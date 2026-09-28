@@ -1,3 +1,8 @@
+---
+title: 邮箱别名接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理企业内所有用户的邮箱别名，支持邮箱别名的添加、查询与删除。
+---
+
 # IFeishuTenantV1MailAlias - 租户邮箱别名API
 
 ## 功能描述

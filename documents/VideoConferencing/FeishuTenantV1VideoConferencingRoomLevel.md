@@ -1,3 +1,8 @@
+---
+title: 会议室层级接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理飞书会议室层级，支持层级创建、删除、更新、详情/批量查询、分页列表与搜索。
+---
+
 # 会议室层级 - 租户令牌
 **IFeishuTenantV1VideoConferencingRoomLevel**
 

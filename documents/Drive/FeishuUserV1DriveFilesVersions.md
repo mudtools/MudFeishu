@@ -1,3 +1,8 @@
+---
+title: 文件版本管理接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份管理飞书在线文档与电子表格的版本，支持创建、获取、删除版本信息，适用于文档版本回溯与版本对比场景。
+---
+
 # 文件版本管理 - 用户令牌（FeishuUserV1DriveFilesVersions）
 
 ## 接口名称

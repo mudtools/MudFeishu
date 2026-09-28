@@ -1,3 +1,8 @@
+---
+title: AI 语音转文字接口（租户令牌）| MudFeishu
+description: 该接口用于通过飞书 AI 语音转文字能力，将音频文件或流式语音转换为文字内容。支持租户管理员通过租户访问令牌进行语音文件识别与流式语音识别。
+---
+
 # IFeishuTenantV1AISpeechToText - 租户AI语音转文字API
 
 ## 功能描述

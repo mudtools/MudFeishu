@@ -1,3 +1,8 @@
+---
+title: 飞书妙搭（Spark）SDK 接口文档 | MudFeishu
+description: 该文档为飞书妙搭（Spark）服务端 OpenAPI 的接口导航总览，涵盖应用管理、自定义枚举、SQL 执行、数据表与记录、视图查询、文件存储、用户 ID 转换及产品使用权限等能力的入口索引。
+---
+
 # 飞书妙搭（Spark）SDK 接口文档
 
 ## 概述

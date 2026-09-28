@@ -19,6 +19,7 @@ public interface IFeishuTenantV1BatchMessage : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 给多个用户或者多个部门中的成员发送文本消息。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/batch_message/send-messages-in-batches">接口文档</see></para>
     /// </summary>
     /// <param name="sendMessageRequest">批量发送文本消息请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -30,6 +31,7 @@ public interface IFeishuTenantV1BatchMessage : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 给多个用户或者多个部门中的成员发送富文本消息。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/batch_message/send-messages-in-batches">接口文档</see></para>
     /// </summary>
     /// <param name="sendMessageRequest">批量发送富文本消息请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -41,6 +43,7 @@ public interface IFeishuTenantV1BatchMessage : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 给多个用户或者多个部门中的成员发送图片消息。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/batch_message/send-messages-in-batches">接口文档</see></para>
     /// </summary>
     /// <param name="sendMessageRequest">批量发送图片消息请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -52,6 +55,7 @@ public interface IFeishuTenantV1BatchMessage : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 给多个用户或者多个部门中的成员发群分享消息。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/batch_message/send-messages-in-batches">接口文档</see></para>
     /// </summary>
     /// <param name="sendMessageRequest">批量发送群分享消息请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -64,6 +68,7 @@ public interface IFeishuTenantV1BatchMessage : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 用于撤回通过批量发送消息接口发送的消息。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/batch_message/delete">接口文档</see></para>
     /// </summary>
     /// <param name="batch_message_id">待撤回的批量消息任务 ID，该 ID 为批量发送消息接口返回值中的message_id字段，用于标识一次批量发送消息请求。
     /// <para>示例值："om_dc13264520392913993dd051dba21dcf"</para>
@@ -77,6 +82,7 @@ public interface IFeishuTenantV1BatchMessage : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 批量发送消息后，可通过该接口查询消息推送的总人数以及消息已读人数。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/batch_message/read_user">接口文档</see></para>
     /// </summary>
     /// <param name="batch_message_id">待查询的批量消息任务 ID，该 ID 为批量发送消息接口返回值中的 message_id 字段，用于标识一次批量发送消息请求。
     /// <para>示例值："om_dc13264520392913993dd051dba21dcf"</para>
@@ -90,6 +96,7 @@ public interface IFeishuTenantV1BatchMessage : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 批量发送消息或者批量撤回消息后，可通过该接口查询消息的发送进度和撤回进度。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/batch_message/get_progress">接口文档</see></para>
     /// </summary>
     /// <param name="batch_message_id">待查询的批量消息任务 ID，该 ID 为批量发送消息接口返回值中的 message_id 字段，用于标识一次批量发送消息请求。
     /// <para>示例值："om_dc13264520392913993dd051dba21dcf"</para>

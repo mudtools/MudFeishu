@@ -1,3 +1,8 @@
+---
+title: 词典文件接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份（应用身份）管理飞书词典图片文件，支持词条图片的上传与下载。
+---
+
 # 词典文件 - 租户令牌（FeishuTenantV1LingoFile）
 
 ## 接口名称

@@ -1,3 +1,8 @@
+---
+title: OpenAPI 审计日志接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份获取飞书 OpenAPI 审计日志数据，包括调用方、时间、请求与响应摘要等信息。
+---
+
 # OpenAPI 审计日志 - 租户令牌（FeishuTenantV1SecurityOpenApiLog）
 
 ## 接口名称

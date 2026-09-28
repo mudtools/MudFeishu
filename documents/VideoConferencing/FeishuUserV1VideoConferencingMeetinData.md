@@ -1,3 +1,8 @@
+---
+title: 会议数据查询接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份分页查询当前用户相关的会议数据（会议明细、参会人明细、会议质量、会议室预定），仅访问当前用户有权限的数据。
+---
+
 # 会议数据查询 - 用户令牌
 **IFeishuUserV1VideoConferencingMeetinData**
 

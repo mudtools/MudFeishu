@@ -1,3 +1,8 @@
+---
+title: 飞书绩效（Performance）SDK 接口文档 | MudFeishu
+description: 该文档为飞书绩效服务端 OpenAPI 的接口导航总览，涵盖绩效结果与详情数据查询、周期任务查询、关键指标数据获取与录入，以及周期项目与评估/指标配置等能力的入口索引。
+---
+
 # 飞书绩效（Performance）SDK 接口文档
 
 ## 概述

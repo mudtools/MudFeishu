@@ -20,6 +20,7 @@ public interface IFeishuV2WikiNodes : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 创建知识空间节点。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/space-node/create">接口文档</see></para>
     /// </summary>
     /// <param name="space_id">
     /// <para>路径参数</para>
@@ -38,6 +39,7 @@ public interface IFeishuV2WikiNodes : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取知识空间节点信息。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/space/get_node">接口文档</see></para>
     /// </summary>
     /// <param name="token">
     /// <para>必填：是</para>
@@ -75,6 +77,7 @@ public interface IFeishuV2WikiNodes : IFeishuAppContextSwitcher
     /// <summary>
     /// <para>用于分页获取Wiki节点的子节点列表。</para>
     /// <para>此接口为分页接口。由于权限过滤，可能返回列表为空，但分页标记（has_more）为true，可以继续分页请求。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/space-node/list">接口文档</see></para>
     /// </summary>
     /// <param name="space_id">
     /// <para>路径参数</para>
@@ -103,6 +106,7 @@ public interface IFeishuV2WikiNodes : IFeishuAppContextSwitcher
     /// <summary>
     /// <para>移动知识空间节点</para>
     /// 用于在Wiki内移动节点，支持跨知识空间移动。如果有子节点，会携带子节点一起移动。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/space-node/move">接口文档</see></para>
     /// </summary>
     /// <param name="space_id">
     /// <para>路径参数</para>
@@ -129,6 +133,7 @@ public interface IFeishuV2WikiNodes : IFeishuAppContextSwitcher
 
     /// <summary>
     /// <para>更新知识空间节点标题</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/space-node/update_title">接口文档</see></para>
     /// </summary>
     /// <param name="space_id">
     /// <para>路径参数</para>
@@ -145,7 +150,7 @@ public interface IFeishuV2WikiNodes : IFeishuAppContextSwitcher
     /// <param name="updateTitleSpaceNodeRequest">更新知识空间节点标题请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Post("/wiki/v2/spaces/{space_id}/nodes/{node_token}/update_title")]
+    [Post("/open-apis/wiki/v2/spaces/{space_id}/nodes/{node_token}/update_title")]
     Task<FeishuNullDataApiResult?> UpdateTitleSpaceNodeAsync(
        [Path] string space_id,
        [Path] string node_token,
@@ -155,6 +160,7 @@ public interface IFeishuV2WikiNodes : IFeishuAppContextSwitcher
 
     /// <summary>
     /// <para>用于在知识空间创建节点副本到指定位置。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/space-node/copy">接口文档</see></para>
     /// </summary>
     /// <param name="space_id">
     /// <para>路径参数</para>
@@ -180,6 +186,7 @@ public interface IFeishuV2WikiNodes : IFeishuAppContextSwitcher
 
     /// <summary>
     /// <para>移动云空间文档至知识空间，并挂载在指定位置。注意：该接口为异步接口。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/space-node/move_docs_to_wiki">接口文档</see></para>
     /// </summary>
     /// <param name="space_id">
     /// <para>路径参数</para>
@@ -198,6 +205,7 @@ public interface IFeishuV2WikiNodes : IFeishuAppContextSwitcher
 
     /// <summary>
     /// <para>用于获取wiki异步任务的结果。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/task/get">接口文档</see></para>
     /// </summary>
     /// <param name="task_id">
     /// <para>路径参数</para>

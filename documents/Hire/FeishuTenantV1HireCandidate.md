@@ -1,3 +1,8 @@
+---
+title: 招聘候选人接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理飞书招聘候选人与投递流程，覆盖招聘官网、人才管理、投递流程、Offer、背调、三方协议及入职等候选人全生命周期操作。
+---
+
 # 候选人 - 租户令牌（FeishuTenantV1HireCandidate）
 
 ## 接口名称

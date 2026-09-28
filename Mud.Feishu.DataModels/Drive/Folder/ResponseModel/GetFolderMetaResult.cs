@@ -38,27 +38,27 @@ public class GetFolderMetaResult
     /// <para>文件夹的创建者 ID</para>
     /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("createUid")]
+    [JsonPropertyName("create_uid")]
     public string? CreateUid { get; set; }
 
     /// <summary>
     /// <para>文件夹的最后编辑者 ID</para>
     /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("editUid")]
+    [JsonPropertyName("edit_uid")]
     public string? EditUid { get; set; }
 
     /// <summary>
     /// <para>文件夹的上级目录 ID。“0” 表示当前文件夹无上级目录</para>
     /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("parentId")]
+    [JsonPropertyName("parent_id")]
     public string? ParentId { get; set; }
 
     /// <summary>
     /// <para>文件夹为个人文件夹时，为文件夹的所有者 ID；文件夹为共享文件夹时，为文件夹树 ID</para>
     /// <para>必填：否</para>
     /// </summary>
-    [JsonPropertyName("ownUid")]
+    [JsonPropertyName("own_uid")]
     public string? OwnUid { get; set; }
 }

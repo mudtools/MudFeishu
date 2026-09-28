@@ -1,3 +1,8 @@
+---
+title: Mud.Feishu SDK 接口文档 | MudFeishu
+description: 该文档为 Mud.Feishu 企业级 .NET SDK 的总入口，介绍 SDK 对飞书开放平台 API 的完整封装，涵盖 HTTP 客户端、WebSocket 实时事件与 Webhook 事件处理等核心特性。
+---
+
 # Mud.Feishu SDK 接口文档
 
 ## 概述

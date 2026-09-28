@@ -25,6 +25,7 @@ public interface IFeishuV2Wiki : IFeishuAppContextSwitcher
     /// <para>- 使用 tenant access token 调用时，请确认应用或机器人拥有部分知识空间的访问权限，否则返回列表为空。参阅[如何将应用添加为知识库管理员（成员）](https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/wiki-v2/wiki-qa#b5da330b)。</para>
     /// <para>- 此接口为分页接口。由于权限过滤，可能返回列表为空，但当分页标记（has_more）为 true 时，可以继续分页请求。</para>
     /// <para>- 此接口不会返回**我的文档库**。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/space/list">接口文档</see></para>
     /// </summary>
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
@@ -38,6 +39,7 @@ public interface IFeishuV2Wiki : IFeishuAppContextSwitcher
     /// <summary>
     /// <para>获取知识空间信息</para>
     /// <para>此接口用于根据知识空间 ID 查询知识空间的信息，包括空间的类型、可见性、分享状态等。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/space/get">接口文档</see></para>
     /// </summary>
     /// <param name="space_id">
     /// <para>路径参数</para>
@@ -78,6 +80,7 @@ public interface IFeishuV2Wiki : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取知识空间成员列表。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/space-member/list">接口文档</see></para>
     /// </summary>
     /// <param name="space_id">
     /// <para>路径参数</para>
@@ -103,6 +106,7 @@ public interface IFeishuV2Wiki : IFeishuAppContextSwitcher
     /// <para>- 使用 tenant access token 身份操作时，无法使用部门 ID (opendepartmentid) 添加知识空间成员。</para>
     /// <para>- 公开知识空间（即 visibility [可见性](<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/wiki-overview"/>)为 public 的空间）对租户所有用户可见，因此不支持再添加成员，但可以添加管理员。</para>
     /// <para>- 个人知识空间 （即 type [类型](<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/wiki-overview"/>)为 person 的空间）为个人管理的知识空间，不支持添加其他管理员（包括应用/机器人）。但可以添加成员。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/space-member/create">接口文档</see></para>
     /// </summary>
     /// <param name="space_id">
     /// <para>路径参数</para>
@@ -127,6 +131,7 @@ public interface IFeishuV2Wiki : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 删除知识空间成员。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/space-member/delete">接口文档</see></para>
     /// </summary>
     /// <param name="space_id">
     /// <para>路径参数</para>
@@ -151,6 +156,7 @@ public interface IFeishuV2Wiki : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 更新知识空间设置。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/space-setting/update">接口文档</see></para>
     /// </summary>
     /// <param name="space_id">
     /// <para>路径参数</para>

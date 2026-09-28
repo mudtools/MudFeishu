@@ -1,3 +1,8 @@
+---
+title: 会议导出接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份异步导出一段时间内的租户会议数据（会议明细、参会人明细、会议质量、会议室预定），支持查询任务结果并下载文件。
+---
+
 # 会议导出 - 租户令牌
 **IFeishuTenantV1VideoConferencingExports**
 

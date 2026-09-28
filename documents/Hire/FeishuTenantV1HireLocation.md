@@ -1,3 +1,8 @@
+---
+title: 招聘地址接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份查询飞书招聘的地址主数据，可按地点类型批量查询地址码，或按用途分页查询已维护的地址列表。
+---
+
 # 地址（FeishuTenantV1HireLocation）
 
 ## 接口名称

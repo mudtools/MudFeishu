@@ -1,3 +1,8 @@
+---
+title: 飞书云文档接口（租户令牌）| MudFeishu
+description: 该接口用于以租户（应用）身份创建、查询和管理飞书云文档，每篇文档均以唯一的 document_id 作为标识，适用于企业级文档自动化场景。
+---
+
 # 飞书云文档租户接口 - (IFeishuTenantV1Docx)
 
 ## 接口名称

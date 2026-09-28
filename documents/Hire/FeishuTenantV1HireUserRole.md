@@ -1,3 +1,8 @@
+---
+title: 招聘用户角色接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份分页查询用户在飞书招聘中的角色绑定关系，返回用户 ID、角色信息、修改时间及业务管理范围。
+---
+
 # 用户角色（FeishuTenantV1HireUserRole）
 
 ## 接口名称

@@ -1,3 +1,8 @@
+---
+title: 招聘职能分类接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份分页获取飞书招聘职能分类列表（树形结构，通过 parent_id 表达层级），用于职位创建时的职能选择。
+---
+
 # 职能分类（FeishuTenantV1HireJobFunction）
 
 ## 接口名称

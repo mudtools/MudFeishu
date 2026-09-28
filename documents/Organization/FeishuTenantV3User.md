@@ -1,3 +1,8 @@
+---
+title: 用户管理接口（租户 V3）| MudFeishu
+description: 该接口用于以租户身份管理飞书通讯录 V3 版本用户，支持用户创建、更新、ID 变更、查询、搜索、删除、恢复、退出登录与 JSAPI 票据获取。
+---
+
 # 租户V3用户管理 - FeishuTenantV3User
 
 ## 接口名称

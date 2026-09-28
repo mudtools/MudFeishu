@@ -1,3 +1,8 @@
+---
+title: 邮箱标签接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理企业内所有用户的邮箱标签，支持邮件标签的创建、修改、查询与删除。
+---
+
 # IFeishuTenantV1MailLabel - 租户邮箱标签API
 
 ## 功能描述

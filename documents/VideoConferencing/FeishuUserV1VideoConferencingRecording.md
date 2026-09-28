@@ -1,3 +1,8 @@
+---
+title: 会议录制接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份管理会议录制操作，包括开始/停止录制、获取与授权录制文件，操作者需具有相应权限。
+---
+
 # 会议录制 - 用户令牌
 **IFeishuUserV1VideoConferencingRecording**
 

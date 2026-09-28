@@ -1,3 +1,8 @@
+---
+title: 审批 Bot 消息接口（租户令牌）| MudFeishu
+description: 该接口用于通过飞书审批的 Bot 推送消息给用户或更新审批 Bot 消息。当有新的审批待办，或者审批待办的状态有更新时，可以通过飞书审批的 Bot 告知用户。
+---
+
 # 审批 Bot 消息接口 -（FeishuV1ApprovalMessage_Tenant）
 
 ## 接口名称

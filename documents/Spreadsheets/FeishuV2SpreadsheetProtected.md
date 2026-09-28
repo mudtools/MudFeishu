@@ -1,3 +1,8 @@
+---
+title: 电子表格数据保护接口（V2）| MudFeishu
+description: 该接口用于管理飞书电子表格的数据保护范围，支持对工作表行/列的保护与协作者编辑权限设置，包括增加、修改、获取与删除保护范围。
+---
+
 # 电子表格数据保护  
 **数据保护 - IFeishuV2SpreadsheetProtected**
 

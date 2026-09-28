@@ -21,6 +21,7 @@ public interface IFeishuV1Message : IFeishuAppContextSwitcher
     /// 撤回指定消息。调用接口的身份不同（身份通过 Authorization 请求头参数指定），可实现的效果不同：
     /// <para> 机器人可以撤回该机器人自己发送的消息。</para>
     /// <para> 群聊的群主可以撤回群内指定的消息。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message/delete">接口文档</see></para>
     /// </summary>
     /// <param name="message_id">待撤回的消息 ID。示例值："om_dc13264520392913993dd051dba21dcf"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -33,6 +34,7 @@ public interface IFeishuV1Message : IFeishuAppContextSwitcher
     #region 表情回复
     /// <summary>
     /// 给指定消息添加指定类型的表情回复。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message-reaction/create">接口文档</see></para>
     /// </summary>
     /// <param name="sendMessageRequest">添加消息表情回复请求体。</param>
     /// <param name="message_id">待添加表情回复的消息 ID。</param>
@@ -45,6 +47,7 @@ public interface IFeishuV1Message : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取指定消息内的表情回复列表，支持仅获取特定类型的表情回复。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message-reaction/list">接口文档</see></para>
     /// </summary>
     /// <param name="message_id">待查询的消息ID。</param>
     /// <param name="reaction_type">待查询的表情类型，支持的枚举值参考表情文案说明中的 emoji_type 值。</param> 
@@ -64,6 +67,7 @@ public interface IFeishuV1Message : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 删除指定消息的某一表情回复。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message-reaction/delete">接口文档</see></para>
     /// </summary>
     /// <param name="reaction_id">待删除的表情回复 ID。示例值："ZCaCIjUBVVWSrm5L-3ZTw*************sNa8dHVplEzzSfJVUVLMLcS_"</param>
     /// <param name="message_id">待删除表情回复的消息 ID。示例值："om_8964d1b4*********2b31383276113"</param>
@@ -73,11 +77,24 @@ public interface IFeishuV1Message : IFeishuAppContextSwitcher
      [Path] string message_id,
      [Path] string reaction_id,
      CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 批量查询多条消息中的表情回复，可指定每条消息返回的表情数量与表情类型。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message-reaction/batch_query">接口文档</see></para>
+    /// </summary>
+    /// <param name="batchQueryRequest">批量查询消息表情回复请求体。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/im/v1/messages/reactions/batch_query")]
+    Task<FeishuApiResult<BatchQueryMessageReactionsResult>?> BatchQueryMessageReactionsAsync(
+     [Body] BatchQueryMessageReactionsRequest batchQueryRequest,
+     CancellationToken cancellationToken = default);
     #endregion
 
     #region Pin
     /// <summary>
     /// Pin 一条指定的消息。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/pin/create">接口文档</see></para>
     /// </summary>
     /// <param name="messageRequest">Pin 消息请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -89,6 +106,7 @@ public interface IFeishuV1Message : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 移除一条指定消息的 Pin。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/pin/delete">接口文档</see></para>
     /// </summary>
     /// <param name="message_id">待移除 Pin 的消息 ID。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -100,6 +118,7 @@ public interface IFeishuV1Message : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取指定群、指定时间范围内的所有 Pin 消息。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/pin/list">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">待获取 Pin 消息的群组 ID。 示例值："oc_234jsi43d3ssi993d43545f"</param>
     /// <param name="start_time">获取 Pin 消息的起始时间，毫秒级时间戳。 示例值："1658632251800"</param>

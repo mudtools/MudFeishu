@@ -1,3 +1,8 @@
+---
+title: 日历访问控制接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理飞书日历的访问控制（ACL）成员权限，可为日历成员设置游客、订阅者、编辑者或管理员等访问权限。
+---
+
 # 日历访问控制 - 租户令牌
 **IFeishuTenantV4CalendarAcl**
 

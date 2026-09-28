@@ -1,3 +1,8 @@
+---
+title: 词库接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份获取飞书词典的词库列表。
+---
+
 # 词库 - 用户令牌（FeishuUserV1LingoRepo）
 
 ## 接口名称

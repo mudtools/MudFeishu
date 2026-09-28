@@ -1,3 +1,8 @@
+---
+title: 邮箱文件夹接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理企业内所有用户的邮箱文件夹，支持邮箱文件夹的创建、修改、查询与删除。
+---
+
 # IFeishuTenantV1MailFolder - 租户邮箱文件夹API
 
 ## 功能描述

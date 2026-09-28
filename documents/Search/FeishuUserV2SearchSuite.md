@@ -1,3 +1,8 @@
+---
+title: 搜索套件接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份在飞书套件内检索消息与应用，根据关键词对当前用户可见的应用、消息进行搜索。
+---
+
 # 搜索套件 - 用户令牌（FeishuUserV2SearchSuite）
 
 ## 接口名称

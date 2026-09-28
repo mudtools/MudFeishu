@@ -1,3 +1,8 @@
+---
+title: 飞书妙搭用户 ID 转换接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份在飞书妙搭与飞书开放平台之间转换用户 ID。
+---
+
 # 飞书妙搭用户 ID 转换 - 租户令牌（FeishuTenantV1SparkDirectoryUser）
 
 ## 接口名称

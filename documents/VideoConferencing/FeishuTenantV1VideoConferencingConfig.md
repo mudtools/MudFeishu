@@ -1,3 +1,8 @@
+---
+title: 会议室配置接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份配置飞书会议室，支持会议室配置查询与设置、预定限制、预定表单、预定管理员及禁用状态变更通知管理。
+---
+
 # 会议室配置 - 租户令牌
 **IFeishuTenantV1VideoConferencingConfig**
 

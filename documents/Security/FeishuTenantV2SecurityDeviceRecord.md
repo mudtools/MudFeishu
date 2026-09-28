@@ -1,3 +1,8 @@
+---
+title: 设备管理接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理飞书设备记录，支持设备的新增、分页/单个查询、更新与删除。
+---
+
 # 设备管理 - 租户令牌（FeishuTenantV2SecurityDeviceRecord）
 
 ## 接口名称

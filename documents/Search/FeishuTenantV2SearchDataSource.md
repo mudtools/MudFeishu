@@ -1,3 +1,8 @@
+---
+title: 搜索数据源接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理飞书搜索连接器数据源，支持数据源与数据范式的创建/更新/删除/查询，以及数据项的索引创建、批量创建与删除。
+---
+
 # 搜索数据源 - 租户令牌（FeishuTenantV2SearchDataSource）
 
 ## 接口名称

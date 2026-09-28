@@ -1,3 +1,8 @@
+---
+title: 考勤排班接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份创建或修改飞书考勤临时排班，可在排班表上创建或修改临时班次并用于排班，支持按日期对一位或多位人员进行排临时班次。
+---
+
 # 考勤排班（用户令牌） - FeishuV1AttendanceUserDailyShifts_User
 
 ## 接口名称

@@ -1,3 +1,8 @@
+---
+title: 会议室搜索接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份搜索飞书会议室，支持关键词或自定义会议室 ID 查询，仅返回用户有预定权限的会议室列表。
+---
+
 # 会议室搜索 - 用户令牌
 **IFeishuUserV1VideoConferencingRoom**
 

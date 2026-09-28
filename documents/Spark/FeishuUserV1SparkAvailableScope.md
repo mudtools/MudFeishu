@@ -1,3 +1,8 @@
+---
+title: 飞书妙搭产品使用权限接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份获取与修改飞书妙搭产品企业级使用权限配置（可用范围模式 + 允许/禁止的部门/成员名单）。
+---
+
 # 飞书妙搭产品使用权限 - 用户令牌（FeishuUserV1SparkAvailableScope）
 
 ## 接口名称

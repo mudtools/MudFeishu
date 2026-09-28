@@ -1,3 +1,8 @@
+---
+title: 招聘职位模板接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份按场景（社招/校招）分页获取职位模板列表，返回模板下的模块与字段结构（含必填/可见/启用状态与选项配置）。
+---
+
 # 职位模板（FeishuTenantV1HireJobSchema）
 
 ## 接口名称

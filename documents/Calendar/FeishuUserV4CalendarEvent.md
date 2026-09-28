@@ -1,3 +1,8 @@
+---
+title: 日历日程接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份管理飞书日历日程资源，包括日程的增删改查、搜索、回复、参与人管理、会议群/纪要管理、会议室忙闲查询，以及日程变更事件订阅、CalDAV 配置生成和 Exchange 账户绑定等用户专属功能。
+---
+
 # 日历日程 - 用户令牌
 **IFeishuUserV4CalendarEvent**
 

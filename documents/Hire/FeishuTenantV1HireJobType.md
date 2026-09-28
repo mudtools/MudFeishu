@@ -1,3 +1,8 @@
+---
+title: 招聘职位类别接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份分页获取飞书招聘职位类别列表（树形结构，通过 parent_id 表达层级），用于职位创建时的类别选择。
+---
+
 # 职位类别（FeishuTenantV1HireJobType）
 
 ## 接口名称

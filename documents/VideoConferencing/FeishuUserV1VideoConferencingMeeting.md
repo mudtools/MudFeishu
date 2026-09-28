@@ -1,3 +1,8 @@
+---
+title: 会议管理接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份管理飞书会议，支持获取会议详情、关联会议列表、搜索会议、设置主持人、邀请参会人及结束会议等操作。
+---
+
 # 会议管理 - 用户令牌
 **IFeishuUserV1VideoConferencingMeeting**
 

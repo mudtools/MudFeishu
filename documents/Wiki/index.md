@@ -1,3 +1,8 @@
+---
+title: 知识库 SDK 接口文档 | MudFeishu
+description: 该文档为飞书 Wiki 知识库服务端 OpenAPI 的接口导航总览，涵盖知识空间管理、节点操作、成员权限管理等能力的入口索引。
+---
+
 # 知识库 SDK 接口文档
 
 ## 概述

@@ -1,3 +1,8 @@
+---
+title: 电子表格与工作表接口（V3）| MudFeishu
+description: 该接口用于管理飞书电子表格与工作表，提供表格（spreadsheet）、工作表（sheet）与范围（range）的创建、查询与属性管理能力。
+---
+
 # 电子表格  
 **电子表格与工作表 - IFeishuV3Spreadsheets**
 

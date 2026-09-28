@@ -1,3 +1,8 @@
+---
+title: 部门管理接口（用户 V3）| MudFeishu
+description: 该接口用于以用户身份管理飞书通讯录 V3 版本部门，支持部门的查询、创建、更新与删除。
+---
+
 # 用户V3部门管理 - FeishuUserV3Departments
 
 ## 接口名称

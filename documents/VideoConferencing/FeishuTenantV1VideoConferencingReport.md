@@ -1,3 +1,8 @@
+---
+title: 会议报告接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份获取一段时间内租户的会议使用情况报告，包括每日会议使用报告与 Top 用户列表（最近 90 天）。
+---
+
 # 会议报告 - 租户令牌
 **IFeishuTenantV1VideoConferencingReport**
 

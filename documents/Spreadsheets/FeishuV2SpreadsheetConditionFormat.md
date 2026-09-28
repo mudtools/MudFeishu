@@ -1,3 +1,8 @@
+---
+title: 电子表格条件格式接口（V2）| MudFeishu
+description: 该接口用于管理飞书电子表格的条件格式，支持跨工作表批量创建、更新、获取与删除条件格式。
+---
+
 # 电子表格条件格式  
 **条件格式 - IFeishuV2SpreadsheetConditionFormat**
 

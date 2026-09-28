@@ -1,3 +1,8 @@
+---
+title: 邮箱事件接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份管理邮箱事件通知，支持邮箱事件的订阅、订阅状态查询与取消订阅。
+---
+
 # IFeishuUserV1Mail - 用户邮箱事件API
 
 ## 功能描述

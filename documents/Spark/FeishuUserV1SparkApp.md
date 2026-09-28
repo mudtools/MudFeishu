@@ -1,3 +1,8 @@
+---
+title: 飞书妙搭应用管理接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份管理飞书妙搭（Spark）应用，包括创建/更新应用、上传图标、HTML 发布、可用范围管理，并继承双令牌只读端点。
+---
+
 # 飞书妙搭应用管理 - 用户令牌（FeishuUserV1SparkApp）
 
 ## 接口名称

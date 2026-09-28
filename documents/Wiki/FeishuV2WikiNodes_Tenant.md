@@ -1,3 +1,8 @@
+---
+title: Wiki 知识库节点接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理飞书知识空间节点（支持文档、表格等类型），包括创建、移动、复制节点以及获取节点信息等操作。
+---
+
 ## 接口名称
 
 **Wiki 知识库节点（租户令牌）- (IFeishuTenantV2WikiNodes)**

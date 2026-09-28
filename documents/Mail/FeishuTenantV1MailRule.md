@@ -1,3 +1,8 @@
+---
+title: 邮箱收信规则接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理企业内所有用户的邮箱收信规则，支持收信规则的创建、修改、查询与删除。
+---
+
 # IFeishuTenantV1MailRule - 租户邮箱收信规则API
 
 ## 功能描述

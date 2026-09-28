@@ -1,3 +1,8 @@
+---
+title: Wiki 知识库接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理飞书知识空间，适用于后台服务、机器人等无需用户登录的场景。
+---
+
 ## 接口名称
 **Wiki 知识库（租户令牌）- (IFeishuTenantV2Wiki)**
 

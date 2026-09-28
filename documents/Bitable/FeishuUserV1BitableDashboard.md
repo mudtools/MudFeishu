@@ -1,3 +1,8 @@
+---
+title: 多维表格仪表盘接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份管理飞书多维表格仪表盘（block），仪表盘可从不同维度对多维表格数据进行统计，支持复制仪表盘和列出仪表盘等操作。
+---
+
 # 多维表格仪表盘 - 用户令牌（FeishuUserV1BitableDashboard）
 
 ## 接口名称

@@ -13,6 +13,7 @@ namespace Mud.Feishu.Interfaces;
 /// 任务可以拥有附件。一个附件可以是任意类型的文件，如图片，PDF文档，zip文件等。
 /// <para>附件不可以单独存在，必须与某种资源产生关联关系。</para>
 /// <para>关联附件的资源类型只有任务。因为附件不可单独存在，因此为新任务添加附件时，必须先调用创建任务接口，完成任务创建，再调用上传附件接口上传文件，并关联到新建的任务上。</para>
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/task-v2/attachment/upload"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -20,6 +21,7 @@ public interface IFeishuV2TaskAttachments : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 为特定资源上传附件。本接口可以支持一次上传多个附件，最多5个。每个附件尺寸不超过50MB，格式不限。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/attachment/upload">接口文档</see></para>
     /// </summary>
     /// <param name="uploadFileRequest">上传附件请求体。</param>
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
@@ -35,6 +37,7 @@ public interface IFeishuV2TaskAttachments : IFeishuAppContextSwitcher
     /// <summary>
     /// 列取一个资源的所有附件。返回的附件列表支持分页，按照附件上传时间排序。
     /// <para>每个附件会返回一个可供下载的临时url，有效期为3分钟，最多可以支持3次下载。如果超过使用限制，需要通过本接口获取新的临时url。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/attachment/list">接口文档</see></para>
     /// </summary>
     /// <param name="resource_id">要获取评论的资源ID。例如要获取任务的评论列表，此处应该填写任务全局唯一ID
     /// <para>示例值："d300a75f-c56a-4be9-80d1-e47653028ceb"</para></param>
@@ -57,6 +60,7 @@ public interface IFeishuV2TaskAttachments : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 提供一个附件GUID，返回附件的详细信息，包括GUID，名称，大小，上传时间，临时可下载链接等。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/attachment/get">接口文档</see></para>
     /// </summary>
     /// <param name="attachment_guid">获取详情的附件GUID。示例值："b59aa7a3-e98c-4830-8273-cbb29f89b837"</param>
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
@@ -71,6 +75,7 @@ public interface IFeishuV2TaskAttachments : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 提供一个附件GUID，删除该附件。删除后该附件不可再恢复。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/attachment/delete">接口文档</see></para>
     /// </summary>
     /// <param name="attachment_guid">删除的附件GUID。示例值："b59aa7a3-e98c-4830-8273-cbb29f89b837"</param>
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>

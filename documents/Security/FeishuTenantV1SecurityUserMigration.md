@@ -1,3 +1,8 @@
+---
+title: 数据驻留与用户迁移接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理飞书数据驻留与用户迁移，支持获取可用地理位置列表、迁移用户数据驻留位置及查询/取消迁移状态。
+---
+
 # 数据驻留与用户迁移 - 租户令牌（FeishuTenantV1SecurityUserMigration）
 
 ## 接口名称

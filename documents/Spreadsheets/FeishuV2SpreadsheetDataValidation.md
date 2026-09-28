@@ -1,3 +1,8 @@
+---
+title: 电子表格数据校验接口（V2）| MudFeishu
+description: 该接口用于管理飞书电子表格的数据校验（下拉列表），支持数据校验的创建、更新、获取与删除。
+---
+
 # 电子表格数据校验  
 **数据校验 - IFeishuV2SpreadsheetDataValidation**
 

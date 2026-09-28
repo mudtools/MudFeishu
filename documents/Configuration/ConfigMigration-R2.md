@@ -1,3 +1,8 @@
+---
+title: 配置迁移指南（R2/R3）| MudFeishu
+description: 该文档为 MudFeishu 配置面的迁移指南，说明 R2 统一事件去重节 FeishuDeduplication 等新配置项的推荐用法与迁移方式。
+---
+
 # 配置迁移指南（R2/R3）
 
 对应实施方案：`.docs/配置面Bug修复与功能完善方案.md`（验证回写 §0A + 实施任务 §12）。

@@ -1,3 +1,8 @@
+---
+title: 搜索文档接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份搜索飞书云文档，根据关键词对当前用户可见的云文档进行检索（可见性与文档权限一致）。
+---
+
 # 搜索文档 - 用户令牌（FeishuUserV2SearchDocWiki）
 
 ## 接口名称

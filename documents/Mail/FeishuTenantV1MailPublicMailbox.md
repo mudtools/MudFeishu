@@ -1,3 +1,8 @@
+---
+title: 公共邮箱接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份管理企业内所有公共邮箱，包括公共邮箱、成员及别名的管理。
+---
+
 # IFeishuTenantV1MailPublicMailbox - 租户公共邮箱API
 
 ## 功能描述

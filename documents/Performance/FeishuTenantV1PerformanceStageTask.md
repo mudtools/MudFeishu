@@ -1,3 +1,8 @@
+---
+title: 绩效周期任务接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份获取飞书绩效周期任务，支持按指定用户或全量分页方式获取周期内各用户的环节任务信息（任务分类、截止时间、环节状态等）。
+---
+
 # 周期任务 - 租户令牌（FeishuTenantV1PerformanceStageTask）
 
 ## 接口名称

@@ -1,3 +1,8 @@
+---
+title: 电子表格筛选视图接口（V3）| MudFeishu
+description: 该接口用于管理飞书电子表格的筛选视图，提供筛选视图与筛选条件的完整增删改查能力，便于团队在共享数据源时拥有独立观察视角。
+---
+
 # 电子表格筛选视图  
 **筛选视图 - IFeishuV3SpreadsheetFilterView**
 

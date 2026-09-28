@@ -1,3 +1,8 @@
+---
+title: Aily 智能体接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份调用飞书 Aily 智能体，提供智能体对话（含 SSE 流式输出）、会话管理、附件上传与产物下载等能力，可将其集成到业务系统中。
+---
+
 # 飞书 Aily 智能体 - 租户令牌（FeishuTenantV1AilyAgent）
 
 ## 接口名称

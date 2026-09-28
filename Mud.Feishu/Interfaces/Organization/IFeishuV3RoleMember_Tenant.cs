@@ -97,7 +97,7 @@ public interface IFeishuTenantV3RoleMember : IFeishuAppContextSwitcher
     /// <param name="user_id_type">用户 ID 类型，默认值：open_id</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
-    [Delete("/open-apis/contact/v3/functional_roles/{role_id}/members/batch_delete")]
+    [Patch("/open-apis/contact/v3/functional_roles/{role_id}/members/batch_delete")]
     Task<FeishuApiResult<RoleAssignmentResult>?> DeleteMembersByRoleIdAsync(
          [Path] string role_id,
          [Body] RoleMembersRequest roleMembersRequest,

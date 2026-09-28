@@ -1,3 +1,8 @@
+---
+title: 邮箱草稿接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份管理自己的邮件草稿，支持草稿的创建、修改、查询、删除与发送。
+---
+
 # IFeishuUserV1MailDraft - 用户邮箱草稿API
 
 ## 功能描述

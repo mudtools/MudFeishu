@@ -30,7 +30,7 @@ public class DocumentCoverInfo
     /// <para>默认值：0</para>
     /// </summary>
     [JsonPropertyName("offset_ratio_x")]
-    public float? OffsetRatioX { get; set; }
+    public double? OffsetRatioX { get; set; }
 
     /// <summary>
     /// <para>展示视图在垂直方向的偏移比例。其值为距离原图中心的垂直方向偏移值 px / 原图高度 px。 视图在原图中心时，该值为 0； 视图在原图上部分时，该值为正数； 视图在原图下部分时，改值为负数。</para>
@@ -39,5 +39,5 @@ public class DocumentCoverInfo
     /// <para>默认值：0</para>
     /// </summary>
     [JsonPropertyName("offset_ratio_y")]
-    public float? OffsetRatioY { get; set; }
+    public double? OffsetRatioY { get; set; }
 }

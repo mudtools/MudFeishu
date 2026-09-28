@@ -14,6 +14,7 @@ namespace Mud.Feishu.Interfaces;
 /// <para>可以：<list type="bullet">按状态分组，待启动-进行中-已完成
 /// <item>按优先级分组，P0-重要且紧急，P1-重要但不紧急，...</item>
 /// <item>按类别分组，市场相关、人事相关，...</item></list></para>
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/task-v2/section/create"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -22,6 +23,7 @@ public interface IFeishuV2TaskSections : IFeishuAppContextSwitcher
     /// <summary>
     /// <para>为清单或我负责的任务列表创建一个自定义分组。</para>
     /// <para>创建时可以需要提供名称和可选的配置。如果不指定位置，新分组会放到指定resource的自定义分组列表的最后。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/section/create">接口文档</see></para>
     /// </summary>
     /// <param name="createTaskSectionsRequest">创建自定义分组请求体。</param>
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
@@ -36,6 +38,7 @@ public interface IFeishuV2TaskSections : IFeishuAppContextSwitcher
     /// <summary>
     /// <para>更新自定义分组，可以更新自定义分组的名称和位置。</para>
     /// <para>更新时，将update_fields字段中填写所有要修改的字段名，同时在section字段中填写要修改的字段的新值即可。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/section/patch">接口文档</see></para>
     /// </summary>
     /// <param name="section_guid">要更新的自定义分组GUID。示例值："9842501a-9f47-4ff5-a622-d319eeecb97f"</param>
     /// <param name="updateTaskSectionsRequest">更新自定义分组请求体。</param>
@@ -52,6 +55,7 @@ public interface IFeishuV2TaskSections : IFeishuAppContextSwitcher
     /// <summary>
     /// <para>获取一个自定义分组详情，包括名称，创建人等信息。</para>
     /// <para>如果该自定义分组归属于一个清单，还会返回清单的摘要信息。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/section/get">接口文档</see></para>
     /// </summary>
     /// <param name="section_guid">要获取的自定义分组GUID。示例值："9842501a-9f47-4ff5-a622-d319eeecb97f"</param>
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
@@ -66,6 +70,7 @@ public interface IFeishuV2TaskSections : IFeishuAppContextSwitcher
     /// <summary>
     /// <para>删除一个自定义分组。</para>
     /// <para>删除后该自定义分组中的任务会被移动到被删除自定义分组所属资源的默认自定义分组中。不能删除默认的自定义分组。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/section/delete">接口文档</see></para>
     /// </summary>
     /// <param name="section_guid">要删除的自定义分组GUID。示例值："9842501a-9f47-4ff5-a622-d319eeecb97f"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -78,6 +83,7 @@ public interface IFeishuV2TaskSections : IFeishuAppContextSwitcher
 
     /// <summary>
     /// <para>分页获取自定义分组列表。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/section/list">接口文档</see></para>
     /// </summary>
     /// <param name="resource_id">如resource_type为"tasklist"，这里需要填写要列取自定义分组的清单的GUID。示例值："caef228f-2342-23c1-c36d-91186414dc64"</param>
     /// <param name="resource_type">自定义分组所属的资源类型。支持my_tasks(我负责的）和tasklist（清单）。当使用tasklist时，需要用resource_id提供清单的全局唯一ID。示例值："tasklist"</param>
@@ -98,6 +104,7 @@ public interface IFeishuV2TaskSections : IFeishuAppContextSwitcher
     /// <summary>
     /// <para>获取自定义分组任务列表。</para>
     /// <para>列取一个自定义分组里的所有任务。支持分页。任务按照自定义排序的顺序返回。本接口支持简单的过滤。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/section/tasks">接口文档</see></para>
     /// </summary>
     /// <param name="section_guid">要获取的自定义分组GUID。示例值："9842501a-9f47-4ff5-a622-d319eeecb97f"</param>
     /// <param name="completed">按照任务状态过滤，如果不填写则表示不按完成状态过滤，示例值：true</param>

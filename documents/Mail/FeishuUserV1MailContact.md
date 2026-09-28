@@ -1,3 +1,8 @@
+---
+title: 邮箱联系人接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份管理自己的邮箱联系人，支持邮箱联系人的修改、查询与删除。
+---
+
 # IFeishuUserV1MailContact - 用户邮箱联系人API
 
 ## 功能描述

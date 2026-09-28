@@ -1,3 +1,8 @@
+---
+title: Wiki 知识库节点接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份管理飞书知识空间节点，除基础节点操作外，还支持 Wiki 搜索功能。
+---
+
 ## 接口名称
 **Wiki 知识库节点（用户令牌）- (IFeishuUserV2WikiNodes)**
 

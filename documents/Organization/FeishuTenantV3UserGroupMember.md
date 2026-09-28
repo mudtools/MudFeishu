@@ -1,3 +1,8 @@
+---
+title: 用户组成员管理接口（租户 V3）| MudFeishu
+description: 该接口用于以租户身份管理飞书用户组成员，支持成员的添加、批量添加、查询、移除与批量移除。
+---
+
 # 租户V3用户组成员管理 - FeishuTenantV3UserGroupMember
 
 ## 接口名称

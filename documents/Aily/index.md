@@ -1,3 +1,8 @@
+---
+title: Aily SDK 接口文档 | MudFeishu
+description: 该文档为飞书 Aily（智能伙伴/智能体）服务端 OpenAPI 的接口导航总览，涵盖智能体对话与会话管理、技能调用、数据知识问答与管理等能力的入口索引。
+---
+
 # 飞书 Aily SDK 接口文档
 
 ## 概述

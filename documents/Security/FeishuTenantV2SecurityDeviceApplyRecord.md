@@ -1,3 +1,8 @@
+---
+title: 设备申报接口（租户令牌）| MudFeishu
+description: 该接口用于以租户身份审批飞书设备申报，支持通过或驳回成员自主申报的设备申请。
+---
+
 # 设备申报 - 租户令牌（FeishuTenantV2SecurityDeviceApplyRecord）
 
 ## 接口名称

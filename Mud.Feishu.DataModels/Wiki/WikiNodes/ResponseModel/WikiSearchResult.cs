@@ -53,7 +53,7 @@ public class WikiSearchResult
     /// <para>必填：否</para>
     /// </summary>
     [JsonPropertyName("sort_id")]
-    public int? SortId { get; set; }
+    public double? SortId { get; set; }
 
     /// <summary>
     /// <para>wiki 标题</para>

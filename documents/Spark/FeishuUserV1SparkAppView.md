@@ -1,3 +1,8 @@
+---
+title: 飞书妙搭视图接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份查询飞书妙搭应用下的视图数据记录。
+---
+
 # 飞书妙搭视图 - 用户令牌（FeishuUserV1SparkAppView）
 
 ## 接口名称

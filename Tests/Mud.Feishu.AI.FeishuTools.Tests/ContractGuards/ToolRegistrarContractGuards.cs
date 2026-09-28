@@ -11,7 +11,8 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 
 /// <summary>
 /// 域注册器 / DI 装配产物契约守卫（<c>ToolRegistrarEmitter</c> →
-/// <c>FeishuToolDomainRegistrars.g.cs</c> + <c>FeishuToolsServiceCollectionCoreExtensions.g.cs</c>）。
+/// <c>FeishuToolDomainRegistrars/{Registrar}.g.cs</c> 每执行器一文件
+/// + <c>FeishuToolsServiceCollectionCoreExtensions.g.cs</c>）。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -87,7 +88,7 @@ public class ToolRegistrarContractGuards
         source.Should().NotContain(
             ": IFeishuToolDomainRegistrar",
             "手写侧只允许保留契约（IFeishuToolDomainRegistrar）与登记助手；实现类必须由生成器产出"
-            + "（BitableToolDomainRegistrar 等已由 FeishuToolDomainRegistrars.g.cs 生成）");
+            + "（BitableToolDomainRegistrar 等已由 FeishuToolDomainRegistrars/*.g.cs 生成）");
     }
 
     /// <summary>

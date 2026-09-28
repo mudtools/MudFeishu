@@ -10,7 +10,7 @@ using System.Reflection;
 namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 
 /// <summary>
-/// 参数解包产物契约守卫（<c>ToolArgsEmitter</c> → <c>FeishuToolArgs.g.cs</c>）：断言每枚契约工具都有
+/// 参数解包产物契约守卫（<c>ToolArgsEmitter</c> → <c>FeishuToolArgs/{Tool}Args.g.cs</c>，每类型一文件）：断言每枚契约工具都有
 /// 生成的 <c>{Tool}Args</c> 类型、其字段与 Schema 参数<b>逐一对齐</b>，且 <c>Unpack</c> 的必填校验
 /// 与可选读取语义正确——这是"执行器不再手写参数名字面量"的前提。
 /// </summary>

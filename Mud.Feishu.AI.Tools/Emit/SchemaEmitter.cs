@@ -239,6 +239,7 @@ internal static class SchemaEmitter
         source.AppendLine("{");
         source.AppendLine("    /// <summary>工具契约（编译期常量视图，单一真相源 = [FeishuTool] 特性 + SDK 符号）。</summary>");
         source.AppendLine("    /// <remarks>与 FeishuToolSchemas 的 JSON 字面量出自同一 pass，仅形态不同（类型化 vs 字符串）。</remarks>");
+        source.AppendLine($"    {GeneratedCodeMarker.Attribute}");
         source.AppendLine("    public sealed record FeishuToolContract(");
         source.AppendLine("        string Name,");
         source.AppendLine("        string Description,");
@@ -252,12 +253,14 @@ internal static class SchemaEmitter
         source.AppendLine("        string ParametersSchemaJson);");
         source.AppendLine();
         source.AppendLine("    /// <summary>工具契约表（按名索引；顺序与 golden 一致，保证确定性）。</summary>");
+        source.AppendLine($"    {GeneratedCodeMarker.Attribute}");
         source.AppendLine("    public static class FeishuToolContracts");
         source.AppendLine("    {");
 
         foreach (var model in ordered)
         {
             source.AppendLine($"        /// <summary>{model.Entry.ToolName} 的编译期契约。</summary>");
+            source.AppendLine($"        {GeneratedCodeMarker.Attribute}");
             source.AppendLine($"        public static FeishuToolContract {BuildNameConstant(model.Entry.ToolName)} {{ get; }} = new(");
             source.AppendLine($"            Name: {JsonText.ToCSharpLiteral(model.Entry.ToolName)},");
             source.AppendLine($"            Description: {JsonText.ToCSharpLiteral(model.Entry.DocSummary ?? string.Empty)},");
@@ -273,6 +276,7 @@ internal static class SchemaEmitter
         }
 
         source.AppendLine("        /// <summary>工具名 → 契约的注册表快照（注册器/目录/守卫的唯一契约消费点）。</summary>");
+        source.AppendLine($"        {GeneratedCodeMarker.Attribute}");
         source.AppendLine("        public static System.Collections.Generic.IReadOnlyDictionary<string, FeishuToolContract> ByToolName { get; } =");
         source.AppendLine("            new System.Collections.Generic.Dictionary<string, FeishuToolContract>(System.StringComparer.Ordinal)");
         source.AppendLine("            {");
@@ -284,6 +288,7 @@ internal static class SchemaEmitter
         source.AppendLine("            };");
         source.AppendLine();
         source.AppendLine("        /// <summary>全部契约名（与 FeishuToolNames.All 同源同序）。</summary>");
+        source.AppendLine($"        {GeneratedCodeMarker.Attribute}");
         source.AppendLine("        public static string[] AllNames { get; } =");
         source.AppendLine("        [");
         foreach (var model in ordered)
@@ -294,9 +299,11 @@ internal static class SchemaEmitter
         source.AppendLine("        ];");
         source.AppendLine();
         source.AppendLine("        /// <summary>契约中实际出现的身份集合（宿主策略默认值/闭集校验的派生依据）。</summary>");
+        source.AppendLine($"        {GeneratedCodeMarker.Attribute}");
         source.AppendLine($"        public static string[] DistinctIdentities {{ get; }} = {StringArrayLiteral(DistinctIdentities(ordered))};");
         source.AppendLine();
         source.AppendLine("        /// <summary>契约中实际出现的 scope 全集（scope 权威清单校验用，去重后按序）。</summary>");
+        source.AppendLine($"        {GeneratedCodeMarker.Attribute}");
         source.AppendLine($"        public static string[] AllRequiredScopes {{ get; }} = {StringArrayLiteral(DistinctScopes(ordered))};");
         source.AppendLine("    }");
         source.AppendLine("}");

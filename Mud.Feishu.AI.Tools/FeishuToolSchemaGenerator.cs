@@ -35,8 +35,11 @@ namespace Mud.Feishu.AI.Tools;
 /// source 的类型化出口，消费方零运行期解析；只发射进 FeishuTools 程序集）；</item>
 /// <item><c>FeishuToolGuidance.g.cs</c> —— 域级 guidance 资产（WP6：<c>Guidance/{domain}.md</c>
 /// → 编译期字典，装配期按"已启用工具所属域"注入指令；只发射进 FeishuTools 程序集）；</item>
-/// <item><c>FeishuToolArgs.g.cs</c> —— 参数解包器（每工具一个 <c>{Tool}Args</c> 类型 + <c>Unpack</c>，
-/// 取代执行器首部的逐参 <c>ToolArgs.*</c> 读取；只发射进 FeishuTools 程序集）；</item>
+/// <item><c>FeishuToolArgs/{Tool}Args.g.cs</c> —— 参数解包器（每工具一个 <c>{Tool}Args</c> 类型
+/// + <c>Unpack</c>，一类型一文件；取代执行器首部的逐参 <c>ToolArgs.*</c> 读取；只发射进
+/// FeishuTools 程序集）；</item>
+/// <item><c>FeishuToolDomainRegistrars/{Registrar}.g.cs</c> —— 域注册器（每执行器类一个文件）+
+/// <c>FeishuToolsServiceCollectionCoreExtensions.g.cs</c>（逐执行器 DI 装配；只发射进 FeishuTools 程序集）。</item>
 /// <item><c>FeishuCapabilityCatalog.g.cs</c> —— Tier R 能力目录聚合（<c>build_property.FeishuToolCatalog=true</c> 时）。</item>
 /// </list>
 /// <para>
@@ -96,7 +99,7 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
             models.Combine(assemblyName).Combine(golden),
             static (spc, input) => EmitToolSurface(spc, input.Left.Left, input.Left.Right, input.Right));
 
-        // ── L2：参数解包器（FeishuToolArgs.g.cs）──
+        // ── L2：参数解包器（FeishuToolArgs/{Tool}Args.g.cs，每类型一文件）──
         // 与 Schema/契约表同一 pass、同一模型集合（零新增扫描）；发射门槛为**名字契约所有者程序集**——
         // 产物消费 FeishuTools 的 internal ToolArgs，其他声明样例 [FeishuTool] 接口的工程（AI.Tests）
         // 若一并发射会因 ToolArgs 不可见而 CS0103。
@@ -104,7 +107,8 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
             models.Combine(assemblyName),
             static (spc, input) => ToolArgsEmitter.Emit(spc, input.Left, input.Right));
 
-        // ── L2：域注册器 + DI 装配（FeishuToolDomainRegistrars.g.cs / FeishuToolsServiceCollectionCoreExtensions.g.cs）──
+        // ── L2：域注册器 + DI 装配（FeishuToolDomainRegistrars/{Registrar}.g.cs 每执行器一文件
+        // / FeishuToolsServiceCollectionCoreExtensions.g.cs）──
         // 同一 pass、同一模型集合 + 执行器绑定集合；owner 门槛同 FeishuToolNames/Contracts/Args。
         // 注意元组层级：models.Combine(assemblyName) 后再 Combine(handlerBindings)——
         // 程序集名在 input.Left.Right（R1 §5 曾把它误写为 input.Right，那是一处编译错误）。

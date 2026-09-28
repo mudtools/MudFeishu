@@ -17,7 +17,7 @@ namespace Mud.Feishu.AI.FeishuTools.Registration;
 /// <remarks>
 /// 本契约与 <see cref="FeishuToolRegistration"/> 保持手写（稳定契约、单文件、生成无收益）；
 /// <b>实现类</b>（<c>{Executor}ToolDomainRegistrar</c>）由 <c>ToolRegistrarEmitter</c> 编译期产出
-/// （见 <c>FeishuToolDomainRegistrars.g.cs</c>）——手写实现已全部删除，未发布无需过渡期。
+/// （见 <c>FeishuToolDomainRegistrars/{Registrar}.g.cs</c>，每执行器一个文件）——手写实现已全部删除，未发布无需过渡期。
 /// </remarks>
 internal interface IFeishuToolDomainRegistrar
 {

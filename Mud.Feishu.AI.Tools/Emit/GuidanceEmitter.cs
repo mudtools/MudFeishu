@@ -96,9 +96,11 @@ internal static class GuidanceEmitter
         source.AppendLine("    /// 域级 guidance 资产（WP6 / AT-F09）：域 = 工具名首个 '.' 之前的部分；");
         source.AppendLine("    /// 素材为 Guidance/{domain}.md（生成器 AdditionalFiles），内容与该域工具同源同 pass。");
         source.AppendLine("    /// </summary>");
+        source.AppendLine($"    {GeneratedCodeMarker.Attribute}");
         source.AppendLine("    public static class FeishuToolGuidance");
         source.AppendLine("    {");
         source.AppendLine("        /// <summary>域 → guidance 正文（装配时只注入已启用工具所属域，见 FeishuGuidanceComposer）。</summary>");
+        source.AppendLine($"        {GeneratedCodeMarker.Attribute}");
         source.AppendLine("        public static System.Collections.Generic.IReadOnlyDictionary<string, string> ByDomain { get; } =");
         source.AppendLine("            new System.Collections.Generic.Dictionary<string, string>(System.StringComparer.Ordinal)");
         source.AppendLine("            {");

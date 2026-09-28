@@ -19,7 +19,7 @@ using Mud.Feishu.AI.Tools.Schema;
 namespace Mud.Feishu.AI.Tools.Emit;
 
 /// <summary>
-/// Tier C 发射器：产出 <c>FeishuToolDomainRegistrars.g.cs</c>（域注册器）与
+/// Tier C 发射器：产出 <c>FeishuToolDomainRegistrars/*.g.cs</c>（每执行器一个域注册器文件）与
 /// <c>FeishuToolsServiceCollectionCoreExtensions.g.cs</c>（逐执行器 DI 装配）。
 /// </summary>
 /// <remarks>
@@ -41,8 +41,8 @@ namespace Mud.Feishu.AI.Tools.Emit;
 /// </remarks>
 internal static class ToolRegistrarEmitter
 {
-    /// <summary>域注册器产物文件名。</summary>
-    public const string RegistrarsFileName = "FeishuToolDomainRegistrars.g.cs";
+    /// <summary>域注册器产物目录名（每注册器类一个文件，hintName 前缀）。</summary>
+    public const string RegistrarsOutputFolder = "FeishuToolDomainRegistrars";
 
     /// <summary>DI 装配产物文件名。</summary>
     public const string CoreFileName = "FeishuToolsServiceCollectionCoreExtensions.g.cs";
@@ -133,39 +133,45 @@ internal static class ToolRegistrarEmitter
             return;
         }
 
-        context.AddSource(RegistrarsFileName, SourceText.From(EmitRegistrars(executors), Encoding.UTF8));
+        // 域注册器：每执行器一个独立产物文件（同一注册器类不再与他类共文件）。
+        foreach (var executor in executors)
+        {
+            context.AddSource(
+                RegistrarHintName(executor.First().RegistrarTypeName),
+                SourceText.From(EmitRegistrar(executor), Encoding.UTF8));
+        }
+
         context.AddSource(CoreFileName, SourceText.From(EmitCoreExtensions(executors), Encoding.UTF8));
     }
 
-    // ────────── 产物一：域注册器 ──────────
+    /// <summary>域注册器产物 hintName：<c>BitableToolDomainRegistrar</c> → <c>FeishuToolDomainRegistrars/BitableToolDomainRegistrar.g.cs</c>。</summary>
+    private static string RegistrarHintName(string registrarTypeName)
+        => $"{RegistrarsOutputFolder}/{registrarTypeName}.g.cs";
 
-    private static string EmitRegistrars(IGrouping<string, ToolHandlerBinding>[] executors)
+    // ────────── 产物一：域注册器（每执行器一个文件） ──────────
+
+    private static string EmitRegistrar(IGrouping<string, ToolHandlerBinding> executor)
     {
+        var first = executor.First();
         var source = new StringBuilder();
         AppendHeader(source, RegistrarsNamespace);
         source.AppendLine("{");
+        source.AppendLine($"    /// <summary>{first.ExecutorTypeName} 的域注册器（编译期按 [FeishuToolHandler] 聚合）。</summary>");
+        source.AppendLine($"    {GeneratedCodeMarker.Attribute}");
+        source.AppendLine($"    internal sealed class {first.RegistrarTypeName}({first.ExecutorType} executor, FeishuToolBinding binding) : IFeishuToolDomainRegistrar");
+        source.AppendLine("    {");
+        source.AppendLine($"        {GeneratedCodeMarker.Attribute}");
+        source.AppendLine("        public void Register(FeishuToolRegistry registry)");
+        source.AppendLine("        {");
 
-        foreach (var executor in executors)
+        foreach (var binding in executor.OrderBy(static b => b.ToolName, StringComparer.Ordinal))
         {
-            var first = executor.First();
-            source.AppendLine($"    /// <summary>{first.ExecutorTypeName} 的域注册器（编译期按 [FeishuToolHandler] 聚合）。</summary>");
-            source.AppendLine($"    {GeneratedCodeMarker.Attribute}");
-            source.AppendLine($"    internal sealed class {first.RegistrarTypeName}({first.ExecutorType} executor, FeishuToolBinding binding) : IFeishuToolDomainRegistrar");
-            source.AppendLine("    {");
-            source.AppendLine("        public void Register(FeishuToolRegistry registry)");
-            source.AppendLine("        {");
-
-            foreach (var binding in executor.OrderBy(static b => b.ToolName, StringComparer.Ordinal))
-            {
-                source.AppendLine($"            FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.{SchemaEmitter.BuildNameConstant(binding.ToolName)}, binding,");
-                source.AppendLine($"                (args, ct) => executor.{binding.MethodName}(args, ct));");
-            }
-
-            source.AppendLine("        }");
-            source.AppendLine("    }");
-            source.AppendLine();
+            source.AppendLine($"            FeishuToolRegistration.RegisterExecution(registry, FeishuToolNames.{SchemaEmitter.BuildNameConstant(binding.ToolName)}, binding,");
+            source.AppendLine($"                (args, ct) => executor.{binding.MethodName}(args, ct));");
         }
 
+        source.AppendLine("        }");
+        source.AppendLine("    }");
         source.AppendLine("}");
         return source.ToString();
     }

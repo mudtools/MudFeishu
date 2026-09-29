@@ -14,6 +14,13 @@ namespace Mud.Feishu.DataModels.Docx;
 public class BlockOpResult
 {
     /// <summary>
+    /// <para>更新后的 Block 信息</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("block")]
+    public Block? Block { get; set; }
+
+    /// <summary>
     /// <para>所添加的孩子的 Block 信息</para>
     /// <para>必填：否</para>
     /// </summary>

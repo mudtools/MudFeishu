@@ -37,9 +37,9 @@ public interface IFeishuV1MailContact : IFeishuAppContextSwitcher
 
 
     /// <summary>
-    /// 创建邮箱联系人。
-    /// <para>创建邮箱联系人。使用 tenant_access_token 时，需要申请邮箱联系人资源的数据权限。</para>
-    /// <para><see href="https://open.feishu.cn/document/mail-v1/user_mailbox-mail_contact/create">接口文档</see></para>
+    /// 删除邮箱联系人。
+    /// <para>删除一个邮箱联系人。使用 tenant_access_token 时，需要申请邮箱联系人资源的数据权限。</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-mail_contact/delete">接口文档</see></para>
     /// </summary>
     /// <param name="user_mailbox_id">
     /// <para>用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。</para>

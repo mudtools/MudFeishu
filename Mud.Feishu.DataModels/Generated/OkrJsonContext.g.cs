@@ -53,7 +53,7 @@ namespace Mud.Feishu.DataModels.Okr;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.OkrV2.UpdateCycleObjectivesResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.OkrV2.UpdateCycleObjectivesWeightRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.OkrV2.ListProgressesResult))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Okr.UploadProgressRecordImageRequest), TypeInfoPropertyName = "Mud_Feishu_DataModels_Okr_UploadProgressRecordImageRequest")] // SYSLIB1031 防护：默认 TypeInfo 属性名与本 Context 内其他根冲突，已显式重命名
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Okr.UploadProgressRecordImageRequest))]
 internal partial class OkrJsonContext : JsonSerializerContext
 {
 }

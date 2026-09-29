@@ -333,7 +333,7 @@ public interface IFeishuTenantV1HelpDeskTicket : IFeishuV1HelpDeskTicket
     /// <summary>
     /// 获取全部工单自定义字段
     /// <para>用于获取全部工单自定义字段。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket_customized_field/get-ticket-customized-field">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket_customized_field/list-ticket-customized-fields">接口文档</see></para>
     /// </summary>
     /// <param name="request">获取工单自定义字段请求体</param>
     /// <param name="page_token">

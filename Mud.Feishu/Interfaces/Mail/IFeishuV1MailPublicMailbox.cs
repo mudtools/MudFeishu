@@ -23,11 +23,15 @@ public interface IFeishuV1MailPublicMailbox : IFeishuAppContextSwitcher
     /// <para>分页批量获取公共邮箱列表。</para>
     /// <para><see href="https://open.feishu.cn/document/server-docs/mail-v1/public-mailbox/public_mailbox/list">接口文档</see></para>
     /// </summary>
+    /// <param name="user_id">用户 ID，与 <paramref name="user_id_type"/> 配合指定查询的用户。</param>
+    /// <param name="user_id_type">user_id 对应的用户 ID 类型，可选值：open_id、user_id、union_id。</param>
     /// <param name="page_size">分页大小，即本次请求所返回的信息列表内的最大条目数。默认值：20</param>
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Get("/open-apis/mail/v1/public_mailboxes")]
     Task<FeishuApiPageListResult<PublicMailboxInfo>?> GetPublicMailboxPageListAsync(
+         [Query] string? user_id = null,
+         [Query] string? user_id_type = null,
          [Query] int page_size = Consts.PageSize_20,
          [Query] string? page_token = null,
          CancellationToken cancellationToken = default);

@@ -85,3 +85,43 @@ public interface IFeishuApprovalCreateInstanceTool
         [ToolParameter("dry_run", "仅预演不发起（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }
+
+// ─────────────────────────── Approval 只读（1 个） ───────────────────────────
+
+/// <summary>工具接口：approval.list_pending_tasks（映射 <c>IFeishuTenantV4ApprovalQuery.GetTasksPageListAsync</c>）。</summary>
+[FeishuTool("approval.list_pending_tasks",
+    Description = "查询审批待办任务列表（按用户 ID 过滤 PENDING 状态任务）。task_id/instance_code 可传给 approval.approve_task 完成同意操作。只读，需 approval:approval:readonly。",
+    RequiredScopes = ["approval:approval:readonly"],
+    Source = "IFeishuTenantV4ApprovalQuery.GetTasksPageListAsync")]
+public interface IFeishuApprovalListPendingTasksTool
+{
+    /// <summary>查询审批待办任务列表。</summary>
+    /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token），超长截断并标记 truncated。</returns>
+    Task<string> GetTasksPageListAsync(
+        [ToolParameter("user_id", "审批人用户 ID（open_id/user_id/union_id，与宿主配置的 user_id_type 一致）", Required = true)] string user_id,
+        [ToolParameter("approval_code", "审批定义 Code（可选，限定特定审批流）")] string? approval_code = null,
+        [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        CancellationToken cancellationToken = default);
+}
+
+// ─────────────────────────── Approval 写补充（1 个） ───────────────────────────
+
+/// <summary>工具接口：approval.approve_task（映射 <c>IFeishuTenantV4ApprovalTask.AgreeApprovalAsync</c>）。</summary>
+[FeishuTool("approval.approve_task",
+    Description = "同意指定审批任务（需 approval_code/instance_code/task_id/user_id 四要素，task_id/instance_code 来自 approval.list_pending_tasks）。同意后审批流程流转到下一个审批人。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 approval:approval。",
+    RequiredScopes = ["approval:approval"],
+    IsWrite = true,
+    Source = "IFeishuTenantV4ApprovalTask.AgreeApprovalAsync")]
+public interface IFeishuApprovalApproveTaskTool
+{
+    /// <summary>同意审批任务。</summary>
+    /// <returns>白名单投影后的 JSON 文本（approved=true）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> ApproveTaskAsync(
+        [ToolParameter("approval_code", "审批定义 Code", Required = true)] string approval_code,
+        [ToolParameter("instance_code", "审批实例 Code", Required = true)] string instance_code,
+        [ToolParameter("task_id", "审批任务 ID（来自 approval.list_pending_tasks 结果的 task_id）", Required = true)] string task_id,
+        [ToolParameter("user_id", "审批人用户 ID（与查询时使用的 user_id_type 一致）", Required = true)] string user_id,
+        [ToolParameter("comment", "审批意见（可选，如「同意」）")] string? comment = null,
+        [ToolParameter("dry_run", "仅预演不审批（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}

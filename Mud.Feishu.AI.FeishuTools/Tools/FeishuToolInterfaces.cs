@@ -185,7 +185,7 @@ public interface IFeishuSearchDocWikiTool
         CancellationToken cancellationToken = default);
 }
 
-// ─────────────────────────── IM（2 个） ───────────────────────────
+// ─────────────────────────── IM（5 个：2 只读 + 1 只读会话治理 + 1 写会话治理 + 1 只读搜索） ───────────────────────────
 
 /// <summary>工具接口：im.get_history_messages（映射 <c>IFeishuTenantV1Message.GetHistoryMessageAsync</c>）。</summary>
 [FeishuTool("im.get_history_messages",
@@ -215,6 +215,59 @@ public interface IFeishuImMessageContentTool
     /// <returns>白名单投影后的 JSON 文本（message_id/msg_type/body/mentions），超长截断并标记 truncated。</returns>
     Task<string> GetContentAsync(
         [ToolParameter("message_id", "消息 ID（形如 omXxx，来自 im.get_history_messages 或事件上下文）", Required = true)] string message_id,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：im.list_chat_members（映射 <c>IFeishuTenantV1ChatGroupMember.GetMemberPageListByIdAsync</c>）。</summary>
+[FeishuTool("im.list_chat_members",
+    Description = "分页列出群聊成员（member_id/name/tenant_key）——'这个群里有哪些人'的多步流程地基。chat_id 可由事件上下文获得。只读，需 im:chat:readonly。",
+    RequiredScopes = ["im:chat:readonly"],
+    Source = "IFeishuTenantV1ChatGroupMember.GetMemberPageListByIdAsync")]
+public interface IFeishuImListChatMembersTool
+{
+    /// <summary>列出群成员（分页）。</summary>
+    /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token/member_total），超长截断并标记 truncated。</returns>
+    Task<string> GetMemberPageListByIdAsync(
+        [ToolParameter("chat_id", "群聊 ID（形如 ocXxx）", Required = true)] string chat_id,
+        [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：im.reply_message（映射 <c>IFeishuTenantV1Message.ReplyMessageAsync</c>）。</summary>
+[FeishuTool("im.reply_message",
+    Description = "回复指定消息，形成话题串避免刷屏。message_id 来自 im.get_history_messages 或事件上下文；content 为 JSON 字符串（msg_type=text 时如 {\"text\":\"回复内容\"}）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。",
+    RequiredScopes = ["im:message"],
+    IsWrite = true,
+    Source = "IFeishuTenantV1Message.ReplyMessageAsync")]
+public interface IFeishuImReplyMessageTool
+{
+    /// <summary>回复消息。</summary>
+    /// <returns>白名单投影后的 JSON 文本（message_id）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> ReplyMessageAsync(
+        [ToolParameter("message_id", "待回复的消息 ID（形如 omXxx）", Required = true)] string message_id,
+        [ToolParameter("msg_type", "消息类型（text/post/image/file/audio/media/sticker/interactive/share_chat/share_user）", Required = true)] string msg_type,
+        [ToolParameter("content", "消息内容 JSON 字符串（msg_type=text 时如 {\"text\":\"回复内容\"}）", Required = true)] string content,
+        [ToolParameter("reply_in_thread", "是否以话题形式回复（可选，默认 false）")] bool? reply_in_thread = null,
+        [ToolParameter("idempotency_key", "幂等键（可选）：相同 uuid 在 1 小时内至多成功回复一条。省略时不保证幂等。")] string? idempotency_key = null,
+        [ToolParameter("dry_run", "仅预演不回复（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：im.search_messages（映射 <c>IFeishuTenantV1Message.SearchMessageAsync</c>）。</summary>
+[FeishuTool("im.search_messages",
+    Description = "按关键词搜索可见会话中的消息——支持按会话/发送者/时间过滤。返回消息 ID 与命中片段预览，可用 im.get_message_content 回查完整内容。只读，需 im:message:readonly。",
+    RequiredScopes = ["im:message:readonly"],
+    Source = "IFeishuTenantV1Message.SearchMessageAsync")]
+public interface IFeishuImSearchMessagesTool
+{
+    /// <summary>搜索消息（分页）。</summary>
+    /// <returns>白名单投影后的 JSON 文本（items/total/has_more/page_token），超长截断并标记 truncated。</returns>
+    Task<string> SearchMessageAsync(
+        [ToolParameter("query", "搜索关键词（≤50 字符）", Required = true)] string query,
+        [ToolParameter("chat_ids", "限定会话 ID 列表（可选，字符串数组）")] string[]? chat_ids = null,
+        [ToolParameter("from_ids", "限定发送者 ID 列表（可选，字符串数组）")] string[]? from_ids = null,
+        [ToolParameter("chat_type", "会话类型过滤（可选：p2p=单聊 / group=群聊）")] string? chat_type = null,
+        [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
         CancellationToken cancellationToken = default);
 }
 

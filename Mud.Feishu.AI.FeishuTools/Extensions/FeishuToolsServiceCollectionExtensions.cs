@@ -76,7 +76,12 @@ public static class FeishuToolsServiceCollectionExtensions
             // 「跨 im/bitable/approval 三模块的写域」不再需要特例分支）。
             .AddFeishuMessageWriteToolsCore()
             .AddFeishuBitableWriteToolsCore()
-            .AddFeishuApprovalWriteToolsCore();
+            .AddFeishuApprovalWriteToolsCore()
+            // WP2/R5 写入面补齐：docx/sheets/bitable(update/delete)/drive 写执行器
+            .AddFeishuDocxWriteToolsCore()
+            .AddFeishuSheetsWriteToolsCore()
+            .AddFeishuBitableWriteTools2Core()
+            .AddFeishuDriveWriteToolsCore();
 
     /// <summary>
     /// 注册只读工具包（Phase 1 兼容入口；现等价 <see cref="AddFeishuTools"/>——写工具同批注册但
@@ -194,7 +199,12 @@ public static class FeishuToolsServiceCollectionExtensions
         => AddFeishuToolInfrastructure(services, configure)
             .AddFeishuMessageWriteToolsCore()
             .AddFeishuBitableWriteToolsCore()
-            .AddFeishuApprovalWriteToolsCore();
+            .AddFeishuApprovalWriteToolsCore()
+            // WP2/R5 写入面补齐：docx/sheets/bitable(update/delete)/drive 写执行器
+            .AddFeishuDocxWriteToolsCore()
+            .AddFeishuSheetsWriteToolsCore()
+            .AddFeishuBitableWriteTools2Core()
+            .AddFeishuDriveWriteToolsCore();
 
     /// <summary>
     /// 注册分片编辑流式通道（Phase 2 T2-1 兼容入口，保持不变）：

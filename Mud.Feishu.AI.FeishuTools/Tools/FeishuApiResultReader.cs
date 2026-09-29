@@ -143,6 +143,19 @@ internal static class ToolArgs
         }
     }
 
+    /// <summary>读取必填整数参数（缺失或无法解析 → <see cref="ArgumentException"/>，与 <see cref="RequireString"/> 同构）。</summary>
+    /// <exception cref="ArgumentException">缺失或无法解析为整数。</exception>
+    public static int RequireInt(IReadOnlyDictionary<string, object?> arguments, string name)
+    {
+        var value = OptionalInt(arguments, name);
+        if (value is null)
+        {
+            throw new ArgumentException($"缺少必填参数 {name}");
+        }
+
+        return value.Value;
+    }
+
     /// <summary>读取可选字符串数组参数。</summary>
     public static string[]? OptionalStringArray(IReadOnlyDictionary<string, object?> arguments, string name)
     {

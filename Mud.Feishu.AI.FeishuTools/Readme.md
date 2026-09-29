@@ -238,6 +238,26 @@ public readonly record struct StagedAttachment(string LocalPath, long Size, stri
   成功与失败路径**都**清理（用例断言执行后临时文件不存在）。
 - **参数只收 URL**：模型给出本地路径是危险信号（无从得知宿主磁盘布局）→ 直接 `invalid_args`。
 
+### 7.1 参考实现（WP1 / R5）
+
+`Demos/Mud.Feishu.Agent.Demo/DemoAttachmentStager.cs` 提供 **Demo 级参考实现**：
+
+```csharp
+services.AddHttpClient<DemoAttachmentStager>();
+services.AddSingleton<IFeishuAttachmentStager>(sp => sp.GetRequiredService<DemoAttachmentStager>());
+```
+
+| 安全项 | Demo 默认值 | 生产宿主应 |
+| --- | --- | --- |
+| 协议 | 只允许 http/https（防 SSRF） | 收紧为 HTTPS-only + 域名白名单 |
+| 大小上限 | 25 MB | 按业务调整 |
+| 扩展名 | 白名单（图片/文档/压缩/文本/音视频） | 按业务收窄 |
+| 临时目录 | `Path.GetTempPath()` 下唯一子目录 | 按存储策略调整 |
+| 清理 | `Cleanup` 在 `finally` 中删除文件 | 同（生命周期显式） |
+
+**软缺席语义（宿主未实现 stager 时）**：`im.send_image` / `im.send_file` 不注册（模型看不到这两个工具），
+不报错、不静默失败——与"域客户端缺席 → 该域工具不注册"同一机制。
+
 ---
 
 ## 8. 编译期契约出口与域 guidance（R4/WP2/WP6）

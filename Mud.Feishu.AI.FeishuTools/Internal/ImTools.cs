@@ -6,7 +6,9 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.AI.FeishuTools.Tools;
+using Mud.Feishu.DataModels.ChatGroupMember;
 using Mud.Feishu.DataModels.Messages;
+using System.Text.Json.Nodes;
 
 namespace Mud.Feishu.AI.FeishuTools.Internal;
 
@@ -16,13 +18,18 @@ namespace Mud.Feishu.AI.FeishuTools.Internal;
 /// 绑定层注入（§3.3.3）；消息内容回查依赖 P1D-1a 路由修复（AI-FD-D12）。
 /// </summary>
 /// <remarks>执行骨架（catch/回填/截断）由 <see cref="ToolExecutor"/> 承担（WP3）；本类只保留参数校验与投影语义。</remarks>
-internal sealed class ImTools(Mud.Feishu.IFeishuTenantV1Message messageClient, IOptions<FeishuAgentOptions> options)
+internal sealed class ImTools(
+    Mud.Feishu.IFeishuTenantV1Message messageClient,
+    Mud.Feishu.IFeishuTenantV1ChatGroupMember chatMemberClient,
+    IOptions<FeishuAgentOptions> options)
 {
     private const string ContainerIdTypeChat = "chat";
     private const string SortTypeByCreateTimeDesc = "ByCreateTimeDesc";
 
     private readonly Mud.Feishu.IFeishuTenantV1Message _messageClient = messageClient
         ?? throw new ArgumentNullException(nameof(messageClient));
+    private readonly Mud.Feishu.IFeishuTenantV1ChatGroupMember _chatMemberClient = chatMemberClient
+        ?? throw new ArgumentNullException(nameof(chatMemberClient));
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>im.get_history_messages：读取历史消息（白名单 message_id/create_time/sender_id/message_type/content 预览）。</summary>
@@ -120,6 +127,171 @@ internal sealed class ImTools(Mud.Feishu.IFeishuTenantV1Message messageClient, I
         }
 
         return envelope;
+    }
+
+    /// <summary>im.list_chat_members：分页列出群成员（白名单 member_id/name/tenant_key）。</summary>
+    [FeishuToolHandler(typeof(IFeishuImListChatMembersTool))]
+    public Task<FeishuToolResult> ListChatMembersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.ImListChatMembers, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var args = ImListChatMembersArgs.Unpack(arguments);
+
+            var outcome = FeishuApiResultReader.Read(await _chatMemberClient
+                .GetMemberPageListByIdAsync(
+                    args.ChatId,
+                    page_size: PageSizes.History,
+                    page_token: args.PageToken,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApi(outcome, ProjectChatMembers);
+        });
+    }
+
+    /// <summary>im.reply_message：回复指定消息（<c>dry_run=true</c> 时只预演）。</summary>
+    /// <remarks>幂等键（uuid）：相同 uuid 在 1 小时内至多成功回复一条。</remarks>
+    [FeishuToolHandler(typeof(IFeishuImReplyMessageTool))]
+    public Task<FeishuToolResult> ReplyMessageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.ImReplyMessage);
+        return executor.RunAsync(async () =>
+        {
+            var args = ImReplyMessageArgs.Unpack(arguments);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "POST", $"/open-apis/im/v1/messages/{args.MessageId}/reply",
+                    ToolDryRun.IdempotencyNote(args.IdempotencyKey),
+                    ("message_id", args.MessageId.Length), ("msg_type", args.MsgType.Length), ("content", args.Content.Length)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _messageClient
+                .ReplyMessageAsync(
+                    args.MessageId,
+                    new ReplyMessageRequest
+                    {
+                        Content = args.Content,
+                        MsgType = args.MsgType,
+                        ReplyInThread = args.ReplyInThread ?? false,
+                        Uuid = args.IdempotencyKey,
+                    },
+                    cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApiUntruncated(outcome, data => new JsonObject
+            {
+                ["message_id"] = data.MessageId,
+            });
+        });
+    }
+
+    /// <summary>im.search_messages：按关键词搜索消息（白名单 id/display_info/meta_data）。</summary>
+    [FeishuToolHandler(typeof(IFeishuImSearchMessagesTool))]
+    public Task<FeishuToolResult> SearchMessagesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.ImSearchMessages, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var args = ImSearchMessagesArgs.Unpack(arguments);
+
+            var searchRequest = new SearchMessageRequest
+            {
+                Query = args.Query,
+                Filter = BuildSearchFilter(args),
+            };
+
+            var outcome = FeishuApiResultReader.Read(await _messageClient
+                .SearchMessageAsync(
+                    searchRequest,
+                    page_size: PageSizes.Search,
+                    page_token: args.PageToken,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApi(outcome, ProjectSearchResults);
+        });
+    }
+
+    /// <summary>list_chat_members 投影：items（member_id/name/tenant_key）+ 翻页契约。</summary>
+    private static JsonObject ProjectChatMembers(GetMemberPageListResult data)
+    {
+        var envelope = new JsonObject
+        {
+            ["items"] = new JsonArray(),
+            ["has_more"] = data.HasMore,
+            ["member_total"] = data.MemberTotal,
+        };
+        if (!string.IsNullOrEmpty(data.PageToken))
+        {
+            envelope["page_token"] = data.PageToken;
+        }
+
+        foreach (var member in data.Items ?? [])
+        {
+            envelope["items"]!.AsArray().AddNode(new JsonObject
+            {
+                ["member_id"] = member.MemberId,
+                ["name"] = member.Name,
+                ["tenant_key"] = member.TenantKey,
+            });
+        }
+
+        return envelope;
+    }
+
+    /// <summary>search_messages 投影：items（id/display_info + meta_data 白名单）+ 翻页契约。</summary>
+    private static JsonObject ProjectSearchResults(SearchMessageResult data)
+    {
+        var envelope = new JsonObject
+        {
+            ["items"] = new JsonArray(),
+            ["total"] = data.Total,
+            ["has_more"] = data.HasMore,
+        };
+        if (!string.IsNullOrEmpty(data.PageToken))
+        {
+            envelope["page_token"] = data.PageToken;
+        }
+
+        foreach (var item in data.Items ?? [])
+        {
+            var meta = item.MetaData is null ? null : new JsonObject
+            {
+                ["message_id"] = item.MetaData.MessageId,
+                ["type"] = item.MetaData.Type,
+                ["create_time"] = item.MetaData.CreateTime,
+                ["chat_id"] = item.MetaData.ChatId,
+                ["from_id"] = item.MetaData.FromId,
+            };
+            envelope["items"]!.AsArray().AddNode(new JsonObject
+            {
+                ["id"] = item.Id,
+                ["display_info"] = ToolResultText.Truncate(item.DisplayInfo ?? string.Empty, PageSizes.MessagePreviewLength),
+                ["meta_data"] = meta,
+            });
+        }
+
+        return envelope;
+    }
+
+    /// <summary>从工具参数构造搜索过滤器（绑定层组装，模型只见标量/标量数组）。</summary>
+    private static MessageSearchFilter? BuildSearchFilter(ImSearchMessagesArgs args)
+    {
+        var hasChatIds = args.ChatIds is { Length: > 0 };
+        var hasFromIds = args.FromIds is { Length: > 0 };
+        var hasChatType = !string.IsNullOrWhiteSpace(args.ChatType);
+
+        if (!hasChatIds && !hasFromIds && !hasChatType)
+        {
+            return null;
+        }
+
+        return new MessageSearchFilter
+        {
+            ChatIds = hasChatIds ? args.ChatIds : null,
+            FromIds = hasFromIds ? args.FromIds : null,
+            ChatType = hasChatType ? args.ChatType : null,
+        };
     }
 
     /// <summary>RFC3339 → 秒级时间戳字符串（绑定层转换；解析失败抛 <see cref="ArgumentException"/> 结构化回填）。</summary>

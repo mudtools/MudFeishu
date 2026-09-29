@@ -112,6 +112,110 @@ internal sealed class TaskTools(
         });
     }
 
+    /// <summary>task.update_task：更新任务信息（summary/description/due，至少传一个；<c>dry_run=true</c> 时只预演）。</summary>
+    [FeishuToolHandler(typeof(IFeishuTaskUpdateTaskTool))]
+    public Task<FeishuToolResult> UpdateTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.TaskUpdateTask);
+        return executor.RunAsync(async () =>
+        {
+            var args = TaskUpdateTaskArgs.Unpack(arguments);
+
+            // 构造 update_fields：只包含实际传入的字段
+            var updateFields = new List<string>(3);
+            var taskData = new UpdateTaskData();
+
+            if (args.Summary is { Length: > 0 } summary)
+            {
+                updateFields.Add("summary");
+                taskData.Summary = summary;
+            }
+            if (args.Description is { } description)
+            {
+                updateFields.Add("description");
+                taskData.Description = description;
+            }
+            if (args.Due is { } due)
+            {
+                updateFields.Add("due");
+                taskData.Due = new TaskTime { Timestamp = ToUnixMilliseconds(due) };
+            }
+
+            if (updateFields.Count == 0)
+            {
+                throw new ArgumentException("task.update_task 至少需提供一个要更新的字段（summary/description/due）");
+            }
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "PATCH", $"/open-apis/task/v2/tasks/{args.TaskGuid}",
+                    ToolDryRun.IdempotencyNote("PATCH 按字段更新天然幂等——相同字段重复写入结果一致"),
+                    ("task_guid", args.TaskGuid.Length),
+                    ("update_fields", string.Join(",", updateFields).Length)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _taskClient
+                .UpdateTaskAsync(
+                    args.TaskGuid,
+                    new UpdateTaskRequest { Task = taskData, UpdateFields = [.. updateFields] },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApiUntruncated(outcome, data => new JsonObject
+            {
+                ["task_guid"] = data.Task?.Guid,
+            });
+        });
+    }
+
+    /// <summary>task.complete_task：将任务标记为已完成（通过 update_task 设置 completed_at；<c>dry_run=true</c> 时只预演）。</summary>
+    /// <remarks>
+    /// <para>
+    /// 完成任务 = <c>UpdateTaskAsync(update_fields=["completed_at"])</c>，<c>completed_at</c> 设为当前毫秒时间戳。
+    /// 不暴露 completed_at 参数给模型——当前时间由工具层注入（模型不感知时间戳语义）。
+    /// </para>
+    /// <para>
+    /// 天然幂等：对已完成的任务重复调用 completed_at 不会产生副作用（只更新时间戳，不会"取消完成"）。
+    /// </para>
+    /// </remarks>
+    [FeishuToolHandler(typeof(IFeishuTaskCompleteTaskTool))]
+    public Task<FeishuToolResult> CompleteTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.TaskCompleteTask);
+        return executor.RunAsync(async () =>
+        {
+            var args = TaskCompleteTaskArgs.Unpack(arguments);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "PATCH", $"/open-apis/task/v2/tasks/{args.TaskGuid}",
+                    ToolDryRun.IdempotencyNote("幂等——对已完成的任务重复调用不产生副作用"),
+                    ("task_guid", args.TaskGuid.Length),
+                    ("update_fields", "completed_at".Length)));
+            }
+
+            var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                .ToString(CultureInfo.InvariantCulture);
+
+            var outcome = FeishuApiResultReader.Read(await _taskClient
+                .UpdateTaskAsync(
+                    args.TaskGuid,
+                    new UpdateTaskRequest
+                    {
+                        Task = new UpdateTaskData { CompletedAt = nowMs },
+                        UpdateFields = ["completed_at"],
+                    },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApiUntruncated(outcome, data => new JsonObject
+            {
+                ["task_guid"] = data.Task?.Guid,
+                ["completed"] = true,
+            });
+        });
+    }
+
     /// <summary>list_my_tasks 投影：items（guid/summary/due/completed_at）+ 翻页契约。</summary>
     private static JsonObject ProjectMyTasks(ApiPageListResult<ListTaskInfo> data)
     {

@@ -211,6 +211,11 @@ internal static class CuratedToolScanner
         foreach (var parameter in method.Parameters)
         {
             var typeName = parameter.Type.ToDisplayString();
+            if (typeName is "System.Threading.CancellationToken")
+            {
+                continue;
+            }
+
             var isBinary = typeName is "byte[]" or "System.Byte[]" or "System.IO.Stream"
                 or "System.IO.FileStream" or "System.IO.MemoryStream";
             var isFormContent = parameter.GetAttributes().Any(static a => a.AttributeClass?.Name == "FormContentAttribute");

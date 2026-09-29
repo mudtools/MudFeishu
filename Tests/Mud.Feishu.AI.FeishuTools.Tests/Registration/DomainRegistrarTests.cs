@@ -82,14 +82,24 @@ public class DomainRegistrarTests
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableField>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableRecord>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1Docx>().Object);
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DocxBlocks>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV2WikiNodes>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV2SearchDocWiki>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1Message>().Object);
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1ChatGroupMember>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3Spreadsheets>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3SpreadsheetData>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DriveFolder>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DriveFiles>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.AI.Knowledge.IRetriever>().Object);
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4Approval>().Object);
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4ApprovalQuery>().Object);
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4ApprovalTask>().Object);
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV2Task>().Object);
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuUserV2Task>().Object);
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4CalendarEvent>().Object);
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4Calendar>().Object);
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3User>().Object);
         });
 
         using var singleEntryProvider = new ServiceCollection()
@@ -108,6 +118,9 @@ public class DomainRegistrarTests
             .AddFeishuImTools()
             .AddFeishuSheetsTools()
             .AddFeishuDriveTools()
+            .AddFeishuContactTools()
+            .AddFeishuCalendarTools()
+            .AddFeishuTaskTools()
             .AddFeishuKnowledgeTools()
             // 能力出处元工具是一个独立入口（AT-F12）：它不属于任何业务域，
             // 故"全域 = 逐域联合"的等价性要求这里也显式调一次。

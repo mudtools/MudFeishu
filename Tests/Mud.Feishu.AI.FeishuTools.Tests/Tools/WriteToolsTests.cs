@@ -22,6 +22,13 @@ public class WriteToolsTests
     private readonly Mock<Mud.Feishu.IFeishuTenantV1Message> _messageClient = new();
     private readonly Mock<Mud.Feishu.IFeishuTenantV1BitableRecord> _recordClient = new();
     private readonly Mock<Mud.Feishu.IFeishuTenantV4Approval> _approvalClient = new();
+    private readonly Mock<Mud.Feishu.IFeishuTenantV4ApprovalQuery> _approvalQueryClient = new();
+    private readonly Mock<Mud.Feishu.IFeishuTenantV4ApprovalTask> _approvalTaskClient = new();
+
+    private static FeishuAgentOptions NewOptions() => new() { Instructions = "test" };
+
+    private ApprovalWriteTools CreateApprovalTools()
+        => new(_approvalClient.Object, _approvalQueryClient.Object, _approvalTaskClient.Object, Options.Create(NewOptions()));
 
     private static IReadOnlyDictionary<string, object?> Args(params (string Key, object? Value)[] items)
         => items.ToDictionary(p => p.Key, p => p.Value);
@@ -160,7 +167,7 @@ public class WriteToolsTests
                 Data = new CreateInstancesResult { InstanceCode = "inst_001" },
             });
 
-        var tools = new ApprovalWriteTools(_approvalClient.Object);
+        var tools = CreateApprovalTools();
         var result = await tools.CreateInstanceAsync(
             Args(("approval_code", "C4C0E8F0"), ("form", """[{"id":"widget1","type":"input","value":"出差申请"}]"""), ("user_id", "ou_u1")),
             CancellationToken.None);
@@ -180,7 +187,7 @@ public class WriteToolsTests
             .Setup(c => c.CreateInstanceAsync(It.IsAny<CreateInstanceRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new FeishuApiResult<CreateInstancesResult> { Code = 134003, Msg = "审批定义不存在" });
 
-        var tools = new ApprovalWriteTools(_approvalClient.Object);
+        var tools = CreateApprovalTools();
         var result = await tools.CreateInstanceAsync(
             Args(("approval_code", "bad"), ("form", "[]")), CancellationToken.None);
 

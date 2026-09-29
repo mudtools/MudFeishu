@@ -30,6 +30,8 @@ public class WriteIdempotencyKeyTests
     private static IReadOnlyDictionary<string, object?> Args(params (string Key, object? Value)[] items)
         => items.ToDictionary(p => p.Key, p => p.Value);
 
+    private static FeishuAgentOptions NewOptions() => new() { Instructions = "test" };
+
     // ───────────────────── im.send_message → Uuid ─────────────────────
 
     [Fact]
@@ -142,7 +144,7 @@ public class WriteIdempotencyKeyTests
                 Data = new CreateInstancesResult { InstanceCode = "ic_idem_1" },
             });
 
-        var tools = new ApprovalWriteTools(_approvalClient.Object);
+        var tools = new ApprovalWriteTools(_approvalClient.Object, null, null, Options.Create(NewOptions()));
         await tools.CreateInstanceAsync(
             Args(("approval_code", "AC-1"), ("form", "[{\"id\":\"w1\",\"type\":\"input\",\"value\":\"内容\"}]"), ("idempotency_key", "7C468A54-8745-2245-9675-08B7C63E7A87")),
             CancellationToken.None);
@@ -165,7 +167,7 @@ public class WriteIdempotencyKeyTests
                 Data = new CreateInstancesResult { InstanceCode = "ic_idem_2" },
             });
 
-        var tools = new ApprovalWriteTools(_approvalClient.Object);
+        var tools = new ApprovalWriteTools(_approvalClient.Object, null, null, Options.Create(NewOptions()));
         await tools.CreateInstanceAsync(
             Args(("approval_code", "AC-1"), ("form", "[{\"id\":\"w1\",\"type\":\"input\",\"value\":\"内容\"}]")),
             CancellationToken.None);
@@ -180,7 +182,7 @@ public class WriteIdempotencyKeyTests
     {
         var messageTools = new MessageWriteTools(_messageClient.Object);
         var bitableTools = new BitableWriteTools(_recordClient.Object);
-        var approvalTools = new ApprovalWriteTools(_approvalClient.Object);
+        var approvalTools = new ApprovalWriteTools(_approvalClient.Object, null, null, Options.Create(NewOptions()));
 
         var provided = (await messageTools.SendMessageAsync(
             Args(("receive_id", "oc_g"), ("text", "hi"), ("idempotency_key", "k1"), ("dry_run", true)),

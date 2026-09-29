@@ -59,3 +59,40 @@ public interface IFeishuUserTaskListMyTasksTool
         [ToolParameter("completed", "是否包含已完成任务（可选，默认不包含）")] bool? completed = null,
         CancellationToken cancellationToken = default);
 }
+
+// ─────────────────────────── Task 写（2 个，WP4 动作面） ───────────────────────────
+
+/// <summary>工具接口：task.update_task（映射 <c>IFeishuTenantV2Task.UpdateTaskAsync</c>）。</summary>
+[FeishuTool("task.update_task",
+    Description = "更新任务信息（summary/description/due 等字段，至少传一个要更新的字段）。task_guid 来自 task.create_task 或 task.list_my_tasks。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
+    RequiredScopes = ["task:task"],
+    IsWrite = true,
+    Source = "IFeishuTenantV2Task.UpdateTaskAsync")]
+public interface IFeishuTaskUpdateTaskTool
+{
+    /// <summary>更新任务。</summary>
+    /// <returns>白名单投影后的 JSON 文本（task_guid）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> UpdateTaskAsync(
+        [ToolParameter("task_guid", "任务全局唯一 ID（来自 task.create_task 或 task.list_my_tasks）", Required = true)] string task_guid,
+        [ToolParameter("summary", "任务标题（可选更新；如更新不可为空）")] string? summary = null,
+        [ToolParameter("description", "任务描述（可选更新）")] string? description = null,
+        [ToolParameter("due", "截止时间（RFC3339，如 2026-10-01T18:00:00+08:00；可选更新）")] string? due = null,
+        [ToolParameter("dry_run", "仅预演不更新（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：task.complete_task（映射 <c>IFeishuTenantV2Task.UpdateTaskAsync</c>，update_fields=["completed_at"]）。</summary>
+[FeishuTool("task.complete_task",
+    Description = "将任务标记为已完成（通过 update_task 设置 completed_at 字段）。task_guid 来自 task.create_task 或 task.list_my_tasks。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
+    RequiredScopes = ["task:task"],
+    IsWrite = true,
+    Source = "IFeishuTenantV2Task.UpdateTaskAsync")]
+public interface IFeishuTaskCompleteTaskTool
+{
+    /// <summary>完成任务。</summary>
+    /// <returns>白名单投影后的 JSON 文本（task_guid/completed=true）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> CompleteTaskAsync(
+        [ToolParameter("task_guid", "任务全局唯一 ID（来自 task.create_task 或 task.list_my_tasks）", Required = true)] string task_guid,
+        [ToolParameter("dry_run", "仅预演不完成（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}

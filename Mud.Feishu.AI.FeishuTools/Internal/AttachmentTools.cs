@@ -203,7 +203,7 @@ internal sealed class AttachmentTools(
 
     /// <summary>校验 URL 参数（<b>只接受 http/https 绝对地址</b>；拒绝本地路径）。</summary>
     /// <remarks>取值由生成的 <c>Args.Unpack</c> 承担（必填校验同源），此处只保留协议白名单——它是业务规则而非解包。</remarks>
-    private static string RequireHttpUrl(string value, string parameterName)
+    internal static string RequireHttpUrl(string value, string parameterName)
     {
         if (!Uri.TryCreate(value, UriKind.Absolute, out var uri)
             || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))

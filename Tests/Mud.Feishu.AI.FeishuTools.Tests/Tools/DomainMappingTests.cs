@@ -155,7 +155,7 @@ public class DomainMappingTests
                 },
             });
 
-        var tools = new ImTools(client.Object, Options.Create(NewOptions()));
+        var tools = new ImTools(client.Object, new Mock<Mud.Feishu.IFeishuTenantV1ChatGroupMember>().Object, Options.Create(NewOptions()));
         var result = await tools.GetHistoryAsync(
             Args(("chat_id", "oc001"), ("start_time", "2026-09-27T00:00:00+08:00"), ("end_time", "2026-09-27T12:00:00Z")),
             CancellationToken.None);
@@ -178,7 +178,7 @@ public class DomainMappingTests
     public async Task ImHistory_InvalidRfc3339_ShouldBackfillStructuredError()
     {
         var client = new Mock<Mud.Feishu.IFeishuTenantV1Message>();
-        var tools = new ImTools(client.Object, Options.Create(NewOptions()));
+        var tools = new ImTools(client.Object, new Mock<Mud.Feishu.IFeishuTenantV1ChatGroupMember>().Object, Options.Create(NewOptions()));
 
         var result = await tools.GetHistoryAsync(
             Args(("chat_id", "oc001"), ("start_time", "2026/09/27 00:00")),

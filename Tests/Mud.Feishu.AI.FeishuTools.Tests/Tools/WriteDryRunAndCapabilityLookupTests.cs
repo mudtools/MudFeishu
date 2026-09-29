@@ -71,7 +71,7 @@ public class WriteDryRunAndCapabilityLookupTests
     public async Task ApprovalCreateInstance_DryRun_ShouldNotCallDownstream()
     {
         var client = new Mock<Mud.Feishu.IFeishuTenantV4Approval>();
-        var tools = new ApprovalWriteTools(client.Object);
+        var tools = new ApprovalWriteTools(client.Object, null, null, Options.Create(AgentOptions()));
 
         var result = await tools.CreateInstanceAsync(
             Args(("approval_code", "CODE1"), ("form", "[{\"id\":\"w1\",\"type\":\"input\",\"value\":\"请假\"}]"), ("dry_run", true)),
@@ -87,7 +87,7 @@ public class WriteDryRunAndCapabilityLookupTests
     public async Task ApprovalCreateInstance_InvalidForm_ShouldFailBeforeDownstream()
     {
         var client = new Mock<Mud.Feishu.IFeishuTenantV4Approval>();
-        var tools = new ApprovalWriteTools(client.Object);
+        var tools = new ApprovalWriteTools(client.Object, null, null, Options.Create(AgentOptions()));
 
         var notJson = await tools.CreateInstanceAsync(Args(("approval_code", "C"), ("form", "not json")), CancellationToken.None);
         notJson.ToString().Should().Contain("form 不是合法 JSON");

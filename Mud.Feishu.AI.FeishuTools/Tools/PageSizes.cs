@@ -58,6 +58,9 @@ internal static class PageSizes
     /// <summary>task.list_my_tasks（官方默认 10；此处取 50 以减少追问轮次）。</summary>
     public const int TaskList = 50;
 
+    /// <summary>approval.list_pending_tasks（官方默认 10；此处取 50 以减少追问轮次）。</summary>
+    public const int ApprovalTasks = 50;
+
     /// <summary>tokens 类参数的单请求上限（通用钳制）。</summary>
     public const int TokenBatch = 100;
 

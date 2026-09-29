@@ -169,8 +169,8 @@ internal static class ToolArgsEmitter
     /// <c>string[]?</c> / <c>int?</c> / <c>bool?</c>（31 枚工具逐一核对）。
     /// </para>
     /// <para>
-    /// <b>有意不提供 <c>int</c> / <c>bool</c> 必填映射</b>：当前无任何工具声明必填标量数字/布尔参数，
-    /// 先补 <c>RequireInt</c> 只会得到「定义即死代码」——真需要时由 MUDFT020 在构建期拦下并提示补 helper。
+    /// <c>int</c> 必填与可选映射均提供（<c>RequireInt</c> / <c>OptionalInt</c>）；
+    /// <c>bool</c> 仅提供可选映射（当前无工具声明必填布尔参数）。
     /// </para>
     /// </remarks>
     private static bool TryResolveReader(CapabilityParameter parameter, out string fieldType, out string reader)
@@ -209,9 +209,18 @@ internal static class ToolArgsEmitter
 
                 return true;
 
-            case "int" when !isRequired:
-                fieldType = "int?";
-                reader = $"ToolArgs.OptionalInt(args, {name})";
+            case "int":
+                if (isRequired)
+                {
+                    fieldType = "int";
+                    reader = $"ToolArgs.RequireInt(args, {name})";
+                }
+                else
+                {
+                    fieldType = "int?";
+                    reader = $"ToolArgs.OptionalInt(args, {name})";
+                }
+
                 return true;
 
             case "bool" when !isRequired:

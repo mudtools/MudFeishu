@@ -103,10 +103,15 @@ public static class ToolsDemo
                 options.AllowedIdentities = ["tenant", "user"];
                 // Phase 2 写工具示例（默认空=不启用）：显式键控 + 授权器注册后才真正放行。
                 // options.WriteAllowList = [FeishuToolNames.ImSendMessage];
-                // R4/WP7 上传工具（im.send_image / im.send_file）还需宿主注册 IFeishuAttachmentStager
-                // （域名白名单/大小/MIME 校验属宿主安全域）；未注册时两个工具不注册（软缺席）。
+                // R4/WP7 上传工具（im.send_image / im.send_file）：Demo 参考落盘器已注册。
+                // WP1（R5）：DemoAttachmentStager 提供域名白名单（HTTPS-only）+ 大小上限（25MB）+ 扩展名校验 + finally 清理。
+                // 生产宿主应替换为自身安全域实现。
             })
             .AddFeishuTools();
+
+        // WP1（R5）：注册 Demo 级附件落盘器，使 im.send_image / im.send_file 可用。
+        services.AddHttpClient<DemoAttachmentStager>();
+        services.AddSingleton<IFeishuAttachmentStager>(sp => sp.GetRequiredService<DemoAttachmentStager>());
 
         // Phase 2 流式演示：提供 FEISHU_DEMO_CHAT_ID 时注册分片编辑通道。
         if (!string.IsNullOrEmpty(streamChatId))

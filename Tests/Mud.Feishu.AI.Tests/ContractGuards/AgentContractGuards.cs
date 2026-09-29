@@ -400,6 +400,34 @@ public class AgentContractGuards
     }
 
     /// <summary>
+    /// P4-3：自研确认令牌必须<b>保持已废弃标注</b>，且写类工具不得回到令牌路径。
+    /// </summary>
+    /// <remarks>
+    /// 两条不变量各自对应一个已发生的缺陷面：
+    /// ① 废弃标注若被移除，宿主会继续把新代码接到一条计划下线的机制上；
+    /// ② 写类工具若重新走令牌路径，会回到「MAF 已批准、执行链仍拒绝」的死胡同
+    /// （宿主无法把 confirm_token 注入模型工具参数）。
+    /// </remarks>
+    [Fact]
+    public void DeprecatedTokenPath_ShouldStayObsolete_AndNotReclaimWriteTools()
+    {
+        var providerSource = ReadAiSource("Tools", "IToolConfirmationTokenSecretProvider.cs");
+        providerSource.Should().Contain("[Obsolete(",
+            "自研确认令牌契约必须保持 [Obsolete]（P4-3：写类工具已由 MAF 审批管线承担）");
+        providerSource.Should().Contain("IFeishuToolApprovalChannel",
+            "废弃消息必须指向替代契约——否则宿主不知道迁移到哪里");
+
+        var root = GetSolutionRoot();
+        File.ReadAllText(Path.Combine(root, "Mud.Feishu.AI.FeishuTools", "Tools", "ToolConfirmationToken.cs"))
+            .Should().Contain("[Obsolete(", "内部令牌签发器同样必须标注废弃（计划 next-major 移除）");
+
+        var binding = File.ReadAllText(
+            Path.Combine(root, "Mud.Feishu.AI.FeishuTools", "Tools", "FeishuToolBinding.cs"));
+        binding.Should().Contain("AuthorizationDecision.NeedsUserConfirmation && tool.IsWrite",
+            "写类工具必须先于令牌分支被放行（框架已前置批准）；删除该分支会让写工具陷入死胡同");
+    }
+
+    /// <summary>
     /// R2-2：会话恢复必须<b>急切</b>校验历史状态（惰性反序列化纳入守护区）。
     /// </summary>
     [Fact]

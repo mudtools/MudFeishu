@@ -7,12 +7,20 @@
 
 using Mud.Feishu.AI.FeishuTools.Tools;
 
+// P4-3：本类**有意**验证已标记 [Obsolete] 的自研确认令牌（其唯一剩余使用者是非写类工具），
+// 故在此抑制 CS0618。移除时机与该路径的 next-major 下线同步。
+#pragma warning disable CS0618 // Type or member is obsolete
+
 namespace Mud.Feishu.AI.FeishuTools.Tests.Tools;
 
 /// <summary>
 /// T4-2（WP4 / D-3 / R-5）：无状态确认令牌的单元测试——签发/验签回环、过期、
 /// <b>绑定矩阵</b>（换工具/换参数/换应用/换用户均失效）与防伪造。
 /// </summary>
+/// <remarks>
+/// <b>P4-3</b>：本机制已对写类工具失效（MAF 审批管线前置承担），仅服务非写类工具的动态选择性确认，
+/// 已标 <c>[Obsolete]</c>、计划 next-major 移除。本类保留至该路径下线，用于守住过渡期的验签语义。
+/// </remarks>
 public class ToolConfirmationTokenTests
 {
     private const string Secret = "unit-test-host-secret";
@@ -85,7 +93,8 @@ public class ToolConfirmationTokenTests
     {
         var withToken = new Dictionary<string, object?>
         {
-            ["text"] = "你好", [ToolConfirmationToken.ArgumentName] = "v1.123.ABCD",
+            ["text"] = "你好",
+            [ToolConfirmationToken.ArgumentName] = "v1.123.ABCD",
         };
         var withoutToken = new Dictionary<string, object?> { ["text"] = "你好" };
 

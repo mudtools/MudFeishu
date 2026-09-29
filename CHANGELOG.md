@@ -1,5 +1,35 @@
 # Mud.Feishu 更新日志
 
+## [Unreleased] - Phase 4 P4-3：自研确认令牌退场（2026-09-29）
+
+### ⚠️ 行为变更登记
+
+- **【修复 P4-1 连带缺陷】写类工具不再被执行链二次拦截**：写工具经框架审批放行后才可能被调用，
+  而执行链原先会对 `NeedsUserConfirmation` **再次**要求自研令牌——宿主无法把 `confirm_token`
+  注入模型的工具参数，导致写工具卡死在「框架已批准、执行链仍拒绝」的**死胡同**。
+  现在写类工具的待确认判定直接放行（记 Information 日志），`NeedsUserConfirmation` 对写工具
+  退化为「由框架承载」。**非写类工具**行为不变（仍走令牌闭环）。
+- **`IToolConfirmationTokenSecretProvider` 标记 `[Obsolete]`**：写类工具的人工确认已由 MAF
+  审批管线承担；本契约仅剩「非写类工具的动态选择性确认」一种用途，**计划 next-major 移除**，
+  新代码请改用 `IFeishuToolApprovalChannel`。现仍可用（不是 `error: true`），故未迁移宿主照常编译运行。
+- **内部 `ToolConfirmationToken` 标记 `[Obsolete]`**（internal，不影响宿主）；同时修正其类注释中
+  仍写着「模型转述令牌给用户」的过期描述（该行为已在 R2-1 作为 P0 修复）。
+
+> **迁移注记（宿主需自查）**：写类工具的放行以「工具由 `FeishuToolsToolSource` 产出（即经
+> `ApplyApprovalGate` 包装）」为前提。若宿主绕过工具源、直接构造 `FeishuToolAIFunction`，
+> 则该写工具**不会**经过框架审批，此时执行链的放行等于绕过了人工确认——此类宿主须自行在授权器
+> 中做拒绝判定，或改用受支持的注册路径。
+
+### 🧪 测试与守卫
+
+- `FeishuToolBindingTests` +2：写类工具放行且不回到令牌分支 / 非写类工具仍走令牌闭环（反向锁定）。
+- `ToolConfirmationTokenFlowTests` 的工具定义由写类改为**非写类**——P4-3 后写类工具不再进入令牌路径，
+  沿用写类定义会让这 8 个用例退化为"测试不可达代码"。
+- 新增守卫 `DeprecatedTokenPath_ShouldStayObsolete_AndNotReclaimWriteTools`：
+  锁定废弃标注（含"指向替代契约"）与写类工具放行分支，防止任一条被静默回退。
+
+---
+
 ## [Unreleased] - Phase 4 P4-4：交付态补发（outbox，2026-09-29）
 
 ### 🌟 新增／行为变更

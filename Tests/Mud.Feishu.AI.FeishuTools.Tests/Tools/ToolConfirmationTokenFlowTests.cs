@@ -9,6 +9,10 @@ using Mud.Feishu.AI.FeishuTools.Tools;
 using ToolApprovalRequest = Mud.Feishu.AI.Tools.ToolApprovalRequest;
 using IFeishuToolApprovalChannel = Mud.Feishu.AI.Tools.IFeishuToolApprovalChannel;
 
+// P4-3：本类**有意**验证已标记 [Obsolete] 的自研确认令牌路径（过渡期最后一位使用者：
+// 非写类工具的动态选择性确认）。故在此抑制 CS0618；移除时机与该路径的 next-major 下线同步。
+#pragma warning disable CS0618 // Type or member is obsolete
+
 namespace Mud.Feishu.AI.FeishuTools.Tests.Tools;
 
 /// <summary>
@@ -16,10 +20,19 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.Tools;
 /// 以及降级（未配置密钥/未注册通道）与防滥用（换参数重试、令牌不豁免 Denied）语义。
 /// </summary>
 /// <remarks>
+/// <para>
 /// <b>R2-1（P0）改写</b>：确认令牌<b>不再</b>经工具结果回填模型——模型可据此自行带令牌重试并放行写操作。
 /// 令牌只经 <see cref="IFeishuToolApprovalChannel"/> 交给宿主；本类既有用例中
 /// 「从结果文本正则提取令牌」的写法（等价于把泄漏固化为契约）已全部改为
 /// 「从宿主通道捕获令牌」，并新增「模型可见文本不得含令牌」的反向断言。
+/// </para>
+/// <para>
+/// <b>P4-3 改写</b>：本类工具定义一律为<b>非写类</b>（<c>isWrite: false</c>）。写类工具的人工确认
+/// 已由 MAF 审批管线在调用之前承担——执行链对写类工具的 <c>NeedsUserConfirmation</c> 直接放行
+/// （见 <c>FeishuToolBinding.AuthorizeGateAsync</c> 的 P4-3 分支）。若此处仍用写类定义，
+/// 用例将不再覆盖令牌路径，而是变成"测试一段不可达代码"。
+/// 写类工具的新语义由 <c>FeishuToolBindingTests</c> 的 P4-3 用例单独锁定。
+/// </para>
 /// </remarks>
 public class ToolConfirmationTokenFlowTests : IDisposable
 {
@@ -101,8 +114,12 @@ public class ToolConfirmationTokenFlowTests : IDisposable
         }
     }
 
+    /// <summary>
+    /// 非写类工具定义：P4-3 起自研确认令牌**只**服务于非写类工具的动态选择性确认
+    /// （写类工具已由 MAF 审批管线前置把关），故本类全部用例使用只读定义。
+    /// </summary>
     private static FeishuToolDefinition Definition(string name = "test.tool", FeishuToolHandler? handler = null)
-        => new(name, "测试工具", ["test:write"], true, FeishuToolRisk.Write, "tenant",
+        => new(name, "测试工具", ["test:read"], false, FeishuToolRisk.Read, "tenant",
             handler ?? ((_, _, _) => Task.FromResult(FeishuToolResult.FromText("downstream-result"))));
 
     private static IReadOnlyDictionary<string, object?> Args(params (string Key, object? Value)[] items)
@@ -149,7 +166,7 @@ public class ToolConfirmationTokenFlowTests : IDisposable
         request.UserId.Should().Be("user1");
         request.ConversationKey.Should().Be("conv-1");
         request.Reason.Should().Be("删除操作须用户批准");
-        request.RequiredScopes.Should().Contain("test:write");
+        request.RequiredScopes.Should().Contain("test:read");
         request.ArgumentsDigest.Should().NotBeNullOrEmpty("参数摘要与令牌绑定，宿主不得修改参数");
         request.ExpiresAt.Should().Be(Now + ToolConfirmationToken.DefaultLifetime);
         request.ConfirmationToken.Should().StartWith("v1.");

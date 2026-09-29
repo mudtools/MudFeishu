@@ -14,10 +14,15 @@ namespace Mud.Feishu.AI.FeishuTools.Tools;
 
 /// <summary>
 /// 无状态确认令牌（T4-2 / D-3）：把 <c>NeedsUserConfirmation</c> 的「批准」从一次会话语境
-/// 变成<b>可校验的凭据</b>——执行链签发，模型转述给用户，用户同意后模型以
-/// <c>confirm_token=&lt;令牌&gt;</c> 重试同一调用，执行链验签通过则跳过授权器的 Confirm 分支。
+/// 变成<b>可校验的凭据</b>——执行链签发、<b>只交给宿主</b>（R2-1），宿主批准后由宿主侧回灌
+/// <c>confirm_token=&lt;令牌&gt;</c>，执行链验签通过则跳过授权器的 Confirm 分支。
 /// </summary>
 /// <remarks>
+/// <para>
+/// <b>[Obsolete]（P4-3）</b>：写类工具的确认已由 MAF 审批管线前置承担（写工具经
+/// <c>ApprovalRequiredAIFunction</c> 包装，框架不批准则执行链根本不会被调用，且批准只能来自宿主），
+/// 故本类型对写类工具<b>已无消费点</b>；仅剩非写类工具的动态选择性确认，将在下个 major 版本移除。
+/// </para>
 /// <para>
 /// <b>无状态</b>：令牌 = <c>v1.{过期时刻}.{HMAC}</c>，批准状态不落任何存储（执行链禁区不变）。
 /// <b>防伪造</b>：HMAC-SHA256 覆盖 <c>toolName | 参数摘要 | appKey | userId | expiry</c> 五元组，
@@ -27,9 +32,17 @@ namespace Mud.Feishu.AI.FeishuTools.Tools;
 /// 同形状不同值的两次调用，会造成批准转移。
 /// </para>
 /// <para>
+/// <b>R2-1 语义修正</b>：初版让「模型转述令牌给用户」——该文案把令牌带进模型上下文，
+/// 而验签不校验批准是否来自人 ⇒ 模型可自行带令牌重试放行（已作为 P0 修复）。令牌现在<b>只</b>经
+/// <c>IFeishuToolApprovalChannel</c> 交给宿主，绝不进入模型可见文本。
+/// </para>
+/// <para>
 /// <b>时间源可注入</b>（R4.1 评审 R-5）：签发/校验的时刻由调用方传入，过期语义可测。
 /// </para>
 /// </remarks>
+[Obsolete(
+    "写类工具的人工确认已改由 MAF 审批管线承担（P4-3）；本类型仅剩非写类工具的动态选择性确认，"
+    + "将在下个 major 版本移除。")]
 internal static class ToolConfirmationToken
 {
     /// <summary>默认有效期（R4 方案 T4-2 建议 10 分钟）。</summary>

@@ -128,7 +128,14 @@ services.AddFeishuTools();                 // 引入全部域（含元工具）
 | MAF（`FunctionInvokingChatClient`） | 在调用**之前**把包装工具的调用转成 `ToolApprovalRequestContent`（工具此刻**未执行**） |
 | SDK（`ConversationalFeishuEventHandler`） | 识别该内容 → `IFeishuToolApprovalChannel.RequestFrameworkApprovalAsync` 提交宿主 → 向用户回一条「等待人工确认」；**未注册通道即 fail-closed** |
 | 宿主 | 在自有界面完成批准后，由宿主侧回灌批准响应继续本轮；`ApprovalResponseBindingChatClient` 只接受与框架请求绑定的响应 |
-| 自研 `confirm_token` 路径 | **仍在**（未迁移宿主的兜底），保留至 P4-3 标记 `[Obsolete]` |
+| 自研 `confirm_token` 路径 | **已标 `[Obsolete]`（P4-3）**，仅剩「非写类工具的动态选择性确认」一种用途，计划 next-major 移除 |
+
+**执行链对写类工具不再二次拦截（P4-3）**：写工具能被执行链看到，就说明框架已经批准过——
+若此时授权器仍返回 `NeedsUserConfirmation` 而执行链又走自研令牌，宿主无法把 `confirm_token`
+注入模型工具参数 ⇒ 写工具会卡死在「框架已批准、执行链仍拒绝」的**死胡同**。
+故 `FeishuToolBinding` 对写类工具的待确认判定直接放行（记 Information 日志），
+`NeedsUserConfirmation` 对写工具退化为「由框架承载」的语义。
+**非写类工具**不进入框架审批，自研令牌仍是其唯一 HITL 机制（已废弃但可用）。
 
 **关键安全收益**：批准资格由框架绑定到「框架发出的请求」，模型**无法自批复**——
 这补上了上述 R2-1 方案里"仍需依赖模型自律"的最后一环。

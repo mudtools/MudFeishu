@@ -10,6 +10,12 @@ using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.Metrics;
 using Mud.Feishu.AI.FeishuTools.Tools;
 
+// P4-3：本文件仍**有意**在内部消费已标记 [Obsolete] 的自研确认令牌——其唯一剩余用途是
+// 「非写类工具的动态选择性确认」（写类工具已由 MAF 审批管线前置承担，见 AuthorizeGateAsync 的 P4-3 分支）。
+// 宿主可见面已废弃，SDK 侧保留可用性直到下个 major 移除，故在此抑制 CS0618。
+// 抑制范围仅限本文件；新增对令牌的引用请一并确认是否仍在过渡期计划内。
+#pragma warning disable CS0618 // Type or member is obsolete
+
 namespace Mud.Feishu.AI.FeishuTools;
 
 /// <summary>
@@ -442,11 +448,28 @@ public sealed class FeishuToolBinding
             return GateDecision.Deny("authorization_denied: 授权器返回空结果——按拒绝处理（fail-closed）", ToolErrorKind.Forbidden);
         }
 
+        // P4-3：写类工具的「待确认」已由 MAF 审批管线在**调用之前**完成——写工具经
+        // FeishuToolsToolSource → ApplyApprovalGate 包装为 ApprovalRequiredAIFunction，
+        // 框架不批准则本方法**根本不会被调用**。因此走到这里即意味着"人已批准"，
+        // 授权器的 Confirm 已被满足，不得再用自研令牌二次拦截。
+        //
+        // 为什么必须显式处理而不是继续走令牌路径：MAF 批准后自研令牌路径要求宿主把 confirm_token
+        // 回灌为**工具参数**，而宿主无法向模型注入工具参数 ⇒ 写工具会卡死在「框架已批准、执行链仍拒绝」
+        // 的死胡同（P4-1 引入的连带缺陷）。此处放行 + Warning 使其可观测。
+        if (result.Decision == AuthorizationDecision.NeedsUserConfirmation && tool.IsWrite)
+        {
+            _logger?.LogInformation(
+                "写类工具 {ToolName} 的待确认已由 MAF 审批管线前置完成（P4-3），执行链不再二次拦截（原因: {Reason}）",
+                tool.Name, result.Reason);
+            return GateDecision.Pass();
+        }
+
         return result.Decision switch
         {
             AuthorizationDecision.Allowed => GateDecision.Pass(),
             AuthorizationDecision.Denied => GateDecision.Deny(
                 $"authorization_denied: {result.Reason ?? "授权被拒绝"}", ToolErrorKind.Forbidden),
+            // 非写类工具不进入框架审批（未被包装）⇒ 自研确认令牌仍是其唯一 HITL 机制（[Obsolete]，下个 major 移除）。
             AuthorizationDecision.NeedsUserConfirmation =>
                 await ResolveNeedsConfirmationAsync(tool, arguments, context, result.Reason, cancellationToken)
                     .ConfigureAwait(false),

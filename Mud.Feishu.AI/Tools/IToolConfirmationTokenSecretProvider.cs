@@ -23,6 +23,11 @@ namespace Mud.Feishu.AI.Tools;
 /// 即失效——模型无法把 A 场景的批准搬到 B 场景。有效期默认 10 分钟（签发时写入令牌）。
 /// </para>
 /// </remarks>
+[Obsolete(
+    "写类工具的人工确认已由 MAF 审批管线承担（P4-1/P4-3）：写工具经 ApprovalRequiredAIFunction 包装后，"
+    + "确认由框架在调用之前发起、且只接受与框架请求绑定的批准（模型无法自批复），本契约对写类工具已不再生效。"
+    + "本契约仅剩「非写类工具的动态选择性确认」一种用途，将在下个 major 版本移除；"
+    + "新代码请改用 IFeishuToolApprovalChannel（配合 MAF 审批流）。")]
 public interface IToolConfirmationTokenSecretProvider
 {
     /// <summary>返回宿主签名密钥（<see langword="null"/> 或空白 = 未配置，确认令牌能力降级）。</summary>

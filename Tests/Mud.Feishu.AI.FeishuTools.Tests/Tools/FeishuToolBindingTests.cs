@@ -241,6 +241,58 @@ public class FeishuToolBindingTests : IDisposable
         result.ToString().Should().Contain("需要用户确认");
     }
 
+    // ───────────────────── P4-3：写类工具的人工确认已交由 MAF 审批管线 ─────────────────────
+
+    [Fact]
+    public async Task Execute_NeedsUserConfirmation_OnWriteTool_ShouldPass_WithoutTokenPath()
+    {
+        // 写类工具经 FeishuToolsToolSource 包装为 ApprovalRequiredAIFunction ⇒ 框架不批准则
+        // 执行链**根本不会被调用**。所以能走到这里就等于"人已批准"，不得再用自研令牌二次拦截——
+        // 否则写工具会卡死在「框架已批准、执行链仍拒绝」的死胡同（宿主的回灌协议已随 P4-1 变更）。
+        var confirming = new Mock<IToolExecutionAuthorizer>();
+        confirming
+            .Setup(a => a.AuthorizeAsync(
+                It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<bool>(),
+                It.IsAny<IReadOnlyDictionary<string, object?>>(), It.IsAny<FeishuToolContext>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(AuthorizationResult.Confirm("删除操作须用户批准"));
+
+        var binding = CreateBinding(confirming.Object);
+        var downstreamCalled = false;
+
+        var result = await binding.ExecuteAsync(
+            Definition(scopes: ["test:write"], isWrite: true, risk: FeishuToolRisk.Write),
+            Args(), new FeishuToolContext("appA"),
+            _ => { downstreamCalled = true; return Task.FromResult(FeishuToolResult.FromText("ok")); });
+
+        downstreamCalled.Should().BeTrue("写类工具的批准已由框架前置完成，执行链必须放行");
+        result.ToString().Should().Be("ok");
+        result.ToString().Should().NotContain("需要用户确认", "不得再回到自研令牌的待确认分支");
+    }
+
+    [Fact]
+    public async Task Execute_NonWriteConfirmation_ShouldStillUseTokenPath()
+    {
+        // 反向锁定：非写类工具**未**进入框架审批 ⇒ 自研令牌仍是其唯一 HITL 机制，不得被一并放行。
+        var confirming = new Mock<IToolExecutionAuthorizer>();
+        confirming
+            .Setup(a => a.AuthorizeAsync(
+                It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<bool>(),
+                It.IsAny<IReadOnlyDictionary<string, object?>>(), It.IsAny<FeishuToolContext>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(AuthorizationResult.Confirm("敏感数据读取须用户批准"));
+
+        var binding = CreateBinding(confirming.Object);
+        var downstreamCalled = false;
+
+        var result = await binding.ExecuteAsync(
+            Definition(isWrite: false), Args(), new FeishuToolContext("appA"),
+            _ => { downstreamCalled = true; return Task.FromResult(FeishuToolResult.FromText("ok")); });
+
+        downstreamCalled.Should().BeFalse("非写类工具的待确认仍须经令牌闭环，不得静默放行");
+        result.ToString().Should().Contain("需要用户确认");
+    }
+
     [Fact]
     public async Task Execute_DownstreamThrows_ShouldReturnStructuredError_NotRethrow()
     {

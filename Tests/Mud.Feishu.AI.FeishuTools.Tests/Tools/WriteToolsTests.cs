@@ -28,7 +28,7 @@ public class WriteToolsTests
     private static FeishuAgentOptions NewOptions() => new() { Instructions = "test" };
 
     private ApprovalWriteTools CreateApprovalTools()
-        => new(_approvalClient.Object, _approvalQueryClient.Object, _approvalTaskClient.Object, Options.Create(NewOptions()));
+        => new(_approvalClient.Object, _approvalQueryClient.Object, _approvalTaskClient.Object, null, Options.Create(NewOptions()));
 
     private static IReadOnlyDictionary<string, object?> Args(params (string Key, object? Value)[] items)
         => items.ToDictionary(p => p.Key, p => p.Value);

@@ -140,14 +140,15 @@ internal sealed class BitableWriteTools(Mud.Feishu.IFeishuTenantV1BitableRecord 
 }
 
 /// <summary>
-/// Approval 工具执行器（<c>approval.create_instance</c> / <c>approval.list_pending_tasks</c> / <c>approval.approve_task</c>，WP4 动作面）：
+/// Approval 工具执行器（<c>approval.create_instance</c> / <c>approval.list_pending_tasks</c> / <c>approval.approve_task</c> / <c>approval.get_instance</c>，WP4 动作面 + WP5 只读实例详情）：
 /// 模型扁平参数 → 强类型请求 → SDK 调用 → 解包投影。
 /// </summary>
 /// <remarks>
 /// <para>
 /// <b>多客户端注入</b>：<c>create_instance</c> 走 <c>IFeishuTenantV4Approval</c>，
 /// <c>list_pending_tasks</c> 走 <c>IFeishuTenantV4ApprovalQuery</c>，
-/// <c>approve_task</c> 走 <c>IFeishuTenantV4ApprovalTask</c>——三个分接口各管一个子域。
+/// <c>approve_task</c> 走 <c>IFeishuTenantV4ApprovalTask</c>，
+/// <c>get_instance</c> 走 <c>IFeishuUserV4ApprovalInstance</c>（用户身份——WP5 新增）。
 /// </para>
 /// <para>
 /// 写工具（<c>approve_task</c>）的软缺席语义：若 DI 容器缺少 <c>IFeishuTenantV4ApprovalTask</c>，
@@ -158,12 +159,14 @@ internal sealed class ApprovalWriteTools(
     Mud.Feishu.IFeishuTenantV4Approval approvalClient,
     Mud.Feishu.IFeishuTenantV4ApprovalQuery? approvalQueryClient,
     Mud.Feishu.IFeishuTenantV4ApprovalTask? approvalTaskClient,
+    Mud.Feishu.IFeishuUserV4ApprovalInstance? approvalInstanceUserClient,
     IOptions<FeishuAgentOptions> options)
 {
     private readonly Mud.Feishu.IFeishuTenantV4Approval _approvalClient = approvalClient
         ?? throw new ArgumentNullException(nameof(approvalClient));
     private readonly Mud.Feishu.IFeishuTenantV4ApprovalQuery? _approvalQueryClient = approvalQueryClient;
     private readonly Mud.Feishu.IFeishuTenantV4ApprovalTask? _approvalTaskClient = approvalTaskClient;
+    private readonly Mud.Feishu.IFeishuUserV4ApprovalInstance? _approvalInstanceUserClient = approvalInstanceUserClient;
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>approval.create_instance：发起审批实例（<c>dry_run=true</c> 时只预演）。</summary>
@@ -303,6 +306,32 @@ internal sealed class ApprovalWriteTools(
         });
     }
 
+    /// <summary>approval.get_instance：获取审批实例详情（白名单 instance_code/status/form/auditors，user-only）。</summary>
+    /// <remarks>用户身份工具——宿主须在 AllowedIdentities 放行 user。客户端缺席时返回结构化错误。</remarks>
+    [FeishuToolHandler(typeof(IFeishuUserApprovalGetInstanceTool))]
+    public Task<FeishuToolResult> GetInstanceAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.ApprovalGetInstance, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            if (_approvalInstanceUserClient is null)
+            {
+                throw new ArgumentException(
+                    "approval.get_instance 需要 IFeishuUserV4ApprovalInstance（用户令牌）——宿主须启用 AddApprovalApi 的实例侧客户端并在 AllowedIdentities 放行 user");
+            }
+
+            var args = ApprovalGetInstanceArgs.Unpack(arguments);
+
+            var outcome = FeishuApiResultReader.Read(await _approvalInstanceUserClient
+                .GetInstanceDetailAsync(
+                    args.InstanceCode,
+                    locale: args.Locale,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApi(outcome, ProjectInstanceDetail);
+        });
+    }
+
     /// <summary>list_pending_tasks 投影：items（task_id/instance_code/approval_name/title/status）+ 翻页契约。</summary>
     private static JsonObject ProjectPendingTasks(ApprovalInstancesTaskQueryResult data)
     {
@@ -328,6 +357,51 @@ internal sealed class ApprovalWriteTools(
                 ["status"] = item.Task?.Status,
                 ["start_time"] = item.Task?.StartTime,
             });
+        }
+
+        return envelope;
+    }
+
+    /// <summary>get_instance 投影：instance_code/status/form（截断预览）/auditors。</summary>
+    private static JsonObject ProjectInstanceDetail(InstanceDetailResult data)
+    {
+        var envelope = new JsonObject
+        {
+            ["instance_code"] = data.InstanceCode,
+            ["definition_name"] = data.DefinitionName,
+            ["status"] = data.Status,
+            ["start_time"] = data.StartTime,
+            ["end_time"] = data.EndTime,
+            ["user_id"] = data.UserId,
+            ["serial_number"] = data.SerialNumber,
+            ["reverted"] = data.Reverted,
+        };
+
+        // form 是 JSON 字符串，可能很长——只取前 500 字符做预览
+        if (!string.IsNullOrEmpty(data.Form))
+        {
+            var formPreview = data.Form.Length > 500
+                ? data.Form[..500] + "…[truncated]"
+                : data.Form;
+            envelope["form_preview"] = formPreview;
+        }
+
+        // 审批任务列表（白名单 task_id/user_id/status/node_name）
+        if (data.Tasks is { Length: > 0 })
+        {
+            var tasks = new JsonArray();
+            foreach (var task in data.Tasks)
+            {
+                tasks.AddNode(new JsonObject
+                {
+                    ["task_id"] = task.Id,
+                    ["user_id"] = task.UserId,
+                    ["status"] = task.Status,
+                    ["node_name"] = task.NodeName,
+                    ["type"] = task.Type,
+                });
+            }
+            envelope["tasks"] = tasks;
         }
 
         return envelope;

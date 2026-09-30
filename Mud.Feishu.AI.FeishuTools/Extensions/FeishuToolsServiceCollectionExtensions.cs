@@ -81,7 +81,10 @@ public static class FeishuToolsServiceCollectionExtensions
             .AddFeishuDocxWriteToolsCore()
             .AddFeishuSheetsWriteToolsCore()
             .AddFeishuBitableWriteTools2Core()
-            .AddFeishuDriveWriteToolsCore();
+            .AddFeishuDriveWriteToolsCore()
+            // WP5/R5 域扩容：邮件工具 + 通讯录部门轴工具
+            .AddFeishuMailToolsCore()
+            .AddFeishuContactDepartmentToolsCore();
 
     /// <summary>
     /// 注册只读工具包（Phase 1 兼容入口；现等价 <see cref="AddFeishuTools"/>——写工具同批注册但
@@ -156,6 +159,30 @@ public static class FeishuToolsServiceCollectionExtensions
         => AddFeishuToolInfrastructure(services, configure).AddFeishuKnowledgeSearchToolsCore();
 
     /// <summary>
+    /// 按域注册邮件工具（WP5：<c>mail.list_messages</c>/<c>mail.get_message</c> 只读 + <c>mail.send_message</c> 写）。
+    /// </summary>
+    /// <remarks>
+    /// 读侧（list/get）需 <c>IFeishuTenantV1MailMessage</c>（租户令牌），发信需 <c>IFeishuUserV1MailDraft</c>（用户令牌）——
+    /// 两者均可软缺席（客户端缺席时对应工具不注册）。
+    /// </remarks>
+    public static IServiceCollection AddFeishuMailTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure).AddFeishuMailToolsCore();
+
+    /// <summary>
+    /// 按域注册通讯录部门轴工具（WP5：<c>contact.list_departments</c>/<c>contact.list_department_members</c>）。
+    /// </summary>
+    /// <remarks>
+    /// 部门列表需 <c>IFeishuTenantV3Departments</c>，部门成员需 <c>IFeishuTenantV1Employees</c>——
+    /// 两者均可软缺席（客户端缺席时对应工具不注册）。
+    /// </remarks>
+    public static IServiceCollection AddFeishuContactDepartmentTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure).AddFeishuContactDepartmentToolsCore();
+
+    /// <summary>
     /// 按域注册日历工具（WP5 / AT-F04：<c>calendar.create_event</c> 写 + <c>find_free_slots</c>/<c>list_events</c> 只读）。
     /// </summary>
     /// <remarks>要求宿主已注册 <c>IFeishuTenantV4CalendarEvent</c> 与 <c>IFeishuTenantV4Calendar</c>（AddCalendarApi）；缺席时整域不注册。</remarks>
@@ -204,7 +231,10 @@ public static class FeishuToolsServiceCollectionExtensions
             .AddFeishuDocxWriteToolsCore()
             .AddFeishuSheetsWriteToolsCore()
             .AddFeishuBitableWriteTools2Core()
-            .AddFeishuDriveWriteToolsCore();
+            .AddFeishuDriveWriteToolsCore()
+            // WP5/R5 域扩容：邮件工具 + 通讯录部门轴工具
+            .AddFeishuMailToolsCore()
+            .AddFeishuContactDepartmentToolsCore();
 
     /// <summary>
     /// 注册分片编辑流式通道（Phase 2 T2-1 兼容入口，保持不变）：

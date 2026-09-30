@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.DataModels.Mail;
+
 namespace Mud.Feishu;
 
 
@@ -16,4 +18,17 @@ namespace Mud.Feishu;
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]
 public interface IFeishuUserV1MailTemplate : IFeishuV1MailTemplate, ICurrentUserId
 {
+    /// <summary>
+    /// 查询用户邮箱签名，返回签名列表与各邮箱地址的签名使用情况。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-setting/get_signatures">接口文档</see></para>
+    /// </summary>
+    /// <param name="user_mailbox_id">
+    /// <para>用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。</para>
+    /// <para>示例值：user@example.com</para>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/settings/signatures")]
+    Task<FeishuApiResult<MailboxSignaturesResult>?> GetUserMailboxSignaturesAsync(
+       [Path] string user_mailbox_id,
+       CancellationToken cancellationToken = default);
 }

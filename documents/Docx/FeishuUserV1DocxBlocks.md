@@ -16,8 +16,14 @@ description: 该接口用于以用户身份对飞书云文档块进行增删改�
 ## 参考文档
 
 - [飞书云文档概述](https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/docx-overview)
-- [创建块](https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document-block/create)
+- [创建块](https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/document-block-children/create)
+- [创建嵌套块](https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/document-block-descendant/create)
 - [更新块](https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document-block/patch)
+- [获取块信息](https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document-block/get)
+- [批量更新块](https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document-block/batch_update)
+- [获取子块列表](https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/document-block-children/get)
+- [批量删除子块](https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/document-block-children/batch_delete)
+- [内容转换](https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/document/convert)
 
 ## 函数列表
 
@@ -49,7 +55,7 @@ Task<FeishuApiResult<BlockOpResult>?> CreateBlockAsync(
     [Body] CreateBlockRequest createBlockRequest,
     [Query("document_revision_id")] int? document_revision_id = -1,
     [Query("client_token")] string? client_token = null,
-    [Query("user_id_type")] string user_id_type = "open_id",
+    [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -57,22 +63,22 @@ Task<FeishuApiResult<BlockOpResult>?> CreateBlockAsync(
 
 **参数**：
 
-| 参数名 | 类型 | 必填 | 描述 | 默认值 |
+| 参数名 | 类型 | 必填 | 描述 | 示例 |
 |-------|------|------|------|--------|
-| `document_id` | `string` | ✅ | 文档的唯一标识 | - |
-| `block_id` | `string` | ✅ | 父块的 block_id（文档根节点可用 document_id） | - |
+| `document_id` | `string` | ✅ | 文档的唯一标识 | `doxcnePuYufKa49ISjhD8Iabcef` |
+| `block_id` | `string` | ✅ | 父块的 block_id（文档根节点可用 document_id） | `doxcnePuYufKa49ISjhD8Ih0ikh` |
 | `createBlockRequest` | `CreateBlockRequest` | ✅ | 创建块请求体 | - |
-| `document_revision_id` | `int?` | ⚪ | 文档版本号，-1 表示最新版本 | `-1` |
-| `client_token` | `string?` | ⚪ | 幂等操作标识 | `null` |
-| `user_id_type` | `string` | ⚪ | 用户 ID 类型 | `open_id` |
-| `cancellationToken` | `CancellationToken` | ⚪ | 取消操作令牌 | - |
+| `document_revision_id` | `int?` | ⚪ | 查询的文档版本，-1 表示最新版本，默认 -1 | `-1` |
+| `client_token` | `string?` | ⚪ | 操作的唯一标识，用于幂等进行更新操作；为空表示发起新的请求 | `fe599b60-450f-46ff-b2ef-9f6675625b97` |
+| `user_id_type` | `string` | ⚪ | 用户 ID 类型，默认 open_id | `open_id` |
+| `cancellationToken` | `CancellationToken` | ⚪ | 取消操作令牌对象 | default |
 
 **CreateBlockRequest 字段说明**：
 
 | 字段名 | 类型 | 必填 | 描述 |
 |-------|------|------|------|
-| `Childrens` | `Block[]?` | ⚪ | 添加的子块列表，最大 50 个 |
-| `Index` | `int?` | ⚪ | 插入位置，起始值为 0 | `-1`（末尾） |
+| `Childrens` | `Block[]?` | ⚪ | 添加的子块列表，最大 50 个，最小 1 个 |
+| `Index` | `int?` | ⚪ | 插入位置，起始值为 0，默认 -1（末尾） |
 
 **响应**：
 
@@ -95,6 +101,11 @@ Task<FeishuApiResult<BlockOpResult>?> CreateBlockAsync(
   }
 }
 ```
+
+**说明**：
+
+- 响应体为 `BlockOpResult`，包含 `block`（更新后的块信息）、`children`（本次添加的子块信息）、`document_revision_id`（操作成功后的文档版本号）、`client_token`（操作的唯一标识）四个字段
+- 创建子块场景主要返回 `children`；`block` 字段用于返回更新后的块，详见 `UpdateBlockAsync` 的响应示例
 
 **代码示例**：
 
@@ -122,7 +133,7 @@ public class UserEditorService
                     {
                         Elements = new[]
                         {
-                            new TextElement { TextRun = new TextRun { Content = noteContent } }
+                            new TextElement { TextRun = new TextElementTextRun { Content = noteContent } }
                         }
                     }
                 }
@@ -131,7 +142,7 @@ public class UserEditorService
 
         var result = await _userBlocksClient.CreateBlockAsync(documentId, documentId, request);
         
-        if (result?.IsSuccess() == true)
+        if (result?.Code == 0)
         {
             Console.WriteLine($"笔记添加成功，文档版本: {result.Data?.DocumentRevisionId}");
         }
@@ -154,7 +165,7 @@ Task<FeishuApiResult<CreateDescendantBlockResult>?> CreateDescendantBlockAsync(
     [Body] CreateDescendantBlockRequest createDescendantBlockRequest,
     [Query("document_revision_id")] int? document_revision_id = -1,
     [Query("client_token")] string? client_token = null,
-    [Query("user_id_type")] string user_id_type = "open_id",
+    [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -162,15 +173,15 @@ Task<FeishuApiResult<CreateDescendantBlockResult>?> CreateDescendantBlockAsync(
 
 **参数**：
 
-| 参数名 | 类型 | 必填 | 描述 | 默认值 |
+| 参数名 | 类型 | 必填 | 描述 | 示例 |
 |-------|------|------|------|--------|
-| `document_id` | `string` | ✅ | 文档的唯一标识 | - |
-| `block_id` | `string` | ✅ | 父块的 block_id | - |
+| `document_id` | `string` | ✅ | 文档的唯一标识 | `doxcnePuYufKa49ISjhD8Iabcef` |
+| `block_id` | `string` | ✅ | 父块的 block_id（文档根节点可用 document_id） | `doxcnePuYufKa49ISjhD8Ih0ikh` |
 | `createDescendantBlockRequest` | `CreateDescendantBlockRequest` | ✅ | 创建嵌套块请求体 | - |
-| `document_revision_id` | `int?` | ⚪ | 文档版本号 | `-1` |
-| `client_token` | `string?` | ⚪ | 幂等操作标识 | `null` |
-| `user_id_type` | `string` | ⚪ | 用户 ID 类型 | `open_id` |
-| `cancellationToken` | `CancellationToken` | ⚪ | 取消操作令牌 | - |
+| `document_revision_id` | `int?` | ⚪ | 查询的文档版本，-1 表示最新版本，默认 -1 | `-1` |
+| `client_token` | `string?` | ⚪ | 操作的唯一标识，用于幂等进行更新操作；为空表示发起新的请求 | `fe599b60-450f-46ff-b2ef-9f6675625b97` |
+| `user_id_type` | `string` | ⚪ | 用户 ID 类型，默认 open_id | `open_id` |
+| `cancellationToken` | `CancellationToken` | ⚪ | 取消操作令牌对象 | default |
 
 **说明**：
 
@@ -189,7 +200,7 @@ Task<FeishuApiResult<CreateDescendantBlockResult>?> CreateDescendantBlockAsync(
     "document_revision_id": 6,
     "client_token": "80bf5b2a-4dea-4c02-8a84-a0e682de463d",
     "block_id_relations": [
-      {"temp_block_id": "temp_001", "block_id": "doxcnxxx..."}
+      {"temporary_block_id": "temp_001", "block_id": "doxcnxxx..."}
     ]
   }
 }
@@ -210,7 +221,7 @@ Task<FeishuApiResult<BlockOpResult>?> UpdateBlockAsync(
     [Body] UpdateBlockRequest updateBlockRequest,
     [Query("document_revision_id")] int? document_revision_id = -1,
     [Query("client_token")] string? client_token = null,
-    [Query("user_id_type")] string user_id_type = "open_id",
+    [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -218,15 +229,15 @@ Task<FeishuApiResult<BlockOpResult>?> UpdateBlockAsync(
 
 **参数**：
 
-| 参数名 | 类型 | 必填 | 描述 | 默认值 |
+| 参数名 | 类型 | 必填 | 描述 | 示例 |
 |-------|------|------|------|--------|
-| `document_id` | `string` | ✅ | 文档的唯一标识 | - |
-| `block_id` | `string` | ✅ | 要更新的块 ID | - |
-| `updateBlockRequest` | `UpdateBlockRequest` | ✅ | 更新块请求体 | - |
-| `document_revision_id` | `int?` | ⚪ | 文档版本号 | `-1` |
-| `client_token` | `string?` | ⚪ | 幂等操作标识 | `null` |
-| `user_id_type` | `string` | ⚪ | 用户 ID 类型 | `open_id` |
-| `cancellationToken` | `CancellationToken` | ⚪ | 取消操作令牌 | - |
+| `document_id` | `string` | ✅ | 文档的唯一标识 | `doxcnePuYufKa49ISjhD8Iabcef` |
+| `block_id` | `string` | ✅ | 要更新的块的唯一标识 | `doxcnO6UW6wAw2qIcYf4hZpFIth` |
+| `updateBlockRequest` | `UpdateBlockRequest` | ✅ | 更新块的内容请求体 | - |
+| `document_revision_id` | `int?` | ⚪ | 查询的文档版本，-1 表示最新版本，默认 -1 | `-1` |
+| `client_token` | `string?` | ⚪ | 操作的唯一标识，用于幂等进行更新操作；为空表示发起新的请求 | `fe599b60-450f-46ff-b2ef-9f6675625b97` |
+| `user_id_type` | `string` | ⚪ | 用户 ID 类型，默认 open_id | `open_id` |
+| `cancellationToken` | `CancellationToken` | ⚪ | 取消操作令牌对象 | default |
 
 **UpdateBlockRequest 字段说明**：
 
@@ -238,6 +249,41 @@ Task<FeishuApiResult<BlockOpResult>?> UpdateBlockAsync(
 | `InsertTableRow` | `InsertTableRowRequest?` | ⚪ | 表格插入新行 |
 | `InsertTableColumn` | `InsertTableColumnRequest?` | ⚪ | 表格插入新列 |
 | `DeleteTableRows` | `DeleteTableRowsRequest?` | ⚪ | 表格删除行 |
+| `DeleteTableColumns` | `DeleteTableColumnsRequest?` | ⚪ | 表格删除列 |
+| `MergeTableCells` | `MergeTableCellsRequest?` | ⚪ | 合并表格单元格 |
+| `UnmergeTableCells` | `UnmergeTableCellsRequest?` | ⚪ | 取消合并表格单元格 |
+| `InsertGridColumn` | `InsertGridColumnRequest?` | ⚪ | 分栏插入新列 |
+| `DeleteGridColumn` | `DeleteGridColumnRequest?` | ⚪ | 分栏删除列 |
+| `UpdateGridColumnWidthRatio` | `UpdateGridColumnWidthRatioRequest?` | ⚪ | 更新分栏列宽比例 |
+| `ReplaceImage` | `ReplaceImageRequest?` | ⚪ | 替换图片块的资源 |
+| `ReplaceFile` | `ReplaceFileRequest?` | ⚪ | 替换文件块的资源 |
+| `UpdateText` | `UpdateTextRequest?` | ⚪ | 更新文本元素及关键样式 |
+
+**响应**：
+
+```json
+{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "block": {
+      "block_id": "doxcnO6UW6wAw2qIcYf4hZpFIth",
+      "block_type": 2,
+      "parent_id": "doxcnePuYufKa49ISjhD8Ih0ikh",
+      "children": [],
+      "text": {
+        "elements": [{"text_run": {"content": "更新后的文本"}}]
+      }
+    },
+    "document_revision_id": 6,
+    "client_token": "fe599b60-450f-46ff-b2ef-9f6675625b97"
+  }
+}
+```
+
+**说明**：
+
+- 响应体为 `BlockOpResult`，其中 `block` 字段返回更新后的块的富文本内容
 
 **代码示例**：
 
@@ -255,7 +301,7 @@ public async Task EditTextBlockAsync(string documentId, string blockId, string n
 
     var result = await _userBlocksClient.UpdateBlockAsync(documentId, blockId, request);
     
-    if (result?.IsSuccess() == true)
+    if (result?.Code == 0)
     {
         Console.WriteLine("内容更新成功");
     }
@@ -275,7 +321,7 @@ Task<FeishuApiResult<GetBlockInfoResult>?> GetBlockInfoAsync(
     [Path] string document_id,
     [Path] string block_id,
     [Query("document_revision_id")] int? document_revision_id = -1,
-    [Query("user_id_type")] string user_id_type = "open_id",
+    [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -283,13 +329,13 @@ Task<FeishuApiResult<GetBlockInfoResult>?> GetBlockInfoAsync(
 
 **参数**：
 
-| 参数名 | 类型 | 必填 | 描述 | 默认值 |
+| 参数名 | 类型 | 必填 | 描述 | 示例 |
 |-------|------|------|------|--------|
-| `document_id` | `string` | ✅ | 文档的唯一标识 | - |
-| `block_id` | `string` | ✅ | 块的唯一标识 | - |
-| `document_revision_id` | `int?` | ⚪ | 文档版本号 | `-1` |
-| `user_id_type` | `string` | ⚪ | 用户 ID 类型 | `open_id` |
-| `cancellationToken` | `CancellationToken` | ⚪ | 取消操作令牌 | - |
+| `document_id` | `string` | ✅ | 文档的唯一标识 | `doxcnePuYufKa49ISjhD8Iabcef` |
+| `block_id` | `string` | ✅ | 指定块的唯一标识 | `doxcnO6UW6wAw2qIcYf4hZpFIth` |
+| `document_revision_id` | `int?` | ⚪ | 查询的文档版本，-1 表示最新版本，默认 -1 | `-1` |
+| `user_id_type` | `string` | ⚪ | 用户 ID 类型，默认 open_id | `open_id` |
+| `cancellationToken` | `CancellationToken` | ⚪ | 取消操作令牌对象 | default |
 
 **响应**：
 
@@ -325,11 +371,44 @@ Task<FeishuApiResult<BatchUpdateBlocksResult>?> BatchUpdateBlocksAsync(
     [Body] BatchUpdateBlocksRequest updateBlockRequest,
     [Query("document_revision_id")] int? document_revision_id = -1,
     [Query("client_token")] string? client_token = null,
-    [Query("user_id_type")] string user_id_type = "open_id",
+    [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
 **认证**：用户令牌（`TokenType.UserAccessToken`）
+
+**参数**：
+
+| 参数名 | 类型 | 必填 | 描述 | 示例 |
+|-------|------|------|------|--------|
+| `document_id` | `string` | ✅ | 文档的唯一标识 | `doxcnePuYufKa49ISjhD8Iabcef` |
+| `updateBlockRequest` | `BatchUpdateBlocksRequest` | ✅ | 批量更新块的内容请求体 | - |
+| `document_revision_id` | `int?` | ⚪ | 查询的文档版本，-1 表示最新版本，默认 -1 | `-1` |
+| `client_token` | `string?` | ⚪ | 操作的唯一标识，用于幂等进行更新操作；为空表示发起新的请求 | `fe599b60-450f-46ff-b2ef-9f6675625b97` |
+| `user_id_type` | `string` | ⚪ | 用户 ID 类型，默认 open_id | `open_id` |
+| `cancellationToken` | `CancellationToken` | ⚪ | 取消操作令牌对象 | default |
+
+**响应**：
+
+```json
+{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "blocks": [
+      {
+        "block_id": "doxcnO6UW6wAw2qIcYf4hZpFIth",
+        "block_type": 2,
+        "text": {
+          "elements": [{"text_run": {"content": "批量更新后的文本"}}]
+        }
+      }
+    ],
+    "document_revision_id": 6,
+    "client_token": "8aac2291-bc9e-4b12-a162-b3cf15bb06bd"
+  }
+}
+```
 
 **说明**：
 
@@ -350,10 +429,10 @@ Task<FeishuApiPageListResult<Block>?> GetChildrenBlocksPageListAsync(
     [Path] string document_id,
     [Path] string block_id,
     [Query("document_revision_id")] int? document_revision_id = -1,
-    [Query("client_token")] string? client_token = null,
     [Query("page_size")] int page_size = 500,
     [Query("page_token")] string? page_token = null,
-    [Query("user_id_type")] string user_id_type = "open_id",
+    [Query("with_descendants")] bool? with_descendants = null,
+    [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -361,16 +440,16 @@ Task<FeishuApiPageListResult<Block>?> GetChildrenBlocksPageListAsync(
 
 **参数**：
 
-| 参数名 | 类型 | 必填 | 描述 | 默认值 |
+| 参数名 | 类型 | 必填 | 描述 | 示例 |
 |-------|------|------|------|--------|
-| `document_id` | `string` | ✅ | 文档的唯一标识 | - |
-| `block_id` | `string` | ✅ | 父块的 block_id | - |
-| `document_revision_id` | `int?` | ⚪ | 文档版本号 | `-1` |
-| `client_token` | `string?` | ⚪ | 幂等操作标识 | `null` |
-| `page_size` | `int` | ⚪ | 分页大小 | `500` |
-| `page_token` | `string?` | ⚪ | 分页标记 | `null` |
-| `user_id_type` | `string` | ⚪ | 用户 ID 类型 | `open_id` |
-| `cancellationToken` | `CancellationToken` | ⚪ | 取消操作令牌 | - |
+| `document_id` | `string` | ✅ | 文档的唯一标识 | `doxcnePuYufKa49ISjhD8Iabcef` |
+| `block_id` | `string` | ✅ | 父块的唯一标识 | `doxcnePuYufKa49ISjhD8Ih0ikh` |
+| `document_revision_id` | `int?` | ⚪ | 查询的文档版本，-1 表示最新版本，默认 -1 | `-1` |
+| `page_size` | `int` | ⚪ | 分页大小，默认 500 | `500` |
+| `page_token` | `string?` | ⚪ | 分页标记，第一次请求不填，表示从头开始遍历 | `-` |
+| `with_descendants` | `bool?` | ⚪ | 是否返回指定块的所有子孙块；false 仅返回子块，true 以先序遍历返回子孙块（含指定块本身），默认 false | `false` |
+| `user_id_type` | `string` | ⚪ | 用户 ID 类型，默认 open_id | `open_id` |
+| `cancellationToken` | `CancellationToken` | ⚪ | 取消操作令牌对象 | default |
 
 **代码示例**：
 
@@ -386,7 +465,7 @@ public async Task<List<Block>> GetSectionContentAsync(string documentId, string 
         var result = await _userBlocksClient.GetChildrenBlocksPageListAsync(
             documentId, sectionBlockId, page_token: pageToken);
 
-        if (result?.IsSuccess() == true && result.Data?.Items != null)
+        if (result?.Code == 0 && result.Data?.Items != null)
         {
             allBlocks.AddRange(result.Data.Items);
             pageToken = result.Data.PageToken;
@@ -423,14 +502,14 @@ Task<FeishuApiResult<BatchDeleteBlocksResult>?> BatchDeleteBlocksAsync(
 
 **参数**：
 
-| 参数名 | 类型 | 必填 | 描述 | 默认值 |
+| 参数名 | 类型 | 必填 | 描述 | 示例 |
 |-------|------|------|------|--------|
-| `document_id` | `string` | ✅ | 文档的唯一标识 | - |
-| `block_id` | `string` | ✅ | 父块的 block_id | - |
+| `document_id` | `string` | ✅ | 文档的唯一标识 | `doxcnePuYufKa49ISjhD8Iabcef` |
+| `block_id` | `string` | ✅ | 父 Block 的唯一标识 | `doxcnePuYufKa49ISjhD8Ih0ikh` |
 | `batchDeleteBlocksRequest` | `BatchDeleteBlocksRequest` | ✅ | 删除块请求体 | - |
-| `document_revision_id` | `int?` | ⚪ | 文档版本号 | `-1` |
-| `client_token` | `string?` | ⚪ | 幂等操作标识 | `null` |
-| `cancellationToken` | `CancellationToken` | ⚪ | 取消操作令牌 | - |
+| `document_revision_id` | `int?` | ⚪ | 查询的文档版本，-1 表示最新版本，默认 -1 | `-1` |
+| `client_token` | `string?` | ⚪ | 操作的唯一标识，用于幂等进行更新操作；为空表示发起新的请求 | `fe599b60-450f-46ff-b2ef-9f6675625b97` |
+| `cancellationToken` | `CancellationToken` | ⚪ | 取消操作令牌对象 | default |
 
 **BatchDeleteBlocksRequest 字段说明**：
 
@@ -456,7 +535,7 @@ Task<FeishuApiResult<BatchDeleteBlocksResult>?> BatchDeleteBlocksAsync(
 ```csharp
 Task<FeishuApiResult<ContentConvertResult>?> ContentConvertAsync(
     [Body] ConvertContentRequest convertContentRequest,
-    [Query("user_id_type")] string user_id_type = "open_id",
+    [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -464,18 +543,18 @@ Task<FeishuApiResult<ContentConvertResult>?> ContentConvertAsync(
 
 **参数**：
 
-| 参数名 | 类型 | 必填 | 描述 | 默认值 |
+| 参数名 | 类型 | 必填 | 描述 | 示例 |
 |-------|------|------|------|--------|
 | `convertContentRequest` | `ConvertContentRequest` | ✅ | 内容转换请求体 | - |
-| `user_id_type` | `string` | ⚪ | 用户 ID 类型 | `open_id` |
-| `cancellationToken` | `CancellationToken` | ⚪ | 取消操作令牌 | - |
+| `user_id_type` | `string` | ⚪ | 用户 ID 类型，默认 open_id | `open_id` |
+| `cancellationToken` | `CancellationToken` | ⚪ | 取消操作令牌对象 | default |
 
 **ConvertContentRequest 字段说明**：
 
 | 字段名 | 类型 | 必填 | 描述 |
 |-------|------|------|------|
-| `ContentType` | `string` | ✅ | 内容类型：`markdown` 或 `html` | `markdown` |
-| `Content` | `string` | ✅ | 文本内容，长度 1-10485760 字符 | - |
+| `ContentType` | `string` | ✅ | 内容类型，必填项，默认值：markdown。可选值：markdown（Markdown 格式）、html（HTML 格式） |
+| `Content` | `string` | ✅ | 文本内容，长度范围：1 ～ 10485760 字符 |
 
 **支持的转换类型**：
 
@@ -515,7 +594,7 @@ public async Task ImportMarkdownNotesAsync(string markdownContent)
 
     var result = await _userBlocksClient.ContentConvertAsync(request);
     
-    if (result?.IsSuccess() == true)
+    if (result?.Code == 0)
     {
         var blocks = result.Data?.Blocks;
         var blockIds = result.Data?.FirstLevelBlockIds;

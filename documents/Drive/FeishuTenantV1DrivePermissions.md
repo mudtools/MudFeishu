@@ -16,23 +16,27 @@ description: 该接口用于以租户身份管理飞书云文档权限，支持�
 ## 参考文档
 
 - [权限概述 - 飞书开放平台](https://open.feishu.cn/document/server-docs/docs/permission/overview)
+- [获取云文档权限设置（v1 历史版本接口） - 飞书开放平台](https://open.feishu.cn/document/server-docs/docs/permission/permission-public/get)
+- [更新云文档权限设置（v1 历史版本接口） - 飞书开放平台](https://open.feishu.cn/document/server-docs/docs/permission/permission-public/patch)
 
 ## 函数列表
 
-| 函数名称                            | 功能描述             | 认证方式 | HTTP 方法 |
-| ----------------------------------- | -------------------- | -------- | --------- |
-| CreatePermissionMemberAsync         | 增加协作者权限       | 租户令牌 | POST      |
-| BatchCreatePermissionMemberAsync    | 批量增加协作者权限   | 租户令牌 | POST      |
-| UpdatePermissionMemberAsync         | 更新协作者权限       | 租户令牌 | PUT       |
-| GetPermissionMemberAsync            | 获取云文档协作者     | 租户令牌 | GET       |
-| DeletePermissionMemberAsync         | 移除云文档协作者权限 | 租户令牌 | DELETE    |
-| TransferOwnerPermissionMemberAsync  | 转移云文档所有者     | 租户令牌 | POST      |
-| GetAuthPermissionMemberAsync        | 判断用户云文档权限   | 租户令牌 | GET       |
-| UpdatePermissionPublicAsync         | 更新云文档权限设置   | 租户令牌 | PATCH     |
-| GetPermissionPublicAsync            | 获取云文档权限设置   | 租户令牌 | GET       |
-| CreatePermissionPublicPasswordAsync | 启用云文档密码       | 租户令牌 | POST      |
-| UpdatePermissionPublicPasswordAsync | 刷新云文档密码       | 租户令牌 | PUT       |
-| DeletePermissionPublicPasswordAsync | 停用云文档密码       | 租户令牌 | DELETE    |
+| 函数名称                            | 功能描述                             | 认证方式 | HTTP 方法 |
+| ----------------------------------- | ------------------------------------ | -------- | --------- |
+| CreatePermissionMemberAsync         | 增加协作者权限                       | 租户令牌 | POST      |
+| BatchCreatePermissionMemberAsync    | 批量增加协作者权限                   | 租户令牌 | POST      |
+| UpdatePermissionMemberAsync         | 更新协作者权限                       | 租户令牌 | PUT       |
+| GetPermissionMemberAsync            | 获取云文档协作者                     | 租户令牌 | GET       |
+| DeletePermissionMemberAsync         | 移除云文档协作者权限                 | 租户令牌 | DELETE    |
+| TransferOwnerPermissionMemberAsync  | 转移云文档所有者                     | 租户令牌 | POST      |
+| GetAuthPermissionMemberAsync        | 判断用户云文档权限                   | 租户令牌 | GET       |
+| GetPermissionPublicV1Async          | 获取云文档权限设置（v1 历史版本接口） | 租户令牌 | GET       |
+| UpdatePermissionPublicV1Async       | 更新云文档权限设置（v1 历史版本接口） | 租户令牌 | PATCH     |
+| UpdatePermissionPublicAsync         | 更新云文档权限设置（v2 新版接口）     | 租户令牌 | PATCH     |
+| GetPermissionPublicAsync            | 获取云文档权限设置（v2 新版接口）     | 租户令牌 | GET       |
+| CreatePermissionPublicPasswordAsync | 启用云文档密码                       | 租户令牌 | POST      |
+| UpdatePermissionPublicPasswordAsync | 刷新云文档密码                       | 租户令牌 | PUT       |
+| DeletePermissionPublicPasswordAsync | 停用云文档密码                       | 租户令牌 | DELETE    |
 
 ## 函数详细内容
 
@@ -332,6 +336,144 @@ Task<FeishuApiResult<GetAuthPermissionMemberResult>?> GetAuthPermissionMemberAsy
 
 ---
 
+### 获取云文档权限设置（v1 历史版本接口）
+
+**函数签名**：
+
+```csharp
+Task<FeishuApiResult<PermissionPublicV1Result>?> GetPermissionPublicV1Async(
+      [Path] string token,
+      [Query("type")] string type,
+      CancellationToken cancellationToken = default);
+```
+
+**认证**：租户令牌
+
+**参数**：
+
+| 参数名  | 类型     | 必填 | 说明                                                                                                                                     |
+| ------- | -------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `token` | `string` | ✅   | 云文档的 token，示例值：`doccnBKgoMyY5OMbUG6FioTXuBe`                                                                                    |
+| `type`  | `string` | ✅   | 云文档类型，可选值：`doc`、`sheet`、`file`、`wiki`、`bitable`、`docx`、`mindnote`、`minutes`、`slides`，示例值：`doc`（不含 `folder`）    |
+
+**响应**：
+
+```json
+{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "permission_public": {
+      "external_access": true,
+      "security_entity": "anyone_can_view",
+      "comment_entity": "anyone_can_view",
+      "share_entity": "anyone",
+      "link_share_entity": "tenant_readable",
+      "invite_external": true,
+      "lock_switch": false
+    }
+  }
+}
+```
+
+**说明**：
+
+- 获取指定云文档的权限设置（`GET /open-apis/drive/v1/permissions/{token}/public`），返回 `PermissionPublicV1Result`，`data.permission_public` 为权限设置对象，字段：
+  - `external_access`（`bool?`）：是否允许内容被分享到组织外
+  - `security_entity`（`string?`）：谁可以创建副本、打印、下载，可选值 `anyone_can_view` / `anyone_can_edit` / `only_full_access`
+  - `comment_entity`（`string?`）：谁可以评论，可选值 `anyone_can_view` / `anyone_can_edit`
+  - `share_entity`（`string?`）：谁可以添加和管理协作者，可选值 `anyone` / `same_tenant` / `only_full_access`
+  - `link_share_entity`（`string?`）：链接分享设置，可选值 `tenant_readable` / `tenant_editable` / `anyone_readable` / `anyone_editable` / `closed`
+  - `invite_external`（`bool?`）：是否允许非「可管理权限」的人分享到组织外（仅 `share_entity` 为 `same_tenant` 时有效）
+  - `lock_switch`（`bool?`）：节点是否已加锁，加锁后不再继承父级页面的权限设置
+- **v1/v2 区分**：本接口为**历史版本接口（drive/v1）**，推荐使用新版接口 `GetPermissionPublicAsync`（`GET /open-apis/drive/v2/permissions/{token}/public`，返回 `PermissionPublicResult`）。二者仅版本与返回类型不同，勿混淆。
+- 文档类型 `type` 的可选值与 v2 版本不同：v1 不支持 `folder`。
+
+**代码示例**：
+
+```csharp
+var result = await _permissionsClient.GetPermissionPublicV1Async(
+    token: "doccnBKgoMyY5OMbUG6FioTXuBe", type: "docx");
+
+var settings = result?.Data?.PermissionPublic;
+if (settings != null)
+{
+    Console.WriteLine($"链接分享：{settings.LinkShareEntity}，组织外分享：{settings.ExternalAccess}");
+}
+```
+
+---
+
+### 更新云文档权限设置（v1 历史版本接口）
+
+**函数签名**：
+
+```csharp
+Task<FeishuApiResult<PermissionPublicV1Result>?> UpdatePermissionPublicV1Async(
+       [Path] string token,
+       [Query("type")] string type,
+       [Body] UpdateDrivePermissionsV1Request updateDrivePermissionsV1Request,
+       CancellationToken cancellationToken = default);
+```
+
+**认证**：租户令牌
+
+**参数**：
+
+| 参数名                          | 类型                            | 必填 | 说明                                                                                                                                     |
+| ------------------------------- | ------------------------------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `token`                         | `string`                        | ✅   | 云文档的 token，示例值：`doccnBKgoMyY5OMbUG6FioTXuBe`                                                                                    |
+| `type`                          | `string`                        | ✅   | 云文档类型，可选值：`doc`、`sheet`、`file`、`wiki`、`bitable`、`docx`、`mindnote`、`minutes`、`slides`，示例值：`doc`（不含 `folder`）    |
+| `updateDrivePermissionsV1Request` | `UpdateDrivePermissionsV1Request` | ✅   | 更新云文档权限设置（v1）的请求体，字段见下                                                                                               |
+| ├─ `ExternalAccess`             | `bool?`                         | ⚪   | 是否允许内容被分享到组织外，可选值：`true`/`false`（`wiki` 类型不支持传入）                                                              |
+| ├─ `SecurityEntity`             | `string?`                       | ⚪   | 谁可以创建副本、打印、下载：`anyone_can_view` / `anyone_can_edit` / `only_full_access`                                                   |
+| ├─ `CommentEntity`              | `string?`                       | ⚪   | 谁可以评论：`anyone_can_view` / `anyone_can_edit`                                                                                        |
+| ├─ `ShareEntity`                | `string?`                       | ⚪   | 谁可以添加和管理协作者：`anyone` / `same_tenant` / `only_full_access`（`wiki` 类型不支持传入）                                           |
+| ├─ `LinkShareEntity`            | `string?`                       | ⚪   | 链接分享设置：`tenant_readable` / `tenant_editable` / `anyone_readable` / `anyone_editable` / `closed`（`wiki` 类型不支持传入）          |
+| ├─ `InviteExternal`             | `bool?`                         | ⚪   | 是否允许非「可管理权限」的人分享到组织外，可选值：`true`/`false`（`wiki` 类型不支持传入）                                                |
+
+**响应**：
+
+```json
+{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "permission_public": {
+      "external_access": true,
+      "security_entity": "anyone_can_view",
+      "comment_entity": "anyone_can_view",
+      "share_entity": "anyone",
+      "link_share_entity": "tenant_readable",
+      "invite_external": true,
+      "lock_switch": false
+    }
+  }
+}
+```
+
+**说明**：
+
+- 更新指定云文档的权限设置（`PATCH /open-apis/drive/v1/permissions/{token}/public`），请求体为 `UpdateDrivePermissionsV1Request`，返回更新后的设置 `PermissionPublicV1Result`（未更新的字段不返回）。
+- **v1/v2 区分**：本接口为**历史版本接口（drive/v1）**，推荐使用新版接口 `UpdatePermissionPublicAsync`（`PATCH /open-apis/drive/v2/permissions/{token}/public`，请求体为 `UpdateDrivePermissionsRequest`，返回 `PermissionPublicResult`）。二者路径版本、请求体与返回类型均不同，勿混淆。
+- 与 v2 不同，v1 请求体（`UpdateDrivePermissionsV1Request`）不含 `lock_switch`，且 `type` 不支持 `folder`。
+
+**代码示例**：
+
+```csharp
+var request = new UpdateDrivePermissionsV1Request
+{
+    ExternalAccess = true,
+    LinkShareEntity = "tenant_readable",
+    ShareEntity = "anyone"
+};
+
+var result = await _permissionsClient.UpdatePermissionPublicV1Async(
+    token: "doccnBKgoMyY5OMbUG6FioTXuBe", type: "docx", updateDrivePermissionsV1Request: request);
+```
+
+---
+
 ### 更新云文档权限设置
 
 **函数签名**：
@@ -372,7 +514,7 @@ Task<FeishuApiResult<PermissionPublicResult>?> UpdatePermissionPublicAsync(
 }
 ```
 
-**说明**：更新指定云文档的权限设置，包括是否允许内容被分享到组织外、谁可以查看、添加、移除协作者、谁可以复制内容等设置。
+**说明**：更新指定云文档的权限设置，包括是否允许内容被分享到组织外、谁可以查看、添加、移除协作者、谁可以复制内容等设置。本接口为**新版接口（drive/v2）**，请求体为 `UpdateDrivePermissionsRequest`；历史版本接口（drive/v1，请求体为 `UpdateDrivePermissionsV1Request`）为 `UpdatePermissionPublicV1Async`，二者勿混淆。
 
 ---
 
@@ -414,7 +556,7 @@ Task<FeishuApiResult<PermissionPublicResult>?> GetPermissionPublicAsync(
 }
 ```
 
-**说明**：获取指定云文档的权限设置，包括是否允许内容被分享到组织外、谁可以查看、添加、移除协作者、谁可以复制内容等设置。
+**说明**：获取指定云文档的权限设置，包括是否允许内容被分享到组织外、谁可以查看、添加、移除协作者、谁可以复制内容等设置。本接口为**新版接口（drive/v2）**，返回 `PermissionPublicResult`；历史版本接口（drive/v1，返回 `PermissionPublicV1Result`）为 `GetPermissionPublicV1Async`，二者勿混淆。
 
 ---
 

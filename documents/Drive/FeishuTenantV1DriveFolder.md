@@ -63,9 +63,10 @@ Task<FeishuApiResult<GetDriveFilesResult>?> GetFilesPageListAsync(
     [Query("folder_token")] string? folder_token,
     [Query("order_by")] string? order_by = "EditedTime",
     [Query("direction")] string? direction = "DESC",
-    [Query("page_size")] int page_size = 10,
+    [Query("page_size")] int page_size = Consts.PageSize_10,
     [Query("page_token")] string? page_token = null,
-    [Query("user_id_type")] string? user_id_type = "open_id",
+    [Query("option")] string? option = null,
+    [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -80,6 +81,7 @@ Task<FeishuApiResult<GetDriveFilesResult>?> GetFilesPageListAsync(
 | `direction` | `string?` | ⚪ | 排序方向：`ASC`/`DESC`，默认 `DESC` |
 | `page_size` | `int` | ⚪ | 分页大小，默认 10 |
 | `page_token` | `string?` | ⚪ | 分页标记，首次请求不填 |
+| `option` | `string?` | ⚪ | 筛选返回结果的字段，可选值：`owner_name`（所有者姓名） |
 | `user_id_type` | `string?` | ⚪ | 用户 ID 类型，默认 `open_id` |
 
 **响应**：
@@ -113,7 +115,7 @@ Task<FeishuApiResult<GetDriveFilesResult>?> GetFilesPageListAsync(
 **函数签名**：
 ```csharp
 Task<FeishuApiResult<GetFolderMetaResult>?> GetFolderMetaByTokenAsync(
-    [Path] string? folderToken,
+    [Path] string folderToken,
     CancellationToken cancellationToken = default);
 ```
 
@@ -123,7 +125,7 @@ Task<FeishuApiResult<GetFolderMetaResult>?> GetFolderMetaByTokenAsync(
 
 | 参数名 | 类型 | 必填 | 说明 |
 |-------|------|-----|------|
-| `folderToken` | `string?` | ✅ | 文件夹 token |
+| `folderToken` | `string` | ✅ | 文件夹 token |
 
 **响应**：
 ```json

@@ -115,6 +115,7 @@ public class DriveController : ControllerBase
 ### 文件夹管理
 
 - [文件夹管理（租户）](./FeishuTenantV1DriveFolder.md) — 获取文件夹元数据、创建文件夹、获取文件清单
+- [文件夹管理（用户）](./FeishuUserV1DriveFolder.md) — 用户令牌的文件夹管理
 
 ### 素材管理
 

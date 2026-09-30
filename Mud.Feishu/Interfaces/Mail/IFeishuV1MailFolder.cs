@@ -107,7 +107,7 @@ public interface IFeishuV1MailFolder : IFeishuAppContextSwitcher
     /// <summary>
     /// 列出邮箱文件夹。
     /// <para>列出用户文件夹，可获取文件夹名称、文件夹ID、文件夹下的未读邮件和未读会话数量。</para>
-    /// <para><see href="https://open.feishu.cn/document/mail-v1/user_mailbox-folder/patch">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-folder/list">接口文档</see></para>
     /// </summary>
     /// <param name="user_mailbox_id">
     /// <para>用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。</para>

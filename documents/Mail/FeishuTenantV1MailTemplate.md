@@ -43,7 +43,7 @@ Task<FeishuApiResult<GetAttachmentsDownloadUrlResult>?> GetAttachmentsDownloadUr
 ```
 
 **认证**
-TenantsAccessToken（租户访问令牌）
+TenantAccessToken（租户访问令牌）
 
 **参数**
 | 参数名 | 类型 | 必填 | 描述 | 示例 |
@@ -59,13 +59,17 @@ TenantsAccessToken（租户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "attachments": [
+    "download_urls": [
       {
         "attachment_id": "att_001",
-        "download_url": "https://example.com/download/att_001",
-        "expire_time": "2026-06-03T12:00:00+08:00"
+        "download_url": "https://example.com/download/att_001"
+      },
+      {
+        "attachment_id": "att_002",
+        "download_url": "https://example.com/download/att_002"
       }
-    ]
+    ],
+    "failed_reasons": []
   }
 }
 ```
@@ -83,9 +87,9 @@ var result = await templateApi.GetAttachmentsDownloadUrlAsync(
     "user@example.com",
     "7281187859195772947",
     attachmentIds);
-if (result?.Data?.Attachments != null)
+if (result?.Data?.DownloadUrls != null)
 {
-    foreach (var att in result.Data.Attachments)
+    foreach (var att in result.Data.DownloadUrls)
     {
         Console.WriteLine($"附件 {att.AttachmentId} 下载链接: {att.DownloadUrl}");
     }
@@ -107,7 +111,7 @@ Task<FeishuApiResult<UpdateMailTemplateResult>?> UpdateMailTemplateAsync(
 ```
 
 **认证**
-TenantsAccessToken（租户访问令牌）
+TenantAccessToken（租户访问令牌）
 
 **参数**
 | 参数名 | 类型 | 必填 | 描述 | 示例 |
@@ -123,9 +127,11 @@ TenantsAccessToken（租户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "template_id": "7281187859195772947",
-    "name": "更新后的模板名称",
-    "update_time": "2026-06-03T11:50:00+08:00"
+    "template": {
+      "name": "更新后的模板名称",
+      "subject": "更新后的邮件主题",
+      "template_content": "更新后的邮件正文"
+    }
   }
 }
 ```
@@ -140,15 +146,18 @@ TenantsAccessToken（租户访问令牌）
 var templateApi = feishuApp.GetApi<IFeishuTenantV1MailTemplate>();
 var request = new UpdateMailTemplateRequest
 {
-    Name = "更新后的模板名称",
-    Subject = "更新后的邮件主题",
-    Body = "更新后的邮件正文"
+    Template = new MailTemplate
+    {
+        Name = "更新后的模板名称",
+        Subject = "更新后的邮件主题",
+        TemplateContent = "更新后的邮件正文"
+    }
 };
 var result = await templateApi.UpdateMailTemplateAsync(
     "user@example.com",
     "7281187859195772947",
     request);
-Console.WriteLine($"模板更新成功: {result?.Data?.Name}");
+Console.WriteLine($"模板更新成功: {result?.Data?.Template?.Name}");
 ```
 
 ---
@@ -164,7 +173,7 @@ Task<FeishuApiResult<GetMailTemplateListResult>?> GetMailTemplateListAsync(
 ```
 
 **认证**
-TenantsAccessToken（租户访问令牌）
+TenantAccessToken（租户访问令牌）
 
 **参数**
 | 参数名 | 类型 | 必填 | 描述 | 示例 |
@@ -222,7 +231,7 @@ Task<FeishuApiResult<GetMailTemplateResult>?> GetMailTemplateAsync(
 ```
 
 **认证**
-TenantsAccessToken（租户访问令牌）
+TenantAccessToken（租户访问令牌）
 
 **参数**
 | 参数名 | 类型 | 必填 | 描述 | 示例 |
@@ -237,13 +246,19 @@ TenantsAccessToken（租户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "template_id": "7281187859195772947",
-    "name": "模板名称",
-    "subject": "邮件主题",
-    "body": "邮件正文",
-    "to_recipients": ["recipient@example.com"],
-    "create_time": "2026-06-03T11:50:00+08:00",
-    "update_time": "2026-06-03T11:50:00+08:00"
+    "template": {
+      "template_id": "7281187859195772947",
+      "name": "模板名称",
+      "subject": "邮件主题",
+      "template_content": "邮件正文",
+      "tos": [
+        {
+          "mail_address": "recipient@example.com",
+          "name": "收件人"
+        }
+      ],
+      "create_time": "2026-06-03T11:50:00+08:00"
+    }
   }
 }
 ```
@@ -259,9 +274,9 @@ var templateApi = feishuApp.GetApi<IFeishuTenantV1MailTemplate>();
 var result = await templateApi.GetMailTemplateAsync(
     "user@example.com",
     "7281187859195772947");
-Console.WriteLine($"模板名称: {result?.Data?.Name}");
-Console.WriteLine($"主题: {result?.Data?.Subject}");
-Console.WriteLine($"正文: {result?.Data?.Body}");
+Console.WriteLine($"模板名称: {result?.Data?.Template?.Name}");
+Console.WriteLine($"主题: {result?.Data?.Template?.Subject}");
+Console.WriteLine($"正文: {result?.Data?.Template?.TemplateContent}");
 ```
 
 ---
@@ -278,7 +293,7 @@ Task<FeishuApiResult<CreateMailTemplateResult>?> CreateMailTemplateAsync(
 ```
 
 **认证**
-TenantsAccessToken（租户访问令牌）
+TenantAccessToken（租户访问令牌）
 
 **参数**
 | 参数名 | 类型 | 必填 | 描述 | 示例 |
@@ -293,11 +308,13 @@ TenantsAccessToken（租户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "template_id": "7281187859195772947",
-    "name": "新模板",
-    "subject": "邮件主题",
-    "body": "邮件正文",
-    "create_time": "2026-06-03T11:50:00+08:00"
+    "template": {
+      "template_id": "7281187859195772947",
+      "name": "新模板",
+      "subject": "邮件主题",
+      "template_content": "邮件正文",
+      "create_time": "2026-06-03T11:50:00+08:00"
+    }
   }
 }
 ```
@@ -314,13 +331,16 @@ TenantsAccessToken（租户访问令牌）
 var templateApi = feishuApp.GetApi<IFeishuTenantV1MailTemplate>();
 var request = new CreateMailTemplateRequest
 {
-    Name = "新模板",
-    Subject = "邮件主题",
-    Body = "邮件正文",
-    ToRecipients = new List<string> { "recipient@example.com" }
+    Template = new MailTemplate
+    {
+        Name = "新模板",
+        Subject = "邮件主题",
+        TemplateContent = "邮件正文",
+        Tos = new[] { new MailAddress { MailAddressSuffix = "recipient@example.com", Name = "收件人" } }
+    }
 };
 var result = await templateApi.CreateMailTemplateAsync("user@example.com", request);
-Console.WriteLine($"模板创建成功: {result?.Data?.TemplateId}");
+Console.WriteLine($"模板创建成功: {result?.Data?.Template?.TemplateId}");
 ```
 
 ---
@@ -337,7 +357,7 @@ Task<FeishuNullDataApiResult?> DeleteMailTemplateAsync(
 ```
 
 **认证**
-TenantsAccessToken（租户访问令牌）
+TenantAccessToken（租户访问令牌）
 
 **参数**
 | 参数名 | 类型 | 必填 | 描述 | 示例 |
@@ -384,7 +404,7 @@ Task<FeishuApiResult<GetSendAsUserMailboxSettingResult>?> GetSendAsUserMailboxSe
 ```
 
 **认证**
-TenantsAccessToken（租户访问令牌）
+TenantAccessToken（租户访问令牌）
 
 **参数**
 | 参数名 | 类型 | 必填 | 描述 | 示例 |
@@ -398,16 +418,16 @@ TenantsAccessToken（租户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "send_as_addresses": [
+    "sendable_addresses": [
       {
-        "email": "user@example.com",
+        "email_address": "user@example.com",
         "name": "用户姓名",
-        "is_default": true
+        "email_type": "USER_PRIMARY"
       },
       {
-        "email": "alias@example.com",
+        "email_address": "alias@example.com",
         "name": "别名邮箱",
-        "is_default": false
+        "email_type": "USER_ALIAS"
       }
     ]
   }
@@ -423,11 +443,11 @@ TenantsAccessToken（租户访问令牌）
 ```csharp
 var templateApi = feishuApp.GetApi<IFeishuTenantV1MailTemplate>();
 var result = await templateApi.GetSendAsUserMailboxSettingAsync("user@example.com");
-if (result?.Data?.SendAsAddresses != null)
+if (result?.Data?.SendableAddresses != null)
 {
-    foreach (var addr in result.Data.SendAsAddresses)
+    foreach (var addr in result.Data.SendableAddresses)
     {
-        Console.WriteLine($"可发信邮箱: {addr.Email} (默认: {addr.IsDefault})");
+        Console.WriteLine($"可发信邮箱: {addr.EmailAddress} ({addr.EmailType})");
     }
 }
 ```

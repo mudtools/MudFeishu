@@ -428,6 +428,82 @@ public interface IFeishuV1DrivePermissions : IFeishuAppContextSwitcher
 
 
     /// <summary>
+    /// 获取云文档权限设置（v1 历史版本接口）
+    /// <para>获取指定云文档的权限设置，包括是否允许内容被分享到组织外、谁可以查看、添加、移除协作者等设置。</para>
+    /// <para>**注意**：本接口为历史版本接口，推荐使用新版接口 <see cref="GetPermissionPublicAsync"/>（drive/v2）。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/permission/permission-public/get">接口文档</see></para>
+    /// </summary>
+    /// <param name="token">
+    /// <para>路径参数</para>
+    /// <para>必填：是</para>
+    /// <para>云文档的 token，需要与 type 参数指定的云文档类型相匹配。</para>
+    /// <para>示例值：doccnBKgoMyY5OMbUG6FioTXuBe</para>
+    /// </param>
+    /// <param name="type">
+    /// <para>必填：是</para>
+    /// <para>云文档类型，需要与云文档的 token 相匹配。</para>
+    /// <para>示例值：doc</para>
+    /// <list type="bullet">
+    /// <item>doc：旧版文档。</item>
+    /// <item>sheet：电子表格</item>
+    /// <item>file：云空间文件</item>
+    /// <item>wiki：知识库节点</item>
+    /// <item>bitable：多维表格</item>
+    /// <item>docx：新版文档</item>
+    /// <item>mindnote：思维笔记</item>
+    /// <item>minutes：妙记</item>
+    /// <item>slides：幻灯片</item>
+    /// </list>
+    /// </param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("/open-apis/drive/v1/permissions/{token}/public")]
+    Task<FeishuApiResult<PermissionPublicV1Result>?> GetPermissionPublicV1Async(
+      [Path] string token,
+      [Query("type")] string type,
+      CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// 更新云文档权限设置（v1 历史版本接口）
+    /// <para>更新指定云文档的权限设置，包括是否允许内容被分享到组织外、谁可以查看、添加、移除协作者、谁可以复制内容等设置。</para>
+    /// <para>**注意**：本接口为历史版本接口，推荐使用新版接口 <see cref="UpdatePermissionPublicAsync"/>（drive/v2）。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/permission/permission-public/patch">接口文档</see></para>
+    /// </summary>
+    /// <param name="token">
+    /// <para>路径参数</para>
+    /// <para>必填：是</para>
+    /// <para>云文档的 token，需要与 type 参数指定的云文档类型相匹配。</para>
+    /// <para>示例值：doccnBKgoMyY5OMbUG6FioTXuBe</para>
+    /// </param>
+    /// <param name="type">
+    /// <para>必填：是</para>
+    /// <para>云文档类型，需要与云文档的 token 相匹配。</para>
+    /// <para>示例值：doc</para>
+    /// <list type="bullet">
+    /// <item>doc：旧版文档。</item>
+    /// <item>sheet：电子表格</item>
+    /// <item>file：云空间文件</item>
+    /// <item>wiki：知识库节点</item>
+    /// <item>bitable：多维表格</item>
+    /// <item>docx：新版文档</item>
+    /// <item>mindnote：思维笔记</item>
+    /// <item>minutes：妙记</item>
+    /// <item>slides：幻灯片</item>
+    /// </list>
+    /// </param>
+    /// <param name="updateDrivePermissionsV1Request">更新云文档权限设置（v1）的请求体。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Patch("/open-apis/drive/v1/permissions/{token}/public")]
+    Task<FeishuApiResult<PermissionPublicV1Result>?> UpdatePermissionPublicV1Async(
+       [Path] string token,
+       [Query("type")] string type,
+       [Body] UpdateDrivePermissionsV1Request updateDrivePermissionsV1Request,
+       CancellationToken cancellationToken = default);
+
+
+    /// <summary>
     /// 更新云文档权限设置
     /// <para>更新指定云文档的权限设置，包括是否允许内容被分享到组织外、谁可以查看、添加、移除协作者、谁可以复制内容等设置。</para>
     /// <para><see href="https://open.feishu.cn/document/server-docs/docs/permission/permission-public/patch-2">接口文档</see></para>

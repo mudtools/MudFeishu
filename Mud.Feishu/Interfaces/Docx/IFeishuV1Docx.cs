@@ -78,7 +78,7 @@ public interface IFeishuV1Docx : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取文档所有块的富文本内容并分页返回。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document-block/list">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/document-block/list">接口文档</see></para>
     /// </summary>
     /// <param name="document_id">文档的唯一标识。</param>
     /// <param name="document_revision_id">

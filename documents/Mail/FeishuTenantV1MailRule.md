@@ -12,7 +12,7 @@ description: 该接口用于以租户身份管理企业内所有用户的邮箱�
 - [创建收信规则](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/create)
 - [删除收信规则](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/delete)
 - [更新收信规则](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/update)
-- [列出收信规则](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/list)
+- [列出收信规则](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-rule/list)
 - [对收信规则进行排序](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/reorder)
 
 ## 函数列表
@@ -53,9 +53,11 @@ TenantAccessToken（租户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "rule_id": "123123123",
-    "name": "收信规则名称",
-    "create_time": "2026-06-03T11:41:00+08:00"
+    "rule": {
+      "id": "123123123",
+      "name": "收信规则名称",
+      "is_enable": true
+    }
   }
 }
 ```
@@ -70,11 +72,18 @@ var ruleApi = feishuApp.GetApi<IFeishuTenantV1MailRule>();
 var request = new CreateUserMailboxRuleRequest
 {
     Name = "重要邮件规则",
-    Condition = new RuleCondition { Sender = "boss@example.com" },
-    Action = new RuleAction { MoveToFolder = "INBOX" }
+    Condition = new RuleCondition
+    {
+        MatchType = 1,
+        Items = new[] { new RuleConditionItem { Type = 1, Input = "boss@example.com" } }
+    },
+    Action = new RuleAction
+    {
+        Items = new[] { new RuleActionItem { Type = 1, Input = "INBOX" } }
+    }
 };
 var result = await ruleApi.CreateUserMailboxRuleAsync("user@example.com", request);
-Console.WriteLine($"规则创建成功: {result?.Data?.RuleId}");
+Console.WriteLine($"规则创建成功: {result?.Data?.Rule?.Id}");
 ```
 
 ---
@@ -164,7 +173,11 @@ var ruleApi = feishuApp.GetApi<IFeishuTenantV1MailRule>();
 var request = new UpdateUserMailboxRuleRequest
 {
     Name = "更新后的规则名称",
-    Condition = new RuleCondition { Sender = "updated@example.com" }
+    Condition = new RuleCondition
+    {
+        MatchType = 1,
+        Items = new[] { new RuleConditionItem { Type = 1, Input = "updated@example.com" } }
+    }
 };
 var result = await ruleApi.UpdateUserMailboxRuleAsync("user@example.com", "123123123", request);
 Console.WriteLine($"规则更新结果: {result.Code == 0}");
@@ -199,9 +212,9 @@ TenantAccessToken（租户访问令牌）
   "data": {
     "items": [
       {
-        "rule_id": "123123123",
+        "id": "123123123",
         "name": "收信规则名称",
-        "create_time": "2026-06-03T11:41:00+08:00"
+        "is_enable": true
       }
     ]
   }
@@ -220,7 +233,7 @@ if (result?.Data?.Items != null)
 {
     foreach (var rule in result.Data.Items)
     {
-        Console.WriteLine($"规则: {rule.Name} ({rule.RuleId})");
+        Console.WriteLine($"规则: {rule.Name} ({rule.Id})");
     }
 }
 ```
@@ -267,7 +280,7 @@ TenantAccessToken（租户访问令牌）
 var ruleApi = feishuApp.GetApi<IFeishuTenantV1MailRule>();
 var request = new ReorderUserMailboxRuleRequest
 {
-    RuleIds = new List<string> { "rule_id_3", "rule_id_1", "rule_id_2" }
+    RuleIds = new[] { "rule_id_3", "rule_id_1", "rule_id_2" }
 };
 var result = await ruleApi.ReorderUserMailboxRuleAsync("user@example.com", request);
 Console.WriteLine($"规则排序结果: {result.Code == 0}");

@@ -313,6 +313,11 @@ public static class FeishuServiceCollectionExtensions
         if (configuration != null)
         {
             var tokenRecoverySection = configuration.GetSection(TokenRecoveryOptions.SectionName);
+            // Mud.HttpUtils 2.0.9+：TokenRecoveryOptions.TokenInvalidationDetector（ITokenInvalidationDetector）
+            // 是**代码级扩展点**（宿主以实例注入，语义上不可由配置节构造），配置绑定源生成器对接口类型属性
+            // 无法生成绑定代码而报 SYSLIB1100/SYSLIB1101 —— 该诊断由生成器上报（#pragma 无法抑制），
+            // 已在 Mud.Feishu.Abstractions.csproj 的 NoWarn 中项目级静默并注明原因；
+            // 该属性不经配置绑定，运行期行为不受影响。
             services.Configure<TokenRecoveryOptions>(options => tokenRecoverySection.Bind(options));
             // 与组件 AddMudHttpTokenRecoveryFromConfiguration 的热更新语义对齐：注册 ChangeTokenSource，
             // 配置重载时使 IOptionsMonitor（TokenRecoveryExecutor / FeishuAppManager 经此读取）的共享缓存失效，

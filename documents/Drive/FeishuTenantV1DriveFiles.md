@@ -37,6 +37,7 @@ description: 该接口用于以租户身份管理飞书云空间文件，提供�
 | DownloadExportFileAsync | 下载导出文件 | 租户令牌 | GET |
 | DownloadExportLargeFileAsync | 下载导出大文件 | 租户令牌 | GET |
 | GetFileLikePageListByFileTokenAsync | 获取文件点赞列表 | 租户令牌 | GET |
+| GetFileContentByFileTokenAsync | 获取云文档内容 | 租户令牌 | GET |
 
 ## 函数详细内容
 
@@ -46,7 +47,7 @@ description: 该接口用于以租户身份管理飞书云空间文件，提供�
 ```csharp
 Task<FeishuApiResult<MetasBatchQueryResult>?> BatchQueryMetasAsync(
     [Body] MetasBatchQueryRequest metasBatchQueryRequest,
-    [Query("user_id_type")] string? user_id_type = "open_id",
+    [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -127,7 +128,7 @@ public class FileMetaService
 **函数签名**：
 ```csharp
 Task<FeishuApiResult<FileStatisticsReuslt>?> GetFileStatisticsByFileTokenAsync(
-    [Path] string? file_token,
+    [Path] string file_token,
     [Query("file_type")] string file_type,
     CancellationToken cancellationToken = default);
 ```
@@ -138,7 +139,7 @@ Task<FeishuApiResult<FileStatisticsReuslt>?> GetFileStatisticsByFileTokenAsync(
 
 | 参数名 | 类型 | 必填 | 说明 |
 |-------|------|-----|------|
-| `file_token` | `string?` | ✅ | 文件 token，示例值：`doccnfYZzTlvXqZIGTdAHKabcef` |
+| `file_token` | `string` | ✅ | 文件 token，示例值：`doccnfYZzTlvXqZIGTdAHKabcef` |
 | `file_type` | `string` | ✅ | 文件类型：`doc`/`docx`/`sheet`/`bitable`/`mindnote`/`wiki`/`file` |
 
 **响应**：
@@ -179,11 +180,11 @@ public async Task GetFileStatsAsync(string fileToken, string fileType)
 **函数签名**：
 ```csharp
 Task<FeishuApiPageListResult<FileViewRecord>?> GetFileViewRecordPageListByFileTokenAsync(
-    [Path] string? file_token,
+    [Path] string file_token,
     [Query("file_type")] string file_type,
-    [Query("page_size")] int page_size = 10,
+    [Query("page_size")] int page_size = Consts.PageSize_10,
     [Query("page_token")] string? page_token = null,
-    [Query("viewer_id_type")] string? viewer_id_type = "open_id",
+    [Query("viewer_id_type")] string? viewer_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -193,7 +194,7 @@ Task<FeishuApiPageListResult<FileViewRecord>?> GetFileViewRecordPageListByFileTo
 
 | 参数名 | 类型 | 必填 | 说明 |
 |-------|------|-----|------|
-| `file_token` | `string?` | ✅ | 文件的 token |
+| `file_token` | `string` | ✅ | 文件的 token |
 | `file_type` | `string` | ✅ | 文件类型 |
 | `page_size` | `int` | ⚪ | 分页大小，默认 10 |
 | `page_token` | `string?` | ⚪ | 分页标记，首次请求为空 |
@@ -229,8 +230,8 @@ Task<FeishuApiPageListResult<FileViewRecord>?> GetFileViewRecordPageListByFileTo
 ```csharp
 Task<FeishuApiResult<CopyFileResult>?> CopyFileByFileTokenAsync(
     [Body] CopyFileRequest copyFileRequest,
-    [Path] string? file_token,
-    [Query("user_id_type")] string? user_id_type = "open_id",
+    [Path] string file_token,
+    [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -240,7 +241,7 @@ Task<FeishuApiResult<CopyFileResult>?> CopyFileByFileTokenAsync(
 
 | 参数名 | 类型 | 必填 | 说明 |
 |-------|------|-----|------|
-| `file_token` | `string?` | ✅ | 源文件 token |
+| `file_token` | `string` | ✅ | 源文件 token |
 | `copyFileRequest` | `CopyFileRequest` | ✅ | 复制请求体 |
 | ├─ `Name` | `string` | ✅ | 新文件名称，最大 256 字节 |
 | ├─ `Type` | `string?` | ⚪ | 源文件类型（必须与实际类型一致） |
@@ -289,7 +290,7 @@ public async Task<string> CopyDocumentAsync(string sourceToken, string newName, 
 ```csharp
 Task<FeishuApiResult<FileTaskResult>?> MoveFileByFileTokenAsync(
     [Body] MoveFileRequest moveFileRequest,
-    [Path] string? file_token,
+    [Path] string file_token,
     CancellationToken cancellationToken = default);
 ```
 
@@ -299,7 +300,7 @@ Task<FeishuApiResult<FileTaskResult>?> MoveFileByFileTokenAsync(
 
 | 参数名 | 类型 | 必填 | 说明 |
 |-------|------|-----|------|
-| `file_token` | `string?` | ✅ | 文件 token |
+| `file_token` | `string` | ✅ | 文件 token |
 | `moveFileRequest` | `MoveFileRequest` | ✅ | 移动请求体 |
 | ├─ `FolderToken` | `string` | ✅ | 目标文件夹 token |
 | ├─ `Type` | `string?` | ⚪ | 文件类型 |
@@ -324,8 +325,9 @@ Task<FeishuApiResult<FileTaskResult>?> MoveFileByFileTokenAsync(
 **函数签名**：
 ```csharp
 Task<FeishuApiResult<FileTaskResult>?> DeleteFileByFileTokenAsync(
-    [Path] string? file_token,
+    [Path] string file_token,
     [Query("type")] string file_type,
+    [Query("async")] bool? async = null,
     CancellationToken cancellationToken = default);
 ```
 
@@ -335,8 +337,9 @@ Task<FeishuApiResult<FileTaskResult>?> DeleteFileByFileTokenAsync(
 
 | 参数名 | 类型 | 必填 | 说明 |
 |-------|------|-----|------|
-| `file_token` | `string?` | ✅ | 文件 token |
+| `file_token` | `string` | ✅ | 文件 token |
 | `file_type` | `string` | ✅ | 被删除文件的类型：`file`/`docx`/`bitable`/`folder`/`doc`/`sheet`/`mindnote`/`shortcut`/`slides` |
+| `async` | `bool?` | ⚪ | 是否为异步删除文件，默认 `false`。填 `true` 时删除文件夹会返回 `task_id`，可继续调用查询异步任务状态接口查询任务执行状态 |
 
 **响应**：
 ```json
@@ -359,7 +362,7 @@ Task<FeishuApiResult<FileTaskResult>?> DeleteFileByFileTokenAsync(
 ```csharp
 Task<FeishuApiResult<CreateShortcutResult>?> CreateShortcutAsync(
     [Body] CreateShortcutRequest createShortcutRequest,
-    [Query("user_id_type")] string? user_id_type = "open_id",
+    [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -497,6 +500,7 @@ Task<FeishuApiResult<FilesUploadFinishResult>?> UploadFinishFileAsync(
 Task<byte[]?> DownloadFileAsync(
     [Path] string file_token,
     [Header("Range")] string? range = null,
+    [Query("version")] string? version = null,
     CancellationToken cancellationToken = default);
 ```
 
@@ -508,6 +512,7 @@ Task<byte[]?> DownloadFileAsync(
 |-------|------|-----|------|
 | `file_token` | `string` | ✅ | 文件的 token |
 | `range` | `string?` | ⚪ | 分片下载范围，格式：`bytes=start-end` |
+| `version` | `string?` | ⚪ | 文件版本标识，指定下载的文件版本 |
 
 **响应**：文件字节流
 
@@ -634,11 +639,11 @@ Task DownloadExportLargeFileAsync(
 **函数签名**：
 ```csharp
 Task<FeishuApiPageListResult<FileLikeInfo>?> GetFileLikePageListByFileTokenAsync(
-    [Path] string? file_token,
+    [Path] string file_token,
     [Query("file_type")] string file_type,
-    [Query("page_size")] int page_size = 10,
+    [Query("page_size")] int page_size = Consts.PageSize_10,
     [Query("page_token")] string? page_token = null,
-    [Query("user_id_type")] string? user_id_type = "open_id",
+    [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -648,10 +653,48 @@ Task<FeishuApiPageListResult<FileLikeInfo>?> GetFileLikePageListByFileTokenAsync
 
 | 参数名 | 类型 | 必填 | 说明 |
 |-------|------|-----|------|
-| `file_token` | `string?` | ✅ | 文件的 token |
+| `file_token` | `string` | ✅ | 文件的 token |
 | `file_type` | `string` | ✅ | 云文档类型：`doc`/`docx`/`file` |
 | `page_size` | `int` | ⚪ | 分页大小，默认 10 |
 | `page_token` | `string?` | ⚪ | 分页标记 |
 | `user_id_type` | `string?` | ⚪ | 用户 ID 类型 |
 
 **说明**：获取指定云文档的点赞者列表并按点赞时间由近到远分页返回。
+
+---
+
+### 获取云文档内容
+
+**函数签名**：
+```csharp
+Task<FeishuApiResult<FileContentResult>?> GetFileContentByFileTokenAsync(
+       [Query] string doc_token,
+       [Query] string doc_type,
+       [Query] string content_type,
+       [Query] string? lang = "zh",
+       CancellationToken cancellationToken = default);
+```
+
+**认证**：租户令牌
+
+**参数**：
+
+| 参数名 | 类型 | 必填 | 说明 |
+|-------|------|-----|------|
+| `doc_token` | `string` | ✅ | 文件的 token，示例值：`XIHSdYSI7oMEU1xrsnxc8fabcef` |
+| `doc_type` | `string` | ✅ | 云文档类型，可选值：`docx`（新版文档），示例值：`docx` |
+| `content_type` | `string` | ✅ | 内容类型，可选值：`markdown`（Markdown 格式），示例值：`markdown` |
+| `lang` | `string?` | ⚪ | 云文档中存在 @用户 元素时，指定该用户名称的语言，可选值：`zh`（中文，默认）/`en`（英文）/`ja`（日文） |
+
+**响应**：
+```json
+{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "content": "# 项目文档\n\n这是文档正文内容。"
+  }
+}
+```
+
+**说明**：获取指定云文档内容，当前只支持获取新版文档（`docx`）Markdown 格式的内容，返回 `FileContentResult`，`data.content` 即为 Markdown 文本。接口路径为 `GET /open-apis/docs/v1/content`，参数全部位于查询串（非路径参数）。

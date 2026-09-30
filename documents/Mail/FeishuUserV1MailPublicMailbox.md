@@ -24,7 +24,9 @@ description: 该接口用于以用户身份访问和管理自己有权限的公�
 **函数签名**
 ```csharp
 Task<FeishuApiPageListResult<PublicMailboxInfo>?> GetPublicMailboxPageListAsync(
-    [Query] int page_size = 20,
+    [Query] string? user_id = null,
+    [Query] string? user_id_type = null,
+    [Query] int page_size = Consts.PageSize_20,
     [Query] string? page_token = null,
     CancellationToken cancellationToken = default);
 ```
@@ -35,6 +37,8 @@ UserAccessToken（用户访问令牌）
 **参数**
 | 参数名 | 类型 | 必填 | 描述 | 示例 |
 | :--- | :--- | :--- | :--- | :--- |
+| user_id | string? | ⚪ | 用户 ID，结合 user_id_type 指定查询的用户 | ou_xxxxxx |
+| user_id_type | string? | ⚪ | user_id 对应的用户 ID 类型，可选值：open_id、user_id、union_id | open_id |
 | page_size | int | ⚪ | 分页大小，默认值：20 | 20 |
 | page_token | string? | ⚪ | 分页标记 | - |
 | cancellationToken | CancellationToken | ⚪ | 取消操作令牌对象 | default |

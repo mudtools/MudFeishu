@@ -3,7 +3,7 @@ title: 邮箱收信规则接口（用户令牌）| MudFeishu
 description: 该接口用于以用户身份管理自己的邮箱收信规则，支持收信规则的创建、修改、查询与删除。
 ---
 
-# IFeshuUserV1MailRule - 用户邮箱收信规则API
+# IFeishuUserV1MailRule - 用户邮箱收信规则API
 
 ## 功能描述
 飞书邮箱收信规则API接口实现了修改、查询、删除等邮箱收信规则管理功能。
@@ -13,7 +13,7 @@ description: 该接口用于以用户身份管理自己的邮箱收信规则，�
 - [创建收信规则](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/create)
 - [删除收信规则](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/delete)
 - [更新收信规则](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/update)
-- [列出收信规则](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/list)
+- [列出收信规则](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-rule/list)
 - [对收信规则进行排序](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/reorder)
 
 ## 函数列表
@@ -54,28 +54,37 @@ UserAccessToken（用户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "rule_id": "123123123",
-    "name": "规则名称",
-    "create_time": "2026-06-03T11:41:00+08:00"
+    "rule": {
+      "id": "123123123",
+      "name": "规则名称",
+      "is_enable": true
+    }
   }
 }
 ```
 
 **说明**
-- 创建收信规则。使用 tenant_access_token 时，需要申请收信规则资源的数据权限。
+- 创建收信规则。使用 user_access_token 时，需要申请收信规则资源的数据权限。
 - 创建后可设置条件（发件人、主题、收件人等）和操作（移动到文件夹、标记、删除等）。
 
 **代码示例**
 ```csharp
-var ruleApi = feishuApp.GetApi<IFeshuUserV1MailRule>();
+var ruleApi = feishuApp.GetApi<IFeishuUserV1MailRule>();
 var request = new CreateUserMailboxRuleRequest
 {
     Name = "重要邮件规则",
-    Condition = new RuleCondition { Sender = "boss@example.com" },
-    Action = new RuleAction { MoveToFolder = "重要邮件" }
+    Condition = new RuleCondition
+    {
+        MatchType = 1,
+        Items = new[] { new RuleConditionItem { Type = 1, Input = "boss@example.com" } }
+    },
+    Action = new RuleAction
+    {
+        Items = new[] { new RuleActionItem { Type = 1, Input = "重要邮件" } }
+    }
 };
 var result = await ruleApi.CreateUserMailboxRuleAsync("me", request);
-Console.WriteLine($"规则创建成功: {result?.Data?.RuleId}");
+Console.WriteLine($"规则创建成功: {result?.Data?.Rule?.Id}");
 ```
 
 ---
@@ -111,12 +120,12 @@ UserAccessToken（用户访问令牌）
 ```
 
 **说明**
-- 删除收信规则。使用 tenant_access_token 时，需要申请收信规则资源的数据权限。
+- 删除收信规则。使用 user_access_token 时，需要申请收信规则资源的数据权限。
 - 删除操作不可恢复。
 
 **代码示例**
 ```csharp
-var ruleApi = feishuApp.GetApi<IFeshuUserV1MailRule>();
+var ruleApi = feishuApp.GetApi<IFeishuUserV1MailRule>();
 var result = await ruleApi.DeleteUserMailboxRuleAsync("me", "123123123");
 Console.WriteLine($"规则删除结果: {result.Code == 0}");
 ```
@@ -156,16 +165,20 @@ UserAccessToken（用户访问令牌）
 ```
 
 **说明**
-- 更新收信规则。使用 tenant_access_token 时，需要申请收信规则资源的数据权限。
+- 更新收信规则。使用 user_access_token 时，需要申请收信规则资源的数据权限。
 - 可更新规则名称、条件、操作等。
 
 **代码示例**
 ```csharp
-var ruleApi = feishuApp.GetApi<IFeshuUserV1MailRule>();
+var ruleApi = feishuApp.GetApi<IFeishuUserV1MailRule>();
 var request = new UpdateUserMailboxRuleRequest
 {
     Name = "更新后的规则名称",
-    Condition = new RuleCondition { Sender = "updated@example.com" }
+    Condition = new RuleCondition
+    {
+        MatchType = 1,
+        Items = new[] { new RuleConditionItem { Type = 1, Input = "updated@example.com" } }
+    }
 };
 var result = await ruleApi.UpdateUserMailboxRuleAsync("me", "123123123", request);
 Console.WriteLine($"规则更新结果: {result.Code == 0}");
@@ -200,9 +213,9 @@ UserAccessToken（用户访问令牌）
   "data": {
     "items": [
       {
-        "rule_id": "123123123",
+        "id": "123123123",
         "name": "规则名称",
-        "create_time": "2026-06-03T11:41:00+08:00"
+        "is_enable": true
       }
     ]
   }
@@ -210,18 +223,18 @@ UserAccessToken（用户访问令牌）
 ```
 
 **说明**
-- 列出收信规则。使用 tenant_access_token 时，需要申请收信规则资源的数据权限。
+- 列出收信规则。使用 user_access_token 时，需要申请收信规则资源的数据权限。
 - 返回所有收信规则列表，按排序顺序排列。
 
 **代码示例**
 ```csharp
-var ruleApi = feishuApp.GetApi<IFeshuUserV1MailRule>();
+var ruleApi = feishuApp.GetApi<IFeishuUserV1MailRule>();
 var result = await ruleApi.GetMailboxRuleListAsync("me");
 if (result?.Data?.Items != null)
 {
     foreach (var rule in result.Data.Items)
     {
-        Console.WriteLine($"规则: {rule.Name} ({rule.RuleId})");
+        Console.WriteLine($"规则: {rule.Name} ({rule.Id})");
     }
 }
 ```
@@ -259,16 +272,16 @@ UserAccessToken（用户访问令牌）
 ```
 
 **说明**
-- 对收信规则进行排序。使用 tenant_access_token 时，需要申请收信规则资源的数据权限。
+- 对收信规则进行排序。使用 user_access_token 时，需要申请收信规则资源的数据权限。
 - 当使用该接口时，需要传递所有规则 id。
 - 排序影响规则的匹配顺序，排在前面的规则优先匹配。
 
 **代码示例**
 ```csharp
-var ruleApi = feishuApp.GetApi<IFeshuUserV1MailRule>();
+var ruleApi = feishuApp.GetApi<IFeishuUserV1MailRule>();
 var request = new ReorderUserMailboxRuleRequest
 {
-    RuleIds = new List<string> { "rule_id_3", "rule_id_1", "rule_id_2" }
+    RuleIds = new[] { "rule_id_3", "rule_id_1", "rule_id_2" }
 };
 var result = await ruleApi.ReorderUserMailboxRuleAsync("me", request);
 Console.WriteLine($"规则排序结果: {result.Code == 0}");

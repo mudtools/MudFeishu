@@ -10,7 +10,7 @@ description: 该接口用于以用户身份管理自己的邮箱联系人，支�
 
 ## 参考文档
 - [创建邮箱联系人](https://open.feishu.cn/document/mail-v1/user_mailbox-mail_contact/create)
-- [删除邮箱联系人](https://open.feishu.cn/document/mail-v1/user_mailbox-mail_contact/delete)
+- [删除邮箱联系人](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-mail_contact/delete)
 - [修改邮箱联系人](https://open.feishu.cn/document/mail-v1/user_mailbox-mail_contact/patch)
 - [列出邮箱联系人](https://open.feishu.cn/document/mail-v1/user_mailbox-mail_contact/list)
 
@@ -51,10 +51,11 @@ UserAccessToken（用户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "mail_contact_id": "123",
-    "email": "contact@example.com",
-    "name": "联系人名称",
-    "create_time": "2026-06-03T11:34:00+08:00"
+    "mail_contact": {
+      "id": "123",
+      "name": "联系人名称",
+      "mail_address": "contact@example.com"
+    }
   }
 }
 ```
@@ -68,11 +69,11 @@ UserAccessToken（用户访问令牌）
 var contactApi = feishuApp.GetApi<IFeishuUserV1MailContact>();
 var request = new CreateUserMailboxContactRequest
 {
-    Email = "contact@example.com",
+    MailAddress = "contact@example.com",
     Name = "联系人名称"
 };
 var result = await contactApi.CreateUserMailboxContactAsync("me", request);
-Console.WriteLine($"联系人创建成功: {result?.Data?.MailContactId}");
+Console.WriteLine($"联系人创建成功: {result?.Data?.MailContact?.Id}");
 ```
 
 ---
@@ -176,7 +177,7 @@ Console.WriteLine($"联系人更新结果: {result.Code == 0}");
 ```csharp
 Task<FeishuApiPageListResult<MailboxContactInfo>?> GetUserMailboxContactPageListAsync(
     [Path] string user_mailbox_id,
-    [Query] int page_size = 20,
+    [Query] int page_size = Consts.PageSize_20,
     [Query] string? page_token = null,
     CancellationToken cancellationToken = default);
 ```
@@ -200,10 +201,9 @@ UserAccessToken（用户访问令牌）
   "data": {
     "items": [
       {
-        "mail_contact_id": "123",
-        "email": "contact@example.com",
+        "id": "123",
         "name": "联系人名称",
-        "create_time": "2026-06-03T11:34:00+08:00"
+        "mail_address": "contact@example.com"
       }
     ],
     "page_token": "evt_xxx",
@@ -224,7 +224,7 @@ if (result?.Data?.Items != null)
 {
     foreach (var contact in result.Data.Items)
     {
-        Console.WriteLine($"联系人: {contact.Name} ({contact.Email})");
+        Console.WriteLine($"联系人: {contact.Name} ({contact.MailAddress})");
     }
 }
 ```

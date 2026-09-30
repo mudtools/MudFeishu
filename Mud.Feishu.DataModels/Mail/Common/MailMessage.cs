@@ -184,4 +184,12 @@ public class MailMessage
     /// </summary>
     [JsonPropertyName("references")]
     public string? References { get; set; }
+
+    /// <summary>
+    /// <para>日历邀请正文（base64url），需具备字段权限：获取邮件正文(mail:user_mailbox.message.body:read)</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：QkVHSU46VkNBTEVOREFSDQpWRVJTSU9OOjIuMA0KLi4uDQpFTkQ6VkNBTEVOREFS</para>
+    /// </summary>
+    [JsonPropertyName("body_calendar")]
+    public string? BodyCalendar { get; set; }
 }

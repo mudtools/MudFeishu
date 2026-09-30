@@ -45,6 +45,7 @@ Task<FeishuApiPageListResult<FileComment>?> GetCommentsPageListAsync(
     [Query] bool? is_whole = false,
     [Query] bool? is_solved = false,
     [Query] bool? need_reaction = false,
+    [Query] bool? need_relation = null,
     [Query] int page_size = Consts.PageSize_50,
     [Query] string? page_token = null,
     [Query] string? user_id_type = Consts.User_Id_Type,
@@ -62,6 +63,7 @@ Task<FeishuApiPageListResult<FileComment>?> GetCommentsPageListAsync(
 | `is_whole`      | `bool?`   | ⚪   | 是否全文评论，默认值：`false`                                                                                                     |
 | `is_solved`     | `bool?`   | ⚪   | 是否已解决，默认值：`false`                                                                                                       |
 | `need_reaction` | `bool?`   | ⚪   | 是否需要获取评论卡片上挂载的 Reaction 数据，默认值：`false`                                                                       |
+| `need_relation` | `bool?`   | ⚪   | 是否需要获取评论者与回复者的关系，默认不传（服务端默认 `false`）                                                                  |
 | `page_size`     | `int`     | ⚪   | 分页大小，默认值：50                                                                                                              |
 | `page_token`    | `string?` | ⚪   | 分页标记，第一次请求不填                                                                                                          |
 | `user_id_type`  | `string?` | ⚪   | 用户 ID 类型                                                                                                                      |
@@ -447,7 +449,6 @@ Task<FeishuNullDataApiResult?> UpdateReactionCommentReactionAsync(
     [Path] string file_token,
     [Query] string file_type,
     [Body] UpdateReactionCommentReactionRequest updateReactionCommentReactionRequest,
-    [Query] string? user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -460,7 +461,6 @@ Task<FeishuNullDataApiResult?> UpdateReactionCommentReactionAsync(
 | `file_token`                           | `string`                               | ✅   | 文件的 token，示例值：`XIHSdYSI7oMEU1xrsnxc8fabcef`                         |
 | `file_type`                            | `string`                               | ✅   | 云文档类型，可选值：`doc`、`docx`、`sheet`、`file`、`slides`，示例值：`doc` |
 | `updateReactionCommentReactionRequest` | `UpdateReactionCommentReactionRequest` | ✅   | 添加/取消表情回应请求体                                                     |
-| `user_id_type`                         | `string?`                              | ⚪   | 用户 ID 类型                                                                |
 
 **响应**：
 

@@ -146,12 +146,16 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
     /// </list>
     /// </param>
     /// <param name="file_token">文件 token。示例值：doccnfYZzTlvXqZIGTdAHKabcef</param>
+    /// <param name="async">
+    /// <para>是否为异步删除文件，默认 false。填 true 时删除文件夹会返回 task_id，可继续调用查询异步任务状态接口查询任务执行状态。</para>
+    /// </param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Delete("/open-apis/drive/v1/files/{file_token}")]
     Task<FeishuApiResult<FileTaskResult>?> DeleteFileByFileTokenAsync(
         [Path] string file_token,
         [Query("type")] string file_type,
+        [Query("async")] bool? async = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -235,6 +239,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
     /// <para> 在 HTTP 请求头中，通过指定 Range 来下载文件的部分内容，单位是字节（byte）。</para>
     /// <para> 该参数的格式为 Range: bytes=start-end，示例值为 Range: bytes=0-1024，表示下载第 0 个字节到第 1024 个字节之间的数据。</para>
     /// </param>
+    /// <param name="version">文件版本标识，指定下载的文件版本。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns>
     /// 成功时返回响应的二进制内容（取自 <c>HttpContent.ReadAsByteArrayAsync</c>，不会为 <see langword="null"/>；空响应体对应空数组）。
@@ -250,6 +255,7 @@ public interface IFeishuV1DriveFiles : IFeishuAppContextSwitcher
     Task<byte[]?> DownloadFileAsync(
         [Path] string file_token,
         [Header("Range")] string? range = null,
+        [Query("version")] string? version = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

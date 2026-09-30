@@ -13,7 +13,7 @@ description: 该接口用于以租户身份管理企业内所有公共邮箱，�
 - [修改公共邮箱部分信息](https://open.feishu.cn/document/server-docs/mail-v1/public-mailbox/public_mailbox/patch)
 - [修改公共邮箱全部信息](https://open.feishu.cn/document/server-docs/mail-v1/public-mailbox/public_mailbox/update)
 - [查询指定公共邮箱](https://open.feishu.cn/document/server-docs/mail-v1/public-mailbox/public_mailbox/get)
-- [将公共邮箱移至回收站](https://open.feishu.cn/document/server-docs/mail-v1/public-mailbox/public_mailbox/remove_to_recycle_bin)
+- [将公共邮箱移至回收站](https://open.feishu.cn/document/mail-v1/public-mailbox/public_mailbox/remove_to_recycle_bin)
 - [永久删除公共邮箱](https://open.feishu.cn/document/server-docs/mail-v1/public-mailbox/public_mailbox/delete)
 - [分页查询所有公共邮箱](https://open.feishu.cn/document/server-docs/mail-v1/public-mailbox/public_mailbox/list)
 - [添加公共邮箱成员](https://open.feishu.cn/document/server-docs/mail-v1/public-mailbox/public_mailbox-member/create)
@@ -77,8 +77,7 @@ TenantAccessToken（租户访问令牌）
   "data": {
     "public_mailbox_id": "xxxxxxxxxxxxxxx",
     "email": "test_public_mailbox@xxx.xx",
-    "name": "公共邮箱名称",
-    "create_time": "2026-06-03T11:41:00+08:00"
+    "name": "公共邮箱名称"
   }
 }
 ```
@@ -130,8 +129,7 @@ TenantAccessToken（租户访问令牌）
   "data": {
     "public_mailbox_id": "xxxxxxxxxxxxxxx",
     "email": "test_public_mailbox@xxx.xx",
-    "name": "更新后的公共邮箱名称",
-    "update_time": "2026-06-03T11:41:00+08:00"
+    "name": "更新后的公共邮箱名称"
   }
 }
 ```
@@ -182,8 +180,7 @@ TenantAccessToken（租户访问令牌）
   "data": {
     "public_mailbox_id": "xxxxxxxxxxxxxxx",
     "email": "test_public_mailbox@xxx.xx",
-    "name": "更新后的公共邮箱名称",
-    "update_time": "2026-06-03T11:41:00+08:00"
+    "name": "更新后的公共邮箱名称"
   }
 }
 ```
@@ -197,8 +194,8 @@ TenantAccessToken（租户访问令牌）
 var publicMailboxApi = feishuApp.GetApi<IFeishuTenantV1MailPublicMailbox>();
 var request = new UpdatePublicMailboxRequest
 {
-    Name = "更新后的公共邮箱名称",
-    Description = "更新后的描述"
+    Email = "test_public_mailbox@xxx.xx",
+    Name = "更新后的公共邮箱名称"
 };
 var result = await publicMailboxApi.UpdatePublicMailboxAsync("test_public_mailbox@xxx.xx", request);
 Console.WriteLine($"公共邮箱更新结果: {result?.Data?.Name}");
@@ -234,9 +231,7 @@ TenantAccessToken（租户访问令牌）
     "public_mailbox_id": "xxxxxxxxxxxxxxx",
     "email": "test_public_mailbox@xxx.xx",
     "name": "公共邮箱名称",
-    "description": "公共邮箱描述",
-    "create_time": "2026-06-03T11:41:00+08:00",
-    "update_time": "2026-06-03T11:41:00+08:00"
+    "geo": "CN"
   }
 }
 ```
@@ -345,7 +340,9 @@ Console.WriteLine($"永久删除结果: {result.Code == 0}");
 **函数签名**
 ```csharp
 Task<FeishuApiPageListResult<PublicMailboxInfo>?> GetPublicMailboxPageListAsync(
-    [Query] int page_size = 20,
+    [Query] string? user_id = null,
+    [Query] string? user_id_type = null,
+    [Query] int page_size = Consts.PageSize_20,
     [Query] string? page_token = null,
     CancellationToken cancellationToken = default);
 ```
@@ -356,6 +353,8 @@ TenantAccessToken（租户访问令牌）
 **参数**
 | 参数名 | 类型 | 必填 | 描述 | 示例 |
 | :--- | :--- | :--- | :--- | :--- |
+| user_id | string? | ⚪ | 用户 ID，结合 user_id_type 指定查询的用户 | ou_xxxxxx |
+| user_id_type | string? | ⚪ | user_id 对应的用户 ID 类型，可选值：open_id、user_id、union_id | open_id |
 | page_size | int | ⚪ | 分页大小，默认值：20 | 20 |
 | page_token | string? | ⚪ | 分页标记 | - |
 | cancellationToken | CancellationToken | ⚪ | 取消操作令牌对象 | default |
@@ -406,7 +405,7 @@ if (result?.Data?.Items != null)
 Task<FeishuApiResult<PublicMailboxMemberOopsResult>?> CreatePublicMailboxMemberAsync(
     [Path] string public_mailbox_id,
     [Body] CreatePublicMailboxMemberRequest request,
-    [Query] string? user_id_type = "user",
+    [Query] string? user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -428,7 +427,8 @@ TenantAccessToken（租户访问令牌）
   "msg": "success",
   "data": {
     "member_id": "xxxxxxxxxxxxxxx",
-    "create_time": "2026-06-03T11:41:00+08:00"
+    "user_id": "ou_xxxxxx",
+    "type": "USER"
   }
 }
 ```
@@ -542,7 +542,7 @@ Console.WriteLine($"所有成员删除结果: {result.Code == 0}");
 Task<FeishuApiResult<PublicMailboxMemberOopsResult>?> GetPublicMailboxMemberAsync(
     [Path] string public_mailbox_id,
     [Path] string member_id,
-    [Query] string? user_id_type = "user",
+    [Query] string? user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -565,8 +565,7 @@ TenantAccessToken（租户访问令牌）
   "data": {
     "member_id": "xxxxxxxxxxxxxxx",
     "user_id": "ou_xxxxxx",
-    "name": "成员名称",
-    "create_time": "2026-06-03T11:41:00+08:00"
+    "type": "USER"
   }
 }
 ```
@@ -579,7 +578,7 @@ TenantAccessToken（租户访问令牌）
 ```csharp
 var publicMailboxApi = feishuApp.GetApi<IFeishuTenantV1MailPublicMailbox>();
 var result = await publicMailboxApi.GetPublicMailboxMemberAsync("test_public_mailbox@xxx.xx", "member_id_123");
-Console.WriteLine($"成员名称: {result?.Data?.Name}");
+Console.WriteLine($"成员用户 ID: {result?.Data?.UserId}");
 ```
 
 ---
@@ -591,9 +590,9 @@ Console.WriteLine($"成员名称: {result?.Data?.Name}");
 ```csharp
 Task<FeishuApiPageListResult<PublicMailboxMemberInfo>?> GetPublicMailboxMemberPageListAsync(
     [Path] string public_mailbox_id,
-    [Query] int page_size = 20,
+    [Query] int page_size = Consts.PageSize_20,
     [Query] string? page_token = null,
-    [Query] string? user_id_type = "user",
+    [Query] string? user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -619,7 +618,7 @@ TenantAccessToken（租户访问令牌）
       {
         "member_id": "xxxxxxxxxxxxxxx",
         "user_id": "ou_xxxxxx",
-        "name": "成员名称"
+        "type": "USER"
       }
     ],
     "page_token": "evt_xxx",
@@ -640,7 +639,7 @@ if (result?.Data?.Items != null)
 {
     foreach (var member in result.Data.Items)
     {
-        Console.WriteLine($"成员: {member.Name} ({member.UserId})");
+        Console.WriteLine($"成员: {member.UserId} ({member.Type})");
     }
 }
 ```
@@ -655,7 +654,7 @@ if (result?.Data?.Items != null)
 Task<FeishuApiResult<BatchCreatePublicMailboxMemberResult>?> BatchCreatePublicMailboxMemberAsync(
     [Path] string public_mailbox_id,
     [Body] BatchCreatePublicMailboxMemberRequest request,
-    [Query] string? user_id_type = "user",
+    [Query] string? user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -676,8 +675,18 @@ TenantAccessToken（租户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "success_count": 5,
-    "failed_count": 0
+    "items": [
+      {
+        "member_id": "xxxxxxxxxxxxxxx",
+        "user_id": "ou_xxxxxx",
+        "type": "USER"
+      },
+      {
+        "member_id": "yyyyyyyyyyyyyyy",
+        "user_id": "ou_yyyyyy",
+        "type": "USER"
+      }
+    ]
   }
 }
 ```
@@ -691,14 +700,14 @@ TenantAccessToken（租户访问令牌）
 var publicMailboxApi = feishuApp.GetApi<IFeishuTenantV1MailPublicMailbox>();
 var request = new BatchCreatePublicMailboxMemberRequest
 {
-    Members = new List<PublicMailboxMemberItem>
+    Items = new[]
     {
-        new PublicMailboxMemberItem { UserId = "ou_xxxxxx" },
-        new PublicMailboxMemberItem { UserId = "ou_yyyyyy" }
+        new PublicMailboxMember { UserId = "ou_xxxxxx" },
+        new PublicMailboxMember { UserId = "ou_yyyyyy" }
     }
 };
 var result = await publicMailboxApi.BatchCreatePublicMailboxMemberAsync("test_public_mailbox@xxx.xx", request);
-Console.WriteLine($"成功添加: {result?.Data?.SuccessCount} 个成员");
+Console.WriteLine($"成功添加: {result?.Data?.Items?.Length} 个成员");
 ```
 
 ---
@@ -742,7 +751,7 @@ TenantAccessToken（租户访问令牌）
 var publicMailboxApi = feishuApp.GetApi<IFeishuTenantV1MailPublicMailbox>();
 var request = new BatchDeletePublicMailboxMemberRequest
 {
-    MemberIds = new List<string> { "member_id_123", "member_id_456" }
+    MemberIdList = new[] { "member_id_123", "member_id_456" }
 };
 var result = await publicMailboxApi.BatchDeletePublicMailboxMemberAsync("test_public_mailbox@xxx.xx", request);
 Console.WriteLine($"成员批量删除结果: {result.Code == 0}");
@@ -777,9 +786,10 @@ TenantAccessToken（租户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "alias_id": "alias_123456",
-    "alias_email": "test_public_mailbox.alias@xxx.xx",
-    "create_time": "2026-06-03T11:41:00+08:00"
+    "public_mailbox_alias": {
+      "primary_email": "test_public_mailbox@xxx.xx",
+      "email_alias": "test_public_mailbox.alias@xxx.xx"
+    }
   }
 }
 ```
@@ -793,10 +803,10 @@ TenantAccessToken（租户访问令牌）
 var publicMailboxApi = feishuApp.GetApi<IFeishuTenantV1MailPublicMailbox>();
 var request = new CreatePublicMailboxAliasRequest
 {
-    AliasEmail = "test_public_mailbox.alias@xxx.xx"
+    EmailAlias = "test_public_mailbox.alias@xxx.xx"
 };
 var result = await publicMailboxApi.CreatePublicMailboxAliasAsync("test_public_mailbox@xxx.xx", request);
-Console.WriteLine($"别名创建成功: {result?.Data?.AliasEmail}");
+Console.WriteLine($"别名创建成功: {result?.Data?.PublicMailboxAlias?.EmailAliasSuffix}");
 ```
 
 ---
@@ -871,9 +881,8 @@ TenantAccessToken（租户访问令牌）
   "data": {
     "items": [
       {
-        "alias_id": "alias_123456",
-        "alias_email": "test_public_mailbox.alias@xxx.xx",
-        "create_time": "2026-06-03T11:41:00+08:00"
+        "primary_email": "test_public_mailbox@xxx.xx",
+        "email_alias": "test_public_mailbox.alias@xxx.xx"
       }
     ]
   }
@@ -892,7 +901,7 @@ if (result?.Data?.Items != null)
 {
     foreach (var alias in result.Data.Items)
     {
-        Console.WriteLine($"别名: {alias.AliasEmail}");
+        Console.WriteLine($"别名: {alias.EmailAliasSuffix}");
     }
 }
 ```

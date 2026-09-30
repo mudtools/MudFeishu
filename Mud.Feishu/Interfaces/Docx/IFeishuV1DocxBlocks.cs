@@ -22,7 +22,7 @@ public interface IFeishuV1DocxBlocks : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 指定需要操作的块，为其创建一批子块，并插入到指定位置。如果操作成功，接口将返回新创建子块的富文本内容。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document-block-children/create">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/document-block-children/create">接口文档</see></para>
     /// </summary>
     /// <param name="document_id">文档的唯一标识。</param>
     /// <param name="block_id">父块的block_id，表示为其创建一批子块。如果需要对文档树根节点创建子块，可将 document_id 填入此处。</param>
@@ -58,7 +58,7 @@ public interface IFeishuV1DocxBlocks : IFeishuAppContextSwitcher
     /// <para>如果操作成功，接口将返回新创建子块的富文本内容。</para>
     /// <para>调用该接口前，你可参考 <see href="https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/docx-overview">文档概述-基本概念</see> 了解块的父子关系规则。</para>
     /// <para>当创建的子块中含有 GridColumn、TableCell、Callout 时其中至少需要包含一个子块 ，即内容为空时也需要填入一个空 Text Block 作为子块。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document-block-descendant/create">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/document-block-descendant/create">接口文档</see></para>
     /// </summary>
     /// <param name="document_id">文档的唯一标识。</param>
     /// <param name="block_id">父块的block_id，表示为其创建一批子块。如果需要对文档树根节点创建子块，可将 document_id 填入此处。</param>
@@ -172,7 +172,7 @@ public interface IFeishuV1DocxBlocks : IFeishuAppContextSwitcher
 
     /// <summary>
     /// <para>获取文档中指定块的所有子块的富文本内容并分页返回。文档版本号可选。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document-block-children/get">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/document-block-children/get">接口文档</see></para>
     /// </summary>
     /// <param name="document_id">文档的唯一标识。</param>
     /// <param name="block_id">父块的block_id，表示为其创建一批子块。如果需要对文档树根节点创建子块，可将 document_id 填入此处。</param>
@@ -182,13 +182,14 @@ public interface IFeishuV1DocxBlocks : IFeishuAppContextSwitcher
     /// <para>示例值：-1</para>
     /// <para>默认值：-1</para>
     /// </param>
-    /// <param name="client_token">
-    /// <para>操作的唯一标识，与接口返回值的 client_token 相对应，用于幂等的进行更新操作。此值为空表示将发起一次新的请求，此值非空表示幂等的进行更新操作。</para>
-    /// <para>示例值：fe599b60-450f-46ff-b2ef-9f6675625b97</para>
-    /// <para>默认值：null</para>
-    /// </param>
     /// <param name="page_size">分页大小，即本次请求所返回的信息列表内的最大条目数。默认值：500</param>
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="with_descendants">
+    /// <para>查询的结果中是否返回指定块的所有子孙块。</para>
+    /// <para>为 false 时，仅返回指定块的所有子块列表；为 true 时，以先序遍历的方式返回指定块的所有子孙块列表，返回结果包含当前指定的块。</para>
+    /// <para>示例值：false</para>
+    /// <para>默认值：false</para>
+    /// </param>
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
@@ -197,15 +198,15 @@ public interface IFeishuV1DocxBlocks : IFeishuAppContextSwitcher
          [Path] string document_id,
          [Path] string block_id,
          [Query("document_revision_id")] int? document_revision_id = -1,
-         [Query("client_token")] string? client_token = null,
          [Query("page_size")] int page_size = 500,
          [Query("page_token")] string? page_token = null,
+         [Query("with_descendants")] bool? with_descendants = null,
          [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
          CancellationToken cancellationToken = default);
 
     /// <summary>
     /// <para>指定需要操作的块，删除其指定范围的子块。如果操作成功，接口将返回应用删除操作后的文档版本号。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document-block-children/batch_delete">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/document-block-children/batch_delete">接口文档</see></para>
     /// </summary>
     /// <param name="document_id">文档的唯一标识。</param>
     /// <param name="document_revision_id">
@@ -235,7 +236,7 @@ public interface IFeishuV1DocxBlocks : IFeishuAppContextSwitcher
     /// <summary>
     /// <para>将 Markdown/HTML 格式的内容转换为文档块，以便于将 Markdown/HTML 格式的内容插入到文档中。</para>
     /// <para>目前支持转换为的块类型包含文本、一到九级标题、无序列表、有序列表、代码块、引用、待办事项、图片、表格、表格单元格。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document/convert">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/document/convert">接口文档</see></para>
     /// </summary>
     /// <param name="convertContentRequest">内容转换请求体</param>
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>

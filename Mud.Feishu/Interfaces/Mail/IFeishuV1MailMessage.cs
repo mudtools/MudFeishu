@@ -160,7 +160,7 @@ public interface IFeishuV1MailMessage : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取邮件卡片的邮件列表。
-    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/list_thread_message">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/get_by_card">接口文档</see></para>
     /// </summary>
     /// <param name="user_mailbox_id">
     /// <para>用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。</para>
@@ -265,22 +265,6 @@ public interface IFeishuV1MailMessage : IFeishuAppContextSwitcher
          [Path] string user_mailbox_id,
          [Path] string message_id,
          [Query] string? format = null,
-         CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 查询已发送邮件的投递状态，返回每个收件人的投递状态。
-    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/send_status">接口文档</see></para>
-    /// </summary>
-    /// <param name="user_mailbox_id">
-    /// <para>用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。</para>
-    /// <para>示例值：user@example.com</para>
-    /// </param>
-    /// <param name="message_id">待查询的邮件 ID。</param>
-    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
-    [Get("/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/messages/{message_id}/send_status")]
-    Task<FeishuApiResult<MessageSendStatusResult>?> GetUserMailboxMessageSendStatusAsync(
-         [Path] string user_mailbox_id,
-         [Path] string message_id,
          CancellationToken cancellationToken = default);
 
     /// <summary>

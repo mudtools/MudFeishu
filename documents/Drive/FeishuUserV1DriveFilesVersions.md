@@ -32,7 +32,7 @@ description: 该接口用于以用户身份管理飞书在线文档与电子表�
 Task<FeishuApiResult<CreateFileVersionResult>?> CreateFileVersionAsync(
     [Path] string file_token,
     [Body] CreateFileVersionRequest createFileVersionRequest,
-    [Query("user_id_type")] string? user_id_type = "open_id",
+    [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -70,11 +70,11 @@ Task<FeishuApiResult<CreateFileVersionResult>?> CreateFileVersionAsync(
 **函数签名**：
 ```csharp
 Task<FeishuApiPageListResult<FileVersionInfo>?> GetFileVersionPageListByFileTokenAsync(
-    [Path] string? file_token,
+    [Path] string file_token,
     [Query("obj_type")] string obj_type,
-    [Query("page_size")] int page_size = 10,
+    [Query("page_size")] int page_size = Consts.PageSize_10,
     [Query("page_token")] string? page_token = null,
-    [Query("user_id_type")] string? user_id_type = "open_id",
+    [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -84,7 +84,7 @@ Task<FeishuApiPageListResult<FileVersionInfo>?> GetFileVersionPageListByFileToke
 
 | 参数名 | 类型 | 必填 | 说明 |
 |-------|------|-----|------|
-| `file_token` | `string?` | ✅ | 文件 token |
+| `file_token` | `string` | ✅ | 文件 token |
 | `obj_type` | `string` | ✅ | 源文档类型：`docx`/`sheet` |
 | `page_size` | `int` | ⚪ | 分页大小，默认 10 |
 | `page_token` | `string?` | ⚪ | 分页标记，首次请求不填 |
@@ -119,10 +119,12 @@ Task<FeishuApiPageListResult<FileVersionInfo>?> GetFileVersionPageListByFileToke
 **函数签名**：
 ```csharp
 Task<FeishuApiResult<FileVersionInfo>?> GetFileVersionByFileTokenAsync(
-    [Path] string? file_token,
+    [Path] string file_token,
     [Path] string version_id,
     [Query("obj_type")] string obj_type,
-    [Query("user_id_type")] string? user_id_type = "open_id",
+    [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+    [Query("page_size")] int? page_size = null,
+    [Query("page_token")] string? page_token = null,
     CancellationToken cancellationToken = default);
 ```
 
@@ -132,10 +134,12 @@ Task<FeishuApiResult<FileVersionInfo>?> GetFileVersionByFileTokenAsync(
 
 | 参数名 | 类型 | 必填 | 说明 |
 |-------|------|-----|------|
-| `file_token` | `string?` | ✅ | 文件 token |
+| `file_token` | `string` | ✅ | 文件 token |
 | `version_id` | `string` | ✅ | 版本标识，示例值：`fnJfyX` |
 | `obj_type` | `string` | ✅ | 源文档类型：`docx`/`sheet` |
 | `user_id_type` | `string?` | ⚪ | 用户 ID 类型，默认 `open_id` |
+| `page_size` | `int?` | ⚪ | 分页大小，不传时按服务端默认（10） |
+| `page_token` | `string?` | ⚪ | 分页标记，首次请求不填 |
 
 **响应**：
 ```json
@@ -160,10 +164,10 @@ Task<FeishuApiResult<FileVersionInfo>?> GetFileVersionByFileTokenAsync(
 **函数签名**：
 ```csharp
 Task<FeishuNullDataApiResult?> DeleteFileVersionByFileTokenAsync(
-    [Path] string? file_token,
+    [Path] string file_token,
     [Path] string version_id,
     [Query("obj_type")] string obj_type,
-    [Query("user_id_type")] string? user_id_type = "open_id",
+    [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -173,7 +177,7 @@ Task<FeishuNullDataApiResult?> DeleteFileVersionByFileTokenAsync(
 
 | 参数名 | 类型 | 必填 | 说明 |
 |-------|------|-----|------|
-| `file_token` | `string?` | ✅ | 文件 token |
+| `file_token` | `string` | ✅ | 文件 token |
 | `version_id` | `string` | ✅ | 版本标识 |
 | `obj_type` | `string` | ✅ | 源文档类型：`docx`/`sheet` |
 | `user_id_type` | `string?` | ⚪ | 用户 ID 类型，默认 `open_id` |

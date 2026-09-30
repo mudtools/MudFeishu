@@ -21,7 +21,7 @@ public interface IFeishuTenantV1MailGroup : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 创建邮件组。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup/create?appId=cli_a98ea7d1a0ba100b">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup/create">接口文档</see></para>
     /// </summary>
     /// <param name="request">创建邮件组请求对象，包含待创建的邮件组信息。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -67,7 +67,7 @@ public interface IFeishuTenantV1MailGroup : IFeishuAppContextSwitcher
     /// <summary>
     /// 修改邮件组全部信息。
     /// <para>更新邮件组所有字段。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup/patch">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup/update">接口文档</see></para>
     /// </summary>
     /// <param name="mailgroup_id">
     /// <para>邮件组ID或者邮件组地址</para>
@@ -463,7 +463,7 @@ public interface IFeishuTenantV1MailGroup : IFeishuAppContextSwitcher
     /// <summary>
     /// 获取邮件组所有别名。
     /// <para>该接口一次性返回所有数据，分页参数无效</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-alias/delete">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-alias/list">接口文档</see></para>
     /// </summary>
     /// <param name="mailgroup_id">
     /// <para>邮件组ID或邮箱地址</para>

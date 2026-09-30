@@ -53,7 +53,7 @@ public interface IFeishuUserV1HelpDeskTicket : IFeishuV1HelpDeskTicket, ICurrent
     /// <summary>
     /// 删除工单自定义字段
     /// <para>用于删除工单自定义字段。注意事项：user_access_token 访问，需要操作者是当前服务台的管理员或所有者</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket_customized_field/create-ticket-customized-field">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket_customized_field/delete">接口文档</see></para>
     /// </summary>   
     /// <param name="ticket_customized_field_id">
     /// <para>工单自定义字段ID</para>

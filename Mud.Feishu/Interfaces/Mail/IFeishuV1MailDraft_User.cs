@@ -45,7 +45,7 @@ public interface IFeishuUserV1MailDraft : IFeishuAppContextSwitcher, ICurrentUse
 
     /// <summary>
     /// 发送草稿。
-    /// <para>将指定的草稿发送出去。</para>
+    /// <para>将指定的草稿发送出去。传入 send_time 时为定时发送，不传则立即发送。</para>
     /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-draft/send">接口文档</see></para>
     /// </summary>
     /// <param name="user_mailbox_id">
@@ -53,14 +53,16 @@ public interface IFeishuUserV1MailDraft : IFeishuAppContextSwitcher, ICurrentUse
     /// <para>示例值：user@example.com</para>
     /// </param>
     /// <param name="draft_id">
-    /// <para>草稿ID，可通过创建草稿或列出草稿接口获得</para>
+    /// <para>草稿ID，可通过创建草稿、更新草稿或列出草稿列表接口获得</para>
     /// <para>示例值：268dce11-85f7-427d-8756-6be3abc850fd</para>
     /// </param>
+    /// <param name="request">发送草稿请求体，可选指定定时发送时间 send_time（Unix 时间戳，秒）。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/drafts/{draft_id}/send")]
     Task<FeishuApiResult<SendUserMailboxDraftResult>?> SendUserMailboxDraftAsync(
       [Path] string user_mailbox_id,
       [Path] string draft_id,
+      [Body] SendUserMailboxDraftRequest request,
       CancellationToken cancellationToken = default);
 
 

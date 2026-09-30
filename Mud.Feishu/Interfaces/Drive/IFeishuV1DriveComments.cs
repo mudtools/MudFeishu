@@ -54,6 +54,11 @@ public interface IFeishuV1DriveComments : IFeishuAppContextSwitcher
     /// <para>示例值：false</para>
     /// <para>默认值：false</para>
     /// </param>
+    /// <param name="need_relation">
+    /// <para>是否需要获取评论者与回复者的关系，默认值为 false</para>
+    /// <para>示例值：false</para>
+    /// <para>默认值：false</para>
+    /// </param>
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
     /// <param name="user_id_type">用户 ID，ID 类型与查询结果中的 user_id_type 类型保持一致。</param>
@@ -65,6 +70,7 @@ public interface IFeishuV1DriveComments : IFeishuAppContextSwitcher
            [Query] bool? is_whole = false,
            [Query] bool? is_solved = false,
            [Query] bool? need_reaction = false,
+           [Query] bool? need_relation = null,
            [Query] int page_size = Consts.PageSize_50,
            [Query] string? page_token = null,
            [Query] string? user_id_type = Consts.User_Id_Type,
@@ -171,7 +177,7 @@ public interface IFeishuV1DriveComments : IFeishuAppContextSwitcher
     /// <summary>
     /// 添加全文评论
     /// <para>在文档中添加一条全局评论，不支持局部评论。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/CommentAPI/create">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/CommentAPI/get">接口文档</see></para>
     /// </summary>
     /// <param name="file_token">文件的 token
     /// <para>示例值：XIHSdYSI7oMEU1xrsnxc8fabcef</para>
@@ -392,13 +398,11 @@ public interface IFeishuV1DriveComments : IFeishuAppContextSwitcher
     /// </list>
     /// </param>
     /// <param name="updateReactionCommentReactionRequest">添加/取消表情回应请求体</param>
-    /// <param name="user_id_type">用户 ID，ID 类型与查询结果中的 user_id_type 类型保持一致。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     [Post("/open-apis/drive/v2/files/{file_token}/comments/reaction")]
     Task<FeishuNullDataApiResult?> UpdateReactionCommentReactionAsync(
        [Path] string file_token,
        [Query] string file_type,
        [Body] UpdateReactionCommentReactionRequest updateReactionCommentReactionRequest,
-       [Query] string? user_id_type = Consts.User_Id_Type,
        CancellationToken cancellationToken = default);
 }

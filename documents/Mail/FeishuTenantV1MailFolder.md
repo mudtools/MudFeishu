@@ -13,7 +13,7 @@ description: 该接口用于以租户身份管理企业内所有用户的邮箱�
 - [创建邮箱文件夹](https://open.feishu.cn/document/mail-v1/user_mailbox-folder/create)
 - [删除邮箱文件夹](https://open.feishu.cn/document/mail-v1/user_mailbox-folder/delete)
 - [更新邮箱文件夹](https://open.feishu.cn/document/mail-v1/user_mailbox-folder/patch)
-- [列出邮箱文件夹](https://open.feishu.cn/document/mail-v1/user_mailbox-folder/list)
+- [列出邮箱文件夹](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-folder/list)
 - [列出可访问的邮箱](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox/accessible_mailboxes)
 
 ## 函数列表
@@ -55,12 +55,14 @@ TenantAccessToken（租户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "folder_id": "7620095646711680541",
-    "name": "工作邮件",
-    "type": 2,
-    "parent_id": "0",
-    "create_time": "2026-06-03T11:34:00+08:00",
-    "update_time": "2026-06-03T11:34:00+08:00"
+    "folder": {
+      "id": "7620095646711680541",
+      "name": "工作邮件",
+      "parent_folder_id": "0",
+      "folder_type": 2,
+      "unread_message_count": 5,
+      "unread_thread_count": 3
+    }
   }
 }
 ```
@@ -73,7 +75,7 @@ TenantAccessToken（租户访问令牌）
 ```csharp
 var folderApi = feishuApp.GetApi<IFeishuTenantV1MailFolder>();
 var result = await folderApi.GetUserMailboxFoldeAsync("user@example.com", "7620095646711680541");
-Console.WriteLine($"文件夹名称: {result?.Data?.Name}");
+Console.WriteLine($"文件夹名称: {result?.Data?.Folder?.Name}");
 ```
 
 ---
@@ -105,11 +107,12 @@ TenantAccessToken（租户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "folder_id": "7620095646711680542",
-    "name": "新建文件夹",
-    "type": 2,
-    "parent_id": "0",
-    "create_time": "2026-06-03T11:34:00+08:00"
+    "folder": {
+      "id": "7620095646711680542",
+      "name": "新建文件夹",
+      "parent_folder_id": "0",
+      "folder_type": 2
+    }
   }
 }
 ```
@@ -124,10 +127,10 @@ var folderApi = feishuApp.GetApi<IFeishuTenantV1MailFolder>();
 var request = new CreateUserMailboxFoldeRequest
 {
     Name = "工作邮件",
-    ParentId = "0"
+    ParentFolderId = "0"
 };
 var result = await folderApi.CreateUserMailboxFoldeAsync("user@example.com", request);
-Console.WriteLine($"文件夹创建成功: {result?.Data?.FolderId}");
+Console.WriteLine($"文件夹创建成功: {result?.Data?.Folder?.Id}");
 ```
 
 ---
@@ -254,11 +257,12 @@ TenantAccessToken（租户访问令牌）
   "data": {
     "items": [
       {
-        "folder_id": "7620095646711680541",
+        "id": "7620095646711680541",
         "name": "工作邮件",
-        "type": 2,
-        "unread_count": 5,
-        "total_count": 100
+        "parent_folder_id": "0",
+        "folder_type": 2,
+        "unread_message_count": 5,
+        "unread_thread_count": 3
       }
     ]
   }
@@ -277,7 +281,7 @@ if (result?.Data?.Items != null)
 {
     foreach (var folder in result.Data.Items)
     {
-        Console.WriteLine($"文件夹: {folder.Name}, 未读: {folder.UnreadCount}");
+        Console.WriteLine($"文件夹: {folder.Name}, 未读: {folder.UnreadMessageCount}");
     }
 }
 ```
@@ -309,16 +313,14 @@ TenantAccessToken（租户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "items": [
+    "accessible_mailboxes": [
       {
-        "mailbox_id": "user@example.com",
-        "mailbox_type": "user_mailbox",
-        "permission": "read_write"
+        "email_address": "user@example.com",
+        "email_type": "USER_PRIMARY"
       },
       {
-        "mailbox_id": "public@company.com",
-        "mailbox_type": "public_mailbox",
-        "permission": "read_only"
+        "email_address": "public@company.com",
+        "email_type": "PUBLIC_MAILBOX"
       }
     ]
   }
@@ -333,11 +335,11 @@ TenantAccessToken（租户访问令牌）
 ```csharp
 var folderApi = feishuApp.GetApi<IFeishuTenantV1MailFolder>();
 var result = await folderApi.GetAccessibleMailboxesUserMailboxAsync("user@example.com");
-if (result?.Data?.Items != null)
+if (result?.Data?.AccessibleMailboxes != null)
 {
-    foreach (var mailbox in result.Data.Items)
+    foreach (var mailbox in result.Data.AccessibleMailboxes)
     {
-        Console.WriteLine($"可访问邮箱: {mailbox.MailboxId}, 权限: {mailbox.Permission}");
+        Console.WriteLine($"可访问邮箱: {mailbox.EmailAddress}, 类型: {mailbox.EmailType}");
     }
 }
 ```

@@ -12,8 +12,8 @@ description: 该接口用于以用户身份管理自己的邮箱标签，支持�
 - [更新标签](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-label/patch)
 - [列出标签](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-label/list)
 - [获取标签信息](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-label/get)
-- [删除标签](https://open.feishhu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-label/delete)
-- [创建标签](https://open.feishhu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-label/create)
+- [删除标签](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-label/delete)
+- [创建标签](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-label/create)
 
 ## 函数列表
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
@@ -55,10 +55,11 @@ UserAccessToken（用户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "label_id": "7620003644728938013",
-    "name": "更新后的标签名称",
-    "color": "blue",
-    "update_time": "2026-06-03T11:41:00+08:00"
+    "label": {
+      "id": "7620003644728938013",
+      "name": "更新后的标签名称",
+      "background_color": "blue"
+    }
   }
 }
 ```
@@ -72,11 +73,10 @@ UserAccessToken（用户访问令牌）
 var labelApi = feishuApp.GetApi<IFeishuUserV1MailLabel>();
 var request = new UpdateUserMailboxLabelRequest
 {
-    Name = "更新后的标签名称",
-    Color = "blue"
+    Label = new MailLabel { Name = "更新后的标签名称", BackgroundColor = "blue" }
 };
 var result = await labelApi.UpdateUserMailboxLabelAsync("me", "7620003644728938013", request);
-Console.WriteLine($"标签更新成功: {result?.Data?.Name}");
+Console.WriteLine($"标签更新成功: {result?.Data?.Label?.Name}");
 ```
 
 ---
@@ -108,10 +108,10 @@ UserAccessToken（用户访问令牌）
   "data": {
     "items": [
       {
-        "label_id": "7620003644728938013",
+        "id": "7620003644728938013",
         "name": "重要邮件",
-        "color": "red",
-        "unread_count": 5
+        "background_color": "red",
+        "messages_unread": 5
       }
     ]
   }
@@ -130,7 +130,7 @@ if (result?.Data?.Items != null)
 {
     foreach (var label in result.Data.Items)
     {
-        Console.WriteLine($"标签: {label.Name}, 未读: {label.UnreadCount}");
+        Console.WriteLine($"标签: {label.Name}, 未读: {label.MessagesUnread}");
     }
 }
 ```
@@ -164,11 +164,12 @@ UserAccessToken（用户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "label_id": "7620003644728938013",
-    "name": "重要邮件",
-    "color": "red",
-    "unread_count": 5,
-    "create_time": "2026-06-03T11:41:00+08:00"
+    "label": {
+      "id": "7620003644728938013",
+      "name": "重要邮件",
+      "background_color": "red",
+      "messages_unread": 5
+    }
   }
 }
 ```
@@ -179,9 +180,9 @@ UserAccessToken（用户访问令牌）
 
 **代码示例**
 ```csharp
-var labelApi = feishhuApp.GetApi<IFeishuUserV1MailLabel>();
+var labelApi = feishuApp.GetApi<IFeishuUserV1MailLabel>();
 var result = await labelApi.GetUserMailboxLabelAsync("me", "7620003644728938013");
-Console.WriteLine($"标签名称: {result?.Data?.Name}, 颜色: {result?.Data?.Color}");
+Console.WriteLine($"标签名称: {result?.Data?.Label?.Name}, 颜色: {result?.Data?.Label?.BackgroundColor}");
 ```
 
 ---
@@ -222,7 +223,7 @@ UserAccessToken（用户访问令牌）
 
 **代码示例**
 ```csharp
-var labelApi = feishhuApp.GetApi<IFeishuUserV1MailLabel>();
+var labelApi = feishuApp.GetApi<IFeishuUserV1MailLabel>();
 var result = await labelApi.DeleteUserMailboxLabelAsync("me", "7620003644728938013");
 Console.WriteLine($"标签删除结果: {result.Code == 0}");
 ```
@@ -234,7 +235,7 @@ Console.WriteLine($"标签删除结果: {result.Code == 0}");
 
 **函数签名**
 ```csharp
-Task<FeishhuApiResult<UserMailboxLabelOopsResult>?> CreateUserMailboxLabelAsync(
+Task<FeishuApiResult<UserMailboxLabelOopsResult>?> CreateUserMailboxLabelAsync(
     [Path] string user_mailbox_id,
     [Body] CreateUserMailboxLabelRequest createUserMailboxLabelRequest,
     CancellationToken cancellationToken = default);
@@ -256,10 +257,11 @@ UserAccessToken（用户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "label_id": "7620003644728938013",
-    "name": "新标签",
-    "color": "green",
-    "create_time": "2026-06-03T11:41:00+08:00"
+    "label": {
+      "id": "7620003644728938013",
+      "name": "新标签",
+      "background_color": "green"
+    }
   }
 }
 ```
@@ -270,12 +272,11 @@ UserAccessToken（用户访问令牌）
 
 **代码示例**
 ```csharp
-var labelApi = feishhuApp.GetApi<IFeishuUserV1MailLabel>();
+var labelApi = feishuApp.GetApi<IFeishuUserV1MailLabel>();
 var request = new CreateUserMailboxLabelRequest
 {
-    Name = "新标签",
-    Color = "green"
+    Label = new MailLabel { Name = "新标签", BackgroundColor = "green" }
 };
 var result = await labelApi.CreateUserMailboxLabelAsync("me", request);
-Console.WriteLine($"标签创建成功: {result?.Data?.LabelId}");
+Console.WriteLine($"标签创建成功: {result?.Data?.Label?.Id}");
 ```

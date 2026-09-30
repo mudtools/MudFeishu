@@ -12,9 +12,27 @@ description: 该接口用于以租户身份管理企业内所有邮件组，包�
 - [创建邮件组](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup/create)
 - [删除邮件组](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup/delete)
 - [修改邮件组部分信息](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup/patch)
-- [修改邮件组全部信息](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup/patch)
+- [修改邮件组全部信息](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup/update)
 - [查询指定邮件组](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup/get)
 - [分页批量获取邮件组](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup/list)
+- [批量创建邮件组管理员](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-manager/batch_create)
+- [批量删除邮件组管理员](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-manager/batch_delete)
+- [批量获取邮件组管理员](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-manager/list)
+- [创建邮件组成员](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-member/create)
+- [删除邮件组成员](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-member/delete)
+- [查询指定邮件组成员](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-member/get)
+- [分页获取所有邮件组成员](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-member/list)
+- [批量创建邮件组成员](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-member/batch_create)
+- [批量删除邮件组成员](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-member/batch_delete)
+- [创建邮件组别名](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-alias/create)
+- [删除邮件组别名](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-alias/delete)
+- [获取邮件组所有别名](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-alias/list)
+- [创建邮件组权限成员](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-permission_member/create)
+- [删除邮件组权限成员](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-permission_member/delete)
+- [获取邮件组权限成员](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-permission_member/get)
+- [分页批量获取邮件组权限成员](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-permission_member/list)
+- [批量创建邮件组权限成员](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-permission_member/batch_create)
+- [批量删除邮件组权限成员](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-permission_member/batch_delete)
 
 ## 函数列表
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
@@ -73,8 +91,7 @@ TenantAccessToken（租户访问令牌）
   "data": {
     "mailgroup_id": "xxxxxxxxxxxxxxx",
     "email": "test_mail_group@xxx.xx",
-    "name": "邮件组名称",
-    "create_time": "2026-06-03T11:41:00+08:00"
+    "name": "邮件组名称"
   }
 }
 ```
@@ -92,7 +109,7 @@ var request = new CreateMailGroupRequest
     Name = "测试邮件组"
 };
 var result = await mailGroupApi.CreateMailGroupAsync(request);
-Console.WriteLine($"邮件组创建成功: {result?.Data?.MailGroupId}");
+Console.WriteLine($"邮件组创建成功: {result?.Data?.MailgroupId}");
 ```
 
 ---
@@ -167,8 +184,7 @@ TenantAccessToken（租户访问令牌）
   "data": {
     "mailgroup_id": "xxxxxxxxxxxxxxx",
     "email": "test_mail_group@xxx.xx",
-    "name": "更新后的邮件组名称",
-    "update_time": "2026-06-03T11:41:00+08:00"
+    "name": "更新后的邮件组名称"
   }
 }
 ```
@@ -219,8 +235,7 @@ TenantAccessToken（租户访问令牌）
   "data": {
     "mailgroup_id": "xxxxxxxxxxxxxxx",
     "email": "test_mail_group@xxx.xx",
-    "name": "更新后的邮件组名称",
-    "update_time": "2026-06-03T11:41:00+08:00"
+    "name": "更新后的邮件组名称"
   }
 }
 ```
@@ -271,9 +286,7 @@ TenantAccessToken（租户访问令牌）
     "mailgroup_id": "xxxxxxxxxxxxxxx",
     "email": "test_mail_group@xxx.xx",
     "name": "邮件组名称",
-    "description": "邮件组描述",
-    "create_time": "2026-06-03T11:41:00+08:00",
-    "update_time": "2026-06-03T11:41:00+08:00"
+    "description": "邮件组描述"
   }
 }
 ```
@@ -298,9 +311,9 @@ Console.WriteLine($"邮件组名称: {result?.Data?.Name}");
 ```csharp
 Task<FeishuApiPageListResult<MailGroupInfo>?> GetMailGroupPageListAsync(
     [Query] string? manager_user_id = null,
-    [Query] int page_size = 20,
+    [Query] int page_size = Consts.PageSize_20,
     [Query] string? page_token = null,
-    [Query] string? user_id_type = "user",
+    [Query] string? user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -362,7 +375,7 @@ if (result?.Data?.Items != null)
 Task<FeishuNullDataApiResult?> BatchCreateMailgroupManagerAsync(
     [Path] string mailgroup_id,
     [Body] BatchOopsMailgroupManagerRequest request,
-    [Query] string? user_id_type = "user",
+    [Query] string? user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -395,7 +408,11 @@ TenantAccessToken（租户访问令牌）
 var mailGroupApi = feishuApp.GetApi<IFeishuTenantV1MailGroup>();
 var request = new BatchOopsMailgroupManagerRequest
 {
-    ManagerIds = new List<string> { "ou_xxxxxx", "ou_yyyyyy" }
+    MailgroupManagerLists = new[]
+    {
+        new MailgroupManager { UserId = "ou_xxxxxx" },
+        new MailgroupManager { UserId = "ou_yyyyyy" }
+    }
 };
 var result = await mailGroupApi.BatchCreateMailgroupManagerAsync("test_mail_group@xxx.xx", request);
 Console.WriteLine($"管理员添加结果: {result.Code == 0}");
@@ -411,7 +428,7 @@ Console.WriteLine($"管理员添加结果: {result.Code == 0}");
 Task<FeishuNullDataApiResult?> BatchDeleteMailGroupManagerAsync(
     [Path] string mailgroup_id,
     [Body] BatchOopsMailgroupManagerRequest request,
-    [Query] string? user_id_type = "user",
+    [Query] string? user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -444,7 +461,7 @@ TenantAccessToken（租户访问令牌）
 var mailGroupApi = feishuApp.GetApi<IFeishuTenantV1MailGroup>();
 var request = new BatchOopsMailgroupManagerRequest
 {
-    ManagerIds = new List<string> { "ou_xxxxxx" }
+    MailgroupManagerLists = new[] { new MailgroupManager { UserId = "ou_xxxxxx" } }
 };
 var result = await mailGroupApi.BatchDeleteMailGroupManagerAsync("test_mail_group@xxx.xx", request);
 Console.WriteLine($"管理员删除结果: {result.Code == 0}");
@@ -459,9 +476,9 @@ Console.WriteLine($"管理员删除结果: {result.Code == 0}");
 ```csharp
 Task<FeishuApiPageListResult<MailgroupManager>?> GetMailgroupManagerPageListAsync(
     [Path] string mailgroup_id,
-    [Query] int page_size = 20,
+    [Query] int page_size = Consts.PageSize_20,
     [Query] string? page_token = null,
-    [Query] string? user_id_type = "user",
+    [Query] string? user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -485,8 +502,7 @@ TenantAccessToken（租户访问令牌）
   "data": {
     "items": [
       {
-        "manager_id": "ou_xxxxxx",
-        "name": "管理员名称"
+        "user_id": "ou_xxxxxx"
       }
     ],
     "page_token": "evt_xxx",
@@ -507,7 +523,7 @@ if (result?.Data?.Items != null)
 {
     foreach (var manager in result.Data.Items)
     {
-        Console.WriteLine($"管理员: {manager.Name} ({manager.ManagerId})");
+        Console.WriteLine($"管理员: {manager.UserId}");
     }
 }
 ```
@@ -522,8 +538,8 @@ if (result?.Data?.Items != null)
 Task<FeishuApiResult<MailGroupMemberOopsResult>?> CreateMailGroupMemberAsync(
     [Path] string mailgroup_id,
     [Body] CreateMailGroupMemberRequest request,
-    [Query] string? user_id_type = "user",
-    [Query] string? department_id_type = "open_department_id",
+    [Query] string? user_id_type = Consts.User_Id_Type,
+    [Query] string? department_id_type = Consts.Department_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -546,7 +562,8 @@ TenantAccessToken（租户访问令牌）
   "msg": "success",
   "data": {
     "member_id": "xxxxxxxxxxxxxxx",
-    "create_time": "2026-06-03T11:41:00+08:00"
+    "user_id": "ou_xxxxxx",
+    "email": "member@xxx.xx"
   }
 }
 ```
@@ -619,8 +636,8 @@ Console.WriteLine($"成员删除结果: {result.Code == 0}");
 Task<FeishuApiResult<MailGroupMemberOopsResult>?> GetMailGroupMemberAsync(
     [Path] string mailgroup_id,
     [Path] string member_id,
-    [Query] string? user_id_type = "user",
-    [Query] string? department_id_type = "open_department_id",
+    [Query] string? user_id_type = Consts.User_Id_Type,
+    [Query] string? department_id_type = Consts.Department_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -644,8 +661,7 @@ TenantAccessToken（租户访问令牌）
   "data": {
     "member_id": "xxxxxxxxxxxxxxx",
     "user_id": "ou_xxxxxx",
-    "name": "成员名称",
-    "create_time": "2026-06-03T11:41:00+08:00"
+    "email": "member@xxx.xx"
   }
 }
 ```
@@ -658,7 +674,7 @@ TenantAccessToken（租户访问令牌）
 ```csharp
 var mailGroupApi = feishuApp.GetApi<IFeishuTenantV1MailGroup>();
 var result = await mailGroupApi.GetMailGroupMemberAsync("test_mail_group@xxx.xx", "member_id_123");
-Console.WriteLine($"成员名称: {result?.Data?.Name}");
+Console.WriteLine($"成员邮箱: {result?.Data?.Email}");
 ```
 
 ---
@@ -670,10 +686,10 @@ Console.WriteLine($"成员名称: {result?.Data?.Name}");
 ```csharp
 Task<FeishuApiPageListResult<MailGroupMemberInfo>?> GetMailGroupMemberPageListAsync(
     [Path] string mailgroup_id,
-    [Query] int page_size = 20,
+    [Query] int page_size = Consts.PageSize_20,
     [Query] string? page_token = null,
-    [Query] string? user_id_type = "user",
-    [Query] string? department_id_type = "open_department_id",
+    [Query] string? user_id_type = Consts.User_Id_Type,
+    [Query] string? department_id_type = Consts.Department_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -700,7 +716,7 @@ TenantAccessToken（租户访问令牌）
       {
         "member_id": "xxxxxxxxxxxxxxx",
         "user_id": "ou_xxxxxx",
-        "name": "成员名称"
+        "email": "member@xxx.xx"
       }
     ],
     "page_token": "evt_xxx",
@@ -721,7 +737,7 @@ if (result?.Data?.Items != null)
 {
     foreach (var member in result.Data.Items)
     {
-        Console.WriteLine($"成员: {member.Name} ({member.UserId})");
+        Console.WriteLine($"成员: {member.Email} ({member.UserId})");
     }
 }
 ```
@@ -736,8 +752,8 @@ if (result?.Data?.Items != null)
 Task<FeishuApiResult<BatchCreateMailGroupMemberResult>?> BatchCreateMailGroupMemberAsync(
     [Path] string mailgroup_id,
     [Body] BatchCreateMailGroupMemberRequest request,
-    [Query] string? user_id_type = "user",
-    [Query] string? department_id_type = "open_department_id",
+    [Query] string? user_id_type = Consts.User_Id_Type,
+    [Query] string? department_id_type = Consts.Department_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -759,8 +775,18 @@ TenantAccessToken（租户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "success_count": 5,
-    "failed_count": 0
+    "items": [
+      {
+        "member_id": "xxxxxxxxxxxxxxx",
+        "user_id": "ou_xxxxxx",
+        "email": "member_a@xxx.xx"
+      },
+      {
+        "member_id": "yyyyyyyyyyyyyyy",
+        "user_id": "ou_yyyyyy",
+        "email": "member_b@xxx.xx"
+      }
+    ]
   }
 }
 ```
@@ -774,14 +800,14 @@ TenantAccessToken（租户访问令牌）
 var mailGroupApi = feishuApp.GetApi<IFeishuTenantV1MailGroup>();
 var request = new BatchCreateMailGroupMemberRequest
 {
-    Members = new List<MailGroupMemberItem>
+    Items = new[]
     {
-        new MailGroupMemberItem { UserId = "ou_xxxxxx" },
-        new MailGroupMemberItem { UserId = "ou_yyyyyy" }
+        new MailGroupMemberInfo { UserId = "ou_xxxxxx" },
+        new MailGroupMemberInfo { UserId = "ou_yyyyyy" }
     }
 };
 var result = await mailGroupApi.BatchCreateMailGroupMemberAsync("test_mail_group@xxx.xx", request);
-Console.WriteLine($"成功添加: {result?.Data?.SuccessCount} 个成员");
+Console.WriteLine($"成功添加: {result?.Data?.Items?.Length} 个成员");
 ```
 
 ---
@@ -825,7 +851,7 @@ TenantAccessToken（租户访问令牌）
 var mailGroupApi = feishuApp.GetApi<IFeishuTenantV1MailGroup>();
 var request = new BatchDeleteMailGroupMemberRequest
 {
-    MemberIds = new List<string> { "member_id_123", "member_id_456" }
+    MemberIdList = new[] { "member_id_123", "member_id_456" }
 };
 var result = await mailGroupApi.BatchDeleteMailGroupMemberAsync("test_mail_group@xxx.xx", request);
 Console.WriteLine($"成员批量删除结果: {result.Code == 0}");
@@ -860,9 +886,10 @@ TenantAccessToken（租户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "alias_id": "alias_123456",
-    "alias_email": "test_mail_group.alias@xxx.xx",
-    "create_time": "2026-06-03T11:41:00+08:00"
+    "mailgroup_alias": {
+      "primary_email": "test_mail_group@xxx.xx",
+      "email_alias": "test_mail_group.alias@xxx.xx"
+    }
   }
 }
 ```
@@ -876,10 +903,10 @@ TenantAccessToken（租户访问令牌）
 var mailGroupApi = feishuApp.GetApi<IFeishuTenantV1MailGroup>();
 var request = new CreateMailGroupAliasRequest
 {
-    AliasEmail = "test_mail_group.alias@xxx.xx"
+    EmailAlias = "test_mail_group.alias@xxx.xx"
 };
 var result = await mailGroupApi.CreateMailGroupAliasAsync("test_mail_group@xxx.xx", request);
-Console.WriteLine($"别名创建成功: {result?.Data?.AliasEmail}");
+Console.WriteLine($"别名创建成功: {result?.Data?.MailgroupAlias?.EmailAliasSuffix}");
 ```
 
 ---
@@ -954,9 +981,8 @@ TenantAccessToken（租户访问令牌）
   "data": {
     "items": [
       {
-        "alias_id": "alias_123456",
-        "alias_email": "test_mail_group.alias@xxx.xx",
-        "create_time": "2026-06-03T11:41:00+08:00"
+        "primary_email": "test_mail_group@xxx.xx",
+        "email_alias": "test_mail_group.alias@xxx.xx"
       }
     ]
   }
@@ -975,7 +1001,7 @@ if (result?.Data?.Items != null)
 {
     foreach (var alias in result.Data.Items)
     {
-        Console.WriteLine($"别名: {alias.AliasEmail}");
+        Console.WriteLine($"别名: {alias.EmailAliasSuffix}");
     }
 }
 ```
@@ -990,8 +1016,8 @@ if (result?.Data?.Items != null)
 Task<FeishuApiResult<CreateMailGroupPermissionMemberResult>?> CreateMailGroupPermissionMemberAsync(
     [Path] string mailgroup_id,
     [Body] CreateMailGroupPermissionMemberRequest request,
-    [Query] string? user_id_type = "user",
-    [Query] string? department_id_type = "open_department_id",
+    [Query] string? user_id_type = Consts.User_Id_Type,
+    [Query] string? department_id_type = Consts.Department_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -1014,7 +1040,8 @@ TenantAccessToken（租户访问令牌）
   "msg": "success",
   "data": {
     "permission_member_id": "xxxxxxxxxxxxxxx",
-    "create_time": "2026-06-03T11:41:00+08:00"
+    "user_id": "ou_xxxxxx",
+    "email": "member@xxx.xx"
   }
 }
 ```
@@ -1087,8 +1114,8 @@ Console.WriteLine($"权限成员删除结果: {result.Code == 0}");
 Task<FeishuApiResult<GetMailGroupPermissionMemberResult>?> GetailGroupPermissionMemberAsync(
     [Path] string mailgroup_id,
     [Path] string permission_member_id,
-    [Query] string? user_id_type = "user",
-    [Query] string? department_id_type = "open_department_id",
+    [Query] string? user_id_type = Consts.User_Id_Type,
+    [Query] string? department_id_type = Consts.Department_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -1112,8 +1139,8 @@ TenantAccessToken（租户访问令牌）
   "data": {
     "permission_member_id": "xxxxxxxxxxxxxxx",
     "user_id": "ou_xxxxxx",
-    "name": "权限成员名称",
-    "create_time": "2026-06-03T11:41:00+08:00"
+    "department_id": "0",
+    "email": "member@xxx.xx"
   }
 }
 ```
@@ -1126,7 +1153,7 @@ TenantAccessToken（租户访问令牌）
 ```csharp
 var mailGroupApi = feishuApp.GetApi<IFeishuTenantV1MailGroup>();
 var result = await mailGroupApi.GetailGroupPermissionMemberAsync("test_mail_group@xxx.xx", "permission_member_id_123");
-Console.WriteLine($"权限成员名称: {result?.Data?.Name}");
+Console.WriteLine($"权限成员邮箱: {result?.Data?.Email}");
 ```
 
 ---
@@ -1138,10 +1165,10 @@ Console.WriteLine($"权限成员名称: {result?.Data?.Name}");
 ```csharp
 Task<FeishuApiPageListResult<MailGroupPermissionMember>?> GetMailgroupPermissionMemberPageListAsync(
     [Path] string mailgroup_id,
-    [Query] int page_size = 20,
+    [Query] int page_size = Consts.PageSize_20,
     [Query] string? page_token = null,
-    [Query] string? user_id_type = "user",
-    [Query] string? department_id_type = "open_department_id",
+    [Query] string? user_id_type = Consts.User_Id_Type,
+    [Query] string? department_id_type = Consts.Department_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -1168,7 +1195,7 @@ TenantAccessToken（租户访问令牌）
       {
         "permission_member_id": "xxxxxxxxxxxxxxx",
         "user_id": "ou_xxxxxx",
-        "name": "权限成员名称"
+        "email": "member@xxx.xx"
       }
     ],
     "page_token": "evt_xxx",
@@ -1189,7 +1216,7 @@ if (result?.Data?.Items != null)
 {
     foreach (var member in result.Data.Items)
     {
-        Console.WriteLine($"权限成员: {member.Name} ({member.UserId})");
+        Console.WriteLine($"权限成员: {member.Email} ({member.UserId})");
     }
 }
 ```
@@ -1204,8 +1231,8 @@ if (result?.Data?.Items != null)
 Task<FeishuApiResult<BatchCreateMailGroupPermissionMembersResult>?> BatchCreateMailGroupPermissionMembersAsync(
     [Path] string mailgroup_id,
     [Body] BatchCreateMailGroupPermissionMembersRequest request,
-    [Query] string? user_id_type = "user",
-    [Query] string? department_id_type = "open_department_id",
+    [Query] string? user_id_type = Consts.User_Id_Type,
+    [Query] string? department_id_type = Consts.Department_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -1227,8 +1254,18 @@ TenantAccessToken（租户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "success_count": 3,
-    "failed_count": 0
+    "items": [
+      {
+        "permission_member_id": "xxxxxxxxxxxxxxx",
+        "user_id": "ou_xxxxxx",
+        "email": "member_a@xxx.xx"
+      },
+      {
+        "permission_member_id": "yyyyyyyyyyyyyyy",
+        "user_id": "ou_yyyyyy",
+        "email": "member_b@xxx.xx"
+      }
+    ]
   }
 }
 ```
@@ -1242,14 +1279,14 @@ TenantAccessToken（租户访问令牌）
 var mailGroupApi = feishuApp.GetApi<IFeishuTenantV1MailGroup>();
 var request = new BatchCreateMailGroupPermissionMembersRequest
 {
-    PermissionMembers = new List<MailGroupPermissionMemberItem>
+    Items = new[]
     {
-        new MailGroupPermissionMemberItem { UserId = "ou_xxxxxx" },
-        new MailGroupPermissionMemberItem { UserId = "ou_yyyyyy" }
+        new MailGroupPermissionMember { UserId = "ou_xxxxxx" },
+        new MailGroupPermissionMember { UserId = "ou_yyyyyy" }
     }
 };
 var result = await mailGroupApi.BatchCreateMailGroupPermissionMembersAsync("test_mail_group@xxx.xx", request);
-Console.WriteLine($"成功添加: {result?.Data?.SuccessCount} 个权限成员");
+Console.WriteLine($"成功添加: {result?.Data?.Items?.Length} 个权限成员");
 ```
 
 ---
@@ -1293,7 +1330,7 @@ TenantAccessToken（租户访问令牌）
 var mailGroupApi = feishuApp.GetApi<IFeishuTenantV1MailGroup>();
 var request = new BatchDeleteMailGroupPermissionMembersRequest
 {
-    PermissionMemberIds = new List<string> { "permission_member_id_123", "permission_member_id_456" }
+    PermissionMemberIdList = new[] { "permission_member_id_123", "permission_member_id_456" }
 };
 var result = await mailGroupApi.BatchDeleteMailGroupPermissionMemberAsync("test_mail_group@xxx.xx", request);
 Console.WriteLine($"权限成员批量删除结果: {result.Code == 0}");

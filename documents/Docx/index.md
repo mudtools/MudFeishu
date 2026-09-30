@@ -105,6 +105,11 @@ public class DocxController : ControllerBase
 - [飞书云文档块租户接口](./FeishuTenantV1DocxBlocks.md) — 创建/更新/删除文档块、批量更新、内容转换
 - [飞书云文档块用户接口](./FeishuUserV1DocxBlocks.md) — 用户令牌的文档块管理，以用户身份编辑文档内容
 
+### 群公告管理
+
+- [飞书群公告租户接口](./FeishuTenantV1DocxAnnouncement.md) — 获取群公告基本信息、读取/批量更新群公告块、创建/删除群公告子块
+- [飞书群公告用户接口](./FeishuUserV1DocxAnnouncement.md) — 用户令牌的群公告管理，以用户身份读写所在群的群公告
+
 ## 命名空间与版本信息
 
 - **根命名空间**：`Mud.Feishu`

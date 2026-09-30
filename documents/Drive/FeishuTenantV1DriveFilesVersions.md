@@ -34,7 +34,7 @@ description: 该接口用于以租户身份管理飞书在线文档与电子表�
 Task<FeishuApiResult<CreateFileVersionResult>?> CreateFileVersionAsync(
     [Path] string file_token,
     [Body] CreateFileVersionRequest createFileVersionRequest,
-    [Query("user_id_type")] string? user_id_type = "open_id",
+    [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -112,11 +112,11 @@ public class DocumentVersionService
 **函数签名**：
 ```csharp
 Task<FeishuApiPageListResult<FileVersionInfo>?> GetFileVersionPageListByFileTokenAsync(
-    [Path] string? file_token,
+    [Path] string file_token,
     [Query("obj_type")] string obj_type,
-    [Query("page_size")] int page_size = 10,
+    [Query("page_size")] int page_size = Consts.PageSize_10,
     [Query("page_token")] string? page_token = null,
-    [Query("user_id_type")] string? user_id_type = "open_id",
+    [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -207,10 +207,12 @@ public class DocumentVersionService
 **函数签名**：
 ```csharp
 Task<FeishuApiResult<FileVersionInfo>?> GetFileVersionByFileTokenAsync(
-    [Path] string? file_token,
+    [Path] string file_token,
     [Path] string version_id,
     [Query("obj_type")] string obj_type,
-    [Query("user_id_type")] string? user_id_type = "open_id",
+    [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+    [Query("page_size")] int? page_size = null,
+    [Query("page_token")] string? page_token = null,
     CancellationToken cancellationToken = default);
 ```
 
@@ -224,6 +226,8 @@ Task<FeishuApiResult<FileVersionInfo>?> GetFileVersionByFileTokenAsync(
 | version_id | string | ✅ | 版本标识 | fnJfyX |
 | obj_type | string | ✅ | 源文档类型：docx/sheet | docx |
 | user_id_type | string | ⚪ | 用户 ID 类型 | open_id |
+| page_size | int | ⚪ | 分页大小，不传时按服务端默认（10） | - |
+| page_token | string | ⚪ | 分页标记，第一次请求不填 | - |
 | cancellationToken | CancellationToken | ⚪ | 取消操作令牌 | - |
 
 **响应**：
@@ -282,10 +286,10 @@ public class DocumentVersionService
 **函数签名**：
 ```csharp
 Task<FeishuNullDataApiResult?> DeleteFileVersionByFileTokenAsync(
-    [Path] string? file_token,
+    [Path] string file_token,
     [Path] string version_id,
     [Query("obj_type")] string obj_type,
-    [Query("user_id_type")] string? user_id_type = "open_id",
+    [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 

@@ -8,15 +8,11 @@
 namespace Mud.Feishu.DataModels.Mail;
 
 /// <summary>
-/// 批量创建邮件组权限成员 响应体
+/// 创建邮件组权限成员响应体
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-permission_member/create"/></para>
 /// </summary>
 [HttpJsonSerializable(SerializerClassName = "Mail")]
-public class CreateMailGroupPermissionMemberResult
+public class CreateMailGroupPermissionMemberResult : MailGroupPermissionMember
 {
-    /// <summary>
-    /// <para>添加成功后的邮件组权限成员信息列表</para>
-    /// <para>必填：否</para>
-    /// </summary>
-    [JsonPropertyName("items")]
-    public MailGroupPermissionMember[]? Items { get; set; }
+
 }

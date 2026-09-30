@@ -20,4 +20,12 @@ public class UserMailboxDraftOopsResult
     [JsonPropertyName("draft")]
     public MailDraft? Draft { get; set; }
 
+    /// <summary>
+    /// <para>草稿 Web 预览链接</para>
+    /// <para>必填：否</para>
+    /// <para>示例值：https://{domain}/mail?draftId=MWFhMjA5NzctYTE5OC00ZDcxLTkxYTctNjY1MDVjNDc4MmJm&amp;scene=send-preview&amp;mailbox=user%40company.com</para>
+    /// </summary>
+    [JsonPropertyName("reference")]
+    public string? Reference { get; set; }
+
 }

@@ -13,21 +13,35 @@ namespace Mud.Feishu.Abstractions.Authentication;
 /// 飞书应用级令牌管理器基类
 /// </summary>
 /// <remarks>
-/// 提取 TenantTokenManager 和 AppTokenManager 的公共逻辑，
-/// 包括令牌恢复、持久化、刷新等通用流程。
-/// 继承 Mud.HttpUtils v2.0 的 TokenManagerBase，获得内置并发安全、自动清理、重试等能力。
+/// <para>
+/// 提取 TenantTokenManager 和 AppTokenManager 的公共逻辑。
+/// 继承 Mud.HttpUtils v2.0 的 <see cref="TokenManagerBase"/>，获得内置并发安全、自动清理、重试等能力。
+/// </para>
+/// <para>
+/// <b>持久化接线（令牌存储桥接）</b>：注入 <see cref="ITokenStore"/> 时，基类缓存改为
+/// <see cref="TokenStoreBackedTokenCache{T}"/>（内层经 <see cref="PurgeGateTokenStoreDecorator"/>
+/// 承担清库门与读容错），于是：
+/// <list type="bullet">
+/// <item><b>恢复</b>：管线在刷新前经 <c>IAsyncTokenCache&lt;T&gt;.GetAsync</c> 读穿透直达持久层，
+/// 命中即返回（不再进入刷新路径）；存储值缺过期戳或剩余 ≤ <c>TokenRefreshThreshold</c> 一律视为未命中
+/// （D9 / TMA-15）。</item>
+/// <item><b>写穿</b>：刷新成功后基类 <c>UpdateToken</c> 写缓存即自动写穿持久层，
+/// TTL 由值适配器从 <see cref="CredentialToken.Expire"/> 推导（与管线判定同源）。</item>
+/// <item><b>失效</b>：基类 <c>InvalidateTokenAsync</c> 经桥接器写穿删除持久层槽位
+/// （TMA-01 / D1：内存与持久层双清）。</item>
+/// </list>
+/// 不注入 store 时使用与基类无参构造同款的进程内缓存，行为与改造前完全一致。
+/// </para>
 /// </remarks>
 internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
 {
     private readonly IFeishuAuthentication _authenticationApi;
     private readonly FeishuAppConfig _options;
     private readonly ILogger _logger;
-    private readonly ITokenStore? _tokenStore;
     private readonly string _tokenTypeKey;
 
     protected IFeishuAuthentication AuthenticationApi => _authenticationApi;
     protected FeishuAppConfig Options => _options;
-    protected string TokenTypeKey => _tokenTypeKey;
 
     protected FeishuAppTokenManagerBase(
         IFeishuAuthentication authenticationApi,
@@ -35,12 +49,12 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
         ILogger logger,
         ITokenStore? tokenStore,
         string tokenTypeKeyPrefix)
+        : base(BuildCache(tokenStore, options, logger, tokenTypeKeyPrefix))
     {
         _authenticationApi = authenticationApi ?? throw new ArgumentNullException(nameof(authenticationApi));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _tokenStore = tokenStore;
-        _tokenTypeKey = $"{tokenTypeKeyPrefix}:{_options.AppKey}";
+        _tokenTypeKey = BuildTokenTypeKey(options, tokenTypeKeyPrefix);
     }
 
     protected override int ExpireThresholdSeconds => _options.TokenRefreshThreshold;
@@ -50,50 +64,21 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
         return await GetOrRefreshTokenAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    // TMA-01 / P0-1 修复：失效必须级联持久层，否则 401 恢复会被 store 里的陈旧令牌短路。
-    // D1 契约：ITenantTokenManager / IAppTokenManager 的失效语义统一为「内存 + ITokenStore 双清」。
-    // 清 store 失败不阻断失效流程（catch when (ex is not OperationCanceledException) + LogWarning），
-    // 保证 401 恢复不因存储抖动而中断。
-    public override async Task<TokenResult> InvalidateTokenAsync(string[]? scopes, CancellationToken cancellationToken = default)
-    {
-        if (_tokenStore != null)
-        {
-            try
-            {
-                await _tokenStore.RemoveAsync(_tokenTypeKey, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                _logger.LogWarning(ex,
-                    "TMA-01: 清除 ITokenStore 中的令牌失败（不阻断失效流程）。TokenType: {TokenType}, AppId: {AppId}",
-                    _tokenTypeKey, _options.AppId);
-            }
-        }
-
-        return await base.InvalidateTokenAsync(scopes, cancellationToken).ConfigureAwait(false);
-    }
-
     protected override async Task<CredentialToken> RefreshTokenCoreAsync(CancellationToken cancellationToken)
     {
-        var restoredToken = await TryRestoreFromStoreAsync(cancellationToken).ConfigureAwait(false);
-        if (restoredToken != null)
-            return restoredToken;
-
         _logger.LogInformation("Refreshing {TokenType} for AppId: {AppId}", _tokenTypeKey, _options.AppId);
 
         var result = await RefreshTokenFromApiAsync(cancellationToken).ConfigureAwait(false);
 
         // v1.1 修复 P0：飞书 API 异常响应时 result.AccessToken 可能为 null，
-        // 此时 PersistTokenAsync 会抛 ArgumentNullException（语义不准）。
-        // 在此提前校验，抛 InvalidOperationException 并附带上下文信息，便于诊断。
+        // 空值属于状态无效而非参数传递错误，抛 InvalidOperationException 并附带上下文信息，便于诊断。
         if (string.IsNullOrEmpty(result.AccessToken))
         {
             throw new InvalidOperationException(
                 $"飞书 API 刷新 {_tokenTypeKey} 令牌失败：返回的 AccessToken 为空。AppId: {_options.AppId}");
         }
 
-        await PersistTokenAsync(_tokenTypeKey, result.AccessToken, result.ExpireSeconds, cancellationToken).ConfigureAwait(false);
-
+        // 持久化由基类 UpdateToken → 桥接器写穿承担（不再手工编码落库）。
         return new CredentialToken
         {
             AccessToken = result.AccessToken,
@@ -103,112 +88,74 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
 
     protected abstract Task<(string? AccessToken, int ExpireSeconds)> RefreshTokenFromApiAsync(CancellationToken cancellationToken);
 
-    private async Task<CredentialToken?> TryRestoreFromStoreAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// 构建令牌缓存：有持久化存储时装配桥接器，否则退回与基类无参构造一致的进程内缓存。
+    /// </summary>
+    /// <remarks>
+    /// 本方法在基类构造链上执行，<b>不</b>承担参数校验（构造函数体统一负责，保持既有异常类型与参数名）。
+    /// 桥接器与装饰器在此处包装 per-app store，使「直接 new 管理器」的路径同样获得读穿透、写穿与门控。
+    /// </remarks>
+    private static ITokenCache<CredentialToken> BuildCache(
+        ITokenStore? tokenStore,
+        IOptions<FeishuAppConfig>? options,
+        ILogger logger,
+        string tokenTypeKeyPrefix)
     {
-        if (_tokenStore == null)
-            return null;
+        if (tokenStore is null)
+            return new ConcurrentDictionaryTokenCache<CredentialToken>();
 
-        // TMR2-P1-5：凭据变更清库进行中则跳过 store（等价于 D10「清库完成前不得恢复旧令牌」）。
-        // 修复前该约束由 Phase-P 在 IOptionsMonitor.OnChange 回调线程上同步等待清库完成来维持，
-        // 现将约束下沉到恢复路径，回调线程不再阻塞（详见 TokenStorePurgeGate）。
-        if (ShouldSkipStoreRestoreForPendingPurge())
-            return null;
+        var appKey = options?.Value?.AppKey ?? string.Empty;
+        var tokenTypeKey = BuildTokenTypeKey(options, tokenTypeKeyPrefix);
 
-        try
-        {
-            var storedValue = await _tokenStore.GetAccessTokenAsync(_tokenTypeKey, cancellationToken).ConfigureAwait(false);
-            if (string.IsNullOrEmpty(storedValue))
-                return null;
-
-            var (accessToken, expireTimestampMs) = TokenStoreHelper.DecodeStoredToken(storedValue!);
-
-            if (expireTimestampMs > 0)
-            {
-                var remainingMs = expireTimestampMs - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                // TMA2-04 / D9：恢复阈值与缓存有效性阈值同源（TokenRefreshThreshold）。
-                // 不变式：命中 ⇒ remaining > threshold*1000 ⇒ expire - threshold > now ⇒ 缓存视角下仍有效。
-                // 此前取 threshold/2 导致"恢复命中 → 立即判失效 → 再恢复"的自循环。
-                var restoreThresholdMs = _options.TokenRefreshThreshold * 1000L;
-                if (remainingMs <= restoreThresholdMs)
-                {
-                    _logger.LogDebug("Restored token from ITokenStore is near expiration for AppId: {AppId}, skipping", _options.AppId);
-                    return null;
-                }
-
-                _logger.LogDebug("Restored token from ITokenStore for AppId: {AppId}, TokenType: {TokenType}", _options.AppId, _tokenTypeKey);
-                return new CredentialToken
-                {
-                    AccessToken = accessToken,
-                    Expire = expireTimestampMs
-                };
-            }
-
-            // TMA-15 / P2-2 修复：无过期信息的存储值不再编造有效期，改为返回 null（走 API 刷新）。
-            _logger.LogWarning(
-                "存储值缺少过期时间戳，按未命中处理（TMA-15）。AppId: {AppId}, TokenType: {TokenType}",
-                _options.AppId, _tokenTypeKey);
-            return null;
-        }
-        // TM-03 修复：过滤 OperationCanceledException，避免取消请求被误判为"持久化失败"。
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            _logger.LogWarning(ex, "Failed to restore token from ITokenStore for AppId: {AppId}", _options.AppId);
-        }
-
-        return null;
+        return new TokenStoreBackedTokenCache<CredentialToken>(
+            new PurgeGateTokenStoreDecorator(tokenStore, appKey, logger),
+            valueAdapter: AdaptCredentialToken,
+            valueFactory: CreateCredentialToken,
+            // BD-1：键映射为常量 tokenType —— 物理键派生（TokenKeyBuilder）与改造前逐字节一致。
+            storeKeyMapper: _ => tokenTypeKey,
+            logger: logger);
     }
 
     /// <summary>
-    /// TMR2-P1-5：检查本应用的「待清库」门；返回 true 表示本次必须跳过 store 恢复。
+    /// 令牌类型键（store 侧 tokenType / 日志维度），构造口径与键映射保持一致。
+    /// </summary>
+    private static string BuildTokenTypeKey(IOptions<FeishuAppConfig>? options, string tokenTypeKeyPrefix)
+        => $"{tokenTypeKeyPrefix}:{options?.Value?.AppKey}";
+
+    /// <summary>
+    /// 写穿方向的值适配：<see cref="CredentialToken"/> → 存储三元组（保持 <c>{expireMs}|{token}</c> 格式）。
     /// </summary>
     /// <remarks>
-    /// <see cref="TokenStorePurgeGate.PurgeGateState.Pending"/> → 跳过（D10）；
-    /// <see cref="TokenStorePurgeGate.PurgeGateState.TimedOut"/> → fail-open（记一次 Warning 后按无门处理，
-    /// 绝不因门而永久禁用 store 恢复）。
+    /// 租户 / 应用令牌无 refresh；TTL 由 <see cref="CredentialToken.Expire"/> 推导，
+    /// 剩余 ≤ 0 时返回 0 使桥接器<b>跳过</b>访问令牌写穿（不产生 1 秒 TTL 的垃圾条目）。
     /// </remarks>
-    /// <returns>true 表示应跳过 store 恢复。</returns>
-    private bool ShouldSkipStoreRestoreForPendingPurge()
+    private static TokenStoreValue? AdaptCredentialToken(CredentialToken? token)
+        => token is null
+            ? null
+            : new TokenStoreValue(
+                accessToken: FeishuTokenBridgeCodec.EncodeToken(token.AccessToken, token.Expire),
+                refreshToken: null,
+                expiresInSeconds: FeishuTokenBridgeCodec.RemainingSeconds(token.Expire));
+
+    /// <summary>
+    /// 读穿透方向的值工厂：存储三元组 → <see cref="CredentialToken"/>。
+    /// </summary>
+    /// <remarks>
+    /// 解码失败（TMA-15 旧格式 / 损坏值，无 <c>{expireMs}|</c> 前缀）或令牌为空时返回 null ⇒ 读穿透视为未命中。
+    /// <c>IssuedAt = 0</c> 是存储格式不含签发时间所致的保守代价（TMF-06 方案 A）：
+    /// 管线有效期判定退化为配置阈值 <c>TokenRefreshThreshold</c>，与改造前的恢复阈值（D9）数值与判定完全一致。
+    /// </remarks>
+    private static CredentialToken? CreateCredentialToken(TokenStoreValue value)
     {
-        switch (TokenStorePurgeGate.Query(_options.AppKey))
+        var (accessToken, expireTimestampMs) = FeishuTokenBridgeCodec.DecodeToken(value.AccessToken);
+        if (string.IsNullOrEmpty(accessToken) || expireTimestampMs <= 0)
+            return null;
+
+        return new CredentialToken
         {
-            case TokenStorePurgeGate.PurgeGateState.Pending:
-                _logger.LogDebug(
-                    "凭据变更清库进行中，跳过 ITokenStore 恢复以避免恢复旧凭据令牌（D10）。TokenType: {TokenType}, AppId: {AppId}",
-                    _tokenTypeKey, _options.AppId);
-                return true;
-
-            case TokenStorePurgeGate.PurgeGateState.TimedOut:
-                _logger.LogWarning(
-                    "凭据变更清库门超过 {TimeoutSeconds}s 未撤除，已 fail-open：恢复路径重新启用 store 读取，" +
-                    "可能存在旧凭据令牌残留。TokenType: {TokenType}, AppId: {AppId}",
-                    TokenStorePurgeGate.SafetyTimeoutSeconds, _tokenTypeKey, _options.AppId);
-                return false;
-
-            default:
-                return false;
-        }
+            AccessToken = accessToken,
+            Expire = expireTimestampMs,
+            IssuedAt = 0
+        };
     }
-
-    private async Task PersistTokenAsync(string tokenType, string? accessToken, long expiresInSeconds, CancellationToken cancellationToken)
-    {
-        // v1.1 修正：参数为空属于状态无效而非参数传递错误，抛 InvalidOperationException 更准确。
-        // 正常流程下 RefreshTokenCoreAsync 已在上游校验，此处为防御性检查。
-        if (string.IsNullOrEmpty(accessToken))
-            throw new InvalidOperationException($"持久化令牌失败：accessToken 为空。TokenType: {tokenType}");
-        if (_tokenStore == null)
-            return;
-
-        try
-        {
-            var expireTimestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + (expiresInSeconds * 1000L);
-            var encodedValue = TokenStoreHelper.EncodeStoredToken(accessToken!, expireTimestampMs);
-            await _tokenStore.SetAccessTokenAsync(tokenType, encodedValue, expiresInSeconds, cancellationToken).ConfigureAwait(false);
-        }
-        // TM-03 修复：过滤 OperationCanceledException，避免取消请求被误判为"持久化失败"。
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            _logger.LogWarning(ex, "Failed to persist token to ITokenStore for tokenType: {TokenType}", tokenType);
-        }
-    }
-
 }

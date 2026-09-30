@@ -22,16 +22,12 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
     public CapabilityEntry(
         string interfaceName,
         string toolName,
-        string moduleName,
         ToolIdentity identity,
         string httpMethod,
         string routeTemplate,
         string methodName,
-        string returnTypeMetadataName,
         IReadOnlyList<CapabilityParameter> parameters,
         string? docSummary,
-        bool hasFileUpload,
-        bool returnsBinary,
         ToolRisk risk,
         IReadOnlyList<string> scopes,
         string? outputSchemaJson = null,
@@ -39,16 +35,12 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
     {
         InterfaceName = interfaceName;
         ToolName = toolName;
-        ModuleName = moduleName;
         Identity = identity;
         HttpMethod = httpMethod;
         RouteTemplate = routeTemplate;
         MethodName = methodName;
-        ReturnTypeMetadataName = returnTypeMetadataName;
         Parameters = parameters;
         DocSummary = docSummary;
-        HasFileUpload = hasFileUpload;
-        ReturnsBinary = returnsBinary;
         Risk = risk;
         Scopes = scopes;
         OutputSchemaJson = outputSchemaJson;
@@ -57,16 +49,12 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
 
     public string InterfaceName { get; }
     public string ToolName { get; }
-    public string ModuleName { get; }
     public ToolIdentity Identity { get; }
     public string HttpMethod { get; }
     public string RouteTemplate { get; }
     public string MethodName { get; }
-    public string ReturnTypeMetadataName { get; }
     public IReadOnlyList<CapabilityParameter> Parameters { get; }
     public string? DocSummary { get; }
-    public bool HasFileUpload { get; }
-    public bool ReturnsBinary { get; }
     public ToolRisk Risk { get; }
     public IReadOnlyList<string> Scopes { get; }
 
@@ -103,16 +91,12 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
 
         return string.Equals(InterfaceName, other.InterfaceName, StringComparison.Ordinal)
             && string.Equals(ToolName, other.ToolName, StringComparison.Ordinal)
-            && string.Equals(ModuleName, other.ModuleName, StringComparison.Ordinal)
             && Identity == other.Identity
             && string.Equals(HttpMethod, other.HttpMethod, StringComparison.Ordinal)
             && string.Equals(RouteTemplate, other.RouteTemplate, StringComparison.Ordinal)
             && string.Equals(MethodName, other.MethodName, StringComparison.Ordinal)
-            && string.Equals(ReturnTypeMetadataName, other.ReturnTypeMetadataName, StringComparison.Ordinal)
             && ParametersEqual(Parameters, other.Parameters)
             && string.Equals(DocSummary ?? string.Empty, other.DocSummary ?? string.Empty, StringComparison.Ordinal)
-            && HasFileUpload == other.HasFileUpload
-            && ReturnsBinary == other.ReturnsBinary
             && Risk == other.Risk
             && ScopesEqual(Scopes, other.Scopes)
             && string.Equals(OutputSchemaJson ?? string.Empty, other.OutputSchemaJson ?? string.Empty, StringComparison.Ordinal)
@@ -145,12 +129,10 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
             var hash = 17;
             hash = (hash * 31) + comparer.GetHashCode(InterfaceName);
             hash = (hash * 31) + comparer.GetHashCode(ToolName);
-            hash = (hash * 31) + comparer.GetHashCode(ModuleName);
             hash = (hash * 31) + (int)Identity;
             hash = (hash * 31) + comparer.GetHashCode(HttpMethod);
             hash = (hash * 31) + comparer.GetHashCode(RouteTemplate);
             hash = (hash * 31) + comparer.GetHashCode(MethodName);
-            hash = (hash * 31) + comparer.GetHashCode(ReturnTypeMetadataName);
 
             hash = (hash * 31) + Parameters.Count;
             foreach (var parameter in Parameters)
@@ -159,8 +141,6 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
             }
 
             hash = (hash * 31) + comparer.GetHashCode(DocSummary ?? string.Empty);
-            hash = (hash * 31) + (HasFileUpload ? 1 : 0);
-            hash = (hash * 31) + (ReturnsBinary ? 1 : 0);
             hash = (hash * 31) + (int)Risk;
 
             hash = (hash * 31) + Scopes.Count;

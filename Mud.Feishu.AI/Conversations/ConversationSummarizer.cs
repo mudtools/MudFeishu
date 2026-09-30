@@ -95,8 +95,7 @@ public sealed class ConversationSummarizer
         _logger = logger;
     }
 
-    /// <summary>会话历史是否需要摘要（条数阈值判定；仅诊断/测试用，主流程走 token 维度重载）。</summary>
-    public bool ShouldSummarize(int historyCount) => _summaryThreshold > 0 && historyCount >= _summaryThreshold;
+    // R3-09：已删除 ShouldSummarize(int) 单参重载——全仓零调用方，主流程走双参重载。
 
     /// <summary>
     /// 会话历史是否需要摘要（AI-FD-D12 P2D-3a：条数与 token 双窗口，<b>先触发者生效</b>——

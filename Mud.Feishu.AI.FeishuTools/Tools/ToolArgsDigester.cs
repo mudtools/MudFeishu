@@ -17,6 +17,12 @@ namespace Mud.Feishu.AI.FeishuTools.Tools;
 internal static class ToolArgsDigester
 {
     /// <summary>敏感键名清单（键名命中即掩码值；集中维护，对齐 MaskSensitiveData 精神）。</summary>
+    /// <remarks>
+    /// R3-05：此处为<b>入站审计口径</b>（子串匹配，宁可多掩），与出站脱敏
+    /// <see cref="SecurityTextPrimitives.CredentialKeys"/>（精确匹配 + 非 JSON 形态）是<b>有意分离</b>的——
+    /// 审计侧可接受过掩（摘要不影响模型），出站侧不可误伤标识类字段（会影响模型可用性）。
+    /// 两侧键集的<b>差异是有意的</b>，合并会引入误伤。
+    /// </remarks>
     private static readonly string[] SensitiveKeys =
     [
         "token", "secret", "password", "authorization", "api_key", "apikey", "app_secret", "credential",

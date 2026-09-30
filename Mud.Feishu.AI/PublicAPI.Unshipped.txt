@@ -1,0 +1,501 @@
+﻿~override Mud.Feishu.AI.Agents.FeishuGuidanceBlock.Equals(object obj) -> bool
+~override Mud.Feishu.AI.Agents.FeishuGuidanceBlock.ToString() -> string
+~override Mud.Feishu.AI.Tools.AttachmentSource.Equals(object obj) -> bool
+~override Mud.Feishu.AI.Tools.AttachmentSource.ToString() -> string
+~override Mud.Feishu.AI.Tools.StagedAttachment.Equals(object obj) -> bool
+~override Mud.Feishu.AI.Tools.StagedAttachment.ToString() -> string
+abstract Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.BuildRequestAsync(T! eventData, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Mud.Feishu.AI.Conversations.ConversationRequest!>!
+abstract Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.ReplyAsync(Mud.Feishu.AI.Conversations.ConversationRequest! request, string! responseText, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+abstract Mud.Feishu.AI.Tools.FeishuAgentToolSource.GetTools(System.IServiceProvider! serviceProvider) -> System.Collections.Generic.IReadOnlyList<Microsoft.Extensions.AI.AIFunction!>!
+const Mud.Feishu.AI.Agents.FeishuAgentOptions.SectionName = "FeishuAgent" -> string!
+const Mud.Feishu.AI.Agents.FeishuGuidanceComposer.MaxGuidanceLength = 2048 -> int
+const Mud.Feishu.AI.Knowledge.AilyKnowledgeOptions.SectionName = "FeishuAilyKnowledge" -> string!
+const Mud.Feishu.AI.Knowledge.KnowledgeContextAssembler.ChunkPreviewLength = 500 -> int
+const Mud.Feishu.AI.Knowledge.KnowledgeContextAssembler.DefaultOrder = 100 -> int
+const Mud.Feishu.AI.Tools.ContentSafetyModes.AllowedValuesText = "off / warn / block" -> string!
+const Mud.Feishu.AI.Tools.ContentSafetyModes.Block = "block" -> string!
+const Mud.Feishu.AI.Tools.ContentSafetyModes.Off = "off" -> string!
+const Mud.Feishu.AI.Tools.ContentSafetyModes.Warn = "warn" -> string!
+const Mud.Feishu.AI.Tools.FeishuToolIdentityNames.AllowedValuesText = "tenant / user" -> string!
+const Mud.Feishu.AI.Tools.FeishuToolIdentityNames.Tenant = "tenant" -> string!
+const Mud.Feishu.AI.Tools.FeishuToolIdentityNames.User = "user" -> string!
+const Mud.Feishu.AI.Tools.FeishuToolRiskNames.AllowedValuesText = "read / write / high-risk-write" -> string!
+const Mud.Feishu.AI.Tools.FeishuToolRiskNames.HighRiskWrite = "high-risk-write" -> string!
+const Mud.Feishu.AI.Tools.FeishuToolRiskNames.Read = "read" -> string!
+const Mud.Feishu.AI.Tools.FeishuToolRiskNames.Write = "write" -> string!
+Mud.Feishu.AI.Agents.FeishuAgent
+Mud.Feishu.AI.Agents.FeishuAgent.FeishuAgent(Microsoft.Extensions.AI.IChatClient! chatClient, Mud.Feishu.AI.Agents.FeishuAgentOptions! options, Mud.Feishu.Abstractions.Conversations.IConversationStore? conversationStore = null, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null, System.IServiceProvider? services = null, System.Collections.Generic.IReadOnlyList<Microsoft.Extensions.AI.AIFunction!>? tools = null, System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Agents.FeishuGuidanceBlock>? domainGuidance = null, Mud.Feishu.AI.Conversations.ConversationSummarizer? summarizer = null) -> void
+Mud.Feishu.AI.Agents.FeishuAgent.GetOrCreateSessionAsync(string! conversationKey, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Agents.AI.AgentSession!>!
+Mud.Feishu.AI.Agents.FeishuAgent.Guidance.get -> Mud.Feishu.AI.Agents.FeishuGuidanceResult!
+Mud.Feishu.AI.Agents.FeishuAgent.SaveSessionAsync(string! conversationKey, Microsoft.Agents.AI.AgentSession! session, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Mud.Feishu.AI.Agents.FeishuAgentOptions
+Mud.Feishu.AI.Agents.FeishuAgentOptions.AllowedIdentities.get -> string![]!
+Mud.Feishu.AI.Agents.FeishuAgentOptions.AllowedIdentities.set -> void
+Mud.Feishu.AI.Agents.FeishuAgentOptions.ContentSafetyMode.get -> string!
+Mud.Feishu.AI.Agents.FeishuAgentOptions.ContentSafetyMode.set -> void
+Mud.Feishu.AI.Agents.FeishuAgentOptions.EnforceToolAuthorization.get -> bool
+Mud.Feishu.AI.Agents.FeishuAgentOptions.EnforceToolAuthorization.set -> void
+Mud.Feishu.AI.Agents.FeishuAgentOptions.FeishuAgentOptions() -> void
+Mud.Feishu.AI.Agents.FeishuAgentOptions.Instructions.get -> string!
+Mud.Feishu.AI.Agents.FeishuAgentOptions.Instructions.set -> void
+Mud.Feishu.AI.Agents.FeishuAgentOptions.MaxHistoryMessages.get -> int
+Mud.Feishu.AI.Agents.FeishuAgentOptions.MaxHistoryMessages.set -> void
+Mud.Feishu.AI.Agents.FeishuAgentOptions.MaxHistoryTokens.get -> int
+Mud.Feishu.AI.Agents.FeishuAgentOptions.MaxHistoryTokens.set -> void
+Mud.Feishu.AI.Agents.FeishuAgentOptions.MaxStreamChunkLength.get -> int
+Mud.Feishu.AI.Agents.FeishuAgentOptions.MaxStreamChunkLength.set -> void
+Mud.Feishu.AI.Agents.FeishuAgentOptions.MaxToolResultLength.get -> int
+Mud.Feishu.AI.Agents.FeishuAgentOptions.MaxToolResultLength.set -> void
+Mud.Feishu.AI.Agents.FeishuAgentOptions.MaxToolRisk.get -> string!
+Mud.Feishu.AI.Agents.FeishuAgentOptions.MaxToolRisk.set -> void
+Mud.Feishu.AI.Agents.FeishuAgentOptions.ModelServiceKey.get -> string?
+Mud.Feishu.AI.Agents.FeishuAgentOptions.ModelServiceKey.set -> void
+Mud.Feishu.AI.Agents.FeishuAgentOptions.Name.get -> string!
+Mud.Feishu.AI.Agents.FeishuAgentOptions.Name.set -> void
+Mud.Feishu.AI.Agents.FeishuAgentOptions.SummaryThreshold.get -> int
+Mud.Feishu.AI.Agents.FeishuAgentOptions.SummaryThreshold.set -> void
+Mud.Feishu.AI.Agents.FeishuAgentOptions.Tools.get -> string![]!
+Mud.Feishu.AI.Agents.FeishuAgentOptions.Tools.set -> void
+Mud.Feishu.AI.Agents.FeishuAgentOptions.Validate() -> void
+Mud.Feishu.AI.Agents.FeishuAgentOptions.WriteAllowList.get -> string![]!
+Mud.Feishu.AI.Agents.FeishuAgentOptions.WriteAllowList.set -> void
+Mud.Feishu.AI.Agents.FeishuAgentOptionsValidator
+Mud.Feishu.AI.Agents.FeishuAgentOptionsValidator.FeishuAgentOptionsValidator() -> void
+Mud.Feishu.AI.Agents.FeishuAgentOptionsValidator.Validate(string? name, Mud.Feishu.AI.Agents.FeishuAgentOptions! options) -> Microsoft.Extensions.Options.ValidateOptionsResult!
+Mud.Feishu.AI.Agents.FeishuGuidanceBlock
+Mud.Feishu.AI.Agents.FeishuGuidanceBlock.Content.get -> string!
+Mud.Feishu.AI.Agents.FeishuGuidanceBlock.Content.init -> void
+Mud.Feishu.AI.Agents.FeishuGuidanceBlock.Deconstruct(out string! Domain, out string! Content) -> void
+Mud.Feishu.AI.Agents.FeishuGuidanceBlock.Domain.get -> string!
+Mud.Feishu.AI.Agents.FeishuGuidanceBlock.Domain.init -> void
+Mud.Feishu.AI.Agents.FeishuGuidanceBlock.Equals(Mud.Feishu.AI.Agents.FeishuGuidanceBlock other) -> bool
+Mud.Feishu.AI.Agents.FeishuGuidanceBlock.FeishuGuidanceBlock() -> void
+Mud.Feishu.AI.Agents.FeishuGuidanceBlock.FeishuGuidanceBlock(string! Domain, string! Content) -> void
+Mud.Feishu.AI.Agents.FeishuGuidanceComposer
+Mud.Feishu.AI.Agents.FeishuGuidanceResult
+Mud.Feishu.AI.Agents.FeishuGuidanceResult.<Clone>$() -> Mud.Feishu.AI.Agents.FeishuGuidanceResult!
+Mud.Feishu.AI.Agents.FeishuGuidanceResult.Deconstruct(out string! Instructions, out bool Truncated, out System.Collections.Generic.IReadOnlyList<string!>! IncludedDomains, out System.Collections.Generic.IReadOnlyList<string!>! OmittedDomains) -> void
+Mud.Feishu.AI.Agents.FeishuGuidanceResult.Equals(Mud.Feishu.AI.Agents.FeishuGuidanceResult? other) -> bool
+Mud.Feishu.AI.Agents.FeishuGuidanceResult.FeishuGuidanceResult(string! Instructions, bool Truncated, System.Collections.Generic.IReadOnlyList<string!>! IncludedDomains, System.Collections.Generic.IReadOnlyList<string!>! OmittedDomains) -> void
+Mud.Feishu.AI.Agents.FeishuGuidanceResult.IncludedDomains.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Mud.Feishu.AI.Agents.FeishuGuidanceResult.IncludedDomains.init -> void
+Mud.Feishu.AI.Agents.FeishuGuidanceResult.Instructions.get -> string!
+Mud.Feishu.AI.Agents.FeishuGuidanceResult.Instructions.init -> void
+Mud.Feishu.AI.Agents.FeishuGuidanceResult.OmittedDomains.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Mud.Feishu.AI.Agents.FeishuGuidanceResult.OmittedDomains.init -> void
+Mud.Feishu.AI.Agents.FeishuGuidanceResult.Truncated.get -> bool
+Mud.Feishu.AI.Agents.FeishuGuidanceResult.Truncated.init -> void
+Mud.Feishu.AI.Channels.IMessageChannel
+Mud.Feishu.AI.Channels.IMessageChannel.BeginAsync(string! appKey, string! chatId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+Mud.Feishu.AI.Channels.IMessageChannel.FlushAsync(string! appKey, string! chatId, string! messageId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Mud.Feishu.AI.Channels.IMessageChannel.WriteStreamAsync(string! appKey, string! chatId, string! messageId, string! delta, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Mud.Feishu.AI.Channels.IMessageChannelTargetResolver
+Mud.Feishu.AI.Channels.IMessageChannelTargetResolver.ResolveStreamTarget(Mud.Feishu.AI.Conversations.ConversationRequest! request) -> string?
+Mud.Feishu.AI.Channels.StreamingRequestContext
+Mud.Feishu.AI.Conversations.ConversationRequest
+Mud.Feishu.AI.Conversations.ConversationRequest.<Clone>$() -> Mud.Feishu.AI.Conversations.ConversationRequest!
+Mud.Feishu.AI.Conversations.ConversationRequest.AppKey.get -> string!
+Mud.Feishu.AI.Conversations.ConversationRequest.AppKey.init -> void
+Mud.Feishu.AI.Conversations.ConversationRequest.ChatId.get -> string?
+Mud.Feishu.AI.Conversations.ConversationRequest.ChatId.init -> void
+Mud.Feishu.AI.Conversations.ConversationRequest.ConversationRequest(string! AppKey, Mud.Feishu.Abstractions.Conversations.ConversationScope Scope, string! SubjectId, string! SenderId, string! MessageId, string? MentionedText, string? ChatId = null, string? ParentId = null) -> void
+Mud.Feishu.AI.Conversations.ConversationRequest.Deconstruct(out string! AppKey, out Mud.Feishu.Abstractions.Conversations.ConversationScope Scope, out string! SubjectId, out string! SenderId, out string! MessageId, out string? MentionedText, out string? ChatId, out string? ParentId) -> void
+Mud.Feishu.AI.Conversations.ConversationRequest.Equals(Mud.Feishu.AI.Conversations.ConversationRequest? other) -> bool
+Mud.Feishu.AI.Conversations.ConversationRequest.MentionedText.get -> string?
+Mud.Feishu.AI.Conversations.ConversationRequest.MentionedText.init -> void
+Mud.Feishu.AI.Conversations.ConversationRequest.MessageId.get -> string!
+Mud.Feishu.AI.Conversations.ConversationRequest.MessageId.init -> void
+Mud.Feishu.AI.Conversations.ConversationRequest.ParentId.get -> string?
+Mud.Feishu.AI.Conversations.ConversationRequest.ParentId.init -> void
+Mud.Feishu.AI.Conversations.ConversationRequest.Scope.get -> Mud.Feishu.Abstractions.Conversations.ConversationScope
+Mud.Feishu.AI.Conversations.ConversationRequest.Scope.init -> void
+Mud.Feishu.AI.Conversations.ConversationRequest.SenderId.get -> string!
+Mud.Feishu.AI.Conversations.ConversationRequest.SenderId.init -> void
+Mud.Feishu.AI.Conversations.ConversationRequest.SubjectId.get -> string!
+Mud.Feishu.AI.Conversations.ConversationRequest.SubjectId.init -> void
+Mud.Feishu.AI.Conversations.ConversationSummarizer
+Mud.Feishu.AI.Conversations.ConversationSummarizer.ConversationSummarizer(Microsoft.Extensions.AI.IChatClient! chatClient, Mud.Feishu.AI.Agents.FeishuAgentOptions! options, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+Mud.Feishu.AI.Conversations.ConversationSummarizer.ShouldSummarize(int historyCount, int historyTokens) -> bool
+Mud.Feishu.AI.Conversations.ConversationSummarizer.SummarizeIfNeededAsync(Microsoft.Agents.AI.AgentSession! session, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Mud.Feishu.AI.Conversations.KeyedConversationGate
+Mud.Feishu.AI.Conversations.KeyedConversationGate.AcquireAsync(string! conversationKey, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Mud.Feishu.Abstractions.Conversations.IConversationGateHandle!>!
+Mud.Feishu.AI.Conversations.KeyedConversationGate.KeyedConversationGate() -> void
+Mud.Feishu.AI.Conversations.MemoryConversationStore
+Mud.Feishu.AI.Conversations.MemoryConversationStore.DeleteAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Mud.Feishu.AI.Conversations.MemoryConversationStore.GetAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
+Mud.Feishu.AI.Conversations.MemoryConversationStore.MemoryConversationStore(System.TimeSpan? ttl = null, System.Func<System.DateTimeOffset>? utcNow = null) -> void
+Mud.Feishu.AI.Conversations.MemoryConversationStore.SaveAsync(string! key, string! serializedSession, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>
+Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.ApprovalChannel.get -> Mud.Feishu.AI.Tools.IFeishuToolApprovalChannel?
+Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.ContextAssemblers.get -> System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Events.IContextAssembler!>!
+Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.ConversationalFeishuEventHandler(Mud.Feishu.AI.Agents.FeishuAgent! agent, Mud.Feishu.Abstractions.Services.IFeishuEventDeduplicator! businessDeduplicator, Microsoft.Extensions.Logging.ILogger? logger = null, System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Events.IContextAssembler!>? contextAssemblers = null, Mud.Feishu.AI.Tools.IFeishuToolContextAccessor? toolContextAccessor = null, Mud.Feishu.AI.Channels.IMessageChannel? messageChannel = null, Mud.Feishu.Abstractions.Conversations.IConversationGate? conversationGate = null, Mud.Feishu.Abstractions.Services.IAppKeyAccessor? appKeyAccessor = null, Mud.Feishu.AI.Tools.IFeishuToolApprovalChannel? approvalChannel = null) -> void
+Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.ConversationGate.get -> Mud.Feishu.Abstractions.Conversations.IConversationGate?
+Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.HasAppKeyContext.get -> bool
+Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.MessageChannel.get -> Mud.Feishu.AI.Channels.IMessageChannel?
+Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.ToolContextAccessor.get -> Mud.Feishu.AI.Tools.IFeishuToolContextAccessor?
+Mud.Feishu.AI.Events.IContextAssembler
+Mud.Feishu.AI.Events.IContextAssembler.AssembleAsync(Mud.Feishu.AI.Conversations.ConversationRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
+Mud.Feishu.AI.Events.IContextAssembler.Order.get -> int
+Mud.Feishu.AI.Extensions.FeishuAgentServiceCollectionExtensions
+Mud.Feishu.AI.Knowledge.AilyKnowledgeOptions
+Mud.Feishu.AI.Knowledge.AilyKnowledgeOptions.AilyKnowledgeOptions() -> void
+Mud.Feishu.AI.Knowledge.AilyKnowledgeOptions.AppId.get -> string!
+Mud.Feishu.AI.Knowledge.AilyKnowledgeOptions.AppId.set -> void
+Mud.Feishu.AI.Knowledge.AilyKnowledgeOptions.DataAssetIds.get -> string![]?
+Mud.Feishu.AI.Knowledge.AilyKnowledgeOptions.DataAssetIds.set -> void
+Mud.Feishu.AI.Knowledge.AilyKnowledgeOptions.DataAssetTagIds.get -> string![]?
+Mud.Feishu.AI.Knowledge.AilyKnowledgeOptions.DataAssetTagIds.set -> void
+Mud.Feishu.AI.Knowledge.AilyKnowledgeOptions.Validate() -> void
+Mud.Feishu.AI.Knowledge.AilyKnowledgeOptionsValidator
+Mud.Feishu.AI.Knowledge.AilyKnowledgeOptionsValidator.AilyKnowledgeOptionsValidator() -> void
+Mud.Feishu.AI.Knowledge.AilyKnowledgeOptionsValidator.Validate(string? name, Mud.Feishu.AI.Knowledge.AilyKnowledgeOptions! options) -> Microsoft.Extensions.Options.ValidateOptionsResult!
+Mud.Feishu.AI.Knowledge.IFeishuKnowledgeBase
+Mud.Feishu.AI.Knowledge.IFeishuKnowledgeBase.AskAsync(string! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Mud.Feishu.AI.Knowledge.KnowledgeAnswer!>!
+Mud.Feishu.AI.Knowledge.IRetriever
+Mud.Feishu.AI.Knowledge.IRetriever.RetrieveAsync(string! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Knowledge.RetrievedChunk!>!>!
+Mud.Feishu.AI.Knowledge.KnowledgeAnswer
+Mud.Feishu.AI.Knowledge.KnowledgeAnswer.<Clone>$() -> Mud.Feishu.AI.Knowledge.KnowledgeAnswer!
+Mud.Feishu.AI.Knowledge.KnowledgeAnswer.AnswerText.get -> string?
+Mud.Feishu.AI.Knowledge.KnowledgeAnswer.AnswerText.init -> void
+Mud.Feishu.AI.Knowledge.KnowledgeAnswer.Chunks.get -> System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Knowledge.RetrievedChunk!>!
+Mud.Feishu.AI.Knowledge.KnowledgeAnswer.Chunks.init -> void
+Mud.Feishu.AI.Knowledge.KnowledgeAnswer.Deconstruct(out string! Question, out string? AnswerText, out bool HasAnswer, out System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Knowledge.RetrievedChunk!>! Chunks) -> void
+Mud.Feishu.AI.Knowledge.KnowledgeAnswer.Equals(Mud.Feishu.AI.Knowledge.KnowledgeAnswer? other) -> bool
+Mud.Feishu.AI.Knowledge.KnowledgeAnswer.HasAnswer.get -> bool
+Mud.Feishu.AI.Knowledge.KnowledgeAnswer.HasAnswer.init -> void
+Mud.Feishu.AI.Knowledge.KnowledgeAnswer.KnowledgeAnswer(string! Question, string? AnswerText, bool HasAnswer, System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Knowledge.RetrievedChunk!>! Chunks) -> void
+Mud.Feishu.AI.Knowledge.KnowledgeAnswer.Question.get -> string!
+Mud.Feishu.AI.Knowledge.KnowledgeAnswer.Question.init -> void
+Mud.Feishu.AI.Knowledge.KnowledgeAnswer.Sources.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Mud.Feishu.AI.Knowledge.KnowledgeContextAssembler
+Mud.Feishu.AI.Knowledge.KnowledgeContextAssembler.AssembleAsync(Mud.Feishu.AI.Conversations.ConversationRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
+Mud.Feishu.AI.Knowledge.KnowledgeContextAssembler.KnowledgeContextAssembler(Mud.Feishu.AI.Knowledge.IRetriever! retriever, int order = 100) -> void
+Mud.Feishu.AI.Knowledge.KnowledgeContextAssembler.Order.get -> int
+Mud.Feishu.AI.Knowledge.RetrievedChunk
+Mud.Feishu.AI.Knowledge.RetrievedChunk.<Clone>$() -> Mud.Feishu.AI.Knowledge.RetrievedChunk!
+Mud.Feishu.AI.Knowledge.RetrievedChunk.Deconstruct(out string! Text, out string? Source, out double? Score) -> void
+Mud.Feishu.AI.Knowledge.RetrievedChunk.Equals(Mud.Feishu.AI.Knowledge.RetrievedChunk? other) -> bool
+Mud.Feishu.AI.Knowledge.RetrievedChunk.RetrievedChunk(string! Text, string? Source = null, double? Score = null) -> void
+Mud.Feishu.AI.Knowledge.RetrievedChunk.Score.get -> double?
+Mud.Feishu.AI.Knowledge.RetrievedChunk.Score.init -> void
+Mud.Feishu.AI.Knowledge.RetrievedChunk.Source.get -> string?
+Mud.Feishu.AI.Knowledge.RetrievedChunk.Source.init -> void
+Mud.Feishu.AI.Knowledge.RetrievedChunk.Text.get -> string!
+Mud.Feishu.AI.Knowledge.RetrievedChunk.Text.init -> void
+Mud.Feishu.AI.Tools.AttachmentSource
+Mud.Feishu.AI.Tools.AttachmentSource.AttachmentSource() -> void
+Mud.Feishu.AI.Tools.AttachmentSource.AttachmentSource(string? Url, System.ReadOnlyMemory<byte>? Content, string? FileName) -> void
+Mud.Feishu.AI.Tools.AttachmentSource.Content.get -> System.ReadOnlyMemory<byte>?
+Mud.Feishu.AI.Tools.AttachmentSource.Content.init -> void
+Mud.Feishu.AI.Tools.AttachmentSource.Deconstruct(out string? Url, out System.ReadOnlyMemory<byte>? Content, out string? FileName) -> void
+Mud.Feishu.AI.Tools.AttachmentSource.Equals(Mud.Feishu.AI.Tools.AttachmentSource other) -> bool
+Mud.Feishu.AI.Tools.AttachmentSource.FileName.get -> string?
+Mud.Feishu.AI.Tools.AttachmentSource.FileName.init -> void
+Mud.Feishu.AI.Tools.AttachmentSource.Url.get -> string?
+Mud.Feishu.AI.Tools.AttachmentSource.Url.init -> void
+Mud.Feishu.AI.Tools.AuthorizationDecision
+Mud.Feishu.AI.Tools.AuthorizationDecision.Allowed = 0 -> Mud.Feishu.AI.Tools.AuthorizationDecision
+Mud.Feishu.AI.Tools.AuthorizationDecision.Denied = 1 -> Mud.Feishu.AI.Tools.AuthorizationDecision
+Mud.Feishu.AI.Tools.AuthorizationDecision.NeedsUserConfirmation = 2 -> Mud.Feishu.AI.Tools.AuthorizationDecision
+Mud.Feishu.AI.Tools.AuthorizationResult
+Mud.Feishu.AI.Tools.AuthorizationResult.<Clone>$() -> Mud.Feishu.AI.Tools.AuthorizationResult!
+Mud.Feishu.AI.Tools.AuthorizationResult.AuthorizationResult(Mud.Feishu.AI.Tools.AuthorizationDecision Decision, string? Reason = null) -> void
+Mud.Feishu.AI.Tools.AuthorizationResult.Decision.get -> Mud.Feishu.AI.Tools.AuthorizationDecision
+Mud.Feishu.AI.Tools.AuthorizationResult.Decision.init -> void
+Mud.Feishu.AI.Tools.AuthorizationResult.Deconstruct(out Mud.Feishu.AI.Tools.AuthorizationDecision Decision, out string? Reason) -> void
+Mud.Feishu.AI.Tools.AuthorizationResult.Equals(Mud.Feishu.AI.Tools.AuthorizationResult? other) -> bool
+Mud.Feishu.AI.Tools.AuthorizationResult.Reason.get -> string?
+Mud.Feishu.AI.Tools.AuthorizationResult.Reason.init -> void
+Mud.Feishu.AI.Tools.ContentSafetyModes
+Mud.Feishu.AI.Tools.FeishuAgentToolSource
+Mud.Feishu.AI.Tools.FeishuAgentToolSource.FeishuAgentToolSource() -> void
+Mud.Feishu.AI.Tools.FeishuToolAttribute
+Mud.Feishu.AI.Tools.FeishuToolAttribute.Description.get -> string!
+Mud.Feishu.AI.Tools.FeishuToolAttribute.Description.init -> void
+Mud.Feishu.AI.Tools.FeishuToolAttribute.FeishuToolAttribute(string! name) -> void
+Mud.Feishu.AI.Tools.FeishuToolAttribute.IsWrite.get -> bool
+Mud.Feishu.AI.Tools.FeishuToolAttribute.IsWrite.init -> void
+Mud.Feishu.AI.Tools.FeishuToolAttribute.Name.get -> string!
+Mud.Feishu.AI.Tools.FeishuToolAttribute.RequiredScopes.get -> string![]!
+Mud.Feishu.AI.Tools.FeishuToolAttribute.RequiredScopes.init -> void
+Mud.Feishu.AI.Tools.FeishuToolAttribute.Source.get -> string?
+Mud.Feishu.AI.Tools.FeishuToolAttribute.Source.init -> void
+Mud.Feishu.AI.Tools.FeishuToolContext
+Mud.Feishu.AI.Tools.FeishuToolContext.<Clone>$() -> Mud.Feishu.AI.Tools.FeishuToolContext!
+Mud.Feishu.AI.Tools.FeishuToolContext.AppKey.get -> string!
+Mud.Feishu.AI.Tools.FeishuToolContext.AppKey.init -> void
+Mud.Feishu.AI.Tools.FeishuToolContext.ChatId.get -> string?
+Mud.Feishu.AI.Tools.FeishuToolContext.ChatId.init -> void
+Mud.Feishu.AI.Tools.FeishuToolContext.ConversationKey.get -> string?
+Mud.Feishu.AI.Tools.FeishuToolContext.ConversationKey.init -> void
+Mud.Feishu.AI.Tools.FeishuToolContext.Deconstruct(out string! AppKey, out string? ConversationKey, out string? ChatId, out string? UserId) -> void
+Mud.Feishu.AI.Tools.FeishuToolContext.Equals(Mud.Feishu.AI.Tools.FeishuToolContext? other) -> bool
+Mud.Feishu.AI.Tools.FeishuToolContext.FeishuToolContext(string! AppKey, string? ConversationKey = null, string? ChatId = null, string? UserId = null) -> void
+Mud.Feishu.AI.Tools.FeishuToolContext.UserId.get -> string?
+Mud.Feishu.AI.Tools.FeishuToolContext.UserId.init -> void
+Mud.Feishu.AI.Tools.FeishuToolContextAccessor
+Mud.Feishu.AI.Tools.FeishuToolContextAccessor.Begin(Mud.Feishu.AI.Tools.FeishuToolContext! context) -> System.IDisposable!
+Mud.Feishu.AI.Tools.FeishuToolContextAccessor.Current.get -> Mud.Feishu.AI.Tools.FeishuToolContext?
+Mud.Feishu.AI.Tools.FeishuToolContextAccessor.FeishuToolContextAccessor() -> void
+Mud.Feishu.AI.Tools.FeishuToolDefinition
+Mud.Feishu.AI.Tools.FeishuToolDefinition.<Clone>$() -> Mud.Feishu.AI.Tools.FeishuToolDefinition!
+Mud.Feishu.AI.Tools.FeishuToolDefinition.Deconstruct(out string! Name, out string! Description, out System.Collections.Generic.IReadOnlyList<string!>! RequiredScopes, out bool IsWrite, out Mud.Feishu.AI.Tools.FeishuToolRisk Risk, out string! Identity, out Mud.Feishu.AI.Tools.FeishuToolHandler! Handler) -> void
+Mud.Feishu.AI.Tools.FeishuToolDefinition.Description.get -> string!
+Mud.Feishu.AI.Tools.FeishuToolDefinition.Description.init -> void
+Mud.Feishu.AI.Tools.FeishuToolDefinition.Equals(Mud.Feishu.AI.Tools.FeishuToolDefinition? other) -> bool
+Mud.Feishu.AI.Tools.FeishuToolDefinition.FeishuToolDefinition(string! Name, string! Description, System.Collections.Generic.IReadOnlyList<string!>! RequiredScopes, bool IsWrite, Mud.Feishu.AI.Tools.FeishuToolRisk Risk, string! Identity, Mud.Feishu.AI.Tools.FeishuToolHandler! Handler) -> void
+Mud.Feishu.AI.Tools.FeishuToolDefinition.Handler.get -> Mud.Feishu.AI.Tools.FeishuToolHandler!
+Mud.Feishu.AI.Tools.FeishuToolDefinition.Handler.init -> void
+Mud.Feishu.AI.Tools.FeishuToolDefinition.Identity.get -> string!
+Mud.Feishu.AI.Tools.FeishuToolDefinition.Identity.init -> void
+Mud.Feishu.AI.Tools.FeishuToolDefinition.IsWrite.get -> bool
+Mud.Feishu.AI.Tools.FeishuToolDefinition.IsWrite.init -> void
+Mud.Feishu.AI.Tools.FeishuToolDefinition.Name.get -> string!
+Mud.Feishu.AI.Tools.FeishuToolDefinition.Name.init -> void
+Mud.Feishu.AI.Tools.FeishuToolDefinition.RequiredScopes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Mud.Feishu.AI.Tools.FeishuToolDefinition.RequiredScopes.init -> void
+Mud.Feishu.AI.Tools.FeishuToolDefinition.Risk.get -> Mud.Feishu.AI.Tools.FeishuToolRisk
+Mud.Feishu.AI.Tools.FeishuToolDefinition.Risk.init -> void
+Mud.Feishu.AI.Tools.FeishuToolHandler
+Mud.Feishu.AI.Tools.FeishuToolIdentityNames
+Mud.Feishu.AI.Tools.FeishuToolRegistry
+Mud.Feishu.AI.Tools.FeishuToolRegistry.AllTools.get -> System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Tools.FeishuToolDefinition!>!
+Mud.Feishu.AI.Tools.FeishuToolRegistry.EnabledTools.get -> System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Tools.FeishuToolDefinition!>!
+Mud.Feishu.AI.Tools.FeishuToolRegistry.FeishuToolRegistry() -> void
+Mud.Feishu.AI.Tools.FeishuToolRegistry.IsEnabled(string! name) -> bool
+Mud.Feishu.AI.Tools.FeishuToolRegistry.MapTool(string! name) -> Mud.Feishu.AI.Tools.FeishuToolRegistry!
+Mud.Feishu.AI.Tools.FeishuToolRegistry.Register(Mud.Feishu.AI.Tools.FeishuToolDefinition! definition) -> Mud.Feishu.AI.Tools.FeishuToolRegistry!
+Mud.Feishu.AI.Tools.FeishuToolRegistry.TryGet(string! name, out Mud.Feishu.AI.Tools.FeishuToolDefinition? definition) -> bool
+Mud.Feishu.AI.Tools.FeishuToolResult
+Mud.Feishu.AI.Tools.FeishuToolResult.Data.get -> System.Text.Json.Nodes.JsonNode?
+Mud.Feishu.AI.Tools.FeishuToolResult.Data.init -> void
+Mud.Feishu.AI.Tools.FeishuToolResult.FeishuToolResult() -> void
+Mud.Feishu.AI.Tools.FeishuToolResult.Text.get -> string?
+Mud.Feishu.AI.Tools.FeishuToolResult.Text.init -> void
+Mud.Feishu.AI.Tools.FeishuToolResult.Truncated.get -> bool
+Mud.Feishu.AI.Tools.FeishuToolResult.Truncated.init -> void
+Mud.Feishu.AI.Tools.FeishuToolResult.TruncationReason.get -> string?
+Mud.Feishu.AI.Tools.FeishuToolResult.TruncationReason.init -> void
+Mud.Feishu.AI.Tools.FeishuToolRisk
+Mud.Feishu.AI.Tools.FeishuToolRisk.HighRiskWrite = 2 -> Mud.Feishu.AI.Tools.FeishuToolRisk
+Mud.Feishu.AI.Tools.FeishuToolRisk.Read = 0 -> Mud.Feishu.AI.Tools.FeishuToolRisk
+Mud.Feishu.AI.Tools.FeishuToolRisk.Write = 1 -> Mud.Feishu.AI.Tools.FeishuToolRisk
+Mud.Feishu.AI.Tools.FeishuToolRiskNames
+Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest
+Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest.<Clone>$() -> Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest!
+Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest.AppKey.get -> string!
+Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest.AppKey.init -> void
+Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest.ArgumentsDigest.get -> string?
+Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest.ArgumentsDigest.init -> void
+Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest.ConversationKey.get -> string?
+Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest.ConversationKey.init -> void
+Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest.Deconstruct(out string! RequestId, out string! ToolName, out string? ToolCallId, out string! AppKey, out string? UserId, out string? ConversationKey, out string? ArgumentsDigest, out System.Collections.Generic.IReadOnlyList<string!>! RequiredScopes) -> void
+Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest.Equals(Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest? other) -> bool
+Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest.FrameworkToolApprovalRequest(string! RequestId, string! ToolName, string? ToolCallId, string! AppKey, string? UserId, string? ConversationKey, string? ArgumentsDigest, System.Collections.Generic.IReadOnlyList<string!>! RequiredScopes) -> void
+Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest.RequestId.get -> string!
+Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest.RequestId.init -> void
+Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest.RequiredScopes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest.RequiredScopes.init -> void
+Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest.ToolCallId.get -> string?
+Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest.ToolCallId.init -> void
+Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest.ToolName.get -> string!
+Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest.ToolName.init -> void
+Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest.UserId.get -> string?
+Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest.UserId.init -> void
+Mud.Feishu.AI.Tools.IFeishuAttachmentStager
+Mud.Feishu.AI.Tools.IFeishuAttachmentStager.StageAsync(Mud.Feishu.AI.Tools.AttachmentSource source, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Mud.Feishu.AI.Tools.StagedAttachment?>!
+Mud.Feishu.AI.Tools.IFeishuToolApprovalChannel
+Mud.Feishu.AI.Tools.IFeishuToolApprovalChannel.RequestApprovalAsync(Mud.Feishu.AI.Tools.ToolApprovalRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
+Mud.Feishu.AI.Tools.IFeishuToolApprovalChannel.RequestFrameworkApprovalAsync(Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
+Mud.Feishu.AI.Tools.IFeishuToolContextAccessor
+Mud.Feishu.AI.Tools.IFeishuToolContextAccessor.Begin(Mud.Feishu.AI.Tools.FeishuToolContext! context) -> System.IDisposable!
+Mud.Feishu.AI.Tools.IFeishuToolContextAccessor.Current.get -> Mud.Feishu.AI.Tools.FeishuToolContext?
+Mud.Feishu.AI.Tools.IToolCatalog
+Mud.Feishu.AI.Tools.IToolCatalog.Entries.get -> System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Tools.ToolCatalogEntry!>!
+Mud.Feishu.AI.Tools.IToolCatalog.Find(string! toolName) -> Mud.Feishu.AI.Tools.ToolCatalogEntry?
+Mud.Feishu.AI.Tools.IToolExecutionAuditSink
+Mud.Feishu.AI.Tools.IToolExecutionAuditSink.WriteAsync(Mud.Feishu.AI.Tools.ToolExecutionAuditRecord! record, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Mud.Feishu.AI.Tools.IToolExecutionAuthorizer
+Mud.Feishu.AI.Tools.IToolExecutionAuthorizer.AuthorizeAsync(string! toolName, System.Collections.Generic.IReadOnlyList<string!>! requiredScopes, bool isWrite, System.Collections.Generic.IReadOnlyDictionary<string!, object?>! arguments, Mud.Feishu.AI.Tools.FeishuToolContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Mud.Feishu.AI.Tools.AuthorizationResult!>!
+Mud.Feishu.AI.Tools.IToolSchemaExporter
+Mud.Feishu.AI.Tools.IToolSchemaExporter.Export(Mud.Feishu.AI.Tools.ToolSchemaDialect dialect) -> string!
+Mud.Feishu.AI.Tools.StagedAttachment
+Mud.Feishu.AI.Tools.StagedAttachment.Cleanup.get -> System.Func<System.Threading.Tasks.ValueTask>!
+Mud.Feishu.AI.Tools.StagedAttachment.Cleanup.init -> void
+Mud.Feishu.AI.Tools.StagedAttachment.ContentType.get -> string?
+Mud.Feishu.AI.Tools.StagedAttachment.ContentType.init -> void
+Mud.Feishu.AI.Tools.StagedAttachment.Deconstruct(out string! LocalPath, out long Size, out string? ContentType, out System.Func<System.Threading.Tasks.ValueTask>! Cleanup) -> void
+Mud.Feishu.AI.Tools.StagedAttachment.Equals(Mud.Feishu.AI.Tools.StagedAttachment other) -> bool
+Mud.Feishu.AI.Tools.StagedAttachment.LocalPath.get -> string!
+Mud.Feishu.AI.Tools.StagedAttachment.LocalPath.init -> void
+Mud.Feishu.AI.Tools.StagedAttachment.Size.get -> long
+Mud.Feishu.AI.Tools.StagedAttachment.Size.init -> void
+Mud.Feishu.AI.Tools.StagedAttachment.StagedAttachment() -> void
+Mud.Feishu.AI.Tools.StagedAttachment.StagedAttachment(string! LocalPath, long Size, string? ContentType, System.Func<System.Threading.Tasks.ValueTask>! Cleanup) -> void
+Mud.Feishu.AI.Tools.ToolApprovalRequest
+Mud.Feishu.AI.Tools.ToolApprovalRequest.<Clone>$() -> Mud.Feishu.AI.Tools.ToolApprovalRequest!
+Mud.Feishu.AI.Tools.ToolApprovalRequest.AppKey.get -> string!
+Mud.Feishu.AI.Tools.ToolApprovalRequest.AppKey.init -> void
+Mud.Feishu.AI.Tools.ToolApprovalRequest.ArgumentsDigest.get -> string!
+Mud.Feishu.AI.Tools.ToolApprovalRequest.ArgumentsDigest.init -> void
+Mud.Feishu.AI.Tools.ToolApprovalRequest.ConversationKey.get -> string?
+Mud.Feishu.AI.Tools.ToolApprovalRequest.ConversationKey.init -> void
+Mud.Feishu.AI.Tools.ToolApprovalRequest.Deconstruct(out string! ToolName, out string! AppKey, out string? UserId, out string? ConversationKey, out string! ArgumentsDigest, out System.Collections.Generic.IReadOnlyList<string!>! RequiredScopes, out string? Reason, out System.DateTimeOffset ExpiresAt) -> void
+Mud.Feishu.AI.Tools.ToolApprovalRequest.Equals(Mud.Feishu.AI.Tools.ToolApprovalRequest? other) -> bool
+Mud.Feishu.AI.Tools.ToolApprovalRequest.ExpiresAt.get -> System.DateTimeOffset
+Mud.Feishu.AI.Tools.ToolApprovalRequest.ExpiresAt.init -> void
+Mud.Feishu.AI.Tools.ToolApprovalRequest.Reason.get -> string?
+Mud.Feishu.AI.Tools.ToolApprovalRequest.Reason.init -> void
+Mud.Feishu.AI.Tools.ToolApprovalRequest.RequiredScopes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Mud.Feishu.AI.Tools.ToolApprovalRequest.RequiredScopes.init -> void
+Mud.Feishu.AI.Tools.ToolApprovalRequest.ToolApprovalRequest(string! ToolName, string! AppKey, string? UserId, string? ConversationKey, string! ArgumentsDigest, System.Collections.Generic.IReadOnlyList<string!>! RequiredScopes, string? Reason, System.DateTimeOffset ExpiresAt) -> void
+Mud.Feishu.AI.Tools.ToolApprovalRequest.ToolName.get -> string!
+Mud.Feishu.AI.Tools.ToolApprovalRequest.ToolName.init -> void
+Mud.Feishu.AI.Tools.ToolApprovalRequest.UserId.get -> string?
+Mud.Feishu.AI.Tools.ToolApprovalRequest.UserId.init -> void
+Mud.Feishu.AI.Tools.ToolCatalogEntry
+Mud.Feishu.AI.Tools.ToolCatalogEntry.<Clone>$() -> Mud.Feishu.AI.Tools.ToolCatalogEntry!
+Mud.Feishu.AI.Tools.ToolCatalogEntry.Deconstruct(out string! Name, out string! Description, out System.Collections.Generic.IReadOnlyList<string!>! RequiredScopes, out bool IsWrite, out Mud.Feishu.AI.Tools.FeishuToolRisk Risk, out string! Identity, out string! SdkSource, out string! ParameterSchemaJson) -> void
+Mud.Feishu.AI.Tools.ToolCatalogEntry.Description.get -> string!
+Mud.Feishu.AI.Tools.ToolCatalogEntry.Description.init -> void
+Mud.Feishu.AI.Tools.ToolCatalogEntry.Equals(Mud.Feishu.AI.Tools.ToolCatalogEntry? other) -> bool
+Mud.Feishu.AI.Tools.ToolCatalogEntry.Identity.get -> string!
+Mud.Feishu.AI.Tools.ToolCatalogEntry.Identity.init -> void
+Mud.Feishu.AI.Tools.ToolCatalogEntry.IsWrite.get -> bool
+Mud.Feishu.AI.Tools.ToolCatalogEntry.IsWrite.init -> void
+Mud.Feishu.AI.Tools.ToolCatalogEntry.Name.get -> string!
+Mud.Feishu.AI.Tools.ToolCatalogEntry.Name.init -> void
+Mud.Feishu.AI.Tools.ToolCatalogEntry.ParameterSchemaJson.get -> string!
+Mud.Feishu.AI.Tools.ToolCatalogEntry.ParameterSchemaJson.init -> void
+Mud.Feishu.AI.Tools.ToolCatalogEntry.RequiredScopes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Mud.Feishu.AI.Tools.ToolCatalogEntry.RequiredScopes.init -> void
+Mud.Feishu.AI.Tools.ToolCatalogEntry.Risk.get -> Mud.Feishu.AI.Tools.FeishuToolRisk
+Mud.Feishu.AI.Tools.ToolCatalogEntry.Risk.init -> void
+Mud.Feishu.AI.Tools.ToolCatalogEntry.SdkSource.get -> string!
+Mud.Feishu.AI.Tools.ToolCatalogEntry.SdkSource.init -> void
+Mud.Feishu.AI.Tools.ToolCatalogEntry.ToolCatalogEntry(string! Name, string! Description, System.Collections.Generic.IReadOnlyList<string!>! RequiredScopes, bool IsWrite, Mud.Feishu.AI.Tools.FeishuToolRisk Risk, string! Identity, string! SdkSource, string! ParameterSchemaJson) -> void
+Mud.Feishu.AI.Tools.ToolExecutionAuditRecord
+Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.<Clone>$() -> Mud.Feishu.AI.Tools.ToolExecutionAuditRecord!
+Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.AppKey.get -> string!
+Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.AppKey.init -> void
+Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.ArgsDigest.get -> string?
+Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.ArgsDigest.init -> void
+Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.ConversationKey.get -> string?
+Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.ConversationKey.init -> void
+Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.Decision.get -> string!
+Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.Decision.init -> void
+Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.Deconstruct(out string! ToolName, out string! AppKey, out System.Collections.Generic.IReadOnlyList<string!>! RequiredScopes, out string! Decision, out string? Reason, out bool IsWrite, out string? ArgsDigest, out long DurationMs, out string? ConversationKey) -> void
+Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.DurationMs.get -> long
+Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.DurationMs.init -> void
+Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.Equals(Mud.Feishu.AI.Tools.ToolExecutionAuditRecord? other) -> bool
+Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.IsWrite.get -> bool
+Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.IsWrite.init -> void
+Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.Reason.get -> string?
+Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.Reason.init -> void
+Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.RequiredScopes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.RequiredScopes.init -> void
+Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.ToolExecutionAuditRecord(string! ToolName, string! AppKey, System.Collections.Generic.IReadOnlyList<string!>! RequiredScopes, string! Decision, string? Reason, bool IsWrite, string? ArgsDigest, long DurationMs, string? ConversationKey) -> void
+Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.ToolName.get -> string!
+Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.ToolName.init -> void
+Mud.Feishu.AI.Tools.ToolParameterAttribute
+Mud.Feishu.AI.Tools.ToolParameterAttribute.Description.get -> string!
+Mud.Feishu.AI.Tools.ToolParameterAttribute.Name.get -> string!
+Mud.Feishu.AI.Tools.ToolParameterAttribute.Required.get -> bool
+Mud.Feishu.AI.Tools.ToolParameterAttribute.Required.init -> void
+Mud.Feishu.AI.Tools.ToolParameterAttribute.ToolParameterAttribute(string! name, string! description) -> void
+Mud.Feishu.AI.Tools.ToolSchemaDialect
+Mud.Feishu.AI.Tools.ToolSchemaDialect.OpenAiFunctions = 1 -> Mud.Feishu.AI.Tools.ToolSchemaDialect
+override Mud.Feishu.AI.Agents.FeishuAgent.GetService(System.Type! serviceType, object? serviceKey = null) -> object?
+override Mud.Feishu.AI.Agents.FeishuAgent.Name.get -> string?
+override Mud.Feishu.AI.Agents.FeishuGuidanceBlock.GetHashCode() -> int
+override Mud.Feishu.AI.Agents.FeishuGuidanceResult.Equals(object? obj) -> bool
+override Mud.Feishu.AI.Agents.FeishuGuidanceResult.GetHashCode() -> int
+override Mud.Feishu.AI.Agents.FeishuGuidanceResult.ToString() -> string!
+override Mud.Feishu.AI.Conversations.ConversationRequest.Equals(object? obj) -> bool
+override Mud.Feishu.AI.Conversations.ConversationRequest.GetHashCode() -> int
+override Mud.Feishu.AI.Conversations.ConversationRequest.ToString() -> string!
+override Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.GetBusinessKey(Mud.Feishu.Abstractions.EventData! eventData) -> string?
+override Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.ProcessBusinessLogicAsync(Mud.Feishu.Abstractions.EventData! eventData, T? eventEntity, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+override Mud.Feishu.AI.Knowledge.KnowledgeAnswer.Equals(object? obj) -> bool
+override Mud.Feishu.AI.Knowledge.KnowledgeAnswer.GetHashCode() -> int
+override Mud.Feishu.AI.Knowledge.KnowledgeAnswer.ToString() -> string!
+override Mud.Feishu.AI.Knowledge.RetrievedChunk.Equals(object? obj) -> bool
+override Mud.Feishu.AI.Knowledge.RetrievedChunk.GetHashCode() -> int
+override Mud.Feishu.AI.Knowledge.RetrievedChunk.ToString() -> string!
+override Mud.Feishu.AI.Tools.AttachmentSource.GetHashCode() -> int
+override Mud.Feishu.AI.Tools.AuthorizationResult.Equals(object? obj) -> bool
+override Mud.Feishu.AI.Tools.AuthorizationResult.GetHashCode() -> int
+override Mud.Feishu.AI.Tools.AuthorizationResult.ToString() -> string!
+override Mud.Feishu.AI.Tools.FeishuToolContext.Equals(object? obj) -> bool
+override Mud.Feishu.AI.Tools.FeishuToolContext.GetHashCode() -> int
+override Mud.Feishu.AI.Tools.FeishuToolContext.ToString() -> string!
+override Mud.Feishu.AI.Tools.FeishuToolDefinition.Equals(object? obj) -> bool
+override Mud.Feishu.AI.Tools.FeishuToolDefinition.GetHashCode() -> int
+override Mud.Feishu.AI.Tools.FeishuToolDefinition.ToString() -> string!
+override Mud.Feishu.AI.Tools.FeishuToolResult.ToString() -> string!
+override Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest.Equals(object? obj) -> bool
+override Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest.GetHashCode() -> int
+override Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest.ToString() -> string!
+override Mud.Feishu.AI.Tools.StagedAttachment.GetHashCode() -> int
+override Mud.Feishu.AI.Tools.ToolApprovalRequest.Equals(object? obj) -> bool
+override Mud.Feishu.AI.Tools.ToolApprovalRequest.GetHashCode() -> int
+override Mud.Feishu.AI.Tools.ToolApprovalRequest.ToString() -> string!
+override Mud.Feishu.AI.Tools.ToolCatalogEntry.Equals(object? obj) -> bool
+override Mud.Feishu.AI.Tools.ToolCatalogEntry.GetHashCode() -> int
+override Mud.Feishu.AI.Tools.ToolCatalogEntry.ToString() -> string!
+override Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.Equals(object? obj) -> bool
+override Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.GetHashCode() -> int
+override Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.ToString() -> string!
+static Mud.Feishu.AI.Agents.FeishuGuidanceBlock.operator !=(Mud.Feishu.AI.Agents.FeishuGuidanceBlock left, Mud.Feishu.AI.Agents.FeishuGuidanceBlock right) -> bool
+static Mud.Feishu.AI.Agents.FeishuGuidanceBlock.operator ==(Mud.Feishu.AI.Agents.FeishuGuidanceBlock left, Mud.Feishu.AI.Agents.FeishuGuidanceBlock right) -> bool
+static Mud.Feishu.AI.Agents.FeishuGuidanceComposer.Compose(string? hostInstructions, System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Agents.FeishuGuidanceBlock>? blocks) -> Mud.Feishu.AI.Agents.FeishuGuidanceResult!
+static Mud.Feishu.AI.Agents.FeishuGuidanceResult.operator !=(Mud.Feishu.AI.Agents.FeishuGuidanceResult? left, Mud.Feishu.AI.Agents.FeishuGuidanceResult? right) -> bool
+static Mud.Feishu.AI.Agents.FeishuGuidanceResult.operator ==(Mud.Feishu.AI.Agents.FeishuGuidanceResult? left, Mud.Feishu.AI.Agents.FeishuGuidanceResult? right) -> bool
+static Mud.Feishu.AI.Channels.StreamingRequestContext.Begin(Mud.Feishu.AI.Conversations.ConversationRequest! request) -> System.IDisposable!
+static Mud.Feishu.AI.Channels.StreamingRequestContext.Current.get -> Mud.Feishu.AI.Conversations.ConversationRequest?
+static Mud.Feishu.AI.Conversations.ConversationRequest.operator !=(Mud.Feishu.AI.Conversations.ConversationRequest? left, Mud.Feishu.AI.Conversations.ConversationRequest? right) -> bool
+static Mud.Feishu.AI.Conversations.ConversationRequest.operator ==(Mud.Feishu.AI.Conversations.ConversationRequest? left, Mud.Feishu.AI.Conversations.ConversationRequest? right) -> bool
+static Mud.Feishu.AI.Extensions.FeishuAgentServiceCollectionExtensions.AddFeishuAgent(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration? configuration = null, System.Action<Mud.Feishu.AI.Agents.FeishuAgentOptions!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Mud.Feishu.AI.Extensions.FeishuAgentServiceCollectionExtensions.AddFeishuOpenAIChatClient(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! serviceKey, string! modelId, string! apiKey, string? endpoint = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Mud.Feishu.AI.Knowledge.KnowledgeAnswer.NoAnswer(string! question) -> Mud.Feishu.AI.Knowledge.KnowledgeAnswer!
+static Mud.Feishu.AI.Knowledge.KnowledgeAnswer.operator !=(Mud.Feishu.AI.Knowledge.KnowledgeAnswer? left, Mud.Feishu.AI.Knowledge.KnowledgeAnswer? right) -> bool
+static Mud.Feishu.AI.Knowledge.KnowledgeAnswer.operator ==(Mud.Feishu.AI.Knowledge.KnowledgeAnswer? left, Mud.Feishu.AI.Knowledge.KnowledgeAnswer? right) -> bool
+static Mud.Feishu.AI.Knowledge.RetrievedChunk.operator !=(Mud.Feishu.AI.Knowledge.RetrievedChunk? left, Mud.Feishu.AI.Knowledge.RetrievedChunk? right) -> bool
+static Mud.Feishu.AI.Knowledge.RetrievedChunk.operator ==(Mud.Feishu.AI.Knowledge.RetrievedChunk? left, Mud.Feishu.AI.Knowledge.RetrievedChunk? right) -> bool
+static Mud.Feishu.AI.Tools.AttachmentSource.operator !=(Mud.Feishu.AI.Tools.AttachmentSource left, Mud.Feishu.AI.Tools.AttachmentSource right) -> bool
+static Mud.Feishu.AI.Tools.AttachmentSource.operator ==(Mud.Feishu.AI.Tools.AttachmentSource left, Mud.Feishu.AI.Tools.AttachmentSource right) -> bool
+static Mud.Feishu.AI.Tools.AuthorizationResult.Allowed.get -> Mud.Feishu.AI.Tools.AuthorizationResult!
+static Mud.Feishu.AI.Tools.AuthorizationResult.Confirm(string! reason) -> Mud.Feishu.AI.Tools.AuthorizationResult!
+static Mud.Feishu.AI.Tools.AuthorizationResult.Deny(string! reason) -> Mud.Feishu.AI.Tools.AuthorizationResult!
+static Mud.Feishu.AI.Tools.AuthorizationResult.operator !=(Mud.Feishu.AI.Tools.AuthorizationResult? left, Mud.Feishu.AI.Tools.AuthorizationResult? right) -> bool
+static Mud.Feishu.AI.Tools.AuthorizationResult.operator ==(Mud.Feishu.AI.Tools.AuthorizationResult? left, Mud.Feishu.AI.Tools.AuthorizationResult? right) -> bool
+static Mud.Feishu.AI.Tools.ContentSafetyModes.IsValid(string? mode) -> bool
+static Mud.Feishu.AI.Tools.FeishuToolContext.operator !=(Mud.Feishu.AI.Tools.FeishuToolContext? left, Mud.Feishu.AI.Tools.FeishuToolContext? right) -> bool
+static Mud.Feishu.AI.Tools.FeishuToolContext.operator ==(Mud.Feishu.AI.Tools.FeishuToolContext? left, Mud.Feishu.AI.Tools.FeishuToolContext? right) -> bool
+static Mud.Feishu.AI.Tools.FeishuToolDefinition.operator !=(Mud.Feishu.AI.Tools.FeishuToolDefinition? left, Mud.Feishu.AI.Tools.FeishuToolDefinition? right) -> bool
+static Mud.Feishu.AI.Tools.FeishuToolDefinition.operator ==(Mud.Feishu.AI.Tools.FeishuToolDefinition? left, Mud.Feishu.AI.Tools.FeishuToolDefinition? right) -> bool
+static Mud.Feishu.AI.Tools.FeishuToolIdentityNames.IsValid(string? identity) -> bool
+static Mud.Feishu.AI.Tools.FeishuToolResult.FromData(System.Text.Json.Nodes.JsonNode! data, bool truncated = false, string? truncationReason = null) -> Mud.Feishu.AI.Tools.FeishuToolResult!
+static Mud.Feishu.AI.Tools.FeishuToolResult.FromError(string! errorText) -> Mud.Feishu.AI.Tools.FeishuToolResult!
+static Mud.Feishu.AI.Tools.FeishuToolResult.FromText(string! text, bool truncated = false, string? truncationReason = null) -> Mud.Feishu.AI.Tools.FeishuToolResult!
+static Mud.Feishu.AI.Tools.FeishuToolRiskNames.ToLiteral(Mud.Feishu.AI.Tools.FeishuToolRisk risk) -> string!
+static Mud.Feishu.AI.Tools.FeishuToolRiskNames.TryParse(string? value, out Mud.Feishu.AI.Tools.FeishuToolRisk risk) -> bool
+static Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest.operator !=(Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest? left, Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest? right) -> bool
+static Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest.operator ==(Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest? left, Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest? right) -> bool
+static Mud.Feishu.AI.Tools.StagedAttachment.operator !=(Mud.Feishu.AI.Tools.StagedAttachment left, Mud.Feishu.AI.Tools.StagedAttachment right) -> bool
+static Mud.Feishu.AI.Tools.StagedAttachment.operator ==(Mud.Feishu.AI.Tools.StagedAttachment left, Mud.Feishu.AI.Tools.StagedAttachment right) -> bool
+static Mud.Feishu.AI.Tools.ToolApprovalRequest.operator !=(Mud.Feishu.AI.Tools.ToolApprovalRequest? left, Mud.Feishu.AI.Tools.ToolApprovalRequest? right) -> bool
+static Mud.Feishu.AI.Tools.ToolApprovalRequest.operator ==(Mud.Feishu.AI.Tools.ToolApprovalRequest? left, Mud.Feishu.AI.Tools.ToolApprovalRequest? right) -> bool
+static Mud.Feishu.AI.Tools.ToolCatalogEntry.operator !=(Mud.Feishu.AI.Tools.ToolCatalogEntry? left, Mud.Feishu.AI.Tools.ToolCatalogEntry? right) -> bool
+static Mud.Feishu.AI.Tools.ToolCatalogEntry.operator ==(Mud.Feishu.AI.Tools.ToolCatalogEntry? left, Mud.Feishu.AI.Tools.ToolCatalogEntry? right) -> bool
+static Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.operator !=(Mud.Feishu.AI.Tools.ToolExecutionAuditRecord? left, Mud.Feishu.AI.Tools.ToolExecutionAuditRecord? right) -> bool
+static Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.operator ==(Mud.Feishu.AI.Tools.ToolExecutionAuditRecord? left, Mud.Feishu.AI.Tools.ToolExecutionAuditRecord? right) -> bool
+virtual Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.AllowMissingAppKey.get -> bool
+virtual Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.AllowToolsWithoutAppKey.get -> bool
+virtual Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.AssembleUserMessageAsync(Mud.Feishu.AI.Conversations.ConversationRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<string!>!
+virtual Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.BuildApprovalPendingReply(System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Tools.FrameworkToolApprovalRequest!>! pending) -> string!
+virtual Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.ResolveStreamTarget(Mud.Feishu.AI.Conversations.ConversationRequest! request) -> string?
+virtual Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.ResolveStreamTargetChatId(Mud.Feishu.AI.Conversations.ConversationRequest! request) -> string?
+virtual Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.TryFindDeliveryBlockAsync(Mud.Feishu.AI.Conversations.ConversationRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<string?>!
+virtual Mud.Feishu.AI.Tools.FeishuAgentToolSource.GetGuidance(System.IServiceProvider! serviceProvider) -> System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Agents.FeishuGuidanceBlock>!
+virtual Mud.Feishu.AI.Tools.FeishuToolHandler.Invoke(System.Collections.Generic.IReadOnlyDictionary<string!, object?>! arguments, Mud.Feishu.AI.Tools.FeishuToolContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Mud.Feishu.AI.Tools.FeishuToolResult!>!

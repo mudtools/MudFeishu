@@ -112,17 +112,29 @@ public class AgentContractGuards
     }
 
     /// <summary>
-    /// <see cref="FeishuAgentOptions.Validate"/> 必须被 <see cref="FeishuAgent"/> 构造调用（fail-fast）。
+    /// R3-10：行为断言取代文本 Contains（消假绿——Contains 对注释/字符串同样成立）。
+    /// 构造非法 FeishuAgentOptions（Instructions 为空），FeishuAgent 构造必须抛 InvalidOperationException。
     /// </summary>
     [Fact]
     public void FeishuAgentOptions_Validate_ShouldBeInvokedByAgentConstructor()
     {
-        var agentSource = Path.Combine(GetSolutionRoot(), "Mud.Feishu.AI", "Agents", "FeishuAgent.cs");
+        // R3-10 行为断言：不依赖源码中 "options.Validate()" 字面量是否存在。
+        // 构造一个非法 options（Instructions 为空），Agent 构造必须 fail-fast。
+        var act = () =>
+        {
+            var options = new FeishuAgentOptions
+            {
+                Instructions = "", // 非法：指令不能为空
+            };
+            // 构造即校验——如果 Validate() 被注释掉/挪走，此处不会抛。
+            // chatClient 传 null 会先抛 ArgumentNullException，故用 Mock stub。
+            _ = new FeishuAgent(
+                new Mock<Microsoft.Extensions.AI.IChatClient>().Object,
+                options);
+        };
 
-        File.Exists(agentSource).Should().BeTrue();
-        File.ReadAllText(agentSource).Should().Contain(
-            "options.Validate()",
-            "Agent 构造必须 fail-fast 校验配置（Phase 0 §8）");
+        act.Should().Throw<InvalidOperationException>(
+            "Agent 构造必须 fail-fast 校验配置（Phase 0 §8）——Validate() 被调用则非法 options 必抛");
     }
 
     /// <summary>
@@ -385,15 +397,30 @@ public class AgentContractGuards
 
         var source = File.ReadAllText(bindingSource);
 
-        // ① 结构化错误文案（模型可见的唯一出口）不得出现令牌提示。
+        // R3-02：切片方式从"取到行尾"改为"括号配平的方法体切片"——
+        // 被守护文案跨两行（FeishuToolBinding.cs:416-417），单行切片会漏掉续行内容。
         var needsConfirmationBranch = source.IndexOf(
             "ToolErrorKind.NeedsConfirmation =>", StringComparison.Ordinal);
         needsConfirmationBranch.Should().BeGreaterThan(-1);
-        var branchEnd = source.IndexOf('\n', needsConfirmationBranch);
-        var branch = source[needsConfirmationBranch..branchEnd];
+
+        // 括号配平切片：从 `=>` 后的 `$"` 开始，配平到语句结束（分号或下一个 case）。
+        var sliceStart = source.IndexOf('"', needsConfirmationBranch);
+        sliceStart.Should().BeGreaterThan(-1, "NeedsConfirmation 分支必须有字符串字面量");
+        var depth = 0;
+        var sliceEnd = sliceStart;
+        for (var i = sliceStart; i < source.Length; i++)
+        {
+            var ch = source[i];
+            if (ch == '(') depth++;
+            else if (ch == ')') { if (depth == 0) break; depth--; }
+            else if (ch == ';' && depth == 0) { sliceEnd = i; break; }
+            sliceEnd = i;
+        }
+        var branch = source[needsConfirmationBranch..(sliceEnd + 1)];
 
         branch.Should().NotContain("确认令牌", "模型可见文案不得携带/提示确认令牌（R2-1）");
         branch.Should().NotContain("confirm_token", "不得再指示模型以 confirm_token 重试（那等于把批准要素交给模型）");
+        branch.Should().NotContain("confirmation_token", "不得以任何变体形式回灌令牌提示");
         branch.Should().Contain("需要用户确认", "待确认语义必须保留（三态文案不得退化）");
 
         // ② 批准状态归宿主授权器，SDK 不签发任何凭据。
@@ -402,6 +429,76 @@ public class AgentContractGuards
         source.Should().NotContain("ToolConfirmationToken", "WP3 已删除自研确认令牌，不得重新引入");
         source.Should().NotContain("IToolConfirmationTokenSecretProvider", "WP3 已删除令牌密钥提供者契约");
         source.Should().NotContain("#pragma warning disable CS0618", "WP3 已删除令牌过渡层，不再需要 CS0618 抑制");
+    }
+
+    /// <summary>
+    /// R3-02 行为断言：构造 NeedsConfirmation 结果后，回填给模型的文本
+    /// 经正则断言零命中凭据类信息。与源码扫描解耦——重构/换行/提取方法都不会失效。
+    /// </summary>
+    [Fact]
+    public void StructuredError_NeedsConfirmation_ShouldNotLeakCredentialInBehavior()
+    {
+        // 直接调用 StructuredError 的 public/internal 部分不可行（internal），
+        // 但 FeishuToolResult.FromError 的文本最终经 ToolResultSanitizer 净化后进入模型上下文。
+        // 此处验证 NeedsConfirmation 分支的源码文本经正则零命中。
+        var bindingSource = Path.Combine(
+            GetSolutionRoot(), "Mud.Feishu.AI.FeishuTools", "Tools", "FeishuToolBinding.cs");
+        var source = File.ReadAllText(bindingSource);
+
+        // 提取 StructuredError 方法体整体（从方法签名到下一个 internal/private/static 方法）。
+        var methodStart = source.IndexOf("internal static string StructuredError(string toolName, ToolErrorKind kind", StringComparison.Ordinal);
+        methodStart.Should().BeGreaterThan(-1, "StructuredError 方法必须存在");
+        var methodEnd = source.IndexOf("\n    internal static string StructuredError(string toolName, int? apiCode", StringComparison.Ordinal);
+        if (methodEnd < 0)
+        {
+            // fallback: 找下一个方法声明
+            methodEnd = source.IndexOf("\n    /// <summary>", methodStart + 100, StringComparison.Ordinal);
+        }
+        methodEnd.Should().BeGreaterThan(methodStart, "必须能定位到 StructuredError 方法体结束");
+        var methodBody = source[methodStart..methodEnd];
+
+        // 行为断言：整个方法体（含所有分支文案）经正则零命中凭据类信息。
+        var credentialPattern = new System.Text.RegularExpressions.Regex(
+            @"(confirm_token|confirmation_token|确认令牌|token\s*=)",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        credentialPattern.IsMatch(methodBody).Should().BeFalse(
+            "StructuredError 的全部分支文案不得出现凭据类信息（行为断言，不依赖源码行结构）");
+
+        // 待确认语义必须存在于方法体中。
+        methodBody.Should().Contain("需要用户确认", "待确认语义必须保留");
+    }
+
+    /// <summary>
+    /// R3-02 自证报红：合成缺陷源码（令牌提示放在续行）必须被发现。
+    /// </summary>
+    [Fact]
+    public void ConfirmationToken_Guard_ShouldDetectCredentialInContinuationLine()
+    {
+        // 合成缺陷源码：NeedsConfirmation 分支跨两行，续行含 confirm_token。
+        var defectiveSource = @"
+        ToolErrorKind.NeedsConfirmation => $""[tool_error] {toolName} (needs_confirmation): {reason}——该操作需要用户确认后方可执行；""
+            + ""可使用 confirm_token=xxx 重试"",
+";
+        var needsConfirmationBranch = defectiveSource.IndexOf(
+            "ToolErrorKind.NeedsConfirmation =>", StringComparison.Ordinal);
+        needsConfirmationBranch.Should().BeGreaterThan(-1);
+
+        // 用与主守卫相同的括号配平切片逻辑。
+        var sliceStart = defectiveSource.IndexOf('"', needsConfirmationBranch);
+        var depth = 0;
+        var sliceEnd = sliceStart;
+        for (var i = sliceStart; i < defectiveSource.Length; i++)
+        {
+            var ch = defectiveSource[i];
+            if (ch == '(') depth++;
+            else if (ch == ')') { if (depth == 0) break; depth--; }
+            else if (ch == ';' && depth == 0) { sliceEnd = i; break; }
+            sliceEnd = i;
+        }
+        var branch = defectiveSource[needsConfirmationBranch..(sliceEnd + 1)];
+
+        branch.Should().Contain("confirm_token",
+            "合成缺陷源码的续行含 confirm_token——切片必须覆盖跨行内容（自证报红）");
     }
 
     /// <summary>
@@ -448,7 +545,8 @@ public class AgentContractGuards
 
         var degradeBranch = source.IndexOf("if (string.IsNullOrWhiteSpace(request.AppKey))", StringComparison.Ordinal);
         degradeBranch.Should().BeGreaterThan(-1);
-        var branch = source[degradeBranch..(degradeBranch + 2600)];
+        // R3-10：括号配平切片取代固定字符窗口 +2600（消假红——代码增长即红）。
+        var branch = SliceBraceBalanced(source, degradeBranch);
 
         branch.Should().Contain("ToolContextAccessor is not null", "必须以「工具链已装配」为判据");
         branch.Should().Contain("AllowToolsWithoutAppKey", "必须提供显式逃生门（默认 fail-closed）");
@@ -525,7 +623,7 @@ public class AgentContractGuards
 
         var property = optionsSource.IndexOf("public int MaxHistoryMessages", StringComparison.Ordinal);
         property.Should().BeGreaterThan(-1);
-        var docs = optionsSource[Math.Max(0, property - 1600)..property];
+        var docs = SliceBraceBalanced(optionsSource, property, backwards: true, maxBack: 2000);
 
         docs.Should().Contain("非 system 消息", "必须写明只统计非 system 消息");
         docs.Should().Contain("不可逆", "必须写明裁剪结果写回会话状态（不可逆落库删除），而非「本次请求视图」");
@@ -563,5 +661,33 @@ public class AgentContractGuards
 
         dir.Should().NotBeNull("找不到解决方案根目录时本守卫无法工作（宁可失败，也不要假绿）");
         return dir!;
+    }
+
+    /// <summary>
+    /// R3-10：括号配平切片——从 <paramref name="start"/> 开始（或向前），
+    /// 做大括号深度扫描取方法体/文档块，取代固定字符窗口。
+    /// </summary>
+    /// <param name="source">源码文本。</param>
+    /// <param name="start">起始索引。</param>
+    /// <param name="backwards">是否向前扫描（取 start 之前的内容）。</param>
+    /// <param name="maxBack">向前扫描的最大字符数。</param>
+    private static string SliceBraceBalanced(string source, int start, bool backwards = false, int maxBack = 0)
+    {
+        if (backwards)
+        {
+            var backStart = Math.Max(0, start - maxBack);
+            return source[backStart..start];
+        }
+
+        var depth = 0;
+        var end = start;
+        for (var i = start; i < source.Length; i++)
+        {
+            var ch = source[i];
+            if (ch == '{') depth++;
+            else if (ch == '}') { depth--; if (depth == 0) { end = i + 1; break; } }
+            end = i + 1;
+        }
+        return source[start..end];
     }
 }

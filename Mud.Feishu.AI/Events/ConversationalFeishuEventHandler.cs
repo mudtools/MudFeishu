@@ -444,6 +444,19 @@ public abstract class ConversationalFeishuEventHandler<T>(
         }
         catch (OperationCanceledException)
         {
+            // R3-14：取消路径补偿收尾——与非取消异常路径一致，必须把占位消息落到终结态，
+            // 否则单例字典残留该 messageId 的完整文本（BufferedMessageChannel 的清理只在 FlushAsync 内）。
+            // 补偿路径不得使用会被取消的令牌（D15 精神）。
+            try
+            {
+                await MessageChannel.FlushAsync(request.AppKey, streamTarget!, messageId, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception flushEx)
+            {
+                _logger.LogWarning(flushEx, "流式取消路径补偿收尾失败（messageId: {MessageId}）", messageId);
+            }
+
+            // 取消语义不变（不得吞掉）。
             throw;
         }
         catch

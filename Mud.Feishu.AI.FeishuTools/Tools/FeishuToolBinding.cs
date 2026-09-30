@@ -186,11 +186,24 @@ public sealed class FeishuToolBinding
         }
 
         var userContextApplied = false;
+        // R3-03：捕获宿主既有用户上下文前值——执行后恢复而非无条件 Clear，
+        // 避免抹掉宿主经中间件设置的环境用户身份（后续依赖用户令牌的调用退化为未认证）。
+        // 前值为空时仍走 Clear()（既有 "set-user → downstream → clear-user" 断言不变）。
+        string? previousOpenId = null;
+        string? previousUnionId = null;
+        string? previousUserId = null;
+        string? previousName = null;
         try
         {
             using var scope = _scopeFactory.BeginScope(context.AppKey);
             if (userContextRequired)
             {
+                // 捕获前值（仅 user 身份路径需要；tenant 路径完全不触碰上下文）。
+                previousOpenId = _currentUserContext!.OpenId;
+                previousUnionId = _currentUserContext.UnionId;
+                previousUserId = _currentUserContext.UserId;
+                previousName = _currentUserContext.Name;
+
                 // SetUser 的 openId 形参是令牌缓存查找键（未显式传 userId 时回退 openId）——
                 // 此处把 context.UserId 同时作为两者，保证"查找键 = 宿主提供的身份"。
                 _currentUserContext!.SetUser(context.UserId!, userId: context.UserId);
@@ -218,6 +231,8 @@ public sealed class FeishuToolBinding
             var annotation = ToolResultContentSafety.BuildAnnotation(safetyHits);
             if (annotation.Length > 0)
             {
+                // R3-12：降级路径指标化——warn 模式只加标注不阻断，补计数使告警可量化。
+                FeishuToolDiagnostics.RecordDegraded(context.AppKey, FeishuMetrics.DegradedReasons.ContentSafetyWarn);
                 result = FeishuToolResult.FromText(annotation + result.ToString(), result.Truncated, result.TruncationReason);
             }
 
@@ -272,10 +287,20 @@ public sealed class FeishuToolBinding
         }
         finally
         {
-            // user 身份上下文成对清理（设置/清理必须成对，见 ④'）：AsyncLocal 泄漏 = 跨用户令牌误用。
+            // R3-03：user 身份上下文成对清理——恢复宿主既有上下文，而不是无条件抹掉。
+            // 前值为空 ⇒ 仍走 Clear()（既有 "set-user → downstream → clear-user" 断言不变）。
+            // 前值非空 ⇒ 先 Clear() 再 SetUser(前值)，规避 SetUser 的覆盖告警噪音。
             if (userContextApplied)
             {
-                _currentUserContext?.Clear();
+                if (string.IsNullOrEmpty(previousOpenId))
+                {
+                    _currentUserContext?.Clear();
+                }
+                else
+                {
+                    _currentUserContext?.Clear();
+                    _currentUserContext?.SetUser(previousOpenId, previousUnionId, previousUserId, previousName);
+                }
             }
         }
     }
@@ -342,6 +367,8 @@ public sealed class FeishuToolBinding
         }
         catch (Exception ex)
         {
+            // R3-12：降级路径指标化——审计出口失效对监控不可见，补计数使可告警。
+            FeishuToolDiagnostics.RecordDegraded(context.AppKey, FeishuMetrics.DegradedReasons.AuditDeliveryFailed);
             _logger?.LogWarning(ex, "工具审计出口投递失败（tool: {ToolName}）——审计事件丢弃", tool.Name);
         }
     }
@@ -387,6 +414,8 @@ public sealed class FeishuToolBinding
         }
         catch (Exception ex)
         {
+            // R3-12：降级路径指标化——整形失败回退默认结果，补计数使可观测。
+            FeishuToolDiagnostics.RecordDegraded(string.Empty, FeishuMetrics.DegradedReasons.ResultShapingFailed);
             _logger?.LogWarning(ex, "工具结果整形钩子失败，回退默认结果（tool: {ToolName}）", toolName);
             return result;
         }

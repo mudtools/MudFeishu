@@ -138,8 +138,9 @@ internal static class ToolArgumentSanitizer
     }
 
     /// <summary>禁止的 C0/C1 控制字符（保留 <c>\n</c> / <c>\r</c> / <c>\t</c>；<c>\r</c> 由调用方单独处理）。</summary>
+    /// <remarks>R3-05：判定表达式单源到 <see cref="SecurityTextPrimitives.IsControl"/>（出站剥离 / 入站拒绝共用同一事实）。</remarks>
     private static bool IsForbiddenControl(char ch)
-        => (ch < ' ' && ch is not ('\n' or '\r' or '\t')) || ch == '\u007F' || (ch >= '\u0080' && ch <= '\u009F');
+        => SecurityTextPrimitives.IsControl(ch);
 
     /// <summary>
     /// 禁止的"危险 Unicode"：孤立零宽字符、Bidi 覆盖/嵌入/隔离、BOM 与各类不可见控制。

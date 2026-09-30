@@ -385,7 +385,8 @@ public static class FeishuToolsServiceCollectionExtensions
         services.AddOptions<AilyKnowledgeOptions>().ValidateOnStart();
 #endif
 
-        services.AddSingleton<AilyKnowledgeProvider>(static sp =>
+        // R3-07：注册幂等——改为 TryAddSingleton，与前后行一致，避免重复调用产生多条描述符。
+        services.TryAddSingleton<AilyKnowledgeProvider>(static sp =>
         {
             var options = sp.GetRequiredService<IOptions<AilyKnowledgeOptions>>().Value;
             options.Validate();
@@ -425,6 +426,11 @@ public static class FeishuToolsServiceCollectionExtensions
     /// <summary>
     /// 写域工具核心批量注册（W4 抽取：消除 AddFeishuTools 与 AddFeishuWriteTools 的重复链）。
     /// </summary>
+    /// <remarks>
+    /// R3-08：注意——<c>mail</c>（邮件）与 <c>contact-department</c>（通讯录部门轴）为<b>读写混合域</b>，
+    /// 其读工具随写链注册（因为 <c>AddFeishuTools</c> 总是同时调用两链，行为正确）。
+    /// 未来如按链拆分装配，须把这两个域的读执行器拆到 <see cref="AddFeishuReadonlyToolCores"/>。
+    /// </remarks>
     private static IServiceCollection AddFeishuWriteToolCores(IServiceCollection services)
         => services
             // 写域按执行器拆成三个生成的 DI 核心方法（注册器按「执行器类」聚合，

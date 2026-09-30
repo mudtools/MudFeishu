@@ -264,13 +264,7 @@ internal static class Extractors
 
     // ────────── 返回类型元数据 ──────────
 
-    /// <summary>
-    /// 提取方法返回类型的元数据名（如 FeishuApiResult<JobListResult>）。
-    /// </summary>
-    public static string ExtractReturnTypeMetadata(IMethodSymbol method)
-    {
-        return method.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-    }
+    // R3-09：已删除 ExtractReturnTypeMetadata——随 ReturnTypeMetadataName 字段一同清理。
 
     /// <summary>
     /// 解包返回类型：<c>Task&lt;T&gt;</c> / <c>ValueTask&lt;T&gt;</c> → 载荷类型 T。

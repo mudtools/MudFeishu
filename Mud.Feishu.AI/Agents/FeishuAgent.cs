@@ -69,6 +69,7 @@ public sealed class FeishuAgent : AIAgent
     /// 为空/空集时保持 Phase 0 裸模型行为。</param>
     /// <param name="domainGuidance">已启用工具所属域的 guidance 资产（可空；WP6 / AT-F09）。
     /// 追加在宿主 <c>Instructions</c> <b>之后</b>（宿主指令优先）；为空/空集时指令与 Phase 0 完全一致。</param>
+    /// <param name="summarizer">渐进式会话摘要器（可空；R3-13 DI 化——为空时按阈值自动创建，非空时直接使用）。</param>
     /// <exception cref="InvalidOperationException">配置非法（fail-fast）。</exception>
     public FeishuAgent(
         IChatClient chatClient,
@@ -77,7 +78,8 @@ public sealed class FeishuAgent : AIAgent
         ILoggerFactory? loggerFactory = null,
         IServiceProvider? services = null,
         IReadOnlyList<AIFunction>? tools = null,
-        IReadOnlyList<FeishuGuidanceBlock>? domainGuidance = null)
+        IReadOnlyList<FeishuGuidanceBlock>? domainGuidance = null,
+        ConversationSummarizer? summarizer = null)
     {
         if (chatClient is null)
             throw new ArgumentNullException(nameof(chatClient));
@@ -90,11 +92,10 @@ public sealed class FeishuAgent : AIAgent
         _conversationStore = conversationStore;
         _logger = loggerFactory?.CreateLogger<FeishuAgent>();
 
-        // 渐进式会话摘要（Phase 2 §3.2）：条数阈值或 token 预算任一启用即挂载（P2-6）——
-        // 否则「仅配 token 阈值」的宿主会静默失去摘要能力。摘要与主对话共用同一模型客户端与历史状态键。
-        _summarizer = options.SummaryThreshold > 0 || options.MaxHistoryTokens > 0
+        // R3-13：Summarizer DI 化——接受外部注入的替身实例；未注入时按阈值自动创建（保留既有语义）。
+        _summarizer = summarizer ?? (options.SummaryThreshold > 0 || options.MaxHistoryTokens > 0
             ? new ConversationSummarizer(chatClient, options, loggerFactory?.CreateLogger<ConversationSummarizer>())
-            : null;
+            : null);
 
         // 精确计数可观测（R2-4）：原先 ChatTokenCounter 的初始化失败被 catch 静默吞掉，
         // 「token 预算实际走字符估算」这一配置/依赖不匹配完全不可见。此处借宿主 logger 告警一次

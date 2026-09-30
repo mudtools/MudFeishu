@@ -151,7 +151,8 @@ public sealed class TaskUpdatedConversationalEventHandler(
         // 任务事件无 chat_id：经解析出的负责人以 open_id 发单聊（对齐 ApprovalTaskConversationalEventHandler 范式）。
         // content 用 JsonObject 构造（AOT 安全 + 正确转义），不手写 JSON 字符串。
         var receiveId = request.SenderId;
-        if (string.IsNullOrEmpty(receiveId) || receiveId == "system")
+        // R3-13：使用 SystemSenderId 常量替代硬编码 "system" 字面量。
+        if (string.IsNullOrEmpty(receiveId) || receiveId == SystemSenderId)
         {
             throw new InvalidOperationException(
                 $"任务事件回复失败：无可投递接收方（subject: {request.SubjectId}）");

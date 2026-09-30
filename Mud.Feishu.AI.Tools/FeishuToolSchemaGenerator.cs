@@ -43,9 +43,19 @@ namespace Mud.Feishu.AI.Tools;
 /// <item><c>FeishuCapabilityCatalog.g.cs</c> —— Tier R 能力目录聚合（<c>build_property.FeishuToolCatalog=true</c> 时）。</item>
 /// </list>
 /// <para>
-/// <b>增量纪律</b>：Tier C 全程在 <c>SemanticModel</c> 上完成（不引入 <c>CompilationProvider</c>）——
-/// 管线输出是纯值模型，源码不变则不重发；Tier R 需要全程序集扫描，故显式 opt-in，避免拖累
-/// 每个引用本生成器的工程。
+/// <b>增量纪律（R3-04 更新）</b>：Tier C 的 <c>ScanTool</c> 在语法变换内读
+/// <c>context.SemanticModel.Compilation</c>（用于源挂钩交叉校验）。这是一个<b>已知限制</b>：
+/// 只编辑 <c>Source</c> 指向的 SDK 文件时，工具接口所在语法树不变 ⇒ 变换不重跑 ⇒ 缓存的
+/// route/risk 可能陈旧。方案 B（性能优先）选择保留现状，以 <c>GeneratorDriver</c> 用例锁定行为
+/// （见 <c>GeneratorIncrementalBehaviorTests</c>）。若实测证明陈旧真实发生，则需接入
+/// <c>CompilationProvider</c> 把该产物降为编译级粒度（方案 A，代价是增量构建耗时恶化）。
+/// </para>
+/// <para>
+/// <b>输出路径计数</b>（R3-04 修正）：实际 7 条输出路径——
+/// <c>FeishuToolSchemas</c> / <c>FeishuToolArgs</c> / <c>FeishuToolDomainRegistrars</c> /
+/// <c>FeishuToolGuidance</c> / <c>FeishuCapabilityCatalog</c> / <c>FeishuToolDiagnostics</c> /
+/// <c>Guard&lt;T&gt;</c> 兜底层。守卫 <c>GeneratorOutputGuardContractGuards</c> 用
+/// <c>HaveCountGreaterThanOrEqualTo(6)</c> 下界断言 + 逐条 <c>IsWrapped</c> 结构断言，不依赖该数字。
 /// </para>
 /// </remarks>
 [Generator]

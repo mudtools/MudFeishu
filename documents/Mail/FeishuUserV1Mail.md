@@ -61,7 +61,7 @@ UserAccessToken（用户访问令牌）
 var mailApi = feishuApp.GetApi<IFeishuUserV1Mail>();
 var request = new SubscribeUserMailboxEventRequest
 {
-    // 填充订阅配置
+    EventType = 1 // 邮件消息事件
 };
 var result = await mailApi.SubscribeUserMailboxEventAsync("me", request);
 Console.WriteLine($"订阅结果: {result.Code == 0}");
@@ -94,8 +94,7 @@ UserAccessToken（用户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "is_subscribed": true,
-    "subscribe_time": "2026-06-03T11:34:00+08:00"
+    "event_types": [1]
   }
 }
 ```
@@ -108,9 +107,9 @@ UserAccessToken（用户访问令牌）
 ```csharp
 var mailApi = feishuApp.GetApi<IFeishuUserV1Mail>();
 var result = await mailApi.GetSubscribeUserMailboxEventAsync("me");
-if (result?.Data?.IsSubscribed == true)
+if (result?.Data?.EventTypes != null)
 {
-    Console.WriteLine("邮箱事件已订阅");
+    Console.WriteLine($"邮箱事件已订阅: {string.Join(", ", result.Data.EventTypes)}");
 }
 ```
 
@@ -153,7 +152,10 @@ UserAccessToken（用户访问令牌）
 **代码示例**
 ```csharp
 var mailApi = feishuApp.GetApi<IFeishuUserV1Mail>();
-var request = new UnSubscribeUserMailboxEventRequest();
+var request = new UnSubscribeUserMailboxEventRequest
+{
+    EventType = 1 // 邮件消息事件
+};
 var result = await mailApi.UnSubscribeUserMailboxEventAsync("me", request);
 Console.WriteLine($"取消订阅结果: {result.Code == 0}");
 ```

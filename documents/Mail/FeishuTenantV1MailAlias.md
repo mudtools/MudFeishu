@@ -9,9 +9,10 @@ description: 该接口用于以租户身份管理企业内所有用户的邮箱�
 飞书邮箱别名API接口实现了添加、查询、删除等邮箱别名管理功能。支持租户管理员通过租户访问令牌管理企业内所有用户的邮箱别名。
 
 ## 参考文档
+- [从回收站删除用户邮箱地址](https://open.feishu.cn/document/server-docs/mail-v1/user_mailbox-alias/delete)
 - [创建邮箱别名](https://open.feishu.cn/document/server-docs/mail-v1/user_mailbox-alias/create)
 - [删除邮箱别名](https://open.feishu.cn/document/server-docs/mail-v1/user_mailbox-alias/delete-2)
-- [获取邮箱别名列表](https://open.feishu.cn/document/server-docs/mail-v1/user_mailbox-alias/delete-2)
+- [获取邮箱别名列表](https://open.feishu.cn/document/server-docs/mail-v1/user_mailbox-alias/list)
 - [查询邮箱地址状态](https://open.feishu.cn/document/server-docs/mail-v1/user/query)
 
 ## 函数列表
@@ -98,9 +99,10 @@ TenantAccessToken（租户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "alias_id": "alias_123456",
-    "alias_email": "user.alias@example.com",
-    "create_time": "2026-06-03T11:34:00+08:00"
+    "user_mailbox_alias": {
+      "primary_email": "user@example.com",
+      "email_alias": "user.alias@example.com"
+    }
   }
 }
 ```
@@ -114,10 +116,10 @@ TenantAccessToken（租户访问令牌）
 var mailAliasApi = feishuApp.GetApi<IFeishuTenantV1MailAlias>();
 var request = new CreateUserMailboxAliasRequest
 {
-    AliasEmail = "user.alias@example.com"
+    EmailAlias = "user.alias@example.com"
 };
 var result = await mailAliasApi.CreateUserMailboxAliasAsync("user@example.com", request);
-Console.WriteLine($"别名创建成功: {result?.Data?.AliasEmail}");
+Console.WriteLine($"别名创建成功: {result?.Data?.UserMailboxAlias?.EmailAliasSuffix}");
 ```
 
 ---
@@ -174,7 +176,7 @@ Console.WriteLine($"别名删除结果: {result.Code == 0}");
 ```csharp
 Task<FeishuApiPageListResult<EmailAlias>?> GetUserMailboxAliasPageListAsync(
     [Path] string user_mailbox_id,
-    [Query] int page_size = 20,
+    [Query] int page_size = Consts.PageSize_20,
     [Query] string? page_token = null,
     CancellationToken cancellationToken = default);
 ```
@@ -196,11 +198,10 @@ TenantAccessToken（租户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "aliases": [
+    "items": [
       {
-        "alias_id": "alias_123456",
-        "alias_email": "user.alias@example.com",
-        "create_time": "2026-06-03T11:34:00+08:00"
+        "primary_email": "user@example.com",
+        "email_alias": "user.alias@example.com"
       }
     ],
     "page_token": "evt_xxx",
@@ -221,7 +222,7 @@ if (result?.Data?.Items != null)
 {
     foreach (var alias in result.Data.Items)
     {
-        Console.WriteLine($"别名: {alias.AliasEmail}");
+        Console.WriteLine($"别名: {alias.EmailAliasSuffix}");
     }
 }
 ```
@@ -253,10 +254,18 @@ TenantAccessToken（租户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "email": "user@example.com",
-    "type": "user_mailbox",
-    "status": "active",
-    "create_time": "2026-01-01T00:00:00+08:00"
+    "user_list": [
+      {
+        "email": "user@example.com",
+        "status": 1,
+        "type": 1
+      },
+      {
+        "email": "admin@example.com",
+        "status": 1,
+        "type": 1
+      }
+    ]
   }
 }
 ```
@@ -270,12 +279,12 @@ TenantAccessToken（租户访问令牌）
 var mailAliasApi = feishuApp.GetApi<IFeishuTenantV1MailAlias>();
 var request = new QueryUserMailboxAddressRequest
 {
-    Emails = new List<string> { "user@example.com", "admin@example.com" }
+    EmailList = new[] { "user@example.com", "admin@example.com" }
 };
 var result = await mailAliasApi.QueryUserMailboxAddressAsync(request);
-if (result?.Data?.Items != null)
+if (result?.Data?.UserLists != null)
 {
-    foreach (var item in result.Data.Items)
+    foreach (var item in result.Data.UserLists)
     {
         Console.WriteLine($"邮箱: {item.Email}, 状态: {item.Status}");
     }

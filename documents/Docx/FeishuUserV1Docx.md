@@ -19,6 +19,7 @@ description: 该接口用于以用户身份创建、查询和管理飞书云文�
 - [创建文档](https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document/create)
 - [获取文档信息](https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document/get)
 - [获取文档纯文本内容](https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document/raw_content)
+- [获取文档所有块（分页）](https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/document-block/list)
 
 ## 函数列表
 
@@ -49,10 +50,10 @@ Task<FeishuApiResult<DocumentInfoResult>?> CreateDocumentAsync(
 
 **参数**：
 
-| 参数名 | 类型 | 必填 | 描述 |
-|-------|------|------|------|
-| `createDocumentRequest` | `CreateDocumentRequest` | ✅ | 创建文档请求体 |
-| `cancellationToken` | `CancellationToken` | ⚪ | 取消操作令牌 |
+| 参数名 | 类型 | 必填 | 描述 | 示例 |
+|-------|------|------|------|--------|
+| `createDocumentRequest` | `CreateDocumentRequest` | ✅ | 创建文档请求体 | - |
+| `cancellationToken` | `CancellationToken` | ⚪ | 取消操作令牌对象 | default |
 
 **CreateDocumentRequest 字段说明**：
 
@@ -110,7 +111,7 @@ public class UserDocumentService
 
         var result = await _userDocxClient.CreateDocumentAsync(request);
         
-        if (result?.IsSuccess() == true)
+        if (result?.Code == 0)
         {
             var docId = result.Data?.Document?.DocumentId;
             Console.WriteLine($"个人文档创建成功，ID: {docId}");
@@ -140,10 +141,10 @@ Task<FeishuApiResult<DocumentInfoResult>?> GetDocumentInfoAsync(
 
 **参数**：
 
-| 参数名 | 类型 | 必填 | 描述 |
-|-------|------|------|------|
+| 参数名 | 类型 | 必填 | 描述 | 示例 |
+|-------|------|------|------|--------|
 | `document_id` | `string` | ✅ | 文档的唯一标识 | `doxcnePuYufKa49ISjhD8Iabcef` |
-| `cancellationToken` | `CancellationToken` | ⚪ | 取消操作令牌 |
+| `cancellationToken` | `CancellationToken` | ⚪ | 取消操作令牌对象 | default |
 
 **响应**：
 
@@ -182,7 +183,7 @@ public async Task<string?> GetDocumentTitleAsync(string documentId)
 {
     var result = await _userDocxClient.GetDocumentInfoAsync(documentId);
     
-    if (result?.IsSuccess() == true)
+    if (result?.Code == 0)
     {
         return result.Data?.Document?.Title;
     }
@@ -210,11 +211,11 @@ Task<FeishuApiResult<DocumentRawContentResult>?> GetDocumentRawContentAsync(
 
 **参数**：
 
-| 参数名 | 类型 | 必填 | 描述 |
-|-------|------|------|------|
-| `document_id` | `string` | ✅ | 文档的唯一标识 |
-| `lang` | `int?` | ⚪ | @用户 的语言类型，默认 0 |
-| `cancellationToken` | `CancellationToken` | ⚪ | 取消操作令牌 |
+| 参数名 | 类型 | 必填 | 描述 | 示例 |
+|-------|------|------|------|--------|
+| `document_id` | `string` | ✅ | 文档的唯一标识 | `doxcnePuYufKa49ISjhD8Iabcef` |
+| `lang` | `int?` | ⚪ | 指定返回的 @用户 的语言，默认 0 | `0` |
+| `cancellationToken` | `CancellationToken` | ⚪ | 取消操作令牌对象 | default |
 
 **lang 可选值**：
 
@@ -249,7 +250,7 @@ public async Task<string> ExtractDocumentTextAsync(string documentId)
 {
     var result = await _userDocxClient.GetDocumentRawContentAsync(documentId);
     
-    if (result?.IsSuccess() == true)
+    if (result?.Code == 0)
     {
         return result.Data?.Content ?? string.Empty;
     }
@@ -272,7 +273,7 @@ Task<FeishuApiPageListResult<Block>?> GetDocumentBlocksPageListAsync(
     [Query("document_revision_id")] int? document_revision_id = -1,
     [Query("page_size")] int page_size = 500,
     [Query("page_token")] string? page_token = null,
-    [Query("user_id_type")] string user_id_type = "open_id",
+    [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -280,14 +281,14 @@ Task<FeishuApiPageListResult<Block>?> GetDocumentBlocksPageListAsync(
 
 **参数**：
 
-| 参数名 | 类型 | 必填 | 描述 | 默认值 |
+| 参数名 | 类型 | 必填 | 描述 | 示例 |
 |-------|------|------|------|--------|
-| `document_id` | `string` | ✅ | 文档的唯一标识 | - |
-| `document_revision_id` | `int?` | ⚪ | 文档版本号，-1 表示最新版本 | `-1` |
-| `page_size` | `int` | ⚪ | 分页大小，最大 500 | `500` |
-| `page_token` | `string?` | ⚪ | 分页标记，首次请求不填 | `null` |
-| `user_id_type` | `string` | ⚪ | 用户 ID 类型 | `open_id` |
-| `cancellationToken` | `CancellationToken` | ⚪ | 取消操作令牌 | - |
+| `document_id` | `string` | ✅ | 文档的唯一标识 | `doxcnePuYufKa49ISjhD8Iabcef` |
+| `document_revision_id` | `int?` | ⚪ | 查询的文档版本，-1 表示最新版本，默认 -1 | `-1` |
+| `page_size` | `int` | ⚪ | 分页大小，默认 500 | `500` |
+| `page_token` | `string?` | ⚪ | 分页标记，第一次请求不填，表示从头开始遍历 | `-` |
+| `user_id_type` | `string` | ⚪ | 用户 ID 类型，默认 open_id | `open_id` |
+| `cancellationToken` | `CancellationToken` | ⚪ | 取消操作令牌对象 | default |
 
 **响应**：
 
@@ -335,7 +336,7 @@ public async Task<List<string>> ExtractAllHeadingsAsync(string documentId)
     var headings = new List<string>();
     var result = await _userDocxClient.GetDocumentBlocksPageListAsync(documentId);
 
-    if (result?.IsSuccess() == true && result.Data?.Items != null)
+    if (result?.Code == 0 && result.Data?.Items != null)
     {
         foreach (var block in result.Data.Items)
         {

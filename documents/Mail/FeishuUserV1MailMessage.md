@@ -15,10 +15,16 @@ description: 该接口用于以用户身份管理自己的邮箱邮件，支持�
 - [修改邮件](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/modify)
 - [批量获取邮件详情](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/batch_get)
 - [查询会话下邮件信息](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/list_thread_message)
-- [获取邮件卡片的邮件列表](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/list_thread_message)
+- [获取邮件卡片的邮件列表](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/get_by_card)
 - [分页列出邮件](https://open.feishu.cn/document/mail-v1/user_mailbox-message/list)
 - [获取邮件详情](https://open.feishu.cn/document/mail-v1/user_mailbox-message/get)
-- [发送邮件](https://open.feishu.cn/document/mail-v1/user_mailbox-message/send)
+- [获取邮件内附件的下载链接](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message-attachment/download_url)
+- [撤回已发送的邮件](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-sent_message/recall)
+- [查询已发送邮件的撤回详情](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-sent_message/get_recall_detail)
+- [发送邮件](https://open.feishu.cn/document/server-docs/mail-v1/user_mailbox-message/send)
+- [查询已发送邮件的投递状态](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/send_status)
+- [搜索邮件](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox/search)
+- [取消定时发送](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-draft/cancel_scheduled_send)
 
 ## 函数列表
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
@@ -32,7 +38,13 @@ description: 该接口用于以用户身份管理自己的邮箱邮件，支持�
 | GetByCardUserMailboxMessageAsync | 获取邮件卡片的邮件列表 | UserAccessToken | GET |
 | GetUserMailboxMessagePageListAsync | 分页列出邮件 | UserAccessToken | GET |
 | GetUserMailboxMessageAsync | 获取邮件详情 | UserAccessToken | GET |
+| GetMessageAttachmentDownloadUrlAsync | 获取邮件内附件的下载链接 | UserAccessToken | GET |
+| RecallUserMailboxMessageAsync | 撤回已发送的邮件 | UserAccessToken | POST |
+| GetUserMailboxMessageRecallDetailAsync | 查询已发送邮件的撤回详情 | UserAccessToken | GET |
 | SendUserMailboxMessageAsync | 发送邮件 | UserAccessToken | POST |
+| GetUserMailboxMessageSendStatusAsync | 查询已发送邮件的投递状态 | UserAccessToken | GET |
+| SearchUserMailboxMessageAsync | 搜索邮件 | UserAccessToken | POST |
+| CancelScheduledSendUserMailboxMessageAsync | 取消定时发送 | UserAccessToken | POST |
 
 ## 函数详细内容
 
@@ -75,7 +87,7 @@ UserAccessToken（用户访问令牌）
 var messageApi = feishuApp.GetApi<IFeishuUserV1MailMessage>();
 var request = new BatchTrashUserMailboxMessageRequest
 {
-    MessageIds = new List<string> { "msg_id_1", "msg_id_2" }
+    MessageIds = new[] { "msg_id_1", "msg_id_2" }
 };
 var result = await messageApi.BatchTrashUserMailboxMessageAsync("me", request);
 Console.WriteLine($"批量删除结果: {result.Code == 0}");
@@ -123,8 +135,8 @@ UserAccessToken（用户访问令牌）
 var messageApi = feishuApp.GetApi<IFeishuUserV1MailMessage>();
 var request = new BatchModifyUserMailboxMessageRequest
 {
-    MessageIds = new List<string> { "msg_id_1", "msg_id_2" },
-    Labels = new List<string> { "FLAGGED" }
+    MessageIds = new[] { "msg_id_1", "msg_id_2" },
+    AddLabelIds = new[] { "FLAGGED" }
 };
 var result = await messageApi.BatchModifyUserMailboxMessageAsync("me", request);
 Console.WriteLine($"批量修改结果: {result.Code == 0}");
@@ -217,8 +229,8 @@ UserAccessToken（用户访问令牌）
 var messageApi = feishuApp.GetApi<IFeishuUserV1MailMessage>();
 var request = new ModifyUserMailboxMessageRequest
 {
-    Labels = new List<string> { "FLAGGED" },
-    IsRead = true
+    AddLabelIds = new[] { "FLAGGED" },
+    AddFolder = "INBOX"
 };
 var result = await messageApi.ModifyUserMailboxMessageAsync("me", "msg_id_123", request);
 Console.WriteLine($"邮件修改结果: {result.Code == 0}");
@@ -253,13 +265,13 @@ UserAccessToken（用户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "items": [
+    "messages": [
       {
         "message_id": "NzR3Zkd5NGhBTS9NVkZnSklidDVGT3VoQmM4PQ==",
         "subject": "邮件主题",
-        "from": "sender@example.com",
-        "to": ["recipient@example.com"],
-        "create_time": "2026-06-03T11:41:00+08:00"
+        "head_from": { "mail_address": "sender@example.com", "name": "发件人" },
+        "to": [{ "mail_address": "recipient@example.com", "name": "收件人" }],
+        "internal_date": "1682377086000"
       }
     ]
   }
@@ -275,12 +287,12 @@ UserAccessToken（用户访问令牌）
 var messageApi = feishuApp.GetApi<IFeishuUserV1MailMessage>();
 var request = new BatchGetUserMailboxMessageRequest
 {
-    MessageIds = new List<string> { "msg_id_1", "msg_id_2" }
+    MessageIds = new[] { "msg_id_1", "msg_id_2" }
 };
 var result = await messageApi.BatchGetUserMailboxMessageAsync("me", request);
-if (result?.Data?.Items != null)
+if (result?.Data?.Messages != null)
 {
-    foreach (var msg in result.Data.Items)
+    foreach (var msg in result.Data.Messages)
     {
         Console.WriteLine($"邮件: {msg.Subject}");
     }
@@ -323,9 +335,10 @@ UserAccessToken（用户访问令牌）
     "items": [
       {
         "message_id": "NzR3Zkd5NGhBTS9NVkZnSklidDVGT3VoQmM4PQ==",
-        "subject": "邮件主题",
-        "from": "sender@example.com",
-        "create_time": "2026-06-03T11:41:00+08:00"
+        "thread_id": "thread_id_123",
+        "folder_id": "INBOX",
+        "internal_date": "1682377086000",
+        "message_state": 1
       }
     ]
   }
@@ -344,7 +357,7 @@ if (result?.Data?.Items != null)
 {
     foreach (var msg in result.Data.Items)
     {
-        Console.WriteLine($"会话邮件: {msg.Subject}");
+        Console.WriteLine($"会话邮件: {msg.Message?.Subject}");
     }
 }
 ```
@@ -360,7 +373,7 @@ Task<FeishuApiResult<GetByCardUserMailboxMessageResult>?> GetByCardUserMailboxMe
     [Path] string user_mailbox_id,
     [Query] string card_id,
     [Query] string owner_id,
-    [Query] string? user_id_type = "user",
+    [Query] string? user_id_type = Consts.User_Id_Type,
     CancellationToken cancellationToken = default);
 ```
 
@@ -382,12 +395,12 @@ UserAccessToken（用户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "items": [
-      {
-        "message_id": "NzR3Zkd5NGhBTS9NVkZnSklidDVGT3VoQmM4PQ==",
-        "subject": "邮件主题"
-      }
-    ]
+    "owner_info": {
+      "type": "user",
+      "owner_user_id": "1234567890"
+    },
+    "message_ids": ["NzR3Zkd5NGhBTS9NVkZnSklidDVGT3VoQmM4PQ=="],
+    "card_id": "512ca581-6059-4449-8150-5522e6641d32"
   }
 }
 ```
@@ -404,12 +417,9 @@ var result = await messageApi.GetByCardUserMailboxMessageAsync(
     "me",
     "512ca581-6059-4449-8150-5522e6641d32",
     "1234567890");
-if (result?.Data?.Items != null)
+foreach (var msgId in result?.Data?.MessageIds ?? [])
 {
-    foreach (var msg in result.Data.Items)
-    {
-        Console.WriteLine($"卡片邮件: {msg.Subject}");
-    }
+    Console.WriteLine($"卡片邮件ID: {msgId}");
 }
 ```
 
@@ -425,7 +435,7 @@ Task<FeishuApiPageListResult<string>?> GetUserMailboxMessagePageListAsync(
     [Query] string? folder_id = null,
     [Query] bool? only_unread = null,
     [Query] string? label_id = null,
-    [Query] int page_size = 20,
+    [Query] int page_size = Consts.PageSize_20,
     [Query] string? page_token = null,
     CancellationToken cancellationToken = default);
 ```
@@ -506,12 +516,15 @@ UserAccessToken（用户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "message_id": "NzR3Zkd5NGhBTS9NVkZnSklidDVGT3VoQmM4PQ==",
-    "subject": "邮件主题",
-    "from": "sender@example.com",
-    "to": ["recipient@example.com"],
-    "body": "邮件正文内容",
-    "create_time": "2026-06-03T11:41:00+08:00"
+    "message": {
+      "message_id": "NzR3Zkd5NGhBTS9NVkZnSklidDVGT3VoQmM4PQ==",
+      "subject": "邮件主题",
+      "head_from": { "mail_address": "sender@example.com", "name": "发件人" },
+      "to": [{ "mail_address": "recipient@example.com", "name": "收件人" }],
+      "body_html": "5b+76K+H5paH5Lu25pON5L2c",
+      "body_calendar": "QkVHSU46VkNBTEVOREFS",
+      "internal_date": "1682377086000"
+    }
   }
 }
 ```
@@ -519,14 +532,185 @@ UserAccessToken（用户访问令牌）
 **说明**
 - 获取邮件详情
 - 可通过format参数控制返回内容的详细程度
+- `body_calendar`（日历邀请正文）需具备字段权限：获取邮件正文(mail:user_mailbox.message.body:read)
 - 使用 user_access_token 时，只能获取当前授权用户的邮箱邮件详情
 
 **代码示例**
 ```csharp
 var messageApi = feishuApp.GetApi<IFeishuUserV1MailMessage>();
 var result = await messageApi.GetUserMailboxMessageAsync("me", "msg_id_123", format: "full");
-Console.WriteLine($"邮件主题: {result?.Data?.Subject}");
-Console.WriteLine($"发件人: {result?.Data?.From}");
+Console.WriteLine($"邮件主题: {result?.Data?.Message?.Subject}");
+Console.WriteLine($"发件人: {result?.Data?.Message?.HeadFrom?.Name}");
+```
+
+---
+
+### GetMessageAttachmentDownloadUrlAsync
+获取邮件内附件的下载链接
+
+**函数签名**
+```csharp
+Task<FeishuApiResult<AttachmentDownloadUrlResult>?> GetMessageAttachmentDownloadUrlAsync(
+     [Path] string user_mailbox_id,
+     [Path] string message_id,
+     [Query("attachment_ids")] string? attachment_ids = null,
+     CancellationToken cancellationToken = default);
+```
+
+**认证**
+UserAccessToken（用户访问令牌）
+
+**参数**
+| 参数名 | 类型 | 必填 | 描述 | 示例 |
+| :--- | :--- | :--- | :--- | :--- |
+| user_mailbox_id | string | ✅ | 用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。 | user@example.com |
+| message_id | string | ✅ | 邮件 ID | NzR3Zkd5NGhBTS9NVkZnSklidDVGT3VoQmM4PQ== |
+| attachment_ids | string? | ⚪ | 待获取下载链接的附件 ID 列表，多个 ID 以逗号分隔 | att_001,att_002 |
+| cancellationToken | CancellationToken | ⚪ | 取消操作令牌对象 | default |
+
+**响应**
+```json
+{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "download_urls": [
+      {
+        "attachment_id": "att_001",
+        "download_url": "https://api-drive-stream.feishu.cn/space/api/box/stream/download/authcode/?code=xxxx"
+      }
+    ],
+    "failed_ids": ["att_002"]
+  }
+}
+```
+
+**说明**
+- 获取指定邮件内附件的有效下载链接，链接有时效性，过期后需重新获取
+- 附件 ID 可通过获取邮件详情接口返回的 attachments 字段中的 id 获取
+- `failed_ids` 返回获取失败的附件 ID 列表
+- 使用 user_access_token 时，只能获取当前授权用户的邮箱邮件附件
+
+**代码示例**
+```csharp
+var messageApi = feishuApp.GetApi<IFeishuUserV1MailMessage>();
+var result = await messageApi.GetMessageAttachmentDownloadUrlAsync(
+    "me",
+    "msg_id_123",
+    "att_001,att_002");
+if (result?.Data?.DownloadUrls != null)
+{
+    foreach (var item in result.Data.DownloadUrls)
+    {
+        Console.WriteLine($"附件 {item.AttachmentId} 下载链接: {item.DownloadUrl}");
+    }
+}
+```
+
+---
+
+### RecallUserMailboxMessageAsync
+撤回已发送的邮件
+
+**函数签名**
+```csharp
+Task<FeishuApiResult<RecallMessageResult>?> RecallUserMailboxMessageAsync(
+    [Path] string user_mailbox_id,
+    [Path] string message_id,
+    CancellationToken cancellationToken = default);
+```
+
+**认证**
+UserAccessToken（用户访问令牌）
+
+**参数**
+| 参数名 | 类型 | 必填 | 描述 | 示例 |
+| :--- | :--- | :--- | :--- | :--- |
+| user_mailbox_id | string | ✅ | 用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。 | user@example.com |
+| message_id | string | ✅ | 待撤回的邮件 ID | NzR3Zkd5NGhBTS9NVkZnSklidDVGT3VoQmM4PQ== |
+| cancellationToken | CancellationToken | ⚪ | 取消操作令牌对象 | default |
+
+**响应**
+```json
+{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "recall_status": "unavailable",
+    "recall_restriction_reason": "recall time exceeded"
+  }
+}
+```
+
+**说明**
+- 仅可撤回当前授权用户已发送且在可撤回时间窗口内的邮件
+- `recall_status` 表示撤回任务状态；不允许撤回时通过 `recall_restriction_reason` 返回原因
+- 每个收件人的撤回结果可通过查询已发送邮件的撤回详情接口获取
+
+**代码示例**
+```csharp
+var messageApi = feishuApp.GetApi<IFeishuUserV1MailMessage>();
+var result = await messageApi.RecallUserMailboxMessageAsync("me", "msg_id_123");
+Console.WriteLine($"撤回状态: {result?.Data?.RecallStatus}");
+```
+
+---
+
+### GetUserMailboxMessageRecallDetailAsync
+查询已发送邮件的撤回详情
+
+**函数签名**
+```csharp
+Task<FeishuApiResult<RecallMessageDetailResult>?> GetUserMailboxMessageRecallDetailAsync(
+    [Path] string user_mailbox_id,
+    [Path] string message_id,
+    CancellationToken cancellationToken = default);
+```
+
+**认证**
+UserAccessToken（用户访问令牌）
+
+**参数**
+| 参数名 | 类型 | 必填 | 描述 | 示例 |
+| :--- | :--- | :--- | :--- | :--- |
+| user_mailbox_id | string | ✅ | 用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。 | user@example.com |
+| message_id | string | ✅ | 待查询撤回详情的邮件 ID | NzR3Zkd5NGhBTS9NVkZnSklidDVGT3VoQmM4PQ== |
+| cancellationToken | CancellationToken | ⚪ | 取消操作令牌对象 | default |
+
+**响应**
+```json
+{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "recall_status": "success",
+    "recall_result": "part_success",
+    "success_count": 2,
+    "failure_count": 1,
+    "processing_count": 0,
+    "items": [
+      {
+        "recipient_address": "recipient@example.com",
+        "recipient_name": "收件人",
+        "status": "success",
+        "fail_reason": "",
+        "is_mailing_list": false
+      }
+    ]
+  }
+}
+```
+
+**说明**
+- 查询当前授权用户已发送邮件的每个收件人撤回结果，包括成功、失败与处理中的收件人数
+- 收件人为邮件组地址时，`is_mailing_list` 为 true，并返回组内成功/失败人数
+
+**代码示例**
+```csharp
+var messageApi = feishuApp.GetApi<IFeishuUserV1MailMessage>();
+var result = await messageApi.GetUserMailboxMessageRecallDetailAsync("me", "msg_id_123");
+Console.WriteLine($"撤回状态: {result?.Data?.RecallStatus}");
+Console.WriteLine($"成功: {result?.Data?.SuccessCount}, 失败: {result?.Data?.FailureCount}");
 ```
 
 ---
@@ -559,13 +743,14 @@ UserAccessToken（用户访问令牌）
   "msg": "success",
   "data": {
     "message_id": "NzR3Zkd5NGhBTS9NVkZnSklidDVGT3VoQmM4PQ==",
-    "send_time": "2026-06-03T11:41:00+08:00"
+    "thread_id": "thread_id_123"
   }
 }
 ```
 
 **说明**
 - 发送邮件使用 base64url 编码。与普通 base64 的区别是将「+/」替换为「-_」
+- 可通过 `raw` 传入完整 EML，或通过 subject/to/body_html 等结构化字段构造邮件
 - 使用 user_access_token 时，只能从当前授权用户的主邮箱发送邮件
 
 **代码示例**
@@ -574,9 +759,190 @@ var messageApi = feishuApp.GetApi<IFeishuUserV1MailMessage>();
 var request = new SendUserMailboxMessageRequest
 {
     Subject = "邮件主题",
-    ToRecipients = new List<string> { "recipient@example.com" },
-    Body = "邮件正文内容"
+    Tos = new MailAddress[] { new MailAddress { MailAddressSuffix = "recipient@example.com", Name = "收件人" } },
+    BodyHtml = "<p>邮件正文内容</p>"
 };
 var result = await messageApi.SendUserMailboxMessageAsync("me", request);
 Console.WriteLine($"邮件发送成功: {result?.Data?.MessageId}");
+```
+
+---
+
+### GetUserMailboxMessageSendStatusAsync
+查询已发送邮件的投递状态
+
+**函数签名**
+```csharp
+Task<FeishuApiResult<MessageSendStatusResult>?> GetUserMailboxMessageSendStatusAsync(
+     [Path] string user_mailbox_id,
+     [Path] string message_id,
+     CancellationToken cancellationToken = default);
+```
+
+**认证**
+UserAccessToken（用户访问令牌）
+
+**参数**
+| 参数名 | 类型 | 必填 | 描述 | 示例 |
+| :--- | :--- | :--- | :--- | :--- |
+| user_mailbox_id | string | ✅ | 用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。 | user@example.com |
+| message_id | string | ✅ | 待查询的邮件 ID | NzR3Zkd5NGhBTS9NVkZnSklidDVGT3VoQmM4PQ== |
+| cancellationToken | CancellationToken | ⚪ | 取消操作令牌对象 | default |
+
+**响应**
+```json
+{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "message_id": "NzR3Zkd5NGhBTS9NVkZnSklidDVGT3VoQmM4PQ==",
+    "details": [
+      {
+        "recipient": {
+          "email_address": "recipient@example.com",
+          "name": "收件人"
+        },
+        "status": 2,
+        "last_updated_time": 1717382400
+      }
+    ]
+  }
+}
+```
+
+**说明**
+- 返回已发送邮件中每个收件人的投递状态
+- `last_updated_time` 为最后更新时间（Unix 时间戳，秒）
+
+**代码示例**
+```csharp
+var messageApi = feishuApp.GetApi<IFeishuUserV1MailMessage>();
+var result = await messageApi.GetUserMailboxMessageSendStatusAsync("me", "msg_id_123");
+if (result?.Data?.Details != null)
+{
+    foreach (var detail in result.Data.Details)
+    {
+        Console.WriteLine($"收件人 {detail.Recipient?.EmailAddress} 投递状态: {detail.Status}");
+    }
+}
+```
+
+---
+
+### SearchUserMailboxMessageAsync
+搜索邮件
+
+**函数签名**
+```csharp
+Task<FeishuApiResult<SearchUserMailboxMessageResult>?> SearchUserMailboxMessageAsync(
+    [Path] string user_mailbox_id,
+    [Body] SearchUserMailboxMessageRequest request,
+    [Query] int page_size = Consts.PageSize_15,
+    [Query] string? page_token = null,
+    CancellationToken cancellationToken = default);
+```
+
+**认证**
+UserAccessToken（用户访问令牌）
+
+**参数**
+| 参数名 | 类型 | 必填 | 描述 | 示例 |
+| :--- | :--- | :--- | :--- | :--- |
+| user_mailbox_id | string | ✅ | 用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。 | user@example.com |
+| request | SearchUserMailboxMessageRequest | ✅ | 搜索请求体：`query` 搜索关键词、`filter` 过滤条件（from/to/cc/bcc/subject/folder/label/has_attachment/is_unread/create_time） | - |
+| page_size | int | ⚪ | 单次返回的搜索结果条数，默认值：15，取值范围 1 ～ 15 | 15 |
+| page_token | string? | ⚪ | 分页标记，第一次请求不填，表示从头开始遍历 | - |
+| cancellationToken | CancellationToken | ⚪ | 取消操作令牌对象 | default |
+
+**响应**
+```json
+{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "items": [
+      {
+        "id": "msg_id_123",
+        "display_info": "会议通知",
+        "meta_data": {
+          "title": "会议通知",
+          "thread_id": "thread_id_123",
+          "create_time": "2026-06-03T11:41:00+08:00",
+          "message_biz_id": "NzR3Zkd5NGhBTS9NVkZnSklidDVGT3VoQmM4PQ==",
+          "from": { "mail_address": "sender@example.com", "name": "发件人" }
+        }
+      }
+    ],
+    "total": 99,
+    "has_more": true,
+    "page_token": "eVQrYzJBNDNONlk4VFZBZVlSdzlKdFJ4bVVHVExENDNKVHoxaVdiVnViQT0=",
+    "notice": ""
+  }
+}
+```
+
+**说明**
+- 支持关键词与发件人、收件人、文件夹、时间范围等多维过滤条件组合查询
+- 返回 `page_token` 需在下次请求中回传以继续翻页
+- `notice` 为服务端提示信息（如 query 被截断）
+
+**代码示例**
+```csharp
+var messageApi = feishuApp.GetApi<IFeishuUserV1MailMessage>();
+var request = new SearchUserMailboxMessageRequest
+{
+    Query = "会议通知",
+    Filter = new MailSearchFilter { IsUnread = true }
+};
+var result = await messageApi.SearchUserMailboxMessageAsync("me", request);
+if (result?.Data?.Items != null)
+{
+    foreach (var item in result.Data.Items)
+    {
+        Console.WriteLine($"搜索结果: {item.MetaData?.Title}");
+    }
+}
+```
+
+---
+
+### CancelScheduledSendUserMailboxMessageAsync
+取消定时发送
+
+**函数签名**
+```csharp
+Task<FeishuNullDataApiResult?> CancelScheduledSendUserMailboxMessageAsync(
+    [Path] string user_mailbox_id,
+    [Path] string message_id,
+    CancellationToken cancellationToken = default);
+```
+
+**认证**
+UserAccessToken（用户访问令牌）
+
+**参数**
+| 参数名 | 类型 | 必填 | 描述 | 示例 |
+| :--- | :--- | :--- | :--- | :--- |
+| user_mailbox_id | string | ✅ | 用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。 | aba@aac.com |
+| message_id | string | ✅ | 已设置定时发送的邮件 ID | 268dce11-85f7-427d-8756-6be3abc850fd |
+| cancellationToken | CancellationToken | ⚪ | 取消操作令牌对象 | default |
+
+**响应**
+```json
+{
+  "code": 0,
+  "msg": "success",
+  "data": null
+}
+```
+
+**说明**
+- 取消定时发送的邮件，被取消的邮件将变成草稿
+- 仅对已设置定时发送且尚未实际发出的邮件有效
+
+**代码示例**
+```csharp
+var messageApi = feishuApp.GetApi<IFeishuUserV1MailMessage>();
+var result = await messageApi.CancelScheduledSendUserMailboxMessageAsync("me", "msg_id_123");
+Console.WriteLine($"取消定时发送结果: {result.Code == 0}");
 ```

@@ -1,15 +1,15 @@
 ---
-title: 云空间文件夹管理接口（租户令牌）| MudFeishu
-description: 该接口用于以租户身份管理飞书云空间文件夹，支持获取文件夹元数据、创建文件夹、获取文件清单以及查询异步任务状态，每个文件夹均有唯一 token 作为标识。
+title: 云空间文件夹管理接口（用户令牌）| MudFeishu
+description: 该接口用于以用户身份管理飞书云空间文件夹，支持获取文件夹元数据、创建文件夹、获取文件清单以及查询异步任务状态，每个文件夹均有唯一 token 作为标识。
 ---
 
-# 文件夹管理 - 租户令牌（FeishuTenantV1DriveFolder）
+# 文件夹管理 - 用户令牌（FeishuUserV1DriveFolder）
 
 ## 接口名称
-**文件夹管理（租户令牌）** -（`IFeishuTenantV1DriveFolder`）
+**文件夹管理（用户令牌）** -（`IFeishuUserV1DriveFolder`）
 
 ## 功能描述
-提供以租户身份管理飞书云空间文件夹的能力。文件夹是飞书云空间中用于管理文件和其它文件夹的容器，每个文件夹都有唯一的 token 作为标识。支持获取文件夹元数据、创建文件夹、获取文件清单以及查询异步任务状态。适用于需要以应用身份管理云空间文件夹的业务场景，如企业级文档管理、自动化文件夹创建等。
+提供以用户身份管理飞书云空间文件夹的能力。文件夹是飞书云空间中用于管理文件和其它文件夹的容器，每个文件夹都有唯一的 token 作为标识。支持获取文件夹元数据、创建文件夹、获取文件清单以及查询异步任务状态。适用于需要以具体用户身份管理云空间文件夹的业务场景，如个人文件整理、用户级文件夹自动化创建等。
 
 ## 参考文档
 - [文件夹概述 - 飞书开放平台](https://open.feishu.cn/document/docs/drive-v1/folder/folder-overview)
@@ -18,11 +18,11 @@ description: 该接口用于以租户身份管理飞书云空间文件夹，支�
 
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
 |---------|---------|---------|----------|
-| GetDriveRootFolderMetaAsync | 获取根文件夹元数据 | 租户令牌 | GET |
-| GetFilesPageListAsync | 获取文件夹中的文件清单 | 租户令牌 | GET |
-| GetFolderMetaByTokenAsync | 获取文件夹元数据 | 租户令牌 | GET |
-| CreateFolderAsync | 创建文件夹 | 租户令牌 | POST |
-| GetTaskCheckFileAsync | 查询异步任务状态 | 租户令牌 | GET |
+| GetDriveRootFolderMetaAsync | 获取根文件夹元数据 | 用户令牌 | GET |
+| GetFilesPageListAsync | 获取文件夹中的文件清单 | 用户令牌 | GET |
+| GetFolderMetaByTokenAsync | 获取文件夹元数据 | 用户令牌 | GET |
+| CreateFolderAsync | 创建文件夹 | 用户令牌 | POST |
+| GetTaskCheckFileAsync | 查询异步任务状态 | 用户令牌 | GET |
 
 ## 函数详细内容
 
@@ -34,7 +34,7 @@ Task<FeishuApiResult<GetDriveRootFolderMetaReuslt>?> GetDriveRootFolderMetaAsync
     CancellationToken cancellationToken = default);
 ```
 
-**认证**：租户令牌
+**认证**：用户令牌
 
 **参数**：无
 
@@ -70,7 +70,7 @@ Task<FeishuApiResult<GetDriveFilesResult>?> GetFilesPageListAsync(
     CancellationToken cancellationToken = default);
 ```
 
-**认证**：租户令牌
+**认证**：用户令牌
 
 **参数**：
 
@@ -119,7 +119,7 @@ Task<FeishuApiResult<GetFolderMetaResult>?> GetFolderMetaByTokenAsync(
     CancellationToken cancellationToken = default);
 ```
 
-**认证**：租户令牌
+**认证**：用户令牌
 
 **参数**：
 
@@ -155,7 +155,7 @@ Task<FeishuApiResult<CreateFolderResult>?> CreateFolderAsync(
     CancellationToken cancellationToken = default);
 ```
 
-**认证**：租户令牌
+**认证**：用户令牌
 
 **参数**：
 
@@ -191,7 +191,7 @@ Task<FeishuApiResult<FilesTaskCheckResult>?> GetTaskCheckFileAsync(
     CancellationToken cancellationToken = default);
 ```
 
-**认证**：租户令牌
+**认证**：用户令牌
 
 **参数**：
 
@@ -218,12 +218,12 @@ Task<FeishuApiResult<FilesTaskCheckResult>?> GetTaskCheckFileAsync(
 
 **代码示例**：
 ```csharp
-// 使用租户令牌管理文件夹
-public class FolderManagementService
+// 使用用户令牌管理文件夹
+public class UserFolderService
 {
-    private readonly IFeishuTenantV1DriveFolder _folderClient;
+    private readonly IFeishuUserV1DriveFolder _folderClient;
 
-    public FolderManagementService(IFeishuTenantV1DriveFolder folderClient)
+    public UserFolderService(IFeishuUserV1DriveFolder folderClient)
     {
         _folderClient = folderClient;
     }

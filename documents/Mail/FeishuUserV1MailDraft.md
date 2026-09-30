@@ -57,14 +57,22 @@ UserAccessToken（用户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "draft_id": "268dce11-85f7-427d-8756-6be3abc850fd",
-    "update_time": "2026-06-03T11:34:00+08:00"
+    "draft": {
+      "id": "268dce11-85f7-427d-8756-6be3abc850fd",
+      "message": {
+        "raw": "Q29udGVudC1UeXBlOiB0ZXh0L3BsYWluOyBjaGFyc2V0PSJ1cy1hc2NpaSIK",
+        "subject": "更新后的邮件主题",
+        "message_state": 3
+      }
+    },
+    "reference": "https://{domain}/mail?draftId=268dce11-85f7-427d-8756-6be3abc850fd&scene=send-preview&mailbox=user%40company.com"
   }
 }
 ```
 
 **说明**
-- 支持更新草稿的主题、收件人、正文等内容
+- 以 base64url 编码的完整 RFC 5822（EML）邮件内容整体替换草稿，未携带的字段将被清空
+- `reference` 为草稿 Web 预览链接
 - 更新后草稿状态保持不变
 
 **代码示例**
@@ -72,11 +80,10 @@ UserAccessToken（用户访问令牌）
 var draftApi = feishuApp.GetApi<IFeishuUserV1MailDraft>();
 var request = new UserMailboxDraftRequest
 {
-    Subject = "更新后的邮件主题",
-    ToRecipients = new List<string> { "recipient@example.com" }
+    Raw = Convert.ToBase64String(Encoding.UTF8.GetBytes(eml)).Replace('+', '-').Replace('/', '_')
 };
 var result = await draftApi.UpdateUserMailboxDraftAsync("me", "draft_id_123", request);
-Console.WriteLine($"草稿更新成功: {result?.Data?.DraftId}");
+Console.WriteLine($"草稿更新成功: {result?.Data?.Draft?.Id}");
 ```
 
 ---
@@ -89,6 +96,7 @@ Console.WriteLine($"草稿更新成功: {result?.Data?.DraftId}");
 Task<FeishuApiResult<SendUserMailboxDraftResult>?> SendUserMailboxDraftAsync(
     [Path] string user_mailbox_id,
     [Path] string draft_id,
+    [Body] SendUserMailboxDraftRequest request,
     CancellationToken cancellationToken = default);
 ```
 
@@ -99,7 +107,8 @@ UserAccessToken（用户访问令牌）
 | 参数名 | 类型 | 必填 | 描述 | 示例 |
 | :--- | :--- | :--- | :--- | :--- |
 | user_mailbox_id | string | ✅ | 用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。 | user@example.com |
-| draft_id | string | ✅ | 草稿ID，可通过创建草稿或列出草稿接口获得 | 268dce11-85f7-427d-8756-6be3abc850fd |
+| draft_id | string | ✅ | 草稿ID，可通过创建草稿、更新草稿或列出草稿列表接口获得 | 268dce11-85f7-427d-8756-6be3abc850fd |
+| request | SendUserMailboxDraftRequest | ⚪ | 发送草稿请求体，可选 `send_time`（定时发送的 Unix 时间戳，秒），需至少为当前时间 + 5 分钟；不传则立即发送，日历邀请邮件不支持该字段 | - |
 | cancellationToken | CancellationToken | ⚪ | 取消操作令牌对象 | default |
 
 **响应**
@@ -108,21 +117,29 @@ UserAccessToken（用户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "message_id": "msg_xxxxxxxx",
-    "send_time": "2026-06-03T11:34:00+08:00"
+    "message_id": "197c5d72e22e1d79",
+    "thread_id": "197c5d72e22e1d78",
+    "recall_status": "available",
+    "automation_send_disable": {
+      "reason": "Automation send is disabled by your mailbox setting",
+      "reference": "https://open.larksuite.com/mail/settings/automation"
+    }
   }
 }
 ```
 
 **说明**
-- 将指定的草稿发送出去
+- 传入 `send_time` 时为定时发送，不传则立即发送
+- `recall_status` 为撤回状态：available（可撤回）/ unavailable（不可撤回）
+- `automation_send_disable` 非空表示自动化发信被禁用，其中 `reason` 为禁用原因、`reference` 为参考链接
 - 发送成功后草稿将被删除
 
 **代码示例**
 ```csharp
 var draftApi = feishuApp.GetApi<IFeishuUserV1MailDraft>();
-var result = await draftApi.SendUserMailboxDraftAsync("me", "draft_id_123");
-Console.WriteLine($"草稿发送成功: {result?.Data?.MessageId}");
+var request = new SendUserMailboxDraftRequest { SendTime = "1720000000" };
+var result = await draftApi.SendUserMailboxDraftAsync("me", "draft_id_123", request);
+Console.WriteLine($"草稿发送成功: {result?.Data?.MessageId}，会话: {result?.Data?.ThreadId}");
 ```
 
 ---
@@ -134,7 +151,7 @@ Console.WriteLine($"草稿发送成功: {result?.Data?.MessageId}");
 ```csharp
 Task<FeishuApiPageListResult<DraftId>?> GetUserMailboxDraftPageListAsync(
     [Path] string user_mailbox_id,
-    [Query] int page_size = 20,
+    [Query] int page_size = Consts.PageSize_20,
     [Query] string? page_token = null,
     CancellationToken cancellationToken = default);
 ```
@@ -158,7 +175,7 @@ UserAccessToken（用户访问令牌）
   "data": {
     "items": [
       {
-        "draft_id": "268dce11-85f7-427d-8756-6be3abc850fd"
+        "id": "268dce11-85f7-427d-8756-6be3abc850fd"
       }
     ],
     "page_token": "evt_xxx",
@@ -179,7 +196,7 @@ if (result?.Data?.Items != null)
 {
     foreach (var draft in result.Data.Items)
     {
-        Console.WriteLine($"草稿ID: {draft.DraftId}");
+        Console.WriteLine($"草稿ID: {draft.Id}");
     }
 }
 ```
@@ -215,24 +232,30 @@ UserAccessToken（用户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "draft_id": "268dce11-85f7-427d-8756-6be3abc850fd",
-    "subject": "邮件主题",
-    "to_recipients": ["recipient@example.com"],
-    "create_time": "2026-06-03T11:34:00+08:00",
-    "update_time": "2026-06-03T11:34:00+08:00"
+    "draft": {
+      "id": "268dce11-85f7-427d-8756-6be3abc850fd",
+      "message": {
+        "subject": "邮件主题",
+        "to": [{ "mail_address": "recipient@example.com", "name": "收件人" }],
+        "head_from": { "mail_address": "user@example.com", "name": "发件人" },
+        "body_html": "5b+76K+H5paH5Lu25pON5L2c",
+        "message_state": 3,
+        "folder_id": "DRAFT"
+      }
+    }
   }
 }
 ```
 
 **说明**
-- 根据草稿ID获取草稿详细信息
+- 根据草稿ID获取草稿详细信息，返回结构为 `draft`（含 `id` 与 `message`）
 - 可通过format参数控制返回内容的详细程度
 
 **代码示例**
 ```csharp
 var draftApi = feishuApp.GetApi<IFeishuUserV1MailDraft>();
 var result = await draftApi.GetUserMailboxDraftAsync("me", "draft_id_123", format: "full");
-Console.WriteLine($"草稿主题: {result?.Data?.Subject}");
+Console.WriteLine($"草稿主题: {result?.Data?.Draft?.Message?.Subject}");
 ```
 
 ---
@@ -307,25 +330,30 @@ UserAccessToken（用户访问令牌）
   "code": 0,
   "msg": "success",
   "data": {
-    "draft_id": "268dce11-85f7-427d-8756-6be3abc850fd",
-    "create_time": "2026-06-03T11:34:00+08:00"
+    "draft": {
+      "id": "268dce11-85f7-427d-8756-6be3abc850fd",
+      "message": {
+        "subject": "新邮件主题",
+        "message_state": 3
+      }
+    },
+    "reference": "https://{domain}/mail?draftId=268dce11-85f7-427d-8756-6be3abc850fd&scene=send-preview&mailbox=user%40company.com"
   }
 }
 ```
 
 **说明**
-- 根据指定的内容创建草稿
-- 创建成功后返回草稿ID，可用于后续更新、发送等操作
+- 根据 base64url 编码的完整 RFC 5822（EML）邮件内容创建草稿
+- 创建成功后通过 `draft.id` 返回草稿ID，可用于后续更新、发送等操作
+- `reference` 为草稿 Web 预览链接
 
 **代码示例**
 ```csharp
 var draftApi = feishuApp.GetApi<IFeishuUserV1MailDraft>();
 var request = new UserMailboxDraftRequest
 {
-    Subject = "新邮件主题",
-    ToRecipients = new List<string> { "recipient@example.com" },
-    Body = "邮件正文内容"
+    Raw = Convert.ToBase64String(Encoding.UTF8.GetBytes(eml)).Replace('+', '-').Replace('/', '_')
 };
 var result = await draftApi.CreateUserMailboxDraftAsync("me", request);
-Console.WriteLine($"草稿创建成功: {result?.Data?.DraftId}");
+Console.WriteLine($"草稿创建成功: {result?.Data?.Draft?.Id}");
 ```

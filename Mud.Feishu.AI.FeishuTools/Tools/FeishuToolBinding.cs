@@ -10,12 +10,6 @@ using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.Metrics;
 using Mud.Feishu.AI.FeishuTools.Tools;
 
-// P4-3：本文件仍**有意**在内部消费已标记 [Obsolete] 的自研确认令牌——其唯一剩余用途是
-// 「非写类工具的动态选择性确认」（写类工具已由 MAF 审批管线前置承担，见 AuthorizeGateAsync 的 P4-3 分支）。
-// 宿主可见面已废弃，SDK 侧保留可用性直到下个 major 移除，故在此抑制 CS0618。
-// 抑制范围仅限本文件；新增对令牌的引用请一并确认是否仍在过渡期计划内。
-#pragma warning disable CS0618 // Type or member is obsolete
-
 namespace Mud.Feishu.AI.FeishuTools;
 
 /// <summary>
@@ -48,7 +42,6 @@ public sealed class FeishuToolBinding
     private readonly IToolExecutionAuthorizer? _authorizer;
     private readonly IToolResultShaper? _resultShaper;
     private readonly IToolExecutionAuditSink? _auditSink;
-    private readonly IToolConfirmationTokenSecretProvider? _confirmationTokenSecretProvider;
     private readonly IFeishuCurrentUserContext? _currentUserContext;
 
     /// <summary>宿主人工批准通道（R2-1：确认令牌的唯一出模型面出口；未注册时 HITL 降级为纯提示）。</summary>
@@ -56,6 +49,9 @@ public sealed class FeishuToolBinding
 
     private readonly ILogger? _logger;
     private readonly Func<DateTimeOffset> _utcClock;
+
+    /// <summary>身份闭集（构造期物化为 HashSet，热路径 O(1) 查找——A1）。</summary>
+    private readonly HashSet<string> _allowedIdentities;
 
     /// <summary>
     /// 初始化 <see cref="FeishuToolBinding"/>。
@@ -65,28 +61,23 @@ public sealed class FeishuToolBinding
     /// <param name="authorizer">工具授权钩子（可空；SDK 不内建策略）。</param>
     /// <param name="resultShaper">结果整形钩子（可空；宿主注册后对投影结果做最终整形，P1D-2a）。</param>
     /// <param name="auditSink">结构化审计出口（可空；注册后投递允许/拒绝/错误三类审计事件，P1D-3b）。</param>
-    /// <param name="confirmationTokenSecretProvider">
-    /// 确认令牌签名密钥提供者（可空；T4-2/D-3——未注册或返回空 = 确认令牌能力降级为不可用，
-    /// <c>needs_confirmation</c> 维持纯提示文案）。
-    /// </param>
     /// <param name="currentUserContext">
     /// 当前用户上下文（可空；WP5 §5.3——user 身份工具执行期在此写入当前用户，
     /// 使用户令牌缓存查找键可用；<b>执行后必须成对清理</b>，防 AsyncLocal 跨用户泄漏）。
     /// </param>
     /// <param name="approvalChannel">
-    /// 宿主人工批准通道（可空；R2-1——<see cref="IFeishuToolApprovalChannel"/> 是确认令牌<b>唯一</b>的
-    /// 出模型面出口。未注册 = HITL 降级为纯提示：模型只会收到"需要用户确认"，拿不到令牌，无法自批复。
+    /// 宿主人工批准通道（可空；<see cref="IFeishuToolApprovalChannel"/> 是 HITL 的宿主通知出口。
+    /// 未注册 = HITL 降级为纯提示：模型只会收到"需要用户确认"，拿不到任何凭据，无法自批复。
     /// DI 场景无需显式注册：未注册的可空构造参数由容器传 <see langword="null"/>。
     /// </param>
     /// <param name="logger">日志（可空）。</param>
-    /// <param name="utcClock">UTC 时钟（可空；确认令牌过期校验用，测试注入固定时钟——R-5）。</param>
+    /// <param name="utcClock">UTC 时钟（可空；确认有效期计算用，测试注入固定时钟——R-5）。</param>
     public FeishuToolBinding(
         IFeishuAppContextScopeFactory scopeFactory,
         IOptions<FeishuAgentOptions> options,
         IToolExecutionAuthorizer? authorizer = null,
         IToolResultShaper? resultShaper = null,
         IToolExecutionAuditSink? auditSink = null,
-        IToolConfirmationTokenSecretProvider? confirmationTokenSecretProvider = null,
         IFeishuCurrentUserContext? currentUserContext = null,
         IFeishuToolApprovalChannel? approvalChannel = null,
         ILogger<FeishuToolBinding>? logger = null,
@@ -97,11 +88,11 @@ public sealed class FeishuToolBinding
         _authorizer = authorizer;
         _resultShaper = resultShaper;
         _auditSink = auditSink;
-        _confirmationTokenSecretProvider = confirmationTokenSecretProvider;
         _currentUserContext = currentUserContext;
         _approvalChannel = approvalChannel;
         _logger = logger;
         _utcClock = utcClock ?? (() => DateTimeOffset.UtcNow);
+        _allowedIdentities = new HashSet<string>(_options.AllowedIdentities, StringComparer.Ordinal);
     }
 
     /// <summary>
@@ -251,14 +242,20 @@ public sealed class FeishuToolBinding
         {
             // ⑤ 异常归一：结构化错误回填模型，不抛裸异常（总体设计 §4 不变式）。
             _logger?.LogWarning(ex, "工具 {ToolName} 执行失败（appKey: {AppKey}）", tool.Name, context.AppKey);
-            var errorText = StructuredError(tool.Name, ToolErrorClassifier.Classify(ex), $"工具执行异常: {ex.Message}");
+
+            // WP2（S3 修复）：异常消息可能携带 URL/query/响应体片段，同属"外部数据"——
+            // 与正常路径（L224 SanitizeResult）同源处理，经出站净化后再回填模型。
+            // 审计的 reason 保留原始 ex.Message（审计是宿主内网出口，出站净化只约束模型上下文出口）。
+            var raw = StructuredError(tool.Name, ToolErrorClassifier.Classify(ex), $"工具执行异常: {ex.Message}");
+            var bounded = ToolResultText.Truncate(ToolResultSanitizer.Sanitize(raw), _options.MaxToolResultLength);
+
             FeishuToolDiagnostics.RecordExecution(tool.Name, context.AppKey, FeishuMetrics.ToolOutcomes.Error);
             FeishuToolDiagnostics.RecordDuration(tool.Name, context.AppKey, executionStopwatch.ElapsedMilliseconds);
             await WriteAuditWithIsolationAsync(
                 tool, context, FeishuMetrics.ToolOutcomes.Error, ex.Message,
                 ToolArgsDigester.Digest(arguments), executionStopwatch.ElapsedMilliseconds,
                 CancellationToken.None).ConfigureAwait(false);
-            return FeishuToolResult.FromError(errorText);
+            return FeishuToolResult.FromError(bounded);
         }
         finally
         {
@@ -479,28 +476,12 @@ public sealed class FeishuToolBinding
     }
 
     /// <summary>
-    /// NeedsUserConfirmation 的真挂起解析（T4-2 / 决策 D-3；<b>R2-1 安全重写</b>）：
-    /// ① 请求携带<b>有效</b>确认令牌（签名 + 未过期 + 绑定 toolName/参数摘要/appKey/userId）
-    /// → 视为已获用户批准，跳过授权器的 Confirm 分支放行（<b>Denied 与策略轴仍照常生效</b>——
-    /// 令牌只豁免"待确认"，不豁免"被禁止"）。令牌只能由<b>宿主</b>经自有通道回灌为工具参数，
-    /// 模型侧拿不到它；
-    /// ② 无有效令牌 → 拒绝，并把新签发的令牌<b>只</b>投递给宿主批准通道
-    /// （<see cref="IFeishuToolApprovalChannel"/>）；未注册通道或缺少密钥时降级为纯提示（fail-closed）。
+    /// NeedsUserConfirmation 的挂起解析（WP3 后无令牌版）：
+    /// 批准状态的唯一所有者是宿主授权器（<see cref="IToolExecutionAuthorizer"/>）——
+    /// SDK 不签发、不校验任何凭据。首次调用 → 通知宿主批准通道（携带参数摘要，供宿主建立"已批准"上下文）
+    /// 并<b>中性拒绝</b>；宿主批准后由授权器在下一次调用时返回 <c>Allowed</c>——模型侧恒为中性语义，
+    /// 不存在可自批复的凭据。
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>R2-1（P0）根因</b>：原实现把令牌内插进拒绝文案（<c>\n确认令牌: {issued}</c>），
-    /// 该文案经 <see cref="StructuredError(string, ToolErrorKind, string)"/> 原样作为工具结果回填模型，
-    /// 使批准所需的全部要素（令牌、原参数、appKey、userId）进入模型上下文；
-    /// 而 <c>ToolConfirmationToken.TryValidate</c> 只校验签名/有效期/绑定，<b>不校验批准是否来自人</b>
-    /// ⇒ 模型可自行带令牌重试并放行写操作。
-    /// </para>
-    /// <para>
-    /// <b>连带闭合</b>：同一 <c>reason</c> 会经 <c>DenyAsync</c> 投递给 <c>IToolExecutionAuditSink</c>，
-    /// 故令牌此前也落审计/日志面——修复后 reason 恒为中性文案，令牌只存在于
-    /// <see cref="ToolApprovalRequest"/>（宿主侧）。
-    /// </para>
-    /// </remarks>
     private async Task<GateDecision> ResolveNeedsConfirmationAsync(
         FeishuToolDefinition tool,
         IReadOnlyDictionary<string, object?> arguments,
@@ -509,41 +490,9 @@ public sealed class FeishuToolBinding
         CancellationToken cancellationToken)
     {
         var reasonText = reason ?? "未提供原因";
-        var secret = _confirmationTokenSecretProvider?.GetSecret();
-        var argsDigest = ToolConfirmationToken.ComputeArgumentsDigest(arguments);
 
-        // ① 宿主已批准后的重试路径（令牌由宿主经自有通道回灌，模型无法自行获得）。
-        if (!string.IsNullOrWhiteSpace(secret)
-            && arguments.TryGetValue(ToolConfirmationToken.ArgumentName, out var tokenValue))
-        {
-            var presented = tokenValue switch
-            {
-                string s => s,
-                System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.String } e => e.GetString(),
-                _ => null,
-            };
-            if (ToolConfirmationToken.TryValidate(
-                    presented, secret!, tool.Name, argsDigest, context.AppKey, context.UserId, _utcClock()))
-            {
-                // 仍走后续内容安全/净化/审计，Denied 在这里已被排除。
-                return GateDecision.Pass();
-            }
-
-            return GateDecision.Deny(
-                $"需要用户确认后才能执行（HITL）：{reasonText}；confirm_token 无效或已过期（换参数/换应用/换用户/超时都会失效）——请重新发起确认",
-                ToolErrorKind.NeedsConfirmation);
-        }
-
-        // ② 首次路径：签发令牌，**只**交给宿主批准通道（未注册则是纯提示，模型拿不到令牌）。
-        if (string.IsNullOrWhiteSpace(secret) || _approvalChannel is null)
-        {
-            return GateDecision.Deny(
-                $"需要用户确认后才能执行（HITL）：{reasonText}", ToolErrorKind.NeedsConfirmation);
-        }
-
-        var issued = ToolConfirmationToken.Issue(
-            secret, tool.Name, argsDigest, context.AppKey, context.UserId, _utcClock());
-        if (issued is null)
+        // 未注册通道 = 纯提示（fail-closed），模型只收到中性拒绝文案。
+        if (_approvalChannel is null)
         {
             return GateDecision.Deny(
                 $"需要用户确认后才能执行（HITL）：{reasonText}", ToolErrorKind.NeedsConfirmation);
@@ -558,16 +507,15 @@ public sealed class FeishuToolBinding
                     context.AppKey,
                     context.UserId,
                     context.ConversationKey,
-                    argsDigest,
+                    ToolArgsDigester.Digest(arguments),
                     tool.RequiredScopes,
                     reason,
-                    _utcClock() + ToolConfirmationToken.DefaultLifetime,
-                    issued),
+                    _utcClock() + ConfirmationLifetime),
                 cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            // 通道失败必须降级为纯提示，绝不把令牌回填到任何模型可见文本。
+            // 通道失败必须降级为纯提示，绝不影响执行链安全。
             _logger?.LogWarning(ex, "工具批准通道提交失败，已降级为纯提示（tool: {ToolName}）", tool.Name);
         }
 
@@ -578,6 +526,9 @@ public sealed class FeishuToolBinding
                 : $"；已在宿主侧发起确认（关联号 {approvalId}），请等待用户批准"),
             ToolErrorKind.NeedsConfirmation);
     }
+
+    /// <summary>确认有效期（宿主据此判定多久未批准即视为放弃；原 T4-2 建议 10 分钟，WP3 内联为常量）。</summary>
+    private static readonly TimeSpan ConfirmationLifetime = TimeSpan.FromMinutes(10);
 
     /// <summary>
     /// 策略轴判定（AT-B13）：风险上限与身份闭集——<b>早于授权门禁</b>，拒绝时零调用下游、不切租户。
@@ -608,7 +559,7 @@ public sealed class FeishuToolBinding
                 + $"超过宿主配置上限 '{_options.MaxToolRisk}'";
         }
 
-        if (!_options.AllowedIdentities.Contains(tool.Identity, StringComparer.Ordinal))
+        if (!_allowedIdentities.Contains(tool.Identity))
         {
             return $"identity_mismatch: 工具 '{tool.Name}' 的身份为 '{tool.Identity}'，"
                 + $"不在宿主允许集合 [{string.Join(",", _options.AllowedIdentities)}] 内"

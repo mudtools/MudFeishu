@@ -18,7 +18,7 @@ namespace Mud.Feishu.AI.Tools;
 /// <see cref="MUDFT004"/>/<see cref="MUDFT008"/>/<see cref="MUDFT010"/>/<see cref="MUDFT014"/>/
 /// <see cref="MUDFT015"/>/<see cref="MUDFT016"/>/<see cref="MUDFT017"/>/<see cref="MUDFT019"/>/
 /// <see cref="MUDFT020"/>/<see cref="MUDFT022"/>/<see cref="MUDFT023"/>/<see cref="MUDFT024"/>/
-/// <see cref="MUDFT025"/>（见 <see cref="ZeroToleranceIds"/>）。
+/// <see cref="MUDFT025"/>/<see cref="MUDFT026"/>（见 <see cref="ZeroToleranceIds"/>）。
 /// </para>
 /// <para>
 /// <b>AT-B14 清理记录（R3 评审 C-2）</b>：本表原先还声明了
@@ -262,6 +262,22 @@ internal static class Diagnostics
         defaultSeverity: DiagnosticSeverity.Info,
         isEnabledByDefault: true);
 
+    /// <summary>
+    /// 生成器内部异常兜底（W2：故障隔离）。
+    /// </summary>
+    /// <remarks>
+    /// 生成器抛出未捕获异常时 Roslyn 会产出 <c>CS8785</c>（"Generator failed"）——
+    /// 该诊断不在零容忍集内，不会阻断构建，但工具面会不完整且<b>无任何可定位提示</b>。
+    /// 本诊断在生成器 catch 块中上报，使故障可定位（含程序集名、异常类型与消息）。
+    /// </remarks>
+    public static readonly DiagnosticDescriptor MUDFT026 = new(
+        id: "MUDFT026",
+        title: "工具面生成器内部异常",
+        messageFormat: "生成器内部异常（程序集 {0}）：{1}: {2}——已兜底，工具面本次不完整，请按堆栈修复生成器",
+        category: "MudFeishu.Tooling",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
     // ────────── 零容忍集合 ──────────
 
     /// <summary>
@@ -277,7 +293,8 @@ internal static class Diagnostics
         "MUDFT001", "MUDFT002", "MUDFT003", "MUDFT004",
         "MUDFT008", "MUDFT010", "MUDFT014", "MUDFT015",
         "MUDFT016", "MUDFT017", "MUDFT019", "MUDFT020",
-        "MUDFT022", "MUDFT023", "MUDFT024", "MUDFT025"
+        "MUDFT022", "MUDFT023", "MUDFT024", "MUDFT025",
+        "MUDFT026"
     ];
 
     // ────────── 集中上报 ──────────

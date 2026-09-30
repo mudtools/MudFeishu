@@ -106,6 +106,110 @@ public class ToolArgumentSanitizerTests
             ["nothing"] = null,
         };
 
-        ToolArgumentSanitizer.Validate(args).Should().BeNull("非文本参数不携带可注入的不可见字符");
+        ToolArgumentSanitizer.Validate(args).Should().BeNull("数值/布尔/null 参数不携带可注入的不可见字符");
     }
+
+    // ───────────────────── WP1 形态矩阵（S1 核心回归） ─────────────────────
+
+    /// <summary>
+    /// WP1 形态矩阵：确保入站净化覆盖运行时真实参数形态（JsonElement），
+    /// 不再只识别 string/IEnumerable&lt;string&gt;（S1 根因修复）。
+    /// </summary>
+    [Theory]
+    [InlineData(JsonValueKind.String)]
+    [InlineData(JsonValueKind.Array)]
+    [InlineData(JsonValueKind.Object)]
+    public void Validate_ShouldRejectInvisibleChars_InEveryJsonElementShape(JsonValueKind kind)
+    {
+        var value = BuildJsonElement(kind);
+        var args = new Dictionary<string, object?> { ["text"] = value };
+
+        var failure = ToolArgumentSanitizer.Validate(args);
+        failure.Should().NotBeNull($"JsonElement({kind}) 形态的参数必须被净化覆盖（S1 核心回归）");
+    }
+
+    [Fact]
+    public void Validate_ShouldRejectInvisibleChars_InJsonElementString()
+    {
+        // JsonElement String 形态——S1 的核心回归：原先完全不被识别。
+        var element = System.Text.Json.JsonSerializer.SerializeToElement("a\u200bb");
+        var args = new Dictionary<string, object?> { ["text"] = element };
+
+        var failure = ToolArgumentSanitizer.Validate(args);
+        failure.Should().NotBeNull("JsonElement String 形态含零宽空格必须被拒绝（S1）");
+        failure.Should().Contain("text");
+    }
+
+    [Fact]
+    public void Validate_ShouldRejectInvisibleChars_InJsonElementArray_WithIndexedPath()
+    {
+        // JsonElement Array 形态——第 2 项含控制字符。
+        var element = System.Text.Json.JsonSerializer.SerializeToElement(new[] { "ok", "bad\u0001" });
+        var args = new Dictionary<string, object?> { ["texts"] = element };
+
+        var failure = ToolArgumentSanitizer.Validate(args);
+        failure.Should().NotBeNull("JsonElement Array 形态含控制字符必须被拒绝");
+        failure.Should().Contain("texts[1]", "错误消息必须定位到具体数组元素");
+    }
+
+    [Fact]
+    public void Validate_ShouldPassJsonElementArray_WhenAllItemsClean()
+    {
+        var element = System.Text.Json.JsonSerializer.SerializeToElement(new[] { "a@example.com", "b@example.com" });
+        var args = new Dictionary<string, object?> { ["emails"] = element };
+
+        ToolArgumentSanitizer.Validate(args).Should().BeNull("全部合法的 JsonElement Array 应放行");
+    }
+
+    [Fact]
+    public void Validate_ShouldRejectInvisibleChars_InJsonElementObject_WithPropertyPath()
+    {
+        // JsonElement Object 形态——fields.name 含独立 CR。
+        var json = """{"fields":{"name":"a\rb"}}""";
+        var element = System.Text.Json.JsonSerializer.SerializeToElement(
+            System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(json));
+        var args = new Dictionary<string, object?> { ["data"] = element };
+
+        var failure = ToolArgumentSanitizer.Validate(args);
+        failure.Should().NotBeNull("JsonElement Object 形态含独立 CR 必须被拒绝");
+        failure.Should().Contain("fields.name", "错误消息必须定位到具体属性路径");
+    }
+
+    [Fact]
+    public void Validate_ShouldPassJsonElementNumberAndBool()
+    {
+        var numberElement = System.Text.Json.JsonSerializer.SerializeToElement(42);
+        var boolElement = System.Text.Json.JsonSerializer.SerializeToElement(true);
+        var args = new Dictionary<string, object?>
+        {
+            ["count"] = numberElement,
+            ["flag"] = boolElement,
+        };
+
+        ToolArgumentSanitizer.Validate(args).Should().BeNull("JsonElement Number/Boolean 不携带文本，应放行");
+    }
+
+    [Fact]
+    public void Validate_ShouldRejectOverLengthJsonElementString()
+    {
+        var longText = new string('a', ToolArgumentSanitizer.MaxArgumentValueLength + 1);
+        var element = System.Text.Json.JsonSerializer.SerializeToElement(longText);
+        var args = new Dictionary<string, object?> { ["text"] = element };
+
+        var failure = ToolArgumentSanitizer.Validate(args);
+        failure.Should().NotBeNull("超长 JsonElement String 必须被拒绝");
+    }
+
+    /// <summary>
+    /// 构造含不可见字符的 JsonElement（按指定形态）。
+    /// </summary>
+    private static System.Text.Json.JsonElement BuildJsonElement(JsonValueKind kind) => kind switch
+    {
+        JsonValueKind.String => System.Text.Json.JsonSerializer.SerializeToElement("a\u200bb"),
+        JsonValueKind.Array => System.Text.Json.JsonSerializer.SerializeToElement(new[] { "ok", "bad\u0001" }),
+        JsonValueKind.Object => System.Text.Json.JsonSerializer.SerializeToElement(
+            System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(
+                """{"name":"a\rb"}""")),
+        _ => throw new System.ArgumentOutOfRangeException(nameof(kind)),
+    };
 }

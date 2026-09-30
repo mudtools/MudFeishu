@@ -105,7 +105,8 @@ internal sealed class PendingDiagnostic : IEquatable<PendingDiagnostic?>
     public static PendingDiagnostic Create(DiagnosticDescriptor descriptor, params object[] arguments)
         => new(descriptor, arguments);
 
-    private string Signature => Descriptor.Id + "\u0001" + string.Join("\u0002", Arguments.Select(static a => a?.ToString() ?? string.Empty));
+    // W6：使用 InvariantCulture 格式化以消除区域性敏感的相等性漂移（如数值的小数分隔符）。
+    private string Signature => Descriptor.Id + "\u0001" + string.Join("\u0002", Arguments.Select(static a => string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0}", a)));
 
     public bool Equals(PendingDiagnostic? other) => other is not null && Signature == other.Signature;
 

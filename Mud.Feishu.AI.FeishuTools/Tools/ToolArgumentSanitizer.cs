@@ -66,40 +66,27 @@ internal static class ToolArgumentSanitizer
         return null;
     }
 
-    /// <summary>校验单个参数值（递归处理字符串数组；其余类型视为不携带文本，放行）。</summary>
+    /// <summary>校验单个参数值（递归处理任意形态的文本值；数值/布尔/null 放行）。</summary>
     /// <param name="name">参数名（错误消息用）。</param>
     /// <param name="value">参数值。</param>
     /// <returns>违规描述，或 <see langword="null"/>。</returns>
+    /// <remarks>
+    /// <b>WP1 修复（S1）</b>：原先只识别 <c>string</c> 与 <c>IEnumerable&lt;string&gt;</c>，
+    /// 不识别运行时真实形态 <c>JsonElement</c>——导致入站净化在主路径从未生效。
+    /// 现经 <see cref="ToolArgumentNormalizer.EnumerateTexts"/> 统一遍历，覆盖所有 JSON 形态。
+    /// </remarks>
     public static string? ValidateValue(string name, object? value)
     {
-        switch (value)
+        foreach (var (path, text) in ToolArgumentNormalizer.EnumerateTexts(name, value))
         {
-            case null:
-                return null;
-
-            case string text:
-                return ValidateText(name, text);
-
-            case IEnumerable<string> strings:
-                {
-                    var index = 0;
-                    foreach (var item in strings)
-                    {
-                        var failure = ValidateText($"{name}[{index.ToString(CultureInfo.InvariantCulture)}]", item);
-                        if (failure is not null)
-                        {
-                            return failure;
-                        }
-
-                        index++;
-                    }
-
-                    return null;
-                }
-
-            default:
-                return null;
+            var failure = ValidateText(path, text);
+            if (failure is not null)
+            {
+                return failure;
+            }
         }
+
+        return null;
     }
 
     /// <summary>校验一段文本（长度 + 控制字符 + 危险 Unicode + 独立 CR）。</summary>

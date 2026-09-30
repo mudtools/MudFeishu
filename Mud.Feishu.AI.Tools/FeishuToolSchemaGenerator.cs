@@ -198,6 +198,30 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
             return;
         }
 
+        // W2：生成器故障隔离——未捕获异常会被 Roslyn 转为 CS8785（无定位、无程序集名），
+        // 改为 MUDFT026 使故障可定位且纳入零容忍集（构建期阻断）。
+        try
+        {
+            EmitToolSurfaceCore(context, models, assemblyName, goldenTexts);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Diagnostics.Report(
+                context,
+                Diagnostics.MUDFT026,
+                null,
+                assemblyName ?? "(unknown)",
+                ex.GetType().Name,
+                ex.Message);
+        }
+    }
+
+    private static void EmitToolSurfaceCore(
+        SourceProductionContext context,
+        ImmutableArray<ToolSchemaModel> models,
+        string? assemblyName,
+        ImmutableArray<AdditionalText> goldenTexts)
+    {
         // L4 校验：结构 / 类型一致 / 跨字段一致（含工具名唯一性 → MUDFT003）。
         foreach (var result in DescriptorValidator.ValidateAll(models.Select(static m => m.Entry)))
         {

@@ -403,6 +403,41 @@ public class GeneratorNegativeCaseTests
     // ────────── 元守卫 ──────────
 
     /// <summary>
+    /// MUDFT026（生成器内部异常兜底）验证：描述符已声明、为 Error 级、且 EmitToolSurface 包含 try/catch。
+    /// </summary>
+    /// <remarks>
+    /// W2 的故障隔离通过 try/catch 实现——真正的注入式负例需要修改生成器管线以人为抛出异常，
+    /// 这在增量生成器架构中不易实现（管线由 Roslyn 驱动，外部无法注入中间异常）。
+    /// 故本用例验证三件事：① MUDFT026 描述符存在于 Diagnostics.cs；② 它是 Error 级；
+    /// ③ EmitToolSurface 方法体包含 try/catch 且 catch 块引用 MUDFT026（故障隔离接线验证）。
+    /// </remarks>
+    [Fact]
+    public void MUDFT026_GeneratorExceptionGuard_ShouldBeWiredInEmitToolSurface()
+    {
+        var repoRoot = FindRepositoryRoot();
+
+        // ① 描述符声明存在。
+        var diagnosticsPath = Path.Combine(repoRoot, "Mud.Feishu.AI.Tools", "Diagnostics.cs");
+        var diagnosticsSource = File.ReadAllText(diagnosticsPath);
+        diagnosticsSource.Should().Contain("MUDFT026", "MUDFT026 描述符必须在 Diagnostics.cs 中声明");
+
+        // ② Error 级（零容忍集内的诊断必须是 Error）。
+        var severityMatch = System.Text.RegularExpressions.Regex.Match(
+            diagnosticsSource,
+            @"id:\s*""MUDFT026"".*?defaultSeverity:\s*DiagnosticSeverity\.Error",
+            System.Text.RegularExpressions.RegexOptions.Singleline);
+        severityMatch.Success.Should().BeTrue("MUDFT026 既列入 ZeroToleranceIds，其 severity 必须是 Error");
+
+        // ③ EmitToolSurface 包含 try/catch 且 catch 块引用 MUDFT026。
+        var generatorPath = Path.Combine(repoRoot, "Mud.Feishu.AI.Tools", "FeishuToolSchemaGenerator.cs");
+        var generatorSource = File.ReadAllText(generatorPath);
+        generatorSource.Should().Contain("Diagnostics.MUDFT026",
+            "EmitToolSurface 的 catch 块必须上报 MUDFT026（W2 故障隔离接线）");
+        generatorSource.Should().Contain("catch (Exception",
+            "EmitToolSurface 必须包含 try/catch 故障隔离（W2）");
+    }
+
+    /// <summary>
     /// <c>ZeroToleranceIds</c> 的每一条都必须有 driver 负例（双向：不多、不少、登记的方法真实存在）。
     /// 取代 R3 的"债务登记表"——A2 债务清零后，登记负例是<b>义务</b>而非可豁免状态。
     /// </summary>

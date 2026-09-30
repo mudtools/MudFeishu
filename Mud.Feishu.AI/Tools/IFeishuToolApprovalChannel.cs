@@ -9,23 +9,30 @@ namespace Mud.Feishu.AI.Tools;
 
 /// <summary>
 /// 工具人工确认（HITL）的<b>宿主批准通道</b>：SDK 把「待确认」事件的全部要素交给宿主，
-/// 由宿主在自有界面（飞书卡片/工单/审批单）完成批准——<b>确认令牌绝不进入模型上下文</b>。
+/// 由宿主在自有界面（飞书卡片/工单/审批单）完成批准——<b>批准状态所有权归宿主授权器，SDK 不签发任何凭据</b>。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>为什么必须有本契约</b>：确认令牌若经工具结果回填给模型，批准所需的全部要素
-/// （令牌、原参数、appKey、userId）都在模型上下文内，而令牌校验只校验签名/有效期/绑定、
-/// <b>不校验批准是否来自人</b> ⇒ 模型可在同一 FICC 循环或下一轮<b>自行带令牌重试</b>并放行写操作。
-/// 一次成功的提示注入即可让写工具在无人确认下执行，安全护栏退化为「取决于模型是否听话」。
+/// <b>三层分工</b>（WP3 后的 HITL 契约）：
 /// </para>
 /// <para>
-/// <b>未注册 = 降级为「纯提示」</b>：模型只会收到「需要人工确认」，拿不到令牌，无法自批复（fail-closed）。
-/// 宿主完成批准后，由宿主侧把令牌回灌为工具参数 <c>confirm_token</c> 再次发起调用
-/// （执行链的令牌校验路径保持不变）。
+/// 1. <b>MAF 审批管线</b>（<c>ApprovalRequiredAIFunction</c>）：写类工具的调用前拦截；
+/// 批准只能来自宿主，模型侧不可自批复。
 /// </para>
 /// <para>
-/// SDK 只定契约、不内实现（与 <see cref="IToolExecutionAuthorizer"/> /
-/// <see cref="IToolConfirmationTokenSecretProvider"/> 同款定位）。
+/// 2. <b>宿主授权器</b>（<see cref="IToolExecutionAuthorizer"/>）：批准状态的唯一所有者——
+/// 首次收到 <c>NeedsUserConfirmation</c> → 记为挂起；经批准通道拿到摘要后建立「已批准」上下文；
+/// 下次同 <c>(tool, argsDigest, appKey, userId)</c> 调用返回 <c>Allowed</c>。
+/// </para>
+/// <para>
+/// 3. <b>SDK 执行链</b>：咨询授权器、通知宿主、<b>中性拒绝</b>（不含任何凭据）。
+/// 不签发/不校验/不缓存批准状态。
+/// </para>
+/// <para>
+/// <b>未注册 = 降级为「纯提示」</b>：模型只会收到「需要人工确认」，拿不到任何凭据，无法自批复（fail-closed）。
+/// </para>
+/// <para>
+/// SDK 只定契约、不内实现（与 <see cref="IToolExecutionAuthorizer"/> 同款定位）。
 /// </para>
 /// </remarks>
 public interface IFeishuToolApprovalChannel
@@ -33,13 +40,13 @@ public interface IFeishuToolApprovalChannel
     /// <summary>
     /// 提交一次待人工确认的工具调用，返回宿主侧关联 ID（批准界面据此回填）。
     /// </summary>
-    /// <param name="request">待确认要素（含仅交给宿主的确认令牌）。</param>
+    /// <param name="request">待确认要素（含已脱敏的参数摘要）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>
     /// 宿主侧关联 ID；返回 <see langword="null"/> 表示宿主未生成关联号（仍按「已发起确认」处理）。
     /// </returns>
     /// <remarks>
-    /// 通道抛异常时执行链<b>降级为纯提示</b>并记日志，绝不把令牌写进任何回填模型的文本。
+    /// 通道抛异常时执行链<b>降级为纯提示</b>并记日志，绝不把敏感信息写进任何回填模型的文本。
     /// </remarks>
     Task<string?> RequestApprovalAsync(ToolApprovalRequest request, CancellationToken cancellationToken = default);
 
@@ -104,11 +111,10 @@ public sealed record FrameworkToolApprovalRequest(
 /// <param name="AppKey">应用唯一标识。</param>
 /// <param name="UserId">触发用户（可空）。</param>
 /// <param name="ConversationKey">会话键（可空）。</param>
-/// <param name="ArgumentsDigest">参数摘要（与令牌绑定，宿主不得修改）。</param>
+/// <param name="ArgumentsDigest">参数摘要（已脱敏；供宿主建立"已批准"上下文，宿主不得修改）。</param>
 /// <param name="RequiredScopes">工具声明的权限点。</param>
-/// <param name="Reason">授权器给出的待确认原因。</param>
-/// <param name="ExpiresAt">令牌有效期（宿主批准界面据此显示倒计时）。</param>
-/// <param name="ConfirmationToken">确认令牌——<b>仅交给宿主</b>，禁止写入任何回填模型的文本或审计 reason。</param>
+    /// <param name="Reason">授权器给出的待确认原因。</param>
+    /// <param name="ExpiresAt">确认有效期（宿主批准界面据此显示倒计时；默认 10 分钟）。</param>
 public sealed record ToolApprovalRequest(
     string ToolName,
     string AppKey,
@@ -117,5 +123,4 @@ public sealed record ToolApprovalRequest(
     string ArgumentsDigest,
     IReadOnlyList<string> RequiredScopes,
     string? Reason,
-    DateTimeOffset ExpiresAt,
-    string ConfirmationToken);
+    DateTimeOffset ExpiresAt);

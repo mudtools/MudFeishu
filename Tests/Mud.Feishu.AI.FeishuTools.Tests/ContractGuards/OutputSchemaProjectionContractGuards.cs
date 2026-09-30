@@ -12,7 +12,6 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 
 /// <summary>
 /// WP6/R5 输出投影 Schema 驱动守卫：验证 <c>SchemaProjection</c> 基础设施可用性
-/// 与 <c>FromApiWithSchemaProjection</c> 路径的正确性。
 /// </summary>
 /// <remarks>
 /// <para>

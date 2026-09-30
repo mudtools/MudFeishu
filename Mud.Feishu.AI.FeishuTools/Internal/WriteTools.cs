@@ -11,7 +11,6 @@ using Mud.Feishu.DataModels.ApprovalQuery;
 using Mud.Feishu.DataModels.ApprovalTask;
 using Mud.Feishu.DataModels.Bitable;
 using Mud.Feishu.DataModels.Messages;
-using Mud.Feishu.AI.FeishuTools.Channels;
 using Mud.Feishu.AI.FeishuTools.Tools;
 
 namespace Mud.Feishu.AI.FeishuTools.Internal;
@@ -36,10 +35,10 @@ internal sealed class MessageWriteTools(Mud.Feishu.IFeishuTenantV1Message messag
         {
             var args = ImSendMessageArgs.Unpack(arguments);
             var receiveIdType = args.ReceiveIdType ?? "chat_id";
-            if (!EditMessageChannel.AllowedReceiveIdTypes.Contains(receiveIdType, StringComparer.Ordinal))
+            if (!ReceiveIdTypes.Allowed.Contains(receiveIdType, StringComparer.Ordinal))
             {
                 throw new ArgumentException(
-                    $"receive_id_type 仅支持 {string.Join("/", EditMessageChannel.AllowedReceiveIdTypes)}，实际: {receiveIdType}");
+                    $"receive_id_type 仅支持 {string.Join("/", ReceiveIdTypes.Allowed)}，实际: {receiveIdType}");
             }
 
             if (ToolDryRun.IsRequested(args.DryRun))
@@ -135,7 +134,9 @@ internal sealed class BitableWriteTools(Mud.Feishu.IFeishuTenantV1BitableRecord 
             throw new ArgumentException("fields 须为 JSON 对象（{\"字段名\": 值}）");
         }
 
-        return JsonDocument.Parse(fieldsJson).RootElement.Clone();
+        // WP4（W5 修复）：使用 using 归还池化缓冲（CA2000），Clone 后 JsonDocument 可安全释放。
+        using var document = JsonDocument.Parse(fieldsJson);
+        return document.RootElement.Clone();
     }
 }
 

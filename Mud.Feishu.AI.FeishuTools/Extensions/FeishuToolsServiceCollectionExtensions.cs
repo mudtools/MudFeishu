@@ -58,33 +58,7 @@ public static class FeishuToolsServiceCollectionExtensions
     public static IServiceCollection AddFeishuTools(
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure)
-            .AddFeishuBitableToolsCore()
-            .AddFeishuDocxToolsCore()
-            .AddFeishuWikiToolsCore()
-            .AddFeishuSearchToolsCore()
-            .AddFeishuImToolsCore()
-            .AddFeishuSheetsToolsCore()
-            .AddFeishuDriveToolsCore()
-            .AddFeishuContactToolsCore()
-            .AddFeishuCalendarToolsCore()
-            .AddFeishuTaskToolsCore()
-            .AddFeishuAttachmentToolsCore()
-            .AddFeishuKnowledgeSearchToolsCore()
-            .AddFeishuCapabilityLookupToolsCore()
-            // 写域按执行器拆成三个生成的 DI 核心方法（注册器按「执行器类」聚合，
-            // 「跨 im/bitable/approval 三模块的写域」不再需要特例分支）。
-            .AddFeishuMessageWriteToolsCore()
-            .AddFeishuBitableWriteToolsCore()
-            .AddFeishuApprovalWriteToolsCore()
-            // WP2/R5 写入面补齐：docx/sheets/bitable(update/delete)/drive 写执行器
-            .AddFeishuDocxWriteToolsCore()
-            .AddFeishuSheetsWriteToolsCore()
-            .AddFeishuBitableWriteTools2Core()
-            .AddFeishuDriveWriteToolsCore()
-            // WP5/R5 域扩容：邮件工具 + 通讯录部门轴工具
-            .AddFeishuMailToolsCore()
-            .AddFeishuContactDepartmentToolsCore();
+        => AddFeishuWriteToolCores(AddFeishuReadonlyToolCores(AddFeishuToolInfrastructure(services, configure)));
 
     /// <summary>
     /// 注册只读工具包（Phase 1 兼容入口；现等价 <see cref="AddFeishuTools"/>——写工具同批注册但
@@ -223,18 +197,7 @@ public static class FeishuToolsServiceCollectionExtensions
     public static IServiceCollection AddFeishuWriteTools(
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure)
-            .AddFeishuMessageWriteToolsCore()
-            .AddFeishuBitableWriteToolsCore()
-            .AddFeishuApprovalWriteToolsCore()
-            // WP2/R5 写入面补齐：docx/sheets/bitable(update/delete)/drive 写执行器
-            .AddFeishuDocxWriteToolsCore()
-            .AddFeishuSheetsWriteToolsCore()
-            .AddFeishuBitableWriteTools2Core()
-            .AddFeishuDriveWriteToolsCore()
-            // WP5/R5 域扩容：邮件工具 + 通讯录部门轴工具
-            .AddFeishuMailToolsCore()
-            .AddFeishuContactDepartmentToolsCore();
+        => AddFeishuWriteToolCores(AddFeishuToolInfrastructure(services, configure));
 
     /// <summary>
     /// 注册分片编辑流式通道（Phase 2 T2-1 兼容入口，保持不变）：
@@ -431,6 +394,44 @@ public static class FeishuToolsServiceCollectionExtensions
 
         return services;
     }
+
+    /// <summary>
+    /// 只读域工具核心批量注册（W4 抽取：消除 AddFeishuTools 与 AddFeishuWriteTools 的重复链）。
+    /// </summary>
+    private static IServiceCollection AddFeishuReadonlyToolCores(IServiceCollection services)
+        => services
+            .AddFeishuBitableToolsCore()
+            .AddFeishuDocxToolsCore()
+            .AddFeishuWikiToolsCore()
+            .AddFeishuSearchToolsCore()
+            .AddFeishuImToolsCore()
+            .AddFeishuSheetsToolsCore()
+            .AddFeishuDriveToolsCore()
+            .AddFeishuContactToolsCore()
+            .AddFeishuCalendarToolsCore()
+            .AddFeishuTaskToolsCore()
+            .AddFeishuAttachmentToolsCore()
+            .AddFeishuKnowledgeSearchToolsCore()
+            .AddFeishuCapabilityLookupToolsCore();
+
+    /// <summary>
+    /// 写域工具核心批量注册（W4 抽取：消除 AddFeishuTools 与 AddFeishuWriteTools 的重复链）。
+    /// </summary>
+    private static IServiceCollection AddFeishuWriteToolCores(IServiceCollection services)
+        => services
+            // 写域按执行器拆成三个生成的 DI 核心方法（注册器按「执行器类」聚合，
+            // 「跨 im/bitable/approval 三模块的写域」不再需要特例分支）。
+            .AddFeishuMessageWriteToolsCore()
+            .AddFeishuBitableWriteToolsCore()
+            .AddFeishuApprovalWriteToolsCore()
+            // WP2/R5 写入面补齐：docx/sheets/bitable(update/delete)/drive 写执行器
+            .AddFeishuDocxWriteToolsCore()
+            .AddFeishuSheetsWriteToolsCore()
+            .AddFeishuBitableWriteTools2Core()
+            .AddFeishuDriveWriteToolsCore()
+            // WP5/R5 域扩容：邮件工具 + 通讯录部门轴工具
+            .AddFeishuMailToolsCore()
+            .AddFeishuContactDepartmentToolsCore();
 
     /// <summary>执行链协作件 + 注册表 + 工具源桥（幂等；各域扩展共同前置）。</summary>
     private static IServiceCollection AddFeishuToolInfrastructure(

@@ -7,7 +7,6 @@
 
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.AI.FeishuTools.Tools;
 
 namespace Mud.Feishu.AI.FeishuTools.Internal;
@@ -134,36 +133,4 @@ internal readonly struct ToolExecutor(string toolName, int maxResultLength)
         return FeishuToolResult.FromText(ToolResultText.TruncateJson(envelope.ToJsonString(), maxResultLength));
     }
 
-    /// <summary>
-    /// Schema 驱动投影路径（WP6/R5）：无显式投影时，按工具的 <c>output_schema</c> 推导字段白名单——
-    /// 把 API 返回的 JSON 递归过滤为 output_schema 中声明的字段集。
-    /// </summary>
-    /// <typeparam name="T">业务载荷类型。</typeparam>
-    /// <param name="outcome"><see cref="FeishuApiResultReader.Read"/> 的解包结果。</param>
-    /// <param name="outputSchemaJson">工具的 output_schema JSON 文本（来自 <c>FeishuToolSchemas</c>）。</param>
-    /// <remarks>
-    /// <para>
-    /// 与 <see cref="FromApi{T}"/> 的关系：显式投影（手写 <c>ProjectXxx</c>）优先——它做"字段子集策展"；
-    /// 本方法做"全量保留 output_schema 声明的字段"——用于投影逻辑就是"保留 schema 所声明的全部字段"的工具。
-    /// </para>
-    /// <para>
-    /// <b>截断工具</b>：output_schema 被 MUDFT009 截断的工具，深层字段不在 schema 中 → 被 <see cref="SchemaProjection"/> 丢弃。
-    /// 故<b>截断工具不宜用本方法</b>（应保留手写投影或改用 <see cref="FromPlainText{T}"/>）。守卫会标注。
-    /// </para>
-    /// </remarks>
-    public FeishuToolResult FromApiWithSchemaProjection<T>(FeishuApiOutcome<T> outcome, string? outputSchemaJson) where T : class
-    {
-        if (!outcome.Ok)
-        {
-            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(toolName, outcome.Code, outcome.ErrorText!));
-        }
-
-        // 把 Data 序列化为 JsonObject → Schema 驱动过滤 → 截断。
-        // 用 FeishuJsonAot.Serialize 走 AOT 安全路径（net8+ 通过 TypeInfoResolver 解析 JsonTypeInfo），
-        // 避免 JsonSerializer.SerializeToNode<T>(T, JsonSerializerOptions) 反射重载的 IL2026/IL3050。
-        var json = FeishuJsonAot.Serialize(outcome.Data!, FeishuJsonDefaults.SerializerOptions);
-        var dataJson = JsonNode.Parse(json) as JsonObject ?? new JsonObject();
-        var projected = SchemaProjection.Project(dataJson, outputSchemaJson);
-        return FeishuToolResult.FromText(ToolResultText.TruncateJson(projected.ToJsonString(), maxResultLength));
-    }
 }

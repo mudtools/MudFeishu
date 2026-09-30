@@ -56,13 +56,19 @@ internal static class DescriptorValidator
         // 所有工具都经过风险分级（Read/Write/HighRiskWrite），故 risk 覆盖率始终为 100%。
         var riskCovered = entryList.Count;
 
+        // W3（R5 修订）：outputSchemaRate 此前复用 riskCovered（= entryList.Count）放恒为 1.0——假度量。
+        // 真实度量需在 CapabilityEntry 增加 OutputSchemaDeclared/OutputSchemaTruncated 字段（影响面偏大），
+        // 待该模块下次功能改动时一并实现。当前显式报 0 以避免误导（0 不会让人误以为已覆盖）。
+        // TODO(WP5-W3): 实现 outputSchema 真实度量。
+        var outputSchemaCovered = 0;
+
         return new CoverageReport(
             toolCount: toolCount,
             totalMethodCount: totalMethodCount,
             toolCoverageRate: toolCount == 0 || totalMethodCount == 0 ? 0 : (double)toolCount / totalMethodCount,
             descriptionCoverageRate: toolCount == 0 ? 0 : (double)descriptionCovered / toolCount,
             paramDescriptionCoverageRate: paramTotal == 0 ? 0 : (double)paramDescCovered / paramTotal,
-            outputSchemaRate: toolCount == 0 ? 0 : (double)riskCovered / toolCount,
+            outputSchemaRate: toolCount == 0 ? 0 : (double)outputSchemaCovered / toolCount,
             scopesCoverageRate: toolCount == 0 ? 0 : (double)scopesCovered / toolCount,
             riskCoverageRate: toolCount == 0 ? 0 : (double)riskCovered / toolCount);
     }

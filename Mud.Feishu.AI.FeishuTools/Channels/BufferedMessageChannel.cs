@@ -86,6 +86,8 @@ public abstract class BufferedMessageChannel : IMessageChannel
     /// <inheritdoc />
     public async Task FlushAsync(string appKey, string chatId, string messageId, CancellationToken cancellationToken = default)
     {
+        // WP4（W1 修复）：与 _buffers 同生命周期清理——_lastUpdateTicks 在 FlushAsync 后不得持有已终止的 messageId。
+        _lastUpdateTicks.TryRemove(messageId, out _);
         if (_buffers.TryRemove(messageId, out var buffer) && buffer.Length > 0)
         {
             // 终态无条件落地（速率钳制不适用于收尾）。

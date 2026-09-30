@@ -46,9 +46,6 @@ public sealed class EditMessageChannel(
     /// <summary>占位消息初始文本（可见的「正在输入」占位；空文本会被飞书拒绝）。</summary>
     private const string PlaceholderText = "…";
 
-    /// <summary>允许的 receive_id_type 白名单（防注入任意查询参数）。</summary>
-    internal static readonly string[] AllowedReceiveIdTypes = ["chat_id", "open_id", "user_id", "union_id", "email"];
-
     private readonly IFeishuTenantV1Message _messageClient = messageClient ?? throw new ArgumentNullException(nameof(messageClient));
     private readonly IFeishuAppContextScopeFactory _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
     private readonly ILogger? _logger = logger;

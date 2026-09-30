@@ -22,7 +22,7 @@ namespace Mud.Feishu.AI.FeishuTools.Internal;
 /// </para>
 /// <para>
 /// <b>显式覆盖优先</b>：工具执行器可继续传入手写投影（<c>FromApi(outcome, project)</c>），
-/// 本类仅在"无显式投影"时作为默认推导路径（<c>FromApiWithSchemaProjection</c>）。
+/// 本类仅在"无显式投影"时作为默认推导路径（由调用方直接调用 <see cref="Project"/>）。
 /// 手写投影是<b>有意策展</b>（字段子集），本类是<b>全量保留</b>（output_schema 定义了什么就保留什么）。
 /// </para>
 /// <para>

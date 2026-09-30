@@ -367,11 +367,13 @@ public class AgentContractGuards
     // ────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// R2-1（P0）：确认令牌<b>绝不</b>进入模型可见载荷。
+    /// R2-1（P0）/ WP3：SDK 不签发/不校验任何确认凭据——模型可见载荷中
+    /// <b>绝不</b>出现 confirm_token、令牌明文或自批复指示。
     /// </summary>
     /// <remarks>
-    /// 令牌若出现在工具结果文本里，批准所需的全部要素（令牌/原参数/appKey/userId）都进了模型上下文，
-    /// 而令牌校验<b>不校验批准是否来自人</b> ⇒ 模型可自行带令牌重试放行写操作。
+    /// WP3 删除了自研确认令牌全部过渡层（ToolConfirmationToken / IToolConfirmationTokenSecretProvider）。
+    /// HITL 的批准状态所有权归宿主授权器（IToolExecutionAuthorizer），SDK 执行链恒为中性拒绝。
+    /// 本守卫锁住"模型可见文案不含任何凭据类信息"这一不变量，防止令牌机制被重新引入。
     /// 扫描落在 <c>Mud.Feishu.AI.FeishuTools</c>（执行链唯一实现方）。
     /// </remarks>
     [Fact]
@@ -394,37 +396,25 @@ public class AgentContractGuards
         branch.Should().NotContain("confirm_token", "不得再指示模型以 confirm_token 重试（那等于把批准要素交给模型）");
         branch.Should().Contain("需要用户确认", "待确认语义必须保留（三态文案不得退化）");
 
-        // ② 令牌的唯一出口必须是宿主批准通道。
-        source.Should().Contain("ToolApprovalRequest", "令牌必须经 IFeishuToolApprovalChannel 投递给宿主");
+        // ② 批准状态归宿主授权器，SDK 不签发任何凭据。
+        source.Should().Contain("ToolApprovalRequest", "待确认事件必须经 ToolApprovalRequest 投递给宿主");
         source.Should().Contain("IFeishuToolApprovalChannel", "必须存在宿主批准通道契约（未注册即 fail-closed）");
+        source.Should().NotContain("ToolConfirmationToken", "WP3 已删除自研确认令牌，不得重新引入");
+        source.Should().NotContain("IToolConfirmationTokenSecretProvider", "WP3 已删除令牌密钥提供者契约");
+        source.Should().NotContain("#pragma warning disable CS0618", "WP3 已删除令牌过渡层，不再需要 CS0618 抑制");
     }
 
     /// <summary>
-    /// P4-3：自研确认令牌必须<b>保持已废弃标注</b>，且写类工具不得回到令牌路径。
+    /// WP3：写类工具的 NeedsUserConfirmation 必须在授权门禁被放行（MAF 审批管线已前置承担），
+    /// 不得因删除令牌而误删此分支——否则重新引入 P4-1 的「框架已批准、执行链仍拒绝」死胡同。
     /// </summary>
-    /// <remarks>
-    /// 两条不变量各自对应一个已发生的缺陷面：
-    /// ① 废弃标注若被移除，宿主会继续把新代码接到一条计划下线的机制上；
-    /// ② 写类工具若重新走令牌路径，会回到「MAF 已批准、执行链仍拒绝」的死胡同
-    /// （宿主无法把 confirm_token 注入模型工具参数）。
-    /// </remarks>
     [Fact]
-    public void DeprecatedTokenPath_ShouldStayObsolete_AndNotReclaimWriteTools()
+    public void WriteTool_NeedsUserConfirmation_ShouldBeBypassed_AtAuthorizeGate()
     {
-        var providerSource = ReadAiSource("Tools", "IToolConfirmationTokenSecretProvider.cs");
-        providerSource.Should().Contain("[Obsolete(",
-            "自研确认令牌契约必须保持 [Obsolete]（P4-3：写类工具已由 MAF 审批管线承担）");
-        providerSource.Should().Contain("IFeishuToolApprovalChannel",
-            "废弃消息必须指向替代契约——否则宿主不知道迁移到哪里");
-
-        var root = GetSolutionRoot();
-        File.ReadAllText(Path.Combine(root, "Mud.Feishu.AI.FeishuTools", "Tools", "ToolConfirmationToken.cs"))
-            .Should().Contain("[Obsolete(", "内部令牌签发器同样必须标注废弃（计划 next-major 移除）");
-
-        var binding = File.ReadAllText(
-            Path.Combine(root, "Mud.Feishu.AI.FeishuTools", "Tools", "FeishuToolBinding.cs"));
+        var binding = File.ReadAllText(Path.Combine(
+            GetSolutionRoot(), "Mud.Feishu.AI.FeishuTools", "Tools", "FeishuToolBinding.cs"));
         binding.Should().Contain("AuthorizationDecision.NeedsUserConfirmation && tool.IsWrite",
-            "写类工具必须先于令牌分支被放行（框架已前置批准）；删除该分支会让写工具陷入死胡同");
+            "写类工具必须先于确认分支被放行（框架已前置批准）；删除该分支会让写工具陷入死胡同");
     }
 
     /// <summary>

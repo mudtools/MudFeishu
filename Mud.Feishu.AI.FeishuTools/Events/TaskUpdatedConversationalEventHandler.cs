@@ -76,7 +76,8 @@ public sealed class TaskUpdatedConversationalEventHandler(
     IConversationGate? conversationGate = null,
     IAppKeyAccessor? appKeyAccessor = null)
     : ConversationalFeishuEventHandler<TaskUpdatedResult>(
-        agent, businessDeduplicator, logger, contextAssemblers, toolContextAccessor, messageChannel, conversationGate, appKeyAccessor)
+        agent, businessDeduplicator, logger, contextAssemblers, toolContextAccessor, messageChannel, conversationGate, appKeyAccessor,
+        appContextScopeFactory: scopeFactory)
 {
     /// <summary>负责人角色字面量（任务 v2 成员角色的闭集取值之一）。</summary>
     private const string AssigneeRole = "assignee";
@@ -89,7 +90,6 @@ public sealed class TaskUpdatedConversationalEventHandler(
 
     private readonly Mud.Feishu.IFeishuTenantV1Message? _messageClient = messageClient;
     private readonly Mud.Feishu.IFeishuTenantV2Task? _taskClient = taskClient;
-    private readonly IFeishuAppContextScopeFactory? _scopeFactory = scopeFactory;
 
     /// <inheritdoc />
     protected override async Task<ConversationRequest> BuildRequestAsync(TaskUpdatedResult eventData, CancellationToken cancellationToken)
@@ -158,7 +158,7 @@ public sealed class TaskUpdatedConversationalEventHandler(
                 $"任务事件回复失败：无可投递接收方（subject: {request.SubjectId}）");
         }
 
-        using var scope = BeginScopeIfPossible(request.AppKey);
+        using var appScope = BeginAppScope(request.AppKey);
         var outcome = FeishuApiResultReader.Read(await _messageClient
             .SendMessageAsync(
                 new SendMessageRequest
@@ -203,7 +203,7 @@ public sealed class TaskUpdatedConversationalEventHandler(
 
         try
         {
-            using var scope = BeginScopeIfPossible(CurrentAppKey);
+            using var appScope = BeginAppScope(CurrentAppKey);
             var outcome = FeishuApiResultReader.Read(await _taskClient
                 .GetTaskByIdAsync(taskId!, cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
@@ -243,18 +243,6 @@ public sealed class TaskUpdatedConversationalEventHandler(
             return null;
         }
     }
-
-    /// <summary>
-    /// 按需切换租户上下文（多应用宿主必须切；单应用宿主无 appKey 时按现状直调）。
-    /// </summary>
-    /// <remarks>
-    /// <c>IFeishuAppContextScopeFactory.BeginScope</c> 显式拒绝空 appKey（多租户隔离禁止默认兜底，TMA2-20），
-    /// 故空值路径不调用它（与 <see cref="ConversationalFeishuEventHandler{T}"/> 对单应用宿主的降级口径一致）。
-    /// </remarks>
-    private IDisposable? BeginScopeIfPossible(string? appKey)
-        => _scopeFactory is not null && !string.IsNullOrWhiteSpace(appKey)
-            ? _scopeFactory.BeginScope(appKey!)
-            : null;
 
     /// <summary>
     /// 构造任务更新通知文本。

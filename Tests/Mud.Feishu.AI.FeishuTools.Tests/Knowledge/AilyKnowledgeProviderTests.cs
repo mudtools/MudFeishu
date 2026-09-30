@@ -85,6 +85,29 @@ public class AilyKnowledgeProviderTests : IDisposable
         answer.Chunks[0].Text.Should().Be("切片一：采购申请");
     }
 
+    /// <summary>
+    /// R3-6①：<c>chunks</c> 中出现非字符串元素（数字 / 布尔 / 对象 / 数组）时必须降级为文本，
+    /// 而不是让 <c>JsonElement.GetString()</c> 抛 <see cref="InvalidOperationException"/>——否则
+    /// 一条脏数据会让<b>整次召回</b>（含已解析的 answer）一起失败。
+    /// </summary>
+    [Fact]
+    public async Task Ask_ShouldSkipNonStringChunk_WithoutLosingOthers()
+    {
+        using var _scope = _contextAccessor.Begin(new FeishuToolContext("appA"));
+        SetupSseResponse(
+            "data: {\"status\":\"finished\",\"message\":{\"content\":\"答案\"},"
+            + "\"process_data\":{\"chunks\":[\"切片一\",123,{\"nested\":\"v\"},\"切片二\"]},\"has_answer\":true}\n");
+
+        var answer = await CreateProvider().AskAsync("问题");
+
+        answer.HasAnswer.Should().BeTrue();
+        answer.Chunks.Should().HaveCount(4, "非字符串元素降级为文本，不得整条丢弃也不得抛异常");
+        answer.Chunks[0].Text.Should().Be("切片一");
+        answer.Chunks[1].Text.Should().Be("123", "数字元素按原始 JSON 文本降级");
+        answer.Chunks[2].Text.Should().Be("{\"nested\":\"v\"}", "对象元素按原始 JSON 文本降级");
+        answer.Chunks[3].Text.Should().Be("切片二", "脏数据之后的切片必须仍然保留");
+    }
+
     [Fact]
     public async Task Ask_ShouldMapRequestOptions_AndUseConfiguredAppId()
     {

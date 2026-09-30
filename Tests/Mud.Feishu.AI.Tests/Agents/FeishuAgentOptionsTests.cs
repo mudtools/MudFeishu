@@ -234,6 +234,62 @@ public class FeishuAgentOptionsTests
             "默认 warn（比官方 CLI 的默认 off 更安全），且不阻断工具语义");
     }
 
+    // ───────────────── R3-9：数值项「下界 + 上界」双向校验 ─────────────────
+
+    /// <summary>
+    /// R3-9：五个数值配置项必须<b>同时</b>校验下界与上界。只校验下界时，超大值（如 21 亿条历史窗）
+    /// 不在装配期失败，而是在运行期表现为内存 / 逐轮序列化开销失控——故障点远离配置点，极难排查。
+    /// </summary>
+    public static TheoryData<string, Action<FeishuAgentOptions, int>, int> OutOfRangeNumericCases => new()
+    {
+        { nameof(FeishuAgentOptions.MaxHistoryMessages), static (o, v) => o.MaxHistoryMessages = v, 0 },
+        { nameof(FeishuAgentOptions.MaxHistoryMessages), static (o, v) => o.MaxHistoryMessages = v, 10_001 },
+        { nameof(FeishuAgentOptions.MaxToolResultLength), static (o, v) => o.MaxToolResultLength = v, 0 },
+        { nameof(FeishuAgentOptions.MaxToolResultLength), static (o, v) => o.MaxToolResultLength = v, 200_001 },
+        { nameof(FeishuAgentOptions.MaxStreamChunkLength), static (o, v) => o.MaxStreamChunkLength = v, 0 },
+        { nameof(FeishuAgentOptions.MaxStreamChunkLength), static (o, v) => o.MaxStreamChunkLength = v, 100_001 },
+        { nameof(FeishuAgentOptions.SummaryThreshold), static (o, v) => o.SummaryThreshold = v, -1 },
+        { nameof(FeishuAgentOptions.SummaryThreshold), static (o, v) => o.SummaryThreshold = v, 10_001 },
+        { nameof(FeishuAgentOptions.MaxHistoryTokens), static (o, v) => o.MaxHistoryTokens = v, -1 },
+        { nameof(FeishuAgentOptions.MaxHistoryTokens), static (o, v) => o.MaxHistoryTokens = v, 1_000_001 },
+    };
+
+    [Theory]
+    [MemberData(nameof(OutOfRangeNumericCases))]
+    public void Validate_ShouldRejectOutOfRange_ForEachNumericOption(
+        string propertyName, Action<FeishuAgentOptions, int> set, int value)
+    {
+        var options = new FeishuAgentOptions { Instructions = "x" };
+        set(options, value);
+
+        var act = () => options.Validate();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage($"*{propertyName}*");
+    }
+
+    /// <summary>上界本身必须合法（闭区间），否则上界校验会把「合法极限值」误判为非法。</summary>
+    public static TheoryData<string, Action<FeishuAgentOptions, int>, int> UpperBoundNumericCases => new()
+    {
+        { nameof(FeishuAgentOptions.MaxHistoryMessages), static (o, v) => o.MaxHistoryMessages = v, 10_000 },
+        { nameof(FeishuAgentOptions.MaxToolResultLength), static (o, v) => o.MaxToolResultLength = v, 200_000 },
+        { nameof(FeishuAgentOptions.MaxStreamChunkLength), static (o, v) => o.MaxStreamChunkLength = v, 100_000 },
+        { nameof(FeishuAgentOptions.SummaryThreshold), static (o, v) => o.SummaryThreshold = v, 10_000 },
+        { nameof(FeishuAgentOptions.MaxHistoryTokens), static (o, v) => o.MaxHistoryTokens = v, 1_000_000 },
+    };
+
+    [Theory]
+    [MemberData(nameof(UpperBoundNumericCases))]
+    public void Validate_ShouldAcceptNumericOptions_AtUpperBounds(
+        string propertyName, Action<FeishuAgentOptions, int> set, int value)
+    {
+        var options = new FeishuAgentOptions { Instructions = "x" };
+        set(options, value);
+
+        var act = () => options.Validate();
+
+        act.Should().NotThrow($"{propertyName} 的上界 {value} 属闭区间内的合法值");
+    }
+
     /// <summary>
     /// R5：配置 DTO 不得使用 <c>required</c>——源生成配置绑定器经 <c>new T()</c> 构造，
     /// 带 required 会产生 CS9035。反射断言（比源码扫描更硬）。

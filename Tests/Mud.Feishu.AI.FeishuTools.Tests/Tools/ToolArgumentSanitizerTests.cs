@@ -52,6 +52,18 @@ public class ToolArgumentSanitizerTests
     }
 
     [Fact]
+    public void ValidateHeaderValue_ShouldReject_AnyLineBreak_WhileValidateTextAllowsIt()
+    {
+        // R3-12：头字段禁忌比全局净化更严——CR 与 LF 一律拒绝（逐行解析的头部里换行即注入）。
+        ToolArgumentSanitizer.ValidateHeaderValue("subject", "会议纪要").Should().BeNull("无换行的普通主题必须放行");
+        ToolArgumentSanitizer.ValidateHeaderValue("subject", "正常\r\n").Should().NotBeNull("CRLF 是 SMTP 头注入的经典载体");
+        ToolArgumentSanitizer.ValidateHeaderValue("subject", "a\nBcc: attacker@evil").Should().NotBeNull("LF 同样可凭空插入头字段");
+
+        // 对照：全局净化必须继续放行换行——收紧会把所有多行正文/文档内容判成攻击。
+        ToolArgumentSanitizer.ValidateText("text", "a\nb").Should().BeNull("正文换行是合法内容，禁忌只施加于头字段");
+    }
+
+    [Fact]
     public void ValidateText_ShouldReject_WhenOverLengthLimit()
     {
         ToolArgumentSanitizer.ValidateText("text", new string('a', ToolArgumentSanitizer.MaxArgumentValueLength)).Should().BeNull();

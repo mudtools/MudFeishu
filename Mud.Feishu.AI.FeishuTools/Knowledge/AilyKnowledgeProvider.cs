@@ -202,7 +202,15 @@ public sealed class AilyKnowledgeProvider : IFeishuKnowledgeBase, IRetriever
             {
                 foreach (var chunk in chunksElement.EnumerateArray())
                 {
-                    var text = chunk.GetString();
+                    // R3-6：非字符串 chunk（数字/布尔/对象/数组）降级为文本而非抛异常——
+                    // JsonElement.GetString() 对非 String 会抛 InvalidOperationException，
+                    // 一条脏数据会让**整次召回**（chunks + answer）失败。
+                    var text = chunk.ValueKind switch
+                    {
+                        JsonValueKind.String => chunk.GetString(),
+                        JsonValueKind.Null or JsonValueKind.Undefined => null,
+                        _ => chunk.GetRawText(),
+                    };
                     if (!string.IsNullOrWhiteSpace(text))
                     {
                         chunks.Add(new RetrievedChunk(text!));

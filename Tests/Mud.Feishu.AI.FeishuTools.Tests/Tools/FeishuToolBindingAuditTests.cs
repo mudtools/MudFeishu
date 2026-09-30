@@ -41,7 +41,10 @@ public class FeishuToolBindingAuditTests
 
     private static FeishuToolBinding CreateBinding(IToolExecutionAuditSink? sink = null, IToolExecutionAuthorizer? authorizer = null)
         => new(
-            new FeishuAppContextScopeFactory(new Mock<Mud.Feishu.IFeishuTenantV1Message>().Object),
+            new FeishuAppContextScopeFactory(
+                new Mock<Mud.HttpUtils.IAppContextHolder>().Object,
+                new Mock<Mud.Feishu.Abstractions.IFeishuAppManager>().Object,
+                Mock.Of<Mud.HttpUtils.IAppAccessAuthorizer>(a => a.CanSwitchTo(It.IsAny<string>()))),
             Options.Create(new FeishuAgentOptions { Instructions = "test" }),
             authorizer,
             resultShaper: null,

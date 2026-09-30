@@ -156,7 +156,8 @@ public class AgentContractGuards
     /// <summary>
     /// AI-FD-D12 批次 A/B 新增配置属性必须有真实消费点（R5 规则 2）：
     /// <c>MaxHistoryTokens</c>（ConversationSummarizer token 维度判定）、
-    /// <c>RequireMentionInGroup</c>/<c>AllowP2pConversation</c>（ImMessageConversationalEventHandler 过滤）。
+    /// <c>RequireMentionInGroup</c>/<c>AllowP2pConversation</c>/<c>BotName</c>
+    /// （ImMessageConversationalEventHandler 过滤）。
     /// </summary>
     [Fact]
     public void FeishuAgentOptions_Phase12Properties_ShouldHaveRealConsumptionPoints()
@@ -178,6 +179,9 @@ public class AgentContractGuards
         handlerContent.Should().Contain(
             "AllowP2pConversation",
             "ImConversationOptions.AllowP2pConversation 必须在事件处理器中被消费（单聊会话开关，P2D-5a）");
+        handlerContent.Should().Contain(
+            "BotName",
+            "ImConversationOptions.BotName 必须在事件处理器中被消费（群聊「@ 到 Bot 本人」判定，R3-3）");
     }
 
     // ────────────────────────────────────────────────────────────────────

@@ -28,6 +28,11 @@ namespace Mud.Feishu.AI.FeishuTools.Channels;
 /// <b>互斥语义</b>：同一 messageId 生命周期只落在一个子通道（Begin 时即锁定），无混用态。
 /// 全部子通道 Begin 失败时抛最后一个异常——事件处理器回退非流式路径（模型尚未调用，零重复成本）。
 /// </para>
+/// <para>
+/// <b>归属契约（R3-15）</b>：<see cref="WriteStreamAsync"/>/<see cref="FlushAsync"/> 只接受本链
+/// <see cref="BeginAsync"/> 返回的 messageId——未登记的 messageId 一律 fail-fast（不回退首选通道），
+/// 杜绝「增量写到非归属子通道」的静默错投。
+/// </para>
 /// </remarks>
 public sealed class StreamingChannelChain : IMessageChannel, IMessageChannelTargetResolver
 {
@@ -147,10 +152,22 @@ public sealed class StreamingChannelChain : IMessageChannel, IMessageChannelTarg
         }
     }
 
+    /// <summary>
+    /// 解析 messageId 的归属子通道。
+    /// </summary>
+    /// <remarks>
+    /// <b>未登记即抛（R3-15）</b>：此前未命中回退 <c>_channels[0]</c>——把「未经本链 Begin 的
+    /// messageId」静默路由到首选通道，可能把增量写到错误的通道（如降级期由编辑通道承载的
+    /// messageId 落到卡片流）。归属登记是本链的<b>唯一</b>路由依据，缺失即契约违背，fail-fast
+    /// 比静默错投更安全。
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">messageId 未在本链登记（未先经 <see cref="BeginAsync"/>）。</exception>
     private IMessageChannel ResolveOwner(string messageId)
         => _messageOwners.TryGetValue(messageId, out var owner)
             ? owner
-            : _channels[0]; // 外部直调（非经本链 Begin 的 messageId）按首选通道透传。
+            : throw new InvalidOperationException(
+                "流式消息未在本链登记——WriteStream/Flush 只能用于本链 BeginAsync 返回的 messageId（R3-15："
+                + "静默回退首选通道会把增量写到错误的子通道）");
 
     private string ResolveTarget(string messageId, string fallback)
     {

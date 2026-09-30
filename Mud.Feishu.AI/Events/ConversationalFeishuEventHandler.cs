@@ -69,11 +69,13 @@ public abstract class ConversationalFeishuEventHandler<T>(
     IMessageChannel? messageChannel = null,
     IConversationGate? conversationGate = null,
     IAppKeyAccessor? appKeyAccessor = null,
-    IFeishuToolApprovalChannel? approvalChannel = null) : IdempotentFeishuEventHandler<T>(
+    IFeishuToolApprovalChannel? approvalChannel = null,
+    IFeishuAppContextScopeFactory? appContextScopeFactory = null) : IdempotentFeishuEventHandler<T>(
         businessDeduplicator, logger ?? NullLogger.Instance, appKeyAccessor)
     where T : class, IEventResult, new()
 {
     private readonly FeishuAgent _agent = agent ?? throw new ArgumentNullException(nameof(agent));
+    private readonly IFeishuAppContextScopeFactory? _appContextScopeFactory = appContextScopeFactory;
 
     /// <summary>
     /// 宿主是否装配了应用键上下文（多应用宿主标志；构造期确定）。
@@ -122,6 +124,41 @@ public abstract class ConversationalFeishuEventHandler<T>(
     /// <param name="responseText">模型最终回答文本。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     protected abstract Task ReplyAsync(ConversationRequest request, string responseText, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// 为「调用飞书客户端产生对外副作用」的动作建立 SDK 租户作用域（R3-1/R3-2）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>必须</b>在任何下发动作<b>之前</b>调用（回复消息、上传附件、更新卡片等）：生成的客户端在
+    /// 无环境上下文时会退化为 <c>_appContextHolder.Current ?? _tokenManager.GetDefaultApp()</c>，
+    /// 多应用宿主下即以<b>默认应用身份</b>把回复发给别的租户（TMA2-20 跨租户错发）。
+    /// </para>
+    /// <para>
+    /// <b>fail-closed</b>：有 appKey 却未注入 <see cref="IFeishuAppContextScopeFactory"/> 属装配缺陷，
+    /// 显式抛错而**不**回退默认应用——宁可失败，也不以其他租户身份发出。
+    /// appKey 为空时返回 <see langword="null"/>（单应用宿主语义，由 <see cref="AllowMissingAppKey"/>
+    /// 分级决定是否允许），此时行为与既有实现<b>零差异</b>。
+    /// </para>
+    /// </remarks>
+    /// <param name="appKey">会话请求携带的应用键（可空）。</param>
+    /// <returns>作用域；appKey 为空时为 <see langword="null"/>（调用方以 <c>using</c> 承接即可）。</returns>
+    /// <exception cref="InvalidOperationException">appKey 非空但未注入作用域工厂。</exception>
+    protected IDisposable? BeginAppScope(string? appKey)
+    {
+        if (string.IsNullOrWhiteSpace(appKey))
+        {
+            return null;
+        }
+
+        if (_appContextScopeFactory is null)
+        {
+            throw new InvalidOperationException(
+                $"事件包含 appKey('{appKey}') 但未注入 {nameof(IFeishuAppContextScopeFactory)}，拒绝以默认应用身份回复。");
+        }
+
+        return _appContextScopeFactory.BeginScope(appKey!);
+    }
 
     /// <summary>
     /// 下发可行性前置判定（R2-01）：在<b>装配上下文与调用模型之前</b>执行，返回非 <see langword="null"/>
@@ -234,8 +271,12 @@ public abstract class ConversationalFeishuEventHandler<T>(
 
         using var activity = FeishuAgentDiagnostics.StartConversationActivity(conversationKey, request.AppKey);
 
-        // 会话闸门（P2D-1）：同键串行、跨键并行；闸门忙时快速失败——
-        // 事件层既有幂等回滚 + 重投递机制承接，不静默排队。等待耗时只进 Span 属性（原则 8：键不进 Metrics tag）。
+        // 会话闸门（P2D-1）：同键串行、跨键并行。**等待语义由闸门实现决定，本层不做超时**：
+        // 默认 KeyedConversationGate 是进程内串行化等待（同会话并发请求排队直至取得许可，
+        // 不快速失败——等待时长由一次模型回合决定，无法给出通用正确的超时值）；
+        // 需要「忙即失败」的宿主替换为 Redis 闸门（ConversationBusyException 的分布式租约语义）。
+        // 等待耗时只进 Span 属性（原则 8：键不进 Metrics tag）。
+        // 语义依据：R2 §0.3 否决 3 + KeyedConversationGate 的「不快速失败」说明（R3-11）。
         IConversationGateHandle? gateHandle = null;
         try
         {

@@ -222,8 +222,10 @@ internal sealed class SheetsWriteTools(Mud.Feishu.IFeishuTenantV3SpreadsheetData
 
 /// <summary>
 /// Bitable 写工具执行器（<c>bitable.update_record</c> / <c>bitable.delete_record</c>，WP2/R5）。
+/// 与 <see cref="BitableWriteTools"/>（<c>add_record</c>）职责不同，故分列两个类型
+/// （R3-20：原名 <c>BitableWriteTools2</c> 无语义，改按职责命名）。
 /// </summary>
-internal sealed class BitableWriteTools2(Mud.Feishu.IFeishuTenantV1BitableRecord recordClient)
+internal sealed class BitableWriteRecordOps(Mud.Feishu.IFeishuTenantV1BitableRecord recordClient)
 {
     private readonly Mud.Feishu.IFeishuTenantV1BitableRecord _recordClient = recordClient
         ?? throw new ArgumentNullException(nameof(recordClient));

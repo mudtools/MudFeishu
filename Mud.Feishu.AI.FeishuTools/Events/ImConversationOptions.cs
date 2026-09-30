@@ -32,6 +32,24 @@ public sealed class ImConversationOptions
     /// <remarks>默认 true；仅做任务型 Bot 的宿主可关闭单聊，收窄可对话面。</remarks>
     public bool AllowP2pConversation { get; set; } = true;
 
+    /// <summary>
+    /// 群聊「@ 到 Bot 本人」判定所用的 Bot 显示名（消费点：群聊事件过滤；
+    /// 仅在 <see cref="RequireMentionInGroup"/> 为 <see langword="true"/> 时生效）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 配置后，群聊消息必须存在一个 <c>mentions[].name</c> 与本值（忽略大小写）相等的 @ 对象才进入会话；
+    /// 否则按「未 @Bot」跳过（与「<c>mentions</c> 为空」同一条跳过路径）。
+    /// 这修复了「任何 @（@ 别人、@ 全体）都会触发 Bot 回复」的过度响应（R3-3）。
+    /// </para>
+    /// <para>
+    /// <b>默认 <see langword="null"/> = 不启用该收紧</b>（等价旧行为：「<c>mentions</c> 非空即视为 @Bot」），
+    /// 保证升级零破坏。取值须与飞书群内 @ 时呈现的 <c>mentions[].name</c> 一致（通常是 Bot 的群内显示名，
+    /// 未必等于应用名）——配置错误表现为「群聊静默不响应」，故先用默认值观察真实 <c>mentions</c> 报文再配置。
+    /// </para>
+    /// </remarks>
+    public string? BotName { get; set; }
+
     /// <summary>校验配置合法性（注册时触发，fail-fast）。</summary>
     public void Validate()
     {

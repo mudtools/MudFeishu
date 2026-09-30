@@ -296,11 +296,24 @@ public sealed class FeishuAgent : AIAgent
 
         // 失败可见性（P2-8 / B3.3）：迭代器不能在含 catch 的 try 内 yield（CS1626），
         // 故把「枚举 + 异常时标记 Span Error」下沉到非迭代器包装层。
-        await foreach (var update in MarkFailureOnEnumerateAsync(
-            _innerAgent.RunStreamingAsync(messages, session, options, cancellationToken), activity)
-            .ConfigureAwait(false))
+        //
+        // R3-7：流式路径同样记录模型调用耗时（与非流式 RunCoreAsync 对齐）——
+        // 此前只有非流式入直方图，流式（IM 会话默认路径）的 P95/P99 因此缺失。
+        // try/finally 在迭代器中**合法**（CS1626 只禁止 try 块内 yield 与 catch 共存）。
+        // 纪律：时长只进数值直方图（维度 agent），不得新增 appKey/sessionId 等 tag（原则 8：键只进 Span）。
+        var llmStopwatch = System.Diagnostics.Stopwatch.StartNew();
+        try
         {
-            yield return update;
+            await foreach (var update in MarkFailureOnEnumerateAsync(
+                _innerAgent.RunStreamingAsync(messages, session, options, cancellationToken), activity)
+                .ConfigureAwait(false))
+            {
+                yield return update;
+            }
+        }
+        finally
+        {
+            FeishuAgentDiagnostics.RecordLlmDuration(_options.Name, llmStopwatch.ElapsedMilliseconds);
         }
     }
 

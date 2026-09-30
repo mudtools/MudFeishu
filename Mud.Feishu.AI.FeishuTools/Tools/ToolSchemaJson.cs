@@ -46,10 +46,15 @@ internal static class ToolSchemaJson
     public static JsonElement ExtractParameters(string schemaJson)
     {
         using var document = JsonDocument.Parse(schemaJson);
-        return document.RootElement.TryGetProperty("parameters", out var parameters)
-               && parameters.ValueKind == JsonValueKind.Object
-            ? parameters.Clone()
-            : JsonDocument.Parse(EmptyParametersJson).RootElement.Clone();
+        if (document.RootElement.TryGetProperty("parameters", out var parameters)
+            && parameters.ValueKind == JsonValueKind.Object)
+        {
+            return parameters.Clone();
+        }
+
+        // R3-13：兜底分支同样必须释放 JsonDocument（Clone() 之后的元素可脱离 document 存活）。
+        using var fallback = JsonDocument.Parse(EmptyParametersJson);
+        return fallback.RootElement.Clone();
     }
 
     /// <summary>

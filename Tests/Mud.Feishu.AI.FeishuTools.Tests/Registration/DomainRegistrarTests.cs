@@ -23,6 +23,10 @@ public class DomainRegistrarTests
         configureOptions(options);
         return new ServiceCollection()
             .AddSingleton(Options.Create(options))
+            // R3-5：作用域工厂的核心依赖（与生成的 HTTP 客户端同构），与工具域无关。
+            .AddSingleton(new Mock<Mud.HttpUtils.IAppContextHolder>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.Abstractions.IFeishuAppManager>().Object)
+            .AddSingleton(Mock.Of<Mud.HttpUtils.IAppAccessAuthorizer>(a => a.CanSwitchTo(It.IsAny<string>())))
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1Message>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableAppTable>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableField>().Object)
@@ -78,6 +82,10 @@ public class DomainRegistrarTests
 
         var mockClients = new Action<IServiceCollection>(services =>
         {
+            // R3-5：作用域工厂的核心依赖（与生成的 HTTP 客户端同构），与工具域无关。
+            services.AddSingleton(new Mock<Mud.HttpUtils.IAppContextHolder>().Object);
+            services.AddSingleton(new Mock<Mud.Feishu.Abstractions.IFeishuAppManager>().Object);
+            services.AddSingleton(Mock.Of<Mud.HttpUtils.IAppAccessAuthorizer>(a => a.CanSwitchTo(It.IsAny<string>())));
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableAppTable>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableField>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableRecord>().Object);
@@ -134,6 +142,34 @@ public class DomainRegistrarTests
         single.AllTools.Select(t => t.Name).Should().BeEquivalentTo(
             perDomain.AllTools.Select(t => t.Name), "全域入口与逐域扩展产物一致（兼容等价性）");
         single.EnabledTools.Select(t => t.Name).Should().BeEquivalentTo(perDomain.EnabledTools.Select(t => t.Name));
+    }
+
+    /// <summary>
+    /// R3-5：作用域工厂必须<b>零业务客户端依赖</b>——按域装配（只注册 Bitable 三个客户端、
+    /// 完全没有 IM 客户端）也必须能解析整条工具执行链。
+    /// </summary>
+    /// <remarks>
+    /// 缺陷原始形态：工厂以单例持有 <c>IFeishuTenantV1Message</c>（瞬时注册），既构成
+    /// Captive Dependency（TMA-13），又使「只调 <c>AddFeishuBitableTools()</c>」的宿主在解析
+    /// <c>FeishuToolBinding</c> 时报「无法解析 IFeishuTenantV1Message」——按域装配这个核心卖点被静默破坏。
+    /// </remarks>
+    [Fact]
+    public void AddFeishuBitableTools_ShouldResolveToolBinding_WithoutImClient()
+    {
+        using var provider = new ServiceCollection()
+            .AddSingleton(Options.Create(new FeishuAgentOptions { Instructions = "test" }))
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableAppTable>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableField>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableRecord>().Object)
+            // 工厂的两个单例依赖（生产环境由 AddTokenProvider / 应用管理器提供）与授权器。
+            .AddSingleton(new Mock<Mud.HttpUtils.IAppContextHolder>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.Abstractions.IFeishuAppManager>().Object)
+            .AddSingleton(Mock.Of<Mud.HttpUtils.IAppAccessAuthorizer>(a => a.CanSwitchTo(It.IsAny<string>())))
+            .AddFeishuBitableTools()
+            .BuildServiceProvider();
+
+        provider.GetRequiredService<FeishuToolBinding>().Should().NotBeNull(
+            "按域装配（无 IM 客户端）必须可解析工具绑定——旧工厂直接依赖 IFeishuTenantV1Message 时此处会失败（R3-5）");
     }
 
     [Fact]

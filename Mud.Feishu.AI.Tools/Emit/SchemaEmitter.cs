@@ -37,6 +37,19 @@ namespace Mud.Feishu.AI.Tools.Emit;
 internal static class SchemaEmitter
 {
     /// <summary>工具名契约表所有者的程序集名。</summary>
+    /// <remarks>
+    /// R3-17：本程序集名是<b>多个发射器的共同门槛</b>，改名须同步以下 <b>3 个常量</b>
+    /// （同值但语义不同，编译器不会互相校验）：
+    /// <list type="number">
+    /// <item><see cref="ToolNamesOwnerAssembly"/>（本常量，工具名契约表所有者门槛）；</item>
+    /// <item><c>ToolArgsEmitter.NamespaceName</c>（ARGS 产物命名空间）；</item>
+    /// <item><c>ToolRegistrarEmitter.CoreNamespace</c>（DI 装配产物命名空间）。</item>
+    /// </list>
+    /// 另：owner 门槛还被 <c>GuidanceEmitter</c> / <c>ToolRegistrarEmitter</c> / <c>ToolArgsEmitter</c>
+    /// 以<b>引用本常量</b>的方式消费（无需同步）。未来若改为从
+    /// <c>AnalyzerConfigOptionsProvider</c> 读 <c>build_property.MudFeishuToolOwnerAssembly</c>，
+    /// 须先解决"是否算新增配置面"的 R5 治理问题。
+    /// </remarks>
     public const string ToolNamesOwnerAssembly = "Mud.Feishu.AI.FeishuTools";
 
     /// <summary>golden 快照文件名（由 csproj 以 <c>AdditionalFiles</c> 声明）。</summary>

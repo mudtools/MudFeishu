@@ -342,6 +342,10 @@ public static class FeishuToolsServiceCollectionExtensions
             services.AddFeishuKnowledgeContext();
         }
 
+        // R3-1：回复前切租户依赖作用域工厂——本入口是 IM 会话处理器的「一行接入」装配点，
+        // 若此处不注册，多应用宿主会在回复时 fail-closed 抛错（有 appKey 无工厂）。
+        services.TryAddSingleton<IFeishuAppContextScopeFactory, FeishuAppContextScopeFactory>();
+
         // 处理器本体：宿主经通道 AddHandler<ImMessageConversationalEventHandler>() 挂载（AddScoped 语义由通道补齐）。
         services.TryAddScoped<ImMessageConversationalEventHandler>();
 
@@ -441,7 +445,7 @@ public static class FeishuToolsServiceCollectionExtensions
             // WP2/R5 写入面补齐：docx/sheets/bitable(update/delete)/drive 写执行器
             .AddFeishuDocxWriteToolsCore()
             .AddFeishuSheetsWriteToolsCore()
-            .AddFeishuBitableWriteTools2Core()
+            .AddFeishuBitableWriteRecordOpsCore()
             .AddFeishuDriveWriteToolsCore()
             // WP5/R5 域扩容：邮件工具 + 通讯录部门轴工具
             .AddFeishuMailToolsCore()
@@ -454,6 +458,8 @@ public static class FeishuToolsServiceCollectionExtensions
     {
         // 执行链协作件。
         services.TryAddSingleton<IFeishuToolContextAccessor, FeishuToolContextAccessor>();
+        // R3-5：实现零业务客户端依赖（只取单例 IAppContextHolder / IFeishuAppManager），
+        // 故「只装 Bitable」等按域装配也能解析 FeishuToolBinding；同时消除 Singleton 捕获 Transient（TMA-13）。
         services.TryAddSingleton<IFeishuAppContextScopeFactory, FeishuAppContextScopeFactory>();
         services.TryAddSingleton<FeishuToolBinding>();
 

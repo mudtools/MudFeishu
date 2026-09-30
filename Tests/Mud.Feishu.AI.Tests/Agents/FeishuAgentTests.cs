@@ -385,6 +385,68 @@ public class FeishuAgentTests
             "失败样本也必须进入 feishu.agent.llm.duration（否则 P95/P99 只反映成功路径）");
     }
 
+    /// <summary>
+    /// R3-7：流式路径必须与非流式 <c>RunCoreAsync</c> 一样记录 <c>feishu.agent.llm.duration</c>——
+    /// IM 会话默认走流式，漏记会让监控里的耗时 P95/P99 只反映非流式路径。
+    /// </summary>
+    [Fact]
+    public async Task RunStreamingAsync_ShouldRecordLlmDuration_Once()
+    {
+        // 指标是**进程级**直方图，xUnit 并行执行的其他用例也会打同一 instrument——
+        // 故用本用例独有的 Agent 名做维度过滤，才能断言"恰好一次"而不受邻居干扰。
+        var agentName = "stream-duration-" + Guid.NewGuid().ToString("N");
+        var recorded = new ConcurrentQueue<string>();
+
+        using var meterListener = new MeterListener
+        {
+            InstrumentPublished = (instrument, l) =>
+            {
+                if (instrument.Name == "feishu.agent.llm.duration")
+                {
+                    l.EnableMeasurementEvents(instrument);
+                }
+            },
+        };
+        meterListener.SetMeasurementEventCallback<double>((_, _, tags, _) =>
+        {
+            foreach (var tag in tags)
+            {
+                // 只收本用例维度：并行用例会用**别的** Agent 名打同一 instrument，
+                // 若不过滤会把邻居的测量值一并入队（net10.0 全量运行下曾因此假红）。
+                if (tag.Key == "agent" && tag.Value is string name && name == agentName)
+                {
+                    recorded.Enqueue(name);
+                }
+            }
+        });
+        meterListener.Start();
+        // 兜底：FeishuMetrics.AgentLlmDuration 是 static readonly，可能在监听器启动前就已创建
+        // （InstrumentPublished 不保证回放已存在的 instrument），显式启用确保稳定收到测量值。
+        meterListener.EnableMeasurementEvents(Mud.Feishu.Abstractions.Metrics.FeishuMetrics.AgentLlmDuration);
+
+        var mock = new Mock<IChatClient>();
+        mock.Setup(c => c.GetStreamingResponseAsync(
+                It.IsAny<IEnumerable<ChatMessage>>(),
+                It.IsAny<ChatOptions?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(StreamChunks("你", "好"));
+
+        var options = ValidOptions();
+        options.Name = agentName;
+        var agent = new FeishuAgent(mock.Object, options);
+        var session = await agent.CreateSessionAsync();
+
+        var updates = 0;
+        await foreach (var _ in agent.RunStreamingAsync("流式", session))
+        {
+            updates++;
+        }
+
+        updates.Should().Be(2);
+        recorded.Should().ContainSingle().Which.Should().Be(agentName,
+            "一次流式消费必须恰好记录一次模型调用耗时（R3-7：流式与非流式对齐）");
+    }
+
     [Fact]
     public async Task RunStreaming_ShouldStopActivity_WhenConsumerBreaksEarly()
     {

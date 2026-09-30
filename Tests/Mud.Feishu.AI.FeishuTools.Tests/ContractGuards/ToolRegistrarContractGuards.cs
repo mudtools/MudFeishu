@@ -53,15 +53,19 @@ public class ToolRegistrarContractGuards
     /// 仅依赖 <c>IOptions&lt;T&gt;</c> 的执行器（无任何软缺席候选）在<b>无任何域客户端</b>下仍须注册。
     /// </summary>
     /// <remarks>
-    /// 唯一注册的消息客户端不属于任何<b>工具</b>域——它是执行链基础设施
-    /// （<c>FeishuAppContextScopeFactory</c> 的构造依赖，缺它连注册表都建不起来，与本次生成化无关）。
+    /// 注册的三个依赖都属于<b>执行链基础设施</b>（<c>FeishuAppContextScopeFactory</c> 的构造依赖：
+    /// <c>IAppContextHolder</c> + <c>IFeishuAppManager</c> + 授权器，与生成的 HTTP 客户端同构），
+    /// <b>不属于任何工具域</b>——缺它们连注册表都建不起来。R3-5 之后工厂不再需要 IM 客户端，
+    /// 本条用例因此比旧形态更严格：连一个业务域客户端都没有。
     /// </remarks>
     [Fact]
     public void OptionsOnlyExecutor_ShouldBeRegisteredWithoutAnyDomainClient()
     {
         var services = new ServiceCollection()
             .AddSingleton(Options.Create(new FeishuAgentOptions { Instructions = "test" }))
-            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1Message>().Object);
+            .AddSingleton(new Mock<Mud.HttpUtils.IAppContextHolder>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.Abstractions.IFeishuAppManager>().Object)
+            .AddSingleton(Mock.Of<Mud.HttpUtils.IAppAccessAuthorizer>(a => a.CanSwitchTo(It.IsAny<string>())));
 
         using var provider = services.AddFeishuCapabilityTools().BuildServiceProvider();
 

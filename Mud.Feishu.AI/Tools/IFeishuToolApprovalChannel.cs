@@ -115,8 +115,8 @@ public sealed record FrameworkToolApprovalRequest(
 /// <param name="ConversationKey">会话键（可空）。</param>
 /// <param name="ArgumentsDigest">参数摘要（已脱敏；供宿主建立"已批准"上下文，宿主不得修改）。</param>
 /// <param name="RequiredScopes">工具声明的权限点。</param>
-    /// <param name="Reason">授权器给出的待确认原因。</param>
-    /// <param name="ExpiresAt">确认有效期（宿主批准界面据此显示倒计时；默认 10 分钟）。</param>
+/// <param name="Reason">授权器给出的待确认原因。</param>
+/// <param name="ExpiresAt">确认有效期（宿主批准界面据此显示倒计时；默认 10 分钟）。</param>
 public sealed record ToolApprovalRequest(
     string ToolName,
     string AppKey,

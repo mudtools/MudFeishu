@@ -109,6 +109,9 @@ public sealed class FeishuToolSchemaExporter : IToolSchemaExporter
     {
         if (dialect != ToolSchemaDialect.OpenAiFunctions)
         {
+            // R3-19 复核：fail-fast 有意为之——非法方言不得降级为"空列表"（静默产出空 Schema 会让
+            // 消费方以为"该方言下无工具"）。既有用例 FeishuToolCatalogTests.Export_ShouldRejectUnsupportedDialect
+            // 已断言本异常，非缺陷。
             throw new ArgumentOutOfRangeException(nameof(dialect), $"暂不支持的导出方言: {dialect}（Skills/Aily/MCP 归 Phase 4）");
         }
 

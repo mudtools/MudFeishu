@@ -123,7 +123,9 @@ public sealed class FeishuToolBinding
         // ① 上下文校验：多租户隔离事实来源，缺 appKey 即失败（TMA2-20）。
         if (string.IsNullOrWhiteSpace(context.AppKey))
         {
-            return FeishuToolResult.FromError(StructuredError(tool.Name, "工具执行上下文缺少 appKey——多租户隔离禁止默认应用兜底（TMA2-20）"));
+            return EgressResult(
+                tool.Name,
+                "工具执行上下文缺少 appKey——多租户隔离禁止默认应用兜底（TMA2-20）");
         }
 
         using var activity = FeishuToolDiagnostics.StartToolActivity(
@@ -299,7 +301,9 @@ public sealed class FeishuToolBinding
                 else
                 {
                     _currentUserContext?.Clear();
-                    _currentUserContext?.SetUser(previousOpenId, previousUnionId, previousUserId, previousName);
+                    // `!`：`netstandard2.0` 的 `string.IsNullOrEmpty` 无 [NotNullWhen(false)] 注解，
+                    // 编译器无法从上方分支推断非空（net6.0+ 无此警告，语义一致）。
+                    _currentUserContext?.SetUser(previousOpenId!, previousUnionId, previousUserId, previousName);
                 }
             }
         }
@@ -310,6 +314,10 @@ public sealed class FeishuToolBinding
     /// <b>零调用下游、不切租户</b>。入站净化 / 策略轴 / 授权门禁 / 内容安全阻断四条路径共用，
     /// 确保"新增一个拒绝分支必然带上审计"（否则审计会成为可选步骤而被遗漏）。
     /// </summary>
+    /// <remarks>
+    /// R3-4：模型可见文案经 <see cref="EgressResult(string, ToolErrorKind, string)"/> 返回——
+    /// 与成功路径同源净化 + 截断（审计侧仍记原始 <paramref name="reason"/>，两条出口判据不同）。
+    /// </remarks>
     private async Task<FeishuToolResult> DenyAsync(
         FeishuToolDefinition tool,
         FeishuToolContext context,
@@ -326,8 +334,39 @@ public sealed class FeishuToolBinding
             tool, context, FeishuMetrics.ToolOutcomes.Denied, reason,
             ToolArgsDigester.Digest(arguments), executionStopwatch.ElapsedMilliseconds,
             cancellationToken).ConfigureAwait(false);
-        return FeishuToolResult.FromError(StructuredError(tool.Name, kind, reason));
+
+        // R3-4：审计仍记**原始** reason（内部事实，非模型可见——R1 §7 纪律 4 的两条出口判据不同），
+        // 回填模型的文本则必须经唯一出口净化 + 截断。
+        return EgressResult(tool.Name, kind, reason);
     }
+
+    /// <summary>
+    /// 模型可见出口的**唯一构造点**（R3-4）：一切回填模型的文本都必须经此净化 + 截断。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 根因（R3-4）：出站净化此前是「成功路径的一段代码」而不是「出口的唯一通道」，
+    /// 于是新出口（拒绝、内容安全阻断、HITL 挂起、上下文缺失）天然漏掉净化。
+    /// 收口到本方法后，净化成为出口的<b>性质</b>而非可遗忘的步骤。
+    /// </para>
+    /// <para>
+    /// 拒绝文案同属「外部数据 → 模型上下文」的出口：<c>invalid_args: {argumentFailure}</c> 这类
+    /// 文案含**模型可控**键名（由 <c>ToolArgumentNormalizer</c> 的 <c>prop.Name</c> 拼成），不得双标。
+    /// </para>
+    /// </remarks>
+    private FeishuToolResult EgressResult(string message)
+    {
+        var safe = ToolResultText.Truncate(ToolResultSanitizer.Sanitize(message), _options.MaxToolResultLength);
+        return FeishuToolResult.FromError(safe);
+    }
+
+    /// <summary>带错误语义分类的出口（结构化文案经 <see cref="StructuredError(string, ToolErrorKind, string)"/> 构造后走唯一闸门）。</summary>
+    private FeishuToolResult EgressResult(string toolName, ToolErrorKind kind, string reason)
+        => EgressResult(StructuredError(toolName, kind, reason));
+
+    /// <summary>无分类的出口（等价 <see cref="StructuredError(string, string)"/> 文案，用于上下文缺失等通用失败）。</summary>
+    private FeishuToolResult EgressResult(string toolName, string reason)
+        => EgressResult(StructuredError(toolName, reason));
 
     /// <summary>
     /// P1D-3b 审计出口投递（异常隔离：sink 失败只记日志，绝不影响执行链；
@@ -509,7 +548,9 @@ public sealed class FeishuToolBinding
             AuthorizationDecision.Allowed => GateDecision.Pass(),
             AuthorizationDecision.Denied => GateDecision.Deny(
                 $"authorization_denied: {result.Reason ?? "授权被拒绝"}", ToolErrorKind.Forbidden),
-            // 非写类工具不进入框架审批（未被包装）⇒ 自研确认令牌仍是其唯一 HITL 机制（[Obsolete]，下个 major 移除）。
+            // 非写类工具不进入框架审批（未被包装）⇒ 自研确认令牌仍是其唯一 HITL 机制。
+            // R3-18：此处**不是**（也**不应**是）[Obsolete] 路径——对只读工具它是唯一 HITL 手段，
+            // 标废会误导宿主放弃审批；仅写类工具的审批已由 MAF 管线接管（见上方 P4-3）。
             AuthorizationDecision.NeedsUserConfirmation =>
                 await ResolveNeedsConfirmationAsync(tool, arguments, context, result.Reason, cancellationToken)
                     .ConfigureAwait(false),

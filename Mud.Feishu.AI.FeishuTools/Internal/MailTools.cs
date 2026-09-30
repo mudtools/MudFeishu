@@ -212,26 +212,39 @@ internal sealed class MailTools(
     }
 
     /// <summary>构造 RFC 5822 EML 文本（纯文本邮件）。</summary>
-    private static string BuildEml(MailSendMessageArgs args)
+    /// <remarks>
+    /// R3-12：头字段（To/Cc/Bcc/Subject）逐个拒绝任何 <c>CR</c>/<c>LF</c>。全局入站净化
+    /// （<see cref="ToolArgumentSanitizer.ValidateText"/>）<b>必须</b>放行换行（正文/文档/消息都靠换行表达结构），
+    /// 故头注入面只能在此收口——否则 <c>Subject: "x\r\nBcc: attacker@evil"</c> 会凭空插入收件人。
+    /// 正文（<paramref name="args"/>.Body）仍允许 LF。
+    /// </remarks>
+    /// <exception cref="ArgumentException">头字段含 CR/LF（执行链转结构化错误回填模型，不落到下游）。</exception>
+    internal static string BuildEml(MailSendMessageArgs args)
     {
         var sb = new StringBuilder();
         sb.Append("Content-Type: text/plain; charset=\"utf-8\"").Append("\r\n");
         sb.Append("Content-Transfer-Encoding: 8bit").Append("\r\n");
         sb.Append("MIME-Version: 1.0").Append("\r\n");
-        sb.Append("To: ").Append(string.Join(", ", args.To.Select(a => $"<{a}>"))).Append("\r\n");
+        sb.Append("To: ").Append(string.Join(", ", args.To.Select(a => $"<{RequireHeaderField("to", a)}>"))).Append("\r\n");
         if (args.Cc is { Length: > 0 })
         {
-            sb.Append("Cc: ").Append(string.Join(", ", args.Cc.Select(a => $"<{a}>"))).Append("\r\n");
+            sb.Append("Cc: ").Append(string.Join(", ", args.Cc.Select(a => $"<{RequireHeaderField("cc", a)}>"))).Append("\r\n");
         }
         if (args.Bcc is { Length: > 0 })
         {
-            sb.Append("Bcc: ").Append(string.Join(", ", args.Bcc.Select(a => $"<{a}>"))).Append("\r\n");
+            sb.Append("Bcc: ").Append(string.Join(", ", args.Bcc.Select(a => $"<{RequireHeaderField("bcc", a)}>"))).Append("\r\n");
         }
-        sb.Append("Subject: ").Append(args.Subject).Append("\r\n");
+        sb.Append("Subject: ").Append(RequireHeaderField("subject", args.Subject)).Append("\r\n");
         sb.Append("\r\n");
         sb.Append(args.Body);
         return sb.ToString();
     }
+
+    /// <summary>头字段守卫（R3-12）：含 CR/LF 即抛（SMTP 头注入防护）。</summary>
+    private static string RequireHeaderField(string name, string value)
+        => ToolArgumentSanitizer.ValidateHeaderValue(name, value) is { } violation
+            ? throw new ArgumentException(violation, name)
+            : value;
 
     /// <summary>Base64Url 编码（飞书邮件 API 要求 base64url 编码的 EML 内容）。</summary>
     private static string Base64UrlEncode(string input)

@@ -43,8 +43,20 @@ public class ToolEgressPurificationContractGuards
     {
         var source = ReadBindingSource();
 
-        // 匹配 ExecuteAsync 方法体中的所有 return FeishuToolResult.From*(...) 语句。
-        var exits = Regex.Matches(source, @"return\s+(?:await\s+)?FeishuToolResult\.From(?:Text|Error)\(([^;]*)\);");
+        // R3-4：模型可见出口的唯一闸门 EgressResult(string message) 自身即净化点——
+        // 其内部的 return FeishuToolResult.FromError(safe) 就是「净化后的出口」本身，
+        // 不应对本次穷尽扫描重复判红（否则收口反而触发假红）。闸门自身的净化 + 截断
+        // 由 ModelVisibleEgress_ShouldBeFunneledThroughSanitizingConstructor 断言。
+        var sink = Regex.Match(
+            source,
+            @"private\s+FeishuToolResult\s+EgressResult\(string\s+message\)\s*\{[^{}]*\}",
+            RegexOptions.Singleline);
+        sink.Success.Should().BeTrue(
+            "R3-4：必须存在模型可见出口的唯一闸门 EgressResult(string message)");
+        var scanned = source.Remove(sink.Index, sink.Length);
+
+        // 匹配所有 return FeishuToolResult.From*(...) 语句（闸门自身已剔除）。
+        var exits = Regex.Matches(scanned, @"return\s+(?:await\s+)?FeishuToolResult\.From(?:Text|Error)\(([^;]*)\);");
 
         var violations = new List<string>();
         foreach (System.Text.RegularExpressions.Match m in exits)
@@ -100,6 +112,104 @@ public class ToolEgressPurificationContractGuards
             "catch 分支必须经出站净化（WP2/S3 修复）——异常消息可能携带 URL/响应体片段");
         catchSegment.Should().Contain("bounded",
             "catch 分支的返回值必须使用净化后的 bounded 变量");
+    }
+
+    /// <summary>
+    /// R3-4：模型可见出口必须收口到**唯一构造器** <c>EgressResult(string message)</c>，
+    /// 且该构造器自身必须净化 + 截断。
+    /// </summary>
+    /// <remarks>
+    /// <b>为什么必须新增这条</b>：原守卫只校验「<c>return FeishuToolResult.From*(...)</c> 的表达式含
+    /// <c>StructuredError</c>」——而拒绝文案（<c>invalid_args</c> 含模型可控键名）正是走
+    /// <c>StructuredError</c> 却<b>未</b>经净化，属守卫盲区。收口后判据改为「一切模型可见出口都必须
+    /// 经过携带净化/截断的 <c>EgressResult</c>」。
+    /// </remarks>
+    [Fact]
+    public void ModelVisibleEgress_ShouldBeFunneledThroughSanitizingConstructor()
+    {
+        var source = ReadBindingSource();
+
+        // ① 唯一闸门自身必须净化 + 截断（否则"收口"只是换了个名字）。
+        var core = Regex.Match(
+            source,
+            @"private\s+FeishuToolResult\s+EgressResult\(string\s+message\)\s*\{(?<body>[^{}]*)\}",
+            RegexOptions.Singleline);
+        core.Success.Should().BeTrue(
+            "R3-4：必须存在模型可见出口的唯一构造器 EgressResult(string message)");
+        core.Groups["body"].Value.Should().Contain(
+            "ToolResultSanitizer.Sanitize", "出口闸门必须净化（与成功路径同源）");
+        core.Groups["body"].Value.Should().Contain(
+            "ToolResultText.Truncate", "出口闸门必须按 MaxToolResultLength 截断（预算约束）");
+
+        // ② 拒绝出口必须共用它（DenyAsync 的模型可见返回值）。
+        var denyIdx = source.IndexOf("private async Task<FeishuToolResult> DenyAsync(", StringComparison.Ordinal);
+        denyIdx.Should().BeGreaterThan(-1, "FeishuToolBinding 必须有统一拒绝出口 DenyAsync");
+        var denyTail = source[denyIdx..];
+        var nextMemberIdx = denyTail.IndexOf("\n    /// <summary>", StringComparison.Ordinal);
+        (nextMemberIdx > 0 ? denyTail[..nextMemberIdx] : denyTail).Should().Contain(
+            "EgressResult(", "拒绝文案同属外部数据出口，必须经唯一闸门净化（R3-4 消除双标）");
+
+        // ③ 不得再出现"绕过闸门的裸结构化错误出口"。
+        Regex.Matches(source, @"return\s+FeishuToolResult\.FromError\(StructuredError\(")
+            .Should().BeEmpty(
+                "所有 return 的结构化错误文案都必须经 EgressResult 净化——"
+                + "裸 FromError(StructuredError(...)) 会让新出口（拒绝/HITL/上下文缺失）再次漏掉净化");
+    }
+
+    /// <summary>
+    /// R3-4 / T10：模型可见出口面必须**封闭**——<c>EgressResult</c> 重载恰好是被登记的 3 个，
+    /// 且每个重载要么自身净化（唯一核心闸门）要么委派给核心闸门；带 <c>ToolErrorKind</c>
+    /// 的分类出口唯一。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>与既有守卫的分工（不重复）</b>：<see cref="ModelVisibleEgress_ShouldBeFunneledThroughSanitizingConstructor"/>
+    /// 断言的是「<b>现有</b>出口都经过净化」；它无法阻止**将来新增**一个重载并直接
+    /// <c>return FeishuToolResult.FromError(...)</c> —— 那处新出口不在旧断言的扫描清单里。
+    /// 本守卫把「重载面」钉死：新增出口必然改动本文件的重载数，从而**同时**触发本断言失败，
+    /// 逼迫作者回到此处登记净化判据（守卫自维护，而非依赖评审者记忆）。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void EveryToolErrorKind_ShouldHavePurifiedEgress()
+    {
+        var source = ReadBindingSource();
+
+        // ① 出口面封闭：EgressResult 重载恰好 3 个（核心净化 / 带分类 / 无分类）。
+        var overloads = Regex.Matches(
+            source,
+            @"private\s+FeishuToolResult\s+EgressResult\([^)]*\)");
+        overloads.Count.Should().Be(3,
+            "模型可见出口面必须封闭为 3 个已登记重载（核心净化 / 带 ToolErrorKind / 无分类）——"
+            + "新增重载即新增一条模型可见路径，必须同步在此登记其净化判据");
+
+        // ② 每个重载要么自身是净化核心，要么委派给核心闸门（不允许"自己拼文案直接返回"）。
+        var selfContained = new List<string>();
+        foreach (System.Text.RegularExpressions.Match overload in overloads)
+        {
+            var tailEnd = Math.Min(source.Length, overload.Index + overload.Length + 200);
+            var tail = source[(overload.Index + overload.Length)..tailEnd];
+            var delegates = tail.Contains("EgressResult(", StringComparison.Ordinal);
+            var sanitizes = tail.Contains("ToolResultSanitizer.Sanitize", StringComparison.Ordinal);
+            if (!delegates && !sanitizes)
+            {
+                selfContained.Add(overload.Value.Trim());
+            }
+        }
+
+        selfContained.Should().BeEmpty(
+            "以下 EgressResult 重载既不自净化也不委派核心闸门——它是一条绕过净化的模型可见出口：{0}",
+            string.Join(" | ", selfContained));
+
+        // ③ 带分类的出口唯一：ToolErrorKind → 模型文本只有一条路径，且它必须委派核心闸门。
+        var classified = Regex.Match(
+            source,
+            @"private\s+FeishuToolResult\s+EgressResult\(string\s+toolName,\s*ToolErrorKind\s+kind,\s*string\s+reason\)\s*(?<body>=>[^;]*;|\{.*?\})",
+            RegexOptions.Singleline);
+        classified.Success.Should().BeTrue(
+            "带 ToolErrorKind 的分类出口必须存在（拒绝路径与 catch 分支共用，R3-4 收口）");
+        classified.Groups["body"].Value.Should().Contain(
+            "EgressResult(", "分类出口不得自行拼文案返回，必须委派唯一净化闸门");
     }
 
     private static string ReadBindingSource()

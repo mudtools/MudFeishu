@@ -146,11 +146,11 @@ public sealed class CardStreamMessageChannel(
                 "应用消息卡片流增量更新失败（bizId: {BizId}）: {Error}——停留上一次成功内容",
                 messageId, outcome.ErrorText);
         }
-        else if (outcome.Data!.FailedCards is { Length: > 0 })
+        else if (outcome.Data?.FailedCards is { Length: > 0 } failedCards)
         {
             _logger?.LogWarning(
                 "应用消息卡片流增量更新部分失败（bizId: {BizId}，失败 {Count} 张）——停留上一次成功内容",
-                messageId, outcome.Data.FailedCards.Length);
+                messageId, failedCards.Length);
         }
     }
 

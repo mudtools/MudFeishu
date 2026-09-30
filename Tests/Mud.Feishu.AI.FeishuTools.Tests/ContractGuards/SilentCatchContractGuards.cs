@@ -276,7 +276,8 @@ internal static class SilentCatchScanner
     }
 
     /// <summary>该位置是否落在行注释/块注释/字符串字面量内（粗判，用于排除文档注释里的 "catch"）。</summary>
-    private static bool IsInsideCommentOrString(string source, int index)
+    /// <remarks>同程序集的其它源码扫描守卫（如 <c>ReplyScopeScanner</c>）复用本状态机，避免复制。</remarks>
+    internal static bool IsInsideCommentOrString(string source, int index)
     {
         var inLineComment = false;
         var inBlockComment = false;

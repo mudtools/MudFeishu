@@ -35,6 +35,35 @@ description: 该接口用于以用户身份管理飞书群组，提供解散群�
 
 ## 函数详细内容
 
+### 创建群聊
+
+**函数名称**：创建群聊
+
+**函数签名**：
+```csharp
+Task<FeishuApiResult<CreateUpdateChatResult>?> CreateChatGroupAsync(
+    [Body] CreateChatRequest createChatRequest,
+    [Query("user_id_type")] string user_id_type = "open_id",
+    [Query("set_bot_manager")] bool? set_bot_manager = false,
+    [Query("uuid")] string? uuid = null,
+    CancellationToken cancellationToken = default);
+```
+
+**认证**：用户令牌
+
+**参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|-----|------|------|------|
+| createChatRequest | CreateChatRequest | ✅ | 创建群聊请求体 |
+| user_id_type | string | ⚪ | 用户 ID 类型，默认值：`open_id` |
+| set_bot_manager | bool? | ⚪ | 在请求体 owner_id 指定用户为群主时，是否同时设置创建此群的机器人为管理员，默认值：`false` |
+| uuid | string? | ⚪ | 由开发者生成的唯一字符串序列，用于创建群组请求去重；持有相同 uuid + owner_id 的请求 10 小时内只可成功创建 1 个群聊 |
+
+**接口文档**：[创建群聊](https://open.feishu.cn/document/server-docs/group/chat/create)
+
+---
+
 ### 更新群信息
 
 **函数名称**：更新群信息

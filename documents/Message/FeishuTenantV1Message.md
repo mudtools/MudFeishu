@@ -31,6 +31,8 @@ description: 该接口用于以租户身份对飞书消息进行发送、回复�
 | GetMessageReadUsesAsync | 获取消息已读用户 | 租户令牌 | GET |
 | GetHistoryMessageAsync | 获取历史消息 | 租户令牌 | GET |
 | GetContentListByMessageIdAsync | 根据ID获取消息内容 | 租户令牌 | GET |
+| PatchMessageAsync | 更新已发送的消息卡片 | 租户令牌 | PATCH |
+| SearchMessageAsync | 搜索消息 | 租户令牌 | POST |
 | GetMessageFile | 获取消息资源文件（小文件） | 租户令牌 | GET |
 | GetMessageLargeFile | 获取消息资源文件（大文件） | 租户令牌 | GET |
 
@@ -67,6 +69,7 @@ description: 该接口用于以租户身份对飞书消息进行发送、回复�
 | AddMessageReactionsAsync | 添加表情回复 | 租户令牌 | POST |
 | GetMessageReactionsPageListAsync | 获取表情回复列表 | 租户令牌 | GET |
 | DeleteMessageReactionsAsync | 删除表情回复 | 租户令牌 | DELETE |
+| BatchQueryMessageReactionsAsync | 批量查询消息表情回复 | 租户令牌 | POST |
 | PinMessageAsync | Pin 消息 | 租户令牌 | POST |
 | DeletePinMessageAsync | 移除 Pin | 租户令牌 | DELETE |
 | GetPinMessagePageListAsync | 获取 Pin 消息列表 | 租户令牌 | GET |

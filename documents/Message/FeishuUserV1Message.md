@@ -25,6 +25,7 @@ description: 该接口用于以用户身份对飞书消息进行发送、回复�
 | AddMessageReactionsAsync | 添加表情回复 | 用户令牌 | POST |
 | GetMessageReactionsPageListAsync | 获取表情回复列表 | 用户令牌 | GET |
 | DeleteMessageReactionsAsync | 删除表情回复 | 用户令牌 | DELETE |
+| BatchQueryMessageReactionsAsync | 批量查询消息表情回复 | 用户令牌 | POST |
 | PinMessageAsync | Pin 消息 | 用户令牌 | POST |
 | DeletePinMessageAsync | 移除 Pin | 用户令牌 | DELETE |
 | GetPinMessagePageListAsync | 获取 Pin 消息列表 | 用户令牌 | GET |

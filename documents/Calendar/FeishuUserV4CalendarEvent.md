@@ -32,6 +32,8 @@ description: 该接口用于以用户身份管理飞书日历日程资源，包�
 | DeleteCalendarEventAttendeeAsync | 删除日程参与人 | 用户令牌 | POST |
 | GetCalendarEventAttendeePageListAsync | 获取日程参与人列表 | 用户令牌 | GET |
 | GetCalendarEventAttendeeChatMemberPageListAsync | 获取参与群成员列表 | 用户令牌 | GET |
+| SubscribeCalendarEventChangedEventAsync | 订阅日程变更事件 | 用户令牌 | POST |
+| UnsubscribeCalendarEventChangedEventAsync | 取消订阅日程变更事件 | 用户令牌 | POST |
 | SubscriptionCalendarEventAsync | 订阅日程变更事件 | 用户令牌 | POST |
 | UnSubscriptionCalendarEventAsync | 取消订阅日程变更事件 | 用户令牌 | POST |
 | GenerateCaldavConfSettingAsync | 生成 CalDAV 配置 | 用户令牌 | POST |

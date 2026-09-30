@@ -24,7 +24,7 @@ description: 该接口用于以租户身份管理飞书角色成员，支持角�
 | BatchAddMembersSopesAsync | 批量设置成员管理范围 | 租户令牌 | POST |
 | GetMembersSopesAsync | 获取成员管理范围 | 租户令牌 | GET |
 | GetMembersAsync | 获取角色成员列表 | 租户令牌 | GET |
-| DeleteMembersByRoleIdAsync | 批量删除角色成员 | 租户令牌 | DELETE |
+| DeleteMembersByRoleIdAsync | 批量删除角色成员 | 租户令牌 | PATCH |
 
 ## 函数详细内容
 

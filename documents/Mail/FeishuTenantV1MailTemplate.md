@@ -27,6 +27,7 @@ description: 该接口用于以租户身份管理企业内所有用户的邮件�
 | CreateMailTemplateAsync | 创建邮件模板 | TenantAccessToken | POST |
 | DeleteMailTemplateAsync | 删除邮件模板 | TenantAccessToken | DELETE |
 | GetSendAsUserMailboxSettingAsync | 列出可发信邮箱 | TenantAccessToken | GET |
+| GetUserMailboxSignaturesAsync | 查询用户邮箱签名 | TenantAccessToken | GET |
 
 ## 函数详细内容
 
@@ -451,3 +452,58 @@ if (result?.Data?.SendableAddresses != null)
     }
 }
 ```
+
+---
+
+### GetUserMailboxSignaturesAsync
+查询用户邮箱签名
+
+**函数签名**
+```csharp
+Task<FeishuApiResult<MailboxSignaturesResult>?> GetUserMailboxSignaturesAsync(
+   [Path] string user_mailbox_id,
+   CancellationToken cancellationToken = default);
+```
+
+**认证**
+TenantAccessToken（租户访问令牌）
+
+**参数**
+| 参数名 | 类型 | 必填 | 描述 | 示例 |
+| :--- | :--- | :--- | :--- | :--- |
+| user_mailbox_id | string | ✅ | 用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。 | user@example.com |
+| cancellationToken | CancellationToken | ⚪ | 取消操作令牌对象 | default |
+
+**响应**
+```json
+{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "signatures": [
+      {
+        "id": "7281187859195772947",
+        "name": "默认签名",
+        "content": "<p>张三</p>",
+        "signature_type": "USER",
+        "signature_device": "PC"
+      }
+    ],
+    "usages": [
+      {
+        "email_address": "user@example.com",
+        "send_mail_signature_id": "7281187859195772947",
+        "reply_signature_id": "7281187859195772947"
+      }
+    ]
+  }
+}
+```
+
+**说明**
+- 查询用户邮箱签名，返回签名列表与各邮箱地址的签名使用情况
+- 签名类型 `signature_type` 可选值：`USER`（用户签名）、`TENANT`（租户签名）
+- 适用设备 `signature_device` 可选值：`PC`、`MOBILE`
+
+**接口文档**
+[查询用户邮箱签名](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-setting/get_signatures)

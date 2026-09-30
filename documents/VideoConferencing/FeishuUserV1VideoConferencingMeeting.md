@@ -17,7 +17,7 @@ description: 该接口用于以用户身份管理飞书会议，支持获取会�
 | :--- | :--- | :--- | :--- |
 | GetMeetingAsync | 获取会议详情 | 用户令牌 | GET |
 | GetMeetingPageListAsync | 获取与会议号关联的会议列表 | 用户令牌 | GET |
-| SearchMeetingPageListAsync | 搜索会议记录 | 用户令牌 | GET |
+| SearchMeetingPageListAsync | 搜索会议记录 | 用户令牌 | POST |
 | SetHostMeetingAsync | 设置主持人 | 用户令牌 | PATCH |
 | InviteMeetingAsync | 邀请参会人 | 用户令牌 | PATCH |
 | EndMeetingAsync | 结束会议 | 用户令牌 | PATCH |

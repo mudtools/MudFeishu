@@ -29,7 +29,7 @@ description: 该接口用于以租户身份管理飞书任务的自定义字段�
 | AddCustomFieldsByIdAsync | 将自定义字段加入资源 | 租户令牌 | POST |
 | RemoveCustomFieldsByIdAsync | 将自定义字段从资源移出 | 租户令牌 | POST |
 | CreateCustomFieldsOptionsAsync | 创建自定义字段选项 | 租户令牌 | POST |
-| UpdateCustomFieldsOptionsAsync | 更新自定义字段选项 | 租户令牌 | POST |
+| UpdateCustomFieldsOptionsAsync | 更新自定义字段选项 | 租户令牌 | PATCH |
 
 ---
 

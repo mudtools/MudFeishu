@@ -160,6 +160,8 @@ public sealed class QuoteMessageContextAssembler : IContextAssembler
         catch (System.Text.Json.JsonException)
         {
             // 非法 JSON 按原文展示。
+            // 有意静默（守卫白名单）：降级路径本身有确定输出（原文），且引用内容来自平台回调——
+            // 记日志的收益（噪声）小于成本；解析失败是"消息不是 text 形态"的正常分支。
         }
 
         return content;

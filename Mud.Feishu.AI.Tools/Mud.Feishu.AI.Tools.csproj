@@ -20,4 +20,11 @@
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" PrivateAssets="all" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<!-- R2-04：分析器发布跟踪（RS2008 的解药）——诊断码的新增/删除/语义变更的**发布账本**。
+		     文件名是分析器约定的固定名（Microsoft.CodeAnalysis.Analyzers 按名读取）。 -->
+		<AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
+		<AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
+	</ItemGroup>
+
 </Project>

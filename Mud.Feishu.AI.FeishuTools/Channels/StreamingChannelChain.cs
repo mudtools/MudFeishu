@@ -122,12 +122,30 @@ public sealed class StreamingChannelChain : IMessageChannel, IMessageChannelTarg
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// 并发契约同 <see cref="IMessageChannel"/>：同一 <paramref name="messageId"/> 的写与 Flush 须顺序 <c>await</c>。
+    /// </remarks>
     public Task WriteStreamAsync(string appKey, string chatId, string messageId, string delta, CancellationToken cancellationToken = default)
         => ResolveOwner(messageId).WriteStreamAsync(appKey, ResolveTarget(messageId, chatId), messageId, delta, cancellationToken);
 
     /// <inheritdoc />
-    public Task FlushAsync(string appKey, string chatId, string messageId, CancellationToken cancellationToken = default)
-        => ResolveOwner(messageId).FlushAsync(appKey, ResolveTarget(messageId, chatId), messageId, cancellationToken);
+    /// <remarks>
+    /// R2-02：本链不继承 <c>BufferedMessageChannel</c>（无缓冲语义），故自行承担「终结态落地后清空
+    /// 本 messageId 的归属登记」——且必须在 <c>finally</c> 中：Flush 抛异常时归属同样已终结，
+    /// 留着会让单例字典随流式回复次数线性增长，且额外钉住整条子通道实例引用。
+    /// </remarks>
+    public async Task FlushAsync(string appKey, string chatId, string messageId, CancellationToken cancellationToken = default)
+    {
+        var target = ResolveTarget(messageId, chatId);
+        try
+        {
+            await ResolveOwner(messageId).FlushAsync(appKey, target, messageId, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _messageOwners.TryRemove(messageId, out _);
+        }
+    }
 
     private IMessageChannel ResolveOwner(string messageId)
         => _messageOwners.TryGetValue(messageId, out var owner)

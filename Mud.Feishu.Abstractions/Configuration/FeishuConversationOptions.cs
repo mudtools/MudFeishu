@@ -28,9 +28,19 @@ public sealed class FeishuConversationOptions
     public const string SectionName = "FeishuConversation";
 
     /// <summary>
+    /// 会话空闲 TTL 的<b>默认值</b>（R2-10：本常量是唯一字面量处）。
+    /// </summary>
+    /// <remarks>
+    /// 消费点：本属性默认值 + <c>MemoryConversationStore</c> 的构造函数缺省值。
+    /// 此前两处各写一份 <c>TimeSpan.FromHours(24)</c>，与 <c>IConversationStore</c> 上
+    /// 「TTL 单一阈值源为 <see cref="SessionTtl"/>」的契约相矛盾（漂移不会被编译器发现）。
+    /// </remarks>
+    public static readonly TimeSpan DefaultSessionTtl = TimeSpan.FromHours(24);
+
+    /// <summary>
     /// 会话空闲 TTL（消费点：Memory/Redis 会话存储的过期时长，单一阈值源——两后端不得各设一套）。
     /// </summary>
-    public TimeSpan SessionTtl { get; set; } = TimeSpan.FromHours(24);
+    public TimeSpan SessionTtl { get; set; } = DefaultSessionTtl;
 
     /// <summary>
     /// 校验配置合法性。

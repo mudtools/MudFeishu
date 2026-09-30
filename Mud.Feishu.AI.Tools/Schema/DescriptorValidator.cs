@@ -56,11 +56,15 @@ internal static class DescriptorValidator
         // 所有工具都经过风险分级（Read/Write/HighRiskWrite），故 risk 覆盖率始终为 100%。
         var riskCovered = entryList.Count;
 
-        // W3（R5 修订）：outputSchemaRate 此前复用 riskCovered（= entryList.Count）放恒为 1.0——假度量。
-        // 真实度量需在 CapabilityEntry 增加 OutputSchemaDeclared/OutputSchemaTruncated 字段（影响面偏大），
-        // 待该模块下次功能改动时一并实现。当前显式报 0 以避免误导（0 不会让人误以为已覆盖）。
-        // TODO(WP5-W3): 实现 outputSchema 真实度量。
-        var outputSchemaCovered = 0;
+        // W3（R5 修订 → R2-05 补完）：outputSchemaRate 的历史形态是**两次假度量**——
+        // 第一版复用 riskCovered（= entryList.Count）故恒为 1.0；R5 改为显式报 0 并挂 TODO，
+        // 但 0 同样是"诚实的假值"（它说"没有工具声明输出 Schema"，而事实上 53/53 都有）。
+        // R2-05 起按**真实语义**计算：声明了非空 output_schema 且推导过程**未被截断**的工具占比。
+        // 该值即"模型可见的返回契约完整"的程度——截断工具（MUDFT009）会拉低它，正是本度量要暴露的事实。
+        var outputSchemaCovered = entryList.Count(static e =>
+            !string.IsNullOrEmpty(e.OutputSchemaJson)
+            && e.OutputSchemaJson != "{}"
+            && e.OutputSchemaTruncations.Count == 0);
 
         return new CoverageReport(
             toolCount: toolCount,
@@ -69,6 +73,7 @@ internal static class DescriptorValidator
             descriptionCoverageRate: toolCount == 0 ? 0 : (double)descriptionCovered / toolCount,
             paramDescriptionCoverageRate: paramTotal == 0 ? 0 : (double)paramDescCovered / paramTotal,
             outputSchemaRate: toolCount == 0 ? 0 : (double)outputSchemaCovered / toolCount,
+            outputSchemaCoveredToolCount: outputSchemaCovered,
             scopesCoverageRate: toolCount == 0 ? 0 : (double)scopesCovered / toolCount,
             riskCoverageRate: toolCount == 0 ? 0 : (double)riskCovered / toolCount);
     }
@@ -213,13 +218,11 @@ internal sealed class ValidationResult
     private ValidationResult(
         DiagnosticDescriptor descriptor,
         string interfaceName,
-        object[] arguments,
-        bool isError)
+        object[] arguments)
     {
         Descriptor = descriptor;
         InterfaceName = interfaceName;
         Arguments = arguments;
-        IsError = isError;
     }
 
     /// <summary>诊断描述符（与 <see cref="Diagnostics"/> 定义同源）。</summary>
@@ -231,16 +234,13 @@ internal sealed class ValidationResult
     /// <summary>诊断消息实参。</summary>
     public object[] Arguments { get; }
 
-    /// <summary>是否为 Error 级（Error 级结果必须上报，不得静默丢弃）。</summary>
-    public bool IsError { get; }
-
-    /// <summary>构造 Error 级结果。</summary>
+    /// <summary>构造校验结果（级别由 <see cref="Descriptor"/> 自身的 <c>DefaultSeverity</c> 表达）。</summary>
+    /// <remarks>
+    /// R2-10：此处原有 <c>IsError</c> 属性与 <c>Warning(...)</c> 工厂——二者<b>均无读取方</b>
+    /// （全部校验项都走 <c>Error(...)</c>，且严重级已在描述符里定义），留下会诱使"再加一个不生效的级别开关"。
+    /// </remarks>
     public static ValidationResult Error(DiagnosticDescriptor descriptor, string iface, params object[] arguments)
-        => new(descriptor, iface, arguments, isError: true);
-
-    /// <summary>构造 Warning 级结果。</summary>
-    public static ValidationResult Warning(DiagnosticDescriptor descriptor, string iface, params object[] arguments)
-        => new(descriptor, iface, arguments, isError: false);
+        => new(descriptor, iface, arguments);
 }
 
 /// <summary>覆盖率度量报告。</summary>
@@ -253,9 +253,11 @@ internal sealed class CoverageReport
         double descriptionCoverageRate,
         double paramDescriptionCoverageRate,
         double outputSchemaRate,
+        int outputSchemaCoveredToolCount,
         double scopesCoverageRate,
         double riskCoverageRate)
     {
+        OutputSchemaCoveredToolCount = outputSchemaCoveredToolCount;
         ToolCount = toolCount;
         TotalMethodCount = totalMethodCount;
         ToolCoverageRate = toolCoverageRate;
@@ -272,6 +274,9 @@ internal sealed class CoverageReport
     public double DescriptionCoverageRate { get; }
     public double ParamDescriptionCoverageRate { get; }
     public double OutputSchemaRate { get; }
+
+    /// <summary>输出契约完整的工具数（<see cref="OutputSchemaRate"/> 的分子；整数形态便于生成期直接发射）。</summary>
+    public int OutputSchemaCoveredToolCount { get; }
     public double ScopesCoverageRate { get; }
     public double RiskCoverageRate { get; }
 }

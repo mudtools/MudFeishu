@@ -117,6 +117,16 @@ internal static class CapabilityCatalogEmitter
         source.AppendLine($"        public const int SdkMethodCount = {totalMethods};");
         source.AppendLine("        /// <summary>已策展（对外暴露）的工具数。</summary>");
         source.AppendLine($"        public const int CuratedToolCount = {coverage.ToolCount};");
+        source.AppendLine("        /// <summary>");
+        source.AppendLine("        /// 输出契约完整的工具数（声明了非空 output_schema 且推导未被截断）。");
+        source.AppendLine("        /// </summary>");
+        source.AppendLine("        /// <remarks>");
+        source.AppendLine("        /// R2-05：这是 <c>CoverageReport.OutputSchemaRate</c> 的<b>分子</b>（分母 = CuratedToolCount）——");
+        source.AppendLine("        /// 该度量在 R5 之前恒为 1.0、R5 之后恒为 0，两次都是假值；此处是它的第一个真实消费点");
+        source.AppendLine("        /// （契约守卫断言 OutputSchemaCoveredToolCount ≤ CuratedToolCount，且与 golden 快照的 output_schema 面一致）。");
+        source.AppendLine("        /// 单列分子/分母而<b>不</b>发射浮点率：整数是精确的、跨区域性无关的，且可由消费者自行求商。");
+        source.AppendLine("        /// </remarks>");
+        source.AppendLine($"        public const int OutputSchemaCoveredToolCount = {coverage.OutputSchemaCoveredToolCount};");
         source.AppendLine("        /// <summary>覆盖的能力分组个数（分组轴 = 接口名的 domain+resource 段，如 BitableAppTable / ApprovalTask）。</summary>");
         source.AppendLine($"        public const int DomainCount = {methodsByModule.Count};");
         source.AppendLine();

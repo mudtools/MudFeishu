@@ -161,4 +161,11 @@ public sealed class CardStreamMessageChannel(
         return Task.CompletedTask;
     }
 
+    /// <inheritdoc />
+    /// <remarks>
+    /// R2-02：终结态落地后移除"bizId → 投放用户 open_id"登记。该键是<b>每次新会话单调新增的业务 ID</b>
+    /// （永不重复），此前无移除点 ⇒ 单例字典随流式回复次数线性增长。
+    /// </remarks>
+    protected override void OnFlushed(string messageId) => _bizIdToTarget.TryRemove(messageId, out _);
+
 }

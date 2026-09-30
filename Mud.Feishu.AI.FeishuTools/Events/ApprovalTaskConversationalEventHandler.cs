@@ -32,7 +32,14 @@ namespace Mud.Feishu.AI.FeishuTools.Events;
 /// </para>
 /// <para>
 /// <b>软缺席</b>：未注册 <c>IFeishuTenantV1Message</c> 时回复通道不可用——事件处理器仍可装配，
-/// 但回复路径 fail-fast（会话上下文仍正常建立，模型可被调用）。
+/// 但回复路径 fail-fast。
+/// </para>
+/// <para>
+/// <b>R2-01b（本轮审查新增发现）</b>：本类与任务事件处理器同批修正了三处缺陷——
+/// ① 触发文本（<c>MentionedText</c>）此前进不了模型，且无装配器时用户消息恒空 ⇒ 模型从未被调用
+/// （真实形态是端到端 no-op，比"白跑模型"更严重；已在基类 <c>AssembleUserMessageAsync</c> 统一修正）；
+/// ② 回复的 content 用 <c>JsonObject</c> 构造，替代手写 <c>Replace</c> 转义链；
+/// ③ 平台返回 <c>code != 0</c> 时不再静默成功——改为上抛触发幂等回滚 + 重投递。
 /// </para>
 /// <para>
 /// <b>与 IM 会话处理器的差异</b>：审批事件没有 <c>chat_id</c>——回复目标必须由宿主覆写
@@ -53,6 +60,12 @@ public sealed class ApprovalTaskConversationalEventHandler(
     : ConversationalFeishuEventHandler<ApprovalTaskResult>(
         agent, businessDeduplicator, logger, contextAssemblers, toolContextAccessor, messageChannel, conversationGate, appKeyAccessor)
 {
+    /// <summary>
+    /// 解析不出操作人时的会话主体占位值（<c>open_id</c> 与 <c>user_id</c> 都为空，
+    /// 如自动通过类型的审批任务）——它只用于会话分桶，<b>不是</b>可投递接收方。
+    /// </summary>
+    private const string UnknownSubject = "unknown_user";
+
     private readonly Mud.Feishu.IFeishuTenantV1Message? _messageClient = messageClient;
 
     /// <inheritdoc />
@@ -61,7 +74,7 @@ public sealed class ApprovalTaskConversationalEventHandler(
         // 审批事件面向操作人（open_id），单聊维度。
         var subjectId = !string.IsNullOrEmpty(eventData.OpenId)
             ? eventData.OpenId!
-            : eventData.UserId ?? "unknown_user";
+            : eventData.UserId ?? UnknownSubject;
 
         var request = new ConversationRequest(
             AppKey: CurrentAppKey ?? string.Empty,
@@ -79,22 +92,62 @@ public sealed class ApprovalTaskConversationalEventHandler(
     {
         if (_messageClient is null)
         {
-            _logger.LogWarning("审批事件回复失败：IFeishuTenantV1Message 未注册（appKey: {AppKey}, subject: {SubjectId}）",
-                request.AppKey, request.SubjectId);
-            return;
+            // R2-01b：与任务事件处理器对齐——不得静默 return（"看起来已消费但用户没收到"）。
+            // 正常路径已由 TryFindDeliveryBlockAsync 在调用模型前拦截；此处是补发路径的兜底。
+            throw new InvalidOperationException(
+                $"审批事件回复失败：IFeishuTenantV1Message 未注册（appKey: {request.AppKey}, subject: {request.SubjectId}）");
         }
 
-        // 审批事件无 chat_id：回复需要宿主提供目标（如经 resolve_user 查到 open_id 后发消息）。
-        // 此处用 receive_id_type=open_id 发送单聊消息。
-        await _messageClient.SendMessageAsync(
-            new Mud.Feishu.DataModels.Messages.SendMessageRequest
-            {
-                ReceiveId = request.SubjectId,
-                MsgType = "text",
-                Content = """{"text":""" + responseText.Replace("\\", "\\\\").Replace("\"", "\\\"") + """}""",
-            },
-            "open_id",
-            cancellationToken).ConfigureAwait(false);
+        if (string.IsNullOrEmpty(request.SubjectId))
+        {
+            throw new InvalidOperationException("审批事件回复失败：会话主体为空，无可投递接收方");
+        }
+
+        // 审批事件无 chat_id：以审批人 open_id 发单聊（receive_id_type = open_id）。
+        // content 用 JsonObject 构造（AOT 安全 + 正确转义），取代此前手写的 Replace 转义链
+        //（手写转义漏掉 \b/\f/\n/\r/\t 与单个 \u 序列，且与 SDK 其它出口两套写法——R2-16 的收敛点之一）。
+        var outcome = FeishuApiResultReader.Read(await _messageClient
+            .SendMessageAsync(
+                new Mud.Feishu.DataModels.Messages.SendMessageRequest
+                {
+                    ReceiveId = request.SubjectId,
+                    MsgType = "text",
+                    Content = new JsonObject { ["text"] = responseText }.ToJsonString(),
+                },
+                "open_id",
+                cancellationToken)
+            .ConfigureAwait(false));
+
+        // R2-01b：此前**不检查** outcome —— 平台拒绝（限流/权限/目标不存在）时静默成功，
+        // 幂等标记落 Completed，用户永远收不到答复且无任何信号。现改为上抛 → 基类幂等回滚 + 重投递
+        //（重投递经 outbox 补发同一文本，不重跑模型）。
+        if (!outcome.Ok)
+        {
+            throw new InvalidOperationException(
+                $"审批事件回复失败（receiver: {request.SubjectId}）: {outcome.ErrorText ?? "返回空数据"}");
+        }
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// R2-01：审批事件的投递目标<b>来自事件本身</b>（<c>open_id</c>），因此"能不能送出去"在调用模型前
+    /// 即可判定——不可投递时短路可省下一次完整模型调用（与任务事件处理器同一处置）。
+    /// <b>自动通过类型的审批任务 <c>open_id</c> 为空</b>（官方文档明示），此时同样无收件人。
+    /// </remarks>
+    protected override Task<string?> TryFindDeliveryBlockAsync(ConversationRequest request, CancellationToken cancellationToken)
+    {
+        _ = cancellationToken;
+
+        if (_messageClient is null)
+        {
+            return Task.FromResult<string?>(
+                "未注册 IFeishuTenantV1Message，审批事件回复通道不可用——已跳过本轮模型调用（注册消息客户端后重试）");
+        }
+
+        var subject = request.SubjectId;
+        return Task.FromResult<string?>(string.IsNullOrEmpty(subject) || string.Equals(subject, UnknownSubject, StringComparison.Ordinal)
+            ? "审批事件无可投递操作人（open_id/user_id 均为空，如自动通过类型的审批任务）——已跳过本轮模型调用"
+            : null);
     }
 
     /// <summary>

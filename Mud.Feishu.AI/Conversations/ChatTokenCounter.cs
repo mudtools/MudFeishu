@@ -41,6 +41,8 @@ internal static class ChatTokenCounter
         catch (Exception ex)
         {
             // 编码器初始化失败（词表资源缺失等）→ 保留原因回退估算；不让 token 窗口成为启动风险。
+            // 有意静默（守卫白名单）：失败原因写入 InitializationFailure 由 FeishuAgent 在构造期
+            // 读取并告警一次（本类型是 static，拿不到 logger）——可观测性由那条告警承载，不是丢弃。
             InitializationFailure = $"{ex.GetType().Name}: {ex.Message}";
             return null;
         }

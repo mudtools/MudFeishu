@@ -52,7 +52,10 @@ public sealed class MemoryConversationStore : IConversationStore
         if (ttl.HasValue && ttl.Value <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(ttl), "会话 TTL 必须为正数");
 
-        _ttl = ttl ?? TimeSpan.FromHours(24);
+        // R2-10：默认 TTL 引用**同一常量**，不再各写一份 24h——两处字面量漂移时
+        // 「TTL 单一阈值源 = FeishuConversationOptions.SessionTtl」这句契约（IConversationStore 的注释）
+        // 就变成了假的，而漂移不会被编译器发现。
+        _ttl = ttl ?? Mud.Feishu.Abstractions.Configuration.FeishuConversationOptions.DefaultSessionTtl;
         _utcNow = utcNow ?? (static () => DateTimeOffset.UtcNow);
     }
 

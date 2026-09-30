@@ -91,6 +91,8 @@ public sealed class FeishuToolCatalog : IToolCatalog
         }
         catch (JsonException)
         {
+            // 有意静默（守卫白名单）：本方法是"读取编译期常量"的纯函数（无 logger），
+            // 且失败输出确定（空参数 Schema，仍是合法 JSON Schema）。常量损坏由 golden 门禁在构建期拦下。
             return ToolSchemaJson.EmptyParametersJson;
         }
     }
@@ -137,6 +139,8 @@ public sealed class FeishuToolSchemaExporter : IToolSchemaExporter
             catch (JsonException)
             {
                 // 单条 Schema 异常跳过（编译期常量正常时不可达；防御性隔离）。
+                // 有意静默（守卫白名单）：纯函数（无 logger）且"跳过单条"是确定的降级语义，
+                // 常量损坏在构建期已由 golden 门禁与 MUDFT014 拦下，运行期记日志无新增信息。
             }
         }
 

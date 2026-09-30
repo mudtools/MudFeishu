@@ -377,6 +377,14 @@ public static class FeishuToolsServiceCollectionExtensions
             builder.Configure(configure);
         }
 
+        // R2-10：与 FeishuAgentOptions 同等对待——Options 管线接入 Validate()，
+        // 使"AppId 未配置"在**启动期**响亮失败，而不是等第一次知识提问时在 Provider 工厂里炸。
+        // 此处是 Aily 选项的**注册点**（AI 底座不注册 Aily，故校验器也必须在工具包侧登记）。
+        services.TryAddSingleton<IValidateOptions<AilyKnowledgeOptions>, AilyKnowledgeOptionsValidator>();
+#if NET6_0_OR_GREATER
+        services.AddOptions<AilyKnowledgeOptions>().ValidateOnStart();
+#endif
+
         services.AddSingleton<AilyKnowledgeProvider>(static sp =>
         {
             var options = sp.GetRequiredService<IOptions<AilyKnowledgeOptions>>().Value;

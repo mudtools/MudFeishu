@@ -403,16 +403,23 @@ public class GeneratorNegativeCaseTests
     // ────────── 元守卫 ──────────
 
     /// <summary>
-    /// MUDFT026（生成器内部异常兜底）验证：描述符已声明、为 Error 级、且 EmitToolSurface 包含 try/catch。
+    /// MUDFT026（生成器内部异常兜底）验证：描述符已声明、为 Error 级、且<b>全部 6 条输出路径</b>
+    /// 都经统一 <c>Guard</c> 包装。
     /// </summary>
     /// <remarks>
-    /// W2 的故障隔离通过 try/catch 实现——真正的注入式负例需要修改生成器管线以人为抛出异常，
-    /// 这在增量生成器架构中不易实现（管线由 Roslyn 驱动，外部无法注入中间异常）。
-    /// 故本用例验证三件事：① MUDFT026 描述符存在于 Diagnostics.cs；② 它是 Error 级；
-    /// ③ EmitToolSurface 方法体包含 try/catch 且 catch 块引用 MUDFT026（故障隔离接线验证）。
+    /// <para>
+    /// <b>R2-03 对本用例的修订（重要）</b>：本用例原断言"<c>EmitToolSurface</c> 方法体内含 try/catch"——
+    /// 那是 R1-WP5 的形态，并且正是 R2-03 认定的缺陷：6 条输出路径只有 1 条有兜底，而当时的验收方式
+    /// （对这一条路径注入异常）无法发现另外 5 条裸奔。真实的注入式负例在增量生成器架构下不可行
+    /// （管线由 Roslyn 驱动，外部无法注入中间异常），故处置方式改为
+    /// <b>结构断言</b>：<c>GuardChecker</c> 逐个解析每一处 <c>RegisterSourceOutput</c>，
+    /// 断言第二个实参均为 <c>Guard&lt;T&gt;(...)</c>——覆盖面等于代码里的实际路径数，
+    /// <b>新增路径自动被覆盖</b>（详见 <c>ContractGuards/GeneratorOutputGuardContractGuards</c>）。
+    /// </para>
+    /// <para>本用例保留的职责：描述符声明 + 严重级 + "<c>Guard</c> 是唯一兜底实现"（防两套写法回潮）。</para>
     /// </remarks>
     [Fact]
-    public void MUDFT026_GeneratorExceptionGuard_ShouldBeWiredInEmitToolSurface()
+    public void MUDFT026_GeneratorExceptionGuard_ShouldCoverEveryOutputPath()
     {
         var repoRoot = FindRepositoryRoot();
 
@@ -428,13 +435,16 @@ public class GeneratorNegativeCaseTests
             System.Text.RegularExpressions.RegexOptions.Singleline);
         severityMatch.Success.Should().BeTrue("MUDFT026 既列入 ZeroToleranceIds，其 severity 必须是 Error");
 
-        // ③ EmitToolSurface 包含 try/catch 且 catch 块引用 MUDFT026。
+        // ③ Guard 是兜底的唯一实现（6/6 路径的结构断言由 GeneratorOutputGuardContractGuards 承担）。
         var generatorPath = Path.Combine(repoRoot, "Mud.Feishu.AI.Tools", "FeishuToolSchemaGenerator.cs");
         var generatorSource = File.ReadAllText(generatorPath);
         generatorSource.Should().Contain("Diagnostics.MUDFT026",
-            "EmitToolSurface 的 catch 块必须上报 MUDFT026（W2 故障隔离接线）");
-        generatorSource.Should().Contain("catch (Exception",
-            "EmitToolSurface 必须包含 try/catch 故障隔离（W2）");
+            "Guard 的 catch 块必须上报 MUDFT026（R2-03 故障隔离的唯一上报点）");
+        generatorSource.Should().Contain(
+            "when (ex is not OperationCanceledException)",
+            "Guard 必须放行 OperationCanceledException（否则取消构建会变成构建失败）");
+        generatorSource.Should().Contain("private static Action<SourceProductionContext, T> Guard<T>(",
+            "全部输出路径必须共用同一个 Guard 包装器（禁止回到逐路径手写 try/catch 的两套写法）");
     }
 
     /// <summary>

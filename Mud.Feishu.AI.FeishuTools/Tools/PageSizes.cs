@@ -70,9 +70,6 @@ internal static class PageSizes
     /// <summary>contact.list_department_members（官方上限 100）。</summary>
     public const int DepartmentMembers = 50;
 
-    /// <summary>tokens 类参数的单请求上限（通用钳制）。</summary>
-    public const int TokenBatch = 100;
-
     /// <summary>单条消息 content 预览截断长度。</summary>
     public const int MessagePreviewLength = 200;
 }

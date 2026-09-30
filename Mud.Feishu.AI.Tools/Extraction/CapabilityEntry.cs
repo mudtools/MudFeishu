@@ -30,7 +30,6 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
         string returnTypeMetadataName,
         IReadOnlyList<CapabilityParameter> parameters,
         string? docSummary,
-        string? docReturns,
         bool hasFileUpload,
         bool returnsBinary,
         ToolRisk risk,
@@ -48,7 +47,6 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
         ReturnTypeMetadataName = returnTypeMetadataName;
         Parameters = parameters;
         DocSummary = docSummary;
-        DocReturns = docReturns;
         HasFileUpload = hasFileUpload;
         ReturnsBinary = returnsBinary;
         Risk = risk;
@@ -67,7 +65,6 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
     public string ReturnTypeMetadataName { get; }
     public IReadOnlyList<CapabilityParameter> Parameters { get; }
     public string? DocSummary { get; }
-    public string? DocReturns { get; }
     public bool HasFileUpload { get; }
     public bool ReturnsBinary { get; }
     public ToolRisk Risk { get; }
@@ -77,8 +74,16 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
     /// 工具返回值的 JSON Schema（可空；由 <see cref="Schema.TypeSchemaResolver"/> 从 SDK 返回类型推导）。
     /// </summary>
     /// <remarks>
-    /// 消费面：<c>x-feishu.output_schema</c> → <c>FeishuToolAIFunction.ReturnJsonSchema</c>
-    /// （MEAI 对返回值的标准表达位），使支持结构化输出的客户端能约束模型看到的返回形状。
+    /// <para>
+    /// 消费面（R2-05 决策后的真实消费点，两条皆为<b>构建期</b>信号）：
+    /// ① 写入描述符信封 <c>x-feishu.output_schema</c>（供宿主与生成器产物做契约比对）；
+    /// ② 驱动 <c>CoverageReport.OutputSchemaRate</c> 与截断告警 <c>MUDFT009</c>。
+    /// </para>
+    /// <para>
+    /// <b>不接线到运行时结果投影</b>：曾计划的 <c>SchemaProjection.Project</c> 运行期字段裁剪
+    /// 与各执行器的<b>有意策展投影</b>冲突——策展后的键名（如 <c>task_guid</c>）并不都在
+    /// output_schema 的顶层字段集（如 <c>task.guid</c>）内，接线会把结果裁成空对象（R2-05 已实证并驳回）。
+    /// </para>
     /// </remarks>
     public string? OutputSchemaJson { get; }
 
@@ -106,7 +111,6 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
             && string.Equals(ReturnTypeMetadataName, other.ReturnTypeMetadataName, StringComparison.Ordinal)
             && ParametersEqual(Parameters, other.Parameters)
             && string.Equals(DocSummary ?? string.Empty, other.DocSummary ?? string.Empty, StringComparison.Ordinal)
-            && string.Equals(DocReturns ?? string.Empty, other.DocReturns ?? string.Empty, StringComparison.Ordinal)
             && HasFileUpload == other.HasFileUpload
             && ReturnsBinary == other.ReturnsBinary
             && Risk == other.Risk
@@ -155,7 +159,6 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
             }
 
             hash = (hash * 31) + comparer.GetHashCode(DocSummary ?? string.Empty);
-            hash = (hash * 31) + comparer.GetHashCode(DocReturns ?? string.Empty);
             hash = (hash * 31) + (HasFileUpload ? 1 : 0);
             hash = (hash * 31) + (ReturnsBinary ? 1 : 0);
             hash = (hash * 31) + (int)Risk;

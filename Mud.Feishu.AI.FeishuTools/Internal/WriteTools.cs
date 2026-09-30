@@ -170,6 +170,9 @@ internal sealed class ApprovalWriteTools(
     private readonly Mud.Feishu.IFeishuUserV4ApprovalInstance? _approvalInstanceUserClient = approvalInstanceUserClient;
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
+    /// <summary>审批表单 JSON 的预览截断长度（get_instance 的 <c>form_preview</c> 落点；字面量常数，I16 纪律）。</summary>
+    private const int FormPreviewLength = 500;
+
     /// <summary>approval.create_instance：发起审批实例（<c>dry_run=true</c> 时只预演）。</summary>
     /// <remarks>幂等键（T4-1 / F-1）：<c>idempotency_key</c> → <see cref="CreateInstanceRequest.Uuid"/>（冲突返回 60012）。</remarks>
     [FeishuToolHandler(typeof(IFeishuApprovalCreateInstanceTool))]
@@ -378,13 +381,14 @@ internal sealed class ApprovalWriteTools(
             ["reverted"] = data.Reverted,
         };
 
-        // form 是 JSON 字符串，可能很长——只取前 500 字符做预览
-        if (!string.IsNullOrEmpty(data.Form))
+        // form 是 JSON 字符串，可能很长——只取前 500 字符做预览。
+        // 局部化后再判空（R2-08）：`data.Form` 是**另一个对象的属性**，此处前后虽无调用，
+        // 但把可空性判断与取值绑定到同一局部变量可让编译器完全接管（消除 CS8602，不依赖流分析对属性的建模）。
+        if (data.Form is { Length: > 0 } form)
         {
-            var formPreview = data.Form.Length > 500
-                ? data.Form[..500] + "…[truncated]"
-                : data.Form;
-            envelope["form_preview"] = formPreview;
+            envelope["form_preview"] = form.Length > FormPreviewLength
+                ? form[..FormPreviewLength] + "…[truncated]"
+                : form;
         }
 
         // 审批任务列表（白名单 task_id/user_id/status/node_name）

@@ -241,12 +241,25 @@ public sealed class FeishuToolBinding
         catch (Exception ex)
         {
             // ⑤ 异常归一：结构化错误回填模型，不抛裸异常（总体设计 §4 不变式）。
-            _logger?.LogWarning(ex, "工具 {ToolName} 执行失败（appKey: {AppKey}）", tool.Name, context.AppKey);
+            // R2-07：追踪号取本工具 Span 的 Id —— 模型侧提示的号与日志/Span 可关联
+            //（"不要为了安全把可调试性一起削掉"，追踪号是白名单化的代价补偿）。
+            var trace = activity?.Id ?? Guid.NewGuid().ToString("N").Substring(0, 8);
+            _logger?.LogWarning(ex, "工具 {ToolName} 执行失败（appKey: {AppKey}, trace: {Trace}）",
+                tool.Name, context.AppKey, trace);
 
             // WP2（S3 修复）：异常消息可能携带 URL/query/响应体片段，同属"外部数据"——
-            // 与正常路径（L224 SanitizeResult）同源处理，经出站净化后再回填模型。
-            // 审计的 reason 保留原始 ex.Message（审计是宿主内网出口，出站净化只约束模型上下文出口）。
-            var raw = StructuredError(tool.Name, ToolErrorClassifier.Classify(ex), $"工具执行异常: {ex.Message}");
+            // 与正常路径（SanitizeResult）同源处理，经出站净化后再回填模型（纵深防御，保持不变）。
+            //
+            // R2-07（SC-1 降级后的策略增强）：`ToolResultSanitizer` 是**黑名单**（掩码凭据/PII/控制字符），
+            // 它不掩码内网 URL、主机名、SDK 类型名——而这些会随每轮对话进入第三方 LLM 并持久化到会话历史。
+            // 故此处把模型出口改为**白名单**：错误分类 + 稳定文案 + 追踪号，原文只进日志与审计。
+            // **审计出口不改**（下方 WriteAuditWithIsolationAsync 仍传 ex.Message）：
+            // 审计是宿主内网出口，两条出口的判据不同（R1 §7 纪律 4）。
+            var kind = ToolErrorClassifier.Classify(ex);
+            var raw = StructuredError(
+                tool.Name,
+                kind,
+                $"工具执行异常（{kind}，追踪号 {trace}）——请检查参数后重试；若反复失败请联系管理员并提供该追踪号");
             var bounded = ToolResultText.Truncate(ToolResultSanitizer.Sanitize(raw), _options.MaxToolResultLength);
 
             FeishuToolDiagnostics.RecordExecution(tool.Name, context.AppKey, FeishuMetrics.ToolOutcomes.Error);
@@ -325,6 +338,7 @@ public sealed class FeishuToolBinding
         catch (OperationCanceledException)
         {
             // 补偿性投递（对齐 D15 精神）：审计不得被取消中断，也不得影响执行链。
+            // 有意静默（守卫白名单）：取消是调用方的意图，不是审计故障——记日志只会把"正常取消"变成噪声。
         }
         catch (Exception ex)
         {

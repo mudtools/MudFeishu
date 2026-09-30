@@ -74,7 +74,7 @@ public static class FeishuToolRiskNames
 /// </summary>
 /// <remarks>
 /// 闭集校验（P2-9）把「拼写错误静默拒绝全部工具身份」变成装配期可读错误：
-/// <see cref="FeishuAgentOptions.AllowedIdentities"/> 与工具定义 / 策略轴
+/// <see cref="Agents.FeishuAgentOptions.AllowedIdentities"/> 与工具定义 / 策略轴
 /// （<c>FeishuToolBinding</c> 的 <c>identity_mismatch</c> 判定）必须共用本词汇表。
 /// </remarks>
 public static class FeishuToolIdentityNames

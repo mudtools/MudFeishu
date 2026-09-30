@@ -45,14 +45,16 @@ internal static class CuratedToolScanner
             return ScannedTool.Faulted(symbol.Name);
         }
 
-        var toolName = attribute.ConstructorArguments.FirstOrDefault().Value as string;
-        if (string.IsNullOrWhiteSpace(toolName))
+        var candidateToolName = attribute.ConstructorArguments.FirstOrDefault().Value as string;
+        if (string.IsNullOrWhiteSpace(candidateToolName))
         {
             // MUDFT001 上报点①：缺工具名。
             return ScannedTool.Faulted(symbol.Name, PendingDiagnostic.Create(Diagnostics.MUDFT001, symbol.Name));
         }
 
-        toolName = toolName!;
+        // R2-04：显式窄化到独立的非空局部变量（取代 `toolName = toolName!;` 的自赋值空抑制）——
+        // 一次窄化同时消除 CS1717（自赋值）与下游 4 处 CS8604（把 `string?` 传进非空形参）。
+        var toolName = candidateToolName!;
         var description = GetNamedString(attribute, "Description") ?? string.Empty;
         var scopes = GetNamedArray(attribute, "RequiredScopes");
         var isWrite = GetNamedBool(attribute, "IsWrite");
@@ -155,7 +157,6 @@ internal static class CuratedToolScanner
             returnTypeMetadataName: returnTypeMetadata,
             parameters: parameters,
             docSummary: docSummary,
-            docReturns: null,
             hasFileUpload: hasFileUpload,
             returnsBinary: returnsBinary,
             risk: risk,

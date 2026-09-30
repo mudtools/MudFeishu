@@ -101,9 +101,13 @@ internal static class FeishuToolRegistration
 /// 是"生成产物只依赖稳定 seam"的最小代价实现。
 /// </para>
 /// <para>
-/// <b>null 语义</b>：<paramref name="factory"/> 返回 <see langword="null"/> 表示该域执行器缺席
+/// <b>null 语义</b>：注册器的<b>工厂</b>返回 <see langword="null"/> 表示该域执行器缺席
 /// （软缺席），此时仍登记一个返回 <see langword="null"/> 的描述符——<c>BuildRegistry</c> 显式跳过
 /// null（既有行为，未变更）。
+/// </para>
+/// <para>
+/// 注：此处原写 <c>&lt;paramref name="factory"/&gt;</c>，但本项是<b>类</b>注释而 <c>factory</c> 是
+/// <see cref="Add{T}"/> 的形参名——该 cref 无法解析（<c>CS1734</c>），已改为普通形参说明（R2-08）。
 /// </para>
 /// </remarks>
 internal static class FeishuToolDomainRegistrars

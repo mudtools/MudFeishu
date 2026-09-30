@@ -29,6 +29,13 @@ namespace Mud.Feishu.AI.FeishuTools.Channels;
 /// 占位消息停留上一次成功内容，不中断模型流。子类 <see cref="UpdateCoreAsync"/> 内的业务级失败
 /// （如 outcome.Ok=false）自行记日志返回，同样不中断模型流。
 /// </para>
+/// <para>
+/// <b>状态生命周期契约（R2-02 / 根因 R-B）</b>：通道注册为 <c>Singleton</c>（进程寿命），故
+/// <b>子类新增的任何 per-messageId 状态（字典/集合）必须在 <see cref="OnFlushed"/> 中移除</b>——
+/// 基类在 <c>FlushAsync</c> 的终态落地之后无条件调用该钩子。未覆写即泄漏，且由
+/// <c>ChannelStateLifecycleContractGuards</c> 反射断言（Begin→Write→Flush 后全部
+/// <c>ConcurrentDictionary&lt;string, *&gt;</c> 字段计数归零）兜住。
+/// </para>
 /// </remarks>
 public abstract class BufferedMessageChannel : IMessageChannel
 {
@@ -62,6 +69,10 @@ public abstract class BufferedMessageChannel : IMessageChannel
     public abstract Task<string> BeginAsync(string appKey, string chatId, CancellationToken cancellationToken = default);
 
     /// <inheritdoc />
+    /// <remarks>
+    /// <b>并发契约（R2-11）</b>：同一 <paramref name="messageId"/> 的写入与 <see cref="FlushAsync"/> 必须由调用方
+    /// <b>顺序</b> <c>await</c>（事件处理器即如此），并发调用不在本接口契约内——<see cref="IMessageChannel"/> 已声明同款约束。
+    /// </remarks>
     public async Task WriteStreamAsync(string appKey, string chatId, string messageId, string delta, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(delta))
@@ -74,12 +85,21 @@ public abstract class BufferedMessageChannel : IMessageChannel
         lock (buffer)
         {
             buffer.Append(delta);
-            shouldUpdate = buffer.Length >= ChunkLength && IntervalElapsed(messageId);
+
+            // R2-11：率阈值判定与时间戳登记必须在<b>同一把锁</b>内完成——此前登记在锁外的
+            // UpdateBufferedAsync 中，两次并发写可同时看到"间隔已过"而各自触发一次下游更新。
+            // 先登记再更新（失败也消耗本窗口，防失败风暴式重试）的语义保持不变。
+            var now = DateTime.UtcNow.Ticks;
+            shouldUpdate = buffer.Length >= ChunkLength && IntervalElapsed(messageId, now);
+            if (shouldUpdate)
+            {
+                _lastUpdateTicks[messageId] = now;
+            }
         }
 
         if (shouldUpdate)
         {
-            await UpdateBufferedAsync(appKey, chatId, messageId, buffer, cancellationToken).ConfigureAwait(false);
+            await UpdateWithIsolationAsync(appKey, chatId, messageId, buffer, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -88,31 +108,59 @@ public abstract class BufferedMessageChannel : IMessageChannel
     {
         // WP4（W1 修复）：与 _buffers 同生命周期清理——_lastUpdateTicks 在 FlushAsync 后不得持有已终止的 messageId。
         _lastUpdateTicks.TryRemove(messageId, out _);
-        if (_buffers.TryRemove(messageId, out var buffer) && buffer.Length > 0)
+        try
         {
-            // 终态无条件落地（速率钳制不适用于收尾）。
-            await UpdateWithIsolationAsync(appKey, chatId, messageId, buffer, cancellationToken).ConfigureAwait(false);
+            if (_buffers.TryRemove(messageId, out var buffer) && buffer.Length > 0)
+            {
+                // 终态无条件落地（速率钳制不适用于收尾）。
+                await UpdateWithIsolationAsync(appKey, chatId, messageId, buffer, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            // R2-02（根因 R-B）：子类登记的 per-messageId 状态与基类状态<b>同生命周期</b>——
+            // 由基类统一触发清理，子类不可能漏（清理职责从"谁定义"上移为"谁新增谁覆写钩子"）。
+            // 位置必须在**终态落地之后**：终态更新本身仍需要子类状态
+            // （如卡片流通道要用 Begin 期登记的投放目标 open_id），提前清理会让终态更新静默跳过。
+            OnFlushed(messageId);
         }
     }
 
-    /// <summary>距上次下游更新是否已达最小间隔（首次更新恒允许）。</summary>
-    private bool IntervalElapsed(string messageId)
+    /// <summary>
+    /// 状态清理钩子（R2-02）：<b>子类新增的任何 per-messageId 状态必须在此移除</b>。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 本钩子是"长生命周期对象的状态生命周期"契约点：通道实例注册为 <c>Singleton</c>（与进程同寿命），
+    /// 若子类在 <see cref="BeginAsync"/> 中登记的字典键（<c>biz_id</c> / <c>messageId</c> 等）单调新增且永不重复，
+    /// 而清理又只做在基类自己的字典上，则泄漏是<b>确定性</b>的（不是"疏忽"而是"缺少强制机制"）。
+    /// </para>
+    /// <para>
+    /// 为什么不是"补两行 <c>TryRemove</c>"：把清理从<b>私有实现细节</b>提升为<b>可覆写的契约点</b>后，
+    /// "新增一个字典字段"在写代码时就必须在"覆写本钩子 / 明确不覆写"之间做出选择；
+    /// 并被元守卫 <c>ChannelStateLifecycleContractGuards</c>（反射枚举全部 <see cref="IMessageChannel"/>
+    /// 实现的 <c>ConcurrentDictionary&lt;string, *&gt;</c> 字段，断言 Begin→Write→Flush 后计数归零）机械锁定。
+    /// </para>
+    /// <para>
+    /// 因此<b>未覆写本钩子的新增状态字段会被守卫直接报红</b>，而新增通道实现亦须在守卫中登记构造工厂
+    /// （守卫对"未登记"同样报红），覆盖面不依赖评审者是否想到。
+    /// </para>
+    /// </remarks>
+    /// <param name="messageId">已终结的占位消息 ID。</param>
+    protected virtual void OnFlushed(string messageId)
     {
-        var now = DateTime.UtcNow.Ticks;
+        _ = messageId;
+    }
+
+    /// <summary>距上次下游更新是否已达最小间隔（首次更新恒允许）。</summary>
+    private bool IntervalElapsed(string messageId, long now)
+    {
         if (!_lastUpdateTicks.TryGetValue(messageId, out var last))
         {
             return true;
         }
 
         return now - last >= _minUpdateInterval.Ticks;
-    }
-
-    /// <summary>按缓冲累计全文更新一次下游并登记时间（量阈值 + 率阈值均已通过）。</summary>
-    private async Task UpdateBufferedAsync(string appKey, string chatId, string messageId, StringBuilder buffer, CancellationToken cancellationToken)
-    {
-        // 先登记时间再更新：失败也消耗本窗口（防失败风暴式重试）。
-        _lastUpdateTicks[messageId] = DateTime.UtcNow.Ticks;
-        await UpdateWithIsolationAsync(appKey, chatId, messageId, buffer, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>取出缓冲累计全文执行一次下游更新（异常隔离，子类共用）。</summary>
@@ -134,6 +182,8 @@ public abstract class BufferedMessageChannel : IMessageChannel
         }
         catch (Exception ex)
         {
+            // 有意静默（守卫白名单）：异常**不是**被吞掉，而是交给子类钩子 OnUpdateFailedAsync 记录
+            // （子类各自记得更准的上下文：卡片流记 bizId、编辑通道记 messageId）。基类不重复记一遍。
             await OnUpdateFailedAsync(messageId, ex).ConfigureAwait(false);
         }
     }

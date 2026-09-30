@@ -21,7 +21,7 @@ namespace Mud.Feishu.AI.FeishuTools.Internal;
 /// </para>
 /// <para>
 /// <b>list_my_tasks 的用户上下文</b>：执行链在 user 身份工具执行前把当前用户写入
-/// <see cref="IFeishuCurrentUserContext"/>（AsyncLocal）并在 finally 中清理——
+/// <see cref="Mud.Feishu.Abstractions.IFeishuCurrentUserContext"/>（AsyncLocal）并在 finally 中清理——
 /// 泄漏会让后续请求误用上一个人的令牌（R4 §5.3，本方案最危险的一处）。
 /// </para>
 /// </remarks>

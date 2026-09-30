@@ -57,10 +57,13 @@ internal readonly struct ToolExecutor(string toolName, int maxResultLength)
         }
         catch (ArgumentException ex)
         {
+            // 有意静默（守卫白名单）：异常被**转换**为模型可见的结构化错误文本（换了一条上报通道：
+            // 回填模型 + FeishuToolBinding 侧同样计 Error 指标与审计），不是吞掉。
             return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(toolName, ex.Message));
         }
         catch (JsonException ex)
         {
+            // 有意静默（守卫白名单）：同 ArgumentException 分支——转为结构化错误文本回填模型。
             return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(toolName, $"参数不是合法 JSON: {ex.Message}"));
         }
     }

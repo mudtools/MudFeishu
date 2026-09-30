@@ -73,7 +73,9 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
             .SelectMany(static (result, _) => result.Diagnostics)
             .Collect();
 
-        context.RegisterSourceOutput(diagnostics, ReportPendingDiagnostics);
+        context.RegisterSourceOutput(
+            diagnostics,
+            Guard<ImmutableArray<PendingDiagnostic>>("FeishuToolDiagnostics(工具扫描)", ReportPendingDiagnostics));
 
         // ── L1：执行器绑定扫描（[FeishuToolHandler] → 工具名 + 执行器构造签名）──
         // 与 Tier C 同层同纪律：执行器构造签名在 SemanticModel 内即可完全解析，
@@ -85,7 +87,7 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
 
         context.RegisterSourceOutput(
             handlers.SelectMany(static (result, _) => result.Diagnostics).Collect(),
-            ReportPendingDiagnostics);
+            Guard<ImmutableArray<PendingDiagnostic>>("FeishuToolDiagnostics(执行器扫描)", ReportPendingDiagnostics));
 
         var handlerBindings = handlers.Collect();
 
@@ -97,7 +99,8 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
 
         context.RegisterSourceOutput(
             models.Combine(assemblyName).Combine(golden),
-            static (spc, input) => EmitToolSurface(spc, input.Left.Left, input.Left.Right, input.Right));
+            Guard<((ImmutableArray<ToolSchemaModel> Models, string? AssemblyName) Left, ImmutableArray<AdditionalText> Right)>(
+                "FeishuToolSchemas", EmitToolSurface));
 
         // ── L2：参数解包器（FeishuToolArgs/{Tool}Args.g.cs，每类型一文件）──
         // 与 Schema/契约表同一 pass、同一模型集合（零新增扫描）；发射门槛为**名字契约所有者程序集**——
@@ -105,7 +108,7 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
         // 若一并发射会因 ToolArgs 不可见而 CS0103。
         context.RegisterSourceOutput(
             models.Combine(assemblyName),
-            static (spc, input) => ToolArgsEmitter.Emit(spc, input.Left, input.Right));
+            Guard<(ImmutableArray<ToolSchemaModel> Left, string? Right)>("FeishuToolArgs", EmitToolArgs));
 
         // ── L2：域注册器 + DI 装配（FeishuToolDomainRegistrars/{Registrar}.g.cs 每执行器一文件
         // / FeishuToolsServiceCollectionCoreExtensions.g.cs）──
@@ -114,7 +117,8 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
         // 程序集名在 input.Left.Right（R1 §5 曾把它误写为 input.Right，那是一处编译错误）。
         context.RegisterSourceOutput(
             models.Combine(assemblyName).Combine(handlerBindings),
-            static (spc, input) => ToolRegistrarEmitter.Emit(spc, input.Left.Left, input.Left.Right, input.Right));
+            Guard<((ImmutableArray<ToolSchemaModel> Models, string? AssemblyName) Left, ImmutableArray<ScannedHandler> Right)>(
+                "FeishuToolDomainRegistrars", EmitRegistrars));
 
         // ── WP6：域级 guidance 资产（Guidance/{domain}.md → FeishuToolGuidance.g.cs）──
         // 与工具面同一 pass、同一发射门槛：素材是 AdditionalFiles（与 golden 同机制），
@@ -125,7 +129,7 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
 
         context.RegisterSourceOutput(
             assemblyName.Combine(guidanceFiles),
-            static (spc, input) => GuidanceEmitter.Emit(spc, input.Left, input.Right, spc.CancellationToken));
+            Guard<(string? Left, ImmutableArray<AdditionalText> Right)>("FeishuToolGuidance", EmitGuidance));
 
         // ── Tier R：能力目录（聚合；显式 opt-in）──
         var catalogEnabled = context.AnalyzerConfigOptionsProvider.Select(static (provider, _) =>
@@ -140,14 +144,45 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
 
         context.RegisterSourceOutput(
             catalogInput,
-            static (spc, pair) =>
-            {
-                if (pair.Left is not null)
-                {
-                    CapabilityCatalogEmitter.Emit(spc, pair.Left, pair.Right);
-                }
-            });
+            Guard<(Compilation? Left, ImmutableArray<ToolSchemaModel> Right)>("FeishuCapabilityCatalog", EmitCapabilityCatalog));
     }
+
+    // ────────── 故障隔离（R2-03：6/6 输出路径统一兜底）──────────
+
+    /// <summary>
+    /// 输出路径统一异常兜底（R2-03）：把任一条 <c>RegisterSourceOutput</c> 回调内的未捕获异常
+    /// 转为可定位的 <see cref="Diagnostics.MUDFT026"/>（Error + 零容忍），而不是无定位的 <c>CS8785</c>。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么是包装器而不是在每个回调里写 try/catch</b>（根因 R-C）：行为用例的覆盖面 = 你想到的路径数，
+    /// 结构包装的覆盖面 = 代码里的实际路径数。此前 <c>MUDFT026</c> 的"故障隔离"承诺只兑现 1/6
+    /// （只有 <c>EmitToolSurface</c> 有兜底），另 5 条路径的异常退化为 <c>CS8785</c>——
+    /// 而当时的验收方式是"对那一条路径注入人为异常"，因此漏项无声。
+    /// 现在把"每条注册路径都必须经本包装器"做成结构断言（生成器测试侧的元守卫），
+    /// <b>新增路径自动被覆盖</b>。
+    /// </para>
+    /// <para>
+    /// <b><see cref="OperationCanceledException"/> 必须放行</b>：编译被取消不是生成器故障；
+    /// 上报 <c>MUDFT026</c>（Error 级 + 零容忍）会把"用户取消构建"变成"构建失败"。
+    /// </para>
+    /// </remarks>
+    /// <typeparam name="T">该路径的输入载荷类型（由管线决定）。</typeparam>
+    /// <param name="product">产物名（诊断消息中用于定位是哪条路径失败）。</param>
+    /// <param name="emit">实际发射逻辑。</param>
+    /// <returns>带兜底的输出回调。</returns>
+    private static Action<SourceProductionContext, T> Guard<T>(string product, Action<SourceProductionContext, T> emit)
+        => (spc, input) =>
+        {
+            try
+            {
+                emit(spc, input);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                Diagnostics.Report(spc, Diagnostics.MUDFT026, null, product, ex.GetType().Name, ex.Message);
+            }
+        };
 
     // ────────── 候选与扫描 ──────────
 
@@ -187,7 +222,44 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
         }
     }
 
+    /// <summary>Schema 与工具名契约表发射（管线适配层；异常兜底由 <see cref="Guard{T}"/> 承担）。</summary>
     private static void EmitToolSurface(
+        SourceProductionContext context,
+        ((ImmutableArray<ToolSchemaModel> Models, string? AssemblyName) Left, ImmutableArray<AdditionalText> Right) input)
+        => EmitToolSurfaceCore(context, input.Left.Models, input.Left.AssemblyName, input.Right);
+
+    /// <summary>参数解包器发射（管线适配层；异常兜底由 <see cref="Guard{T}"/> 承担）。</summary>
+    private static void EmitToolArgs(
+        SourceProductionContext context,
+        (ImmutableArray<ToolSchemaModel> Left, string? Right) input)
+        => ToolArgsEmitter.Emit(context, input.Left, input.Right);
+
+    /// <summary>域注册器 + DI 装配发射（管线适配层；异常兜底由 <see cref="Guard{T}"/> 承担）。</summary>
+    private static void EmitRegistrars(
+        SourceProductionContext context,
+        ((ImmutableArray<ToolSchemaModel> Models, string? AssemblyName) Left, ImmutableArray<ScannedHandler> Right) input)
+        => ToolRegistrarEmitter.Emit(context, input.Left.Models, input.Left.AssemblyName, input.Right);
+
+    /// <summary>域级 guidance 资产发射（管线适配层；异常兜底由 <see cref="Guard{T}"/> 承担）。</summary>
+    private static void EmitGuidance(
+        SourceProductionContext context,
+        (string? Left, ImmutableArray<AdditionalText> Right) input)
+        => GuidanceEmitter.Emit(context, input.Left, input.Right, context.CancellationToken);
+
+    /// <summary>
+    /// Tier R 能力目录发射（管线适配层；关闭开关时输入为常量 <see langword="null"/>，此处按"不产出"处理）。
+    /// </summary>
+    private static void EmitCapabilityCatalog(
+        SourceProductionContext context,
+        (Compilation? Left, ImmutableArray<ToolSchemaModel> Right) input)
+    {
+        if (input.Left is not null)
+        {
+            CapabilityCatalogEmitter.Emit(context, input.Left, input.Right);
+        }
+    }
+
+    private static void EmitToolSurfaceCore(
         SourceProductionContext context,
         ImmutableArray<ToolSchemaModel> models,
         string? assemblyName,
@@ -198,30 +270,6 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
             return;
         }
 
-        // W2：生成器故障隔离——未捕获异常会被 Roslyn 转为 CS8785（无定位、无程序集名），
-        // 改为 MUDFT026 使故障可定位且纳入零容忍集（构建期阻断）。
-        try
-        {
-            EmitToolSurfaceCore(context, models, assemblyName, goldenTexts);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            Diagnostics.Report(
-                context,
-                Diagnostics.MUDFT026,
-                null,
-                assemblyName ?? "(unknown)",
-                ex.GetType().Name,
-                ex.Message);
-        }
-    }
-
-    private static void EmitToolSurfaceCore(
-        SourceProductionContext context,
-        ImmutableArray<ToolSchemaModel> models,
-        string? assemblyName,
-        ImmutableArray<AdditionalText> goldenTexts)
-    {
         // L4 校验：结构 / 类型一致 / 跨字段一致（含工具名唯一性 → MUDFT003）。
         foreach (var result in DescriptorValidator.ValidateAll(models.Select(static m => m.Entry)))
         {

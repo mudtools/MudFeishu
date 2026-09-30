@@ -31,8 +31,14 @@ public sealed class FeishuToolResult
     public string? Text { get; init; }
 
     /// <summary>
-    /// 结构化 JSON 结果（对应 OutputSchema，后续批次启用）。
+    /// 结构化 JSON 结果（可空；<see cref="FromData"/> 构造，<see cref="ToString"/> 未填充 <see cref="Text"/> 时回退序列化）。
     /// </summary>
+    /// <remarks>
+    /// <b>与 <c>output_schema</c> 无关（R2-05 决策）</b>：曾计划用编译期 <c>x-feishu.output_schema</c>
+    /// 在运行期对本属性做字段裁剪，已驳回——各执行器的<b>有意策展投影</b>才是模型可见结果的真契约，
+    /// 叠加 Schema 白名单会把策展后的键（如 <c>task_guid</c>）当作未声明字段丢弃。原注释写"后续批次启用"
+    /// 属陈旧表述（该批次已定为"不启用"）。
+    /// </remarks>
     public JsonNode? Data { get; init; }
 
     /// <summary>结果是否被截断。</summary>

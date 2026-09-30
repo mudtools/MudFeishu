@@ -254,6 +254,8 @@ public sealed class AilyKnowledgeProvider : IFeishuKnowledgeBase, IRetriever
         }
         catch (JsonException)
         {
+            // 有意静默（守卫白名单）：本方法是"把错误体转成可读文本"的纯函数（无 logger），
+            // 解析失败时**输出仍然确定**（截断原文），调用方会把结果包进 InvalidOperationException 上报。
             return body.Length > 200 ? body.Substring(0, 200) : body;
         }
     }

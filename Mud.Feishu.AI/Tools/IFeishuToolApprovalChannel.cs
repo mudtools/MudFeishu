@@ -62,7 +62,9 @@ public interface IFeishuToolApprovalChannel
     /// </para>
     /// <para>
     /// 本方法是会话语义上的<b>异步</b>：宿主在此登记待确认项，随后在自有界面完成批准，
-    /// 再经 <c>ConversationalFeishuEventHandler.ResumeWithApprovalsAsync</c> 回灌结果继续本轮。
+    /// 再经 <c>Microsoft.Extensions.AI.ApprovalResponseBindingChatClient</c> 回灌批准响应继续本轮
+    /// （框架原生管线；SDK 侧<b>不提供</b> <c>ConversationalFeishuEventHandler</c> 上的回灌方法——
+    /// 该机制由 R1-WP3 删除自研确认令牌时一并收敛，旧注释曾引用一个并不存在的方法名，R2-08 已订正）。
     /// 故实现不应阻塞等待人类点按钮。
     /// </para>
     /// <para>

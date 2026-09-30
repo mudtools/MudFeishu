@@ -112,16 +112,6 @@ public sealed class ImMessageConversationalEventHandler(
         return Task.FromResult(request);
     }
 
-    /// <summary>
-    /// 用户消息 = 触发消息文本（问题在前）+ 装配器片段（SenderInfo/引用/知识等注入其后）。
-    /// </summary>
-    protected override async Task<string> AssembleUserMessageAsync(ConversationRequest request, CancellationToken cancellationToken)
-    {
-        var fragments = await base.AssembleUserMessageAsync(request, cancellationToken).ConfigureAwait(false);
-        var question = request.MentionedText ?? string.Empty;
-        return string.IsNullOrWhiteSpace(fragments) ? question : $"{question}\n{fragments}";
-    }
-
     /// <inheritdoc />
     protected override async Task ReplyAsync(ConversationRequest request, string responseText, CancellationToken cancellationToken)
     {
@@ -226,6 +216,7 @@ public sealed class ImMessageConversationalEventHandler(
         catch (System.Text.Json.JsonException)
         {
             // 非法 JSON 按原文处理。
+            // 有意静默（守卫白名单）：这是"消息非 text JSON"的正常分支，降级输出确定；记日志只会产生噪声。
         }
 
         return false;

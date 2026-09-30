@@ -305,12 +305,4 @@ internal static class Diagnostics
         context.ReportDiagnostic(Diagnostic.Create(descriptor, location ?? Location.None, args));
     }
 
-    /// <summary>上报多条诊断。</summary>
-    public static void ReportAll(SourceProductionContext context, IEnumerable<Diagnostic> diagnostics)
-    {
-        foreach (var diagnostic in diagnostics)
-        {
-            context.ReportDiagnostic(diagnostic);
-        }
-    }
 }

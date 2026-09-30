@@ -153,7 +153,7 @@ services.AddFeishuTools();                 // 引入全部域（含元工具）
 | 层 | 内容 | 模型可见？ |
 | --- | --- | --- |
 | L1 能力目录 | 编译期聚合事实（SDK 方法总数 / 分组分布 / 策展计数），`build_property.FeishuToolCatalog=true` 时产出 | ❌（`internal`） |
-| L2 暴露策展 | 标注了 `[FeishuTool]` 的 24 个工具 | ✅（白名单启用后） |
+| L2 暴露策展 | 标注了 `[FeishuTool]` 的 53 个工具 | ✅（白名单启用后） |
 | **L3 能力出路** | **`feishu.capability_lookup`**：按关键字回答"这个能力在 SDK 里有几个分组 / 是否已策展成工具" | ✅（默认不启用） |
 
 所以模型遇到不认识的域时，正确动作是**先问 `feishu.capability_lookup`**，据此判断

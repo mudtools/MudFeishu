@@ -293,15 +293,53 @@ public class FeishuToolBindingTests : IDisposable
         result.ToString().Should().Contain("需要用户确认");
     }
 
+    /// <summary>
+    /// R2-07：异常路径不抛裸异常（既有语义），且<b>模型出口是白名单</b>——
+    /// 异常原文（可能含内网 URL / 主机名 / SDK 类型名）只进日志与审计，模型只拿到
+    /// 错误分类 + 稳定文案 + 追踪号。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么要显式断言"不含 ex.Message"</b>：出站净化（<c>ToolResultSanitizer</c>）是<b>黑名单</b>
+    /// （掩码凭据/PII/控制字符），它<b>不掩码</b>内网 URL 与类型名——这些内容会随每轮对话进入第三方 LLM
+    /// 并持久化到会话历史。此前的实现把 <c>ex.Message</c> 原样拼进模型可见文本，本条用例锁死该面已收紧。
+    /// </para>
+    /// <para>
+    /// <b>本用例同时断言审计侧仍含原始信息</b>（对称断言）：两条出口的判据不同
+    /// （审计 = 宿主内网出口，必须可排障；模型出口 = 不可撤销的第三方出口），
+    /// 收紧一侧时最容易误伤另一侧。
+    /// </para>
+    /// </remarks>
     [Fact]
-    public async Task Execute_DownstreamThrows_ShouldReturnStructuredError_NotRethrow()
+    public async Task Execute_DownstreamThrows_ShouldWhiteListModelText_AndKeepRawInAudit()
     {
-        var binding = CreateBinding();
+        var auditSink = new Mock<IToolExecutionAuditSink>();
+        ToolExecutionAuditRecord? audit = null;
+        auditSink
+            .Setup(s => s.WriteAsync(It.IsAny<ToolExecutionAuditRecord>(), It.IsAny<CancellationToken>()))
+            .Callback<ToolExecutionAuditRecord, CancellationToken>((record, _) => audit = record)
+            .Returns(Task.CompletedTask);
 
+        var binding = CreateBinding(auditSink: auditSink.Object);
+
+        // 异常原文刻意携带内网信息（黑名单净化不会掩码它们）。
+        const string RawMessage =
+            "POST https://internal-corp.example.cn/open-apis/bitable/v1/apps 失败：Mud.Feishu.HttpUtils.ClientException";
         var result = await binding.ExecuteAsync(Definition(), Args(), new FeishuToolContext("appA"),
-            _ => throw new InvalidOperationException("boom"));
+            _ => throw new InvalidOperationException(RawMessage));
 
-        result.ToString().Should().StartWith("[tool_error]").And.Contain("boom");
+        var modelText = result.ToString()!;
+        modelText.Should().StartWith("[tool_error]", "异常仍归一为结构化错误文本（不抛裸异常）");
+        modelText.Should().NotContain("internal-corp.example.cn", "模型出口不得含内网主机名");
+        modelText.Should().NotContain("Mud.Feishu.HttpUtils", "模型出口不得含 SDK 类型名");
+        modelText.Should().NotContain("open-apis/bitable", "模型出口不得回显内部请求路径");
+        modelText.Should().MatchRegex(
+            @"追踪号 \S{8,}",
+            "白名单化必须留下可关联日志/链路追踪号（否则可调试性被削掉）；追踪号取本工具 Span 的 Id");
+
+        audit.Should().NotBeNull("异常路径必须投递审计（既有语义不变）");
+        audit!.Reason.Should().Contain(RawMessage, "审计是宿主内网出口，必须保留原始信息供排障（两条出口判据不同）");
+
         _callLog.Should().Contain("scope-release", "异常路径作用域仍释放");
     }
 

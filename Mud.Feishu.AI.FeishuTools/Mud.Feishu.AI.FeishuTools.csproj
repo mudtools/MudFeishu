@@ -41,7 +41,10 @@
 		<ProjectReference Include="..\Mud.Feishu.DataModels\Mud.Feishu.DataModels.csproj" />
 		<!-- 内置 IM 会话事件处理器（P2D-5a）的事件 DTO 来源：MessageReceiveResult/MentionUser 强类型面。 -->
 		<ProjectReference Include="..\Mud.Feishu.EventCallback\Mud.Feishu.EventCallback.csproj" />
-		<!-- [FeishuTool] 源生成器（已决策⑤）：以分析器形态引用，产出本包 24 个工具接口的 Schema 常量。 -->
+		<!-- [FeishuTool] 源生成器（已决策⑤）：以分析器形态引用，产出本包全部工具接口的 Schema 常量。
+		     工具面规模（条目数 / 签名）不在此处写死数字——数字漂移无法被编译器发现，改为唯一真相源：
+		     FeishuToolSchemas.golden.txt 与生成的 FeishuToolContracts（三者一致性由
+		     ToolSurfaceScaleContractGuards 机械断言，见 R2-09/G4）。 -->
 		<ProjectReference Include="..\Mud.Feishu.AI.Tools\Mud.Feishu.AI.Tools.csproj"
 		                 OutputItemType="Analyzer"
 		                 ReferenceOutputAssembly="false" />

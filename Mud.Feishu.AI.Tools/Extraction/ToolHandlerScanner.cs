@@ -70,8 +70,8 @@ internal static class ToolHandlerScanner
                 PendingDiagnostic.Create(Diagnostics.MUDFT023, owner, "（非法接口实参）", "实参须为 [FeishuTool] 接口的 typeof"));
         }
 
-        var toolName = Extractors.TryGetToolNameFromAttribute(toolInterface);
-        if (string.IsNullOrWhiteSpace(toolName))
+        var candidateName = Extractors.TryGetToolNameFromAttribute(toolInterface);
+        if (string.IsNullOrWhiteSpace(candidateName))
         {
             // MUDFT023 上报点②：指向的接口未标注 [FeishuTool]（推导不出工具名）。
             return ScannedHandler.Faulted(
@@ -83,7 +83,10 @@ internal static class ToolHandlerScanner
                     "该接口未标注 [FeishuTool]，推导不出工具名"));
         }
 
-        toolName = toolName!;
+        // R2-04：显式窄化到独立的非空局部变量（取代 `toolName = toolName!;` 的自赋值空抑制）——
+        // 自赋值不改变运行时值，后续若语义变为可空编译器不再提醒（CS1717）；且抑制后仍处处传 `string?`，
+        // 会连带产生 5 处 CS8604。此处一次窄化，下游全部用非空名。
+        var toolName = candidateName!;
 
         if (executor is null)
         {
@@ -150,17 +153,25 @@ internal static class ToolHandlerScanner
     /// 按「是否接口 + 命名空间是否 <c>Mud.Feishu*</c> + 是否可空」分类（判定依据见
     /// <see cref="ToolDependencyKind"/> 的说明表）。
     /// </summary>
+    /// <remarks>
+    /// <b>可空声明优先于命名空间（R2-06 修正）</b>：参数的 <c>?</c> 就是"该依赖可缺席"的意图表达——
+    /// 此前非 <c>Mud.Feishu*</c> 命名空间的可空接口参数被误判为 <see cref="ToolDependencyKind.RequiredService"/>
+    /// （生成 <c>GetRequiredService&lt;T&gt;()</c>），于是"声明可空"与"解析必失败即崩"互相矛盾
+    /// （典型：执行器为补日志而新增 <c>ILogger&lt;T&gt;? logger = null</c>）。
+    /// 现改为：可空 ⇒ <see cref="ToolDependencyKind.OptionalService"/>（<c>GetService</c>，缺席返回 null），
+    /// 只有<b>非可空</b>的非 Feishu 依赖才走 <c>GetRequiredService</c>（宿主必须提供的硬依赖，如 <c>IOptions&lt;T&gt;</c>）。
+    /// </remarks>
     private static ToolDependencyKind ClassifyDependency(IParameterSymbol parameter)
     {
-        if (parameter.Type is not INamedTypeSymbol { TypeKind: TypeKind.Interface } named
-            || !IsFeishuNamespace(named.ContainingNamespace))
+        if (parameter.Type is not INamedTypeSymbol { TypeKind: TypeKind.Interface } named)
         {
             return ToolDependencyKind.RequiredService;
         }
 
-        return parameter.NullableAnnotation == NullableAnnotation.Annotated
-            ? ToolDependencyKind.OptionalService
-            : ToolDependencyKind.SoftService;
+        var optional = parameter.NullableAnnotation == NullableAnnotation.Annotated;
+        return IsFeishuNamespace(named.ContainingNamespace)
+            ? (optional ? ToolDependencyKind.OptionalService : ToolDependencyKind.SoftService)
+            : (optional ? ToolDependencyKind.OptionalService : ToolDependencyKind.RequiredService);
     }
 
     /// <summary>命名空间是否为 <c>Mud.Feishu</c> 或其子命名空间（软缺席候选的判定前提）。</summary>

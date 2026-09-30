@@ -212,19 +212,15 @@ internal static class Extractors
     }
 
     /// <summary>
-    /// 获取方法的 XML returns 文档注释。
-    /// </summary>
-    public static string? GetDocReturns(IMethodSymbol method)
-    {
-        var xml = method.GetDocumentationCommentXml();
-        if (string.IsNullOrWhiteSpace(xml)) return null;
-
-        return ExtractXmlTag(xml!, "returns");
-    }
-
-    /// <summary>
     /// 获取参数的 XML param 文档注释。
     /// </summary>
+    /// <remarks>
+    /// R2-10 死代码清理：此处原有 <c>GetDocReturns</c>（提取 <c>&lt;returns&gt;</c>）——
+    /// 它<b>从未被调用</b>（调用方恒传 <c>docReturns: null</c>），连同 <c>CapabilityEntry.DocReturns</c>
+    /// 字段与 <c>CuratedToolScanner</c> 的实参一并删除。返回值文档若要接线，需先确认
+    /// 「53 个 SDK 方法的 <c>&lt;returns&gt;</c> 覆盖度」这一前提（当前 XML 注释大多为空，
+    /// 接线会产生一批空描述），故按"删掉而不是留着一个永远为 null 的通道"处置。
+    /// </remarks>
     public static string? GetParamDoc(IMethodSymbol method, string paramName)
     {
         var xml = method.GetDocumentationCommentXml();

@@ -20,6 +20,18 @@ namespace Mud.Feishu.AI.Channels;
 /// 失败语义（Phase 2 §3.1，对齐 I1 事件派发异常隔离）：<b>单次增量写入失败不中断模型流</b>——
 /// 实现方记日志后继续；<see cref="BeginAsync"/> 失败由调用方回退非流式路径（模型尚未调用，零重复成本）。
 /// </para>
+/// <para>
+/// <b>并发契约（R2-11，明确写入契约面）</b>：同一 <c>messageId</c> 上的
+/// <see cref="WriteStreamAsync"/> 与 <see cref="FlushAsync"/> <b>必须由调用方顺序 <c>await</c></b>——
+/// 并发调用<b>不在契约内</b>（实现方为无锁乐观路径：缓冲摘除后仍持引用的并发写会永久滞留半截文本）。
+/// 事件处理器即按顺序 <c>await</c> 驱动（<c>ConversationalFeishuEventHandler.RunConversationAsync</c>），
+/// 故该约束在生产链路上恒成立；此声明把"实现依赖的隐含前提"变成契约的一部分。
+/// </para>
+/// <para>
+/// <b>状态生命周期契约（R2-02）</b>：实现方若为 <c>Singleton</c>，其<b>per-messageId 状态必须在
+/// <see cref="FlushAsync"/> 内清理</b>（基类钩子见 <c>BufferedMessageChannel.OnFlushed</c>）——
+/// 否则字典键随会话单调新增而永不重复，形成确定性常驻内存增长。
+/// </para>
 /// </remarks>
 public interface IMessageChannel
 {

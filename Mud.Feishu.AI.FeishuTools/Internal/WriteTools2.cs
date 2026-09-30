@@ -294,13 +294,17 @@ internal sealed class BitableWriteTools2(Mud.Feishu.IFeishuTenantV1BitableRecord
 internal sealed class DriveWriteTools(
     Mud.Feishu.IFeishuTenantV1DriveFolder folderClient,
     Mud.Feishu.IFeishuTenantV1DriveFiles filesClient,
-    IFeishuAttachmentStager? stager)
+    IFeishuAttachmentStager? stager,
+    ILogger<DriveWriteTools>? logger = null)
 {
     private readonly Mud.Feishu.IFeishuTenantV1DriveFolder _folderClient = folderClient
         ?? throw new ArgumentNullException(nameof(folderClient));
     private readonly Mud.Feishu.IFeishuTenantV1DriveFiles _filesClient = filesClient
         ?? throw new ArgumentNullException(nameof(filesClient));
     private readonly IFeishuAttachmentStager? _stager = stager;
+
+    /// <summary>日志（可空；R2-06 起用于"临时附件清理失败"留痕——磁盘残留是用户数据驻留面）。</summary>
+    private readonly ILogger? _logger = logger;
 
     /// <summary>drive.create_folder：创建文件夹。</summary>
     [FeishuToolHandler(typeof(IFeishuDriveCreateFolderTool))]
@@ -417,9 +421,10 @@ internal sealed class DriveWriteTools(
                 {
                     await stagedValue.Cleanup().ConfigureAwait(false);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // 清理失败不覆盖业务结果（磁盘残留由宿主监控负责）。
+                    // 清理失败不覆盖业务结果，但必须留痕（R2-06）：宿主此前没有任何可观测来源。
+                    _logger?.LogWarning(ex, "临时附件清理失败，文件可能残留（path: {Path}）", stagedValue.LocalPath);
                 }
             }
         });

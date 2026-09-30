@@ -33,7 +33,8 @@ namespace Mud.Feishu.AI.FeishuTools.Internal;
 /// </remarks>
 internal sealed class AttachmentTools(
     Mud.Feishu.IFeishuTenantV1Message messageClient,
-    IFeishuAttachmentStager stager)
+    IFeishuAttachmentStager stager,
+    ILogger<AttachmentTools>? logger = null)
 {
     /// <summary>IM 上传接口的文件类型：非枚举内格式统一用 <c>stream</c>（官方文档口径）。</summary>
     private const string StreamFileType = "stream";
@@ -45,6 +46,9 @@ internal sealed class AttachmentTools(
         ?? throw new ArgumentNullException(nameof(messageClient));
     private readonly IFeishuAttachmentStager _stager = stager
         ?? throw new ArgumentNullException(nameof(stager));
+
+    /// <summary>日志（可空；R2-06 起用于"临时附件清理失败"留痕——磁盘残留是用户数据驻留面）。</summary>
+    private readonly ILogger? _logger = logger;
 
     /// <summary>im.send_image：落盘 → 上传图片 → 发送图片消息（<c>dry_run=true</c> 时只预演）。</summary>
     [FeishuToolHandler(typeof(IFeishuImSendImageTool))]
@@ -90,9 +94,12 @@ internal sealed class AttachmentTools(
                 {
                     await staged.Cleanup().ConfigureAwait(false);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // 有意吞掉：清理失败不应把一次成功的发送变成失败（磁盘残留由宿主监控负责）。
+                    // 清理失败不覆盖业务结果（既有判断正确），但必须留痕（R2-06）：
+                    // 临时附件是**含用户数据的外泄面载体**，清理持续失败 ⇒ 磁盘被敏感文件占满且无任何信号。
+                    // 此前"磁盘残留由宿主监控负责"成立的前提是宿主有可观测来源——它没有。
+                    _logger?.LogWarning(ex, "临时附件清理失败，文件可能残留（path: {Path}）", staged.LocalPath);
                 }
             }
         });
@@ -145,9 +152,10 @@ internal sealed class AttachmentTools(
                 {
                     await staged.Cleanup().ConfigureAwait(false);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // 同上：清理失败不覆盖业务结果。
+                    // 同上（R2-06）：清理失败不覆盖业务结果，但必须留痕。
+                    _logger?.LogWarning(ex, "临时附件清理失败，文件可能残留（path: {Path}）", staged.LocalPath);
                 }
             }
         });

@@ -124,6 +124,34 @@ public abstract class ConversationalFeishuEventHandler<T>(
     protected abstract Task ReplyAsync(ConversationRequest request, string responseText, CancellationToken cancellationToken);
 
     /// <summary>
+    /// 下发可行性前置判定（R2-01）：在<b>装配上下文与调用模型之前</b>执行，返回非 <see langword="null"/>
+    /// 表示本轮不可投递，基类按「<b>已消费</b>」短路（不调模型、不落历史、不重投递），原因进 Warning 日志。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>要解决的问题</b>：部分事件形态（如 <c>task.task.updated_v1</c>）的回投目标必须经平台 API 解析，
+    /// 而"解析不出收件人"若在<b>回复阶段</b>才发现，则本轮已经付过一次完整模型调用（计费 + 延迟 + 一轮历史落库）。
+    /// 该判定把"能不能送出去"前移到<b>花钱之前</b>——这是本钩子的唯一目的。
+    /// </para>
+    /// <para>
+    /// <b>为什么用钩子而不是"抛终态异常 + 改基类异常语义"</b>（与方案初稿的偏离，理由如下）：
+    /// 基类既有的异常语义是<b>幂等回滚 + 重投递</b>（<see cref="ProcessBusinessLogicAsync"/> 的
+    /// at-least-once 契约，被多个用例锁定）；引入"某类异常不重投递"需要改这条全局契约，
+    /// 影响面覆盖全部派生处理器。钩子返回值的表达力等价（可携带原因），却<b>零异常语义变更</b>。
+    /// </para>
+    /// <para>
+    /// <b>实现方约定</b>：需要平台 API 解析投递目标时，在
+    /// <see cref="BuildRequestAsync"/> 内解析并把目标写入 <see cref="ConversationRequest.SenderId"/>
+    /// （或 <see cref="ConversationRequest.SubjectId"/>），本钩子只做纯判定（不再重复 I/O）。
+    /// </para>
+    /// </remarks>
+    /// <param name="request">已规范化的会话请求。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>不可投递的原因；可投递时为 <see langword="null"/>（默认，即保持既有行为）。</returns>
+    protected virtual Task<string?> TryFindDeliveryBlockAsync(ConversationRequest request, CancellationToken cancellationToken)
+        => Task.FromResult<string?>(null);
+
+    /// <summary>
     /// 缺少 <see cref="ConversationRequest.AppKey"/> 时是否允许降级到 <c>default</c> 命名空间。
     /// </summary>
     /// <remarks>
@@ -230,6 +258,18 @@ public abstract class ConversationalFeishuEventHandler<T>(
                 // 补发成功后落库（条目已在内存中摘除）：失败则异常 ⇒ 幂等回滚 ⇒ 再重投递仍会补发，
                 // 语义与既有 at-least-once 一致（不追求 exactly-once，见类注释）。
                 await _agent.SaveSessionAsync(conversationKey, session, cancellationToken).ConfigureAwait(false);
+                return;
+            }
+
+            // 下发可行性前置判定（R2-01）：置于补发判定**之后**（补发不消耗模型，不该被本判定拦截），
+            // 模型调用（含上下文装配）**之前**。判定不通过即按「已消费」返回：幂等终态落 Completed，
+            // 绝不重投递——重投递只会把同一轮白判一次，对"投递目标不存在"这一事实毫无改善。
+            var deliveryBlock = await TryFindDeliveryBlockAsync(request, cancellationToken).ConfigureAwait(false);
+            if (deliveryBlock is not null)
+            {
+                _logger.LogWarning(
+                    "本轮不可投递，已在调用模型前短路（未产生模型计费与历史落库；subject: {SubjectId}）：{Reason}",
+                    request.SubjectId, deliveryBlock);
                 return;
             }
 
@@ -656,8 +696,29 @@ public abstract class ConversationalFeishuEventHandler<T>(
             : $"feishu.agent.conversation:{eventData.EventId}";
 
     /// <summary>
-    /// 拼接用户消息：默认仅装配器产物；派生类可覆写追加固定前缀/额外上下文。
+    /// 拼接用户消息：<b>触发文本在前</b>（<see cref="ConversationRequest.MentionedText"/>），
+    /// 装配器片段在后；派生类可覆写以改变次序或追加固定前缀。
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>R2-01b（本轮审查新增发现，方案初稿未识别）</b>：本方法此前<b>只</b>返回装配器产物——
+    /// 于是"事件触发器文本"（每个派生类的 <c>MentionedText</c>：IM 的用户提问、审批/任务变更通知）
+    /// <b>永远进不了模型</b>，且在没有装配器的宿主上用户消息恒为空 ⇒ 基类的空消息守卫直接短路，
+    /// 模型<b>根本不会被调用</b>。真实缺陷因此比"白跑一次模型"更严重：
+    /// <c>TaskUpdatedConversationalEventHandler</c> 与 <c>ApprovalTaskConversationalEventHandler</c>
+    /// 是<b>端到端完全 no-op</b>（既不调模型，也不投递），只有
+    /// <c>ImMessageConversationalEventHandler</c> 因自行覆写本方法而幸免。
+    /// </para>
+    /// <para>
+    /// <b>为什么修在基类而不是各派生类各补一遍</b>：这正是根因 R-C 的形态——"每个派生类都必须记得
+    /// 覆写一次同样的三行"是机制缺失，不是实现疏忽。修在基类后<b>新增派生类自动正确</b>，
+    /// 且 <c>ImMessage…</c> 的重复覆写随之删除（同一语义只允许有一处实现）。
+    /// </para>
+    /// <para>
+    /// 空消息守卫（下方 <c>ProcessBusinessLogicAsync</c>）保持不变：它拦的是"装配器与触发文本都空"
+    /// 的真实异常形态（会被 OpenAI 兼容端点 400 拒绝且已计费）。
+    /// </para>
+    /// </remarks>
     /// <param name="request">会话请求。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>用户消息文本。</returns>
@@ -686,6 +747,15 @@ public abstract class ConversationalFeishuEventHandler<T>(
             }
         }
 
-        return string.Join("\n", fragments);
+        var assembled = string.Join("\n", fragments);
+        var triggerText = request.MentionedText;
+        if (string.IsNullOrWhiteSpace(triggerText))
+        {
+            return assembled;
+        }
+
+        return string.IsNullOrWhiteSpace(assembled)
+            ? triggerText!
+            : $"{triggerText}\n{assembled}";
     }
 }

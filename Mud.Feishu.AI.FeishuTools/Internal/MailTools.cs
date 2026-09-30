@@ -174,6 +174,7 @@ internal sealed class MailTools(
                 .SendUserMailboxDraftAsync(
                     args.UserMailboxId,
                     nonNullDraftId,
+                    new SendUserMailboxDraftRequest(),
                     cancellationToken)
                 .ConfigureAwait(false));
 

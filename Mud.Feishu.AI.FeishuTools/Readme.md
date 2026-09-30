@@ -8,21 +8,22 @@
 
 ---
 
-## 1. 工具面现状（31 个：24 只读 + 7 写类）
+## 1. 工具面现状（61 个：33 只读 + 28 写类）
 
 | 域 | 工具 |
 | --- | --- |
-| Bitable（4 只读 + 1 写） | `bitable.list_tables` / `list_fields` / `query_records` / `get_records_by_ids` / `add_record`（写） |
-| 云文档 Docx（2 只读） | `docx.get_raw_content` / `docx.get_document_blocks` |
+| Bitable（4 只读 + 3 写） | `bitable.list_tables` / `list_fields` / `query_records` / `get_records_by_ids` / `add_record`（写）/ `update_record`（写）/ `delete_record`（写） |
+| 云文档 Docx（2 只读 + 2 写） | `docx.get_raw_content` / `docx.get_document_blocks` / `create_document`（写）/ `append_blocks`（写） |
 | Wiki（2 只读） | `wiki.get_node` / `wiki.list_nodes` |
 | 搜索（1 只读） | `search.doc_wiki` |
-| IM（2 只读 + 3 写） | `im.get_history_messages` / `im.get_message_content` / `send_message`（写）/ **`send_image` / `send_file`（写，需宿主落盘器，见 §7）** |
-| 云空间 Drive（2 只读） | `drive.list_folder_files` / `drive.get_file_metas` |
-| 电子表格 Sheets（2 只读） | `sheets.list_sheets` / `sheets.get_range_values` |
-| 通讯录 Contact（4 只读） | `contact.resolve_user`（邮箱/手机号→ID）/ **`search_user`（姓名/关键字→ID）** / `get_user` / `batch_get` |
-| 审批 Approval（1 写） | `approval.create_instance`（写） |
-| 日历 Calendar（2 只读 + 1 写） | **`calendar.find_free_slots` / `list_events` / `create_event`（写）** |
-| 任务 Task（1 只读 + 1 写） | **`task.create_task`（写）/ `task.list_my_tasks`（只读，`identity=user`）** |
+| IM（5 只读 + 4 写） | `im.get_history_messages` / `im.get_message_content` / `im.list_chat_members` / `im.search_messages` / `im.reply_message`（写）/ `send_message`（写）/ **`send_image` / `send_file`（写，需宿主落盘器，见 §7）** |
+| 云空间 Drive（2 只读 + 3 写） | `drive.list_folder_files` / `drive.get_file_metas` / `create_folder`（写）/ `move_file`（写）/ `upload_file`（写） |
+| 电子表格 Sheets（2 只读 + 2 写） | `sheets.list_sheets` / `sheets.get_range_values` / `update_range`（写）/ `append_rows`（写） |
+| 通讯录 Contact（6 只读） | `contact.resolve_user`（邮箱/手机号→ID）/ **`search_user`（姓名/关键字→ID）** / `get_user` / `batch_get` / `list_departments` / `list_department_members` |
+| 审批 Approval（2 只读 + 2 写） | `approval.list_pending_tasks` / `approval.get_instance`（只读，`identity=user`）/ `create_instance`（写）/ `approve_task`（写） |
+| 日历 Calendar（3 只读 + 4 写） | **`calendar.find_free_slots` / `list_events` / `list_event_attendees`（只读）/ `create_event`（写）/ `update_event`（写）/ `delete_event`（写，high-risk）/ `add_event_attendees`（写）** |
+| 任务 Task（1 只读 + 7 写） | **`task.create_task`（写）/ `task.list_my_tasks`（只读，`identity=user`）/ `update_task`（写）/ `complete_task`（写）/ `delete_task`（写，high-risk）/ `create_subtask`（写）/ `add_comment`（写）/ `add_members`（写）** |
+| 邮件 Mail（2 只读 + 1 写） | `mail.list_messages` / `mail.get_message` / `mail.send_message`（写，`identity=user`） |
 | 知识库（1 只读） | `knowledge.search`（绑定宿主 `IRetriever`） |
 | 元工具（1 只读） | **`feishu.capability_lookup`**（能力出处，见 §4） |
 
@@ -147,13 +148,13 @@ services.AddFeishuTools();                 // 引入全部域（含元工具）
 
 ## 4. 模型看不到的能力，出路在哪
 
-本包刻意**不**做"每个 SDK 方法一个工具"（1155 无差别暴露）也不做通用裸 `api` 工具。
+本包刻意**不**做"每个 SDK 方法一个工具"（1203 无差别暴露）也不做通用裸 `api` 工具。
 三层结构如下：
 
 | 层 | 内容 | 模型可见？ |
 | --- | --- | --- |
 | L1 能力目录 | 编译期聚合事实（SDK 方法总数 / 分组分布 / 策展计数），`build_property.FeishuToolCatalog=true` 时产出 | ❌（`internal`） |
-| L2 暴露策展 | 标注了 `[FeishuTool]` 的 53 个工具 | ✅（白名单启用后） |
+| L2 暴露策展 | 标注了 `[FeishuTool]` 的 61 个工具 | ✅（白名单启用后） |
 | **L3 能力出路** | **`feishu.capability_lookup`**：按关键字回答"这个能力在 SDK 里有几个分组 / 是否已策展成工具" | ✅（默认不启用） |
 
 所以模型遇到不认识的域时，正确动作是**先问 `feishu.capability_lookup`**，据此判断
@@ -178,8 +179,11 @@ services.AddFeishuTools();                 // 引入全部域（含元工具）
 3. **写执行器**（手写，投影独占）：`Internal/{Tool}Tools.cs` —— `new ToolExecutor(FeishuToolNames.X, maxLength)`
    → `RunAsync(async () => { ToolArgs 取参 → SDK 调用 → FeishuApiResultReader.Read → executor.FromApi(...) })`；
    **不要**手写 `if (!outcome.Ok)` / `catch (ArgumentException)`（WP3 守卫会红）。
-4. **注册 + 装配**（手写，一行/工具 + 一行/域）：`Registration/FeishuToolDomainRegistrars.cs` 增域注册器；
-   `Extensions/FeishuToolsServiceCollectionExtensions.cs` 增 `Add…Core` 并串入入口。
+4. **注册 + 装配**（生成器自动产出）：`ToolRegistrarEmitter` 按执行器类自动生成域注册器
+   （`FeishuToolDomainRegistrars/*.g.cs`）与逐域 DI 核心方法（`AddFeishu{Tools}Core`，
+   `FeishuToolsServiceCollectionCoreExtensions.g.cs`）。手写侧仅保留公开入口编排
+   （`Extensions/FeishuToolsServiceCollectionExtensions.cs` 的 `AddFeishuReadonlyToolCores` /
+   `AddFeishuWriteToolCores` 链中增一行 `AddFeishu{NewDomain}ToolsCore()`）。
 5. **golden 重固化**（机械）：见下方流程。
 6. **守卫与文档**（机械）：`documents/AIAgent/scope-authority.json` 回填新 scope →
    《工具权限对照表》由守卫逐行交叉验证 → 调用链用例（断言 method/path/body/query 实参）。
@@ -274,3 +278,38 @@ services.AddSingleton<IFeishuAttachmentStager>(sp => sp.GetRequiredService<DemoA
 **scope 权威性**：`documents/AIAgent/scope-authority.json`（人工从控制台核对回填）与契约表构成
 **双向守卫**——契约里的 scope 必须在清单中（缺口即红），清单里未标 `⚠️` 的必须被至少一个工具使用
 （防僵尸权限），`⚠️` 项必须持续可见。
+
+### 8.1 写工具幂等能力表（R7/WP2-T2-4）
+
+| 工具 | 暴露 `idempotency_key` | 底层支持 `client_token` | 说明 |
+| --- | --- | --- | --- |
+| `im.send_message` | ✅ | ✅ | 平台侧 1 小时去重 |
+| `im.reply_message` | ✅ | ✅ | 平台侧 1 小时去重 |
+| `im.send_image` | ❌ | — | 三步链路，幂等由落盘器保证 |
+| `im.send_file` | ❌ | — | 同上 |
+| `bitable.add_record` | ✅ | ✅ | 相同键返回同一条记录 |
+| `bitable.update_record` | ✅ | ✅ | 相同键不产生副作用 |
+| `bitable.delete_record` | ❌ | — | 删除天然幂等 |
+| `approval.create_instance` | ✅ | ✅ | 相同键返回错误码 60012 |
+| `approval.approve_task` | ❌ | — | 同意操作天然幂等 |
+| `docx.create_document` | ❌ | ✅ | 工具层未暴露，SDK 支持 |
+| `docx.append_blocks` | ✅ | ✅ | 24 小时去重 |
+| `sheets.update_range` | ❌ | — | 覆盖写天然幂等 |
+| `sheets.append_rows` | ❌ | — | 追加操作非幂等 |
+| `drive.create_folder` | ❌ | — | 非幂等 |
+| `drive.move_file` | ❌ | — | 异步操作，非幂等 |
+| `drive.upload_file` | ❌ | — | 非幂等 |
+| `calendar.create_event` | ✅ | ✅ | 平台原生幂等 |
+| `calendar.update_event` | ❌ | — | PATCH 按字段更新天然幂等 |
+| `calendar.delete_event` | ❌ | — | 删除天然幂等 |
+| `calendar.add_event_attendees` | ❌ | — | 非幂等（重复添加同一用户无效） |
+| `task.create_task` | ✅ | ✅ | 平台原生幂等 |
+| `task.update_task` | ❌ | — | PATCH 按字段更新天然幂等 |
+| `task.complete_task` | ❌ | — | 通过 update 实现，幂等 |
+| `task.delete_task` | ❌ | — | 删除天然幂等 |
+| `task.create_subtask` | ✅ | ✅ | 平台原生幂等 |
+| `task.add_comment` | ❌ | — | 非幂等 |
+| `task.add_members` | ✅ | ✅ | 平台原生幂等 |
+| `mail.send_message` | ❌ | — | 两步合一，非幂等 |
+
+**汇总**：28 个写工具中，10 个暴露 `idempotency_key`，18 个不暴露（其中 8 个天然幂等，10 个非幂等）。

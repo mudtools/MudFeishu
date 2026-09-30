@@ -55,6 +55,9 @@ internal static class PageSizes
     /// <summary>calendar.list_events（绑定层固定页大小，上限 50）。</summary>
     public const int CalendarEvents = 50;
 
+    /// <summary>calendar.list_event_attendees（官方默认 500/页，此处取 50 控量）。</summary>
+    public const int CalendarEventAttendees = 50;
+
     /// <summary>task.list_my_tasks（官方默认 10；此处取 50 以减少追问轮次）。</summary>
     public const int TaskList = 50;
 

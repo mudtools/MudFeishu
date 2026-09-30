@@ -432,20 +432,19 @@ public class AgentContractGuards
     }
 
     /// <summary>
-    /// R3-02 行为断言：构造 NeedsConfirmation 结果后，回填给模型的文本
-    /// 经正则断言零命中凭据类信息。与源码扫描解耦——重构/换行/提取方法都不会失效。
+    /// R3-02 行为断言：StructuredError 全部分支的<b>字符串字面量</b>经正则断言零命中凭据类信息。
+    /// 本测试工程未引用 FeishuTools 程序集（无法反射调用 internal 方法），故退化为
+    /// "只扫描字符串字面量、剥离注释"的源码断言——注释中的"确认令牌"（解释为什么删除了令牌提示）
+    /// 不得触发假红。R3-10 纪律：文本断言仅限无法行为化的项，此处属该例外。
     /// </summary>
     [Fact]
     public void StructuredError_NeedsConfirmation_ShouldNotLeakCredentialInBehavior()
     {
-        // 直接调用 StructuredError 的 public/internal 部分不可行（internal），
-        // 但 FeishuToolResult.FromError 的文本最终经 ToolResultSanitizer 净化后进入模型上下文。
-        // 此处验证 NeedsConfirmation 分支的源码文本经正则零命中。
         var bindingSource = Path.Combine(
             GetSolutionRoot(), "Mud.Feishu.AI.FeishuTools", "Tools", "FeishuToolBinding.cs");
         var source = File.ReadAllText(bindingSource);
 
-        // 提取 StructuredError 方法体整体（从方法签名到下一个 internal/private/static 方法）。
+        // 提取 StructuredError 方法体整体（从方法签名到下一个方法声明）。
         var methodStart = source.IndexOf("internal static string StructuredError(string toolName, ToolErrorKind kind", StringComparison.Ordinal);
         methodStart.Should().BeGreaterThan(-1, "StructuredError 方法必须存在");
         var methodEnd = source.IndexOf("\n    internal static string StructuredError(string toolName, int? apiCode", StringComparison.Ordinal);
@@ -457,15 +456,23 @@ public class AgentContractGuards
         methodEnd.Should().BeGreaterThan(methodStart, "必须能定位到 StructuredError 方法体结束");
         var methodBody = source[methodStart..methodEnd];
 
-        // 行为断言：整个方法体（含所有分支文案）经正则零命中凭据类信息。
+        // 剥离注释行（// 开头的行）——注释中解释"为什么删除了确认令牌"不应触发假红。
+        var lines = methodBody.Split('\n');
+        var codeOnly = string.Join('\n', lines.Where(static l =>
+        {
+            var trimmed = l.AsSpan().TrimStart();
+            return !trimmed.StartsWith("//", StringComparison.Ordinal) && !trimmed.StartsWith("///", StringComparison.Ordinal);
+        }));
+
+        // 行为断言：剥离注释后的代码体（含所有分支文案字面量）经正则零命中凭据类信息。
         var credentialPattern = new System.Text.RegularExpressions.Regex(
             @"(confirm_token|confirmation_token|确认令牌|token\s*=)",
             System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        credentialPattern.IsMatch(methodBody).Should().BeFalse(
-            "StructuredError 的全部分支文案不得出现凭据类信息（行为断言，不依赖源码行结构）");
+        credentialPattern.IsMatch(codeOnly).Should().BeFalse(
+            "StructuredError 的全部分支文案（字符串字面量）不得出现凭据类信息（已剥离注释）");
 
         // 待确认语义必须存在于方法体中。
-        methodBody.Should().Contain("需要用户确认", "待确认语义必须保留");
+        codeOnly.Should().Contain("需要用户确认", "待确认语义必须保留");
     }
 
     /// <summary>

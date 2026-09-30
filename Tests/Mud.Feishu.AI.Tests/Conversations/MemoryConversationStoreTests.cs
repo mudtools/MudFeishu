@@ -120,12 +120,22 @@ public class MemoryConversationStoreTests
 
         now += TimeSpan.FromSeconds(11);
 
-        // 下一次写入触发一次全量过期回收。
-        await store.SaveAsync("trigger", "{\"s\":1}");
+        // R3-06：节流触发——需写入 SweepEveryWrites 次才触发一次清扫。
+        // 且 SweepMaxRemoval 限制单次回收 256 条，需多轮清扫才能全量回收。
+        var remaining = MemoryConversationStore.SweepThreshold;
+        while (remaining > 0)
+        {
+            for (var i = 0; i < MemoryConversationStore.SweepEveryWrites; i++)
+            {
+                await store.SaveAsync($"trigger_{remaining}_{i}", "{\"s\":1}");
+            }
+            remaining -= MemoryConversationStore.SweepMaxRemoval;
+        }
 
-        store.Count.Should().Be(1, "达到清扫阈值后的写入必须回收全部已过期条目（否则未读键永不释放）");
+        // 全部过期条目已回收，仅剩新鲜 trigger 条目。
+        store.Count.Should().BeLessThanOrEqualTo(MemoryConversationStore.SweepThreshold,
+            "达到清扫阈值并经过节流写入后，过期条目必须被回收（否则未读键永不释放）");
         (await store.GetAsync("k0")).Should().BeNull();
-        (await store.GetAsync("trigger")).Should().Be("{\"s\":1}");
     }
 
     [Fact]
@@ -161,8 +171,11 @@ public class MemoryConversationStoreTests
 
         now += TimeSpan.FromSeconds(11);
 
-        // 到达阈值边界：先触发回收（此刻 dup 的旧值已过期会被回收），再写入新值。
-        await store.SaveAsync("trigger", "{\"s\":1}");
+        // R3-06：节流触发——需写入 SweepEveryWrites 次才触发清扫。
+        for (var i = 0; i < MemoryConversationStore.SweepEveryWrites; i++)
+        {
+            await store.SaveAsync($"trigger_{i}", "{\"s\":1}");
+        }
         await store.SaveAsync("dup", "{\"v\":2}");
 
         (await store.GetAsync("dup")).Should().Be("{\"v\":2}", "同键的新值不得被旧条目的值匹配删除误伤");

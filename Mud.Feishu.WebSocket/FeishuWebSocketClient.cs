@@ -73,6 +73,9 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     // F7 修复：统一去重中间件（可选），提供 EventId + SeqID 双重去重。
     private readonly IUnifiedDeduplicationMiddleware? _unifiedDedupMiddleware;
 
+    // R-E1（E-P1-3）：失败事件落盘（可选），透传至 FeishuEventMessageHandler
+    private readonly IFailedEventStore? _failedEventStore;
+
     // 保存事件处理器委托引用，用于正确的取消订阅，避免内存泄漏
     private readonly EventHandler<EventArgs> _onConnected;
     private readonly EventHandler<WebSocketCloseEventArgs> _onDisconnected;
@@ -303,7 +306,8 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         FeishuWebSocketConcurrencyService? concurrencyService = null,
         IOptionsMonitor<FeishuWebSocketOptions>? optionsMonitor = null,
         IUnifiedDeduplicationMiddleware? unifiedDedupMiddleware = null,
-        Microsoft.Extensions.Hosting.IHostEnvironment? hostEnvironment = null)
+        Microsoft.Extensions.Hosting.IHostEnvironment? hostEnvironment = null,
+        IFailedEventStore? failedEventStore = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _eventHandlerFactory = eventHandlerFactory ?? throw new ArgumentNullException(nameof(eventHandlerFactory));
@@ -317,6 +321,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         _eventDeduplicator = eventDeduplicator;
         _concurrencyService = concurrencyService;
         _unifiedDedupMiddleware = unifiedDedupMiddleware;
+        _failedEventStore = failedEventStore;
 
         // 初始化事件处理器委托，保存引用以便正确取消订阅
         // WS-10 修复（P1-7/P1-2）：此前 _onConnected 使用 Task.Run fire-and-forget
@@ -443,7 +448,8 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
             _eventDeduplicator,
             _interceptors,
             _options,
-            _unifiedDedupMiddleware);
+            _unifiedDedupMiddleware,
+            _failedEventStore);
 
         _messageRouter.RegisterHandler(pingPongHandler);
         _messageRouter.RegisterHandler(authHandler);

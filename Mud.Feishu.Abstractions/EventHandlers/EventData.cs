@@ -9,11 +9,12 @@ namespace Mud.Feishu.Abstractions;
 
 /// <summary>
 /// 飞书事件 Header 数据（v2.0 版本事件的 header 部分）
-/// <para>v1.0 事件无独立 header，对应字段从事件根级别解析</para>
+/// <para>v1.0 事件无独立 header，SDK 会构造<b>合成 Header</b>：字段取自根级 uuid/token/ts 与 event.*，<see cref="Schema"/> 恒为 null（R-E1/AD-2）</para>
 /// </summary>
 public class FeishuEventHeader : IEventHeader
 {
     /// <inheritdoc />
+    /// <remarks>v1.0 事件的合成 Header 中此属性恒为 null——请以 <c>Schema == null</c> 判别 v1.0 格式。</remarks>
     [JsonPropertyName("schema")]
     public string? Schema { get; set; }
 
@@ -23,13 +24,13 @@ public class FeishuEventHeader : IEventHeader
 
     /// <summary>
     /// 事件 Token（用于验证事件来源）
-    /// <para>仅 v2.0 事件包含此字段</para>
+    /// <para>v2.0 事件取自 header.token；v1.0 事件由 SDK 从根级 token 解析（R-E1/E-P1-1）</para>
     /// </summary>
     [JsonPropertyName("token")]
     public string? Token { get; set; }
 
     /// <summary>
-    /// 事件创建时间戳（单位：毫秒）
+    /// 事件创建时间戳（原始字符串：v2.0 为 header.create_time 原文；v1.0 为根级 ts 原文）
     /// </summary>
     [JsonPropertyName("create_time")]
     public string? CreateTime { get; set; }
@@ -77,21 +78,24 @@ public class EventData
     public string TenantKey { get; set; } = string.Empty;
 
     /// <summary>
-    /// 事件创建时间（毫秒时间戳）
+    /// 事件创建时间（毫秒时间戳；R-E1/E-P2-2 统一口径，跨格式跨通道可比）
     /// </summary>
     [JsonPropertyName("create_time")]
     public long CreateTime { get; set; }
 
     /// <summary>
-    /// 事件内容
+    /// 事件内容（JSON 原文）
+    /// <para>SDK 生产路径恒写入 JSON 字符串；<c>object?</c> 仅为源兼容保留（历史 WS 通道曾写入 JsonElement），
+    /// 读取请使用 <see cref="FeishuEventDataExtensions.GetEventRawJson"/>，下一 major 收敛为 <c>string?</c></para>
     /// </summary>
     [JsonPropertyName("event")]
     public object? Event { get; set; }
 
     /// <summary>
-    /// 事件 Header 数据（v2.0 事件的完整 header 信息）
-    /// <para>v1.0 事件此属性为 null，其字段已扁平化到 EventData 根级别</para>
-    /// <para>v2.0 事件此属性包含完整的 header 原始数据，包括 token 等字段</para>
+    /// 事件 Header 数据
+    /// <para>v2.0 事件为完整 header；v1.0 事件为 SDK 构造的合成 Header（字段取自根级 uuid/token/ts 与 event.*，
+    /// <see cref="FeishuEventHeader.Schema"/> 恒为 null，R-E1/AD-2）。判定 v1.0 请用 <c>Schema == null</c>，
+    /// 不要用 <c>Header == null</c>（自本版本起 v1.0 的 Header 不再为 null）</para>
     /// </summary>
     [JsonIgnore]
     public FeishuEventHeader? Header { get; set; }

@@ -447,9 +447,10 @@ public class MultiAppService
 
 #### 2. Application Context Switching
 
-> **Recommended**: Use `BeginScope(string)` for scope-based switching with automatic context restoration.
-> `UseApp()` / `UseDefaultApp()` modify the current context in place, which risks context leakage
-> outside of `using` scenarios in multi-threaded code.
+> **Recommended**: Use `UseAppScope(string)` for scope-based switching with automatic context restoration
+> (an `IAppScopeSwitcher` member inherited by `IFeishuAppContextSwitcher`).
+> `UseApp()` / `UseDefaultApp()` / `BeginScope(string)` are legacy entries marked `[Obsolete]`
+> (CS0618) since Mud.HttpUtils 3.0.0; they will be removed in the next major version.
 
 ```csharp
 public class AppSwitchingService
@@ -471,7 +472,7 @@ public class AppSwitchingService
             .GetTokenAsync();
 
         // Recommended: scope pattern, context auto-restored when the scope ends
-        using (_switcher.BeginScope("approval"))
+        using (_switcher.UseAppScope("approval"))
         {
             var approvalToken = await _switcher.GetTokenAsync();
         }
@@ -484,7 +485,8 @@ public class AppSwitchingService
 
 ```csharp
 // ⚠️ UseApp / UseDefaultApp switch the global context in place without an IDisposable scope,
-// risking context leakage in non-`using` scenarios. Prefer BeginScope(appKey).
+// risking context leakage in non-`using` scenarios. Prefer UseAppScope(appKey).
+// Both are marked [Obsolete] (CS0618) since Mud.HttpUtils 3.0.0.
 var defaultContext = _switcher.UseDefaultApp();
 var approvalContext = _switcher.UseApp("approval");
 ```

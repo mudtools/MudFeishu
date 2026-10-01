@@ -183,7 +183,7 @@ app.Run();
 | 包 | 版本 | 说明 |
 | --- | --- | --- |
 | **Mud.Feishu.Abstractions** | * | 飞书 SDK 抽象层（提供 ActivitySource 和 Meter 定义） |
-| **Mud.HttpUtils** | 2.0.6 | HTTP 出站请求与 Token 刷新的可观测性源（`MudHttpActivitySource` / `MudHttpMeter`） |
+| **Mud.HttpUtils** | 3.0.0 | HTTP 出站请求与 Token 刷新的可观测性源（`MudHttpActivitySource` / `MudHttpMeter`） |
 | **OpenTelemetry** | 1.16.0 | OpenTelemetry .NET SDK |
 | **OpenTelemetry.Extensions.Hosting** | 1.16.0 | 主机集成 |
 | **OpenTelemetry.Exporter.OpenTelemetryProtocol** | 1.16.0 | OTLP 导出器 |

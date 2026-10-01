@@ -392,12 +392,13 @@ public class P0P1FixRegressionTests
         // Act
         await sut.HandleAsync(message);
 
-        // Assert：HandleAsync 返回后 JsonDocument 已释放，
-        // 若未 Clone，读取 event 会拿到已被 ArrayPool 复用的内存。
+        // Assert：HandleAsync 返回后 JsonDocument 已释放，Event 载荷必须仍可完整读取。
+        // R-E1（AD-3）：写侧由 Clone()（JsonElement）收敛为 GetRawText()（JSON 原文字符串），
+        // 生命周期安全语义不变（字符串是独立副本，天然脱离 JsonDocument 生命周期）。
         handler.LastEventData.Should().NotBeNull();
-        var element = handler.LastEventData!.Event.Should().BeOfType<System.Text.Json.JsonElement>().Subject;
-        element.TryGetProperty("text", out var textProp).Should().BeTrue();
-        textProp.GetString().Should().Be("hello");
+        var raw = handler.LastEventData!.Event.Should().BeOfType<string>().Subject;
+        raw.Should().Contain("hello");
+        raw.Should().Contain("text");
     }
 
     #endregion

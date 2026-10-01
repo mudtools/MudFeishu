@@ -393,7 +393,8 @@ public class MultiAppService
 
     public async Task UseSpecificAppAsync(string appKey)
     {
-        // 获取指定应用的 API（内部已调用 UseApp(appKey) 切换上下文）
+        // 获取指定应用的 API（内部经 IAppContextHolder.SwitchToApp(appKey, ...) 切换上下文：
+        // 完整守卫 + 立即切换 + 不自动归还）
         var api = _appManager.GetWebApi<IMyApi>(appKey);
         await api.DoSomethingAsync();
     }
@@ -402,9 +403,10 @@ public class MultiAppService
 
 #### 2. 应用上下文切换
 
-> **推荐**：使用 `BeginScope(string)` 进行作用域切换（生成客户端实现的 `IFeishuAppContextSwitcher` 接口成员），
-> 返回 `IDisposable`，配合 `using` 在作用域结束自动恢复上下文。
-> `UseApp(appKey)` / `UseDefaultApp()` 为无作用域切换，不会自动归还上下文。
+> **推荐**：使用 `UseAppScope(appKey)` 进行作用域切换（`IFeishuAppContextSwitcher` 继承的上游
+> `IAppScopeSwitcher` 成员），返回 `IDisposable`，配合 `using` 在作用域结束自动恢复上下文。
+> `UseApp(appKey)` / `UseDefaultApp()` / `BeginScope(string)` 为旧的无作用域/别名入口，
+> 自 Mud.HttpUtils 3.0.0 起已标注 `[Obsolete]`（CS0618），将在下一个大版本移除。
 
 ```csharp
 using Mud.Feishu.Abstractions;
@@ -422,8 +424,9 @@ public class AppSwitchingService
 
     public async Task WorkWithAppsAsync(string approvalAppKey)
     {
-        // 推荐方式：BeginScope(appKey) 作用域切换，作用域结束自动恢复上下文
-        using (_api.BeginScope(approvalAppKey))
+        // 推荐方式：UseAppScope(appKey) 作用域切换，作用域结束自动恢复上下文
+        // （守卫与旧 BeginScope(appKey) 完全相同：格式校验 + 授权判定 + 默认拒绝）
+        using (_api.UseAppScope(approvalAppKey))
         {
             var approvalToken = await _api.GetTokenAsync();
             // 作用域内的 API 调用均使用 approval 应用的上下文
@@ -449,7 +452,8 @@ public class AppSwitchingService
 ```csharp
 // ⚠️ UseApp / UseDefaultApp 为无作用域切换：直接写入当前上下文，
 // 不返回 IDisposable、不会自动恢复，长生命周期宿主（后台服务、单例编排等）
-// 中存在上下文泄漏风险，应优先使用 BeginScope(appKey)
+// 中存在上下文泄漏风险，应优先使用 UseAppScope(appKey)；
+// 且自 Mud.HttpUtils 3.0.0 起已标 [Obsolete]（CS0618）
 var approvalContext = _api.UseApp("approval");
 var defaultContext = _api.UseDefaultApp();
 ```
@@ -489,9 +493,9 @@ public class MessageService
         // 方法1: 直接使用 IFeishuAppManager 获取指定应用的 API（推荐）
         var approvalUserApi = appManager.GetWebApi<IFeishuTenantV3User>("approval-app");
 
-        // 方法2: 使用 UseApp 切换（注意：有线程安全问题）
+        // 方法2: 使用 UseAppScope 作用域切换（有线程安全问题，须以 using 包络）
         // var userApi = _serviceProvider.GetRequiredService<IFeishuTenantV3User>();
-        // var appContext = userApi.UseApp("approval-app");
+        // using (userApi.UseAppScope("approval-app")) { ... }
 
         await approvalUserApi.SendMessageAsync(message);
     }
@@ -500,7 +504,7 @@ public class MessageService
 
 **重要提示**：
 
-- ⚠️ **线程安全警告**：直接使用 `UseApp()` 方法会改变服务实例的状态，在多线程环境下可能导致应用上下文混乱。**推荐使用 `IFeishuAppManager.GetWebApi<T>(appKey)` 方法获取独立的服务实例。**
+- ⚠️ **线程安全警告**：直接使用 `UseApp()` / `UseAppScope()` 方法会改变当前执行流的上下文状态，在多线程环境下可能导致应用上下文混乱。**推荐使用 `IFeishuAppManager.GetWebApi<T>(appKey)` 方法获取独立的服务实例。**
 
 - ✅ **推荐做法**：始终通过 `IFeishuAppManager` 获取指定应用的 API 实例，这样可以确保每次都使用正确的应用凭证，并避免线程安全问题。
 

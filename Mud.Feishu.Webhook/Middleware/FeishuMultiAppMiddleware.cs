@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Abstractions;
+using Mud.Feishu.Abstractions.EventHandlers;
 using Mud.Feishu.Abstractions.Metrics;
 // 使用类型别名而非命名空间 using：Mud.Feishu.Abstractions.Utilities 与 Mud.Feishu.Webhook.Serialization
 // 都存在 FeishuJsonContext，直接引入命名空间会造成 CS0104 二义性。
@@ -497,7 +498,10 @@ public class FeishuMultiAppMiddleware : IDisposable
         string? challenge = null;
         string? token = null;
 
-        if (decryptedData.Event is string eventJson)
+        // R-E1（E-P1-2）：双分支（string / JsonElement）收敛为 GetEventRawJson 单出口——
+        // SDK 写侧已统一为 JSON 字符串，扩展仅兜底宿主手工构造的历史 JsonElement 残留。
+        var eventJson = decryptedData.GetEventRawJson();
+        if (!string.IsNullOrEmpty(eventJson))
         {
             try
             {
@@ -515,17 +519,6 @@ public class FeishuMultiAppMiddleware : IDisposable
             catch (JsonException ex)
             {
                 _logger.LogError(ex, "解析验证请求数据时发生错误");
-            }
-        }
-        else if (decryptedData.Event is JsonElement eventElement)
-        {
-            if (eventElement.TryGetProperty("challenge", out var challengeElement))
-            {
-                challenge = challengeElement.GetString();
-            }
-            if (eventElement.TryGetProperty("token", out var tokenElement))
-            {
-                token = tokenElement.GetString();
             }
         }
 

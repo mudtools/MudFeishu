@@ -225,7 +225,8 @@ dotnet add package Mud.Feishu.OpenTelemetry
 | `MessageSizeLimits`           | object   | 见下方  | 消息大小限制配置                                                   |
 | `EventDeduplication`          | object   | 见下方  | 事件去重配置                                                       |
 | `RejectEmptyEventIds`         | bool     | true    | 事件 EventId 为空时是否拒绝处理（fail-closed，对齐 Webhook WHF-05） |
-| `IgnoreUnknownEventTypes`     | bool     | false   | 未注册事件类型是否静默忽略（推荐 true，对齐 Webhook WHF-09；默认 false 保持兼容；支持热更新） |
+| `IgnoreUnknownEventTypes`     | bool     | false   | 未注册事件类型是否静默忽略（推荐 true，对齐 Webhook WHF-09；默认 false 保持兼容；Webhook 通道默认为 true，两者不一致会启动告警；支持热更新） |
+| `FailedEventInitialRetryDelaySeconds` | int | 10 | 失败事件落盘的初始重试延迟（秒，R-E1）；仅在注册 `IFailedEventStore`（`AddFailedEventStore`）后生效，重试主路径仍为服务端重发 |
 
 > ℹ️ **迁移提示**：旧版本的 `TokenRefreshInterval` / `TokenRefreshAhead` 配置已移除。令牌刷新现由 `FeishuAppConfig.TokenRefreshThreshold`（HTTP 层）统一控制，WebSocket 连接复用同一应用的令牌管理器，无需单独配置。
 
@@ -1338,6 +1339,9 @@ public interface IFeishuV1HelpDeskTicket
 - ✅ 事件重试机制（可配置重试次数、延迟和策略）
 - ✅ 健康检查（内置 FeishuWebhookHealthCheck）
 - ✅ 性能监控（可选性能指标收集）
+
+> ⚠️ **加密链路前提**：Webhook 模块仅支持**加密模式**的事件订阅验证（明文 `url_verification` 一律 403）。
+> 请在飞书开放平台为订阅应用启用加密并配置 Encrypt Key。详见 [Webhook 文档](./Mud.Feishu.Webhook/README.md)。
 
 > 💡 **提示**：[查看完整文档](./Mud.Feishu.Webhook/README.md)
 

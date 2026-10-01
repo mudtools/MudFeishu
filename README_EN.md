@@ -222,7 +222,8 @@ dotnet add package Mud.Feishu.Redis
 | `MessageSizeLimits` | object | 1MB / 10MB | Max text (chars) / binary (bytes) message size |
 | `EventDeduplication` | object | InMemory | Event deduplication (`Mode`/`CacheExpiration`/`CleanupInterval`) |
 | `RejectEmptyEventIds` | bool | true | Reject events with empty EventId (fail-closed, WHF-05 aligned) |
-| `IgnoreUnknownEventTypes` | bool | false | Silently ignore unregistered event types (recommended true; default false for compatibility; supports hot reload) |
+| `IgnoreUnknownEventTypes` | bool | false | Silently ignore unregistered event types (recommended true; default false for compatibility; the Webhook channel defaults to true and a mismatch raises a startup warning; supports hot reload) |
+| `FailedEventInitialRetryDelaySeconds` | int | 10 | Initial retry delay (seconds) for failed-event persistence (R-E1); only effective after registering an `IFailedEventStore` via `AddFailedEventStore`; server-side redelivery remains the primary retry path |
 
 > ℹ️ **Migration note**: the legacy `TokenRefreshInterval` / `TokenRefreshAhead` options have been removed. Token refresh is now controlled by `FeishuAppConfig.TokenRefreshThreshold` (HTTP layer); the WebSocket connection reuses the same app token manager and needs no extra configuration.
 

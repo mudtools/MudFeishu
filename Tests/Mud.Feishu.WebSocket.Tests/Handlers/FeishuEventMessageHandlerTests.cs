@@ -9,6 +9,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Mud.Feishu.Abstractions;
+using Mud.Feishu.Abstractions.EventHandlers;
 using Mud.Feishu.Abstractions.Interceptors;
 using Mud.Feishu.WebSocket.Handlers;
 
@@ -206,8 +207,9 @@ public class FeishuEventMessageHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_WithV1Event_HeaderShouldBeNull()
+    public async Task HandleAsync_WithWrappedV1Frame_ShouldParse_WithSyntheticHeader()
     {
+        // R-E1（AD-4）：data 包裹帧经共享解析器下钻 data 子树解析，合成 Header（Schema=null）
         var handler = CreateHandler();
         var v1Message = @"{""data"":{""event_id"":""evt_v1_ws"",""event_type"":""test.v1.event"",""app_id"":""cli_v1"",""tenant_key"":""tk_v1""}}";
 
@@ -220,8 +222,43 @@ public class FeishuEventMessageHandlerTests
         await handler.HandleAsync(v1Message);
 
         capturedEventData.Should().NotBeNull();
-        capturedEventData!.Header.Should().BeNull();
+        capturedEventData!.Header.Should().NotBeNull("v1 事件由 SDK 构造合成 Header（R-E1/AD-2）");
+        capturedEventData.Header!.Schema.Should().BeNull("v1 合成 Header 的 Schema 契约为 null");
+        capturedEventData.Header.EventId.Should().Be("evt_v1_ws");
+        capturedEventData.Header.AppId.Should().Be("cli_v1");
         capturedEventData.Schema.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithOfficialV1Frame_ShouldDispatchToHandler()
+    {
+        // R-E1（E-P0-2）：官方 v1.0 根级形态（uuid/token/ts、事件字段在 event 内、无 data 包裹）
+        // 此前被 SafeDeserialize<EventMessage> 整帧丢弃（Data==null → Warning return）
+        var handler = CreateHandler();
+        var v1Message = """
+            {"ts":"1502199207.7171419","uuid":"bc447199585340d1f3728d26b1c0297a","token":"41a9425ea7df4536a7623e38fa321bae",
+             "type":"event_callback","event":{"app_id":"cli_9c8609450f78d102","tenant_key":"736588c9260f175c","type":"p2p_chat_create"}}
+            """;
+
+        EventData? capturedEventData = null;
+        _handlerFactoryMock
+            .Setup(f => f.HandleEventParallelAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .Callback<string, EventData, CancellationToken>((_, ed, _) => capturedEventData = ed)
+            .Returns(Task.CompletedTask);
+
+        await handler.HandleAsync(v1Message);
+
+        capturedEventData.Should().NotBeNull("官方 v1.0 帧不得再被整帧丢弃");
+        capturedEventData!.EventId.Should().Be("bc447199585340d1f3728d26b1c0297a");
+        capturedEventData.EventType.Should().Be("p2p_chat_create");
+        capturedEventData.AppId.Should().Be("cli_9c8609450f78d102");
+        capturedEventData.TenantKey.Should().Be("736588c9260f175c");
+        capturedEventData.Header!.Token.Should().Be("41a9425ea7df4536a7623e38fa321bae");
+        capturedEventData.Header.Schema.Should().BeNull();
+
+        _handlerFactoryMock.Verify(
+            f => f.HandleEventParallelAsync("p2p_chat_create", It.IsAny<EventData>(), It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
@@ -730,9 +767,8 @@ public class FeishuEventMessageHandlerTests
     [Fact]
     public async Task HandleAsync_WithV2Event_EventShouldBeReadable_AfterParseScopeDisposes()
     {
-        // Arrange - E9/P1-10：eventElement 隶属于 using jsonDoc 的池化缓冲，Clone() 使其脱离文档
-        // 生命周期。HandleAsync 返回即文档已 Dispose——此后读取 eventData.Event 必须安全。
-        // 若有人移除 Clone()（直接赋值 JsonElement），本用例将抛 ObjectDisposedException 或读到脏内存。
+        // Arrange - E9/P1-10 + R-E1（AD-3）：Event 写侧统一为 JSON 原文字符串（GetRawText 复制），
+        // HandleAsync 返回即文档已 Dispose——此后读取 eventData.Event 必须安全且内容完整。
         var handler = CreateHandler();
         var v2Message = "{\"schema\":\"2.0\",\"header\":{\"event_id\":\"evt_clone_life\",\"event_type\":\"drive.file.edit_v1\",\"tenant_key\":\"tk\",\"app_id\":\"app\"},\"event\":{\"file_token\":\"ft_clone_123\",\"user\":\"u1\"}}";
 
@@ -744,13 +780,12 @@ public class FeishuEventMessageHandlerTests
 
         await handler.HandleAsync(v2Message);
 
-        // Assert：HandleAsync 已返回（jsonDoc 已 Dispose），Event 必须仍是可读的独立 JsonElement
+        // Assert：HandleAsync 已返回（jsonDoc 已 Dispose），Event 必须是完整可读的 JSON 字符串
         capturedEventData.Should().NotBeNull();
-        capturedEventData!.Event.Should().BeOfType<System.Text.Json.JsonElement>();
-        var element = (System.Text.Json.JsonElement)capturedEventData.Event!;
-        element.ValueKind.Should().Be(System.Text.Json.JsonValueKind.Object);
-        element.TryGetProperty("file_token", out var fileToken).Should().BeTrue();
-        fileToken.GetString().Should().Be("ft_clone_123", "Clone 后元素内容必须完整可读");
+        capturedEventData!.Event.Should().BeOfType<string>("R-E1 写侧统一为 string");
+        var raw = capturedEventData.GetEventRawJson();
+        raw.Should().NotBeNullOrEmpty();
+        raw!.Should().Contain("ft_clone_123").And.Contain("u1");
     }
 
     [Fact]

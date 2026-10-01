@@ -125,6 +125,16 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
         _stoppingToken = stoppingToken;
         _logger.LogInformation("飞书WebSocket后台服务正在启动...");
 
+        // R-E1（E-P2-1）：双通道 IgnoreUnknownEventTypes 默认值不同（WS=false 回退默认处理器兜底，
+        // Webhook=true 静默忽略）。不改默认值（AD-5），仅做一次性启动告警提示显式对齐，
+        // 模式对齐既有 WarnIfDeduplicationKeysAreIneffective 单出口告警。
+        if (!_optionsMonitor.CurrentValue.IgnoreUnknownEventTypes)
+        {
+            _logger.LogWarning(
+                "IgnoreUnknownEventTypes=false（WS 默认值）：未注册事件将回退默认处理器兜底。" +
+                "Webhook 通道默认为 true（静默忽略），跨通道部署建议显式对齐该配置");
+        }
+
         // 初始连接重试：首次启动失败时进行有限次重试
         int initialRetryCount = 0;
         const int maxInitialRetries = 3;

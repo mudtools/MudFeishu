@@ -257,4 +257,19 @@ public interface IFeishuV2Task : IFeishuAppContextSwitcher
           [Query("page_token")] string? page_token = null,
           [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
           CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 设置指定任务的父任务。
+    /// <para>设置后，该任务会成为父任务的子任务。若将 ancestor_guid 设置为空字符串，则表示将该任务转为独立任务。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/task/set_ancestor_task">接口文档</see></para>
+    /// </summary>
+    /// <param name="task_guid">要设置父任务的任务 GUID。 示例值："e297ddff-06ca-4166-b917-4ce57cd3a7a0"</param>
+    /// <param name="setAncestorTaskRequest">设置父任务请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/task/v2/tasks/{task_guid}/set_ancestor_task")]
+    Task<FeishuNullDataApiResult?> SetAncestorTaskByIdAsync(
+         [Path] string task_guid,
+         [Body] SetAncestorTaskRequest setAncestorTaskRequest,
+         CancellationToken cancellationToken = default);
 }

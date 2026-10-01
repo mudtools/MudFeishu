@@ -96,8 +96,8 @@ namespace Mud.Feishu.DataModels.AI;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.AI.TranslateTerm))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.AI.TranslateTextRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.AI.TranslateTextResult))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.AI.FileUploadRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.AI.ContractFileUploadRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.AI.FileUploadRequest))]
 internal partial class AIJsonContext : JsonSerializerContext
 {
 }

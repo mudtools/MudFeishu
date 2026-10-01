@@ -23,7 +23,6 @@ description: 该接口用于以租户身份管理企业内所有用户的邮箱�
 | DeleteUserMailboxAliasAsync | 删除用户邮箱别名 | TenantAccessToken | DELETE |
 | GetUserMailboxAliasPageListAsync | 获取用户邮箱所有别名 | TenantAccessToken | GET |
 | QueryUserMailboxAddressAsync | 查询邮箱地址状态 | TenantAccessToken | POST |
-| GetUserMailboxProfileAsync | 查询用户主邮箱地址 | TenantAccessToken | GET |
 
 ## 函数详细内容
 
@@ -292,42 +291,3 @@ if (result?.Data?.UserLists != null)
 }
 ```
 
----
-
-### GetUserMailboxProfileAsync
-查询用户主邮箱地址
-
-**函数签名**
-```csharp
-Task<FeishuApiResult<UserMailboxProfileResult>?> GetUserMailboxProfileAsync(
-   [Path] string user_mailbox_id,
-   CancellationToken cancellationToken = default);
-```
-
-**认证**
-TenantAccessToken（租户访问令牌）
-
-**参数**
-| 参数名 | 类型 | 必填 | 描述 | 示例 |
-| :--- | :--- | :--- | :--- | :--- |
-| user_mailbox_id | string | ✅ | 用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。 | user@example.com |
-| cancellationToken | CancellationToken | ⚪ | 取消操作令牌对象 | default |
-
-**响应**
-```json
-{
-  "code": 0,
-  "msg": "success",
-  "data": {
-    "primary_email_address": "user@example.com",
-    "not_found_reason": ""
-  }
-}
-```
-
-**说明**
-- 根据用户邮箱 ID 查询其主邮箱地址
-- 邮箱地址不存在时，可通过 `not_found_reason` 判断未命中原因
-
-**接口文档**
-[查询用户主邮箱地址](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox/profile)

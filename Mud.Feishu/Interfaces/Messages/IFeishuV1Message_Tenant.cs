@@ -50,7 +50,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
 
     /// <summary>
     /// 编辑已发送的消息内容，支持编辑文本、富文本消息。
-    /// <para>如需编辑卡片消息，请使用<see href="https://open.feishu.cn/document/server-docs/im-v1/message/patch">更新应用发送的消息卡片</see>接口。</para>
+    /// <para>如需编辑卡片消息，请使用<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/message/patch">更新应用发送的消息卡片</see>接口。</para>
     /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message/update">接口文档</see></para>
     /// </summary>
     /// <param name="editMessageRequest">编辑消息请求体。</param>
@@ -99,7 +99,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
 
     /// <summary>
     /// 将话题转发至指定的用户、群聊或话题。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/thread/forward">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/thread/forward">接口文档</see></para>
     /// </summary>
     /// <param name="thread_id">要转发的话题ID。示例值："omt_dc132645203"</param>
     /// <param name="receiveMessageRequest">转发消息请求体。</param>
@@ -119,7 +119,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
 
     /// <summary>
     /// 在最新一条消息下方添加气泡样式的内容，当消息接收者点击气泡或者新消息到达后，气泡消失。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message/push_follow_up">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/im-v1/message/push_follow_up">接口文档</see></para>
     /// </summary>
     /// <param name="message_id">机器人发送的消息 ID。示例值："om_dc13264520392913993dd051dba21dcf"</param>
     /// <param name="messageFollowUpRequest">跟随气泡请求体。</param>
@@ -181,7 +181,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <summary>
     /// 获取指定消息内包含的资源文件，包括音频、视频、图片和文件。成功调用后，返回二进制文件流下载文件。
     /// <para>注意：该函数适用于获取小文件。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message-resource/get">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/message-resource/get">接口文档</see></para>
     /// </summary>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <param name="message_id">待查询的消息 ID。</param>
@@ -213,7 +213,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// <summary>
     /// 获取指定消息内包含的资源文件，包括音频、视频、图片和文件。成功调用后，返回二进制文件流下载文件。
     /// <para>注意：该函数适用于获取大文件。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message-resource/get">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/message-resource/get">接口文档</see></para>
     /// </summary>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <param name="message_id">待查询的消息 ID。</param>
@@ -251,7 +251,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
 
     /// <summary>
     /// 通过消息 ID（message_id）更新已发送的消息卡片的内容。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message/patch">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/message/patch">接口文档</see></para>
     /// </summary>
     /// <param name="message_id">待更新的消息的 ID。示例值："om_dc13264520392913993dd051dba21dcf"</param>
     /// <param name="patchMessageRequest">更新消息卡片请求体。</param>
@@ -265,7 +265,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
 
     /// <summary>
     /// 搜索当前用户（或机器人）可见的单聊、群聊会话中的消息，支持按关键词、会话、发送者、时间等条件过滤。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message/search">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/message/search">接口文档</see></para>
     /// </summary>
     /// <param name="searchMessageRequest">搜索消息请求体。</param>
     /// <param name="page_size">分页大小，即本次请求所返回的信息列表内的最大条目数。默认值：10</param>
@@ -389,7 +389,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     #region 消息加急
     /// <summary>
     /// 把指定消息加急给目标用户，加急仅在飞书客户端内通知。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message/urgent_app">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/message/urgent_app">接口文档</see></para>
     /// </summary>
     /// <param name="sendMessageRequest">消息加急请求体。</param>
     /// <param name="message_id">待加急的消息 ID。</param>
@@ -404,7 +404,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
 
     /// <summary>
     /// 把指定消息加急给目标用户，加急将通过飞书客户端和短信进行通知。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message/urgent_sms">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/message/urgent_sms">接口文档</see></para>
     /// </summary>
     /// <param name="sendMessageRequest">消息加急请求体。</param>
     /// <param name="message_id">待加急的消息 ID。</param>
@@ -419,7 +419,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
 
     /// <summary>
     /// 把指定消息加急给目标用户，加急将通过飞书客户端和电话进行通知。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message/urgent_phone">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/message/urgent_phone">接口文档</see></para>
     /// </summary>
     /// <param name="sendMessageRequest">消息加急请求体。</param>
     /// <param name="message_id">待加急的消息 ID。</param>

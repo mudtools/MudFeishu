@@ -32,7 +32,7 @@ public interface IFeishuV1VideoConferencingBot : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 分页获取指定会议内发生的会中事件，例如成员加入、离开、转写接收等。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/bot/events">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/vc-v1/bot/events">接口文档</see></para>
     /// </summary>
     /// <param name="meeting_id">会议 ID。</param>
     /// <param name="start_time">查询的起始时间，秒级时间戳。</param>
@@ -54,7 +54,7 @@ public interface IFeishuV1VideoConferencingBot : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 通过会议号使机器人加入指定的会议。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/bot/join">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/vc-v1/bot/join">接口文档</see></para>
     /// </summary>
     /// <param name="joinBotRequest">机器人入会请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -66,7 +66,7 @@ public interface IFeishuV1VideoConferencingBot : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 使机器人离开指定的会议。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/bot/leave">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/vc-v1/bot/leave">接口文档</see></para>
     /// </summary>
     /// <param name="leaveBotRequest">机器人离会请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -78,7 +78,7 @@ public interface IFeishuV1VideoConferencingBot : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 机器人在会中发送文本消息或反馈表情。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/bot/message">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/vc-v1/bot/message">接口文档</see></para>
     /// </summary>
     /// <param name="messageBotRequest">会中发送消息请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -90,7 +90,7 @@ public interface IFeishuV1VideoConferencingBot : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 查询指定用户当前正在参加的会议，返回会议号、会议 ID 与会议标题。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/bot/user_active_meeting">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/vc-v1/bot/user_active_meeting">接口文档</see></para>
     /// </summary>
     /// <param name="user_id">目标用户的 ID。以应用身份调用时必填；以用户身份调用时可不填，默认为当前调用用户。</param>
     /// <param name="user_id_type">用户 ID 类型，默认值：open_id</param>

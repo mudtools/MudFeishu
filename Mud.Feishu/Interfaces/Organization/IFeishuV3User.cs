@@ -102,7 +102,7 @@ public interface IFeishuV3User : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 分页获取租户（或当前授权范围）下的用户列表，用户信息包括用户 ID、名称、邮箱、手机号、状态以及所属部门等。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/user/list">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/contact-v3/user/list">接口文档</see></para>
     /// </summary>
     /// <param name="department_id">部门 ID，用于获取该部门下的直属用户，ID 类型与 department_id_type 的取值保持一致。</param>
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
@@ -122,7 +122,7 @@ public interface IFeishuV3User : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 以全量覆盖的方式更新通讯录中指定用户的信息，包括名称、邮箱、手机号、所属部门以及自定义字段等。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/user/update">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/contact-v3/user/update">接口文档</see></para>
     /// </summary>
     /// <param name="user_id">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="userModel">用于更新的用户请求体。</param>
@@ -140,7 +140,7 @@ public interface IFeishuV3User : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 批量获取多个用户的基础信息，仅返回用户 ID、姓名与国际化名称。相较于批量查询用户接口，本接口返回字段更少、性能更高。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/user/basic_batch">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/contact-v3/user/basic_batch">接口文档</see></para>
     /// </summary>
     /// <param name="basicBatchUserRequest">批量获取用户基础信息请求体。</param>
     /// <param name="user_id_type">用户 ID 类型</param>

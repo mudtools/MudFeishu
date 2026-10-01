@@ -87,7 +87,7 @@ public interface IFeishuV3Departments : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 分页获取租户下的部门列表，列表内包含部门的名称、ID、父部门、负责人以及状态等信息。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/department/list">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/contact-v3/department/list">接口文档</see></para>
     /// </summary>
     /// <param name="parent_department_id">父部门的 ID，填写 0 表示获取根部门下的子部门。</param>
     /// <param name="fetch_child">是否递归获取子部门。true 表示递归获取，false 表示只获取直接子部门。</param>

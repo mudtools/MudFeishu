@@ -39,7 +39,7 @@ public interface IFeishuV2WikiNodes : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取知识空间节点信息。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/space/get_node">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/space-node/get_node">接口文档</see></para>
     /// </summary>
     /// <param name="token">
     /// <para>必填：是</para>

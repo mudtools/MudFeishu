@@ -21,7 +21,7 @@ public delegate Task<FeishuToolResult> FeishuToolHandler(
     CancellationToken cancellationToken);
 
 /// <summary>
-/// 工具风险分级（AT-B13 / R3 评审 D2）：<b>唯一真相源是编译期 Schema 的 <c>x-feishu.risk</c></b>
+/// 工具风险分级：<b>唯一真相源是编译期 Schema 的 <c>x-feishu.risk</c></b>
 /// （由源生成器从 SDK 事实派生：危险词 → <c>high-risk-write</c>；<c>PUT/PATCH/DELETE</c> → <c>write</c>；
 /// 其余 → <c>read</c>）。运行时<b>不得手写</b>本值，否则产生第二真相源并与 golden 脱钩。
 /// </summary>

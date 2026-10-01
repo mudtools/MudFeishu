@@ -469,6 +469,10 @@ sequenceDiagram
 | **Security Hardening** | Sliding window rate limiting, threat detection, security audit, key validation, JSON depth limit, private IP detection |
 | **Performance**        | Streaming request body reading, source generator serialization, memory optimization, semaphore concurrency control |
 
+> ⚠️ **Encrypted transport prerequisite**: the Webhook module only supports **encrypted mode** for event subscription verification (plaintext `url_verification` requests are always rejected with 403).
+> Enable encryption and configure the Encrypt Key for the subscribing app on the Feishu Open Platform. See the [Webhook documentation](./Mud.Feishu.Webhook/README_EN.md).
+> The WebSocket long-connection channel has no `url_verification` step (authentication goes through the connection handshake).
+
 **Security Enhancement Features**:
 
 - ✅ **Content-Type Validation** - Only accepts `application/json` requests

@@ -30,6 +30,10 @@ A webhook component for Feishu event subscription and handling, providing comple
 - ✅ **Cross-Platform**: Supports .NET Standard 2.0, .NET 6.0, .NET 8.0, .NET 10.0
 - ✅ **Native AOT**: First-class Native AOT publishing on net8.0+, with source-generated JSON serialization and configuration binding
 
+> ⚠️ **Encrypted transport prerequisite (ADR, fixed in R-E1)**: this module only supports `url_verification` in **encrypted mode** (the encrypted challenge payload is decrypted and answered).
+> Plaintext `url_verification` requests are always rejected with **403**. Make sure encryption is enabled and an Encrypt Key is configured for the subscribing app on the Feishu Open Platform
+> (encryption strategy set to "Encrypt"); otherwise the event subscription cannot pass URL verification. The WebSocket long-connection channel has no `url_verification` step (authentication goes through the connection handshake).
+
 ## Quick Start
 
 ### 1. Install NuGet Package

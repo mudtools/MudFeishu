@@ -2,9 +2,9 @@
 
 ## [未发布] - 2026-10-01
 
-> 主题：**适配 `Mud.HttpUtils` 3.0.0（上游 `BC-27`：移除 UseApp / UseDefaultApp / BeginScope(string)）**。
+> 主题：**适配 `Mud.HttpUtils` 3.0.0（上游 `BC-27`：移除 UseApp / UseDefaultApp / BeginScope(string)）** 与 **事件 v1.0/v2.0 双格式解析修复（R-E1）**。
 > 本仓对外契约**无移除**（三个旧成员由 `IFeishuAppContextSwitcher` 接续声明并标 `[Obsolete]`），
-> 建议版本 **3.0.1**（补丁级；对外 API 仅新增 `IAppScopeSwitcher` 继承与废弃标注）。
+> 建议版本 **3.1.0**（minor 级；无公开 API 移除，新增 `FeishuEventDataParser` / `GetEventRawJson` / `AddFailedEventStore` 等公开面）。
 > 细节见 `.docs/MudHttpUtils-3.0.0-破坏性变更改造计划.md` §10。
 
 ### 依赖升级
@@ -33,6 +33,24 @@
 - 以 `IFeishuAppContextSwitcher` 类型调用 `UseApp` / `UseDefaultApp` / `BeginScope(string)` 会产生 **`CS0618`** 警告（有意引导）。
   若宿主启用 `TreatWarningsAsErrors`，请改用 `UseAppScope` / `UseDefaultAppScope`（守卫相同，额外自动归还上下文），或临时 `NoWarn CS0618`。
 - 语义提醒：`UseAppScope` 在 `using` 结束时**自动回切**；`UseApp` 会一直保持到下次切换（长生命周期宿主须显式切回）。
+
+### 事件 v1.0/v2.0 双格式解析修复（R-E1）
+
+- **新增共享事件解析器 `FeishuEventDataParser`**（Abstractions，单一真源）：v2.0 / v1.0 官方形态 / `data` 包裹兼容形态统一解析；
+  WebSocket 与 Webhook 双通道删除各自平行实现，契约守卫 `EventParserSingleSourceGuards` 阻止回归。
+- **修复（P0）**：Webhook 通道 v1.0 事件字段映射错误导致被空字段 fail-closed 400 拒绝（E-P0-1）；
+  WebSocket 通道 v1.0 官方帧（根级 `uuid`/`token`/`ts`、事件字段在 `event` 内）被整帧静默丢弃（E-P0-2）。现两通道均正常路由 v1.0 事件（事件类型取 `event.type` 原值，handler 按此注册）。
+- **修复（P1）**：v1.0 事件根级 `token` 现解析进入合成 Header（`Schema == null`，字段取自根级 `uuid`/`token`/`ts` 与 `event.*`，E-P1-1）——
+  判定 v1.0 请用 `Schema == null`，不要再用 `Header == null`；来源校验与依赖 Header 的幂等逻辑在 v1.0 下恢复可用。
+- **修复（P1）**：`EventData.Event` 写侧统一为 JSON 原文**字符串**（原 WS 通道写 `JsonElement`，E-P1-2）。
+  属性类型保持 `object?` 不变；读取请改用扩展 `GetEventRawJson()`，下一 major 收敛为 `string?`。
+- **修复（P1）**：WebSocket 通道处理失败可经 `AddFailedEventStore<T>()` / `AddFailedEventStore(instance)` 落盘
+  `IFailedEventStore`（TryAdd 语义，不默认注册，未注册零行为变化；业务失败分支落盘，取消/拦截终态不落盘）。
+  配套新增 `FeishuWebSocketOptions.FailedEventInitialRetryDelaySeconds`（默认 10，非正数回退默认）。
+- **行为变更（P2）**：`EventData.CreateTime` 语义由「秒」修正为**毫秒**（与 XML 注释对齐，E-P2-2，v1.0 `ts` 一并纳入统一启发式）。
+  按秒消费的宿主请 ×1000 或改用 `DateTimeOffset.FromUnixTimeMilliseconds`。
+- **P2**：`IgnoreUnknownEventTypes` 默认值两通道不一致（Webhook=true / WS=false，AD-5 不改默认）——
+  两侧 Options XML 已注明差异原因，WS=false 时启动期输出一次性对齐告警。
 
 ## [3.0.0] - 2026-09-28
 

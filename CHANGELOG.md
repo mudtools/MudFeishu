@@ -65,8 +65,13 @@ InvalidOperationException or NotSupportedException`）收口为 `when (ex is not
   `FeishuToolBindingTests` 原放行用例拆为 `..._ShouldDeny_WhenAuthorizerNotApproved` +
   `..._ShouldPass_WhenAuthorizerApproved`（后者锁"宿主批准后不得死胡同"）。
 - 落地口径：**能并入既有测试类即不新建类**（原方案 8 个新类实际只新建 2 个），避免重复 fixture 装配。
-- 实测（net8.0，`--filter "Category!=Stress"`）：`Mud.Feishu.AI.Tests` **264/264**、
+- 实测（net8.0 / net10.0 双 TFM，`--filter "Category!=Stress"`）：`Mud.Feishu.AI.Tests` **264/264**、
   `Mud.Feishu.AI.FeishuTools.Tests` **372/372**、`Mud.Feishu.AI.Tools.Tests` **32/32**。
+- **R4-8 用例并行隔离修正**：`RunStreamingAsync_ShouldRecordTokenUsage` 原仅按 operation
+  （`feishu.agent.run_streaming`）从**进程级** `ActivitySource` 取 `Single`——xUnit 并行下邻居用例的
+  同名 Span 会一并入队，**net10.0 全量运行**抛 `Sequence contains more than one matching element`
+  （net8.0 因时序侥幸通过）。改用本用例独有的 Agent 名过滤 `feishu.agent.name` 标签
+  （对齐既有 `RunStreamingAsync_ShouldRecordLlmDuration_Once` 的既有做法）。
 - **红转绿留档**：R4-3 临时还原覆盖式赋值 → `HasAnswer` 为 `False`（红），恢复累积后绿；
   R4-1/R4-7 守卫反转/改写均**先跑红再改源码**；R4-2 实测**全绿**（证否"增量陈旧"，
   故未转 `CompilationProvider` 方案，用例转为回归锁）。逐条登记见方案 §5.3。

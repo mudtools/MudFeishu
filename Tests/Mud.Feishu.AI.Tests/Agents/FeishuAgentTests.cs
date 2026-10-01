@@ -507,6 +507,12 @@ public class FeishuAgentTests
         };
         ActivitySource.AddActivityListener(listener);
 
+        // Span 是**进程级** ActivitySource 产物，xUnit 并行执行的其他用例也会打同一 operation——
+        // 故用本用例独有的 Agent 名做维度过滤，才能断言"恰好一次"而不受邻居干扰
+        // （对齐 RunStreamingAsync_ShouldRecordLlmDuration_Once 的做法；net10.0 全量运行下
+        // 仅按 operation 过滤会因邻居的 run_streaming Span 同时入队而抛"Sequence contains more than one matching element"）。
+        var agentName = "stream-usage-" + Guid.NewGuid().ToString("N");
+
         var mock = new Mock<IChatClient>();
         mock.Setup(c => c.GetStreamingResponseAsync(
                 It.IsAny<IEnumerable<ChatMessage>>(),
@@ -514,14 +520,18 @@ public class FeishuAgentTests
                 It.IsAny<CancellationToken>()))
             .Returns(StreamChunksWithUsage(input: 10, output: 5, total: 15));
 
-        var agent = new FeishuAgent(mock.Object, ValidOptions());
+        var options = ValidOptions();
+        options.Name = agentName;
+        var agent = new FeishuAgent(mock.Object, options);
         var session = await agent.CreateSessionAsync();
 
         await foreach (var _ in agent.RunStreamingAsync("流式", session))
         {
         }
 
-        var runActivity = stopped.Single(a => a.OperationName == "feishu.agent.run_streaming");
+        var runActivity = stopped.Single(
+            a => a.OperationName == "feishu.agent.run_streaming"
+                && (string?)a.GetTagItem("feishu.agent.name") == agentName);
         runActivity.GetTagItem("feishu.llm.input_tokens").Should().Be(10L,
             "流式路径必须把输入 token 写入 Span（R4-8）");
         runActivity.GetTagItem("feishu.llm.output_tokens").Should().Be(5L,

@@ -11,7 +11,7 @@ namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// 任务清单动态订阅
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/task-v2/tasklist-activity_subscription/create"/></para>
+/// <para><see href="https://open.feishu.cn/document/task-v2/tasklist-activity_subscription/create">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

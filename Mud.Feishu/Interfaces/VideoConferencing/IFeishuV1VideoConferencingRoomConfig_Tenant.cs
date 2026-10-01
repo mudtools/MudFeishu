@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 /// <summary>
 /// 会议室配置用于统一管理国家/地区、城市、楼宇、楼层与会议室各层级上的展示与状态配置。
 /// <para>当前接口使用租户令牌访问，适应于租户应用场景。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/historic-version/meeting_room-v1/room_config/rooms-configuration-overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/historic-version/meeting_room-v1/room_config/rooms-configuration-overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "VideoConferencing")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

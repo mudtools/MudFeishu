@@ -13,7 +13,7 @@ namespace Mud.Feishu;
 /// <summary>
 /// 会议管理功能为用户在会议中进行邀请参会成员、移除参会成员和设置主持人等操作。
 /// <para>功能包括：获取会议详情、获取与会议号相关联的会议列表、邀请参会人、移除参会人、设置主持人、结束会议。事件包括：会议开始、会议结束、加入会议、离开会议、录制开始、录制停止、录制完成、屏幕共享开始、屏幕共享结束。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/vc-v1/meeting/meeting-overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/meeting/meeting-overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "VideoConferencing", InheritedFrom = nameof(FeishuV1VideoConferencingMeeting))]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

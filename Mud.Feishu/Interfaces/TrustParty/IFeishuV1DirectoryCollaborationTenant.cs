@@ -11,7 +11,7 @@ namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// 飞书关联组织管理端（directory/v1）SDK 用于管理员视角查询本租户所有已建联的关联组织（返回 i18n_text 结构的名称与简称），为创建可搜可见规则等管理操作提供有效的 tenant key。全部端点同时支持 tenant_access_token 与 user_access_token。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/trust_party-v1/-collaboraiton-organization/list-2"/></para>
+/// <para><see href="https://open.feishu.cn/document/trust_party-v1/-collaboraiton-organization/list-2">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

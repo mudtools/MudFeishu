@@ -11,7 +11,7 @@ namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// 评论接口可以实现评论创建、回复、更新、删除、获取详情等功能。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/task-v2/comment/create"/></para>
+/// <para><see href="https://open.feishu.cn/document/task-v2/comment/create">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 审批实例（以用户身份调用）：支持抄送、催办、撤回当前用户身份提交的审批实例，查看已发起列表与实例详情，以及订阅/退订实例状态变更事件。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/approval-v4/instance/overview-approval-instance"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/instance/overview-approval-instance">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Approval")]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

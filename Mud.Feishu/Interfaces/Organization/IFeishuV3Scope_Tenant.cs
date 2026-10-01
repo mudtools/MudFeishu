@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 /// <summary>
 /// 通讯录授权范围用于描述当前应用可读写的部门、用户与用户组集合，便于应用在授权边界内安全地访问通讯录数据。
 /// <para>当前接口使用租户令牌访问，适应于租户应用场景。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/contact-v3/scope/list"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/scope/list">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Organization")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

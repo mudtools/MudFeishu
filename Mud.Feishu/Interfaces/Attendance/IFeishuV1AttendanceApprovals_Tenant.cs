@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 用于管理三方系统假勤审批的请假、加班、外出和出差四种审批数据。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/attendance-v1/user_approval/query"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/attendance-v1/user_approval/query">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Attendance")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

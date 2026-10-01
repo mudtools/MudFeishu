@@ -9,7 +9,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书在线文档中的评论是文件、文件夹、文档、电子表格、多维表格、思维笔记、知识库中的文档的评论。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/CommentAPI/list"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/docs/CommentAPI/list">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Drive", InheritedFrom = nameof(FeishuV1DriveComments))]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

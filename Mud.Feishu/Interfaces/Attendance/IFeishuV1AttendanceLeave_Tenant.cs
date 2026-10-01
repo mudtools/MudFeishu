@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 考勤休假管理，包含休假过期时间获取发放记录、休假发放记录接口。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/attendance-v1/leave_employ_expire_record/get"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/attendance-v1/leave_employ_expire_record/get">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Attendance")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

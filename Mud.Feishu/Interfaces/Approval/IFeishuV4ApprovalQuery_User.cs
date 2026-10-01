@@ -9,7 +9,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 通过不同条件查询审批系统中符合条件的审批实例、审批抄送、审批抄送列表(适用于原生审批及三方审批)。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/approval-v4/approval-search/query-2"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/approval-search/query-2">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Approval", InheritedFrom = nameof(FeishuV4ApprovalQuery))]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

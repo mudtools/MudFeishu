@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 审批任务（以用户身份调用）：支持同意、拒绝、转交、退回、加签审批任务，获取任务列表，以及订阅/退订任务状态变更事件。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/approval-v4/task/introduction"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/task/introduction">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Approval")]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

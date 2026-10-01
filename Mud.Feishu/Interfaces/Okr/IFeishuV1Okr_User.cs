@@ -10,7 +10,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书 OKR「OKR 查询」SDK 是一组服务端 OpenAPI 的封装，用于按用户获取 OKR 列表以及按 OKR id 批量获取 OKR 详情（用户令牌）。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/okr-v1/okr/list"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/okr-v1/okr/list">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Okr", InheritedFrom = nameof(FeishuV1Okr))]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

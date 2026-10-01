@@ -11,7 +11,7 @@ namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// 飞书关联组织（trust_party/v1）SDK 是一组服务端 OpenAPI 的封装，用于查询本组织与对方关联组织（协作组织）之间的协作关系，包括可见关联组织列表、关联组织详情、组织内可见的部门/成员/用户组信息以及部门、成员详情。全部端点同时支持 tenant_access_token 与 user_access_token（二者按不同的可见性规则校验）。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/trust_party-v1/-collaboraiton-organization/list"/></para>
+/// <para><see href="https://open.feishu.cn/document/trust_party-v1/-collaboraiton-organization/list">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

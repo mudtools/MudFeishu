@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书招聘（Hire）附件入口域 SDK 是一组服务端 OpenAPI 的封装，用于招聘系统附件文件的上传（创建通用附件）、附件元信息（文件名、创建时间、下载地址）查询，以及人才简历附件的 PDF 格式下载链接获取。本接口全部端点仅支持 tenant_access_token 调用。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/hire-v1/attachment/create_attachment"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/attachment/create_attachment">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Hire")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

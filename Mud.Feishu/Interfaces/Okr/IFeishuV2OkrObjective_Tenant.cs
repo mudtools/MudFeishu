@@ -10,7 +10,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书 OKR「Objective」SDK 是一组服务端 OpenAPI 的封装，用于获取、修改与删除 OKR Cycle 下的 Objective（租户令牌）。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/okr-v2/okr-objective/get"/></para>
+/// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/okr-v2/okr-objective/get">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Okr", InheritedFrom = nameof(FeishuV2OkrObjective))]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

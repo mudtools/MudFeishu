@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 原生审批实例的流程中包含多个审批节点，审批节点内根据设置的审批人情况，会生成审批任务（一个审批人对应一个审批任务），使用原生审批任务 API，可以同意、拒绝、转交以及退回审批任务。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/approval-v4/task/introduction"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/task/introduction">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Approval")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

@@ -9,7 +9,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书关联组织（trust_party/v1）SDK（用户令牌）：以 user_access_token 身份调用，可见性按 admin 后台对用户设置的可见性规则校验。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/trust_party-v1/-collaboraiton-organization/list"/></para>
+/// <para><see href="https://open.feishu.cn/document/trust_party-v1/-collaboraiton-organization/list">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "TrustParty", InheritedFrom = nameof(FeishuV1TrustPartyCollaborationTenant))]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

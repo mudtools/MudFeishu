@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 审批 Bot 消息，用来通过飞书审批的 Bot 推送消息给用户或更新审批 Bot 消息。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/approval-v4/approval-search/query-2"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/approval-search/query-2">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Approval")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

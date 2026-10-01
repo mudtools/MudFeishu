@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书智能门禁（ACS）访客 SDK 是一组服务端 OpenAPI 的封装，用于以用户身份添加访客与删除访客。本接口全部端点仅支持 user_access_token 调用。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/acs-v1/visitor/create"/></para>
+/// <para><see href="https://open.feishu.cn/document/acs-v1/visitor/create">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Acs")]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

@@ -13,7 +13,7 @@ namespace Mud.Feishu.Interfaces;
 /// 任务可以拥有附件。一个附件可以是任意类型的文件，如图片，PDF文档，zip文件等。
 /// <para>附件不可以单独存在，必须与某种资源产生关联关系。</para>
 /// <para>关联附件的资源类型只有任务。因为附件不可单独存在，因此为新任务添加附件时，必须先调用创建任务接口，完成任务创建，再调用上传附件接口上传文件，并关联到新建的任务上。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/task-v2/attachment/upload"/></para>
+/// <para><see href="https://open.feishu.cn/document/task-v2/attachment/upload">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

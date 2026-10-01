@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 考勤用户管理接口主要实现了修改用户人脸识别信息、批量查询用户人脸识别信息以及上传下载用户人脸识别照片。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/attendance-v1/user_setting/modify"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/attendance-v1/user_setting/modify">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Attendance")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -52,7 +52,6 @@ public interface IFeishuTenantV1AttendanceUserSettings : IFeishuAppContextSwitch
     /// <summary>
     /// 上传用户人脸照片并获取文件 ID，对应小程序端的人脸录入功能。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=upload&amp;project=attendance&amp;resource=file&amp;version=v1"/></para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/file/upload-files">接口文档</see></para>
     /// </summary>
     /// <param name="uploadFileRequest">需要上传的用户人脸照片文件。</param>
     /// <param name="file_name">照片的文件名（含扩展名，必填），如 photo.png。示例值："人脸照片.jpg"。</param>

@@ -17,7 +17,7 @@ namespace Mud.Feishu.Interfaces;
 /// <item>sheetId 为工作表的唯一标识，通过获取工作表 获取。</item>
 /// <item>&lt;开始位置&gt;:&lt;结束位置&gt; 为工作表中单元格的范围，使用数字表示行索引，字母表示列索引。如 A2:B2 表示该工作表第 2 行的 A 列到 B 列。</item>
 /// </list></para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

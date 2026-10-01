@@ -13,7 +13,7 @@ namespace Mud.Feishu.Interfaces;
 /// <summary>
 /// 筛选指在电子表格工作表指定范围中，为指定列（col）设置筛选条件。
 /// <para>本接口提供飞书开放平台电子表格中筛选能力相关方法列表。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

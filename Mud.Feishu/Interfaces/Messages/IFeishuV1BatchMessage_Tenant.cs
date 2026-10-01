@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 用于管理给多个用户或者多个部门发送消息，支持发送文本、富文本、卡片、群名片、个人名片、图片、视频、音频、文件、表情包。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/im-v1/batch_message/send-messages-in-batches"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/batch_message/send-messages-in-batches">接口文档</see></para>
 /// </summary> 
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Message")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

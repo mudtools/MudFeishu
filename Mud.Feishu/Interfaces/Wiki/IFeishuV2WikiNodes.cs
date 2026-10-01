@@ -12,7 +12,7 @@ namespace Mud.Feishu.Interfaces;
 /// <summary>
 /// <para>知识空间中的节点，支持文档、表格等多种文件类型。</para>
 /// <para>文件是各种类型的文件的统称，泛指云空间内所有的文件。每个文件都有唯一 token 作为标识。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/wiki-overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/wiki-overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

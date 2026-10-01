@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书薪酬发放（Payroll）「发薪活动与发薪明细」SDK 是一组服务端 OpenAPI 的封装，用于封存发薪活动、查询发薪活动列表、查询发薪活动明细列表以及按员工批量查询发薪明细。本接口全部端点为 payroll/v1，仅支持 tenant_access_token 调用。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/payroll-v1/payment_activity/list"/></para>
+/// <para><see href="https://open.feishu.cn/document/payroll-v1/payment_activity/list">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Payroll")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

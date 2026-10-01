@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 /// <para>可以：<list type="bullet">按状态分组，待启动-进行中-已完成
 /// <item>按优先级分组，P0-重要且紧急，P1-重要但不紧急，...</item>
 /// <item>按类别分组，市场相关、人事相关，...</item></list></para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/task-v2/section/section-feature-overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/task-v2/section/section-feature-overview">接口文档</see></para>
 /// </summary> 
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Task", InheritedFrom = nameof(FeishuV2TaskSections))]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

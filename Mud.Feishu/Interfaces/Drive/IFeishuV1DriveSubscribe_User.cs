@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 云文档事件订阅，用于订阅云文档的事件，如文件创建、更新、删除等，当云文档发生指定事件时，系统会向配置的地址发送事件通知。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/media/introduction"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/media/introduction">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Drive", InheritedFrom = nameof(FeishuV1DriveSubscribe))]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

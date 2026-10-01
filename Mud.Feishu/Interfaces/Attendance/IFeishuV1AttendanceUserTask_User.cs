@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 考勤打卡结果（用户令牌）：获取企业内员工的实际打卡结果（用户令牌，飞书考勤支持租户/用户两种令牌调用）。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/attendance-v1/user_task/query"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/attendance-v1/user_task/query">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Attendance")]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

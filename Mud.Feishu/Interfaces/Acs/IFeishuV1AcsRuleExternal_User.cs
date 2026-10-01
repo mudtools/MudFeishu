@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书智能门禁（ACS）权限组 SDK 是一组服务端 OpenAPI 的封装，用于创建/更新权限组、删除权限组、查询设备权限组信息，以及将设备绑定到权限组。本接口全部端点仅支持 user_access_token 调用。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/acs-v1/rule_external/create"/></para>
+/// <para><see href="https://open.feishu.cn/document/acs-v1/rule_external/create">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Acs")]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

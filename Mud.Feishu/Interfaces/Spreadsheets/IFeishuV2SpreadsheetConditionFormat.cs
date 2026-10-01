@@ -13,7 +13,7 @@ namespace Mud.Feishu.Interfaces;
 /// <summary>
 /// 电子表格条件格式用于根据指定的条件更改单元格的外观格式。。
 /// <para>目前，电子表格单个工作表中最多支持设置 20 个条件格式。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/conditionformat/condition-format-guide"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/conditionformat/condition-format-guide">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

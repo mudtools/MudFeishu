@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 会议室配置用于对飞书会议室的背景设置、资源管理等进行配置。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/vc-v1/scope_config/room-configuration-overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/scope_config/room-configuration-overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "VideoConferencing")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

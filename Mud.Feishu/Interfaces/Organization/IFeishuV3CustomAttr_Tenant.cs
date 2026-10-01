@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 /// <summary>
 /// 自定义字段是企业在飞书通讯录中为成员扩展的个性化属性，可用于承载标准字段之外的业务信息。
 /// <para>当前接口使用租户令牌访问，适应于租户应用场景。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/contact-v3/custom_attr/list"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/custom_attr/list">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Organization")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

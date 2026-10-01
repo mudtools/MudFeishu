@@ -10,7 +10,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书 OKR「进展记录」SDK 是一组服务端 OpenAPI 的封装，用于创建、更新、查询、删除 OKR 进展记录，以及上传进展记录中的图片附件（用户令牌）。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/okr-v1/progress_record/create"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/okr-v1/progress_record/create">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Okr", InheritedFrom = nameof(FeishuV1OkrProgressRecord))]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

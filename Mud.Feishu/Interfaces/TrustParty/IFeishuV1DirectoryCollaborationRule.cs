@@ -11,7 +11,7 @@ namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// 飞书可搜可见规则（directory/v1/collaboration_rules）SDK 用于管理关联组织间的协作规则：查询、新增、更新、删除规则，控制双方组织内哪些主体（人员/部门/用户组）可以搜到并看见对方组织内的哪些客体。规则主客体实体数量之和需小于100。全部端点同时支持 tenant_access_token 与 user_access_token，调用者需具备关联组织管理员权限。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/trust_party-v1/searchable-and-visible-rules/list"/></para>
+/// <para><see href="https://open.feishu.cn/document/trust_party-v1/searchable-and-visible-rules/list">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

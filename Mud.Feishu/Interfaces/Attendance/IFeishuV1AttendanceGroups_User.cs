@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 /// 考勤组，是对部门或者员工在某个特定场所及特定时间段内的出勤情况
 /// <para>（包括上下班、迟到、早退、病假、婚假、丧假、公休、工作时间、加班情况等）的一种规则设定。</para>
 /// <para>通过设置考勤组，可以从部门、员工两个维度，来设定考勤方式、考勤时间、考勤地点等考勤规则。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/attendance-v1/group/create"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/attendance-v1/group/create">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Attendance", InheritedFrom = nameof(FeishuV1AttendanceGroups))]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

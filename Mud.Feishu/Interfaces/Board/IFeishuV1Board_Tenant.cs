@@ -10,7 +10,7 @@ namespace Mud.Feishu;
 /// <summary>
 /// 画板是全新的图形创作工具，使用门槛低、简洁高效且协作方便，能用画板轻松画出好看的流程图、规划图和方案图，并且可以和团队一起在画板上进行实时的图形化协作。
 /// <para>通过画板 API，可以让画板接入内部业务系统，让画板成为业务流程的一部分。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/docs/board-v1/overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/docs/board-v1/overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(RegistryGroupName = "Drive", TokenManage = nameof(IFeishuAppManager), InheritedFrom = nameof(FeishuV1Board))]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

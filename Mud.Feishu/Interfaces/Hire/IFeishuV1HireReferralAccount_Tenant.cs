@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书招聘（Hire）内推账户入口域 SDK 是一组服务端 OpenAPI 的封装，用于内推奖励账户的注册、启用/停用、余额查询、全额提现以及按时间段的提现数据对账。本接口全部端点仅支持 tenant_access_token 调用。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/hire-v1/referral_account/create"/></para>
+/// <para><see href="https://open.feishu.cn/document/hire-v1/referral_account/create">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Hire")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

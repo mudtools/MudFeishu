@@ -13,7 +13,7 @@ namespace Mud.Feishu;
 /// 飞书人员类型是通讯录中一种特殊的用户属性字段，用于标记用户的身份类型。
 /// <para>当前接口使用租户令牌访问，适应于租户应用场景。</para>
 /// <para>使用通讯录 API，可以对人员类型资源进行增删改查操作。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/contact-v3/employee_type_enum/overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/employee_type_enum/overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Organization")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

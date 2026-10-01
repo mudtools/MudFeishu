@@ -13,7 +13,7 @@ namespace Mud.Feishu;
 /// 排班表是用来描述考勤组内人员每天按哪个班次进行上班。
 /// <para>目前排班表支持按x月y日对一位或多位人员进行排班。当用户的排班数据不存在时会进行创建，当用户的排班数据存在时会按照入参信息进行修改。</para>
 /// <para>注意：每人每天只能在一个考勤组中。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/attendance-v1/user_daily_shift/batch_create"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/attendance-v1/user_daily_shift/batch_create">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Attendance")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

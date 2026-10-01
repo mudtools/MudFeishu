@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书绩效（Performance）后台配置 SDK 是一组服务端 OpenAPI 的封装，覆盖「周期与项目」（查询周期与项目配置、批量查询/导入/删除被评估人补充信息、更新人员组成员、查询被评估人与绩效周期人员快照信息）与「评估配置」（绩效模板、评估项、标签填写题）及「指标配置」（指标模板、指标库指标、指标字段、指标标签）。本接口全部端点仅支持 tenant_access_token 调用；除获取周期列表（performance/v1）外，其余端点为 performance/v2。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/performance-v1/review_config/semester_activity/semester/list"/></para>
+/// <para><see href="https://open.feishu.cn/document/performance-v1/review_config/semester_activity/semester/list">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Performance")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

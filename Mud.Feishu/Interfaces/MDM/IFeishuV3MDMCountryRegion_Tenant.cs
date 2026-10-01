@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书主数据管理（MDM）「国家/地区」SDK 是一组服务端 OpenAPI 的封装，用于通过 mdmcode 批量查询以及分页批量查询国家/地区主数据（行政编码、多语言名称、大洲归属等，支持多语言并定期更新）。本接口全部端点为 mdm/v3，仅支持 tenant_access_token 调用。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/mdm-v1/mdm-v3/country_region/get"/></para>
+/// <para><see href="https://open.feishu.cn/document/mdm-v1/mdm-v3/country_region/get">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "MDM")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

@@ -10,7 +10,7 @@ namespace Mud.Feishu;
 /// <summary>
 /// 审批事件是飞书开放平台众多事件中的一项，开发者可以订阅审批事件，在审批单发生数据状态变更时，及时收到通知，并根据数据变化做出相应的业务处理。
 /// <para>通过事件订阅，开发者可以实时、自动接收到审批资源的状态变化，而无需轮训审批查询接口获取审批资源的最新状态。降低了开发复杂度，节省了接口查询消耗。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/approval-v4/event/function-introduction"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/event/function-introduction">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Approval")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

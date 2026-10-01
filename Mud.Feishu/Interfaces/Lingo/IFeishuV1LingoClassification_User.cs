@@ -10,7 +10,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书词典（Lingo）分类入口域用户态 SDK 是一组服务端 OpenAPI 的封装，用于以用户身份分页获取飞书词典的词典分类。本接口全部端点支持 user_access_token 调用（租户态见 <see cref="IFeishuTenantV1LingoClassification"/>）。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/lingo-v1/overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/lingo-v1/overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Lingo", InheritedFrom = nameof(FeishuV1LingoClassification))]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

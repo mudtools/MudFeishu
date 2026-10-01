@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书安全与合规（Security）「行为审计日志」SDK 用于查询成员的操作行为日志（时间、地点、操作对象等），管理员可借此发现违规操作以保护企业数据和信息安全。实际端点路径为 admin/v1/audit_infos，仅支持 tenant_access_token 调用。查询时请适当缩短查询时间范围并控制查询频次。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/security_and_compliance-v1/audit_log/audit_data_get"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/security_and_compliance-v1/audit_log/audit_data_get">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Security")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

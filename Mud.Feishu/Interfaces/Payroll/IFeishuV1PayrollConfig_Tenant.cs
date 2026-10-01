@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书薪酬发放（Payroll）「基础配置」SDK 是一组服务端 OpenAPI 的封装，用于批量查询算薪项、获取薪资组基本信息以及获取外部数据源配置信息。本接口全部端点为 payroll/v1，仅支持 tenant_access_token 调用。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/payroll-v1/acct_item/list"/></para>
+/// <para><see href="https://open.feishu.cn/document/payroll-v1/acct_item/list">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Payroll")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

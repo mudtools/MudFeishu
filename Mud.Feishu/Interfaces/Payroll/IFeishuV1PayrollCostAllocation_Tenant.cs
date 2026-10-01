@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书薪酬发放（Payroll）「成本分摊」SDK 是一组服务端 OpenAPI 的封装，用于批量查询成本分摊方案、查询成本分摊报表明细与汇总数据。调用明细/汇总接口前，需打开「财务过账」开关并完成发布成本分摊报表。本接口全部端点为 payroll/v1，仅支持 tenant_access_token 调用。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/payroll-v1/cost_allocation_plan/list"/></para>
+/// <para><see href="https://open.feishu.cn/document/payroll-v1/cost_allocation_plan/list">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Payroll")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

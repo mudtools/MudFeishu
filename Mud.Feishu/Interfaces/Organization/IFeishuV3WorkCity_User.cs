@@ -10,7 +10,7 @@ namespace Mud.Feishu;
 /// <summary>
 /// 工作城市是用户属性之一，通过工作城市 API 仅支持查询工作城市信息。
 /// <para>当前接口使用用户令牌访问，适应于用户应用场景。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/contact-v3/work_city/work-city-resources-introduction"/></para>
+/// <para><see href="https://open.feishu.cn/document/contact-v3/work_city/work-city-resources-introduction">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Organization", InheritedFrom = nameof(FeishuV3WorkCity))]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

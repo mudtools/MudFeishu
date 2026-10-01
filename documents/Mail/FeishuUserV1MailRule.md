@@ -22,7 +22,7 @@ description: 该接口用于以用户身份管理自己的邮箱收信规则，�
 | CreateUserMailboxRuleAsync | 创建收信规则 | UserAccessToken | POST | [CreateUserMailboxRuleAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/create) |
 | DeleteUserMailboxRuleAsync | 删除收信规则 | UserAccessToken | DELETE | [DeleteUserMailboxRuleAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/delete) |
 | UpdateUserMailboxRuleAsync | 更新收信规则 | UserAccessToken | PUT | [UpdateUserMailboxRuleAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/update) |
-| GetMailboxRuleListAsync | 列出收信规则 | UserAccessToken | GET | [GetMailboxRuleListAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/list) |
+| GetMailboxRuleListAsync | 列出收信规则 | UserAccessToken | GET | [GetMailboxRuleListAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-rule/list) |
 | ReorderUserMailboxRuleAsync | 对收信规则进行排序 | UserAccessToken | POST | [ReorderUserMailboxRuleAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/reorder) |
 
 ## 函数详细内容

@@ -21,6 +21,7 @@ public interface IFeishuV2SpreadsheetProtected : IFeishuAppContextSwitcher
     /// <summary>
     /// 增加保护范围
     /// <para>在电子表格工作表中设置多个保护范围，支持对行或列设置保护范围。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/protect-range/add-locked-cells">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="user_id_type">定请求体中 users 字段对应的用户 ID 类型。</param>
@@ -37,6 +38,7 @@ public interface IFeishuV2SpreadsheetProtected : IFeishuAppContextSwitcher
     /// <summary>
     /// 修改保护范围
     /// <para>修改电子表格工作表中指定的保护范围。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/protect-range/modify-protection-scopes">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="updateProtectedRequest">创建保护范围的请求体</param>
@@ -51,6 +53,7 @@ public interface IFeishuV2SpreadsheetProtected : IFeishuAppContextSwitcher
     /// <summary>
     /// 获取保护范围
     /// <para>获取电子表格工作表中指定保护范围的信息，包括保护的行列索引、支持编辑的用户 ID、保护范围的备注等。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/protect-range/retrieve-protection-scopes">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="protectIds">要获取的保护范围的 ID 列表，多个 ID 之间逗号分隔。
@@ -68,6 +71,7 @@ public interface IFeishuV2SpreadsheetProtected : IFeishuAppContextSwitcher
     /// <summary>
     /// 删除保护范围
     /// <para>根据保护范围 ID 删除保护范围。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/protect-range/delete-protection-scopes">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="protectIds">要删除的保护范围的 ID 列表，多个 ID 之间逗号分隔。

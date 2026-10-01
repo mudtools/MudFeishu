@@ -28,11 +28,11 @@ range 参数的格式为 `<sheetId>!<开始位置>:<结束位置>`。其中：
 ## 函数列表  
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
 | :--- | :--- | :--- | :--- |----------|
-| CreateRangeAsync | 增加行列 | 租户令牌 / 用户令牌 | POST | — |
-| InsertRangeAsync | 插入行列 | 租户令牌 / 用户令牌 | POST | — |
-| UpdateRangeAsync | 更新行列 | 租户令牌 / 用户令牌 | PUT | — |
-| MoveRangeAsync | 移动行列 | 租户令牌 / 用户令牌 | POST | — |
-| DeleteRangeAsync | 删除行列 | 租户令牌 / 用户令牌 | POST | — |
+| CreateRangeAsync | 增加行列 | 租户令牌 / 用户令牌 | POST | [CreateRangeAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/sheet-rowcol/add-rows-or-columns) |
+| InsertRangeAsync | 插入行列 | 租户令牌 / 用户令牌 | POST | [InsertRangeAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/sheet-rowcol/insert-rows-or-columns) |
+| UpdateRangeAsync | 更新行列 | 租户令牌 / 用户令牌 | PUT | [UpdateRangeAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/sheet-rowcol/update-rows-or-columns) |
+| MoveRangeAsync | 移动行列 | 租户令牌 / 用户令牌 | POST | [MoveRangeAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/sheet-rowcol/move_dimension) |
+| DeleteRangeAsync | 删除行列 | 租户令牌 / 用户令牌 | POST | [DeleteRangeAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/sheet-rowcol/-delete-rows-or-columns) |
 
 ## 函数详细内容  
 

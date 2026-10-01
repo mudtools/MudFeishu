@@ -28,13 +28,13 @@ description: 该接口用于管理飞书电子表格与工作表，提供表格�
 ## 函数列表  
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
 | :--- | :--- | :--- | :--- |----------|
-| CreateSpreadsheetAsync | 创建电子表格 | 租户令牌 / 用户令牌 | POST | — |
-| PatchSpreadsheetAsync | 修改电子表格属性 | 租户令牌 / 用户令牌 | PATCH | — |
-| GetSpreadsheetByTokenAsync | 获取电子表格信息 | 租户令牌 / 用户令牌 | GET | — |
-| BatchUpdateSheetAsync | 操作工作表 | 租户令牌 / 用户令牌 | POST | — |
-| BatchUpdateSheetPropertiesAsync | 更新工作表属性 | 租户令牌 / 用户令牌 | POST | — |
-| GetSpreadsheetSheetsByTokenAsync | 获取所有工作表 | 租户令牌 / 用户令牌 | GET | — |
-| GetSpreadsheetSheetBySheetIdAsync | 查询工作表 | 租户令牌 / 用户令牌 | GET | — |
+| CreateSpreadsheetAsync | 创建电子表格 | 租户令牌 / 用户令牌 | POST | [CreateSpreadsheetAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet/create) |
+| PatchSpreadsheetAsync | 修改电子表格属性 | 租户令牌 / 用户令牌 | PATCH | [PatchSpreadsheetAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet/patch) |
+| GetSpreadsheetByTokenAsync | 获取电子表格信息 | 租户令牌 / 用户令牌 | GET | [GetSpreadsheetByTokenAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet/get) |
+| BatchUpdateSheetAsync | 操作工作表 | 租户令牌 / 用户令牌 | POST | [BatchUpdateSheetAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet/operate-sheets) |
+| BatchUpdateSheetPropertiesAsync | 更新工作表属性 | 租户令牌 / 用户令牌 | POST | [BatchUpdateSheetPropertiesAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet/update-sheet-properties) |
+| GetSpreadsheetSheetsByTokenAsync | 获取所有工作表 | 租户令牌 / 用户令牌 | GET | [GetSpreadsheetSheetsByTokenAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet/query) |
+| GetSpreadsheetSheetBySheetIdAsync | 查询工作表 | 租户令牌 / 用户令牌 | GET | [GetSpreadsheetSheetBySheetIdAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet/get) |
 
 ## 函数详细内容  
 

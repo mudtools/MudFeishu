@@ -24,10 +24,10 @@ description: 该接口用于管理飞书电子表格的数据校验（下拉列�
 ## 函数列表  
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
 | :--- | :--- | :--- | :--- |----------|
-| CreateDataValidationAsync | 创建数据验证 | 租户令牌 / 用户令牌 | POST | — |
-| UpdateDataValidationAsync | 更新下拉列表设置 | 租户令牌 / 用户令牌 | PUT | — |
-| GetDataValidationsAsync | 获取数据验证 | 租户令牌 / 用户令牌 | GET | — |
-| DeleteDataValidationAsync | 删除下拉列表设置 | 租户令牌 / 用户令牌 | DELETE | — |
+| CreateDataValidationAsync | 创建数据验证 | 租户令牌 / 用户令牌 | POST | [CreateDataValidationAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/datavalidation/set-dropdown) |
+| UpdateDataValidationAsync | 更新下拉列表设置 | 租户令牌 / 用户令牌 | PUT | [UpdateDataValidationAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/datavalidation/update-datavalidation) |
+| GetDataValidationsAsync | 获取数据验证 | 租户令牌 / 用户令牌 | GET | [GetDataValidationsAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/datavalidation/query-datavalidation) |
+| DeleteDataValidationAsync | 删除下拉列表设置 | 租户令牌 / 用户令牌 | DELETE | [DeleteDataValidationAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/datavalidation/delete-datavalidation) |
 
 ## 函数详细内容  
 

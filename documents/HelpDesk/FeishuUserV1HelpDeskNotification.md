@@ -22,14 +22,14 @@ description: 该接口用于以用户身份管理飞书服务台推送任务，�
 ## 函数列表
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
 | :--- | :--- | :--- | :--- |----------|
-| CreateNotificationAsync | 创建推送 | UserAccessToken | POST | [CreateNotificationAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/notification/create) |
-| GetNotificationAsync | 查询推送详情 | UserAccessToken | GET | [GetNotificationAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/notification/get) |
-| UpdateNotificationAsync | 更新推送 | UserAccessToken | PATCH | [UpdateNotificationAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/notification/patch) |
-| PreviewNotificationAsync | 预览推送 | UserAccessToken | POST | [PreviewNotificationAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/notification/preview) |
-| SubmitApproveNotificationAsync | 提交审批 | UserAccessToken | POST | [SubmitApproveNotificationAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/notification/submit_approve) |
-| ExecuteSendNotificationAsync | 发送推送 | UserAccessToken | POST | [ExecuteSendNotificationAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/notification/execute_send) |
-| CancelSendNotificationAsync | 取消推送 | UserAccessToken | POST | [CancelSendNotificationAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/notification/cancel_send) |
-| CancelApproveNotificationAsync | 取消审批 | UserAccessToken | POST | [CancelApproveNotificationAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/notification/cancel_approve) |
+| CreateNotificationAsync | 创建推送 | UserAccessToken | POST | [CreateNotificationAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/notification/create) |
+| GetNotificationAsync | 查询推送详情 | UserAccessToken | GET | [GetNotificationAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/notification/get) |
+| UpdateNotificationAsync | 更新推送 | UserAccessToken | PATCH | [UpdateNotificationAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/notification/patch) |
+| PreviewNotificationAsync | 预览推送 | UserAccessToken | POST | [PreviewNotificationAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/notification/preview) |
+| SubmitApproveNotificationAsync | 提交审批 | UserAccessToken | POST | [SubmitApproveNotificationAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/notification/submit_approve) |
+| ExecuteSendNotificationAsync | 发送推送 | UserAccessToken | POST | [ExecuteSendNotificationAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/notification/execute_send) |
+| CancelSendNotificationAsync | 取消推送 | UserAccessToken | POST | [CancelSendNotificationAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/notification/cancel_send) |
+| CancelApproveNotificationAsync | 取消审批 | UserAccessToken | POST | [CancelApproveNotificationAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/notification/cancel_approve) |
 
 ## 函数详细内容
 

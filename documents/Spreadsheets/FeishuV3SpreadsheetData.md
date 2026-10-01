@@ -22,13 +22,13 @@ description: 该接口用于读写飞书电子表格工作表中的数据，支�
 ## 函数列表  
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
 | :--- | :--- | :--- | :--- |----------|
-| InsertDataAsync | 插入数据 | 租户令牌 / 用户令牌 | POST | — |
-| AppendDataAsync | 追加数据 | 租户令牌 / 用户令牌 | POST | — |
-| ImageDataAsync | 写入图片 | 租户令牌 / 用户令牌 | POST | — |
-| GetRangeDataAsync | 读取单个范围 | 租户令牌 / 用户令牌 | GET | — |
-| GetRangesDataAsync | 读取多个范围 | 租户令牌 / 用户令牌 | GET | — |
-| RangeWriteDataAsync | 向单个范围写入数据 | 租户令牌 / 用户令牌 | PUT | — |
-| RangesWriteDataAsync | 向多个范围写入数据 | 租户令牌 / 用户令牌 | POST | — |
+| InsertDataAsync | 插入数据 | 租户令牌 / 用户令牌 | POST | [InsertDataAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/data-operation/prepend-data) |
+| AppendDataAsync | 追加数据 | 租户令牌 / 用户令牌 | POST | [AppendDataAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/data-operation/append-data) |
+| ImageDataAsync | 写入图片 | 租户令牌 / 用户令牌 | POST | [ImageDataAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/data-operation/write-images) |
+| GetRangeDataAsync | 读取单个范围 | 租户令牌 / 用户令牌 | GET | [GetRangeDataAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/data-operation/reading-a-single-range) |
+| GetRangesDataAsync | 读取多个范围 | 租户令牌 / 用户令牌 | GET | [GetRangesDataAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/data-operation/reading-multiple-ranges) |
+| RangeWriteDataAsync | 向单个范围写入数据 | 租户令牌 / 用户令牌 | PUT | [RangeWriteDataAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/data-operation/write-data-to-a-single-range) |
+| RangesWriteDataAsync | 向多个范围写入数据 | 租户令牌 / 用户令牌 | POST | [RangesWriteDataAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/data-operation/write-data-to-multiple-ranges) |
 
 ## 函数详细内容  
 

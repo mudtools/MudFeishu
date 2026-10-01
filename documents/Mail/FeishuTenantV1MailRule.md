@@ -21,7 +21,7 @@ description: 该接口用于以租户身份管理企业内所有用户的邮箱�
 | CreateUserMailboxRuleAsync | 创建收信规则 | TenantAccessToken | POST | [CreateUserMailboxRuleAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/create) |
 | DeleteUserMailboxRuleAsync | 删除收信规则 | TenantAccessToken | DELETE | [DeleteUserMailboxRuleAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/delete) |
 | UpdateUserMailboxRuleAsync | 更新收信规则 | TenantAccessToken | PUT | [UpdateUserMailboxRuleAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/update) |
-| GetMailboxRuleListAsync | 列出收信规则 | TenantAccessToken | GET | [GetMailboxRuleListAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/list) |
+| GetMailboxRuleListAsync | 列出收信规则 | TenantAccessToken | GET | [GetMailboxRuleListAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-rule/list) |
 | ReorderUserMailboxRuleAsync | 对收信规则进行排序 | TenantAccessToken | POST | [ReorderUserMailboxRuleAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/reorder) |
 
 ## 函数详细内容

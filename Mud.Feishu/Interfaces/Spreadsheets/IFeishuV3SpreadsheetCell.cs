@@ -22,6 +22,7 @@ public interface IFeishuV3SpreadsheetCell : IFeishuAppContextSwitcher
     /// <summary>
     /// 合并单元格
     /// <para>合并电子表格工作表中的单元格。。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/data-operation/merge-cells">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="mergeCellsRequest">合并单元格请求体</param>
@@ -36,6 +37,7 @@ public interface IFeishuV3SpreadsheetCell : IFeishuAppContextSwitcher
     /// <summary>
     /// 拆分单元格
     /// <para>拆分电子表格工作表中的单元格。。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/data-operation/split-cells">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="unMergeCellsRequest">拆分单元格请求体</param>
@@ -50,6 +52,7 @@ public interface IFeishuV3SpreadsheetCell : IFeishuAppContextSwitcher
     /// <summary>
     /// 查找单元格
     /// <para>在指定范围内查找符合查找条件的单元格。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/data-operation/find">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
@@ -66,6 +69,7 @@ public interface IFeishuV3SpreadsheetCell : IFeishuAppContextSwitcher
     /// <summary>
     /// 替换单元格
     /// <para>在指定范围内，查找并替换符合查找条件的单元格。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/data-operation/replace">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
@@ -82,6 +86,7 @@ public interface IFeishuV3SpreadsheetCell : IFeishuAppContextSwitcher
     /// <summary>
     /// 设置单元格样式
     /// <para>设置单元格中数据的样式。支持设置字体、背景、边框等样式。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/data-operation/set-cell-style">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="setCellsStyleRequest">设置单元格样式请求体</param>
@@ -96,6 +101,7 @@ public interface IFeishuV3SpreadsheetCell : IFeishuAppContextSwitcher
     /// <summary>
     /// 批量设置单元格样式
     /// <para>批量设置单元格中数据的样式。支持设置字体、背景、边框等样式。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/data-operation/batch-set-cell-style">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="batchSetCellsStyleRequest">批量设置单元格样式请求体</param>

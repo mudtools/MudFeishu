@@ -24,16 +24,16 @@ description: 该接口用于管理飞书电子表格的筛选视图，提供筛�
 ## 函数列表  
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
 | :--- | :--- | :--- | :--- |----------|
-| CreateFilterViewAsync | 创建筛选视图 | 租户令牌 / 用户令牌 | POST | — |
-| UpdateFilterViewAsync | 更新筛选视图 | 租户令牌 / 用户令牌 | PATCH | — |
-| GetFilterViewsAsync | 查询筛选视图列表 | 租户令牌 / 用户令牌 | GET | — |
-| GetFilterViewByIdAsync | 获取筛选视图 | 租户令牌 / 用户令牌 | GET | — |
-| DeleteFilterViewByIdAsync | 删除筛选视图 | 租户令牌 / 用户令牌 | DELETE | — |
-| CreateFilterConditionsAsync | 创建筛选条件 | 租户令牌 / 用户令牌 | POST | — |
-| UpdateFilterConditionsAsync | 更新筛选条件 | 租户令牌 / 用户令牌 | PUT | — |
-| GetFilterConditionsAsync | 查询筛选条件列表 | 租户令牌 / 用户令牌 | GET | — |
-| GetFilterConditionByIdAsync | 获取筛选条件 | 租户令牌 / 用户令牌 | GET | — |
-| DeleteFilterConditionByIdAsync | 删除筛选条件 | 租户令牌 / 用户令牌 | DELETE | — |
+| CreateFilterViewAsync | 创建筛选视图 | 租户令牌 / 用户令牌 | POST | [CreateFilterViewAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-filter_view/create) |
+| UpdateFilterViewAsync | 更新筛选视图 | 租户令牌 / 用户令牌 | PATCH | [UpdateFilterViewAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-filter_view/patch) |
+| GetFilterViewsAsync | 查询筛选视图列表 | 租户令牌 / 用户令牌 | GET | [GetFilterViewsAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-filter_view/query) |
+| GetFilterViewByIdAsync | 获取筛选视图 | 租户令牌 / 用户令牌 | GET | [GetFilterViewByIdAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-filter_view/get) |
+| DeleteFilterViewByIdAsync | 删除筛选视图 | 租户令牌 / 用户令牌 | DELETE | [DeleteFilterViewByIdAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-filter_view/delete) |
+| CreateFilterConditionsAsync | 创建筛选条件 | 租户令牌 / 用户令牌 | POST | [CreateFilterConditionsAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-filter_view/spreadsheet-sheet-filter_view-condition/create) |
+| UpdateFilterConditionsAsync | 更新筛选条件 | 租户令牌 / 用户令牌 | PUT | [UpdateFilterConditionsAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-filter_view/spreadsheet-sheet-filter_view-condition/update) |
+| GetFilterConditionsAsync | 查询筛选条件列表 | 租户令牌 / 用户令牌 | GET | [GetFilterConditionsAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-filter_view/spreadsheet-sheet-filter_view-condition/query) |
+| GetFilterConditionByIdAsync | 获取筛选条件 | 租户令牌 / 用户令牌 | GET | [GetFilterConditionByIdAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-filter_view/spreadsheet-sheet-filter_view-condition/get) |
+| DeleteFilterConditionByIdAsync | 删除筛选条件 | 租户令牌 / 用户令牌 | DELETE | [DeleteFilterConditionByIdAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-filter_view/spreadsheet-sheet-filter_view-condition/delete) |
 
 ## 函数详细内容  
 

@@ -21,6 +21,7 @@ public interface IFeishuV3SpreadsheetFilterView : IFeishuAppContextSwitcher
     /// <summary>
     /// 创建筛选视图
     /// <para>指定电子表格工作表的筛选范围，创建一个筛选视图。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-filter_view/create">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
@@ -37,6 +38,7 @@ public interface IFeishuV3SpreadsheetFilterView : IFeishuAppContextSwitcher
     /// <summary>
     /// 更新筛选视图
     /// <para>更新筛选视图的名称或筛选范围。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-filter_view/patch">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
@@ -56,6 +58,7 @@ public interface IFeishuV3SpreadsheetFilterView : IFeishuAppContextSwitcher
     /// <summary>
     /// 查询筛选视图
     /// <para>查询电子表格指定工作表的所有筛选视图及其基本信息，包括视图 ID、视图名称和筛选范围。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-filter_view/query">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
@@ -70,6 +73,7 @@ public interface IFeishuV3SpreadsheetFilterView : IFeishuAppContextSwitcher
     /// <summary>
     /// 获取筛选视图
     /// <para>获取指定筛选视图的信息，包括 ID、名称和筛选范围。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-filter_view/get">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
@@ -86,6 +90,7 @@ public interface IFeishuV3SpreadsheetFilterView : IFeishuAppContextSwitcher
     /// <summary>
     /// 删除筛选视图
     /// <para>删除指定筛选视图。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-filter_view/delete">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
@@ -102,6 +107,7 @@ public interface IFeishuV3SpreadsheetFilterView : IFeishuAppContextSwitcher
     /// <summary>
     /// 创建筛选条件
     /// <para>在筛选视图的指定列创建筛选条件，包括筛选的类型、比较类型、筛选参数等。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-filter_view/spreadsheet-sheet-filter_view-condition/create">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
@@ -120,6 +126,7 @@ public interface IFeishuV3SpreadsheetFilterView : IFeishuAppContextSwitcher
     /// <summary>
     /// 创建筛选条件
     /// <para>在筛选视图的指定列创建筛选条件，包括筛选的类型、比较类型、筛选参数等。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-filter_view/spreadsheet-sheet-filter_view-condition/update">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
@@ -140,6 +147,7 @@ public interface IFeishuV3SpreadsheetFilterView : IFeishuAppContextSwitcher
     /// <summary>
     /// 查询筛选条件
     /// <para>查询指定筛选视图的所有筛选条件，包括筛选的类型、比较类型、筛选参数等。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-filter_view/spreadsheet-sheet-filter_view-condition/query">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
@@ -155,6 +163,7 @@ public interface IFeishuV3SpreadsheetFilterView : IFeishuAppContextSwitcher
     /// <summary>
     /// 查询筛选条件
     /// <para>查询指定筛选视图的所有筛选条件，包括筛选的类型、比较类型、筛选参数等。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-filter_view/spreadsheet-sheet-filter_view-condition/get">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
@@ -173,6 +182,7 @@ public interface IFeishuV3SpreadsheetFilterView : IFeishuAppContextSwitcher
     /// <summary>
     /// 删除筛选条件
     /// <para>删除筛选视图指定列的所有筛选条件。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-filter_view/spreadsheet-sheet-filter_view-condition/delete">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>

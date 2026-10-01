@@ -18,10 +18,10 @@ description: 该接口用于以租户身份管理飞书卡片，支持创建卡�
 
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
 |---------|---------|---------|----------|----------|
-| CreateCardAsync | 创建卡片实体 | 租户令牌 | POST | [CreateCardAsync](https://open.feishu.cn/document/cardkit-v1/card/create) |
-| UpdateCardSettingsByIdAsync | 更新卡片配置 | 租户令牌 | PATCH | [UpdateCardSettingsByIdAsync](https://open.feishu.cn/document/cardkit-v1/card/settings) |
-| PartialUpdateCardByIdAsync | 局部更新卡片 | 租户令牌 | POST | [PartialUpdateCardByIdAsync](https://open.feishu.cn/document/cardkit-v1/card/batch_update) |
-| UpdateCardByIdAsync | 全量更新卡片 | 租户令牌 | PUT | [UpdateCardByIdAsync](https://open.feishu.cn/document/cardkit-v1/card/update) |
+| CreateCardAsync | 创建卡片实体 | 租户令牌 | POST | [CreateCardAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/cardkit-v1/card/create) |
+| UpdateCardSettingsByIdAsync | 更新卡片配置 | 租户令牌 | PATCH | [UpdateCardSettingsByIdAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/cardkit-v1/card/settings) |
+| PartialUpdateCardByIdAsync | 局部更新卡片 | 租户令牌 | POST | [PartialUpdateCardByIdAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/cardkit-v1/card/batch_update) |
+| UpdateCardByIdAsync | 全量更新卡片 | 租户令牌 | PUT | [UpdateCardByIdAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/cardkit-v1/card/update) |
 | IdConvertCardAsync | 转换 ID | 租户令牌 | POST | [IdConvertCardAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/cardkit-v1/card/id_convert) |
 
 ---

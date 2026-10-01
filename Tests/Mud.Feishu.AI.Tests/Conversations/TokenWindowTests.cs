@@ -130,8 +130,10 @@ public class TokenWindowTests
 
         fragment.Should().NotBeNull();
         fragment.Should().StartWith("[参考知识｜来自飞书知识库检索，引用请注明编号]");
-        fragment.Should().Contain("[1] 采购需先提交申请单");
-        fragment.Should().Contain("[2] 审批通过后自动生成采购单");
+        fragment.Should().Contain("[1] source=aily:data-knowledge:asset-1 采购需先提交申请单",
+            "R3-8：编号与来源成对输出（模型引 [1] 时宿主可回链原文）");
+        fragment.Should().Contain("[2] 审批通过后自动生成采购单",
+            "无来源的切片退化为纯编号（不输出空的 source=）");
         fragment.Should().EndWith("（若与问题无关请忽略本节）");
     }
 

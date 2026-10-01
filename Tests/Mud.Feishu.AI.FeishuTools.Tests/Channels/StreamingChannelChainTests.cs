@@ -103,4 +103,40 @@ public class StreamingChannelChainTests
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*编辑失败*", "全部子通道失败上抛最后异常——事件处理器回退非流式路径");
     }
+
+    /// <summary>
+    /// R3-15：未登记的 messageId 必须 fail-fast——不得静默回退首选通道
+    /// （回退会把"降级期由编辑通道承载的消息"的增量写到卡片流，属静默错投）。
+    /// </summary>
+    [Fact]
+    public async Task WriteStream_ShouldThrow_WhenMessageIdNotRegistered()
+    {
+        var card = new Mock<IMessageChannel>();
+        var edit = new Mock<IMessageChannel>();
+
+        var chain = new StreamingChannelChain(null, card.Object, edit.Object);
+
+        var write = async () => await chain.WriteStreamAsync(
+            "appA", "oc_group", "om_never_begun", "增量", CancellationToken.None);
+        var flush = async () => await chain.FlushAsync(
+            "appA", "oc_group", "om_never_begun", CancellationToken.None);
+
+        await write.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*未在本链登记*");
+        await flush.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*未在本链登记*");
+
+        card.Verify(
+            c => c.WriteStreamAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never, "未登记 messageId 不得落到任何子通道（含首选通道）");
+        edit.Verify(
+            c => c.WriteStreamAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        card.Verify(
+            c => c.FlushAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        edit.Verify(
+            c => c.FlushAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
 }

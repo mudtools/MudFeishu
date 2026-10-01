@@ -36,7 +36,9 @@ namespace Mud.Feishu.AI.FeishuTools.Events;
 /// <b>安全内建</b>（通用逻辑权威化，非策略下放）：
 /// Bot 自激过滤——<c>sender_type == "app"</c> 跳过（防 Bot 回复自己触发的事件风暴）；
 /// 群聊 @ 过滤——<see cref="ImConversationOptions.RequireMentionInGroup"/> 默认仅响应
-/// @Bot 消息（单聊不受影响）；单聊开关 <see cref="ImConversationOptions.AllowP2pConversation"/>。
+/// @Bot 消息（单聊不受影响；配置 <see cref="ImConversationOptions.BotName"/> 后收紧为「必须 @ 到 Bot 本人」，
+/// 未配置时等价旧行为「<c>mentions</c> 非空即视为 @Bot」——R3-3）；
+/// 单聊开关 <see cref="ImConversationOptions.AllowP2pConversation"/>。
 /// 过滤在业务幂等标记<b>之前</b>……由于基类 <c>HandleAsync</c> 已密封，过滤落在
 /// <see cref="ProcessBusinessLogicAsync"/> 入口：被过滤消息按「已消费」落幂等终态（不重投递）。
 /// </para>
@@ -59,9 +61,11 @@ public sealed class ImMessageConversationalEventHandler(
     IFeishuToolContextAccessor? toolContextAccessor = null,
     IMessageChannel? messageChannel = null,
     IConversationGate? conversationGate = null,
-    IAppKeyAccessor? appKeyAccessor = null)
+    IAppKeyAccessor? appKeyAccessor = null,
+    IFeishuAppContextScopeFactory? appContextScopeFactory = null)
     : ConversationalFeishuEventHandler<MessageReceiveResult>(
-        agent, businessDeduplicator, logger, contextAssemblers, toolContextAccessor, messageChannel, conversationGate, appKeyAccessor)
+        agent, businessDeduplicator, logger, contextAssemblers, toolContextAccessor, messageChannel, conversationGate, appKeyAccessor,
+        appContextScopeFactory: appContextScopeFactory)
 {
     private const string ChatTypeGroup = "group";
     private const string SenderTypeApp = "app";
@@ -115,6 +119,8 @@ public sealed class ImMessageConversationalEventHandler(
     /// <inheritdoc />
     protected override async Task ReplyAsync(ConversationRequest request, string responseText, CancellationToken cancellationToken)
     {
+        // R3-1：回复前必须切到事件的租户上下文，否则生成的客户端会退回默认应用身份（TMA2-20 跨租户错发）。
+        using var appScope = BeginAppScope(request.AppKey);
         var outcome = FeishuApiResultReader.Read(await _messageClient
             .ReplyMessageAsync(request.MessageId, new ReplyMessageRequest
             {
@@ -148,7 +154,7 @@ public sealed class ImMessageConversationalEventHandler(
         var isGroup = string.Equals(message.ChatType, ChatTypeGroup, StringComparison.OrdinalIgnoreCase);
         if (isGroup)
         {
-            if (_options.RequireMentionInGroup && (message.Mentions is not { Length: > 0 }))
+            if (_options.RequireMentionInGroup && !IsBotMentioned(message))
             {
                 return true; // 群聊 @ 过滤（默认仅响应 @Bot 消息）。
             }
@@ -156,6 +162,39 @@ public sealed class ImMessageConversationalEventHandler(
         else if (!_options.AllowP2pConversation)
         {
             return true; // 单聊会话开关（仅做任务型 Bot 的宿主可关闭）。
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// 群聊消息是否 @ 到 Bot 本人（R3-3）：存在 <c>mentions[].name</c> 命中
+    /// <see cref="ImConversationOptions.BotName"/>（忽略大小写）即为真。
+    /// </summary>
+    /// <remarks>
+    /// <b>未配置 <see cref="ImConversationOptions.BotName"/> 时保守放行</b>（<c>mentions</c> 非空即视为 @Bot）——
+    /// 与旧行为等价，避免升级即「群聊静默不响应」；配置后收紧为「必须 @ 到 Bot 本人」，
+    /// 使 @ 别人 / @ 全体不再触发回复。
+    /// </remarks>
+    private bool IsBotMentioned(Mud.Feishu.EventCallback.IM.MessageContent message)
+    {
+        if (message.Mentions is not { Length: > 0 })
+        {
+            return false;
+        }
+
+        var botName = _options.BotName;
+        if (string.IsNullOrWhiteSpace(botName))
+        {
+            return true;
+        }
+
+        foreach (var mention in message.Mentions)
+        {
+            if (string.Equals(mention?.Name, botName, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
         }
 
         return false;

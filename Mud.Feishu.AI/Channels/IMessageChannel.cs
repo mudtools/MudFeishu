@@ -28,9 +28,10 @@ namespace Mud.Feishu.AI.Channels;
 /// 故该约束在生产链路上恒成立；此声明把"实现依赖的隐含前提"变成契约的一部分。
 /// </para>
 /// <para>
-/// <b>状态生命周期契约（R2-02）</b>：实现方若为 <c>Singleton</c>，其<b>per-messageId 状态必须在
+/// <b>状态生命周期契约（R2-02 / R3-14）</b>：实现方若为 <c>Singleton</c>，其<b>per-messageId 状态必须在
 /// <see cref="FlushAsync"/> 内清理</b>（基类钩子见 <c>BufferedMessageChannel.OnFlushed</c>）——
-/// 否则字典键随会话单调新增而永不重复，形成确定性常驻内存增长。
+/// 否则字典键随会话单调新增而永不重复，形成确定性常驻内存增长。<b>任何终止路径</b>（正常/异常/取消）
+/// 都必须使 per-messageId 状态归零——取消路径由调用方经补偿 <see cref="FlushAsync"/> 确保（R3-14）。
 /// </para>
 /// </remarks>
 public interface IMessageChannel

@@ -6,13 +6,14 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.DataModels.Tasks;
+using Mud.Feishu.DataModels.TasksComments;
 using Mud.Feishu.AI.FeishuTools.Tools;
 
 namespace Mud.Feishu.AI.FeishuTools.Internal;
 
 /// <summary>
-/// Task 双工具执行器（<c>task.create_task</c>（tenant）/ <c>task.list_my_tasks</c>（<b>user 身份</b>），
-/// WP5 / AT-F17）。
+/// Task 工具执行器（<c>task.create_task</c>（tenant）/ <c>task.list_my_tasks</c>（<b>user 身份</b>），
+/// WP5 / AT-F17 + R7/WP5 写面成环）。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -28,11 +29,13 @@ namespace Mud.Feishu.AI.FeishuTools.Internal;
 internal sealed class TaskTools(
     Mud.Feishu.IFeishuTenantV2Task taskClient,
     Mud.Feishu.IFeishuUserV2Task? userTaskClient,
+    Mud.Feishu.IFeishuTenantV2TaskComments? taskCommentsClient,
     IOptions<FeishuAgentOptions> options)
 {
     private readonly Mud.Feishu.IFeishuTenantV2Task _taskClient = taskClient
         ?? throw new ArgumentNullException(nameof(taskClient));
     private readonly Mud.Feishu.IFeishuUserV2Task? _userTaskClient = userTaskClient;
+    private readonly Mud.Feishu.IFeishuTenantV2TaskComments? _taskCommentsClient = taskCommentsClient;
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>task.create_task：创建任务（<c>dry_run=true</c> 时只预演）。</summary>
@@ -259,5 +262,158 @@ internal sealed class TaskTools(
         }
 
         return parsed.ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture);
+    }
+
+    // ────────── R7/WP5 写面成环 ──────────
+
+    /// <summary>task.delete_task：删除任务（<c>dry_run=true</c> 时只预演）。</summary>
+    [FeishuToolHandler(typeof(IFeishuTaskDeleteTaskTool))]
+    public Task<FeishuToolResult> DeleteTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.TaskDeleteTask);
+        return executor.RunAsync(async () =>
+        {
+            var args = TaskDeleteTaskArgs.Unpack(arguments);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "DELETE", $"/open-apis/task/v2/tasks/{args.TaskGuid}"));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _taskClient
+                .DeleteTaskByIdAsync(args.TaskGuid, cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApiUntruncated(outcome, _ => new JsonObject
+            {
+                ["deleted"] = true,
+                ["task_guid"] = args.TaskGuid,
+            });
+        });
+    }
+
+    /// <summary>task.create_subtask：创建子任务（<c>dry_run=true</c> 时只预演）。</summary>
+    /// <remarks>幂等键：<c>idempotency_key</c> → <c>CreateSubTaskRequest.ClientToken</c>（平台原生幂等）。</remarks>
+    [FeishuToolHandler(typeof(IFeishuTaskCreateSubtaskTool))]
+    public Task<FeishuToolResult> CreateSubtaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.TaskCreateSubtask, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var args = TaskCreateSubtaskArgs.Unpack(arguments);
+
+            var dueMs = args.Due is null ? null : ToUnixMilliseconds(args.Due);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "POST", $"/open-apis/task/v2/tasks/{args.TaskGuid}/subtasks",
+                    ToolDryRun.IdempotencyNote(args.IdempotencyKey),
+                    ("summary", args.Summary.Length),
+                    ("due", args.Due?.Length ?? 0)));
+            }
+
+            var request = new CreateSubTaskRequest
+            {
+                Summary = args.Summary,
+                Description = args.Description,
+                ClientToken = args.IdempotencyKey,
+            };
+            if (dueMs is not null)
+            {
+                request.Due = new TaskTime { Timestamp = dueMs };
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _taskClient
+                .CreateSubTaskAsync(args.TaskGuid, request, cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApiUntruncated(outcome, data => new JsonObject
+            {
+                ["subtask_guid"] = data.Subtask?.Guid,
+            });
+        });
+    }
+
+    /// <summary>task.add_comment：添加评论（<c>dry_run=true</c> 时只预演）。</summary>
+    [FeishuToolHandler(typeof(IFeishuTaskAddCommentTool))]
+    public Task<FeishuToolResult> AddCommentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.TaskAddComment);
+        return executor.RunAsync(async () =>
+        {
+            if (_taskCommentsClient is null)
+            {
+                throw new ArgumentException(
+                    "task.add_comment 需要评论客户端 IFeishuTenantV2TaskComments——宿主须启用 AddTaskApi 的评论侧客户端");
+            }
+
+            var args = TaskAddCommentArgs.Unpack(arguments);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "POST", "/open-apis/task/v2/comments",
+                    null,
+                    ("task_guid", args.TaskGuid.Length),
+                    ("content", args.Content.Length),
+                    ("reply_to_comment_id", args.ReplyToCommentId?.Length ?? 0)));
+            }
+
+            var request = new CreateCommentRequest
+            {
+                Content = args.Content,
+                ResourceId = args.TaskGuid,
+                ResourceType = "task",
+                ReplyToCommentId = args.ReplyToCommentId,
+            };
+
+            var outcome = FeishuApiResultReader.Read(await _taskCommentsClient
+                .CreateCommentAsync(request, cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApiUntruncated(outcome, data => new JsonObject
+            {
+                ["comment_id"] = data.Comment?.Id,
+            });
+        });
+    }
+
+    /// <summary>task.add_members：添加任务成员（<c>dry_run=true</c> 时只预演）。</summary>
+    /// <remarks>幂等键：<c>idempotency_key</c> → <c>AddMembersRequest.ClientToken</c>（平台原生幂等）。</remarks>
+    [FeishuToolHandler(typeof(IFeishuTaskAddMembersTool))]
+    public Task<FeishuToolResult> AddMembersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.TaskAddMembers);
+        return executor.RunAsync(async () =>
+        {
+            var args = TaskAddMembersArgs.Unpack(arguments);
+
+            var role = string.IsNullOrEmpty(args.Role) ? "assignee" : args.Role;
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "POST", $"/open-apis/task/v2/tasks/{args.TaskGuid}/add_members",
+                    ToolDryRun.IdempotencyNote(args.IdempotencyKey),
+                    ("member_ids", args.MemberIds.Length),
+                    ("role", role.Length)));
+            }
+
+            var request = new AddMembersRequest
+            {
+                Members = args.MemberIds
+                    .Select(id => new TaskMemberInfo { Id = id, Type = "open_id", Role = role })
+                    .ToArray(),
+                ClientToken = args.IdempotencyKey,
+            };
+
+            var outcome = FeishuApiResultReader.Read(await _taskClient
+                .AddMembersByIdAsync(args.TaskGuid, request, cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApiUntruncated(outcome, _ => new JsonObject
+            {
+                ["added_count"] = args.MemberIds.Length,
+                ["task_guid"] = args.TaskGuid,
+            });
+        });
     }
 }

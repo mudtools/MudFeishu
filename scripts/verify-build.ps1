@@ -1,4 +1,4 @@
-﻿# -----------------------------------------------------------------------
+# -----------------------------------------------------------------------
 #  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 #  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 #  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -19,6 +19,7 @@
       步骤 5  Redis 集成测试（Docker 可用时逐 (工程, TFM) 运行，断言 total>0 / failed=0 / skipped=0；
               无 Docker 时告警并登记覆盖缺口）——T-R2-04
       步骤 6  dotnet format --verify-no-changes（默认仅告警，见 -StrictFormat）
+      步骤 7  打包内容门禁（opt-in -WithPackCheck；R3-01）
 
 .PARAMETER ClearStaleCache
     检测到 Mud.HttpUtils 依赖缓存内容与本地源不一致时自动清理，而不是仅报错退出。
@@ -35,12 +36,14 @@
     ./scripts/verify-build.ps1
     ./scripts/verify-build.ps1 -ClearStaleCache -StrictFormat
     ./scripts/verify-build.ps1 -CacheCheckOnly
+    ./scripts/verify-build.ps1 -WithPackCheck
 #>
 [CmdletBinding()]
 param(
     [switch]$ClearStaleCache,
     [switch]$StrictFormat,
-    [switch]$CacheCheckOnly
+    [switch]$CacheCheckOnly,
+    [switch]$WithPackCheck
 )
 
 $ErrorActionPreference = 'Continue'
@@ -217,8 +220,8 @@ Assert-Zero -Name 'AOT001-007'    -Count ((Select-String -Path $buildLog -Patter
 #   生成器工程自身的 RS2008 警告（"为包含规则“MUDFT015”的分析器项目启用分析器发布跟踪"）
 #   正文里就带这些 ID，只匹配 ID 会让"生成器工程被重新编译"这一无害动作把本条断言变成假红
 #   （实测：全量重建命中 19 处、其中真诊断 0 条）。真诊断的格式恒为 `warning MUDFT0xx: …`。
-$mudftZero = (Select-String -Path $buildLog -Pattern '(?:warning|error) MUDFT(001|002|003|004|008|010|014|015|016|017|019|020|022|023|024|025|026):' -AllMatches).Count
-Assert-Zero -Name 'MUDFT 零容忍'  -Count $mudftZero -Hint 'AI 工具描述符零容忍集（001/002/003/004/008/010/014/015/016/017/019/020/022/023/024/025/026），见 Diagnostics.ZeroToleranceIds'
+$mudftZero = (Select-String -Path $buildLog -Pattern '(?:warning|error) MUDFT(001|002|003|004|008|010|014|015|016|017|019|020|022|023|024|025|026|027):' -AllMatches).Count
+Assert-Zero -Name 'MUDFT 零容忍'  -Count $mudftZero -Hint 'AI 工具描述符零容忍集（001/002/003/004/008/010/014/015/016/017/019/020/022/023/024/025/026/027），见 Diagnostics.ZeroToleranceIds'
 
 # golden 快照门禁的"非空"防呆：描述符快照必须存在且被测试消费——
 # 若有人删掉 AdditionalFiles 声明或快照文件，构建期 MUDFT014 会静默失效，
@@ -654,6 +657,29 @@ if ($LASTEXITCODE -ne 0) {
 }
 else {
     Write-Host "  [ OK ] 格式校验通过" -ForegroundColor Green
+}
+
+# ---------------------------------------------------------------- 步骤 7
+if ($WithPackCheck) {
+    Write-Host "[步骤 7] 打包内容门禁（R3-01）" -ForegroundColor Cyan
+    $nupkgDir = Join-Path $repoRoot 'nupkg'
+    # 清理旧产物后重新打包
+    if (Test-Path $nupkgDir) { Remove-Item $nupkgDir -Recurse -Force -ErrorAction SilentlyContinue }
+    $packLog = dotnet pack $solution -c Release --output $nupkgDir --no-build 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        $script:failures.Add('dotnet pack 失败')
+        Write-Host '  [FAIL] dotnet pack 失败' -ForegroundColor Red
+    }
+    else {
+        $verifyPackScript = Join-Path $PSScriptRoot 'verify-pack.ps1'
+        & $verifyPackScript -Configuration Release -OutputDir $nupkgDir
+        if ($LASTEXITCODE -ne 0) {
+            $script:failures.Add('verify-pack.ps1 未通过')
+        }
+    }
+}
+else {
+    Write-Host '[步骤 7] 打包内容门禁（跳过；加 -WithPackCheck 启用）' -ForegroundColor DarkGray
 }
 
 # ---------------------------------------------------------------- 汇总

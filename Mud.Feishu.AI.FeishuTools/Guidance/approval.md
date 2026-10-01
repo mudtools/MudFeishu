@@ -1,0 +1,1 @@
+审批（approval.*）：`approval.list_pending_tasks` 查询待办任务列表（返回 task_id/instance_code），`approval.get_instance` 获取审批实例详情（含表单/状态/审批流程节点，需用户身份）。同意审批走 `approval.approve_task`（需 approval_code/instance_code/task_id/user_id 四要素，task_id/instance_code 来自 list_pending_tasks），为写操作（默认不启用，需宿主授权）。`approval.create_instance` 按审批定义 Code 发起审批实例（form 为审批表单 JSON 数组），同为写操作。

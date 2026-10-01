@@ -174,6 +174,167 @@ internal sealed class CalendarTools(
         return envelope;
     }
 
+    // ────────── R7/WP4 写面成环 ──────────
+
+    /// <summary>calendar.update_event：更新日程（<c>dry_run=true</c> 时只预演）。</summary>
+    [FeishuToolHandler(typeof(IFeishuCalendarUpdateEventTool))]
+    public Task<FeishuToolResult> UpdateEventAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.CalendarUpdateEvent, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var args = CalendarUpdateEventArgs.Unpack(arguments);
+
+            // start/end 必须同时提供
+            if ((args.Start is null) != (args.End is null))
+            {
+                throw new ArgumentException("start 与 end 必须同时提供（或同时省略）");
+            }
+
+            DateTimeOffset? startUtc = null, endUtc = null;
+            if (args.Start is not null && args.End is not null)
+            {
+                startUtc = ParseRfc3339(args.Start, "start");
+                endUtc = ParseRfc3339(args.End, "end");
+                if (endUtc <= startUtc)
+                {
+                    throw new ArgumentException("end 须晚于 start");
+                }
+            }
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "PATCH", $"/open-apis/calendar/v4/calendars/{args.CalendarId}/events/{args.EventId}",
+                    null,
+                    ("summary", args.Summary?.Length ?? 0), ("description", args.Description?.Length ?? 0),
+                    ("start", args.Start?.Length ?? 0), ("end", args.End?.Length ?? 0)));
+            }
+
+            var request = new UpdateCalendarEventRequest();
+            if (args.Summary is not null)
+                request.Summary = args.Summary;
+            if (args.Description is not null)
+                request.Description = args.Description;
+            if (args.Start is not null && args.End is not null)
+            {
+                request.StartTime = new CalendarTimeInfo { DateTime = args.Start, Timezone = DefaultTimezone };
+                request.EndTime = new CalendarTimeInfo { DateTime = args.End, Timezone = DefaultTimezone };
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _calendarEventClient
+                .UpdateCalendarEventAsync(args.CalendarId, args.EventId, request, cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApiUntruncated(outcome, data => new JsonObject
+            {
+                ["event_id"] = args.EventId,
+            });
+        });
+    }
+
+    /// <summary>calendar.delete_event：取消日程（<c>dry_run=true</c> 时只预演）。</summary>
+    [FeishuToolHandler(typeof(IFeishuCalendarDeleteEventTool))]
+    public Task<FeishuToolResult> DeleteEventAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.CalendarDeleteEvent);
+        return executor.RunAsync(async () =>
+        {
+            var args = CalendarDeleteEventArgs.Unpack(arguments);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "DELETE", $"/open-apis/calendar/v4/calendars/{args.CalendarId}/events/{args.EventId}"));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _calendarEventClient
+                .DeleteCalendarEventAsync(args.CalendarId, args.EventId, need_notification: true, cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApiUntruncated(outcome, _ => new JsonObject
+            {
+                ["deleted"] = true,
+                ["event_id"] = args.EventId,
+            });
+        });
+    }
+
+    /// <summary>calendar.add_event_attendees：添加与会者（<c>dry_run=true</c> 时只预演）。</summary>
+    [FeishuToolHandler(typeof(IFeishuCalendarAddEventAttendeesTool))]
+    public Task<FeishuToolResult> AddEventAttendeesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.CalendarAddEventAttendees);
+        return executor.RunAsync(async () =>
+        {
+            var args = CalendarAddEventAttendeesArgs.Unpack(arguments);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "POST", $"/open-apis/calendar/v4/calendars/{args.CalendarId}/events/{args.EventId}/attendees",
+                    null,
+                    ("attendee_ids", args.AttendeeIds.Length)));
+            }
+
+            var attendees = args.AttendeeIds
+                .Select(id => new CalendarEventAttendeeData { Type = "user", UserId = id })
+                .ToArray();
+
+            var request = new CreateCalendarEventAttendeeRequest { Attendees = attendees };
+
+            var outcome = FeishuApiResultReader.Read(await _calendarEventClient
+                .CreateCalendarEventAttendeeAsync(args.CalendarId, args.EventId, request, cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApiUntruncated(outcome, _ => new JsonObject
+            {
+                ["added_count"] = args.AttendeeIds.Length,
+                ["event_id"] = args.EventId,
+            });
+        });
+    }
+
+    /// <summary>calendar.list_event_attendees：列出现有与会者（分页）。</summary>
+    [FeishuToolHandler(typeof(IFeishuCalendarListEventAttendeesTool))]
+    public Task<FeishuToolResult> ListEventAttendeesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.CalendarListEventAttendees, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var args = CalendarListEventAttendeesArgs.Unpack(arguments);
+
+            var outcome = FeishuApiResultReader.Read(await _calendarEventClient
+                .GetCalendarEventAttendeePageListAsync(args.CalendarId, args.EventId, page_size: PageSizes.CalendarEventAttendees, page_token: args.PageToken, cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApi(outcome, ProjectAttendees);
+        });
+    }
+
+    /// <summary>list_event_attendees 投影：items（attendee_id/name/type）+ 翻页契约。</summary>
+    private static JsonObject ProjectAttendees(ApiPageListResult<CalendarEventAttendeeInfoResult> data)
+    {
+        var envelope = new JsonObject
+        {
+            ["items"] = new JsonArray(),
+            ["has_more"] = data.HasMore,
+        };
+        if (!string.IsNullOrEmpty(data.PageToken))
+        {
+            envelope["page_token"] = data.PageToken;
+        }
+
+        foreach (var item in data.Items ?? [])
+        {
+            envelope["items"]!.AsArray().AddNode(new JsonObject
+            {
+                ["attendee_id"] = item.AttendeeId,
+                ["name"] = item.DisplayName,
+                ["type"] = item.Type,
+                ["is_optional"] = item.IsOptional,
+            });
+        }
+
+        return envelope;
+    }
+
     /// <summary>
     /// RFC3339 严格解析（带时区，同 ImTools 纪律：宽松解析会把无时区值按本地时区折算产生静默偏移）。
     /// </summary>

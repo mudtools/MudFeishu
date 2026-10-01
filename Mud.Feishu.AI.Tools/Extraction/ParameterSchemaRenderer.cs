@@ -82,7 +82,6 @@ internal static class ParameterSchemaRenderer
             result.Add(new CapabilityParameter(
                 name: parameter.Name,
                 csharpType: parameter.Type.ToDisplayString(),
-                parameterKind: DeriveParameterKind(parameter),
                 docDescription: description,
                 isRequired: isRequired,
                 isNullable: isNullable,
@@ -244,29 +243,7 @@ internal static class ParameterSchemaRenderer
         => objectSchema.IndexOf("\"properties\":{", StringComparison.Ordinal) >= 0
            && objectSchema.IndexOf("\"properties\":{}", StringComparison.Ordinal) < 0;
 
-    // ────────── 参数元数据 ──────────
-
-    private static string DeriveParameterKind(IParameterSymbol parameter)
-    {
-        foreach (var attribute in parameter.GetAttributes())
-        {
-            switch (attribute.AttributeClass?.Name)
-            {
-                case "PathAttribute":
-                    return "Path";
-                case "QueryAttribute":
-                    return "Query";
-                case "BodyAttribute":
-                    return "Body";
-                case "HeaderAttribute":
-                    return "Header";
-                case "FormContentAttribute":
-                    return "FormContent";
-            }
-        }
-
-        return "Query";
-    }
+    // R3-09：已删除 DeriveParameterKind——随 ParameterKind 属性一同清理。
 
     private static bool IsRequired(IParameterSymbol parameter, AttributeData? attribute)
     {

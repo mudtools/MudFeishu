@@ -50,10 +50,10 @@ public class GeneratorCapabilityCatalogTests
     /// （那正是本次修复要消除的假绿形态）。
     /// </para>
     /// </remarks>
-    private const int ExpectedSdkMethodCount = 1169;
+    private const int ExpectedSdkMethodCount = 1203;
 
     /// <summary>能力分组个数（分组轴 = 接口名的 domain+resource 段）——精确值（AT-B17）。</summary>
-    private const int ExpectedDomainCount = 182;
+    private const int ExpectedDomainCount = 188;
 
     /// <summary>SDK 能力总数与 <c>Mud.Feishu</c> 的实际规模一致（精确锁定，非下界）。</summary>
     [Fact]
@@ -102,5 +102,49 @@ public class GeneratorCapabilityCatalogTests
 
         FeishuCapabilityCatalog.CuratedToolCount.Should().BeLessThan(FeishuCapabilityCatalog.SdkMethodCount,
             "暴露面必须是 SDK 能力面的真子集（无差别全量暴露是明确非目标）");
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // R4-9：能力目录对本包是**必需产物**（"opt-in"措辞与实际强依赖对齐）
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// R4-9：<c>Mud.Feishu.AI.FeishuTools</c> 必须显式开启 <c>FeishuToolCatalog</c>。
+    /// </summary>
+    /// <remarks>
+    /// 消费方 <c>CapabilityLookupTools</c> <b>编译期无条件</b>引用 <see cref="FeishuCapabilityCatalog"/>，
+    /// 关闭该属性即 <c>CS0103</c>（构建失败）——故"显式 opt-in、关闭即不产出"的措辞与事实不符：
+    /// <b>对本包它是必需产物</b>（属性仍是构建开关，但"可关闭"只对 AI 底座/测试等工程成立）。
+    /// 本守卫把该耦合显式化：删掉 csproj 属性时失败信息直接指出消费方依赖，
+    /// 而不是抛一个难以定位的裸 <c>CS0103</c>。
+    /// </remarks>
+    [Fact]
+    public void FeishuToolCatalog_ShouldBeEnabledForThisPackage_AsRequiredArtifact()
+    {
+        var root = FindRepositoryRoot();
+        var csproj = Path.Combine(root, "Mud.Feishu.AI.FeishuTools", "Mud.Feishu.AI.FeishuTools.csproj");
+        var consumer = Path.Combine(root, "Mud.Feishu.AI.FeishuTools", "Internal", "CapabilityLookupTools.cs");
+
+        File.Exists(csproj).Should().BeTrue();
+        File.ReadAllText(csproj).Should().MatchRegex(
+            @"<FeishuToolCatalog>\s*true\s*</FeishuToolCatalog>",
+            "FeishuTools 必须开启 FeishuToolCatalog——CapabilityLookupTools 编译期依赖 FeishuCapabilityCatalog（R4-9）");
+
+        File.Exists(consumer).Should().BeTrue();
+        File.ReadAllText(consumer).Should().Contain("FeishuCapabilityCatalog.",
+            "消费点必须存在；若该引用被移除，则本属性对本包不再必需，守卫与注释口径需同步修订（R4-9）");
+    }
+
+    /// <summary>跨平台定位仓库根目录（以 <c>Mud.Feishu.slnx</c> 为锚，对齐本仓其余守卫）。</summary>
+    private static string FindRepositoryRoot()
+    {
+        var directory = AppContext.BaseDirectory;
+        while (!string.IsNullOrEmpty(directory) && !File.Exists(Path.Combine(directory, "Mud.Feishu.slnx")))
+        {
+            directory = Path.GetDirectoryName(directory);
+        }
+
+        directory.Should().NotBeNullOrEmpty("测试必须能定位仓库根目录（以 Mud.Feishu.slnx 为锚）");
+        return directory!;
     }
 }

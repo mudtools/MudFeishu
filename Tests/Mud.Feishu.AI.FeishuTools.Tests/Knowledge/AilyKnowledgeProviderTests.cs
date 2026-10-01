@@ -85,6 +85,29 @@ public class AilyKnowledgeProviderTests : IDisposable
         answer.Chunks[0].Text.Should().Be("切片一：采购申请");
     }
 
+    /// <summary>
+    /// R3-6①：<c>chunks</c> 中出现非字符串元素（数字 / 布尔 / 对象 / 数组）时必须降级为文本，
+    /// 而不是让 <c>JsonElement.GetString()</c> 抛 <see cref="InvalidOperationException"/>——否则
+    /// 一条脏数据会让<b>整次召回</b>（含已解析的 answer）一起失败。
+    /// </summary>
+    [Fact]
+    public async Task Ask_ShouldSkipNonStringChunk_WithoutLosingOthers()
+    {
+        using var _scope = _contextAccessor.Begin(new FeishuToolContext("appA"));
+        SetupSseResponse(
+            "data: {\"status\":\"finished\",\"message\":{\"content\":\"答案\"},"
+            + "\"process_data\":{\"chunks\":[\"切片一\",123,{\"nested\":\"v\"},\"切片二\"]},\"has_answer\":true}\n");
+
+        var answer = await CreateProvider().AskAsync("问题");
+
+        answer.HasAnswer.Should().BeTrue();
+        answer.Chunks.Should().HaveCount(4, "非字符串元素降级为文本，不得整条丢弃也不得抛异常");
+        answer.Chunks[0].Text.Should().Be("切片一");
+        answer.Chunks[1].Text.Should().Be("123", "数字元素按原始 JSON 文本降级");
+        answer.Chunks[2].Text.Should().Be("{\"nested\":\"v\"}", "对象元素按原始 JSON 文本降级");
+        answer.Chunks[3].Text.Should().Be("切片二", "脏数据之后的切片必须仍然保留");
+    }
+
     [Fact]
     public async Task Ask_ShouldMapRequestOptions_AndUseConfiguredAppId()
     {
@@ -173,5 +196,31 @@ public class AilyKnowledgeProviderTests : IDisposable
         var act = () => new AilyKnowledgeOptions { AppId = string.Empty }.Validate();
 
         act.Should().Throw<InvalidOperationException>().WithMessage("*AppId*");
+    }
+
+    /// <summary>
+    /// R4-3：<c>has_answer</c> 必须<b>单调累积</b>——末事件省略该字段时，不得把先前事件的真值覆盖为 false。
+    /// </summary>
+    /// <remarks>
+    /// SSE 的 processing/中间事件普遍<b>省略</b> <c>has_answer</c>，而 <c>status=finished</c> 的终结事件也不保证携带。
+    /// 覆盖式赋值会让"明确有答案"被最后一次无字段事件重置为 false ⇒ <see cref="KnowledgeAnswer.HasAnswer"/> 假阴性，
+    /// 消费点据此丢弃整次召回（静默丢失，无异常、无日志）。本条为端到端用例（经 <c>AskAsync</c>），
+    /// 因 <c>ParseSseBody</c> 是 private static 不可直测（见方案 §5.1 可行性约束①）。
+    /// </remarks>
+    [Fact]
+    public async Task Ask_ShouldAccumulateHasAnswer_WhenLastEventOmitsField()
+    {
+        using var _scope = _contextAccessor.Begin(new FeishuToolContext("appA"));
+        SetupSseResponse(
+            "data: {\"status\":\"processing\",\"message\":{\"content\":\"正在检索知识...\"},\"has_answer\":true}\n"
+            + "\n"
+            + "data: {\"status\":\"finished\",\"finish_type\":\"qa\",\"message\":{\"content\":\"采购流程共 3 步。\"},"
+            + "\"process_data\":{\"chunks\":[\"切片一：采购申请\"],\"sql_data\":[]}}\n");
+
+        var answer = await CreateProvider().AskAsync("采购流程是什么？");
+
+        answer.AnswerText.Should().Be("采购流程共 3 步。");
+        answer.HasAnswer.Should().BeTrue("末事件省略 has_answer 不得覆盖先前事件的真值（R4-3：单调累积而非覆盖）");
+        answer.Chunks.Should().ContainSingle();
     }
 }

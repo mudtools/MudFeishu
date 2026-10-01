@@ -1,0 +1,1 @@
+邮件（mail.*）：`mail.list_messages` 列出用户邮箱邮件（user_mailbox_id 为邮箱地址），`mail.get_message` 获取邮件详情。发信走 `mail.send_message`（两步合一：内部先建草稿再发送，模型无需感知中间态；to/cc/bcc 为邮箱地址数组，收件人地址可由 contact.search_user 获取）。写操作默认不启用，需宿主授权；mail 域写面需用户身份（identity=user），宿主须在 AllowedIdentities 放行 user。

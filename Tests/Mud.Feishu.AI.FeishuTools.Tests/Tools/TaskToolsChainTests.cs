@@ -23,11 +23,13 @@ public class TaskToolsChainTests
 {
     private readonly Mock<Mud.Feishu.IFeishuTenantV2Task> _taskClient = new();
     private readonly Mock<Mud.Feishu.IFeishuUserV2Task> _userTaskClient = new();
+    private readonly Mock<Mud.Feishu.IFeishuTenantV2TaskComments> _taskCommentsClient = new();
 
-    private TaskTools CreateTools(bool withUserClient = true)
+    private TaskTools CreateTools(bool withUserClient = true, bool withCommentsClient = true)
         => new(
             _taskClient.Object,
             withUserClient ? _userTaskClient.Object : null,
+            withCommentsClient ? _taskCommentsClient.Object : null,
             Options.Create(new FeishuAgentOptions { Instructions = "test" }));
 
     private static IReadOnlyDictionary<string, object?> Args(params (string Key, object? Value)[] items)

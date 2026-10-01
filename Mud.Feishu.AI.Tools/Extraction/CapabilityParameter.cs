@@ -30,7 +30,6 @@ internal sealed class CapabilityParameter : IEquatable<CapabilityParameter?>
     public CapabilityParameter(
         string name,
         string csharpType,
-        string parameterKind,
         string? docDescription,
         bool isRequired,
         bool isNullable,
@@ -39,7 +38,6 @@ internal sealed class CapabilityParameter : IEquatable<CapabilityParameter?>
     {
         Name = name;
         CsharpType = csharpType;
-        ParameterKind = parameterKind;
         DocDescription = docDescription;
         IsRequired = isRequired;
         IsNullable = isNullable;
@@ -62,8 +60,7 @@ internal sealed class CapabilityParameter : IEquatable<CapabilityParameter?>
     /// <summary>C# 类型显示名（仅用于诊断消息，不参与 Schema 推导）。</summary>
     public string CsharpType { get; }
 
-    /// <summary>参数类别：Path / Query / Body / Header / FormContent。</summary>
-    public string ParameterKind { get; }
+    // R3-09：已删除 ParameterKind 属性——零消费方。
 
     /// <summary>参数文档描述（XML <c>&lt;param&gt;</c> 或 <c>[ToolParameter]</c>）。</summary>
     public string? DocDescription { get; }
@@ -82,7 +79,6 @@ internal sealed class CapabilityParameter : IEquatable<CapabilityParameter?>
             && string.Equals(Name, other.Name, StringComparison.Ordinal)
             && string.Equals(DeclaredToolParameterName ?? string.Empty, other.DeclaredToolParameterName ?? string.Empty, StringComparison.Ordinal)
             && string.Equals(CsharpType, other.CsharpType, StringComparison.Ordinal)
-            && string.Equals(ParameterKind, other.ParameterKind, StringComparison.Ordinal)
             && string.Equals(DocDescription ?? string.Empty, other.DocDescription ?? string.Empty, StringComparison.Ordinal)
             && IsRequired == other.IsRequired
             && IsNullable == other.IsNullable
@@ -100,7 +96,6 @@ internal sealed class CapabilityParameter : IEquatable<CapabilityParameter?>
             hash = (hash * 31) + comparer.GetHashCode(Name);
             hash = (hash * 31) + comparer.GetHashCode(DeclaredToolParameterName ?? string.Empty);
             hash = (hash * 31) + comparer.GetHashCode(CsharpType);
-            hash = (hash * 31) + comparer.GetHashCode(ParameterKind);
             hash = (hash * 31) + comparer.GetHashCode(DocDescription ?? string.Empty);
             hash = (hash * 31) + comparer.GetHashCode(SchemaFragmentJson);
             hash = (hash * 31) + (IsRequired ? 1 : 0);

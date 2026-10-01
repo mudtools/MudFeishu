@@ -18,7 +18,7 @@ namespace Mud.Feishu.AI.Tools;
 /// <see cref="MUDFT004"/>/<see cref="MUDFT008"/>/<see cref="MUDFT010"/>/<see cref="MUDFT014"/>/
 /// <see cref="MUDFT015"/>/<see cref="MUDFT016"/>/<see cref="MUDFT017"/>/<see cref="MUDFT019"/>/
 /// <see cref="MUDFT020"/>/<see cref="MUDFT022"/>/<see cref="MUDFT023"/>/<see cref="MUDFT024"/>/
-/// <see cref="MUDFT025"/>/<see cref="MUDFT026"/>（见 <see cref="ZeroToleranceIds"/>）。
+/// <see cref="MUDFT025"/>/<see cref="MUDFT026"/>/<see cref="MUDFT027"/>（见 <see cref="ZeroToleranceIds"/>）。
 /// </para>
 /// <para>
 /// <b>AT-B14 清理记录（R3 评审 C-2）</b>：本表原先还声明了
@@ -61,6 +61,30 @@ internal static class Diagnostics
         id: "MUDFT003",
         title: "工具名冲突",
         messageFormat: "工具名 '{0}' 冲突：已被接口 {1} 占用",
+        category: "MudFeishu.AI",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// 工具名归一后的<b>派生常量名</b>冲突（<c>foo.bar_baz</c> 与 <c>foo.bar.baz</c> 都派生出 <c>FooBarBaz</c>）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <see cref="MUDFT003"/> 只保证工具名<b>字面</b>唯一；而 <c>FeishuToolNames</c> 的常量、<c>{Tool}Args</c>
+    /// 类型名与其中间 hintName 都由 <c>SchemaEmitter.BuildNameConstant</c>（丢弃 <c>.</c>/<c>_</c>/<c>-</c>
+    /// 后 PascalCase）派生——字面不同的两个名字可以归一到同一个派生名，产物随即撞成
+    /// <c>CS0101</c>（重复常量/类型）或 <c>AddSource</c> 重复 hintName 异常（被 <c>MUDFT026</c> 兜底，报的是
+    /// "生成器内部异常"这一表面症状）。
+    /// </para>
+    /// <para>
+    /// <b>为什么不消歧而是报错</b>：派生常量是编译期契约标识符（守卫用它把生成类型映射回工具名），
+    /// 静默加后缀会让两个"看起来一样"的工具各自持有一个常量，掩盖建模错误。改名是唯一正解。
+    /// </para>
+    /// </remarks>
+    public static readonly DiagnosticDescriptor MUDFT027 = new(
+        id: "MUDFT027",
+        title: "工具名派生常量名冲突",
+        messageFormat: "工具名 '{0}' 与 '{1}' 归一为同一编译期常量名 '{2}'——请改名使派生常量唯一",
         category: "MudFeishu.AI",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -291,6 +315,7 @@ internal static class Diagnostics
     public static readonly string[] ZeroToleranceIds =
     [
         "MUDFT001", "MUDFT002", "MUDFT003", "MUDFT004",
+        "MUDFT027",
         "MUDFT008", "MUDFT010", "MUDFT014", "MUDFT015",
         "MUDFT016", "MUDFT017", "MUDFT019", "MUDFT020",
         "MUDFT022", "MUDFT023", "MUDFT024", "MUDFT025",

@@ -96,3 +96,78 @@ public interface IFeishuTaskCompleteTaskTool
         [ToolParameter("dry_run", "仅预演不完成（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }
+
+// ─────────────────────────── Task 写面成环（R7/WP5，4 个） ───────────────────────────
+
+/// <summary>工具接口：task.delete_task（映射 <c>IFeishuTenantV2Task.DeleteTaskByIdAsync</c>）。</summary>
+[FeishuTool("task.delete_task",
+    Description = "删除指定任务（删除后任务无法再被获取到）。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。建议先 dry_run 预演确认。task_guid 来自 task.create_task 或 task.list_my_tasks。",
+    RequiredScopes = ["task:task"],
+    IsWrite = true,
+    Source = "IFeishuTenantV2Task.DeleteTaskByIdAsync")]
+public interface IFeishuTaskDeleteTaskTool
+{
+    /// <summary>删除任务。</summary>
+    /// <returns>白名单投影后的 JSON 文本（deleted=true）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> DeleteTaskAsync(
+        [ToolParameter("task_guid", "任务全局唯一 ID（来自 task.create_task 或 task.list_my_tasks）", Required = true)] string task_guid,
+        [ToolParameter("dry_run", "仅预演不删除（可选，默认 false）：返回将要下发的 method/path，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：task.create_subtask（映射 <c>IFeishuTenantV2Task.CreateSubTaskAsync</c>）。</summary>
+[FeishuTool("task.create_subtask",
+    Description = "为指定父任务创建子任务（summary 必填；接口功能除了额外需要父任务 GUID 外，和创建任务完全一致）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
+    RequiredScopes = ["task:task"],
+    IsWrite = true,
+    Source = "IFeishuTenantV2Task.CreateSubTaskAsync")]
+public interface IFeishuTaskCreateSubtaskTool
+{
+    /// <summary>创建子任务。</summary>
+    /// <returns>白名单投影后的 JSON 文本（subtask_guid）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> CreateSubtaskAsync(
+        [ToolParameter("task_guid", "父任务全局唯一 ID（来自 task.create_task 或 task.list_my_tasks）", Required = true)] string task_guid,
+        [ToolParameter("summary", "子任务标题", Required = true)] string summary,
+        [ToolParameter("description", "子任务描述（可选）")] string? description = null,
+        [ToolParameter("due", "截止时间（RFC3339，如 2026-10-01T18:00:00+08:00；可选）")] string? due = null,
+        [ToolParameter("idempotency_key", "幂等键（可选）：平台原生幂等——相同键至多创建一次子任务；省略时不保证幂等。建议由调用方给出稳定值，不要用随机数。幂等键不跨工具共享。")] string? idempotency_key = null,
+        [ToolParameter("dry_run", "仅预演不创建（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：task.add_comment（映射 <c>IFeishuTenantV2TaskComments.CreateCommentAsync</c>）。</summary>
+[FeishuTool("task.add_comment",
+    Description = "为指定任务添加评论（content 必填，最长 3000 个 utf8 字符）。可通过 reply_to_comment_id 回复已有评论。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
+    RequiredScopes = ["task:task"],
+    IsWrite = true,
+    Source = "IFeishuTenantV2TaskComments.CreateCommentAsync")]
+public interface IFeishuTaskAddCommentTool
+{
+    /// <summary>添加评论。</summary>
+    /// <returns>白名单投影后的 JSON 文本（comment_id）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> AddCommentAsync(
+        [ToolParameter("task_guid", "任务全局唯一 ID（评论归属的资源 ID）", Required = true)] string task_guid,
+        [ToolParameter("content", "评论内容（最长 3000 个 utf8 字符）", Required = true)] string content,
+        [ToolParameter("reply_to_comment_id", "回复目标评论 ID（可选；不填表示创建非回复评论）")] string? reply_to_comment_id = null,
+        [ToolParameter("dry_run", "仅预演不创建（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：task.add_members（映射 <c>IFeishuTenantV2Task.AddMembersByIdAsync</c>）。</summary>
+[FeishuTool("task.add_members",
+    Description = "向指定任务添加成员（负责人或关注人，member_ids 为 open_id 数组，role 指定角色 assignee 或 follower）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
+    RequiredScopes = ["task:task"],
+    IsWrite = true,
+    Source = "IFeishuTenantV2Task.AddMembersByIdAsync")]
+public interface IFeishuTaskAddMembersTool
+{
+    /// <summary>添加任务成员。</summary>
+    /// <returns>白名单投影后的 JSON 文本（added_count/task_guid）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> AddMembersAsync(
+        [ToolParameter("task_guid", "任务全局唯一 ID（来自 task.create_task 或 task.list_my_tasks）", Required = true)] string task_guid,
+        [ToolParameter("member_ids", "成员 open_id 数组（如 [\"ou_xxx\"]）", Required = true)] string[] member_ids,
+        [ToolParameter("role", "成员角色：assignee（负责人，默认）或 follower（关注人）")] string? role = null,
+        [ToolParameter("idempotency_key", "幂等键（可选）：平台原生幂等——相同键至多添加一次；省略时不保证幂等。幂等键不跨工具共享。")] string? idempotency_key = null,
+        [ToolParameter("dry_run", "仅预演不添加（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}

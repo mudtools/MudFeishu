@@ -151,6 +151,22 @@ public class FeishuAgentTests
         }
     }
 
+    /// <summary>R4-8：末尾附带一条 <see cref="UsageContent"/>（MAF 的流式用量上报形态）。</summary>
+    private static async IAsyncEnumerable<ChatResponseUpdate> StreamChunksWithUsage(
+        long? input, long? output, long? total)
+    {
+        yield return new ChatResponseUpdate(ChatRole.Assistant, "你");
+        await Task.Yield();
+        yield return new ChatResponseUpdate(
+            ChatRole.Assistant,
+            [new UsageContent(new UsageDetails
+            {
+                InputTokenCount = input,
+                OutputTokenCount = output,
+                TotalTokenCount = total,
+            })]);
+    }
+
     // ───────────────────── P1-4：坏载荷自愈（毒事件循环） ─────────────────────
 
     /// <summary>
@@ -297,6 +313,33 @@ public class FeishuAgentTests
             "坏值必须被删除——否则每次重投递都在同一处抛，该会话在 TTL 内永久毒化");
     }
 
+    /// <summary>
+    /// R4-7：坏值自愈的 catch 面必须收口为「非 <see cref="OperationCanceledException"/>」——
+    /// <b>白名单之外</b>的异常类型也必须走「删除坏值 + 重建」，否则坏值逃出守护区、会话永久毒化。
+    /// </summary>
+    /// <remarks>
+    /// 载荷 <c>{"feishu.agent.history":null}</c> 在急切校验中实测抛 <see cref="NullReferenceException"/>
+    /// （MAF 对 null 状态值未做防御）——该类型**不在**原白名单内：
+    /// <c>JsonException/ArgumentException/InvalidOperationException/NotSupportedException</c>。
+    /// 故本用例在旧实现下必然 FAIL（异常逃出），在收口后 PASS——构成 R4-7 的红转绿回归锁。
+    /// </remarks>
+    [Fact]
+    public async Task CorruptStateBag_ShouldDeleteAndRebuild_RegardlessOfExceptionType()
+    {
+        var mock = CreateMockClient("ok");
+        var store = new MemoryConversationStore();
+        var agent = new FeishuAgent(mock.Object, ValidOptions(), store);
+        var key = ConversationKeyBuilder.Build("app-a", ConversationScope.P2P(), "ou_nre_payload");
+
+        await store.SaveAsync(key, "{\"stateBag\":{\"feishu.agent.history\":null}}");
+
+        var restored = await agent.GetOrCreateSessionAsync(key);
+
+        restored.Should().NotBeNull("白名单之外的异常类型同样必须按 miss 处理并重建（R4-7 收口）");
+        (await store.GetAsync(key)).Should().BeNull(
+            "坏值必须被删除——否则每次重投递都在同一处（守护区外）再抛，会话在 TTL 内永久毒化");
+    }
+
     [Fact]
     public async Task GetOrCreateSessionAsync_ShouldKeepUsableHistory_WhenStateIntact()
     {
@@ -383,6 +426,118 @@ public class FeishuAgentTests
             "失败路径必须把 Span 标为 Error（否则失败在链路里不可见）");
         durations.Should().NotBeEmpty(
             "失败样本也必须进入 feishu.agent.llm.duration（否则 P95/P99 只反映成功路径）");
+    }
+
+    /// <summary>
+    /// R3-7：流式路径必须与非流式 <c>RunCoreAsync</c> 一样记录 <c>feishu.agent.llm.duration</c>——
+    /// IM 会话默认走流式，漏记会让监控里的耗时 P95/P99 只反映非流式路径。
+    /// </summary>
+    [Fact]
+    public async Task RunStreamingAsync_ShouldRecordLlmDuration_Once()
+    {
+        // 指标是**进程级**直方图，xUnit 并行执行的其他用例也会打同一 instrument——
+        // 故用本用例独有的 Agent 名做维度过滤，才能断言"恰好一次"而不受邻居干扰。
+        var agentName = "stream-duration-" + Guid.NewGuid().ToString("N");
+        var recorded = new ConcurrentQueue<string>();
+
+        using var meterListener = new MeterListener
+        {
+            InstrumentPublished = (instrument, l) =>
+            {
+                if (instrument.Name == "feishu.agent.llm.duration")
+                {
+                    l.EnableMeasurementEvents(instrument);
+                }
+            },
+        };
+        meterListener.SetMeasurementEventCallback<double>((_, _, tags, _) =>
+        {
+            foreach (var tag in tags)
+            {
+                // 只收本用例维度：并行用例会用**别的** Agent 名打同一 instrument，
+                // 若不过滤会把邻居的测量值一并入队（net10.0 全量运行下曾因此假红）。
+                if (tag.Key == "agent" && tag.Value is string name && name == agentName)
+                {
+                    recorded.Enqueue(name);
+                }
+            }
+        });
+        meterListener.Start();
+        // 兜底：FeishuMetrics.AgentLlmDuration 是 static readonly，可能在监听器启动前就已创建
+        // （InstrumentPublished 不保证回放已存在的 instrument），显式启用确保稳定收到测量值。
+        meterListener.EnableMeasurementEvents(Mud.Feishu.Abstractions.Metrics.FeishuMetrics.AgentLlmDuration);
+
+        var mock = new Mock<IChatClient>();
+        mock.Setup(c => c.GetStreamingResponseAsync(
+                It.IsAny<IEnumerable<ChatMessage>>(),
+                It.IsAny<ChatOptions?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(StreamChunks("你", "好"));
+
+        var options = ValidOptions();
+        options.Name = agentName;
+        var agent = new FeishuAgent(mock.Object, options);
+        var session = await agent.CreateSessionAsync();
+
+        var updates = 0;
+        await foreach (var _ in agent.RunStreamingAsync("流式", session))
+        {
+            updates++;
+        }
+
+        updates.Should().Be(2);
+        recorded.Should().ContainSingle().Which.Should().Be(agentName,
+            "一次流式消费必须恰好记录一次模型调用耗时（R3-7：流式与非流式对齐）");
+    }
+
+    /// <summary>
+    /// R4-8：流式路径必须把 token 用量写入 Span（与非流式 <c>RunCoreAsync</c> 对齐）——
+    /// IM 会话默认走流式，漏记会让用量可观测性缺一半（输入/输出 token 从不进入链路）。
+    /// </summary>
+    /// <remarks>用量只写 Span 标量属性（原则 8），故断言落在 Activity 标签上而非 Metrics tag。</remarks>
+    [Fact]
+    public async Task RunStreamingAsync_ShouldRecordTokenUsage()
+    {
+        var stopped = new ConcurrentQueue<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == FeishuActivitySource.Name,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+            ActivityStopped = activity => stopped.Enqueue(activity),
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        // Span 是**进程级** ActivitySource 产物，xUnit 并行执行的其他用例也会打同一 operation——
+        // 故用本用例独有的 Agent 名做维度过滤，才能断言"恰好一次"而不受邻居干扰
+        // （对齐 RunStreamingAsync_ShouldRecordLlmDuration_Once 的做法；net10.0 全量运行下
+        // 仅按 operation 过滤会因邻居的 run_streaming Span 同时入队而抛"Sequence contains more than one matching element"）。
+        var agentName = "stream-usage-" + Guid.NewGuid().ToString("N");
+
+        var mock = new Mock<IChatClient>();
+        mock.Setup(c => c.GetStreamingResponseAsync(
+                It.IsAny<IEnumerable<ChatMessage>>(),
+                It.IsAny<ChatOptions?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(StreamChunksWithUsage(input: 10, output: 5, total: 15));
+
+        var options = ValidOptions();
+        options.Name = agentName;
+        var agent = new FeishuAgent(mock.Object, options);
+        var session = await agent.CreateSessionAsync();
+
+        await foreach (var _ in agent.RunStreamingAsync("流式", session))
+        {
+        }
+
+        var runActivity = stopped.Single(
+            a => a.OperationName == "feishu.agent.run_streaming"
+                && (string?)a.GetTagItem("feishu.agent.name") == agentName);
+        runActivity.GetTagItem("feishu.llm.input_tokens").Should().Be(10L,
+            "流式路径必须把输入 token 写入 Span（R4-8）");
+        runActivity.GetTagItem("feishu.llm.output_tokens").Should().Be(5L,
+            "流式路径必须把输出 token 写入 Span（R4-8）");
+        runActivity.GetTagItem("feishu.llm.total_tokens").Should().Be(15L,
+            "流式路径必须把总 token 写入 Span（R4-8）");
     }
 
     [Fact]

@@ -137,9 +137,42 @@ internal static class ToolArgumentSanitizer
         return null;
     }
 
+    /// <summary>
+    /// 校验<b>邮件头字段</b>值（R3-12）：拒绝任何 <c>CR</c>/<c>LF</c>——头字段换行是 SMTP 头注入的
+    /// 经典载体（<c>Subject: "x\r\nBcc: attacker@evil"</c> 可凭空插入收件人）。
+    /// </summary>
+    /// <remarks>
+    /// <b>为什么不改 <see cref="ValidateText"/></b>：全局入站净化<b>必须</b>允许 CRLF/LF
+    /// （正文、文档内容、消息文本都靠换行表达结构），收紧会影响全部域；故换行禁忌只施加于
+    /// 「会被逐行解析成头部的字段」这一小面，由调用方（邮件 EML 构造）显式使用本方法。
+    /// </remarks>
+    /// <param name="name">字段名（错误消息用）。</param>
+    /// <param name="value">字段值。</param>
+    /// <returns>违规描述，或 <see langword="null"/>。</returns>
+    public static string? ValidateHeaderValue(string name, string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return null;
+        }
+
+        for (var i = 0; i < value!.Length; i++)
+        {
+            var ch = value[i];
+            if (ch == '\r' || ch == '\n')
+            {
+                return $"参数 {name} 含换行符（{(ch == '\r' ? "CR" : "LF")}）——"
+                    + "邮件头字段禁止换行（SMTP 头注入防护），换行请放在正文中";
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>禁止的 C0/C1 控制字符（保留 <c>\n</c> / <c>\r</c> / <c>\t</c>；<c>\r</c> 由调用方单独处理）。</summary>
+    /// <remarks>R3-05：判定表达式单源到 <see cref="SecurityTextPrimitives.IsControl"/>（出站剥离 / 入站拒绝共用同一事实）。</remarks>
     private static bool IsForbiddenControl(char ch)
-        => (ch < ' ' && ch is not ('\n' or '\r' or '\t')) || ch == '\u007F' || (ch >= '\u0080' && ch <= '\u009F');
+        => SecurityTextPrimitives.IsControl(ch);
 
     /// <summary>
     /// 禁止的"危险 Unicode"：孤立零宽字符、Bidi 覆盖/嵌入/隔离、BOM 与各类不可见控制。

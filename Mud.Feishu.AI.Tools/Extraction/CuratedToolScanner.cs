@@ -30,7 +30,7 @@ namespace Mud.Feishu.AI.Tools.Extraction;
 /// </remarks>
 internal static class CuratedToolScanner
 {
-    private static readonly char[] NameSeparator = ['.'];
+    // R3-09：NameSeparator 已随 DeriveModule 一同清理。
 
     /// <summary>扫描单个接口符号。</summary>
     /// <param name="symbol">标注 <c>[FeishuTool]</c> 的接口。</param>
@@ -67,10 +67,7 @@ internal static class CuratedToolScanner
         var httpMethod = string.Empty;
         var routeTemplate = string.Empty;
         var methodName = string.Empty;
-        var returnTypeMetadata = string.Empty;
         string? outputSchema = null;
-        var hasFileUpload = false;
-        var returnsBinary = false;
         var risk = isWrite ? ToolRisk.Write : ToolRisk.Read;
         var identity = ToolIdentity.Tenant;
         IReadOnlyList<string> outputSchemaTruncations = [];
@@ -92,9 +89,6 @@ internal static class CuratedToolScanner
                 var (sourceType, method) = resolved.Value;
                 (httpMethod, routeTemplate) = Extractors.ExtractHttpInfo(method);
                 methodName = method.Name;
-                returnTypeMetadata = Extractors.ExtractReturnTypeMetadata(method);
-                hasFileUpload = Extractors.HasFileUpload(method);
-                returnsBinary = Extractors.ReturnsBinary(method);
                 identity = DeriveIdentityFromSource(sourceType.Name, sourceTypeName, diagnostics, toolName);
 
                 if (!Extractors.TryParseSdkInterfaceName(sourceType.Name, out _, out _, out _))
@@ -149,16 +143,12 @@ internal static class CuratedToolScanner
         var entry = new CapabilityEntry(
             interfaceName: symbol.Name,
             toolName: toolName,
-            moduleName: DeriveModule(toolName),
             identity: identity,
             httpMethod: httpMethod,
             routeTemplate: routeTemplate,
             methodName: methodName,
-            returnTypeMetadataName: returnTypeMetadata,
             parameters: parameters,
             docSummary: docSummary,
-            hasFileUpload: hasFileUpload,
-            returnsBinary: returnsBinary,
             risk: risk,
             scopes: scopes,
             outputSchemaJson: outputSchema,
@@ -285,11 +275,7 @@ internal static class CuratedToolScanner
         _ => "read",
     };
 
-    private static string DeriveModule(string toolName)
-    {
-        var separatorIndex = toolName.IndexOfAny(NameSeparator);
-        return separatorIndex > 0 ? toolName.Substring(0, separatorIndex) : toolName;
-    }
+    // R3-09：已删除 DeriveModule——随 ModuleName 字段一同清理。
 
     private static bool IsPrimitiveName(string csharpType)
     {

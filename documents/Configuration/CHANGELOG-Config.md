@@ -5,6 +5,30 @@ description: 该文档记录 MudFeishu 配置面的变更日志，涵盖事件�
 
 # 配置面变更日志（CHANGELOG-Config）
 
+## 2026-09（AI 审查缺陷修复 R3）
+
+> 方案：`.docs/AI/Mud.Feishu.AI-审查缺陷修复与能力完善方案-R3.md`
+
+### R3-3 — 群聊「@ 到 Bot 本人」判定
+
+| 变更 | 类型 | 说明 |
+| ---- | ---- | ---- |
+| 新增 `ImConversationOptions.BotName`（`string?`，默认 `null`） | 新增能力 + **行为变更（仅当配置后）** | 群聊 `@` 过滤此前仅判「`mentions` 非空」⇒ 任何 `@`（`@` 别人、`@` 全体）都会触发 Bot 回复。配置本值后，必须存在 `mentions[].name` 与之（忽略大小写）相等的 `@` 对象才进入会话 |
+
+**迁移指引**：默认 `null` 保持旧行为（升级零破坏）。如遇群内过度响应，配置
+`FeishuAgent` → 内置 IM 会话选项的 `BotName` 为 Bot 在群内的显示名即可收紧；
+取值须与飞书群内 `@` 时呈现的 `mentions[].name` 一致（通常是群内显示名，未必等于应用名）——
+配置错误表现为「群聊静默不响应」，建议先以默认值观察真实 `mentions` 报文再配置。
+
+### R3-9 — 数值配置项补齐上界
+
+| 变更 | 类型 | 说明 |
+| ---- | ---- | ---- |
+| `FeishuAgentOptions` 五个数值项由「仅下界」改为「下界 + 上界」 | **行为变更** | `MaxHistoryMessages` 1..10000、`MaxToolResultLength` 1..200000、`MaxStreamChunkLength` 1..100000、`SummaryThreshold` 0 或 4..10000、`MaxHistoryTokens` 0..1000000。此前超大值不在装配期失败，而在运行期表现为内存/序列化开销失控 |
+
+**迁移指引**：将上述任一值配置到上界之外的部署，升级后会在装配期抛
+`InvalidOperationException`（fail-fast，信息含合法区间）。
+
 ## 2026-09（事件路由 R2）
 
 > 方案：`.docs/事件路由审查修复方案-R2.md`

@@ -17,9 +17,10 @@ namespace Mud.Feishu.AI.Conversations;
 /// 读侧有效性判定；Redis 由服务器键过期 + 读侧时间戳双重兜底）。
 /// </para>
 /// <para>
-/// <b>过期回收（R2-5）</b>：软过期只在<b>读同一键</b>时删除，<b>不再被读取</b>的键（一次性会话、
-/// 被移出群的用户）永不回收 ⇒ 长跑宿主的内存随会话数单调增长。故在写入路径按阈值触发一次
-/// <b>惰性分摊清扫</b>：单次 O(n)、均摊 O(1)，<b>不引入后台线程/定时器</b>（保持"纯库、零宿主假设"品格），
+/// <b>过期回收（R2-5 / R3-06）</b>：软过期只在<b>读同一键</b>时删除，<b>不再被读取</b>的键（一次性会话、
+/// 被移出群的用户）永不回收 ⇒ 长跑宿主的内存随会话数单调增长。故在写入路径按阈值 + 节流触发一次
+/// <b>惰性分摊清扫</b>：≤<c>SweepThreshold</c> 条目时 O(1)；超过后按 <c>SweepEveryWrites</c> 次写入节流，
+/// 单次成本上界 <c>SweepMaxRemoval</c>，<b>不引入后台线程/定时器</b>（保持"纯库、零宿主假设"品格），
 /// 语义与 Redis 服务端过期一致（读侧软过期兜底不变）。
 /// </para>
 /// <para>
@@ -34,12 +35,24 @@ namespace Mud.Feishu.AI.Conversations;
 public sealed class MemoryConversationStore : IConversationStore
 {
     /// <summary>清扫触发阈值（条目数；达到则在下一次写入时做一次全量过期回收）。</summary>
-    /// <remarks>分摊策略：单次 O(n)、均摊 O(1)。值为 2 的幂，便于在用例中构造边界。</remarks>
+    /// <remarks>R3-06：分摊策略——节流触发（距上次清扫 ≥ SweepEveryWrites 次写入且条目数 ≥ 阈值），
+    /// 避免稳态下每次写入全表扫描。单次成本上界为 O(n)（受 SweepMaxRemoval 限制回收条数）。</remarks>
     internal const int SweepThreshold = 1024;
+
+    /// <summary>R3-06：两次清扫之间的最少写入次数（节流，避免每次写入都扫）。</summary>
+    internal const int SweepEveryWrites = 64;
+
+    /// <summary>R3-06：单次清扫最多回收的条目数（成本上界，与回收效果解耦）。</summary>
+    internal const int SweepMaxRemoval = 256;
 
     private readonly ConcurrentDictionary<string, StoreEntry> _entries = new(StringComparer.Ordinal);
     private readonly TimeSpan _ttl;
     private readonly Func<DateTimeOffset> _utcNow;
+
+    // R3-06：清扫节流状态——距上次清扫的写入次数。
+    private int _writesSinceSweep;
+    // R3-06：清扫调用计数（诊断/测试观测面，用于断言节流效果）。
+    internal int SweepCallCount;
 
     /// <summary>
     /// 初始化内存会话存储。
@@ -88,10 +101,11 @@ public sealed class MemoryConversationStore : IConversationStore
         if (string.IsNullOrEmpty(serializedSession))
             throw new ArgumentException("会话载荷不能为空", nameof(serializedSession));
 
-        // 惰性分摊清扫（R2-5）：未再被读取的过期键永不到达读侧软过期路径，
-        // 故由写入路径按阈值触发一次全量回收（不引入后台线程/定时器）。
-        if (_entries.Count >= SweepThreshold)
+        // R3-06：节流触发——条目数 ≥ 阈值 **且** 距上次清扫 ≥ SweepEveryWrites 次写入。
+        // 避免稳态下每次写入全表扫描（原实现仅判 Count >= SweepThreshold，新鲜条目长期 ≥1024 时恒扫）。
+        if (_entries.Count >= SweepThreshold && System.Threading.Interlocked.Increment(ref _writesSinceSweep) >= SweepEveryWrites)
         {
+            _writesSinceSweep = 0;
             SweepExpired();
         }
 
@@ -112,19 +126,26 @@ public sealed class MemoryConversationStore : IConversationStore
     /// <summary>当前驻留条目数（含已过期未回收者；诊断与用例观测面）。</summary>
     internal int Count => _entries.Count;
 
-    /// <summary>回收全部已过期条目（值匹配删除，与读侧软过期同源判定）。</summary>
+    /// <summary>回收已过期条目（值匹配删除，与读侧软过期同源判定；R3-06：单次上限 SweepMaxRemoval）。</summary>
     /// <remarks>
     /// <see cref="ConcurrentDictionary{TKey,TValue}"/> 支持枚举期间移除；KVP 值匹配保证
     /// 不会误删「同键在枚举期间被覆盖写入」的新值（与读侧软过期同一手法）。
+    /// R3-06：单次最多回收 <see cref="SweepMaxRemoval"/> 条，使单次成本有界。
     /// </remarks>
     private void SweepExpired()
     {
+        System.Threading.Interlocked.Increment(ref SweepCallCount);
         var nowMs = _utcNow().ToUnixTimeMilliseconds();
+        var removed = 0;
         foreach (var pair in _entries)
         {
             if (pair.Value.ExpireAtMs <= nowMs)
             {
                 ((ICollection<KeyValuePair<string, StoreEntry>>)_entries).Remove(pair);
+                if (++removed >= SweepMaxRemoval)
+                {
+                    break;
+                }
             }
         }
     }

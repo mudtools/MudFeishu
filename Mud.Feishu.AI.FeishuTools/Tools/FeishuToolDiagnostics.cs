@@ -116,4 +116,20 @@ internal static class FeishuToolDiagnostics
         };
         FeishuMetrics.ToolDuration.Record(durationMs, tags);
     }
+
+    /// <summary>
+    /// R3-12：记录一次降级路径计数（<c>feishu.agent.tool.degraded</c>；维度 app_key/reason——
+    /// 高基数纪律（原则 8）：维度不得含键/用户标识。reason 取值见 <see cref="FeishuMetrics.DegradedReasons"/>。
+    /// </summary>
+    /// <param name="appKey">应用唯一标识。</param>
+    /// <param name="reason">降级原因（<see cref="FeishuMetrics.DegradedReasons"/> 受控枚举）。</param>
+    public static void RecordDegraded(string appKey, string reason)
+    {
+        var tags = new TagList
+        {
+            { FeishuMetrics.Tags.AppKey, appKey },
+            { FeishuMetrics.Tags.Reason, reason },
+        };
+        FeishuMetrics.ToolDegradedCount.Add(1, tags);
+    }
 }

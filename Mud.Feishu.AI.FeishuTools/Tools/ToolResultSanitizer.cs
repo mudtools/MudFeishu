@@ -48,28 +48,26 @@ internal static class ToolResultSanitizer
     /// <summary>脱敏掩码。</summary>
     public const string Mask = "***";
 
-    /// <summary>需要脱敏的凭据类 JSON 属性名（精确匹配；<b>不含</b>任何 <c>*_token</c> 标识字段）。</summary>
-    private static readonly string[] SecretKeys =
-    [
-        "app_secret", "client_secret", "secret", "password", "passwd",
-        "access_token", "refresh_token", "tenant_access_token", "user_access_token",
-        "app_access_token", "authorization", "private_key", "encrypt_key", "verification_token",
-    ];
+    /// <summary>需要脱敏的凭据类 JSON 属性名（R3-05：单源到 SecurityTextPrimitives.CredentialKeys）。</summary>
+    private static readonly string[] SecretKeys = SecurityTextPrimitives.CredentialKeys;
 
     /// <summary>ANSI 转义序列（CSI/OSC）：终端控制，模型上下文里没有任何正当用途。</summary>
     private static readonly Regex AnsiEscape = new(
         @"\x1B\[[0-9;?]*[ -/]*[@-~]|\x1B\][^\x07\x1B]*(?:\x07|\x1B\\)|\x1B[@-Z\\-_]",
-        RegexOptions.Compiled);
+        RegexOptions.Compiled,
+        SecurityTextPrimitives.MatchTimeout);
 
-    /// <summary>凭据键 → 值脱敏（JSON 形态：<c>"app_secret":"…"</c>）。</summary>
-    private static readonly Regex SecretValues = new(
-        "\\\"(?<key>" + string.Join("|", SecretKeys) + ")\\\"\\s*:\\s*\\\"[^\\\"]*\\\"",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    /// <summary>凭据键 → 值脱敏（R3-05：单源到 SecurityTextPrimitives.SecretValuesJson）。</summary>
+    private static readonly Regex SecretValues = SecurityTextPrimitives.SecretValuesJson;
+
+    /// <summary>凭据键 → 值脱敏（非 JSON 形态：key=value / key: value；R3-05 新增）。</summary>
+    private static readonly Regex SecretValuesFlat = SecurityTextPrimitives.SecretValuesFlat;
 
     /// <summary>中国大陆手机号（带边界断言，避免命中更长的标识/数字串）。</summary>
     private static readonly Regex ChinaMobile = new(
         @"(?<![\dA-Za-z])1[3-9]\d{9}(?![\dA-Za-z])",
-        RegexOptions.Compiled);
+        RegexOptions.Compiled,
+        SecurityTextPrimitives.MatchTimeout);
 
     /// <summary>
     /// 净化工具结果文本。
@@ -87,7 +85,9 @@ internal static class ToolResultSanitizer
         // （实测：先剥控制字符会把 ANSI 序列切成无害但可见的乱码，达不到净化目的）。
         var sanitized = AnsiEscape.Replace(text!, string.Empty);
         sanitized = StripControlCharacters(sanitized);
+        // R3-05：JSON 形态 + 非 JSON 形态脱敏（补齐 api_key/client_id 等此前漏网的键）。
         sanitized = SecretValues.Replace(sanitized, m => "\"" + m.Groups["key"].Value + "\":\"" + Mask + "\"");
+        sanitized = SecretValuesFlat.Replace(sanitized, m => m.Groups["key"].Value + "=" + Mask);
         sanitized = ChinaMobile.Replace(sanitized, Mask);
         return sanitized;
     }
@@ -128,5 +128,5 @@ internal static class ToolResultSanitizer
     }
 
     private static bool IsStrippedControl(char ch)
-        => (ch < ' ' && ch is not ('\n' or '\r' or '\t')) || ch == '\u007F' || (ch >= '\u0080' && ch <= '\u009F');
+        => SecurityTextPrimitives.IsControl(ch);
 }

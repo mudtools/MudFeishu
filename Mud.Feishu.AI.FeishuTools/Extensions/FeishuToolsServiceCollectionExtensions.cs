@@ -342,6 +342,10 @@ public static class FeishuToolsServiceCollectionExtensions
             services.AddFeishuKnowledgeContext();
         }
 
+        // R3-1：回复前切租户依赖作用域工厂——本入口是 IM 会话处理器的「一行接入」装配点，
+        // 若此处不注册，多应用宿主会在回复时 fail-closed 抛错（有 appKey 无工厂）。
+        services.TryAddSingleton<IFeishuAppContextScopeFactory, FeishuAppContextScopeFactory>();
+
         // 处理器本体：宿主经通道 AddHandler<ImMessageConversationalEventHandler>() 挂载（AddScoped 语义由通道补齐）。
         services.TryAddScoped<ImMessageConversationalEventHandler>();
 
@@ -385,7 +389,8 @@ public static class FeishuToolsServiceCollectionExtensions
         services.AddOptions<AilyKnowledgeOptions>().ValidateOnStart();
 #endif
 
-        services.AddSingleton<AilyKnowledgeProvider>(static sp =>
+        // R3-07：注册幂等——改为 TryAddSingleton，与前后行一致，避免重复调用产生多条描述符。
+        services.TryAddSingleton<AilyKnowledgeProvider>(static sp =>
         {
             var options = sp.GetRequiredService<IOptions<AilyKnowledgeOptions>>().Value;
             options.Validate();
@@ -425,6 +430,11 @@ public static class FeishuToolsServiceCollectionExtensions
     /// <summary>
     /// 写域工具核心批量注册（W4 抽取：消除 AddFeishuTools 与 AddFeishuWriteTools 的重复链）。
     /// </summary>
+    /// <remarks>
+    /// R3-08：注意——<c>mail</c>（邮件）与 <c>contact-department</c>（通讯录部门轴）为<b>读写混合域</b>，
+    /// 其读工具随写链注册（因为 <c>AddFeishuTools</c> 总是同时调用两链，行为正确）。
+    /// 未来如按链拆分装配，须把这两个域的读执行器拆到 <see cref="AddFeishuReadonlyToolCores"/>。
+    /// </remarks>
     private static IServiceCollection AddFeishuWriteToolCores(IServiceCollection services)
         => services
             // 写域按执行器拆成三个生成的 DI 核心方法（注册器按「执行器类」聚合，
@@ -435,7 +445,7 @@ public static class FeishuToolsServiceCollectionExtensions
             // WP2/R5 写入面补齐：docx/sheets/bitable(update/delete)/drive 写执行器
             .AddFeishuDocxWriteToolsCore()
             .AddFeishuSheetsWriteToolsCore()
-            .AddFeishuBitableWriteTools2Core()
+            .AddFeishuBitableWriteRecordOpsCore()
             .AddFeishuDriveWriteToolsCore()
             // WP5/R5 域扩容：邮件工具 + 通讯录部门轴工具
             .AddFeishuMailToolsCore()
@@ -448,6 +458,8 @@ public static class FeishuToolsServiceCollectionExtensions
     {
         // 执行链协作件。
         services.TryAddSingleton<IFeishuToolContextAccessor, FeishuToolContextAccessor>();
+        // R3-5：实现零业务客户端依赖（只取单例 IAppContextHolder / IFeishuAppManager），
+        // 故「只装 Bitable」等按域装配也能解析 FeishuToolBinding；同时消除 Singleton 捕获 Transient（TMA-13）。
         services.TryAddSingleton<IFeishuAppContextScopeFactory, FeishuAppContextScopeFactory>();
         services.TryAddSingleton<FeishuToolBinding>();
 

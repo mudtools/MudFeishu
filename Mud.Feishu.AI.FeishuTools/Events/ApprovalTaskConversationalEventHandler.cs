@@ -56,9 +56,11 @@ public sealed class ApprovalTaskConversationalEventHandler(
     IFeishuToolContextAccessor? toolContextAccessor = null,
     IMessageChannel? messageChannel = null,
     IConversationGate? conversationGate = null,
-    IAppKeyAccessor? appKeyAccessor = null)
+    IAppKeyAccessor? appKeyAccessor = null,
+    IFeishuAppContextScopeFactory? appContextScopeFactory = null)
     : ConversationalFeishuEventHandler<ApprovalTaskResult>(
-        agent, businessDeduplicator, logger, contextAssemblers, toolContextAccessor, messageChannel, conversationGate, appKeyAccessor)
+        agent, businessDeduplicator, logger, contextAssemblers, toolContextAccessor, messageChannel, conversationGate, appKeyAccessor,
+        appContextScopeFactory: appContextScopeFactory)
 {
     /// <summary>
     /// 解析不出操作人时的会话主体占位值（<c>open_id</c> 与 <c>user_id</c> 都为空，
@@ -102,6 +104,9 @@ public sealed class ApprovalTaskConversationalEventHandler(
         {
             throw new InvalidOperationException("审批事件回复失败：会话主体为空，无可投递接收方");
         }
+
+        // R3-1：回复前必须切到事件的租户上下文，否则生成的客户端会退回默认应用身份（TMA2-20 跨租户错发）。
+        using var appScope = BeginAppScope(request.AppKey);
 
         // 审批事件无 chat_id：以审批人 open_id 发单聊（receive_id_type = open_id）。
         // content 用 JsonObject 构造（AOT 安全 + 正确转义），取代此前手写的 Replace 转义链

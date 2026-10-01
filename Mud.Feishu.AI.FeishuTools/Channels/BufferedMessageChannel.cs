@@ -7,6 +7,7 @@
 
 using System.Collections.Concurrent;
 using System.Text;
+using Mud.Feishu.Abstractions.Metrics;
 using Mud.Feishu.AI.Channels;
 
 namespace Mud.Feishu.AI.FeishuTools.Channels;
@@ -184,6 +185,8 @@ public abstract class BufferedMessageChannel : IMessageChannel
         {
             // 有意静默（守卫白名单）：异常**不是**被吞掉，而是交给子类钩子 OnUpdateFailedAsync 记录
             // （子类各自记得更准的上下文：卡片流记 bizId、编辑通道记 messageId）。基类不重复记一遍。
+            // R3-12：降级路径指标化——通道更新失败补计数使可告警。
+            FeishuToolDiagnostics.RecordDegraded(appKey, FeishuMetrics.DegradedReasons.ChannelUpdateFailed);
             await OnUpdateFailedAsync(messageId, ex).ConfigureAwait(false);
         }
     }

@@ -107,4 +107,20 @@ public class ToolErrorClassifierTests
         var byCode = FeishuToolBinding.StructuredError("im.get_history_messages", 99991663, "无权限");
         byCode.Should().Contain("(forbidden)", "code=99991663 权限类错误按 forbidden 分类");
     }
+
+    /// <summary>
+    /// R4-13（收窄版）：飞书业务 code 必须透出（此前分类器算出后即被丢弃，模型只能读中文后缀）；
+    /// 无 code 时不产出空槽，保持既有文案形态。
+    /// </summary>
+    [Fact]
+    public void StructuredError_ShouldExposeApiCode_OnlyWhenKnown()
+    {
+        var withCode = FeishuToolBinding.StructuredError("im.get_history_messages", 99991663, "无权限");
+        withCode.Should().Contain("code=99991663", "业务 code 是此前被丢弃的机器可读事实，必须透出");
+
+        var withoutCode = FeishuToolBinding.StructuredError(
+            "bitable.query_records", ToolErrorKind.Retryable, "服务端繁忙");
+        withoutCode.Should().NotContain("code=", "无 code 时不产出空槽（HTTP 5xx/429 本就没有业务码）");
+        withoutCode.Should().Contain("(retryable)", "kind 标签保留（它已表达可重试性，故不再重复 retryable= 字段）");
+    }
 }

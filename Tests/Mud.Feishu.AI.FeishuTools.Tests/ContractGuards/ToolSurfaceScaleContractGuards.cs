@@ -166,7 +166,9 @@ internal static class ToolScaleScanner
         for (var i = 0; i < lines.Length; i++)
         {
             // 显式限定类型：本工程全局 using 了 Moq，其 `Moq.Match` 与正则的 `Match` 同名。
-            foreach (System.Text.RegularExpressions.Match match in Regex.Matches(lines[i], @"(?<count>\d+)\s*个工具"))
+            // R7/WP2-T2-3：原正则 `(?<count>\d+)\s*个工具` 无法匹配「31 个：24 只读 + 7 写类」形态，
+            // 扩展为同时匹配「N 个工具」与「N 个：…」/「N 个（…）」等写法。
+            foreach (System.Text.RegularExpressions.Match match in Regex.Matches(lines[i], @"(?<count>\d+)\s*个(?:工具|：|（|\()"))
             {
                 if (!int.TryParse(match.Groups["count"].Value, out var count))
                 {

@@ -98,46 +98,6 @@ public interface IFeishuSheetsAppendRowsTool
         CancellationToken cancellationToken = default);
 }
 
-// ─────────────────────────── Bitable 写（2 个，补充 update/delete） ───────────────────────────
-
-/// <summary>工具接口：bitable.update_record（映射 <c>IFeishuTenantV1BitableRecord.UpdateRecordAsync</c>）。</summary>
-[FeishuTool("bitable.update_record",
-    Description = "更新多维表格中的指定记录（按 record_id 更新 fields）。fields 为「字段名 → 值」JSON 对象字符串。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 bitable:app。",
-    RequiredScopes = ["bitable:app"],
-    IsWrite = true,
-    Source = "IFeishuTenantV1BitableRecord.UpdateRecordAsync")]
-public interface IFeishuBitableUpdateRecordTool
-{
-    /// <summary>更新记录。</summary>
-    /// <returns>白名单投影后的 JSON 文本（record_id）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
-    Task<string> UpdateRecordAsync(
-        [ToolParameter("app_token", "多维表格 AppToken（形如 bascnXxx）", Required = true)] string app_token,
-        [ToolParameter("table_id", "数据表 ID（形如 tblXxx）", Required = true)] string table_id,
-        [ToolParameter("record_id", "记录 ID（形如 recXxx，来自 bitable.query_records）", Required = true)] string record_id,
-        [ToolParameter("fields", "更新字段 JSON 对象字符串，如 {\"状态\":\"已完成\"}", Required = true)] string fields,
-        [ToolParameter("idempotency_key", "幂等键（可选）：相同 client_token 重复请求不会产生副作用。")] string? idempotency_key = null,
-        [ToolParameter("dry_run", "仅预演不更新（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
-        CancellationToken cancellationToken = default);
-}
-
-/// <summary>工具接口：bitable.delete_record（映射 <c>IFeishuTenantV1BitableRecord.DeleteRecordAsync</c>）。</summary>
-[FeishuTool("bitable.delete_record",
-    Description = "删除多维表格中的指定记录（不可恢复！请谨慎使用，建议先 dry_run 预演确认）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 bitable:app。",
-    RequiredScopes = ["bitable:app"],
-    IsWrite = true,
-    Source = "IFeishuTenantV1BitableRecord.DeleteRecordAsync")]
-public interface IFeishuBitableDeleteRecordTool
-{
-    /// <summary>删除记录（不可恢复）。</summary>
-    /// <returns>白名单投影后的 JSON 文本（删除确认）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
-    Task<string> DeleteRecordAsync(
-        [ToolParameter("app_token", "多维表格 AppToken（形如 bascnXxx）", Required = true)] string app_token,
-        [ToolParameter("table_id", "数据表 ID（形如 tblXxx）", Required = true)] string table_id,
-        [ToolParameter("record_id", "要删除的记录 ID（形如 recXxx）", Required = true)] string record_id,
-        [ToolParameter("dry_run", "仅预演不删除（可选，默认 false）：返回将要下发的 method/path，不调用下游")] bool? dry_run = null,
-        CancellationToken cancellationToken = default);
-}
-
 // ─────────────────────────── Drive 写（3 个） ───────────────────────────
 
 /// <summary>工具接口：drive.create_folder（映射 <c>IFeishuTenantV1DriveFolder.CreateFolderAsync</c>）。</summary>

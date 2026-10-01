@@ -1,1 +1,1 @@
-云文档（docx.*）：`docx.get_raw_content` 取纯文本正文（长文档会被截断）；需要标题/表格/列表等结构时用 `docx.get_document_blocks`，并用返回的 page_token 翻页。
+云文档（docx.*）：`docx.get_raw_content` 取纯文本正文（长文档会被截断）；需要标题/表格/列表等结构时用 `docx.get_document_blocks`，并用返回的 page_token 翻页。写入走 `docx.create_document`（创建文档，返回 document_id）与 `docx.append_blocks`（向文档追加段落/标题等内容），均为写操作（默认不启用，需宿主授权）。

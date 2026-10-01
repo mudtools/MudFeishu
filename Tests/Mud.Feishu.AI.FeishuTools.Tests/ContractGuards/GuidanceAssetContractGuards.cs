@@ -111,4 +111,134 @@ public class GuidanceAssetContractGuards
 
         blocks.Select(static b => b.Domain).Should().Equal(["bitable", "docx", "wiki"]);
     }
+
+    // ────────── R7/WP1 守卫 A：工具名引用一致性 ──────────
+
+    /// <summary>
+    /// guidance 中所有 <c>域.工具</c> 形式引用必须存在于 <see cref="FeishuToolNames.All"/>——
+    /// 防"引用了已删/改名的工具"（R7/WP1-T1-4，根因 R-G 修复）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>正则</b>：匹配 guidance 文本中出现的 <c>word.word</c> 模式（如 <c>sheets.update_range</c>），
+    /// 然后断言其全集 ⊆ <see cref="FeishuToolNames.All"/>。
+    /// </para>
+    /// <para>
+    /// <b>负例</b>：<see cref="Scanner_ShouldFlagNonExistentToolReference_WhenGuidanceMentionsRemovedTool"/>
+    /// 用合成文本驱动同一扫描器并断言报红。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void GuidanceToolReferences_ShouldAllExistInToolContracts()
+    {
+        var validNames = FeishuToolNames.All.ToHashSet(StringComparer.Ordinal);
+        var violations = new List<string>();
+
+        foreach (var (domain, content) in FeishuToolGuidance.ByDomain)
+        {
+            var referenced = GuidanceReferenceScanner.FindToolReferences(content);
+            foreach (var name in referenced)
+            {
+                if (!validNames.Contains(name))
+                {
+                    violations.Add($"{domain}.md 引用了不存在的工具 '{name}'");
+                }
+            }
+        }
+
+        violations.Should().BeEmpty(
+            "guidance 中引用的工具名必须全部存在于 FeishuToolNames.All（防引用已删/改名的工具）：{0}",
+            string.Join(" | ", violations));
+    }
+
+    /// <summary>负例：合成文本包含一个不存在的工具名 → 扫描器必须检出。</summary>
+    [Fact]
+    public void Scanner_ShouldFlagNonExistentToolReference_WhenGuidanceMentionsRemovedTool()
+    {
+        var validNames = new HashSet<string>(["bitable.list_tables", "bitable.add_record"], StringComparer.Ordinal);
+        var referenced = GuidanceReferenceScanner.FindToolReferences("写入走 bitable.ghost_tool（已删除）");
+
+        var ghosts = referenced.Where(n => !validNames.Contains(n)).ToArray();
+        ghosts.Should().Contain("bitable.ghost_tool",
+            "扫描器必须能定位 guidance 中的工具名引用——找不到说明正则坏了（假绿）");
+    }
+
+    // ────────── R7/WP1 守卫 B：反义短语一致性 ──────────
+
+    /// <summary>
+    /// 若某域在契约中存在写工具，则该域 guidance <b>不得</b>包含
+    /// 「未开放」「不支持写」「仅只读」「未提供写」等否定短语——
+    /// 防"自带资产否定自身能力"（R7/WP1-T1-5，根因 R-G 修复）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>负例</b>：<see cref="Scanner_ShouldFlagDenialPhrase_WhenDomainHasWriteTools"/>
+    /// 用合成文本驱动同一扫描器并断言报红。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void Guidance_ShouldNotDenyWriteCapability_WhenDomainHasWriteTools()
+    {
+        var writeDomains = FeishuToolContracts.ByToolName
+            .Where(static kv => kv.Value.IsWrite)
+            .Select(static kv => kv.Key.Substring(0, kv.Key.IndexOf('.', StringComparison.Ordinal)))
+            .ToHashSet(StringComparer.Ordinal);
+
+        var violations = new List<string>();
+
+        foreach (var (domain, content) in FeishuToolGuidance.ByDomain)
+        {
+            if (!writeDomains.Contains(domain))
+                continue;
+
+            var denied = GuidanceReferenceScanner.FindWriteDenialPhrases(content);
+            if (denied.Count > 0)
+            {
+                violations.Add($"{domain}.md 存在否定写能力的短语（但该域已有写工具）：{string.Join(", ", denied)}");
+            }
+        }
+
+        violations.Should().BeEmpty(
+            "已有写工具的域，其 guidance 不得否定写能力（会误导模型避免调用已启用的写工具）：{0}",
+            string.Join(" | ", violations));
+    }
+
+    /// <summary>负例：合成文本包含否定短语 → 扫描器必须检出。</summary>
+    [Fact]
+    public void Scanner_ShouldFlagDenialPhrase_WhenDomainHasWriteTools()
+    {
+        var denied = GuidanceReferenceScanner.FindWriteDenialPhrases("写类接口未开放");
+        denied.Should().Contain("未开放",
+            "扫描器必须能检出「未开放」否定短语——找不到说明正则坏了（假绿）");
+    }
+}
+
+/// <summary>
+/// guidance 文本扫描器（可被合成文本驱动 ⇒ 支持检查器自证）。
+/// </summary>
+internal static class GuidanceReferenceScanner
+{
+    private static readonly System.Text.RegularExpressions.Regex ToolReferencePattern =
+        new(@"\b([a-z][a-z0-9]*)\.([a-z][a-z0-9_]*)\b",
+            System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    private static readonly string[] DenialPhrases =
+        ["未开放", "不支持写", "仅只读", "未提供写", "写类未开放", "不支持写入"];
+
+    /// <summary>提取 guidance 文本中所有 <c>域.工具</c> 形式引用。</summary>
+    public static IReadOnlyList<string> FindToolReferences(string text)
+    {
+        var names = new List<string>();
+        foreach (System.Text.RegularExpressions.Match match in ToolReferencePattern.Matches(text))
+        {
+            names.Add(match.Value);
+        }
+        return names.Distinct(StringComparer.Ordinal).ToArray();
+    }
+
+    /// <summary>检测 guidance 文本中是否存在否定写能力的短语。</summary>
+    public static IReadOnlyList<string> FindWriteDenialPhrases(string text)
+    {
+        return DenialPhrases.Where(p => text.Contains(p, StringComparison.Ordinal)).ToArray();
+    }
 }

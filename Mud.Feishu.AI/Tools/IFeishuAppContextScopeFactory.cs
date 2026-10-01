@@ -5,17 +5,25 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.AI.FeishuTools;
+namespace Mud.Feishu.AI.Tools;
 
 /// <summary>
-/// 租户上下文作用域工厂：工具执行链切换 <c>appKey</c> 的唯一入口（TMA2-20：租户=应用上下文）。
+/// 租户上下文作用域工厂：切换 <c>appKey</c> 的唯一入口（TMA2-20：租户 = 应用上下文）。
 /// </summary>
 /// <remarks>
 /// <para>
 /// 生成的 HTTP 客户端共享单例 <c>IAppContextHolder</c>（默认 <c>AsyncLocalAppContextSwitcher</c>），
-/// 任意一个客户端的 <c>BeginScope(appKey)</c> 都会切换异步流内的环境应用上下文——
-/// 对所有客户端同时生效。默认实现取 <c>IFeishuTenantV1Message</c> 客户端作为作用域入口
-/// （10 工具中 IM 域必注册该客户端）。
+/// 任意一个客户端切换环境应用上下文都会在异步流内<b>对所有客户端同时生效</b>——故本抽象只需
+/// 「切到目标 appKey」这一个动作，不需要知道调用方接下来用哪个业务域客户端。
+/// </para>
+/// <para>
+/// <b>接口归属（R3-1 步骤 0）</b>：本抽象只依赖 <see cref="IDisposable"/>，与任何飞书业务域无关，
+/// 因此归 AI 底座包（<c>Mud.Feishu.AI</c>）；具体实现（依赖 <c>IAppContextHolder</c> /
+/// <c>IFeishuAppManager</c>）留在工具包 <c>Mud.Feishu.AI.FeishuTools</c>——
+/// 依赖方向保持 FeishuTools → AI <b>单向</b>，基类因此得以在回复前主动切租户（R3-1/2）。
+/// </para>
+/// <para>
+/// <b>fail-closed</b>：作用域无法建立时不得回退默认应用（多租户隔离禁止默认应用兜底）。
 /// </para>
 /// </remarks>
 public interface IFeishuAppContextScopeFactory
@@ -23,23 +31,7 @@ public interface IFeishuAppContextScopeFactory
     /// <summary>
     /// 切换环境应用上下文到 <paramref name="appKey"/>；返回的作用域释放时恢复原上下文。
     /// </summary>
-    /// <param name="appKey">应用唯一标识。</param>
+    /// <param name="appKey">应用唯一标识（非空且格式合法，否则实现必须显式失败）。</param>
     /// <returns>作用域（<see cref="IDisposable.Dispose"/> 恢复原上下文）。</returns>
     IDisposable BeginScope(string appKey);
-}
-
-/// <summary><see cref="IFeishuAppContextScopeFactory"/> 默认实现（经消息客户端切换环境上下文）。</summary>
-public sealed class FeishuAppContextScopeFactory(Mud.Feishu.IFeishuTenantV1Message messageClient) : IFeishuAppContextScopeFactory
-{
-    private readonly Mud.Feishu.IFeishuTenantV1Message _messageClient = messageClient
-        ?? throw new ArgumentNullException(nameof(messageClient));
-
-    /// <inheritdoc />
-    public IDisposable BeginScope(string appKey)
-    {
-        if (string.IsNullOrWhiteSpace(appKey))
-            throw new ArgumentException("appKey 不能为空", nameof(appKey));
-
-        return _messageClient.BeginScope(appKey);
-    }
 }

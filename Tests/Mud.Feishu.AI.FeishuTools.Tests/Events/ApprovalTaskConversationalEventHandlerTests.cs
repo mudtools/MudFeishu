@@ -136,6 +136,33 @@ public class ApprovalTaskConversationalEventHandlerTests
             "无收件人（自动通过类型）时必须在模型调用前短路");
     }
 
+    /// <summary>
+    /// R3-1/R3-2（P0）：有 appKey 却未注入作用域工厂属<b>装配缺陷</b>——必须 fail-closed，
+    /// 禁止回退默认应用身份把回复发给别的租户。
+    /// </summary>
+    /// <remarks>
+    /// 与 <see cref="ImMessageConversationalEventHandlerTests.ReplyAsync_ShouldBeginAppScope_WhenAppKeyIsNotDefault"/>
+    /// 构成一对：那里锁定「有工厂时用」的<b>正向</b>行为，这里锁定「缺工厂时拒」的<b>负向</b>行为。
+    /// 只锁正向会留下一个静默外壳——把工厂删掉，用例仍全绿，而生产上跨租户错发照旧。
+    /// </remarks>
+    [Fact]
+    public async Task HandleAsync_ShouldFailClosed_WithoutSending_WhenScopeFactoryMissing()
+    {
+        var (handler, messageClient, _, _) = CreateHandler(appKey: "app-a");
+        messageClient
+            .Setup(c => c.SendMessageAsync(It.IsAny<SendMessageRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FeishuApiResult<MessageDataResult> { Code = 0, Data = new MessageDataResult { MessageId = "om_ok" } });
+
+        var act = async () => await handler.HandleAsync(ApprovalEvent("evt-1"), default);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*未注入*", "装配缺陷必须显式上抛（而非静默以默认应用身份发出）");
+        messageClient.Verify(
+            c => c.SendMessageAsync(It.IsAny<SendMessageRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never,
+            "拒绝对外可见的形式是「一次下发都没有」，而不是「先发出再补救」");
+    }
+
     // ────────── 辅助 ──────────
 
     private static (
@@ -144,7 +171,9 @@ public class ApprovalTaskConversationalEventHandlerTests
         Mock<IChatClient> ChatClient,
         Mock<IFeishuEventDeduplicator> Deduplicator) CreateHandler(
         bool withMessageClient = true,
-        string replyText = "模型回答")
+        string replyText = "模型回答",
+        string? appKey = null,
+        IFeishuAppContextScopeFactory? scopeFactory = null)
     {
         var chatClient = new Mock<IChatClient>();
         chatClient
@@ -156,11 +185,16 @@ public class ApprovalTaskConversationalEventHandlerTests
         var deduplicator = CreateDeduplicator();
         var messageMock = new Mock<Mud.Feishu.IFeishuTenantV1Message>();
 
+        var appKeyAccessor = new Mock<IAppKeyAccessor>();
+        appKeyAccessor.Setup(a => a.CurrentAppKey).Returns(appKey);
+
         var handler = new ApprovalTaskConversationalEventHandler(
             agent,
             deduplicator.Object,
             withMessageClient ? messageMock.Object : null,
-            logger: NullLogger.Instance);
+            logger: NullLogger.Instance,
+            appKeyAccessor: appKey is null ? null : appKeyAccessor.Object,
+            appContextScopeFactory: scopeFactory);
 
         return (handler, messageMock, chatClient, deduplicator);
     }

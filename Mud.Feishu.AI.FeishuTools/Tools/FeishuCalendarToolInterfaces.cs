@@ -80,3 +80,78 @@ public interface IFeishuCalendarListEventsTool
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
         CancellationToken cancellationToken = default);
 }
+
+// ─────────────────────────── Calendar 写面成环（R7/WP4，4 个） ───────────────────────────
+
+/// <summary>工具接口：calendar.update_event（映射 <c>IFeishuTenantV4CalendarEvent.UpdateCalendarEventAsync</c>）。</summary>
+[FeishuTool("calendar.update_event",
+    Description = "更新指定日程的信息（summary/description/start/end 等字段，至少传一个要更新的字段）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 calendar:calendar。start/end 为 RFC3339 时间。",
+    RequiredScopes = ["calendar:calendar"],
+    IsWrite = true,
+    Source = "IFeishuTenantV4CalendarEvent.UpdateCalendarEventAsync")]
+public interface IFeishuCalendarUpdateEventTool
+{
+    /// <summary>更新日程。</summary>
+    /// <returns>白名单投影后的 JSON 文本（event_id）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> UpdateEventAsync(
+        [ToolParameter("calendar_id", "日历 ID（形如 feishu.cn_xxx@group.calendar.feishu.cn）", Required = true)] string calendar_id,
+        [ToolParameter("event_id", "日程 ID（来自 calendar.create_event 或 calendar.list_events）", Required = true)] string event_id,
+        [ToolParameter("summary", "日程标题（可选更新）")] string? summary = null,
+        [ToolParameter("description", "日程描述（可选更新）")] string? description = null,
+        [ToolParameter("start", "开始时间（RFC3339，如 2026-10-01T14:00:00+08:00；可选更新，须与 end 同时提供）")] string? start = null,
+        [ToolParameter("end", "结束时间（RFC3339，须晚于 start；可选更新，须与 start 同时提供）")] string? end = null,
+        [ToolParameter("dry_run", "仅预演不更新（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：calendar.delete_event（映射 <c>IFeishuTenantV4CalendarEvent.DeleteCalendarEventAsync</c>）。</summary>
+[FeishuTool("calendar.delete_event",
+    Description = "取消（删除）指定日程——取消日程会通知所有与会者。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 calendar:calendar。建议先 dry_run 预演确认。",
+    RequiredScopes = ["calendar:calendar"],
+    IsWrite = true,
+    Source = "IFeishuTenantV4CalendarEvent.DeleteCalendarEventAsync")]
+public interface IFeishuCalendarDeleteEventTool
+{
+    /// <summary>取消日程。</summary>
+    /// <returns>白名单投影后的 JSON 文本（deleted=true）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> DeleteEventAsync(
+        [ToolParameter("calendar_id", "日历 ID（形如 feishu.cn_xxx@group.calendar.feishu.cn）", Required = true)] string calendar_id,
+        [ToolParameter("event_id", "日程 ID（来自 calendar.create_event 或 calendar.list_events）", Required = true)] string event_id,
+        [ToolParameter("dry_run", "仅预演不取消（可选，默认 false）：返回将要下发的 method/path，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：calendar.add_event_attendees（映射 <c>IFeishuTenantV4CalendarEvent.CreateCalendarEventAttendeeAsync</c>）。</summary>
+[FeishuTool("calendar.add_event_attendees",
+    Description = "向指定日程添加与会者（attendee_ids 为 open_id 数组，每位参会人会收到日程邀请）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 calendar:calendar。",
+    RequiredScopes = ["calendar:calendar"],
+    IsWrite = true,
+    Source = "IFeishuTenantV4CalendarEvent.CreateCalendarEventAttendeeAsync")]
+public interface IFeishuCalendarAddEventAttendeesTool
+{
+    /// <summary>添加与会者。</summary>
+    /// <returns>白名单投影后的 JSON 文本（added_count）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> AddEventAttendeesAsync(
+        [ToolParameter("calendar_id", "日历 ID（形如 feishu.cn_xxx@group.calendar.feishu.cn）", Required = true)] string calendar_id,
+        [ToolParameter("event_id", "日程 ID（来自 calendar.create_event 或 calendar.list_events）", Required = true)] string event_id,
+        [ToolParameter("attendee_ids", "与会者 open_id 数组（如 [\"ou_xxx\"]）", Required = true)] string[] attendee_ids,
+        [ToolParameter("dry_run", "仅预演不添加（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：calendar.list_event_attendees（映射 <c>IFeishuTenantV4CalendarEvent.GetCalendarEventAttendeePageListAsync</c>）。</summary>
+[FeishuTool("calendar.list_event_attendees",
+    Description = "分页列出指定日程的与会者（attendee_id/name/type/is_optional），可翻页。只读，需 calendar:calendar:readonly。",
+    RequiredScopes = ["calendar:calendar:readonly"],
+    IsWrite = false,
+    Source = "IFeishuTenantV4CalendarEvent.GetCalendarEventAttendeePageListAsync")]
+public interface IFeishuCalendarListEventAttendeesTool
+{
+    /// <summary>列出现有与会者。</summary>
+    /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token），超长截断并标记 truncated。</returns>
+    Task<string> ListEventAttendeesAsync(
+        [ToolParameter("calendar_id", "日历 ID（形如 feishu.cn_xxx@group.calendar.feishu.cn）", Required = true)] string calendar_id,
+        [ToolParameter("event_id", "日程 ID（来自 calendar.create_event 或 calendar.list_events）", Required = true)] string event_id,
+        [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        CancellationToken cancellationToken = default);
+}

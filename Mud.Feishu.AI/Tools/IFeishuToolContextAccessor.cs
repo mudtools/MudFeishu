@@ -52,10 +52,13 @@ public sealed class FeishuToolContextAccessor : IFeishuToolContextAccessor
 
         var previous = _current.Value;
         _current.Value = context;
-        return new RestoreScope(this, previous);
+        return new RestoreScope(this, previous, context);
     }
 
-    private sealed class RestoreScope(FeishuToolContextAccessor owner, FeishuToolContext? previous) : IDisposable
+    private sealed class RestoreScope(
+        FeishuToolContextAccessor owner,
+        FeishuToolContext? previous,
+        FeishuToolContext applied) : IDisposable
     {
         private FeishuToolContextAccessor? _owner = owner;
 
@@ -65,7 +68,15 @@ public sealed class FeishuToolContextAccessor : IFeishuToolContextAccessor
             if (_owner is null)
                 return;
 
-            _owner._current.Value = previous;
+            // R3-10：**所有权校验**——只有「当前值仍是我写入的值」才回滚。
+            // 乱序释放（内层未释放而外层先 Dispose）时，当前值属内层作用域：
+            // 此时若照旧写回更外层的 previous，会把内层租户上下文覆盖掉 ⇒ 跨租户串号。
+            // 宁可不恢复（由内层自身的 Dispose 兜底），也不覆盖别人写入的值。
+            if (ReferenceEquals(_owner._current.Value, applied))
+            {
+                _owner._current.Value = previous;
+            }
+
             _owner = null;
         }
     }

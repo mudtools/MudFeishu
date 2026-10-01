@@ -123,7 +123,9 @@ public sealed class FeishuToolBinding
         // ① 上下文校验：多租户隔离事实来源，缺 appKey 即失败（TMA2-20）。
         if (string.IsNullOrWhiteSpace(context.AppKey))
         {
-            return FeishuToolResult.FromError(StructuredError(tool.Name, "工具执行上下文缺少 appKey——多租户隔离禁止默认应用兜底（TMA2-20）"));
+            return EgressResult(
+                tool.Name,
+                "工具执行上下文缺少 appKey——多租户隔离禁止默认应用兜底（TMA2-20）");
         }
 
         using var activity = FeishuToolDiagnostics.StartToolActivity(
@@ -186,11 +188,24 @@ public sealed class FeishuToolBinding
         }
 
         var userContextApplied = false;
+        // R3-03：捕获宿主既有用户上下文前值——执行后恢复而非无条件 Clear，
+        // 避免抹掉宿主经中间件设置的环境用户身份（后续依赖用户令牌的调用退化为未认证）。
+        // 前值为空时仍走 Clear()（既有 "set-user → downstream → clear-user" 断言不变）。
+        string? previousOpenId = null;
+        string? previousUnionId = null;
+        string? previousUserId = null;
+        string? previousName = null;
         try
         {
             using var scope = _scopeFactory.BeginScope(context.AppKey);
             if (userContextRequired)
             {
+                // 捕获前值（仅 user 身份路径需要；tenant 路径完全不触碰上下文）。
+                previousOpenId = _currentUserContext!.OpenId;
+                previousUnionId = _currentUserContext.UnionId;
+                previousUserId = _currentUserContext.UserId;
+                previousName = _currentUserContext.Name;
+
                 // SetUser 的 openId 形参是令牌缓存查找键（未显式传 userId 时回退 openId）——
                 // 此处把 context.UserId 同时作为两者，保证"查找键 = 宿主提供的身份"。
                 _currentUserContext!.SetUser(context.UserId!, userId: context.UserId);
@@ -218,6 +233,8 @@ public sealed class FeishuToolBinding
             var annotation = ToolResultContentSafety.BuildAnnotation(safetyHits);
             if (annotation.Length > 0)
             {
+                // R3-12：降级路径指标化——warn 模式只加标注不阻断，补计数使告警可量化。
+                FeishuToolDiagnostics.RecordDegraded(context.AppKey, FeishuMetrics.DegradedReasons.ContentSafetyWarn);
                 result = FeishuToolResult.FromText(annotation + result.ToString(), result.Truncated, result.TruncationReason);
             }
 
@@ -272,10 +289,22 @@ public sealed class FeishuToolBinding
         }
         finally
         {
-            // user 身份上下文成对清理（设置/清理必须成对，见 ④'）：AsyncLocal 泄漏 = 跨用户令牌误用。
+            // R3-03：user 身份上下文成对清理——恢复宿主既有上下文，而不是无条件抹掉。
+            // 前值为空 ⇒ 仍走 Clear()（既有 "set-user → downstream → clear-user" 断言不变）。
+            // 前值非空 ⇒ 先 Clear() 再 SetUser(前值)，规避 SetUser 的覆盖告警噪音。
             if (userContextApplied)
             {
-                _currentUserContext?.Clear();
+                if (string.IsNullOrEmpty(previousOpenId))
+                {
+                    _currentUserContext?.Clear();
+                }
+                else
+                {
+                    _currentUserContext?.Clear();
+                    // `!`：`netstandard2.0` 的 `string.IsNullOrEmpty` 无 [NotNullWhen(false)] 注解，
+                    // 编译器无法从上方分支推断非空（net6.0+ 无此警告，语义一致）。
+                    _currentUserContext?.SetUser(previousOpenId!, previousUnionId, previousUserId, previousName);
+                }
             }
         }
     }
@@ -285,6 +314,10 @@ public sealed class FeishuToolBinding
     /// <b>零调用下游、不切租户</b>。入站净化 / 策略轴 / 授权门禁 / 内容安全阻断四条路径共用，
     /// 确保"新增一个拒绝分支必然带上审计"（否则审计会成为可选步骤而被遗漏）。
     /// </summary>
+    /// <remarks>
+    /// R3-4：模型可见文案经 <see cref="EgressResult(string, ToolErrorKind, string)"/> 返回——
+    /// 与成功路径同源净化 + 截断（审计侧仍记原始 <paramref name="reason"/>，两条出口判据不同）。
+    /// </remarks>
     private async Task<FeishuToolResult> DenyAsync(
         FeishuToolDefinition tool,
         FeishuToolContext context,
@@ -301,8 +334,39 @@ public sealed class FeishuToolBinding
             tool, context, FeishuMetrics.ToolOutcomes.Denied, reason,
             ToolArgsDigester.Digest(arguments), executionStopwatch.ElapsedMilliseconds,
             cancellationToken).ConfigureAwait(false);
-        return FeishuToolResult.FromError(StructuredError(tool.Name, kind, reason));
+
+        // R3-4：审计仍记**原始** reason（内部事实，非模型可见——R1 §7 纪律 4 的两条出口判据不同），
+        // 回填模型的文本则必须经唯一出口净化 + 截断。
+        return EgressResult(tool.Name, kind, reason);
     }
+
+    /// <summary>
+    /// 模型可见出口的**唯一构造点**（R3-4）：一切回填模型的文本都必须经此净化 + 截断。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 根因（R3-4）：出站净化此前是「成功路径的一段代码」而不是「出口的唯一通道」，
+    /// 于是新出口（拒绝、内容安全阻断、HITL 挂起、上下文缺失）天然漏掉净化。
+    /// 收口到本方法后，净化成为出口的<b>性质</b>而非可遗忘的步骤。
+    /// </para>
+    /// <para>
+    /// 拒绝文案同属「外部数据 → 模型上下文」的出口：<c>invalid_args: {argumentFailure}</c> 这类
+    /// 文案含**模型可控**键名（由 <c>ToolArgumentNormalizer</c> 的 <c>prop.Name</c> 拼成），不得双标。
+    /// </para>
+    /// </remarks>
+    private FeishuToolResult EgressResult(string message)
+    {
+        var safe = ToolResultText.Truncate(ToolResultSanitizer.Sanitize(message), _options.MaxToolResultLength);
+        return FeishuToolResult.FromError(safe);
+    }
+
+    /// <summary>带错误语义分类的出口（结构化文案经 <see cref="StructuredError(string, ToolErrorKind, string, int?)"/> 构造后走唯一闸门）。</summary>
+    private FeishuToolResult EgressResult(string toolName, ToolErrorKind kind, string reason)
+        => EgressResult(StructuredError(toolName, kind, reason));
+
+    /// <summary>无分类的出口（等价 <see cref="StructuredError(string, string)"/> 文案，用于上下文缺失等通用失败）。</summary>
+    private FeishuToolResult EgressResult(string toolName, string reason)
+        => EgressResult(StructuredError(toolName, reason));
 
     /// <summary>
     /// P1D-3b 审计出口投递（异常隔离：sink 失败只记日志，绝不影响执行链；
@@ -342,6 +406,8 @@ public sealed class FeishuToolBinding
         }
         catch (Exception ex)
         {
+            // R3-12：降级路径指标化——审计出口失效对监控不可见，补计数使可告警。
+            FeishuToolDiagnostics.RecordDegraded(context.AppKey, FeishuMetrics.DegradedReasons.AuditDeliveryFailed);
             _logger?.LogWarning(ex, "工具审计出口投递失败（tool: {ToolName}）——审计事件丢弃", tool.Name);
         }
     }
@@ -387,6 +453,8 @@ public sealed class FeishuToolBinding
         }
         catch (Exception ex)
         {
+            // R3-12：降级路径指标化——整形失败回退默认结果，补计数使可观测。
+            FeishuToolDiagnostics.RecordDegraded(string.Empty, FeishuMetrics.DegradedReasons.ResultShapingFailed);
             _logger?.LogWarning(ex, "工具结果整形钩子失败，回退默认结果（tool: {ToolName}）", toolName);
             return result;
         }
@@ -401,26 +469,41 @@ public sealed class FeishuToolBinding
     /// 授权拒绝与参数错误可区分，模型据此自我修正：重试 or 换参数 or 放弃）。
     /// </summary>
     /// <remarks>
+    /// <para>
     /// AT-B12（R3 评审 C-1）：<see cref="ToolErrorKind.NeedsConfirmation"/> 是<b>独立</b>语义，
     /// 不得复用 <see cref="ToolErrorKind.InvalidArgs"/> 的"请修正参数"后缀——待确认不是参数错，
     /// 让模型去改参数会让它陷入无意义的重试循环。
+    /// </para>
+    /// <para>
+    /// <b>R4-13（收窄版）：只补"文案里还没有"的机器可读事实——飞书业务 code。</b>
+    /// 方案原拟同时追加 <c>retryable</c> 与 <c>reason_code</c>，复核后<b>不加</b>：
+    /// 前者与 <c>(retryable)</c> / <c>(forbidden)</c> 这类 kind 标签同义（同一事实的第二份表示，
+    /// 模型面对两套真相源时只会增加歧义），后者与 <paramref name="reason"/> 文本自带的
+    /// <c>authorization_denied:</c> 前缀重复。故此处只透出分类器已算出、但此前被丢弃的业务 code。
+    /// </para>
     /// </remarks>
-    internal static string StructuredError(string toolName, ToolErrorKind kind, string reason) => kind switch
+    internal static string StructuredError(string toolName, ToolErrorKind kind, string reason, int? apiCode = null)
     {
-        ToolErrorKind.Retryable => $"[tool_error] {toolName} (retryable): {reason}——服务端繁忙/网络异常，可稍后重试同一调用",
-        ToolErrorKind.InvalidArgs => $"[tool_error] {toolName} (invalid_args): {reason}",
-        ToolErrorKind.Forbidden => $"[tool_error] {toolName} (forbidden): {reason}——授权被拒绝，请放弃或改用只读方案",
-        // R2-1（P0）：删除「若结果中提供了确认令牌…重试即可继续」——该文案把批准所需的全部要素
-        // 交给了模型，使模型可自行带令牌重试并放行写操作（HITL 退化为「取决于模型是否听话」）。
-        // 确认令牌只经 IFeishuToolApprovalChannel 交给宿主，模型侧恒为中性语义。
-        ToolErrorKind.NeedsConfirmation => $"[tool_error] {toolName} (needs_confirmation): {reason}——该操作需要用户确认后方可执行；"
-            + "已交由宿主确认通道处理，未获得确认前不得重试同一调用，请告知用户确认进度",
-        _ => $"[tool_error] {toolName}: {reason}",
-    };
+        // 无 code 时不产出空槽（保持既有文案形态不变，老用例的 Contain 断言不受影响）。
+        var codeSegment = apiCode.HasValue ? $" code={apiCode.Value}" : string.Empty;
+
+        return kind switch
+        {
+            ToolErrorKind.Retryable => $"[tool_error] {toolName} (retryable){codeSegment}: {reason}——服务端繁忙/网络异常，可稍后重试同一调用",
+            ToolErrorKind.InvalidArgs => $"[tool_error] {toolName} (invalid_args){codeSegment}: {reason}",
+            ToolErrorKind.Forbidden => $"[tool_error] {toolName} (forbidden){codeSegment}: {reason}——授权被拒绝，请放弃或改用只读方案",
+            // R2-1（P0）：删除「若结果中提供了确认令牌…重试即可继续」——该文案把批准所需的全部要素
+            // 交给了模型，使模型可自行带令牌重试并放行写操作（HITL 退化为「取决于模型是否听话」）。
+            // 确认令牌只经 IFeishuToolApprovalChannel 交给宿主，模型侧恒为中性语义。
+            ToolErrorKind.NeedsConfirmation => $"[tool_error] {toolName} (needs_confirmation){codeSegment}: {reason}——该操作需要用户确认后方可执行；"
+                + "已交由宿主确认通道处理，未获得确认前不得重试同一调用，请告知用户确认进度",
+            _ => $"[tool_error] {toolName}{codeSegment}: {reason}",
+        };
+    }
 
     /// <summary>按飞书业务 code 分类构造错误回填（<c>FeishuApiOutcome</c> 解包路径共用；分类器 internal，宿主不可见）。</summary>
     internal static string StructuredError(string toolName, int? apiCode, string reason)
-        => StructuredError(toolName, ToolErrorClassifier.ClassifyCode(apiCode), reason);
+        => StructuredError(toolName, ToolErrorClassifier.ClassifyCode(apiCode), reason, apiCode);
 
     /// <summary>授权门禁判定结果（AT-B12：<see cref="ToolErrorKind"/> 随判定一起返回，避免调用方猜测语义）。</summary>
     private readonly record struct GateDecision(bool Allowed, string Reason, ToolErrorKind Kind)
@@ -459,28 +542,22 @@ public sealed class FeishuToolBinding
             return GateDecision.Deny("authorization_denied: 授权器返回空结果——按拒绝处理（fail-closed）", ToolErrorKind.Forbidden);
         }
 
-        // P4-3：写类工具的「待确认」已由 MAF 审批管线在**调用之前**完成——写工具经
-        // FeishuToolsToolSource → ApplyApprovalGate 包装为 ApprovalRequiredAIFunction，
-        // 框架不批准则本方法**根本不会被调用**。因此走到这里即意味着"人已批准"，
-        // 授权器的 Confirm 已被满足，不得再用自研令牌二次拦截。
+        // R4-1（P0）：删除原「写类工具 NeedsUserConfirmation ⇒ Pass()」特例。
         //
-        // 为什么必须显式处理而不是继续走令牌路径：MAF 批准后自研令牌路径要求宿主把 confirm_token
-        // 回灌为**工具参数**，而宿主无法向模型注入工具参数 ⇒ 写工具会卡死在「框架已批准、执行链仍拒绝」
-        // 的死胡同（P4-1 引入的连带缺陷）。此处放行 + Warning 使其可观测。
-        if (result.Decision == AuthorizationDecision.NeedsUserConfirmation && tool.IsWrite)
-        {
-            _logger?.LogInformation(
-                "写类工具 {ToolName} 的待确认已由 MAF 审批管线前置完成（P4-3），执行链不再二次拦截（原因: {Reason}）",
-                tool.Name, result.Reason);
-            return GateDecision.Pass();
-        }
-
+        // 原依据是注释里的假设——「写工具经 ApplyApprovalGate 包装为 ApprovalRequiredAIFunction，
+        // 框架不批准则本方法根本不会被调用 ⇒ 走到这里即意味着人已批准」。该假设在**运行期无任何校验**：
+        // ApprovalRequiredAIFunction 是 MEAI **纯标记类型**，拦截只在 FunctionInvokingChatClient
+        // 内部生效；宿主直接 InvokeAsync、或模型/调用方绕开该管线时，写工具会**静默放行**。
+        //
+        // 现在一律 fail-closed：批准状态的唯一所有者是宿主 IToolExecutionAuthorizer——
+        // 未返回 Allowed 的待确认调用，无论读/写，都走无令牌版挂起解析（通知宿主通道 + 中性拒绝）。
+        // 宿主在 MAF 批准回调中更新授权器状态后，下一次调用自然返回 Allowed。
         return result.Decision switch
         {
             AuthorizationDecision.Allowed => GateDecision.Pass(),
             AuthorizationDecision.Denied => GateDecision.Deny(
                 $"authorization_denied: {result.Reason ?? "授权被拒绝"}", ToolErrorKind.Forbidden),
-            // 非写类工具不进入框架审批（未被包装）⇒ 自研确认令牌仍是其唯一 HITL 机制（[Obsolete]，下个 major 移除）。
+            // WP3 后无令牌版：读写工具共用同一条挂起解析路径（SDK 不签发、不校验任何凭据）。
             AuthorizationDecision.NeedsUserConfirmation =>
                 await ResolveNeedsConfirmationAsync(tool, arguments, context, result.Reason, cancellationToken)
                     .ConfigureAwait(false),
@@ -490,12 +567,16 @@ public sealed class FeishuToolBinding
     }
 
     /// <summary>
-    /// NeedsUserConfirmation 的挂起解析（WP3 后无令牌版）：
+    /// NeedsUserConfirmation 的挂起解析（WP3 后无令牌版，R4-1 起<b>读写工具共用</b>）：
     /// 批准状态的唯一所有者是宿主授权器（<see cref="IToolExecutionAuthorizer"/>）——
     /// SDK 不签发、不校验任何凭据。首次调用 → 通知宿主批准通道（携带参数摘要，供宿主建立"已批准"上下文）
     /// 并<b>中性拒绝</b>；宿主批准后由授权器在下一次调用时返回 <c>Allowed</c>——模型侧恒为中性语义，
     /// 不存在可自批复的凭据。
     /// </summary>
+    /// <remarks>
+    /// 写类工具同样走本路径：MAF 的 <c>ApprovalRequiredAIFunction</c> 只是「调用前提醒」，
+    /// 不是执行链可验证的批准证据，故不得据此放行（R4-1 删除的 <c>Pass()</c> 特例）。
+    /// </remarks>
     private async Task<GateDecision> ResolveNeedsConfirmationAsync(
         FeishuToolDefinition tool,
         IReadOnlyDictionary<string, object?> arguments,

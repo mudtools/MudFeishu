@@ -157,12 +157,18 @@ public static class FeishuAgentServiceCollectionExtensions
                 .SelectMany(source => source.GetGuidance(sp))
                 .ToArray();
 
+            // R4-6：不把根 IServiceProvider 钉进单例（Captive Dependency 面 / TMA-13）。
+            // 工具与 guidance 已在上面**立即**解析为实例（source.GetTools(sp) / GetGuidance(sp)），
+            // 会话历史由构造期显式装配的 InMemoryChatHistoryProvider 提供——MAF 侧无需再经容器解析任何
+            // 依赖，故 services 传 null。宿主确需注入容器（如注册 ChatHistoryProviderFactory）时，
+            // 可自行 new FeishuAgent(..., services: <scope factory 派生>) 装配，并遵守
+            // "依赖必须 Singleton/Transient"约束（见 Mud.Feishu.AI/Readme.md）。
             return new FeishuAgent(
                 chatClient,
                 options,
                 sp.GetRequiredService<IConversationStore>(),
                 sp.GetService<ILoggerFactory>(),
-                sp,
+                services: null,
                 tools,
                 guidance);
         });

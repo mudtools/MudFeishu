@@ -196,13 +196,18 @@ public sealed class FeishuAgentOptions
         if (string.IsNullOrWhiteSpace(Name))
             throw new InvalidOperationException($"FeishuAgent:{nameof(Name)} 不能为空");
 
-        if (MaxHistoryMessages < 1)
+        // R3-9：数值项必须**同时**有下界与上界——只有下界时，把 1 写成 100000000 是合法配置，
+        // 表现为「内存/上下文预算被静默吃光」，而 fail-fast 是配置面治理的基本盘（AGENTS.md WebSocket I16 同款纪律）。
+        // 上界取值见各条异常文案（按项目未发布的现状直接收紧，不做兼容过渡）。
+        if (MaxHistoryMessages is < 1 or > 10_000)
             throw new InvalidOperationException(
-                $"FeishuAgent:{nameof(MaxHistoryMessages)} 须 ≥ 1，实际值: {MaxHistoryMessages.ToString(CultureInfo.InvariantCulture)}");
+                $"FeishuAgent:{nameof(MaxHistoryMessages)} 须在 1..10000 之间，实际值: {MaxHistoryMessages.ToString(CultureInfo.InvariantCulture)}"
+                + "（上界约束会话历史窗口与逐轮序列化开销）");
 
-        if (MaxToolResultLength < 1)
+        if (MaxToolResultLength is < 1 or > 200_000)
             throw new InvalidOperationException(
-                $"FeishuAgent:{nameof(MaxToolResultLength)} 须 ≥ 1，实际值: {MaxToolResultLength.ToString(CultureInfo.InvariantCulture)}");
+                $"FeishuAgent:{nameof(MaxToolResultLength)} 须在 1..200000 之间，实际值: {MaxToolResultLength.ToString(CultureInfo.InvariantCulture)}"
+                + "（上界约束单次工具结果回填模型的上下文占用）");
 
         if (Tools.Any(t => string.IsNullOrWhiteSpace(t)))
             throw new InvalidOperationException(
@@ -212,19 +217,22 @@ public sealed class FeishuAgentOptions
             throw new InvalidOperationException(
                 $"FeishuAgent:{nameof(WriteAllowList)} 白名单不能包含空项——工具名是模型可见契约");
 
-        if (MaxStreamChunkLength < 1)
+        if (MaxStreamChunkLength is < 1 or > 100_000)
             throw new InvalidOperationException(
-                $"FeishuAgent:{nameof(MaxStreamChunkLength)} 须 ≥ 1，实际值: {MaxStreamChunkLength.ToString(CultureInfo.InvariantCulture)}");
+                $"FeishuAgent:{nameof(MaxStreamChunkLength)} 须在 1..100000 之间，实际值: {MaxStreamChunkLength.ToString(CultureInfo.InvariantCulture)}"
+                + "（上界约束流式编辑的增量缓冲）");
 
         // 阈值语义：0 = 禁用；启用时 ≥ 4 保证「重建后条数（保留窗+1）低于阈值」，防每轮重复摘要。
-        if (SummaryThreshold is < 0 or (> 0 and < 4))
+        if (SummaryThreshold is < 0 or (> 0 and < 4) or > 10_000)
             throw new InvalidOperationException(
-                $"FeishuAgent:{nameof(SummaryThreshold)} 为 0（禁用）或 ≥ 4，实际值: {SummaryThreshold.ToString(CultureInfo.InvariantCulture)}");
+                $"FeishuAgent:{nameof(SummaryThreshold)} 为 0（禁用）或 4..10000，实际值: {SummaryThreshold.ToString(CultureInfo.InvariantCulture)}"
+                + "（上界约束摘要触发点；1~3 无法保证「重建后条数低于阈值」，会导致每轮重复摘要）");
 
         // token 上限语义：0 = 不启用（仅条数阈值判定）；启用时须为正数。
-        if (MaxHistoryTokens < 0)
+        if (MaxHistoryTokens is < 0 or > 1_000_000)
             throw new InvalidOperationException(
-                $"FeishuAgent:{nameof(MaxHistoryTokens)} 为 0（不启用）或正数，实际值: {MaxHistoryTokens.ToString(CultureInfo.InvariantCulture)}");
+                $"FeishuAgent:{nameof(MaxHistoryTokens)} 为 0（不启用）或 1..1000000，实际值: {MaxHistoryTokens.ToString(CultureInfo.InvariantCulture)}"
+                + "（上界约束 token 维度摘要触发点）");
 
         // AT-B13 策略轴（取值必须与 Schema 的 x-feishu.risk 词汇一致，否则静默失效）。
         if (!FeishuToolRiskNames.TryParse(MaxToolRisk, out _))

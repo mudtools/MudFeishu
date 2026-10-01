@@ -8,6 +8,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
+using Mud.Feishu.AI.Tools.Emit;
 using Mud.Feishu.AI.Tools.Extraction;
 
 namespace Mud.Feishu.AI.Tools.Schema;
@@ -83,6 +84,7 @@ internal static class DescriptorValidator
     private static void ValidateL1Structure(List<CapabilityEntry> entries, List<ValidationResult> results)
     {
         var seenNames = new Dictionary<string, string>(); // toolName → interfaceName
+        var seenConstantNames = new Dictionary<string, string>(); // 派生常量名 → toolName
 
         foreach (var entry in entries)
         {
@@ -101,6 +103,20 @@ internal static class DescriptorValidator
                 else
                 {
                     seenNames[entry.ToolName] = entry.InterfaceName;
+                }
+
+                // 派生常量名唯一（MUDFT027 / R4-10）：字面不同的工具名可归一到同一常量名，
+                // 产物会撞成重复常量（CS0101）或重复 hintName（AddSource 异常 → MUDFT026 表面症状）。
+                // 派生规则与产物同源（SchemaEmitter.BuildNameConstant），不在此复刻。
+                var constantName = SchemaEmitter.BuildNameConstant(entry.ToolName);
+                if (seenConstantNames.TryGetValue(constantName, out var sameConstantName))
+                {
+                    results.Add(ValidationResult.Error(
+                        Diagnostics.MUDFT027, entry.InterfaceName, entry.ToolName, sameConstantName, constantName));
+                }
+                else
+                {
+                    seenConstantNames[constantName] = entry.ToolName;
                 }
             }
         }

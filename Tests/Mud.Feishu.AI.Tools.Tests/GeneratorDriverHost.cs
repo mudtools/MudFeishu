@@ -62,31 +62,100 @@ public static class GeneratorDriverHost
         string[] sources,
         string assemblyName = DefaultAssemblyName)
     {
-        var parseOptions = new CSharpParseOptions(
-            languageVersion: LanguageVersion.CSharp12,
-            documentationMode: DocumentationMode.Parse);
-
-        var compilation = CSharpCompilation.Create(
-            assemblyName,
-            sources.Select(source => CSharpSyntaxTree.ParseText(source, parseOptions)),
-            CreateBclReferences(),
-            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
-                .WithNullableContextOptions(NullableContextOptions.Enable));
+        var compilation = CreateCompilation(ParseTrees(sources), assemblyName);
+        var driver = CreateDriver(additionalText);
 
         // 注意：诊断必须经 RunGenerators + GetRunResult 获取——
         // RunGeneratorsAndUpdateCompilation 的重载在部分流程下不会把生成器诊断带进 GetRunResult()。
-        var driver = CSharpGeneratorDriver.Create(
-            generators: [new FeishuToolSchemaGenerator().AsSourceGenerator()],
-            additionalTexts: additionalText is null
-                ? ImmutableArray<AdditionalText>.Empty
-                : [additionalText],
-            parseOptions: parseOptions);
-
         var runResult = driver.RunGenerators(compilation).GetRunResult();
 
         return new GeneratorRun(
             runResult.Diagnostics.ToImmutableArray(),
             runResult.GeneratedTrees.Select(static tree => tree.ToString()).ToImmutableArray());
+    }
+
+    // ────────── 增量行为用例原语（R4-2） ──────────
+    //
+    // 增量语义只有"同一 driver 连续驱动多份 compilation"才能观察到；每次新建 driver 会重建全部
+    // 缓存，用例恒绿（假绿）。故把 driver / 语法树实例的构造拆出来供增量用例复用。
+
+    /// <summary>解析选项（各路径共用；文档模式为 Parse——生成器只读 XML 注释文本）。</summary>
+    public static CSharpParseOptions ParseOptions { get; } = new(
+        languageVersion: LanguageVersion.CSharp12,
+        documentationMode: DocumentationMode.Parse);
+
+    /// <summary>
+    /// 把合成源码解析为<b>保留实例</b>的语法树数组——增量用例须以
+    /// <see cref="CSharpCompilation.ReplaceSyntaxTree"/> 只替换改动的那一棵，未改动的树保持同实例，
+    /// 否则整编译失效、用例退化为恒绿。
+    /// </summary>
+    public static ImmutableArray<SyntaxTree> ParseTrees(IEnumerable<string> sources)
+        => sources.Select(source => CSharpSyntaxTree.ParseText(source, ParseOptions)).ToImmutableArray();
+
+    /// <summary>以给定语法树构造编译（增量用例用）。</summary>
+    public static CSharpCompilation CreateCompilation(
+        ImmutableArray<SyntaxTree> trees,
+        string assemblyName = DefaultAssemblyName)
+        => CSharpCompilation.Create(
+            assemblyName,
+            trees,
+            CreateBclReferences(),
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+                .WithNullableContextOptions(NullableContextOptions.Enable));
+
+    /// <summary>创建可复用的增量 driver（增量用例用）。</summary>
+    /// <param name="additionalText">附加文件（如 golden 快照）；默认无。</param>
+    /// <param name="trackSteps">
+    /// 是否追踪增量步骤（<see cref="RunOnceTracked"/> 需要；默认关闭以免无谓开销）。
+    /// </param>
+    public static GeneratorDriver CreateDriver(AdditionalText? additionalText = null, bool trackSteps = false)
+        => CSharpGeneratorDriver.Create(
+            generators: [new FeishuToolSchemaGenerator().AsSourceGenerator()],
+            additionalTexts: additionalText is null
+                ? ImmutableArray<AdditionalText>.Empty
+                : [additionalText],
+            parseOptions: ParseOptions,
+            driverOptions: new GeneratorDriverOptions(
+                IncrementalGeneratorOutputKind.None,
+                trackIncrementalGeneratorSteps: trackSteps));
+
+    /// <summary>
+    /// 以既有 driver 驱动一次编译，返回<b>带缓存状态的新 driver</b> 与本次运行结果
+    /// （<see cref="GeneratorDriver"/> 不可变，须回填返回值才能延续缓存）。
+    /// </summary>
+    public static (GeneratorDriver Driver, GeneratorRun Run) RunOnce(GeneratorDriver driver, Compilation compilation)
+    {
+        var updated = driver.RunGenerators(compilation);
+        var runResult = updated.GetRunResult();
+
+        return (updated, new GeneratorRun(
+            runResult.Diagnostics.ToImmutableArray(),
+            runResult.GeneratedTrees.Select(static tree => tree.ToString()).ToImmutableArray()));
+    }
+
+    /// <summary>
+    /// 同 <see cref="RunOnce"/>，另返回<b>增量步骤轨迹</b>（须以
+    /// <c>CreateDriver(trackSteps: true)</c> 创建 driver；否则轨迹为空）。
+    /// </summary>
+    /// <remarks>
+    /// 缓存判定依据是每步输出的 <see cref="IncrementalStepRunReason"/>：<c>Cached</c> 即复用上趟结果。
+    /// 只看"产出文本相同"不足以证明缓存命中（全部重跑也会得到相同文本）。
+    /// </remarks>
+    public static (GeneratorDriver Driver, GeneratorRun Run, ImmutableArray<IncrementalGeneratorRunStep> Steps) RunOnceTracked(
+        GeneratorDriver driver,
+        Compilation compilation)
+    {
+        var updated = driver.RunGenerators(compilation);
+        var runResult = updated.GetRunResult();
+
+        var steps = runResult.Results.IsDefaultOrEmpty
+            ? ImmutableArray<IncrementalGeneratorRunStep>.Empty
+            : runResult.Results.SelectMany(static result => result.TrackedSteps.Values.SelectMany(static v => v))
+                .ToImmutableArray();
+
+        return (updated, new GeneratorRun(
+            runResult.Diagnostics.ToImmutableArray(),
+            runResult.GeneratedTrees.Select(static tree => tree.ToString()).ToImmutableArray()), steps);
     }
 
     /// <summary>

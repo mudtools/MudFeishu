@@ -1,1 +1,1 @@
-消息（im.*）：`im.get_history_messages` 按会话与时间窗取历史（时间用带时区的 RFC3339），`im.get_message_content` 取单条消息正文（图片/文件只回元数据，不下载）。发送走 `im.send_message`（默认不启用）。
+消息（im.*）：`im.get_history_messages` 按会话与时间窗取历史（时间用带时区的 RFC3339），`im.get_message_content` 取单条消息正文（图片/文件只回元数据，不下载），`im.search_messages` 按关键词搜索可见会话消息，`im.list_chat_members` 列出群聊成员。发送走 `im.send_message`（文本消息）与 `im.reply_message`（回复指定消息，形成话题串），`im.send_image`/`im.send_file` 走 URL 落盘→上传→发送三步链路——均为写操作（默认不启用，需宿主授权）。

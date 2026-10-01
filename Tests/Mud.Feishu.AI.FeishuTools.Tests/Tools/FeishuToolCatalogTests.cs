@@ -128,6 +128,11 @@ internal static class GuardProviderFactory
 
         var services = new ServiceCollection()
             .AddSingleton(Options.Create(options))
+            // R3-5：作用域工厂的核心依赖（与生成的 HTTP 客户端同构：IFeishuAppManager + IAppContextHolder
+            // + 授权器），与业务域无关——任何装配组合都必须提供，否则连注册表都建不起来。
+            .AddSingleton(new Mock<Mud.HttpUtils.IAppContextHolder>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.Abstractions.IFeishuAppManager>().Object)
+            .AddSingleton(Mock.Of<Mud.HttpUtils.IAppAccessAuthorizer>(a => a.CanSwitchTo(It.IsAny<string>())))
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableAppTable>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableField>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableRecord>().Object)

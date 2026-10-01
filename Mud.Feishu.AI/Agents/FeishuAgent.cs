@@ -63,12 +63,16 @@ public sealed class FeishuAgent : AIAgent
     /// <param name="options">Agent 配置（构造时执行 <see cref="FeishuAgentOptions.Validate"/>）。</param>
     /// <param name="conversationStore">会话存储；为 <see langword="null"/> 时不持久化（仅内存会话）。</param>
     /// <param name="loggerFactory">日志工厂（可空，MAF 内部日志兜底关闭）。</param>
-    /// <param name="services">服务提供器（MAF 工具解析用，可空）。</param>
+    /// <param name="services">服务提供器（MAF 高级装配用，可空）。SDK 自身的 DI 装配（<c>AddFeishuAgent</c>）
+    /// <b>不传</b>根容器——工具与 guidance 在装配期已解析为实例、历史由显式
+    /// <c>InMemoryChatHistoryProvider</c> 提供，MAF 侧无需再经容器解析。宿主传入时必须保证
+    /// <b>不解析 Scoped 服务</b>（本类型是 Singleton，Scoped 依赖会被钉住成为 Captive Dependency）。</param>
     /// <param name="tools">暴露给模型的工具（可空）。来源：容器内全部 <see cref="AIFunction"/>
     /// 注册（如 <c>Mud.Feishu.AI.FeishuTools</c> 经白名单 MapTool 后桥接产出）；
     /// 为空/空集时保持 Phase 0 裸模型行为。</param>
     /// <param name="domainGuidance">已启用工具所属域的 guidance 资产（可空；WP6 / AT-F09）。
     /// 追加在宿主 <c>Instructions</c> <b>之后</b>（宿主指令优先）；为空/空集时指令与 Phase 0 完全一致。</param>
+    /// <param name="summarizer">渐进式会话摘要器（可空；R3-13 DI 化——为空时按阈值自动创建，非空时直接使用）。</param>
     /// <exception cref="InvalidOperationException">配置非法（fail-fast）。</exception>
     public FeishuAgent(
         IChatClient chatClient,
@@ -77,7 +81,8 @@ public sealed class FeishuAgent : AIAgent
         ILoggerFactory? loggerFactory = null,
         IServiceProvider? services = null,
         IReadOnlyList<AIFunction>? tools = null,
-        IReadOnlyList<FeishuGuidanceBlock>? domainGuidance = null)
+        IReadOnlyList<FeishuGuidanceBlock>? domainGuidance = null,
+        ConversationSummarizer? summarizer = null)
     {
         if (chatClient is null)
             throw new ArgumentNullException(nameof(chatClient));
@@ -90,11 +95,10 @@ public sealed class FeishuAgent : AIAgent
         _conversationStore = conversationStore;
         _logger = loggerFactory?.CreateLogger<FeishuAgent>();
 
-        // 渐进式会话摘要（Phase 2 §3.2）：条数阈值或 token 预算任一启用即挂载（P2-6）——
-        // 否则「仅配 token 阈值」的宿主会静默失去摘要能力。摘要与主对话共用同一模型客户端与历史状态键。
-        _summarizer = options.SummaryThreshold > 0 || options.MaxHistoryTokens > 0
+        // R3-13：Summarizer DI 化——接受外部注入的替身实例；未注入时按阈值自动创建（保留既有语义）。
+        _summarizer = summarizer ?? (options.SummaryThreshold > 0 || options.MaxHistoryTokens > 0
             ? new ConversationSummarizer(chatClient, options, loggerFactory?.CreateLogger<ConversationSummarizer>())
-            : null;
+            : null);
 
         // 精确计数可观测（R2-4）：原先 ChatTokenCounter 的初始化失败被 catch 静默吞掉，
         // 「token 预算实际走字符估算」这一配置/依赖不匹配完全不可见。此处借宿主 logger 告警一次
@@ -201,17 +205,28 @@ public sealed class FeishuAgent : AIAgent
                 _ = session.TryGetInMemoryChatHistory(out _, ChatHistoryStateKey, null);
                 return session;
             }
-            catch (Exception ex) when (ex is JsonException or ArgumentException or InvalidOperationException or NotSupportedException)
+            // R4-7：坏值自愈的 catch 面必须**收口**，不得是枚举白名单。
+            // 原白名单（JsonException/ArgumentException/InvalidOperationException/NotSupportedException）
+            // 与注释自称的"覆盖全部"矛盾：FormatException/KeyNotFoundException/IndexOutOfRangeException/
+            // NullReferenceException 等残余类型会逃出守护区 ⇒ 坏载荷每次重投递都在区外再抛 ⇒ 会话永久毒化。
+            // 现改为 `not OperationCanceledException`：取消必须原样传播（否则调用方取消被吞成"重建"），
+            // 其余异常一律走「删除坏值 + 重建」——对结构不符/旧格式/未知反序列化失败都是安全处置。
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                // 损坏/旧格式载荷视为 miss（Phase 0 §8）：**删除坏值** + 重建会话，不让事件循环崩溃。
-                // MAF ChatClientAgentSession.Deserialize 对「合法 JSON 但根不是对象」（"[]"/"123"/"\"str\""）
-                // 抛 ArgumentException；若不纳入 catch 面，坏载荷会在每次重投递时再次失败（毒事件循环，
-                // 且坏数据永不自愈）。InvalidOperationException/NotSupportedException 一并纳入：
-                // 「重建 + 删除」对结构不符/旧格式都是安全处置（丢一轮历史 << 毒事件循环）。
                 _logger?.LogWarning(ex, "会话载荷不可用，已删除并重建（conversationKey: {ConversationKey}）", conversationKey);
                 if (_conversationStore is not null)
                 {
-                    await _conversationStore.DeleteAsync(conversationKey, cancellationToken).ConfigureAwait(false);
+                    try
+                    {
+                        // 用 None 而非调用方 token：清库是坏值自愈的必要动作，不得被取消中断
+                        // （否则坏值残留，会话在其 TTL 内继续毒化）。
+                        await _conversationStore.DeleteAsync(conversationKey, CancellationToken.None).ConfigureAwait(false);
+                    }
+                    catch (Exception deleteEx)
+                    {
+                        // 删除失败不得掩盖"重建"主路径：坏值由 TTL 兜底，但必须可观测（R4-7）。
+                        _logger?.LogWarning(deleteEx, "删除损坏会话失败（conversationKey: {ConversationKey}）", conversationKey);
+                    }
                 }
             }
         }
@@ -295,11 +310,36 @@ public sealed class FeishuAgent : AIAgent
 
         // 失败可见性（P2-8 / B3.3）：迭代器不能在含 catch 的 try 内 yield（CS1626），
         // 故把「枚举 + 异常时标记 Span Error」下沉到非迭代器包装层。
-        await foreach (var update in MarkFailureOnEnumerateAsync(
-            _innerAgent.RunStreamingAsync(messages, session, options, cancellationToken), activity)
-            .ConfigureAwait(false))
+        //
+        // R3-7：流式路径同样记录模型调用耗时（与非流式 RunCoreAsync 对齐）——
+        // 此前只有非流式入直方图，流式（IM 会话默认路径）的 P95/P99 因此缺失。
+        // try/finally 在迭代器中**合法**（CS1626 只禁止 try 块内 yield 与 catch 共存）。
+        // 纪律：时长只进数值直方图（维度 agent），不得新增 appKey/sessionId 等 tag（原则 8：键只进 Span）。
+        var llmStopwatch = System.Diagnostics.Stopwatch.StartNew();
+        UsageDetails? lastUsage = null;
+        try
         {
-            yield return update;
+            await foreach (var update in MarkFailureOnEnumerateAsync(
+                _innerAgent.RunStreamingAsync(messages, session, options, cancellationToken), activity)
+                .ConfigureAwait(false))
+            {
+                // R4-8：流式路径同样记录 token 用量（与非流式 RunCoreAsync 对齐）——此前流式
+                // （IM 会话默认路径）的输入/输出 token 从不进 Span，用量可观测性出现一半缺口。
+                // MAF 在流中经 UsageContent 上报，取最后一次（其 Details 即本轮累计值）；
+                // 累积逻辑放在循环体内（MarkFailureOnEnumerateAsync 是无状态静态包装，不承载状态）。
+                if (update.Contents.OfType<UsageContent>().LastOrDefault() is { } usage)
+                {
+                    lastUsage = usage.Details;
+                }
+
+                yield return update;
+            }
+        }
+        finally
+        {
+            FeishuAgentDiagnostics.RecordLlmDuration(_options.Name, llmStopwatch.ElapsedMilliseconds);
+            // 用量只写 Span 标量属性（原则 8：键只进 Span、不入 Metrics tag）。
+            FeishuAgentDiagnostics.RecordUsage(activity, lastUsage);
         }
     }
 

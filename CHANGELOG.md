@@ -1,5 +1,156 @@
 # Mud.Feishu 更新日志
 
+## [Unreleased] - Mud.Feishu.AI 审查缺陷修复 R4（2026-10-01）
+
+> 方案与双视角复核（高级程序员 / 系统架构师）见 `.docs/AI/Mud.Feishu.AI-审查缺陷修复与能力完善方案-R4.md`
+> （§0.6 复核订正、§0.7 落地记录、§4 批次 B0/B1/B2、§5.3 红转绿登记）。
+> 覆盖 1 个 P0（R4-1）、5 个 P1、8 个 P2；R4-14 与维度 B（能力补齐）维持 Phase/分期，不进本轮。
+> **AI 模块尚未发布，本轮为一次性重构，无兼容负担。**
+
+### ⚠️ 行为变更登记（宿主可感）
+
+- **【P0 / R4-1】写工具 HITL 改为 fail-closed（不再静默放行）**：删除 `AuthorizeGateAsync` 中
+  「`AuthorizationDecision.NeedsUserConfirmation && tool.IsWrite → Pass()`」特例。该特例的唯一依据
+  （"MAF 未批准则本方法不会被调用"）在运行期**无任何校验**——`ApprovalRequiredAIFunction` 是 MEAI
+  **纯标记类型**，拦截只发生在 `FunctionInvokingChatClient` 内；宿主直接 `InvokeAsync`、或同一进程内两种
+  调用混用时，写工具会被**静默放行**。
+  **新语义**：**授权器是批准状态的唯一所有者**（SDK 不签发/不校验任何凭据，WP3 不变）；
+  读、写工具一律走 `ResolveNeedsConfirmationAsync` 挂起解析并**恒不放行**，宿主批准后须以同一键
+  返回 `Allowed` 才会执行。**迁移**：原以"MAF 批准即放行"为前提的宿主，需在批准回调中更新
+  `IToolExecutionAuthorizer` 状态；未注册批准通道时降级为纯提示（模型拿不到任何凭据）。
+  **源破坏（项目未发布）**。
+- **【R4-6】单例 `FeishuAgent` 不再接收根 `IServiceProvider`**：`ChatClientAgent` 的 `services`
+  改为 `null`（原先在**单例工厂**内传入根容器 `sp`）。根容器被单例长期持有会把 Scoped 依赖钉成
+  事实单例（Captive Dependency，TMA-13 同类问题）。需要 Scoped 服务的宿主应自行
+  `new FeishuAgent(..., services: <由 scope 派生>)`。
+- **【R4-13】结构化错误补 `code` 机器可读字段**：`[tool_error] <tool> (kind) code=<飞书业务码>: <reason>`
+  ——此前 `ToolErrorClassifier` 已算出 code 却在文本中丢失，模型只能读中文后缀。**无 code 时不产出空槽**
+  （HTTP 5xx/429 本就没有业务码）。人读文案形态保持不变（纯追加）。
+
+### 🐛 修复
+
+- **R4-3**：Aily 知识召回 `has_answer` 由**覆盖式赋值**改为**单调累积**。SSE 的 processing 中间事件与
+  终结事件常**省略** `has_answer`，覆盖式会被最后一次无字段事件重置为 `false` ⇒ 有答案被判为无答案，
+  消费点据此**静默丢弃整次召回**（无异常、无日志）。
+- **R4-7**：会话损坏自愈的 catch 面由**枚举白名单**（`JsonException or ArgumentException or
+InvalidOperationException or NotSupportedException`）收口为 `when (ex is not OperationCanceledException)`。
+  白名单既与同处注释"覆盖全部异常类型"自相矛盾，也拦不住 MAF 内部字典/格式转换抛出的
+  `FormatException`/`KeyNotFoundException`（残余类型会毒化会话）。
+- **R4-8**：流式 Agent 路径补记 token 用量（在**迭代器循环体内**累积 `UsageDetails`，循环结束后
+  `RecordUsage`）——此前仅非流式路径有遥测，流式调用在可观测性上不可见。
+- **R4-9**：`FeishuCapabilityCatalog` 的 opt-in 表述与强依赖对齐——该产物对 `Mud.Feishu.AI.FeishuTools`
+  是**必需**（`CapabilityLookupTools` 编译期无条件引用，置 `false` 即 `CS0103`）；
+  `build_property.FeishuToolCatalog` 只对**其他引用本生成器的工程**才是可关闭的增量开关。
+- **R4-10**：生成器 `AddSource` 唯一性护栏加固。`RegistrarTypeName` / Core 方法名 / hintName 三者
+  均由执行器**简单名**派生并发射进**同一**命名空间 ⇒ 跨命名空间的同名执行器会产出同名类型（`CS0101`）
+  与同名方法（`CS0111`），或让 `AddSource` 抛异常后被 `Guard<T>` 吞成 `MUDFT026`（"生成器内部异常"的
+  **表面症状**）。修复：**仅对发生碰撞的执行器**追加命名空间段消歧后缀（无碰撞者名字零变更，手写
+  `AddFeishu{X}Core` 调用点不受影响），并同步修正方法体内的类型引用（否则 `CS0246`）。
+- **R4-11**：写工具文件收敛（**纯位移 + 重命名，不改任何方法体**）——新建 `Internal/BitableWriteTools.cs`
+  与 `Tools/FeishuBitableWriteToolInterfaces.cs` 收纳 bitable 写域；`WriteTools.cs` →
+  `MessageAndApprovalWriteTools.cs`、`WriteTools2.cs` → `DocxSheetsDriveWriteTools.cs`、
+  `FeishuWriteToolInterfaces2.cs` → `FeishuDocxSheetsDriveToolInterfaces.cs`。仓库内不再有 `*2.cs`。
+- **R4-12**：`Pass()` 的"注释写 Warning / 代码 `LogInformation`"矛盾随 R4-1 删除该分支一并消失。
+
+### 🧪 测试与守卫
+
+- **新增诊断 `MUDFT027`（Error，零容忍）**：工具名"字面不同但归一后同名"（如 `fake.a_b` 与
+  `fake.a.b` 均归一为 `FakeAB`）会导致产物常量重复（`CS0101`）或 hintName 重复
+  （→ `MUDFT026`）。**不复用 `MUDFT003`**——后者是"字面工具名重复"，二者真因不同。
+  四处同批登记：`Diagnostics.ZeroToleranceIds` → `AnalyzerReleases.Unshipped.md` →
+  `scripts/verify-build.ps1`（零容忍正则）→ `GeneratorNegativeCaseTests`（可触发负例）。
+- **守卫反转/改写**（改源码不改守卫 = 门禁红）：
+  `WriteTool_NeedsUserConfirmation_ShouldBeBypassed_AtAuthorizeGate` **反转为** `..._ShouldBeDenied_...`；
+  `SessionRestore_ShouldEagerlyValidateHistoryState` 判据改为"catch 面非枚举白名单"；
+  `FeishuToolBindingTests` 原放行用例拆为 `..._ShouldDeny_WhenAuthorizerNotApproved` +
+  `..._ShouldPass_WhenAuthorizerApproved`（后者锁"宿主批准后不得死胡同"）。
+- 落地口径：**能并入既有测试类即不新建类**（原方案 8 个新类实际只新建 2 个），避免重复 fixture 装配。
+- 实测（net8.0 / net10.0 双 TFM，`--filter "Category!=Stress"`）：`Mud.Feishu.AI.Tests` **264/264**、
+  `Mud.Feishu.AI.FeishuTools.Tests` **372/372**、`Mud.Feishu.AI.Tools.Tests` **32/32**。
+- **R4-8 用例并行隔离修正**：`RunStreamingAsync_ShouldRecordTokenUsage` 原仅按 operation
+  （`feishu.agent.run_streaming`）从**进程级** `ActivitySource` 取 `Single`——xUnit 并行下邻居用例的
+  同名 Span 会一并入队，**net10.0 全量运行**抛 `Sequence contains more than one matching element`
+  （net8.0 因时序侥幸通过）。改用本用例独有的 Agent 名过滤 `feishu.agent.name` 标签
+  （对齐既有 `RunStreamingAsync_ShouldRecordLlmDuration_Once` 的既有做法）。
+- **红转绿留档**：R4-3 临时还原覆盖式赋值 → `HasAnswer` 为 `False`（红），恢复累积后绿；
+  R4-1/R4-7 守卫反转/改写均**先跑红再改源码**；R4-2 实测**全绿**（证否"增量陈旧"，
+  故未转 `CompilationProvider` 方案，用例转为回归锁）。逐条登记见方案 §5.3。
+- `FeishuToolSchemas.golden.txt` **零漂移**（R4-11 为纯位移，生成器按 `ToolName` 序数排序）。
+
+### 📄 文档
+
+- **R4-4**：工具包 `Readme.md` 的 HITL 段重写（原文仍称"签发 HMAC 令牌 / `confirm_token` /
+  `[Obsolete]`"，与已删除令牌的源码相反），并**同批订正基座 `Mud.Feishu.AI/Readme.md`**
+  （原文写 `NeedsUserConfirmation && IsWrite → Pass()` "**必须保留**"，与 R4-1 正面冲突）；
+  新增文档守卫 `Readmes_ShouldNotDescribeConfirmToken` 扫描**两处** Readme。
+- **R4-5**：工具包 `Readme.md` 幂等表 `docx.create_document` 行订正为
+  "**平台端点与 SDK 均不支持** `client_token`"（底层 `CreateDocumentRequest` 无该字段，
+  原文"底层支持 ✅"错误）。
+
+---
+
+## [Unreleased] - Mud.Feishu.AI 审查缺陷修复 R3（2026-10-01）
+
+> 方案与四视角复核裁定见 `.docs/AI/Mud.Feishu.AI-审查缺陷修复与能力完善方案-R3.md`
+> （§0.5 复核裁定、§4 落地批次 B0/B1/B2、§6 交付前置）。覆盖 3 个 P0（R3-1/R3-2/R3-5）、
+> 7 个 P1、12 个 P2（其中 R3-14 经复核判为不可达死代码，不落地）；新增配置键 1 个（`BotName`）。
+
+### ⚠️ 行为变更登记（宿主可感）
+
+- **【P0 / R3-1 / R3-2】回复动作必须先建立 SDK 租户作用域**：IM 消息、审批任务、任务更新三个
+  会话式事件器在**下发之前**调用 `ConversationalFeishuEventHandler.BeginAppScope(appKey)`。
+  生成的客户端在无环境上下文时会退化为 `Current ?? GetDefaultApp()` ⇒ 多应用宿主下以**默认应用身份**
+  把回复发给别的租户（TMA2-20 跨租户错发）。
+  **fail-closed**：事件带 `appKey` 却未注入 `IFeishuAppContextScopeFactory` 时**显式抛**
+  `InvalidOperationException`，**不**回退默认应用。**迁移**：多应用宿主须注册工厂
+  （`AddFeishuTools()` 已包含）；`appKey` 为空的单应用宿主行为**零差异**。
+- **【R3-1 步骤 0】`IFeishuAppContextScopeFactory` 契约上移**：接口由 `Mud.Feishu.AI.FeishuTools`
+  上移到 `Mud.Feishu.AI`（命名空间 `Mud.Feishu.AI.Tools`），实现在 FeishuTools；`Mud.Feishu.AI`
+  不再反向依赖 FeishuTools。**源破坏（项目未发布，无兼容负担）**。
+- **【R3-5】作用域工厂解耦重写**：`FeishuAppContextScopeFactory` 去除 IM 客户端硬依赖
+  （原先按域装配的宿主无法解析）；`BeginScope(string appKey)` 改为四步门禁——
+  格式校验 → 授权器非空 → `CanSwitchTo` → `BeginScope(context)`，任一步拒绝都**零下游副作用**。
+- **【R3-3】群聊「@Bot 本人」判定**：新增 `ImConversationOptions.BotName`（`string?`，默认 `null`）。
+  此前仅判「`mentions` 非空」⇒ 任意 `@`（@别人、@全体）都触发回复；配置后必须存在
+  `mentions[].name` 与之（忽略大小写）相等才进入会话。**`null` 保持旧行为**（升级零破坏）。
+  详见 `documents/Configuration/CHANGELOG-Config.md`（R3-3）。
+- **【R3-4】拒绝/阻断文案统一出站净化**：出口收敛为**单一闸门** `EgressResult`（3 个重载），
+  授权拒绝、策略拒绝、参数非法、待确认等**非成功路径**的文案与成功路径同样经
+  `Sanitize` + `Truncate`（截断长度复用 `MaxToolResultLength`）。此前拒绝文案未经净化（与成功路径双标）。
+- **【R3-9】数值配置项补齐上界**：`FeishuAgentOptions` 五项由「仅下界」改为「下界 + 上界」
+  （`MaxHistoryMessages` 1..10000、`MaxToolResultLength` 1..200000、`MaxStreamChunkLength` 1..100000、
+  `SummaryThreshold` 0 或 4..10000、`MaxHistoryTokens` 0..1000000）。越界在**装配期**抛
+  `InvalidOperationException`（此前运行期才表现为内存/序列化开销失控）。详见 `CHANGELOG-Config.md`（R3-9）。
+- **【R3-8】知识上下文注入预算**：`KnowledgeContextAssembler` 注入上限 = **8 条**、总长 **3000 字**
+  （单条预览 500 字，`TruncateChunk` 截断加 `…`），编号连续且带来源映射（无来源时退化）。
+- **【R3-12】邮件头字段拒绝换行**：`mail.send_message` 的 `To`/`Cc`/`Bcc`/`Subject` 含 CR/LF
+  一律**拒绝**（EML 头注入防护）；正文多行仍放行（`ToolArgumentSanitizer.ValidateHeaderValue`）。
+- **【R3-15】流式通道未登记 `messageId` 时抛错**：`StreamingChannelChain` 的 `WriteStream`/`Flush`
+  在 `messageId` 未注册时抛 `InvalidOperationException`（fail-fast），不再静默错投。
+
+### 🐛 修复
+
+- **R3-10**：`IFeishuToolContextAccessor` 以 `_owner` 引用做**所有权 + 幂等**判定
+  （`ReferenceEquals(_owner._current.Value, applied)` 才回滚），外层先释放不再污染内层作用域。
+- **R3-6**：Aily 召回按 `JsonValueKind` 分派，非字符串 chunk（数字/对象/null）不再抛异常
+  （脏值降级为 JSON 原文，其余合法 chunk 全部保留）；原文 ②（`break` 提前终止）经复核判为误报，已删除。
+- **R3-7**：流式 Agent 路径补记 LLM 时长指标（`FeishuAgentDiagnostics.RecordLlmDuration`，
+  非流式与流式 `try/finally` 各一处）。
+- **R3-14 / R3-16 / R3-19 / R3-11 / R3-13 / R3-17 / R3-18 / R3-21 / R3-22**：按方案 §4.3 实施期裁定处置
+  （R3-14 判为不可达死代码不落地；R3-16 仅去 `!`；R3-19 保留 `throw`；其余为注释/常量/重命名/守卫收口）。
+- **R3-20**：`internal` 类型重命名 `BitableWriteTools2` → `BitableWriteRecordOps`（不改方法体）。
+
+### 🧪 测试与守卫
+
+- 新增 T1–T12：`ReplyScopeContractGuards`（T11/T12）、`FeishuAppContextScopeFactoryTests`（T3b）、
+  `KnowledgeContextAssemblerTests`（T6）、`ToolContextAccessorTests`（T8）、`MailToolsTests`（T9）、
+  `ToolEgressPurificationContractGuards`（T10）等。
+- 双 TFM 实测：`Mud.Feishu.AI.Tests` **261/261**、`Mud.Feishu.AI.FeishuTools.Tests` **368/368**
+  （net8.0 / net10.0），`--filter "Category!=Stress"`。
+- 守卫先行：`ReplyScopeContractGuards`、`ToolEgressPurificationContractGuards` 先于修复落地。
+
+---
+
 ## [Unreleased] - Phase 4 P4-3：自研确认令牌退场（2026-09-29）
 
 ### ⚠️ 行为变更登记
@@ -356,11 +507,11 @@
 
 ### ⚙️ 配置面新增（R4/R5 对齐）
 
-| 配置属性 | 配置节 | 默认值 | 消费点 |
-| --- | --- | --- | --- |
-| `MaxHistoryTokens` | `FeishuAgent` | `8000`（0=不启用） | `ConversationSummarizer` |
-| `RequireMentionInGroup` | `FeishuAgent:ImConversation` | `true` | `ImMessageConversationalEventHandler` |
-| `AllowP2pConversation` | `FeishuAgent:ImConversation` | `true` | 同上 |
+| 配置属性                | 配置节                       | 默认值             | 消费点                                |
+| ----------------------- | ---------------------------- | ------------------ | ------------------------------------- |
+| `MaxHistoryTokens`      | `FeishuAgent`                | `8000`（0=不启用） | `ConversationSummarizer`              |
+| `RequireMentionInGroup` | `FeishuAgent:ImConversation` | `true`             | `ImMessageConversationalEventHandler` |
+| `AllowP2pConversation`  | `FeishuAgent:ImConversation` | `true`             | 同上                                  |
 
 ## [3.0.0] - 2026-09-28
 

@@ -444,6 +444,19 @@ public static class FeishuMetrics
         return results;
     }
 
+    // ── Agent 降级路径指标（R3-12） ──
+
+    /// <summary>
+    /// Agent 工具/通道降级计数（维度：app_key, reason）——"有意静默/降级"路径的可观测出口（R3-12）。
+    /// </summary>
+    /// <remarks>
+    /// 高基数纪律（原则 8）：维度不得含键/用户标识。reason 取值见 <see cref="DegradedReasons"/>（受控枚举）。
+    /// </remarks>
+    public static readonly Counter<long> ToolDegradedCount = Instance.CreateCounter<long>(
+        "feishu.agent.tool.degraded",
+        unit: "{degradation}",
+        description: "Agent 工具/通道降级路径计数（审计失败/整形失败/通道更新失败/内容安全告警）");
+
     // ── Webhook 指标 ──
 
     /// <summary>
@@ -514,6 +527,27 @@ public static class FeishuMetrics
 
         /// <summary>并发闸门未授予租约（连接关闭或并发服务已释放），消息被丢弃。</summary>
         public const string ConcurrencyRejected = "concurrency_rejected";
+    }
+
+    /// <summary>
+    /// <see cref="ToolDegradedCount"/> 的降级原因常量（R3-12）。
+    /// </summary>
+    /// <remarks>
+    /// 用常量而非裸字符串：告警规则与看板按这些值聚合，散落字面量会在重构时静默改变指标序列。
+    /// </remarks>
+    public static class DegradedReasons
+    {
+        /// <summary>审计投递失败（sink 异常，审计事件丢弃）。</summary>
+        public const string AuditDeliveryFailed = "audit_delivery_failed";
+
+        /// <summary>结果整形钩子失败（回退默认结果）。</summary>
+        public const string ResultShapingFailed = "result_shaping_failed";
+
+        /// <summary>通道单次更新失败（子类钩子记录，不中断模型流）。</summary>
+        public const string ChannelUpdateFailed = "channel_update_failed";
+
+        /// <summary>内容安全 warn 模式命中（只加标注，不阻断）。</summary>
+        public const string ContentSafetyWarn = "content_safety_warn";
     }
 
     /// <summary>

@@ -133,24 +133,119 @@ internal static class ToolRegistrarEmitter
             return;
         }
 
+        // R4-10：注册器类型名 / 核心方法名 / hintName 的**碰撞消歧**。
+        // 三者都由执行器**简单名**派生，却发射进同一个命名空间（RegistrarsNamespace）与同一个静态类——
+        // 两个命名空间下的同名执行器（A.FooTools / B.FooTools）会产出同名注册器（CS0101）
+        // 与同名核心方法（CS0111）。此处仅为**发生碰撞**的执行器追加稳定的命名空间消歧后缀：
+        // 无碰撞的执行器名字保持不变（手写 AddFeishu{X}Core 调用点因此无需改动）。
+        var suffixByExecutor = ResolveCollidingNames(executors);
+
         // 域注册器：每执行器一个独立产物文件（同一注册器类不再与他类共文件）。
         foreach (var executor in executors)
         {
+            var registrarName = ApplySuffix(
+                executor.First().RegistrarTypeName,
+                suffixByExecutor.TryGetValue(executor.Key, out var suffix) ? suffix : string.Empty,
+                RegistrarTypeSuffix);
+
             context.AddSource(
-                RegistrarHintName(executor.First().RegistrarTypeName),
-                SourceText.From(EmitRegistrar(executor), Encoding.UTF8));
+                RegistrarHintName(registrarName),
+                SourceText.From(EmitRegistrar(executor, registrarName), Encoding.UTF8));
         }
 
-        context.AddSource(CoreFileName, SourceText.From(EmitCoreExtensions(executors), Encoding.UTF8));
+        context.AddSource(
+            CoreFileName,
+            SourceText.From(EmitCoreExtensions(executors, suffixByExecutor), Encoding.UTF8));
     }
+
+    /// <summary>域注册器类型名的固定尾缀（守卫据此断言"域注册器家族在位"）。</summary>
+    private const string RegistrarTypeSuffix = "ToolDomainRegistrar";
+
+    /// <summary>DI 核心方法名的固定尾缀（手写入口以 <c>AddFeishu{X}Core</c> 调用）。</summary>
+    private const string CoreMethodSuffix = "Core";
 
     /// <summary>域注册器产物 hintName：<c>BitableToolDomainRegistrar</c> → <c>FeishuToolDomainRegistrars/BitableToolDomainRegistrar.g.cs</c>。</summary>
     private static string RegistrarHintName(string registrarTypeName)
         => $"{RegistrarsOutputFolder}/{registrarTypeName}.g.cs";
 
+    /// <summary>
+    /// R4-10：找出「派生名碰撞」的执行器并给出消歧后缀（无碰撞者为空串）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 注册器名与核心方法名**分别**判碰撞——两者派生规则不同，可能一个撞另一个不撞
+    /// （如 <c>FooTools</c> 与 <c>FooToolTools</c>：注册器名都归约为 <c>FooToolDomainRegistrar</c>，
+    /// 核心方法名却是 <c>AddFeishuFooToolsCore</c> / <c>AddFeishuFooToolToolsCore</c>）。
+    /// </para>
+    /// <para>
+    /// 后缀取自执行器<b>全限定名中的命名空间</b>（剥离非字母数字字符）——<c>命名空间 + 类名</c>在 C# 中唯一，
+    /// 故后缀能消除碰撞；且它与编译顺序无关（增量构建下名字稳定，不会引起无谓重发）。
+    /// </para>
+    /// </remarks>
+    private static Dictionary<string, string> ResolveCollidingNames(
+        IGrouping<string, ToolHandlerBinding>[] executors)
+    {
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        foreach (var selector in new Func<IGrouping<string, ToolHandlerBinding>, string>[]
+                 {
+                     static executor => executor.First().RegistrarTypeName,
+                     static executor => executor.First().CoreMethodName,
+                 })
+        {
+            foreach (var group in executors.GroupBy(selector, StringComparer.Ordinal))
+            {
+                // 同一 ExecutorType 的多个绑定本就在同一组，只有**跨执行器**同名才算碰撞。
+                if (group.Select(static executor => executor.Key).Distinct(StringComparer.Ordinal).Count() <= 1)
+                {
+                    continue;
+                }
+
+                foreach (var executor in group)
+                {
+                    result[executor.Key] = NamespaceSuffix(executor.First().ExecutorType);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>把后缀插到固定尾缀<b>之前</b>（保持 <c>…ToolDomainRegistrar</c> / <c>…Core</c> 形态）。</summary>
+    private static string ApplySuffix(string name, string suffix, string trailingMarker)
+        => string.IsNullOrEmpty(suffix) || !name.EndsWith(trailingMarker, StringComparison.Ordinal)
+            ? name
+            : name.Substring(0, name.Length - trailingMarker.Length) + suffix + trailingMarker;
+
+    /// <summary>从全限定类型名取"命名空间"消歧后缀（<c>global::A.B.C.Foo</c> → <c>ABC</c>）。</summary>
+    private static string NamespaceSuffix(string executorType)
+    {
+        const string GlobalPrefix = "global::";
+        var full = executorType.StartsWith(GlobalPrefix, StringComparison.Ordinal)
+            ? executorType.Substring(GlobalPrefix.Length)
+            : executorType;
+
+        var lastDot = full.LastIndexOf('.');
+        if (lastDot <= 0)
+        {
+            return string.Empty;
+        }
+
+        var builder = new StringBuilder(lastDot);
+        foreach (var ch in full.Substring(0, lastDot))
+        {
+            if (char.IsLetterOrDigit(ch))
+            {
+                builder.Append(ch);
+            }
+        }
+
+        return builder.ToString();
+    }
+
     // ────────── 产物一：域注册器（每执行器一个文件） ──────────
 
-    private static string EmitRegistrar(IGrouping<string, ToolHandlerBinding> executor)
+    private static string EmitRegistrar(IGrouping<string, ToolHandlerBinding> executor, string registrarName)
     {
         var first = executor.First();
         var source = new StringBuilder();
@@ -158,7 +253,7 @@ internal static class ToolRegistrarEmitter
         source.AppendLine("{");
         source.AppendLine($"    /// <summary>{first.ExecutorTypeName} 的域注册器（编译期按 [FeishuToolHandler] 聚合）。</summary>");
         source.AppendLine($"    {GeneratedCodeMarker.Attribute}");
-        source.AppendLine($"    internal sealed class {first.RegistrarTypeName}({first.ExecutorType} executor, FeishuToolBinding binding) : IFeishuToolDomainRegistrar");
+        source.AppendLine($"    internal sealed class {registrarName}({first.ExecutorType} executor, FeishuToolBinding binding) : IFeishuToolDomainRegistrar");
         source.AppendLine("    {");
         source.AppendLine($"        {GeneratedCodeMarker.Attribute}");
         source.AppendLine("        public void Register(FeishuToolRegistry registry)");
@@ -178,7 +273,9 @@ internal static class ToolRegistrarEmitter
 
     // ────────── 产物二：DI 装配 ──────────
 
-    private static string EmitCoreExtensions(IGrouping<string, ToolHandlerBinding>[] executors)
+    private static string EmitCoreExtensions(
+        IGrouping<string, ToolHandlerBinding>[] executors,
+        Dictionary<string, string> suffixByExecutor)
     {
         var source = new StringBuilder();
         AppendHeader(source, CoreNamespace, "Microsoft.Extensions.DependencyInjection", "Microsoft.Extensions.DependencyInjection.Extensions");
@@ -191,7 +288,14 @@ internal static class ToolRegistrarEmitter
 
         foreach (var executor in executors)
         {
-            EmitCoreMethod(source, executor);
+            // R4-10：核心方法名与**其引用的注册器类型名**必须同步消歧——
+            // 同名执行器会让本静态类出现签名相同的方法（CS0111）；而方法体里的
+            // `new {RegistrarsNamespace}.{RegistrarTypeName}(...)` 若仍用未消歧名则 CS0246。
+            var suffix = suffixByExecutor.TryGetValue(executor.Key, out var resolved) ? resolved : string.Empty;
+            var coreMethodName = ApplySuffix(executor.First().CoreMethodName, suffix, CoreMethodSuffix);
+            var registrarName = ApplySuffix(executor.First().RegistrarTypeName, suffix, RegistrarTypeSuffix);
+
+            EmitCoreMethod(source, executor, coreMethodName, registrarName);
         }
 
         source.AppendLine("    }");
@@ -199,7 +303,11 @@ internal static class ToolRegistrarEmitter
         return source.ToString();
     }
 
-    private static void EmitCoreMethod(StringBuilder source, IGrouping<string, ToolHandlerBinding> executor)
+    private static void EmitCoreMethod(
+        StringBuilder source,
+        IGrouping<string, ToolHandlerBinding> executor,
+        string coreMethodName,
+        string registrarName)
     {
         var first = executor.First();
         var dependencies = first.Dependencies;
@@ -234,7 +342,7 @@ internal static class ToolRegistrarEmitter
         }
 
         source.AppendLine($"        {GeneratedCodeMarker.Attribute}");
-        source.AppendLine($"        internal static IServiceCollection {first.CoreMethodName}(this IServiceCollection services)");
+        source.AppendLine($"        internal static IServiceCollection {coreMethodName}(this IServiceCollection services)");
         source.AppendLine("        {");
 
         if (softIndexes.Length == 0)
@@ -262,7 +370,7 @@ internal static class ToolRegistrarEmitter
         // 经 internal 静态助手登记（**非** private 扩展——生成产物是独立类型，跨类不可见：R1 §4.5 的 CS0122 根因）。
         source.AppendLine($"            {RegistrarsNamespace}.FeishuToolDomainRegistrars.Add(services, static sp =>");
         source.AppendLine($"                sp.GetService<{first.ExecutorType}>() is {{ }} executor");
-        source.AppendLine($"                    ? new {RegistrarsNamespace}.{first.RegistrarTypeName}(executor, sp.GetRequiredService<{CoreNamespace}.FeishuToolBinding>())");
+        source.AppendLine($"                    ? new {RegistrarsNamespace}.{registrarName}(executor, sp.GetRequiredService<{CoreNamespace}.FeishuToolBinding>())");
         source.AppendLine("                    : null);");
         source.AppendLine("            return services;");
         source.AppendLine("        }");

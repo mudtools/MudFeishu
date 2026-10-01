@@ -54,22 +54,26 @@ internal static class ToolResultContentSafety
         // ① 指令覆盖：要求模型放弃/忽略先前的指令。
         ("instruction_override", new Regex(
             @"\b(ignore|disregard|forget|override)\b[^\n]{0,40}\b(previous|prior|above|earlier|all)\b[^\n]{0,20}\b(instruction|prompt|rule|direction)s?\b",
-            RegexOptions.Compiled | RegexOptions.IgnoreCase)),
+            RegexOptions.Compiled | RegexOptions.IgnoreCase,
+            SecurityTextPrimitives.MatchTimeout)),
 
-        // ② 角色注入：伪造 system/assistant 角色发言，或声明"你现在是…"。
+        // ② 角色注入：伪造 system/assistant 角色发言，或声明“你现在是…”。
         ("role_injection", new Regex(
             @"(<\|\s*(system|assistant)\s*\|>)|(^|\n)\s*(system|assistant)\s*:|你(现在)?(是|扮演)|you\s+are\s+now\b|act\s+as\s+(an?\s+)?(system|admin|developer)",
-            RegexOptions.Compiled | RegexOptions.IgnoreCase)),
+            RegexOptions.Compiled | RegexOptions.IgnoreCase,
+            SecurityTextPrimitives.MatchTimeout)),
 
         // ③ 系统提示泄露：要求复述 system prompt / 揭示隐藏指令。
         ("system_prompt_leak", new Regex(
             @"(reveal|repeat|print|show|disclose|输出|泄露|复述)[^\n]{0,30}(system\s*prompt|initial\s*(prompt|instruction)|hidden\s*(prompt|instruction)|系统提示词|系统指令|隐藏指令)",
-            RegexOptions.Compiled | RegexOptions.IgnoreCase)),
+            RegexOptions.Compiled | RegexOptions.IgnoreCase,
+            SecurityTextPrimitives.MatchTimeout)),
 
-        // ④ 分隔符走私：伪造工具/对话分隔标记与"新一轮"边界。
+        // ④ 分隔符走私：伪造工具/对话分隔标记与“新一轮”边界。
         ("delimiter_smuggle", new Regex(
             @"(\[/?(INST|SYS|SYSTEM|TOOL|FUNCTION|USER|ASSISTANT)\])|(<\|(im_start|im_end|endoftext)\|>)|(^|\n)-{3,}\s*(new\s+(instruction|task|system)|新(指令|任务))",
-            RegexOptions.Compiled | RegexOptions.IgnoreCase)),
+            RegexOptions.Compiled | RegexOptions.IgnoreCase,
+            SecurityTextPrimitives.MatchTimeout)),
     ];
 
     /// <summary>

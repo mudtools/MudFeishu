@@ -1445,7 +1445,7 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// </para>
     /// <para>
     /// <b>Mud.HttpUtils 3.0.0 迁移（上游 BC-27 + SW-15）</b>：原实现调用生成类的 <c>UseApp(appKey)</c>（上游已移除），
-    /// 现改为 <c>IAppContextHolder.SwitchToApp(appKey, this, serviceProvider)</c>，语义<b>逐字等价</b>：
+    /// 现改为「显式守卫 + <c>IAppContextHolder.SwitchTo(IMudAppContext)</c>」，语义<b>逐字等价</b>：
     /// <list type="bullet">
     /// <item><description><b>守卫相同</b>：appKey 格式校验 → 未注册授权器默认拒绝 → 授权判定；
     /// 三条异常消息与生成代码逐字一致（由上游 <c>AppKeyGuardConsistencyTests</c> 跨项目钉死）；</description></item>
@@ -1473,8 +1473,21 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             throw new InvalidOperationException($"未注册飞书API服务: {typeof(IFeishuAppContext).FullName}");
 
         // 受控的无作用域切换（完整守卫 + 立即切换 + 不归还）—— 等价于上游已移除的生成实现 UseApp(appKey)。
-        // 传 IServiceProvider 的重载按「默认拒绝」语义解析 IAppAccessAuthorizer（本 SDK 默认注册 AllowAllAppAccessAuthorizer）。
-        _serviceProvider.GetRequiredService<IAppContextHolder>().SwitchToApp(appKey, this, _serviceProvider);
+        // Mud.HttpUtils 3.0.0 的实际入口为 IAppContextHolder.SwitchTo(IMudAppContext)，
+        // 授权守卫需由调用方显式完成（见 FeishuServiceCollectionExtensions 中「未注册即默认拒绝」的约定）。
+        var holder = _serviceProvider.GetRequiredService<IAppContextHolder>();
+
+        // 未注册 IAppAccessAuthorizer 时默认拒绝（本 SDK 默认注册 AllowAllAppAccessAuthorizer）。
+        var authorizer = _serviceProvider.GetService<IAppAccessAuthorizer>()
+            ?? throw new InvalidOperationException(
+                $"未注册 {nameof(IAppAccessAuthorizer)}，无法切换到指定应用上下文（默认拒绝）。" +
+                $"请注册 {nameof(IAppAccessAuthorizer)} 实现（如 AllowAllAppAccessAuthorizer）。");
+
+        if (!authorizer.CanSwitchTo(appKey))
+            throw new InvalidOperationException($"当前 {nameof(IAppAccessAuthorizer)} 不允许切换到应用：{appKey}");
+
+        // 未知 appKey 由 GetApp 校验并抛错；此处立即切换且不归还上下文。
+        holder.SwitchTo(GetApp(appKey));
 
         return service;
     }
@@ -1486,8 +1499,8 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// 重写基类方法：从 DI 容器获取已注册的服务，并切换到默认应用上下文（同样为<b>无作用域</b>语义）。
     /// <para>
     /// <b>Mud.HttpUtils 3.0.0 迁移</b>：原实现调用生成类的 <c>UseDefaultApp()</c>，现改为
-    /// <c>IAppContextHolder.SwitchToDefaultApp(this)</c> —— 二者都用「本类单例」解析默认应用
-    /// （<c>GetDefaultApp()</c>）后写入同一 Holder，语义等价。
+    /// <c>IAppContextHolder.SwitchTo(GetDefaultApp())</c> —— 二者都用「本类单例」解析默认应用
+    /// 后写入同一 Holder，语义等价。
     /// 默认应用路径<b>不做</b> appKey 格式校验与授权判定（无 appKey 输入），与生成实现一致。
     /// </para>
     /// </remarks>
@@ -1498,7 +1511,9 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         if (service == null)
             throw new InvalidOperationException($"未注册飞书API服务: {typeof(IFeishuAppContext).FullName}");
 
-        _serviceProvider.GetRequiredService<IAppContextHolder>().SwitchToDefaultApp(this);
+        // 默认应用路径不做 appKey 校验与授权判定（无 appKey 输入），与生成实现 UseDefaultApp 一致；
+        // 立即切换且不归还上下文。
+        _serviceProvider.GetRequiredService<IAppContextHolder>().SwitchTo(GetDefaultApp());
 
         return service;
     }

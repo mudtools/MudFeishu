@@ -5,14 +5,14 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.DataModels.TasksList;
+
 namespace Mud.Feishu;
 
 /// <summary>
 /// <para>飞书清单可以用于组织和管理属于同一个项目的多个任务。</para>
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/task-v2/tasklist/overview"/></para>
 /// </summary> 
-using Mud.Feishu.DataModels.TasksList;
-
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Task", InheritedFrom = nameof(FeishuV2TaskList))]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]
 public interface IFeishuUserV2TaskList : IFeishuV2TaskList, ICurrentUserId

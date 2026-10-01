@@ -19,9 +19,9 @@ description: 该接口用于以用户身份获取飞书词典的词库列表。
 
 ## 函数列表
 
-| 函数名称         | 功能描述     | 认证方式 | HTTP 方法 |
-| ---------------- | ------------ | -------- | --------- |
-| GetRepoListAsync | 获取词库列表 | 用户令牌 | GET       |
+| 函数名称         | 功能描述     | 认证方式 | HTTP 方法 | 接口文档 |
+| ---------------- | ------------ | -------- | --------- |----------|
+| GetRepoListAsync | 获取词库列表 | 用户令牌 | GET       | [GetRepoListAsync](https://open.feishu.cn/document/lingo-v1/repo/list) |
 
 ## 函数详细内容
 

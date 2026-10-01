@@ -13,14 +13,14 @@ description: 该接口用于以用户身份导出当前用户相关的会议数�
 - [导出概述](https://open.feishu.cn/document/server-docs/vc-v1/export/export-overview)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| MeetingListExportAsync | 导出会议明细 | 用户令牌 | POST |
-| ParticipantListExportAsync | 导出参会人明细 | 用户令牌 | POST |
-| ParticipantQualityListExportAsync | 导出参会人会议质量数据 | 用户令牌 | POST |
-| ResourceReservationListExportAsync | 导出会议室预定数据 | 用户令牌 | POST |
-| GetExportAsync | 查询导出任务结果 | 用户令牌 | GET |
-| DownloadExportAsync | 下载导出文件 | 用户令牌 | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| MeetingListExportAsync | 导出会议明细 | 用户令牌 | POST | [MeetingListExportAsync](https://open.feishu.cn/document/server-docs/vc-v1/export/meeting_list) |
+| ParticipantListExportAsync | 导出参会人明细 | 用户令牌 | POST | [ParticipantListExportAsync](https://open.feishu.cn/document/server-docs/vc-v1/export/participant_list) |
+| ParticipantQualityListExportAsync | 导出参会人会议质量数据 | 用户令牌 | POST | [ParticipantQualityListExportAsync](https://open.feishu.cn/document/server-docs/vc-v1/export/participant_quality_list) |
+| ResourceReservationListExportAsync | 导出会议室预定数据 | 用户令牌 | POST | [ResourceReservationListExportAsync](https://open.feishu.cn/document/server-docs/vc-v1/export/resource_reservation_list) |
+| GetExportAsync | 查询导出任务结果 | 用户令牌 | GET | [GetExportAsync](https://open.feishu.cn/document/server-docs/vc-v1/export/get) |
+| DownloadExportAsync | 下载导出文件 | 用户令牌 | GET | [DownloadExportAsync](https://open.feishu.cn/document/server-docs/vc-v1/export/download) |
 
 ## 函数详细内容
 

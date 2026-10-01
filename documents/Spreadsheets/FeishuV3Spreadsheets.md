@@ -26,15 +26,15 @@ description: 该接口用于管理飞书电子表格与工作表，提供表格�
 | `IFeishuUserV3Spreadsheets` | 用户令牌（UserAccessToken） | 用户身份访问 |
 
 ## 函数列表  
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| CreateSpreadsheetAsync | 创建电子表格 | 租户令牌 / 用户令牌 | POST |
-| PatchSpreadsheetAsync | 修改电子表格属性 | 租户令牌 / 用户令牌 | PATCH |
-| GetSpreadsheetByTokenAsync | 获取电子表格信息 | 租户令牌 / 用户令牌 | GET |
-| BatchUpdateSheetAsync | 操作工作表 | 租户令牌 / 用户令牌 | POST |
-| BatchUpdateSheetPropertiesAsync | 更新工作表属性 | 租户令牌 / 用户令牌 | POST |
-| GetSpreadsheetSheetsByTokenAsync | 获取所有工作表 | 租户令牌 / 用户令牌 | GET |
-| GetSpreadsheetSheetBySheetIdAsync | 查询工作表 | 租户令牌 / 用户令牌 | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| CreateSpreadsheetAsync | 创建电子表格 | 租户令牌 / 用户令牌 | POST | — |
+| PatchSpreadsheetAsync | 修改电子表格属性 | 租户令牌 / 用户令牌 | PATCH | — |
+| GetSpreadsheetByTokenAsync | 获取电子表格信息 | 租户令牌 / 用户令牌 | GET | — |
+| BatchUpdateSheetAsync | 操作工作表 | 租户令牌 / 用户令牌 | POST | — |
+| BatchUpdateSheetPropertiesAsync | 更新工作表属性 | 租户令牌 / 用户令牌 | POST | — |
+| GetSpreadsheetSheetsByTokenAsync | 获取所有工作表 | 租户令牌 / 用户令牌 | GET | — |
+| GetSpreadsheetSheetBySheetIdAsync | 查询工作表 | 租户令牌 / 用户令牌 | GET | — |
 
 ## 函数详细内容  
 

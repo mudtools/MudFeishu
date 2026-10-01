@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 /// <summary>
 /// 会议室配置用于统一管理国家/地区、城市、楼宇、楼层与会议室各层级上的展示与状态配置。
 /// <para>当前接口使用租户令牌访问，适应于租户应用场景。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/vc-v1/room_config/room-config-overview"/></para>
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/historic-version/meeting_room-v1/room_config/rooms-configuration-overview"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "VideoConferencing")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -20,7 +20,7 @@ public interface IFeishuTenantV1VideoConferencingRoomConfig : IFeishuAppContextS
 {
     /// <summary>
     /// 查询指定节点范围内的会议室级别配置，包括背景图、数字标牌与会议室状态等。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/room_config/query">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/historic-version/meeting_room-v1/room_config/query">接口文档</see></para>
     /// </summary>
     /// <param name="scope">查询配置的节点范围。</param>
     /// <param name="country_id">国家/地区 ID，scope 为 2 或 3 时必填。</param>
@@ -44,7 +44,7 @@ public interface IFeishuTenantV1VideoConferencingRoomConfig : IFeishuAppContextS
 
     /// <summary>
     /// 设置指定节点范围内的会议室级别配置，包括背景图、数字标牌与会议室状态等。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/room_config/set">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/historic-version/meeting_room-v1/room_config/set">接口文档</see></para>
     /// </summary>
     /// <param name="setRoomConfigRequest">设置会议室级别配置请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -56,7 +56,7 @@ public interface IFeishuTenantV1VideoConferencingRoomConfig : IFeishuAppContextS
 
     /// <summary>
     /// 设置签到板的部署访问码，返回生成的访问码。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/room_config/set_checkboard_access_code">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/historic-version/meeting_room-v1/room_config/set_checkboard_access_code">接口文档</see></para>
     /// </summary>
     /// <param name="setAccessCodeRequest">设置部署访问码请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -68,7 +68,7 @@ public interface IFeishuTenantV1VideoConferencingRoomConfig : IFeishuAppContextS
 
     /// <summary>
     /// 设置会议室的部署访问码，返回生成的访问码。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/room_config/set_room_access_code">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/historic-version/meeting_room-v1/room_config/set_room_access_code">接口文档</see></para>
     /// </summary>
     /// <param name="setAccessCodeRequest">设置部署访问码请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>

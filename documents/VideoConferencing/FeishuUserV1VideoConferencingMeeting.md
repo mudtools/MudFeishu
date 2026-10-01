@@ -13,14 +13,14 @@ description: 该接口用于以用户身份管理飞书会议，支持获取会�
 - [会议管理概述](https://open.feishu.cn/document/server-docs/vc-v1/meeting/meeting-overview)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| GetMeetingAsync | 获取会议详情 | 用户令牌 | GET |
-| GetMeetingPageListAsync | 获取与会议号关联的会议列表 | 用户令牌 | GET |
-| SearchMeetingPageListAsync | 搜索会议记录 | 用户令牌 | POST |
-| SetHostMeetingAsync | 设置主持人 | 用户令牌 | PATCH |
-| InviteMeetingAsync | 邀请参会人 | 用户令牌 | PATCH |
-| EndMeetingAsync | 结束会议 | 用户令牌 | PATCH |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| GetMeetingAsync | 获取会议详情 | 用户令牌 | GET | [GetMeetingAsync](https://open.feishu.cn/document/server-docs/vc-v1/meeting/get) |
+| GetMeetingPageListAsync | 获取与会议号关联的会议列表 | 用户令牌 | GET | [GetMeetingPageListAsync](https://open.feishu.cn/document/server-docs/vc-v1/meeting-room-data/get) |
+| SearchMeetingPageListAsync | 搜索会议记录 | 用户令牌 | POST | [SearchMeetingPageListAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/vc-v1/meeting/search) |
+| SetHostMeetingAsync | 设置主持人 | 用户令牌 | PATCH | [SetHostMeetingAsync](https://open.feishu.cn/document/server-docs/vc-v1/meeting/set_host) |
+| InviteMeetingAsync | 邀请参会人 | 用户令牌 | PATCH | [InviteMeetingAsync](https://open.feishu.cn/document/server-docs/vc-v1/meeting/invite) |
+| EndMeetingAsync | 结束会议 | 用户令牌 | PATCH | [EndMeetingAsync](https://open.feishu.cn/document/server-docs/vc-v1/meeting/end) |
 
 ## 函数详细内容
 

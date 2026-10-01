@@ -12,26 +12,26 @@ description: 该接口用于通过飞书 AI 文档识别能力，对简历、身
 - [简历信息解析](https://open.feishu.cn/document/ai/document_ai-v1/resume/parse)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| ParseResumeAsync | 识别文件中的简历信息 | TenantAccessToken | POST |
-| RecognizeHkmMainlandTravelPermitAsync | 识别港澳居民来往内地通行证 | TenantAccessToken | POST |
-| RecognizeTwMainlandTravelPermitAsync | 识别台湾居民来往大陆通行证 | TenantAccessToken | POST |
-| RecognizeChinesePassportAsync | 识别中国护照 | TenantAccessToken | POST |
-| RecognizeBankCardAsync | 识别银行卡 | TenantAccessToken | POST |
-| RecognizeVehicleLicenseAsync | 识别行驶证 | TenantAccessToken | POST |
-| RecognizeTrainInvoiceAsync | 识别火车票 | TenantAccessToken | POST |
-| RecognizeTaxiInvoiceAsync | 识别出租车发票 | TenantAccessToken | POST |
-| RecognizeIdCardAsync | 识别身份证 | TenantAccessToken | POST |
-| RecognizeFoodProduceLicenseAsync | 识别食品生产许可证 | TenantAccessToken | POST |
-| RecognizeFoodManageLicenseAsync | 识别食品经营许可证 | TenantAccessToken | POST |
-| RecognizeDrivingLicenseAsync | 识别驾驶证 | TenantAccessToken | POST |
-| RecognizeVatInvoiceAsync | 识别增值税发票 | TenantAccessToken | POST |
-| RecognizeBusinessLicenseAsync | 识别营业执照 | TenantAccessToken | POST |
-| RecognizeContractFieldAsync | 识别合同字段 | TenantAccessToken | POST |
-| RecognizeBusinessCardAsync | 识别名片 | TenantAccessToken | POST |
-| RecognizeVehicleInvoiceAsync | 识别机动车发票 | TenantAccessToken | POST |
-| RecognizeHealthCertificateAsync | 识别健康证 | TenantAccessToken | POST |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| ParseResumeAsync | 识别文件中的简历信息 | TenantAccessToken | POST | [ParseResumeAsync](https://open.feishu.cn/document/ai/document_ai-v1/resume/parse) |
+| RecognizeHkmMainlandTravelPermitAsync | 识别港澳居民来往内地通行证 | TenantAccessToken | POST | [RecognizeHkmMainlandTravelPermitAsync](https://open.feishu.cn/document/ai/document_ai-v1/hkm_mainland_travel_permit/recognize) |
+| RecognizeTwMainlandTravelPermitAsync | 识别台湾居民来往大陆通行证 | TenantAccessToken | POST | [RecognizeTwMainlandTravelPermitAsync](https://open.feishu.cn/document/ai/document_ai-v1/tw_mainland_travel_permit/recognize) |
+| RecognizeChinesePassportAsync | 识别中国护照 | TenantAccessToken | POST | [RecognizeChinesePassportAsync](https://open.feishu.cn/document/ai/document_ai-v1/chinese_passport/recognize) |
+| RecognizeBankCardAsync | 识别银行卡 | TenantAccessToken | POST | [RecognizeBankCardAsync](https://open.feishu.cn/document/ai/document_ai-v1/bank_card/recognize) |
+| RecognizeVehicleLicenseAsync | 识别行驶证 | TenantAccessToken | POST | [RecognizeVehicleLicenseAsync](https://open.feishu.cn/document/ai/document_ai-v1/vehicle_license/recognize) |
+| RecognizeTrainInvoiceAsync | 识别火车票 | TenantAccessToken | POST | [RecognizeTrainInvoiceAsync](https://open.feishu.cn/document/ai/document_ai-v1/train_invoice/recognize) |
+| RecognizeTaxiInvoiceAsync | 识别出租车发票 | TenantAccessToken | POST | [RecognizeTaxiInvoiceAsync](https://open.feishu.cn/document/ai/document_ai-v1/taxi_invoice/recognize) |
+| RecognizeIdCardAsync | 识别身份证 | TenantAccessToken | POST | [RecognizeIdCardAsync](https://open.feishu.cn/document/ai/document_ai-v1/id_card/recognize) |
+| RecognizeFoodProduceLicenseAsync | 识别食品生产许可证 | TenantAccessToken | POST | [RecognizeFoodProduceLicenseAsync](https://open.feishu.cn/document/ai/document_ai-v1/food_produce_license/recognize) |
+| RecognizeFoodManageLicenseAsync | 识别食品经营许可证 | TenantAccessToken | POST | [RecognizeFoodManageLicenseAsync](https://open.feishu.cn/document/ai/document_ai-v1/food_manage_license/recognize) |
+| RecognizeDrivingLicenseAsync | 识别驾驶证 | TenantAccessToken | POST | [RecognizeDrivingLicenseAsync](https://open.feishu.cn/document/ai/document_ai-v1/driving_license/recognize) |
+| RecognizeVatInvoiceAsync | 识别增值税发票 | TenantAccessToken | POST | [RecognizeVatInvoiceAsync](https://open.feishu.cn/document/ai/document_ai-v1/vat_invoice/recognize) |
+| RecognizeBusinessLicenseAsync | 识别营业执照 | TenantAccessToken | POST | [RecognizeBusinessLicenseAsync](https://open.feishu.cn/document/ai/document_ai-v1/business_license/recognize) |
+| RecognizeContractFieldAsync | 识别合同字段 | TenantAccessToken | POST | [RecognizeContractFieldAsync](https://open.feishu.cn/document/server-docs/ai/document_ai-v1/contract/field_extraction) |
+| RecognizeBusinessCardAsync | 识别名片 | TenantAccessToken | POST | [RecognizeBusinessCardAsync](https://open.feishu.cn/document/server-docs/ai/document_ai-v1/business_card/recognize) |
+| RecognizeVehicleInvoiceAsync | 识别机动车发票 | TenantAccessToken | POST | [RecognizeVehicleInvoiceAsync](https://open.feishu.cn/document/ai/document_ai-v1/vehicle_invoice/recognize) |
+| RecognizeHealthCertificateAsync | 识别健康证 | TenantAccessToken | POST | [RecognizeHealthCertificateAsync](https://open.feishu.cn/document/ai/document_ai-v1/health_certificate/recognize) |
 
 ## 函数详细内容
 

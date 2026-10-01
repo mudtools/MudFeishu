@@ -17,15 +17,15 @@ description: 该接口用于以用户身份管理飞书群公告，群公告是�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| GetNoticeInfoByIdAsync | 获取群公告基本信息 | 用户令牌 | GET |
-| GetNoticeBlocksListByIdAsync | 分页获取群公告块列表 | 用户令牌 | GET |
-| CreateNoticeBlockAsync | 创建群公告块 | 用户令牌 | POST |
-| UpdateNoticeBlockAsync | 更新群公告块 | 用户令牌 | PATCH |
-| GetBlockContentByIdAsync | 获取群公告块内容 | 用户令牌 | GET |
-| GetBlockContentPageListByIdAsync | 分页获取块子内容 | 用户令牌 | GET |
-| DeleteBlockByIdAsync | 删除群公告块 | 用户令牌 | DELETE |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| GetNoticeInfoByIdAsync | 获取群公告基本信息 | 用户令牌 | GET | [GetNoticeInfoByIdAsync](https://open.feishu.cn/document/group/upgraded-group-announcement/chat-announcement/get) |
+| GetNoticeBlocksListByIdAsync | 分页获取群公告块列表 | 用户令牌 | GET | [GetNoticeBlocksListByIdAsync](https://open.feishu.cn/document/group/upgraded-group-announcement/chat-announcement/list) |
+| CreateNoticeBlockAsync | 创建群公告块 | 用户令牌 | POST | [CreateNoticeBlockAsync](https://open.feishu.cn/document/group/upgraded-group-announcement/chat-announcement-block/create) |
+| UpdateNoticeBlockAsync | 更新群公告块 | 用户令牌 | PATCH | [UpdateNoticeBlockAsync](https://open.feishu.cn/document/group/upgraded-group-announcement/chat-announcement-block/batch_update) |
+| GetBlockContentByIdAsync | 获取群公告块内容 | 用户令牌 | GET | [GetBlockContentByIdAsync](https://open.feishu.cn/document/group/upgraded-group-announcement/chat-announcement-block/get) |
+| GetBlockContentPageListByIdAsync | 分页获取块子内容 | 用户令牌 | GET | [GetBlockContentPageListByIdAsync](https://open.feishu.cn/document/group/upgraded-group-announcement/chat-announcement-block/get-2) |
+| DeleteBlockByIdAsync | 删除群公告块 | 用户令牌 | DELETE | [DeleteBlockByIdAsync](https://open.feishu.cn/document/group/upgraded-group-announcement/chat-announcement-block/batch_delete) |
 
 ---
 

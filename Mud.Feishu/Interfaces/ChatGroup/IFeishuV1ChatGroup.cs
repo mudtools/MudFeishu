@@ -98,7 +98,7 @@ public interface IFeishuV1ChatGroup : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 更新群组中的群置顶信息，可以将群中的某一条消息，或群公告置顶展示。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/group/chat-top_notice/put_top_notice">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/group/chat/put_top_notice">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="chatTopNoticeRequest">群置顶操作请求体。</param>
@@ -112,7 +112,7 @@ public interface IFeishuV1ChatGroup : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 撤销指定群组中的置顶消息或群公告。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/group/chat-top_notice/delete_top_notice">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/group/chat/delete_top_notice">接口文档</see></para>
     /// </summary>
     /// <param name="chat_id">群 ID。 示例值："oc_a0553eda9014c201e6969b478895c230"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>

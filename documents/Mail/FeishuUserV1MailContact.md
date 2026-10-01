@@ -15,12 +15,12 @@ description: 该接口用于以用户身份管理自己的邮箱联系人，支�
 - [列出邮箱联系人](https://open.feishu.cn/document/mail-v1/user_mailbox-mail_contact/list)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| CreateUserMailboxContactAsync | 创建邮箱联系人 | UserAccessToken | POST |
-| DeleteUserMailboxContactAsync | 删除邮箱联系人 | UserAccessToken | DELETE |
-| UpdateUserMailboxContactAsync | 修改邮箱联系人信息 | UserAccessToken | PATCH |
-| GetUserMailboxContactPageListAsync | 分页列出邮箱联系人 | UserAccessToken | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| CreateUserMailboxContactAsync | 创建邮箱联系人 | UserAccessToken | POST | [CreateUserMailboxContactAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-mail_contact/create) |
+| DeleteUserMailboxContactAsync | 删除邮箱联系人 | UserAccessToken | DELETE | [DeleteUserMailboxContactAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-mail_contact/delete) |
+| UpdateUserMailboxContactAsync | 修改邮箱联系人信息 | UserAccessToken | PATCH | [UpdateUserMailboxContactAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-mail_contact/patch) |
+| GetUserMailboxContactPageListAsync | 分页列出邮箱联系人 | UserAccessToken | GET | [GetUserMailboxContactPageListAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-mail_contact/list) |
 
 ## 函数详细内容
 

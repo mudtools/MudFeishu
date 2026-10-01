@@ -19,18 +19,18 @@ description: 该接口用于以用户身份使用飞书妙记，支持创建妙�
 
 ## 函数列表
 
-| 函数名称                 | 功能描述               | 认证方式 | HTTP 方法 |
-| ------------------------ | ---------------------- | -------- | --------- |
-| GetMinuteAsync           | 获取妙记信息           | 用户令牌 | GET       |
-| GetMinuteMediaAsync      | 下载妙记音视频文件     | 用户令牌 | GET       |
-| GetMinuteTranscriptAsync | 导出妙记文字记录       | 用户令牌 | GET       |
-| GetMinuteStatisticsAsync | 获取妙记统计数据       | 用户令牌 | GET       |
-| GetMinuteArtifactsAsync  | 获取妙记 AI 产物       | 用户令牌 | GET       |
-| SearchMinutesAsync       | 搜索妙记               | 用户令牌 | POST      |
-| ClipMinuteAsync          | 创建妙记剪辑           | 用户令牌 | POST      |
-| UploadMinuteAsync        | 导入云盘文件生成妙记   | 用户令牌 | POST      |
-| SubscribeMinuteAsync     | 订阅妙记变更事件       | 用户令牌 | POST      |
-| UnsubscribeMinuteAsync   | 取消订阅妙记变更事件   | 用户令牌 | POST      |
+| 函数名称                 | 功能描述               | 认证方式 | HTTP 方法 | 接口文档 |
+| ------------------------ | ---------------------- | -------- | --------- |----------|
+| GetMinuteAsync           | 获取妙记信息           | 用户令牌 | GET       | [GetMinuteAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/minutes-v1/minute/get) |
+| GetMinuteMediaAsync      | 下载妙记音视频文件     | 用户令牌 | GET       | [GetMinuteMediaAsync](https://open.feishu.cn/document/minutes-v1/minute-media/get) |
+| GetMinuteTranscriptAsync | 导出妙记文字记录       | 用户令牌 | GET       | [GetMinuteTranscriptAsync](https://open.feishu.cn/document/minutes-v1/minute-transcript/get) |
+| GetMinuteStatisticsAsync | 获取妙记统计数据       | 用户令牌 | GET       | [GetMinuteStatisticsAsync](https://open.feishu.cn/document/server-docs/minutes-v1/minute-statistics/get) |
+| GetMinuteArtifactsAsync  | 获取妙记 AI 产物       | 用户令牌 | GET       | [GetMinuteArtifactsAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/minutes-v1/minute/artifacts) |
+| SearchMinutesAsync       | 搜索妙记               | 用户令牌 | POST      | [SearchMinutesAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/minutes-v1/minute/search) |
+| ClipMinuteAsync          | 创建妙记剪辑           | 用户令牌 | POST      | [ClipMinuteAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/minutes-v1/minute/clip) |
+| UploadMinuteAsync        | 导入云盘文件生成妙记   | 用户令牌 | POST      | [UploadMinuteAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/minutes-v1/minute/upload) |
+| SubscribeMinuteAsync     | 订阅妙记变更事件       | 用户令牌 | POST      | [SubscribeMinuteAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/minutes-v1/minute/subscription) |
+| UnsubscribeMinuteAsync   | 取消订阅妙记变更事件   | 用户令牌 | POST      | [UnsubscribeMinuteAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/minutes-v1/minute/unsubscription) |
 
 ## 函数详细内容
 

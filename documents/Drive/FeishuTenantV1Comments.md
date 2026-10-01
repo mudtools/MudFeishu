@@ -19,18 +19,18 @@ description: 该接口用于以租户身份管理飞书云文档评论，支持�
 
 ## 函数列表
 
-| 函数名称                           | 功能描述           | 认证方式 | HTTP 方法 |
-| ---------------------------------- | ------------------ | -------- | --------- |
-| GetCommentsPageListAsync           | 获取云文档所有评论 | 租户令牌 | GET       |
-| BatchQueryFileCommentAsync         | 批量获取评论       | 租户令牌 | POST      |
-| PatchFileCommentAsync              | 解决/恢复评论      | 租户令牌 | PATCH     |
-| CreateFileCommentAsync             | 添加全文评论       | 租户令牌 | POST      |
-| GetFileCommentAsync                | 获取评论详情       | 租户令牌 | GET       |
-| CreateFileCommentReplyAsync        | 添加回复           | 租户令牌 | POST      |
-| GetFileCommentRepliesPageListAsync | 分页获取回复信息   | 租户令牌 | GET       |
-| UpdateFileCommentReplyAsync        | 更新回复的内容     | 租户令牌 | PUT       |
-| DeleteFileCommentReplyAsync        | 删除回复           | 租户令牌 | DELETE    |
-| UpdateReactionCommentReactionAsync | 添加/取消表情回应  | 租户令牌 | POST      |
+| 函数名称                           | 功能描述           | 认证方式 | HTTP 方法 | 接口文档 |
+| ---------------------------------- | ------------------ | -------- | --------- |----------|
+| GetCommentsPageListAsync           | 获取云文档所有评论 | 租户令牌 | GET       | [GetCommentsPageListAsync](https://open.feishu.cn/document/server-docs/docs/CommentAPI/list) |
+| BatchQueryFileCommentAsync         | 批量获取评论       | 租户令牌 | POST      | [BatchQueryFileCommentAsync](https://open.feishu.cn/document/server-docs/docs/CommentAPI/batch_query) |
+| PatchFileCommentAsync              | 解决/恢复评论      | 租户令牌 | PATCH     | [PatchFileCommentAsync](https://open.feishu.cn/document/server-docs/docs/CommentAPI/patch) |
+| CreateFileCommentAsync             | 添加全文评论       | 租户令牌 | POST      | [CreateFileCommentAsync](https://open.feishu.cn/document/server-docs/docs/CommentAPI/create) |
+| GetFileCommentAsync                | 获取评论详情       | 租户令牌 | GET       | [GetFileCommentAsync](https://open.feishu.cn/document/server-docs/docs/CommentAPI/get) |
+| CreateFileCommentReplyAsync        | 添加回复           | 租户令牌 | POST      | [CreateFileCommentReplyAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/drive-v1/file-comment-reply/create) |
+| GetFileCommentRepliesPageListAsync | 分页获取回复信息   | 租户令牌 | GET       | [GetFileCommentRepliesPageListAsync](https://open.feishu.cn/document/server-docs/docs/CommentAPI/list-2) |
+| UpdateFileCommentReplyAsync        | 更新回复的内容     | 租户令牌 | PUT       | [UpdateFileCommentReplyAsync](https://open.feishu.cn/document/server-docs/docs/CommentAPI/update) |
+| DeleteFileCommentReplyAsync        | 删除回复           | 租户令牌 | DELETE    | [DeleteFileCommentReplyAsync](https://open.feishu.cn/document/server-docs/docs/CommentAPI/delete) |
+| UpdateReactionCommentReactionAsync | 添加/取消表情回应  | 租户令牌 | POST      | [UpdateReactionCommentReactionAsync](https://open.feishu.cn/document/ukTMukTMukTM/uIzNzUjLyczM14iM3MTN/drive-v2/comment_reaction/update_reaction) |
 
 ## 函数详细内容
 

@@ -18,17 +18,17 @@ description: 该接口用于以租户身份管理飞书企业员工的完整生�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| CreateEmployeeAsync | 创建员工 | 租户令牌 | POST |
-| UpdateEmployeeAsync | 更新员工信息 | 租户令牌 | PATCH |
-| DeleteEmployeeByIdAsync | 离职员工 | 租户令牌 | DELETE |
-| ResurrectEmployeeAsync | 恢复已离职员工 | 租户令牌 | POST |
-| ResignedEmployeeAsync | 办理员工待离职 | 租户令牌 | PATCH |
-| RegularEmployeeAsync | 取消员工离职 | 租户令牌 | PATCH |
-| QueryEmployeesAsync | 批量查询员工 | 租户令牌 | POST |
-| QueryEmployeePageListAsync | 分页查询员工列表 | 租户令牌 | POST |
-| SearchEmployeePageListAsync | 搜索员工 | 租户令牌 | POST |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| CreateEmployeeAsync | 创建员工 | 租户令牌 | POST | — |
+| UpdateEmployeeAsync | 更新员工信息 | 租户令牌 | PATCH | — |
+| DeleteEmployeeByIdAsync | 离职员工 | 租户令牌 | DELETE | — |
+| ResurrectEmployeeAsync | 恢复已离职员工 | 租户令牌 | POST | — |
+| ResignedEmployeeAsync | 办理员工待离职 | 租户令牌 | PATCH | — |
+| RegularEmployeeAsync | 取消员工离职 | 租户令牌 | PATCH | — |
+| QueryEmployeesAsync | 批量查询员工 | 租户令牌 | POST | — |
+| QueryEmployeePageListAsync | 分页查询员工列表 | 租户令牌 | POST | — |
+| SearchEmployeePageListAsync | 搜索员工 | 租户令牌 | POST | — |
 
 ## 函数详细内容
 

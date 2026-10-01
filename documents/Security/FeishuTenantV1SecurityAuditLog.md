@@ -19,9 +19,9 @@ description: 该接口用于以租户身份查询飞书行为审计日志，获�
 
 ## 函数列表
 
-| 函数名称             | 功能描述               | 认证方式 | HTTP 方法 |
-| -------------------- | ---------------------- | -------- | --------- |
-| GetAuditLogDataAsync | 获取行为审计日志数据   | 租户令牌 | GET       |
+| 函数名称             | 功能描述               | 认证方式 | HTTP 方法 | 接口文档 |
+| -------------------- | ---------------------- | -------- | --------- |----------|
+| GetAuditLogDataAsync | 获取行为审计日志数据   | 租户令牌 | GET       | [GetAuditLogDataAsync](https://open.feishu.cn/document/server-docs/security_and_compliance-v1/audit_log/audit_data_get) |
 
 ## 函数详细内容
 

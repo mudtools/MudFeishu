@@ -186,7 +186,7 @@ public interface IFeishuV2WikiNodes : IFeishuAppContextSwitcher
 
     /// <summary>
     /// <para>移动云空间文档至知识空间，并挂载在指定位置。注意：该接口为异步接口。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/space-node/move_docs_to_wiki">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/task/move_docs_to_wiki">接口文档</see></para>
     /// </summary>
     /// <param name="space_id">
     /// <para>路径参数</para>

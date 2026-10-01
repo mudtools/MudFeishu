@@ -19,13 +19,13 @@ description: 该接口用于以用户身份查询飞书关联组织（trust_part
 
 ## 函数列表
 
-| 函数名称                        | 功能描述                 | 认证方式 | HTTP 方法 |
-| ------------------------------- | ------------------------ | -------- | --------- |
-| GetCollaborationTenantListAsync | 获取可见关联组织的列表   | 用户令牌 | GET       |
-| GetCollaborationTenantAsync     | 获取关联组织详情         | 用户令牌 | GET       |
-| GetVisibleOrganizationAsync     | 获取关联组织的成员信息   | 用户令牌 | GET       |
-| GetCollaborationDepartmentAsync | 获取关联组织部门详情     | 用户令牌 | GET       |
-| GetCollaborationUserAsync       | 获取关联组织成员详情     | 用户令牌 | GET       |
+| 函数名称                        | 功能描述                 | 认证方式 | HTTP 方法 | 接口文档 |
+| ------------------------------- | ------------------------ | -------- | --------- |----------|
+| GetCollaborationTenantListAsync | 获取可见关联组织的列表   | 用户令牌 | GET       | [GetCollaborationTenantListAsync](https://open.feishu.cn/document/trust_party-v1/-collaboraiton-organization/list) |
+| GetCollaborationTenantAsync     | 获取关联组织详情         | 用户令牌 | GET       | [GetCollaborationTenantAsync](https://open.feishu.cn/document/trust_party-v1/-collaboraiton-organization/get) |
+| GetVisibleOrganizationAsync     | 获取关联组织的成员信息   | 用户令牌 | GET       | [GetVisibleOrganizationAsync](https://open.feishu.cn/document/trust_party-v1/-collaboraiton-organization/visible_organization) |
+| GetCollaborationDepartmentAsync | 获取关联组织部门详情     | 用户令牌 | GET       | [GetCollaborationDepartmentAsync](https://open.feishu.cn/document/trust_party-v1/-collaboraiton-organization/get-2) |
+| GetCollaborationUserAsync       | 获取关联组织成员详情     | 用户令牌 | GET       | [GetCollaborationUserAsync](https://open.feishu.cn/document/trust_party-v1/-collaboraiton-organization/get-3) |
 
 ## 函数详细内容
 

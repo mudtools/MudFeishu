@@ -35,32 +35,32 @@ description: 该接口用于以租户身份管理企业内所有邮件组，包�
 - [批量删除邮件组权限成员](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-permission_member/batch_delete)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| CreateMailGroupAsync | 创建邮件组 | TenantAccessToken | POST |
-| DeleteMailGroupAsync | 删除邮件组 | TenantAccessToken | DELETE |
-| UpdateMailGroupPartialAsync | 修改邮件组部分信息 | TenantAccessToken | PATCH |
-| UpdateMailGroupAsync | 修改邮件组全部信息 | TenantAccessToken | PUT |
-| GetMailGroupAsync | 查询指定邮件组 | TenantAccessToken | GET |
-| GetMailGroupPageListAsync | 分页批量获取邮件组 | TenantAccessToken | GET |
-| BatchCreateMailgroupManagerAsync | 批量创建邮件组管理员 | TenantAccessToken | POST |
-| BatchDeleteMailGroupManagerAsync | 批量删除邮件组管理员 | TenantAccessToken | POST |
-| GetMailgroupManagerPageListAsync | 批量获取邮件组管理员 | TenantAccessToken | GET |
-| CreateMailGroupMemberAsync | 创建邮件组成员 | TenantAccessToken | POST |
-| DeleteMailGroupMemberAsync | 删除邮件组成员 | TenantAccessToken | DELETE |
-| GetMailGroupMemberAsync | 查询指定邮件组成员 | TenantAccessToken | GET |
-| GetMailGroupMemberPageListAsync | 分页获取所有邮件组成员 | TenantAccessToken | GET |
-| BatchCreateMailGroupMemberAsync | 批量创建邮件组成员 | TenantAccessToken | POST |
-| BatchDeleteMailGroupMemberAsync | 批量删除邮件组成员 | TenantAccessToken | DELETE |
-| CreateMailGroupAliasAsync | 创建邮件组别名 | TenantAccessToken | POST |
-| DeleteMailGroupAliasAsync | 删除邮件组别名 | TenantAccessToken | DELETE |
-| GetMailGroupAliasListAsync | 获取邮件组所有别名 | TenantAccessToken | GET |
-| CreateMailGroupPermissionMemberAsync | 创建邮件组权限成员 | TenantAccessToken | POST |
-| DeleteMailGroupPermissionMemberAsync | 删除邮件组权限成员 | TenantAccessToken | DELETE |
-| GetailGroupPermissionMemberAsync | 获取邮件组权限成员 | TenantAccessToken | GET |
-| GetMailgroupPermissionMemberPageListAsync | 分页批量获取邮件组权限成员 | TenantAccessToken | GET |
-| BatchCreateMailGroupPermissionMembersAsync | 批量创建邮件组权限成员 | TenantAccessToken | POST |
-| BatchDeleteMailGroupPermissionMemberAsync | 批量删除邮件组权限成员 | TenantAccessToken | DELETE |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| CreateMailGroupAsync | 创建邮件组 | TenantAccessToken | POST | [CreateMailGroupAsync](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup/create) |
+| DeleteMailGroupAsync | 删除邮件组 | TenantAccessToken | DELETE | [DeleteMailGroupAsync](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup/delete) |
+| UpdateMailGroupPartialAsync | 修改邮件组部分信息 | TenantAccessToken | PATCH | [UpdateMailGroupPartialAsync](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup/patch) |
+| UpdateMailGroupAsync | 修改邮件组全部信息 | TenantAccessToken | PUT | [UpdateMailGroupAsync](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup/update) |
+| GetMailGroupAsync | 查询指定邮件组 | TenantAccessToken | GET | [GetMailGroupAsync](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup/get) |
+| GetMailGroupPageListAsync | 分页批量获取邮件组 | TenantAccessToken | GET | [GetMailGroupPageListAsync](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup/list) |
+| BatchCreateMailgroupManagerAsync | 批量创建邮件组管理员 | TenantAccessToken | POST | [BatchCreateMailgroupManagerAsync](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-manager/batch_create) |
+| BatchDeleteMailGroupManagerAsync | 批量删除邮件组管理员 | TenantAccessToken | POST | [BatchDeleteMailGroupManagerAsync](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-manager/batch_delete) |
+| GetMailgroupManagerPageListAsync | 批量获取邮件组管理员 | TenantAccessToken | GET | [GetMailgroupManagerPageListAsync](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-manager/list) |
+| CreateMailGroupMemberAsync | 创建邮件组成员 | TenantAccessToken | POST | [CreateMailGroupMemberAsync](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-member/create) |
+| DeleteMailGroupMemberAsync | 删除邮件组成员 | TenantAccessToken | DELETE | [DeleteMailGroupMemberAsync](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-member/delete) |
+| GetMailGroupMemberAsync | 查询指定邮件组成员 | TenantAccessToken | GET | [GetMailGroupMemberAsync](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-member/get) |
+| GetMailGroupMemberPageListAsync | 分页获取所有邮件组成员 | TenantAccessToken | GET | [GetMailGroupMemberPageListAsync](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-member/list) |
+| BatchCreateMailGroupMemberAsync | 批量创建邮件组成员 | TenantAccessToken | POST | [BatchCreateMailGroupMemberAsync](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-member/batch_create) |
+| BatchDeleteMailGroupMemberAsync | 批量删除邮件组成员 | TenantAccessToken | DELETE | [BatchDeleteMailGroupMemberAsync](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-member/batch_delete) |
+| CreateMailGroupAliasAsync | 创建邮件组别名 | TenantAccessToken | POST | [CreateMailGroupAliasAsync](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-alias/create) |
+| DeleteMailGroupAliasAsync | 删除邮件组别名 | TenantAccessToken | DELETE | [DeleteMailGroupAliasAsync](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-alias/delete) |
+| GetMailGroupAliasListAsync | 获取邮件组所有别名 | TenantAccessToken | GET | [GetMailGroupAliasListAsync](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-alias/list) |
+| CreateMailGroupPermissionMemberAsync | 创建邮件组权限成员 | TenantAccessToken | POST | [CreateMailGroupPermissionMemberAsync](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-permission_member/create) |
+| DeleteMailGroupPermissionMemberAsync | 删除邮件组权限成员 | TenantAccessToken | DELETE | [DeleteMailGroupPermissionMemberAsync](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-permission_member/delete) |
+| GetailGroupPermissionMemberAsync | 获取邮件组权限成员 | TenantAccessToken | GET | [GetailGroupPermissionMemberAsync](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-permission_member/get) |
+| GetMailgroupPermissionMemberPageListAsync | 分页批量获取邮件组权限成员 | TenantAccessToken | GET | [GetMailgroupPermissionMemberPageListAsync](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-permission_member/list) |
+| BatchCreateMailGroupPermissionMembersAsync | 批量创建邮件组权限成员 | TenantAccessToken | POST | [BatchCreateMailGroupPermissionMembersAsync](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-permission_member/batch_create) |
+| BatchDeleteMailGroupPermissionMemberAsync | 批量删除邮件组权限成员 | TenantAccessToken | DELETE | [BatchDeleteMailGroupPermissionMemberAsync](https://open.feishu.cn/document/server-docs/mail-v1/mail-group/mailgroup-permission_member/batch_delete) |
 
 ## 函数详细内容
 

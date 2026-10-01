@@ -13,18 +13,18 @@ description: 该接口用于以租户身份配置飞书会议室，支持会议�
 - [会议室配置概述](https://open.feishu.cn/document/server-docs/vc-v1/scope_config/room-configuration-overview)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| GetScopeConfigAsync | 查询会议室配置 | 租户令牌 | GET |
-| CreateScopeConfigAsync | 设置会议室配置 | 租户令牌 | POST |
-| GetReserveScopeReserveConfigAsync | 查询会议室预定限制 | 租户令牌 | GET |
-| UpdateReserveConfigAsync | 更新会议室预定限制 | 租户令牌 | PATCH |
-| GetReserveConfigFormAsync | 查询会议室预定表单 | 租户令牌 | GET |
-| UpdateReserveConfigFormAsync | 更新会议室预定表单 | 租户令牌 | PATCH |
-| GetReserveConfigAdminAsync | 查询会议室预定管理员 | 租户令牌 | GET |
-| UpdateReserveConfigAdminAsync | 更新会议室预定管理员 | 租户令牌 | PATCH |
-| GetReserveConfigDisableInformAsync | 查询禁用状态变更通知 | 租户令牌 | GET |
-| UpdateReserveConfigDisableInformAsync | 更新禁用状态变更通知 | 租户令牌 | PATCH |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| GetScopeConfigAsync | 查询会议室配置 | 租户令牌 | GET | [GetScopeConfigAsync](https://open.feishu.cn/document/server-docs/vc-v1/scope_config/get) |
+| CreateScopeConfigAsync | 设置会议室配置 | 租户令牌 | POST | [CreateScopeConfigAsync](https://open.feishu.cn/document/server-docs/vc-v1/scope_config/create) |
+| GetReserveScopeReserveConfigAsync | 查询会议室预定限制 | 租户令牌 | GET | [GetReserveScopeReserveConfigAsync](https://open.feishu.cn/document/server-docs/vc-v1/scope_config/reserve_scope) |
+| UpdateReserveConfigAsync | 更新会议室预定限制 | 租户令牌 | PATCH | [UpdateReserveConfigAsync](https://open.feishu.cn/document/server-docs/vc-v1/scope_config/patch) |
+| GetReserveConfigFormAsync | 查询会议室预定表单 | 租户令牌 | GET | [GetReserveConfigFormAsync](https://open.feishu.cn/document/server-docs/vc-v1/scope_config/get-2) |
+| UpdateReserveConfigFormAsync | 更新会议室预定表单 | 租户令牌 | PATCH | [UpdateReserveConfigFormAsync](https://open.feishu.cn/document/server-docs/vc-v1/scope_config/patch-2) |
+| GetReserveConfigAdminAsync | 查询会议室预定管理员 | 租户令牌 | GET | [GetReserveConfigAdminAsync](https://open.feishu.cn/document/server-docs/vc-v1/scope_config/get-3) |
+| UpdateReserveConfigAdminAsync | 更新会议室预定管理员 | 租户令牌 | PATCH | [UpdateReserveConfigAdminAsync](https://open.feishu.cn/document/server-docs/vc-v1/scope_config/patch-3) |
+| GetReserveConfigDisableInformAsync | 查询禁用状态变更通知 | 租户令牌 | GET | [GetReserveConfigDisableInformAsync](https://open.feishu.cn/document/server-docs/vc-v1/scope_config/get-4) |
+| UpdateReserveConfigDisableInformAsync | 更新禁用状态变更通知 | 租户令牌 | PATCH | [UpdateReserveConfigDisableInformAsync](https://open.feishu.cn/document/server-docs/vc-v1/scope_config/patch-4) |
 
 ## 函数详细内容
 

@@ -19,17 +19,17 @@ description: 该接口用于以租户身份查询飞书招聘基础配置与字�
 
 ## 函数列表
 
-| 函数名称                          | 功能描述                 | 认证方式 | HTTP 方法 |
-| --------------------------------- | ------------------------ | -------- | --------- |
-| GetJobProcessListAsync            | 获取招聘流程列表         | 租户令牌 | GET       |
-| GetSubjectListAsync               | 获取科目列表             | 租户令牌 | GET       |
-| GetRegistrationSchemaListAsync    | 获取信息登记表模板列表   | 租户令牌 | GET       |
-| GetTalentTagListAsync             | 获取人才标签列表         | 租户令牌 | GET       |
-| QueryLocationAsync                | 查询地点列表             | 租户令牌 | POST      |
-| GetLocationListAsync              | 获取地点列表             | 租户令牌 | GET       |
-| GetRoleAsync                      | 获取角色信息             | 租户令牌 | GET       |
-| GetRoleListAsync                  | 获取角色列表             | 租户令牌 | GET       |
-| GetUserRoleListAsync              | 获取用户角色列表         | 租户令牌 | GET       |
+| 函数名称                          | 功能描述                 | 认证方式 | HTTP 方法 | 接口文档 |
+| --------------------------------- | ------------------------ | -------- | --------- |----------|
+| GetJobProcessListAsync            | 获取招聘流程列表         | 租户令牌 | GET       | [GetJobProcessListAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job_process/list) |
+| GetSubjectListAsync               | 获取科目列表             | 租户令牌 | GET       | [GetSubjectListAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/subject/list) |
+| GetRegistrationSchemaListAsync    | 获取信息登记表模板列表   | 租户令牌 | GET       | [GetRegistrationSchemaListAsync](https://open.feishu.cn/document/hire-v1/recruitment-related-configuration/application/list) |
+| GetTalentTagListAsync             | 获取人才标签列表         | 租户令牌 | GET       | [GetTalentTagListAsync](https://open.feishu.cn/document/hire-v1/recruitment-related-configuration/application/list-2) |
+| QueryLocationAsync                | 查询地点列表             | 租户令牌 | POST      | [QueryLocationAsync](https://open.feishu.cn/document/hire-v1/recruitment-related-configuration/location/query) |
+| GetLocationListAsync              | 获取地点列表             | 租户令牌 | GET       | [GetLocationListAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/location/list) |
+| GetRoleAsync                      | 获取角色信息             | 租户令牌 | GET       | [GetRoleAsync](https://open.feishu.cn/document/hire-v1/recruitment-related-configuration/auth/get) |
+| GetRoleListAsync                  | 获取角色列表             | 租户令牌 | GET       | [GetRoleListAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/auth/list) |
+| GetUserRoleListAsync              | 获取用户角色列表         | 租户令牌 | GET       | [GetUserRoleListAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/auth/list-2) |
 
 ## 函数详细内容
 

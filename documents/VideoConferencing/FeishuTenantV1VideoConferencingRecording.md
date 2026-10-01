@@ -13,9 +13,9 @@ description: 该接口用于以租户身份获取租户下会议的录制文件�
 - [会议录制概述](https://open.feishu.cn/document/server-docs/vc-v1/meeting-recording/recording-overview)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| GetMeetingRecordingAsync | 获取录制文件 | 租户令牌 | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| GetMeetingRecordingAsync | 获取录制文件 | 租户令牌 | GET | [GetMeetingRecordingAsync](https://open.feishu.cn/document/server-docs/vc-v1/meeting-recording/start) |
 
 ## 函数详细内容
 

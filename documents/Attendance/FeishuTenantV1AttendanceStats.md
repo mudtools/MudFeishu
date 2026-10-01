@@ -16,12 +16,12 @@ description: 该接口用于飞书考勤统计，支持开发者定制接口返�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| UpdateUserStatsViewAsync | 更新统计设置 | 租户令牌 | PUT |
-| QueryUserStatsFieldAsync | 查询统计表头 | 租户令牌 | POST |
-| QueryUserStatsViewAsync | 查询统计设置 | 租户令牌 | POST |
-| QueryUserStatsDataAsync | 查询统计数据 | 租户令牌 | POST |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| UpdateUserStatsViewAsync | 更新统计设置 | 租户令牌 | PUT | — |
+| QueryUserStatsFieldAsync | 查询统计表头 | 租户令牌 | POST | — |
+| QueryUserStatsViewAsync | 查询统计设置 | 租户令牌 | POST | — |
+| QueryUserStatsDataAsync | 查询统计数据 | 租户令牌 | POST | — |
 
 ---
 

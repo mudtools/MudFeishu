@@ -16,11 +16,11 @@ description: 该接口用于管理三方系统假勤审批的请假、加班、�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| QueryUserApprovalAsync | 获取员工审批数据 | 租户令牌 | POST |
-| CreateUserApprovalAsync | 回写三方审批结果 | 租户令牌 | POST |
-| ProcessApprovalInfoAsync | 更新审批状态 | 租户令牌 | POST |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| QueryUserApprovalAsync | 获取员工审批数据 | 租户令牌 | POST | — |
+| CreateUserApprovalAsync | 回写三方审批结果 | 租户令牌 | POST | — |
+| ProcessApprovalInfoAsync | 更新审批状态 | 租户令牌 | POST | — |
 
 ---
 

@@ -22,13 +22,13 @@ description: 该接口用于管理飞书电子表格中的浮动图片（悬浮�
 | `IFeishuUserV3SpreadsheetFloatImage` | 用户令牌（UserAccessToken） | 用户身份访问 |
 
 ## 函数列表  
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| CreateFloatImageAsync | 创建浮动图片 | 租户令牌 / 用户令牌 | POST |
-| UpdateFloatImageAsync | 更新浮动图片 | 租户令牌 / 用户令牌 | PATCH |
-| GetFloatImageAsync | 获取浮动图片 | 租户令牌 / 用户令牌 | GET |
-| GetFloatImagesAsync | 查询浮动图片列表 | 租户令牌 / 用户令牌 | GET |
-| DeleteFloatImageAsync | 删除浮动图片 | 租户令牌 / 用户令牌 | DELETE |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| CreateFloatImageAsync | 创建浮动图片 | 租户令牌 / 用户令牌 | POST | [CreateFloatImageAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-float_image/create) |
+| UpdateFloatImageAsync | 更新浮动图片 | 租户令牌 / 用户令牌 | PATCH | [UpdateFloatImageAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-float_image/patch) |
+| GetFloatImageAsync | 获取浮动图片 | 租户令牌 / 用户令牌 | GET | [GetFloatImageAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-float_image/get) |
+| GetFloatImagesAsync | 查询浮动图片列表 | 租户令牌 / 用户令牌 | GET | [GetFloatImagesAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-float_image/query) |
+| DeleteFloatImageAsync | 删除浮动图片 | 租户令牌 / 用户令牌 | DELETE | [DeleteFloatImageAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-float_image/delete) |
 
 ## 函数详细内容  
 

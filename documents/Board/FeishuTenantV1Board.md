@@ -19,15 +19,15 @@ description: 该接口用于以租户身份管理飞书画板，画板是简洁�
 
 ## 函数列表
 
-| 函数名称                          | 功能描述       | 认证方式 | HTTP 方法 |
-| --------------------------------- | -------------- | -------- | --------- |
-| GetWhiteboardThemeAsync           | 获取画板主题   | 租户令牌 | GET       |
-| UpdateWhiteboardThemeAsync        | 更新画板主题   | 租户令牌 | POST      |
-| DownloadWhiteboardImageAsync      | 获取画板缩略图 | 租户令牌 | GET       |
-| CreatePlantumlWhiteboardNodeAsync | 解析画板语法   | 租户令牌 | POST      |
-| CreateWhiteboardNodeAsync         | 创建节点       | 租户令牌 | POST      |
-| GetWhiteboardNodesAsync           | 获取所有节点   | 租户令牌 | GET       |
-| BatchDeleteWhiteboardNodeAsync    | 批量删除节点   | 租户令牌 | DELETE    |
+| 函数名称                          | 功能描述       | 认证方式 | HTTP 方法 | 接口文档 |
+| --------------------------------- | -------------- | -------- | --------- |----------|
+| GetWhiteboardThemeAsync           | 获取画板主题   | 租户令牌 | GET       | [GetWhiteboardThemeAsync](https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/board-v1/whiteboard/theme) |
+| UpdateWhiteboardThemeAsync        | 更新画板主题   | 租户令牌 | POST      | [UpdateWhiteboardThemeAsync](https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/board-v1/whiteboard/update_theme) |
+| DownloadWhiteboardImageAsync      | 获取画板缩略图 | 租户令牌 | GET       | [DownloadWhiteboardImageAsync](https://open.feishu.cn/document/docs/board-v1/whiteboard/download_as_image) |
+| CreatePlantumlWhiteboardNodeAsync | 解析画板语法   | 租户令牌 | POST      | [CreatePlantumlWhiteboardNodeAsync](https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/board-v1/whiteboard-node/create_plantuml) |
+| CreateWhiteboardNodeAsync         | 创建节点       | 租户令牌 | POST      | [CreateWhiteboardNodeAsync](https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/board-v1/whiteboard-node/create) |
+| GetWhiteboardNodesAsync           | 获取所有节点   | 租户令牌 | GET       | [GetWhiteboardNodesAsync](https://open.feishu.cn/document/docs/board-v1/whiteboard-node/list) |
+| BatchDeleteWhiteboardNodeAsync    | 批量删除节点   | 租户令牌 | DELETE    | [BatchDeleteWhiteboardNodeAsync](https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/board-v1/whiteboard-node/batch_delete) |
 
 ## 函数详细内容
 

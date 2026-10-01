@@ -10,7 +10,7 @@ namespace Mud.Feishu;
 /// <summary>
 /// 飞书会议机器人资源，机器人可以加入会议、在会中发送消息、设置会中倒计时、获取会中事件，以及离会。
 /// <para>当前接口使用用户令牌访问，适应于用户应用场景。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/vc-v1/bot/bot-overview"/></para>
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/vc-v1/bot/user-guide/agent-meeting-user-guide"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "VideoConferencing", InheritedFrom = nameof(FeishuV1VideoConferencingBot))]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

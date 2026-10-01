@@ -20,10 +20,10 @@ description: 该接口用于以用户身份获取与修改飞书妙搭产品企�
 
 ## 函数列表
 
-| 函数名称                | 功能描述             | 认证方式 | HTTP 方法 |
-| ----------------------- | -------------------- | -------- | --------- |
-| GetAvailableScopeAsync  | 获取妙搭产品使用权限 | 用户令牌 | GET       |
-| UpdateAvailableScopeAsync | 修改妙搭产品使用权限 | 用户令牌 | PUT       |
+| 函数名称                | 功能描述             | 认证方式 | HTTP 方法 | 接口文档 |
+| ----------------------- | -------------------- | -------- | --------- |----------|
+| GetAvailableScopeAsync  | 获取妙搭产品使用权限 | 用户令牌 | GET       | [GetAvailableScopeAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app-available_scope/open_api_get_miaoda_available_scope) |
+| UpdateAvailableScopeAsync | 修改妙搭产品使用权限 | 用户令牌 | PUT       | [UpdateAvailableScopeAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app-available_scope/open_api_update_miaoda_available_scope) |
 
 ## 函数详细内容
 

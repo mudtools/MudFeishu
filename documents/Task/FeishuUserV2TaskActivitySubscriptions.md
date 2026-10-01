@@ -18,13 +18,13 @@ description: 该接口用于以当前登录用户身份管理任务清单动态�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| CreateActivitySubscriptionsAsync | 创建动态订阅 | 用户令牌 | POST |
-| GetActivitySubscriptionsByIdAsync | 获取动态订阅详情 | 用户令牌 | GET |
-| GetActivitySubscriptionsListByIdAsync | 列取动态订阅列表 | 用户令牌 | GET |
-| UpdateActivitySubscriptionsByIdAsync | 更新动态订阅 | 用户令牌 | PATCH |
-| DeleteActivitySubscriptionsByIdAsync | 删除动态订阅 | 用户令牌 | DELETE |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| CreateActivitySubscriptionsAsync | 创建动态订阅 | 用户令牌 | POST | [CreateActivitySubscriptionsAsync](https://open.feishu.cn/document/task-v2/tasklist-activity_subscription/create) |
+| GetActivitySubscriptionsByIdAsync | 获取动态订阅详情 | 用户令牌 | GET | [GetActivitySubscriptionsByIdAsync](https://open.feishu.cn/document/task-v2/tasklist-activity_subscription/get) |
+| GetActivitySubscriptionsListByIdAsync | 列取动态订阅列表 | 用户令牌 | GET | [GetActivitySubscriptionsListByIdAsync](https://open.feishu.cn/document/task-v2/tasklist-activity_subscription/list) |
+| UpdateActivitySubscriptionsByIdAsync | 更新动态订阅 | 用户令牌 | PATCH | [UpdateActivitySubscriptionsByIdAsync](https://open.feishu.cn/document/task-v2/tasklist-activity_subscription/patch) |
+| DeleteActivitySubscriptionsByIdAsync | 删除动态订阅 | 用户令牌 | DELETE | [DeleteActivitySubscriptionsByIdAsync](https://open.feishu.cn/document/task-v2/tasklist-activity_subscription/delete) |
 
 ---
 

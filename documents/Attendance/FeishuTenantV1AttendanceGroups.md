@@ -16,13 +16,13 @@ description: 该接口用于管理飞书考勤组，对部门或员工在特定�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| CreateGroupAsync | 创建或修改考勤组 | 租户令牌 | POST |
-| DeleteGroupByIdAsync | 删除考勤组 | 租户令牌 | DELETE |
-| GetGroupByIdAsync | 获取考勤组详情 | 租户令牌 | GET |
-| GetGroupByNameAsync | 按名称查询考勤组 | 租户令牌 | POST |
-| GetGroupPageListAsync | 分页获取考勤组列表 | 租户令牌 | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| CreateGroupAsync | 创建或修改考勤组 | 租户令牌 | POST | — |
+| DeleteGroupByIdAsync | 删除考勤组 | 租户令牌 | DELETE | — |
+| GetGroupByIdAsync | 获取考勤组详情 | 租户令牌 | GET | — |
+| GetGroupByNameAsync | 按名称查询考勤组 | 租户令牌 | POST | — |
+| GetGroupPageListAsync | 分页获取考勤组列表 | 租户令牌 | GET | — |
 
 ---
 

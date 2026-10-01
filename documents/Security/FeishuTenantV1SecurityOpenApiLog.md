@@ -19,9 +19,9 @@ description: 该接口用于以租户身份获取飞书 OpenAPI 审计日志数�
 
 ## 函数列表
 
-| 函数名称                 | 功能描述                   | 认证方式 | HTTP 方法 |
-| ------------------------ | -------------------------- | -------- | --------- |
-| ListOpenApiLogDataAsync  | 获取 OpenAPI 审计日志数据  | 租户令牌 | POST      |
+| 函数名称                 | 功能描述                   | 认证方式 | HTTP 方法 | 接口文档 |
+| ------------------------ | -------------------------- | -------- | --------- |----------|
+| ListOpenApiLogDataAsync  | 获取 OpenAPI 审计日志数据  | 租户令牌 | POST      | [ListOpenApiLogDataAsync](https://open.feishu.cn/document/security_and_compliance-v1/openapi_log/list_data) |
 
 ## 函数详细内容
 

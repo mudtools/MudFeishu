@@ -19,23 +19,23 @@ description: 该接口用于以租户身份管理飞书招聘职位，支持职�
 
 ## 函数列表
 
-| 函数名称                        | 功能描述                 | 认证方式 | HTTP 方法 |
-| ------------------------------- | ------------------------ | -------- | --------- |
-| CombinedCreateJobAsync          | 组合创建职位             | 租户令牌 | POST      |
-| CombinedUpdateJobAsync          | 组合更新职位             | 租户令牌 | POST      |
-| UpdateJobConfigAsync            | 更新职位设置             | 租户令牌 | POST      |
-| BatchUpdateJobManagerAsync      | 批量更新职位管理人员     | 租户令牌 | POST      |
-| GetJobAsync                     | 获取职位信息             | 租户令牌 | GET       |
-| GetJobDetailAsync               | 获取职位详情             | 租户令牌 | GET       |
-| GetJobConfigAsync               | 获取职位设置             | 租户令牌 | GET       |
-| GetJobListAsync                 | 获取职位列表             | 租户令牌 | GET       |
-| OpenJobAsync                    | 开放职位                 | 租户令牌 | POST      |
-| GetJobRecruiterAsync            | 获取职位发布人           | 租户令牌 | GET       |
-| GetJobTypeListAsync             | 获取职位类别列表         | 租户令牌 | GET       |
-| GetJobFunctionListAsync         | 获取职位职能分类列表     | 租户令牌 | GET       |
-| GetJobSchemaListAsync           | 获取职位模板列表         | 租户令牌 | GET       |
-| SearchJobPublishRecordAsync     | 查询职位发布记录         | 租户令牌 | POST      |
-| PublishAdvertisementAsync       | 发布职位广告             | 租户令牌 | POST      |
+| 函数名称                        | 功能描述                 | 认证方式 | HTTP 方法 | 接口文档 |
+| ------------------------------- | ------------------------ | -------- | --------- |----------|
+| CombinedCreateJobAsync          | 组合创建职位             | 租户令牌 | POST      | [CombinedCreateJobAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/combined_create) |
+| CombinedUpdateJobAsync          | 组合更新职位             | 租户令牌 | POST      | [CombinedUpdateJobAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/combined_update) |
+| UpdateJobConfigAsync            | 更新职位设置             | 租户令牌 | POST      | [UpdateJobConfigAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/update_config) |
+| BatchUpdateJobManagerAsync      | 批量更新职位管理人员     | 租户令牌 | POST      | [BatchUpdateJobManagerAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/batch_update) |
+| GetJobAsync                     | 获取职位信息             | 租户令牌 | GET       | [GetJobAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/get) |
+| GetJobDetailAsync               | 获取职位详情             | 租户令牌 | GET       | [GetJobDetailAsync](https://open.feishu.cn/document/hire-v1/recruitment-related-configuration/job/get_detail) |
+| GetJobConfigAsync               | 获取职位设置             | 租户令牌 | GET       | [GetJobConfigAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/config) |
+| GetJobListAsync                 | 获取职位列表             | 租户令牌 | GET       | [GetJobListAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/list-2) |
+| OpenJobAsync                    | 开放职位                 | 租户令牌 | POST      | [OpenJobAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/open) |
+| GetJobRecruiterAsync            | 获取职位发布人           | 租户令牌 | GET       | [GetJobRecruiterAsync](https://open.feishu.cn/document/hire-v1/recruitment-related-configuration/job/recruiter) |
+| GetJobTypeListAsync             | 获取职位类别列表         | 租户令牌 | GET       | [GetJobTypeListAsync](https://open.feishu.cn/document/hire-v1/recruitment-related-configuration/job/list-4) |
+| GetJobFunctionListAsync         | 获取职位职能分类列表     | 租户令牌 | GET       | [GetJobFunctionListAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/list-3) |
+| GetJobSchemaListAsync           | 获取职位模板列表         | 租户令牌 | GET       | [GetJobSchemaListAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/list) |
+| SearchJobPublishRecordAsync     | 查询职位发布记录         | 租户令牌 | POST      | [SearchJobPublishRecordAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/search) |
+| PublishAdvertisementAsync       | 发布职位广告             | 租户令牌 | POST      | [PublishAdvertisementAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/publish) |
 
 ## 函数详细内容
 

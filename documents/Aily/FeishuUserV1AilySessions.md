@@ -19,19 +19,19 @@ description: 该接口用于以用户身份管理飞书 Aily 会话，提供会�
 
 ## 函数列表
 
-| 函数名称                                | 功能描述             | 认证方式 | HTTP 方法 |
-| --------------------------------------- | -------------------- | -------- | --------- |
-| CreateSessionAsync                      | 创建会话             | 用户令牌 | POST      |
-| UpdateSessionAsync                      | 更新会话             | 用户令牌 | PUT       |
-| GetSessionAsync                         | 获取会话             | 用户令牌 | GET       |
-| DeleteSessionAsync                      | 删除会话             | 用户令牌 | DELETE    |
-| CreateSessionAilyMessageAsync           | 发送 Aily 消息       | 用户令牌 | POST      |
-| GetSessionAilyMessageAsync              | 获取 Aily 消息       | 用户令牌 | GET       |
-| GetSessionAilyMessagePageListAsync      | 获取 Aily 消息（列表） | 用户令牌 | GET       |
-| CreateSessionRunAsync                   | 创建运行             | 用户令牌 | POST      |
-| GetSessionRunAsync                      | 获取运行             | 用户令牌 | GET       |
-| GetSessionRunPageListAsync              | 列出运行             | 用户令牌 | GET       |
-| CancelSessionRunAsync                   | 取消运行             | 用户令牌 | POST      |
+| 函数名称                                | 功能描述             | 认证方式 | HTTP 方法 | 接口文档 |
+| --------------------------------------- | -------------------- | -------- | --------- |----------|
+| CreateSessionAsync                      | 创建会话             | 用户令牌 | POST      | [CreateSessionAsync](https://open.feishu.cn/document/aily-v1/aily_session/create) |
+| UpdateSessionAsync                      | 更新会话             | 用户令牌 | PUT       | [UpdateSessionAsync](https://open.feishu.cn/document/aily-v1/aily_session/update) |
+| GetSessionAsync                         | 获取会话             | 用户令牌 | GET       | [GetSessionAsync](https://open.feishu.cn/document/aily-v1/aily_session/get) |
+| DeleteSessionAsync                      | 删除会话             | 用户令牌 | DELETE    | [DeleteSessionAsync](https://open.feishu.cn/document/aily-v1/aily_session/delete) |
+| CreateSessionAilyMessageAsync           | 发送 Aily 消息       | 用户令牌 | POST      | [CreateSessionAilyMessageAsync](https://open.feishu.cn/document/aily-v1/aily_session-aily_message/create) |
+| GetSessionAilyMessageAsync              | 获取 Aily 消息       | 用户令牌 | GET       | [GetSessionAilyMessageAsync](https://open.feishu.cn/document/aily-v1/aily_session-aily_message/get) |
+| GetSessionAilyMessagePageListAsync      | 获取 Aily 消息（列表） | 用户令牌 | GET       | [GetSessionAilyMessagePageListAsync](https://open.feishu.cn/document/aily-v1/aily_session-aily_message/get) |
+| CreateSessionRunAsync                   | 创建运行             | 用户令牌 | POST      | [CreateSessionRunAsync](https://open.feishu.cn/document/aily-v1/aily_session-run/create) |
+| GetSessionRunAsync                      | 获取运行             | 用户令牌 | GET       | [GetSessionRunAsync](https://open.feishu.cn/document/aily-v1/aily_session-run/get) |
+| GetSessionRunPageListAsync              | 列出运行             | 用户令牌 | GET       | [GetSessionRunPageListAsync](https://open.feishu.cn/document/aily-v1/aily_session-run/list) |
+| CancelSessionRunAsync                   | 取消运行             | 用户令牌 | POST      | [CancelSessionRunAsync](https://open.feishu.cn/document/aily-v1/aily_session-run/cancel) |
 
 > 说明：源码中 `GetSessionAilyMessagePageListAsync` 的 XML 摘要与 `GetSessionAilyMessageAsync` 同名（均为「获取 Aily 消息」），本文档在列表接口的摘要后补充「（列表）」以便区分。
 

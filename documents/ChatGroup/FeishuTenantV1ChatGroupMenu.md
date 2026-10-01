@@ -18,13 +18,13 @@ description: 该接口用于以租户身份管理飞书群菜单，支持添加�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| AddMenuByIdAsync | 添加群菜单 | 租户令牌 | POST |
-| UpdateMenuByIdAsync | 更新群菜单 | 租户令牌 | PATCH |
-| DeleteMenuByIdAsync | 删除群菜单 | 租户令牌 | DELETE |
-| SortMenuByIdAsync | 排序群菜单 | 租户令牌 | POST |
-| GetMenuByIdAsync | 获取群菜单 | 租户令牌 | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| AddMenuByIdAsync | 添加群菜单 | 租户令牌 | POST | [AddMenuByIdAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/chat-menu_tree/create) |
+| UpdateMenuByIdAsync | 更新群菜单 | 租户令牌 | PATCH | [UpdateMenuByIdAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/chat-menu_item/patch) |
+| DeleteMenuByIdAsync | 删除群菜单 | 租户令牌 | DELETE | [DeleteMenuByIdAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/chat-menu_tree/delete) |
+| SortMenuByIdAsync | 排序群菜单 | 租户令牌 | POST | [SortMenuByIdAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/chat-menu_tree/sort) |
+| GetMenuByIdAsync | 获取群菜单 | 租户令牌 | GET | [GetMenuByIdAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/chat-menu_tree/get) |
 
 ---
 

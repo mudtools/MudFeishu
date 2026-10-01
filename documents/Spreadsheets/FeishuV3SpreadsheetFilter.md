@@ -20,12 +20,12 @@ description: 该接口用于管理飞书电子表格的筛选，支持为指定�
 | `IFeishuUserV3SpreadsheetFilter` | 用户令牌（UserAccessToken） | 用户身份访问 |
 
 ## 函数列表  
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| CreateFilterAsync | 创建筛选 | 租户令牌 / 用户令牌 | POST |
-| UpdateFilterAsync | 更新筛选 | 租户令牌 / 用户令牌 | PUT |
-| GetFilterAsync | 获取筛选 | 租户令牌 / 用户令牌 | GET |
-| DeleteFilterAsync | 删除筛选 | 租户令牌 / 用户令牌 | DELETE |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| CreateFilterAsync | 创建筛选 | 租户令牌 / 用户令牌 | POST | — |
+| UpdateFilterAsync | 更新筛选 | 租户令牌 / 用户令牌 | PUT | — |
+| GetFilterAsync | 获取筛选 | 租户令牌 / 用户令牌 | GET | — |
+| DeleteFilterAsync | 删除筛选 | 租户令牌 / 用户令牌 | DELETE | — |
 
 ## 函数详细内容  
 

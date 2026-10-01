@@ -20,10 +20,10 @@ description: 该接口用于以租户身份查询飞书招聘的角色信息，�
 
 ## 函数列表
 
-| 函数名称       | 功能描述     | 限频                      | 所需权限                                  | HTTP 方法 |
-| -------------- | ------------ | ------------------------- | ----------------------------------------- | --------- |
-| GetRoleAsync   | 获取角色详情 | 10 次/秒                  | hire:auth:readonly 或 hire:auth           | GET       |
-| GetRoleListAsync | 获取角色列表 | 1000 次/分、50 次/秒      | hire:auth:readonly 或 hire:auth           | GET       |
+| 函数名称       | 功能描述     | 限频                      | 所需权限                                  | HTTP 方法 | 接口文档 |
+| -------------- | ------------ | ------------------------- | ----------------------------------------- | --------- |----------|
+| GetRoleAsync   | 获取角色详情 | 10 次/秒                  | hire:auth:readonly 或 hire:auth           | GET       | [GetRoleAsync](https://open.feishu.cn/document/hire-v1/recruitment-related-configuration/auth/get) |
+| GetRoleListAsync | 获取角色列表 | 1000 次/分、50 次/秒      | hire:auth:readonly 或 hire:auth           | GET       | [GetRoleListAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/auth/list) |
 
 ## 函数详细内容
 

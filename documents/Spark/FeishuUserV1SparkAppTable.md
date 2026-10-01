@@ -19,15 +19,15 @@ description: 该接口用于以用户身份管理飞书妙搭应用的数据表�
 
 ## 函数列表
 
-| 函数名称                        | 功能描述                 | 认证方式 | HTTP 方法 |
-| ------------------------------- | ------------------------ | -------- | --------- |
-| GetTableListAsync               | 获取数据表列表           | 用户令牌 | GET       |
-| GetTableDetailAsync             | 获取数据表详细信息       | 用户令牌 | GET       |
-| GetTableRecordListAsync         | 查询数据表数据记录       | 用户令牌 | GET       |
-| PostTableRecordsAsync           | 向数据表中添加或更新记录 | 用户令牌 | POST      |
-| PatchTableRecordsAsync          | 按条件更新数据表中的记录 | 用户令牌 | PATCH     |
-| BatchUpdateTableRecordsAsync    | 批量更新数据表中的记录   | 用户令牌 | PATCH     |
-| DeleteTableRecordsAsync         | 删除数据表中的记录       | 用户令牌 | DELETE    |
+| 函数名称                        | 功能描述                 | 认证方式 | HTTP 方法 | 接口文档 |
+| ------------------------------- | ------------------------ | -------- | --------- |----------|
+| GetTableListAsync               | 获取数据表列表           | 用户令牌 | GET       | [GetTableListAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app-table/get_table_list) |
+| GetTableDetailAsync             | 获取数据表详细信息       | 用户令牌 | GET       | [GetTableDetailAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app-table/get_table_detail) |
+| GetTableRecordListAsync         | 查询数据表数据记录       | 用户令牌 | GET       | [GetTableRecordListAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app-table/get_table_record_list) |
+| PostTableRecordsAsync           | 向数据表中添加或更新记录 | 用户令牌 | POST      | [PostTableRecordsAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app-table/post_table_records) |
+| PatchTableRecordsAsync          | 按条件更新数据表中的记录 | 用户令牌 | PATCH     | [PatchTableRecordsAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app-table/patch_table_records) |
+| BatchUpdateTableRecordsAsync    | 批量更新数据表中的记录   | 用户令牌 | PATCH     | [BatchUpdateTableRecordsAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app-table/batch_update_table_records) |
+| DeleteTableRecordsAsync         | 删除数据表中的记录       | 用户令牌 | DELETE    | [DeleteTableRecordsAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app-table/delete_table_records) |
 
 ## 函数详细内容
 

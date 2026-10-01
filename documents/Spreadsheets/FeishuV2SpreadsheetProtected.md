@@ -22,12 +22,12 @@ description: 该接口用于管理飞书电子表格的数据保护范围，支�
 | `IFeishuUserV2SpreadsheetProtected` | 用户令牌（UserAccessToken） | 用户身份访问 |
 
 ## 函数列表  
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| CreateProtectedAsync | 增加保护范围 | 租户令牌 / 用户令牌 | POST |
-| UpdateProtectedAsync | 修改保护范围 | 租户令牌 / 用户令牌 | POST |
-| GetProtectedAsync | 获取保护范围 | 租户令牌 / 用户令牌 | GET |
-| DeleteProtectedAsync | 删除保护范围 | 租户令牌 / 用户令牌 | DELETE |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| CreateProtectedAsync | 增加保护范围 | 租户令牌 / 用户令牌 | POST | — |
+| UpdateProtectedAsync | 修改保护范围 | 租户令牌 / 用户令牌 | POST | — |
+| GetProtectedAsync | 获取保护范围 | 租户令牌 / 用户令牌 | GET | — |
+| DeleteProtectedAsync | 删除保护范围 | 租户令牌 / 用户令牌 | DELETE | — |
 
 ## 函数详细内容  
 

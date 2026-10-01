@@ -12,9 +12,9 @@ description: 该接口用于以用户身份访问和管理自己有权限的公�
 - [分页查询所有公共邮箱](https://open.feishu.cn/document/server-docs/mail-v1/public-mailbox/public_mailbox/list)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| GetPublicMailboxPageListAsync | 分页查询所有公共邮箱 | UserAccessToken | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| GetPublicMailboxPageListAsync | 分页查询所有公共邮箱 | UserAccessToken | GET | [GetPublicMailboxPageListAsync](https://open.feishu.cn/document/server-docs/mail-v1/public-mailbox/public_mailbox/list) |
 
 ## 函数详细内容
 

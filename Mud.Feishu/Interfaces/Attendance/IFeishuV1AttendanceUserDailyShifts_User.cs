@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 考勤排班（用户令牌）：创建或修改临时排班（用户令牌，飞书考勤支持租户/用户两种令牌调用）。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/attendance-v1/user_daily_shift/batch_create_temp"/></para>
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/attendance-v1/user_daily_shift/batch_create_temp"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Attendance")]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

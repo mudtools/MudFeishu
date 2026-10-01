@@ -20,15 +20,15 @@ description: 该接口用于以租户身份向多个用户或部门批量发送�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| BatchSendTextMessageAsync | 批量发送文本消息 | 租户令牌 | POST |
-| BatchSendRichTextMessageAsync | 批量发送富文本消息 | 租户令牌 | POST |
-| BatchSendImageMessageAsync | 批量发送图片消息 | 租户令牌 | POST |
-| BatchSendGroupShareMessageAsync | 批量发送群分享消息 | 租户令牌 | POST |
-| RevokeMessageAsync | 撤回批量消息 | 租户令牌 | DELETE |
-| GetUserReadMessageInfosAsync | 获取消息已读用户信息 | 租户令牌 | GET |
-| GetBatchMessageProgressAsync | 获取批量消息发送/撤回进度 | 租户令牌 | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| BatchSendTextMessageAsync | 批量发送文本消息 | 租户令牌 | POST | [BatchSendTextMessageAsync](https://open.feishu.cn/document/server-docs/im-v1/batch_message/send-messages-in-batches) |
+| BatchSendRichTextMessageAsync | 批量发送富文本消息 | 租户令牌 | POST | [BatchSendRichTextMessageAsync](https://open.feishu.cn/document/server-docs/im-v1/batch_message/send-messages-in-batches) |
+| BatchSendImageMessageAsync | 批量发送图片消息 | 租户令牌 | POST | [BatchSendImageMessageAsync](https://open.feishu.cn/document/server-docs/im-v1/batch_message/send-messages-in-batches) |
+| BatchSendGroupShareMessageAsync | 批量发送群分享消息 | 租户令牌 | POST | [BatchSendGroupShareMessageAsync](https://open.feishu.cn/document/server-docs/im-v1/batch_message/send-messages-in-batches) |
+| RevokeMessageAsync | 撤回批量消息 | 租户令牌 | DELETE | [RevokeMessageAsync](https://open.feishu.cn/document/server-docs/im-v1/batch_message/delete) |
+| GetUserReadMessageInfosAsync | 获取消息已读用户信息 | 租户令牌 | GET | [GetUserReadMessageInfosAsync](https://open.feishu.cn/document/server-docs/im-v1/batch_message/read_user) |
+| GetBatchMessageProgressAsync | 获取批量消息发送/撤回进度 | 租户令牌 | GET | [GetBatchMessageProgressAsync](https://open.feishu.cn/document/server-docs/im-v1/batch_message/get_progress) |
 
 ## 函数详细内容
 

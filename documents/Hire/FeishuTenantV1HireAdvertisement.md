@@ -19,9 +19,9 @@ description: 该接口用于以租户身份将职位广告发布至指定招聘�
 
 ## 函数列表
 
-| 函数名称                  | 功能描述         | 限频     | 所需权限          | HTTP 方法 |
-| ------------------------- | ---------------- | -------- | ----------------- | --------- |
-| PublishAdvertisementAsync | 发布招聘官网广告 | 10 次/秒 | hire:advertisement | POST      |
+| 函数名称                  | 功能描述         | 限频     | 所需权限          | HTTP 方法 | 接口文档 |
+| ------------------------- | ---------------- | -------- | ----------------- | --------- |----------|
+| PublishAdvertisementAsync | 发布招聘官网广告 | 10 次/秒 | hire:advertisement | POST      | [PublishAdvertisementAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/publish) |
 
 ## 函数详细内容
 

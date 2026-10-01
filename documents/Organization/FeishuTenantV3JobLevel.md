@@ -18,13 +18,13 @@ description: 该接口用于以租户身份管理飞书职级（Job Level），�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| CreateJobLevelAsync | 创建职级 | 租户令牌 | POST |
-| UpdateJobLevelAsync | 更新职级 | 租户令牌 | PUT |
-| GetJobLevelByIdAsync | 获取职级详情 | 租户令牌 | GET |
-| GetJobLevelListAsync | 获取职级列表 | 租户令牌 | GET |
-| DeleteJobLevelByIdAsync | 删除职级 | 租户令牌 | DELETE |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| CreateJobLevelAsync | 创建职级 | 租户令牌 | POST | — |
+| UpdateJobLevelAsync | 更新职级 | 租户令牌 | PUT | — |
+| GetJobLevelByIdAsync | 获取职级详情 | 租户令牌 | GET | — |
+| GetJobLevelListAsync | 获取职级列表 | 租户令牌 | GET | — |
+| DeleteJobLevelByIdAsync | 删除职级 | 租户令牌 | DELETE | — |
 
 ## 函数详细内容
 

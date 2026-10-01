@@ -22,12 +22,12 @@ description: 该接口用于管理飞书电子表格的数据校验（下拉列�
 | `IFeishuUserV2SpreadsheetDataValidation` | 用户令牌（UserAccessToken） | 用户身份访问 |
 
 ## 函数列表  
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| CreateDataValidationAsync | 创建数据验证 | 租户令牌 / 用户令牌 | POST |
-| UpdateDataValidationAsync | 更新下拉列表设置 | 租户令牌 / 用户令牌 | PUT |
-| GetDataValidationsAsync | 获取数据验证 | 租户令牌 / 用户令牌 | GET |
-| DeleteDataValidationAsync | 删除下拉列表设置 | 租户令牌 / 用户令牌 | DELETE |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| CreateDataValidationAsync | 创建数据验证 | 租户令牌 / 用户令牌 | POST | — |
+| UpdateDataValidationAsync | 更新下拉列表设置 | 租户令牌 / 用户令牌 | PUT | — |
+| GetDataValidationsAsync | 获取数据验证 | 租户令牌 / 用户令牌 | GET | — |
+| DeleteDataValidationAsync | 删除下拉列表设置 | 租户令牌 / 用户令牌 | DELETE | — |
 
 ## 函数详细内容  
 

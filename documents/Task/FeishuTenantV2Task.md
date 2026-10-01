@@ -18,23 +18,23 @@ description: 该接口用于以租户身份操作飞书任务的完整能力，�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| CreateTaskAsync | 创建任务 | 租户令牌 | POST |
-| UpdateTaskAsync | 更新任务 | 租户令牌 | PATCH |
-| GetTaskByIdAsync | 获取任务详情 | 租户令牌 | GET |
-| DeleteTaskByIdAsync | 删除任务 | 租户令牌 | DELETE |
-| AddMembersByIdAsync | 添加任务成员 | 租户令牌 | POST |
-| RemoveMembersByIdAsync | 移除任务成员 | 租户令牌 | POST |
-| GetTaskListsByIdAsync | 列取任务所在清单 | 租户令牌 | GET |
-| AddTaskListsByIdAsync | 将任务加入清单 | 租户令牌 | POST |
-| RemoveTaskListsByIdAsync | 将任务从清单移出 | 租户令牌 | POST |
-| AddTaskReminderByIdAsync | 添加任务提醒 | 租户令牌 | POST |
-| RemoveTaskReminderByIdAsync | 移除任务提醒 | 租户令牌 | POST |
-| AddTaskDependenciesByIdAsync | 添加任务依赖 | 租户令牌 | POST |
-| RemoveTaskDependenciesByIdAsync | 移除任务依赖 | 租户令牌 | POST |
-| CreateSubTaskAsync | 创建子任务 | 租户令牌 | POST |
-| GetSubTasksPageListByIdAsync | 分页获取子任务列表 | 租户令牌 | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| CreateTaskAsync | 创建任务 | 租户令牌 | POST | [CreateTaskAsync](https://open.feishu.cn/document/task-v2/task/create) |
+| UpdateTaskAsync | 更新任务 | 租户令牌 | PATCH | [UpdateTaskAsync](https://open.feishu.cn/document/task-v2/task/patch) |
+| GetTaskByIdAsync | 获取任务详情 | 租户令牌 | GET | [GetTaskByIdAsync](https://open.feishu.cn/document/task-v2/task/get) |
+| DeleteTaskByIdAsync | 删除任务 | 租户令牌 | DELETE | [DeleteTaskByIdAsync](https://open.feishu.cn/document/task-v2/task/delete) |
+| AddMembersByIdAsync | 添加任务成员 | 租户令牌 | POST | [AddMembersByIdAsync](https://open.feishu.cn/document/task-v2/task/add_members) |
+| RemoveMembersByIdAsync | 移除任务成员 | 租户令牌 | POST | [RemoveMembersByIdAsync](https://open.feishu.cn/document/task-v2/task/remove_members) |
+| GetTaskListsByIdAsync | 列取任务所在清单 | 租户令牌 | GET | [GetTaskListsByIdAsync](https://open.feishu.cn/document/task-v2/task/tasklists) |
+| AddTaskListsByIdAsync | 将任务加入清单 | 租户令牌 | POST | [AddTaskListsByIdAsync](https://open.feishu.cn/document/task-v2/task/add_tasklist) |
+| RemoveTaskListsByIdAsync | 将任务从清单移出 | 租户令牌 | POST | [RemoveTaskListsByIdAsync](https://open.feishu.cn/document/task-v2/task/remove_tasklist) |
+| AddTaskReminderByIdAsync | 添加任务提醒 | 租户令牌 | POST | [AddTaskReminderByIdAsync](https://open.feishu.cn/document/task-v2/task/add_reminders) |
+| RemoveTaskReminderByIdAsync | 移除任务提醒 | 租户令牌 | POST | [RemoveTaskReminderByIdAsync](https://open.feishu.cn/document/task-v2/task/remove_reminders) |
+| AddTaskDependenciesByIdAsync | 添加任务依赖 | 租户令牌 | POST | [AddTaskDependenciesByIdAsync](https://open.feishu.cn/document/task-v2/task/add_dependencies) |
+| RemoveTaskDependenciesByIdAsync | 移除任务依赖 | 租户令牌 | POST | [RemoveTaskDependenciesByIdAsync](https://open.feishu.cn/document/task-v2/task/remove_dependencies) |
+| CreateSubTaskAsync | 创建子任务 | 租户令牌 | POST | [CreateSubTaskAsync](https://open.feishu.cn/document/task-v2/task-subtask/create) |
+| GetSubTasksPageListByIdAsync | 分页获取子任务列表 | 租户令牌 | GET | [GetSubTasksPageListByIdAsync](https://open.feishu.cn/document/task-v2/task-subtask/list) |
 
 ---
 

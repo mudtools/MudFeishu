@@ -19,10 +19,10 @@ description: 该接口用于以用户身份管理飞书词典图片文件，支�
 
 ## 函数列表
 
-| 函数名称          | 功能描述     | 认证方式 | HTTP 方法 |
-| ----------------- | ------------ | -------- | --------- |
-| UploadFileAsync   | 上传词条图片 | 用户令牌 | POST      |
-| DownloadFileAsync | 下载词条图片 | 用户令牌 | GET       |
+| 函数名称          | 功能描述     | 认证方式 | HTTP 方法 | 接口文档 |
+| ----------------- | ------------ | -------- | --------- |----------|
+| UploadFileAsync   | 上传词条图片 | 用户令牌 | POST      | [UploadFileAsync](https://open.feishu.cn/document/lingo-v1/file/upload) |
+| DownloadFileAsync | 下载词条图片 | 用户令牌 | GET       | [DownloadFileAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/download/download) |
 
 ## 函数详细内容
 

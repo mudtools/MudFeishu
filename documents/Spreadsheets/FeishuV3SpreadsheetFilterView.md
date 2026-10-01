@@ -22,18 +22,18 @@ description: 该接口用于管理飞书电子表格的筛选视图，提供筛�
 | `IFeishuUserV3SpreadsheetFilterView` | 用户令牌（UserAccessToken） | 用户身份访问 |
 
 ## 函数列表  
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| CreateFilterViewAsync | 创建筛选视图 | 租户令牌 / 用户令牌 | POST |
-| UpdateFilterViewAsync | 更新筛选视图 | 租户令牌 / 用户令牌 | PATCH |
-| GetFilterViewsAsync | 查询筛选视图列表 | 租户令牌 / 用户令牌 | GET |
-| GetFilterViewByIdAsync | 获取筛选视图 | 租户令牌 / 用户令牌 | GET |
-| DeleteFilterViewByIdAsync | 删除筛选视图 | 租户令牌 / 用户令牌 | DELETE |
-| CreateFilterConditionsAsync | 创建筛选条件 | 租户令牌 / 用户令牌 | POST |
-| UpdateFilterConditionsAsync | 更新筛选条件 | 租户令牌 / 用户令牌 | PUT |
-| GetFilterConditionsAsync | 查询筛选条件列表 | 租户令牌 / 用户令牌 | GET |
-| GetFilterConditionByIdAsync | 获取筛选条件 | 租户令牌 / 用户令牌 | GET |
-| DeleteFilterConditionByIdAsync | 删除筛选条件 | 租户令牌 / 用户令牌 | DELETE |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| CreateFilterViewAsync | 创建筛选视图 | 租户令牌 / 用户令牌 | POST | — |
+| UpdateFilterViewAsync | 更新筛选视图 | 租户令牌 / 用户令牌 | PATCH | — |
+| GetFilterViewsAsync | 查询筛选视图列表 | 租户令牌 / 用户令牌 | GET | — |
+| GetFilterViewByIdAsync | 获取筛选视图 | 租户令牌 / 用户令牌 | GET | — |
+| DeleteFilterViewByIdAsync | 删除筛选视图 | 租户令牌 / 用户令牌 | DELETE | — |
+| CreateFilterConditionsAsync | 创建筛选条件 | 租户令牌 / 用户令牌 | POST | — |
+| UpdateFilterConditionsAsync | 更新筛选条件 | 租户令牌 / 用户令牌 | PUT | — |
+| GetFilterConditionsAsync | 查询筛选条件列表 | 租户令牌 / 用户令牌 | GET | — |
+| GetFilterConditionByIdAsync | 获取筛选条件 | 租户令牌 / 用户令牌 | GET | — |
+| DeleteFilterConditionByIdAsync | 删除筛选条件 | 租户令牌 / 用户令牌 | DELETE | — |
 
 ## 函数详细内容  
 

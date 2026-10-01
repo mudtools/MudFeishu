@@ -22,12 +22,12 @@ description: 该接口用于管理飞书电子表格的条件格式，支持跨�
 | `IFeishuUserV2SpreadsheetConditionFormat` | 用户令牌（UserAccessToken） | 用户身份访问 |
 
 ## 函数列表  
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| CreateConditionFormatsAsync | 批量创建条件格式 | 租户令牌 / 用户令牌 | POST |
-| UpdateConditionFormatsAsync | 批量更新条件格式 | 租户令牌 / 用户令牌 | POST |
-| GetConditionFormatsAsync | 批量获取条件格式 | 租户令牌 / 用户令牌 | GET |
-| DeleteConditionFormatsAsync | 批量删除条件格式 | 租户令牌 / 用户令牌 | DELETE |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| CreateConditionFormatsAsync | 批量创建条件格式 | 租户令牌 / 用户令牌 | POST | — |
+| UpdateConditionFormatsAsync | 批量更新条件格式 | 租户令牌 / 用户令牌 | POST | — |
+| GetConditionFormatsAsync | 批量获取条件格式 | 租户令牌 / 用户令牌 | GET | — |
+| DeleteConditionFormatsAsync | 批量删除条件格式 | 租户令牌 / 用户令牌 | DELETE | — |
 
 ## 函数详细内容  
 

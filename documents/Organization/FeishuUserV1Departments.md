@@ -18,14 +18,14 @@ description: 该接口用于以用户身份管理飞书企业组织架构中的�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| CreateDepartmentAsync | 创建部门 | 用户令牌 | POST |
-| UpdateDepartmentAsync | 更新部门 | 用户令牌 | PATCH |
-| DeleteDepartmentByIdAsync | 删除部门 | 用户令牌 | DELETE |
-| QueryDepartmentsAsync | 批量查询部门 | 用户令牌 | POST |
-| QueryDepartmentsPageListAsync | 分页查询部门列表 | 用户令牌 | POST |
-| SearchEmployeePageListAsync | 搜索部门 | 用户令牌 | POST |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| CreateDepartmentAsync | 创建部门 | 用户令牌 | POST | — |
+| UpdateDepartmentAsync | 更新部门 | 用户令牌 | PATCH | — |
+| DeleteDepartmentByIdAsync | 删除部门 | 用户令牌 | DELETE | — |
+| QueryDepartmentsAsync | 批量查询部门 | 用户令牌 | POST | — |
+| QueryDepartmentsPageListAsync | 分页查询部门列表 | 用户令牌 | POST | — |
+| SearchEmployeePageListAsync | 搜索部门 | 用户令牌 | POST | — |
 
 ## 函数详细内容
 

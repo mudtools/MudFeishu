@@ -19,17 +19,17 @@ description: 该接口用于以租户身份调用飞书 Aily 智能体，提供�
 
 ## 函数列表
 
-| 函数名称                            | 功能描述               | 认证方式 | HTTP 方法 |
-| ----------------------------------- | ---------------------- | -------- | --------- |
-| CreateAgentAttachmentAsync          | 上传附件               | 租户令牌 | POST      |
-| GetAgentChatSessionPageListAsync    | 查询会话列表           | 租户令牌 | GET       |
-| GetAgentChatSessionAsync            | 获取指定会话信息       | 租户令牌 | GET       |
-| DeleteAgentChatSessionAsync         | 删除会话               | 租户令牌 | DELETE    |
-| CreateAgentChatSessionAsync         | 创建会话               | 租户令牌 | POST      |
-| CreateAgentChatAsync                | 发起智能体对话         | 租户令牌 | POST      |
-| CreateAgentChatStreamAsync          | 发起智能体对话（SSE 流式输出） | 租户令牌 | POST      |
-| GetAgentChatAsync                   | 获取对话结果           | 租户令牌 | GET       |
-| GetAgentArtifactAsync               | 下载智能体产物         | 租户令牌 | GET       |
+| 函数名称                            | 功能描述               | 认证方式 | HTTP 方法 | 接口文档 |
+| ----------------------------------- | ---------------------- | -------- | --------- |----------|
+| CreateAgentAttachmentAsync          | 上传附件               | 租户令牌 | POST      | [CreateAgentAttachmentAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/aily-v1/agent-agent_attachment/create) |
+| GetAgentChatSessionPageListAsync    | 查询会话列表           | 租户令牌 | GET       | [GetAgentChatSessionPageListAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/aily-v1/agent-agent_chat_session/list) |
+| GetAgentChatSessionAsync            | 获取指定会话信息       | 租户令牌 | GET       | [GetAgentChatSessionAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/aily-v1/agent-agent_chat_session/get) |
+| DeleteAgentChatSessionAsync         | 删除会话               | 租户令牌 | DELETE    | [DeleteAgentChatSessionAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/aily-v1/agent-agent_chat_session/delete) |
+| CreateAgentChatSessionAsync         | 创建会话               | 租户令牌 | POST      | [CreateAgentChatSessionAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/aily-v1/agent-agent_chat_session/create) |
+| CreateAgentChatAsync                | 发起智能体对话         | 租户令牌 | POST      | [CreateAgentChatAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/aily-v1/agent-agent_chat/create) |
+| CreateAgentChatStreamAsync          | 发起智能体对话（SSE 流式输出） | 租户令牌 | POST      | [CreateAgentChatStreamAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/aily-v1/agent-agent_chat/create) |
+| GetAgentChatAsync                   | 获取对话结果           | 租户令牌 | GET       | [GetAgentChatAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/aily-v1/agent-agent_chat/get) |
+| GetAgentArtifactAsync               | 下载智能体产物         | 租户令牌 | GET       | [GetAgentArtifactAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/aily-v1/agent-agent_artifact/get) |
 
 ## 函数详细内容
 

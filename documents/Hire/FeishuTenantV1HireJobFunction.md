@@ -19,9 +19,9 @@ description: 该接口用于以租户身份分页获取飞书招聘职能分类�
 
 ## 函数列表
 
-| 函数名称                 | 功能描述         | 限频     | 所需权限          | HTTP 方法 |
-| ------------------------ | ---------------- | -------- | ----------------- | --------- |
-| GetJobFunctionListAsync  | 获取职能分类列表 | 20 次/秒 | hire:job:readonly | GET       |
+| 函数名称                 | 功能描述         | 限频     | 所需权限          | HTTP 方法 | 接口文档 |
+| ------------------------ | ---------------- | -------- | ----------------- | --------- |----------|
+| GetJobFunctionListAsync  | 获取职能分类列表 | 20 次/秒 | hire:job:readonly | GET       | [GetJobFunctionListAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/list-3) |
 
 ## 函数详细内容
 

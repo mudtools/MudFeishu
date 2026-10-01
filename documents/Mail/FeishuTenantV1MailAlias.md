@@ -16,13 +16,13 @@ description: 该接口用于以租户身份管理企业内所有用户的邮箱�
 - [查询邮箱地址状态](https://open.feishu.cn/document/server-docs/mail-v1/user/query)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| DeleteUserMailboxAsync | 从回收站删除用户邮箱地址 | TenantAccessToken | DELETE |
-| CreateUserMailboxAliasAsync | 创建用户邮箱别名 | TenantAccessToken | POST |
-| DeleteUserMailboxAliasAsync | 删除用户邮箱别名 | TenantAccessToken | DELETE |
-| GetUserMailboxAliasPageListAsync | 获取用户邮箱所有别名 | TenantAccessToken | GET |
-| QueryUserMailboxAddressAsync | 查询邮箱地址状态 | TenantAccessToken | POST |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| DeleteUserMailboxAsync | 从回收站删除用户邮箱地址 | TenantAccessToken | DELETE | [DeleteUserMailboxAsync](https://open.feishu.cn/document/server-docs/mail-v1/user_mailbox-alias/delete) |
+| CreateUserMailboxAliasAsync | 创建用户邮箱别名 | TenantAccessToken | POST | [CreateUserMailboxAliasAsync](https://open.feishu.cn/document/server-docs/mail-v1/user_mailbox-alias/create) |
+| DeleteUserMailboxAliasAsync | 删除用户邮箱别名 | TenantAccessToken | DELETE | [DeleteUserMailboxAliasAsync](https://open.feishu.cn/document/server-docs/mail-v1/user_mailbox-alias/delete-2) |
+| GetUserMailboxAliasPageListAsync | 获取用户邮箱所有别名 | TenantAccessToken | GET | [GetUserMailboxAliasPageListAsync](https://open.feishu.cn/document/server-docs/mail-v1/user_mailbox-alias/list) |
+| QueryUserMailboxAddressAsync | 查询邮箱地址状态 | TenantAccessToken | POST | [QueryUserMailboxAddressAsync](https://open.feishu.cn/document/server-docs/mail-v1/user/query) |
 
 ## 函数详细内容
 

@@ -16,12 +16,12 @@ description: 该接口用于以租户身份查询飞书服务台知识库 FAQ，
 - [服务台接入指南](https://open.feishu.cn/document/server-docs/helpdesk-v1/access-guide)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| GetFaqListAsync | 查询知识库FAQ列表 | TenantAccessToken | GET |
-| SearchFaqAsync | 搜索知识库FAQ | TenantAccessToken | GET |
-| GetFaqAsync | 获取知识库FAQ详情 | TenantAccessToken | GET |
-| GetFaqImageAsync | 获取知识库FAQ图片 | TenantAccessToken | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| GetFaqListAsync | 查询知识库FAQ列表 | TenantAccessToken | GET | [GetFaqListAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/faq-management/faq/list) |
+| SearchFaqAsync | 搜索知识库FAQ | TenantAccessToken | GET | [SearchFaqAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/faq-management/faq/search) |
+| GetFaqAsync | 获取知识库FAQ详情 | TenantAccessToken | GET | [GetFaqAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/faq-management/faq/get) |
+| GetFaqImageAsync | 获取知识库FAQ图片 | TenantAccessToken | GET | [GetFaqImageAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/faq-management/faq/faq_image) |
 
 ## 函数详细内容
 

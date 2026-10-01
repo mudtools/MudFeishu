@@ -19,15 +19,15 @@ description: 该接口用于以用户身份获取群公告基本信息、读取�
 - [创建群](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/chat/create)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| GetChatAnnouncementAsync | 获取群公告基本信息 | UserAccessToken | GET |
-| BatchUpdateChatAnnouncementBlocksAsync | 批量更新群公告块内容 | UserAccessToken | PATCH |
-| GetChatAnnouncementBlockInfoAsync | 获取群公告指定块信息 | UserAccessToken | GET |
-| GetChatAnnouncementBlocksPageListAsync | 分页获取群公告所有块 | UserAccessToken | GET |
-| BatchDeleteChatAnnouncementBlockChildrenAsync | 批量删除群公告子块 | UserAccessToken | DELETE |
-| CreateChatAnnouncementBlockChildrenAsync | 在群公告中创建子块 | UserAccessToken | POST |
-| GetChatAnnouncementBlockChildrenPageListAsync | 分页获取群公告指定块的子块 | UserAccessToken | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| GetChatAnnouncementAsync | 获取群公告基本信息 | UserAccessToken | GET | [GetChatAnnouncementAsync](https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/chat-announcement/get) |
+| BatchUpdateChatAnnouncementBlocksAsync | 批量更新群公告块内容 | UserAccessToken | PATCH | [BatchUpdateChatAnnouncementBlocksAsync](https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/chat-announcement-block/batch_update) |
+| GetChatAnnouncementBlockInfoAsync | 获取群公告指定块信息 | UserAccessToken | GET | [GetChatAnnouncementBlockInfoAsync](https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/chat-announcement-block/get) |
+| GetChatAnnouncementBlocksPageListAsync | 分页获取群公告所有块 | UserAccessToken | GET | [GetChatAnnouncementBlocksPageListAsync](https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/chat-announcement-block/list) |
+| BatchDeleteChatAnnouncementBlockChildrenAsync | 批量删除群公告子块 | UserAccessToken | DELETE | [BatchDeleteChatAnnouncementBlockChildrenAsync](https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/chat-announcement-block-children/batch_delete) |
+| CreateChatAnnouncementBlockChildrenAsync | 在群公告中创建子块 | UserAccessToken | POST | [CreateChatAnnouncementBlockChildrenAsync](https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/chat-announcement-block-children/create) |
+| GetChatAnnouncementBlockChildrenPageListAsync | 分页获取群公告指定块的子块 | UserAccessToken | GET | [GetChatAnnouncementBlockChildrenPageListAsync](https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/chat-announcement-block-children/get) |
 
 ## 函数详细内容
 

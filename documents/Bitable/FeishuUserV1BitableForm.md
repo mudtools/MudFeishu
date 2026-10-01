@@ -19,13 +19,13 @@ description: 该接口用于以用户身份管理飞书多维表格表单视图�
 
 ## 函数列表
 
-| 函数名称                     | 功能描述       | 认证方式 | HTTP 方法 |
-| ---------------------------- | -------------- | -------- | --------- |
-| UpgradeFormAsync             | 升级表单       | 用户令牌 | POST      |
-| UpdateFormAsync              | 更新表单元数据 | 用户令牌 | PATCH     |
-| GetFormAsync                 | 获取表单元数据 | 用户令牌 | GET       |
-| UpdateFormFieldAsync         | 更新表单问题   | 用户令牌 | PATCH     |
-| GetFormFieldsPageListAsync   | 列出表单问题   | 用户令牌 | GET       |
+| 函数名称                     | 功能描述       | 认证方式 | HTTP 方法 | 接口文档 |
+| ---------------------------- | -------------- | -------- | --------- |----------|
+| UpgradeFormAsync             | 升级表单       | 用户令牌 | POST      | [UpgradeFormAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/bitable-v1/app-table-form/upgrade) |
+| UpdateFormAsync              | 更新表单元数据 | 用户令牌 | PATCH     | [UpdateFormAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/form/patch-2) |
+| GetFormAsync                 | 获取表单元数据 | 用户令牌 | GET       | [GetFormAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/form/get) |
+| UpdateFormFieldAsync         | 更新表单问题   | 用户令牌 | PATCH     | [UpdateFormFieldAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/form/patch) |
+| GetFormFieldsPageListAsync   | 列出表单问题   | 用户令牌 | GET       | [GetFormFieldsPageListAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/form/list) |
 
 ## 函数详细内容
 

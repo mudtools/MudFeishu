@@ -18,14 +18,14 @@ description: 该接口用于以租户身份管理飞书用户组（User Group）
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| CreateUserGroupAsync | 创建用户组 | 租户令牌 | POST |
-| UpdateUserGroupAsync | 更新用户组 | 租户令牌 | PATCH |
-| GetUserGroupInfoByIdAsync | 获取用户组详情 | 租户令牌 | GET |
-| GetUserGroupsAsync | 获取用户组列表 | 租户令牌 | GET |
-| GetUserBelongGroupsAsync | 获取成员所属用户组 | 租户令牌 | GET |
-| DeleteUserGroupByIdAsync | 删除用户组 | 租户令牌 | DELETE |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| CreateUserGroupAsync | 创建用户组 | 租户令牌 | POST | — |
+| UpdateUserGroupAsync | 更新用户组 | 租户令牌 | PATCH | — |
+| GetUserGroupInfoByIdAsync | 获取用户组详情 | 租户令牌 | GET | — |
+| GetUserGroupsAsync | 获取用户组列表 | 租户令牌 | GET | — |
+| GetUserBelongGroupsAsync | 获取成员所属用户组 | 租户令牌 | GET | — |
+| DeleteUserGroupByIdAsync | 删除用户组 | 租户令牌 | DELETE | — |
 
 ## 函数详细内容
 

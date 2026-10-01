@@ -16,13 +16,13 @@ description: 该接口用于以用户身份管理自己的邮箱标签，支持�
 - [创建标签](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-label/create)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| UpdateUserMailboxLabelAsync | 更新标签 | UserAccessToken | PATCH |
-| GetUserMailboxLabelListAsync | 列出标签 | UserAccessToken | GET |
-| GetUserMailboxLabelAsync | 获取标签信息 | UserAccessToken | GET |
-| DeleteUserMailboxLabelAsync | 删除标签 | UserAccessToken | DELETE |
-| CreateUserMailboxLabelAsync | 创建标签 | UserAccessToken | POST |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| UpdateUserMailboxLabelAsync | 更新标签 | UserAccessToken | PATCH | [UpdateUserMailboxLabelAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-label/patch) |
+| GetUserMailboxLabelListAsync | 列出标签 | UserAccessToken | GET | [GetUserMailboxLabelListAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-label/list) |
+| GetUserMailboxLabelAsync | 获取标签信息 | UserAccessToken | GET | [GetUserMailboxLabelAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-label/get) |
+| DeleteUserMailboxLabelAsync | 删除标签 | UserAccessToken | DELETE | [DeleteUserMailboxLabelAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-label/delete) |
+| CreateUserMailboxLabelAsync | 创建标签 | UserAccessToken | POST | [CreateUserMailboxLabelAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-label/create) |
 
 ## 函数详细内容
 

@@ -19,16 +19,16 @@ description: 该接口用于以用户身份管理自己的邮件模板，支持�
 - [查询用户邮箱签名](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-setting/get_signatures)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| GetAttachmentsDownloadUrlAsync | 获取模板附件下载链接 | UserAccessToken | GET |
-| UpdateMailTemplateAsync | 更新邮件模板 | UserAccessToken | PUT |
-| GetMailTemplateListAsync | 列出邮件模板 | UserAccessToken | GET |
-| GetMailTemplateAsync | 获取邮件模板 | UserAccessToken | GET |
-| CreateMailTemplateAsync | 创建邮件模板 | UserAccessToken | POST |
-| DeleteMailTemplateAsync | 删除邮件模板 | UserAccessToken | DELETE |
-| GetSendAsUserMailboxSettingAsync | 列出可发信邮箱 | UserAccessToken | GET |
-| GetUserMailboxSignaturesAsync | 查询用户邮箱签名 | UserAccessToken | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| GetAttachmentsDownloadUrlAsync | 获取模板附件下载链接 | UserAccessToken | GET | [GetAttachmentsDownloadUrlAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-template/download_url) |
+| UpdateMailTemplateAsync | 更新邮件模板 | UserAccessToken | PUT | [UpdateMailTemplateAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-template/update) |
+| GetMailTemplateListAsync | 列出邮件模板 | UserAccessToken | GET | [GetMailTemplateListAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-template/list) |
+| GetMailTemplateAsync | 获取邮件模板 | UserAccessToken | GET | [GetMailTemplateAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-template/get) |
+| CreateMailTemplateAsync | 创建邮件模板 | UserAccessToken | POST | [CreateMailTemplateAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-template/create) |
+| DeleteMailTemplateAsync | 删除邮件模板 | UserAccessToken | DELETE | [DeleteMailTemplateAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-template/delete) |
+| GetSendAsUserMailboxSettingAsync | 列出可发信邮箱 | UserAccessToken | GET | [GetSendAsUserMailboxSettingAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-setting/send_as) |
+| GetUserMailboxSignaturesAsync | 查询用户邮箱签名 | UserAccessToken | GET | [GetUserMailboxSignaturesAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-setting/get_signatures) |
 
 ## 函数详细内容
 

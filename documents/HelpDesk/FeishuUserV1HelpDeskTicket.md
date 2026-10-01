@@ -17,12 +17,12 @@ description: 该接口用于以用户身份更新服务台工单详情，并创�
 - [服务台接入指南](https://open.feishu.cn/document/server-docs/helpdesk-v1/access-guide)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| UpdateTicketAsync | 更新工单详情 | UserAccessToken | PUT |
-| CreateCustomizedFieldAsync | 创建工单自定义字段 | UserAccessToken | POST |
-| DeleteCustomizedFieldAsync | 删除工单自定义字段 | UserAccessToken | DELETE |
-| UpdateCustomizedFieldAsync | 更新工单自定义字段 | UserAccessToken | PATCH |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| UpdateTicketAsync | 更新工单详情 | UserAccessToken | PUT | [UpdateTicketAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket/update) |
+| CreateCustomizedFieldAsync | 创建工单自定义字段 | UserAccessToken | POST | [CreateCustomizedFieldAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket_customized_field/create-ticket-customized-field) |
+| DeleteCustomizedFieldAsync | 删除工单自定义字段 | UserAccessToken | DELETE | [DeleteCustomizedFieldAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket_customized_field/delete) |
+| UpdateCustomizedFieldAsync | 更新工单自定义字段 | UserAccessToken | PATCH | [UpdateCustomizedFieldAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket_customized_field/update-ticket-customized-field) |
 
 ## 函数详细内容
 

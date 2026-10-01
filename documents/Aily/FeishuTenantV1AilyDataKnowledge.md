@@ -19,15 +19,15 @@ description: 该接口用于以租户身份管理飞书 Aily 数据知识，提�
 
 ## 函数列表
 
-| 函数名称                        | 功能描述                     | 认证方式 | HTTP 方法 |
-| ------------------------------- | ---------------------------- | -------- | --------- |
-| AskDataKnowledgeAsync           | 执行数据知识问答             | 租户令牌 | POST      |
-| UploadDataAssetFileAsync        | 上传文件用于数据知识管理     | 租户令牌 | POST      |
-| CreateDataAssetAsync            | 创建数据知识                 | 租户令牌 | POST      |
-| GetDataAssetAsync               | 获取数据知识                 | 租户令牌 | GET       |
-| DeleteDataAssetAsync            | 删除数据知识                 | 租户令牌 | DELETE    |
-| GetDataAssetPageListAsync       | 获取数据知识列表             | 租户令牌 | GET       |
-| GetDataAssetTagPageListAsync    | 获取数据知识分类列表         | 租户令牌 | GET       |
+| 函数名称                        | 功能描述                     | 认证方式 | HTTP 方法 | 接口文档 |
+| ------------------------------- | ---------------------------- | -------- | --------- |----------|
+| AskDataKnowledgeAsync           | 执行数据知识问答             | 租户令牌 | POST      | [AskDataKnowledgeAsync](https://open.feishu.cn/document/aily-v1/data-knowledge/ask) |
+| UploadDataAssetFileAsync        | 上传文件用于数据知识管理     | 租户令牌 | POST      | [UploadDataAssetFileAsync](https://open.feishu.cn/document/aily-v1/data-knowledge/data-knowledge-management/upload_file) |
+| CreateDataAssetAsync            | 创建数据知识                 | 租户令牌 | POST      | [CreateDataAssetAsync](https://open.feishu.cn/document/aily-v1/data-knowledge/data-knowledge-management/create) |
+| GetDataAssetAsync               | 获取数据知识                 | 租户令牌 | GET       | [GetDataAssetAsync](https://open.feishu.cn/document/aily-v1/data-knowledge/data-knowledge-management/get) |
+| DeleteDataAssetAsync            | 删除数据知识                 | 租户令牌 | DELETE    | [DeleteDataAssetAsync](https://open.feishu.cn/document/aily-v1/data-knowledge/data-knowledge-management/delete) |
+| GetDataAssetPageListAsync       | 获取数据知识列表             | 租户令牌 | GET       | [GetDataAssetPageListAsync](https://open.feishu.cn/document/aily-v1/data-knowledge/data-knowledge-management/list) |
+| GetDataAssetTagPageListAsync    | 获取数据知识分类列表         | 租户令牌 | GET       | [GetDataAssetTagPageListAsync](https://open.feishu.cn/document/aily-v1/data-knowledge/data-knowledge-management/list-2) |
 
 ## 函数详细内容
 

@@ -19,9 +19,9 @@ description: 该接口用于以用户身份查询飞书妙搭应用下的视图�
 
 ## 函数列表
 
-| 函数名称                  | 功能描述           | 认证方式 | HTTP 方法 |
-| ------------------------- | ------------------ | -------- | --------- |
-| GetViewRecordListAsync    | 查询视图数据记录   | 用户令牌 | GET       |
+| 函数名称                  | 功能描述           | 认证方式 | HTTP 方法 | 接口文档 |
+| ------------------------- | ------------------ | -------- | --------- |----------|
+| GetViewRecordListAsync    | 查询视图数据记录   | 用户令牌 | GET       | [GetViewRecordListAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app-view/get_view_record_list) |
 
 ## 函数详细内容
 

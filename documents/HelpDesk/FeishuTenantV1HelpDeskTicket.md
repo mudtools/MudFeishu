@@ -25,19 +25,19 @@ description: 该接口用于以租户身份操作飞书服务台工单，支持�
 - [服务台接入指南](https://open.feishu.cn/document/server-docs/helpdesk-v1/access-guide)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| StartServiceTicketAsync | 创建服务台对话 | TenantAccessToken | POST |
-| GetTicketAsync | 查询指定工单详情 | TenantAccessToken | GET |
-| GetTicketListAsync | 查询全部工单详情 | TenantAccessToken | GET |
-| GetTicketImageAsync | 获取工单内图像 | TenantAccessToken | GET |
-| AnswerUserQueryTicketAsync | 回复用户在工单里的提问 | TenantAccessToken | POST |
-| GetCustomizedFieldsListAsync | 获取服务台自定义字段 | TenantAccessToken | GET |
-| CreateTicketMessageAsync | 发送工单消息 | TenantAccessToken | POST |
-| GetTicketMessageListAsync | 获取工单消息详情 | TenantAccessToken | GET |
-| CreateBotMessageAsync | 服务台机器人向工单绑定的群内发送消息 | TenantAccessToken | POST |
-| GetCustomizedFieldAsync | 获取指定工单自定义字段 | TenantAccessToken | GET |
-| GetCustomizedFieldPageListAsync | 获取全部工单自定义字段 | TenantAccessToken | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| StartServiceTicketAsync | 创建服务台对话 | TenantAccessToken | POST | [StartServiceTicketAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket/start_service) |
+| GetTicketAsync | 查询指定工单详情 | TenantAccessToken | GET | [GetTicketAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket/get) |
+| GetTicketListAsync | 查询全部工单详情 | TenantAccessToken | GET | [GetTicketListAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket/list) |
+| GetTicketImageAsync | 获取工单内图像 | TenantAccessToken | GET | [GetTicketImageAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket/ticket_image) |
+| AnswerUserQueryTicketAsync | 回复用户在工单里的提问 | TenantAccessToken | POST | [AnswerUserQueryTicketAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket/answer_user_query) |
+| GetCustomizedFieldsListAsync | 获取服务台自定义字段 | TenantAccessToken | GET | [GetCustomizedFieldsListAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket/customized_fields) |
+| CreateTicketMessageAsync | 发送工单消息 | TenantAccessToken | POST | [CreateTicketMessageAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket-message/create) |
+| GetTicketMessageListAsync | 获取工单消息详情 | TenantAccessToken | GET | [GetTicketMessageListAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket-message/list) |
+| CreateBotMessageAsync | 服务台机器人向工单绑定的群内发送消息 | TenantAccessToken | POST | [CreateBotMessageAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket-message/create-2) |
+| GetCustomizedFieldAsync | 获取指定工单自定义字段 | TenantAccessToken | GET | [GetCustomizedFieldAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket_customized_field/get-ticket-customized-field) |
+| GetCustomizedFieldPageListAsync | 获取全部工单自定义字段 | TenantAccessToken | GET | [GetCustomizedFieldPageListAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/ticket-management/ticket_customized_field/list-ticket-customized-fields) |
 
 ## 函数详细内容
 

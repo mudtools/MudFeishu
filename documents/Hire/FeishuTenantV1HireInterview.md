@@ -19,13 +19,13 @@ description: 该接口用于以租户身份管理飞书招聘面试配置，支�
 
 ## 函数列表
 
-| 函数名称                              | 功能描述                   | 认证方式 | HTTP 方法 |
-| ------------------------------------- | -------------------------- | -------- | --------- |
-| GetInterviewRoundTypeListAsync        | 获取面试轮次类型列表       | 租户令牌 | GET       |
-| GetInterviewFeedbackFormListAsync     | 获取面试反馈表             | 租户令牌 | GET       |
-| GetInterviewRegistrationSchemaListAsync | 获取面试登记表模板列表   | 租户令牌 | GET       |
-| GetInterviewerListAsync               | 获取面试官信息列表         | 租户令牌 | GET       |
-| PatchInterviewerAsync                 | 更新面试官信息             | 租户令牌 | PATCH     |
+| 函数名称                              | 功能描述                   | 认证方式 | HTTP 方法 | 接口文档 |
+| ------------------------------------- | -------------------------- | -------- | --------- |----------|
+| GetInterviewRoundTypeListAsync        | 获取面试轮次类型列表       | 租户令牌 | GET       | [GetInterviewRoundTypeListAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/interview-settings/list-2) |
+| GetInterviewFeedbackFormListAsync     | 获取面试反馈表             | 租户令牌 | GET       | [GetInterviewFeedbackFormListAsync](https://open.feishu.cn/document/hire-v1/recruitment-related-configuration/interview-settings/list-3) |
+| GetInterviewRegistrationSchemaListAsync | 获取面试登记表模板列表   | 租户令牌 | GET       | [GetInterviewRegistrationSchemaListAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/interview-settings/list-3) |
+| GetInterviewerListAsync               | 获取面试官信息列表         | 租户令牌 | GET       | [GetInterviewerListAsync](https://open.feishu.cn/document/hire-v1/recruitment-related-configuration/interview-settings/interviewer/list) |
+| PatchInterviewerAsync                 | 更新面试官信息             | 租户令牌 | PATCH     | [PatchInterviewerAsync](https://open.feishu.cn/document/hire-v1/recruitment-related-configuration/interview-settings/interviewer/patch) |
 
 ## 函数详细内容
 

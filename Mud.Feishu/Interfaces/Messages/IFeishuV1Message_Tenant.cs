@@ -436,7 +436,7 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     #region URL 预览
     /// <summary>
     /// 更新 URL 预览。
-    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v2/url_preview/batch_update">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/im-v1/url_preview/batch_update">接口文档</see></para>
     /// </summary>
     /// <param name="urlPreviewRequest">更新 URL 预览请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>

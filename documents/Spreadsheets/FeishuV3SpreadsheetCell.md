@@ -20,14 +20,14 @@ description: 该接口用于操作飞书电子表格工作表中的单元格，�
 | `IFeishuUserV3SpreadsheetCell` | 用户令牌（UserAccessToken） | 用户身份访问 |
 
 ## 函数列表  
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| MergeCellsAsync | 合并单元格 | 租户令牌 / 用户令牌 | POST |
-| UnMergeCellsAsync | 拆分单元格 | 租户令牌 / 用户令牌 | POST |
-| FindCellsAsync | 查找单元格 | 租户令牌 / 用户令牌 | POST |
-| ReplaceCellsAsync | 替换单元格 | 租户令牌 / 用户令牌 | POST |
-| SetCellsStyleAsync | 设置单元格样式 | 租户令牌 / 用户令牌 | PUT |
-| BatchSetCellsStyleAsync | 批量设置单元格样式 | 租户令牌 / 用户令牌 | PUT |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| MergeCellsAsync | 合并单元格 | 租户令牌 / 用户令牌 | POST | — |
+| UnMergeCellsAsync | 拆分单元格 | 租户令牌 / 用户令牌 | POST | — |
+| FindCellsAsync | 查找单元格 | 租户令牌 / 用户令牌 | POST | — |
+| ReplaceCellsAsync | 替换单元格 | 租户令牌 / 用户令牌 | POST | — |
+| SetCellsStyleAsync | 设置单元格样式 | 租户令牌 / 用户令牌 | PUT | — |
+| BatchSetCellsStyleAsync | 批量设置单元格样式 | 租户令牌 / 用户令牌 | PUT | — |
 
 ## 函数详细内容  
 

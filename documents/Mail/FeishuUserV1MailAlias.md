@@ -12,9 +12,9 @@ description: 该接口用于以用户身份查询自己的主邮箱地址，可�
 - [查询用户主邮箱地址](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox/profile)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| GetUserMailboxProfileAsync | 查询用户主邮箱地址 | UserAccessToken | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| GetUserMailboxProfileAsync | 查询用户主邮箱地址 | UserAccessToken | GET | [GetUserMailboxProfileAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox/profile) |
 
 ## 函数详细内容
 

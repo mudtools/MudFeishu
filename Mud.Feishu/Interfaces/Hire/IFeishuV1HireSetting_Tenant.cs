@@ -92,7 +92,7 @@ public interface IFeishuTenantV1HireSetting : IFeishuAppContextSwitcher
     /// 查询地点列表
     /// <para>根据地点类型（国家/省份/城市/区县）与地点码批量查询地点信息，获取地点名称（中文、英文、拼音）。</para>
     /// <para>限频：5 次/秒。所需权限：hire:location:readonly（获取地点信息）。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/location/query">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/hire-v1/recruitment-related-configuration/location/query">接口文档</see></para>
     /// </summary>
     /// <param name="request">查询请求体（location_type 必填：1 国家 / 2 省份 / 3 城市 / 4 区县；code_list 地点码列表，可选，最大 100 个，不填则查询全部）</param>
     /// <param name="page_size">每页数量，必填，取值范围 1～100</param>
@@ -130,7 +130,7 @@ public interface IFeishuTenantV1HireSetting : IFeishuAppContextSwitcher
     /// 获取角色信息
     /// <para>按角色 ID 获取角色详情，包括角色名称、描述、适用范围与社招/校招权限配置。</para>
     /// <para>限频：10 次/秒。所需权限：hire:auth:readonly（获取权限信息）或 hire:auth（更新权限信息）。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/auth/get">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/hire-v1/recruitment-related-configuration/auth/get">接口文档</see></para>
     /// </summary>
     /// <param name="role_id">角色 ID，可通过获取角色列表接口获取，示例值：7350589232462807068</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>

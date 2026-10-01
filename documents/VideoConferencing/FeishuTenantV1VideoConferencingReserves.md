@@ -13,13 +13,13 @@ description: 该接口用于以租户身份预约飞书会议，可提前设置�
 - [会议预约概述](https://open.feishu.cn/document/server-docs/vc-v1/reserve/schedule-meeting-overview)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| ApplyReserveAsync | 预约会议 | 租户令牌 | POST |
-| DeleteReserveAsync | 删除预约 | 租户令牌 | DELETE |
-| UpdateReserveAsync | 更新预约 | 租户令牌 | PUT |
-| GetReserveAsync | 获取预约详情 | 租户令牌 | GET |
-| GetActiveMeetingReserveAsync | 获取活跃会议 | 租户令牌 | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| ApplyReserveAsync | 预约会议 | 租户令牌 | POST | [ApplyReserveAsync](https://open.feishu.cn/document/server-docs/vc-v1/reserve/apply) |
+| DeleteReserveAsync | 删除预约 | 租户令牌 | DELETE | [DeleteReserveAsync](https://open.feishu.cn/document/server-docs/vc-v1/reserve/delete) |
+| UpdateReserveAsync | 更新预约 | 租户令牌 | PUT | [UpdateReserveAsync](https://open.feishu.cn/document/server-docs/vc-v1/reserve/update) |
+| GetReserveAsync | 获取预约详情 | 租户令牌 | GET | [GetReserveAsync](https://open.feishu.cn/document/server-docs/vc-v1/reserve/get) |
+| GetActiveMeetingReserveAsync | 获取活跃会议 | 租户令牌 | GET | [GetActiveMeetingReserveAsync](https://open.feishu.cn/document/server-docs/vc-v1/reserve/get_active_meeting) |
 
 ## 函数详细内容
 

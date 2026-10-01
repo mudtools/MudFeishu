@@ -16,11 +16,11 @@ description: 该接口用于以用户身份管理飞书服务台知识库分类�
 - [服务台接入指南](https://open.feishu.cn/document/server-docs/helpdesk-v1/access-guide)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| CreateCategoryAsync | 创建知识库分类 | UserAccessToken | POST |
-| DeleteCategoryAsync | 删除知识库分类 | UserAccessToken | DELETE |
-| UpdateCategoryAsync | 更新知识库分类 | UserAccessToken | PATCH |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| CreateCategoryAsync | 创建知识库分类 | UserAccessToken | POST | [CreateCategoryAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/faq-management/category/create) |
+| DeleteCategoryAsync | 删除知识库分类 | UserAccessToken | DELETE | [DeleteCategoryAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/faq-management/category/delete) |
+| UpdateCategoryAsync | 更新知识库分类 | UserAccessToken | PATCH | [UpdateCategoryAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/faq-management/category/patch) |
 
 ## 函数详细内容
 

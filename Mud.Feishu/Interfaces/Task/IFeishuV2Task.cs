@@ -13,7 +13,7 @@ namespace Mud.Feishu.Interfaces;
 /// <para>飞书任务是一款飞书自带的通用任务/项目管理工具，拥有强大的协作能力。</para>
 /// <para>可以轻松地在飞书App的任务中心，群组，文档等场景中快捷创建任务。</para>
 /// <para>同时也可以将任务分享给感兴趣的成员，或者关注和跟进一些感兴趣的任务。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/task-v2/task/introduction"/></para>
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/task-v2/task/overview"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

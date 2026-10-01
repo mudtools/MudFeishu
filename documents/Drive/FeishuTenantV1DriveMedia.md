@@ -16,14 +16,14 @@ description: 该接口用于以租户身份管理飞书云文档素材，支持�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| UploadAllMediaAsync | 上传素材（完整上传） | 租户令牌 | POST |
-| UploadPrepareMediaAsync | 预上传（分片上传初始化） | 租户令牌 | POST |
-| UploadPartMediaAsync | 上传分片 | 租户令牌 | POST |
-| UploadFinishMediaAsync | 完成分片上传 | 租户令牌 | POST |
-| DownloadFileAsync | 下载素材 | 租户令牌 | GET |
-| BatchGetTmpDownloadUrlAsync | 获取素材临时下载链接 | 租户令牌 | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| UploadAllMediaAsync | 上传素材（完整上传） | 租户令牌 | POST | [UploadAllMediaAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/media/upload_all) |
+| UploadPrepareMediaAsync | 预上传（分片上传初始化） | 租户令牌 | POST | [UploadPrepareMediaAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/media/multipart-upload-media/upload_prepare) |
+| UploadPartMediaAsync | 上传分片 | 租户令牌 | POST | [UploadPartMediaAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/media/multipart-upload-media/upload_part) |
+| UploadFinishMediaAsync | 完成分片上传 | 租户令牌 | POST | [UploadFinishMediaAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/media/multipart-upload-media/upload_finish) |
+| DownloadFileAsync | 下载素材 | 租户令牌 | GET | [DownloadFileAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/download/download) |
+| BatchGetTmpDownloadUrlAsync | 获取素材临时下载链接 | 租户令牌 | GET | [BatchGetTmpDownloadUrlAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/media/batch_get_tmp_download_url) |
 
 ## 函数详细内容
 

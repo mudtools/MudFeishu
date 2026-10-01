@@ -19,9 +19,9 @@ description: 该接口用于以租户身份获取飞书绩效结果，返回被�
 
 ## 函数列表
 
-| 函数名称             | 功能描述     | 认证方式 | HTTP 方法 |
-| -------------------- | ------------ | -------- | --------- |
-| QueryReviewDataAsync | 获取绩效结果 | 租户令牌 | POST      |
+| 函数名称             | 功能描述     | 认证方式 | HTTP 方法 | 接口文档 |
+| -------------------- | ------------ | -------- | --------- |----------|
+| QueryReviewDataAsync | 获取绩效结果 | 租户令牌 | POST      | [QueryReviewDataAsync](https://open.feishu.cn/document/server-docs/performance-v1/query) |
 
 ## 函数详细内容
 

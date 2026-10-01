@@ -14,10 +14,10 @@ description: 该接口用于以租户身份管理飞书服务台事件的订阅�
 - [服务台接入指南](https://open.feishu.cn/document/server-docs/helpdesk-v1/access-guide)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| SubscribeEventAsync | 订阅服务台事件 | TenantAccessToken | POST |
-| UnsubscribeEventAsync | 取消订阅服务台事件 | TenantAccessToken | POST |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| SubscribeEventAsync | 订阅服务台事件 | TenantAccessToken | POST | [SubscribeEventAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/event/subscribe) |
+| UnsubscribeEventAsync | 取消订阅服务台事件 | TenantAccessToken | POST | [UnsubscribeEventAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/event/unsubscribe) |
 
 ## 函数详细内容
 

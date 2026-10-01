@@ -18,18 +18,18 @@ description: 该接口用于以租户身份管理飞书通讯录 V3 版本的部
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| GetDepartmentInfoByIdAsync | 获取部门信息 | 租户令牌 | GET |
-| GetDepartmentsByIdsAsync | 批量获取部门 | 租户令牌 | GET |
-| GetDepartmentsByParentIdAsync | 获取子部门列表 | 租户令牌 | GET |
-| GetParentDepartmentsByIdAsync | 获取父部门列表 | 租户令牌 | GET |
-| CreateDepartmentAsync | 创建部门 | 租户令牌 | POST |
-| UpdatePartDepartmentAsync | 部分更新部门 | 租户令牌 | PATCH |
-| UpdateDepartmentAsync | 全量更新部门 | 租户令牌 | PUT |
-| UpdateDepartmentIdAsync | 更新部门ID | 租户令牌 | PATCH |
-| UnbindDepartmentChatAsync | 解绑部门群 | 租户令牌 | POST |
-| DeleteDepartmentByIdAsync | 删除部门 | 租户令牌 | DELETE |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| GetDepartmentInfoByIdAsync | 获取部门信息 | 租户令牌 | GET | — |
+| GetDepartmentsByIdsAsync | 批量获取部门 | 租户令牌 | GET | — |
+| GetDepartmentsByParentIdAsync | 获取子部门列表 | 租户令牌 | GET | — |
+| GetParentDepartmentsByIdAsync | 获取父部门列表 | 租户令牌 | GET | — |
+| CreateDepartmentAsync | 创建部门 | 租户令牌 | POST | — |
+| UpdatePartDepartmentAsync | 部分更新部门 | 租户令牌 | PATCH | — |
+| UpdateDepartmentAsync | 全量更新部门 | 租户令牌 | PUT | — |
+| UpdateDepartmentIdAsync | 更新部门ID | 租户令牌 | PATCH | — |
+| UnbindDepartmentChatAsync | 解绑部门群 | 租户令牌 | POST | — |
+| DeleteDepartmentByIdAsync | 删除部门 | 租户令牌 | DELETE | — |
 
 ## 函数详细内容
 

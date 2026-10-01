@@ -17,14 +17,14 @@ description: 该接口用于以用户身份管理自己的邮件会话，支持�
 - [分页列出邮件会话](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-thread/list)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| BatchTrashUserMailboxThreadAsync | 批量删除邮件会话 | UserAccessToken | POST |
-| BatchModifyUserMailboxThreadAsync | 批量修改邮件会话 | UserAccessToken | POST |
-| TrashUserMailboxThreadAsync | 删除邮件会话 | UserAccessToken | POST |
-| ModifyUserMailboxThreadAsync | 修改邮件会话 | UserAccessToken | POST |
-| GetUserMailboxThreadAsync | 获取邮件会话详情 | UserAccessToken | GET |
-| GetUserMailboxThreadPageListAsync | 分页列出邮件会话 | UserAccessToken | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| BatchTrashUserMailboxThreadAsync | 批量删除邮件会话 | UserAccessToken | POST | [BatchTrashUserMailboxThreadAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-thread/batch_trash) |
+| BatchModifyUserMailboxThreadAsync | 批量修改邮件会话 | UserAccessToken | POST | [BatchModifyUserMailboxThreadAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-thread/batch_modify) |
+| TrashUserMailboxThreadAsync | 删除邮件会话 | UserAccessToken | POST | [TrashUserMailboxThreadAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-thread/trash) |
+| ModifyUserMailboxThreadAsync | 修改邮件会话 | UserAccessToken | POST | [ModifyUserMailboxThreadAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-thread/modify) |
+| GetUserMailboxThreadAsync | 获取邮件会话详情 | UserAccessToken | GET | [GetUserMailboxThreadAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-thread/get) |
+| GetUserMailboxThreadPageListAsync | 分页列出邮件会话 | UserAccessToken | GET | [GetUserMailboxThreadPageListAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-thread/list) |
 
 ## 函数详细内容
 

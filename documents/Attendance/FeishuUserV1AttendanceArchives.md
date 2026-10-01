@@ -16,8 +16,8 @@ description: 该接口用于以用户身份管理飞书考勤归档报表，对�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
 | （继承自 FeishuV1AttendanceArchives） | 查询归档报表表头 / 删除归档报表行数据 / 查询所有归档规则 | 用户令牌 | POST/GET |
 
 > 注意：写入归档报表结果（upload_report）按飞书官方元数据仅支持**租户令牌**，已从本接口中移除，请使用 `IFeishuTenantV1AttendanceArchives.UploadReportArchiveRuleAsync`。

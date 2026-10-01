@@ -12,9 +12,9 @@ description: 该接口用于以用户身份进行多实体搜索，适用于写�
 - [多实体搜索](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/multi_entity/search)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| SearchMultiEntityAsync | 多实体搜索 | UserAccessToken | POST |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| SearchMultiEntityAsync | 多实体搜索 | UserAccessToken | POST | [SearchMultiEntityAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/multi_entity/search) |
 
 ## 函数详细内容
 

@@ -19,12 +19,12 @@ description: 该接口用于以租户身份管理飞书多维表格（Base），
 
 ## 函数列表
 
-| 函数名称                | 功能描述         | 认证方式 | HTTP 方法 |
-| ----------------------- | ---------------- | -------- | --------- |
-| CreateBitableAppAsync   | 创建多维表格     | 租户令牌 | POST      |
-| CopyBitableAppAsync     | 复制多维表格     | 租户令牌 | POST      |
-| GetBitableAppInfoAsync  | 获取多维表格元数据 | 租户令牌 | GET       |
-| UpdateBitableAppAsync   | 更新多维表格元数据 | 租户令牌 | PUT       |
+| 函数名称                | 功能描述         | 认证方式 | HTTP 方法 | 接口文档 |
+| ----------------------- | ---------------- | -------- | --------- |----------|
+| CreateBitableAppAsync   | 创建多维表格     | 租户令牌 | POST      | [CreateBitableAppAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app/create) |
+| CopyBitableAppAsync     | 复制多维表格     | 租户令牌 | POST      | [CopyBitableAppAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app/copy) |
+| GetBitableAppInfoAsync  | 获取多维表格元数据 | 租户令牌 | GET       | [GetBitableAppInfoAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app/get) |
+| UpdateBitableAppAsync   | 更新多维表格元数据 | 租户令牌 | PUT       | [UpdateBitableAppAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app/update?appId=cli_a98ea7d1a0ba100b) |
 
 ## 函数详细内容
 

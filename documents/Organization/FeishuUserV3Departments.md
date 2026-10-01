@@ -18,12 +18,12 @@ description: 该接口用于以用户身份管理飞书通讯录 V3 版本部门
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| GetDepartmentInfoByIdAsync | 获取部门信息 | 用户令牌 | GET |
-| GetDepartmentsByIdsAsync | 批量获取部门 | 用户令牌 | GET |
-| GetDepartmentsByParentIdAsync | 获取子部门列表 | 用户令牌 | GET |
-| GetParentDepartmentsByIdAsync | 获取父部门列表 | 用户令牌 | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| GetDepartmentInfoByIdAsync | 获取部门信息 | 用户令牌 | GET | — |
+| GetDepartmentsByIdsAsync | 批量获取部门 | 用户令牌 | GET | — |
+| GetDepartmentsByParentIdAsync | 获取子部门列表 | 用户令牌 | GET | — |
+| GetParentDepartmentsByIdAsync | 获取父部门列表 | 用户令牌 | GET | — |
 
 ## 函数详细内容
 

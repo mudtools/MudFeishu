@@ -18,13 +18,13 @@ description: 该接口用于以租户身份查询飞书服务台客服信息，�
 - [服务台接入指南](https://open.feishu.cn/document/server-docs/helpdesk-v1/access-guide)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| GetAgentEmailAsync | 获取客服邮箱 | TenantAccessToken | GET |
-| GetAgentScheduleAsync | 查询指定客服工作日程 | TenantAccessToken | GET |
-| GetAgentScheduleListAsync | 查询全部客服工作日程 | TenantAccessToken | GET |
-| GetAgentSkillListAsync | 查询全部客服技能 | TenantAccessToken | GET |
-| GetAgentSkillRuleListAsync | 获取客服技能列表 | TenantAccessToken | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| GetAgentEmailAsync | 获取客服邮箱 | TenantAccessToken | GET | [GetAgentEmailAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/agent-function/agent/agent_email) |
+| GetAgentScheduleAsync | 查询指定客服工作日程 | TenantAccessToken | GET | [GetAgentScheduleAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/agent-function/agent-schedules/get) |
+| GetAgentScheduleListAsync | 查询全部客服工作日程 | TenantAccessToken | GET | [GetAgentScheduleListAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/agent-function/agent-schedules/list) |
+| GetAgentSkillListAsync | 查询全部客服技能 | TenantAccessToken | GET | [GetAgentSkillListAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/agent-function/agent_skill/list) |
+| GetAgentSkillRuleListAsync | 获取客服技能列表 | TenantAccessToken | GET | [GetAgentSkillRuleListAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/agent-function/agent_skill_rule/list) |
 
 ## 函数详细内容
 

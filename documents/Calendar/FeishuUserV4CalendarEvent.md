@@ -13,33 +13,33 @@ description: 该接口用于以用户身份管理飞书日历日程资源，包�
 - [日历日程概述](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event/introduction)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| CreateCalendarEventAsync | 创建日程 | 用户令牌 | POST |
-| DeleteCalendarEventAsync | 删除日程 | 用户令牌 | DELETE |
-| UpdateCalendarEventAsync | 更新日程 | 用户令牌 | PATCH |
-| GetCalendarEventAsync | 获取日程 | 用户令牌 | GET |
-| GetCalendarEventPageListAsync | 获取日程列表 | 用户令牌 | GET |
-| SearchCalendarEventPageListAsync | 搜索日程 | 用户令牌 | POST |
-| ReplyCalendarEventAsync | 回复日程 | 用户令牌 | POST |
-| GetInstancesCalendarEventPageListAsync | 获取重复日程实例 | 用户令牌 | GET |
-| GetInstanceViewCalendarEventAsync | 查询日程视图 | 用户令牌 | GET |
-| CreateCalendarEventMeetingChatAsync | 创建会议群 | 用户令牌 | POST |
-| DeleteCalendarEventMeetingChatAsync | 解绑会议群 | 用户令牌 | DELETE |
-| CreateCalendarEventMeetingMinuteAsync | 创建会议纪要 | 用户令牌 | POST |
-| QueryMeetingRoomFreebusyAsync | 查询会议室忙闲 | 用户令牌 | GET |
-| CreateCalendarEventAttendeeAsync | 添加日程参与人 | 用户令牌 | POST |
-| DeleteCalendarEventAttendeeAsync | 删除日程参与人 | 用户令牌 | POST |
-| GetCalendarEventAttendeePageListAsync | 获取日程参与人列表 | 用户令牌 | GET |
-| GetCalendarEventAttendeeChatMemberPageListAsync | 获取参与群成员列表 | 用户令牌 | GET |
-| SubscribeCalendarEventChangedEventAsync | 订阅日程变更事件 | 用户令牌 | POST |
-| UnsubscribeCalendarEventChangedEventAsync | 取消订阅日程变更事件 | 用户令牌 | POST |
-| SubscriptionCalendarEventAsync | 订阅日程变更事件 | 用户令牌 | POST |
-| UnSubscriptionCalendarEventAsync | 取消订阅日程变更事件 | 用户令牌 | POST |
-| GenerateCaldavConfSettingAsync | 生成 CalDAV 配置 | 用户令牌 | POST |
-| CreateExchangeBindingAsync | 绑定 Exchange 账户 | 用户令牌 | POST |
-| DeleteExchangeBindingAsync | 删除 Exchange 绑定 | 用户令牌 | DELETE |
-| GetExchangeBindingAsync | 查询 Exchange 绑定状态 | 用户令牌 | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| CreateCalendarEventAsync | 创建日程 | 用户令牌 | POST | [CreateCalendarEventAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event/create) |
+| DeleteCalendarEventAsync | 删除日程 | 用户令牌 | DELETE | [DeleteCalendarEventAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event/delete) |
+| UpdateCalendarEventAsync | 更新日程 | 用户令牌 | PATCH | [UpdateCalendarEventAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event/patch) |
+| GetCalendarEventAsync | 获取日程 | 用户令牌 | GET | [GetCalendarEventAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event/get) |
+| GetCalendarEventPageListAsync | 获取日程列表 | 用户令牌 | GET | [GetCalendarEventPageListAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event/list) |
+| SearchCalendarEventPageListAsync | 搜索日程 | 用户令牌 | POST | [SearchCalendarEventPageListAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event/search) |
+| ReplyCalendarEventAsync | 回复日程 | 用户令牌 | POST | [ReplyCalendarEventAsync](https://open.feishu.cn/document/calendar-v4/calendar-event/reply) |
+| GetInstancesCalendarEventPageListAsync | 获取重复日程实例 | 用户令牌 | GET | [GetInstancesCalendarEventPageListAsync](https://open.feishu.cn/document/calendar-v4/calendar-event/instances) |
+| GetInstanceViewCalendarEventAsync | 查询日程视图 | 用户令牌 | GET | [GetInstanceViewCalendarEventAsync](https://open.feishu.cn/document/calendar-v4/calendar-event/instance_view) |
+| CreateCalendarEventMeetingChatAsync | 创建会议群 | 用户令牌 | POST | [CreateCalendarEventMeetingChatAsync](https://open.feishu.cn/document/calendar-v4/calendar-event-meeting_chat/create) |
+| DeleteCalendarEventMeetingChatAsync | 解绑会议群 | 用户令牌 | DELETE | [DeleteCalendarEventMeetingChatAsync](https://open.feishu.cn/document/calendar-v4/calendar-event-meeting_chat/delete) |
+| CreateCalendarEventMeetingMinuteAsync | 创建会议纪要 | 用户令牌 | POST | [CreateCalendarEventMeetingMinuteAsync](https://open.feishu.cn/document/calendar-v4/calendar-event-meeting_minute/create) |
+| QueryMeetingRoomFreebusyAsync | 查询会议室忙闲 | 用户令牌 | GET | [QueryMeetingRoomFreebusyAsync](https://open.feishu.cn/document/server-docs/calendar-v4/meeting-room-event/query-room-availability) |
+| CreateCalendarEventAttendeeAsync | 添加日程参与人 | 用户令牌 | POST | [CreateCalendarEventAttendeeAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event-attendee/create) |
+| DeleteCalendarEventAttendeeAsync | 删除日程参与人 | 用户令牌 | POST | [DeleteCalendarEventAttendeeAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event-attendee/batch_delete) |
+| GetCalendarEventAttendeePageListAsync | 获取日程参与人列表 | 用户令牌 | GET | [GetCalendarEventAttendeePageListAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event-attendee/list-2) |
+| GetCalendarEventAttendeeChatMemberPageListAsync | 获取参与群成员列表 | 用户令牌 | GET | [GetCalendarEventAttendeeChatMemberPageListAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event-attendee/list) |
+| SubscribeCalendarEventChangedEventAsync | 订阅日程变更事件 | 用户令牌 | POST | [SubscribeCalendarEventChangedEventAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event/subscription) |
+| UnsubscribeCalendarEventChangedEventAsync | 取消订阅日程变更事件 | 用户令牌 | POST | [UnsubscribeCalendarEventChangedEventAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event/unsubscription) |
+| SubscriptionCalendarEventAsync | 订阅日程变更事件 | 用户令牌 | POST | [SubscriptionCalendarEventAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event/subscription) |
+| UnSubscriptionCalendarEventAsync | 取消订阅日程变更事件 | 用户令牌 | POST | [UnSubscriptionCalendarEventAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event/unsubscription) |
+| GenerateCaldavConfSettingAsync | 生成 CalDAV 配置 | 用户令牌 | POST | [GenerateCaldavConfSettingAsync](https://open.feishu.cn/document/server-docs/calendar-v4/setting/generate_caldav_conf) |
+| CreateExchangeBindingAsync | 绑定 Exchange 账户 | 用户令牌 | POST | [CreateExchangeBindingAsync](https://open.feishu.cn/document/server-docs/calendar-v4/exchange_binding/create) |
+| DeleteExchangeBindingAsync | 删除 Exchange 绑定 | 用户令牌 | DELETE | [DeleteExchangeBindingAsync](https://open.feishu.cn/document/server-docs/calendar-v4/exchange_binding/delete) |
+| GetExchangeBindingAsync | 查询 Exchange 绑定状态 | 用户令牌 | GET | [GetExchangeBindingAsync](https://open.feishu.cn/document/server-docs/calendar-v4/exchange_binding/get) |
 
 ## 函数详细内容
 

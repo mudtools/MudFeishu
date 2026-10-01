@@ -19,14 +19,14 @@ description: 该接口用于以租户身份管理飞书多维表格数据表（t
 
 ## 函数列表
 
-| 函数名称                   | 功能描述       | 认证方式 | HTTP 方法 |
-| -------------------------- | -------------- | -------- | --------- |
-| CreateAppTableAsync        | 新增一个数据表 | 租户令牌 | POST      |
-| CreateAppTablesAsync       | 新增多个数据表 | 租户令牌 | POST      |
-| UpdateAppTableAsync        | 更新数据表     | 租户令牌 | PATCH     |
-| GetAppTablePageListAsync   | 列出数据表     | 租户令牌 | GET       |
-| DeleteAppTableAsync        | 删除一个数据表 | 租户令牌 | DELETE    |
-| DeleteAppTablesAsync       | 删除多个数据表 | 租户令牌 | POST      |
+| 函数名称                   | 功能描述       | 认证方式 | HTTP 方法 | 接口文档 |
+| -------------------------- | -------------- | -------- | --------- |----------|
+| CreateAppTableAsync        | 新增一个数据表 | 租户令牌 | POST      | [CreateAppTableAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table/create) |
+| CreateAppTablesAsync       | 新增多个数据表 | 租户令牌 | POST      | [CreateAppTablesAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table/batch_create) |
+| UpdateAppTableAsync        | 更新数据表     | 租户令牌 | PATCH     | [UpdateAppTableAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table/patch) |
+| GetAppTablePageListAsync   | 列出数据表     | 租户令牌 | GET       | [GetAppTablePageListAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table/list) |
+| DeleteAppTableAsync        | 删除一个数据表 | 租户令牌 | DELETE    | [DeleteAppTableAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table/delete) |
+| DeleteAppTablesAsync       | 删除多个数据表 | 租户令牌 | POST      | [DeleteAppTablesAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table/batch_delete) |
 
 ## 函数详细内容
 

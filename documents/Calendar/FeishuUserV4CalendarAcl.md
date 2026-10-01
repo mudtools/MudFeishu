@@ -13,15 +13,15 @@ description: 该接口用于以用户身份管理飞书日历的访问控制（A
 - [日历访问控制概述](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-acl/introduction)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| CreateCalendarAclAsync | 创建访问控制 | 用户令牌 | POST |
-| DeleteCalendarAclAsync | 删除访问控制 | 用户令牌 | DELETE |
-| GetCalendarAclsPageListAsync | 分页获取访问控制列表 | 用户令牌 | GET |
-| SubscribeCalendarAclChangedEventAsync | 订阅日历访问控制变更事件 | 用户令牌 | POST |
-| UnsubscribeCalendarAclChangedEventAsync | 取消订阅日历访问控制变更事件 | 用户令牌 | POST |
-| SubscriptionCalendarAclAsync | 订阅日历访问控制变更事件 | 用户令牌 | POST |
-| UnSubscriptionCalendarAclAsync | 取消订阅日历访问控制变更事件 | 用户令牌 | POST |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| CreateCalendarAclAsync | 创建访问控制 | 用户令牌 | POST | [CreateCalendarAclAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-acl/create) |
+| DeleteCalendarAclAsync | 删除访问控制 | 用户令牌 | DELETE | [DeleteCalendarAclAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-acl/delete) |
+| GetCalendarAclsPageListAsync | 分页获取访问控制列表 | 用户令牌 | GET | [GetCalendarAclsPageListAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-acl/list) |
+| SubscribeCalendarAclChangedEventAsync | 订阅日历访问控制变更事件 | 用户令牌 | POST | [SubscribeCalendarAclChangedEventAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-acl/subscription) |
+| UnsubscribeCalendarAclChangedEventAsync | 取消订阅日历访问控制变更事件 | 用户令牌 | POST | [UnsubscribeCalendarAclChangedEventAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-acl/unsubscription) |
+| SubscriptionCalendarAclAsync | 订阅日历访问控制变更事件 | 用户令牌 | POST | [SubscriptionCalendarAclAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-acl/subscription) |
+| UnSubscriptionCalendarAclAsync | 取消订阅日历访问控制变更事件 | 用户令牌 | POST | [UnSubscriptionCalendarAclAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-acl/unsubscription) |
 
 ## 函数详细内容
 

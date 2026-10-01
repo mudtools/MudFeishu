@@ -38,4 +38,54 @@ public interface IFeishuUserV2Task : IFeishuV2Task, ICurrentUserId
       [Query("type")] string? type = "my_tasks",
       [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
       CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 基于关键词与过滤条件搜索当前用户可见的任务，返回命中的任务条目与总数。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/task-v2/task/search">接口文档</see></para>
+    /// </summary>
+    /// <param name="searchTaskRequest">搜索任务请求体</param>
+    /// <param name="page_size">分页大小，即本次请求所返回的信息列表内的最大条目数。默认值：15，最大值：30</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/task/v2/tasks/search")]
+    Task<FeishuApiResult<SearchTaskResult>?> SearchTasksAsync(
+      [Body] SearchTaskRequest searchTaskRequest,
+      [Query("page_size")] int page_size = Consts.PageSize_15,
+      [Query("page_token")] string? page_token = null,
+      [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+      CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 分页列出与调用者相关的任务，返回任务的完整信息。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/task-v2/task_v2/list_related_task">接口文档</see></para>
+    /// </summary>
+    /// <param name="completed">按完成状态过滤，不填写时表示不过滤。true 表示已完成，false 表示未完成。</param>
+    /// <param name="task_updated_time">按任务最后更新时间筛选的时间戳（毫秒）。</param>
+    /// <param name="page_size">分页大小，即本次请求所返回的信息列表内的最大条目数。默认值：15</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("/open-apis/task/v2/task_v2/list_related_task")]
+    Task<FeishuApiPageListResult<ListTaskInfo>?> GetRelatedTasksPageListAsync(
+      [Query("completed")] bool? completed = null,
+      [Query("task_updated_time")] string? task_updated_time = null,
+      [Query("page_size")] int page_size = Consts.PageSize_15,
+      [Query("page_token")] string? page_token = null,
+      [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+      CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 订阅任务中心的提醒消息，调用成功后任务中心的变更会通过应用推送给调用者。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/task-v2/task_v2/task_subscription">接口文档</see></para>
+    /// </summary>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/task/v2/task_v2/task_subscription")]
+    Task<FeishuNullDataApiResult?> SubscribeTaskAsync(
+      [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+      CancellationToken cancellationToken = default);
 }

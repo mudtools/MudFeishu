@@ -18,6 +18,8 @@ description: 该接口用于以租户身份管理飞书日历的访问控制（A
 | CreateCalendarAclAsync | 创建访问控制 | 租户令牌 | POST |
 | DeleteCalendarAclAsync | 删除访问控制 | 租户令牌 | DELETE |
 | GetCalendarAclsPageListAsync | 分页获取访问控制列表 | 租户令牌 | GET |
+| SubscribeCalendarAclChangedEventAsync | 订阅日历访问控制变更事件 | 租户令牌 | POST |
+| UnsubscribeCalendarAclChangedEventAsync | 取消订阅日历访问控制变更事件 | 租户令牌 | POST |
 
 ## 函数详细内容
 

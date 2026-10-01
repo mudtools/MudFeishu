@@ -36,6 +36,32 @@ public interface IFeishuUserV1VideoConferencingMeeting : IFeishuV1VideoConferenc
         [Query] string? page_token = null,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// 订阅会议事件
+    /// <para>为当前用户身份订阅指定的会议事件，事件触发后应用会接收到对应的事件回调。</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/vc-v1/meeting/subscription">接口文档</see></para>
+    /// </summary>
+    /// <param name="eventTypeRequest">订阅事件请求体，其中 event_type 的可选值为 vc.meeting.participant_meeting_ended_v1（参会人离开会议事件）。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/vc/v1/meetings/subscription")]
+    Task<FeishuNullDataApiResult?> SubscribeMeetingEventAsync(
+        [Body] MeetingEventRequest eventTypeRequest,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 取消订阅会议事件
+    /// <para>为当前用户身份取消订阅指定的会议事件。</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/vc-v1/meeting/unsubscription">接口文档</see></para>
+    /// </summary>
+    /// <param name="eventTypeRequest">取消订阅事件请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/vc/v1/meetings/unsubscription")]
+    Task<FeishuNullDataApiResult?> UnsubscribeMeetingEventAsync(
+        [Body] MeetingEventRequest eventTypeRequest,
+        CancellationToken cancellationToken = default);
+
 
     /// <summary>
     /// 邀请参会人

@@ -28,6 +28,8 @@ description: 该接口用于以用户身份调用飞书日历 API 管理日历�
 | SearchCalendarsPageListAsync | 搜索日历 | 用户令牌 | POST |
 | SubscribeCalendarAsync | 订阅日历 | 用户令牌 | POST |
 | UnSubscribeCalendarAsync | 取消订阅日历 | 用户令牌 | POST |
+| SubscribeCalendarChangedEventAsync | 订阅日历变更事件 | 用户令牌 | POST |
+| UnsubscribeCalendarChangedEventAsync | 取消订阅日历变更事件 | 用户令牌 | POST |
 | SubscribeCalendarEventAsync | 订阅日历变更事件 | 用户令牌 | POST |
 | UnSubscribeCalendarEventAsync | 取消订阅日历变更事件 | 用户令牌 | POST |
 

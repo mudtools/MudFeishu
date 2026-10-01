@@ -11,8 +11,27 @@ namespace Mud.Feishu;
 /// <para>飞书清单可以用于组织和管理属于同一个项目的多个任务。</para>
 /// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/task-v2/tasklist/overview"/></para>
 /// </summary> 
+using Mud.Feishu.DataModels.TasksList;
+
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Task", InheritedFrom = nameof(FeishuV2TaskList))]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]
 public interface IFeishuUserV2TaskList : IFeishuV2TaskList, ICurrentUserId
 {
+    /// <summary>
+    /// 基于关键词与过滤条件搜索当前用户可见的清单，返回命中的清单条目与总数。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/tasklist/search">接口文档</see></para>
+    /// </summary>
+    /// <param name="searchTaskListRequest">搜索清单请求体</param>
+    /// <param name="page_size">分页大小，即本次请求所返回的信息列表内的最大条目数。默认值：15，最小值：1，最大值：30</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/task/v2/tasklists/search")]
+    Task<FeishuApiResult<SearchTaskListResult>?> SearchTaskListsAsync(
+      [Body] SearchTaskListRequest searchTaskListRequest,
+      [Query("page_size")] int page_size = Consts.PageSize_15,
+      [Query("page_token")] string? page_token = null,
+      [Query("user_id_type")] string user_id_type = Consts.User_Id_Type,
+      CancellationToken cancellationToken = default);
 }

@@ -32,6 +32,8 @@ description: 该接口用于以租户身份管理飞书日历日程，提供日�
 | DeleteCalendarEventAttendeeAsync | 删除日程参与人 | 租户令牌 | POST |
 | GetCalendarEventAttendeePageListAsync | 分页获取日程参与人列表 | 租户令牌 | GET |
 | GetCalendarEventAttendeeChatMemberPageListAsync | 获取日程参与群成员列表 | 租户令牌 | GET |
+| SubscribeCalendarEventChangedEventAsync | 订阅日程变更事件 | 租户令牌 | POST |
+| UnsubscribeCalendarEventChangedEventAsync | 取消订阅日程变更事件 | 租户令牌 | POST |
 | CreateTimeoffEventAsync | 创建请假日程 | 租户令牌 | POST |
 | DeleteTimeoffEventAsync | 删除请假日程 | 租户令牌 | DELETE |
 | GetMeetingRoomSummaryAsync | 查询会议室日程主题和详情 | 租户令牌 | POST |

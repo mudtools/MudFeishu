@@ -99,4 +99,56 @@ public interface IFeishuV3User : IFeishuAppContextSwitcher
      [Query("page_size")] int? page_size = Consts.PageSize_10,
      [Query("page_token")] string? page_token = null,
      CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 分页获取租户（或当前授权范围）下的用户列表，用户信息包括用户 ID、名称、邮箱、手机号、状态以及所属部门等。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/contact-v3/user/list">接口文档</see></para>
+    /// </summary>
+    /// <param name="department_id">部门 ID，用于获取该部门下的直属用户，ID 类型与 department_id_type 的取值保持一致。</param>
+    /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="user_id_type">用户 ID 类型</param>
+    /// <param name="department_id_type">此次调用中使用的部门 ID 类型。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("/open-apis/contact/v3/users")]
+    Task<FeishuApiPageListResult<GetUserInfoResult>?> GetUsersPageListAsync(
+     [Query("department_id")] string? department_id = null,
+     [Query("page_size")] int? page_size = Consts.PageSize_10,
+     [Query("page_token")] string? page_token = null,
+     [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+     [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
+     CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 以全量覆盖的方式更新通讯录中指定用户的信息，包括名称、邮箱、手机号、所属部门以及自定义字段等。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/contact-v3/user/update">接口文档</see></para>
+    /// </summary>
+    /// <param name="user_id">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
+    /// <param name="userModel">用于更新的用户请求体。</param>
+    /// <param name="user_id_type">用户 ID 类型</param>
+    /// <param name="department_id_type">此次调用中使用的部门 ID 类型。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Put("/open-apis/contact/v3/users/{user_id}")]
+    Task<FeishuApiResult<CreateOrUpdateUserResult>?> UpdateUserByIdAsync(
+        [Path] string user_id,
+        [Body] UpdateUserRequest userModel,
+        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+        [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 批量获取多个用户的基础信息，仅返回用户 ID、姓名与国际化名称。相较于批量查询用户接口，本接口返回字段更少、性能更高。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/contact-v3/user/basic_batch">接口文档</see></para>
+    /// </summary>
+    /// <param name="basicBatchUserRequest">批量获取用户基础信息请求体。</param>
+    /// <param name="user_id_type">用户 ID 类型</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/contact/v3/users/basic_batch")]
+    Task<FeishuApiResult<BasicBatchUserResult>?> GetUserBasicInfosAsync(
+       [Body] BasicBatchUserRequest basicBatchUserRequest,
+       [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+       CancellationToken cancellationToken = default);
 }

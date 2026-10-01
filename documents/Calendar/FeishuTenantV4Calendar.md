@@ -28,6 +28,8 @@ description: 该接口用于以租户身份管理飞书日历资源，开放对�
 | SearchCalendarsPageListAsync | 搜索日历 | 租户令牌 | POST |
 | SubscribeCalendarAsync | 订阅日历 | 租户令牌 | POST |
 | UnSubscribeCalendarAsync | 取消订阅日历 | 租户令牌 | POST |
+| SubscribeCalendarChangedEventAsync | 订阅日历变更事件 | 租户令牌 | POST |
+| UnsubscribeCalendarChangedEventAsync | 取消订阅日历变更事件 | 租户令牌 | POST |
 
 ## 函数详细内容
 

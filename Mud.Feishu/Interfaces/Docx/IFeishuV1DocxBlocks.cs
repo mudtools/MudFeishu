@@ -89,7 +89,7 @@ public interface IFeishuV1DocxBlocks : IFeishuAppContextSwitcher
 
     /// <summary>
     /// <para>更新指定块的内容。如果操作成功，接口将返回更新后的块的富文本内容。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document-block/patch">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/document-block/patch">接口文档</see></para>
     /// </summary>
     /// <param name="document_id">文档的唯一标识。</param>
     /// <param name="block_id">父块的block_id，表示为其创建一批子块。如果需要对文档树根节点创建子块，可将 document_id 填入此处。</param>
@@ -120,7 +120,7 @@ public interface IFeishuV1DocxBlocks : IFeishuAppContextSwitcher
 
     /// <summary>
     /// <para>指定块的 block id 获取指定块的富文本内容数据。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document-block/get">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/document-block/get">接口文档</see></para>
     /// </summary>
     /// <param name="document_id">文档的唯一标识。</param>
     /// <param name="block_id">父块的block_id，表示为其创建一批子块。如果需要对文档树根节点创建子块，可将 document_id 填入此处。</param>
@@ -143,7 +143,7 @@ public interface IFeishuV1DocxBlocks : IFeishuAppContextSwitcher
 
     /// <summary>
     /// <para>批量更新块的富文本内容。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document-block/batch_update">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/document-block/batch_update">接口文档</see></para>
     /// </summary>
     /// <param name="document_id">文档的唯一标识。</param>
     /// <param name="document_revision_id">

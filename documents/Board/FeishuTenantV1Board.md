@@ -27,6 +27,7 @@ description: 该接口用于以租户身份管理飞书画板，画板是简洁�
 | CreatePlantumlWhiteboardNodeAsync | 解析画板语法   | 租户令牌 | POST      |
 | CreateWhiteboardNodeAsync         | 创建节点       | 租户令牌 | POST      |
 | GetWhiteboardNodesAsync           | 获取所有节点   | 租户令牌 | GET       |
+| BatchDeleteWhiteboardNodeAsync    | 批量删除节点   | 租户令牌 | DELETE    |
 
 ## 函数详细内容
 
@@ -259,3 +260,44 @@ Task<FeishuApiResult<GetWhiteboardNodesResult>?> GetWhiteboardNodesAsync(
 ```
 
 **说明**：返回画板内所有节点的列表，节点以数组方式返回。可通过 `parent_id`（父节点）和 `children`（子节点）关系组装成画板的完整内容结构。
+
+---
+
+### 批量删除节点
+
+**函数名称**：批量删除节点
+
+**函数签名**：
+```csharp
+Task<FeishuApiResult<BatchDeleteWhiteboardNodeResult>?> BatchDeleteWhiteboardNodeAsync(
+    [Path] string whiteboard_id,
+    [Body] BatchDeleteWhiteboardNodeRequest batchDeleteWhiteboardNodeRequest,
+    [Query] string? user_id_type = "open_id",
+    CancellationToken cancellationToken = default);
+```
+
+**认证**：租户令牌
+
+**参数**：
+
+| 参数名 | 类型 | 必填 | 说明 |
+| ----- | ---- | ---- | ---- |
+| `whiteboard_id` | `string` | ✅ | 画板标识，示例值：`Ud8xwWH01hO5mwbakqHbHeqmcCI` |
+| `batchDeleteWhiteboardNodeRequest` | `BatchDeleteWhiteboardNodeRequest` | ✅ | 批量删除节点请求体，其中 `ids` 为需要删除的节点 ID 列表 |
+| `user_id_type` | `string?` | ⚪ | 用户 ID 类型，可选值：`open_id`、`union_id`、`user_id`，默认值：`open_id` |
+
+**响应**：
+
+```json
+{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "client_token": "fe599b60-450f-46ff-b2ef-9f6675625b97"
+  }
+}
+```
+
+**接口文档**：[批量删除节点](https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/board-v1/whiteboard-node/batch_delete)
+
+**说明**：画板批量删除节点，子节点会被递归删除。返回值中的 `client_token` 为本次操作的唯一标识，更新请求中使用此值表示幂等地进行此次更新。

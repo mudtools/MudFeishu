@@ -27,6 +27,7 @@ description: 该接口用于以当前登录用户身份管理飞书任务清单�
 | AddTaskListMemberByIdAsync | 添加清单成员 | 用户令牌 | POST |
 | RemoveTaskListMemberByIdAsync | 移除清单成员 | 用户令牌 | POST |
 | GetTaskListPageListByIdAsync | 分页获取清单任务列表 | 用户令牌 | GET |
+| GetTaskListsPageListAsync | 分页获取可读取的清单列表 | 用户令牌 | GET |
 
 ---
 

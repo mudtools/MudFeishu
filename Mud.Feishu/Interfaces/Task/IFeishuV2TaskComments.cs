@@ -11,7 +11,7 @@ namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// 评论接口可以实现评论创建、回复、更新、删除、获取详情等功能。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/task-v2/comment/create"/></para>
+/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/task-v2/comment/create"/></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -20,7 +20,7 @@ public interface IFeishuV2TaskComments : IFeishuAppContextSwitcher
     /// <summary>
     /// <para>为一个任务创建评论，或者回复该任务的某个评论。</para>
     /// <para>若要创建一个回复评论，需要在创建时设置reply_to_comment_id字段。被回复的评论和新建的评论必须属于同一个任务。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/comment/create">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/task-v2/comment/create">接口文档</see></para>
     /// </summary>
     /// <param name="createCommentRequest">创建评论请求体。</param>
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
@@ -34,7 +34,7 @@ public interface IFeishuV2TaskComments : IFeishuAppContextSwitcher
 
     /// <summary>
     /// <para>给定一个评论的ID，返回评论的详情，包括内容，创建人，创建时间和更新时间等信息。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/comment/get">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/task-v2/comment/get">接口文档</see></para>
     /// </summary>
     /// <param name="comment_id">要获取评论详情的评论ID。示例值："7198104824246747156"</param>
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
@@ -49,7 +49,7 @@ public interface IFeishuV2TaskComments : IFeishuAppContextSwitcher
     /// <summary>
     /// <para>更新一条评论。</para>
     /// <para>更新时，将update_fields字段中填写所有要修改的评论的字段名，同时在comment字段中填写要修改的字段的新值即可。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/comment/patch">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/task-v2/comment/patch">接口文档</see></para>
     /// </summary>
     /// <param name="updateCommentRequest">更新评论请求体。</param>
     /// <param name="comment_id">要更新评论详情的评论ID。示例值："7198104824246747156"</param>
@@ -67,7 +67,7 @@ public interface IFeishuV2TaskComments : IFeishuAppContextSwitcher
     /// <summary>
     /// <para>删除一条评论。</para>
     /// <para>评论被删除后，将无法进行任何操作，也无法恢复。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/comment/delete">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/task-v2/comment/delete">接口文档</see></para>
     /// </summary>
     /// <param name="comment_id">要删除评论详情的评论ID。示例值："7198104824246747156"</param>
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
@@ -83,7 +83,7 @@ public interface IFeishuV2TaskComments : IFeishuAppContextSwitcher
     /// <summary>
     /// 给定一个资源，返回该资源的评论列表。
     /// <para>支持分页。评论可以按照创建时间的正序（asc, 从最老到最新），或者逆序（desc，从最老到最新），返回数据。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/comment/list">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/task-v2/comment/list">接口文档</see></para>
     /// </summary>
     /// <param name="direction">返回数据的排序方式。"asc"表示从最老到最新顺序返回；"desc"表示从最新到最老顺序返回。默认为"asc"。</param>
     /// <param name="resource_id">要获取评论的资源ID。例如要获取任务的评论列表，此处应该填写任务全局唯一ID

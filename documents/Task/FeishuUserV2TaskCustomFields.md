@@ -29,7 +29,7 @@ description: 该接口用于以当前登录用户身份管理飞书任务自定�
 | AddCustomFieldsByIdAsync | 将自定义字段加入资源 | 用户令牌 | POST |
 | RemoveCustomFieldsByIdAsync | 将自定义字段从资源移出 | 用户令牌 | POST |
 | CreateCustomFieldsOptionsAsync | 创建自定义字段选项 | 用户令牌 | POST |
-| UpdateCustomFieldsOptionsAsync | 更新自定义字段选项 | 用户令牌 | POST |
+| UpdateCustomFieldsOptionsAsync | 更新自定义字段选项 | 用户令牌 | PATCH |
 
 ---
 

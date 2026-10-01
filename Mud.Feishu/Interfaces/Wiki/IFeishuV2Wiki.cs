@@ -80,7 +80,7 @@ public interface IFeishuV2Wiki : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取知识空间成员列表。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/space-member/list">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/docs/wiki-v2/space-member/list">接口文档</see></para>
     /// </summary>
     /// <param name="space_id">
     /// <para>路径参数</para>

@@ -151,6 +151,22 @@ public class FeishuAgentTests
         }
     }
 
+    /// <summary>R4-8：末尾附带一条 <see cref="UsageContent"/>（MAF 的流式用量上报形态）。</summary>
+    private static async IAsyncEnumerable<ChatResponseUpdate> StreamChunksWithUsage(
+        long? input, long? output, long? total)
+    {
+        yield return new ChatResponseUpdate(ChatRole.Assistant, "你");
+        await Task.Yield();
+        yield return new ChatResponseUpdate(
+            ChatRole.Assistant,
+            [new UsageContent(new UsageDetails
+            {
+                InputTokenCount = input,
+                OutputTokenCount = output,
+                TotalTokenCount = total,
+            })]);
+    }
+
     // ───────────────────── P1-4：坏载荷自愈（毒事件循环） ─────────────────────
 
     /// <summary>
@@ -295,6 +311,33 @@ public class FeishuAgentTests
         restored.Should().NotBeNull("损坏载荷必须按 miss 处理并重建，绝不把异常抛给事件循环");
         (await store.GetAsync(key)).Should().BeNull(
             "坏值必须被删除——否则每次重投递都在同一处抛，该会话在 TTL 内永久毒化");
+    }
+
+    /// <summary>
+    /// R4-7：坏值自愈的 catch 面必须收口为「非 <see cref="OperationCanceledException"/>」——
+    /// <b>白名单之外</b>的异常类型也必须走「删除坏值 + 重建」，否则坏值逃出守护区、会话永久毒化。
+    /// </summary>
+    /// <remarks>
+    /// 载荷 <c>{"feishu.agent.history":null}</c> 在急切校验中实测抛 <see cref="NullReferenceException"/>
+    /// （MAF 对 null 状态值未做防御）——该类型**不在**原白名单内：
+    /// <c>JsonException/ArgumentException/InvalidOperationException/NotSupportedException</c>。
+    /// 故本用例在旧实现下必然 FAIL（异常逃出），在收口后 PASS——构成 R4-7 的红转绿回归锁。
+    /// </remarks>
+    [Fact]
+    public async Task CorruptStateBag_ShouldDeleteAndRebuild_RegardlessOfExceptionType()
+    {
+        var mock = CreateMockClient("ok");
+        var store = new MemoryConversationStore();
+        var agent = new FeishuAgent(mock.Object, ValidOptions(), store);
+        var key = ConversationKeyBuilder.Build("app-a", ConversationScope.P2P(), "ou_nre_payload");
+
+        await store.SaveAsync(key, "{\"stateBag\":{\"feishu.agent.history\":null}}");
+
+        var restored = await agent.GetOrCreateSessionAsync(key);
+
+        restored.Should().NotBeNull("白名单之外的异常类型同样必须按 miss 处理并重建（R4-7 收口）");
+        (await store.GetAsync(key)).Should().BeNull(
+            "坏值必须被删除——否则每次重投递都在同一处（守护区外）再抛，会话在 TTL 内永久毒化");
     }
 
     [Fact]
@@ -445,6 +488,46 @@ public class FeishuAgentTests
         updates.Should().Be(2);
         recorded.Should().ContainSingle().Which.Should().Be(agentName,
             "一次流式消费必须恰好记录一次模型调用耗时（R3-7：流式与非流式对齐）");
+    }
+
+    /// <summary>
+    /// R4-8：流式路径必须把 token 用量写入 Span（与非流式 <c>RunCoreAsync</c> 对齐）——
+    /// IM 会话默认走流式，漏记会让用量可观测性缺一半（输入/输出 token 从不进入链路）。
+    /// </summary>
+    /// <remarks>用量只写 Span 标量属性（原则 8），故断言落在 Activity 标签上而非 Metrics tag。</remarks>
+    [Fact]
+    public async Task RunStreamingAsync_ShouldRecordTokenUsage()
+    {
+        var stopped = new ConcurrentQueue<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == FeishuActivitySource.Name,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+            ActivityStopped = activity => stopped.Enqueue(activity),
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        var mock = new Mock<IChatClient>();
+        mock.Setup(c => c.GetStreamingResponseAsync(
+                It.IsAny<IEnumerable<ChatMessage>>(),
+                It.IsAny<ChatOptions?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(StreamChunksWithUsage(input: 10, output: 5, total: 15));
+
+        var agent = new FeishuAgent(mock.Object, ValidOptions());
+        var session = await agent.CreateSessionAsync();
+
+        await foreach (var _ in agent.RunStreamingAsync("流式", session))
+        {
+        }
+
+        var runActivity = stopped.Single(a => a.OperationName == "feishu.agent.run_streaming");
+        runActivity.GetTagItem("feishu.llm.input_tokens").Should().Be(10L,
+            "流式路径必须把输入 token 写入 Span（R4-8）");
+        runActivity.GetTagItem("feishu.llm.output_tokens").Should().Be(5L,
+            "流式路径必须把输出 token 写入 Span（R4-8）");
+        runActivity.GetTagItem("feishu.llm.total_tokens").Should().Be(15L,
+            "流式路径必须把总 token 写入 Span（R4-8）");
     }
 
     [Fact]

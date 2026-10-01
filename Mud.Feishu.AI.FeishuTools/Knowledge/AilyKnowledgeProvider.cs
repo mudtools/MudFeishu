@@ -159,7 +159,7 @@ public sealed class AilyKnowledgeProvider : IFeishuKnowledgeBase, IRetriever
             "application/json",
             StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>解析 SSE 载荷（<c>data:</c> 行逐事件投影；QA 答案取最后一次出现的非空 content）。</summary>
+    /// <summary>解析 SSE 载荷（<c>data:</c> 行逐事件投影；QA 答案取最后一次出现的非空 content；<c>has_answer</c> 单调累积）。</summary>
     private static (string? AnswerText, bool HasAnswer, IReadOnlyList<RetrievedChunk> Chunks) ParseSseBody(string body)
     {
         string? answerText = null;
@@ -179,8 +179,14 @@ public sealed class AilyKnowledgeProvider : IFeishuKnowledgeBase, IRetriever
             var root = document.RootElement;
 
             var status = root.TryGetProperty("status", out var statusElement) ? statusElement.GetString() : null;
-            hasAnswer = root.TryGetProperty("has_answer", out var hasAnswerElement)
-                && hasAnswerElement.ValueKind == JsonValueKind.True;
+
+            // R4-3：单调累积（OR-累积），不得覆盖。SSE 中间事件（processing 等）常省略 has_answer，
+            // 覆盖式赋值会被最后一次「无该字段」的事件重置为 false ⇒ 有答案被误判为无答案（静默召回丢失）。
+            if (root.TryGetProperty("has_answer", out var hasAnswerElement)
+                && hasAnswerElement.ValueKind == JsonValueKind.True)
+            {
+                hasAnswer = true;
+            }
 
             if (root.TryGetProperty("message", out var messageElement)
                 && messageElement.ValueKind == JsonValueKind.Object

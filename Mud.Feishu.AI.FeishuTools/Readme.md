@@ -10,22 +10,22 @@
 
 ## 1. 工具面现状（61 个：33 只读 + 28 写类）
 
-| 域 | 工具 |
-| --- | --- |
-| Bitable（4 只读 + 3 写） | `bitable.list_tables` / `list_fields` / `query_records` / `get_records_by_ids` / `add_record`（写）/ `update_record`（写）/ `delete_record`（写） |
-| 云文档 Docx（2 只读 + 2 写） | `docx.get_raw_content` / `docx.get_document_blocks` / `create_document`（写）/ `append_blocks`（写） |
-| Wiki（2 只读） | `wiki.get_node` / `wiki.list_nodes` |
-| 搜索（1 只读） | `search.doc_wiki` |
-| IM（5 只读 + 4 写） | `im.get_history_messages` / `im.get_message_content` / `im.list_chat_members` / `im.search_messages` / `im.reply_message`（写）/ `send_message`（写）/ **`send_image` / `send_file`（写，需宿主落盘器，见 §7）** |
-| 云空间 Drive（2 只读 + 3 写） | `drive.list_folder_files` / `drive.get_file_metas` / `create_folder`（写）/ `move_file`（写）/ `upload_file`（写） |
-| 电子表格 Sheets（2 只读 + 2 写） | `sheets.list_sheets` / `sheets.get_range_values` / `update_range`（写）/ `append_rows`（写） |
-| 通讯录 Contact（6 只读） | `contact.resolve_user`（邮箱/手机号→ID）/ **`search_user`（姓名/关键字→ID）** / `get_user` / `batch_get` / `list_departments` / `list_department_members` |
-| 审批 Approval（2 只读 + 2 写） | `approval.list_pending_tasks` / `approval.get_instance`（只读，`identity=user`）/ `create_instance`（写）/ `approve_task`（写） |
-| 日历 Calendar（3 只读 + 4 写） | **`calendar.find_free_slots` / `list_events` / `list_event_attendees`（只读）/ `create_event`（写）/ `update_event`（写）/ `delete_event`（写，high-risk）/ `add_event_attendees`（写）** |
-| 任务 Task（1 只读 + 7 写） | **`task.create_task`（写）/ `task.list_my_tasks`（只读，`identity=user`）/ `update_task`（写）/ `complete_task`（写）/ `delete_task`（写，high-risk）/ `create_subtask`（写）/ `add_comment`（写）/ `add_members`（写）** |
-| 邮件 Mail（2 只读 + 1 写） | `mail.list_messages` / `mail.get_message` / `mail.send_message`（写，`identity=user`） |
-| 知识库（1 只读） | `knowledge.search`（绑定宿主 `IRetriever`） |
-| 元工具（1 只读） | **`feishu.capability_lookup`**（能力出处，见 §4） |
+| 域                               | 工具                                                                                                                                                                                                                      |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bitable（4 只读 + 3 写）         | `bitable.list_tables` / `list_fields` / `query_records` / `get_records_by_ids` / `add_record`（写）/ `update_record`（写）/ `delete_record`（写）                                                                         |
+| 云文档 Docx（2 只读 + 2 写）     | `docx.get_raw_content` / `docx.get_document_blocks` / `create_document`（写）/ `append_blocks`（写）                                                                                                                      |
+| Wiki（2 只读）                   | `wiki.get_node` / `wiki.list_nodes`                                                                                                                                                                                       |
+| 搜索（1 只读）                   | `search.doc_wiki`                                                                                                                                                                                                         |
+| IM（5 只读 + 4 写）              | `im.get_history_messages` / `im.get_message_content` / `im.list_chat_members` / `im.search_messages` / `im.reply_message`（写）/ `send_message`（写）/ **`send_image` / `send_file`（写，需宿主落盘器，见 §7）**          |
+| 云空间 Drive（2 只读 + 3 写）    | `drive.list_folder_files` / `drive.get_file_metas` / `create_folder`（写）/ `move_file`（写）/ `upload_file`（写）                                                                                                        |
+| 电子表格 Sheets（2 只读 + 2 写） | `sheets.list_sheets` / `sheets.get_range_values` / `update_range`（写）/ `append_rows`（写）                                                                                                                              |
+| 通讯录 Contact（6 只读）         | `contact.resolve_user`（邮箱/手机号→ID）/ **`search_user`（姓名/关键字→ID）** / `get_user` / `batch_get` / `list_departments` / `list_department_members`                                                                 |
+| 审批 Approval（2 只读 + 2 写）   | `approval.list_pending_tasks` / `approval.get_instance`（只读，`identity=user`）/ `create_instance`（写）/ `approve_task`（写）                                                                                           |
+| 日历 Calendar（3 只读 + 4 写）   | **`calendar.find_free_slots` / `list_events` / `list_event_attendees`（只读）/ `create_event`（写）/ `update_event`（写）/ `delete_event`（写，high-risk）/ `add_event_attendees`（写）**                                 |
+| 任务 Task（1 只读 + 7 写）       | **`task.create_task`（写）/ `task.list_my_tasks`（只读，`identity=user`）/ `update_task`（写）/ `complete_task`（写）/ `delete_task`（写，high-risk）/ `create_subtask`（写）/ `add_comment`（写）/ `add_members`（写）** |
+| 邮件 Mail（2 只读 + 1 写）       | `mail.list_messages` / `mail.get_message` / `mail.send_message`（写，`identity=user`）                                                                                                                                    |
+| 知识库（1 只读）                 | `knowledge.search`（绑定宿主 `IRetriever`）                                                                                                                                                                               |
+| 元工具（1 只读）                 | **`feishu.capability_lookup`**（能力出处，见 §4）                                                                                                                                                                         |
 
 **权威清单以编译期产物为准**：`FeishuToolNames.All`、`FeishuToolContracts.ByToolName`（生成器发射的
 **类型化契约表**，见 §8）、`FeishuToolSchemas.SchemaByToolName`、以及《工具权限对照表》
@@ -48,12 +48,12 @@ services.AddFeishuTools();                 // 引入全部域（含元工具）
 ```jsonc
 {
   "FeishuAgent": {
-    "Tools": ["bitable.list_tables", "contact.search_user"],       // 只读白名单
-    "WriteAllowList": ["im.send_message"],                          // 写工具单独键控（默认空 = 不启用任何写工具）
-    "MaxToolRisk": "high-risk-write",                               // 策略轴：风险上限（默认值 = 不额外收紧）
-    "AllowedIdentities": ["tenant", "user"],                        // 策略轴：身份闭集（默认 ["tenant"]）
-    "ContentSafetyMode": "warn"                                     // off | warn（默认） | block
-  }
+    "Tools": ["bitable.list_tables", "contact.search_user"], // 只读白名单
+    "WriteAllowList": ["im.send_message"], // 写工具单独键控（默认空 = 不启用任何写工具）
+    "MaxToolRisk": "high-risk-write", // 策略轴：风险上限（默认值 = 不额外收紧）
+    "AllowedIdentities": ["tenant", "user"], // 策略轴：身份闭集（默认 ["tenant"]）
+    "ContentSafetyMode": "warn", // off | warn（默认） | block
+  },
 }
 ```
 
@@ -76,8 +76,8 @@ services.AddFeishuTools();                 // 引入全部域（含元工具）
 ①' 入站净化        —— 控制字符/危险 Unicode/独立 CR → 拒绝（invalid_args），零调用下游
 ② 策略轴           —— MaxToolRisk / AllowedIdentities → 拒绝（policy_denied: reason_code）
 ③ 授权门禁         —— IToolExecutionAuthorizer → 拒绝（authorization_denied: ...）；
-                      NeedsUserConfirmation → 签发无状态确认令牌，并**只**投递给宿主批准通道
-                      （IFeishuToolApprovalChannel）；令牌**不进入模型上下文**（R2-1，见下）
+                      NeedsUserConfirmation → 通知宿主批准通道（IFeishuToolApprovalChannel）
+                      并**中性拒绝**；SDK 不签发、不校验任何凭据（WP3 / R4-1，见下）
 ④ 租户上下文切换    —— BeginScope(appKey)
 ④' 用户上下文       —— 仅 identity=user 工具：写入 IFeishuCurrentUserContext（AsyncLocal，
                       用户令牌缓存查找键）并在 finally 清理；tenant 路径不触碰
@@ -103,46 +103,42 @@ services.AddFeishuTools();                 // 引入全部域（含元工具）
   工具结果里合法出现"忽略上一段"这类字面文本是可能的（例如一份评审文档）。
 - **`dry_run`（写工具）**：只回 `method`/`path` 与请求体字段**长度**摘要，不回原文，也不调用下游。
 
-### 人工确认（HITL）语义（R2-1，**宿主可见的行为变更**）
+### 人工确认（HITL）语义（WP3 后：**无令牌版**；R4-1 起读写工具同路径）
 
-`IToolExecutionAuthorizer` 返回 `NeedsUserConfirmation` 时，执行链签发一枚无状态确认令牌
-（HMAC，绑定 `toolName` + 参数摘要 + `appKey` + `userId`，默认 10 分钟有效）。
+批准状态的**唯一所有者**是宿主授权器 `IToolExecutionAuthorizer`。SDK 侧不签发、不校验任何凭据
+（旧的 HMAC 确认令牌 / `confirm_token` 已**整条删除**，源码中不再存在）。
 
-**令牌只交给宿主，绝不进入模型上下文。**
+| 角色                       | 职责                                                                                                                                                                                                                                        |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SDK（`FeishuToolBinding`） | 授权器返回 `NeedsUserConfirmation` → 构造 `ToolApprovalRequest`（含工具名/参数摘要/appKey/userId/原因）→ 调 `IFeishuToolApprovalChannel.RequestApprovalAsync` → 回填模型的是**中性文案**（`needs_confirmation` + 宿主关联号），**恒不放行** |
+| 宿主授权器                 | 记为挂起；用户批准后建立"已批准"上下文；**下次同 `(tool, argsDigest, appKey, userId)` 调用返回 `Allowed`** ⇒ 执行链放行                                                                                                                     |
+| 未注册通道                 | HITL **降级为纯提示**（fail-closed）：模型只会收到"需要用户确认"，拿不到任何凭据                                                                                                                                                            |
 
-| 角色 | 职责 |
-| --- | --- |
-| SDK（`FeishuToolBinding`） | 签发令牌 → 构造 `ToolApprovalRequest` → 调 `IFeishuToolApprovalChannel.RequestApprovalAsync` → 回填模型的是**中性文案**（`needs_confirmation` + 宿主关联号） |
-| 宿主 | 实现 `IFeishuToolApprovalChannel`，在自有界面（飞书卡片/工单/审批单）展示待确认项；用户批准后把令牌作为工具参数 `confirm_token` 回灌，重新发起调用 |
-| 未注册通道 | HITL **降级为纯提示**（fail-closed）：模型只会收到"需要用户确认"，拿不到令牌 |
+### 审批时序：MAF 管线在前，执行链在后（**R4-1 订正**）
 
-> **为什么改**：旧实现把令牌内插进回填模型的拒绝文案，使批准所需的全部要素都进入模型上下文，
-> 而令牌校验只校验签名/有效期/绑定、**不校验批准是否来自人** ⇒ 模型可自行带令牌重试放行写操作，
-> 一次成功的提示注入即可绕过人工确认。
+写类工具会被 MEAI `ApprovalRequiredAIFunction` 包装，**写调用到达拦截点的时序前移**：
 
-### P4-1：改由 MAF 审批管线把关（**当前形态**）
-
-写类工具现在会用 MEAI `ApprovalRequiredAIFunction` 包装，因此**写调用到达拦截点的时序前移**：
-
-| 角色 | 职责 |
-| --- | --- |
-| MAF（`FunctionInvokingChatClient`） | 在调用**之前**把包装工具的调用转成 `ToolApprovalRequestContent`（工具此刻**未执行**） |
+| 角色                                      | 职责                                                                                                                                          |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| MAF（`FunctionInvokingChatClient`）       | 在调用**之前**把包装工具的调用转成 `ToolApprovalRequestContent`（工具此刻**未执行**）                                                         |
 | SDK（`ConversationalFeishuEventHandler`） | 识别该内容 → `IFeishuToolApprovalChannel.RequestFrameworkApprovalAsync` 提交宿主 → 向用户回一条「等待人工确认」；**未注册通道即 fail-closed** |
-| 宿主 | 在自有界面完成批准后，由宿主侧回灌批准响应继续本轮；`ApprovalResponseBindingChatClient` 只接受与框架请求绑定的响应 |
-| 自研 `confirm_token` 路径 | **已标 `[Obsolete]`（P4-3）**，仅剩「非写类工具的动态选择性确认」一种用途，计划 next-major 移除 |
+| 宿主                                      | 在自有界面完成批准后，由宿主侧回灌批准响应继续本轮；`ApprovalResponseBindingChatClient` 只接受与框架请求绑定的响应                            |
 
-**执行链对写类工具不再二次拦截（P4-3）**：写工具能被执行链看到，就说明框架已经批准过——
-若此时授权器仍返回 `NeedsUserConfirmation` 而执行链又走自研令牌，宿主无法把 `confirm_token`
-注入模型工具参数 ⇒ 写工具会卡死在「框架已批准、执行链仍拒绝」的**死胡同**。
-故 `FeishuToolBinding` 对写类工具的待确认判定直接放行（记 Information 日志），
-`NeedsUserConfirmation` 对写工具退化为「由框架承载」的语义。
-**非写类工具**不进入框架审批，自研令牌仍是其唯一 HITL 机制（已废弃但可用）。
+**执行链仍会二次把关（R4-1）**：`ApprovalRequiredAIFunction` 是 MEAI **纯标记类型**，
+其拦截只在 `FunctionInvokingChatClient` 内部生效——宿主直接 `InvokeAsync`、或调用方绕开该管线时，
+包装**不会**阻止写工具执行。因此执行链**不得**据"框架已批准"放行：
 
-**关键安全收益**：批准资格由框架绑定到「框架发出的请求」，模型**无法自批复**——
-这补上了上述 R2-1 方案里"仍需依赖模型自律"的最后一环。
+- 授权器未返回 `Allowed` 的 `NeedsUserConfirmation`，**读、写工具一律**走同一条挂起解析
+  （通知宿主通道 + 中性拒绝）⇒ fail-closed；
+- 宿主在 MAF 批准回调中**必须同步更新授权器状态**（置为已批准），否则会出现
+  「框架已批准、执行链仍拒绝」的表现。这是 WP3「批准状态单一所有权」的必然结果：
+  批准事实只有一个来源，框架的回执不构成执行链可验证的证据。
 
-> **迁移**：若宿主此前按旧文案实现「把令牌抄回去重试」，须改为实现 `IFeishuToolApprovalChannel`、
-> 由宿主侧回灌令牌；旧路径的令牌从未真正证明"人已批准"，应予废弃。
+> **R4-1 之前的行为**（已废弃）：写工具在授权门禁被无条件放行（`Pass()`），依据是注释里的假设
+> 「框架不批准则本方法根本不会被调用」。该假设运行期无任何校验，是一条静默 fail-open 路径。
+
+**关键安全收益**：批准事实由宿主授权器持有并逐次咨询，模型**无法自批复**；
+写工具的直调路径也不再绕过人工确认。
 
 ---
 
@@ -151,11 +147,11 @@ services.AddFeishuTools();                 // 引入全部域（含元工具）
 本包刻意**不**做"每个 SDK 方法一个工具"（1203 无差别暴露）也不做通用裸 `api` 工具。
 三层结构如下：
 
-| 层 | 内容 | 模型可见？ |
-| --- | --- | --- |
-| L1 能力目录 | 编译期聚合事实（SDK 方法总数 / 分组分布 / 策展计数），`build_property.FeishuToolCatalog=true` 时产出 | ❌（`internal`） |
-| L2 暴露策展 | 标注了 `[FeishuTool]` 的 61 个工具 | ✅（白名单启用后） |
-| **L3 能力出路** | **`feishu.capability_lookup`**：按关键字回答"这个能力在 SDK 里有几个分组 / 是否已策展成工具" | ✅（默认不启用） |
+| 层              | 内容                                                                                                 | 模型可见？         |
+| --------------- | ---------------------------------------------------------------------------------------------------- | ------------------ |
+| L1 能力目录     | 编译期聚合事实（SDK 方法总数 / 分组分布 / 策展计数），`build_property.FeishuToolCatalog=true` 时产出 | ❌（`internal`）   |
+| L2 暴露策展     | 标注了 `[FeishuTool]` 的 61 个工具                                                                   | ✅（白名单启用后） |
+| **L3 能力出路** | **`feishu.capability_lookup`**：按关键字回答"这个能力在 SDK 里有几个分组 / 是否已策展成工具"         | ✅（默认不启用）   |
 
 所以模型遇到不认识的域时，正确动作是**先问 `feishu.capability_lookup`**，据此判断
 "是不存在（放弃）"还是"存在但宿主没启用（如实告知用户）"，而不是臆造一次调用。
@@ -205,17 +201,17 @@ services.AddFeishuTools();                 // 引入全部域（含元工具）
 
 ## 6. 不变量（改动本包前请先读）
 
-| # | 不变量 | 锁定方式 |
-| --- | --- | --- |
-| A1 | `SchemaByToolName.Keys == FeishuToolNames.All == FeishuToolContracts.AllNames == registry.AllTools == 对照表键集` | 契约守卫 |
-| A2 | 每个零容忍诊断有上报点**且**有可触发反例 | `Mud.Feishu.AI.Tools.Tests` 的 driver 负例（**11/11 已落地**，R4/WP1）+ 元守卫（登记缺失即红）；R3 的"债务登记表"已删除 |
-| A3 | `risk >= write` 的工具必经授权钩子；无授权器时默认拒绝 | 执行链 + 用例 |
-| A4 | 出站净化在整形钩子之前 | `Execute_ShouldSanitizeBeforeResultShaper` |
-| A5 | 入站净化对参数必经且**先于授权门禁** | `Execute_InboundSanitization_ShouldRejectControlChars_BeforeAuthorizer` |
-| A6 | 新工具必须能通过 `Source` 锚定到 SDK 符号 | `MUDFT019` |
-| A7 | 模型可见能力面的任何变化必须产生 golden diff | `MUDFT014` 中断构建 + golden 用例 |
-| A8 | 能力目录覆盖数字精确锁定 | `GeneratorCapabilityCatalogTests` |
-| A9 | 出站顺序固定为 `内容安全 → 净化 → 整形 → 审计标记` | `Execute_ContentSafety_ShouldAnnotate_AndStillSanitize` |
+| #   | 不变量                                                                                                            | 锁定方式                                                                                                                |
+| --- | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| A1  | `SchemaByToolName.Keys == FeishuToolNames.All == FeishuToolContracts.AllNames == registry.AllTools == 对照表键集` | 契约守卫                                                                                                                |
+| A2  | 每个零容忍诊断有上报点**且**有可触发反例                                                                          | `Mud.Feishu.AI.Tools.Tests` 的 driver 负例（**11/11 已落地**，R4/WP1）+ 元守卫（登记缺失即红）；R3 的"债务登记表"已删除 |
+| A3  | `risk >= write` 的工具必经授权钩子；无授权器时默认拒绝                                                            | 执行链 + 用例                                                                                                           |
+| A4  | 出站净化在整形钩子之前                                                                                            | `Execute_ShouldSanitizeBeforeResultShaper`                                                                              |
+| A5  | 入站净化对参数必经且**先于授权门禁**                                                                              | `Execute_InboundSanitization_ShouldRejectControlChars_BeforeAuthorizer`                                                 |
+| A6  | 新工具必须能通过 `Source` 锚定到 SDK 符号                                                                         | `MUDFT019`                                                                                                              |
+| A7  | 模型可见能力面的任何变化必须产生 golden diff                                                                      | `MUDFT014` 中断构建 + golden 用例                                                                                       |
+| A8  | 能力目录覆盖数字精确锁定                                                                                          | `GeneratorCapabilityCatalogTests`                                                                                       |
+| A9  | 出站顺序固定为 `内容安全 → 净化 → 整形 → 审计标记`                                                                | `Execute_ContentSafety_ShouldAnnotate_AndStillSanitize`                                                                 |
 
 **防假绿铁律**：「工具存在」不算通过（必须有断言 method/path/body 的链路用例）；
 断言诊断为 0 必须同时断言构建成功与产物非空；「必经」类性质不得用源码扫描验证（改用运行时行为断言）。
@@ -251,13 +247,13 @@ services.AddHttpClient<DemoAttachmentStager>();
 services.AddSingleton<IFeishuAttachmentStager>(sp => sp.GetRequiredService<DemoAttachmentStager>());
 ```
 
-| 安全项 | Demo 默认值 | 生产宿主应 |
-| --- | --- | --- |
-| 协议 | 只允许 http/https（防 SSRF） | 收紧为 HTTPS-only + 域名白名单 |
-| 大小上限 | 25 MB | 按业务调整 |
-| 扩展名 | 白名单（图片/文档/压缩/文本/音视频） | 按业务收窄 |
-| 临时目录 | `Path.GetTempPath()` 下唯一子目录 | 按存储策略调整 |
-| 清理 | `Cleanup` 在 `finally` 中删除文件 | 同（生命周期显式） |
+| 安全项   | Demo 默认值                          | 生产宿主应                     |
+| -------- | ------------------------------------ | ------------------------------ |
+| 协议     | 只允许 http/https（防 SSRF）         | 收紧为 HTTPS-only + 域名白名单 |
+| 大小上限 | 25 MB                                | 按业务调整                     |
+| 扩展名   | 白名单（图片/文档/压缩/文本/音视频） | 按业务收窄                     |
+| 临时目录 | `Path.GetTempPath()` 下唯一子目录    | 按存储策略调整                 |
+| 清理     | `Cleanup` 在 `finally` 中删除文件    | 同（生命周期显式）             |
 
 **软缺席语义（宿主未实现 stager 时）**：`im.send_image` / `im.send_file` 不注册（模型看不到这两个工具），
 不报错、不静默失败——与"域客户端缺席 → 该域工具不注册"同一机制。
@@ -268,12 +264,12 @@ services.AddSingleton<IFeishuAttachmentStager>(sp => sp.GetRequiredService<DemoA
 
 生成器在**同一 pass** 发射（都只进本程序集）：
 
-| 产物 | 内容 | 消费方 |
-| --- | --- | --- |
-| `FeishuToolSchemas` | 模型侧 JSON 载荷（参数 + `x-feishu` 元数据） | 工具桥 + golden 门禁 |
-| `FeishuToolNames` | 工具名契约表（只读/写分离） | 白名单、守卫 |
-| **`FeishuToolContracts`** | **类型化契约**（`Risk`/`Identity`/`IsWrite`/`RequiredScopes`/`SdkSource`/`HttpMethod`/`Route`） | 注册器（直接构造定义，**零运行期解析**）、目录、守卫、权威 scope 清单校验 |
-| **`FeishuToolGuidance`** | 域 guidance（素材 `Guidance/{domain}.md`，AdditionalFiles） | `FeishuGuidanceComposer`（宿主指令之后追加，2 KB 上限，超限按域截断并在返回值上给 `Truncated` 信号） |
+| 产物                      | 内容                                                                                            | 消费方                                                                                               |
+| ------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `FeishuToolSchemas`       | 模型侧 JSON 载荷（参数 + `x-feishu` 元数据）                                                    | 工具桥 + golden 门禁                                                                                 |
+| `FeishuToolNames`         | 工具名契约表（只读/写分离）                                                                     | 白名单、守卫                                                                                         |
+| **`FeishuToolContracts`** | **类型化契约**（`Risk`/`Identity`/`IsWrite`/`RequiredScopes`/`SdkSource`/`HttpMethod`/`Route`） | 注册器（直接构造定义，**零运行期解析**）、目录、守卫、权威 scope 清单校验                            |
+| **`FeishuToolGuidance`**  | 域 guidance（素材 `Guidance/{domain}.md`，AdditionalFiles）                                     | `FeishuGuidanceComposer`（宿主指令之后追加，2 KB 上限，超限按域截断并在返回值上给 `Truncated` 信号） |
 
 **scope 权威性**：`documents/AIAgent/scope-authority.json`（人工从控制台核对回填）与契约表构成
 **双向守卫**——契约里的 scope 必须在清单中（缺口即红），清单里未标 `⚠️` 的必须被至少一个工具使用
@@ -281,35 +277,35 @@ services.AddSingleton<IFeishuAttachmentStager>(sp => sp.GetRequiredService<DemoA
 
 ### 8.1 写工具幂等能力表（R7/WP2-T2-4）
 
-| 工具 | 暴露 `idempotency_key` | 底层支持 `client_token` | 说明 |
-| --- | --- | --- | --- |
-| `im.send_message` | ✅ | ✅ | 平台侧 1 小时去重 |
-| `im.reply_message` | ✅ | ✅ | 平台侧 1 小时去重 |
-| `im.send_image` | ❌ | — | 三步链路，幂等由落盘器保证 |
-| `im.send_file` | ❌ | — | 同上 |
-| `bitable.add_record` | ✅ | ✅ | 相同键返回同一条记录 |
-| `bitable.update_record` | ✅ | ✅ | 相同键不产生副作用 |
-| `bitable.delete_record` | ❌ | — | 删除天然幂等 |
-| `approval.create_instance` | ✅ | ✅ | 相同键返回错误码 60012 |
-| `approval.approve_task` | ❌ | — | 同意操作天然幂等 |
-| `docx.create_document` | ❌ | ✅ | 工具层未暴露，SDK 支持 |
-| `docx.append_blocks` | ✅ | ✅ | 24 小时去重 |
-| `sheets.update_range` | ❌ | — | 覆盖写天然幂等 |
-| `sheets.append_rows` | ❌ | — | 追加操作非幂等 |
-| `drive.create_folder` | ❌ | — | 非幂等 |
-| `drive.move_file` | ❌ | — | 异步操作，非幂等 |
-| `drive.upload_file` | ❌ | — | 非幂等 |
-| `calendar.create_event` | ✅ | ✅ | 平台原生幂等 |
-| `calendar.update_event` | ❌ | — | PATCH 按字段更新天然幂等 |
-| `calendar.delete_event` | ❌ | — | 删除天然幂等 |
-| `calendar.add_event_attendees` | ❌ | — | 非幂等（重复添加同一用户无效） |
-| `task.create_task` | ✅ | ✅ | 平台原生幂等 |
-| `task.update_task` | ❌ | — | PATCH 按字段更新天然幂等 |
-| `task.complete_task` | ❌ | — | 通过 update 实现，幂等 |
-| `task.delete_task` | ❌ | — | 删除天然幂等 |
-| `task.create_subtask` | ✅ | ✅ | 平台原生幂等 |
-| `task.add_comment` | ❌ | — | 非幂等 |
-| `task.add_members` | ✅ | ✅ | 平台原生幂等 |
-| `mail.send_message` | ❌ | — | 两步合一，非幂等 |
+| 工具                           | 暴露 `idempotency_key` | 底层支持 `client_token` | 说明                                                                                                                        |
+| ------------------------------ | ---------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `im.send_message`              | ✅                     | ✅                      | 平台侧 1 小时去重                                                                                                           |
+| `im.reply_message`             | ✅                     | ✅                      | 平台侧 1 小时去重                                                                                                           |
+| `im.send_image`                | ❌                     | —                       | 三步链路，幂等由落盘器保证                                                                                                  |
+| `im.send_file`                 | ❌                     | —                       | 同上                                                                                                                        |
+| `bitable.add_record`           | ✅                     | ✅                      | 相同键返回同一条记录                                                                                                        |
+| `bitable.update_record`        | ✅                     | ✅                      | 相同键不产生副作用                                                                                                          |
+| `bitable.delete_record`        | ❌                     | —                       | 删除天然幂等                                                                                                                |
+| `approval.create_instance`     | ✅                     | ✅                      | 相同键返回错误码 60012                                                                                                      |
+| `approval.approve_task`        | ❌                     | —                       | 同意操作天然幂等                                                                                                            |
+| `docx.create_document`         | ❌                     | ❌                      | 平台端点与 SDK 请求模型**均不支持**幂等键（`CreateDocumentRequest` 仅 `FolderToken`/`Title`，无 `client_token`；R4-5 订正） |
+| `docx.append_blocks`           | ✅                     | ✅                      | 24 小时去重                                                                                                                 |
+| `sheets.update_range`          | ❌                     | —                       | 覆盖写天然幂等                                                                                                              |
+| `sheets.append_rows`           | ❌                     | —                       | 追加操作非幂等                                                                                                              |
+| `drive.create_folder`          | ❌                     | —                       | 非幂等                                                                                                                      |
+| `drive.move_file`              | ❌                     | —                       | 异步操作，非幂等                                                                                                            |
+| `drive.upload_file`            | ❌                     | —                       | 非幂等                                                                                                                      |
+| `calendar.create_event`        | ✅                     | ✅                      | 平台原生幂等                                                                                                                |
+| `calendar.update_event`        | ❌                     | —                       | PATCH 按字段更新天然幂等                                                                                                    |
+| `calendar.delete_event`        | ❌                     | —                       | 删除天然幂等                                                                                                                |
+| `calendar.add_event_attendees` | ❌                     | —                       | 非幂等（重复添加同一用户无效）                                                                                              |
+| `task.create_task`             | ✅                     | ✅                      | 平台原生幂等                                                                                                                |
+| `task.update_task`             | ❌                     | —                       | PATCH 按字段更新天然幂等                                                                                                    |
+| `task.complete_task`           | ❌                     | —                       | 通过 update 实现，幂等                                                                                                      |
+| `task.delete_task`             | ❌                     | —                       | 删除天然幂等                                                                                                                |
+| `task.create_subtask`          | ✅                     | ✅                      | 平台原生幂等                                                                                                                |
+| `task.add_comment`             | ❌                     | —                       | 非幂等                                                                                                                      |
+| `task.add_members`             | ✅                     | ✅                      | 平台原生幂等                                                                                                                |
+| `mail.send_message`            | ❌                     | —                       | 两步合一，非幂等                                                                                                            |
 
 **汇总**：28 个写工具中，10 个暴露 `idempotency_key`，18 个不暴露（其中 8 个天然幂等，10 个非幂等）。

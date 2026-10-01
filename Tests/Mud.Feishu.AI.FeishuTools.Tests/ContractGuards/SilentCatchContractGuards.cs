@@ -14,7 +14,7 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 /// <remarks>
 /// <para>
 /// <b>为什么是元守卫而不是补 3 条日志</b>（根因 R-C）：R2-06 修的 3 处空 <c>catch</c>
-/// （<c>AttachmentTools</c>×2、<c>WriteTools2</c>×1）是<b>当时想到的</b>位置；行为用例的覆盖面
+/// （<c>AttachmentTools</c>×2、<c>DocxSheetsDriveWriteTools</c>×1）是<b>当时想到的</b>位置；行为用例的覆盖面
 /// 等于你想到的路径数。本守卫断言的是<b>结构</b>——"这类形态不允许无声存在"，因此
 /// <b>新增的静默 catch 自动被覆盖</b>，不需要任何人记得回来补用例。
 /// </para>

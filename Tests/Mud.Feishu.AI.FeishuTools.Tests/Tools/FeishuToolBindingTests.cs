@@ -241,14 +241,15 @@ public class FeishuToolBindingTests : IDisposable
         result.ToString().Should().Contain("需要用户确认");
     }
 
-    // ───────────────────── P4-3：写类工具的人工确认已交由 MAF 审批管线 ─────────────────────
+    // ────────── R4-1：写类工具的人工确认 fail-closed（宿主授权器是批准状态唯一所有者） ──────────
 
     [Fact]
-    public async Task Execute_NeedsUserConfirmation_OnWriteTool_ShouldPass_WithoutTokenPath()
+    public async Task Execute_NeedsUserConfirmation_OnWriteTool_ShouldDeny_WhenAuthorizerNotApproved()
     {
-        // 写类工具经 FeishuToolsToolSource 包装为 ApprovalRequiredAIFunction ⇒ 框架不批准则
-        // 执行链**根本不会被调用**。所以能走到这里就等于"人已批准"，不得再用自研令牌二次拦截——
-        // 否则写工具会卡死在「框架已批准、执行链仍拒绝」的死胡同（宿主的回灌协议已随 P4-1 变更）。
+        // R4-1：删除原「写类工具 ⇒ Pass()」特例。ApprovalRequiredAIFunction 是 MEAI **纯标记类型**，
+        // 拦截只在 FunctionInvokingChatClient 内生效——宿主直调 InvokeAsync 或绕开该管线时，
+        // 写工具会被**静默放行**。现在读写工具共用同一条无令牌版挂起解析：
+        // 未获授权器 Allowed ⇒ 中性拒绝（并通知宿主批准通道）。
         var confirming = new Mock<IToolExecutionAuthorizer>();
         confirming
             .Setup(a => a.AuthorizeAsync(
@@ -265,15 +266,40 @@ public class FeishuToolBindingTests : IDisposable
             Args(), new FeishuToolContext("appA"),
             _ => { downstreamCalled = true; return Task.FromResult(FeishuToolResult.FromText("ok")); });
 
-        downstreamCalled.Should().BeTrue("写类工具的批准已由框架前置完成，执行链必须放行");
+        downstreamCalled.Should().BeFalse("未获授权器 Allowed 的写工具必须 fail-closed——不得据 MAF 包装放行");
+        result.ToString().Should().Contain("需要用户确认");
+    }
+
+    [Fact]
+    public async Task Execute_NeedsUserConfirmation_OnWriteTool_ShouldPass_WhenAuthorizerApproved()
+    {
+        // 宿主在 MAF 批准回调中把授权器状态更新为 Allowed 后，下一次调用即放行——
+        // 「框架已批准、执行链仍拒绝」的死胡同不再存在（批准所有权收敛到单一所有者）。
+        var allowed = new Mock<IToolExecutionAuthorizer>();
+        allowed
+            .Setup(a => a.AuthorizeAsync(
+                It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<bool>(),
+                It.IsAny<IReadOnlyDictionary<string, object?>>(), It.IsAny<FeishuToolContext>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(AuthorizationResult.Allowed);
+
+        var binding = CreateBinding(allowed.Object);
+        var downstreamCalled = false;
+
+        var result = await binding.ExecuteAsync(
+            Definition(scopes: ["test:write"], isWrite: true, risk: FeishuToolRisk.Write),
+            Args(), new FeishuToolContext("appA"),
+            _ => { downstreamCalled = true; return Task.FromResult(FeishuToolResult.FromText("ok")); });
+
+        downstreamCalled.Should().BeTrue("授权器返回 Allowed（宿主已批准）时必须放行");
         result.ToString().Should().Be("ok");
-        result.ToString().Should().NotContain("需要用户确认", "不得再回到自研令牌的待确认分支");
     }
 
     [Fact]
     public async Task Execute_NonWriteConfirmation_ShouldStillUseTokenPath()
     {
-        // 反向锁定：非写类工具**未**进入框架审批 ⇒ 自研令牌仍是其唯一 HITL 机制，不得被一并放行。
+        // 反向锁定：非写类工具**未**进入框架审批（不被 ApprovalRequiredAIFunction 包装）⇒
+        // 其待确认同样走无令牌版挂起解析，不得被静默放行。
         var confirming = new Mock<IToolExecutionAuthorizer>();
         confirming
             .Setup(a => a.AuthorizeAsync(

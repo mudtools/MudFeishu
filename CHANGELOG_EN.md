@@ -1,5 +1,103 @@
 # Mud.Feishu Change Log
 
+## [Unreleased] - Mud.Feishu.AI review remediation R4 (2026-10-01)
+
+> Plan and two-perspective verification (senior engineer / system architect):
+> `.docs/AI/Mud.Feishu.AI-审查缺陷修复与能力完善方案-R4.md` (§0.6 review corrections, §0.7 landing log,
+> §4 batches B0/B1/B2, §5.3 red→green log). Covers 1 P0 (R4-1), 5 P1 and 8 P2 items; R4-14 and
+> dimension B (capability gaps) stay on the original phase plan and are **not** part of this round.
+> **The AI module is unreleased — this round is a one-shot refactor with no compatibility burden.**
+
+### ⚠️ Behaviour changes (host-visible)
+
+- **[P0 / R4-1] Write tools are now fail-closed under HITL (no more silent pass-through)**: the
+  `NeedsUserConfirmation && tool.IsWrite → Pass()` special case in `AuthorizeGateAsync` is deleted. Its only
+  premise ("MAF will not call this method when unapproved") had **no runtime enforcement** —
+  `ApprovalRequiredAIFunction` is a MEAI **marker type** and interception happens only inside
+  `FunctionInvokingChatClient`; a host calling `InvokeAsync` directly (or mixing both call styles in one
+  process) had write tools **silently executed**. New semantics: **the authorizer is the single owner of the
+  approval state** (the SDK still issues and validates no credential — WP3 unchanged); read and write tools
+  both go through `ResolveNeedsConfirmationAsync` and are **never** allowed through, so a host approval must
+  return `Allowed` under the same key. **Migration**: hosts that relied on "MAF approval = execute" must update
+  `IToolExecutionAuthorizer` state in their approval callback; without an approval channel this degrades to a
+  plain prompt (the model receives no credential). **Source breaking (module unreleased).**
+- **[R4-6] The singleton `FeishuAgent` no longer receives the root `IServiceProvider`**: `ChatClientAgent`'s
+  `services` is now `null` (it used to be the root container, handed over inside a **singleton factory**).
+  A singleton holding the root container pins Scoped dependencies into de-facto singletons
+  (captive dependency, same class as TMA-13). Hosts needing Scoped services should construct
+  `new FeishuAgent(..., services: <derived from a scope>)` themselves.
+- **[R4-13] Structured errors carry a machine-readable `code`**: `[tool_error] <tool> (kind) code=<code>: <reason>`
+  — `ToolErrorClassifier` already computed the code but it was dropped from the text, leaving the model with a
+  Chinese suffix only. **No empty slot is emitted when there is no code** (HTTP 5xx/429 have no business code).
+  The human-readable shape is unchanged (pure append). Deliberately **not** added: `retryable` / `reason_code`
+  (already conveyed by the kind label and the reason text — would be redundant).
+
+### 🐞 Fixed
+
+- **R4-3**: Aily knowledge recall `has_answer` changed from **overwrite** to **monotonic accumulation**. SSE
+  processing events and even the terminal event routinely **omit** `has_answer`, so an overwrite reset a
+  previous `true` to `false` ⇒ an answered query was reported as unanswered and the consumer **silently
+  dropped the whole recall** (no exception, no log).
+- **R4-7**: The session-corruption self-heal catch was narrowed from an **enumerated whitelist** to
+  `when (ex is not OperationCanceledException)`. The whitelist contradicted its own comment ("covers all
+  exception types") and missed `FormatException`/`KeyNotFoundException` thrown inside MAF dictionary/format
+  conversion — leftover types poisoned the session.
+- **R4-8**: Token usage is now recorded on the streaming Agent path (accumulated inside the **iterator loop**,
+  `RecordUsage` after the loop); previously only the non-streaming path was instrumented, leaving streaming
+  calls invisible to telemetry.
+- **R4-9**: `FeishuCapabilityCatalog`'s opt-in wording realigned with the hard dependency — the artifact is
+  **required** for `Mud.Feishu.AI.FeishuTools` (`CapabilityLookupTools` references it unconditionally; setting
+  it to `false` is a `CS0103`). `build_property.FeishuToolCatalog` is an incremental switch only for **other
+  projects** referencing the generator.
+- **R4-10**: `AddSource` uniqueness guard hardened. `RegistrarTypeName`, the Core method name and the hintName
+  are all derived from the executor **simple name** and emitted into the **same** namespace ⇒ executors with
+  the same name in different namespaces produced duplicate types (`CS0101`) and duplicate methods (`CS0111`),
+  or made `AddSource` throw and get swallowed by `Guard<T>` into `MUDFT026` (the **symptom** of an internal
+  generator exception). Fix: append a namespace-segment disambiguation suffix **only** to colliding executors
+  (non-colliding names are byte-identical, so hand-written `AddFeishu{X}Core` call sites are unaffected), and
+  fix the type references inside the method body too (otherwise `CS0246`).
+- **R4-11**: Write-tool file consolidation (**pure move + rename, no method body touched**) — new
+  `Internal/BitableWriteTools.cs` and `Tools/FeishuBitableWriteToolInterfaces.cs` host the bitable write
+  domain; `WriteTools.cs` → `MessageAndApprovalWriteTools.cs`, `WriteTools2.cs` →
+  `DocxSheetsDriveWriteTools.cs`, `FeishuWriteToolInterfaces2.cs` →
+  `FeishuDocxSheetsDriveToolInterfaces.cs`. No `*2.cs` remains in the repo.
+- **R4-12**: The "comment says Warning / code logs Information" contradiction on `Pass()` disappeared together
+  with that branch (deleted by R4-1).
+
+### 🧪 Tests & guards
+
+- **New diagnostic `MUDFT027` (Error, zero tolerance)**: tool names that are literally different but normalise
+  to the same identifier (e.g. `fake.a_b` and `fake.a.b` both → `FakeAB`) produce duplicate artifact constants
+  (`CS0101`) or duplicate hintNames (→ `MUDFT026`). **Not** reusing `MUDFT003`, which means "literally duplicate
+  tool name" — a different root cause. Registered in four places in the same batch: `Diagnostics.ZeroToleranceIds`
+  → `AnalyzerReleases.Unshipped.md` → `scripts/verify-build.ps1` (zero-tolerance regex) →
+  `GeneratorNegativeCaseTests` (triggerable negative case).
+- **Guards inverted/rewritten** (changing the source without changing the guard = red gate):
+  `WriteTool_NeedsUserConfirmation_ShouldBeBypassed_AtAuthorizeGate` **inverted** to `..._ShouldBeDenied_...`;
+  `SessionRestore_ShouldEagerlyValidateHistoryState` now asserts "catch surface is not an enumerated whitelist";
+  the old pass-through case in `FeishuToolBindingTests` split into `..._ShouldDeny_WhenAuthorizerNotApproved` +
+  `..._ShouldPass_WhenAuthorizerApproved` (the latter locks "no dead end after host approval").
+- Landing rule: **extend an existing test class whenever possible instead of adding a new one** (2 new classes
+  instead of the 8 originally planned), avoiding duplicated fixture setup.
+- Measured (net8.0, `--filter "Category!=Stress"`): `Mud.Feishu.AI.Tests` **264/264**,
+  `Mud.Feishu.AI.FeishuTools.Tests` **372/372**, `Mud.Feishu.AI.Tools.Tests` **32/32**.
+- **Red→green archived**: R4-3 temporarily restored the overwrite form → `HasAnswer` was `False` (red), green
+  after restoring accumulation; R4-1/R4-7 guard inversion/rewrite were **run red before the source change**;
+  R4-2 measured **all green** (disproving "incremental staleness", so the `CompilationProvider` approach was
+  not adopted and the case became a regression lock). Per-item log in plan §5.3.
+- `FeishuToolSchemas.golden.txt` **zero drift** (R4-11 is pure move; the generator sorts by `ToolName` ordinal).
+
+### 📄 Documentation
+
+- **R4-4**: the tool package `Readme.md` HITL section rewritten (it still described "issuing an HMAC token /
+  `confirm_token` / `[Obsolete]`", the opposite of the source after token removal), and the base
+  `Mud.Feishu.AI/Readme.md` corrected in the same batch (it stated `NeedsUserConfirmation && IsWrite → Pass()`
+  "**must be kept**", which directly contradicts R4-1). New guard `Readmes_ShouldNotDescribeConfirmToken`
+  scans **both** Readmes.
+- **R4-5**: the tool package `Readme.md` idempotency table row for `docx.create_document` corrected to
+  "**neither the platform endpoint nor the SDK supports** `client_token`" (the underlying
+  `CreateDocumentRequest` has no such field; the previous "supported at the base layer ✅" was wrong).
+
 ## [Unreleased] - AI tool surface R3 (3rd code review round vs. the official CLI, 2026-09-28)
 
 > Four-perspective review (PM / architect / senior engineer / QA) and per-task verification:

@@ -197,4 +197,30 @@ public class AilyKnowledgeProviderTests : IDisposable
 
         act.Should().Throw<InvalidOperationException>().WithMessage("*AppId*");
     }
+
+    /// <summary>
+    /// R4-3：<c>has_answer</c> 必须<b>单调累积</b>——末事件省略该字段时，不得把先前事件的真值覆盖为 false。
+    /// </summary>
+    /// <remarks>
+    /// SSE 的 processing/中间事件普遍<b>省略</b> <c>has_answer</c>，而 <c>status=finished</c> 的终结事件也不保证携带。
+    /// 覆盖式赋值会让"明确有答案"被最后一次无字段事件重置为 false ⇒ <see cref="KnowledgeAnswer.HasAnswer"/> 假阴性，
+    /// 消费点据此丢弃整次召回（静默丢失，无异常、无日志）。本条为端到端用例（经 <c>AskAsync</c>），
+    /// 因 <c>ParseSseBody</c> 是 private static 不可直测（见方案 §5.1 可行性约束①）。
+    /// </remarks>
+    [Fact]
+    public async Task Ask_ShouldAccumulateHasAnswer_WhenLastEventOmitsField()
+    {
+        using var _scope = _contextAccessor.Begin(new FeishuToolContext("appA"));
+        SetupSseResponse(
+            "data: {\"status\":\"processing\",\"message\":{\"content\":\"正在检索知识...\"},\"has_answer\":true}\n"
+            + "\n"
+            + "data: {\"status\":\"finished\",\"finish_type\":\"qa\",\"message\":{\"content\":\"采购流程共 3 步。\"},"
+            + "\"process_data\":{\"chunks\":[\"切片一：采购申请\"],\"sql_data\":[]}}\n");
+
+        var answer = await CreateProvider().AskAsync("采购流程是什么？");
+
+        answer.AnswerText.Should().Be("采购流程共 3 步。");
+        answer.HasAnswer.Should().BeTrue("末事件省略 has_answer 不得覆盖先前事件的真值（R4-3：单调累积而非覆盖）");
+        answer.Chunks.Should().ContainSingle();
+    }
 }

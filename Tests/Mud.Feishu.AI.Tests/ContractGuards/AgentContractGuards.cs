@@ -513,21 +513,103 @@ public class AgentContractGuards
     }
 
     /// <summary>
-    /// WP3：写类工具的 NeedsUserConfirmation 必须在授权门禁被放行（MAF 审批管线已前置承担），
-    /// 不得因删除令牌而误删此分支——否则重新引入 P4-1 的「框架已批准、执行链仍拒绝」死胡同。
+    /// R4-1：写类工具的 NeedsUserConfirmation <b>不得</b>在授权门禁被放行。
     /// </summary>
+    /// <remarks>
+    /// WP3 的 <c>Pass()</c> 特例（"MAF 已前置批准 ⇒ 走到这里即人已批准"）在运行期无任何校验：
+    /// <c>ApprovalRequiredAIFunction</c> 是 MEAI <b>纯标记类型</b>，拦截只在 <c>FunctionInvokingChatClient</c>
+    /// 内生效——宿主直接 <c>InvokeAsync</c> 或绕开该管线时，写工具会被静默放行。
+    /// 批准状态的唯一所有者是宿主 <c>IToolExecutionAuthorizer</c>。
+    /// </remarks>
     [Fact]
-    public void WriteTool_NeedsUserConfirmation_ShouldBeBypassed_AtAuthorizeGate()
+    public void WriteTool_NeedsUserConfirmation_ShouldBeDenied_AtAuthorizeGate()
     {
         var binding = File.ReadAllText(Path.Combine(
             GetSolutionRoot(), "Mud.Feishu.AI.FeishuTools", "Tools", "FeishuToolBinding.cs"));
-        binding.Should().Contain("AuthorizationDecision.NeedsUserConfirmation && tool.IsWrite",
-            "写类工具必须先于确认分支被放行（框架已前置批准）；删除该分支会让写工具陷入死胡同");
+
+        binding.Should().NotContain("AuthorizationDecision.NeedsUserConfirmation && tool.IsWrite",
+            "写类工具的待确认不得据此放行（R4-1 fail-closed）——该特例必须删除，否则直调路径静默放行写操作");
+
+        binding.Should().Contain("AuthorizationDecision.NeedsUserConfirmation =>",
+            "NeedsUserConfirmation 必须统一走下面的挂起解析分支（读写工具同一条路径）");
+        binding.Should().Contain(
+            "ResolveNeedsConfirmationAsync(tool, arguments, context, result.Reason, cancellationToken)",
+            "挂起解析调用点必须保留——宿主授权器是批准状态的唯一所有者");
     }
 
     /// <summary>
-    /// R2-2：会话恢复必须<b>急切</b>校验历史状态（惰性反序列化纳入守护区）。
+    /// R4-4：两处 Readme 不得再把「自研确认令牌」描述为现存机制（WP3 已整条删除），
+    /// 也不得再声明「写工具放行」（R4-1 已删除该特例）。
     /// </summary>
+    /// <remarks>
+    /// 只锁<b>文档与实现的一致性</b>：允许「已删除 / 不再 / 不含」等否定语境
+    /// （文档必须解释"为什么没有了"，那不是漂移），命中令牌词却<b>无</b>否定词才算漂移。
+    /// 两条文档（底座 + 工具面）都扫描——R4-4 的缺陷正是底座 Readme 与工具 Readme 各自
+    /// 残留了一套过期 HITL 描述（只改其一仍会误导宿主）。
+    /// </remarks>
+    [Fact]
+    public void Readmes_ShouldNotDescribeConfirmToken()
+    {
+        var root = GetSolutionRoot();
+        var readmes = new[]
+        {
+            Path.Combine(root, "Mud.Feishu.AI", "Readme.md"),
+            Path.Combine(root, "Mud.Feishu.AI.FeishuTools", "Readme.md"),
+        };
+
+        // 否定语境标记：命中其一即视为"文档在说明该机制已不存在"，不算漂移。
+        string[] negationMarkers =
+        [
+            "已删除", "已移除", "整条删除", "删除", "移除", "不再", "废弃", "从未", "不含", "没有", "不得", "禁止",
+        ];
+        // 令牌词：出现即要求同行有否定语境（防止把已删除机制重新描述为可用）。
+        string[] credentialMarkers = ["confirm_token", "ToolConfirmationToken", "确认令牌"];
+        // R4-1：写工具放行特例已删除，文档不得再声明"必须保留"这一放行旁路。
+        const string passMarker = "Pass()";
+
+        var offenders = new List<string>();
+
+        foreach (var readme in readmes)
+        {
+            File.Exists(readme).Should().BeTrue($"文档守卫必须能读到 {readme}（宁可失败，也不要假绿）");
+            var lines = File.ReadAllLines(readme);
+
+            for (var i = 0; i < lines.Length; i++)
+            {
+                var line = lines[i];
+                var location = $"{Path.GetFileName(readme)}:{i + 1}";
+
+                if (credentialMarkers.Any(m => line.Contains(m, StringComparison.Ordinal)))
+                {
+                    var negated = negationMarkers.Any(m => line.Contains(m, StringComparison.Ordinal));
+                    if (!negated)
+                        offenders.Add($"{location} 描述了令牌机制但无否定语境：{line.Trim()}");
+                }
+
+                if (line.Contains(passMarker, StringComparison.Ordinal)
+                    && line.Contains("必须保留", StringComparison.Ordinal))
+                {
+                    offenders.Add($"{location} 仍声明写工具放行旁路「必须保留 {passMarker}」（R4-1 已删除）：{line.Trim()}");
+                }
+            }
+        }
+
+        offenders.Should().BeEmpty(
+            "R4-4：两处 Readme 不得再把自研确认令牌描述为现存机制，也不得再声明写工具放行特例。"
+            + " 违例: " + string.Join("; ", offenders));
+    }
+
+    /// <summary>
+    /// R2-2 / R4-7：会话恢复必须<b>急切</b>校验历史状态（惰性反序列化纳入守护区），
+    /// 且坏值自愈的 catch 面<b>不得是枚举白名单</b>。
+    /// </summary>
+    /// <remarks>
+    /// R4-7 订正：原判据锁定字面量 <c>catch (Exception ex) when (ex is JsonException</c>——
+    /// 它固化了"枚举白名单"这一缺陷形态（白名单不含 FormatException/KeyNotFoundException/
+    /// IndexOutOfRangeException/NullReferenceException ⇒ 残余异常类型逃出守护区 ⇒ 坏值永不删除）。
+    /// 判据改为「catch 面等价于 <c>when (ex is not OperationCanceledException)</c>」，
+    /// 并<b>显式禁止</b>白名单写法复活；急切读取仍必须落在 catch 面之内。
+    /// </remarks>
     [Fact]
     public void SessionRestore_ShouldEagerlyValidateHistoryState()
     {
@@ -538,10 +620,15 @@ public class AgentContractGuards
         var body = source[restoreMethod..];
 
         var eagerRead = body.IndexOf("TryGetInMemoryChatHistory", StringComparison.Ordinal);
-        var guard = body.IndexOf("catch (Exception ex) when (ex is JsonException", StringComparison.Ordinal);
+        var guard = body.IndexOf("catch (Exception ex) when (ex is not OperationCanceledException)", StringComparison.Ordinal);
+
+        body.Should().NotContain("ex is JsonException or ArgumentException",
+            "坏值自愈的 catch 面必须是收口形态（非枚举白名单）——白名单会漏掉残余异常类型，"
+            + "使坏载荷每次重投递都在守护区外再抛（R4-7）");
 
         eagerRead.Should().BeGreaterThan(-1, "会话恢复必须急切触发一次历史状态读取（惰性解析否则逃逸守护区）");
-        guard.Should().BeGreaterThan(-1);
+        guard.Should().BeGreaterThan(-1,
+            "catch 面必须收口为 `when (ex is not OperationCanceledException)`（R4-7）");
         eagerRead.Should().BeLessThan(guard,
             "急切读取必须落在坏值自愈的 catch 面**之内**——否则内层损坏在摘要器/Provider 内抛出，坏值永不删除");
     }

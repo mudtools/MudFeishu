@@ -40,15 +40,20 @@ namespace Mud.Feishu.AI.Tools;
 /// FeishuTools 程序集）；</item>
 /// <item><c>FeishuToolDomainRegistrars/{Registrar}.g.cs</c> —— 域注册器（每执行器类一个文件）+
 /// <c>FeishuToolsServiceCollectionCoreExtensions.g.cs</c>（逐执行器 DI 装配；只发射进 FeishuTools 程序集）。</item>
-/// <item><c>FeishuCapabilityCatalog.g.cs</c> —— Tier R 能力目录聚合（<c>build_property.FeishuToolCatalog=true</c> 时）。</item>
+/// <item><c>FeishuCapabilityCatalog.g.cs</c> —— Tier R 能力目录聚合。由
+/// <c>build_property.FeishuToolCatalog=true</c> 开启；<b>对 <c>Mud.Feishu.AI.FeishuTools</c> 这是必需产物</b>
+/// （<c>CapabilityLookupTools</c> 编译期无条件引用其成员，关闭即 <c>CS0103</c>），
+/// 属性只是"其他引用本生成器的工程（AI 底座 / 测试）可关闭以省增量开销"的开关（R4-9）。</item>
 /// </list>
 /// <para>
-/// <b>增量纪律（R3-04 更新）</b>：Tier C 的 <c>ScanTool</c> 在语法变换内读
-/// <c>context.SemanticModel.Compilation</c>（用于源挂钩交叉校验）。这是一个<b>已知限制</b>：
-/// 只编辑 <c>Source</c> 指向的 SDK 文件时，工具接口所在语法树不变 ⇒ 变换不重跑 ⇒ 缓存的
-/// route/risk 可能陈旧。方案 B（性能优先）选择保留现状，以 <c>GeneratorDriver</c> 用例锁定行为
-/// （见 <c>GeneratorIncrementalBehaviorTests</c>）。若实测证明陈旧真实发生，则需接入
-/// <c>CompilationProvider</c> 把该产物降为编译级粒度（方案 A，代价是增量构建耗时恶化）。
+/// <b>增量纪律（R4-2 实证更新）</b>：Tier C 的 <c>ScanTool</c> 在语法变换内读
+/// <c>context.SemanticModel.Compilation</c>（用于源挂钩交叉校验）。此前担心这会退化为
+/// "整棵语法树粒度缓存"——只编辑 <c>Source</c> 指向的 SDK 文件时变换不重跑、route 陈旧。
+/// <b>实测证否</b>：<c>GeneratorIncrementalBehaviorTests</c> 以同一 <see cref="CSharpGeneratorDriver"/>
+/// 连续驱动两份 compilation（仅 <see cref="CSharpCompilation.ReplaceSyntaxTree"/> 被编辑的 SDK 树），
+/// 断言产物携带新 route；同时以 <c>IncrementalStepRunReason</c> 断言无变更时全部 <c>Cached</c>。
+/// 结论：<c>GeneratorSyntaxContext</c> 携带 compilation，变换结果随编译变更而失效，
+/// <b>无需</b>接入 <c>CompilationProvider</c>（那会把本产物降为编译级粒度、恶化增量耗时）。
 /// </para>
 /// <para>
 /// <b>输出路径计数</b>（R3-04 修正）：实际 7 条输出路径——
@@ -141,7 +146,9 @@ public sealed class FeishuToolSchemaGenerator : IIncrementalGenerator
             assemblyName.Combine(guidanceFiles),
             Guard<(string? Left, ImmutableArray<AdditionalText> Right)>("FeishuToolGuidance", EmitGuidance));
 
-        // ── Tier R：能力目录（聚合；显式 opt-in）──
+        // ── Tier R：能力目录（聚合；build_property.FeishuToolCatalog 控制是否发射 —— R4-9：
+        // 对 Mud.Feishu.AI.FeishuTools 该产物为**必需**（CapabilityLookupTools 编译期依赖），
+        // 该属性仅对"其他引用本生成器的工程"才是可关闭的增量开关。）──
         var catalogEnabled = context.AnalyzerConfigOptionsProvider.Select(static (provider, _) =>
             provider.GlobalOptions.TryGetValue(CatalogPropertyName, out var value)
             && string.Equals(value, "true", StringComparison.OrdinalIgnoreCase));

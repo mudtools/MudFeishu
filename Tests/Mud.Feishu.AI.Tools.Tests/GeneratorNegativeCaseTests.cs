@@ -99,6 +99,120 @@ public class GeneratorNegativeCaseTests
         run.ShouldReport("MUDFT003", "工具名全仓冲突必须被上报（DescriptorValidator L1 唯一性）");
     }
 
+    /// <summary>
+    /// R4-10：工具名字面不同、但<b>归一后派生常量名相同</b>（<c>fake.a_b</c> / <c>fake.a.b</c> → 都是
+    /// <c>FakeAB</c>）必须被上报——否则 <c>FeishuToolNames</c> 出现重复常量（CS0101），
+    /// 或 <c>{Tool}Args</c> 的 hintName 重复使 <c>AddSource</c> 抛异常（表面症状是 MUDFT026）。
+    /// </summary>
+    [Fact]
+    public void MUDFT027_DerivedConstantNameCollision_ShouldBeReported()
+    {
+        var run = GeneratorDriverHost.Run(SyntheticSources.Attributes, ToolSource("""
+            [FeishuTool("fake.a_b", Description = "派生常量名碰撞 A（_ 与 . 归一后同名）。")]
+            public interface IDerivedCollisionA
+            {
+            }
+
+            [FeishuTool("fake.a.b", Description = "派生常量名碰撞 B（_ 与 . 归一后同名）。")]
+            public interface IDerivedCollisionB
+            {
+            }
+            """));
+
+        run.ShouldNotReport("MUDFT003", "两条工具名字面不同，不属 MUDFT003 的判定范围");
+        run.ShouldReport("MUDFT027", "字面不同的工具名归一到同一编译期常量名必须被上报（产物会 CS0101/重复 hintName）");
+    }
+
+    /// <summary>
+    /// R4-10 对照：归一后仍互异的工具名不得触发 MUDFT027（防"报得太宽"把合法命名拦下）。
+    /// </summary>
+    [Fact]
+    public void MUDFT027_DistinctDerivedConstantNames_ShouldNotBeReported()
+    {
+        var run = GeneratorDriverHost.Run(SyntheticSources.Attributes, ToolSource("""
+            [FeishuTool("fake.a_b", Description = "派生常量名互异 A。")]
+            public interface IDistinctDerivedA
+            {
+            }
+
+            [FeishuTool("fake.a_bc", Description = "派生常量名互异 B。")]
+            public interface IDistinctDerivedB
+            {
+            }
+            """));
+
+        run.ShouldNotReport("MUDFT027", "派生常量名互异（FakeAB / FakeABc）不应被上报");
+    }
+
+    // ────────── 产物名字唯一性（R4-10） ──────────
+
+    /// <summary>
+    /// R4-10：两个命名空间下的<b>同名执行器</b>必须产出互异的注册器类型名 / 核心方法名 / hintName。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 修复前三者都由执行器<b>简单名</b>派生且落入同一命名空间与同一静态类：注册器类型名重复 ⇒
+    /// <c>CS0101</c>；静态类出现签名相同的方法 ⇒ <c>CS0111</c>；hintName 重复使 <c>AddSource</c> 抛异常
+    /// ⇒ 被 <c>Guard</c> 兜成 <c>MUDFT026</c>（"生成器内部异常"这一表面症状，定位不到根因）。
+    /// </para>
+    /// <para>
+    /// <b>与文档原名的差异</b>：方案原拟 "碰撞即报诊断"，实现改为<b>仅对碰撞者追加命名空间后缀</b>——
+    /// 因为注册器类型名与 Core 方法名<b>必须</b>存在（不像工具名可以要求改名），且无碰撞者改名会打断
+    /// 手写 <c>AddFeishu{X}Core</c> 调用点。故本用例断言的是"产物并存且名字互异"，而非诊断上报。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void RegistrarNames_ShouldBeDisambiguated_WhenExecutorSimpleNamesCollide()
+    {
+        var run = GeneratorDriverHost.RunAsOwnerAssembly(
+            SyntheticSources.Attributes,
+            SyntheticSources.HandlerAttribute,
+            CollidingExecutorSource("FakeExecutorA", "fake.disambiguation_a", "IDisambiguationATool"),
+            CollidingExecutorSource("FakeExecutorB", "fake.disambiguation_b", "IDisambiguationBTool"));
+
+        // 修复前：重复 hintName 让 AddSource 抛异常 → Guard 兜成 MUDFT026。
+        run.Diagnostics.Should().BeEmpty("消歧后不得有任何诊断（尤其不得出现 MUDFT026 这一「生成器内部异常」表面症状）");
+
+        var generated = string.Join("\n", run.GeneratedSources);
+
+        // ① 注册器类型名互异且保持固定尾缀形态。
+        generated.Should().Contain("class DupFakeExecutorAToolDomainRegistrar(",
+            "命名空间 A 下的 DupTools 应产出消歧后的注册器名");
+        generated.Should().Contain("class DupFakeExecutorBToolDomainRegistrar(",
+            "命名空间 B 下的 DupTools 应产出消歧后的注册器名");
+
+        // ② 核心方法名互异（否则 FeishuToolsServiceCollectionCoreExtensions 内 CS0111）。
+        generated.Should().Contain("AddFeishuDupToolsFakeExecutorACore(this IServiceCollection services)");
+        generated.Should().Contain("AddFeishuDupToolsFakeExecutorBCore(this IServiceCollection services)");
+
+        // ③ 核心方法体内引用的注册器类型必须同步消歧（否则 CS0246）。
+        generated.Should().Contain("Registration.DupFakeExecutorAToolDomainRegistrar(executor,");
+        generated.Should().Contain("Registration.DupFakeExecutorBToolDomainRegistrar(executor,");
+    }
+
+    /// <summary>R4-10 的合成源码节：指定命名空间下的同名执行器 <c>DupTools</c> 及其携带的工具。</summary>
+    private static string CollidingExecutorSource(string ns, string toolName, string toolInterfaceName) => $$"""
+        namespace {{ns}};
+
+        /// <summary>执行器返回类型桩（生成器按简单名匹配；每个命名空间各自声明一份）。</summary>
+        public sealed class FeishuToolResult
+        {
+        }
+
+        [Mud.Feishu.AI.Tools.FeishuTool("{{toolName}}", Description = "同名执行器消歧用例。")]
+        public interface {{toolInterfaceName}}
+        {
+        }
+
+        internal sealed class DupTools
+        {
+            [Mud.Feishu.AI.FeishuTools.FeishuToolHandler(typeof({{toolInterfaceName}}))]
+            public System.Threading.Tasks.Task<FeishuToolResult> QueryAsync(
+                System.Collections.Generic.IReadOnlyDictionary<string, object?> args,
+                System.Threading.CancellationToken ct) => throw new System.NotSupportedException();
+        }
+        """;
+
     [Fact]
     public void MUDFT004_UnmappableReturnType_ShouldBeReported()
     {

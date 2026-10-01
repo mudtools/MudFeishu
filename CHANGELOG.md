@@ -1,5 +1,89 @@
 # Mud.Feishu 更新日志
 
+## [Unreleased] - Mud.Feishu.AI 审查缺陷修复 R4（2026-10-01）
+
+> 方案与双视角复核（高级程序员 / 系统架构师）见 `.docs/AI/Mud.Feishu.AI-审查缺陷修复与能力完善方案-R4.md`
+> （§0.6 复核订正、§0.7 落地记录、§4 批次 B0/B1/B2、§5.3 红转绿登记）。
+> 覆盖 1 个 P0（R4-1）、5 个 P1、8 个 P2；R4-14 与维度 B（能力补齐）维持 Phase/分期，不进本轮。
+> **AI 模块尚未发布，本轮为一次性重构，无兼容负担。**
+
+### ⚠️ 行为变更登记（宿主可感）
+
+- **【P0 / R4-1】写工具 HITL 改为 fail-closed（不再静默放行）**：删除 `AuthorizeGateAsync` 中
+  「`AuthorizationDecision.NeedsUserConfirmation && tool.IsWrite → Pass()`」特例。该特例的唯一依据
+  （"MAF 未批准则本方法不会被调用"）在运行期**无任何校验**——`ApprovalRequiredAIFunction` 是 MEAI
+  **纯标记类型**，拦截只发生在 `FunctionInvokingChatClient` 内；宿主直接 `InvokeAsync`、或同一进程内两种
+  调用混用时，写工具会被**静默放行**。
+  **新语义**：**授权器是批准状态的唯一所有者**（SDK 不签发/不校验任何凭据，WP3 不变）；
+  读、写工具一律走 `ResolveNeedsConfirmationAsync` 挂起解析并**恒不放行**，宿主批准后须以同一键
+  返回 `Allowed` 才会执行。**迁移**：原以"MAF 批准即放行"为前提的宿主，需在批准回调中更新
+  `IToolExecutionAuthorizer` 状态；未注册批准通道时降级为纯提示（模型拿不到任何凭据）。
+  **源破坏（项目未发布）**。
+- **【R4-6】单例 `FeishuAgent` 不再接收根 `IServiceProvider`**：`ChatClientAgent` 的 `services`
+  改为 `null`（原先在**单例工厂**内传入根容器 `sp`）。根容器被单例长期持有会把 Scoped 依赖钉成
+  事实单例（Captive Dependency，TMA-13 同类问题）。需要 Scoped 服务的宿主应自行
+  `new FeishuAgent(..., services: <由 scope 派生>)`。
+- **【R4-13】结构化错误补 `code` 机器可读字段**：`[tool_error] <tool> (kind) code=<飞书业务码>: <reason>`
+  ——此前 `ToolErrorClassifier` 已算出 code 却在文本中丢失，模型只能读中文后缀。**无 code 时不产出空槽**
+  （HTTP 5xx/429 本就没有业务码）。人读文案形态保持不变（纯追加）。
+
+### 🐛 修复
+
+- **R4-3**：Aily 知识召回 `has_answer` 由**覆盖式赋值**改为**单调累积**。SSE 的 processing 中间事件与
+  终结事件常**省略** `has_answer`，覆盖式会被最后一次无字段事件重置为 `false` ⇒ 有答案被判为无答案，
+  消费点据此**静默丢弃整次召回**（无异常、无日志）。
+- **R4-7**：会话损坏自愈的 catch 面由**枚举白名单**（`JsonException or ArgumentException or
+InvalidOperationException or NotSupportedException`）收口为 `when (ex is not OperationCanceledException)`。
+  白名单既与同处注释"覆盖全部异常类型"自相矛盾，也拦不住 MAF 内部字典/格式转换抛出的
+  `FormatException`/`KeyNotFoundException`（残余类型会毒化会话）。
+- **R4-8**：流式 Agent 路径补记 token 用量（在**迭代器循环体内**累积 `UsageDetails`，循环结束后
+  `RecordUsage`）——此前仅非流式路径有遥测，流式调用在可观测性上不可见。
+- **R4-9**：`FeishuCapabilityCatalog` 的 opt-in 表述与强依赖对齐——该产物对 `Mud.Feishu.AI.FeishuTools`
+  是**必需**（`CapabilityLookupTools` 编译期无条件引用，置 `false` 即 `CS0103`）；
+  `build_property.FeishuToolCatalog` 只对**其他引用本生成器的工程**才是可关闭的增量开关。
+- **R4-10**：生成器 `AddSource` 唯一性护栏加固。`RegistrarTypeName` / Core 方法名 / hintName 三者
+  均由执行器**简单名**派生并发射进**同一**命名空间 ⇒ 跨命名空间的同名执行器会产出同名类型（`CS0101`）
+  与同名方法（`CS0111`），或让 `AddSource` 抛异常后被 `Guard<T>` 吞成 `MUDFT026`（"生成器内部异常"的
+  **表面症状**）。修复：**仅对发生碰撞的执行器**追加命名空间段消歧后缀（无碰撞者名字零变更，手写
+  `AddFeishu{X}Core` 调用点不受影响），并同步修正方法体内的类型引用（否则 `CS0246`）。
+- **R4-11**：写工具文件收敛（**纯位移 + 重命名，不改任何方法体**）——新建 `Internal/BitableWriteTools.cs`
+  与 `Tools/FeishuBitableWriteToolInterfaces.cs` 收纳 bitable 写域；`WriteTools.cs` →
+  `MessageAndApprovalWriteTools.cs`、`WriteTools2.cs` → `DocxSheetsDriveWriteTools.cs`、
+  `FeishuWriteToolInterfaces2.cs` → `FeishuDocxSheetsDriveToolInterfaces.cs`。仓库内不再有 `*2.cs`。
+- **R4-12**：`Pass()` 的"注释写 Warning / 代码 `LogInformation`"矛盾随 R4-1 删除该分支一并消失。
+
+### 🧪 测试与守卫
+
+- **新增诊断 `MUDFT027`（Error，零容忍）**：工具名"字面不同但归一后同名"（如 `fake.a_b` 与
+  `fake.a.b` 均归一为 `FakeAB`）会导致产物常量重复（`CS0101`）或 hintName 重复
+  （→ `MUDFT026`）。**不复用 `MUDFT003`**——后者是"字面工具名重复"，二者真因不同。
+  四处同批登记：`Diagnostics.ZeroToleranceIds` → `AnalyzerReleases.Unshipped.md` →
+  `scripts/verify-build.ps1`（零容忍正则）→ `GeneratorNegativeCaseTests`（可触发负例）。
+- **守卫反转/改写**（改源码不改守卫 = 门禁红）：
+  `WriteTool_NeedsUserConfirmation_ShouldBeBypassed_AtAuthorizeGate` **反转为** `..._ShouldBeDenied_...`；
+  `SessionRestore_ShouldEagerlyValidateHistoryState` 判据改为"catch 面非枚举白名单"；
+  `FeishuToolBindingTests` 原放行用例拆为 `..._ShouldDeny_WhenAuthorizerNotApproved` +
+  `..._ShouldPass_WhenAuthorizerApproved`（后者锁"宿主批准后不得死胡同"）。
+- 落地口径：**能并入既有测试类即不新建类**（原方案 8 个新类实际只新建 2 个），避免重复 fixture 装配。
+- 实测（net8.0，`--filter "Category!=Stress"`）：`Mud.Feishu.AI.Tests` **264/264**、
+  `Mud.Feishu.AI.FeishuTools.Tests` **372/372**、`Mud.Feishu.AI.Tools.Tests` **32/32**。
+- **红转绿留档**：R4-3 临时还原覆盖式赋值 → `HasAnswer` 为 `False`（红），恢复累积后绿；
+  R4-1/R4-7 守卫反转/改写均**先跑红再改源码**；R4-2 实测**全绿**（证否"增量陈旧"，
+  故未转 `CompilationProvider` 方案，用例转为回归锁）。逐条登记见方案 §5.3。
+- `FeishuToolSchemas.golden.txt` **零漂移**（R4-11 为纯位移，生成器按 `ToolName` 序数排序）。
+
+### 📄 文档
+
+- **R4-4**：工具包 `Readme.md` 的 HITL 段重写（原文仍称"签发 HMAC 令牌 / `confirm_token` /
+  `[Obsolete]`"，与已删除令牌的源码相反），并**同批订正基座 `Mud.Feishu.AI/Readme.md`**
+  （原文写 `NeedsUserConfirmation && IsWrite → Pass()` "**必须保留**"，与 R4-1 正面冲突）；
+  新增文档守卫 `Readmes_ShouldNotDescribeConfirmToken` 扫描**两处** Readme。
+- **R4-5**：工具包 `Readme.md` 幂等表 `docx.create_document` 行订正为
+  "**平台端点与 SDK 均不支持** `client_token`"（底层 `CreateDocumentRequest` 无该字段，
+  原文"底层支持 ✅"错误）。
+
+---
+
 ## [Unreleased] - Mud.Feishu.AI 审查缺陷修复 R3（2026-10-01）
 
 > 方案与四视角复核裁定见 `.docs/AI/Mud.Feishu.AI-审查缺陷修复与能力完善方案-R3.md`

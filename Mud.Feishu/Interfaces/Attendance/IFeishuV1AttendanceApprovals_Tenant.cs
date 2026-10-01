@@ -50,6 +50,7 @@ public interface IFeishuTenantV1AttendanceApprovals : IFeishuAppContextSwitcher
     /// <summary>
     /// 通过该接口更新写入飞书考勤系统中的三方系统审批状态，例如请假、加班、外出、出差、补卡等审批，状态包括通过、不通过、撤销等。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=process&amp;project=attendance&amp;resource=approval_info&amp;version=v1"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/attendance-v1/user_approval/process">接口文档</see></para>
     /// </summary>
     /// <param name="updateApprovalInfosRequest">通知审批状态更新请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>

@@ -44,7 +44,7 @@ description: 该接口用于以租户身份对飞书消息进行发送、回复�
 | DownLargeFileAsync | 下载文件（大文件） | 租户令牌 | GET | [DownLargeFileAsync](https://open.feishu.cn/document/server-docs/im-v1/file/get) |
 | DownImageAsync | 下载图片（小文件） | 租户令牌 | GET | [DownImageAsync](https://open.feishu.cn/document/server-docs/im-v1/image/get) |
 | DownLargeImageAsync | 下载图片（大文件） | 租户令牌 | GET | [DownLargeImageAsync](https://open.feishu.cn/document/server-docs/im-v1/image/get) |
-| UploadFileAsync | 上传文件 | 租户令牌 | POST | [UploadFileAsync](https://open.feishu.cn/document/lingo-v1/file/upload) |
+| UploadFileAsync | 上传文件 | 租户令牌 | POST | [UploadFileAsync](https://open.feishu.cn/document/server-docs/approval-v4/file/upload-files) |
 | UploadImageAsync | 上传图片 | 租户令牌 | POST | [UploadImageAsync](https://open.feishu.cn/document/server-docs/im-v1/image/create) |
 
 ### 消息加急

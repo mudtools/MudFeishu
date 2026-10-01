@@ -20,7 +20,7 @@ description: 该接口用于管理三方系统假勤审批的请假、加班、�
 |---------|---------|---------|----------|----------|
 | QueryUserApprovalAsync | 获取员工审批数据 | 租户令牌 | POST | [QueryUserApprovalAsync](https://open.feishu.cn/document/server-docs/attendance-v1/user_approval/query) |
 | CreateUserApprovalAsync | 回写三方审批结果 | 租户令牌 | POST | [CreateUserApprovalAsync](https://open.feishu.cn/document/server-docs/attendance-v1/user_approval/create) |
-| ProcessApprovalInfoAsync | 更新审批状态 | 租户令牌 | POST | — |
+| ProcessApprovalInfoAsync | 更新审批状态 | 租户令牌 | POST | [ProcessApprovalInfoAsync](https://open.feishu.cn/document/server-docs/attendance-v1/user_approval/process) |
 
 ---
 

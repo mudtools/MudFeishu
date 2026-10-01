@@ -129,6 +129,7 @@ public interface IFeishuTenantV4Approval : IFeishuAppContextSwitcher
     /// <summary>
     /// 在创建审批实例之前，可调用本接口预览审批流程数据。
     /// <para>官方文档：<see href="https://open.feishu.cn/document/server-docs/approval-v4/instance/approval-preview"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/instance/approval-preview">接口文档</see></para>
     /// </summary>
     /// <param name="previewInstanceRequest">预览审批流程请求体</param>
     /// <param name="user_id_type">用户 ID 类型</param>
@@ -143,6 +144,7 @@ public interface IFeishuTenantV4Approval : IFeishuAppContextSwitcher
     /// <summary>
     /// 在创建审批实例之后，可调用本接口预览某一审批节点的后续流程数据。
     /// <para>官方文档：<see href="https://open.feishu.cn/document/server-docs/approval-v4/instance/approval-preview"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/instance/approval-preview">接口文档</see></para>
     /// </summary>
     /// <param name="previewInstanceRequest">在创建审批实例之后预览审批流程请求体</param>
     /// <param name="user_id_type">用户 ID 类型</param>

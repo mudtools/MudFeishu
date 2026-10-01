@@ -20,6 +20,7 @@ public interface IFeishuUserV2Wiki : IFeishuV2Wiki, ICurrentUserId
 {
     /// <summary>
     /// 创建知识空间。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/space/create">接口文档</see></para>
     /// </summary>
     /// <param name="createSpaceRequest">创建知识空间请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -29,3 +30,4 @@ public interface IFeishuUserV2Wiki : IFeishuV2Wiki, ICurrentUserId
          [Body] CreateSpaceRequest createSpaceRequest,
          CancellationToken cancellationToken = default);
 }
+

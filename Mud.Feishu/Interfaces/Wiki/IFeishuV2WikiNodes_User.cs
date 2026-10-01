@@ -20,6 +20,7 @@ public interface IFeishuUserV2WikiNodes : IFeishuV2WikiNodes, ICurrentUserId
 {
     /// <summary>
     /// <para>搜索 Wiki，用户通过关键词查询 Wiki，只能查找自己可见的 wiki</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/search_wiki">接口文档</see></para>
     /// <para>**注：** Wiki 存在，但用户搜索不到并不一定是搜索有问题，可能是用户没有查看该 Wiki 的权限</para>  /// </summary>
     /// <param name="wikiSearchRequest">搜索 Wiki 请求体</param>
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
@@ -32,3 +33,4 @@ public interface IFeishuUserV2WikiNodes : IFeishuV2WikiNodes, ICurrentUserId
          [Query("page_token")] string? page_token = null,
          CancellationToken cancellationToken = default);
 }
+

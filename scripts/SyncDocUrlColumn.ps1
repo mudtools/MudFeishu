@@ -92,18 +92,22 @@ foreach ($f in $files) {
     $lines = [System.IO.File]::ReadAllLines($f.FullName)
     $dirty = $false
     $inTable = $false
+    $hasColumn = $false
     for ($i = 0; $i -lt $lines.Count; $i++) {
         $line = $lines[$i]
         $hm = $headerRe.Match($line)
-        if ($hm.Success -and $line -notmatch '接口文档') {
-            # 表头：追加一列
-            $lines[$i] = $line.TrimEnd() + ' 接口文档 |'
-            # 紧随其后的分隔行
-            if ($i + 1 -lt $lines.Count -and $lines[$i + 1] -match '^\|[\s\-:|]+\|\s*$') {
-                $lines[$i + 1] = $lines[$i + 1].TrimEnd() + ' --- |'
+        if ($hm.Success) {
+            $hasColumn = $line -match '接口文档'
+            if (-not $hasColumn) {
+                # 表头：追加一列
+                $lines[$i] = $line.TrimEnd() + ' 接口文档 |'
+                # 紧随其后的分隔行
+                if ($i + 1 -lt $lines.Count -and $lines[$i + 1] -match '^\|[\s\-:|]+\|\s*$') {
+                    $lines[$i + 1] = $lines[$i + 1].TrimEnd() + ' --- |'
+                }
+                $dirty = $true
             }
             $inTable = $true
-            $dirty = $true
             continue
         }
         if ($inTable) {
@@ -113,7 +117,10 @@ foreach ($f in $files) {
                 $url = $methodUrl[$name]
                 $cell = if ($url) { " [$name]($url) |" } else { ' — |' }
                 if (-not $url) { $skipped++ }
-                $lines[$i] = $line.TrimEnd() + $cell
+                $base = $line.TrimEnd()
+                # 该表已带「接口文档」列时，替换最后一格而非追加
+                if ($hasColumn) { $base = $base -replace '\s*(\[[^\]]*\]\([^)]*\)|—)\s*\|\s*$', '' }
+                $lines[$i] = $base + $cell
                 $addedCells++
                 $dirty = $true
             }

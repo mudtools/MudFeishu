@@ -22,6 +22,7 @@ public interface IFeishuV1AttendanceArchives : IFeishuAppContextSwitcher
     /// <summary>
     /// 查询归档报表表头。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=user_stats_fields_query&amp;project=attendance&amp;resource=archive_rule&amp;version=v1"/></para>
+    /// <para><see href="https://open.feishu.cn/document/attendance-v1/archive_rule/user_stats_fields_query">接口文档</see></para>
     /// </summary>
     /// <param name="queryArchiveUserStatsFieldsRequest">查询归档报表表头请求体</param>
     /// <param name="employee_type">请求体中的 user_id 和响应体中的 user_id 的员工ID类型。</param>
@@ -37,6 +38,7 @@ public interface IFeishuV1AttendanceArchives : IFeishuAppContextSwitcher
     /// 按月份、用户和归档规则ID直接删除归档报表行数据。
     /// <para>页面无对应功能，页面是通过导入并全量覆盖完成数据删除的。</para>
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=del_report&amp;project=attendance&amp;resource=archive_rule&amp;version=v1"/></para>
+    /// <para><see href="https://open.feishu.cn/document/attendance-v1/archive_rule/del_report">接口文档</see></para>
     /// </summary>
     /// <param name="archiveUploadReportRequest">删除归档报表行数据请求体</param>
     /// <param name="employee_type">请求体中的 user_id 和响应体中的 user_id 的员工ID类型。</param>
@@ -52,6 +54,7 @@ public interface IFeishuV1AttendanceArchives : IFeishuAppContextSwitcher
     /// 查询所有归档规则。
     /// <para>对应后台假勤管理-考勤统计-报表-归档报表功能</para>
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=list&amp;project=attendance&amp;resource=archive_rule&amp;version=v1"/></para>
+    /// <para><see href="https://open.feishu.cn/document/attendance-v1/archive_rule/list">接口文档</see></para>
     /// </summary>
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>

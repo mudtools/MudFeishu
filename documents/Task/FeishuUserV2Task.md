@@ -20,7 +20,7 @@ description: 该接口用于以当前登录用户身份操作飞书任务的完�
 
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
 |---------|---------|---------|----------|----------|
-| GetTasksPageListByIdAsync | 分页获取任务列表 | 用户令牌 | GET | — |
+| GetTasksPageListByIdAsync | 分页获取任务列表 | 用户令牌 | GET | [GetTasksPageListByIdAsync](https://open.feishu.cn/document/task-v2/task/list) |
 | CreateTaskAsync | 创建任务 | 用户令牌 | POST | [CreateTaskAsync](https://open.feishu.cn/document/task-v2/task/create) |
 | UpdateTaskAsync | 更新任务 | 用户令牌 | PATCH | [UpdateTaskAsync](https://open.feishu.cn/document/task-v2/task/patch) |
 | GetTaskByIdAsync | 获取任务详情 | 用户令牌 | GET | [GetTaskByIdAsync](https://open.feishu.cn/document/task-v2/task/get) |

@@ -21,7 +21,7 @@ description: 该接口用于飞书考勤统计，支持开发者定制接口返�
 | UpdateUserStatsViewAsync | 更新统计设置 | 租户令牌 | PUT | — |
 | QueryUserStatsFieldAsync | 查询统计表头 | 租户令牌 | POST | — |
 | QueryUserStatsViewAsync | 查询统计设置 | 租户令牌 | POST | — |
-| QueryUserStatsDataAsync | 查询统计数据 | 租户令牌 | POST | — |
+| QueryUserStatsDataAsync | 查询统计数据 | 租户令牌 | POST | [QueryUserStatsDataAsync](https://open.feishu.cn/document/server-docs/attendance-v1/user_stats_data/query) |
 
 ---
 

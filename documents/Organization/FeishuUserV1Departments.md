@@ -20,12 +20,12 @@ description: 该接口用于以用户身份管理飞书企业组织架构中的�
 
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
 |---------|---------|---------|----------|----------|
-| CreateDepartmentAsync | 创建部门 | 用户令牌 | POST | — |
-| UpdateDepartmentAsync | 更新部门 | 用户令牌 | PATCH | — |
-| DeleteDepartmentByIdAsync | 删除部门 | 用户令牌 | DELETE | — |
-| QueryDepartmentsAsync | 批量查询部门 | 用户令牌 | POST | — |
-| QueryDepartmentsPageListAsync | 分页查询部门列表 | 用户令牌 | POST | — |
-| SearchEmployeePageListAsync | 搜索部门 | 用户令牌 | POST | — |
+| CreateDepartmentAsync | 创建部门 | 用户令牌 | POST | [CreateDepartmentAsync](https://open.feishu.cn/document/directory-v1/department/create) |
+| UpdateDepartmentAsync | 更新部门 | 用户令牌 | PATCH | [UpdateDepartmentAsync](https://open.feishu.cn/document/directory-v1/department/patch) |
+| DeleteDepartmentByIdAsync | 删除部门 | 用户令牌 | DELETE | [DeleteDepartmentByIdAsync](https://open.feishu.cn/document/directory-v1/department/delete) |
+| QueryDepartmentsAsync | 批量查询部门 | 用户令牌 | POST | [QueryDepartmentsAsync](https://open.feishu.cn/document/directory-v1/department/mget) |
+| QueryDepartmentsPageListAsync | 分页查询部门列表 | 用户令牌 | POST | [QueryDepartmentsPageListAsync](https://open.feishu.cn/document/directory-v1/department/filter) |
+| SearchEmployeePageListAsync | 搜索部门 | 用户令牌 | POST | [SearchEmployeePageListAsync](https://open.feishu.cn/document/directory-v1/department/search) |
 
 ## 函数详细内容
 

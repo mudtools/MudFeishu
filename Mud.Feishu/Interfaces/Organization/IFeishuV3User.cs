@@ -21,6 +21,7 @@ public interface IFeishuV3User : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 更新通讯录中指定用户的信息，包括名称、邮箱、手机号、所属部门以及自定义字段等信息。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/user/patch">接口文档</see></para>
     /// </summary>
     /// <param name="user_id">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="userModel">用于更新的用户请求体。</param>
@@ -38,6 +39,7 @@ public interface IFeishuV3User : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取通讯录中某一用户的信息，包括用户 ID、名称、邮箱、手机号、状态以及所属部门等信息。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/user/get">接口文档</see></para>
     /// </summary>
     /// <param name="user_id">用户ID。ID 类型与查询参数 user_id_type 保持一致。</param>
     /// <param name="user_id_type">用户 ID 类型</param>
@@ -53,6 +55,7 @@ public interface IFeishuV3User : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 批量获取通讯录中用户的信息，包括用户 ID、名称、邮箱、手机号、状态以及所属部门等信息。
+    /// <para><see href="https://open.feishu.cn/document/contact-v3/user/batch">接口文档</see></para>
     /// </summary>
     /// <param name="user_id_type">用户 ID 类型</param>
     /// <param name="department_id_type">此次调用中使用的部门 ID 类型。</param>
@@ -68,6 +71,7 @@ public interface IFeishuV3User : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取指定部门直属的用户信息列表。用户信息包括用户 ID、名称、邮箱、手机号以及状态等信息。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/user/find_by_department">接口文档</see></para>
     /// </summary>
     /// <param name="user_id_type">用户 ID 类型</param>
     /// <param name="department_id_type">此次调用中使用的部门 ID 类型。</param>

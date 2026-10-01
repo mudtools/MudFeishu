@@ -21,6 +21,7 @@ public interface IFeishuTenantV4ApprovalTask : IFeishuAppContextSwitcher
     /// <summary>
     /// 对单个审批任务进行同意操作。同意后审批流程会流转到下一个审批人。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=approve&amp;project=approval&amp;resource=task&amp;version=v4"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/task/approve">接口文档</see></para>
     /// </summary>
     /// <param name="agreeApprovalTasksRequest">同意审批任务请求体</param>
     /// <param name="user_id_type">用户 ID 类型</param>
@@ -36,6 +37,7 @@ public interface IFeishuTenantV4ApprovalTask : IFeishuAppContextSwitcher
     /// <summary>
     /// 对单个审批任务进行拒绝操作。拒绝后审批流程结束。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=reject&amp;project=approval&amp;resource=task&amp;version=v4"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/task/reject">接口文档</see></para>
     /// </summary>
     /// <param name="rejectApprovalTaskRequest">拒绝审批任务请求体</param>
     /// <param name="user_id_type">用户 ID 类型</param>
@@ -50,6 +52,7 @@ public interface IFeishuTenantV4ApprovalTask : IFeishuAppContextSwitcher
     /// <summary>
     /// 对单个审批任务进行转交操作。转交后审批流程流转给被转交人。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=transfer&amp;project=approval&amp;resource=task&amp;version=v4"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/task/transfer">接口文档</see></para>
     /// </summary>
     /// <param name="transferApprovalTasksRequest">转交审批任务请求体</param>
     /// <param name="user_id_type">用户 ID 类型</param>
@@ -92,6 +95,7 @@ public interface IFeishuTenantV4ApprovalTask : IFeishuAppContextSwitcher
     /// <summary>
     /// 对于退回到发起人的审批任务进行重新发起操作。发起后审批流程会流转到下一个审批人。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=resubmit&amp;project=approval&amp;resource=task&amp;version=v4"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/task/resubmit">接口文档</see></para>
     /// </summary>
     /// <param name="instancesAddSignRequest">重新提交审批任务请求体</param>
     /// <param name="user_id_type">用户 ID 类型</param>

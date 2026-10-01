@@ -20,6 +20,7 @@ public interface IFeishuTenantV3User : IFeishuV3User
 {
     /// <summary>
     /// 向通讯录创建一个用户（该动作可以理解为员工入职）。成功创建用户后，系统会以短信或邮件的形式向用户发送邀请，用户在同意邀请后方可访问企业或团队。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/user/create">接口文档</see></para>
     /// </summary>
     /// <param name="userModel">创建的用户请求体。</param>
     /// <param name="user_id_type">用户 ID 类型</param>
@@ -37,6 +38,7 @@ public interface IFeishuTenantV3User : IFeishuV3User
 
     /// <summary>
     /// 更新用户 ID
+    /// <para><see href="https://open.feishu.cn/document/contact-v3/user/update_user_id">接口文档</see></para>
     /// </summary>
     /// <param name="user_id">用户 ID，ID 类型与查询参数 user_id_type 的取值保持一致。</param>
     /// <param name="updateUserId">自定义新的用户 user_id。长度不能超过 64 字符。</param>
@@ -66,6 +68,7 @@ public interface IFeishuTenantV3User : IFeishuV3User
 
     /// <summary>
     /// 从通讯录内删除一个指定用户（该动作可以理解为员工离职），删除时可通过请求参数将用户所有的群组、文档、日程和应用等数据转让至他人。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/user/delete">接口文档</see></para>
     /// </summary>
     /// <param name="user_id">用户 ID。</param>
     /// <param name="user_id_type">用户 ID 类型</param>
@@ -81,6 +84,7 @@ public interface IFeishuTenantV3User : IFeishuV3User
 
     /// <summary>
     /// 用于恢复已删除用户（已离职的成员）。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/user/resurrect">接口文档</see></para>
     /// </summary>
     /// <param name="user_id">用户 ID。</param>
     /// <param name="user_id_type">用户 ID 类型</param>

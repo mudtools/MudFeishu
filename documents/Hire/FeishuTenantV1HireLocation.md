@@ -15,7 +15,7 @@ description: 该接口用于以租户身份查询飞书招聘的地址主数据�
 
 ## 参考文档
 
-- [查询地址](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/location/query)
+- [查询地址](https://open.feishu.cn/document/hire-v1/recruitment-related-configuration/location/query)
 - [获取地址列表](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/location/list)
 
 ## 函数列表

@@ -45,6 +45,7 @@ public interface IFeishuTenantV3UserGroupMember : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 查询指定用户组内的成员列表，列表内主要包括成员 ID 信息。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/group/simplelist">接口文档</see></para>
     /// </summary>
     /// <param name="group_id">用户组 ID。</param>
     /// <param name="member_id_type">用户组成员 ID 类型。默认值：open_id</param>

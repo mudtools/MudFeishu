@@ -15,7 +15,7 @@ description: 该接口用于以租户身份管理企业内所有用户的邮箱�
 - [修改邮件](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/modify)
 - [批量获取邮件详情](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/batch_get)
 - [查询会话下邮件信息](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/list_thread_message)
-- [获取邮件卡片的邮件列表](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/get_by_card)
+- [获取邮件卡片的邮件列表](https://open.feishu.cn/document/mail-v1/user_mailbox-message/get_by_card)
 - [分页列出邮件](https://open.feishu.cn/document/mail-v1/user_mailbox-message/list)
 - [获取邮件详情](https://open.feishu.cn/document/mail-v1/user_mailbox-message/get)
 - [获取邮件内附件的下载链接](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message-attachment/download_url)
@@ -31,7 +31,7 @@ description: 该接口用于以租户身份管理企业内所有用户的邮箱�
 | ModifyUserMailboxMessageAsync | 修改邮件 | TenantAccessToken | PUT | [ModifyUserMailboxMessageAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/modify) |
 | BatchGetUserMailboxMessageAsync | 批量获取邮件详情 | TenantAccessToken | POST | [BatchGetUserMailboxMessageAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/batch_get) |
 | GetThreadMessageUserMailboxMessageAsync | 查询会话下邮件信息 | TenantAccessToken | GET | [GetThreadMessageUserMailboxMessageAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/list_thread_message) |
-| GetByCardUserMailboxMessageAsync | 获取邮件卡片的邮件列表 | TenantAccessToken | GET | [GetByCardUserMailboxMessageAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/get_by_card) |
+| GetByCardUserMailboxMessageAsync | 获取邮件卡片的邮件列表 | TenantAccessToken | GET | [GetByCardUserMailboxMessageAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-message/get_by_card) |
 | GetUserMailboxMessagePageListAsync | 分页列出邮件 | TenantAccessToken | GET | [GetUserMailboxMessagePageListAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-message/list) |
 | GetUserMailboxMessageAsync | 获取邮件详情 | TenantAccessToken | GET | [GetUserMailboxMessageAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-message/get) |
 | GetMessageAttachmentDownloadUrlAsync | 获取邮件内附件的下载链接 | TenantAccessToken | GET | [GetMessageAttachmentDownloadUrlAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message-attachment/download_url) |

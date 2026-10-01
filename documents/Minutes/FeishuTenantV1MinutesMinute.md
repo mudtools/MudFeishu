@@ -15,13 +15,13 @@ description: 该接口用于以租户身份获取飞书妙记信息，支持妙�
 
 ## 参考文档
 
-- [获取妙记信息 - 飞书开放平台](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/minutes-v1/minute/get)
+- [获取妙记信息 - 飞书开放平台](https://open.feishu.cn/document/server-docs/minutes-v1/minute/get)
 
 ## 函数列表
 
 | 函数名称                 | 功能描述               | 认证方式 | HTTP 方法 | 接口文档 |
 | ------------------------ | ---------------------- | -------- | --------- |----------|
-| GetMinuteAsync           | 获取妙记信息           | 租户令牌 | GET       | [GetMinuteAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/minutes-v1/minute/get) |
+| GetMinuteAsync           | 获取妙记信息           | 租户令牌 | GET       | [GetMinuteAsync](https://open.feishu.cn/document/server-docs/minutes-v1/minute/get) |
 | GetMinuteMediaAsync      | 下载妙记音视频文件     | 租户令牌 | GET       | [GetMinuteMediaAsync](https://open.feishu.cn/document/minutes-v1/minute-media/get) |
 | GetMinuteTranscriptAsync | 导出妙记文字记录       | 租户令牌 | GET       | [GetMinuteTranscriptAsync](https://open.feishu.cn/document/minutes-v1/minute-transcript/get) |
 | GetMinuteStatisticsAsync | 获取妙记统计数据       | 租户令牌 | GET       | [GetMinuteStatisticsAsync](https://open.feishu.cn/document/server-docs/minutes-v1/minute-statistics/get) |

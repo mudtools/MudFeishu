@@ -18,11 +18,11 @@ description: 该接口用于管理飞书考勤班次，班次描述一次考勤�
 
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
 |---------|---------|---------|----------|----------|
-| CreateShiftAsync | 创建考勤班次 | 租户令牌 | POST | — |
-| DeleteShiftByIdAsync | 删除考勤班次 | 租户令牌 | DELETE | — |
-| GetShiftByIdAsync | 获取班次详情 | 租户令牌 | GET | — |
-| GetShiftByNameAsync | 按名称查询班次 | 租户令牌 | POST | — |
-| GetShiftsPageListAsync | 分页查询所有班次 | 租户令牌 | GET | — |
+| CreateShiftAsync | 创建考勤班次 | 租户令牌 | POST | [CreateShiftAsync](https://open.feishu.cn/document/server-docs/attendance-v1/shift/create) |
+| DeleteShiftByIdAsync | 删除考勤班次 | 租户令牌 | DELETE | [DeleteShiftByIdAsync](https://open.feishu.cn/document/server-docs/attendance-v1/shift/delete) |
+| GetShiftByIdAsync | 获取班次详情 | 租户令牌 | GET | [GetShiftByIdAsync](https://open.feishu.cn/document/server-docs/attendance-v1/shift/get) |
+| GetShiftByNameAsync | 按名称查询班次 | 租户令牌 | POST | [GetShiftByNameAsync](https://open.feishu.cn/document/server-docs/attendance-v1/shift/query) |
+| GetShiftsPageListAsync | 分页查询所有班次 | 租户令牌 | GET | [GetShiftsPageListAsync](https://open.feishu.cn/document/server-docs/attendance-v1/shift/list) |
 
 ---
 

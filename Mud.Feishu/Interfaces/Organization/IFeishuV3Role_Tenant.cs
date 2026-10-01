@@ -22,6 +22,7 @@ public interface IFeishuTenantV3Role : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 创建一个角色。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/functional_role/create">接口文档</see></para>
     /// </summary>
     /// <param name="roleRequest">创建角色请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -33,6 +34,7 @@ public interface IFeishuTenantV3Role : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 修改指定角色的角色名称。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/functional_role/update">接口文档</see></para>
     /// </summary>
     /// <param name="role_id">角色 ID。</param>
     /// <param name="roleRequest">创建角色请求体。</param>
@@ -46,6 +48,7 @@ public interface IFeishuTenantV3Role : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 删除指定角色。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/functional_role/delete">接口文档</see></para>
     /// </summary>
     /// <param name="role_id">角色 ID。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>

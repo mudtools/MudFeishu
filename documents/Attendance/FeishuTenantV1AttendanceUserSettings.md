@@ -18,8 +18,8 @@ description: 该接口用于管理飞书考勤用户设置，主要实现修改�
 
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
 |---------|---------|---------|----------|----------|
-| ModifyUserSettingAsync | 修改用户设置 | 租户令牌 | POST | — |
-| QueryUserSettingAsync | 查询用户设置 | 租户令牌 | GET | — |
+| ModifyUserSettingAsync | 修改用户设置 | 租户令牌 | POST | [ModifyUserSettingAsync](https://open.feishu.cn/document/server-docs/attendance-v1/user_setting/modify) |
+| QueryUserSettingAsync | 查询用户设置 | 租户令牌 | GET | [QueryUserSettingAsync](https://open.feishu.cn/document/server-docs/attendance-v1/user_setting/query) |
 | UploadFileAsync | 上传人脸照片 | 租户令牌 | POST | [UploadFileAsync](https://open.feishu.cn/document/lingo-v1/file/upload) |
 | DownloadFileAsync | 下载人脸照片 | 租户令牌 | GET | [DownloadFileAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/download/download) |
 

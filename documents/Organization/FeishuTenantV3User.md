@@ -20,16 +20,16 @@ description: 该接口用于以租户身份管理飞书通讯录 V3 版本用户
 
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
 |---------|---------|---------|----------|----------|
-| GetUserInfoByIdAsync | 获取用户信息 | 租户令牌 | GET | — |
-| GetUserByIdsAsync | 批量获取用户 | 租户令牌 | GET | — |
-| GetUserByDepartmentIdAsync | 获取部门直属用户 | 租户令牌 | GET | — |
-| UpdateUserAsync | 更新用户 | 租户令牌 | PATCH | — |
-| CreateUserAsync | 创建用户 | 租户令牌 | POST | — |
-| UpdateUserIdAsync | 更新用户ID | 租户令牌 | PATCH | — |
+| GetUserInfoByIdAsync | 获取用户信息 | 租户令牌 | GET | [GetUserInfoByIdAsync](https://open.feishu.cn/document/server-docs/contact-v3/user/get) |
+| GetUserByIdsAsync | 批量获取用户 | 租户令牌 | GET | [GetUserByIdsAsync](https://open.feishu.cn/document/contact-v3/user/batch) |
+| GetUserByDepartmentIdAsync | 获取部门直属用户 | 租户令牌 | GET | [GetUserByDepartmentIdAsync](https://open.feishu.cn/document/server-docs/contact-v3/user/find_by_department) |
+| UpdateUserAsync | 更新用户 | 租户令牌 | PATCH | [UpdateUserAsync](https://open.feishu.cn/document/server-docs/contact-v3/user/patch) |
+| CreateUserAsync | 创建用户 | 租户令牌 | POST | [CreateUserAsync](https://open.feishu.cn/document/server-docs/contact-v3/user/create) |
+| UpdateUserIdAsync | 更新用户ID | 租户令牌 | PATCH | [UpdateUserIdAsync](https://open.feishu.cn/document/contact-v3/user/update_user_id) |
 | GetBatchUsersAsync | 通过手机号/邮箱获取用户 | 租户令牌 | POST | — |
 | GetUsersByKeywordAsync | 搜索用户 | 租户令牌 | GET | — |
-| DeleteUserByIdAsync | 删除用户 | 租户令牌 | DELETE | — |
-| ResurrectUserByIdAsync | 恢复用户 | 租户令牌 | POST | — |
+| DeleteUserByIdAsync | 删除用户 | 租户令牌 | DELETE | [DeleteUserByIdAsync](https://open.feishu.cn/document/server-docs/contact-v3/user/delete) |
+| ResurrectUserByIdAsync | 恢复用户 | 租户令牌 | POST | [ResurrectUserByIdAsync](https://open.feishu.cn/document/server-docs/contact-v3/user/resurrect) |
 | LogoutAsync | 退出登录 | 租户令牌 | POST | — |
 | GetJsTicketAsync | 获取JSAPI票据 | 租户令牌 | POST | — |
 

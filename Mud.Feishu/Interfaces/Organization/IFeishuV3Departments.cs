@@ -19,6 +19,7 @@ public interface IFeishuV3Departments : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 获取单个部门信息，包括部门名称、ID、父部门、负责人、状态以及成员个数等。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/department/get">接口文档</see></para>
     /// </summary>
     /// <param name="department_id">部门 ID，ID 类型需要与查询参数 department_id_type 的取值保持一致。</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
@@ -33,6 +34,7 @@ public interface IFeishuV3Departments : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取单个部门信息，包括部门名称、ID、父部门、负责人、状态以及成员个数等。
+    /// <para><see href="https://open.feishu.cn/document/contact-v3/department/batch">接口文档</see></para>
     /// </summary>
     /// <param name="department_ids">部门 ID，ID 类型需要与查询参数 department_id_type 的取值保持一致。</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
@@ -47,6 +49,7 @@ public interface IFeishuV3Departments : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 查询指定部门下的子部门列表，列表内包含部门的名称、ID、父部门、负责人以及状态等信息。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/department/children">接口文档</see></para>
     /// </summary>
     /// <param name="department_id">部门 ID，ID 类型与 department_id_type 的取值保持一致。</param>
     /// <param name="fetch_child"></param> 
@@ -68,6 +71,7 @@ public interface IFeishuV3Departments : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 递归获取指定部门的父部门信息，包括部门名称、ID、负责人以及状态等。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/department/parent">接口文档</see></para>
     /// </summary>
     /// <param name="department_id">部门 ID，ID 类型与 department_id_type 的取值保持一致。</param>
     /// <param name="user_id_type">用户 ID 类型</param>

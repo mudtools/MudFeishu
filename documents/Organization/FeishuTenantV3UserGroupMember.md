@@ -22,7 +22,7 @@ description: 该接口用于以租户身份管理飞书用户组成员，支持�
 |---------|---------|---------|----------|----------|
 | AddMemberAsync | 添加成员 | 租户令牌 | POST | [AddMemberAsync](https://open.feishu.cn/document/server-docs/group/chat-member/create) |
 | BatchAddMemberAsync | 批量添加成员 | 租户令牌 | POST | — |
-| GetMemberListByGroupIdAsync | 获取成员列表 | 租户令牌 | GET | — |
+| GetMemberListByGroupIdAsync | 获取成员列表 | 租户令牌 | GET | [GetMemberListByGroupIdAsync](https://open.feishu.cn/document/server-docs/contact-v3/group/simplelist) |
 | RemoveMemberAsync | 移除成员 | 租户令牌 | POST | [RemoveMemberAsync](https://open.feishu.cn/document/server-docs/group/chat-member/delete) |
 | BatchRemoveMemberAsync | 批量移除成员 | 租户令牌 | POST | — |
 

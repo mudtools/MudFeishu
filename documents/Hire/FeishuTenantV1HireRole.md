@@ -15,7 +15,7 @@ description: 该接口用于以租户身份查询飞书招聘的角色信息，�
 
 ## 参考文档
 
-- [获取角色详情](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/auth/get)
+- [获取角色详情](https://open.feishu.cn/document/hire-v1/recruitment-related-configuration/auth/get)
 - [获取角色列表](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/auth/list)
 
 ## 函数列表

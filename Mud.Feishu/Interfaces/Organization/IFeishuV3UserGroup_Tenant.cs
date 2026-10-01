@@ -21,6 +21,7 @@ public interface IFeishuTenantV3UserGroup : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 创建用户组。用户组是飞书通讯录中基础实体之一，在用户组内可添加用户或部门资源。各类业务权限管控可以与用户组关联，从而实现高效便捷的成员权限管控。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/group/create">接口文档</see></para>
     /// </summary>
     /// <param name="groupInfoRequest">创建用户组请求体。</param>
     /// <param name="user_id_type">用户 ID 类型</param>
@@ -36,6 +37,7 @@ public interface IFeishuTenantV3UserGroup : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 更新用户组。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/group/patch">接口文档</see></para>
     /// </summary>
     /// <param name="groupUpdateRequest">更新用户组请求体。</param>
     /// <param name="group_id">用户组 ID。用户组 ID 可在创建用户组时从返回值中获取，你也可以调用查询用户组列表接口，获取用户组的 ID。</param>
@@ -52,6 +54,7 @@ public interface IFeishuTenantV3UserGroup : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 通过用户组 ID 查询指定用户组的基本信息，包括用户组名称、成员数量和类型等。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/group/get">接口文档</see></para>
     /// </summary>
     /// <param name="group_id">用户组 ID。</param>
     /// <param name="user_id_type">此次调用中的用户 ID 类型</param>
@@ -67,6 +70,7 @@ public interface IFeishuTenantV3UserGroup : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 查询当前租户下的用户组列表，列表内包含用户组的 ID、名字、成员数量和类型等信息。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/group/simplelist">接口文档</see></para>
     /// </summary>
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
@@ -82,6 +86,7 @@ public interface IFeishuTenantV3UserGroup : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 查询指定用户所属的用户组列表。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/group/member_belong">接口文档</see></para>
     /// </summary>
     /// <param name="member_id">成员 ID。ID 类型与 member_id_type 取值保持一致。</param>
     /// <param name="member_id_type">成员 ID 类型。</param>
@@ -103,6 +108,7 @@ public interface IFeishuTenantV3UserGroup : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 删除指定用户组。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/group/delete">接口文档</see></para>
     /// </summary>
     /// <param name="group_id">需删除的用户组 ID。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>

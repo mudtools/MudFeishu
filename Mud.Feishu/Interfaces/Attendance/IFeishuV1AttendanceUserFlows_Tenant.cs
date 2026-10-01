@@ -81,6 +81,7 @@ public interface IFeishuTenantV1AttendanceUserFlows : IFeishuAppContextSwitcher
     /// <summary>
     /// 获取企业内员工的实际打卡结果。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=query&amp;project=attendance&amp;resource=user_task&amp;version=v1"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/attendance-v1/user_task/query">接口文档</see></para>
     /// </summary>
     /// <param name="userTasksQueryRequest">查询打卡结果请求体</param>
     /// <param name="ignore_invalid_users">是否忽略无效和没有权限的用户，对应employee_type。

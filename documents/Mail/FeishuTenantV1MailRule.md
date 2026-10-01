@@ -12,7 +12,7 @@ description: 该接口用于以租户身份管理企业内所有用户的邮箱�
 - [创建收信规则](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/create)
 - [删除收信规则](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/delete)
 - [更新收信规则](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/update)
-- [列出收信规则](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-rule/list)
+- [列出收信规则](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/list)
 - [对收信规则进行排序](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/reorder)
 
 ## 函数列表
@@ -21,7 +21,7 @@ description: 该接口用于以租户身份管理企业内所有用户的邮箱�
 | CreateUserMailboxRuleAsync | 创建收信规则 | TenantAccessToken | POST | [CreateUserMailboxRuleAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/create) |
 | DeleteUserMailboxRuleAsync | 删除收信规则 | TenantAccessToken | DELETE | [DeleteUserMailboxRuleAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/delete) |
 | UpdateUserMailboxRuleAsync | 更新收信规则 | TenantAccessToken | PUT | [UpdateUserMailboxRuleAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/update) |
-| GetMailboxRuleListAsync | 列出收信规则 | TenantAccessToken | GET | [GetMailboxRuleListAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-rule/list) |
+| GetMailboxRuleListAsync | 列出收信规则 | TenantAccessToken | GET | [GetMailboxRuleListAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/list) |
 | ReorderUserMailboxRuleAsync | 对收信规则进行排序 | TenantAccessToken | POST | [ReorderUserMailboxRuleAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/reorder) |
 
 ## 函数详细内容
@@ -106,7 +106,7 @@ TenantAccessToken（租户访问令牌）
 | 参数名 | 类型 | 必填 | 描述 | 示例 |
 | :--- | :--- | :--- | :--- | :--- |
 | user_mailbox_id | string | ✅ | 用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。 | user@example.com |
-| rule_id | string | ✅ | 规则 id，获取方式见 [列出收信规则](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-rule/list) | 123123123 |
+| rule_id | string | ✅ | 规则 id，获取方式见 [列出收信规则](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/list) | 123123123 |
 | cancellationToken | CancellationToken | ⚪ | 取消操作令牌对象 | default |
 
 **响应**
@@ -150,7 +150,7 @@ TenantAccessToken（租户访问令牌）
 | 参数名 | 类型 | 必填 | 描述 | 示例 |
 | :--- | :--- | :--- | :--- | :--- |
 | user_mailbox_id | string | ✅ | 用户邮箱地址，作为用户邮箱身份标识。使用 user_access_token 调用时，可使用占位符 `me` 表示当前授权用户的主邮箱。 | user@example.com |
-| rule_id | string | ✅ | 规则 id，获取方式见 [列出收信规则](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-rule/list) | 123123123 |
+| rule_id | string | ✅ | 规则 id，获取方式见 [列出收信规则](https://open.feishu.cn/document/mail-v1/user_mailbox-rule/list) | 123123123 |
 | request | UpdateUserMailboxRuleRequest | ✅ | 更新用户邮箱收信规则请求对象，包含待更新的收信规则信息。 | - |
 | cancellationToken | CancellationToken | ⚪ | 取消操作令牌对象 | default |
 

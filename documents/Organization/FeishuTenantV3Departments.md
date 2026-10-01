@@ -20,16 +20,16 @@ description: 该接口用于以租户身份管理飞书通讯录 V3 版本的部
 
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
 |---------|---------|---------|----------|----------|
-| GetDepartmentInfoByIdAsync | 获取部门信息 | 租户令牌 | GET | — |
-| GetDepartmentsByIdsAsync | 批量获取部门 | 租户令牌 | GET | — |
-| GetDepartmentsByParentIdAsync | 获取子部门列表 | 租户令牌 | GET | — |
-| GetParentDepartmentsByIdAsync | 获取父部门列表 | 租户令牌 | GET | — |
-| CreateDepartmentAsync | 创建部门 | 租户令牌 | POST | — |
-| UpdatePartDepartmentAsync | 部分更新部门 | 租户令牌 | PATCH | — |
-| UpdateDepartmentAsync | 全量更新部门 | 租户令牌 | PUT | — |
-| UpdateDepartmentIdAsync | 更新部门ID | 租户令牌 | PATCH | — |
-| UnbindDepartmentChatAsync | 解绑部门群 | 租户令牌 | POST | — |
-| DeleteDepartmentByIdAsync | 删除部门 | 租户令牌 | DELETE | — |
+| GetDepartmentInfoByIdAsync | 获取部门信息 | 租户令牌 | GET | [GetDepartmentInfoByIdAsync](https://open.feishu.cn/document/server-docs/contact-v3/department/get) |
+| GetDepartmentsByIdsAsync | 批量获取部门 | 租户令牌 | GET | [GetDepartmentsByIdsAsync](https://open.feishu.cn/document/contact-v3/department/batch) |
+| GetDepartmentsByParentIdAsync | 获取子部门列表 | 租户令牌 | GET | [GetDepartmentsByParentIdAsync](https://open.feishu.cn/document/server-docs/contact-v3/department/children) |
+| GetParentDepartmentsByIdAsync | 获取父部门列表 | 租户令牌 | GET | [GetParentDepartmentsByIdAsync](https://open.feishu.cn/document/server-docs/contact-v3/department/parent) |
+| CreateDepartmentAsync | 创建部门 | 租户令牌 | POST | [CreateDepartmentAsync](https://open.feishu.cn/document/directory-v1/department/create) |
+| UpdatePartDepartmentAsync | 部分更新部门 | 租户令牌 | PATCH | [UpdatePartDepartmentAsync](https://open.feishu.cn/document/server-docs/contact-v3/department/patch) |
+| UpdateDepartmentAsync | 全量更新部门 | 租户令牌 | PUT | [UpdateDepartmentAsync](https://open.feishu.cn/document/directory-v1/department/patch) |
+| UpdateDepartmentIdAsync | 更新部门ID | 租户令牌 | PATCH | [UpdateDepartmentIdAsync](https://open.feishu.cn/document/contact-v3/department/update_department_id) |
+| UnbindDepartmentChatAsync | 解绑部门群 | 租户令牌 | POST | [UnbindDepartmentChatAsync](https://open.feishu.cn/document/server-docs/contact-v3/department/unbind_department_chat) |
+| DeleteDepartmentByIdAsync | 删除部门 | 租户令牌 | DELETE | [DeleteDepartmentByIdAsync](https://open.feishu.cn/document/directory-v1/department/delete) |
 
 ## 函数详细内容
 

@@ -20,6 +20,7 @@ public interface IFeishuTenantV4Approval : IFeishuAppContextSwitcher
     /// <summary>
     /// 用于创建审批定义，可以灵活指定审批定义的基础信息、表单和流程等。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=create&amp;project=approval&amp;resource=approval&amp;version=v4"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/approval/create">接口文档</see></para>
     /// </summary>
     /// <param name="createApprovalRequest">创建审批定义请求体。</param>
     /// <param name="user_id_type">用户 ID 类型</param>
@@ -36,6 +37,7 @@ public interface IFeishuTenantV4Approval : IFeishuAppContextSwitcher
     /// <summary>
     /// 根据审批定义 Code 以及语言、用户 ID 等筛选条件获取指定审批定义的信息，包括审批定义名称、状态、表单控件以及节点等信息。获取审批定义信息后，可根据信息构造创建审批实例的请求。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=get&amp;project=approval&amp;resource=approval&amp;version=v4"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/approval/get">接口文档</see></para>
     /// </summary>
     /// <param name="approval_code">审批定义 Code。示例值："7C468A54-8745-2245-9675-08B7C63E7A85"</param>
     /// <param name="user_id_type">用户 ID 类型</param>
@@ -60,6 +62,7 @@ public interface IFeishuTenantV4Approval : IFeishuAppContextSwitcher
     /// <summary>
     /// 使用指定审批定义 Code 创建一个审批实例，接口调用者需对审批定义的表单有详细了解，按照定义的表单结构，将表单 Value 通过本接口传入。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=create&amp;project=approval&amp;resource=instance&amp;version=v4"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/instance/create">接口文档</see></para>
     /// </summary>
     /// <param name="createInstanceRequest">创建审批实例请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -73,6 +76,7 @@ public interface IFeishuTenantV4Approval : IFeishuAppContextSwitcher
     /// <summary>
     /// 批量获取审批实例 ID。根据审批定义的 approval_code 批量获取审批实例的 instance_code，用于拉取企业下某个审批定义的全部审批实例。默认以审批创建时间先后顺序排列。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=list&amp;project=approval&amp;resource=instance&amp;version=v4"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/instance/list">接口文档</see></para>
     /// </summary>
     /// <param name="approval_code">审批定义 Code。示例值："7C468A54-8745-2245-9675-08B7C63E7A85"</param>
     /// <param name="start_time">开始时间，Unix 时间戳（毫秒）。与 end_time 参数构成查询条件，不传则返回全部实例。示例值："1547654251506"</param>
@@ -93,6 +97,7 @@ public interface IFeishuTenantV4Approval : IFeishuAppContextSwitcher
     /// 撤回审批实例
     /// <para>管理员在审批后台的某一审批定义的 更多设置 中，勾选了 允许撤销审批中的申请 或者 允许撤销 x 天内通过的审批，则在符合撤销规则的情况下，你可以调用本接口将指定提交人的审批实例撤回。</para>
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=cancel&amp;project=approval&amp;resource=instance&amp;version=v4"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/instance/cancel">接口文档</see></para>
     /// </summary>
     /// <param name="cancelInstancesRequest">撤回审批实例请求体</param>
     /// <param name="user_id_type">用户 ID 类型</param>
@@ -108,6 +113,7 @@ public interface IFeishuTenantV4Approval : IFeishuAppContextSwitcher
     /// 将当前审批实例抄送给指定用户。被抄送的用户可以查看审批实例详情。
     /// <para>例如，在飞书客户端的 工作台 &gt; 审批 &gt; 审批中心 &gt; 抄送我 列表中查看到审批实例。</para>
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=cc&amp;project=approval&amp;resource=instance&amp;version=v4"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/instance/cc">接口文档</see></para>
     /// </summary>
     /// <param name="ccInstanceRequest">抄送审批实例请求体</param>
     /// <param name="user_id_type">用户 ID 类型</param>
@@ -152,6 +158,7 @@ public interface IFeishuTenantV4Approval : IFeishuAppContextSwitcher
     /// <summary>
     /// 通过审批实例 Code 获取指定审批实例的详细信息，包括审批实例的名称、创建时间、发起审批的用户、状态以及任务列表等信息。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=get&amp;project=approval&amp;resource=instance&amp;version=v4"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/instance/get">接口文档</see></para>
     /// </summary>
     /// <param name="instance_id">审批实例 Code。示例值："7C468A54-8745-2245-9675-08B7C63E7A85"</param>
     /// <param name="user_id_type">用户 ID 类型</param>

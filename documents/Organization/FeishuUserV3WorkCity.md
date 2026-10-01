@@ -14,8 +14,8 @@
 
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
 |---------|---------|---------|----------|----------|
-| GetWorkCitesListAsync | 获取工作城市列表 | 用户令牌 | GET | — |
-| GetWorkCityByIdAsync | 获取指定工作城市信息 | 用户令牌 | GET | — |
+| GetWorkCitesListAsync | 获取工作城市列表 | 用户令牌 | GET | [GetWorkCitesListAsync](https://open.feishu.cn/document/contact-v3/work_city/list) |
+| GetWorkCityByIdAsync | 获取指定工作城市信息 | 用户令牌 | GET | [GetWorkCityByIdAsync](https://open.feishu.cn/document/contact-v3/work_city/get) |
 
 ---
 

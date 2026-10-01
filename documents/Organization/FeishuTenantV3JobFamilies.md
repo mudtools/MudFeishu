@@ -20,11 +20,11 @@ description: 该接口用于以租户身份管理飞书序列（Job Family），
 
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
 |---------|---------|---------|----------|----------|
-| CreateJobFamilyAsync | 创建序列 | 租户令牌 | POST | — |
-| UpdateJobFamilyAsync | 更新序列 | 租户令牌 | PUT | — |
-| GetJobFamilyByIdAsync | 获取序列详情 | 租户令牌 | GET | — |
-| GetJobFamilesListAsync | 获取序列列表 | 租户令牌 | GET | — |
-| DeleteJobFamilyByIdAsync | 删除序列 | 租户令牌 | DELETE | — |
+| CreateJobFamilyAsync | 创建序列 | 租户令牌 | POST | [CreateJobFamilyAsync](https://open.feishu.cn/document/server-docs/contact-v3/job_family/create) |
+| UpdateJobFamilyAsync | 更新序列 | 租户令牌 | PUT | [UpdateJobFamilyAsync](https://open.feishu.cn/document/server-docs/contact-v3/job_family/update) |
+| GetJobFamilyByIdAsync | 获取序列详情 | 租户令牌 | GET | [GetJobFamilyByIdAsync](https://open.feishu.cn/document/server-docs/contact-v3/job_family/get) |
+| GetJobFamilesListAsync | 获取序列列表 | 租户令牌 | GET | [GetJobFamilesListAsync](https://open.feishu.cn/document/server-docs/contact-v3/job_family/list) |
+| DeleteJobFamilyByIdAsync | 删除序列 | 租户令牌 | DELETE | [DeleteJobFamilyByIdAsync](https://open.feishu.cn/document/server-docs/contact-v3/job_family/delete) |
 
 ## 函数详细内容
 

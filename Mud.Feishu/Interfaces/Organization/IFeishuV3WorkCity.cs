@@ -19,6 +19,7 @@ public interface IFeishuV3WorkCity : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 获取当前租户下所有工作城市信息，包括工作城市的 ID、名称、多语言名称以及启用状态。
+    /// <para><see href="https://open.feishu.cn/document/contact-v3/work_city/list">接口文档</see></para>
     /// </summary>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
@@ -32,6 +33,7 @@ public interface IFeishuV3WorkCity : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取指定工作城市的信息，包括工作城市的 ID、名称、多语言名称以及启用状态。
+    /// <para><see href="https://open.feishu.cn/document/contact-v3/work_city/get">接口文档</see></para>
     /// </summary>
     /// <param name="work_city_id">工作城市 ID。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>

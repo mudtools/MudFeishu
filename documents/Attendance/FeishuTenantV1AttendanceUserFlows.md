@@ -22,7 +22,7 @@ description: 该接口用于管理飞书考勤打卡信息，支持导入、查�
 | GetUserFlowAsync | 获取打卡流水记录 | 租户令牌 | GET | — |
 | QueryUserFlowAsync | 批量查询打卡流水 | 租户令牌 | POST | — |
 | BatchDelUserFlowAsync | 删除打卡流水 | 租户令牌 | POST | — |
-| QueryUserTaskAsync | 查询打卡结果 | 租户令牌 | POST | — |
+| QueryUserTaskAsync | 查询打卡结果 | 租户令牌 | POST | [QueryUserTaskAsync](https://open.feishu.cn/document/server-docs/attendance-v1/user_task/query) |
 
 ---
 

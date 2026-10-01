@@ -63,6 +63,7 @@ public interface IFeishuTenantV1AttendanceStats : IFeishuAppContextSwitcher
     /// <summary>
     /// 查询日度统计或月度统计的统计数据。字段包含基本信息、考勤组信息、出勤统计、异常统计、请假统计、加班统计、打卡时间、考勤结果和自定义字段。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=query&amp;project=attendance&amp;resource=user_stats_data&amp;version=v1"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/attendance-v1/user_stats_data/query">接口文档</see></para>
     /// </summary>
     /// <param name="queryStatsDatasRequest">查询统计数据请求体</param>
     /// <param name="employee_type">请求体中的 user_id 和响应体中的 user_id 的员工ID类型。</param>

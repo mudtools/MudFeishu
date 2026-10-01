@@ -21,6 +21,7 @@ public interface IFeishuUserV1AttendanceUserTask : IFeishuAppContextSwitcher, IC
     /// 获取企业内员工的实际打卡结果。
     /// <para>注意：如果企业给一个员工设定的班次是上午 9 点和下午 6 点各打一次上下班卡，即使员工在这期间打了多次卡，该接口也只会返回 1 条记录。如果要获取打卡的详细数据（如打卡位置等信息），可使用查询打卡流水或批量查询打卡流水的接口。</para>
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=query&amp;project=attendance&amp;resource=user_task&amp;version=v1"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/attendance-v1/user_task/query">接口文档</see></para>
     /// </summary>
     /// <param name="userTasksQueryRequest">查询打卡结果请求体</param>
     /// <param name="ignore_invalid_users">是否忽略无效和没有权限的用户，对应employee_type。

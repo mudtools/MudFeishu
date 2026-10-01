@@ -21,7 +21,7 @@ description: 该接口用于以用户身份使用飞书妙记，支持创建妙�
 
 | 函数名称                 | 功能描述               | 认证方式 | HTTP 方法 | 接口文档 |
 | ------------------------ | ---------------------- | -------- | --------- |----------|
-| GetMinuteAsync           | 获取妙记信息           | 用户令牌 | GET       | [GetMinuteAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/minutes-v1/minute/get) |
+| GetMinuteAsync           | 获取妙记信息           | 用户令牌 | GET       | [GetMinuteAsync](https://open.feishu.cn/document/server-docs/minutes-v1/minute/get) |
 | GetMinuteMediaAsync      | 下载妙记音视频文件     | 用户令牌 | GET       | [GetMinuteMediaAsync](https://open.feishu.cn/document/minutes-v1/minute-media/get) |
 | GetMinuteTranscriptAsync | 导出妙记文字记录       | 用户令牌 | GET       | [GetMinuteTranscriptAsync](https://open.feishu.cn/document/minutes-v1/minute-transcript/get) |
 | GetMinuteStatisticsAsync | 获取妙记统计数据       | 用户令牌 | GET       | [GetMinuteStatisticsAsync](https://open.feishu.cn/document/server-docs/minutes-v1/minute-statistics/get) |

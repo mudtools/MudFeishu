@@ -22,6 +22,7 @@ public interface IFeishuTenantV1AttendanceArchives : IFeishuV1AttendanceArchives
     /// <summary>
     /// 写入归档报表结果，对应假勤管理-考勤统计-报表-归档报表页签，点击报表名称进入后的导入功能。可以将数据直接写入归档报表。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=upload_report&amp;project=attendance&amp;resource=archive_rule&amp;version=v1"/></para>
+    /// <para><see href="https://open.feishu.cn/document/attendance-v1/archive_rule/upload_report">接口文档</see></para>
     /// </summary>
     /// <param name="archiveUploadReportRequest">写入归档报表结果请求体</param>
     /// <param name="employee_type">请求体中的 user_id 和响应体中的 user_id 的员工ID类型。</param>

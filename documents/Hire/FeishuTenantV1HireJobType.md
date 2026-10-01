@@ -15,7 +15,7 @@ description: 该接口用于以租户身份分页获取飞书招聘职位类别�
 
 ## 参考文档
 
-- [获取职位类别列表](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/list-4)
+- [获取职位类别列表](https://open.feishu.cn/document/hire-v1/recruitment-related-configuration/job/list-4)
 
 ## 函数列表
 

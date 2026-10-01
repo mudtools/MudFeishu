@@ -19,8 +19,8 @@ description: 该接口用于管理飞书考勤补卡，针对仅使用飞书考�
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
 |---------|---------|---------|----------|----------|
 | CreateUserTaskRemedyAsync | 创建补卡审批 | 租户令牌 | POST | — |
-| QueryUserAllowedRemedysUserTaskRemedyAsync | 获取可补卡时间 | 租户令牌 | POST | — |
-| QueryUserTaskRemedyAsync | 查询补卡记录 | 租户令牌 | POST | — |
+| QueryUserAllowedRemedysUserTaskRemedyAsync | 获取可补卡时间 | 租户令牌 | POST | [QueryUserAllowedRemedysUserTaskRemedyAsync](https://open.feishu.cn/document/server-docs/attendance-v1/user_task_remedy/query_user_allowed_remedys) |
+| QueryUserTaskRemedyAsync | 查询补卡记录 | 租户令牌 | POST | [QueryUserTaskRemedyAsync](https://open.feishu.cn/document/server-docs/attendance-v1/user_task_remedy/query) |
 
 ---
 

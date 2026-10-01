@@ -533,10 +533,13 @@ sequenceDiagram
 [HttpPost("users")]
 public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
 {
-    _userApi.UseApp("hr-app");// Switch to hr-app in multi-app scenario, can be omitted in single-app scenario
-    var result = await _userApi.CreateUserAsync(request);
-    _userApi.UseDefaultApp();// Switch back to default app in multi-app scenario, can be omitted in single-app scenario
-    return result.Code == 0 ? Ok(result.Data) : BadRequest(result.Msg);
+    // Multi-app switching: UseAppScope is scope-based (context auto-restored when the using ends).
+    // (Legacy entries UseApp / UseDefaultApp are marked [Obsolete] since Mud.HttpUtils 3.0.0.)
+    using (_userApi.UseAppScope("hr-app"))
+    {
+        var result = await _userApi.CreateUserAsync(request);
+        return result.Code == 0 ? Ok(result.Data) : BadRequest(result.Msg);
+    }
 }
 
 // Constructor injection of IFeishuAppManager interface
@@ -546,9 +549,9 @@ private readonly IFeishuAppManager _feishuAppManager;
 var tenantJobTitleApi = _feishuAppManager.GetWebApi<IFeishuTenantV3JobTitle>("hr-app");
 var result = await tenantJobTitleApi.GetJobTitlesListAsync(10, null);
 
-// Scope-based app switching with automatic context restoration (BeginScope)
+// Scope-based app switching with automatic context restoration (UseAppScope)
 var userApi = _feishuAppManager.GetDefaultWebApi<IFeishuTenantV3User>();
-using (userApi.BeginScope("hr-app"))
+using (userApi.UseAppScope("hr-app"))
 {
     // All API calls within this scope use hr-app
     var userResult = await userApi.GetUserInfoByIdAsync("user_123");
@@ -733,14 +736,14 @@ public class TenantController : ControllerBase
     {
         var userApi = _appManager.GetDefaultWebApi<IFeishuTenantV3User>();
         // using ensures the default app is restored when the scope ends
-        using var scope = userApi.BeginScope(tenantKey);
+        using var scope = userApi.UseAppScope(tenantKey);
         var result = await userApi.GetUserInfoByIdAsync(userId);
         return Ok(result);
     }
 }
 ```
 
-> ⚠️ **Security note**: `UseApp`/`BeginScope` only switches the app context (token/endpoint); it does **NOT enforce tenant isolation authorization**.
+> ⚠️ **Security note**: `UseAppScope` only switches the app context (token/endpoint); it does **NOT enforce tenant isolation authorization**.
 > To restrict a caller to its own tenant's data, implement custom authorization in the business layer (e.g., a Claim-based tenant validation middleware).
 > The component-side `IAppAccessAuthorizer` reports an error when it is missing, but this SDK does not bundle an authorization implementation.
 
@@ -822,8 +825,8 @@ dotnet publish -r win-x64 -c Release /p:PublishAot=true
 
 | Package                                       | Version          | Description                                           |
 | --------------------------------------------- | ---------------- | ----------------------------------------------------- |
-| **Mud.HttpUtils**                             | v2.0.7           | HTTP client utilities with source generator (incl. resilience policies) |
-| **Mud.HttpUtils.Generator**                   | v2.0.7           | HTTP client code generator (compile-time)             |
+| **Mud.HttpUtils**                             | v3.0.0           | HTTP client utilities with source generator (incl. resilience policies) |
+| **Mud.HttpUtils.Generator**                   | v3.0.0           | HTTP client code generator (compile-time)             |
 | **System.Text.Json**                          | v10.0.9          | High-performance JSON serialization (netstandard2.0 target) |
 | **Microsoft.Extensions.***                    | v8.0.2 / v10.0.9 | Dependency injection, logging, configuration binding, options |
 

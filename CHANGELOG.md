@@ -1,5 +1,39 @@
 # Mud.Feishu 更新日志
 
+## [未发布] - 2026-10-01
+
+> 主题：**适配 `Mud.HttpUtils` 3.0.0（上游 `BC-27`：移除 UseApp / UseDefaultApp / BeginScope(string)）**。
+> 本仓对外契约**无移除**（三个旧成员由 `IFeishuAppContextSwitcher` 接续声明并标 `[Obsolete]`），
+> 建议版本 **3.0.1**（补丁级；对外 API 仅新增 `IAppScopeSwitcher` 继承与废弃标注）。
+> 细节见 `.docs/MudHttpUtils-3.0.0-破坏性变更改造计划.md` §10。
+
+### 依赖升级
+
+- `Mud.HttpUtils` / `Mud.HttpUtils.Generator`：`2.0.9` → **`3.0.0`**（两者必须同版本）。
+  ⚠️ 3.0.0 尚未上架 nuget.org 时，`nuget.config` 需要本地包源（本仓以 `D:\Repos\MudHttpUtils\artifacts` 联调，官方包发布后移除该源）。
+- 上游 3.0.0 起，非 HttpClient 模式的生成类**默认不再发射** `UseApp(string)` / `UseDefaultApp()` / `BeginScope(string)`，
+  且 `IAppContextSwitcher` 不再声明它们；生成类**自动附加** `IAppScopeSwitcher`（`UseAppScope` / `UseDefaultAppScope`）。
+
+### 新增（Added）
+
+- **`IFeishuAppContextSwitcher` 继承 `IAppScopeSwitcher`**：下游可直接以推荐面（作用域式、释放时自动归还上下文）编程。
+- **`IFeishuAppContextSwitcher` 接续声明三个旧成员并标注 `[Obsolete]`**：保持对外契约不变 ——
+  该写法触发上游「接口自行声明即豁免」机制，188+ 个生成实现类**继续发射**这三个成员，行为与 2.0.9 完全一致。
+  三个成员将在本 SDK 的下一个大版本随上游一并移除，请按提示迁移到 `UseAppScope` / `UseDefaultAppScope`。
+
+### 变更（Changed）
+
+- **`FeishuAppManager.GetWebApi` / `GetDefaultWebApi` 内部实现迁移**：由生成类的
+  `UseApp(appKey)` / `UseDefaultApp()` 改为 `IAppContextHolder.SwitchToApp(appKey, this, serviceProvider)` /
+  `SwitchToDefaultApp(this)`（上游 `SW-15` 扩展，**语义逐字等价**：完整守卫 + 立即切换 + 不归还 + 返回上下文）。
+  对外行为不变（仍返回 DI 解析到的服务实例，且其 `Current` 已绑定目标应用）。
+
+### 迁移提示
+
+- 以 `IFeishuAppContextSwitcher` 类型调用 `UseApp` / `UseDefaultApp` / `BeginScope(string)` 会产生 **`CS0618`** 警告（有意引导）。
+  若宿主启用 `TreatWarningsAsErrors`，请改用 `UseAppScope` / `UseDefaultAppScope`（守卫相同，额外自动归还上下文），或临时 `NoWarn CS0618`。
+- 语义提醒：`UseAppScope` 在 `using` 结束时**自动回切**；`UseApp` 会一直保持到下次切换（长生命周期宿主须显式切回）。
+
 ## [3.0.0] - 2026-09-28
 
 > 3.0 是一次面向**生产可靠性与性能**的全面升级：原生 AOT 一等支持、令牌与多应用管理重构加固、Webhook 安全基线、Redis / WebSocket 稳定性专项，并统一配置结构。包含较多破坏性变更，升级前务必阅读「升级要点」；逐项明细见下方 rc2 / rc3 记录。

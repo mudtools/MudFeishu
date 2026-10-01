@@ -28,7 +28,7 @@ description: 该接口用于以租户身份管理飞书企业员工的完整生�
 | RegularEmployeeAsync | 取消员工离职 | 租户令牌 | PATCH | [RegularEmployeeAsync](https://open.feishu.cn/document/directory-v1/employee/regular) |
 | QueryEmployeesAsync | 批量查询员工 | 租户令牌 | POST | [QueryEmployeesAsync](https://open.feishu.cn/document/directory-v1/employee/mget) |
 | QueryEmployeePageListAsync | 分页查询员工列表 | 租户令牌 | POST | [QueryEmployeePageListAsync](https://open.feishu.cn/document/directory-v1/employee/filter) |
-| SearchEmployeePageListAsync | 搜索员工 | 租户令牌 | POST | [SearchEmployeePageListAsync](https://open.feishu.cn/document/directory-v1/department/search) |
+| SearchEmployeePageListAsync | 搜索员工 | 租户令牌 | POST | [SearchEmployeePageListAsync](https://open.feishu.cn/document/directory-v1/employee/search) |
 
 ## 函数详细内容
 

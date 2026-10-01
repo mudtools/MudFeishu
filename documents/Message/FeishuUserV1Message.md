@@ -21,7 +21,7 @@ description: 该接口用于以用户身份对飞书消息进行发送、回复�
 
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
 |---------|---------|---------|----------|----------|
-| RevokeMessageAsync | 撤回消息 | 用户令牌 | DELETE | [RevokeMessageAsync](https://open.feishu.cn/document/server-docs/im-v1/batch_message/delete) |
+| RevokeMessageAsync | 撤回消息 | 用户令牌 | DELETE | [RevokeMessageAsync](https://open.feishu.cn/document/server-docs/im-v1/message/delete) |
 | AddMessageReactionsAsync | 添加表情回复 | 用户令牌 | POST | [AddMessageReactionsAsync](https://open.feishu.cn/document/server-docs/im-v1/message-reaction/create) |
 | GetMessageReactionsPageListAsync | 获取表情回复列表 | 用户令牌 | GET | [GetMessageReactionsPageListAsync](https://open.feishu.cn/document/server-docs/im-v1/message-reaction/list) |
 | DeleteMessageReactionsAsync | 删除表情回复 | 用户令牌 | DELETE | [DeleteMessageReactionsAsync](https://open.feishu.cn/document/server-docs/im-v1/message-reaction/delete) |

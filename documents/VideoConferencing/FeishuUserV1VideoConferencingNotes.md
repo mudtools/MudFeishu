@@ -14,7 +14,7 @@
 
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
 |---------|---------|---------|----------|----------|
-| GetNoteAsync | 获取纪要详情 | 用户令牌 | GET | [GetNoteAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/note/get) |
+| GetNoteAsync | 获取纪要详情 | 用户令牌 | GET | [GetNoteAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/vc-v1/note/get) |
 | SubscriptionNoteAsync | 订阅纪要变更事件 | 用户令牌 | POST | [SubscriptionNoteAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/vc-v1/note/subscription) |
 | UnSubscriptionNoteAsync | 取消订阅纪要变更事件 | 用户令牌 | POST | [UnSubscriptionNoteAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/vc-v1/note/unsubscription) |
 

@@ -44,7 +44,7 @@ description: 该接口用于以租户身份对飞书消息进行发送、回复�
 | DownLargeFileAsync | 下载文件（大文件） | 租户令牌 | GET | [DownLargeFileAsync](https://open.feishu.cn/document/server-docs/im-v1/file/get) |
 | DownImageAsync | 下载图片（小文件） | 租户令牌 | GET | [DownImageAsync](https://open.feishu.cn/document/server-docs/im-v1/image/get) |
 | DownLargeImageAsync | 下载图片（大文件） | 租户令牌 | GET | [DownLargeImageAsync](https://open.feishu.cn/document/server-docs/im-v1/image/get) |
-| UploadFileAsync | 上传文件 | 租户令牌 | POST | [UploadFileAsync](https://open.feishu.cn/document/server-docs/approval-v4/file/upload-files) |
+| UploadFileAsync | 上传文件 | 租户令牌 | POST | [UploadFileAsync](https://open.feishu.cn/document/server-docs/im-v1/file/create) |
 | UploadImageAsync | 上传图片 | 租户令牌 | POST | [UploadImageAsync](https://open.feishu.cn/document/server-docs/im-v1/image/create) |
 
 ### 消息加急
@@ -65,7 +65,7 @@ description: 该接口用于以租户身份对飞书消息进行发送、回复�
 
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
 |---------|---------|---------|----------|----------|
-| RevokeMessageAsync | 撤回消息 | 租户令牌 | DELETE | [RevokeMessageAsync](https://open.feishu.cn/document/server-docs/im-v1/batch_message/delete) |
+| RevokeMessageAsync | 撤回消息 | 租户令牌 | DELETE | [RevokeMessageAsync](https://open.feishu.cn/document/server-docs/im-v1/message/delete) |
 | AddMessageReactionsAsync | 添加表情回复 | 租户令牌 | POST | [AddMessageReactionsAsync](https://open.feishu.cn/document/server-docs/im-v1/message-reaction/create) |
 | GetMessageReactionsPageListAsync | 获取表情回复列表 | 租户令牌 | GET | [GetMessageReactionsPageListAsync](https://open.feishu.cn/document/server-docs/im-v1/message-reaction/list) |
 | DeleteMessageReactionsAsync | 删除表情回复 | 租户令牌 | DELETE | [DeleteMessageReactionsAsync](https://open.feishu.cn/document/server-docs/im-v1/message-reaction/delete) |

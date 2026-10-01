@@ -25,7 +25,7 @@ description: 该接口用于以用户身份管理飞书通讯录 V3 版本用户
 | GetUserByDepartmentIdAsync | 获取部门直属用户 | 用户令牌 | GET | [GetUserByDepartmentIdAsync](https://open.feishu.cn/document/server-docs/contact-v3/user/find_by_department) |
 | UpdateUserAsync | 更新用户 | 用户令牌 | PATCH | [UpdateUserAsync](https://open.feishu.cn/document/server-docs/contact-v3/user/patch) |
 | GetUsersByKeywordAsync | 搜索用户 | 用户令牌 | GET | [GetUsersByKeywordAsync](https://open.feishu.cn/document/server-docs/contact-v3/user/search-users) |
-| GetUserInfoAsync | 获取当前登录用户信息 | 用户令牌 | GET | [GetUserInfoAsync](https://open.feishu.cn/document/server-docs/contact-v3/user/field-overview) |
+| GetUserInfoAsync | 获取当前登录用户信息 | 用户令牌 | GET | — |
 
 ## 函数详细内容
 

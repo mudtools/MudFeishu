@@ -20,8 +20,8 @@ description: 该接口用于以租户身份管理飞书角色（Functional Role�
 
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
 |---------|---------|---------|----------|----------|
-| CreateRoleAsync | 创建角色 | 租户令牌 | POST | [CreateRoleAsync](https://open.feishu.cn/document/docs/bitable-v1/advanced-permission/app-role/create-2) |
-| UpdateRoleAsync | 更新角色 | 租户令牌 | PUT | [UpdateRoleAsync](https://open.feishu.cn/document/docs/bitable-v1/advanced-permission/app-role/update-2) |
+| CreateRoleAsync | 创建角色 | 租户令牌 | POST | [CreateRoleAsync](https://open.feishu.cn/document/server-docs/contact-v3/functional_role/create) |
+| UpdateRoleAsync | 更新角色 | 租户令牌 | PUT | [UpdateRoleAsync](https://open.feishu.cn/document/server-docs/contact-v3/functional_role/update) |
 | DeleteRoleByIdAsync | 删除角色 | 租户令牌 | DELETE | [DeleteRoleByIdAsync](https://open.feishu.cn/document/server-docs/contact-v3/functional_role/delete) |
 
 ## 函数详细内容

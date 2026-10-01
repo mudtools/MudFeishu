@@ -16,7 +16,7 @@ description: 该接口用于以用户身份管理飞书会议，支持获取会�
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
 | :--- | :--- | :--- | :--- |----------|
 | GetMeetingAsync | 获取会议详情 | 用户令牌 | GET | [GetMeetingAsync](https://open.feishu.cn/document/server-docs/vc-v1/meeting/get) |
-| GetMeetingPageListAsync | 获取与会议号关联的会议列表 | 用户令牌 | GET | [GetMeetingPageListAsync](https://open.feishu.cn/document/server-docs/vc-v1/meeting-room-data/get) |
+| GetMeetingPageListAsync | 获取与会议号关联的会议列表 | 用户令牌 | GET | [GetMeetingPageListAsync](https://open.feishu.cn/document/server-docs/vc-v1/meeting/list_by_no) |
 | SearchMeetingPageListAsync | 搜索会议记录 | 用户令牌 | POST | [SearchMeetingPageListAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/vc-v1/meeting/search) |
 | SetHostMeetingAsync | 设置主持人 | 用户令牌 | PATCH | [SetHostMeetingAsync](https://open.feishu.cn/document/server-docs/vc-v1/meeting/set_host) |
 | InviteMeetingAsync | 邀请参会人 | 用户令牌 | PATCH | [InviteMeetingAsync](https://open.feishu.cn/document/server-docs/vc-v1/meeting/invite) |

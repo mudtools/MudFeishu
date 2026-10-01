@@ -38,18 +38,23 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 if (-not $DocumentsPath) { $DocumentsPath = Join-Path $repoRoot 'documents' }
 $interfacesRoot = Join-Path $repoRoot 'Mud.Feishu/Interfaces'
 
-# ---------- 1. 提取 方法名 -> 文档地址 ----------
-$methodUrl = @{}
+# ---------- 1. 提取 (接口, 方法名) -> 文档地址 ----------
+# 关键：方法名在不同模块间会重名（如 UploadFileAsync 存在于 Approval / Lingo / Message），
+# 因此必须以「声明它的接口」为作用域，避免跨模块张冠李戴。
+$mapByInterface = @{}   # 接口名 -> @{ 方法名 = 文档地址 }
+$methodUrlAll = @{}     # 方法名 -> 全部候选地址集合（用于全局兜底与歧义判定）
+
 # 只认方法级链接（锚文本为「接口文档」），避免误用接口级/参数内的通用链接
 $docUrlRe = [regex]'<see href="(https://open\.feishu\.cn/document/[^"]+)">接口文档</see>'
 # 方法名 = 行内第一个「标识符 + 左括号」，且该标识符不是返回类型关键字。
-# 这样可正确处理嵌套泛型返回类型，如 Task<FeishuApiResult<X>?> FooAsync(
 $callRe = [regex]'(\w+)\s*\('
 $reservedNames = @('Task', 'ValueTask', 'void', 'Func', 'Action')
+$interfaceRe = [regex]'^\s*(?:public|internal)?\s*(?:partial\s+)?interface\s+(\w+)'
 
 foreach ($f in Get-ChildItem -Path $interfacesRoot -Recurse -Filter '*.cs') {
     $lines = [System.IO.File]::ReadAllLines($f.FullName)
     $pendingUrl = $null
+    $currentInterface = $null
     for ($i = 0; $i -lt $lines.Count; $i++) {
         $line = $lines[$i]
         if ($line -match '^\s*///') {
@@ -57,19 +62,37 @@ foreach ($f in Get-ChildItem -Path $interfacesRoot -Recurse -Filter '*.cs') {
             if ($m.Success) { $pendingUrl = $m.Groups[1].Value }
             continue
         }
+        $im = $interfaceRe.Match($line)
+        if ($im.Success) {
+            $currentInterface = $im.Groups[1].Value
+            # 接口级链接（位于 interface 声明之前）不得被其内部第一个方法「继承」
+            $pendingUrl = $null
+            continue
+        }
         if ($line -match '^\s*\[') { continue }
         if ($pendingUrl) {
             foreach ($mm in $callRe.Matches($line)) {
                 $name = $mm.Groups[1].Value
                 if ($reservedNames -contains $name) { continue }
-                if (-not $methodUrl.ContainsKey($name)) { $methodUrl[$name] = $pendingUrl }
+                if ($currentInterface) {
+                    if (-not $mapByInterface.ContainsKey($currentInterface)) { $mapByInterface[$currentInterface] = @{} }
+                    if (-not $mapByInterface[$currentInterface].ContainsKey($name)) {
+                        $mapByInterface[$currentInterface][$name] = $pendingUrl
+                    }
+                }
+                if (-not $methodUrlAll.ContainsKey($name)) {
+                    $methodUrlAll[$name] = New-Object System.Collections.Generic.HashSet[string]
+                }
+                [void]$methodUrlAll[$name].Add($pendingUrl)
                 $pendingUrl = $null
                 break
             }
         }
     }
 }
-Write-Host "提取到方法映射：$($methodUrl.Count)"
+Write-Host "提取到接口：$($mapByInterface.Count)   方法名（含重名）：$($methodUrlAll.Count)"
+$ambiguous = @($methodUrlAll.Keys | Where-Object { $methodUrlAll[$_].Count -gt 1 })
+Write-Host "跨模块重名方法：$($ambiguous.Count)"
 
 # ---------- 2. 为 md 表格补列 ----------
 $headerRe = [regex]'^\|\s*函数名称\s*\|(.+)\|\s*$'
@@ -88,8 +111,33 @@ if ($ExcludeFolder) {
 }
 
 $changedFiles = 0; $addedCells = 0; $skipped = 0
+$ifaceTokenRe = [regex]'IFeishu[A-Za-z0-9_]+'
 foreach ($f in $files) {
     $lines = [System.IO.File]::ReadAllLines($f.FullName)
+
+    # 基础层：全仓无歧义的方法映射（同名方法只有一个地址时可直接采用）
+    $methodUrl = @{}
+    foreach ($k in $methodUrlAll.Keys) {
+        if ($methodUrlAll[$k].Count -eq 1) { $methodUrl[$k] = @($methodUrlAll[$k])[0] }
+    }
+    # 覆盖层：该 md 文档涉及的接口（文件内出现的 IFeishuXxx 标识符）优先，用于纠正跨模块重名
+    # 注意：方法通常声明在派生接口的「基接口」上（IFeishuTenantV1LingoFile -> IFeishuV1LingoFile），
+    # 故同时纳入去掉 Tenant/User 后的基接口名。
+    $text = ($lines -join "`n")
+    $ifaceTokens = New-Object System.Collections.Generic.List[string]
+    foreach ($t in ($ifaceTokenRe.Matches($text) | ForEach-Object { $_.Value } | Sort-Object -Unique)) {
+        $ifaceTokens.Add($t)
+        $base = $t -replace '^IFeishu(Tenant|User)', 'IFeishu'
+        if ($base -ne $t) { $ifaceTokens.Add($base) }
+    }
+    foreach ($t in ($ifaceTokens | Sort-Object -Unique)) {
+        if ($mapByInterface.ContainsKey($t)) {
+            foreach ($k in $mapByInterface[$t].Keys) {
+                $methodUrl[$k] = $mapByInterface[$t][$k]
+            }
+        }
+    }
+
     $dirty = $false
     $inTable = $false
     $hasColumn = $false

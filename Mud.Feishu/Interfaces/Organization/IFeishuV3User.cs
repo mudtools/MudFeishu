@@ -91,6 +91,7 @@ public interface IFeishuV3User : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 通过用户名关键词搜索其他用户的信息，包括用户头像、用户名、用户所在部门、用户 user_id 以及 open_id。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/user/search-users">接口文档</see></para>
     /// </summary>
     /// <param name="query">搜索关键词，接口通过传入的关键词搜索相匹配的用户名。</param>
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>

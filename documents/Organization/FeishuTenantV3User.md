@@ -26,11 +26,11 @@ description: 该接口用于以租户身份管理飞书通讯录 V3 版本用户
 | UpdateUserAsync | 更新用户 | 租户令牌 | PATCH | [UpdateUserAsync](https://open.feishu.cn/document/server-docs/contact-v3/user/patch) |
 | CreateUserAsync | 创建用户 | 租户令牌 | POST | [CreateUserAsync](https://open.feishu.cn/document/server-docs/contact-v3/user/create) |
 | UpdateUserIdAsync | 更新用户ID | 租户令牌 | PATCH | [UpdateUserIdAsync](https://open.feishu.cn/document/contact-v3/user/update_user_id) |
-| GetBatchUsersAsync | 通过手机号/邮箱获取用户 | 租户令牌 | POST | — |
-| GetUsersByKeywordAsync | 搜索用户 | 租户令牌 | GET | — |
+| GetBatchUsersAsync | 通过手机号/邮箱获取用户 | 租户令牌 | POST | [GetBatchUsersAsync](https://open.feishu.cn/document/server-docs/contact-v3/user/batch_get_id) |
+| GetUsersByKeywordAsync | 搜索用户 | 租户令牌 | GET | [GetUsersByKeywordAsync](https://open.feishu.cn/document/server-docs/contact-v3/user/search-users) |
 | DeleteUserByIdAsync | 删除用户 | 租户令牌 | DELETE | [DeleteUserByIdAsync](https://open.feishu.cn/document/server-docs/contact-v3/user/delete) |
 | ResurrectUserByIdAsync | 恢复用户 | 租户令牌 | POST | [ResurrectUserByIdAsync](https://open.feishu.cn/document/server-docs/contact-v3/user/resurrect) |
-| LogoutAsync | 退出登录 | 租户令牌 | POST | — |
+| LogoutAsync | 退出登录 | 租户令牌 | POST | [LogoutAsync](https://open.feishu.cn/document/authentication-management/login-state-management/logout) |
 | GetJsTicketAsync | 获取JSAPI票据 | 租户令牌 | POST | — |
 
 ## 函数详细内容

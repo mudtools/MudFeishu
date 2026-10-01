@@ -54,6 +54,7 @@ public interface IFeishuTenantV3User : IFeishuV3User
 
     /// <summary>
     /// 通过手机号或邮箱获取一个或多个用户的 ID （包括 user_id、open_id、union_id）与状态信息。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/user/batch_get_id">接口文档</see></para>
     /// </summary>
     /// <param name="user_id_type">用户 ID 类型</param>
     /// <param name="queryRequest">查询参数请求体。</param>
@@ -102,6 +103,7 @@ public interface IFeishuTenantV3User : IFeishuV3User
 
     /// <summary>
     /// 该接口用于退出用户的登录态
+    /// <para><see href="https://open.feishu.cn/document/authentication-management/login-state-management/logout">接口文档</see></para>
     /// </summary>
     /// <param name="user_id_type">用户 ID 类型，非必填项。</param>
     /// <param name="logoutRequest">退出登录请求体。</param>

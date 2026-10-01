@@ -20,11 +20,11 @@ description: 该接口用于以租户身份管理飞书角色成员，支持角�
 
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
 |---------|---------|---------|----------|----------|
-| BatchAddMemberAsync | 批量添加角色成员 | 租户令牌 | POST | — |
-| BatchAddMembersSopesAsync | 批量设置成员管理范围 | 租户令牌 | POST | — |
-| GetMembersSopesAsync | 获取成员管理范围 | 租户令牌 | GET | — |
-| GetMembersAsync | 获取角色成员列表 | 租户令牌 | GET | — |
-| DeleteMembersByRoleIdAsync | 批量删除角色成员 | 租户令牌 | PATCH | — |
+| BatchAddMemberAsync | 批量添加角色成员 | 租户令牌 | POST | [BatchAddMemberAsync](https://open.feishu.cn/document/server-docs/contact-v3/functional_role-member/batch_create) |
+| BatchAddMembersSopesAsync | 批量设置成员管理范围 | 租户令牌 | POST | [BatchAddMembersSopesAsync](https://open.feishu.cn/document/server-docs/contact-v3/functional_role-member/scopes) |
+| GetMembersSopesAsync | 获取成员管理范围 | 租户令牌 | GET | [GetMembersSopesAsync](https://open.feishu.cn/document/server-docs/contact-v3/functional_role-member/get) |
+| GetMembersAsync | 获取角色成员列表 | 租户令牌 | GET | [GetMembersAsync](https://open.feishu.cn/document/server-docs/contact-v3/functional_role-member/list) |
+| DeleteMembersByRoleIdAsync | 批量删除角色成员 | 租户令牌 | PATCH | [DeleteMembersByRoleIdAsync](https://open.feishu.cn/document/server-docs/contact-v3/functional_role-member/batch_delete) |
 
 ## 函数详细内容
 

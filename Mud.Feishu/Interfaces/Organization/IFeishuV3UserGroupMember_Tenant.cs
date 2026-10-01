@@ -20,6 +20,7 @@ public interface IFeishuTenantV3UserGroupMember : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 向指定的普通用户组内添加成员。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/group-member/add">接口文档</see></para>
     /// </summary>
     /// <param name="group_id">用户组 ID。</param>
     /// <param name="groupMemberRequest">添加用户组成员请求体</param>
@@ -33,6 +34,7 @@ public interface IFeishuTenantV3UserGroupMember : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 向指定的普通用户组内添加一个或多个成员。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/group-member/batch_add">接口文档</see></para>
     /// </summary>
     /// <param name="group_id">用户组 ID。</param>
     /// <param name="groupMemberRequest">批量添加用户组成员请求体</param>
@@ -65,6 +67,7 @@ public interface IFeishuTenantV3UserGroupMember : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 移除指定普通用户组内的某一成员。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/group-member/remove">接口文档</see></para>
     /// </summary>
     /// <param name="group_id">用户组 ID。</param>
     /// <param name="groupMemberRequest">移除用户组成员请求体</param>
@@ -79,6 +82,7 @@ public interface IFeishuTenantV3UserGroupMember : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 从指定普通用户组内移除一个或多个成员。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/group-member/batch_remove">接口文档</see></para>
     /// </summary>
     /// <param name="group_id">用户组 ID。</param>
     /// <param name="groupMemberRequest">批量移除用户组成员请求体</param>

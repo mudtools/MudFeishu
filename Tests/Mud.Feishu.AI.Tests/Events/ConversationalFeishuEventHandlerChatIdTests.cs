@@ -133,4 +133,44 @@ public class ConversationalFeishuEventHandlerChatIdTests
         channel.Verify(c => c.BeginAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never, "单聊无 ChatId：不适用流式，回退非流式（既有行为兼容）");
     }
+
+    [Fact]
+    public async Task HandleAsync_ShouldStreamWithDefaultChatId_WhenResolverReturnsNullAndChatIdPresent()
+    {
+        // R5-3 语义锁定（两段式解析，P2D-2a）：覆写方法返回 null **不是**「放弃流式」，
+        // 而是回退 ResolveStreamTargetChatId 的默认解析值，作为 BeginAsync 的入参兜底目标。
+        // 本用例钉住 `??` 语义，防止后续按任一方文档「修复」成 null ⇒ 弃流式 时静默漂移。
+        var channel = new Mock<IMessageChannel>();
+        channel.Setup(c => c.BeginAsync("app-a", "oc_chatid", It.IsAny<CancellationToken>())).ReturnsAsync("om_s4");
+        channel
+            .As<IMessageChannelTargetResolver>()
+            .Setup(r => r.ResolveStreamTarget(It.IsAny<ConversationRequest>()))
+            .Returns((string?)null);
+
+        var handler = new RecordingHandler(CreateAgent(), CreateDeduplicator().Object, channel.Object);
+        await handler.HandleAsync(DemoEventData("group_with-chat"), default);
+
+        channel.As<IMessageChannelTargetResolver>().Verify(
+            r => r.ResolveStreamTarget(It.IsAny<ConversationRequest>()), Times.Once,
+            "通道实现了解析器接口 ⇒ 事件处理器必须先咨询它");
+        channel.Verify(c => c.BeginAsync("app-a", "oc_chatid", It.IsAny<CancellationToken>()), Times.Once,
+            "解析器返回 null ⇒ 回退默认解析值（?? 语义），仍以 ChatId 流式");
+    }
+
+    [Fact]
+    public async Task HandleAsync_ShouldFallbackToNonStreaming_WhenResolverReturnsNullAndNoDefaultTarget()
+    {
+        // 对照组：解析器返回 null 且默认解析值也为 null（单聊无 ChatId）⇒ 才真正回退非流式。
+        var channel = new Mock<IMessageChannel>();
+        channel
+            .As<IMessageChannelTargetResolver>()
+            .Setup(r => r.ResolveStreamTarget(It.IsAny<ConversationRequest>()))
+            .Returns((string?)null);
+
+        var handler = new RecordingHandler(CreateAgent(), CreateDeduplicator().Object, channel.Object);
+        await handler.HandleAsync(DemoEventData("p2p_no-chat"), default);
+
+        channel.Verify(c => c.BeginAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never, "兜底目标同样不可得时才回退非流式");
+    }
 }

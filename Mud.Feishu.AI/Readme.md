@@ -14,6 +14,19 @@ WP3 后，HITL 的批准状态所有权**单一化**到宿主授权器——SDK 
 | **宿主授权器**（`IToolExecutionAuthorizer`） | **批准状态的唯一所有者**：首次收到 `NeedsUserConfirmation` → 记为挂起；经批准通道拿到摘要后建立"已批准"上下文；下次同 `(tool, argsDigest, appKey, userId)` 调用返回 `Allowed` | 不得依赖 SDK 提供凭据 |
 | **SDK 执行链**（`FeishuToolBinding`） | 咨询授权器、通知宿主、**中性拒绝**（不含任何凭据） | 不签发/不校验/不缓存批准状态 |
 
+### 批准之后：续跑义务（R5-2 / R5-11 / R5-12）
+
+批准**不等于**放行，且「批准了却没人继续跑」是有后果的：
+
+- **续跑必须显式重建租户上下文**：续跑轮不在事件流内，`IFeishuToolContextAccessor` 的 `AsyncLocal`
+  上下文不存在 ⇒ 写工具 fail-closed 结构化拒绝（禁止默认 appKey 兜底，TMA2-20）。
+  **推荐用 SDK 闭环一次调用完成**：`FeishuAgent.RunApprovalContinuationAsync(...)`
+  （加载会话 → 取框架记录的原始审批请求 → 重建工具上下文 → 经框架绑定层续跑 → 落库）；
+  宿主仍需自行把返回文本投递给用户。
+- **完全不续跑**：SDK 在事件层自愈——新的用户轮次会放弃该待确认项、摘除会话历史里的孤儿审批请求并清空
+  框架的待审批记录，避免 MEAI `FunctionInvokingChatClient` 对整段入站历史做配对校验时抛
+  `InvalidOperationException` 而把会话**永久毒化**；迟到的批准随后被框架绑定层丢弃（fail-closed）。
+
 ### 关键约束
 
 - **SDK 不签发任何凭据**：删除了 `ToolConfirmationToken` 全套（签发/验签/HMAC/常数时间比较），批准状态由 `IToolExecutionAuthorizer` 在每次调用时被咨询。
@@ -38,3 +51,4 @@ WP3 后，HITL 的批准状态所有权**单一化**到宿主授权器——SDK 
 - `IFeishuToolApprovalChannel`：宿主批准通道（SDK 定义契约，宿主实现）。通知宿主有待确认的工具调用，携带参数摘要（已脱敏）。
 - `IToolExecutionAuthorizer`：批准状态的唯一所有者。每次工具调用时被咨询。
 - `ToolApprovalRequest`：待确认要素（不含令牌，只含参数摘要与原因）。
+- `FeishuAgent.RunApprovalContinuationAsync`：批准回灌续跑的 SDK 闭环（R5-11；见上方续跑义务）。

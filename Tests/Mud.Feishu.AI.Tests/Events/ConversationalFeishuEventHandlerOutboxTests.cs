@@ -155,4 +155,87 @@ public class ConversationalFeishuEventHandlerOutboxTests
             new[] { "第一版回答", "第二版回答" },
             "送达成功后必须摘除待补发条目——否则下一轮会被误当成『未送达』而补发旧文本");
     }
+
+    /// <summary>
+    /// R5-4：<c>pending_reply*</c> 载荷形状损坏时必须按 <b>miss</b> 处理——不逃逸、不毒化事件循环。
+    /// </summary>
+    /// <remarks>
+    /// 状态袋的值是<b>惰性</b>反序列化的：内层载荷损坏只在首次类型化读取时抛，而该读取就发生在
+    /// <c>TryTakePendingReply</c> 内。若异常逃出该守护区 ⇒ 幂等回滚 ⇒ 重投递同点再抛 ⇒ 事件永久毒化。
+    /// 本用例把已落盘的 <c>feishu.agent.pending_reply</c> 改成 JSON <b>数字</b>（形状不符），
+    /// 断言事件仍正常收尾（坏值按 miss，走模型）。
+    /// </remarks>
+    [Fact]
+    public async Task TryTakePendingReply_ShouldTreatAnyCorruptionAsMiss_ExceptCancellation()
+    {
+        var store = new MemoryConversationStore();
+        var client = CreateClient("第一版回答", "第二版回答");
+        var agent = new FeishuAgent(client.Object, new FeishuAgentOptions { Instructions = "x" }, store);
+        var handler = new FlakyReplyHandler(agent, CreateDeduplicator().Object, store, failTimes: 1);
+
+        // 第一轮：下发失败 ⇒ 会话已落盘（含待补发条目）
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => handler.HandleAsync(DemoEventData("evt-outbox-corrupt", messageId: "om_1"), default));
+
+        var key = ConversationKeyBuilder.Build("app-a", ConversationScope.Group(), "oc_1");
+        var stored = await store.GetAsync(key);
+        stored.Should().NotBeNullOrEmpty("前置：会话必须已落盘（否则本用例验证的是空路径）");
+
+        TryPoisonStringValue(stored!, "feishu.agent.pending_reply", out var poisonedPayload)
+            .Should().BeTrue("前置：必须真的改坏了 pending_reply 载荷（否则本用例是假绿）");
+        await store.SaveAsync(key, poisonedPayload!);
+
+        // 第二轮：同一事件重投递 ⇒ 坏载荷按 miss，事件正常收尾（必须调用模型，且不得逃逸异常）
+        var act = async () => await handler.HandleAsync(DemoEventData("evt-outbox-corrupt", messageId: "om_1"), default);
+
+        await act.Should().NotThrowAsync("损坏的待补发条目不得毒化事件循环（坏值按 miss，R2-2/R4-7 同一哲学）");
+        handler.Delivered.Should().ContainSingle().Which.Should().Be("第二版回答",
+            "坏载荷按 miss ⇒ 正常走模型（而不是补发不可读的旧条目）");
+    }
+
+    /// <summary>把 JSON 中指定键的值改成数字形态（破坏「字符串」契约），并输出改写后的 JSON。</summary>
+    private static bool TryPoisonStringValue(string json, string key, out string? poisonedJson)
+    {
+        var node = System.Text.Json.Nodes.JsonNode.Parse(json);
+        var hit = Poison(node);
+        poisonedJson = hit ? node!.ToJsonString() : json;
+        return hit;
+
+        bool Poison(System.Text.Json.Nodes.JsonNode? current)
+        {
+            switch (current)
+            {
+                case System.Text.Json.Nodes.JsonObject obj:
+                    if (obj.ContainsKey(key))
+                    {
+                        obj[key] = System.Text.Json.Nodes.JsonValue.Create(42);
+                        return true;
+                    }
+
+                    foreach (var pair in obj)
+                    {
+                        if (Poison(pair.Value))
+                        {
+                            return true;
+                        }
+                    }
+
+                    return false;
+
+                case System.Text.Json.Nodes.JsonArray array:
+                    foreach (var item in array)
+                    {
+                        if (Poison(item))
+                        {
+                            return true;
+                        }
+                    }
+
+                    return false;
+
+                default:
+                    return false;
+            }
+        }
+    }
 }

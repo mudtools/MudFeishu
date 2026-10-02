@@ -122,7 +122,33 @@ services.AddFeishuTools();                 // 引入全部域（含元工具）
 | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | MAF（`FunctionInvokingChatClient`）       | 在调用**之前**把包装工具的调用转成 `ToolApprovalRequestContent`（工具此刻**未执行**）                                                         |
 | SDK（`ConversationalFeishuEventHandler`） | 识别该内容 → `IFeishuToolApprovalChannel.RequestFrameworkApprovalAsync` 提交宿主 → 向用户回一条「等待人工确认」；**未注册通道即 fail-closed** |
-| 宿主                                      | 在自有界面完成批准后，由宿主侧回灌批准响应继续本轮；`ApprovalResponseBindingChatClient` 只接受与框架请求绑定的响应                            |
+| 宿主                                      | 在自有界面完成批准后，调用 **`FeishuAgent.RunApprovalContinuationAsync`** 回灌续跑（见下节）；`ApprovalResponseBindingChatClient` 只接受与框架请求绑定的响应 |
+
+### 批准之后：续跑轮必须显式重建租户上下文（**R5-2 / R5-11**）
+
+批准**不等于**放行：续跑轮**不在事件流内**，`IFeishuToolContextAccessor` 的 `AsyncLocal` 执行上下文
+（唯一建立点在 `ConversationalFeishuEventHandler`）并不存在。缺上下文时工具会 fail-closed 结构化拒绝
+（多租户隔离禁止默认 appKey 兜底，TMA2-20），表现为「批准了却不生效」。
+
+**推荐路径**（SDK 闭环，一次调用完成加载会话 → 取框架记录的原始审批请求 → 重建工具上下文 → 续跑 → 落库）：
+
+```csharp
+var response = await agent.RunApprovalContinuationAsync(
+    toolContextAccessor,          // 容器解析的 IFeishuToolContextAccessor（AddFeishuTools* 已 Singleton 注册）
+    approval,                     // 批准通道收到的 FrameworkToolApprovalRequest（原样回传，RequestId 必须带回）
+    approved: true,
+    reason: "管理员已确认",
+    conversationGate: gate,       // 建议：与事件层同款闸门，保证同会话串行
+    approvalChannel: channel);    // 建议：续跑轮若再产出新的写工具审批，SDK 会再次提交宿主
+
+// 宿主仍需自己把 response.Text 投递给用户；若续跑又产出审批请求，文本为空（已提交通道）。
+```
+
+**未续跑 ≠ 无害（R5-12）**：发起确认的那一轮会把待应答审批请求写进会话历史，而 MEAI
+`FunctionInvokingChatClient` 对**整段入站历史**做审批配对校验——残留的未应答审批会让该会话
+**此后每一轮**直接抛 `InvalidOperationException`。SDK 已在事件层对该形态自愈（新的用户轮次会放弃
+该待确认项、摘除孤儿审批内容并清空框架记录），因此「宿主从不续跑」只会退化为「该次写操作被放弃」，
+不会毒化会话；**迟到的批准**也会被框架绑定层丢弃（fail-closed，绝不把已放弃的写操作重新放行）。
 
 **执行链仍会二次把关（R4-1）**：`ApprovalRequiredAIFunction` 是 MEAI **纯标记类型**，
 其拦截只在 `FunctionInvokingChatClient` 内部生效——宿主直接 `InvokeAsync`、或调用方绕开该管线时，

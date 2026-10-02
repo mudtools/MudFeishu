@@ -129,8 +129,12 @@ public sealed class ConversationSummarizer
                 return false;
             }
         }
-        catch (Exception ex) when (ex is JsonException or ArgumentException or InvalidOperationException or NotSupportedException)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            // R5-4：catch 面**收口**（不得是枚举白名单），与 FeishuAgent.GetOrCreateSessionAsync（R4-7）同款口径。
+            // 历史载荷的首次类型化读取就在此处：白名单之外的异常会逃出摘要器并穿过调用方
+            // （FeishuAgent.RunCoreAsync）⇒ 幂等回滚 ⇒ 重投递同点再抛 ⇒ 会话永久毒化。
+            // 取消必须原样传播，不得被吞成「跳过压缩」。
             _logger?.LogWarning(ex, "会话历史状态不可用，本轮跳过压缩（由会话入口的坏值自愈路径重建）");
             return false;
         }
@@ -191,7 +195,6 @@ public sealed class ConversationSummarizer
 
         // netstandard2.0 的 BCL 缺少流转注解：历史计数局部化供 catch 路径使用。
         var historyCount = history!.Count;
-        var retainedCount = history.Count;
 
         string? summaryText;
         try

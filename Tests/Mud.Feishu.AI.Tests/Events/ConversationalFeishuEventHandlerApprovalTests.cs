@@ -8,6 +8,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Mud.Feishu.AI.Tools;
 using Mud.Feishu.AI.Events;
+using Mud.Feishu.AI.Channels;
 using Mud.Feishu.Abstractions;
 
 namespace Mud.Feishu.AI.Tests.Events;
@@ -28,9 +29,10 @@ public class ConversationalFeishuEventHandlerApprovalTests
     private sealed class RecordingHandler(
         FeishuAgent agent,
         IFeishuEventDeduplicator deduplicator,
-        IFeishuToolApprovalChannel? approvalChannel = null)
+        IFeishuToolApprovalChannel? approvalChannel = null,
+        IMessageChannel? messageChannel = null)
         : ConversationalFeishuEventHandler<DemoEvent>(
-            agent, deduplicator, NullLogger.Instance, approvalChannel: approvalChannel)
+            agent, deduplicator, NullLogger.Instance, messageChannel: messageChannel, approvalChannel: approvalChannel)
     {
         public string? LastReply { get; private set; }
 
@@ -154,5 +156,31 @@ public class ConversationalFeishuEventHandlerApprovalTests
 
         await act.Should().NotThrowAsync("通道故障不得冒到事件循环（按『无法发起确认』处理）");
         handler.LastReply.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task HandleAsync_ShouldNotifyApprovalRequests_WhenBeginFailsAndModelDefersToolCall()
+    {
+        // R5-1：流式 Begin 失败 → 回退非流式，该回退路径**必须与主非流式路径共用同一回合实现**。
+        // 修复前形态：回退路径直接 `return (response.Text, false)`，审批请求被静默丢弃 ——
+        // 用户收不到确认提示（空文本被 R2-9 守卫吞掉）、宿主批准通道收不到回调、写工具永久挂起。
+        var agent = new FeishuAgent(
+            CreateApprovalClient().Object, new FeishuAgentOptions { Instructions = "x" });
+        var channel = new CapturingChannel();
+        var messageChannel = new Mock<IMessageChannel>();
+        messageChannel
+            .Setup(c => c.BeginAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("飞书占位消息创建失败（限流）"));
+
+        var handler = new RecordingHandler(
+            agent, CreateDeduplicator().Object, channel, messageChannel.Object);
+
+        await handler.HandleAsync(DemoEventData("evt-approval-fallback"), default);
+
+        channel.Requests.Should().ContainSingle("回退路径同样必须把待确认项提交宿主批准通道");
+        channel.Requests[0].RequestId.Should().Be("ficc_call-1",
+            "RequestId 必须原样携带（回灌响应靠它绑定框架请求）");
+        handler.LastReply.Should().NotBeNullOrEmpty("用户必须收到『等待确认』答复，而不是被空回复守卫静默吞掉");
+        handler.LastReply.Should().NotContain("ficc_call-1", "答复不得携带批准要素");
     }
 }

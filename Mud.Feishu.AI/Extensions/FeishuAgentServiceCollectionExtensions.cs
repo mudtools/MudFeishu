@@ -182,9 +182,14 @@ public static class FeishuAgentServiceCollectionExtensions
         if (string.Equals(endpoint.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
             return;
 
+        // R5-7：IPv6 字面量经 System.Uri 规范化后 Host **带方括号且为零压缩的完整形态**
+        // （http://[::1]:8000/v1 ⇒ "[0000:0000:0000:0000:0000:0000:0000:0001]"），
+        // 故原先的 "::1" 字面量比较恒不成立、IPAddress.TryParse("[::1]") 也恒失败——
+        // 「环回地址例外」在 IPv6 写法下被静默破坏（fail-closed 方向，纯可用性缺陷）。
+        // 先剥方括号再 TryParse，同时覆盖 "[::1]" 与 "[0:0:0:0:0:0:0:1]" 两种书写。
+        var host = endpoint.Host.Trim('[', ']');
         var isLoopback = string.Equals(endpoint.Host, "localhost", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(endpoint.Host, "::1", StringComparison.OrdinalIgnoreCase)
-            || (System.Net.IPAddress.TryParse(endpoint.Host, out var address)
+            || (System.Net.IPAddress.TryParse(host, out var address)
                 && System.Net.IPAddress.IsLoopback(address));
 
         if (!isLoopback)

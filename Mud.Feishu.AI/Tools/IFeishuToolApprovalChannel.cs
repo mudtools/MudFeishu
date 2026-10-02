@@ -61,11 +61,44 @@ public interface IFeishuToolApprovalChannel
     /// 因此不再需要「令牌往返模型上下文」这条危险路径。
     /// </para>
     /// <para>
-    /// 本方法是会话语义上的<b>异步</b>：宿主在此登记待确认项，随后在自有界面完成批准，
-    /// 再经 <c>Microsoft.Extensions.AI.ApprovalResponseBindingChatClient</c> 回灌批准响应继续本轮
-    /// （框架原生管线；SDK 侧<b>不提供</b> <c>ConversationalFeishuEventHandler</c> 上的回灌方法——
-    /// 该机制由 R1-WP3 删除自研确认令牌时一并收敛，旧注释曾引用一个并不存在的方法名，R2-08 已订正）。
-    /// 故实现不应阻塞等待人类点按钮。
+    /// 本方法是会话语义上的<b>异步</b>：宿主在此登记待确认项，随后在自有界面完成批准，再<b>回灌续跑</b>
+    /// （见下方宿主续跑义务）。故实现不应阻塞等待人类点按钮（实现内不得 <c>Task.Delay</c> 轮询等待批准）。
+    /// </para>
+    /// <para>
+    /// <b>宿主续跑义务（R5-2：批准之后的唯一正确路径）</b>——推荐直接调用 SDK 闭环
+    /// <see cref="Mud.Feishu.AI.Agents.FeishuAgentApprovalExtensions.RunApprovalContinuationAsync"/>，
+    /// 它一次完成下列全部动作。手工实现时四步缺一不可：
+    /// <list type="number">
+    /// <item>
+    /// 用<b>同一个</b>会话键（<see cref="FrameworkToolApprovalRequest.ConversationKey"/>）在<b>同一</b>
+    /// <c>FeishuAgent</c> 上加载会话（框架的待审批记录驻留会话状态袋，框架记录即批准权威；换键/换实例即失配）；
+    /// </item>
+    /// <item>
+    /// 构造 <c>ToolApprovalResponseContent</c> 装入 <c>ChatMessage(ChatRole.User, …)</c>：
+    /// 最稳妥的构造方式是取框架记录的原始请求
+    /// （<c>ToolApprovalRequestContent.CreateResponse(approved, reason)</c>，SDK 闭环内部即如此），
+    /// 使 CallId 与入参同源；即使宿主自行构造，绑定层也会按 <see cref="FrameworkToolApprovalRequest.RequestId"/>
+    /// 把工具调用重绑定到框架记录的原始请求上，故 <c>RequestId</c> 必须原样带回；
+    /// </item>
+    /// <item>
+    /// <b>RunAsync 之前</b>重建工具执行上下文：
+    /// <c>toolContextAccessor.Begin(new FeishuToolContext(AppKey, ConversationKey, ChatId, UserId))</c>
+    /// ——续跑轮不在事件流内，缺此步工具将 fail-closed 结构化拒绝（多租户隔离禁止默认 appKey 兜底，
+    /// TMA2-20）。<b>批准 ≠ 放行</b>：租户上下文必须由宿主显式重建；
+    /// </item>
+    /// <item>
+    /// 跑完 <c>SaveSessionAsync</c> 落库（含框架绑定层消费掉的审批记录），并把本轮回复投递给用户
+    /// （回复下发不在 SDK 闭环内——<c>ReplyAsync</c> 属派生事件处理器）。
+    /// </item>
+    /// </list>
+    /// 未按上述执行的续跑会得到工具拒绝或审批绑定失败——均为 fail-closed，不产生越权执行。
+    /// </para>
+    /// <para>
+    /// <b>未续跑 ≠ 无害（R5-12）</b>：发起确认的那一轮会把「待应答审批请求」写进会话历史；MEAI
+    /// <c>FunctionInvokingChatClient</c> 对<b>整段入站历史</b>做审批配对校验，残留未应答的审批请求会让
+    /// <b>该会话的后续每一轮</b>直接抛 <c>InvalidOperationException</c>（工具调用未被放行，但会话不可用）。
+    /// SDK 已在事件层对该形态做自愈（新的用户轮次会放弃该待确认项并摘除孤儿审批、清空框架记录），
+    /// 因此「宿主从不续跑」只会退化为「该次写操作被放弃」，不会毒化会话。
     /// </para>
     /// <para>
     /// 通道抛异常时同样 <b>fail-closed</b>：写工具保持未执行，绝不降级为「自动批准」。
@@ -96,6 +129,10 @@ public interface IFeishuToolApprovalChannel
 /// 入参摘要（可空；供审批界面展示——<b>不得</b>回灌给模型）。
 /// </param>
 /// <param name="RequiredScopes">工具声明的权限点（查不到目录时为空）。</param>
+/// <param name="ChatId">
+/// 触发会话的 chat_id（可空；R5-11 追加）。续跑轮重建工具执行上下文
+/// （<see cref="FeishuToolContext.ChatId"/>）时使用——续跑不在事件流内，宿主侧只有本投影可依。
+/// </param>
 public sealed record FrameworkToolApprovalRequest(
     string RequestId,
     string ToolName,
@@ -104,7 +141,8 @@ public sealed record FrameworkToolApprovalRequest(
     string? UserId,
     string? ConversationKey,
     string? ArgumentsDigest,
-    IReadOnlyList<string> RequiredScopes);
+    IReadOnlyList<string> RequiredScopes,
+    string? ChatId = null);
 
 /// <summary>
 /// 待人工确认的工具调用要素（入参以摘要形式提供；不含模型原文）。

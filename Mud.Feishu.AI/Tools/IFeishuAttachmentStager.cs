@@ -54,5 +54,5 @@ public interface IFeishuAttachmentStager
     /// <param name="source">来源（URL 或内存字节）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>已落盘附件；返回 <see langword="null"/> 表示该来源不被允许（工具层转为结构化错误）。</returns>
-    Task<StagedAttachment?> StageAsync(AttachmentSource source, CancellationToken cancellationToken);
+    Task<StagedAttachment?> StageAsync(AttachmentSource source, CancellationToken cancellationToken = default);
 }

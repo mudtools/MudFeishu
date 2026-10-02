@@ -182,6 +182,27 @@ public class FeishuAgentServiceCollectionExtensionsTests
         act.Should().NotThrow();
     }
 
+    /// <summary>
+    /// R5-7：IPv6 环回字面量的两种合法书写都必须命中「环回地址例外」。
+    /// </summary>
+    /// <remarks>
+    /// <c>System.Uri</c> 会把 IPv6 字面量规范化为<b>带方括号、零压缩展开</b>的形态
+    /// （<c>http://[::1]:8000/v1</c> ⇒ Host = <c>[0000:0000:0000:0000:0000:0000:0000:0001]</c>），
+    /// 故「<c>Host == "::1"</c>」的字面量比较与 <c>IPAddress.TryParse("[::1]")</c> 都必然失败。
+    /// 注意：无方括号的 <c>http://::1:8000/v1</c> 会被 <see cref="Uri"/> 直接判为非法格式，
+    /// 不能作为用例数据（那不是「合法写法」，而是解析异常）。
+    /// </remarks>
+    [Theory]
+    [InlineData("http://[::1]:8000/v1")]
+    [InlineData("http://[0:0:0:0:0:0:0:1]:9000/v4")]
+    public void AddFeishuOpenAIChatClient_ShouldAllowLoopbackHttp_ForIpv6Literal(string endpoint)
+    {
+        var services = new ServiceCollection();
+        var act = () => services.AddFeishuOpenAIChatClient("k", "m", "sk", endpoint);
+
+        act.Should().NotThrow("环回地址例外不得因 IPv6 书写形态而静默失效");
+    }
+
     [Fact]
     public void AddFeishuOpenAIChatClient_ShouldRejectBlankArguments()
     {

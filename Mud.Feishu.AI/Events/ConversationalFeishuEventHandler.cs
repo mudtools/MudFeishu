@@ -112,6 +112,19 @@ public abstract class ConversationalFeishuEventHandler<T>(
     /// <summary>
     /// 把强类型事件规范化为会话请求（群聊/单聊维度选择、会话主体提取）。
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>租户作用域义务（R5-9）</b>：本方法在基类建立<b>任何</b>租户作用域<b>之前</b>执行
+    /// （<see cref="BeginAppScope"/> 的 fail-closed 防线只覆盖「下发动作」）。实现内如需调用
+    /// 飞书 API（如 <c>task.task.updated_v1</c> 按平台解析回投目标），必须先以
+    /// <c>BeginAppScope(从事件中提取的 appKey)</c> 建立租户作用域——否则多应用宿主下该解析请求
+    /// 会以<b>默认应用身份</b>发出（TMA2-20 跨租户错发的「读」方向）。
+    /// </para>
+    /// <para>
+    /// 需要平台解析时，按 R2-01 的约定把结果写入 <see cref="ConversationRequest.SenderId"/> /
+    /// <see cref="ConversationRequest.SubjectId"/>，<see cref="TryFindDeliveryBlockAsync"/> 只做纯判定。
+    /// </para>
+    /// </remarks>
     /// <param name="eventData">强类型事件 DTO。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>会话请求。</returns>
@@ -302,6 +315,27 @@ public abstract class ConversationalFeishuEventHandler<T>(
                 return;
             }
 
+            // R5-12：放弃「上一轮发起、至今无人应答」的待确认写操作。
+            // 触发条件（两个判据取并集，见 FeishuPendingApprovalState.HasPending）：上一轮以「等待人工确认」
+            // 收尾，而本轮的到来意味着宿主没有走续跑（RunApprovalContinuationAsync）而是开了新一轮。
+            // 不处理的后果有二：① 残留的审批请求内容会随历史进入 MEAI FunctionInvokingChatClient 的
+            // **整段入站配对校验**，使该会话此后每一轮都抛 InvalidOperationException（异常早于任何新消息落库
+            // ⇒ 永不恢复，幂等回滚 + 重投递 = 事件永久毒化循环）；② 框架仍记着的待审批请求会让**迟到的批准**
+            // 把一轮已被用户放弃的写操作真正执行（越权方向）。
+            // 放弃 = 摘除孤儿审批内容 + 清空框架记录（迟到的批准在绑定层被丢弃，绝不重新放行）。
+            // 位置：补发判定**之后**（补发不调模型，无需修史）、模型调用**之前**（必须早于历史进入管线）。
+            if (FeishuPendingApprovalState.HasPending(session))
+            {
+                var abandoned = FeishuPendingApprovalState.Abandon(session);
+                _logger.LogWarning(
+                    "上一轮的人工确认未在续跑轮中回灌，已放弃该待确认操作（摘除 {Removed} 条孤儿审批内容；subject: {SubjectId}）"
+                    + "——如需执行该操作请重新发起；迟到的批准将被框架绑定层丢弃（fail-closed）",
+                    abandoned, request.SubjectId);
+
+                // 立即落库：修史结果必须持久化，否则下一次重投递会读到仍含孤儿的旧载荷而反复修补。
+                await _agent.SaveSessionAsync(conversationKey, session, cancellationToken).ConfigureAwait(false);
+            }
+
             // 下发可行性前置判定（R2-01）：置于补发判定**之后**（补发不消耗模型，不该被本判定拦截），
             // 模型调用（含上下文装配）**之前**。判定不通过即按「已消费」返回：幂等终态落 Completed，
             // 绝不重投递——重投递只会把同一轮白判一次，对"投递目标不存在"这一事实毫无改善。
@@ -400,19 +434,7 @@ public abstract class ConversationalFeishuEventHandler<T>(
         var streamTarget = MessageChannel is not null ? ResolveStreamTarget(request) : null;
         if (MessageChannel is null || string.IsNullOrEmpty(streamTarget))
         {
-            var response = await _agent.RunAsync(userMessage, session, options: null, cancellationToken).ConfigureAwait(false);
-
-            // P4-1：写工具经 ApprovalRequiredAIFunction 包装后，MAF 会在**调用之前**把该次调用
-            // 改写成 ToolApprovalRequestContent——此刻工具**未执行**，须由宿主批准后继续。
-            // 必须先于 R2-9 空回复守卫判定：这里的语义是「已发起确认」，不是「模型没说话」。
-            var pending = ExtractApprovalRequests(response.Messages, request);
-            if (pending.Count > 0)
-            {
-                await NotifyApprovalRequestsAsync(request, pending, cancellationToken).ConfigureAwait(false);
-                return (BuildApprovalPendingReply(pending), false);
-            }
-
-            return (response.Text, false);
+            return await RunNonStreamingTurnAsync(request, session, userMessage, cancellationToken).ConfigureAwait(false);
         }
 
         // 环境量携带会话请求：通道降级链内各子通道按自身语义重解析目标（卡片流=open_id、编辑通道=chat_id），
@@ -431,10 +453,11 @@ public abstract class ConversationalFeishuEventHandler<T>(
         catch (Exception ex)
         {
             // Begin 失败：模型尚未调用，回退非流式（零重复成本，Phase 2 §3.1）。
+            // R5-1：回退路径必须与主非流式路径共用同一回合实现——否则审批请求在此被静默丢弃
+            // （写工具永久挂起、宿主收不到回调、用户收到空回复而被空回复守卫吞掉）。
             _logger.LogWarning(ex, "流式占位消息创建失败，回退非流式回复（appKey: {AppKey}, target: {Target}）",
                 request.AppKey, streamTarget);
-            var response = await _agent.RunAsync(userMessage, session, options: null, cancellationToken).ConfigureAwait(false);
-            return (response.Text, false);
+            return await RunNonStreamingTurnAsync(request, session, userMessage, cancellationToken).ConfigureAwait(false);
         }
 
         var fullText = new StringBuilder();
@@ -479,7 +502,7 @@ public abstract class ConversationalFeishuEventHandler<T>(
             // （占位消息已 Flush 到终结态，故这里返回的文本不再经通道送达，由 HandleAsync 走非流式回复）。
             if (pendingApprovals.Count > 0)
             {
-                await NotifyApprovalRequestsAsync(request, pendingApprovals, cancellationToken).ConfigureAwait(false);
+                await NotifyApprovalRequestsAsync(pendingApprovals, cancellationToken).ConfigureAwait(false);
                 return (BuildApprovalPendingReply(pendingApprovals), false);
             }
         }
@@ -520,6 +543,43 @@ public abstract class ConversationalFeishuEventHandler<T>(
 
         activity?.AddTag(FeishuAgentDiagnostics.TagStreamed, true);
         return (fullText.ToString(), true);
+    }
+
+    /// <summary>
+    /// 非流式单轮 Run：「审批判定先于空回复守卫」纪律的<b>唯一点</b>（R5-1）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么必须抽成单一实现</b>：本方法此前只被主非流式路径使用，流式 <c>BeginAsync</c> 失败的回退
+    /// 路径自己写了一行 <c>_agent.RunAsync</c> 就直接返回——「每条路径都得记得补审批三行」正是机制缺失
+    /// （与 R2-01b 把触发文本收进基类 <see cref="AssembleUserMessageAsync"/> 同款哲学）。缺陷后果：
+    /// 模型已产出 <see cref="ToolApprovalRequestContent"/>（工具未执行）、回退路径却把空文本当普通回复 ⇒
+    /// 命中 R2-9 空回复守卫后按「已消费」收尾——<b>用户收不到确认提示、宿主批准通道收不到回调、
+    /// 写工具静默挂起</b>。
+    /// </para>
+    /// <para>
+    /// 审批判定必须先于 R2-9 空回复守卫：这里的语义是「已发起确认」，不是「模型没说话」。
+    /// </para>
+    /// </remarks>
+    /// <returns>（模型最终回答文本, 是否已经流式送达）——本路径恒为 <see langword="false"/>。</returns>
+    private async Task<(string ResponseText, bool Streamed)> RunNonStreamingTurnAsync(
+        ConversationRequest request,
+        AgentSession session,
+        string userMessage,
+        CancellationToken cancellationToken)
+    {
+        var response = await _agent.RunAsync(userMessage, session, options: null, cancellationToken).ConfigureAwait(false);
+
+        // P4-1：写工具经 ApprovalRequiredAIFunction 包装后，MAF 会在**调用之前**把该次调用
+        // 改写成 ToolApprovalRequestContent——此刻工具**未执行**，须由宿主批准后继续。
+        var pending = ExtractApprovalRequests(response.Messages, request);
+        if (pending.Count > 0)
+        {
+            await NotifyApprovalRequestsAsync(pending, cancellationToken).ConfigureAwait(false);
+            return (BuildApprovalPendingReply(pending), false);
+        }
+
+        return (response.Text, false);
     }
 
     /// <summary>
@@ -581,10 +641,14 @@ public abstract class ConversationalFeishuEventHandler<T>(
             pendingReply = stored;
             return true;
         }
-        catch (Exception ex) when (ex is JsonException or ArgumentException
-                                     or InvalidOperationException or NotSupportedException)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             // 损坏条目：按 miss 处理（与 R2-2 同一哲学——坏值不该毒化会话）。
+            // R5-4：catch 面必须**收口**，不得是枚举白名单——与 FeishuAgent.GetOrCreateSessionAsync
+            // （R4-7）同款口径。状态袋值是**惰性**反序列化的，`feishu.agent.pending_reply*` 的首次类型化
+            // 读取就发生在这里：白名单之外的异常（FormatException/KeyNotFoundException/…）会逃出本守护区
+            // ⇒ 幂等回滚 ⇒ 重投递同点再抛 ⇒ 事件永久毒化循环。
+            // 取消必须原样传播（否则调用方取消被吞成「按 miss 处理」，本轮的补偿与回滚语义随之丢失）。
             _logger.LogWarning(ex, "待补发条目不可用（已按无待补发处理）");
             return false;
         }
@@ -609,55 +673,31 @@ public abstract class ConversationalFeishuEventHandler<T>(
     /// <see cref="FrameworkToolApprovalRequest"/>（写工具经 <c>ApprovalRequiredAIFunction</c>
     /// 包装后，MAF 在<b>调用之前</b>产出该内容，此时工具<b>尚未执行</b>）。
     /// </summary>
+    /// <remarks>
+    /// R5-11：投影实现已下沉到 <see cref="FeishuApprovalRequestProjector"/>（事件层与 HITL 续跑闭环共用一份，
+    /// 避免「每个入口各写一遍」的机制缺失）。
+    /// </remarks>
     /// <param name="messages">模型回应消息集合。</param>
     /// <param name="request">规范化会话请求（提供 appKey / user / 会话键）。</param>
     /// <returns>待提交宿主的审批请求（无则空）。</returns>
     private List<FrameworkToolApprovalRequest> ExtractApprovalRequests(
         IEnumerable<ChatMessage> messages, ConversationRequest request)
-    {
-        var collected = new List<FrameworkToolApprovalRequest>();
-        if (messages is null)
-        {
-            return collected;
-        }
-
-        foreach (var message in messages)
-        {
-            CollectApprovalRequests(message.Contents, request, collected);
-        }
-
-        return collected;
-    }
+        => FeishuApprovalRequestProjector.FromMessages(
+            messages,
+            request.AppKey,
+            ConversationKeyBuilder.Build(request.AppKey, request.Scope, request.SubjectId),
+            ResolveStreamTargetChatId(request),
+            request.SenderId);
 
     private void CollectApprovalRequests(
         IList<AIContent>? contents, ConversationRequest request, List<FrameworkToolApprovalRequest> sink)
-    {
-        if (contents is null)
-        {
-            return;
-        }
-
-        foreach (var content in contents)
-        {
-            if (content is not ToolApprovalRequestContent approval)
-            {
-                continue;
-            }
-
-            // ToolCallContent 是基类；具体形态是 FunctionCallContent（含 Name/Arguments）。
-            var toolName = approval.ToolCall is FunctionCallContent call ? call.Name : null;
-
-            sink.Add(new FrameworkToolApprovalRequest(
-                RequestId: approval.RequestId,
-                ToolName: toolName ?? "(unknown)",
-                ToolCallId: approval.ToolCall?.CallId,
-                AppKey: request.AppKey,
-                UserId: request.SenderId,
-                ConversationKey: ConversationKeyBuilder.Build(request.AppKey, request.Scope, request.SubjectId),
-                ArgumentsDigest: null,
-                RequiredScopes: []));
-        }
-    }
+        => FeishuApprovalRequestProjector.Collect(
+            contents,
+            request.AppKey,
+            ConversationKeyBuilder.Build(request.AppKey, request.Scope, request.SubjectId),
+            ResolveStreamTargetChatId(request),
+            request.SenderId,
+            sink);
 
     /// <summary>
     /// P4-1：把待确认项交给宿主批准通道，并记一条 Warning（便于观测「写工具停在等待确认」）。
@@ -666,44 +706,10 @@ public abstract class ConversationalFeishuEventHandler<T>(
     /// <b>fail-closed</b>：通道未注册 ⇒ 写工具保持未执行，只提示用户「无法发起确认」——
     /// 绝不自动批准。通道抛异常同理。
     /// </remarks>
-    private async Task NotifyApprovalRequestsAsync(
-        ConversationRequest request,
+    private Task NotifyApprovalRequestsAsync(
         IReadOnlyList<FrameworkToolApprovalRequest> pending,
         CancellationToken cancellationToken)
-    {
-        foreach (var item in pending)
-        {
-            _logger.LogWarning(
-                "写工具待人工确认（工具: {ToolName}, requestId: {RequestId}, appKey: {AppKey}）——工具尚未执行，宿主批准后回灌批准响应方可继续",
-                item.ToolName, item.RequestId, item.AppKey);
-        }
-
-        if (ApprovalChannel is null)
-        {
-            return;
-        }
-
-        foreach (var item in pending)
-        {
-            try
-            {
-                await ApprovalChannel
-                    .RequestFrameworkApprovalAsync(item, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                // 与 FeishuToolBinding 同侧哲学：通道故障只降级为「无法发起确认」，不自动放行。
-                _logger.LogWarning(ex,
-                    "宿主批准通道提交失败（工具: {ToolName}, requestId: {RequestId}）——写工具保持未执行",
-                    item.ToolName, item.RequestId);
-            }
-        }
-    }
+        => FeishuApprovalRequestProjector.NotifyAsync(ApprovalChannel, _logger, pending, cancellationToken);
 
     /// <summary>
     /// P4-1：构造「等待人工确认」的用户可见答复。
@@ -720,10 +726,24 @@ public abstract class ConversationalFeishuEventHandler<T>(
     /// 解析流式回复目标：通道实现 <see cref="IMessageChannelTargetResolver"/> 时按其语义解析
     /// （卡片流 = 接收用户 open_id）；否则缺省 <see cref="ResolveStreamTargetChatId"/>
     /// （<see cref="ConversationRequest.ChatId"/> 优先，群聊回退会话主体）。
-    /// 返回 <see langword="null"/> 表示本次事件不适用流式，回退非流式路径。
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>R5-3 语义订正（两段式解析，P2D-2a）</b>：覆写方法返回 <see langword="null"/> <b>不是</b>
+    /// 「放弃流式」，而是回退 <see cref="ResolveStreamTargetChatId"/> 的默认解析值，作为
+    /// <c>IMessageChannel.BeginAsync</c> 的<b>入参兜底目标</b>（非解析器通道与外部直调形态使用）。
+    /// 「本通道对本次事件不适用」这一信号由<b>第二段</b>承接：链内各子通道在 <c>BeginAsync</c> 阶段
+    /// 按 <see cref="StreamingRequestContext"/> 环境量二次重解析自身目标，全部子通道不适用时
+    /// <c>BeginAsync</c> 抛错 ⇒ <see cref="RunConversationAsync"/> 回退非流式。
+    /// </para>
+    /// <para>
+    /// 原 XML 注释（"返回 null 表示本次事件不适用流式，回退非流式路径"）与实现矛盾，曾足以误导
+    /// 第三方通道作者按错误语义实现；本口径与 <see cref="IMessageChannelTargetResolver"/> 的接口文档、
+    /// `StreamingChannelChain` 的链实现三方一致。
+    /// </para>
+    /// </remarks>
     /// <param name="request">规范化会话请求。</param>
-    /// <returns>流式目标（通道自解释；可空）。</returns>
+    /// <returns>流式目标（通道自解释；可空——为空时回退默认解析值）。</returns>
     protected virtual string? ResolveStreamTarget(ConversationRequest request)
         => MessageChannel is IMessageChannelTargetResolver resolver
             ? resolver.ResolveStreamTarget(request) ?? ResolveStreamTargetChatId(request)

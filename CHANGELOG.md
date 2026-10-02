@@ -1,5 +1,60 @@
 # Mud.Feishu 更新日志
 
+## [Unreleased] - Mud.Feishu.AI 审查缺陷修复与能力完善 R5（2026-10-02）
+
+> 方案、双视角复核与落地记录见 `.docs/AI/Mud.Feishu.AI-审查缺陷修复与能力完善方案-R5.md`
+> （§0 复核订正与定级纠正、§1 缺陷修复、§2 能力完善、§3 批次 B0/B1/B2、§4 红转绿证据）。
+> **AI 模块尚未发布，本轮为一次性重构，无兼容负担。**
+
+### ⚠️ 行为变更登记（宿主可感）
+
+- **【P0 / R5-12（原 P2-8「探针」定级纠正）】未应答的人工确认不再毒化会话**：发起确认的那一轮会把
+  待应答的 `ToolApprovalRequestContent` 写进会话历史，而 MEAI `FunctionInvokingChatClient` 对**整段
+  入站历史**做审批配对校验——残留未应答审批即抛
+  `InvalidOperationException: ToolApprovalRequestContent found with FunctionCall.CallId(s) '…' that have no
+  matching ToolApprovalResponseContent.`，且异常早于任何新消息落库 ⇒ 该会话**此后每一轮**都抛
+  （幂等回滚 + 重投递 = 事件永久毒化循环）。**新语义**：事件层在每个新用户轮次开始时自愈——
+  摘除历史中的孤儿审批请求内容 + 清空框架的待审批记录，并记 Warning。用户可见后果：该次写操作被
+  **放弃**（需重新发起），会话保持可用；**迟到的批准**由框架绑定层丢弃（fail-closed，绝不重新放行）。
+- **【P1 / R5-1】流式 `BeginAsync` 失败回退路径不再丢失审批**：回退非流式路径此前直接返回模型文本，
+  未做审批判定 ⇒ 写工具审批被静默丢弃（用户收不到确认提示、宿主收不到回调、写工具永久挂起）。
+  现与主非流式路径共用 `RunNonStreamingTurnAsync`（「审批判定先于空回复守卫」的唯一点）。
+- **【P1 / R5-11】新增批准回灌续跑 SDK 闭环**：`FeishuAgent.RunApprovalContinuationAsync(...)`——
+  加载会话 → 取**框架记录的**原始审批请求 → `ToolApprovalRequestContent.CreateResponse` →
+  **显式重建租户上下文** → 经框架绑定层续跑 → 落库。此前宿主「手工四步」易漏第 ③ 步（重建上下文），
+  表现为「批准了却不生效」；未命中框架记录即 fail-closed 抛错（绝不凭空放行）。
+  `FrameworkToolApprovalRequest` 追加尾部可选字段 `ChatId`（源兼容；续跑轮重建工具上下文需要）。
+
+### 🐛 修复
+
+- **R5-1**：见上「行为变更登记」。
+- **R5-4**：`TryTakePendingReply`（事件层）与 `ConversationSummarizer.SummarizeIfNeededAsync`（摘要器）
+  的 catch 面由**枚举白名单**收口为 `when (ex is not OperationCanceledException)`，与 R4-7 同款口径
+  （漏网的 `FormatException`/`KeyNotFoundException` 等会逃出坏值守护区并毒化会话）。
+- **R5-5**：删除 `ConversationSummarizer` 中的死变量 `retainedCount`。
+- **R5-6**：`IFeishuAttachmentStager.StageAsync` 的 `CancellationToken` 补缺省值（对齐异步规范）。
+- **R5-7**：模型端点环回白名单支持 IPv6 字面量——`Uri.Host` 对 `http://[::1]:8000` 返回的是
+  **带方括号、零压缩展开**的形态（`[0000:…:0001]`），原 `"::1"` 比较与 `IPAddress.TryParse` 均恒失败，
+  「环回地址例外」在 IPv6 书写下静默失效（`http://[::1]:8000/v1` 启动即抛）。
+- **R5-3**：`ResolveStreamTarget` 覆写方法的 XML 与实现矛盾订正（"返回 null 表示不适用流式" ⇒ 实为
+  「回退默认解析值，作为 `BeginAsync` 的入参兜底目标」；「本通道不适用」由链内第二段重解析承接）。
+- **R5-8**：知识注入块头部补 **untrusted 显式标注**（知识库内容属半可信数据，其中的指令性表述不得执行），
+  与工具结果侧 `ToolResultContentSafety` 防线对称。
+- **R5-2 / R5-9**：契约文档补全——`IFeishuToolApprovalChannel.RequestFrameworkApprovalAsync` 的
+  **宿主续跑义务**（四步，含「批准 ≠ 放行」的上下文重建）与 `ConversationalFeishuEventHandler.BuildRequestAsync`
+  的**租户作用域义务**（本方法在基类建立任何租户作用域之前执行）。
+
+### 🧪 测试与守卫
+
+- 新增 `ApprovalContinuationContractGuards`：① **枚举白名单 catch 结构守卫**（含检查器自证，取代
+  「临时改坏生产代码跑一次」的一次性自证）；② MAF 内部待审批状态键 `_pendingApprovalRequests` 的
+  **反射契约守卫**（框架改名即测试期报红，避免 HITL 续跑静默失效）。
+- 新增 `FeishuAgentApprovalContinuationTests`（7 例）：走真实框架管线验证「批准 → 工具真执行且
+  租户上下文正确」「缺上下文 fail-fast」「记录未命中 fail-closed」「拒绝路径」「闸门串行」
+  「未应答审批自愈后会话仍可用」。
+- 红转绿证据（详见方案 §4.3）：R5-1（回退路径审批通知缺失）、R5-12（框架抛
+  `InvalidOperationException` 毒化会话）均已先在**修复前代码**上跑出红后再转绿。
+
 ## [Unreleased] - Mud.Feishu.AI 审查缺陷修复 R4（2026-10-01）
 
 > 方案与双视角复核（高级程序员 / 系统架构师）见 `.docs/AI/Mud.Feishu.AI-审查缺陷修复与能力完善方案-R4.md`

@@ -13,7 +13,7 @@ namespace Mud.Feishu;
 /// <summary>
 /// 归档报表用于对应对应后台假勤管理-考勤统计-报表-归档报表功能（租户令牌）。
 /// <para>归档报表支持引用系统报表，可设置归档时间和数据归档周期，并且支持根据部门/人员、国家/地区、人员类型、工作地点、职级、序列、职务进行人员圈选。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/attendance-v1/archive_rule/list"/></para>
+/// <para><see href="https://open.feishu.cn/document/attendance-v1/archive_rule/list">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Attendance", InheritedFrom = nameof(FeishuV1AttendanceArchives))]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -22,6 +22,7 @@ public interface IFeishuTenantV1AttendanceArchives : IFeishuV1AttendanceArchives
     /// <summary>
     /// 写入归档报表结果，对应假勤管理-考勤统计-报表-归档报表页签，点击报表名称进入后的导入功能。可以将数据直接写入归档报表。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=upload_report&amp;project=attendance&amp;resource=archive_rule&amp;version=v1"/></para>
+    /// <para><see href="https://open.feishu.cn/document/attendance-v1/archive_rule/upload_report">接口文档</see></para>
     /// </summary>
     /// <param name="archiveUploadReportRequest">写入归档报表结果请求体</param>
     /// <param name="employee_type">请求体中的 user_id 和响应体中的 user_id 的员工ID类型。</param>

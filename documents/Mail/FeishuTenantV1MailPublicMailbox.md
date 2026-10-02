@@ -28,25 +28,25 @@ description: 该接口用于以租户身份管理企业内所有公共邮箱，�
 - [查询公共邮箱的所有别名](https://open.feishu.cn/document/server-docs/mail-v1/public-mailbox/public_mailbox-alias/list)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| CreatePublicMailboxAsync | 创建公共邮箱 | TenantAccessToken | POST |
-| UpdatePublicMailboxPartialAsync | 修改公共邮箱部分信息 | TenantAccessToken | PATCH |
-| UpdatePublicMailboxAsync | 修改公共邮箱全部信息 | TenantAccessToken | PUT |
-| GetPublicMailboxAsync | 查询指定公共邮箱 | TenantAccessToken | GET |
-| RemoveToRecycleBinPublicMailboxAsync | 将公共邮箱移至回收站 | TenantAccessToken | DELETE |
-| DeletePublicMailboxAsync | 永久删除公共邮箱 | TenantAccessToken | DELETE |
-| GetPublicMailboxPageListAsync | 分页查询所有公共邮箱 | TenantAccessToken | GET |
-| CreatePublicMailboxMemberAsync | 添加公共邮箱成员 | TenantAccessToken | POST |
-| DeletePublicMailboxMemberAsync | 删除公共邮箱单个成员 | TenantAccessToken | DELETE |
-| DeletePublicMailboxAllMemberAsync | 删除公共邮箱所有成员 | TenantAccessToken | POST |
-| GetPublicMailboxMemberAsync | 查询指定公共邮箱成员信息 | TenantAccessToken | GET |
-| GetPublicMailboxMemberPageListAsync | 查询所有公共邮箱成员信息 | TenantAccessToken | GET |
-| BatchCreatePublicMailboxMemberAsync | 批量添加公共邮箱成员 | TenantAccessToken | POST |
-| BatchDeletePublicMailboxMemberAsync | 批量删除公共邮箱成员 | TenantAccessToken | DELETE |
-| CreatePublicMailboxAliasAsync | 创建公共邮箱别名 | TenantAccessToken | POST |
-| DeletePublicMailboxAliasAsync | 删除公共邮箱别名 | TenantAccessToken | DELETE |
-| GetPublicMailboxAliasListAsync | 查询公共邮箱的所有别名 | TenantAccessToken | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| CreatePublicMailboxAsync | 创建公共邮箱 | TenantAccessToken | POST | [CreatePublicMailboxAsync](https://open.feishu.cn/document/server-docs/mail-v1/public-mailbox/public_mailbox/create) |
+| UpdatePublicMailboxPartialAsync | 修改公共邮箱部分信息 | TenantAccessToken | PATCH | [UpdatePublicMailboxPartialAsync](https://open.feishu.cn/document/server-docs/mail-v1/public-mailbox/public_mailbox/patch) |
+| UpdatePublicMailboxAsync | 修改公共邮箱全部信息 | TenantAccessToken | PUT | [UpdatePublicMailboxAsync](https://open.feishu.cn/document/server-docs/mail-v1/public-mailbox/public_mailbox/update) |
+| GetPublicMailboxAsync | 查询指定公共邮箱 | TenantAccessToken | GET | [GetPublicMailboxAsync](https://open.feishu.cn/document/server-docs/mail-v1/public-mailbox/public_mailbox/get) |
+| RemoveToRecycleBinPublicMailboxAsync | 将公共邮箱移至回收站 | TenantAccessToken | DELETE | [RemoveToRecycleBinPublicMailboxAsync](https://open.feishu.cn/document/mail-v1/public-mailbox/public_mailbox/remove_to_recycle_bin) |
+| DeletePublicMailboxAsync | 永久删除公共邮箱 | TenantAccessToken | DELETE | [DeletePublicMailboxAsync](https://open.feishu.cn/document/server-docs/mail-v1/public-mailbox/public_mailbox/delete) |
+| GetPublicMailboxPageListAsync | 分页查询所有公共邮箱 | TenantAccessToken | GET | [GetPublicMailboxPageListAsync](https://open.feishu.cn/document/server-docs/mail-v1/public-mailbox/public_mailbox/list) |
+| CreatePublicMailboxMemberAsync | 添加公共邮箱成员 | TenantAccessToken | POST | [CreatePublicMailboxMemberAsync](https://open.feishu.cn/document/server-docs/mail-v1/public-mailbox/public_mailbox-member/create) |
+| DeletePublicMailboxMemberAsync | 删除公共邮箱单个成员 | TenantAccessToken | DELETE | [DeletePublicMailboxMemberAsync](https://open.feishu.cn/document/server-docs/mail-v1/public-mailbox/public_mailbox-member/delete) |
+| DeletePublicMailboxAllMemberAsync | 删除公共邮箱所有成员 | TenantAccessToken | POST | [DeletePublicMailboxAllMemberAsync](https://open.feishu.cn/document/server-docs/mail-v1/public-mailbox/public_mailbox-member/clear) |
+| GetPublicMailboxMemberAsync | 查询指定公共邮箱成员信息 | TenantAccessToken | GET | [GetPublicMailboxMemberAsync](https://open.feishu.cn/document/server-docs/mail-v1/public-mailbox/public_mailbox-member/get) |
+| GetPublicMailboxMemberPageListAsync | 查询所有公共邮箱成员信息 | TenantAccessToken | GET | [GetPublicMailboxMemberPageListAsync](https://open.feishu.cn/document/server-docs/mail-v1/public-mailbox/public_mailbox-member/list) |
+| BatchCreatePublicMailboxMemberAsync | 批量添加公共邮箱成员 | TenantAccessToken | POST | [BatchCreatePublicMailboxMemberAsync](https://open.feishu.cn/document/server-docs/mail-v1/public-mailbox/public_mailbox-member/batch_create) |
+| BatchDeletePublicMailboxMemberAsync | 批量删除公共邮箱成员 | TenantAccessToken | DELETE | [BatchDeletePublicMailboxMemberAsync](https://open.feishu.cn/document/server-docs/mail-v1/public-mailbox/public_mailbox-member/batch_delete) |
+| CreatePublicMailboxAliasAsync | 创建公共邮箱别名 | TenantAccessToken | POST | [CreatePublicMailboxAliasAsync](https://open.feishu.cn/document/server-docs/mail-v1/public-mailbox/public_mailbox-alias/create) |
+| DeletePublicMailboxAliasAsync | 删除公共邮箱别名 | TenantAccessToken | DELETE | [DeletePublicMailboxAliasAsync](https://open.feishu.cn/document/server-docs/mail-v1/public-mailbox/public_mailbox-alias/delete) |
+| GetPublicMailboxAliasListAsync | 查询公共邮箱的所有别名 | TenantAccessToken | GET | [GetPublicMailboxAliasListAsync](https://open.feishu.cn/document/server-docs/mail-v1/public-mailbox/public_mailbox-alias/list) |
 
 ## 函数详细内容
 

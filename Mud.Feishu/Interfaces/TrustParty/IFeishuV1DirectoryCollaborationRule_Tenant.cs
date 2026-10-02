@@ -9,7 +9,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书可搜可见规则 SDK（租户令牌）：以 tenant_access_token 身份调用，仅支持自建应用，调用者需具备关联组织管理员权限。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/trust_party-v1/searchable-and-visible-rules/list"/></para>
+/// <para><see href="https://open.feishu.cn/document/trust_party-v1/searchable-and-visible-rules/list">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "TrustParty", InheritedFrom = nameof(FeishuV1DirectoryCollaborationRule))]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

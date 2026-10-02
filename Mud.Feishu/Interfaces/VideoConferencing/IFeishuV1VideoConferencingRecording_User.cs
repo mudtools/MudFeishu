@@ -13,7 +13,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 用户可以录制一场会议，在会议结束后获得会议录制文件链接，包括：开始录制、停止录制、获取录制文件、授权录制文件。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/vc-v1/meeting-recording/recording-overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/meeting-recording/recording-overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "VideoConferencing", InheritedFrom = nameof(FeishuV1VideoConferencingRecording))]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

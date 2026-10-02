@@ -14,10 +14,10 @@ description: 该接口用于以租户身份查询飞书服务台知识库分类�
 - [服务台接入指南](https://open.feishu.cn/document/server-docs/helpdesk-v1/access-guide)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| GetCategoryListAsync | 获取全部知识库分类 | TenantAccessToken | GET |
-| GetCategoryAsync | 获取知识库分类 | TenantAccessToken | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| GetCategoryListAsync | 获取全部知识库分类 | TenantAccessToken | GET | [GetCategoryListAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/faq-management/category/list-categories) |
+| GetCategoryAsync | 获取知识库分类 | TenantAccessToken | GET | [GetCategoryAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/faq-management/category/get) |
 
 ## 函数详细内容
 

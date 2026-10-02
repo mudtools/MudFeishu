@@ -19,6 +19,7 @@ public interface IFeishuV3Departments : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 获取单个部门信息，包括部门名称、ID、父部门、负责人、状态以及成员个数等。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/department/get">接口文档</see></para>
     /// </summary>
     /// <param name="department_id">部门 ID，ID 类型需要与查询参数 department_id_type 的取值保持一致。</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
@@ -33,6 +34,7 @@ public interface IFeishuV3Departments : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取单个部门信息，包括部门名称、ID、父部门、负责人、状态以及成员个数等。
+    /// <para><see href="https://open.feishu.cn/document/contact-v3/department/batch">接口文档</see></para>
     /// </summary>
     /// <param name="department_ids">部门 ID，ID 类型需要与查询参数 department_id_type 的取值保持一致。</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
@@ -47,6 +49,7 @@ public interface IFeishuV3Departments : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 查询指定部门下的子部门列表，列表内包含部门的名称、ID、父部门、负责人以及状态等信息。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/department/children">接口文档</see></para>
     /// </summary>
     /// <param name="department_id">部门 ID，ID 类型与 department_id_type 的取值保持一致。</param>
     /// <param name="fetch_child"></param> 
@@ -68,6 +71,7 @@ public interface IFeishuV3Departments : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 递归获取指定部门的父部门信息，包括部门名称、ID、负责人以及状态等。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/department/parent">接口文档</see></para>
     /// </summary>
     /// <param name="department_id">部门 ID，ID 类型与 department_id_type 的取值保持一致。</param>
     /// <param name="user_id_type">用户 ID 类型</param>
@@ -79,6 +83,48 @@ public interface IFeishuV3Departments : IFeishuAppContextSwitcher
     [Get("/open-apis/contact/v3/departments/parent")]
     Task<FeishuApiPageListResult<GetDepartmentInfo>?> GetParentDepartmentsByIdAsync(
          [Query("department_id")] string department_id,
+         [Query("page_size")] int? page_size = Consts.PageSize_10,
+         [Query("page_token")] string? page_token = null,
+         [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+         [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
+         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 分页获取租户下的部门列表，列表内包含部门的名称、ID、父部门、负责人以及状态等信息。
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/contact-v3/department/list">接口文档</see></para>
+    /// </summary>
+    /// <param name="parent_department_id">父部门的 ID，填写 0 表示获取根部门下的子部门。</param>
+    /// <param name="fetch_child">是否递归获取子部门。true 表示递归获取，false 表示只获取直接子部门。</param>
+    /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="user_id_type">用户 ID 类型</param>
+    /// <param name="department_id_type">此次调用中使用的部门 ID 类型。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Get("/open-apis/contact/v3/departments")]
+    Task<FeishuApiPageListResult<GetDepartmentInfo>?> GetDepartmentsPageListAsync(
+         [Query("parent_department_id")] string? parent_department_id = null,
+         [Query("fetch_child")] bool? fetch_child = null,
+         [Query("page_size")] int? page_size = Consts.PageSize_10,
+         [Query("page_token")] string? page_token = null,
+         [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
+         [Query("department_id_type")] string? department_id_type = Consts.Department_Id_Type,
+         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 通过部门名称关键词搜索符合条件的部门，支持分页返回。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/department/search">接口文档</see></para>
+    /// </summary>
+    /// <param name="searchDepartmentRequest">搜索部门请求体。</param>
+    /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
+    /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>
+    /// <param name="user_id_type">用户 ID 类型</param>
+    /// <param name="department_id_type">此次调用中使用的部门 ID 类型。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/contact/v3/departments/search")]
+    Task<FeishuApiPageListResult<GetDepartmentInfo>?> SearchDepartmentsAsync(
+         [Body] SearchDepartmentRequest searchDepartmentRequest,
          [Query("page_size")] int? page_size = Consts.PageSize_10,
          [Query("page_token")] string? page_token = null,
          [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,

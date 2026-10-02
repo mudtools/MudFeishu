@@ -18,12 +18,12 @@ description: 该接口用于以租户身份管理飞书人员类型，支持人�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| CreateEmployeeTypeAsync | 创建人员类型 | 租户令牌 | POST |
-| UpdateEmployeeTypeAsync | 更新人员类型 | 租户令牌 | PUT |
-| GetEmployeeTypesAsync | 查询人员类型列表 | 租户令牌 | GET |
-| DeleteEmployeeTypeByIdAsync | 删除人员类型 | 租户令牌 | DELETE |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| CreateEmployeeTypeAsync | 创建人员类型 | 租户令牌 | POST | [CreateEmployeeTypeAsync](https://open.feishu.cn/document/server-docs/contact-v3/employee_type_enum/create) |
+| UpdateEmployeeTypeAsync | 更新人员类型 | 租户令牌 | PUT | [UpdateEmployeeTypeAsync](https://open.feishu.cn/document/server-docs/contact-v3/employee_type_enum/update) |
+| GetEmployeeTypesAsync | 查询人员类型列表 | 租户令牌 | GET | [GetEmployeeTypesAsync](https://open.feishu.cn/document/server-docs/contact-v3/employee_type_enum/list) |
+| DeleteEmployeeTypeByIdAsync | 删除人员类型 | 租户令牌 | DELETE | [DeleteEmployeeTypeByIdAsync](https://open.feishu.cn/document/server-docs/contact-v3/employee_type_enum/delete) |
 
 ## 函数详细内容
 

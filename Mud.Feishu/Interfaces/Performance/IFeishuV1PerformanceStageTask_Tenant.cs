@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书绩效（Performance）「周期任务」SDK 是一组服务端 OpenAPI 的封装，用于按指定用户或全量分页方式获取周期内各用户的环节任务信息（任务分类、截止时间、环节状态等）。本接口全部端点为 performance/v1，仅支持 tenant_access_token 调用。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/performance-v1/stage_task/find_by_user_list"/></para>
+/// <para><see href="https://open.feishu.cn/document/performance-v1/stage_task/find_by_user_list">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Performance")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

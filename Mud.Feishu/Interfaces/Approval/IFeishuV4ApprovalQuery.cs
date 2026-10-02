@@ -11,7 +11,7 @@ namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// 通过不同条件查询审批系统中符合条件的审批实例、审批抄送、审批抄送列表(适用于原生审批及三方审批)。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/approval-v4/approval-search/query-2"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/approval-search/query-2">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -20,6 +20,7 @@ public interface IFeishuV4ApprovalQuery : IFeishuAppContextSwitcher
     /// <summary>
     /// 根据用户和任务分组查询任务列表。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=query&amp;project=approval&amp;resource=task&amp;version=v4"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/approval-search/query">接口文档</see></para>
     /// </summary>
     /// <param name="user_id">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
     /// <param name="topic">审批主题，用于查询指定主题的审批任务。如「待办」、「已办」等
@@ -45,3 +46,4 @@ public interface IFeishuV4ApprovalQuery : IFeishuAppContextSwitcher
        [Query("user_id_type")] string? user_id_type = Consts.User_Id_Type,
        CancellationToken cancellationToken = default);
 }
+

@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 考勤用户管理接口主要实现了修改用户人脸识别信息、批量查询用户人脸识别信息以及上传下载用户人脸识别照片。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/attendance-v1/user_setting/modify"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/attendance-v1/user_setting/modify">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Attendance")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -21,6 +21,7 @@ public interface IFeishuTenantV1AttendanceUserSettings : IFeishuAppContextSwitch
     /// 修改授权内员工的用户设置信息，包括人脸照片文件 ID。
     /// <para>修改用户人脸识别信息目前只支持 API 方式修改，管理后台已无法修改。</para>
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=modify&amp;project=attendance&amp;resource=user_setting&amp;version=v1"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/attendance-v1/user_setting/modify">接口文档</see></para>
     /// </summary>
     /// <param name="userFacialRecognitionRequest">修改用户人脸识别信息请求体。</param>
     /// <param name="employee_type">响应体或请求体中 user_id 的员工 ID 类型。</param>
@@ -36,6 +37,7 @@ public interface IFeishuTenantV1AttendanceUserSettings : IFeishuAppContextSwitch
     /// 批量查询授权内员工的用户设置信息，包括人脸照片文件 ID、人脸照片更新时间。
     /// <para>对应页面假勤设置-人脸识别。根据返回的 face_key 可以下载人脸信息（下载用户人脸识别照片）。</para>
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=query&amp;project=attendance&amp;resource=user_setting&amp;version=v1"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/attendance-v1/user_setting/query">接口文档</see></para>
     /// </summary>
     /// <param name="userSettingsQueryRequest">批量查询用户人脸识别信息请求体。</param>
     /// <param name="employee_type">响应体或请求体中 user_id 的员工 ID 类型。</param>

@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书 OKR「复盘查询」SDK 是一组服务端 OpenAPI 的封装，用于按周期与用户批量查询 OKR 复盘信息（周期复盘文档、进展报告文档）。本接口全部端点为 okr/v1，仅支持 tenant_access_token 调用。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/okr-v1/review/query"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/okr-v1/review/query">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Okr")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

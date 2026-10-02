@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 /// <summary>
 /// 飞书 Aily SDK 是一组服务端 OpenAPI 的封装，用于让用户以编程方式调用飞书 Aily（智能伙伴/智能体）的智能体对话、会话管理、附件与产物能力，把它集成到自己的业务系统里。
 /// <para>以 user_access_token（用户身份）调用；除基础接口方法外，还提供仅支持用户身份的智能体可见性查询。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/aily-v1/agent-agent_chat/create"/></para>
+/// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/aily-v1/agent-agent_chat/create">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Aily", InheritedFrom = nameof(FeishuV1AilyAgent))]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

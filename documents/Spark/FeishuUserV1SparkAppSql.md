@@ -19,9 +19,9 @@ description: 该接口用于以用户身份在飞书妙搭应用下执行 SQL �
 
 ## 函数列表
 
-| 函数名称                 | 功能描述   | 认证方式 | HTTP 方法 |
-| ------------------------ | ---------- | -------- | --------- |
-| ExecuteSqlCommandAsync   | 执行 SQL   | 用户令牌 | POST      |
+| 函数名称                 | 功能描述   | 认证方式 | HTTP 方法 | 接口文档 |
+| ------------------------ | ---------- | -------- | --------- |----------|
+| ExecuteSqlCommandAsync   | 执行 SQL   | 用户令牌 | POST      | [ExecuteSqlCommandAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app/sql_commands) |
 
 ## 函数详细内容
 

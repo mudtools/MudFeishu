@@ -17,14 +17,14 @@ description: 该接口用于以用户身份管理自己的邮件草稿，支持�
 - [创建草稿](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-draft/create)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| UpdateUserMailboxDraftAsync | 更新草稿 | UserAccessToken | PUT |
-| SendUserMailboxDraftAsync | 发送草稿 | UserAccessToken | POST |
-| GetUserMailboxDraftPageListAsync | 分页列出草稿列表 | UserAccessToken | GET |
-| GetUserMailboxDraftAsync | 获取草稿内容 | UserAccessToken | GET |
-| DeleteUserMailboxDraftAsync | 删除草稿 | UserAccessToken | DELETE |
-| CreateUserMailboxDraftAsync | 创建草稿 | UserAccessToken | POST |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| UpdateUserMailboxDraftAsync | 更新草稿 | UserAccessToken | PUT | [UpdateUserMailboxDraftAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-draft/update) |
+| SendUserMailboxDraftAsync | 发送草稿 | UserAccessToken | POST | [SendUserMailboxDraftAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-draft/send) |
+| GetUserMailboxDraftPageListAsync | 分页列出草稿列表 | UserAccessToken | GET | [GetUserMailboxDraftPageListAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-draft/list) |
+| GetUserMailboxDraftAsync | 获取草稿内容 | UserAccessToken | GET | [GetUserMailboxDraftAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-draft/get) |
+| DeleteUserMailboxDraftAsync | 删除草稿 | UserAccessToken | DELETE | [DeleteUserMailboxDraftAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-draft/delete) |
+| CreateUserMailboxDraftAsync | 创建草稿 | UserAccessToken | POST | [CreateUserMailboxDraftAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-draft/create) |
 
 ## 函数详细内容
 

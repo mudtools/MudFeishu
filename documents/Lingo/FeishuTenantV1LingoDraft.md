@@ -19,10 +19,10 @@ description: 该接口用于以租户身份（应用身份）管理飞书词典�
 
 ## 函数列表
 
-| 函数名称          | 功能描述 | 认证方式 | HTTP 方法 |
-| ----------------- | -------- | -------- | --------- |
-| CreateDraftAsync  | 创建草稿 | 租户令牌 | POST      |
-| UpdateDraftAsync  | 更新草稿 | 租户令牌 | PUT       |
+| 函数名称          | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| ----------------- | -------- | -------- | --------- |----------|
+| CreateDraftAsync  | 创建草稿 | 租户令牌 | POST      | [CreateDraftAsync](https://open.feishu.cn/document/lingo-v1/draft/create) |
+| UpdateDraftAsync  | 更新草稿 | 租户令牌 | PUT       | [UpdateDraftAsync](https://open.feishu.cn/document/lingo-v1/draft/update) |
 
 ## 函数详细内容
 

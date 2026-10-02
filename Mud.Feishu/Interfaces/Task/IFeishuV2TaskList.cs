@@ -11,7 +11,7 @@ namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// <para>飞书清单可以用于组织和管理属于同一个项目的多个任务。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/task-v2/tasklist/introduction"/></para>
+/// <para><see href="https://open.feishu.cn/document/task-v2/tasklist/overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -20,7 +20,7 @@ public interface IFeishuV2TaskList : IFeishuAppContextSwitcher
     /// <summary>
     /// <para>创建一个清单。清单可以用于组织和管理属于同一个项目的多个任务。</para>
     /// <para>创建时，必须填写清单的名字。同时，可以设置通过members字段设置清单的协作成员。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/tasklist/create">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/task-v2/tasklist/create">接口文档</see></para>
     /// </summary>
     /// <param name="createTaskListRequest">创建任务列表请求体。</param>
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
@@ -35,7 +35,7 @@ public interface IFeishuV2TaskList : IFeishuAppContextSwitcher
 
     /// <summary>
     /// <para>获取一个清单的详细信息，包括清单名，所有者，清单成员等。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/tasklist/get">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/task-v2/tasklist/get">接口文档</see></para>
     /// </summary>
     /// <param name="tasklist_guid">任务清单全局唯一GUID，示例值："d300a75f-c56a-4be9-80d1-e47653028ceb"。</param>
     /// <param name="user_id_type">用户 ID，ID 类型需要与查询参数中的 user_id_type 类型保持一致。</param>
@@ -50,7 +50,7 @@ public interface IFeishuV2TaskList : IFeishuAppContextSwitcher
     /// <summary>
     /// <para>更新清单，可以更新清单的名字和所有者。</para>
     /// <para>更新清单时，将update_fields字段中填写所有要修改的清单字段名，同时在tasklist字段中填写要修改的字段的新值即可。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/tasklist/patch">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/task-v2/tasklist/patch">接口文档</see></para>
     /// </summary>
     /// <param name="tasklist_guid">任务清单全局唯一GUID，示例值："d300a75f-c56a-4be9-80d1-e47653028ceb"。</param>
     /// <param name="updateTaskListRequest">更新任务列表请求体</param>
@@ -66,7 +66,7 @@ public interface IFeishuV2TaskList : IFeishuAppContextSwitcher
 
     /// <summary>
     /// <para>删除一个清单。删除清单后，不可对该清单做任何操作，也无法再访问到清单。清单被删除后不可恢复。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/tasklist/delete">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/task-v2/tasklist/delete">接口文档</see></para>
     /// </summary>
     /// <param name="tasklist_guid">任务清单全局唯一GUID，示例值："d300a75f-c56a-4be9-80d1-e47653028ceb"。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -79,7 +79,7 @@ public interface IFeishuV2TaskList : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 向一个清单添加1个或多个协作成员。成员信息通过设置members字段实现。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/tasklist/add_members">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/task-v2/tasklist/add_members">接口文档</see></para>
     /// </summary>
     /// <param name="tasklist_guid">任务清单全局唯一GUID，示例值："d300a75f-c56a-4be9-80d1-e47653028ceb"。</param>
     /// <param name="addTaskListMemberRequest">添加清单成员请求体</param>
@@ -95,7 +95,7 @@ public interface IFeishuV2TaskList : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 移除清单的一个或多个协作成员。通过设置members字段表示要移除的成员信息。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/tasklist/remove_members">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/task-v2/tasklist/remove_members">接口文档</see></para>
     /// </summary>
     /// <param name="tasklist_guid">任务清单全局唯一GUID，示例值："d300a75f-c56a-4be9-80d1-e47653028ceb"。</param>
     /// <param name="removeTaskListMemberRequest">移除清单成员请求体</param>
@@ -111,7 +111,7 @@ public interface IFeishuV2TaskList : IFeishuAppContextSwitcher
 
     /// <summary>
     /// <para>分页获取一个清单的任务列表，返回任务的摘要信息。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/tasklist/tasks">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/task-v2/tasklist/tasks">接口文档</see></para>
     /// </summary>
     /// <param name="completed">特定完成状态的任务，填写“true”表示返回已经完成的任务；“false”表示只返回未完成的任务；不填写表示不按完成状态过滤。</param>
     /// <param name="created_from">任务创建的起始时间戳（ms），闭区间，不填写默认为首个任务的创建时间戳，示例值：1675742789470</param>
@@ -135,7 +135,7 @@ public interface IFeishuV2TaskList : IFeishuAppContextSwitcher
 
     /// <summary>
     /// <para>获取调用身份所有可读取的清单列表。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/tasklist/list">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/task-v2/tasklist/list">接口文档</see></para>
     /// </summary>
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>

@@ -12,7 +12,7 @@ namespace Mud.Feishu.Interfaces;
 /// <summary>
 /// 数据校验用于限制电子表格单元格中的数据类型或用户输入单元格的值。
 /// <para>目前，电子表格支持下拉列表相关接口，用于验证数据。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/datavalidation/datavalidation-guide"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/datavalidation/datavalidation-guide">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -22,6 +22,7 @@ public interface IFeishuV2SpreadsheetDataValidation : IFeishuAppContextSwitcher
     /// <summary>
     /// 增加保护范围
     /// <para>在电子表格工作表中设置多个保护范围，支持对行或列设置保护范围。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/datavalidation/set-dropdown">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="createDataValidationRequest">创建数据验证请求体</param>
@@ -37,6 +38,7 @@ public interface IFeishuV2SpreadsheetDataValidation : IFeishuAppContextSwitcher
     /// <summary>
     /// 更新下拉列表设置
     /// <para>更新电子表格工作表中单个下拉列表的设置，支持更新下拉列表的选项和属性，包括是否支持多选、下拉选项的样式等。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/datavalidation/update-datavalidation">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="sheetId">工作表的 ID。示例值："2jm6f6"</param>
@@ -53,6 +55,7 @@ public interface IFeishuV2SpreadsheetDataValidation : IFeishuAppContextSwitcher
     /// <summary>
     /// 增加保护范围
     /// <para>在电子表格工作表中设置多个保护范围，支持对行或列设置保护范围。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/datavalidation/query-datavalidation">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -75,6 +78,7 @@ public interface IFeishuV2SpreadsheetDataValidation : IFeishuAppContextSwitcher
     /// <summary>
     /// 删除下拉列表设置
     /// <para>删除电子表格工作表指定范围中下拉列表的设置，但仍保留选项文本。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/datavalidation/delete-datavalidation">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="deleteDataValidationRequest">删除数据验证请求体</param>

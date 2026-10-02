@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书安全与合规（Security）「数据驻留与用户迁移」SDK 是一组服务端 OpenAPI 的封装，用于获取租户可用的数据驻留地理位置列表、迁移用户数据驻留位置、查询单个/批量用户迁移状态以及取消用户迁移任务。本接口全部端点为 security_and_compliance/v1，仅支持 tenant_access_token 调用。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/security_and_compliance-v1/user_migration/create"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/security_and_compliance-v1/user_migration/create">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Security")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

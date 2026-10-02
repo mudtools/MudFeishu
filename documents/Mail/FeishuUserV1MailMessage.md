@@ -15,7 +15,7 @@ description: 该接口用于以用户身份管理自己的邮箱邮件，支持�
 - [修改邮件](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/modify)
 - [批量获取邮件详情](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/batch_get)
 - [查询会话下邮件信息](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/list_thread_message)
-- [获取邮件卡片的邮件列表](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/get_by_card)
+- [获取邮件卡片的邮件列表](https://open.feishu.cn/document/mail-v1/user_mailbox-message/get_by_card)
 - [分页列出邮件](https://open.feishu.cn/document/mail-v1/user_mailbox-message/list)
 - [获取邮件详情](https://open.feishu.cn/document/mail-v1/user_mailbox-message/get)
 - [获取邮件内附件的下载链接](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message-attachment/download_url)
@@ -27,24 +27,24 @@ description: 该接口用于以用户身份管理自己的邮箱邮件，支持�
 - [取消定时发送](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-draft/cancel_scheduled_send)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| BatchTrashUserMailboxMessageAsync | 批量删除邮件 | UserAccessToken | POST |
-| BatchModifyUserMailboxMessageAsync | 批量修改邮件 | UserAccessToken | POST |
-| DeleteUserMailboxMessageAsync | 删除邮件 | UserAccessToken | POST |
-| ModifyUserMailboxMessageAsync | 修改邮件 | UserAccessToken | PUT |
-| BatchGetUserMailboxMessageAsync | 批量获取邮件详情 | UserAccessToken | POST |
-| GetThreadMessageUserMailboxMessageAsync | 查询会话下邮件信息 | UserAccessToken | GET |
-| GetByCardUserMailboxMessageAsync | 获取邮件卡片的邮件列表 | UserAccessToken | GET |
-| GetUserMailboxMessagePageListAsync | 分页列出邮件 | UserAccessToken | GET |
-| GetUserMailboxMessageAsync | 获取邮件详情 | UserAccessToken | GET |
-| GetMessageAttachmentDownloadUrlAsync | 获取邮件内附件的下载链接 | UserAccessToken | GET |
-| RecallUserMailboxMessageAsync | 撤回已发送的邮件 | UserAccessToken | POST |
-| GetUserMailboxMessageRecallDetailAsync | 查询已发送邮件的撤回详情 | UserAccessToken | GET |
-| SendUserMailboxMessageAsync | 发送邮件 | UserAccessToken | POST |
-| GetUserMailboxMessageSendStatusAsync | 查询已发送邮件的投递状态 | UserAccessToken | GET |
-| SearchUserMailboxMessageAsync | 搜索邮件 | UserAccessToken | POST |
-| CancelScheduledSendUserMailboxMessageAsync | 取消定时发送 | UserAccessToken | POST |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| BatchTrashUserMailboxMessageAsync | 批量删除邮件 | UserAccessToken | POST | [BatchTrashUserMailboxMessageAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/batch_trash) |
+| BatchModifyUserMailboxMessageAsync | 批量修改邮件 | UserAccessToken | POST | [BatchModifyUserMailboxMessageAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/batch_modify) |
+| DeleteUserMailboxMessageAsync | 删除邮件 | UserAccessToken | POST | [DeleteUserMailboxMessageAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/trash) |
+| ModifyUserMailboxMessageAsync | 修改邮件 | UserAccessToken | PUT | [ModifyUserMailboxMessageAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/modify) |
+| BatchGetUserMailboxMessageAsync | 批量获取邮件详情 | UserAccessToken | POST | [BatchGetUserMailboxMessageAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/batch_get) |
+| GetThreadMessageUserMailboxMessageAsync | 查询会话下邮件信息 | UserAccessToken | GET | [GetThreadMessageUserMailboxMessageAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/list_thread_message) |
+| GetByCardUserMailboxMessageAsync | 获取邮件卡片的邮件列表 | UserAccessToken | GET | [GetByCardUserMailboxMessageAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/get_by_card) |
+| GetUserMailboxMessagePageListAsync | 分页列出邮件 | UserAccessToken | GET | [GetUserMailboxMessagePageListAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-message/list) |
+| GetUserMailboxMessageAsync | 获取邮件详情 | UserAccessToken | GET | [GetUserMailboxMessageAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-message/get) |
+| GetMessageAttachmentDownloadUrlAsync | 获取邮件内附件的下载链接 | UserAccessToken | GET | [GetMessageAttachmentDownloadUrlAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message-attachment/download_url) |
+| RecallUserMailboxMessageAsync | 撤回已发送的邮件 | UserAccessToken | POST | [RecallUserMailboxMessageAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-sent_message/recall) |
+| GetUserMailboxMessageRecallDetailAsync | 查询已发送邮件的撤回详情 | UserAccessToken | GET | [GetUserMailboxMessageRecallDetailAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-sent_message/get_recall_detail) |
+| SendUserMailboxMessageAsync | 发送邮件 | UserAccessToken | POST | [SendUserMailboxMessageAsync](https://open.feishu.cn/document/server-docs/mail-v1/user_mailbox-message/send) |
+| GetUserMailboxMessageSendStatusAsync | 查询已发送邮件的投递状态 | UserAccessToken | GET | [GetUserMailboxMessageSendStatusAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-message/send_status) |
+| SearchUserMailboxMessageAsync | 搜索邮件 | UserAccessToken | POST | [SearchUserMailboxMessageAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox/search) |
+| CancelScheduledSendUserMailboxMessageAsync | 取消定时发送 | UserAccessToken | POST | [CancelScheduledSendUserMailboxMessageAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-draft/cancel_scheduled_send) |
 
 ## 函数详细内容
 

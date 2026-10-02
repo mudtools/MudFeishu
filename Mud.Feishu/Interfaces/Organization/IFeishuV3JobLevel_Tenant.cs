@@ -14,7 +14,7 @@ namespace Mud.Feishu;
 /// <para>当前接口使用租户令牌访问，适应于租户应用场景。</para>
 /// <para>后续在创建用户或者更新用户时，可以为用户设置指定的职级属性。</para>
 /// <para>使用职级 API，可以创建、更新、删除或查询职级。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/contact-v3/job_level/job-level-resources-introduction"/></para>
+/// <para><see href="https://open.feishu.cn/document/contact-v3/job_level/job-level-resources-introduction">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Organization")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -22,6 +22,7 @@ public interface IFeishuTenantV3JobLevel : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 创建一个职级。职级是用户属性之一，用于标识用户的职位级别，例如 P1、P2、P3、P4。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/job_level/create">接口文档</see></para>
     /// </summary>
     /// <param name="levelCreateRequest">创建职级请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -33,6 +34,7 @@ public interface IFeishuTenantV3JobLevel : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 更新指定职级的信息。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/job_level/update">接口文档</see></para>
     /// </summary>
     /// <param name="levelCreateRequest">更新职级请求体。</param>
     /// <param name="job_level_id">职级 ID。</param>
@@ -46,6 +48,7 @@ public interface IFeishuTenantV3JobLevel : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取指定职级的信息，包括职级名称、描述、排序、状态以及多语言等。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/job_level/get">接口文档</see></para>
     /// </summary>
     /// <param name="job_level_id">职级 ID。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -57,6 +60,7 @@ public interface IFeishuTenantV3JobLevel : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取当前租户下的职级信息，包括职级名称、描述、排序、状态以及多语言等。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/job_level/list">接口文档</see></para>
     /// </summary>
     /// <param name="name">职级名称。示例值："高级专家"</param>
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
@@ -72,6 +76,7 @@ public interface IFeishuTenantV3JobLevel : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 删除指定的职级。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/job_level/delete">接口文档</see></para>
     /// </summary>
     /// <param name="job_level_id">职级 ID。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>

@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 /// <para>视图 view 是多维表格数据的汇总和展现形式。视图有多种类型，包括表格视图、看板视图、画册视图、甘特视图和表单视图等，可参考飞书帮助中心文档视图类型。</para>
 /// <para>一个数据表至少有一个视图，可能有多个视图。每个视图都有唯一标识 view_id，view_id 在一个多维表格中唯一，在全局不一定唯一。</para>
 /// <para>可通过多维表格 URL 获取 view_id，也可通过列出视图接口获取 view_id。暂时无法获取到嵌入到文档中的多维表格的 view_id。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/bitable-overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/bitable-overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(RegistryGroupName = "Bitable", TokenManage = nameof(IFeishuAppManager), InheritedFrom = nameof(FeishuV1BitableView))]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

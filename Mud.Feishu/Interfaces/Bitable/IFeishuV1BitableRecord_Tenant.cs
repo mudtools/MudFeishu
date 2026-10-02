@@ -10,7 +10,7 @@ namespace Mud.Feishu;
 /// <summary>
 /// <para>记录 record是多维表格的数据表中的每一行数据都是一条记录（record）。</para>
 /// <para>每条记录都有唯一标识 record_id，record_id 在一个多维表格中唯一，在全局不一定唯一。record_id 需要通过查询记录接口获取。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/docs/bitable-v1/app-table-record/bitable-record-data-structure-overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/docs/bitable-v1/app-table-record/bitable-record-data-structure-overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(RegistryGroupName = "Bitable", TokenManage = nameof(IFeishuAppManager), InheritedFrom = nameof(FeishuV1BitableRecord))]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

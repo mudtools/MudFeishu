@@ -222,7 +222,8 @@ dotnet add package Mud.Feishu.Redis
 | `MessageSizeLimits` | object | 1MB / 10MB | Max text (chars) / binary (bytes) message size |
 | `EventDeduplication` | object | InMemory | Event deduplication (`Mode`/`CacheExpiration`/`CleanupInterval`) |
 | `RejectEmptyEventIds` | bool | true | Reject events with empty EventId (fail-closed, WHF-05 aligned) |
-| `IgnoreUnknownEventTypes` | bool | false | Silently ignore unregistered event types (recommended true; default false for compatibility; supports hot reload) |
+| `IgnoreUnknownEventTypes` | bool | false | Silently ignore unregistered event types (recommended true; default false for compatibility; the Webhook channel defaults to true and a mismatch raises a startup warning; supports hot reload) |
+| `FailedEventInitialRetryDelaySeconds` | int | 10 | Initial retry delay (seconds) for failed-event persistence (R-E1); only effective after registering an `IFailedEventStore` via `AddFailedEventStore`; server-side redelivery remains the primary retry path |
 
 > ℹ️ **Migration note**: the legacy `TokenRefreshInterval` / `TokenRefreshAhead` options have been removed. Token refresh is now controlled by `FeishuAppConfig.TokenRefreshThreshold` (HTTP layer); the WebSocket connection reuses the same app token manager and needs no extra configuration.
 
@@ -468,6 +469,10 @@ sequenceDiagram
 | **Security Hardening** | Sliding window rate limiting, threat detection, security audit, key validation, JSON depth limit, private IP detection |
 | **Performance**        | Streaming request body reading, source generator serialization, memory optimization, semaphore concurrency control |
 
+> ⚠️ **Encrypted transport prerequisite**: the Webhook module only supports **encrypted mode** for event subscription verification (plaintext `url_verification` requests are always rejected with 403).
+> Enable encryption and configure the Encrypt Key for the subscribing app on the Feishu Open Platform. See the [Webhook documentation](./Mud.Feishu.Webhook/README_EN.md).
+> The WebSocket long-connection channel has no `url_verification` step (authentication goes through the connection handshake).
+
 **Security Enhancement Features**:
 
 - ✅ **Content-Type Validation** - Only accepts `application/json` requests
@@ -533,10 +538,13 @@ sequenceDiagram
 [HttpPost("users")]
 public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
 {
-    _userApi.UseApp("hr-app");// Switch to hr-app in multi-app scenario, can be omitted in single-app scenario
-    var result = await _userApi.CreateUserAsync(request);
-    _userApi.UseDefaultApp();// Switch back to default app in multi-app scenario, can be omitted in single-app scenario
-    return result.Code == 0 ? Ok(result.Data) : BadRequest(result.Msg);
+    // Multi-app switching: UseAppScope is scope-based (context auto-restored when the using ends).
+    // (Legacy entries UseApp / UseDefaultApp are marked [Obsolete] since Mud.HttpUtils 3.0.0.)
+    using (_userApi.UseAppScope("hr-app"))
+    {
+        var result = await _userApi.CreateUserAsync(request);
+        return result.Code == 0 ? Ok(result.Data) : BadRequest(result.Msg);
+    }
 }
 
 // Constructor injection of IFeishuAppManager interface
@@ -546,9 +554,9 @@ private readonly IFeishuAppManager _feishuAppManager;
 var tenantJobTitleApi = _feishuAppManager.GetWebApi<IFeishuTenantV3JobTitle>("hr-app");
 var result = await tenantJobTitleApi.GetJobTitlesListAsync(10, null);
 
-// Scope-based app switching with automatic context restoration (BeginScope)
+// Scope-based app switching with automatic context restoration (UseAppScope)
 var userApi = _feishuAppManager.GetDefaultWebApi<IFeishuTenantV3User>();
-using (userApi.BeginScope("hr-app"))
+using (userApi.UseAppScope("hr-app"))
 {
     // All API calls within this scope use hr-app
     var userResult = await userApi.GetUserInfoByIdAsync("user_123");
@@ -733,14 +741,14 @@ public class TenantController : ControllerBase
     {
         var userApi = _appManager.GetDefaultWebApi<IFeishuTenantV3User>();
         // using ensures the default app is restored when the scope ends
-        using var scope = userApi.BeginScope(tenantKey);
+        using var scope = userApi.UseAppScope(tenantKey);
         var result = await userApi.GetUserInfoByIdAsync(userId);
         return Ok(result);
     }
 }
 ```
 
-> ⚠️ **Security note**: `UseApp`/`BeginScope` only switches the app context (token/endpoint); it does **NOT enforce tenant isolation authorization**.
+> ⚠️ **Security note**: `UseAppScope` only switches the app context (token/endpoint); it does **NOT enforce tenant isolation authorization**.
 > To restrict a caller to its own tenant's data, implement custom authorization in the business layer (e.g., a Claim-based tenant validation middleware).
 > The component-side `IAppAccessAuthorizer` reports an error when it is missing, but this SDK does not bundle an authorization implementation.
 
@@ -822,8 +830,8 @@ dotnet publish -r win-x64 -c Release /p:PublishAot=true
 
 | Package                                       | Version          | Description                                           |
 | --------------------------------------------- | ---------------- | ----------------------------------------------------- |
-| **Mud.HttpUtils**                             | v2.0.8           | HTTP client utilities with source generator (incl. resilience policies) |
-| **Mud.HttpUtils.Generator**                   | v2.0.8           | HTTP client code generator (compile-time)             |
+| **Mud.HttpUtils**                             | v3.0.0           | HTTP client utilities with source generator (incl. resilience policies) |
+| **Mud.HttpUtils.Generator**                   | v3.0.0           | HTTP client code generator (compile-time)             |
 | **System.Text.Json**                          | v10.0.9          | High-performance JSON serialization (netstandard2.0 target) |
 | **Microsoft.Extensions.***                    | v10.0.11         | Dependency injection, logging, configuration binding, options |
 | **Microsoft.Agents.AI**                       | v1.20.0          | AI foundation (referenced by Mud.Feishu.AI only; core stays MAF-free) |

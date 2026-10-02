@@ -9,7 +9,7 @@ namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// 飞书服务台知识库分类API是开放平台基于飞书服务台知识库的分类功能开放的查看/创建/修改/删除等API，开发者可以基于这些API对服务台知识库分类进行操作。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/faq-management/category/list-categories"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/faq-management/category/list-categories">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

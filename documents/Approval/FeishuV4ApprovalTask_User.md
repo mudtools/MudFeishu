@@ -29,8 +29,8 @@ description: 该接口用于以用户身份操作飞书审批任务，对应审�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
 | `AddSignApprovalTaskAsync` | 加签审批任务 | 用户令牌 | POST |
 | `ForwardApprovalTaskAsync` | 转交审批任务 | 用户令牌 | POST |
 | `GetApprovalTaskPageListAsync` | 获取审批任务列表 | 用户令牌 | GET |

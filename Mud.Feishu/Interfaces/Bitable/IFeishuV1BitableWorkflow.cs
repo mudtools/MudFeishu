@@ -12,7 +12,7 @@ namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// <para>自动化流程 workflows是用户给多维表格设定的自动运行规则。设定“触发条件”和“执行操作”以后，多维表格会根据数据变更，自动执行下一步操作。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/docs/bitable-v1/app-workflow/list"/></para>
+/// <para><see href="https://open.feishu.cn/document/docs/bitable-v1/app-workflow/list">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 审批 Bot 消息，用来通过飞书审批的 Bot 推送消息给用户或更新审批 Bot 消息。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/approval-v4/approval-search/query-2"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/approval-search/query-2">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Approval")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -20,7 +20,8 @@ public interface IFeishuTenantV1ApprovalMessage : IFeishuAppContextSwitcher
     /// <summary>
     /// 用来通过飞书审批的 Bot 推送消息给用户，当有新的审批待办，或者审批待办的状态有更新时，可以通过飞书审批的 Bot 告知用户。
     /// <para>如果出现推送成功，但是没有收到消息，可能是因为开通了审批机器人的聚合推送。</para>
-    /// <para>官方文档：<see href="https://open.feishu.cn/document/server-docs/approval-v4/message/send"/></para>
+    /// <para>官方文档：<see href="https://open.feishu.cn/document/server-docs/approval-v4/message/send-bot-messages"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/message/send-bot-messages">接口文档</see></para>
     /// </summary>
     /// <param name="approvalBotMessageRequest">发送审批 Bot 消息通用模板请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -33,7 +34,8 @@ public interface IFeishuTenantV1ApprovalMessage : IFeishuAppContextSwitcher
     /// <summary>
     /// 用来通过飞书审批的 Bot 推送消息给用户，当有新的审批待办，或者审批待办的状态有更新时，可以通过飞书审批的 Bot 告知用户。
     /// <para>如果出现推送成功，但是没有收到消息，可能是因为开通了审批机器人的聚合推送。</para>
-    /// <para>官方文档：<see href="https://open.feishu.cn/document/server-docs/approval-v4/message/send"/></para>
+    /// <para>官方文档：<see href="https://open.feishu.cn/document/server-docs/approval-v4/message/send-bot-messages"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/message/send-bot-messages">接口文档</see></para>
     /// </summary>
     /// <param name="customApprovalBotMessageRequest">发送审批 Bot 消息我肯定义模板请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -47,7 +49,8 @@ public interface IFeishuTenantV1ApprovalMessage : IFeishuAppContextSwitcher
     /// <summary>
     /// 调用发送审批 Bot 消息接口后，可根据审批 Bot 消息 ID 及审批相应的状态，更新审批 Bot 消息。
     /// <para>例如，给审批人推送了审批待办消息，当审批人通过审批后，可以将之前推送的 Bot 消息更新为已审批。</para>
-    /// <para>官方文档：<see href="https://open.feishu.cn/document/server-docs/approval-v4/message/update"/></para>
+    /// <para>官方文档：<see href="https://open.feishu.cn/document/server-docs/approval-v4/message/update-bot-messages"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/message/update-bot-messages">接口文档</see></para>
     /// </summary>
     /// <param name="approvalBotMessageUpdateRequest">更新审批 Bot 消息 请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>

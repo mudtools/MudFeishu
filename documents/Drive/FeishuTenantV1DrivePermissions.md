@@ -21,22 +21,22 @@ description: 该接口用于以租户身份管理飞书云文档权限，支持�
 
 ## 函数列表
 
-| 函数名称                            | 功能描述                             | 认证方式 | HTTP 方法 |
-| ----------------------------------- | ------------------------------------ | -------- | --------- |
-| CreatePermissionMemberAsync         | 增加协作者权限                       | 租户令牌 | POST      |
-| BatchCreatePermissionMemberAsync    | 批量增加协作者权限                   | 租户令牌 | POST      |
-| UpdatePermissionMemberAsync         | 更新协作者权限                       | 租户令牌 | PUT       |
-| GetPermissionMemberAsync            | 获取云文档协作者                     | 租户令牌 | GET       |
-| DeletePermissionMemberAsync         | 移除云文档协作者权限                 | 租户令牌 | DELETE    |
-| TransferOwnerPermissionMemberAsync  | 转移云文档所有者                     | 租户令牌 | POST      |
-| GetAuthPermissionMemberAsync        | 判断用户云文档权限                   | 租户令牌 | GET       |
-| GetPermissionPublicV1Async          | 获取云文档权限设置（v1 历史版本接口） | 租户令牌 | GET       |
-| UpdatePermissionPublicV1Async       | 更新云文档权限设置（v1 历史版本接口） | 租户令牌 | PATCH     |
-| UpdatePermissionPublicAsync         | 更新云文档权限设置（v2 新版接口）     | 租户令牌 | PATCH     |
-| GetPermissionPublicAsync            | 获取云文档权限设置（v2 新版接口）     | 租户令牌 | GET       |
-| CreatePermissionPublicPasswordAsync | 启用云文档密码                       | 租户令牌 | POST      |
-| UpdatePermissionPublicPasswordAsync | 刷新云文档密码                       | 租户令牌 | PUT       |
-| DeletePermissionPublicPasswordAsync | 停用云文档密码                       | 租户令牌 | DELETE    |
+| 函数名称                            | 功能描述                             | 认证方式 | HTTP 方法 | 接口文档 |
+| ----------------------------------- | ------------------------------------ | -------- | --------- |----------|
+| CreatePermissionMemberAsync         | 增加协作者权限                       | 租户令牌 | POST      | [CreatePermissionMemberAsync](https://open.feishu.cn/document/server-docs/docs/permission/permission-member/create) |
+| BatchCreatePermissionMemberAsync    | 批量增加协作者权限                   | 租户令牌 | POST      | [BatchCreatePermissionMemberAsync](https://open.feishu.cn/document/docs/permission/permission-member/batch_create) |
+| UpdatePermissionMemberAsync         | 更新协作者权限                       | 租户令牌 | PUT       | [UpdatePermissionMemberAsync](https://open.feishu.cn/document/server-docs/docs/permission/permission-member/update) |
+| GetPermissionMemberAsync            | 获取云文档协作者                     | 租户令牌 | GET       | [GetPermissionMemberAsync](https://open.feishu.cn/document/server-docs/docs/permission/permission-member/list) |
+| DeletePermissionMemberAsync         | 移除云文档协作者权限                 | 租户令牌 | DELETE    | [DeletePermissionMemberAsync](https://open.feishu.cn/document/server-docs/docs/permission/permission-member/delete) |
+| TransferOwnerPermissionMemberAsync  | 转移云文档所有者                     | 租户令牌 | POST      | [TransferOwnerPermissionMemberAsync](https://open.feishu.cn/document/server-docs/docs/permission/permission-member/transfer_owner) |
+| GetAuthPermissionMemberAsync        | 判断用户云文档权限                   | 租户令牌 | GET       | [GetAuthPermissionMemberAsync](https://open.feishu.cn/document/server-docs/docs/permission/permission-member/auth) |
+| GetPermissionPublicV1Async          | 获取云文档权限设置（v1 历史版本接口） | 租户令牌 | GET       | [GetPermissionPublicV1Async](https://open.feishu.cn/document/server-docs/docs/permission/permission-public/get) |
+| UpdatePermissionPublicV1Async       | 更新云文档权限设置（v1 历史版本接口） | 租户令牌 | PATCH     | [UpdatePermissionPublicV1Async](https://open.feishu.cn/document/server-docs/docs/permission/permission-public/patch) |
+| UpdatePermissionPublicAsync         | 更新云文档权限设置（v2 新版接口）     | 租户令牌 | PATCH     | [UpdatePermissionPublicAsync](https://open.feishu.cn/document/server-docs/docs/permission/permission-public/patch-2) |
+| GetPermissionPublicAsync            | 获取云文档权限设置（v2 新版接口）     | 租户令牌 | GET       | [GetPermissionPublicAsync](https://open.feishu.cn/document/server-docs/docs/permission/permission-public/get-2) |
+| CreatePermissionPublicPasswordAsync | 启用云文档密码                       | 租户令牌 | POST      | [CreatePermissionPublicPasswordAsync](https://open.feishu.cn/document/server-docs/docs/permission/permission-public/permission-public-password/create) |
+| UpdatePermissionPublicPasswordAsync | 刷新云文档密码                       | 租户令牌 | PUT       | [UpdatePermissionPublicPasswordAsync](https://open.feishu.cn/document/server-docs/docs/permission/permission-public/permission-public-password/update) |
+| DeletePermissionPublicPasswordAsync | 停用云文档密码                       | 租户令牌 | DELETE    | [DeletePermissionPublicPasswordAsync](https://open.feishu.cn/document/server-docs/docs/permission/permission-public/permission-public-password/delete) |
 
 ## 函数详细内容
 

@@ -13,7 +13,7 @@ namespace Mud.Feishu.Interfaces;
 /// <summary>
 /// 筛选指在电子表格工作表指定范围中，为指定列（col）设置筛选条件。
 /// <para>本接口提供飞书开放平台电子表格中筛选能力相关方法列表。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -23,6 +23,7 @@ public interface IFeishuV3SpreadsheetFilter : IFeishuAppContextSwitcher
     /// <summary>
     /// 创建筛选
     /// <para>在电子表格工作表的指定范围内，设置筛选条件，创建筛选。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-filter/create">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
@@ -39,6 +40,7 @@ public interface IFeishuV3SpreadsheetFilter : IFeishuAppContextSwitcher
     /// <summary>
     /// 更新筛选
     /// <para>在电子表格工作表筛选范围中，更新指定列的筛选条件。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-filter/update">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
@@ -55,6 +57,7 @@ public interface IFeishuV3SpreadsheetFilter : IFeishuAppContextSwitcher
     /// <summary>
     /// 获取筛选
     /// <para>获取电子表格中工作表的详细筛选信息，包括筛选的应用范围、筛选条件、被筛选条件过滤掉的行。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-filter/get">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
@@ -69,6 +72,7 @@ public interface IFeishuV3SpreadsheetFilter : IFeishuAppContextSwitcher
     /// <summary>
     /// 删除筛选
     /// <para>删除电子表格中指定工作表的所有筛选。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-filter/delete">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>

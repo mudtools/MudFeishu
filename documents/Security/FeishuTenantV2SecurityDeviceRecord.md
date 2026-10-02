@@ -19,13 +19,13 @@ description: 该接口用于以租户身份管理飞书设备记录，支持设�
 
 ## 函数列表
 
-| 函数名称                 | 功能描述     | 认证方式 | HTTP 方法 |
-| ------------------------ | ------------ | -------- | --------- |
-| CreateDeviceRecordAsync  | 新增设备     | 租户令牌 | POST      |
-| ListDeviceRecordsAsync   | 查询设备信息 | 租户令牌 | GET       |
-| GetDeviceRecordAsync     | 获取设备信息 | 租户令牌 | GET       |
-| UpdateDeviceRecordAsync  | 更新设备     | 租户令牌 | PUT       |
-| DeleteDeviceRecordAsync  | 删除设备     | 租户令牌 | DELETE    |
+| 函数名称                 | 功能描述     | 认证方式 | HTTP 方法 | 接口文档 |
+| ------------------------ | ------------ | -------- | --------- |----------|
+| CreateDeviceRecordAsync  | 新增设备     | 租户令牌 | POST      | [CreateDeviceRecordAsync](https://open.feishu.cn/document/security_and_compliance-v1/security_and_compliance-v2/device_record/create) |
+| ListDeviceRecordsAsync   | 查询设备信息 | 租户令牌 | GET       | [ListDeviceRecordsAsync](https://open.feishu.cn/document/security_and_compliance-v1/security_and_compliance-v2/device_record/list) |
+| GetDeviceRecordAsync     | 获取设备信息 | 租户令牌 | GET       | [GetDeviceRecordAsync](https://open.feishu.cn/document/security_and_compliance-v1/security_and_compliance-v2/device_record/get) |
+| UpdateDeviceRecordAsync  | 更新设备     | 租户令牌 | PUT       | [UpdateDeviceRecordAsync](https://open.feishu.cn/document/security_and_compliance-v1/security_and_compliance-v2/device_record/update) |
+| DeleteDeviceRecordAsync  | 删除设备     | 租户令牌 | DELETE    | [DeleteDeviceRecordAsync](https://open.feishu.cn/document/security_and_compliance-v1/security_and_compliance-v2/device_record/delete) |
 
 ## 函数详细内容
 

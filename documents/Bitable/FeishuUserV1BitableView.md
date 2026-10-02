@@ -19,13 +19,13 @@ description: 该接口用于以用户身份管理飞书多维表格视图（view
 
 ## 函数列表
 
-| 函数名称                   | 功能描述     | 认证方式 | HTTP 方法 |
-| -------------------------- | ------------ | -------- | --------- |
-| CreateViewAsync            | 新增视图     | 用户令牌 | POST      |
-| UpdateViewAsync            | 更新视图     | 用户令牌 | PATCH     |
-| GetViewsPageListAsync      | 分页列出视图 | 用户令牌 | GET       |
-| GetViewAsync               | 获取视图     | 用户令牌 | GET       |
-| DeleteViewAsync            | 删除视图     | 用户令牌 | DELETE    |
+| 函数名称                   | 功能描述     | 认证方式 | HTTP 方法 | 接口文档 |
+| -------------------------- | ------------ | -------- | --------- |----------|
+| CreateViewAsync            | 新增视图     | 用户令牌 | POST      | [CreateViewAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-view/create) |
+| UpdateViewAsync            | 更新视图     | 用户令牌 | PATCH     | [UpdateViewAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-view/patch) |
+| GetViewsPageListAsync      | 分页列出视图 | 用户令牌 | GET       | [GetViewsPageListAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-view/list) |
+| GetViewAsync               | 获取视图     | 用户令牌 | GET       | [GetViewAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-view/get) |
+| DeleteViewAsync            | 删除视图     | 用户令牌 | DELETE    | [DeleteViewAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-view/delete) |
 
 ## 函数详细内容
 

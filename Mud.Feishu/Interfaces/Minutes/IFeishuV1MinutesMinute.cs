@@ -12,7 +12,7 @@ namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// 飞书妙记（Minutes）SDK 是一组服务端 OpenAPI 的封装，用于获取妙记基础信息、音视频下载链接、文字记录、统计数据、AI 产物与搜索妙记。本接口仅声明支持 tenant_access_token 与 user_access_token 双令牌调用的只读端点；剪辑、导入生成、事件订阅等 user-only 写端点见 <see cref="IFeishuUserV1MinutesMinute"/>。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/minutes-v1/minute/get"/></para>
+/// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/minutes-v1/minute/get">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

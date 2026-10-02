@@ -12,7 +12,7 @@ namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// 文件版本是基于文件生成的新版本，版本依附于文件而存在。飞书开放平台支持基于在线文档和电子表格创建、删除和获取版本信息。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/file-version/overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/file-version/overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

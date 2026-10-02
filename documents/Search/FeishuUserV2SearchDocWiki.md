@@ -19,9 +19,9 @@ description: 该接口用于以用户身份搜索飞书云文档，根据关键�
 
 ## 函数列表
 
-| 函数名称           | 功能描述 | 认证方式 | HTTP 方法 |
-| ------------------ | -------- | -------- | --------- |
-| SearchDocWikiAsync | 搜索文档 | 用户令牌 | POST      |
+| 函数名称           | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| ------------------ | -------- | -------- | --------- |----------|
+| SearchDocWikiAsync | 搜索文档 | 用户令牌 | POST      | [SearchDocWikiAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/search-v2/doc_wiki/search) |
 
 ## 函数详细内容
 

@@ -10,7 +10,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 权限是指在云文档相关资源中，应用或用户对各类云文档资源，如文件夹、文档、电子表格、多维表格、知识库等的可阅读、可编辑、可管理等权限。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/permission/overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/docs/permission/overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Drive", InheritedFrom = nameof(FeishuV1DrivePermissions))]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

@@ -13,7 +13,7 @@ namespace Mud.Feishu.Interfaces;
 /// <summary>
 /// 群公告是群聊中的公告消息，新版群公告以文档（docx）形式存储，其内容由多个块（Block）组成。
 /// <para>通过群公告接口可以获取群公告基本信息、读取群公告中的块、批量更新块的内容，以及在群公告中创建或删除块。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/chat-announcement/get"/></para>
+/// <para><see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/chat-announcement/get">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

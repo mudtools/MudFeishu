@@ -17,13 +17,13 @@ description: 该接口用于以用户身份管理飞书会话标签页，即会�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| CreateChatTabsByIdAsync | 创建会话标签页 | 用户令牌 | POST |
-| UpdateChatTabsByIdAsync | 更新会话标签页 | 用户令牌 | POST |
-| DeleteChatTabsByIdAsync | 删除会话标签页 | 用户令牌 | DELETE |
-| ChatTabsSortByIdAsync | 排序会话标签页 | 用户令牌 | POST |
-| GetChatTabsListByIdAsync | 获取会话标签页列表 | 用户令牌 | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| CreateChatTabsByIdAsync | 创建会话标签页 | 用户令牌 | POST | [CreateChatTabsByIdAsync](https://open.feishu.cn/document/server-docs/group/chat-tab/create) |
+| UpdateChatTabsByIdAsync | 更新会话标签页 | 用户令牌 | POST | [UpdateChatTabsByIdAsync](https://open.feishu.cn/document/server-docs/group/chat-tab/update_tabs) |
+| DeleteChatTabsByIdAsync | 删除会话标签页 | 用户令牌 | DELETE | [DeleteChatTabsByIdAsync](https://open.feishu.cn/document/server-docs/group/chat-tab/delete_tabs) |
+| ChatTabsSortByIdAsync | 排序会话标签页 | 用户令牌 | POST | [ChatTabsSortByIdAsync](https://open.feishu.cn/document/server-docs/group/chat-tab/sort_tabs) |
+| GetChatTabsListByIdAsync | 获取会话标签页列表 | 用户令牌 | GET | [GetChatTabsListByIdAsync](https://open.feishu.cn/document/server-docs/group/chat-tab/list_tabs) |
 
 ---
 

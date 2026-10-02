@@ -20,12 +20,12 @@ description: 该接口用于以当前登录用户身份管理飞书任务附件�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| UploadAttachmentAsync | 上传附件 | 用户令牌 | POST |
-| GetAttachmentPageListAsync | 列取附件列表 | 用户令牌 | GET |
-| GetAttachmentByIdAsync | 获取附件详情 | 用户令牌 | GET |
-| DeleteAttachmentByIdAsync | 删除附件 | 用户令牌 | DELETE |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| UploadAttachmentAsync | 上传附件 | 用户令牌 | POST | [UploadAttachmentAsync](https://open.feishu.cn/document/task-v2/attachment/upload) |
+| GetAttachmentPageListAsync | 列取附件列表 | 用户令牌 | GET | [GetAttachmentPageListAsync](https://open.feishu.cn/document/task-v2/attachment/list) |
+| GetAttachmentByIdAsync | 获取附件详情 | 用户令牌 | GET | [GetAttachmentByIdAsync](https://open.feishu.cn/document/task-v2/attachment/get) |
+| DeleteAttachmentByIdAsync | 删除附件 | 用户令牌 | DELETE | [DeleteAttachmentByIdAsync](https://open.feishu.cn/document/task-v2/attachment/delete) |
 
 ---
 

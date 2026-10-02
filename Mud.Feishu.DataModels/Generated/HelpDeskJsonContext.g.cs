@@ -36,6 +36,7 @@ namespace Mud.Feishu.DataModels.HelpDesk;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.HelpDesk.GetAgentScheduleListResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.HelpDesk.GetAgentScheduleResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.HelpDesk.GetAgentSkillListResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.HelpDesk.GetAgentSkillResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.HelpDesk.GetAgentSkillRuleListResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.HelpDesk.Category))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.HelpDesk.CreateCategoryRequest))]

@@ -17,23 +17,52 @@ description: 该接口用于以用户身份管理飞书群组，提供解散群�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| CreateChatGroupAsync | 创建群聊 | 用户令牌 | POST |
-| UpdateChatGroupByIdAsync | 更新群信息 | 用户令牌 | PUT |
-| DeleteChatGroupAsync | 解散群组 | 用户令牌 | DELETE |
-| UpdateChatModerationAsync | 更新群发言权限 | 用户令牌 | PUT |
-| GetChatGroupInoByIdAsync | 获取群基本信息 | 用户令牌 | GET |
-| PutChatGroupTopNoticeAsync | 设置群置顶 | 用户令牌 | POST |
-| DeleteChatGroupTopNoticeAsync | 撤销群置顶 | 用户令牌 | POST |
-| GetChatGroupPageListAsync | 分页获取群列表 | 用户令牌 | GET |
-| GetChatGroupPageListByKeywordAsync | 关键词搜索群列表 | 用户令牌 | GET |
-| GetChatGroupModeratorPageListByIdAsync | 获取群发言模式及名单 | 用户令牌 | GET |
-| GetChatGroupShareLinkByIdAsync | 获取群分享链接 | 用户令牌 | POST |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| CreateChatGroupAsync | 创建群聊 | 用户令牌 | POST | [CreateChatGroupAsync](https://open.feishu.cn/document/server-docs/group/chat/create) |
+| UpdateChatGroupByIdAsync | 更新群信息 | 用户令牌 | PUT | [UpdateChatGroupByIdAsync](https://open.feishu.cn/document/server-docs/group/chat/update) |
+| DeleteChatGroupAsync | 解散群组 | 用户令牌 | DELETE | [DeleteChatGroupAsync](https://open.feishu.cn/document/server-docs/group/chat/delete) |
+| UpdateChatModerationAsync | 更新群发言权限 | 用户令牌 | PUT | [UpdateChatModerationAsync](https://open.feishu.cn/document/server-docs/group/chat/moderation/update) |
+| GetChatGroupInoByIdAsync | 获取群基本信息 | 用户令牌 | GET | [GetChatGroupInoByIdAsync](https://open.feishu.cn/document/server-docs/group/chat/get) |
+| PutChatGroupTopNoticeAsync | 设置群置顶 | 用户令牌 | POST | [PutChatGroupTopNoticeAsync](https://open.feishu.cn/document/server-docs/group/chat/put_top_notice) |
+| DeleteChatGroupTopNoticeAsync | 撤销群置顶 | 用户令牌 | POST | [DeleteChatGroupTopNoticeAsync](https://open.feishu.cn/document/server-docs/group/chat/delete_top_notice) |
+| GetChatGroupPageListAsync | 分页获取群列表 | 用户令牌 | GET | [GetChatGroupPageListAsync](https://open.feishu.cn/document/server-docs/group/chat/list) |
+| GetChatGroupPageListByKeywordAsync | 关键词搜索群列表 | 用户令牌 | GET | [GetChatGroupPageListByKeywordAsync](https://open.feishu.cn/document/server-docs/group/chat/search) |
+| GetChatGroupModeratorPageListByIdAsync | 获取群发言模式及名单 | 用户令牌 | GET | [GetChatGroupModeratorPageListByIdAsync](https://open.feishu.cn/document/server-docs/group/chat/moderation/get) |
+| GetChatGroupShareLinkByIdAsync | 获取群分享链接 | 用户令牌 | POST | [GetChatGroupShareLinkByIdAsync](https://open.feishu.cn/document/server-docs/group/chat/link) |
 
 ---
 
 ## 函数详细内容
+
+### 创建群聊
+
+**函数名称**：创建群聊
+
+**函数签名**：
+```csharp
+Task<FeishuApiResult<CreateUpdateChatResult>?> CreateChatGroupAsync(
+    [Body] CreateChatRequest createChatRequest,
+    [Query("user_id_type")] string user_id_type = "open_id",
+    [Query("set_bot_manager")] bool? set_bot_manager = false,
+    [Query("uuid")] string? uuid = null,
+    CancellationToken cancellationToken = default);
+```
+
+**认证**：用户令牌
+
+**参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|-----|------|------|------|
+| createChatRequest | CreateChatRequest | ✅ | 创建群聊请求体 |
+| user_id_type | string | ⚪ | 用户 ID 类型，默认值：`open_id` |
+| set_bot_manager | bool? | ⚪ | 在请求体 owner_id 指定用户为群主时，是否同时设置创建此群的机器人为管理员，默认值：`false` |
+| uuid | string? | ⚪ | 由开发者生成的唯一字符串序列，用于创建群组请求去重；持有相同 uuid + owner_id 的请求 10 小时内只可成功创建 1 个群聊 |
+
+**接口文档**：[创建群聊](https://open.feishu.cn/document/server-docs/group/chat/create)
+
+---
 
 ### 更新群信息
 

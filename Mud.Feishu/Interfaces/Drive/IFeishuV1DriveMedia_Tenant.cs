@@ -9,7 +9,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 素材指在文档、电子表格、多维表格等中用到的资源素材，如文档中的图片、视频或文件等。每个素材都有唯一的 token 作为标识。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/media/introduction"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/docs/drive-v1/media/introduction">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Drive", InheritedFrom = nameof(FeishuV1DriveMedia))]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

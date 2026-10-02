@@ -67,16 +67,27 @@ asserted for the diagnostic whitelist afterwards (`.github/workflows/dotnet-publ
 
 ## Dependency version policy (Mud.HttpUtils)
 
-This repo consumes `Mud.HttpUtils` **2.0.7** — the release line that carries the generator-side fixes:
-inherited-interface clients forward `appAuthorizer` to the base generated class and no longer
-re-declare the field (fixes a P0 where `UseApp`/`BeginScope` on inherited-interface clients always
-threw under the MT-02 default-deny authorizer, plus ~1184 `CS0108` — neither for the
-`_appAuthorizer` field nor for `[Query]`/`[Path]`/`[Header]` interface properties re-declared in
-derived classes), the `CS0472` value-type array filter and the `CS8604` nullable path-parameter
-escaping fixes, and the JsonContextScaffolder now emits `TypeInfoPropertyName` for duplicate
-type-info names — SYSLIB1031. 2.0.7 is published on nuget.org, so `nuget.config` declares
-**nuget.org only** (the temporary `MudHttpUtils-local` folder source pointing at
-`D:/Repos/MudHttpUtils/artifacts` has been removed). To consume a newer component version: bump the
+This repo consumes `Mud.HttpUtils` **3.0.0** (HttpUtils and Generator **must stay on the same
+version**) — the release line that carries **BC-27**: `IAppContextSwitcher` no longer declares
+`UseApp(string)` / `UseDefaultApp()` / `BeginScope(string)`, and the generator no longer emits them
+by default. Adaptation (plan: `.docs/MudHttpUtils-3.0.0-破坏性变更改造计划.md`, §10):
+
+- `IFeishuAppContextSwitcher` **re-declares** the three legacy members with `[Obsolete]`
+  (upstream "self-declared ⇒ exempt" mechanism keeps 188+ generated classes emitting them).
+  Do **not** delete them before the next major version, and keep their signatures verbatim —
+  a mismatched signature drops the exemption and turns into `HTTPCLIENT024` + `NotSupportedException`
+  placeholders. The contract guard `GeneratedAppSwitchContractTests` (in `Tests/Mud.Feishu.Tests`)
+  asserts the five switch members reflectively on all generated classes.
+- New code must use `IAppScopeSwitcher.UseAppScope` / `UseDefaultAppScope`; for the
+  "guarded + switch-and-stay" semantics use `IAppContextHolder.SwitchToApp(appKey, appManager, sp)`
+  (upstream `SW-15`) — as done in `FeishuAppManager.GetWebApi`/`GetDefaultWebApi`.
+  `Demos/` still consume the **published** `Mud.Feishu 3.0.0` package (which depends on
+  `Mud.HttpUtils 2.0.8`), so demo `BeginScope("hr-app")` calls are intentionally untouched until the
+  rebuilt package ships.
+
+At the time of writing 3.0.0 is **not yet on nuget.org**, so `nuget.config` carries a temporary local
+source (`mudhttputils-local` → `D:/Repos/MudHttpUtils/artifacts`); remove it once the official package
+is published. To consume a newer component version: bump the
 version in the `PackageReference`s and, optionally, sync `AGENTS.md` / the README dependency tables
 (`README.md` / `README_EN.md` / `Mud.Feishu/README.md`) — the docs are **not** gated (a wrong version
 number there has no runtime impact and must not block an upgrade). The contract guard

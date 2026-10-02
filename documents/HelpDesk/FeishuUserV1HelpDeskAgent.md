@@ -20,15 +20,15 @@ description: 该接口用于以用户身份管理飞书服务台客服坐席，�
 - [服务台接入指南](https://open.feishu.cn/document/server-docs/helpdesk-v1/access-guide)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| UpdateAgentInfoAsync | 更新客服信息 | UserAccessToken | PATCH |
-| CreateAgentScheduleAsync | 创建客服工作日程 | UserAccessToken | POST |
-| DeleteAgentScheduleAsync | 删除客服工作日程 | UserAccessToken | DELETE |
-| UpdateAgentScheduleAsync | 更新客服工作日程 | UserAccessToken | PATCH |
-| CreateAgentSkillAsync | 创建客服技能 | UserAccessToken | POST |
-| DeleteAgentSkillAsync | 删除客服技能 | UserAccessToken | DELETE |
-| UpdateAgentSkillAsync | 更新客服技能 | UserAccessToken | PATCH |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| UpdateAgentInfoAsync | 更新客服信息 | UserAccessToken | PATCH | [UpdateAgentInfoAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/agent-function/agent/patch) |
+| CreateAgentScheduleAsync | 创建客服工作日程 | UserAccessToken | POST | [CreateAgentScheduleAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/agent-function/agent-schedules/create) |
+| DeleteAgentScheduleAsync | 删除客服工作日程 | UserAccessToken | DELETE | [DeleteAgentScheduleAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/agent-function/agent-schedules/delete) |
+| UpdateAgentScheduleAsync | 更新客服工作日程 | UserAccessToken | PATCH | [UpdateAgentScheduleAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/agent-function/agent-schedules/patch) |
+| CreateAgentSkillAsync | 创建客服技能 | UserAccessToken | POST | [CreateAgentSkillAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/agent-function/agent_skill/create) |
+| DeleteAgentSkillAsync | 删除客服技能 | UserAccessToken | DELETE | [DeleteAgentSkillAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/agent-function/agent_skill/delete) |
+| UpdateAgentSkillAsync | 更新客服技能 | UserAccessToken | PATCH | [UpdateAgentSkillAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/agent-function/agent_skill/patch) |
 
 ## 函数详细内容
 

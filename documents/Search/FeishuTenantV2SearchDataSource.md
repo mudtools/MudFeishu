@@ -19,21 +19,21 @@ description: 该接口用于以租户身份管理飞书搜索连接器数据源�
 
 ## 函数列表
 
-| 函数名称                      | 功能描述             | 认证方式 | HTTP 方法 |
-| ----------------------------- | -------------------- | -------- | --------- |
-| CreateDataSourceAsync         | 创建数据源           | 租户令牌 | POST      |
-| DeleteDataSourceAsync         | 删除数据源           | 租户令牌 | DELETE    |
-| UpdateDataSourceAsync         | 更新数据源           | 租户令牌 | PATCH     |
-| GetDataSourceAsync            | 获取数据源           | 租户令牌 | GET       |
-| GetDataSourcePageListAsync    | 批量获取数据源       | 租户令牌 | GET       |
-| CreateDataItemIndexAsync      | 为指定数据项创建索引 | 租户令牌 | POST      |
-| BatchCreateDataItemIndexAsync | 批量为数据项创建索引 | 租户令牌 | POST      |
-| DeleteDataItemIndexAsync      | 删除数据项           | 租户令牌 | DELETE    |
-| GetDataItemIndexAsync         | 查询指定数据项       | 租户令牌 | GET       |
-| CreateSchemaAsync             | 创建数据范式         | 租户令牌 | POST      |
-| DeleteSchemaAsync             | 删除数据范式         | 租户令牌 | DELETE    |
-| UpdateSchemaAsync             | 修改数据范式         | 租户令牌 | PATCH     |
-| GetSchemaAsync                | 获取数据范式         | 租户令牌 | GET       |
+| 函数名称                      | 功能描述             | 认证方式 | HTTP 方法 | 接口文档 |
+| ----------------------------- | -------------------- | -------- | --------- |----------|
+| CreateDataSourceAsync         | 创建数据源           | 租户令牌 | POST      | [CreateDataSourceAsync](https://open.feishu.cn/document/server-docs/search-v2/open-search/data_source/create) |
+| DeleteDataSourceAsync         | 删除数据源           | 租户令牌 | DELETE    | [DeleteDataSourceAsync](https://open.feishu.cn/document/server-docs/search-v2/open-search/data_source/delete) |
+| UpdateDataSourceAsync         | 更新数据源           | 租户令牌 | PATCH     | [UpdateDataSourceAsync](https://open.feishu.cn/document/server-docs/search-v2/open-search/data_source/patch) |
+| GetDataSourceAsync            | 获取数据源           | 租户令牌 | GET       | [GetDataSourceAsync](https://open.feishu.cn/document/server-docs/search-v2/open-search/data_source/get) |
+| GetDataSourcePageListAsync    | 批量获取数据源       | 租户令牌 | GET       | [GetDataSourcePageListAsync](https://open.feishu.cn/document/server-docs/search-v2/open-search/data_source/list) |
+| CreateDataItemIndexAsync      | 为指定数据项创建索引 | 租户令牌 | POST      | [CreateDataItemIndexAsync](https://open.feishu.cn/document/server-docs/search-v2/open-search/data_source-item/create) |
+| BatchCreateDataItemIndexAsync | 批量为数据项创建索引 | 租户令牌 | POST      | [BatchCreateDataItemIndexAsync](https://open.feishu.cn/document/server-docs/search-v2/open-search/data_source-item/batch_create) |
+| DeleteDataItemIndexAsync      | 删除数据项           | 租户令牌 | DELETE    | [DeleteDataItemIndexAsync](https://open.feishu.cn/document/server-docs/search-v2/open-search/data_source/delete) |
+| GetDataItemIndexAsync         | 查询指定数据项       | 租户令牌 | GET       | [GetDataItemIndexAsync](https://open.feishu.cn/document/server-docs/search-v2/open-search/data_source-item/get?appId=cli_a98ea7d1a0ba100b) |
+| CreateSchemaAsync             | 创建数据范式         | 租户令牌 | POST      | [CreateSchemaAsync](https://open.feishu.cn/document/server-docs/search-v2/open-search/schema/create) |
+| DeleteSchemaAsync             | 删除数据范式         | 租户令牌 | DELETE    | [DeleteSchemaAsync](https://open.feishu.cn/document/server-docs/search-v2/open-search/schema/delete) |
+| UpdateSchemaAsync             | 修改数据范式         | 租户令牌 | PATCH     | [UpdateSchemaAsync](https://open.feishu.cn/document/server-docs/search-v2/open-search/schema/patch) |
+| GetSchemaAsync                | 获取数据范式         | 租户令牌 | GET       | [GetSchemaAsync](https://open.feishu.cn/document/server-docs/search-v2/open-search/schema/get) |
 
 ## 函数详细内容
 

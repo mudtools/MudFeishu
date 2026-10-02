@@ -21,14 +21,14 @@ description: 该接口用于以当前登录用户身份管理飞书任务自定�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| CreateTaskSectionsAsync | 创建自定义分组 | 用户令牌 | POST |
-| UpdateSectionsAsync | 更新自定义分组 | 用户令牌 | PATCH |
-| GetTaskSectionsByIdAsync | 获取自定义分组详情 | 用户令牌 | GET |
-| DeleteTaskSectionsByIdAsync | 删除自定义分组 | 用户令牌 | DELETE |
-| GetTaskSectionsPageListAsync | 列取自定义分组列表 | 用户令牌 | GET |
-| GetTaskSectionsPageListByIdAsync | 获取自定义分组任务列表 | 用户令牌 | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| CreateTaskSectionsAsync | 创建自定义分组 | 用户令牌 | POST | [CreateTaskSectionsAsync](https://open.feishu.cn/document/task-v2/section/create) |
+| UpdateSectionsAsync | 更新自定义分组 | 用户令牌 | PATCH | [UpdateSectionsAsync](https://open.feishu.cn/document/task-v2/section/patch) |
+| GetTaskSectionsByIdAsync | 获取自定义分组详情 | 用户令牌 | GET | [GetTaskSectionsByIdAsync](https://open.feishu.cn/document/task-v2/section/get) |
+| DeleteTaskSectionsByIdAsync | 删除自定义分组 | 用户令牌 | DELETE | [DeleteTaskSectionsByIdAsync](https://open.feishu.cn/document/task-v2/section/delete) |
+| GetTaskSectionsPageListAsync | 列取自定义分组列表 | 用户令牌 | GET | [GetTaskSectionsPageListAsync](https://open.feishu.cn/document/task-v2/section/list) |
+| GetTaskSectionsPageListByIdAsync | 获取自定义分组任务列表 | 用户令牌 | GET | [GetTaskSectionsPageListByIdAsync](https://open.feishu.cn/document/task-v2/section/tasks) |
 
 ---
 

@@ -19,16 +19,16 @@ description: 该接口用于以租户身份管理飞书多维表格记录（reco
 
 ## 函数列表
 
-| 函数名称                    | 功能描述     | 认证方式 | HTTP 方法 |
-| --------------------------- | ------------ | -------- | --------- |
-| AddRecordAsync              | 新增记录     | 租户令牌 | POST      |
-| UpdateRecordAsync           | 更新记录     | 租户令牌 | PUT       |
-| QueryRecordsPageListAsync   | 查询记录     | 租户令牌 | POST      |
-| DeleteRecordAsync           | 删除记录     | 租户令牌 | DELETE    |
-| AddRecordsAsync             | 新增多条记录 | 租户令牌 | POST      |
-| UpdateRecordsAsync          | 更新多条记录 | 租户令牌 | POST      |
-| GetRecordsAsync             | 批量获取记录 | 租户令牌 | POST      |
-| DeleteRecordsAsync          | 批量删除记录 | 租户令牌 | POST      |
+| 函数名称                    | 功能描述     | 认证方式 | HTTP 方法 | 接口文档 |
+| --------------------------- | ------------ | -------- | --------- |----------|
+| AddRecordAsync              | 新增记录     | 租户令牌 | POST      | [AddRecordAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-record/create) |
+| UpdateRecordAsync           | 更新记录     | 租户令牌 | PUT       | [UpdateRecordAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-record/update) |
+| QueryRecordsPageListAsync   | 查询记录     | 租户令牌 | POST      | [QueryRecordsPageListAsync](https://open.feishu.cn/document/docs/bitable-v1/app-table-record/search) |
+| DeleteRecordAsync           | 删除记录     | 租户令牌 | DELETE    | [DeleteRecordAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-record/delete) |
+| AddRecordsAsync             | 新增多条记录 | 租户令牌 | POST      | [AddRecordsAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-record/batch_create) |
+| UpdateRecordsAsync          | 更新多条记录 | 租户令牌 | POST      | [UpdateRecordsAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-record/batch_update) |
+| GetRecordsAsync             | 批量获取记录 | 租户令牌 | POST      | [GetRecordsAsync](https://open.feishu.cn/document/docs/bitable-v1/app-table-record/batch_get) |
+| DeleteRecordsAsync          | 批量删除记录 | 租户令牌 | POST      | [DeleteRecordsAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-record/batch_delete) |
 
 ## 函数详细内容
 

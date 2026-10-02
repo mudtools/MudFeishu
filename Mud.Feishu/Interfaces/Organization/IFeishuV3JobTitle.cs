@@ -19,6 +19,7 @@ public interface IFeishuV3JobTitle : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 获取当前租户下的职务信息，包括职务的 ID、名称、多语言名称以及启用状态。
+    /// <para><see href="https://open.feishu.cn/document/contact-v3/job_title/list">接口文档</see></para>
     /// </summary>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
@@ -32,6 +33,7 @@ public interface IFeishuV3JobTitle : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取指定职务的信息，包括职务的 ID、名称、多语言名称以及启用状态。
+    /// <para><see href="https://open.feishu.cn/document/contact-v3/job_title/get">接口文档</see></para>
     /// </summary>
     /// <param name="job_title_id">职务 ID。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>

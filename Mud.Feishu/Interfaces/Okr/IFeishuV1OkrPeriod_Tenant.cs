@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书 OKR「周期与周期规则」SDK 是一组服务端 OpenAPI 的封装，用于按周期规则创建周期、修改周期显示状态、获取租户下的 OKR 周期列表与周期规则列表。本接口全部端点为 okr/v1，仅支持 tenant_access_token 调用。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/okr-v1/period/list"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/okr-v1/period/list">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Okr")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

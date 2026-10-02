@@ -14,7 +14,7 @@ namespace Mud.Feishu;
 /// <para>当前接口使用租户令牌访问，适应于租户应用场景。</para>
 /// <para>可以根据企业实际需要添加序列，后续在创建或更新用户时，为用户设置相匹配的序列。</para>
 /// <para>通过序列 API，可以创建、更新、查询、删除序列信息。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/contact-v3/job_family/job-family-resource-introduction"/></para>
+/// <para><see href="https://open.feishu.cn/document/contact-v3/job_family/job-family-resource-introduction">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Organization")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -22,6 +22,7 @@ public interface IFeishuTenantV3JobFamilies : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 创建一个序列。序列是用户属性之一，用来定义用户的工作类型，例如产品、研发、运营等。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/job_family/create">接口文档</see></para>
     /// </summary>
     /// <param name="familyCreateRequest">职位序列创建请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -33,6 +34,7 @@ public interface IFeishuTenantV3JobFamilies : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 更新指定序列的信息。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/job_family/update">接口文档</see></para>
     /// </summary>
     /// <param name="familyCreateRequest">职位序列创建请求体。</param>
     /// <param name="job_family_id">序列 ID。</param>
@@ -46,6 +48,7 @@ public interface IFeishuTenantV3JobFamilies : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取指定序列的信息，包括序列的名称、描述、启用状态以及 ID 等。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/job_family/get">接口文档</see></para>
     /// </summary>
     /// <param name="job_family_id">序列 ID。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -57,6 +60,7 @@ public interface IFeishuTenantV3JobFamilies : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取当前租户下的序列信息，包含序列的名称、描述、启用状态以及 ID 等。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/job_family/list">接口文档</see></para>
     /// </summary>
     /// <param name="name">序列名称。示例值："产品"</param>
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
@@ -75,6 +79,7 @@ public interface IFeishuTenantV3JobFamilies : IFeishuAppContextSwitcher
     /// <para>
     /// 仅支持删除没有子序列的序列。如果序列内存在子序列，则不能直接删除。
     /// </para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/job_family/delete">接口文档</see></para>
     /// </summary>
     /// <param name="job_family_id">序列 ID。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>

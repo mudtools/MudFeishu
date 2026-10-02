@@ -18,13 +18,13 @@ description: 该接口用于以租户身份管理飞书用户组成员，支持�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| AddMemberAsync | 添加成员 | 租户令牌 | POST |
-| BatchAddMemberAsync | 批量添加成员 | 租户令牌 | POST |
-| GetMemberListByGroupIdAsync | 获取成员列表 | 租户令牌 | GET |
-| RemoveMemberAsync | 移除成员 | 租户令牌 | POST |
-| BatchRemoveMemberAsync | 批量移除成员 | 租户令牌 | POST |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| AddMemberAsync | 添加成员 | 租户令牌 | POST | [AddMemberAsync](https://open.feishu.cn/document/server-docs/contact-v3/group-member/add) |
+| BatchAddMemberAsync | 批量添加成员 | 租户令牌 | POST | [BatchAddMemberAsync](https://open.feishu.cn/document/server-docs/contact-v3/group-member/batch_add) |
+| GetMemberListByGroupIdAsync | 获取成员列表 | 租户令牌 | GET | [GetMemberListByGroupIdAsync](https://open.feishu.cn/document/server-docs/contact-v3/group/simplelist) |
+| RemoveMemberAsync | 移除成员 | 租户令牌 | POST | [RemoveMemberAsync](https://open.feishu.cn/document/server-docs/contact-v3/group-member/remove) |
+| BatchRemoveMemberAsync | 批量移除成员 | 租户令牌 | POST | [BatchRemoveMemberAsync](https://open.feishu.cn/document/server-docs/contact-v3/group-member/batch_remove) |
 
 ## 函数详细内容
 

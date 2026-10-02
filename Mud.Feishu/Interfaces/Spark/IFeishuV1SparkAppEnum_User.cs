@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书妙搭（Spark）自定义枚举 SDK 是一组服务端 OpenAPI 的封装，用于获取妙搭应用下的自定义枚举列表与详情。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Spark")]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

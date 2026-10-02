@@ -18,13 +18,13 @@ description: 该接口用于以当前登录用户身份管理飞书任务评论�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| CreateCommentAsync | 创建评论 | 用户令牌 | POST |
-| GetCommentByIdAsync | 获取评论详情 | 用户令牌 | GET |
-| UpdateCommentByIdAsync | 更新评论 | 用户令牌 | PATCH |
-| DeleteCommentByIdAsync | 删除评论 | 用户令牌 | DELETE |
-| GetCommentPageListAsync | 列取评论列表 | 用户令牌 | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| CreateCommentAsync | 创建评论 | 用户令牌 | POST | [CreateCommentAsync](https://open.feishu.cn/document/task-v2/comment/create) |
+| GetCommentByIdAsync | 获取评论详情 | 用户令牌 | GET | [GetCommentByIdAsync](https://open.feishu.cn/document/task-v2/comment/get) |
+| UpdateCommentByIdAsync | 更新评论 | 用户令牌 | PATCH | [UpdateCommentByIdAsync](https://open.feishu.cn/document/task-v2/comment/patch) |
+| DeleteCommentByIdAsync | 删除评论 | 用户令牌 | DELETE | [DeleteCommentByIdAsync](https://open.feishu.cn/document/task-v2/comment/delete) |
+| GetCommentPageListAsync | 列取评论列表 | 用户令牌 | GET | [GetCommentPageListAsync](https://open.feishu.cn/document/task-v2/comment/list) |
 
 ---
 

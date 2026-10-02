@@ -19,13 +19,13 @@ description: 该接口用于以租户身份管理飞书数据驻留与用户迁�
 
 ## 函数列表
 
-| 函数名称                      | 功能描述                 | 认证方式 | HTTP 方法 |
-| ----------------------------- | ------------------------ | -------- | --------- |
-| GetMultiGeoEntityTenantAsync  | 获取数据驻留地理位置列表 | 租户令牌 | GET       |
-| CreateUserMigrationAsync      | 迁移用户数据驻留位置     | 租户令牌 | POST      |
-| GetUserMigrationAsync         | 获取单个用户迁移状态     | 租户令牌 | GET       |
-| SearchUserMigrationsAsync     | 批量获取用户迁移状态     | 租户令牌 | POST      |
-| CancelUserMigrationAsync      | 取消用户迁移任务         | 租户令牌 | POST      |
+| 函数名称                      | 功能描述                 | 认证方式 | HTTP 方法 | 接口文档 |
+| ----------------------------- | ------------------------ | -------- | --------- |----------|
+| GetMultiGeoEntityTenantAsync  | 获取数据驻留地理位置列表 | 租户令牌 | GET       | [GetMultiGeoEntityTenantAsync](https://open.feishu.cn/document/server-docs/security_and_compliance-v1/user_migration/get-2) |
+| CreateUserMigrationAsync      | 迁移用户数据驻留位置     | 租户令牌 | POST      | [CreateUserMigrationAsync](https://open.feishu.cn/document/server-docs/security_and_compliance-v1/user_migration/create) |
+| GetUserMigrationAsync         | 获取单个用户迁移状态     | 租户令牌 | GET       | [GetUserMigrationAsync](https://open.feishu.cn/document/server-docs/security_and_compliance-v1/user_migration/get) |
+| SearchUserMigrationsAsync     | 批量获取用户迁移状态     | 租户令牌 | POST      | [SearchUserMigrationsAsync](https://open.feishu.cn/document/server-docs/security_and_compliance-v1/user_migration/search) |
+| CancelUserMigrationAsync      | 取消用户迁移任务         | 租户令牌 | POST      | [CancelUserMigrationAsync](https://open.feishu.cn/document/server-docs/security_and_compliance-v1/user_migration/cancel) |
 
 ## 函数详细内容
 

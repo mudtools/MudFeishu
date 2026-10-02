@@ -9,7 +9,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// <para>实现评论创建、回复、更新、删除、获取详情等功能。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/task-v2/comment/overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/task-v2/comment/overview">接口文档</see></para>
 /// </summary> 
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Task", InheritedFrom = nameof(FeishuV2TaskComments))]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

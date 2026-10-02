@@ -19,10 +19,10 @@ description: 该接口用于以用户身份在飞书套件内检索消息与应�
 
 ## 函数列表
 
-| 函数名称                 | 功能描述 | 认证方式 | HTTP 方法 |
-| ------------------------ | -------- | -------- | --------- |
-| SearchMessagePageListAsync | 搜索消息 | 用户令牌 | POST      |
-| SearchAppPageListAsync   | 搜索应用 | 用户令牌 | POST      |
+| 函数名称                 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| ------------------------ | -------- | -------- | --------- |----------|
+| SearchMessagePageListAsync | 搜索消息 | 用户令牌 | POST      | [SearchMessagePageListAsync](https://open.feishu.cn/document/server-docs/search-v2/suite-search/create) |
+| SearchAppPageListAsync   | 搜索应用 | 用户令牌 | POST      | [SearchAppPageListAsync](https://open.feishu.cn/document/server-docs/search-v2/suite-search/create) |
 
 ## 函数详细内容
 

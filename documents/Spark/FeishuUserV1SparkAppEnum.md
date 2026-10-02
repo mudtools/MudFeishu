@@ -19,10 +19,10 @@ description: 该接口用于以用户身份获取飞书妙搭应用下的自定�
 
 ## 函数列表
 
-| 函数名称              | 功能描述                 | 认证方式 | HTTP 方法 |
-| --------------------- | ------------------------ | -------- | --------- |
-| GetEnumListAsync      | 获取自定义枚举列表       | 用户令牌 | GET       |
-| GetEnumDetailAsync    | 获取自定义枚举详细信息   | 用户令牌 | GET       |
+| 函数名称              | 功能描述                 | 认证方式 | HTTP 方法 | 接口文档 |
+| --------------------- | ------------------------ | -------- | --------- |----------|
+| GetEnumListAsync      | 获取自定义枚举列表       | 用户令牌 | GET       | [GetEnumListAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app-enum/get_enum_list) |
+| GetEnumDetailAsync    | 获取自定义枚举详细信息   | 用户令牌 | GET       | [GetEnumDetailAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app-enum/get_enum_detail) |
 
 ## 函数详细内容
 

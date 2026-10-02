@@ -14,7 +14,7 @@ namespace Mud.Feishu.Interfaces;
 /// 考勤组，是对部门或者员工在某个特定场所及特定时间段内的出勤情况
 /// <para>（包括上下班、迟到、早退、病假、婚假、丧假、公休、工作时间、加班情况等）的一种规则设定。</para>
 /// <para>通过设置考勤组，可以从部门、员工两个维度，来设定考勤方式、考勤时间、考勤地点等考勤规则。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/attendance-v1/group/create"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/attendance-v1/group/create">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -23,6 +23,7 @@ public interface IFeishuV1AttendanceGroups : IFeishuAppContextSwitcher
     /// <summary>
     /// 查询考勤组下所有成员
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=list_user&amp;project=attendance&amp;resource=group&amp;version=v1"/></para>
+    /// <para><see href="https://open.feishu.cn/document/attendance-v1/group/list_user">接口文档</see></para>
     /// </summary>
     /// <param name="group_id">考勤组 ID，示例值：6919358128597097404</param>
     /// <param name="member_clock_type">查询的考勤组成员的打卡类型

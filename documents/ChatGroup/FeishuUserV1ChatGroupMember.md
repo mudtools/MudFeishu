@@ -17,15 +17,15 @@ description: 该接口用于以用户身份管理飞书群成员，支持添加�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| AddManagersAsync | 添加群管理员 | 用户令牌 | POST |
-| DeleteManagersAsync | 删除群管理员 | 用户令牌 | POST |
-| AddMemberAsync | 添加群成员 | 用户令牌 | POST |
-| MeJoinChatGroupAsync | 主动加入群聊 | 用户令牌 | PATCH |
-| RemoveMemberAsync | 移除群成员 | 用户令牌 | DELETE |
-| GetMemberPageListByIdAsync | 分页获取群成员列表 | 用户令牌 | GET |
-| GetMemberInChatByIdAsync | 判断是否在群中 | 用户令牌 | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| AddManagersAsync | 添加群管理员 | 用户令牌 | POST | [AddManagersAsync](https://open.feishu.cn/document/server-docs/group/chat-member/add_managers) |
+| DeleteManagersAsync | 删除群管理员 | 用户令牌 | POST | [DeleteManagersAsync](https://open.feishu.cn/document/server-docs/group/chat-member/delete_managers) |
+| AddMemberAsync | 添加群成员 | 用户令牌 | POST | [AddMemberAsync](https://open.feishu.cn/document/server-docs/group/chat-member/create) |
+| MeJoinChatGroupAsync | 主动加入群聊 | 用户令牌 | PATCH | [MeJoinChatGroupAsync](https://open.feishu.cn/document/server-docs/group/chat-member/me_join) |
+| RemoveMemberAsync | 移除群成员 | 用户令牌 | DELETE | [RemoveMemberAsync](https://open.feishu.cn/document/server-docs/group/chat-member/delete) |
+| GetMemberPageListByIdAsync | 分页获取群成员列表 | 用户令牌 | GET | [GetMemberPageListByIdAsync](https://open.feishu.cn/document/server-docs/group/chat-member/get) |
+| GetMemberInChatByIdAsync | 判断是否在群中 | 用户令牌 | GET | [GetMemberInChatByIdAsync](https://open.feishu.cn/document/server-docs/group/chat-member/is_in_chat) |
 
 ---
 

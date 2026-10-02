@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书会议纪要资源，用户可以查看会议生成的纪要文档、逐字稿等产物，并获取相关上下文（例如会中共享文档等），可以用于复盘、检索增强、对齐校验与可追溯引用。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/vc-v1/note/notes_overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/vc-v1/note/notes_overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "VideoConferencing")]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

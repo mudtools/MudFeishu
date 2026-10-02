@@ -92,10 +92,11 @@ public static class FeishuServiceCollectionExtensions
     {
         UrlValidator.ConfigureAllowedDomains(["open.feishu.cn", "open.larksuite.com", "larksuite.com", "feishu.cn"]);
 
-        // MUDHTTP-2.0.5 适配（BC-18 / MT-02）：组件生成代码的 UseApp / BeginScope(appKey) 由
+        // MUDHTTP-2.0.5 适配（BC-18 / MT-02）：带 appKey 的切换入口由
         // 「未注册 IAppAccessAuthorizer 即静默放行」改为「默认拒绝」（调用时抛 InvalidOperationException）。
-        // 本 SDK 的多应用切换入口（FeishuAppManager.GetWebApi）依赖生成实现的 UseApp(appKey)，
-        // 而 appKey 始终来源于 FeishuAppConfig 注册表（未知 appKey 由 GetApp 校验并抛错），
+        // 涉及两处守卫一致的入口：生成类的 UseAppScope(appKey)，以及本 SDK 内部多应用切换入口
+        // （FeishuAppManager.GetWebApi → IAppContextHolder.SwitchToApp(appKey, this, sp)）。
+        // appKey 始终来源于 FeishuAppConfig 注册表（未知 appKey 由 GetApp 校验并抛错），
         // 因此注册放行型授权器恢复多应用切换能力；宿主可先注册更严格的 IAppAccessAuthorizer
         // 实现（TryAdd 语义：先注册者胜出）实现租户级授权。
         services.TryAddSingleton<IAppAccessAuthorizer, AllowAllAppAccessAuthorizer>();

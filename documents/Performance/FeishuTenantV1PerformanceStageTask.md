@@ -19,10 +19,10 @@ description: 该接口用于以租户身份获取飞书绩效周期任务，支�
 
 ## 函数列表
 
-| 函数名称                     | 功能描述               | 认证方式 | HTTP 方法 |
-| ---------------------------- | ---------------------- | -------- | --------- |
-| FindStageTaskByUserListAsync | 获取周期任务（指定用户） | 租户令牌 | POST      |
-| FindStageTaskByPageAsync     | 获取周期任务（全部用户） | 租户令牌 | POST      |
+| 函数名称                     | 功能描述               | 认证方式 | HTTP 方法 | 接口文档 |
+| ---------------------------- | ---------------------- | -------- | --------- |----------|
+| FindStageTaskByUserListAsync | 获取周期任务（指定用户） | 租户令牌 | POST      | [FindStageTaskByUserListAsync](https://open.feishu.cn/document/performance-v1/stage_task/find_by_user_list) |
+| FindStageTaskByPageAsync     | 获取周期任务（全部用户） | 租户令牌 | POST      | [FindStageTaskByPageAsync](https://open.feishu.cn/document/performance-v1/stage_task/find_by_page) |
 
 ## 函数详细内容
 

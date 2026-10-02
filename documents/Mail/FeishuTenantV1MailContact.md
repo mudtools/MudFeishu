@@ -10,17 +10,17 @@ description: 该接口用于以租户身份管理企业内所有用户的邮箱�
 
 ## 参考文档
 - [创建邮箱联系人](https://open.feishu.cn/document/mail-v1/user_mailbox-mail_contact/create)
-- [删除邮箱联系人](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-mail_contact/delete)
+- [删除邮箱联系人](https://open.feishu.cn/document/mail-v1/user_mailbox-mail_contact/delete)
 - [修改邮箱联系人](https://open.feishu.cn/document/mail-v1/user_mailbox-mail_contact/patch)
 - [列出邮箱联系人](https://open.feishu.cn/document/mail-v1/user_mailbox-mail_contact/list)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| CreateUserMailboxContactAsync | 创建邮箱联系人 | TenantAccessToken | POST |
-| DeleteUserMailboxContactAsync | 删除邮箱联系人 | TenantAccessToken | DELETE |
-| UpdateUserMailboxContactAsync | 修改邮箱联系人信息 | TenantAccessToken | PATCH |
-| GetUserMailboxContactPageListAsync | 分页列出邮箱联系人 | TenantAccessToken | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| CreateUserMailboxContactAsync | 创建邮箱联系人 | TenantAccessToken | POST | [CreateUserMailboxContactAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-mail_contact/create) |
+| DeleteUserMailboxContactAsync | 删除邮箱联系人 | TenantAccessToken | DELETE | [DeleteUserMailboxContactAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-mail_contact/delete) |
+| UpdateUserMailboxContactAsync | 修改邮箱联系人信息 | TenantAccessToken | PATCH | [UpdateUserMailboxContactAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-mail_contact/patch) |
+| GetUserMailboxContactPageListAsync | 分页列出邮箱联系人 | TenantAccessToken | GET | [GetUserMailboxContactPageListAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-mail_contact/list) |
 
 ## 函数详细内容
 

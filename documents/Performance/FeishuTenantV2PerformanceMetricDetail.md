@@ -19,10 +19,10 @@ description: 该接口用于以租户身份管理飞书绩效关键指标数据�
 
 ## 函数列表
 
-| 函数名称                   | 功能描述                 | 认证方式 | HTTP 方法 |
-| -------------------------- | ------------------------ | -------- | --------- |
-| QueryMetricDetailListAsync | 获取被评估人关键指标结果 | 租户令牌 | POST      |
-| ImportMetricDetailAsync    | 录入被评估人关键指标数据 | 租户令牌 | POST      |
+| 函数名称                   | 功能描述                 | 认证方式 | HTTP 方法 | 接口文档 |
+| -------------------------- | ------------------------ | -------- | --------- |----------|
+| QueryMetricDetailListAsync | 获取被评估人关键指标结果 | 租户令牌 | POST      | [QueryMetricDetailListAsync](https://open.feishu.cn/document/performance-v1/metric_detail/query) |
+| ImportMetricDetailAsync    | 录入被评估人关键指标数据 | 租户令牌 | POST      | [ImportMetricDetailAsync](https://open.feishu.cn/document/performance-v1/metric_detail/import) |
 
 ## 函数详细内容
 

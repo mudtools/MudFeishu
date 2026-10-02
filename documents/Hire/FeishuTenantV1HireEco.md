@@ -19,25 +19,25 @@ description: 该接口用于以租户身份对接飞书招聘生态服务商，�
 
 ## 函数列表
 
-| 函数名称                                    | 功能描述                   | 认证方式 | HTTP 方法 |
-| ------------------------------------------- | -------------------------- | -------- | --------- |
-| CreateEcoAccountCustomFieldAsync            | 创建账号自定义字段         | 租户令牌 | POST      |
-| BatchUpdateEcoAccountCustomFieldAsync       | 更新账号自定义字段         | 租户令牌 | PATCH     |
-| BatchDeleteEcoAccountCustomFieldAsync       | 删除账号自定义字段         | 租户令牌 | POST      |
-| CancelEcoBackgroundCheckAsync               | 终止背调订单               | 租户令牌 | POST      |
-| UpdateProgressEcoBackgroundCheckAsync       | 更新背调订单进度           | 租户令牌 | POST      |
-| UpdateResultEcoBackgroundCheckAsync         | 回传背调订单的最终结果     | 租户令牌 | POST      |
-| CreateEcoBackgroundCheckCustomFieldAsync    | 创建背调自定义字段         | 租户令牌 | POST      |
-| BatchUpdateEcoBackgroundCheckCustomFieldAsync | 更新背调自定义字段       | 租户令牌 | PATCH     |
-| BatchDeleteEcoBackgroundCheckCustomFieldAsync | 删除背调自定义字段       | 租户令牌 | POST      |
-| CreateEcoBackgroundCheckPackageAsync        | 创建背调套餐和附加调查项   | 租户令牌 | POST      |
-| BatchUpdateEcoBackgroundCheckPackageAsync   | 更新背调套餐和附加调查项   | 租户令牌 | PATCH     |
-| BatchDeleteEcoBackgroundCheckPackageAsync   | 删除背调套餐和附加调查项   | 租户令牌 | POST      |
-| LoginInfoEcoExamAsync                       | 回传笔试安排结果           | 租户令牌 | POST      |
-| UpdateResultEcoExamAsync                    | 回传笔试结果               | 租户令牌 | POST      |
-| CreateEcoExamPaperAsync                     | 创建试卷列表               | 租户令牌 | POST      |
-| BatchUpdateEcoExamPaperAsync                | 更新试卷列表               | 租户令牌 | PATCH     |
-| BatchDeleteEcoExamPaperAsync                | 删除试卷列表               | 租户令牌 | POST      |
+| 函数名称                                    | 功能描述                   | 认证方式 | HTTP 方法 | 接口文档 |
+| ------------------------------------------- | -------------------------- | -------- | --------- |----------|
+| CreateEcoAccountCustomFieldAsync            | 创建账号自定义字段         | 租户令牌 | POST      | [CreateEcoAccountCustomFieldAsync](https://open.feishu.cn/document/ukTMukTMukTM/uMzM1YjLzMTN24yMzUjN/hire-v1/eco_account_custom_field/create) |
+| BatchUpdateEcoAccountCustomFieldAsync       | 更新账号自定义字段         | 租户令牌 | PATCH     | [BatchUpdateEcoAccountCustomFieldAsync](https://open.feishu.cn/document/ukTMukTMukTM/uMzM1YjLzMTN24yMzUjN/hire-v1/eco_account_custom_field/batch_update) |
+| BatchDeleteEcoAccountCustomFieldAsync       | 删除账号自定义字段         | 租户令牌 | POST      | [BatchDeleteEcoAccountCustomFieldAsync](https://open.feishu.cn/document/ukTMukTMukTM/uMzM1YjLzMTN24yMzUjN/hire-v1/eco_account_custom_field/batch_delete) |
+| CancelEcoBackgroundCheckAsync               | 终止背调订单               | 租户令牌 | POST      | [CancelEcoBackgroundCheckAsync](https://open.feishu.cn/document/ukTMukTMukTM/uMzM1YjLzMTN24yMzUjN/hire-v1/eco_background_check/cancel) |
+| UpdateProgressEcoBackgroundCheckAsync       | 更新背调订单进度           | 租户令牌 | POST      | [UpdateProgressEcoBackgroundCheckAsync](https://open.feishu.cn/document/ukTMukTMukTM/uMzM1YjLzMTN24yMzUjN/hire-v1/eco_background_check/update_progress) |
+| UpdateResultEcoBackgroundCheckAsync         | 回传背调订单的最终结果     | 租户令牌 | POST      | [UpdateResultEcoBackgroundCheckAsync](https://open.feishu.cn/document/ukTMukTMukTM/uMzM1YjLzMTN24yMzUjN/hire-v1/eco_background_check/update_result) |
+| CreateEcoBackgroundCheckCustomFieldAsync    | 创建背调自定义字段         | 租户令牌 | POST      | [CreateEcoBackgroundCheckCustomFieldAsync](https://open.feishu.cn/document/ukTMukTMukTM/uMzM1YjLzMTN24yMzUjN/hire-v1/eco_background_check_custom_field/create) |
+| BatchUpdateEcoBackgroundCheckCustomFieldAsync | 更新背调自定义字段       | 租户令牌 | PATCH     | [BatchUpdateEcoBackgroundCheckCustomFieldAsync](https://open.feishu.cn/document/ukTMukTMukTM/uMzM1YjLzMTN24yMzUjN/hire-v1/eco_background_check_custom_field/batch_update) |
+| BatchDeleteEcoBackgroundCheckCustomFieldAsync | 删除背调自定义字段       | 租户令牌 | POST      | [BatchDeleteEcoBackgroundCheckCustomFieldAsync](https://open.feishu.cn/document/ukTMukTMukTM/uMzM1YjLzMTN24yMzUjN/hire-v1/eco_background_check_custom_field/batch_delete) |
+| CreateEcoBackgroundCheckPackageAsync        | 创建背调套餐和附加调查项   | 租户令牌 | POST      | [CreateEcoBackgroundCheckPackageAsync](https://open.feishu.cn/document/ukTMukTMukTM/uMzM1YjLzMTN24yMzUjN/hire-v1/eco_background_check_package/create) |
+| BatchUpdateEcoBackgroundCheckPackageAsync   | 更新背调套餐和附加调查项   | 租户令牌 | PATCH     | [BatchUpdateEcoBackgroundCheckPackageAsync](https://open.feishu.cn/document/ukTMukTMukTM/uMzM1YjLzMTN24yMzUjN/hire-v1/eco_background_check_package/batch_update) |
+| BatchDeleteEcoBackgroundCheckPackageAsync   | 删除背调套餐和附加调查项   | 租户令牌 | POST      | [BatchDeleteEcoBackgroundCheckPackageAsync](https://open.feishu.cn/document/ukTMukTMukTM/uMzM1YjLzMTN24yMzUjN/hire-v1/eco_background_check_package/batch_delete) |
+| LoginInfoEcoExamAsync                       | 回传笔试安排结果           | 租户令牌 | POST      | [LoginInfoEcoExamAsync](https://open.feishu.cn/document/ukTMukTMukTM/uMzM1YjLzMTN24yMzUjN/hire-v1/eco_exam/login_info) |
+| UpdateResultEcoExamAsync                    | 回传笔试结果               | 租户令牌 | POST      | [UpdateResultEcoExamAsync](https://open.feishu.cn/document/ukTMukTMukTM/uMzM1YjLzMTN24yMzUjN/hire-v1/eco_exam/update_result) |
+| CreateEcoExamPaperAsync                     | 创建试卷列表               | 租户令牌 | POST      | [CreateEcoExamPaperAsync](https://open.feishu.cn/document/ukTMukTMukTM/uMzM1YjLzMTN24yMzUjN/hire-v1/eco_exam_paper/create) |
+| BatchUpdateEcoExamPaperAsync                | 更新试卷列表               | 租户令牌 | PATCH     | [BatchUpdateEcoExamPaperAsync](https://open.feishu.cn/document/ukTMukTMukTM/uMzM1YjLzMTN24yMzUjN/hire-v1/eco_exam_paper/batch_update) |
+| BatchDeleteEcoExamPaperAsync                | 删除试卷列表               | 租户令牌 | POST      | [BatchDeleteEcoExamPaperAsync](https://open.feishu.cn/document/ukTMukTMukTM/uMzM1YjLzMTN24yMzUjN/hire-v1/eco_exam_paper/batch_delete) |
 
 ## 函数详细内容
 

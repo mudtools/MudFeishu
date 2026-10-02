@@ -19,7 +19,7 @@ namespace Mud.Feishu.Interfaces;
 /// <item>管理员：可管理日历及共享设置。</item>
 /// </list>
 /// </para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/calendar-v4/calendar-acl/introduction"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/calendar-v4/calendar-acl/introduction">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

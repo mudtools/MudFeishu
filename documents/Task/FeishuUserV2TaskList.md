@@ -18,15 +18,16 @@ description: 该接口用于以当前登录用户身份管理飞书任务清单�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| CreateTaskListAsync | 创建清单 | 用户令牌 | POST |
-| GetTaskListByIdAsync | 获取清单详情 | 用户令牌 | GET |
-| UpdateTaskListByIdAsync | 更新清单 | 用户令牌 | PATCH |
-| DeleteTaskListByIdAsync | 删除清单 | 用户令牌 | DELETE |
-| AddTaskListMemberByIdAsync | 添加清单成员 | 用户令牌 | POST |
-| RemoveTaskListMemberByIdAsync | 移除清单成员 | 用户令牌 | POST |
-| GetTaskListPageListByIdAsync | 分页获取清单任务列表 | 用户令牌 | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| CreateTaskListAsync | 创建清单 | 用户令牌 | POST | [CreateTaskListAsync](https://open.feishu.cn/document/task-v2/tasklist/create) |
+| GetTaskListByIdAsync | 获取清单详情 | 用户令牌 | GET | [GetTaskListByIdAsync](https://open.feishu.cn/document/task-v2/tasklist/get) |
+| UpdateTaskListByIdAsync | 更新清单 | 用户令牌 | PATCH | [UpdateTaskListByIdAsync](https://open.feishu.cn/document/task-v2/tasklist/patch) |
+| DeleteTaskListByIdAsync | 删除清单 | 用户令牌 | DELETE | [DeleteTaskListByIdAsync](https://open.feishu.cn/document/task-v2/tasklist/delete) |
+| AddTaskListMemberByIdAsync | 添加清单成员 | 用户令牌 | POST | [AddTaskListMemberByIdAsync](https://open.feishu.cn/document/task-v2/tasklist/add_members) |
+| RemoveTaskListMemberByIdAsync | 移除清单成员 | 用户令牌 | POST | [RemoveTaskListMemberByIdAsync](https://open.feishu.cn/document/task-v2/tasklist/remove_members) |
+| GetTaskListPageListByIdAsync | 分页获取清单任务列表 | 用户令牌 | GET | [GetTaskListPageListByIdAsync](https://open.feishu.cn/document/task-v2/tasklist/tasks) |
+| GetTaskListsPageListAsync | 分页获取可读取的清单列表 | 用户令牌 | GET | [GetTaskListsPageListAsync](https://open.feishu.cn/document/task-v2/tasklist/list) |
 
 ---
 

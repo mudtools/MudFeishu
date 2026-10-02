@@ -10,7 +10,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书 OKR「关键结果」SDK 是一组服务端 OpenAPI 的封装，用于查询、创建、修改与删除 Objective 下的关键结果，以及调整其排序与权重（租户令牌）。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/okr-v2/okr-objective-key_result/list"/></para>
+/// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/okr-v2/okr-objective-key_result/list">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Okr", InheritedFrom = nameof(FeishuV2OkrKeyResult))]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

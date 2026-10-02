@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书服务台推送API是开放平台基于飞书服务台的推送功能开放的创建/查询/更新/预览/审批/发送等API，开发者可以基于这些API管理服务台推送任务。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/notification/create"/></para>
+/// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/notification/create">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "HelpDesk")]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

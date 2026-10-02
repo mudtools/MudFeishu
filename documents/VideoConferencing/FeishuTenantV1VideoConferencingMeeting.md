@@ -13,12 +13,12 @@ description: 该接口用于以租户身份管理飞书会议，支持获取会�
 - [会议管理概述](https://open.feishu.cn/document/server-docs/vc-v1/meeting/meeting-overview)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| GetMeetingAsync | 获取会议详情 | 租户令牌 | GET |
-| GetMeetingPageListAsync | 获取与会议号关联的会议列表 | 租户令牌 | GET |
-| SetHostMeetingAsync | 设置主持人 | 租户令牌 | PATCH |
-| KickoutMeetingAsync | 移除参会人 | 租户令牌 | POST |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| GetMeetingAsync | 获取会议详情 | 租户令牌 | GET | [GetMeetingAsync](https://open.feishu.cn/document/server-docs/vc-v1/meeting/get) |
+| GetMeetingPageListAsync | 获取与会议号关联的会议列表 | 租户令牌 | GET | [GetMeetingPageListAsync](https://open.feishu.cn/document/server-docs/vc-v1/meeting/list_by_no) |
+| SetHostMeetingAsync | 设置主持人 | 租户令牌 | PATCH | [SetHostMeetingAsync](https://open.feishu.cn/document/server-docs/vc-v1/meeting/set_host) |
+| KickoutMeetingAsync | 移除参会人 | 租户令牌 | POST | [KickoutMeetingAsync](https://open.feishu.cn/document/server-docs/vc-v1/meeting/kickout) |
 
 ## 函数详细内容
 

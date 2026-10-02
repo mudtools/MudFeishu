@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书招聘（Hire）外部系统信息导入入口域 SDK 是一组服务端 OpenAPI 的封装，用于将外部系统（ATS/RMS）中的人才外部创建时间、外部投递、外部面试与面评、外部 Offer、外部背调以及内推奖励导入或同步到飞书招聘。本接口全部端点仅支持 tenant_access_token 调用。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/import-external-system-information/create"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/import-external-system-information/create">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Hire")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

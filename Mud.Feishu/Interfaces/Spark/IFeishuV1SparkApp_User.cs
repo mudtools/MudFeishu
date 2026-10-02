@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书妙搭（Spark）应用 SDK 是一组服务端 OpenAPI 的封装，用于以用户身份创建、更新妙搭应用、上传图标、发布 HTML 代码与管理应用可用范围，并继承双令牌只读端点（批量查询应用、AI 额度、运营数据）。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app/create"/></para>
+/// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app/create">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Spark", InheritedFrom = nameof(FeishuV1SparkApp))]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

@@ -12,6 +12,12 @@ namespace Mud.Feishu.WebSocket.DataModels;
 /// <summary>
 /// 飞书WebSocket事件消息
 /// </summary>
+/// <remarks>
+/// R-E1 起仅兼容历史 <c>{"type":"event","data":{...}}</c> 网关包裹帧；
+/// 事件主路径解析已由共享解析器 <see cref="Mud.Feishu.Abstractions.EventHandlers.FeishuEventDataParser"/>
+/// 承担（官方 v1.0 根级形态 + v2.0 + data 包裹兜底），<see cref="FeishuEventMessageHandler"/> 不再经本类型反序列化。
+/// 类型保留以避免公开面破坏，下一 major 评估标注 Obsolete。
+/// </remarks>
 public class EventMessage : FeishuWebSocketMessage
 {
     /// <summary>

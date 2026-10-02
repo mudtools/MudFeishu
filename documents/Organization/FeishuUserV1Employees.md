@@ -18,17 +18,17 @@ description: 该接口用于以用户身份管理飞书企业员工的完整生�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| CreateEmployeeAsync | 创建员工 | 用户令牌 | POST |
-| UpdateEmployeeAsync | 更新员工信息 | 用户令牌 | PATCH |
-| DeleteEmployeeByIdAsync | 离职员工 | 用户令牌 | DELETE |
-| ResurrectEmployeeAsync | 恢复已离职员工 | 用户令牌 | POST |
-| ResignedEmployeeAsync | 办理员工待离职 | 用户令牌 | PATCH |
-| RegularEmployeeAsync | 取消员工离职 | 用户令牌 | PATCH |
-| QueryEmployeesAsync | 批量查询员工 | 用户令牌 | POST |
-| QueryEmployeePageListAsync | 分页查询员工列表 | 用户令牌 | POST |
-| SearchEmployeePageListAsync | 搜索员工 | 用户令牌 | POST |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| CreateEmployeeAsync | 创建员工 | 用户令牌 | POST | [CreateEmployeeAsync](https://open.feishu.cn/document/directory-v1/employee/create) |
+| UpdateEmployeeAsync | 更新员工信息 | 用户令牌 | PATCH | [UpdateEmployeeAsync](https://open.feishu.cn/document/directory-v1/employee/patch) |
+| DeleteEmployeeByIdAsync | 离职员工 | 用户令牌 | DELETE | [DeleteEmployeeByIdAsync](https://open.feishu.cn/document/directory-v1/employee/delete) |
+| ResurrectEmployeeAsync | 恢复已离职员工 | 用户令牌 | POST | [ResurrectEmployeeAsync](https://open.feishu.cn/document/directory-v1/employee/resurrect) |
+| ResignedEmployeeAsync | 办理员工待离职 | 用户令牌 | PATCH | [ResignedEmployeeAsync](https://open.feishu.cn/document/directory-v1/employee/to_be_resigned) |
+| RegularEmployeeAsync | 取消员工离职 | 用户令牌 | PATCH | [RegularEmployeeAsync](https://open.feishu.cn/document/directory-v1/employee/regular) |
+| QueryEmployeesAsync | 批量查询员工 | 用户令牌 | POST | [QueryEmployeesAsync](https://open.feishu.cn/document/directory-v1/employee/mget) |
+| QueryEmployeePageListAsync | 分页查询员工列表 | 用户令牌 | POST | [QueryEmployeePageListAsync](https://open.feishu.cn/document/directory-v1/employee/filter) |
+| SearchEmployeePageListAsync | 搜索员工 | 用户令牌 | POST | [SearchEmployeePageListAsync](https://open.feishu.cn/document/directory-v1/employee/search) |
 
 ## 函数详细内容
 

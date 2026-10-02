@@ -13,10 +13,10 @@ description: 该接口用于以租户身份获取一段时间内租户的会议�
 - [会议报告概述](https://open.feishu.cn/document/server-docs/vc-v1/report/meeting-report-overview)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| GetDailyReportAsync | 获取会议报告 | 租户令牌 | GET |
-| GetTopUserReportAsync | 获取 Top 用户列表 | 租户令牌 | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| GetDailyReportAsync | 获取会议报告 | 租户令牌 | GET | [GetDailyReportAsync](https://open.feishu.cn/document/server-docs/vc-v1/report/get_daily) |
+| GetTopUserReportAsync | 获取 Top 用户列表 | 租户令牌 | GET | [GetTopUserReportAsync](https://open.feishu.cn/document/server-docs/vc-v1/report/get_top_user) |
 
 ## 函数详细内容
 

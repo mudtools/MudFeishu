@@ -11,7 +11,7 @@ namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// 用于导出一段时间内租户的会议数据，包括：导出会议明细、导出参会人明细、导出参会人会议质量数据。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/vc-v1/export/export-overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/export/export-overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

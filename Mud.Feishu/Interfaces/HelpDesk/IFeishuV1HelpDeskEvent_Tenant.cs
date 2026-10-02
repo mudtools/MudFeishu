@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书服务台事件订阅API是开放平台基于飞书服务台的事件功能开放的订阅/取消订阅API，开发者可以基于这些API管理服务台事件的订阅状态。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/event/subscribe"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/helpdesk-v1/event/subscribe">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "HelpDesk")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

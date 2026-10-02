@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书主数据管理（MDM）「用户数据维度」SDK 用于为指定应用下的用户绑定或解绑一类数据维度（支持批量对多个用户同时增量授权/解除授权）。本接口全部端点为 mdm/v1，仅支持 tenant_access_token 调用。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/mdm-v1/user_auth_data_relation/bind"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/mdm-v1/user_auth_data_relation/bind">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "MDM")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

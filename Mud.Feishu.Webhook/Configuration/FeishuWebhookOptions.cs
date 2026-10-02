@@ -263,6 +263,10 @@ public class FeishuWebhookOptions
     /// <para>
     /// 门控位于 <c>FeishuWebhookService.DispatchEventAsync</c> 的全局工厂路径（应用专属处理器路径不受影响）。
     /// </para>
+    /// <para>
+    /// E-P2-1：与 WebSocket 通道默认值不同（<c>FeishuWebSocketOptions.IgnoreUnknownEventTypes</c> 默认 false，
+    /// 回退默认处理器兜底属行为兼容选择）——跨通道部署时建议显式对齐。
+    /// </para>
     /// </remarks>
     public bool IgnoreUnknownEventTypes { get; set; } = true;
 

@@ -16,12 +16,12 @@ description: 该接口用于以用户身份管理飞书在线文档与电子表�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| CreateFileVersionAsync | 创建文档版本 | 用户令牌 | POST |
-| GetFileVersionPageListByFileTokenAsync | 获取文档版本列表 | 用户令牌 | GET |
-| GetFileVersionByFileTokenAsync | 获取指定版本信息 | 用户令牌 | GET |
-| DeleteFileVersionByFileTokenAsync | 删除文档版本 | 用户令牌 | DELETE |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| CreateFileVersionAsync | 创建文档版本 | 用户令牌 | POST | [CreateFileVersionAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/file-version/create) |
+| GetFileVersionPageListByFileTokenAsync | 获取文档版本列表 | 用户令牌 | GET | [GetFileVersionPageListByFileTokenAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/file-version/list) |
+| GetFileVersionByFileTokenAsync | 获取指定版本信息 | 用户令牌 | GET | [GetFileVersionByFileTokenAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/file-version/get) |
+| DeleteFileVersionByFileTokenAsync | 删除文档版本 | 用户令牌 | DELETE | [DeleteFileVersionByFileTokenAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/file-version/delete) |
 
 ## 函数详细内容
 

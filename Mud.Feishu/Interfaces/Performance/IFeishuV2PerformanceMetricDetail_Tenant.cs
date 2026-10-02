@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书绩效（Performance）「关键指标数据」SDK 是一组服务端 OpenAPI 的封装，用于批量获取指定周期中被评估人的关键指标结果，以及批量录入被评估人的关键指标数据。本接口全部端点为 performance/v2，仅支持 tenant_access_token 调用。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/performance-v1/metric_detail/query"/></para>
+/// <para><see href="https://open.feishu.cn/document/performance-v1/metric_detail/query">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Performance")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

@@ -13,14 +13,14 @@ description: 该接口用于以租户身份管理飞书会议室，提供会议�
 - [会议室概述](https://open.feishu.cn/document/server-docs/vc-v1/room/room-overview)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| CreateMeetingRoomAsync | 创建会议室 | 租户令牌 | POST |
-| DeleteMeetingRoomAsync | 删除会议室 | 租户令牌 | DELETE |
-| UpdateMeetingRoomAsync | 更新会议室 | 租户令牌 | PATCH |
-| GetMeetingRoomAsync | 查询会议室详情 | 租户令牌 | GET |
-| GetMeetingRoomsAsync | 批量查询会议室详情 | 租户令牌 | POST |
-| GetMeetingRoomsPageListAsync | 分页查询会议室列表 | 租户令牌 | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| CreateMeetingRoomAsync | 创建会议室 | 租户令牌 | POST | [CreateMeetingRoomAsync](https://open.feishu.cn/document/server-docs/vc-v1/room/create) |
+| DeleteMeetingRoomAsync | 删除会议室 | 租户令牌 | DELETE | [DeleteMeetingRoomAsync](https://open.feishu.cn/document/server-docs/vc-v1/room/delete) |
+| UpdateMeetingRoomAsync | 更新会议室 | 租户令牌 | PATCH | [UpdateMeetingRoomAsync](https://open.feishu.cn/document/server-docs/vc-v1/room/patch) |
+| GetMeetingRoomAsync | 查询会议室详情 | 租户令牌 | GET | [GetMeetingRoomAsync](https://open.feishu.cn/document/server-docs/vc-v1/room/get) |
+| GetMeetingRoomsAsync | 批量查询会议室详情 | 租户令牌 | POST | [GetMeetingRoomsAsync](https://open.feishu.cn/document/server-docs/vc-v1/room/mget) |
+| GetMeetingRoomsPageListAsync | 分页查询会议室列表 | 租户令牌 | GET | [GetMeetingRoomsPageListAsync](https://open.feishu.cn/document/server-docs/vc-v1/room/list) |
 
 ## 函数详细内容
 

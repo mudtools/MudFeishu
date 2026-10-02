@@ -12,12 +12,12 @@ description: 该接口用于管理飞书考勤归档报表，对应后台假勤�
 归档报表用于对应后台假勤管理-考勤统计-报表-归档报表功能。支持引用系统报表，可设置归档时间和数据归档周期，并且支持根据部门/人员、国家/地区、人员类型、工作地点、职级、序列、职务进行人员圈选。
 
 ## 参考文档
-- [飞书开放平台 - 考勤归档报表文档](https://open.feishu.cn/document/server-docs/attendance-v1/archive_rule/list)
+- [飞书开放平台 - 考勤归档报表文档](https://open.feishu.cn/document/attendance-v1/archive_rule/list)
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
 | `UploadReportArchiveRuleAsync` | 写入归档报表结果 | 租户令牌 | POST |
 | （继承自 FeishuV1AttendanceArchives） | 查询归档报表表头 / 删除归档报表行数据 / 查询所有归档规则 | 租户令牌 | POST/GET |
 

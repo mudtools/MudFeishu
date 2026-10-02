@@ -19,23 +19,23 @@ description: 该接口用于以租户身份读取与维护飞书绩效后台配�
 
 ## 函数列表
 
-| 函数名称                             | 功能描述               | 认证方式 | HTTP 方法 |
-| ------------------------------------ | ---------------------- | -------- | --------- |
-| GetSemesterListAsync                 | 获取周期列表           | 租户令牌 | GET       |
-| QueryActivityListAsync               | 获取项目列表           | 租户令牌 | POST      |
-| QueryAdditionalInformationListAsync  | 批量查询补充信息       | 租户令牌 | POST      |
-| ImportAdditionalInformationAsync     | 批量导入补充信息       | 租户令牌 | POST      |
-| BatchDeleteAdditionalInformationAsync | 批量删除补充信息      | 租户令牌 | DELETE    |
-| WriteUserGroupUserRelAsync           | 更新人员组成员         | 租户令牌 | POST      |
-| QueryRevieweeListAsync               | 获取被评估人信息       | 租户令牌 | POST      |
-| QueryUserInfoListAsync               | 获取绩效周期人员信息   | 租户令牌 | POST      |
-| QueryReviewTemplateListAsync         | 获取绩效模板           | 租户令牌 | POST      |
-| QueryTagBasedQuestionListAsync       | 获取标签填写题配置     | 租户令牌 | POST      |
-| QueryIndicatorListAsync              | 获取评估项列表         | 租户令牌 | POST      |
-| QueryMetricTemplateListAsync         | 获取指标模板列表       | 租户令牌 | POST      |
-| QueryMetricFieldListAsync            | 获取指标字段列表       | 租户令牌 | POST      |
-| QueryMetricListAsync                 | 获取指标列表           | 租户令牌 | POST      |
-| GetMetricTagListAsync                | 获取指标标签列表       | 租户令牌 | GET       |
+| 函数名称                             | 功能描述               | 认证方式 | HTTP 方法 | 接口文档 |
+| ------------------------------------ | ---------------------- | -------- | --------- |----------|
+| GetSemesterListAsync                 | 获取周期列表           | 租户令牌 | GET       | [GetSemesterListAsync](https://open.feishu.cn/document/performance-v1/review_config/semester_activity/semester/list) |
+| QueryActivityListAsync               | 获取项目列表           | 租户令牌 | POST      | [QueryActivityListAsync](https://open.feishu.cn/document/performance-v1/review_config/semester_activity/activity/query) |
+| QueryAdditionalInformationListAsync  | 批量查询补充信息       | 租户令牌 | POST      | [QueryAdditionalInformationListAsync](https://open.feishu.cn/document/performance-v1/review_config/semester_activity/additional_information/query) |
+| ImportAdditionalInformationAsync     | 批量导入补充信息       | 租户令牌 | POST      | [ImportAdditionalInformationAsync](https://open.feishu.cn/document/performance-v1/review_config/semester_activity/additional_information/import) |
+| BatchDeleteAdditionalInformationAsync | 批量删除补充信息      | 租户令牌 | DELETE    | [BatchDeleteAdditionalInformationAsync](https://open.feishu.cn/document/performance-v1/review_config/semester_activity/additional_information/delete) |
+| WriteUserGroupUserRelAsync           | 更新人员组成员         | 租户令牌 | POST      | [WriteUserGroupUserRelAsync](https://open.feishu.cn/document/performance-v1/review_config/semester_activity/user_group_user_rel/write) |
+| QueryRevieweeListAsync               | 获取被评估人信息       | 租户令牌 | POST      | [QueryRevieweeListAsync](https://open.feishu.cn/document/performance-v1/review_config/semester_activity/reviewee/query) |
+| QueryUserInfoListAsync               | 获取绩效周期人员信息   | 租户令牌 | POST      | [QueryUserInfoListAsync](https://open.feishu.cn/document/performance-v1/review_config/semester_activity/reviewee/query-2) |
+| QueryReviewTemplateListAsync         | 获取绩效模板           | 租户令牌 | POST      | [QueryReviewTemplateListAsync](https://open.feishu.cn/document/performance-v1/review_config/review_template/query) |
+| QueryTagBasedQuestionListAsync       | 获取标签填写题配置     | 租户令牌 | POST      | [QueryTagBasedQuestionListAsync](https://open.feishu.cn/document/performance-v1/review_config/review_template/query-2) |
+| QueryIndicatorListAsync              | 获取评估项列表         | 租户令牌 | POST      | [QueryIndicatorListAsync](https://open.feishu.cn/document/performance-v1/review_config/review_template/query-3) |
+| QueryMetricTemplateListAsync         | 获取指标模板列表       | 租户令牌 | POST      | [QueryMetricTemplateListAsync](https://open.feishu.cn/document/performance-v1/review_config/metric_template/query) |
+| QueryMetricFieldListAsync            | 获取指标字段列表       | 租户令牌 | POST      | [QueryMetricFieldListAsync](https://open.feishu.cn/document/performance-v1/review_config/metric_template/query-2) |
+| QueryMetricListAsync                 | 获取指标列表           | 租户令牌 | POST      | [QueryMetricListAsync](https://open.feishu.cn/document/performance-v1/review_config/metric_template/query-3) |
+| GetMetricTagListAsync                | 获取指标标签列表       | 租户令牌 | GET       | [GetMetricTagListAsync](https://open.feishu.cn/document/performance-v1/review_config/metric_template/list) |
 
 ## 函数详细内容
 

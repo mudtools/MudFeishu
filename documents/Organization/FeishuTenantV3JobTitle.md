@@ -18,10 +18,10 @@ description: 该接口用于以租户身份查询飞书职务（Job Title），�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| GetJobTitlesListAsync | 获取职务列表 | 租户令牌 | GET |
-| GetJobTitleByIdAsync | 获取职务详情 | 租户令牌 | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| GetJobTitlesListAsync | 获取职务列表 | 租户令牌 | GET | [GetJobTitlesListAsync](https://open.feishu.cn/document/contact-v3/job_title/list) |
+| GetJobTitleByIdAsync | 获取职务详情 | 租户令牌 | GET | [GetJobTitleByIdAsync](https://open.feishu.cn/document/contact-v3/job_title/get) |
 
 ## 函数详细内容
 

@@ -9,7 +9,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书妙搭（Spark）用户目录 SDK 是一组服务端 OpenAPI 的封装，以租户身份在飞书妙搭与飞书开放平台之间转换用户 ID。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/directory-user/id_convert"/></para>
+/// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/directory-user/id_convert">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Spark", InheritedFrom = nameof(FeishuV1SparkDirectoryUser))]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

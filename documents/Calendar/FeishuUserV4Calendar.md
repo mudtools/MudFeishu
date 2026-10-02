@@ -13,23 +13,25 @@ description: 该接口用于以用户身份调用飞书日历 API 管理日历�
 - [日历管理概述](https://open.feishu.cn/document/server-docs/calendar-v4/calendar/introduction)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| CreateCalendarAsync | 创建共享日历 | 用户令牌 | POST |
-| DeleteCalendarAsync | 删除共享日历 | 用户令牌 | DELETE |
-| GetPrimaryCalendarAsync | 查询主日历信息 | 用户令牌 | POST |
-| GetPrimarysCalendarAsync | 批量获取主日历信息 | 用户令牌 | POST |
-| GetCalendarAsync | 查询日历信息 | 用户令牌 | GET |
-| GetCalendarsAsync | 批量查询日历信息 | 用户令牌 | POST |
-| GetFreebusyCalendarAsync | 查询主日历日程忙闲信息 | 用户令牌 | POST |
-| GetFreebusyCalendarsAsync | 批量查询主日历日程忙闲信息 | 用户令牌 | POST |
-| QueryCalendarsPageListAsync | 查询日历列表 | 用户令牌 | GET |
-| UpdateCalendarAsync | 更新日历信息 | 用户令牌 | PATCH |
-| SearchCalendarsPageListAsync | 搜索日历 | 用户令牌 | POST |
-| SubscribeCalendarAsync | 订阅日历 | 用户令牌 | POST |
-| UnSubscribeCalendarAsync | 取消订阅日历 | 用户令牌 | POST |
-| SubscribeCalendarEventAsync | 订阅日历变更事件 | 用户令牌 | POST |
-| UnSubscribeCalendarEventAsync | 取消订阅日历变更事件 | 用户令牌 | POST |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| CreateCalendarAsync | 创建共享日历 | 用户令牌 | POST | [CreateCalendarAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar/create) |
+| DeleteCalendarAsync | 删除共享日历 | 用户令牌 | DELETE | [DeleteCalendarAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar/delete) |
+| GetPrimaryCalendarAsync | 查询主日历信息 | 用户令牌 | POST | [GetPrimaryCalendarAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar/primary) |
+| GetPrimarysCalendarAsync | 批量获取主日历信息 | 用户令牌 | POST | [GetPrimarysCalendarAsync](https://open.feishu.cn/document/calendar-v4/calendar/primarys) |
+| GetCalendarAsync | 查询日历信息 | 用户令牌 | GET | [GetCalendarAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar/get) |
+| GetCalendarsAsync | 批量查询日历信息 | 用户令牌 | POST | [GetCalendarsAsync](https://open.feishu.cn/document/calendar-v4/calendar/mget-3) |
+| GetFreebusyCalendarAsync | 查询主日历日程忙闲信息 | 用户令牌 | POST | [GetFreebusyCalendarAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar/list) |
+| GetFreebusyCalendarsAsync | 批量查询主日历日程忙闲信息 | 用户令牌 | POST | [GetFreebusyCalendarsAsync](https://open.feishu.cn/document/calendar-v4/calendar/batch) |
+| QueryCalendarsPageListAsync | 查询日历列表 | 用户令牌 | GET | [QueryCalendarsPageListAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar/list-2) |
+| UpdateCalendarAsync | 更新日历信息 | 用户令牌 | PATCH | [UpdateCalendarAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar/patch) |
+| SearchCalendarsPageListAsync | 搜索日历 | 用户令牌 | POST | [SearchCalendarsPageListAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar/search) |
+| SubscribeCalendarAsync | 订阅日历 | 用户令牌 | POST | [SubscribeCalendarAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar/subscribe) |
+| UnSubscribeCalendarAsync | 取消订阅日历 | 用户令牌 | POST | [UnSubscribeCalendarAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar/subscribe) |
+| SubscribeCalendarChangedEventAsync | 订阅日历变更事件 | 用户令牌 | POST | [SubscribeCalendarChangedEventAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar/subscription) |
+| UnsubscribeCalendarChangedEventAsync | 取消订阅日历变更事件 | 用户令牌 | POST | [UnsubscribeCalendarChangedEventAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar/unsubscription) |
+| SubscribeCalendarEventAsync | 订阅日历变更事件 | 用户令牌 | POST | [SubscribeCalendarEventAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar/subscription) |
+| UnSubscribeCalendarEventAsync | 取消订阅日历变更事件 | 用户令牌 | POST | [UnSubscribeCalendarEventAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar/unsubscription) |
 
 ## 函数详细内容
 

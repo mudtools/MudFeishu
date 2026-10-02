@@ -12,7 +12,7 @@ namespace Mud.Feishu.Interfaces;
 /// <summary>
 /// <para>仪表盘 block，仪表盘与数据看板类似，可以从不同的维度统计对多维表格中的数据进行统计。</para>
 /// <para>仪表盘的唯一标识为 block_id，以 blk 开头，可通过多维表格 URL 获取 block_id。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-dashboard/list"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-dashboard/list">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

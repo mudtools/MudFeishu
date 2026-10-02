@@ -19,9 +19,9 @@ description: 该接口用于以租户身份查询本租户所有已建联的关�
 
 ## 函数列表
 
-| 函数名称                            | 功能描述                 | 认证方式 | HTTP 方法 |
-| ----------------------------------- | ------------------------ | -------- | --------- |
-| GetAllCollaborationTenantListAsync  | 管理员获取所有关联组织列表 | 租户令牌 | GET       |
+| 函数名称                            | 功能描述                 | 认证方式 | HTTP 方法 | 接口文档 |
+| ----------------------------------- | ------------------------ | -------- | --------- |----------|
+| GetAllCollaborationTenantListAsync  | 管理员获取所有关联组织列表 | 租户令牌 | GET       | [GetAllCollaborationTenantListAsync](https://open.feishu.cn/document/trust_party-v1/-collaboraiton-organization/list-2) |
 
 ## 函数详细内容
 

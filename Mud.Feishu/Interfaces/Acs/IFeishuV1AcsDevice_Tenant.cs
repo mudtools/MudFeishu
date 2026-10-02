@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书智能门禁（ACS）设备 SDK 是一组服务端 OpenAPI 的封装，用于获取租户内所有门禁设备列表（设备 ID、名称、SN 码与在线状态等属性）。本接口全部端点仅支持 tenant_access_token 调用，仅支持自建应用。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/acs-v1/device/list"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/acs-v1/device/list">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Acs")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

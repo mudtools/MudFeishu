@@ -16,17 +16,17 @@ description: 该接口用于以用户身份订阅飞书云文档事件，支持�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| SubscribeFileEventAsync | 订阅云文档事件 | 用户令牌 | POST |
-| GetFileSubscribeAsync | 查询云文档事件订阅状态 | 用户令牌 | GET |
-| UnsubscribeFileEventAsync | 取消云文档事件订阅 | 用户令牌 | DELETE |
-| SubscribeUserFileEventAsync | 订阅用户云文档事件 | 用户令牌 | POST |
-| UnsubscribeUserFileEventAsync | 取消用户云文档事件订阅 | 用户令牌 | DELETE |
-| GetUserFileSubscribeAsync | 查询用户云文档事件订阅状态 | 用户令牌 | GET |
-| GetFileSubscriptionAsync | 获取订阅状态 | 用户令牌 | GET |
-| CreateFileSubscriptionAsync | 创建订阅 | 用户令牌 | POST |
-| UpdateFileSubscriptionAsync | 更新订阅状态 | 用户令牌 | PATCH |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| SubscribeFileEventAsync | 订阅云文档事件 | 用户令牌 | POST | [SubscribeFileEventAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/event/subscribe) |
+| GetFileSubscribeAsync | 查询云文档事件订阅状态 | 用户令牌 | GET | [GetFileSubscribeAsync](https://open.feishu.cn/document/docs/drive-v1/event/get_subscribe) |
+| UnsubscribeFileEventAsync | 取消云文档事件订阅 | 用户令牌 | DELETE | [UnsubscribeFileEventAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/event/delete_subscribe) |
+| SubscribeUserFileEventAsync | 订阅用户云文档事件 | 用户令牌 | POST | [SubscribeUserFileEventAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/drive-v1/user/subscription) |
+| UnsubscribeUserFileEventAsync | 取消用户云文档事件订阅 | 用户令牌 | DELETE | [UnsubscribeUserFileEventAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/drive-v1/user/remove_subscription) |
+| GetUserFileSubscribeAsync | 查询用户云文档事件订阅状态 | 用户令牌 | GET | [GetUserFileSubscribeAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/drive-v1/user/subscription_status) |
+| GetFileSubscriptionAsync | 获取订阅状态 | 用户令牌 | GET | [GetFileSubscriptionAsync](https://open.feishu.cn/document/server-docs/docs/docs-assistant/file-subscription/get) |
+| CreateFileSubscriptionAsync | 创建订阅 | 用户令牌 | POST | [CreateFileSubscriptionAsync](https://open.feishu.cn/document/server-docs/docs/docs-assistant/file-subscription/create) |
+| UpdateFileSubscriptionAsync | 更新订阅状态 | 用户令牌 | PATCH | [UpdateFileSubscriptionAsync](https://open.feishu.cn/document/server-docs/docs/docs-assistant/file-subscription/patch) |
 
 ## 函数详细内容
 

@@ -13,7 +13,7 @@ namespace Mud.Feishu;
 /// 飞书组织机构部门是指企业组织架构树上的某一个节点。
 /// <para>当前接口使用租户令牌访问，适应于租户应用场景。</para>
 /// <para>在部门内部，可添加用户作为部门成员，也可添加新的部门作为子部门。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/contact-v3/department/field-overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/department/field-overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Organization", InheritedFrom = nameof(FeishuV3Departments))]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -21,6 +21,7 @@ public interface IFeishuTenantV3Departments : IFeishuV3Departments
 {
     /// <summary>
     /// 在通讯录内创建一个部门。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/department/create">接口文档</see></para>
     /// </summary>
     /// <param name="departmentCreateRequest">创建部门的请求体。</param>
     /// <param name="user_id_type">用户 ID 类型</param>
@@ -38,6 +39,7 @@ public interface IFeishuTenantV3Departments : IFeishuV3Departments
 
     /// <summary>
     /// 更新指定部门的部分信息，包括名称、父部门、排序以及负责人等。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/department/patch">接口文档</see></para>
     /// </summary>
     /// <param name="departmentCreateRequest">创建部门的请求体。</param>
     /// <param name="department_id">部门 ID，ID 类型需要与查询参数 department_id_type 的取值保持一致。</param>
@@ -54,6 +56,7 @@ public interface IFeishuTenantV3Departments : IFeishuV3Departments
 
     /// <summary>
     /// 更新指定部门的信息，包括名称、父部门以及负责人等信息。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/department/update">接口文档</see></para>
     /// </summary>
     /// <param name="departmentCreateRequest">创建部门的请求体。</param>
     /// <param name="department_id">部门 ID，ID 类型需要与查询参数 department_id_type 的取值保持一致。</param>
@@ -70,6 +73,7 @@ public interface IFeishuTenantV3Departments : IFeishuV3Departments
 
     /// <summary>
     /// 更新部门的自定义 ID，即 department_id。
+    /// <para><see href="https://open.feishu.cn/document/contact-v3/department/update_department_id">接口文档</see></para>
     /// </summary>
     /// <param name="departMentUpdateIdRequest">更新部门ID的请求体。</param>
     /// <param name="department_id">部门 ID，ID 类型需要与查询参数 department_id_type 的取值保持一致。</param>
@@ -84,6 +88,7 @@ public interface IFeishuTenantV3Departments : IFeishuV3Departments
 
     /// <summary>
     /// 将指定部门的部门群转为普通群。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/department/unbind_department_chat">接口文档</see></para>
     /// </summary> 
     /// <param name="departmentRequest">部门 ID，ID 类型需要与查询参数 department_id_type 的取值保持一致。</param>
     /// <param name="department_id_type">此次调用中的部门 ID 类型。</param>
@@ -96,6 +101,7 @@ public interface IFeishuTenantV3Departments : IFeishuV3Departments
 
     /// <summary>
     /// 从通讯录中删除指定的部门。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/department/delete">接口文档</see></para>
     /// </summary>
     /// <param name="department_id">部门 ID，ID 类型与 department_id_type 的取值保持一致。</param>
     /// <param name="department_id_type">此次调用中使用的部门 ID 类型。</param>

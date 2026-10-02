@@ -19,11 +19,11 @@ description: 该接口用于以租户身份管理飞书多维表格自动化流�
 
 ## 函数列表
 
-| 函数名称                      | 功能描述           | 认证方式 | HTTP 方法 |
-| ----------------------------- | ------------------ | -------- | --------- |
-| GetAppWorkflowListAsync       | 列出自动化流程     | 租户令牌 | GET       |
-| UpdateAppWorkflowAsync        | 更新自动化流程状态 | 租户令牌 | PUT       |
-| GetAppBlockWorkflowListAsync  | 列出工作流         | 租户令牌 | GET       |
+| 函数名称                      | 功能描述           | 认证方式 | HTTP 方法 | 接口文档 |
+| ----------------------------- | ------------------ | -------- | --------- |----------|
+| GetAppWorkflowListAsync       | 列出自动化流程     | 租户令牌 | GET       | [GetAppWorkflowListAsync](https://open.feishu.cn/document/docs/bitable-v1/app-workflow/list) |
+| UpdateAppWorkflowAsync        | 更新自动化流程状态 | 租户令牌 | PUT       | [UpdateAppWorkflowAsync](https://open.feishu.cn/document/docs/bitable-v1/app-workflow/update) |
+| GetAppBlockWorkflowListAsync  | 列出工作流         | 租户令牌 | GET       | [GetAppBlockWorkflowListAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/bitable-v1/app-block_workflow/list) |
 
 ## 函数详细内容
 

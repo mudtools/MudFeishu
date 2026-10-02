@@ -16,7 +16,7 @@ namespace Mud.Feishu;
 /// <remarks>
 /// <para>可以将角色设置为审批流程的审批人，这样该角色内的成员均可处理审批。</para>
 /// <para>同时，每一个角色成员都可以设置管理范围，以便指定不同成员管理不同的部门。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/contact-v3/functional_role-member/resource-introduction"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/functional_role-member/resource-introduction">接口文档</see></para>
 /// </remarks>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Organization")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -24,6 +24,7 @@ public interface IFeishuTenantV3RoleMember : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 在指定角色内添加一个或多个成员。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/functional_role-member/batch_create">接口文档</see></para>
     /// </summary>
     /// <param name="role_id">角色 ID。</param>
     /// <param name="user_id_type">用户 ID 类型，默认值：open_id</param>
@@ -39,6 +40,7 @@ public interface IFeishuTenantV3RoleMember : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 为指定角色内的一个或多个角色成员设置管理范围。管理范围是指角色成员可以管理的部门范围。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/functional_role-member/scopes">接口文档</see></para>
     /// </summary>
     /// <param name="role_id">角色 ID。</param>
     /// <param name="user_id_type">用户 ID 类型，默认值：open_id</param>
@@ -56,6 +58,7 @@ public interface IFeishuTenantV3RoleMember : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 查询指定角色内的指定成员的管理范围。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/functional_role-member/get">接口文档</see></para>
     /// </summary>
     /// <param name="role_id">角色 ID。</param>
     /// <param name="member_id">角色成员的用户 ID，ID 类型需要和查询参数 user_id_type 的取值保持一致。</param>
@@ -73,6 +76,7 @@ public interface IFeishuTenantV3RoleMember : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 查询指定角色内的所有成员信息，包括成员的用户 ID、管理范围。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/functional_role-member/list">接口文档</see></para>
     /// </summary>
     /// <param name="role_id">角色 ID。</param>
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
@@ -91,6 +95,7 @@ public interface IFeishuTenantV3RoleMember : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 在指定角色内删除一个或多个成员。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/functional_role-member/batch_delete">接口文档</see></para>
     /// </summary>
     /// <param name="role_id">角色 ID。</param>
     /// <param name="roleMembersRequest">需删除的角色成员的用户 ID 列表请求体。</param>

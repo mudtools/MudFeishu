@@ -19,14 +19,14 @@ description: 该接口用于以租户身份管理飞书招聘需求，支持招�
 
 ## 函数列表
 
-| 函数名称                          | 功能描述                       | 认证方式 | HTTP 方法 |
-| --------------------------------- | ------------------------------ | -------- | --------- |
-| CreateJobRequirementAsync         | 创建招聘需求                   | 租户令牌 | POST      |
-| UpdateJobRequirementAsync         | 更新招聘需求                   | 租户令牌 | PUT       |
-| SearchJobRequirementAsync         | 获取招聘需求信息（按 ID 批量查询） | 租户令牌 | POST   |
-| GetJobRequirementListAsync        | 获取招聘需求列表               | 租户令牌 | GET       |
-| DeleteJobRequirementAsync         | 删除招聘需求                   | 租户令牌 | DELETE    |
-| GetJobRequirementSchemaListAsync  | 获取招聘需求模板               | 租户令牌 | GET       |
+| 函数名称                          | 功能描述                       | 认证方式 | HTTP 方法 | 接口文档 |
+| --------------------------------- | ------------------------------ | -------- | --------- |----------|
+| CreateJobRequirementAsync         | 创建招聘需求                   | 租户令牌 | POST      | [CreateJobRequirementAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job_requirement/create) |
+| UpdateJobRequirementAsync         | 更新招聘需求                   | 租户令牌 | PUT       | [UpdateJobRequirementAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job_requirement/update) |
+| SearchJobRequirementAsync         | 获取招聘需求信息（按 ID 批量查询） | 租户令牌 | POST   | [SearchJobRequirementAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job_requirement/list_by_id) |
+| GetJobRequirementListAsync        | 获取招聘需求列表               | 租户令牌 | GET       | [GetJobRequirementListAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job_requirement/list-2) |
+| DeleteJobRequirementAsync         | 删除招聘需求                   | 租户令牌 | DELETE    | [DeleteJobRequirementAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job_requirement/delete) |
+| GetJobRequirementSchemaListAsync  | 获取招聘需求模板               | 租户令牌 | GET       | [GetJobRequirementSchemaListAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job_requirement/list) |
 
 ## 函数详细内容
 

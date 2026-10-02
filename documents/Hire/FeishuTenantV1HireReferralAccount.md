@@ -19,14 +19,14 @@ description: 该接口用于以租户身份管理飞书招聘内推奖励账户�
 
 ## 函数列表
 
-| 函数名称                            | 功能描述               | 认证方式 | HTTP 方法 |
-| ----------------------------------- | ---------------------- | -------- | --------- |
-| CreateReferralAccountAsync          | 注册内推账户           | 租户令牌 | POST      |
-| EnableReferralAccountAsync          | 启用内推账户           | 租户令牌 | POST      |
-| GetReferralAccountAssetsAsync       | 查询内推账户           | 租户令牌 | GET       |
-| DeactivateReferralAccountAsync      | 停用内推账户           | 租户令牌 | POST      |
-| WithdrawReferralAccountAsync        | 全额提取内推账户余额   | 租户令牌 | POST      |
-| ReconciliationReferralAccountAsync  | 内推账户提现数据对账   | 租户令牌 | POST      |
+| 函数名称                            | 功能描述               | 认证方式 | HTTP 方法 | 接口文档 |
+| ----------------------------------- | ---------------------- | -------- | --------- |----------|
+| CreateReferralAccountAsync          | 注册内推账户           | 租户令牌 | POST      | [CreateReferralAccountAsync](https://open.feishu.cn/document/hire-v1/referral_account/create) |
+| EnableReferralAccountAsync          | 启用内推账户           | 租户令牌 | POST      | [EnableReferralAccountAsync](https://open.feishu.cn/document/hire-v1/referral_account/enable) |
+| GetReferralAccountAssetsAsync       | 查询内推账户           | 租户令牌 | GET       | [GetReferralAccountAssetsAsync](https://open.feishu.cn/document/hire-v1/referral_account/get_account_assets) |
+| DeactivateReferralAccountAsync      | 停用内推账户           | 租户令牌 | POST      | [DeactivateReferralAccountAsync](https://open.feishu.cn/document/hire-v1/referral_account/deactivate) |
+| WithdrawReferralAccountAsync        | 全额提取内推账户余额   | 租户令牌 | POST      | [WithdrawReferralAccountAsync](https://open.feishu.cn/document/hire-v1/referral_account/withdraw) |
+| ReconciliationReferralAccountAsync  | 内推账户提现数据对账   | 租户令牌 | POST      | [ReconciliationReferralAccountAsync](https://open.feishu.cn/document/hire-v1/referral_account/reconciliation) |
 
 ## 函数详细内容
 

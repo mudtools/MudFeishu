@@ -12,9 +12,9 @@ description: 该接口用于通过飞书 AI 光学字符识别（OCR）能力，
 - [基础图片识别](https://open.feishu.cn/document/server-docs/ai/optical_char_recognition-v1/basic_recognize)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| BasicRecognizeImageAsync | 识别图片中的文字 | TenantAccessToken | POST |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| BasicRecognizeImageAsync | 识别图片中的文字 | TenantAccessToken | POST | [BasicRecognizeImageAsync](https://open.feishu.cn/document/server-docs/ai/optical_char_recognition-v1/basic_recognize) |
 
 ## 函数详细内容
 

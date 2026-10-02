@@ -21,22 +21,22 @@ description: 该接口用于以租户身份管理飞书多维表格高级权限�
 
 ### 自定义角色管理
 
-| 函数名称               | 功能描述       | 认证方式 | HTTP 方法 |
-| ---------------------- | -------------- | -------- | --------- |
-| CreateRoleAsync        | 新增自定义角色 | 租户令牌 | POST      |
-| UpdateRoleAsync        | 更新自定义角色 | 租户令牌 | PUT       |
-| GetRolesPageListAsync  | 列出自定义角色 | 租户令牌 | GET       |
-| DeleteRoleAsync        | 删除自定义角色 | 租户令牌 | DELETE    |
+| 函数名称               | 功能描述       | 认证方式 | HTTP 方法 | 接口文档 |
+| ---------------------- | -------------- | -------- | --------- |----------|
+| CreateRoleAsync        | 新增自定义角色 | 租户令牌 | POST      | [CreateRoleAsync](https://open.feishu.cn/document/docs/bitable-v1/advanced-permission/app-role/create-2) |
+| UpdateRoleAsync        | 更新自定义角色 | 租户令牌 | PUT       | [UpdateRoleAsync](https://open.feishu.cn/document/docs/bitable-v1/advanced-permission/app-role/update-2) |
+| GetRolesPageListAsync  | 列出自定义角色 | 租户令牌 | GET       | [GetRolesPageListAsync](https://open.feishu.cn/document/docs/bitable-v1/advanced-permission/app-role/list-2) |
+| DeleteRoleAsync        | 删除自定义角色 | 租户令牌 | DELETE    | [DeleteRoleAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/advanced-permission/app-role/delete) |
 
 ### 协作者管理
 
-| 函数名称                    | 功能描述       | 认证方式 | HTTP 方法 |
-| --------------------------- | -------------- | -------- | --------- |
-| AddRoleMemberAsync          | 新增协作者     | 租户令牌 | POST      |
-| AddRoleMembersAsync         | 批量新增协作者 | 租户令牌 | POST      |
-| GetRoleMembersPageListAsync | 分页列出协作者 | 租户令牌 | GET       |
-| DeleteRoleMemberAsync       | 删除协作者     | 租户令牌 | DELETE    |
-| DeleteRoleMembersAsync      | 批量删除协作者 | 租户令牌 | POST      |
+| 函数名称                    | 功能描述       | 认证方式 | HTTP 方法 | 接口文档 |
+| --------------------------- | -------------- | -------- | --------- |----------|
+| AddRoleMemberAsync          | 新增协作者     | 租户令牌 | POST      | [AddRoleMemberAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/advanced-permission/app-role-member/create) |
+| AddRoleMembersAsync         | 批量新增协作者 | 租户令牌 | POST      | [AddRoleMembersAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/advanced-permission/app-role-member/batch_create) |
+| GetRoleMembersPageListAsync | 分页列出协作者 | 租户令牌 | GET       | [GetRoleMembersPageListAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/advanced-permission/app-role-member/list) |
+| DeleteRoleMemberAsync       | 删除协作者     | 租户令牌 | DELETE    | [DeleteRoleMemberAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/advanced-permission/app-role-member/delete) |
+| DeleteRoleMembersAsync      | 批量删除协作者 | 租户令牌 | POST      | [DeleteRoleMembersAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/advanced-permission/app-role-member/batch_delete) |
 
 ## 函数详细内容
 

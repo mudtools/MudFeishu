@@ -16,13 +16,13 @@ description: 该接口用于管理飞书考勤打卡信息，支持导入、查�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| BatchCreateUserFlowAsync | 导入打卡流水 | 租户令牌 | POST |
-| GetUserFlowAsync | 获取打卡流水记录 | 租户令牌 | GET |
-| QueryUserFlowAsync | 批量查询打卡流水 | 租户令牌 | POST |
-| BatchDelUserFlowAsync | 删除打卡流水 | 租户令牌 | POST |
-| QueryUserTaskAsync | 查询打卡结果 | 租户令牌 | POST |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| BatchCreateUserFlowAsync | 导入打卡流水 | 租户令牌 | POST | [BatchCreateUserFlowAsync](https://open.feishu.cn/document/server-docs/attendance-v1/user_task/batch_create) |
+| GetUserFlowAsync | 获取打卡流水记录 | 租户令牌 | GET | [GetUserFlowAsync](https://open.feishu.cn/document/server-docs/attendance-v1/user_task/get) |
+| QueryUserFlowAsync | 批量查询打卡流水 | 租户令牌 | POST | [QueryUserFlowAsync](https://open.feishu.cn/document/server-docs/attendance-v1/user_task/query-2) |
+| BatchDelUserFlowAsync | 删除打卡流水 | 租户令牌 | POST | [BatchDelUserFlowAsync](https://open.feishu.cn/document/attendance-v1/user_task/batch_del) |
+| QueryUserTaskAsync | 查询打卡结果 | 租户令牌 | POST | [QueryUserTaskAsync](https://open.feishu.cn/document/server-docs/attendance-v1/user_task/query) |
 
 ---
 

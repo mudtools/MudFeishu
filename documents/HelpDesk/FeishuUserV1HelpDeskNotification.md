@@ -9,27 +9,27 @@ description: 该接口用于以用户身份管理飞书服务台推送任务，�
 飞书服务台推送API是开放平台基于飞书服务台的推送功能开放的创建/查询/更新/预览/审批/发送等API，开发者可以基于这些API管理服务台推送任务。本接口使用用户访问令牌（UserAccessToken）鉴权，并额外实现 `ICurrentUserId`；接口自身声明了 `HelpdeskTokenAndId` 属性，用于在服务台请求 Header 中添加 `X-Lark-Helpdesk-Authorization` 参数（Value 为 `base64(helpdesk_id:helpdesk_token)`，即通过 base64 加密将 helpdesk_id 和 helpdesk_token 用 `:` 连接而成的字符串）。
 
 ## 参考文档
-- [创建推送](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/notification/create)
-- [查询推送详情](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/notification/get)
-- [更新推送](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/notification/patch)
-- [预览推送](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/notification/preview)
-- [提交审批](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/notification/submit_approve)
-- [发送推送](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/notification/execute_send)
-- [取消推送](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/notification/cancel_send)
-- [取消审批](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/notification/cancel_approve)
+- [创建推送](https://open.feishu.cn/document/server-docs/helpdesk-v1/notification/create)
+- [查询推送详情](https://open.feishu.cn/document/server-docs/helpdesk-v1/notification/get)
+- [更新推送](https://open.feishu.cn/document/server-docs/helpdesk-v1/notification/patch)
+- [预览推送](https://open.feishu.cn/document/server-docs/helpdesk-v1/notification/preview)
+- [提交审批](https://open.feishu.cn/document/server-docs/helpdesk-v1/notification/submit_approve)
+- [发送推送](https://open.feishu.cn/document/server-docs/helpdesk-v1/notification/execute_send)
+- [取消推送](https://open.feishu.cn/document/server-docs/helpdesk-v1/notification/cancel_send)
+- [取消审批](https://open.feishu.cn/document/server-docs/helpdesk-v1/notification/cancel_approve)
 - [服务台接入指南](https://open.feishu.cn/document/server-docs/helpdesk-v1/access-guide)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| CreateNotificationAsync | 创建推送 | UserAccessToken | POST |
-| GetNotificationAsync | 查询推送详情 | UserAccessToken | GET |
-| UpdateNotificationAsync | 更新推送 | UserAccessToken | PATCH |
-| PreviewNotificationAsync | 预览推送 | UserAccessToken | POST |
-| SubmitApproveNotificationAsync | 提交审批 | UserAccessToken | POST |
-| ExecuteSendNotificationAsync | 发送推送 | UserAccessToken | POST |
-| CancelSendNotificationAsync | 取消推送 | UserAccessToken | POST |
-| CancelApproveNotificationAsync | 取消审批 | UserAccessToken | POST |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| CreateNotificationAsync | 创建推送 | UserAccessToken | POST | [CreateNotificationAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/notification/create) |
+| GetNotificationAsync | 查询推送详情 | UserAccessToken | GET | [GetNotificationAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/notification/get) |
+| UpdateNotificationAsync | 更新推送 | UserAccessToken | PATCH | [UpdateNotificationAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/notification/patch) |
+| PreviewNotificationAsync | 预览推送 | UserAccessToken | POST | [PreviewNotificationAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/notification/preview) |
+| SubmitApproveNotificationAsync | 提交审批 | UserAccessToken | POST | [SubmitApproveNotificationAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/notification/submit_approve) |
+| ExecuteSendNotificationAsync | 发送推送 | UserAccessToken | POST | [ExecuteSendNotificationAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/notification/execute_send) |
+| CancelSendNotificationAsync | 取消推送 | UserAccessToken | POST | [CancelSendNotificationAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/notification/cancel_send) |
+| CancelApproveNotificationAsync | 取消审批 | UserAccessToken | POST | [CancelApproveNotificationAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/helpdesk-v1/notification/cancel_approve) |
 
 ## 函数详细内容
 

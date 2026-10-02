@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书个人设置（PersonalSettings）「系统状态」SDK 是一组服务端 OpenAPI 的封装，用于管理租户维度的系统状态（创建、删除、修改、查询）以及为用户批量开启/关闭系统状态。每个租户最多创建 10 个系统状态；操作的数据为租户维度数据，请小心操作。本接口全部端点为 personal_settings/v1，仅支持 tenant_access_token 调用。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/personal_settings-v1/system_status/list"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/personal_settings-v1/system_status/list">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "PersonalSettings")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

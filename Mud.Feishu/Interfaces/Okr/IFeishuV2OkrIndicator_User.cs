@@ -10,7 +10,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书 OKR「指标」SDK 是一组服务端 OpenAPI 的封装，用于查询 Objective/Key Result 的指标以及更新指标配置与取值（用户令牌）。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/okr-v2/okr-objective-indicator/list"/></para>
+/// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/okr-v2/okr-objective-indicator/list">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Okr", InheritedFrom = nameof(FeishuV2OkrIndicator))]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

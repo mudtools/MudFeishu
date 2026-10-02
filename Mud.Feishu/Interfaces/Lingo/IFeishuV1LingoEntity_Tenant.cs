@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书词典（Lingo）词条入口域租户态 SDK 是一组服务端 OpenAPI 的封装，除继承自 <see cref="IFeishuV1LingoEntity"/> 的通用查询端点外，本接口还提供免审创建/更新/删除词条端点（仅 tenant_access_token 可调用）。用户态见 <see cref="IFeishuUserV1LingoEntity"/>。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/lingo-v1/overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/lingo-v1/overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Lingo", InheritedFrom = nameof(FeishuV1LingoEntity))]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

@@ -28,18 +28,18 @@ description: 该接口用于以用户身份管理飞书妙搭（Spark）应用�
 
 ## 函数列表
 
-| 函数名称                        | 功能描述             | 认证方式 | HTTP 方法 |
-| ------------------------------- | -------------------- | -------- | --------- |
-| CreateAppAsync                  | 创建妙搭应用         | 用户令牌 | POST      |
-| PatchAppAsync                   | 更新妙搭应用信息     | 用户令牌 | PATCH     |
-| UploadAppIconAsync              | 上传妙搭应用图标     | 用户令牌 | POST      |
-| UploadHtmlCodeAndReleaseAsync   | 上传 HTML 代码并发布 | 用户令牌 | POST      |
-| GetAppVisibilityAsync           | 获取妙搭应用可用范围 | 用户令牌 | GET       |
-| UpdateAppVisibilityAsync        | 更新妙搭应用可用范围 | 用户令牌 | PUT       |
-| GetAppListAsync                 | 批量获取妙搭应用     | 用户令牌 | GET       |
-| GetAppCreditUsageAsync          | 获取应用消耗 AI 额度 | 用户令牌 | GET       |
-| GetAppAnalyticsOverviewAsync    | 获取运营数据总览     | 用户令牌 | GET       |
-| QueryAppAnalyticsDataAsync      | 获取运营数据趋势     | 用户令牌 | POST      |
+| 函数名称                        | 功能描述             | 认证方式 | HTTP 方法 | 接口文档 |
+| ------------------------------- | -------------------- | -------- | --------- |----------|
+| CreateAppAsync                  | 创建妙搭应用         | 用户令牌 | POST      | [CreateAppAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app/create) |
+| PatchAppAsync                   | 更新妙搭应用信息     | 用户令牌 | PATCH     | [PatchAppAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app/patch) |
+| UploadAppIconAsync              | 上传妙搭应用图标     | 用户令牌 | POST      | [UploadAppIconAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app/icon) |
+| UploadHtmlCodeAndReleaseAsync   | 上传 HTML 代码并发布 | 用户令牌 | POST      | [UploadHtmlCodeAndReleaseAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app/upload_html_code_and_release) |
+| GetAppVisibilityAsync           | 获取妙搭应用可用范围 | 用户令牌 | GET       | [GetAppVisibilityAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app/get_app_visibility) |
+| UpdateAppVisibilityAsync        | 更新妙搭应用可用范围 | 用户令牌 | PUT       | [UpdateAppVisibilityAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app/update_app_visibility) |
+| GetAppListAsync                 | 批量获取妙搭应用     | 用户令牌 | GET       | [GetAppListAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app/list) |
+| GetAppCreditUsageAsync          | 获取应用消耗 AI 额度 | 用户令牌 | GET       | [GetAppCreditUsageAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app/open_api_credit_usage) |
+| GetAppAnalyticsOverviewAsync    | 获取运营数据总览     | 用户令牌 | GET       | [GetAppAnalyticsOverviewAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app/open_api_analytics_overview) |
+| QueryAppAnalyticsDataAsync      | 获取运营数据趋势     | 用户令牌 | POST      | [QueryAppAnalyticsDataAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app/query_analytics_data) |
 
 > 后 4 个只读端点继承自 `IFeishuV1SparkApp`（双令牌基接口），也可通过 `IFeishuTenantV1SparkApp` 以租户令牌调用。
 

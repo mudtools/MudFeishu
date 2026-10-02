@@ -19,9 +19,9 @@ description: 该接口用于以租户身份审批飞书设备申报，支持通�
 
 ## 函数列表
 
-| 函数名称                      | 功能描述     | 认证方式 | HTTP 方法 |
-| ----------------------------- | ------------ | -------- | --------- |
-| UpdateDeviceApplyRecordAsync  | 审批设备申报 | 租户令牌 | PUT       |
+| 函数名称                      | 功能描述     | 认证方式 | HTTP 方法 | 接口文档 |
+| ----------------------------- | ------------ | -------- | --------- |----------|
+| UpdateDeviceApplyRecordAsync  | 审批设备申报 | 租户令牌 | PUT       | [UpdateDeviceApplyRecordAsync](https://open.feishu.cn/document/security_and_compliance-v1/security_and_compliance-v2/device_apply_record/update) |
 
 ## 函数详细内容
 

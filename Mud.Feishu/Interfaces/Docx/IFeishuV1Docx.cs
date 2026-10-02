@@ -13,7 +13,7 @@ namespace Mud.Feishu.Interfaces;
 /// 飞书开放平台云文档分为文档和块。
 /// <para>文档是用户在云文档中创建的一篇在线文档。每篇文档都有唯一的 document_id 作为标识。</para>
 /// <para>块是文档中的最小构建单元，是内容的结构化组成元素，有着明确的含义。在一篇文档中，有多个不同类型的段落，这些段落被定义为块（Block）。块有多种形态，可以是一段文字、一张电子表格、一张图片或一个多维表格等。每个块都有唯一的 block_id 作为标识。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/docx-overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/docx-overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -21,7 +21,7 @@ public interface IFeishuV1Docx : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 创建文档类型为 docx 的文档。可选择传入文档标题和文件夹。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document/create">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/document/create">接口文档</see></para>
     /// </summary>
     /// <param name="createDocumentRequest">创建文档请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -33,7 +33,7 @@ public interface IFeishuV1Docx : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取文档基本信息。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document/get">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/document/get">接口文档</see></para>
     /// </summary>
     /// <param name="document_id">文档的唯一标识。
     /// <para>**注意**：</para>
@@ -49,7 +49,7 @@ public interface IFeishuV1Docx : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取文档的纯文本内容。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document/raw_content">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/document-docx/docx-v1/document/raw_content">接口文档</see></para>
     /// </summary>
     /// <param name="document_id">文档的唯一标识。
     /// <para>**注意**：</para>

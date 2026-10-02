@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Abstractions;
+using Mud.Feishu.Abstractions.EventHandlers;
 
 namespace Mud.Feishu.Webhook;
 
@@ -56,17 +57,18 @@ public class FeishuEventDecryptor(ILogger<FeishuEventDecryptor> logger) : IFeish
                     // 将整个 JSON 作为 Event，这样 HandleEncryptedVerificationAsync 可以从中提取 challenge
                     eventData.Event = decryptedJson;
                 }
-                // 检查是否为v2.0版本
-                else if (root.TryGetProperty("schema", out var schemaElement))
-                {
-                    schemaVersion = schemaElement.GetString();
-                    // v2.0版本解析
-                    eventData = ParseV2Event(root);
-                }
                 else
                 {
-                    // v1.0版本：手动解析，以正确处理create_time字段是字符串的情况
-                    eventData = ParseV1Event(root);
+                    // R-E1（AD-1）：v2.0 / v1.0 / data 包裹形态统一由共享解析器解析（单一真源）。
+                    // 此前本地 ParseV1Event 按根级 event_id/event_type/tenant_key/app_id 读取，
+                    // 与官方 v1.0 格式（根级 uuid/token/ts、事件字段在 event 内）不符，
+                    // 导致 v1 事件五个关键字段全空、被 fail-closed 400 拒绝（E-P0-1）。
+                    if (!FeishuEventDataParser.TryParse(root, out eventData, out _))
+                    {
+                        _logger.LogWarning("事件数据解析失败：无法确定事件类型（可能是畸形或非事件报文）");
+                        return null;
+                    }
+                    schemaVersion = eventData.Schema;
                 }
             }
 
@@ -109,133 +111,6 @@ public class FeishuEventDecryptor(ILogger<FeishuEventDecryptor> logger) : IFeish
             throw new InvalidOperationException("解密事件数据时发生错误", ex);
         }
     }
-
-    /// <summary>
-    /// 解析时间戳字段（支持字符串和数字格式，自动转换为秒）
-    /// </summary>
-    private static long ParseCreateTime(JsonElement element)
-    {
-        if (element.ValueKind == JsonValueKind.String &&
-            long.TryParse(element.GetString(), out var timeLong))
-        {
-            return timeLong / 1000; // 转换为秒
-        }
-        if (element.TryGetInt64(out var timeInt))
-        {
-            return timeInt / 1000;
-        }
-        return 0;
-    }
-
-    /// <summary>
-    /// 解析v2.0版本的事件
-    /// </summary>
-    private EventData ParseV2Event(JsonElement root)
-    {
-        var eventData = new EventData();
-
-        // 解析header
-        if (root.TryGetProperty("header", out var headerElement))
-        {
-            // 构建 Header 对象，保留完整的 v2.0 header 数据
-            var header = new FeishuEventHeader { Schema = "2.0" };
-
-            if (headerElement.TryGetProperty("event_id", out var eventIdElement))
-            {
-                var eventId = eventIdElement.GetString() ?? string.Empty;
-                header.EventId = eventId;
-                eventData.EventId = eventId;
-            }
-
-            if (headerElement.TryGetProperty("event_type", out var eventTypeElement))
-            {
-                var eventType = eventTypeElement.GetString() ?? string.Empty;
-                header.EventType = eventType;
-                eventData.EventType = eventType;
-            }
-
-            if (headerElement.TryGetProperty("create_time", out var createTimeElement))
-            {
-                header.CreateTime = createTimeElement.ValueKind == JsonValueKind.String
-                    ? createTimeElement.GetString()
-                    : createTimeElement.TryGetInt64(out var ct) ? ct.ToString() : null;
-                eventData.CreateTime = ParseCreateTime(createTimeElement);
-            }
-
-            if (headerElement.TryGetProperty("token", out var tokenElement))
-                header.Token = tokenElement.GetString();
-
-            if (headerElement.TryGetProperty("tenant_key", out var tenantKeyElement))
-            {
-                header.TenantKey = tenantKeyElement.GetString() ?? string.Empty;
-                eventData.TenantKey = header.TenantKey;
-            }
-
-            if (headerElement.TryGetProperty("app_id", out var appIdElement))
-            {
-                header.AppId = appIdElement.GetString() ?? string.Empty;
-                eventData.AppId = header.AppId;
-            }
-
-            // 设置完整 Header
-            eventData.Header = header;
-        }
-
-        // 解析 schema（在 header 之外）
-        if (root.TryGetProperty("schema", out var schemaElement))
-        {
-            eventData.Header ??= new FeishuEventHeader();
-            eventData.Header.Schema = schemaElement.GetString();
-        }
-
-        // 解析event
-        if (root.TryGetProperty("event", out var eventElement))
-        {
-            // 将event对象转换为原始JSON字符串,避免依赖已释放的JsonDocument
-            // 这样可以确保eventData.Event不依赖于using块内的JsonDocument
-            eventData.Event = eventElement.GetRawText();
-        }
-
-        return eventData;
-    }
-
-    /// <summary>
-    /// 解析v1.0版本的事件
-    /// </summary>
-    private EventData ParseV1Event(JsonElement root)
-    {
-        var eventData = new EventData();
-
-        // 解析基本字段
-        if (root.TryGetProperty("event_id", out var eventIdElement))
-            eventData.EventId = eventIdElement.GetString() ?? string.Empty;
-
-        if (root.TryGetProperty("event_type", out var eventTypeElement))
-            eventData.EventType = eventTypeElement.GetString() ?? string.Empty;
-
-        if (root.TryGetProperty("create_time", out var createTimeElement))
-        {
-            eventData.CreateTime = ParseCreateTime(createTimeElement);
-        }
-
-        if (root.TryGetProperty("tenant_key", out var tenantKeyElement))
-            eventData.TenantKey = tenantKeyElement.GetString() ?? string.Empty;
-
-        if (root.TryGetProperty("app_id", out var appIdElement))
-            eventData.AppId = appIdElement.GetString() ?? string.Empty;
-
-        // 解析event
-        if (root.TryGetProperty("event", out var eventElement))
-        {
-            // 将event对象转换为原始JSON字符串,避免依赖已释放的JsonDocument
-            // 这样可以确保eventData.Event不依赖于using块内的JsonDocument
-            eventData.Event = eventElement.GetRawText();
-        }
-
-        return eventData;
-    }
-
-
 
     /// <summary>
     /// 使用 AES-256-CBC 解密数据

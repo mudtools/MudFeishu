@@ -19,10 +19,10 @@ description: 该接口用于以用户身份管理飞书词典草稿，支持发�
 
 ## 函数列表
 
-| 函数名称         | 功能描述 | 认证方式 | HTTP 方法 |
-| ---------------- | -------- | -------- | --------- |
-| CreateDraftAsync | 创建草稿 | 用户令牌 | POST      |
-| UpdateDraftAsync | 更新草稿 | 用户令牌 | PUT       |
+| 函数名称         | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| ---------------- | -------- | -------- | --------- |----------|
+| CreateDraftAsync | 创建草稿 | 用户令牌 | POST      | [CreateDraftAsync](https://open.feishu.cn/document/lingo-v1/draft/create) |
+| UpdateDraftAsync | 更新草稿 | 用户令牌 | PUT       | [UpdateDraftAsync](https://open.feishu.cn/document/lingo-v1/draft/update) |
 
 ## 函数详细内容
 

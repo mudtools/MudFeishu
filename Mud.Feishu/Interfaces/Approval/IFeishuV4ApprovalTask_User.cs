@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 审批任务（以用户身份调用）：支持同意、拒绝、转交、退回、加签审批任务，获取任务列表，以及订阅/退订任务状态变更事件。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/approval-v4/task/introduction"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/task/introduction">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Approval")]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]
@@ -20,6 +20,7 @@ public interface IFeishuUserV4ApprovalTask : IFeishuAppContextSwitcher, ICurrent
     /// <summary>
     /// 加签审批任务。通过调用该接口在当前节点增加审批人。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=add_sign&amp;project=approval&amp;resource=task&amp;version=v4"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/task/approval-task-addsign">接口文档</see></para>
     /// </summary>
     /// <param name="addSignTaskRequest">加签审批任务请求体</param>
     /// <param name="user_id_type">用户 ID 类型</param>
@@ -34,6 +35,7 @@ public interface IFeishuUserV4ApprovalTask : IFeishuAppContextSwitcher, ICurrent
     /// <summary>
     /// 转交审批任务。对于单个审批任务进行转交操作。转交后审批流程流转给被转交人。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=forward&amp;project=approval&amp;resource=task&amp;version=v4"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/task/transfer">接口文档</see></para>
     /// </summary>
     /// <param name="forwardTaskRequest">转交审批任务请求体</param>
     /// <param name="user_id_type">用户 ID 类型</param>
@@ -74,6 +76,7 @@ public interface IFeishuUserV4ApprovalTask : IFeishuAppContextSwitcher, ICurrent
     /// <summary>
     /// 同意审批任务。对于单个审批任务进行同意操作。同意后审批流程会流转到下一个审批人。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=pass&amp;project=approval&amp;resource=task&amp;version=v4"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/task/approve">接口文档</see></para>
     /// </summary>
     /// <param name="passTaskRequest">同意审批任务请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -86,6 +89,7 @@ public interface IFeishuUserV4ApprovalTask : IFeishuAppContextSwitcher, ICurrent
     /// <summary>
     /// 拒绝审批任务。对于单个审批任务进行拒绝操作。拒绝后审批流程结束。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=refuse&amp;project=approval&amp;resource=task&amp;version=v4"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/task/reject">接口文档</see></para>
     /// </summary>
     /// <param name="refuseTaskRequest">拒绝审批任务请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -98,6 +102,7 @@ public interface IFeishuUserV4ApprovalTask : IFeishuAppContextSwitcher, ICurrent
     /// <summary>
     /// 退回审批任务。从当前审批任务，退回到已审批的一个或多个任务节点。退回后，已审批节点重新生成审批任务。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=rollback&amp;project=approval&amp;resource=task&amp;version=v4"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/task/specified_rollback">接口文档</see></para>
     /// </summary>
     /// <param name="rollbackTaskRequest">退回审批任务请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -110,6 +115,7 @@ public interface IFeishuUserV4ApprovalTask : IFeishuAppContextSwitcher, ICurrent
     /// <summary>
     /// 订阅审批任务状态变更事件。当应用订阅审批事件后，对于事件 type 为审批任务状态变更事件的事件，需要调用该接口指定需要接收通知的审批任务范围，指定后才可以接收到对应范围内的事件。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=subscription&amp;project=approval&amp;resource=task&amp;version=v4"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/event/event-interface/subscribe">接口文档</see></para>
     /// </summary>
     /// <para>订阅类型可选值：INVOLVED_APPROVAL（参与审批订阅）、MANAGED_APPROVAL（管理审批订阅）。</para>
     /// <param name="subscriptionRequest">订阅审批任务状态变更事件请求体</param>
@@ -123,6 +129,7 @@ public interface IFeishuUserV4ApprovalTask : IFeishuAppContextSwitcher, ICurrent
     /// <summary>
     /// 退订审批任务状态变更事件。当不再希望收到任务状态变更事件时，调用此接口，该接口用于撤销订阅审批任务状态变更事件中的操作。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=unsubscription&amp;project=approval&amp;resource=task&amp;version=v4"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/event/event-interface/unsubscribe">接口文档</see></para>
     /// </summary>
     /// <param name="subscription_type">订阅类型，可选值：INVOLVED_APPROVAL、MANAGED_APPROVAL；不传表示取消所有类别的订阅。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>

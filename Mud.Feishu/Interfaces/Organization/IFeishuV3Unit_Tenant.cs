@@ -14,7 +14,7 @@ namespace Mud.Feishu;
 /// <para>当前接口使用租户令牌访问，适应于租户应用场景。</para>
 /// <para>例如，你的企业下存在负责不同业务的两家子公司，那么你可以在同一个租户内，为两家子公司分别创建对应的单位资源。</para>
 /// <para>目前单位资源的主要作用是在部分用户令牌上实现“子公司”级别的权限隔离。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/contact-v3/unit/overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/unit/overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Organization")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -22,6 +22,7 @@ public interface IFeishuTenantV3Unit : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 创建一个单位。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/unit/create">接口文档</see></para>
     /// </summary>
     /// <param name="groupInfoRequest">单位信息请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -33,6 +34,7 @@ public interface IFeishuTenantV3Unit : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 修改指定单位的名字。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/unit/patch">接口文档</see></para>
     /// </summary>
     /// <param name="unit_id">单位 ID。</param>
     /// <param name="nameUpdateRequest">单位名称更新请求体</param>
@@ -46,6 +48,7 @@ public interface IFeishuTenantV3Unit : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 建立部门与单位的绑定关系。一个部门同时只能绑定一个单位。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/unit/bind_department">接口文档</see></para>
     /// </summary>
     /// <param name="unitBindDepartment">部门与单位的绑定关系请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -61,6 +64,7 @@ public interface IFeishuTenantV3Unit : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 解除部门与单位的绑定关系。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/unit/unbind_department">接口文档</see></para>
     /// </summary>
     /// <param name="unitBindDepartment">部门与单位的绑定关系请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -72,6 +76,7 @@ public interface IFeishuTenantV3Unit : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取单位绑定的部门列表
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/unit/list_department">接口文档</see></para>
     /// </summary>
     /// <param name="unit_id">单位 ID。</param>
     /// <param name="department_id_type">此次调用中使用的部门 ID 类型。</param>
@@ -89,6 +94,7 @@ public interface IFeishuTenantV3Unit : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取指定单位的信息，包括单位 ID、名字、类型。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/unit/get">接口文档</see></para>
     /// </summary>
     /// <param name="unit_id">单位 ID。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -100,6 +106,7 @@ public interface IFeishuTenantV3Unit : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取当前租户内的单位列表。列表内主要包含各单位的 ID、名字、类型信息。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/unit/list">接口文档</see></para>
     /// </summary>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <param name="page_size">分页大小，即本次请求所返回的用户信息列表内的最大条目数。默认值：10</param>
@@ -113,6 +120,7 @@ public interface IFeishuTenantV3Unit : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 删除指定单位。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/unit/delete">接口文档</see></para>
     /// </summary>
     /// <param name="unit_id">需删除的单位 ID。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>

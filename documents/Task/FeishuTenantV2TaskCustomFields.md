@@ -20,16 +20,16 @@ description: 该接口用于以租户身份管理飞书任务的自定义字段�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| CreateCustomFieldsAsync | 创建自定义字段 | 租户令牌 | POST |
-| UpdateCustomFieldsAsync | 更新自定义字段 | 租户令牌 | PATCH |
-| GetCustomFieldsByIdAsync | 获取自定义字段详情 | 租户令牌 | GET |
-| GetCustomFieldsPageListAsync | 列取自定义字段列表 | 租户令牌 | GET |
-| AddCustomFieldsByIdAsync | 将自定义字段加入资源 | 租户令牌 | POST |
-| RemoveCustomFieldsByIdAsync | 将自定义字段从资源移出 | 租户令牌 | POST |
-| CreateCustomFieldsOptionsAsync | 创建自定义字段选项 | 租户令牌 | POST |
-| UpdateCustomFieldsOptionsAsync | 更新自定义字段选项 | 租户令牌 | POST |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| CreateCustomFieldsAsync | 创建自定义字段 | 租户令牌 | POST | [CreateCustomFieldsAsync](https://open.feishu.cn/document/task-v2/custom_field/create) |
+| UpdateCustomFieldsAsync | 更新自定义字段 | 租户令牌 | PATCH | [UpdateCustomFieldsAsync](https://open.feishu.cn/document/task-v2/custom_field/patch) |
+| GetCustomFieldsByIdAsync | 获取自定义字段详情 | 租户令牌 | GET | [GetCustomFieldsByIdAsync](https://open.feishu.cn/document/task-v2/custom_field/get) |
+| GetCustomFieldsPageListAsync | 列取自定义字段列表 | 租户令牌 | GET | [GetCustomFieldsPageListAsync](https://open.feishu.cn/document/task-v2/custom_field/list) |
+| AddCustomFieldsByIdAsync | 将自定义字段加入资源 | 租户令牌 | POST | [AddCustomFieldsByIdAsync](https://open.feishu.cn/document/task-v2/custom_field/add) |
+| RemoveCustomFieldsByIdAsync | 将自定义字段从资源移出 | 租户令牌 | POST | [RemoveCustomFieldsByIdAsync](https://open.feishu.cn/document/task-v2/custom_field/remove) |
+| CreateCustomFieldsOptionsAsync | 创建自定义字段选项 | 租户令牌 | POST | [CreateCustomFieldsOptionsAsync](https://open.feishu.cn/document/task-v2/custom_field-option/create) |
+| UpdateCustomFieldsOptionsAsync | 更新自定义字段选项 | 租户令牌 | PATCH | [UpdateCustomFieldsOptionsAsync](https://open.feishu.cn/document/task-v2/custom_field-option/patch) |
 
 ---
 

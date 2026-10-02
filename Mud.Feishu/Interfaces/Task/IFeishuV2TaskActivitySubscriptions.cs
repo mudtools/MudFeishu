@@ -11,7 +11,7 @@ namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// 任务清单动态订阅
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/task-v2/tasklist-activity_subscription/create"/></para>
+/// <para><see href="https://open.feishu.cn/document/task-v2/tasklist-activity_subscription/create">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -21,7 +21,7 @@ public interface IFeishuV2TaskActivitySubscriptions : IFeishuAppContextSwitcher
     /// <para>为一个清单创建一个订阅。每个订阅可以包含1个或多个订阅者（目前只支持普通群组）。</para>
     /// <para>订阅创建后，如清单发生相应的事件，则会向订阅里的订阅者发送通知消息。</para>
     /// <para>一个清单最多可以创建50个订阅。每个订阅最大支持50个订阅者。订阅者目前仅支持"chat"类型。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/tasklist-activity_subscription/create">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/task-v2/tasklist-activity_subscription/create">接口文档</see></para>
     /// </summary>
     /// <param name="createActivitySubscriptionsRequest">创建动态订阅请求体</param>
     /// <param name="tasklist_guid">任务清单全局唯一GUID，示例值："d300a75f-c56a-4be9-80d1-e47653028ceb"。</param>
@@ -37,7 +37,7 @@ public interface IFeishuV2TaskActivitySubscriptions : IFeishuAppContextSwitcher
 
     /// <summary>
     /// <para>提供一个清单的GUID和一个订阅的GUID，获取该订阅的详细信息，包括名称，订阅者，可通知的event key列表等。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/tasklist-activity_subscription/get">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/task-v2/tasklist-activity_subscription/get">接口文档</see></para>
     /// </summary>
     /// <param name="activity_subscription_guid">订阅GUID。可以通过创建动态订阅接口创建，或者通过列取动态订阅查询得到。示例值："33991879-704f-444f-81d7-55a6aa7be80c"</param>
     /// <param name="tasklist_guid">任务清单全局唯一GUID，示例值："d300a75f-c56a-4be9-80d1-e47653028ceb"。</param>
@@ -52,7 +52,7 @@ public interface IFeishuV2TaskActivitySubscriptions : IFeishuAppContextSwitcher
 
     /// <summary>
     /// <para>给定一个清单的GUID，获取其所有的订阅信息。结果按照订阅的创建时间排序。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/tasklist-activity_subscription/list">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/task-v2/tasklist-activity_subscription/list">接口文档</see></para>
     /// </summary>
     /// <param name="limit">返回结果的最大数量，默认值：50</param>
     /// <param name="tasklist_guid">任务清单全局唯一GUID，示例值："d300a75f-c56a-4be9-80d1-e47653028ceb"。</param>
@@ -69,7 +69,7 @@ public interface IFeishuV2TaskActivitySubscriptions : IFeishuAppContextSwitcher
     /// <summary>
     /// <para>提供一个清单的GUID和一个动态订阅的GUID，对其进行更新。</para>
     /// <para>更新时，将update_fields字段中填写所有要修改的字段名，同时在activity_subscription字段中填写要修改的字段的新值即可。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/tasklist-activity_subscription/patch">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/task-v2/tasklist-activity_subscription/patch">接口文档</see></para>
     /// </summary>
     /// <param name="updateActivitySubscriptionsRequest">更新动态订阅请求体</param>
     /// <param name="activity_subscription_guid">订阅GUID。可以通过创建动态订阅接口创建，或者通过列取动态订阅查询得到。示例值："33991879-704f-444f-81d7-55a6aa7be80c"</param>
@@ -87,7 +87,7 @@ public interface IFeishuV2TaskActivitySubscriptions : IFeishuAppContextSwitcher
 
     /// <summary>
     /// <para>给定一个清单的GUID和一个订阅的GUID，将其删除。删除后的数据不可恢复。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/task-v2/tasklist-activity_subscription/delete">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/task-v2/tasklist-activity_subscription/delete">接口文档</see></para>
     /// </summary>
     /// <param name="activity_subscription_guid">订阅GUID。可以通过创建动态订阅接口创建，或者通过列取动态订阅查询得到。示例值："33991879-704f-444f-81d7-55a6aa7be80c"</param>
     /// <param name="tasklist_guid">任务清单全局唯一GUID，示例值："d300a75f-c56a-4be9-80d1-e47653028ceb"。</param>

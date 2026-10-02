@@ -28,6 +28,8 @@ public class FeishuEventMessageHandler : JsonMessageHandler
     private readonly FeishuWebSocketOptions _options;
     // F7 修复：统一去重中间件（可选），优先于分离的 _deduplicator 使用，提供 EventId + SeqID 双重去重。
     private readonly IUnifiedDeduplicationMiddleware? _unifiedDedupMiddleware;
+    // R-E1（E-P1-3）：失败事件落盘（可选）。未注册时行为与未引入前完全一致（零破坏）。
+    private readonly IFailedEventStore? _failedEventStore;
 
     /// <summary>
     /// 初始化飞书事件消息处理器
@@ -38,13 +40,15 @@ public class FeishuEventMessageHandler : JsonMessageHandler
     /// <param name="interceptors">事件拦截器集合</param>
     /// <param name="options">WebSocket 配置选项</param>
     /// <param name="unifiedDedupMiddleware">统一去重中间件（可选，F7 修复引入）</param>
+    /// <param name="failedEventStore">失败事件存储（可选，R-E1 引入；经 FeishuWebSocketServiceBuilder.AddFailedEventStore 注册）</param>
     public FeishuEventMessageHandler(
         ILogger<FeishuEventMessageHandler> logger,
         IFeishuEventHandlerFactory eventHandlerFactory,
         IFeishuEventDeduplicator? deduplicator,
         IFeishuEventInterceptor[]? interceptors,
         FeishuWebSocketOptions options,
-        IUnifiedDeduplicationMiddleware? unifiedDedupMiddleware = null)
+        IUnifiedDeduplicationMiddleware? unifiedDedupMiddleware = null,
+        IFailedEventStore? failedEventStore = null)
         : base(logger)
     {
         _eventHandlerFactory = eventHandlerFactory ?? throw new ArgumentNullException(nameof(eventHandlerFactory));
@@ -52,6 +56,7 @@ public class FeishuEventMessageHandler : JsonMessageHandler
         _interceptors = interceptors ?? Array.Empty<IFeishuEventInterceptor>();
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _unifiedDedupMiddleware = unifiedDedupMiddleware;
+        _failedEventStore = failedEventStore;
     }
 
     /// <inheritdoc/>
@@ -63,6 +68,8 @@ public class FeishuEventMessageHandler : JsonMessageHandler
     }
 
     /// <inheritdoc/>
+    // R-E1：本 override 已不再使用反射序列化（解析走共享 FeishuEventDataParser），
+    // 但基类 JsonMessageHandler.HandleAsync 声明了 Requires* 标注，override 必须逐字匹配（IL2046）。
 #if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
 #endif
@@ -101,28 +108,18 @@ public class FeishuEventMessageHandler : JsonMessageHandler
             {
                 var root = jsonDoc.RootElement;
 
-                EventData eventData;
-
-                // 检查是否为v2.0版本
-                if (root.TryGetProperty("schema", out var schemaElement) &&
-                    schemaElement.GetString() == "2.0")
+                // R-E1（AD-1）：v2.0 / v1.0 / data 包裹形态统一由共享解析器解析（单一真源）。
+                // 此前 v2 走本地 ParseV2Event、v1 走 SafeDeserialize<EventMessage>（要求 data 包裹），
+                // 真实 v1.0 官方帧（根级 uuid/token/ts、事件字段在 event 内）被整帧丢弃（E-P0-2）。
+                // 信任模型（P2-4）：v1 帧级凭据同样进入 eventData.Header.Token（合成 Header，Schema=null），
+                // 拦截器校验口径与 v2 一致。
+                if (!FeishuEventDataParser.TryParse(root, out var eventData, out var parseFailure))
                 {
-                    // v2.0版本解析
-                    eventData = ParseV2Event(root);
-                }
-                else
-                {
-                    // v1.0版本解析
-                    var eventMessage = SafeDeserialize<EventMessage>(message);
-                    if (eventMessage?.Data == null)
-                    {
-                        // P2-4：截断改走 LogSanitizer.CleanMessage（先剥离 token/encrypt 等敏感字段值再截断）。
-                        // 此前直接 Substring(0,200)：v1.0 报文前 200 字符常含 token/encrypt 键值，属明确泄露面。
-                        var truncatedV1Msg = Mud.Feishu.Abstractions.Utilities.LogSanitizer.CleanMessage(message, 200);
-                        _logger.LogWarning("无法解析v1.0事件消息 (长度: {Length}): {Message}", message.Length, truncatedV1Msg);
-                        return;
-                    }
-                    eventData = eventMessage.Data;
+                    // P2-4：截断改走 LogSanitizer.CleanMessage（先剥离 token/encrypt 等敏感字段值再截断）。
+                    var truncatedMsg = Mud.Feishu.Abstractions.Utilities.LogSanitizer.CleanMessage(message, 200);
+                    _logger.LogWarning("无法解析事件消息 (原因: {Failure}, 长度: {Length}): {Message}",
+                        parseFailure, message.Length, truncatedMsg);
+                    return;
                 }
 
                 if (string.IsNullOrEmpty(eventData.EventType))
@@ -267,6 +264,12 @@ public class FeishuEventMessageHandler : JsonMessageHandler
 
                             // 记录事件处理失败
                             FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: false, ex.GetType().Name);
+
+                            // R-E1（E-P1-3）：业务失败落盘（可选容灾）。仅覆盖通用业务失败分支——
+                            // OCE（取消后服务端必然重发）与 EventHandlingOutcomeException（拦截/取消终态，
+                            // 重发后拦截器重新决策）不落盘。写入失败仅 Warning，不影响 ACK 语义（WHF-07 口径）。
+                            await StoreFailedEventAsync(eventData, ex, cancellationToken);
+
                             throw;
                         }
                         finally
@@ -350,94 +353,27 @@ public class FeishuEventMessageHandler : JsonMessageHandler
     }
 
     /// <summary>
-    /// 解析v2.0版本的事件
+    /// 将业务失败事件写入失败事件存储（R-E1/E-P1-3 阶段一：仅落盘 + 指标，重试以服务端重发为主路径）。
     /// </summary>
-    private EventData ParseV2Event(JsonElement root)
+    /// <remarks>
+    /// 与 Webhook 通道 <c>FeishuWebhookService</c> 同构：<c>NextRetryAt = now + 初始延迟</c>（指数退避在重试侧，
+    /// 阶段一无重试消费者）。写入失败仅记录 Warning，不得改变 ACK/消费结论（对齐 WHF-07「标记失败不改变
+    /// 消费结论」口径）。未注册 <see cref="IFailedEventStore"/> 时为 no-op。
+    /// </remarks>
+    private async Task StoreFailedEventAsync(EventData eventData, Exception exception, CancellationToken cancellationToken)
     {
-        var eventData = new EventData();
+        if (_failedEventStore == null)
+            return;
 
-        // 解析header
-        if (root.TryGetProperty("header", out var headerElement))
+        try
         {
-            // 构建 Header 对象，保留完整的 v2.0 header 数据
-            var header = new FeishuEventHeader { Schema = "2.0" };
-
-            if (headerElement.TryGetProperty("event_id", out var eventIdElement))
-            {
-                var eventId = eventIdElement.GetString() ?? string.Empty;
-                header.EventId = eventId;
-                eventData.EventId = eventId;
-            }
-
-            if (headerElement.TryGetProperty("event_type", out var eventTypeElement))
-            {
-                var eventType = eventTypeElement.GetString() ?? string.Empty;
-                header.EventType = eventType;
-                eventData.EventType = eventType;
-            }
-
-            if (headerElement.TryGetProperty("create_time", out var createTimeElement))
-            {
-                // E9（R2 实施）：TryGetInt64 仅在 Number 值类型上合法——字符串/ null /布尔等
-                // 非数字 create_time 会抛 InvalidOperationException，使合法 JSON 报文陷入
-                // ACK 500 重发死循环。非数字值静默为 0（Header.CreateTime 保留原字符串）。
-                header.CreateTime = createTimeElement.ValueKind == JsonValueKind.String
-                    ? createTimeElement.GetString()
-                    : createTimeElement.ValueKind == JsonValueKind.Number && createTimeElement.TryGetInt64(out var ct) ? ct.ToString() : null;
-
-                if (createTimeElement.ValueKind == JsonValueKind.String &&
-                    long.TryParse(createTimeElement.GetString(), out var createTimeLong))
-                {
-                    eventData.CreateTime = createTimeLong / 1000; // 转换为秒
-                }
-                else if (createTimeElement.ValueKind == JsonValueKind.Number &&
-                         createTimeElement.TryGetInt64(out var createTimeInt))
-                {
-                    eventData.CreateTime = createTimeInt / 1000;
-                }
-            }
-
-            // P2-4（R2）信任模型说明：WebSocket 长连接的身份认证由 AuthenticationManager 在
-            // 连接握手阶段完成，事件帧内 header.token 是连接级凭据的透传（与官方 SDK 行为一致），
-            // 本 SDK 不做逐帧重验。该字段仅透传至 EventData.Header 供业务处理器按需校验；
-            // 如需帧级来源校验，请在拦截器的 BeforeHandleAsync 中实现（见 IFeishuEventInterceptor）。
-            if (headerElement.TryGetProperty("token", out var tokenElement))
-                header.Token = tokenElement.GetString();
-
-            if (headerElement.TryGetProperty("tenant_key", out var tenantKeyElement))
-            {
-                header.TenantKey = tenantKeyElement.GetString() ?? string.Empty;
-                eventData.TenantKey = header.TenantKey;
-            }
-
-            if (headerElement.TryGetProperty("app_id", out var appIdElement))
-            {
-                header.AppId = appIdElement.GetString() ?? string.Empty;
-                eventData.AppId = header.AppId;
-            }
-
-            // 设置完整 Header
-            eventData.Header = header;
+            var nextRetryAt = DateTimeOffset.UtcNow.AddSeconds(_options.FailedEventInitialRetryDelaySeconds);
+            await _failedEventStore.StoreFailedEventAsync(eventData, exception, _options.AppKey, nextRetryAt, cancellationToken);
+            FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: false, "failed_event_stored");
         }
-
-        // 解析 schema（在 header 之外）
-        if (root.TryGetProperty("schema", out var schemaElement))
+        catch (Exception storeEx)
         {
-            eventData.Header ??= new FeishuEventHeader();
-            eventData.Header.Schema = schemaElement.GetString();
+            _logger.LogWarning(storeEx, "写入失败事件存储失败，EventId: {EventId}", eventData.EventId);
         }
-
-        // 解析event
-        if (root.TryGetProperty("event", out var eventElement))
-        {
-            // P1-10 修复：eventElement 隶属于 using var jsonDoc 所租用的 ArrayPool 缓冲，
-            // 直接赋值会让 JsonElement 逃逸出 JsonDocument 生命周期：文档 Dispose 后缓冲被归还池中，
-            // 任何在 HandleAsync 返回之后读取 eventData.Event 的代码（例如把事件排入后台队列延迟处理）
-            // 都会读到已被其它 JSON 解析覆写的内存，造成静默数据损坏或抛 ObjectDisposedException。
-            // Clone() 会分配独立的文档副本，脱离原生命周期。
-            eventData.Event = eventElement.Clone();
-        }
-
-        return eventData;
     }
 }

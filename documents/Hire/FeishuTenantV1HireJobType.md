@@ -15,13 +15,13 @@ description: 该接口用于以租户身份分页获取飞书招聘职位类别�
 
 ## 参考文档
 
-- [获取职位类别列表](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/list-4)
+- [获取职位类别列表](https://open.feishu.cn/document/hire-v1/recruitment-related-configuration/job/list-4)
 
 ## 函数列表
 
-| 函数名称            | 功能描述         | 限频     | 所需权限          | HTTP 方法 |
-| ------------------- | ---------------- | -------- | ----------------- | --------- |
-| GetJobTypeListAsync | 获取职位类别列表 | 20 次/秒 | hire:job:readonly | GET       |
+| 函数名称            | 功能描述         | 限频     | 所需权限          | HTTP 方法 | 接口文档 |
+| ------------------- | ---------------- | -------- | ----------------- | --------- |----------|
+| GetJobTypeListAsync | 获取职位类别列表 | 20 次/秒 | hire:job:readonly | GET       | [GetJobTypeListAsync](https://open.feishu.cn/document/hire-v1/recruitment-related-configuration/job/list-4) |
 
 ## 函数详细内容
 

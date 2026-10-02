@@ -19,12 +19,12 @@ description: 该接口用于以租户身份管理飞书招聘 Offer 配置，支
 
 ## 函数列表
 
-| 函数名称                          | 功能描述                    | 认证方式 | HTTP 方法 |
-| --------------------------------- | --------------------------- | -------- | --------- |
-| GetOfferApplicationFormListAsync  | 获取 Offer 申请表列表       | 租户令牌 | GET       |
-| GetOfferApplicationFormAsync      | 获取 Offer 申请表模板信息   | 租户令牌 | GET       |
-| UpdateOfferCustomFieldAsync       | 更新 Offer 申请表自定义字段 | 租户令牌 | PUT       |
-| GetOfferApprovalTemplateListAsync | 获取 Offer 审批模板列表     | 租户令牌 | GET       |
+| 函数名称                          | 功能描述                    | 认证方式 | HTTP 方法 | 接口文档 |
+| --------------------------------- | --------------------------- | -------- | --------- |----------|
+| GetOfferApplicationFormListAsync  | 获取 Offer 申请表列表       | 租户令牌 | GET       | [GetOfferApplicationFormListAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/offer-settings/offer_application_form/list) |
+| GetOfferApplicationFormAsync      | 获取 Offer 申请表模板信息   | 租户令牌 | GET       | [GetOfferApplicationFormAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/offer-settings/offer_application_form/get) |
+| UpdateOfferCustomFieldAsync       | 更新 Offer 申请表自定义字段 | 租户令牌 | PUT       | [UpdateOfferCustomFieldAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/offer-settings/offer_application_form/update) |
+| GetOfferApprovalTemplateListAsync | 获取 Offer 审批模板列表     | 租户令牌 | GET       | [GetOfferApprovalTemplateListAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/offer-settings/offer_approval_template/list) |
 
 ## 函数详细内容
 

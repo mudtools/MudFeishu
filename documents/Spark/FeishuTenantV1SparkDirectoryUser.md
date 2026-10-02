@@ -19,9 +19,9 @@ description: 该接口用于以租户身份在飞书妙搭与飞书开放平台�
 
 ## 函数列表
 
-| 函数名称       | 功能描述                        | 认证方式 | HTTP 方法 |
-| -------------- | ------------------------------- | -------- | --------- |
-| IdConvertAsync | 转换妙搭与开放平台之间的用户 ID | 租户令牌 | POST      |
+| 函数名称       | 功能描述                        | 认证方式 | HTTP 方法 | 接口文档 |
+| -------------- | ------------------------------- | -------- | --------- |----------|
+| IdConvertAsync | 转换妙搭与开放平台之间的用户 ID | 租户令牌 | POST      | [IdConvertAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/directory-user/id_convert) |
 
 ## 函数详细内容
 

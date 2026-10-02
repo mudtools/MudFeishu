@@ -104,6 +104,7 @@ public class MyController : ControllerBase
 | [消息（Message）](./Message/index.md)     | 消息发送、回复、编辑、撤回、转发，获取历史消息与已读状态     |
 | [群组（ChatGroup）](./ChatGroup/index.md) | 群聊创建、更新、解散，群成员管理，群公告，群菜单，会话标签页 |
 | [卡片（Card）](./Card/index.md)           | 卡片创建、更新，卡片组件管理，消息流卡片                     |
+| [邮箱（Mail）](./Mail/index.md)           | 邮件收发、会话与草稿、邮箱组织、邮件组、模板与签名           |
 
 ### 文档与存储
 
@@ -129,6 +130,7 @@ public class MyController : ControllerBase
 | [飞书妙搭（Spark）](./Spark/index.md)       | 应用管理与运营数据、用户 ID 转换、产品使用权限、自定义枚举、执行 SQL、数据表与记录管理、视图查询、文件存储 |
 | [飞书妙记（Minutes）](./Minutes/index.md)   | 妙记基础信息、音视频下载、文字记录导出、统计数据、AI 产物、搜索、剪辑与导入生成、事件订阅 |
 | [飞书招聘（Hire）](./Hire/index.md)         | 职位组合创建/更新、职位设置与管理人员、职位列表与发布、地址查询、角色与用户角色权限、职位模板/职能/类别 |
+| [帮助中心（HelpDesk）](./HelpDesk/index.md) | 工单管理、客服坐席、工单分类、常见问题、事件订阅与通知       |
 
 ### 人工智能
 
@@ -142,10 +144,9 @@ public class MyController : ControllerBase
 | --- | --- |
 | [错误处理指南](./ErrorHandling.md) | 统一响应模型、`ApiException` 语义、**文件下载类接口（`Task<byte[]?>`）的错误契约与残余风险** |
 | [响应缓存使用指南](./ResponseCaching.md) | `[Cache]` 特性接入方式、**多应用缓存键隔离约束**、适合缓存的接口清单 |
-| [Webhook 安全加固与可靠性完善方案](./WebhookHardeningPlan.md) | Webhook 模块代码审查（P0/P1/P2）修复方案、**AOT 门禁修复（ADR-1）**、失败重试权威路径（ADR-2）、客户端 IP 零信任模型（ADR-3）、生产环境安全项锁定（ADR-4） |
 
 ## 命名空间与版本信息
 
 - **根命名空间**：`Mud.Feishu`
-- **当前版本**：2.0.9
+- **当前版本**：3.0.0
 - **目标框架**：.NET Standard 2.0 / .NET 6+ / .NET 8+

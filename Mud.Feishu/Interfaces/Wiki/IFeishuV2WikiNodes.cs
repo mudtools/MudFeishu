@@ -12,7 +12,7 @@ namespace Mud.Feishu.Interfaces;
 /// <summary>
 /// <para>知识空间中的节点，支持文档、表格等多种文件类型。</para>
 /// <para>文件是各种类型的文件的统称，泛指云空间内所有的文件。每个文件都有唯一 token 作为标识。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/wiki-overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/wiki-overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -39,7 +39,7 @@ public interface IFeishuV2WikiNodes : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取知识空间节点信息。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/space/get_node">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/space-node/get_node">接口文档</see></para>
     /// </summary>
     /// <param name="token">
     /// <para>必填：是</para>
@@ -186,7 +186,7 @@ public interface IFeishuV2WikiNodes : IFeishuAppContextSwitcher
 
     /// <summary>
     /// <para>移动云空间文档至知识空间，并挂载在指定位置。注意：该接口为异步接口。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/space-node/move_docs_to_wiki">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/wiki-v2/task/move_docs_to_wiki">接口文档</see></para>
     /// </summary>
     /// <param name="space_id">
     /// <para>路径参数</para>

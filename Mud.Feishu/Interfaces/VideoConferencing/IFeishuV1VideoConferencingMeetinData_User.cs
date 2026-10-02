@@ -10,7 +10,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 用于分页查询一段时间内租户的会议数据，包括：查询会议明细、查询参会人明细、查询参会人会议质量数据、查询会议室预定数据。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/vc-v1/meeting-room-data/resource-introduction"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/meeting-room-data/resource-introduction">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "VideoConferencing", InheritedFrom = nameof(FeishuV1VideoConferencingMeetinData))]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

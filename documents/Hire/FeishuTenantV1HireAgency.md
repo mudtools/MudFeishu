@@ -19,15 +19,15 @@ description: 该接口用于以租户身份管理飞书招聘猎头供应商，�
 
 ## 函数列表
 
-| 函数名称                     | 功能描述                 | 认证方式 | HTTP 方法 |
-| ---------------------------- | ------------------------ | -------- | --------- |
-| BatchQueryAgencyAsync        | 搜索猎头供应商列表       | 租户令牌 | POST      |
-| GetAgencyAsync               | 获取猎头供应商信息       | 租户令牌 | GET       |
-| QueryAgencyAsync             | 按名称查询猎头供应商     | 租户令牌 | GET       |
-| GetAgencyAccountAsync        | 查询猎头供应商下猎头列表 | 租户令牌 | POST      |
-| OperateAgencyAccountAsync    | 禁用/取消禁用猎头        | 租户令牌 | POST      |
-| ProtectAgencyAsync           | 设置猎头保护期           | 租户令牌 | POST      |
-| SearchAgencyProtectionAsync  | 查询猎头保护期信息       | 租户令牌 | POST      |
+| 函数名称                     | 功能描述                 | 认证方式 | HTTP 方法 | 接口文档 |
+| ---------------------------- | ------------------------ | -------- | --------- |----------|
+| BatchQueryAgencyAsync        | 搜索猎头供应商列表       | 租户令牌 | POST      | [BatchQueryAgencyAsync](https://open.feishu.cn/document/hire-v1/get-candidates/agency/batch_query) |
+| GetAgencyAsync               | 获取猎头供应商信息       | 租户令牌 | GET       | [GetAgencyAsync](https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/agency/get) |
+| QueryAgencyAsync             | 按名称查询猎头供应商     | 租户令牌 | GET       | [QueryAgencyAsync](https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/agency/query) |
+| GetAgencyAccountAsync        | 查询猎头供应商下猎头列表 | 租户令牌 | POST      | [GetAgencyAccountAsync](https://open.feishu.cn/document/hire-v1/get-candidates/agency/get_agency_account) |
+| OperateAgencyAccountAsync    | 禁用/取消禁用猎头        | 租户令牌 | POST      | [OperateAgencyAccountAsync](https://open.feishu.cn/document/hire-v1/get-candidates/agency/operate_agency_account) |
+| ProtectAgencyAsync           | 设置猎头保护期           | 租户令牌 | POST      | [ProtectAgencyAsync](https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/agency/protect) |
+| SearchAgencyProtectionAsync  | 查询猎头保护期信息       | 租户令牌 | POST      | [SearchAgencyProtectionAsync](https://open.feishu.cn/document/hire-v1/get-candidates/agency/protect_search) |
 
 ## 函数详细内容
 

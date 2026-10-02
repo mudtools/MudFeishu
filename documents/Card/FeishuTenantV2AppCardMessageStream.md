@@ -16,14 +16,14 @@ description: 该接口用于以租户身份管理飞书应用消息流卡片，�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| CreateCardMessageStreamAsync | 创建应用消息流卡片 | 租户令牌 | POST |
-| UpdateCardMessageStreamAsync | 更新应用消息流卡片 | 租户令牌 | PUT |
-| DeleteCardMessageStreamAsync | 删除应用消息流卡片 | 租户令牌 | DELETE |
-| BotTimeSentiveAsync | 机器人单聊即时提醒 | 租户令牌 | PATCH |
-| UpdateCardMessageStreamButtonAsync | 更新消息流卡片按钮 | 租户令牌 | PUT |
-| FeedCardsByFeedCardIdAsync | 群组/机器人即时提醒 | 租户令牌 | PATCH |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| CreateCardMessageStreamAsync | 创建应用消息流卡片 | 租户令牌 | POST | [CreateCardMessageStreamAsync](https://open.feishu.cn/document/im-v2/app_feed_card/create) |
+| UpdateCardMessageStreamAsync | 更新应用消息流卡片 | 租户令牌 | PUT | [UpdateCardMessageStreamAsync](https://open.feishu.cn/document/im-v2/app_feed_card/update) |
+| DeleteCardMessageStreamAsync | 删除应用消息流卡片 | 租户令牌 | DELETE | [DeleteCardMessageStreamAsync](https://open.feishu.cn/document/im-v2/app_feed_card/delete) |
+| BotTimeSentiveAsync | 机器人单聊即时提醒 | 租户令牌 | PATCH | [BotTimeSentiveAsync](https://open.feishu.cn/document/im-v2/groups-bots/bot_time_sentive) |
+| UpdateCardMessageStreamButtonAsync | 更新消息流卡片按钮 | 租户令牌 | PUT | [UpdateCardMessageStreamButtonAsync](https://open.feishu.cn/document/im-v2/groups-bots/update) |
+| FeedCardsByFeedCardIdAsync | 群组/机器人即时提醒 | 租户令牌 | PATCH | [FeedCardsByFeedCardIdAsync](https://open.feishu.cn/document/im-v2/groups-bots/patch) |
 
 ---
 

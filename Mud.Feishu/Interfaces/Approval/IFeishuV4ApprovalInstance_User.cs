@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 审批实例（以用户身份调用）：支持抄送、催办、撤回当前用户身份提交的审批实例，查看已发起列表与实例详情，以及订阅/退订实例状态变更事件。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/approval-v4/instance/overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/instance/overview-approval-instance">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Approval")]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]
@@ -21,6 +21,7 @@ public interface IFeishuUserV4ApprovalInstance : IFeishuAppContextSwitcher, ICur
     /// 抄送审批实例。调用该接口将当前审批实例抄送给指定用户。被抄送的用户可以查看审批实例详情。
     /// <para>例如，在飞书客户端的 工作台 &gt; 审批 &gt; 审批中心 &gt; 抄送我 列表中查看到审批实例。</para>
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=add_cc&amp;project=approval&amp;resource=instance&amp;version=v4"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/instance/cc">接口文档</see></para>
     /// </summary>
     /// <param name="addCcInstanceRequest">抄送审批实例请求体</param>
     /// <param name="user_id_type">用户 ID 类型</param>
@@ -100,6 +101,7 @@ public interface IFeishuUserV4ApprovalInstance : IFeishuAppContextSwitcher, ICur
     /// <summary>
     /// 订阅审批实例状态变更事件。当应用订阅审批事件后，对于事件 type 为审批实例状态变更事件的事件，需要调用该接口指定需要接收通知的审批任务范围，指定后才可以接收到对应范围内的事件。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=subscription&amp;project=approval&amp;resource=instance&amp;version=v4"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/event/event-interface/subscribe">接口文档</see></para>
     /// </summary>
     /// <para>订阅类型可选值：INVOLVED_APPROVAL（参与审批订阅）、MANAGED_APPROVAL（管理审批订阅）。</para>
     /// <param name="subscriptionRequest">订阅审批实例状态变更事件请求体</param>
@@ -113,6 +115,7 @@ public interface IFeishuUserV4ApprovalInstance : IFeishuAppContextSwitcher, ICur
     /// <summary>
     /// 退订审批实例状态变更事件。当不再希望收到实例状态变更事件时，调用此接口，该接口用于撤销订阅审批实例状态变更事件中的操作。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=unsubscription&amp;project=approval&amp;resource=instance&amp;version=v4"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/event/event-interface/unsubscribe">接口文档</see></para>
     /// </summary>
     /// <param name="subscription_type">订阅类型，可选值：INVOLVED_APPROVAL、MANAGED_APPROVAL；不传表示取消所有类别的订阅。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>

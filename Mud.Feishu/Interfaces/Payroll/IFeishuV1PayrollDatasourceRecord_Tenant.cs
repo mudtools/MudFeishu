@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书薪酬发放（Payroll）「外部算薪数据」SDK 是一组服务端 OpenAPI 的封装，用于按数据源批量保存（创建或更新）与批量查询外部算薪数据记录。本接口全部端点为 payroll/v1，仅支持 tenant_access_token 调用。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/payroll-v1/datasource_record/save"/></para>
+/// <para><see href="https://open.feishu.cn/document/payroll-v1/datasource_record/save">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Payroll")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

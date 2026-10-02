@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 /// <para>数据表 table是多维表格的数据容器，一个多维表格中至少有一个数据表（table），也可能有多个数据表。</para>
 /// <para>每个数据表都有唯一标识 table_id。table_id 在一个多维表格 App 中唯一，在全局不一定唯一。</para>
 /// <para>可通过多维表格 URL 获取 table_id，也可通过列出数据表接口获取 table_id。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/bitable-overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/bitable-overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(RegistryGroupName = "Bitable", TokenManage = nameof(IFeishuAppManager), InheritedFrom = nameof(FeishuV1BitableAppTable))]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

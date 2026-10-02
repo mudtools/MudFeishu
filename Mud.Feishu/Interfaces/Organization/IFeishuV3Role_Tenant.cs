@@ -14,7 +14,7 @@ namespace Mud.Feishu;
 /// <para>当前接口使用租户令牌访问，适应于租户应用场景。</para>
 /// <para>目前，角色主要用于应用审批场景。在审批管理后台，管理员可以选择某一角色作为审批人。</para> 
 /// <para>例如，选择财务角色作为报销流程的审批人。这样做可以避免因成员离职变动导致的审批流失效的情况，角色内的其他成员可以继续完成审批，提高审批效率。</para> 
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/contact-v3/functional_role/resource-introduction"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/functional_role/resource-introduction">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Organization")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -22,6 +22,7 @@ public interface IFeishuTenantV3Role : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 创建一个角色。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/functional_role/create">接口文档</see></para>
     /// </summary>
     /// <param name="roleRequest">创建角色请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -33,6 +34,7 @@ public interface IFeishuTenantV3Role : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 修改指定角色的角色名称。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/functional_role/update">接口文档</see></para>
     /// </summary>
     /// <param name="role_id">角色 ID。</param>
     /// <param name="roleRequest">创建角色请求体。</param>
@@ -46,6 +48,7 @@ public interface IFeishuTenantV3Role : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 删除指定角色。
+    /// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/functional_role/delete">接口文档</see></para>
     /// </summary>
     /// <param name="role_id">角色 ID。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>

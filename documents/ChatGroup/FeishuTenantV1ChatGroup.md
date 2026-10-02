@@ -20,19 +20,19 @@ description: 该接口用于以租户身份管理飞书群组，提供创建群�
 
 ## 函数列表
 
-| 函数名称                                   | 功能描述       | 认证方式 | HTTP 方法 |
-| -------------------------------------- | ---------- | ---- | ------- |
-| CreateChatGroupAsync                   | 创建群聊       | 租户令牌 | POST    |
-| UpdateChatGroupByIdAsync               | 更新群信息      | 租户令牌 | PUT     |
-| DeleteChatGroupAsync                   | 解散群组       | 租户令牌 | DELETE  |
-| UpdateChatModerationAsync              | 更新群发言权限    | 租户令牌 | PUT     |
-| GetChatGroupInoByIdAsync               | 获取群基本信息    | 租户令牌 | GET     |
-| PutChatGroupTopNoticeAsync             | 设置群置顶      | 租户令牌 | POST    |
-| DeleteChatGroupTopNoticeAsync          | 撤销群置顶      | 租户令牌 | POST    |
-| GetChatGroupPageListAsync              | 分页获取群列表    | 租户令牌 | GET     |
-| GetChatGroupPageListByKeywordAsync     | 关键词搜索群列表   | 租户令牌 | GET     |
-| GetChatGroupModeratorPageListByIdAsync | 获取群发言模式及名单 | 租户令牌 | GET     |
-| GetChatGroupShareLinkByIdAsync         | 获取群分享链接    | 租户令牌 | POST    |
+| 函数名称                                   | 功能描述       | 认证方式 | HTTP 方法 | 接口文档 |
+| -------------------------------------- | ---------- | ---- | ------- |----------|
+| CreateChatGroupAsync                   | 创建群聊       | 租户令牌 | POST    | [CreateChatGroupAsync](https://open.feishu.cn/document/server-docs/group/chat/create) |
+| UpdateChatGroupByIdAsync               | 更新群信息      | 租户令牌 | PUT     | [UpdateChatGroupByIdAsync](https://open.feishu.cn/document/server-docs/group/chat/update) |
+| DeleteChatGroupAsync                   | 解散群组       | 租户令牌 | DELETE  | [DeleteChatGroupAsync](https://open.feishu.cn/document/server-docs/group/chat/delete) |
+| UpdateChatModerationAsync              | 更新群发言权限    | 租户令牌 | PUT     | [UpdateChatModerationAsync](https://open.feishu.cn/document/server-docs/group/chat/moderation/update) |
+| GetChatGroupInoByIdAsync               | 获取群基本信息    | 租户令牌 | GET     | [GetChatGroupInoByIdAsync](https://open.feishu.cn/document/server-docs/group/chat/get) |
+| PutChatGroupTopNoticeAsync             | 设置群置顶      | 租户令牌 | POST    | [PutChatGroupTopNoticeAsync](https://open.feishu.cn/document/server-docs/group/chat/put_top_notice) |
+| DeleteChatGroupTopNoticeAsync          | 撤销群置顶      | 租户令牌 | POST    | [DeleteChatGroupTopNoticeAsync](https://open.feishu.cn/document/server-docs/group/chat/delete_top_notice) |
+| GetChatGroupPageListAsync              | 分页获取群列表    | 租户令牌 | GET     | [GetChatGroupPageListAsync](https://open.feishu.cn/document/server-docs/group/chat/list) |
+| GetChatGroupPageListByKeywordAsync     | 关键词搜索群列表   | 租户令牌 | GET     | [GetChatGroupPageListByKeywordAsync](https://open.feishu.cn/document/server-docs/group/chat/search) |
+| GetChatGroupModeratorPageListByIdAsync | 获取群发言模式及名单 | 租户令牌 | GET     | [GetChatGroupModeratorPageListByIdAsync](https://open.feishu.cn/document/server-docs/group/chat/moderation/get) |
+| GetChatGroupShareLinkByIdAsync         | 获取群分享链接    | 租户令牌 | POST    | [GetChatGroupShareLinkByIdAsync](https://open.feishu.cn/document/server-docs/group/chat/link) |
 
 ***
 

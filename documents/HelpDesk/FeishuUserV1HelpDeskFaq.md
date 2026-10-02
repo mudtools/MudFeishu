@@ -16,11 +16,11 @@ description: 该接口用于以用户身份管理飞书服务台知识库 FAQ，
 - [服务台接入指南](https://open.feishu.cn/document/server-docs/helpdesk-v1/access-guide)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| CreateFaqAsync | 创建知识库FAQ | UserAccessToken | POST |
-| DeleteFaqAsync | 删除知识库FAQ | UserAccessToken | DELETE |
-| UpdateFaqAsync | 修改知识库FAQ | UserAccessToken | PATCH |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| CreateFaqAsync | 创建知识库FAQ | UserAccessToken | POST | [CreateFaqAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/faq-management/faq/create) |
+| DeleteFaqAsync | 删除知识库FAQ | UserAccessToken | DELETE | [DeleteFaqAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/faq-management/faq/delete) |
+| UpdateFaqAsync | 修改知识库FAQ | UserAccessToken | PATCH | [UpdateFaqAsync](https://open.feishu.cn/document/server-docs/helpdesk-v1/faq-management/faq/patch) |
 
 ## 函数详细内容
 

@@ -16,13 +16,13 @@ description: 该接口用于以租户身份对飞书卡片中的组件进行精�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| CreateCardElementAsync | 新增卡片组件 | 租户令牌 | POST |
-| UpdateCardElementByIdAsync | 更新卡片组件 | 租户令牌 | PUT |
-| UpdateCardElementAttributeByIdAsync | 更新组件属性 | 租户令牌 | PATCH |
-| StreamUpdateCardTextByIdAsync | 流式更新文本 | 租户令牌 | PUT |
-| DeleteCardElementByIdAsync | 删除卡片组件 | 租户令牌 | DELETE |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| CreateCardElementAsync | 新增卡片组件 | 租户令牌 | POST | [CreateCardElementAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/cardkit-v1/card-element/create) |
+| UpdateCardElementByIdAsync | 更新卡片组件 | 租户令牌 | PUT | [UpdateCardElementByIdAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/cardkit-v1/card-element/update) |
+| UpdateCardElementAttributeByIdAsync | 更新组件属性 | 租户令牌 | PATCH | [UpdateCardElementAttributeByIdAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/cardkit-v1/card-element/patch) |
+| StreamUpdateCardTextByIdAsync | 流式更新文本 | 租户令牌 | PUT | [StreamUpdateCardTextByIdAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/cardkit-v1/card-element/content) |
+| DeleteCardElementByIdAsync | 删除卡片组件 | 租户令牌 | DELETE | [DeleteCardElementByIdAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/cardkit-v1/card-element/delete) |
 
 ---
 

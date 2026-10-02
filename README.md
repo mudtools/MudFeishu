@@ -225,7 +225,8 @@ dotnet add package Mud.Feishu.OpenTelemetry
 | `MessageSizeLimits`           | object   | 见下方  | 消息大小限制配置                                                   |
 | `EventDeduplication`          | object   | 见下方  | 事件去重配置                                                       |
 | `RejectEmptyEventIds`         | bool     | true    | 事件 EventId 为空时是否拒绝处理（fail-closed，对齐 Webhook WHF-05） |
-| `IgnoreUnknownEventTypes`     | bool     | false   | 未注册事件类型是否静默忽略（推荐 true，对齐 Webhook WHF-09；默认 false 保持兼容；支持热更新） |
+| `IgnoreUnknownEventTypes`     | bool     | false   | 未注册事件类型是否静默忽略（推荐 true，对齐 Webhook WHF-09；默认 false 保持兼容；Webhook 通道默认为 true，两者不一致会启动告警；支持热更新） |
+| `FailedEventInitialRetryDelaySeconds` | int | 10 | 失败事件落盘的初始重试延迟（秒，R-E1）；仅在注册 `IFailedEventStore`（`AddFailedEventStore`）后生效，重试主路径仍为服务端重发 |
 
 > ℹ️ **迁移提示**：旧版本的 `TokenRefreshInterval` / `TokenRefreshAhead` 配置已移除。令牌刷新现由 `FeishuAppConfig.TokenRefreshThreshold`（HTTP 层）统一控制，WebSocket 连接复用同一应用的令牌管理器，无需单独配置。
 
@@ -1339,6 +1340,9 @@ public interface IFeishuV1HelpDeskTicket
 - ✅ 健康检查（内置 FeishuWebhookHealthCheck）
 - ✅ 性能监控（可选性能指标收集）
 
+> ⚠️ **加密链路前提**：Webhook 模块仅支持**加密模式**的事件订阅验证（明文 `url_verification` 一律 403）。
+> 请在飞书开放平台为订阅应用启用加密并配置 Encrypt Key。详见 [Webhook 文档](./Mud.Feishu.Webhook/README.md)。
+
 > 💡 **提示**：[查看完整文档](./Mud.Feishu.Webhook/README.md)
 
 ### 🔑 Mud.Feishu.Authentication - 用户认证中间件
@@ -1401,10 +1405,13 @@ public interface IFeishuV1HelpDeskTicket
 [HttpPost("users")]
 public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
 {
-    _userApi.UseApp("hr-app");// 多应用场景下切换应用
-    var result = await _userApi.CreateUserAsync(request);
-    _userApi.UseDefaultApp();
-    return result.Code == 0 ? Ok(result.Data) : BadRequest(result.Msg);
+    // 多应用场景下切换应用：UseAppScope 为作用域式（using 结束自动恢复上下文）
+    // （旧入口 UseApp / UseDefaultApp 自 Mud.HttpUtils 3.0.0 起已标 [Obsolete]）
+    using (_userApi.UseAppScope("hr-app"))
+    {
+        var result = await _userApi.CreateUserAsync(request);
+        return result.Code == 0 ? Ok(result.Data) : BadRequest(result.Msg);
+    }
 }
 
 // 多应用场景下使用 IFeishuAppManager
@@ -1413,7 +1420,7 @@ var result = await tenantJobTitleApi.GetJobTitlesListAsync(10, null);
 
 // 使用作用域切换应用上下文，using 结束后自动恢复
 var userApi = _feishuAppManager.GetDefaultWebApi<IFeishuTenantV3User>();
-using (userApi.BeginScope("hr-app"))
+using (userApi.UseAppScope("hr-app"))
 {
     var userResult = await userApi.GetUserInfoByIdAsync("user_123");
 }
@@ -1457,7 +1464,7 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 
 ### 多租户部署指引
 
-> **多租户 = 多应用**。每个租户对应一个 `FeishuAppConfig`（独立 AppId/AppSecret），通过 `UseApp`/`BeginScope` 切换应用上下文。
+> **多租户 = 多应用**。每个租户对应一个 `FeishuAppConfig`（独立 AppId/AppSecret），通过 `UseAppScope`（或 `IFeishuAppManager.GetWebApi`）切换应用上下文。
 
 **最小装配片段**：
 
@@ -1489,14 +1496,14 @@ public class TenantController : ControllerBase
     {
         // 使用 using 确保作用域结束后自动恢复默认应用
         var userApi = _appManager.GetDefaultWebApi<IFeishuTenantV3User>();
-        using var scope = userApi.BeginScope(tenantKey);
+        using var scope = userApi.UseAppScope(tenantKey);
         var result = await userApi.GetUserInfoByIdAsync(userId);
         return Ok(result);
     }
 }
 ```
 
-> ⚠️ **安全提示**：`UseApp`/`BeginScope` 仅切换应用上下文（令牌/端点），**不做租户隔离授权**。
+> ⚠️ **安全提示**：`UseAppScope` 仅切换应用上下文（令牌/端点），**不做租户隔离授权**。
 > 如需限制请求方只能访问其所属租户的数据，应在业务层注册自定义授权逻辑（如基于 Claim 的租户校验中间件）。
 > 组件侧的 `IAppAccessAuthorizer` 已对缺失给出错误提示，但本 SDK 不内置授权实现。
 
@@ -1594,8 +1601,8 @@ dotnet publish -r win-x64 -c Release /p:PublishAot=true
 
 | 包                            | 版本             | 说明                                |
 | ----------------------------- | ---------------- | ----------------------------------- |
-| **Mud.HttpUtils**             | v2.0.8  | HTTP 客户端工具类（含源代码生成器） |
-| **Mud.HttpUtils.Generator**   | v2.0.8  | HTTP 客户端代码生成器（编译时）     |
+| **Mud.HttpUtils**             | v3.0.0  | HTTP 客户端工具类（含源代码生成器） |
+| **Mud.HttpUtils.Generator**   | v3.0.0  | HTTP 客户端代码生成器（编译时）     |
 | **Microsoft.Extensions.Http** | v8.0.1 / v10.0.9 | HTTP 客户端工厂                     |
 | **Microsoft.Agents.AI**       | v1.20.0 | AI 底座（仅 Mud.Feishu.AI 引用；核心项目不依赖） |
 | **Microsoft.Agents.AI.OpenAI** | v1.20.0 | OpenAI-compatible 模型接入（仅 Mud.Feishu.AI 引用） |

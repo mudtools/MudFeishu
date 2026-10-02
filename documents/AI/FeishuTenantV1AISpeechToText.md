@@ -13,10 +13,10 @@ description: 该接口用于通过飞书 AI 语音转文字能力，将音频文
 - [流式识别](https://open.feishu.cn/document/server-docs/ai/speech_to_text-v1/stream_recognize)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| FileRecognizeSpeechAsync | 识别语音文件 | TenantAccessToken | POST |
-| StreamRecognizeSpeechAsync | 识别流式语音 | TenantAccessToken | POST |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| FileRecognizeSpeechAsync | 识别语音文件 | TenantAccessToken | POST | [FileRecognizeSpeechAsync](https://open.feishu.cn/document/server-docs/ai/speech_to_text-v1/file_recognize) |
+| StreamRecognizeSpeechAsync | 识别流式语音 | TenantAccessToken | POST | [StreamRecognizeSpeechAsync](https://open.feishu.cn/document/server-docs/ai/speech_to_text-v1/stream_recognize) |
 
 ## 函数详细内容
 

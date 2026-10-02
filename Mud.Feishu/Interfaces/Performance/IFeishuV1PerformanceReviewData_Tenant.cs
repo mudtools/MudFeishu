@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书绩效（Performance）「绩效结果」SDK（v1）用于获取被评估人在指定周期、指定项目中各个环节的评估结果信息，包含绩效所在的周期、项目、评估项、评估模版以及各环节评估数据等信息。仅支持 tenant_access_token 或 user_access_token 调用；tenant_access_token 鉴权模式下推荐使用 v2 的获取绩效详情数据接口获取更丰富的返回数据。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/performance-v1/query"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/performance-v1/query">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Performance")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

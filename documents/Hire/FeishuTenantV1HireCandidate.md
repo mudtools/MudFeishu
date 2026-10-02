@@ -19,78 +19,78 @@ description: 该接口用于以租户身份管理飞书招聘候选人与投递�
 
 ## 函数列表
 
-| 函数名称                                | 功能描述                        | 认证方式 | HTTP 方法 |
-| --------------------------------------- | ------------------------------- | -------- | --------- |
-| SearchReferralAsync                     | 查询内推信息                    | 租户令牌 | POST      |
-| GetReferralWebsiteJobPostListAsync      | 获取内推官网职位列表            | 租户令牌 | GET       |
-| GetReferralWebsiteJobPostAsync          | 获取内推官网职位详情            | 租户令牌 | GET       |
-| GetReferralByApplicationAsync           | 按投递 ID 获取内推信息          | 租户令牌 | GET       |
-| GetPortalApplySchemaListAsync           | 获取官网申请表模板列表          | 租户令牌 | GET       |
-| CreateWebsiteChannelAsync               | 创建官网推广渠道                | 租户令牌 | POST      |
-| UpdateWebsiteChannelAsync               | 更新官网推广渠道                | 租户令牌 | PUT       |
-| DeleteWebsiteChannelAsync               | 删除官网推广渠道                | 租户令牌 | DELETE    |
-| GetWebsiteChannelListAsync              | 获取官网推广渠道列表            | 租户令牌 | GET       |
-| CreateWebsiteUserAsync                  | 创建官网用户                    | 租户令牌 | POST      |
-| GetWebsiteListAsync                     | 获取官网列表                    | 租户令牌 | GET       |
-| GetWebsiteJobPostAsync                  | 获取官网职位详情                | 租户令牌 | GET       |
-| GetWebsiteJobPostListAsync              | 获取官网职位列表                | 租户令牌 | GET       |
-| SearchWebsiteJobPostAsync               | 搜索官网职位列表                | 租户令牌 | POST      |
-| CreateWebsiteDeliveryByResumeAsync      | 按简历创建官网投递              | 租户令牌 | POST      |
-| CreateWebsiteDeliveryByAttachmentAsync  | 按简历附件创建官网投递          | 租户令牌 | POST      |
-| GetWebsiteDeliveryTaskAsync             | 获取官网投递任务结果            | 租户令牌 | GET       |
-| CreateNoteAsync                         | 创建人才备注                    | 租户令牌 | POST      |
-| PatchNoteAsync                          | 更新人才备注                    | 租户令牌 | PATCH     |
-| GetNoteAsync                            | 获取人才备注                    | 租户令牌 | GET       |
-| GetNoteListAsync                        | 获取人才备注列表                | 租户令牌 | GET       |
-| DeleteNoteAsync                         | 删除人才备注                    | 租户令牌 | DELETE    |
-| GetEvaluationTaskListAsync              | 获取简历评估任务列表            | 租户令牌 | GET       |
-| GetExamMarkingTaskListAsync             | 获取笔试阅卷任务列表            | 租户令牌 | GET       |
-| GetInterviewTaskListAsync               | 获取面试任务列表                | 租户令牌 | GET       |
-| GetResumeSourceListAsync                | 获取简历来源列表                | 租户令牌 | GET       |
-| BatchChangeTalentPoolAsync              | 批量加入/移除人才库中人才       | 租户令牌 | POST      |
-| GetTalentPoolListAsync                  | 获取人才库列表                  | 租户令牌 | GET       |
-| AddTalentToTalentPoolAsync              | 将人才加入人才库                | 租户令牌 | POST      |
-| OperateTalentTagAsync                   | 操作人才标签                    | 租户令牌 | POST      |
-| CombinedCreateTalentAsync               | 创建人才                        | 租户令牌 | POST      |
-| CombinedUpdateTalentAsync               | 更新人才信息                    | 租户令牌 | POST      |
-| AddTalentToFolderAsync                  | 人才加入文件夹                  | 租户令牌 | POST      |
-| RemoveTalentFromFolderAsync             | 人才移出文件夹                  | 租户令牌 | POST      |
-| GetTalentFolderListAsync                | 获取人才文件夹信息              | 租户令牌 | GET       |
-| BatchGetTalentIdAsync                   | 根据手机号或邮箱获取人才 ID     | 租户令牌 | POST      |
-| GetTalentListAsync                      | 获取人才列表                    | 租户令牌 | GET       |
-| QueryTalentObjectAsync                  | 获取人才字段                    | 租户令牌 | GET       |
-| GetTalentAsync                          | 获取人才信息（v1）              | 租户令牌 | GET       |
-| GetTalentV2Async                        | 获取人才详细信息（v2）          | 租户令牌 | GET       |
-| UpdateTalentOnboardStatusAsync          | 更新人才在职状态                | 租户令牌 | POST      |
-| ChangeTalentBlockAsync                  | 加入/移出人才黑名单             | 租户令牌 | POST      |
-| GetBackgroundCheckOrderListAsync        | 获取背调信息列表                | 租户令牌 | GET       |
-| BatchQueryBackgroundCheckOrderAsync     | 查询背调信息列表                | 租户令牌 | POST      |
-| CreateTripartiteAgreementAsync          | 创建三方协议                    | 租户令牌 | POST      |
-| GetTripartiteAgreementListAsync         | 获取三方协议                    | 租户令牌 | GET       |
-| UpdateTripartiteAgreementAsync          | 更新三方协议                    | 租户令牌 | PUT       |
-| DeleteTripartiteAgreementAsync          | 删除三方协议                    | 租户令牌 | DELETE    |
-| TransferOnboardAsync                    | 操作候选人入职                  | 租户令牌 | POST      |
-| CancelOnboardAsync                      | 取消候选人入职                  | 租户令牌 | POST      |
-| GetEmployeeByApplicationAsync           | 通过投递 ID 获取入职信息        | 租户令牌 | GET       |
-| GetEmployeeAsync                        | 通过员工 ID 获取入职信息        | 租户令牌 | GET       |
-| PatchEmployeeAsync                      | 更新员工状态                    | 租户令牌 | PATCH     |
-| PatchEhrImportTaskAsync                 | 更新 e-HR 导入任务结果          | 租户令牌 | PATCH     |
-| CreateOfferAsync                        | 创建 Offer                      | 租户令牌 | POST      |
-| UpdateOfferAsync                        | 更新 Offer 信息                 | 租户令牌 | PUT       |
-| GetApplicationOfferAsync                | 获取 Offer 信息（按投递 ID）    | 租户令牌 | GET       |
-| GetOfferAsync                           | 获取 Offer 详情                 | 租户令牌 | GET       |
-| GetOfferListAsync                       | 获取 Offer 列表                 | 租户令牌 | GET       |
-| ChangeOfferStatusAsync                  | 更新 Offer 状态                 | 租户令牌 | PATCH     |
-| ChangeInternOfferStatusAsync            | 更新实习 Offer 入/离职状态      | 租户令牌 | POST      |
-| GetInterviewListAsync                   | 获取面试信息                    | 租户令牌 | GET       |
-| GetInterviewByTalentAsync               | 获取人才面试信息                | 租户令牌 | GET       |
-| GetInterviewRecordAsync                 | 获取面试评价详细信息（v1）      | 租户令牌 | GET       |
-| GetInterviewRecordV2Async               | 获取面试评价详细信息（新版 v2） | 租户令牌 | GET       |
-| GetInterviewRecordListAsync             | 批量获取面试评价详细信息（v1）  | 租户令牌 | GET       |
-| GetInterviewRecordListV2Async           | 批量获取面试评价详细信息（新版 v2） | 租户令牌 | GET   |
-| GetInterviewRecordAttachmentAsync       | 获取面试记录附件                | 租户令牌 | GET       |
-| GetInterviewMinutesAsync                | 获取面试速记明细                | 租户令牌 | GET       |
-| GetInterviewQuestionnaireListAsync      | 获取面试满意度问卷列表          | 租户令牌 | GET       |
+| 函数名称                                | 功能描述                        | 认证方式 | HTTP 方法 | 接口文档 |
+| --------------------------------------- | ------------------------------- | -------- | --------- |----------|
+| SearchReferralAsync                     | 查询内推信息                    | 租户令牌 | POST      | [SearchReferralAsync](https://open.feishu.cn/document/hire-v1/get-candidates/referral/search) |
+| GetReferralWebsiteJobPostListAsync      | 获取内推官网职位列表            | 租户令牌 | GET       | [GetReferralWebsiteJobPostListAsync](https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/referral/list) |
+| GetReferralWebsiteJobPostAsync          | 获取内推官网职位详情            | 租户令牌 | GET       | [GetReferralWebsiteJobPostAsync](https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/referral/get) |
+| GetReferralByApplicationAsync           | 按投递 ID 获取内推信息          | 租户令牌 | GET       | [GetReferralByApplicationAsync](https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/referral/get_by_application) |
+| GetPortalApplySchemaListAsync           | 获取官网申请表模板列表          | 租户令牌 | GET       | [GetPortalApplySchemaListAsync](https://open.feishu.cn/document/hire-v1/portal_apply_schema/list) |
+| CreateWebsiteChannelAsync               | 创建官网推广渠道                | 租户令牌 | POST      | [CreateWebsiteChannelAsync](https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/website/create-2) |
+| UpdateWebsiteChannelAsync               | 更新官网推广渠道                | 租户令牌 | PUT       | [UpdateWebsiteChannelAsync](https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/website/update) |
+| DeleteWebsiteChannelAsync               | 删除官网推广渠道                | 租户令牌 | DELETE    | [DeleteWebsiteChannelAsync](https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/website/delete) |
+| GetWebsiteChannelListAsync              | 获取官网推广渠道列表            | 租户令牌 | GET       | [GetWebsiteChannelListAsync](https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/website/list-3) |
+| CreateWebsiteUserAsync                  | 创建官网用户                    | 租户令牌 | POST      | [CreateWebsiteUserAsync](https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/website/create) |
+| GetWebsiteListAsync                     | 获取官网列表                    | 租户令牌 | GET       | [GetWebsiteListAsync](https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/website/list) |
+| GetWebsiteJobPostAsync                  | 获取官网职位详情                | 租户令牌 | GET       | [GetWebsiteJobPostAsync](https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/website/get) |
+| GetWebsiteJobPostListAsync              | 获取官网职位列表                | 租户令牌 | GET       | [GetWebsiteJobPostListAsync](https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/website/list-2) |
+| SearchWebsiteJobPostAsync               | 搜索官网职位列表                | 租户令牌 | POST      | [SearchWebsiteJobPostAsync](https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/website/search) |
+| CreateWebsiteDeliveryByResumeAsync      | 按简历创建官网投递              | 租户令牌 | POST      | [CreateWebsiteDeliveryByResumeAsync](https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/website/create_by_resume) |
+| CreateWebsiteDeliveryByAttachmentAsync  | 按简历附件创建官网投递          | 租户令牌 | POST      | [CreateWebsiteDeliveryByAttachmentAsync](https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/website/create_by_attachment) |
+| GetWebsiteDeliveryTaskAsync             | 获取官网投递任务结果            | 租户令牌 | GET       | [GetWebsiteDeliveryTaskAsync](https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/website/get-2) |
+| CreateNoteAsync                         | 创建人才备注                    | 租户令牌 | POST      | [CreateNoteAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/note/create) |
+| PatchNoteAsync                          | 更新人才备注                    | 租户令牌 | PATCH     | [PatchNoteAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/note/patch) |
+| GetNoteAsync                            | 获取人才备注                    | 租户令牌 | GET       | [GetNoteAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/note/get) |
+| GetNoteListAsync                        | 获取人才备注列表                | 租户令牌 | GET       | [GetNoteListAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/note/list) |
+| DeleteNoteAsync                         | 删除人才备注                    | 租户令牌 | DELETE    | [DeleteNoteAsync](https://open.feishu.cn/document/hire-v1/candidate-management/note/delete) |
+| GetEvaluationTaskListAsync              | 获取简历评估任务列表            | 租户令牌 | GET       | [GetEvaluationTaskListAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/recruitment-process-follow-up/list-3) |
+| GetExamMarkingTaskListAsync             | 获取笔试阅卷任务列表            | 租户令牌 | GET       | [GetExamMarkingTaskListAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/recruitment-process-follow-up/list-2) |
+| GetInterviewTaskListAsync               | 获取面试任务列表                | 租户令牌 | GET       | [GetInterviewTaskListAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/recruitment-process-follow-up/list-4) |
+| GetResumeSourceListAsync                | 获取简历来源列表                | 租户令牌 | GET       | [GetResumeSourceListAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/resume_source/list) |
+| BatchChangeTalentPoolAsync              | 批量加入/移除人才库中人才       | 租户令牌 | POST      | [BatchChangeTalentPoolAsync](https://open.feishu.cn/document/hire-v1/candidate-management/talent_pool/batch_change_talent_pool) |
+| GetTalentPoolListAsync                  | 获取人才库列表                  | 租户令牌 | GET       | [GetTalentPoolListAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/talent_pool/search) |
+| AddTalentToTalentPoolAsync              | 将人才加入人才库                | 租户令牌 | POST      | [AddTalentToTalentPoolAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/talent_pool/move_talent) |
+| OperateTalentTagAsync                   | 操作人才标签                    | 租户令牌 | POST      | [OperateTalentTagAsync](https://open.feishu.cn/document/hire-v1/candidate-management/talent/tag) |
+| CombinedCreateTalentAsync               | 创建人才                        | 租户令牌 | POST      | [CombinedCreateTalentAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/talent/combined_create) |
+| CombinedUpdateTalentAsync               | 更新人才信息                    | 租户令牌 | POST      | [CombinedUpdateTalentAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/talent/combined_update) |
+| AddTalentToFolderAsync                  | 人才加入文件夹                  | 租户令牌 | POST      | [AddTalentToFolderAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/talent/add_to_folder) |
+| RemoveTalentFromFolderAsync             | 人才移出文件夹                  | 租户令牌 | POST      | [RemoveTalentFromFolderAsync](https://open.feishu.cn/document/hire-v1/candidate-management/talent/remove_to_folder) |
+| GetTalentFolderListAsync                | 获取人才文件夹信息              | 租户令牌 | GET       | [GetTalentFolderListAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/talent/list-2) |
+| BatchGetTalentIdAsync                   | 根据手机号或邮箱获取人才 ID     | 租户令牌 | POST      | [BatchGetTalentIdAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/talent/batch_get_id) |
+| GetTalentListAsync                      | 获取人才列表                    | 租户令牌 | GET       | [GetTalentListAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/talent/list) |
+| QueryTalentObjectAsync                  | 获取人才字段                    | 租户令牌 | GET       | [QueryTalentObjectAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/talent/query) |
+| GetTalentAsync                          | 获取人才信息（v1）              | 租户令牌 | GET       | [GetTalentAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/talent/get) |
+| GetTalentV2Async                        | 获取人才详细信息（v2）          | 租户令牌 | GET       | [GetTalentV2Async](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/talent/get-2) |
+| UpdateTalentOnboardStatusAsync          | 更新人才在职状态                | 租户令牌 | POST      | [UpdateTalentOnboardStatusAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/talent/onboard_status) |
+| ChangeTalentBlockAsync                  | 加入/移出人才黑名单             | 租户令牌 | POST      | [ChangeTalentBlockAsync](https://open.feishu.cn/document/hire-v1/candidate-management/talent/change_talent_block) |
+| GetBackgroundCheckOrderListAsync        | 获取背调信息列表                | 租户令牌 | GET       | [GetBackgroundCheckOrderListAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/delivery-process-management/background_check_order/list) |
+| BatchQueryBackgroundCheckOrderAsync     | 查询背调信息列表                | 租户令牌 | POST      | [BatchQueryBackgroundCheckOrderAsync](https://open.feishu.cn/document/hire-v1/candidate-management/delivery-process-management/background_check_order/batch_query) |
+| CreateTripartiteAgreementAsync          | 创建三方协议                    | 租户令牌 | POST      | [CreateTripartiteAgreementAsync](https://open.feishu.cn/document/hire-v1/candidate-management/delivery-process-management/tripartite_agreement/create) |
+| GetTripartiteAgreementListAsync         | 获取三方协议                    | 租户令牌 | GET       | [GetTripartiteAgreementListAsync](https://open.feishu.cn/document/hire-v1/candidate-management/delivery-process-management/tripartite_agreement/list) |
+| UpdateTripartiteAgreementAsync          | 更新三方协议                    | 租户令牌 | PUT       | [UpdateTripartiteAgreementAsync](https://open.feishu.cn/document/hire-v1/candidate-management/delivery-process-management/tripartite_agreement/update) |
+| DeleteTripartiteAgreementAsync          | 删除三方协议                    | 租户令牌 | DELETE    | [DeleteTripartiteAgreementAsync](https://open.feishu.cn/document/hire-v1/candidate-management/delivery-process-management/tripartite_agreement/delete) |
+| TransferOnboardAsync                    | 操作候选人入职                  | 租户令牌 | POST      | [TransferOnboardAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/delivery-process-management/onboard/transfer_onboard) |
+| CancelOnboardAsync                      | 取消候选人入职                  | 租户令牌 | POST      | [CancelOnboardAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/delivery-process-management/onboard/cancel_onboard) |
+| GetEmployeeByApplicationAsync           | 通过投递 ID 获取入职信息        | 租户令牌 | GET       | [GetEmployeeByApplicationAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/delivery-process-management/onboard/get_by_application) |
+| GetEmployeeAsync                        | 通过员工 ID 获取入职信息        | 租户令牌 | GET       | [GetEmployeeAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/delivery-process-management/onboard/get) |
+| PatchEmployeeAsync                      | 更新员工状态                    | 租户令牌 | PATCH     | [PatchEmployeeAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/delivery-process-management/onboard/patch) |
+| PatchEhrImportTaskAsync                 | 更新 e-HR 导入任务结果          | 租户令牌 | PATCH     | [PatchEhrImportTaskAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/delivery-process-management/onboard/patch-2) |
+| CreateOfferAsync                        | 创建 Offer                      | 租户令牌 | POST      | [CreateOfferAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/delivery-process-management/offer/create) |
+| UpdateOfferAsync                        | 更新 Offer 信息                 | 租户令牌 | PUT       | [UpdateOfferAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/delivery-process-management/offer/update) |
+| GetApplicationOfferAsync                | 获取 Offer 信息（按投递 ID）    | 租户令牌 | GET       | [GetApplicationOfferAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/delivery-process-management/offer/offer) |
+| GetOfferAsync                           | 获取 Offer 详情                 | 租户令牌 | GET       | [GetOfferAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/delivery-process-management/offer/get) |
+| GetOfferListAsync                       | 获取 Offer 列表                 | 租户令牌 | GET       | [GetOfferListAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/delivery-process-management/offer/list) |
+| ChangeOfferStatusAsync                  | 更新 Offer 状态                 | 租户令牌 | PATCH     | [ChangeOfferStatusAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/delivery-process-management/offer/offer_status) |
+| ChangeInternOfferStatusAsync            | 更新实习 Offer 入/离职状态      | 租户令牌 | POST      | [ChangeInternOfferStatusAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/delivery-process-management/offer/intern_offer_status) |
+| GetInterviewListAsync                   | 获取面试信息                    | 租户令牌 | GET       | [GetInterviewListAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/delivery-process-management/interview/list) |
+| GetInterviewByTalentAsync               | 获取人才面试信息                | 租户令牌 | GET       | [GetInterviewByTalentAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/delivery-process-management/interview/get_by_talent) |
+| GetInterviewRecordAsync                 | 获取面试评价详细信息（v1）      | 租户令牌 | GET       | [GetInterviewRecordAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/delivery-process-management/interview/get) |
+| GetInterviewRecordV2Async               | 获取面试评价详细信息（新版 v2） | 租户令牌 | GET       | [GetInterviewRecordV2Async](https://open.feishu.cn/document/hire-v1/candidate-management/delivery-process-management/interview/get-3) |
+| GetInterviewRecordListAsync             | 批量获取面试评价详细信息（v1）  | 租户令牌 | GET       | [GetInterviewRecordListAsync](https://open.feishu.cn/document/hire-v1/candidate-management/delivery-process-management/interview/list-3) |
+| GetInterviewRecordListV2Async           | 批量获取面试评价详细信息（新版 v2） | 租户令牌 | GET   | [GetInterviewRecordListV2Async](https://open.feishu.cn/document/hire-v1/candidate-management/delivery-process-management/interview/list-4) |
+| GetInterviewRecordAttachmentAsync       | 获取面试记录附件                | 租户令牌 | GET       | [GetInterviewRecordAttachmentAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/delivery-process-management/interview/get-2) |
+| GetInterviewMinutesAsync                | 获取面试速记明细                | 租户令牌 | GET       | [GetInterviewMinutesAsync](https://open.feishu.cn/document/hire-v1/candidate-management/delivery-process-management/interview/get-4) |
+| GetInterviewQuestionnaireListAsync      | 获取面试满意度问卷列表          | 租户令牌 | GET       | [GetInterviewQuestionnaireListAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/delivery-process-management/interview/list-2) |
 
 ## 函数详细内容
 

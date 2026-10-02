@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 会议报告用于记录一段时间内租户会议的使用情况，包括：获取会议报告、获取 Top 用户列表。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/vc-v1/report/meeting-report-overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/report/meeting-report-overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "VideoConferencing")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

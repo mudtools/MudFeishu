@@ -19,9 +19,9 @@ description: 该接口用于以用户身份获取飞书招聘待办事项（评�
 
 ## 函数列表
 
-| 函数名称         | 功能描述         | 认证方式 | HTTP 方法 |
-| ---------------- | ---------------- | -------- | --------- |
-| GetTodoListAsync | 批量获取待办事项 | 用户令牌 | GET       |
+| 函数名称         | 功能描述         | 认证方式 | HTTP 方法 | 接口文档 |
+| ---------------- | ---------------- | -------- | --------- |----------|
+| GetTodoListAsync | 批量获取待办事项 | 用户令牌 | GET       | [GetTodoListAsync](https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/recruitment-process-follow-up/list) |
 
 ## 函数详细内容
 

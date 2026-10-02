@@ -19,13 +19,13 @@ description: 该接口用于以用户身份查询飞书词典词条，支持词�
 
 ## 函数列表
 
-| 函数名称             | 功能描述     | 认证方式 | HTTP 方法 |
-| -------------------- | ------------ | -------- | --------- |
-| GetEntityAsync       | 获取词条详情 | 用户令牌 | GET       |
-| GetEntityListAsync   | 获取词条列表 | 用户令牌 | GET       |
-| SearchEntityAsync    | 模糊搜索词条 | 用户令牌 | POST      |
-| MatchEntityAsync     | 精准搜索词条 | 用户令牌 | POST      |
-| HighlightEntityAsync | 词条高亮     | 用户令牌 | POST      |
+| 函数名称             | 功能描述     | 认证方式 | HTTP 方法 | 接口文档 |
+| -------------------- | ------------ | -------- | --------- |----------|
+| GetEntityAsync       | 获取词条详情 | 用户令牌 | GET       | [GetEntityAsync](https://open.feishu.cn/document/lingo-v1/entity/get) |
+| GetEntityListAsync   | 获取词条列表 | 用户令牌 | GET       | [GetEntityListAsync](https://open.feishu.cn/document/lingo-v1/entity/list) |
+| SearchEntityAsync    | 模糊搜索词条 | 用户令牌 | POST      | [SearchEntityAsync](https://open.feishu.cn/document/lingo-v1/entity/search) |
+| MatchEntityAsync     | 精准搜索词条 | 用户令牌 | POST      | [MatchEntityAsync](https://open.feishu.cn/document/lingo-v1/entity/match) |
+| HighlightEntityAsync | 词条高亮     | 用户令牌 | POST      | [HighlightEntityAsync](https://open.feishu.cn/document/lingo-v1/entity/highlight) |
 
 ## 函数详细内容
 

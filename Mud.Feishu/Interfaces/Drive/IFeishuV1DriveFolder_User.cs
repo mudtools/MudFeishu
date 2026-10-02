@@ -9,7 +9,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 文件夹是飞书云空间中用于管理文件和其它文件夹的容器。每个文件夹都有唯一的 token 作为标识。在不同接口中，其参数命名可能不同，包括 token、 folder_token、folderToken 等。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/docs/drive-v1/folder/folder-overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/docs/drive-v1/folder/folder-overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Drive", InheritedFrom = nameof(FeishuV1DriveFolder))]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

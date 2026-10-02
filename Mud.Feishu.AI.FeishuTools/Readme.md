@@ -170,7 +170,7 @@ var response = await agent.RunApprovalContinuationAsync(
 
 ## 4. 模型看不到的能力，出路在哪
 
-本包刻意**不**做"每个 SDK 方法一个工具"（1203 无差别暴露）也不做通用裸 `api` 工具。
+本包刻意**不**做"每个 SDK 方法一个工具"（1228 无差别暴露）也不做通用裸 `api` 工具。
 三层结构如下：
 
 | 层              | 内容                                                                                                 | 模型可见？         |

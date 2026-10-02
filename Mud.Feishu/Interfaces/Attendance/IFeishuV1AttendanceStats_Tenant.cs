@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 考勤统计接口支持开发者定制接口返回数据，让开发者可以只获取自己所关注的数据内容。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/attendance-v1/user_stats_data/attendance-statistic-reference"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/attendance-v1/user_stats_data/update">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Attendance")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -20,6 +20,7 @@ public interface IFeishuTenantV1AttendanceStats : IFeishuAppContextSwitcher
     /// <summary>
     /// 更新开发者定制的日度统计或月度统计的统计报表表头设置信息。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=update&amp;project=attendance&amp;resource=user_stats_view&amp;version=v1"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/attendance-v1/user_stats_data/update">接口文档</see></para>
     /// </summary>
     /// <param name="userStatsViewsRequest">更新统计设置请求体</param>
     /// <param name="user_stats_view_id">用户视图 ID,示例值："TmpZNU5qTTJORFF6T1RnNU5UTTNOakV6TWl0dGIyNTBhQT09"</param>
@@ -36,6 +37,7 @@ public interface IFeishuTenantV1AttendanceStats : IFeishuAppContextSwitcher
     /// <summary>
     /// 查询考勤统计支持的日度统计或月度统计的统计表头。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=query&amp;project=attendance&amp;resource=user_stats_field&amp;version=v1"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/attendance-v1/user_stats_data/query-2">接口文档</see></para>
     /// </summary>
     /// <param name="queryStatsFieldsRequest">查询统计表头请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -48,6 +50,7 @@ public interface IFeishuTenantV1AttendanceStats : IFeishuAppContextSwitcher
     /// <summary>
     /// 查询考勤统计支持的日度统计或月度统计的统计表头。报表的表头信息可以在考勤统计-报表中查询到具体的报表信息，此接口专门用于查询表头数据。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=query&amp;project=attendance&amp;resource=user_stats_view&amp;version=v1"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/attendance-v1/user_stats_data/query">接口文档</see></para>
     /// </summary>
     /// <param name="queryStatsFieldsRequest">查询统计设置请求体</param>
     /// <param name="employee_type">请求体中的 user_id 和响应体中的 user_id 的员工ID类型。</param>
@@ -63,6 +66,7 @@ public interface IFeishuTenantV1AttendanceStats : IFeishuAppContextSwitcher
     /// <summary>
     /// 查询日度统计或月度统计的统计数据。字段包含基本信息、考勤组信息、出勤统计、异常统计、请假统计、加班统计、打卡时间、考勤结果和自定义字段。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=query&amp;project=attendance&amp;resource=user_stats_data&amp;version=v1"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/attendance-v1/user_stats_data/query-3">接口文档</see></para>
     /// </summary>
     /// <param name="queryStatsDatasRequest">查询统计数据请求体</param>
     /// <param name="employee_type">请求体中的 user_id 和响应体中的 user_id 的员工ID类型。</param>
@@ -74,3 +78,4 @@ public interface IFeishuTenantV1AttendanceStats : IFeishuAppContextSwitcher
      [Query("employee_type")] string employee_type = Consts.User_Id_Type,
      CancellationToken cancellationToken = default);
 }
+

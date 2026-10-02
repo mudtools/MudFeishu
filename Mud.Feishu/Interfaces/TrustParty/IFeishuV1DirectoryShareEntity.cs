@@ -11,7 +11,7 @@ namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// 飞书共享成员范围（directory/v1/share_entities）SDK 用于查询本组织与对方关联组织之间双向共享的部门、用户组与成员范围，为配置可搜可见规则时选取主客体实体提供依据。全部端点同时支持 tenant_access_token 与 user_access_token，调用者需具备关联组织管理员权限。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/trust_party-v1/-collaboraiton-organization/list-3"/></para>
+/// <para><see href="https://open.feishu.cn/document/trust_party-v1/-collaboraiton-organization/list-3">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

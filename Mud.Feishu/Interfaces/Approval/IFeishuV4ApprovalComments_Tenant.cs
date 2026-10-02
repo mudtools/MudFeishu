@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 原生审批实例内，支持员工进行评论、回复评论。评论内容支持文本、@用户以及添加附件。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/approval-v4/instance-comment/overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/instance-comment/overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Approval")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -20,6 +20,7 @@ public interface IFeishuTenantV4ApprovalComments : IFeishuAppContextSwitcher
     /// <summary>
     /// 在指定审批实例下创建、修改评论或回复评论（不包含审批同意、拒绝、转交等附加的理由或意见）。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=create&amp;project=approval&amp;resource=instance.comment&amp;version=v4"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/instance-comment/create">接口文档</see></para>
     /// </summary>
     /// <param name="instance_id">审批实例 Code。说明：支持传入自定义审批实例 ID。示例值："6A123516-FB88-470D-A428-9AF58B71B3C0"</param>
     /// <param name="user_id">用户 ID，ID 类型与 user_id_type 取值一致。示例值："e5286g26"</param>
@@ -38,6 +39,7 @@ public interface IFeishuTenantV4ApprovalComments : IFeishuAppContextSwitcher
     /// <summary>
     /// 删除某审批实例下的一条评论或评论回复（不包含审批同意、拒绝、转交等附加的理由或意见），删除后在审批中心的审批实例内不再显示评论内容，而是显示 评论已删除。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=delete&amp;project=approval&amp;resource=instance.comment&amp;version=v4"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/instance-comment/delete">接口文档</see></para>
     /// </summary>
     /// <param name="instance_id">审批实例 Code。说明：支持传入自定义审批实例 ID。示例值："6A123516-FB88-470D-A428-9AF58B71B3C0"</param>
     /// <param name="user_id">用户 ID，ID 类型与 user_id_type 取值一致。示例值："e5286g26"</param>
@@ -56,6 +58,7 @@ public interface IFeishuTenantV4ApprovalComments : IFeishuAppContextSwitcher
     /// <summary>
     /// 清空某审批实例下的全部评论与评论回复，包括显示为已删除的评论。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=remove&amp;project=approval&amp;resource=instance.comment&amp;version=v4"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/instance-comment/remove">接口文档</see></para>
     /// </summary>
     /// <param name="instance_id">审批实例 Code。说明：支持传入自定义审批实例 ID。示例值："6A123516-FB88-470D-A428-9AF58B71B3C0"</param>
     /// <param name="user_id">用户 ID，ID 类型与 user_id_type 取值一致。示例值："e5286g26"</param>
@@ -72,6 +75,7 @@ public interface IFeishuTenantV4ApprovalComments : IFeishuAppContextSwitcher
     /// <summary>
     /// 根据审批实例 Code 获取某个审批实例下，全部评论与评论回复（不包含审批同意、拒绝、转交等附加的理由或意见）。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=list&amp;project=approval&amp;resource=instance.comment&amp;version=v4"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/approval-v4/instance-comment/list">接口文档</see></para>
     /// </summary>
     /// <param name="instance_id">审批实例 Code。说明：支持传入自定义审批实例 ID。示例值："6A123516-FB88-470D-A428-9AF58B71B3C0"</param>
     /// <param name="user_id">用户 ID，ID 类型与 user_id_type 取值一致。示例值："e5286g26"</param>

@@ -15,7 +15,7 @@ public interface IEventHeader
 {
     /// <summary>
     /// 事件版本标识
-    /// <para>v2.0 事件为 "2.0"，v1.0 事件为 null</para>
+    /// <para>v2.0 事件为 "2.0"；v1.0 事件由 SDK 构造合成 Header（字段取自根级 uuid/token 与 event.*），此属性恒为 null</para>
     /// </summary>
     string? Schema { get; }
 

@@ -151,6 +151,23 @@ Tool-level idempotency keys (blocked by decision ⑤ — the Feishu `client_toke
 SDK interface signature), calendar/task/docx-write tools (SDK signatures and DTOs unverified; deferred with the
 rationale in plan §6.3), scope mapping table, domain guidance assets, IM/mail/multimodal/long-tail domains.
 
+---
+
+## [Unreleased] - 2026-10-01
+
+> Themes: **adapting to `Mud.HttpUtils` 3.0.0** (upstream `BC-27`: removal of UseApp / UseDefaultApp / BeginScope(string)) and **event header dual-format (v1.0/v2.0) parsing fixes (R-E1)**.
+> Suggested version: **3.1.0** (minor level; no public API removals — adds `FeishuEventDataParser` / `GetEventRawJson` / `AddFailedEventStore` and more).
+
+### Event dual-format parsing fixes (R-E1)
+
+- **New shared event parser `FeishuEventDataParser`** (Abstractions, single source of truth): v2.0 / official v1.0 shape / `data`-wrapped fallback shape are parsed uniformly; the WebSocket and Webhook channels removed their parallel implementations, and the `EventParserSingleSourceGuards` contract guard prevents regressions.
+- **Fixed (P0)**: the Webhook channel mapped v1.0 event fields incorrectly, so v1.0 events were rejected with 400 by the empty-identifier fail-closed gate (E-P0-1); the WebSocket channel silently dropped entire official v1.0 frames (root-level `uuid`/`token`/`ts`, event fields inside `event`, E-P0-2). Both channels now route v1.0 events normally (the event type is the raw `event.type` value — register handlers by that key).
+- **Fixed (P1)**: the v1.0 root-level `token` is now parsed into a synthetic Header (`Schema == null`; fields from root-level `uuid`/`token`/`ts` and `event.*`, E-P1-1) — detect v1.0 with `Schema == null`, not `Header == null`; token verification and Header-based idempotency work again for v1.0.
+- **Fixed (P1)**: `EventData.Event` is now written uniformly as the raw JSON **string** (the WS channel used to write a `JsonElement`, E-P1-2). The property type stays `object?`; read via the new `GetEventRawJson()` extension — it will converge to `string?` in the next major.
+- **Fixed (P1)**: WebSocket handling failures can now be persisted to `IFailedEventStore` via `AddFailedEventStore<T>()` / `AddFailedEventStore(instance)` (TryAdd semantics, not registered by default, zero behavior change when absent; only the business-failure branch persists — cancellation/interception terminal states do not). Adds `FeishuWebSocketOptions.FailedEventInitialRetryDelaySeconds` (default 10; non-positive falls back to the default).
+- **Behavior change (P2)**: `EventData.CreateTime` semantics corrected from "seconds" to **milliseconds** (aligned with the XML docs, E-P2-2; v1.0 `ts` included in the unified heuristic). Hosts consuming seconds must multiply by 1000 or switch to `DateTimeOffset.FromUnixTimeMilliseconds`.
+- **P2**: the `IgnoreUnknownEventTypes` defaults differ across channels (Webhook=true / WS=false, AD-5 keeps both) — both Options XML docs state the reason, and a one-time startup warning is emitted when WS runs with `false`.
+
 ## [3.0.0-rc3] - 2026-09-23
 
 > This release focuses on **Webhook multi-region security hardening, token & multi-app hot-reload stability, Redis dedup & token-store correctness, and WebSocket connection reliability**. It includes breaking changes — read "Upgrade Notes" before upgrading.

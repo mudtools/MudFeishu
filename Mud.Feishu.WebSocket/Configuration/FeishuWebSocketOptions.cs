@@ -147,8 +147,27 @@ public class FeishuWebSocketOptions
     /// <remarks>
     /// 对齐 Webhook 通道 <c>FeishuWebhookOptions.IgnoreUnknownEventTypes</c>（WHF-09，默认 true）。
     /// WS 默认 false 是行为兼容选择；推荐新宿主设为 true 以与 Webhook 一致。
+    /// E-P2-1：两通道默认值不同——Webhook 默认 true（未注册事件静默忽略），WS 默认 false（默认处理器兜底），
+    /// 语义不一致属已知差异（AD-5：不改默认值，避免行为收紧），宿主可显式对齐。
     /// </remarks>
     public bool IgnoreUnknownEventTypes { get; set; }
+
+    private const int DefaultFailedEventInitialRetryDelaySeconds = Mud.Feishu.Abstractions.Consts.DefaultEventRetryInitialDelaySeconds;
+    private int _failedEventInitialRetryDelaySeconds = DefaultFailedEventInitialRetryDelaySeconds;
+
+    /// <summary>
+    /// 失败事件落盘的初始重试延迟（秒），默认 10；非正数回退默认值。
+    /// </summary>
+    /// <remarks>
+    /// R-E1/E-P1-3 阶段一：WS 处理失败时（若已注册 <c>IFailedEventStore</c>）以该延迟写入
+    /// <c>NextRetryAt</c>；重试主路径仍是服务端重发（ACK 500），本字段仅为落盘记录提供对账口径。
+    /// 完整重试配置（倍数/上限/轮询）随 R-next 重试循环泛化时引入。
+    /// </remarks>
+    public int FailedEventInitialRetryDelaySeconds
+    {
+        get => _failedEventInitialRetryDelaySeconds;
+        set => _failedEventInitialRetryDelaySeconds = value <= 0 ? DefaultFailedEventInitialRetryDelaySeconds : value;
+    }
 
     /// <summary>从配置节回填 R3 前的扁平连接/证书键（仅 JSON 兼容）</summary>
     /// <param name="section">FeishuWebSocket 配置节</param>

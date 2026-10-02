@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书邮箱地址API接口实现了查询用户主邮箱地址功能。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox/profile"/></para>
+/// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox/profile">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Mail")]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

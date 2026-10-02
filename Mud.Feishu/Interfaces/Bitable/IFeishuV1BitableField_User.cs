@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 /// <summary>
 /// <para>字段 field即多维表格的“列”，多维表格提供丰富的字段类型。</para>
 /// <para>每个字段都有唯一标识 field_id，field_id 在一个多维表格内唯一，在全局不一定唯一。field_id 需要通过列出字段接口获取。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-field/guide"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-field/guide">接口文档</see></para>
 /// </summary>
 [HttpClientApi(RegistryGroupName = "Bitable", TokenManage = nameof(IFeishuAppManager), InheritedFrom = nameof(FeishuV1BitableField))]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

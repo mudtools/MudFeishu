@@ -19,9 +19,9 @@ description: 该接口用于以租户身份按招聘渠道搜索职位发布记�
 
 ## 函数列表
 
-| 函数名称                    | 功能描述         | 限频                    | 所需权限                                       | HTTP 方法 |
-| --------------------------- | ---------------- | ----------------------- | ---------------------------------------------- | --------- |
-| SearchJobPublishRecordAsync | 搜索职位发布记录 | 1000 次/分、50 次/秒    | hire:job:readonly 或 hire:job（字段权限 contact:user.employee_id:readonly） | POST |
+| 函数名称                    | 功能描述         | 限频                    | 所需权限                                       | HTTP 方法 | 接口文档 |
+| --------------------------- | ---------------- | ----------------------- | ---------------------------------------------- | --------- |----------|
+| SearchJobPublishRecordAsync | 搜索职位发布记录 | 1000 次/分、50 次/秒    | hire:job:readonly 或 hire:job（字段权限 contact:user.employee_id:readonly） | POST | [SearchJobPublishRecordAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/search) |
 
 ## 函数详细内容
 

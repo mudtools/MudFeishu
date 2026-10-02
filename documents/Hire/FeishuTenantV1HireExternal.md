@@ -19,30 +19,30 @@ description: 该接口用于以租户身份将外部招聘系统（ATS/RMS）中
 
 ## 函数列表
 
-| 函数名称                                | 功能描述               | 认证方式 | HTTP 方法 |
-| --------------------------------------- | ---------------------- | -------- | --------- |
-| CreateTalentExternalInfoAsync           | 创建人才外部信息       | 租户令牌 | POST      |
-| UpdateTalentExternalInfoAsync           | 更新人才外部信息       | 租户令牌 | PUT       |
-| CreateExternalApplicationAsync          | 创建外部投递           | 租户令牌 | POST      |
-| UpdateExternalApplicationAsync          | 更新外部投递           | 租户令牌 | PUT       |
-| GetExternalApplicationListAsync         | 获取外部投递列表       | 租户令牌 | GET       |
-| DeleteExternalApplicationAsync          | 删除外部投递           | 租户令牌 | DELETE    |
-| CreateExternalInterviewAsync            | 创建外部面试           | 租户令牌 | POST      |
-| UpdateExternalInterviewAsync            | 更新外部面试           | 租户令牌 | PUT       |
-| BatchQueryExternalInterviewAsync        | 查询外部面试列表       | 租户令牌 | POST      |
-| DeleteExternalInterviewAsync            | 删除外部面试           | 租户令牌 | DELETE    |
-| CreateExternalInterviewAssessmentAsync  | 创建外部面试评价       | 租户令牌 | POST      |
-| PatchExternalInterviewAssessmentAsync   | 更新外部面试评价       | 租户令牌 | PATCH     |
-| CreateExternalOfferAsync                | 创建外部 Offer         | 租户令牌 | POST      |
-| UpdateExternalOfferAsync                | 更新外部 Offer         | 租户令牌 | PUT       |
-| BatchQueryExternalOfferAsync            | 查询外部 Offer 列表    | 租户令牌 | POST      |
-| DeleteExternalOfferAsync                | 删除外部 Offer         | 租户令牌 | DELETE    |
-| CreateExternalBackgroundCheckAsync      | 创建外部背调           | 租户令牌 | POST      |
-| UpdateExternalBackgroundCheckAsync      | 更新外部背调           | 租户令牌 | PUT       |
-| BatchQueryExternalBackgroundCheckAsync  | 查询外部背调列表       | 租户令牌 | POST      |
-| DeleteExternalBackgroundCheckAsync      | 删除外部背调           | 租户令牌 | DELETE    |
-| CreateExternalReferralRewardAsync       | 导入外部内推奖励       | 租户令牌 | POST      |
-| DeleteExternalReferralRewardAsync       | 删除外部内推奖励       | 租户令牌 | DELETE    |
+| 函数名称                                | 功能描述               | 认证方式 | HTTP 方法 | 接口文档 |
+| --------------------------------------- | ---------------------- | -------- | --------- |----------|
+| CreateTalentExternalInfoAsync           | 创建人才外部信息       | 租户令牌 | POST      | [CreateTalentExternalInfoAsync](https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/import-external-system-information/create-5) |
+| UpdateTalentExternalInfoAsync           | 更新人才外部信息       | 租户令牌 | PUT       | [UpdateTalentExternalInfoAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-development-guide) |
+| CreateExternalApplicationAsync          | 创建外部投递           | 租户令牌 | POST      | [CreateExternalApplicationAsync](https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/import-external-system-information/create) |
+| UpdateExternalApplicationAsync          | 更新外部投递           | 租户令牌 | PUT       | [UpdateExternalApplicationAsync](https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/import-external-system-information/update-2) |
+| GetExternalApplicationListAsync         | 获取外部投递列表       | 租户令牌 | GET       | [GetExternalApplicationListAsync](https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/import-external-system-information/list) |
+| DeleteExternalApplicationAsync          | 删除外部投递           | 租户令牌 | DELETE    | [DeleteExternalApplicationAsync](https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/import-external-system-information/delete) |
+| CreateExternalInterviewAsync            | 创建外部面试           | 租户令牌 | POST      | [CreateExternalInterviewAsync](https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/import-external-system-information/create-3) |
+| UpdateExternalInterviewAsync            | 更新外部面试           | 租户令牌 | PUT       | [UpdateExternalInterviewAsync](https://open.feishu.cn/document/hire-v1/get-candidates/import-external-system-information/import-external-interview-info/update) |
+| BatchQueryExternalInterviewAsync        | 查询外部面试列表       | 租户令牌 | POST      | [BatchQueryExternalInterviewAsync](https://open.feishu.cn/document/hire-v1/get-candidates/import-external-system-information/import-external-interview-info/batch_query) |
+| DeleteExternalInterviewAsync            | 删除外部面试           | 租户令牌 | DELETE    | [DeleteExternalInterviewAsync](https://open.feishu.cn/document/hire-v1/get-candidates/import-external-system-information/import-external-interview-info/delete) |
+| CreateExternalInterviewAssessmentAsync  | 创建外部面试评价       | 租户令牌 | POST      | [CreateExternalInterviewAssessmentAsync](https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/import-external-system-information/create-4) |
+| PatchExternalInterviewAssessmentAsync   | 更新外部面试评价       | 租户令牌 | PATCH     | [PatchExternalInterviewAssessmentAsync](https://open.feishu.cn/document/hire-v1/get-candidates/import-external-system-information/import-external-interview-info/patch) |
+| CreateExternalOfferAsync                | 创建外部 Offer         | 租户令牌 | POST      | [CreateExternalOfferAsync](https://open.feishu.cn/document/hire-v1/get-candidates/import-external-system-information/import-external-offer-info/create) |
+| UpdateExternalOfferAsync                | 更新外部 Offer         | 租户令牌 | PUT       | [UpdateExternalOfferAsync](https://open.feishu.cn/document/hire-v1/get-candidates/import-external-system-information/import-external-offer-info/update) |
+| BatchQueryExternalOfferAsync            | 查询外部 Offer 列表    | 租户令牌 | POST      | [BatchQueryExternalOfferAsync](https://open.feishu.cn/document/hire-v1/get-candidates/import-external-system-information/import-external-offer-info/batch_query) |
+| DeleteExternalOfferAsync                | 删除外部 Offer         | 租户令牌 | DELETE    | [DeleteExternalOfferAsync](https://open.feishu.cn/document/hire-v1/get-candidates/import-external-system-information/import-external-offer-info/delete) |
+| CreateExternalBackgroundCheckAsync      | 创建外部背调           | 租户令牌 | POST      | [CreateExternalBackgroundCheckAsync](https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/import-external-system-information/create-2) |
+| UpdateExternalBackgroundCheckAsync      | 更新外部背调           | 租户令牌 | PUT       | [UpdateExternalBackgroundCheckAsync](https://open.feishu.cn/document/hire-v1/get-candidates/import-external-system-information/import-external-background-info/update) |
+| BatchQueryExternalBackgroundCheckAsync  | 查询外部背调列表       | 租户令牌 | POST      | [BatchQueryExternalBackgroundCheckAsync](https://open.feishu.cn/document/hire-v1/get-candidates/import-external-system-information/import-external-background-info/batch_query) |
+| DeleteExternalBackgroundCheckAsync      | 删除外部背调           | 租户令牌 | DELETE    | [DeleteExternalBackgroundCheckAsync](https://open.feishu.cn/document/hire-v1/get-candidates/import-external-system-information/import-external-background-info/delete) |
+| CreateExternalReferralRewardAsync       | 导入外部内推奖励       | 租户令牌 | POST      | [CreateExternalReferralRewardAsync](https://open.feishu.cn/document/hire-v1/get-candidates/import-external-system-information/import-external-referral-reward-info/create) |
+| DeleteExternalReferralRewardAsync       | 删除外部内推奖励       | 租户令牌 | DELETE    | [DeleteExternalReferralRewardAsync](https://open.feishu.cn/document/hire-v1/get-candidates/import-external-system-information/import-external-referral-reward-info/delete) |
 
 ## 函数详细内容
 

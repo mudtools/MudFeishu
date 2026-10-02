@@ -19,9 +19,9 @@ description: 该接口用于以用户身份分页获取飞书词典的词典分�
 
 ## 函数列表
 
-| 函数名称                   | 功能描述     | 认证方式 | HTTP 方法 |
-| -------------------------- | ------------ | -------- | --------- |
-| GetClassificationListAsync | 获取词典分类 | 用户令牌 | GET       |
+| 函数名称                   | 功能描述     | 认证方式 | HTTP 方法 | 接口文档 |
+| -------------------------- | ------------ | -------- | --------- |----------|
+| GetClassificationListAsync | 获取词典分类 | 用户令牌 | GET       | [GetClassificationListAsync](https://open.feishu.cn/document/lingo-v1/classification/list) |
 
 ## 函数详细内容
 

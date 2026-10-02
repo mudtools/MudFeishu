@@ -252,6 +252,7 @@ public class FeishuEventDecryptorTests
     [Fact]
     public async Task DecryptAsync_WithV1Event_HeaderShouldBeNull()
     {
+        // R-E1（AD-2）：v1 事件由 SDK 构造合成 Header——Header 不再为 null，但 Schema 恒为 null
         var encryptKey = "test_encrypt_key_123456";
         var originalJson = "{\"event_id\":\"evt_v1_001\",\"event_type\":\"test_event\",\"create_time\":1234567890,\"event\":{\"data\":\"value\"}}";
         var encryptedData = EncryptData(originalJson, encryptKey);
@@ -259,8 +260,36 @@ public class FeishuEventDecryptorTests
         var result = await _decryptor.DecryptAsync(encryptedData, encryptKey);
 
         result.Should().NotBeNull();
-        result!.Header.Should().BeNull();
+        result!.Header.Should().NotBeNull("v1 事件由 SDK 构造合成 Header（R-E1/AD-2）");
+        result.Header!.Schema.Should().BeNull("v1 合成 Header 的 Schema 契约为 null");
+        result.Header.EventId.Should().Be("evt_v1_001");
+        result.Header.EventType.Should().Be("test_event");
         result.Schema.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task DecryptAsync_WithOfficialV1Sample_ShouldNotBeRejectedAsEmptyIdentifiers()
+    {
+        // R-E1（E-P0-1）：官方 v1.0 格式（根级 uuid/token/ts、事件字段在 event 内）
+        // 此前 ParseV1Event 按根级 event_id/event_type 读取 → 五字段全空 →
+        // 默认 RejectEmptyIdentifiers=true 下被 400 拒绝。修复后 EventId=uuid 非空、可路由。
+        var encryptKey = "test_encrypt_key_123456";
+        var originalJson = """
+            {"ts":"1502199207.7171419","uuid":"bc447199585340d1f3728d26b1c0297a","token":"41a9425ea7df4536a7623e38fa321bae",
+             "type":"event_callback","event":{"app_id":"cli_9c8609450f78d102","tenant_key":"736588c9260f175c","type":"p2p_chat_create"}}
+            """;
+        var encryptedData = EncryptData(originalJson, encryptKey);
+
+        var result = await _decryptor.DecryptAsync(encryptedData, encryptKey);
+
+        result.Should().NotBeNull();
+        result!.EventId.Should().Be("bc447199585340d1f3728d26b1c0297a", "v1 唯一标识取自根级 uuid");
+        result.EventType.Should().Be("p2p_chat_create", "v1 事件类型取自 event.type");
+        result.AppId.Should().Be("cli_9c8609450f78d102");
+        result.TenantKey.Should().Be("736588c9260f175c");
+        result.Header!.Token.Should().Be("41a9425ea7df4536a7623e38fa321bae", "v1 token 进入合成 Header（E-P1-1）");
+        result.CreateTime.Should().Be(1502199207717, "浮点秒 ts → 毫秒（E-P2-2）");
+        result.Event.Should().BeOfType<string>();
     }
 
     [Fact]

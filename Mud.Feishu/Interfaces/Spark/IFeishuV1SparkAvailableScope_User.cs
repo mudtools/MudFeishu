@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书妙搭（Spark）产品使用权限 SDK 是一组服务端 OpenAPI 的封装，用于获取与修改妙搭产品的企业级使用权限配置（可用范围模式 + 允许/禁止名单）。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app-available_scope/open_api_get_miaoda_available_scope"/></para>
+/// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app-available_scope/open_api_get_miaoda_available_scope">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Spark")]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

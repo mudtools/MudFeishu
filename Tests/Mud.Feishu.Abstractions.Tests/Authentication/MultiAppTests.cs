@@ -54,6 +54,14 @@ public class MultiAppTests
         // 测试基础设施必须注册工厂，否则任何触发 Lazy 创建的测试都会抛 InvalidOperationException。
         services.TryAddSingleton<IFeishuTokenManagerFactory, DefaultFeishuTokenManagerFactory>();
 
+        // Mud.HttpUtils 3.0.0 迁移（BC-27 + SW-15）回归：FeishuAppManager.GetWebApi/GetDefaultWebApi
+        // 现经由 IAppContextHolder.SwitchToApp/SwitchToDefaultApp 完成切换（完整守卫 + 立即切换 + 不归还），
+        // 而不再调用生成类的 UseApp/UseDefaultApp。故测试基础设施需按生产接线
+        // （AddFeishuAppBaseServices）注册 Holder 与授权器，否则切换路径会「默认拒绝」。
+        // 与 IMemoryCache / 令牌工厂同理：属测试基础设施补全，不改变测试契约。
+        services.TryAddSingleton<IAppContextHolder, AsyncLocalAppContextSwitcher>();
+        services.TryAddSingleton<IAppAccessAuthorizer, AllowAllAppAccessAuthorizer>();
+
         return services;
     }
 
@@ -541,14 +549,11 @@ public class MultiAppTests
     }
 
     [Fact]
-    public void FeishuAppManager_GetWebApi_ShouldUseOverrideImplementation()
+    public void FeishuAppManager_GetWebApi_ShouldReturnDiResolvedService_AndSwitchContextToTargetApp()
     {
         var services = CreateServiceCollection();
 
         var switcherMock = new Mock<IFeishuAppContextSwitcher>();
-        var appContextMock = new Mock<IMudAppContext>();
-        switcherMock.Setup(x => x.UseApp(AppConfigs.AppKeys.Default)).Returns(appContextMock.Object);
-
         services.AddSingleton<IFeishuAppContextSwitcher>(switcherMock.Object);
 
         var configs = new List<FeishuAppConfig>
@@ -569,22 +574,38 @@ public class MultiAppTests
 
         var provider = services.BuildServiceProvider();
         var appManager = provider.GetRequiredService<IFeishuAppManager>();
+        var holder = provider.GetRequiredService<IAppContextHolder>();
 
         var result = appManager.GetWebApi<IFeishuAppContextSwitcher>(AppConfigs.AppKeys.Default);
 
-        Assert.NotNull(result);
-        switcherMock.Verify(x => x.UseApp(AppConfigs.AppKeys.Default), Times.Once);
+        // 1) 原样返回 DI 解析到的服务实例（重写基类实现的核心契约）。
+        Assert.Same(switcherMock.Object, result);
+
+        // 2) Mud.HttpUtils 3.0.0 迁移（BC-27 + SW-15）后的实现契约：切换由
+        //    IAppContextHolder.SwitchToApp 完成（完整守卫 + 立即切换 + 不归还），
+        //    解析器为本类单例（即生成类 _tokenManager 的同一实例）⇒ 目标上下文已绑定。
+        var expected = appManager.GetApp(AppConfigs.AppKeys.Default);
+        Assert.Same(expected, holder.Current);
+        Assert.Equal(AppConfigs.AppKeys.Default, holder.Current!.AppKey);
+
+        // 3) 「无作用域」语义：再次读取仍为目标应用（不会自动归还）。
+        Assert.Same(expected, holder.Current);
+
+        // 4) 已废弃的旧入口不得被调用（否则说明实现回退到 BC-27 移除的路径）。
+        // 说明：这两个 Verify 是对 [Obsolete] 成员的「有意负向断言」（断言其 Times.Never），
+        // 属于废弃 API 的守卫性引用，而非实际调用 —— 按计划 §10.2 V7 要求本批废弃成员 CS0618 归零，
+        // 故在此精确豁免（仅本表达式块，不波及测试类其余部分）。
+#pragma warning disable CS0618 // IFeishuAppContextSwitcher.UseApp 已废弃（BC-27 适配）：此处为守卫性负向断言
+        switcherMock.Verify(x => x.UseApp(It.IsAny<string>()), Times.Never);
+#pragma warning restore CS0618
     }
 
     [Fact]
-    public void FeishuAppManager_GetDefaultWebApi_ShouldUseOverrideImplementation()
+    public void FeishuAppManager_GetDefaultWebApi_ShouldReturnDiResolvedService_AndSwitchToDefaultApp()
     {
         var services = CreateServiceCollection();
 
         var switcherMock = new Mock<IFeishuAppContextSwitcher>();
-        var appContextMock = new Mock<IMudAppContext>();
-        switcherMock.Setup(x => x.UseDefaultApp()).Returns(appContextMock.Object);
-
         services.AddSingleton<IFeishuAppContextSwitcher>(switcherMock.Object);
 
         var configs = new List<FeishuAppConfig>
@@ -605,10 +626,19 @@ public class MultiAppTests
 
         var provider = services.BuildServiceProvider();
         var appManager = provider.GetRequiredService<IFeishuAppManager>();
+        var holder = provider.GetRequiredService<IAppContextHolder>();
 
         var result = appManager.GetDefaultWebApi<IFeishuAppContextSwitcher>();
 
-        Assert.NotNull(result);
-        switcherMock.Verify(x => x.UseDefaultApp(), Times.Once);
+        Assert.Same(switcherMock.Object, result);
+
+        // 默认应用路径不做 appKey 校验与授权判定（无 appKey 输入），与生成实现 UseDefaultApp 一致。
+        var expected = appManager.GetDefaultApp();
+        Assert.Same(expected, holder.Current);
+        Assert.Equal(AppConfigs.AppKeys.Default, holder.Current!.AppKey);
+
+#pragma warning disable CS0618 // IFeishuAppContextSwitcher.UseDefaultApp 已废弃（BC-27 适配）：此处为守卫性负向断言
+        switcherMock.Verify(x => x.UseDefaultApp(), Times.Never);
+#pragma warning restore CS0618
     }
 }

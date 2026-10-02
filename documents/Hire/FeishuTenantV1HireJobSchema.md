@@ -19,9 +19,9 @@ description: 该接口用于以租户身份按场景（社招/校招）分页获
 
 ## 函数列表
 
-| 函数名称               | 功能描述         | 限频     | 所需权限          | HTTP 方法 |
-| ---------------------- | ---------------- | -------- | ----------------- | --------- |
-| GetJobSchemaListAsync  | 获取职位模板列表 | 10 次/秒 | hire:job:readonly | GET       |
+| 函数名称               | 功能描述         | 限频     | 所需权限          | HTTP 方法 | 接口文档 |
+| ---------------------- | ---------------- | -------- | ----------------- | --------- |----------|
+| GetJobSchemaListAsync  | 获取职位模板列表 | 10 次/秒 | hire:job:readonly | GET       | [GetJobSchemaListAsync](https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/list) |
 
 ## 函数详细内容
 

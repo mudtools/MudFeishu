@@ -13,7 +13,7 @@ namespace Mud.Feishu.Interfaces;
 /// 基于飞书日历功能开放了对日历、日程、忙闲等资源的操作与查询能力。开发人员能以应用或用户的身份调用日历 API 来实现多种功能。
 /// <para>日历资源包括日历本身的资源以及日历包含的日程资源。日历本身可以创建多个，并且每个日历拥有标题、颜色、类型以及公开范围等属性。</para>
 /// <para>同时，针对每一个日历，都支持查询其中的日程忙闲信息。开发人员可通过开放平台提供的创建、订阅以及查询等一系列 API，管理日历资源、查询日程忙闲。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/calendar-v4/calendar/introduction"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/calendar-v4/calendar/introduction">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

@@ -13,9 +13,9 @@ description: 该接口用于以用户身份搜索飞书会议室，支持关键�
 - [会议室概述](https://open.feishu.cn/document/server-docs/vc-v1/room/room-overview)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| SearchMeetingRoomsAsync | 搜索会议室 | 用户令牌 | POST |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| SearchMeetingRoomsAsync | 搜索会议室 | 用户令牌 | POST | [SearchMeetingRoomsAsync](https://open.feishu.cn/document/server-docs/vc-v1/room/list) |
 
 ## 函数详细内容
 

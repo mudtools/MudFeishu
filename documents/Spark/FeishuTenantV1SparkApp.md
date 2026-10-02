@@ -22,12 +22,12 @@ description: 该接口用于以租户身份调用飞书妙搭（Spark）应用�
 
 ## 函数列表
 
-| 函数名称                     | 功能描述             | 认证方式 | HTTP 方法 |
-| ---------------------------- | -------------------- | -------- | --------- |
-| GetAppListAsync              | 批量获取妙搭应用     | 租户令牌 | GET       |
-| GetAppCreditUsageAsync       | 获取应用消耗 AI 额度 | 租户令牌 | GET       |
-| GetAppAnalyticsOverviewAsync | 获取运营数据总览     | 租户令牌 | GET       |
-| QueryAppAnalyticsDataAsync   | 获取运营数据趋势     | 租户令牌 | POST      |
+| 函数名称                     | 功能描述             | 认证方式 | HTTP 方法 | 接口文档 |
+| ---------------------------- | -------------------- | -------- | --------- |----------|
+| GetAppListAsync              | 批量获取妙搭应用     | 租户令牌 | GET       | [GetAppListAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app/list) |
+| GetAppCreditUsageAsync       | 获取应用消耗 AI 额度 | 租户令牌 | GET       | [GetAppCreditUsageAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app/open_api_credit_usage) |
+| GetAppAnalyticsOverviewAsync | 获取运营数据总览     | 租户令牌 | GET       | [GetAppAnalyticsOverviewAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app/open_api_analytics_overview) |
+| QueryAppAnalyticsDataAsync   | 获取运营数据趋势     | 租户令牌 | POST      | [QueryAppAnalyticsDataAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app/query_analytics_data) |
 
 ## 函数详细内容
 

@@ -16,13 +16,13 @@ description: 该接口用于以用户身份管理飞书云空间文件夹，支�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| GetDriveRootFolderMetaAsync | 获取根文件夹元数据 | 用户令牌 | GET |
-| GetFilesPageListAsync | 获取文件夹中的文件清单 | 用户令牌 | GET |
-| GetFolderMetaByTokenAsync | 获取文件夹元数据 | 用户令牌 | GET |
-| CreateFolderAsync | 创建文件夹 | 用户令牌 | POST |
-| GetTaskCheckFileAsync | 查询异步任务状态 | 用户令牌 | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| GetDriveRootFolderMetaAsync | 获取根文件夹元数据 | 用户令牌 | GET | [GetDriveRootFolderMetaAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/folder/get-root-folder-meta) |
+| GetFilesPageListAsync | 获取文件夹中的文件清单 | 用户令牌 | GET | [GetFilesPageListAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/folder/list) |
+| GetFolderMetaByTokenAsync | 获取文件夹元数据 | 用户令牌 | GET | [GetFolderMetaByTokenAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/folder/get-folder-meta) |
+| CreateFolderAsync | 创建文件夹 | 用户令牌 | POST | [CreateFolderAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/folder/create_folder) |
+| GetTaskCheckFileAsync | 查询异步任务状态 | 用户令牌 | GET | [GetTaskCheckFileAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/file/async-task/task_check) |
 
 ## 函数详细内容
 

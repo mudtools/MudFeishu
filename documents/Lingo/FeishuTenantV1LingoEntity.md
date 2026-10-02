@@ -19,16 +19,16 @@ description: 该接口用于以租户身份管理飞书词典词条，除通用�
 
 ## 函数列表
 
-| 函数名称                | 功能描述         | 认证方式 | HTTP 方法 |
-| ----------------------- | ---------------- | -------- | --------- |
-| GetEntityAsync          | 获取词条详情     | 租户令牌 | GET       |
-| GetEntityListAsync      | 获取词条列表     | 租户令牌 | GET       |
-| SearchEntityAsync       | 模糊搜索词条     | 租户令牌 | POST      |
-| MatchEntityAsync        | 精准搜索词条     | 租户令牌 | POST      |
-| HighlightEntityAsync    | 词条高亮         | 租户令牌 | POST      |
-| CreateEntityAsync       | 创建免审词条     | 租户令牌 | POST      |
-| UpdateEntityAsync       | 更新免审词条     | 租户令牌 | PUT       |
-| DeleteEntityAsync       | 删除免审词条     | 租户令牌 | DELETE    |
+| 函数名称                | 功能描述         | 认证方式 | HTTP 方法 | 接口文档 |
+| ----------------------- | ---------------- | -------- | --------- |----------|
+| GetEntityAsync          | 获取词条详情     | 租户令牌 | GET       | [GetEntityAsync](https://open.feishu.cn/document/lingo-v1/entity/get) |
+| GetEntityListAsync      | 获取词条列表     | 租户令牌 | GET       | [GetEntityListAsync](https://open.feishu.cn/document/lingo-v1/entity/list) |
+| SearchEntityAsync       | 模糊搜索词条     | 租户令牌 | POST      | [SearchEntityAsync](https://open.feishu.cn/document/lingo-v1/entity/search) |
+| MatchEntityAsync        | 精准搜索词条     | 租户令牌 | POST      | [MatchEntityAsync](https://open.feishu.cn/document/lingo-v1/entity/match) |
+| HighlightEntityAsync    | 词条高亮         | 租户令牌 | POST      | [HighlightEntityAsync](https://open.feishu.cn/document/lingo-v1/entity/highlight) |
+| CreateEntityAsync       | 创建免审词条     | 租户令牌 | POST      | [CreateEntityAsync](https://open.feishu.cn/document/lingo-v1/entity/create) |
+| UpdateEntityAsync       | 更新免审词条     | 租户令牌 | PUT       | [UpdateEntityAsync](https://open.feishu.cn/document/lingo-v1/entity/update) |
+| DeleteEntityAsync       | 删除免审词条     | 租户令牌 | DELETE    | [DeleteEntityAsync](https://open.feishu.cn/document/lingo-v1/entity/delete) |
 
 ## 函数详细内容
 

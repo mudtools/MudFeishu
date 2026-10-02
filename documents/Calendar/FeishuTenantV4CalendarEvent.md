@@ -13,29 +13,31 @@ description: 该接口用于以租户身份管理飞书日历日程，提供日�
 - [日历日程概述](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event/introduction)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| CreateCalendarEventAsync | 创建日程 | 租户令牌 | POST |
-| DeleteCalendarEventAsync | 删除日程 | 租户令牌 | DELETE |
-| UpdateCalendarEventAsync | 更新日程 | 租户令牌 | PATCH |
-| GetCalendarEventAsync | 获取日程 | 租户令牌 | GET |
-| GetCalendarEventPageListAsync | 获取日程列表 | 租户令牌 | GET |
-| SearchCalendarEventPageListAsync | 搜索日程 | 租户令牌 | POST |
-| ReplyCalendarEventAsync | 回复日程 | 租户令牌 | POST |
-| GetInstancesCalendarEventPageListAsync | 获取重复日程实例 | 租户令牌 | GET |
-| GetInstanceViewCalendarEventAsync | 查询日程视图 | 租户令牌 | GET |
-| CreateCalendarEventMeetingChatAsync | 创建会议群 | 租户令牌 | POST |
-| DeleteCalendarEventMeetingChatAsync | 解绑会议群 | 租户令牌 | DELETE |
-| CreateCalendarEventMeetingMinuteAsync | 创建会议纪要 | 租户令牌 | POST |
-| QueryMeetingRoomFreebusyAsync | 查询会议室忙闲 | 租户令牌 | GET |
-| CreateCalendarEventAttendeeAsync | 添加日程参与人 | 租户令牌 | POST |
-| DeleteCalendarEventAttendeeAsync | 删除日程参与人 | 租户令牌 | POST |
-| GetCalendarEventAttendeePageListAsync | 分页获取日程参与人列表 | 租户令牌 | GET |
-| GetCalendarEventAttendeeChatMemberPageListAsync | 获取日程参与群成员列表 | 租户令牌 | GET |
-| CreateTimeoffEventAsync | 创建请假日程 | 租户令牌 | POST |
-| DeleteTimeoffEventAsync | 删除请假日程 | 租户令牌 | DELETE |
-| GetMeetingRoomSummaryAsync | 查询会议室日程主题和详情 | 租户令牌 | POST |
-| ReplyMeetingRoomEventInstanceAsync | 回复会议室日程实例 | 租户令牌 | POST |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| CreateCalendarEventAsync | 创建日程 | 租户令牌 | POST | [CreateCalendarEventAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event/create) |
+| DeleteCalendarEventAsync | 删除日程 | 租户令牌 | DELETE | [DeleteCalendarEventAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event/delete) |
+| UpdateCalendarEventAsync | 更新日程 | 租户令牌 | PATCH | [UpdateCalendarEventAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event/patch) |
+| GetCalendarEventAsync | 获取日程 | 租户令牌 | GET | [GetCalendarEventAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event/get) |
+| GetCalendarEventPageListAsync | 获取日程列表 | 租户令牌 | GET | [GetCalendarEventPageListAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event/list) |
+| SearchCalendarEventPageListAsync | 搜索日程 | 租户令牌 | POST | [SearchCalendarEventPageListAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event/search) |
+| ReplyCalendarEventAsync | 回复日程 | 租户令牌 | POST | [ReplyCalendarEventAsync](https://open.feishu.cn/document/calendar-v4/calendar-event/reply) |
+| GetInstancesCalendarEventPageListAsync | 获取重复日程实例 | 租户令牌 | GET | [GetInstancesCalendarEventPageListAsync](https://open.feishu.cn/document/calendar-v4/calendar-event/instances) |
+| GetInstanceViewCalendarEventAsync | 查询日程视图 | 租户令牌 | GET | [GetInstanceViewCalendarEventAsync](https://open.feishu.cn/document/calendar-v4/calendar-event/instance_view) |
+| CreateCalendarEventMeetingChatAsync | 创建会议群 | 租户令牌 | POST | [CreateCalendarEventMeetingChatAsync](https://open.feishu.cn/document/calendar-v4/calendar-event-meeting_chat/create) |
+| DeleteCalendarEventMeetingChatAsync | 解绑会议群 | 租户令牌 | DELETE | [DeleteCalendarEventMeetingChatAsync](https://open.feishu.cn/document/calendar-v4/calendar-event-meeting_chat/delete) |
+| CreateCalendarEventMeetingMinuteAsync | 创建会议纪要 | 租户令牌 | POST | [CreateCalendarEventMeetingMinuteAsync](https://open.feishu.cn/document/calendar-v4/calendar-event-meeting_minute/create) |
+| QueryMeetingRoomFreebusyAsync | 查询会议室忙闲 | 租户令牌 | GET | [QueryMeetingRoomFreebusyAsync](https://open.feishu.cn/document/server-docs/calendar-v4/meeting-room-event/query-room-availability) |
+| CreateCalendarEventAttendeeAsync | 添加日程参与人 | 租户令牌 | POST | [CreateCalendarEventAttendeeAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event-attendee/create) |
+| DeleteCalendarEventAttendeeAsync | 删除日程参与人 | 租户令牌 | POST | [DeleteCalendarEventAttendeeAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event-attendee/batch_delete) |
+| GetCalendarEventAttendeePageListAsync | 分页获取日程参与人列表 | 租户令牌 | GET | [GetCalendarEventAttendeePageListAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event-attendee/list-2) |
+| GetCalendarEventAttendeeChatMemberPageListAsync | 获取日程参与群成员列表 | 租户令牌 | GET | [GetCalendarEventAttendeeChatMemberPageListAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event-attendee/list) |
+| SubscribeCalendarEventChangedEventAsync | 订阅日程变更事件 | 租户令牌 | POST | [SubscribeCalendarEventChangedEventAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event/subscription) |
+| UnsubscribeCalendarEventChangedEventAsync | 取消订阅日程变更事件 | 租户令牌 | POST | [UnsubscribeCalendarEventChangedEventAsync](https://open.feishu.cn/document/server-docs/calendar-v4/calendar-event/unsubscription) |
+| CreateTimeoffEventAsync | 创建请假日程 | 租户令牌 | POST | [CreateTimeoffEventAsync](https://open.feishu.cn/document/server-docs/calendar-v4/timeoff_event/create) |
+| DeleteTimeoffEventAsync | 删除请假日程 | 租户令牌 | DELETE | [DeleteTimeoffEventAsync](https://open.feishu.cn/document/server-docs/calendar-v4/timeoff_event/delete) |
+| GetMeetingRoomSummaryAsync | 查询会议室日程主题和详情 | 租户令牌 | POST | [GetMeetingRoomSummaryAsync](https://open.feishu.cn/document/server-docs/calendar-v4/meeting-room-event/) |
+| ReplyMeetingRoomEventInstanceAsync | 回复会议室日程实例 | 租户令牌 | POST | [ReplyMeetingRoomEventInstanceAsync](https://open.feishu.cn/document/server-docs/calendar-v4/meeting-room-event/reply-meeting-room-event-instance) |
 
 ## 函数详细内容
 

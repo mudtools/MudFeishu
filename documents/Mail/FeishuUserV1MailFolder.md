@@ -13,18 +13,18 @@ description: 该接口用于以用户身份管理自己的邮箱文件夹，支�
 - [创建邮箱文件夹](https://open.feishu.cn/document/mail-v1/user_mailbox-folder/create)
 - [删除邮箱文件夹](https://open.feishu.cn/document/mail-v1/user_mailbox-folder/delete)
 - [更新邮箱文件夹](https://open.feishu.cn/document/mail-v1/user_mailbox-folder/patch)
-- [列出邮箱文件夹](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-folder/list)
+- [列出邮箱文件夹](https://open.feishu.cn/document/mail-v1/user_mailbox-folder/list)
 - [列出可访问的邮箱](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox/accessible_mailboxes)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| GetUserMailboxFoldeAsync | 获取邮箱文件夹信息 | UserAccessToken | GET |
-| CreateUserMailboxFoldeAsync | 创建邮箱文件夹 | UserAccessToken | POST |
-| DeleteUserMailboxFoldeAsync | 删除邮箱文件夹 | UserAccessToken | DELETE |
-| UpdateUserMailboxFoldeAsync | 更新邮箱文件夹 | UserAccessToken | PATCH |
-| GetUserMailboxFoldeListAsync | 列出邮箱文件夹 | UserAccessToken | GET |
-| GetAccessibleMailboxesUserMailboxAsync | 列出可访问的邮箱 | UserAccessToken | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| GetUserMailboxFoldeAsync | 获取邮箱文件夹信息 | UserAccessToken | GET | [GetUserMailboxFoldeAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-folder/get) |
+| CreateUserMailboxFoldeAsync | 创建邮箱文件夹 | UserAccessToken | POST | [CreateUserMailboxFoldeAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-folder/create) |
+| DeleteUserMailboxFoldeAsync | 删除邮箱文件夹 | UserAccessToken | DELETE | [DeleteUserMailboxFoldeAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-folder/delete) |
+| UpdateUserMailboxFoldeAsync | 更新邮箱文件夹 | UserAccessToken | PATCH | [UpdateUserMailboxFoldeAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-folder/patch) |
+| GetUserMailboxFoldeListAsync | 列出邮箱文件夹 | UserAccessToken | GET | [GetUserMailboxFoldeListAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-folder/list) |
+| GetAccessibleMailboxesUserMailboxAsync | 列出可访问的邮箱 | UserAccessToken | GET | [GetAccessibleMailboxesUserMailboxAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox/accessible_mailboxes) |
 
 ## 函数详细内容
 

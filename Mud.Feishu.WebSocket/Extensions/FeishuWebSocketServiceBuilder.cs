@@ -7,6 +7,7 @@
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.EventHandlers;
@@ -252,6 +253,43 @@ public class FeishuWebSocketServiceBuilder
             throw new ArgumentNullException(nameof(configureAction));
 
         configureAction(this);
+        return this;
+    }
+
+    /// <summary>
+    /// 注册失败事件存储（R-E1/E-P1-3）：WS 事件处理业务失败时落盘（可审计、可对账）。
+    /// </summary>
+    /// <typeparam name="TStore">存储实现类型</typeparam>
+    /// <returns>建造者实例，支持链式调用</returns>
+    /// <remarks>
+    /// TryAdd 语义：宿主已自行注册 <see cref="IFailedEventStore"/> 时，本方法不覆盖。
+    /// <b>未注册时行为与未引入前完全一致</b>（零破坏）——与 Webhook 不同，WS 不会默认注册
+    /// 内存实现（阶段一落盘纯增益，默认开启会静默改变行为）；
+    /// 重试主路径仍是服务端重发（ACK 500），宿主可自行消费 <see cref="IFailedEventStore"/> 实现重放。
+    /// </remarks>
+    public FeishuWebSocketServiceBuilder AddFailedEventStore<
+#if NET6_0_OR_GREATER
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+#endif
+        TStore>()
+        where TStore : class, IFailedEventStore
+    {
+        _services.TryAddSingleton<IFailedEventStore, TStore>();
+        return this;
+    }
+
+    /// <summary>
+    /// 注册失败事件存储实例（R-E1/E-P1-3）。
+    /// </summary>
+    /// <param name="store">存储实例</param>
+    /// <returns>建造者实例，支持链式调用</returns>
+    /// <remarks>TryAdd 语义见 <see cref="AddFailedEventStore{TStore}"/>。</remarks>
+    public FeishuWebSocketServiceBuilder AddFailedEventStore(IFailedEventStore store)
+    {
+        if (store == null)
+            throw new ArgumentNullException(nameof(store));
+
+        _services.TryAddSingleton(store);
         return this;
     }
 
@@ -522,11 +560,14 @@ public class FeishuWebSocketServiceBuilder
             var concurrencyService = serviceProvider.GetRequiredService<FeishuWebSocketConcurrencyService>();
             // F7 修复：注入统一去重中间件（可选）
             var unifiedDedupMiddleware = serviceProvider.GetService<IUnifiedDeduplicationMiddleware>();
+            // R-E1（E-P1-3）：失败事件存储（可选；未注册时 GetService 返回 null，行为与未引入前一致）
+            var failedEventStore = serviceProvider.GetService<IFailedEventStore>();
             return new FeishuWebSocketClient(
                 logger, eventHandlerFactory, loggerFactory,
                 eventDeduplicator, interceptors, options: optionsMonitor.CurrentValue,
                 seqIdDeduplicator, sessionManager, sequenceValidator,
-                concurrencyService, optionsMonitor, unifiedDedupMiddleware);
+                concurrencyService, optionsMonitor, unifiedDedupMiddleware,
+                failedEventStore: failedEventStore);
         });
 #pragma warning restore IL2026, IL3050
 

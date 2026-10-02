@@ -19,13 +19,13 @@ description: 该接口用于以用户身份管理飞书妙搭应用的文件资�
 
 ## 函数列表
 
-| 函数名称                        | 功能描述                       | 认证方式 | HTTP 方法 |
-| ------------------------------- | ------------------------------ | -------- | --------- |
-| UploadStorageAsync              | 上传文件                       | 用户令牌 | POST      |
-| DownloadStorageAsync            | 下载文件                       | 用户令牌 | GET       |
-| UploadStorageInitializeAsync    | 分片上传文件 - 创建上传请求    | 用户令牌 | POST      |
-| UploadStoragePartAsync          | 分片上传文件 - 上传分片        | 用户令牌 | POST      |
-| UploadStorageCompleteAsync      | 分片上传文件 - 完成上传        | 用户令牌 | POST      |
+| 函数名称                        | 功能描述                       | 认证方式 | HTTP 方法 | 接口文档 |
+| ------------------------------- | ------------------------------ | -------- | --------- |----------|
+| UploadStorageAsync              | 上传文件                       | 用户令牌 | POST      | [UploadStorageAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app-storage/upload) |
+| DownloadStorageAsync            | 下载文件                       | 用户令牌 | GET       | [DownloadStorageAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app-storage/download) |
+| UploadStorageInitializeAsync    | 分片上传文件 - 创建上传请求    | 用户令牌 | POST      | [UploadStorageInitializeAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app-storage/upload_initialize) |
+| UploadStoragePartAsync          | 分片上传文件 - 上传分片        | 用户令牌 | POST      | [UploadStoragePartAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app-storage/upload_part) |
+| UploadStorageCompleteAsync      | 分片上传文件 - 完成上传        | 用户令牌 | POST      | [UploadStorageCompleteAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app-storage/upload_complete) |
 
 ## 函数详细内容
 

@@ -19,13 +19,13 @@ description: 该接口用于以租户身份管理飞书多维表格字段（fiel
 
 ## 函数列表
 
-| 函数名称                    | 功能描述     | 认证方式 | HTTP 方法 |
-| --------------------------- | ------------ | -------- | --------- |
-| AddFieldAsync               | 新增字段     | 租户令牌 | POST      |
-| UpdateFieldAsync            | 更新字段     | 租户令牌 | PUT       |
-| GetFieldsPageListAsync      | 列出字段     | 租户令牌 | GET       |
-| DeleteFieldAsync            | 删除字段     | 租户令牌 | DELETE    |
-| CreateFieldGroupAsync       | 创建字段编组 | 租户令牌 | POST      |
+| 函数名称                    | 功能描述     | 认证方式 | HTTP 方法 | 接口文档 |
+| --------------------------- | ------------ | -------- | --------- |----------|
+| AddFieldAsync               | 新增字段     | 租户令牌 | POST      | [AddFieldAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-field/create) |
+| UpdateFieldAsync            | 更新字段     | 租户令牌 | PUT       | [UpdateFieldAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-field/update) |
+| GetFieldsPageListAsync      | 列出字段     | 租户令牌 | GET       | [GetFieldsPageListAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-field/list) |
+| DeleteFieldAsync            | 删除字段     | 租户令牌 | DELETE    | [DeleteFieldAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-field/delete) |
+| CreateFieldGroupAsync       | 创建字段编组 | 租户令牌 | POST      | [CreateFieldGroupAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/bitable-v1/app-table-field_group/create) |
 
 ## 函数详细内容
 

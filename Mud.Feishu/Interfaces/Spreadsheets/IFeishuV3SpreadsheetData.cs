@@ -12,7 +12,7 @@ namespace Mud.Feishu.Interfaces;
 /// <summary>
 /// 飞书开放平台电子表格工作表中的数据处理相关功能。
 /// <para>在工作表中进行读取数据、写入数据、写入图片等各类操作时。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -21,6 +21,7 @@ public interface IFeishuV3SpreadsheetData : IFeishuAppContextSwitcher
     /// <summary>
     /// 插入数据
     /// <para>在电子表格工作表的指定范围的起始位置上方增加若干行，并在该范围中填充数据。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/data-operation/prepend-data">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="insertDataRequest">插入数据请求体</param>
@@ -35,6 +36,7 @@ public interface IFeishuV3SpreadsheetData : IFeishuAppContextSwitcher
     /// <summary>
     /// 追加数据
     /// <para>在电子表格工作表的指定范围中，在空白位置中追加数据。例如，若指定范围参数 range 为 6e5ed3!A1:B2，该接口将会依次寻找 A1、A2、A3...单元格，在找到的第一个空白位置中写入数据。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/data-operation/append-data">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="appendDataRequest">追加数据请求体</param>
@@ -56,6 +58,7 @@ public interface IFeishuV3SpreadsheetData : IFeishuAppContextSwitcher
     /// <summary>
     /// 写入图片
     /// <para>向电子表格某个工作表的单个指定单元格写入图片，支持传入图片的二进制流，支持多种图片格式。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/data-operation/write-images">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="imageDataOpsRequest">写入图片请求体</param>
@@ -70,6 +73,7 @@ public interface IFeishuV3SpreadsheetData : IFeishuAppContextSwitcher
     /// <summary>
     /// 读取单个范围
     /// <para>读取电子表格中单个指定范围的数据。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/data-operation/reading-a-single-range">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="range">
@@ -108,6 +112,7 @@ public interface IFeishuV3SpreadsheetData : IFeishuAppContextSwitcher
     /// <summary>
     /// 读取多个范围
     /// <para>读取电子表格中多个指定范围的数据。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/data-operation/reading-multiple-ranges">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="ranges">
@@ -146,6 +151,7 @@ public interface IFeishuV3SpreadsheetData : IFeishuAppContextSwitcher
     /// <summary>
     /// 向单个范围写入数据
     /// <para>向电子表格某个工作表的单个指定范围中写入数据。若指定范围内已有数据，将被新写入的数据覆盖。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/data-operation/write-data-to-a-single-range">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="rangeDataRequest">指定工作表的范围和写入的数据请求体</param>
@@ -160,6 +166,7 @@ public interface IFeishuV3SpreadsheetData : IFeishuAppContextSwitcher
     /// <summary>
     /// 向多个范围写入数据
     /// <para>向电子表格某个工作表的多个指定范围中写入数据。若指定范围已内有数据，将被新写入的数据覆盖。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/data-operation/write-data-to-multiple-ranges">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="rangesDataRequest">写入多个范围数据请求体</param>

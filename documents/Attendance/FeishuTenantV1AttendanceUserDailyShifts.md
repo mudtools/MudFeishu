@@ -16,11 +16,11 @@ description: 该接口用于管理飞书考勤排班表，描述考勤组内人�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| BatchCreateUserDailyShiftAsync | 创建或修改排班表 | 租户令牌 | POST |
-| QueryUserDailyShiftAsync | 查询排班表 | 租户令牌 | POST |
-| BatchCreateTempUserDailyShiftAsync | 创建或修改临时排班 | 租户令牌 | POST |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| BatchCreateUserDailyShiftAsync | 创建或修改排班表 | 租户令牌 | POST | [BatchCreateUserDailyShiftAsync](https://open.feishu.cn/document/server-docs/attendance-v1/user_daily_shift/batch_create) |
+| QueryUserDailyShiftAsync | 查询排班表 | 租户令牌 | POST | [QueryUserDailyShiftAsync](https://open.feishu.cn/document/server-docs/attendance-v1/user_daily_shift/query) |
+| BatchCreateTempUserDailyShiftAsync | 创建或修改临时排班 | 租户令牌 | POST | [BatchCreateTempUserDailyShiftAsync](https://open.feishu.cn/document/attendance-v1/user_daily_shift/batch_create_temp) |
 
 ---
 

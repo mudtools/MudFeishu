@@ -20,12 +20,12 @@ description: 该接口用于管理飞书电子表格的筛选，支持为指定�
 | `IFeishuUserV3SpreadsheetFilter` | 用户令牌（UserAccessToken） | 用户身份访问 |
 
 ## 函数列表  
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| CreateFilterAsync | 创建筛选 | 租户令牌 / 用户令牌 | POST |
-| UpdateFilterAsync | 更新筛选 | 租户令牌 / 用户令牌 | PUT |
-| GetFilterAsync | 获取筛选 | 租户令牌 / 用户令牌 | GET |
-| DeleteFilterAsync | 删除筛选 | 租户令牌 / 用户令牌 | DELETE |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| CreateFilterAsync | 创建筛选 | 租户令牌 / 用户令牌 | POST | [CreateFilterAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-filter/create) |
+| UpdateFilterAsync | 更新筛选 | 租户令牌 / 用户令牌 | PUT | [UpdateFilterAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-filter/update) |
+| GetFilterAsync | 获取筛选 | 租户令牌 / 用户令牌 | GET | [GetFilterAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-filter/get) |
+| DeleteFilterAsync | 删除筛选 | 租户令牌 / 用户令牌 | DELETE | [DeleteFilterAsync](https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet-filter/delete) |
 
 ## 函数详细内容  
 

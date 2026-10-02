@@ -129,8 +129,13 @@ public class UserController : ControllerBase
 - [租户 V3 单位管理](./FeishuTenantV3Unit.md) — 单位创建、更新、部门绑定、查询
 - [租户 V3 人员类型管理](./FeishuTenantV3EmployeeType.md) — 人员类型创建、更新、查询、删除
 
+### 工作城市
+
+- [租户 V3 工作城市管理](./FeishuTenantV3WorkCity.md) — 工作城市列表与详情查询
+- [用户 V3 工作城市管理](./FeishuUserV3WorkCity.md) — 用户令牌的工作城市查询
+
 ## 命名空间与版本信息
 
 - **根命名空间**：`Mud.Feishu`
-- **当前版本**：2.0.9
+- **当前版本**：3.0.0
 - **目标框架**：.NET Standard 2.0 / .NET 6+ / .NET 8+

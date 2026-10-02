@@ -19,12 +19,12 @@ description: 该接口用于以用户身份管理飞书关联组织间的可搜�
 
 ## 函数列表
 
-| 函数名称                      | 功能描述         | 认证方式 | HTTP 方法 |
-| ----------------------------- | ---------------- | -------- | --------- |
-| GetCollaborationRuleListAsync | 查询可搜可见规则 | 用户令牌 | GET       |
-| CreateCollaborationRuleAsync  | 新增可搜可见规则 | 用户令牌 | POST      |
-| UpdateCollaborationRuleAsync  | 更新可搜可见规则 | 用户令牌 | PUT       |
-| DeleteCollaborationRuleAsync  | 删除可搜可见规则 | 用户令牌 | DELETE    |
+| 函数名称                      | 功能描述         | 认证方式 | HTTP 方法 | 接口文档 |
+| ----------------------------- | ---------------- | -------- | --------- |----------|
+| GetCollaborationRuleListAsync | 查询可搜可见规则 | 用户令牌 | GET       | [GetCollaborationRuleListAsync](https://open.feishu.cn/document/trust_party-v1/searchable-and-visible-rules/list) |
+| CreateCollaborationRuleAsync  | 新增可搜可见规则 | 用户令牌 | POST      | [CreateCollaborationRuleAsync](https://open.feishu.cn/document/trust_party-v1/searchable-and-visible-rules/create) |
+| UpdateCollaborationRuleAsync  | 更新可搜可见规则 | 用户令牌 | PUT       | [UpdateCollaborationRuleAsync](https://open.feishu.cn/document/trust_party-v1/searchable-and-visible-rules/update) |
+| DeleteCollaborationRuleAsync  | 删除可搜可见规则 | 用户令牌 | DELETE    | [DeleteCollaborationRuleAsync](https://open.feishu.cn/document/trust_party-v1/searchable-and-visible-rules/delete) |
 
 ## 函数详细内容
 

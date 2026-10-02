@@ -13,15 +13,15 @@ description: 该接口用于以租户身份管理飞书会议室层级，支持�
 - [会议室层级概述](https://open.feishu.cn/document/server-docs/vc-v1/room_level/room-level-overview)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| CreateRoomLevelAsync | 创建会议室层级 | 租户令牌 | POST |
-| DeleteRoomLevelAsync | 删除会议室层级 | 租户令牌 | POST |
-| UpdateRoomLevelAsync | 更新会议室层级 | 租户令牌 | PATCH |
-| GetRoomLevelAsync | 查询会议室层级详情 | 租户令牌 | GET |
-| GetRoomLevelsAsync | 批量查询会议室层级详情 | 租户令牌 | POST |
-| GetRoomLevelsPageListAsync | 分页查询会议室层级列表 | 租户令牌 | GET |
-| SearchRoomLevelAsync | 搜索会议室层级 | 租户令牌 | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| CreateRoomLevelAsync | 创建会议室层级 | 租户令牌 | POST | [CreateRoomLevelAsync](https://open.feishu.cn/document/server-docs/vc-v1/room_level/create) |
+| DeleteRoomLevelAsync | 删除会议室层级 | 租户令牌 | POST | [DeleteRoomLevelAsync](https://open.feishu.cn/document/server-docs/vc-v1/room_level/del) |
+| UpdateRoomLevelAsync | 更新会议室层级 | 租户令牌 | PATCH | [UpdateRoomLevelAsync](https://open.feishu.cn/document/server-docs/vc-v1/room_level/patch) |
+| GetRoomLevelAsync | 查询会议室层级详情 | 租户令牌 | GET | [GetRoomLevelAsync](https://open.feishu.cn/document/server-docs/vc-v1/room_level/get) |
+| GetRoomLevelsAsync | 批量查询会议室层级详情 | 租户令牌 | POST | [GetRoomLevelsAsync](https://open.feishu.cn/document/server-docs/vc-v1/room_level/mget) |
+| GetRoomLevelsPageListAsync | 分页查询会议室层级列表 | 租户令牌 | GET | [GetRoomLevelsPageListAsync](https://open.feishu.cn/document/server-docs/vc-v1/room_level/list) |
+| SearchRoomLevelAsync | 搜索会议室层级 | 租户令牌 | GET | [SearchRoomLevelAsync](https://open.feishu.cn/document/server-docs/vc-v1/room_level/search) |
 
 ## 函数详细内容
 

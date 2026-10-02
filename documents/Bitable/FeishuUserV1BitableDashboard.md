@@ -19,10 +19,10 @@ description: 该接口用于以用户身份管理飞书多维表格仪表盘（b
 
 ## 函数列表
 
-| 函数名称                    | 功能描述     | 认证方式 | HTTP 方法 |
-| --------------------------- | ------------ | -------- | --------- |
-| CopyDashboardAsync          | 复制仪表盘   | 用户令牌 | POST      |
-| GetDashboardPageListAsync   | 列出仪表盘   | 用户令牌 | GET       |
+| 函数名称                    | 功能描述     | 认证方式 | HTTP 方法 | 接口文档 |
+| --------------------------- | ------------ | -------- | --------- |----------|
+| CopyDashboardAsync          | 复制仪表盘   | 用户令牌 | POST      | [CopyDashboardAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-dashboard/copy) |
+| GetDashboardPageListAsync   | 列出仪表盘   | 用户令牌 | GET       | [GetDashboardPageListAsync](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-dashboard/list) |
 
 ## 函数详细内容
 

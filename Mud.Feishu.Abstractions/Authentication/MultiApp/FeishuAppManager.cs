@@ -1436,16 +1436,30 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// 根据应用键获取飞书API实例
     /// </summary>
     /// <remarks>
-    /// 重写基类方法，从 DI 容器获取已注册的服务并调用 UseApp 切换应用上下文。
-    /// A-2 修复说明：本类使用 DI 解析模式（GetService + UseApp），而非基类 <see cref="DefaultAppManager{TAppContext}.RegisterSwitcherFactory"/>
+    /// 重写基类方法：从 DI 容器获取已注册的服务，并以<b>受控的无作用域切换</b>把当前上下文切到目标应用。
+    /// <para>
+    /// A-2 修复说明：本类使用 DI 解析模式（GetService + 切换上下文），而非基类 <see cref="DefaultAppManager{TAppContext}.RegisterSwitcherFactory"/>
     /// 的工厂委托模式。两种模式共存但 <see cref="GetWebApi{TContextSwitcher}"/> 仅走 DI 路径，
     /// 调用 <c>RegisterSwitcherFactory</c> 注册的工厂不会被本方法使用。
     /// 统一为 DI 模式可降低理解成本，基类工厂委托路径在中期标记为 [Obsolete]。
+    /// </para>
     /// <para>
-    /// NEW-MA-11 说明：<c>UseApp</c> 的生成实现通过 <c>_appContextHolder.Current = context</c>
-    /// 切换上下文，而 <c>IAppContextHolder</c> 的默认实现 <c>AsyncLocalAppContextSwitcher</c> 基于
-    /// <see cref="AsyncLocal{T}"/>，因此即使 T 注册为 Singleton，并发调用 <c>UseApp</c>
-    /// 也不会互相覆盖（每个异步流持有独立的 Current 值）。
+    /// <b>Mud.HttpUtils 3.0.0 迁移（上游 BC-27 + SW-15）</b>：原实现调用生成类的 <c>UseApp(appKey)</c>（上游已移除），
+    /// 现改为「显式守卫 + <c>IAppContextHolder.SwitchTo(IMudAppContext)</c>」，语义<b>逐字等价</b>：
+    /// <list type="bullet">
+    /// <item><description><b>守卫相同</b>：appKey 格式校验 → 未注册授权器默认拒绝 → 授权判定；
+    /// 三条异常消息与生成代码逐字一致（由上游 <c>AppKeyGuardConsistencyTests</c> 跨项目钉死）；</description></item>
+    /// <item><description><b>解析器相同</b>：生成类在 TokenManager 模式下的 <c>_tokenManager</c> 即
+    /// <see cref="IFeishuAppManager"/>（本类单例），故两者的 <c>GetApp(appKey)</c> 命中同一注册表；</description></item>
+    /// <item><description><b>无作用域语义相同</b>：切换后<b>不归还</b>上下文 —— 返回实例的 <c>Current</c> 即目标应用，
+    /// 与旧 <c>UseApp</c> 行为一致（宿主需自行切回，或改用 <see cref="IAppScopeSwitcher.UseAppScope"/>）。</description></item>
+    /// </list>
+    /// 切换用的 <see cref="IAppContextHolder"/> 即 DI 单例（<c>AsyncLocalAppContextSwitcher</c>），
+    /// 与生成类注入的 <c>_appContextHolder</c> 为<b>同一实例</b>，故切换对全部消费者可见。
+    /// </para>
+    /// <para>
+    /// NEW-MA-11 说明：<see cref="IAppContextHolder"/> 基于 <see cref="AsyncLocal{T}"/>，
+    /// 因此即使 T 注册为 Singleton，并发切换也不会互相覆盖（每个异步流持有独立的 Current 值）。
     /// 但仍建议将 T 注册为 Scoped（通过 <c>AddFeishuApi&lt;T&gt;</c> 或 <c>AddFeishuApp&lt;T&gt;</c>），
     /// 以避免 Singleton 实例长期持有已释放的 <see cref="IFeishuAppContext"/> 引用。
     /// </para>
@@ -1457,7 +1471,24 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         var service = _serviceProvider.GetService<IFeishuAppContext>();
         if (service == null)
             throw new InvalidOperationException($"未注册飞书API服务: {typeof(IFeishuAppContext).FullName}");
-        service.UseApp(appKey);
+
+        // 受控的无作用域切换（完整守卫 + 立即切换 + 不归还）—— 等价于上游已移除的生成实现 UseApp(appKey)。
+        // Mud.HttpUtils 3.0.0 的实际入口为 IAppContextHolder.SwitchTo(IMudAppContext)，
+        // 授权守卫需由调用方显式完成（见 FeishuServiceCollectionExtensions 中「未注册即默认拒绝」的约定）。
+        var holder = _serviceProvider.GetRequiredService<IAppContextHolder>();
+
+        // 未注册 IAppAccessAuthorizer 时默认拒绝（本 SDK 默认注册 AllowAllAppAccessAuthorizer）。
+        var authorizer = _serviceProvider.GetService<IAppAccessAuthorizer>()
+            ?? throw new InvalidOperationException(
+                $"未注册 {nameof(IAppAccessAuthorizer)}，无法切换到指定应用上下文（默认拒绝）。" +
+                $"请注册 {nameof(IAppAccessAuthorizer)} 实现（如 AllowAllAppAccessAuthorizer）。");
+
+        if (!authorizer.CanSwitchTo(appKey))
+            throw new InvalidOperationException($"当前 {nameof(IAppAccessAuthorizer)} 不允许切换到应用：{appKey}");
+
+        // 未知 appKey 由 GetApp 校验并抛错；此处立即切换且不归还上下文。
+        holder.SwitchTo(GetApp(appKey));
+
         return service;
     }
 
@@ -1465,7 +1496,13 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// 获取默认应用的飞书API实例
     /// </summary>
     /// <remarks>
-    /// 重写基类方法，从 DI 容器获取已注册的服务并调用 UseDefaultApp 切换应用上下文。
+    /// 重写基类方法：从 DI 容器获取已注册的服务，并切换到默认应用上下文（同样为<b>无作用域</b>语义）。
+    /// <para>
+    /// <b>Mud.HttpUtils 3.0.0 迁移</b>：原实现调用生成类的 <c>UseDefaultApp()</c>，现改为
+    /// <c>IAppContextHolder.SwitchTo(GetDefaultApp())</c> —— 二者都用「本类单例」解析默认应用
+    /// 后写入同一 Holder，语义等价。
+    /// 默认应用路径<b>不做</b> appKey 格式校验与授权判定（无 appKey 输入），与生成实现一致。
+    /// </para>
     /// </remarks>
     // TMA-17 / P2-4 修复：与 GetWebApi 同理，泛型参数名由基类决定。
     public override IFeishuAppContext GetDefaultWebApi<IFeishuAppContext>()
@@ -1473,7 +1510,11 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         var service = _serviceProvider.GetService<IFeishuAppContext>();
         if (service == null)
             throw new InvalidOperationException($"未注册飞书API服务: {typeof(IFeishuAppContext).FullName}");
-        service.UseDefaultApp();
+
+        // 默认应用路径不做 appKey 校验与授权判定（无 appKey 输入），与生成实现 UseDefaultApp 一致；
+        // 立即切换且不归还上下文。
+        _serviceProvider.GetRequiredService<IAppContextHolder>().SwitchTo(GetDefaultApp());
+
         return service;
     }
 

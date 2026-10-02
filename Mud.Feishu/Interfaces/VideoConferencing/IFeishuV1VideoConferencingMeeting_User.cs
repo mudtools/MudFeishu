@@ -13,7 +13,7 @@ namespace Mud.Feishu;
 /// <summary>
 /// 会议管理功能为用户在会议中进行邀请参会成员、移除参会成员和设置主持人等操作。
 /// <para>功能包括：获取会议详情、获取与会议号相关联的会议列表、邀请参会人、移除参会人、设置主持人、结束会议。事件包括：会议开始、会议结束、加入会议、离开会议、录制开始、录制停止、录制完成、屏幕共享开始、屏幕共享结束。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/vc-v1/meeting/meeting-overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/vc-v1/meeting/meeting-overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "VideoConferencing", InheritedFrom = nameof(FeishuV1VideoConferencingMeeting))]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]
@@ -34,6 +34,32 @@ public interface IFeishuUserV1VideoConferencingMeeting : IFeishuV1VideoConferenc
         [Body] SearchMeetingRequest searchMeetingRequest,
         [Query] int page_size = Consts.PageSize_15,
         [Query] string? page_token = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 订阅会议事件
+    /// <para>为当前用户身份订阅指定的会议事件，事件触发后应用会接收到对应的事件回调。</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/vc-v1/meeting/subscription">接口文档</see></para>
+    /// </summary>
+    /// <param name="eventTypeRequest">订阅事件请求体，其中 event_type 的可选值为 vc.meeting.participant_meeting_ended_v1（参会人离开会议事件）。</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/vc/v1/meetings/subscription")]
+    Task<FeishuNullDataApiResult?> SubscribeMeetingEventAsync(
+        [Body] MeetingEventRequest eventTypeRequest,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 取消订阅会议事件
+    /// <para>为当前用户身份取消订阅指定的会议事件。</para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/vc-v1/meeting/unsubscription">接口文档</see></para>
+    /// </summary>
+    /// <param name="eventTypeRequest">取消订阅事件请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    /// <returns></returns>
+    [Post("/open-apis/vc/v1/meetings/unsubscription")]
+    Task<FeishuNullDataApiResult?> UnsubscribeMeetingEventAsync(
+        [Body] MeetingEventRequest eventTypeRequest,
         CancellationToken cancellationToken = default);
 
 

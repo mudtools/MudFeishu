@@ -16,10 +16,10 @@ description: 该接口用于管理飞书考勤休假，包含通过过期时间�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| GetLeaveEmployExpireRecordAsync | 通过过期时间获取发放记录 | 租户令牌 | GET |
-| ModifyLeaveAccrualRecordAsync | 修改发放记录 | 租户令牌 | PATCH |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| GetLeaveEmployExpireRecordAsync | 通过过期时间获取发放记录 | 租户令牌 | GET | [GetLeaveEmployExpireRecordAsync](https://open.feishu.cn/document/server-docs/attendance-v1/leave_employ_expire_record/get) |
+| ModifyLeaveAccrualRecordAsync | 修改发放记录 | 租户令牌 | PATCH | [ModifyLeaveAccrualRecordAsync](https://open.feishu.cn/document/server-docs/attendance-v1/leave_accrual_record/patch) |
 
 ---
 

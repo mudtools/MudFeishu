@@ -17,7 +17,7 @@ namespace Mud.Feishu.Interfaces;
 /// <item>sheetId 为工作表的唯一标识，通过获取工作表 获取。</item>
 /// <item>&lt;开始位置&gt;:&lt;结束位置&gt; 为工作表中单元格的范围，使用数字表示行索引，字母表示列索引。如 A2:B2 表示该工作表第 2 行的 A 列到 B 列。</item>
 /// </list></para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -27,6 +27,7 @@ public interface IFeishuV3SpreadsheetRange : IFeishuAppContextSwitcher
     /// <summary>
     /// 增加行列
     /// <para>用于在电子表格工作表中增加空白行或列。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/sheet-rowcol/add-rows-or-columns">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="createRangeRequest">增加行列请求体</param>
@@ -41,6 +42,7 @@ public interface IFeishuV3SpreadsheetRange : IFeishuAppContextSwitcher
     /// <summary>
     /// 插入行列
     /// <para>用于在电子表格的指定位置插入空白行或列。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/sheet-rowcol/insert-rows-or-columns">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="insertRangeRequest">插入行列请求体</param>
@@ -55,6 +57,7 @@ public interface IFeishuV3SpreadsheetRange : IFeishuAppContextSwitcher
     /// <summary>
     /// 更新行列
     /// <para>用于更新设置电子表格中行列的属性，包括是否隐藏行列和设置行高列宽。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/sheet-rowcol/update-rows-or-columns">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="insertRangeRequest">更新行列请求体</param>
@@ -68,6 +71,7 @@ public interface IFeishuV3SpreadsheetRange : IFeishuAppContextSwitcher
     /// <summary>
     /// 移动行列
     /// <para>用于移动行或列。行或列被移动到目标位置后，原本在目标位置的行列会对应右移或下移。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/sheet-rowcol/move_dimension">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="sheet_id">工作表的 ID。示例值："2jm6f6"</param>
@@ -85,6 +89,7 @@ public interface IFeishuV3SpreadsheetRange : IFeishuAppContextSwitcher
     /// <summary>
     /// 删除行列
     /// <para>用于删除电子表格中的指定行或列。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/sheet-rowcol/-delete-rows-or-columns">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="deleteRangeRequest">删除行列请求体</param>

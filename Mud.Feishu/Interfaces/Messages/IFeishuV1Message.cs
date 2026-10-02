@@ -11,7 +11,7 @@ namespace Mud.Feishu.Interfaces;
 
 /// <summary>
 /// 消息即飞书聊天中的一条消息。可以使用消息管理 API 对消息进行发送、回复、编辑、撤回、转发以及查询等操作。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/im-v1/message/intro"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message/intro">接口文档</see></para>
 /// </summary> 
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -80,7 +80,7 @@ public interface IFeishuV1Message : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 批量查询多条消息中的表情回复，可指定每条消息返回的表情数量与表情类型。
-    /// <para><see href="https://open.feishu.cn/document/server-docs/im-v1/message-reaction/batch_query">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/message-reaction/batch_query">接口文档</see></para>
     /// </summary>
     /// <param name="batchQueryRequest">批量查询消息表情回复请求体。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>

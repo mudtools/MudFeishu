@@ -19,11 +19,11 @@ description: 该接口用于以用户身份调用飞书 Aily 技能，提供技�
 
 ## 函数列表
 
-| 函数名称                | 功能描述       | 认证方式 | HTTP 方法 |
-| ----------------------- | -------------- | -------- | --------- |
-| StartSkillAsync         | 调用技能       | 用户令牌 | POST      |
-| GetSkillAsync           | 获取技能信息   | 用户令牌 | GET       |
-| GetSkillPageListAsync   | 查询技能列表   | 用户令牌 | GET       |
+| 函数名称                | 功能描述       | 认证方式 | HTTP 方法 | 接口文档 |
+| ----------------------- | -------------- | -------- | --------- |----------|
+| StartSkillAsync         | 调用技能       | 用户令牌 | POST      | [StartSkillAsync](https://open.feishu.cn/document/aily-v1/app-skill/start) |
+| GetSkillAsync           | 获取技能信息   | 用户令牌 | GET       | [GetSkillAsync](https://open.feishu.cn/document/aily-v1/app-skill/get) |
+| GetSkillPageListAsync   | 查询技能列表   | 用户令牌 | GET       | [GetSkillPageListAsync](https://open.feishu.cn/document/aily-v1/app-skill/list) |
 
 ## 函数详细内容
 

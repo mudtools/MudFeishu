@@ -13,12 +13,12 @@ description: 该接口用于以用户身份管理会议录制操作，包括开�
 - [会议录制概述](https://open.feishu.cn/document/server-docs/vc-v1/meeting-recording/recording-overview)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| StartMeetingRecordingAsync | 开始录制 | 用户令牌 | PATCH |
-| StopMeetingRecordingAsync | 停止录制 | 用户令牌 | PATCH |
-| GetMeetingRecordingAsync | 获取录制文件 | 用户令牌 | GET |
-| SetPermissionMeetingRecordingAsync | 授权录制文件 | 用户令牌 | PATCH |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| StartMeetingRecordingAsync | 开始录制 | 用户令牌 | PATCH | [StartMeetingRecordingAsync](https://open.feishu.cn/document/server-docs/vc-v1/meeting-recording/start) |
+| StopMeetingRecordingAsync | 停止录制 | 用户令牌 | PATCH | [StopMeetingRecordingAsync](https://open.feishu.cn/document/server-docs/vc-v1/meeting-recording/stop) |
+| GetMeetingRecordingAsync | 获取录制文件 | 用户令牌 | GET | [GetMeetingRecordingAsync](https://open.feishu.cn/document/server-docs/vc-v1/meeting-recording/start) |
+| SetPermissionMeetingRecordingAsync | 授权录制文件 | 用户令牌 | PATCH | [SetPermissionMeetingRecordingAsync](https://open.feishu.cn/document/server-docs/vc-v1/meeting-recording/start) |
 
 ## 函数详细内容
 

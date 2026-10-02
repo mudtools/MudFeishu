@@ -19,57 +19,60 @@ description: 该接口用于以租户身份对飞书消息进行发送、回复�
 
 ### 消息管理
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| SendMessageAsync | 发送消息 | 租户令牌 | POST |
-| ReplyMessageAsync | 回复消息 | 租户令牌 | POST |
-| EditMessageAsync | 编辑消息 | 租户令牌 | PUT |
-| ReceiveMessageAsync | 转发消息 | 租户令牌 | POST |
-| MergeReceiveMessageAsync | 合并转发消息 | 租户令牌 | POST |
-| ReceiveThreadsAsync | 转发话题 | 租户令牌 | POST |
-| CreateMessageFollowUpAsync | 添加消息跟随气泡 | 租户令牌 | POST |
-| GetMessageReadUsesAsync | 获取消息已读用户 | 租户令牌 | GET |
-| GetHistoryMessageAsync | 获取历史消息 | 租户令牌 | GET |
-| GetContentListByMessageIdAsync | 根据ID获取消息内容 | 租户令牌 | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| SendMessageAsync | 发送消息 | 租户令牌 | POST | [SendMessageAsync](https://open.feishu.cn/document/server-docs/im-v1/message/create) |
+| ReplyMessageAsync | 回复消息 | 租户令牌 | POST | [ReplyMessageAsync](https://open.feishu.cn/document/server-docs/im-v1/message/reply) |
+| EditMessageAsync | 编辑消息 | 租户令牌 | PUT | [EditMessageAsync](https://open.feishu.cn/document/server-docs/im-v1/message/update) |
+| ReceiveMessageAsync | 转发消息 | 租户令牌 | POST | [ReceiveMessageAsync](https://open.feishu.cn/document/server-docs/im-v1/message/forward) |
+| MergeReceiveMessageAsync | 合并转发消息 | 租户令牌 | POST | [MergeReceiveMessageAsync](https://open.feishu.cn/document/server-docs/im-v1/message/merge_forward) |
+| ReceiveThreadsAsync | 转发话题 | 租户令牌 | POST | [ReceiveThreadsAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/thread/forward) |
+| CreateMessageFollowUpAsync | 添加消息跟随气泡 | 租户令牌 | POST | [CreateMessageFollowUpAsync](https://open.feishu.cn/document/im-v1/message/push_follow_up) |
+| GetMessageReadUsesAsync | 获取消息已读用户 | 租户令牌 | GET | [GetMessageReadUsesAsync](https://open.feishu.cn/document/server-docs/im-v1/message/read_users) |
+| GetHistoryMessageAsync | 获取历史消息 | 租户令牌 | GET | [GetHistoryMessageAsync](https://open.feishu.cn/document/server-docs/im-v1/message/list) |
+| GetContentListByMessageIdAsync | 根据ID获取消息内容 | 租户令牌 | GET | [GetContentListByMessageIdAsync](https://open.feishu.cn/document/server-docs/im-v1/message/get) |
+| PatchMessageAsync | 更新已发送的消息卡片 | 租户令牌 | PATCH | [PatchMessageAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/message/patch) |
+| SearchMessageAsync | 搜索消息 | 租户令牌 | POST | [SearchMessageAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/message/search) |
 | GetMessageFile | 获取消息资源文件（小文件） | 租户令牌 | GET |
 | GetMessageLargeFile | 获取消息资源文件（大文件） | 租户令牌 | GET |
 
 ### 文件管理
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| DownFileAsync | 下载文件（小文件） | 租户令牌 | GET |
-| DownLargeFileAsync | 下载文件（大文件） | 租户令牌 | GET |
-| DownImageAsync | 下载图片（小文件） | 租户令牌 | GET |
-| DownLargeImageAsync | 下载图片（大文件） | 租户令牌 | GET |
-| UploadFileAsync | 上传文件 | 租户令牌 | POST |
-| UploadImageAsync | 上传图片 | 租户令牌 | POST |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| DownFileAsync | 下载文件（小文件） | 租户令牌 | GET | [DownFileAsync](https://open.feishu.cn/document/server-docs/im-v1/file/get) |
+| DownLargeFileAsync | 下载文件（大文件） | 租户令牌 | GET | [DownLargeFileAsync](https://open.feishu.cn/document/server-docs/im-v1/file/get) |
+| DownImageAsync | 下载图片（小文件） | 租户令牌 | GET | [DownImageAsync](https://open.feishu.cn/document/server-docs/im-v1/image/get) |
+| DownLargeImageAsync | 下载图片（大文件） | 租户令牌 | GET | [DownLargeImageAsync](https://open.feishu.cn/document/server-docs/im-v1/image/get) |
+| UploadFileAsync | 上传文件 | 租户令牌 | POST | [UploadFileAsync](https://open.feishu.cn/document/server-docs/im-v1/file/create) |
+| UploadImageAsync | 上传图片 | 租户令牌 | POST | [UploadImageAsync](https://open.feishu.cn/document/server-docs/im-v1/image/create) |
 
 ### 消息加急
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| MessageUrgentAppAsync | 应用内加急 | 租户令牌 | PATCH |
-| MessageUrgentSMSAsync | 短信加急 | 租户令牌 | PATCH |
-| MessageUrgentPhoneAsync | 电话加急 | 租户令牌 | PATCH |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| MessageUrgentAppAsync | 应用内加急 | 租户令牌 | PATCH | [MessageUrgentAppAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/message/urgent_app) |
+| MessageUrgentSMSAsync | 短信加急 | 租户令牌 | PATCH | [MessageUrgentSMSAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/message/urgent_sms) |
+| MessageUrgentPhoneAsync | 电话加急 | 租户令牌 | PATCH | [MessageUrgentPhoneAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/message/urgent_phone) |
 
 ### URL 预览
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| UpdateUrlPreviewAsync | 更新 URL 预览 | 租户令牌 | POST |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| UpdateUrlPreviewAsync | 更新 URL 预览 | 租户令牌 | POST | [UpdateUrlPreviewAsync](https://open.feishu.cn/document/im-v1/url_preview/batch_update) |
 
 ### 继承自父接口（IFeishuV1Message）
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| RevokeMessageAsync | 撤回消息 | 租户令牌 | DELETE |
-| AddMessageReactionsAsync | 添加表情回复 | 租户令牌 | POST |
-| GetMessageReactionsPageListAsync | 获取表情回复列表 | 租户令牌 | GET |
-| DeleteMessageReactionsAsync | 删除表情回复 | 租户令牌 | DELETE |
-| PinMessageAsync | Pin 消息 | 租户令牌 | POST |
-| DeletePinMessageAsync | 移除 Pin | 租户令牌 | DELETE |
-| GetPinMessagePageListAsync | 获取 Pin 消息列表 | 租户令牌 | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| RevokeMessageAsync | 撤回消息 | 租户令牌 | DELETE | [RevokeMessageAsync](https://open.feishu.cn/document/server-docs/im-v1/message/delete) |
+| AddMessageReactionsAsync | 添加表情回复 | 租户令牌 | POST | [AddMessageReactionsAsync](https://open.feishu.cn/document/server-docs/im-v1/message-reaction/create) |
+| GetMessageReactionsPageListAsync | 获取表情回复列表 | 租户令牌 | GET | [GetMessageReactionsPageListAsync](https://open.feishu.cn/document/server-docs/im-v1/message-reaction/list) |
+| DeleteMessageReactionsAsync | 删除表情回复 | 租户令牌 | DELETE | [DeleteMessageReactionsAsync](https://open.feishu.cn/document/server-docs/im-v1/message-reaction/delete) |
+| BatchQueryMessageReactionsAsync | 批量查询消息表情回复 | 租户令牌 | POST | [BatchQueryMessageReactionsAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/message-reaction/batch_query) |
+| PinMessageAsync | Pin 消息 | 租户令牌 | POST | [PinMessageAsync](https://open.feishu.cn/document/server-docs/im-v1/pin/create) |
+| DeletePinMessageAsync | 移除 Pin | 租户令牌 | DELETE | [DeletePinMessageAsync](https://open.feishu.cn/document/server-docs/im-v1/pin/delete) |
+| GetPinMessagePageListAsync | 获取 Pin 消息列表 | 租户令牌 | GET | [GetPinMessagePageListAsync](https://open.feishu.cn/document/server-docs/im-v1/pin/list) |
 
 ## 函数详细内容
 

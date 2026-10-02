@@ -16,28 +16,28 @@ description: 该接口用于以租户身份管理飞书云空间文件，提供�
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| BatchQueryMetasAsync | 批量获取文件元数据 | 租户令牌 | POST |
-| GetFileStatisticsByFileTokenAsync | 获取文件统计信息 | 租户令牌 | GET |
-| GetFileViewRecordPageListByFileTokenAsync | 获取文件访问记录 | 租户令牌 | GET |
-| CopyFileByFileTokenAsync | 复制文件 | 租户令牌 | POST |
-| MoveFileByFileTokenAsync | 移动文件 | 租户令牌 | POST |
-| DeleteFileByFileTokenAsync | 删除文件 | 租户令牌 | DELETE |
-| CreateShortcutAsync | 创建文件快捷方式 | 租户令牌 | POST |
-| UploadAllFileAsync | 上传文件（完整上传） | 租户令牌 | POST |
-| UploadPrepareFileAsync | 预上传（分片上传初始化） | 租户令牌 | POST |
-| UploadPartFileAsync | 上传分片 | 租户令牌 | POST |
-| UploadFinishFileAsync | 完成分片上传 | 租户令牌 | POST |
-| DownloadFileAsync | 下载文件 | 租户令牌 | GET |
-| CreateImportTaskAsync | 创建导入任务 | 租户令牌 | POST |
-| GetImportTaskAsync | 查询导入任务结果 | 租户令牌 | GET |
-| CreateExportTaskAsync | 创建导出任务 | 租户令牌 | POST |
-| GetExportTaskAsync | 查询导出任务结果 | 租户令牌 | GET |
-| DownloadExportFileAsync | 下载导出文件 | 租户令牌 | GET |
-| DownloadExportLargeFileAsync | 下载导出大文件 | 租户令牌 | GET |
-| GetFileLikePageListByFileTokenAsync | 获取文件点赞列表 | 租户令牌 | GET |
-| GetFileContentByFileTokenAsync | 获取云文档内容 | 租户令牌 | GET |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| BatchQueryMetasAsync | 批量获取文件元数据 | 租户令牌 | POST | [BatchQueryMetasAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/file/batch_query) |
+| GetFileStatisticsByFileTokenAsync | 获取文件统计信息 | 租户令牌 | GET | [GetFileStatisticsByFileTokenAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/file/get) |
+| GetFileViewRecordPageListByFileTokenAsync | 获取文件访问记录 | 租户令牌 | GET | [GetFileViewRecordPageListByFileTokenAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/file-view_record/list) |
+| CopyFileByFileTokenAsync | 复制文件 | 租户令牌 | POST | [CopyFileByFileTokenAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/file/copy) |
+| MoveFileByFileTokenAsync | 移动文件 | 租户令牌 | POST | [MoveFileByFileTokenAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/file/move) |
+| DeleteFileByFileTokenAsync | 删除文件 | 租户令牌 | DELETE | [DeleteFileByFileTokenAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/file/delete) |
+| CreateShortcutAsync | 创建文件快捷方式 | 租户令牌 | POST | [CreateShortcutAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/file/create_shortcut) |
+| UploadAllFileAsync | 上传文件（完整上传） | 租户令牌 | POST | [UploadAllFileAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/upload/upload_all) |
+| UploadPrepareFileAsync | 预上传（分片上传初始化） | 租户令牌 | POST | [UploadPrepareFileAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/upload/multipart-upload-file-/upload_prepare) |
+| UploadPartFileAsync | 上传分片 | 租户令牌 | POST | [UploadPartFileAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/upload/multipart-upload-file-/upload_part) |
+| UploadFinishFileAsync | 完成分片上传 | 租户令牌 | POST | [UploadFinishFileAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/upload/multipart-upload-file-/upload_finish) |
+| DownloadFileAsync | 下载文件 | 租户令牌 | GET | [DownloadFileAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/download/download) |
+| CreateImportTaskAsync | 创建导入任务 | 租户令牌 | POST | [CreateImportTaskAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/import_task/create) |
+| GetImportTaskAsync | 查询导入任务结果 | 租户令牌 | GET | [GetImportTaskAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/import_task/get) |
+| CreateExportTaskAsync | 创建导出任务 | 租户令牌 | POST | [CreateExportTaskAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/export_task/create) |
+| GetExportTaskAsync | 查询导出任务结果 | 租户令牌 | GET | [GetExportTaskAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/export_task/get) |
+| DownloadExportFileAsync | 下载导出文件 | 租户令牌 | GET | [DownloadExportFileAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/export_task/download) |
+| DownloadExportLargeFileAsync | 下载导出大文件 | 租户令牌 | GET | [DownloadExportLargeFileAsync](https://open.feishu.cn/document/server-docs/docs/drive-v1/export_task/download) |
+| GetFileLikePageListByFileTokenAsync | 获取文件点赞列表 | 租户令牌 | GET | [GetFileLikePageListByFileTokenAsync](https://open.feishu.cn/document/docs/drive-v1/like/list) |
+| GetFileContentByFileTokenAsync | 获取云文档内容 | 租户令牌 | GET | [GetFileContentByFileTokenAsync](https://open.feishu.cn/document/docs/docs-v1/get) |
 
 ## 函数详细内容
 

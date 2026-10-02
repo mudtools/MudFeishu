@@ -13,7 +13,7 @@ namespace Mud.Feishu;
 /// 考勤组，是对部门或者员工在某个特定场所及特定时间段内的出勤情况
 /// <para>（包括上下班、迟到、早退、病假、婚假、丧假、公休、工作时间、加班情况等）的一种规则设定。</para>
 /// <para>通过设置考勤组，可以从部门、员工两个维度，来设定考勤方式、考勤时间、考勤地点等考勤规则。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/attendance-v1/group/create"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/attendance-v1/group/create">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Attendance", InheritedFrom = nameof(FeishuV1AttendanceGroups))]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -23,6 +23,7 @@ public interface IFeishuTenantV1AttendanceGroups : IFeishuV1AttendanceGroups
     /// <summary>
     /// 创建或修改考勤组
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=create&amp;project=attendance&amp;resource=group&amp;version=v1"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/attendance-v1/group/create">接口文档</see></para>
     /// </summary> 
     /// <param name="createAttendanceShiftsRequest">创建或修改考勤组请求体</param>
     /// <param name="employee_type">响应体或请求体中 user_id 的员工 ID 类型。</param>
@@ -40,6 +41,7 @@ public interface IFeishuTenantV1AttendanceGroups : IFeishuV1AttendanceGroups
     /// <summary>
     /// <para>通过考勤组 ID 删除考勤组。对应设置-假勤设置-考勤组操作列的删除功能。</para>
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=delete&amp;project=attendance&amp;resource=group&amp;version=v1"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/attendance-v1/group/delete">接口文档</see></para>
     /// </summary>
     /// <param name="group_id">考勤组 ID，示例值："6919358128597097404"</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -52,6 +54,7 @@ public interface IFeishuTenantV1AttendanceGroups : IFeishuV1AttendanceGroups
     /// <summary>
     /// 通过考勤组 ID 获取考勤组详情。包含基本信息、考勤班次、考勤方式、考勤设置信息。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=get&amp;project=attendance&amp;resource=group&amp;version=v1"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/attendance-v1/group/get">接口文档</see></para>
     /// </summary>
     /// <param name="group_id">考勤组 ID，示例值：6919358128597097404</param>
     /// <param name="employee_type">响应体中 user_id 的员工 ID 类型。</param>
@@ -70,6 +73,7 @@ public interface IFeishuTenantV1AttendanceGroups : IFeishuV1AttendanceGroups
     /// 按考勤组名称查询考勤组摘要信息。查询条件支持名称精确匹配和模糊匹配两种方式。
     /// <para>查询结果按考勤组修改时间 desc 排序，且最大记录数为 10 条。</para>
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=search&amp;project=attendance&amp;resource=group&amp;version=v1"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/attendance-v1/group/search">接口文档</see></para>
     /// </summary>
     /// <param name="groupsSearchRequest">按名称查询考勤组请求体</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
@@ -82,6 +86,7 @@ public interface IFeishuTenantV1AttendanceGroups : IFeishuV1AttendanceGroups
     /// <summary>
     /// 分页获取所有考勤组列表。列表中的数据为考勤组信息，字段包含考勤组名称和考勤组id。
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=list&amp;project=attendance&amp;resource=group&amp;version=v1"/></para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/attendance-v1/group/list">接口文档</see></para>
     /// </summary>
     /// <param name="page_size">分页大小，示例值：10，默认值：10</param>
     /// <param name="page_token">分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果</param>

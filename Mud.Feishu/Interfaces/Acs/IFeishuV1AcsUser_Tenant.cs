@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书智能门禁（ACS）用户 SDK 是一组服务端 OpenAPI 的封装，用于查询门禁用户信息（单个/列表，仅限已加入智能门禁权限组的用户）、录入韦根卡号，以及上传/下载用户人脸图片。本接口全部端点仅支持 tenant_access_token 调用。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/acs-v1/user/get"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/acs-v1/user/get">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Acs")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

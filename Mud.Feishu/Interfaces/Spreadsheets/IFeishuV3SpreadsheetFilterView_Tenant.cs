@@ -10,7 +10,7 @@ namespace Mud.Feishu;
 /// <summary>
 /// 飞书的筛选视图是解决在线表格协作中“互相干扰”问题的关键功能，同时也是一个强大的数据组织和分发工具，帮助团队在共享一份数据源的同时，拥有各自独立的、高效的观察视角。
 /// <para>本接口提供飞书开放平台电子表格中筛选视图能力相关方法。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Spreadsheets", InheritedFrom = nameof(FeishuV3SpreadsheetFilterView))]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

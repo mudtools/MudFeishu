@@ -13,7 +13,7 @@ namespace Mud.Feishu.Interfaces;
 /// <summary>
 /// 电子表格条件格式用于根据指定的条件更改单元格的外观格式。。
 /// <para>目前，电子表格单个工作表中最多支持设置 20 个条件格式。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/conditionformat/condition-format-guide"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/conditionformat/condition-format-guide">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -23,6 +23,7 @@ public interface IFeishuV2SpreadsheetConditionFormat : IFeishuAppContextSwitcher
     /// <summary>
     /// 批量创建条件格式
     /// <para>在电子表格工作表的指定区域中，为满足指定条件的单元格和单元格中的数据设置样式。支持跨工作表创建多个条件格式。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/conditionformat/condition-format-set">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="createConditionFormatRequest">批量创建条件格式请求体</param>
@@ -37,6 +38,7 @@ public interface IFeishuV2SpreadsheetConditionFormat : IFeishuAppContextSwitcher
     /// <summary>
     /// 批量更新条件格式
     /// <para>更新已有的条件格式。支持跨工作表更新多个条件格式。该接口为全量更新接口，若非必填参数不传值，将改变原有配置。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/conditionformat/condition-format-update">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="updateConditionFormatRequest">批量更新条件格式请求体</param>
@@ -51,6 +53,7 @@ public interface IFeishuV2SpreadsheetConditionFormat : IFeishuAppContextSwitcher
     /// <summary>
     /// 批量获取条件格式
     /// <para>根据工作表 ID 获取详细的条件格式信息，最多支持同时查询 10 个工作表的条件格式。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/conditionformat/condition-format-get">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="sheet_ids">电子表格工作表的 ID，多个 ID 使用逗号分隔。**示例值**：`xxxID1,xxxID2`</param>
@@ -65,6 +68,7 @@ public interface IFeishuV2SpreadsheetConditionFormat : IFeishuAppContextSwitcher
     /// <summary>
     /// 批量删除条件格式
     /// <para>删除已有的条件格式。支持跨工作表删除多个条件格式。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/docs/sheets-v3/conditionformat/condition-format-delete">接口文档</see></para>
     /// </summary>
     /// <param name="spreadsheet_token">电子表格的 token。示例值："Iow7sNNEphp3WbtnbCscPqabcef"</param>
     /// <param name="deleteConditionFormatsRequest">删除条件格式请求体</param>

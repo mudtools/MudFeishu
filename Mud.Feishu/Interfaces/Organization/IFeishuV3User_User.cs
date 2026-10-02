@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 /// <summary>
 /// 飞书用户是飞书通讯录中的基础资源，对应企业组织架构中的成员实体。
 /// <para>当前接口使用用户令牌访问，适应于用户应用场景。</para>
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/contact-v3/user/field-overview"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/contact-v3/user/field-overview">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Organization", InheritedFrom = nameof(FeishuV3User))]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]

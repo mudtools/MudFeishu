@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书安全与合规（Security）「设备管理」SDK 是一组服务端 OpenAPI 的封装，用于在设备管理中新增、查询（分页/单个）、更新、删除设备记录。本接口全部端点为 security_and_compliance/v2，仅支持 tenant_access_token 调用。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/security_and_compliance-v1/security_and_compliance-v2/device_record/create"/></para>
+/// <para><see href="https://open.feishu.cn/document/security_and_compliance-v1/security_and_compliance-v2/device_record/create">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Security")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]

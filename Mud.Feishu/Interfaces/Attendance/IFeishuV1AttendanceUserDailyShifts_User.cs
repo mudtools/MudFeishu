@@ -11,7 +11,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 考勤排班（用户令牌）：创建或修改临时排班（用户令牌，飞书考勤支持租户/用户两种令牌调用）。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/attendance-v1/user_daily_shift/batch_create_temp"/></para>
+/// <para><see href="https://open.feishu.cn/document/attendance-v1/user_daily_shift/batch_create_temp">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Attendance")]
 [Token(FeishuTokenTypes.UserAccessToken, Name = Consts.Authorization)]
@@ -23,6 +23,7 @@ public interface IFeishuUserV1AttendanceUserDailyShifts : IFeishuAppContextSwitc
     /// <para>临时排班为付费功能，如需使用请联系飞书的客户经理。</para>
     /// <para>注意：如果返回 code=0，且 msg 不为空，表示临时排班部分成功。如 msg 返回 {人员：[日期，日期]} 格式，代表人员在排班日期下临时排班未成功。这种一般是考勤组 id 与人员不匹配造成的。</para>
     /// <para>官方文档：<see href="https://open.feishu.cn/api-explorer?from=op_doc_tab&amp;apiName=batch_create_temp&amp;project=attendance&amp;resource=user_daily_shift&amp;version=v1"/></para>
+    /// <para><see href="https://open.feishu.cn/document/attendance-v1/user_daily_shift/batch_create_temp">接口文档</see></para>
     /// </summary>
     /// <param name="userTmpDailyShiftRequest">创建或修改临时排班请求体</param>
     /// <param name="employee_type">请求体中的 user_id 和响应体中的 user_id 的员工ID类型。</param>

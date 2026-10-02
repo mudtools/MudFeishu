@@ -19,11 +19,11 @@ description: 该接口用于以租户身份管理飞书招聘附件，支持通�
 
 ## 函数列表
 
-| 函数名称                | 功能描述                             | 认证方式 | HTTP 方法 |
-| ----------------------- | ------------------------------------ | -------- | --------- |
-| CreateAttachmentAsync   | 创建附件                             | 租户令牌 | POST      |
-| GetAttachmentAsync      | 获取附件信息                         | 租户令牌 | GET       |
-| PreviewAttachmentAsync  | 获取人才简历附件 PDF 格式下载链接    | 租户令牌 | GET       |
+| 函数名称                | 功能描述                             | 认证方式 | HTTP 方法 | 接口文档 |
+| ----------------------- | ------------------------------------ | -------- | --------- |----------|
+| CreateAttachmentAsync   | 创建附件                             | 租户令牌 | POST      | [CreateAttachmentAsync](https://open.feishu.cn/document/server-docs/hire-v1/attachment/create_attachment) |
+| GetAttachmentAsync      | 获取附件信息                         | 租户令牌 | GET       | [GetAttachmentAsync](https://open.feishu.cn/document/server-docs/hire-v1/attachment/get) |
+| PreviewAttachmentAsync  | 获取人才简历附件 PDF 格式下载链接    | 租户令牌 | GET       | [PreviewAttachmentAsync](https://open.feishu.cn/document/server-docs/hire-v1/attachment/preview) |
 
 ## 函数详细内容
 

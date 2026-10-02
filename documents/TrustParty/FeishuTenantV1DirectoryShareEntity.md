@@ -19,9 +19,9 @@ description: 该接口用于以租户身份查询本组织与对方关联组织�
 
 ## 函数列表
 
-| 函数名称                 | 功能描述                     | 认证方式 | HTTP 方法 |
-| ------------------------ | ---------------------------- | -------- | --------- |
-| GetShareEntityListAsync  | 获取关联组织双方共享成员范围 | 租户令牌 | GET       |
+| 函数名称                 | 功能描述                     | 认证方式 | HTTP 方法 | 接口文档 |
+| ------------------------ | ---------------------------- | -------- | --------- |----------|
+| GetShareEntityListAsync  | 获取关联组织双方共享成员范围 | 租户令牌 | GET       | [GetShareEntityListAsync](https://open.feishu.cn/document/trust_party-v1/-collaboraiton-organization/list-3) |
 
 ## 函数详细内容
 

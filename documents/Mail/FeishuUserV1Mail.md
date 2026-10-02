@@ -14,11 +14,11 @@ description: 该接口用于以用户身份管理邮箱事件通知，支持邮�
 - [取消订阅事件](https://open.feishu.cn/document/mail-v1/user_mailbox-event/unsubscribe)
 
 ## 函数列表
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-| :--- | :--- | :--- | :--- |
-| SubscribeUserMailboxEventAsync | 订阅邮箱事件 | UserAccessToken | POST |
-| GetSubscribeUserMailboxEventAsync | 获取邮箱事件订阅状态 | UserAccessToken | GET |
-| UnSubscribeUserMailboxEventAsync | 取消订阅邮箱事件 | UserAccessToken | POST |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+| :--- | :--- | :--- | :--- |----------|
+| SubscribeUserMailboxEventAsync | 订阅邮箱事件 | UserAccessToken | POST | [SubscribeUserMailboxEventAsync](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/mail-v1/user_mailbox-event/subscribe) |
+| GetSubscribeUserMailboxEventAsync | 获取邮箱事件订阅状态 | UserAccessToken | GET | [GetSubscribeUserMailboxEventAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-event/subscription) |
+| UnSubscribeUserMailboxEventAsync | 取消订阅邮箱事件 | UserAccessToken | POST | [UnSubscribeUserMailboxEventAsync](https://open.feishu.cn/document/mail-v1/user_mailbox-event/unsubscribe) |
 
 ## 函数详细内容
 

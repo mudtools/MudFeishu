@@ -12,7 +12,7 @@ namespace Mud.Feishu;
 
 /// <summary>
 /// 飞书招聘（Hire）职位域 SDK 是一组服务端 OpenAPI 的封装，用于职位的组合创建/更新与设置维护、职位管理人员批量维护、职位详情与列表查询、职位开放，以及职位类别、职能分类、职位模板、职位发布记录与职位广告发布。本接口全部端点仅支持 tenant_access_token 调用。
-/// <para>接口详细文档请参见：<see href="https://open.feishu.cn/document/server-docs/hire-v1/recruitment-development-guide"/></para>
+/// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/recruitment-development-guide">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Hire")]
 [Token(FeishuTokenTypes.TenantAccessToken, Name = Consts.Authorization)]
@@ -131,7 +131,7 @@ public interface IFeishuTenantV1HireJob : IFeishuAppContextSwitcher
     /// 获取职位详情
     /// <para>获取职位聚合详情，包括基本信息、职位管理人员、招聘需求、职位地址、职位设置、门店、标签与投递阶段统计数据。</para>
     /// <para>限频：20 次/秒。所需权限：hire:job.composite_info:readonly（获取职位聚合信息）。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/get_detail">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/hire-v1/recruitment-related-configuration/job/get_detail">接口文档</see></para>
     /// </summary>
     /// <param name="job_id">职位 ID，示例值：6960663240925956660</param>
     /// <param name="user_id_type">用户 ID 类型（open_id/union_id/user_id/people_admin_id），默认 open_id；取 user_id 时需 contact:user.employee_id:readonly 字段权限</param>
@@ -203,7 +203,7 @@ public interface IFeishuTenantV1HireJob : IFeishuAppContextSwitcher
     /// 获取职位发布人
     /// <para>获取指定职位的招聘负责人、用人经理与招聘助理列表。</para>
     /// <para>限频：50 次/秒。所需权限：hire:job:readonly（获取职位信息）。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/recruiter">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/hire-v1/recruitment-related-configuration/job/recruiter">接口文档</see></para>
     /// </summary>
     /// <param name="job_id">职位 ID，示例值：6960663240925956660</param>
     /// <param name="user_id_type">用户 ID 类型（open_id/union_id/user_id），默认 open_id；取 user_id 时需 contact:user.employee_id:readonly 字段权限</param>
@@ -220,7 +220,7 @@ public interface IFeishuTenantV1HireJob : IFeishuAppContextSwitcher
     /// 获取职位类别列表
     /// <para>分页获取招聘系统预置的职位类别列表，按创建时间升序返回，并包含节点的父子层级关系（parent_id），可用于构建职位类别树。</para>
     /// <para>限频：20 次/秒。所需权限：hire:job:readonly（获取职位信息）。</para>
-    /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/list-4">接口文档</see></para>
+    /// <para><see href="https://open.feishu.cn/document/hire-v1/recruitment-related-configuration/job/list-4">接口文档</see></para>
     /// </summary>
     /// <param name="page_size">每页数量，默认 10</param>
     /// <param name="page_token">分页标记，首次请求不填，翻页时取上一次返回的 page_token</param>

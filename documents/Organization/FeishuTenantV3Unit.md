@@ -18,16 +18,16 @@ description: 该接口用于以租户身份管理飞书通讯录单位（Unit，
 
 ## 函数列表
 
-| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 |
-|---------|---------|---------|----------|
-| CreateUnitAsync | 创建单位 | 租户令牌 | POST |
-| UpdateUnitAsync | 更新单位 | 租户令牌 | PATCH |
-| BindDepartmentAsync | 绑定部门 | 租户令牌 | POST |
-| UnBindDepartmentAsync | 解绑部门 | 租户令牌 | POST |
-| GetDepartmentListAsync | 获取单位部门列表 | 租户令牌 | GET |
-| GetUnitInfoAsync | 获取单位详情 | 租户令牌 | GET |
-| GetUnitListAsync | 获取单位列表 | 租户令牌 | GET |
-| DeleteUnitByIdAsync | 删除单位 | 租户令牌 | DELETE |
+| 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
+|---------|---------|---------|----------|----------|
+| CreateUnitAsync | 创建单位 | 租户令牌 | POST | [CreateUnitAsync](https://open.feishu.cn/document/server-docs/contact-v3/unit/create) |
+| UpdateUnitAsync | 更新单位 | 租户令牌 | PATCH | [UpdateUnitAsync](https://open.feishu.cn/document/server-docs/contact-v3/unit/patch) |
+| BindDepartmentAsync | 绑定部门 | 租户令牌 | POST | [BindDepartmentAsync](https://open.feishu.cn/document/server-docs/contact-v3/unit/bind_department) |
+| UnBindDepartmentAsync | 解绑部门 | 租户令牌 | POST | [UnBindDepartmentAsync](https://open.feishu.cn/document/server-docs/contact-v3/unit/unbind_department) |
+| GetDepartmentListAsync | 获取单位部门列表 | 租户令牌 | GET | [GetDepartmentListAsync](https://open.feishu.cn/document/server-docs/contact-v3/unit/list_department) |
+| GetUnitInfoAsync | 获取单位详情 | 租户令牌 | GET | [GetUnitInfoAsync](https://open.feishu.cn/document/server-docs/contact-v3/unit/get) |
+| GetUnitListAsync | 获取单位列表 | 租户令牌 | GET | [GetUnitListAsync](https://open.feishu.cn/document/server-docs/contact-v3/unit/list) |
+| DeleteUnitByIdAsync | 删除单位 | 租户令牌 | DELETE | [DeleteUnitByIdAsync](https://open.feishu.cn/document/server-docs/contact-v3/unit/delete) |
 
 ## 函数详细内容
 

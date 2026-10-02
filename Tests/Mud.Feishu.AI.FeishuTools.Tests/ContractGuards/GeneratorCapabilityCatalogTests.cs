@@ -50,10 +50,10 @@ public class GeneratorCapabilityCatalogTests
     /// （那正是本次修复要消除的假绿形态）。
     /// </para>
     /// </remarks>
-    private const int ExpectedSdkMethodCount = 1203;
+    private const int ExpectedSdkMethodCount = 1228;
 
     /// <summary>能力分组个数（分组轴 = 接口名的 domain+resource 段）——精确值（AT-B17）。</summary>
-    private const int ExpectedDomainCount = 188;
+    private const int ExpectedDomainCount = 192;
 
     /// <summary>SDK 能力总数与 <c>Mud.Feishu</c> 的实际规模一致（精确锁定，非下界）。</summary>
     [Fact]

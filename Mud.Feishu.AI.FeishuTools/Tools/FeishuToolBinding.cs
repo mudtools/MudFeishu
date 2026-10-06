@@ -490,16 +490,48 @@ public sealed class FeishuToolBinding
         return kind switch
         {
             ToolErrorKind.Retryable => $"[tool_error] {toolName} (retryable){codeSegment}: {reason}——服务端繁忙/网络异常，可稍后重试同一调用",
-            ToolErrorKind.InvalidArgs => $"[tool_error] {toolName} (invalid_args){codeSegment}: {reason}",
+            ToolErrorKind.InvalidArgs => $"[tool_error] {toolName} (invalid_args){codeSegment}: {reason}——{InvalidArgsNextStep}",
             ToolErrorKind.Forbidden => $"[tool_error] {toolName} (forbidden){codeSegment}: {reason}——授权被拒绝，请放弃或改用只读方案",
             // R2-1（P0）：删除「若结果中提供了确认令牌…重试即可继续」——该文案把批准所需的全部要素
             // 交给了模型，使模型可自行带令牌重试并放行写操作（HITL 退化为「取决于模型是否听话」）。
             // 确认令牌只经 IFeishuToolApprovalChannel 交给宿主，模型侧恒为中性语义。
             ToolErrorKind.NeedsConfirmation => $"[tool_error] {toolName} (needs_confirmation){codeSegment}: {reason}——该操作需要用户确认后方可执行；"
                 + "已交由宿主确认通道处理，未获得确认前不得重试同一调用，请告知用户确认进度",
-            _ => $"[tool_error] {toolName}{codeSegment}: {reason}",
+            // ApiError（default 分支）：此前**完全没有下一步**（F-8 点名的两态之一）。
+            _ => $"[tool_error] {toolName} (api_error){codeSegment}: {reason}——{ApiErrorNextStep}",
         };
     }
+
+    /// <summary>
+    /// R5 / F-8：<c>invalid_args</c> 的<b>可执行下一步</b>。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 官方 <c>lark-cli</c> 的 <c>Suggestions []string</c> 注释写明其用途是
+    /// "so an agent can retry <b>without parsing the human-facing hint</b>"。
+    /// 本仓的对应形态是：<b>F-2 的闭集</b>让"非法取值"类错误天然带合法值清单
+    /// （<c>ToolArgs.RequireNamedInt</c> 已输出"合法取值：…"），<b>B-6 的 anyOf</b>
+    /// 则让"缺一"类错误天然带构造模板。本后缀只补<b>这两者都覆盖不到</b>的剩余情形
+    /// （形状错、类型错、必填缺失），并明确指向上述机器可读来源。
+    /// </para>
+    /// <para>
+    /// 刻意<b>不</b>在这里重复罗列取值：那会与闭集读取器输出的具体清单形成第二份真相源。
+    /// </para>
+    /// </remarks>
+    private const string InvalidArgsNextStep =
+        "请修正参数后重试：取值范围见工具参数描述中的 enum 闭集（非法取值时错误会直接列出全部合法值）；"
+        + "多个参数'至少提供一个'的约束见 anyOf；仍是形状/类型错误请对照参数描述的类型重填";
+
+    /// <summary>
+    /// R5 / F-8：<c>api_error</c> 的<b>可执行下一步</b>。
+    /// </summary>
+    /// <remarks>
+    /// 该态此前是纯 <c>{reason}</c>，模型只能盲试。补上后可形成确定的三步路径：
+    /// 先核实只读事实 → 再重试 → 仍失败则带上 code 上报。
+    /// </remarks>
+    private const string ApiErrorNextStep =
+        "该调用已被下游拒绝。建议顺序：① 先用同域只读工具核实目标是否存在/参数是否正确；"
+        + "② 确认无误后重试同一调用；③ 仍失败请把上面的 code 一并提供给用户（code 是排查所需的唯一标识）";
 
     /// <summary>按飞书业务 code 分类构造错误回填（<c>FeishuApiOutcome</c> 解包路径共用；分类器 internal，宿主不可见）。</summary>
     internal static string StructuredError(string toolName, int? apiCode, string reason)

@@ -95,7 +95,7 @@ internal sealed class CapabilityLookupTools(IOptions<FeishuAgentOptions> options
             };
 
             return Task.FromResult(FeishuToolResult.FromText(
-                ToolResultText.TruncateJson(envelope.ToJsonString(), _maxResultLength)));
+                ToolResultText.TruncateJson(ToolResultJson.ToText(envelope), _maxResultLength)));
         });
     }
 

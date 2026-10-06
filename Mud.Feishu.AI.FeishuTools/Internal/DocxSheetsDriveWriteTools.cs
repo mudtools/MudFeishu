@@ -499,7 +499,7 @@ internal sealed class DocxWriteTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, 
             {
                 envelope["deleted"] = 0;
                 envelope["note"] = "原文档无子块，仅追加";
-                return FeishuToolResult.FromText(envelope.ToJsonString());
+                return FeishuToolResult.FromText(ToolResultJson.ToText(envelope));
             }
 
             // ④ 再删除旧块 [0, oldCount)。失败时新旧并存 —— 如实上报，不做二次破坏性操作。
@@ -523,11 +523,11 @@ internal sealed class DocxWriteTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, 
                     $"新内容已写入（{newBlocks.Length} 块），但旧内容删除失败：{deleteOutcome.ErrorText}。"
                     + "文档现为**新旧内容并存**，内容未丢失。修复：调用 docx.delete_blocks，"
                     + $"document_id={args.DocumentId}，start_index=0，end_index={oldCount}（建议先 dry_run 确认区间）。";
-                return FeishuToolResult.FromText(envelope.ToJsonString());
+                return FeishuToolResult.FromText(ToolResultJson.ToText(envelope));
             }
 
             envelope["deleted"] = oldCount;
-            return FeishuToolResult.FromText(envelope.ToJsonString());
+            return FeishuToolResult.FromText(ToolResultJson.ToText(envelope));
         });
     }
 
@@ -588,14 +588,14 @@ internal sealed class DocxWriteTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, 
     /// 是让失败可恢复的最低成本手段。
     /// </remarks>
     private static FeishuToolResult Untouched(string toolName, string step, string? errorText)
-        => FeishuToolResult.FromText(new JsonObject
+        => FeishuToolResult.FromText(ToolResultJson.ToText(new JsonObject
         {
             ["partial_failure"] = true,
             ["step"] = step,
             ["tool"] = toolName,
             ["message"] =
                 $"{step}失败：{errorText}。文档**未被修改**（旧内容完整、新内容未写入），可安全重试。",
-        }.ToJsonString());
+        }));
 
     /// <summary>校验删除区间；返回待删条数。<b>非法区间必须提前拒绝</b>（否则平台会按意外区间删除）。</summary>
     private static int ValidateRange(int startIndex, int endIndex)

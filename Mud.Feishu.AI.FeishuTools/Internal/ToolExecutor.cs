@@ -93,7 +93,7 @@ internal readonly struct ToolExecutor(string toolName, int maxResultLength)
             return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(toolName, outcome.Code, outcome.ErrorText!));
         }
 
-        return FeishuToolResult.FromText(project(outcome.Data!).ToJsonString());
+        return FeishuToolResult.FromText(ToolResultJson.ToText(project(outcome.Data!)));
     }
 
     /// <summary>
@@ -133,7 +133,7 @@ internal readonly struct ToolExecutor(string toolName, int maxResultLength)
         }
 
         var envelope = project(outcome.Data!);
-        return FeishuToolResult.FromText(ToolResultText.TruncateJson(envelope.ToJsonString(), maxResultLength));
+        return FeishuToolResult.FromText(ToolResultText.TruncateJson(ToolResultJson.ToText(envelope), maxResultLength));
     }
 
 }

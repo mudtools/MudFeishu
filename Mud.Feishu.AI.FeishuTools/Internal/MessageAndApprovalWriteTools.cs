@@ -286,12 +286,149 @@ internal sealed class ApprovalWriteTools(
                     $"飞书接口返回错误 code={nullDataResult.Code.ToString(CultureInfo.InvariantCulture)}, msg={nullDataResult.Msg ?? "(无错误信息)"}"));
             }
 
-            return FeishuToolResult.FromText(new JsonObject
+            return FeishuToolResult.FromText(ToolResultJson.ToText(new JsonObject
             {
                 ["approved"] = true,
                 ["task_id"] = args.TaskId,
-            }.ToJsonString());
+            }));
         });
+    }
+
+    /// <summary>
+    /// approval.reject_task：拒绝审批任务（R5 / F-11 —— 补齐"只能同意"这一硬缺陷）。
+    /// </summary>
+    [FeishuToolHandler(typeof(IFeishuApprovalRejectTaskTool))]
+    public Task<FeishuToolResult> RejectTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.ApprovalRejectTask);
+        return executor.RunAsync(async () =>
+        {
+            var client = RequireApprovalTaskClient(executor.ToolName);
+            var args = ApprovalRejectTaskArgs.Unpack(arguments);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "POST", "/open-apis/approval/v4/tasks/reject",
+                    ToolDryRun.IdempotencyNote(null),
+                    ("approval_code", args.ApprovalCode.Length),
+                    ("instance_code", args.InstanceCode.Length),
+                    ("task_id", args.TaskId.Length),
+                    ("user_id", args.UserId.Length),
+                    ("comment", args.Comment?.Length ?? 0)));
+            }
+
+            var nullDataResult = await client
+                .RejectApprovalAsync(
+                    new RejectApprovalTaskRequest
+                    {
+                        ApprovalCode = args.ApprovalCode,
+                        InstanceCode = args.InstanceCode,
+                        TaskId = args.TaskId,
+                        UserId = args.UserId,
+                        Comment = args.Comment,
+                    },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            RequireNullDataSuccess(executor.ToolName, nullDataResult);
+
+            return FeishuToolResult.FromText(ToolResultJson.ToText(new JsonObject
+            {
+                ["rejected"] = true,
+                ["task_id"] = args.TaskId,
+            }));
+        });
+    }
+
+    /// <summary>
+    /// approval.transfer_task：转交审批任务（与 reject 同批补齐）。
+    /// </summary>
+    /// <remarks>
+    /// <b>转交给自己必须提前拒绝</b>：平台会接受但语义上是空操作（流程不前进），
+    /// 模型若不察觉会误以为转交成功。这是"构建通过、调用成功、但结果无意义"的一类。
+    /// </remarks>
+    [FeishuToolHandler(typeof(IFeishuApprovalTransferTaskTool))]
+    public Task<FeishuToolResult> TransferTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.ApprovalTransferTask);
+        return executor.RunAsync(async () =>
+        {
+            var client = RequireApprovalTaskClient(executor.ToolName);
+            var args = ApprovalTransferTaskArgs.Unpack(arguments);
+
+            if (string.Equals(args.TransferUserId, args.UserId, StringComparison.Ordinal))
+            {
+                throw new ArgumentException(
+                    $"transfer_user_id 与 user_id 相同（'{args.UserId}'）—— 转交给自己不会推进审批流程，"
+                    + "请指定另一位审批人");
+            }
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "POST", "/open-apis/approval/v4/tasks/transfer",
+                    ToolDryRun.IdempotencyNote(null),
+                    ("approval_code", args.ApprovalCode.Length),
+                    ("instance_code", args.InstanceCode.Length),
+                    ("task_id", args.TaskId.Length),
+                    ("user_id", args.UserId.Length),
+                    ("transfer_user_id", args.TransferUserId.Length),
+                    ("comment", args.Comment?.Length ?? 0)));
+            }
+
+            var nullDataResult = await client
+                .TransferApprovalAsync(
+                    new TransferApprovalTasksRequest
+                    {
+                        ApprovalCode = args.ApprovalCode,
+                        InstanceCode = args.InstanceCode,
+                        TaskId = args.TaskId,
+                        UserId = args.UserId,
+                        TransferUserId = args.TransferUserId,
+                        Comment = args.Comment,
+                    },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            RequireNullDataSuccess(executor.ToolName, nullDataResult);
+
+            return FeishuToolResult.FromText(ToolResultJson.ToText(new JsonObject
+            {
+                ["transferred"] = true,
+                ["task_id"] = args.TaskId,
+                ["transfer_user_id"] = args.TransferUserId,
+            }));
+        });
+    }
+
+    /// <summary>
+    /// 取审批任务侧客户端；未注册时给出<b>可执行</b>的提示（宿主该启用什么）。
+    /// </summary>
+    private IFeishuTenantV4ApprovalTask RequireApprovalTaskClient(string toolName)
+        => _approvalTaskClient
+            ?? throw new ArgumentException(
+                $"{toolName} 需要 IFeishuTenantV4ApprovalTask——宿主须启用 AddApprovalApi 的任务侧客户端");
+
+    /// <summary>
+    /// 解包 <c>FeishuNullDataApiResult</c>（不走 <c>FeishuApiResultReader.Read&lt;T&gt;</c>，T 不可推断）。
+    /// </summary>
+    private static void RequireNullDataSuccess(string toolName, FeishuNullDataApiResult? result)
+    {
+        if (result is null)
+        {
+            throw new ArgumentException("飞书接口无响应（result 为空）");
+        }
+
+        if (result.Code != 0)
+        {
+            throw new ArgumentException(
+                FeishuToolBinding.StructuredError(
+                    toolName,
+                    result.Code,
+                    $"飞书接口返回错误 code={result.Code.ToString(CultureInfo.InvariantCulture)}, "
+                    + $"msg={result.Msg ?? "(无错误信息)"}"));
+        }
     }
 
     /// <summary>approval.get_instance：获取审批实例详情（白名单 instance_code/status/form/auditors，user-only）。</summary>

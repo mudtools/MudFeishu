@@ -147,6 +147,8 @@ internal static class GuardProviderFactory
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4Approval>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4ApprovalQuery>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4ApprovalTask>().Object)
+            // R5 / F-11：minutes 域执行器（MinutesReadTools）需要该客户端才能被 DI 装配进目录。
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1MinutesMinute>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DriveFolder>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DriveFiles>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3User>().Object)

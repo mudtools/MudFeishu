@@ -34,7 +34,7 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 public class ToolScopeDeclarationContractTests
 {
     private static readonly string ToolInterfacesDirectory = Path.Combine(
-        FindRepositoryRoot(), "Mud.Feishu.AI.FeishuTools", "Tools");
+        FindRepositoryRoot(), "Mud.Feishu.AI.FeishuTools", "Curation");
 
     /// <summary><b>方向一</b>：工具声明的每个 scope 必须在仓内其它出处也出现过。</summary>
     [Fact]

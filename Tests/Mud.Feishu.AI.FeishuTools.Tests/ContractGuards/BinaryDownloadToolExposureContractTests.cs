@@ -43,7 +43,8 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 /// </remarks>
 public class BinaryDownloadToolExposureContractTests
 {
-    private const string ToolInterfacesDirectory = "Mud.Feishu.AI.FeishuTools/Tools";
+    // R5 / F-1：工具声明面已从 Tools/ 迁到 Curation/（载体 C：策展面与基础设施物理分离）。
+    private const string ToolInterfacesDirectory = "Mud.Feishu.AI.FeishuTools/Curation";
     private const string SdkInterfacesDirectory = "Mud.Feishu/Interfaces";
 
     /// <summary>二进制返回类型的<b>正则形态</b>（与 <c>Mud.HttpUtils</c> 的下载分支判定同源）。</summary>

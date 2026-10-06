@@ -35,7 +35,7 @@ public class ExecutorDomainPurityContractTests
         FindRepositoryRoot(), "Mud.Feishu.AI.FeishuTools", "Internal");
 
     private static readonly string ToolInterfacesDirectory = Path.Combine(
-        FindRepositoryRoot(), "Mud.Feishu.AI.FeishuTools", "Tools");
+        FindRepositoryRoot(), "Mud.Feishu.AI.FeishuTools", "Curation");
 
     /// <summary><b>断言一</b>：每个执行器类绑定的工具必须<b>同属一个域</b>。</summary>
     [Fact]

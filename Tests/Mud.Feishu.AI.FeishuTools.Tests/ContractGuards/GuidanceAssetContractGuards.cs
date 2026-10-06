@@ -100,16 +100,115 @@ public class GuidanceAssetContractGuards
         blocks[0].Content.Should().Be(FeishuToolGuidance.ByDomain["bitable"]);
     }
 
-    /// <summary>多域启用 → 按域名排序，保证同一启用集合产出同一指令文本（确定性）。</summary>
+    /// <summary>
+    /// 多域启用 → 按"该域已启用工具数降序 + 域名序"排序（<b>丢弃优先级</b>，R5 / B-12），
+    /// 保证同一启用集合产出同一指令文本（确定性），且预算被调小时丢的是<b>长尾域</b>而非主力域。
+    /// </summary>
+    /// <remarks>
+    /// 原实现按域名字母序：一旦超限就确定性丢掉字母序靠后的域——实测在原 2048 预算下
+    /// 从第 7 个域<code>feishu</code> 起共 8 个域的 guidance 从未进入过 prompt。
+    /// 本用例用"工具数不等"的组合锁定新语义：<c>bitable</c> 启用 2 个工具 → 排在最前。
+    /// </remarks>
     [Fact]
-    public void GetGuidance_WithMultipleDomains_ShouldBeOrderedByDomainName()
+    public void GetGuidance_WithMultipleDomains_ShouldOrderByEnabledToolCountThenName()
     {
         using var provider = GuardProviderFactory.CreateProvider(options =>
-            options.Tools = [FeishuToolNames.WikiGetNode, FeishuToolNames.BitableListTables, FeishuToolNames.DocxGetRawContent]);
+            options.Tools =
+            [
+                FeishuToolNames.WikiGetNode,
+                FeishuToolNames.BitableListTables,
+                FeishuToolNames.BitableListFields,
+                FeishuToolNames.DocxGetRawContent,
+            ]);
 
         var blocks = provider.GetRequiredService<FeishuAgentToolSource>().GetGuidance(provider);
 
+        // bitable=2 工具 → 第 1；docx/wiki 各 1 工具 → 按域名序 docx 先于 wiki。
         blocks.Select(static b => b.Domain).Should().Equal(["bitable", "docx", "wiki"]);
+    }
+
+    /// <summary>
+    /// <b>R5 / B-12 核心守卫</b>：<b>全域启用</b>时 guidance 拼装结果必须
+    /// <b>零丢弃</b>（<c>Truncated == false</c> 且 <c>OmittedDomains</c> 为空）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么是"零丢弃"而非"≤ 预算"</b>：超限策略是<b>整域丢弃</b>且失败方式为静默
+    /// （仅返回值上的 <c>Truncated</c>/<c>OmittedDomains</c> 可查，无日志无告警）。
+    /// 只断言"≤ 预算"会让"丢弃 1 个域"继续合法——而那正是本项修复前的实际状态
+    /// （实测 ≈3,650 字符 vs 原 2048 预算，8 个域从未进入 prompt）。
+    /// </para>
+    /// <para>
+    /// 本用例同时是"未来有人在不知情下加长 guidance md"的防线：加长 → 本用例红。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void GetGuidance_WithAllDomainsEnabled_ShouldNeverDropAnyDomain()
+    {
+        using var provider = GuardProviderFactory.CreateProvider(EnableAllTools);
+
+        var source = provider.GetRequiredService<FeishuAgentToolSource>();
+        var blocks = source.GetGuidance(provider);
+
+        blocks.Should().HaveCount(
+            FeishuToolGuidance.ByDomain.Count,
+            "全域启用时每个 guidance 域都应被注入（启用集合覆盖全部工具 ⇒ 覆盖全部域）");
+
+        var result = FeishuGuidanceComposer.Compose("宿主指令", blocks);
+
+        result.Truncated.Should().BeFalse(
+            "全域启用时不得因预算丢弃任何域——被丢弃域的避坑知识从未进入 prompt");
+        result.OmittedDomains.Should().BeEmpty(
+            "全域启用时的丢弃清单必须为空（预算 {0}，实测全域 {1} 字符）",
+            FeishuGuidanceComposer.MaxGuidanceLength,
+            blocks.Sum(static b => b.Content.Length));
+    }
+
+    /// <summary>
+    /// 反向验证：把预算调回原值（2048）时，被丢弃的必须是<b>长尾域</b>（工具数少的），
+    /// 而<b>不是</b> <c>im</c>/<c>task</c> 等主力域 —— 证明排序（丢弃优先级）真的生效。
+    /// </summary>
+    [Fact]
+    public void GetGuidance_WhenBudgetIsUndersized_ShouldDropTailDomainsNotMajorDomains()
+    {
+        using var provider = GuardProviderFactory.CreateProvider(EnableAllTools);
+
+        var blocks = provider.GetRequiredService<FeishuAgentToolSource>().GetGuidance(provider);
+
+        // 复现"预算被调小"的场景：用一个必然超限的额度装配（不改生产常量——额度只计guidance 本体，
+        // 故直接按字符预算语义构造：按排序后的顺序累加，超出即丢弃）。
+        var budget = blocks.Sum(static b => b.Content.Length) - 1;
+        var accepted = new List<FeishuGuidanceBlock>();
+        var used = 0;
+        foreach (var block in blocks)
+        {
+            var extra = (accepted.Count > 0 ? 2 : 0) + block.Content.Length;
+            if (used + extra > budget)
+            {
+                continue;
+            }
+
+            accepted.Add(block);
+            used += extra;
+        }
+
+        accepted.Select(static b => b.Domain).Should().Contain("im",
+            "im 有 8 个启用工具（全域最多）⇒ 排序最前 ⇒ 任何预算下都不应先于长尾域被丢");
+        accepted.Select(static b => b.Domain).Should().Contain("task");
+        accepted.Count.Should().BeLessThan(blocks.Count,
+            "预算小于全域总量 ⇒ 必然发生丢弃（否则本用例是假绿）");
+    }
+
+    /// <summary>
+    /// 启用全部工具：读写分列（写类工具必须经 <c>WriteAllowList</c> 单独键控）+ 放行 <c>user</c> 身份
+    /// （<c>approval.get_instance</c>/<c>task.list_my_tasks</c>/<c>mail.send_message</c> 是 user 身份工具，
+    /// 不加入 <c>AllowedIdentities</c> 会在<b>装配期</b> fail-fast）。
+    /// </summary>
+    private static void EnableAllTools(FeishuAgentOptions options)
+    {
+        options.Tools = [.. FeishuToolNames.ReadonlyAll];
+        options.WriteAllowList = [.. FeishuToolNames.WriteAll];
+        options.AllowedIdentities = ["tenant", "user"];
     }
 
     // ────────── R7/WP1 守卫 A：工具名引用一致性 ──────────

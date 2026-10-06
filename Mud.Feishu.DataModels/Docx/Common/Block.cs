@@ -42,60 +42,27 @@ public class Block
     /// <para>block 类型</para>
     /// <para>必填：是</para>
     /// <para>示例值：1</para>
-    /// <para>可选值：<list type="bullet">
-    /// <item>1：页面 Block</item>
-    /// <item>2：文本 Block</item>
-    /// <item>3：标题 1 Block</item>
-    /// <item>4：标题 2 Block</item>
-    /// <item>5：标题 3 Block</item>
-    /// <item>6：标题 4 Block</item>
-    /// <item>7：标题 5 Block</item>
-    /// <item>8：标题 6 Block</item>
-    /// <item>9：标题 7 Block</item>
-    /// <item>10：标题 8 Block</item>
-    /// <item>11：标题 9 Block</item>
-    /// <item>12：无序列表 Block</item>
-    /// <item>13：有序列表 Block</item>
-    /// <item>14：代码块 Block</item>
-    /// <item>15：引用 Block</item>
-    /// <item>17：待办事项 Block</item>
-    /// <item>18：多维表格 Block</item>
-    /// <item>19：高亮块 Block</item>
-    /// <item>20：会话卡片 Block</item>
-    /// <item>21：流程图 &amp; UML Block</item>
-    /// <item>22：分割线 Block</item>
-    /// <item>23：文件 Block</item>
-    /// <item>24：分栏 Block</item>
-    /// <item>25：分栏列 Block</item>
-    /// <item>26：内嵌 Block Block</item>
-    /// <item>27：图片 Block</item>
-    /// <item>28：开放平台小组件 Block</item>
-    /// <item>29：思维笔记 Block</item>
-    /// <item>30：电子表格 Block</item>
-    /// <item>31：表格 Block</item>
-    /// <item>32：表格单元格 Block</item>
-    /// <item>33：视图 Block</item>
-    /// <item>34：引用容器 Block</item>
-    /// <item>35：任务 Block</item>
-    /// <item>36：OKR Block</item>
-    /// <item>37：OKR Objective</item>
-    /// <item>38：OKR Key Result</item>
-    /// <item>39：OKR 进展</item>
-    /// <item>40：文档小组件</item>
-    /// <item>41：Jira Issue</item>
-    /// <item>42：Wiki 子目录 Block</item>
-    /// <item>43：画板 Block</item>
-    /// <item>44：议程 Block</item>
-    /// <item>45：议程项 Block</item>
-    /// <item>46：议程项标题 Block</item>
-    /// <item>47：议程项内容 Block</item>
-    /// <item>48：链接预览 Block</item>
-    /// <item>49：源同步块</item>
-    /// <item>50：引用同步块</item>
-    /// <item>51：新版 Wiki 子目录 Block</item>
-    /// <item>52：AI 模板 Block</item>
-    /// <item>999：未支持 Block</item>
-    /// </list></para>
+    /// <para>
+    /// 可选值：<b>见 <see cref="BlockTypes"/> 类的常量表</b>（R5 / B-1：取值清单已从注释迁移到常量类，
+    /// 以便工具层与生成器引用同一真相源，避免把裸整数写进模型可见 Schema）。
+    /// 由 <c>BlockTypesContractTests</c> 机械锁定"常量集合 == 本注释清单 == Schema 枚举集"。
+    /// </para>
+    /// <para>官方清单：<list type="bullet">
+    /// <item>1：页面 Block｜2：文本 Block｜3~11：标题 1~9 Block</item>
+    /// <item>12：无序列表｜13：有序列表｜14：代码块｜15：引用</item>
+    /// <item><b>16：平台保留号（官方清单无此取值，登记见 <see cref="BlockTypes.Reserved"/>）</b></item>
+    /// <item>17：待办事项｜18：多维表格｜19：高亮块｜20：会话卡片｜21：流程图 &amp; UML</item>
+    /// <item>22：分割线｜23：文件｜24：分栏｜25：分栏列｜26：内嵌｜27：图片</item>
+    /// <item>28：开放平台小组件｜29：思维笔记｜30：电子表格｜31：表格｜32：表格单元格</item>
+    /// <item>33：视图｜34：引用容器｜35：任务｜36~39：OKR 系列｜40：文档小组件</item>
+    /// <item>41：Jira Issue｜42：Wiki 子目录｜43：画板｜44~47：议程系列</item>
+    /// <item>48：链接预览｜49：源同步块｜50：引用同步块｜51：新版 Wiki 子目录｜52：AI 模板｜999：未支持</item>
+    /// </list>
+    /// <para>
+    /// <b>已知文档缺口（R5 / B-1 登记，未臆造）</b>：本类的 <c>equation</c> 属性在官方 block_type
+    /// 清单中<b>没有对应编号</b>，故 <see cref="BlockTypes"/> 未为其编造常量；
+    /// <see cref="BlockTypes.GetName"/> 对未知值返回 <see cref="BlockTypes.UnknownName"/> 而不抛异常。
+    /// </para>
     /// </summary>
     [JsonPropertyName("block_type")]
     public int BlockType { get; set; }

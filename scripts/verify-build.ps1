@@ -32,10 +32,16 @@
     仅执行步骤 0（依赖缓存新鲜度自检）后退出。供 CI 在 Restore 之前调用
     （CI runner 为全新环境，本地源通常不存在，此时会输出 [SKIP] 并通过）。
 
+.PARAMETER DenyToolWarnings
+    把 Warning/Info 级 MUDFT 诊断纳入门禁（R5 / B-11）：
+    MUDFT005/006/018 绝对 0；MUDFT009/021 按 scripts/mudft-warning-baseline.txt 的基线拦增量。
+    默认关（存量告警不阻塞日常开发），CI 应打开。
+
 .EXAMPLE
     ./scripts/verify-build.ps1
     ./scripts/verify-build.ps1 -ClearStaleCache -StrictFormat
     ./scripts/verify-build.ps1 -CacheCheckOnly
+    ./scripts/verify-build.ps1 -DenyToolWarnings
     ./scripts/verify-build.ps1 -WithPackCheck
 #>
 [CmdletBinding()]
@@ -43,12 +49,18 @@ param(
     [switch]$ClearStaleCache,
     [switch]$StrictFormat,
     [switch]$CacheCheckOnly,
+    [switch]$DenyToolWarnings,
     [switch]$WithPackCheck
 )
 
 $ErrorActionPreference = 'Continue'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $solution = Join-Path $repoRoot 'Mud.Feishu.slnx'
+
+# AI 工具描述符诊断门禁的单一真相源（R5 / B-11）：ID 清单 + 判定口径 + 基线读取。
+# CI workflow（.github/workflows/dotnet-publish.yml）dot-source 同一文件，
+# 由 DiagnosticsGateParityContractGuards 锁定三方一致，防"本地断言与 CI 断言漂移"。
+. (Join-Path $PSScriptRoot 'diagnostics-gate.ps1')
 
 $failures = New-Object System.Collections.Generic.List[string]
 $cacheCleared = $false
@@ -207,21 +219,42 @@ Assert-Zero -Name 'MUD001/002'    -Count ((Select-String -Path $buildLog -Patter
 Assert-Zero -Name 'FORM0xx'       -Count ((Select-String -Path $buildLog -Pattern 'FORM0\d\d' -AllMatches).Count)
 Assert-Zero -Name 'AOT001-007'    -Count ((Select-String -Path $buildLog -Pattern 'AOT00[1-7]' -AllMatches).Count) -Hint 'AOT006 已在 netstandard2.0/net6.0 豁免，net8+ 必须净零'
 
-# AI 工具描述符零容忍诊断：与 Mud.Feishu.AI.Tools/Diagnostics.cs 的 ZeroToleranceIds 保持同步。
+# AI 工具描述符零容忍诊断（R5 / B-11）：**ID 清单与判定口径抽到 scripts/diagnostics-gate.ps1**，
+# 由本地门禁与 CI workflow 共同 dot-source，并由 DiagnosticsGateParityContractGuards 锁定三方一致
+# （Diagnostics.ZeroToleranceIds ↔ diagnostics-gate.ps1 ↔ workflow）。
+#
 #   001 缺工具名 / 002 命名不符范式 / 003 工具名冲突 / 004 返回类型不可映射
 #   008 上传参数不可映射 / 010 查询参数展开失败 / 014 golden 漂移
-#   015 Schema 内部不一致 / 016 身份与接口令牌类型不符 / 017 读写分类与 SDK 事实脱钩 / 019 SDK 源无法解析
+#   015 Schema内部一致 / 016 身份与接口令牌类型不符 / 017 读写分类与 SDK 事实脱钩 / 019 SDK 源无法解析
 #   020 参数类型无解包映射（ToolArgsEmitter/ToolArgs 映射表）
 #   022 工具未绑定执行器 / 023 绑定不成立 / 024 执行器方法签名不符 / 025 执行器构造参数无法解析
-#       （ToolRegistrarEmitter：注册器 + DI 装配产物）
 # 注：本断言是"二次锁"——原先是恒为 0 的假绿（零容忍集里 5 个 ID 当时没有任何上报点）。
 #     缺失上报点已补齐，并由守卫 ZeroToleranceDiagnostics_ShouldHaveReportSites 机械锁定。
-# 只匹配「诊断形态」（warning/error + ID + 冒号），不能只匹配 ID 字符串：
-#   生成器工程自身的 RS2008 警告（"为包含规则“MUDFT015”的分析器项目启用分析器发布跟踪"）
-#   正文里就带这些 ID，只匹配 ID 会让"生成器工程被重新编译"这一无害动作把本条断言变成假红
-#   （实测：全量重建命中 19 处、其中真诊断 0 条）。真诊断的格式恒为 `warning MUDFT0xx: …`。
-$mudftZero = (Select-String -Path $buildLog -Pattern '(?:warning|error) MUDFT(001|002|003|004|008|010|014|015|016|017|019|020|022|023|024|025|026|027):' -AllMatches).Count
-Assert-Zero -Name 'MUDFT 零容忍'  -Count $mudftZero -Hint 'AI 工具描述符零容忍集（001/002/003/004/008/010/014/015/016/017/019/020/022/023/024/025/026/027），见 Diagnostics.ZeroToleranceIds'
+# 注：口径纪律见 diagnostics-gate.ps1 头部——只匹配「诊断形态」，不能只匹配 ID 字符串
+#     （生成器工程自身的 RS2008 警告正文里就带这些 ID，只匹配 ID 会假红）。
+$mudftZero = Measure-Mudft -LogPath $buildLog -Ids $MudftZeroToleranceIds
+Assert-Zero -Name 'MUDFT 零容忍'  -Count $mudftZero -Hint "AI 工具描述符零容忍集（$($MudftZeroToleranceIds -join '/')），见 Diagnostics.ZeroToleranceIds"
+
+# Warning/Info 级：默认不阻断（存量告警不应阻塞日常开发），-DenyToolWarnings（CI 开）后生效。
+if ($DenyToolWarnings) {
+    #恒为 0 的三类：描述质量退化 / 能力目录未更新，出现即红。
+    $mudftWarnAlwaysZero = Measure-Mudft -LogPath $buildLog -Ids $MudftAlwaysZeroIds
+    Assert-Zero -Name 'MUDFT Warning恒 0集' -Count $mudftWarnAlwaysZero -Hint "描述质量/能力目录类（$($MudftAlwaysZeroIds -join '/')）不得出现"
+
+    # 基线类：天然 >0（截断率/可空性），只拦"增量"。
+    $baseline = Get-MudftBaseline
+    foreach ($id in $MudftBaselineIds) {
+        $actual = Measure-Mudft -LogPath $buildLog -Ids @($id)
+        $expected = if ($baseline.ContainsKey($id)) { $baseline[$id] } else { 0 }
+        if ($actual -gt $expected) {
+            $script:failures.Add("MUDFT$id 基线回归: 基线 $expected，实际 $actual（降本需显式更新 $MudftBaselinePath）")
+            Write-Host "  [FAIL] MUDFT$id 基线 = $actual (基线 $expected)" -ForegroundColor Red
+        }
+        else {
+            Write-Host "  [ OK ] MUDFT$id 基线 = $actual (基线 $expected)" -ForegroundColor Green
+        }
+    }
+}
 
 # golden 快照门禁的"非空"防呆：描述符快照必须存在且被测试消费——
 # 若有人删掉 AdditionalFiles 声明或快照文件，构建期 MUDFT014 会静默失效，

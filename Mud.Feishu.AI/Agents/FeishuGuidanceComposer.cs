@@ -46,8 +46,18 @@ public sealed record FeishuGuidanceResult(
 /// <para>
 /// <b>上限是常量（R4.1 评审 R-4）</b>：不设公开配置键——"可配"意味着新配置键，
 /// 与 R5 治理（每公开属性须有消费点 + 守卫登记）冲突，且当前没有第二个取值需求。
-/// 超限按<b>输入顺序</b>（= 域优先级）丢弃尾部域，并在 <see cref="FeishuGuidanceResult"/> 上给出
+/// 超限按<b>输入顺序</b>丢弃尾部域，并在 <see cref="FeishuGuidanceResult"/> 上给出
 /// <c>Truncated</c> 与丢弃清单，调用方可据此告警或调整资产长度。
+/// </para>
+/// <para>
+/// <b>预算值R5 / B-12（2048 → 8192）</b>：原值 2048 是按"中文 UTF-8 3 字节/字符"估算的
+/// （把 6,578 <b>字节</b>当成 ≈2,030 <b>字符</b>）。实测 14 个域合计<b>≈ 3,624 字符</b>
+/// + 13 个分隔符 ≈ <b>3,650 字符</b>，<b>超原预算 78%</b>。而超限策略是"整域丢弃"，
+/// 且遍历顺序由调用方给出（原为域名字母序）⇒ 溢出时<b>第 7 个域起共 8 个域
+/// （feishu/im/task/mail/wiki/search/knowledge/sheets）的 guidance 从未进入过 prompt</b>，
+/// 失败方式为静默（仅返回值上的 <c>Truncated</c>/<c>OmittedDomains</c> 可查）。
+/// 8192 &gt; 3,650 ⇒ 全域零丢弃，同时为 F-9 的结构化改造（每域 ≤ 2 KB）留出余量。
+/// 排序侧的兜底见 <c>FeishuToolAIFunction.GetGuidance</c>。
 /// </para>
 /// </remarks>
 public static class FeishuGuidanceComposer
@@ -56,8 +66,14 @@ public static class FeishuGuidanceComposer
     /// <remarks>
     /// 额度<b>只计域 guidance 本体</b>（含块间分隔符），不含宿主 <c>Instructions</c>——
     /// 宿主指令长度不该决定域资产是否被注入（P1-6）。
+    /// <para>
+    /// <b>R5 / B-12</b>：2048 → <b>8192</b>。原值低于"全域总量"78%，导致全域启用时
+    /// 8 个域的 guidance 被静默整域丢弃。取值 8192 的依据：全域实测 ≈3,650 字符，
+    /// 留 ~2.2倍余量供 F-9 结构化改造（14 域 × ≤2 KB 的上限不会成为约束）。
+    /// 守卫：<c>GuidanceAssetContractGuards</c> 的"全域拼装零丢弃"用例锁死该不变量。
+    /// </para>
     /// </remarks>
-    public const int MaxGuidanceLength = 2048;
+    public const int MaxGuidanceLength = 8192;
 
     private const string Separator = "\n\n";
 

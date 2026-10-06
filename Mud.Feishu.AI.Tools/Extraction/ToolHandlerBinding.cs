@@ -17,8 +17,16 @@ namespace Mud.Feishu.AI.Tools.Extraction;
 /// <remarks>
 /// <para>
 /// 判定只用两条符号事实：<b>参数是否为接口</b> + <b>接口所在命名空间是否为 <c>Mud.Feishu*</c></b>
-/// + <b>参数是否可空</b>。三者的组合恰好覆盖工具面全部 16 个执行器的真实差异，
+/// + <b>参数是否可空</b>。三者的组合恰好覆盖工具面全部 22 个执行器的真实差异，
 /// <b>无需 per-domain 逃生舱</b>：
+/// <para>
+/// <b>计数纪律（R5 / B-S4）</b>：此处的工具/执行器计数必须与
+/// <c>Tests/Mud.Feishu.AI.FeishuTools.Tests/ContractGuards/ToolSurfaceScaleContractGuards</c>
+/// 的实测口径一致（工具 = <c>[FeishuTool]</c> 数；执行器 = 含 <c>[FeishuToolHandler]</c> 的
+/// <c>internal sealed class *Tools</c> 数，分布在 18 个文件——同文件可有多个执行器类，
+/// 如 <c>MessageAndApprovalWriteTools.cs</c> 含 2 个、<c>DocxSheetsDriveWriteTools.cs</c> 含 3 个、
+/// <c>BitableWriteTools.cs</c> 含 2 个）。历史注释写"16 个执行器"，实际 22 个。
+/// </para>
 /// </para>
 /// <list type="bullet">
 /// <item><c>IFeishuTenantV1BitableAppTable</c>（Mud.Feishu，不可空）→ <see cref="SoftService"/>；</item>
@@ -80,7 +88,7 @@ internal sealed class ToolExecutorDependency : IEquatable<ToolExecutorDependency
 /// <para>
 /// <b>为什么需要方法级声明</b>：tool → 执行器方法<b>不可派生</b>——<c>CapabilityEntry.MethodName</c> 是
 /// <c>Source</c> 挂钩解析出的 <b>SDK 方法名</b>（<c>GetAppTablePageListAsync</c>），而注册器需要的是
-/// 执行器方法名（<c>ListTablesAsync</c>），二者既不等同也无命名律可依（31 枚工具中 12 枚不满足任何
+/// 执行器方法名（<c>ListTablesAsync</c>），二者既不等同也无命名律可依（61 枚工具中相当比例不满足任何
 /// 简单约定）。故映射必须显式声明；把它放在<b>执行器方法上</b>（而非单独的注册器文件里）使
 /// 「新增工具」从 3 处编辑降为 2 处，且工具名经 <c>FeishuToolNames</c> 常量传递 = 编译期校验。
 /// </para>

@@ -166,31 +166,158 @@ public class GeneratorDiagnosticsContractGuards
             .ToArray();
 
     /// <summary>
-    /// CI 脚本（<c>verify-build.ps1</c>）的 MUDFT 断言正则必须覆盖代码定义的全部零容忍 ID。
+    /// <b>R5 / B-11</b>：MUDFT 零容忍门禁必须<b>三方同源且在 CI 上真的生效</b>。
     /// </summary>
-    /// <remarks>否则新增零容忍项只在代码里生效、脚本里漏掉，门禁只锁一半。</remarks>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么改写这条守卫（R5 新增根因 R-G）</b>：原实现从 <c>verify-build.ps1</c> 里
+    /// 抓一段手抄正则 <c>MUDFT(...)</c>，只能保证"脚本 ⊇ 代码定义"。
+    /// R5 评审发现更根本的问题：<b>CI workflow 里一条 MUDFT 都没有</b> ——
+    /// 本地死守的 18 个零容忍 Error 在 CI 上完全无效，而原守卫对此<b>完全无感</b>
+    /// （它只看本地脚本）。同时 ID 清单在脚本里手抄，与 <c>Diagnostics.ZeroToleranceIds</c> 无强约束。
+    /// </para>
+    /// <para>
+    /// 现改为断言四件事：① <c>scripts/diagnostics-gate.ps1</c>（单一真相源）覆盖全部零容忍 ID；
+    /// ② <c>verify-build.ps1</c> 不再手抄正则（改走真相源）；
+    /// ③ CI workflow <b>dot-source 真相源</b>；④ CI workflow <b>真的执行</b>零容忍断言
+    /// —— ③④ 缺任一，本用例即红（这是 R-G 的直接判据）。
+    /// </para>
+    /// </remarks>
     [Fact]
-    public void VerifyBuildScript_ShouldCoverEveryZeroToleranceDiagnostic()
+    public void MudftGate_ShouldCoverEveryZeroToleranceDiagnosticAndBeActiveInCi()
     {
         var zeroToleranceIds = ReadZeroToleranceIds();
+        zeroToleranceIds.Should().NotBeEmpty("ZeroToleranceIds 必须可解析（解析失败说明 Diagnostics.cs 结构被改坏）");
 
-        var scriptPath = Path.Combine(FindRepositoryRoot(), "scripts", "verify-build.ps1");
-        File.Exists(scriptPath).Should().BeTrue();
-        var script = File.ReadAllText(scriptPath);
+        var gatePath = Path.Combine(FindRepositoryRoot(), "scripts", "diagnostics-gate.ps1");
+        File.Exists(gatePath).Should().BeTrue(
+            "MUDFT 门禁的单一真相源 scripts/diagnostics-gate.ps1 缺失——本地门禁与 CI 将失去共同口径");
+        var gate = File.ReadAllText(gatePath);
 
-        var covered = Regex.Match(script, @"MUDFT\(([0-9|]+)\)");
-        covered.Success.Should().BeTrue("verify-build.ps1 应含 MUDFT 零容忍断言正则");
-
-        var coveredIds = covered.Groups[1].Value
-            .Split('|', StringSplitOptions.RemoveEmptyEntries)
+        // ① 真相源覆盖全部零容忍 ID。
+        var coveredIds = ReadGateScriptIdList(gate, "$MudftZeroToleranceIds")
             .Select(static suffix => "MUDFT" + suffix)
             .ToArray();
+        coveredIds.Should().NotBeEmpty("scripts/diagnostics-gate.ps1 应声明 $MudftZeroToleranceIds");
 
         foreach (var id in zeroToleranceIds)
         {
             coveredIds.Should().Contain(id,
-                $"零容忍诊断 {id} 未进入 verify-build.ps1 的断言正则（门禁覆盖不完整）");
+                $"零容忍诊断 {id} 未进入 scripts/diagnostics-gate.ps1 的 $MudftZeroToleranceIds（门禁覆盖不完整）");
         }
+
+        // ② verify-build.ps1 不得再手抄 ID 正则（单一真相源纪律）。
+        var verifyScriptPath = Path.Combine(FindRepositoryRoot(), "scripts", "verify-build.ps1");
+        var verifyScript = File.ReadAllText(verifyScriptPath);
+        Regex.Matches(verifyScript, @"warning\|error\)\s*MUDFT\(").Count.Should().Be(
+            0,
+            "verify-build.ps1 出现手抄的 MUDFT ID 正则——应改为 Measure-Mudft + $MudftZeroToleranceIds，"
+            + "否则本地门禁会与真相源再次漂移");
+
+        // ③ CI 必须 dot-source 真相源。
+        var workflowPath = Path.Combine(FindRepositoryRoot(), ".github", "workflows", "dotnet-publish.yml");
+        File.Exists(workflowPath).Should().BeTrue("CI workflow 缺失——MUDFT 断言将无处执行（R5 根因 R-G）");
+        var workflow = File.ReadAllText(workflowPath);
+
+        workflow.Should().Contain(
+            "diagnostics-gate.ps1",
+            "CI 未 dot-source scripts/diagnostics-gate.ps1 ⇒ MUDFT 断言与本地门禁不同源（R5 根因 R-G）");
+
+        // ④ CI 必须真的执行零容忍断言（只 dot-source 不断言 = 半吊子假绿）。
+        workflow.Should().Contain(
+            "Measure-Mudft -LogPath $log -Ids $MudftZeroToleranceIds",
+            "CI 未执行 MUDFT 零容忍断言——本地死守的 Error 在 CI 上仍然无效（R5 根因 R-G）");
+    }
+
+    /// <summary>
+    /// <b>R5 / B-11</b>：CI 必须同时断言 Warning 恒 0 集与基线集，
+    /// 否则 5 条 Warning/Info 诊断在任何地方都无人守护。
+    /// </summary>
+    [Fact]
+    public void Workflow_ShouldAssertMudftWarningsAndBaseline()
+    {
+        var workflowPath = Path.Combine(FindRepositoryRoot(), ".github", "workflows", "dotnet-publish.yml");
+        var workflow = File.ReadAllText(workflowPath);
+
+        workflow.Should().Contain(
+            "Measure-Mudft -LogPath $log -Ids $MudftAlwaysZeroIds",
+            "CI 未断言 MUDFT Warning 恒 0 集（MUDFT005/006/018：描述质量与能力目录退化将无人拦截）");
+
+        workflow.Should().Contain(
+            "Get-MudftBaseline",
+            "CI 未接入 MUDFT 基线机制 ⇒ 截断率类 Warning（MUDFT009/021）无法拦增量");
+    }
+
+    /// <summary>
+    /// 门禁的三个 ID 集合（零容忍 / 恒 0 Warning / 基线）<b>两两不相交</b>，
+    /// 且并集覆盖 <c>Diagnostics.cs</c> 中全部已声明诊断——防止某个 ID 落在三不管地带。
+    /// </summary>
+    [Fact]
+    public void MudftGateSets_ShouldBeDisjointAndCoverAllDeclaredDiagnostics()
+    {
+        var gatePath = Path.Combine(FindRepositoryRoot(), "scripts", "diagnostics-gate.ps1");
+        File.Exists(gatePath).Should().BeTrue("scripts/diagnostics-gate.ps1 缺失（MUDFT 门禁真相源）");
+        var gate = File.ReadAllText(gatePath);
+
+        var zero = ReadGateScriptIdList(gate, "$MudftZeroToleranceIds").ToHashSet(StringComparer.Ordinal);
+        var alwaysZero = ReadGateScriptIdList(gate, "$MudftAlwaysZeroIds").ToHashSet(StringComparer.Ordinal);
+        var baseline = ReadGateScriptIdList(gate, "$MudftBaselineIds").ToHashSet(StringComparer.Ordinal);
+
+        alwaysZero.Should().NotBeEmpty("恒 0 Warning 集不得为空（MUDFT005/006/018 需被守护）");
+        baseline.Should().NotBeEmpty("基线集不得为空（MUDFT009/021 需按基线拦增量）");
+
+        var overlap = zero.Intersect(alwaysZero)
+            .Concat(zero.Intersect(baseline))
+            .Concat(alwaysZero.Intersect(baseline))
+            .OrderBy(static id => id, StringComparer.Ordinal)
+            .ToArray();
+        overlap.Should().BeEmpty(
+            "同一诊断 ID 同时出现在两个门禁集合中，判定口径会互相矛盾：{0}", string.Join(", ", overlap));
+
+        var uncovered = ReadDeclaredDiagnosticIds()
+            .Select(static id => id["MUDFT".Length..])
+            .Except(zero)
+            .Except(alwaysZero)
+            .Except(baseline)
+            .OrderBy(static id => id, StringComparer.Ordinal)
+            .ToArray();
+        uncovered.Should().BeEmpty(
+            "以下已声明诊断未进入任何门禁集合（既非零容忍、也非恒 0、也不是基线）⇒ 严重级别无人守护：{0}",
+            string.Join(", ", uncovered));
+    }
+
+    /// <summary>基线文件必须存在，且其中的 ID 都在 <c>$MudftBaselineIds</c> 中声明（否则该行永不生效）。</summary>
+    [Fact]
+    public void MudftBaselineFile_ShouldExistAndOnlyReferenceDeclaredIds()
+    {
+        var root = FindRepositoryRoot();
+        var baselinePath = Path.Combine(root, "scripts", "mudft-warning-baseline.txt");
+        File.Exists(baselinePath).Should().BeTrue(
+            "MUDFT Warning 基线缺失——-DenyToolWarnings 与 CI 会把基线当0 判，任何截断增量都会被误报");
+
+        var gate = File.ReadAllText(Path.Combine(root, "scripts", "diagnostics-gate.ps1"));
+        var declared = ReadGateScriptIdList(gate, "$MudftBaselineIds").ToHashSet(StringComparer.Ordinal);
+
+        var orphans = new List<string>();
+        foreach (var line in File.ReadAllLines(baselinePath))
+        {
+            var trimmed = line.Trim();
+            if (trimmed.Length == 0 || trimmed.StartsWith('#'))
+            {
+                continue;
+            }
+
+            var match = Regex.Match(trimmed, @"^(?<id>\d{3})\s*=\s*(?<count>\d+)$");
+            match.Success.Should().BeTrue($"基线行格式非法（应形如 009=0）：{trimmed}");
+
+            if (!declared.Contains(match.Groups["id"].Value))
+            {
+                orphans.Add(match.Groups["id"].Value);
+            }
+        }
+
+        orphans.Should().BeEmpty(
+            "基线文件里的 ID 未在 $MudftBaselineIds 中声明 ⇒ 该行永远不会被检查：{0}", string.Join(", ", orphans));
     }
 
     /// <summary>
@@ -207,6 +334,24 @@ public class GeneratorDiagnosticsContractGuards
     }
 
     // ────────── 读取与定位 ──────────
+
+    /// <summary>
+    /// 从 <c>scripts/diagnostics-gate.ps1</c> 读取形如
+    /// <c>$Xxx = @('001', '002', …)</c> 的数组字面量，返回<b>三位数字后缀</b>序列。
+    /// </summary>
+    private static IReadOnlyList<string> ReadGateScriptIdList(string gateScript, string variableName)
+    {
+        var block = Regex.Match(
+            gateScript,
+            $@"{Regex.Escape(variableName)}\s*=\s*@\((?<body>.*?)\)",
+            RegexOptions.Singleline);
+
+        return block.Success
+            ? Regex.Matches(block.Groups["body"].Value, "'(?<id>[^']+)'")
+                .Select(static m => m.Groups["id"].Value)
+                .ToArray()
+            : [];
+    }
 
     private static IReadOnlyList<string> ReadZeroToleranceIds()
     {

@@ -164,6 +164,21 @@ internal sealed class FeishuToolsToolSource : FeishuAgentToolSource
     /// 口径与 <see cref="GetTools"/> 完全一致（<see cref="FeishuToolRegistry.EnabledTools"/>）：
     /// 未启用任何工具 → 无 guidance → 指令装配与 Phase 0 一致。
     /// </para>
+    /// <para>
+    /// <b>排序＝丢弃优先级（R5 / B-12）</b>：超限时 <see cref="FeishuGuidanceComposer.Compose"/>
+    /// 按<b>输入顺序</b>整域丢弃尾部域，故输入顺序即"域重要性"。原实现按<b>域名字母序</b>，
+    /// 一旦超限就<b>确定性地</b>丢掉字母序靠后的域——实测在原 2048 预算下从第 7 个域
+    /// <c>feishu</c> 起共 8 个域的 guidance 从未进入过 prompt（含 <c>im</c>/<c>task</c>/<c>mail</c>/<c>wiki</c>）。
+    /// 现改为<b>按"该域已启用工具数"降序</b>，同数按域名字母序：
+    /// <list type="bullet">
+    /// <item>工具数多的域是Agent 最常命中的域（<c>im</c>/<c>task</c>/<c>calendar</c>/<c>bitable</c>/<c>drive</c>
+    /// 各 5~8 个工具），其 guidance 最不该被丢；</item>
+    /// <item>工具数少的域（<c>search</c>/<c>knowledge</c>/<c>feishu</c>/<c>wiki</c> 各 1~2 个）先于长尾被丢弃。</item>
+    /// </list>
+    /// <b>零人工配置</b>：优先级完全由 <see cref="FeishuToolRegistry.EnabledTools"/> 派生
+    /// （无需新增配置键，也不违反 R-4 "上限固化常量、不设公开配置键"的治理）。
+    /// 该顺序在"预算充足"（当前 8192 全域零丢弃）与"预算被调小"两种场景下都给出可断言的行为。
+    /// </para>
     /// </remarks>
     public override IReadOnlyList<FeishuGuidanceBlock> GetGuidance(IServiceProvider serviceProvider)
     {
@@ -176,19 +191,32 @@ internal sealed class FeishuToolsToolSource : FeishuAgentToolSource
             return [];
         }
 
-        // 按域名排序保证装配确定（同一启用集合 → 同一指令文本，便于 golden 式比对与缓存）。
-        var domains = registry.EnabledTools
-            .Select(static tool => DomainOf(tool.Name))
-            .Where(static domain => domain.Length > 0)
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(static domain => domain, StringComparer.Ordinal);
+        // 域 = 工具名首个"." 之前的部分；按域聚合已启用工具数 → 丢弃优先级（工具数降序，同数按域名字母序）。
+        var domainToolCounts = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var tool in registry.EnabledTools)
+        {
+            var domain = DomainOf(tool.Name);
+            if (domain.Length == 0)
+            {
+                continue;
+            }
+
+            domainToolCounts[domain] = domainToolCounts.TryGetValue(domain, out var count)
+                ? count + 1
+                : 1;
+        }
+
+        // OrderByDescending(工具数) → OrderBy(域名)：前者定重要性，后者保证同重要性的顺序确定（可 golden 比对）。
+        var domains = domainToolCounts
+            .OrderByDescending(static pair => pair.Value)
+            .ThenBy(static pair => pair.Key, StringComparer.Ordinal);
 
         var blocks = new List<FeishuGuidanceBlock>();
         foreach (var domain in domains)
         {
-            if (FeishuToolGuidance.ByDomain.TryGetValue(domain, out var content))
+            if (FeishuToolGuidance.ByDomain.TryGetValue(domain.Key, out var content))
             {
-                blocks.Add(new FeishuGuidanceBlock(domain, content));
+                blocks.Add(new FeishuGuidanceBlock(domain.Key, content));
             }
         }
 

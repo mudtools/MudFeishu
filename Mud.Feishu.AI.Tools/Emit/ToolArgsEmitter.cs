@@ -166,7 +166,8 @@ internal static class ToolArgsEmitter
     /// <remarks>
     /// <para>
     /// 只映射<b>当前工具面真实存在的形态</b>：<c>string</c> / <c>string?</c> / <c>string[]</c> /
-    /// <c>string[]?</c> / <c>int?</c> / <c>bool?</c>（31 枚工具逐一核对）。
+    /// <c>string[]?</c> / <c>int?</c> / <c>bool?</c>（61 枚工具逐一核对；计数以
+    /// <c>ToolSurfaceScaleContractGuards</c> 的实测口径为准）。
     /// </para>
     /// <para>
     /// <c>int</c> 必填与可选映射均提供（<c>RequireInt</c> / <c>OptionalInt</c>）；

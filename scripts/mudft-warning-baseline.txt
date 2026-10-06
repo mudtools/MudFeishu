@@ -1,0 +1,15 @@
+# AI 工具描述符诊断（MUDFTxxx）Warning 基线 —— R5 / B-11
+#
+# 用途：MUDFT009（output_schema 深度截断）与 MUDFT021（参数可空性存疑）是 Warning 级，
+# 天然 >0（全量消除不现实且无收益），因此**不能**断言绝对 0，改为"基线 + 拦增量"：
+#   实际计数 > 基线 ⇒ 门禁红（说明新增了截断/可空性疑点，须显式评审并更新本文件）。
+#   实际计数 < 基线 ⇒ 通过（变好不阻塞）。
+#
+# 数据来源：2026-10-06 Release 全解决方案构建实测（dotnet build Mud.Feishu.slnx -c Release）。
+# 当前两者均为 0：全部 61 个工具的 output_schema 在深度上限 4 内无截断，无可空性疑点。
+#
+# 格式：<三位ID>=<允许的最大计数>；行首 # 为注释。
+# 口径与 ID 清单的单一真相源在 scripts/diagnostics-gate.ps1（$MudftBaselineIds 引用本文件）。
+
+009=0
+021=0

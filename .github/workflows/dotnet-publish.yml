@@ -81,9 +81,16 @@ jobs:
           "MUD_BUILD_LOG=$log" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       # 步骤4.5：诊断白名单断言（与 scripts/verify-build.ps1 步骤 2 的判定口径保持一致）
+      #
+      # R5 / B-11：MUDFT 断言此前**完全不在 CI**（本地 verify-build.ps1 死守 18 个零容忍 Error，
+      # CI 侧一条都没有 ⇒「门禁的门禁本身失效」，R5 新增根因 R-G）。现改为与本地门禁
+      # **dot-source 同一份真相源** scripts/diagnostics-gate.ps1 —— 不再在 workflow 里
+      # 手抄 ID 清单，并由 DiagnosticsGateParityContractGuards 锁定三方一致
+      # （Diagnostics.ZeroToleranceIds ↔ diagnostics-gate.ps1 ↔ 本 workflow）。
       - name: Assert diagnostics whitelist
         shell: pwsh
         run: |
+          . ./scripts/diagnostics-gate.ps1
           $log = $env:MUD_BUILD_LOG
           $failed = $false
           function Assert-Zero([string]$name, [int]$count, [string]$hint = '') {
@@ -101,6 +108,29 @@ jobs:
           Assert-Zero 'MUD001/002'       (Select-String -Path $log -Pattern 'MUD00[12]' -AllMatches).Count
           Assert-Zero 'FORM0xx'          (Select-String -Path $log -Pattern 'FORM0\d\d' -AllMatches).Count
           Assert-Zero 'AOT001-007'       (Select-String -Path $log -Pattern 'AOT00[1-7]' -AllMatches).Count 'AOT006 已在 ns2.0/net6.0 豁免，net8+ 必须净零'
+
+          # MUDFT 零容忍 Error（18 个）—— 与本地门禁同源同口径。
+          $mudftZero = Measure-Mudft -LogPath $log -Ids $MudftZeroToleranceIds
+          Assert-Zero 'MUDFT 零容忍' $mudftZero "AI 工具描述符零容忍集（$($MudftZeroToleranceIds -join '/')）"
+
+          # MUDFT Warning 恒 0 集（CI 开 -DenyToolWarnings 的等价口径）。
+          $mudftWarn = Measure-Mudft -LogPath $log -Ids $MudftAlwaysZeroIds
+          Assert-Zero 'MUDFT Warning恒 0集' $mudftWarn "描述质量/能力目录类（$($MudftAlwaysZeroIds -join '/')）"
+
+          # MUDFT 基线集：只拦增量（截断率/可空性天然 >0）。
+          $baseline = Get-MudftBaseline
+          foreach ($id in $MudftBaselineIds) {
+            $actual = Measure-Mudft -LogPath $log -Ids @($id)
+            $expected = if ($baseline.ContainsKey($id)) { $baseline[$id] } else { 0 }
+            if ($actual -gt $expected) {
+              Write-Host "  [FAIL] MUDFT$id 基线回归: 基线 $expected，实际 $actual" -ForegroundColor Red
+              $failed = $true
+            }
+            else {
+              Write-Host "  [ OK ] MUDFT$id 基线 = $actual (基线 $expected)" -ForegroundColor Green
+            }
+          }
+
           if ($failed) { exit 1 }
 
       # 步骤4.6：配置面审计（R5/G1）。

@@ -108,6 +108,105 @@ public class ToolExecutorSkeletonGuards
             .ToDictionary(static p => p, File.ReadAllText, StringComparer.Ordinal);
     }
 
+    // ────────── R5 / B-3 + B-5：回填口径守卫（合并为一条，避免"守卫套守卫"）──
+
+    /// <summary>
+    /// <b>R5 / B-3</b>：消息正文字段（<c>content</c> / <c>body</c>）回填时<b>必须</b>经
+    /// <c>ToolResultText.Truncate</c> 预截断。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>缺陷背景（B-3）</b>：<c>ImTools.ProjectHistory</c> 的 <c>content</c> 经
+    /// <c>PageSizes.MessagePreviewLength</c> 预截断，而 <c>ProjectContent</c> 的 <c>body</c>
+    /// 直接回填 —— 同一工具面内两个同类字段口径不一致，超长消息体会挤占上下文。
+    /// 已修复（本项DoD 的"修复面"），本守卫锁住"修复不回潮"。
+    /// </para>
+    /// <para>
+    /// <b>为什么是扫描式守卫</b>：截断是<b>逐调用点手写</b>的，没有可派生的类型系统约束；
+    /// 扫描"消息正文类字段的直接回填"是唯一能在新增投影时立刻报红的手段（与本目录既有体例一致）。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void MessageBodyBackfill_ShouldAlwaysBeTruncated()
+    {
+        var violations = new List<string>();
+        foreach (var (fileName, source) in ExecutorSources())
+        {
+            // 形如 ["content"] = <expr>;  或 ["content"] = ToolResultText.Truncate(...);
+            // 只看"消息正文语义"的键：content / body（不含 display_info 等其它域字段）。
+            var matches = Regex.Matches(
+                source,
+                @"\[\s*""(?<key>content|body)""\s*\]\s*=\s*(?<expr>[^;,]+)",
+                RegexOptions.None,
+                TimeSpan.FromSeconds(5));
+
+            foreach (System.Text.RegularExpressions.Match match in matches)
+            {
+                var expr = match.Groups["expr"].Value.Trim();
+                if (!expr.Contains("ToolResultText.Truncate", StringComparison.Ordinal))
+                {
+                    violations.Add(
+                        $"{Path.GetFileName(fileName)}: [\"{match.Groups["key"].Value}\"] = {expr}（未预截断）");
+                }
+            }
+        }
+
+        violations.Should().BeEmpty(
+            "消息正文字段回填未预截断——content/body 必须经 ToolResultText.Truncate(…, PageSizes.MessagePreviewLength)，"
+            + "否则超长消息体挤占上下文（R5 / B-3）：{0}",
+            string.Join(" | ", violations));
+    }
+
+    /// <summary>
+    /// <b>R5 / B-5</b>：<c>ContactTools</c> 内传给 SDK 的 <c>user_id_type</c> 必须引用域级常量
+    /// <c>DefaultUserIdType</c>（或由它赋值的局部变量），<b>不得出现裸字面量</b>。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>缺陷背景（B-5）</b>：参数是否暴露 <c>user_id_type</c> 原按"SDK 接口有这个 query 参数"决定，
+    /// 而非按"这个工具有多种合理 id 形态"决定 ⇒ 同域同类工具 id 口径可能不一致。
+    /// 修复面已到位（<c>resolve_user</c> 不暴露该参数——其语义是 email/mobile → id，输出恒为
+    /// <c>open_id</c>，暴露即误导；其余调用点统一走 <c>DefaultUserIdType</c>）。
+    /// </para>
+    /// <para>
+    /// <b>为什么这条守卫有长期价值</b>：口径靠"逐调用点自觉引用常量"是纯人工不变量，
+    /// 新增工具时最容易退化成裸 <c>"open_id"</c> 字面量。本守卫让那种退化立刻变红。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void ContactUserIdType_ShouldAlwaysReferenceDomainConstant()
+    {
+        var fileName = ExecutorSources()
+            .Keys
+            .Single(static path => Path.GetFileName(path).Equals("ContactTools.cs", StringComparison.Ordinal));
+        var source = File.ReadAllText(fileName);
+
+        // 收集由 DefaultUserIdType 赋值的局部变量名（允许 `var x = args.UserIdType ?? DefaultUserIdType` 形态）。
+        var aliases = Regex.Matches(source, @"\bvar\s+(?<name>\w+)\s*=\s*[^;]*\bDefaultUserIdType\b")
+            .Select(static m => m.Groups["name"].Value)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var violations = new List<string>();
+        foreach (System.Text.RegularExpressions.Match match in Regex.Matches(source, @"user_id_type:\s*(?<value>[A-Za-z_][\w]*)"))
+        {
+            var value = match.Groups["value"].Value;
+            if (!value.Equals("DefaultUserIdType", StringComparison.Ordinal) && !aliases.Contains(value))
+            {
+                violations.Add($"user_id_type: {value}");
+            }
+        }
+
+        // 反向自证：守卫必须真的看得到至少一个调用点，否则"扫不到"会被误当成"全绿"。
+        Regex.Matches(source, @"user_id_type:\s*[A-Za-z_][\w]*").Count.Should().BeGreaterThan(
+            0,
+            "未在 ContactTools 中找到任何 user_id_type: 调用点——扫描正则坏了（假绿），请先修守卫");
+
+        violations.Should().BeEmpty(
+            "ContactTools 内传给 SDK 的 user_id_type 未引用域级常量 DefaultUserIdType——"
+            + "同域同类工具的 id 口径必须一致（R5 / B-5）：{0}",
+            string.Join(" | ", violations));
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = AppContext.BaseDirectory;

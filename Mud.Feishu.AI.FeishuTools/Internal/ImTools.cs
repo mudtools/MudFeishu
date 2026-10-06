@@ -114,7 +114,10 @@ internal sealed class ImTools(
             {
                 ["message_id"] = message.MessageId,
                 ["msg_type"] = message.MsgType,
-                ["body"] = message.Body?.Content,
+
+                // R5 / B-3：与 ProjectHistory 的 content 保持同一口径（此前 body 直接回填未预截断，
+                // 同一工具面内content 与 body 两个同类字段截断规则不一致）。
+                ["body"] = ToolResultText.Truncate(message.Body?.Content, PageSizes.MessagePreviewLength),
                 ["mentions"] = message.Mentions is { Count: > 0 }
                     ? new JsonArray([.. message.Mentions.Select(m => (JsonNode?)new JsonObject
                         {

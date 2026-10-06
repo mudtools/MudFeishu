@@ -148,7 +148,7 @@ public class ToolArgumentShapeContractGuards
     }
 
     /// <summary>
-    /// <b>R5 / F-1</b>：基线 + <b>反向自证</b> —— <c>Curation/</c> 恰有 12 个声明文件、61 个契约接口。
+    /// <b>R5 / F-1</b>：基线 + <b>反向自证</b> —— <c>Curation/</c> 恰有 12 个声明文件、68 个契约接口。
     /// </summary>
     [Fact]
     public void CurationDirectory_ShouldMatchRegisteredBaseline()
@@ -178,8 +178,8 @@ public class ToolArgumentShapeContractGuards
             .ToArray();
 
         interfaces.Should().HaveCount(
-            61,
-            "Curation/ 的工具契约接口数从 61 变为 {0}——新增/删除工具属有意的契约变更，请同步更新本基线"
+            68,
+            "Curation/ 的工具契约接口数从 68 变为 {0}——新增/删除工具属有意的契约变更，请同步更新本基线"
             + "（若同时看到『文件数没变而接口数变了』，说明有文件被塞进了非契约内容）",
             interfaces.Length);
     }

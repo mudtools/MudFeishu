@@ -23,15 +23,32 @@ internal sealed class ImTools(
     IFeishuTenantV1ChatGroupMember chatMemberClient,
     IOptions<FeishuAgentOptions> options,
 
-    // R5 / F-4：新增依赖。刻意**放在options 之后且为可选**——它属"软缺席"语义
-    // （未注册时执行器仍须能构造），且追加在末尾可让既有 3 参构造点保持源码兼容。
+    // R5 / F-3：im.get_chat / im.search_chats 落到 ChatGroup 客户端。
+    // ⚠️ 刻意做成**可选**：ChatGroup 客户端缺席时（宿主未注册群管理服务），
+    // 只应让这两个工具不出现，而不是让整个 im 域工具连坐消失——
+    // 这正是 ToolHandlerBinding 里 ToolDependencyKind.SoftService 的语义。
+    IFeishuTenantV1ChatGroup? chatGroupClient = null,
+
+    // R5 / F-4：新增依赖。刻意**放在末尾且为可选**——它属"软缺席"语义
+    // （未注册时执行器仍须能构造），且追加在末尾可让既有构造点保持源码兼容。
     IFeishuToolContextAccessor? toolContextAccessor = null)
 {
     private const string ContainerIdTypeChat = "chat";
+
+    /// <summary>R5 / F-3：话题容器类型（<c>im.get_thread_messages</c> 用它取代 chat）。</summary>
+    private const string ContainerIdTypeThread = "thread";
+
     private const string SortTypeByCreateTimeDesc = "ByCreateTimeDesc";
+
+    /// <summary>转发类工具的 <c>receive_id_type</c> 缺省值（与 SDK 的 <c>Consts.User_Id_Type</c> 一致）。</summary>
+    private const string DefaultReceiveIdType = "open_id";
+
+    /// <summary>允许的 <c>receive_id_type</c> 白名单（非法值提前拒绝，便于模型自我纠正）。</summary>
+    private static readonly string[] AllowedReceiveIdTypes = ["open_id", "user_id", "union_id"];
 
     private readonly IFeishuTenantV1Message _messageClient = messageClient
         ?? throw new ArgumentNullException(nameof(messageClient));
+    private readonly IFeishuTenantV1ChatGroup? _chatGroupClient = chatGroupClient;
     private readonly IFeishuTenantV1ChatGroupMember _chatMemberClient = chatMemberClient
         ?? throw new ArgumentNullException(nameof(chatMemberClient));
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
@@ -110,6 +127,251 @@ internal sealed class ImTools(
     }
 
     /// <summary>get_history_messages 投影：items（含 content 预览截断）+ 翻页契约。</summary>
+    // ────────── R5 / F-3：IM 域补齐（thread / 撤回 / 转发 / 已读 / 群管理） ──────────
+
+    /// <summary>im.get_thread_messages：读取话题内消息（container_id_type 固定 thread）。</summary>
+    [FeishuToolHandler(typeof(IFeishuImGetThreadMessagesTool))]
+    public Task<FeishuToolResult> GetThreadMessagesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.ImGetThreadMessages, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var args = ImGetThreadMessagesArgs.Unpack(arguments);
+
+            var outcome = FeishuApiResultReader.Read(await _messageClient
+                .GetHistoryMessageAsync(
+                    ContainerIdTypeThread,
+                    args.ThreadId,
+                    start_time: null,
+                    end_time: null,
+                    sort_type: SortTypeByCreateTimeDesc,
+                    page_size: args.PageSize ?? PageSizes.History,
+                    page_token: args.PageToken,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApi(outcome, ProjectHistory);
+        });
+    }
+
+    /// <summary>im.revoke_message：撤回本 Bot 发出的消息（写面：DELETE = high-risk-write）。</summary>
+    [FeishuToolHandler(typeof(IFeishuImRevokeMessageTool))]
+    public Task<FeishuToolResult> RevokeMessageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.ImRevokeMessage, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var args = ImRevokeMessageArgs.Unpack(arguments);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "DELETE", $"/open-apis/im/v1/messages/{args.MessageId}",
+                    ToolDryRun.IdempotencyNote(null),
+                    ("message_id", args.MessageId.Length)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _messageClient
+                .RevokeMessageAsync(args.MessageId, cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApiUntruncated(outcome, _ => new JsonObject { ["ok"] = true });
+        });
+    }
+
+    /// <summary>im.forward_message：转发单条消息（SDK 方法名 ReceiveMessageAsync，语义为转发）。</summary>
+    [FeishuToolHandler(typeof(IFeishuImForwardMessageTool))]
+    public Task<FeishuToolResult> ForwardMessageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.ImForwardMessage, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var args = ImForwardMessageArgs.Unpack(arguments);
+            var receiveIdType = ResolveReceiveIdType(args.ReceiveIdType);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "POST", $"/open-apis/im/v1/messages/{args.MessageId}/forward",
+                    ToolDryRun.IdempotencyNote(args.IdempotencyKey),
+                    ("message_id", args.MessageId.Length), ("receive_id", args.ReceiveId.Length)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _messageClient
+                .ReceiveMessageAsync(
+                    args.MessageId,
+                    new ReceiveMessageRequest { ReceiveId = args.ReceiveId },
+                    receiveIdType,
+                    args.IdempotencyKey,
+                    cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApiUntruncated(outcome, data => new JsonObject
+            {
+                ["message_id"] = data?.MessageId,
+            });
+        });
+    }
+
+    /// <summary>im.forward_thread：转发整个话题（SDK 方法名 ReceiveThreadsAsync，语义为转发话题）。</summary>
+    [FeishuToolHandler(typeof(IFeishuImForwardThreadTool))]
+    public Task<FeishuToolResult> ForwardThreadAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.ImForwardThread, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var args = ImForwardThreadArgs.Unpack(arguments);
+            var receiveIdType = ResolveReceiveIdType(args.ReceiveIdType);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "POST", $"/open-apis/im/v1/threads/{args.ThreadId}/forward",
+                    ToolDryRun.IdempotencyNote(args.IdempotencyKey),
+                    ("thread_id", args.ThreadId.Length), ("receive_id", args.ReceiveId.Length)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _messageClient
+                .ReceiveThreadsAsync(
+                    args.ThreadId,
+                    new ReceiveMessageRequest { ReceiveId = args.ReceiveId },
+                    receiveIdType,
+                    args.IdempotencyKey,
+                    cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApiUntruncated(outcome, data => new JsonObject
+            {
+                ["thread_id"] = data?.ThreadId,
+            });
+        });
+    }
+
+    /// <summary>im.get_message_read_users：查询已读用户（SDK 方法名 GetMessageReadUsesAsync）。</summary>
+    [FeishuToolHandler(typeof(IFeishuImGetMessageReadUsersTool))]
+    public Task<FeishuToolResult> GetMessageReadUsersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.ImGetMessageReadUsers, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var args = ImGetMessageReadUsersArgs.Unpack(arguments);
+
+            var outcome = FeishuApiResultReader.Read(await _messageClient
+                .GetMessageReadUsesAsync(
+                    args.MessageId,
+                    args.PageSize ?? PageSizes.History,
+                    args.PageToken,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApi(outcome, ProjectReadUsers);
+        });
+    }
+
+    /// <summary>im.get_chat：读取群基础信息（SDK 方法名 GetChatGroupInoByIdAsync）。</summary>
+    [FeishuToolHandler(typeof(IFeishuImGetChatTool))]
+    public Task<FeishuToolResult> GetChatAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.ImGetChat, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var args = ImGetChatArgs.Unpack(arguments);
+            var client = RequireChatGroupClient();
+
+            var outcome = FeishuApiResultReader.Read(await client
+                .GetChatGroupInoByIdAsync(args.ChatId, cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApi(outcome, data => new JsonObject
+            {
+                // chat_id 由入参回显：SDK 的 GetChatGroupInfoResult 不含该字段（继承自 ChatGroupBase）。
+                ["chat_id"] = args.ChatId,
+                ["name"] = data?.Name,
+                ["description"] = data?.Description,
+                ["user_count"] = data?.UserCount,
+                ["owner_id"] = data?.OwnerId,
+                ["owner_id_type"] = data?.OwnerIdType,
+            });
+        });
+    }
+
+    /// <summary>im.search_chats：按关键词搜索群聊。</summary>
+    [FeishuToolHandler(typeof(IFeishuImSearchChatsTool))]
+    public Task<FeishuToolResult> SearchChatsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.ImSearchChats, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var args = ImSearchChatsArgs.Unpack(arguments);
+            var client = RequireChatGroupClient();
+
+            var outcome = FeishuApiResultReader.Read(await client
+                .GetChatGroupPageListByKeywordAsync(
+                    args.Query,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApi(outcome, ProjectChats);
+        });
+    }
+
+    /// <summary>取 ChatGroup 客户端；缺席时给模型可执行的错误（而非 NRE）。</summary>
+    private IFeishuTenantV1ChatGroup RequireChatGroupClient()
+        => _chatGroupClient ?? throw new InvalidOperationException(
+            "im.get_chat / im.search_chats 需要宿主注册 IFeishuTenantV1ChatGroup；"
+            + "当前未注册（该依赖为软缺席，缺席时本就不应出现这两个工具）");
+
+    /// <summary>
+    /// 解析 <c>receive_id_type</c>（转发类工具）：空 ⇒ <c>open_id</c>；非空但不在白名单 ⇒ <b>抛错</b>。
+    /// </summary>
+    /// <remarks>
+    /// <b>为什么对非空值严格白名单而对空值宽容默认</b>：空值有明确的默认语义（平台侧也是 open_id），
+    /// 而非法值会被平台拒绝并返回难以理解的错误；提前拒绝能让模型立刻改对。
+    /// 名单与 <c>ContactTools.DefaultUserIdType</c> 同一口径（open_id / user_id / union_id）。
+    /// </remarks>
+    private static string ResolveReceiveIdType(string? modelSupplied)
+    {
+        if (string.IsNullOrWhiteSpace(modelSupplied))
+        {
+            return DefaultReceiveIdType;
+        }
+
+        var value = modelSupplied.Trim();
+        if (Array.IndexOf(AllowedReceiveIdTypes, value) < 0)
+        {
+            throw new ArgumentException(
+                $"receive_id_type 只能是 {string.Join(" / ", AllowedReceiveIdTypes)}，收到 '{value}'");
+        }
+
+        return value;
+    }
+
+    private static JsonObject ProjectReadUsers(ApiPageListResult<ReadMessageUser> data)
+    {
+        var envelope = new JsonObject { ["items"] = new JsonArray() };
+        foreach (var user in data.Items ?? [])
+        {
+            envelope["items"]!.AsArray().AddNode(new JsonObject
+            {
+                ["user_id"] = user.UserId,
+                ["user_id_type"] = user.UserIdType,
+                ["read_time"] = user.Timestamp,
+            });
+        }
+
+        return envelope;
+    }
+
+    private static JsonObject ProjectChats(
+        ApiPageListResult<DataModels.ChatGroup.ChatItemInfo> data)
+    {
+        var envelope = new JsonObject { ["items"] = new JsonArray() };
+        foreach (var chat in data.Items ?? [])
+        {
+            envelope["items"]!.AsArray().AddNode(new JsonObject
+            {
+                ["chat_id"] = chat.ChatId,
+                ["name"] = chat.Name,
+                ["description"] = chat.Description,
+            });
+        }
+
+        return envelope;
+    }
+
     private static JsonObject ProjectHistory(ApiPageListResult<HistoryMessageData> data)
     {
         var envelope = new JsonObject

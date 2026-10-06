@@ -84,6 +84,7 @@ public class ImReplyInThreadContextTests
             client.Object,
             new Mock<Mud.Feishu.IFeishuTenantV1ChatGroupMember>().Object,
             Options.Create(new FeishuAgentOptions { Instructions = "test" }),
+            chatGroupClient: null,
             accessor);
 
     /// <summary>

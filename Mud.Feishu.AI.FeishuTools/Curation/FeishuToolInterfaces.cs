@@ -247,8 +247,7 @@ public interface IFeishuImReplyMessageTool
         [ToolParameter("message_id", "待回复的消息 ID（形如 omXxx）", Required = true)] string message_id,
         [ToolParameter("msg_type", "消息类型（text/post/image/file/audio/media/sticker/interactive/share_chat/share_user）", Required = true)] string msg_type,
         [ToolParameter("content", "消息内容 JSON 字符串（msg_type=text 时如 {\"text\":\"回复内容\"}）", Required = true)] string content,
-        [ToolParameter("reply_in_thread", "是否以话题形式回复（可选）。留空时：若当前会话处于话题中则自动为 true，否则 false。仅在需要脱离话题、直接回主会话时才显式传 false。")] bool? reply_in_thread = null,
-        [ToolParameter("idempotency_key", "幂等键（可选）：相同 uuid 在 1 小时内至多成功回复一条。省略时不保证幂等。")] string? idempotency_key = null,
+        [ToolParameter("reply_in_thread", "是否以话题形式回复（可选）。留空时：若当前会话处于话题中则自动为 true，否则 false。仅在需要脱离话题、直接回主会话时才显式传 false。")] bool? reply_in_thread = null, [ToolParameter("idempotency_key", "幂等键（可选）：相同 uuid 在 1 小时内至多成功回复一条。省略时不保证幂等。")] string? idempotency_key = null,
         [ToolParameter("dry_run", "仅预演不回复（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }
@@ -264,6 +263,7 @@ public interface IFeishuImSearchMessagesTool
     /// <returns>白名单投影后的 JSON 文本（items/total/has_more/page_token），超长截断并标记 truncated。</returns>
     Task<string> SearchMessageAsync(
         [ToolParameter("query", "搜索关键词（≤50 字符）", Required = true)] string query,
+
         [ToolParameter("chat_ids", "限定会话 ID 列表（可选，字符串数组）")] string[]? chat_ids = null,
         [ToolParameter("from_ids", "限定发送者 ID 列表（可选，字符串数组）")] string[]? from_ids = null,
         [ToolParameter("chat_type", "会话类型过滤（可选：p2p=单聊 / group=群聊）")] string? chat_type = null,
@@ -300,5 +300,124 @@ public interface IFeishuSheetsRangeTool
         [ToolParameter("spreadsheet_token", "电子表格 token（形如 shtcnXxx）", Required = true)] string spreadsheet_token,
         [ToolParameter("range", "单元格区域（形如 ShtXxx!A1:C100）", Required = true)] string range,
         [ToolParameter("value_render_option", "取值格式（可选：ToString / FormattedValue / UnformattedValue）")] string? value_render_option = null,
+        CancellationToken cancellationToken = default);
+}
+
+// ────────── R5 / F-3：IM 域补齐（thread / 群管理 / 撤回转发 / 已读） ──────────
+// ⚠️ SDK 方法名缺陷说明（U-19：本轮不改 SDK，只在工具名与注释中用正确语义）：
+//   · forward_message 落到 SDK 的 ReceiveMessageAsync（实为 POST /messages/{id}/forward，不是"接收消息"）
+//   · 已读用户落到 GetMessageReadUsesAsync（"Uses" 应为 "Users"）
+//   · 群信息落到 GetChatGroupInoByIdAsync（"Ino" 应为 "Info"）
+
+/// <summary>im.get_thread_messages：读取话题（thread）内的消息。</summary>
+[FeishuTool("im.get_thread_messages",
+    Description = "读取某个话题（thread）内的消息——群话题场景下用 thread_id 取代 chat_id 读话题内容。thread_id 可由事件上下文获得。只读，需 im:message:readonly。",
+    RequiredScopes = ["im:message:readonly"],
+    Source = "IFeishuTenantV1Message.GetHistoryMessageAsync")]
+    public interface IFeishuImGetThreadMessagesTool
+{
+    /// <summary>读取话题消息（分页，按创建时间倒序）。</summary>
+    /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token），超长截断并标记 truncated。</returns>
+    Task<string> GetThreadMessagesAsync(
+        [ToolParameter("thread_id", "话题 ID（形如 omt_xxx，来自事件上下文或 im.reply_message 返回）", Required = true)] string thread_id,
+        [ToolParameter("page_size", "每页条数（可选，默认 50）")] int? page_size = null,
+        [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>im.revoke_message：撤回自己发出的消息。</summary>
+[FeishuTool("im.revoke_message", IsWrite = true,
+    Description = "撤回一条自己发出的消息（发错内容时纠正）。只能撤回本 Bot 发送的消息；message_id 来自事件上下文或 im.get_history_messages。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。",
+    RequiredScopes = ["im:message"],
+    Source = "IFeishuTenantV1Message.RevokeMessageAsync")]
+    public interface IFeishuImRevokeMessageTool
+{
+    /// <summary>撤回消息。</summary>
+    /// <returns>结构化文本（ok=true 表示已受理）。</returns>
+    Task<string> RevokeMessageAsync(
+        [ToolParameter("message_id", "待撤回的消息 ID（形如 omXxx）", Required = true)] string message_id,
+        [ToolParameter("dry_run", "仅预演不执行（可选，默认 false）：返回将要下发的 method/path，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>im.forward_message：转发单条消息到指定会话。</summary>
+[FeishuTool("im.forward_message", IsWrite = true,
+    Description = "把一条消息转发给用户或群。receive_id 来自 im.search_user / 事件上下文。⚠️ 底层 SDK 方法名为 ReceiveMessageAsync 但语义是转发（POST /messages/{id}/forward），不是接收消息。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message:send_as_bot。",
+    RequiredScopes = ["im:message:send_as_bot"],
+    Source = "IFeishuTenantV1Message.ReceiveMessageAsync")]
+public interface IFeishuImForwardMessageTool
+{
+    /// <summary>转发消息。</summary>
+    /// <returns>结构化文本（转发结果 message_id）。</returns>
+    Task<string> ForwardMessageAsync(
+        [ToolParameter("message_id", "待转发的消息 ID（形如 omXxx）", Required = true)] string message_id,
+        [ToolParameter("receive_id", "接收方 ID（open_id / user_id / union_id 之一）", Required = true)] string receive_id,
+        [ToolParameter("receive_id_type", "接收方 ID 类型（可选：open_id / user_id / union_id，默认 open_id）")] string? receive_id_type = null,
+        [ToolParameter("idempotency_key", "幂等键（可选）：相同键的重复请求不会重复转发；建议由调用方给出稳定值，不要用随机数")] string? idempotency_key = null,
+        [ToolParameter("dry_run", "仅预演不执行（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>im.forward_thread：转发整个话题。</summary>
+[FeishuTool("im.forward_thread", IsWrite = true,
+    Description = "把整个话题（thread）转发给用户或群——一次性把讨论上下文带过去。thread_id 来自事件上下文。⚠️ 底层 SDK 方法名为 ReceiveThreadsAsync 但语义是转发话题。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message:send_as_bot。",
+    RequiredScopes = ["im:message:send_as_bot"],
+    Source = "IFeishuTenantV1Message.ReceiveThreadsAsync")]
+    public interface IFeishuImForwardThreadTool
+{
+    /// <summary>转发话题。</summary>
+    /// <returns>结构化文本（转发结果 thread_id）。</returns>
+    Task<string> ForwardThreadAsync(
+        [ToolParameter("thread_id", "待转发的话题 ID（形如 omt_xxx）", Required = true)] string thread_id,
+        [ToolParameter("receive_id", "接收方 ID（open_id / user_id / union_id 之一）", Required = true)] string receive_id,
+        [ToolParameter("receive_id_type", "接收方 ID 类型（可选：open_id / user_id / union_id，默认 open_id）")] string? receive_id_type = null,
+        [ToolParameter("idempotency_key", "幂等键（可选）：相同键的重复请求不会重复转发")] string? idempotency_key = null,
+        [ToolParameter("dry_run", "仅预演不执行（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>im.get_message_read_users：查询消息已读用户。</summary>
+[FeishuTool("im.get_message_read_users",
+    Description = "查询某条消息已被哪些人读到（user_id + 读取时间）。⚠️ 底层 SDK 方法名拼写为 GetMessageReadUsesAsync（Uses 应为 Users），此处按正确语义命名。只读，需 im:message:readonly。",
+    RequiredScopes = ["im:message:readonly"],
+    Source = "IFeishuTenantV1Message.GetMessageReadUsesAsync")]
+    public interface IFeishuImGetMessageReadUsersTool
+{
+    /// <summary>查询已读用户（分页）。</summary>
+    /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token）。</returns>
+    Task<string> GetMessageReadUsersAsync(
+        [ToolParameter("message_id", "目标消息 ID（形如 omXxx）", Required = true)] string message_id,
+        [ToolParameter("page_size", "每页条数（可选，默认 50）")] int? page_size = null,
+        [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>im.get_chat：读取群基础信息。</summary>
+[FeishuTool("im.get_chat",
+    Description = "读取群基础信息（群名/描述/成员数/群主）。chat_id 可由事件上下文获得。⚠️ 底层 SDK 方法名拼写为 GetChatGroupInoByIdAsync（Ino 应为 Info），此处按正确语义命名。只读，需 im:chat:readonly。",
+    RequiredScopes = ["im:chat:readonly"],
+    Source = "IFeishuTenantV1ChatGroup.GetChatGroupInoByIdAsync")]
+    public interface IFeishuImGetChatTool
+{
+    /// <summary>读取群信息。</summary>
+    /// <returns>白名单投影后的 JSON 文本（chat_id/name/description/user_count/owner_id）。</returns>
+    Task<string> GetChatAsync(
+        [ToolParameter("chat_id", "群 ID（形如 ocXxx）", Required = true)] string chat_id,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>im.search_chats：按关键词搜索群。</summary>
+[FeishuTool("im.search_chats",
+    Description = "按关键词搜索群聊（返回 chat_id/name/描述）——用户只记得群名片段时的入口。只读，需 im:chat:readonly。",
+    RequiredScopes = ["im:chat:readonly"],
+    Source = "IFeishuTenantV1ChatGroup.GetChatGroupPageListByKeywordAsync")]
+    public interface IFeishuImSearchChatsTool
+{
+    /// <summary>搜索群（分页）。</summary>
+    /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token）。</returns>
+    Task<string> SearchChatsAsync(
+        [ToolParameter("query", "搜索关键词（群名片段）", Required = true)] string query,
+        [ToolParameter("page_size", "每页条数（可选，默认 50）")] int? page_size = null,
+        [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
         CancellationToken cancellationToken = default);
 }

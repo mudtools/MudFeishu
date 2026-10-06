@@ -34,4 +34,11 @@ public sealed record ConversationRequest(
     string MessageId,
     string? MentionedText,
     string? ChatId = null,
-    string? ParentId = null);
+    string? ParentId = null,
+
+    // R5 / F-4：话题（thread）维度。群话题场景下 Feishu 会把消息归入 thread；
+    // 缺此字段则 thread 类工具（im.get_thread_messages / forward_thread）与
+    // im.reply_message 的 reply_in_thread 在真实场景里拿不到必要入参。
+    // 追加为**末尾可选参数** ⇒ 既有 8 个位置参数的调用点全部源码兼容。
+    // 不变式：**流式目标恒为 chat_id**（thread 只作上下文与路由维度，不改流式目标）。
+    string? ThreadId = null);

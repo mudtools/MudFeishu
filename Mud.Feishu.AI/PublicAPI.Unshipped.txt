@@ -8,7 +8,7 @@ abstract Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.BuildRequestAs
 abstract Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.ReplyAsync(Mud.Feishu.AI.Conversations.ConversationRequest! request, string! responseText, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 abstract Mud.Feishu.AI.Tools.FeishuAgentToolSource.GetTools(System.IServiceProvider! serviceProvider) -> System.Collections.Generic.IReadOnlyList<Microsoft.Extensions.AI.AIFunction!>!
 const Mud.Feishu.AI.Agents.FeishuAgentOptions.SectionName = "FeishuAgent" -> string!
-const Mud.Feishu.AI.Agents.FeishuGuidanceComposer.MaxGuidanceLength = 2048 -> int
+const Mud.Feishu.AI.Agents.FeishuGuidanceComposer.MaxGuidanceLength = 8192 -> int
 const Mud.Feishu.AI.Knowledge.AilyKnowledgeOptions.SectionName = "FeishuAilyKnowledge" -> string!
 const Mud.Feishu.AI.Knowledge.KnowledgeContextAssembler.ChunkPreviewLength = 500 -> int
 const Mud.Feishu.AI.Knowledge.KnowledgeContextAssembler.DefaultOrder = 100 -> int
@@ -100,8 +100,8 @@ Mud.Feishu.AI.Conversations.ConversationRequest.AppKey.get -> string!
 Mud.Feishu.AI.Conversations.ConversationRequest.AppKey.init -> void
 Mud.Feishu.AI.Conversations.ConversationRequest.ChatId.get -> string?
 Mud.Feishu.AI.Conversations.ConversationRequest.ChatId.init -> void
-Mud.Feishu.AI.Conversations.ConversationRequest.ConversationRequest(string! AppKey, Mud.Feishu.Abstractions.Conversations.ConversationScope Scope, string! SubjectId, string! SenderId, string! MessageId, string? MentionedText, string? ChatId = null, string? ParentId = null) -> void
-Mud.Feishu.AI.Conversations.ConversationRequest.Deconstruct(out string! AppKey, out Mud.Feishu.Abstractions.Conversations.ConversationScope Scope, out string! SubjectId, out string! SenderId, out string! MessageId, out string? MentionedText, out string? ChatId, out string? ParentId) -> void
+Mud.Feishu.AI.Conversations.ConversationRequest.ConversationRequest(string! AppKey, Mud.Feishu.Abstractions.Conversations.ConversationScope Scope, string! SubjectId, string! SenderId, string! MessageId, string? MentionedText, string? ChatId = null, string? ParentId = null, string? ThreadId = null) -> void
+Mud.Feishu.AI.Conversations.ConversationRequest.Deconstruct(out string! AppKey, out Mud.Feishu.Abstractions.Conversations.ConversationScope Scope, out string! SubjectId, out string! SenderId, out string! MessageId, out string? MentionedText, out string? ChatId, out string? ParentId, out string? ThreadId) -> void
 Mud.Feishu.AI.Conversations.ConversationRequest.Equals(Mud.Feishu.AI.Conversations.ConversationRequest? other) -> bool
 Mud.Feishu.AI.Conversations.ConversationRequest.MentionedText.get -> string?
 Mud.Feishu.AI.Conversations.ConversationRequest.MentionedText.init -> void
@@ -231,9 +231,9 @@ Mud.Feishu.AI.Tools.FeishuToolContext.ChatId.get -> string?
 Mud.Feishu.AI.Tools.FeishuToolContext.ChatId.init -> void
 Mud.Feishu.AI.Tools.FeishuToolContext.ConversationKey.get -> string?
 Mud.Feishu.AI.Tools.FeishuToolContext.ConversationKey.init -> void
-Mud.Feishu.AI.Tools.FeishuToolContext.Deconstruct(out string! AppKey, out string? ConversationKey, out string? ChatId, out string? UserId) -> void
+Mud.Feishu.AI.Tools.FeishuToolContext.Deconstruct(out string! AppKey, out string? ConversationKey, out string? ChatId, out string? UserId, out string? ThreadId) -> void
 Mud.Feishu.AI.Tools.FeishuToolContext.Equals(Mud.Feishu.AI.Tools.FeishuToolContext? other) -> bool
-Mud.Feishu.AI.Tools.FeishuToolContext.FeishuToolContext(string! AppKey, string? ConversationKey = null, string? ChatId = null, string? UserId = null) -> void
+Mud.Feishu.AI.Tools.FeishuToolContext.FeishuToolContext(string! AppKey, string? ConversationKey = null, string? ChatId = null, string? UserId = null, string? ThreadId = null) -> void
 Mud.Feishu.AI.Tools.FeishuToolContext.UserId.get -> string?
 Mud.Feishu.AI.Tools.FeishuToolContext.UserId.init -> void
 Mud.Feishu.AI.Tools.FeishuToolContextAccessor
@@ -503,3 +503,7 @@ virtual Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.ResolveStreamTa
 virtual Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.TryFindDeliveryBlockAsync(Mud.Feishu.AI.Conversations.ConversationRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<string?>!
 virtual Mud.Feishu.AI.Tools.FeishuAgentToolSource.GetGuidance(System.IServiceProvider! serviceProvider) -> System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Agents.FeishuGuidanceBlock>!
 virtual Mud.Feishu.AI.Tools.FeishuToolHandler.Invoke(System.Collections.Generic.IReadOnlyDictionary<string!, object?>! arguments, Mud.Feishu.AI.Tools.FeishuToolContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Mud.Feishu.AI.Tools.FeishuToolResult!>!
+Mud.Feishu.AI.Conversations.ConversationRequest.ThreadId.get -> string?
+Mud.Feishu.AI.Conversations.ConversationRequest.ThreadId.init -> void
+Mud.Feishu.AI.Tools.FeishuToolContext.ThreadId.get -> string?
+Mud.Feishu.AI.Tools.FeishuToolContext.ThreadId.init -> void

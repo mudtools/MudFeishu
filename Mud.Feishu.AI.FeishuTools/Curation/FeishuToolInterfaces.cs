@@ -247,7 +247,7 @@ public interface IFeishuImReplyMessageTool
         [ToolParameter("message_id", "待回复的消息 ID（形如 omXxx）", Required = true)] string message_id,
         [ToolParameter("msg_type", "消息类型（text/post/image/file/audio/media/sticker/interactive/share_chat/share_user）", Required = true)] string msg_type,
         [ToolParameter("content", "消息内容 JSON 字符串（msg_type=text 时如 {\"text\":\"回复内容\"}）", Required = true)] string content,
-        [ToolParameter("reply_in_thread", "是否以话题形式回复（可选，默认 false）")] bool? reply_in_thread = null,
+        [ToolParameter("reply_in_thread", "是否以话题形式回复（可选）。留空时：若当前会话处于话题中则自动为 true，否则 false。仅在需要脱离话题、直接回主会话时才显式传 false。")] bool? reply_in_thread = null,
         [ToolParameter("idempotency_key", "幂等键（可选）：相同 uuid 在 1 小时内至多成功回复一条。省略时不保证幂等。")] string? idempotency_key = null,
         [ToolParameter("dry_run", "仅预演不回复（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);

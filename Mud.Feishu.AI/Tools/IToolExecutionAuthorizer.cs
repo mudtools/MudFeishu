@@ -54,7 +54,12 @@ public sealed record FeishuToolContext(
     string AppKey,
     string? ConversationKey = null,
     string? ChatId = null,
-    string? UserId = null);
+    string? UserId = null,
+
+   // R5 / F-4：把 thread 维度**带进工具执行上下文**，使 im.reply_message 的 reply_in_thread
+   // 能**自动取自当前会话**（模型不必猜、也不必显式传参）。
+   // 追加为末尾可选参数 ⇒ 既有构造点源码兼容。
+   string? ThreadId = null);
 
 /// <summary>
 /// 工具执行授权钩子：SDK 只给钩子、不内实现策略（对齐 <c>IAppAccessAuthorizer</c> 提示模式）。

@@ -99,7 +99,7 @@ internal static class ToolArgs
     /// <b>为什么用 <c>Enum.TryParse&lt;T&gt;</c> + <c>IsDefined</c> 而非 <c>Enum.Parse</c></b>：
     /// <c>Enum.Parse</c> 对<b>未定义但数值合法</b>的值（如 <c>block_type=999</c> 落在枚举范围外）
     /// 会静默成功，而 <c>Enum.IsDefined</c> 能把它拦下——这正是"模型猜了一个数字"最常见的情形。
-    /// <br>⚠️ 用<b>非泛型</b> <c>IsDefined(Type, object)</c>：<c>IsDefined&lt;T&gt;(T)</c> 仅 .NET 7+ 有，
+    /// <br/>⚠️ 用<b>非泛型</b> <c>IsDefined(Type, object)</c>：<c>IsDefined&lt;T&gt;(T)</c> 仅 .NET 7+ 有，
     /// 而本工程含 <c>netstandard2.0</c> 目标。
     /// </remarks>
     public static TEnum RequireEnum<TEnum>(
@@ -194,7 +194,8 @@ internal static class ToolArgs
 
     /// <summary>读取可选布尔参数（兼容 JSON <c>true/false</c> 与字符串 <c>"true"/"false"</c>）。</summary>
     public static bool? OptionalBool(IReadOnlyDictionary<string, object?> arguments, string name)
-    {        if (!arguments.TryGetValue(name, out var value) || value is null)
+    {
+        if (!arguments.TryGetValue(name, out var value) || value is null)
         {
             return null;
         }

@@ -19,18 +19,52 @@ namespace Mud.Feishu.AI.FeishuTools.Internal;
 /// </summary>
 /// <remarks>执行骨架（catch/回填/截断）由 <see cref="ToolExecutor"/> 承担（WP3）；本类只保留参数校验与投影语义。</remarks>
 internal sealed class ImTools(
-    Mud.Feishu.IFeishuTenantV1Message messageClient,
-    Mud.Feishu.IFeishuTenantV1ChatGroupMember chatMemberClient,
-    IOptions<FeishuAgentOptions> options)
+    IFeishuTenantV1Message messageClient,
+    IFeishuTenantV1ChatGroupMember chatMemberClient,
+    IOptions<FeishuAgentOptions> options,
+
+    // R5 / F-4：新增依赖。刻意**放在options 之后且为可选**——它属"软缺席"语义
+    // （未注册时执行器仍须能构造），且追加在末尾可让既有 3 参构造点保持源码兼容。
+    IFeishuToolContextAccessor? toolContextAccessor = null)
 {
     private const string ContainerIdTypeChat = "chat";
     private const string SortTypeByCreateTimeDesc = "ByCreateTimeDesc";
 
-    private readonly Mud.Feishu.IFeishuTenantV1Message _messageClient = messageClient
+    private readonly IFeishuTenantV1Message _messageClient = messageClient
         ?? throw new ArgumentNullException(nameof(messageClient));
-    private readonly Mud.Feishu.IFeishuTenantV1ChatGroupMember _chatMemberClient = chatMemberClient
+    private readonly IFeishuTenantV1ChatGroupMember _chatMemberClient = chatMemberClient
         ?? throw new ArgumentNullException(nameof(chatMemberClient));
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+    private readonly IFeishuToolContextAccessor? _toolContextAccessor = toolContextAccessor;
+
+    /// <summary>
+    /// 解析 <c>reply_in_thread</c>：<b>模型显式传参优先，其次才是"当前处于话题中"的自动推断</b>。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么需要自动推断（R5 / F-4）</b>：原实现是 <c>args.ReplyInThread ?? false</c>，
+    /// 意味着模型不显式传参就拿不到话题串⇒ 在真实群话题场景里回复会**掉回主会话**。
+    /// 而"当前是否处于话题中"是<b>会话固有事实</b>，不该让模型猜或显式表达。
+    /// </para>
+    /// <para>
+    /// <b>优先级为什么是"显式 &gt; 自动"</b>：显式传参是模型的<b>明确指令</b>（如话题中要求
+    /// "不接话题、直接回主会话"）。若让自动推断覆盖显式值，等于让系统擅自推翻用户/模型的意图。
+    /// </para>
+    /// <para>
+    /// <b>为什么允许 accessor 为 null</b>：该依赖是<b>可选</b>（<c>IFeishuToolContextAccessor</c>
+    /// 属 <c>SoftService</c> 语义，未注册时ImTools 仍须能构造并注册，见 ToolHandlerBinding 的依赖分类）。
+    /// 缺上下文 ⇒ 退化为原行为 <c>args.ReplyInThread ?? false</c>。
+    /// </para>
+    /// </remarks>
+    private bool ResolveReplyInThread(bool? modelSupplied)
+    {
+        if (modelSupplied.HasValue)
+        {
+            return modelSupplied.Value;
+        }
+
+        return _toolContextAccessor?.Current?.ThreadId is not null;
+    }
 
     /// <summary>im.get_history_messages：读取历史消息（白名单 message_id/create_time/sender_id/message_type/content 预览）。</summary>
     [FeishuToolHandler(typeof(IFeishuImHistoryTool))]
@@ -177,7 +211,7 @@ internal sealed class ImTools(
                     {
                         Content = args.Content,
                         MsgType = args.MsgType,
-                        ReplyInThread = args.ReplyInThread ?? false,
+                        ReplyInThread = ResolveReplyInThread(args.ReplyInThread),
                         Uuid = args.IdempotencyKey,
                     },
                     cancellationToken)

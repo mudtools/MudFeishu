@@ -207,6 +207,39 @@ public class ToolExecutorSkeletonGuards
             string.Join(" | ", violations));
     }
 
+    /// <summary>
+    /// <b>R5 / F-4③</b>：<c>ImTools</c> 必须注入 <c>IFeishuToolContextAccessor</c>。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 实施前实测：<c>Internal/ImTools.cs</c> 内 <c>IFeishuToolContextAccessor</c> <b>0 命中</b>
+    /// ⇒ <c>reply_in_thread</c> 恒为 <c>args.ReplyInThread ?? false</c>，模型不显式传参就拿不到话题串。
+    /// </para>
+    /// <para>
+    /// <b>为什么用源码扫描而非 DI 断言</b>：DI 层面"注入了但没被读过"与"没注入"行为完全一样
+    /// （都是false），无法区分；而这里的失效模式恰恰是"接了线但没消费"。
+    /// 扫描<b>读取点</b>（<c>.Current</c>）能同时锁住"注入了"与"真的用了"两件事。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void ImTools_ShouldConsumeToolContext_ForAutomaticReplyInThread()
+    {
+        var source = File.ReadAllText(
+            Path.Combine(FindRepositoryRoot(), "Mud.Feishu.AI.FeishuTools", "Internal", "ImTools.cs"));
+
+        source.Should().Contain(
+            "IFeishuToolContextAccessor",
+            "ImTools 未注入 IFeishuToolContextAccessor ⇒ reply_in_thread 无法自动取自会话（R5 / F-4）");
+
+        source.Should().Contain(
+            ".Current?.ThreadId",
+            "ImTools 注入了 accessor 却没有**读取** ThreadId ⇒ 又一次『接了线没消费』的静默失效");
+
+        // 反向自证：不能因为"匹配不到任何东西"而全绿。
+        Regex.Matches(source, @"\.Current\?\.ThreadId").Count.Should().BeGreaterThan(
+            0, "ThreadId 读取点已消失——本守卫的正则会先于行为失效（假绿）");
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = AppContext.BaseDirectory;

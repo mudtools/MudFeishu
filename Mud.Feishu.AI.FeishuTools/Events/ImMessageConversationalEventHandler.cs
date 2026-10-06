@@ -112,7 +112,12 @@ public sealed class ImMessageConversationalEventHandler(
             MessageId: message.MessageId ?? string.Empty,
             MentionedText: ExtractMentionedText(message),
             ChatId: message.ChatId,
-            ParentId: message.ParentId);
+            ParentId: message.ParentId,
+
+            // R5 / F-4：回填话题维度（数据源本来就存在：MessageContent.ThreadId，
+            // Mud.Feishu.EventCallback/IM/MessageReceiveEvent/MessageContent.cs:55-56）。
+            // 非话题消息该字段为 null ⇒ 下游 reply_in_thread 仍取默认 false，行为不变。
+            ThreadId: message.ThreadId);
         return Task.FromResult(request);
     }
 

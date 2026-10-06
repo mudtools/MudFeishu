@@ -359,7 +359,11 @@ public abstract class ConversationalFeishuEventHandler<T>(
                 request.AppKey,
                 conversationKey,
                 ChatId: ResolveStreamTargetChatId(request),
-                UserId: request.SenderId));
+                UserId: request.SenderId,
+
+                // R5 / F-4：把话题维度带进工具执行上下文 ⇒ im.reply_message 的 reply_in_thread
+                // 能自动取自当前会话。ChatId 仍走 ResolveStreamTargetChatId ⇒ **流式目标不变**。
+                ThreadId: request.ThreadId));
 
             var userMessage = await AssembleUserMessageAsync(request, cancellationToken).ConfigureAwait(false);
 

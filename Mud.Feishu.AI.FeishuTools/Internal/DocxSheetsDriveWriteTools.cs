@@ -289,6 +289,448 @@ internal sealed class DocxWriteTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, 
         throw new ArgumentException(
             $"block_type '{normalizedName}' 不支持。可用值：{string.Join(" / ", SupportedBlockTypeNames)}");
     }
+
+    // ────────── R5 / F-5（续）：update / delete / import_markdown ──────────
+
+    /// <summary>单次批量更新的块数上限（平台约束）。</summary>
+    private const int MaxUpdatesPerRequest = 200;
+
+    /// <summary>读取子块列表的单页条数（平台上限 500）。</summary>
+    private const int ChildrenPageSize = 500;
+
+    /// <summary>统计子块数时的翻页上限（防异常循环；500×20 = 1 万块）。</summary>
+    private const int MaxChildrenPages = 20;
+
+    /// <summary>im/docx 的根块 ID 约定：文档根块的 block_id == document_id。</summary>
+    private static string ResolveParentBlockId(string? modelSupplied, string documentId)
+        => string.IsNullOrWhiteSpace(modelSupplied) ? documentId : modelSupplied!;
+
+    /// <summary>docx.update_blocks：批量替换块的文本元素（<c>update_text_elements</c> 面）。</summary>
+    [FeishuToolHandler(typeof(IFeishuDocxUpdateBlocksTool))]
+    public Task<FeishuToolResult> UpdateBlocksAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.DocxUpdateBlocks);
+        return executor.RunAsync(async () =>
+        {
+            var args = DocxUpdateBlocksArgs.Unpack(arguments);
+            var requests = ParseUpdateRequests(args.Blocks, MaxUpdatesPerRequest);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "PATCH", $"/open-apis/docx/v1/documents/{args.DocumentId}/blocks/batch_update",
+                    ToolDryRun.IdempotencyNote(args.IdempotencyKey),
+                    ("document_id", args.DocumentId.Length), ("blocks", requests.Length)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _blocksClient
+                .BatchUpdateBlocksAsync(
+                    args.DocumentId,
+                    new BatchUpdateBlocksRequest { Requests = requests },
+                    client_token: args.IdempotencyKey,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApiUntruncated(outcome, _ => new JsonObject { ["updated"] = requests.Length });
+        });
+    }
+
+    /// <summary>docx.delete_blocks：删除父块下 [start_index, end_index) 的子块。</summary>
+    [FeishuToolHandler(typeof(IFeishuDocxDeleteBlocksTool))]
+    public Task<FeishuToolResult> DeleteBlocksAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.DocxDeleteBlocks);
+        return executor.RunAsync(async () =>
+        {
+            var args = DocxDeleteBlocksArgs.Unpack(arguments);
+            var parentBlockId = ResolveParentBlockId(args.ParentBlockId, args.DocumentId);
+            var count = ValidateRange(args.StartIndex, args.EndIndex);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "DELETE",
+                    $"/open-apis/docx/v1/documents/{args.DocumentId}/blocks/{parentBlockId}/children/batch_delete",
+                    ToolDryRun.IdempotencyNote(args.IdempotencyKey),
+                    ("document_id", args.DocumentId.Length), ($"range [{args.StartIndex},{args.EndIndex})", count)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _blocksClient
+                .BatchDeleteBlocksAsync(
+                    args.DocumentId,
+                    parentBlockId,
+                    new BatchDeleteBlocksRequest { StartIndex = args.StartIndex, EndIndex = args.EndIndex },
+                    client_token: args.IdempotencyKey,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApiUntruncated(outcome, _ => new JsonObject { ["deleted"] = count });
+        });
+    }
+
+    /// <summary>docx.import_markdown：Markdown → 文档块（只转换、不写入）。</summary>
+    [FeishuToolHandler(typeof(IFeishuDocxImportMarkdownTool))]
+    public Task<FeishuToolResult> ImportMarkdownAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.DocxImportMarkdown);
+        return executor.RunAsync(async () =>
+        {
+            var args = DocxImportMarkdownArgs.Unpack(arguments);
+
+            if (string.IsNullOrWhiteSpace(args.Markdown))
+            {
+                throw new ArgumentException("markdown 不能为空");
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _blocksClient
+                .ContentConvertAsync(
+                    new ConvertContentRequest { ContentType = "markdown", Content = args.Markdown! },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApi(outcome, ProjectContentConvert);
+        });
+    }
+
+    /// <summary>
+    /// docx.replace_document：整篇替换（<b>先追加新块、再删除旧块</b>）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么顺序是"先建后删"而不是原文方案的"先删后建"</b>：先删会打开一个
+    /// <b>破坏窗口</b>——删除成功而创建失败 ⇒ 文档被清空，且补偿需要预先完整快照
+    /// （SDK 无事务，快照只能自己读出来再回放，可靠性远低于"不删就不会丢"）。
+    /// 先建后删的三种失败点都<b>不丢内容</b>：转换失败文档未动；追加失败旧内容完整；
+    /// 删除失败则新旧并存（可见、可恢复，并如实上报待删区间）。
+    /// </para>
+    /// <para>
+    /// <b>删除失败为何不回滚新块</b>：回滚（删掉刚追加的新块）会把状态从"新旧并存"
+    /// 变成"旧内容完整"——看似更干净，但若回滚本身也失败，就会留下<b>部分旧 + 部分新</b>
+    /// 的更难诊断的状态。既然"新旧并存"无损且给出精确修复指引，就<b>不做二次破坏性操作</b>。
+    /// </para>
+    /// </remarks>
+    [FeishuToolHandler(typeof(IFeishuDocxReplaceDocumentTool))]
+    public Task<FeishuToolResult> ReplaceDocumentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.DocxReplaceDocument);
+        return executor.RunAsync(async () =>
+        {
+            var args = DocxReplaceDocumentArgs.Unpack(arguments);
+            var parentBlockId = ResolveParentBlockId(args.ParentBlockId, args.DocumentId);
+
+            // 幂等键必填：缺省时"追加成功但删除失败"的重试会重复插入并重复删除。
+            if (string.IsNullOrWhiteSpace(args.IdempotencyKey))
+            {
+                throw new ArgumentException(
+                    "replace_document 必须提供 idempotency_key：该工具是两步写（追加新块 + 删除旧块），"
+                    + "重试若无稳定 client_token 会重复插入并重复删除。请传入一个稳定值（如业务单号），不要用随机数。");
+            }
+
+            if (string.IsNullOrWhiteSpace(args.Markdown))
+            {
+                throw new ArgumentException("markdown 不能为空");
+            }
+
+            var baseRoute = $"/open-apis/docx/v1/documents/{args.DocumentId}/blocks";
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "POST+DELETE", $"{baseRoute}/convert → {baseRoute}/{parentBlockId}/children → {baseRoute}/{parentBlockId}/children/batch_delete",
+                    "步骤：① 转换 Markdown ② 追加新块 ③ 删除旧块 [0, 原块数)。"
+                    + "原块数在**执行时**读取（dry_run 不发起任何调用）。"
+                    + ToolDryRun.IdempotencyNote(args.IdempotencyKey),
+                    ("document_id", args.DocumentId.Length), ("markdown", args.Markdown!.Length)));
+            }
+
+            // ① 转换（只读；失败 ⇒ 文档完全未被触碰）。
+            var convertOutcome = FeishuApiResultReader.Read(await _blocksClient
+                .ContentConvertAsync(
+                    new ConvertContentRequest { ContentType = "markdown", Content = args.Markdown! },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+
+            if (!convertOutcome.Ok || convertOutcome.Data is null)
+            {
+                // 显式回报"文档未被修改"：模型据此可安全重试，不必担心留下半成品。
+                return Untouched(executor.ToolName, "Markdown 转换", convertOutcome.ErrorText);
+            }
+
+            var newBlocks = convertOutcome.Data.Blocks ?? [];
+            if (newBlocks.Length == 0)
+            {
+                // 拒绝执行：若放行，下一步会删光旧内容却无新内容可写。
+                throw new ArgumentException(
+                    "markdown 未产生任何块，已拒绝执行替换（否则会清空文档而无新内容）。请检查输入是否为有效 Markdown。");
+            }
+
+            // ② 读取现有子块数（旧内容区间上界）。
+            var countOutcome = await CountChildrenAsync(args.DocumentId, parentBlockId, cancellationToken).ConfigureAwait(false);
+            if (!countOutcome.Ok)
+            {
+                return Untouched(executor.ToolName, "读取现有子块", countOutcome.ErrorText);
+            }
+
+            var oldCount = countOutcome.Count;
+
+            // ③ 先追加新块（失败 ⇒ 旧内容完整，无损失 —— 这是本实现相对"先删后建"的核心优势）。
+            var appendOutcome = FeishuApiResultReader.Read(await _blocksClient
+                .CreateBlockAsync(
+                    args.DocumentId,
+                    parentBlockId,
+                    new CreateBlockRequest { Childrens = newBlocks },
+                    client_token: args.IdempotencyKey,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+
+            if (!appendOutcome.Ok || appendOutcome.Data is null)
+            {
+                return Untouched(executor.ToolName, "追加新块", appendOutcome.ErrorText);
+            }
+
+            var newBlockIds = new JsonArray(
+                [.. (appendOutcome.Data.Childrens ?? []).Select(static child => (JsonNode?)child?.BlockId)]);
+
+            var envelope = new JsonObject
+            {
+                ["appended"] = newBlocks.Length,
+                ["new_block_ids"] = newBlockIds,
+            };
+
+            // 空文档没有"旧块"可删，跳过删除（ValidateRange 也拒绝 end == start）。
+            if (oldCount == 0)
+            {
+                envelope["deleted"] = 0;
+                envelope["note"] = "原文档无子块，仅追加";
+                return FeishuToolResult.FromText(envelope.ToJsonString());
+            }
+
+            // ④ 再删除旧块 [0, oldCount)。失败时新旧并存 —— 如实上报，不做二次破坏性操作。
+            // 删除失败**不抛异常**：要把"内容未丢失 + 精确修复指引"作为**正常结果**回给模型，
+            // 让它能自主完成收尾；抛异常会丢掉已成功追加的块信息。
+            var deleteOutcome = FeishuApiResultReader.Read(await _blocksClient
+                .BatchDeleteBlocksAsync(
+                    args.DocumentId,
+                    parentBlockId,
+                    new BatchDeleteBlocksRequest { StartIndex = 0, EndIndex = oldCount },
+                    client_token: args.IdempotencyKey,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+
+            if (!deleteOutcome.Ok)
+            {
+                // ⚠️ 部分失败必须**如实上报**（不得静默）：内容未丢失，但文档现为新旧并存。
+                envelope["deleted"] = 0;
+                envelope["partial_failure"] = true;
+                envelope["message"] =
+                    $"新内容已写入（{newBlocks.Length} 块），但旧内容删除失败：{deleteOutcome.ErrorText}。"
+                    + "文档现为**新旧内容并存**，内容未丢失。修复：调用 docx.delete_blocks，"
+                    + $"document_id={args.DocumentId}，start_index=0，end_index={oldCount}（建议先 dry_run 确认区间）。";
+                return FeishuToolResult.FromText(envelope.ToJsonString());
+            }
+
+            envelope["deleted"] = oldCount;
+            return FeishuToolResult.FromText(envelope.ToJsonString());
+        });
+    }
+
+    /// <summary>
+    /// 统计某父块下的子块总数（翻页累加）。
+    /// </summary>
+    /// <remarks>
+    /// 平台单页上限 500，超长文档必须翻页，否则删除区间会短于实际旧内容 ⇒ 只删掉一部分、
+    /// 留下"半旧半新"。翻页上限设 20 页（1 万块）以防异常循环。
+    /// </remarks>
+    private async Task<(bool Ok, int Count, string? ErrorText)> CountChildrenAsync(
+        string documentId,
+        string parentBlockId,
+        CancellationToken cancellationToken)
+    {
+        var total = 0;
+        string? pageToken = null;
+
+        for (var page = 0; page < MaxChildrenPages; page++)
+        {
+            var outcome = FeishuApiResultReader.Read(await _blocksClient
+                .GetChildrenBlocksPageListAsync(
+                    documentId,
+                    parentBlockId,
+                    page_size: ChildrenPageSize,
+                    page_token: pageToken,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+
+            if (!outcome.Ok || outcome.Data is null)
+            {
+                // 返回元组而非 FeishuApiOutcome<int>：后者约束 T : class，int 不满足。
+                return (false, 0, outcome.ErrorText ?? "读取子块列表返回空数据");
+            }
+
+            total += outcome.Data.Items?.Count ?? 0;
+
+            if (!outcome.Data.HasMore || string.IsNullOrEmpty(outcome.Data.PageToken))
+            {
+                return (true, total, null);
+            }
+
+            pageToken = outcome.Data.PageToken;
+        }
+
+        throw new InvalidOperationException(
+            $"文档子块超过 {MaxChildrenPages * ChildrenPageSize} 块，超出本工具安全范围；"
+            + "请改用 docx.delete_blocks 分段处理，避免对超大文档执行整体替换");
+    }
+
+    /// <summary>
+    /// 构造"文档未被修改"的中断结果。
+    /// </summary>
+    /// <remarks>
+    /// <b>为什么必须显式说明"未被修改"</b>：模型在收到失败后要决定是否重试。
+    /// 若它不知道文档原封未动，可能转而执行更激进的补救动作（如手动删除旧块），
+    /// 反而制造出真正的破损状态。<b>把"可安全重试"作为结果的一部分</b>，
+    /// 是让失败可恢复的最低成本手段。
+    /// </remarks>
+    private static FeishuToolResult Untouched(string toolName, string step, string? errorText)
+        => FeishuToolResult.FromText(new JsonObject
+        {
+            ["partial_failure"] = true,
+            ["step"] = step,
+            ["tool"] = toolName,
+            ["message"] =
+                $"{step}失败：{errorText}。文档**未被修改**（旧内容完整、新内容未写入），可安全重试。",
+        }.ToJsonString());
+
+    /// <summary>校验删除区间；返回待删条数。<b>非法区间必须提前拒绝</b>（否则平台会按意外区间删除）。</summary>
+    private static int ValidateRange(int startIndex, int endIndex)
+    {
+        if (startIndex < 0)
+        {
+            throw new ArgumentException($"start_index 不能为负，收到 {startIndex}");
+        }
+
+        if (endIndex <= startIndex)
+        {
+            throw new ArgumentException(
+                $"end_index 必须大于 start_index（区间为 [start, end) 半开），收到 [{startIndex}, {endIndex})");
+        }
+
+        return endIndex - startIndex;
+    }
+
+    /// <summary>
+    /// 解析 <c>blocks</c>（JSON 数组）为批量更新请求，逐项校验。
+    /// </summary>
+    /// <remarks>
+    /// 每项形如 <c>{"block_id":"…","text":"…"}</c>；映射到 SDK 的
+    /// <c>UpdateBlockRequest.UpdateTextElements.Elements</c>（单个文本元素 = 整块替换文本）。
+    /// </remarks>
+    private static BatchUpdateBlockRequest[] ParseUpdateRequests(string json, int maxItems)
+    {
+        List<BatchUpdateBlockRequest> requests;
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            if (document.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                throw new ArgumentException(
+                    "blocks 必须是 JSON 数组，如 [{\"block_id\":\"doxcnXxx\",\"text\":\"新文本\"}]");
+            }
+
+            requests = [.. document.RootElement.EnumerateArray().Select(ParseUpdateItem)];
+        }
+        catch (JsonException ex)
+        {
+            throw new ArgumentException(
+                $"blocks 不是合法 JSON 数组：{ex.Message}。示例：[{{\"block_id\":\"doxcnXxx\",\"text\":\"新文本\"}}]", ex);
+        }
+
+        if (requests.Count == 0)
+        {
+            throw new ArgumentException("blocks 至少要有一个待更新块");
+        }
+
+        if (requests.Count > maxItems)
+        {
+            throw new ArgumentException($"单次最多更新 {maxItems} 个块，收到 {requests.Count} 个");
+        }
+
+        return [.. requests];
+    }
+
+    private static BatchUpdateBlockRequest ParseUpdateItem(JsonElement item)
+    {
+        if (item.ValueKind != JsonValueKind.Object)
+        {
+            throw new ArgumentException($"blocks 每一项都必须是对象，收到 {item.ValueKind}");
+        }
+
+        var blockId = item.TryGetProperty("block_id", out var idElement) && idElement.ValueKind == JsonValueKind.String
+            ? idElement.GetString()
+            : null;
+
+        if (string.IsNullOrWhiteSpace(blockId))
+        {
+            throw new ArgumentException("blocks 每项都必须有字符串字段 block_id");
+        }
+
+        if (!item.TryGetProperty("text", out var textElement) || textElement.ValueKind != JsonValueKind.String)
+        {
+            throw new ArgumentException($"blocks 项 '{blockId}' 缺少字符串字段 text");
+        }
+
+        // 批量接口用的是 BatchUpdateBlockRequest（= UpdateBlockRequest + block_id）。
+        return new BatchUpdateBlockRequest
+        {
+            BlockId = blockId!,
+            UpdateTextElements = new UpdateTextElementsRequest
+            {
+                Elements =
+                [
+                    new TextElement
+                    {
+                        TextRun = new TextElementTextRun { Content = textElement.GetString() ?? string.Empty },
+                    },
+                ],
+            },
+        };
+    }
+
+    /// <summary>投影 <c>ContentConvertResult</c>：块的 <c>block_type</c> 用 <see cref="BlockTypes"/> 转成可读名。</summary>
+    private static JsonObject ProjectContentConvert(ContentConvertResult data)
+    {
+        var envelope = new JsonObject
+        {
+            ["first_level_block_ids"] = new JsonArray(
+                [.. (data.FirstLevelBlockIds ?? []).Select(static id => (JsonNode?)id)]),
+            ["blocks"] = new JsonArray([.. (data.Blocks ?? []).Select(static block => (JsonNode?)ProjectConvertedBlock(block))]),
+        };
+
+        // 图片占位块 → 真实 URL 的映射：模型据此把图片写进文档。
+        var images = new JsonObject();
+        foreach (var entry in data.BlockIdToImageUrls ?? [])
+        {
+            images[entry.BlockId] = entry.ImageUrl;
+        }
+
+        envelope["image_urls"] = images;
+        return envelope;
+    }
+
+    /// <summary>投影单个转换块：只回填模型写入所需的最小字段（block_type 名 + 文本摘要）。</summary>
+    private static JsonNode? ProjectConvertedBlock(Block block)
+    {
+        if (block is null)
+        {
+            return null;
+        }
+
+        var text = block.Text?.Elements is null
+            ? null
+            : string.Concat(block.Text.Elements.Select(static e => e?.TextRun?.Content));
+
+        return new JsonObject
+        {
+            ["block_type"] = BlockTypes.GetName(block.BlockType),
+            ["text"] = ToolResultText.Truncate(text, PageSizes.MessagePreviewLength),
+        };
+    }
 }
 
 // ─────────────────────────── Sheets 写执行器 ───────────────────────────

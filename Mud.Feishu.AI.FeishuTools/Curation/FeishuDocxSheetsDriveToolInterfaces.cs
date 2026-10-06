@@ -63,6 +63,114 @@ public interface IFeishuDocxAppendBlocksTool
         CancellationToken cancellationToken = default);
 }
 
+/// <summary>工具接口：docx.update_blocks（映射 <c>IFeishuTenantV1DocxBlocks.BatchUpdateBlocksAsync</c>）。</summary>
+/// <remarks>
+/// <b>暴露范围（刻意收窄）</b>：只暴露 SDK <c>UpdateBlockRequest</c> 的 <c>update_text_elements</c> 面
+/// （替换块的文本元素）。其余 11 个面（<c>update_text_style</c> / <c>update_table_property</c> /
+/// <c>insert_table_row</c> / <c>merge_table_cells</c> …）属表格结构与富样式编辑，
+/// 每个都需要独立的参数面；塞进同一个工具会让模型面对 12 个互斥可选参数而难以正确选择。
+/// <b>这是有意的范围决策，不是遗漏</b>（登记于 §13.12）。
+/// </remarks>
+[FeishuTool("docx.update_blocks",
+    Description = "更新文档中已有块的文本内容（改写段落/标题的文字）。block_id 来自 docx.append_blocks 或 docx.get_raw_content 的返回。⚠️ 只支持改文本，不支持改表格结构与富样式（见工具说明）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。",
+    RequiredScopes = ["docx:document"],
+    IsWrite = true,
+    Source = "IFeishuTenantV1DocxBlocks.BatchUpdateBlocksAsync")]
+public interface IFeishuDocxUpdateBlocksTool
+{
+    /// <summary>批量更新块文本。</summary>
+    /// <returns>结构化文本（updated=成功条数；dry_run=true 时返回请求摘要且不调用下游）。</returns>
+    Task<string> UpdateBlocksAsync(
+        [ToolParameter("document_id", "文档 ID（形如 doxcnXxx）", Required = true)] string document_id,
+        [ToolParameter("blocks", "要更新的块列表（JSON 数组字符串）。每项形如 {\"block_id\":\"doxcnXxx\",\"text\":\"新文本\"}；单次最多 200 条。", Required = true)] string blocks,
+        [ToolParameter("idempotency_key", "幂等键（可选）：相同 client_token 在 24 小时内至多成功一次；省略时不保证幂等。")] string? idempotency_key = null,
+        [ToolParameter("dry_run", "仅预演不更新（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：docx.delete_blocks（映射 <c>IFeishuTenantV1DocxBlocks.BatchDeleteBlocksAsync</c>）。</summary>
+[FeishuTool("docx.delete_blocks",
+    Description = "删除某个父块下指定索引区间的子块（如删掉文档里过时的一批段落）。索引是父块下的子块序号（从 0 开始），可由 docx.get_raw_content 或 docx.append_blocks 的返回推算。⚠️ 删除不可撤销——务必先用 dry_run 确认区间。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。",
+    RequiredScopes = ["docx:document"],
+    IsWrite = true,
+    Source = "IFeishuTenantV1DocxBlocks.BatchDeleteBlocksAsync")]
+public interface IFeishuDocxDeleteBlocksTool
+{
+    /// <summary>删除子块区间 [start_index, end_index)。</summary>
+    /// <returns>结构化文本（deleted=删除条数；dry_run=true 时返回请求摘要且不调用下游）。</returns>
+    Task<string> DeleteBlocksAsync(
+        [ToolParameter("document_id", "文档 ID（形如 doxcnXxx）", Required = true)] string document_id,
+        [ToolParameter("start_index", "起始索引（含），从 0 开始", Required = true)] int start_index,
+        [ToolParameter("end_index", "结束索引（不含）", Required = true)] int end_index,
+        [ToolParameter("parent_block_id", "父块 ID（可选，默认文档根块 document_id）")] string? parent_block_id = null,
+        [ToolParameter("idempotency_key", "幂等键（可选）：相同 client_token 在 24 小时内至多成功一次；省略时不保证幂等。")] string? idempotency_key = null,
+        [ToolParameter("dry_run", "仅预演不删除（可选，默认 false）：返回将要下发的 method/path 与区间摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：docx.import_markdown（映射 <c>IFeishuTenantV1DocxBlocks.ContentConvertAsync</c>）。</summary>
+/// <remarks>
+/// <b>为什么只做"转换"而不直接写入</b>：SDK 的 <c>ContentConvertAsync</c> 只做格式转换，
+/// 返回可用的块结构；写入是另一跳。拆开的收益是模型可以先看转换结果（含图片 URL 映射）再决定是否写入，
+/// 而"一步替换整篇"由 <c>docx.replace_document</c> 承担。
+/// </remarks>
+[FeishuTool("docx.import_markdown",
+    Description = "把 Markdown 内容转换成文档块结构（不写入文档）——用于先预览转换结果，再用 docx.append_blocks 写入。支持文本、一到九级标题、有序/无序列表、代码块、引用、待办、图片、表格。只读转换，需 docx:document。",
+    RequiredScopes = ["docx:document"],
+    Source = "IFeishuTenantV1DocxBlocks.ContentConvertAsync")]
+public interface IFeishuDocxImportMarkdownTool
+{
+    /// <summary>Markdown/HTML → 文档块。</summary>
+    /// <returns>白名单投影后的 JSON 文本（blocks / first_level_block_ids / image_urls），超长截断并标记 truncated。</returns>
+    Task<string> ImportMarkdownAsync(
+        [ToolParameter("markdown", "Markdown 源文本", Required = true)] string markdown,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：docx.replace_document（<b>组合工具</b>：ContentConvert → CreateBlock → BatchDeleteBlock）。
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>为什么是组合而非单方法</b>：SDK <b>没有</b>"整篇替换"接口（已核实，`IFeishuV1DocxBlocks`
+/// 仅 8 个方法，无 replace/overwrite）。故由 <c>ContentConvertAsync</c> →
+/// <c>CreateBlockAsync</c> → <c>BatchDeleteBlocksAsync</c> 组合而成。
+/// </para>
+/// <para>
+/// <b>⚠️ 与原文方案的关键差异（安全性设计）</b>：原文要求"先删后建 + 补偿路径"。
+/// 本实现改为 <b>先建后删</b>，从而<b>从根本上消除"已删未建"的破坏窗口</b>：
+/// <list type="number">
+/// <item>转换失败 ⇒ 文档未被触碰；</item>
+/// <item>追加失败 ⇒ 旧内容完整，新内容未入库（<b>无损失</b>）；</item>
+/// <item>删除失败 ⇒ 新旧内容并存——这是<b>可见且可恢复</b>的状态，工具会如实上报
+/// 精确的待删区间与新建块 ID，并明确告知"内容未丢失"。</item>
+/// </list>
+/// 对比"先删后建"：删除成功而创建失败会留下<b>被清空的文档</b>，且补偿（重放旧块）
+/// 需要先完整快照旧文档——在 SDK 无事务的前提下，那才是真正的不可靠路径。
+/// </para>
+/// <para>
+/// <b>为什么 <c>idempotency_key</c> 是必填</b>：写操作在"已追加未删除"处中断后重试，
+/// 若没有稳定 client_token，会把新内容<b>再插一遍</b>并重复删除。必填让重试语义明确。
+/// </para>
+/// </remarks>
+[FeishuTool("docx.replace_document",
+    Description = "用 Markdown 内容整体替换文档正文（保留为新内容的旧块会被删除）。适用于'把这篇文章重建一遍'。执行顺序为先追加新块、再删除旧块，因此中途失败不会导致内容丢失。⚠️ 必须提供 idempotency_key（重试语义）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。",
+    RequiredScopes = ["docx:document"],
+    IsWrite = true,
+    Source = "IFeishuTenantV1DocxBlocks.CreateBlockAsync")]
+public interface IFeishuDocxReplaceDocumentTool
+{
+    /// <summary>整篇替换（Markdown → 新块，追加后删除旧块）。</summary>
+    /// <returns>结构化文本（appended / deleted / 以及删除失败时的待删区间与修复指引）。</returns>
+    Task<string> ReplaceDocumentAsync(
+        [ToolParameter("document_id", "文档 ID（形如 doxcnXxx）", Required = true)] string document_id,
+        [ToolParameter("markdown", "新的正文内容（Markdown 格式）", Required = true)] string markdown,
+        [ToolParameter("idempotency_key", "幂等键（**必填**）：相同 client_token 在 24 小时内至多成功一次，防止重试时重复插入并重复删除。请提供稳定值，不要用随机数。", Required = true)] string idempotency_key,
+        [ToolParameter("parent_block_id", "父块 ID（可选，默认文档根块 document_id）")] string? parent_block_id = null,
+        [ToolParameter("dry_run", "仅预演不执行（可选，默认 false）：返回将要下发的步骤与 method/path，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
 // ─────────────────────────── Sheets 写（2 个） ───────────────────────────
 
 /// <summary>工具接口：sheets.update_range（映射 <c>IFeishuTenantV3SpreadsheetData.RangeWriteDataAsync</c>）。</summary>

@@ -53,8 +53,11 @@ public interface IFeishuDocxAppendBlocksTool
     /// <returns>白名单投影后的 JSON 文本（block_id）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
     Task<string> AppendBlocksAsync(
         [ToolParameter("document_id", "文档 ID（形如 doxcnXxx）", Required = true)] string document_id,
-        [ToolParameter("block_type", "块类型（决定新增块的形态）", Required = true, EnumType = typeof(global::Mud.Feishu.DataModels.Docx.BlockTypes))] int block_type,
-        [ToolParameter("text", "块文本内容", Required = true)] string text,
+        [ToolParameter("block_type", "块类型（决定新增块的形态）。单块简写：与 text 配对使用；给了 blocks 时忽略。", Required = false, EnumType = typeof(global::Mud.Feishu.DataModels.Docx.BlockTypes))] string? block_type = null,
+        [ToolParameter("text", "块文本内容（单块简写，与 block_type 配对；给了 blocks 时忽略）")] string? text = null,
+            [ToolParameter("blocks", "要追加的块列表（JSON 数组字符串，可选）。每项形如 {\"block_type\":\"heading1\",\"text\":\"标题\"}；block_type 取值见单块简写说明（text/heading1~9/bullet/ordered/code/quote/todo/divider）。divider 忽略 text。⚠️ 表格/单元格/引用容器暂不支持（SDK 缺类型）。与 block_type/text 同时给出时**以 blocks 为准**；单次最多 50 个子块。")] string? blocks = null,
+            [ToolParameter("parent_block_id", "父块 ID（可选，默认文档根块 document_id）")] string? parent_block_id = null,
+            [ToolParameter("index", "插入到父块下的位置（可选，默认追加到末尾）")] int? index = null,
         [ToolParameter("idempotency_key", "幂等键（可选）：相同 client_token 在 24 小时内至多成功创建一次；省略时不保证幂等。")] string? idempotency_key = null,
         [ToolParameter("dry_run", "仅预演不追加（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);

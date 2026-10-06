@@ -296,13 +296,22 @@ internal static class ToolArgsEmitter
         }
 
         // 常量类 + 整型参数：按常量名映射。
-        if (NormalizeTypeName(parameter.CsharpType) is not ("int" or "long" or "short"))
+        if (NormalizeTypeName(parameter.CsharpType) is not ("int" or "long" or "short" or "string"))
         {
             return false;
         }
 
         var map = ClosedSetMapAccess(parameter.EnumTypeFullName!);
-        fieldType = parameter.CsharpType;
+
+        // R5 / F-5：闭集声明为 `string` 时，模型侧传**名字**（Schema 是
+        // `{"type":"string","enum":[…]}`），而 Args 字段必须是**整型**（SDK 要数字）——
+        // 两者由同一个 `RequireNamedInt` 衔接。若沿用声明类型 `string`，字段会变成字符串，
+        // 与生成器后续按整型使用它的假设冲突。
+        var declaredType = NormalizeTypeName(parameter.CsharpType);
+        fieldType = declaredType == "string"
+            ? (isRequired ? "int" : "int?")
+            : parameter.CsharpType;
+
         reader = isRequired
             ? $"ToolArgs.RequireNamedInt(args, {nameLiteral}, {map})"
             : $"ToolArgs.OptionalNamedInt(args, {nameLiteral}, {map})";

@@ -10,4 +10,5 @@
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-----------------------------------------------------
 MUDFT027 | MudFeishu.AI | Error | 工具名派生常量名冲突（R4-10：字面不同的工具名归一为同一常量名）
+MUDFT011 | MudFeishu.AI | Error | AnyOf 条件必填组引用不存在的参数 / 混入 Required 参数 / 单元素组（R5-B6：否则 anyOf 约束空气、静默失效）
 

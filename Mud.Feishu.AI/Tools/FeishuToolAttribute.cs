@@ -57,4 +57,40 @@ public sealed class FeishuToolAttribute(string name) : Attribute
     /// </para>
     /// </remarks>
     public string? Source { get; init; }
+
+    /// <summary>
+    /// <b>条件必填组</b>（R5 / B-6）：每项形如 <c>"a|b|c"</c>，表示<b>该组内至少要提供一个</b>。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么需要它</b>：一批工具存在<b>跨参数</b>的必填约束——
+    /// <c>calendar.find_free_slots</c>（<c>user_id</c>/<c>room_id</c> 二选一）、
+    /// <c>contact.resolve_user</c>（<c>emails</c>/<c>mobiles</c> 至少一个）、
+    /// <c>task.update_task</c>（<c>summary</c>/<c>description</c>/<c>due</c> 至少一个）。
+    /// 这类约束<b>无法</b>用 <c>Required = true</c> 表达（那会让三者都变必填），
+    /// 此前只写在描述文本里靠模型"读懂"，属<b>弱约束</b>。
+    /// </para>
+    /// <para>
+    /// <b>产出形态</b>：源生成器把它渲染为参数 Schema 的标准 JSON Schema 关键字
+    /// <c>"anyOf": [ {"required":["a"]}, … ]</c>，使约束<b>结构化</b>地进入模型可见契约；
+    /// 同时仍保留描述文本（两者互补：结构化给校验器，文本给推理）。
+    /// </para>
+    /// <para>
+    /// <b>校验</b>：组内引用的参数名<b>必须</b>存在于同一工具的签名，否则报
+    /// <c>MUDFT011</c>（构建期 Error）——避免"组里写错参数名 ⇒ 约束静默失效"。
+    /// </para>
+    /// <para>
+    /// <b>运行时兜底不变</b>：执行器里的 <c>ArgumentException</c> 校验<b>保留</b>——
+    /// Schema 是给模型的提示，不是安全边界；不支持 Schema 的宿主仍需正确报错。
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// [FeishuTool("calendar.find_free_slots",
+    ///     Description = "…",
+    ///     Source = "IFeishuTenantV4Calendar.GetFreebusyCalendarAsync",
+    ///     AnyOf = ["user_id|room_id"])]
+    /// </code>
+    /// </example>
+    public string[] AnyOf { get; init; } = [];
 }

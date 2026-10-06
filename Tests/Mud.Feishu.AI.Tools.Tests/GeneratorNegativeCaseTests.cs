@@ -257,6 +257,46 @@ public class GeneratorNegativeCaseTests
         run.ShouldReport("MUDFT010", "复合 DTO 无可展开属性被降级为 string 必须被上报（模型无法得知可传字段）");
     }
 
+    /// <summary>
+    /// R5 / B-6：<c>AnyOf</c> 条件必填组引用了签名中<b>不存在</b>的参数名。
+    /// </summary>
+    /// <remarks>
+    /// 这类错误若放行，渲染出的 <c>"anyOf":[{"required":["不存在的字段"]}]</c>
+    /// <b>约束了空气</b>：构建通过、Schema 合法、但约束对模型永久无效——典型的静默失效。
+    /// </remarks>
+    [Fact]
+    public void MUDFT011_AnyOfGroupReferencingUnknownParameter_ShouldBeReported()
+    {
+        var run = RunSdk(ToolSource("""
+            [FeishuTool("fake.any_of_typo", Description = "AnyOf 组引用不存在的参数。", AnyOf = ["user_id|room_idd"])]
+            public interface IAnyOfTypoTool
+            {
+                Task<string> QueryAsync(string user_id);
+            }
+            """));
+
+        run.ShouldReport("MUDFT011", "AnyOf 组引用不存在的参数必须被上报（否则 anyOf 约束空气、静默失效）");
+    }
+
+    /// <summary>
+    /// R5 / B-6：<c>AnyOf</c> 组内混入 <c>Required = true</c> 的参数 ⇒ 语义从"至少一个"反转为"全部必填"。
+    /// </summary>
+    [Fact]
+    public void MUDFT011_AnyOfGroupMixingRequiredParameter_ShouldBeReported()
+    {
+        var run = RunSdk(ToolSource("""
+            [FeishuTool("fake.any_of_required_mix", Description = "AnyOf 组混入必填参数。", AnyOf = ["a|b"])]
+            public interface IAnyOfRequiredMixTool
+            {
+                Task<string> QueryAsync(
+                    [ToolParameter("a", "a", Required = true)] string a,
+                    string b = "");
+            }
+            """));
+
+        run.ShouldReport("MUDFT011", "AnyOf 组混入 Required=true 参数必须被上报（anyOf 语义会反转为全部必填）");
+    }
+
     [Fact]
     public void MUDFT014_GoldenDrift_ShouldBeReported_AndCleanRunShouldNot()
     {
@@ -683,6 +723,9 @@ public static class SyntheticSources
                 public bool IsWrite { get; set; }
 
                 public string? Source { get; set; }
+
+                /// <summary>条件必填组（R5 / B-6）：每项形如 "a|b"，表示组内至少提供一个。</summary>
+                public string[] AnyOf { get; set; } = System.Array.Empty<string>();
             }
 
             [System.AttributeUsage(System.AttributeTargets.Method | System.AttributeTargets.Parameter, AllowMultiple = true, Inherited = false)]

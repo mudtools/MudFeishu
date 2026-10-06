@@ -31,7 +31,8 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
         ToolRisk risk,
         IReadOnlyList<string> scopes,
         string? outputSchemaJson = null,
-        IReadOnlyList<string>? outputSchemaTruncations = null)
+        IReadOnlyList<string>? outputSchemaTruncations = null,
+        IReadOnlyList<IReadOnlyList<string>>? anyOfGroups = null)
     {
         InterfaceName = interfaceName;
         ToolName = toolName;
@@ -45,6 +46,7 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
         Scopes = scopes;
         OutputSchemaJson = outputSchemaJson;
         OutputSchemaTruncations = outputSchemaTruncations ?? [];
+        AnyOfGroups = anyOfGroups ?? [];
     }
 
     public string InterfaceName { get; }
@@ -84,6 +86,23 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
     /// </remarks>
     public IReadOnlyList<string> OutputSchemaTruncations { get; }
 
+    /// <summary>
+    /// 条件必填组（R5 / B-6）：外层每项是一个"至少提供一个"的组，内层是该组的参数名。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 声明面是 <c>[FeishuTool(AnyOf = ["user_id|room_id"])]</c>，渲染成参数 Schema 的
+    /// <c>"anyOf": [{"required":["user_id"]},{"required":["room_id"]}]</c>。
+    /// </para>
+    /// <para>
+    /// <b>为什么必须进相等字段集</b>：本类型是 Roslyn 增量管线的值键。若<code>AnyOfGroups</code>
+    /// 不参与 <see cref="Equals(CapabilityEntry?)"/>，那么"只改 <c>AnyOf</c> 不改其它字段"时
+    /// 生成器会认为条目未变 ⇒ <b>Schema 不更新</b> ⇒ 约束悄悄丢失。
+    /// 本字段的存在由 <c>CapabilityEqualityFieldCoverageTests</c> 机械锁定。
+    /// </para>
+    /// </remarks>
+    public IReadOnlyList<IReadOnlyList<string>> AnyOfGroups { get; }
+
     public bool Equals(CapabilityEntry? other)
     {
         if (other is null) return false;
@@ -100,7 +119,8 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
             && Risk == other.Risk
             && ScopesEqual(Scopes, other.Scopes)
             && string.Equals(OutputSchemaJson ?? string.Empty, other.OutputSchemaJson ?? string.Empty, StringComparison.Ordinal)
-            && StringsEqual(OutputSchemaTruncations, other.OutputSchemaTruncations);
+            && StringsEqual(OutputSchemaTruncations, other.OutputSchemaTruncations)
+            && AnyOfGroupsEqual(AnyOfGroups, other.AnyOfGroups);
     }
 
     public override bool Equals(object? obj) => Equals(obj as CapabilityEntry);
@@ -157,6 +177,16 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
                 hash = (hash * 31) + comparer.GetHashCode(truncation);
             }
 
+            hash = (hash * 31) + AnyOfGroups.Count;
+            foreach (var group in AnyOfGroups)
+            {
+                hash = (hash * 31) + group.Count;
+                foreach (var parameterName in group)
+                {
+                    hash = (hash * 31) + comparer.GetHashCode(parameterName);
+                }
+            }
+
             return hash;
         }
     }
@@ -187,6 +217,25 @@ internal sealed class CapabilityEntry : IEquatable<CapabilityEntry?>
         for (var i = 0; i < a.Count; i++)
         {
             if (!string.Equals(a[i], b[i], StringComparison.Ordinal)) return false;
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// 条件必填组的逐组逐名比较（R5 / B-6）。
+    /// </summary>
+    /// <remarks>
+    /// <b>为什么不能复用 <see cref="StringsEqual"/></b>：类型是
+    /// <c>IReadOnlyList&lt;IReadOnlyList&lt;string&gt;&gt;</c>（嵌套集合），不是扁平集合。
+    /// </remarks>
+    private static bool AnyOfGroupsEqual(
+        IReadOnlyList<IReadOnlyList<string>> a,
+        IReadOnlyList<IReadOnlyList<string>> b)
+    {
+        if (a.Count != b.Count) return false;
+        for (var i = 0; i < a.Count; i++)
+        {
+            if (!StringsEqual(a[i], b[i])) return false;
         }
         return true;
     }

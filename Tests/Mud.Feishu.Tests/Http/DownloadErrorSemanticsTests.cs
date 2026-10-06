@@ -17,17 +17,36 @@ namespace Mud.Feishu.Tests.Http;
 /// </summary>
 /// <remarks>
 /// <para>
-/// 全 SDK 统一返回 <c>FeishuApiResult&lt;T&gt;?</c>（承载 <c>Code/Msg/Data</c>），但存在 9 个
-/// <c>Task&lt;byte[]?&gt;</c> 下载方法（<c>GetMessageFile</c>、<c>DownFileAsync</c>、<c>DownImageAsync</c>、
+/// 全 SDK 统一返回 <c>FeishuApiResult&lt;T&gt;?</c>（承载 <c>Code/Msg/Data</c>），但存在 <b>16 个</b>
+/// <c>Task&lt;byte[]?&gt;</c> 下载方法完全丢失该错误通道，因此其行为必须被<b>显式锁定</b>：
+/// <c>IFeishuV1Message_Tenant.GetMessageFile</c>、<c>DownFileAsync</c>、<c>DownImageAsync</c>、
 /// <c>IFeishuV1DriveFiles.DownloadFileAsync</c>、<c>DownloadExportFileAsync</c>、
-/// <c>IFeishuV1DriveMedia.DownloadFileAsync</c>、<c>DownloadWhiteboardImageAsync</c>、
-/// <c>DownloadExportAsync</c>、<c>IFeishuV1AttendanceUserSettings_Tenant.DownloadFileAsync</c>、
-/// <c>GetTicketImageAsync</c>）完全丢失该错误通道，因此其行为必须被<b>显式锁定</b>。
+/// <c>IFeishuV1DriveMedia.DownloadFileAsync</c>、<c>IFeishuV1Board.DownloadWhiteboardImageAsync</c>、
+/// <c>IFeishuV1AttendanceUserSettings_Tenant.DownloadFileAsync</c>、
+/// <c>IFeishuV1LingoFile.DownloadFileAsync</c>、
+/// <c>IFeishuV1HelpDeskTicket_Tenant.GetTicketImageAsync</c>、
+/// <c>IFeishuV1HelpDeskFaq_Tenant.GetFaqImageAsync</c>、
+/// <c>IFeishuV1MinutesMinute.GetMinuteTranscriptAsync</c>、
+/// <c>IFeishuV1SparkAppStorage_User.DownloadStorageAsync</c>、
+/// <c>IFeishuV1VideoConferencingExports.DownloadExportAsync</c>、
+/// <c>IFeishuV1AcsUser_Tenant.DownloadUserFaceAsync</c>、
+/// <c>IFeishuV1AcsAccessRecord_Tenant.DownloadAccessRecordAccessPhotoAsync</c>。
+/// </para>
+/// <para>
+/// ⚠️<b>R5 / B-2 修订</b>：原注释写「存在 <b>9 个</b>」并只列了 10 个名字，<b>计数与清单双重不符</b>
+/// （漏掉 Lingo / Minutes / Spark / Acs 两个 / HelpDeskFaq 共 6 个）。
+/// 现状以 <c>BinaryDownloadToolExposureContractTests</c> 的实测口径为准（<b>16 个/ 13 个接口</b>）。
+/// </para>
+/// <para>
+/// <b>与 AI 工具面的关系（R5 / B-2 核心结论）</b>：这 16 个下载方法<b>全部未暴露为 AI 工具</b>——
+/// 其所属 13 个接口的 <c>[FeishuTool]</c> 计数<b>均为 0</b>，因此二进制<b>当前不可能</b>进入工具
+/// JSON 结果。该不变量由 <c>BinaryDownloadToolExposureContractTests</c> 机械锁定；
+/// 本测试则锁定其<b>错误语义</b>（非 2xx 抛 <c>ApiException</c>，错误体进入异常）。
 /// </para>
 /// <para>
 /// 生成器对可空 <c>byte[]</c> 返回类型走「下载分支」，直接调用
 /// <c>IHttpRequestExecutor.DownloadAsync</c>（不经 JSON 反序列化，<c>ResponseDescriptor</c> 未启用
-/// <c>AllowAnyStatusCode</c>），故本测试直接在执行器层面锁定该契约，等价于对这 9 个方法的语义锁定。
+/// <c>AllowAnyStatusCode</c>），故本测试直接在执行器层面锁定该契约，等价于对这 16 个方法的语义锁定。
 /// </para>
 /// </remarks>
 public class DownloadErrorSemanticsTests

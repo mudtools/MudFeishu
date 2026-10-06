@@ -67,7 +67,13 @@ public interface IFeishuUserTaskListMyTasksTool
     Description = "更新任务信息（summary/description/due 等字段，至少传一个要更新的字段）。task_guid 来自 task.create_task 或 task.list_my_tasks。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
-    Source = "IFeishuTenantV2Task.UpdateTaskAsync")]
+    Source = "IFeishuTenantV2Task.UpdateTaskAsync",
+
+    // R5 / B-6：至少要更新一个字段——跨参数约束，required 表达不了（会让三者都必填）。
+    // 成员集与执行器的运行时校验（TaskTools.UpdateTaskAsync）严格一致，不多不少。
+    // 注意：task.complete_task 共用同一 SDK 方法但**不加** AnyOf——它只传 completed_at，
+    // 语义是"固定字段写入"，不是"开放字段任选其一"。
+    AnyOf = ["summary|description|due"])]
 public interface IFeishuTaskUpdateTaskTool
 {
     /// <summary>更新任务。</summary>

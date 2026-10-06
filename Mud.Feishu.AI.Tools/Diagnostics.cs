@@ -15,7 +15,7 @@ namespace Mud.Feishu.AI.Tools;
 /// <remarks>
 /// <para>
 /// 零容忍集：<see cref="MUDFT001"/>/<see cref="MUDFT002"/>/<see cref="MUDFT003"/>/
-/// <see cref="MUDFT004"/>/<see cref="MUDFT008"/>/<see cref="MUDFT010"/>/<see cref="MUDFT014"/>/
+/// <see cref="MUDFT004"/>/<see cref="MUDFT008"/>/<see cref="MUDFT010"/>/<see cref="MUDFT011"/>/<see cref="MUDFT014"/>/
 /// <see cref="MUDFT015"/>/<see cref="MUDFT016"/>/<see cref="MUDFT017"/>/<see cref="MUDFT019"/>/
 /// <see cref="MUDFT020"/>/<see cref="MUDFT022"/>/<see cref="MUDFT023"/>/<see cref="MUDFT024"/>/
 /// <see cref="MUDFT025"/>/<see cref="MUDFT026"/>/<see cref="MUDFT027"/>（见 <see cref="ZeroToleranceIds"/>）。
@@ -103,6 +103,29 @@ internal static class Diagnostics
         id: "MUDFT008",
         title: "上传/下载参数类型无法映射 binary",
         messageFormat: "方法 {0}.{1} 的参数 {2} 标注了 [FormContent] 但类型 {3} 无法映射为 format:binary",
+        category: "MudFeishu.AI",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// 条件必填组（<c>AnyOf</c>）引用了工具签名中<b>不存在</b>的参数名。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么零容忍（R5 / B-6）</b>：<c>AnyOf = ["user_id|room_id"]</c> 这类声明会渲染成
+    /// <c>"anyOf":[{"required":["user_id"]},{"required":["room_id"]}]</c>。若组内参数名拼错，
+    /// 渲染出的约束<b>指向一个不存在的字段</b> ⇒ 该约束对模型<b>永久失效</b>且无任何症状
+    /// （构建通过、Schema 合法、只是约束了空气）。这正是"静默失效"的标准形态，故设为 Error。
+    /// </para>
+    /// <para>
+    /// <b>反向也校验</b>：<see cref="CuratedToolScanner"/> 同时要求组内参数<b>不能</b>是
+    /// <c>Required = true</c> 的参数——那会让"至少一个"退化为"全部必填"，语义相反。
+    /// </para>
+    /// </remarks>
+    public static readonly DiagnosticDescriptor MUDFT011 = new(
+        id: "MUDFT011",
+        title: "条件必填组引用了不存在的参数",
+        messageFormat: "工具 {0} 的 AnyOf 组 \"{1}\" 引用了签名中不存在的参数 \"{2}\"（可用参数：{3}）——该约束不会生效，请修正参数名",
         category: "MudFeishu.AI",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -316,7 +339,7 @@ internal static class Diagnostics
     [
         "MUDFT001", "MUDFT002", "MUDFT003", "MUDFT004",
         "MUDFT027",
-        "MUDFT008", "MUDFT010", "MUDFT014", "MUDFT015",
+        "MUDFT008", "MUDFT010", "MUDFT011", "MUDFT014", "MUDFT015",
         "MUDFT016", "MUDFT017", "MUDFT019", "MUDFT020",
         "MUDFT022", "MUDFT023", "MUDFT024", "MUDFT025",
         "MUDFT026"

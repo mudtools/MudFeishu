@@ -61,7 +61,8 @@ internal static class CuratedToolScanner
         var source = GetNamedString(attribute, "Source");
 
         var parameters = ParameterSchemaRenderer.RenderParameters(symbol, compilation);
-        var diagnostics = new List<PendingDiagnostic>();
+        var anyOfGroups = ReadAnyOfGroups(symbol, toolName, parameters, out var anyOfDiagnostics);
+        var diagnostics = new List<PendingDiagnostic>(anyOfDiagnostics);
 
         // 源挂钩交叉校验（AT-B02 的落地形态：工具面消费 Mud.Feishu 符号）。
         var httpMethod = string.Empty;
@@ -152,7 +153,8 @@ internal static class CuratedToolScanner
             risk: risk,
             scopes: scopes,
             outputSchemaJson: outputSchema,
-            outputSchemaTruncations: outputSchemaTruncations);
+            outputSchemaTruncations: outputSchemaTruncations,
+            anyOfGroups: anyOfGroups);
 
         var model = new ToolSchemaModel(entry, BuildConstName(toolName), description, isWrite, source);
         return diagnostics.Count == 0
@@ -161,6 +163,103 @@ internal static class CuratedToolScanner
     }
 
     // ────────── 校验 ──────────
+
+    /// <summary>
+    /// 读取并校验 <c>[FeishuTool(AnyOf = ["a|b|c"])]</c> 条件必填组（R5 / B-6）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么在生成器侧校验</b>：组内参数名若拼错，渲染出的 <c>anyOf</c> 会指向不存在的字段，
+    /// 约束<b>永久失效且无任何症状</b>（构建通过、Schema 合法、只是约束了空气）。
+    /// 这类"静默失效"必须在构建期拦下，故报<code>MUDFT011</code>（Error）。
+    /// </para>
+    /// <para>
+    /// <b>三条校验规则</b>：① 组内每个参数名必须存在于签名；② 组内不得含
+    /// <c>Required = true</c> 的参数（否则"至少一个"退化为"全部必填"，语义相反）；
+    /// ③ 单元素组无意义（等价于该参数必填，应改用 <c>Required</c>）。
+    /// </para>
+    /// </remarks>
+    private static IReadOnlyList<IReadOnlyList<string>> ReadAnyOfGroups(
+        INamedTypeSymbol symbol,
+        string toolName,
+        IReadOnlyList<CapabilityParameter> parameters,
+        out List<PendingDiagnostic> diagnostics)
+    {
+        diagnostics = [];
+        var groups = new List<IReadOnlyList<string>>();
+
+        var attribute = Extractors.GetFeishuToolAttribute(symbol);
+        var declarations = GetNamedArray(attribute, "AnyOf");
+        if (declarations.Count == 0)
+        {
+            return groups;
+        }
+
+        // netstandard2.0 无 Enumerable.ToHashSet / StringSplitOptions.TrimEntries，手工构建。
+        var parameterNames = new HashSet<string>(StringComparer.Ordinal);
+        var requiredNames = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var p in parameters)
+        {
+            parameterNames.Add(p.Name);
+            if (p.IsRequired)
+            {
+                requiredNames.Add(p.Name);
+            }
+        }
+
+        var available = string.Join(" / ", parameterNames);
+
+        foreach (var declaration in declarations)
+        {
+            // 语法："a|b|c"（'|' 分隔）。空白容忍，但空组判错。
+            var members = new List<string>();
+            foreach (var raw in declaration.Split('|'))
+            {
+                var member = raw.Trim();
+                if (member.Length > 0)
+                {
+                    members.Add(member);
+                }
+            }
+
+            if (members.Count == 0)
+            {
+                diagnostics.Add(PendingDiagnostic.Create(
+                    Diagnostics.MUDFT011, toolName, declaration, "(空)", available));
+                continue;
+            }
+
+            // ① 组内每个参数名必须存在于签名，否则 anyOf 约束"空气"。
+            var unknown = members.FindAll(name => !parameterNames.Contains(name));
+            if (unknown.Count > 0)
+            {
+                diagnostics.Add(PendingDiagnostic.Create(
+                    Diagnostics.MUDFT011, toolName, declaration, unknown[0], available));
+                continue;
+            }
+
+            // ② 与"已必填"混用会让 anyOf 语义反转（"至少一个" → "全部必填"）。
+            var conflicting = members.FindAll(requiredNames.Contains);
+            if (conflicting.Count > 0)
+            {
+                diagnostics.Add(PendingDiagnostic.Create(
+                    Diagnostics.MUDFT011, toolName, declaration, conflicting[0], available));
+                continue;
+            }
+
+            // ③ 单元素组等价于 Required = true，应改用它。
+            if (members.Count == 1)
+            {
+                diagnostics.Add(PendingDiagnostic.Create(
+                    Diagnostics.MUDFT011, toolName, declaration, members[0], available));
+                continue;
+            }
+
+            groups.Add(members);
+        }
+
+        return groups;
+    }
 
     private static void ValidateReturnType(
         string interfaceName,

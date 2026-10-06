@@ -122,6 +122,37 @@ internal static class SchemaWriter
             json.Append(']');
         }
 
+        // 条件必填（R5 / B-6）："至少提供一个"是跨参数约束，required 关键字表达不了
+        // （那会让组内每一项都变必填）。用标准 JSON Schema 的 anyOf，**每个成员一个分支**：
+        //   "anyOf": [ {"required":["user_id"]}, {"required":["room_id"]} ]
+        // 语义 = 任一分支被满足 ⟺ 至少一个成员出现（即"二选一"）；分支顺序 = 声明顺序（golden 稳定）。
+        //
+        // ⚠️ 曾实现错误（已修，勿回退）：把整组塞进**单个**分支
+        //   "anyOf": [ {"required":["user_id","room_id"]} ]
+        // 那是 **AND** 语义（两者都必须出现），与"二选一"**完全相反** —— 比不表达更坏：
+        // 模型会被结构化地告知"必须同时给 user_id 和 room_id"，从而永不命中正确用法。
+        // 该反转由 AnyOfSemanticContractTests 按 JSON Schema 语义机械锁定（不只比文本）。
+        if (entry.AnyOfGroups.Count > 0)
+        {
+            json.Append(",\"anyOf\":[");
+            var firstBranch = true;
+            for (var g = 0; g < entry.AnyOfGroups.Count; g++)
+            {
+                foreach (var member in entry.AnyOfGroups[g])
+                {
+                    if (!firstBranch)
+                    {
+                        json.Append(',');
+                    }
+
+                    firstBranch = false;
+                    json.Append("{\"required\":[").Append(JsonText.Quote(member)).Append("]}");
+                }
+            }
+
+            json.Append(']');
+        }
+
         json.Append('}');
         return json.ToString();
     }

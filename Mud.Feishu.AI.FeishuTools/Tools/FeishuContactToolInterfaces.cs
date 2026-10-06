@@ -32,7 +32,10 @@ namespace Mud.Feishu.AI.FeishuTools.Tools;
 [FeishuTool("contact.resolve_user",
     Description = "把邮箱或手机号批量换成用户 ID（open_id/user_id/union_id）——发送消息、加群、指派任务前的第一步。emails 与 mobiles 至少填一个，合计不超过 50 项。已知姓名/昵称而非邮箱手机号时请改用 contact.search_user。只读，需 contact:user.base:readonly。",
     RequiredScopes = ["contact:user.base:readonly"],
-    Source = "IFeishuTenantV3User.GetBatchUsersAsync")]
+    Source = "IFeishuTenantV3User.GetBatchUsersAsync",
+
+    // R5 / B-6：emails 与 mobiles 至少提供一个——跨参数约束，required 表达不了。
+    AnyOf = ["emails|mobiles"])]
 public interface IFeishuContactResolveUserTool
 {
     /// <summary>按邮箱/手机号批量解析用户 ID。</summary>

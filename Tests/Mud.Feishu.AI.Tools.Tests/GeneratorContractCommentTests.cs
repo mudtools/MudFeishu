@@ -36,7 +36,13 @@ public class GeneratorContractCommentTests
     {
         var root = FindRepositoryRoot();
         var generatorDirectory = Path.Combine(root, "Mud.Feishu.AI.Tools");
-        var testDirectory = Path.Combine(root, "Tests", "Mud.Feishu.AI.Tools.Tests");
+
+        // ⚠️ 扫描范围是**整个 Tests/**，不只 Mud.Feishu.AI.Tools.Tests（R5 / B-6 修订）。
+        //   本守卫的意图是"注释引用的测试类型必须真实存在"，而非"必须存在于某个特定工程"——
+        //   生成器的元守卫（如 CapabilityEqualityFieldCoverageTests、AnyOfSemanticContractTests）
+        //   合法地落在 Mud.Feishu.AI.FeishuTools.Tests。旧实现只扫单一工程，会把这些正确引用
+        //   误判为"声明大于事实"，逼着作者删掉本可追溯的引用信息。
+        var testDirectory = Path.Combine(root, "Tests");
 
         var referenced = Directory
             .EnumerateFiles(generatorDirectory, "*.cs", SearchOption.AllDirectories)
@@ -59,7 +65,7 @@ public class GeneratorContractCommentTests
         {
             testSources.Should().Contain(
                 "class " + typeName,
-                $"生成器源码引用了 {typeName}，它必须真实存在（否则就是 R4-2 那类『声明大于事实』）");
+                $"生成器源码引用了 {typeName}，它必须真实存在于 Tests/ 下（否则就是 R4-2 那类『声明大于事实』）");
         }
     }
 

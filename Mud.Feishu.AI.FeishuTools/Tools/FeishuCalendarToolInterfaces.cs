@@ -51,7 +51,11 @@ public interface IFeishuCalendarCreateEventTool
     Description = "查询一个用户主日历或一间会议室在指定时间窗内的忙闲（time_min/time_max 为 RFC3339；user_id 与 room_id 二选一）。多人场景请逐人调用。只读，需 calendar:calendar:readonly。",
     RequiredScopes = ["calendar:calendar:readonly"],
     IsWrite = false,
-    Source = "IFeishuTenantV4Calendar.GetFreebusyCalendarAsync")]
+    Source = "IFeishuTenantV4Calendar.GetFreebusyCalendarAsync",
+
+    // R5 / B-6：user_id 与 room_id 二选一是跨参数约束，required 表达不了（会让两者都必填）。
+    // 渲染为 "anyOf":[{"required":["user_id"]},{"required":["room_id"]}]，让约束结构化进入模型可见契约。
+    AnyOf = ["user_id|room_id"])]
 public interface IFeishuCalendarFindFreeSlotsTool
 {
     /// <summary>查询忙闲。</summary>

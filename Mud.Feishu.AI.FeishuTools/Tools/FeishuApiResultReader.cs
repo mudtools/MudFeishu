@@ -83,10 +83,118 @@ internal static class ToolArgs
     public static string? OptionalString(IReadOnlyDictionary<string, object?> arguments, string name)
         => Convert(arguments.TryGetValue(name, out var value) ? value : null);
 
+    // ────────── 取值闭集（R5 / F-2）──────────
+
+    /// <summary>
+    /// 读取必填的<b>枚举参数</b>（<c>[ToolParameter(EnumType = typeof(SomeEnum))]</c>）。
+    /// </summary>
+    /// <typeparam name="TEnum">闭集类型（真实 C# <c>enum</c>）。</typeparam>
+    /// <param name="arguments">模型入参字典。</param>
+    /// <param name="name">参数名（snake_case 契约）。</param>
+    /// <exception cref="ArgumentException">
+    /// 缺失/为空，或值<b>不在闭集内</b>——错误文案<b>附合法值清单</b>
+    /// （F-8 的"suggestions 等价物"由此天然成立：闭集就是可执行的下一步建议）。
+    /// </exception>
+    /// <remarks>
+    /// <b>为什么用 <c>Enum.TryParse&lt;T&gt;</c> + <c>IsDefined</c> 而非 <c>Enum.Parse</c></b>：
+    /// <c>Enum.Parse</c> 对<b>未定义但数值合法</b>的值（如 <c>block_type=999</c> 落在枚举范围外）
+    /// 会静默成功，而 <c>Enum.IsDefined</c> 能把它拦下——这正是"模型猜了一个数字"最常见的情形。
+    /// <br>⚠️ 用<b>非泛型</b> <c>IsDefined(Type, object)</c>：<c>IsDefined&lt;T&gt;(T)</c> 仅 .NET 7+ 有，
+    /// 而本工程含 <c>netstandard2.0</c> 目标。
+    /// </remarks>
+    public static TEnum RequireEnum<TEnum>(
+        IReadOnlyDictionary<string, object?> arguments,
+        string name)
+        where TEnum : struct, System.Enum
+    {
+        var raw = RequireString(arguments, name);
+
+        if (!System.Enum.TryParse<TEnum>(raw, ignoreCase: false, out var parsed)
+            || !System.Enum.IsDefined(typeof(TEnum), parsed))
+        {
+            throw new ArgumentException(
+                $"参数 {name} 的值 '{raw}' 不在允许取值内。合法取值：{string.Join(" / ", LegalValues<TEnum>())}");
+        }
+
+        return parsed;
+    }
+
+    /// <summary>读取可选的<b>枚举参数</b>（缺失 ⇒ <see langword="null"/>；非法值 ⇒ 抛）。</summary>
+    /// <typeparam name="TEnum">闭集类型（真实 C# <c>enum</c>）。</typeparam>
+    /// <param name="arguments">模型入参字典。</param>
+    /// <param name="name">参数名。</param>
+    public static TEnum? OptionalEnum<TEnum>(
+        IReadOnlyDictionary<string, object?> arguments,
+        string name)
+        where TEnum : struct, System.Enum
+    {
+        var raw = OptionalString(arguments, name);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        return RequireEnum<TEnum>(arguments, name);
+    }
+
+    /// <summary>
+    /// 读取必填的<b>常量类闭集</b>参数：模型按<b>常量名</b>给值，读取器映射为<b>整型平台值</b>。
+    /// </summary>
+    /// <param name="arguments">模型入参字典。</param>
+    /// <param name="name">参数名。</param>
+    /// <param name="nameToValue">
+    /// 常量名 → 平台整数值 的映射（由生成器发射为 <c>static readonly Dictionary</c>，<b>零反射</b>，
+    /// 对齐 <c>AGENTS.md</c> 的 IL2026/IL3050 = 0 纪律）。
+    /// </param>
+    /// <exception cref="ArgumentException">缺失/为空，或常量名不在映射内（文案附合法常量名清单）。</exception>
+    /// <remarks>
+    /// <b>为什么需要它（R5 / R-4）</b>：<c>static class</c> + <c>const int</c> 的闭集类型
+    /// （如 <c>BlockTypes</c>）其 <c>TypeKind</c> 是 <c>Class</c> 而非 <c>Enum</c>
+    /// ⇒ 泛型 <c>Enum.TryParse</c> 不适用，而参数 C# 类型又确实是 <c>int</c>
+    /// ⇒ 只能按"名字 → 值"映射。Schema 侧渲染的也是<b>常量名</b>，两侧口径一致。
+    /// </remarks>
+    public static int RequireNamedInt(
+        IReadOnlyDictionary<string, object?> arguments,
+        string name,
+        System.Collections.Generic.IReadOnlyDictionary<string, int> nameToValue)
+    {
+        var raw = RequireString(arguments, name);
+
+        if (!nameToValue.TryGetValue(raw, out var value))
+        {
+            throw new ArgumentException(
+                $"参数 {name} 的值 '{raw}' 不在允许取值内。合法取值：{string.Join(" / ", nameToValue.Keys)}");
+        }
+
+        return value;
+    }
+
+    /// <summary>读取可选的<b>常量类闭集</b>参数（缺失 ⇒ <see langword="null"/>；非法名 ⇒ 抛）。</summary>
+    /// <param name="arguments">模型入参字典。</param>
+    /// <param name="name">参数名。</param>
+    /// <param name="nameToValue">常量名 → 平台整数值 的映射（生成器发射）。</param>
+    public static int? OptionalNamedInt(
+        IReadOnlyDictionary<string, object?> arguments,
+        string name,
+        System.Collections.Generic.IReadOnlyDictionary<string, int> nameToValue)
+    {
+        var raw = OptionalString(arguments, name);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        return RequireNamedInt(arguments, name, nameToValue);
+    }
+
+    /// <summary>枚举的合法成员名（已定义者，<b>排除未定义数值</b>）。</summary>
+    private static System.Collections.Generic.IEnumerable<string> LegalValues<TEnum>()
+        where TEnum : struct, System.Enum
+        => System.Enum.GetNames(typeof(TEnum));
+
     /// <summary>读取可选布尔参数（兼容 JSON <c>true/false</c> 与字符串 <c>"true"/"false"</c>）。</summary>
     public static bool? OptionalBool(IReadOnlyDictionary<string, object?> arguments, string name)
-    {
-        if (!arguments.TryGetValue(name, out var value) || value is null)
+    {        if (!arguments.TryGetValue(name, out var value) || value is null)
         {
             return null;
         }

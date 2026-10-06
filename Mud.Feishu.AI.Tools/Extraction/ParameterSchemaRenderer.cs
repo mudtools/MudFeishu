@@ -74,6 +74,22 @@ internal static class ParameterSchemaRenderer
                     && named.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T);
 
             var fragment = RenderFragment(parameter.Type, resolver, depth: 0);
+
+            // R5 / F-2：显式声明的取值闭集优先于类型推导。
+            // 放在 InsertDescription 之前 ⇒ InsertDescription 仍能把 description 正确插到
+            // 闭合花括号之前（插入点不依赖片段内部是否已带 description）。
+            var closedSet = GetParameterEnumType(attribute);
+            string? enumMembers = null;
+            if (closedSet is not null)
+            {
+                string closedSetFragment;
+                if (TryRenderClosedSet(closedSet, out closedSetFragment, out var closedSetMembers))
+                {
+                    fragment = closedSetFragment;
+                    enumMembers = closedSetMembers;
+                }
+            }
+
             if (!string.IsNullOrWhiteSpace(description))
             {
                 fragment = InsertDescription(fragment, description!);
@@ -86,10 +102,121 @@ internal static class ParameterSchemaRenderer
                 isRequired: isRequired,
                 isNullable: isNullable,
                 schemaFragmentJson: fragment,
-                declaredToolParameterName: GetDeclaredToolParameterName(parameter, attribute)));
+                declaredToolParameterName: GetDeclaredToolParameterName(parameter, attribute),
+                enumTypeFullName: closedSet?.ToDisplayString(),
+                enumMembers: enumMembers));
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// 读取 <c>[ToolParameter(EnumType = typeof(X))]</c> 声明的闭集类型（可标注在参数或方法上）。
+    /// </summary>
+    /// <remarks>
+    /// 走<b>符号</b>而非类型名字符串：<c>typeof(X)</c> 的实参是 <see cref="TypedConstant"/>
+    /// （<c>Kind == TypedConstantKind.Type</c>），<c>Value</c> 即 <see cref="ITypeSymbol"/>。
+    /// </remarks>
+    private static INamedTypeSymbol? GetParameterEnumType(AttributeData? attribute)
+        => attribute is null ? null : ReadEnumTypeFrom(attribute);
+
+    /// <summary>从 <c>ToolParameterAttribute</c> 读取 <c>EnumType</c> 的类型符号。</summary>
+    internal static INamedTypeSymbol? ReadEnumTypeFrom(AttributeData attribute)
+    {
+        foreach (var named in attribute.NamedArguments)
+        {
+            if (named.Key != "EnumType")
+            {
+                continue;
+            }
+
+            if (named.Value.Kind == TypedConstantKind.Type
+                && named.Value.Value is INamedTypeSymbol typeSymbol)
+            {
+                return typeSymbol;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 渲染取值闭集：<c>{"type":"string","enum":[…]}</c>。
+    /// </summary>
+    /// <remarks>
+    /// <b>两类来源（R5 / R-4）</b>：
+    /// <list type="bullet">
+    /// <item><b>C# enum</b>：成员取 <c>GetMembers().OfType&lt;IFieldSymbol&gt;()</c>，
+    /// 以 <c>HasConstantValue</c> 过滤（滤掉 enum 的 <c>value__</c> 实例字段），
+    /// 渲染<b>成员名</b>（模型的自然语言契约，与既有 <see cref="RenderEnum"/> 行为一致）；</item>
+    /// <item><b>常量类</b>（<c>static class</c> + <c>const int</c>）：同样过滤
+    /// <c>HasConstantValue</c>，渲染<b>常量名</b>而非数值——因为模型的入参是<b>字面量字符串</b>
+    /// （解包期按名字映射），渲染数值会让模型传"2"而解包只认"heading1"。</item>
+    /// </list>
+    /// 返回 <see langword="null"/> 表示"该类型无可用常量成员"⇒ 调用方回退到类型推导片段。
+    /// </remarks>
+    /// <summary>该常量字段是否为<b>整型常量</b>（闭集只描述平台整型取值）。</summary>
+    /// <remarks>
+    /// 排除 <c>const string</c> 哨兵（如 <c>BlockTypes.UnknownName</c>）与浮点/字符常量。
+    /// <c>HasConstantValue</c> 为真时 <c>ConstantValue</c> 的运行时类型即常量类型。
+    /// </remarks>
+    private static bool IsIntegralConstant(IFieldSymbol field)
+        => field.ConstantValue is sbyte or byte or short or ushort or int or uint or long or ulong;
+
+    private static bool TryRenderClosedSet(INamedTypeSymbol closedSetType, out string fragment, out string members)
+    {
+        fragment = string.Empty;
+        members = string.Empty;
+
+        // ⚠️ 必须过滤 HasConstantValue：enum 的实例字段 `value__` 没有常量值，
+        // 不过滤会把它写进 enum 列表（输出侧 TypeSchemaResolver.ResolveEnumSchema 曾有此缺陷，已同步修正）。
+        //
+        // ⚠️⚠️ 还必须过滤**非整型常量**（R5 / F-2 实施期实测踩到）：`BlockTypes` 里有一个
+        // `public const string UnknownName = "unknown"` 哨兵（供 GetName 对未知值返回），
+        // 它同样是 public const 字段 ⇒ 只按 HasConstantValue 过滤会把它渲染进 enum 列表，
+        // 使闭集多出一个模型无法使用的 "unknown"，且与 `BlockTypes.All` 不一致。
+        // 闭集的定义是"平台整型取值集合"，故只收整型常量。
+        var fields = closedSetType.GetMembers()
+            .OfType<IFieldSymbol>()
+            .Where(static f => f.HasConstantValue
+                && f.DeclaredAccessibility == Accessibility.Public
+                && IsIntegralConstant(f))
+            .ToArray();
+
+        if (fields.Length == 0)
+        {
+            return false;
+        }
+
+        var names = fields.Select(static f => f.Name).ToArray();
+
+        var sb = new StringBuilder("{\"type\":\"string\",\"enum\":[");
+        for (var i = 0; i < names.Length; i++)
+        {
+            if (i > 0)
+            {
+                sb.Append(',');
+            }
+
+            sb.Append(JsonText.Quote(names[i]));
+        }
+
+        sb.Append("]}");
+        fragment = sb.ToString();
+
+        // 成员表（"name=value" 以 ';' 分隔）——供 ToolArgsEmitter 发射"常量名 → 平台整数值"映射。
+        var memberPairs = new List<string>(fields.Length);
+        foreach (var field in fields)
+        {
+            if (field.ConstantValue is not null)
+            {
+                memberPairs.Add(
+                    field.Name + "=" + System.Convert.ToString(field.ConstantValue, System.Globalization.CultureInfo.InvariantCulture));
+            }
+        }
+
+        members = string.Join(";", memberPairs);
+        return true;
     }
 
     // ────────── 类型 → Schema 片段 ──────────

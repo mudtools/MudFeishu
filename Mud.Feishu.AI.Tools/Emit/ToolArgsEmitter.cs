@@ -157,7 +157,8 @@ internal static class ToolArgsEmitter
             : new ArgsPlan(
                 toolName: entry.ToolName,
                 typeName: SchemaEmitter.BuildNameConstant(entry.ToolName) + TypeSuffix,
-                fields: fields);
+                fields: fields,
+                closedSetMaps: RenderClosedSetMaps(entry.Parameters));
     }
 
     /// <summary>
@@ -178,6 +179,16 @@ internal static class ToolArgsEmitter
     {
         var name = JsonText.ToCSharpLiteral(parameter.Name);
         var isRequired = parameter.IsRequired;
+
+        // R5 / F-2：显式声明的取值闭集优先于类型推导。
+        //
+        // ⚠️ 关键：Schema 侧渲染的是**闭集成员的字面量**（enum 名或常量类常量名），
+        // 而参数的 C# 类型是 `int` / 某个 enum。二者口径必须一致，否则模型按 Schema 传名字、
+        // 读取器却按数值解析 ⇒ 恒失败。故此处**不复用**下面的 NormalizeTypeName 分支。
+        if (TryResolveClosedSetReader(parameter, name, isRequired, out fieldType, out reader))
+        {
+            return true;
+        }
 
         switch (NormalizeTypeName(parameter.CsharpType))
         {
@@ -237,6 +248,143 @@ internal static class ToolArgsEmitter
     }
 
     /// <summary>
+    /// 渲染取值闭集的读取器（R5 / F-2）。
+    /// </summary>
+    /// <returns>
+    /// <see langword="true"/> 已产出 <paramref name="reader"/>；<see langword="false"/>
+    /// "本参数无闭集或闭集不可解"⇒ 调用方<b>回退到类型推导分支</b>（随后可能被 MUDFT020 拦下）。
+    /// </returns>
+    /// <remarks>
+    /// <b>两类闭集（R5 / R-4）</b>：
+    /// <list type="number">
+    /// <item><b>C# enum</b>：参数 C# 类型<b>就是</b>该 enum（同名）⇒
+    /// <c>ToolArgs.RequireEnum&lt;TEnum&gt;</c> / <c>OptionalEnum&lt;TEnum&gt;</c>，
+    /// 泛型 + <c>Enum.TryParse</c>，AOT 安全；</item>
+    /// <item><b>常量类</b>（<c>static class</c> + <c>const int</c>，如 <c>BlockTypes</c>）：
+    /// 参数类型是 <c>int</c> ⇒ 只能按名字映射，用
+    /// <c>ToolArgs.RequireNamedInt</c> / <c>OptionalNamedInt</c>，
+    /// 映射表由 <see cref="RenderClosedSetMaps"/> 发射为 <c>static readonly Dictionary</c>。</item>
+    /// </list>
+    /// </remarks>
+    private static bool TryResolveClosedSetReader(
+        CapabilityParameter parameter,
+        string nameLiteral,
+        bool isRequired,
+        out string fieldType,
+        out string reader)
+    {
+        fieldType = string.Empty;
+        reader = string.Empty;
+
+        if (string.IsNullOrEmpty(parameter.EnumTypeFullName) || string.IsNullOrEmpty(parameter.EnumMembers))
+        {
+            return false;
+        }
+
+        // 真实 C# enum：参数类型与闭集类型同名。
+        if (string.Equals(
+                NormalizeTypeName(parameter.CsharpType),
+                NormalizeTypeName(parameter.EnumTypeFullName!),
+                StringComparison.Ordinal))
+        {
+            var enumType = "global::" + parameter.EnumTypeFullName;
+            fieldType = isRequired ? enumType : $"{enumType}?";
+            reader = isRequired
+                ? $"ToolArgs.RequireEnum<{enumType}>(args, {nameLiteral})"
+                : $"ToolArgs.OptionalEnum<{enumType}>(args, {nameLiteral})";
+            return true;
+        }
+
+        // 常量类 + 整型参数：按常量名映射。
+        if (NormalizeTypeName(parameter.CsharpType) is not ("int" or "long" or "short"))
+        {
+            return false;
+        }
+
+        var map = ClosedSetMapAccess(parameter.EnumTypeFullName!);
+        fieldType = parameter.CsharpType;
+        reader = isRequired
+            ? $"ToolArgs.RequireNamedInt(args, {nameLiteral}, {map})"
+            : $"ToolArgs.OptionalNamedInt(args, {nameLiteral}, {map})";
+        return true;
+    }
+
+    /// <summary>成员表分隔符（netstandard2.0 无 <c>Split(char, …)</c> 重载）。</summary>
+    private static readonly char[] SemicolonSeparators = [';'];
+
+    /// <summary>常量类映射表在生成类内的字段名（由 <c>RenderClosedSetMaps</c> 发射）。</summary>
+    private static string ClosedSetMapAccess(string enumTypeFullName)
+        => "__closedSet_" + enumTypeFullName.Replace("global::", string.Empty).Replace('.', '_');
+
+    /// <summary>
+    /// 为参数列表中<b>每个常量类闭集</b>发射一个
+    /// <c>private static readonly IReadOnlyDictionary&lt;string,int&gt;</c> 映射表。
+    /// </summary>
+    /// <remarks>
+    /// <b>为什么必须发射</b>：模型按 Schema 里的<b>常量名</b>传值，而 SDK 要<b>整型平台值</b>；
+    /// 不发射这层映射就会"Schema 收名字、读取器收数字"⇒ 该参数<b>恒失败</b>。
+    /// <c>static readonly</c> ⇒ <b>零反射</b>（对齐 <c>AGENTS.md</c> 的 IL2026/IL3050 = 0 纪律）。
+    /// <br>成员表取自 <see cref="CapabilityParameter.EnumMembers"/>（<c>"name=value;…"</c>）。
+    /// </remarks>
+    private static string RenderClosedSetMaps(IReadOnlyList<CapabilityParameter> parameters)
+    {
+        var emitted = new HashSet<string>(StringComparer.Ordinal);
+        var builder = new StringBuilder();
+
+        foreach (var parameter in parameters)
+        {
+            if (string.IsNullOrEmpty(parameter.EnumTypeFullName) || string.IsNullOrEmpty(parameter.EnumMembers))
+            {
+                continue;
+            }
+
+            // 真实 C# enum 不需要映射表（泛型 Enum.TryParse 直接按名解析）。
+            if (string.Equals(
+                    NormalizeTypeName(parameter.CsharpType),
+                    NormalizeTypeName(parameter.EnumTypeFullName!),
+                    StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var access = ClosedSetMapAccess(parameter.EnumTypeFullName!);
+            if (!emitted.Add(access))
+            {
+                continue;
+            }
+
+            builder.Append("    private static readonly global::System.Collections.Generic.IReadOnlyDictionary<string, int> ")
+                .Append(access)
+                .Append(" = new global::System.Collections.Generic.Dictionary<string, int>(StringComparer.Ordinal)\n    {\n");
+
+            // netstandard2.0：无 string.Split(char, StringSplitOptions) 重载、无 Range/Index ⇒用 char[] + Substring。
+            foreach (var pair in parameter.EnumMembers!.Split(SemicolonSeparators, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var separator = pair.IndexOf('=');
+                if (separator <= 0)
+                {
+                    continue;
+                }
+
+                var key = JsonText.Quote(pair.Substring(0, separator));
+                var value = pair.Substring(separator + 1);
+                if (!int.TryParse(value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var number))
+                {
+                    // 非整型常量（如 const string）——本仓闭集只用整型；出现即跳过该键而非产出错代码。
+                    continue;
+                }
+
+                builder.Append("        [").Append(key).Append("] = ")
+                    .Append(number.ToString(System.Globalization.CultureInfo.InvariantCulture)).Append(",\n");
+            }
+
+            builder.Append("    };\n");
+        }
+
+        return builder.ToString();
+    }
+
+    /// <summary>
     /// 归一化 C# 类型显示名（去 <c>?</c>、别名与 CLR 名统一）——<c>ToDisplayString()</c> 的
     /// 可空引用注解与 <c>UseSpecialTypes</c> 选项跨版本有差异，按名匹配必须容错两侧写法。
     /// </summary>
@@ -263,6 +411,13 @@ internal static class ToolArgsEmitter
         source.AppendLine("    {");
         source.AppendLine($"        /// <summary>工具名契约常量（与 <c>FeishuToolNames</c> 同源；契约守卫据此把本类型映射回工具名）。</summary>");
         source.AppendLine($"        internal const string {ToolNameConstant} = {JsonText.ToCSharpLiteral(plan.ToolName)};");
+
+        // R5 / F-2：常量类闭集的"常量名 → 平台整数值"映射表（零反射；AOT 安全）。
+        if (!string.IsNullOrEmpty(plan.ClosedSetMaps))
+        {
+            source.Append(plan.ClosedSetMaps);
+            source.AppendLine();
+        }
 
         var locals = plan.Fields.Select(static f => LocalName(f.FieldName)).ToArray();
 
@@ -323,12 +478,21 @@ internal static class ToolArgsEmitter
     /// <summary>一枚工具的解包计划。</summary>
     private sealed class ArgsPlan
     {
-        public ArgsPlan(string toolName, string typeName, IReadOnlyList<ArgsField> fields)
+        public ArgsPlan(string toolName, string typeName, IReadOnlyList<ArgsField> fields, string closedSetMaps = "")
         {
             ToolName = toolName;
             TypeName = typeName;
             Fields = fields;
+            ClosedSetMaps = closedSetMaps;
         }
+
+        /// <summary>
+        /// R5 / F-2：常量类闭集的"常量名 → 平台整数值"映射表源码（<c>static readonly Dictionary</c>）。
+        /// </summary>
+        /// <remarks>
+        /// 为空串表示本工具无常量类闭集参数——此时产物里不应出现任何 <c>__closedSet_*</c> 字段。
+        /// </remarks>
+        public string ClosedSetMaps { get; }
 
         public string ToolName { get; }
 

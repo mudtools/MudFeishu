@@ -159,6 +159,36 @@ public class ToolArgsContractGuards
         bool isRequired)
     {
         var jsonType = schema.GetProperty("type").GetString();
+
+        // R5 / F-2：取值闭集参数是**契约例外**——Schema 面是 string（模型按**成员名**传值），
+        // 而 Args 面是**平台整型**（SDK 要数字），生成器在两者之间做名字→值映射。
+        // 因此"Args 基础类型 == Schema type"在此**不成立**，改为断言更强的两条：
+        //   ① Schema 必须是 string（模型侧只能传名字）；
+        //   ② Args 字段必须是整型（平台侧要数字）。
+        // 这不是放宽：它把"两侧必须一致"细化为"两侧各自必须对"。
+        if (schema.ValueKind == JsonValueKind.Object
+            && schema.TryGetProperty("enum", out _))
+        {
+            jsonType.Should().Be(
+                "string",
+                $"{toolName}.{parameterName} 声明了取值闭集 ⇒ Schema 面必须是 string（模型按成员名传值）");
+
+            var underlying = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+
+            // ⚠️ 不用 Type.IsIntegral（.NET 7+ 才有；本测试工程含 net6.0 目标）⇒显式列举。
+            var integral = new[]
+            {
+                typeof(byte), typeof(sbyte), typeof(short), typeof(ushort),
+                typeof(int), typeof(uint), typeof(long), typeof(ulong),
+            };
+
+            integral.Should().Contain(underlying,
+                $"{toolName}.{parameterName} 声明了取值闭集 ⇒ Args 字段必须是整型平台值"
+                + $"（实际 {underlying}）；生成器负责名字→值映射");
+
+            return;
+        }
+
         var expected = jsonType switch
         {
             "string" => typeof(string),

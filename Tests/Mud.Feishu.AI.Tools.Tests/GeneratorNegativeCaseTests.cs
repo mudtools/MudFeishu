@@ -659,6 +659,111 @@ public class GeneratorNegativeCaseTests
         """;
 
     /// <summary>驱动生成器并预置完整 SDK 面（特性 + 假 SDK 接口）。</summary>
+    /// <summary>
+    /// R5 / F-2 正向断言：<b>常量类闭集</b>（<c>static class</c> + <c>const int</c>）的 <b>Schema 侧</b>。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么只断言 Schema 侧</b>：<c>FeishuToolArgs</c> 产物的发射门槛是
+    /// <b>「名字契约所有者程序集」</b>（<c>FeishuToolSchemaGenerator.cs:120-126</c>：
+    /// 产物消费 FeishuTools 的 <c>internal ToolArgs</c>，其他程序集一并发射会 CS0103）。
+    /// driver 的合成程序集名不匹配 ⇒ Args 侧<b>在 driver 中不可观测</b>。
+    /// Args 侧由两道互补机制守护：① <b>真实构建</b>——闭集解包失败会触发零容忍
+    /// <c>MUDFT020</c>（整份 {Tool}Args 不产出）⇒ 构建失败；
+    /// ② <c>ToolArgsClosedSetHelperTests</c> 对 <c>ToolArgs.RequireNamedInt</c> /
+    /// <c>RequireEnum</c> 做运行时行为断言。
+    /// </para>
+    /// <para>
+    /// <b>为什么必须有这条正向用例</b>：本项此前零覆盖，且只加负例不够——负例只证明"会报错"，
+    /// 不证明"能用"。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void F2_ConstClassClosedSet_ShouldRenderEnumInSchema()
+    {
+        var run = RunSdk(ToolSource("""
+            public static class BlockTypes
+            {
+                public const int Page = 1;
+                public const int Text = 2;
+                public const int Heading1 = 3;
+            }
+
+            [FeishuTool("fake.append_blocks", Description = "追加块。")]
+            public interface IAppendBlocksTool
+            {
+                Task<string> AppendAsync(
+                    [ToolParameter("block_type", "块类型", Required = true, EnumType = typeof(BlockTypes))] int block_type);
+            }
+            """));
+
+        var all = string.Join("\n", run.GeneratedSources);
+
+        all.Should().Contain("\"enum\":[\"Page\",\"Text\",\"Heading1\"]", "常量类闭集未渲染进 Schema");
+        all.Should().NotContain("value__", "enum 列表混入了 enum 的实例字段 value__");
+    }
+
+    /// <summary>
+    /// R5 / F-2 正向断言：<b>真实 C# enum 闭集</b>的 <b>Schema 侧</b>。
+    /// </summary>
+    /// <remarks>
+    /// Args 侧（泛型 <c>ToolArgs.RequireEnum&lt;TEnum&gt;</c>）在此<b>不可观测</b>——原因与
+    /// <see cref="F2_ConstClassClosedSet_ShouldRenderEnumInSchema"/> 相同（程序集名门槛），
+    /// 由 <c>ToolArgsClosedSetHelperTests</c>做运行时行为断言 + 真实构建的 MUDFT020 兜底。
+    /// </remarks>
+    [Fact]
+    public void F2_CsharpEnumClosedSet_ShouldRenderEnumInSchema()
+    {
+        var run = RunSdk(ToolSource("""
+            public enum MsgType
+            {
+                Text,
+                Image,
+                Interactive,
+            }
+
+            [FeishuTool("fake.send", Description = "发消息。")]
+            public interface ISendTool
+            {
+                Task<string> SendAsync(
+                    [ToolParameter("msg_type", "消息类型", Required = true, EnumType = typeof(MsgType))] MsgType msg_type);
+            }
+            """));
+
+        var all = string.Join("\n", run.GeneratedSources);
+
+        all.Should().Contain("\"enum\":[\"Text\",\"Image\",\"Interactive\"]", "C# enum 闭集未渲染进 Schema");
+        all.Should().NotContain("value__", "enum 列表混入了 enum 的实例字段 value__");
+    }
+
+    /// <summary>
+    /// R5 / F-2 反向自证：合成源里<b>确实</b>带 <c>EnumType</c> 声明位。
+    /// 若哪天合成源不再注入该属性，上面两条会因"闭集根本没声明"而<b>假绿</b>。
+    /// </summary>
+    [Fact]
+    public void F2_SyntheticToolParameter_ShouldDeclareEnumType_OtherwiseTheClosedSetCasesAreFalseGreen()
+    {
+        // 合成源在本文件内联声明（见 ToolSource 的 SyntheticSources 段），
+        // 故直接断言"本文件确实给出了 EnumType 声明位"——若哪天删掉，上面两条会假绿。
+        var source = ReadSelfSource();
+        source.Should().Contain(
+            "public System.Type? EnumType { get; set; }",
+            "合成 ToolParameterAttribute 未声明 EnumType ⇒ F-2 的正向/负例用例全部假绿");    }
+
+    /// <summary>读取本测试文件自身源码（用于"合成源确实含某声明位"这类自证断言）。</summary>
+    private static string ReadSelfSource()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Mud.Feishu.slnx")))
+        {
+            directory = directory.Parent;
+        }
+
+        directory.Should().NotBeNull();
+        return File.ReadAllText(Path.Combine(
+            directory!.FullName, "Tests", "Mud.Feishu.AI.Tools.Tests", "GeneratorNegativeCaseTests.cs"));
+    }
+
     private static GeneratorRun RunSdk(params string[] sources)
         => GeneratorDriverHost.Run([.. SyntheticSources.SdkSurface, .. sources]);
 
@@ -734,6 +839,9 @@ public static class SyntheticSources
                 public ToolParameterAttribute(string name, string description) { }
 
                 public bool Required { get; set; }
+
+                /// <summary>取值闭集类型（R5 / F-2）。真实类型在 Mud.Feishu.AI.Tools，本副本供合成源使用。</summary>
+                public System.Type? EnumType { get; set; }
             }
         }
         """;

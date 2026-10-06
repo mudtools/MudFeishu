@@ -53,7 +53,7 @@ public interface IFeishuDocxAppendBlocksTool
     /// <returns>白名单投影后的 JSON 文本（block_id）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
     Task<string> AppendBlocksAsync(
         [ToolParameter("document_id", "文档 ID（形如 doxcnXxx）", Required = true)] string document_id,
-        [ToolParameter("block_type", "块类型（2=文本段落, 3=标题1, 4=标题2, ..., 11=标题9）", Required = true)] int block_type,
+        [ToolParameter("block_type", "块类型（决定新增块的形态）", Required = true, EnumType = typeof(global::Mud.Feishu.DataModels.Docx.BlockTypes))] int block_type,
         [ToolParameter("text", "块文本内容", Required = true)] string text,
         [ToolParameter("idempotency_key", "幂等键（可选）：相同 client_token 在 24 小时内至多成功创建一次；省略时不保证幂等。")] string? idempotency_key = null,
         [ToolParameter("dry_run", "仅预演不追加（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,

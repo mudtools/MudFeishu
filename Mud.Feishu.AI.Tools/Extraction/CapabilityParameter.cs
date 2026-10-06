@@ -34,7 +34,9 @@ internal sealed class CapabilityParameter : IEquatable<CapabilityParameter?>
         bool isRequired,
         bool isNullable,
         string schemaFragmentJson,
-        string? declaredToolParameterName = null)
+        string? declaredToolParameterName = null,
+        string? enumTypeFullName = null,
+        string? enumMembers = null)
     {
         Name = name;
         CsharpType = csharpType;
@@ -43,6 +45,8 @@ internal sealed class CapabilityParameter : IEquatable<CapabilityParameter?>
         IsNullable = isNullable;
         SchemaFragmentJson = schemaFragmentJson;
         DeclaredToolParameterName = declaredToolParameterName;
+        EnumTypeFullName = enumTypeFullName;
+        EnumMembers = enumMembers;
     }
 
     /// <summary>模型可见参数名（snake_case 契约）。</summary>
@@ -74,6 +78,43 @@ internal sealed class CapabilityParameter : IEquatable<CapabilityParameter?>
     /// <summary>已推导的 JSON Schema 片段（如 <c>{"type":"array","items":{"type":"string"}}</c>）。</summary>
     public string SchemaFragmentJson { get; }
 
+    /// <summary>
+    /// 显式声明的取值闭集类型全名（R5 / F-2，来自 <c>[ToolParameter(EnumType = typeof(X))]</c>；
+    /// 未声明时为 <see langword="null"/>）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么进值键（<c>Equals</c>/<c>GetHashCode</c>）</b>：它决定
+    /// <see cref="SchemaFragmentJson"/> 里的 <c>"enum":[…]</c>，属"影响产物的事实"。
+    /// 漏掉它会让"增删闭集声明"不触发增量重算⇒ 描述符产物过期。
+    /// 本仓已因同类问题漏字段 2 次（AT-B16），故由
+    /// <c>CapabilityEqualityFieldCoverageTests</c> 机械锁定"每个构造参数都参与相等性"。
+    /// </para>
+    /// <para>
+    /// <b>为什么用全名（string）而不是 <c>INamedTypeSymbol</c></c>：本类型是 Roslyn 增量管线的
+    /// <b>值键</b>，其成员必须是可比较的不可变值；符号对象不满足该约束（且会把编译状态带进缓存键）。
+    /// </para>
+    /// </remarks>
+    public string? EnumTypeFullName { get; }
+
+    /// <summary>
+    /// 闭集成员表（R5 / F-2，形如 <c>"page=1;text=2;heading1=3"</c>；<b>仅常量类闭集</b>有值）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么用字符串而不是 <c>List&lt;(string, long)&gt;</c></b>：本类型是 Roslyn 增量管线的
+    /// <b>值键</b>，成员必须可比较、不含编译状态，且跨 <c>netstandard2.0</c> 的
+    /// <c>ValueTuple</c> 命名开销也要避免。字符串 CSV 是最省事且足够的选择——
+    /// 它的唯一消费者是 <c>ToolArgsEmitter</c> 的映射表渲染。
+    /// </para>
+    /// <para>
+    /// <b>为什么必须进值键</b>：常量类闭集<b>增删成员</b>会改变映射表（进而改变 Args 产物），
+    /// 却<b>不会</b>改变 <see cref="SchemaFragmentJson"/>（那里只渲染名字，且名字集合可能不变
+    /// ——例如值变了但名字没变）。漏掉本字段 ⇒ 改常量值不触发增量重算 ⇒ 产物过期。
+    /// </para>
+    /// </remarks>
+    public string? EnumMembers { get; }
+
     public bool Equals(CapabilityParameter? other)
         => other is not null
             && string.Equals(Name, other.Name, StringComparison.Ordinal)
@@ -82,6 +123,8 @@ internal sealed class CapabilityParameter : IEquatable<CapabilityParameter?>
             && string.Equals(DocDescription ?? string.Empty, other.DocDescription ?? string.Empty, StringComparison.Ordinal)
             && IsRequired == other.IsRequired
             && IsNullable == other.IsNullable
+            && string.Equals(EnumTypeFullName ?? string.Empty, other.EnumTypeFullName ?? string.Empty, StringComparison.Ordinal)
+            && string.Equals(EnumMembers ?? string.Empty, other.EnumMembers ?? string.Empty, StringComparison.Ordinal)
             && string.Equals(SchemaFragmentJson, other.SchemaFragmentJson, StringComparison.Ordinal);
 
     public override bool Equals(object? obj) => Equals(obj as CapabilityParameter);
@@ -97,6 +140,8 @@ internal sealed class CapabilityParameter : IEquatable<CapabilityParameter?>
             hash = (hash * 31) + comparer.GetHashCode(DeclaredToolParameterName ?? string.Empty);
             hash = (hash * 31) + comparer.GetHashCode(CsharpType);
             hash = (hash * 31) + comparer.GetHashCode(DocDescription ?? string.Empty);
+            hash = (hash * 31) + comparer.GetHashCode(EnumTypeFullName ?? string.Empty);
+            hash = (hash * 31) + comparer.GetHashCode(EnumMembers ?? string.Empty);
             hash = (hash * 31) + comparer.GetHashCode(SchemaFragmentJson);
             hash = (hash * 31) + (IsRequired ? 1 : 0);
             hash = (hash * 31) + (IsNullable ? 1 : 0);

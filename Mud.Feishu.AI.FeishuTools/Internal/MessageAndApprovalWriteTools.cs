@@ -67,6 +67,61 @@ internal sealed class MessageWriteTools(Mud.Feishu.IFeishuTenantV1Message messag
             });
         });
     }
+
+    /// <summary>
+    /// im.send_card：结构化描述 → <c>CardDsl</c> 编译 → <c>interactive</c> 卡片消息。
+    /// </summary>
+    /// <remarks>
+    /// <b>模型全程零 JSON 字符串</b>（F-6 的目的）：入参是 DSL 文本，出参是编译好的卡片 JSON。
+    /// 与 <c>im.send_message</c> 复用同一条 <c>SendMessageAsync</c> 发送路径（A-12）。
+    /// </remarks>
+    [FeishuToolHandler(typeof(IFeishuImSendCardTool))]
+    public Task<FeishuToolResult> SendCardAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.ImSendCard);
+        return executor.RunAsync(async () =>
+        {
+            var args = ImSendCardArgs.Unpack(arguments);
+            var receiveIdType = args.ReceiveIdType ?? "chat_id";
+            if (!ReceiveIdTypes.Allowed.Contains(receiveIdType, StringComparer.Ordinal))
+            {
+                throw new ArgumentException(
+                    $"receive_id_type 仅支持 {string.Join("/", ReceiveIdTypes.Allowed)}，实际: {receiveIdType}");
+            }
+
+            // 编译期：DSL 非法组合在此报错并附合法组合（DoD）；不进入下游。
+            var card = CardDsl.Compile(args.Title, args.Body, args.Buttons);
+            var content = card.ToJsonString();
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "POST", "/open-apis/im/v1/messages",
+                    "卡片结构（由 body/buttons 编译，非模型手写）：" + content
+                    + ToolDryRun.IdempotencyNote(args.IdempotencyKey),
+                    ("receive_id", args.ReceiveId.Length),
+                    ("content", content.Length),
+                    ("receive_id_type", receiveIdType.Length)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _messageClient
+                .SendMessageAsync(
+                    new SendMessageRequest
+                    {
+                        ReceiveId = args.ReceiveId,
+                        MsgType = "interactive",
+                        Content = content,
+                        Uuid = args.IdempotencyKey,
+                    },
+                    receiveIdType,
+                    cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApiUntruncated(outcome, data => new JsonObject
+            {
+                ["message_id"] = data.MessageId,
+            });
+        });
+    }
 }
 
 /// <summary>

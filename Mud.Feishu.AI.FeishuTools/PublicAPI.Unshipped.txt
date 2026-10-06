@@ -56,6 +56,7 @@ const Mud.Feishu.AI.FeishuTools.FeishuToolNames.ImReplyMessage = "im.reply_messa
 const Mud.Feishu.AI.FeishuTools.FeishuToolNames.ImRevokeMessage = "im.revoke_message" -> string!
 const Mud.Feishu.AI.FeishuTools.FeishuToolNames.ImSearchChats = "im.search_chats" -> string!
 const Mud.Feishu.AI.FeishuTools.FeishuToolNames.ImSearchMessages = "im.search_messages" -> string!
+const Mud.Feishu.AI.FeishuTools.FeishuToolNames.ImSendCard = "im.send_card" -> string!
 const Mud.Feishu.AI.FeishuTools.FeishuToolNames.ImSendFile = "im.send_file" -> string!
 const Mud.Feishu.AI.FeishuTools.FeishuToolNames.ImSendImage = "im.send_image" -> string!
 const Mud.Feishu.AI.FeishuTools.FeishuToolNames.ImSendMessage = "im.send_message" -> string!
@@ -266,6 +267,8 @@ Mud.Feishu.AI.FeishuTools.Curation.IFeishuImSearchChatsTool
 Mud.Feishu.AI.FeishuTools.Curation.IFeishuImSearchChatsTool.SearchChatsAsync(string! query, int? page_size = null, string? page_token = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
 Mud.Feishu.AI.FeishuTools.Curation.IFeishuImSearchMessagesTool
 Mud.Feishu.AI.FeishuTools.Curation.IFeishuImSearchMessagesTool.SearchMessageAsync(string! query, string![]? chat_ids = null, string![]? from_ids = null, string? chat_type = null, string? page_token = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+Mud.Feishu.AI.FeishuTools.Curation.IFeishuImSendCardTool
+Mud.Feishu.AI.FeishuTools.Curation.IFeishuImSendCardTool.SendCardAsync(string! receive_id, string! body, string? title = null, string? buttons = null, string? receive_id_type = null, string? idempotency_key = null, bool? dry_run = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
 Mud.Feishu.AI.FeishuTools.Curation.IFeishuImSendFileTool
 Mud.Feishu.AI.FeishuTools.Curation.IFeishuImSendFileTool.SendFileAsync(string! receive_id, string! file_url, string! file_name, string? receive_id_type = null, bool? dry_run = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
 Mud.Feishu.AI.FeishuTools.Curation.IFeishuImSendImageTool
@@ -479,6 +482,7 @@ static Mud.Feishu.AI.Tools.Generated.FeishuToolContracts.ImReplyMessage.get -> M
 static Mud.Feishu.AI.Tools.Generated.FeishuToolContracts.ImRevokeMessage.get -> Mud.Feishu.AI.Tools.Generated.FeishuToolContract!
 static Mud.Feishu.AI.Tools.Generated.FeishuToolContracts.ImSearchChats.get -> Mud.Feishu.AI.Tools.Generated.FeishuToolContract!
 static Mud.Feishu.AI.Tools.Generated.FeishuToolContracts.ImSearchMessages.get -> Mud.Feishu.AI.Tools.Generated.FeishuToolContract!
+static Mud.Feishu.AI.Tools.Generated.FeishuToolContracts.ImSendCard.get -> Mud.Feishu.AI.Tools.Generated.FeishuToolContract!
 static Mud.Feishu.AI.Tools.Generated.FeishuToolContracts.ImSendFile.get -> Mud.Feishu.AI.Tools.Generated.FeishuToolContract!
 static Mud.Feishu.AI.Tools.Generated.FeishuToolContracts.ImSendImage.get -> Mud.Feishu.AI.Tools.Generated.FeishuToolContract!
 static Mud.Feishu.AI.Tools.Generated.FeishuToolContracts.ImSendMessage.get -> Mud.Feishu.AI.Tools.Generated.FeishuToolContract!

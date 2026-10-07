@@ -265,26 +265,30 @@ public interface IFeishuDriveUploadFileTool
 }
 
 /// <summary>
-/// 工具接口：drive.download_file（映射 <c>IFeishuTenantV1DriveFiles.DownloadFileAsync</c> +宿主 stager 落盘）。
+/// 工具接口：drive.download_file（映射 <c>IFeishuTenantV1DriveFiles.DownloadFileAsync</c> + 宿主 stager 落盘）。
 /// </summary>
-// ─────────────────────────── R5 / F-10 回滚说明 ───────────────────────────
+// ─────────────────────────── R5 / F-10 现状（2026-10-07 更新）───────────────────────────
 //
-// F-10（drive.download_file）**本轮回滚**，原因与其设计无关，而是与既有零容忍守卫冲突：
+// 【已解决】B-2 的豁免机制此前**被收集却从未被使用**（`CollectBinarySafeTools()` 的返回值
+//   在断言里没有参与任何判定）——即"看着存在但完全不生效"。现已接通并**加固为"挣得的豁免"**：
+//   声明 `no-bytes-in-context` 只是**申请**，放行还需核验执行器源码里两道防线真的落地：
+//     ① 注入**非可空**的 IFeishuAttachmentStager（字节交给宿主落盘边界；软缺席语义随之成立）；
+//     ② 调用 DownloadedContentGuard.ShouldRejectForJsonErrorBody（平台错误体不得落盘）。
+//   核验不通过的"豁免"会**按违规报出**，故"改一行描述就能关掉零容忍守卫"这条路已被堵死。
+//   （守卫：Tests/…/ContractGuards/BinaryDownloadToolExposureContractTests.VerifyExemptions，
+//     含合成源码的反向自证。）
 //
-//   B-2 的 BinaryDownloadToolExposureContractTests 规定：工具的 [FeishuTool(Source = …)]
-//   **不得**指向返回二进制的 SDK 方法（DownloadFileAsync 返回的是二进制字节数组，正是该形态）。
+// 【已排除】"改用返回临时 URL 的能力（BatchGetTmpDownloadUrlAsync）"**不可行**：
+//   SDK 对该方法的注释原文——"本接口仅支持下载云文档而非云空间中的资源文件。
+//   如要下载云空间中的资源文件，需调用[下载文件]接口"。即云空间资源文件**只能**走二进制接口。
 //
-// 本工具的语义恰恰是「下载字节 → 交宿主 stager 落盘 → 只回填元信息」，字节不进模型上下文，
-// 属 B-2 的**受控出口**而非违规。但 B-2 守卫**没有豁免机制**。
-// （另核实：F-10 原方案提出的「扩展 IFeishuAttachmentStager」其实**不需要** ——
-//   stager 已作为软依赖挂在 DriveWriteTools 上，其 StageAsync 本就接受 AttachmentSource.Content。
-//   也就是说 F-10 的其余部分都成立，唯独缺一个与 B-2 和解的表达方式。）
+// 【仍阻塞】`output_schema` 由 **Source 方法的返回类型**推导（CuratedToolScanner.ValidateReturnType
+//   → TypeSchemaResolver.ResolveOutputSchema），而本工具的 Source 返回 `Task<byte[]?>` ⇒
+//   生成的 output_schema 是 `{"type":"string","format":"binary"}`，会**告诉模型"本工具返回二进制"**，
+//   与该工具实际返回的"本地路径/大小/Content-Type"元信息**矛盾**（对模型而言是假事实）。
+//   `[FeishuTool]` 目前**没有** output_schema 覆盖能力。
 //
-// ⇒ 三条可选出路（下一轮择一）：
-//   ① 给 B-2 增加**自声明豁免**：工具在 Description 里显式声明「字节不进上下文」，
-//      且守卫额外校验其执行器确实注入 IFeishuAttachmentStager；
-//   ② 改用平台「返回临时 URL」的能力（如 BatchGetTmpDownloadUrlAsync），完全不碰二进制方法
-//      —— 守卫推荐的修法，代价是 URL 有有效期；
-//   ③ 维持回滚，把下载能力整体留在工具面之外。
-//
-// 在这三条里选定之前，**不落 F-10**，避免留下零容忍守卫的红灯。
+// ⇒ 落地 F-10 还差一个小能力（择一，属独立设计项）：
+//   ⓐ 给 `[FeishuTool]` 加 output_schema 覆盖（如 `OutputSchema = "…"` 或命名形态）；
+//   ⓑ 或让"受控二进制出口"这条路径**不推导** output_schema（留空），由 Description 描述结果形状。
+//   在选定之前不落 F-10 —— 避免交付一个"Schema 与实现互相矛盾"的工具。

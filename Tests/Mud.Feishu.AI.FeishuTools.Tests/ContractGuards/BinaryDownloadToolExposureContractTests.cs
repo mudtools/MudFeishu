@@ -77,10 +77,20 @@ public class BinaryDownloadToolExposureContractTests
             .Select(static entry => entry.Split('|')[0])
             .ToHashSet(StringComparer.Ordinal);
 
-        // R5 / F-10：<b>自声明豁免</b>。`drive.download_file` 是受控下载出口——
+        // R5 / F-10：<b>挣得的豁免</b>。`drive.download_file` 是受控下载出口——
         // 二进制由宿主 stager 落盘，工具结果只含本地路径/大小/Content-Type。
         // 它必须**显式声明**豁免（Description 里含 no-bytes-in-context），否则本守卫照旧报红。
         // 豁免是 opt-in 的：新工具若指向二进制方法而不声明，一律拦下。
+        //
+        // ⚠️ **声明本身不足以豁免**（R5 / S-24）：`no-bytes-in-context` 只是一个字符串，
+        //    若仅凭它放行，任何人都能靠**改一行描述**关掉本零容忍守卫，而工具实际仍可能把字节
+        //    回填进结果。故放行的前提是**核验已挣得**：该工具的执行器必须
+        //    ① 注入 `IFeishuAttachmentStager`（字节交给宿主落盘边界，而非回填结果）；
+        //    ② 调用 `DownloadedContentGuard.ShouldRejectForJsonErrorBody`（错误体不得落盘）。
+        //    核验不通过的"豁免"会被当作违规报出（见下方 VerifyExemptions）。
+        //
+        //    历史：本机制此前**被收集却从未被使用**（`binarySafeTools` 只在第 84 行赋值），
+        //    等于"看着存在但完全不生效"——F-10 因此长期处于回滚状态。
         var binarySafeTools = CollectBinarySafeTools();
 
         var violations = new List<string>();
@@ -88,11 +98,14 @@ public class BinaryDownloadToolExposureContractTests
         {
             // Source 形如 "IFeishuTenantV1DriveFiles.BatchQueryMetasAsync"（也允许带命名空间前缀）。
             var referenced = source.Split('.').Last();
-            if (binaryNames.Contains(referenced))
+            if (binaryNames.Contains(referenced) && !binarySafeTools.Contains(toolName))
             {
                 violations.Add($"{toolFile}::{toolName} → Source=\"{source}\"");
             }
         }
+
+        // 豁免必须"挣得"：声明了标记但执行器未落实两道防线的，按违规报出。
+        violations.AddRange(VerifyExemptions());
 
         violations.Should().BeEmpty(
             "以下工具的 [FeishuTool(Source=…)] 指向了返回二进制的 SDK 方法 ⇒ 二进制会被回填进工具 JSON 结果"
@@ -111,7 +124,7 @@ public class BinaryDownloadToolExposureContractTests
 
         foreach (var file in EnumerateFiles(ToolInterfacesDirectory))
         {
-            foreach (var (toolName, block) in SplitToolMethodBlocks(File.ReadAllText(file)))
+            foreach (var (toolName, block) in SplitToolMethodBlocks(ReadSourceWithoutComments(file)))
             {
                 if (Regex.IsMatch(block, BinaryReturnPattern))
                 {
@@ -191,7 +204,7 @@ public class BinaryDownloadToolExposureContractTests
         foreach (var path in EnumerateFiles(ToolInterfacesDirectory))
         {
             var fileName = Path.GetFileName(path);
-            foreach (var (toolName, block) in SplitToolMethodBlocks(File.ReadAllText(path)))
+            foreach (var (toolName, block) in SplitToolMethodBlocks(ReadSourceWithoutComments(path)))
             {
                 var source = Regex.Match(block, @"Source\s*=\s*""(?<value>[^""]+)""");
                 if (source.Success)
@@ -201,6 +214,34 @@ public class BinaryDownloadToolExposureContractTests
             }
         }
     }
+
+    /// <summary>
+    /// 读取源文件并<b>丢弃整行注释</b>（行首为 <c>//</c> / <c>///</c>）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么必须丢</b>：本守卫按 <c>[FeishuTool(</c> 切块，而块边界是"到下一个 <c>[FeishuTool(</c>"，
+    /// 因此<b>两个工具之间的注释会落进前一个工具的块里</b>。于是注释里只要提到被禁的形态
+    /// （标记名、<c>Task&lt;byte[]?&gt;</c>），前一个工具就会被<b>误判</b>。
+    /// 实测撞到过两次：一次是说明注释提到豁免标记 ⇒ 前一个工具被当成"未挣得的豁免"；
+    /// 一次是注释里写了 <c>Task&lt;byte[]?&gt;</c> ⇒ 前一个工具被当成"声明了二进制返回类型"。
+    /// </para>
+    /// <para>
+    /// <b>为什么只丢"整行"注释</b>：行内 <c>//</c> 可能出现在字符串字面量里（如描述中的
+    /// <c>https://…</c> 链接），按 <c>//</c> 粗暴截断会把链接后半段（甚至其后的标记）一并切掉。
+    /// 只处理行首即注释的行，既能消灭上述误判，又不会碰字符串内容；即便漏判，
+    /// 方向也是"豁免不成立 ⇒ 报违规"，属 fail-safe。
+    /// </para>
+    /// </remarks>
+    private static string ReadSourceWithoutComments(string path)
+        => StripFullLineComments(File.ReadAllText(path));
+
+    /// <summary>同一判定逻辑的可测重载（单测须测<b>实现本身</b>，而不是它的副本）。</summary>
+    internal static string StripFullLineComments(string source)
+        => string.Join(
+            "\n",
+            source.Split('\n').Where(static line =>
+                !line.TrimStart().StartsWith("//", StringComparison.Ordinal)));
 
     private static IEnumerable<string> EnumerateFiles(string relativeDirectory)
     {
@@ -257,6 +298,253 @@ public class BinaryDownloadToolExposureContractTests
     /// 判据：<c>[FeishuTool("name", … Description = "…no-bytes-in-context…")]</c>。
     /// 用「声明块内是否出现该标记」而非「文件内是否出现」，避免一个文件里多个工具时互相冒名顶替。
     /// </remarks>
+    /// <summary>
+    /// <b>R5 / S-24</b>：核验每一处 <c>no-bytes-in-context</c> 豁免是否<b>已挣得</b>。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 判据放在<b>实现</b>而非<b>声明</b>上：光在描述里写一句标记不构成豁免资格，
+    /// 还必须能在执行器源码里看到两道防线真的落地：
+    /// ① 执行器类注入 <c>IFeishuAttachmentStager</c>（<b>非可空</b> ⇒ 与既有上传工具同款软缺席语义：
+    ///    宿主没配落盘器时该工具<b>不进注册表</b>，而不是运行期才失败）；
+    /// ② 绑定方法体内调用 <c>ShouldRejectForJsonErrorBody</c>（B-2 的错误体防线）。
+    /// </para>
+    /// <para>
+    /// <b>核到"文件级 + 类级"的粒度</b>：绑定与构造写在同一个执行器类里，
+    /// 故按「包含该绑定的 <c>internal sealed class</c> 段」判定 —— 比全文件匹配更紧，
+    /// 又不必解析语法树（本仓契约守卫一贯用源码扫描，避免引入 Roslyn 依赖）。
+    /// </para>
+    /// </remarks>
+    private static IReadOnlyList<string> VerifyExemptions()
+    {
+        var root = FindRepositoryRoot();
+        var curation = Directory
+            .GetFiles(Path.Combine(root, "Mud.Feishu.AI.FeishuTools", "Curation"), "*.cs", SearchOption.AllDirectories)
+            .Select(static path => (Path.GetFileName(path), ReadSourceWithoutComments(path)))
+            .ToArray();
+        var executors = Directory
+            .GetFiles(Path.Combine(root, "Mud.Feishu.AI.FeishuTools", "Internal"), "*.cs", SearchOption.AllDirectories)
+            .Select(static path => (Path.GetFileName(path), ReadSourceWithoutComments(path)))
+            .ToArray();
+
+        return FindUnearnedExemptions(curation, executors);
+    }
+
+    /// <summary>
+    /// 核验内核（<b>纯函数，便于单测反向自证</b>）：返回"未挣得豁免"的原因列表。
+    /// </summary>
+    /// <param name="curationFiles">声明面文件（文件名, 源码）。</param>
+    /// <param name="executorFiles">执行器文件（文件名, 源码）。</param>
+    internal static IReadOnlyList<string> FindUnearnedExemptions(
+        IEnumerable<(string FileName, string Source)> curationFiles,
+        IEnumerable<(string FileName, string Source)> executorFiles)
+    {
+        const string marker = "no-bytes-in-context";
+        var reasons = new List<string>();
+        var executorList = executorFiles.ToArray();
+
+        foreach (var (fileName, source) in curationFiles)
+        {
+            // 按 [FeishuTool( 分块：块 = 该工具的属性块 + 其后的接口声明。
+            var starts = Regex.Matches(source, @"\[FeishuTool\s*\(");
+            for (var i = 0; i < starts.Count; i++)
+            {
+                var from = starts[i].Index;
+                var to = i + 1 < starts.Count ? starts[i + 1].Index : source.Length;
+                var block = source[from..to];
+
+                // ⚠️ 标记只在**属性块内**（`[FeishuTool(…)]` 到配对的 `)]`）才算数。
+                //    若按"到下一个 [FeishuTool( 为止"判定，则**两个工具之间的注释**会被算进
+                //    前一个工具的块里 —— 实测撞到过：在新工具的说明注释里提到标记，
+                //    结果前一个工具被误判为"声明了豁免却未挣得"。属性块边界是唯一的判据。
+                var attributeEnd = block.IndexOf(")]", StringComparison.Ordinal);
+                var attributeBlock = attributeEnd > 0 ? block[..attributeEnd] : block;
+
+                if (!attributeBlock.Contains(marker, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                var toolName = Regex.Match(block, @"\[FeishuTool\s*\(\s*""(?<name>[^""]+)""").Groups["name"].Value;
+                var interfaceName = Regex.Match(block, @"public\s+interface\s+(?<name>\w+)").Groups["name"].Value;
+
+                if (toolName.Length == 0 || interfaceName.Length == 0)
+                {
+                    reasons.Add($"{fileName}: 声明了 {marker} 但无法解析工具名/接口名（工具名='{toolName}'）");
+                    continue;
+                }
+
+                var binding = $"FeishuToolHandler(typeof({interfaceName}))";
+                var host = executorList.FirstOrDefault(entry => entry.Source.Contains(binding, StringComparison.Ordinal));
+                if (host.Source is null)
+                {
+                    reasons.Add(
+                        $"'{toolName}': 声明了 {marker} 豁免，但全仓找不到绑定该接口（{interfaceName}）的执行器 —— "
+                        + "没有任何实现可核验，豁免不成立");
+                    continue;
+                }
+
+                var classSegment = ExtractContainingClass(host.Source, binding);
+
+                // ① 注入落盘器（非可空 ⇒ 软缺席语义）。
+                if (!Regex.IsMatch(classSegment, @"(?<!\?)IFeishuAttachmentStager\s+\w+\s*[,)]"))
+                {
+                    reasons.Add(
+                        $"'{toolName}'（{host.FileName}）: 声明豁免，但执行器未注入**非可空**的 IFeishuAttachmentStager —— "
+                        + "无法保证字节交给宿主落盘边界（且软缺席语义缺失：宿主未配落盘器时该工具应不进注册表）");
+                }
+
+                // ② 调用错误体防线（B-2 的 DoD：错误 JSON 不得落盘）。
+                if (!host.Source.Contains("ShouldRejectForJsonErrorBody", StringComparison.Ordinal))
+                {
+                    reasons.Add(
+                        $"'{toolName}'（{host.FileName}）: 声明豁免，但执行器未调用 "
+                        + "DownloadedContentGuard.ShouldRejectForJsonErrorBody —— 平台错误体会被当文件落盘");
+                }
+            }
+        }
+
+        return reasons;
+    }
+
+    /// <summary>取出包含给定锚点的 <c>internal sealed class</c> 段（到下一个类声明为止）。</summary>
+    private static string ExtractContainingClass(string source, string anchor)
+    {
+        var anchorIndex = source.IndexOf(anchor, StringComparison.Ordinal);
+        if (anchorIndex < 0)
+        {
+            return string.Empty;
+        }
+
+        var lastClass = source.LastIndexOf("internal sealed class", anchorIndex, StringComparison.Ordinal);
+        if (lastClass < 0)
+        {
+            return source[..anchorIndex];
+        }
+
+        var nextClass = source.IndexOf("internal sealed class", anchorIndex, StringComparison.Ordinal);
+        return nextClass < 0 ? source[lastClass..] : source[lastClass..nextClass];
+    }
+
+    /// <summary>
+    /// <b>核验器自证</b>：用合成源码证明它<b>会失败</b>——否则"豁免全部合规"可能只是核验恒真。
+    /// </summary>
+    [Fact]
+    public void BinarySafeExemption_ShouldDetectUnearnedClaim()
+    {
+        const string curation = """
+            [FeishuTool("fake.download",
+                Description = "受控下载出口（no-bytes-in-context）。")]
+            public interface IFakeDownloadTool
+            {
+                Task<string> DownloadAsync();
+            }
+            """;
+
+        // ① 只有声明、执行器什么都没做 ⇒ 必须报出（这正是"改一行描述即可关掉守卫"的路径）。
+        var nothingDone = FindUnearnedExemptions(
+            [("Curation.cs", curation)],
+            [("Internal.cs", "[FeishuToolHandler(typeof(IFakeDownloadTool))] public Task<X> DownloadAsync() { }")]);
+
+        nothingDone.Should().HaveCount(2,
+            "既未注入 stager、也未调用错误体防线 ⇒ 两条理由都要报出，且**不得**放过");
+
+        // ② 只注入了落盘器、没做错误体自检 ⇒ 仍必须报出（少一道防线即不合格）。
+        var noGuardCall = FindUnearnedExemptions(
+            [("Curation.cs", curation)],
+            [("Internal.cs", """
+                internal sealed class FakeTools(IFeishuAttachmentStager stager)
+                {
+                    [FeishuToolHandler(typeof(IFakeDownloadTool))]
+                    public Task<X> DownloadAsync() => throw new System.NotSupportedException();
+                }
+                """)]);
+
+        noGuardCall.Should().ContainSingle(
+            reason => reason.Contains("ShouldRejectForJsonErrorBody", StringComparison.Ordinal),
+            "注入了落盘器但缺错误体自检 ⇒ 必须仍被拦下");
+
+        // ③ 两道防线齐备 ⇒ 放行（否则豁免机制形同不存在，F-10 永远落不了地）。
+        var earned = FindUnearnedExemptions(
+            [("Curation.cs", curation)],
+            [("Internal.cs", """
+                internal sealed class FakeTools(IFeishuAttachmentStager stager)
+                {
+                    [FeishuToolHandler(typeof(IFakeDownloadTool))]
+                    public Task<X> DownloadAsync()
+                    {
+                        _ = DownloadedContentGuard.ShouldRejectForJsonErrorBody(default, null, out _);
+                        throw new System.NotSupportedException();
+                    }
+                }
+                """)]);
+
+        earned.Should().BeEmpty("两道防线齐备的豁免必须放行");
+    }
+
+    /// <summary>
+    /// <b>注释不得参与判定</b>：两个工具之间的注释会落进前一个工具的块里，
+    /// 若注释里的"违禁形态"字面量被当真，前一个工具会被误判。
+    /// </summary>
+    /// <remarks>
+    /// 实测撞到过两次（同一根因）：① 说明注释提到豁免标记 ⇒ 前一个工具被当成"未挣得的豁免"；
+    /// ② 注释里写了 <c>Task&lt;byte[]?&gt;</c> ⇒ 前一个工具被当成"声明了二进制返回类型"。
+    /// 本用例把"注释被忽略"变成机械断言，避免第三人再踩。
+    /// </remarks>
+    [Fact]
+    public void Comments_ShouldNotParticipateInScanning()
+    {
+        // 第一块是正常工具；紧随其后的**整行注释**里刻意写出两处违禁形态字面量。
+        const string source = """
+            [FeishuTool("fake.normal", Description = "普通工具。")]
+            public interface IFakeNormalTool
+            {
+                Task<string> DoAsync();
+            }
+
+            // 下面这段注释提到 no-bytes-in-context 标记，并写出 Task<byte[]?> 形态——
+            // 它们必须被扫描忽略，否则上面的 fake.normal 会被误判。
+            [FeishuTool("fake.next", Description = "下一个工具。")]
+            public interface IFakeNextTool
+            {
+                Task<string> DoAsync();
+            }
+            """;
+
+        // 断言**实现本身**（不是逻辑副本）。
+        var kept = StripFullLineComments(source);
+
+        kept.Should().NotContain("no-bytes-in-context", "整行注释必须被丢弃");
+        kept.Should().NotContain("Task<byte[]?>", "注释里的二进制形态字面量必须被丢弃");
+        kept.Should().Contain("fake.normal", "代码行必须原样保留（剥离只针对注释）");
+        kept.Should().Contain("fake.next", "代码行必须原样保留（剥离只针对注释）");
+
+        // 反向自证：未剥离的原文里这些字面量确实存在 ⇒ 若不剥离就会误判（本断言因此不是多余的）。
+        source.Should().Contain("no-bytes-in-context");
+        source.Should().Contain("Task<byte[]?>");
+    }
+
+    /// <summary>
+    /// 反向自证：若把 <c>no-bytes-in-context</c> 换成别的词，核验必须<b>不再触发</b>
+    /// （证明判据确实锚在标记上，而不是恒真）。
+    /// </summary>
+    [Fact]
+    public void BinarySafeExemption_ShouldNotTriggerWithoutMarker()
+    {
+        const string withoutMarker = """
+            [FeishuTool("fake.download", Description = "普通下载工具。")]
+            public interface IFakeDownloadTool
+            {
+                Task<string> DownloadAsync();
+            }
+            """;
+
+        FindUnearnedExemptions(
+            [("Curation.cs", withoutMarker)],
+            [("Internal.cs", "[FeishuToolHandler(typeof(IFakeDownloadTool))] public Task<X> DownloadAsync() { }")])
+            .Should().BeEmpty("未声明标记就不属于豁免路径（由核心断言按违规处理）");
+    }
+
     private static HashSet<string> CollectBinarySafeTools()
     {
         const string marker = "no-bytes-in-context";
@@ -266,7 +554,7 @@ public class BinaryDownloadToolExposureContractTests
             FindRepositoryRoot(), "Mud.Feishu.AI.FeishuTools", "Curation");
         foreach (var file in Directory.GetFiles(root, "*.cs", SearchOption.AllDirectories))
         {
-            var text = File.ReadAllText(file);
+            var text = ReadSourceWithoutComments(file);
 
             // 以 [FeishuTool( 为分隔，逐块判定：块内出现标记才算该工具声明了豁免。
             var chunks = text.Split("\"[FeishuTool(\"", StringSplitOptions.None);

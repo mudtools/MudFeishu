@@ -77,6 +77,12 @@ public class BinaryDownloadToolExposureContractTests
             .Select(static entry => entry.Split('|')[0])
             .ToHashSet(StringComparer.Ordinal);
 
+        // R5 / F-10：<b>自声明豁免</b>。`drive.download_file` 是受控下载出口——
+        // 二进制由宿主 stager 落盘，工具结果只含本地路径/大小/Content-Type。
+        // 它必须**显式声明**豁免（Description 里含 no-bytes-in-context），否则本守卫照旧报红。
+        // 豁免是 opt-in 的：新工具若指向二进制方法而不声明，一律拦下。
+        var binarySafeTools = CollectBinarySafeTools();
+
         var violations = new List<string>();
         foreach (var (toolFile, toolName, source) in CollectToolSourceReferences())
         {
@@ -243,5 +249,52 @@ public class BinaryDownloadToolExposureContractTests
 
         directory.Should().NotBeNullOrEmpty("测试必须能定位仓库根目录（以 Mud.Feishu.slnx 为锚）");
         return directory!;
+    }
+    /// <summary>
+    /// 收集<b>显式声明</b>了「字节不进上下文」豁免的工具名。
+    /// </summary>
+    /// <remarks>
+    /// 判据：<c>[FeishuTool("name", … Description = "…no-bytes-in-context…")]</c>。
+    /// 用「声明块内是否出现该标记」而非「文件内是否出现」，避免一个文件里多个工具时互相冒名顶替。
+    /// </remarks>
+    private static HashSet<string> CollectBinarySafeTools()
+    {
+        const string marker = "no-bytes-in-context";
+        var result = new HashSet<string>(StringComparer.Ordinal);
+
+        var root = Path.Combine(
+            FindRepositoryRoot(), "Mud.Feishu.AI.FeishuTools", "Curation");
+        foreach (var file in Directory.GetFiles(root, "*.cs", SearchOption.AllDirectories))
+        {
+            var text = File.ReadAllText(file);
+
+            // 以 [FeishuTool( 为分隔，逐块判定：块内出现标记才算该工具声明了豁免。
+            var chunks = text.Split("\"[FeishuTool(\"", StringSplitOptions.None);
+            for (var i = 1; i < chunks.Length; i++)
+            {
+                var chunk = chunks[i];
+                var quote = chunk.IndexOf('"');
+                if (quote <= 0)
+                {
+                    continue;
+                }
+
+                var name = chunk[..quote];
+
+                // 只看本工具的属性块（到下一个顶层声明为止），避免跨工具串味。
+                var end = chunk.IndexOf(")]", StringComparison.Ordinal);
+                var block = end > 0 ? chunk[..end] : chunk;
+                if (block.Contains(marker, StringComparison.Ordinal))
+                {
+                    result.Add(name);
+                }
+            }
+        }
+
+        result.Should().NotBeEmpty(
+            "未找到任何声明了 no-bytes-in-context 的工具——若豁免机制已废弃请移除本豁免，"
+            + "否则说明标记形态变了（假绿）");
+
+        return result;
     }
 }

@@ -93,6 +93,16 @@ public static class FeishuToolsServiceCollectionExtensions
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure).AddFeishuWikiToolsCore();
 
+    /// <summary>按域注册 Minutes 工具（2 个只读，R5/F-11）。</summary>
+    /// <remarks>
+    /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**：
+    /// 少任何一处都会让 minutes 工具在对应入口下静默缺席（S-13）。
+    /// </remarks>
+    public static IServiceCollection AddFeishuMinutesReadTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure).AddFeishuMinutesReadToolsCore();
+
     /// <summary>按域注册 Search 工具（1 个只读）。</summary>
     public static IServiceCollection AddFeishuSearchTools(
         this IServiceCollection services,
@@ -425,7 +435,14 @@ public static class FeishuToolsServiceCollectionExtensions
             .AddFeishuTaskToolsCore()
             .AddFeishuAttachmentToolsCore()
             .AddFeishuKnowledgeSearchToolsCore()
-            .AddFeishuCapabilityLookupToolsCore();
+
+                    // R5 / F-11（S-13 修复）：minutes 域执行器 MinutesReadTools。
+                    // ⚠️ 本行不是"登记一下"——**漏掉它会让 minutes.* 两个工具静默不入注册表**：
+                    // 生成器照常产出 AddFeishuMinutesReadToolsCore（编译通过、无任何诊断），
+                    // 但只有本清单会调用它。这张表是**人工维护**的，故已加守卫
+                    // ToolDomainCores_ShouldAllBeWiredIntoTheAggregator 锁死"生成的 Core 必须被聚合"。
+                    .AddFeishuMinutesReadToolsCore()
+                    .AddFeishuCapabilityLookupToolsCore();
 
     /// <summary>
     /// 写域工具核心批量注册（W4 抽取：消除 AddFeishuTools 与 AddFeishuWriteTools 的重复链）。

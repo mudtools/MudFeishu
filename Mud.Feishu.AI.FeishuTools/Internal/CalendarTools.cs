@@ -262,7 +262,7 @@ internal sealed class CalendarTools(
     [FeishuToolHandler(typeof(IFeishuCalendarAddEventAttendeesTool))]
     public Task<FeishuToolResult> AddEventAttendeesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
-        var executor = new ToolExecutor(FeishuToolNames.CalendarAddEventAttendees);
+        var executor = new ToolExecutor(FeishuToolNames.CalendarAddEventAttendees, _maxResultLength);
         return executor.RunAsync(async () =>
         {
             var args = CalendarAddEventAttendeesArgs.Unpack(arguments);

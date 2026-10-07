@@ -43,7 +43,11 @@ public class DomainRegistrarTests
         var registry = provider.GetRequiredService<FeishuToolRegistry>();
         registry.AllTools.Select(t => t.Name).Should().BeEquivalentTo(
             [FeishuToolNames.BitableListTables, FeishuToolNames.BitableListFields,
-             FeishuToolNames.BitableQueryRecords, FeishuToolNames.BitableGetRecordsByIds],
+             FeishuToolNames.BitableQueryRecords, FeishuToolNames.BitableGetRecordsByIds,
+
+             // R5 / F-11：视图侧是**软依赖**（可空），故视图客户端缺席时这两个工具
+             // 仍会注册在案（软缺席 = 执行期报错，而非"工具不存在"）。
+             FeishuToolNames.BitableListViews, FeishuToolNames.BitableGetView],
             "单域注册：其余域工具不进注册表（域客户端缺席 → 注册器缺席）");
         registry.EnabledTools.Should().BeEmpty();
     }

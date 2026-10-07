@@ -240,6 +240,74 @@ public class ToolExecutorSkeletonGuards
             0, "ThreadId 读取点已消失——本守卫的正则会先于行为失效（假绿）");
     }
 
+    /// <summary>
+    /// <b>禁止"无预算的执行器 + 截断版出口"组合</b>（R5 实施期发现的真实缺陷类别）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>new ToolExecutor(name)</c>（单参）把上限置为 <b>0</b>；而 <c>FromApi(...)</c>
+    /// 是<b>截断版</b>出口，内部 <c>Truncate(text, 0)</c> 会把 <c>maxLength &lt; 1</c>
+    /// 钳到 <b>1</b> ⇒ 工具结果被截成 <b>1 个字符</b>。
+    /// </para>
+    /// <para>
+    /// <b>这是本轮实测抓到的真实 bug（不是假想）</b>：<c>docx.import_markdown</c>
+    /// 与 <c>calendar.add_event_attendees</c> 两处正是该组合，结果实为 1 字符。
+    /// 二者已修（前者改走 <c>FromApiUntruncated</c>，后者补 <c>_maxResultLength</c>）。
+    /// </para>
+    /// <para>
+    /// 组合本身编译期完全合法、测试若不断言内容也照样绿 ⇒ <b>只能靠守卫</b>。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void ToolExecutor_WithoutBudget_ShouldNotUseTheTruncatingExit()
+    {
+        var violations = new List<string>();
+        var scanned = 0;
+
+        var directory = Path.Combine(
+            FindRepositoryRoot(), ExecutorDirectory.Replace('/', Path.DirectorySeparatorChar));
+
+        foreach (var file in Directory.GetFiles(directory, "*Tools.cs", SearchOption.TopDirectoryOnly))
+        {
+            var lines = File.ReadAllLines(file);
+            for (var i = 0; i < lines.Length; i++)
+            {
+                var match = Regex.Match(lines[i], @"new ToolExecutor\((?<args>[^)]*)\)");
+                if (!match.Success || match.Groups["args"].Value.Contains(','))
+                {
+                    continue; // 只关心单参（无预算）构造
+                }
+
+                scanned++;
+
+                // 窗口必须**限定在本方法体内**：到下个 [FeishuToolHandler] 或下个
+                // new ToolExecutor( 为止。若用固定行数，会跨到下一个方法而误判
+                // （实测：delete_blocks 的窗口曾"看到"了 import_markdown 的出口）。
+                var end = i + 1;
+                while (end < lines.Length
+                    && !lines[end].Contains("[FeishuToolHandler(", StringComparison.Ordinal)
+                    && !lines[end].Contains("new ToolExecutor(", StringComparison.Ordinal))
+                {
+                    end++;
+                }
+
+                var window = string.Join("\n", lines.Skip(i + 1).Take(end - i - 1));
+                if (Regex.IsMatch(window, @"(?<!Untruncated)FromApi\("))
+                {
+                    violations.Add(
+                        $"{Path.GetFileName(file)}:{i + 1} —— 单参 ToolExecutor 配 FromApi(截断版)，"
+                        + "结果会被截成 1 个字符；请改走 FromApiUntruncated 或传入 _maxResultLength");
+                }
+            }
+        }
+
+        scanned.Should().BeGreaterThan(0, "未扫到任何 ToolExecutor 构造——扫描正则坏了（假绿），请先修守卫");
+
+        violations.Should().BeEmpty(
+            "存在『无预算执行器 + 截断版出口』组合（结果会被截成 1 字符）：{0}",
+            string.Join(" | ", violations));
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = AppContext.BaseDirectory;

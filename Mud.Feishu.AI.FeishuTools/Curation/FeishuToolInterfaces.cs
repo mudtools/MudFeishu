@@ -100,6 +100,45 @@ public interface IFeishuBitableRecordsByIdsTool
         CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// 工具接口：bitable.list_views（映射 <c>IFeishuTenantV1BitableView.GetViewsPageListAsync</c>）。
+/// </summary>
+/// <remarks>
+/// R5 / F-11：补齐"**先看视图、再取记录**"的链路首环。此前模型的唯一路径是
+/// <c>bitable.query_records</c>（面向整表），无法按视图（筛选/分组后的视角）取数。
+/// </remarks>
+[FeishuTool("bitable.list_views",
+    Description = "列出数据表下的全部视图（名称/类型/可见范围）。取记录前先用它确定 view_id，再传给 bitable.query_records 按视图取数。只读，需 bitable:app:readonly。",
+    RequiredScopes = ["bitable:app:readonly"],
+    Source = "IFeishuTenantV1BitableView.GetViewsPageListAsync")]
+public interface IFeishuBitableListViewsTool
+{
+    /// <summary>列出视图。</summary>
+    /// <returns>白名单投影后的 JSON 文本（views: view_id/view_name/view_type + total）。</returns>
+    Task<string> ListViewsAsync(
+        [ToolParameter("app_token", "多维表格 AppToken（形如 bascnXxx）", Required = true)] string app_token,
+        [ToolParameter("table_id", "数据表 ID（形如 tblXxx）", Required = true)] string table_id,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：bitable.get_view（映射 <c>IFeishuTenantV1BitableView.GetViewAsync</c>）。
+/// </summary>
+[FeishuTool("bitable.get_view",
+    Description = "按 view_id 获取单个视图的详情（名称/类型/可见范围）。确认某个视图的具体配置时使用。只读，需 bitable:app:readonly。",
+    RequiredScopes = ["bitable:app:readonly"],
+    Source = "IFeishuTenantV1BitableView.GetViewAsync")]
+public interface IFeishuBitableGetViewTool
+{
+    /// <summary>获取视图详情。</summary>
+    /// <returns>白名单投影后的 JSON 文本（view_id/view_name/view_type）。</returns>
+    Task<string> GetViewAsync(
+        [ToolParameter("app_token", "多维表格 AppToken（形如 bascnXxx）", Required = true)] string app_token,
+        [ToolParameter("table_id", "数据表 ID（形如 tblXxx）", Required = true)] string table_id,
+        [ToolParameter("view_id", "视图 ID（形如 veiwXxx，可由 bitable.list_views 获得）", Required = true)] string view_id,
+        CancellationToken cancellationToken = default);
+}
+
 // ─────────────────────────── Docx（2 个） ───────────────────────────
 
 /// <summary>工具接口：docx.get_raw_content（映射 <c>IFeishuTenantV1Docx.GetDocumentRawContentAsync</c>）。</summary>

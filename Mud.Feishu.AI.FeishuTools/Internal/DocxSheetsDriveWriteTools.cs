@@ -370,6 +370,11 @@ internal sealed class DocxWriteTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, 
     [FeishuToolHandler(typeof(IFeishuDocxImportMarkdownTool))]
     public Task<FeishuToolResult> ImportMarkdownAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
+        // ⚠️ 必须用**非截断**出口：本类（DocxWriteTools）没有 IOptions，拿不到
+        // MaxToolResultLength，而 `FromApi(...)`（截断版）在 maxResultLength=0 时
+        // 会把结果截到 **1 个字符**（Truncate 内部 `maxLength<1 → 1`）。
+        // 与其拿到一个 1 字符的废结果，不如完整返回（转换结果体积由输入 markdown 长度决定）。
+        // TODO(S-16)：给 DocxWriteTools 注入 IOptions<FeishuAgentOptions>，改为有预算的截断。
         var executor = new ToolExecutor(FeishuToolNames.DocxImportMarkdown);
         return executor.RunAsync(async () =>
         {
@@ -385,7 +390,7 @@ internal sealed class DocxWriteTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, 
                     new ConvertContentRequest { ContentType = "markdown", Content = args.Markdown! },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
-            return executor.FromApi(outcome, ProjectContentConvert);
+            return executor.FromApiUntruncated(outcome, ProjectContentConvert);
         });
     }
 

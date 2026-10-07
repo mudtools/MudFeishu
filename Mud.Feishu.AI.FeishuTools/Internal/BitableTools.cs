@@ -19,7 +19,12 @@ internal sealed class BitableTools(
     Mud.Feishu.IFeishuTenantV1BitableAppTable appTableClient,
     Mud.Feishu.IFeishuTenantV1BitableField fieldClient,
     Mud.Feishu.IFeishuTenantV1BitableRecord recordClient,
-    IOptions<FeishuAgentOptions> options)
+    IOptions<FeishuAgentOptions> options,
+
+    // R5 / F-11：视图客户端为**软依赖**（可空 ⇒ 缺席时本执行器其余工具仍全部在位，
+    // 仅 bitable.list_views / get_view 两个工具缺席）。若声明为硬依赖，
+    // 宿主未启用 AddBitableApi 的视图侧时会**整域注册器缺席**（连带拖垮 4 个既有工具）。
+    Mud.Feishu.IFeishuTenantV1BitableView? viewClient = null)
 {
     private readonly Mud.Feishu.IFeishuTenantV1BitableAppTable _appTableClient = appTableClient
         ?? throw new ArgumentNullException(nameof(appTableClient));
@@ -27,6 +32,7 @@ internal sealed class BitableTools(
         ?? throw new ArgumentNullException(nameof(fieldClient));
     private readonly Mud.Feishu.IFeishuTenantV1BitableRecord _recordClient = recordClient
         ?? throw new ArgumentNullException(nameof(recordClient));
+    private readonly Mud.Feishu.IFeishuTenantV1BitableView? _viewClient = viewClient;
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>bitable.list_tables：列出数据表（白名单 table_id/name/revision）。</summary>
@@ -234,5 +240,88 @@ internal sealed class BitableTools(
         }
 
         return envelope;
+    }
+
+    /// <summary>
+    /// 取视图客户端；缺席时给出<b>可执行</b>提示（宿主该启用什么），而不是空引用。
+    /// </summary>
+    private Mud.Feishu.IFeishuTenantV1BitableView RequireViewClient(string toolName)
+        => _viewClient
+            ?? throw new ArgumentException(
+                $"{toolName} 需要 IFeishuTenantV1BitableView——宿主须启用 AddBitableApi 的视图侧客户端；"
+                + "未启用时本工具不在工具列表中（软缺席，不影响 bitable 其它工具）");
+
+    /// <summary>bitable.list_views：列出数据表下的视图（"先看视图再取记录"的链路首环）。</summary>
+    [FeishuToolHandler(typeof(IFeishuBitableListViewsTool))]
+    public Task<FeishuToolResult> ListViewsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.BitableListViews, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var args = BitableListViewsArgs.Unpack(arguments);
+
+            var outcome = FeishuApiResultReader.Read(await RequireViewClient(executor.ToolName)
+                .GetViewsPageListAsync(args.AppToken, args.TableId, cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+
+            return executor.FromApi(outcome, data =>
+            {
+                var views = new JsonArray();
+                foreach (var view in data.Items ?? [])
+                {
+                    views.Add(new JsonObject
+                    {
+                        ["view_id"] = view.ViewId,
+                        ["view_name"] = view.ViewName,
+                        ["view_type"] = view.ViewType,
+                    });
+                }
+
+                return new JsonObject
+                {
+                    ["views"] = views,
+                    ["total"] = data.Total,
+                    ["has_more"] = data.HasMore,
+                };
+            });
+        });
+    }
+
+    /// <summary>bitable.get_view：按 view_id 取单个视图详情。</summary>
+    [FeishuToolHandler(typeof(IFeishuBitableGetViewTool))]
+    public Task<FeishuToolResult> GetViewAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.BitableGetView, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var args = BitableGetViewArgs.Unpack(arguments);
+
+            var outcome = FeishuApiResultReader.Read(await RequireViewClient(executor.ToolName)
+                .GetViewAsync(args.AppToken, args.TableId, args.ViewId, cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+
+            return executor.FromApi(outcome, data =>
+            {
+                var view = data.View;
+                if (view is null)
+                {
+                    // 空结果哨兵（F-5）：显式告知"没拿到"，而不是返回空对象让模型猜。
+                    return new JsonObject
+                    {
+                        ["found"] = false,
+                        ["view_id"] = args.ViewId,
+                        ["message"] = "未找到该视图，请确认 view_id 是否属于该数据表（可先用 bitable.list_views 取回）。",
+                    };
+                }
+
+                return new JsonObject
+                {
+                    ["found"] = true,
+                    ["view_id"] = view.ViewId,
+                    ["view_name"] = view.ViewName,
+                    ["view_type"] = view.ViewType,
+                };
+            });
+        });
     }
 }

@@ -411,14 +411,14 @@ internal static class ToolResultText
         }
 
         // 逐条删除尾部条目直至整体长度达标（至少保留 1 条，保证「有内容且可读」）。
-        while (array.Count > 1 && root!.ToJsonString().Length > maxLength)
+        while (array.Count > 1 && Mud.Feishu.AI.FeishuTools.Tools.ToolResultJson.ToText(root!).Length > maxLength)
         {
             ((IList<JsonNode?>)array).RemoveAt(array.Count - 1);
         }
 
         root!["truncated"] = true;
         root!["hint"] = $"结果已按 {arrayKey} 截断——请缩小查询范围或用 page_token 翻页";
-        return root!.ToJsonString();
+        return Mud.Feishu.AI.FeishuTools.Tools.ToolResultJson.ToText(root!);
     }
 
     /// <summary>结果文本是否已被截断（OTel 审计属性消费；兼容字符截断与 JSON 感知截断两种标记）。</summary>

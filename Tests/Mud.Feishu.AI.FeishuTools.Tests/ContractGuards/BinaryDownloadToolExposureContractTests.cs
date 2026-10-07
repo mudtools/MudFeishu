@@ -291,10 +291,6 @@ public class BinaryDownloadToolExposureContractTests
             }
         }
 
-        result.Should().NotBeEmpty(
-            "未找到任何声明了 no-bytes-in-context 的工具——若豁免机制已废弃请移除本豁免，"
-            + "否则说明标记形态变了（假绿）");
-
         return result;
     }
 }

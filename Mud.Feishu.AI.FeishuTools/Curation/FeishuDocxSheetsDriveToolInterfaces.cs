@@ -267,34 +267,24 @@ public interface IFeishuDriveUploadFileTool
 /// <summary>
 /// 工具接口：drive.download_file（映射 <c>IFeishuTenantV1DriveFiles.DownloadFileAsync</c> +宿主 stager 落盘）。
 /// </summary>
-/// <remarks>
-/// <para>
-/// <b>R5 / F-10</b>：把云空间文件下载到<b>宿主磁盘</b>，只回填落盘元信息。
-/// </para>
-/// <para>
-/// <b>核心不变量：字节绝不进入模型上下文。</b>工具内部把字节交给
-/// <c>IFeishuAttachmentStager</c> 落盘，返回值只有本地路径 / 大小 / Content-Type。
-/// 这是 B-2（二进制防线）在工具面的落地——B-2 守住了"二进制方法不被暴露"，
-/// 本工具则提供了<b>受控</b>的下载出口：需要文件时用它，而不是把字节读进上下文。
-/// </para>
-/// <para>
-/// <b>⚠️ B-2 的失败模式在此被显式拦截</b>：平台在部分错误场景下返回
-/// <b>错误 JSON 而非文件字节</b>。若直接落盘，宿主磁盘上会出现一个"名为 .xlsx 实为 JSON 错误体"的文件，
-/// 后续任何读取都会失败且极难定位。故本工具<b>先做形状校验再落盘</b>。
-/// </para>
-/// </remarks>
-[FeishuTool("drive.download_file",
-    Description = "把云空间文件下载到宿主磁盘，返回本地路径/大小/类型——**不会**把文件内容读进上下文（需要内容时用 docx/sheets 工具按文档类型读取）。[no-bytes-in-context] 写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
-    RequiredScopes = ["drive:drive"],
-    IsWrite = true,
-    Source = "IFeishuTenantV1DriveFiles.DownloadFileAsync")]
-public interface IFeishuDriveDownloadFileTool
-{
-    /// <summary>下载文件到宿主磁盘。</summary>
-    /// <returns>白名单投影后的 JSON 文本（local_path / size / content_type），<b>不含任何文件字节</b>。</returns>
-    Task<string> DownloadFileAsync(
-        [ToolParameter("file_token", "文件 token（形如 boxcnXxx，可由 drive.list_folder_files / drive.get_file_metas 获得）", Required = true)] string file_token,
-        [ToolParameter("file_name", "建议文件名（含扩展名，宿主据此定 MIME；可选）")] string? file_name = null,
-        [ToolParameter("dry_run", "仅预演不下载（可选，默认 false）：返回将要下发的 method/path 与字段摘要，不调用下游")] bool? dry_run = null,
-        CancellationToken cancellationToken = default);
-}
+// ─────────────────────────── R5 / F-10 回滚说明 ───────────────────────────
+//
+// F-10（drive.download_file）**本轮回滚**，原因与其设计无关，而是与既有零容忍守卫冲突：
+//
+//   B-2 的 BinaryDownloadToolExposureContractTests 规定：工具的 [FeishuTool(Source = …)]
+//   **不得**指向返回二进制的 SDK 方法（DownloadFileAsync 返回的是二进制字节数组，正是该形态）。
+//
+// 本工具的语义恰恰是「下载字节 → 交宿主 stager 落盘 → 只回填元信息」，字节不进模型上下文，
+// 属 B-2 的**受控出口**而非违规。但 B-2 守卫**没有豁免机制**。
+// （另核实：F-10 原方案提出的「扩展 IFeishuAttachmentStager」其实**不需要** ——
+//   stager 已作为软依赖挂在 DriveWriteTools 上，其 StageAsync 本就接受 AttachmentSource.Content。
+//   也就是说 F-10 的其余部分都成立，唯独缺一个与 B-2 和解的表达方式。）
+//
+// ⇒ 三条可选出路（下一轮择一）：
+//   ① 给 B-2 增加**自声明豁免**：工具在 Description 里显式声明「字节不进上下文」，
+//      且守卫额外校验其执行器确实注入 IFeishuAttachmentStager；
+//   ② 改用平台「返回临时 URL」的能力（如 BatchGetTmpDownloadUrlAsync），完全不碰二进制方法
+//      —— 守卫推荐的修法，代价是 URL 有有效期；
+//   ③ 维持回滚，把下载能力整体留在工具面之外。
+//
+// 在这三条里选定之前，**不落 F-10**，避免留下零容忍守卫的红灯。

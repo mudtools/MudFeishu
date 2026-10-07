@@ -178,7 +178,7 @@ public class ToolArgumentShapeContractGuards
             .ToArray();
 
         interfaces.Should().HaveCount(
-            88,
+            87,
             "Curation/ 的工具契约接口数从 72 变为 {0}——新增/删除工具属有意的契约变更，请同步更新本基线"
             + "（若同时看到『文件数没变而接口数变了』，说明有文件被塞进了非契约内容）",
             interfaces.Length);

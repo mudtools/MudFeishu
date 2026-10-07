@@ -28,6 +28,7 @@
     "sheets:spreadsheet:readonly": "电子表格 · 只读（sheets.list_sheets / get_range_values 使用）",
     "task:task": "任务 · 读写（task.create_task 使用）",
     "task:task:readonly": "任务 · 只读（task.list_my_tasks 使用）",
-    "wiki:wiki:readonly": "知识库 · 只读（wiki.get_node / list_nodes 使用）"
+    "wiki:wiki:readonly": "知识库 · 只读（wiki.get_node / list_nodes 使用）",
+  "wiki:wiki": "知识库 · 读写（R5/F-11 新增：wiki.create_node / move_node / move_docs_to_space 使用）"
   }
 }

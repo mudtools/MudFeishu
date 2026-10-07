@@ -86,4 +86,156 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
         ["parent_node_token"] = node?.ParentNodeToken,
         ["has_child"] = node?.HasChild,
     };
+
+    // ────────── R5 / F-11：wiki 写面（此前本域只有读） ──────────
+
+    /// <summary>wiki.create_node：在知识空间下创建节点。</summary>
+    [FeishuToolHandler(typeof(IFeishuWikiCreateNodeTool))]
+    public Task<FeishuToolResult> CreateNodeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.WikiCreateNode, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var args = WikiCreateNodeArgs.Unpack(arguments);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "POST", $"/open-apis/wiki/v2/spaces/{args.SpaceId}/nodes",
+                    ToolDryRun.IdempotencyNote(null),
+                    ("space_id", args.SpaceId.Length), ("title", args.Title.Length)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _wikiNodesClient
+                .CreateSpaceNodeAsync(
+                    args.SpaceId,
+                    new CreateSpaceNodeRequest
+                    {
+                        Title = args.Title,
+                        ObjType = args.ObjType ?? "docx",
+                        ParentNodeToken = args.ParentNodeToken,
+                        NodeType = args.NodeType ?? "origin",
+                    },
+                    cancellationToken)
+                .ConfigureAwait(false));
+
+            return executor.FromApi(outcome, data => ProjectNode(data.Node, created: true));
+        });
+    }
+
+    /// <summary>wiki.move_node：移动节点（改父节点或换空间）。</summary>
+    [FeishuToolHandler(typeof(IFeishuWikiMoveNodeTool))]
+    public Task<FeishuToolResult> MoveNodeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.WikiMoveNode, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var args = WikiMoveNodeArgs.Unpack(arguments);
+
+            // 目标缺失必须提前拒绝：平台会把"移到哪"留空后原地不动，模型却会以为已移动。
+            if (string.IsNullOrWhiteSpace(args.TargetParentToken) && string.IsNullOrWhiteSpace(args.TargetSpaceId))
+            {
+                throw new ArgumentException(
+                    "target_parent_token 与 target_space_id 至少要提供一个——两者都为空时平台不会移动节点，"
+                    + "但调用会'成功'（空操作），容易让模型误判");
+            }
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "POST",
+                    $"/open-apis/wiki/v2/spaces/{args.SpaceId}/nodes/{args.NodeToken}/move",
+                    ToolDryRun.IdempotencyNote(null),
+                    ("space_id", args.SpaceId.Length), ("node_token", args.NodeToken.Length)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _wikiNodesClient
+                .MoveSpaceNodeAsync(
+                    args.SpaceId,
+                    args.NodeToken,
+                    new MoveSpaceNodeRequest
+                    {
+                        TargetParentToken = args.TargetParentToken,
+                        TargetSpaceId = args.TargetSpaceId,
+                    },
+                    cancellationToken)
+                .ConfigureAwait(false));
+
+            return executor.FromApi(outcome, data => ProjectNode(data.Node, created: false));
+        });
+    }
+
+    /// <summary>
+    /// wiki.move_docs_to_space：把已有云文档迁入知识空间（异步任务）。
+    /// </summary>
+    /// <remarks>
+    /// <b>为何必须如实回传 <c>applied</c> 与 <c>task_id</c></b>：平台以异步任务执行，
+    /// 立即返回并不代表已生效。只回"成功"会让模型误以为文档已在知识库里。
+    /// </remarks>
+    [FeishuToolHandler(typeof(IFeishuWikiMoveDocsToSpaceTool))]
+    public Task<FeishuToolResult> MoveDocsToSpaceAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.WikiMoveDocsToSpace, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var args = WikiMoveDocsToSpaceArgs.Unpack(arguments);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "POST", $"/open-apis/wiki/v2/spaces/{args.SpaceId}/nodes/move_docs_to_wiki",
+                    "平台以**异步任务**执行：立即返回不代表已生效，applied 字段为真实状态。"
+                    + ToolDryRun.IdempotencyNote(null),
+                    ("space_id", args.SpaceId.Length), ("obj_token", args.ObjToken.Length)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _wikiNodesClient
+                .MoveDocsToWikiSpaceNodeAsync(
+                    args.SpaceId,
+                    new MoveDocsToWikiSpaceNodeRequest
+                    {
+                        ObjToken = args.ObjToken,
+                        ObjType = args.ObjType ?? "docx",
+                        ParentWikiToken = args.ParentWikiToken,
+                    },
+                    cancellationToken)
+                .ConfigureAwait(false));
+
+            return executor.FromApi(outcome, data => new JsonObject
+            {
+                ["wiki_token"] = data.WikiToken,
+                ["task_id"] = data.TaskId,
+                ["applied"] = data.Applied,
+                ["note"] = data.Applied == true
+                    ? "已迁入知识空间"
+                    : "平台已受理但**尚未生效**（异步任务）——请稍后用 wiki.get_node 确认 wiki_token 对应节点是否出现",
+            });
+        });
+    }
+
+    /// <summary>投影 <c>SpaceNodeInfo</c>（写面复用同一白名单，避免两套字段口径）。</summary>
+    private static JsonObject ProjectNode(SpaceNodeInfo? node, bool created)
+    {
+        if (node is null)
+        {
+            return new JsonObject
+            {
+                ["ok"] = false,
+                ["message"] = created
+                    ? "平台未返回新节点信息——请用 wiki.list_nodes 确认是否已创建"
+                    : "平台未返回移动后的节点信息——请用 wiki.list_nodes 确认实际位置",
+            };
+        }
+
+        return new JsonObject
+        {
+            ["ok"] = true,
+            ["node_token"] = node.NodeToken,
+            ["obj_token"] = node.ObjToken,
+            ["obj_type"] = node.ObjType,
+            ["title"] = node.Title,
+            ["space_id"] = node.SpaceId,
+            ["parent_node_token"] = node.ParentNodeToken,
+        };
+    }
 }

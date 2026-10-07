@@ -12,7 +12,7 @@ global using Mud.Feishu.AI.Agents;
 global using Mud.Feishu.AI.Tools;
 global using Mud.Feishu.AI.Tools.Generated;
 
-// R5 / F-1（载体 C）：工具声明面（77 个 [FeishuTool] 契约接口）迁到独立目录 Curation/ 与
+// R5 / F-1（载体 C）：工具声明面（80 个 [FeishuTool] 契约接口）迁到独立目录 Curation/ 与
 // 独立命名空间，使其与 Tools/ 下的运行时基础设施（参数净化、结果裁剪、错误分类、DI…）在
 // **物理与逻辑上都可区分**——"人工策展什么"与"框架提供什么"不再混在同一目录。
 // 之所以用全局 using 而非逐文件添加：这批接口是本程序集的核心词汇（每个执行器都实现其中几个），

@@ -129,3 +129,76 @@ public interface IFeishuUserApprovalGetInstanceTool
         [ToolParameter("locale", "语言（可选，如 zh-CN/en-US，默认 zh-CN）")] string? locale = null,
         CancellationToken cancellationToken = default);
 }
+
+// ─────────────────────────── Mail 增强（R5 / F-11） ───────────────────────────
+
+/// <summary>工具接口：mail.search（映射 <c>IFeishuUserV1MailMessage.SearchUserMailboxMessageAsync</c>）。</summary>
+/// <remarks>
+/// R5 / F-11：<b>关键字搜索只在 user 身份接口上</b>（<c>IFeishuV1MailMessage_User.cs:76</c>），
+/// tenant 侧的 mail.list_messages 只有 folder/label/未读过滤 ⇒ 此前模型无法按关键词搜邮件。
+/// </remarks>
+[FeishuTool("mail.search",
+    Description = "按关键字搜索邮箱邮件（如'找张三发的关于合同的邮件'）。user 身份接口，支持分页。只读，需 mail:mailbox:readonly。",
+    RequiredScopes = ["mail:mailbox:readonly"],
+    Source = "IFeishuUserV1MailMessage.SearchUserMailboxMessageAsync")]
+public interface IFeishuUserMailSearchTool
+{
+    /// <summary>搜索邮件。</summary>
+    /// <returns>白名单投影后的 JSON 文本（items + 分页信息），超长截断并标记 truncated。</returns>
+    Task<string> SearchMailAsync(
+        [ToolParameter("user_mailbox_id", "用户邮箱 ID（形如 xxx@xxx）", Required = true)] string user_mailbox_id,
+        [ToolParameter("query", "搜索关键字", Required = true)] string query,
+        [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：mail.list_labels（映射 <c>IFeishuTenantV1MailLabel.GetUserMailboxLabelListAsync</c>）。</summary>
+[FeishuTool("mail.list_labels",
+    Description = "列出邮箱的邮件标签（label）——用于查清可用的 label_id，再传给 mail.list_messages 做标签过滤。只读，需 mail:mailbox:readonly。",
+    RequiredScopes = ["mail:mailbox:readonly"],
+    Source = "IFeishuTenantV1MailLabel.GetUserMailboxLabelListAsync")]
+public interface IFeishuMailListLabelsTool
+{
+    /// <summary>列出标签。</summary>
+    /// <returns>白名单投影后的 JSON 文本（label_id/name）。</returns>
+    Task<string> ListLabelsAsync(
+        [ToolParameter("user_mailbox_id", "用户邮箱 ID（形如 xxx@xxx）", Required = true)] string user_mailbox_id,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：mail.get_thread（映射 <c>IFeishuTenantV1MailThread.GetUserMailboxThreadAsync</c>）。</summary>
+[FeishuTool("mail.get_thread",
+    Description = "取一封邮件的会话线程（同一主题下的往来邮件）——回复/追问类问题的完整上下文来源。只读，需 mail:mailbox:readonly。",
+    RequiredScopes = ["mail:mailbox:readonly"],
+    Source = "IFeishuTenantV1MailThread.GetUserMailboxThreadAsync")]
+public interface IFeishuMailGetThreadTool
+{
+    /// <summary>获取会话线程。</summary>
+    /// <returns>白名单投影后的 JSON 文本（thread_id/body_preview/messages）。</returns>
+    Task<string> GetThreadAsync(
+        [ToolParameter("user_mailbox_id", "用户邮箱 ID（形如 xxx@xxx）", Required = true)] string user_mailbox_id,
+        [ToolParameter("thread_id", "会话线程 ID（形如 txxx）", Required = true)] string thread_id,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：mail.mark_read（映射 <c>IFeishuTenantV1MailMessage.ModifyUserMailboxMessageAsync</c>）。</summary>
+/// <remarks>
+/// <b>为何需要它</b>：模型读完邮件后若不回写已读，用户邮箱会堆积大量"未读"，
+/// 与人工处理结果不一致（Agent 读过的邮件在用户眼里仍是未读）。
+/// </remarks>
+[FeishuTool("mail.mark_read",
+    Description = "把邮件标记为已读（或未读）——Agent 读完邮件后应回写，避免用户邮箱堆积未读。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 mail:mailbox。",
+    RequiredScopes = ["mail:mailbox"],
+    IsWrite = true,
+    Source = "IFeishuTenantV1MailMessage.ModifyUserMailboxMessageAsync")]
+public interface IFeishuMailMarkReadTool
+{
+    /// <summary>标记已读状态。</summary>
+    /// <returns>结构化文本（message_id/read）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> MarkReadAsync(
+        [ToolParameter("user_mailbox_id", "用户邮箱 ID（形如 xxx@xxx）", Required = true)] string user_mailbox_id,
+        [ToolParameter("message_id", "邮件 ID（形如 xxx）", Required = true)] string message_id,
+        [ToolParameter("read", "目标状态（可选，默认 true=true=已读；传 false 标记未读）")] bool? read = null,
+        [ToolParameter("dry_run", "仅预演不修改（可选，默认 false）：返回将要下发的 method/path 与字段摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}

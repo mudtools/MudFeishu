@@ -27,10 +27,20 @@ namespace Mud.Feishu.AI.FeishuTools.Internal;
 internal sealed class MailTools(
     Mud.Feishu.IFeishuTenantV1MailMessage? mailMessageClient,
     Mud.Feishu.IFeishuUserV1MailDraft? mailDraftUserClient,
-    IOptions<FeishuAgentOptions> options)
+    IOptions<FeishuAgentOptions> options,
+
+    // R5 / F-11：以下三个客户端一律**软依赖**（可空）。理由与 BitableViewTools 相同——
+    // 「客户端缺席 → 执行器缺席 → 注册器不注册」，写成硬依赖会把宿主未启用的那一侧
+    // 变成整域缺席，连带拖垮 mail 已有的 3 个工具。
+    Mud.Feishu.IFeishuUserV1MailMessage? mailUserMessageClient = null,
+    Mud.Feishu.IFeishuTenantV1MailLabel? mailLabelClient = null,
+    Mud.Feishu.IFeishuTenantV1MailThread? mailThreadClient = null)
 {
     private readonly Mud.Feishu.IFeishuTenantV1MailMessage? _mailMessageClient = mailMessageClient;
     private readonly Mud.Feishu.IFeishuUserV1MailDraft? _mailDraftUserClient = mailDraftUserClient;
+    private readonly Mud.Feishu.IFeishuUserV1MailMessage? _mailUserMessageClient = mailUserMessageClient;
+    private readonly Mud.Feishu.IFeishuTenantV1MailLabel? _mailLabelClient = mailLabelClient;
+    private readonly Mud.Feishu.IFeishuTenantV1MailThread? _mailThreadClient = mailThreadClient;
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>mail.list_messages：列出用户邮箱中的邮件（分页，白名单 message_id）。</summary>
@@ -251,4 +261,195 @@ internal sealed class MailTools(
             .Replace('/', '_')
             .TrimEnd('=');
     }
+
+    // ────────── R5 / F-11：Mail 增强（搜索 / 标签 / 会话线程 / 已读回写） ──────────
+
+    /// <summary>取软依赖客户端；缺席时给出<b>可执行</b>提示（宿主该启用什么），而不是空引用。</summary>
+    private static T Require<T>(T? client, string toolName, string clientName, string api)
+        where T : class
+        => client ?? throw new ArgumentException(
+            $"{toolName} 需要 {clientName}——宿主须启用 {api}；未启用时本工具不在工具列表中"
+            + "（软缺席，不影响 mail 其它工具）");
+
+    /// <summary>mail.search：按关键字搜索邮件（<b>仅 user 身份接口</b>提供该能力）。</summary>
+    [FeishuToolHandler(typeof(IFeishuUserMailSearchTool))]
+    public Task<FeishuToolResult> SearchMailAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.MailSearch, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var client = Require(
+                _mailUserMessageClient, executor.ToolName, "IFeishuUserV1MailMessage", "AddMailApi 的 user 身份侧");
+            var args = MailSearchArgs.Unpack(arguments);
+
+            var outcome = FeishuApiResultReader.Read(await client
+                .SearchUserMailboxMessageAsync(
+                    args.UserMailboxId,
+                    new SearchUserMailboxMessageRequest { Query = args.Query },
+                    page_token: args.PageToken,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+
+            return executor.FromApi(outcome, data =>
+            {
+                var items = new JsonArray();
+                foreach (var hit in data.Items ?? [])
+                {
+                    items.Add(new JsonObject
+                    {
+                        // MailSearchItem 只有 Id / DisplayInfo / MetaData 三个字段
+                        // （标题、线程、时间都在 MetaData 里），故按实际可得字段投影。
+                        ["message_id"] = hit.Id,
+                        ["preview"] = ToolResultText.Truncate(hit.DisplayInfo, PageSizes.MessagePreviewLength),
+                    });
+                }
+
+                return new JsonObject
+                {
+                    ["items"] = items,
+                    ["total"] = data.Total,
+                    ["has_more"] = data.HasMore,
+                    ["page_token"] = data.PageToken,
+                };
+            });
+        });
+    }
+
+    /// <summary>mail.list_labels：列出邮箱标签（供 mail.list_messages 的 label 过滤取 id）。</summary>
+    [FeishuToolHandler(typeof(IFeishuMailListLabelsTool))]
+    public Task<FeishuToolResult> ListLabelsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.MailListLabels, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var client = Require(_mailLabelClient, executor.ToolName, "IFeishuTenantV1MailLabel", "AddMailApi 的标签侧");
+            var args = MailListLabelsArgs.Unpack(arguments);
+
+            var outcome = FeishuApiResultReader.Read(await client
+                .GetUserMailboxLabelListAsync(args.UserMailboxId, cancellationToken)
+                .ConfigureAwait(false));
+
+            return executor.FromApi(outcome, data =>
+            {
+                var labels = new JsonArray();
+                foreach (var label in data.Items ?? [])
+                {
+                    labels.Add(new JsonObject
+                    {
+                        ["label_id"] = label.Id,
+                        ["name"] = label.Name,
+                    });
+                }
+
+                return new JsonObject { ["labels"] = labels, ["total"] = labels.Count };
+            });
+        });
+    }
+
+    /// <summary>mail.get_thread：取会话线程（同一主题的往来邮件）。</summary>
+    [FeishuToolHandler(typeof(IFeishuMailGetThreadTool))]
+    public Task<FeishuToolResult> GetThreadAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.MailGetThread, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var client = Require(_mailThreadClient, executor.ToolName, "IFeishuTenantV1MailThread", "AddMailApi 的会话侧");
+            var args = MailGetThreadArgs.Unpack(arguments);
+
+            var outcome = FeishuApiResultReader.Read(await client
+                .GetUserMailboxThreadAsync(args.UserMailboxId, args.ThreadId, cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+
+            return executor.FromApi(outcome, data =>
+            {
+                var thread = data.Thread;
+                if (thread is null)
+                {
+                    // 空结果哨兵（F-5）：显式"未找到"，而不是空对象让模型猜。
+                    return new JsonObject
+                    {
+                        ["found"] = false,
+                        ["thread_id"] = args.ThreadId,
+                        ["message"] = "未找到该会话线程，请确认 thread_id 是否属于该邮箱。",
+                    };
+                }
+
+                // ⚠️ 只回填线程摘要与**成员数量**，不逐封展开正文：
+                // 线程内每封邮件正文都可能很长，逐封回填会挤爆上下文；
+                // 需要具体某封时用 mail.get_message 按 message_id 取。
+                return new JsonObject
+                {
+                    ["found"] = true,
+                    ["thread_id"] = thread.Id,
+                    ["messages_count"] = thread.Messages?.Length ?? 0,
+                    ["hint"] = "如需某封邮件的正文，请用 mail.get_message 按 message_id 读取（避免一次性灌入整条会话）。",
+                };
+            });
+        });
+    }
+
+    /// <summary>
+    /// mail.mark_read：回写已读状态。
+    /// </summary>
+    /// <remarks>
+    /// <b>为什么默认 true</b>：工具名即语义（mark_read）。若默认 false，模型忘记传参时
+    /// 会把邮件标成<b>未读</b>——与调用方预期相反，属"静默反向"。
+    /// </remarks>
+    [FeishuToolHandler(typeof(IFeishuMailMarkReadTool))]
+    public Task<FeishuToolResult> MarkReadAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.MailMarkRead, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var client = Require(_mailMessageClient, executor.ToolName, "IFeishuTenantV1MailMessage", "AddMailApi 的邮件侧");
+            var args = MailMarkReadArgs.Unpack(arguments);
+            var read = args.Read ?? true;
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "PATCH",
+                    $"/open-apis/mail/v1/user_mailboxes/{args.UserMailboxId}/messages/{args.MessageId}",
+                    ToolDryRun.IdempotencyNote(null),
+                    ("user_mailbox_id", args.UserMailboxId.Length),
+                    ("message_id", args.MessageId.Length),
+                    ("read", read ? 1 : 0)));
+            }
+
+            var nullDataResult = await client
+                .ModifyUserMailboxMessageAsync(
+                    args.UserMailboxId,
+                    args.MessageId,
+                    // 已读状态在飞书邮箱里就是**UNREAD 标签**：移除 = 已读，加上 = 未读。
+                    // （核实：ModifyUserMailboxMessageRequest 只有 add_label_ids /
+                    //  remove_label_ids / add_folder 三个字段，官方文档亦把 UNREAD 列为
+                    //  可增删的标签之一 ⇒ 无需给 SDK 补 read 字段，保持零 SDK 改动。）
+                    read
+                        ? new ModifyUserMailboxMessageRequest { RemoveLabelIds = NewUnreadLabel() }
+                        : new ModifyUserMailboxMessageRequest { AddLabelIds = NewUnreadLabel() },
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            if (nullDataResult is null)
+            {
+                throw new ArgumentException("飞书接口无响应（result 为空）");
+            }
+
+            if (nullDataResult.Code != 0)
+            {
+                throw new ArgumentException(
+                    $"飞书接口返回错误 code={nullDataResult.Code.ToString(CultureInfo.InvariantCulture)}, "
+                    + $"msg={nullDataResult.Msg ?? "(无错误信息)"}");
+            }
+
+            return FeishuToolResult.FromText(ToolResultJson.ToText(new JsonObject
+            {
+                ["message_id"] = args.MessageId,
+                ["read"] = read,
+            }));
+        });
+    }
+
+    /// <summary>飞书邮箱的"未读"标签名（已读 = 移除该标签，未读 = 添加该标签）。</summary>
+    private static string[] NewUnreadLabel() => ["UNREAD"];
 }

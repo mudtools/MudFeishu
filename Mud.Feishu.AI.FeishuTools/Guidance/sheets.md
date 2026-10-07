@@ -1,1 +1,11 @@
-电子表格（sheets.*）：`sheets.list_sheets` 取 sheet_id，`sheets.get_range_values` 按 A1 范围取单元格——范围越小越省 token。写入走 `sheets.update_range`（覆盖写，天然幂等）与 `sheets.append_rows`（追加行，不清空既有数据），均为写操作（默认不启用，需宿主授权）。
+# 电子表格（sheets.*）
+
+## 前置链
+`list_sheets` 取 sheet_id → `get_range_values` 按 A1 范围取；写 `update_range` / `append_rows`。
+
+## 避坑
+- **范围越小越省 token**，别习惯性取整表。
+- `update_range` 是覆盖写（幂等）；`append_rows` 不清空既有数据。
+
+## 示例
+B2:D10 是什么数 → `get_range_values`。

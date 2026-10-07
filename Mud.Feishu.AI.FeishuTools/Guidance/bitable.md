@@ -1,1 +1,12 @@
-多维表格（bitable.*）：先 `bitable.list_tables` 取 app_token/table_id，再 `bitable.list_fields` 确认字段名，最后 `bitable.query_records` 取数（filter/sort 用受控语法，不要写自由表达式）。写入走 `bitable.add_record`（新增）、`bitable.update_record`（更新指定记录）、`bitable.delete_record`（删除指定记录，不可恢复），均为写操作（默认不启用，需宿主授权）。
+# 多维表格（bitable.*）
+
+## 前置链
+`list_tables` → `list_fields` → `query_records`；按视图取数先 `list_views`。
+
+## 避坑
+- 不要猜字段名，先 `list_fields`。
+- `delete_record` 不可恢复。
+- filter/sort 用受控语法，不写自由表达式。
+
+## 示例
+项目表有哪些任务 → tables → fields → `query_records`。

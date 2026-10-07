@@ -1,1 +1,11 @@
-云空间（drive.*）：`drive.list_folder_files` 按文件夹 token 列文件，`drive.get_file_metas` 批量取元信息；两者只回元数据，不下载文件内容。写入走 `drive.create_folder`（创建文件夹）、`drive.move_file`（移动文件到指定文件夹，异步操作）、`drive.upload_file`（从 URL 上传文件到云空间，宿主负责落盘），均为写操作（默认不启用，需宿主授权）。
+# 云空间（drive.*）
+
+## 前置链
+`list_folder_files` / `get_file_metas` 只回元数据；写面 `create_folder` / `move_file` / `upload_file`。
+
+## 避坑
+- **只读工具不下载内容**，取正文请用 docx / sheets。
+- `move_file` 是异步的，立即返回不代表已生效。
+
+## 示例
+这个文件夹里有什么 → `list_folder_files`。

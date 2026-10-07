@@ -1,1 +1,12 @@
-任务（task.*）：`task.create_task` 创建任务（due 用 RFC3339，工具层负责转毫秒；assignee_ids 是 open_id 列表；idempotency_key 防重复创建），`task.update_task` 更新任务字段，`task.complete_task` 通过更新状态标记完成，`task.delete_task` 删除任务（不可恢复，high-risk-write 建议 dry_run 确认），`task.create_subtask` 为父任务创建子任务（idempotency_key 防重复），`task.add_comment` 为任务添加评论（可回复已有评论），`task.add_members` 添加任务负责人或关注人（role 指定 assignee/follower，idempotency_key 防重复添加）。`task.list_my_tasks` 读「我负责的」任务，依赖用户令牌与当前用户身份。除 `list_my_tasks` 外均为写操作（默认不启用，需宿主授权）。
+# 任务（task.*）
+
+## 前置链
+`list_my_tasks` 读我负责的；写 `create_task` / `update_task` / `complete_task` / `delete_task` / `create_subtask` / `add_comment` / `add_members`。
+
+## 避坑
+- `due` 用 RFC3339；`assignee_ids` 是 open_id 列表。
+- **创建 / 子任务 / 加成员都要 idempotency_key**。
+- `delete_task` 不可恢复，建议先 `dry_run`。
+
+## 示例
+明天给张三建写周报任务 → `search_user` → `create_task`。

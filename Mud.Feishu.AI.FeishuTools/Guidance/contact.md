@@ -1,1 +1,11 @@
-通讯录（contact.*）：把姓名/邮箱/手机号解析成 open_id 是绝大多数写操作的前置步骤——`contact.resolve_user` / `contact.search_user` / `contact.get_user` / `contact.batch_get`。部门维度走 `contact.list_departments`（列子部门）与 `contact.list_department_members`（按部门列员工）。解析不到时先确认该用户在当前应用可见范围内，不要反复换关键字重试。
+# 通讯录（contact.*）
+
+## 前置链
+`resolve_user` / `search_user` → open_id → im / mail / task 等写工具。
+
+## 避坑
+- **发给张三不是一步**，必须先解析 open_id。
+- 解析不到先确认可见范围，别反复换关键字重试。
+
+## 示例
+发给张三 → `search_user` → `im.send_message`。

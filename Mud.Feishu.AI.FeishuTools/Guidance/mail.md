@@ -1,1 +1,12 @@
-邮件（mail.*）：`mail.list_messages` 列出用户邮箱邮件（user_mailbox_id 为邮箱地址），`mail.get_message` 获取邮件详情。发信走 `mail.send_message`（两步合一：内部先建草稿再发送，模型无需感知中间态；to/cc/bcc 为邮箱地址数组，收件人地址可由 contact.search_user 获取）。写操作默认不启用，需宿主授权；mail 域写面需用户身份（identity=user），宿主须在 AllowedIdentities 放行 user。
+# 邮件（mail.*）
+
+## 前置链
+`list_messages` / `get_message`；按关键字 `search`；会话 `get_thread`；标签 `list_labels`。
+
+## 避坑
+- **mail 写面需用户身份**，宿主须放行 `user`。
+- `send_message` 两步合一，模型无需感知草稿态。
+- Agent 读完应 `mark_read` 回写，否则用户邮箱堆积未读。
+
+## 示例
+找张三发的合同邮件 → `mail.search`。

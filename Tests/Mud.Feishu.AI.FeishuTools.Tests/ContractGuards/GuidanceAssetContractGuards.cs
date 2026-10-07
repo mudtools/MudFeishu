@@ -29,7 +29,9 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 public class GuidanceAssetContractGuards
 {
     /// <summary>单域 guidance 的体积上限（字符）——防止单个资产把 2 KB 预算吃光。</summary>
-    private const int MaxBlockLength = 512;
+    // R5 / F-9（评审点③）：原值 512 与"每域 ≤ 2 KB"冲突——结构化改造后最大域（im）达 1375 字符，
+    // 512 会让守卫先于内容变红。故按方案把上限提到 2 KB，并留出余量给后续补充避坑。
+    private const int MaxBlockLength = 2048;
 
     /// <summary>guidance 的域必须对应契约工具面中真实存在的域（防僵尸资产：域改名/删工具后 md 成了孤儿）。</summary>
     [Fact]

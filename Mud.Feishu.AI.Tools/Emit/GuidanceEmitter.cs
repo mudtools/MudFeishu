@@ -66,19 +66,47 @@ internal static class GuidanceEmitter
             return;
         }
 
-        // 域 = 文件名去扩展名（如 Guidance/bitable.md → "bitable"）。
+        // L1 = Guidance/{domain}.md（无子目录）；L2 = Guidance/{domain}/{topic}.md（子目录）。
+        // 键：L1 用 "{domain}"，L2 用 "{domain}/{topic}"。
         // 用 SortedDictionary 保证产物确定（否则 golden 式的逐字节可比性无从谈起）。
         var blocks = new SortedDictionary<string, string>(StringComparer.Ordinal);
+        var references = new SortedDictionary<string, string>(StringComparer.Ordinal);
+        var owners = new Dictionary<string, string>(StringComparer.Ordinal);
+
         foreach (var file in files.OrderBy(static f => f.Path, StringComparer.Ordinal))
         {
-            var domain = DomainOf(file.Path);
+            var key = AssetKeyOf(file.Path);
             var text = file.GetText(cancellationToken)?.ToString();
-            if (string.IsNullOrWhiteSpace(domain) || string.IsNullOrWhiteSpace(text))
+            if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(text))
             {
                 continue;
             }
 
-            blocks[domain!] = text!.Trim();
+            // ⚠️ **冲突必须响亮失败，绝不静默覆盖**（R5 / F-9，评审点②）。
+            // 旧实现是 blocks[domain] = text：两个文件映射到同一域时后者直接覆盖前者，
+            // **没有任何报错**——而 guidance 是模型的行为依据，覆盖即等于"某域的避坑文本静默消失"。
+            // 之所以用抛异常而非新增 MUDFT ID：新增零容忍诊断需同步 Diagnostics /
+            // AnalyzerReleases / diagnostics-gate / 三方一致守卫四处；此处抛异常已能让构建失败，
+            // 且消息更直接。代价是错误类型不是 MUDFT 编号（登记于 §13 的取舍说明）。
+            if (owners.TryGetValue(key!, out var previousOwner))
+            {
+                throw new InvalidOperationException(
+                    $"guidance 资产键冲突：'{key}' 同时由 '{previousOwner}' 与 '{file.Path}' 提供。"
+                    + "L1 键为 {domain}（Guidance/{domain}.md），L2 键为 {domain}/{topic}"
+                    + "（Guidance/{domain}/{topic}.md）。请重命名其中一份——静默覆盖会让该域的"
+                    + "行为依据凭空消失。");
+            }
+
+            owners[key!] = file.Path;
+
+            if (key!.Contains('/'))
+            {
+                references[key] = text!.Trim();
+            }
+            else
+            {
+                blocks[key] = text!.Trim();
+            }
         }
 
         if (blocks.Count == 0)
@@ -110,19 +138,75 @@ internal static class GuidanceEmitter
         }
 
         source.AppendLine("            };");
+
+        // L2：按需读取的深层文本（"feishu.guidance_read" 的唯一数据源）。
+        source.AppendLine();
+        source.AppendLine("        /// <summary>L2 references：键为 \"{domain}/{topic}\"，供 feishu.guidance_read 按需读取。</summary>");
+        source.AppendLine($"        {GeneratedCodeMarker.Attribute}");
+        source.AppendLine("        public static System.Collections.Generic.IReadOnlyDictionary<string, string> References { get; } =");
+        source.AppendLine("            new System.Collections.Generic.Dictionary<string, string>(System.StringComparer.Ordinal)");
+        source.AppendLine("            {");
+        foreach (var reference in references)
+        {
+            source.AppendLine($"                [{JsonText.ToCSharpLiteral(reference.Key)}] = {JsonText.ToCSharpLiteral(reference.Value)},");
+        }
+
+        source.AppendLine("            };");
+        source.AppendLine();
+        source.AppendLine("        /// <summary>可读的 L2 资产清单（形如 \"{domain}/{topic}\"），用于错误提示与守卫。</summary>");
+        source.AppendLine($"        {GeneratedCodeMarker.Attribute}");
+        source.AppendLine("        public static string[] ReferenceKeys { get; } = new string[]");
+        source.AppendLine("        {");
+        foreach (var reference in references)
+        {
+            source.AppendLine($"            {JsonText.ToCSharpLiteral(reference.Key)},");
+        }
+
+        source.AppendLine("        };");
+        source.AppendLine();
+        source.AppendLine("        /// <summary>按键取 L2 文本；不存在返回 false（不抛异常，调用方负责给可执行提示）。</summary>");
+        source.AppendLine($"        {GeneratedCodeMarker.Attribute}");
+        source.AppendLine("        public static bool TryGetReference(string key, out string text)");
+        source.AppendLine("            => References.TryGetValue(key, out text!);");
         source.AppendLine("    }");
         source.AppendLine("}");
 
         context.AddSource(HintName, SourceText.From(source.ToString(), Encoding.UTF8));
     }
 
-    /// <summary>从资产路径取域名（去扩展名的文件名）。</summary>
-    private static string? DomainOf(string path)
+    /// <summary>
+    /// 从资产路径取<b>资产键</b>（R5 / F-9）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 旧实现只取<b>文件名</b>（<c>Guidance/bitable.md</c> → <c>"bitable"</c>），因此一旦引入
+    /// 子目录 <c>Guidance/im/replies.md</c>，键会变成 <c>"replies"</c>——与真正的域名混在一起，
+    /// 且不同域下的同名 topic 会<b>静默互相覆盖</b>。
+    /// </para>
+    /// <para>
+    /// 现改为：取 <c>Guidance/</c> 之后的相对路径去扩展名 ——
+    /// 无子目录 ⇒ L1 键 <c>{domain}</c>（保持既有键不变，向后兼容）；
+    /// 有子目录 ⇒ L2 键 <c>{domain}/{topic}</c>。
+    /// </para>
+    /// </remarks>
+    private static string? AssetKeyOf(string path)
     {
         var normalized = path.Replace('\\', '/');
-        var lastSlash = normalized.LastIndexOf('/');
-        var fileName = lastSlash >= 0 ? normalized.Substring(lastSlash + 1) : normalized;
-        var dot = fileName.LastIndexOf('.');
-        return dot <= 0 ? null : fileName.Substring(0, dot);
+        const string root = "Guidance/";
+        var start = normalized.IndexOf(root, StringComparison.OrdinalIgnoreCase);
+        var relative = start >= 0
+            ? normalized.Substring(start + root.Length)
+            : normalized;
+
+        var lastSlash = relative.LastIndexOf('/');
+        var tail = lastSlash >= 0 ? relative.Substring(lastSlash + 1) : relative;
+        var dot = tail.LastIndexOf('.');
+        if (dot <= 0)
+        {
+            return null;
+        }
+
+        var key = relative.Substring(0, dot);
+        return key.Length == 0 ? null : key;
     }
 }

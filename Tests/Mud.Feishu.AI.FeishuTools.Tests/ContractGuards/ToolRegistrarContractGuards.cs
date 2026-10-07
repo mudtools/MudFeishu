@@ -72,8 +72,8 @@ public class ToolRegistrarContractGuards
         // 用 BeEquivalentTo + 显式数组：Equal(params string[]) 会把理由文本当成期望元素。
         provider.GetRequiredService<FeishuToolRegistry>().AllTools.Select(static t => t.Name)
             .Should().BeEquivalentTo(
-                new[] { FeishuToolNames.FeishuCapabilityLookup },
-                "能力出处元工具的数据源是编译期常量，装配它不需要任何飞书域客户端（不随域缺席而软缺席）");
+                new[] { FeishuToolNames.FeishuCapabilityLookup, FeishuToolNames.FeishuGuidanceRead },
+                            "元工具（能力出处 / L2 guidance 读取）的数据源是编译期常量，装配它不需要任何飞书域客户端（不随域缺席而软缺席）");
     }
 
     /// <summary>

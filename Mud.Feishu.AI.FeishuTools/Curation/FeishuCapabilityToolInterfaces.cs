@@ -41,3 +41,35 @@ public interface IFeishuCapabilityLookupTool
         [ToolParameter("keyword", "能力分组关键字（如 Calendar / Task / Docx / Bitable；大小写不敏感）", Required = true)] string keyword,
         CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// 工具接口：feishu.guidance_read（读取 L2 references 资产；R5 / F-9）。
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>为什么归入既有 <c>feishu</c> 域而非新开 <c>guidance</c> 域</b>（评审点④）：
+/// 新开域需同步 <c>FeishuGuidanceComposer</c> 优先级表、<c>GuidanceAssetContractGuards</c>
+/// 域清单与 golden 三处，且它本身不属于任何业务域——与 <c>feishu.capability_lookup</c>
+/// 同属"元工具"，放在同一域语义一致。
+/// </para>
+/// <para>
+/// <b>为什么需要 L2（按需读取）</b>：L1 是常驻 guidance，受
+/// <c>FeishuGuidanceComposer</c> 预算（B-12 已升到 8192）硬约束；14 个域的避坑文本全量预拼
+/// 必然溢出。L2 把深层文本（命令级避坑、完整示例）挪到按需读取，<b>由模型在调用失败后主动拉取</b>——
+/// 这也是官方 <c>lark-cli skills read</c> 的等价物。
+/// </para>
+/// </remarks>
+[FeishuTool("feishu.guidance_read",
+    Description = "按需读取某个域的深层避坑/示例文本（如 im/topics-and-replies、docx/block-editing）。常驻 guidance 只放要点；当某个工具连续失败或你不确定某域的约束时，先读它再重试。只读，需 feishu:base。",
+    RequiredScopes = ["feishu:base"])]
+// Source 刻意留空：本工具读取的是**编译期内嵌的 guidance 资产**，不调用任何 SDK 接口。
+// 编造一个 SDK 方法名（如 capability_lookup 那样）会让 MUDFT019「工具面不得与 SDK 脱钩」的门禁形同虚设。
+public interface IFeishuGuidanceReadTool
+{
+    /// <summary>读取 L2 guidance。</summary>
+    /// <returns>L2 正文文本；键不存在时返回<b>可执行的候选清单</b>而非空结果。</returns>
+    Task<string> GuidanceReadAsync(
+        [ToolParameter("domain", "域（如 im / docx / approval），即工具名前缀", Required = true)] string domain,
+        [ToolParameter("topic", "主题（如 topics-and-replies / block-editing / decisions）", Required = true)] string topic,
+        CancellationToken cancellationToken = default);
+}

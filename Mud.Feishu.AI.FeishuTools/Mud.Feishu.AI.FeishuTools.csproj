@@ -26,7 +26,8 @@
 		<!-- 域级 guidance 资产（WP6 / AT-F09）：生成器编译期固化为 FeishuToolGuidance.g.cs，
 		     装配期只注入「已启用工具所属域」的资产（Mud.Feishu.AI 的 FeishuGuidanceComposer）。
 		     素材与该域工具同 repo 同 pass，故不存在"md 与工具面漂移"的面。 -->
-		<AdditionalFiles Include="Guidance\*.md" />
+		<!-- R5 / F-9：改递归，否则 Guidance/{domain}/{topic}.md（L2 资产）不会进生成器 -->
+    <AdditionalFiles Include="Guidance\**\*.md" />
 		<!-- 让源生成器经 AnalyzerConfigOptions 读到 FeishuToolCatalog —— MSBuild 属性默认对分析器
 		     不可见，缺此声明时生成器读到的是"未设置"，Tier R 能力目录会静默不产出
 		     （症状：构建通过但没有 FeishuCapabilityCatalog 类型）。 -->

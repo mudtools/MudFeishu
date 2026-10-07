@@ -137,4 +137,33 @@ internal sealed class CapabilityLookupTools(IOptions<FeishuAgentOptions> options
 
         return groupName.Substring(0, end);
     }
+
+    /// <summary>
+    /// feishu.guidance_read：按需读取 L2 references（R5 / F-9）。
+    /// </summary>
+    /// <remarks>
+    /// <b>键不存在时必须给候选清单</b>：只回"未找到"会让模型反复试错；
+    /// 把可用的 <c>{domain}/{topic}</c> 全列出来，模型一次就能选对（对齐 F-8 的可恢复性要求）。
+    /// </remarks>
+    [FeishuToolHandler(typeof(IFeishuGuidanceReadTool))]
+    public Task<FeishuToolResult> GuidanceReadAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.FeishuGuidanceRead, _maxResultLength);
+        return executor.RunAsync(() =>
+        {
+            var args = FeishuGuidanceReadArgs.Unpack(arguments);
+            var key = $"{args.Domain.Trim()}/{args.Topic.Trim()}";
+
+            if (Mud.Feishu.AI.Tools.Generated.FeishuToolGuidance.TryGetReference(key, out var text))
+            {
+                return Task.FromResult(FeishuToolResult.FromText(
+                    ToolResultText.Truncate(text, _maxResultLength)));
+            }
+
+            var available = Mud.Feishu.AI.Tools.Generated.FeishuToolGuidance.ReferenceKeys;
+            throw new ArgumentException(
+                $"没有 L2 guidance '{key}'。可用的键：{string.Join(" / ", available)}。"
+                + "（键 = {域}/{主题}，域即工具名前缀；请从上列清单里选，不要自行拼造）");
+        });
+    }
 }

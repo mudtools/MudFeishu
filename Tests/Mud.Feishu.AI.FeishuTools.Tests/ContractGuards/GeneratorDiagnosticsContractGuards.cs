@@ -307,8 +307,12 @@ public class GeneratorDiagnosticsContractGuards
                 continue;
             }
 
-            var match = Regex.Match(trimmed, @"^(?<id>\d{3})\s*=\s*(?<count>\d+)$");
-            match.Success.Should().BeTrue($"基线行格式非法（应形如 009=0）：{trimmed}");
+            // 两种行格式（S-23）：
+            //   <三位ID>=<count>          ← 日志出现次数口径（Measure-Mudft）
+            //   <三位ID>-tools=<count>    ← 语义量口径（仅"聚合单条"诊断需要；
+            //                               出现次数对它是"1 × 编译次数"，拦不住"变多"）
+            var match = Regex.Match(trimmed, @"^(?<id>\d{3})(?<semantic>-tools)?\s*=\s*(?<count>\d+)$");
+            match.Success.Should().BeTrue($"基线行格式非法（应形如 009=0 或 009-tools=30）：{trimmed}");
 
             if (!declared.Contains(match.Groups["id"].Value))
             {
@@ -318,6 +322,41 @@ public class GeneratorDiagnosticsContractGuards
 
         orphans.Should().BeEmpty(
             "基线文件里的 ID 未在 $MudftBaselineIds 中声明 ⇒ 该行永远不会被检查：{0}", string.Join(", ", orphans));
+    }
+
+    /// <summary>
+    /// <b>R5 / S-23</b>：<c>MUDFT009</c> 的<b>语义量</b>基线行必须存在。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 这条守卫守的是"守卫本身的有效性"：<c>MUDFT009</c> 是**聚合单条**诊断，真正的计数写在
+    /// 消息文本里（"N 个工具的输出 Schema 被截断"），而 <c>Measure-Mudft</c> 数的是日志出现次数
+    /// ⇒ 那个数恒等于"编译次数"（实测 8），**截断工具数 30 → 40 时它不变**。
+    /// </para>
+    /// <para>
+    /// 也就是说：只保留 <c>009=8</c> 这一行，门禁对"截断变多"是**结构性失明**的。
+    /// 删掉 <c>009-tools=</c> 会让它悄悄退回失明状态且无任何症状 —— 故在此机械锁死。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void MudftBaselineFile_ShouldDeclareSemanticCountForAggregatedDiagnostic()
+    {
+        var baselinePath = Path.Combine(FindRepositoryRoot(), "scripts", "mudft-warning-baseline.txt");
+        var content = File.ReadAllText(baselinePath);
+
+        Regex.IsMatch(content, @"(?m)^\s*009-tools\s*=\s*\d+\s*$").Should().BeTrue(
+            "缺少 `009-tools=<N>` 行 ⇒ MUDFT009 只剩'日志出现次数'口径，"
+            + "而该口径对聚合单条诊断恒等于编译次数，无法发现被截断的工具数增长（S-23）");
+
+        // 两处断言（本地门禁 + CI）必须都接同一份语义量口径，否则"本地绿、CI 红"会再次出现。
+        var verify = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "scripts", "verify-build.ps1"));
+        verify.Should().Contain("Get-MudftSemanticBaseline", "本地门禁未接入 MUDFT009 语义量断言");
+        verify.Should().Contain("Get-MudftOutputSchemaTruncatedToolCount", "本地门禁未真正提取语义量");
+
+        var workflow = File.ReadAllText(
+            Path.Combine(FindRepositoryRoot(), ".github", "workflows", "dotnet-publish.yml"));
+        workflow.Should().Contain("Get-MudftSemanticBaseline", "CI 未接入 MUDFT009 语义量断言");
+        workflow.Should().Contain("Get-MudftOutputSchemaTruncatedToolCount", "CI 未真正提取语义量");
     }
 
     /// <summary>

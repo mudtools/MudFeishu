@@ -202,7 +202,16 @@ if ($script:cacheCleared) {
 }
 
 $buildLog = Join-Path $env:TEMP "mudfeishu-verify-build-$([guid]::NewGuid().ToString('N')).log"
-dotnet build $solution -c Release --nologo 2>&1 | Tee-Object -FilePath $buildLog | Out-Null
+
+# ⚠️ `--no-incremental` 不是可选项：步骤 2 要读的 MUDFT 诊断**全部由源生成器产出**，
+#    而增量构建会**整体跳过生成器** ⇒ 日志里一条诊断都没有 ⇒ 所有断言在"0 个诊断"上
+#    通过 —— 一个**不可能失败**的测量。
+#
+#    实测（2026-10-07）：同一次改动，增量构建 MUDFT009 = 0，全量构建 = 8。
+#    CI 在全新 runner 上构建（必然全量），因此基线必须按**全量**口径取值；
+#    本地若用增量构建测，会得到与 CI 不同的数，从而把 CI 变红却无人察觉
+#    （本次的基线 009=0 就是这样写下的：它是在"生成器被跳过"的热构建上测出来的）。
+dotnet build $solution -c Release --nologo --no-incremental 2>&1 | Tee-Object -FilePath $buildLog | Out-Null
 
 $cs1750 = (Select-String -Path $buildLog -Pattern 'error CS1750' -AllMatches).Count
 $nu1603 = (Select-String -Path $buildLog -Pattern 'NU1603' -AllMatches).Count
@@ -261,6 +270,21 @@ if ($DenyToolWarnings) {
         }
         else {
             Write-Host "  [ OK ] MUDFT$id 基线 = $actual (基线 $expected)" -ForegroundColor Green
+        }
+    }
+
+    # S-23：**语义量**断言。上面那轮数的是"该 ID 在日志里出现几次"，对**聚合单条**
+    # 诊断（MUDFT009 每个编译单元只报一条）它恒等于"编译次数"——截断工具数从 30 涨到 40
+    # 时该数**不变**，拦不住本该拦的增量。故再按"消息里的工具数"断一次。
+    $expectedTools = Get-MudftSemanticBaseline -Id '009'
+    if ($null -ne $expectedTools) {
+        $actualTools = Get-MudftOutputSchemaTruncatedToolCount -LogPath $buildLog
+        if ($actualTools -gt $expectedTools) {
+            $script:failures.Add("MUDFT009 语义量回归: 被截断工具数 $actualTools > 基线 $expectedTools（新增/加深了截断，须评审并更新 $MudftBaselinePath）")
+            Write-Host "  [FAIL] MUDFT009 被截断工具数 = $actualTools (基线 $expectedTools)" -ForegroundColor Red
+        }
+        else {
+            Write-Host "  [ OK ] MUDFT009 被截断工具数 = $actualTools (基线 $expectedTools)" -ForegroundColor Green
         }
     }
 }

@@ -624,6 +624,107 @@ public class GeneratorNegativeCaseTests
         }
     }
 
+    /// <summary>
+    /// <b>R5 / S-23</b>：<c>MUDFT009</c>（output_schema 截断）必须<b>可触发</b>，且只在深度超限时触发。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么补这条</b>：009 是**聚合单条** Warning，门禁按"日志出现次数 + 消息里的工具数"判定
+    /// （见 <c>scripts/mudft-warning-baseline.txt</c>），但它此前<b>没有任何 driver 负例</b>。
+    /// 若有人把上报条件改成恒假，日志里再也不出现该诊断 ⇒ 门禁在 0 上通过 ⇒
+    /// 又一次"不可能失败的测量"（S-23 的成因已在基线文件上真实发生过一次）。
+    /// </para>
+    /// <para>
+    /// 两侧同锁：深层返回类型<b>必须</b>触发（可触发），浅层<b>不得</b>触发（不过报，否则该诊断退化为噪声）。
+    /// 断言取消息里的<b>工具数</b>而不只是 ID —— 门禁正是按那个数字拦增量的。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void MUDFT009_DeepReturnType_ShouldBeReportedButShallowShouldNot()
+    {
+        var shallow = RunSdk(ToolSource("""
+            [FeishuTool("fake.get_thing",
+                Description = "浅层返回（对照）：返回类型在深度上限内，不得触发截断告警。",
+                Source = "IFeishuTenantV1Fake.GetThingAsync")]
+            public interface IShallowReturnTool
+            {
+                Task<string> GetThingAsync([ToolParameter("thing_id", "假数据 ID")] string thing_id);
+            }
+            """));
+
+        // 6 层嵌套对象链：Root→A→B→C→D→E（E 为字符串），深度明显超过 MaxOutputDepth = 4。
+        //
+        // ⚠️ 每层属性**必须**标 [JsonPropertyName]：`TypeSchemaResolver.GetSerializableProperties`
+        //    只发射带该特性的属性，未标注的属性会被整体略过 ⇒ 递归根本不深入 ⇒ 永远测不到截断
+        //    （首版用例就是这样"零诊断"通过的，看似成功实则什么都没验证）。
+        var deep = RunSdk(
+            FakeJsonPropertyNameAttributeSource,
+            ToolSource("""
+            using System.Text.Json.Serialization;
+
+            public class DeepL { [JsonPropertyName("leaf")] public string Leaf { get; set; } = string.Empty; }
+            public class DeepK { [JsonPropertyName("child")] public DeepL Child { get; set; } = new(); }
+            public class DeepJ { [JsonPropertyName("child")] public DeepK Child { get; set; } = new(); }
+            public class DeepI { [JsonPropertyName("child")] public DeepJ Child { get; set; } = new(); }
+            public class DeepH { [JsonPropertyName("child")] public DeepI Child { get; set; } = new(); }
+            public class DeepG { [JsonPropertyName("child")] public DeepH Child { get; set; } = new(); }
+            public class DeepF { [JsonPropertyName("child")] public DeepG Child { get; set; } = new(); }
+            public class DeepE { [JsonPropertyName("child")] public DeepF Child { get; set; } = new(); }
+            public class DeepD { [JsonPropertyName("child")] public DeepE Child { get; set; } = new(); }
+            public class DeepC { [JsonPropertyName("child")] public DeepD Child { get; set; } = new(); }
+            public class DeepB { [JsonPropertyName("child")] public DeepC Child { get; set; } = new(); }
+            public class DeepA { [JsonPropertyName("child")] public DeepB Child { get; set; } = new(); }
+
+            public interface IFeishuTenantV1DeepFake
+            {
+                [Post("/open-apis/deep/v1/things")]
+                System.Threading.Tasks.Task<DeepA?> GetDeepAsync(string thing_id);
+            }
+
+            [FeishuTool("fake.get_deep",
+                Description = "深层返回（应触发截断）：返回结构超过深度上限，output_schema 会被截断。",
+                Source = "IFeishuTenantV1DeepFake.GetDeepAsync")]
+            public interface IDeepReturnTool
+            {
+                Task<string> GetDeepAsync([ToolParameter("thing_id", "假数据 ID")] string thing_id);
+            }
+            """));
+
+        shallow.ShouldNotReport("MUDFT009", "深度上限内的返回类型不得触发截断告警（否则该诊断退化为噪声）");
+
+        var reported = deep.Diagnostics.FirstOrDefault(static d => d.Id == "MUDFT009");
+        var observed = string.Join(", ", deep.Diagnostics.Select(static d => d.Id + ": " + d.GetMessage()));
+
+        reported.Should().NotBeNull(
+            "超过深度上限的返回类型必须触发 MUDFT009 —— 若上报条件被改成恒假，"
+            + "日志里将再无该诊断，门禁会在 0 上通过（S-23 的成因）。实际诊断：{0}", observed);
+
+        reported!.GetMessage().Should().Contain(
+            "1 个工具的输出 Schema 被截断",
+            "消息里的工具数是门禁的语义量基线所读的数（S-23），必须真实反映被截断的工具数");
+    }
+
+    /// <summary>
+    /// 假 <c>JsonPropertyNameAttribute</c>（生成器按「名字 + <c>System.Text.Json.Serialization</c> 命名空间」匹配）。
+    /// </summary>
+    /// <remarks>
+    /// <b>为什么必须有它</b>：<c>TypeSchemaResolver.GetSerializableProperties</c> <b>只</b>发射带该特性的属性
+    /// —— 未标注的属性会被整体略过，递归因此根本不深入。凡是要验证 output_schema 形状/深度的用例，
+    /// 都少不得这个特性；此前 driver 用例从未覆盖输出 Schema 递归，故一直缺它。
+    /// </remarks>
+    public const string FakeJsonPropertyNameAttributeSource = """
+        namespace System.Text.Json.Serialization
+        {
+            [System.AttributeUsage(System.AttributeTargets.Property)]
+            public sealed class JsonPropertyNameAttribute : System.Attribute
+            {
+                public JsonPropertyNameAttribute(string name) => Name = name;
+
+                public string Name { get; }
+            }
+        }
+        """;
+
     /// <summary>负例对应的合成源码节（工具面声明）。</summary>
     private static string ToolSource(string content) => $$"""
         using System.Threading.Tasks;

@@ -60,6 +60,77 @@ $MudftBaselineIds = @('009', '021')
 # ── 基线文件（当前计数；增量即红）────────────────────────────────────────
 $MudftBaselinePath = Join-Path $PSScriptRoot 'mudft-warning-baseline.txt'
 
+# ── 语义量基线（S-23：给"聚合单条"诊断用的编译无关口径）────────────────────
+#
+# 为什么需要第二套口径：`Measure-Mudft` 数的是**日志里该 ID 的出现次数**，而
+# MUDFT009 是**聚合单条**诊断（每个编译单元只报一条，真正的计数写在**消息文本**里：
+# "N 个工具的输出 Schema 被截断"）。于是：
+#   出现次数 = 1 × 编译次数（实测 8） ⇒ 截断工具数 30 → 40 时**出现次数不变**
+#   ⇒ 只靠出现次数，基线退化为二元开关（0 / 非 0），拦不住"截断变多"这类真实增量。
+#
+# 故对聚合类诊断，基线取**消息里的语义量**（编译无关、与增量构建与否无关）。
+# 提取函数见 Get-MudftOutputSchemaTruncatedToolCount。
+function Get-MudftSemanticBaseline {
+    <#
+
+    .SYNOPSIS
+        读取语义量基线（形如 "009-tools=30" 的行）。
+
+    .PARAMETER Id
+        三位诊断 ID（如 '009'）。
+
+    .OUTPUTS
+        允许的最大语义量；未声明时为 $null（调用方按"无基线"处理）。
+    #>
+    param([Parameter(Mandatory = $true)][string]$Id)
+
+    if (-not (Test-Path $MudftBaselinePath)) {
+        return $null
+    }
+
+    foreach ($line in Get-Content -Path $MudftBaselinePath) {
+        $trimmed = $line.Trim()
+        if ($trimmed -match ("^" + [regex]::Escape($Id) + "-tools\s*=\s*(\d+)$")) {
+            return [int]$Matches[1]
+        }
+    }
+
+    return $null
+}
+
+function Get-MudftOutputSchemaTruncatedToolCount {
+    <#
+
+    .SYNOPSIS
+        从构建日志中提取 MUDFT009 的**语义量**：被截断的工具数（编译无关）。
+
+    .DESCRIPTION
+        消息形如 "…：30 个工具的输出 Schema 被截断（深度超限或循环引用）。样本：…"。
+        各编译单元的该数字相同，故取最大值（防日志交错/截断）。
+
+    .PARAMETER LogPath
+        构建日志路径。
+
+    .OUTPUTS
+        被截断的工具数；无该诊断时为 0。
+    #>
+    param([Parameter(Mandatory = $true)][string]$LogPath)
+
+    if (-not (Test-Path $LogPath)) {
+        return 0
+    }
+
+    $matches = [regex]::Matches(
+        [System.IO.File]::ReadAllText($LogPath),
+        '(\d+) 个工具的输出 Schema 被截断')
+
+    if ($matches.Count -eq 0) {
+        return 0
+    }
+
+    return ($matches | ForEach-Object { [int]$_.Groups[1].Value } | Measure-Object -Maximum).Maximum
+}
+
 function Get-MudftBaseline {
     <#
     .SYNOPSIS

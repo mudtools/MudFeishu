@@ -22,18 +22,35 @@ namespace Mud.Feishu.AI.FeishuTools.Internal;
 /// <summary>
 /// Docx 写工具执行器（<c>docx.create_document</c> / <c>docx.append_blocks</c>，WP2/R5）。
 /// </summary>
-internal sealed class DocxWriteTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, Mud.Feishu.IFeishuTenantV1DocxBlocks blocksClient)
+internal sealed class DocxWriteTools(
+    Mud.Feishu.IFeishuTenantV1Docx docxClient,
+    Mud.Feishu.IFeishuTenantV1DocxBlocks blocksClient,
+    IOptions<FeishuAgentOptions> options)
 {
     private readonly Mud.Feishu.IFeishuTenantV1Docx _docxClient = docxClient
         ?? throw new ArgumentNullException(nameof(docxClient));
     private readonly Mud.Feishu.IFeishuTenantV1DocxBlocks _blocksClient = blocksClient
         ?? throw new ArgumentNullException(nameof(blocksClient));
 
+    /// <summary>
+    /// 结果截断预算（与读侧执行器同源）。
+    /// </summary>
+    /// <remarks>
+    /// <b>为什么本类必须有它</b>（S-16）：单参 <c>ToolExecutor(...)</c> 把预算记作 <b>0</b>，
+    /// 而 <c>FromApi</c> 在预算为 0 时会把结果截到 <b>1 个字符</b>。本类原先因此改用
+    /// <c>FromApiUntruncated</c> 绕过 —— 但 <c>docx.import_markdown</c> 的结果体积由输入
+    /// markdown 决定（可含数百个块 + 图片映射），<b>不截断就等于把上下文交给调用方</b>，
+    /// 与它自己声明的"超长截断并标记 truncated"契约相矛盾。给出真实预算后，
+    /// 正常载荷不受影响（<c>TruncateJson</c> 在预算内原样返回），超长载荷才被约束。
+    /// </remarks>
+    private readonly int _maxResultLength =
+        (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+
     /// <summary>docx.create_document：创建文档（<c>dry_run=true</c> 时只预演）。</summary>
     [FeishuToolHandler(typeof(IFeishuDocxCreateDocumentTool))]
     public Task<FeishuToolResult> CreateDocumentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
-        var executor = new ToolExecutor(FeishuToolNames.DocxCreateDocument);
+        var executor = new ToolExecutor(FeishuToolNames.DocxCreateDocument, _maxResultLength);
         return executor.RunAsync(async () =>
         {
             var args = DocxCreateDocumentArgs.Unpack(arguments);
@@ -51,7 +68,7 @@ internal sealed class DocxWriteTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, 
                     new CreateDocumentRequest { FolderToken = args.FolderToken, Title = args.Title },
                     cancellationToken)
                 .ConfigureAwait(false));
-            return executor.FromApiUntruncated(outcome, data => new JsonObject
+            return executor.FromApi(outcome, data => new JsonObject
             {
                 ["document_id"] = data.Document?.DocumentId,
             });
@@ -63,7 +80,7 @@ internal sealed class DocxWriteTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, 
     [FeishuToolHandler(typeof(IFeishuDocxAppendBlocksTool))]
     public Task<FeishuToolResult> AppendBlocksAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
-        var executor = new ToolExecutor(FeishuToolNames.DocxAppendBlocks);
+        var executor = new ToolExecutor(FeishuToolNames.DocxAppendBlocks, _maxResultLength);
         return executor.RunAsync(async () =>
         {
             var args = DocxAppendBlocksArgs.Unpack(arguments);
@@ -92,7 +109,7 @@ internal sealed class DocxWriteTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, 
                     client_token: args.IdempotencyKey,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
-            return executor.FromApiUntruncated(outcome, data => new JsonObject
+            return executor.FromApi(outcome, data => new JsonObject
             {
                 // 逐个回填新增块 ID（模型下一跳要用它定位），单块时长度 1。
                 ["block_ids"] = new JsonArray(
@@ -309,7 +326,7 @@ internal sealed class DocxWriteTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, 
     [FeishuToolHandler(typeof(IFeishuDocxUpdateBlocksTool))]
     public Task<FeishuToolResult> UpdateBlocksAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
-        var executor = new ToolExecutor(FeishuToolNames.DocxUpdateBlocks);
+        var executor = new ToolExecutor(FeishuToolNames.DocxUpdateBlocks, _maxResultLength);
         return executor.RunAsync(async () =>
         {
             var args = DocxUpdateBlocksArgs.Unpack(arguments);
@@ -330,7 +347,7 @@ internal sealed class DocxWriteTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, 
                     client_token: args.IdempotencyKey,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
-            return executor.FromApiUntruncated(outcome, _ => new JsonObject { ["updated"] = requests.Length });
+            return executor.FromApi(outcome, _ => new JsonObject { ["updated"] = requests.Length });
         });
     }
 
@@ -338,7 +355,7 @@ internal sealed class DocxWriteTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, 
     [FeishuToolHandler(typeof(IFeishuDocxDeleteBlocksTool))]
     public Task<FeishuToolResult> DeleteBlocksAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
-        var executor = new ToolExecutor(FeishuToolNames.DocxDeleteBlocks);
+        var executor = new ToolExecutor(FeishuToolNames.DocxDeleteBlocks, _maxResultLength);
         return executor.RunAsync(async () =>
         {
             var args = DocxDeleteBlocksArgs.Unpack(arguments);
@@ -362,7 +379,7 @@ internal sealed class DocxWriteTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, 
                     client_token: args.IdempotencyKey,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
-            return executor.FromApiUntruncated(outcome, _ => new JsonObject { ["deleted"] = count });
+            return executor.FromApi(outcome, _ => new JsonObject { ["deleted"] = count });
         });
     }
 
@@ -370,12 +387,9 @@ internal sealed class DocxWriteTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, 
     [FeishuToolHandler(typeof(IFeishuDocxImportMarkdownTool))]
     public Task<FeishuToolResult> ImportMarkdownAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
-        // ⚠️ 必须用**非截断**出口：本类（DocxWriteTools）没有 IOptions，拿不到
-        // MaxToolResultLength，而 `FromApi(...)`（截断版）在 maxResultLength=0 时
-        // 会把结果截到 **1 个字符**（Truncate 内部 `maxLength<1 → 1`）。
-        // 与其拿到一个 1 字符的废结果，不如完整返回（转换结果体积由输入 markdown 长度决定）。
-        // TODO(S-16)：给 DocxWriteTools 注入 IOptions<FeishuAgentOptions>，改为有预算的截断。
-        var executor = new ToolExecutor(FeishuToolNames.DocxImportMarkdown);
+        // 本类已持有 _maxResultLength（见字段注释）：用**有预算**的截断出口。
+        // 转换结果体积由输入 markdown 决定，不设上限等于把上下文交给调用方。
+        var executor = new ToolExecutor(FeishuToolNames.DocxImportMarkdown, _maxResultLength);
         return executor.RunAsync(async () =>
         {
             var args = DocxImportMarkdownArgs.Unpack(arguments);
@@ -390,7 +404,7 @@ internal sealed class DocxWriteTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, 
                     new ConvertContentRequest { ContentType = "markdown", Content = args.Markdown! },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
-            return executor.FromApiUntruncated(outcome, ProjectContentConvert);
+            return executor.FromApi(outcome, ProjectContentConvert);
         });
     }
 
@@ -414,7 +428,7 @@ internal sealed class DocxWriteTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, 
     [FeishuToolHandler(typeof(IFeishuDocxReplaceDocumentTool))]
     public Task<FeishuToolResult> ReplaceDocumentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
-        var executor = new ToolExecutor(FeishuToolNames.DocxReplaceDocument);
+        var executor = new ToolExecutor(FeishuToolNames.DocxReplaceDocument, _maxResultLength);
         return executor.RunAsync(async () =>
         {
             var args = DocxReplaceDocumentArgs.Unpack(arguments);
@@ -504,7 +518,7 @@ internal sealed class DocxWriteTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, 
             {
                 envelope["deleted"] = 0;
                 envelope["note"] = "原文档无子块，仅追加";
-                return FeishuToolResult.FromText(ToolResultJson.ToText(envelope));
+                return FromEnvelope(envelope);
             }
 
             // ④ 再删除旧块 [0, oldCount)。失败时新旧并存 —— 如实上报，不做二次破坏性操作。
@@ -528,13 +542,24 @@ internal sealed class DocxWriteTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, 
                     $"新内容已写入（{newBlocks.Length} 块），但旧内容删除失败：{deleteOutcome.ErrorText}。"
                     + "文档现为**新旧内容并存**，内容未丢失。修复：调用 docx.delete_blocks，"
                     + $"document_id={args.DocumentId}，start_index=0，end_index={oldCount}（建议先 dry_run 确认区间）。";
-                return FeishuToolResult.FromText(ToolResultJson.ToText(envelope));
+                return FromEnvelope(envelope);
             }
 
             envelope["deleted"] = oldCount;
-            return FeishuToolResult.FromText(ToolResultJson.ToText(envelope));
+            return FromEnvelope(envelope);
         });
     }
+
+    /// <summary>
+    /// 按预算截断后返回手工信封（<c>replace_document</c> 的 3 条返回路径都走它）。
+    /// </summary>
+    /// <remarks>
+    /// 该工具的成功路径需要**手工拼装**信封（追加数 / 新块 ID / 部分失败指引），
+    /// 无法复用 <c>FromApi</c> 的投影形参；但**不截断**会让 <c>new_block_ids</c>
+    /// 这类数组随文档规模膨胀。故手工路径也必须过同一道预算。
+    /// </remarks>
+    private FeishuToolResult FromEnvelope(JsonObject envelope)
+        => FeishuToolResult.FromText(ToolResultText.TruncateJson(ToolResultJson.ToText(envelope), _maxResultLength));
 
     /// <summary>
     /// 统计某父块下的子块总数（翻页累加）。
@@ -727,13 +752,19 @@ internal sealed class DocxWriteTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, 
         }
 
         var text = block.Text?.Elements is null
-            ? null
+            ? string.Empty
             : string.Concat(block.Text.Elements.Select(static e => e?.TextRun?.Content));
 
         return new JsonObject
         {
             ["block_type"] = BlockTypes.GetName(block.BlockType),
-            ["text"] = ToolResultText.Truncate(text, PageSizes.MessagePreviewLength),
+
+            // ⚠️ 无文本块（分隔线 / 图片 / 表格）的 Text 为 null，必须回 null 而不是把 null
+            //    交给 Truncate —— 后者会抛 NullReferenceException，让**任何含分隔线或图片的
+            //    Markdown 都无法转换**。这类块在转换结果里很常见，属于必现路径而非边角。
+            ["text"] = string.IsNullOrEmpty(text)
+                ? null
+                : ToolResultText.Truncate(text, PageSizes.MessagePreviewLength),
         };
     }
 }

@@ -76,7 +76,8 @@ public class ErrorRecoverabilityTests
     {
         var tools = new Mud.Feishu.AI.FeishuTools.Internal.DocxWriteTools(
             new Moq.Mock<Mud.Feishu.IFeishuTenantV1Docx>().Object,
-            new Moq.Mock<Mud.Feishu.IFeishuTenantV1DocxBlocks>().Object);
+            new Moq.Mock<Mud.Feishu.IFeishuTenantV1DocxBlocks>().Object,
+            Microsoft.Extensions.Options.Options.Create(new Mud.Feishu.AI.Agents.FeishuAgentOptions()));
 
         var result = await tools.AppendBlocksAsync(
             new Dictionary<string, object?>(StringComparer.Ordinal)

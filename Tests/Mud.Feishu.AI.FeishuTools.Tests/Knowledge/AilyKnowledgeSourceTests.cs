@@ -38,6 +38,39 @@ public class AilyKnowledgeSourceTests
         document.RootElement.GetProperty("hint").GetString().Should().Contain("page_token");
     }
 
+    /// <summary>
+    /// <b>两个大数组的信封也必须被压到上限内</b>——只剪第一个数组会让整体照样超标，
+    /// 而 <c>truncated</c> 标记还会谎报"已经处理过了"。
+    /// </summary>
+    /// <remarks>
+    /// 复现源：<c>docx.import_markdown</c> 的投影同时返回 <c>first_level_block_ids</c> 与
+    /// <c>blocks</c>，二者同长（都随 markdown 规模增长）。首版只处理首个数组，
+    /// 于是"截断"后的结果体量仍与输入同量级。
+    /// </remarks>
+    [Fact]
+    public void TruncateJson_ShouldBoundAllArrays_NotJustTheFirst()
+    {
+        var ids = new JsonArray([.. Enumerable.Range(0, 300)
+            .Select(i => (JsonNode?)$"blk{i:0000}")]);
+        var blocks = new JsonArray([.. Enumerable.Range(0, 300)
+            .Select(i => (JsonNode?)new JsonObject { ["block_type"] = "文本段落", ["text"] = $"第 {i} 段" })]);
+        var json = new JsonObject
+        {
+            ["first_level_block_ids"] = ids,
+            ["blocks"] = blocks,
+        }.ToJsonString();
+
+        var truncated = ToolResultText.TruncateJson(json, 500);
+
+        truncated.Length.Should().BeLessThan(2000,
+            "两个大数组都必须被剪，否则'已截断'只是标记而没有效果");
+        using var document = JsonDocument.Parse(truncated);
+        document.RootElement.GetProperty("first_level_block_ids").GetArrayLength().Should()
+            .BeGreaterThan(0).And.BeLessThan(300, "第一个数组同样要剪（保底留 1 条）");
+        document.RootElement.GetProperty("blocks").GetArrayLength().Should()
+            .BeGreaterThan(0).And.BeLessThan(300, "第二个数组不能被漏掉——这正是本用例的存在理由");
+    }
+
     [Fact]
     public void TruncateJson_ShouldFallbackToCharTruncate_ForPlainText()
     {

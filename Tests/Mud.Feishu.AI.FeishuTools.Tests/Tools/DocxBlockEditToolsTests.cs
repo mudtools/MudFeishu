@@ -36,6 +36,12 @@ public class DocxBlockEditToolsTests
         public string? DeleteParentBlockId { get; set; }
 
         public ConvertContentRequest? ConvertRequest { get; set; }
+
+        /// <summary>转换返回的块数（用于验证结果体量真的被预算约束）。</summary>
+        public int ConvertedBlockCount { get; set; }
+
+        /// <summary>额外补一个**无文本块**（分隔线 / 图片 / 表格在转换结果里就没有 Text）。</summary>
+        public bool IncludeTextlessBlock { get; set; }
     }
 
     private static (Mock<IFeishuTenantV1DocxBlocks> Client, Capture Captured) CreateClient()
@@ -63,13 +69,35 @@ public class DocxBlockEditToolsTests
             .Setup(c => c.ContentConvertAsync(
                 It.IsAny<ConvertContentRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Callback<ConvertContentRequest, string, CancellationToken>((request, _, _) => captured.ConvertRequest = request)
-            .ReturnsAsync(new FeishuApiResult<ContentConvertResult> { Code = 0, Data = new ContentConvertResult() });
+            .ReturnsAsync(() => new FeishuApiResult<ContentConvertResult>
+            {
+                Code = 0,
+                Data = new ContentConvertResult
+                {
+                    Blocks = captured.IncludeTextlessBlock
+                        ?
+                        [
+                            .. Enumerable.Range(0, captured.ConvertedBlockCount)
+                                .Select(i => new Block { BlockType = BlockTypes.Text }),
+                            // Text 为 null：分隔线 / 图片 / 表格在转换结果里的真实形态。
+                            new Block { BlockType = BlockTypes.Divider },
+                        ]
+                        : [.. Enumerable.Range(0, captured.ConvertedBlockCount)
+                            .Select(i => new Block { BlockType = BlockTypes.Text })],
+                    FirstLevelBlockIds = [.. Enumerable.Range(0, captured.ConvertedBlockCount)
+                        .Select(i => $"blk{i}")],
+                },
+            });
 
         return (client, captured);
     }
 
-    private static DocxWriteTools CreateTools(Mock<IFeishuTenantV1DocxBlocks> client)
-        => new(new Mock<IFeishuTenantV1Docx>().Object, client.Object);
+    /// <summary>构造执行器；<paramref name="maxResultLength"/> 可调，用于验证截断预算被真正遵守。</summary>
+    private static DocxWriteTools CreateTools(Mock<IFeishuTenantV1DocxBlocks> client, int maxResultLength = 4000)
+        => new(
+            new Mock<IFeishuTenantV1Docx>().Object,
+            client.Object,
+            Options.Create(new FeishuAgentOptions { MaxToolResultLength = maxResultLength }));
 
     /// <summary>update_blocks：把 {block_id,text} 正确映射为 UpdateTextElements。</summary>
     [Fact]
@@ -413,6 +441,71 @@ public class DocxBlockEditToolsTests
 
         captured.Order.Should().BeEmpty("dry_run 必须完全不触达下游");
         result.Text.Should().Contain("dry_run");
+    }
+
+    /// <summary>
+    /// import_markdown：<b>无文本块（分隔线 / 图片 / 表格）不得让工具崩溃</b>。
+    /// </summary>
+    /// <remarks>
+    /// 这不是假想边角：Markdown 里的 <c>---</c>、图片、表格转换后**都没有 Text**，
+    /// 属常见路径。首版投影把 <c>null</c> 直接交给 <c>Truncate</c> ⇒
+    /// <see cref="NullReferenceException"/> 冒到工具层，**含分隔线或图片的 Markdown 全数转换失败**。
+    /// 该缺陷无编译错误、无 golden 漂移，只能由断言锁住。
+    /// </remarks>
+    [Fact]
+    public async Task ImportMarkdown_ShouldNotCrash_WhenBlockHasNoText()
+    {
+        var (client, captured) = CreateClient();
+        captured.ConvertedBlockCount = 2;
+        captured.IncludeTextlessBlock = true;
+        var tools = CreateTools(client);
+
+        var result = await tools.ImportMarkdownAsync(
+            Args(("markdown", "文本\n\n---\n\n更多")), CancellationToken.None);
+
+        using var document = JsonDocument.Parse(result.Text);
+        document.RootElement.GetProperty("blocks").EnumerateArray()
+            .Should().Contain(
+                block => block.GetProperty("text").ValueKind == JsonValueKind.Null,
+                "无文本块的 text 必须回 null（而不是抛异常、也不是空字符串）");
+    }
+
+    /// <summary>
+    /// import_markdown：<b>超长结果必须被预算截断</b>（S-16）。
+    /// </summary>
+    /// <remarks>
+    /// 这条断言的对象是"<b>预算是否被真正遵守</b>"，而不是某个具体投影：
+    /// 本类原先因拿不到 <c>MaxToolResultLength</c> 而改用非截断出口，
+    /// 于是"结果体积由输入 markdown 决定"⇒ 调用方上下文不受保护。
+    /// 该缺陷**没有任何编译错误**，只能靠断言结果长度来锁住。
+    /// </remarks>
+    [Fact]
+    public async Task ImportMarkdown_ShouldTruncateResult_WhenExceedingBudget()
+    {
+        var (client, captured) = CreateClient();
+        captured.ConvertedBlockCount = 500;
+        var tools = CreateTools(client, maxResultLength: 200);
+
+        var result = await tools.ImportMarkdownAsync(Args(("markdown", "# 大文档")), CancellationToken.None);
+
+        ToolResultText.IsTruncated(result.Text).Should().BeTrue(
+            "超长转换结果必须被截断——否则 docx.import_markdown 会把不受限的上下文交给调用方");
+        result.Text.Length.Should().BeLessThan(1000,
+            "截断后体量应与预算同量级，而不是与块数同量级");
+    }
+
+    /// <summary>预算宽裕时不得出现截断标记（证明截断是"按预算生效"而非无条件发生）。</summary>
+    [Fact]
+    public async Task ImportMarkdown_ShouldNotTruncate_WhenWithinBudget()
+    {
+        var (client, captured) = CreateClient();
+        captured.ConvertedBlockCount = 3;
+        var tools = CreateTools(client, maxResultLength: 4000);
+
+        var result = await tools.ImportMarkdownAsync(Args(("markdown", "# 小文档")), CancellationToken.None);
+
+        ToolResultText.IsTruncated(result.Text).Should().BeFalse("预算内的结果必须原样返回");
+        result.Text.Should().Contain("\"blocks\"");
     }
 
     /// <summary>import_markdown：空输入必须被拒（转换空内容会返回空块集，浪费一次调用）。</summary>

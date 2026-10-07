@@ -58,7 +58,8 @@ public class DocxAppendBlocksMultiTypeTests
     private static DocxWriteTools CreateTools(Mock<IFeishuTenantV1DocxBlocks> client)
         => new(
             new Mock<IFeishuTenantV1Docx>().Object,
-            client.Object);
+            client.Object,
+            Options.Create(new FeishuAgentOptions()));
 
     /// <summary>DoD 核心：一次调用下发 5 种块型，且每种都挂在与其 block_type 匹配的元素属性上。</summary>
     [Fact]

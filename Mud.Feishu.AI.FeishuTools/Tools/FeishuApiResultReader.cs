@@ -341,8 +341,18 @@ internal static class ToolResultText
     };
 
     /// <summary>按 <see cref="FeishuAgentOptions.MaxToolResultLength"/> 截断并追加标记。</summary>
-    public static string Truncate(string text, int maxLength)
+    /// <remarks>
+    /// <paramref name="text"/> 可空：投影函数常把"该字段本来就没有值"（如无文本块）直传进来，
+    /// 若在此抛 <see cref="NullReferenceException"/>，失败会以**未处理异常**的形式冒到工具层，
+    /// 而不是一个可读的空值 —— 定位成本远高于容忍一个 null。
+    /// </remarks>
+    public static string Truncate(string? text, int maxLength)
     {
+        if (string.IsNullOrEmpty(text))
+        {
+            return string.Empty;
+        }
+
         if (maxLength < 1)
         {
             maxLength = 1;
@@ -358,14 +368,26 @@ internal static class ToolResultText
     }
 
     /// <summary>
-    /// JSON 感知截断（AI-FD-D12 P1D-2a 默认行为升级）：对 JSON 文本按首个数组属性
-    /// （<c>items</c>/<c>values</c>/<c>metas</c> 等）<b>逐条删除</b>直至长度达标，追加
+    /// JSON 感知截断（AI-FD-D12 P1D-2a 默认行为升级）：对 JSON 文本按数组属性
+    /// （<c>items</c>/<c>values</c>/<c>metas</c>/<c>blocks</c> 等）删除尾部条目直至长度达标，追加
     /// <c>truncated</c>/<c>hint</c> 标记——截断不落在 JSON 结构中间，模型拿到的是合法 JSON；
     /// 解析失败（纯文本/非法 JSON）或无数组属性时退回字符截断（<see cref="Truncate"/>，既有行为）。
     /// </summary>
     /// <remarks>
+    /// <para>
     /// 开销为一次 JSON 解析（结果投影路径上，AOT 安全）；
     /// 仅剩 1 条仍超限时保持合法 JSON 返回（不落到字符截断破坏结构，结构完整性优先于硬上限）。
+    /// </para>
+    /// <para>
+    /// <b>处理<b>全部</b>数组属性而不仅是第一个</b>：有的信封天然带两个同长的大数组
+    /// （典型 <c>docx.import_markdown</c> 的 <c>first_level_block_ids</c> + <c>blocks</c>）。
+    /// 只剪第一个会留下另一个照样超标 —— 而 <c>truncated</c> 标记还会告诉调用方"已经处理过了"，
+    /// 即"看起来守住了上限，实际没有"，比不截断更危险。
+    /// </para>
+    /// <para>
+    /// 删除按<b>成批（每次约一半）</b>进行：逐条删除时每删 1 条都要重新序列化整棵树，
+    /// 双大数组信封会退化成 O(n²) 的字符串重排；成批把迭代次数降到 O(log n)。
+    /// </para>
     /// </remarks>
     public static string TruncateJson(string text, int maxLength)
     {
@@ -389,35 +411,59 @@ internal static class ToolResultText
             root = null; // 非 JSON 文本（如 docx.get_raw_content 的纯文本正文）：退回字符截断。
         }
 
-        // 查找第一个可截断的数组属性（items/values/metas 等列表型键）。
-        JsonArray? array = null;
-        string? arrayKey = null;
+        // 收集**全部**可截断的数组属性（items/values/blocks/…）。
+        //
+        // ⚠️ 这里必须收集所有数组，不能只取第一个：有的信封天然带**两个大数组**
+        // （典型：docx.import_markdown 的 first_level_block_ids + blocks 同长）。
+        // 只剪第一个会让另一个原样留下 ⇒ "已截断"但体积照样超标，而截断标记还告诉
+        // 调用方"已经处理过了"，比不截断更危险。
+        var arrays = new List<(JsonArray Array, string Key)>();
         if (root is not null)
         {
             foreach (var pair in root)
             {
                 if (pair.Value is JsonArray { Count: > 0 } candidate)
                 {
-                    array = candidate;
-                    arrayKey = pair.Key;
-                    break;
+                    arrays.Add((candidate, pair.Key));
                 }
             }
         }
 
-        if (array is null || arrayKey is null)
+        if (arrays.Count == 0)
         {
             return Truncate(text, maxLength);
         }
 
-        // 逐条删除尾部条目直至整体长度达标（至少保留 1 条，保证「有内容且可读」）。
-        while (array.Count > 1 && Mud.Feishu.AI.FeishuTools.Tools.ToolResultJson.ToText(root!).Length > maxLength)
+        // 记录"主导数组"（条目最多者）用于提示文案。
+        var primaryKey = arrays.OrderByDescending(static a => a.Array.Count).First().Key;
+
+        // 反复从"条目最多且仍可删"的数组尾部**成批**删除，直至整体达标。
+        //
+        // 成批（每次删一半）而非逐条：逐条删除时每删 1 条都要重新序列化整棵树，
+        // 双大数组信封会退化成 O(n²) 的字符串重排。成批把迭代次数降到 O(log n)。
+        // 每个数组至少保留 1 条，保证「有内容且可读」。
+        while (Mud.Feishu.AI.FeishuTools.Tools.ToolResultJson.ToText(root!).Length > maxLength)
         {
-            ((IList<JsonNode?>)array).RemoveAt(array.Count - 1);
+            var target = arrays
+                .Where(static a => a.Array.Count > 1)
+                .OrderByDescending(static a => a.Array.Count)
+                .FirstOrDefault();
+
+            if (target.Array is null)
+            {
+                break; // 所有数组都已只剩 1 条：保持合法 JSON 返回（结构完整性优先于硬上限）。
+            }
+
+            var removable = target.Array.Count - 1;
+            var batch = Math.Max(1, Math.Min(removable, target.Array.Count / 2));
+            for (var i = 0; i < batch; i++)
+            {
+                ((IList<JsonNode?>)target.Array).RemoveAt(target.Array.Count - 1);
+            }
         }
 
         root!["truncated"] = true;
-        root!["hint"] = $"结果已按 {arrayKey} 截断——请缩小查询范围或用 page_token 翻页";
+        root!["hint"] = $"结果已按 {primaryKey} 截断——请缩小查询范围或用 page_token 翻页";
         return Mud.Feishu.AI.FeishuTools.Tools.ToolResultJson.ToText(root!);
     }
 

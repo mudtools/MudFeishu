@@ -8,14 +8,11 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Options;
 using Mud.Feishu.AI.Channels;
 using Mud.Feishu.AI.Events;
 using Mud.Feishu.AI.Knowledge;
-using Mud.Feishu.AI.Tools;
 using Mud.Feishu.AI.Tools.Channels;
 using Mud.Feishu.AI.Tools.Events;
-using Mud.Feishu.AI.Tools.Internal;
 using Mud.Feishu.AI.Tools.Knowledge;
 using Mud.Feishu.AI.Tools.Registration;
 using Mud.Feishu.AI.Tools.Tools;
@@ -494,7 +491,7 @@ public static class FeishuToolsServiceCollectionExtensions
     }
 
     /// <summary>
-    /// 按域注册能力出处元工具（AT-F12）：<c>feishu.capability_lookup</c>（默认不启用）。
+    /// 按域注册能力出处元工具：<c>feishu.capability_lookup</c>（默认不启用）。
     /// </summary>
     /// <remarks>
     /// <para>

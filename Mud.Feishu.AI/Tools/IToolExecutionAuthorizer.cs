@@ -66,7 +66,7 @@ public sealed record FeishuToolContext(
 /// </summary>
 /// <remarks>
 /// <para>
-/// 与官方飞书 CLI 的定位区分（已决策⑥）：CLI 的 <c>--dry-run</c> 是调用方自愿的执行前预览；
+/// 与官方飞书 CLI 的定位区分：CLI 的 <c>--dry-run</c> 是调用方自愿的执行前预览；
 /// 本授权器是<b>宿主强制的服务端门禁</b>——写工具未过授权即拒绝，不可绕过。
 /// </para>
 /// <para>

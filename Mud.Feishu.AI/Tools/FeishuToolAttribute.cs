@@ -30,7 +30,7 @@ public sealed class FeishuToolAttribute(string name) : Attribute
     public string Description { get; init; } = string.Empty;
 
     /// <summary>
-    /// 所需权限点清单（已决策⑥）：随 Schema 输出，供 <see cref="IToolExecutionAuthorizer"/>
+    /// 所需权限点清单：随 Schema 输出，供 <see cref="IToolExecutionAuthorizer"/>
     /// 钩子与运维审计消费；SDK 不内建 scope 校验。
     /// </summary>
     public string[] RequiredScopes { get; init; } = [];

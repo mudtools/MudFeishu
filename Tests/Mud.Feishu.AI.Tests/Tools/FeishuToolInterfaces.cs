@@ -8,7 +8,7 @@
 namespace Mud.Feishu.AI.Tests.Tools;
 
 /// <summary>
-/// [FeishuTool] 源生成器闭环验证样例（T1-3）——仅测试载体，不属于生产 API 面。
+/// [FeishuTool] 源生成器闭环验证样例——仅测试载体，不属于生产 API 面。
 /// </summary>
 /// <remarks>
 /// <para>

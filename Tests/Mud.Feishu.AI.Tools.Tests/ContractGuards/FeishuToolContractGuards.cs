@@ -37,7 +37,7 @@ public class FeishuToolContractGuards
     [Fact]
     public void ReadonlyTools_ShouldBeReadOnly_WithScopes()
     {
-        // 免 scope 的元工具白名单（AT-F12）：它们不映射任何飞书 API，由
+        // 免 scope 的元工具白名单：它们不映射任何飞书 API，由
         // MetadataOnlyTools_ShouldNotDeclarePlatformScopes 反向锁定"scope 必须为空"。
         var scopeExemptTools = new[] { FeishuToolNames.FeishuCapabilityLookup };
 
@@ -114,7 +114,7 @@ public class FeishuToolContractGuards
 
             var scopes = root.GetProperty("x-feishu").GetProperty("required_scopes")
                 .EnumerateArray().Select(e => e.GetString()!).ToArray();
-            scopes.Should().NotBeEmpty($"{name} 必须声明 required_scopes（已决策⑥）");
+            scopes.Should().NotBeEmpty($"{name} 必须声明 required_scopes");
         }
     }
 

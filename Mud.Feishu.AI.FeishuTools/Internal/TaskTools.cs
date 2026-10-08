@@ -40,7 +40,7 @@ internal sealed class TaskTools(
 
     /// <summary>task.create_task：创建任务（<c>dry_run=true</c> 时只预演）。</summary>
     /// <remarks>幂等键（T4-1 同款）：<c>idempotency_key</c> → <c>CreateTaskRequest.ClientToken</c>（平台原生幂等）。</remarks>
-    [FeishuToolHandler(typeof(IFeishuTaskCreateTaskTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantTaskCreateTaskTool))]
     public Task<FeishuToolResult> CreateTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.TaskCreateTask, _maxResultLength);
@@ -116,7 +116,7 @@ internal sealed class TaskTools(
     }
 
     /// <summary>task.update_task：更新任务信息（summary/description/due，至少传一个；<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTaskUpdateTaskTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantTaskUpdateTaskTool))]
     public Task<FeishuToolResult> UpdateTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.TaskUpdateTask);
@@ -181,7 +181,7 @@ internal sealed class TaskTools(
     /// 天然幂等：对已完成的任务重复调用 completed_at 不会产生副作用（只更新时间戳，不会"取消完成"）。
     /// </para>
     /// </remarks>
-    [FeishuToolHandler(typeof(IFeishuTaskCompleteTaskTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantTaskCompleteTaskTool))]
     public Task<FeishuToolResult> CompleteTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.TaskCompleteTask);
@@ -267,7 +267,7 @@ internal sealed class TaskTools(
     // ────────── R7/WP5 写面成环 ──────────
 
     /// <summary>task.delete_task：删除任务（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTaskDeleteTaskTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantTaskDeleteTaskTool))]
     public Task<FeishuToolResult> DeleteTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.TaskDeleteTask);
@@ -294,7 +294,7 @@ internal sealed class TaskTools(
 
     /// <summary>task.create_subtask：创建子任务（<c>dry_run=true</c> 时只预演）。</summary>
     /// <remarks>幂等键：<c>idempotency_key</c> → <c>CreateSubTaskRequest.ClientToken</c>（平台原生幂等）。</remarks>
-    [FeishuToolHandler(typeof(IFeishuTaskCreateSubtaskTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantTaskCreateSubtaskTool))]
     public Task<FeishuToolResult> CreateSubtaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.TaskCreateSubtask, _maxResultLength);
@@ -335,7 +335,7 @@ internal sealed class TaskTools(
     }
 
     /// <summary>task.add_comment：添加评论（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTaskAddCommentTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantTaskAddCommentTool))]
     public Task<FeishuToolResult> AddCommentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.TaskAddComment);
@@ -379,7 +379,7 @@ internal sealed class TaskTools(
 
     /// <summary>task.add_members：添加任务成员（<c>dry_run=true</c> 时只预演）。</summary>
     /// <remarks>幂等键：<c>idempotency_key</c> → <c>AddMembersRequest.ClientToken</c>（平台原生幂等）。</remarks>
-    [FeishuToolHandler(typeof(IFeishuTaskAddMembersTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantTaskAddMembersTool))]
     public Task<FeishuToolResult> AddMembersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.TaskAddMembers);

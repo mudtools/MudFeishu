@@ -41,7 +41,7 @@ internal sealed class ContactDepartmentTools(
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>contact.list_departments：列出指定部门下的子部门（分页，白名单 department_id/name/parent_department_id）。</summary>
-    [FeishuToolHandler(typeof(IFeishuContactListDepartmentsTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantContactListDepartmentsTool))]
     public Task<FeishuToolResult> ListDepartmentsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ContactListDepartments, _maxResultLength);
@@ -74,7 +74,7 @@ internal sealed class ContactDepartmentTools(
     /// 部门 ID 过滤条件：<c>field="base_info.departments.department_id"</c>, <c>operator="eq"</c>,
     /// <c>value="\"{department_id}\""</c>（转义 JSON 字符串）。
     /// </remarks>
-    [FeishuToolHandler(typeof(IFeishuContactListDepartmentMembersTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantContactListDepartmentMembersTool))]
     public Task<FeishuToolResult> ListDepartmentMembersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ContactListDepartmentMembers, _maxResultLength);

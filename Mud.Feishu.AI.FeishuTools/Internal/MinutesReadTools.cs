@@ -32,7 +32,7 @@ internal sealed class MinutesReadTools(Mud.Feishu.IFeishuTenantV1MinutesMinute? 
 {
     private readonly Mud.Feishu.IFeishuTenantV1MinutesMinute? _minutesClient = minutesClient;
 
-    [FeishuToolHandler(typeof(IFeishuMinutesGetTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantMinutesGetTool))]
     public Task<FeishuToolResult> GetMinuteAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.MinutesGet);
@@ -72,7 +72,7 @@ internal sealed class MinutesReadTools(Mud.Feishu.IFeishuTenantV1MinutesMinute? 
         });
     }
 
-    [FeishuToolHandler(typeof(IFeishuMinutesGetArtifactsTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantMinutesGetArtifactsTool))]
     public Task<FeishuToolResult> GetMinuteArtifactsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.MinutesGetArtifacts);
@@ -89,7 +89,8 @@ internal sealed class MinutesReadTools(Mud.Feishu.IFeishuTenantV1MinutesMinute? 
                 var chapters = new JsonArray();
                 foreach (var chapter in data.MinuteChapters ?? [])
                 {
-                    chapters.Add(new JsonObject
+                    // AddNode（而非 Add）：见 ToolResultText.AddNode——泛型 Add<T>(T) 的裁剪/AOT 注解会红。
+                    chapters.AddNode(new JsonObject
                     {
                         ["title"] = chapter.Title,
                         ["start_ms"] = chapter.StartMs,
@@ -101,7 +102,7 @@ internal sealed class MinutesReadTools(Mud.Feishu.IFeishuTenantV1MinutesMinute? 
                 var todos = new JsonArray();
                 foreach (var todo in data.MinuteTodos ?? [])
                 {
-                    todos.Add(new JsonObject
+                    todos.AddNode(new JsonObject
                     {
                         // 与 body/content 同口径预截断（B-3 纪律：回填的文本一律不等长放任）。
                         ["content"] = ToolResultText.Truncate(todo.Content, PageSizes.MessagePreviewLength),

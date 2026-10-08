@@ -23,7 +23,7 @@ internal sealed class SearchTools(Mud.Feishu.IFeishuTenantV2SearchDocWiki search
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>search.doc_wiki：云文档与知识库搜索（白名单 title/url/owner/doc_type）。</summary>
-    [FeishuToolHandler(typeof(IFeishuSearchDocWikiTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantSearchDocWikiTool))]
     public Task<FeishuToolResult> SearchAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.SearchDocWiki, _maxResultLength);

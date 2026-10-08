@@ -29,8 +29,8 @@ namespace Mud.Feishu.AI.FeishuTools.Curation;
     Description = "创建一条任务（summary 必填；due 为 RFC3339 时间由工具层转换为毫秒时间戳；assignee_ids 为被指派人 open_id 列表）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
-    Source = "IFeishuTenantV2Task.CreateTaskAsync")]
-public interface IFeishuTaskCreateTaskTool
+    Source = nameof(IFeishuTenantV2Task) + "." + nameof(IFeishuTenantV2Task.CreateTaskAsync))]
+public interface IFeishuTenantTaskCreateTaskTool
 {
     /// <summary>创建任务。</summary>
     /// <returns>白名单投影后的 JSON 文本（task guid）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
@@ -49,7 +49,7 @@ public interface IFeishuTaskCreateTaskTool
     Description = "以用户令牌身份读取「我负责的」任务列表（按用户在任务界面的自定义排序返回；可翻页）。要求宿主已提供当前用户身份与该用户的用户令牌。只读，需 task:task:readonly。",
     RequiredScopes = ["task:task:readonly"],
     IsWrite = false,
-    Source = "IFeishuUserV2Task.GetTasksPageListByIdAsync")]
+    Source = nameof(IFeishuUserV2Task) + "." + nameof(IFeishuUserV2Task.GetTasksPageListByIdAsync))]
 public interface IFeishuUserTaskListMyTasksTool
 {
     /// <summary>列出我的任务。</summary>
@@ -67,14 +67,14 @@ public interface IFeishuUserTaskListMyTasksTool
     Description = "更新任务信息（summary/description/due 等字段，至少传一个要更新的字段）。task_guid 来自 task.create_task 或 task.list_my_tasks。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
-    Source = "IFeishuTenantV2Task.UpdateTaskAsync",
+    Source = nameof(IFeishuTenantV2Task) + "." + nameof(IFeishuTenantV2Task.UpdateTaskAsync),
 
     // R5 / B-6：至少要更新一个字段——跨参数约束，required 表达不了（会让三者都必填）。
     // 成员集与执行器的运行时校验（TaskTools.UpdateTaskAsync）严格一致，不多不少。
     // 注意：task.complete_task 共用同一 SDK 方法但**不加** AnyOf——它只传 completed_at，
     // 语义是"固定字段写入"，不是"开放字段任选其一"。
     AnyOf = ["summary|description|due"])]
-public interface IFeishuTaskUpdateTaskTool
+public interface IFeishuTenantTaskUpdateTaskTool
 {
     /// <summary>更新任务。</summary>
     /// <returns>白名单投影后的 JSON 文本（task_guid）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
@@ -92,8 +92,8 @@ public interface IFeishuTaskUpdateTaskTool
     Description = "将任务标记为已完成（通过 update_task 设置 completed_at 字段）。task_guid 来自 task.create_task 或 task.list_my_tasks。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
-    Source = "IFeishuTenantV2Task.UpdateTaskAsync")]
-public interface IFeishuTaskCompleteTaskTool
+    Source = nameof(IFeishuTenantV2Task) + "." + nameof(IFeishuTenantV2Task.UpdateTaskAsync))]
+public interface IFeishuTenantTaskCompleteTaskTool
 {
     /// <summary>完成任务。</summary>
     /// <returns>白名单投影后的 JSON 文本（task_guid/completed=true）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
@@ -110,8 +110,8 @@ public interface IFeishuTaskCompleteTaskTool
     Description = "删除指定任务（删除后任务无法再被获取到）。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。建议先 dry_run 预演确认。task_guid 来自 task.create_task 或 task.list_my_tasks。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
-    Source = "IFeishuTenantV2Task.DeleteTaskByIdAsync")]
-public interface IFeishuTaskDeleteTaskTool
+    Source = nameof(IFeishuTenantV2Task) + "." + nameof(IFeishuTenantV2Task.DeleteTaskByIdAsync))]
+public interface IFeishuTenantTaskDeleteTaskTool
 {
     /// <summary>删除任务。</summary>
     /// <returns>白名单投影后的 JSON 文本（deleted=true）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
@@ -126,8 +126,8 @@ public interface IFeishuTaskDeleteTaskTool
     Description = "为指定父任务创建子任务（summary 必填；接口功能除了额外需要父任务 GUID 外，和创建任务完全一致）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
-    Source = "IFeishuTenantV2Task.CreateSubTaskAsync")]
-public interface IFeishuTaskCreateSubtaskTool
+    Source = nameof(IFeishuTenantV2Task) + "." + nameof(IFeishuTenantV2Task.CreateSubTaskAsync))]
+public interface IFeishuTenantTaskCreateSubtaskTool
 {
     /// <summary>创建子任务。</summary>
     /// <returns>白名单投影后的 JSON 文本（subtask_guid）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
@@ -146,8 +146,8 @@ public interface IFeishuTaskCreateSubtaskTool
     Description = "为指定任务添加评论（content 必填，最长 3000 个 utf8 字符）。可通过 reply_to_comment_id 回复已有评论。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
-    Source = "IFeishuTenantV2TaskComments.CreateCommentAsync")]
-public interface IFeishuTaskAddCommentTool
+    Source = nameof(IFeishuTenantV2TaskComments) + "." + nameof(IFeishuTenantV2TaskComments.CreateCommentAsync))]
+public interface IFeishuTenantTaskAddCommentTool
 {
     /// <summary>添加评论。</summary>
     /// <returns>白名单投影后的 JSON 文本（comment_id）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
@@ -164,8 +164,8 @@ public interface IFeishuTaskAddCommentTool
     Description = "向指定任务添加成员（负责人或关注人，member_ids 为 open_id 数组，role 指定角色 assignee 或 follower）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
-    Source = "IFeishuTenantV2Task.AddMembersByIdAsync")]
-public interface IFeishuTaskAddMembersTool
+    Source = nameof(IFeishuTenantV2Task) + "." + nameof(IFeishuTenantV2Task.AddMembersByIdAsync))]
+public interface IFeishuTenantTaskAddMembersTool
 {
     /// <summary>添加任务成员。</summary>
     /// <returns>白名单投影后的 JSON 文本（added_count/task_guid）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>

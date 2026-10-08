@@ -26,7 +26,7 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 /// 该误解会诱导后续开发者按"能力已存在"的错误前提重复建设，故此处显式纠正。
 /// </para>
 /// <para>
-/// 注：<c>FeishuCapabilityCatalog</c> 为 <c>internal</c>（不进入公共 API 面），
+/// 注：<c>FeishuToolCapabilityCatalog</c> 为 <c>internal</c>（不进入公共 API 面），
 /// 经 <c>InternalsVisibleTo</c> 对测试可见；其发射由
 /// <c>Mud.Feishu.AI.FeishuTools.csproj</c> 的 <c>FeishuToolCatalog=true</c> 开启。
 /// </para>
@@ -59,7 +59,7 @@ public class GeneratorCapabilityCatalogTests
     [Fact]
     public void SdkMethodCount_ShouldMatchExactExpectedValue()
     {
-        FeishuCapabilityCatalog.SdkMethodCount.Should().Be(ExpectedSdkMethodCount,
+        FeishuToolCapabilityCatalog.SdkMethodCount.Should().Be(ExpectedSdkMethodCount,
             "SDK 方法总数是「能力面差距」的量化依据，必须精确锁定（原 BeGreaterThan(200) 是假绿："
             + "生成器退化成只看 [FeishuTool] 也照样通过）。变更该值须先评审。");
     }
@@ -68,7 +68,7 @@ public class GeneratorCapabilityCatalogTests
     [Fact]
     public void CuratedToolCount_ShouldMatchTheDerivedContractTable()
     {
-        FeishuCapabilityCatalog.CuratedToolCount.Should().Be(FeishuToolNames.All.Length,
+        FeishuToolCapabilityCatalog.CuratedToolCount.Should().Be(FeishuToolNames.All.Length,
             "能力目录的策展计数与工具名契约表必须同源（都从 [FeishuTool] 派生）");
     }
 
@@ -76,13 +76,13 @@ public class GeneratorCapabilityCatalogTests
     [Fact]
     public void MethodsByDomain_ShouldBeConsistentAndMatchExactDomainCount()
     {
-        var byDomain = FeishuCapabilityCatalog.MethodsByDomain;
+        var byDomain = FeishuToolCapabilityCatalog.MethodsByDomain;
 
         byDomain.Should().NotBeEmpty();
-        FeishuCapabilityCatalog.DomainCount.Should().Be(byDomain.Count);
-        FeishuCapabilityCatalog.DomainCount.Should().Be(ExpectedDomainCount,
+        FeishuToolCapabilityCatalog.DomainCount.Should().Be(byDomain.Count);
+        FeishuToolCapabilityCatalog.DomainCount.Should().Be(ExpectedDomainCount,
             "能力分组数（= 接口文件级的 domain+resource 段）必须精确锁定——原 BeGreaterThan(100) 同样是假绿");
-        byDomain.Values.Sum().Should().Be(FeishuCapabilityCatalog.SdkMethodCount,
+        byDomain.Values.Sum().Should().Be(FeishuToolCapabilityCatalog.SdkMethodCount,
             "各组方法数之和必须等于总量（否则统计口径不一致）");
     }
 
@@ -97,10 +97,10 @@ public class GeneratorCapabilityCatalogTests
     [Fact]
     public void CapabilityCatalog_ShouldBeInternallyCoherent()
     {
-        FeishuCapabilityCatalog.DomainCount.Should().BeGreaterThan(100,
+        FeishuToolCapabilityCatalog.DomainCount.Should().BeGreaterThan(100,
             "分组轴是 domain+resource 段，数量应接近接口文件数（数百），远多于 32 个目录域");
 
-        FeishuCapabilityCatalog.CuratedToolCount.Should().BeLessThan(FeishuCapabilityCatalog.SdkMethodCount,
+        FeishuToolCapabilityCatalog.CuratedToolCount.Should().BeLessThan(FeishuToolCapabilityCatalog.SdkMethodCount,
             "暴露面必须是 SDK 能力面的真子集（无差别全量暴露是明确非目标）");
     }
 
@@ -112,7 +112,7 @@ public class GeneratorCapabilityCatalogTests
     /// R4-9：<c>Mud.Feishu.AI.FeishuTools</c> 必须显式开启 <c>FeishuToolCatalog</c>。
     /// </summary>
     /// <remarks>
-    /// 消费方 <c>CapabilityLookupTools</c> <b>编译期无条件</b>引用 <see cref="FeishuCapabilityCatalog"/>，
+    /// 消费方 <c>CapabilityLookupTools</c> <b>编译期无条件</b>引用 <see cref="FeishuToolCapabilityCatalog"/>，
     /// 关闭该属性即 <c>CS0103</c>（构建失败）——故"显式 opt-in、关闭即不产出"的措辞与事实不符：
     /// <b>对本包它是必需产物</b>（属性仍是构建开关，但"可关闭"只对 AI 底座/测试等工程成立）。
     /// 本守卫把该耦合显式化：删掉 csproj 属性时失败信息直接指出消费方依赖，
@@ -128,10 +128,10 @@ public class GeneratorCapabilityCatalogTests
         File.Exists(csproj).Should().BeTrue();
         File.ReadAllText(csproj).Should().MatchRegex(
             @"<FeishuToolCatalog>\s*true\s*</FeishuToolCatalog>",
-            "FeishuTools 必须开启 FeishuToolCatalog——CapabilityLookupTools 编译期依赖 FeishuCapabilityCatalog（R4-9）");
+            "FeishuTools 必须开启 FeishuToolCatalog——CapabilityLookupTools 编译期依赖 FeishuToolCapabilityCatalog（R4-9）");
 
         File.Exists(consumer).Should().BeTrue();
-        File.ReadAllText(consumer).Should().Contain("FeishuCapabilityCatalog.",
+        File.ReadAllText(consumer).Should().Contain("FeishuToolCapabilityCatalog.",
             "消费点必须存在；若该引用被移除，则本属性对本包不再必需，守卫与注释口径需同步修订（R4-9）");
     }
 

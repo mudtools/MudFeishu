@@ -28,8 +28,8 @@ namespace Mud.Feishu.AI.FeishuTools.Curation;
 [FeishuTool("mail.list_messages",
     Description = "列出用户邮箱中的邮件（返回 message_id 列表，可传给 mail.get_message 获取详情）。user_mailbox_id 为用户邮箱地址。只读，需 mail:mailbox:readonly。",
     RequiredScopes = ["mail:mailbox:readonly"],
-    Source = "IFeishuTenantV1MailMessage.GetUserMailboxMessagePageListAsync")]
-public interface IFeishuMailListMessagesTool
+    Source = nameof(IFeishuTenantV1MailMessage) + "." + nameof(IFeishuTenantV1MailMessage.GetUserMailboxMessagePageListAsync))]
+public interface IFeishuTenantMailListMessagesTool
 {
     /// <summary>列出邮件（分页）。</summary>
     /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token），超长截断并标记 truncated。</returns>
@@ -45,8 +45,8 @@ public interface IFeishuMailListMessagesTool
 [FeishuTool("mail.get_message",
     Description = "获取邮件详情（主题/收发件人/正文预览）。message_id 来自 mail.list_messages。只读，需 mail:mailbox:readonly。",
     RequiredScopes = ["mail:mailbox:readonly"],
-    Source = "IFeishuTenantV1MailMessage.GetUserMailboxMessageAsync")]
-public interface IFeishuMailGetMessageTool
+    Source = nameof(IFeishuTenantV1MailMessage) + "." + nameof(IFeishuTenantV1MailMessage.GetUserMailboxMessageAsync))]
+public interface IFeishuTenantMailGetMessageTool
 {
     /// <summary>获取邮件详情。</summary>
     /// <returns>白名单投影后的 JSON 文本（subject/from/to/cc/body_preview/message_id），超长截断并标记 truncated。</returns>
@@ -64,7 +64,7 @@ public interface IFeishuMailGetMessageTool
     Description = "以用户身份发送邮件（两步操作：先创建草稿再发送，模型无需感知中间态）。to/cc/bcc 为邮箱地址数组，subject 为主题，body 为纯文本正文。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 mail:mailbox。用户身份工具——宿主须在 AllowedIdentities 放行 user。",
     RequiredScopes = ["mail:mailbox"],
     IsWrite = true,
-    Source = "IFeishuUserV1MailDraft.SendUserMailboxDraftAsync")]
+    Source = nameof(IFeishuUserV1MailDraft) + "." + nameof(IFeishuUserV1MailDraft.SendUserMailboxDraftAsync))]
 public interface IFeishuUserMailSendMessageTool
 {
     /// <summary>发送邮件。</summary>
@@ -86,8 +86,8 @@ public interface IFeishuUserMailSendMessageTool
 [FeishuTool("contact.list_departments",
     Description = "列出指定部门下的子部门（返回 department_id/name/parent_department_id）。department_id 为 0 时列出根部门。只读，需 contact:department.base:readonly。",
     RequiredScopes = ["contact:department.base:readonly"],
-    Source = "IFeishuTenantV3Departments.GetDepartmentsByParentIdAsync")]
-public interface IFeishuContactListDepartmentsTool
+    Source = nameof(IFeishuTenantV3Departments) + "." + nameof(IFeishuTenantV3Departments.GetDepartmentsByParentIdAsync))]
+public interface IFeishuTenantContactListDepartmentsTool
 {
     /// <summary>列出子部门（分页）。</summary>
     /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token），超长截断并标记 truncated。</returns>
@@ -102,8 +102,8 @@ public interface IFeishuContactListDepartmentsTool
 [FeishuTool("contact.list_department_members",
     Description = "按部门 ID 列出该部门下的员工（返回 open_id/name/employee_id）。department_id 来自 contact.list_departments。只读，需 contact:user.base:readonly。",
     RequiredScopes = ["contact:user.base:readonly"],
-    Source = "IFeishuTenantV1Employees.QueryEmployeePageListAsync")]
-public interface IFeishuContactListDepartmentMembersTool
+    Source = nameof(IFeishuTenantV1Employees) + "." + nameof(IFeishuTenantV1Employees.QueryEmployeePageListAsync))]
+public interface IFeishuTenantContactListDepartmentMembersTool
 {
     /// <summary>按部门列出员工（分页）。</summary>
     /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token），超长截断并标记 truncated。</returns>
@@ -119,7 +119,7 @@ public interface IFeishuContactListDepartmentMembersTool
 [FeishuTool("approval.get_instance",
     Description = "获取审批实例详情（含表单/状态/审批流程节点）。instance_code 来自 approval.list_pending_tasks 或审批事件。只读，需 approval:approval:readonly。用户身份工具——宿主须在 AllowedIdentities 放行 user。",
     RequiredScopes = ["approval:approval:readonly"],
-    Source = "IFeishuUserV4ApprovalInstance.GetInstanceDetailAsync")]
+    Source = nameof(IFeishuUserV4ApprovalInstance) + "." + nameof(IFeishuUserV4ApprovalInstance.GetInstanceDetailAsync))]
 public interface IFeishuUserApprovalGetInstanceTool
 {
     /// <summary>获取审批实例详情。</summary>
@@ -140,7 +140,7 @@ public interface IFeishuUserApprovalGetInstanceTool
 [FeishuTool("mail.search",
     Description = "按关键字搜索邮箱邮件（如'找张三发的关于合同的邮件'）。user 身份接口，支持分页。只读，需 mail:mailbox:readonly。",
     RequiredScopes = ["mail:mailbox:readonly"],
-    Source = "IFeishuUserV1MailMessage.SearchUserMailboxMessageAsync")]
+    Source = nameof(IFeishuUserV1MailMessage) + "." + nameof(IFeishuUserV1MailMessage.SearchUserMailboxMessageAsync))]
 public interface IFeishuUserMailSearchTool
 {
     /// <summary>搜索邮件。</summary>
@@ -156,8 +156,8 @@ public interface IFeishuUserMailSearchTool
 [FeishuTool("mail.list_labels",
     Description = "列出邮箱的邮件标签（label）——用于查清可用的 label_id，再传给 mail.list_messages 做标签过滤。只读，需 mail:mailbox:readonly。",
     RequiredScopes = ["mail:mailbox:readonly"],
-    Source = "IFeishuTenantV1MailLabel.GetUserMailboxLabelListAsync")]
-public interface IFeishuMailListLabelsTool
+    Source = nameof(IFeishuTenantV1MailLabel) + "." + nameof(IFeishuTenantV1MailLabel.GetUserMailboxLabelListAsync))]
+public interface IFeishuTenantMailListLabelsTool
 {
     /// <summary>列出标签。</summary>
     /// <returns>白名单投影后的 JSON 文本（label_id/name）。</returns>
@@ -170,8 +170,8 @@ public interface IFeishuMailListLabelsTool
 [FeishuTool("mail.get_thread",
     Description = "取一封邮件的会话线程（同一主题下的往来邮件）——回复/追问类问题的完整上下文来源。只读，需 mail:mailbox:readonly。",
     RequiredScopes = ["mail:mailbox:readonly"],
-    Source = "IFeishuTenantV1MailThread.GetUserMailboxThreadAsync")]
-public interface IFeishuMailGetThreadTool
+    Source = nameof(IFeishuTenantV1MailThread) + "." + nameof(IFeishuTenantV1MailThread.GetUserMailboxThreadAsync))]
+public interface IFeishuTenantMailGetThreadTool
 {
     /// <summary>获取会话线程。</summary>
     /// <returns>白名单投影后的 JSON 文本（thread_id/body_preview/messages）。</returns>
@@ -190,8 +190,8 @@ public interface IFeishuMailGetThreadTool
     Description = "把邮件标记为已读（或未读）——Agent 读完邮件后应回写，避免用户邮箱堆积未读。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 mail:mailbox。",
     RequiredScopes = ["mail:mailbox"],
     IsWrite = true,
-    Source = "IFeishuTenantV1MailMessage.ModifyUserMailboxMessageAsync")]
-public interface IFeishuMailMarkReadTool
+    Source = nameof(IFeishuTenantV1MailMessage) + "." + nameof(IFeishuTenantV1MailMessage.ModifyUserMailboxMessageAsync))]
+public interface IFeishuTenantMailMarkReadTool
 {
     /// <summary>标记已读状态。</summary>
     /// <returns>结构化文本（message_id/read）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>

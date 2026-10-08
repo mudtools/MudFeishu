@@ -21,7 +21,8 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 /// <item><b>SDK 接口</b>（<c>Mud.Feishu/Interfaces/**</c>）提供底层能力，<b>从不</b>携带
 /// <c>[FeishuTool]</c>（实测：含二进制方法的 13 个接口，工具计数全为 0）。</item>
 /// </list>
-/// 两层靠 <c>[FeishuTool(Source = "接口名.方法名")]</c> 交叉引用。
+/// 两层靠 <c>[FeishuTool(Source = …)]</c> 交叉引用（R-1 起为
+/// <c>nameof(接口) + "." + nameof(接口.方法)</c> 常量拼接，编译期求值结果与旧字面量逐字节相同）。
 /// </para>
 /// <para>
 /// <b>所以真正的暴露向量只有一个</b>：<b><c>Source</c> 指向了返回二进制的 SDK 方法</b>。
@@ -153,6 +154,37 @@ public class BinaryDownloadToolExposureContractTests
     }
 
     /// <summary>
+    /// <b>R-1+2c 反向自证</b>：扫描器必须读得懂 <c>Source</c> 的<b>现形态</b>
+    /// （<c>nameof(接口) + "." + nameof(接口.方法)</c> 常量拼接），且归一结果与旧字面量形态同构。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 为什么必须单列这条：R-1 把 84 处 <c>Source</c> 从字面量改成 <c>nameof</c> 拼接后，
+    /// 若扫描器只认 <c>Source = "…"</c>，核心断言（<see cref="ToolSources_ShouldNeverPointToBinaryReturningSdkMethods"/>）
+    /// 会退化为"一个 Source 都扫不到" ⇒ <b>防线静默失效</b>（这正是"永远为绿的守卫"形态）。
+    /// </para>
+    /// <para>
+    /// 判据用精确基线 84（与 <c>ToolSourceConsistencyContractTests</c> 同源），
+    /// 且要求每个 Source 都含 <c>.</c>（证明接口名没有被 <c>nameof</c> 的"末段标识符"语义吃掉）。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void Scanner_ShouldReadTheNameofConcatenationForm_AndNormalizeToInterfaceDotMethod()
+    {
+        var references = CollectToolSourceReferences().ToArray();
+
+        references.Should().HaveCount(
+            84,
+            "84 个工具声明了 Source（另 3 个元工具无 SDK 源）——骤降说明扫描器读不懂现形态（R-1 的 nameof 拼接）");
+
+        references.Should().OnlyContain(
+            static reference => reference.Source.Contains('.', StringComparison.Ordinal)
+                && reference.Source.IndexOf('.') > 0
+                && reference.Source.IndexOf('.') < reference.Source.Length - 1,
+            "每个 Source 必须归一为「接口名.方法名」——单段 nameof(接口.方法) 只产出方法名，会被判为无接口");
+    }
+
+    /// <summary>
     /// 基线锁定：二进制方法数 / 接口数都是<b>有意登记的存量</b>，变动时必须显式更新期望值——
     /// 避免"新增下载方法"这类有意的接口面扩张静默发生。
     /// </summary>
@@ -198,7 +230,20 @@ public class BinaryDownloadToolExposureContractTests
         return names;
     }
 
-    /// <summary>采集工具侧全部 <c>[FeishuTool]</c> 的工具名与 <c>Source</c> 值。</summary>
+    /// <summary>
+    /// 采集工具侧全部 <c>[FeishuTool]</c> 的工具名与 <c>Source</c> 值（归一到 <c>"接口.方法"</c> 形态）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>必须支持两种声明形态</b>（R-1 迁移后只剩后一种，但扫描器要能同时读——否则形态回退时
+    /// 扫描器会静默扫不到任何 Source）：
+    /// </para>
+    /// <list type="bullet">
+    /// <item>旧字面量：<c>Source = "IFeishuTenantV1X.MethodAsync"</c>；</item>
+    /// <item>现形态（常量拼接）：<c>Source = nameof(IFeishuTenantV1X) + "." + nameof(IFeishuTenantV1X.MethodAsync)</c>。
+    /// 注意单段 <c>nameof(接口.方法)</c> 只产出方法名（丢接口名），故形态必须是两段拼接。</item>
+    /// </list>
+    /// </remarks>
     private static IEnumerable<(string ToolFile, string ToolName, string Source)> CollectToolSourceReferences()
     {
         foreach (var path in EnumerateFiles(ToolInterfacesDirectory))
@@ -206,10 +251,21 @@ public class BinaryDownloadToolExposureContractTests
             var fileName = Path.GetFileName(path);
             foreach (var (toolName, block) in SplitToolMethodBlocks(ReadSourceWithoutComments(path)))
             {
-                var source = Regex.Match(block, @"Source\s*=\s*""(?<value>[^""]+)""");
-                if (source.Success)
+                var literal = Regex.Match(block, @"Source\s*=\s*""(?<value>[^""]+)""");
+                if (literal.Success)
                 {
-                    yield return (fileName, toolName, source.Groups["value"].Value);
+                    yield return (fileName, toolName, literal.Groups["value"].Value);
+                    continue;
+                }
+
+                var nameofForm = Regex.Match(
+                    block,
+                    @"Source\s*=\s*nameof\(\s*(?<type>[A-Za-z0-9_.]+)\s*\)\s*\+\s*""\.""\s*\+\s*nameof\(\s*(?<member>[A-Za-z0-9_.]+)\s*\)");
+                if (nameofForm.Success)
+                {
+                    var type = nameofForm.Groups["type"].Value.Split('.').Last();
+                    var method = nameofForm.Groups["member"].Value.Split('.').Last();
+                    yield return (fileName, toolName, type + "." + method);
                 }
             }
         }

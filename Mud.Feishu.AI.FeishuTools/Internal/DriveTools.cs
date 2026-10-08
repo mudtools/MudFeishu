@@ -31,7 +31,7 @@ internal sealed class DriveTools(
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>drive.list_folder_files：列出文件夹内容（folder_token 缺省=根目录；白名单 token/name/type/url）。</summary>
-    [FeishuToolHandler(typeof(IFeishuDriveFolderFilesTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantDriveFolderFilesTool))]
     public Task<FeishuToolResult> ListFolderFilesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DriveListFolderFiles, _maxResultLength);
@@ -47,7 +47,7 @@ internal sealed class DriveTools(
     }
 
     /// <summary>drive.get_file_metas：元信息批量查询（官方单请求上限 200；白名单 doc_token/doc_type/title/url/owner_id）。</summary>
-    [FeishuToolHandler(typeof(IFeishuDriveFileMetasTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantDriveFileMetasTool))]
     public Task<FeishuToolResult> GetFileMetasAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DriveGetFileMetas, _maxResultLength);

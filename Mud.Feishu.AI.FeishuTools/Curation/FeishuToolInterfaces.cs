@@ -36,8 +36,8 @@ namespace Mud.Feishu.AI.FeishuTools.Curation;
 [FeishuTool("bitable.list_tables",
     Description = "列出多维表格中的全部数据表，返回 table_id/name/revision；先于 bitable.list_fields、bitable.query_records 使用。只读，需 bitable:app:readonly。",
     RequiredScopes = ["bitable:app:readonly"],
-    Source = "IFeishuTenantV1BitableAppTable.GetAppTablePageListAsync")]
-public interface IFeishuBitableListTablesTool
+    Source = nameof(IFeishuTenantV1BitableAppTable) + "." + nameof(IFeishuTenantV1BitableAppTable.GetAppTablePageListAsync))]
+public interface IFeishuTenantBitableListTablesTool
 {
     /// <summary>列出数据表（分页）。</summary>
     /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token），超长截断并标记 truncated。</returns>
@@ -51,8 +51,8 @@ public interface IFeishuBitableListTablesTool
 [FeishuTool("bitable.list_fields",
     Description = "列出数据表的字段定义（field_id/name/type），查询前先了解字段结构，配合 bitable.query_records 的 field_names/filter 使用。只读，需 bitable:app:readonly。",
     RequiredScopes = ["bitable:app:readonly"],
-    Source = "IFeishuTenantV1BitableField.GetFieldsPageListAsync")]
-public interface IFeishuBitableListFieldsTool
+    Source = nameof(IFeishuTenantV1BitableField) + "." + nameof(IFeishuTenantV1BitableField.GetFieldsPageListAsync))]
+public interface IFeishuTenantBitableListFieldsTool
 {
     /// <summary>列出字段定义（分页）。</summary>
     /// <returns>白名单投影后的 JSON 文本，超长截断并标记 truncated。</returns>
@@ -68,8 +68,8 @@ public interface IFeishuBitableListFieldsTool
 [FeishuTool("bitable.query_records",
     Description = "按条件查询多维表格记录（先经 bitable.list_tables 获取 table_id，经 bitable.list_fields 了解字段）；filter 为简化筛选式，如 status = \"done\" and owner contains 张三。只读，需 bitable:app:readonly。",
     RequiredScopes = ["bitable:app:readonly"],
-    Source = "IFeishuTenantV1BitableRecord.QueryRecordsPageListAsync")]
-public interface IFeishuBitableQueryRecordsTool
+    Source = nameof(IFeishuTenantV1BitableRecord) + "." + nameof(IFeishuTenantV1BitableRecord.QueryRecordsPageListAsync))]
+public interface IFeishuTenantBitableQueryRecordsTool
 {
     /// <summary>查询记录（分页；filter 简化文法由绑定层解析为官方过滤结构）。</summary>
     /// <returns>白名单投影后的 JSON 文本（record_id/fields），超长截断并标记 truncated。</returns>
@@ -88,8 +88,8 @@ public interface IFeishuBitableQueryRecordsTool
 [FeishuTool("bitable.get_records_by_ids",
     Description = "按 record_id 批量获取多维表格记录（最多 100 条）——bitable.query_records 翻页后的精取链。只读，需 bitable:app:readonly。",
     RequiredScopes = ["bitable:app:readonly"],
-    Source = "IFeishuTenantV1BitableRecord.GetRecordsAsync")]
-public interface IFeishuBitableRecordsByIdsTool
+    Source = nameof(IFeishuTenantV1BitableRecord) + "." + nameof(IFeishuTenantV1BitableRecord.GetRecordsAsync))]
+public interface IFeishuTenantBitableRecordsByIdsTool
 {
     /// <summary>按 ID 批量取记录。</summary>
     /// <returns>白名单投影后的 JSON 文本（record_id/fields/absent_record_ids），超长截断并标记 truncated。</returns>
@@ -110,8 +110,8 @@ public interface IFeishuBitableRecordsByIdsTool
 [FeishuTool("bitable.list_views",
     Description = "列出数据表下的全部视图（名称/类型/可见范围）。取记录前先用它确定 view_id，再传给 bitable.query_records 按视图取数。只读，需 bitable:app:readonly。",
     RequiredScopes = ["bitable:app:readonly"],
-    Source = "IFeishuTenantV1BitableView.GetViewsPageListAsync")]
-public interface IFeishuBitableListViewsTool
+    Source = nameof(IFeishuTenantV1BitableView) + "." + nameof(IFeishuTenantV1BitableView.GetViewsPageListAsync))]
+public interface IFeishuTenantBitableListViewsTool
 {
     /// <summary>列出视图。</summary>
     /// <returns>白名单投影后的 JSON 文本（views: view_id/view_name/view_type + total）。</returns>
@@ -127,8 +127,8 @@ public interface IFeishuBitableListViewsTool
 [FeishuTool("bitable.get_view",
     Description = "按 view_id 获取单个视图的详情（名称/类型/可见范围）。确认某个视图的具体配置时使用。只读，需 bitable:app:readonly。",
     RequiredScopes = ["bitable:app:readonly"],
-    Source = "IFeishuTenantV1BitableView.GetViewAsync")]
-public interface IFeishuBitableGetViewTool
+    Source = nameof(IFeishuTenantV1BitableView) + "." + nameof(IFeishuTenantV1BitableView.GetViewAsync))]
+public interface IFeishuTenantBitableGetViewTool
 {
     /// <summary>获取视图详情。</summary>
     /// <returns>白名单投影后的 JSON 文本（view_id/view_name/view_type）。</returns>
@@ -145,8 +145,8 @@ public interface IFeishuBitableGetViewTool
 [FeishuTool("docx.get_raw_content",
     Description = "读取飞书文档的纯文本正文；document_id 可来自 wiki.get_node 的 obj_token 或 search.doc_wiki 结果的 token。只读，需 docx:document:readonly。",
     RequiredScopes = ["docx:document:readonly"],
-    Source = "IFeishuTenantV1Docx.GetDocumentRawContentAsync")]
-public interface IFeishuDocxRawContentTool
+    Source = nameof(IFeishuTenantV1Docx) + "." + nameof(IFeishuTenantV1Docx.GetDocumentRawContentAsync))]
+public interface IFeishuTenantDocxRawContentTool
 {
     /// <summary>读取文档纯文本正文。</summary>
     /// <returns>正文纯文本，超长截断并标记 truncated。</returns>
@@ -160,8 +160,8 @@ public interface IFeishuDocxRawContentTool
 [FeishuTool("docx.get_document_blocks",
     Description = "分块读取飞书文档结构（block_id/block_type/文本），表格/代码块等结构化场景使用；document_id 可来自 wiki.get_node 的 obj_token。只读，需 docx:document:readonly。",
     RequiredScopes = ["docx:document:readonly"],
-    Source = "IFeishuTenantV1Docx.GetDocumentBlocksPageListAsync")]
-public interface IFeishuDocxDocumentBlocksTool
+    Source = nameof(IFeishuTenantV1Docx) + "." + nameof(IFeishuTenantV1Docx.GetDocumentBlocksPageListAsync))]
+public interface IFeishuTenantDocxDocumentBlocksTool
 {
     /// <summary>分块读取文档（500 块/页）。</summary>
     /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token），超长截断并标记 truncated。</returns>
@@ -177,8 +177,8 @@ public interface IFeishuDocxDocumentBlocksTool
 [FeishuTool("wiki.get_node",
     Description = "解析知识库节点信息（node_token/title/obj_type/obj_token）；obj_token 可传给 docx.get_raw_content 读取正文。只读，需 wiki:wiki:readonly。",
     RequiredScopes = ["wiki:wiki:readonly"],
-    Source = "IFeishuTenantV2WikiNodes.GetNodeSpaceInfoAsync")]
-public interface IFeishuWikiGetNodeTool
+    Source = nameof(IFeishuTenantV2WikiNodes) + "." + nameof(IFeishuTenantV2WikiNodes.GetNodeSpaceInfoAsync))]
+public interface IFeishuTenantWikiGetNodeTool
 {
     /// <summary>获取节点信息（单对象）。</summary>
     /// <returns>白名单投影后的 JSON 文本（node 对象）。</returns>
@@ -192,8 +192,8 @@ public interface IFeishuWikiGetNodeTool
 [FeishuTool("wiki.list_nodes",
     Description = "列出知识空间（或某父节点下）的子节点列表；node_token 可传给 wiki.get_node 解析详情。只读，需 wiki:wiki:readonly。",
     RequiredScopes = ["wiki:wiki:readonly"],
-    Source = "IFeishuTenantV2WikiNodes.GetSpaceNodesPageListAsync")]
-public interface IFeishuWikiListNodesTool
+    Source = nameof(IFeishuTenantV2WikiNodes) + "." + nameof(IFeishuTenantV2WikiNodes.GetSpaceNodesPageListAsync))]
+public interface IFeishuTenantWikiListNodesTool
 {
     /// <summary>列出子节点（分页）。</summary>
     /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token），超长截断并标记 truncated。</returns>
@@ -216,8 +216,8 @@ public interface IFeishuWikiListNodesTool
     Description = "在知识空间下创建节点（新建一篇 wiki 文档/普通页面）。space_id 可由 wiki.list_nodes 的结果推断。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 wiki:wiki。",
     RequiredScopes = ["wiki:wiki"],
     IsWrite = true,
-    Source = "IFeishuTenantV2WikiNodes.CreateSpaceNodeAsync")]
-public interface IFeishuWikiCreateNodeTool
+    Source = nameof(IFeishuTenantV2WikiNodes) + "." + nameof(IFeishuTenantV2WikiNodes.CreateSpaceNodeAsync))]
+public interface IFeishuTenantWikiCreateNodeTool
 {
     /// <summary>创建知识空间节点。</summary>
     /// <returns>白名单投影后的 JSON 文本（node_token/obj_token/title/obj_type）。</returns>
@@ -238,8 +238,8 @@ public interface IFeishuWikiCreateNodeTool
     Description = "移动知识空间节点（改父节点或换空间）——用于知识库整理、归档。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 wiki:wiki。",
     RequiredScopes = ["wiki:wiki"],
     IsWrite = true,
-    Source = "IFeishuTenantV2WikiNodes.MoveSpaceNodeAsync")]
-public interface IFeishuWikiMoveNodeTool
+    Source = nameof(IFeishuTenantV2WikiNodes) + "." + nameof(IFeishuTenantV2WikiNodes.MoveSpaceNodeAsync))]
+public interface IFeishuTenantWikiMoveNodeTool
 {
     /// <summary>移动节点。</summary>
     /// <returns>白名单投影后的 JSON 文本（node_token/parent_node_token/space_id）。</returns>
@@ -263,8 +263,8 @@ public interface IFeishuWikiMoveNodeTool
     Description = "把已有云文档（docx/sheet/bitable 等）迁移进知识空间，成为 wiki 节点——'把这份文档挪进知识库'的首选入口。⚠️ 平台以异步任务执行，返回 task_id。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 wiki:wiki。",
     RequiredScopes = ["wiki:wiki"],
     IsWrite = true,
-    Source = "IFeishuTenantV2WikiNodes.MoveDocsToWikiSpaceNodeAsync")]
-public interface IFeishuWikiMoveDocsToSpaceTool
+    Source = nameof(IFeishuTenantV2WikiNodes) + "." + nameof(IFeishuTenantV2WikiNodes.MoveDocsToWikiSpaceNodeAsync))]
+public interface IFeishuTenantWikiMoveDocsToSpaceTool
 {
     /// <summary>把文档迁入知识空间（异步任务）。</summary>
     /// <returns>白名单投影后的 JSON 文本（wiki_token/task_id/applied）。</returns>
@@ -283,8 +283,8 @@ public interface IFeishuWikiMoveDocsToSpaceTool
 [FeishuTool("search.doc_wiki",
     Description = "云文档与知识库全文搜索，返回标题/摘要/URL；结果的 token 可传给 docx.get_raw_content、url 对应节点可传给 wiki.get_node。query 上限 30 字符。只读，需 search:docs:readonly。",
     RequiredScopes = ["search:docs:readonly"],
-    Source = "IFeishuTenantV2SearchDocWiki.SearchDocWikiAsync")]
-public interface IFeishuSearchDocWikiTool
+    Source = nameof(IFeishuTenantV2SearchDocWiki) + "." + nameof(IFeishuTenantV2SearchDocWiki.SearchDocWikiAsync))]
+public interface IFeishuTenantSearchDocWikiTool
 {
     /// <summary>云文档/知识库搜索（分页）。</summary>
     /// <returns>白名单投影后的 JSON 文本（title/url/owner/doc_type），超长截断并标记 truncated。</returns>
@@ -303,8 +303,8 @@ public interface IFeishuSearchDocWikiTool
 [FeishuTool("im.get_history_messages",
     Description = "读取群聊的历史消息（chat_id 可由事件上下文获得），按创建时间倒序返回最近消息预览。只读，需 im:message:readonly。",
     RequiredScopes = ["im:message:readonly"],
-    Source = "IFeishuTenantV1Message.GetHistoryMessageAsync")]
-public interface IFeishuImHistoryTool
+    Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.GetHistoryMessageAsync))]
+public interface IFeishuTenantImHistoryTool
 {
     /// <summary>读取历史消息（分页，按创建时间倒序）。</summary>
     /// <returns>白名单投影后的 JSON 文本（message_id/create_time/sender_id/message_type/content 预览），超长截断并标记 truncated。</returns>
@@ -320,8 +320,8 @@ public interface IFeishuImHistoryTool
 [FeishuTool("im.get_message_content",
     Description = "按 message_id 回查单条消息的完整内容——与 im.get_history_messages 组成两步链（历史消息列表 → 指定消息内容）。只读，需 im:message:readonly。",
     RequiredScopes = ["im:message:readonly"],
-    Source = "IFeishuTenantV1Message.GetContentListByMessageIdAsync")]
-public interface IFeishuImMessageContentTool
+    Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.GetContentListByMessageIdAsync))]
+public interface IFeishuTenantImMessageContentTool
 {
     /// <summary>单条消息内容回查。</summary>
     /// <returns>白名单投影后的 JSON 文本（message_id/msg_type/body/mentions），超长截断并标记 truncated。</returns>
@@ -334,8 +334,8 @@ public interface IFeishuImMessageContentTool
 [FeishuTool("im.list_chat_members",
     Description = "分页列出群聊成员（member_id/name/tenant_key）——'这个群里有哪些人'的多步流程地基。chat_id 可由事件上下文获得。只读，需 im:chat:readonly。",
     RequiredScopes = ["im:chat:readonly"],
-    Source = "IFeishuTenantV1ChatGroupMember.GetMemberPageListByIdAsync")]
-public interface IFeishuImListChatMembersTool
+    Source = nameof(IFeishuTenantV1ChatGroupMember) + "." + nameof(IFeishuTenantV1ChatGroupMember.GetMemberPageListByIdAsync))]
+public interface IFeishuTenantImListChatMembersTool
 {
     /// <summary>列出群成员（分页）。</summary>
     /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token/member_total），超长截断并标记 truncated。</returns>
@@ -350,8 +350,8 @@ public interface IFeishuImListChatMembersTool
     Description = "回复指定消息，形成话题串避免刷屏。message_id 来自 im.get_history_messages 或事件上下文；content 为 JSON 字符串（msg_type=text 时如 {\"text\":\"回复内容\"}）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。",
     RequiredScopes = ["im:message"],
     IsWrite = true,
-    Source = "IFeishuTenantV1Message.ReplyMessageAsync")]
-public interface IFeishuImReplyMessageTool
+    Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.ReplyMessageAsync))]
+public interface IFeishuTenantImReplyMessageTool
 {
     /// <summary>回复消息。</summary>
     /// <returns>白名单投影后的 JSON 文本（message_id）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
@@ -368,8 +368,8 @@ public interface IFeishuImReplyMessageTool
 [FeishuTool("im.search_messages",
     Description = "按关键词搜索可见会话中的消息——支持按会话/发送者/时间过滤。返回消息 ID 与命中片段预览，可用 im.get_message_content 回查完整内容。只读，需 im:message:readonly。",
     RequiredScopes = ["im:message:readonly"],
-    Source = "IFeishuTenantV1Message.SearchMessageAsync")]
-public interface IFeishuImSearchMessagesTool
+    Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.SearchMessageAsync))]
+public interface IFeishuTenantImSearchMessagesTool
 {
     /// <summary>搜索消息（分页）。</summary>
     /// <returns>白名单投影后的 JSON 文本（items/total/has_more/page_token），超长截断并标记 truncated。</returns>
@@ -389,8 +389,8 @@ public interface IFeishuImSearchMessagesTool
 [FeishuTool("sheets.list_sheets",
     Description = "列出电子表格的全部工作表（sheet_id/title/index）；sheet_id 供 sheets.get_range_values 构造 range。只读，需 sheets:spreadsheet:readonly。",
     RequiredScopes = ["sheets:spreadsheet:readonly"],
-    Source = "IFeishuTenantV3Spreadsheets.GetSpreadsheetSheetsByTokenAsync")]
-public interface IFeishuSheetsListTool
+    Source = nameof(IFeishuTenantV3Spreadsheets) + "." + nameof(IFeishuTenantV3Spreadsheets.GetSpreadsheetSheetsByTokenAsync))]
+public interface IFeishuTenantSheetsListTool
 {
     /// <summary>列出工作表。</summary>
     /// <returns>白名单投影后的 JSON 文本（items）。</returns>
@@ -403,8 +403,8 @@ public interface IFeishuSheetsListTool
 [FeishuTool("sheets.get_range_values",
     Description = "读取工作表单元格区域数据；range 形如 ShtXxx!A1:C100（sheet_id 来自 sheets.list_sheets），建议先小范围取数。只读，需 sheets:spreadsheet:readonly。",
     RequiredScopes = ["sheets:spreadsheet:readonly"],
-    Source = "IFeishuTenantV3SpreadsheetData.GetRangeDataAsync")]
-public interface IFeishuSheetsRangeTool
+    Source = nameof(IFeishuTenantV3SpreadsheetData) + "." + nameof(IFeishuTenantV3SpreadsheetData.GetRangeDataAsync))]
+public interface IFeishuTenantSheetsRangeTool
 {
     /// <summary>读取单元格区域数据。</summary>
     /// <returns>区域值网格 JSON 文本（range/values），超长截断并标记 truncated。</returns>
@@ -425,8 +425,8 @@ public interface IFeishuSheetsRangeTool
 [FeishuTool("im.get_thread_messages",
     Description = "读取某个话题（thread）内的消息——群话题场景下用 thread_id 取代 chat_id 读话题内容。thread_id 可由事件上下文获得。只读，需 im:message:readonly。",
     RequiredScopes = ["im:message:readonly"],
-    Source = "IFeishuTenantV1Message.GetHistoryMessageAsync")]
-    public interface IFeishuImGetThreadMessagesTool
+    Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.GetHistoryMessageAsync))]
+    public interface IFeishuTenantImGetThreadMessagesTool
 {
     /// <summary>读取话题消息（分页，按创建时间倒序）。</summary>
     /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token），超长截断并标记 truncated。</returns>
@@ -441,8 +441,8 @@ public interface IFeishuSheetsRangeTool
 [FeishuTool("im.revoke_message", IsWrite = true,
     Description = "撤回一条自己发出的消息（发错内容时纠正）。只能撤回本 Bot 发送的消息；message_id 来自事件上下文或 im.get_history_messages。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。",
     RequiredScopes = ["im:message"],
-    Source = "IFeishuTenantV1Message.RevokeMessageAsync")]
-    public interface IFeishuImRevokeMessageTool
+    Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.RevokeMessageAsync))]
+    public interface IFeishuTenantImRevokeMessageTool
 {
     /// <summary>撤回消息。</summary>
     /// <returns>结构化文本（ok=true 表示已受理）。</returns>
@@ -456,8 +456,8 @@ public interface IFeishuSheetsRangeTool
 [FeishuTool("im.forward_message", IsWrite = true,
     Description = "把一条消息转发给用户或群。receive_id 来自 im.search_user / 事件上下文。⚠️ 底层 SDK 方法名为 ReceiveMessageAsync 但语义是转发（POST /messages/{id}/forward），不是接收消息。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message:send_as_bot。",
     RequiredScopes = ["im:message:send_as_bot"],
-    Source = "IFeishuTenantV1Message.ReceiveMessageAsync")]
-public interface IFeishuImForwardMessageTool
+    Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.ReceiveMessageAsync))]
+public interface IFeishuTenantImForwardMessageTool
 {
     /// <summary>转发消息。</summary>
     /// <returns>结构化文本（转发结果 message_id）。</returns>
@@ -474,8 +474,8 @@ public interface IFeishuImForwardMessageTool
 [FeishuTool("im.forward_thread", IsWrite = true,
     Description = "把整个话题（thread）转发给用户或群——一次性把讨论上下文带过去。thread_id 来自事件上下文。⚠️ 底层 SDK 方法名为 ReceiveThreadsAsync 但语义是转发话题。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message:send_as_bot。",
     RequiredScopes = ["im:message:send_as_bot"],
-    Source = "IFeishuTenantV1Message.ReceiveThreadsAsync")]
-    public interface IFeishuImForwardThreadTool
+    Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.ReceiveThreadsAsync))]
+    public interface IFeishuTenantImForwardThreadTool
 {
     /// <summary>转发话题。</summary>
     /// <returns>结构化文本（转发结果 thread_id）。</returns>
@@ -492,8 +492,8 @@ public interface IFeishuImForwardMessageTool
 [FeishuTool("im.get_message_read_users",
     Description = "查询某条消息已被哪些人读到（user_id + 读取时间）。⚠️ 底层 SDK 方法名拼写为 GetMessageReadUsesAsync（Uses 应为 Users），此处按正确语义命名。只读，需 im:message:readonly。",
     RequiredScopes = ["im:message:readonly"],
-    Source = "IFeishuTenantV1Message.GetMessageReadUsesAsync")]
-    public interface IFeishuImGetMessageReadUsersTool
+    Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.GetMessageReadUsesAsync))]
+    public interface IFeishuTenantImGetMessageReadUsersTool
 {
     /// <summary>查询已读用户（分页）。</summary>
     /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token）。</returns>
@@ -508,8 +508,8 @@ public interface IFeishuImForwardMessageTool
 [FeishuTool("im.get_chat",
     Description = "读取群基础信息（群名/描述/成员数/群主）。chat_id 可由事件上下文获得。⚠️ 底层 SDK 方法名拼写为 GetChatGroupInoByIdAsync（Ino 应为 Info），此处按正确语义命名。只读，需 im:chat:readonly。",
     RequiredScopes = ["im:chat:readonly"],
-    Source = "IFeishuTenantV1ChatGroup.GetChatGroupInoByIdAsync")]
-    public interface IFeishuImGetChatTool
+    Source = nameof(IFeishuTenantV1ChatGroup) + "." + nameof(IFeishuTenantV1ChatGroup.GetChatGroupInoByIdAsync))]
+    public interface IFeishuTenantImGetChatTool
 {
     /// <summary>读取群信息。</summary>
     /// <returns>白名单投影后的 JSON 文本（chat_id/name/description/user_count/owner_id）。</returns>
@@ -522,8 +522,8 @@ public interface IFeishuImForwardMessageTool
 [FeishuTool("im.search_chats",
     Description = "按关键词搜索群聊（返回 chat_id/name/描述）——用户只记得群名片段时的入口。只读，需 im:chat:readonly。",
     RequiredScopes = ["im:chat:readonly"],
-    Source = "IFeishuTenantV1ChatGroup.GetChatGroupPageListByKeywordAsync")]
-    public interface IFeishuImSearchChatsTool
+    Source = nameof(IFeishuTenantV1ChatGroup) + "." + nameof(IFeishuTenantV1ChatGroup.GetChatGroupPageListByKeywordAsync))]
+    public interface IFeishuTenantImSearchChatsTool
 {
     /// <summary>搜索群（分页）。</summary>
     /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token）。</returns>

@@ -32,11 +32,11 @@ namespace Mud.Feishu.AI.FeishuTools.Curation;
 [FeishuTool("contact.resolve_user",
     Description = "把邮箱或手机号批量换成用户 ID（open_id/user_id/union_id）——发送消息、加群、指派任务前的第一步。emails 与 mobiles 至少填一个，合计不超过 50 项。已知姓名/昵称而非邮箱手机号时请改用 contact.search_user。只读，需 contact:user.base:readonly。",
     RequiredScopes = ["contact:user.base:readonly"],
-    Source = "IFeishuTenantV3User.GetBatchUsersAsync",
+    Source = nameof(IFeishuTenantV3User) + "." + nameof(IFeishuTenantV3User.GetBatchUsersAsync),
 
     // R5 / B-6：emails 与 mobiles 至少提供一个——跨参数约束，required 表达不了。
     AnyOf = ["emails|mobiles"])]
-public interface IFeishuContactResolveUserTool
+public interface IFeishuTenantContactResolveUserTool
 {
     /// <summary>按邮箱/手机号批量解析用户 ID。</summary>
     /// <returns>白名单投影后的 JSON 文本（items：email/mobile/user_id/open_id/status），超长截断并标记 truncated。</returns>
@@ -58,8 +58,8 @@ public interface IFeishuContactResolveUserTool
 [FeishuTool("contact.search_user",
     Description = "按姓名/关键字搜索用户，返回 open_id/user_id/姓名/所属部门——用户说\"发给张三\"时的第一步（拿到 open_id 后交给 im.send_message，receive_id_type 传 open_id）。只读，需 contact:user.base:readonly。",
     RequiredScopes = ["contact:user.base:readonly"],
-    Source = "IFeishuTenantV3User.GetUsersByKeywordAsync")]
-public interface IFeishuContactSearchUserTool
+    Source = nameof(IFeishuTenantV3User) + "." + nameof(IFeishuTenantV3User.GetUsersByKeywordAsync))]
+public interface IFeishuTenantContactSearchUserTool
 {
     /// <summary>按关键字（姓名/昵称）搜索用户。</summary>
     /// <returns>白名单投影后的 JSON 文本（items：open_id/user_id/name/department_ids），超长截断并标记 truncated。</returns>
@@ -73,8 +73,8 @@ public interface IFeishuContactSearchUserTool
 [FeishuTool("contact.get_user",
     Description = "按 user_id 或 open_id 读取单个用户的通讯录详情（姓名/邮箱/手机号/部门/上级/状态）。只读，需 contact:user.base:readonly。",
     RequiredScopes = ["contact:user.base:readonly"],
-    Source = "IFeishuTenantV3User.GetUserInfoByIdAsync")]
-public interface IFeishuContactGetUserTool
+    Source = nameof(IFeishuTenantV3User) + "." + nameof(IFeishuTenantV3User.GetUserInfoByIdAsync))]
+public interface IFeishuTenantContactGetUserTool
 {
     /// <summary>读取单个用户详情。</summary>
     /// <returns>白名单投影后的 JSON 文本（user 对象），超长截断并标记 truncated。</returns>
@@ -88,8 +88,8 @@ public interface IFeishuContactGetUserTool
 [FeishuTool("contact.batch_get",
     Description = "按 ID 批量读取用户通讯录详情（最多 50 个）——contact.resolve_user 拿到 ID 后的详情补全链。只读，需 contact:user.base:readonly。",
     RequiredScopes = ["contact:user.base:readonly"],
-    Source = "IFeishuTenantV3User.GetUserByIdsAsync")]
-public interface IFeishuContactBatchGetTool
+    Source = nameof(IFeishuTenantV3User) + "." + nameof(IFeishuTenantV3User.GetUserByIdsAsync))]
+public interface IFeishuTenantContactBatchGetTool
 {
     /// <summary>批量读取用户详情。</summary>
     /// <returns>白名单投影后的 JSON 文本（items：user 对象数组），超长截断并标记 truncated。</returns>

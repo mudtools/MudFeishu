@@ -16,7 +16,7 @@ namespace Mud.Feishu.AI.FeishuTools.Internal;
 /// <remarks>
 /// <para>
 /// 数据源<b>全部是编译期常量</b>（无下游调用、无网络、无租户依赖，也<b>不需要</b> <c>IToolCatalog</c>）：
-/// ① <see cref="FeishuCapabilityCatalog.MethodsByDomain"/>——SDK 的"能力分组 → 方法数"；
+/// ① <see cref="FeishuToolCapabilityCatalog.MethodsByDomain"/>——SDK 的"能力分组 → 方法数"；
 /// ② <see cref="FeishuToolSchemas.SchemaByToolName"/>——已策展工具名契约表。
 /// </para>
 /// <para>
@@ -41,7 +41,7 @@ internal sealed class CapabilityLookupTools(IOptions<FeishuAgentOptions> options
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>feishu.capability_lookup：按关键字检索能力分组。</summary>
-    [FeishuToolHandler(typeof(IFeishuCapabilityLookupTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantCapabilityLookupTool))]
     public Task<FeishuToolResult> LookupAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.FeishuCapabilityLookup, _maxResultLength);
@@ -52,7 +52,7 @@ internal sealed class CapabilityLookupTools(IOptions<FeishuAgentOptions> options
             var curatedByModule = BuildCuratedToolIndex();
             var matched = new JsonArray();
             var matchedModules = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var pair in FeishuCapabilityCatalog.MethodsByDomain)
+            foreach (var pair in FeishuToolCapabilityCatalog.MethodsByDomain)
             {
                 if (pair.Key.IndexOf(args.Keyword, StringComparison.OrdinalIgnoreCase) < 0)
                 {
@@ -83,8 +83,8 @@ internal sealed class CapabilityLookupTools(IOptions<FeishuAgentOptions> options
 
             var envelope = new JsonObject
             {
-                ["sdk_method_count"] = FeishuCapabilityCatalog.SdkMethodCount,
-                ["curated_tool_count"] = FeishuCapabilityCatalog.CuratedToolCount,
+                ["sdk_method_count"] = FeishuToolCapabilityCatalog.SdkMethodCount,
+                ["curated_tool_count"] = FeishuToolCapabilityCatalog.CuratedToolCount,
                 ["matched_group_count"] = matched.Count,
                 ["matched_groups"] = matched,
                 ["curated_tools"] = curatedTools,
@@ -145,7 +145,7 @@ internal sealed class CapabilityLookupTools(IOptions<FeishuAgentOptions> options
     /// <b>键不存在时必须给候选清单</b>：只回"未找到"会让模型反复试错；
     /// 把可用的 <c>{domain}/{topic}</c> 全列出来，模型一次就能选对（对齐 F-8 的可恢复性要求）。
     /// </remarks>
-    [FeishuToolHandler(typeof(IFeishuGuidanceReadTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantGuidanceReadTool))]
     public Task<FeishuToolResult> GuidanceReadAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.FeishuGuidanceRead, _maxResultLength);

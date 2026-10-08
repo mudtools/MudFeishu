@@ -34,7 +34,7 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 /// <para>
 /// 故运行期投影基础设施（<c>SchemaProjection.cs</c> 182 行）与它的 4 条行为用例<b>一并删除</b>；
 /// <c>output_schema</c> 保留为**构建期信号**（<c>MUDFT009</c> 截断告警 +
-/// <c>FeishuCapabilityCatalog.OutputSchemaCoveredToolCount</c> 度量）。本类守卫其<b>生成侧</b>形态。
+/// <c>FeishuToolCapabilityCatalog.OutputSchemaCoveredToolCount</c> 度量）。本类守卫其<b>生成侧</b>形态。
 /// </para>
 /// <para>
 /// <b>不守卫的内容</b>：策展投影键 ⊆ output_schema 字段集——二者是<b>有意的两套命名</b>
@@ -90,8 +90,8 @@ public class OutputSchemaContractGuards
     [Fact]
     public void OutputSchemaCoverageMetric_ShouldBeARealValue_NotAConstant()
     {
-        var covered = FeishuCapabilityCatalog.OutputSchemaCoveredToolCount;
-        var total = FeishuCapabilityCatalog.CuratedToolCount;
+        var covered = FeishuToolCapabilityCatalog.OutputSchemaCoveredToolCount;
+        var total = FeishuToolCapabilityCatalog.CuratedToolCount;
 
         total.Should().Be(FeishuToolContracts.AllNames.Length,
             "能力目录的策展工具数必须与契约表条目数一致（同源同 pass 产出）");

@@ -1,5 +1,62 @@
 # Mud.Feishu Change Log
 
+## [Unreleased] - AI tool-surface engine upstreamed + symbolised `Source` (R-1+2c, 2026-10-08)
+
+> Plan, four-perspective review (product / architecture / senior dev / QA), landing log and migration
+> ledger: `.docs/AI/AI-SDK耦合解耦与工具上游化-Bug修复与功能完善方案.md` (§六 / §七).
+> **The AI module is unreleased — this round is a one-shot breaking refactor with no compatibility
+> burden.**
+
+### ⚠️ Breaking changes
+
+- **Tool-surface generation engine moved to the component package.** The local generator project
+  `Mud.Feishu.AI.Tools` and `Tests/Mud.Feishu.AI.Tools.Tests` were deleted; tool schemas are now
+  produced by the generic `ToolSurface` engine in `Mud.HttpUtils.Generator` 3.0.3, driven by a
+  **profile** (`SdkProfile/FeishuToolProfile.cs`, implementing `ISdkToolProfile` and annotated with
+  `[SdkToolProfile]`). New dependencies: `Mud.HttpUtils.Generator` (analyzer) / `Attributes` /
+  `Abstractions` 3.0.3. Two engines must never coexist (duplicate hint-name collisions); enforced by
+  `FeishuToolProfileContractGuards`.
+- **Curation naming tightened.** 83 tenant-token tool interfaces were renamed from
+  `IFeishu<Domain><Verb>Tool` to **`IFeishuTenant<Domain><Verb>Tool`** (symmetric with the existing
+  `IFeishuUser*Tool`): slot 016 compares the tool identity against the token type derived from the
+  carrier interface name, so a missing marker fails the build with `MUDFT016` (Error).
+- **Capability-catalog artifact renamed** from `FeishuCapabilityCatalog` to
+  **`FeishuToolCapabilityCatalog`** (engine derives it as `{ProductPrefix}CapabilityCatalog`).
+- **One tool's output contract converged (intentional):** `im.get_message_content` no longer exposes
+  the `FeishuApiListResult` envelope (`data.items` → `items`), matching the envelope-stripping rule of
+  the PageList family. The other **86/87** tool schemas are byte-for-byte unchanged.
+
+### 🔧 Changes
+
+- **Symbolised `Source` (R-1):** all 84 `[FeishuTool(Source = …)]` declarations moved from string
+  literals to `nameof(Interface) + "." + nameof(Interface.Method)` constant concatenation — the
+  compile-time value is byte-for-byte identical, and SDK renames now flow through IDE rename
+  refactoring instead of manual magic-string hunts.
+- **Diagnostic gate extended** with the `SDKT001/SDKT002` zero-tolerance set (profile ↔ attribute
+  pairing, missing required slots), asserted from both `verify-build.ps1` and CI — `SDKT002` makes the
+  engine silently emit **no** tool surface, the most hidden failure channel of all.
+- **One-command golden re-freeze:** `dotnet test … -p:FeishuToolRefreeze=true` (with
+  `FeishuToolGoldenUpdate=true`) escapes the "gate is itself a build error" deadlock.
+- **Test guards re-anchored:** new `FeishuToolProfileContractGuards` (31 frozen profile slots +
+  upstream 24-slot mirror ↔ gate sets ↔ CI + migration ledger + `Source` shape);
+  `GeneratorDiagnosticsContractGuards` re-anchored to the gate chain; `GeneratorProductGateCoverageTests`
+  re-anchored to profile-derived outlet templates + artifact existence;
+  `BinaryDownloadToolExposureContractTests` now reads the `nameof` form with a dual-form self-check.
+
+### 🐛 Fixes (pre-existing gate failures, cleared in this round)
+
+- **Demo compile errors ×4:** two `DeleteFileByFileTokenAsync(token, "file", cancellationToken)` call
+  sites in `Demos/FeishuFileServer` lagged behind the SDK signature (the `[Query("async")] bool?` 
+  parameter now sits third) → pass `async: null` (keeping the synchronous-delete semantics).
+- **AOT strict-mode failures ×20** (10×`IL2026` + 10×`IL3050`): five
+  `JsonArray.Add(new JsonObject{…})` sites in `Internal/{BitableTools,MailTools,MinutesReadTools}.cs`
+  were bound to the generic `Add<T>(T)` carrying `RequiresUnreferencedCode`/`RequiresDynamicCode`
+  (non-`JsonNode` `T` goes through reflective `JsonValue.Create`) → switched to the repo's **existing**
+  AOT-safe extension `ToolResultText.AddNode` (explicit `IList<JsonNode?>` implementation).
+  **Root cause fixed, no suppressions added.**
+  ⇒ `verify-build.ps1` is green on all seven steps (0 build errors, `AotStrictMode`
+  `AOT00x`/`IL2026`/`IL3050` all 0, 9468 tests passed / 0 failed).
+
 ## [Unreleased] - Mud.Feishu.AI review remediation R4 (2026-10-01)
 
 > Plan and two-perspective verification (senior engineer / system architect):
@@ -45,7 +102,7 @@
 - **R4-8**: Token usage is now recorded on the streaming Agent path (accumulated inside the **iterator loop**,
   `RecordUsage` after the loop); previously only the non-streaming path was instrumented, leaving streaming
   calls invisible to telemetry.
-- **R4-9**: `FeishuCapabilityCatalog`'s opt-in wording realigned with the hard dependency — the artifact is
+- **R4-9**: `FeishuToolCapabilityCatalog`'s opt-in wording realigned with the hard dependency — the artifact is
   **required** for `Mud.Feishu.AI.FeishuTools` (`CapabilityLookupTools` references it unconditionally; setting
   it to `false` is a `CS0103`). `build_property.FeishuToolCatalog` is an incremental switch only for **other
   projects** referencing the generator.

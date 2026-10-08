@@ -31,7 +31,7 @@ internal sealed class KnowledgeSearchTools(IRetriever retriever, IOptions<Feishu
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>knowledge.search：知识检索（编号切片回填）。</summary>
-    [FeishuToolHandler(typeof(IFeishuKnowledgeSearchTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantKnowledgeSearchTool))]
     public Task<FeishuToolResult> SearchAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.KnowledgeSearch, _maxResultLength);

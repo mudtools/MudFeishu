@@ -36,7 +36,7 @@ internal sealed class BitableTools(
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>bitable.list_tables：列出数据表（白名单 table_id/name/revision）。</summary>
-    [FeishuToolHandler(typeof(IFeishuBitableListTablesTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantBitableListTablesTool))]
     public Task<FeishuToolResult> ListTablesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.BitableListTables, _maxResultLength);
@@ -53,7 +53,7 @@ internal sealed class BitableTools(
 
     /// <summary>bitable.list_fields：列出字段定义（白名单 field_id/name/type/is_primary/ui_type）。</summary>
     /// <remarks>源码出参 <c>property</c> 为复杂嵌套对象，AOT 安全投影不含反射序列化，故不回填（Phase 2 评估源生成上下文引用）。</remarks>
-    [FeishuToolHandler(typeof(IFeishuBitableListFieldsTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantBitableListFieldsTool))]
     public Task<FeishuToolResult> ListFieldsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.BitableListFields, _maxResultLength);
@@ -69,7 +69,7 @@ internal sealed class BitableTools(
     }
 
     /// <summary>bitable.query_records：查询记录（filter/sort 简化文法 → 官方过滤/排序结构）。</summary>
-    [FeishuToolHandler(typeof(IFeishuBitableQueryRecordsTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantBitableQueryRecordsTool))]
     public Task<FeishuToolResult> QueryRecordsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.BitableQueryRecords, _maxResultLength);
@@ -105,7 +105,7 @@ internal sealed class BitableTools(
     }
 
     /// <summary>bitable.get_records_by_ids：按 ID 批量取记录（官方上限 100 条/请求；白名单 record_id/fields）。</summary>
-    [FeishuToolHandler(typeof(IFeishuBitableRecordsByIdsTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantBitableRecordsByIdsTool))]
     public Task<FeishuToolResult> GetRecordsByIdsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.BitableGetRecordsByIds, _maxResultLength);
@@ -252,7 +252,7 @@ internal sealed class BitableTools(
                 + "未启用时本工具不在工具列表中（软缺席，不影响 bitable 其它工具）");
 
     /// <summary>bitable.list_views：列出数据表下的视图（"先看视图再取记录"的链路首环）。</summary>
-    [FeishuToolHandler(typeof(IFeishuBitableListViewsTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantBitableListViewsTool))]
     public Task<FeishuToolResult> ListViewsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.BitableListViews, _maxResultLength);
@@ -269,7 +269,9 @@ internal sealed class BitableTools(
                 var views = new JsonArray();
                 foreach (var view in data.Items ?? [])
                 {
-                    views.Add(new JsonObject
+                    // AddNode（而非 Add）：泛型 Add<T>(T) 带 RequiresUnreferencedCode/RequiresDynamicCode
+                    // 注解（非 JsonNode 的 T 会走反射 JsonValue.Create），IL2026/IL3050 必须为 0。
+                    views.AddNode(new JsonObject
                     {
                         ["view_id"] = view.ViewId,
                         ["view_name"] = view.ViewName,
@@ -288,7 +290,7 @@ internal sealed class BitableTools(
     }
 
     /// <summary>bitable.get_view：按 view_id 取单个视图详情。</summary>
-    [FeishuToolHandler(typeof(IFeishuBitableGetViewTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantBitableGetViewTool))]
     public Task<FeishuToolResult> GetViewAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.BitableGetView, _maxResultLength);

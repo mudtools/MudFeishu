@@ -28,8 +28,8 @@ namespace Mud.Feishu.AI.FeishuTools.Curation;
     Description = "把一张网络图片作为消息发送到指定会话（image_url 为 http/https 绝对地址，由宿主负责下载落盘）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:resource 与 im:message:send_as_bot。",
     RequiredScopes = ["im:resource", "im:message:send_as_bot"],
     IsWrite = true,
-    Source = "IFeishuTenantV1Message.SendMessageAsync")]
-public interface IFeishuImSendImageTool
+    Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.SendMessageAsync))]
+public interface IFeishuTenantImSendImageTool
 {
     /// <summary>发送图片消息。</summary>
     /// <returns>白名单投影后的 JSON 文本（message_id）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
@@ -47,8 +47,8 @@ public interface IFeishuImSendImageTool
     Description = "把一个网络文件作为消息发送到指定会话（file_url 为 http/https 绝对地址，由宿主负责下载落盘）。file_name 必须带扩展名。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:resource 与 im:message:send_as_bot。",
     RequiredScopes = ["im:resource", "im:message:send_as_bot"],
     IsWrite = true,
-    Source = "IFeishuTenantV1Message.SendMessageAsync")]
-public interface IFeishuImSendFileTool
+    Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.SendMessageAsync))]
+public interface IFeishuTenantImSendFileTool
 {
     /// <summary>发送文件消息。</summary>
     /// <returns>白名单投影后的 JSON 文本（message_id）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>

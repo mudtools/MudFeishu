@@ -28,8 +28,8 @@ namespace Mud.Feishu.AI.FeishuTools.Curation;
     Description = "在指定日历上创建一个日程（start/end 为 RFC3339 时间，如 2026-10-01T14:00:00+08:00）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 calendar:calendar。",
     RequiredScopes = ["calendar:calendar"],
     IsWrite = true,
-    Source = "IFeishuTenantV4CalendarEvent.CreateCalendarEventAsync")]
-public interface IFeishuCalendarCreateEventTool
+    Source = nameof(IFeishuTenantV4CalendarEvent) + "." + nameof(IFeishuTenantV4CalendarEvent.CreateCalendarEventAsync))]
+public interface IFeishuTenantCalendarCreateEventTool
 {
     /// <summary>创建日程。</summary>
     /// <returns>白名单投影后的 JSON 文本（event_id）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
@@ -51,12 +51,12 @@ public interface IFeishuCalendarCreateEventTool
     Description = "查询一个用户主日历或一间会议室在指定时间窗内的忙闲（time_min/time_max 为 RFC3339；user_id 与 room_id 二选一）。多人场景请逐人调用。只读，需 calendar:calendar:readonly。",
     RequiredScopes = ["calendar:calendar:readonly"],
     IsWrite = false,
-    Source = "IFeishuTenantV4Calendar.GetFreebusyCalendarAsync",
+    Source = nameof(IFeishuTenantV4Calendar) + "." + nameof(IFeishuTenantV4Calendar.GetFreebusyCalendarAsync),
 
     // R5 / B-6：user_id 与 room_id 二选一是跨参数约束，required 表达不了（会让两者都必填）。
     // 渲染为 "anyOf":[{"required":["user_id"]},{"required":["room_id"]}]，让约束结构化进入模型可见契约。
     AnyOf = ["user_id|room_id"])]
-public interface IFeishuCalendarFindFreeSlotsTool
+public interface IFeishuTenantCalendarFindFreeSlotsTool
 {
     /// <summary>查询忙闲。</summary>
     /// <returns>白名单投影后的 JSON 文本（busy 段列表）。</returns>
@@ -74,8 +74,8 @@ public interface IFeishuCalendarFindFreeSlotsTool
     Description = "列出指定日历上的日程（按开始时间返回，含 summary/start/end/event_id），可翻页。只读，需 calendar:calendar:readonly。",
     RequiredScopes = ["calendar:calendar:readonly"],
     IsWrite = false,
-    Source = "IFeishuTenantV4CalendarEvent.GetCalendarEventPageListAsync")]
-public interface IFeishuCalendarListEventsTool
+    Source = nameof(IFeishuTenantV4CalendarEvent) + "." + nameof(IFeishuTenantV4CalendarEvent.GetCalendarEventPageListAsync))]
+public interface IFeishuTenantCalendarListEventsTool
 {
     /// <summary>列出日程。</summary>
     /// <returns>白名单投影后的 JSON 文本（items + 翻页契约）。</returns>
@@ -92,8 +92,8 @@ public interface IFeishuCalendarListEventsTool
     Description = "更新指定日程的信息（summary/description/start/end 等字段，至少传一个要更新的字段）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 calendar:calendar。start/end 为 RFC3339 时间。",
     RequiredScopes = ["calendar:calendar"],
     IsWrite = true,
-    Source = "IFeishuTenantV4CalendarEvent.UpdateCalendarEventAsync")]
-public interface IFeishuCalendarUpdateEventTool
+    Source = nameof(IFeishuTenantV4CalendarEvent) + "." + nameof(IFeishuTenantV4CalendarEvent.UpdateCalendarEventAsync))]
+public interface IFeishuTenantCalendarUpdateEventTool
 {
     /// <summary>更新日程。</summary>
     /// <returns>白名单投影后的 JSON 文本（event_id）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
@@ -113,8 +113,8 @@ public interface IFeishuCalendarUpdateEventTool
     Description = "取消（删除）指定日程——取消日程会通知所有与会者。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 calendar:calendar。建议先 dry_run 预演确认。",
     RequiredScopes = ["calendar:calendar"],
     IsWrite = true,
-    Source = "IFeishuTenantV4CalendarEvent.DeleteCalendarEventAsync")]
-public interface IFeishuCalendarDeleteEventTool
+    Source = nameof(IFeishuTenantV4CalendarEvent) + "." + nameof(IFeishuTenantV4CalendarEvent.DeleteCalendarEventAsync))]
+public interface IFeishuTenantCalendarDeleteEventTool
 {
     /// <summary>取消日程。</summary>
     /// <returns>白名单投影后的 JSON 文本（deleted=true）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
@@ -130,8 +130,8 @@ public interface IFeishuCalendarDeleteEventTool
     Description = "向指定日程添加与会者（attendee_ids 为 open_id 数组，每位参会人会收到日程邀请）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 calendar:calendar。",
     RequiredScopes = ["calendar:calendar"],
     IsWrite = true,
-    Source = "IFeishuTenantV4CalendarEvent.CreateCalendarEventAttendeeAsync")]
-public interface IFeishuCalendarAddEventAttendeesTool
+    Source = nameof(IFeishuTenantV4CalendarEvent) + "." + nameof(IFeishuTenantV4CalendarEvent.CreateCalendarEventAttendeeAsync))]
+public interface IFeishuTenantCalendarAddEventAttendeesTool
 {
     /// <summary>添加与会者。</summary>
     /// <returns>白名单投影后的 JSON 文本（added_count）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
@@ -148,8 +148,8 @@ public interface IFeishuCalendarAddEventAttendeesTool
     Description = "分页列出指定日程的与会者（attendee_id/name/type/is_optional），可翻页。只读，需 calendar:calendar:readonly。",
     RequiredScopes = ["calendar:calendar:readonly"],
     IsWrite = false,
-    Source = "IFeishuTenantV4CalendarEvent.GetCalendarEventAttendeePageListAsync")]
-public interface IFeishuCalendarListEventAttendeesTool
+    Source = nameof(IFeishuTenantV4CalendarEvent) + "." + nameof(IFeishuTenantV4CalendarEvent.GetCalendarEventAttendeePageListAsync))]
+public interface IFeishuTenantCalendarListEventAttendeesTool
 {
     /// <summary>列出现有与会者。</summary>
     /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token），超长截断并标记 truncated。</returns>

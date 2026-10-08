@@ -21,11 +21,17 @@ namespace Mud.Feishu.AI.Tests.Tools;
 /// <c>[Path]/[Body]</c> 路由特性（Phase 1 §3.2）。
 /// scope 字符串为占位，落地时对照开放平台控制台逐工具核对回填。
 /// </para>
+/// <para>
+/// <b>R-1+2c 命名约束</b>：工具特性接口名必须携带<b>令牌标记</b>（<c>IFeishuTenant*</c> /
+/// <c>IFeishuUser*</c>）——引擎的槽位 016 会比对「工具身份（无 Source 时缺省 Tenant）」
+/// 与「承载接口名推导出的令牌类型」，缺标记即 MUDFT016（Error，零容忍）。
+/// 本样例因此随迁移改名为 <c>IFeishuTenantBitableQueryTool</c>。
+/// </para>
 /// </remarks>
 [FeishuTool("bitable.query_records",
     Description = "按条件查询多维表格记录（先经 bitable.list_tables 获取 table_id）",
     RequiredScopes = ["bitable:app:readonly"])]
-public interface IFeishuBitableQueryTool
+public interface IFeishuTenantBitableQueryTool
 {
     /// <summary>
     /// 查询记录（模型可见参数扁平化；复杂请求体由执行链构造）。

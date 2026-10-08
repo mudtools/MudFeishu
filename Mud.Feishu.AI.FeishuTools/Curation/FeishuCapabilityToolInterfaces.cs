@@ -33,7 +33,7 @@ namespace Mud.Feishu.AI.FeishuTools.Curation;
 [FeishuTool("feishu.capability_lookup",
     Description = "查询飞书开放平台能力在 SDK 中是否存在（按能力分组回答：组名 / 方法数 / 该组所属模块是否已有可用工具）。当所需能力不在当前工具集内时用它判断\"是没有还是没启用\"，避免凭空猜测调用不存在的接口。只返回元数据，不返回请求构造。",
     RequiredScopes = [])]
-public interface IFeishuCapabilityLookupTool
+public interface IFeishuTenantCapabilityLookupTool
 {
     /// <summary>按关键字检索能力分组。</summary>
     /// <returns>白名单投影后的 JSON 文本（sdk_method_count / curated_tool_count / matched_groups / curated_tools），超长截断并标记 truncated。</returns>
@@ -64,7 +64,7 @@ public interface IFeishuCapabilityLookupTool
     RequiredScopes = ["feishu:base"])]
 // Source 刻意留空：本工具读取的是**编译期内嵌的 guidance 资产**，不调用任何 SDK 接口。
 // 编造一个 SDK 方法名（如 capability_lookup 那样）会让 MUDFT019「工具面不得与 SDK 脱钩」的门禁形同虚设。
-public interface IFeishuGuidanceReadTool
+public interface IFeishuTenantGuidanceReadTool
 {
     /// <summary>读取 L2 guidance。</summary>
     /// <returns>L2 正文文本；键不存在时返回<b>可执行的候选清单</b>而非空结果。</returns>

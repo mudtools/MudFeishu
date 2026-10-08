@@ -1,5 +1,56 @@
 # Mud.Feishu 更新日志
 
+## [Unreleased] - AI 工具面生成引擎上游化 + `Source` 符号化（R-1+2c，2026-10-08）
+
+> 方案、四维评审（产品/架构/程序员/QA）、实施记录与迁移台账见
+> `.docs/AI/AI-SDK耦合解耦与工具上游化-Bug修复与功能完善方案.md`（§六/§七）。
+> **AI 模块尚未发布，本轮为一次性破坏性重构，无兼容负担。**
+
+### ⚠️ 破坏性变更登记
+
+- **【工具面生成引擎上移组件侧】** 本地生成器工程 `Mud.Feishu.AI.Tools` 与 `Tests/Mud.Feishu.AI.Tools.Tests`
+  **整体删除**；工具 Schema 改由 `Mud.HttpUtils.Generator` 3.0.3 的通用 `ToolSurface` 引擎按
+  **剖面**（`SdkProfile/FeishuToolProfile.cs`，实现 `ISdkToolProfile` + 标注 `[SdkToolProfile]`）
+  驱动生成。新增依赖：`Mud.HttpUtils.Generator`（analyzer）/ `Attributes` / `Abstractions` 3.0.3。
+  两套引擎不得并存（同名 hintName 产物冲突），由 `FeishuToolProfileContractGuards` 机械守护。
+- **【策划面命名约定收紧】** 83 个租户令牌工具接口由 `IFeishu<Domain><Verb>Tool` 统一改为
+  **`IFeishuTenant<Domain><Verb>Tool`**（与既有 `IFeishuUser*Tool` 对称）：引擎的槽位 016 会比对
+  「工具身份 ↔ 承载接口名推导出的令牌类型」，缺标记即 `MUDFT016`（Error）。公开接口因此改名
+  （未发布窗口期，`PublicAPI.Unshipped.txt` 已同步）。
+- **【能力目录产物改名】** 生成产物由 `FeishuCapabilityCatalog` 改为
+  **`FeishuToolCapabilityCatalog`**（引擎按 `{ProductPrefix}CapabilityCatalog` 派生）。
+- **【一个工具的输出契约收敛（有意）】** `im.get_message_content` 的 `output_schema` 不再暴露
+  `FeishuApiListResult` 信封（此前 `data.items`，现直接 `items`），与 PageList 族的信封剥离口径一致；
+  其余 **86/87** 工具的 Schema 逐字节不变。
+
+### 🔧 变更
+
+- **`Source` 符号化（R-1）**：84 处 `[FeishuTool(Source = …)]` 由字符串字面量改为
+  `nameof(接口) + "." + nameof(接口.方法)` 常量拼接——编译期求值结果与旧字面量逐字节相同，
+  SDK 接口/方法改名可随 IDE 重命名自动联动（不再依赖人工定位魔法串）。
+- **诊断门禁扩展**：`scripts/diagnostics-gate.ps1` 新增 `SDKT001/SDKT002`（剖面接口↔特性成对性、
+  剖面必填槽缺失）零容忍集，本地 `verify-build.ps1` 与 CI workflow 同源断言——
+  `SDKT002` 会让引擎**静默不产任何工具面**，是比任何 MUDFT 都隐蔽的失败通道。
+- **golden 一键再固化入口**：`dotnet test … -p:FeishuToolRefreeze=true`（配合
+  `FeishuToolGoldenUpdate=true`）绕过"门禁即构建错误"的自锁，兑现 v1 方案 §2.1-C3 的承诺。
+- **测试守卫重锚**：新增 `FeishuToolProfileContractGuards`（剖面 31 槽冻结 + 上游 24 槽镜像
+  ↔ 门禁三集合 ↔ CI + 迁移台账 + `Source` 形态）；`GeneratorDiagnosticsContractGuards` 按
+  "门禁链路"重锚；`GeneratorProductGateCoverageTests` 改为"剖面派生出口模板 + 产物存在性"双锚点；
+  `BinaryDownloadToolExposureContractTests` 支持 nameof 形态并加双形态自证。
+
+### 🐛 修复（既有门禁失败，随本轮一并清零）
+
+- **Demo 编译失败 ×4**：`Demos/FeishuFileServer` 的 `FeishuDriveService` 两处
+  `DeleteFileByFileTokenAsync(token, "file", cancellationToken)` 落后于 SDK 签名
+  （`[Query("async")] bool? async` 已插入第 3 位）⇒ 补 `async: null`（保持同步删除语义）。
+- **AOT 严格模式失败 ×20**（10×`IL2026` + 10×`IL3050`）：`Internal/{BitableTools,MailTools,MinutesReadTools}.cs`
+  的 5 处 `JsonArray.Add(new JsonObject{…})` 被重载解析绑到带
+  `RequiresUnreferencedCode`/`RequiresDynamicCode` 的泛型 `Add<T>(T)`（非 `JsonNode` 的 T 走反射
+  `JsonValue.Create`）⇒ 改用仓库**既有的** AOT 安全扩展 `ToolResultText.AddNode`（走
+  `IList<JsonNode?>` 显式实现）。**真修根因，未加任何抑制**。
+  ⇒ `verify-build.ps1` 七步全绿（编译 0 错误、`AotStrictMode` `AOT00x`/`IL2026`/`IL3050` 全 0、
+  单元测试 9468 通过 / 0 失败）。
+
 ## [Unreleased] - Mud.Feishu.AI 审查缺陷修复与能力完善 R5（2026-10-02）
 
 > 方案、双视角复核与落地记录见 `.docs/AI/Mud.Feishu.AI-审查缺陷修复与能力完善方案-R5.md`
@@ -93,7 +144,7 @@ InvalidOperationException or NotSupportedException`）收口为 `when (ex is not
   `FormatException`/`KeyNotFoundException`（残余类型会毒化会话）。
 - **R4-8**：流式 Agent 路径补记 token 用量（在**迭代器循环体内**累积 `UsageDetails`，循环结束后
   `RecordUsage`）——此前仅非流式路径有遥测，流式调用在可观测性上不可见。
-- **R4-9**：`FeishuCapabilityCatalog` 的 opt-in 表述与强依赖对齐——该产物对 `Mud.Feishu.AI.FeishuTools`
+- **R4-9**：`FeishuToolCapabilityCatalog` 的 opt-in 表述与强依赖对齐——该产物对 `Mud.Feishu.AI.FeishuTools`
   是**必需**（`CapabilityLookupTools` 编译期无条件引用，置 `false` 即 `CS0103`）；
   `build_property.FeishuToolCatalog` 只对**其他引用本生成器的工程**才是可关闭的增量开关。
 - **R4-10**：生成器 `AddSource` 唯一性护栏加固。`RegistrarTypeName` / Core 方法名 / hintName 三者

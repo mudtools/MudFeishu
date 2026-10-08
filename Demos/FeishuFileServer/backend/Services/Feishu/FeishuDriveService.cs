@@ -225,7 +225,10 @@ public class FeishuDriveService : IFeishuDriveService
 
         try
         {
-            var result = await _driveFiles.DeleteFileByFileTokenAsync(fileToken, "file", cancellationToken);
+            // async 参数（`[Query("async")] bool?`）为 SDK 后增：显式传 null = 同步删除，
+            // 与既有"同步删除"语义一致（省略该实参会把 cancellationToken 顶到第 3 个形参上而编译失败）。
+            var result = await _driveFiles.DeleteFileByFileTokenAsync(
+                fileToken, "file", async: null, cancellationToken: cancellationToken);
 
             if (result == null)
             {
@@ -274,7 +277,8 @@ public class FeishuDriveService : IFeishuDriveService
 
         try
         {
-            var result = await _driveFiles.DeleteFileByFileTokenAsync(folderToken, "folder", cancellationToken);
+            var result = await _driveFiles.DeleteFileByFileTokenAsync(
+                folderToken, "folder", async: null, cancellationToken: cancellationToken);
 
             if (result == null)
             {

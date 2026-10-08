@@ -67,10 +67,13 @@ asserted for the diagnostic whitelist afterwards (`.github/workflows/dotnet-publ
 
 ## Dependency version policy (Mud.HttpUtils)
 
-This repo consumes `Mud.HttpUtils` **3.0.0** (HttpUtils and Generator **must stay on the same
+This repo consumes `Mud.HttpUtils` **3.0.3** (HttpUtils and Generator **must stay on the same
 version**) — the release line that carries **BC-27**: `IAppContextSwitcher` no longer declares
 `UseApp(string)` / `UseDefaultApp()` / `BeginScope(string)`, and the generator no longer emits them
-by default. Adaptation (plan: `.docs/MudHttpUtils-3.0.0-破坏性变更改造计划.md`, §10):
+by default — **plus the tool-surface generation engine** (`ToolSurface/` in
+`Mud.HttpUtils.Generator` + `ISdkToolProfile` in `Mud.HttpUtils.Abstractions` +
+`[SdkToolProfile]` in `Mud.HttpUtils.Attributes`). Adaptation (plan:
+`.docs/MudHttpUtils-3.0.0-破坏性变更改造计划.md`, §10):
 
 - `IFeishuAppContextSwitcher` **re-declares** the three legacy members with `[Obsolete]`
   (upstream "self-declared ⇒ exempt" mechanism keeps 188+ generated classes emitting them).
@@ -85,9 +88,16 @@ by default. Adaptation (plan: `.docs/MudHttpUtils-3.0.0-破坏性变更改造计
   `Mud.HttpUtils 2.0.8`), so demo `BeginScope("hr-app")` calls are intentionally untouched until the
   rebuilt package ships.
 
-At the time of writing 3.0.0 is **not yet on nuget.org**, so `nuget.config` carries a temporary local
-source (`mudhttputils-local` → `D:/Repos/MudHttpUtils/artifacts`); remove it once the official package
-is published. To consume a newer component version: bump the
+At the time of writing 3.0.3 is **not yet on nuget.org**, so `nuget.config` carries a temporary local
+source (`MudHttpUtils-local` → `D:/Repos/MudHttpUtils/artifacts-debug`, i.e. the **Debug** build
+produced by `pack_debug.ps1`); remove it once the official Release package is published. The tool
+surface is generated **only** by the component-side engine: the local generator project
+(`Mud.Feishu.AI.Tools`) and its driver tests were retired in the R-1+2c migration, and
+`Tests/Mud.Feishu.AI.FeishuTools.Tests/ContractGuards/FeishuToolProfileContractGuards.cs` asserts
+that no source/project trace of them returns. `FeishuToolProfile.cs`
+(`Mud.Feishu.AI.FeishuTools/SdkProfile/`) is the single source of the Feishu naming facts and is
+**linked** into `Tests/Mud.Feishu.AI.Tests` (`Compile Include`) because profiles are discovered per
+compilation unit. To consume a newer component version: bump the
 version in the `PackageReference`s and, optionally, sync `AGENTS.md` / the README dependency tables
 (`README.md` / `README_EN.md` / `Mud.Feishu/README.md`) — the docs are **not** gated (a wrong version
 number there has no runtime impact and must not block an upgrade). The contract guard

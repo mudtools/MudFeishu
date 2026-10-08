@@ -20,10 +20,10 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\Mud.Feishu.Abstractions\Mud.Feishu.Abstractions.csproj" />
-		<!-- [FeishuTool] 源生成器（已决策⑤）：以分析器形态引用，不作为运行时程序集。 -->
-		<ProjectReference Include="..\Mud.Feishu.AI.Tools\Mud.Feishu.AI.Tools.csproj"
-		                 OutputItemType="Analyzer"
-		                 ReferenceOutputAssembly="false" />
+		<!-- R-1+2c：本工程不含任何 [FeishuTool] 接口，也不消费工具面产物（仅 XML 注释提及
+		     Mud.Feishu.AI.Tools.Generated）⇒ 迁移到上游引擎后**不再需要**挂分析器引用。
+		     工具面生成的剖面（FeishuToolProfile）只属于声明了 [FeishuTool] 的程序集
+		     （Mud.Feishu.AI.FeishuTools 与样例测试工程），见该文件注释。 -->
 	</ItemGroup>
 
 	<ItemGroup>

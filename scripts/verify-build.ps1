@@ -238,8 +238,8 @@ Assert-Zero -Name 'RS0016 公开面缺失' -Count ((Select-String -Path $buildLo
 Assert-Zero -Name 'RS0017 陈旧残留'   -Count ((Select-String -Path $buildLog -Pattern 'RS0017' -AllMatches).Count) -Hint "PublicAPI.Unshipped.txt 有改名/回滚残留；先跑 pwsh ./scripts/sync-publicapi.ps1（详见 $buildLog）"
 
 # AI 工具描述符零容忍诊断（R5 / B-11）：**ID 清单与判定口径抽到 scripts/diagnostics-gate.ps1**，
-# 由本地门禁与 CI workflow 共同 dot-source，并由 DiagnosticsGateParityContractGuards 锁定三方一致
-# （Diagnostics.ZeroToleranceIds ↔ diagnostics-gate.ps1 ↔ workflow）。
+# 由本地门禁与 CI workflow 共同 dot-source，并由 FeishuToolProfileContractGuards 锁定三方一致
+# （上游 ToolSurface 槽位表镜像 ↔ diagnostics-gate.ps1 ↔ workflow）。
 #
 #   001 缺工具名 / 002 命名不符范式 / 003 工具名冲突 / 004 返回类型不可映射
 #   008 上传参数不可映射 / 010 查询参数展开失败 / 014 golden 漂移
@@ -247,11 +247,17 @@ Assert-Zero -Name 'RS0017 陈旧残留'   -Count ((Select-String -Path $buildLog
 #   020 参数类型无解包映射（ToolArgsEmitter/ToolArgs 映射表）
 #   022 工具未绑定执行器 / 023 绑定不成立 / 024 执行器方法签名不符 / 025 执行器构造参数无法解析
 # 注：本断言是"二次锁"——原先是恒为 0 的假绿（零容忍集里 5 个 ID 当时没有任何上报点）。
-#     缺失上报点已补齐，并由守卫 ZeroToleranceDiagnostics_ShouldHaveReportSites 机械锁定。
+#     缺失上报点在 R-1+2c 迁移后由组件侧引擎的等价守卫（ToolSurfaceContractTests 的
+#     "描述符集 == 上报点集"）承接；本地侧由 FeishuToolProfileContractGuards 的槽位镜像守卫锁定口径。
 # 注：口径纪律见 diagnostics-gate.ps1 头部——只匹配「诊断形态」，不能只匹配 ID 字符串
 #     （生成器工程自身的 RS2008 警告正文里就带这些 ID，只匹配 ID 会假红）。
 $mudftZero = Measure-Mudft -LogPath $buildLog -Ids $MudftZeroToleranceIds
-Assert-Zero -Name 'MUDFT 零容忍'  -Count $mudftZero -Hint "AI 工具描述符零容忍集（$($MudftZeroToleranceIds -join '/')），见 Diagnostics.ZeroToleranceIds"
+Assert-Zero -Name 'MUDFT 零容忍'  -Count $mudftZero -Hint "AI 工具描述符零容忍集（$($MudftZeroToleranceIds -join '/')），见 scripts/diagnostics-gate.ps1（上游槽位表镜像）"
+
+# 剖面契约诊断（SDKT001/002，R-1+2c）：工具面改由上游引擎按 [SdkToolProfile] 剖面驱动后，
+# 「剖面写坏」是一条新的失败通道——SDKT001 = 接口↔特性未成对；SDKT002 = 必填槽缺失，
+# 后者会让引擎**静默不产任何工具面**（构建"成功"但工具消失），比任何 MUDFT 都隐蔽。
+Assert-Zero -Name 'SDKT 剖面契约' -Count (Measure-SdkToolDiagnostics -LogPath $buildLog) -Hint "SDKT001/002（$($SdkToolZeroToleranceIds -join '/')）：剖面成对性与必填槽完整性"
 
 # Warning/Info 级：默认不阻断（存量告警不应阻塞日常开发），-DenyToolWarnings（CI 开）后生效。
 if ($DenyToolWarnings) {
@@ -317,7 +323,7 @@ $strictProjects = @($sourceRoots |
     ForEach-Object { Get-ChildItem -Path $_.FullName -Filter '*.csproj' -File -ErrorAction SilentlyContinue } |
     Where-Object { $_.FullName -notmatch '\\(obj|bin)\\' } |
     Sort-Object FullName)
-# 单 TFM 源项目（netstandard2.0 源生成器宿主等，如 Mud.Feishu.AI.Tools）不含 net8.0 目标，
+# 单 TFM 源项目（netstandard2.0 源生成器宿主等）不含 net8.0 目标，
 # 用 -f net8.0 构建会报 NETSDK1005。此处按求值后的 TargetFrameworks 过滤（与步骤 4 同口径），
 # 仅对真正含 net8.0 目标的源项目做严格冒烟。
 $strictProjects = @(foreach ($proj in $strictProjects) {

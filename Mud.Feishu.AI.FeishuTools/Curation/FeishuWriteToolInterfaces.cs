@@ -30,8 +30,8 @@ namespace Mud.Feishu.AI.FeishuTools.Curation;
     Description = "发送文本消息到指定群聊或用户。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。首次面向陌生接收者时建议先以 dry_run=true 预演。",
     RequiredScopes = ["im:message:send_as_bot"],
     IsWrite = true,
-    Source = "IFeishuTenantV1Message.SendMessageAsync")]
-public interface IFeishuImSendMessageTool
+    Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.SendMessageAsync))]
+public interface IFeishuTenantImSendMessageTool
 {
     /// <summary>发送文本消息。</summary>
     /// <returns>白名单投影后的 JSON 文本（message_id）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
@@ -68,8 +68,8 @@ public interface IFeishuImSendMessageTool
     Description = "发送一张交互式卡片（标题＋正文＋按钮），用于让对方一眼看到要点并能直接点按钮——比纯文本更适合通知、待办、审批提醒。⚠️ 用结构化语法描述内容，**不要写 JSON**：body 每行一个元素（text:内容 / quote:内容 / code:内容 / divider），buttons 每行一个按钮（按钮文本|url|链接 或 按钮文本|value|回调值）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。",
     RequiredScopes = ["im:message:send_as_bot"],
     IsWrite = true,
-    Source = "IFeishuTenantV1Message.SendMessageAsync")]
-public interface IFeishuImSendCardTool
+    Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.SendMessageAsync))]
+public interface IFeishuTenantImSendCardTool
 {
     /// <summary>发送交互式卡片。</summary>
     /// <returns>白名单投影后的 JSON 文本（message_id）；<c>dry_run=true</c> 时返回请求摘要与编译出的卡片结构，不调用下游。</returns>
@@ -97,8 +97,8 @@ public interface IFeishuImSendCardTool
     Description = "拒绝一个审批任务（拒绝后审批流程结束）。与 approval.approve_task 构成完整的双向决策面；task_id 来自 approval.list_pending_tasks。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 approval:approval。",
     RequiredScopes = ["approval:approval"],
     IsWrite = true,
-    Source = "IFeishuTenantV4ApprovalTask.RejectApprovalAsync")]
-public interface IFeishuApprovalRejectTaskTool
+    Source = nameof(IFeishuTenantV4ApprovalTask) + "." + nameof(IFeishuTenantV4ApprovalTask.RejectApprovalAsync))]
+public interface IFeishuTenantApprovalRejectTaskTool
 {
     /// <summary>拒绝审批任务。</summary>
     /// <returns>结构化文本（rejected=true）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
@@ -123,8 +123,8 @@ public interface IFeishuApprovalRejectTaskTool
     Description = "把一个审批任务转交给他人（转交后流程流转给被转交人）。适用于'这条不该我批/我无法判断'的场景。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 approval:approval。",
     RequiredScopes = ["approval:approval"],
     IsWrite = true,
-    Source = "IFeishuTenantV4ApprovalTask.TransferApprovalAsync")]
-public interface IFeishuApprovalTransferTaskTool
+    Source = nameof(IFeishuTenantV4ApprovalTask) + "." + nameof(IFeishuTenantV4ApprovalTask.TransferApprovalAsync))]
+public interface IFeishuTenantApprovalTransferTaskTool
 {
     /// <summary>转交审批任务。</summary>
     /// <returns>结构化文本（transferred=true）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
@@ -146,8 +146,8 @@ public interface IFeishuApprovalTransferTaskTool
     Description = "按审批定义 Code 发起一个审批实例，form 为审批表单 Value（JSON 数组字符串，按定义的表单控件结构填写；非 JSON 数组会在下发前被拒绝）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 approval:approval。",
     RequiredScopes = ["approval:approval"],
     IsWrite = true,
-    Source = "IFeishuTenantV4Approval.CreateInstanceAsync")]
-public interface IFeishuApprovalCreateInstanceTool
+    Source = nameof(IFeishuTenantV4Approval) + "." + nameof(IFeishuTenantV4Approval.CreateInstanceAsync))]
+public interface IFeishuTenantApprovalCreateInstanceTool
 {
     /// <summary>发起审批实例。</summary>
     /// <returns>白名单投影后的 JSON 文本（instance_code）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
@@ -166,8 +166,8 @@ public interface IFeishuApprovalCreateInstanceTool
 [FeishuTool("approval.list_pending_tasks",
     Description = "查询审批待办任务列表（按用户 ID 过滤 PENDING 状态任务）。task_id/instance_code 可传给 approval.approve_task 完成同意操作。只读，需 approval:approval:readonly。",
     RequiredScopes = ["approval:approval:readonly"],
-    Source = "IFeishuTenantV4ApprovalQuery.GetTasksPageListAsync")]
-public interface IFeishuApprovalListPendingTasksTool
+    Source = nameof(IFeishuTenantV4ApprovalQuery) + "." + nameof(IFeishuTenantV4ApprovalQuery.GetTasksPageListAsync))]
+public interface IFeishuTenantApprovalListPendingTasksTool
 {
     /// <summary>查询审批待办任务列表。</summary>
     /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token），超长截断并标记 truncated。</returns>
@@ -185,8 +185,8 @@ public interface IFeishuApprovalListPendingTasksTool
     Description = "同意指定审批任务（需 approval_code/instance_code/task_id/user_id 四要素，task_id/instance_code 来自 approval.list_pending_tasks）。同意后审批流程流转到下一个审批人。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 approval:approval。",
     RequiredScopes = ["approval:approval"],
     IsWrite = true,
-    Source = "IFeishuTenantV4ApprovalTask.AgreeApprovalAsync")]
-public interface IFeishuApprovalApproveTaskTool
+    Source = nameof(IFeishuTenantV4ApprovalTask) + "." + nameof(IFeishuTenantV4ApprovalTask.AgreeApprovalAsync))]
+public interface IFeishuTenantApprovalApproveTaskTool
 {
     /// <summary>同意审批任务。</summary>
     /// <returns>白名单投影后的 JSON 文本（approved=true）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>

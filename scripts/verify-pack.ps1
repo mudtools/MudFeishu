@@ -19,10 +19,14 @@ Set-Location $solutionRoot
 
 $failures = @()
 
-# ① Mud.Feishu.AI.Tools 不得产出 nupkg（IsPackable=false）
+# ① 工具面源生成器**不得**以本地工程形态重新出现（R-1+2c 已把生成引擎上游化到组件侧
+#    Mud.HttpUtils.Generator；本地 Mud.Feishu.AI.Tools 工程与其 driver 测试工程已摘除）。
+#    本检查保留为"回归陷阱"：若有人重新引入本地引擎工程且未设 IsPackable=false，
+#    它会产出 Mud.Feishu.AI.Tools.*.nupkg —— 那意味着两套引擎并存的窗口被再次打开。
 $aiToolsNupkg = Get-ChildItem -Path $OutputDir -Filter "Mud.Feishu.AI.Tools.*.nupkg" -ErrorAction SilentlyContinue
 if ($aiToolsNupkg) {
-    $failures += "R3-01 ① 失败：Mud.Feishu.AI.Tools 不应产出 nupkg，但发现 $($aiToolsNupkg.Name)——IsPackable=false 未生效或被遮蔽"
+    $failures += "① 失败：发现 $($aiToolsNupkg.Name)——工具面生成引擎已上游化到 Mud.HttpUtils.Generator 3.0.x，" +
+    "本地不应再存在 Mud.Feishu.AI.Tools 工程（两套引擎并存会产生同名 hintName 产物冲突）"
 }
 
 # ② 测试工程不得产出 nupkg
@@ -88,6 +92,6 @@ if ($failures.Count -gt 0) {
 }
 
 Write-Host "## verify-pack: PASS" -ForegroundColor Green
-Write-Host "  - Mud.Feishu.AI.Tools 未产出 nupkg（IsPackable=false 生效）"
+Write-Host "  - 本地工具面生成引擎工程未复活（R-1+2c：生成引擎归属 Mud.HttpUtils.Generator）"
 Write-Host "  - 测试工程未产出 nupkg"
 Write-Host "  - src 包形态与元数据检查通过"

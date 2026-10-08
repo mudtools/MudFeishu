@@ -12,8 +12,8 @@ namespace Mud.Feishu.AI.FeishuTools.Curation;
     Description = "向多维表格数据表新增一条记录，fields 为「字段名 → 值」JSON 对象（字段名先经 bitable.list_fields 确认；字段名拼错会在下发前被拒绝）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 bitable:app。",
     RequiredScopes = ["bitable:app"],
     IsWrite = true,
-    Source = "IFeishuTenantV1BitableRecord.AddRecordAsync")]
-public interface IFeishuBitableAddRecordTool
+    Source = nameof(IFeishuTenantV1BitableRecord) + "." + nameof(IFeishuTenantV1BitableRecord.AddRecordAsync))]
+public interface IFeishuTenantBitableAddRecordTool
 {
     /// <summary>新增记录。</summary>
     /// <returns>白名单投影后的 JSON 文本（record_id）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
@@ -31,8 +31,8 @@ public interface IFeishuBitableAddRecordTool
     Description = "更新多维表格中的指定记录（按 record_id 更新 fields）。fields 为「字段名 → 值」JSON 对象字符串。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 bitable:app。",
     RequiredScopes = ["bitable:app"],
     IsWrite = true,
-    Source = "IFeishuTenantV1BitableRecord.UpdateRecordAsync")]
-public interface IFeishuBitableUpdateRecordTool
+    Source = nameof(IFeishuTenantV1BitableRecord) + "." + nameof(IFeishuTenantV1BitableRecord.UpdateRecordAsync))]
+public interface IFeishuTenantBitableUpdateRecordTool
 {
     /// <summary>更新记录。</summary>
     /// <returns>白名单投影后的 JSON 文本（record_id）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
@@ -51,8 +51,8 @@ public interface IFeishuBitableUpdateRecordTool
     Description = "删除多维表格中的指定记录（不可恢复！请谨慎使用，建议先 dry_run 预演确认）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 bitable:app。",
     RequiredScopes = ["bitable:app"],
     IsWrite = true,
-    Source = "IFeishuTenantV1BitableRecord.DeleteRecordAsync")]
-public interface IFeishuBitableDeleteRecordTool
+    Source = nameof(IFeishuTenantV1BitableRecord) + "." + nameof(IFeishuTenantV1BitableRecord.DeleteRecordAsync))]
+public interface IFeishuTenantBitableDeleteRecordTool
 {
     /// <summary>删除记录（不可恢复）。</summary>
     /// <returns>白名单投影后的 JSON 文本（删除确认）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>

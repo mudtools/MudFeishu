@@ -19,6 +19,10 @@ global using Mud.Feishu.AI.Tools.Generated;
 // 逐文件添加会产生 24+ 处无信息量的 using 行；GlobalUsings.cs 已是本仓既有机制。
 global using Mud.Feishu.AI.FeishuTools.Curation;
 global using Mud.Feishu.DataModels;
+// R-1+2c：Curation/ 的 [FeishuTool(Source = …)] 由字面量改为「nameof(接口) + "." + nameof(接口.方法)」
+// 常量拼接形态（符号锚定 → IDE 重命名自动联动）。SDK 接口全部落在 Mud.Feishu 命名空间，故引入本 using
+// 让 84 处声明免写全限定名（本工程内部/执行器仍保留 Mud.Feishu.IFeishuX 的全限定风格）。
+global using Mud.Feishu;
 global using System;
 global using System.Collections.Generic;
 global using System.Diagnostics;

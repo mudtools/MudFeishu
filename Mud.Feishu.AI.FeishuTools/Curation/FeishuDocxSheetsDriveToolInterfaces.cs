@@ -29,8 +29,8 @@ namespace Mud.Feishu.AI.FeishuTools.Curation;
     Description = "在云空间中创建一个飞书文档（返回 document_id，可用 docx.get_raw_content 读回）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。",
     RequiredScopes = ["docx:document"],
     IsWrite = true,
-    Source = "IFeishuTenantV1Docx.CreateDocumentAsync")]
-public interface IFeishuDocxCreateDocumentTool
+    Source = nameof(IFeishuTenantV1Docx) + "." + nameof(IFeishuTenantV1Docx.CreateDocumentAsync))]
+public interface IFeishuTenantDocxCreateDocumentTool
 {
     /// <summary>创建文档。</summary>
     /// <returns>白名单投影后的 JSON 文本（document_id）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
@@ -46,8 +46,8 @@ public interface IFeishuDocxCreateDocumentTool
     Description = "在文档根块下创建子块（向文档追加内容，如段落、标题等）。document_id 可由 docx.create_document 创建后获得或来自已有文档。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。",
     RequiredScopes = ["docx:document"],
     IsWrite = true,
-    Source = "IFeishuTenantV1DocxBlocks.CreateBlockAsync")]
-public interface IFeishuDocxAppendBlocksTool
+    Source = nameof(IFeishuTenantV1DocxBlocks) + "." + nameof(IFeishuTenantV1DocxBlocks.CreateBlockAsync))]
+public interface IFeishuTenantDocxAppendBlocksTool
 {
     /// <summary>追加文档块。</summary>
     /// <returns>白名单投影后的 JSON 文本（block_id）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
@@ -75,8 +75,8 @@ public interface IFeishuDocxAppendBlocksTool
     Description = "更新文档中已有块的文本内容（改写段落/标题的文字）。block_id 来自 docx.append_blocks 或 docx.get_raw_content 的返回。⚠️ 只支持改文本，不支持改表格结构与富样式（见工具说明）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。",
     RequiredScopes = ["docx:document"],
     IsWrite = true,
-    Source = "IFeishuTenantV1DocxBlocks.BatchUpdateBlocksAsync")]
-public interface IFeishuDocxUpdateBlocksTool
+    Source = nameof(IFeishuTenantV1DocxBlocks) + "." + nameof(IFeishuTenantV1DocxBlocks.BatchUpdateBlocksAsync))]
+public interface IFeishuTenantDocxUpdateBlocksTool
 {
     /// <summary>批量更新块文本。</summary>
     /// <returns>结构化文本（updated=成功条数；dry_run=true 时返回请求摘要且不调用下游）。</returns>
@@ -93,8 +93,8 @@ public interface IFeishuDocxUpdateBlocksTool
     Description = "删除某个父块下指定索引区间的子块（如删掉文档里过时的一批段落）。索引是父块下的子块序号（从 0 开始），可由 docx.get_raw_content 或 docx.append_blocks 的返回推算。⚠️ 删除不可撤销——务必先用 dry_run 确认区间。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。",
     RequiredScopes = ["docx:document"],
     IsWrite = true,
-    Source = "IFeishuTenantV1DocxBlocks.BatchDeleteBlocksAsync")]
-public interface IFeishuDocxDeleteBlocksTool
+    Source = nameof(IFeishuTenantV1DocxBlocks) + "." + nameof(IFeishuTenantV1DocxBlocks.BatchDeleteBlocksAsync))]
+public interface IFeishuTenantDocxDeleteBlocksTool
 {
     /// <summary>删除子块区间 [start_index, end_index)。</summary>
     /// <returns>结构化文本（deleted=删除条数；dry_run=true 时返回请求摘要且不调用下游）。</returns>
@@ -117,8 +117,8 @@ public interface IFeishuDocxDeleteBlocksTool
 [FeishuTool("docx.import_markdown",
     Description = "把 Markdown 内容转换成文档块结构（不写入文档）——用于先预览转换结果，再用 docx.append_blocks 写入。支持文本、一到九级标题、有序/无序列表、代码块、引用、待办、图片、表格。只读转换，需 docx:document。",
     RequiredScopes = ["docx:document"],
-    Source = "IFeishuTenantV1DocxBlocks.ContentConvertAsync")]
-public interface IFeishuDocxImportMarkdownTool
+    Source = nameof(IFeishuTenantV1DocxBlocks) + "." + nameof(IFeishuTenantV1DocxBlocks.ContentConvertAsync))]
+public interface IFeishuTenantDocxImportMarkdownTool
 {
     /// <summary>Markdown/HTML → 文档块。</summary>
     /// <returns>白名单投影后的 JSON 文本（blocks / first_level_block_ids / image_urls），超长截断并标记 truncated。</returns>
@@ -157,8 +157,8 @@ public interface IFeishuDocxImportMarkdownTool
     Description = "用 Markdown 内容整体替换文档正文（保留为新内容的旧块会被删除）。适用于'把这篇文章重建一遍'。执行顺序为先追加新块、再删除旧块，因此中途失败不会导致内容丢失。⚠️ 必须提供 idempotency_key（重试语义）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。",
     RequiredScopes = ["docx:document"],
     IsWrite = true,
-    Source = "IFeishuTenantV1DocxBlocks.CreateBlockAsync")]
-public interface IFeishuDocxReplaceDocumentTool
+    Source = nameof(IFeishuTenantV1DocxBlocks) + "." + nameof(IFeishuTenantV1DocxBlocks.CreateBlockAsync))]
+public interface IFeishuTenantDocxReplaceDocumentTool
 {
     /// <summary>整篇替换（Markdown → 新块，追加后删除旧块）。</summary>
     /// <returns>结构化文本（appended / deleted / 以及删除失败时的待删区间与修复指引）。</returns>
@@ -178,8 +178,8 @@ public interface IFeishuDocxReplaceDocumentTool
     Description = "向电子表格指定区域写入数据（覆盖写，天然幂等——同一区域重复写入结果一致）。spreadsheet_token 来自 sheets.list_sheets；range 形如 ShtXxx!A1:B2。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 sheets:spreadsheet。",
     RequiredScopes = ["sheets:spreadsheet"],
     IsWrite = true,
-    Source = "IFeishuTenantV3SpreadsheetData.RangeWriteDataAsync")]
-public interface IFeishuSheetsUpdateRangeTool
+    Source = nameof(IFeishuTenantV3SpreadsheetData) + "." + nameof(IFeishuTenantV3SpreadsheetData.RangeWriteDataAsync))]
+public interface IFeishuTenantSheetsUpdateRangeTool
 {
     /// <summary>更新区域数据。</summary>
     /// <returns>白名单投影后的 JSON 文本（revision）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
@@ -196,8 +196,8 @@ public interface IFeishuSheetsUpdateRangeTool
     Description = "向电子表格追加行数据（在指定区域末尾追加，不清空既有行）。spreadsheet_token 来自 sheets.list_sheets。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 sheets:spreadsheet。",
     RequiredScopes = ["sheets:spreadsheet"],
     IsWrite = true,
-    Source = "IFeishuTenantV3SpreadsheetData.AppendDataAsync")]
-public interface IFeishuSheetsAppendRowsTool
+    Source = nameof(IFeishuTenantV3SpreadsheetData) + "." + nameof(IFeishuTenantV3SpreadsheetData.AppendDataAsync))]
+public interface IFeishuTenantSheetsAppendRowsTool
 {
     /// <summary>追加行数据。</summary>
     /// <returns>白名单投影后的 JSON 文本（revision + appended_range）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
@@ -216,8 +216,8 @@ public interface IFeishuSheetsAppendRowsTool
     Description = "在云空间中创建文件夹（返回 folder_token，可用 drive.list_folder_files 验证）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
     RequiredScopes = ["drive:drive"],
     IsWrite = true,
-    Source = "IFeishuTenantV1DriveFolder.CreateFolderAsync")]
-public interface IFeishuDriveCreateFolderTool
+    Source = nameof(IFeishuTenantV1DriveFolder) + "." + nameof(IFeishuTenantV1DriveFolder.CreateFolderAsync))]
+public interface IFeishuTenantDriveCreateFolderTool
 {
     /// <summary>创建文件夹。</summary>
     /// <returns>白名单投影后的 JSON 文本（folder_token）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
@@ -233,8 +233,8 @@ public interface IFeishuDriveCreateFolderTool
     Description = "将文件或文件夹移动到指定文件夹下（返回异步任务 ID——移动操作为异步执行，需后续轮询确认完成）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
     RequiredScopes = ["drive:drive"],
     IsWrite = true,
-    Source = "IFeishuTenantV1DriveFiles.MoveFileByFileTokenAsync")]
-public interface IFeishuDriveMoveFileTool
+    Source = nameof(IFeishuTenantV1DriveFiles) + "." + nameof(IFeishuTenantV1DriveFiles.MoveFileByFileTokenAsync))]
+public interface IFeishuTenantDriveMoveFileTool
 {
     /// <summary>移动文件。</summary>
     /// <returns>白名单投影后的 JSON 文本（task_id——异步任务）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
@@ -251,8 +251,8 @@ public interface IFeishuDriveMoveFileTool
     Description = "将网络文件上传到云空间（file_url 为 http/https 绝对地址，由宿主负责下载落盘——与 im.send_image 同机制）。返回 file_token。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
     RequiredScopes = ["drive:drive"],
     IsWrite = true,
-    Source = "IFeishuTenantV1DriveFiles.UploadAllFileAsync")]
-public interface IFeishuDriveUploadFileTool
+    Source = nameof(IFeishuTenantV1DriveFiles) + "." + nameof(IFeishuTenantV1DriveFiles.UploadAllFileAsync))]
+public interface IFeishuTenantDriveUploadFileTool
 {
     /// <summary>上传文件。</summary>
     /// <returns>白名单投影后的 JSON 文本（file_token）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>

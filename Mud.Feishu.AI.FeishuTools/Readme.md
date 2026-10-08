@@ -190,14 +190,18 @@ var response = await agent.RunApprovalContinuationAsync(
 
 以 `calendar.create_event` / `task.list_my_tasks`（R4/WP5）为样本，实测 **4 处手改 + 2 处机械**：
 
-1. **核对 SDK 签名与 DTO**（`Mud.Feishu/Interfaces/{Module}/`）→ 定下 `Source` 字符串
-   （形如 `"IFeishuTenantV4CalendarEvent.CreateCalendarEventAsync"`）。
+1. **核对 SDK 签名与 DTO**（`Mud.Feishu/Interfaces/{Module}/`）→ 定下 `Source` 锚点，形如
+   **`Source = nameof(IFeishuTenantV4CalendarEvent) + "." + nameof(IFeishuTenantV4CalendarEvent.CreateCalendarEventAsync)`**
+   （R-1 起为 `nameof` 常量拼接：编译期求值结果与旧字面量 `"IFeishuTenantV4CalendarEvent.CreateCalendarEventAsync"` 逐字节相同，
+   但 SDK 改名可随 IDE 重命名联动。⚠️ **单段 `nameof(接口.方法)` 只产出方法名**（丢接口名），会被判为 `MUDFT019`）。
    ⚠️ 双令牌派生接口（`IFeishuTenantV*`/`IFeishuUserV*`）是**空**接口，方法在基接口上。
-2. **写工具接口声明**（手写）：`Tools/Feishu{Tool}ToolInterfaces.cs` ——
+2. **写工具接口声明**（手写）：`Curation/Feishu{Domain}ToolInterfaces.cs` ——
    `[FeishuTool("域.动作", Description=…, RequiredScopes=[…], IsWrite=…, Source=…)]` +
    `[ToolParameter("名", "说明", Required=…)]` 扁平参数。
    分页尺寸/排序/容器类型等**运维参数不进 Schema**（绑定层补齐并钳制）；`page_token` 例外保留。
-   ⚠️ `identity=user` 的工具，其接口名**必须以 `IFeishuUser` 开头**（`MUDFT016` 跨字段校验）。
+   ⚠️ **工具接口名必须携带令牌标记**：租户令牌用 `IFeishuTenant{域}{动作}Tool`，用户令牌用
+   `IFeishuUser{域}{动作}Tool`（`MUDFT016` 会把「工具身份」与「承载接口名推导出的令牌类型」比对，
+   缺标记即构建失败——R-1+2c 起 Tenant 侧也强制，此前只有 User 侧强制）。
 3. **写执行器**（手写，投影独占）：`Internal/{Tool}Tools.cs` —— `new ToolExecutor(FeishuToolNames.X, maxLength)`
    → `RunAsync(async () => { ToolArgs 取参 → SDK 调用 → FeishuApiResultReader.Read → executor.FromApi(...) })`；
    **不要**手写 `if (!outcome.Ok)` / `catch (ArgumentException)`（WP3 守卫会红）。
@@ -218,10 +222,18 @@ var response = await agent.RunApprovalContinuationAsync(
 ④ `Source` 可解析；⑤ 写工具默认不启用且过授权门禁；
 ⑥ `risk`/`is_write`/`identity` 与 Schema 一致；⑦ 新域 guidance 资产（可选，见 §8）已补。
 
-> **golden 重固化的循环依赖**：漂移会让 `MUDFT014`（Error）中断构建，而重固化要靠构建出的程序集跑测试。
-> 可行流程：**先把 `FeishuToolSchemas.golden.txt` 移开** → 构建（无 `AdditionalFiles`，不比对）→
-> `$env:FeishuToolGoldenUpdate='true'; dotnet test Tests/Mud.Feishu.AI.FeishuTools.Tests --filter "FullyQualifiedName~FeishuToolGoldenTests"`
-> → 删除旧备份文件。
+> **golden 重固化（R-1+2c 起有一键通道）**：漂移会让 `MUDFT014`（Error）中断构建，而重固化要靠构建出的
+> 程序集跑测试——为解开这个自锁，csproj 提供了显式重固化窗口：
+>
+> ```powershell
+> $env:FeishuToolGoldenUpdate='true'
+> dotnet test Tests/Mud.Feishu.AI.FeishuTools.Tests -p:FeishuToolRefreeze=true `
+>   --filter "FullyQualifiedName~FeishuToolGoldenTests"
+> ```
+>
+> `-p:FeishuToolRefreeze=true` 让构建期 `AdditionalFiles` 暂时不引入快照（从而不比对），测试则用运行时
+> 真实 Schema 重写快照。固化后**必须**：评审 diff（媒体可见面变更）→ 运行
+> `pwsh ./scripts/sync-publicapi.ps1`（同步 `PublicAPI.Unshipped.txt` 里的 Schema 常量载荷）→ 记录 CHANGELOG。
 
 ---
 

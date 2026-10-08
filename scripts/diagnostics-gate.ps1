@@ -36,7 +36,10 @@
 Set-StrictMode -Off
 
 # ── 零容忍 Error（Severity=Error，出现即构建失败）─────────────────────────
-#   与 Mud.Feishu.AI.Tools/Diagnostics.cs 的 ZeroToleranceIds 一一对应（由守卫测试锁定）：
+#   真相源（R-1+2c 迁移后）：**组件侧** Mud.HttpUtils.Generator 的 ToolSurface 槽位表
+#   （ToolSurfaceDiagnostics.Slots 的 ZeroTolerance 列），ID = 剖面 DiagnosticPrefix（"MUDFT"）+ 槽位号。
+#   本地不再持有 Diagnostics.cs；口径由 Tests/.../FeishuToolProfileContractGuards.cs 的
+#   「上游槽位镜像」逐槽锁定（镜像与引擎槽位表不一致 ⇒ 守卫红，必须显式评审后更新）。
 #     001 缺工具名 / 002 命名不符范式 / 003 工具名冲突 / 004 返回类型不可映射
 #     008 上传参数不可映射 / 010 查询参数展开失败 / 011 条件必填组引用不存在的参数 / 014 golden 漂移
 #     015 Schema内部不一致 / 016 身份与接口令牌类型不符 / 017 读写分类与 SDK 事实脱钩
@@ -47,6 +50,15 @@ $MudftZeroToleranceIds = @(
     '001', '002', '003', '004', '008', '010', '011', '014', '015', '016', '017',
     '019', '020', '022', '023', '024', '025', '026', '027'
 )
+
+# ── 剖面契约诊断（SDKT，R-1+2c 新增的失败模式）───────────────────────────────
+#   为什么必须进本表：工具面生成由**组件侧引擎**按 [SdkToolProfile] 剖面驱动，剖面写坏时
+#   引擎不再报 MUDFT，而是报 SDKT —— 且 SDKT002（必填槽缺失）会让引擎**静默不产任何工具面**
+#   （症状 = 构建"成功"但工具消失），比任何 MUDFT 都更隐蔽。
+#     SDKT001 ISdkToolProfile ↔ [SdkToolProfile] 成对守卫（Error，零容忍）
+#     SDKT002 必填槽缺失（Error，零容忍；该剖面从一切扇出中排除）
+#   前缀 SDKT 由引擎固定（不随剖面走），故与 MUDFT 并列为本文件的第二组零容忍集。
+$SdkToolZeroToleranceIds = @('SDKT001', 'SDKT002')
 
 # ── 恒为 0 的 Warning/Info（描述质量退化 / 能力目录未更新）──────────────────
 #   MUDFT005 描述缺失或过短 / MUDFT006 描述含未验证的绝对化措辞
@@ -178,6 +190,27 @@ function Get-MudftPattern {
     }
 
     return '(?:warning|error) MUDFT(' + ($Ids -join '|') + '):'
+}
+
+function Measure-SdkToolDiagnostics {
+    <#
+    .SYNOPSIS
+        统计构建日志中**剖面契约诊断**（SDKT，由组件侧引擎上报）的真实出现次数。
+
+    .PARAMETER LogPath
+        构建日志路径。
+
+    .OUTPUTS
+        匹配出现次数；无该诊断时为 0。
+
+    .NOTES
+        与 Measure-Mudft 同口径：按 `(warning|error) SDKTnnn:` 诊断形态匹配，不匹配裸 ID
+        （生成器工程自身的 RS2008 警告正文里会带这些 ID）。
+    #>
+    param([Parameter(Mandatory = $true)][string]$LogPath)
+
+    if (-not (Test-Path $LogPath)) { return 0 }
+    return (Select-String -Path $LogPath -Pattern '(?:warning|error) SDKT[0-9]{3}:' -AllMatches).Count
 }
 
 function Measure-Mudft {

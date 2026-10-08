@@ -44,7 +44,7 @@ internal sealed class MailTools(
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
 
     /// <summary>mail.list_messages：列出用户邮箱中的邮件（分页，白名单 message_id）。</summary>
-    [FeishuToolHandler(typeof(IFeishuMailListMessagesTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantMailListMessagesTool))]
     public Task<FeishuToolResult> ListMessagesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.MailListMessages, _maxResultLength);
@@ -96,7 +96,7 @@ internal sealed class MailTools(
     }
 
     /// <summary>mail.get_message：获取邮件详情（白名单 subject/from/to/cc/body_preview/message_id）。</summary>
-    [FeishuToolHandler(typeof(IFeishuMailGetMessageTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantMailGetMessageTool))]
     public Task<FeishuToolResult> GetMessageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.MailGetMessage, _maxResultLength);
@@ -295,7 +295,8 @@ internal sealed class MailTools(
                 var items = new JsonArray();
                 foreach (var hit in data.Items ?? [])
                 {
-                    items.Add(new JsonObject
+                    // AddNode（而非 Add）：见 ToolResultText.AddNode——泛型 Add<T>(T) 的裁剪/AOT 注解会红。
+                    items.AddNode(new JsonObject
                     {
                         // MailSearchItem 只有 Id / DisplayInfo / MetaData 三个字段
                         // （标题、线程、时间都在 MetaData 里），故按实际可得字段投影。
@@ -316,7 +317,7 @@ internal sealed class MailTools(
     }
 
     /// <summary>mail.list_labels：列出邮箱标签（供 mail.list_messages 的 label 过滤取 id）。</summary>
-    [FeishuToolHandler(typeof(IFeishuMailListLabelsTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantMailListLabelsTool))]
     public Task<FeishuToolResult> ListLabelsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.MailListLabels, _maxResultLength);
@@ -334,7 +335,7 @@ internal sealed class MailTools(
                 var labels = new JsonArray();
                 foreach (var label in data.Items ?? [])
                 {
-                    labels.Add(new JsonObject
+                    labels.AddNode(new JsonObject
                     {
                         ["label_id"] = label.Id,
                         ["name"] = label.Name,
@@ -347,7 +348,7 @@ internal sealed class MailTools(
     }
 
     /// <summary>mail.get_thread：取会话线程（同一主题的往来邮件）。</summary>
-    [FeishuToolHandler(typeof(IFeishuMailGetThreadTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantMailGetThreadTool))]
     public Task<FeishuToolResult> GetThreadAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.MailGetThread, _maxResultLength);
@@ -395,7 +396,7 @@ internal sealed class MailTools(
     /// <b>为什么默认 true</b>：工具名即语义（mark_read）。若默认 false，模型忘记传参时
     /// 会把邮件标成<b>未读</b>——与调用方预期相反，属"静默反向"。
     /// </remarks>
-    [FeishuToolHandler(typeof(IFeishuMailMarkReadTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantMailMarkReadTool))]
     public Task<FeishuToolResult> MarkReadAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.MailMarkRead, _maxResultLength);

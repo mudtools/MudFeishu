@@ -33,7 +33,7 @@ internal sealed class BitableWriteTools(Mud.Feishu.IFeishuTenantV1BitableRecord 
 
     /// <summary>bitable.add_record：新增记录（fields 为「字段名 → 值」JSON 对象字符串；<c>dry_run=true</c> 时只预演）。</summary>
     /// <remarks>幂等键（T4-1 / F-1）：<c>idempotency_key</c> → 透传查询参数 <c>client_token</c>（重复请求返回原记录）。</remarks>
-    [FeishuToolHandler(typeof(IFeishuBitableAddRecordTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantBitableAddRecordTool))]
     public Task<FeishuToolResult> AddRecordAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.BitableAddRecord);
@@ -103,7 +103,7 @@ internal sealed class BitableWriteRecordOps(Mud.Feishu.IFeishuTenantV1BitableRec
         ?? throw new ArgumentNullException(nameof(recordClient));
 
     /// <summary>bitable.update_record：更新记录（fields 为「字段名 → 值」JSON 对象字符串）。</summary>
-    [FeishuToolHandler(typeof(IFeishuBitableUpdateRecordTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantBitableUpdateRecordTool))]
     public Task<FeishuToolResult> UpdateRecordAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.BitableUpdateRecord);
@@ -132,7 +132,7 @@ internal sealed class BitableWriteRecordOps(Mud.Feishu.IFeishuTenantV1BitableRec
     }
 
     /// <summary>bitable.delete_record：删除记录（不可恢复，high-risk-write）。</summary>
-    [FeishuToolHandler(typeof(IFeishuBitableDeleteRecordTool))]
+    [FeishuToolHandler(typeof(IFeishuTenantBitableDeleteRecordTool))]
     public Task<FeishuToolResult> DeleteRecordAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.BitableDeleteRecord);

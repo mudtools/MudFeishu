@@ -186,7 +186,7 @@ public class ExecutorDomainPurityContractTests
         {
             var source = File.ReadAllText(file);
 
-            // 形如：[FeishuTool("docx.append_blocks", …)]  …  public interface IFeishuDocxAppendBlocksTool
+            // 形如：[FeishuTool("docx.append_blocks", …)]  …  public interface IFeishuTenantDocxAppendBlocksTool
             foreach (System.Text.RegularExpressions.Match m in Regex.Matches(
                 source,
                 @"\[FeishuTool\s*\(\s*""(?<tool>[^""]+)""[\s\S]{0,600}?interface\s+(?<iface>I\w+Tool)\b"))

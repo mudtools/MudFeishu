@@ -19,8 +19,8 @@ namespace Mud.Feishu.AI.FeishuTools.Curation;
 [FeishuTool("minutes.get",
     Description = "按 minute_token 获取妙记的元信息（标题、时长、链接、创建时间、所有者）。拿到 token 后先用它确认是不是目标会议，再用 minutes.get_artifacts 取总结与待办。只读，需 minutes:minutes:readonly。",
     RequiredScopes = ["minutes:minutes:readonly"],
-    Source = "IFeishuTenantV1MinutesMinute.GetMinuteAsync")]
-public interface IFeishuMinutesGetTool
+    Source = nameof(IFeishuTenantV1MinutesMinute) + "." + nameof(IFeishuTenantV1MinutesMinute.GetMinuteAsync))]
+public interface IFeishuTenantMinutesGetTool
 {
     /// <summary>获取妙记元信息。</summary>
     /// <returns>白名单投影后的 JSON 文本（token/title/url/duration/create_time/owner_id）。</returns>
@@ -46,8 +46,8 @@ public interface IFeishuMinutesGetTool
 [FeishuTool("minutes.get_artifacts",
     Description = "按 minute_token 获取妙记的智能产物：AI 总结、章节摘要、待办事项、关键词——'总结这周会议'这类请求的首选入口（无需自行归纳全文）。逐字稿会截断以适应上下文。只读，需 minutes:minutes:readonly。",
     RequiredScopes = ["minutes:minutes:readonly"],
-    Source = "IFeishuTenantV1MinutesMinute.GetMinuteArtifactsAsync")]
-public interface IFeishuMinutesGetArtifactsTool
+    Source = nameof(IFeishuTenantV1MinutesMinute) + "." + nameof(IFeishuTenantV1MinutesMinute.GetMinuteArtifactsAsync))]
+public interface IFeishuTenantMinutesGetArtifactsTool
 {
     /// <summary>获取妙记智能产物。</summary>
     /// <returns>白名单投影后的 JSON 文本（summary / chapters / todos / keywords / transcript 截断）。</returns>

@@ -85,8 +85,8 @@ jobs:
       # R5 / B-11：MUDFT 断言此前**完全不在 CI**（本地 verify-build.ps1 死守 18 个零容忍 Error，
       # CI 侧一条都没有 ⇒「门禁的门禁本身失效」，R5 新增根因 R-G）。现改为与本地门禁
       # **dot-source 同一份真相源** scripts/diagnostics-gate.ps1 —— 不再在 workflow 里
-      # 手抄 ID 清单，并由 DiagnosticsGateParityContractGuards 锁定三方一致
-      # （Diagnostics.ZeroToleranceIds ↔ diagnostics-gate.ps1 ↔ 本 workflow）。
+      # 手抄 ID 清单，并由 FeishuToolProfileContractGuards 锁定三方一致
+      # （上游 ToolSurface 槽位表镜像 ↔ diagnostics-gate.ps1 ↔ 本 workflow）。
       - name: Assert diagnostics whitelist
         shell: pwsh
         run: |
@@ -112,6 +112,10 @@ jobs:
           # MUDFT 零容忍 Error（18 个）—— 与本地门禁同源同口径。
           $mudftZero = Measure-Mudft -LogPath $log -Ids $MudftZeroToleranceIds
           Assert-Zero 'MUDFT 零容忍' $mudftZero "AI 工具描述符零容忍集（$($MudftZeroToleranceIds -join '/')）"
+
+          # SDKT 剖面契约（R-1+2c）：工具面由上游引擎按 [SdkToolProfile] 剖面驱动，
+          # SDKT001/002 是"剖面写坏"这一新失败通道（SDKT002 会让工具面静默消失）。
+          Assert-Zero 'SDKT 剖面契约' (Measure-SdkToolDiagnostics -LogPath $log) "SDKT001/002（$($SdkToolZeroToleranceIds -join '/')）"
 
           # MUDFT Warning 恒 0 集（CI 开 -DenyToolWarnings 的等价口径）。
           $mudftWarn = Measure-Mudft -LogPath $log -Ids $MudftAlwaysZeroIds

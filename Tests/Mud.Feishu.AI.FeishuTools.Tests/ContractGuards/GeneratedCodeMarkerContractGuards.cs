@@ -47,7 +47,7 @@ public class GeneratedCodeMarkerContractGuards
         "FeishuToolContracts",
         "FeishuToolsServiceCollectionCoreExtensions",
         "FeishuToolGuidance",
-        "FeishuCapabilityCatalog",
+        "FeishuToolCapabilityCatalog",
     };
 
     /// <summary>已知产物家族（Args 类型按工具、域注册器按执行器、固定名产物）缺一不可。</summary>

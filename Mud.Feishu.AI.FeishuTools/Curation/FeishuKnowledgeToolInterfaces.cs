@@ -15,7 +15,7 @@ namespace Mud.Feishu.AI.FeishuTools.Curation;
 [FeishuTool("knowledge.search",
     Description = "检索飞书知识库（Aily 数据知识），返回与问题相关的知识切片；当需要企业知识/文档内容作答时使用。只读。",
     RequiredScopes = ["aily:knowledge:readonly"])]
-public interface IFeishuKnowledgeSearchTool
+public interface IFeishuTenantKnowledgeSearchTool
 {
     /// <summary>知识检索（切片编号列表回填）。</summary>
     /// <returns>编号切片文本（每条截断，超限截断标记），超长截断并标记 truncated。</returns>

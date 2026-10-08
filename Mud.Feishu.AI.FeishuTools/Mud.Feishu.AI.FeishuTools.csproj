@@ -22,7 +22,10 @@
 		<!-- 工具描述符 golden 快照（门禁）：源生成器逐字节比对，漂移即 MUDFT014 构建失败。
 		     重新固化：以 FeishuToolGoldenUpdate=true 运行 Mud.Feishu.AI.FeishuTools.Tests 的
 		     FeishuToolGoldenTests（见该测试类注释）。 -->
-		<AdditionalFiles Include="FeishuToolSchemas.golden.txt" Condition="Exists('FeishuToolSchemas.golden.txt')" />
+		<!-- TEMP-REFREEZE（R-1+2c 重新固化窗口，随后恢复）：构建期 golden 门禁会把「重新固化」本身挡在编译之前
+		     （MUDFT014 是 Error 级），故重固化期间临时摘除该 AdditionalFile，改用 FeishuToolGoldenTests
+		     的 FeishuToolGoldenUpdate=true 通道写出快照，再恢复本行。 -->
+		<AdditionalFiles Include="FeishuToolSchemas.golden.txt" Condition="Exists('FeishuToolSchemas.golden.txt') and '$(FeishuToolRefreeze)' != 'true'" />
 		<!-- 域级 guidance 资产（WP6 / AT-F09）：生成器编译期固化为 FeishuToolGuidance.g.cs，
 		     装配期只注入「已启用工具所属域」的资产（Mud.Feishu.AI 的 FeishuGuidanceComposer）。
 		     素材与该域工具同 repo 同 pass，故不存在"md 与工具面漂移"的面。 -->
@@ -30,7 +33,7 @@
     <AdditionalFiles Include="Guidance\**\*.md" />
 		<!-- 让源生成器经 AnalyzerConfigOptions 读到 FeishuToolCatalog —— MSBuild 属性默认对分析器
 		     不可见，缺此声明时生成器读到的是"未设置"，Tier R 能力目录会静默不产出
-		     （症状：构建通过但没有 FeishuCapabilityCatalog 类型）。 -->
+		     （症状：构建通过但没有 FeishuToolCapabilityCatalog 类型）。 -->
 		<CompilerVisibleProperty Include="FeishuToolCatalog" />
 	</ItemGroup>
 
@@ -42,13 +45,19 @@
 		<ProjectReference Include="..\Mud.Feishu.DataModels\Mud.Feishu.DataModels.csproj" />
 		<!-- 内置 IM 会话事件处理器（P2D-5a）的事件 DTO 来源：MessageReceiveResult/MentionUser 强类型面。 -->
 		<ProjectReference Include="..\Mud.Feishu.EventCallback\Mud.Feishu.EventCallback.csproj" />
-		<!-- [FeishuTool] 源生成器（已决策⑤）：以分析器形态引用，产出本包全部工具接口的 Schema 常量。
+		<!-- [FeishuTool] 源生成器（已决策⑤ → R-1+2c 上游化）：本地引擎 Mud.Feishu.AI.Tools 已删除，
+		     改用组件侧 Mud.HttpUtils.Generator 3.0.3 的通用 ToolSurface 引擎（分析器形态）。
 		     工具面规模（条目数 / 签名）不在此处写死数字——数字漂移无法被编译器发现，改为唯一真相源：
 		     FeishuToolSchemas.golden.txt 与生成的 FeishuToolContracts（三者一致性由
 		     ToolSurfaceScaleContractGuards 机械断言，见 R2-09/G4）。 -->
-		<ProjectReference Include="..\Mud.Feishu.AI.Tools\Mud.Feishu.AI.Tools.csproj"
-		                 OutputItemType="Analyzer"
-		                 ReferenceOutputAssembly="false" />
+		<PackageReference Include="Mud.HttpUtils.Generator" Version="3.0.3"
+		                  PrivateAssets="all"
+		                  OutputItemType="Analyzer"
+		                  ReferenceOutputAssembly="false" />
+		<!-- 剖面契约：[SdkToolProfile]（数据载体）+ ISdkToolProfile / SdkTokenKind（标记接口与枚举）。
+		     见 SdkProfile/FeishuToolProfile.cs —— 旧本地引擎的全部飞书硬编码收拢于此。 -->
+		<PackageReference Include="Mud.HttpUtils.Attributes" Version="3.0.3" />
+		<PackageReference Include="Mud.HttpUtils.Abstractions" Version="3.0.3" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -91,13 +91,26 @@ by default — **plus the tool-surface generation engine** (`ToolSurface/` in
 At the time of writing 3.0.3 is **not yet on nuget.org**, so `nuget.config` carries a temporary local
 source (`MudHttpUtils-local` → `D:/Repos/MudHttpUtils/artifacts-debug`, i.e. the **Debug** build
 produced by `pack_debug.ps1`); remove it once the official Release package is published. The tool
-surface is generated **only** by the component-side engine: the local generator project
-(`Mud.Feishu.AI.Tools`) and its driver tests were retired in the R-1+2c migration, and
+surface is generated **only** by the component-side engine: the local generator project and its
+driver tests were retired in the R-1+2c migration, and
 `Tests/Mud.Feishu.AI.Tools.Tests/ContractGuards/FeishuToolProfileContractGuards.cs` asserts
-that no source/project trace of them returns. `FeishuToolProfile.cs`
+that no local generator implementation returns — by **capability**, not by project name
+(no `[Generator]`-annotated source anywhere, no legacy engine type names, the `ProjectReference`
+graph is closed against `Mud.Feishu.slnx`, and no project references
+`Microsoft.CodeAnalysis.CSharp`). `scripts/verify-pack.ps1` check ① mirrors the last criterion.
+> **Naming-collision caveat**: the retired generator engine was **itself named
+> `Mud.Feishu.AI.Tools`**, and the tool-surface project has since been renamed from
+> `Mud.Feishu.AI.FeishuTools` to `Mud.Feishu.AI.Tools`, so the two now share a name. Everywhere
+> below (and in the CHANGELOG history), `Mud.Feishu.AI.Tools` as a *generator* means the deleted
+> engine; as a *project* it means the current tool-surface assembly.
+`FeishuToolProfile.cs`
 (`Mud.Feishu.AI.Tools/SdkProfile/`) is the single source of the Feishu naming facts and is
 **linked** into `Tests/Mud.Feishu.AI.Tests` (`Compile Include`) because profiles are discovered per
-compilation unit. To consume a newer component version: bump the
+compilation unit. Note that `[FeishuToolHandler]` deliberately lives in its own sub-namespace
+(`Mud.Feishu.AI.Tools.Handlers`) so that the profile's `ToolAttributeNamespace` /
+`ToolHandlerAttributeNamespace` slots stay distinct — the project root namespace collides with
+`Mud.Feishu.AI`'s own `Mud.Feishu.AI.Tools`, which is where `[FeishuTool]` lives. To consume a newer
+component version: bump the
 version in the `PackageReference`s and, optionally, sync `AGENTS.md` / the README dependency tables
 (`README.md` / `README_EN.md` / `Mud.Feishu/README.md`) — the docs are **not** gated (a wrong version
 number there has no runtime impact and must not block an upgrade). The contract guard

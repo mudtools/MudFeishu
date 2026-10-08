@@ -16,6 +16,21 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- 控制台工程（Microsoft.NET.Sdk）没有 ASP.NET Core 的框架引用，故 JSON 配置提供程序
+         必须显式引用（Web 系 Demo 靠 Microsoft.NET.Sdk.Web 隐式获得）。
+         版本与依赖图里既有的 Microsoft.Extensions.Configuration 保持一致，避免 NU1603 版本漂移。 -->
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 配置文件随生成输出复制：配置根目录取 AppContext.BaseDirectory（与工作目录无关，
+         `dotnet run` / 直接跑产物 / 任意 cwd 行为一致）。
+         appsettings.local.json 被 .gitignore 忽略，仅本地存在；不存在时 Update 不匹配任何项，零副作用。 -->
+    <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="appsettings.local.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- 本 Demo 的可测逻辑（配置解析、授权器、审计 sink、剧本、REPL 解析、渲染器）
          以 internal 暴露给同仓库测试工程；不公开 API 面，也不参与打包。 -->
     <InternalsVisibleTo Include="Mud.Feishu.Agent.Demo.Tests" />

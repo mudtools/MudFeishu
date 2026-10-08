@@ -269,17 +269,28 @@ public class DocAgentDemoContractGuards
         }
     }
 
-    /// <summary>以 <c>Mud.Feishu.slnx</c> 为锚定位仓库根目录（与既有守卫同款）。</summary>
-    private static string FindRepositoryRoot()
+    /// <summary>
+    /// 守卫 ⑩：两个配置文件必须随产物复制到**输出目录**。
+    /// </summary>
+    /// <remarks>
+    /// 配置根取 <c>AppContext.BaseDirectory</c>（与工作目录无关）。若忘了 <c>CopyToOutputDirectory</c>，
+    /// 表现为"文件明明写了、配置却不生效"，且**不报任何错**（`optional: true`）——正是横幅"配置来源"
+    /// 与模板守卫要挡的那类静默失效，故在构建期固化。
+    /// </remarks>
+    [Fact]
+    public void DemoProject_ShouldCopyConfigurationFilesToOutput()
     {
-        var directory = AppContext.BaseDirectory;
-        while (!string.IsNullOrEmpty(directory)
-            && !File.Exists(Path.Combine(directory, "Mud.Feishu.slnx")))
-        {
-            directory = Path.GetDirectoryName(directory);
-        }
+        var csproj = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(),
+            "Demos", "Mud.Feishu.Agent.Demo", "Mud.Feishu.Agent.Demo.csproj"));
 
-        directory.Should().NotBeNullOrEmpty("测试必须能定位仓库根目录（以 Mud.Feishu.slnx 为锚）");
-        return directory!;
+        csproj.Should().Contain(DocAgentSettings.AppSettingsFile);
+        csproj.Should().Contain(DocAgentSettings.LocalAppSettingsFile);
+        csproj.Should().Contain(
+            "CopyToOutputDirectory",
+            "配置文件必须在输出目录（配置根 = AppContext.BaseDirectory），否则纯文件方式静默失效");
     }
+
+    /// <summary>以 <c>Mud.Feishu.slnx</c> 为锚定位仓库根目录（与既有守卫同款）。</summary>
+    private static string FindRepositoryRoot() => TestDoubles.RepositoryRoot();
 }

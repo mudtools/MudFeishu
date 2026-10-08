@@ -43,11 +43,24 @@ public static class Program
             return;
         }
 
-        // Phase 3 文档业务智能体（写闭环 + 三道安全闸 + 剧本驱动）：FEISHU_DEMO_DOC_AGENT=1 时启用。
+        // Phase 3 文档业务智能体（写闭环 + 三道安全闸 + 剧本驱动）：
+        // 环境变量 FEISHU_DEMO_DOC_AGENT=1，或配置文件 FeishuDocAgent:Enabled=true 时启用。
         // 放置位置刻意在「事件模式之后、裸模型之前」，保持「能力由弱到强」的阅读顺序。
-        if (string.Equals(Environment.GetEnvironmentVariable("FEISHU_DEMO_DOC_AGENT"), "1", StringComparison.Ordinal))
+        var docAgentSwitch = Environment.GetEnvironmentVariable(DocAgentSettings.EnvDocAgent);
+        if (string.Equals(docAgentSwitch, "1", StringComparison.Ordinal))
         {
-            await DocAgentDemo.RunAsync();
+            await DocAgentDemo.RunAsync(DocAgentDemo.BuildConfiguration(AppContext.BaseDirectory));
+            return;
+        }
+
+        // 环境变量未启用时才看配置文件；显式设了非 "1" 的值（如 0）⇒ 按它判定，不再读文件
+        // （来源优先级与配置项一致：环境变量一旦存在就说了算）。
+        // 配置文件不可读（坏 JSON 等）⇒ 只提示、不中断：前三个模式必须保持零回归。
+        if (string.IsNullOrEmpty(docAgentSwitch)
+            && TryReadDocAgentConfiguration(out var docAgentConfiguration)
+            && DocAgentSettings.IsEnabledByConfiguration(docAgentConfiguration!.Configuration))
+        {
+            await DocAgentDemo.RunAsync(docAgentConfiguration!);
             return;
         }
 
@@ -80,6 +93,32 @@ public static class Program
             var response = await agent.RunAsync(userText, session);
             Console.WriteLine($"Agent: {response.Text}");
             await agent.SaveSessionAsync(conversationKey, session);
+        }
+    }
+
+    /// <summary>
+    /// 尝试读取配置文件（用于判定 <c>FeishuDocAgent:Enabled</c>）。
+    /// </summary>
+    /// <param name="configuration">配置来源（失败时为 <see langword="null"/>）。</param>
+    /// <returns>是否读取成功。</returns>
+    /// <remarks>
+    /// 失败只提示、不抛出：裸模型模式（Phase 0）与两个工具/事件模式都不依赖配置文件，
+    /// 一个写坏的 <c>appsettings.json</c> 不该让它们启动不了；但也不能静默——
+    /// 否则"文件里 Enabled=true 却没进 Demo 模式"会变成无迹可寻的怪现象。
+    /// </remarks>
+    private static bool TryReadDocAgentConfiguration(out DocAgentConfiguration? configuration)
+    {
+        try
+        {
+            configuration = DocAgentDemo.BuildConfiguration(AppContext.BaseDirectory);
+            return true;
+        }
+        catch (Exception ex) when (ex is FormatException or InvalidDataException or IOException)
+        {
+            Console.Error.WriteLine(
+                $"[!] 配置文件解析失败，已忽略（其他模式不受影响）：{ex.Message}");
+            configuration = null;
+            return false;
         }
     }
 }

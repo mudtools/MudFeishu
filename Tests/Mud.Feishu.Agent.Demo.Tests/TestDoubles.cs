@@ -17,6 +17,42 @@ namespace Mud.Feishu.Agent.Demo.Tests;
 /// </remarks>
 internal static class TestDoubles
 {
+    /// <summary>
+    /// 仓库根目录（以 <c>Mud.Feishu.slnx</c> 为锚）。
+    /// </summary>
+    /// <returns>仓库根的绝对路径。</returns>
+    /// <remarks>
+    /// 供"真实文件"类守卫使用（随仓库提交的配置模板、csproj 依赖面等）——断言真实文件才能挡住
+    /// "改了代码忘了改模板"这类静默失效；纯内存替身对此无能为力。
+    /// </remarks>
+    public static string RepositoryRoot()
+    {
+        var directory = AppContext.BaseDirectory;
+        while (!string.IsNullOrEmpty(directory)
+            && !File.Exists(Path.Combine(directory, "Mud.Feishu.slnx")))
+        {
+            directory = Path.GetDirectoryName(directory);
+        }
+
+        if (string.IsNullOrEmpty(directory))
+        {
+            throw new InvalidOperationException("测试必须能定位仓库根目录（以 Mud.Feishu.slnx 为锚）");
+        }
+
+        return directory;
+    }
+
+    /// <summary>
+    /// 构造环境变量读取替身（不触碰进程环境——进程级环境变量在并行用例下不可复现）。
+    /// </summary>
+    /// <param name="values">要"存在"的环境变量（未列出的读到 <see langword="null"/>）。</param>
+    /// <returns>读取器。</returns>
+    public static Func<string, string?> EnvReader(params (string Name, string Value)[] values)
+    {
+        var map = values.ToDictionary(static v => v.Name, static v => v.Value, StringComparer.Ordinal);
+        return name => map.GetValueOrDefault(name);
+    }
+
     /// <summary>构造默认合法的配置（必填项齐备，其余取默认值）。</summary>
     /// <returns>配置实例。</returns>
     public static DocAgentSettings CreateSettings() => new()

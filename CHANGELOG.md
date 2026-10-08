@@ -570,57 +570,56 @@ InvalidOperationException or NotSupportedException`）收口为 `when (ex is not
 
 ---
 
-## [未发布] - 2026-10-01
+## [3.0.1] - 2026-10-07
 
-> 主题：**适配 `Mud.HttpUtils` 3.0.0（上游 `BC-27`：移除 UseApp / UseDefaultApp / BeginScope(string)）** 与 **事件 v1.0/v2.0 双格式解析修复（R-E1）**。
-> 本仓对外契约**无移除**（三个旧成员由 `IFeishuAppContextSwitcher` 接续声明并标 `[Obsolete]`），
-> 建议版本 **3.1.0**（minor 级；无公开 API 移除，新增 `FeishuEventDataParser` / `GetEventRawJson` / `AddFailedEventStore` 等公开面）。
-> 细节见 `.docs/MudHttpUtils-3.0.0-破坏性变更改造计划.md` §10。
+> 主题：**适配 `Mud.HttpUtils` 3.0.0**（上游移除 `UseApp` / `UseDefaultApp` / `BeginScope(string)`，改以作用域式切换）与 **事件 v1.0 / v2.0 双格式解析修复**。
+> 本仓对外契约**无移除**（三个旧成员由 `IFeishuAppContextSwitcher` 接续声明并标 `[Obsolete]`）；
+> 含少量行为修正（`EventData.CreateTime` 单位、`EventData.Event` 写侧类型），升级前请阅读「变更（Changed）」与「迁移提示」。
 
 ### 依赖升级
 
 - `Mud.HttpUtils` / `Mud.HttpUtils.Generator`：`2.0.9` → **`3.0.0`**（两者必须同版本）。
-  ⚠️ 3.0.0 尚未上架 nuget.org 时，`nuget.config` 需要本地包源（本仓以 `D:\Repos\MudHttpUtils\artifacts` 联调，官方包发布后移除该源）。
 - 上游 3.0.0 起，非 HttpClient 模式的生成类**默认不再发射** `UseApp(string)` / `UseDefaultApp()` / `BeginScope(string)`，
   且 `IAppContextSwitcher` 不再声明它们；生成类**自动附加** `IAppScopeSwitcher`（`UseAppScope` / `UseDefaultAppScope`）。
 
 ### 新增（Added）
 
 - **`IFeishuAppContextSwitcher` 继承 `IAppScopeSwitcher`**：下游可直接以推荐面（作用域式、释放时自动归还上下文）编程。
-- **`IFeishuAppContextSwitcher` 接续声明三个旧成员并标注 `[Obsolete]`**：保持对外契约不变 ——
-  该写法触发上游「接口自行声明即豁免」机制，188+ 个生成实现类**继续发射**这三个成员，行为与 2.0.9 完全一致。
+- **`IFeishuAppContextSwitcher` 接续声明三个旧成员并标注 `[Obsolete]`**：保持对外契约不变，
+  188+ 个生成实现类**继续发射**这三个成员，行为与 2.0.9 完全一致。
   三个成员将在本 SDK 的下一个大版本随上游一并移除，请按提示迁移到 `UseAppScope` / `UseDefaultAppScope`。
+- **共享事件解析器 `FeishuEventDataParser`**（Abstractions，单一真源）：v2.0 / v1.0 官方形态 / `data` 包裹兼容形态统一解析，
+  WebSocket 与 Webhook 双通道删除各自平行实现。
+- **事件失败落盘**：WebSocket 通道处理失败可经 `AddFailedEventStore<T>()` / `AddFailedEventStore(instance)` 注册 `IFailedEventStore`（TryAdd 语义，不默认注册，未注册零行为变化；业务失败分支落盘，取消/拦截终态不落盘）。
+  配套新增 `FeishuWebSocketOptions.FailedEventInitialRetryDelaySeconds`（默认 10，非正数回退默认）。
+- **读取扩展 `GetEventRawJson()`**：统一读取 `EventData.Event` 携带的 JSON 原文。
 
 ### 变更（Changed）
 
 - **`FeishuAppManager.GetWebApi` / `GetDefaultWebApi` 内部实现迁移**：由生成类的
   `UseApp(appKey)` / `UseDefaultApp()` 改为 `IAppContextHolder.SwitchToApp(appKey, this, serviceProvider)` /
-  `SwitchToDefaultApp(this)`（上游 `SW-15` 扩展，**语义逐字等价**：完整守卫 + 立即切换 + 不归还 + 返回上下文）。
+  `SwitchToDefaultApp(this)`（**语义等价**：完整守卫 + 立即切换 + 不归还 + 返回上下文）。
   对外行为不变（仍返回 DI 解析到的服务实例，且其 `Current` 已绑定目标应用）。
+- **`EventData.Event` 写侧统一为 JSON 原文**字符串**（原 WebSocket 通道写 `JsonElement`）。
+  属性类型保持 `object?` 不变；读取请改用扩展 `GetEventRawJson()`，下一 major 收敛为 `string?`。
+- **行为变更**：`EventData.CreateTime` 语义由「秒」修正为**毫秒**（与 XML 注释对齐，v1.0 `ts` 一并纳入统一启发式）。
+  按秒消费的宿主请 ×1000 或改用 `DateTimeOffset.FromUnixTimeMilliseconds`。
+- **`IgnoreUnknownEventTypes` 默认值两通道保持差异**（Webhook=true / WS=false，不改默认）：
+  两侧 Options XML 已注明差异原因，WS=false 时启动期输出一次性对齐告警。
+
+### 修复（Fixed）
+
+- **Webhook 通道 v1.0 事件字段映射错误**导致事件被空字段 fail-closed 400 拒绝；
+  **WebSocket 通道 v1.0 官方帧**（根级 `uuid`/`token`/`ts`、事件字段在 `event` 内）被整帧静默丢弃。
+  现两通道均正常路由 v1.0 事件（事件类型取 `event.type` 原值，handler 按此注册）。
+- **v1.0 事件根级 `token` 现解析进入合成 Header**（`Schema == null`，字段取自根级 `uuid`/`token`/`ts` 与 `event.*`）：
+  判定 v1.0 请用 `Schema == null`，不要再用 `Header == null`；来源校验与依赖 Header 的幂等逻辑在 v1.0 下恢复可用。
 
 ### 迁移提示
 
 - 以 `IFeishuAppContextSwitcher` 类型调用 `UseApp` / `UseDefaultApp` / `BeginScope(string)` 会产生 **`CS0618`** 警告（有意引导）。
   若宿主启用 `TreatWarningsAsErrors`，请改用 `UseAppScope` / `UseDefaultAppScope`（守卫相同，额外自动归还上下文），或临时 `NoWarn CS0618`。
 - 语义提醒：`UseAppScope` 在 `using` 结束时**自动回切**；`UseApp` 会一直保持到下次切换（长生命周期宿主须显式切回）。
-
-### 事件 v1.0/v2.0 双格式解析修复（R-E1）
-
-- **新增共享事件解析器 `FeishuEventDataParser`**（Abstractions，单一真源）：v2.0 / v1.0 官方形态 / `data` 包裹兼容形态统一解析；
-  WebSocket 与 Webhook 双通道删除各自平行实现，契约守卫 `EventParserSingleSourceGuards` 阻止回归。
-- **修复（P0）**：Webhook 通道 v1.0 事件字段映射错误导致被空字段 fail-closed 400 拒绝（E-P0-1）；
-  WebSocket 通道 v1.0 官方帧（根级 `uuid`/`token`/`ts`、事件字段在 `event` 内）被整帧静默丢弃（E-P0-2）。现两通道均正常路由 v1.0 事件（事件类型取 `event.type` 原值，handler 按此注册）。
-- **修复（P1）**：v1.0 事件根级 `token` 现解析进入合成 Header（`Schema == null`，字段取自根级 `uuid`/`token`/`ts` 与 `event.*`，E-P1-1）——
-  判定 v1.0 请用 `Schema == null`，不要再用 `Header == null`；来源校验与依赖 Header 的幂等逻辑在 v1.0 下恢复可用。
-- **修复（P1）**：`EventData.Event` 写侧统一为 JSON 原文**字符串**（原 WS 通道写 `JsonElement`，E-P1-2）。
-  属性类型保持 `object?` 不变；读取请改用扩展 `GetEventRawJson()`，下一 major 收敛为 `string?`。
-- **修复（P1）**：WebSocket 通道处理失败可经 `AddFailedEventStore<T>()` / `AddFailedEventStore(instance)` 落盘
-  `IFailedEventStore`（TryAdd 语义，不默认注册，未注册零行为变化；业务失败分支落盘，取消/拦截终态不落盘）。
-  配套新增 `FeishuWebSocketOptions.FailedEventInitialRetryDelaySeconds`（默认 10，非正数回退默认）。
-- **行为变更（P2）**：`EventData.CreateTime` 语义由「秒」修正为**毫秒**（与 XML 注释对齐，E-P2-2，v1.0 `ts` 一并纳入统一启发式）。
-  按秒消费的宿主请 ×1000 或改用 `DateTimeOffset.FromUnixTimeMilliseconds`。
-- **P2**：`IgnoreUnknownEventTypes` 默认值两通道不一致（Webhook=true / WS=false，AD-5 不改默认）——
-  两侧 Options XML 已注明差异原因，WS=false 时启动期输出一次性对齐告警。
 
 ## [3.0.0] - 2026-09-28
 

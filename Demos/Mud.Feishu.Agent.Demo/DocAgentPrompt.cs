@@ -15,7 +15,7 @@ namespace Mud.Feishu.Agent.Demo;
 /// <b>为什么不在这里手写域 guidance</b>：域 guidance 的证据源是编译期常量
 /// <c>Mud.Feishu.AI.Tools.Generated.FeishuToolGuidance.ByDomain</c>，
 /// 由 <c>FeishuToolsToolSource.GetGuidance</c> 按「该域已启用工具数降序」自动装配进
-/// <c>FeishuGuidanceComposer</c>（额度 8192 字符、超限整域丢弃尾部）。
+/// <c>FeishuGuidanceComposer</c>（额度 16384 字符、超限整域丢弃尾部）。
 /// 手写一份会立刻产生第二真相源，并让「guidance 是否被截断」这一可断言信号失去意义。
 /// </para>
 /// <para>

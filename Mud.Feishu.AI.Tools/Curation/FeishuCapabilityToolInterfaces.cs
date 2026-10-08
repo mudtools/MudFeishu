@@ -54,8 +54,8 @@ public interface IFeishuTenantCapabilityLookupTool
 /// </para>
 /// <para>
 /// <b>为什么需要 L2（按需读取）</b>：L1 是常驻 guidance，受
-/// <c>FeishuGuidanceComposer</c> 预算（B-12 已升到 8192）硬约束；14 个域的避坑文本全量预拼
-/// 必然溢出。L2 把深层文本（命令级避坑、完整示例）挪到按需读取，<b>由模型在调用失败后主动拉取</b>——
+/// <c>FeishuGuidanceComposer</c> 预算（B-12 → R6/S1 已升到 16384）硬约束；16 个域的避坑文本全量预拼
+/// 仍会逼近上限。L2 把深层文本（命令级避坑、完整示例）挪到按需读取，<b>由模型在调用失败后主动拉取</b>——
 /// 这也是官方 <c>lark-cli skills read</c> 的等价物。
 /// </para>
 /// </remarks>

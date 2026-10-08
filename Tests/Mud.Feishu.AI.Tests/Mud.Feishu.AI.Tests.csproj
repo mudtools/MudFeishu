@@ -10,12 +10,12 @@
          R-1+2c：本地生成器工程已删除，改用组件侧 Mud.HttpUtils.Generator 3.0.3
          的通用 ToolSurface 引擎（分析器形态）。
          注意：包引用形态的分析器**不会**经 ProjectReference 传递到下游，故此处必须显式声明。 -->
-    <PackageReference Include="Mud.HttpUtils.Generator" Version="3.0.3"
+    <PackageReference Include="Mud.HttpUtils.Generator" Version="3.0.4"
                       PrivateAssets="all"
                       OutputItemType="Analyzer"
                       ReferenceOutputAssembly="false" />
-    <PackageReference Include="Mud.HttpUtils.Attributes" Version="3.0.3" />
-    <PackageReference Include="Mud.HttpUtils.Abstractions" Version="3.0.3" />
+    <PackageReference Include="Mud.HttpUtils.Attributes" Version="3.0.4" />
+    <PackageReference Include="Mud.HttpUtils.Abstractions" Version="3.0.4" />
   </ItemGroup>
 
   <ItemGroup>

@@ -120,7 +120,7 @@ public interface IFeishuTenantApprovalRejectTaskTool
 /// SDK 的 <c>TransferApprovalAsync</c> 已存在，零 SDK 改动。
 /// </remarks>
 [FeishuTool("approval.transfer_task",
-    Description = "把一个审批任务转交给他人（转交后流程流转给被转交人）。适用于'这条不该我批/我无法判断'的场景。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 approval:approval。",
+    Description = "把一个审批任务转交给他人（转交后流程流转给被转交人）。适用于'这条不该我批/我无法判断'的场景。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 approval:approval。建议先 dry_run 预演确认转交对象。",
     RequiredScopes = ["approval:approval"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV4ApprovalTask) + "." + nameof(IFeishuTenantV4ApprovalTask.TransferApprovalAsync))]

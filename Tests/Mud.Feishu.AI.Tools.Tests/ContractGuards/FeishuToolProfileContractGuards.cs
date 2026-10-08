@@ -408,8 +408,13 @@ public class FeishuToolProfileContractGuards
     /// 单段写法会产出无 <c>.</c> 的串，直接被判为"源无法解析"（MUDFT019）。
     /// </para>
     /// <para>
-    /// 计数用<b>精确基线</b>（84）：一条"永远为真"的形态守卫与没有守卫等价，
-    /// 故同时锁"字面量 = 0"与"nameof 形态 = 84"两侧。
+    /// 计数用<b>精确基线</b>（99）：一条"永远为真"的形态守卫与没有守卫等价，
+    /// 故同时锁"字面量 = 0"与"nameof 形态 = 99"两侧。
+    /// </para>
+    /// <para>
+    /// ⚠️ 本守卫按<b>文本</b>匹配「等号右侧紧接 <c>nameof(</c> 的赋值」，故注释/文档里写出
+    /// 同样的字面文本也会被计数（R6/S2 实测：Curation 头注释里写了一次该形态即让基线 +1）。
+    /// 新增域时若基线多出 1，先检查是不是注释被算了进去，再决定是否改基线。
     /// </para>
     /// </remarks>
     [Fact]
@@ -431,8 +436,8 @@ public class FeishuToolProfileContractGuards
         literalCount.Should().Be(0,
             "仍有 Source 魔法字符串字面量——SDK 接口改名时它们不会随 IDE 重命名联动（R-1 的收益目标）");
 
-        nameofCount.Should().Be(84,
-            "Source 声明数必须恒为 84（新增/删除 Source 时同步本基线——不得改成下限断言，那会让覆盖缩水静默通过）");
+        nameofCount.Should().Be(99,
+            "Source 声明数必须恒为 99（新增/删除 Source 时同步本基线——不得改成下限断言，那会让覆盖缩水静默通过）");
     }
 
     // ────────── 读取与定位 ──────────

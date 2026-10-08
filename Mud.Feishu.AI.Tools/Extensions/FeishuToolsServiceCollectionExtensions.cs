@@ -100,6 +100,16 @@ public static class FeishuToolsServiceCollectionExtensions
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure).AddFeishuMinutesReadToolsCore();
 
+    /// <summary>按域注册 OKR 只读工具（9 个只读，R6/S2；写工具经 <see cref="AddFeishuWriteTools"/>）。</summary>
+    /// <remarks>
+    /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**：
+    /// 少任何一处都会让 okr 只读工具在对应入口下静默缺席（S-13 的同款失败形态）。
+    /// </remarks>
+    public static IServiceCollection AddFeishuOkrTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure).AddFeishuOkrToolsCore();
+
     /// <summary>按域注册 Search 工具（1 个只读）。</summary>
     public static IServiceCollection AddFeishuSearchTools(
         this IServiceCollection services,
@@ -439,6 +449,11 @@ public static class FeishuToolsServiceCollectionExtensions
                     // 但只有本清单会调用它。这张表是**人工维护**的，故已加守卫
                     // ToolDomainCores_ShouldAllBeWiredIntoTheAggregator 锁死"生成的 Core 必须被聚合"。
                     .AddFeishuMinutesReadToolsCore()
+
+                    // R6 / S2：OKR 域只读执行器 OkrTools（9 个工具）。
+                    // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，
+                    // 漏加即「工具静默不入注册表」（ToolDomainCoresWiringContractTests 会报红）。
+                    .AddFeishuOkrToolsCore()
                     .AddFeishuCapabilityLookupToolsCore();
 
     /// <summary>
@@ -463,7 +478,11 @@ public static class FeishuToolsServiceCollectionExtensions
             .AddFeishuDriveWriteToolsCore()
             // WP5/R5 域扩容：邮件工具 + 通讯录部门轴工具
             .AddFeishuMailToolsCore()
-            .AddFeishuContactDepartmentToolsCore();
+            .AddFeishuContactDepartmentToolsCore()
+
+            // R6 / S2：OKR 域写入执行器 OkrWriteTools（6 个工具）。
+            // 与 MailTools 同属「读写混合域」——按链拆分的取舍见 AddFeishuWriteToolCores 的 remarks。
+            .AddFeishuOkrWriteToolsCore();
 
     /// <summary>执行链协作件 + 注册表 + 工具源桥（幂等；各域扩展共同前置）。</summary>
     private static IServiceCollection AddFeishuToolInfrastructure(

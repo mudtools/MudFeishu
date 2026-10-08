@@ -439,7 +439,7 @@ public interface IFeishuTenantSheetsRangeTool
 
 /// <summary>im.revoke_message：撤回自己发出的消息。</summary>
 [FeishuTool("im.revoke_message", IsWrite = true,
-    Description = "撤回一条自己发出的消息（发错内容时纠正）。只能撤回本 Bot 发送的消息；message_id 来自事件上下文或 im.get_history_messages。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。",
+    Description = "撤回一条自己发出的消息（发错内容时纠正）。只能撤回本 Bot 发送的消息；message_id 来自事件上下文或 im.get_history_messages。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。建议先 dry_run 预演确认目标消息。",
     RequiredScopes = ["im:message"],
     Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.RevokeMessageAsync))]
     public interface IFeishuTenantImRevokeMessageTool

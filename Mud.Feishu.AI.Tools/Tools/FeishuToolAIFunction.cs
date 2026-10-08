@@ -177,7 +177,7 @@ internal sealed class FeishuToolsToolSource : FeishuAgentToolSource
     /// </list>
     /// <b>零人工配置</b>：优先级完全由 <see cref="FeishuToolRegistry.EnabledTools"/> 派生
     /// （无需新增配置键，也不违反 R-4 "上限固化常量、不设公开配置键"的治理）。
-    /// 该顺序在"预算充足"（当前 8192 全域零丢弃）与"预算被调小"两种场景下都给出可断言的行为。
+    /// 该顺序在"预算充足"（当前 16384 全域零丢弃）与"预算被调小"两种场景下都给出可断言的行为。
     /// </para>
     /// </remarks>
     public override IReadOnlyList<FeishuGuidanceBlock> GetGuidance(IServiceProvider serviceProvider)

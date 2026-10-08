@@ -50,14 +50,14 @@
 		     工具面规模（条目数 / 签名）不在此处写死数字——数字漂移无法被编译器发现，改为唯一真相源：
 		     FeishuToolSchemas.golden.txt 与生成的 FeishuToolContracts（三者一致性由
 		     ToolSurfaceScaleContractGuards 机械断言，见 R2-09/G4）。 -->
-		<PackageReference Include="Mud.HttpUtils.Generator" Version="3.0.3"
+		<PackageReference Include="Mud.HttpUtils.Generator" Version="3.0.4"
 		                  PrivateAssets="all"
 		                  OutputItemType="Analyzer"
 		                  ReferenceOutputAssembly="false" />
 		<!-- 剖面契约：[SdkToolProfile]（数据载体）+ ISdkToolProfile / SdkTokenKind（标记接口与枚举）。
 		     见 SdkProfile/FeishuToolProfile.cs —— 旧本地引擎的全部飞书硬编码收拢于此。 -->
-		<PackageReference Include="Mud.HttpUtils.Attributes" Version="3.0.3" />
-		<PackageReference Include="Mud.HttpUtils.Abstractions" Version="3.0.3" />
+		<PackageReference Include="Mud.HttpUtils.Attributes" Version="3.0.4" />
+		<PackageReference Include="Mud.HttpUtils.Abstractions" Version="3.0.4" />
 	</ItemGroup>
 
 	<ItemGroup>

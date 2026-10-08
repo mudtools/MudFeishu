@@ -7,7 +7,7 @@
 
 using Mud.Feishu.Abstractions;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>
 /// 租户上下文作用域工厂的四步门禁（R3-5）。

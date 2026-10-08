@@ -7,7 +7,7 @@
 
 using System.Text.Json;
 
-namespace Mud.Feishu.AI.FeishuTools.Tools;
+namespace Mud.Feishu.AI.Tools.Tools;
 
 /// <summary>
 /// 编译期工具 Schema 常量（<see cref="FeishuToolSchemas"/>）的读取器：从<b>完整信封</b>中取出

@@ -1,7 +1,7 @@
 param(
-    [string]$Project = 'Mud.Feishu.AI.FeishuTools/Mud.Feishu.AI.FeishuTools.csproj',
-    [string]$ApiFile = 'Mud.Feishu.AI.FeishuTools/PublicAPI.Unshipped.txt',
-    [string]$Golden = 'Mud.Feishu.AI.FeishuTools/FeishuToolSchemas.golden.txt'
+    [string]$Project = 'Mud.Feishu.AI.Tools/Mud.Feishu.AI.Tools.csproj',
+    [string]$ApiFile = 'Mud.Feishu.AI.Tools/PublicAPI.Unshipped.txt',
+    [string]$Golden = 'Mud.Feishu.AI.Tools/FeishuToolSchemas.golden.txt'
 )
 
 $ErrorActionPreference = 'Stop'

@@ -9,11 +9,11 @@ using System.Text.Json;
 
 using Moq;
 
-using Mud.Feishu.AI.FeishuTools.Internal;
+using Mud.Feishu.AI.Tools.Internal;
 using Mud.Feishu.DataModels;
 using Mud.Feishu.DataModels.Wiki;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>
 /// R5 / F-11：wiki 写面（<c>create_node</c> / <c>move_node</c> / <c>move_docs_to_space</c>）断言。

@@ -19,7 +19,7 @@ namespace Mud.Feishu.AI.Tools;
 /// <para>
 /// <b>接口归属（R3-1 步骤 0）</b>：本抽象只依赖 <see cref="IDisposable"/>，与任何飞书业务域无关，
 /// 因此归 AI 底座包（<c>Mud.Feishu.AI</c>）；具体实现（依赖 <c>IAppContextHolder</c> /
-/// <c>IFeishuAppManager</c>）留在工具包 <c>Mud.Feishu.AI.FeishuTools</c>——
+/// <c>IFeishuAppManager</c>）留在工具包 <c>Mud.Feishu.AI.Tools</c>——
 /// 依赖方向保持 FeishuTools → AI <b>单向</b>，基类因此得以在回复前主动切租户（R3-1/2）。
 /// </para>
 /// <para>

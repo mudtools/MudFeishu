@@ -7,7 +7,7 @@
 
 using System.Text.RegularExpressions;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// <b>R5 / B-2</b>：AI 工具面的<b>二进制防线</b> —— 断言<b>没有任何工具能把二进制内容送进 JSON 结果</b>。
@@ -16,7 +16,7 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 /// <para>
 /// <b>架构事实（决定了防线该建在哪）</b>：本仓的工具体面是<b>两层、且目录分离</b>的——
 /// <list type="bullet">
-/// <item><b>工具接口</b>（<c>Mud.Feishu.AI.FeishuTools/Tools/Feishu*ToolInterfaces.cs</c>）声明
+/// <item><b>工具接口</b>（<c>Mud.Feishu.AI.Tools/Tools/Feishu*ToolInterfaces.cs</c>）声明
 /// <c>[FeishuTool]</c> 方法，返回 JSON 可序列化类型；</item>
 /// <item><b>SDK 接口</b>（<c>Mud.Feishu/Interfaces/**</c>）提供底层能力，<b>从不</b>携带
 /// <c>[FeishuTool]</c>（实测：含二进制方法的 13 个接口，工具计数全为 0）。</item>
@@ -45,7 +45,7 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 public class BinaryDownloadToolExposureContractTests
 {
     // R5 / F-1：工具声明面已从 Tools/ 迁到 Curation/（载体 C：策展面与基础设施物理分离）。
-    private const string ToolInterfacesDirectory = "Mud.Feishu.AI.FeishuTools/Curation";
+    private const string ToolInterfacesDirectory = "Mud.Feishu.AI.Tools/Curation";
     private const string SdkInterfacesDirectory = "Mud.Feishu/Interfaces";
 
     /// <summary>二进制返回类型的<b>正则形态</b>（与 <c>Mud.HttpUtils</c> 的下载分支判定同源）。</summary>
@@ -375,11 +375,11 @@ public class BinaryDownloadToolExposureContractTests
     {
         var root = FindRepositoryRoot();
         var curation = Directory
-            .GetFiles(Path.Combine(root, "Mud.Feishu.AI.FeishuTools", "Curation"), "*.cs", SearchOption.AllDirectories)
+            .GetFiles(Path.Combine(root, "Mud.Feishu.AI.Tools", "Curation"), "*.cs", SearchOption.AllDirectories)
             .Select(static path => (Path.GetFileName(path), ReadSourceWithoutComments(path)))
             .ToArray();
         var executors = Directory
-            .GetFiles(Path.Combine(root, "Mud.Feishu.AI.FeishuTools", "Internal"), "*.cs", SearchOption.AllDirectories)
+            .GetFiles(Path.Combine(root, "Mud.Feishu.AI.Tools", "Internal"), "*.cs", SearchOption.AllDirectories)
             .Select(static path => (Path.GetFileName(path), ReadSourceWithoutComments(path)))
             .ToArray();
 
@@ -607,7 +607,7 @@ public class BinaryDownloadToolExposureContractTests
         var result = new HashSet<string>(StringComparer.Ordinal);
 
         var root = Path.Combine(
-            FindRepositoryRoot(), "Mud.Feishu.AI.FeishuTools", "Curation");
+            FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Curation");
         foreach (var file in Directory.GetFiles(root, "*.cs", SearchOption.AllDirectories))
         {
             var text = ReadSourceWithoutComments(file);

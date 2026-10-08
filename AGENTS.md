@@ -93,9 +93,9 @@ source (`MudHttpUtils-local` → `D:/Repos/MudHttpUtils/artifacts-debug`, i.e. t
 produced by `pack_debug.ps1`); remove it once the official Release package is published. The tool
 surface is generated **only** by the component-side engine: the local generator project
 (`Mud.Feishu.AI.Tools`) and its driver tests were retired in the R-1+2c migration, and
-`Tests/Mud.Feishu.AI.FeishuTools.Tests/ContractGuards/FeishuToolProfileContractGuards.cs` asserts
+`Tests/Mud.Feishu.AI.Tools.Tests/ContractGuards/FeishuToolProfileContractGuards.cs` asserts
 that no source/project trace of them returns. `FeishuToolProfile.cs`
-(`Mud.Feishu.AI.FeishuTools/SdkProfile/`) is the single source of the Feishu naming facts and is
+(`Mud.Feishu.AI.Tools/SdkProfile/`) is the single source of the Feishu naming facts and is
 **linked** into `Tests/Mud.Feishu.AI.Tests` (`Compile Include`) because profiles are discovered per
 compilation unit. To consume a newer component version: bump the
 version in the `PackageReference`s and, optionally, sync `AGENTS.md` / the README dependency tables

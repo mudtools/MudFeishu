@@ -5,10 +5,10 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Mud.Feishu.AI.FeishuTools.Tools;
-using Mud.Feishu.AI.FeishuTools.Tests.Tools;
+using Mud.Feishu.AI.Tools.Tools;
+using Mud.Feishu.AI.Tools.Tests.Tools;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// 工具名契约表守卫（Phase 1 §7 + Phase 2 §3.3）：Schema 注册表恰为契约名全集
@@ -380,7 +380,7 @@ public class FeishuToolContractGuards
             dir = Path.GetDirectoryName(dir);
         }
 
-        return Directory.GetFiles(Path.Combine(dir!, "Mud.Feishu.AI.FeishuTools"), "*.cs", SearchOption.AllDirectories)
+        return Directory.GetFiles(Path.Combine(dir!, "Mud.Feishu.AI.Tools"), "*.cs", SearchOption.AllDirectories)
             .Where(p => !p.Contains("obj") && !p.Contains("bin"))
             .ToList();
     }

@@ -164,7 +164,7 @@ public class AgentContractGuards
     {
         var summarizerSource = Path.Combine(GetSolutionRoot(), "Mud.Feishu.AI", "Conversations", "ConversationSummarizer.cs");
         var imHandlerSource = Path.Combine(
-            GetSolutionRoot(), "Mud.Feishu.AI.FeishuTools", "Events", "ImMessageConversationalEventHandler.cs");
+            GetSolutionRoot(), "Mud.Feishu.AI.Tools", "Events", "ImMessageConversationalEventHandler.cs");
 
         File.Exists(summarizerSource).Should().BeTrue();
         File.ReadAllText(summarizerSource).Should().Contain(
@@ -390,13 +390,13 @@ public class AgentContractGuards
     /// WP3 删除了自研确认令牌全部过渡层（ToolConfirmationToken / IToolConfirmationTokenSecretProvider）。
     /// HITL 的批准状态所有权归宿主授权器（IToolExecutionAuthorizer），SDK 执行链恒为中性拒绝。
     /// 本守卫锁住"模型可见文案不含任何凭据类信息"这一不变量，防止令牌机制被重新引入。
-    /// 扫描落在 <c>Mud.Feishu.AI.FeishuTools</c>（执行链唯一实现方）。
+    /// 扫描落在 <c>Mud.Feishu.AI.Tools</c>（执行链唯一实现方）。
     /// </remarks>
     [Fact]
     public void ConfirmationToken_ShouldNeverEnterModelVisiblePayload()
     {
         var bindingSource = Path.Combine(
-            GetSolutionRoot(), "Mud.Feishu.AI.FeishuTools", "Tools", "FeishuToolBinding.cs");
+            GetSolutionRoot(), "Mud.Feishu.AI.Tools", "Tools", "FeishuToolBinding.cs");
         File.Exists(bindingSource).Should().BeTrue();
 
         var source = File.ReadAllText(bindingSource);
@@ -445,7 +445,7 @@ public class AgentContractGuards
     public void StructuredError_NeedsConfirmation_ShouldNotLeakCredentialInBehavior()
     {
         var bindingSource = Path.Combine(
-            GetSolutionRoot(), "Mud.Feishu.AI.FeishuTools", "Tools", "FeishuToolBinding.cs");
+            GetSolutionRoot(), "Mud.Feishu.AI.Tools", "Tools", "FeishuToolBinding.cs");
         var source = File.ReadAllText(bindingSource);
 
         // 提取 StructuredError 方法体整体（从方法签名到下一个方法声明）。
@@ -525,7 +525,7 @@ public class AgentContractGuards
     public void WriteTool_NeedsUserConfirmation_ShouldBeDenied_AtAuthorizeGate()
     {
         var binding = File.ReadAllText(Path.Combine(
-            GetSolutionRoot(), "Mud.Feishu.AI.FeishuTools", "Tools", "FeishuToolBinding.cs"));
+            GetSolutionRoot(), "Mud.Feishu.AI.Tools", "Tools", "FeishuToolBinding.cs"));
 
         binding.Should().NotContain("AuthorizationDecision.NeedsUserConfirmation && tool.IsWrite",
             "写类工具的待确认不得据此放行（R4-1 fail-closed）——该特例必须删除，否则直调路径静默放行写操作");
@@ -554,7 +554,7 @@ public class AgentContractGuards
         var readmes = new[]
         {
             Path.Combine(root, "Mud.Feishu.AI", "Readme.md"),
-            Path.Combine(root, "Mud.Feishu.AI.FeishuTools", "Readme.md"),
+            Path.Combine(root, "Mud.Feishu.AI.Tools", "Readme.md"),
         };
 
         // 否定语境标记：命中其一即视为"文档在说明该机制已不存在"，不算漂移。

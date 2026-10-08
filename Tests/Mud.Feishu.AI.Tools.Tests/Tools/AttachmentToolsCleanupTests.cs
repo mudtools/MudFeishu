@@ -6,11 +6,11 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
-using Mud.Feishu.AI.FeishuTools.Internal;
+using Mud.Feishu.AI.Tools.Internal;
 using Mud.Feishu.AI.Tools;
 using Mud.Feishu.DataModels.Messages;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>
 /// R2-06：临时附件清理失败必须<b>留痕</b>，且不得改变业务语义（成功仍是成功）。

@@ -7,13 +7,13 @@
 
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
-using Mud.Feishu.AI.FeishuTools.Tools;
+using Mud.Feishu.AI.Tools.Tools;
 using Mud.Feishu.AI.Tools;
 using Mud.Feishu.DataModels;
 using Mud.Feishu.DataModels.Departments;
 using Mud.Feishu.DataModels.Employees;
 
-namespace Mud.Feishu.AI.FeishuTools.Internal;
+namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
 /// 通讯录部门轴工具执行器（<c>contact.list_departments</c> / <c>contact.list_department_members</c>，WP5/R5）。

@@ -11,12 +11,12 @@ using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.EventHandlers;
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.AI.Conversations;
-using Mud.Feishu.AI.FeishuTools.Events;
+using Mud.Feishu.AI.Tools.Events;
 using Mud.Feishu.DataModels.Messages;
 using Mud.Feishu.DataModels.Tasks;
 using Mud.Feishu.EventCallback.Task;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Events;
+namespace Mud.Feishu.AI.Tools.Tests.Events;
 
 /// <summary>
 /// R2-01：任务更新事件的回复链路——<b>可投递则投递、不可投递则在调用模型之前短路</b>。

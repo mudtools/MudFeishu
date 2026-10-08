@@ -11,7 +11,7 @@ using Mud.Feishu.AI.Agents;
 using Mud.Feishu.AI.Knowledge;
 using Mud.Feishu.DataModels.Aily;
 
-namespace Mud.Feishu.AI.FeishuTools.Knowledge;
+namespace Mud.Feishu.AI.Tools.Knowledge;
 
 /// <summary>
 /// Aily 托管知识问答提供器（RAG-A 默认路径，Phase 2 §3.4）：包装

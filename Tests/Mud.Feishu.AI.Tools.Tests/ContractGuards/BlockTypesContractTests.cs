@@ -11,7 +11,7 @@ using System.Text.RegularExpressions;
 
 using Mud.Feishu.DataModels.Docx;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// <b>R5 / B-1</b>：<see cref="BlockTypes"/> 常量表守卫—— 防止"常量 / 文档 / 反查表"三面漂移。

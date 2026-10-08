@@ -11,7 +11,7 @@
 using Mud.HttpUtils;
 using Mud.HttpUtils.Attributes;
 
-namespace Mud.Feishu.AI.FeishuTools.SdkProfile;
+namespace Mud.Feishu.AI.Tools.SdkProfile;
 
 /// <summary>
 /// 飞书工具生成剖面：把「<c>Mud.Feishu</c> 命名事实」收拢成上游通用工具 Schema 生成引擎
@@ -19,7 +19,7 @@ namespace Mud.Feishu.AI.FeishuTools.SdkProfile;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>这一份类 = 旧本地引擎 <c>Mud.Feishu.AI.Tools</c> 全部飞书硬编码的收拢</b>（R-1+2c 迁移）。
+/// <b>这一份类 = 已删除的本地生成器引擎全部飞书硬编码的收拢</b>（R-1+2c 迁移）。
 /// 迁移前这些事实散落在 11 个文件里：<c>Extractors</c>（特性名/命名空间/源解析/接口正则/危险词）、
 /// <c>CuratedToolScanner</c>（令牌身份前缀）、<c>SchemaEmitter</c>（owner 程序集/产物命名空间/风险枚举全名）、
 /// <c>ToolHandlerScanner</c>（handler 特性命名空间/返回类型名）、<c>ToolArgsEmitter</c>/<c>ToolRegistrarEmitter</c>
@@ -35,7 +35,7 @@ namespace Mud.Feishu.AI.FeishuTools.SdkProfile;
 /// <para>
 /// <b>发现粒度</b>：剖面经 <c>CompilationProvider</c> 按<b>编译单元</b>发现 ⇒
 /// 凡声明了 <c>[FeishuTool]</c> 接口、且需要生成产物落在自己程序集内的工程，都必须携带本类型
-/// （当前：<c>Mud.Feishu.AI.FeishuTools</c> 本体 + <c>Tests/Mud.Feishu.AI.Tests</c> 样例工程，
+/// （当前：<c>Mud.Feishu.AI.Tools</c> 本体 + <c>Tests/Mud.Feishu.AI.Tests</c> 样例工程，
 /// 后者以 <c>Compile Include</c> 链接本文件共享同一份真相源）。
 /// </para>
 /// <para>
@@ -50,8 +50,11 @@ namespace Mud.Feishu.AI.FeishuTools.SdkProfile;
     ToolAttributeName = "FeishuTool",
     ToolAttributeNamespace = "Mud.Feishu.AI.Tools",
     ToolHandlerAttributeName = "FeishuToolHandler",
-    // 注意：handler 特性与工具特性**不同命名空间**（旧 ToolHandlerScanner.AttributeNamespace）。
-    ToolHandlerAttributeNamespace = "Mud.Feishu.AI.FeishuTools",
+    // 注意：handler 特性与工具特性**必须处于不同命名空间**，否则引擎无法靠 (命名空间, 特性名)
+    // 二元组把 [FeishuTool]（声明面，命名空间 = Mud.Feishu.AI.Tools）与 [FeishuToolHandler]
+    // （执行器绑定面）区分开。本工程根命名空间已与 Mud.Feishu.AI 的 Mud.Feishu.AI.Tools 同名，
+    // 故 handler 特性独占 Handlers/ 子命名空间以保住该可寻址性。
+    ToolHandlerAttributeNamespace = "Mud.Feishu.AI.Tools.Handlers",
     ParameterAttributeName = "ToolParameter",
 
     // ────────── 2. 源符号解析 ──────────
@@ -76,10 +79,10 @@ namespace Mud.Feishu.AI.FeishuTools.SdkProfile;
 
     // ────────── 8-11. 描述符与契约产物事实 ──────────
     SchemaExtensionKey = "x-feishu",
-    OwnerAssembly = "Mud.Feishu.AI.FeishuTools",
+    OwnerAssembly = "Mud.Feishu.AI.Tools",
     GeneratedNamespace = "Mud.Feishu.AI.Tools.Generated",
-    ContractNamespace = "Mud.Feishu.AI.FeishuTools",
-    RegistrationNamespace = "Mud.Feishu.AI.FeishuTools.Registration",
+    ContractNamespace = "Mud.Feishu.AI.Tools",
+    RegistrationNamespace = "Mud.Feishu.AI.Tools.Registration",
     RiskEnumFullName = "Mud.Feishu.AI.Tools.FeishuToolRisk",
 
     // ────────── 12-17. 执行器 / 输出 / 聚合事实 ──────────

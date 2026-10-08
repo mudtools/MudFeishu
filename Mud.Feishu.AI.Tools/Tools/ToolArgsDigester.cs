@@ -7,7 +7,7 @@
 
 using System.Text;
 
-namespace Mud.Feishu.AI.FeishuTools.Tools;
+namespace Mud.Feishu.AI.Tools.Tools;
 
 /// <summary>
 /// 审计入参摘要器（AI-FD-D12 P1D-3b 脱敏责任）：SDK 侧把工具入参折叠为

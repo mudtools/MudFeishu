@@ -9,7 +9,7 @@ using System.Collections.Concurrent;
 using Mud.Feishu.AI.Channels;
 using Mud.Feishu.AI.Conversations;
 
-namespace Mud.Feishu.AI.FeishuTools.Channels;
+namespace Mud.Feishu.AI.Tools.Channels;
 
 /// <summary>
 /// 流式通道降级链（AI-FD-D12 P2D-2a）：<see cref="IMessageChannel"/> 复合实现——

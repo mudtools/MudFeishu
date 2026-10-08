@@ -6,10 +6,10 @@
 // -----------------------------------------------------------------------
 
 using System.Text;
-using Mud.Feishu.AI.FeishuTools.Tools;
+using Mud.Feishu.AI.Tools.Tools;
 using Mud.Feishu.DataModels.Docx;
 
-namespace Mud.Feishu.AI.FeishuTools.Internal;
+namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
 /// Docx 工具执行器（<c>docx.get_raw_content</c> / <c>docx.get_document_blocks</c>）：

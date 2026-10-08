@@ -1,4 +1,4 @@
-# Mud.Feishu.AI.FeishuTools
+# Mud.Feishu.AI.Tools
 
 把 `Mud.Feishu` 的强类型接口以**编译期 Schema** 暴露为模型可调用的 FunctionCall 工具，
 并内置多租户授权执行链、出站净化、内容安全与流式回复通道。
@@ -227,7 +227,7 @@ var response = await agent.RunApprovalContinuationAsync(
 >
 > ```powershell
 > $env:FeishuToolGoldenUpdate='true'
-> dotnet test Tests/Mud.Feishu.AI.FeishuTools.Tests -p:FeishuToolRefreeze=true `
+> dotnet test Tests/Mud.Feishu.AI.Tools.Tests -p:FeishuToolRefreeze=true `
 >   --filter "FullyQualifiedName~FeishuToolGoldenTests"
 > ```
 >

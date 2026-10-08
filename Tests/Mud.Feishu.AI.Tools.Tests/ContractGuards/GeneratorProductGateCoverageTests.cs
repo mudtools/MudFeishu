@@ -6,10 +6,10 @@
 // -----------------------------------------------------------------------
 
 using System.Reflection;
-using Mud.Feishu.AI.FeishuTools.SdkProfile;
+using Mud.Feishu.AI.Tools.SdkProfile;
 using Mud.HttpUtils.Attributes;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// <b>R5 / B-9</b>：<b>生成器产物门禁覆盖守卫</b> —— 断言每一个发射产物要么被 golden 直接覆盖，
@@ -179,7 +179,7 @@ public class GeneratorProductGateCoverageTests
     /// <summary>产物类型的两个合法命名空间（Schemas/Contracts/Guidance/Catalog 在 Generated；Names/DI 在宿主命名空间）。</summary>
     private static Type? FindProductType(Assembly assembly, string typeName)
         => assembly.GetType("Mud.Feishu.AI.Tools.Generated." + typeName, throwOnError: false)
-            ?? assembly.GetType("Mud.Feishu.AI.FeishuTools." + typeName, throwOnError: false);
+            ?? assembly.GetType("Mud.Feishu.AI.Tools." + typeName, throwOnError: false);
 
     private static string ReadProfileSlot(string slotName)
     {

@@ -7,7 +7,7 @@
 
 using System.Text.RegularExpressions;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// 执行器骨架收敛守卫（WP3 / R-C 根因）：机械断言"机械骨架只存在于
@@ -29,7 +29,7 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 /// </remarks>
 public class ToolExecutorSkeletonGuards
 {
-    private const string ExecutorDirectory = "Mud.Feishu.AI.FeishuTools/Internal";
+    private const string ExecutorDirectory = "Mud.Feishu.AI.Tools/Internal";
 
     /// <summary>解包/回填骨架不得回潮到具体执行器。</summary>
     [Fact]
@@ -225,7 +225,7 @@ public class ToolExecutorSkeletonGuards
     public void ImTools_ShouldConsumeToolContext_ForAutomaticReplyInThread()
     {
         var source = File.ReadAllText(
-            Path.Combine(FindRepositoryRoot(), "Mud.Feishu.AI.FeishuTools", "Internal", "ImTools.cs"));
+            Path.Combine(FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Internal", "ImTools.cs"));
 
         source.Should().Contain(
             "IFeishuToolContextAccessor",

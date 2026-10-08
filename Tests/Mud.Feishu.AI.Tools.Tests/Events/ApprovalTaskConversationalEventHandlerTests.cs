@@ -10,11 +10,11 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.EventHandlers;
 using Mud.Feishu.Abstractions.Services;
-using Mud.Feishu.AI.FeishuTools.Events;
+using Mud.Feishu.AI.Tools.Events;
 using Mud.Feishu.DataModels.Messages;
 using Mud.Feishu.EventCallback.Approval;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Events;
+namespace Mud.Feishu.AI.Tools.Tests.Events;
 
 /// <summary>
 /// R2-01b：审批任务事件处理器的投递与"触发文本入模型"链路。

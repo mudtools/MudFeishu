@@ -7,7 +7,7 @@
 
 using System.Text.RegularExpressions;
 
-namespace Mud.Feishu.AI.FeishuTools.Tools;
+namespace Mud.Feishu.AI.Tools.Tools;
 
 /// <summary>
 /// 出站内容安全检测（AT-F14）：识别工具结果中"试图指挥模型"的注入载荷，按模式标注或阻断。

@@ -7,7 +7,7 @@
 
 using Mud.Feishu.DataModels.Bitable;
 
-namespace Mud.Feishu.AI.FeishuTools.Tools;
+namespace Mud.Feishu.AI.Tools.Tools;
 
 /// <summary>
 /// bitable.query_records <c>sort</c> 简化文法解析器（AI-FD-D12 P1D-1b 批次 A）：

@@ -8,7 +8,7 @@
 
 using System.Globalization;
 
-namespace Mud.Feishu.AI.FeishuTools.Tools;
+namespace Mud.Feishu.AI.Tools.Tools;
 
 /// <summary>
 /// 工具参数值的形态归一化中心（AT-B19 / WP1）：

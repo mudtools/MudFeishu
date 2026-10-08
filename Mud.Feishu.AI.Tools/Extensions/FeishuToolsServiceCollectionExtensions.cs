@@ -13,14 +13,14 @@ using Mud.Feishu.AI.Channels;
 using Mud.Feishu.AI.Events;
 using Mud.Feishu.AI.Knowledge;
 using Mud.Feishu.AI.Tools;
-using Mud.Feishu.AI.FeishuTools.Channels;
-using Mud.Feishu.AI.FeishuTools.Events;
-using Mud.Feishu.AI.FeishuTools.Internal;
-using Mud.Feishu.AI.FeishuTools.Knowledge;
-using Mud.Feishu.AI.FeishuTools.Registration;
-using Mud.Feishu.AI.FeishuTools.Tools;
+using Mud.Feishu.AI.Tools.Channels;
+using Mud.Feishu.AI.Tools.Events;
+using Mud.Feishu.AI.Tools.Internal;
+using Mud.Feishu.AI.Tools.Knowledge;
+using Mud.Feishu.AI.Tools.Registration;
+using Mud.Feishu.AI.Tools.Tools;
 
-namespace Mud.Feishu.AI.FeishuTools;
+namespace Mud.Feishu.AI.Tools;
 
 /// <summary>
 /// 飞书工具包注册（Phase 1 只读 + Phase 2 写类/流式通道/RAG-A + AI-FD-D12 子域注册粒度）。

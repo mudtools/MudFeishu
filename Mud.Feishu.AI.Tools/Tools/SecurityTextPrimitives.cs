@@ -7,7 +7,7 @@
 
 using System.Text.RegularExpressions;
 
-namespace Mud.Feishu.AI.FeishuTools.Tools;
+namespace Mud.Feishu.AI.Tools.Tools;
 
 /// <summary>
 /// R3-05：安全文本基线单源——敏感键 / 控制字符判定 / 正则超时统一来源。

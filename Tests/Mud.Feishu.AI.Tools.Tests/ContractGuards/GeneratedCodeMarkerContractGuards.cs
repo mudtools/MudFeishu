@@ -8,9 +8,9 @@
 using System.CodeDom.Compiler;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using Mud.Feishu.AI.FeishuTools.Registration;
+using Mud.Feishu.AI.Tools.Registration;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// 生成代码标记契约守卫：断言生成器产物（FeishuTools 程序集内的全部生成类型）的<b>每个类型</b>与

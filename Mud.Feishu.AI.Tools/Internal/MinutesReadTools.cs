@@ -7,10 +7,10 @@
 
 using System.Text.Json.Nodes;
 
-using Mud.Feishu.AI.FeishuTools.Tools;
+using Mud.Feishu.AI.Tools.Tools;
 using Mud.Feishu.DataModels;
 
-namespace Mud.Feishu.AI.FeishuTools.Internal;
+namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
 /// Minutes 只读工具执行器（R5 / F-11：<c>minutes.get</c> / <c>minutes.get_artifacts</c>）。

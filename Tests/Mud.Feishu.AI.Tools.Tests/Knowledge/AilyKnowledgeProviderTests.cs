@@ -7,10 +7,10 @@
 
 using System.Net;
 using System.Text;
-using Mud.Feishu.AI.FeishuTools.Knowledge;
+using Mud.Feishu.AI.Tools.Knowledge;
 using Mud.Feishu.DataModels.Aily;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Knowledge;
+namespace Mud.Feishu.AI.Tools.Tests.Knowledge;
 
 /// <summary>
 /// Aily 托管知识问答提供器测试（RAG-A，Phase 2 §3.4）：SSE 事件投影（答案 + chunks）、

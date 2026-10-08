@@ -7,7 +7,7 @@
 
 using System.Text.Json;
 
-namespace Mud.Feishu.AI.FeishuTools;
+namespace Mud.Feishu.AI.Tools;
 
 /// <summary>
 /// <c>FeishuApiResult</c> 解包结果（Phase 1 §3.3.3 通用规则 3：统一解包，错误转可读文本回填模型）。
@@ -442,7 +442,7 @@ internal static class ToolResultText
         // 成批（每次删一半）而非逐条：逐条删除时每删 1 条都要重新序列化整棵树，
         // 双大数组信封会退化成 O(n²) 的字符串重排。成批把迭代次数降到 O(log n)。
         // 每个数组至少保留 1 条，保证「有内容且可读」。
-        while (Mud.Feishu.AI.FeishuTools.Tools.ToolResultJson.ToText(root!).Length > maxLength)
+        while (Mud.Feishu.AI.Tools.Tools.ToolResultJson.ToText(root!).Length > maxLength)
         {
             var target = arrays
                 .Where(static a => a.Array.Count > 1)
@@ -464,7 +464,7 @@ internal static class ToolResultText
 
         root!["truncated"] = true;
         root!["hint"] = $"结果已按 {primaryKey} 截断——请缩小查询范围或用 page_token 翻页";
-        return Mud.Feishu.AI.FeishuTools.Tools.ToolResultJson.ToText(root!);
+        return Mud.Feishu.AI.Tools.Tools.ToolResultJson.ToText(root!);
     }
 
     /// <summary>结果文本是否已被截断（OTel 审计属性消费；兼容字符截断与 JSON 感知截断两种标记）。</summary>

@@ -10,9 +10,9 @@ using Microsoft.Extensions.Options;
 using Moq;
 
 using Mud.Feishu.AI;
-using Mud.Feishu.AI.FeishuTools.Internal;
+using Mud.Feishu.AI.Tools.Internal;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>
 /// <b>R5 / F-4</b>：<c>thread_id</c> 上下文链路的行为断言（F-4 DoD ①②）。

@@ -298,7 +298,7 @@ if ($DenyToolWarnings) {
 # golden 快照门禁的"非空"防呆：描述符快照必须存在且被测试消费——
 # 若有人删掉 AdditionalFiles 声明或快照文件，构建期 MUDFT014 会静默失效，
 # 故此处再断言快照文件存在（防"门禁静默消失"）。
-$goldenSnapshot = Join-Path $PSScriptRoot '..\Mud.Feishu.AI.FeishuTools\FeishuToolSchemas.golden.txt'
+$goldenSnapshot = Join-Path $PSScriptRoot '..\Mud.Feishu.AI.Tools\FeishuToolSchemas.golden.txt'
 if (-not (Test-Path $goldenSnapshot)) {
     $script:failures.Add("工具描述符 golden 快照缺失：$goldenSnapshot（门禁会静默失效，见 FeishuToolGoldenTests）")
     Write-Host "  [FAIL] golden 快照存在" -ForegroundColor Red

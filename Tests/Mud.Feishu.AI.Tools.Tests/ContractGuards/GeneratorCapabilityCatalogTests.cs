@@ -7,7 +7,7 @@
 
 using Mud.Feishu.AI.Tools.Generated;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// Tier R 能力目录守卫：证明源生成器<b>确实消费了</b> <c>Mud.Feishu</c> SDK 接口并产出了可度量的能力事实。
@@ -28,7 +28,7 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 /// <para>
 /// 注：<c>FeishuToolCapabilityCatalog</c> 为 <c>internal</c>（不进入公共 API 面），
 /// 经 <c>InternalsVisibleTo</c> 对测试可见；其发射由
-/// <c>Mud.Feishu.AI.FeishuTools.csproj</c> 的 <c>FeishuToolCatalog=true</c> 开启。
+/// <c>Mud.Feishu.AI.Tools.csproj</c> 的 <c>FeishuToolCatalog=true</c> 开启。
 /// </para>
 /// </remarks>
 public class GeneratorCapabilityCatalogTests
@@ -109,7 +109,7 @@ public class GeneratorCapabilityCatalogTests
     // ──────────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// R4-9：<c>Mud.Feishu.AI.FeishuTools</c> 必须显式开启 <c>FeishuToolCatalog</c>。
+    /// R4-9：<c>Mud.Feishu.AI.Tools</c> 必须显式开启 <c>FeishuToolCatalog</c>。
     /// </summary>
     /// <remarks>
     /// 消费方 <c>CapabilityLookupTools</c> <b>编译期无条件</b>引用 <see cref="FeishuToolCapabilityCatalog"/>，
@@ -122,8 +122,8 @@ public class GeneratorCapabilityCatalogTests
     public void FeishuToolCatalog_ShouldBeEnabledForThisPackage_AsRequiredArtifact()
     {
         var root = FindRepositoryRoot();
-        var csproj = Path.Combine(root, "Mud.Feishu.AI.FeishuTools", "Mud.Feishu.AI.FeishuTools.csproj");
-        var consumer = Path.Combine(root, "Mud.Feishu.AI.FeishuTools", "Internal", "CapabilityLookupTools.cs");
+        var csproj = Path.Combine(root, "Mud.Feishu.AI.Tools", "Mud.Feishu.AI.Tools.csproj");
+        var consumer = Path.Combine(root, "Mud.Feishu.AI.Tools", "Internal", "CapabilityLookupTools.cs");
 
         File.Exists(csproj).Should().BeTrue();
         File.ReadAllText(csproj).Should().MatchRegex(

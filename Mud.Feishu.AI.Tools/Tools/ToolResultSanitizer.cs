@@ -8,7 +8,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace Mud.Feishu.AI.FeishuTools.Tools;
+namespace Mud.Feishu.AI.Tools.Tools;
 
 /// <summary>
 /// 出站净化阶段（工具结果 → 模型上下文）：剥离控制字符与 ANSI 转义、脱敏通信凭据与手机号。

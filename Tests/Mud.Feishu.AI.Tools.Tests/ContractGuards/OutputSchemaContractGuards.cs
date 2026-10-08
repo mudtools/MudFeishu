@@ -8,7 +8,7 @@
 using System.Text.Json;
 using Mud.Feishu.AI.Tools.Generated;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// 输出契约（<c>x-feishu.output_schema</c>）守卫（R2-05 决策后重写）。

@@ -8,7 +8,7 @@
 
 using System.Text.RegularExpressions;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// 出站净化穷尽守卫（WP2 / S3）：断言 <c>FeishuToolBinding</c> 内所有返回模型文本的出口
@@ -33,7 +33,7 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 /// </remarks>
 public class ToolEgressPurificationContractGuards
 {
-    private const string BindingFile = "Mud.Feishu.AI.FeishuTools/Tools/FeishuToolBinding.cs";
+    private const string BindingFile = "Mud.Feishu.AI.Tools/Tools/FeishuToolBinding.cs";
 
     /// <summary>
     /// FeishuToolBinding 内所有 FeishuToolResult 出口必须经过净化或使用本地构造文案。

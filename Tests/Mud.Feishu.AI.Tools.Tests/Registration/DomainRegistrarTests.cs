@@ -5,11 +5,11 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Mud.Feishu.AI.FeishuTools;
-using Mud.Feishu.AI.FeishuTools.Tools;
+using Mud.Feishu.AI.Tools;
+using Mud.Feishu.AI.Tools.Tools;
 using Mud.Feishu.AI.Tools;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Registration;
+namespace Mud.Feishu.AI.Tools.Tests.Registration;
 
 /// <summary>
 /// 子域注册粒度测试（AI-FD-D12 P1D-1c）：单域注册后其余域工具不在注册表、

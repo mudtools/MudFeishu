@@ -4,7 +4,7 @@
 		<TargetFrameworks>netstandard2.0;net6.0;net8.0;net10.0</TargetFrameworks>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
-		<AssemblyName>Mud.Feishu.AI.FeishuTools</AssemblyName>
+		<AssemblyName>Mud.Feishu.AI.Tools</AssemblyName>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 		<PackageProjectUrl>http://www.mudtools.cn/</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/mudtools/MudFeishu</RepositoryUrl>
@@ -20,7 +20,7 @@
 
 	<ItemGroup>
 		<!-- 工具描述符 golden 快照（门禁）：源生成器逐字节比对，漂移即 MUDFT014 构建失败。
-		     重新固化：以 FeishuToolGoldenUpdate=true 运行 Mud.Feishu.AI.FeishuTools.Tests 的
+		     重新固化：以 FeishuToolGoldenUpdate=true 运行 Mud.Feishu.AI.Tools.Tests 的
 		     FeishuToolGoldenTests（见该测试类注释）。 -->
 		<!-- TEMP-REFREEZE（R-1+2c 重新固化窗口，随后恢复）：构建期 golden 门禁会把「重新固化」本身挡在编译之前
 		     （MUDFT014 是 Error 级），故重固化期间临时摘除该 AdditionalFile，改用 FeishuToolGoldenTests
@@ -45,7 +45,7 @@
 		<ProjectReference Include="..\Mud.Feishu.DataModels\Mud.Feishu.DataModels.csproj" />
 		<!-- 内置 IM 会话事件处理器（P2D-5a）的事件 DTO 来源：MessageReceiveResult/MentionUser 强类型面。 -->
 		<ProjectReference Include="..\Mud.Feishu.EventCallback\Mud.Feishu.EventCallback.csproj" />
-		<!-- [FeishuTool] 源生成器（已决策⑤ → R-1+2c 上游化）：本地引擎 Mud.Feishu.AI.Tools 已删除，
+		<!-- [FeishuTool] 源生成器（已决策⑤ → R-1+2c 上游化）：本地生成器工程已删除，
 		     改用组件侧 Mud.HttpUtils.Generator 3.0.3 的通用 ToolSurface 引擎（分析器形态）。
 		     工具面规模（条目数 / 签名）不在此处写死数字——数字漂移无法被编译器发现，改为唯一真相源：
 		     FeishuToolSchemas.golden.txt 与生成的 FeishuToolContracts（三者一致性由
@@ -85,7 +85,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<InternalsVisibleTo Include="Mud.Feishu.AI.FeishuTools.Tests" />
+		<InternalsVisibleTo Include="Mud.Feishu.AI.Tools.Tests" />
 	</ItemGroup>
 
 </Project>

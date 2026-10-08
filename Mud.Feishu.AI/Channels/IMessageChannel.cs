@@ -13,7 +13,7 @@ namespace Mud.Feishu.AI.Channels;
 /// <remarks>
 /// <para>
 /// SDK 不预设消息通道——实现方决定「占位消息怎么建、增量怎么落」（首版降级实现为
-/// <c>EditMessageAsync</c> 分片编辑，落点在 <c>Mud.Feishu.AI.FeishuTools</c> 包；
+/// <c>EditMessageAsync</c> 分片编辑，落点在 <c>Mud.Feishu.AI.Tools</c> 包；
 /// 消息流卡片 <c>IFeishuTenantV2AppCardMessageStream</c> 为后续通道实现切换）。
 /// </para>
 /// <para>

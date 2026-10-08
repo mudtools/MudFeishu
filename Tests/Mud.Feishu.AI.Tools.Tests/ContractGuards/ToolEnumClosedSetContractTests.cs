@@ -9,7 +9,7 @@ using System.Text.Json;
 
 using Mud.Feishu.DataModels.Docx;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// <b>R5 / F-2</b>：取值闭集的 golden 侧守卫（<b>B-1 ↔ F-2 联动锁</b>）。
@@ -21,7 +21,7 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 public class ToolEnumClosedSetContractTests
 {
     private static readonly string Golden = Path.Combine(
-        FindRepositoryRoot(), "Mud.Feishu.AI.FeishuTools", "FeishuToolSchemas.golden.txt");
+        FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "FeishuToolSchemas.golden.txt");
 
     /// <summary>核心断言：<c>block_type</c> 的 Schema 闭集与 <see cref="BlockTypes"/> 完全一致。</summary>
     [Fact]

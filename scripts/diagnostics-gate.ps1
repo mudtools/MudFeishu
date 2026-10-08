@@ -20,7 +20,7 @@
     本文件把ID 清单与判定口径抽出来，供**双方** dot-source：
       · scripts/verify-build.ps1（本地全量门禁，步骤 2）
       · .github/workflows/dotnet-publish.yml（CI 断言）
-    并由 Tests/Mud.Feishu.AI.FeishuTools.Tests/ContractGuards/DiagnosticsGateParityContractGuards.cs
+    并由 Tests/Mud.Feishu.AI.Tools.Tests/ContractGuards/DiagnosticsGateParityContractGuards.cs
     机械锁定"本文件 ↔ Diagnostics.ZeroToleranceIds ↔ CI workflow"三方一致，防再次漂移。
 
 .PARAMETER DenyWarnings

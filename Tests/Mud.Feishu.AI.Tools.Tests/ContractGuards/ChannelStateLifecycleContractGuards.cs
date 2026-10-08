@@ -9,11 +9,11 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using Mud.Feishu.AI.Channels;
 using Mud.Feishu.AI.Conversations;
-using Mud.Feishu.AI.FeishuTools.Channels;
+using Mud.Feishu.AI.Tools.Channels;
 using Mud.Feishu.DataModels.CardMessageStream;
 using Mud.Feishu.DataModels.Messages;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// G2（R2-09 / 根因 R-B）：<b>流式通道的 per-messageId 状态在终结后必须归零</b>。
@@ -67,7 +67,7 @@ public class ChannelStateLifecycleContractGuards
     [Fact]
     public void EveryMessageChannelImplementation_ShouldBeRegisteredForLifecycleCheck()
     {
-        // 扫描面 = 通道实现所在程序集（实现都在 Mud.Feishu.AI.FeishuTools；接口在 Mud.Feishu.AI）。
+        // 扫描面 = 通道实现所在程序集（实现都在 Mud.Feishu.AI.Tools；接口在 Mud.Feishu.AI）。
         // 刻意不扫测试程序集：本文件里的 LeakingChannel 是"检查器自证"用的合成类型，不该进覆盖集。
         var implementations = typeof(EditMessageChannel).Assembly
             .GetTypes()

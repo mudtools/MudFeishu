@@ -7,7 +7,7 @@
 
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Mud.Feishu.AI.FeishuTools.Registration;
+namespace Mud.Feishu.AI.Tools.Registration;
 
 /// <summary>
 /// 域级工具注册器契约（AI-FD-D12 P1D-1c，internal）：每域一个注册器——把该域工具注册进

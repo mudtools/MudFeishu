@@ -21,7 +21,7 @@ public class ApprovalContinuationContractGuards
     private static readonly string[] ScannedProjects =
     [
         "Mud.Feishu.AI",
-        "Mud.Feishu.AI.FeishuTools",
+        "Mud.Feishu.AI.Tools",
     ];
 
     /// <summary>

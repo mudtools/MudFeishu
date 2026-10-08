@@ -7,11 +7,11 @@
 
 using Moq;
 
-using Mud.Feishu.AI.FeishuTools.Internal;
+using Mud.Feishu.AI.Tools.Internal;
 using Mud.Feishu.DataModels;
 using Mud.Feishu.DataModels.Bitable;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>
 /// R5 / F-11：<c>bitable.list_views</c> / <c>bitable.get_view</c> 断言。

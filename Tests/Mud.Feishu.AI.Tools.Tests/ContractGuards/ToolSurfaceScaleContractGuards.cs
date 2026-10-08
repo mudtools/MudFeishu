@@ -7,14 +7,14 @@
 
 using System.Text.RegularExpressions;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// G4（R2-09）：<b>工具面规模数字必须与唯一真相源一致</b>。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>缺陷原始形态</b>：<c>Mud.Feishu.AI.FeishuTools.csproj</c> 写「产出本包 <b>24</b> 个工具接口的
+/// <b>缺陷原始形态</b>：<c>Mud.Feishu.AI.Tools.csproj</c> 写「产出本包 <b>24</b> 个工具接口的
 /// Schema 常量」，<c>Readme.md</c> 的 L2 层写「<b>24</b> 个工具」——实测 <c>[FeishuTool]</c> 与
 /// <c>[FeishuToolHandler]</c> 都是 <b>53</b>。这类漂移<b>没有任何编译器或现有门禁能发现</b>：
 /// 数字写在注释/文档里，宿主据此判断"这个包能干什么"，误差 2 倍以上。
@@ -36,8 +36,8 @@ public class ToolSurfaceScaleContractGuards
     /// <summary>被断言"不得写错规模数字"的文件（注释/文档中的裸数字）。</summary>
     private static readonly string[] CountBearingFiles =
     [
-        "Mud.Feishu.AI.FeishuTools/Mud.Feishu.AI.FeishuTools.csproj",
-        "Mud.Feishu.AI.FeishuTools/Readme.md",
+        "Mud.Feishu.AI.Tools/Mud.Feishu.AI.Tools.csproj",
+        "Mud.Feishu.AI.Tools/Readme.md",
         "Mud.Feishu.AI/Readme.md",
     ];
 
@@ -118,7 +118,7 @@ public class ToolSurfaceScaleContractGuards
     private static int ReadGoldenEntryCount()
         => File
             .ReadAllLines(Path.Combine(
-                FindRepositoryRoot(), "Mud.Feishu.AI.FeishuTools", "FeishuToolSchemas.golden.txt"))
+                FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "FeishuToolSchemas.golden.txt"))
             .Count(static line => !string.IsNullOrWhiteSpace(line));
 
     private static string FindRepositoryRoot()

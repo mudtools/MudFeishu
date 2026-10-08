@@ -6,7 +6,7 @@
 // -----------------------------------------------------------------------
 
 using System.Text.Json;
-using Mud.Feishu.AI.FeishuTools.Tools;
+using Mud.Feishu.AI.Tools.Tools;
 using Mud.Feishu.AI.Tools;
 using Mud.Feishu.DataModels.Bitable;
 using Mud.Feishu.DataModels.Docx;
@@ -15,7 +15,7 @@ using Mud.Feishu.DataModels.Drive.Files;
 using Mud.Feishu.DataModels.Drive.Folder;
 using Mud.Feishu.DataModels.Spreadsheets;
 
-namespace Mud.Feishu.AI.FeishuTools.Internal;
+namespace Mud.Feishu.AI.Tools.Internal;
 
 // ─────────────────────────── Docx 写执行器 ───────────────────────────
 

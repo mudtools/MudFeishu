@@ -7,7 +7,7 @@
 
 using System.Text.Json;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>
 /// 出站净化单元测试（方案 §5 AT-B08 / §8.2 R4 的正反两面）。

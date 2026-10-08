@@ -7,7 +7,7 @@
 
 using System.Text.RegularExpressions;
 
-namespace Mud.Feishu.AI.FeishuTools;
+namespace Mud.Feishu.AI.Tools;
 
 /// <summary>
 /// Bitable <c>filter</c> 简化文法解析器（Phase 1 §3.3.3）：

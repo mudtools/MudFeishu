@@ -5,7 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// G1（R2-09）：<b>静默 catch 必须显式留痕</b>——每个"既不上抛也不记日志"的 <c>catch</c> 块，
@@ -34,7 +34,7 @@ public class SilentCatchContractGuards
     private static readonly string[] ScannedProjects =
     [
         "Mud.Feishu.AI",
-        "Mud.Feishu.AI.FeishuTools",
+        "Mud.Feishu.AI.Tools",
     ];
 
     /// <summary>生产源码中不得存在"未标注理由的静默 catch"。</summary>

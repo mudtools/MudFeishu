@@ -8,7 +8,7 @@
 using System.Text;
 using Mud.Feishu.AI.Tools.Generated;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// 工具描述符 golden 快照守卫：把「模型可见的工具契约」钉死为可审阅的文本，
@@ -19,14 +19,14 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 /// <b>双重加锁</b>（对齐本仓库既有的"只断言诊断计数 = 假绿"教训）：
 /// </para>
 /// <list type="number">
-/// <item>构建期：<c>Mud.Feishu.AI.FeishuTools.csproj</c> 以 <c>AdditionalFiles</c> 声明本快照，
+/// <item>构建期：<c>Mud.Feishu.AI.Tools.csproj</c> 以 <c>AdditionalFiles</c> 声明本快照，
 /// 源生成器逐字节比对，漂移即 <c>MUDFT014</c> 并中断构建；</item>
 /// <item>测试期：本用例再独立比对一次（TRX 可见，能进 <c>verify-build.ps1</c> 的
 /// "空 TRX = 假绿"防呆），并在快照缺失时报错（防止有人删掉 AdditionalFiles 让门禁静默消失）。</item>
 /// </list>
 /// <para>
 /// <b>重新固化</b>（仅当契约确实要变）：设置环境变量后运行本用例——
-/// <c>$env:FeishuToolGoldenUpdate='true'; dotnet test Tests/Mud.Feishu.AI.FeishuTools.Tests --filter "FullyQualifiedName~FeishuToolGoldenTests"</c>。
+/// <c>$env:FeishuToolGoldenUpdate='true'; dotnet test Tests/Mud.Feishu.AI.Tools.Tests --filter "FullyQualifiedName~FeishuToolGoldenTests"</c>。
 /// 固化后的 diff 必须连同 CHANGELOG 一并提交评审（工具名/描述/scope/风险是模型可见契约）。
 /// </para>
 /// </remarks>
@@ -34,7 +34,7 @@ public class FeishuToolGoldenTests
 {
     private const string UpdateFlag = "FeishuToolGoldenUpdate";
     private const string GoldenFileName = "FeishuToolSchemas.golden.txt";
-    private const string OwnerProjectDirectory = "Mud.Feishu.AI.FeishuTools";
+    private const string OwnerProjectDirectory = "Mud.Feishu.AI.Tools";
 
     /// <summary>
     /// 生成器产出的描述符集必须与 golden 快照逐字节一致。

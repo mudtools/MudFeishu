@@ -8,7 +8,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// <b>R5 / D-3′</b>：工具声明 scope 的<b>一致性守卫</b>（独立于 F-13）。
@@ -34,7 +34,7 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 public class ToolScopeDeclarationContractTests
 {
     private static readonly string ToolInterfacesDirectory = Path.Combine(
-        FindRepositoryRoot(), "Mud.Feishu.AI.FeishuTools", "Curation");
+        FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Curation");
 
     /// <summary><b>方向一</b>：工具声明的每个 scope 必须在仓内其它出处也出现过。</summary>
     [Fact]

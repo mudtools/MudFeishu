@@ -7,7 +7,7 @@
 
 using System.Text.RegularExpressions;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// 工具面诊断<b>门禁链路</b>守卫：判定口径的单一真相源、CI 是否真的执行、基线机制是否活着。
@@ -175,7 +175,7 @@ public class GeneratorDiagnosticsContractGuards
     public void GoldenSnapshot_ShouldExistForBuildTimeDriftGate()
     {
         var goldenPath = Path.Combine(
-            FindRepositoryRoot(), "Mud.Feishu.AI.FeishuTools", "FeishuToolSchemas.golden.txt");
+            FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "FeishuToolSchemas.golden.txt");
 
         File.Exists(goldenPath).Should().BeTrue(
             "golden 快照缺失会让构建期的 MUDFT014 比对静默失效（csproj 的 AdditionalFiles 声明带 Exists 条件）");

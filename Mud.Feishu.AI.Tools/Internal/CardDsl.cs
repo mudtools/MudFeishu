@@ -7,7 +7,7 @@
 
 using System.Text.Json.Nodes;
 
-namespace Mud.Feishu.AI.FeishuTools.Internal;
+namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
 /// R5 / F-6：<b>卡片窄 DSL 编译器</b> —— 把结构化文本编译为飞书 <c>interactive</c> 卡片 JSON。

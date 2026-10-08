@@ -7,7 +7,7 @@
 
 using Microsoft.Extensions.AI;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>
 /// AIFunction 桥接测试：Schema 常量注入、异步流上下文读取、缺失上下文结构化拒绝。

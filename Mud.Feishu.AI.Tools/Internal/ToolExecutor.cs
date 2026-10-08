@@ -7,9 +7,9 @@
 
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Mud.Feishu.AI.FeishuTools.Tools;
+using Mud.Feishu.AI.Tools.Tools;
 
-namespace Mud.Feishu.AI.FeishuTools.Internal;
+namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
 /// 执行器骨架收敛（WP3 / R-C 根因 + F-3）：把"参数校验失败回填 / JSON 解析失败回填 /

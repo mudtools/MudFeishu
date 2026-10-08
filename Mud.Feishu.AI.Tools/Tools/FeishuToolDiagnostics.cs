@@ -7,7 +7,7 @@
 
 using Mud.Feishu.Abstractions.Metrics;
 
-namespace Mud.Feishu.AI.FeishuTools;
+namespace Mud.Feishu.AI.Tools;
 
 /// <summary>
 /// 工具执行遥测：执行链 Span 与护城河审计属性（Phase 1 §5 硬验收③）。

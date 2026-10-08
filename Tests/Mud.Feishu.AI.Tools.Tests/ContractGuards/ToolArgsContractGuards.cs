@@ -7,7 +7,7 @@
 
 using System.Reflection;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// 参数解包产物契约守卫（<c>ToolArgsEmitter</c> → <c>FeishuToolArgs/{Tool}Args.g.cs</c>，每类型一文件）：断言每枚契约工具都有

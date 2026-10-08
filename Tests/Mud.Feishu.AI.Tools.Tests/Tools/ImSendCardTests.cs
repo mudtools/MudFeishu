@@ -9,11 +9,11 @@ using System.Text.Json;
 
 using Moq;
 
-using Mud.Feishu.AI.FeishuTools.Internal;
+using Mud.Feishu.AI.Tools.Internal;
 using Mud.Feishu.DataModels;
 using Mud.Feishu.DataModels.Messages;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>
 /// R5 / F-6：<c>im.send_card</c> 执行器断言。

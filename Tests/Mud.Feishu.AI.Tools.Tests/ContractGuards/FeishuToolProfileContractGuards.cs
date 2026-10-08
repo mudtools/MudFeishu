@@ -6,19 +6,20 @@
 // -----------------------------------------------------------------------
 
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
-using Mud.Feishu.AI.FeishuTools.SdkProfile;
+using Mud.Feishu.AI.Tools.SdkProfile;
 using Mud.HttpUtils;
 using Mud.HttpUtils.Attributes;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// <b>R-1+2c 迁移契约守卫</b>：把「飞书工具生成剖面」与「上游引擎事实」钉成机械约束。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>为什么需要它</b>：迁移把工具面生成的真相源从<b>本仓源码</b>（<c>Mud.Feishu.AI.Tools</c> 的
+/// <b>为什么需要它</b>：迁移把工具面生成的真相源从<b>本仓源码</b>（一个已删除的本地生成器工程，
 /// 11 个文件，含全部飞书命名硬编码）搬到了<b>组件侧引擎 + 一份剖面声明</b>
 /// （<c>SdkProfile/FeishuToolProfile.cs</c>）。搬移的正确性只能靠两条机械约束守住：
 /// </para>
@@ -33,15 +34,23 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 /// 中依赖已删除的 <c>Diagnostics.cs</c> 的"定义集 == 上报点集"守卫。</item>
 /// </list>
 /// <para>
-/// 另附两条迁移台账守卫（<see cref="RetiredLocalEngine_ShouldBeAbsentFromTheRepository"/>、
+/// 另附两条迁移台账守卫（<see cref="RetiredLocalEngine_ShouldNotReappearAsALocalGenerator"/>、
 /// <see cref="ToolSourceDeclarations_ShouldUseNameofForm"/>）：前者防"删了代码忘了删条目"导致
 /// 两套引擎并存的窗口被重新打开；后者锁定 R-1 的交付物形态（84 处 <c>Source</c> 全部 nameof 化）。
 /// </para>
 /// </remarks>
 public class FeishuToolProfileContractGuards
 {
-    private const string ProfileNamespacePrefix = "Mud.Feishu.AI.FeishuTools.SdkProfile.";
-    private const string SourceDirectory = "Mud.Feishu.AI.FeishuTools/Curation";
+    private const string ProfileNamespacePrefix = "Mud.Feishu.AI.Tools.SdkProfile.";
+    private const string SourceDirectory = "Mud.Feishu.AI.Tools/Curation";
+
+    /// <summary>
+    /// 本守卫自身所在文件名——判据 ①② 要扫描的字面量就写在本文件里，必须把自己排除出扫描面。
+    /// </summary>
+    private static readonly string SelfFileName = Path.GetFileName(CallerPath());
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static string CallerPath([CallerFilePath] string path = "") => path;
 
     // ────────────────────────────────────────────────────────────────────
     // 守卫 1：剖面逐槽冻结（"旧引擎 11 个文件的硬编码收拢"这一主张的可验证形态）
@@ -62,7 +71,9 @@ public class FeishuToolProfileContractGuards
         ["ToolAttributeName"] = "FeishuTool",
         ["ToolAttributeNamespace"] = "Mud.Feishu.AI.Tools",
         ["ToolHandlerAttributeName"] = "FeishuToolHandler",
-        ["ToolHandlerAttributeNamespace"] = "Mud.Feishu.AI.FeishuTools",
+        // 本工程更名后根命名空间与 [FeishuTool] 所在的 Mud.Feishu.AI.Tools 同名，故 handler 特性
+        // 独占 .Handlers 子命名空间——两槽塌陷为同值会让引擎失去「声明面 vs 执行器绑定面」的可寻址性。
+        ["ToolHandlerAttributeNamespace"] = "Mud.Feishu.AI.Tools.Handlers",
         ["ParameterAttributeName"] = "ToolParameter",
         // 2. 源解析（旧 Extractors.ResolveSourceMember 的 "Mud.Feishu." 前缀）
         ["SdkNamespaceRoot"] = "Mud.Feishu",
@@ -81,10 +92,10 @@ public class FeishuToolProfileContractGuards
         // 8-11. 描述符与契约产物事实（旧 SchemaWriter 扩展键、SchemaEmitter.ToolNamesOwnerAssembly、
         //        各 Emitter 命名空间、SchemaEmitter 的风险枚举全名）
         ["SchemaExtensionKey"] = "x-feishu",
-        ["OwnerAssembly"] = "Mud.Feishu.AI.FeishuTools",
+        ["OwnerAssembly"] = "Mud.Feishu.AI.Tools",
         ["GeneratedNamespace"] = "Mud.Feishu.AI.Tools.Generated",
-        ["ContractNamespace"] = "Mud.Feishu.AI.FeishuTools",
-        ["RegistrationNamespace"] = "Mud.Feishu.AI.FeishuTools.Registration",
+        ["ContractNamespace"] = "Mud.Feishu.AI.Tools",
+        ["RegistrationNamespace"] = "Mud.Feishu.AI.Tools.Registration",
         ["RiskEnumFullName"] = "Mud.Feishu.AI.Tools.FeishuToolRisk",
         // 12-17. 执行器 / 输出 / 聚合事实（旧 ToolHandlerScanner 返回类型名、ToolRegistrarEmitter
         //        绑定类型名、TypeSchemaResolver 解包表、CapabilityCatalogEmitter 接口前缀）
@@ -149,7 +160,7 @@ public class FeishuToolProfileContractGuards
             "剖面类的全名是接线锚点（owner 程序集 + 命名空间），改名须同步测试工程的 Compile Include 链接");
 
         type.Assembly.GetName().Name.Should().Be(
-            "Mud.Feishu.AI.FeishuTools",
+            "Mud.Feishu.AI.Tools",
             "剖面必须编译进工具面宿主程序集（owner 门槛 = 该程序集名）");
     }
 
@@ -298,43 +309,92 @@ public class FeishuToolProfileContractGuards
     // ────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// 本地引擎工程与其 driver 测试工程必须<b>彻底摘除</b>（目录、slnx、csproj 引用三处）。
+    /// 本仓<b>不得存在本地工具面生成器实现</b>——生成引擎已上游化到组件侧
+    /// <c>Mud.HttpUtils.Generator</c>（R-1+2c），本仓只保留一份剖面声明
+    /// （<c>SdkProfile/FeishuToolProfile.cs</c>）作为飞书命名事实的载体。
     /// </summary>
     /// <remarks>
-    /// 两套引擎并存会同时向同一编译发射同名 hintName 产物 ⇒ 编译期冲突 + 维护双份同构代码。
-    /// "删了代码忘了删条目"（slnx/csproj 残留）正是这种窗口的典型入口。
+    /// <para>
+    /// <b>为什么按"有无生成器实现"判据，而不是按工程名判据</b>：两套引擎并存会同时向同一编译发射
+    /// 同名 hintName 产物 ⇒ 编译期冲突 + 维护双份同构代码，而"两套引擎"这件事的本质是
+    /// <b>存在第二个 <c>IIncrementalGenerator</c> 实现</b>，与它挂在哪个工程名下无关。
+    /// 早先的判据是"目录 <c>Mud.Feishu.AI.Tools</c> / <c>Tests/Mud.Feishu.AI.Tools.Tests</c> 不存在"，
+    /// 它把守卫和一个具体工程名焊死：本仓把工具面工程更名为 <c>Mud.Feishu.AI.Tools</c> 后，
+    /// 守卫会因"目录存在"而必红——判据被命名决策而非被不变量触发（假红）。
+    /// 下面的判据全部与命名解耦。
+    /// </para>
+    /// <para>
+    /// <b>四条判据</b>：① 无任何 <c>[Generator]</c> 标注（增量生成器的唯一编译期标记）；
+    /// ② 无旧引擎实现类型名残留（删了特性但留死代码同样误导维护者）；
+    /// ③ <b>ProjectReference 图闭合</b>——任何 <c>ProjectReference</c> 的目标必须是 <c>slnx</c> 登记的
+    /// 工程，"新建一个未登记的本地生成器工程并被引用"这条退化路径因此必红；
+    /// ④ 本仓无 Roslyn 组件宿主（无工程直接引用 <c>Microsoft.CodeAnalysis.CSharp</c>）——
+    /// 这是"本地生成器工程"绕不开的依赖，故与命名无关。
+    /// </para>
     /// </remarks>
     [Fact]
-    public void RetiredLocalEngine_ShouldBeAbsentFromTheRepository()
+    public void RetiredLocalEngine_ShouldNotReappearAsALocalGenerator()
     {
         var root = FindRepositoryRoot();
 
-        // 判据用"可编译的痕迹"（*.csproj / *.cs）而非目录存在性：退化的 obj/bin 残留不参与构建，
-        // 而只要有人放回任何源文件或工程文件，本用例即红。
-        SourceFootprints("Mud.Feishu.AI.Tools").Should().BeEmpty(
-            "本地工具面生成器已上游化到 Mud.HttpUtils.Generator（R-1+2c）——不得留下任何源/工程文件");
+        // 判据的字面量（[Generator]、旧引擎类型名）就写在**本文件**里，扫描面必须排除自身，
+        // 否则守卫恒红（第一次跑就会命中自己）。文件名取自 CallerFilePath 而非硬编码，
+        // 本文件改名/移动都不会让排除失效。
+        var self = SelfFileName;
+        IEnumerable<string> Scan(Func<string, IEnumerable<string>> source)
+            => source(root).Where(path => !Path.GetFileName(path).Equals(self, StringComparison.OrdinalIgnoreCase));
 
-        SourceFootprints(Path.Combine("Tests", "Mud.Feishu.AI.Tools.Tests")).Should().BeEmpty(
-            "driver 负例工程随本地引擎一并迁移（等价用例已在组件侧 ToolSurfaceEmissionTests）");
-
-        var slnx = File.ReadAllText(Path.Combine(root, "Mud.Feishu.slnx"));
-        slnx.Should().NotContain("Mud.Feishu.AI.Tools",
-            "解决方案文件里残留引擎工程条目会让构建重新拉入本地引擎（两套引擎并存）");
-
-        // 判据只看"有效引用"：先剔除 XML 注释——多个 csproj 会在注释里解释"已改为组件侧引擎"，
-        // 那是对迁移的记录而非引用（与 TokenMultiAppContractGuards 的注释剔除纪律一致）。
-        var offenders = Directory
-            .EnumerateFiles(root, "*.csproj", SearchOption.AllDirectories)
-            .Where(static path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-                && !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
-            .Where(path => Regex.Replace(File.ReadAllText(path), "<!--.*?-->", string.Empty, RegexOptions.Singleline)
-                .Contains("Mud.Feishu.AI.Tools", StringComparison.Ordinal))
-            .Select(static path => Path.GetFileName(path))
+        // 判据 ①：全仓（剔 obj/bin）不得出现 [Generator] / [GeneratorWithAttributeSearch]。
+        // 这是名称无关的判据：本地引擎工程无论被改成什么名字，只要它带着生成器实现就会被拦。
+        var generators = Scan(RepositorySources)
+            .Where(static path => GeneratorAttributeRegex().IsMatch(File.ReadAllText(path)))
+            .Select(path => RelativeName(root, path))
             .ToArray();
 
-        offenders.Should().BeEmpty(
-            "以下工程仍引用本地引擎工程——必须改为 PackageReference Mud.HttpUtils.Generator 3.0.x：{0}",
-            string.Join(", ", offenders));
+        generators.Should().BeEmpty(
+            "工具面生成引擎已上游化到 Mud.HttpUtils.Generator（R-1+2c）——本仓不得再出现任何 "
+            + "[Generator] 标注的增量生成器实现（两套引擎并存会产生同名 hintName 产物冲突）：{0}",
+            string.Join(" | ", generators));
+
+        // 判据 ②：旧引擎的实现类型名不得残留（特性被摘掉但代码还在，是同一退化的中间态）。
+        var legacyTypes = Scan(RepositorySources)
+            .Where(static path => LegacyEngineTypeRegex().IsMatch(File.ReadAllText(path)))
+            .Select(path => RelativeName(root, path))
+            .ToArray();
+
+        legacyTypes.Should().BeEmpty(
+            "R-1+2c 已删除的本地引擎实现类型仍有残留（等价能力在组件侧 ToolSurface/）：{0}",
+            string.Join(" | ", legacyTypes));
+
+        // 判据 ③：ProjectReference 图必须闭合——目标工程须在 slnx 中登记。
+        // 这条同时锁住"新增工程忘了登记"与"引用一个未登记的本地生成器工程"两种退化。
+        var registered = RegisteredProjectFileNames(root);
+
+        var unregisteredTargets = Scan(RepositoryProjectFiles)
+            .SelectMany(static path => ProjectReferences(path)
+                .Select(include => (Owner: Path.GetFileName(path), Target: Path.GetFileName(include))))
+            .Where(reference => !registered.Contains(reference.Target))
+            .Select(static reference => $"{reference.Owner} → {reference.Target}")
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        unregisteredTargets.Should().BeEmpty(
+            "以下 ProjectReference 目标未登记在 Mud.Feishu.slnx 中——未登记的工程既不在方案构建图内，"
+            + "也无法被 AOT 严格模式枚举到，是'两套引擎并存'最隐蔽的入口：{0}",
+            string.Join(" | ", unregisteredTargets));
+
+        // 判据 ④：本仓不得存在 Roslyn 组件（分析器/生成器）工程——那正是"本地引擎"的宿主形态。
+        // 判据取"是否直接引用 Roslyn 编译器 API"而非工程名：生成器工程无论叫什么、放在哪，
+        // 都必须引用 Microsoft.CodeAnalysis.CSharp 才能实现 IIncrementalGenerator。
+        var roslynHosts = Scan(RepositoryProjectFiles)
+            .Where(static path => RoslynApiRegex().IsMatch(StripXmlComments(File.ReadAllText(path))))
+            .Select(path => RelativeName(root, path))
+            .ToArray();
+
+        roslynHosts.Should().BeEmpty(
+            "工具面生成引擎已上游化到 Mud.HttpUtils.Generator（R-1+2c）——本仓不得存在直接引用 Roslyn "
+            + "编译器 API（Microsoft.CodeAnalysis.CSharp）的工程，即本地生成器/分析器宿主：{0}",
+            string.Join(" | ", roslynHosts));
     }
 
     /// <summary>
@@ -377,26 +437,56 @@ public class FeishuToolProfileContractGuards
 
     // ────────── 读取与定位 ──────────
 
-    /// <summary>列出目录下"参与构建的痕迹"（<c>*.cs</c> / <c>*.csproj</c>，排除 obj/bin 与已删除文件）。</summary>
-    private static IReadOnlyList<string> SourceFootprints(string relativeDirectory)
-    {
-        var directory = Path.Combine(FindRepositoryRoot(), relativeDirectory);
-        if (!Directory.Exists(directory))
-        {
-            return [];
-        }
+    /// <summary>全仓参与构建的 C# 源文件（排除 obj/bin 与版本控制内部目录）。</summary>
+    private static IEnumerable<string> RepositorySources(string root)
+        => EnumerateBuildableFiles(root, "*.cs");
 
-        return Directory
-            .EnumerateFiles(directory, "*.*", SearchOption.AllDirectories)
-            .Where(static path => path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
-                || path.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase)
-                || path.EndsWith(".md", StringComparison.OrdinalIgnoreCase)
-                || path.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
+    /// <summary>全仓参与构建的工程文件（排除 obj/bin 与版本控制内部目录）。</summary>
+    private static IEnumerable<string> RepositoryProjectFiles(string root)
+        => EnumerateBuildableFiles(root, "*.csproj");
+
+    private static IEnumerable<string> EnumerateBuildableFiles(string root, string pattern)
+        => Directory
+            .EnumerateFiles(root, pattern, SearchOption.AllDirectories)
             .Where(static path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-                && !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
-            .Select(static path => Path.GetFileName(path))
-            .ToArray();
+                && !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                && !path.Contains($"{Path.DirectorySeparatorChar}.git{Path.DirectorySeparatorChar}", StringComparison.Ordinal));
+
+    /// <summary>把绝对路径压成相对仓库根的、便于写进失败消息的展示形式。</summary>
+    private static string RelativeName(string root, string path)
+        => Path.GetRelativePath(root, path).Replace(Path.DirectorySeparatorChar, '/');
+
+    /// <summary>剔除 XML 注释后再匹配：多个 csproj 会在注释里解释"已改为组件侧引擎"，那是记录而非声明。</summary>
+    private static string StripXmlComments(string content)
+        => Regex.Replace(content, "<!--.*?-->", string.Empty, RegexOptions.Singleline);
+
+    /// <summary>读取 <c>slnx</c> 登记的工程文件名集合（判据"图闭合"的权威清单）。</summary>
+    private static HashSet<string> RegisteredProjectFileNames(string root)
+    {
+        var slnx = File.ReadAllText(Path.Combine(root, "Mud.Feishu.slnx"));
+
+        return Regex.Matches(slnx, @"<Project\s+Path=""[^""]*?(?<name>[^/""]+\.csproj)""")
+            .Select(static match => match.Groups["name"].Value)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
+
+    /// <summary>读取一个工程文件的全部 <c>ProjectReference</c> 目标（原始 <c>Include</c> 值）。</summary>
+    private static IReadOnlyList<string> ProjectReferences(string csprojPath)
+        => Regex.Matches(StripXmlComments(File.ReadAllText(csprojPath)), @"<ProjectReference\s+Include=""(?<inc>[^""]+)""")
+            .Select(static match => match.Groups["inc"].Value)
+            .ToArray();
+
+    // 三条正则用 GeneratedRegex 之外的手写构造：它们只在守卫执行时跑一次，
+    // [GeneratedRegex] 会把每次测试运行都变成一次源生成器编译，不划算。
+    private static Regex GeneratorAttributeRegex()
+        => new(@"\[(?:Generator|GeneratorWithAttributeSearch)\s*[\]\(]", RegexOptions.CultureInvariant);
+
+    private static Regex LegacyEngineTypeRegex()
+        => new(@"\b(?:class|record)\s+(?:FeishuToolSchemaGenerator|CuratedToolScanner|ToolHandlerScanner|CapabilityCatalogEmitter|SchemaEmitter|ToolRegistrarEmitter|TypeSchemaResolver)\b",
+            RegexOptions.CultureInvariant);
+
+    private static Regex RoslynApiRegex()
+        => new(@"PackageReference\s+Include=""Microsoft\.CodeAnalysis\.(?:CSharp|VisualBasic)""", RegexOptions.CultureInvariant);
 
     private static SdkToolProfileAttribute ReadProfileAttribute()
     {

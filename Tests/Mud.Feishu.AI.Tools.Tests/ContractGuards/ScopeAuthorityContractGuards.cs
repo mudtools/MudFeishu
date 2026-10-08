@@ -9,7 +9,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Mud.Feishu.AI.Tools.Generated;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// scope 权威清单守卫（T2-3 / <c>AT-B06</code> 的可执行定义）：把"scope 是否权威"从

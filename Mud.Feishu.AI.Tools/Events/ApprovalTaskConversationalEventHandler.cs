@@ -15,7 +15,7 @@ using Mud.Feishu.AI.Conversations;
 using Mud.Feishu.AI.Events;
 using Mud.Feishu.EventCallback.Approval;
 
-namespace Mud.Feishu.AI.FeishuTools.Events;
+namespace Mud.Feishu.AI.Tools.Events;
 
 /// <summary>
 /// 审批任务状态变更会话事件处理器（WP7/R5 T7-1）：

@@ -6,10 +6,10 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.AI.Agents;
-using Mud.Feishu.AI.FeishuTools.Tests.Tools;
+using Mud.Feishu.AI.Tools.Tests.Tools;
 using Mud.Feishu.AI.Tools.Generated;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// WP6 / AT-F09 域 guidance 资产守卫：域集合与工具面<b>同源不漂移</b>，

@@ -1,5 +1,39 @@
 # Mud.Feishu Change Log
 
+## [Unreleased] - `Mud.Feishu.AI.FeishuTools` renamed to `Mud.Feishu.AI.Tools` (2026-10-08)
+
+### ⚠️ Breaking changes
+
+- **【Project / assembly / namespace rename】** `Mud.Feishu.AI.FeishuTools` → **`Mud.Feishu.AI.Tools`**
+  (test project: `Tests/Mud.Feishu.AI.Tools.Tests`). Directory, `.csproj`, `AssemblyName`, NuGet
+  package id, namespaces (root plus every sub-namespace: `Tools` / `Internal` / `Events` /
+  `Curation` / `Channels` / `Registration` / `SdkProfile` / `Knowledge`), `InternalsVisibleTo`,
+  profile slots (`OwnerAssembly` / `ContractNamespace` / `RegistrationNamespace`) and
+  `PublicAPI.Unshipped.txt` were renamed in lockstep. The AI module is unreleased, so there is no
+  compatibility burden.
+
+- **【Handler attribute moved to its own sub-namespace】** `FeishuToolHandlerAttribute` moved from
+  the root namespace to **`Mud.Feishu.AI.Tools.Handlers`**. After the rename the root namespace of
+  this project collides with `Mud.Feishu.AI.Tools` in `Mud.Feishu.AI`, which is where
+  `[FeishuTool]` lives. Merging them would collapse the profile's `ToolAttributeNamespace` and
+  `ToolHandlerAttributeNamespace` slots into the same value, leaving the engine unable to address
+  the tool-declaration surface and the executor-binding surface separately. With the split, all
+  31 tool bindings resolve (no MUDFT022/023/024/025).
+
+- **【Retirement guard judgement rewritten】** The "retired local generator must not come back"
+  guard used to key on the **project name** (directories `Mud.Feishu.AI.Tools` /
+  `Tests/Mud.Feishu.AI.Tools.Tests` absent; no such string in `slnx` / csproj), which this rename
+  would have turned permanently red. It now keys on **capability**, decoupled from naming:
+  ① no `[Generator]`-annotated incremental generator anywhere; ② no legacy engine type names;
+  ③ the `ProjectReference` graph is closed (every target registered in `slnx`); ④ no project
+  references `Microsoft.CodeAnalysis.CSharp` (no Roslyn component host).
+  Check ① of `scripts/verify-pack.ps1` now mirrors ④.
+
+> **Naming collision note**: the local generator engine deleted during R-1+2c was **itself named
+> `Mud.Feishu.AI.Tools`** (see the Unreleased entry below). This rename reuses that name for the
+> tool-surface project, so every `Mud.Feishu.AI.Tools` in the historical entries below refers to
+> the **deleted generator engine**, not to the current project.
+
 ## [Unreleased] - AI tool-surface engine upstreamed + symbolised `Source` (R-1+2c, 2026-10-08)
 
 > Plan, four-perspective review (product / architecture / senior dev / QA), landing log and migration

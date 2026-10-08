@@ -6,10 +6,10 @@
 // -----------------------------------------------------------------------
 
 using System.Text;
-using Mud.Feishu.AI.FeishuTools.Tools;
+using Mud.Feishu.AI.Tools.Tools;
 using Mud.Feishu.AI.Knowledge;
 
-namespace Mud.Feishu.AI.FeishuTools.Internal;
+namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
 /// Knowledge 单工具执行器（<c>knowledge.search</c>，AI-FD-D12 P2D-4b）：绑定

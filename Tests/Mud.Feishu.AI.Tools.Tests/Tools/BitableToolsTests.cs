@@ -7,7 +7,7 @@
 
 using Mud.Feishu.DataModels.Bitable;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>
 /// Bitable 分域映射单测（Phase 1 §7）：filter 简化文法 → <c>RecordQueryFilterInfo</c>、

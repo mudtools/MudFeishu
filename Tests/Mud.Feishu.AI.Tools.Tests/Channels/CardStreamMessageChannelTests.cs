@@ -9,10 +9,10 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
 using Mud.Feishu.Abstractions.Conversations;
 using Mud.Feishu.AI.Conversations;
-using Mud.Feishu.AI.FeishuTools.Channels;
+using Mud.Feishu.AI.Tools.Channels;
 using Mud.Feishu.DataModels.CardMessageStream;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Channels;
+namespace Mud.Feishu.AI.Tools.Tests.Channels;
 
 /// <summary>
 /// 应用消息卡片流通道测试（AI-FD-D12 P2D-2a）：Create→Update→终态全链、失败隔离、

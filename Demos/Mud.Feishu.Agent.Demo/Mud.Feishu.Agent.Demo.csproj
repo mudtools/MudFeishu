@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Mud.Feishu.AI.FeishuTools\Mud.Feishu.AI.FeishuTools.csproj" />
+    <ProjectReference Include="..\..\Mud.Feishu.AI.Tools\Mud.Feishu.AI.Tools.csproj" />
     <ProjectReference Include="..\..\Mud.Feishu.AI\Mud.Feishu.AI.csproj" />
     <ProjectReference Include="..\..\Mud.Feishu\Mud.Feishu.csproj" />
   </ItemGroup>

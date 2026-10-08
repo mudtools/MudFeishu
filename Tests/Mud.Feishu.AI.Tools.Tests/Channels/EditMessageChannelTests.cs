@@ -7,10 +7,10 @@
 
 using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
-using Mud.Feishu.AI.FeishuTools.Channels;
+using Mud.Feishu.AI.Tools.Channels;
 using Mud.Feishu.DataModels.Messages;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Channels;
+namespace Mud.Feishu.AI.Tools.Tests.Channels;
 
 /// <summary>
 /// 分片编辑流式通道测试（Phase 2 §3.1）：占位消息创建、分片缓冲编辑（累计全文）、

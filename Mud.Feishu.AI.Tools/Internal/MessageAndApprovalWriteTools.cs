@@ -11,9 +11,9 @@ using Mud.Feishu.DataModels.ApprovalQuery;
 using Mud.Feishu.DataModels.ApprovalTask;
 using Mud.Feishu.DataModels.Bitable;
 using Mud.Feishu.DataModels.Messages;
-using Mud.Feishu.AI.FeishuTools.Tools;
+using Mud.Feishu.AI.Tools.Tools;
 
-namespace Mud.Feishu.AI.FeishuTools.Internal;
+namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
 /// IM 写工具执行器（<c>im.send_message</c>）：模型扁平参数 → <see cref="SendMessageRequest"/>

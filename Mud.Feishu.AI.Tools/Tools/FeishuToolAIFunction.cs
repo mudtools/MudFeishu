@@ -8,9 +8,9 @@
 using System.Text.Json;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
-using Mud.Feishu.AI.FeishuTools.Tools;
+using Mud.Feishu.AI.Tools.Tools;
 
-namespace Mud.Feishu.AI.FeishuTools;
+namespace Mud.Feishu.AI.Tools;
 
 /// <summary>
 /// 注册表工具 → MEAI <see cref="AIFunction"/> 桥接：Schema 取编译期生成常量

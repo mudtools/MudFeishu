@@ -8,7 +8,7 @@
 
 using System.Text.RegularExpressions;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// 参数形态认知契约守卫（WP7 / WP1）：断言 <c>JsonValueKind.String</c> 的参数值形态认知
@@ -40,7 +40,7 @@ public class ToolArgumentShapeContractGuards
     public void JsonValueKindString_ShouldOnlyAppearInNormalizerAndAllowedFiles()
     {
         var root = FindRepositoryRoot();
-        var toolsDir = Path.Combine(root, "Mud.Feishu.AI.FeishuTools", "Tools");
+        var toolsDir = Path.Combine(root, "Mud.Feishu.AI.Tools", "Tools");
 
         // 白名单：允许处理 JsonValueKind.String 的文件（R2 评审修订后的范围）。
         var allowedFiles = new HashSet<string>(StringComparer.Ordinal)
@@ -56,7 +56,7 @@ public class ToolArgumentShapeContractGuards
         var offenders = Directory
             .EnumerateFiles(toolsDir, "*.cs", SearchOption.AllDirectories)
             .Concat(Directory.EnumerateFiles(
-                Path.Combine(root, "Mud.Feishu.AI.FeishuTools", "Curation"),
+                Path.Combine(root, "Mud.Feishu.AI.Tools", "Curation"),
                 "*.cs",
                 SearchOption.AllDirectories))
             .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
@@ -95,8 +95,8 @@ public class ToolArgumentShapeContractGuards
     public void CurationDirectory_ShouldContainOnlyToolContractDeclarations()
     {
         var root = FindRepositoryRoot();
-        var curation = Path.Combine(root, "Mud.Feishu.AI.FeishuTools", "Curation");
-        var tools = Path.Combine(root, "Mud.Feishu.AI.FeishuTools", "Tools");
+        var curation = Path.Combine(root, "Mud.Feishu.AI.Tools", "Curation");
+        var tools = Path.Combine(root, "Mud.Feishu.AI.Tools", "Tools");
 
         var mixedIn = Directory
             .EnumerateFiles(curation, "*.cs", SearchOption.TopDirectoryOnly)
@@ -128,9 +128,9 @@ public class ToolArgumentShapeContractGuards
     [Fact]
     public void CurationFiles_ShouldDeclareTheCurationNamespace()
     {
-        const string Expected = "Mud.Feishu.AI.FeishuTools.Curation";
+        const string Expected = "Mud.Feishu.AI.Tools.Curation";
 
-        var curation = Path.Combine(FindRepositoryRoot(), "Mud.Feishu.AI.FeishuTools", "Curation");
+        var curation = Path.Combine(FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Curation");
 
         var offenders = Directory
             .EnumerateFiles(curation, "*.cs", SearchOption.TopDirectoryOnly)
@@ -153,7 +153,7 @@ public class ToolArgumentShapeContractGuards
     [Fact]
     public void CurationDirectory_ShouldMatchRegisteredBaseline()
     {
-        var curation = Path.Combine(FindRepositoryRoot(), "Mud.Feishu.AI.FeishuTools", "Curation");
+        var curation = Path.Combine(FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Curation");
 
         var files = Directory
             .EnumerateFiles(curation, "*.cs", SearchOption.TopDirectoryOnly)

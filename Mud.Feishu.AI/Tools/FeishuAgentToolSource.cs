@@ -12,7 +12,7 @@ namespace Mud.Feishu.AI.Tools;
 /// </summary>
 /// <remarks>
 /// <para>
-/// 依赖方向铁律：AI 不反向依赖工具包——工具包（如 <c>Mud.Feishu.AI.FeishuTools</c>）
+/// 依赖方向铁律：AI 不反向依赖工具包——工具包（如 <c>Mud.Feishu.AI.Tools</c>）
 /// 派生本类并注册到容器，<c>AddFeishuAgent</c> 聚合全部工具源产出
 /// <c>ChatOptions.Tools</c>。未注册任何工具源时保持裸模型行为。
 /// </para>

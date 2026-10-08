@@ -5,7 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法��纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// R5 / F-12 + F-6：<b>工具参数不得出现二进制/base64 语义</b>。
@@ -126,7 +126,7 @@ public class BinaryArgumentShapeContractTests
 
     private static IEnumerable<string> EnumerateCurationFiles()
     {
-        var directory = Path.Combine(FindRepositoryRoot(), "Mud.Feishu.AI.FeishuTools", "Curation");
+        var directory = Path.Combine(FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Curation");
         return Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories);
     }
 

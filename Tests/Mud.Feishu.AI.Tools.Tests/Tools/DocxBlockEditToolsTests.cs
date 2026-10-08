@@ -7,11 +7,11 @@
 
 using Moq;
 
-using Mud.Feishu.AI.FeishuTools.Internal;
+using Mud.Feishu.AI.Tools.Internal;
 using Mud.Feishu.DataModels;
 using Mud.Feishu.DataModels.Docx;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>
 /// R5 / F-5（续）：docx.update_blocks / delete_blocks / import_markdown 的行为断言。

@@ -9,7 +9,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Mud.Feishu.AI.Tools;
 
-namespace Mud.Feishu.AI.FeishuTools.Tools;
+namespace Mud.Feishu.AI.Tools.Tools;
 
 /// <summary>
 /// 工具目录实现（AI-FD-D12 P1D-4）：包装 <see cref="FeishuToolRegistry.AllTools"/> 为

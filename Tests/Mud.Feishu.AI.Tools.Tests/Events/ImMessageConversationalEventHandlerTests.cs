@@ -12,11 +12,11 @@ using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.Conversations;
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.AI.Agents;
-using Mud.Feishu.AI.FeishuTools.Events;
+using Mud.Feishu.AI.Tools.Events;
 using Mud.Feishu.DataModels.Messages;
 using Mud.Feishu.EventCallback.IM;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Events;
+namespace Mud.Feishu.AI.Tools.Tests.Events;
 
 /// <summary>
 /// 内置 IM 会话事件处理器测试（AI-FD-D12 P2D-5a）：事件规范化（群聊/单聊维度 + ChatId +

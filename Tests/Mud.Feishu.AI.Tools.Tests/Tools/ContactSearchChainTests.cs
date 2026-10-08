@@ -8,7 +8,7 @@
 using Mud.Feishu.DataModels.Messages;
 using Mud.Feishu.DataModels.Users;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>
 /// AT-F11「姓名 → open_id → 发消息」两跳写链路（§8.2 #15 / #15b）。

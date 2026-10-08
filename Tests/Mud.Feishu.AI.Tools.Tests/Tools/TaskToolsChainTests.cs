@@ -6,10 +6,10 @@
 // -----------------------------------------------------------------------
 
 using System.Globalization;
-using Mud.Feishu.AI.FeishuTools.Internal;
+using Mud.Feishu.AI.Tools.Internal;
 using Mud.Feishu.DataModels.Tasks;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>
 /// WP5（AT-F17）任务双工具的<b>真实调用链路</b>用例：<c>task.create_task</c>（tenant）与

@@ -7,7 +7,7 @@
 
 using System.Text.Json;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// <b>R5 / B-6</b>：条件必填（<c>anyOf</c>）的<b>语义</b>守卫 —— 不比文本，按 JSON Schema 语义判定。
@@ -34,7 +34,7 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 public class AnyOfSemanticContractTests
 {
     private static readonly string GoldenPath = Path.Combine(
-        FindRepositoryRoot(), "Mud.Feishu.AI.FeishuTools", "FeishuToolSchemas.golden.txt");
+        FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "FeishuToolSchemas.golden.txt");
 
     /// <summary>
     /// 基线：带 <c>anyOf</c> 的工具恰为 <b>3 个</b>（三处条件必填），且组成员与运行时校验一致。

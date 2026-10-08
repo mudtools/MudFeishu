@@ -9,7 +9,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using Mud.Feishu.Abstractions.Metrics;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>
 /// 工具执行链测试（<see cref="FeishuToolBinding"/>），含护城河硬验收三项（Phase 1 §5/§7）：

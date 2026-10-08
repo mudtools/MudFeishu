@@ -1,5 +1,35 @@
 # Mud.Feishu 更新日志
 
+## [Unreleased] - `Mud.Feishu.AI.FeishuTools` 更名为 `Mud.Feishu.AI.Tools`（2026-10-08）
+
+### ⚠️ 破坏性变更登记
+
+- **【工程/程序集/命名空间更名】** `Mud.Feishu.AI.FeishuTools` → **`Mud.Feishu.AI.Tools`**
+  （测试工程同步为 `Tests/Mud.Feishu.AI.Tools.Tests`）。目录名、`.csproj`、`AssemblyName`、
+  NuGet 包 id、命名空间（根 + `Tools`/`Internal`/`Events`/`Curation`/`Channels`/`Registration`/
+  `SdkProfile`/`Knowledge` 全部子命名空间）、`InternalsVisibleTo`、剖面槽位
+  （`OwnerAssembly` / `ContractNamespace` / `RegistrationNamespace`）与 `PublicAPI.Unshipped.txt`
+  同步更名。AI 模块尚未发布，无兼容负担。
+
+- **【执行器绑定特性迁至独立子命名空间】** `FeishuToolHandlerAttribute` 由根命名空间迁到
+  **`Mud.Feishu.AI.Tools.Handlers`**。原因：更名后本工程根命名空间与 `Mud.Feishu.AI` 中
+  `[FeishuTool]` 所在的 `Mud.Feishu.AI.Tools` 同名，若两者合并，剖面的
+  `ToolAttributeNamespace` / `ToolHandlerAttributeNamespace` 两槽将塌陷为同值，引擎失去
+  「工具声明面 vs 执行器绑定面」的可寻址性。迁移后两槽保持可区分，执行链 31 枚工具绑定
+  全部解析成功（无 MUDFT022/023/024/025）。
+
+- **【治理守卫判据改写】** 「退役本地生成器不得复活」原按**工程名**判据（目录
+  `Mud.Feishu.AI.Tools` / `Tests/Mud.Feishu.AI.Tools.Tests` 不存在、`slnx`/csproj 不含该串），
+  该判据与本次更名直接冲突（更名后必然假红）。改为按**能力**判据，与命名解耦：
+  ① 全仓无任何 `[Generator]` 标注的增量生成器实现；② 无旧引擎实现类型名残留；
+  ③ `ProjectReference` 图闭合（目标须登记于 `slnx`）；④ 全仓无直接引用
+  `Microsoft.CodeAnalysis.CSharp` 的 Roslyn 组件宿主工程。
+  `scripts/verify-pack.ps1` 的 ① 同步改为 ④ 的判据。
+
+> **命名撞车提示**：R-1+2c 迁移时已删除的本地生成器工程**原名即为 `Mud.Feishu.AI.Tools`**
+> （见下方 Unreleased 记录）。本轮更名后该名称被本工具面工程复用，故上方历史条目中的
+> `Mud.Feishu.AI.Tools` 一律指**已删除的生成器工程**，与当前工程无关——阅读历史条目时需注意。
+
 ## [Unreleased] - AI 工具面生成引擎上游化 + `Source` 符号化（R-1+2c，2026-10-08）
 
 > 方案、四维评审（产品/架构/程序员/QA）、实施记录与迁移台账见

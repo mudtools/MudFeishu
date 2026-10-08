@@ -8,10 +8,10 @@
 using Mud.Feishu.AI.Channels;
 using Mud.Feishu.Abstractions.Conversations;
 using Mud.Feishu.AI.Conversations;
-using Mud.Feishu.AI.FeishuTools.Channels;
-using Mud.Feishu.AI.FeishuTools.Events;
+using Mud.Feishu.AI.Tools.Channels;
+using Mud.Feishu.AI.Tools.Events;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Channels;
+namespace Mud.Feishu.AI.Tools.Tests.Channels;
 
 /// <summary>
 /// 流式通道降级链测试（AI-FD-D12 P2D-2a）：卡片流能力不可用自动降级编辑通道（事件处理器零感知）、

@@ -7,9 +7,9 @@
 
 using System.Text.Json.Nodes;
 
-using Mud.Feishu.AI.FeishuTools.Tools;
+using Mud.Feishu.AI.Tools.Tools;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>
 /// R5 / F-8（错误可恢复性）+ S-10（工具结果中文可读性）断言。
@@ -74,7 +74,7 @@ public class ErrorRecoverabilityTests
     [Fact]
     public async Task ClosedSetInvalidValue_ShouldListAllLegalValues()
     {
-        var tools = new Mud.Feishu.AI.FeishuTools.Internal.DocxWriteTools(
+        var tools = new Mud.Feishu.AI.Tools.Internal.DocxWriteTools(
             new Moq.Mock<Mud.Feishu.IFeishuTenantV1Docx>().Object,
             new Moq.Mock<Mud.Feishu.IFeishuTenantV1DocxBlocks>().Object,
             Microsoft.Extensions.Options.Options.Create(new Mud.Feishu.AI.Agents.FeishuAgentOptions()));
@@ -125,7 +125,7 @@ public class ErrorRecoverabilityTests
     public void ToolExecutor_ShouldSerializeViaToolResultJson_NotRawToJsonString()
     {
         var source = File.ReadAllText(
-            Path.Combine(FindRepositoryRoot(), "Mud.Feishu.AI.FeishuTools", "Internal", "ToolExecutor.cs"));
+            Path.Combine(FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Internal", "ToolExecutor.cs"));
 
         source.Should().Contain(
             "ToolResultJson.ToText",

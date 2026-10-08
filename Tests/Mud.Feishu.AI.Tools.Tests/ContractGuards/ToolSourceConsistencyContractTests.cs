@@ -7,7 +7,7 @@
 
 using System.Reflection;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// <b>R5 / S-20</b>：<c>[FeishuTool(Source = …)]</c> 的<b>语义正确性</b>守卫 ——
@@ -44,7 +44,7 @@ public class ToolSourceConsistencyContractTests
     [Fact]
     public void DeclaredSourceInterface_ShouldBeInjectedByTheBoundExecutor()
     {
-        var assembly = typeof(Mud.Feishu.AI.FeishuTools.Internal.DocxWriteTools).Assembly;
+        var assembly = typeof(Mud.Feishu.AI.Tools.Internal.DocxWriteTools).Assembly;
 
         var executorByInterface = MapExecutorByToolInterface(assembly);
         var violations = new List<string>();
@@ -121,7 +121,7 @@ public class ToolSourceConsistencyContractTests
     [Fact]
     public void Guard_ShouldDetectMismatch_WhenSourceInterfaceIsNotInjected()
     {
-        var docxWriteTools = typeof(Mud.Feishu.AI.FeishuTools.Internal.DocxWriteTools);
+        var docxWriteTools = typeof(Mud.Feishu.AI.Tools.Internal.DocxWriteTools);
 
         var injected = docxWriteTools
             .GetConstructors()

@@ -6,7 +6,7 @@
 // -----------------------------------------------------------------------
 
 using System.Text.Json;
-using Mud.Feishu.AI.FeishuTools.Tools;
+using Mud.Feishu.AI.Tools.Tools;
 using Mud.Feishu.DataModels.Approval;
 using Mud.Feishu.DataModels.ApprovalQuery;
 using Mud.Feishu.DataModels.ApprovalTask;
@@ -19,7 +19,7 @@ using Mud.Feishu.DataModels.Drive.Files;
 using Mud.Feishu.DataModels.Drive.Folder;
 using Mud.Feishu.DataModels.Spreadsheets;
 
-namespace Mud.Feishu.AI.FeishuTools.Internal;
+namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
 /// Bitable 写工具执行器（<c>bitable.add_record</c>）：模型 JSON 字符串 →

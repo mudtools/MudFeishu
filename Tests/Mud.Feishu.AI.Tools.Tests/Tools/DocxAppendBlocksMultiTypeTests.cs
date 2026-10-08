@@ -7,10 +7,10 @@
 
 using Moq;
 
-using Mud.Feishu.AI.FeishuTools.Internal;
+using Mud.Feishu.AI.Tools.Internal;
 using Mud.Feishu.DataModels.Docx;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>
 /// R5 / F-5：docx.append_blocks 多块 / 多块型升级的行为断言（F-5 DoD）。

@@ -7,7 +7,7 @@
 
 using System.Text.Json;
 
-namespace Mud.Feishu.AI.FeishuTools.Tools;
+namespace Mud.Feishu.AI.Tools.Tools;
 
 /// <summary>
 /// <b>R5 / B-2 + F-10</b>：字节型下载的"<b>错误体伪装成文件</b>"防线。

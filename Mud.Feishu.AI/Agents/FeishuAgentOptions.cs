@@ -70,7 +70,7 @@ public sealed class FeishuAgentOptions
 
     /// <summary>
     /// 工具白名单——<c>MapTool</c> 的配置面等价物（消费点：
-    /// <c>Mud.Feishu.AI.FeishuTools</c> 的 <c>AddFeishuReadonlyTools</c> 逐名启用注册表工具）。
+    /// <c>Mud.Feishu.AI.Tools</c> 的 <c>AddFeishuReadonlyTools</c> 逐名启用注册表工具）。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -98,7 +98,7 @@ public sealed class FeishuAgentOptions
 
     /// <summary>
     /// 写类工具白名单（Phase 2 §4：写工具白名单单独键控，默认空=不启用任何写工具；
-    /// 消费点：<c>Mud.Feishu.AI.FeishuTools</c> 注册扩展——仅写类（<c>IsWrite</c>）工具可经本名单
+    /// 消费点：<c>Mud.Feishu.AI.Tools</c> 注册扩展——仅写类（<c>IsWrite</c>）工具可经本名单
     /// <c>MapTool</c> 启用，且必须先过 <c>IToolExecutionAuthorizer</c> 强制门禁）。
     /// </summary>
     /// <remarks>

@@ -7,7 +7,7 @@
 
 using System.Text.RegularExpressions;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// <b>R5 / S-13（根治）</b>：每个执行器类生成的 <c>AddFeishuXxxCore</c> 都<b>必须</b>被
@@ -29,10 +29,10 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 /// </remarks>
 public class ToolDomainCoresWiringContractTests
 {
-    private const string InternalDirectory = "Mud.Feishu.AI.FeishuTools/Internal";
+    private const string InternalDirectory = "Mud.Feishu.AI.Tools/Internal";
 
     private const string ExtensionsFile =
-        "Mud.Feishu.AI.FeishuTools/Extensions/FeishuToolsServiceCollectionExtensions.cs";
+        "Mud.Feishu.AI.Tools/Extensions/FeishuToolsServiceCollectionExtensions.cs";
 
     /// <summary>从执行器类声明反推应被聚合的 Core 名（XxxTools → AddFeishuXxxCore）。</summary>
     private static SortedSet<string> ReadExpectedCoreNames()

@@ -7,7 +7,7 @@
 
 using System.Text.RegularExpressions;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// <b>R5 / B-7</b>：事件 DTO 的<b>文件名 == 首个公共类型名</b>守卫（<c>AGENTS.md</c> 文件头规范的自动化）。

@@ -145,7 +145,7 @@ public static class FeishuAgentServiceCollectionExtensions
                 ? sp.GetRequiredService<IChatClient>()
                 : sp.GetRequiredKeyedService<IChatClient>(options.ModelServiceKey);
 
-            // 工具来源：容器内全部 FeishuAgentToolSource（如 Mud.Feishu.AI.FeishuTools 的白名单桥）。
+            // 工具来源：容器内全部 FeishuAgentToolSource（如 Mud.Feishu.AI.Tools 的白名单桥）。
             // 未注册工具包时为空集——保持 Phase 0 裸模型行为。
             var sources = sp.GetServices<FeishuAgentToolSource>().ToArray();
             var tools = sources

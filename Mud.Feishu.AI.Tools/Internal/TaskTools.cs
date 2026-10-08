@@ -7,9 +7,9 @@
 
 using Mud.Feishu.DataModels.Tasks;
 using Mud.Feishu.DataModels.TasksComments;
-using Mud.Feishu.AI.FeishuTools.Tools;
+using Mud.Feishu.AI.Tools.Tools;
 
-namespace Mud.Feishu.AI.FeishuTools.Internal;
+namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
 /// Task 工具执行器（<c>task.create_task</c>（tenant）/ <c>task.list_my_tasks</c>（<b>user 身份</b>），

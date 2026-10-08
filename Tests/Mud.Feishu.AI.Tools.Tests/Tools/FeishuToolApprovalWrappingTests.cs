@@ -8,7 +8,7 @@
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>
 /// P4-1：写类工具必须被 MEAI <see cref="ApprovalRequiredAIFunction"/> 包裹，

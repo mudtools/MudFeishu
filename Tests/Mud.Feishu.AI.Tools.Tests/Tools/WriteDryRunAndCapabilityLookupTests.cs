@@ -9,7 +9,7 @@ using Mud.Feishu.DataModels.Approval;
 using Mud.Feishu.DataModels.Bitable;
 using Mud.Feishu.DataModels.Messages;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>
 /// 写操作预演（AT-F13①，§8.2 #10）与能力出处元工具（AT-F12，§8.2 #9）。

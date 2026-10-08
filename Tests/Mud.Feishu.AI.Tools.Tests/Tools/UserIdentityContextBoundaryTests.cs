@@ -7,7 +7,7 @@
 
 using Mud.Feishu.Abstractions;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>
 /// WP5 §5.3（R4 方案中<b>最危险的一处</b>）：user 身份工具执行期的

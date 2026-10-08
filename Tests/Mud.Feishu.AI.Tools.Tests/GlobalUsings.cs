@@ -11,12 +11,14 @@ global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Options;
 global using Moq;
 global using Mud.Feishu.AI.Agents;
-global using Mud.Feishu.AI.FeishuTools;
-global using Mud.Feishu.AI.FeishuTools.Internal;
-global using Mud.Feishu.AI.FeishuTools.Tools;
 global using Mud.Feishu.AI.Knowledge;
 global using Mud.Feishu.AI.Tools;
 global using Mud.Feishu.AI.Tools.Generated;
+// 执行器绑定特性独占 Handlers/ 命名空间（与 [FeishuTool] 所在的 Mud.Feishu.AI.Tools 刻意不同——
+// 剖面靠这两个命名空间差异区分「工具声明面」与「执行器绑定面」，塌陷即失去可寻址性）。
+global using Mud.Feishu.AI.Tools.Handlers;
+global using Mud.Feishu.AI.Tools.Internal;
+global using Mud.Feishu.AI.Tools.Tools;
 global using Mud.Feishu.Abstractions.Observability;
 global using Mud.Feishu.DataModels;
 global using Xunit;

@@ -5,7 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// R5 / F-9（DoD 第①项）：<b>每个 L1 域资产都必须含三个固定小节</b>——
@@ -39,7 +39,7 @@ public class GuidanceStructureContractTests
     {
         var directory = Path.Combine(
             FindRepositoryRoot(),
-            "Mud.Feishu.AI.FeishuTools", "Guidance");
+            "Mud.Feishu.AI.Tools", "Guidance");
 
         var files = Directory
             .GetFiles(directory, "*.md", SearchOption.TopDirectoryOnly)
@@ -95,7 +95,7 @@ public class GuidanceStructureContractTests
     public void Guard_ShouldActuallyMatchTheSectionHeadings()
     {
         var directory = Path.Combine(
-            FindRepositoryRoot(), "Mud.Feishu.AI.FeishuTools", "Guidance");
+            FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Guidance");
 
         var sample = File.ReadAllText(Path.Combine(directory, "im.md"));
         foreach (var section in RequiredSections)
@@ -111,7 +111,7 @@ public class GuidanceStructureContractTests
     [Fact]
     public void EveryL2ReferenceAsset_ShouldAlsoBeStructured()
     {
-        var root = Path.Combine(FindRepositoryRoot(), "Mud.Feishu.AI.FeishuTools", "Guidance");
+        var root = Path.Combine(FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Guidance");
 
         var referenceFiles = Directory.GetFiles(root, "*.md", SearchOption.AllDirectories);
         var references = referenceFiles

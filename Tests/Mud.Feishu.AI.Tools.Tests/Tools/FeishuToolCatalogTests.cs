@@ -6,11 +6,11 @@
 // -----------------------------------------------------------------------
 
 using System.Text.Json;
-using Mud.Feishu.AI.FeishuTools;
-using Mud.Feishu.AI.FeishuTools.Tools;
+using Mud.Feishu.AI.Tools;
+using Mud.Feishu.AI.Tools.Tools;
 using Mud.Feishu.AI.Tools;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>
 /// 工具目录与 Schema 导出测试（AI-FD-D12 P1D-4）：目录枚举与契约表一致；

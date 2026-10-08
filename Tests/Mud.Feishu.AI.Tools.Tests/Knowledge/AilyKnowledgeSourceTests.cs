@@ -7,10 +7,10 @@
 
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Mud.Feishu.AI.FeishuTools.Tools;
+using Mud.Feishu.AI.Tools.Tools;
 using Mud.Feishu.AI.Knowledge;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Knowledge;
+namespace Mud.Feishu.AI.Tools.Tests.Knowledge;
 
 /// <summary>
 /// JSON 感知截断测试（AI-FD-D12 P1D-2a）与 RAG 引用回链投影测试（P2D-4c）。

@@ -6,12 +6,12 @@
 // -----------------------------------------------------------------------
 
 using System.Text.Json;
-using Mud.Feishu.AI.FeishuTools.Internal;
+using Mud.Feishu.AI.Tools.Internal;
 using Mud.Feishu.DataModels.Approval;
 using Mud.Feishu.DataModels.Bitable;
 using Mud.Feishu.DataModels.Messages;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>
 /// T4-1（WP4 / AT-F13② / F-1）：写工具幂等键的真实调用链路用例——

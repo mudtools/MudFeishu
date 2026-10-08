@@ -11,7 +11,6 @@ using Mud.Feishu.Abstractions.Conversations;
 using Mud.Feishu.AI.Agents;
 using Mud.Feishu.AI.Channels;
 using Mud.Feishu.AI.Extensions;
-using Mud.Feishu.AI.FeishuTools;
 using Mud.Feishu.AI.Tools;
 
 namespace Mud.Feishu.Agent.Demo;

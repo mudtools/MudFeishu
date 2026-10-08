@@ -5,7 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.AI.FeishuTools.Curation;
+namespace Mud.Feishu.AI.Tools.Curation;
 
 // <summary>
 // Phase 2 写类工具接口集（§3.3：发消息 / 新增记录 / 发起审批实例，全部 <c>IsWrite = true</c>）。

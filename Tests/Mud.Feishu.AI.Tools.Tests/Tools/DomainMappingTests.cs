@@ -10,7 +10,7 @@ using Mud.Feishu.DataModels.Search;
 using Mud.Feishu.DataModels.Spreadsheets;
 using Mud.Feishu.DataModels.Wiki;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>
 /// Search/IM/Wiki/Docx/Sheets 分域映射单测（Phase 1 §7）：

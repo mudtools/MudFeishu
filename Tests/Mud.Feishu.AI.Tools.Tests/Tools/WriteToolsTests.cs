@@ -6,12 +6,12 @@
 // -----------------------------------------------------------------------
 
 using System.Text.Json;
-using Mud.Feishu.AI.FeishuTools.Internal;
+using Mud.Feishu.AI.Tools.Internal;
 using Mud.Feishu.DataModels.Approval;
 using Mud.Feishu.DataModels.Bitable;
 using Mud.Feishu.DataModels.Messages;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>
 /// 写类工具分域映射单测（Phase 2 §3.3）：扁平参数 → 请求体构造 → 解包投影，

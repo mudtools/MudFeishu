@@ -7,7 +7,7 @@
 
 using System.Text.RegularExpressions;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// <b>R5 / B-8</b>：<b>执行器类"域纯度"守卫</b> —— 每个执行器类只服务<b>一个</b>工具域。
@@ -32,10 +32,10 @@ namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
 public class ExecutorDomainPurityContractTests
 {
     private static readonly string InternalDirectory = Path.Combine(
-        FindRepositoryRoot(), "Mud.Feishu.AI.FeishuTools", "Internal");
+        FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Internal");
 
     private static readonly string ToolInterfacesDirectory = Path.Combine(
-        FindRepositoryRoot(), "Mud.Feishu.AI.FeishuTools", "Curation");
+        FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Curation");
 
     /// <summary><b>断言一</b>：每个执行器类绑定的工具必须<b>同属一个域</b>。</summary>
     [Fact]

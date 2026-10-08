@@ -5,9 +5,9 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Mud.Feishu.AI.FeishuTools.Tests.Tools;
+using Mud.Feishu.AI.Tools.Tests.Tools;
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// 域注册器 / DI 装配产物契约守卫（<c>ToolRegistrarEmitter</c> →
@@ -85,7 +85,7 @@ public class ToolRegistrarContractGuards
     {
         var source = File.ReadAllText(Path.Combine(
             FindRepositoryRoot(),
-            "Mud.Feishu.AI.FeishuTools",
+            "Mud.Feishu.AI.Tools",
             "Registration",
             "FeishuToolDomainRegistrars.cs"));
 
@@ -104,7 +104,7 @@ public class ToolRegistrarContractGuards
     {
         var source = File.ReadAllText(Path.Combine(
             FindRepositoryRoot(),
-            "Mud.Feishu.AI.FeishuTools",
+            "Mud.Feishu.AI.Tools",
             "Extensions",
             "FeishuToolsServiceCollectionExtensions.cs"));
 

@@ -7,7 +7,7 @@
 
 using System.Text;
 
-namespace Mud.Feishu.AI.FeishuTools.Tools;
+namespace Mud.Feishu.AI.Tools.Tools;
 
 /// <summary>
 /// 写操作预演（<c>dry_run</c>，AT-F13①）：返回"将下发什么"，但<b>不调用下游</b>。

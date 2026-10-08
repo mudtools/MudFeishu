@@ -6,9 +6,9 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.DataModels.Calendar;
-using Mud.Feishu.AI.FeishuTools.Tools;
+using Mud.Feishu.AI.Tools.Tools;
 
-namespace Mud.Feishu.AI.FeishuTools.Internal;
+namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
 /// Calendar 三工具执行器（<c>calendar.create_event</c> / <c>calendar.find_free_slots</c> /

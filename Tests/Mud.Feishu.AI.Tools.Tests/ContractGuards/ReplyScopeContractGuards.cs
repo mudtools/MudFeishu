@@ -5,7 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.AI.FeishuTools.Tests.ContractGuards;
+namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
 /// R3-1/R3-2（P0）防复发守卫：<b>回复路径必须收口到基类租户作用域</b>。
@@ -28,7 +28,7 @@ public class ReplyScopeContractGuards
     private static readonly string[] ScannedProjects =
     [
         "Mud.Feishu.AI",
-        "Mud.Feishu.AI.FeishuTools",
+        "Mud.Feishu.AI.Tools",
     ];
 
     /// <summary>T11：所有 <c>ReplyAsync</c> 覆写体必须先建立 SDK 租户作用域。</summary>

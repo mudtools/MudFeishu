@@ -15,4 +15,10 @@
     <ProjectReference Include="..\..\Mud.Feishu\Mud.Feishu.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- 本 Demo 的可测逻辑（配置解析、授权器、审计 sink、剧本、REPL 解析、渲染器）
+         以 internal 暴露给同仓库测试工程；不公开 API 面，也不参与打包。 -->
+    <InternalsVisibleTo Include="Mud.Feishu.Agent.Demo.Tests" />
+  </ItemGroup>
+
 </Project>

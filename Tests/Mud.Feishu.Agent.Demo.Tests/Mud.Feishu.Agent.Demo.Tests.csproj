@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- 单 TFM：被测工程 Demos/Mud.Feishu.Agent.Demo 只面向 net10.0。
+         用 TargetFrameworks（复数）与既有测试工程同款写法，保证 msbuild 求值路径一致。 -->
+    <TargetFrameworks>net10.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <AssemblyName>Mud.Feishu.Agent.Demo.Tests</AssemblyName>
+    <RootNamespace>Mud.Feishu.Agent.Demo.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 契约守卫与单测都直接断言 Demo 的 internal 成员（Demo 侧已 InternalsVisibleTo 本工程名）。 -->
+    <ProjectReference Include="..\..\Demos\Mud.Feishu.Agent.Demo\Mud.Feishu.Agent.Demo.csproj" />
+  </ItemGroup>
+
+</Project>

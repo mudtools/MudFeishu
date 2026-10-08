@@ -277,9 +277,7 @@ public class FeishuDriveService : IFeishuDriveService
 
         try
         {
-            // 同上：用具名参数跳过 [Query("async")] bool? async，保持「同步删除」语义。
-            var result = await _driveFiles.DeleteFileByFileTokenAsync(
-                folderToken, "folder", cancellationToken: cancellationToken);
+            var result = await _driveFiles.DeleteFileByFileTokenAsync(folderToken, "folder", cancellationToken);
 
             if (result == null)
             {

@@ -43,6 +43,14 @@ public static class Program
             return;
         }
 
+        // Phase 3 文档业务智能体（写闭环 + 三道安全闸 + 剧本驱动）：FEISHU_DEMO_DOC_AGENT=1 时启用。
+        // 放置位置刻意在「事件模式之后、裸模型之前」，保持「能力由弱到强」的阅读顺序。
+        if (string.Equals(Environment.GetEnvironmentVariable("FEISHU_DEMO_DOC_AGENT"), "1", StringComparison.Ordinal))
+        {
+            await DocAgentDemo.RunAsync();
+            return;
+        }
+
         var modelId = Environment.GetEnvironmentVariable("FEISHU_AI_MODEL_KEY")
             ?? throw new InvalidOperationException("请先设置 FEISHU_AI_MODEL_KEY");
         var apiKey = Environment.GetEnvironmentVariable("FEISHU_AI_API_KEY")

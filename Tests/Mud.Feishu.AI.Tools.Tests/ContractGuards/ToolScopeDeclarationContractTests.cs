@@ -62,7 +62,7 @@ public class ToolScopeDeclarationContractTests
     [Fact]
     public void DeclaredScopeSet_ShouldMatchRegisteredBaseline()
     {
-        const int ExpectedScopeCount = 35; // 2026-10-08 实测（R6/S2：Okr 域引入 6 个新 scope）
+        const int ExpectedScopeCount = 41; // 2026-10-08 实测（R6/S3：VideoConferencing 域引入 6 个新 scope）
 
         var declared = ReadDeclaredScopes();
         declared.Should().HaveCount(

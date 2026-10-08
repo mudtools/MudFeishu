@@ -89,9 +89,9 @@ internal sealed class CapabilityLookupTools(IOptions<FeishuAgentOptions> options
                 ["matched_groups"] = matched,
                 ["curated_tools"] = curatedTools,
                 ["actionable"] = curatedTools.Count > 0,
-                ["note"] = "仅回答能力分组级的存在性：本工具不返回方法名与请求构造（方法名不在编译期产物中）。"
+                ["note"] = "回答能力分组级的存在性。要查方法级签名（HTTP/路由/参数），用 feishu.schema_read。"
                     + "curated_tools 为空表示该能力尚未被策展为工具，本宿主的工具集里没有它——不要臆造调用。"
-                    + "actionable=true 表示有对应工具可直接调用；actionable=false 表示能力存在但未策展，须如实告知用户并给出替代路径。",
+                    + "actionable=true 表示有对应工具可直接调用；actionable=false 表示能力存在但未策展，可用 feishu.schema_read + feishu.api_call 兜底。",
             };
 
             return Task.FromResult(FeishuToolResult.FromText(

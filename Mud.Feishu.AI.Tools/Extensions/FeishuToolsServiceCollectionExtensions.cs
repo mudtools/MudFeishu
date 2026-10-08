@@ -110,6 +110,17 @@ public static class FeishuToolsServiceCollectionExtensions
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure).AddFeishuOkrToolsCore();
 
+    /// <summary>按域注册 VideoConferencing 只读工具（6 个只读，R6/S3；写工具经 <see cref="AddFeishuWriteTools"/>）。</summary>
+    /// <remarks>
+    /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**（S-13 的同款失败形态）。
+    /// 注意：<c>vc.invite_participants</c> / <c>vc.end_meeting</c> 是 <b>user 身份</b>工具，
+    /// 宿主启用它们时必须在 <c>FeishuAgent:AllowedIdentities</c> 放行 <c>user</c>，否则装配期 fail-fast。
+    /// </remarks>
+    public static IServiceCollection AddFeishuVcTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure).AddFeishuVcToolsCore();
+
     /// <summary>按域注册 Search 工具（1 个只读）。</summary>
     public static IServiceCollection AddFeishuSearchTools(
         this IServiceCollection services,
@@ -454,6 +465,12 @@ public static class FeishuToolsServiceCollectionExtensions
                     // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，
                     // 漏加即「工具静默不入注册表」（ToolDomainCoresWiringContractTests 会报红）。
                     .AddFeishuOkrToolsCore()
+
+                    // R6 / S3：VideoConferencing 只读执行器 VcTools（6 个工具）。
+                    .AddFeishuVcToolsCore()
+
+                    // R6 / S5：运行时 schema 自省执行器 SchemaReadTools（feishu.schema_read，只读编译期目录）。
+                    .AddFeishuSchemaReadToolsCore()
                     .AddFeishuCapabilityLookupToolsCore();
 
     /// <summary>
@@ -482,7 +499,15 @@ public static class FeishuToolsServiceCollectionExtensions
 
             // R6 / S2：OKR 域写入执行器 OkrWriteTools（6 个工具）。
             // 与 MailTools 同属「读写混合域」——按链拆分的取舍见 AddFeishuWriteToolCores 的 remarks。
-            .AddFeishuOkrWriteToolsCore();
+            .AddFeishuOkrWriteToolsCore()
+
+            // R6 / S3：VideoConferencing 写入执行器 VcWriteTools（4 个工具，其中含 2 个 user 身份工具）。
+            .AddFeishuVcWriteToolsCore()
+
+            // R6 / S4：万能兜底调用执行器 GenericApiTools（feishu.api_call）。
+            // 归写链的原因：它有侧效应（IsWrite=true）⇒ 必须经 WriteAllowList 键控 + 授权门禁，
+            // 且**不**出现在只读链里（默认装配不会意外获得"任意调用"的能力）。
+            .AddFeishuGenericApiToolsCore();
 
     /// <summary>执行链协作件 + 注册表 + 工具源桥（幂等；各域扩展共同前置）。</summary>
     private static IServiceCollection AddFeishuToolInfrastructure(
@@ -531,6 +556,25 @@ public static class FeishuToolsServiceCollectionExtensions
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure).AddFeishuCapabilityLookupToolsCore();
+
+    /// <summary>
+    /// 注册运行时 schema 自省工具（<c>feishu.schema_read</c>，R6 / S5）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 与 <see cref="AddFeishuCapabilityTools"/> 同属"元工具显式入口"：数据源是编译期方法目录
+    /// （<c>FeishuToolMethodCatalog</c>，1228 个方法的结构化事实），<b>不依赖任何飞书客户端</b>，
+    /// 也不随域缺席而软缺席。全域入口 <see cref="AddFeishuTools"/> 已包含它。
+    /// </para>
+    /// <para>
+    /// 万能兜底 <c>feishu.api_call</c> 在<b>写链</b>（<see cref="AddFeishuWriteTools"/>）——
+    /// 它有侧效应，需 <c>WriteAllowList</c> 键控与授权器放行，不在本入口内。
+    /// </para>
+    /// </remarks>
+    public static IServiceCollection AddFeishuSchemaReadTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure).AddFeishuSchemaReadToolsCore();
 
     private static FeishuToolRegistry BuildRegistry(IServiceProvider sp, Action<FeishuToolRegistry>? configure)
     {

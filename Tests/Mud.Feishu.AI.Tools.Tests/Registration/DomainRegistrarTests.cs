@@ -140,9 +140,13 @@ public class DomainRegistrarTests
     .AddFeishuMinutesReadTools()
             // R6 / S2：Okr 只读域同样是独立入口（写面由 AddFeishuWriteTools 覆盖）。
             .AddFeishuOkrTools()
+            // R6 / S3：VideoConferencing 只读域同理（写面含 user 身份工具，由 AddFeishuWriteTools 覆盖）。
+            .AddFeishuVcTools()
             // 能力出处元工具是一个独立入口：它不属于任何业务域，
             // 故"全域 = 逐域联合"的等价性要求这里也显式调一次。
             .AddFeishuCapabilityTools()
+            // R6/S5：运行时 schema 自省同属元工具独立入口（api_call 在 AddFeishuWriteTools 内）。
+            .AddFeishuSchemaReadTools()
             .AddFeishuWriteTools()
             .BuildServiceProvider();
 

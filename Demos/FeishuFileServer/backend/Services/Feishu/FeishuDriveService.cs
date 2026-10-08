@@ -225,10 +225,10 @@ public class FeishuDriveService : IFeishuDriveService
 
         try
         {
-            // async 参数（`[Query("async")] bool?`）为 SDK 后增：显式传 null = 同步删除，
-            // 与既有"同步删除"语义一致（省略该实参会把 cancellationToken 顶到第 3 个形参上而编译失败）。
+            // 接口签名含可选参数 [Query("async")] bool? async = null（同步删除即不传该 Query）。
+            // 此处必须用具名参数跳过它，否则第 3 参会被解析为 async（CS1503）。
             var result = await _driveFiles.DeleteFileByFileTokenAsync(
-                fileToken, "file", async: null, cancellationToken: cancellationToken);
+                fileToken, "file", cancellationToken: cancellationToken);
 
             if (result == null)
             {
@@ -277,8 +277,9 @@ public class FeishuDriveService : IFeishuDriveService
 
         try
         {
+            // 同上：用具名参数跳过 [Query("async")] bool? async，保持「同步删除」语义。
             var result = await _driveFiles.DeleteFileByFileTokenAsync(
-                folderToken, "folder", async: null, cancellationToken: cancellationToken);
+                folderToken, "folder", cancellationToken: cancellationToken);
 
             if (result == null)
             {

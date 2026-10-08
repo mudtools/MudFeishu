@@ -21,7 +21,18 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Mud.HttpUtils" Version="3.0.3" />
+        <!-- 产品贡献描述（FeishuOpenTelemetryExtensions.CreateContribution）与选项映射
+             （FeishuOpenTelemetryOptionsMapper）为 internal，供测试直读：前者锁定
+             IncludeMudHttpUtils → IncludeMudHttpSources 与「精确 Meter Mud.Feishu」契约，
+             后者锁定「每个公开配置属性都被读取」。 -->
+        <InternalsVisibleTo Include="Mud.Feishu.OpenTelemetry.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- 可观测性共享装配内核（MudObservabilityBootstrap / MudObservabilityDefaults 等）由上游包提供；
+             本包不再直接引用 Mud.HttpUtils（MudHttpActivitySource/MudHttpMeter 由内核内部使用）。
+             ⚠ 全仓 Mud.HttpUtils* 必须同版本（守卫 TokenMultiAppContractGuards.MudHttpUtils_PackageReference_ShouldBeSingleVersion）。 -->
+        <PackageReference Include="Mud.HttpUtils.OpenTelemetry" Version="3.0.3" />
         <PackageReference Include="OpenTelemetry" Version="1.16.0" />
         <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.16.0" />
         <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.16.0" />

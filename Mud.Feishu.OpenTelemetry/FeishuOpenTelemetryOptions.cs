@@ -9,6 +9,10 @@ using Microsoft.Extensions.Options;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
+using Mud.HttpUtils.OpenTelemetry;
+// 别名消歧：Mud.HttpUtils.OpenTelemetry 也导出 OtlpExportProtocol，与本文件的 OTel 相关命名空间
+// 形成潜在二义（CS0104），统一用别名引用上游枚举。
+using MudOtlpExportProtocol = Mud.HttpUtils.OpenTelemetry.OtlpExportProtocol;
 
 namespace Mud.Feishu.OpenTelemetry;
 
@@ -61,6 +65,35 @@ public class FeishuOpenTelemetryOptions : IValidateOptions<FeishuOpenTelemetryOp
     public Uri? OtlpEndpoint { get; set; } = new("http://localhost:4317");
 
     /// <summary>
+    /// OTLP 导出协议。默认 <c>Grpc</c>。
+    /// 内网仅开放 4318 或走 HTTP/Protobuf 的 collector 时设为 <c>HttpProtobuf</c>。
+    /// </summary>
+    public MudOtlpExportProtocol OtlpExportProtocol { get; set; } = MudOtlpExportProtocol.Grpc;
+
+    /// <summary>
+    /// 自定义 OTLP Headers（如托管型 collector 必需的 <c>Authorization: Bearer &lt;token&gt;</c>）。
+    /// 为 <c>null</c> 或空则不设置额外头。
+    /// </summary>
+    public IDictionary<string, string>? OtlpHeaders { get; set; }
+
+    /// <summary>
+    /// 是否将 OTLP 导出器的导出超时设为较短时间（5 秒），便于开发调试。默认 <c>false</c>。
+    /// </summary>
+    public bool UseShortExporterTimeout { get; set; }
+
+    /// <summary>
+    /// OTLP 每批导出最大条目数。设为 <c>null</c> 使用 SDK 默认值（512）。仅当 <c>&gt;0</c> 时生效。
+    /// 负数由共享内核在启动期拦截（<c>OptionsValidationException</c>）。
+    /// </summary>
+    public int? ExportBatchSize { get; set; }
+
+    /// <summary>
+    /// OTLP 批量导出间隔（毫秒）。设为 <c>null</c> 使用 SDK 默认值（5000ms）。仅当 <c>&gt;0</c> 时生效。
+    /// 负数由共享内核在启动期拦截（<c>OptionsValidationException</c>）。
+    /// </summary>
+    public int? ExportIntervalMilliseconds { get; set; }
+
+    /// <summary>
     /// 服务名称，用于 OTel Resource 属性 <c>service.name</c>。默认 <c>"Mud.Feishu.Application"</c>。
     /// </summary>
     public string ServiceName { get; set; } = "Mud.Feishu.Application";
@@ -101,6 +134,15 @@ public class FeishuOpenTelemetryOptions : IValidateOptions<FeishuOpenTelemetryOp
     /// 验证配置有效性
     /// </summary>
     /// <returns>验证结果，失败时返回错误信息</returns>
+    /// <remarks>
+    /// <para>由 <see cref="FeishuOpenTelemetryExtensions"/> 在**注册期显式调用**（CFG-10 口径：本类
+    /// 注册进 DI 的 <see cref="IValidateOptions{T}"/> 永不被 .NET options 管道触发，因为扩展方法把预构建实例
+    /// 经 <c>OptionsWrapper</c> 直接注册为 <see cref="IOptions{T}"/>），失败即抛
+    /// <see cref="OptionsValidationException"/>，使非法配置在启动期即失败而非静默。</para>
+    /// <para><see cref="SamplingRatio"/> 越界由扩展方法先行拦截并抛
+    /// <see cref="ArgumentOutOfRangeException"/>（保留既有异常语义与 <c>paramName</c>）。</para>
+    /// <para>本方法同时保留以供宿主自行接线（如 <c>AddOptions&lt;T&gt;().ValidateOnStart()</c>）。</para>
+    /// </remarks>
     public ValidateOptionsResult Validate(string? name, FeishuOpenTelemetryOptions options)
     {
         var failures = new List<string>();

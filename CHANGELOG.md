@@ -1,5 +1,72 @@
 # Mud.Feishu 更新日志
 
+## [Unreleased] - Demo 编译错误修复（2026-10-08）
+
+> 与本次 OpenTelemetry 迁移无关的**既有**缺陷，修复后全解决方案 Release 构建恢复 0 错误。
+
+- **`Demos/FeishuFileServer/backend/Services/Feishu/FeishuDriveService.cs`**：`DeleteFileAsync` / `DeleteFolderAsync`
+  调用 `IFeishuV1DriveFiles.DeleteFileByFileTokenAsync` 时把 `cancellationToken` 作为第 3 个位置参数传入，
+  而该接口自 2026-10-01 起第 3 参为可选的 `[Query("async")] bool? async = null` ⇒ `CS1503`
+  （`CancellationToken` 无法转换为 `bool?`），全解决方案构建恒 2 个错误。
+  改为**具名参数** `cancellationToken: cancellationToken`（不传 `async`，保持「同步删除」语义与修复前一致）。
+
+## [Unreleased] - OpenTelemetry 共享装配内核迁移（2026-10-08）
+
+> 方案见 `.docs/MudFeishu-OpenTelemetry-SharedKernel-Migration-Plan-3.1.0.md`
+> （上游内核契约见 `D:/Repos/MudHttpUtils/.docs/OpenTelemetry共享装配内核抽取方案_3.1.0.md`）。
+> **依赖前置**：`Mud.HttpUtils 3.0.3`（含新增的 `Mud.HttpUtils.OpenTelemetry` 共享内核）已在上游落地，
+> 本仓全量升级至同一版本；未发布前 CI 还原需可访问该版本的包源。
+
+### ⚠️ 行为变更登记（宿主可感）
+
+- **【P1】非法配置改为启动期抛错（此前静默通过）**：`AddFeishuOpenTelemetry` 现在在**注册期显式执行**
+  `FeishuOpenTelemetryOptions.Validate`，失败即抛 `OptionsValidationException`。此前注册进 DI 的
+  `IValidateOptions<FeishuOpenTelemetryOptions>` 从不被触发（扩展方法把预构建实例经 `OptionsWrapper`
+  直接注册为 `IOptions<>`，绕过 .NET options 校验管道），导致 `ServiceName`/`ServiceVersion`/
+  `DeploymentEnvironment` 为空、`OtlpEndpoint` 为相对 URI 等配置**静默生效**。
+  `SamplingRatio` 越界仍抛 `ArgumentOutOfRangeException`（`paramName = "SamplingRatio"`，语义与优先级不变）。
+- **【P2】`netstandard2.0` 下不再注册 ASP.NET Core Instrumentation**：该兜底上收至共享内核
+  （`#if NETSTANDARD2_0` 强制 `EnableAspNetCoreInstrumentation = false`），`netstandard2.0` 消费方的行为与
+  其他 TFM 一致化（此前 ns2.0 资产仍会调用 `AddAspNetCoreInstrumentation()`，该 TFM 下无 ASP.NET Core 语义）。
+- **【P2】导出器注册去重**：源/Meter 集合在内核内去重后注册，避免 `AddSource`/`AddMeter` 重复注册导致
+  同一 Activity/Metric 被重复采集（Span 翻倍）。
+- **单一入口约束（fail-fast）**：同一宿主**不得**同时调用 `AddFeishuOpenTelemetry` 与
+  `AddMudHttpOpenTelemetry`。二者都是「整条 OTel 管道」的装配入口，叠加会导致 Resource `service.name`
+  被覆盖、同一 Span 被两个 OTLP 导出器重复上报。内核现按产品名拒绝异产品重复注册（抛
+  `InvalidOperationException`）；同一产品重复注册幂等短路。仅使用飞书 SDK 的宿主调用本方法即可，
+  Mud.HttpUtils 的源与指标已由 `IncludeMudHttpUtils`（默认 `true`）覆盖。
+
+### ✨ 新增
+
+- **OTLP 导出增强面（5 个配置项）**：`OtlpExportProtocol`（`Grpc` / `HttpProtobuf`，内网仅开 4318 时必需）、
+  `OtlpHeaders`（托管型 collector 的 `Authorization` 等）、`UseShortExporterTimeout`（5s 短超时）、
+  `ExportBatchSize`、`ExportIntervalMilliseconds`（后两者映射
+  `BatchExportProcessorOptions<Activity>`，仅 `>0` 生效；负数在启动期抛 `OptionsValidationException`）。
+- **`FeishuOpenTelemetryOptionsMapper`**（internal）：产品选项 → 上游共享内核选项的逐属性显式映射
+  （选映射而非 options 继承，规避配置绑定源生成器对继承属性的未验证风险）。
+
+### ♻️ 重构
+
+- **`FeishuOpenTelemetryExtensions` 退化为薄壳**（约 200 行 → 约 160 行含文档）：装配（`AddOpenTelemetry` /
+  Resource / Sampler / 源与 Meter 注册 / Instrumentation 开关 / OTLP 导出器 / 批量导出 / ns2.0 兜底 /
+  重复入口守卫）全部委托上游共享内核，本包只保留「注册期校验 + 产品贡献描述 + 选项映射」。
+  两个公开重载的**签名、默认值、`sectionPath` 默认值、异常语义与 DI 面**（`IValidateOptions<>` /
+  `IOptions<>` 注册）逐项保持不变。
+- **依赖面收窄**：`Mud.Feishu.OpenTelemetry` 的直接 `Mud.HttpUtils` 引用替换为
+  `Mud.HttpUtils.OpenTelemetry 3.0.3`（`MudHttpActivitySource`/`MudHttpMeter` 由内核内部使用）。
+- 全仓 `Mud.HttpUtils*`（`Mud.HttpUtils` ×3、`Mud.HttpUtils.Generator` ×3）由 `3.0.0` 统一升至 `3.0.3`
+  （守卫 `TokenMultiAppContractGuards.MudHttpUtils_PackageReference_ShouldBeSingleVersion` 锁定单一版本）。
+
+### 🧪 测试
+
+- 新增 `FeishuOpenTelemetrySharedKernelTests`（11 例）：产品贡献契约（单根源 `Mud.Feishu` + **精确 Meter**
+  非通配 + `IncludeMudHttpUtils` → `IncludeMudHttpSources` 镜像）、映射逐属性完整性、注册期真校验
+  （空 `ServiceName` / 相对 `OtlpEndpoint` / 负数 `ExportIntervalMilliseconds`）、**单一入口禁令抛错**、
+  同产品幂等、既有 DI 面保留。
+- 既有 `Mud.Feishu.OpenTelemetry.Tests` 35 例（net8.0 + net10.0）**零修改**全绿，作为「迁移行为等价」回归证据。
+
+---
+
 ## [Unreleased] - Mud.Feishu.AI 审查缺陷修复与能力完善 R5（2026-10-02）
 
 > 方案、双视角复核与落地记录见 `.docs/AI/Mud.Feishu.AI-审查缺陷修复与能力完善方案-R5.md`

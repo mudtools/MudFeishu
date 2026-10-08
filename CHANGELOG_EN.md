@@ -1,5 +1,79 @@
 # Mud.Feishu Change Log
 
+## [Unreleased] - Demo build fix (2026-10-08)
+
+> A **pre-existing** defect unrelated to the OpenTelemetry migration; the full-solution Release build is
+> back to 0 errors.
+
+- **`Demos/FeishuFileServer/backend/Services/Feishu/FeishuDriveService.cs`**: `DeleteFileAsync` /
+  `DeleteFolderAsync` passed `cancellationToken` as the third positional argument of
+  `IFeishuV1DriveFiles.DeleteFileByFileTokenAsync`, but since 2026-10-01 that parameter is the optional
+  `[Query("async")] bool? async = null` ⇒ `CS1503` (`CancellationToken` cannot convert to `bool?`), leaving
+  the solution with a permanent 2-error build.
+  Fixed by using the named argument `cancellationToken: cancellationToken` (omitting `async`, which keeps the
+  synchronous-delete semantics identical to before).
+
+## [Unreleased] - OpenTelemetry shared composition kernel migration (2026-10-08)
+
+> Plan: `.docs/MudFeishu-OpenTelemetry-SharedKernel-Migration-Plan-3.1.0.md`
+> (upstream kernel contract: `D:/Repos/MudHttpUtils/.docs/OpenTelemetry共享装配内核抽取方案_3.1.0.md`).
+> **Prerequisite**: `Mud.HttpUtils 3.0.3` (which ships the new `Mud.HttpUtils.OpenTelemetry` shared kernel)
+> is available upstream; this repository upgrades every `Mud.HttpUtils*` declaration to that same version.
+
+### ⚠️ Behaviour changes (host-visible)
+
+- **Invalid configuration now fails at startup instead of silently passing.** `AddFeishuOpenTelemetry`
+  explicitly runs `FeishuOpenTelemetryOptions.Validate` during registration and throws
+  `OptionsValidationException` on failure. The `IValidateOptions<FeishuOpenTelemetryOptions>` registered in DI
+  was never invoked (the extension registers a pre-built instance through `OptionsWrapper` as `IOptions<>`,
+  bypassing the .NET options validation pipeline), so blank `ServiceName`/`ServiceVersion`/
+  `DeploymentEnvironment` and a relative `OtlpEndpoint` used to take effect silently. `SamplingRatio` out of
+  range still throws `ArgumentOutOfRangeException` with `paramName = "SamplingRatio"`.
+- **ASP.NET Core instrumentation is no longer registered for `netstandard2.0` consumers.** That guard moved
+  into the shared kernel (`#if NETSTANDARD2_0` forces `EnableAspNetCoreInstrumentation = false`), making the
+  `netstandard2.0` asset consistent with the other target frameworks.
+- **Source/Meter registration is de-duplicated** inside the kernel, preventing duplicate `AddSource`/`AddMeter`
+  registrations from collecting the same Activity/Metric twice.
+- **Single-entry rule (fail-fast).** A host must not call both `AddFeishuOpenTelemetry` and
+  `AddMudHttpOpenTelemetry`: both are whole-pipeline bootstrap entry points, and stacking them overwrites the
+  Resource `service.name` and reports every span twice. The kernel now rejects a second, different product
+  (`InvalidOperationException`) and short-circuits repeated calls for the same product. Feishu-only hosts only
+  need this method; Mud.HttpUtils sources/metrics are covered by `IncludeMudHttpUtils` (default `true`).
+
+### ✨ Added
+
+- **OTLP export surface (5 options)**: `OtlpExportProtocol` (`Grpc` / `HttpProtobuf`), `OtlpHeaders`
+  (e.g. `Authorization` for managed collectors), `UseShortExporterTimeout` (5s), `ExportBatchSize` and
+  `ExportIntervalMilliseconds` (mapped to `BatchExportProcessorOptions<Activity>`, applied only when `>0`;
+  negative values throw `OptionsValidationException` at startup).
+- **`FeishuOpenTelemetryOptionsMapper`** (internal): explicit property-by-property mapping into the upstream
+  kernel options (explicit mapping over options inheritance avoids the unverified inheritance behaviour of the
+  configuration binding source generator).
+
+### ♻️ Refactoring
+
+- **`FeishuOpenTelemetryExtensions` reduced to a thin shell.** All composition (AddOpenTelemetry / Resource /
+  Sampler / sources and meters / instrumentation switches / OTLP exporter / batch export / ns2.0 fallback /
+  duplicate-entry guard) is delegated to the upstream shared kernel; this package keeps only
+  "registration-time validation + product contribution + option mapping". Both public overloads keep their
+  signatures, defaults, `sectionPath` default, exception semantics and DI surface unchanged.
+- **Narrower dependency surface**: the direct `Mud.HttpUtils` reference became
+  `Mud.HttpUtils.OpenTelemetry 3.0.3`.
+- Every `Mud.HttpUtils*` declaration (3 × `Mud.HttpUtils`, 3 × `Mud.HttpUtils.Generator`) moved from `3.0.0`
+  to `3.0.3` (locked to a single version by
+  `TokenMultiAppContractGuards.MudHttpUtils_PackageReference_ShouldBeSingleVersion`).
+
+### 🧪 Tests
+
+- New `FeishuOpenTelemetrySharedKernelTests` (11 cases): contribution contract (single `Mud.Feishu` root +
+  **exact Meter** rather than a wildcard + `IncludeMudHttpUtils` → `IncludeMudHttpSources` mirror), mapper
+  completeness, registration-time validation, **single-entry enforcement**, idempotency, and preserved DI
+  surface.
+- The 35 existing `Mud.Feishu.OpenTelemetry.Tests` cases (net8.0 + net10.0) pass **unmodified** as the
+  behaviour-equivalence evidence for this migration.
+
+---
+
 ## [Unreleased] - Mud.Feishu.AI review remediation R4 (2026-10-01)
 
 > Plan and two-perspective verification (senior engineer / system architect):

@@ -18,7 +18,8 @@ Mud.Feishu OpenTelemetry 适配包，一键开启飞书 SDK 的分布式追踪�
 - ✅ **日志导出** - 可选的 OTLP 日志导出
 - ✅ **采样策略** - 支持 ParentBased + TraceIdRatioBased 采样
 - ✅ **资源标签** - 自动添加 `service.name`、`service.version`、`deployment.environment` 标签
-- ✅ **配置验证** - 内置 `IValidateOptions` 验证，支持 `ValidateOnStart`
+- ✅ **配置验证** - 注册期 fail-fast（非法配置抛 `OptionsValidationException`），并注册 `IValidateOptions` 供宿主接线 `ValidateOnStart`
+- ✅ **单一入口保护** - 由上游共享内核按产品名拒绝异产品重复注册，避免双管道重复上报
 - ✅ **灵活扩展** - 提供自定义配置委托，可追加/覆盖默认配置
 - ✅ **多框架支持** - 支持 .NET Standard 2.0、.NET 6.0、.NET 8.0、.NET 10.0
 - ✅ **原生 AOT 支持** - net8.0+ 一等公民支持 Native AOT 发布，指标与追踪源自动注册零反射
@@ -120,6 +121,11 @@ builder.Services.AddFeishuOpenTelemetry(builder.Configuration);
 | `EnableHttpClientInstrumentation` | bool | true | 是否启用 .NET HttpClient Instrumentation |
 | `EnableAspNetCoreInstrumentation` | bool | true | 是否启用 ASP.NET Core 入站请求 Instrumentation |
 | `OtlpEndpoint` | Uri? | `http://localhost:4317` | OTLP 导出端点，设为 null 则不配置 OTLP 导出器 |
+| `OtlpExportProtocol` | enum | `Grpc` | OTLP 导出协议（`Grpc` / `HttpProtobuf`；内网仅开放 4318 时用后者） |
+| `OtlpHeaders` | IDictionary? | null | 自定义 OTLP Headers（如托管型 collector 需要的 `Authorization`） |
+| `UseShortExporterTimeout` | bool | false | 是否使用 5 秒短导出超时（开发调试） |
+| `ExportBatchSize` | int? | null | 每批导出最大条目数，仅 `>0` 生效；负数启动期抛 `OptionsValidationException` |
+| `ExportIntervalMilliseconds` | int? | null | 批量导出间隔（毫秒），仅 `>0` 生效；负数启动期抛 `OptionsValidationException` |
 | `ServiceName` | string | `Mud.Feishu.Application` | 服务名称（OTel Resource） |
 | `ServiceVersion` | string | SDK 版本 | 服务版本（OTel Resource） |
 | `DeploymentEnvironment` | string | `production` | 部署环境（OTel Resource） |
@@ -159,31 +165,38 @@ builder.Services.AddFeishuOpenTelemetry(options =>
 });
 ```
 
-### 配合 ASP.NET Core 启动验证
+### 配置校验与启动 fail-fast
 
-`AddFeishuOpenTelemetry` 已自动注册 `IValidateOptions<FeishuOpenTelemetryOptions>`（校验 `SamplingRatio` 范围、`ServiceName` / `ServiceVersion` / `DeploymentEnvironment` 非空、`OtlpEndpoint` 为绝对 URI），并在注册时即时校验 `SamplingRatio`（越界直接抛出 `ArgumentOutOfRangeException`）。
+`AddFeishuOpenTelemetry` 在**注册期**即显式执行完整校验（`SamplingRatio` 范围、`ServiceName` / `ServiceVersion` / `DeploymentEnvironment` 非空、`OtlpEndpoint` 为绝对 URI、`ExportBatchSize` / `ExportIntervalMilliseconds` 非负）：
 
-如需在应用启动阶段 fail-fast，可追加 `ValidateOnStart`：
+- `SamplingRatio` 越界 → 抛 `ArgumentOutOfRangeException`（`ParamName = "SamplingRatio"`）；
+- 其余不合法 → 抛 `OptionsValidationException`（`OptionsType = typeof(FeishuOpenTelemetryOptions)`）。
+
+即**无需额外配置**即可获得启动期 fail-fast。扩展同时仍会注册
+`IValidateOptions<FeishuOpenTelemetryOptions>` 与 `IOptions<FeishuOpenTelemetryOptions>`，
+供宿主自行接线（如 `AddOptions<FeishuOpenTelemetryOptions>().ValidateOnStart()`）。
+
+### 单一入口约束
+
+本包内部经上游共享装配内核完成装配（Resource / Sampler / 源与 Meter / Instrumentation / OTLP 导出器），
+内核按产品名拒绝「不同产品重复注册」。**请勿**与 `AddMudHttpOpenTelemetry()` 同时调用：
 
 ```csharp
+// ✅ 只调一个：飞书宿主的 Mud.HttpUtils 源与指标已由 IncludeMudHttpUtils（默认 true）覆盖
 builder.Services.AddFeishuOpenTelemetry(builder.Configuration);
 
-// 扩展已自动注册 IValidateOptions<FeishuOpenTelemetryOptions>，
-// 启用 ValidateOnStart 后，配置无效将在应用启动时失败并给出错误信息
-builder.Services.AddOptions<FeishuOpenTelemetryOptions>()
-    .ValidateOnStart();
-
-var app = builder.Build();
-
-app.Run();
+// ❌ 禁止：两条完整管道叠加 ⇒ Resource service.name 被覆盖、同一 Span 被两个 OTLP 导出器重复上报
+// builder.Services.AddMudHttpOpenTelemetry(builder.Configuration);
 ```
+
+同时调用会在注册期抛 `InvalidOperationException`（fail-fast）；同一产品重复调用则幂等短路。
 
 ## 依赖项
 
 | 包 | 版本 | 说明 |
 | --- | --- | --- |
 | **Mud.Feishu.Abstractions** | * | 飞书 SDK 抽象层（提供 ActivitySource 和 Meter 定义） |
-| **Mud.HttpUtils** | 3.0.0 | HTTP 出站请求与 Token 刷新的可观测性源（`MudHttpActivitySource` / `MudHttpMeter`） |
+| **Mud.HttpUtils.OpenTelemetry** | 3.0.3 | 可观测性**共享装配内核**（`MudObservabilityBootstrap` 等），并负责注册 Mud.HttpUtils 的源与 Meter（`MudHttpActivitySource` / `MudHttpMeter`） |
 | **OpenTelemetry** | 1.16.0 | OpenTelemetry .NET SDK |
 | **OpenTelemetry.Extensions.Hosting** | 1.16.0 | 主机集成 |
 | **OpenTelemetry.Exporter.OpenTelemetryProtocol** | 1.16.0 | OTLP 导出器 |

@@ -128,7 +128,7 @@ internal sealed class ConsoleRenderer
         foreach (var (key, value) in facts)
         {
             // 键按**显示宽度**补齐（中文键占 2 列，用 string.PadRight 会错位）；
-            // 值可能含来自环境变量的用户输入，写出前统一过滤 ANSI。
+            // 值可能含来自配置文件的用户输入，写出前统一过滤 ANSI。
             var padded = key + new string(' ', Math.Max(0, keyWidth - DisplayWidth(key)));
             WriteLine($" {padded} : {StripAnsi(value ?? string.Empty)}");
         }

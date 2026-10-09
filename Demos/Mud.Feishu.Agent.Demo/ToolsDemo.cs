@@ -21,18 +21,20 @@ namespace Mud.Feishu.Agent.Demo;
 /// </summary>
 /// <remarks>
 /// <para>
-/// 运行前设置环境变量（Key 绝不写进代码/配置文件提交）：
+/// 运行前在配置节 <c>FeishuToolsDemo</c>（<c>appsettings.local.json</c>）填写模型与飞书凭证，
+/// 并把 <c>FeishuToolsDemo:Enabled</c> 置为 <c>true</c>（真实密钥只写本地覆盖文件，不落盘提交）：
 /// <code>
-/// set FEISHU_DEMO_TOOLS=1
-/// set FEISHU_AI_MODEL_KEY=glm-4-flash
-/// set FEISHU_AI_API_KEY=sk-xxxx
-/// set FEISHU_AI_ENDPOINT=https://open.bigmodel.cn/api/paas/v4/
-/// set FEISHU_APP_ID=cli_xxx
-/// set FEISHU_APP_SECRET=dsk_xxx
-/// rem Phase 2 流式演示（可选）：提供目标群 chat_id 时经分片编辑通道流式回复
-/// set FEISHU_DEMO_CHAT_ID=oc_xxx
-/// dotnet run --project Demos/Mud.Feishu.Agent.Demo
+/// "FeishuToolsDemo": {
+///   "Enabled": true,
+///   "ModelId": "glm-4-flash",
+///   "ApiKey": "sk-xxxx",
+///   "Endpoint": "https://open.bigmodel.cn/api/paas/v4/",
+///   "AppId": "cli_xxx",
+///   "AppSecret": "dsk_xxx",
+///   "StreamChatId": "oc_xxx"
+/// }
 /// </code>
+/// <c>StreamChatId</c> 可选：提供目标群 chat_id 时经分片编辑通道流式回复（Phase 2）。
 /// </para>
 /// <para>
 /// 工具执行链租户上下文固定为 <c>demo-app</c>（即下方注册的飞书应用 AppKey）；
@@ -49,34 +51,31 @@ namespace Mud.Feishu.Agent.Demo;
 /// </remarks>
 public static class ToolsDemo
 {
-    public static async Task RunAsync()
+    public static async Task RunAsync(IConfiguration configuration)
     {
-        var modelId = Environment.GetEnvironmentVariable("FEISHU_AI_MODEL_KEY")
-            ?? throw new InvalidOperationException("请先设置 FEISHU_AI_MODEL_KEY");
-        var apiKey = Environment.GetEnvironmentVariable("FEISHU_AI_API_KEY")
-            ?? throw new InvalidOperationException("请先设置 FEISHU_AI_API_KEY");
-        var endpoint = Environment.GetEnvironmentVariable("FEISHU_AI_ENDPOINT");
-        var appId = Environment.GetEnvironmentVariable("FEISHU_APP_ID")
-            ?? throw new InvalidOperationException("请先设置 FEISHU_APP_ID");
-        var appSecret = Environment.GetEnvironmentVariable("FEISHU_APP_SECRET")
-            ?? throw new InvalidOperationException("请先设置 FEISHU_APP_SECRET");
-        var streamChatId = Environment.GetEnvironmentVariable("FEISHU_DEMO_CHAT_ID");
+        ArgumentNullException.ThrowIfNull(configuration);
 
-        const string appKey = "demo-app";
+        var settings = ToolsDemoSettings.FromConfiguration(configuration);
+        settings.Validate();
 
-        // 飞书多应用配置（进程内构造，不经文件；AppSecret 走环境变量，不落盘）。
-        var configuration = new ConfigurationBuilder()
+        var model = settings.Model;
+        const string appKey = DocAgentSettings.DefaultAppKey;
+
+        // 飞书多应用配置（进程内构造，不经文件；AppSecret 只从配置文件读，不落盘）。
+        var feishuConfig = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["FeishuApps:0:AppKey"] = appKey,
-                ["FeishuApps:0:AppId"] = appId,
-                ["FeishuApps:0:AppSecret"] = appSecret,
+                ["FeishuApps:0:AppId"] = settings.AppId,
+                ["FeishuApps:0:AppSecret"] = settings.AppSecret,
                 ["FeishuApps:0:IsDefault"] = "true",
             })
             .Build();
 
+        var streamChatId = settings.StreamChatId;
+
         var services = new ServiceCollection()
-            .AddFeishuApp(configuration, "FeishuApps")
+            .AddFeishuApp(feishuConfig, "FeishuApps")
             .AddFeishuServices(builder => builder
                 .AddMessageApi()
                 .AddBiTableApi()
@@ -87,7 +86,7 @@ public static class ToolsDemo
                 // R4/WP5 新域：日历（AT-F04）与任务（AT-F17）——域客户端缺席时对应工具不进注册表。
                 .AddCalendarApi()
                 .AddTaskApi())
-            .AddFeishuOpenAIChatClient("demo-model", modelId, apiKey, endpoint)
+            .AddFeishuOpenAIChatClient("demo-model", model.ModelId, model.ApiKey, model.Endpoint)
             .AddFeishuAgent(configure: options =>
             {
                 options.ModelServiceKey = "demo-model";
@@ -112,7 +111,7 @@ public static class ToolsDemo
         services.AddHttpClient<DemoAttachmentStager>();
         services.AddSingleton<IFeishuAttachmentStager>(sp => sp.GetRequiredService<DemoAttachmentStager>());
 
-        // Phase 2 流式演示：提供 FEISHU_DEMO_CHAT_ID 时注册分片编辑通道。
+        // Phase 2 流式演示：配置 StreamChatId 时注册分片编辑通道。
         if (!string.IsNullOrEmpty(streamChatId))
         {
             services.AddFeishuEditMessageChannel();
@@ -128,7 +127,7 @@ public static class ToolsDemo
         Console.WriteLine($"已启用工具 {registry.EnabledTools.Count} 个：{string.Join("、", registry.EnabledTools.Select(t => t.Name))}");
         Console.WriteLine(messageChannel is not null
             ? $"流式回复：开（分片编辑 → chat {streamChatId}）"
-            : "流式回复：关（设置 FEISHU_DEMO_CHAT_ID 开启 Phase 2 流式演示）");
+            : "流式回复：关（配置 FeishuToolsDemo:StreamChatId 开启 Phase 2 流式演示）");
 
         var conversationKey = ConversationKeyBuilder.Build(appKey, ConversationScope.P2P(), "ou_demo_user");
         var session = await agent.GetOrCreateSessionAsync(conversationKey);

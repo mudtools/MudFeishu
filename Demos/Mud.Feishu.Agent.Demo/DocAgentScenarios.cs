@@ -20,8 +20,8 @@ namespace Mud.Feishu.Agent.Demo;
 /// </para>
 /// <para>
 /// <b>占位符</b>：S4/S5 的引导语含 <c>{sheet_token}</c> / <c>{document_id}</c> 等字面占位符，
-/// 刻意<b>不</b>新增环境变量（§12 的 13 个变量是冻结清单）——引导语里显式要求模型"没拿到就问我"，
-/// 由操作者在会话中输入真实 token。S1 的空间 ID 走 <c>FEISHU_DEMO_WIKI_SPACE_ID</c>（已登记变量）。
+/// 刻意<b>不</b>为它们新增配置项——引导语里显式要求模型"没拿到就问我"，
+/// 由操作者在会话中输入真实 token。S1 的空间 ID 走配置键 <c>FeishuDocAgent:WikiSpaceId</c>（见 <see cref="DocAgentSettings.KeyWikiSpaceId"/>）。
 /// </para>
 /// </remarks>
 internal static class DocAgentScenarios

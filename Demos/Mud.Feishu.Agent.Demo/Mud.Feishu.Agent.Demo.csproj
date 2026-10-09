@@ -26,6 +26,9 @@
     <!-- 配置文件随生成输出复制：配置根目录取 AppContext.BaseDirectory（与工作目录无关，
          `dotnet run` / 直接跑产物 / 任意 cwd 行为一致）。
          appsettings.local.json 被 .gitignore 忽略，仅本地存在；不存在时 Update 不匹配任何项，零副作用。 -->
+    <None Update="appsettings.local.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="appsettings.local.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

@@ -105,7 +105,7 @@ internal sealed class ScenarioBook
         if (string.IsNullOrWhiteSpace(settings.WikiSpaceId))
         {
             warnings.Add(
-                $"剧本 {resource.Name} 未配置 {DocAgentSettings.EnvWikiSpaceId}："
+                $"剧本 {resource.Name} 未配置 {DocAgentSettings.SectionName}:{DocAgentSettings.KeyWikiSpaceId}："
                 + "引导语会要求模型自行列出知识库空间（多一次只读调用，仍可一键跑通）");
         }
 

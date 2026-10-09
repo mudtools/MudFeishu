@@ -11,18 +11,20 @@ using Microsoft.Extensions.Configuration;
 namespace Mud.Feishu.Agent.Demo.Tests;
 
 /// <summary>
-/// 配置来源与优先级：<c>环境变量 &gt; appsettings.local.json &gt; appsettings.{环境}.json &gt; appsettings.json &gt; 代码默认值</c>。
+/// 配置来源与优先级：<c>appsettings.local.json &gt; appsettings.json &gt; 代码默认值</c>。
 /// </summary>
 /// <remarks>
+/// <para>
+/// <b>参数全部来自配置文件</b>（R4 配置面约定）：环境变量已不再参与参数解析，
+/// 因此本节不再有任何"环境覆盖配置"类用例——配置的唯一事实源是 <c>appsettings*.json</c>。
+/// </para>
+/// <para>
 /// 全部用例只操作**内存配置**与**临时目录**，不触碰进程环境变量（并行执行下不可复现），
 /// 也不读取真实仓库文件（模板文件的用例单独放在 <see cref="TemplateFileTests"/>）。
+/// </para>
 /// </remarks>
 public class DocAgentConfigurationTests
 {
-    /// <summary>环境替身（薄转发到 <see cref="TestDoubles.EnvReader"/>，类内少写前缀）。</summary>
-    private static Func<string, string?> Env(params (string Name, string Value)[] values)
-        => TestDoubles.EnvReader(values);
-
     /// <summary>内存配置文件（模拟 appsettings 的某个节）。</summary>
     private static IConfigurationRoot SectionConfig(params (string Key, string Value)[] values)
         => new ConfigurationBuilder()
@@ -50,7 +52,7 @@ public class DocAgentConfigurationTests
             ("AuditExportPath", "D:/tmp/audit.jsonl"),
             ("AttachmentMaxMb", "7"));
 
-        var settings = DocAgentSettings.FromConfiguration(configuration, Env());
+        var settings = DocAgentSettings.FromConfiguration(configuration);
 
         settings.ModelId.Should().Be("glm-4-flash");
         settings.ApiKey.Should().Be("sk-from-file");
@@ -66,32 +68,6 @@ public class DocAgentConfigurationTests
         settings.AttachmentMaxBytes.Should().Be(7L * 1024 * 1024);
     }
 
-    /// <summary>
-    /// 环境变量优先于配置文件（同一项两处都有时以环境变量为准）——容器/CI 注入无需改文件。
-    /// </summary>
-    [Fact]
-    public void FromConfiguration_ShouldPreferEnvironment_OverSection()
-    {
-        var configuration = SectionConfig(
-            ("ModelId", "file-model"),
-            ("ApiKey", "sk-file"),
-            ("Policy", DocAgentSettings.PolicyStrict));
-
-        var settings = DocAgentSettings.FromConfiguration(
-            configuration,
-            Env(
-                (DocAgentSettings.EnvModelKey, "env-model"),
-                (DocAgentSettings.EnvApiKey, "sk-env"),
-                (DocAgentSettings.EnvPolicy, DocAgentSettings.PolicyReadonly),
-                (DocAgentSettings.EnvAppId, "cli_env_0000000000001"),
-                (DocAgentSettings.EnvAppSecret, "secret-env")));
-
-        settings.ModelId.Should().Be("env-model");
-        settings.ApiKey.Should().Be("sk-env");
-        settings.Policy.Should().Be(DocAgentSettings.PolicyReadonly);
-        settings.AppId.Should().Be("cli_env_0000000000001");
-    }
-
     /// <summary>只写 SDK 标准写法（<c>FeishuApps</c> 数组）也必须能跑通（三项等价回退）。</summary>
     [Fact]
     public void FromConfiguration_ShouldFallbackToFeishuAppsSection()
@@ -102,17 +78,19 @@ public class DocAgentConfigurationTests
                 ["FeishuApps:0:AppKey"] = "hr-app",
                 ["FeishuApps:0:AppId"] = "cli_from_apps_00000001",
                 ["FeishuApps:0:AppSecret"] = "secret-from-apps",
+
+                // 模型两项只能来自本节（FeishuApps 只覆盖租户三项）。
+                ["FeishuDocAgent:ModelId"] = "test-model",
+                ["FeishuDocAgent:ApiKey"] = "sk-test",
             })
             .Build();
 
-        // 模型两项仍需环境变量或本节提供（FeishuApps 只覆盖租户三项）。
-        var settings = DocAgentSettings.FromConfiguration(
-            configuration,
-            Env((DocAgentSettings.EnvModelKey, "test-model"), (DocAgentSettings.EnvApiKey, "sk-test")));
+        var settings = DocAgentSettings.FromConfiguration(configuration);
 
         settings.AppKey.Should().Be("hr-app");
         settings.AppId.Should().Be("cli_from_apps_00000001");
         settings.AppSecret.Should().Be("secret-from-apps");
+        settings.ModelId.Should().Be("test-model");
     }
 
     /// <summary>
@@ -125,6 +103,8 @@ public class DocAgentConfigurationTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal)
             {
+                ["FeishuDocAgent:ModelId"] = "test-model",
+                ["FeishuDocAgent:ApiKey"] = "sk-test",
                 ["FeishuDocAgent:AppId"] = "cli_from_section_00001",
                 ["FeishuDocAgent:AppSecret"] = "secret-from-section",
                 ["FeishuDocAgent:AppKey"] = "section-app",
@@ -134,9 +114,7 @@ public class DocAgentConfigurationTests
             })
             .Build();
 
-        var settings = DocAgentSettings.FromConfiguration(
-            configuration,
-            Env((DocAgentSettings.EnvModelKey, "test-model"), (DocAgentSettings.EnvApiKey, "sk-test")));
+        var settings = DocAgentSettings.FromConfiguration(configuration);
 
         settings.AppId.Should().Be("cli_from_apps_00000001");
         settings.AppSecret.Should().Be("secret-from-apps");
@@ -150,6 +128,8 @@ public class DocAgentConfigurationTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal)
             {
+                ["FeishuDocAgent:ModelId"] = "test-model",
+                ["FeishuDocAgent:ApiKey"] = "sk-test",
                 ["FeishuApps:0:AppKey"] = "fallback-app",
                 ["FeishuApps:0:AppId"] = "cli_first_000000000001",
                 ["FeishuApps:0:AppSecret"] = "secret-first",
@@ -160,39 +140,35 @@ public class DocAgentConfigurationTests
             })
             .Build();
 
-        var settings = DocAgentSettings.FromConfiguration(
-            configuration,
-            Env((DocAgentSettings.EnvModelKey, "test-model"), (DocAgentSettings.EnvApiKey, "sk-test")));
+        var settings = DocAgentSettings.FromConfiguration(configuration);
 
         settings.AppKey.Should().Be("default-app");
         settings.AppId.Should().Be("cli_default_000000001");
     }
 
-    /// <summary>两处都没有必填项时必须 fail-fast，且消息同时给环境变量名与配置文件键。</summary>
+    /// <summary>两处都没有必填项时必须 fail-fast，且消息同时给配置文件键。</summary>
     [Fact]
-    public void FromConfiguration_ShouldFailFast_WithBothSourceNames()
+    public void FromConfiguration_ShouldFailFast_WhenTenantMissing()
     {
         var configuration = SectionConfig(("ModelId", "glm-4-flash"), ("ApiKey", "sk-file"));
 
-        var act = () => DocAgentSettings.FromConfiguration(configuration, Env());
+        var act = () => DocAgentSettings.FromConfiguration(configuration);
 
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage($"*{DocAgentSettings.EnvAppId}*")
             .WithMessage($"*{DocAgentSettings.SectionName}:AppId*");
     }
 
-    /// <summary>非法整数项的错误消息要指出两套命名（否则用户不知道该改哪处）。</summary>
+    /// <summary>非法整数项的错误消息要指出配置键（否则用户不知道该改哪处）。</summary>
     [Fact]
-    public void FromConfiguration_ShouldReportBothNames_ForInvalidInteger()
+    public void FromConfiguration_ShouldReportKey_ForInvalidInteger()
     {
         var configuration = SectionConfig(
             ("ModelId", "m"), ("ApiKey", "k"), ("AppId", "a"), ("AppSecret", "s"),
             ("SummaryThreshold", "abc"));
 
-        var act = () => DocAgentSettings.FromConfiguration(configuration, Env());
+        var act = () => DocAgentSettings.FromConfiguration(configuration);
 
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage($"*{DocAgentSettings.EnvSummaryThreshold}*")
             .WithMessage($"*{DocAgentSettings.SectionName}:SummaryThreshold*");
     }
 
@@ -212,11 +188,11 @@ public class DocAgentConfigurationTests
     }
 
     /// <summary>
-    /// 文件分层：<c>appsettings.local.json</c> 覆盖 <c>appsettings.json</c>，环境变量再覆盖两者；
+    /// 文件分层：<c>appsettings.local.json</c> 覆盖 <c>appsettings.json</c>；
     /// 且只有真实存在的文件才计入"配置来源"清单。
     /// </summary>
     [Fact]
-    public void BuildConfiguration_ShouldLayerLocalOverBase_AndEnvOverAll()
+    public void BuildConfiguration_ShouldLayerLocalOverBase()
     {
         var directory = CreateTempDirectory();
         try
@@ -243,20 +219,16 @@ public class DocAgentConfigurationTests
                 }
                 """);
 
-            var sources = DocAgentDemo.BuildConfiguration(
-                directory,
-                Env((DocAgentSettings.EnvApiKey, "sk-env")));
+            var sources = DocAgentDemo.BuildConfiguration(directory);
 
             sources.Files.Should().Equal(DocAgentSettings.AppSettingsFile, DocAgentSettings.LocalAppSettingsFile);
 
-            var settings = DocAgentSettings.FromConfiguration(
-                sources.Configuration,
-                Env((DocAgentSettings.EnvApiKey, "sk-env")));
+            var settings = DocAgentSettings.FromConfiguration(sources.Configuration);
 
             settings.ModelId.Should().Be("base-model", "基础文件提供");
             settings.Policy.Should().Be(DocAgentSettings.PolicyAsk, "local 覆盖 base");
             settings.WikiSpaceId.Should().Be("wikcn_base", "local 未覆盖的键仍来自 base");
-            settings.ApiKey.Should().Be("sk-env", "环境变量覆盖所有文件");
+            settings.ApiKey.Should().Be("sk-local", "local 覆盖 base");
         }
         finally
         {
@@ -264,36 +236,20 @@ public class DocAgentConfigurationTests
         }
     }
 
-    /// <summary><c>appsettings.{DOTNET_ENVIRONMENT}.json</c> 参与分层（与仓库其他 Demo 同约定）。</summary>
+    /// <summary>只有真实存在的配置文件才计入"配置来源"清单（local 可选，未提供时不列出）。</summary>
     [Fact]
-    public void BuildConfiguration_ShouldIncludeEnvironmentSpecificFile()
+    public void BuildConfiguration_ShouldListOnlyExistingFiles()
     {
         var directory = CreateTempDirectory();
         try
         {
             WriteJson(Path.Combine(directory, DocAgentSettings.AppSettingsFile), """
-                { "FeishuDocAgent": { "Policy": "strict" } }
-                """);
-            WriteJson(Path.Combine(directory, "appsettings.Production.json"), """
                 { "FeishuDocAgent": { "Policy": "ask" } }
                 """);
 
-            var sources = DocAgentDemo.BuildConfiguration(
-                directory,
-                Env(("DOTNET_ENVIRONMENT", "Production")));
+            var sources = DocAgentDemo.BuildConfiguration(directory);
 
-            sources.Files.Should().Equal(
-                DocAgentSettings.AppSettingsFile,
-                "appsettings.Production.json");
-
-            DocAgentSettings.FromConfiguration(
-                    sources.Configuration,
-                    Env(
-                        (DocAgentSettings.EnvModelKey, "test-model"),
-                        (DocAgentSettings.EnvApiKey, "sk-test"),
-                        (DocAgentSettings.EnvAppId, "cli_env_0000000000001"),
-                        (DocAgentSettings.EnvAppSecret, "secret-env")))
-                .Policy.Should().Be(DocAgentSettings.PolicyAsk);
+            sources.Files.Should().Equal(DocAgentSettings.AppSettingsFile);
         }
         finally
         {
@@ -302,29 +258,17 @@ public class DocAgentConfigurationTests
     }
 
     /// <summary>
-    /// 无配置文件时必须仍然可用（纯环境变量运行是既有用法：容器 / CI / 快速冒烟），
-    /// 且"配置来源"清单为空（横幅据此显示"仅环境变量"）。
+    /// <c>appsettings.json</c> 是必填模板（<c>optional: false</c>）——缺失时 fail-fast 而非静默空配置。
     /// </summary>
     [Fact]
-    public void BuildConfiguration_ShouldBeUsable_WithoutAnyFile()
+    public void BuildConfiguration_ShouldThrow_WhenBaseFileMissing()
     {
         var directory = CreateTempDirectory();
         try
         {
-            var sources = DocAgentDemo.BuildConfiguration(directory, Env());
+            var act = () => DocAgentDemo.BuildConfiguration(directory);
 
-            sources.Files.Should().BeEmpty();
-
-            var settings = DocAgentSettings.FromConfiguration(
-                sources.Configuration,
-                Env(
-                    (DocAgentSettings.EnvModelKey, "env-model"),
-                    (DocAgentSettings.EnvApiKey, "sk-env"),
-                    (DocAgentSettings.EnvAppId, "cli_env_0000000000001"),
-                    (DocAgentSettings.EnvAppSecret, "secret-env")));
-
-            settings.ModelId.Should().Be("env-model");
-            settings.Policy.Should().Be(DocAgentSettings.PolicyStrict, "无文件时取代码默认值");
+            act.Should().Throw<FileNotFoundException>("appsettings.json 是必填模板，缺失时 fail-fast");
         }
         finally
         {
@@ -405,7 +349,7 @@ public class TemplateFileTests
     [Fact]
     public void Template_ShouldBeLoadable()
     {
-        var sources = DocAgentDemo.BuildConfiguration(TemplateDirectory(), Env());
+        var sources = DocAgentDemo.BuildConfiguration(TemplateDirectory());
 
         sources.Files.Should().Contain(DocAgentSettings.AppSettingsFile);
 
@@ -440,15 +384,19 @@ public class TemplateFileTests
     [Fact]
     public void Template_Defaults_ShouldPassValidation()
     {
-        var sources = DocAgentDemo.BuildConfiguration(TemplateDirectory(), Env());
+        // 模板只留空密钥；叠加必填密钥（等效于用户照抄模板后只在本地覆盖文件补密钥）。
+        var overlaid = new ConfigurationBuilder()
+            .AddConfiguration(TemplateConfiguration())
+            .AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                [$"{DocAgentSettings.SectionName}:{DocAgentSettings.KeyModelId}"] = "glm-4-flash",
+                [$"{DocAgentSettings.SectionName}:{DocAgentSettings.KeyApiKey}"] = "sk-test",
+                [$"{DocAgentSettings.SectionName}:{DocAgentSettings.KeyAppId}"] = "cli_test_000000000001",
+                [$"{DocAgentSettings.SectionName}:{DocAgentSettings.KeyAppSecret}"] = "secret-test",
+            })
+            .Build();
 
-        var settings = DocAgentSettings.FromConfiguration(
-            sources.Configuration,
-            TestDoubles.EnvReader(
-                (DocAgentSettings.EnvModelKey, "glm-4-flash"),
-                (DocAgentSettings.EnvApiKey, "sk-test"),
-                (DocAgentSettings.EnvAppId, "cli_test_000000000001"),
-                (DocAgentSettings.EnvAppSecret, "secret-test")));
+        var settings = DocAgentSettings.FromConfiguration(overlaid);
 
         var act = () => settings.Validate();
 
@@ -463,8 +411,7 @@ public class TemplateFileTests
     [Fact]
     public void Template_ShouldNotEnableTheDemo()
     {
-        DocAgentSettings.IsEnabledByConfiguration(
-            DocAgentDemo.BuildConfiguration(TemplateDirectory(), Env()).Configuration)
+        DocAgentSettings.IsEnabledByConfiguration(TemplateConfiguration())
             .Should().BeFalse();
     }
 
@@ -472,9 +419,7 @@ public class TemplateFileTests
     [Fact]
     public void Template_ShouldNotContainAnySecret()
     {
-        var section = DocAgentDemo
-            .BuildConfiguration(TemplateDirectory(), Env())
-            .Configuration
+        var section = TemplateConfiguration()
             .GetSection(DocAgentSettings.SectionName);
 
         section["ApiKey"].Should().BeNullOrWhiteSpace();
@@ -483,17 +428,24 @@ public class TemplateFileTests
     }
 
     private static IReadOnlyCollection<string> SectionKeys()
-        => DocAgentDemo
-            .BuildConfiguration(TemplateDirectory(), Env())
-            .Configuration
+        => TemplateConfiguration()
             .GetSection(DocAgentSettings.SectionName)
             .GetChildren()
             .Select(static child => child.Key)
             .ToArray();
 
+    /// <summary>
+    /// 仅加载随仓库提交的 <c>appsettings.json</c> 模板（不含本地覆盖文件——模板守卫的对象是
+    /// <b>提交进仓库的文件</b>，而非开发者本机的 <c>appsettings.local.json</c>）。
+    /// </summary>
+    private static IConfigurationRoot TemplateConfiguration()
+        => new ConfigurationBuilder()
+            .AddJsonFile(
+                Path.Combine(TemplateDirectory(), DocAgentSettings.AppSettingsFile),
+                optional: false,
+                reloadOnChange: false)
+            .Build();
+
     private static string TemplateDirectory()
         => Path.Combine(TestDoubles.RepositoryRoot(), "Demos", "Mud.Feishu.Agent.Demo");
-
-    /// <summary>环境替身：模板用例不提供任何环境变量（走纯文件路径，才能证明"配置真来自文件"）。</summary>
-    private static Func<string, string?> Env() => TestDoubles.EnvReader();
 }

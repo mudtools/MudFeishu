@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Mud.Feishu.Abstractions.Conversations;
@@ -20,10 +21,15 @@ namespace Mud.Feishu.Agent.Demo;
 /// 消息 → 会话 → 模型 → 回复/流式（Bot 自激过滤、群聊 @ 过滤安全内建）。
 /// </summary>
 /// <remarks>
-/// 运行前在 Phase 0 环境变量基础上增加飞书多应用配置（appKey/appSecret，经 appsettings 或环境变量），
-/// 并设置 <c>FEISHU_DEMO_IM_HANDLER=1</c>：
+/// 运行前在配置节 <c>FeishuImHandlerDemo</c> 填写模型三项，并把
+/// <c>FeishuImHandlerDemo:Enabled</c> 置为 <c>true</c>（飞书多应用由宿主在 WebSocket/Webhook 通道另行配置）：
 /// <code>
-/// dotnet run --project Demos/Mud.Feishu.Agent.Demo
+/// "FeishuImHandlerDemo": {
+///   "Enabled": true,
+///   "ModelId": "glm-4-flash",
+///   "ApiKey": "sk-xxxx",
+///   "Endpoint": ""
+/// }
 /// </code>
 /// 事件订阅侧由 WebSocket 通道挂载内置处理器（<c>AddHandler&lt;ImMessageConversationalEventHandler&gt;()</c>，
 /// 已决策④：不改变事件接入方式）。多实例部署时再追加
@@ -31,16 +37,17 @@ namespace Mud.Feishu.Agent.Demo;
 /// </remarks>
 public static class ImConversationDemo
 {
-    public static async Task RunAsync()
+    public static async Task RunAsync(IConfiguration configuration)
     {
-        var modelId = Environment.GetEnvironmentVariable("FEISHU_AI_MODEL_KEY")
-            ?? throw new InvalidOperationException("请先设置 FEISHU_AI_MODEL_KEY");
-        var apiKey = Environment.GetEnvironmentVariable("FEISHU_AI_API_KEY")
-            ?? throw new InvalidOperationException("请先设置 FEISHU_AI_API_KEY");
-        var endpoint = Environment.GetEnvironmentVariable("FEISHU_AI_ENDPOINT");
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        var settings = ImHandlerDemoSettings.FromConfiguration(configuration);
+        settings.Validate();
+
+        var model = settings.Model;
 
         var services = new ServiceCollection()
-            .AddFeishuOpenAIChatClient("demo-model", modelId, apiKey, endpoint)
+            .AddFeishuOpenAIChatClient("demo-model", model.ModelId, model.ApiKey, model.Endpoint)
             .AddFeishuAgent(configure: options =>
             {
                 options.ModelServiceKey = "demo-model";

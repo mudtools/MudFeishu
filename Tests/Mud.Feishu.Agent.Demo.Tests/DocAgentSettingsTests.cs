@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Microsoft.Extensions.Configuration;
+
 namespace Mud.Feishu.Agent.Demo.Tests;
 
 /// <summary>
@@ -13,30 +15,31 @@ namespace Mud.Feishu.Agent.Demo.Tests;
 public class DocAgentSettingsTests
 {
     /// <summary>
-    /// 缺任一必填项即抛错，且异常消息**包含变量名**（否则排障只能靠猜）。
+    /// 缺任一必填项即抛错，且异常消息**指明配置文件键**（否则排障只能靠猜）。
     /// </summary>
-    /// <param name="missing">被抽掉的变量名。</param>
+    /// <param name="missing">被抽掉的键名（节 <c>FeishuDocAgent</c> 下）。</param>
     [Theory]
-    [InlineData(DocAgentSettings.EnvModelKey)]
-    [InlineData(DocAgentSettings.EnvApiKey)]
-    [InlineData(DocAgentSettings.EnvAppId)]
-    [InlineData(DocAgentSettings.EnvAppSecret)]
-    public void FromEnvironment_ShouldFailFast_WhenMissingRequired(string missing)
+    [InlineData(DocAgentSettings.KeyModelId)]
+    [InlineData(DocAgentSettings.KeyApiKey)]
+    [InlineData(DocAgentSettings.KeyAppId)]
+    [InlineData(DocAgentSettings.KeyAppSecret)]
+    public void FromConfiguration_ShouldFailFast_WhenMissingRequired(string missing)
     {
-        // 环境读取经注入的 reader 提供：不触碰进程级环境变量（并行用例下不可复现）。
         var values = new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [DocAgentSettings.EnvModelKey] = "test-model",
-            [DocAgentSettings.EnvApiKey] = "sk-test",
-            [DocAgentSettings.EnvAppId] = "cli_test",
-            [DocAgentSettings.EnvAppSecret] = "secret",
+            [$"{DocAgentSettings.SectionName}:{DocAgentSettings.KeyModelId}"] = "test-model",
+            [$"{DocAgentSettings.SectionName}:{DocAgentSettings.KeyApiKey}"] = "sk-test",
+            [$"{DocAgentSettings.SectionName}:{DocAgentSettings.KeyAppId}"] = "cli_test",
+            [$"{DocAgentSettings.SectionName}:{DocAgentSettings.KeyAppSecret}"] = "secret",
         };
-        values[missing] = null;
+        values[$"{DocAgentSettings.SectionName}:{missing}"] = null;
 
-        var act = () => DocAgentSettings.FromEnvironment(name => values.GetValueOrDefault(name));
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+
+        var act = () => DocAgentSettings.FromConfiguration(configuration);
 
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage($"*{missing}*", "错误消息必须指明缺哪个变量");
+            .WithMessage($"*{DocAgentSettings.SectionName}:{missing}*", "错误消息必须指明缺哪个配置键");
     }
 
     /// <summary>非 HTTPS 且非环回端点必须被拒（与 SDK 的 EnsureHttpsEndpoint 同口径，但错误更早更友好）。</summary>
@@ -48,7 +51,7 @@ public class DocAgentSettingsTests
         var act = () => settings.Validate();
 
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage($"*{DocAgentSettings.EnvEndpoint}*");
+            .WithMessage($"*{DocAgentSettings.SectionName}:{DocAgentSettings.KeyEndpoint}*");
     }
 
     /// <summary>环回地址走明文是允许的（本地自建模型端点）。</summary>
@@ -82,7 +85,7 @@ public class DocAgentSettingsTests
         var act = () => settings.Validate();
 
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage($"*{DocAgentSettings.EnvPolicy}*");
+            .WithMessage($"*{DocAgentSettings.SectionName}:{DocAgentSettings.KeyPolicy}*");
     }
 
     /// <summary>appKey 含 <c>:</c> 会破坏会话键可读性（键以 <c>:</c> 分段）。</summary>
@@ -94,7 +97,7 @@ public class DocAgentSettingsTests
         var act = () => settings.Validate();
 
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage($"*{DocAgentSettings.EnvAppKey}*");
+            .WithMessage($"*{DocAgentSettings.SectionName}:{DocAgentSettings.KeyAppKey}*");
     }
 
     /// <summary>密钥掩码不得泄漏原文（安全验收 S4 的可执行证据）。</summary>

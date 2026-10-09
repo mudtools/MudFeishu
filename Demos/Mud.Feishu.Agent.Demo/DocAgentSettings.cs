@@ -12,22 +12,19 @@ using Mud.Feishu.AI.Tools;
 namespace Mud.Feishu.Agent.Demo;
 
 /// <summary>
-/// 文档业务智能体（<c>FEISHU_DEMO_DOC_AGENT=1</c>）的配置解析、fail-fast 校验与工具白名单常量。
+/// 文档业务智能体的配置解析、fail-fast 校验与工具白名单常量。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>配置来源与优先级</b>（高 → 低）：
+/// <b>配置来源</b>（高 → 低，仅配置文件）：
 /// <list type="number">
-///   <item><description>环境变量 <c>FEISHU_*</c>（见本类常量；<b>始终最高优先</b>，容器/CI 注入无需改文件）；</description></item>
 ///   <item><description><c>appsettings.local.json</c>（本地覆盖，已被 <c>.gitignore</c> 忽略）；</description></item>
-///   <item><description><c>appsettings.{DOTNET_ENVIRONMENT}.json</c>（可选，与仓库其他 Demo 同约定）；</description></item>
-///   <item><description><c>appsettings.json</c>（节 <see cref="SectionName"/>；随产物复制）；</description></item>
-///   <item><description>本类里同名的代码默认值。</description></item>
+///   <item><description><c>appsettings.json</c>（节 <see cref="SectionName"/>；随产物复制）。</description></item>
 /// </list>
-/// 两种命名指向同一配置项：环境变量名 <c>FEISHU_DEMO_POLICY</c> ≡ 配置文件键 <c>FeishuDocAgent:Policy</c>。
+/// 参数<b>不再从环境变量读取</b>；配置项命名即配置文件键（如 <c>FeishuDocAgent:Policy</c>）。
 /// </para>
 /// <para>
-/// <b>密钥纪律</b>：<see cref="ApiKey"/> 与 <see cref="AppSecret"/> 可来自环境变量或
+/// <b>密钥纪律</b>：<see cref="ApiKey"/> 与 <see cref="AppSecret"/> 只写
 /// <c>appsettings.local.json</c>（<b>该文件已被 <c>.gitignore</c> 忽略</b>，模板文件里只留空串），
 /// 不写日志、不进审计载荷；终端横幅与 <c>/help</c> 一律掩码。
 /// </para>
@@ -37,54 +34,12 @@ namespace Mud.Feishu.Agent.Demo;
 /// 工具名是模型可见契约，改名后 Demo 不得只在启动期才炸。
 /// </para>
 /// <para>
-/// <b>可测性</b>：环境读取经 <c>reader</c> 形参注入、文件读取经 <see cref="IConfiguration"/> 注入，
-/// 单测无需触碰进程环境变量（进程级环境变量在并行用例下不可复现）。
+/// <b>可测性</b>：文件读取经 <see cref="IConfiguration"/> 注入，单测无需触碰进程环境。
 /// </para>
 /// </remarks>
 internal sealed record DocAgentSettings
 {
-    // ────────── 环境变量名（单一真相：装配、/help、README、单测共用） ──────────
-
-    /// <summary>模式开关（置 <c>1</c> 启用文档业务智能体）。</summary>
-    public const string EnvDocAgent = "FEISHU_DEMO_DOC_AGENT";
-
-    /// <summary>模型 ID（必填）。</summary>
-    public const string EnvModelKey = "FEISHU_AI_MODEL_KEY";
-
-    /// <summary>模型 API Key（必填；只走环境变量）。</summary>
-    public const string EnvApiKey = "FEISHU_AI_API_KEY";
-
-    /// <summary>OpenAI-compatible 端点（可选；须 HTTPS 或环回）。</summary>
-    public const string EnvEndpoint = "FEISHU_AI_ENDPOINT";
-
-    /// <summary>飞书应用 AppId（必填）。</summary>
-    public const string EnvAppId = "FEISHU_APP_ID";
-
-    /// <summary>飞书应用 AppSecret（必填；只走环境变量）。</summary>
-    public const string EnvAppSecret = "FEISHU_APP_SECRET";
-
-    /// <summary>应用键（可选；默认 <see cref="DefaultAppKey"/>）。</summary>
-    public const string EnvAppKey = "FEISHU_DEMO_APP_KEY";
-
-    /// <summary>会话键 subject 段（可选；<b>不是</b>真实 open_id）。</summary>
-    public const string EnvUserId = "FEISHU_DEMO_USER_ID";
-
-    /// <summary>剧本 S1 的知识库空间 ID（可选）。</summary>
-    public const string EnvWikiSpaceId = "FEISHU_DEMO_WIKI_SPACE_ID";
-
-    /// <summary>授权策略（可选；<c>strict</c> / <c>ask</c> / <c>readonly</c>）。</summary>
-    public const string EnvPolicy = "FEISHU_DEMO_POLICY";
-
-    /// <summary>摘要触发条数阈值（可选；调低可加速演示摘要）。</summary>
-    public const string EnvSummaryThreshold = "FEISHU_DEMO_SUMMARY_THRESHOLD";
-
-    /// <summary><c>/export</c> 默认落盘路径（可选）。</summary>
-    public const string EnvAuditPath = "FEISHU_DEMO_AUDIT_PATH";
-
-    /// <summary>附件大小上限（MB；可选）。</summary>
-    public const string EnvAttachmentMaxMb = "FEISHU_DEMO_ATTACHMENT_MAX_MB";
-
-    // ────────── 配置文件键（appsettings*.json） ──────────
+    // ────────── 配置文件键（节 FeishuDocAgent 下；单一真相：装配、/help、README、单测共用） ──────────
 
     /// <summary>配置文件中的节名（<c>appsettings*.json</c> 下的 <c>FeishuDocAgent</c>）。</summary>
     public const string SectionName = "FeishuDocAgent";
@@ -98,52 +53,57 @@ internal sealed record DocAgentSettings
     /// <summary>SDK 的飞书多应用节名（<c>AddFeishuApp</c> 读它；本 Demo 也支持由配置文件提供）。</summary>
     public const string AppSectionName = "FeishuApps";
 
-    /// <summary>配置文件里的模式开关键（<c>FeishuDocAgent:Enabled</c>；等价 <see cref="EnvDocAgent"/>=1）。</summary>
+    /// <summary>模式开关键（<c>FeishuDocAgent:Enabled</c>）。</summary>
     public const string ConfigEnabledKey = SectionName + ":Enabled";
 
-    /// <summary>
-    /// 环境变量名 → 配置文件键（<see cref="SectionName"/> 节下）的映射。
-    /// </summary>
-    /// <remarks>两套命名指向同一配置项，取值为环境变量优先（见 <see cref="FromConfiguration"/>）。</remarks>
-    private static readonly Dictionary<string, string> EnvToKey = new(StringComparer.Ordinal)
-    {
-        [EnvModelKey] = "ModelId",
-        [EnvApiKey] = "ApiKey",
-        [EnvEndpoint] = "Endpoint",
-        [EnvAppId] = "AppId",
-        [EnvAppSecret] = "AppSecret",
-        [EnvAppKey] = "AppKey",
-        [EnvUserId] = "UserId",
-        [EnvWikiSpaceId] = "WikiSpaceId",
-        [EnvPolicy] = "Policy",
-        [EnvSummaryThreshold] = "SummaryThreshold",
-        [EnvAuditPath] = "AuditExportPath",
-        [EnvAttachmentMaxMb] = "AttachmentMaxMb",
-    };
+    /// <summary>模型 ID（必填）。</summary>
+    public const string KeyModelId = "ModelId";
+
+    /// <summary>模型 API Key（必填）。</summary>
+    public const string KeyApiKey = "ApiKey";
+
+    /// <summary>OpenAI-compatible 端点（可选；须 HTTPS 或环回）。</summary>
+    public const string KeyEndpoint = "Endpoint";
+
+    /// <summary>飞书应用 AppId（必填）。</summary>
+    public const string KeyAppId = "AppId";
+
+    /// <summary>飞书应用 AppSecret（必填）。</summary>
+    public const string KeyAppSecret = "AppSecret";
+
+    /// <summary>应用键（可选；默认 <see cref="DefaultAppKey"/>）。</summary>
+    public const string KeyAppKey = "AppKey";
+
+    /// <summary>会话键 subject 段（可选；<b>不是</b>真实 open_id）。</summary>
+    public const string KeyUserId = "UserId";
+
+    /// <summary>剧本 S1 的知识库空间 ID（可选）。</summary>
+    public const string KeyWikiSpaceId = "WikiSpaceId";
+
+    /// <summary>授权策略（可选；<c>strict</c> / <c>ask</c> / <c>readonly</c>）。</summary>
+    public const string KeyPolicy = "Policy";
+
+    /// <summary>摘要触发条数阈值（可选；调低可加速演示摘要）。</summary>
+    public const string KeySummaryThreshold = "SummaryThreshold";
+
+    /// <summary><c>/export</c> 默认落盘路径（可选）。</summary>
+    public const string KeyAuditExportPath = "AuditExportPath";
+
+    /// <summary>附件大小上限（MB；可选）。</summary>
+    public const string KeyAttachmentMaxMb = "AttachmentMaxMb";
 
     /// <summary>
-    /// 可从 <see cref="AppSectionName"/> 节回退读取的三项（SDK 标准写法与本节写法等价）。
-    /// </summary>
-    /// <remarks>
-    /// 配置文件同时提供 <c>FeishuApps</c> 与 <c>FeishuDocAgent:AppId</c> 时，前者优先——
-    /// <c>AddFeishuApp</c> 实际消费的是 <c>FeishuApps</c>，若两者不一致，以真正生效的那份为准
-    /// 才能保证「工具执行上下文的 appKey」与「默认应用」一致（否则会被授权器以 appKey 不匹配拒绝）。
-    /// </remarks>
-    private static readonly Dictionary<string, string> EnvToAppKey = new(StringComparer.Ordinal)
-    {
-        [EnvAppId] = "AppId",
-        [EnvAppSecret] = "AppSecret",
-        [EnvAppKey] = "AppKey",
-    };
-
-    /// <summary>
-    /// 配置文件中受支持的键名（<see cref="SectionName"/> 节下）。
+    /// 配置文件中受支持的键名（<see cref="SectionName"/> 节下，不含 <c>Enabled</c>）。
     /// </summary>
     /// <remarks>
     /// 契约守卫据此校验随仓库提交的 <c>appsettings.json</c> 模板不漂移：模板里的每个键都必须受支持，
     /// 且每个受支持的键都必须在模板里出现（避免"改了代码键名、忘了改模板"这类静默失效）。
     /// </remarks>
-    public static IReadOnlyCollection<string> ConfigurationKeys { get; } = [.. EnvToKey.Values];
+    public static IReadOnlyCollection<string> ConfigurationKeys { get; } =
+    [
+        KeyModelId, KeyApiKey, KeyEndpoint, KeyAppId, KeyAppSecret, KeyAppKey,
+        KeyUserId, KeyWikiSpaceId, KeyPolicy, KeySummaryThreshold, KeyAuditExportPath, KeyAttachmentMaxMb,
+    ];
 
     // ────────── 取值常量 ──────────
 
@@ -179,7 +139,7 @@ internal sealed record DocAgentSettings
     /// <summary>模型 ID（如 <c>glm-4-flash</c>）。</summary>
     public required string ModelId { get; init; }
 
-    /// <summary>模型 API Key（只从环境变量读；禁止落盘/入日志）。</summary>
+    /// <summary>模型 API Key（只从本地覆盖文件读；禁止落盘/入日志）。</summary>
     public required string ApiKey { get; init; }
 
     /// <summary>OpenAI-compatible 端点（可空 = SDK 默认端点）。</summary>
@@ -188,7 +148,7 @@ internal sealed record DocAgentSettings
     /// <summary>飞书应用 AppId。</summary>
     public required string AppId { get; init; }
 
-    /// <summary>飞书应用 AppSecret（只从环境变量读；禁止落盘/入日志）。</summary>
+    /// <summary>飞书应用 AppSecret（只从本地覆盖文件读；禁止落盘/入日志）。</summary>
     public required string AppSecret { get; init; }
 
     /// <summary>应用键（工具执行上下文的租户维度事实来源）。</summary>
@@ -291,51 +251,44 @@ internal sealed record DocAgentSettings
     public static readonly string[] Policies = [PolicyStrict, PolicyAsk, PolicyReadonly];
 
     /// <summary>
-    /// 从环境变量读取配置（<paramref name="reader"/> 为 <see langword="null"/> 时读进程环境变量）。
-    /// </summary>
-    /// <param name="reader">环境读取器（可空；单测注入替身以避免触碰进程环境）。</param>
-    /// <returns>配置实例（缺必填项时抛错，消息指明变量名）。</returns>
-    /// <exception cref="InvalidOperationException">缺少必填配置项。</exception>
-    public static DocAgentSettings FromEnvironment(Func<string, string?>? reader = null)
-    {
-        var read = reader ?? Environment.GetEnvironmentVariable;
-
-        return Load((name, _) => NullIfBlank(read(name)));
-    }
-
-    /// <summary>
-    /// 从配置文件 + 环境变量读取配置（环境变量优先）。
+    /// 从配置文件读取配置（节 <see cref="SectionName"/> + <see cref="AppSectionName"/> 主应用回退）。
     /// </summary>
     /// <param name="configuration">配置文件来源（<c>appsettings*.json</c>；见 <see cref="SectionName"/>）。</param>
-    /// <param name="reader">环境读取器（可空 = 读进程环境变量；单测注入替身）。</param>
-    /// <returns>配置实例（缺必填项时抛错，消息同时指明环境变量名与配置文件键）。</returns>
+    /// <returns>配置实例（缺必填项时抛错，消息指明配置文件键）。</returns>
     /// <exception cref="ArgumentNullException"><paramref name="configuration"/> 为 <see langword="null"/>。</exception>
     /// <exception cref="InvalidOperationException">缺少必填配置项，或整数项非法。</exception>
     /// <remarks>
-    /// 单个配置项的查找顺序：<c>环境变量</c> → <c>{SectionName}:{键}</c> → <c>{AppSectionName} 的主应用</c>。
+    /// 单个配置项的查找顺序：<c>{SectionName}:{键}</c> → <c>{AppSectionName} 的主应用</c>（仅租户三项）。
     /// 最后一级让「SDK 标准写法（<c>FeishuApps</c> 数组）」与「本节写法（<c>AppId/AppSecret</c>）」等价：
-    /// 只写其中一种即可，两种都写时以 <c>FeishuApps</c> 为准（那是 <c>AddFeishuApp</c> 真正消费的配置）。
+    /// 只写其中一种即可；两种都写时以 <c>FeishuApps</c> 为准（那是 <c>AddFeishuApp</c> 真正消费的配置）。
     /// </remarks>
-    public static DocAgentSettings FromConfiguration(
-        IConfiguration configuration,
-        Func<string, string?>? reader = null)
+    public static DocAgentSettings FromConfiguration(IConfiguration configuration)
     {
-        if (configuration is null)
-        {
-            throw new ArgumentNullException(nameof(configuration));
-        }
+        ArgumentNullException.ThrowIfNull(configuration);
 
-        var read = reader ?? Environment.GetEnvironmentVariable;
         var primaryApp = ResolvePrimaryApp(configuration);
 
-        return Load((name, appKey) =>
-            NullIfBlank(read(name))
+        string? Section(string key) => NullIfBlank(configuration[$"{SectionName}:{key}"]);
+        string? App(string key) => primaryApp is null ? null : NullIfBlank(primaryApp[key]);
+
+        return new DocAgentSettings
+        {
+            ModelId = Require(Section(KeyModelId), KeyModelId),
+            ApiKey = Require(Section(KeyApiKey), KeyApiKey),
+            Endpoint = Section(KeyEndpoint),
             // 租户三项以 FeishuApps 为准：它是 AddFeishuApp 真正消费的配置，
             // 若改取本节值，工具执行上下文的 appKey 会与实际默认应用不一致（被授权器以 appKey 不匹配拒绝）。
-            ?? (appKey is null ? null : NullIfBlank(primaryApp?[appKey]))
-            ?? (EnvToKey.TryGetValue(name, out var sectionKey)
-                ? NullIfBlank(configuration[$"{SectionName}:{sectionKey}"])
-                : null));
+            AppId = Require(App(KeyAppId) ?? Section(KeyAppId), KeyAppId),
+            AppSecret = Require(App(KeyAppSecret) ?? Section(KeyAppSecret), KeyAppSecret),
+            AppKey = App(KeyAppKey) ?? Section(KeyAppKey) ?? DefaultAppKey,
+            UserId = Section(KeyUserId) ?? DefaultConsoleUserId,
+            WikiSpaceId = Section(KeyWikiSpaceId),
+            Policy = Section(KeyPolicy) ?? PolicyStrict,
+            SummaryThreshold = ParseInt(Section(KeySummaryThreshold), KeySummaryThreshold, DefaultSummaryThreshold),
+            AuditExportPath = Section(KeyAuditExportPath) ?? string.Empty,
+            AttachmentMaxBytes = ParseInt(Section(KeyAttachmentMaxMb), KeyAttachmentMaxMb, DefaultAttachmentMaxMb)
+                * 1024L * 1024L,
+        };
     }
 
     /// <summary>
@@ -343,82 +296,37 @@ internal sealed record DocAgentSettings
     /// </summary>
     /// <param name="configuration">配置文件来源。</param>
     /// <returns>是否启用。</returns>
-    /// <remarks>
-    /// 这是<b>模式开关</b>（等价环境变量 <see cref="EnvDocAgent"/>=1），不是业务配置项：
-    /// 环境变量一旦被设置就按它判定（含显式设为 <c>0</c> 关闭），配置文件只在环境变量缺席时生效。
-    /// </remarks>
     public static bool IsEnabledByConfiguration(IConfiguration configuration)
     {
-        if (configuration is null)
-        {
-            throw new ArgumentNullException(nameof(configuration));
-        }
+        ArgumentNullException.ThrowIfNull(configuration);
 
         return configuration.GetValue<bool?>(ConfigEnabledKey) is true;
     }
 
     /// <summary>
-    /// 取 <see cref="AppSectionName"/> 的"主应用"（<c>IsDefault=true</c> 优先，否则第 0 个）。
-    /// </summary>
-    /// <param name="configuration">配置来源。</param>
-    /// <returns>主应用配置节；配置未提供该节时为 <see langword="null"/>。</returns>
-    private static IConfigurationSection? ResolvePrimaryApp(IConfiguration configuration)
-    {
-        var apps = configuration.GetSection(AppSectionName).GetChildren().ToArray();
-
-        return apps.FirstOrDefault(
-                   static app => string.Equals(app["IsDefault"], "true", StringComparison.OrdinalIgnoreCase))
-               ?? apps.FirstOrDefault();
-    }
-
-    /// <summary>
-    /// 统一装载：<paramref name="read"/> 已封装"多来源优先级 + <c>FeishuApps</c> 回退"。
-    /// </summary>
-    /// <param name="read">读取单个配置项（入参：环境变量名、可空的 <c>FeishuApps</c> 子键名）。</param>
-    /// <returns>配置实例。</returns>
-    private static DocAgentSettings Load(Func<string, string?, string?> read)
-    {
-        return new DocAgentSettings
-        {
-            ModelId = Require(read, EnvModelKey, appKey: null),
-            ApiKey = Require(read, EnvApiKey, appKey: null),
-            Endpoint = NullIfBlank(read(EnvEndpoint, null)),
-            AppId = Require(read, EnvAppId, EnvToAppKey[EnvAppId]),
-            AppSecret = Require(read, EnvAppSecret, EnvToAppKey[EnvAppSecret]),
-            AppKey = NullIfBlank(read(EnvAppKey, EnvToAppKey[EnvAppKey])) ?? DefaultAppKey,
-            UserId = NullIfBlank(read(EnvUserId, null)) ?? DefaultConsoleUserId,
-            WikiSpaceId = NullIfBlank(read(EnvWikiSpaceId, null)),
-            Policy = NullIfBlank(read(EnvPolicy, null)) ?? PolicyStrict,
-            SummaryThreshold = ParseInt(read, EnvSummaryThreshold, null, DefaultSummaryThreshold),
-            AuditExportPath = NullIfBlank(read(EnvAuditPath, null)) ?? string.Empty,
-            AttachmentMaxBytes = ParseInt(read, EnvAttachmentMaxMb, null, DefaultAttachmentMaxMb) * 1024L * 1024L,
-        };
-    }
-
-    /// <summary>
-    /// 校验配置合法性（fail-fast；在装配之前调用，错误消息指明具体变量）。
+    /// 校验配置合法性（fail-fast；在装配之前调用，错误消息指明具体配置键）。
     /// </summary>
     /// <exception cref="InvalidOperationException">存在非法取值。</exception>
     public void Validate()
     {
         if (string.IsNullOrWhiteSpace(ModelId))
         {
-            throw new InvalidOperationException($"请先设置 {EnvModelKey}");
+            throw new InvalidOperationException($"请先设置 {FullKey(KeyModelId)}");
         }
 
         if (string.IsNullOrWhiteSpace(ApiKey))
         {
-            throw new InvalidOperationException($"请先设置 {EnvApiKey}");
+            throw new InvalidOperationException($"请先设置 {FullKey(KeyApiKey)}");
         }
 
         if (string.IsNullOrWhiteSpace(AppId))
         {
-            throw new InvalidOperationException($"请先设置 {EnvAppId}");
+            throw new InvalidOperationException($"请先设置 {FullKey(KeyAppId)}（或在 {AppSectionName} 的主应用中配置）");
         }
 
         if (string.IsNullOrWhiteSpace(AppSecret))
         {
-            throw new InvalidOperationException($"请先设置 {EnvAppSecret}");
+            throw new InvalidOperationException($"请先设置 {FullKey(KeyAppSecret)}（或在 {AppSectionName} 的主应用中配置）");
         }
 
         // 与 AddFeishuOpenAIChatClient 的 EnsureHttpsEndpoint 同口径，但提前给出更友好的错误
@@ -428,7 +336,7 @@ internal sealed record DocAgentSettings
             if (!Uri.TryCreate(Endpoint, UriKind.Absolute, out var endpoint))
             {
                 throw new InvalidOperationException(
-                    $"{EnvEndpoint} 不是合法的绝对 URI：'{Endpoint}'");
+                    $"{FullKey(KeyEndpoint)} 不是合法的绝对 URI：'{Endpoint}'");
             }
 
             EnsureHttpsOrLoopback(endpoint);
@@ -437,25 +345,25 @@ internal sealed record DocAgentSettings
         if (!Policies.Contains(Policy, StringComparer.Ordinal))
         {
             throw new InvalidOperationException(
-                $"{EnvPolicy} 取值非法：'{Policy}'——合法值为 {string.Join(" / ", Policies)}");
+                $"{FullKey(KeyPolicy)} 取值非法：'{Policy}'——合法值为 {string.Join(" / ", Policies)}");
         }
 
         if (string.IsNullOrWhiteSpace(UserId))
         {
-            throw new InvalidOperationException($"{EnvUserId} 不能为空白");
+            throw new InvalidOperationException($"{FullKey(KeyUserId)} 不能为空白");
         }
 
         // 会话键布局（{prefix}:{appKey}:conversation:user:{subjectId}）：appKey 含 ':' 会被
         // ConversationKeyBuilder 转义，键可读性下降且排障困难——此处提前拒绝。
         if (string.IsNullOrWhiteSpace(AppKey))
         {
-            throw new InvalidOperationException($"{EnvAppKey} 不能为空白");
+            throw new InvalidOperationException($"{FullKey(KeyAppKey)} 不能为空白");
         }
 
         if (AppKey.Contains(':', StringComparison.Ordinal))
         {
             throw new InvalidOperationException(
-                $"{EnvAppKey} 不能包含 ':'（会话键以 ':' 分段，含分隔符会触发转义、降低键可读性）：'{AppKey}'");
+                $"{FullKey(KeyAppKey)} 不能包含 ':'（会话键以 ':' 分段，含分隔符会触发转义、降低键可读性）：'{AppKey}'");
         }
 
         var intersection = ReadonlyTools.Intersect(WriteTools, StringComparer.Ordinal).ToArray();
@@ -474,13 +382,13 @@ internal sealed record DocAgentSettings
         if (SummaryThreshold is < 0 or (> 0 and < 4))
         {
             throw new InvalidOperationException(
-                $"{EnvSummaryThreshold} 为 0（禁用摘要）或 ≥ 4，实际值：{SummaryThreshold.ToString(CultureInfo.InvariantCulture)}"
+                $"{FullKey(KeySummaryThreshold)} 为 0（禁用摘要）或 ≥ 4，实际值：{SummaryThreshold.ToString(CultureInfo.InvariantCulture)}"
                 + "（1~3 无法保证「摘要后条数低于阈值」，会导致每轮重复摘要）");
         }
 
         if (AttachmentMaxBytes <= 0)
         {
-            throw new InvalidOperationException($"{EnvAttachmentMaxMb} 必须为正数");
+            throw new InvalidOperationException($"{FullKey(KeyAttachmentMaxMb)} 必须为正数");
         }
     }
 
@@ -499,21 +407,34 @@ internal sealed record DocAgentSettings
         return secret.Length <= 4 ? "****" : string.Concat(secret.AsSpan(0, 4), "***");
     }
 
-    private static string Require(Func<string, string?, string?> read, string name, string? appKey)
-        => NullIfBlank(read(name, appKey))
-           ?? throw new InvalidOperationException(
-               $"请先设置 {name}（或在配置文件的 {SectionName}:{EnvToKey[name]} 中配置）");
+    /// <summary>配置键全名（<c>FeishuDocAgent:{key}</c>）。</summary>
+    private static string FullKey(string key) => $"{SectionName}:{key}";
+
+    /// <summary>
+    /// 取 <see cref="AppSectionName"/> 的"主应用"（<c>IsDefault=true</c> 优先，否则第 0 个）。
+    /// </summary>
+    /// <param name="configuration">配置来源。</param>
+    /// <returns>主应用配置节；配置未提供该节时为 <see langword="null"/>。</returns>
+    private static IConfigurationSection? ResolvePrimaryApp(IConfiguration configuration)
+    {
+        var apps = configuration.GetSection(AppSectionName).GetChildren().ToArray();
+
+        return apps.FirstOrDefault(
+                   static app => string.Equals(app["IsDefault"], "true", StringComparison.OrdinalIgnoreCase))
+               ?? apps.FirstOrDefault();
+    }
+
+    private static string Require(string? value, string key)
+        => value ?? throw new InvalidOperationException(
+            key is KeyAppId or KeyAppSecret
+                ? $"请先设置 {FullKey(key)}（或在 {AppSectionName} 的主应用中配置）"
+                : $"请先设置 {FullKey(key)}");
 
     private static string? NullIfBlank(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value;
 
-    private static int ParseInt(
-        Func<string, string?, string?> read,
-        string name,
-        string? appKey,
-        int fallback)
+    private static int ParseInt(string? raw, string key, int fallback)
     {
-        var raw = NullIfBlank(read(name, appKey));
         if (raw is null)
         {
             return fallback;
@@ -522,7 +443,7 @@ internal sealed record DocAgentSettings
         if (!int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value))
         {
             throw new InvalidOperationException(
-                $"{name}（{SectionName}:{EnvToKey[name]}）必须是整数，实际值：'{raw}'");
+                $"{FullKey(key)} 必须是整数，实际值：'{raw}'");
         }
 
         return value;
@@ -544,7 +465,7 @@ internal sealed record DocAgentSettings
         if (!isLoopback)
         {
             throw new InvalidOperationException(
-                $"{EnvEndpoint} 必须为 HTTPS（环回地址例外，对齐 SDK 的 EnsureHttpsEndpoint 安全默认），实际：{endpoint}");
+                $"{FullKey(KeyEndpoint)} 必须为 HTTPS（环回地址例外，对齐 SDK 的 EnsureHttpsEndpoint 安全默认），实际：{endpoint}");
         }
     }
 }

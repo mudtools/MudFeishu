@@ -18,12 +18,12 @@ namespace Mud.Feishu.Agent.Demo;
 /// <summary>
 /// 已装配的配置来源：配置根 + **实际存在**的配置文件清单。
 /// </summary>
-/// <param name="Configuration">配置根（文件层；环境变量由 <see cref="DocAgentSettings.FromConfiguration"/> 叠加）。</param>
+/// <param name="Configuration">配置根（文件层；<c>appsettings.json</c> / <c>appsettings.local.json</c>）。</param>
 /// <param name="Files">实际加载的配置文件名（用于横幅的"配置来源"事实行；文件不存在时不列出）。</param>
 public sealed record DocAgentConfiguration(IConfigurationRoot Configuration, IReadOnlyList<string> Files);
 
 /// <summary>
-/// 文档业务 AI 智能体控制台 Demo 的模式入口（<c>FEISHU_DEMO_DOC_AGENT=1</c> 或配置 <c>FeishuDocAgent:Enabled=true</c>）。
+/// 文档业务 AI 智能体控制台 Demo 的模式入口（配置 <c>FeishuDocAgent:Enabled=true</c>）。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -59,7 +59,7 @@ public static class DocAgentDemo
         var settings = DocAgentSettings.FromConfiguration(sources.Configuration);
         settings.Validate();
 
-        // ① 飞书多应用配置：配置文件（或环境变量）已提供 FeishuApps 则原样使用，否则用本节三项合成单应用。
+        // ① 飞书多应用配置：配置文件已提供 FeishuApps 则原样使用，否则用本节三项合成单应用。
         var configuration = EnsureAppSection(sources.Configuration, settings);
 
         var services = new ServiceCollection();
@@ -199,33 +199,22 @@ public static class DocAgentDemo
     }
 
     /// <summary>
-    /// 装配配置来源：<c>appsettings.json</c> → <c>appsettings.{环境}.json</c> → <c>appsettings.local.json</c>
-    /// （后者覆盖前者），环境变量的读取由 <see cref="DocAgentSettings.FromConfiguration"/> 以**更高优先级**完成。
+    /// 装配配置来源：<c>appsettings.json</c> → <c>appsettings.local.json</c>（后者覆盖前者）。
+    /// 环境变量不再参与参数解析（R4 配置面约定：参数与模式开关全部来自配置文件）。
     /// </summary>
     /// <param name="baseDirectory">配置根目录（生产路径为 <see cref="AppContext.BaseDirectory"/>，
     /// 与工作目录无关 —— <c>dotnet run</c> / 直接跑产物 / 任意 cwd 行为一致）。</param>
-    /// <param name="reader">环境读取器（可空 = 读进程环境变量；单测注入替身）。</param>
     /// <returns>配置根与**实际存在**的配置文件清单（用于横幅的"配置来源"事实行）。</returns>
     /// <remarks>
-    /// 三层文件与仓库其他 Demo（Webhook / WebSocket / OAuth）保持同一约定；
-    /// 差异是本 Demo 的 <c>appsettings.json</c> 为 <c>optional: true</c> —— 纯环境变量运行
-    /// （容器 / CI / 现有用法）不得因缺文件而启动失败。
+    /// 仅两层文件：<c>appsettings.json</c>（随仓库提交的模板，必填）＋
+    /// <c>appsettings.local.json</c>（本地覆盖，已被 <c>.gitignore</c> 忽略，可选）。
     /// </remarks>
-    internal static DocAgentConfiguration BuildConfiguration(
-        string baseDirectory,
-        Func<string, string?>? reader = null)
+    internal static DocAgentConfiguration BuildConfiguration(string baseDirectory)
     {
-        var read = reader ?? Environment.GetEnvironmentVariable;
-        var environment = read("DOTNET_ENVIRONMENT") ?? read("ASPNETCORE_ENVIRONMENT");
         var files = new List<string>();
 
         var builder = new ConfigurationBuilder();
-        AddJsonFile(DocAgentSettings.AppSettingsFile, optional: true);
-        if (!string.IsNullOrWhiteSpace(environment))
-        {
-            AddJsonFile($"appsettings.{environment}.json", optional: true);
-        }
-
+        AddJsonFile(DocAgentSettings.AppSettingsFile, optional: false);
         AddJsonFile(DocAgentSettings.LocalAppSettingsFile, optional: true);
 
         return new DocAgentConfiguration(builder.Build(), files);
@@ -290,8 +279,8 @@ public static class DocAgentDemo
         var facts = new Dictionary<string, string?>(StringComparer.Ordinal)
         {
             ["配置来源"] = configurationFiles.Count == 0
-                ? "仅环境变量（未发现 appsettings*.json）"
-                : $"{string.Join(" + ", configurationFiles)} + 环境变量（环境变量优先）",
+                ? "（未发现 appsettings*.json）"
+                : string.Join(" + ", configurationFiles),
             ["应用 appKey"] = $"{settings.AppKey}（AppId {DocAgentSettings.Mask(settings.AppId)}，Secret 已隐藏）",
             ["模型"] = settings.Endpoint is null
                 ? $"{settings.ModelId}（SDK 默认端点）"

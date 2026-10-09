@@ -164,7 +164,7 @@ public class BinaryDownloadToolExposureContractTests
     /// 会退化为"一个 Source 都扫不到" ⇒ <b>防线静默失效</b>（这正是"永远为绿的守卫"形态）。
     /// </para>
     /// <para>
-    /// 判据用精确基线 99（与 <c>ToolSourceConsistencyContractTests</c> 同源），
+    /// 判据用精确基线（与 <c>ToolSourceConsistencyContractTests</c> 同源），
     /// 且要求每个 Source 都含 <c>.</c>（证明接口名没有被 <c>nameof</c> 的"末段标识符"语义吃掉）。
     /// </para>
     /// </remarks>
@@ -174,8 +174,8 @@ public class BinaryDownloadToolExposureContractTests
         var references = CollectToolSourceReferences().ToArray();
 
         references.Should().HaveCount(
-            109,
-            "109 个工具声明了 Source（另 3 个元工具无 SDK 源）——骤降说明扫描器读不懂现形态（R-1 的 nameof 拼接）");
+            119,
+            "119 个工具声明了 Source（另 6 个元工具无 SDK 源）——骤降说明扫描器读不懂现形态（R-1 的 nameof 拼接）");
 
         references.Should().OnlyContain(
             static reference => reference.Source.Contains('.', StringComparison.Ordinal)

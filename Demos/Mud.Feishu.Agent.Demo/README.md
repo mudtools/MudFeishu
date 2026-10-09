@@ -276,7 +276,7 @@ tenant 身份无 wiki 关键词搜索（改用 `search.doc_wiki`）；工具结�
 
 ---
 
-## 10. 可观测性
+## 10. 可观测性与运行时日志
 
 Demo **不接 OTel Exporter**（零额外依赖），采用「控制台 Trace + 本地指标快照」，Trace 内容对齐 SDK 的埋点语义：
 
@@ -290,6 +290,18 @@ Demo **不接 OTel Exporter**（零额外依赖），采用「控制台 Trace + 
 
 **高基数纪律**：`conversation_key` / `chat_id` / `user_id` 只进 Span 属性与审计载荷，**绝不进 Metrics tag**；
 审计表里只显示会话键的**后 12 位**。
+
+### 10.1 运行时日志（Serilog）
+
+| 通道 | 级别 | 说明 |
+| --- | --- | --- |
+| 控制台 | Warning+ | 不干扰 REPL 交互与模型流式输出 |
+| 文件 | 全量 Information | `logs/agent-demo-.log`（相对**输出目录**），按天滚动 + 10 MB 单文件上限，保留 7 个 |
+
+级别唯一事实源是 `appsettings*.json` 的 `Serilog` 节（R5 治理：不设「日志开关」类属性）；
+删除该节时代码兜底同形态（`Common/DemoLogging.cs`），「删了节也不静默失明」。
+要观察 SDK 内部日志，在 `Serilog:MinimumLevel:Override` 把对应类别调到 `Debug`/`Information`
+（如 `"Mud.Feishu": "Information"`），随后看日志文件即可——控制台仍只出 Warning+。
 
 ---
 
@@ -331,3 +343,39 @@ dotnet test Tests/Mud.Feishu.Agent.Demo.Tests
 | 用户身份（`identity=user`）工具 | 文档业务域全部是 `tenant`；用户身份需 OAuth2 换 token |
 | Web 宿主 / DB / Redis | 控制台进程内闭环；`MemoryConversationStore` 足够 |
 | 自动重试（Polly 等） | 与 SDK 口径一致：重试语义由模型按 `ToolErrorKind` 自行决定（剧本 S6 演示自愈） |
+
+---
+
+## 13. 项目结构
+
+按功能归类：`Common/`（跨模式公共层）、`Modes/`（三个轻量模式）、`DocAgent/`（文档业务智能体），
+入口 `Program.cs` 只做模式判定与分发。
+
+```
+Mud.Feishu.Agent.Demo/
+├── Program.cs                    # 入口：四模式互斥判定，命中即返回（纯分发，无业务逻辑）
+├── Common/                       # 跨模式公共层
+│   ├── DemoConfiguration.cs      # 配置加载与来源横幅（appsettings.json + local 覆盖）
+│   ├── DemoModeSettings.cs       # 各模式开关/参数绑定 + fail-fast 校验
+│   ├── DemoAppConfig.cs          # FeishuDemo 节 → 飞书应用配置（EnsureAppSection 合成）
+│   ├── DemoAgentDefaults.cs      # 智能体默认值（截断/记忆/通道/身份闭集）
+│   ├── DemoLogging.cs            # 运行时日志装配（Serilog，见 §10.1）
+│   ├── DemoChatLoop.cs           # 通用对话循环（Phase 0 / 工具冒烟共用）
+│   ├── ConsoleRenderer.cs        # ANSI 渲染器（横幅/工具卡片/表格/密钥掩码）
+│   └── DemoAttachmentStager.cs   # 附件落盘器（drive.upload_file 的宿主注入件）
+├── Modes/                        # 三个轻量模式入口
+│   ├── BareModelDemo.cs          # Phase 0 裸模型一问一答
+│   ├── ToolsDemo.cs              # Phase 1/2 全域只读工具冒烟
+│   └── ImConversationDemo.cs     # P2D-5a IM 会话处理器注册面演示
+└── DocAgent/                     # 文档业务智能体
+    ├── DocAgentDemo.cs           # 装配根：DI 组合 + 能力面横幅
+    ├── DocAgentSettings.cs       # FeishuDocAgent 节设置
+    ├── AgentConsoleLoop.cs       # REPL：斜杠命令解析 + 挂起态守卫
+    ├── ConsoleToolAuthorizer.cs  # 闸 2：宿主授权器（readonly/strict 策略轴）
+    ├── ConsoleApprovalChannel.cs # 闸 1 出口：人工批准通道（非阻塞）
+    ├── ConsoleMessageChannel.cs  # 控制台流式消息通道
+    ├── InMemoryAuditSink.cs      # 闸 3：执行审计（/audit /export）
+    ├── DocAgentPrompt.cs         # 系统指令装配（含已知能力缺口）
+    ├── DocAgentScenarios.cs      # 六部剧本引导语
+    └── ScenarioBook.cs           # 剧本应答栈（自动续轮）
+```

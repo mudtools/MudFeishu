@@ -119,13 +119,10 @@ internal sealed record DocAgentSettings
     public const string PolicyReadonly = "readonly";
 
     /// <summary>默认应用键。</summary>
-    public const string DefaultAppKey = "demo-app";
+    public const string DefaultAppKey = DemoAgentDefaults.DefaultAppKey;
 
     /// <summary>默认会话键 subject 段（刻意不是真实 open_id）。</summary>
     public const string DefaultConsoleUserId = "ou_console_demo_user";
-
-    /// <summary>键控模型客户端的服务键（与 <c>AddFeishuOpenAIChatClient</c> 一致）。</summary>
-    public const string ModelServiceKey = "demo-model";
 
     /// <summary>默认摘要触发阈值（与 <c>FeishuAgentOptions.SummaryThreshold</c> 默认值一致）。</summary>
     public const int DefaultSummaryThreshold = 30;
@@ -270,7 +267,7 @@ internal sealed record DocAgentSettings
 
         var shared = FeishuDemoSettings.FromConfiguration(configuration);
 
-        string? Section(string key) => NullIfBlank(configuration[$"{SectionName}:{key}"]);
+        string? Section(string key) => DemoConfigGuards.NullIfBlank(configuration[$"{SectionName}:{key}"]);
 
         return new DocAgentSettings
         {
@@ -338,7 +335,7 @@ internal sealed record DocAgentSettings
                     $"{SharedFullKey(KeyEndpoint)} 不是合法的绝对 URI：'{Endpoint}'");
             }
 
-            EnsureHttpsOrLoopback(endpoint);
+            DemoConfigGuards.EnsureHttpsOrLoopback(SharedFullKey(KeyEndpoint), endpoint);
         }
 
         if (!Policies.Contains(Policy, StringComparer.Ordinal))
@@ -418,9 +415,6 @@ internal sealed record DocAgentSettings
                 ? $"请先设置 {SharedFullKey(key)}"
                 : $"请先设置 {FullKey(key)}");
 
-    private static string? NullIfBlank(string? value)
-        => string.IsNullOrWhiteSpace(value) ? null : value;
-
     private static int ParseInt(string? raw, string key, int fallback)
     {
         if (raw is null)
@@ -435,25 +429,5 @@ internal sealed record DocAgentSettings
         }
 
         return value;
-    }
-
-    private static void EnsureHttpsOrLoopback(Uri endpoint)
-    {
-        if (string.Equals(endpoint.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
-        {
-            return;
-        }
-
-        // IPv6 字面量经 Uri 规范化后 Host 带方括号（" [::1]"），须剥离后再判定环回。
-        var host = endpoint.Host.Trim('[', ']');
-        var isLoopback = string.Equals(endpoint.Host, "localhost", StringComparison.OrdinalIgnoreCase)
-            || (System.Net.IPAddress.TryParse(host, out var address)
-                && System.Net.IPAddress.IsLoopback(address));
-
-        if (!isLoopback)
-        {
-            throw new InvalidOperationException(
-                $"{SharedFullKey(KeyEndpoint)} 必须为 HTTPS（环回地址例外，对齐 SDK 的 EnsureHttpsEndpoint 安全默认），实际：{endpoint}");
-        }
     }
 }

@@ -10,6 +10,49 @@ using Microsoft.Extensions.Configuration;
 namespace Mud.Feishu.Agent.Demo;
 
 /// <summary>
+/// 配置校验的公共原语（原在 <c>ChatModelSettings</c> 与 <c>DocAgentSettings</c> 各写一份，收敛至此）：
+/// 空白归 <see langword="null"/>、HTTPS/环回端点强制（与 SDK 的 <c>EnsureHttpsEndpoint</c> 同口径）。
+/// </summary>
+/// <remarks>
+/// 错误消息**必须指明配置键**（<paramref name="keyName"/> 传完整键名，如 <c>FeishuDemo:Endpoint</c>），
+/// 否则排障只能靠猜。
+/// </remarks>
+internal static class DemoConfigGuards
+{
+    /// <summary>空白（或只含空白）归 <see langword="null"/>。</summary>
+    /// <param name="value">原始值。</param>
+    /// <returns>归一结果。</returns>
+    public static string? NullIfBlank(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value;
+
+    /// <summary>
+    /// 强制端点为 HTTPS（环回地址例外——本地自建模型端点走明文）。
+    /// </summary>
+    /// <param name="keyName">配置键全名（错误消息用，如 <c>FeishuDemo:Endpoint</c>）。</param>
+    /// <param name="endpoint">已解析的绝对 URI。</param>
+    /// <exception cref="InvalidOperationException">非 HTTPS 且非环回。</exception>
+    public static void EnsureHttpsOrLoopback(string keyName, Uri endpoint)
+    {
+        if (string.Equals(endpoint.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        // IPv6 字面量经 Uri 规范化后 Host 带方括号（"[::1]"），须剥离后再判定环回。
+        var host = endpoint.Host.Trim('[', ']');
+        var isLoopback = string.Equals(endpoint.Host, "localhost", StringComparison.OrdinalIgnoreCase)
+            || (System.Net.IPAddress.TryParse(host, out var address)
+                && System.Net.IPAddress.IsLoopback(address));
+
+        if (!isLoopback)
+        {
+            throw new InvalidOperationException(
+                $"{keyName} 必须为 HTTPS（环回地址例外，对齐 SDK 的 EnsureHttpsEndpoint 安全默认），实际：{endpoint}");
+        }
+    }
+}
+
+/// <summary>
 /// 模型客户端三参数（裸模型 / IM 事件接入 / 工具冒烟 / 文档智能体四个模式共用的模型配置面）。
 /// </summary>
 /// <remarks>
@@ -36,7 +79,7 @@ internal sealed record ChatModelSettings
         ArgumentNullException.ThrowIfNull(configuration);
         ArgumentException.ThrowIfNullOrWhiteSpace(sectionName);
 
-        string? Read(string key) => NullIfBlank(configuration[$"{sectionName}:{key}"]);
+        string? Read(string key) => DemoConfigGuards.NullIfBlank(configuration[$"{sectionName}:{key}"]);
 
         return new ChatModelSettings
         {
@@ -68,34 +111,12 @@ internal sealed record ChatModelSettings
                 throw new InvalidOperationException($"{sectionName}:Endpoint 不是合法的绝对 URI：'{Endpoint}'");
             }
 
-            EnsureHttpsOrLoopback(sectionName, endpoint);
+            DemoConfigGuards.EnsureHttpsOrLoopback($"{sectionName}:Endpoint", endpoint);
         }
     }
 
     private static string Require(string? value, string sectionName, string key)
         => value ?? throw new InvalidOperationException($"请先设置 {sectionName}:{key}");
-
-    private static string? NullIfBlank(string? value)
-        => string.IsNullOrWhiteSpace(value) ? null : value;
-
-    private static void EnsureHttpsOrLoopback(string sectionName, Uri endpoint)
-    {
-        if (string.Equals(endpoint.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
-        {
-            return;
-        }
-
-        var host = endpoint.Host.Trim('[', ']');
-        var isLoopback = string.Equals(endpoint.Host, "localhost", StringComparison.OrdinalIgnoreCase)
-            || (System.Net.IPAddress.TryParse(host, out var address)
-                && System.Net.IPAddress.IsLoopback(address));
-
-        if (!isLoopback)
-        {
-            throw new InvalidOperationException(
-                $"{sectionName}:Endpoint 必须为 HTTPS（环回地址例外，对齐 SDK 的 EnsureHttpsEndpoint 安全默认），实际：{endpoint}");
-        }
-    }
 }
 
 /// <summary>
@@ -159,17 +180,14 @@ internal sealed record FeishuDemoSettings
         return new FeishuDemoSettings
         {
             Model = ChatModelSettings.FromSection(configuration, SectionName),
-            AppId = NullIfBlank(configuration[$"{SectionName}:{KeyAppId}"]),
-            AppSecret = NullIfBlank(configuration[$"{SectionName}:{KeyAppSecret}"]),
+            AppId = DemoConfigGuards.NullIfBlank(configuration[$"{SectionName}:{KeyAppId}"]),
+            AppSecret = DemoConfigGuards.NullIfBlank(configuration[$"{SectionName}:{KeyAppSecret}"]),
         };
     }
 
     /// <summary>校验模型三参数合法（fail-fast：缺必填项 / 非 HTTPS 端点）。</summary>
     /// <exception cref="InvalidOperationException">存在非法取值。</exception>
     public void Validate() => Model.Validate(SectionName);
-
-    private static string? NullIfBlank(string? value)
-        => string.IsNullOrWhiteSpace(value) ? null : value;
 }
 
 /// <summary>
@@ -218,7 +236,7 @@ internal sealed record ToolsDemoSettings
             Model = shared.Model,
             AppId = Require(shared.AppId, FeishuDemoSettings.KeyAppId),
             AppSecret = Require(shared.AppSecret, FeishuDemoSettings.KeyAppSecret),
-            StreamChatId = NullIfBlank(configuration[$"{SectionName}:StreamChatId"]),
+            StreamChatId = DemoConfigGuards.NullIfBlank(configuration[$"{SectionName}:StreamChatId"]),
         };
     }
 
@@ -242,9 +260,6 @@ internal sealed record ToolsDemoSettings
     private static string Require(string? value, string key)
         => value ?? throw new InvalidOperationException(
             $"请先设置 {FeishuDemoSettings.SectionName}:{key}");
-
-    private static string? NullIfBlank(string? value)
-        => string.IsNullOrWhiteSpace(value) ? null : value;
 }
 
 /// <summary>

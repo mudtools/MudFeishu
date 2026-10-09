@@ -69,7 +69,16 @@ public class ToolSearchTests
     private static ToolSearchTools CreateExecutor(
         IToolCatalog? catalog = null,
         FeishuToolRegistry? registry = null)
-        => new(DefaultOptions(), catalog ?? CreateCatalog(), registry ?? CreateRegistry());
+    {
+        catalog ??= CreateCatalog();
+        registry ??= CreateRegistry();
+        // ToolSearchTools 构造期不再注入 IToolCatalog/Registry（构建期解析会自我闭环——见该类 remarks），
+        // 改经 IServiceProvider 执行期解析：mock GetService 返回测试桩即可。
+        var provider = new Mock<IServiceProvider>();
+        provider.Setup(p => p.GetService(typeof(IToolCatalog))).Returns(catalog);
+        provider.Setup(p => p.GetService(typeof(FeishuToolRegistry))).Returns(registry);
+        return new(DefaultOptions(), provider.Object);
+    }
 
     private static JsonDocument ParseResult(FeishuToolResult result)
     {

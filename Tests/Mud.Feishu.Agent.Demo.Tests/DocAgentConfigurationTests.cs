@@ -160,7 +160,7 @@ public class DocAgentConfigurationTests
                 }
                 """);
 
-            var sources = DocAgentDemo.BuildConfiguration(directory);
+            var sources = DemoConfiguration.Build(directory);
 
             sources.Files.Should().Equal(DocAgentSettings.AppSettingsFile, DocAgentSettings.LocalAppSettingsFile);
 
@@ -188,7 +188,7 @@ public class DocAgentConfigurationTests
                 { "FeishuDocAgent": { "Policy": "ask" } }
                 """);
 
-            var sources = DocAgentDemo.BuildConfiguration(directory);
+            var sources = DemoConfiguration.Build(directory);
 
             sources.Files.Should().Equal(DocAgentSettings.AppSettingsFile);
         }
@@ -207,7 +207,7 @@ public class DocAgentConfigurationTests
         var directory = CreateTempDirectory();
         try
         {
-            var act = () => DocAgentDemo.BuildConfiguration(directory);
+            var act = () => DemoConfiguration.Build(directory);
 
             act.Should().Throw<FileNotFoundException>("appsettings.json 是必填模板，缺失时 fail-fast");
         }
@@ -290,7 +290,7 @@ public class TemplateFileTests
     [Fact]
     public void Template_ShouldBeLoadable()
     {
-        var sources = DocAgentDemo.BuildConfiguration(TemplateDirectory());
+        var sources = DemoConfiguration.Build(TemplateDirectory());
 
         sources.Files.Should().Contain(DocAgentSettings.AppSettingsFile);
 

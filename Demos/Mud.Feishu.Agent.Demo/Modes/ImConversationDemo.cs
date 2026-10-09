@@ -46,16 +46,12 @@ public static class ImConversationDemo
         var settings = ImHandlerDemoSettings.FromConfiguration(configuration);
         settings.Validate();
 
-        var model = settings.Model;
-
         var services = new ServiceCollection()
-            .AddFeishuOpenAIChatClient("demo-model", model.ModelId, model.ApiKey, model.Endpoint)
-            .AddFeishuAgent(configure: options =>
-            {
-                options.ModelServiceKey = "demo-model";
-                options.Name = "FeishuImConversationDemo";
-                options.Instructions = "你是嵌入在 .NET 服务里的飞书助手，用简洁中文回答。";
-            })
+            .AddDemoLogging(configuration)
+            .AddDemoAgent(
+                settings.Model,
+                "FeishuImConversationDemo",
+                "你是嵌入在 .NET 服务里的飞书助手，用简洁中文回答。")
             // ── 一行接入（P2D-5a）：事件规范化 → 会话 → 模型 → 回复/流式 ──
             // 默认启用 SenderInfo 装配器；可选 QuoteMessage（引用消息）/ Knowledge（知识注入）。
             .AddFeishuImConversationHandler(configure: options =>
@@ -66,7 +62,8 @@ public static class ImConversationDemo
             .BuildServiceProvider();
 
         var agent = services.GetRequiredService<FeishuAgent>();
-        var conversationKey = ConversationKeyBuilder.Build("demo-app", ConversationScope.P2P(), "ou_demo_user");
+        var conversationKey = ConversationKeyBuilder.Build(
+            DemoAgentDefaults.DefaultAppKey, ConversationScope.P2P(), DemoAgentDefaults.DemoUserId);
         var session = await agent.GetOrCreateSessionAsync(conversationKey);
         _ = session; // 会话管线由 ImMessageConversationalEventHandler 驱动，此处仅演示 Agent 可解析。
 

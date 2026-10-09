@@ -112,7 +112,8 @@ internal static class ToolPagination
             }
             catch (Exception ex)
             {
-                // 中途某页失败：保留已取数据
+                // 守卫白名单：中途某页失败时保留已取数据并显式回填警告（非静默——失败原因
+                // 随 PagedFetchResult.Warning 透出给调用方；SilentCatchContractGuards 豁免标记）。
                 return new PagedFetchResult(
                     allItems, truncated, currentPageToken, totalFetched, pagesFetched,
                     $"第 {pagesFetched.ToString(CultureInfo.InvariantCulture)} 页获取失败: {ex.Message}",

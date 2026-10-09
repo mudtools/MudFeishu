@@ -113,6 +113,36 @@ public class ToolSurfaceScaleContractGuards
         found[0].IsConsistent.Should().BeTrue("与真相源一致的数字不得报红（否则守卫会误伤正确文档）");
     }
 
+    /// <summary>
+    /// C1 新守卫：对照表数据行总数 == <c>FeishuToolNames.All</c> 条目数。
+    /// </summary>
+    /// <remarks>
+    /// 只读表数据行数 + 写类表数据行数 = 全部工具数。
+    /// 金丝雀：在对照表中删一行即红。
+    /// </remarks>
+    [Fact]
+    public void PermissionDoc_RowCount_ShouldMatchToolCount()
+    {
+        var docPath = Path.Combine(
+            FindRepositoryRoot(), "documents", "AIAgent", "工具权限对照表.md");
+        File.Exists(docPath).Should().BeTrue("对照表必须存在");
+
+        var lines = File.ReadAllLines(docPath);
+        var dataRows = lines
+            .Where(static l => l.StartsWith("| ", StringComparison.Ordinal)
+                && !l.StartsWith("| #", StringComparison.Ordinal)
+                && !l.StartsWith("| ---", StringComparison.Ordinal)
+                && !l.StartsWith("| 域", StringComparison.Ordinal)
+                && !l.Contains("合计", StringComparison.Ordinal)
+                && l.Split('|', StringSplitOptions.RemoveEmptyEntries).Length >= 3)
+            .Count();
+
+        var truth = FeishuToolNames.All.Length;
+        dataRows.Should().Be(truth,
+            $"对照表数据行总数 ({dataRows}) 必须等于 FeishuToolNames.All 条目数 ({truth})——" +
+            "只读表 + 写类表的总数据行数 = 全部工具数");
+    }
+
     // ────────── 读取 ──────────
 
     private static int ReadGoldenEntryCount()

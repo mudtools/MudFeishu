@@ -275,7 +275,10 @@ Mud.Feishu.AI.Tools.FeishuToolRegistry.MapTool(string! name) -> Mud.Feishu.AI.To
 Mud.Feishu.AI.Tools.FeishuToolRegistry.Register(Mud.Feishu.AI.Tools.FeishuToolDefinition! definition) -> Mud.Feishu.AI.Tools.FeishuToolRegistry!
 Mud.Feishu.AI.Tools.FeishuToolRegistry.TryGet(string! name, out Mud.Feishu.AI.Tools.FeishuToolDefinition? definition) -> bool
 Mud.Feishu.AI.Tools.FeishuToolResult
+Mud.Feishu.AI.Tools.FeishuToolResult.Error.get -> Mud.Feishu.AI.Tools.ToolError?
+Mud.Feishu.AI.Tools.FeishuToolResult.Error.init -> void
 Mud.Feishu.AI.Tools.FeishuToolResult.FeishuToolResult() -> void
+Mud.Feishu.AI.Tools.FeishuToolResult.FromError(Mud.Feishu.AI.Tools.ToolError! error, string! humanReadableText) -> Mud.Feishu.AI.Tools.FeishuToolResult!
 Mud.Feishu.AI.Tools.FeishuToolResult.Text.get -> string?
 Mud.Feishu.AI.Tools.FeishuToolResult.Text.init -> void
 Mud.Feishu.AI.Tools.FeishuToolResult.Truncated.get -> bool
@@ -384,6 +387,25 @@ Mud.Feishu.AI.Tools.ToolCatalogEntry.Risk.init -> void
 Mud.Feishu.AI.Tools.ToolCatalogEntry.SdkSource.get -> string!
 Mud.Feishu.AI.Tools.ToolCatalogEntry.SdkSource.init -> void
 Mud.Feishu.AI.Tools.ToolCatalogEntry.ToolCatalogEntry(string! Name, string! Description, System.Collections.Generic.IReadOnlyList<string!>! RequiredScopes, bool IsWrite, Mud.Feishu.AI.Tools.FeishuToolRisk Risk, string! Identity, string! SdkSource, string! ParameterSchemaJson) -> void
+Mud.Feishu.AI.Tools.ToolError
+Mud.Feishu.AI.Tools.ToolError.ApiCode.get -> int?
+Mud.Feishu.AI.Tools.ToolError.ApiCode.init -> void
+Mud.Feishu.AI.Tools.ToolError.Attempts.get -> int
+Mud.Feishu.AI.Tools.ToolError.Attempts.init -> void
+Mud.Feishu.AI.Tools.ToolError.Category.get -> string!
+Mud.Feishu.AI.Tools.ToolError.Category.init -> void
+Mud.Feishu.AI.Tools.ToolError.Deconstruct(out string! Category, out string! Subtype, out bool Retryable, out int? RetryAfterSeconds, out int? ApiCode, out int Attempts, out string? Trace, out string? Tool) -> void
+Mud.Feishu.AI.Tools.ToolError.Equals(Mud.Feishu.AI.Tools.ToolError? other) -> bool
+Mud.Feishu.AI.Tools.ToolError.RetryAfterSeconds.get -> int?
+Mud.Feishu.AI.Tools.ToolError.RetryAfterSeconds.init -> void
+Mud.Feishu.AI.Tools.ToolError.Retryable.get -> bool
+Mud.Feishu.AI.Tools.ToolError.Retryable.init -> void
+Mud.Feishu.AI.Tools.ToolError.Subtype.get -> string!
+Mud.Feishu.AI.Tools.ToolError.Subtype.init -> void
+Mud.Feishu.AI.Tools.ToolError.Tool.get -> string?
+Mud.Feishu.AI.Tools.ToolError.Tool.init -> void
+Mud.Feishu.AI.Tools.ToolError.ToolError(string! Category, string! Subtype, bool Retryable, int? RetryAfterSeconds = null, int? ApiCode = null, int Attempts = 1, string? Trace = null, string? Tool = null) -> void
+Mud.Feishu.AI.Tools.ToolError.<Clone>$() -> Mud.Feishu.AI.Tools.ToolError!
 Mud.Feishu.AI.Tools.ToolExecutionAuditRecord
 Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.<Clone>$() -> Mud.Feishu.AI.Tools.ToolExecutionAuditRecord!
 Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.AppKey.get -> string!
@@ -455,6 +477,9 @@ override Mud.Feishu.AI.Tools.ToolApprovalRequest.ToString() -> string!
 override Mud.Feishu.AI.Tools.ToolCatalogEntry.Equals(object? obj) -> bool
 override Mud.Feishu.AI.Tools.ToolCatalogEntry.GetHashCode() -> int
 override Mud.Feishu.AI.Tools.ToolCatalogEntry.ToString() -> string!
+override Mud.Feishu.AI.Tools.ToolError.Equals(object? obj) -> bool
+override Mud.Feishu.AI.Tools.ToolError.GetHashCode() -> int
+override Mud.Feishu.AI.Tools.ToolError.ToString() -> string!
 override Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.Equals(object? obj) -> bool
 override Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.GetHashCode() -> int
 override Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.ToString() -> string!
@@ -500,6 +525,8 @@ static Mud.Feishu.AI.Tools.ToolApprovalRequest.operator !=(Mud.Feishu.AI.Tools.T
 static Mud.Feishu.AI.Tools.ToolApprovalRequest.operator ==(Mud.Feishu.AI.Tools.ToolApprovalRequest? left, Mud.Feishu.AI.Tools.ToolApprovalRequest? right) -> bool
 static Mud.Feishu.AI.Tools.ToolCatalogEntry.operator !=(Mud.Feishu.AI.Tools.ToolCatalogEntry? left, Mud.Feishu.AI.Tools.ToolCatalogEntry? right) -> bool
 static Mud.Feishu.AI.Tools.ToolCatalogEntry.operator ==(Mud.Feishu.AI.Tools.ToolCatalogEntry? left, Mud.Feishu.AI.Tools.ToolCatalogEntry? right) -> bool
+static Mud.Feishu.AI.Tools.ToolError.operator !=(Mud.Feishu.AI.Tools.ToolError? left, Mud.Feishu.AI.Tools.ToolError? right) -> bool
+static Mud.Feishu.AI.Tools.ToolError.operator ==(Mud.Feishu.AI.Tools.ToolError? left, Mud.Feishu.AI.Tools.ToolError? right) -> bool
 static Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.operator !=(Mud.Feishu.AI.Tools.ToolExecutionAuditRecord? left, Mud.Feishu.AI.Tools.ToolExecutionAuditRecord? right) -> bool
 static Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.operator ==(Mud.Feishu.AI.Tools.ToolExecutionAuditRecord? left, Mud.Feishu.AI.Tools.ToolExecutionAuditRecord? right) -> bool
 virtual Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.AllowMissingAppKey.get -> bool

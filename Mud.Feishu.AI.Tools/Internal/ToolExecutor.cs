@@ -59,12 +59,12 @@ internal readonly struct ToolExecutor(string toolName, int maxResultLength)
         {
             // 有意静默（守卫白名单）：异常被**转换**为模型可见的结构化错误文本（换了一条上报通道：
             // 回填模型 + FeishuToolBinding 侧同样计 Error 指标与审计），不是吞掉。
-            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(toolName, ex.Message));
+            return FromStructuredError(ToolErrorCategory.Validation, ToolErrorSubtype.InvalidArgs, ex.Message);
         }
         catch (JsonException ex)
         {
             // 有意静默（守卫白名单）：同 ArgumentException 分支——转为结构化错误文本回填模型。
-            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(toolName, $"参数不是合法 JSON: {ex.Message}"));
+            return FromStructuredError(ToolErrorCategory.Validation, ToolErrorSubtype.ShapeMismatch, $"参数不是合法 JSON: {ex.Message}");
         }
     }
 
@@ -76,10 +76,13 @@ internal readonly struct ToolExecutor(string toolName, int maxResultLength)
     {
         if (!outcome.Ok)
         {
-            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(toolName, outcome.Code, outcome.ErrorText!));
+            return FromApiOutcomeError(outcome.Code, outcome.ErrorText!);
         }
 
-        return FeishuToolResult.FromText(ToolResultText.Truncate(text(outcome.Data!) ?? string.Empty, maxResultLength));
+        var fullText = text(outcome.Data!) ?? string.Empty;
+        var truncatedText = ToolResultText.Truncate(fullText, maxResultLength);
+        var truncated = truncatedText.Length < fullText.Length;
+        return FeishuToolResult.FromText(truncatedText, truncated, truncated ? "文本超长截断" : null);
     }
 
     /// <summary>
@@ -90,7 +93,7 @@ internal readonly struct ToolExecutor(string toolName, int maxResultLength)
     {
         if (!outcome.Ok)
         {
-            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(toolName, outcome.Code, outcome.ErrorText!));
+            return FromApiOutcomeError(outcome.Code, outcome.ErrorText!);
         }
 
         return FeishuToolResult.FromText(ToolResultJson.ToText(project(outcome.Data!)));
@@ -117,7 +120,7 @@ internal readonly struct ToolExecutor(string toolName, int maxResultLength)
     public FeishuToolResult? FailIfError<T>(FeishuApiOutcome<T> outcome) where T : class
         => outcome.Ok
             ? null
-            : FeishuToolResult.FromError(FeishuToolBinding.StructuredError(toolName, outcome.Code, outcome.ErrorText!));
+            : FromApiOutcomeError(outcome.Code, outcome.ErrorText!);
 
     /// <summary>
     /// 统一 ApiResult 解包路径：失败回填 + 成功投影 + 截断（取代 22 处 <c>if (!outcome.Ok)</c>）。
@@ -129,11 +132,40 @@ internal readonly struct ToolExecutor(string toolName, int maxResultLength)
     {
         if (!outcome.Ok)
         {
-            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(toolName, outcome.Code, outcome.ErrorText!));
+            return FromApiOutcomeError(outcome.Code, outcome.ErrorText!);
         }
 
         var envelope = project(outcome.Data!);
-        return FeishuToolResult.FromText(ToolResultText.TruncateJson(ToolResultJson.ToText(envelope), maxResultLength));
+        var fullText = ToolResultJson.ToText(envelope);
+        var truncatedText = ToolResultText.TruncateJson(fullText, maxResultLength);
+        var truncated = truncatedText.Length < fullText.Length;
+        return FeishuToolResult.FromText(truncatedText, truncated, truncated ? "JSON 感知截断" : null);
+    }
+
+    /// <summary>
+    /// 构造带结构化错误载荷的错误结果（B2 错误契约：首行 JSON + 人类可读正文）。
+    /// </summary>
+    private FeishuToolResult FromStructuredError(ToolErrorCategory category, string subtype, string reason, int? apiCode = null)
+    {
+        var humanReadable = FeishuToolBinding.StructuredError(toolName, category, reason, apiCode);
+        var errorPayload = new ToolError(
+            Category: FeishuToolBinding.CategoryLiteral(category),
+            Subtype: subtype,
+            Retryable: category == ToolErrorCategory.Retryable,
+            RetryAfterSeconds: null,
+            ApiCode: apiCode,
+            Attempts: 1,
+            Trace: null,
+            Tool: toolName);
+        var jsonLine = ToolErrorPayloadSerializer.Serialize(errorPayload);
+        return FeishuToolResult.FromError(errorPayload, jsonLine + "\n" + humanReadable);
+    }
+
+    /// <summary>从飞书 API outcome 构造错误结果（分类器自动映射）。</summary>
+    private FeishuToolResult FromApiOutcomeError(int? apiCode, string errorText)
+    {
+        var (category, subtype) = ToolErrorClassifier.ClassifyCode(apiCode);
+        return FromStructuredError(category, subtype, errorText, apiCode);
     }
 
 }

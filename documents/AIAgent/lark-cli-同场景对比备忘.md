@@ -14,16 +14,13 @@
 | --- | --- | --- |
 | 调用形态 | 模型 tool_call → `AIFunction`（Schema 编译期产出）→ `FeishuToolBinding` 执行链 → **进程内直连**强类型接口 | 外部编码 Agent（Claude Code 等）→ 子进程 `lark-base records search` → stdout JSON |
 | 运行依赖 | NuGet 引用即可，零外部进程 | 安装/升级 Go 二进制，Agent 每次调用经 JSON 管道 |
-| 本仓交付物 | `Mud.Feishu.AI.FeishuTools`（**21 只读 + 3 写工具，跨 10 个业务域 + 1 个能力元工具**；口径见下表） | **实测 15 个服务 / 251 个方法 + 20 个 shortcuts 域**（原"18 域 200+ 命令"为 README 口径，R3 逐文件计数修正）+ 通用 OpenAPI 调用层（**广度官方胜**，已决策⑥不比广度） |
+| 本仓交付物 | `Mud.Feishu.AI.Tools`（**114 个策展工具：62 只读 + 52 写类，跨 16 个业务域 + 4 个元工具**；口径见下表） | **实测 15 个服务 / 251 个方法 + 20 个 shortcuts 域**（原"18 域 200+ 命令"为 README 口径，R3 逐文件计数修正）+ 通用 OpenAPI 调用层（**广度官方胜**，已决策⑥不比广度） |
 
-> **工具面数字口径（R3 更新，2026-09-28）**：本仓工具数已由 22 增至 **24**
-> （新增 `contact.search_user` 打通「姓名 → ID → 发消息」链路，
-> 与 `feishu.capability_lookup` 补齐"未覆盖能力的出路"）。
-> **权威数字以编译期产物为准**：`FeishuToolNames.All` / `FeishuToolSchemas.golden.txt`（24 行）
+> **工具面数字口径（R7 更新，2026-10-09）**：本仓工具数为 **114**（62 只读 + 52 写类，跨 16 个业务域 + 4 个元工具）。
+> **权威数字以编译期产物为准**：`FeishuToolNames.All` / `FeishuToolSchemas.golden.txt`
 > / 《工具权限对照表》三者由契约守卫断言精确相等。
 > 三层结构（**目录全量 / 暴露策展 / 能力出路**）见
-> `Mud.Feishu.AI.FeishuTools/Readme.md` §4 与
-> `.docs/MudFeishu-AI-Tooling-vs-LarkCli-Review-Remediation-Plan-R3.md` §4 D1。
+> `Mud.Feishu.AI.Tools/Readme.md` §4。
 
 ## 2. 三维度对比
 

@@ -51,7 +51,6 @@ public interface IFeishuTenantOkrListCyclesTool
     /// <returns>白名单投影后的 JSON 文本（items: id/tenant_cycle_id/owner_id/start_time/end_time/cycle_status/score + 翻页契约）。</returns>
     Task<string> ListCyclesAsync(
         [ToolParameter("user_id", "OKR 归属用户 ID（open_id，形如 ou_xxx）", Required = true)] string user_id,
-        [ToolParameter("page_size", "每页条数（可选，默认 20，上限 100）")] int? page_size = null,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
         CancellationToken cancellationToken = default);
 }
@@ -68,7 +67,6 @@ public interface IFeishuTenantOkrListObjectivesTool
     /// <returns>白名单投影后的 JSON 文本（items: objective_id/content/owner_id/position/score/weight/deadline + 翻页契约）。</returns>
     Task<string> ListObjectivesAsync(
         [ToolParameter("cycle_id", "OKR 周期 ID（来自 okr.list_cycles）", Required = true)] string cycle_id,
-        [ToolParameter("page_size", "每页条数（可选，默认 20，上限 100）")] int? page_size = null,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
         CancellationToken cancellationToken = default);
 }
@@ -100,7 +98,6 @@ public interface IFeishuTenantOkrListKeyResultsTool
     /// <returns>白名单投影后的 JSON 文本（items: key_result_id/content/position/score/weight/deadline + 翻页契约）。</returns>
     Task<string> ListKeyResultsAsync(
         [ToolParameter("objective_id", "目标 ID（来自 okr.list_objectives）", Required = true)] string objective_id,
-        [ToolParameter("page_size", "每页条数（可选，默认 20，上限 100）")] int? page_size = null,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
         CancellationToken cancellationToken = default);
 }
@@ -132,7 +129,6 @@ public interface IFeishuTenantOkrListObjectiveProgressesTool
     /// <returns>白名单投影后的 JSON 文本（items: progress_id/content/progress_percent/progress_status/owner_id/create_time + 翻页契约）。</returns>
     Task<string> ListObjectiveProgressesAsync(
         [ToolParameter("objective_id", "目标 ID（来自 okr.list_objectives）", Required = true)] string objective_id,
-        [ToolParameter("page_size", "每页条数（可选，默认 20，上限 100）")] int? page_size = null,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
         CancellationToken cancellationToken = default);
 }
@@ -149,7 +145,6 @@ public interface IFeishuTenantOkrListKeyResultProgressesTool
     /// <returns>白名单投影后的 JSON 文本（items: progress_id/content/progress_percent/progress_status/owner_id/create_time + 翻页契约）。</returns>
     Task<string> ListKeyResultProgressesAsync(
         [ToolParameter("key_result_id", "关键结果 ID（来自 okr.list_key_results）", Required = true)] string key_result_id,
-        [ToolParameter("page_size", "每页条数（可选，默认 20，上限 100）")] int? page_size = null,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
         CancellationToken cancellationToken = default);
 }
@@ -165,7 +160,6 @@ public interface IFeishuTenantOkrListPeriodsTool
     /// <summary>列出 OKR 周期定义。</summary>
     /// <returns>白名单投影后的 JSON 文本（items: period_id/zh_name/en_name/status/period_start_time/period_end_time + 翻页契约）。</returns>
     Task<string> ListPeriodsAsync(
-        [ToolParameter("page_size", "每页条数（可选，默认 20，上限 100）")] int? page_size = null,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
         CancellationToken cancellationToken = default);
 }
@@ -182,7 +176,6 @@ public interface IFeishuTenantOkrListCategoriesTool
     /// <returns>白名单投影后的 JSON 文本（items: category_id/name_zh/enabled/color/category_type + 翻页契约）。</returns>
     Task<string> ListCategoriesAsync(
         [ToolParameter("owner_type", "分类归属类型（可选，默认 user）：user 员工 / department 部门")] string? owner_type = null,
-        [ToolParameter("page_size", "每页条数（可选，默认 20，上限 100）")] int? page_size = null,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
         CancellationToken cancellationToken = default);
 }

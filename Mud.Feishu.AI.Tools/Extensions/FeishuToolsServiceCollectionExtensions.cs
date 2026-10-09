@@ -471,7 +471,9 @@ public static class FeishuToolsServiceCollectionExtensions
 
                     // R6 / S5：运行时 schema 自省执行器 SchemaReadTools（feishu.schema_read，只读编译期目录）。
                     .AddFeishuSchemaReadToolsCore()
-                    .AddFeishuCapabilityLookupToolsCore();
+                    .AddFeishuCapabilityLookupToolsCore()
+                    // B5：已策展工具检索执行器 ToolSearchTools（feishu.tool_search，只读注册表/契约表）。
+                    .AddFeishuToolSearchToolsCore();
 
     /// <summary>
     /// 写域工具核心批量注册（W4 抽取：消除 AddFeishuTools 与 AddFeishuWriteTools 的重复链）。
@@ -555,7 +557,9 @@ public static class FeishuToolsServiceCollectionExtensions
     public static IServiceCollection AddFeishuCapabilityTools(
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuCapabilityLookupToolsCore();
+        => AddFeishuToolInfrastructure(services, configure)
+            .AddFeishuCapabilityLookupToolsCore()
+            .AddFeishuToolSearchToolsCore();
 
     /// <summary>
     /// 注册运行时 schema 自省工具（<c>feishu.schema_read</c>，R6 / S5）。

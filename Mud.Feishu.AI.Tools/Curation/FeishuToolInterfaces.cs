@@ -44,6 +44,8 @@ public interface IFeishuTenantBitableListTablesTool
     Task<string> ListTablesPageListAsync(
         [ToolParameter("app_token", "多维表格 AppToken（形如 bascnXxx）", Required = true)] string app_token,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -81,6 +83,8 @@ public interface IFeishuTenantBitableQueryRecordsTool
         [ToolParameter("filter", "简化筛选式（可选）：字段 = 值 或 字段 contains 值，and 连接，最多 5 个子句，如：status = \"done\" and owner contains 张三")] string? filter = null,
         [ToolParameter("sort", "排序子句（可选，字符串数组，最多 3 个）：形如 字段:asc 或 字段:desc，如 [\"status:desc\", \"name:asc\"]")] string[]? sort = null,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -168,6 +172,8 @@ public interface IFeishuTenantDocxDocumentBlocksTool
     Task<string> GetDocumentBlocksPageListAsync(
         [ToolParameter("document_id", "文档 ID（形如 doxcnXxx；wiki 文档传 wiki.get_node 返回的 obj_token）", Required = true)] string document_id,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -201,6 +207,8 @@ public interface IFeishuTenantWikiListNodesTool
         [ToolParameter("space_id", "知识空间 ID（形如 7xxx）", Required = true)] string space_id,
         [ToolParameter("parent_node_token", "父节点 token（可选；缺省列出空间顶层节点）")] string? parent_node_token = null,
         [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -432,7 +440,6 @@ public interface IFeishuTenantSheetsRangeTool
     /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token），超长截断并标记 truncated。</returns>
     Task<string> GetThreadMessagesAsync(
         [ToolParameter("thread_id", "话题 ID（形如 omt_xxx，来自事件上下文或 im.reply_message 返回）", Required = true)] string thread_id,
-        [ToolParameter("page_size", "每页条数（可选，默认 50）")] int? page_size = null,
         [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
         CancellationToken cancellationToken = default);
 }
@@ -499,7 +506,6 @@ public interface IFeishuTenantImForwardMessageTool
     /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token）。</returns>
     Task<string> GetMessageReadUsersAsync(
         [ToolParameter("message_id", "目标消息 ID（形如 omXxx）", Required = true)] string message_id,
-        [ToolParameter("page_size", "每页条数（可选，默认 50）")] int? page_size = null,
         [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
         CancellationToken cancellationToken = default);
 }
@@ -529,7 +535,6 @@ public interface IFeishuTenantImForwardMessageTool
     /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token）。</returns>
     Task<string> SearchChatsAsync(
         [ToolParameter("query", "搜索关键词（群名片段）", Required = true)] string query,
-        [ToolParameter("page_size", "每页条数（可选，默认 50）")] int? page_size = null,
         [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
         CancellationToken cancellationToken = default);
 }

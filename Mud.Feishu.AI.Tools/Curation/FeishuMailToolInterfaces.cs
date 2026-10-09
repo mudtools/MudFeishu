@@ -38,6 +38,8 @@ public interface IFeishuTenantMailListMessagesTool
         [ToolParameter("folder_id", "文件夹 ID（可选，如 INBOX/SENT/DRAFT）")] string? folder_id = null,
         [ToolParameter("only_unread", "是否只返回未读邮件（可选，默认 false）")] bool? only_unread = null,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -95,6 +97,8 @@ public interface IFeishuTenantContactListDepartmentsTool
         [ToolParameter("department_id", "部门 ID（0=根部门，或来自上一次结果的 department_id）", Required = true)] string department_id,
         [ToolParameter("fetch_child", "是否递归获取全部子部门（可选，默认 false）")] bool? fetch_child = null,
         [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -110,6 +114,8 @@ public interface IFeishuTenantContactListDepartmentMembersTool
     Task<string> ListDepartmentMembersAsync(
         [ToolParameter("department_id", "部门 ID（来自 contact.list_departments）", Required = true)] string department_id,
         [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 

@@ -158,7 +158,7 @@ public class ToolEgressPurificationContractGuards
 
     /// <summary>
     /// R3-4 / T10：模型可见出口面必须**封闭**——<c>EgressResult</c> 重载恰好是被登记的 3 个，
-    /// 且每个重载要么自身净化（唯一核心闸门）要么委派给核心闸门；带 <c>ToolErrorKind</c>
+    /// 且每个重载要么自身净化（唯一核心闸门）要么委派给核心闸门；带 <c>ToolErrorCategory</c>
     /// 的分类出口唯一。
     /// </summary>
     /// <remarks>
@@ -171,7 +171,7 @@ public class ToolEgressPurificationContractGuards
     /// </para>
     /// </remarks>
     [Fact]
-    public void EveryToolErrorKind_ShouldHavePurifiedEgress()
+    public void EveryToolErrorCategory_ShouldHavePurifiedEgress()
     {
         var source = ReadBindingSource();
 
@@ -180,7 +180,7 @@ public class ToolEgressPurificationContractGuards
             source,
             @"private\s+FeishuToolResult\s+EgressResult\([^)]*\)");
         overloads.Count.Should().Be(3,
-            "模型可见出口面必须封闭为 3 个已登记重载（核心净化 / 带 ToolErrorKind / 无分类）——"
+            "模型可见出口面必须封闭为 3 个已登记重载（核心净化 / 带 ToolErrorCategory / 无分类）——"
             + "新增重载即新增一条模型可见路径，必须同步在此登记其净化判据");
 
         // ② 每个重载要么自身是净化核心，要么委派给核心闸门（不允许"自己拼文案直接返回"）。
@@ -201,15 +201,15 @@ public class ToolEgressPurificationContractGuards
             "以下 EgressResult 重载既不自净化也不委派核心闸门——它是一条绕过净化的模型可见出口：{0}",
             string.Join(" | ", selfContained));
 
-        // ③ 带分类的出口唯一：ToolErrorKind → 模型文本只有一条路径，且它必须委派核心闸门。
+        // ③ 带分类的出口唯一：ToolErrorCategory → 模型文本只有一条路径，且它必须自净化。
         var classified = Regex.Match(
             source,
-            @"private\s+FeishuToolResult\s+EgressResult\(string\s+toolName,\s*ToolErrorKind\s+kind,\s*string\s+reason\)\s*(?<body>=>[^;]*;|\{.*?\})",
+            @"private\s+FeishuToolResult\s+EgressResult\(string\s+toolName,\s*ToolErrorCategory\s+category,\s*string\s+subtype,\s*string\s+reason[^)]*\)\s*(?<body>=>[^;]*;|\{.*?\})",
             RegexOptions.Singleline);
         classified.Success.Should().BeTrue(
-            "带 ToolErrorKind 的分类出口必须存在（拒绝路径与 catch 分支共用，R3-4 收口）");
+            "带 ToolErrorCategory 的分类出口必须存在（拒绝路径与 catch 分支共用，R3-4 收口）");
         classified.Groups["body"].Value.Should().Contain(
-            "EgressResult(", "分类出口不得自行拼文案返回，必须委派唯一净化闸门");
+            "ToolResultSanitizer.Sanitize", "分类出口必须自净化（B2 错误契约：首行 JSON + 正文经净化 + 截断）");
     }
 
     private static string ReadBindingSource()

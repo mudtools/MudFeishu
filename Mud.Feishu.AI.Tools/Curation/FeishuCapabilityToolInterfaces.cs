@@ -73,3 +73,40 @@ public interface IFeishuTenantGuidanceReadTool
         [ToolParameter("topic", "主题（如 topics-and-replies / block-editing / decisions）", Required = true)] string topic,
         CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// 工具接口：feishu.tool_search（B5：已策展工具检索；无 SDK 源，只读注册表/契约表）。
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>与既有元工具的分工</b>：
+/// <list type="table">
+/// <item><term><c>feishu.capability_lookup</c></term><description>回答"SDK 里有没有这个能力（几个分组）"——编译期能力目录（L1）</description></item>
+/// <item><term><c>feishu.tool_search</c>（本工具）</term><description>回答"已策展的工具里哪个能干这事，启用了吗"——注册表/契约表（L2/L3）</description></item>
+/// <item><term><c>feishu.schema_read</c></term><description>回答"某个 SDK 方法怎么调（HTTP/参数）"——编译期方法目录（1228 方法）</description></item>
+/// <item><term><c>feishu.api_call</c></term><description>未策展方法的兜底调用——方法目录 + 动态调度</description></item>
+/// </list>
+/// </para>
+/// <para>
+/// <b>边界</b>：只返回<b>已注册</b>工具（含未启用），不返回 SDK 方法名（那是 <c>schema_read</c> 的职责），
+/// 避免"变相通用调用"。
+/// </para>
+/// <para>
+/// 默认启用（元工具，只读，<c>feishu:base</c> scope，与 <c>capability_lookup</c> 同档）。
+/// </para>
+/// </remarks>
+[FeishuTool("feishu.tool_search",
+    Description = "在已策展的飞书工具中按关键字/域/读写过滤搜索。返回工具名、域、是否写操作、风险等级、所需参数、是否已启用。当工具变多后用它快速定位能用哪个工具，以及该工具是否在当前宿主已启用（未启用的会给出原因提示）。只读，需 feishu:base。",
+    RequiredScopes = ["feishu:base"])]
+public interface IFeishuTenantToolSearchTool
+{
+    /// <summary>搜索已策展的工具。</summary>
+    /// <returns>JSON 文本（工具列表，含 name/domain/is_write/risk/identity/required_params/enabled/hint），超长截断并标记 truncated。</returns>
+    Task<string> SearchAsync(
+        [ToolParameter("keyword", "按工具名/描述/域关键字搜索（大小写不敏感）；为空时返回全部（受 limit 约束）")] string? keyword = null,
+        [ToolParameter("domain", "限定域（如 bitable / docx / drive；为空时不限域）")] string? domain = null,
+        [ToolParameter("write_only", "只返回写类工具（默认 false）")] bool? write_only = null,
+        [ToolParameter("read_only", "只返回只读工具（默认 false）")] bool? read_only = null,
+        [ToolParameter("limit", "返回上限（默认 10，上限 30）")] int? limit = null,
+        CancellationToken cancellationToken = default);
+}

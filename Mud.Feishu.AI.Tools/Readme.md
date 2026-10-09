@@ -10,22 +10,29 @@
 
 ## 1. 工具面现状（114 个：62 只读 + 52 写类）
 
-| 域                               | 工具                                                                                                                                                                                                                      |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Bitable（4 只读 + 3 写）         | `bitable.list_tables` / `list_fields` / `query_records` / `get_records_by_ids` / `add_record`（写）/ `update_record`（写）/ `delete_record`（写）                                                                         |
-| 云文档 Docx（2 只读 + 2 写）     | `docx.get_raw_content` / `docx.get_document_blocks` / `create_document`（写）/ `append_blocks`（写）                                                                                                                      |
-| Wiki（2 只读）                   | `wiki.get_node` / `wiki.list_nodes`                                                                                                                                                                                       |
-| 搜索（1 只读）                   | `search.doc_wiki`                                                                                                                                                                                                         |
-| IM（5 只读 + 4 写）              | `im.get_history_messages` / `im.get_message_content` / `im.list_chat_members` / `im.search_messages` / `im.reply_message`（写）/ `send_message`（写）/ **`send_image` / `send_file`（写，需宿主落盘器，见 §7）**          |
-| 云空间 Drive（2 只读 + 3 写）    | `drive.list_folder_files` / `drive.get_file_metas` / `create_folder`（写）/ `move_file`（写）/ `upload_file`（写）                                                                                                        |
-| 电子表格 Sheets（2 只读 + 2 写） | `sheets.list_sheets` / `sheets.get_range_values` / `update_range`（写）/ `append_rows`（写）                                                                                                                              |
-| 通讯录 Contact（6 只读）         | `contact.resolve_user`（邮箱/手机号→ID）/ **`search_user`（姓名/关键字→ID）** / `get_user` / `batch_get` / `list_departments` / `list_department_members`                                                                 |
-| 审批 Approval（2 只读 + 2 写）   | `approval.list_pending_tasks` / `approval.get_instance`（只读，`identity=user`）/ `create_instance`（写）/ `approve_task`（写）                                                                                           |
-| 日历 Calendar（3 只读 + 4 写）   | **`calendar.find_free_slots` / `list_events` / `list_event_attendees`（只读）/ `create_event`（写）/ `update_event`（写）/ `delete_event`（写，high-risk）/ `add_event_attendees`（写）**                                 |
-| 任务 Task（1 只读 + 7 写）       | **`task.create_task`（写）/ `task.list_my_tasks`（只读，`identity=user`）/ `update_task`（写）/ `complete_task`（写）/ `delete_task`（写，high-risk）/ `create_subtask`（写）/ `add_comment`（写）/ `add_members`（写）** |
-| 邮件 Mail（2 只读 + 1 写）       | `mail.list_messages` / `mail.get_message` / `mail.send_message`（写，`identity=user`）                                                                                                                                    |
-| 知识库（1 只读）                 | `knowledge.search`（绑定宿主 `IRetriever`）                                                                                                                                                                               |
-| 元工具（1 只读）                 | **`feishu.capability_lookup`**（能力出处，见 §4）                                                                                                                                                                         |
+| 域 | 只读 | 写类 | 小计 |
+| --- | ---: | ---: | ---: |
+| Bitable | 6 | 3 | 9 |
+| 云文档 Docx | 8 | 4 | 12 |
+| Wiki | 2 | 3 | 5 |
+| 搜索 Search | 1 | — | 1 |
+| IM | 12 | 7 | 19 |
+| 云空间 Drive | 2 | 3 | 5 |
+| 电子表格 Sheets | 2 | 2 | 4 |
+| 通讯录 Contact | 6 | — | 6 |
+| 审批 Approval | 2 | 4 | 6 |
+| 日历 Calendar | 3 | 4 | 7 |
+| 任务 Task | 1 | 7 | 8 |
+| 邮件 Mail | 7 | 3 | 10 |
+| 妙记 Minutes | 2 | — | 2 |
+| OKR | 9 | 6 | 15 |
+| 视频会议 VC | 6 | 4 | 10 |
+| 知识库 Knowledge | 1 | — | 1 |
+| 元工具 | 4 | 1 | 5 |
+| **合计** | **62** | **52** | **114** |
+
+> **逐工具清单**：以《工具权限对照表》（`documents/AIAgent/工具权限对照表.md`）为准——
+> 本表只给域级汇总，不再逐工具列举（逐工具列举会与契约表漂移）。
 
 **权威清单以编译期产物为准**：`FeishuToolNames.All`、`FeishuToolContracts.ByToolName`（生成器发射的
 **类型化契约表**，见 §8）、`FeishuToolSchemas.SchemaByToolName`、以及《工具权限对照表》
@@ -170,19 +177,22 @@ var response = await agent.RunApprovalContinuationAsync(
 
 ## 4. 模型看不到的能力，出路在哪
 
-本包刻意**不**做"每个 SDK 方法一个工具"（1228 无差别暴露）也不做通用裸 `api` 工具。
-三层结构如下：
+本包刻意**不**做"每个 SDK 方法一个工具"（1228 无差别暴露），而是按高频工作流**策展**为 114 个工具。
+对于未策展的方法，提供两层兜底（而非变相暴露全部 1228 方法）：
 
-| 层              | 内容                                                                                                 | 模型可见？         |
-| --------------- | ---------------------------------------------------------------------------------------------------- | ------------------ |
-| L1 能力目录     | 编译期聚合事实（SDK 方法总数 / 分组分布 / 策展计数），`build_property.FeishuToolCatalog=true` 时产出 | ❌（`internal`）   |
-| L2 暴露策展     | 标注了 `[FeishuTool]` 的 114 个工具                                                                   | ✅（白名单启用后） |
-| **L3 能力出路** | **`feishu.capability_lookup`**：按关键字回答"这个能力在 SDK 里有几个分组 / 是否已策展成工具"         | ✅（默认不启用）   |
+| 层 | 内容 | 模型可见？ |
+| --- | --- | --- |
+| L1 能力目录 | 编译期聚合事实（SDK 方法总数 / 分组分布 / 策展计数），`build_property.FeishuToolCatalog=true` 时产出 | ❌（`internal`） |
+| L2 暴露策展 | 标注了 `[FeishuTool]` 的 114 个工具 | ✅（白名单启用后） |
+| **L3 能力出路** | **`feishu.capability_lookup`**：按关键字回答"这个能力在 SDK 里有几个分组 / 是否已策展成工具" | ✅（默认不启用） |
+| **L3.1 方法签名** | **`feishu.schema_read`**：查任意 SDK 方法的签名事实（HTTP/路由/参数/令牌/风险/是否已策展） | ✅（只读，`feishu:base` scope） |
+| **L3.2 兜底调用** | **`feishu.api_call`**：未策展方法的万能兜底（方法名 + 参数 → HTTP 调度），默认 `dry_run=true`，四条 fail-closed 边界 | ✅（归写链，`WriteAllowList` 键控） |
+| **L3.3 guidance** | **`feishu.guidance_read`**：按需读取 L2 references（`{域}/{主题}`），键不存在时列出全部候选 | ✅（只读） |
 
 所以模型遇到不认识的域时，正确动作是**先问 `feishu.capability_lookup`**，据此判断
 "是不存在（放弃）"还是"存在但宿主没启用（如实告知用户）"，而不是臆造一次调用。
-该工具的**边界**：只返回分组级元数据，**不返回方法名、不返回请求构造**（方法名不进编译期产物，
-且返回它等于变相提供通用调用能力）。
+若需查方法签名细节用 `feishu.schema_read`；若该方法未策展且宿主放行了 `feishu.api_call`，
+可用其做兜底调用（默认只预演）。
 
 ---
 

@@ -2,7 +2,8 @@
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
-//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！
+//  任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.AI.Tools.Tools;
@@ -10,27 +11,27 @@ using Mud.Feishu.AI.Tools.Tools;
 namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>
-/// 工具错误分类器测试（AI-FD-D12 P1D-2b）：纯函数表驱动——异常类型 × code 段位 → 分类；
+/// 工具错误分类器测试（B2 错误契约）：纯函数表驱动——异常类型 × code 段位 → 分类；
 /// 回填文本分类前缀可区分（授权拒绝 / 参数错误 / 可重试路径各有断言）。
 /// </summary>
-/// <remarks>ToolErrorKind 为 internal（宿主不可见），断言以数值形态进出 Theory。</remarks>
+/// <remarks>ToolErrorCategory 为 internal（宿主不可见），断言以数值形态进出 Theory。</remarks>
 public class ToolErrorClassifierTests
 {
-    private static readonly int ApiErrorKind = (int)ToolErrorKind.ApiError;
-    private static readonly int InvalidArgsKind = (int)ToolErrorKind.InvalidArgs;
-    private static readonly int RetryableKind = (int)ToolErrorKind.Retryable;
-    private static readonly int ForbiddenKind = (int)ToolErrorKind.Forbidden;
+    private static readonly int ApiCategory = (int)ToolErrorCategory.Api;
+    private static readonly int ValidationCategory = (int)ToolErrorCategory.Validation;
+    private static readonly int RetryableCategory = (int)ToolErrorCategory.Retryable;
+    private static readonly int AuthorizationCategory = (int)ToolErrorCategory.Authorization;
 
     [Fact]
-    public void Classify_ArgumentException_ShouldBeInvalidArgs()
-        => ((int)ToolErrorClassifier.Classify(new ArgumentException("缺少必填参数 chat_id")))
-            .Should().Be(InvalidArgsKind);
+    public void Classify_ArgumentException_ShouldBeValidation()
+        => ((int)ToolErrorClassifier.Classify(new ArgumentException("缺少必填参数 chat_id")).Category)
+            .Should().Be(ValidationCategory);
 
     [Fact]
     public void Classify_NetworkExceptions_ShouldBeRetryable()
     {
-        ((int)ToolErrorClassifier.Classify(new HttpRequestException("网络中断"))).Should().Be(RetryableKind);
-        ((int)ToolErrorClassifier.Classify(new TimeoutException("执行超时"))).Should().Be(RetryableKind);
+        ((int)ToolErrorClassifier.Classify(new HttpRequestException("网络中断")).Category).Should().Be(RetryableCategory);
+        ((int)ToolErrorClassifier.Classify(new TimeoutException("执行超时")).Category).Should().Be(RetryableCategory);
     }
 
     [Fact]
@@ -38,38 +39,37 @@ public class ToolErrorClassifierTests
     {
         // Mud.HttpUtils.ApiException 携带 StatusCode：5xx/429 → 可重试，401/403 → 权限类。
         var serverError = new Mud.HttpUtils.ApiException(System.Net.HttpStatusCode.InternalServerError, "内部错误");
-        ((int)ToolErrorClassifier.Classify(serverError)).Should().Be(RetryableKind);
+        ((int)ToolErrorClassifier.Classify(serverError).Category).Should().Be(RetryableCategory);
     }
 
     [Fact]
-    public void Classify_UnknownException_ShouldBeApiError()
-        => ((int)ToolErrorClassifier.Classify(new InvalidOperationException("业务失败"))).Should().Be(ApiErrorKind);
+    public void Classify_UnknownException_ShouldBeInternal()
+        => ((int)ToolErrorClassifier.Classify(new InvalidOperationException("业务失败")).Category)
+            .Should().Be((int)ToolErrorCategory.Internal);
 
     /// <summary>
-    /// 飞书业务 code → 分类（数值形态进出 Theory：<c>ToolErrorKind</c> 是 internal，且枚举值不能在
+    /// 飞书业务 code → 分类（数值形态进出 Theory：<c>ToolErrorCategory</c> 是 internal，且枚举值不能在
     /// <c>InlineData</c> 里用转换表达式）。
     /// </summary>
     /// <remarks>
-    /// 数值：<c>Retryable=0 / InvalidArgs=1 / Forbidden=2 / NeedsConfirmation=3 / ApiError=4</c>。
-    /// <b>AT-B12 新增 <c>NeedsConfirmation=3</c> 后 <c>ApiError</c> 由 3 变 4</b>——本表随之更新
-    /// （这正是"三态语义不得混用"的断言面）。
+    /// 数值：<c>Validation=0 / Policy=1 / Authorization=2 / Confirmation=3 / Retryable=4 / Api=5 / Internal=6 / ContentSafety=7</c>。
     /// </remarks>
     [Theory]
     [InlineData(99991663, 2)]
     [InlineData(99991661, 2)]
-    [InlineData(230001, 4)]
-    [InlineData(null, 4)]
-    public void ClassifyCode_ShouldMapPermissionCodes(int? code, int expectedKind)
-        => ((int)ToolErrorClassifier.ClassifyCode(code)).Should().Be(expectedKind);
+    [InlineData(230001, 5)]
+    [InlineData(null, 5)]
+    public void ClassifyCode_ShouldMapPermissionCodes(int? code, int expectedCategory)
+        => ((int)ToolErrorClassifier.ClassifyCode(code).Category).Should().Be(expectedCategory);
 
     /// <summary>
     /// 三态语义各有一套文案：待确认<b>既不是</b> forbidden（放弃）<b>也不是</b> invalid_args（改参重试）。
     /// </summary>
     [Fact]
-    public void StructuredError_NeedsConfirmation_ShouldHaveItsOwnSemantics()
+    public void StructuredError_Confirmation_ShouldHaveItsOwnSemantics()
     {
         var needsConfirmation = FeishuToolBinding.StructuredError(
-            "approval.create_instance", ToolErrorKind.NeedsConfirmation, "需要用户批准后才可发起");
+            "approval.create_instance", ToolErrorCategory.Confirmation, "需要用户批准后才可发起");
 
         needsConfirmation.Should().Contain("(needs_confirmation)");
         needsConfirmation.Should().Contain("需要用户确认");
@@ -77,19 +77,19 @@ public class ToolErrorClassifierTests
         needsConfirmation.Should().NotContain("(invalid_args)");
         needsConfirmation.Should().NotContain("请修正参数", "待确认 ≠ 参数错：误导会让模型陷入无意义的重试循环");
 
-        ((int)ToolErrorKind.NeedsConfirmation).Should().NotBe(ForbiddenKind,
+        ((int)ToolErrorCategory.Confirmation).Should().NotBe(AuthorizationCategory,
             "三态必须是互不相同的枚举成员（否则 switch 分支会互相吞并）");
     }
 
     [Fact]
-    public void StructuredError_ShouldDistinguishForbidden_FromInvalidArgs()
+    public void StructuredError_ShouldDistinguishAuthorization_FromValidation()
     {
         var forbidden = FeishuToolBinding.StructuredError(
-            "bitable.add_record", ToolErrorKind.Forbidden, "授权被拒绝");
+            "bitable.add_record", ToolErrorCategory.Authorization, "授权被拒绝");
         var invalidArgs = FeishuToolBinding.StructuredError(
-            "bitable.query_records", ToolErrorKind.InvalidArgs, "filter 语法不支持");
+            "bitable.query_records", ToolErrorCategory.Validation, "filter 语法不支持");
         var retryable = FeishuToolBinding.StructuredError(
-            "bitable.query_records", ToolErrorKind.Retryable, "服务端繁忙");
+            "bitable.query_records", ToolErrorCategory.Retryable, "服务端繁忙");
         var apiError = FeishuToolBinding.StructuredError("bitable.query_records", "其余错误");
 
         forbidden.Should().Contain("(forbidden)", "授权拒绝必须可区分——模型应放弃或改用只读方案");
@@ -119,7 +119,7 @@ public class ToolErrorClassifierTests
         withCode.Should().Contain("code=99991663", "业务 code 是此前被丢弃的机器可读事实，必须透出");
 
         var withoutCode = FeishuToolBinding.StructuredError(
-            "bitable.query_records", ToolErrorKind.Retryable, "服务端繁忙");
+            "bitable.query_records", ToolErrorCategory.Retryable, "服务端繁忙");
         withoutCode.Should().NotContain("code=", "无 code 时不产出空槽（HTTP 5xx/429 本就没有业务码）");
         withoutCode.Should().Contain("(retryable)", "kind 标签保留（它已表达可重试性，故不再重复 retryable= 字段）");
     }

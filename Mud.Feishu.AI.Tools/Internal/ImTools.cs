@@ -145,7 +145,7 @@ internal sealed class ImTools(
                     start_time: null,
                     end_time: null,
                     sort_type: SortTypeByCreateTimeDesc,
-                    page_size: args.PageSize ?? PageSizes.History,
+                    page_size: PageSizes.History,
                     page_token: args.PageToken,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
@@ -255,7 +255,7 @@ internal sealed class ImTools(
             var outcome = FeishuApiResultReader.Read(await _messageClient
                 .GetMessageReadUsesAsync(
                     args.MessageId,
-                    args.PageSize ?? PageSizes.History,
+                    PageSizes.History,
                     args.PageToken,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false));

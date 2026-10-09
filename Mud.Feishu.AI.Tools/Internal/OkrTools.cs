@@ -63,7 +63,7 @@ internal sealed class OkrTools(
             var args = OkrListCyclesArgs.Unpack(arguments);
 
             var outcome = FeishuApiResultReader.Read(await client
-                .ListCyclesAsync(args.UserId, page_size: args.PageSize ?? DefaultPageSize, page_token: args.PageToken, cancellationToken: cancellationToken)
+                .ListCyclesAsync(args.UserId, page_size: DefaultPageSize, page_token: args.PageToken, cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApi(outcome, ProjectCycles);
         });
@@ -81,7 +81,7 @@ internal sealed class OkrTools(
             var args = OkrListObjectivesArgs.Unpack(arguments);
 
             var outcome = FeishuApiResultReader.Read(await client
-                .ListCycleObjectivesAsync(args.CycleId, page_size: args.PageSize ?? DefaultPageSize, page_token: args.PageToken, cancellationToken: cancellationToken)
+                .ListCycleObjectivesAsync(args.CycleId, page_size: DefaultPageSize, page_token: args.PageToken, cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApi(outcome, ProjectObjectives);
         });
@@ -117,7 +117,7 @@ internal sealed class OkrTools(
             var args = OkrListKeyResultsArgs.Unpack(arguments);
 
             var outcome = FeishuApiResultReader.Read(await client
-                .ListObjectiveKeyResultsAsync(args.ObjectiveId, page_size: args.PageSize ?? DefaultPageSize, page_token: args.PageToken, cancellationToken: cancellationToken)
+                .ListObjectiveKeyResultsAsync(args.ObjectiveId, page_size: DefaultPageSize, page_token: args.PageToken, cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApi(outcome, ProjectKeyResults);
         });
@@ -153,7 +153,7 @@ internal sealed class OkrTools(
             var args = OkrListObjectiveProgressesArgs.Unpack(arguments);
 
             var outcome = FeishuApiResultReader.Read(await client
-                .ListObjectiveProgressesAsync(args.ObjectiveId, page_size: args.PageSize ?? DefaultPageSize, page_token: args.PageToken, cancellationToken: cancellationToken)
+                .ListObjectiveProgressesAsync(args.ObjectiveId, page_size: DefaultPageSize, page_token: args.PageToken, cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApi(outcome, ProjectProgresses);
         });
@@ -171,7 +171,7 @@ internal sealed class OkrTools(
             var args = OkrListKeyResultProgressesArgs.Unpack(arguments);
 
             var outcome = FeishuApiResultReader.Read(await client
-                .ListKeyResultProgressesAsync(args.KeyResultId, page_size: args.PageSize ?? DefaultPageSize, page_token: args.PageToken, cancellationToken: cancellationToken)
+                .ListKeyResultProgressesAsync(args.KeyResultId, page_size: DefaultPageSize, page_token: args.PageToken, cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApi(outcome, ProjectProgresses);
         });
@@ -189,7 +189,7 @@ internal sealed class OkrTools(
             var args = OkrListPeriodsArgs.Unpack(arguments);
 
             var outcome = FeishuApiResultReader.Read(await client
-                .ListPeriodsAsync(page_size: args.PageSize ?? DefaultPageSize, page_token: args.PageToken, cancellationToken: cancellationToken)
+                .ListPeriodsAsync(page_size: DefaultPageSize, page_token: args.PageToken, cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApi(outcome, ProjectPeriods);
         });
@@ -213,7 +213,7 @@ internal sealed class OkrTools(
             }
 
             var outcome = FeishuApiResultReader.Read(await client
-                .ListCategoriesAsync(page_size: args.PageSize ?? DefaultPageSize, page_token: args.PageToken, owner_type: ownerType, cancellationToken: cancellationToken)
+                .ListCategoriesAsync(page_size: DefaultPageSize, page_token: args.PageToken, owner_type: ownerType, cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApi(outcome, ProjectCategories);
         });

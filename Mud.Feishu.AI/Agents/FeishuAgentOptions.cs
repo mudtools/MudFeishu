@@ -184,6 +184,41 @@ public sealed class FeishuAgentOptions
     public string ContentSafetyMode { get; set; } = ContentSafetyModes.Warn;
 
     /// <summary>
+    /// 自动分页：单次 <c>fetch_all</c> 的条目预算上限（B1；消费点：<c>ToolPagination.ResolveMaxItems</c>）。
+    /// </summary>
+    /// <remarks>
+    /// 默认 200，硬上限 1000（<c>ToolPagination.HardMaxItems</c>）。模型可用 <c>max_items</c> 参数覆盖（不超过硬上限）。
+    /// </remarks>
+    public int MaxAutoFetchItems { get; set; } = 200;
+
+    /// <summary>
+    /// 自动分页：单次 <c>fetch_all</c> 的页数上限（B1；消费点：<c>ToolPagination.ResolveMaxPages</c>）。
+    /// </summary>
+    /// <remarks>
+    /// 默认 10，硬上限 50（<c>ToolPagination.HardMaxPages</c>）。防失控翻页（如循环 token 场景）。
+    /// </remarks>
+    public int MaxAutoFetchPages { get; set; } = 10;
+
+    /// <summary>
+    /// 工具重试策略（B3；消费点：<c>ToolRetryPolicy</c>）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 只读工具遇到 <c>retryable</c> 错误（429/5xx/超时）时自动重试；写工具默认零重试。
+    /// </para>
+    /// <para>
+    /// 配置面治理（R5）：每个属性必须有真实消费点——<see cref="ToolRetryOptions.Enabled"/>/
+    /// <see cref="ToolRetryOptions.MaxAttempts"/>/
+    /// <see cref="ToolRetryOptions.BaseDelayMilliseconds"/>/
+    /// <see cref="ToolRetryOptions.MaxDelayMilliseconds"/>/
+    /// <see cref="ToolRetryOptions.Jitter"/>/
+    /// <see cref="ToolRetryOptions.AllowWriteRetry"/>
+    /// 均由 <c>ToolRetryPolicy</c> 在执行链消费。
+    /// </para>
+    /// </remarks>
+    public ToolRetryOptions ToolRetry { get; set; } = new();
+
+    /// <summary>
     /// 校验配置合法性（注册时与 <see cref="FeishuAgent"/> 构造时双触发，fail-fast）。
     /// </summary>
     /// <exception cref="InvalidOperationException">存在非法取值。</exception>
@@ -254,5 +289,35 @@ public sealed class FeishuAgentOptions
         if (!ContentSafetyModes.IsValid(ContentSafetyMode))
             throw new InvalidOperationException(
                 $"FeishuAgent:{nameof(ContentSafetyMode)} 取值非法: '{ContentSafetyMode}'——合法值为 {ContentSafetyModes.AllowedValuesText}");
+
+        // B1 自动分页预算校验（R3-9：数值项须同时有下界与上界）。
+        if (MaxAutoFetchItems is < 1 or > 1_000)
+            throw new InvalidOperationException(
+                $"FeishuAgent:{nameof(MaxAutoFetchItems)} 须在 1..1000 之间，实际值: {MaxAutoFetchItems.ToString(CultureInfo.InvariantCulture)}"
+                + "（硬上限 1000，防失控翻页撑爆上下文）");
+
+        if (MaxAutoFetchPages is < 1 or > 50)
+            throw new InvalidOperationException(
+                $"FeishuAgent:{nameof(MaxAutoFetchPages)} 须在 1..50 之间，实际值: {MaxAutoFetchPages.ToString(CultureInfo.InvariantCulture)}"
+                + "（硬上限 50，防循环 token 失控）");
+
+        // B3 重试策略校验
+        if (ToolRetry.MaxAttempts is < 0 or > 10)
+            throw new InvalidOperationException(
+                $"FeishuAgent:{nameof(ToolRetry)}.{nameof(ToolRetry.MaxAttempts)} 须在 0..10 之间，实际值: {ToolRetry.MaxAttempts.ToString(CultureInfo.InvariantCulture)}"
+                + "（0 = 禁用重试；上界防指数退避风暴）");
+
+        if (ToolRetry.BaseDelayMilliseconds is < 0 or > 60_000)
+            throw new InvalidOperationException(
+                $"FeishuAgent:{nameof(ToolRetry)}.{nameof(ToolRetry.BaseDelayMilliseconds)} 须在 0..60000 之间，实际值: {ToolRetry.BaseDelayMilliseconds.ToString(CultureInfo.InvariantCulture)}");
+
+        if (ToolRetry.MaxDelayMilliseconds is < 1 or > 300_000)
+            throw new InvalidOperationException(
+                $"FeishuAgent:{nameof(ToolRetry)}.{nameof(ToolRetry.MaxDelayMilliseconds)} 须在 1..300000 之间，实际值: {ToolRetry.MaxDelayMilliseconds.ToString(CultureInfo.InvariantCulture)}");
+
+        if (ToolRetry.MaxDelayMilliseconds < ToolRetry.BaseDelayMilliseconds)
+            throw new InvalidOperationException(
+                $"FeishuAgent:{nameof(ToolRetry)}.{nameof(ToolRetry.MaxDelayMilliseconds)} ({ToolRetry.MaxDelayMilliseconds.ToString(CultureInfo.InvariantCulture)}) "
+                + $"不得小于 {nameof(ToolRetry.BaseDelayMilliseconds)} ({ToolRetry.BaseDelayMilliseconds.ToString(CultureInfo.InvariantCulture)})");
     }
 }

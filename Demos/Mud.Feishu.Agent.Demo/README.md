@@ -350,4 +350,4 @@ dotnet test Tests/Mud.Feishu.Agent.Demo.Tests
 | Aily 托管知识（`AddFeishuAilyKnowledge` + `knowledge.search`） | 需额外域客户端与配置；白名单不含 `knowledge.search` |
 | 用户身份（`identity=user`）工具 | 文档业务域全部是 `tenant`；用户身份需 OAuth2 换 token |
 | Web 宿主 / DB / Redis | 控制台进程内闭环；`MemoryConversationStore` 足够 |
-| 自动重试（Polly 等） | 与 SDK 口径一致：重试语义由模型按 `ToolErrorKind` 自行决定（剧本 S6 演示自愈） |
+| 自动重试（Polly 等） | 与 SDK 口径一致：重试语义由模型按 `ToolErrorCategory` 自行决定（剧本 S6 演示自愈） |

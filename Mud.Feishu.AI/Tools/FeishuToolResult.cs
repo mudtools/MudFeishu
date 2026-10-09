@@ -41,6 +41,11 @@ public sealed class FeishuToolResult
     public string? TruncationReason { get; init; }
 
     /// <summary>
+    /// 结构化错误载荷（B2 错误契约）：成功时为 <see langword="null"/>，失败时携带分类/子类/可重试等信息。
+    /// </summary>
+    public ToolError? Error { get; init; }
+
+    /// <summary>
     /// 从文本构造结果（便捷工厂）。
     /// </summary>
     /// <param name="text">结果文本。</param>
@@ -58,10 +63,19 @@ public sealed class FeishuToolResult
     /// <summary>
     /// 从错误文本构造结果（便捷工厂）。
     /// </summary>
-    /// <param name="errorText">结构化错误文本。</param>
+    /// <param name="errorText">结构化错误文本（首行 JSON 载荷 + 人类可读正文）。</param>
     /// <returns>工具结果实例。</returns>
     public static FeishuToolResult FromError(string errorText)
         => new() { Text = errorText };
+
+    /// <summary>
+    /// 从结构化错误载荷构造结果（B2 错误契约：首行 JSON + 人类可读正文）。
+    /// </summary>
+    /// <param name="error">结构化错误载荷。</param>
+    /// <param name="humanReadableText">人类可读正文（模型可见，保持向后兼容）。</param>
+    /// <returns>工具结果实例。</returns>
+    public static FeishuToolResult FromError(ToolError error, string humanReadableText)
+        => new() { Text = humanReadableText, Error = error };
 
     /// <summary>
     /// 返回回填模型的文本（显式方法，替代 implicit operator string）。

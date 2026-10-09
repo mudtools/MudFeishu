@@ -2,7 +2,8 @@
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
-//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！
+//  任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
@@ -139,7 +140,7 @@ public sealed class FeishuToolBinding
         if (argumentFailure is not null)
         {
             return await DenyAsync(
-                tool, context, ToolErrorKind.InvalidArgs, $"invalid_args: {argumentFailure}",
+                tool, context, ToolErrorCategory.Validation, ToolErrorSubtype.InvalidArgs, $"invalid_args: {argumentFailure}",
                 arguments, executionStopwatch, activity, cancellationToken).ConfigureAwait(false);
         }
 
@@ -148,7 +149,7 @@ public sealed class FeishuToolBinding
         if (policyFailure is not null)
         {
             return await DenyAsync(
-                tool, context, ToolErrorKind.Forbidden, $"policy_denied: {policyFailure}",
+                tool, context, ToolErrorCategory.Policy, ToolErrorSubtype.ToolNotAllowed, $"policy_denied: {policyFailure}",
                 arguments, executionStopwatch, activity, cancellationToken).ConfigureAwait(false);
         }
 
@@ -157,7 +158,7 @@ public sealed class FeishuToolBinding
         if (!gate.Allowed)
         {
             return await DenyAsync(
-                tool, context, gate.Kind, gate.Reason,
+                tool, context, gate.Category, gate.Subtype, gate.Reason,
                 arguments, executionStopwatch, activity, cancellationToken).ConfigureAwait(false);
         }
 
@@ -173,7 +174,7 @@ public sealed class FeishuToolBinding
             if (_currentUserContext is null)
             {
                 return await DenyAsync(
-                    tool, context, ToolErrorKind.Forbidden,
+                    tool, context, ToolErrorCategory.Authorization, ToolErrorSubtype.AuthorizationDenied,
                     "authorization_denied: user 身份工具需要 IFeishuCurrentUserContext——宿主装配缺失（须注册 Abstractions 的当前用户上下文）",
                     arguments, executionStopwatch, activity, cancellationToken).ConfigureAwait(false);
             }
@@ -181,7 +182,7 @@ public sealed class FeishuToolBinding
             if (string.IsNullOrWhiteSpace(context.UserId))
             {
                 return await DenyAsync(
-                    tool, context, ToolErrorKind.InvalidArgs,
+                    tool, context, ToolErrorCategory.Validation, ToolErrorSubtype.MissingRequired,
                     "invalid_args: user 身份工具要求执行上下文携带当前用户（FeishuToolContext.UserId，取 open_id）——宿主未提供",
                     arguments, executionStopwatch, activity, cancellationToken).ConfigureAwait(false);
             }
@@ -220,7 +221,7 @@ public sealed class FeishuToolBinding
             if (safetyHits.Count > 0 && _options.ContentSafetyMode == ContentSafetyModes.Block)
             {
                 return await DenyAsync(
-                    tool, context, ToolErrorKind.Forbidden,
+                    tool, context, ToolErrorCategory.ContentSafety, ToolErrorSubtype.InjectedContentBlocked,
                     $"content_safety_blocked: 工具结果命中内容安全规则 [{string.Join(",", safetyHits)}]",
                     arguments, executionStopwatch, activity, cancellationToken).ConfigureAwait(false);
             }
@@ -272,12 +273,21 @@ public sealed class FeishuToolBinding
             // 故此处把模型出口改为**白名单**：错误分类 + 稳定文案 + 追踪号，原文只进日志与审计。
             // **审计出口不改**（下方 WriteAuditWithIsolationAsync 仍传 ex.Message）：
             // 审计是宿主内网出口，两条出口的判据不同（R1 §7 纪律 4）。
-            var kind = ToolErrorClassifier.Classify(ex);
-            var raw = StructuredError(
+            var (category, subtype) = ToolErrorClassifier.Classify(ex);
+            var errorPayload = new ToolError(
+                Category: CategoryLiteral(category),
+                Subtype: subtype,
+                Retryable: category == ToolErrorCategory.Retryable,
+                RetryAfterSeconds: null,
+                ApiCode: null,
+                Attempts: 1,
+                Trace: trace,
+                Tool: tool.Name);
+            var humanReadable = StructuredError(
                 tool.Name,
-                kind,
-                $"工具执行异常（{kind}，追踪号 {trace}）——请检查参数后重试；若反复失败请联系管理员并提供该追踪号");
-            var bounded = ToolResultText.Truncate(ToolResultSanitizer.Sanitize(raw), _options.MaxToolResultLength);
+                category,
+                $"工具执行异常（{category}，追踪号 {trace}）——请检查参数后重试；若反复失败请联系管理员并提供该追踪号");
+            var bounded = ToolResultText.Truncate(ToolResultSanitizer.Sanitize(humanReadable), _options.MaxToolResultLength);
 
             FeishuToolDiagnostics.RecordExecution(tool.Name, context.AppKey, FeishuMetrics.ToolOutcomes.Error);
             FeishuToolDiagnostics.RecordDuration(tool.Name, context.AppKey, executionStopwatch.ElapsedMilliseconds);
@@ -285,7 +295,7 @@ public sealed class FeishuToolBinding
                 tool, context, FeishuMetrics.ToolOutcomes.Error, ex.Message,
                 ToolArgsDigester.Digest(arguments), executionStopwatch.ElapsedMilliseconds,
                 CancellationToken.None).ConfigureAwait(false);
-            return FeishuToolResult.FromError(bounded);
+            return FeishuToolResult.FromError(errorPayload, bounded);
         }
         finally
         {
@@ -315,13 +325,14 @@ public sealed class FeishuToolBinding
     /// 确保"新增一个拒绝分支必然带上审计"（否则审计会成为可选步骤而被遗漏）。
     /// </summary>
     /// <remarks>
-    /// R3-4：模型可见文案经 <see cref="EgressResult(string, ToolErrorKind, string)"/> 返回——
+    /// R3-4：模型可见文案经 <see cref="EgressResult(string, ToolErrorCategory, string, string, int?)"/> 返回——
     /// 与成功路径同源净化 + 截断（审计侧仍记原始 <paramref name="reason"/>，两条出口判据不同）。
     /// </remarks>
     private async Task<FeishuToolResult> DenyAsync(
         FeishuToolDefinition tool,
         FeishuToolContext context,
-        ToolErrorKind kind,
+        ToolErrorCategory category,
+        string subtype,
         string reason,
         IReadOnlyDictionary<string, object?> arguments,
         System.Diagnostics.Stopwatch executionStopwatch,
@@ -337,7 +348,7 @@ public sealed class FeishuToolBinding
 
         // R3-4：审计仍记**原始** reason（内部事实，非模型可见——R1 §7 纪律 4 的两条出口判据不同），
         // 回填模型的文本则必须经唯一出口净化 + 截断。
-        return EgressResult(tool.Name, kind, reason);
+        return EgressResult(tool.Name, category, subtype, reason);
     }
 
     /// <summary>
@@ -360,9 +371,24 @@ public sealed class FeishuToolBinding
         return FeishuToolResult.FromError(safe);
     }
 
-    /// <summary>带错误语义分类的出口（结构化文案经 <see cref="StructuredError(string, ToolErrorKind, string, int?)"/> 构造后走唯一闸门）。</summary>
-    private FeishuToolResult EgressResult(string toolName, ToolErrorKind kind, string reason)
-        => EgressResult(StructuredError(toolName, kind, reason));
+    /// <summary>带错误语义分类的出口（B2 错误契约：首行 JSON 载荷 + 人类可读正文，经唯一闸门净化 + 截断）。</summary>
+    private FeishuToolResult EgressResult(string toolName, ToolErrorCategory category, string subtype, string reason, int? apiCode = null)
+    {
+        var humanReadable = StructuredError(toolName, category, reason, apiCode);
+        var errorPayload = new ToolError(
+            Category: CategoryLiteral(category),
+            Subtype: subtype,
+            Retryable: category == ToolErrorCategory.Retryable,
+            RetryAfterSeconds: null,
+            ApiCode: apiCode,
+            Attempts: 1,
+            Trace: null,
+            Tool: toolName);
+        var jsonLine = ToolErrorPayloadSerializer.Serialize(errorPayload);
+        var combined = jsonLine + "\n" + humanReadable;
+        var safe = ToolResultText.Truncate(ToolResultSanitizer.Sanitize(combined), _options.MaxToolResultLength);
+        return FeishuToolResult.FromError(errorPayload, safe);
+    }
 
     /// <summary>无分类的出口（等价 <see cref="StructuredError(string, string)"/> 文案，用于上下文缺失等通用失败）。</summary>
     private FeishuToolResult EgressResult(string toolName, string reason)
@@ -465,39 +491,37 @@ public sealed class FeishuToolBinding
         => $"[tool_error] {toolName}: {reason}";
 
     /// <summary>
-    /// 构造带错误语义分类的结构化错误文本（AI-FD-D12 P1D-2b：分类 + 原因 + 建议——
+    /// 构造带错误语义分类的结构化错误文本（B2 错误契约：分类 + 原因 + 建议——
     /// 授权拒绝与参数错误可区分，模型据此自我修正：重试 or 换参数 or 放弃）。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// AT-B12（R3 评审 C-1）：<see cref="ToolErrorKind.NeedsConfirmation"/> 是<b>独立</b>语义，
-    /// 不得复用 <see cref="ToolErrorKind.InvalidArgs"/> 的"请修正参数"后缀——待确认不是参数错，
+    /// AT-B12（R3 评审 C-1）：<see cref="ToolErrorCategory.Confirmation"/> 是<b>独立</b>语义，
+    /// 不得复用 <see cref="ToolErrorCategory.Validation"/> 的"请修正参数"后缀——待确认不是参数错，
     /// 让模型去改参数会让它陷入无意义的重试循环。
     /// </para>
     /// <para>
-    /// <b>R4-13（收窄版）：只补"文案里还没有"的机器可读事实——飞书业务 code。</b>
-    /// 方案原拟同时追加 <c>retryable</c> 与 <c>reason_code</c>，复核后<b>不加</b>：
-    /// 前者与 <c>(retryable)</c> / <c>(forbidden)</c> 这类 kind 标签同义（同一事实的第二份表示，
-    /// 模型面对两套真相源时只会增加歧义），后者与 <paramref name="reason"/> 文本自带的
-    /// <c>authorization_denied:</c> 前缀重复。故此处只透出分类器已算出、但此前被丢弃的业务 code。
+    /// <b>B2 错误契约</b>：此方法返回人类可读正文；结构化 JSON 载荷由调用方
+    /// （<see cref="EgressResult(string, ToolErrorCategory, string, string, int?)"/>）
+    /// 置于正文首行。老用例的 <c>Contain</c> 断言不受影响（正文形态保持不变）。
     /// </para>
     /// </remarks>
-    internal static string StructuredError(string toolName, ToolErrorKind kind, string reason, int? apiCode = null)
+    internal static string StructuredError(string toolName, ToolErrorCategory category, string reason, int? apiCode = null)
     {
         // 无 code 时不产出空槽（保持既有文案形态不变，老用例的 Contain 断言不受影响）。
         var codeSegment = apiCode.HasValue ? $" code={apiCode.Value}" : string.Empty;
 
-        return kind switch
+        return category switch
         {
-            ToolErrorKind.Retryable => $"[tool_error] {toolName} (retryable){codeSegment}: {reason}——服务端繁忙/网络异常，可稍后重试同一调用",
-            ToolErrorKind.InvalidArgs => $"[tool_error] {toolName} (invalid_args){codeSegment}: {reason}——{InvalidArgsNextStep}",
-            ToolErrorKind.Forbidden => $"[tool_error] {toolName} (forbidden){codeSegment}: {reason}——授权被拒绝，请放弃或改用只读方案",
+            ToolErrorCategory.Retryable => $"[tool_error] {toolName} (retryable){codeSegment}: {reason}——服务端繁忙/网络异常，可稍后重试同一调用",
+            ToolErrorCategory.Validation => $"[tool_error] {toolName} (invalid_args){codeSegment}: {reason}——{InvalidArgsNextStep}",
+            ToolErrorCategory.Authorization => $"[tool_error] {toolName} (forbidden){codeSegment}: {reason}——授权被拒绝，请放弃或改用只读方案",
             // R2-1（P0）：删除「若结果中提供了确认令牌…重试即可继续」——该文案把批准所需的全部要素
             // 交给了模型，使模型可自行带令牌重试并放行写操作（HITL 退化为「取决于模型是否听话」）。
             // 确认令牌只经 IFeishuToolApprovalChannel 交给宿主，模型侧恒为中性语义。
-            ToolErrorKind.NeedsConfirmation => $"[tool_error] {toolName} (needs_confirmation){codeSegment}: {reason}——该操作需要用户确认后方可执行；"
+            ToolErrorCategory.Confirmation => $"[tool_error] {toolName} (needs_confirmation){codeSegment}: {reason}——该操作需要用户确认后方可执行；"
                 + "已交由宿主确认通道处理，未获得确认前不得重试同一调用，请告知用户确认进度",
-            // ApiError（default 分支）：此前**完全没有下一步**（F-8 点名的两态之一）。
+            // Api（default 分支）：此前**完全没有下一步**（F-8 点名的两态之一）。
             _ => $"[tool_error] {toolName} (api_error){codeSegment}: {reason}——{ApiErrorNextStep}",
         };
     }
@@ -535,16 +559,32 @@ public sealed class FeishuToolBinding
 
     /// <summary>按飞书业务 code 分类构造错误回填（<c>FeishuApiOutcome</c> 解包路径共用；分类器 internal，宿主不可见）。</summary>
     internal static string StructuredError(string toolName, int? apiCode, string reason)
-        => StructuredError(toolName, ToolErrorClassifier.ClassifyCode(apiCode), reason, apiCode);
+        => StructuredError(toolName, ToolErrorClassifier.ClassifyCode(apiCode).Category, reason, apiCode);
 
-    /// <summary>授权门禁判定结果（AT-B12：<see cref="ToolErrorKind"/> 随判定一起返回，避免调用方猜测语义）。</summary>
-    private readonly record struct GateDecision(bool Allowed, string Reason, ToolErrorKind Kind)
+    /// <summary>
+    /// 将 <see cref="ToolErrorCategory"/> 映射为 JSON 载荷中的 <c>category</c> 字面量。
+    /// </summary>
+    internal static string CategoryLiteral(ToolErrorCategory category) => category switch
+    {
+        ToolErrorCategory.Validation => "validation",
+        ToolErrorCategory.Policy => "policy",
+        ToolErrorCategory.Authorization => "authorization",
+        ToolErrorCategory.Confirmation => "confirmation",
+        ToolErrorCategory.Retryable => "retryable",
+        ToolErrorCategory.Api => "api",
+        ToolErrorCategory.Internal => "internal",
+        ToolErrorCategory.ContentSafety => "content_safety",
+        _ => "internal",
+    };
+
+    /// <summary>授权门禁判定结果（AT-B12：<see cref="ToolErrorCategory"/> 随判定一起返回，避免调用方猜测语义）。</summary>
+    private readonly record struct GateDecision(bool Allowed, string Reason, ToolErrorCategory Category, string Subtype)
     {
         /// <summary>放行。</summary>
-        public static GateDecision Pass() => new(true, string.Empty, ToolErrorKind.ApiError);
+        public static GateDecision Pass() => new(true, string.Empty, ToolErrorCategory.Api, string.Empty);
 
         /// <summary>拒绝（带语义分类）。</summary>
-        public static GateDecision Deny(string reason, ToolErrorKind kind) => new(false, reason, kind);
+        public static GateDecision Deny(string reason, ToolErrorCategory category, string subtype) => new(false, reason, category, subtype);
     }
 
     private async Task<GateDecision> AuthorizeGateAsync(
@@ -559,7 +599,7 @@ public sealed class FeishuToolBinding
             {
                 return GateDecision.Deny(
                     "authorization_denied: 写类工具未注册 IToolExecutionAuthorizer，且 EnforceToolAuthorization=true——默认拒绝（安全默认，Phase 1 §3.3.4）",
-                    ToolErrorKind.Forbidden);
+                    ToolErrorCategory.Authorization, ToolErrorSubtype.AuthorizationDenied);
             }
 
             // 只读工具默认 NotRequired（授权钩子预留；scopes 随 Schema 供宿主审计）。
@@ -571,7 +611,7 @@ public sealed class FeishuToolBinding
             .ConfigureAwait(false);
         if (result is null)
         {
-            return GateDecision.Deny("authorization_denied: 授权器返回空结果——按拒绝处理（fail-closed）", ToolErrorKind.Forbidden);
+            return GateDecision.Deny("authorization_denied: 授权器返回空结果——按拒绝处理（fail-closed）", ToolErrorCategory.Authorization, ToolErrorSubtype.AuthorizationDenied);
         }
 
         // R4-1（P0）：删除原「写类工具 NeedsUserConfirmation ⇒ Pass()」特例。
@@ -588,13 +628,13 @@ public sealed class FeishuToolBinding
         {
             AuthorizationDecision.Allowed => GateDecision.Pass(),
             AuthorizationDecision.Denied => GateDecision.Deny(
-                $"authorization_denied: {result.Reason ?? "授权被拒绝"}", ToolErrorKind.Forbidden),
+                $"authorization_denied: {result.Reason ?? "授权被拒绝"}", ToolErrorCategory.Authorization, ToolErrorSubtype.AuthorizationDenied),
             // WP3 后无令牌版：读写工具共用同一条挂起解析路径（SDK 不签发、不校验任何凭据）。
             AuthorizationDecision.NeedsUserConfirmation =>
                 await ResolveNeedsConfirmationAsync(tool, arguments, context, result.Reason, cancellationToken)
                     .ConfigureAwait(false),
             _ => GateDecision.Deny(
-                $"authorization_denied: 未知授权判定 {result.Decision}——按拒绝处理（fail-closed）", ToolErrorKind.Forbidden),
+                $"authorization_denied: 未知授权判定 {result.Decision}——按拒绝处理（fail-closed）", ToolErrorCategory.Authorization, ToolErrorSubtype.AuthorizationDenied),
         };
     }
 
@@ -622,7 +662,7 @@ public sealed class FeishuToolBinding
         if (_approvalChannel is null)
         {
             return GateDecision.Deny(
-                $"需要用户确认后才能执行（HITL）：{reasonText}", ToolErrorKind.NeedsConfirmation);
+                $"需要用户确认后才能执行（HITL）：{reasonText}", ToolErrorCategory.Confirmation, ToolErrorSubtype.NeedsUserConfirmation);
         }
 
         string? approvalId = null;
@@ -651,7 +691,7 @@ public sealed class FeishuToolBinding
             + (approvalId is null
                 ? "；已在宿主侧发起确认，请等待用户批准"
                 : $"；已在宿主侧发起确认（关联号 {approvalId}），请等待用户批准"),
-            ToolErrorKind.NeedsConfirmation);
+            ToolErrorCategory.Confirmation, ToolErrorSubtype.NeedsUserConfirmation);
     }
 
     /// <summary>确认有效期（宿主据此判定多久未批准即视为放弃；原 T4-2 建议 10 分钟，WP3 内联为常量）。</summary>

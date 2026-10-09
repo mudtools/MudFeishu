@@ -404,7 +404,7 @@ public class AgentContractGuards
         // R3-02：切片方式从"取到行尾"改为"括号配平的方法体切片"——
         // 被守护文案跨两行（FeishuToolBinding.cs:416-417），单行切片会漏掉续行内容。
         var needsConfirmationBranch = source.IndexOf(
-            "ToolErrorKind.NeedsConfirmation =>", StringComparison.Ordinal);
+            "ToolErrorCategory.Confirmation =>", StringComparison.Ordinal);
         needsConfirmationBranch.Should().BeGreaterThan(-1);
 
         // 括号配平切片：从 `=>` 后的 `$"` 开始，配平到语句结束（分号或下一个 case）。
@@ -449,7 +449,7 @@ public class AgentContractGuards
         var source = File.ReadAllText(bindingSource);
 
         // 提取 StructuredError 方法体整体（从方法签名到下一个方法声明）。
-        var methodStart = source.IndexOf("internal static string StructuredError(string toolName, ToolErrorKind kind", StringComparison.Ordinal);
+        var methodStart = source.IndexOf("internal static string StructuredError(string toolName, ToolErrorCategory category", StringComparison.Ordinal);
         methodStart.Should().BeGreaterThan(-1, "StructuredError 方法必须存在");
         var methodEnd = source.IndexOf("\n    internal static string StructuredError(string toolName, int? apiCode", StringComparison.Ordinal);
         if (methodEnd < 0)
@@ -487,11 +487,11 @@ public class AgentContractGuards
     {
         // 合成缺陷源码：NeedsConfirmation 分支跨两行，续行含 confirm_token。
         var defectiveSource = @"
-        ToolErrorKind.NeedsConfirmation => $""[tool_error] {toolName} (needs_confirmation): {reason}——该操作需要用户确认后方可执行；""
+        ToolErrorCategory.Confirmation => $""[tool_error] {toolName} (needs_confirmation): {reason}——该操作需要用户确认后方可执行；""
             + ""可使用 confirm_token=xxx 重试"",
 ";
         var needsConfirmationBranch = defectiveSource.IndexOf(
-            "ToolErrorKind.NeedsConfirmation =>", StringComparison.Ordinal);
+            "ToolErrorCategory.Confirmation =>", StringComparison.Ordinal);
         needsConfirmationBranch.Should().BeGreaterThan(-1);
 
         // 用与主守卫相同的括号配平切片逻辑。

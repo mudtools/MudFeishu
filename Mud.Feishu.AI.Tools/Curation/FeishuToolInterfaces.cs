@@ -432,7 +432,6 @@ public interface IFeishuTenantSheetsRangeTool
     /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token），超长截断并标记 truncated。</returns>
     Task<string> GetThreadMessagesAsync(
         [ToolParameter("thread_id", "话题 ID（形如 omt_xxx，来自事件上下文或 im.reply_message 返回）", Required = true)] string thread_id,
-        [ToolParameter("page_size", "每页条数（可选，默认 50）")] int? page_size = null,
         [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
         CancellationToken cancellationToken = default);
 }
@@ -499,7 +498,6 @@ public interface IFeishuTenantImForwardMessageTool
     /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token）。</returns>
     Task<string> GetMessageReadUsersAsync(
         [ToolParameter("message_id", "目标消息 ID（形如 omXxx）", Required = true)] string message_id,
-        [ToolParameter("page_size", "每页条数（可选，默认 50）")] int? page_size = null,
         [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
         CancellationToken cancellationToken = default);
 }
@@ -529,7 +527,6 @@ public interface IFeishuTenantImForwardMessageTool
     /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token）。</returns>
     Task<string> SearchChatsAsync(
         [ToolParameter("query", "搜索关键词（群名片段）", Required = true)] string query,
-        [ToolParameter("page_size", "每页条数（可选，默认 50）")] int? page_size = null,
         [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
         CancellationToken cancellationToken = default);
 }

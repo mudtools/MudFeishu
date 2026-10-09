@@ -64,7 +64,7 @@ internal sealed class VcTools(
                     meeting_no: args.MeetingNo,
                     user_id: args.UserId,
                     room_id: args.RoomId,
-                    page_size: args.PageSize ?? DefaultPageSize,
+                    page_size: DefaultPageSize,
                     page_token: args.PageToken,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
@@ -109,7 +109,7 @@ internal sealed class VcTools(
                     meeting_status: args.MeetingStatus,
                     user_id: args.UserId,
                     room_id: args.RoomId,
-                    page_size: args.PageSize ?? DefaultPageSize,
+                    page_size: DefaultPageSize,
                     page_token: args.PageToken,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
@@ -169,7 +169,7 @@ internal sealed class VcTools(
             var outcome = FeishuApiResultReader.Read(await client
                 .GetMeetingRoomsPageListAsync(
                     room_level_id: args.RoomLevelId,
-                    page_size: args.PageSize ?? DefaultPageSize,
+                    page_size: DefaultPageSize,
                     page_token: args.PageToken,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false));

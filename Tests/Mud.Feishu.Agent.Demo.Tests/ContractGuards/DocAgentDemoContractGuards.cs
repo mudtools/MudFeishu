@@ -201,7 +201,7 @@ public class DocAgentDemoContractGuards
     /// </summary>
     /// <remarks>
     /// 与 SDK 口径一致（全仓无 Polly / <c>Microsoft.Extensions.Resilience</c>）：
-    /// 重试语义由模型依据 <c>ToolErrorKind</c> 自行决定，剧本 S6 专门演示。
+    /// 重试语义由模型依据 <c>ToolErrorCategory</c> 自行决定，剧本 S6 专门演示。
     /// </remarks>
     [Fact]
     public void DemoProject_ShouldNotReferenceResilienceLibraries()

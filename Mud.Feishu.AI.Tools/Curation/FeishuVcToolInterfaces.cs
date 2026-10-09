@@ -51,7 +51,6 @@ public interface IFeishuTenantVcListMeetingsTool
         [ToolParameter("meeting_no", "9 位会议号（可选，精确过滤）")] string? meeting_no = null,
         [ToolParameter("user_id", "按参会人用户 ID 过滤（可选）")] string? user_id = null,
         [ToolParameter("room_id", "按会议室 ID 过滤（可选）")] string? room_id = null,
-        [ToolParameter("page_size", "每页条数（可选，默认 20，上限 100）")] int? page_size = null,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
         CancellationToken cancellationToken = default);
 }
@@ -96,7 +95,6 @@ public interface IFeishuTenantVcListParticipantsTool
         [ToolParameter("meeting_status", "会议状态（可选）：1=进行中 2=未开始 3=已结束")] int? meeting_status = null,
         [ToolParameter("user_id", "按参会人用户 ID 过滤（可选）")] string? user_id = null,
         [ToolParameter("room_id", "按会议室 ID 过滤（可选）")] string? room_id = null,
-        [ToolParameter("page_size", "每页条数（可选，默认 20，上限 100）")] int? page_size = null,
         [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
         CancellationToken cancellationToken = default);
 }
@@ -154,7 +152,6 @@ public interface IFeishuTenantVcListRoomsTool
     /// <summary>列出会议室。</summary>
     Task<string> ListRoomsAsync(
         [ToolParameter("room_level_id", "会议室层级 ID（可选，来自层级列表；省略则返回全部可见层级）")] string? room_level_id = null,
-        [ToolParameter("page_size", "每页条数（可选，默认 20，上限 100）")] int? page_size = null,
         [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
         CancellationToken cancellationToken = default);
 }

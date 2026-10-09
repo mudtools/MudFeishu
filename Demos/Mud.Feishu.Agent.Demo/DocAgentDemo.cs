@@ -59,7 +59,7 @@ public static class DocAgentDemo
         var settings = DocAgentSettings.FromConfiguration(sources.Configuration);
         settings.Validate();
 
-        // ① 飞书多应用配置：配置文件已提供 FeishuApps 则原样使用，否则用本节三项合成单应用。
+        // ① 飞书多应用配置：配置文件已提供 FeishuApps 则原样使用，否则用 FeishuDemo 凭证合成单应用。
         var configuration = EnsureAppSection(sources.Configuration, settings);
 
         var services = new ServiceCollection();
@@ -232,15 +232,17 @@ public static class DocAgentDemo
     }
 
     /// <summary>
-    /// 保证 <c>FeishuApps</c> 节存在：配置已提供则原样使用，否则用本节的 AppKey/AppId/AppSecret 合成单应用。
+    /// 保证 <c>FeishuApps</c> 节存在：配置已提供则原样使用，否则用 <c>FeishuDemo</c> 的 AppId/AppSecret
+    /// 与 <c>FeishuDocAgent</c> 的 AppKey 合成单应用。
     /// </summary>
     /// <param name="configuration">配置来源。</param>
-    /// <param name="settings">已解析的配置（提供回退值）。</param>
+    /// <param name="settings">已解析的配置（提供合成值）。</param>
     /// <returns>可供 <c>AddFeishuApp</c> 使用的配置（含 <c>FeishuApps</c> 节）。</returns>
     /// <remarks>
-    /// <b>顺序即语义</b>：配置文件里显式写出的 <c>FeishuApps</c> 优先级高于由 <c>FeishuDocAgent</c> 三项
-    /// 合成的单应用配置（前者是 <c>AddFeishuApp</c> 真正消费的对象）；合成项仅在缺失时追加，
-    /// 且追加在最后（覆盖最低优先级的空节）。
+    /// <b>顺序即语义</b>：配置文件里显式写出的 <c>FeishuApps</c> 优先级高于由统一节合成的单应用配置
+    /// （前者是 <c>AddFeishuApp</c> 真正消费的对象）；合成项仅在缺失时追加，
+    /// 且追加在最后（覆盖最低优先级的空节）。模板不再包含 <c>FeishuApps</c>——
+    /// 模型与飞书凭证的唯一来源是 <c>FeishuDemo</c> 节。
     /// </remarks>
     internal static IConfigurationRoot EnsureAppSection(IConfiguration configuration, DocAgentSettings settings)
     {

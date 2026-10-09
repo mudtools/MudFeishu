@@ -21,16 +21,18 @@ namespace Mud.Feishu.Agent.Demo;
 /// </summary>
 /// <remarks>
 /// <para>
-/// 运行前在配置节 <c>FeishuToolsDemo</c>（<c>appsettings.local.json</c>）填写模型与飞书凭证，
+/// 运行前在统一配置节 <c>FeishuDemo</c>（<c>appsettings.local.json</c>）填写模型与飞书凭证，
 /// 并把 <c>FeishuToolsDemo:Enabled</c> 置为 <c>true</c>（真实密钥只写本地覆盖文件，不落盘提交）：
 /// <code>
-/// "FeishuToolsDemo": {
-///   "Enabled": true,
+/// "FeishuDemo": {
 ///   "ModelId": "glm-4-flash",
 ///   "ApiKey": "sk-xxxx",
 ///   "Endpoint": "https://open.bigmodel.cn/api/paas/v4/",
 ///   "AppId": "cli_xxx",
-///   "AppSecret": "dsk_xxx",
+///   "AppSecret": "dsk_xxx"
+/// },
+/// "FeishuToolsDemo": {
+///   "Enabled": true,
 ///   "StreamChatId": "oc_xxx"
 /// }
 /// </code>

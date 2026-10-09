@@ -33,11 +33,11 @@ public class DemoModeSettingsTests
     public void ChatModelSettings_FromSection_ShouldReadModelIdApiKeyEndpoint()
     {
         var config = Config(
-            ("FeishuToolsDemo:ModelId", "glm-4-flash"),
-            ("FeishuToolsDemo:ApiKey", "sk-test"),
-            ("FeishuToolsDemo:Endpoint", "https://example.com/v1"));
+            ("FeishuDemo:ModelId", "glm-4-flash"),
+            ("FeishuDemo:ApiKey", "sk-test"),
+            ("FeishuDemo:Endpoint", "https://example.com/v1"));
 
-        var model = ChatModelSettings.FromSection(config, ToolsDemoSettings.SectionName);
+        var model = ChatModelSettings.FromSection(config, FeishuDemoSettings.SectionName);
 
         model.ModelId.Should().Be("glm-4-flash");
         model.ApiKey.Should().Be("sk-test");
@@ -51,8 +51,8 @@ public class DemoModeSettingsTests
     public void ChatModelSettings_FromSection_ShouldFailFast_WhenMissingRequired(string missing)
     {
         var config = Config(
-            ("FeishuToolsDemo:ModelId", "glm-4-flash"),
-            ("FeishuToolsDemo:ApiKey", "sk-test"));
+            ("FeishuDemo:ModelId", "glm-4-flash"),
+            ("FeishuDemo:ApiKey", "sk-test"));
 
         // 抽掉一键（用不含该键的等价集合重建）。
         var pruned = config.AsEnumerable()
@@ -61,10 +61,10 @@ public class DemoModeSettingsTests
 
         var act = () => ChatModelSettings.FromSection(
             new ConfigurationBuilder().AddInMemoryCollection(pruned).Build(),
-            ToolsDemoSettings.SectionName);
+            FeishuDemoSettings.SectionName);
 
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage($"*{ToolsDemoSettings.SectionName}:{missing}*");
+            .WithMessage($"*{FeishuDemoSettings.SectionName}:{missing}*");
     }
 
     /// <summary>非 HTTPS 且非环回端点必须被拒。</summary>
@@ -78,10 +78,10 @@ public class DemoModeSettingsTests
             Endpoint = "http://api.example.com/v1",
         };
 
-        var act = () => model.Validate(ToolsDemoSettings.SectionName);
+        var act = () => model.Validate(FeishuDemoSettings.SectionName);
 
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage($"*{ToolsDemoSettings.SectionName}:Endpoint*");
+            .WithMessage($"*{FeishuDemoSettings.SectionName}:Endpoint*");
     }
 
     /// <summary>环回地址走明文是允许的（本地自建模型端点）。</summary>
@@ -95,24 +95,24 @@ public class DemoModeSettingsTests
             Endpoint = "http://127.0.0.1:11434/v1",
         };
 
-        var act = () => model.Validate(ToolsDemoSettings.SectionName);
+        var act = () => model.Validate(FeishuDemoSettings.SectionName);
 
         act.Should().NotThrow();
     }
 
     // ──────────────────────────── ToolsDemoSettings ────────────────────────────
 
-    /// <summary>工具冒烟：开关 + 模型三参数 + 飞书租户三项 + 可选流式目标。</summary>
+    /// <summary>工具冒烟：开关 + 模型三参数 + 飞书租户三项 + 可选流式目标。模型与凭证从 <c>FeishuDemo</c> 统一节读取。</summary>
     [Fact]
     public void ToolsDemoSettings_FromConfiguration_ShouldReadEveryKey()
     {
         var config = Config(
+            ("FeishuDemo:ModelId", "glm-4-flash"),
+            ("FeishuDemo:ApiKey", "sk-test"),
+            ("FeishuDemo:Endpoint", "https://example.com/v1"),
+            ("FeishuDemo:AppId", "cli_test"),
+            ("FeishuDemo:AppSecret", "secret-test"),
             ("FeishuToolsDemo:Enabled", "true"),
-            ("FeishuToolsDemo:ModelId", "glm-4-flash"),
-            ("FeishuToolsDemo:ApiKey", "sk-test"),
-            ("FeishuToolsDemo:Endpoint", "https://example.com/v1"),
-            ("FeishuToolsDemo:AppId", "cli_test"),
-            ("FeishuToolsDemo:AppSecret", "secret-test"),
             ("FeishuToolsDemo:StreamChatId", "oc_test_chat"));
 
         var settings = ToolsDemoSettings.FromConfiguration(config);
@@ -124,17 +124,17 @@ public class DemoModeSettingsTests
         settings.StreamChatId.Should().Be("oc_test_chat");
     }
 
-    /// <summary>工具冒烟缺飞书 AppId / AppSecret 时 fail-fast（工具执行需要租户身份）。</summary>
+    /// <summary>工具冒烟缺飞书 AppId / AppSecret 时 fail-fast（工具执行需要租户身份），消息指向 <c>FeishuDemo</c> 节。</summary>
     [Theory]
     [InlineData("AppId")]
     [InlineData("AppSecret")]
     public void ToolsDemoSettings_FromConfiguration_ShouldFailFast_WhenMissingTenant(string missing)
     {
         var config = Config(
-            ("FeishuToolsDemo:ModelId", "glm-4-flash"),
-            ("FeishuToolsDemo:ApiKey", "sk-test"),
-            ("FeishuToolsDemo:AppId", "cli_test"),
-            ("FeishuToolsDemo:AppSecret", "secret-test"));
+            ("FeishuDemo:ModelId", "glm-4-flash"),
+            ("FeishuDemo:ApiKey", "sk-test"),
+            ("FeishuDemo:AppId", "cli_test"),
+            ("FeishuDemo:AppSecret", "secret-test"));
 
         var pruned = config.AsEnumerable()
             .Where(kv => !kv.Key.EndsWith($":{missing}", StringComparison.Ordinal))
@@ -144,20 +144,20 @@ public class DemoModeSettingsTests
             new ConfigurationBuilder().AddInMemoryCollection(pruned).Build());
 
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage($"*{ToolsDemoSettings.SectionName}:{missing}*");
+            .WithMessage($"*{FeishuDemoSettings.SectionName}:{missing}*");
     }
 
     // ──────────────────────────── ImHandlerDemoSettings ────────────────────────────
 
-    /// <summary>IM 事件接入：开关 + 模型三参数（无需飞书租户三项）。</summary>
+    /// <summary>IM 事件接入：开关 + 模型三参数（无需飞书租户三项）。模型从 <c>FeishuDemo</c> 统一节读取。</summary>
     [Fact]
     public void ImHandlerDemoSettings_FromConfiguration_ShouldReadEveryKey()
     {
         var config = Config(
-            ("FeishuImHandlerDemo:Enabled", "true"),
-            ("FeishuImHandlerDemo:ModelId", "glm-4-flash"),
-            ("FeishuImHandlerDemo:ApiKey", "sk-test"),
-            ("FeishuImHandlerDemo:Endpoint", "https://example.com/v1"));
+            ("FeishuDemo:ModelId", "glm-4-flash"),
+            ("FeishuDemo:ApiKey", "sk-test"),
+            ("FeishuDemo:Endpoint", "https://example.com/v1"),
+            ("FeishuImHandlerDemo:Enabled", "true"));
 
         var settings = ImHandlerDemoSettings.FromConfiguration(config);
 
@@ -168,16 +168,16 @@ public class DemoModeSettingsTests
 
     // ──────────────────────────── 节名契约 ────────────────────────────
 
-    /// <summary>四个模式的配置节/开关键必须互异（模式分派按节名判定，撞名会静默串线）。</summary>
+    /// <summary>三个模式的配置节/开关键必须互异（模式分派按节名判定，撞名会静默串线）。</summary>
     [Fact]
     public void ModeSections_ShouldBeDistinct()
     {
         string[] sections =
         [
+            FeishuDemoSettings.SectionName,
             DocAgentSettings.SectionName,
             ToolsDemoSettings.SectionName,
             ImHandlerDemoSettings.SectionName,
-            ChatDemoSettings.SectionName,
         ];
 
         sections.Should().OnlyHaveUniqueItems();

@@ -13,7 +13,7 @@
 
 | 模式 | 开关（配置文件） | 内容 |
 | --- | --- | --- |
-| Phase 0 裸模型 | 默认（不设任何开关，读 `FeishuChatDemo` 节） | 一问一答，不含任何飞书能力 |
+| Phase 0 裸模型 | 默认（不设任何开关，读 `FeishuDemo` 节） | 一问一答，不含任何飞书能力 |
 | Phase 1/2 工具冒烟 | `FeishuToolsDemo:Enabled=true` | 全域只读工具，打印工具名 + 只读问答 |
 | P2D-5a 事件接入 | `FeishuImHandlerDemo:Enabled=true` | 打印 IM 会话处理器的注册面代码文本 |
 | **文档业务智能体** | **`FeishuDocAgent:Enabled=true`** | **本文件描述的模式** |
@@ -77,18 +77,25 @@ dotnet run --project Demos/Mud.Feishu.Agent.Demo
 配置根目录固定为 **程序输出目录**（`AppContext.BaseDirectory`，两个 `appsettings*.json` 由 csproj 随产物复制），
 与当前工作目录无关：`dotnet run`、`dotnet bin/Debug/net10.0/xxx.dll`、任意 cwd 行为一致。
 
-单个配置项的查找顺序：`FeishuDocAgent:{键}` → `FeishuApps` 的**主应用**（仅租户三项，见 §3.4）。
+模型与飞书凭证**统一写在 `FeishuDemo` 节**（四个模式共用，只此一处）；各模式节只保留自己的开关与专属参数。
 
-### 3.2 配置键对照表（节 `FeishuDocAgent`）
+### 3.2 配置键对照表
+
+**统一连接配置（节 `FeishuDemo`）**——四个模式共用：
+
+| 配置文件键（节 `FeishuDemo`） | 必填 | 默认 | 说明 |
+| --- | --- | --- | --- |
+| `ModelId` | ✅ | — | 模型 ID（如 `glm-4-flash`） |
+| `ApiKey` | ✅ | — | 模型 API Key |
+| `Endpoint` | 否 | SDK 默认 | 须 HTTPS 或环回（`localhost` / `127.0.0.1` / `::1`） |
+| `AppId` | 工具冒烟 / 文档智能体 ✅ | — | 飞书 AppId（`cli_`/`app_` 开头且 ≥20 字符） |
+| `AppSecret` | 工具冒烟 / 文档智能体 ✅ | — | 飞书 AppSecret（≥16 字符） |
+
+**文档智能体专属配置（节 `FeishuDocAgent`）**：
 
 | 配置文件键（节 `FeishuDocAgent`） | 必填 | 默认 | 说明 |
 | --- | --- | --- | --- |
 | `Enabled` | 否 | `false` | 置 `true` 启用本模式 |
-| `ModelId` | ✅ | — | 模型 ID（如 `glm-4-flash`） |
-| `ApiKey` | ✅ | — | 模型 API Key |
-| `Endpoint` | 否 | SDK 默认 | 须 HTTPS 或环回（`localhost` / `127.0.0.1` / `::1`） |
-| `AppId` | ✅ | — | 飞书 AppId（`cli_`/`app_` 开头且 ≥20 字符） |
-| `AppSecret` | ✅ | — | 飞书 AppSecret（≥16 字符） |
 | `AppKey` | 否 | `demo-app` | 应用键（不得含 `:`） |
 | `UserId` | 否 | `ou_console_demo_user` | 会话键 subject 段（**不是**真实 open_id） |
 | `WikiSpaceId` | 否 | — | 剧本 S1 的知识库空间 ID（留空则引导模型自行列空间） |
@@ -103,13 +110,15 @@ dotnet run --project Demos/Mud.Feishu.Agent.Demo
 
 ```jsonc
 {
-  "FeishuDocAgent": {
-    "Enabled": true,
+  "FeishuDemo": {
     "ModelId": "glm-4-flash",
     "ApiKey": "sk-****",                                   // 真实密钥只写本文件
     "Endpoint": "https://open.bigmodel.cn/api/paas/v4/",   // 可留空 = SDK 默认端点
     "AppId": "cli_****",
-    "AppSecret": "****",
+    "AppSecret": "****"
+  },
+  "FeishuDocAgent": {
+    "Enabled": true,
     "AppKey": "demo-app",
     "UserId": "ou_console_demo_user",
     "WikiSpaceId": "wikcn****",
@@ -123,20 +132,12 @@ dotnet run --project Demos/Mud.Feishu.Agent.Demo
 配置 JSON **允许 `//` 注释与尾逗号**（`Microsoft.Extensions.Configuration.Json` 的解析器口径），
 故模板里可以写就地说明。未知键会被忽略——这正是随仓库提交的模板要有守卫的原因（见 §11）。
 
-### 3.4 与 SDK 标准写法（`FeishuApps`）的关系
+### 3.4 飞书多应用装配
 
-`AddFeishuApp` 消费的是 `FeishuApps` 数组，本 Demo 两种写法都支持：
-
-```jsonc
-// 写法一（推荐，本节）：由 AppId/AppSecret/AppKey 合成单应用
-"FeishuDocAgent": { "AppKey": "demo-app", "AppId": "cli_xxx", "AppSecret": "xxx" }
-
-// 写法二（SDK 标准）：显式声明应用数组；本 Demo 取 IsDefault=true 的那个（无标记则取第 0 个）
-"FeishuApps": [ { "AppKey": "demo-app", "AppId": "cli_xxx", "AppSecret": "xxx", "IsDefault": true } ]
-```
-
-两种同时存在时**以 `FeishuApps` 为准**（它是真正生效的租户配置）；此时 `AppKey` 也取自它，
-以保证"工具执行上下文的 appKey"与"默认应用"一致。
+模型与飞书凭证的唯一配置来源是 `FeishuDemo` 节。`AddFeishuApp` 消费的 `FeishuApps` 数组由
+`EnsureAppSection` 在进程内从 `FeishuDemo` 的 `AppId`/`AppSecret` 与 `FeishuDocAgent` 的 `AppKey`
+合成单应用（不落盘、不入日志）。若配置文件显式提供了 `FeishuApps` 数组，则原样使用（高级多应用场景的
+逃生口；模板不含此节）。
 
 ### 3.5 密钥纪律
 
@@ -260,7 +261,7 @@ tenant 身份无 wiki 关键词搜索（改用 `search.doc_wiki`）；工具结�
 
 | 现象 | 原因 | 处置 |
 | --- | --- | --- |
-| 启动即报 `请先设置 FeishuDocAgent:XXX` | 配置文件中缺少该必填项 | 对照 §3.2 补齐 |
+| 启动即报 `请先设置 FeishuDemo:XXX` 或 `FeishuDocAgent:XXX` | 配置文件中缺少该必填项 | 对照 §3.2 补齐 |
 | 改了 `appsettings.local.json` 但不生效 | ① 本 Demo **不监听文件变更**（`reloadOnChange: false`），必须重启；② 文件是新加的、还没被复制到输出目录 → 重新 `dotnet run` / `dotnet build`；③ 键名拼错（对照 §3.2） | 看横幅"配置来源"行确认文件是否被加载；再核对键名 |
 | 配置文件里 `FeishuDocAgent:Enabled=true` 却没进本模式 | 更早优先级的模式开关也被置 `true`（四模式互斥，按 §1 顺序判定：工具冒烟 → IM 事件接入 → 文档智能体） | 检查并关闭其它模式的 `Enabled`，或只保留目标模式 |
 | 横幅"配置来源"只显示 `（未发现 appsettings*.json）` | 两个 `appsettings*.json` 都不在**输出目录** | 确认 `Demos/Mud.Feishu.Agent.Demo/bin/<配置>/net10.0/` 下有 `appsettings.json`（csproj 的 `None Update + CopyToOutputDirectory` 负责复制） |

@@ -10,7 +10,7 @@ using Microsoft.Extensions.Configuration;
 namespace Mud.Feishu.Agent.Demo;
 
 /// <summary>
-/// 模型客户端三参数（裸模型 / IM 事件接入 / 工具冒烟三个模式共用的模型配置面）。
+/// 模型客户端三参数（裸模型 / IM 事件接入 / 工具冒烟 / 文档智能体四个模式共用的模型配置面）。
 /// </summary>
 /// <remarks>
 /// 只从配置文件读取；必填项缺失时 fail-fast（消息指明配置键）。
@@ -26,9 +26,9 @@ internal sealed record ChatModelSettings
     /// <summary>OpenAI-compatible 端点（可空 = SDK 默认端点；须 HTTPS 或环回）。</summary>
     public string? Endpoint { get; init; }
 
-    /// <summary>从给定配置节读模型三参数（键：<c>{section}:ModelId / ApiKey / Endpoint</c>）。</summary>
+    /// <summary>从给定配置节读模型三参数（键：<c>{sectionName}:ModelId / ApiKey / Endpoint</c>）。</summary>
     /// <param name="configuration">配置来源。</param>
-    /// <param name="sectionName">配置节名（如 <c>FeishuChatDemo</c> / <c>FeishuToolsDemo</c> / <c>FeishuImHandlerDemo</c>）。</param>
+    /// <param name="sectionName">配置节名（如 <c>FeishuDemo</c>）。</param>
     /// <exception cref="ArgumentNullException"><paramref name="configuration"/> 为 <see langword="null"/>。</exception>
     /// <exception cref="InvalidOperationException">缺少必填配置项。</exception>
     public static ChatModelSettings FromSection(IConfiguration configuration, string sectionName)
@@ -99,11 +99,85 @@ internal sealed record ChatModelSettings
 }
 
 /// <summary>
+/// 统一连接配置节 <c>FeishuDemo</c>：模型三项 + 飞书自建应用凭证——
+/// 四个运行模式**共用**，只在此处写一次（不再每个模式节重复）。
+/// </summary>
+/// <remarks>
+/// <para>
+/// 模型三项（<see cref="Model"/>）为全部模式必填；飞书凭证
+/// <see cref="AppId"/>/<see cref="AppSecret"/> 仅工具冒烟与文档智能体需要，
+/// 但统一放此处以避免跨节重复（不需要的模式不读取即可）。
+/// </para>
+/// <para>
+/// 只从配置文件读取；必填项缺失时 fail-fast（消息指明 <c>FeishuDemo:*</c> 键）。
+/// </para>
+/// </remarks>
+internal sealed record FeishuDemoSettings
+{
+    /// <summary>配置节名（四个模式的统一连接配置面）。</summary>
+    public const string SectionName = "FeishuDemo";
+
+    /// <summary>模型 ID 键。</summary>
+    public const string KeyModelId = "ModelId";
+
+    /// <summary>模型 API Key 键。</summary>
+    public const string KeyApiKey = "ApiKey";
+
+    /// <summary>端点键。</summary>
+    public const string KeyEndpoint = "Endpoint";
+
+    /// <summary>飞书 AppId 键。</summary>
+    public const string KeyAppId = "AppId";
+
+    /// <summary>飞书 AppSecret 键。</summary>
+    public const string KeyAppSecret = "AppSecret";
+
+    /// <summary>
+    /// 配置文件中受支持的键名（<see cref="SectionName"/> 节下）。
+    /// </summary>
+    /// <remarks>契约守卫据此校验随仓库提交的 <c>appsettings.json</c> 模板不漂移。</remarks>
+    public static IReadOnlyCollection<string> ConfigurationKeys { get; } =
+        [KeyModelId, KeyApiKey, KeyEndpoint, KeyAppId, KeyAppSecret];
+
+    /// <summary>模型三参数。</summary>
+    public required ChatModelSettings Model { get; init; }
+
+    /// <summary>飞书应用 AppId（可空——不需要租户身份的模式不校验）。</summary>
+    public string? AppId { get; init; }
+
+    /// <summary>飞书应用 AppSecret（可空——不需要租户身份的模式不校验）。</summary>
+    public string? AppSecret { get; init; }
+
+    /// <summary>从配置文件读取统一连接配置（节 <see cref="SectionName"/>）。</summary>
+    /// <param name="configuration">配置来源。</param>
+    /// <exception cref="ArgumentNullException"><paramref name="configuration"/> 为 <see langword="null"/>。</exception>
+    /// <exception cref="InvalidOperationException">缺少必填模型配置项。</exception>
+    public static FeishuDemoSettings FromConfiguration(IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        return new FeishuDemoSettings
+        {
+            Model = ChatModelSettings.FromSection(configuration, SectionName),
+            AppId = NullIfBlank(configuration[$"{SectionName}:{KeyAppId}"]),
+            AppSecret = NullIfBlank(configuration[$"{SectionName}:{KeyAppSecret}"]),
+        };
+    }
+
+    /// <summary>校验模型三参数合法（fail-fast：缺必填项 / 非 HTTPS 端点）。</summary>
+    /// <exception cref="InvalidOperationException">存在非法取值。</exception>
+    public void Validate() => Model.Validate(SectionName);
+
+    private static string? NullIfBlank(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value;
+}
+
+/// <summary>
 /// Phase 1/2 工具冒烟模式的配置（全域只读工具 + 飞书租户身份）。
 /// </summary>
 /// <remarks>
-/// 只从配置节 <c>FeishuToolsDemo</c> 读取；模型三项经 <see cref="ChatModelSettings"/> 复用。
-/// 飞书多应用由 <c>AppId</c>/<c>AppSecret</c> 在进程内合成（不落盘、不入日志）。
+/// 模式开关与 <c>StreamChatId</c> 从配置节 <c>FeishuToolsDemo</c> 读取；
+/// 模型三项与飞书凭证从统一节 <c>FeishuDemo</c> 读取（<see cref="FeishuDemoSettings"/>）。
 /// </remarks>
 internal sealed record ToolsDemoSettings
 {
@@ -136,12 +210,14 @@ internal sealed record ToolsDemoSettings
     {
         ArgumentNullException.ThrowIfNull(configuration);
 
+        var shared = FeishuDemoSettings.FromConfiguration(configuration);
+
         return new ToolsDemoSettings
         {
             Enabled = configuration.GetValue<bool?>(EnabledKey) is true,
-            Model = ChatModelSettings.FromSection(configuration, SectionName),
-            AppId = Require(configuration[$"{SectionName}:AppId"], "AppId"),
-            AppSecret = Require(configuration[$"{SectionName}:AppSecret"], "AppSecret"),
+            Model = shared.Model,
+            AppId = Require(shared.AppId, FeishuDemoSettings.KeyAppId),
+            AppSecret = Require(shared.AppSecret, FeishuDemoSettings.KeyAppSecret),
             StreamChatId = NullIfBlank(configuration[$"{SectionName}:StreamChatId"]),
         };
     }
@@ -150,23 +226,22 @@ internal sealed record ToolsDemoSettings
     /// <exception cref="InvalidOperationException">存在非法取值。</exception>
     public void Validate()
     {
-        Model.Validate(SectionName);
+        Model.Validate(FeishuDemoSettings.SectionName);
 
         if (string.IsNullOrWhiteSpace(AppId))
         {
-            throw new InvalidOperationException($"请先设置 {SectionName}:AppId");
+            throw new InvalidOperationException($"请先设置 {FeishuDemoSettings.SectionName}:{FeishuDemoSettings.KeyAppId}");
         }
 
         if (string.IsNullOrWhiteSpace(AppSecret))
         {
-            throw new InvalidOperationException($"请先设置 {SectionName}:AppSecret");
+            throw new InvalidOperationException($"请先设置 {FeishuDemoSettings.SectionName}:{FeishuDemoSettings.KeyAppSecret}");
         }
     }
 
     private static string Require(string? value, string key)
-        => value is null
-            ? throw new InvalidOperationException($"请先设置 {SectionName}:{key}")
-            : value;
+        => value ?? throw new InvalidOperationException(
+            $"请先设置 {FeishuDemoSettings.SectionName}:{key}");
 
     private static string? NullIfBlank(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value;
@@ -175,7 +250,7 @@ internal sealed record ToolsDemoSettings
 /// <summary>
 /// P2D-5a「零自定义接入」IM 会话处理器演示的配置（注册面冒烟，只读模型三项）。
 /// </summary>
-/// <remarks>只从配置节 <c>FeishuImHandlerDemo</c> 读取。</remarks>
+/// <remarks>模式开关从配置节 <c>FeishuImHandlerDemo</c> 读取；模型三项从统一节 <c>FeishuDemo</c> 读取。</remarks>
 internal sealed record ImHandlerDemoSettings
 {
     /// <summary>配置节名。</summary>
@@ -198,30 +273,16 @@ internal sealed record ImHandlerDemoSettings
     {
         ArgumentNullException.ThrowIfNull(configuration);
 
+        var shared = FeishuDemoSettings.FromConfiguration(configuration);
+
         return new ImHandlerDemoSettings
         {
             Enabled = configuration.GetValue<bool?>(EnabledKey) is true,
-            Model = ChatModelSettings.FromSection(configuration, SectionName),
+            Model = shared.Model,
         };
     }
 
     /// <summary>校验配置合法（fail-fast）。</summary>
     /// <exception cref="InvalidOperationException">存在非法取值。</exception>
-    public void Validate() => Model.Validate(SectionName);
-}
-
-/// <summary>
-/// Phase 0 裸模型模式（默认模式，无开关）的配置节名与读取入口。
-/// </summary>
-/// <remarks>只从配置节 <c>FeishuChatDemo</c> 读取。</remarks>
-internal static class ChatDemoSettings
-{
-    /// <summary>配置节名。</summary>
-    public const string SectionName = "FeishuChatDemo";
-
-    /// <summary>从配置文件读取裸模型三参数。</summary>
-    /// <param name="configuration">配置来源。</param>
-    /// <exception cref="ArgumentNullException"><paramref name="configuration"/> 为 <see langword="null"/>。</exception>
-    public static ChatModelSettings FromConfiguration(IConfiguration configuration)
-        => ChatModelSettings.FromSection(configuration, SectionName);
+    public void Validate() => Model.Validate(FeishuDemoSettings.SectionName);
 }

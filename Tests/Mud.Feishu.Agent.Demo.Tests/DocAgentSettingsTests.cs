@@ -16,8 +16,9 @@ public class DocAgentSettingsTests
 {
     /// <summary>
     /// 缺任一必填项即抛错，且异常消息**指明配置文件键**（否则排障只能靠猜）。
+    /// 模型与飞书凭证统一取自 <c>FeishuDemo</c> 节，故错误消息指向 <c>FeishuDemo:*</c>。
     /// </summary>
-    /// <param name="missing">被抽掉的键名（节 <c>FeishuDocAgent</c> 下）。</param>
+    /// <param name="missing">被抽掉的键名（节 <c>FeishuDemo</c> 下）。</param>
     [Theory]
     [InlineData(DocAgentSettings.KeyModelId)]
     [InlineData(DocAgentSettings.KeyApiKey)]
@@ -27,19 +28,19 @@ public class DocAgentSettingsTests
     {
         var values = new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [$"{DocAgentSettings.SectionName}:{DocAgentSettings.KeyModelId}"] = "test-model",
-            [$"{DocAgentSettings.SectionName}:{DocAgentSettings.KeyApiKey}"] = "sk-test",
-            [$"{DocAgentSettings.SectionName}:{DocAgentSettings.KeyAppId}"] = "cli_test",
-            [$"{DocAgentSettings.SectionName}:{DocAgentSettings.KeyAppSecret}"] = "secret",
+            [$"{FeishuDemoSettings.SectionName}:{DocAgentSettings.KeyModelId}"] = "test-model",
+            [$"{FeishuDemoSettings.SectionName}:{DocAgentSettings.KeyApiKey}"] = "sk-test",
+            [$"{FeishuDemoSettings.SectionName}:{DocAgentSettings.KeyAppId}"] = "cli_test",
+            [$"{FeishuDemoSettings.SectionName}:{DocAgentSettings.KeyAppSecret}"] = "secret",
         };
-        values[$"{DocAgentSettings.SectionName}:{missing}"] = null;
+        values[$"{FeishuDemoSettings.SectionName}:{missing}"] = null;
 
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
 
         var act = () => DocAgentSettings.FromConfiguration(configuration);
 
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage($"*{DocAgentSettings.SectionName}:{missing}*", "错误消息必须指明缺哪个配置键");
+            .WithMessage($"*{FeishuDemoSettings.SectionName}:{missing}*", "错误消息必须指明缺哪个配置键");
     }
 
     /// <summary>非 HTTPS 且非环回端点必须被拒（与 SDK 的 EnsureHttpsEndpoint 同口径，但错误更早更友好）。</summary>
@@ -51,7 +52,7 @@ public class DocAgentSettingsTests
         var act = () => settings.Validate();
 
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage($"*{DocAgentSettings.SectionName}:{DocAgentSettings.KeyEndpoint}*");
+            .WithMessage($"*{FeishuDemoSettings.SectionName}:{DocAgentSettings.KeyEndpoint}*");
     }
 
     /// <summary>环回地址走明文是允许的（本地自建模型端点）。</summary>

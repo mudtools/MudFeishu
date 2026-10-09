@@ -21,14 +21,16 @@ namespace Mud.Feishu.Agent.Demo;
 /// 消息 → 会话 → 模型 → 回复/流式（Bot 自激过滤、群聊 @ 过滤安全内建）。
 /// </summary>
 /// <remarks>
-/// 运行前在配置节 <c>FeishuImHandlerDemo</c> 填写模型三项，并把
+/// 运行前在统一配置节 <c>FeishuDemo</c> 填写模型三项，并把
 /// <c>FeishuImHandlerDemo:Enabled</c> 置为 <c>true</c>（飞书多应用由宿主在 WebSocket/Webhook 通道另行配置）：
 /// <code>
-/// "FeishuImHandlerDemo": {
-///   "Enabled": true,
+/// "FeishuDemo": {
 ///   "ModelId": "glm-4-flash",
 ///   "ApiKey": "sk-xxxx",
 ///   "Endpoint": ""
+/// },
+/// "FeishuImHandlerDemo": {
+///   "Enabled": true
 /// }
 /// </code>
 /// 事件订阅侧由 WebSocket 通道挂载内置处理器（<c>AddHandler&lt;ImMessageConversationalEventHandler&gt;()</c>，

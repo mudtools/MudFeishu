@@ -96,12 +96,14 @@ internal sealed record DocAgentSettings
     /// 配置文件中受支持的键名（<see cref="SectionName"/> 节下，不含 <c>Enabled</c>）。
     /// </summary>
     /// <remarks>
+    /// 模型与飞书凭证（<c>ModelId/ApiKey/Endpoint/AppId/AppSecret</c>）已统一移至
+    /// <see cref="FeishuDemoSettings.SectionName"/> 节，不再出现在本节，故不在此列。
     /// 契约守卫据此校验随仓库提交的 <c>appsettings.json</c> 模板不漂移：模板里的每个键都必须受支持，
     /// 且每个受支持的键都必须在模板里出现（避免"改了代码键名、忘了改模板"这类静默失效）。
     /// </remarks>
     public static IReadOnlyCollection<string> ConfigurationKeys { get; } =
     [
-        KeyModelId, KeyApiKey, KeyEndpoint, KeyAppId, KeyAppSecret, KeyAppKey,
+        KeyAppKey,
         KeyUserId, KeyWikiSpaceId, KeyPolicy, KeySummaryThreshold, KeyAuditExportPath, KeyAttachmentMaxMb,
     ];
 
@@ -251,36 +253,33 @@ internal sealed record DocAgentSettings
     public static readonly string[] Policies = [PolicyStrict, PolicyAsk, PolicyReadonly];
 
     /// <summary>
-    /// 从配置文件读取配置（节 <see cref="SectionName"/> + <see cref="AppSectionName"/> 主应用回退）。
+    /// 从配置文件读取配置（模型与飞书凭证统一取自 <see cref="FeishuDemoSettings.SectionName"/> 节，
+    /// 模式专属键取自 <see cref="SectionName"/> 节）。
     /// </summary>
     /// <param name="configuration">配置文件来源（<c>appsettings*.json</c>；见 <see cref="SectionName"/>）。</param>
     /// <returns>配置实例（缺必填项时抛错，消息指明配置文件键）。</returns>
     /// <exception cref="ArgumentNullException"><paramref name="configuration"/> 为 <see langword="null"/>。</exception>
     /// <exception cref="InvalidOperationException">缺少必填配置项，或整数项非法。</exception>
     /// <remarks>
-    /// 单个配置项的查找顺序：<c>{SectionName}:{键}</c> → <c>{AppSectionName} 的主应用</c>（仅租户三项）。
-    /// 最后一级让「SDK 标准写法（<c>FeishuApps</c> 数组）」与「本节写法（<c>AppId/AppSecret</c>）」等价：
-    /// 只写其中一种即可；两种都写时以 <c>FeishuApps</c> 为准（那是 <c>AddFeishuApp</c> 真正消费的配置）。
+    /// 模型三项与 <c>AppId/AppSecret</c> 的唯一来源是 <c>FeishuDemo</c> 节（四个模式共用，只此一处）；
+    /// <c>AppKey/UserId/WikiSpaceId/Policy</c> 等模式专属键取自 <c>FeishuDocAgent</c> 节。
     /// </remarks>
     public static DocAgentSettings FromConfiguration(IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
 
-        var primaryApp = ResolvePrimaryApp(configuration);
+        var shared = FeishuDemoSettings.FromConfiguration(configuration);
 
         string? Section(string key) => NullIfBlank(configuration[$"{SectionName}:{key}"]);
-        string? App(string key) => primaryApp is null ? null : NullIfBlank(primaryApp[key]);
 
         return new DocAgentSettings
         {
-            ModelId = Require(Section(KeyModelId), KeyModelId),
-            ApiKey = Require(Section(KeyApiKey), KeyApiKey),
-            Endpoint = Section(KeyEndpoint),
-            // 租户三项以 FeishuApps 为准：它是 AddFeishuApp 真正消费的配置，
-            // 若改取本节值，工具执行上下文的 appKey 会与实际默认应用不一致（被授权器以 appKey 不匹配拒绝）。
-            AppId = Require(App(KeyAppId) ?? Section(KeyAppId), KeyAppId),
-            AppSecret = Require(App(KeyAppSecret) ?? Section(KeyAppSecret), KeyAppSecret),
-            AppKey = App(KeyAppKey) ?? Section(KeyAppKey) ?? DefaultAppKey,
+            ModelId = shared.Model.ModelId,
+            ApiKey = shared.Model.ApiKey,
+            Endpoint = shared.Model.Endpoint,
+            AppId = Require(shared.AppId, KeyAppId),
+            AppSecret = Require(shared.AppSecret, KeyAppSecret),
+            AppKey = Section(KeyAppKey) ?? DefaultAppKey,
             UserId = Section(KeyUserId) ?? DefaultConsoleUserId,
             WikiSpaceId = Section(KeyWikiSpaceId),
             Policy = Section(KeyPolicy) ?? PolicyStrict,
@@ -311,22 +310,22 @@ internal sealed record DocAgentSettings
     {
         if (string.IsNullOrWhiteSpace(ModelId))
         {
-            throw new InvalidOperationException($"请先设置 {FullKey(KeyModelId)}");
+            throw new InvalidOperationException($"请先设置 {SharedFullKey(KeyModelId)}");
         }
 
         if (string.IsNullOrWhiteSpace(ApiKey))
         {
-            throw new InvalidOperationException($"请先设置 {FullKey(KeyApiKey)}");
+            throw new InvalidOperationException($"请先设置 {SharedFullKey(KeyApiKey)}");
         }
 
         if (string.IsNullOrWhiteSpace(AppId))
         {
-            throw new InvalidOperationException($"请先设置 {FullKey(KeyAppId)}（或在 {AppSectionName} 的主应用中配置）");
+            throw new InvalidOperationException($"请先设置 {SharedFullKey(KeyAppId)}");
         }
 
         if (string.IsNullOrWhiteSpace(AppSecret))
         {
-            throw new InvalidOperationException($"请先设置 {FullKey(KeyAppSecret)}（或在 {AppSectionName} 的主应用中配置）");
+            throw new InvalidOperationException($"请先设置 {SharedFullKey(KeyAppSecret)}");
         }
 
         // 与 AddFeishuOpenAIChatClient 的 EnsureHttpsEndpoint 同口径，但提前给出更友好的错误
@@ -336,7 +335,7 @@ internal sealed record DocAgentSettings
             if (!Uri.TryCreate(Endpoint, UriKind.Absolute, out var endpoint))
             {
                 throw new InvalidOperationException(
-                    $"{FullKey(KeyEndpoint)} 不是合法的绝对 URI：'{Endpoint}'");
+                    $"{SharedFullKey(KeyEndpoint)} 不是合法的绝对 URI：'{Endpoint}'");
             }
 
             EnsureHttpsOrLoopback(endpoint);
@@ -410,24 +409,13 @@ internal sealed record DocAgentSettings
     /// <summary>配置键全名（<c>FeishuDocAgent:{key}</c>）。</summary>
     private static string FullKey(string key) => $"{SectionName}:{key}";
 
-    /// <summary>
-    /// 取 <see cref="AppSectionName"/> 的"主应用"（<c>IsDefault=true</c> 优先，否则第 0 个）。
-    /// </summary>
-    /// <param name="configuration">配置来源。</param>
-    /// <returns>主应用配置节；配置未提供该节时为 <see langword="null"/>。</returns>
-    private static IConfigurationSection? ResolvePrimaryApp(IConfiguration configuration)
-    {
-        var apps = configuration.GetSection(AppSectionName).GetChildren().ToArray();
-
-        return apps.FirstOrDefault(
-                   static app => string.Equals(app["IsDefault"], "true", StringComparison.OrdinalIgnoreCase))
-               ?? apps.FirstOrDefault();
-    }
+    /// <summary>共享配置键全名（<c>FeishuDemo:{key}</c>）。</summary>
+    private static string SharedFullKey(string key) => $"{FeishuDemoSettings.SectionName}:{key}";
 
     private static string Require(string? value, string key)
         => value ?? throw new InvalidOperationException(
             key is KeyAppId or KeyAppSecret
-                ? $"请先设置 {FullKey(key)}（或在 {AppSectionName} 的主应用中配置）"
+                ? $"请先设置 {SharedFullKey(key)}"
                 : $"请先设置 {FullKey(key)}");
 
     private static string? NullIfBlank(string? value)
@@ -465,7 +453,7 @@ internal sealed record DocAgentSettings
         if (!isLoopback)
         {
             throw new InvalidOperationException(
-                $"{FullKey(KeyEndpoint)} 必须为 HTTPS（环回地址例外，对齐 SDK 的 EnsureHttpsEndpoint 安全默认），实际：{endpoint}");
+                $"{SharedFullKey(KeyEndpoint)} 必须为 HTTPS（环回地址例外，对齐 SDK 的 EnsureHttpsEndpoint 安全默认），实际：{endpoint}");
         }
     }
 }

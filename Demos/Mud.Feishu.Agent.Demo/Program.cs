@@ -22,7 +22,7 @@ namespace Mud.Feishu.Agent.Demo;
 ///   <item><description><c>FeishuToolsDemo:Enabled</c> → 工具冒烟（全域只读工具 + 飞书客户端）；</description></item>
 ///   <item><description><c>FeishuImHandlerDemo:Enabled</c> → IM 会话处理器接入演示；</description></item>
 ///   <item><description><c>FeishuDocAgent:Enabled</c> → 文档业务智能体控制台；</description></item>
-///   <item><description>均未启用 → Phase 0 裸模型一问一答（读 <c>FeishuChatDemo</c> 节）。</description></item>
+///   <item><description>均未启用 → Phase 0 裸模型一问一答（读 <c>FeishuDemo</c> 节）。</description></item>
 /// </list>
 /// </remarks>
 public static class Program
@@ -55,9 +55,10 @@ public static class Program
             return;
         }
 
-        // Phase 0 裸模型（默认模式，无开关）。
-        var chat = ChatDemoSettings.FromConfiguration(configuration);
-        chat.Validate(ChatDemoSettings.SectionName);
+        // Phase 0 裸模型（默认模式，无开关）。模型三参数统一读 FeishuDemo 节。
+        var shared = FeishuDemoSettings.FromConfiguration(configuration);
+        shared.Validate();
+        var chat = shared.Model;
 
         var services = new ServiceCollection()
             .AddFeishuOpenAIChatClient("demo-model", chat.ModelId, chat.ApiKey, chat.Endpoint)

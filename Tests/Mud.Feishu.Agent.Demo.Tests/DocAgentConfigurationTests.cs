@@ -25,32 +25,44 @@ namespace Mud.Feishu.Agent.Demo.Tests;
 /// </remarks>
 public class DocAgentConfigurationTests
 {
-    /// <summary>内存配置文件（模拟 appsettings 的某个节）。</summary>
-    private static IConfigurationRoot SectionConfig(params (string Key, string Value)[] values)
-        => new ConfigurationBuilder()
-            .AddInMemoryCollection(values.ToDictionary(
-                v => $"{DocAgentSettings.SectionName}:{v.Key}",
-                static v => (string?)v.Value,
-                StringComparer.Ordinal))
-            .Build();
+    /// <summary>
+    /// 内存配置：共享键（模型 + 飞书凭证）放 <c>FeishuDemo</c> 节，模式专属键放 <c>FeishuDocAgent</c> 节。
+    /// </summary>
+    private static IConfigurationRoot BuildConfig(
+        (string Key, string Value)[] shared,
+        (string Key, string Value)[] modeSpecific)
+    {
+        var dict = new Dictionary<string, string?>(StringComparer.Ordinal);
+        foreach (var (key, value) in shared)
+            dict[$"{FeishuDemoSettings.SectionName}:{key}"] = value;
+        foreach (var (key, value) in modeSpecific)
+            dict[$"{DocAgentSettings.SectionName}:{key}"] = value;
+        return new ConfigurationBuilder().AddInMemoryCollection(dict).Build();
+    }
 
     /// <summary>节里的每一项都必须被读到（键名映射的完整覆盖）。</summary>
     [Fact]
     public void FromConfiguration_ShouldReadEveryKeyFromSection()
     {
-        var configuration = SectionConfig(
-            ("ModelId", "glm-4-flash"),
-            ("ApiKey", "sk-from-file"),
-            ("Endpoint", "https://example.com/v1/"),
-            ("AppId", "cli_from_file_00000001"),
-            ("AppSecret", "secret-from-file"),
-            ("AppKey", "hr-app"),
-            ("UserId", "ou_from_file"),
-            ("WikiSpaceId", "wikcn_from_file"),
-            ("Policy", DocAgentSettings.PolicyAsk),
-            ("SummaryThreshold", "8"),
-            ("AuditExportPath", "D:/tmp/audit.jsonl"),
-            ("AttachmentMaxMb", "7"));
+        var configuration = BuildConfig(
+            shared:
+            [
+                ("ModelId", "glm-4-flash"),
+                ("ApiKey", "sk-from-file"),
+                ("Endpoint", "https://example.com/v1/"),
+                ("AppId", "cli_from_file_00000001"),
+                ("AppSecret", "secret-from-file"),
+            ],
+            modeSpecific:
+            [
+                ("AppKey", "hr-app"),
+                ("UserId", "ou_from_file"),
+                ("WikiSpaceId", "wikcn_from_file"),
+                ("Policy", DocAgentSettings.PolicyAsk),
+                ("SummaryThreshold", "8"),
+                ("AuditExportPath", "D:/tmp/audit.jsonl"),
+                ("AttachmentMaxMb", "7"),
+            ]);
 
         var settings = DocAgentSettings.FromConfiguration(configuration);
 
@@ -68,103 +80,27 @@ public class DocAgentConfigurationTests
         settings.AttachmentMaxBytes.Should().Be(7L * 1024 * 1024);
     }
 
-    /// <summary>只写 SDK 标准写法（<c>FeishuApps</c> 数组）也必须能跑通（三项等价回退）。</summary>
-    [Fact]
-    public void FromConfiguration_ShouldFallbackToFeishuAppsSection()
-    {
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal)
-            {
-                ["FeishuApps:0:AppKey"] = "hr-app",
-                ["FeishuApps:0:AppId"] = "cli_from_apps_00000001",
-                ["FeishuApps:0:AppSecret"] = "secret-from-apps",
-
-                // 模型两项只能来自本节（FeishuApps 只覆盖租户三项）。
-                ["FeishuDocAgent:ModelId"] = "test-model",
-                ["FeishuDocAgent:ApiKey"] = "sk-test",
-            })
-            .Build();
-
-        var settings = DocAgentSettings.FromConfiguration(configuration);
-
-        settings.AppKey.Should().Be("hr-app");
-        settings.AppId.Should().Be("cli_from_apps_00000001");
-        settings.AppSecret.Should().Be("secret-from-apps");
-        settings.ModelId.Should().Be("test-model");
-    }
-
-    /// <summary>
-    /// 两种写法都出现时以 <c>FeishuApps</c> 为准——那才是 <c>AddFeishuApp</c> 真正消费的配置，
-    /// 若取本节值，工具执行上下文的 appKey 会与实际默认应用不一致（被授权器以 appKey 不匹配拒绝）。
-    /// </summary>
-    [Fact]
-    public void FromConfiguration_ShouldPreferFeishuApps_OverSection()
-    {
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal)
-            {
-                ["FeishuDocAgent:ModelId"] = "test-model",
-                ["FeishuDocAgent:ApiKey"] = "sk-test",
-                ["FeishuDocAgent:AppId"] = "cli_from_section_00001",
-                ["FeishuDocAgent:AppSecret"] = "secret-from-section",
-                ["FeishuDocAgent:AppKey"] = "section-app",
-                ["FeishuApps:0:AppId"] = "cli_from_apps_00000001",
-                ["FeishuApps:0:AppSecret"] = "secret-from-apps",
-                ["FeishuApps:0:AppKey"] = "apps-app",
-            })
-            .Build();
-
-        var settings = DocAgentSettings.FromConfiguration(configuration);
-
-        settings.AppId.Should().Be("cli_from_apps_00000001");
-        settings.AppSecret.Should().Be("secret-from-apps");
-        settings.AppKey.Should().Be("apps-app");
-    }
-
-    /// <summary>多应用时取 <c>IsDefault=true</c> 的那个（而不是硬编码第 0 个）。</summary>
-    [Fact]
-    public void FromConfiguration_ShouldPreferDefaultApp_InFeishuApps()
-    {
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal)
-            {
-                ["FeishuDocAgent:ModelId"] = "test-model",
-                ["FeishuDocAgent:ApiKey"] = "sk-test",
-                ["FeishuApps:0:AppKey"] = "fallback-app",
-                ["FeishuApps:0:AppId"] = "cli_first_000000000001",
-                ["FeishuApps:0:AppSecret"] = "secret-first",
-                ["FeishuApps:1:AppKey"] = "default-app",
-                ["FeishuApps:1:AppId"] = "cli_default_000000001",
-                ["FeishuApps:1:AppSecret"] = "secret-default",
-                ["FeishuApps:1:IsDefault"] = "true",
-            })
-            .Build();
-
-        var settings = DocAgentSettings.FromConfiguration(configuration);
-
-        settings.AppKey.Should().Be("default-app");
-        settings.AppId.Should().Be("cli_default_000000001");
-    }
-
-    /// <summary>两处都没有必填项时必须 fail-fast，且消息同时给配置文件键。</summary>
+    /// <summary>缺飞书凭证时必须 fail-fast，且消息指向 <c>FeishuDemo</c> 节。</summary>
     [Fact]
     public void FromConfiguration_ShouldFailFast_WhenTenantMissing()
     {
-        var configuration = SectionConfig(("ModelId", "glm-4-flash"), ("ApiKey", "sk-file"));
+        var configuration = BuildConfig(
+            shared: [("ModelId", "glm-4-flash"), ("ApiKey", "sk-file")],
+            modeSpecific: []);
 
         var act = () => DocAgentSettings.FromConfiguration(configuration);
 
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage($"*{DocAgentSettings.SectionName}:AppId*");
+            .WithMessage($"*{FeishuDemoSettings.SectionName}:AppId*");
     }
 
     /// <summary>非法整数项的错误消息要指出配置键（否则用户不知道该改哪处）。</summary>
     [Fact]
     public void FromConfiguration_ShouldReportKey_ForInvalidInteger()
     {
-        var configuration = SectionConfig(
-            ("ModelId", "m"), ("ApiKey", "k"), ("AppId", "a"), ("AppSecret", "s"),
-            ("SummaryThreshold", "abc"));
+        var configuration = BuildConfig(
+            shared: [("ModelId", "m"), ("ApiKey", "k"), ("AppId", "a"), ("AppSecret", "s")],
+            modeSpecific: [("SummaryThreshold", "abc")]);
 
         var act = () => DocAgentSettings.FromConfiguration(configuration);
 
@@ -176,7 +112,8 @@ public class DocAgentConfigurationTests
     [Fact]
     public void IsEnabledByConfiguration_ShouldReflectEnabledKey()
     {
-        DocAgentSettings.IsEnabledByConfiguration(SectionConfig(("ModelId", "m"))).Should().BeFalse();
+        DocAgentSettings.IsEnabledByConfiguration(
+            new ConfigurationBuilder().AddInMemoryCollection().Build()).Should().BeFalse();
 
         DocAgentSettings.IsEnabledByConfiguration(
             new ConfigurationBuilder()
@@ -199,11 +136,13 @@ public class DocAgentConfigurationTests
         {
             WriteJson(Path.Combine(directory, DocAgentSettings.AppSettingsFile), """
                 {
-                  "FeishuDocAgent": {
+                  "FeishuDemo": {
                     "ModelId": "base-model",
                     "ApiKey": "sk-base",
                     "AppId": "cli_base_00000000001",
-                    "AppSecret": "secret-base",
+                    "AppSecret": "secret-base"
+                  },
+                  "FeishuDocAgent": {
                     "Policy": "readonly",
                     "WikiSpaceId": "wikcn_base"
                   }
@@ -212,9 +151,11 @@ public class DocAgentConfigurationTests
 
             WriteJson(Path.Combine(directory, DocAgentSettings.LocalAppSettingsFile), """
                 {
-                  "FeishuDocAgent": {
-                    "Policy": "ask",
+                  "FeishuDemo": {
                     "ApiKey": "sk-local"
+                  },
+                  "FeishuDocAgent": {
+                    "Policy": "ask"
                   }
                 }
                 """);
@@ -345,7 +286,7 @@ public class DocAgentConfigurationTests
 /// </remarks>
 public class TemplateFileTests
 {
-    /// <summary>模板必须能被配置提供程序解析（注释 / 尾逗号合法）。</summary>
+    /// <summary>模板必须能被配置提供程序解析（注释 / 尾逗号合法），且含 <c>FeishuDemo</c> 与 <c>FeishuDocAgent</c> 两节。</summary>
     [Fact]
     public void Template_ShouldBeLoadable()
     {
@@ -353,31 +294,43 @@ public class TemplateFileTests
 
         sources.Files.Should().Contain(DocAgentSettings.AppSettingsFile);
 
-        var section = sources.Configuration.GetSection(DocAgentSettings.SectionName);
-        section.Exists().Should().BeTrue("模板必须含 FeishuDocAgent 节");
-        section.GetChildren().Should().NotBeEmpty();
+        var sharedSection = sources.Configuration.GetSection(FeishuDemoSettings.SectionName);
+        sharedSection.Exists().Should().BeTrue("模板必须含 FeishuDemo 节（统一连接配置）");
+        sharedSection.GetChildren().Should().NotBeEmpty();
+
+        var modeSection = sources.Configuration.GetSection(DocAgentSettings.SectionName);
+        modeSection.Exists().Should().BeTrue("模板必须含 FeishuDocAgent 节");
+        modeSection.GetChildren().Should().NotBeEmpty();
     }
 
     /// <summary>模板里的每个键都必须是受支持的键（防拼写错误静默失效）。</summary>
     [Fact]
     public void Template_ShouldOnlyContainSupportedKeys()
     {
-        var keys = SectionKeys();
+        var modeKeys = ModeSectionKeys();
+        var sharedKeys = SharedSectionKeys();
 
-        var supported = DocAgentSettings.ConfigurationKeys
+        var supportedMode = DocAgentSettings.ConfigurationKeys
             .Append("Enabled")
             .ToHashSet(StringComparer.Ordinal);
 
-        keys.Should().BeSubsetOf(supported);
+        var supportedShared = FeishuDemoSettings.ConfigurationKeys.ToHashSet(StringComparer.Ordinal);
+
+        modeKeys.Should().BeSubsetOf(supportedMode, "FeishuDocAgent 节的键必须受支持");
+        sharedKeys.Should().BeSubsetOf(supportedShared, "FeishuDemo 节的键必须受支持");
     }
 
     /// <summary>每个受支持的键都必须在模板里出现（改了代码键名就必须同批改模板）。</summary>
     [Fact]
     public void Template_ShouldCoverAllSupportedKeys()
     {
-        SectionKeys().Should().Contain(
+        ModeSectionKeys().Should().Contain(
             DocAgentSettings.ConfigurationKeys,
-            "模板必须覆盖所有受支持的键（改了代码键名就必须同批改模板）");
+            "FeishuDocAgent 节必须覆盖所有受支持的模式专属键");
+
+        SharedSectionKeys().Should().Contain(
+            FeishuDemoSettings.ConfigurationKeys,
+            "FeishuDemo 节必须覆盖所有受支持的共享键");
     }
 
     /// <summary>模板里的非密钥默认值必须能通过 <c>Validate()</c>（照抄模板 + 只补密钥即可跑）。</summary>
@@ -389,10 +342,10 @@ public class TemplateFileTests
             .AddConfiguration(TemplateConfiguration())
             .AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal)
             {
-                [$"{DocAgentSettings.SectionName}:{DocAgentSettings.KeyModelId}"] = "glm-4-flash",
-                [$"{DocAgentSettings.SectionName}:{DocAgentSettings.KeyApiKey}"] = "sk-test",
-                [$"{DocAgentSettings.SectionName}:{DocAgentSettings.KeyAppId}"] = "cli_test_000000000001",
-                [$"{DocAgentSettings.SectionName}:{DocAgentSettings.KeyAppSecret}"] = "secret-test",
+                [$"{FeishuDemoSettings.SectionName}:{DocAgentSettings.KeyModelId}"] = "glm-4-flash",
+                [$"{FeishuDemoSettings.SectionName}:{DocAgentSettings.KeyApiKey}"] = "sk-test",
+                [$"{FeishuDemoSettings.SectionName}:{DocAgentSettings.KeyAppId}"] = "cli_test_000000000001",
+                [$"{FeishuDemoSettings.SectionName}:{DocAgentSettings.KeyAppSecret}"] = "secret-test",
             })
             .Build();
 
@@ -420,16 +373,23 @@ public class TemplateFileTests
     public void Template_ShouldNotContainAnySecret()
     {
         var section = TemplateConfiguration()
-            .GetSection(DocAgentSettings.SectionName);
+            .GetSection(FeishuDemoSettings.SectionName);
 
         section["ApiKey"].Should().BeNullOrWhiteSpace();
         section["AppSecret"].Should().BeNullOrWhiteSpace();
         section["AppId"].Should().BeNullOrWhiteSpace();
     }
 
-    private static IReadOnlyCollection<string> SectionKeys()
+    private static IReadOnlyCollection<string> ModeSectionKeys()
         => TemplateConfiguration()
             .GetSection(DocAgentSettings.SectionName)
+            .GetChildren()
+            .Select(static child => child.Key)
+            .ToArray();
+
+    private static IReadOnlyCollection<string> SharedSectionKeys()
+        => TemplateConfiguration()
+            .GetSection(FeishuDemoSettings.SectionName)
             .GetChildren()
             .Select(static child => child.Key)
             .ToArray();

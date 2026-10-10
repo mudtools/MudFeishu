@@ -64,13 +64,9 @@ public class NonCuratedToolRegistryContractGuards
         ("GetDeviceRecordAsync", "security：设备详情（设备 PII）——同上"),
         ("UpdateDeviceApplyRecordAsync", "security：设备申请审核（写类）——同上"),
 
-        // F-1（org）：只策展"职务目录"两条；同族元数据的其余方法显式登记。
-        ("GetJobLevelByIdAsync", "org：职级详情（只读，可读但本轮不策展）——留待下一片，与 org 职务同权限口径"),
-        ("GetJobLevelListAsync", "org：职级列表（只读，分页）——留待下一片"),
-        ("GetJobFamilyByIdAsync", "org：职务族详情（只读）——留待下一片"),
-        ("GetJobFamilesListAsync", "org：职务族列表（只读，分页）——留待下一片"),
-        ("GetWorkCitesListAsync", "org：工作城市列表（只读，分页）——留待下一片"),
-        ("GetWorkCityByIdAsync", "org：工作城市详情（只读）——留待下一片"),
+        // F-1（org）：只读面已全量策展（职务 / 职级 / 职务族 / 工作城市 共 8 条，见 FeishuOrgToolInterfaces.cs）；
+        // GetJobLevel* / GetJobFamilies* / GetWorkCities* 六个只读方法**已移出本登记表**（它们现在是策展工具）。
+        // 下表仅保留写类——它们需要宿主显式授权，另立批次。
         ("CreateJobLevelAsync", "org：职级写类（新增）——写面需宿主显式授权，另立批次"),
         ("UpdateJobLevelAsync", "org：职级写类（更新）——同上"),
         ("DeleteJobLevelByIdAsync", "org：职级写类（删除，高风险）——同上"),
@@ -156,6 +152,9 @@ public class NonCuratedToolRegistryContractGuards
                      FeishuToolNames.MdmGetCountries,
                      FeishuToolNames.SecurityQueryAuditLogs,
                      FeishuToolNames.OrgListJobTitles,
+                     FeishuToolNames.OrgListJobLevels,
+                     FeishuToolNames.OrgListJobFamilies,
+                     FeishuToolNames.OrgListWorkCities,
                  })
         {
             FeishuToolNames.All.Should().Contain(toolName,

@@ -1,10 +1,24 @@
 # Mud.Feishu.AI.Tools
 
 把 `Mud.Feishu` 的强类型接口以**编译期 Schema** 暴露为模型可调用的 FunctionCall 工具，
-并内置多租户授权执行链、出站净化、内容安全与流式回复通道。
+并内置多租户授权执行链与出站净化。
 
 > 本文档聚焦"工具面"这一件事：**当前有哪些工具、怎么加一个新工具、模型看不到的能力怎么办、
 > 安全边界在哪**。Agent 运行时（会话、流式、知识检索装配）见 `Mud.Feishu.AI` 的 Readme。
+>
+> **⚠️ R-9（2026-10-10）：飞书 Agent 集成面已并入 `Mud.Feishu.AI`。** 本包现在**只**承载工具面
+> （策展 + 执行链 + 编译期契约），下列内容换了落点，改代码前先看：
+>
+> | 内容 | 现落点（命名空间 / 入口） |
+> | --- | --- |
+> | 流式消息通道（`EditMessageChannel` / `CardStreamMessageChannel` / `StreamingChannelChain`） | `Mud.Feishu.AI.Channels`（`Mud.Feishu.AI` 程序集） |
+> | 会话事件处理器与装配器（`ImMessage…` / `ApprovalTask…` / `TaskUpdated…` / `BitableRecordChanged…` / `SenderInfo…` / `QuoteMessage…`） | `Mud.Feishu.AI.Events` |
+> | 事件外桥与事件目录（`FeishuEventNdjsonBridge` / `FeishuEventCatalog` / `FeishuEventEnvelope`） | `Mud.Feishu.AI.Events` |
+> | Aily 托管知识问答（`AilyKnowledgeProvider`） | `Mud.Feishu.AI.Knowledge` |
+> | 装配入口 `AddFeishuEditMessageChannel` / `AddFeishuStreamingChannel` / `AddFeishuImConversationHandler` / `AddFeishuKnowledgeContext` / `AddFeishuAilyKnowledge` | `Mud.Feishu.AI.Extensions`（`AddFeishuAgent` 所在文件） |
+>
+> 收益：本包**不再引用** `Mud.Feishu.EventCallback`——"只接工具面"的宿主不必再背事件 DTO 面
+> （由守卫 `AgentContractGuards.ToolPackage_ShouldNotReferenceEventCallback` 机械锁定）。
 
 ---
 
@@ -393,6 +407,10 @@ IToolSchemaExporter.Export(ToolSchemaDialect.Skills);
 
 ### 7.4 事件外桥：NDJSON（R7 / C7 · 生态位）
 
+> **⚠️ R-9**：`FeishuEventNdjsonBridge` / `RegexEventFileRouter` / `FeishuEventEnvelope` /
+> `IFeishuEventSink` / `IFeishuEventFileRouter` / `FeishuEventCatalog` 已迁到
+> **`Mud.Feishu.AI.Events`**（程序集 `Mud.Feishu.AI`）。语义不变，只改命名空间与程序集引用。
+
 事件此前只能进**本进程内模型**；外桥把同一条事件以 NDJSON 交给仓外任意进程：
 
 ```csharp
@@ -418,6 +436,10 @@ await bridge.WriteAsync(new FeishuEventEnvelope(
   ——载荷↔事件键的映射只存在于源生成阶段，运行期要么手抄（会漂移）要么反射实例化（更糟）。
 
 ### 7.5 多维表格记录变更 → 会话（R7 / C2 配套）
+
+> **⚠️ R-9**：`BitableRecordChangedConversationalEventHandler` 与 `BitableRecordContextAssembler`
+> 现同处 `Mud.Feishu.AI.Events`（处理器）/ `Mud.Feishu.AI.Events`（装配器）——即**两者已同程序集**，
+> 不再需要"工具包 → 集成面"的跨包引用来让装配器与处理器配对。
 
 `BitableRecordChangedConversationalEventHandler` 把 `drive.file.bitable_record_changed_v1`
 变成"模型可用的上下文 + 单聊回复"：

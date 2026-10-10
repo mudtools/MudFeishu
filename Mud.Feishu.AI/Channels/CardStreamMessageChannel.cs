@@ -11,7 +11,7 @@ using Mud.Feishu.AI.Channels;
 using Mud.Feishu.AI.Conversations;
 using Mud.Feishu.DataModels.CardMessageStream;
 
-namespace Mud.Feishu.AI.Tools.Channels;
+namespace Mud.Feishu.AI.Channels;
 
 /// <summary>
 /// 应用消息卡片流通道（AI-FD-D12 P2D-2a 流式正解）：Create 占位卡片（得 <c>biz_id</c>）→

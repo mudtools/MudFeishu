@@ -23,6 +23,14 @@ namespace Mud.Feishu.AI.Tools;
 /// 敏感治理：Span 属性只允许结构化标量（工具名/ID/判定结果），工具入参值与结果文本<b>不得</b>入属性
 /// （对齐 D5 日志最小暴露精神）。
 /// </para>
+/// <para>
+/// <b>R-9 / 阶段 5.0（下沉批）</b>：本类型从 <c>Mud.Feishu.AI.Tools</c> 下沉到本程序集
+/// （保持 <c>internal</c> + IVT 回 AI.Tools）。原因：迁移到本程序集的
+/// <c>Channels/</c> 实现（<c>BufferedMessageChannel</c> 的降级计数）依赖它，而本程序集
+/// <b>不得</b>引用 AI.Tools（新增不变量，防环）；其依赖闭包只含
+/// <see cref="Mud.Feishu.Abstractions.Metrics"/> 与本程序集的风险词汇表（<c>FeishuToolRiskNames</c>），
+/// 因此可以整体下沉而无需牵动其它工具面类型。
+/// </para>
 /// </remarks>
 internal static class FeishuToolDiagnostics
 {

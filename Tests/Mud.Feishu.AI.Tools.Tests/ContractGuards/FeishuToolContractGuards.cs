@@ -353,7 +353,8 @@ public class FeishuToolContractGuards
         var diagnosticsPath = GetFeishuToolsSources()
             .FirstOrDefault(path => path.EndsWith("FeishuToolDiagnostics.cs", StringComparison.Ordinal));
 
-        diagnosticsPath.Should().NotBeNull("FeishuToolDiagnostics.cs 应存在于 FeishuTools 包");
+        diagnosticsPath.Should().NotBeNull(
+            "FeishuToolDiagnostics.cs 应存在于工具面或集成面（R-9 后位于 Mud.Feishu.AI/Tools——扫描面已同步扩为两工程）");
         var diagnosticsSource = File.ReadAllText(diagnosticsPath!);
 
         diagnosticsSource.Should().Contain("FeishuMetrics.ToolExecutions", "工具执行计数指标存在");
@@ -372,6 +373,18 @@ public class FeishuToolContractGuards
 
     private static IReadOnlyDictionary<string, string> SchemaByToolName => FeishuToolSchemas.SchemaByToolName;
 
+    /// <summary>
+    /// 工具面 + 集成面的全部源码文件（R-9 起扫描面覆盖两个工程）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么必须同时扫两个工程</b>：R-9 把流式通道 / 会话事件处理器 / 知识 Provider 迁入
+    /// <c>Mud.Feishu.AI</c>，其中包含<b>工具面语义的消费点</b>——
+    /// <c>FeishuToolDiagnostics</c>（工具执行遥测）与 <c>FeishuAgentOptions.MaxStreamChunkLength</c>
+    /// （分片编辑阈值）现在都在集成面。只扫工具包 ⇒ 这两条守卫会因"文件不在扫描面"而**假绿**
+    /// （与 R2 发现的 <c>ToolArgumentShapeContractGuards</c> 扫描面盲区同一类缺陷）。
+    /// </para>
+    /// </remarks>
     private static List<string> GetFeishuToolsSources()
     {
         var dir = AppContext.BaseDirectory;
@@ -380,7 +393,11 @@ public class FeishuToolContractGuards
             dir = Path.GetDirectoryName(dir);
         }
 
-        return Directory.GetFiles(Path.Combine(dir!, "Mud.Feishu.AI.Tools"), "*.cs", SearchOption.AllDirectories)
+        return new[] { "Mud.Feishu.AI.Tools", "Mud.Feishu.AI" }
+            .SelectMany(project => Directory.GetFiles(
+                Path.Combine(dir!, project),
+                "*.cs",
+                SearchOption.AllDirectories))
             .Where(p => !p.Contains("obj") && !p.Contains("bin"))
             .ToList();
     }

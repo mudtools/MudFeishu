@@ -10,7 +10,7 @@
 		<RepositoryUrl>https://github.com/mudtools/MudFeishu</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<PackageIcon>Icon.png</PackageIcon>
-		<Description>Mud.Feishu AI 飞书工具包：把 Bitable/Docx/Wiki/Search/IM/Sheets/Approval 接口经 [FeishuTool] 源生成 Schema 暴露为模型 FunctionCall（含写类工具），内置多租户授权执行链（BeginScope + 授权门禁 + 结果裁剪）、分片编辑流式消息通道与 Aily 托管知识问答（RAG-A），net8.0+ 原生 AOT 兼容。</Description>
+		<Description>Mud.Feishu AI 飞书工具包：把 Bitable/Docx/Wiki/Search/IM/Sheets/Approval 接口经 [FeishuTool] 源生成 Schema 暴露为模型 FunctionCall（含写类工具），内置多租户授权执行链（BeginScope + 授权门禁 + 结果裁剪）与分页/截断/净化出口；流式消息通道、会话事件处理器与 Aily 托管知识问答（RAG-A）自 R-9 起随集成面并入 Mud.Feishu.AI，net8.0+ 原生 AOT 兼容。</Description>
 		<PackageTags>Feishu;Lark;飞书;Agent;AI;FunctionCall;Tool;AOT;NativeAOT;MudFeishu</PackageTags>
 		<BaseOutputPath>..\bin</BaseOutputPath>
 		<!-- Tier R 能力目录（聚合覆盖报告）：只有本包开启——其余引用生成器的工程（AI 底座、测试）
@@ -43,8 +43,10 @@
 		<ProjectReference Include="..\Mud.Feishu.AI\Mud.Feishu.AI.csproj" />
 		<ProjectReference Include="..\Mud.Feishu\Mud.Feishu.csproj" />
 		<ProjectReference Include="..\Mud.Feishu.DataModels\Mud.Feishu.DataModels.csproj" />
-		<!-- 内置 IM 会话事件处理器（P2D-5a）的事件 DTO 来源：MessageReceiveResult/MentionUser 强类型面。 -->
-		<ProjectReference Include="..\Mud.Feishu.EventCallback\Mud.Feishu.EventCallback.csproj" />
+		<!-- R-9（阶段 5）：EventCallback 引用已摘除——事件处理器/流式通道/知识 Provider 随集成面并入
+		     Mud.Feishu.AI，故「只接工具面」的宿主不再被动背上事件 DTO 面（880 个源文件的依赖）。
+		     ⚠️ 守卫 AgentContractGuards 断言本集合恰为 {AI, core, DataModels}（+ 生成器分析器），
+		     重新加回 EventCallback 会立刻报红。 -->
 		<!-- [FeishuTool] 源生成器（已决策⑤ → R-1+2c 上游化）：本地生成器工程已删除，
 		     改用组件侧 Mud.HttpUtils.Generator 3.0.5 的通用 ToolSurface 引擎（分析器形态）。
 		     工具面规模（条目数 / 签名）不在此处写死数字——数字漂移无法被编译器发现，改为唯一真相源：

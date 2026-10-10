@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -11,13 +11,13 @@ using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.EventHandlers;
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.AI.Events;
-using Mud.Feishu.AI.Tools.Events;
+using Mud.Feishu.AI.Events;
 using Mud.Feishu.DataModels;
 using Mud.Feishu.DataModels.Messages;
 using Mud.Feishu.EventCallback;
 using Mud.Feishu.EventCallback.Bitable;
 
-namespace Mud.Feishu.AI.Tools.Tests.Events;
+namespace Mud.Feishu.AI.Tests.Events;
 
 /// <summary>
 /// R7 / C2：多维表格记录变更事件处理器（事件 → 会话 → 模型 → 回复），

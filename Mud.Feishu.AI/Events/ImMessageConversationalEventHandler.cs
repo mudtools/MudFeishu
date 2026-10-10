@@ -17,7 +17,7 @@ using Mud.Feishu.AI.Events;
 using Mud.Feishu.DataModels.Messages;
 using Mud.Feishu.EventCallback.IM;
 
-namespace Mud.Feishu.AI.Tools.Events;
+namespace Mud.Feishu.AI.Events;
 
 /// <summary>
 /// 内置 IM 会话事件处理器（AI-FD-D12 P2D-5a，「零自定义接入」参考实现）：

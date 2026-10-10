@@ -10,7 +10,7 @@
 		<RepositoryUrl>https://github.com/mudtools/MudFeishu</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<PackageIcon>Icon.png</PackageIcon>
-		<Description>Mud.Feishu AI-Native Agent 运行时：基于 Microsoft Agent Framework 的会话管理、模型接入与飞书工具执行链底座，net8.0+ 原生 AOT 兼容。</Description>
+		<Description>Mud.Feishu AI-Native Agent 运行时：基于 Microsoft Agent Framework 的会话管理、模型接入与飞书工具执行链底座；自 R-9 起同时承载飞书 Agent 集成面（流式消息通道、会话事件处理器、Aily 托管知识问答 RAG-A），并因此需要 Mud.Feishu 客户端与 Mud.Feishu.DataModels 程序集。net8.0+ 原生 AOT 兼容。</Description>
 		<PackageTags>Feishu;Lark;飞书;Agent;AI;AIAgent;LLM;ChatClient;AOT;NativeAOT;MudFeishu</PackageTags>
 		<BaseOutputPath>..\bin</BaseOutputPath>
 		<!-- MEAI001：MessageCountingChatReducer 是 MEAI 唯一内置的历史消息计数裁剪器，
@@ -20,6 +20,13 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\Mud.Feishu.Abstractions\Mud.Feishu.Abstractions.csproj" />
+		<!-- R-9（阶段 5）：飞书 Agent **集成面**（Channels / Events / Knowledge）并入本工程，因此新增三条纵向引用。
+		     无环（已核实）：core → {Abstractions, DataModels}，不引用本工程；EventCallback → Abstractions。
+		     ⚠️ 本工程**不得**引用 Mud.Feishu.AI.Tools / Mud.Feishu.AI.Mcp（防环；保持"工具面依赖集成面"单向），
+		     由 AgentContractGuards 的两条负向断言机械锁定。 -->
+		<ProjectReference Include="..\Mud.Feishu\Mud.Feishu.csproj" />
+		<ProjectReference Include="..\Mud.Feishu.DataModels\Mud.Feishu.DataModels.csproj" />
+		<ProjectReference Include="..\Mud.Feishu.EventCallback\Mud.Feishu.EventCallback.csproj" />
 		<!-- R-1+2c：本工程不含任何 [FeishuTool] 接口，也不消费工具面产物（仅 XML 注释提及
 		     Mud.Feishu.AI.Tools.Generated）⇒ 迁移到上游引擎后**不再需要**挂分析器引用。
 		     工具面生成的剖面（FeishuToolProfile）只属于声明了 [FeishuTool] 的程序集
@@ -63,6 +70,22 @@
 
 	<ItemGroup>
 		<InternalsVisibleTo Include="Mud.Feishu.AI.Tests" />
+		<!-- R-9 / 阶段 5.0（下沉批）：FeishuApiOutcome<T> + FeishuApiResultReader + FeishuToolDiagnostics
+		     + FeishuAppContextScopeFactory 从工具面下沉到本工程（保持 internal）。
+		     工具面（执行器、FeishuToolBinding、AddFeishuToolInfrastructure）与 Channels/ 实现仍要消费它们
+		     ⇒ 用 IVT 而非 public，避免反向扩大公开面。 -->
+		<InternalsVisibleTo Include="Mud.Feishu.AI.Tools" />
+		<!-- 工具面测试工程：其用例直接断言下沉类型的内部行为（如 FeishuAppContextScopeFactoryTests 的
+		     四步门禁），故与 AI.Tests 同等授予。 -->
+		<InternalsVisibleTo Include="Mud.Feishu.AI.Tools.Tests" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- R-9 下沉批：FeishuAppContextScopeFactory 直接使用 Mud.HttpUtils 的
+		     IAppContextHolder / IAppAccessAuthorizer / AppKey——"直接使用的 API 必须直接声明"，
+		     避免依赖 Abstractions 的传递引用；版本与全仓**同一条版本线**
+		     （守卫 TokenMultiAppContractGuards.MudHttpUtils_PackageReference_ShouldBeSingleVersion 锁定）。 -->
+		<PackageReference Include="Mud.HttpUtils" Version="3.0.5" />
 	</ItemGroup>
 
 	<!-- R3-11：公共 API 兼容门禁（利用"未发布"窗口期零成本建基线）。 -->

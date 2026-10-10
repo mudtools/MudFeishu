@@ -9,7 +9,7 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using Mud.Feishu.AI.Channels;
 using Mud.Feishu.AI.Conversations;
-using Mud.Feishu.AI.Tools.Channels;
+using Mud.Feishu.AI.Channels;
 using Mud.Feishu.DataModels.CardMessageStream;
 using Mud.Feishu.DataModels.Messages;
 

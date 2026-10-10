@@ -8,7 +8,7 @@
 using Mud.Feishu.AI.Channels;
 using Mud.Feishu.DataModels.Messages;
 
-namespace Mud.Feishu.AI.Tools.Channels;
+namespace Mud.Feishu.AI.Channels;
 
 /// <summary>
 /// 分片编辑流式通道（Phase 2 §3.1 首版降级实现）：发送占位文本消息 → 模型增量经

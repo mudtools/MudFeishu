@@ -11,8 +11,8 @@ using Microsoft.Extensions.AI;
 using Mud.Feishu.AI.Channels;
 using Mud.Feishu.AI.Events;
 using Mud.Feishu.AI.Tools;
-using Mud.Feishu.AI.Tools.Channels;
-using Mud.Feishu.AI.Tools.Events;
+using Mud.Feishu.AI.Channels;
+using Mud.Feishu.AI.Events;
 
 namespace Mud.Feishu.Agent.Demo.Tests.ContractGuards;
 

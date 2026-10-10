@@ -17,7 +17,7 @@ using Mud.Feishu.AI.Events;
 using Mud.Feishu.EventCallback;
 using Mud.Feishu.EventCallback.Bitable;
 
-namespace Mud.Feishu.AI.Tools.Events;
+namespace Mud.Feishu.AI.Events;
 
 /// <summary>
 /// 多维表格记录变更会话事件处理器（R7 / C2 配套的生产者）：

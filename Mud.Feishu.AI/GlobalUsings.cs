@@ -13,12 +13,19 @@ global using System.Globalization;
 global using System.Linq;
 global using System.Text;
 global using System.Text.Json;
+global using System.Text.Json.Nodes;
 global using System.Threading;
 global using System.Threading.Tasks;
 global using Microsoft.Agents.AI;
 global using Microsoft.Extensions.AI;
 global using Microsoft.Extensions.Logging;
 global using Microsoft.Extensions.Logging.Abstractions;
+
+// R-9（阶段 5）：Channels / Events / Knowledge 的实现并入本工程后，这两条成为"跨子命名空间的
+// 常规依赖"（`Mud.Feishu.AI.Channels` 等不是 `Mud.Feishu.AI.Agents` 的封闭命名空间，
+// 且 Options 是本工程 4 个实现类型的构造依赖）——与其在 8 个文件里各写一遍，不如统一到全局。
+global using Microsoft.Extensions.Options;
+global using Mud.Feishu.AI.Agents;
 global using Mud.Feishu.Abstractions.Observability;
 global using Mud.Feishu.Abstractions;
 global using Mud.Feishu.Abstractions.Configuration;

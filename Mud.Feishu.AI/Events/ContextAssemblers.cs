@@ -11,7 +11,7 @@ using Mud.Feishu.AI.Conversations;
 using Mud.Feishu.AI.Events;
 using Mud.Feishu.AI.Knowledge;
 
-namespace Mud.Feishu.AI.Tools.Events;
+namespace Mud.Feishu.AI.Events;
 
 /// <summary>
 /// 内置 IM 会话事件处理器可选装配的上下文装配器集（AI-FD-D12 P2D-5b 位标记）。

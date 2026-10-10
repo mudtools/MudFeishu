@@ -164,7 +164,7 @@ public class AgentContractGuards
     {
         var summarizerSource = Path.Combine(GetSolutionRoot(), "Mud.Feishu.AI", "Conversations", "ConversationSummarizer.cs");
         var imHandlerSource = Path.Combine(
-            GetSolutionRoot(), "Mud.Feishu.AI.Tools", "Events", "ImMessageConversationalEventHandler.cs");
+            GetSolutionRoot(), "Mud.Feishu.AI", "Events", "ImMessageConversationalEventHandler.cs");
 
         File.Exists(summarizerSource).Should().BeTrue();
         File.ReadAllText(summarizerSource).Should().Contain(
@@ -189,17 +189,44 @@ public class AgentContractGuards
     // ────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Mud.Feishu.AI / Mud.Feishu.Redis 等「实现包」只允许引用 Mud.Feishu.Abstractions
-    /// （纵向），禁止实现包互相引用（横向）。共享契约（如会话存储
-    /// IConversationStore/FeishuConversationOptions）必须下沉 Abstractions。
+    /// 包间纵向引用治理：**白名单形态**（R-9 修订 C7 纪律）。
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>原判据（R-9 前）</b>："Mud.Feishu.AI / Mud.Feishu.Redis 只允许引用 Abstractions"。
+    /// R-9 把飞书 Agent **集成面**（Channels / Events / Knowledge）并入 <c>Mud.Feishu.AI</c>，
+    /// 该包因此合法地需要 core（<c>IFeishu*</c> 强类型客户端）、DataModels（出/入 DTO）与
+    /// EventCallback（事件 DTO）——这是决策的**显式代价**，不是漂移。
+    /// </para>
+    /// <para>
+    /// <b>修订后的判据（按能力而非工程名）</b>：
+    /// <list type="bullet">
+    /// <item><c>Mud.Feishu.AI</c> 允许引用 {Abstractions, Mud.Feishu, DataModels, EventCallback}——即
+    /// "纵向依赖 + 其集成面所需的 SDK 数据面"；</item>
+    /// <item><c>Mud.Feishu.Redis</c> **维持**"仅 Abstractions"（不放松：它没有集成面职责）；</item>
+    /// <item>横向/反向引用（AI.Tools / AI.Mcp / Webhook / WebSocket …）对两者一律禁止。</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// 负向不变量单独成条（见 <see cref="AiPackage_ShouldNotReferenceToolSurfaceOrMcp"/> 与
+    /// <see cref="ToolPackage_ShouldNotReferenceEventCallback"/>），使"防环"与"防回流"两道题的
+    /// 失败原因在测试报告里可区分。
+    /// </para>
+    /// </remarks>
     [Fact]
-    public void ImplementationPackages_ShouldOnlyReferenceAbstractions_VerticalDependencyOnly()
+    public void ImplementationPackages_ShouldOnlyReferenceAllowedSet_VerticalDependencyOnly()
     {
-        var implementationProjects = new[]
+        // 白名单：包名 → 允许引用的工程集合（分析器形态由引用扫描本身排除，见下）。
+        var allowed = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
         {
-            "Mud.Feishu.AI.csproj",
-            "Mud.Feishu.Redis.csproj",
+            ["Mud.Feishu.AI.csproj"] =
+            [
+                "Mud.Feishu.Abstractions.csproj",
+                "Mud.Feishu.csproj",
+                "Mud.Feishu.DataModels.csproj",
+                "Mud.Feishu.EventCallback.csproj",
+            ],
+            ["Mud.Feishu.Redis.csproj"] = ["Mud.Feishu.Abstractions.csproj"],
         };
 
         var offenders = new List<string>();
@@ -207,7 +234,7 @@ public class AgentContractGuards
                      .Where(p => !p.Contains("obj") && !p.Contains("bin")))
         {
             var projectName = Path.GetFileName(csproj);
-            if (!implementationProjects.Contains(projectName, StringComparer.OrdinalIgnoreCase))
+            if (!allowed.TryGetValue(projectName, out var permitted))
                 continue;
 
             var content = Regex.Replace(File.ReadAllText(csproj), "<!--.*?-->", string.Empty, RegexOptions.Singleline);
@@ -225,14 +252,68 @@ public class AgentContractGuards
                     continue;
 
                 var referenced = GetFileNameCrossPlatform(include.Groups[1].Value);
-                if (!string.Equals(referenced, "Mud.Feishu.Abstractions.csproj", StringComparison.OrdinalIgnoreCase))
+                if (!permitted.Contains(referenced, StringComparer.OrdinalIgnoreCase))
                     offenders.Add($"{projectName} → {referenced}");
             }
         }
 
         offenders.Should().BeEmpty(
-            "实现包之间不允许横向引用，只允许纵向引用（→ Mud.Feishu.Abstractions）；" +
-            "共享契约必须迁移至 Abstractions。违例: " + string.Join("; ", offenders));
+            "实现包只允许其白名单内的纵向引用（Mud.Feishu.AI = {{Abstractions, core, DataModels, EventCallback}}；"
+            + "Mud.Feishu.Redis = {{Abstractions}}）；横向/反向引用（AI.Tools / AI.Mcp / Webhook / WebSocket …）"
+            + "会破坏「工具面依赖集成面」的单向性。违例: " + string.Join("; ", offenders));
+    }
+
+    /// <summary>
+    /// <b>R-9 负向不变量 ①</b>：<c>Mud.Feishu.AI</c> <b>不得</b>引用
+    /// <c>Mud.Feishu.AI.Tools</c> / <c>Mud.Feishu.AI.Mcp</c>（防环）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么单独成条而不是只靠白名单</b>：白名单失败只报"引用了不在集合里的工程"，
+    /// 维护者第一反应是"把那个工程加进白名单"——而这里的正确答案恰好相反（加进去就成环）。
+    /// 本条的失败信息直接给出"防环"结论，杜绝把守卫放宽当作修复。
+    /// </para>
+    /// <para>
+    /// 环的形态：AI.Tools → AI（工具面消费集成面）；若 AI → AI.Tools 同时成立，
+    /// 则编译期循环、运行期装配顺序不可判定（DI 会在解析注册表时死锁或得到半构造对象）。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void AiPackage_ShouldNotReferenceToolSurfaceOrMcp()
+    {
+        var csproj = Path.Combine(GetSolutionRoot(), "Mud.Feishu.AI", "Mud.Feishu.AI.csproj");
+        var content = Regex.Replace(File.ReadAllText(csproj), "<!--.*?-->", string.Empty, RegexOptions.Singleline);
+
+        content.Should().NotContain(
+            "Mud.Feishu.AI.Tools.csproj",
+            "R-9 不变量：AI.Tools 依赖 AI（单向）——AI 反向引用工具面即成环，编译期直接拒绝而非放宽守卫");
+        content.Should().NotContain(
+            "Mud.Feishu.AI.Mcp.csproj",
+            "R-9 不变量：MCP 是 AI 的下游消费者（AI.Mcp → AI）；反向引用成环");
+    }
+
+    /// <summary>
+    /// <b>R-9 负向不变量 ②</b>：<c>Mud.Feishu.AI.Tools</c> <b>不得</b>再引用
+    /// <c>Mud.Feishu.EventCallback</c>（防回流）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// R-9 的收益之一就是"只接工具面"的宿主不再被动背上事件 DTO 面（EventCallback 的 880 个源文件）。
+    /// 该收益**只由一个事实维持**：工具包里没有任何消费事件 DTO 的类型。若日后有人把某个事件处理器
+    /// （或一条 `using Mud.Feishu.EventCallback;`）搬回工具包，收益会静默消失（构建照常通过），
+    /// 故在此机械锁定。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void ToolPackage_ShouldNotReferenceEventCallback()
+    {
+        var csproj = Path.Combine(GetSolutionRoot(), "Mud.Feishu.AI.Tools", "Mud.Feishu.AI.Tools.csproj");
+        var content = Regex.Replace(File.ReadAllText(csproj), "<!--.*?-->", string.Empty, RegexOptions.Singleline);
+
+        content.Should().NotContain(
+            "Mud.Feishu.EventCallback.csproj",
+            "R-9 防回流：集成面（含事件 DTO 消费）已并入 Mud.Feishu.AI——工具包重新引用 EventCallback "
+            + "会把事件 DTO 面拉回工具包，静默抹掉 R-9 的依赖面收益");
     }
 
     /// <summary>

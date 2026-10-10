@@ -17,10 +17,13 @@
 
 	<ItemGroup>
 		<!-- 依赖方向（DP-C6-1）：只引用 AI 底座（FeishuToolContext / AIFunction 契约 + guidance 装配）
-		     与工具面（注册表 / 执行链 / 编译期 Schema）。**刻意不引用 Mud.Feishu（SDK 客户端）**：
-		     MCP 包若直连强类型飞书接口，就绕开了授权/审计/净化，等于在进程内开了一条旁路
+		     与工具面（注册表 / 执行链 / 编译期 Schema）。
+		     **刻意不「直接引用」且不「暴露」Mud.Feishu（SDK 客户端）**：MCP 包若直连强类型飞书接口，
+		     就绕开了授权/审计/净化，等于在进程内开了一条旁路
 		     （守卫 McpServerContractTests.Mcp_ShouldNotDependOnSdkClientTypes —— 反射断言本包成员签名里
-		      不出现来自 Mud.Feishu 程序集的类型，含金丝雀自证；改名或找错守卫名会让注释变成假事实）。 -->
+		      不出现来自 Mud.Feishu 程序集的类型，含金丝雀自证；改名或找错守卫名会让注释变成假事实）。
+		     ⚠️ R-9 起 core / DataModels / EventCallback 成为本包的**传递依赖**（AI 承载集成面后必然如此）：
+		     故判据必须是"不暴露"（签名级）而不是"不加载"——写"不引用"会退化成半假事实。 -->
 		<ProjectReference Include="..\Mud.Feishu.AI\Mud.Feishu.AI.csproj" />
 		<ProjectReference Include="..\Mud.Feishu.AI.Tools\Mud.Feishu.AI.Tools.csproj" />
 	</ItemGroup>

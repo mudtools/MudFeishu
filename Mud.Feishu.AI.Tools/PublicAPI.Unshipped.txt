@@ -1,13 +1,4 @@
-~override Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.Equals(object obj) -> bool
-~override Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.ToString() -> string
-abstract Mud.Feishu.AI.Tools.Channels.BufferedMessageChannel.BeginAsync(string! appKey, string! chatId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
-abstract Mud.Feishu.AI.Tools.Channels.BufferedMessageChannel.UpdateCoreAsync(string! appKey, string! chatId, string! messageId, string! fullText, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 const Mud.Feishu.AI.Tools.BitableFilterParser.MaxClauses = 5 -> int
-const Mud.Feishu.AI.Tools.Channels.BufferedMessageChannel.MinUpdateIntervalMs = 800 -> int
-const Mud.Feishu.AI.Tools.Events.ImConversationOptions.SectionName = "FeishuAgent:ImConversation" -> string!
-const Mud.Feishu.AI.Tools.Events.QuoteMessageContextAssembler.DefaultOrder = 20 -> int
-const Mud.Feishu.AI.Tools.Events.QuoteMessageContextAssembler.QuotePreviewLength = 300 -> int
-const Mud.Feishu.AI.Tools.Events.SenderInfoContextAssembler.DefaultOrder = 10 -> int
 const Mud.Feishu.AI.Tools.FeishuToolNames.AiDetectLanguage = "ai.detect_language" -> string!
 const Mud.Feishu.AI.Tools.FeishuToolNames.AiTranslateText = "ai.translate_text" -> string!
 const Mud.Feishu.AI.Tools.FeishuToolNames.ApprovalApproveTask = "approval.approve_task" -> string!
@@ -333,22 +324,6 @@ const Mud.Feishu.AI.Tools.Generated.FeishuToolSchemas.wiki_list_nodesSchemaJson 
 const Mud.Feishu.AI.Tools.Generated.FeishuToolSchemas.wiki_move_docs_to_spaceSchemaJson = "{\"name\":\"wiki.move_docs_to_space\",\"description\":\"把已有云文档（docx/sheet/bitable 等）迁移进知识空间，成为 wiki 节点——'把这份文档挪进知识库'的首选入口。⚠️ 平台以异步任务执行，返回 task_id。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 wiki:wiki。\",\"parameters\":{\"type\":\"object\",\"properties\":{\"space_id\":{\"type\":\"string\",\"description\":\"目标知识空间 ID\"},\"obj_token\":{\"type\":\"string\",\"description\":\"要迁入的文档 token（形如 doxcnXxx）\"},\"parent_wiki_token\":{\"type\":\"string\",\"description\":\"目标父节点 token（可选；缺省放到空间顶层）\"},\"obj_type\":{\"type\":\"string\",\"description\":\"文档类型（可选：docx / sheet / bitable / mindnote / file，默认 docx）\"},\"dry_run\":{\"type\":\"boolean\",\"description\":\"仅预演不写入（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游\"}},\"required\":[\"space_id\",\"obj_token\"]},\"x-feishu\":{\"risk\":\"write\",\"is_write\":true,\"identity\":\"tenant\",\"required_scopes\":[\"wiki:wiki\"],\"source\":{\"sdk\":\"IFeishuTenantV2WikiNodes.MoveDocsToWikiSpaceNodeAsync\",\"http\":\"POST\",\"route\":\"/open-apis/wiki/v2/spaces/{space_id}/nodes/move_docs_to_wiki\"},\"output_schema\":{\"type\":\"object\",\"properties\":{\"wiki_token\":{\"type\":\"string\"},\"task_id\":{\"type\":\"string\"},\"applied\":{\"type\":\"boolean\"}}}}}" -> string!
 const Mud.Feishu.AI.Tools.Generated.FeishuToolSchemas.wiki_move_nodeSchemaJson = "{\"name\":\"wiki.move_node\",\"description\":\"移动知识空间节点（改父节点或换空间）——用于知识库整理、归档。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 wiki:wiki。\",\"parameters\":{\"type\":\"object\",\"properties\":{\"space_id\":{\"type\":\"string\",\"description\":\"节点当前所在空间 ID\"},\"node_token\":{\"type\":\"string\",\"description\":\"要移动的节点 token\"},\"target_parent_token\":{\"type\":\"string\",\"description\":\"目标父节点 token（可选；缺省移到目标空间顶层）\"},\"target_space_id\":{\"type\":\"string\",\"description\":\"目标空间 ID（可选；缺省在当前空间内移动）\"},\"dry_run\":{\"type\":\"boolean\",\"description\":\"仅预演不写入（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游\"}},\"required\":[\"space_id\",\"node_token\"]},\"x-feishu\":{\"risk\":\"write\",\"is_write\":true,\"identity\":\"tenant\",\"required_scopes\":[\"wiki:wiki\"],\"source\":{\"sdk\":\"IFeishuTenantV2WikiNodes.MoveSpaceNodeAsync\",\"http\":\"POST\",\"route\":\"/open-apis/wiki/v2/spaces/{space_id}/nodes/{node_token}/move\"},\"output_schema\":{\"type\":\"object\",\"properties\":{\"node\":{\"type\":\"object\",\"properties\":{\"space_id\":{\"type\":\"string\"},\"node_token\":{\"type\":\"string\"},\"obj_token\":{\"type\":\"string\"},\"obj_type\":{\"type\":\"string\"},\"parent_node_token\":{\"type\":\"string\"},\"node_type\":{\"type\":\"string\"},\"origin_node_token\":{\"type\":\"string\"},\"origin_space_id\":{\"type\":\"string\"},\"has_child\":{\"type\":\"boolean\"},\"title\":{\"type\":\"string\"},\"obj_create_time\":{\"type\":\"string\"},\"obj_edit_time\":{\"type\":\"string\"},\"node_create_time\":{\"type\":\"string\"},\"creator\":{\"type\":\"string\"},\"owner\":{\"type\":\"string\"},\"node_creator\":{\"type\":\"string\"}},\"required\":[\"obj_type\",\"node_type\"]}}}}}" -> string!
 Mud.Feishu.AI.Tools.BitableFilterParser
-Mud.Feishu.AI.Tools.Channels.BufferedMessageChannel
-Mud.Feishu.AI.Tools.Channels.BufferedMessageChannel.BufferedMessageChannel(Microsoft.Extensions.Options.IOptions<Mud.Feishu.AI.Agents.FeishuAgentOptions!>! options, System.TimeSpan? minUpdateInterval = null) -> void
-Mud.Feishu.AI.Tools.Channels.BufferedMessageChannel.ChunkLength.get -> int
-Mud.Feishu.AI.Tools.Channels.BufferedMessageChannel.FlushAsync(string! appKey, string! chatId, string! messageId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-Mud.Feishu.AI.Tools.Channels.BufferedMessageChannel.WriteStreamAsync(string! appKey, string! chatId, string! messageId, string! delta, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-Mud.Feishu.AI.Tools.Channels.CardStreamMessageChannel
-Mud.Feishu.AI.Tools.Channels.CardStreamMessageChannel.CardStreamMessageChannel(Mud.Feishu.IFeishuTenantV2AppCardMessageStream! cardClient, Mud.Feishu.AI.Tools.IFeishuAppContextScopeFactory! scopeFactory, Microsoft.Extensions.Options.IOptions<Mud.Feishu.AI.Agents.FeishuAgentOptions!>! options, Microsoft.Extensions.Logging.ILogger<Mud.Feishu.AI.Tools.Channels.CardStreamMessageChannel!>? logger = null, System.TimeSpan? minUpdateInterval = null) -> void
-Mud.Feishu.AI.Tools.Channels.CardStreamMessageChannel.ResolveStreamTarget(Mud.Feishu.AI.Conversations.ConversationRequest! request) -> string?
-Mud.Feishu.AI.Tools.Channels.EditMessageChannel
-Mud.Feishu.AI.Tools.Channels.EditMessageChannel.EditMessageChannel(Mud.Feishu.IFeishuTenantV1Message! messageClient, Mud.Feishu.AI.Tools.IFeishuAppContextScopeFactory! scopeFactory, Microsoft.Extensions.Options.IOptions<Mud.Feishu.AI.Agents.FeishuAgentOptions!>! options, Microsoft.Extensions.Logging.ILogger<Mud.Feishu.AI.Tools.Channels.EditMessageChannel!>? logger = null, System.TimeSpan? minUpdateInterval = null) -> void
-Mud.Feishu.AI.Tools.Channels.StreamingChannelChain
-Mud.Feishu.AI.Tools.Channels.StreamingChannelChain.BeginAsync(string! appKey, string! chatId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
-Mud.Feishu.AI.Tools.Channels.StreamingChannelChain.FlushAsync(string! appKey, string! chatId, string! messageId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-Mud.Feishu.AI.Tools.Channels.StreamingChannelChain.ResolveStreamTarget(Mud.Feishu.AI.Conversations.ConversationRequest! request) -> string?
-Mud.Feishu.AI.Tools.Channels.StreamingChannelChain.StreamingChannelChain(Microsoft.Extensions.Logging.ILogger? logger, params System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Channels.IMessageChannel!>! channels) -> void
-Mud.Feishu.AI.Tools.Channels.StreamingChannelChain.WriteStreamAsync(string! appKey, string! chatId, string! messageId, string! delta, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Mud.Feishu.AI.Tools.Curation.IFeishuTenantAiDetectLanguageTool
 Mud.Feishu.AI.Tools.Curation.IFeishuTenantAiDetectLanguageTool.DetectTextAsync(string! text, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
 Mud.Feishu.AI.Tools.Curation.IFeishuTenantAiTranslateTextTool
@@ -673,64 +648,6 @@ Mud.Feishu.AI.Tools.Curation.IFeishuUserVcEndMeetingTool
 Mud.Feishu.AI.Tools.Curation.IFeishuUserVcEndMeetingTool.EndMeetingAsync(string! meeting_id, bool? dry_run = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
 Mud.Feishu.AI.Tools.Curation.IFeishuUserVcInviteParticipantsTool
 Mud.Feishu.AI.Tools.Curation.IFeishuUserVcInviteParticipantsTool.InviteParticipantsAsync(string! meeting_id, string![]! invitee_ids, int? user_type = null, bool? dry_run = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
-Mud.Feishu.AI.Tools.Events.ApprovalTaskConversationalEventHandler
-Mud.Feishu.AI.Tools.Events.ApprovalTaskConversationalEventHandler.ApprovalTaskConversationalEventHandler(Mud.Feishu.AI.Agents.FeishuAgent! agent, Mud.Feishu.Abstractions.Services.IFeishuEventDeduplicator! businessDeduplicator, Mud.Feishu.IFeishuTenantV1Message? messageClient, Microsoft.Extensions.Logging.ILogger? logger = null, System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Events.IContextAssembler!>? contextAssemblers = null, Mud.Feishu.AI.Tools.IFeishuToolContextAccessor? toolContextAccessor = null, Mud.Feishu.AI.Channels.IMessageChannel? messageChannel = null, Mud.Feishu.Abstractions.Conversations.IConversationGate? conversationGate = null, Mud.Feishu.Abstractions.Services.IAppKeyAccessor? appKeyAccessor = null, Mud.Feishu.AI.Tools.IFeishuAppContextScopeFactory? appContextScopeFactory = null) -> void
-Mud.Feishu.AI.Tools.Events.BitableRecordChangedConversationalEventHandler
-Mud.Feishu.AI.Tools.Events.BitableRecordChangedConversationalEventHandler.BitableRecordChangedConversationalEventHandler(Mud.Feishu.AI.Agents.FeishuAgent! agent, Mud.Feishu.Abstractions.Services.IFeishuEventDeduplicator! businessDeduplicator, Mud.Feishu.IFeishuTenantV1Message? messageClient, Microsoft.Extensions.Logging.ILogger? logger = null, System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Events.IContextAssembler!>? contextAssemblers = null, Mud.Feishu.AI.Tools.IFeishuToolContextAccessor? toolContextAccessor = null, Mud.Feishu.AI.Channels.IMessageChannel? messageChannel = null, Mud.Feishu.Abstractions.Conversations.IConversationGate? conversationGate = null, Mud.Feishu.Abstractions.Services.IAppKeyAccessor? appKeyAccessor = null, Mud.Feishu.AI.Tools.IFeishuToolApprovalChannel? approvalChannel = null, Mud.Feishu.AI.Tools.IFeishuAppContextScopeFactory? appContextScopeFactory = null, Mud.Feishu.AI.Agents.IFeishuPendingApprovalStore? pendingApprovalStore = null) -> void
-Mud.Feishu.AI.Tools.Events.FeishuEventCatalog
-Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope
-Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.AppKey.get -> string?
-Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.AppKey.init -> void
-Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.Deconstruct(out string! EventKey, out string! PayloadJson, out string? AppKey, out string? EventId, out System.DateTimeOffset? ReceivedAt) -> void
-Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.Equals(Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope other) -> bool
-Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.EventId.get -> string?
-Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.EventId.init -> void
-Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.EventKey.get -> string!
-Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.EventKey.init -> void
-Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.FeishuEventEnvelope() -> void
-Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.FeishuEventEnvelope(string! EventKey, string! PayloadJson, string? AppKey = null, string? EventId = null, System.DateTimeOffset? ReceivedAt = null) -> void
-Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.PayloadJson.get -> string!
-Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.PayloadJson.init -> void
-Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.ReceivedAt.get -> System.DateTimeOffset?
-Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.ReceivedAt.init -> void
-Mud.Feishu.AI.Tools.Events.FeishuEventNdjsonBridge
-Mud.Feishu.AI.Tools.Events.FeishuEventNdjsonBridge.Dispose() -> void
-Mud.Feishu.AI.Tools.Events.FeishuEventNdjsonBridge.FeishuEventNdjsonBridge(System.IO.TextWriter? output = null, Mud.Feishu.AI.Tools.Events.IFeishuEventFileRouter? router = null, Microsoft.Extensions.Logging.ILogger? logger = null, bool ownsWriter = false) -> void
-Mud.Feishu.AI.Tools.Events.FeishuEventNdjsonBridge.WriteAsync(Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope envelope, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
-Mud.Feishu.AI.Tools.Events.FeishuEventNdjsonBridge.WrittenCount.get -> long
-Mud.Feishu.AI.Tools.Events.IFeishuEventFileRouter
-Mud.Feishu.AI.Tools.Events.IFeishuEventFileRouter.RouteAsync(string! eventKey, string! line, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<bool>
-Mud.Feishu.AI.Tools.Events.IFeishuEventSink
-Mud.Feishu.AI.Tools.Events.IFeishuEventSink.WriteAsync(Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope envelope, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
-Mud.Feishu.AI.Tools.Events.ImConversationAssemblers
-Mud.Feishu.AI.Tools.Events.ImConversationAssemblers.Knowledge = 4 -> Mud.Feishu.AI.Tools.Events.ImConversationAssemblers
-Mud.Feishu.AI.Tools.Events.ImConversationAssemblers.None = 0 -> Mud.Feishu.AI.Tools.Events.ImConversationAssemblers
-Mud.Feishu.AI.Tools.Events.ImConversationAssemblers.QuoteMessage = 2 -> Mud.Feishu.AI.Tools.Events.ImConversationAssemblers
-Mud.Feishu.AI.Tools.Events.ImConversationAssemblers.SenderInfo = 1 -> Mud.Feishu.AI.Tools.Events.ImConversationAssemblers
-Mud.Feishu.AI.Tools.Events.ImConversationOptions
-Mud.Feishu.AI.Tools.Events.ImConversationOptions.AllowP2pConversation.get -> bool
-Mud.Feishu.AI.Tools.Events.ImConversationOptions.AllowP2pConversation.set -> void
-Mud.Feishu.AI.Tools.Events.ImConversationOptions.BotName.get -> string?
-Mud.Feishu.AI.Tools.Events.ImConversationOptions.BotName.set -> void
-Mud.Feishu.AI.Tools.Events.ImConversationOptions.ImConversationOptions() -> void
-Mud.Feishu.AI.Tools.Events.ImConversationOptions.RequireMentionInGroup.get -> bool
-Mud.Feishu.AI.Tools.Events.ImConversationOptions.RequireMentionInGroup.set -> void
-Mud.Feishu.AI.Tools.Events.ImConversationOptions.Validate() -> void
-Mud.Feishu.AI.Tools.Events.ImMessageConversationalEventHandler
-Mud.Feishu.AI.Tools.Events.ImMessageConversationalEventHandler.ImMessageConversationalEventHandler(Mud.Feishu.AI.Agents.FeishuAgent! agent, Mud.Feishu.Abstractions.Services.IFeishuEventDeduplicator! businessDeduplicator, Microsoft.Extensions.Options.IOptions<Mud.Feishu.AI.Tools.Events.ImConversationOptions!>! options, Mud.Feishu.IFeishuTenantV1Message! messageClient, Microsoft.Extensions.Logging.ILogger? logger = null, System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Events.IContextAssembler!>? contextAssemblers = null, Mud.Feishu.AI.Tools.IFeishuToolContextAccessor? toolContextAccessor = null, Mud.Feishu.AI.Channels.IMessageChannel? messageChannel = null, Mud.Feishu.Abstractions.Conversations.IConversationGate? conversationGate = null, Mud.Feishu.Abstractions.Services.IAppKeyAccessor? appKeyAccessor = null, Mud.Feishu.AI.Tools.IFeishuAppContextScopeFactory? appContextScopeFactory = null) -> void
-Mud.Feishu.AI.Tools.Events.QuoteMessageContextAssembler
-Mud.Feishu.AI.Tools.Events.QuoteMessageContextAssembler.AssembleAsync(Mud.Feishu.AI.Conversations.ConversationRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
-Mud.Feishu.AI.Tools.Events.QuoteMessageContextAssembler.Order.get -> int
-Mud.Feishu.AI.Tools.Events.QuoteMessageContextAssembler.QuoteMessageContextAssembler(Mud.Feishu.IFeishuTenantV1Message! messageClient, Mud.Feishu.AI.Tools.IFeishuAppContextScopeFactory! scopeFactory, Microsoft.Extensions.Logging.ILogger<Mud.Feishu.AI.Tools.Events.QuoteMessageContextAssembler!>? logger = null) -> void
-Mud.Feishu.AI.Tools.Events.RegexEventFileRouter
-Mud.Feishu.AI.Tools.Events.RegexEventFileRouter.RegexEventFileRouter(string! baseDirectory, params (string! Pattern, string! Directory)[]! routes) -> void
-Mud.Feishu.AI.Tools.Events.RegexEventFileRouter.RouteAsync(string! eventKey, string! line, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<bool>
-Mud.Feishu.AI.Tools.Events.SenderInfoContextAssembler
-Mud.Feishu.AI.Tools.Events.SenderInfoContextAssembler.AssembleAsync(Mud.Feishu.AI.Conversations.ConversationRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
-Mud.Feishu.AI.Tools.Events.SenderInfoContextAssembler.Order.get -> int
-Mud.Feishu.AI.Tools.Events.SenderInfoContextAssembler.SenderInfoContextAssembler() -> void
-Mud.Feishu.AI.Tools.Events.TaskUpdatedConversationalEventHandler
-Mud.Feishu.AI.Tools.Events.TaskUpdatedConversationalEventHandler.TaskUpdatedConversationalEventHandler(Mud.Feishu.AI.Agents.FeishuAgent! agent, Mud.Feishu.Abstractions.Services.IFeishuEventDeduplicator! businessDeduplicator, Mud.Feishu.IFeishuTenantV1Message? messageClient, Mud.Feishu.IFeishuTenantV2Task? taskClient = null, Mud.Feishu.AI.Tools.IFeishuAppContextScopeFactory? scopeFactory = null, Microsoft.Extensions.Logging.ILogger? logger = null, System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Events.IContextAssembler!>? contextAssemblers = null, Mud.Feishu.AI.Tools.IFeishuToolContextAccessor? toolContextAccessor = null, Mud.Feishu.AI.Channels.IMessageChannel? messageChannel = null, Mud.Feishu.Abstractions.Conversations.IConversationGate? conversationGate = null, Mud.Feishu.Abstractions.Services.IAppKeyAccessor? appKeyAccessor = null) -> void
 Mud.Feishu.AI.Tools.FeishuToolNames
 Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions
 Mud.Feishu.AI.Tools.Generated.FeishuToolContract
@@ -767,27 +684,12 @@ Mud.Feishu.AI.Tools.IToolErrorTextFormatter
 Mud.Feishu.AI.Tools.IToolErrorTextFormatter.Format(string! toolName, string! reason) -> string!
 Mud.Feishu.AI.Tools.IToolResultShaper
 Mud.Feishu.AI.Tools.IToolResultShaper.ShapeAsync(string! toolName, string! projectedResult, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
-Mud.Feishu.AI.Tools.Knowledge.AilyKnowledgeProvider
-Mud.Feishu.AI.Tools.Knowledge.AilyKnowledgeProvider.AilyKnowledgeProvider(Mud.Feishu.IFeishuTenantV1AilyDataKnowledge! knowledgeClient, Mud.Feishu.AI.Tools.IFeishuAppContextScopeFactory! scopeFactory, Microsoft.Extensions.Options.IOptions<Mud.Feishu.AI.Knowledge.AilyKnowledgeOptions!>! options, Mud.Feishu.AI.Tools.IFeishuToolContextAccessor? contextAccessor = null, Microsoft.Extensions.Logging.ILogger<Mud.Feishu.AI.Tools.Knowledge.AilyKnowledgeProvider!>? logger = null) -> void
-Mud.Feishu.AI.Tools.Knowledge.AilyKnowledgeProvider.AskAsync(string! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Mud.Feishu.AI.Knowledge.KnowledgeAnswer!>!
-Mud.Feishu.AI.Tools.Knowledge.AilyKnowledgeProvider.RetrieveAsync(string! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Knowledge.RetrievedChunk!>!>!
-override Mud.Feishu.AI.Tools.Channels.CardStreamMessageChannel.BeginAsync(string! appKey, string! chatId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
-override Mud.Feishu.AI.Tools.Channels.EditMessageChannel.BeginAsync(string! appKey, string! chatId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
-override Mud.Feishu.AI.Tools.Events.BitableRecordChangedConversationalEventHandler.SupportedEventType.get -> string!
-override Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.GetHashCode() -> int
 override Mud.Feishu.AI.Tools.Generated.FeishuToolContract.Equals(object? obj) -> bool
 override Mud.Feishu.AI.Tools.Generated.FeishuToolContract.GetHashCode() -> int
 override Mud.Feishu.AI.Tools.Generated.FeishuToolContract.ToString() -> string!
 static Mud.Feishu.AI.Tools.BitableFilterParser.TryParse(string? filter, out Mud.Feishu.DataModels.Bitable.RecordQueryFilterInfo? parsed, out string? error) -> bool
-static Mud.Feishu.AI.Tools.Events.FeishuEventCatalog.ListEventKeys() -> System.Collections.Generic.IReadOnlyList<string!>!
-static Mud.Feishu.AI.Tools.Events.FeishuEventCatalog.ListEventKeysAsNdjson() -> System.Collections.Generic.IEnumerable<string!>!
-static Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.operator !=(Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope left, Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope right) -> bool
-static Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.operator ==(Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope left, Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope right) -> bool
-static Mud.Feishu.AI.Tools.Events.FeishuEventNdjsonBridge.AllowConcurrentWithConversational(string! reason) -> void
-static Mud.Feishu.AI.Tools.Events.FeishuEventNdjsonBridge.EnsureNotConversational(int conversationalHandlerCount) -> void
 static Mud.Feishu.AI.Tools.FeishuToolNames.IsWriteTool(string! name) -> bool
 static Mud.Feishu.AI.Tools.FeishuToolNames.ToConstantName(string! toolName) -> string?
-static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuAilyKnowledge(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration? configuration = null, System.Action<Mud.Feishu.AI.Knowledge.AilyKnowledgeOptions!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuAttachmentTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Mud.Feishu.AI.Tools.FeishuToolRegistry!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuAttendanceTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Mud.Feishu.AI.Tools.FeishuToolRegistry!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuBitableTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Mud.Feishu.AI.Tools.FeishuToolRegistry!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
@@ -799,10 +701,7 @@ static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuConta
 static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuDocxTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Mud.Feishu.AI.Tools.FeishuToolRegistry!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuDriveCollabTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Mud.Feishu.AI.Tools.FeishuToolRegistry!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuDriveTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Mud.Feishu.AI.Tools.FeishuToolRegistry!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
-static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuEditMessageChannel(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
-static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuImConversationHandler(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration? configuration = null, System.Action<Mud.Feishu.AI.Tools.Events.ImConversationOptions!>? configure = null, Mud.Feishu.AI.Tools.Events.ImConversationAssemblers assemblers = Mud.Feishu.AI.Tools.Events.ImConversationAssemblers.SenderInfo) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuImTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Mud.Feishu.AI.Tools.FeishuToolRegistry!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
-static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuKnowledgeContext(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, int order = 100) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuKnowledgeTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Mud.Feishu.AI.Tools.FeishuToolRegistry!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuMailTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Mud.Feishu.AI.Tools.FeishuToolRegistry!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuMinutesReadTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Mud.Feishu.AI.Tools.FeishuToolRegistry!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
@@ -811,7 +710,6 @@ static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuSchem
 static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuSearchTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Mud.Feishu.AI.Tools.FeishuToolRegistry!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuSheetsTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Mud.Feishu.AI.Tools.FeishuToolRegistry!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuSparkTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Mud.Feishu.AI.Tools.FeishuToolRegistry!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
-static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuStreamingChannel(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuTaskTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Mud.Feishu.AI.Tools.FeishuToolRegistry!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Mud.Feishu.AI.Tools.FeishuToolRegistry!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuTranslationTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Mud.Feishu.AI.Tools.FeishuToolRegistry!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
@@ -994,5 +892,3 @@ static Mud.Feishu.AI.Tools.Generated.FeishuToolSchemas.SchemaByToolName.get -> S
 static readonly Mud.Feishu.AI.Tools.FeishuToolNames.All -> string![]!
 static readonly Mud.Feishu.AI.Tools.FeishuToolNames.ReadonlyAll -> string![]!
 static readonly Mud.Feishu.AI.Tools.FeishuToolNames.WriteAll -> string![]!
-virtual Mud.Feishu.AI.Tools.Channels.BufferedMessageChannel.OnFlushed(string! messageId) -> void
-virtual Mud.Feishu.AI.Tools.Channels.BufferedMessageChannel.OnUpdateFailedAsync(string! messageId, System.Exception! exception) -> System.Threading.Tasks.Task!

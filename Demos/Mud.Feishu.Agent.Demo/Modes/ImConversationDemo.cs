@@ -12,7 +12,7 @@ using Mud.Feishu.Abstractions.Conversations;
 using Mud.Feishu.AI.Agents;
 using Mud.Feishu.AI.Extensions;
 using Mud.Feishu.AI.Tools;
-using Mud.Feishu.AI.Tools.Events;
+using Mud.Feishu.AI.Events;
 
 namespace Mud.Feishu.Agent.Demo;
 

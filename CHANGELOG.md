@@ -1,12 +1,38 @@
 # Mud.Feishu 更新日志
 
-## [Unreleased] - AI 工具面架构重构 R1（阶段 0/1/1B/2）：出站唯一出口 + 删除 api_call + 风险词表单源 + 模块边界归位（2026-10-10）
+## [Unreleased] - AI 工具面架构重构 R1（阶段 0/1/1B/2/3/4/6 + 阶段 5）：出站唯一出口 + 删 api_call + 执行层收敛 + 公开面收敛 + 集成面并入 AI（2026-10-10）
 
-> 方案与多维评审见 `.docs/AI/MudFeishu-AI-Tools-架构审查与重构方案-R1.md`（§13 评审结论、§14 落地核验）。
+> 方案与多维评审见 `.docs/AI/MudFeishu-AI-Tools-架构审查与重构方案-R1.md`（§13 评审结论、§14/§15 落地核验）。
 > **AI 模块尚未发布，无兼容负担**；工具面 **163 → 162**（删除 `feishu.api_call`）。
 
 ### 💥 破坏性变更
 
+- **R-9：飞书 Agent 集成面并入 `Mud.Feishu.AI`（阶段 5，最高价值项）**：
+  - **迁移**：`Channels/`（4 类：`BufferedMessageChannel` / `CardStreamMessageChannel` / `EditMessageChannel` /
+    `StreamingChannelChain`）、`Events/`（8 类：三个领域会话处理器 + `ImMessageConversationalEventHandler` +
+    `ContextAssemblers` + `ImConversationOptions` + 事件外桥与事件目录）、`Knowledge/AilyKnowledgeProvider.cs`
+    ——共 13 个文件，命名空间 `Mud.Feishu.AI.Tools.{Channels,Events,Knowledge}` → **`Mud.Feishu.AI.{Channels,Events,Knowledge}`**。
+  - **入口迁移**：`AddFeishuEditMessageChannel` / `AddFeishuStreamingChannel` / `AddFeishuImConversationHandler` /
+    `AddFeishuKnowledgeContext` / `AddFeishuAilyKnowledge` 从 `Mud.Feishu.AI.Tools` 迁到
+    **`Mud.Feishu.AI.Extensions`**（`AddFeishuAgent` 所在文件）。调用方只需换 `using`，签名逐字不变。
+  - **5.0 下沉批**（先于搬迁，否则「AI 不得引用 AI.Tools」与迁移后编译直接冲突）：
+    `FeishuApiOutcome<T>` + `FeishuApiResultReader`、**`FeishuToolDiagnostics`**、**`FeishuAppContextScopeFactory`**
+    三个 internal 类型从工具面下沉到 `Mud.Feishu.AI`（`InternalsVisibleTo` 回 AI.Tools，不公开化）。
+    后两个是**本轮实测新发现的阻塞点**（方案原文只列了第一个）：通道实现要记降级指标、IM 入口要注册作用域工厂实现。
+  - **依赖面变化**：① `Mud.Feishu.AI` 新增 `Mud.Feishu`（core）+ `Mud.Feishu.DataModels` + `Mud.Feishu.EventCallback`
+    + `Mud.HttpUtils` 引用（**代价明示**：只用 Agent 运行时、自建工具面的宿主会被拉入这些程序集）；
+    ② `Mud.Feishu.AI.Tools` **摘除** `Mud.Feishu.EventCallback` 引用——"只接工具面"的宿主不再背事件 DTO 面（880 源文件）。
+  - **架构纪律修订（C7）**：`AgentContractGuards` 的"实现包仅允许引用 Abstractions"改为**白名单形态**
+    （AI = {Abstractions, core, DataModels, EventCallback}；Redis 维持仅 Abstractions），
+    并新增两条**负向不变量**：AI 不得引用 AI.Tools/AI.Mcp（防环）、AI.Tools 不得引用 EventCallback（防回流）。
+  - **连带**：`Mud.Feishu.AI.Mcp` 的 csproj 注释与守卫文案由"**不引用** SDK 客户端"改为"**不直接引用且不暴露**"
+    （core/DataModels/EventCallback 现为其传递依赖，写"不引用"即半假事实；签名级判据不变）。
+  - **公开面**：AI.Tools **998 → 894**，AI **741 → 845**（总量不变、归属变清晰）。
+- **R-7 公开面收敛**：`FeishuToolAIFunction` / `FeishuToolBinding` / `FeishuToolCatalog` / `FeishuToolSchemaExporter`
+  退出公开面（实现细节，此前仅被 MCP 与测试消费）；新增两条**窄接缝** `IFeishuToolFunctionFactory`（构桥）
+  与 `IToolErrorTextFormatter`（错误文案），MCP 改经接缝消费。
+- **R-8 删除同义入口 `AddFeishuReadonlyTools`**：它是 `AddFeishuTools` 的转发，但名字承诺"只读"而实现注册含写工具链。
+  全域入口只保留 `AddFeishuTools`；"写工具是否可用"由 `FeishuAgent:WriteAllowList` 表达（安全默认不变）。
 - **删除万能兜底通道 `feishu.api_call`（R-12）**：删执行器 `Internal/GenericApiTools.cs`（384 行）、
   Curation 声明 `IFeishuTenantApiCallTool`、写链注册行、5 个 `[ToolCall]` 测试用例。
   删除理由（代码级复核）：① 与策展工具构成**双轨调用路径**（同一能力两条路径，投影/幂等/风险语义不同）；
@@ -38,6 +64,20 @@
 
 ### ♻️ 重构
 
+- **R-2 形态认知单源（阶段 3）**：`JsonValueKind` 形态判定白名单由 **6 个文件收缩为单文件**
+  （`ToolArgumentNormalizer` 收敛为 `IsJsonString` / `IsJsonArray` 两条原语）；`ToolArgs`（取值门面）、
+  `ToolArgsDigester`（审计摘要）、`ToolPagination` / `ToolDryRun` / 执行器改为薄委托。
+  ⚠️ **有意行为变更**：`ToolPagination.ReadMaxItems` 对"提供但无法解析为整数"的入参**改为抛错**
+  （原为静默降级为"未提供"——那是把模型的传参错误变成一次看似成功的默认行为）；经执行链转结构化错误回填模型。
+- **R-3 分页信封单源（阶段 3）**：新增 `Tools/ToolResultJsons`（`PageEnvelope` / `ItemsEnvelope` /
+  `WithPageToken`），**31 处 / 18 个文件**的信封构造收敛为单源（含 `BitableTools` 的私有副本）。
+  ⚠️ **有意行为变更**：`MailTools.search_messages` 与 `MinutesReadTools` 原先**无条件**写出 `page_token`
+  （空值即 `""`），空游标会被模型当成"可续页"照抄回传、平台按"从头再来"处理（重复拉第一页且模型无法自查）——
+  统一为"非空才写"。
+- **R-4 执行器构造样板收敛（阶段 3）**：`ToolExecutor.Require(IOptions<FeishuAgentOptions>)` 成为
+  `IOptions` 空值守卫的**唯一地点**，**28 个文件 / 约 40 行** `(options ?? throw …).Value.MaxXxx` 样板消除。
+  ⚠️ 未引入方案原文的 `ToolExecutor.For(name, options)`：执行器预算字段在多个出口点被复用，
+  改签名只增加热路径解析而不改变语义；收敛目标已由 `Require` 达成并被守卫锁定。
 - **R-1 出站出口唯一化**：新增 `Tools/ToolResultPipeline.cs`（无状态静态工厂 + 显式长度参数）
   = `Ok` / `OkJson` / `OkReceipt` / `Error` / `FromErrorText`；20 处手拼信封全部改走它，
   截断/标记成为**出口的性质**而非"记得写的一步"。⚠️ **净化仍留在 `FeishuToolBinding` 的
@@ -67,12 +107,36 @@
   `ToolExecutor.cs` → `ToolResultPipeline.cs`，否则会盯一个已不负责序列化的文件 = 假门禁）；
   `ToolErrorContractGuards` 守卫 ⑤ 改为"执行器委派出口 + 出口自身序列化"；
   `ToolArgumentShapeContractGuards` 白名单随 R-6 拆分同步（`ToolArgs.cs` / `ToolResultText.cs`）。
+- **R-2/R-3/R-4 三条新守卫**：① `ToolArgumentShapeContractGuards` 判据收紧为"形态认知只允许出现在
+  `ToolArgumentNormalizer`"（白名单由 6 项收缩为 **1 项**），并**把扫描面扩到 `Curation/`**——
+  原守卫只扫 `Tools/`，而声明面已迁到 `Curation/`，等于迁移后留下监控盲区（本轮实测发现并修掉）；
+  ② 新增 `PaginationContractGuards.PageEnvelopeFields_ShouldOnlyComeFromSharedHelper`（信封形态只能来自
+  `ToolResultJsons`，白名单为空）；③ 新增 `ToolExecutorSkeletonGuards.OptionsNullGuard_ShouldLiveOnlyInToolExecutor`
+  （`IOptions` 空值守卫只在 `ToolExecutor`，含反向自证）。
+- **R-7 窄接缝 + 公开面内化**：`McpServerContractTests` 判据不变（签名级），但 MCP 改经
+  `IFeishuToolFunctionFactory` / `IToolErrorTextFormatter` 消费；两条接缝在 `AddFeishuToolInfrastructure`
+  注册（缺注册会让 MCP `tools/list` 静默变空）。
+- **R-8 Q-2 方向 B 守卫**：`ToolDomainCoresWiringContractTests.GeneratedCores_ShouldBeMutuallyClosedWithTheAggregator`
+  ——判据改用**反射**（生成产物 `AddFeishu*Core` 集合 ↔ 聚合清单双向闭合）。既有方向 A 的期望集由
+  "执行器类名正则"推断，命名规则一变就失效（漏聚合仍报绿）。
+- **R-13 Demo 链路守卫（4 条，`DomainEventsDemoContractGuards`）**：三个领域处理器 + 两个装配器 +
+  流式通道降级链从"仅测试消费"升级为"有真实调用点 + 有链路断言"（行为面反射 + 调用面源码 +
+  **零增量落点必须抛错**）；新增 Demo 模式 `FeishuDomainEventsDemo` 与 `DemoAppKeyAccessor`
+  （事件处理器在"缺 appKey + 已装配工具链"时 fail-closed，Demo 必须提供应用键事实）。
+- **R-9 纪律修订与扫描面跟进**：`AgentContractGuards` 的依赖治理改白名单 + 两条负向不变量；
+  `FeishuToolContractGuards.GetFeishuToolsSources()` 扫描面由"仅工具包"扩为"工具包 + 集成面"
+  （否则 `FeishuToolDiagnostics` 与 `MaxStreamChunkLength` 两条断言会因"文件不在扫描面"而**假绿**——
+  与 R2 那处扫描面盲区同类）。
 
 ### 📊 测试基线
 
-- `Tests/Mud.Feishu.AI.Tools.Tests`：**837 × 2 TFM 全绿**（新增 7 例：截断出口行为 5 +
-  `ToolErrorFactory` 冻结 1 + guidance 工具名引用自证 1）。
-- 相关工程：`Mud.Feishu.AI.Tests` 357、`Mud.Feishu.Agent.Demo.Tests` 114 全绿；`dotnet build Mud.Feishu.slnx` 0 错误。
+- `Tests/Mud.Feishu.AI.Tools.Tests`：**800 × 2 TFM 全绿**（R-9 后：集成面 9 个测试文件迁出至 `Mud.Feishu.AI.Tests`；
+  本轮新增 35 例形态等价 + 3 条守卫）。
+- `Tests/Mud.Feishu.AI.Tests`：**434 × 2 TFM 全绿**（原 357 + 迁入的通道/事件/知识用例 77）。
+- `Tests/Mud.Feishu.Agent.Demo.Tests`：**119 全绿**（新增 R-13 的 4 条链路守卫 + 领域事件模式配置键断言）。
+- 构建：`Mud.Feishu.AI` / `Mud.Feishu.AI.Tools` / `Mud.Feishu.AI.Mcp` 四 TFM **0 错误**；
+  两包 `RS0016/RS0017` 均为 **0**（公开面基线已同步：AI.Tools 894、AI 845）。
+
 
 ## [Unreleased] - R7 收尾：PM 最终裁定（§8.5）+ 两个重叠契约清理 + 错误子类闭集诚实化（2026-10-10）
 

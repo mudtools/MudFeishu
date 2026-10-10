@@ -13,12 +13,11 @@ using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.AI.Channels;
 using Mud.Feishu.AI.Conversations;
 using Mud.Feishu.AI.Events;
-using Mud.Feishu.AI.Tools.Tools;
 using Mud.Feishu.DataModels.Messages;
 using Mud.Feishu.DataModels.Tasks;
 using Mud.Feishu.EventCallback.Task;
 
-namespace Mud.Feishu.AI.Tools.Events;
+namespace Mud.Feishu.AI.Events;
 
 /// <summary>
 /// 任务更新会话事件处理器（WP7/R5 T7-2；回复链路 R2-01）：<c>task.task.updated_v1</c> 事件 →

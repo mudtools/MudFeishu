@@ -5,12 +5,21 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.DataModels;
+
 namespace Mud.Feishu.AI.Tools;
 
-// R-6（模块边界归位）：本文件现在**只**负责一件事——把生成的强类型接口返回
-// （FeishuApiResult<T>）解包为 FeishuApiOutcome<T>。此前同文件里还住着
-// ToolArgs（入参读取，已拆到 ToolArgs.cs）与 ToolResultText（出站截断，已拆到 ToolResultText.cs），
-// 三者职责互不相干却同处一个以"结果解包"命名的文件里。
+// R-9 / 阶段 5.0（下沉批）：本类型从 `Mud.Feishu.AI.Tools` 下沉到本程序集（保持 internal + IVT 回 AI.Tools）。
+//
+// 为什么必须下沉（R1.3 评审发现的**阻塞项**）：`Channels/` 与 `Events/` 的实现（4 + 8 个文件）都要解包
+// 强类型接口返回，而它们是 R-9 要迁到**本程序集**的。若不先下沉，迁移后本程序集需要引用 `Mud.Feishu.AI.Tools`
+// ——与新增不变量「AI 不得引用 AI.Tools（防环，保持"工具面依赖集成面"单向）」直接矛盾，编译必挂。
+//
+// 为什么用 internal + IVT 而不是 public：公开化会反向抵消 R-7 的公开面收敛目标
+// （下沉是"归属归位"，不该顺带扩大任何一边的公开承诺）。
+//
+// 为什么**不**顺带下沉 ToolArgs / ToolResultText：它们是工具**入参**与**出站预算**语义，
+// 与事件面无关；下沉会把工具面细节灌进集成面。
 
 /// <summary>
 /// <c>FeishuApiResult</c> 解包结果（Phase 1 §3.3.3 通用规则 3：统一解包，错误转可读文本回填模型）。
@@ -32,7 +41,7 @@ internal sealed record FeishuApiOutcome<T>(bool Ok, T? Data, string? ErrorText, 
 }
 
 /// <summary>
-/// <see cref="FeishuApiResult{T}"/> 统一解包器（分域执行器共用；<c>code != 0</c> → 可读错误文本，
+/// <see cref="FeishuApiResult{T}"/> 统一解包器（分域执行器与集成面共用；<c>code != 0</c> → 可读错误文本，
 /// 不吞错误、不抛裸异常）。
 /// </summary>
 internal static class FeishuApiResultReader

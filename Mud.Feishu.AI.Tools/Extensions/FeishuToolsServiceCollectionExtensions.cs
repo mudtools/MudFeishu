@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -11,9 +11,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Mud.Feishu.AI.Channels;
 using Mud.Feishu.AI.Events;
 using Mud.Feishu.AI.Knowledge;
-using Mud.Feishu.AI.Tools.Channels;
-using Mud.Feishu.AI.Tools.Events;
-using Mud.Feishu.AI.Tools.Knowledge;
 using Mud.Feishu.AI.Tools.Registration;
 using Mud.Feishu.AI.Tools.Tools;
 
@@ -293,214 +290,12 @@ public static class FeishuToolsServiceCollectionExtensions
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuWriteToolCores(AddFeishuToolInfrastructure(services, configure));
 
-    /// <summary>
-    /// 注册分片编辑流式通道（Phase 2 T2-1 兼容入口，保持不变）：
-    /// 仅注册 <see cref="EditMessageChannel"/> 单通道（不走卡片流降级链）。
-    /// </summary>
-    /// <param name="services">服务集合。</param>
-    /// <returns>服务集合。</returns>
-    public static IServiceCollection AddFeishuEditMessageChannel(this IServiceCollection services)
-    {
-        if (services is null)
-            throw new ArgumentNullException(nameof(services));
-
-        services.TryAddSingleton<EditMessageChannel>();
-        services.TryAddSingleton<IMessageChannel>(static sp => sp.GetRequiredService<EditMessageChannel>());
-        return services;
-    }
-
-    /// <summary>
-    /// 注册流式通道降级链（AI-FD-D12 P2D-2a）：首选应用消息卡片流通道
-    /// （<see cref="CardStreamMessageChannel"/>，单聊按用户投放），Begin 失败自动降级
-    /// <see cref="EditMessageChannel"/>（分片编辑）——事件处理器零感知。
-    /// </summary>
-    /// <remarks>
-    /// 要求宿主已注册 <c>IFeishuTenantV1Message</c>（编辑通道必需）；卡片流客户端
-    /// <c>IFeishuTenantV2AppCardMessageStream</c> 缺席时链内仅剩编辑通道（注册期软缺席）。
-    /// 群聊场景卡片流目标解析为不适用，直接走编辑通道。
-    /// </remarks>
-    /// <param name="services">服务集合。</param>
-    /// <returns>服务集合。</returns>
-    public static IServiceCollection AddFeishuStreamingChannel(this IServiceCollection services)
-    {
-        if (services is null)
-            throw new ArgumentNullException(nameof(services));
-
-        // 卡片流客户端缺席 → 通道缺席（链内仅编辑通道），与写执行器同一软缺席模式。
-        services.TryAddSingleton(static sp => sp.GetService<Mud.Feishu.IFeishuTenantV2AppCardMessageStream>() is { } card
-            ? new CardStreamMessageChannel(
-                card,
-                sp.GetRequiredService<IFeishuAppContextScopeFactory>(),
-                sp.GetRequiredService<IOptions<FeishuAgentOptions>>(),
-                sp.GetService<ILogger<CardStreamMessageChannel>>())
-            : null!);
-        services.TryAddSingleton<EditMessageChannel>();
-
-        services.TryAddSingleton<IMessageChannel>(static sp =>
-        {
-            var card = sp.GetService<CardStreamMessageChannel>();
-            var edit = sp.GetRequiredService<EditMessageChannel>();
-            return card is not null
-                ? new StreamingChannelChain(sp.GetService<ILogger<StreamingChannelChain>>(), card, edit)
-                : new StreamingChannelChain(sp.GetService<ILogger<StreamingChannelChain>>(), edit);
-        });
-
-        return services;
-    }
-
-    /// <summary>
-    /// 注册知识检索上下文装配器（AI-FD-D12 P2D-4a 注入模式）：每轮把 <see cref="IRetriever"/>
-    /// 召回切片注入 Prompt。宿主<b>显式装配</b>（不默认开启，省 token）——工具模式见
-    /// <see cref="AddFeishuKnowledgeTools"/>；并用合法（注入给背景、工具给深挖）。
-    /// </summary>
-    /// <param name="services">服务集合。</param>
-    /// <param name="order">装配顺序（缺省 100：默认装配器之后，问题文本先于知识注入）。</param>
-    /// <returns>服务集合。</returns>
-    public static IServiceCollection AddFeishuKnowledgeContext(this IServiceCollection services, int order = KnowledgeContextAssembler.DefaultOrder)
-    {
-        if (services is null)
-            throw new ArgumentNullException(nameof(services));
-
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IContextAssembler>(sp =>
-            new KnowledgeContextAssembler(
-                sp.GetRequiredService<IRetriever>(),
-                order)));
-        return services;
-    }
-
-    /// <summary>
-    /// 一行接入内置 IM 会话事件处理器（AI-FD-D12 P2D-5a）：消息 → 会话 → 模型 → 回复/流式。
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// 注册 <see cref="ImConversationOptions"/>（配置节 <c>FeishuAgent:ImConversation</c>）与
-    /// <see cref="ImMessageConversationalEventHandler"/>（含 Bot 自激过滤、群聊 @ 过滤安全内建）。
-    /// 内置上下文装配器集默认只启用 <see cref="ImConversationAssemblers.SenderInfo"/>（零外部调用）；
-    /// 其余经 <paramref name="assemblers"/> 显式装配（P2D-5b）。事件订阅侧由宿主在
-    /// WebSocket/Webhook 通道上 <c>AddHandler&lt;ImMessageConversationalEventHandler&gt;()</c>
-    /// （通道工厂从自身注册表解析，不读全局 <c>IFeishuEventHandler</c> 注册）。
-    /// </para>
-    /// </remarks>
-    /// <param name="services">服务集合。</param>
-    /// <param name="configuration">应用配置（可空；提供时绑定 <c>FeishuAgent:ImConversation</c> 节）。</param>
-    /// <param name="configure">编程式配置覆盖（可空；在配置绑定之后执行）。</param>
-    /// <param name="assemblers">内置装配器集（默认仅 SenderInfo；QuoteMessage 需 Message 客户端、Knowledge 需 IRetriever）。</param>
-    /// <returns>服务集合。</returns>
-    public static IServiceCollection AddFeishuImConversationHandler(
-        this IServiceCollection services,
-        IConfiguration? configuration = null,
-        Action<ImConversationOptions>? configure = null,
-        ImConversationAssemblers assemblers = ImConversationAssemblers.SenderInfo)
-    {
-        if (services is null)
-            throw new ArgumentNullException(nameof(services));
-
-        var builder = services.AddOptions<ImConversationOptions>();
-        if (configuration is not null)
-        {
-            // 源生成绑定（AOT-3）：Bind 调用点可被配置绑定源生成器拦截（net8+ 由根 props 启用）。
-            var section = configuration.GetSection(ImConversationOptions.SectionName);
-            builder.Configure(options => section.Bind(options));
-        }
-
-        if (configure is not null)
-        {
-            builder.Configure(configure);
-        }
-
-        services.TryAddSingleton(static sp =>
-        {
-            var options = sp.GetRequiredService<IOptions<ImConversationOptions>>().Value;
-            options.Validate();
-            return Options.Create(options);
-        });
-
-        // 内置装配器集（P2D-5b）：默认只启用 SenderInfo（零外部调用）；其余宿主显式装配。
-        if (assemblers.HasFlag(ImConversationAssemblers.SenderInfo))
-        {
-            services.TryAddEnumerable(ServiceDescriptor.Singleton<IContextAssembler, SenderInfoContextAssembler>());
-        }
-
-        if (assemblers.HasFlag(ImConversationAssemblers.QuoteMessage))
-        {
-            services.TryAddEnumerable(ServiceDescriptor.Singleton<IContextAssembler>(static sp =>
-                new QuoteMessageContextAssembler(
-                    sp.GetRequiredService<Mud.Feishu.IFeishuTenantV1Message>(),
-                    sp.GetRequiredService<IFeishuAppContextScopeFactory>(),
-                    sp.GetService<ILogger<QuoteMessageContextAssembler>>())));
-        }
-
-        if (assemblers.HasFlag(ImConversationAssemblers.Knowledge))
-        {
-            // 注入模式（P2D-4a）：要求宿主已注册 IRetriever（如 AddFeishuAilyKnowledge）。
-            services.AddFeishuKnowledgeContext();
-        }
-
-        // R3-1：回复前切租户依赖作用域工厂——本入口是 IM 会话处理器的「一行接入」装配点，
-        // 若此处不注册，多应用宿主会在回复时 fail-closed 抛错（有 appKey 无工厂）。
-        services.TryAddSingleton<IFeishuAppContextScopeFactory, FeishuAppContextScopeFactory>();
-
-        // 处理器本体：宿主经通道 AddHandler<ImMessageConversationalEventHandler>() 挂载（AddScoped 语义由通道补齐）。
-        services.TryAddScoped<ImMessageConversationalEventHandler>();
-
-        return services;
-    }
-
-    /// <summary>
-    /// 注册 Aily 托管知识问答（RAG-A 默认路径，Phase 2 T2-6）：
-    /// <see cref="IFeishuKnowledgeBase"/> + <see cref="IRetriever"/> 单实现双接口。
-    /// </summary>
-    /// <param name="services">服务集合。</param>
-    /// <param name="configuration">应用配置（可空；提供时绑定 <c>FeishuAilyKnowledge</c> 节）。</param>
-    /// <param name="configure">编程式配置覆盖（可空；在配置绑定之后执行）。</param>
-    /// <returns>服务集合。</returns>
-    public static IServiceCollection AddFeishuAilyKnowledge(
-        this IServiceCollection services,
-        IConfiguration? configuration = null,
-        Action<AilyKnowledgeOptions>? configure = null)
-    {
-        if (services is null)
-            throw new ArgumentNullException(nameof(services));
-
-        var builder = services.AddOptions<AilyKnowledgeOptions>();
-        if (configuration is not null)
-        {
-            // 源生成绑定（AOT-3）：Bind 调用点可被配置绑定源生成器拦截（net8+ 由根 props 启用）。
-            var section = configuration.GetSection(AilyKnowledgeOptions.SectionName);
-            builder.Configure(options => section.Bind(options));
-        }
-
-        if (configure is not null)
-        {
-            builder.Configure(configure);
-        }
-
-        // R2-10：与 FeishuAgentOptions 同等对待——Options 管线接入 Validate()，
-        // 使"AppId 未配置"在**启动期**响亮失败，而不是等第一次知识提问时在 Provider 工厂里炸。
-        // 此处是 Aily 选项的**注册点**（AI 底座不注册 Aily，故校验器也必须在工具包侧登记）。
-        services.TryAddSingleton<IValidateOptions<AilyKnowledgeOptions>, AilyKnowledgeOptionsValidator>();
-#if NET6_0_OR_GREATER
-        services.AddOptions<AilyKnowledgeOptions>().ValidateOnStart();
-#endif
-
-        // R3-07：注册幂等——改为 TryAddSingleton，与前后行一致，避免重复调用产生多条描述符。
-        services.TryAddSingleton<AilyKnowledgeProvider>(static sp =>
-        {
-            var options = sp.GetRequiredService<IOptions<AilyKnowledgeOptions>>().Value;
-            options.Validate();
-
-            return new AilyKnowledgeProvider(
-                sp.GetRequiredService<Mud.Feishu.IFeishuTenantV1AilyDataKnowledge>(),
-                sp.GetRequiredService<IFeishuAppContextScopeFactory>(),
-                Options.Create(options),
-                sp.GetService<IFeishuToolContextAccessor>(),
-                sp.GetService<ILogger<AilyKnowledgeProvider>>());
-        });
-        services.TryAddSingleton<IFeishuKnowledgeBase>(static sp => sp.GetRequiredService<AilyKnowledgeProvider>());
-        services.TryAddSingleton<IRetriever>(static sp => sp.GetRequiredService<AilyKnowledgeProvider>());
-
-        return services;
-    }
+    // R-9（阶段 5）：原在本文件的 5 个**集成面**装配入口已随 Channels / Events / Knowledge 一并迁到
+    // Mud.Feishu.AI（同命名空间下同名的 FeishuToolsServiceCollectionExtensions 曾承载它们）：
+    //   AddFeishuEditMessageChannel / AddFeishuStreamingChannel / AddFeishuImConversationHandler /
+    //   AddFeishuKnowledgeContext / AddFeishuAilyKnowledge —— 现落点 Mud.Feishu.AI/Extensions/FeishuAgentServiceCollectionExtensions.cs。
+    // ⚠️ 不要在此处重新声明它们：这些入口注册的是集成面实现（流式通道 / 会话事件处理器 / 知识 Provider），
+    // 而本包**不得**再引用 Mud.Feishu.EventCallback（迁移后已摘除该引用），重新声明会连带把事件 DTO 面拉回工具包。
 
     /// <summary>
     /// 只读域工具核心批量注册（W4 抽取：消除 AddFeishuTools 与 AddFeishuWriteTools 的重复链）。

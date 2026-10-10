@@ -9,7 +9,7 @@ using System.Globalization;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 
-namespace Mud.Feishu.AI.Tools.Events;
+namespace Mud.Feishu.AI.Events;
 
 /// <summary>
 /// 外桥事件信封（R7 / C7）：<b>传输层原始载荷</b> + 路由元信息。

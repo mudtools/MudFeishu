@@ -17,7 +17,7 @@ using Mud.Feishu.AI.Channels;
 using Mud.Feishu.AI.Events;
 using Mud.Feishu.AI.Extensions;
 using Mud.Feishu.AI.Tools;
-using Mud.Feishu.AI.Tools.Events;
+using Mud.Feishu.AI.Events;
 using Mud.Feishu.DataModels;
 using Mud.Feishu.EventCallback;
 using Mud.Feishu.EventCallback.Approval;

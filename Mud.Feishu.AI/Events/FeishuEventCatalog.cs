@@ -8,7 +8,7 @@
 using System.Reflection;
 using Mud.Feishu.EventCallback;
 
-namespace Mud.Feishu.AI.Tools.Events;
+namespace Mud.Feishu.AI.Events;
 
 /// <summary>
 /// 事件目录（R7 / C7 的"事件自省"面）：列出本 SDK 支持的<b>全部事件键</b>。

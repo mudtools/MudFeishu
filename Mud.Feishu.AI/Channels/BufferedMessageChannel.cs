@@ -10,7 +10,7 @@ using System.Text;
 using Mud.Feishu.Abstractions.Metrics;
 using Mud.Feishu.AI.Channels;
 
-namespace Mud.Feishu.AI.Tools.Channels;
+namespace Mud.Feishu.AI.Channels;
 
 /// <summary>
 /// 分片缓冲流式通道基类（AI-FD-D12 P2D-2c 抽取）：增量缓冲达

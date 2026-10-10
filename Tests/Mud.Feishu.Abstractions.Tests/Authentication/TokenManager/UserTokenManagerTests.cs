@@ -6,6 +6,8 @@
 // -----------------------------------------------------------------------
 
 using FluentAssertions;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.Authentication;
 using Mud.Feishu.DataModels;
 using Mud.Feishu.Exceptions;
@@ -507,6 +509,58 @@ public class UserTokenManagerTests : TokenManagerTestsBase
         var result = await _userTokenManager.CanRefreshTokenAsync("user1", CancellationToken.None);
 
         result.Should().BeTrue();
+    }
+
+    // ============================================================
+    // F-06（Mud.HttpUtils ≥3.0.4，B3）：RemoveTokenAsync 冷启动写穿对照
+    // ============================================================
+
+    /// <summary>
+    /// F-06 防退化守卫：本类已删除 <c>RemoveTokenAsync</c> 覆写，登出完全依赖基类
+    /// <c>UserTokenManagerBase.RemoveTokenAsync</c> 的异步写穿（桥接器 RemoveAsync 无条件透传持久层）。
+    /// 冷启动对照：共享同一真实 <see cref="FeishuUserTokenStore"/>，manager2 本地镜像为空时登出——
+    /// 持久层 access/refresh 槽位必须被删除（无复活）。若恢复覆写、或上游写穿退化为「镜像条目驱动」，
+    /// 本用例失败。
+    /// </summary>
+    [Fact]
+    public async Task RemoveTokenAsync_ShouldPurgePersistentStore_WhenManagerColdStartsWithEmptyMirror()
+    {
+        // Arrange — 两个管理器共享同一真实 FeishuUserTokenStore（同物理键），各自持有独立内存镜像。
+        var cache = new MemoryCache(Options.Create(new MemoryCacheOptions()));
+        var sharedStore = new FeishuUserTokenStore(new FeishuTokenStore(cache), cache, "test");
+        var options = Options.Create(Config);
+        using var manager1 = new UserTokenManager(
+            CurrentUserContextMock.Object, _authenticationApiMock.Object, options,
+            new Mock<ILogger<UserTokenManager>>().Object, sharedStore);
+        using var manager2 = new UserTokenManager(
+            CurrentUserContextMock.Object, _authenticationApiMock.Object, options,
+            new Mock<ILogger<UserTokenManager>>().Object, sharedStore);
+
+        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        await manager1.StoreUserTokenAsync("user1", new UserTokenInfo
+        {
+            UserId = "user1",
+            AccessToken = "cold-start-access",
+            RefreshToken = "cold-start-refresh",
+            AccessTokenExpireTime = now + 3600_000,
+            RefreshTokenExpireTime = now + 30L * 24 * 3600 * 1000,
+            IssuedAt = now,
+        }, CancellationToken.None);
+
+        // 前置：冷启动实例读穿透到持久层（证明共享 store 链路就绪、manager2 镜像确为冷启动）。
+        var loaded = await manager2.GetTokenInfoAsync("user1", CancellationToken.None);
+        loaded.Should().NotBeNull("共享 store 下冷启动实例必须能读穿透持久层");
+        loaded!.AccessToken.Should().Be("cold-start-access");
+
+        // Act — 冷启动实例（本地镜像此前为空，仅读穿透回填）登出。
+        var removed = await manager2.RemoveTokenAsync("user1", CancellationToken.None);
+
+        // Assert — 持久层槽位被删除，无复活。
+        removed.Should().BeTrue();
+        (await sharedStore.GetAccessTokenAsync("user1", "UserAccessToken:test", CancellationToken.None)).Should().BeNull(
+            "基类写穿必须删除持久层 access 槽位（不依赖本地镜像）");
+        (await sharedStore.GetRefreshTokenAsync("user1", "UserAccessToken:test", CancellationToken.None)).Should().BeNull(
+            "基类写穿必须删除持久层 refresh 槽位");
     }
 
     // ============================================================

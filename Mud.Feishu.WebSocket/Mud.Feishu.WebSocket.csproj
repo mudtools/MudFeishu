@@ -40,8 +40,8 @@
 		<!-- WS2-22：Mud.HttpUtils.MessageSanitizer 此前仅经 Mud.Feishu.Abstractions 传递可用。
 		     传递依赖在依赖链变动（上游改成 PrivateAssets / 换实现包）时会静默断裂，
 		     而本模块的**出站**日志脱敏是安全相关能力（D5），因此声明直接引用以消除脆弱面。
-		     版本须与全仓库保持一致（2.0.9）——由 TokenMultiAppContractGuards 的单版本守卫强制。 -->
-		<PackageReference Include="Mud.HttpUtils" Version="3.0.4" />
+		     版本须与全仓库保持一致——由 TokenMultiAppContractGuards 的单版本守卫强制。 -->
+		<PackageReference Include="Mud.HttpUtils" Version="3.0.5" />
 	</ItemGroup>
 
 	<ItemGroup>

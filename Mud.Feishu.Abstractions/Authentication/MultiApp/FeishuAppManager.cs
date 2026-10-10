@@ -1477,11 +1477,12 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         // 授权守卫需由调用方显式完成（见 FeishuServiceCollectionExtensions 中「未注册即默认拒绝」的约定）。
         var holder = _serviceProvider.GetRequiredService<IAppContextHolder>();
 
-        // 未注册 IAppAccessAuthorizer 时默认拒绝（本 SDK 默认注册 AllowAllAppAccessAuthorizer）。
+        // 未注册 IAppAccessAuthorizer 时默认拒绝。本 SDK 默认注册「注册表白名单」授权器
+        // （AppKeyAllowListAuthorizer.FromPredicate + IFeishuAppManager.HasApp，见 F-09）。
         var authorizer = _serviceProvider.GetService<IAppAccessAuthorizer>()
             ?? throw new InvalidOperationException(
                 $"未注册 {nameof(IAppAccessAuthorizer)}，无法切换到指定应用上下文（默认拒绝）。" +
-                $"请注册 {nameof(IAppAccessAuthorizer)} 实现（如 AllowAllAppAccessAuthorizer）。");
+                $"请注册 {nameof(IAppAccessAuthorizer)} 实现（默认注册已含 AppKeyAllowListAuthorizer；宿主可替换为绑定租户/用户主体的授权器）。");
 
         if (!authorizer.CanSwitchTo(appKey))
             throw new InvalidOperationException($"当前 {nameof(IAppAccessAuthorizer)} 不允许切换到应用：{appKey}");

@@ -22,6 +22,8 @@ internal sealed class DriveCommentTools(
     private readonly Mud.Feishu.IFeishuTenantV1DriveComments _commentsClient = commentsClient
         ?? throw new ArgumentNullException(nameof(commentsClient));
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+    private readonly int _maxAutoFetchItems = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchPages;
 
     /// <summary>drive.list_comments：列出云文档评论（分页；白名单 comment_id/user_id/is_solved/reply_count/created_at）。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantDriveListCommentsTool))]
@@ -32,11 +34,34 @@ internal sealed class DriveCommentTools(
         {
             var args = DriveListCommentsArgs.Unpack(arguments);
 
+            // B1：fetch_all=true 时由 ToolPagination 循环翻页（唯一翻页实现），false 时等价既有单页行为。
+            if (args.FetchAll == true)
+            {
+                var maxItems = ToolPagination.ResolveMaxItems(args.MaxItems, _maxAutoFetchItems);
+                var aggregated = await ToolPagination.AggregateOutcomesAsync<ApiPageListResult<FileComment>>(
+                    async (token, ct) => FeishuApiResultReader.Read(await _commentsClient
+                        .GetCommentsPageListAsync(
+                            args.FileToken,
+                            args.FileType,
+                            is_solved: args.IsSolved,
+                            page_size: PageSizes.DriveComments,
+                            page_token: token,
+                            cancellationToken: ct)
+                        .ConfigureAwait(false)),
+                    page => (page.HasMore, page.PageToken),
+                    page => ProjectComments(page)["items"]!.AsArray(),
+                    maxItems,
+                    ToolPagination.ResolveMaxPages(_maxAutoFetchPages),
+                    cancellationToken).ConfigureAwait(false);
+                return executor.FromPagedResult(aggregated, maxItems);
+            }
+
             var outcome = FeishuApiResultReader.Read(await _commentsClient
                 .GetCommentsPageListAsync(
                     args.FileToken,
                     args.FileType,
                     is_solved: args.IsSolved,
+                    page_size: PageSizes.DriveComments,
                     page_token: args.PageToken,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false));

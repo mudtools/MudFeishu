@@ -43,6 +43,9 @@ internal static class PageSizes
     /// <summary>drive.get_file_metas（官方单请求上限 200）。</summary>
     public const int DriveMetas = 200;
 
+    /// <summary>drive.list_comments（官方默认 100，此处取 50 控量）。</summary>
+    public const int DriveComments = 50;
+
     /// <summary>bitable.get_records_by_ids（官方单请求上限 100）。</summary>
     public const int BitableRecordsByIds = 100;
 

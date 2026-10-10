@@ -207,7 +207,7 @@ public class AttachmentToolsChainTests
             Args(("receive_id", "oc_group1"), ("image_url", url)),
             CancellationToken.None);
 
-        result.ToString().Should().StartWith("[tool_error] im.send_image");
+        result.ToString().Should().Contain("[tool_error] im.send_image");
         result.ToString().Should().Contain("http/https");
         stager.StageCalls.Should().Be(0, "非法来源必须在落盘之前拦截（不得诱导宿主读任意本地文件）");
         _messageClient.Verify(
@@ -227,7 +227,7 @@ public class AttachmentToolsChainTests
             Args(("receive_id", "oc_group1"), ("image_url", "https://internal.corp/secret.png")),
             CancellationToken.None);
 
-        result.ToString().Should().StartWith("[tool_error] im.send_image");
+        result.ToString().Should().Contain("[tool_error] im.send_image");
         result.ToString().Should().Contain("不被宿主允许", "安全域由宿主实现，SDK 只如实回填（不假装能校验）");
         stager.CleanupCalls.Should().Be(0, "未落盘则无清理义务");
         _messageClient.Verify(

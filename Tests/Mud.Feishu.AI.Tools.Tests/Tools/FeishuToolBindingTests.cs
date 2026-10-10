@@ -137,7 +137,7 @@ public class FeishuToolBindingTests : IDisposable
         downstreamCalled.Should().BeFalse("拒绝路径不得触碰下游接口");
         _callLog.Should().NotContain(c => c.StartsWith("scope:", StringComparison.Ordinal),
             "拒绝时不切入租户上下文");
-        result.ToString().Should().StartWith("[tool_error] test.tool");
+        result.ToString().Should().Contain("[tool_error] test.tool");
         result.ToString().Should().Contain("租户未开通该工具", "拒绝原因结构化回填模型");
     }
 

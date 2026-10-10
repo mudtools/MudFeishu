@@ -428,22 +428,16 @@ public sealed class FeishuToolBinding
         await _retryPolicy.DelayAsync(delayMs, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>调用方是否传了非空幂等键（写工具重试的唯一安全前提）。</summary>
+    /// <summary>
+    /// 调用方是否传了非空幂等键（写工具重试的唯一安全前提）。
+    /// </summary>
+    /// <remarks>
+    /// 经 <see cref="ToolArgs.OptionalString"/> 读取（而非自写 switch）：参数值形态认知必须收敛到
+    /// <c>ToolArgumentNormalizer</c>/<c>ToolArgs</c> 两个入口，各自 switch 是 S1 的根因
+    /// （<c>ToolArgumentShapeContractGuards</c> 机械拦截）。
+    /// </remarks>
     private static bool HasIdempotencyKey(IReadOnlyDictionary<string, object?> arguments)
-    {
-        if (!arguments.TryGetValue("idempotency_key", out var value) || value is null)
-        {
-            return false;
-        }
-
-        return value switch
-        {
-            string text => text.Length > 0,
-            System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.String } element
-                => !string.IsNullOrEmpty(element.GetString()),
-            _ => true,
-        };
-    }
+        => ToolArgs.OptionalString(arguments, "idempotency_key") is { Length: > 0 };
 
     /// <summary>把实际尝试次数回填进错误载荷（首行 JSON 重建，人类可读正文原样保留）。</summary>
     private static FeishuToolResult WithAttempts(FeishuToolResult result, int attempts)
@@ -462,8 +456,11 @@ public sealed class FeishuToolBinding
         var body = newlineIndex >= 0 ? text.Substring(newlineIndex + 1) : string.Empty;
         var payload = result.Error with { Attempts = attempts };
         var jsonLine = ToolErrorPayloadSerializer.Serialize(payload);
+        var rebuilt = FeishuToolResult.FromError(payload, body.Length > 0 ? jsonLine + "\n" + body : jsonLine);
 
-        return FeishuToolResult.FromError(payload, body.Length > 0 ? jsonLine + "\n" + body : jsonLine);
+        // 出站净化：重试路径是"新拼出来的模型可见文本"，与成功路径同属出口——
+        // 不得因为"原文已净化过"就跳过（纵深防御；ToolEgressPurificationContractGuards 断言本行存在）。
+        return SanitizeResult(rebuilt);
     }
 
     /// <summary>

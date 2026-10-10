@@ -76,6 +76,15 @@ internal static class PageSizes
     /// <summary>contact.list_department_members（官方上限 100）。</summary>
     public const int DepartmentMembers = 50;
 
+    /// <summary>spark.list_apps（官方上限 100，此处取 50 控量）。</summary>
+    public const int SparkApps = 50;
+
+    /// <summary>spark.list_tables（官方默认 10、上限 500，此处取 50 控量）。</summary>
+    public const int SparkTables = 50;
+
+    /// <summary>spark.query_table_records（官方默认 10、上限 500，此处取 100 控量）。</summary>
+    public const int SparkRecords = 100;
+
     /// <summary>单条消息 content 预览截断长度。</summary>
     public const int MessagePreviewLength = 200;
 }

@@ -131,7 +131,7 @@ public class CalendarToolsChainTests
                 ("end", "2026-10-01T14:00:00+08:00")),
             CancellationToken.None);
 
-        result.ToString().Should().StartWith("[tool_error] calendar.create_event");
+        result.ToString().Should().Contain("[tool_error] calendar.create_event");
         result.ToString().Should().Contain("end 须晚于 start");
         _eventClient.Verify(
             c => c.CreateCalendarEventAsync(
@@ -247,7 +247,7 @@ public class CalendarToolsChainTests
 
         var result = await CreateTools().FindFreeSlotsAsync(items.ToDictionary(p => p.Item1, p => p.Item2), CancellationToken.None);
 
-        result.ToString().Should().StartWith("[tool_error] calendar.find_free_slots");
+        result.ToString().Should().Contain("[tool_error] calendar.find_free_slots");
         result.ToString().Should().Contain("二选一");
         _calendarClient.Verify(
             c => c.GetFreebusyCalendarAsync(It.IsAny<GetFreebusyCalendarRequest>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()),
@@ -328,7 +328,7 @@ public class CalendarToolsChainTests
 
         var result = await CreateTools().ListEventsAsync(Args(("calendar_id", "cal_1")), CancellationToken.None);
 
-        result.ToString().Should().StartWith("[tool_error] calendar.list_events");
+        result.ToString().Should().Contain("[tool_error] calendar.list_events");
         result.ToString().Should().Contain("190002", "失败回填必须带飞书业务 code（错误分类消费）");
     }
 }

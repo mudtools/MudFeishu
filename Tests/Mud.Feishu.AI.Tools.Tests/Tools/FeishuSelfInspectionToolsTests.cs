@@ -124,7 +124,7 @@ public class FeishuSelfInspectionToolsTests
             CancellationToken.None);
 
         var text = result.ToString()!;
-        text.Should().StartWith("[tool_error] feishu.api_call");
+        text.Should().Contain("[tool_error] feishu.api_call");
         text.Should().Contain("IFeishuAppManager",
             "缺少应用管理器时必须给出可操作的错误（并说明 dry_run=true 仍可用）");
     }

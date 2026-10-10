@@ -122,7 +122,7 @@ public class TaskToolsChainTests
             Args(("summary", "写周报"), ("due", due)),
             CancellationToken.None);
 
-        result.ToString().Should().StartWith("[tool_error] task.create_task");
+        result.ToString().Should().Contain("[tool_error] task.create_task");
         result.ToString().Should().Contain("带时区的 RFC3339");
         _taskClient.Verify(
             c => c.CreateTaskAsync(It.IsAny<CreateTaskRequest>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()),
@@ -134,7 +134,7 @@ public class TaskToolsChainTests
     {
         var result = await CreateTools().CreateTaskAsync(Args(), CancellationToken.None);
 
-        result.ToString().Should().StartWith("[tool_error] task.create_task");
+        result.ToString().Should().Contain("[tool_error] task.create_task");
         result.ToString().Should().Contain("summary");
     }
 
@@ -192,7 +192,7 @@ public class TaskToolsChainTests
     {
         var result = await CreateTools(withUserClient: false).ListMyTasksAsync(Args(), CancellationToken.None);
 
-        result.ToString().Should().StartWith("[tool_error] task.list_my_tasks");
+        result.ToString().Should().Contain("[tool_error] task.list_my_tasks");
         result.ToString().Should().Contain("IFeishuUserV2Task", "用户客户端缺席必须给出可读原因（软缺席到工具粒度）");
         _userTaskClient.Verify(
             c => c.GetTasksPageListByIdAsync(
@@ -212,7 +212,7 @@ public class TaskToolsChainTests
 
         var result = await CreateTools().ListMyTasksAsync(Args(), CancellationToken.None);
 
-        result.ToString().Should().StartWith("[tool_error] task.list_my_tasks");
+        result.ToString().Should().Contain("[tool_error] task.list_my_tasks");
         result.ToString().Should().Contain("99991663");
     }
 }

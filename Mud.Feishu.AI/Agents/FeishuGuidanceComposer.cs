@@ -85,11 +85,17 @@ public static class FeishuGuidanceComposer
     /// <b>不设配置键</b>（对齐 R4.1/R-4 与 R5 治理：常量而非开关）。
     /// </para>
     /// <para>
+    /// <b>R7 / A4~A6</b>：16384 → <b>24576</b>。R7 新增三个域（Board / Attendance / Spark）
+    /// 的 L1 资产共 <b>4,629 字符</b>（三域分别 1,286 / 1,576 / 1,767），20 个域实测
+    /// <b>20,079 字符</b>——维持 16384 会让尾部域（按启用工具数降序）被整域丢弃，
+    /// 而复现 R5/B-12 已修过的失败形态。24576 对 20,079 留 ≈22% 余量（≈4 个新域）。
+    /// </para>
+    /// <para>
     /// 守卫：<c>GuidanceAssetContractGuards</c> 的"全域拼装零丢弃"用例锁死该不变量——
     /// 未来再加长 md 会立刻报红，迫使本常量与内容长度同批评审。
     /// </para>
     /// </remarks>
-    public const int MaxGuidanceLength = 16384;
+    public const int MaxGuidanceLength = 24576;
 
     private const string Separator = "\n\n";
 

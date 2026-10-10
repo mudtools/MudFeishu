@@ -24,21 +24,27 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// </remarks>
 public class PaginationContractGuards
 {
-    /// <summary>方案 §3.B1 首批 12 个分页工具名。</summary>
+    /// <summary>方案 §3.B1 首批 12 个分页工具名 + R7 增量（Drive 评论 / Spark 三工具）。</summary>
     private static readonly string[] PaginatedTools =
     [
         "bitable.list_tables",
         "bitable.query_records",
         "wiki.list_nodes",
         "drive.list_folder_files",
+        "drive.list_comments",
         "docx.list_block_children",
         "docx.get_document_blocks",
+        "docx.get_chat_announcement",
         "calendar.list_events",
         "task.list_my_tasks",
         "approval.list_pending_tasks",
         "mail.list_messages",
         "contact.list_departments",
         "contact.list_department_members",
+        // R7/A6：Spark 妙搭三个分页工具（官方 page_size 不进模型面，只暴露 fetch_all/max_items）。
+        "spark.list_apps",
+        "spark.list_tables",
+        "spark.query_table_records",
     ];
 
     /// <summary>

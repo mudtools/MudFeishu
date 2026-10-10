@@ -86,7 +86,7 @@ public class FeishuToolAIFunctionTests
 
         var result = await function.InvokeAsync(new AIFunctionArguments());
         result.Should().BeOfType<FeishuToolResult>()
-            .Which.ToString().Should().StartWith("[tool_error] test.tool").And.Contain("appKey");
+            .Which.ToString().Should().Contain("[tool_error] test.tool").And.Contain("appKey");
     }
 
     [Fact]

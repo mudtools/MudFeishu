@@ -123,6 +123,14 @@ internal sealed class BoardTools(Mud.Feishu.IFeishuTenantV1Board? boardClient = 
                 Theme = args.ThemeId,
             };
 
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "PATCH", "/open-apis/board/v1/whiteboards/{whiteboard_id}",
+                    ToolDryRun.IdempotencyNote(null),
+                    ("theme", args.ThemeId.Length)));
+            }
+
             // UpdateWhiteboardThemeAsync 返回 FeishuNullDataApiResult?（无 Data 载荷）。
             // 走 RequireNullDataSuccess 模式：FeishuApiResultReader.Read<object> 在 Data 为 null 时
             // 会误判为失败，而 FeishuNullDataApiResult 的 Data 天然为 null。
@@ -164,6 +172,14 @@ internal sealed class BoardTools(Mud.Feishu.IFeishuTenantV1Board? boardClient = 
                 PlantUmlCode = args.Content,
                 SyntaxType = args.DslType == "plantuml" ? 1 : 2,
             };
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "POST", "/open-apis/board/v1/whiteboards/{whiteboard_id}/nodes/plantuml",
+                    ToolDryRun.IdempotencyNote(null),
+                    ("dsl_type", args.DslType.Length), ("content", args.Content.Length)));
+            }
 
             // CreatePlantumlWhiteboardNodeAsync 返回 FeishuNullDataApiResult?（无 Data 载荷）。
             var result = await Require(executor.ToolName)
@@ -215,6 +231,14 @@ internal sealed class BoardTools(Mud.Feishu.IFeishuTenantV1Board? boardClient = 
                 Nodes = [.. nodeList],
             };
 
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "POST", "/open-apis/board/v1/whiteboards/{whiteboard_id}/nodes",
+                    ToolDryRun.IdempotencyNote(args.IdempotencyKey),
+                    ("nodes", nodeList.Count)));
+            }
+
             var outcome = FeishuApiResultReader.Read(await Require(executor.ToolName)
                 .CreateWhiteboardNodeAsync(
                     args.WhiteboardId,
@@ -262,6 +286,14 @@ internal sealed class BoardTools(Mud.Feishu.IFeishuTenantV1Board? boardClient = 
             {
                 Ids = [.. args.NodeIds],
             };
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "DELETE", "/open-apis/board/v1/whiteboards/{whiteboard_id}/nodes/batch_delete",
+                    "预演不占坑：本操作无幂等键（删除不可撤销，请核对 node_ids 后去掉 dry_run 重放）",
+                    ("node_ids", args.NodeIds.Length)));
+            }
 
             // BatchDeleteWhiteboardNodeAsync 返回 FeishuApiResult<BatchDeleteWhiteboardNodeResult>?。
             // 成功时 Data 可能为 null（无业务载荷）——只检查 Code，不走 Read<T>（Data null 会误判失败）。

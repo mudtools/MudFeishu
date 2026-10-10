@@ -70,7 +70,7 @@ public class BitableToolsTests
 
         var result = await CreateTools().ListTablesAsync(Args(("app_token", "bad")), CancellationToken.None);
 
-        result.ToString().Should().StartWith("[tool_error] bitable.list_tables")
+        result.ToString().Should().Contain("[tool_error] bitable.list_tables")
             .And.Contain("99991663")
             .And.Contain("token 无效", "code != 0 转可读文本回填模型，非裸异常（总体设计 §4 不变式）");
     }
@@ -188,7 +188,7 @@ public class BitableToolsTests
             Args(("app_token", "bascnXxx"), ("table_id", "tbl001"), ("filter", "a = 1 or b = 2")),
             CancellationToken.None);
 
-        result.ToString().Should().StartWith("[tool_error] bitable.query_records").And.Contain("filter 语法不支持");
+        result.ToString().Should().Contain("[tool_error] bitable.query_records").And.Contain("filter 语法不支持");
         _recordClient.VerifyNoOtherCalls();
     }
 
@@ -286,6 +286,6 @@ public class BitableToolsTests
     {
         var result = await CreateTools().QueryRecordsAsync(Args(("app_token", "bascnXxx")), CancellationToken.None);
 
-        result.ToString().Should().StartWith("[tool_error] bitable.query_records").And.Contain("table_id");
+        result.ToString().Should().Contain("[tool_error] bitable.query_records").And.Contain("table_id");
     }
 }

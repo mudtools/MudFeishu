@@ -162,7 +162,7 @@ public class ToolArgumentShapeContractGuards
             .ToArray();
 
         files.Should().HaveCount(
-            16,
+            20,
             "Curation/ 的声明文件数从 16 变为 {0}：{1}。新增/拆分域声明文件属**有意的契约变更**，"
             + "请确认新文件只含工具契约并更新本基线",
             files.Length,
@@ -178,8 +178,8 @@ public class ToolArgumentShapeContractGuards
             .ToArray();
 
         interfaces.Should().HaveCount(
-            125,
-            "Curation/ 的工具契约接口数从 125 变为 {0}——新增/删除工具属有意的契约变更，请同步更新本基线"
+            161,
+            "Curation/ 的工具契约接口数从 161 变为 {0}——新增/删除工具属有意的契约变更，请同步更新本基线"
             + "（若同时看到『文件数没变而接口数变了』，说明有文件被塞进了非契约内容）",
             interfaces.Length);
     }

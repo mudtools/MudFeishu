@@ -138,6 +138,22 @@ internal static class GuardProviderFactory
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableRecord>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1Docx>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DocxBlocks>().Object)
+            // R7/A2：Docx 深化执行器（DocxDeepTools）的群公告客户端——**必选依赖**，
+            // 缺席时该执行器整体解析失败 ⇒ 9 个 docx 深化工具静默缺席（全量契约断言随之落空）。
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DocxAnnouncement>().Object)
+            // R7/A4：Board 画板（可空依赖，缺席时运行时回填结构化错误——此处仍注册以覆盖"齐备"路径）。
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1Board>().Object)
+            // R7/A5：Attendance 考勤 6 个客户端（全部可空——注册以满足"客户端齐备"的全量契约断言）。
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuUserV1AttendanceUserTask>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1AttendanceUserFlows>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1AttendanceUserDailyShifts>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1AttendanceStats>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1AttendanceRemedys>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1AttendanceShifts>().Object)
+            // R7/A6：Spark 妙搭 3 个客户端（tenant 应用面 / user 应用面 / user 数据表面）。
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1SparkApp>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuUserV1SparkApp>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuUserV1SparkAppTable>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV2WikiNodes>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV2SearchDocWiki>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1Message>().Object)

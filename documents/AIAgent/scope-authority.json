@@ -1,13 +1,19 @@
 {
   "source": "飞书开放平台 · 应用权限（scope 名称与官方文档核对；每次新增工具引入新 scope 时必须同批回填本清单并在「核对」栏留痕）",
-  "lastReviewed": "2026-09-29",
+  "lastReviewed": "2026-10-10",
   "_R5T0_2": "R5 WP0-T0-2 核对结果：aily:knowledge:readonly 与 im:resource 两项 ⚠️ 维持——无法在无控制台权限时定论；下次宿主接入时由控制台二次确认后回写。",
+  "_R7_A5A6": "R7 A5/A6 新增：attendance:* / spark:* / board:* 共 8 个 scope——按官方 API 文档取值与核对，控制台开通前请在「权限管理」页按名称搜索确认（本批标 ⚠️ 待核对）。",
   "scopes": {
-    "aily:knowledge:readonly": "⚠️ Aily 知识库 · 只读（knowledge.search 使用；scope 名称待核对：控制台二次确认，存疑但暂时保留）",
+    "aily:knowledge:readonly": "⚠️ 待核对：Aily 知识库 · 只读（knowledge.search 使用；scope 名称待核对：控制台二次确认，存疑但暂时保留）",
     "approval:approval": "审批 · 读写（approval.create_instance / approve_task 使用）",
     "approval:approval:readonly": "审批 · 只读（approval.list_pending_tasks / approval.get_instance 使用）",
+    "attendance:rule": "⚠️ 待核对：考勤 · 班次规则只读（R7/A5 新增：attendance.get_shift 使用）",
+    "attendance:stats": "⚠️ 待核对：考勤 · 统计报表只读（R7/A5 新增：attendance.query_stats_data 使用）",
+    "attendance:task": "⚠️ 待核对：考勤 · 打卡与补卡读写（R7/A5 新增：attendance.query_my_flow / query_user_flow / get_flow / query_daily_shift / query_my_remedys / submit_remedy 使用）",
     "bitable:app": "多维表格 · 读写（bitable.add_record 使用）",
     "bitable:app:readonly": "多维表格 · 只读（bitable.list_tables / list_fields / query_records / get_records_by_ids 使用）",
+    "board:whiteboard": "⚠️ 待核对：画板 · 读写（R7/A4 新增：board.render_dsl / create_nodes / update_theme / delete_nodes 使用）",
+    "board:whiteboard:readonly": "⚠️ 待核对：画板 · 只读（R7/A4 新增：board.get_theme / board.list_nodes 使用）",
     "calendar:calendar": "日历 · 读写（calendar.create_event 使用）",
     "calendar:calendar:readonly": "日历 · 只读（calendar.find_free_slots / list_events 使用）",
     "contact:department.base:readonly": "通讯录 · 部门基本信息只读（contact.list_departments 使用）",
@@ -20,7 +26,7 @@
     "im:message": "发送与回复消息 · 读写（im.reply_message 使用）",
     "im:message:readonly": "获取与查看单聊、群组消息 · 只读（im.get_history_messages / get_message_content / search_messages 使用）",
     "im:message:send_as_bot": "以应用身份发消息（im.send_message / im.send_image / im.send_file 使用）",
-    "im:resource": "⚠️ 获取与上传图片或文件资源（im.send_image / im.send_file 的上传步骤使用；scope 名称待核对：控制台二次确认）",
+    "im:resource": "⚠️ 待核对：获取与上传图片或文件资源（im.send_image / im.send_file 的上传步骤使用；scope 名称待核对：控制台二次确认）",
     "mail:mailbox": "邮箱 · 读写（mail.send_message 使用）",
     "mail:mailbox:readonly": "邮箱 · 只读（mail.list_messages / mail.get_message 使用）",
     "okr:okr:readonly": "OKR · 只读（R6/S2 新增：okr.list_periods 使用）",
@@ -30,6 +36,9 @@
     "okr:okr.progress:readonly": "OKR 进展 · 只读（R6/S2 新增：okr.list_objective_progresses / list_key_result_progresses 使用）",
     "okr:okr.setting:read": "OKR 设置 · 只读（R6/S2 新增：okr.list_categories 使用）",
     "search:docs:readonly": "搜索文档 · 只读（search.doc_wiki 使用）",
+    "spark:app": "⚠️ 待核对：妙搭 · 应用读写（R7/A6 新增：spark.create_app / patch_app / update_app_visibility 使用）",
+    "spark:app:readonly": "⚠️ 待核对：妙搭 · 应用只读（R7/A6 新增：spark.list_apps / get_app_analytics / get_app_visibility 使用）",
+    "spark:table": "⚠️ 待核对：妙搭 · 数据表读写（R7/A6 新增：spark.list_tables / query_table_records / add_table_records / update_table_records 使用）",
     "vc:meeting": "视频会议 · 读写（R6/S3 新增：vc.set_host / vc.invite_participants / vc.end_meeting 使用）",
     "vc:meeting:readonly": "视频会议 · 只读（R6/S3 新增：vc.list_meetings / vc.get_meeting / vc.list_participants 使用）",
     "vc:recording:readonly": "会议录制 · 只读（R6/S3 新增：vc.get_recording 使用）",
@@ -41,8 +50,70 @@
     "task:task": "任务 · 读写（task.create_task 使用）",
     "task:task:readonly": "任务 · 只读（task.list_my_tasks 使用）",
     "feishu:base": "元工具 · 只读（feishu.capability_lookup / feishu.guidance_read 使用）",
-  "minutes:minutes:readonly": "妙记 · 只读（R5/F-11 新增：minutes.get / minutes.get_artifacts 使用）",
-  "wiki:wiki:readonly": "知识库 · 只读（wiki.get_node / list_nodes 使用）",
-  "wiki:wiki": "知识库 · 读写（R5/F-11 新增：wiki.create_node / move_node / move_docs_to_space 使用）"
-  }
+    "minutes:minutes:readonly": "妙记 · 只读（R5/F-11 新增：minutes.get / minutes.get_artifacts 使用）",
+    "wiki:wiki:readonly": "知识库 · 只读（wiki.get_node / list_nodes 使用）",
+    "wiki:wiki": "知识库 · 读写（R5/F-11 新增：wiki.create_node / move_node / move_docs_to_space 使用）"
+  },
+  "piiTools": [
+    {
+      "tool": "attendance.query_user_flow",
+      "category": "他人考勤打卡流水",
+      "defaultDisabled": true,
+      "note": "DP-A5-1 档位 ①：按 user_id 批量查他人打卡时间/地点，默认不在任何白名单，需宿主显式启用"
+    },
+    {
+      "tool": "attendance.get_flow",
+      "category": "他人考勤打卡详情",
+      "defaultDisabled": true,
+      "note": "DP-A5-1 档位 ①：单条打卡详情（含地点），默认不在任何白名单，需宿主显式启用"
+    },
+    {
+      "tool": "attendance.query_stats_data",
+      "category": "考勤统计（含员工姓名）",
+      "defaultDisabled": false,
+      "note": "统计报表含员工姓名与出勤明细，宿主可经 IToolResultShaper 二次聚合"
+    },
+    {
+      "tool": "contact.list_department_members",
+      "category": "员工通讯录（姓名/手机/邮箱）",
+      "defaultDisabled": false,
+      "note": "回归补登（R7/DP-A5-1 ⑥）：员工基本信息的批量出口"
+    },
+    {
+      "tool": "contact.search_user",
+      "category": "员工通讯录检索",
+      "defaultDisabled": false,
+      "note": "回归补登（R7/DP-A5-1 ⑥）"
+    },
+    {
+      "tool": "contact.get_user",
+      "category": "员工通讯录详情",
+      "defaultDisabled": false,
+      "note": "回归补登（R7/DP-A5-1 ⑥）"
+    },
+    {
+      "tool": "im.get_history_messages",
+      "category": "群聊/单聊历史消息",
+      "defaultDisabled": false,
+      "note": "回归补登（R7/DP-A5-1 ⑥）：会话历史可能含个人信息"
+    },
+    {
+      "tool": "mail.list_messages",
+      "category": "邮箱邮件列表",
+      "defaultDisabled": false,
+      "note": "回归补登（R7/DP-A5-1 ⑥）"
+    },
+    {
+      "tool": "mail.get_message",
+      "category": "邮箱邮件正文",
+      "defaultDisabled": false,
+      "note": "回归补登（R7/DP-A5-1 ⑥）"
+    },
+    {
+      "tool": "minutes.get_artifacts",
+      "category": "会议逐字稿（他人语音内容）",
+      "defaultDisabled": false,
+      "note": "回归补登（R7/DP-A5-1 ⑥）：逐字稿按预览长度截断，宿主可经 IToolResultShaper 进一步裁剪"
+    }
+  ]
 }

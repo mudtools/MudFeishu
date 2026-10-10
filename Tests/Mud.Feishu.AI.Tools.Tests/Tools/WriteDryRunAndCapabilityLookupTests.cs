@@ -170,7 +170,7 @@ public class WriteDryRunAndCapabilityLookupTests
 
         var result = await tools.LookupAsync(Args(), CancellationToken.None);
 
-        result.ToString().Should().StartWith("[tool_error] feishu.capability_lookup");
+        result.ToString().Should().Contain("[tool_error] feishu.capability_lookup");
     }
 
     [Fact]

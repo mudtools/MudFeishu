@@ -138,8 +138,13 @@ public class DomainRegistrarTests
     // R5 / F-11（S-13）：minutes 是新增的独立只读域，"全域 = 逐域联合"的等价性
     // 要求这里也显式调一次——否则 minutes 工具只出现在全域入口，逐域入口缺失。
     .AddFeishuMinutesReadTools()
-            // R6 / S2：Okr 只读域同样是独立入口（写面由 AddFeishuWriteTools 覆盖）。
-            .AddFeishuOkrTools()
+    // R7 / A4~A6：Board / Attendance / Spark 三个新域同样是独立入口
+    //（混合域注册整类，写面默认不启用——见各入口的 remarks）。
+    .AddFeishuBoardTools()
+    .AddFeishuAttendanceTools()
+    .AddFeishuSparkTools()
+    // R6 / S2：Okr 只读域同样是独立入口（写面由 AddFeishuWriteTools 覆盖）。
+    .AddFeishuOkrTools()
             // R6 / S3：VideoConferencing 只读域同理（写面含 user 身份工具，由 AddFeishuWriteTools 覆盖）。
             .AddFeishuVcTools()
             // 能力出处元工具是一个独立入口：它不属于任何业务域，

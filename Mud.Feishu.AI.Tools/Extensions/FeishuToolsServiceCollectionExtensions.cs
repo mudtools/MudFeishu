@@ -78,11 +78,18 @@ public static class FeishuToolsServiceCollectionExtensions
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure).AddFeishuBitableToolsCore();
 
-    /// <summary>按域注册 Docx 工具（2 个只读）。</summary>
+    /// <summary>按域注册 Docx 工具（基础 2 个只读 + R7/A2 深化 9 个：读 5 + 写 4）。</summary>
+    /// <remarks>
+    /// 两个 Core 都必须在此登记：<c>AddFeishuDocxToolsCore</c>（基础只读）+
+    /// <c>AddFeishuDocxDeepToolsCore</c>（块级编辑 / Markdown 正文 / 群公告，单执行器混合域）。
+    /// 这也保证"逐域扩展 == 全域入口"的等价性（DomainRegistrarTests 断言）。
+    /// </remarks>
     public static IServiceCollection AddFeishuDocxTools(
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuDocxToolsCore();
+        => AddFeishuToolInfrastructure(services, configure)
+            .AddFeishuDocxToolsCore()
+            .AddFeishuDocxDeepToolsCore();
 
     /// <summary>按域注册 Wiki 工具（2 个只读）。</summary>
     public static IServiceCollection AddFeishuWikiTools(
@@ -109,6 +116,29 @@ public static class FeishuToolsServiceCollectionExtensions
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure).AddFeishuBoardToolsCore();
+
+    /// <summary>按域注册 Attendance 考勤工具（7 个只读 + 1 个写，R7/A5）。</summary>
+    /// <remarks>
+    /// ⚠️ <c>attendance.query_user_flow</c> / <c>attendance.get_flow</c> 是 <b>PII 敏感</b>且<b>默认不启用</b>
+    /// （DP-A5-1 档位 ①）——宿主须显式加白名单；<c>attendance.query_my_flow</c> 是 <b>user 身份</b>工具，
+    /// 启用时必须在 <c>FeishuAgent:AllowedIdentities</c> 放行 <c>user</c>，否则装配期 fail-fast。
+    /// </remarks>
+    public static IServiceCollection AddFeishuAttendanceTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure).AddFeishuAttendanceToolsCore();
+
+    /// <summary>按域注册 Spark 妙搭工具（10 个：应用面 6 + 数据表面 4，R7/A6）。</summary>
+    /// <remarks>
+    /// <c>spark.create_app</c> / <c>patch_app</c> / <c>update_app_visibility</c> / 数据表写面为 <b>user 身份</b>工具，
+    /// 启用时必须在 <c>FeishuAgent:AllowedIdentities</c> 放行 <c>user</c>，否则装配期 fail-fast。
+    /// </remarks>
+    public static IServiceCollection AddFeishuSparkTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure)
+            .AddFeishuSparkAppToolsCore()
+            .AddFeishuSparkTableToolsCore();
 
     /// <summary>按域注册 OKR 只读工具（9 个只读，R6/S2；写工具经 <see cref="AddFeishuWriteTools"/>）。</summary>
     /// <remarks>
@@ -501,6 +531,15 @@ public static class FeishuToolsServiceCollectionExtensions
                     // 漏加即「工具静默不入注册表」（ToolDomainCoresWiringContractTests 会报红）。
                     .AddFeishuBoardToolsCore()
 
+                    // R7 / A5：Attendance 考勤域执行器 AttendanceTools（8 个工具：7 只读 + 1 写）。
+                    // 与 Board 同属「单执行器混合域」（注册整类，写工具默认不启用）。
+                    .AddFeishuAttendanceToolsCore()
+
+                    // R7 / A6：Spark 妙搭域执行器 SparkAppTools（6）+ SparkTableTools（4）。
+                    // 两个执行器类各出一枚 Core——**两行都不可漏**（漏一行即该域一半工具静默缺席）。
+                    .AddFeishuSparkAppToolsCore()
+                    .AddFeishuSparkTableToolsCore()
+
                     // R6 / S2：OKR 域只读执行器 OkrTools（9 个工具）。
                     // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，
                     // 漏加即「工具静默不入注册表」（ToolDomainCoresWiringContractTests 会报红）。
@@ -532,8 +571,11 @@ public static class FeishuToolsServiceCollectionExtensions
             .AddFeishuApprovalWriteToolsCore()
             // WP2/R5 写入面补齐：docx/sheets/bitable(update/delete)/drive 写执行器
             .AddFeishuDocxWriteToolsCore()
-            // A2 / Docx 深化写入面（create_block / create_descendant_blocks / update_block / set_chat_announcement）。
-            .AddFeishuDocxDeepToolsCore()
+            // ⚠️ 不要在此再列一次 AddFeishuDocxDeepToolsCore()：DocxDeepTools 是**单执行器混合域**
+            // （读 5 + 写 4 由同一个生成 Core 整体注册，见 AddFeishuReadonlyToolCores 的登记）。
+            // 两链同时登记会让该执行器的域注册器被装配两次 ⇒ 工具在注册表里重复注册
+            // （FeishuToolRegistry.Register 直接抛"工具已注册"），而该缺陷在客户端缺席时**不可见**
+            // （注册器解析失败被跳过），一旦宿主补齐客户端就整域炸掉。
             .AddFeishuSheetsWriteToolsCore()
             .AddFeishuBitableWriteRecordOpsCore()
             .AddFeishuDriveWriteToolsCore()

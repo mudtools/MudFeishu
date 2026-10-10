@@ -36,7 +36,7 @@ public interface IFeishuTenantBoardGetThemeTool
 /// R7 / A4：更新画板主题（幂等）。
 /// </remarks>
 [FeishuTool("board.update_theme",
-    Description = "更新画板主题（配色方案）。幂等操作。需 board:whiteboard 权限。",
+    Description = "更新画板主题（配色方案）。幂等操作。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 board:whiteboard 权限。",
     RequiredScopes = ["board:whiteboard"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1Board) + "." + nameof(IFeishuTenantV1Board.UpdateWhiteboardThemeAsync))]
@@ -47,6 +47,7 @@ public interface IFeishuTenantBoardUpdateThemeTool
     Task<string> UpdateWhiteboardThemeAsync(
         [ToolParameter("whiteboard_id", "画板 ID（来自文档 block_type=43 的 block.token）", Required = true)] string whiteboard_id,
         [ToolParameter("theme_id", "目标主题 ID", Required = true)] string theme_id,
+        [ToolParameter("dry_run", "仅预演不更新（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -58,7 +59,7 @@ public interface IFeishuTenantBoardUpdateThemeTool
 /// 模型无需懂画板节点结构，只需输出 DSL 文本。
 /// </remarks>
 [FeishuTool("board.render_dsl",
-    Description = "将 PlantUML 或 Mermaid 源码解析为画板节点（协同编辑）。模型只需输出 DSL 文本，无需了解画板节点结构。需 board:whiteboard 权限。",
+    Description = "将 PlantUML 或 Mermaid 源码解析为画板节点（协同编辑）。模型只需输出 DSL 文本，无需了解画板节点结构。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 board:whiteboard 权限。",
     RequiredScopes = ["board:whiteboard"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1Board) + "." + nameof(IFeishuTenantV1Board.CreatePlantumlWhiteboardNodeAsync))]
@@ -70,6 +71,7 @@ public interface IFeishuTenantBoardRenderDslTool
         [ToolParameter("whiteboard_id", "画板 ID（来自文档 block_type=43 的 block.token）", Required = true)] string whiteboard_id,
         [ToolParameter("dsl_type", "DSL 类型：plantuml 或 mermaid", Required = true)] string dsl_type,
         [ToolParameter("content", "DSL 源码内容（PlantUML 或 Mermaid 语法）", Required = true)] string content,
+        [ToolParameter("dry_run", "仅预演不渲染（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -80,7 +82,7 @@ public interface IFeishuTenantBoardRenderDslTool
 /// R7 / A4：创建画板节点。底层支持 <c>client_token</c> 幂等 → 本工具暴露 <c>idempotency_key</c>。
 /// </remarks>
 [FeishuTool("board.create_nodes",
-    Description = "在画板中创建节点（支持批量创建、父子关系）。支持幂等：传入 idempotency_key 可安全重试。需 board:whiteboard 权限。",
+    Description = "在画板中创建节点（支持批量创建、父子关系）。支持幂等：传入 idempotency_key 可安全重试。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 board:whiteboard 权限。",
     RequiredScopes = ["board:whiteboard"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1Board) + "." + nameof(IFeishuTenantV1Board.CreateWhiteboardNodeAsync))]
@@ -92,6 +94,7 @@ public interface IFeishuTenantBoardCreateNodesTool
         [ToolParameter("whiteboard_id", "画板 ID（来自文档 block_type=43 的 block.token）", Required = true)] string whiteboard_id,
         [ToolParameter("nodes_json", "节点数组 JSON（每个节点含 type/parent_id/props 等）", Required = true)] string nodes_json,
         [ToolParameter("idempotency_key", "幂等键（可选，传入后相同键的重复请求不会创建重复节点）")] string? idempotency_key = null,
+        [ToolParameter("dry_run", "仅预演不创建（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -121,7 +124,7 @@ public interface IFeishuTenantBoardListNodesTool
 /// R7 / A4：批量删除画板节点。<b>子节点会被递归删除</b>——描述中声明后果。
 /// </remarks>
 [FeishuTool("board.delete_nodes",
-    Description = "批量删除画板节点。注意：子节点会被递归删除，操作不可逆。需 board:whiteboard 权限。",
+    Description = "批量删除画板节点。⚠️ 子节点会被递归删除，操作不可逆。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演确认；需 board:whiteboard 权限。",
     RequiredScopes = ["board:whiteboard"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1Board) + "." + nameof(IFeishuTenantV1Board.BatchDeleteWhiteboardNodeAsync))]
@@ -132,5 +135,6 @@ public interface IFeishuTenantBoardDeleteNodesTool
     Task<string> BatchDeleteWhiteboardNodeAsync(
         [ToolParameter("whiteboard_id", "画板 ID（来自文档 block_type=43 的 block.token）", Required = true)] string whiteboard_id,
         [ToolParameter("node_ids", "要删除的节点 ID 数组", Required = true)] string[] node_ids,
+        [ToolParameter("dry_run", "仅预演不删除（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }

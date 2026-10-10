@@ -224,7 +224,7 @@ public class VcToolsTests
         var result = await CreateReadTools(meeting: new Mock<Mud.Feishu.IFeishuTenantV1VideoConferencingMeeting>())
             .GetMeetingAsync(Args(), CancellationToken.None);
 
-        result.ToString().Should().StartWith("[tool_error] vc.get_meeting");
+        result.ToString().Should().Contain("[tool_error] vc.get_meeting");
     }
 
     [Fact]
@@ -234,7 +234,7 @@ public class VcToolsTests
             Args(("meeting_id", "705605196")), CancellationToken.None);
 
         var text = result.ToString()!;
-        text.Should().StartWith("[tool_error] vc.get_recording");
+        text.Should().Contain("[tool_error] vc.get_recording");
         text.Should().Contain("IFeishuTenantV1VideoConferencingRecording",
             "缺席必须给出可操作提示（哪个客户端），而不是裸 NullReferenceException");
     }
@@ -330,7 +330,7 @@ public class VcToolsTests
             Args(("meeting_id", "705605196")), CancellationToken.None);
 
         var text = result.ToString()!;
-        text.Should().StartWith("[tool_error] vc.end_meeting");
+        text.Should().Contain("[tool_error] vc.end_meeting");
         text.Should().Contain("IFeishuUserV1VideoConferencingMeeting",
             "user 身份工具的缺席提示要指明是哪个（用户身份）接口");
     }

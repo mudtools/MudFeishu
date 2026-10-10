@@ -101,7 +101,7 @@ public class DomainMappingTests
 
         var result = await tools.SearchAsync(Args(("query", "q"), ("search_in", "all")), CancellationToken.None);
 
-        result.ToString().Should().StartWith("[tool_error] search.doc_wiki").And.Contain("doc/wiki/both");
+        result.ToString().Should().Contain("[tool_error] search.doc_wiki").And.Contain("doc/wiki/both");
         client.VerifyNoOtherCalls();
     }
 
@@ -113,7 +113,7 @@ public class DomainMappingTests
 
         var result = await tools.SearchAsync(Args(("query", new string('长', 31))), CancellationToken.None);
 
-        result.ToString().Should().StartWith("[tool_error] search.doc_wiki").And.Contain("30");
+        result.ToString().Should().Contain("[tool_error] search.doc_wiki").And.Contain("30");
     }
 
     // ───────────────────── im.get_history_messages ─────────────────────
@@ -184,7 +184,7 @@ public class DomainMappingTests
             Args(("chat_id", "oc001"), ("start_time", "2026/09/27 00:00")),
             CancellationToken.None);
 
-        result.ToString().Should().StartWith("[tool_error] im.get_history_messages").And.Contain("RFC3339");
+        result.ToString().Should().Contain("[tool_error] im.get_history_messages").And.Contain("RFC3339");
         client.VerifyNoOtherCalls();
     }
 

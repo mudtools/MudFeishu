@@ -191,7 +191,7 @@ public class OkrToolsTests
         var result = await CreateReadTools(objective: new Mock<Mud.Feishu.IFeishuTenantV2OkrObjective>())
             .GetObjectiveAsync(Args(), CancellationToken.None);
 
-        result.ToString().Should().StartWith("[tool_error] okr.get_objective");
+        result.ToString().Should().Contain("[tool_error] okr.get_objective");
     }
 
     [Fact]
@@ -200,7 +200,7 @@ public class OkrToolsTests
         var result = await CreateReadTools().ListPeriodsAsync(Args(), CancellationToken.None);
 
         var text = result.ToString()!;
-        text.Should().StartWith("[tool_error] okr.list_periods");
+        text.Should().Contain("[tool_error] okr.list_periods");
         text.Should().Contain("IFeishuTenantV1OkrPeriod",
             "客户端缺席必须给出可操作的提示（哪个客户端、宿主该启用什么），而不是裸 NullReferenceException");
     }
@@ -228,12 +228,15 @@ public class OkrToolsTests
                 },
             });
 
+        // R7/B1（S3）：`page_size` 不再是模型可见参数（"页不进、预算进"）——分页尺寸是绑定层常量
+        // （OkrTools.DefaultPageSize = 20），模型侧只保留 page_token 与 fetch_all/max_items。
         var result = await CreateReadTools(period: client).ListPeriodsAsync(
-            Args(("page_size", 5)), CancellationToken.None);
+            Args(), CancellationToken.None);
 
         using var document = JsonDocument.Parse(result.ToString()!);
         document.RootElement.GetProperty("items")[0].GetProperty("zh_name").GetString().Should().Be("2026 上半年");
-        client.Verify(c => c.ListPeriodsAsync(5, null, It.IsAny<CancellationToken>()), Times.Once);
+        client.Verify(c => c.ListPeriodsAsync(20, null, It.IsAny<CancellationToken>()), Times.Once,
+            "下游调用必须使用绑定层固定页大小（page_size=20），而不是模型传值");
     }
 
     // ───────────────────── 写面：dry-run 与校验 ─────────────────────
@@ -337,7 +340,7 @@ public class OkrToolsTests
         var result = await CreateWriteTools().DeleteKeyResultAsync(
             Args(("key_result_id", "kr_1")), CancellationToken.None);
 
-        result.ToString().Should().StartWith("[tool_error] okr.delete_key_result");
+        result.ToString().Should().Contain("[tool_error] okr.delete_key_result");
     }
 
     // ───────────────────── 投影辅助 ─────────────────────

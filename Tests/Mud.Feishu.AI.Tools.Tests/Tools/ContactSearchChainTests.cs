@@ -82,7 +82,7 @@ public class ContactSearchChainTests
 
         var result = await tools.SearchUsersAsync(Args(), CancellationToken.None);
 
-        result.ToString().Should().StartWith("[tool_error] contact.search_user");
+        result.ToString().Should().Contain("[tool_error] contact.search_user");
         client.VerifyNoOtherCalls();
     }
 

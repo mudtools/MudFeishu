@@ -61,12 +61,13 @@ public class ToolEnumClosedSetContractTests
             .ToArray();
 
         points.Should().HaveCount(
-            1,
-            "已标注闭集的参数点位从 1 变为 {0} 个：{1}；新增属有意的契约收紧，请更新基线",
+            2,
+            "已标注闭集的参数点位从 2 变为 {0} 个：{1}；新增属有意的契约收紧，请更新基线",
             points.Length,
             string.Join(" | ", points));
 
         points.Should().Contain("docx.append_blocks.block_type");
+        points.Should().Contain("docx.create_block.block_type");
     }
 
     /// <summary>反向自证：解析器必须真的读到 parameters 与 enum，否则上面两条会假绿。</summary>

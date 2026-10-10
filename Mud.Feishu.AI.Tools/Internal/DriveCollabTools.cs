@@ -337,6 +337,8 @@ internal sealed class DrivePermissionTools(
         {
             var args = DriveGrantPermissionArgs.Unpack(arguments);
 
+            ValidateMemberType(args.MemberType);
+
             if (ToolDryRun.IsRequested(args.DryRun))
             {
                 return FeishuToolResult.FromText(ToolDryRun.Describe(
@@ -441,6 +443,8 @@ internal sealed class DrivePermissionTools(
         {
             var args = DriveTransferOwnerArgs.Unpack(arguments);
 
+            ValidateMemberType(args.MemberType);
+
             if (ToolDryRun.IsRequested(args.DryRun))
             {
                 return FeishuToolResult.FromText(ToolDryRun.Describe(
@@ -473,6 +477,22 @@ internal sealed class DrivePermissionTools(
                 ["member_id"] = args.MemberId,
             }));
         });
+    }
+
+    /// <summary>合法的 member_type 值（取值闭集白名单，防"拼错的类型静默落到下游"）。</summary>
+    private static readonly HashSet<string> ValidMemberTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "email", "openid", "openchat", "opendepartmentid", "userid", "unionid", "groupid",
+    };
+
+    /// <summary>校验 member_type 落在闭集内（非法值 → 结构化 invalid_args，附全部合法值）。</summary>
+    private static void ValidateMemberType(string memberType)
+    {
+        if (!ValidMemberTypes.Contains(memberType))
+        {
+            throw new ArgumentException(
+                $"member_type '{memberType}' 不合法。可用值：{string.Join(" / ", ValidMemberTypes.OrderBy(static x => x, StringComparer.Ordinal))}");
+        }
     }
 
     /// <summary>公开权限设置投影：link_share_entity/external_access 等白名单字段。</summary>

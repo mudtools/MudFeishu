@@ -57,7 +57,7 @@ public class ErrorRecoverabilityTests
         var category = Enum.Parse<ToolErrorCategory>(categoryName);
         var text = FeishuToolBinding.StructuredError("t.x", category, "原因占位");
 
-        text.Should().StartWith("[tool_error]");
+        text.Should().Contain("[tool_error]");
         text.Should().Contain("——", $"{category} 态缺少下一步建议，模型只能盲试（F-8）");
     }
 

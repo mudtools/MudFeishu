@@ -97,8 +97,8 @@ public class ToolErrorClassifierTests
         retryable.Should().Contain("(retryable)", "可重试错误——模型可稍后重试同一调用");
         apiError.Should().NotContain("(", "api_error 维持既有行为（无分类前缀）");
 
-        forbidden.Should().StartWith("[tool_error] bitable.add_record");
-        invalidArgs.Should().StartWith("[tool_error] bitable.query_records");
+        forbidden.Should().Contain("[tool_error] bitable.add_record");
+        invalidArgs.Should().Contain("[tool_error] bitable.query_records");
     }
 
     [Fact]

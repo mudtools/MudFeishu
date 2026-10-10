@@ -37,6 +37,8 @@ internal sealed class TaskTools(
     private readonly Mud.Feishu.IFeishuUserV2Task? _userTaskClient = userTaskClient;
     private readonly Mud.Feishu.IFeishuTenantV2TaskComments? _taskCommentsClient = taskCommentsClient;
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+    private readonly int _maxAutoFetchItems = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchPages;
 
     /// <summary>task.create_task：创建任务（<c>dry_run=true</c> 时只预演）。</summary>
     /// <remarks>幂等键（T4-1 同款）：<c>idempotency_key</c> → <c>CreateTaskRequest.ClientToken</c>（平台原生幂等）。</remarks>
@@ -103,6 +105,26 @@ internal sealed class TaskTools(
             }
 
             var args = TaskListMyTasksArgs.Unpack(arguments);
+
+            // B1：fetch_all=true 时循环翻页（唯一翻页实现 ToolPagination）。
+            if (args.FetchAll == true)
+            {
+                var maxItems = ToolPagination.ResolveMaxItems(args.MaxItems, _maxAutoFetchItems);
+                var aggregated = await ToolPagination.AggregateOutcomesAsync<ApiPageListResult<ListTaskInfo>>(
+                    async (token, ct) => FeishuApiResultReader.Read(await _userTaskClient
+                        .GetTasksPageListByIdAsync(
+                            page_size: PageSizes.TaskList,
+                            page_token: token,
+                            completed: args.Completed,
+                            cancellationToken: ct)
+                        .ConfigureAwait(false)),
+                    page => (page.HasMore, page.PageToken),
+                    page => ProjectMyTasks(page)["items"]!.AsArray(),
+                    maxItems,
+                    ToolPagination.ResolveMaxPages(_maxAutoFetchPages),
+                    cancellationToken).ConfigureAwait(false);
+                return executor.FromPagedResult(aggregated, maxItems);
+            }
 
             var outcome = FeishuApiResultReader.Read(await _userTaskClient
                 .GetTasksPageListByIdAsync(

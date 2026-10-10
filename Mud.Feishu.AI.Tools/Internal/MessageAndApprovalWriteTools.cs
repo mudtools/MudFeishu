@@ -153,6 +153,8 @@ internal sealed class ApprovalWriteTools(
     private readonly Mud.Feishu.IFeishuTenantV4ApprovalTask? _approvalTaskClient = approvalTaskClient;
     private readonly Mud.Feishu.IFeishuUserV4ApprovalInstance? _approvalInstanceUserClient = approvalInstanceUserClient;
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+    private readonly int _maxAutoFetchItems = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchPages;
 
     /// <summary>审批表单 JSON 的预览截断长度（get_instance 的 <c>form_preview</c> 落点；字面量常数，I16 纪律）。</summary>
     private const int FormPreviewLength = 500;
@@ -219,6 +221,26 @@ internal sealed class ApprovalWriteTools(
                 ApprovalCode = args.ApprovalCode,
                 TaskStatus = "PENDING",
             };
+
+            // B1：fetch_all=true 时循环翻页（唯一翻页实现 ToolPagination）。
+            if (args.FetchAll == true)
+            {
+                var maxItems = ToolPagination.ResolveMaxItems(args.MaxItems, _maxAutoFetchItems);
+                var aggregated = await ToolPagination.AggregateOutcomesAsync<ApprovalInstancesTaskQueryResult>(
+                    async (token, ct) => FeishuApiResultReader.Read(await _approvalQueryClient
+                        .GetTasksPageListAsync(
+                            queryRequest,
+                            page_size: PageSizes.ApprovalTasks,
+                            page_token: token,
+                            cancellationToken: ct)
+                        .ConfigureAwait(false)),
+                    page => (page.HasMore, page.PageToken),
+                    page => ProjectPendingTasks(page)["items"]!.AsArray(),
+                    maxItems,
+                    ToolPagination.ResolveMaxPages(_maxAutoFetchPages),
+                    cancellationToken).ConfigureAwait(false);
+                return executor.FromPagedResult(aggregated, maxItems);
+            }
 
             var outcome = FeishuApiResultReader.Read(await _approvalQueryClient
                 .GetTasksPageListAsync(

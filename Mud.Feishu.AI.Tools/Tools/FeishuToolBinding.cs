@@ -55,6 +55,12 @@ public sealed class FeishuToolBinding
     private readonly HashSet<string> _allowedIdentities;
 
     /// <summary>
+    /// 重试策略（B3 限流退避）：执行链是唯一消费点——只读工具的 retryable 错误在此自动退避重试，
+    /// 写工具默认零重试（防重复副作用）。策略本身是纯函数，此处仅负责"判定 → 等待 → 重放"的编排。
+    /// </summary>
+    private readonly ToolRetryPolicy _retryPolicy;
+
+    /// <summary>
     /// 初始化 <see cref="FeishuToolBinding"/>。
     /// </summary>
     /// <param name="scopeFactory">租户上下文作用域工厂。</param>
@@ -94,6 +100,7 @@ public sealed class FeishuToolBinding
         _logger = logger;
         _utcClock = utcClock ?? (() => DateTimeOffset.UtcNow);
         _allowedIdentities = new HashSet<string>(_options.AllowedIdentities, StringComparer.Ordinal);
+        _retryPolicy = new ToolRetryPolicy(_options.ToolRetry ?? new ToolRetryOptions());
     }
 
     /// <summary>
@@ -213,7 +220,9 @@ public sealed class FeishuToolBinding
                 userContextApplied = true;
             }
 
-            var result = await invokeDownstream(cancellationToken).ConfigureAwait(false);
+            // ④'' B3 限流退避：只读工具的 retryable 错误在此自动重放（唯一编排点，新增执行器零成本）。
+            var result = await InvokeWithRetryAsync(tool, arguments, invokeDownstream, activity, cancellationToken)
+                .ConfigureAwait(false);
 
             // ⑤ 内容安全（AT-F14）：在净化**之前**扫描原始文本（不变量 A9）——净化会剥离控制字符，
             //    而注入载荷常用不可见字符把关键词拆开，先净化就检测不到了。
@@ -317,6 +326,144 @@ public sealed class FeishuToolBinding
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// B3 限流退避（429/5xx/超时的只读自动重试）：<b>唯一编排点</b>——
+    /// 策略判定（<see cref="ToolRetryPolicy.ShouldRetry"/>）与延迟计算（<see cref="ToolRetryPolicy.ComputeDelay"/>）
+    /// 都是纯函数，本方法只负责"判定 → 等待 → 重放"，使重试语义对所有执行器一次生效（新增工具零成本）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>安全语义</b>（方案 §3.B3）：只读工具遇 <c>retryable</c> 自动重试；写工具<b>默认零重试</b>
+    /// （仅在 <c>AllowWriteRetry=true</c> <b>且</b>本调用携带 <c>idempotency_key</c> 时例外）；
+    /// <c>dry_run</c> 与授权/策略拒绝不重试（确定性失败）。
+    /// </para>
+    /// <para>
+    /// <b>异常路径</b>：下游抛出的可重试异常（<c>ApiException</c> 429/5xx、<c>HttpRequestException</c>、超时）
+    /// 同样参与退避；不可重试的异常原样上抛，交外层 catch 归一（分类/审计语义完全不变）。
+    /// </para>
+    /// <para>
+    /// <b>取消优先</b>：等待期间取消立即传播（<c>Task.Delay</c> 带取消令牌），不留"重试中"的中间态。
+    /// </para>
+    /// </remarks>
+    private async Task<FeishuToolResult> InvokeWithRetryAsync(
+        FeishuToolDefinition tool,
+        IReadOnlyDictionary<string, object?> arguments,
+        Func<CancellationToken, Task<FeishuToolResult>> invokeDownstream,
+        Activity? activity,
+        CancellationToken cancellationToken)
+    {
+        if (!_retryPolicy.IsEnabled)
+        {
+            return await invokeDownstream(cancellationToken).ConfigureAwait(false);
+        }
+
+        var isDryRun = ToolDryRun.IsRequested(arguments);
+        var hasIdempotencyKey = HasIdempotencyKey(arguments);
+        var attempt = 0;
+
+        while (true)
+        {
+            FeishuToolResult result;
+            try
+            {
+                result = await invokeDownstream(cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                var (category, subtype) = ToolErrorClassifier.Classify(ex);
+                var transient = new ToolError(
+                    Category: CategoryLiteral(category),
+                    Subtype: subtype,
+                    Retryable: category == ToolErrorCategory.Retryable,
+                    RetryAfterSeconds: null,
+                    ApiCode: null,
+                    Attempts: attempt + 1,
+                    Trace: null,
+                    Tool: tool.Name);
+
+                // 不可重试（或已耗尽预算）⇒ 原样上抛，交外层 catch 归一。
+                if (!_retryPolicy.ShouldRetry(transient, tool.IsWrite, isDryRun, hasIdempotencyKey, attempt))
+                {
+                    throw;
+                }
+
+                await DelayBeforeRetryAsync(tool, transient, attempt, activity, cancellationToken).ConfigureAwait(false);
+                attempt++;
+                continue;
+            }
+
+            if (!_retryPolicy.ShouldRetry(result.Error, tool.IsWrite, isDryRun, hasIdempotencyKey, attempt))
+            {
+                // 尝试次数回填进载荷（B3.4）：宿主与模型都能看到"这条结果其实重试过几次"。
+                activity?.SetTag(FeishuToolDiagnostics.TagAttempts, attempt + 1);
+                return WithAttempts(result, attempt + 1);
+            }
+
+            await DelayBeforeRetryAsync(tool, result.Error!, attempt, activity, cancellationToken).ConfigureAwait(false);
+            attempt++;
+        }
+    }
+
+    /// <summary>退避等待（延迟来自策略；<c>retry_after_seconds</c> 存在时优先采用）。</summary>
+    private async Task DelayBeforeRetryAsync(
+        FeishuToolDefinition tool,
+        ToolError error,
+        int attempt,
+        Activity? activity,
+        CancellationToken cancellationToken)
+    {
+        var delayMs = _retryPolicy.ComputeDelay(attempt, error.RetryAfterSeconds);
+        activity?.SetTag(FeishuToolDiagnostics.TagAttempts, attempt + 1);
+
+        _logger?.LogInformation(
+            "工具 {ToolName} 命中可重试错误（{Category}/{Subtype}），第 {Attempt} 次重试将于 {DelayMs} ms 后发起",
+            tool.Name, error.Category, error.Subtype, attempt + 1, delayMs);
+
+        await _retryPolicy.DelayAsync(delayMs, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>调用方是否传了非空幂等键（写工具重试的唯一安全前提）。</summary>
+    private static bool HasIdempotencyKey(IReadOnlyDictionary<string, object?> arguments)
+    {
+        if (!arguments.TryGetValue("idempotency_key", out var value) || value is null)
+        {
+            return false;
+        }
+
+        return value switch
+        {
+            string text => text.Length > 0,
+            System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.String } element
+                => !string.IsNullOrEmpty(element.GetString()),
+            _ => true,
+        };
+    }
+
+    /// <summary>把实际尝试次数回填进错误载荷（首行 JSON 重建，人类可读正文原样保留）。</summary>
+    private static FeishuToolResult WithAttempts(FeishuToolResult result, int attempts)
+    {
+        if (result.Error is null || attempts <= 1)
+        {
+            return result;
+        }
+
+        var text = result.ToString();
+#if NETSTANDARD2_0
+        var newlineIndex = text.IndexOf('\n');
+#else
+        var newlineIndex = text.IndexOf('\n', StringComparison.Ordinal);
+#endif
+        var body = newlineIndex >= 0 ? text.Substring(newlineIndex + 1) : string.Empty;
+        var payload = result.Error with { Attempts = attempts };
+        var jsonLine = ToolErrorPayloadSerializer.Serialize(payload);
+
+        return FeishuToolResult.FromError(payload, body.Length > 0 ? jsonLine + "\n" + body : jsonLine);
     }
 
     /// <summary>

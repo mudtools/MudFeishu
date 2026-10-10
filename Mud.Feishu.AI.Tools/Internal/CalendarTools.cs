@@ -36,6 +36,8 @@ internal sealed class CalendarTools(
     private readonly Mud.Feishu.IFeishuTenantV4Calendar _calendarClient = calendarClient
         ?? throw new ArgumentNullException(nameof(calendarClient));
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+    private readonly int _maxAutoFetchItems = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchPages;
 
     /// <summary>calendar.create_event：创建日程（<c>dry_run=true</c> 时只预演）。</summary>
     /// <remarks>幂等键（T4-1 同款）：<c>idempotency_key</c> → 直通平台查询参数（平台原生幂等）。</remarks>
@@ -123,6 +125,22 @@ internal sealed class CalendarTools(
         return executor.RunAsync(async () =>
         {
             var args = CalendarListEventsArgs.Unpack(arguments);
+
+            // B1：fetch_all=true 时循环翻页（唯一翻页实现 ToolPagination）。
+            if (args.FetchAll == true)
+            {
+                var maxItems = ToolPagination.ResolveMaxItems(args.MaxItems, _maxAutoFetchItems);
+                var aggregated = await ToolPagination.AggregateOutcomesAsync<GetCalendarEventPageListResult>(
+                    async (token, ct) => FeishuApiResultReader.Read(await _calendarEventClient
+                        .GetCalendarEventPageListAsync(args.CalendarId, page_size: PageSizes.CalendarEvents, page_token: token, cancellationToken: ct)
+                        .ConfigureAwait(false)),
+                    page => (page.HasMore, page.PageToken),
+                    page => ProjectEvents(page)["items"]!.AsArray(),
+                    maxItems,
+                    ToolPagination.ResolveMaxPages(_maxAutoFetchPages),
+                    cancellationToken).ConfigureAwait(false);
+                return executor.FromPagedResult(aggregated, maxItems);
+            }
 
             var outcome = FeishuApiResultReader.Read(await _calendarEventClient
                 .GetCalendarEventPageListAsync(args.CalendarId, page_size: PageSizes.CalendarEvents, page_token: args.PageToken, cancellationToken: cancellationToken)

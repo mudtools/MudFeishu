@@ -34,6 +34,8 @@ internal sealed class BitableTools(
         ?? throw new ArgumentNullException(nameof(recordClient));
     private readonly Mud.Feishu.IFeishuTenantV1BitableView? _viewClient = viewClient;
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+    private readonly int _maxAutoFetchItems = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchPages;
 
     /// <summary>bitable.list_tables：列出数据表（白名单 table_id/name/revision）。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantBitableListTablesTool))]
@@ -43,6 +45,22 @@ internal sealed class BitableTools(
         return executor.RunAsync(async () =>
         {
             var args = BitableListTablesArgs.Unpack(arguments);
+
+            // B1：fetch_all=true 时循环翻页（唯一翻页实现 ToolPagination）。
+            if (args.FetchAll == true)
+            {
+                var maxItems = ToolPagination.ResolveMaxItems(args.MaxItems, _maxAutoFetchItems);
+                var aggregated = await ToolPagination.AggregateOutcomesAsync<ApiPageListResult<AppTableBaseInfo>>(
+                    async (token, ct) => FeishuApiResultReader.Read(await _appTableClient
+                        .GetAppTablePageListAsync(args.AppToken, PageSizes.BitableTables, token, ct)
+                        .ConfigureAwait(false)),
+                    page => (page.HasMore, page.PageToken),
+                    page => ProjectTables(page)["items"]!.AsArray(),
+                    maxItems,
+                    ToolPagination.ResolveMaxPages(_maxAutoFetchPages),
+                    cancellationToken).ConfigureAwait(false);
+                return executor.FromPagedResult(aggregated, maxItems);
+            }
 
             var outcome = FeishuApiResultReader.Read(await _appTableClient
                 .GetAppTablePageListAsync(args.AppToken, PageSizes.BitableTables, args.PageToken, cancellationToken)
@@ -96,6 +114,22 @@ internal sealed class BitableTools(
                 Filter = parsedFilter,
                 Sorts = parsedSort,
             };
+
+            // B1：fetch_all=true 时循环翻页（唯一翻页实现 ToolPagination）。
+            if (args.FetchAll == true)
+            {
+                var maxItems = ToolPagination.ResolveMaxItems(args.MaxItems, _maxAutoFetchItems);
+                var aggregated = await ToolPagination.AggregateOutcomesAsync<ApiPageListTotalResult<AppTableRecord>>(
+                    async (token, ct) => FeishuApiResultReader.Read(await _recordClient
+                        .QueryRecordsPageListAsync(args.AppToken, args.TableId, request, PageSizes.BitableRecords, token, cancellationToken: ct)
+                        .ConfigureAwait(false)),
+                    page => (page.HasMore, page.PageToken),
+                    page => ProjectRecords(page, args.FieldNames)["items"]!.AsArray(),
+                    maxItems,
+                    ToolPagination.ResolveMaxPages(_maxAutoFetchPages),
+                    cancellationToken).ConfigureAwait(false);
+                return executor.FromPagedResult(aggregated, maxItems);
+            }
 
             var outcome = FeishuApiResultReader.Read(await _recordClient
                 .QueryRecordsPageListAsync(args.AppToken, args.TableId, request, PageSizes.BitableRecords, args.PageToken, cancellationToken: cancellationToken)

@@ -117,7 +117,7 @@ public interface IFeishuTenantDriveResolveCommentTool
         [ToolParameter("file_token", "文件 token（形如 doxcnXxx）", Required = true)] string file_token,
         [ToolParameter("comment_id", "评论 ID（来自 drive.list_comments）", Required = true)] string comment_id,
         [ToolParameter("file_type", "文件类型（doc/docx/sheet/file/slides）", Required = true)] string file_type,
-        [ToolParameter("is_solved", "是否解决（true=解决，false=恢复）", Required = true)] bool is_solved,
+        [ToolParameter("is_solved", "是否解决（true=解决，false=恢复，必填）")] bool? is_solved,
         [ToolParameter("dry_run", "仅预演不操作（可选，默认 false）：返回将要下发的 method/path，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }
@@ -126,8 +126,9 @@ public interface IFeishuTenantDriveResolveCommentTool
 
 /// <summary>工具接口：drive.get_permission_public（映射 <c>IFeishuV1DrivePermissions.GetPermissionPublicAsync</c>）。</summary>
 [FeishuTool("drive.get_permission_public",
-    Description = "获取云文档的公开链接权限设置（link_share_entity/external_access 等），用于分享前确认当前文档的可见范围。只读，需 drive:drive:readonly。",
+    Description = "获取云文档的公开链接权限设置（link_share_entity/external_access 等），用于分享前确认当前文档的可见范围。⚠️ 该接口因涉及权限面，被风险分级器标记为写面——须经授权门禁。需 drive:drive:readonly。",
     RequiredScopes = ["drive:drive:readonly"],
+    IsWrite = true,
     Source = nameof(IFeishuTenantV1DrivePermissions) + "." + nameof(IFeishuV1DrivePermissions.GetPermissionPublicAsync))]
 public interface IFeishuTenantDriveGetPermissionPublicTool
 {
@@ -142,8 +143,8 @@ public interface IFeishuTenantDriveGetPermissionPublicTool
 /// <summary>工具接口：drive.update_permission_public（映射 <c>IFeishuV1DrivePermissions.UpdatePermissionPublicAsync</c>）。</summary>
 [FeishuTool("drive.update_permission_public",
     Description = "更新云文档的公开链接权限设置。⚠️ 此操作可能使文档对组织外可见——请先 drive.get_permission_public 确认当前设置，并优先使用 dry_run 预演。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
-    RequiredScopes = ["drive:drive:readonly"],
-    IsWrite = false,
+    RequiredScopes = ["drive:drive"],
+    IsWrite = true,
     Source = nameof(IFeishuTenantV1DrivePermissions) + "." + nameof(IFeishuV1DrivePermissions.UpdatePermissionPublicAsync))]
 public interface IFeishuTenantDriveUpdatePermissionPublicTool
 {

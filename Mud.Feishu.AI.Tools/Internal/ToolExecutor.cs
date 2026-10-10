@@ -143,6 +143,42 @@ internal readonly struct ToolExecutor(string toolName, int maxResultLength)
     }
 
     /// <summary>
+    /// 统一 <c>fetch_all</c> 聚合信封出口（B1）：首页即失败 → 回到结构化错误分类路径
+    /// （保留飞书 code → <see cref="ToolErrorClassifier.ClassifyCode"/>）；
+    /// 其余情况 → 聚合信封（items/has_more/truncated/next_page_token/_budget/partial_error）。
+    /// </summary>
+    /// <remarks>
+    /// 截断标记的<b>双来源合并</b>：聚合层截断（触达 <c>max_items</c>/<c>max_pages</c>）与
+    /// 结果长度截断（<c>MaxToolResultLength</c>）任一为真即 <c>Truncated=true</c>——
+    /// 否则"信封被长度截断"会对宿主与审计不可见（B4 的可见性要求）。
+    /// </remarks>
+    /// <param name="result">聚合结果。</param>
+    /// <param name="maxItems">本条调用的结果预算上限（写入 <c>_budget</c>）。</param>
+    public FeishuToolResult FromPagedResult(ToolPagination.PagedFetchResult result, int maxItems)
+    {
+        // 首页即失败：没有任何已取数据 ⇒ 不是"部分成功"，而是该调用的确定性失败。
+        if (result.Error is not null && result.PagesFetched == 0)
+        {
+            var (category, subtype) = ToolErrorClassifier.ClassifyCode(result.ApiCode);
+            return FromStructuredError(category, subtype, result.Error, result.ApiCode);
+        }
+
+        var envelope = ToolPagination.BuildEnvelope(result, maxItems);
+        var fullText = ToolResultJson.ToText(envelope);
+
+        var bounded = maxResultLength > 0
+            ? ToolResultText.TruncateJson(fullText, maxResultLength)
+            : fullText;
+        var lengthTruncated = bounded.Length < fullText.Length;
+
+        var reason = result.Truncated
+            ? "fetch_all 预算上限"
+            : lengthTruncated ? "JSON 感知截断" : null;
+
+        return FeishuToolResult.FromText(bounded, result.Truncated || lengthTruncated, reason);
+    }
+
+    /// <summary>
     /// 构造带结构化错误载荷的错误结果（B2 错误契约：首行 JSON + 人类可读正文）。
     /// </summary>
     private FeishuToolResult FromStructuredError(ToolErrorCategory category, string subtype, string reason, int? apiCode = null)

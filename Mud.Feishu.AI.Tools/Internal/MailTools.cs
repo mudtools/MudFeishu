@@ -42,6 +42,8 @@ internal sealed class MailTools(
     private readonly Mud.Feishu.IFeishuTenantV1MailLabel? _mailLabelClient = mailLabelClient;
     private readonly Mud.Feishu.IFeishuTenantV1MailThread? _mailThreadClient = mailThreadClient;
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+    private readonly int _maxAutoFetchItems = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchPages;
 
     /// <summary>mail.list_messages：列出用户邮箱中的邮件（分页，白名单 message_id）。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantMailListMessagesTool))]
@@ -58,6 +60,28 @@ internal sealed class MailTools(
 
             var args = MailListMessagesArgs.Unpack(arguments);
 
+            // B1：fetch_all=true 时循环翻页（唯一翻页实现 ToolPagination）。
+            if (args.FetchAll == true)
+            {
+                var maxItems = ToolPagination.ResolveMaxItems(args.MaxItems, _maxAutoFetchItems);
+                var aggregated = await ToolPagination.AggregateOutcomesAsync<ApiPageListResult<string>>(
+                    async (token, ct) => FeishuApiResultReader.Read(await _mailMessageClient
+                        .GetUserMailboxMessagePageListAsync(
+                            args.UserMailboxId,
+                            folder_id: args.FolderId,
+                            only_unread: args.OnlyUnread,
+                            page_size: PageSizes.MailMessages,
+                            page_token: token,
+                            cancellationToken: ct)
+                        .ConfigureAwait(false)),
+                    page => (page.HasMore, page.PageToken),
+                    page => ProjectMessages(page)["items"]!.AsArray(),
+                    maxItems,
+                    ToolPagination.ResolveMaxPages(_maxAutoFetchPages),
+                    cancellationToken).ConfigureAwait(false);
+                return executor.FromPagedResult(aggregated, maxItems);
+            }
+
             var outcome = FeishuApiResultReader.Read(await _mailMessageClient
                 .GetUserMailboxMessagePageListAsync(
                     args.UserMailboxId,
@@ -70,29 +94,32 @@ internal sealed class MailTools(
 
             // GetUserMailboxMessagePageListAsync 返回 FeishuApiPageListResult<string>（message_id 列表）
             // FeishuApiResultReader.Read 解包后 Data 为 ApiPageListResult<string>
-            return executor.FromApi(outcome, data =>
-            {
-                var envelope = new JsonObject
-                {
-                    ["items"] = new JsonArray(),
-                    ["has_more"] = data.HasMore,
-                };
-                if (!string.IsNullOrEmpty(data.PageToken))
-                {
-                    envelope["page_token"] = data.PageToken;
-                }
-
-                foreach (var messageId in data.Items ?? [])
-                {
-                    envelope["items"]!.AsArray().AddNode(new JsonObject
-                    {
-                        ["message_id"] = messageId,
-                    });
-                }
-
-                return envelope;
-            });
+            return executor.FromApi(outcome, ProjectMessages);
         });
+    }
+
+    /// <summary>list_messages 投影：items（message_id）+ 翻页契约。</summary>
+    private static JsonObject ProjectMessages(ApiPageListResult<string> data)
+    {
+        var envelope = new JsonObject
+        {
+            ["items"] = new JsonArray(),
+            ["has_more"] = data.HasMore,
+        };
+        if (!string.IsNullOrEmpty(data.PageToken))
+        {
+            envelope["page_token"] = data.PageToken;
+        }
+
+        foreach (var messageId in data.Items ?? [])
+        {
+            envelope["items"]!.AsArray().AddNode(new JsonObject
+            {
+                ["message_id"] = messageId,
+            });
+        }
+
+        return envelope;
     }
 
     /// <summary>mail.get_message：获取邮件详情（白名单 subject/from/to/cc/body_preview/message_id）。</summary>

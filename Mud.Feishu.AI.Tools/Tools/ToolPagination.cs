@@ -44,6 +44,7 @@ internal static class ToolPagination
     /// <param name="PagesFetched">已请求页数。</param>
     /// <param name="Error">中途失败时的错误信息（null = 全部成功）。</param>
     /// <param name="FailedPageIndex">失败页的序号（0 起；未失败时为 null）。</param>
+    /// <param name="ApiCode">失败页的飞书业务 code（错误分类消费；非 API 失败为 null）。</param>
     internal sealed record PagedFetchResult(
         JsonArray Items,
         bool Truncated,
@@ -51,7 +52,8 @@ internal static class ToolPagination
         int TotalFetched,
         int PagesFetched,
         string? Error,
-        int? FailedPageIndex);
+        int? FailedPageIndex,
+        int? ApiCode = null);
 
     /// <summary>
     /// 自动翻页聚合：循环调用 <paramref name="fetchPage"/> 直到 <c>has_more=false</c> 或触达预算上限。
@@ -64,8 +66,47 @@ internal static class ToolPagination
     /// <param name="maxPages">页数上限。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>聚合结果。</returns>
-    public static async Task<PagedFetchResult> AggregateAsync<TPage>(
+    public static Task<PagedFetchResult> AggregateAsync<TPage>(
         Func<string?, CancellationToken, Task<TPage?>> fetchPage,
+        Func<TPage, (bool HasMore, string? NextToken)> readPageState,
+        Func<TPage, JsonArray> extractItems,
+        int maxItems,
+        int maxPages,
+        CancellationToken cancellationToken)
+        where TPage : class
+    {
+        if (fetchPage is null) throw new ArgumentNullException(nameof(fetchPage));
+
+        // 裸页函数（返回 null = 下游失败）适配为解包结果形态，复用同一份翻页核心。
+        return AggregateOutcomesAsync<TPage>(
+            async (token, ct) =>
+            {
+                var page = await fetchPage(token, ct).ConfigureAwait(false);
+                return page is null
+                    ? FeishuApiOutcome<TPage>.Fail("下游返回空结果")
+                    : FeishuApiOutcome<TPage>.Success(page);
+            },
+            readPageState,
+            extractItems,
+            maxItems,
+            maxPages,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// 自动翻页聚合（<b>解包结果</b>形态，执行器实际使用）：保留失败页的飞书业务 code，
+    /// 使"首页即失败"能回到既有的结构化错误分类路径（<c>ToolErrorClassifier.ClassifyCode</c>）。
+    /// </summary>
+    /// <typeparam name="TPage">单页数据类型（须为 class）。</typeparam>
+    /// <param name="fetchPage">翻页函数：接收 pageToken，返回解包结果（<c>Ok=false</c> 视为该页失败）。</param>
+    /// <param name="readPageState">从单页结果读取 (HasMore, NextToken)。</param>
+    /// <param name="extractItems">从单页结果提取条目列表（JsonArray 形态）。</param>
+    /// <param name="maxItems">结果预算上限（条目数）。</param>
+    /// <param name="maxPages">页数上限。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>聚合结果。</returns>
+    public static async Task<PagedFetchResult> AggregateOutcomesAsync<TPage>(
+        Func<string?, CancellationToken, Task<FeishuApiOutcome<TPage>>> fetchPage,
         Func<TPage, (bool HasMore, string? NextToken)> readPageState,
         Func<TPage, JsonArray> extractItems,
         int maxItems,
@@ -101,10 +142,10 @@ internal static class ToolPagination
                 break;
             }
 
-            TPage? page;
+            FeishuApiOutcome<TPage> outcome;
             try
             {
-                page = await fetchPage(currentPageToken, cancellationToken).ConfigureAwait(false);
+                outcome = await fetchPage(currentPageToken, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -112,6 +153,13 @@ internal static class ToolPagination
             }
             catch (Exception ex)
             {
+                // 首页即抛异常（尚无任何已取数据）：**原样上抛**——让执行链的分类/重试语义保持完整
+                // （429/5xx/超时 → Retryable 可退避；若在此吞成"部分成功"会同时丢掉分类与重试机会）。
+                if (pagesFetched == 0)
+                {
+                    throw;
+                }
+
                 // 中途某页失败：保留已取数据
                 return new PagedFetchResult(
                     allItems, truncated, currentPageToken, totalFetched, pagesFetched,
@@ -119,15 +167,17 @@ internal static class ToolPagination
                     pagesFetched);
             }
 
-            if (page is null)
+            if (outcome is null || !outcome.Ok || outcome.Data is null)
             {
-                // 下游返回 null（网络层吞异常的形态）
+                // 下游返回失败（code != 0 / 网络层吞异常的形态）
                 return new PagedFetchResult(
                     allItems, truncated, currentPageToken, totalFetched, pagesFetched,
-                    $"第 {pagesFetched.ToString(CultureInfo.InvariantCulture)} 页返回空结果",
-                    pagesFetched);
+                    outcome?.ErrorText ?? "下游返回空结果",
+                    pagesFetched,
+                    outcome?.Code);
             }
 
+            var page = outcome.Data;
             pagesFetched++;
 
             var (hasMore, nextToken) = readPageState(page);

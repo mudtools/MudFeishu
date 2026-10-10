@@ -81,4 +81,24 @@ internal static class ToolDryRun
     /// <summary>读取 <c>dry_run</c> 参数（缺省 false；语义：仅预演、不下发）。</summary>
     /// <param name="dryRun">已解包的 <c>dry_run</c> 参数值（缺省 <see langword="null"/>）。</param>
     public static bool IsRequested(bool? dryRun) => dryRun ?? false;
+
+    /// <summary>
+    /// 从<b>原始参数字典</b>读取 <c>dry_run</c>（执行链消费点 B3：dry_run 调用不参与重试，
+    /// 而执行链看到的只有参数字典——此处与生成器解包语义保持一致，缺省 false）。
+    /// </summary>
+    /// <param name="arguments">模型 tool_call 原始入参。</param>
+    public static bool IsRequested(IReadOnlyDictionary<string, object?> arguments)
+    {
+        if (arguments is null || !arguments.TryGetValue("dry_run", out var value) || value is null)
+        {
+            return false;
+        }
+
+        return value switch
+        {
+            bool flag => flag,
+            System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.True } => true,
+            _ => false,
+        };
+    }
 }

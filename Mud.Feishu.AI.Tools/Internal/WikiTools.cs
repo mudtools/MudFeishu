@@ -20,6 +20,8 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
     private readonly Mud.Feishu.IFeishuTenantV2WikiNodes _wikiNodesClient = wikiNodesClient
         ?? throw new ArgumentNullException(nameof(wikiNodesClient));
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+    private readonly int _maxAutoFetchItems = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchPages;
 
     /// <summary>wiki.get_node：解析节点信息（单对象）。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantWikiGetNodeTool))]
@@ -48,6 +50,22 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
         return executor.RunAsync(async () =>
         {
             var args = WikiListNodesArgs.Unpack(arguments);
+
+            // B1：fetch_all=true 时循环翻页（唯一翻页实现 ToolPagination）。
+            if (args.FetchAll == true)
+            {
+                var maxItems = ToolPagination.ResolveMaxItems(args.MaxItems, _maxAutoFetchItems);
+                var aggregated = await ToolPagination.AggregateOutcomesAsync<ApiPageListResult<SpaceNodeInfo>>(
+                    async (token, ct) => FeishuApiResultReader.Read(await _wikiNodesClient
+                        .GetSpaceNodesPageListAsync(args.SpaceId, args.ParentNodeToken, PageSizes.WikiNodes, token, ct)
+                        .ConfigureAwait(false)),
+                    page => (page.HasMore, page.PageToken),
+                    page => ProjectNodes(page)["items"]!.AsArray(),
+                    maxItems,
+                    ToolPagination.ResolveMaxPages(_maxAutoFetchPages),
+                    cancellationToken).ConfigureAwait(false);
+                return executor.FromPagedResult(aggregated, maxItems);
+            }
 
             var outcome = FeishuApiResultReader.Read(await _wikiNodesClient
                 .GetSpaceNodesPageListAsync(args.SpaceId, args.ParentNodeToken, PageSizes.WikiNodes, args.PageToken, cancellationToken)

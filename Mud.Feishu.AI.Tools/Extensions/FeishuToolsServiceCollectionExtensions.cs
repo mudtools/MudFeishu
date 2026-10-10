@@ -90,7 +90,7 @@ public static class FeishuToolsServiceCollectionExtensions
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure).AddFeishuWikiToolsCore();
 
-    /// <summary>按域注册 Minutes 工具（2 个只读，R5/F-11）。</summary>
+    /// <summary>按域注册 Minutes 工具（5 个只读：get/get_artifacts/search/get_statistics/get_media，R5/F-11 + R7/A3）。</summary>
     /// <remarks>
     /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**：
     /// 少任何一处都会让 minutes 工具在对应入口下静默缺席（S-13）。
@@ -99,6 +99,16 @@ public static class FeishuToolsServiceCollectionExtensions
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure).AddFeishuMinutesReadToolsCore();
+
+    /// <summary>按域注册 Board 画板工具（2 个只读 + 4 个写，R7/A4）。</summary>
+    /// <remarks>
+    /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**：
+    /// 少任何一处都会让 board 工具在对应入口下静默缺席（S-13 同款失败形态）。
+    /// </remarks>
+    public static IServiceCollection AddFeishuBoardTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure).AddFeishuBoardToolsCore();
 
     /// <summary>按域注册 OKR 只读工具（9 个只读，R6/S2；写工具经 <see cref="AddFeishuWriteTools"/>）。</summary>
     /// <remarks>
@@ -443,6 +453,9 @@ public static class FeishuToolsServiceCollectionExtensions
         => services
             .AddFeishuBitableToolsCore()
             .AddFeishuDocxToolsCore()
+
+            // A2 / Docx 深化：块级编辑 + Markdown 正文读取 + 群公告（读写混合域，按链拆分见 remarks）。
+            .AddFeishuDocxDeepToolsCore()
             .AddFeishuWikiToolsCore()
             .AddFeishuSearchToolsCore()
             .AddFeishuImToolsCore()
@@ -460,6 +473,11 @@ public static class FeishuToolsServiceCollectionExtensions
                     // 但只有本清单会调用它。这张表是**人工维护**的，故已加守卫
                     // ToolDomainCores_ShouldAllBeWiredIntoTheAggregator 锁死"生成的 Core 必须被聚合"。
                     .AddFeishuMinutesReadToolsCore()
+
+                    // R7 / A4：Board 画板域执行器 BoardTools（6 个工具：2 只读 + 4 写）。
+                    // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，
+                    // 漏加即「工具静默不入注册表」（ToolDomainCoresWiringContractTests 会报红）。
+                    .AddFeishuBoardToolsCore()
 
                     // R6 / S2：OKR 域只读执行器 OkrTools（9 个工具）。
                     // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，
@@ -492,6 +510,8 @@ public static class FeishuToolsServiceCollectionExtensions
             .AddFeishuApprovalWriteToolsCore()
             // WP2/R5 写入面补齐：docx/sheets/bitable(update/delete)/drive 写执行器
             .AddFeishuDocxWriteToolsCore()
+            // A2 / Docx 深化写入面（create_block / create_descendant_blocks / update_block / set_chat_announcement）。
+            .AddFeishuDocxDeepToolsCore()
             .AddFeishuSheetsWriteToolsCore()
             .AddFeishuBitableWriteRecordOpsCore()
             .AddFeishuDriveWriteToolsCore()

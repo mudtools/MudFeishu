@@ -39,7 +39,9 @@
   <Folder Name="/Tests/">
     <File Path="Tests/Directory.Build.props" />
     <Project Path="Tests/Mud.Feishu.Abstractions.Tests/Mud.Feishu.Abstractions.Tests.csproj" />
-    <Project Path="Tests/Mud.Feishu.Agent.Demo.Tests/Mud.Feishu.Agent.Demo.Tests.csproj" />
+    <Project Path="Tests/Mud.Feishu.Agent.Demo.Tests/Mud.Feishu.Agent.Demo.Tests.csproj">
+      <Build Solution="Debug|*" Project="false" />
+    </Project>
     <Project Path="Tests/Mud.Feishu.AI.Tools.Tests/Mud.Feishu.AI.Tools.Tests.csproj">
       <Build Solution="Debug|*" Project="false" />
     </Project>

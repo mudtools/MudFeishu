@@ -29,6 +29,8 @@ internal sealed class DriveTools(
     private readonly Mud.Feishu.IFeishuTenantV1DriveFiles _filesClient = filesClient
         ?? throw new ArgumentNullException(nameof(filesClient));
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+    private readonly int _maxAutoFetchItems = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchPages;
 
     /// <summary>drive.list_folder_files：列出文件夹内容（folder_token 缺省=根目录；白名单 token/name/type/url）。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantDriveFolderFilesTool))]
@@ -38,6 +40,22 @@ internal sealed class DriveTools(
         return executor.RunAsync(async () =>
         {
             var args = DriveListFolderFilesArgs.Unpack(arguments);
+
+            // B1：fetch_all=true 时由 ToolPagination 循环翻页（唯一翻页实现），false 时逐字节等价既有单页行为。
+            if (args.FetchAll == true)
+            {
+                var maxItems = ToolPagination.ResolveMaxItems(args.MaxItems, _maxAutoFetchItems);
+                var aggregated = await ToolPagination.AggregateOutcomesAsync<GetDriveFilesResult>(
+                    async (token, ct) => FeishuApiResultReader.Read(await _folderClient
+                        .GetFilesPageListAsync(args.FolderToken, page_size: PageSizes.DriveFiles, page_token: token, cancellationToken: ct)
+                        .ConfigureAwait(false)),
+                    page => (page.HasMore, page.PageToken),
+                    page => ProjectFolderFiles(page)["items"]!.AsArray(),
+                    maxItems,
+                    ToolPagination.ResolveMaxPages(_maxAutoFetchPages),
+                    cancellationToken).ConfigureAwait(false);
+                return executor.FromPagedResult(aggregated, maxItems);
+            }
 
             var outcome = FeishuApiResultReader.Read(await _folderClient
                 .GetFilesPageListAsync(args.FolderToken, page_size: PageSizes.DriveFiles, page_token: args.PageToken, cancellationToken: cancellationToken)

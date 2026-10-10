@@ -22,6 +22,8 @@ internal sealed class DocxTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, IOpti
     private readonly Mud.Feishu.IFeishuTenantV1Docx _docxClient = docxClient
         ?? throw new ArgumentNullException(nameof(docxClient));
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+    private readonly int _maxAutoFetchItems = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchPages;
 
     /// <summary>docx.get_raw_content：读取文档纯文本正文。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantDocxRawContentTool))]
@@ -50,6 +52,22 @@ internal sealed class DocxTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, IOpti
         return executor.RunAsync(async () =>
         {
             var args = DocxGetDocumentBlocksArgs.Unpack(arguments);
+
+            // B1：fetch_all=true 时循环翻页（唯一翻页实现 ToolPagination）。
+            if (args.FetchAll == true)
+            {
+                var maxItems = ToolPagination.ResolveMaxItems(args.MaxItems, _maxAutoFetchItems);
+                var aggregated = await ToolPagination.AggregateOutcomesAsync<ApiPageListResult<Block>>(
+                    async (token, ct) => FeishuApiResultReader.Read(await _docxClient
+                        .GetDocumentBlocksPageListAsync(args.DocumentId, page_size: PageSizes.DocxBlocks, page_token: token, cancellationToken: ct)
+                        .ConfigureAwait(false)),
+                    page => (page.HasMore, page.PageToken),
+                    page => ProjectBlocks(page)["items"]!.AsArray(),
+                    maxItems,
+                    ToolPagination.ResolveMaxPages(_maxAutoFetchPages),
+                    cancellationToken).ConfigureAwait(false);
+                return executor.FromPagedResult(aggregated, maxItems);
+            }
 
             var outcome = FeishuApiResultReader.Read(await _docxClient
                 .GetDocumentBlocksPageListAsync(args.DocumentId, page_size: PageSizes.DocxBlocks, page_token: args.PageToken, cancellationToken: cancellationToken)

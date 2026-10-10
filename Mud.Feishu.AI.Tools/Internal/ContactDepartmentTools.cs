@@ -39,6 +39,8 @@ internal sealed class ContactDepartmentTools(
     private readonly Mud.Feishu.IFeishuTenantV3Departments? _departmentsClient = departmentsClient;
     private readonly Mud.Feishu.IFeishuTenantV1Employees? _employeesClient = employeesClient;
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+    private readonly int _maxAutoFetchItems = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchPages;
 
     /// <summary>contact.list_departments：列出指定部门下的子部门（分页，白名单 department_id/name/parent_department_id）。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantContactListDepartmentsTool))]
@@ -54,6 +56,27 @@ internal sealed class ContactDepartmentTools(
             }
 
             var args = ContactListDepartmentsArgs.Unpack(arguments);
+
+            // B1：fetch_all=true 时循环翻页（唯一翻页实现 ToolPagination）。
+            if (args.FetchAll == true)
+            {
+                var maxItems = ToolPagination.ResolveMaxItems(args.MaxItems, _maxAutoFetchItems);
+                var aggregated = await ToolPagination.AggregateOutcomesAsync<ApiPageListResult<GetDepartmentInfo>>(
+                    async (token, ct) => FeishuApiResultReader.Read(await _departmentsClient
+                        .GetDepartmentsByParentIdAsync(
+                            args.DepartmentId,
+                            fetch_child: args.FetchChild ?? false,
+                            page_size: PageSizes.Departments,
+                            page_token: token,
+                            cancellationToken: ct)
+                        .ConfigureAwait(false)),
+                    page => (page.HasMore, page.PageToken),
+                    page => ProjectDepartments(page)["items"]!.AsArray(),
+                    maxItems,
+                    ToolPagination.ResolveMaxPages(_maxAutoFetchPages),
+                    cancellationToken).ConfigureAwait(false);
+                return executor.FromPagedResult(aggregated, maxItems);
+            }
 
             var outcome = FeishuApiResultReader.Read(await _departmentsClient
                 .GetDepartmentsByParentIdAsync(
@@ -88,27 +111,26 @@ internal sealed class ContactDepartmentTools(
 
             var args = ContactListDepartmentMembersArgs.Unpack(arguments);
 
-            var filterRequest = new FilterSearchRequest
+            // B1：fetch_all=true 时循环翻页（唯一翻页实现 ToolPagination）；
+            // 翻页游标来自 EmployeePageListResult.Page（内嵌分页信息）。
+            if (args.FetchAll == true)
             {
-                Filter = new FieldFilter
-                {
-                    Conditions =
-                    [
-                        new FieldCondition
-                        {
-                            Field = "base_info.departments.department_id",
-                            Operator = "eq",
-                            Value = $"\"{args.DepartmentId}\"",
-                        },
-                    ],
-                },
-                RequiredFields = ["base_info.employee_id", "base_info.name", "base_info.mobile", "base_info.email"],
-                PageRequest = new PageRequest
-                {
-                    PageSize = PageSizes.DepartmentMembers,
-                    PageToken = args.PageToken,
-                },
-            };
+                var maxItems = ToolPagination.ResolveMaxItems(args.MaxItems, _maxAutoFetchItems);
+                var aggregated = await ToolPagination.AggregateOutcomesAsync<EmployeePageListResult>(
+                    async (token, ct) => FeishuApiResultReader.Read(await _employeesClient
+                        .QueryEmployeePageListAsync(
+                            BuildMemberFilterRequest(args.DepartmentId, token),
+                            cancellationToken: ct)
+                        .ConfigureAwait(false)),
+                    page => (page.Page?.HasMore ?? false, page.Page?.PageToken),
+                    page => ProjectDepartmentMembers(page)["items"]!.AsArray(),
+                    maxItems,
+                    ToolPagination.ResolveMaxPages(_maxAutoFetchPages),
+                    cancellationToken).ConfigureAwait(false);
+                return executor.FromPagedResult(aggregated, maxItems);
+            }
+
+            var filterRequest = BuildMemberFilterRequest(args.DepartmentId, args.PageToken);
 
             var outcome = FeishuApiResultReader.Read(await _employeesClient
                 .QueryEmployeePageListAsync(filterRequest, cancellationToken: cancellationToken)
@@ -116,6 +138,32 @@ internal sealed class ContactDepartmentTools(
 
             return executor.FromApi(outcome, ProjectDepartmentMembers);
         });
+    }
+
+    /// <summary>构造"按部门过滤员工"的查询请求（单页路径与 fetch_all 路径共用）。</summary>
+    private static FilterSearchRequest BuildMemberFilterRequest(string departmentId, string? pageToken)
+    {
+        return new FilterSearchRequest
+        {
+            Filter = new FieldFilter
+            {
+                Conditions =
+                [
+                    new FieldCondition
+                    {
+                        Field = "base_info.departments.department_id",
+                        Operator = "eq",
+                        Value = $"\"{departmentId}\"",
+                    },
+                ],
+            },
+            RequiredFields = ["base_info.employee_id", "base_info.name", "base_info.mobile", "base_info.email"],
+            PageRequest = new PageRequest
+            {
+                PageSize = PageSizes.DepartmentMembers,
+                PageToken = pageToken,
+            },
+        };
     }
 
     /// <summary>list_departments 投影：items（department_id/name/parent_department_id）+ 翻页契约。</summary>

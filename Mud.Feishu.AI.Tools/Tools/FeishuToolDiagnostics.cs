@@ -47,6 +47,9 @@ internal static class FeishuToolDiagnostics
     /// <summary>Span 属性：风险分级（AT-B13；取自 Schema 的 <c>x-feishu.risk</c>）。</summary>
     public const string TagRisk = "feishu.tool.risk";
 
+    /// <summary>Span 属性：本条调用的实际尝试次数（B3 限流退避；1 = 未发生重试）。</summary>
+    public const string TagAttempts = "feishu.tool.attempts";
+
     /// <summary>判定值：放行。</summary>
     public const string DecisionAllowed = "allowed";
 

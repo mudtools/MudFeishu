@@ -9,6 +9,7 @@ using System.Text.Json.Nodes;
 
 using Mud.Feishu.AI.Tools.Tools;
 using Mud.Feishu.DataModels;
+using Mud.Feishu.DataModels.Minutes;
 
 namespace Mud.Feishu.AI.Tools.Internal;
 
@@ -135,4 +136,155 @@ internal sealed class MinutesReadTools(Mud.Feishu.IFeishuTenantV1MinutesMinute? 
             ?? throw new ArgumentException(
                 $"{toolName} 需要 IFeishuTenantV1MinutesMinute——宿主须启用妙记（Minutes）API；"
                 + "未启用时本工具不在工具列表中（软缺席，不影响其它域工具）");
+
+    // ─────────────────────────── Minutes 深化（R7 / A3） ───────────────────────────
+
+    [FeishuToolHandler(typeof(IFeishuTenantMinutesSearchTool))]
+    public Task<FeishuToolResult> SearchMinutesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.MinutesSearch);
+        return executor.RunAsync(async () =>
+        {
+            var args = MinutesSearchArgs.Unpack(arguments);
+
+            // 构造搜索请求体：SearchMinutesRequest { Query, Filter, Sorter }。
+            var request = new SearchMinutesRequest
+            {
+                Query = args.Query,
+            };
+
+            // 过滤条件（至少提供一个：query / owner_ids / participant_ids / create_time）。
+            var filter = new SearchMinutesFilter();
+            var hasFilter = false;
+
+            if (args.OwnerIds is { Length: > 0 } ownerIds)
+            {
+                filter.OwnerIds = [.. ownerIds];
+                hasFilter = true;
+            }
+
+            if (args.ParticipantIds is { Length: > 0 } participantIds)
+            {
+                filter.ParticipantIds = [.. participantIds];
+                hasFilter = true;
+            }
+
+            // create_time_start / create_time_end 是 ISO 8601 字符串，
+            // SearchMinutesFilter.CreateTime 是 MinutesTimeRange（也是 ISO 8601 字符串）。
+            if (!string.IsNullOrEmpty(args.CreateTimeStart) || !string.IsNullOrEmpty(args.CreateTimeEnd))
+            {
+                filter.CreateTime = new MinutesTimeRange
+                {
+                    StartTime = args.CreateTimeStart,
+                    EndTime = args.CreateTimeEnd,
+                };
+                hasFilter = true;
+            }
+
+            if (hasFilter)
+            {
+                request.Filter = filter;
+            }
+
+            var outcome = FeishuApiResultReader.Read(await Require(executor.ToolName)
+                .SearchMinutesAsync(request, page_token: args.PageToken, cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+
+            return executor.FromApiUntruncated(outcome, data =>
+            {
+                var items = new JsonArray();
+                foreach (var item in data.Items ?? [])
+                {
+                    items.AddNode(new JsonObject
+                    {
+                        ["minute_token"] = item.Token,
+                        ["display_info"] = ToolResultText.Truncate(item.DisplayInfo, PageSizes.MessagePreviewLength),
+                        ["description"] = item.MetaData?.Description,
+                        ["app_link"] = item.MetaData?.AppLink,
+                    });
+                }
+
+                return new JsonObject
+                {
+                    ["items"] = items,
+                    ["total"] = data.Total,
+                    ["has_more"] = data.HasMore,
+                    ["page_token"] = data.PageToken,
+                    ["notice"] = data.Notice,
+                };
+            });
+        });
+    }
+
+    [FeishuToolHandler(typeof(IFeishuTenantMinutesGetStatisticsTool))]
+    public Task<FeishuToolResult> GetMinuteStatisticsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.MinutesGetStatistics);
+        return executor.RunAsync(async () =>
+        {
+            var args = MinutesGetStatisticsArgs.Unpack(arguments);
+
+            var outcome = FeishuApiResultReader.Read(await Require(executor.ToolName)
+                .GetMinuteStatisticsAsync(args.MinuteToken, cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+
+            return executor.FromApiUntruncated(outcome, data =>
+            {
+                var stats = data.Statistics;
+                if (stats is null)
+                {
+                    return new JsonObject
+                    {
+                        ["found"] = false,
+                        ["minute_token"] = args.MinuteToken,
+                        ["message"] = "未找到统计数据。",
+                    };
+                }
+
+                var visitList = new JsonArray();
+                foreach (var view in stats.UserViewList ?? [])
+                {
+                    visitList.AddNode(new JsonObject
+                    {
+                        ["user_id"] = view.UserId,
+                        ["view_time"] = view.ViewTime,
+                    });
+                }
+
+                return new JsonObject
+                {
+                    ["found"] = true,
+                    ["minute_token"] = args.MinuteToken,
+                    ["uv"] = stats.UserViewCount,
+                    ["pv"] = stats.PageViewCount,
+                    ["visit_list"] = visitList,
+                };
+            });
+        });
+    }
+
+    [FeishuToolHandler(typeof(IFeishuTenantMinutesGetMediaTool))]
+    public Task<FeishuToolResult> GetMinuteMediaAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.MinutesGetMedia);
+        return executor.RunAsync(async () =>
+        {
+            var args = MinutesGetMediaArgs.Unpack(arguments);
+
+            var outcome = FeishuApiResultReader.Read(await Require(executor.ToolName)
+                .GetMinuteMediaAsync(args.MinuteToken, cancellationToken)
+                .ConfigureAwait(false));
+
+            return executor.FromApiUntruncated(outcome, data =>
+            {
+                // A10 二进制防线：只返回下载 URL（文本），绝不返回字节流。
+                return new JsonObject
+                {
+                    ["minute_token"] = args.MinuteToken,
+                    ["download_url"] = data.DownloadUrl,
+                    ["expire_note"] = "下载链接有效期 1 天，请及时下载。",
+                };
+            });
+        });
+    }
 }

@@ -53,5 +53,73 @@ public interface IFeishuTenantMinutesGetArtifactsTool
     /// <returns>白名单投影后的 JSON 文本（summary / chapters / todos / keywords / transcript 截断）。</returns>
     Task<string> GetMinuteArtifactsAsync(
         [ToolParameter("minute_token", "妙记 token（形如 obcnXxx）", Required = true)] string minute_token,
+        [ToolParameter("transcript_offset", "逐字稿分窗口偏移（可选，默认 0；配合 transcript_limit 分段读取长逐字稿）")] int? transcript_offset = null,
+        [ToolParameter("transcript_limit", "逐字稿分窗口上限字符数（可选，默认 10000；返回 transcript_total_length + has_more 以便续读）")] int? transcript_limit = null,
+        CancellationToken cancellationToken = default);
+}
+
+// ─────────────────────────── Minutes 深化（R7 / A3） ───────────────────────────
+
+/// <summary>
+/// 工具接口：minutes.search（映射 <c>IFeishuTenantV1MinutesMinute.SearchMinutesAsync</c>）。
+/// </summary>
+/// <remarks>
+/// R7 / A3：<b>"找会议"入口</b>——当前模型只能靠 minute_token 逐个查，无从搜索。
+/// 本工具按关键词 + 时间窗检索妙记列表，是"总结这周会议"链路的首环。
+/// </remarks>
+[FeishuTool("minutes.search",
+    Description = "按关键词、所有者、参与者与创建时间搜索妙记列表（分页）。query 关键词 10~50 字符；至少提供一个过滤条件。搜索时间范围最大 1 个月。只读，需 minutes:minutes:readonly。",
+    RequiredScopes = ["minutes:minutes:readonly"],
+    Source = nameof(IFeishuTenantV1MinutesMinute) + "." + nameof(IFeishuTenantV1MinutesMinute.SearchMinutesAsync))]
+public interface IFeishuTenantMinutesSearchTool
+{
+    /// <summary>搜索妙记。</summary>
+    /// <returns>白名单投影后的 JSON 文本（items/total/has_more/page_token）。</returns>
+    Task<string> SearchMinutesAsync(
+        [ToolParameter("query", "搜索关键词（10~50 字符）", Required = true)] string query,
+        [ToolParameter("owner_ids", "所有者 ID 数组（可选，open_id 格式）")] string[]? owner_ids = null,
+        [ToolParameter("participant_ids", "参会人 ID 数组（可选，open_id 格式）")] string[]? participant_ids = null,
+        [ToolParameter("create_time_start", "创建时间起始（可选，ISO 8601 格式如 2026-03-21T16:15:30+08:00）")] string? create_time_start = null,
+        [ToolParameter("create_time_end", "创建时间结束（可选，ISO 8601 格式如 2026-03-21T17:15:30+08:00）")] string? create_time_end = null,
+        [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：minutes.get_statistics（映射 <c>IFeishuTenantV1MinutesMinute.GetMinuteStatisticsAsync</c>）。
+/// </summary>
+/// <remarks>
+/// R7 / A3：与会人/发言时长等统计，用于"谁说了什么"类问题。
+/// </remarks>
+[FeishuTool("minutes.get_statistics",
+    Description = "按 minute_token 获取妙记的访问统计数据（PV、UV、访问用户列表与访问时间）。用于了解妙记的访问情况。只读，需 minutes:minutes:readonly。",
+    RequiredScopes = ["minutes:minutes:readonly"],
+    Source = nameof(IFeishuTenantV1MinutesMinute) + "." + nameof(IFeishuTenantV1MinutesMinute.GetMinuteStatisticsAsync))]
+public interface IFeishuTenantMinutesGetStatisticsTool
+{
+    /// <summary>获取妙记统计数据。</summary>
+    /// <returns>白名单投影后的 JSON 文本（uv/pv/visit_list）。</returns>
+    Task<string> GetMinuteStatisticsAsync(
+        [ToolParameter("minute_token", "妙记 token（形如 obcnXxx）", Required = true)] string minute_token,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：minutes.get_media（映射 <c>IFeishuTenantV1MinutesMinute.GetMinuteMediaAsync</c>）。
+/// </summary>
+/// <remarks>
+/// R7 / A3：<b>只返回媒体下载 URL（文本），绝不返回字节</b>（A10 二进制防线）。
+/// 工具描述限定"返回的是需宿主落盘的临时链接"。
+/// </remarks>
+[FeishuTool("minutes.get_media",
+    Description = "按 minute_token 获取妙记音视频文件的下载链接（有效期 1 天）。返回的是需宿主落盘的临时 URL，不含二进制内容。只读，需 minutes:minutes:readonly。",
+    RequiredScopes = ["minutes:minutes:readonly"],
+    Source = nameof(IFeishuTenantV1MinutesMinute) + "." + nameof(IFeishuTenantV1MinutesMinute.GetMinuteMediaAsync))]
+public interface IFeishuTenantMinutesGetMediaTool
+{
+    /// <summary>获取妙记媒体下载链接。</summary>
+    /// <returns>白名单投影后的 JSON 文本（media_url/expire_time）。</returns>
+    Task<string> GetMinuteMediaAsync(
+        [ToolParameter("minute_token", "妙记 token（形如 obcnXxx）", Required = true)] string minute_token,
         CancellationToken cancellationToken = default);
 }

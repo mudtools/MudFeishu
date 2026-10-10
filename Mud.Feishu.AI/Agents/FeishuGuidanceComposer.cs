@@ -36,7 +36,7 @@ public sealed record FeishuGuidanceResult(
 /// <para>
 /// <b>为什么是纯字符串函数（依赖方向）</b>：guidance 的真相源由源生成器发射进工具面实现包
 /// （<c>Mud.Feishu.AI.Tools.Generated.FeishuToolGuidance</c>），而本类在 AI 底座包
-/// （工具包单向依赖 AI，不可反向）。故工具包经 <see cref="Tools.FeishuAgentToolSource.GetGuidance"/>
+/// （工具包单向依赖 AI，不可反向）。故工具包经 <see cref="AgentTools.FeishuAgentToolSource.GetGuidance"/>
 /// 把<b>已启用域</b>的 guidance 传进来，本类只做装配与截断——零反向依赖，且截断逻辑可独立单测。
 /// </para>
 /// <para>

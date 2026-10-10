@@ -48,12 +48,17 @@ namespace Mud.Feishu.AI.Tools.SdkProfile;
 
     // ────────── 1. 特性识别（扫描目标）──────────
     ToolAttributeName = "FeishuTool",
-    ToolAttributeNamespace = "Mud.Feishu.AI.Tools",
+    // BUG-1 / 方案 C：声明契约（[FeishuTool] / [ToolParameter]）必须能被**任何声明工具的
+    // 程序集**看到——包括**非 owner 声明程序集**（如 Tests/Mud.Feishu.AI.Tests 样例：
+    // 它自带同一份剖面、在同名命名空间 Mud.Feishu.AI.Tools.Generated 里生成自己的
+    // FeishuToolSchemas，故**不能**引用 owner 程序集 Mud.Feishu.AI.Tools —— 引用即 CS0433
+    // 同名类型歧义）。因此声明契约按依赖方向落在 Mud.Feishu.AI 程序集，命名空间改投
+    // Mud.Feishu.AI.AgentTools（与 FeishuToolContext / 接缝接口同处一包）。
+    ToolAttributeNamespace = "Mud.Feishu.AI.AgentTools",
     ToolHandlerAttributeName = "FeishuToolHandler",
     // 注意：handler 特性与工具特性**必须处于不同命名空间**，否则引擎无法靠 (命名空间, 特性名)
-    // 二元组把 [FeishuTool]（声明面，命名空间 = Mud.Feishu.AI.Tools）与 [FeishuToolHandler]
-    // （执行器绑定面）区分开。本工程根命名空间已与 Mud.Feishu.AI 的 Mud.Feishu.AI.Tools 同名，
-    // 故 handler 特性独占 Handlers/ 子命名空间以保住该可寻址性。
+    // 二元组把 [FeishuTool]（声明面，命名空间 = Mud.Feishu.AI.AgentTools）与 [FeishuToolHandler]
+    // （执行器绑定面）区分开。故 handler 特性独占 Handlers/ 子命名空间以保住该可寻址性。
     ToolHandlerAttributeNamespace = "Mud.Feishu.AI.Tools.Handlers",
     ParameterAttributeName = "ToolParameter",
 
@@ -83,7 +88,10 @@ namespace Mud.Feishu.AI.Tools.SdkProfile;
     GeneratedNamespace = "Mud.Feishu.AI.Tools.Generated",
     ContractNamespace = "Mud.Feishu.AI.Tools",
     RegistrationNamespace = "Mud.Feishu.AI.Tools.Registration",
-    RiskEnumFullName = "Mud.Feishu.AI.Tools.FeishuToolRisk",
+    // BUG-1 / 方案 C：风险枚举由 AI 侧（FeishuAgentOptions 策略轴、FeishuToolDiagnostics、
+    // FeishuToolRiskNames）与工具面（契约 Risk 属性）**共同消费**，按依赖方向必须落在
+    // Mud.Feishu.AI 程序集的 Mud.Feishu.AI.AgentTools 命名空间（工具包单向引用 AI）。
+    RiskEnumFullName = "Mud.Feishu.AI.AgentTools.FeishuToolRisk",
 
     // ────────── 12-17. 执行器 / 输出 / 聚合事实 ──────────
     ResultTypeName = "FeishuToolResult",

@@ -1,3 +1,6 @@
+# NOTE (BUG-6 drift): the scale numbers inside these comments are the 2026-10-07 snapshot
+#   (tool surface / truncated-tool counts). Current truth source = .docs/AI/状态基线.md ;
+#   the *values* below (009= / 009-tools= / 021=) are owned by scripts/diagnostics-gate.ps1.
 # AI 工具描述符诊断（MUDFTxxx）Warning 基线 —— R5 / B-11
 #
 # 用途：MUDFT009（output_schema 深度截断）与 MUDFT021（参数可空性存疑）是 Warning 级，

@@ -69,10 +69,12 @@ public class FeishuToolProfileContractGuards
         ["Name"] = "Feishu",
         // 1. 特性识别（旧 Extractors.GetFeishuToolAttribute / ToolHandlerScanner.*）
         ["ToolAttributeName"] = "FeishuTool",
-        ["ToolAttributeNamespace"] = "Mud.Feishu.AI.Tools",
+        ["ToolAttributeNamespace"] = "Mud.Feishu.AI.AgentTools",
         ["ToolHandlerAttributeName"] = "FeishuToolHandler",
-        // 本工程更名后根命名空间与 [FeishuTool] 所在的 Mud.Feishu.AI.Tools 同名，故 handler 特性
-        // 独占 .Handlers 子命名空间——两槽塌陷为同值会让引擎失去「声明面 vs 执行器绑定面」的可寻址性。
+        // 两槽塌陷为同值会让引擎失去「声明面 vs 执行器绑定面」的可寻址性，故 handler 特性
+        // 独占 .Handlers 子命名空间。声明契约（[FeishuTool]）按 BUG-1 落在
+        // Mud.Feishu.AI 程序集的 Mud.Feishu.AI.AgentTools —— 非 owner 声明程序集
+        // （AI.Tests 样例）不能引用 owner 程序集（CS0433），必须从依赖方向下游拿到该特性。
         ["ToolHandlerAttributeNamespace"] = "Mud.Feishu.AI.Tools.Handlers",
         ["ParameterAttributeName"] = "ToolParameter",
         // 2. 源解析（旧 Extractors.ResolveSourceMember 的 "Mud.Feishu." 前缀）
@@ -96,7 +98,7 @@ public class FeishuToolProfileContractGuards
         ["GeneratedNamespace"] = "Mud.Feishu.AI.Tools.Generated",
         ["ContractNamespace"] = "Mud.Feishu.AI.Tools",
         ["RegistrationNamespace"] = "Mud.Feishu.AI.Tools.Registration",
-        ["RiskEnumFullName"] = "Mud.Feishu.AI.Tools.FeishuToolRisk",
+        ["RiskEnumFullName"] = "Mud.Feishu.AI.AgentTools.FeishuToolRisk",
         // 12-17. 执行器 / 输出 / 聚合事实（旧 ToolHandlerScanner 返回类型名、ToolRegistrarEmitter
         //        绑定类型名、TypeSchemaResolver 解包表、CapabilityCatalogEmitter 接口前缀）
         ["ResultTypeName"] = "FeishuToolResult",

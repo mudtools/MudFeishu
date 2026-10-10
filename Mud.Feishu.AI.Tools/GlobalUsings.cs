@@ -9,6 +9,10 @@ global using Microsoft.Extensions.Logging;
 global using Microsoft.Extensions.Options;
 global using Mud.Feishu.Abstractions.Observability;
 global using Mud.Feishu.AI.Agents;
+// BUG-1 / 方案 C：AI 包侧"共享接缝"命名空间（FeishuToolContext / IFeishuToolContextAccessor /
+// IFeishuAppContextScopeFactory / IFeishuToolApprovalChannel / FeishuToolRiskNames /
+// FeishuToolDiagnostics / FeishuApiResultReader …）。工具面契约仍在 Mud.Feishu.AI.Tools。
+global using Mud.Feishu.AI.AgentTools;
 global using Mud.Feishu.AI.Tools;
 global using Mud.Feishu.AI.Tools.Generated;
 // [FeishuToolHandler] 独占 Handlers/ 命名空间，**刻意不等于** [FeishuTool] 所在的 Mud.Feishu.AI.Tools：

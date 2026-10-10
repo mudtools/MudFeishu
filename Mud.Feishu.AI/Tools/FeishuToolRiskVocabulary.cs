@@ -5,7 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.AI.Tools;
+namespace Mud.Feishu.AI.AgentTools;
 
 /// <summary>
 /// 工具风险词汇表（AT-B13 / R3 决策 D2）：配置键 <c>FeishuAgent:MaxToolRisk</c> 与 Schema 的

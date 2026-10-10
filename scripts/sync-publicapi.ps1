@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$Project = 'Mud.Feishu.AI.Tools/Mud.Feishu.AI.Tools.csproj',
     [string]$ApiFile = 'Mud.Feishu.AI.Tools/PublicAPI.Unshipped.txt',
     [string]$Golden = 'Mud.Feishu.AI.Tools/FeishuToolSchemas.golden.txt'
@@ -11,6 +11,20 @@ Set-Location $root
 # ── 1)补全缺失条目（RS0016）──
 $log = dotnet build $Project -c Release --nologo -v n --no-incremental 2>&1 | Out-String
 
+# ⚠️ BUG-7：只解析**目标工程**的诊断。构建目标工程会把依赖工程的诊断一并写进同一份日志
+#    （实测：Mud.Feishu.AI 的 RS0016 曾被写进 Mud.Feishu.AI.Tools 的 PublicAPI 文件，
+#      反之 AI 文件里的陈旧条目会被 AI.Tools 的 RS0017 顺带删除），故按诊断行尾的归属标记
+#    `[<绝对路径>\<Project>.csproj::TargetFramework=...]` 过滤。
+#    过滤后为空 ⇒ 直接中止：否则"过滤正则写坏"会退化成"什么都不补"的假绿。
+$projName = [System.IO.Path]::GetFileName($Project)
+$ownPattern = '\[[^\[\]]*' + [regex]::Escape($projName) + '::'
+$ownLines = @($log -split "`r?`n" | Where-Object { $_ -match $ownPattern })
+if ($ownLines.Count -eq 0) {
+    throw "未解析到目标工程 '$projName' 的任何诊断行——归属过滤可能整体失效（假绿风险），自证失败，脚本中止。"
+}
+$ownLog = $ownLines -join "`n"
+Write-Host ("目标工程诊断行: {0}（共 {1} 行日志）" -f $ownLines.Count, ($log -split "`r?`n").Count)
+
 $existing = New-Object 'System.Collections.Generic.HashSet[string]'
 foreach ($line in [System.IO.File]::ReadAllLines($ApiFile)) {
     if ($line.Trim()) { [void]$existing.Add($line.Trim()) }
@@ -20,7 +34,7 @@ $missing = New-Object 'System.Collections.Generic.List[string]'
 # ⚠️ 不可用 `[^']+` 捕获符号：工具描述里**合法地**含有单引号（如 `适用于'这条不该我批'`），
 #    `[^']+` 会在中间提前截断导致整条正则匹配失败 ⇒ 脚本**静默漏补**这些工具的 PublicAPI
 #    条目（RS0016 永久残留，且不会有任何提示）。改为非贪婪 + 锚定尾界 `' is not part`。
-foreach ($m in [regex]::Matches($log, "RS0016: Symbol '(?<s>.*?)' is not part")) {
+foreach ($m in [regex]::Matches($ownLog, "RS0016: Symbol '(?<s>.*?)' is not part")) {
     $s = $m.Groups['s'].Value
     if (-not $existing.Contains($s)) { $missing.Add($s) }
 }
@@ -33,7 +47,7 @@ Write-Host ("缺失条目(唯一): {0}" -f $uniq.Count)
 #    本脚本原先只补不删，于是这些残留在文件里**单向累积**（实测已累积 112 条），
 #    每次构建都刷屏，最终淹没真正的 API 漂移信号。
 $stale = New-Object 'System.Collections.Generic.HashSet[string]'
-foreach ($m in [regex]::Matches($log, "RS0017: Symbol '(?<s>.*?)' is part of")) {
+foreach ($m in [regex]::Matches($ownLog, "RS0017: Symbol '(?<s>.*?)' is part of")) {
     [void]$stale.Add($m.Groups['s'].Value.Trim())
 }
 
@@ -76,4 +90,7 @@ for ($i = 0; $i -lt $all.Count; $i++) {
 
 $sorted = @($all | Sort-Object -Unique)
 [System.IO.File]::WriteAllLines($ApiFile, $sorted, (New-Object System.Text.UTF8Encoding($false)))
-Write-Host ("Schema常量更新: {0}；总行数: {1}" -f $schemasUpdated, $sorted.Count)
+# BUG-7（可读性项）：三项计数分别列出——原实现只打印"Schema常量更新"，
+# 走 RS0016/RS0017 补删路径时该计数恒为 0，容易被误读成"脚本没干活"。
+Write-Host ("补入条目: {0}；删除陈旧条目: {1}；Schema载荷替换: {2}；总行数: {3}" -f `
+    $uniq.Count, $stale.Count, $schemasUpdated, $sorted.Count)

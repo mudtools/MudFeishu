@@ -33,4 +33,9 @@ global using Mud.Feishu.Abstractions.Conversations;
 global using Mud.Feishu.Abstractions.EventHandlers;
 global using Mud.Feishu.Abstractions.Services;
 global using Mud.Feishu.AI.Conversations;
-global using Mud.Feishu.AI.Tools;
+// BUG-1 / 方案 C：本包保留的"AI 运行时 ↔ 工具面共享接缝"（工具源、租户作用域工厂、
+// 上下文访问器、审批通道、风险/身份/内容安全词汇、诊断、API 结果读取）落在本包自有命名空间
+// Mud.Feishu.AI.AgentTools；工具契约与实现（注册表/结果/属性/目录/授权/审计/错误/附件暂存）
+// 已回迁 Mud.Feishu.AI.Tools 并保持命名空间 Mud.Feishu.AI.Tools（归属唯一，由
+// PackageOwnershipContractGuards 锁定）。
+global using Mud.Feishu.AI.AgentTools;

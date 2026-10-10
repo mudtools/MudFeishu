@@ -20,7 +20,7 @@ Mud.Feishu.AI.Mcp.FeishuMcpStdioHost
 Mud.Feishu.AI.Mcp.FeishuMcpStdioHost.FeishuMcpStdioHost(Mud.Feishu.AI.Mcp.FeishuMcpToolServer! server, System.IO.TextReader! input, System.IO.TextWriter! output, Microsoft.Extensions.Logging.ILogger<Mud.Feishu.AI.Mcp.FeishuMcpStdioHost!>? logger = null) -> void
 Mud.Feishu.AI.Mcp.FeishuMcpStdioHost.RunAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
 Mud.Feishu.AI.Mcp.FeishuMcpToolServer
-Mud.Feishu.AI.Mcp.FeishuMcpToolServer.FeishuMcpToolServer(System.IServiceProvider! services, Microsoft.Extensions.Options.IOptions<Mud.Feishu.AI.Mcp.FeishuMcpServerOptions!>! options, Mud.Feishu.AI.Tools.IFeishuToolContextAccessor! contextAccessor, Microsoft.Extensions.Logging.ILogger<Mud.Feishu.AI.Mcp.FeishuMcpToolServer!>? logger = null) -> void
+Mud.Feishu.AI.Mcp.FeishuMcpToolServer.FeishuMcpToolServer(System.IServiceProvider! services, Microsoft.Extensions.Options.IOptions<Mud.Feishu.AI.Mcp.FeishuMcpServerOptions!>! options, Mud.Feishu.AI.AgentTools.IFeishuToolContextAccessor! contextAccessor, Microsoft.Extensions.Logging.ILogger<Mud.Feishu.AI.Mcp.FeishuMcpToolServer!>? logger = null) -> void
 Mud.Feishu.AI.Mcp.FeishuMcpToolServer.HandleMessageAsync(string? json, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
 Mud.Feishu.AI.Mcp.FeishuMcpToolServer.Instructions.get -> string!
 Mud.Feishu.AI.Mcp.FeishuMcpToolServer.IsInitialized.get -> bool
@@ -30,7 +30,7 @@ Mud.Feishu.AI.Mcp.McpToolInfo
 Mud.Feishu.AI.Mcp.McpToolInfo.<Clone>$() -> Mud.Feishu.AI.Mcp.McpToolInfo!
 Mud.Feishu.AI.Mcp.McpToolInfo.ContractName.get -> string!
 Mud.Feishu.AI.Mcp.McpToolInfo.ContractName.init -> void
-Mud.Feishu.AI.Mcp.McpToolInfo.Deconstruct(out string! Name, out string! ContractName, out string! Description, out bool IsWrite, out Mud.Feishu.AI.Tools.FeishuToolRisk Risk, out string! Identity) -> void
+Mud.Feishu.AI.Mcp.McpToolInfo.Deconstruct(out string! Name, out string! ContractName, out string! Description, out bool IsWrite, out Mud.Feishu.AI.AgentTools.FeishuToolRisk Risk, out string! Identity) -> void
 Mud.Feishu.AI.Mcp.McpToolInfo.Description.get -> string!
 Mud.Feishu.AI.Mcp.McpToolInfo.Description.init -> void
 Mud.Feishu.AI.Mcp.McpToolInfo.Equals(Mud.Feishu.AI.Mcp.McpToolInfo? other) -> bool
@@ -38,10 +38,10 @@ Mud.Feishu.AI.Mcp.McpToolInfo.Identity.get -> string!
 Mud.Feishu.AI.Mcp.McpToolInfo.Identity.init -> void
 Mud.Feishu.AI.Mcp.McpToolInfo.IsWrite.get -> bool
 Mud.Feishu.AI.Mcp.McpToolInfo.IsWrite.init -> void
-Mud.Feishu.AI.Mcp.McpToolInfo.McpToolInfo(string! Name, string! ContractName, string! Description, bool IsWrite, Mud.Feishu.AI.Tools.FeishuToolRisk Risk, string! Identity) -> void
+Mud.Feishu.AI.Mcp.McpToolInfo.McpToolInfo(string! Name, string! ContractName, string! Description, bool IsWrite, Mud.Feishu.AI.AgentTools.FeishuToolRisk Risk, string! Identity) -> void
 Mud.Feishu.AI.Mcp.McpToolInfo.Name.get -> string!
 Mud.Feishu.AI.Mcp.McpToolInfo.Name.init -> void
-Mud.Feishu.AI.Mcp.McpToolInfo.Risk.get -> Mud.Feishu.AI.Tools.FeishuToolRisk
+Mud.Feishu.AI.Mcp.McpToolInfo.Risk.get -> Mud.Feishu.AI.AgentTools.FeishuToolRisk
 Mud.Feishu.AI.Mcp.McpToolInfo.Risk.init -> void
 override Mud.Feishu.AI.Mcp.McpToolInfo.Equals(object? obj) -> bool
 override Mud.Feishu.AI.Mcp.McpToolInfo.GetHashCode() -> int

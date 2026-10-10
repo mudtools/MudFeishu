@@ -41,7 +41,7 @@ internal sealed class TranslationTools(
     private const int MaxGlossaryTerms = 128;
 
     private readonly Mud.Feishu.IFeishuTenantV1AITranslation? _translationClient = translationClient;
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>ai.translate_text：把文本翻译成目标语言（机器翻译）。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantAiTranslateTextTool))]

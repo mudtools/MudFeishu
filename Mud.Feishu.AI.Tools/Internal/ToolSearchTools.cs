@@ -37,7 +37,7 @@ internal sealed class ToolSearchTools(
     IOptions<FeishuAgentOptions> options,
     IServiceProvider serviceProvider)
 {
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
     private readonly IServiceProvider _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
 
     /// <summary>执行期解析目录（注册表构建完成后调用——工具能被执行说明注册表已就绪）。</summary>
@@ -60,7 +60,9 @@ internal sealed class ToolSearchTools(
             var domain = ToolArgs.OptionalString(arguments, "domain");
             var writeOnly = ToolArgs.OptionalBool(arguments, "write_only") ?? false;
             var readOnly = ToolArgs.OptionalBool(arguments, "read_only") ?? false;
-            var limit = TryReadInt(arguments, "limit") ?? DefaultLimit;
+            // R-2：此前本文件自带一份 TryReadInt 形态 switch（R1.3 评审漏列的**第 7 处**副本）——
+            // 取值经唯一门面，与生成的 *Args.Unpack 口径一致。
+            var limit = ToolArgs.OptionalInt(arguments, "limit") ?? DefaultLimit;
 
             limit = Math.Min(Math.Max(limit, 1), MaxLimit);
 
@@ -212,22 +214,5 @@ internal sealed class ToolSearchTools(
         }
 
         return [];
-    }
-
- int? TryReadInt(IReadOnlyDictionary<string, object?> arguments, string key)
-    {
-        if (!arguments.TryGetValue(key, out var value) || value is null)
-        {
-            return null;
-        }
-
-        return value switch
-        {
-            int i => i,
-            long l => (int)l,
-            System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.Number } e
-                when e.TryGetInt32(out var i) => i,
-            _ => null,
-        };
     }
 }

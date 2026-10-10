@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using System.Text.Json;
+using Mud.Feishu.AI.Tools.Tools;
 
 namespace Mud.Feishu.AI.Tools;
 
@@ -15,7 +16,10 @@ namespace Mud.Feishu.AI.Tools;
 //   FeishuApiResultReader.cs → API outcome 解包（唯一）
 //   ToolArgs.cs              → 模型入参读取（唯一取值门面）
 //   ToolResultText.cs        → 出站文本截断 / JSON 感知截断
-// 依赖方向：ToolResultText → ToolResultJson（单向），ToolArgs 独立。
+// 依赖方向：ToolResultText → ToolResultJson（单向）。
+// R-2：ToolArgs 是**取值门面**（模型入参 → 强类型标量），其底层的「JsonElement 形态判定」
+// 一律经 ToolArgumentNormalizer 的判定原语（IsJsonString/IsJsonArray）——本文件不写字面量形态判断，
+// 由 ToolArgumentShapeContractGuards 机械锁定。
 
 /// <summary>
 /// 工具入参读取器：模型 tool_call 的参数字典 → 强类型标量（值可能为 JsonElement/字符串/数字）。
@@ -198,8 +202,11 @@ internal static class ToolArgs
             case System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.Number } element
                 when element.TryGetInt32(out var parsed):
                 return parsed;
-            case System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.String } element
-                when int.TryParse(element.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed):
+
+            // R-2：文本形态判定经唯一认知入口（ToolArgumentNormalizer.IsJsonString）。
+            case System.Text.Json.JsonElement element
+                when ToolArgumentNormalizer.IsJsonString(element, out var raw)
+                     && int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed):
                 return parsed;
             case string text when int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed):
                 return parsed;
@@ -229,13 +236,13 @@ internal static class ToolArgs
             return null;
         }
 
-        if (value is System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.Array } element)
+        // R-2：数组/文本形态判定经唯一认知入口（非文本元素自然被过滤，语义与旧写法一致）。
+        if (ToolArgumentNormalizer.IsJsonArray(value, out var element))
         {
             var items = element.EnumerateArray()
-                .Where(e => e.ValueKind is System.Text.Json.JsonValueKind.String)
-                .Select(e => e.GetString())
-                .Where(s => !string.IsNullOrEmpty(s))
-                .Select(s => s!)
+                .Select(static e => ToolArgumentNormalizer.IsJsonString(e, out var text) ? text : null)
+                .Where(static s => !string.IsNullOrEmpty(s))
+                .Select(static s => s!)
                 .ToArray();
             return items.Length == 0 ? null : items;
         }
@@ -258,11 +265,11 @@ internal static class ToolArgs
     {
         null => null,
         string s => string.IsNullOrWhiteSpace(s) ? null : s,
-        System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.String } e => e.GetString(),
         System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.Number } e => e.GetRawText(),
         System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.True } => bool.TrueString,
         System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.False } => bool.FalseString,
-        System.Text.Json.JsonElement => null,
+        // R-2：文本/其余形态判定经唯一认知入口，本文件不再自带 ValueKind 形态字面量。
+        System.Text.Json.JsonElement => ToolArgumentNormalizer.IsJsonString(value, out var text) ? text : null,
         _ => value.ToString(),
     };
 }

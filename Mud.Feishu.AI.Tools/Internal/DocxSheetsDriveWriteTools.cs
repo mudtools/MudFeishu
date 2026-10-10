@@ -44,7 +44,7 @@ internal sealed class DocxWriteTools(
     /// 正常载荷不受影响（<c>TruncateJson</c> 在预算内原样返回），超长载荷才被约束。
     /// </remarks>
     private readonly int _maxResultLength =
-        (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+        ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>docx.create_document：创建文档（<c>dry_run=true</c> 时只预演）。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantDocxCreateDocumentTool))]

@@ -40,7 +40,7 @@ internal sealed class OkrWriteTools(
     private readonly Mud.Feishu.IFeishuTenantV2OkrCycle? _okrCycleClient = okrCycleClient;
     private readonly Mud.Feishu.IFeishuTenantV2OkrObjective? _okrObjectiveClient = okrObjectiveClient;
     private readonly Mud.Feishu.IFeishuTenantV2OkrKeyResult? _okrKeyResultClient = okrKeyResultClient;
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>okr.create_objective：在周期下创建目标（<c>dry_run=true</c> 时只预演）。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantOkrCreateObjectiveTool))]

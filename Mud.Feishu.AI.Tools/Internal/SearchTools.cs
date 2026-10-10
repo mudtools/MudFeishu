@@ -20,7 +20,7 @@ internal sealed class SearchTools(Mud.Feishu.IFeishuTenantV2SearchDocWiki search
 {
     private readonly Mud.Feishu.IFeishuTenantV2SearchDocWiki _searchClient = searchClient
         ?? throw new ArgumentNullException(nameof(searchClient));
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>search.doc_wiki：云文档与知识库搜索（白名单 title/url/owner/doc_type）。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantSearchDocWikiTool))]
@@ -72,15 +72,8 @@ internal sealed class SearchTools(Mud.Feishu.IFeishuTenantV2SearchDocWiki search
     /// <summary>search 投影：items（title/url/owner/doc_type/token）+ total + 翻页契约。</summary>
     private static JsonObject ProjectSearch(SearchDocWikiResult data)
     {
-        var envelope = new JsonObject
-        {
-            ["items"] = new JsonArray(),
-            ["has_more"] = data.HasMore,
-        };
-        if (!string.IsNullOrEmpty(data.PageToken))
-        {
-            envelope["page_token"] = data.PageToken;
-        }
+        // R-3：信封形态单源（ToolResultJsons.PageEnvelope）。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
 
         if (data.Total.HasValue)
         {

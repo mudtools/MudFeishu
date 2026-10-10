@@ -66,18 +66,35 @@ internal static class ToolArgsDigester
         return builder.ToString();
     }
 
-    private static (string Kind, int? Length) Describe(object? value) => value switch
+    /// <summary>值形态描述（审计摘要词汇：null/str/array/json/list/bool/num）。</summary>
+    /// <remarks>
+    /// R-2：<c>JsonElement</c> 的形态判定经唯一认知入口（<see cref="ToolArgumentNormalizer.IsJsonString"/> /
+    /// <see cref="ToolArgumentNormalizer.IsJsonArray"/>）——本文件不再自带 <c>ValueKind</c> 字面量
+    /// （由 <c>ToolArgumentShapeContractGuards</c> 机械锁定）。产出词汇（str/array/json…）是**审计摘要**
+    /// 的表示法，与取值门面 <c>ToolArgs</c> 的强类型转换不同职责，故保留在本类型。
+    /// </remarks>
+    private static (string Kind, int? Length) Describe(object? value)
     {
-        null => ("null", null),
-        string s => ("str", s.Length),
-        System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.Array } e
-            => ("array", e.GetArrayLength()),
-        System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.String } e
-            => ("str", e.GetString()?.Length ?? 0),
-        System.Text.Json.JsonElement => ("json", null),
-        System.Collections.IEnumerable and not string => ("list", null),
-        bool => ("bool", null),
-        sbyte or byte or short or ushort or int or uint or long or ulong or double or decimal => ("num", null),
-        _ => ("str", value.ToString()?.Length),
-    };
+        switch (value)
+        {
+            case null:
+                return ("null", null);
+            case string s:
+                return ("str", s.Length);
+            case System.Text.Json.JsonElement element when ToolArgumentNormalizer.IsJsonArray(element, out var array):
+                return ("array", array.GetArrayLength());
+            case System.Text.Json.JsonElement element when ToolArgumentNormalizer.IsJsonString(element, out var text):
+                return ("str", text?.Length ?? 0);
+            case System.Text.Json.JsonElement:
+                return ("json", null);
+            case System.Collections.IEnumerable and not string:
+                return ("list", null);
+            case bool:
+                return ("bool", null);
+            case sbyte or byte or short or ushort or int or uint or long or ulong or double or decimal:
+                return ("num", null);
+            default:
+                return ("str", value.ToString()?.Length);
+        }
+    }
 }

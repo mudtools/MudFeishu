@@ -28,73 +28,122 @@ namespace Mud.Feishu.AI.Tools.Tools;
 internal static class ToolArgumentNormalizer
 {
     /// <summary>
+    /// 形态判定原语（R-2）：值是否为 JSON <b>文本</b>元素，并给出文本。
+    /// </summary>
+    /// <remarks>
+    /// <b>为什么要有这两条原语（R-2 的收敛点）</b>：<c>JsonElement.ValueKind</c> 的形态判定
+    /// 此前散落在 6 处（<c>ToolArgs</c> 取值、<c>ToolPagination.TryReadBool/TryReadInt</c>、
+    /// <c>ToolDryRun.IsRequested</c>、<c>ToolArgsDigester.Describe</c>、<c>ToolResultText.ToJsonNode</c>）。
+    /// "同一入参在不同工具里被判成不同形态"是 S1 的同类根因，故把判定收进本类型
+    /// （唯一认知入口），其余位置只能<b>薄委托</b>——
+    /// <c>ToolArgumentShapeContractGuards</c> 已把"<c>JsonValueKind.String</c> 只允许出现在本文件"
+    /// 钉成机械约束（白名单已收缩为单文件），新增位置立刻报红。
+    /// </remarks>
+    /// <param name="value">参数值（运行时真实形态通常是 <see cref="System.Text.Json.JsonElement"/>）。</param>
+    /// <param name="text">命中时的文本（JSON <c>null</c> 之外不会有 null）。</param>
+    /// <returns>是否为 JSON 文本元素。</returns>
+    public static bool IsJsonString(object? value, out string? text)
+    {
+        if (value is System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.String } element)
+        {
+            text = element.GetString();
+            return true;
+        }
+
+        text = null;
+        return false;
+    }
+
+    /// <summary>形态判定原语（R-2）：值是否为 JSON <b>数组</b>元素，并给出元素本身（取长度/遍历用）。</summary>
+    /// <param name="value">参数值。</param>
+    /// <param name="array">命中时的数组元素。</param>
+    /// <returns>是否为 JSON 数组元素。</returns>
+    public static bool IsJsonArray(object? value, out System.Text.Json.JsonElement array)
+    {
+        if (value is System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.Array } element)
+        {
+            array = element;
+            return true;
+        }
+
+        array = default;
+        return false;
+    }
+
+    /// <summary>
     /// 以 (参数路径, 文本值) 的形式遍历任意形态的参数值。
     /// </summary>
     /// <param name="path">当前参数路径（根参数名）。</param>
     /// <param name="value">参数值（可能为 <c>null</c>/<c>string</c>/<c>JsonElement</c>/<c>IEnumerable&lt;string&gt;</c>）。</param>
     /// <returns>(路径, 文本值) 序列——只产出文本值，数值/布尔/null 被跳过。</returns>
+    /// <remarks>
+    /// 形态判定一律经 <see cref="IsJsonString"/>/<see cref="IsJsonArray"/>（R-2）：
+    /// 本方法不再自带 <c>ValueKind</c> 字面量，避免"中心自己也另有一套判定"。
+    /// 分支顺序与被取代的 <c>switch</c> <b>逐字同序</b>（行为等价性由既有用例兜底）。
+    /// </remarks>
     public static IEnumerable<(string Path, string Text)> EnumerateTexts(string path, object? value)
     {
-        switch (value)
+        if (value is null)
         {
-            case null:
-                yield break;
+            yield break;
+        }
 
-            case string s:
-                yield return (path, s);
-                yield break;
+        if (value is string s)
+        {
+            yield return (path, s);
+            yield break;
+        }
 
-            case System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.String } e:
-                yield return (path, e.GetString() ?? string.Empty);
-                yield break;
+        if (IsJsonString(value, out var text))
+        {
+            yield return (path, text ?? string.Empty);
+            yield break;
+        }
 
-            case System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.Array } e:
+        if (IsJsonArray(value, out var array))
+        {
+            var i = 0;
+            foreach (var item in array.EnumerateArray())
+            {
+                foreach (var pair in EnumerateTexts(
+                    $"{path}[{i.ToString(CultureInfo.InvariantCulture)}]", item))
                 {
-                    var i = 0;
-                    foreach (var item in e.EnumerateArray())
-                    {
-                        foreach (var pair in EnumerateTexts(
-                            $"{path}[{i.ToString(CultureInfo.InvariantCulture)}]", item))
-                        {
-                            yield return pair;
-                        }
-
-                        i++;
-                    }
-
-                    yield break;
+                    yield return pair;
                 }
 
-            case System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.Object } e:
+                i++;
+            }
+
+            yield break;
+        }
+
+        if (value is System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.Object } obj)
+        {
+            foreach (var prop in obj.EnumerateObject())
+            {
+                foreach (var pair in EnumerateTexts($"{path}.{prop.Name}", prop.Value))
                 {
-                    foreach (var prop in e.EnumerateObject())
-                    {
-                        foreach (var pair in EnumerateTexts($"{path}.{prop.Name}", prop.Value))
-                        {
-                            yield return pair;
-                        }
-                    }
-
-                    yield break;
+                    yield return pair;
                 }
+            }
 
-            case System.Text.Json.JsonElement: // Number / True / False / Null / Undefined
-                yield break;
+            yield break;
+        }
 
-            case IEnumerable<string> strings: // 宿主侧直接构造的托管形态（测试/内部调用）
-                {
-                    var i = 0;
-                    foreach (var item in strings)
-                    {
-                        yield return ($"{path}[{i.ToString(CultureInfo.InvariantCulture)}]", item);
-                        i++;
-                    }
+        if (value is System.Text.Json.JsonElement)
+        {
+            // Number / True / False / Null / Undefined
+            yield break;
+        }
 
-                    yield break;
-                }
-
-            default:
-                yield break;
+        if (value is IEnumerable<string> strings) // 宿主侧直接构造的托管形态（测试/内部调用）
+        {
+            var i = 0;
+            foreach (var item in strings)
+            {
+                yield return ($"{path}[{i.ToString(CultureInfo.InvariantCulture)}]", item);
+                i++;
+            }
         }
     }
 }

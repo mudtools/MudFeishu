@@ -28,7 +28,7 @@ namespace Mud.Feishu.AI.Tools;
 /// <c>x-feishu</c> 元数据由注册表定义承载——不重复进入 Schema 关键字空间。
 /// </para>
 /// </remarks>
-public sealed class FeishuToolAIFunction : AIFunction
+internal sealed class FeishuToolAIFunction : AIFunction
 {
     private readonly FeishuToolDefinition _definition;
     private readonly IFeishuToolContextAccessor? _contextAccessor;

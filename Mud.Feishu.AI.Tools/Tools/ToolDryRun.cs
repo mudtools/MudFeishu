@@ -86,19 +86,12 @@ internal static class ToolDryRun
     /// 从<b>原始参数字典</b>读取 <c>dry_run</c>（执行链消费点 B3：dry_run 调用不参与重试，
     /// 而执行链看到的只有参数字典——此处与生成器解包语义保持一致，缺省 false）。
     /// </summary>
+    /// <remarks>
+    /// R-2：取值经唯一门面 <see cref="ToolArgs.OptionalBool"/>（此前本类型自带一份形态 switch，
+    /// 与生成的 <c>*Args.Unpack</c> 对同一入参的判断口径不同——如字符串 <c>"true"</c> 在解包侧生效、
+    /// 在执行链侧被忽略，会出现"预演被当成实发"的语义分叉）。
+    /// </remarks>
     /// <param name="arguments">模型 tool_call 原始入参。</param>
     public static bool IsRequested(IReadOnlyDictionary<string, object?> arguments)
-    {
-        if (arguments is null || !arguments.TryGetValue("dry_run", out var value) || value is null)
-        {
-            return false;
-        }
-
-        return value switch
-        {
-            bool flag => flag,
-            System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.True } => true,
-            _ => false,
-        };
-    }
+        => arguments is not null && (ToolArgs.OptionalBool(arguments, "dry_run") ?? false);
 }

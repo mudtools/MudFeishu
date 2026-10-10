@@ -148,6 +148,56 @@ public class PaginationContractGuards
     }
 
     /// <summary>
+    /// <b>R-3 守卫</b>：<b>单页信封字段只允许来自统一帮助方法</b>（<c>ToolResultJsons</c>）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 源码结构断言：<c>Internal/</c> 下的执行器不得再出现
+    /// <list type="bullet">
+    /// <item><c>["items"] = new JsonArray()</c>（信封起手形态）；</item>
+    /// <item><c>envelope["page_token"] = …</c>（<c>page_token</c> 赋值形态）。</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// <b>为什么拦这两条形态</b>：它们正是"逐字重写信封"的最小指纹——29 处 / 18 个文件的
+    /// 重复在此收敛；任一处重新出现即意味着某执行器又自带了一套信封口径
+    /// （键名/空 token 语义可静默漂移，模型续不上页且无任何信号）。
+    /// 白名单为空：<c>ToolResultJsons</c> 是唯一实现，且在 <c>Tools/</c>（不在本守卫扫描面内）。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void PageEnvelopeFields_ShouldOnlyComeFromSharedHelper()
+    {
+        var executorFiles = Directory.GetFiles(
+            Path.Combine(FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Internal"),
+            "*.cs",
+            SearchOption.TopDirectoryOnly);
+
+        executorFiles.Should().NotBeEmpty("执行器文件必须存在");
+
+        var offenders = new List<string>();
+        foreach (var file in executorFiles)
+        {
+            var source = File.ReadAllText(file);
+
+            if (source.Contains("[\"items\"] = new JsonArray()", StringComparison.Ordinal))
+            {
+                offenders.Add($"{Path.GetFileName(file)}: [\"items\"] = new JsonArray()（应改为 ToolResultJsons.ItemsEnvelope()/PageEnvelope(...)）");
+            }
+
+            if (source.Contains("[\"page_token\"] =", StringComparison.Ordinal))
+            {
+                offenders.Add($"{Path.GetFileName(file)}: envelope[\"page_token\"] = …（应改为 ToolResultJsons.WithPageToken/PageEnvelope(...)）");
+            }
+        }
+
+        offenders.Should().BeEmpty(
+            "单页信封（items/has_more/page_token）必须经 ToolResultJsons 单源构造——"
+            + "逐文件重写会让『空 token 不写』这类语义静默漂移（模型续不上页且无信号）：\n"
+            + string.Join("\n", offenders));
+    }
+
+    /// <summary>
     /// 守卫 ③：ToolPagination 硬上限常量存在且为正。
     /// </summary>
     [Fact]

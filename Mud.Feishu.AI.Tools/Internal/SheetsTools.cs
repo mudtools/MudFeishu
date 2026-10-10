@@ -24,7 +24,7 @@ internal sealed class SheetsTools(
         ?? throw new ArgumentNullException(nameof(spreadsheetsClient));
     private readonly Mud.Feishu.IFeishuTenantV3SpreadsheetData _spreadsheetDataClient = spreadsheetDataClient
         ?? throw new ArgumentNullException(nameof(spreadsheetDataClient));
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>sheets.list_sheets：列出工作表（白名单 sheet_id/title/index）。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantSheetsListTool))]
@@ -65,7 +65,8 @@ internal sealed class SheetsTools(
     /// <summary>list_sheets 投影：items（sheet_id/title/index）。</summary>
     private static JsonObject ProjectSheets(GetSpreadsheetSheetsResult data)
     {
-        var envelope = new JsonObject { ["items"] = new JsonArray() };
+        // R-3：信封形态单源（无翻页契约的列表信封）。
+        var envelope = ToolResultJsons.ItemsEnvelope();
         foreach (var sheet in data.Sheets ?? [])
         {
             envelope["items"]!.AsArray().AddNode(new JsonObject

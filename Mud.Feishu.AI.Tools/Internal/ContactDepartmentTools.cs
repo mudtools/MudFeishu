@@ -38,9 +38,9 @@ internal sealed class ContactDepartmentTools(
 {
     private readonly Mud.Feishu.IFeishuTenantV3Departments? _departmentsClient = departmentsClient;
     private readonly Mud.Feishu.IFeishuTenantV1Employees? _employeesClient = employeesClient;
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
-    private readonly int _maxAutoFetchItems = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchItems;
-    private readonly int _maxAutoFetchPages = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchPages;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
+    private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
     /// <summary>contact.list_departments：列出指定部门下的子部门（分页，白名单 department_id/name/parent_department_id）。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantContactListDepartmentsTool))]
@@ -169,15 +169,8 @@ internal sealed class ContactDepartmentTools(
     /// <summary>list_departments 投影：items（department_id/name/parent_department_id）+ 翻页契约。</summary>
     private static JsonObject ProjectDepartments(ApiPageListResult<GetDepartmentInfo> data)
     {
-        var envelope = new JsonObject
-        {
-            ["items"] = new JsonArray(),
-            ["has_more"] = data.HasMore,
-        };
-        if (!string.IsNullOrEmpty(data.PageToken))
-        {
-            envelope["page_token"] = data.PageToken;
-        }
+        // R-3：信封形态单源（ToolResultJsons.PageEnvelope）。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
 
         foreach (var dept in data.Items ?? [])
         {
@@ -197,19 +190,15 @@ internal sealed class ContactDepartmentTools(
     /// <summary>list_department_members 投影：items（employee_id/name/email/mobile）+ 翻页契约。</summary>
     private static JsonObject ProjectDepartmentMembers(EmployeePageListResult data)
     {
-        var envelope = new JsonObject
-        {
-            ["items"] = new JsonArray(),
-        };
+        // R-3：信封形态单源。本投影的分页信息嵌在 Page 子对象里（EmployeePageListResult
+        // 继承 PageListResult），且**缺失 Page 时不写 has_more**（保留该既有语义，不臆造 false）。
+        var envelope = ToolResultJsons.ItemsEnvelope();
 
         // EmployeePageListResult 继承 PageListResult，Page 属性含分页信息
         if (data.Page is not null)
         {
             envelope["has_more"] = data.Page.HasMore;
-            if (!string.IsNullOrEmpty(data.Page.PageToken))
-            {
-                envelope["page_token"] = data.Page.PageToken;
-            }
+            envelope.WithPageToken(data.Page.PageToken);
         }
 
         foreach (var emp in data.Employees ?? [])

@@ -33,7 +33,7 @@ namespace Mud.Feishu.AI.Tools;
 /// （护城河硬验收③，Phase 1 §5）。
 /// </para>
 /// </remarks>
-public sealed class FeishuToolBinding
+internal sealed class FeishuToolBinding
 {
     /// <summary>
     /// user 身份字面量（R-5：单源取自 <see cref="FeishuToolIdentityNames"/>——

@@ -241,14 +241,24 @@ internal static class ToolPagination
     /// <summary>
     /// 从参数字典读取 <c>fetch_all</c> 参数（默认 false）。
     /// </summary>
+    /// <remarks>
+    /// R-2：取值经唯一门面 <see cref="ToolArgs.OptionalBool"/>（此前本类型自带一份 <c>TryReadBool</c>，
+    /// 只认 <c>bool</c> / JSON <c>true|false</c>，而生成的 <c>*Args.Unpack</c> 走 <c>ToolArgs</c>——
+    /// 同一入参在两条路径上被判成不同形态，属 S1 同类根因）。
+    /// </remarks>
     public static bool ReadFetchAll(IReadOnlyDictionary<string, object?> arguments)
-        => TryReadBool(arguments, "fetch_all") ?? false;
+        => ToolArgs.OptionalBool(arguments, "fetch_all") ?? false;
 
     /// <summary>
     /// 从参数字典读取 <c>max_items</c> 参数（默认 null → 由 Options 填充）。
     /// </summary>
+    /// <remarks>
+    /// R-2：取值经唯一门面 <see cref="ToolArgs.OptionalInt"/>——语义随之与生成的 <c>*Args.Unpack</c>
+    /// 对齐：<b>参数存在但无法解析为整数时抛</b>（由执行链转结构化错误），不再静默降级为
+    /// "未提供"。"0 / 非法" 与 "未提供" 是两种语义（见 <see cref="ToolArgs.OptionalInt"/> 的 remarks）。
+    /// </remarks>
     public static int? ReadMaxItems(IReadOnlyDictionary<string, object?> arguments)
-        => TryReadInt(arguments, "max_items");
+        => ToolArgs.OptionalInt(arguments, "max_items");
 
     /// <summary>
     /// 解析实际 maxItems：用户传入 → Options 默认 → 硬上限钳制。
@@ -270,38 +280,5 @@ internal static class ToolPagination
     public static int ResolveMaxPages(int optionsDefault)
     {
         return Math.Min(Math.Max(optionsDefault, 1), HardMaxPages);
-    }
-
-    private static bool? TryReadBool(IReadOnlyDictionary<string, object?> arguments, string key)
-    {
-        if (!arguments.TryGetValue(key, out var value) || value is null)
-        {
-            return null;
-        }
-
-        return value switch
-        {
-            bool b => b,
-            System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.True } => true,
-            System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.False } => false,
-            _ => null,
-        };
-    }
-
-    private static int? TryReadInt(IReadOnlyDictionary<string, object?> arguments, string key)
-    {
-        if (!arguments.TryGetValue(key, out var value) || value is null)
-        {
-            return null;
-        }
-
-        return value switch
-        {
-            int i => i,
-            long l => (int)l,
-            System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.Number } e
-                when e.TryGetInt32(out var i) => i,
-            _ => null,
-        };
     }
 }

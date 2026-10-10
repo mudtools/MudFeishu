@@ -53,7 +53,7 @@ internal sealed class AttendanceTools(
     private readonly Mud.Feishu.IFeishuTenantV1AttendanceStats? _statsClient = statsClient;
     private readonly Mud.Feishu.IFeishuTenantV1AttendanceRemedys? _remedysClient = remedysClient;
     private readonly Mud.Feishu.IFeishuTenantV1AttendanceShifts? _shiftsClient = shiftsClient;
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     // ─────────────────────────── 打卡流水面（3 个） ───────────────────────────
 

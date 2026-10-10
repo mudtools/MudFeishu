@@ -43,7 +43,7 @@ internal sealed class VcTools(
     private readonly Mud.Feishu.IFeishuTenantV1VideoConferencingRecording? _recordingClient = vcRecordingClient;
     private readonly Mud.Feishu.IFeishuTenantV1VideoConferencingReserves? _reservesClient = vcReservesClient;
     private readonly Mud.Feishu.IFeishuTenantV1VideoConferencingRoom? _roomClient = vcRoomClient;
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>vc.list_meetings：按时间范围查询会议列表。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantVcListMeetingsTool))]
@@ -318,15 +318,8 @@ internal sealed class VcTools(
     /// <summary>翻页信封（items + has_more + 可选 page_token）。</summary>
     private static JsonObject PageHeader(ApiPageListResult data)
     {
-        var envelope = new JsonObject
-        {
-            ["items"] = new JsonArray(),
-            ["has_more"] = data.HasMore,
-        };
-        if (!string.IsNullOrEmpty(data.PageToken))
-        {
-            envelope["page_token"] = data.PageToken;
-        }
+        // R-3：信封形态单源（ToolResultJsons.PageEnvelope）。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
 
         return envelope;
     }

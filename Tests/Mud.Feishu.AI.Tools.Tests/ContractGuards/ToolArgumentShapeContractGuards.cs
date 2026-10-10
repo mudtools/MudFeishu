@@ -17,20 +17,19 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>判据（R2 评审修订）</b>：守卫只覆盖「净化与摘要遍历」场景——<c>ToolArgs</c> 的值类型转换
-/// （提取标量）职责不同，不纳入禁止范围。允许的文件白名单：
+/// <b>判据（R-2 收缩为单文件白名单）</b>：<c>JsonValueKind.String</c> 只允许出现在
+/// <c>ToolArgumentNormalizer</c> 内（形态认知的唯一中心）。此前白名单有 6 项，其代价是
+/// 「同一入参在不同位置被判成不同形态」会静默通过（R1.3 评审实测 <c>ToolPagination.TryReadBool</c>
+/// / <c>ToolDryRun.IsRequested</c> / <c>ToolSearchTools.TryReadInt</c> 各有第三、四、七份副本）。
+/// R-2 把判定收成两条原语（<c>IsJsonString</c>/<c>IsJsonArray</c>），其余位置只能薄委托：
 /// <list type="bullet">
-/// <item><c>ToolArgumentNormalizer.cs</c> — 形态认知的唯一中心（WP1 落地）；</item>
-/// <item><c>ToolArgumentSanitizer.cs</c> — 净化入口，经 <c>ToolArgumentNormalizer.EnumerateTexts</c> 遍历；</item>
-/// <item><c>ToolArgsDigester.cs</c> — 审计摘要的值形态描述（区分 str/array/json）；</item>
-/// <item><c>FeishuApiResultReader.cs</c> — API outcome 解包；</item>
-/// <item><c>ToolArgs.cs</c> — <c>ToolArgs</c> 值类型转换（提取标量，不涉及净化/摘要遍历）；</item>
-/// <item><c>ToolResultText.cs</c> — 出站截断与 <c>JsonElement</c> → <c>JsonNode</c> 转换。</item>
+/// <item><c>ToolArgs</c>（取值门面）→ 转调原语；</item>
+/// <item><c>ToolArgsDigester</c>（审计摘要词汇）→ 转调原语（产出词汇仍由摘要器决定）；</item>
+/// <item><c>ToolPagination</c> / <c>ToolDryRun</c> / 执行器 → 转调 <c>ToolArgs</c> 的取值门面。</item>
 /// </list>
 /// </para>
 /// <para>
-/// 新增文件若需处理 <c>JsonElement</c> 的文本值，必须经 <c>ToolArgumentNormalizer.EnumerateTexts</c>——
-/// 否则在本守卫报红。
+/// 新增位置若需处理 <c>JsonElement</c> 的文本值，必须经上述原语/门面——否则在本守卫报红。
 /// </para>
 /// </remarks>
 public class ToolArgumentShapeContractGuards
@@ -44,15 +43,13 @@ public class ToolArgumentShapeContractGuards
         var root = FindRepositoryRoot();
         var toolsDir = Path.Combine(root, "Mud.Feishu.AI.Tools", "Tools");
 
-        // 白名单：允许处理 JsonValueKind.String 的文件（R2 评审修订后的范围）。
+        // 白名单（R-2 已收缩为**单文件**）：形态判定原语（IsJsonString/IsJsonArray）住在
+        // ToolArgumentNormalizer 内，其余位置（ToolArgs 取值门面、ToolArgsDigester 摘要、
+        // ToolPagination/ToolDryRun 取值助手）只能薄委托——"同一入参在不同工具里被判成不同形态"
+        // 是 S1 的同类根因，收敛后该形态在源码层不可能再出现第二处。
         var allowedFiles = new HashSet<string>(StringComparer.Ordinal)
         {
-            "ToolArgumentNormalizer.cs",
-            "ToolArgumentSanitizer.cs",
-            "ToolArgsDigester.cs",
-            "FeishuApiResultReader.cs", // API outcome 解包
-            "ToolArgs.cs", // 模型入参取值转换（R-6 从 FeishuApiResultReader.cs 拆出）
-            "ToolResultText.cs", // 出站截断 + JsonElement 形态转换（R-6 从 FeishuApiResultReader.cs 拆出）
+            "ToolArgumentNormalizer.cs", // 唯一形态认知中心（R-2 起，含判定原语）
         };
 
         // R5 / F-1：声明面已迁到 Curation/（工具契约与运行时基础设施分目录），
@@ -70,9 +67,9 @@ public class ToolArgumentShapeContractGuards
             .ToList();
 
         offenders.Should().BeEmpty(
-            "JsonValueKind.String 的参数值形态认知必须收敛到 ToolArgumentNormalizer（净化/摘要入口）"
-            + "或白名单文件（ToolArgs 值类型转换）；各自 switch 是 S1 的根因（漏一处即静默失效）"
-            + "——违规文件: " + string.Join(", ", offenders));
+            "JsonValueKind.String 的形态认知只允许出现在 ToolArgumentNormalizer（唯一认知中心）；"
+            + "取值/摘要位置必须薄委托 IsJsonString/IsJsonArray——各自 switch 是 S1 的根因"
+            + "（漏一处即静默失效）——违规文件: " + string.Join(", ", offenders));
     }
 
     // ────────── R5 / F-1（载体 C）：策展面与基础设施的分离 ──────────

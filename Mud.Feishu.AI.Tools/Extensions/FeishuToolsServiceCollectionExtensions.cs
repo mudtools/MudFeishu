@@ -57,17 +57,10 @@ public static class FeishuToolsServiceCollectionExtensions
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuWriteToolCores(AddFeishuReadonlyToolCores(AddFeishuToolInfrastructure(services, configure)));
 
-    /// <summary>
-    /// 注册只读工具包（Phase 1 兼容入口；现等价 <see cref="AddFeishuTools"/>——写工具同批注册但
-    /// 默认不启用，仅 <c>FeishuAgent:WriteAllowList</c> 显式启用，安全默认不变）。
-    /// </summary>
-    /// <param name="services">服务集合。</param>
-    /// <param name="configure">注册表回调（可空）。</param>
-    /// <returns>服务集合。</returns>
-    public static IServiceCollection AddFeishuReadonlyTools(
-        this IServiceCollection services,
-        Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuTools(services, configure);
+    // R-8（B-4 处置）：原 `AddFeishuReadonlyTools` 是 `AddFeishuTools` 的**同义转发**
+    // （方法名承诺"只读"，实现却注册含写工具链），名字与行为不符会误导宿主据名推断
+    // "未引入写能力"。未发布窗口期零成本删除：全域入口只保留 `AddFeishuTools` 一个，
+    // "写工具是否可用"由 `FeishuAgent:WriteAllowList` 白名单表达（安全默认不变）。
 
     /// <summary>
     /// 按域注册 Bitable 工具（P1D-1c）：4 个只读工具执行器 + 写执行器缺席。
@@ -641,6 +634,12 @@ public static class FeishuToolsServiceCollectionExtensions
         // 工具目录与 Schema 导出（P1D-4）：注册表之上的稳定契约（Phase 4 前置件）。
         services.TryAddSingleton<IToolCatalog>(static sp => FeishuToolCatalog.From(sp.GetRequiredService<FeishuToolRegistry>()));
         services.TryAddSingleton<IToolSchemaExporter, FeishuToolSchemaExporter>();
+
+        // R-7 窄接缝：实现类型（FeishuToolAIFunction / FeishuToolBinding）已退出公开面，
+        // 周边包（Mud.Feishu.AI.Mcp）改经这两条接缝消费，故必须在此注册——缺注册会让
+        // MCP 的 tools/list 静默变空（接缝解析失败被当作"没有工具"）。
+        services.TryAddSingleton<IFeishuToolFunctionFactory, FeishuToolFunctionFactory>();
+        services.TryAddSingleton<IToolErrorTextFormatter, ToolErrorTextFormatter>();
 
         return services;
     }

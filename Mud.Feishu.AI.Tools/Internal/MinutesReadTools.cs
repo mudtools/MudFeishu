@@ -284,14 +284,14 @@ internal sealed class MinutesReadTools(Mud.Feishu.IFeishuTenantV1MinutesMinute? 
                     });
                 }
 
-                return new JsonObject
-                {
-                    ["items"] = items,
-                    ["total"] = data.Total,
-                    ["has_more"] = data.HasMore,
-                    ["page_token"] = data.PageToken,
-                    ["notice"] = data.Notice,
-                };
+                // R-3：信封形态单源（ToolResultJsons.PageEnvelope）。⚠️ 与旧写法的**有意差异**：
+                // 旧写法无条件写出 page_token（空值时是 ""/null）——模型会当成可续游标照抄回传，
+                // 平台按"从头再来"处理（重复拉第一页）；统一出口只在非空时写出。
+                var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
+                envelope["items"] = items;
+                envelope["total"] = data.Total;
+                envelope["notice"] = data.Notice;
+                return envelope;
             });
         });
     }

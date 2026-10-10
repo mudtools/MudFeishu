@@ -51,7 +51,7 @@ internal sealed class ImTools(
     private readonly IFeishuTenantV1ChatGroup? _chatGroupClient = chatGroupClient;
     private readonly IFeishuTenantV1ChatGroupMember _chatMemberClient = chatMemberClient
         ?? throw new ArgumentNullException(nameof(chatMemberClient));
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
     private readonly IFeishuToolContextAccessor? _toolContextAccessor = toolContextAccessor;
 
     /// <summary>
@@ -341,7 +341,8 @@ internal sealed class ImTools(
 
     private static JsonObject ProjectReadUsers(ApiPageListResult<ReadMessageUser> data)
     {
-        var envelope = new JsonObject { ["items"] = new JsonArray() };
+        // R-3：信封形态单源（无翻页契约的列表信封）。
+        var envelope = ToolResultJsons.ItemsEnvelope();
         foreach (var user in data.Items ?? [])
         {
             envelope["items"]!.AsArray().AddNode(new JsonObject
@@ -358,7 +359,8 @@ internal sealed class ImTools(
     private static JsonObject ProjectChats(
         ApiPageListResult<DataModels.ChatGroup.ChatItemInfo> data)
     {
-        var envelope = new JsonObject { ["items"] = new JsonArray() };
+        // R-3：信封形态单源（无翻页契约的列表信封）。
+        var envelope = ToolResultJsons.ItemsEnvelope();
         foreach (var chat in data.Items ?? [])
         {
             envelope["items"]!.AsArray().AddNode(new JsonObject
@@ -374,15 +376,8 @@ internal sealed class ImTools(
 
     private static JsonObject ProjectHistory(ApiPageListResult<HistoryMessageData> data)
     {
-        var envelope = new JsonObject
-        {
-            ["items"] = new JsonArray(),
-            ["has_more"] = data.HasMore,
-        };
-        if (!string.IsNullOrEmpty(data.PageToken))
-        {
-            envelope["page_token"] = data.PageToken;
-        }
+        // R-3：信封形态单源（ToolResultJsons.PageEnvelope）。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
 
         foreach (var message in data.Items ?? [])
         {
@@ -403,7 +398,8 @@ internal sealed class ImTools(
     /// <summary>get_message_content 投影：items（message_id/msg_type/body/mentions）。</summary>
     private static JsonObject ProjectContent(ApiListResult<MessageContentData> data)
     {
-        var envelope = new JsonObject { ["items"] = new JsonArray() };
+        // R-3：信封形态单源（无翻页契约的列表信封）。
+        var envelope = ToolResultJsons.ItemsEnvelope();
         foreach (var message in data.Items ?? [])
         {
             envelope["items"]!.AsArray().AddNode(new JsonObject
@@ -514,16 +510,9 @@ internal sealed class ImTools(
     /// <summary>list_chat_members 投影：items（member_id/name/tenant_key）+ 翻页契约。</summary>
     private static JsonObject ProjectChatMembers(GetMemberPageListResult data)
     {
-        var envelope = new JsonObject
-        {
-            ["items"] = new JsonArray(),
-            ["has_more"] = data.HasMore,
-            ["member_total"] = data.MemberTotal,
-        };
-        if (!string.IsNullOrEmpty(data.PageToken))
-        {
-            envelope["page_token"] = data.PageToken;
-        }
+        // R-3：信封形态单源（ToolResultJsons.PageEnvelope）+ 本域附加标量（member_total）。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
+        envelope["member_total"] = data.MemberTotal;
 
         foreach (var member in data.Items ?? [])
         {
@@ -541,16 +530,9 @@ internal sealed class ImTools(
     /// <summary>search_messages 投影：items（id/display_info + meta_data 白名单）+ 翻页契约。</summary>
     private static JsonObject ProjectSearchResults(SearchMessageResult data)
     {
-        var envelope = new JsonObject
-        {
-            ["items"] = new JsonArray(),
-            ["total"] = data.Total,
-            ["has_more"] = data.HasMore,
-        };
-        if (!string.IsNullOrEmpty(data.PageToken))
-        {
-            envelope["page_token"] = data.PageToken;
-        }
+        // R-3：信封形态单源（ToolResultJsons.PageEnvelope）+ 本域附加标量（total）。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
+        envelope["total"] = data.Total;
 
         foreach (var item in data.Items ?? [])
         {

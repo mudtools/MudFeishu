@@ -21,9 +21,9 @@ internal sealed class DriveCommentTools(
 {
     private readonly Mud.Feishu.IFeishuTenantV1DriveComments _commentsClient = commentsClient
         ?? throw new ArgumentNullException(nameof(commentsClient));
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
-    private readonly int _maxAutoFetchItems = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchItems;
-    private readonly int _maxAutoFetchPages = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchPages;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
+    private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
     /// <summary>drive.list_comments：列出云文档评论（分页；白名单 comment_id/user_id/is_solved/reply_count/created_at）。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantDriveListCommentsTool))]
@@ -196,15 +196,8 @@ internal sealed class DriveCommentTools(
     /// <summary>list_comments 投影：items（comment_id/user_id/is_solved/reply_count/created_at）+ 翻页契约。</summary>
     private static JsonObject ProjectComments(ApiPageListResult<FileComment> data)
     {
-        var envelope = new JsonObject
-        {
-            ["items"] = new JsonArray(),
-            ["has_more"] = data.HasMore,
-        };
-        if (!string.IsNullOrEmpty(data.PageToken))
-        {
-            envelope["page_token"] = data.PageToken;
-        }
+        // R-3：信封形态单源（ToolResultJsons.PageEnvelope）。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
 
         foreach (var comment in data.Items ?? [])
         {
@@ -261,7 +254,7 @@ internal sealed class DrivePermissionTools(
 {
     private readonly Mud.Feishu.IFeishuTenantV1DrivePermissions _permissionsClient = permissionsClient
         ?? throw new ArgumentNullException(nameof(permissionsClient));
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>drive.get_permission_public：获取公开权限设置（底层 GET 只读；风险分级见类注释）。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantDriveGetPermissionPublicTool))]

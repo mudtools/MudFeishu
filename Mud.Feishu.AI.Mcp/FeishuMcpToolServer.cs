@@ -18,7 +18,10 @@ namespace Mud.Feishu.AI.Mcp;
 /// <para>
 /// <b>执行链复用（DP-C6-1 铁律）</b>：<c>tools/call</c> 只解析出 <see cref="Microsoft.Extensions.AI.AIFunction"/>
 /// 并调用它——授权门禁、租户上下文切换（<c>BeginScope</c>）、出站净化、内容安全、审计、
-/// 流式/截断口径<b>全部沿用既有执行链</b>（<see cref="FeishuToolAIFunction"/> → <c>FeishuToolBinding</c>）。
+/// 流式/截断口径<b>全部沿用既有执行链</b>（经 <see cref="IFeishuToolFunctionFactory"/> 构造的桥 → 执行链类型）。
+/// <b>R-7 起该桥与执行链类型已 internal</b>：本包只依赖两条<b>窄接缝</b>
+/// （<see cref="IFeishuToolFunctionFactory"/> 构桥 + <see cref="IToolErrorTextFormatter"/> 渲染错误文本），
+/// 不再 <c>new</c> 实现类型。
 /// 本包<b>不</b>引用 SDK 强类型客户端，因此结构上无法旁路（守卫断言本目录不出现 <c>IFeishu*</c> 调用）。
 /// </para>
 /// <para>
@@ -31,8 +34,8 @@ namespace Mud.Feishu.AI.Mcp;
 /// <b>为什么不用 <c>FeishuAgentToolSource.GetTools</c> 的列表</b>：那条路径会把写工具包进
 /// MEAI 的 <c>ApprovalRequiredAIFunction</c>，而该类型<b>只是标记</b>——它的强制点在同一条管线里的
 /// <c>FunctionInvokingChatClient</c>（MCP 不走 MAF 管线）。若照搬那条列表，写工具的"需要人工确认"
-/// 标记会被静默丢弃。此处改用注册表 + <see cref="FeishuToolAIFunction"/>：真实门禁是
-/// <c>FeishuToolBinding</c> 的授权门禁（写工具默认不在白名单、授权器返回
+/// 标记会被静默丢弃。此处改用注册表 + <see cref="IFeishuToolFunctionFactory"/> 构造的桥：
+/// 真实门禁是执行链的授权门禁（写工具默认不在白名单、授权器返回
 /// <c>NeedsUserConfirmation</c> 时拒绝且零调用下游——由用例锁定），因此本差别是<b>可测的</b>而不是隐含的。
 /// </para>
 /// <para>
@@ -62,6 +65,16 @@ public sealed class FeishuMcpToolServer
     private readonly FeishuMcpServerOptions _options;
     private readonly IFeishuToolContextAccessor _contextAccessor;
     private readonly ILogger? _logger;
+
+    /// <summary>
+    /// R-7：构桥接缝（<c>null</c> = 宿主未装配工具面 ⇒ <c>tools/list</c> 为空，与"注册表缺席"同语义）。
+    /// </summary>
+    private readonly IFeishuToolFunctionFactory? _functionFactory;
+
+    /// <summary>
+    /// R-7：错误文案接缝（<c>null</c> 时退回纯文本原因——协议层不得因缺一个接缝而抛）。
+    /// </summary>
+    private readonly IToolErrorTextFormatter? _errorFormatter;
     private readonly List<McpToolInfo> _tools = [];
     private readonly Dictionary<string, AIFunction> _functions = new(StringComparer.Ordinal);
     private readonly Dictionary<string, JsonNode> _inputSchemas = new(StringComparer.Ordinal);
@@ -92,6 +105,13 @@ public sealed class FeishuMcpToolServer
         _options.Validate();
 
         _logger = logger;
+
+        // R-7：两条窄接缝从容器解析（与注册表同源，均由 AddFeishuToolInfrastructure 装配）。
+        // 缺席（= 宿主没装配工具面）不抛：tools/list 返回空列表是合法状态，
+        // 真正的装配错误（白名单含未注册工具等）已在注册表构建期 fail-fast。
+        _functionFactory = _services.GetService<IFeishuToolFunctionFactory>();
+        _errorFormatter = _services.GetService<IToolErrorTextFormatter>();
+
         Instructions = _options.IncludeGuidance ? BuildInstructions(_services) : string.Empty;
         BuildToolSurface();
     }
@@ -353,7 +373,10 @@ public sealed class FeishuMcpToolServer
             // 协议层抛出等于把整个 MCP 会话打断，客户端只看到连接断开，缺陷被降级为"网络问题"。
             _logger?.LogError(ex, "MCP 工具调用抛异常：tool={Tool}", contractName);
             return (
-                FeishuToolBinding.StructuredError(contractName, "工具执行抛异常（详见宿主日志）"),
+                // R-7：经窄接缝渲染（与执行链同一份错误契约）；接缝缺席时退回纯文本原因
+                // ——协议层不允许因为"少注册了一个服务"而把异常抛回宿主循环（那会中断会话）。
+                _errorFormatter?.Format(contractName, "工具执行抛异常（详见宿主日志）")
+                    ?? $"工具执行抛异常（详见宿主日志）：{contractName}",
                 true);
         }
     }
@@ -371,7 +394,10 @@ public sealed class FeishuMcpToolServer
     private void BuildToolSurface()
     {
         var registry = _services.GetService<FeishuToolRegistry>();
-        if (registry is null)
+
+        // 注册表缺席 = 宿主未装配工具面（tools/list 空是合法状态）；
+        // 构桥接缝缺席 = 同一装配缺陷的另一面，一并按"无工具"处理而不是抛。
+        if (registry is null || _functionFactory is null)
         {
             return;
         }
@@ -389,7 +415,10 @@ public sealed class FeishuMcpToolServer
             }
 
             var mcpName = McpToolNames.ToMcpName(definition.Name);
-            var function = new FeishuToolAIFunction(definition, schemaJson, _contextAccessor);
+
+            // R-7：经窄接缝构桥（不再 new 实现类型；接缝内部复用 DI 的上下文访问器单例，
+            // 与 InvokeAsync 里 Begin 的访问器是同一实例——这是"上下文可见"的前提）。
+            var function = _functionFactory.Create(definition, schemaJson);
             var info = new McpToolInfo(
                 mcpName,
                 definition.Name,

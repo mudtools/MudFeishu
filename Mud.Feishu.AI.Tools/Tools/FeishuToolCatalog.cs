@@ -15,7 +15,7 @@ namespace Mud.Feishu.AI.Tools.Tools;
 /// 工具目录实现（AI-FD-D12 P1D-4）：包装 <see cref="FeishuToolRegistry.AllTools"/> 为
 /// <see cref="IToolCatalog"/> 稳定契约——构建期一次性投影，运行期零开销枚举。
 /// </summary>
-public sealed class FeishuToolCatalog : IToolCatalog
+internal sealed class FeishuToolCatalog : IToolCatalog
 {
     private readonly IReadOnlyList<ToolCatalogEntry> _entries;
     private readonly Dictionary<string, ToolCatalogEntry> _byName = new(StringComparer.Ordinal);
@@ -103,7 +103,7 @@ public sealed class FeishuToolCatalog : IToolCatalog
 /// 零反射零成本；方言 = <see cref="ToolSchemaDialect.OpenAiFunctions"/>（OpenAI tools 数组）与
 /// <see cref="ToolSchemaDialect.Skills"/>（R7 / C6a：<c>SKILL.md</c> 产物清单）。
 /// </summary>
-public sealed class FeishuToolSchemaExporter : IToolSchemaExporter
+internal sealed class FeishuToolSchemaExporter : IToolSchemaExporter
 {
     /// <inheritdoc />
     public string Export(ToolSchemaDialect dialect)

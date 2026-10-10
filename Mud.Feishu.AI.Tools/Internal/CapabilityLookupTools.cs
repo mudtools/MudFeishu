@@ -38,7 +38,7 @@ namespace Mud.Feishu.AI.Tools.Internal;
 /// </remarks>
 internal sealed class CapabilityLookupTools(IOptions<FeishuAgentOptions> options)
 {
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>feishu.capability_lookup：按关键字检索能力分组。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantCapabilityLookupTool))]

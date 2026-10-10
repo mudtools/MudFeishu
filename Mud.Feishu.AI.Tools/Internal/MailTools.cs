@@ -41,9 +41,9 @@ internal sealed class MailTools(
     private readonly Mud.Feishu.IFeishuUserV1MailMessage? _mailUserMessageClient = mailUserMessageClient;
     private readonly Mud.Feishu.IFeishuTenantV1MailLabel? _mailLabelClient = mailLabelClient;
     private readonly Mud.Feishu.IFeishuTenantV1MailThread? _mailThreadClient = mailThreadClient;
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
-    private readonly int _maxAutoFetchItems = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchItems;
-    private readonly int _maxAutoFetchPages = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchPages;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
+    private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
     /// <summary>mail.list_messages：列出用户邮箱中的邮件（分页，白名单 message_id）。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantMailListMessagesTool))]
@@ -101,15 +101,8 @@ internal sealed class MailTools(
     /// <summary>list_messages 投影：items（message_id）+ 翻页契约。</summary>
     private static JsonObject ProjectMessages(ApiPageListResult<string> data)
     {
-        var envelope = new JsonObject
-        {
-            ["items"] = new JsonArray(),
-            ["has_more"] = data.HasMore,
-        };
-        if (!string.IsNullOrEmpty(data.PageToken))
-        {
-            envelope["page_token"] = data.PageToken;
-        }
+        // R-3：信封形态单源（ToolResultJsons.PageEnvelope）。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
 
         foreach (var messageId in data.Items ?? [])
         {
@@ -332,13 +325,14 @@ internal sealed class MailTools(
                     });
                 }
 
-                return new JsonObject
-                {
-                    ["items"] = items,
-                    ["total"] = data.Total,
-                    ["has_more"] = data.HasMore,
-                    ["page_token"] = data.PageToken,
-                };
+                // R-3：信封形态单源（ToolResultJsons.PageEnvelope）。⚠️ 与旧写法的**有意差异**：
+                // 旧写法无条件写出 page_token（空值时是 ""/null），模型会把它当"可续游标"照抄回传，
+                // 而平台对空 token 的处理是"从头再来"（表现为重复拉第一页且模型无法自查）；
+                // 统一出口只在非空时写出。
+                var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
+                envelope["items"] = items;
+                envelope["total"] = data.Total;
+                return envelope;
             });
         });
     }

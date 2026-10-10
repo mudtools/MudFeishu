@@ -31,7 +31,7 @@ namespace Mud.Feishu.AI.Tools.Internal;
 /// </remarks>
 internal sealed class SchemaReadTools(IOptions<FeishuAgentOptions> options)
 {
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>feishu.schema_read：查询 SDK 方法签名事实。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantSchemaReadTool))]

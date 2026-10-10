@@ -33,9 +33,9 @@ internal sealed class BitableTools(
     private readonly Mud.Feishu.IFeishuTenantV1BitableRecord _recordClient = recordClient
         ?? throw new ArgumentNullException(nameof(recordClient));
     private readonly Mud.Feishu.IFeishuTenantV1BitableView? _viewClient = viewClient;
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
-    private readonly int _maxAutoFetchItems = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchItems;
-    private readonly int _maxAutoFetchPages = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchPages;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
+    private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
     /// <summary>bitable.list_tables：列出数据表（白名单 table_id/name/revision）。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantBitableListTablesTool))]
@@ -163,7 +163,8 @@ internal sealed class BitableTools(
     /// <summary>list_tables 投影：items（table_id/name/revision）+ 翻页契约。</summary>
     private static JsonObject ProjectTables(ApiPageListResult<AppTableBaseInfo> data)
     {
-        var envelope = PageEnvelope(data.HasMore, data.PageToken);
+        // R-3：私有 PageEnvelope 已提升为共享单源（ToolResultJsons.PageEnvelope）。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
         foreach (var table in data.Items ?? [])
         {
             envelope["items"]!.AsArray().AddNode(new JsonObject
@@ -180,7 +181,8 @@ internal sealed class BitableTools(
     /// <summary>list_fields 投影：items（field_id/name/type/is_primary/ui_type）+ 翻页契约。</summary>
     private static JsonObject ProjectFields(ApiPageListTotalResult<AppTableFieldInfo> data)
     {
-        var envelope = PageEnvelope(data.HasMore, data.PageToken);
+        // R-3：私有 PageEnvelope 已提升为共享单源（ToolResultJsons.PageEnvelope）。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
         foreach (var field in data.Items ?? [])
         {
             envelope["items"]!.AsArray().AddNode(new JsonObject
@@ -199,7 +201,8 @@ internal sealed class BitableTools(
     /// <summary>query_records 投影：items（record_id/fields，field_names 过滤）+ total + 翻页契约。</summary>
     private static JsonObject ProjectRecords(ApiPageListTotalResult<AppTableRecord> data, string[]? fieldNames)
     {
-        var envelope = PageEnvelope(data.HasMore, data.PageToken);
+        // R-3：私有 PageEnvelope 已提升为共享单源（ToolResultJsons.PageEnvelope）。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
         if (data.Total.HasValue)
         {
             envelope["total"] = data.Total.Value;
@@ -233,7 +236,8 @@ internal sealed class BitableTools(
     /// <summary>get_records_by_ids 投影：items（record_id/fields）+ absent_record_ids。</summary>
     private static JsonObject ProjectRecordsByIds(GetRecordsResult data)
     {
-        var envelope = new JsonObject { ["items"] = new JsonArray() };
+        // R-3：信封形态单源（无翻页契约的列表信封）。
+        var envelope = ToolResultJsons.ItemsEnvelope();
         foreach (var record in data.Records ?? [])
         {
             var fields = new JsonObject();
@@ -256,21 +260,6 @@ internal sealed class BitableTools(
             {
                 ((IList<JsonNode?>)envelope["absent_record_ids"]!.AsArray()).Add(absent);
             }
-        }
-
-        return envelope;
-    }
-
-    private static JsonObject PageEnvelope(bool hasMore, string? pageToken)
-    {
-        var envelope = new JsonObject
-        {
-            ["items"] = new JsonArray(),
-            ["has_more"] = hasMore,
-        };
-        if (!string.IsNullOrEmpty(pageToken))
-        {
-            envelope["page_token"] = pageToken;
         }
 
         return envelope;

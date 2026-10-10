@@ -42,6 +42,28 @@ internal readonly struct ToolExecutor(string toolName, int maxResultLength)
     }
 
     /// <summary>
+    /// <b>R-4：<c>IOptions</c> 空值守卫的唯一地点</b>——执行器只声明"工具名 + 依赖"，
+    /// 构造参数校验集中于此。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 此前该守卫在 <b>27 个执行器</b>里逐行重写（<c>(options ?? throw …).Value.MaxXxx</c>，
+    /// 其中含 3 个预算项的域写 3 遍），由守卫
+    /// <c>ToolExecutorSkeletonGuards.OptionsNullGuard_ShouldLiveOnlyInToolExecutor</c> 机械锁定不回潮。
+    /// </para>
+    /// <para>
+    /// <b>为什么返回 <see cref="FeishuAgentOptions"/> 而不是只给单个数值</b>：执行器需要三个
+    /// 预算（<c>MaxToolResultLength</c> / <c>MaxAutoFetchItems</c> / <c>MaxAutoFetchPages</c>），
+    /// 若按值分别开放三个方法，每处都要过一次空值守卫（正是重复的来源）；返回已校验的
+    /// Options 让"守卫一次、读取多次"成为唯一形态。
+    /// </para>
+    /// </remarks>
+    /// <param name="options">宿主注入的 Agent 选项（<see langword="null"/> ⇒ 立即抛，构造期即暴露配置错误）。</param>
+    /// <returns>已校验的选项值。</returns>
+    public static FeishuAgentOptions Require(IOptions<FeishuAgentOptions> options)
+        => (options ?? throw new ArgumentNullException(nameof(options))).Value;
+
+    /// <summary>
     /// 工具名（方法体内<b>策展错误路径</b>复用：dry-run 摘要、filter/sort 解析错误等——
     /// 保证 <c>FeishuToolNames.X</c> 在每个执行器方法中只出现 1 处，其余经本属性）。
     /// </summary>

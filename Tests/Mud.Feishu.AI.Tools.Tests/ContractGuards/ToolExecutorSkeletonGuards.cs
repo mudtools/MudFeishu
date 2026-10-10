@@ -99,6 +99,44 @@ public class ToolExecutorSkeletonGuards
             string.Join(", ", violations));
     }
 
+    /// <summary>
+    /// <b>R-4</b>：<c>IOptions</c> 空值守卫<b>只允许</b>出现在 <see cref="ToolExecutor"/> 一处。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>缺陷背景</b>：<c>(options ?? throw new ArgumentNullException(nameof(options))).Value.MaxXxx</c>
+    /// 这行样板此前在 <b>27 个执行器</b>里逐行重写（含 3 个预算项的域写 3 遍 ⇒ 全仓约 40 行）。
+    /// 它不是"重复"这么简单：新增预算项时漏改某域的形态是<b>静默</b>的（该域读到默认值 0），
+    /// 而 0 在该语义下等于"无预算"。
+    /// </para>
+    /// <para>
+    /// <b>收敛形态</b>：执行器只写 <c>ToolExecutor.Require(options).MaxXxx</c>，
+    /// 空值守卫与 <c>.Value</c> 解引用收拢到 <see cref="ToolExecutor.Require"/>。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void OptionsNullGuard_ShouldLiveOnlyInToolExecutor()
+    {
+        var sources = ExecutorSources();
+
+        var violations = sources
+            .Where(kv => kv.Value.Contains(
+                "?? throw new ArgumentNullException(nameof(options))", StringComparison.Ordinal))
+            .Select(static kv => Path.GetFileName(kv.Key))
+            .ToArray();
+
+        violations.Should().BeEmpty(
+            "以下执行器自带 IOptions 空值守卫——请改为 ToolExecutor.Require(options).MaxXxx"
+            + "（R-4：构造参数校验集中一处，新增预算项时不可能漏改某个域）：{0}",
+            string.Join(", ", violations));
+
+        // 反向自证：必须真的看到 Require 的消费点，否则"扫不到"会被误当成"全绿"。
+        sources.Count(kv => kv.Value.Contains("ToolExecutor.Require(options)", StringComparison.Ordinal))
+            .Should().BeGreaterThan(
+                0,
+                "未在任何执行器中找到 ToolExecutor.Require(options)——本守卫的正则会先于实现失效（假绿）");
+    }
+
     /// <summary>读取执行器目录全部源码（排除 ToolExecutor 自身与 obj/bin 产物）。</summary>
     private static Dictionary<string, string> ExecutorSources()
     {

@@ -21,9 +21,9 @@ internal sealed class DocxTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, IOpti
 {
     private readonly Mud.Feishu.IFeishuTenantV1Docx _docxClient = docxClient
         ?? throw new ArgumentNullException(nameof(docxClient));
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
-    private readonly int _maxAutoFetchItems = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchItems;
-    private readonly int _maxAutoFetchPages = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchPages;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
+    private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
     /// <summary>docx.get_raw_content：读取文档纯文本正文。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantDocxRawContentTool))]
@@ -79,15 +79,8 @@ internal sealed class DocxTools(Mud.Feishu.IFeishuTenantV1Docx docxClient, IOpti
     /// <summary>get_document_blocks 投影：items（block_id/block_type/text 预览）+ 翻页契约。</summary>
     private static JsonObject ProjectBlocks(ApiPageListResult<Block> data)
     {
-        var envelope = new JsonObject
-        {
-            ["items"] = new JsonArray(),
-            ["has_more"] = data.HasMore,
-        };
-        if (!string.IsNullOrEmpty(data.PageToken))
-        {
-            envelope["page_token"] = data.PageToken;
-        }
+        // R-3：信封形态单源（ToolResultJsons.PageEnvelope）。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
 
         foreach (var block in data.Items ?? [])
         {

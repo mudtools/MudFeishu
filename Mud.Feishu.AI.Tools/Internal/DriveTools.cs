@@ -28,9 +28,9 @@ internal sealed class DriveTools(
         ?? throw new ArgumentNullException(nameof(folderClient));
     private readonly Mud.Feishu.IFeishuTenantV1DriveFiles _filesClient = filesClient
         ?? throw new ArgumentNullException(nameof(filesClient));
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
-    private readonly int _maxAutoFetchItems = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchItems;
-    private readonly int _maxAutoFetchPages = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchPages;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
+    private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
     /// <summary>drive.list_folder_files：列出文件夹内容（folder_token 缺省=根目录；白名单 token/name/type/url）。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantDriveFolderFilesTool))]
@@ -107,15 +107,8 @@ internal sealed class DriveTools(
     /// <summary>list_folder_files 投影：items（token/name/type/url）+ 翻页契约。</summary>
     private static JsonObject ProjectFolderFiles(GetDriveFilesResult data)
     {
-        var envelope = new JsonObject
-        {
-            ["items"] = new JsonArray(),
-            ["has_more"] = data.HasMore,
-        };
-        if (!string.IsNullOrEmpty(data.PageToken))
-        {
-            envelope["page_token"] = data.PageToken;
-        }
+        // R-3：信封形态单源（ToolResultJsons.PageEnvelope）。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
 
         foreach (var file in data.Files ?? [])
         {

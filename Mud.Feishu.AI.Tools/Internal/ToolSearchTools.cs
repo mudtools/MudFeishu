@@ -8,6 +8,7 @@
 
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Microsoft.Extensions.DependencyInjection;
 using Mud.Feishu.AI.Tools.Tools;
 
 namespace Mud.Feishu.AI.Tools.Internal;
@@ -24,15 +25,26 @@ namespace Mud.Feishu.AI.Tools.Internal;
 /// 与 <c>feishu.capability_lookup</c> 的区别：后者回答"SDK 里有没有这个能力"（编译期能力目录），
 /// 本工具回答"已策展的工具里哪个能干这事，启用了吗"（注册表/契约表）。
 /// </para>
+/// <para>
+/// <b>两个数据源必须执行期经 <see cref="IServiceProvider"/> 解析（构造期注入会死循环）</b>：
+/// 注册表单例的构建要枚举全部域注册器，注册器工厂又会解析本执行器——若本执行器构造期
+/// 反向依赖由注册表派生的 <c>IToolCatalog</c>/<c>FeishuToolRegistry</c>，解析链自我闭环
+/// （同 <see cref="CapabilityLookupTools"/> 注释的警示）；生成器工厂 lambda 内部的重入
+/// 绕过 MS DI 的循环检测，症状是 BuildRegistry 无限递归（测试全量装配挂起，hangdump 实证）。
+/// </para>
 /// </remarks>
 internal sealed class ToolSearchTools(
     IOptions<FeishuAgentOptions> options,
-    IToolCatalog toolCatalog,
-    FeishuToolRegistry toolRegistry)
+    IServiceProvider serviceProvider)
 {
     private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
-    private readonly IToolCatalog _toolCatalog = toolCatalog ?? throw new ArgumentNullException(nameof(toolCatalog));
-    private readonly FeishuToolRegistry _toolRegistry = toolRegistry ?? throw new ArgumentNullException(nameof(toolRegistry));
+    private readonly IServiceProvider _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+
+    /// <summary>执行期解析目录（注册表构建完成后调用——工具能被执行说明注册表已就绪）。</summary>
+    private IToolCatalog ToolCatalog => _serviceProvider.GetRequiredService<IToolCatalog>();
+
+    /// <summary>执行期解析注册表（同上，构建期解析会自我闭环）。</summary>
+    private FeishuToolRegistry ToolRegistry => _serviceProvider.GetRequiredService<FeishuToolRegistry>();
 
     private const int DefaultLimit = 10;
     private const int MaxLimit = 30;
@@ -55,7 +67,7 @@ internal sealed class ToolSearchTools(
             var results = new JsonArray();
             var matchedCount = 0;
 
-            foreach (var entry in _toolCatalog.Entries)
+            foreach (var entry in ToolCatalog.Entries)
             {
                 // 域过滤
                 if (!string.IsNullOrEmpty(domain))
@@ -98,7 +110,7 @@ internal sealed class ToolSearchTools(
                     continue;
                 }
 
-                var isEnabled = _toolRegistry.IsEnabled(entry.Name);
+                var isEnabled = ToolRegistry.IsEnabled(entry.Name);
                 var item = new JsonObject
                 {
                     ["tool"] = entry.Name,
@@ -145,7 +157,7 @@ internal sealed class ToolSearchTools(
             {
                 var candidateDomains = new JsonArray();
                 var seenDomains = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                foreach (var entry in _toolCatalog.Entries)
+                foreach (var entry in ToolCatalog.Entries)
                 {
                     var d = ExtractDomain(entry.Name);
                     if (seenDomains.Add(d))
@@ -194,7 +206,8 @@ internal sealed class ToolSearchTools(
         }
         catch
         {
-            // 解析失败时返回空列表（不阻断搜索）
+            // 守卫白名单：解析失败时返回空列表（不阻断搜索）——入参形态异常不该让检索整体失败，
+            // 检索结果为空是可接受的降级（SilentCatchContractGuards 豁免标记）。
         }
 
         return [];

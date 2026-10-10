@@ -87,7 +87,7 @@ public class ScenarioBookTests
     public void Warnings_ShouldMentionMissingWikiSpaceId()
     {
         CreateBook().Warnings.Should().ContainSingle(
-            w => w.Contains(DocAgentSettings.EnvWikiSpaceId, StringComparison.Ordinal));
+            w => w.Contains(DocAgentSettings.KeyWikiSpaceId, StringComparison.Ordinal));
 
         CreateBook(TestDoubles.CreateSettings() with { WikiSpaceId = "wikcn_space_123" })
             .Warnings.Should().BeEmpty();

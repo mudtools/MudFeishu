@@ -47,13 +47,26 @@ public class ToolEgressPurificationContractGuards
         // 其内部的 return FeishuToolResult.FromError(safe) 就是「净化后的出口」本身，
         // 不应对本次穷尽扫描重复判红（否则收口反而触发假红）。闸门自身的净化 + 截断
         // 由 ModelVisibleEgress_ShouldBeFunneledThroughSanitizingConstructor 断言。
-        var sink = Regex.Match(
+        // B2：带 ToolErrorCategory 的分类出口同理——它是登记的净化点（自净化由
+        // EveryToolErrorCategory_ShouldHavePurifiedEgress ③ 断言），不参与穷尽扫描。
+        var coreSink = Regex.Match(
             source,
             @"private\s+FeishuToolResult\s+EgressResult\(string\s+message\)\s*\{[^{}]*\}",
             RegexOptions.Singleline);
-        sink.Success.Should().BeTrue(
+        coreSink.Success.Should().BeTrue(
             "R3-4：必须存在模型可见出口的唯一闸门 EgressResult(string message)");
-        var scanned = source.Remove(sink.Index, sink.Length);
+        var classifiedSink = Regex.Match(
+            source,
+            @"private\s+FeishuToolResult\s+EgressResult\(string\s+toolName,\s*ToolErrorCategory\s+category[^)]*\)\s*\{[^{}]*\}",
+            RegexOptions.Singleline);
+        classifiedSink.Success.Should().BeTrue(
+            "B2：必须存在带 ToolErrorCategory 的分类出口（首行 JSON 载荷 + 净化正文）");
+        var scanned = source;
+        foreach (var (index, length) in new[] { (coreSink.Index, coreSink.Length), (classifiedSink.Index, classifiedSink.Length) }
+                     .OrderByDescending(static sink => sink.Item1))
+        {
+            scanned = scanned.Remove(index, length);
+        }
 
         // 匹配所有 return FeishuToolResult.From*(...) 语句（闸门自身已剔除）。
         var exits = Regex.Matches(scanned, @"return\s+(?:await\s+)?FeishuToolResult\.From(?:Text|Error)\(([^;]*)\);");
@@ -184,11 +197,19 @@ public class ToolEgressPurificationContractGuards
             + "新增重载即新增一条模型可见路径，必须同步在此登记其净化判据");
 
         // ② 每个重载要么自身是净化核心，要么委派给核心闸门（不允许"自己拼文案直接返回"）。
+        // 判据窗口 = 从签名尾到下一个成员声明（而非固定 200 字符）：B2 错误契约落地后
+        // 分类出口方法体变长（ToolError 载荷构造），固定窗口会把 Sanitize 调用点切在窗外，
+        // 使本判据对真实的未净化出口漏检。
         var selfContained = new List<string>();
         foreach (System.Text.RegularExpressions.Match overload in overloads)
         {
-            var tailEnd = Math.Min(source.Length, overload.Index + overload.Length + 200);
-            var tail = source[(overload.Index + overload.Length)..tailEnd];
+            var bodyStart = overload.Index + overload.Length;
+            var nextMember = Regex.Match(
+                source[bodyStart..],
+                @"\n    (?:/// <summary>|private |public |internal )",
+                RegexOptions.Singleline);
+            var tailEnd = nextMember.Success ? bodyStart + nextMember.Index : source.Length;
+            var tail = source[bodyStart..tailEnd];
             var delegates = tail.Contains("EgressResult(", StringComparison.Ordinal);
             var sanitizes = tail.Contains("ToolResultSanitizer.Sanitize", StringComparison.Ordinal);
             if (!delegates && !sanitizes)

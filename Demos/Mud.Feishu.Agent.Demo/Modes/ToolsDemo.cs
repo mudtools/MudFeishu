@@ -21,18 +21,22 @@ namespace Mud.Feishu.Agent.Demo;
 /// </summary>
 /// <remarks>
 /// <para>
-/// 运行前设置环境变量（Key 绝不写进代码/配置文件提交）：
+/// 运行前在统一配置节 <c>FeishuDemo</c>（<c>appsettings.local.json</c>）填写模型与飞书凭证，
+/// 并把 <c>FeishuToolsDemo:Enabled</c> 置为 <c>true</c>（真实密钥只写本地覆盖文件，不落盘提交）：
 /// <code>
-/// set FEISHU_DEMO_TOOLS=1
-/// set FEISHU_AI_MODEL_KEY=glm-4-flash
-/// set FEISHU_AI_API_KEY=sk-xxxx
-/// set FEISHU_AI_ENDPOINT=https://open.bigmodel.cn/api/paas/v4/
-/// set FEISHU_APP_ID=cli_xxx
-/// set FEISHU_APP_SECRET=dsk_xxx
-/// rem Phase 2 流式演示（可选）：提供目标群 chat_id 时经分片编辑通道流式回复
-/// set FEISHU_DEMO_CHAT_ID=oc_xxx
-/// dotnet run --project Demos/Mud.Feishu.Agent.Demo
+/// "FeishuDemo": {
+///   "ModelId": "glm-4-flash",
+///   "ApiKey": "sk-xxxx",
+///   "Endpoint": "https://open.bigmodel.cn/api/paas/v4/",
+///   "AppId": "cli_xxx",
+///   "AppSecret": "dsk_xxx"
+/// },
+/// "FeishuToolsDemo": {
+///   "Enabled": true,
+///   "StreamChatId": "oc_xxx"
+/// }
 /// </code>
+/// <c>StreamChatId</c> 可选：提供目标群 chat_id 时经分片编辑通道流式回复（Phase 2）。
 /// </para>
 /// <para>
 /// 工具执行链租户上下文固定为 <c>demo-app</c>（即下方注册的飞书应用 AppKey）；
@@ -49,34 +53,24 @@ namespace Mud.Feishu.Agent.Demo;
 /// </remarks>
 public static class ToolsDemo
 {
-    public static async Task RunAsync()
+    public static async Task RunAsync(IConfiguration configuration)
     {
-        var modelId = Environment.GetEnvironmentVariable("FEISHU_AI_MODEL_KEY")
-            ?? throw new InvalidOperationException("请先设置 FEISHU_AI_MODEL_KEY");
-        var apiKey = Environment.GetEnvironmentVariable("FEISHU_AI_API_KEY")
-            ?? throw new InvalidOperationException("请先设置 FEISHU_AI_API_KEY");
-        var endpoint = Environment.GetEnvironmentVariable("FEISHU_AI_ENDPOINT");
-        var appId = Environment.GetEnvironmentVariable("FEISHU_APP_ID")
-            ?? throw new InvalidOperationException("请先设置 FEISHU_APP_ID");
-        var appSecret = Environment.GetEnvironmentVariable("FEISHU_APP_SECRET")
-            ?? throw new InvalidOperationException("请先设置 FEISHU_APP_SECRET");
-        var streamChatId = Environment.GetEnvironmentVariable("FEISHU_DEMO_CHAT_ID");
+        ArgumentNullException.ThrowIfNull(configuration);
 
-        const string appKey = "demo-app";
+        var settings = ToolsDemoSettings.FromConfiguration(configuration);
+        settings.Validate();
 
-        // 飞书多应用配置（进程内构造，不经文件；AppSecret 走环境变量，不落盘）。
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["FeishuApps:0:AppKey"] = appKey,
-                ["FeishuApps:0:AppId"] = appId,
-                ["FeishuApps:0:AppSecret"] = appSecret,
-                ["FeishuApps:0:IsDefault"] = "true",
-            })
-            .Build();
+        var model = settings.Model;
+        var appKey = DemoAgentDefaults.DefaultAppKey;
+
+        // 飞书多应用配置（进程内构造，不经文件；AppSecret 只从配置文件读，不落盘）。
+        var feishuConfig = DemoAppConfig.CreateSingleApp(appKey, settings.AppId, settings.AppSecret);
+
+        var streamChatId = settings.StreamChatId;
 
         var services = new ServiceCollection()
-            .AddFeishuApp(configuration, "FeishuApps")
+            .AddDemoLogging(configuration)
+            .AddFeishuApp(feishuConfig, "FeishuApps")
             .AddFeishuServices(builder => builder
                 .AddMessageApi()
                 .AddBiTableApi()
@@ -87,14 +81,8 @@ public static class ToolsDemo
                 // R4/WP5 新域：日历（AT-F04）与任务（AT-F17）——域客户端缺席时对应工具不进注册表。
                 .AddCalendarApi()
                 .AddTaskApi())
-            .AddFeishuOpenAIChatClient("demo-model", modelId, apiKey, endpoint)
-            .AddFeishuAgent(configure: options =>
+            .AddDemoAgent(model, "FeishuAgentToolsDemo", InstructionsText, options =>
             {
-                options.ModelServiceKey = "demo-model";
-                options.Name = "FeishuAgentToolsDemo";
-                options.Instructions = "你是嵌入在 .NET 服务里的飞书助手。可使用只读工具查询多维表格、读取文档正文、" +
-                    "遍历知识库、搜索云文档、读取群历史消息与电子表格区域数据、查询日历忙闲与日程、列出我负责的任务；" +
-                    "两步链示例：wiki.get_node 解析链接 → docx.get_raw_content 读正文。用简洁中文回答，引用数据时说明来源工具。";
                 // Demo 启用全部只读工具（ReadonlyAll，由生成器从 [FeishuTool] 派生）；生产由宿主按需裁剪白名单。
                 options.Tools = [.. FeishuToolNames.ReadonlyAll];
                 // 身份闭集（R4 WP2 / T2-4 决策 D-1 ⓑ）：只读面含 task.list_my_tasks（identity=user），
@@ -112,7 +100,7 @@ public static class ToolsDemo
         services.AddHttpClient<DemoAttachmentStager>();
         services.AddSingleton<IFeishuAttachmentStager>(sp => sp.GetRequiredService<DemoAttachmentStager>());
 
-        // Phase 2 流式演示：提供 FEISHU_DEMO_CHAT_ID 时注册分片编辑通道。
+        // Phase 2 流式演示：配置 StreamChatId 时注册分片编辑通道。
         if (!string.IsNullOrEmpty(streamChatId))
         {
             services.AddFeishuEditMessageChannel();
@@ -128,15 +116,12 @@ public static class ToolsDemo
         Console.WriteLine($"已启用工具 {registry.EnabledTools.Count} 个：{string.Join("、", registry.EnabledTools.Select(t => t.Name))}");
         Console.WriteLine(messageChannel is not null
             ? $"流式回复：开（分片编辑 → chat {streamChatId}）"
-            : "流式回复：关（设置 FEISHU_DEMO_CHAT_ID 开启 Phase 2 流式演示）");
+            : "流式回复：关（配置 FeishuToolsDemo:StreamChatId 开启 Phase 2 流式演示）");
 
-        var conversationKey = ConversationKeyBuilder.Build(appKey, ConversationScope.P2P(), "ou_demo_user");
+        var conversationKey = ConversationKeyBuilder.Build(appKey, ConversationScope.P2P(), DemoAgentDefaults.DemoUserId);
         var session = await agent.GetOrCreateSessionAsync(conversationKey);
 
-        Console.WriteLine("工具模式问答（exit 退出）：");
-        while (Console.ReadLine() is { } userText
-               && userText.Length > 0
-               && !string.Equals(userText, "exit", StringComparison.OrdinalIgnoreCase))
+        await DemoChatLoop.RunAsync("工具模式问答", async userText =>
         {
             // 工具执行上下文沿异步流注入（多租户隔离事实来源；生产由 ConversationalFeishuEventHandler 注入）。
             using var toolScope = toolContextAccessor.Begin(new FeishuToolContext(appKey, conversationKey));
@@ -165,6 +150,11 @@ public static class ToolsDemo
             }
 
             await agent.SaveSessionAsync(conversationKey, session);
-        }
+        });
     }
+
+    /// <summary>工具冒烟模式的系统提示词（提取为常量以保持 <see cref="RunAsync"/> 装配代码可读）。</summary>
+    private const string InstructionsText = "你是嵌入在 .NET 服务里的飞书助手。可使用只读工具查询多维表格、读取文档正文、" +
+        "遍历知识库、搜索云文档、读取群历史消息与电子表格区域数据、查询日历忙闲与日程、列出我负责的任务；" +
+        "两步链示例：wiki.get_node 解析链接 → docx.get_raw_content 读正文。用简洁中文回答，引用数据时说明来源工具。";
 }

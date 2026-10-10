@@ -160,7 +160,9 @@ internal static class ToolPagination
                     throw;
                 }
 
-                // 中途某页失败：保留已取数据
+                // 中途某页失败：保留已取数据并显式回填失败原因（**非静默**——错误文本随
+                // PagedFetchResult.Error 透出给调用方，并进结果信封的 partial_error；
+                // 本 catch 块含上抛分支，故不触发 SilentCatchContractGuards 的"静默 catch"判定）。
                 return new PagedFetchResult(
                     allItems, truncated, currentPageToken, totalFetched, pagesFetched,
                     $"第 {pagesFetched.ToString(CultureInfo.InvariantCulture)} 页获取失败: {ex.Message}",

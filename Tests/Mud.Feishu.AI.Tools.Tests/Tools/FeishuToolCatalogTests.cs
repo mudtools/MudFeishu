@@ -151,6 +151,16 @@ internal static class GuardProviderFactory
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1MinutesMinute>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DriveFolder>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DriveFiles>().Object)
+            // MUDFT022：drive 协作面执行器（DriveCommentTools / DrivePermissionTools）的两个客户端——
+            // 缺席时该域软缺席，AddFeishuTools_ShouldRegisterExactlyTheContractTools 的
+            // "注册表 ≡ 契约表 125 项"断言必然落空。
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DriveComments>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DrivePermissions>().Object)
+            // MailTools（读写混合域，归写链）的三个客户端：消息侧为必选依赖，标签/会话侧可选；
+            // 全部缺席时 mail 域软缺席——同样会让全量契约断言落空（且 MailTools 构造参数无默认值）。
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1MailMessage>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1MailLabel>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1MailThread>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3User>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4CalendarEvent>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4Calendar>().Object)

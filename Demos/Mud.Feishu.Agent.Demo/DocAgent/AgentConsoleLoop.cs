@@ -373,7 +373,7 @@ internal sealed class AgentConsoleLoop
             "当前关键配置",
             ["项", "值"],
             [
-                ["模式", DocAgentSettings.EnvDocAgent + "=1（文档业务智能体）"],
+                ["模式", DocAgentSettings.ConfigEnabledKey + "=true（文档业务智能体）"],
                 ["应用键", _settings.AppKey],
                 ["模型", $"{_settings.ModelId}{(_settings.Endpoint is null ? "（默认端点）" : " @ " + _settings.Endpoint)}"],
                 ["已启用工具", $"{_registry.EnabledTools.Count} 个（只读 {DocAgentSettings.ReadonlyTools.Length} / 写 {DocAgentSettings.WriteTools.Length}）"],
@@ -639,7 +639,7 @@ internal sealed class AgentConsoleLoop
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
         {
-            _renderer.Notice(NoticeLevel.Error, $"导出失败：{ex.GetType().Name}（可用 {DocAgentSettings.EnvAuditPath} 指定可写路径）。");
+            _renderer.Notice(NoticeLevel.Error, $"导出失败：{ex.GetType().Name}（可用 {DocAgentSettings.SectionName}:{DocAgentSettings.KeyAuditExportPath} 指定可写路径）。");
         }
     }
 

@@ -150,10 +150,32 @@ public static class FeishuToolsServiceCollectionExtensions
         => AddFeishuToolInfrastructure(services, configure).AddFeishuSheetsToolsCore();
 
     /// <summary>按域注册 Drive 工具（2 个只读，AI-FD-D12 P1D-1b 批次 A 新域）。</summary>
+    /// <remarks>
+    /// 评论/权限协作面（drive.list_comments / add_comment / reply_comment / resolve_comment /
+    /// get_permission_public / update_permission_public / grant_permission / update_permission_member /
+    /// remove_permission / transfer_owner）由 <see cref="AddFeishuDriveCollabTools"/> 单独装配——
+    /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**（S-13 的同款失败形态）。
+    /// </remarks>
     public static IServiceCollection AddFeishuDriveTools(
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure).AddFeishuDriveToolsCore();
+
+    /// <summary>
+    /// 按域注册 Drive 协作面工具（评论 4 + 权限 6，MUDFT022 批次）：只读 3 + 写 7。
+    /// </summary>
+    /// <remarks>
+    /// <c>DriveCommentTools</c> / <c>DrivePermissionTools</c> 与 MailTools 同属「读写混合域」——
+    /// 两个 Core 整体挂写链（<see cref="AddFeishuWriteToolCores"/>），按链拆分的取舍见其 remarks。
+    /// 权限域工具被引擎风险分级一律 <c>high-risk-write</c>（含底层 GET 的 get_permission_public，
+    /// MUDFT017），启用须过 <c>WriteAllowList</c> 键控 + 授权门禁。
+    /// </remarks>
+    public static IServiceCollection AddFeishuDriveCollabTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure)
+            .AddFeishuDriveCommentToolsCore()
+            .AddFeishuDrivePermissionToolsCore();
 
     /// <summary>
     /// 按域注册通讯录工具（P0：<c>contact.resolve_user</c> / <c>contact.get_user</c> / <c>contact.batch_get</c>）。
@@ -529,7 +551,14 @@ public static class FeishuToolsServiceCollectionExtensions
             // R6 / S4：万能兜底调用执行器 GenericApiTools（feishu.api_call）。
             // 归写链的原因：它有侧效应（IsWrite=true）⇒ 必须经 WriteAllowList 键控 + 授权门禁，
             // 且**不**出现在只读链里（默认装配不会意外获得"任意调用"的能力）。
-            .AddFeishuGenericApiToolsCore();
+            .AddFeishuGenericApiToolsCore()
+
+            // MUDFT022：Drive 协作面执行器 DriveCommentTools（评论 4）+ DrivePermissionTools（权限 6）。
+            // 与 MailTools 同属「读写混合域」（含只读的 list_comments / get_permission_public）——
+            // 按链拆分的取舍见本方法 remarks。⚠️ 本行是**唯一**会调用这两个生成 Core 的地方，
+            // 漏加即「工具静默不入注册表」（ToolDomainCoresWiringContractTests 会报红）。
+            .AddFeishuDriveCommentToolsCore()
+            .AddFeishuDrivePermissionToolsCore();
 
     /// <summary>执行链协作件 + 注册表 + 工具源桥（幂等；各域扩展共同前置）。</summary>
     private static IServiceCollection AddFeishuToolInfrastructure(

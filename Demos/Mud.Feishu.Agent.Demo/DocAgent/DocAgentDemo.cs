@@ -7,6 +7,7 @@
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Mud.Feishu.Abstractions.Conversations;
 using Mud.Feishu.AI.Agents;
 using Mud.Feishu.AI.Channels;
@@ -16,14 +17,7 @@ using Mud.Feishu.AI.Tools;
 namespace Mud.Feishu.Agent.Demo;
 
 /// <summary>
-/// 已装配的配置来源：配置根 + **实际存在**的配置文件清单。
-/// </summary>
-/// <param name="Configuration">配置根（文件层；环境变量由 <see cref="DocAgentSettings.FromConfiguration"/> 叠加）。</param>
-/// <param name="Files">实际加载的配置文件名（用于横幅的"配置来源"事实行；文件不存在时不列出）。</param>
-public sealed record DocAgentConfiguration(IConfigurationRoot Configuration, IReadOnlyList<string> Files);
-
-/// <summary>
-/// 文档业务 AI 智能体控制台 Demo 的模式入口（<c>FEISHU_DEMO_DOC_AGENT=1</c> 或配置 <c>FeishuDocAgent:Enabled=true</c>）。
+/// 文档业务 AI 智能体控制台 Demo 的模式入口（配置 <c>FeishuDocAgent:Enabled=true</c>）。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -52,17 +46,21 @@ public static class DocAgentDemo
     /// </summary>
     /// <returns>任务。</returns>
     /// <exception cref="InvalidOperationException">配置缺失/非法，或工具白名单与已注册域不匹配。</exception>
-    public static async Task RunAsync(DocAgentConfiguration sources)
+    public static async Task RunAsync(DemoConfigurationSources sources)
     {
         ArgumentNullException.ThrowIfNull(sources);
 
         var settings = DocAgentSettings.FromConfiguration(sources.Configuration);
         settings.Validate();
 
-        // ① 飞书多应用配置：配置文件（或环境变量）已提供 FeishuApps 则原样使用，否则用本节三项合成单应用。
+        // ① 飞书多应用配置：配置文件已提供 FeishuApps 则原样使用，否则用 FeishuDemo 凭证合成单应用。
         var configuration = EnsureAppSection(sources.Configuration, settings);
 
         var services = new ServiceCollection();
+
+        // ⓪ 运行时日志（Serilog：控制台 Warning 不干扰 REPL 流式渲染，文件全量 Information；
+        // 配置文件提供 "Serilog" 节时以其为唯一事实源）。
+        services.AddDemoLogging(sources.Configuration);
 
         // ② 租户与域客户端（必须先于 AddFeishuTools：域缺席 ⇒ 该域工具不注册）。
         services
@@ -75,34 +73,32 @@ public static class DocAgentDemo
                 .AddBiTableApi()       // 多维表格：表 / 字段 / 记录（只读）+ 新增记录
                 .AddSearchApi());      // 云文档搜索（im 域已决策不做）
 
-        // ③ 模型客户端（Endpoint 非 HTTPS 时此处抛错；DocAgentSettings.Validate 已提前给出更友好的错误）。
-        services.AddFeishuOpenAIChatClient(
-            DocAgentSettings.ModelServiceKey, settings.ModelId, settings.ApiKey, settings.Endpoint);
+        // ③ 模型客户端 + Agent（白名单在此定型；Endpoint 非 HTTPS 时 AddFeishuOpenAIChatClient 抛错，
+        // DocAgentSettings.Validate 已提前给出更友好的错误）。
+        services.AddDemoAgent(
+            new ChatModelSettings { ModelId = settings.ModelId, ApiKey = settings.ApiKey, Endpoint = settings.Endpoint },
+            DocAgentSettings.AgentName,
+            DocAgentPrompt.Instructions,
+            options =>
+            {
+                options.Tools = [.. DocAgentSettings.ReadonlyTools];
+                options.WriteAllowList = [.. DocAgentSettings.WriteTools];
 
-        // ④ Agent（白名单在此定型）。
-        services.AddFeishuAgent(configure: options =>
-        {
-            options.ModelServiceKey = DocAgentSettings.ModelServiceKey;
-            options.Name = DocAgentSettings.AgentName;
-            options.Instructions = DocAgentPrompt.Instructions;
-            options.Tools = [.. DocAgentSettings.ReadonlyTools];
-            options.WriteAllowList = [.. DocAgentSettings.WriteTools];
+                // AllowedIdentities 保持默认 ["tenant"]：文档业务域（docx/wiki/drive/sheets/bitable/search）
+                // 全部是 tenant 身份——**这是按域事实推导的结果，不是复制粘贴**。
+                // 对比：工具冒烟模式必须写 ["tenant","user"]，因为那边含 task.list_my_tasks（identity=user）。
+                // MaxToolRisk 保持默认 "high-risk-write"（允许 docx.delete_blocks 进入审批管线）。
+                // EnforceToolAuthorization 保持默认 true（写工具的安全底线）。
+                options.MaxHistoryMessages = 50;
+                options.MaxHistoryTokens = 8000;
+                options.SummaryThreshold = settings.SummaryThreshold;
+                options.MaxToolResultLength = 4000;
+            });
 
-            // AllowedIdentities 保持默认 ["tenant"]：文档业务域（docx/wiki/drive/sheets/bitable/search）
-            // 全部是 tenant 身份——**这是按域事实推导的结果，不是复制粘贴**。
-            // 对比：ToolsDemo 必须写 ["tenant","user"]，因为那边含 task.list_my_tasks（identity=user）。
-            // MaxToolRisk 保持默认 "high-risk-write"（允许 docx.delete_blocks 进入审批管线）。
-            // EnforceToolAuthorization 保持默认 true（写工具的安全底线）。
-            options.MaxHistoryMessages = 50;
-            options.MaxHistoryTokens = 8000;
-            options.SummaryThreshold = settings.SummaryThreshold;
-            options.MaxToolResultLength = 4000;
-        });
-
-        // ⑤ 工具面（读 options.Tools / WriteAllowList 建注册表；写工具在此被审批包装）。
+        // ④ 工具面（读 options.Tools / WriteAllowList 建注册表；写工具在此被审批包装）。
         services.AddFeishuTools();
 
-        // ⑥ 宿主钩子三件套（SDK 只给契约，策略全在 Demo）——必须在 Agent 首次解析前注册。
+        // ⑤ 宿主钩子三件套（SDK 只给契约，策略全在 Demo）——必须在 Agent 首次解析前注册。
         services.AddSingleton<ConsoleRenderer>();
         services.AddSingleton(new ConsoleToolAuthorizerState(
             settings.AppKey, DocAgentSettings.AllowedScopes, settings.Policy));
@@ -114,21 +110,22 @@ public static class DocAgentDemo
         services.AddSingleton<InMemoryAuditSink>();
         services.AddSingleton<IToolExecutionAuditSink>(sp => sp.GetRequiredService<InMemoryAuditSink>());
 
-        // ⑦ 附件落盘器（drive.upload_file 依赖它；缺失 ⇒ 该工具不注册 ⇒ 白名单映射期失败）。
+        // ⑥ 附件落盘器（drive.upload_file 依赖它；缺失 ⇒ 该工具不注册 ⇒ 白名单映射期失败）。
         services.AddHttpClient();
         services.AddSingleton(sp => new DemoAttachmentStager(
             sp.GetRequiredService<IHttpClientFactory>().CreateClient(),
             settings.AttachmentMaxBytes));
         services.AddSingleton<IFeishuAttachmentStager>(sp => sp.GetRequiredService<DemoAttachmentStager>());
 
-        // ⑧ 唯一通道实现直接暴露为 IMessageChannel（无装饰器、无注册顺序坑）。
+        // ⑦ 唯一通道实现直接暴露为 IMessageChannel（无装饰器、无注册顺序坑）。
         services.AddSingleton<ConsoleMessageChannel>();
         services.AddSingleton<IMessageChannel>(sp => sp.GetRequiredService<ConsoleMessageChannel>());
 
-        // ⑨ 剧本（S1 需要可选的知识库空间 ID；装配期告警由宿主在横幅之后统一输出）。
+        // ⑧ 剧本（S1 需要可选的知识库空间 ID；装配期告警由宿主在横幅之后统一输出）。
         services.AddSingleton(_ => ScenarioBook.CreateDefault(settings));
 
-        // ⑩ REPL（显式装配：避免依赖"可选参数由容器填默认值"这一非显然行为）。
+        // ⑨ REPL（显式装配：避免依赖"可选参数由容器填默认值"这一非显然行为；
+        // 日志经公共层注入——SDK 内部与 REPL 自身的日志统一走 Serilog）。
         services.AddSingleton(sp => new AgentConsoleLoop(
             settings,
             sp.GetRequiredService<FeishuAgent>(),
@@ -143,7 +140,8 @@ public static class DocAgentDemo
             sp.GetRequiredService<ConsoleToolAuthorizerState>(),
             sp.GetRequiredService<InMemoryAuditSink>(),
             sp.GetRequiredService<FeishuToolRegistry>(),
-            sp.GetRequiredService<ScenarioBook>()));
+            sp.GetRequiredService<ScenarioBook>(),
+            sp.GetRequiredService<ILogger<AgentConsoleLoop>>()));
 
         var provider = services.BuildServiceProvider(validateScopes: false);
 
@@ -199,63 +197,21 @@ public static class DocAgentDemo
     }
 
     /// <summary>
-    /// 装配配置来源：<c>appsettings.json</c> → <c>appsettings.{环境}.json</c> → <c>appsettings.local.json</c>
-    /// （后者覆盖前者），环境变量的读取由 <see cref="DocAgentSettings.FromConfiguration"/> 以**更高优先级**完成。
-    /// </summary>
-    /// <param name="baseDirectory">配置根目录（生产路径为 <see cref="AppContext.BaseDirectory"/>，
-    /// 与工作目录无关 —— <c>dotnet run</c> / 直接跑产物 / 任意 cwd 行为一致）。</param>
-    /// <param name="reader">环境读取器（可空 = 读进程环境变量；单测注入替身）。</param>
-    /// <returns>配置根与**实际存在**的配置文件清单（用于横幅的"配置来源"事实行）。</returns>
-    /// <remarks>
-    /// 三层文件与仓库其他 Demo（Webhook / WebSocket / OAuth）保持同一约定；
-    /// 差异是本 Demo 的 <c>appsettings.json</c> 为 <c>optional: true</c> —— 纯环境变量运行
-    /// （容器 / CI / 现有用法）不得因缺文件而启动失败。
-    /// </remarks>
-    internal static DocAgentConfiguration BuildConfiguration(
-        string baseDirectory,
-        Func<string, string?>? reader = null)
-    {
-        var read = reader ?? Environment.GetEnvironmentVariable;
-        var environment = read("DOTNET_ENVIRONMENT") ?? read("ASPNETCORE_ENVIRONMENT");
-        var files = new List<string>();
-
-        var builder = new ConfigurationBuilder();
-        AddJsonFile(DocAgentSettings.AppSettingsFile, optional: true);
-        if (!string.IsNullOrWhiteSpace(environment))
-        {
-            AddJsonFile($"appsettings.{environment}.json", optional: true);
-        }
-
-        AddJsonFile(DocAgentSettings.LocalAppSettingsFile, optional: true);
-
-        return new DocAgentConfiguration(builder.Build(), files);
-
-        void AddJsonFile(string fileName, bool optional)
-        {
-            var path = Path.Combine(baseDirectory, fileName);
-            if (File.Exists(path))
-            {
-                files.Add(fileName);
-            }
-
-            builder.AddJsonFile(path, optional: optional, reloadOnChange: false);
-        }
-    }
-
-    /// <summary>
-    /// 保证 <c>FeishuApps</c> 节存在：配置已提供则原样使用，否则用本节的 AppKey/AppId/AppSecret 合成单应用。
+    /// 保证 <c>FeishuApps</c> 节存在：配置已提供则原样使用，否则用 <c>FeishuDemo</c> 的 AppId/AppSecret
+    /// 与 <c>FeishuDocAgent</c> 的 AppKey 合成单应用。
     /// </summary>
     /// <param name="configuration">配置来源。</param>
-    /// <param name="settings">已解析的配置（提供回退值）。</param>
+    /// <param name="settings">已解析的配置（提供合成值）。</param>
     /// <returns>可供 <c>AddFeishuApp</c> 使用的配置（含 <c>FeishuApps</c> 节）。</returns>
     /// <remarks>
-    /// <b>顺序即语义</b>：配置文件里显式写出的 <c>FeishuApps</c> 优先级高于由 <c>FeishuDocAgent</c> 三项
-    /// 合成的单应用配置（前者是 <c>AddFeishuApp</c> 真正消费的对象）；合成项仅在缺失时追加，
-    /// 且追加在最后（覆盖最低优先级的空节）。
+    /// <b>顺序即语义</b>：配置文件里显式写出的 <c>FeishuApps</c> 优先级高于由统一节合成的单应用配置
+    /// （前者是 <c>AddFeishuApp</c> 真正消费的对象）；合成项仅在缺失时追加，
+    /// 且追加在最后（覆盖最低优先级的空节）。模板不再包含 <c>FeishuApps</c>——
+    /// 模型与飞书凭证的唯一来源是 <c>FeishuDemo</c> 节。
     /// </remarks>
     internal static IConfigurationRoot EnsureAppSection(IConfiguration configuration, DocAgentSettings settings)
     {
-        if (!string.IsNullOrWhiteSpace(configuration[$"{DocAgentSettings.AppSectionName}:0:AppId"]))
+        if (!string.IsNullOrWhiteSpace(configuration[$"{DemoAppConfig.SectionName}:0:AppId"]))
         {
             return configuration as IConfigurationRoot
                 ?? new ConfigurationBuilder().AddConfiguration(configuration).Build();
@@ -263,13 +219,7 @@ public static class DocAgentDemo
 
         return new ConfigurationBuilder()
             .AddConfiguration(configuration)
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                [$"{DocAgentSettings.AppSectionName}:0:AppKey"] = settings.AppKey,
-                [$"{DocAgentSettings.AppSectionName}:0:AppId"] = settings.AppId,
-                [$"{DocAgentSettings.AppSectionName}:0:AppSecret"] = settings.AppSecret,
-                [$"{DocAgentSettings.AppSectionName}:0:IsDefault"] = "true",
-            })
+            .AddInMemoryCollection(DemoAppConfig.SingleAppKeys(settings.AppKey, settings.AppId, settings.AppSecret))
             .Build();
     }
 
@@ -290,8 +240,8 @@ public static class DocAgentDemo
         var facts = new Dictionary<string, string?>(StringComparer.Ordinal)
         {
             ["配置来源"] = configurationFiles.Count == 0
-                ? "仅环境变量（未发现 appsettings*.json）"
-                : $"{string.Join(" + ", configurationFiles)} + 环境变量（环境变量优先）",
+                ? "（未发现 appsettings*.json）"
+                : string.Join(" + ", configurationFiles),
             ["应用 appKey"] = $"{settings.AppKey}（AppId {DocAgentSettings.Mask(settings.AppId)}，Secret 已隐藏）",
             ["模型"] = settings.Endpoint is null
                 ? $"{settings.ModelId}（SDK 默认端点）"

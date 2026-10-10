@@ -117,7 +117,7 @@ public interface IFeishuTenantDriveResolveCommentTool
         [ToolParameter("file_token", "文件 token（形如 doxcnXxx）", Required = true)] string file_token,
         [ToolParameter("comment_id", "评论 ID（来自 drive.list_comments）", Required = true)] string comment_id,
         [ToolParameter("file_type", "文件类型（doc/docx/sheet/file/slides）", Required = true)] string file_type,
-        [ToolParameter("is_solved", "是否解决（true=解决，false=恢复，必填）")] bool? is_solved,
+        [ToolParameter("is_solved", "是否解决（true=解决，false=恢复）。执行器要求必须提供：缺失时兜底报错（引擎解包映射表不支持必填布尔，Schema 层无法标 required）")] bool? is_solved = null,
         [ToolParameter("dry_run", "仅预演不操作（可选，默认 false）：返回将要下发的 method/path，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }
@@ -125,8 +125,16 @@ public interface IFeishuTenantDriveResolveCommentTool
 // ─────────────────────────── Drive 协作面：权限（6 个） ───────────────────────────
 
 /// <summary>工具接口：drive.get_permission_public（映射 <c>IFeishuV1DrivePermissions.GetPermissionPublicAsync</c>）。</summary>
+/// <remarks>
+/// <para>
+/// <b>为什么 IsWrite = true（MUDFT017 修复记录）</b>：底层 SDK 是 GET 只读调用，但引擎风险分级
+/// 按方法名危险词推导——权限域方法一律 <c>high-risk-write</c>（权限触点可扩大数据可达范围，
+/// 属敏感面），与「只读」声明矛盾即构建失败。引擎无风险覆盖槽位（单一真相源 = 派生结果），
+/// 故跟随引擎契约声明写面：调用须过 <c>IToolExecutionAuthorizer</c> 门禁。
+/// </para>
+/// </remarks>
 [FeishuTool("drive.get_permission_public",
-    Description = "获取云文档的公开链接权限设置（link_share_entity/external_access 等），用于分享前确认当前文档的可见范围。⚠️ 该接口因涉及权限面，被风险分级器标记为写面——须经授权门禁。需 drive:drive:readonly。",
+    Description = "获取云文档的公开链接权限设置（link_share_entity/external_access 等），用于分享前确认当前文档的可见范围。实际只读（GET），但因权限域风险分级须过授权门禁，建议先 dry_run 预演确认调用面，需 drive:drive:readonly。",
     RequiredScopes = ["drive:drive:readonly"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1DrivePermissions) + "." + nameof(IFeishuV1DrivePermissions.GetPermissionPublicAsync))]
@@ -137,6 +145,7 @@ public interface IFeishuTenantDriveGetPermissionPublicTool
     Task<string> GetPermissionPublicAsync(
         [ToolParameter("token", "云文档 token", Required = true)] string token,
         [ToolParameter("type", "云文档类型（doc/docx/sheet/file/wiki/bitable/folder/mindnote/slides）", Required = true)] string type,
+        [ToolParameter("dry_run", "仅预演不调用（可选，默认 false）：返回将要下发的 method/path，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -164,7 +173,7 @@ public interface IFeishuTenantDriveUpdatePermissionPublicTool
 
 /// <summary>工具接口：drive.grant_permission（映射 <c>IFeishuV1DrivePermissions.CreatePermissionMemberAsync</c>）。</summary>
 [FeishuTool("drive.grant_permission",
-    Description = "为指定云文档添加单个协作者权限（member_type 为 openid/email/userid/chatid/departmentid）。⚠️ 此操作可扩大数据可达范围。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
+    Description = "为指定云文档添加单个协作者权限（member_type 为 openid/email/userid/chatid/departmentid）。⚠️ 此操作可扩大数据可达范围，建议先 dry_run 预演确认。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
     RequiredScopes = ["drive:drive"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1DrivePermissions) + "." + nameof(IFeishuV1DrivePermissions.CreatePermissionMemberAsync))]
@@ -184,7 +193,7 @@ public interface IFeishuTenantDriveGrantPermissionTool
 
 /// <summary>工具接口：drive.update_permission_member（映射 <c>IFeishuV1DrivePermissions.UpdatePermissionMemberAsync</c>）。</summary>
 [FeishuTool("drive.update_permission_member",
-    Description = "更新指定协作者的权限档位（view/edit/full_access），幂等操作。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
+    Description = "更新指定协作者的权限档位（view/edit/full_access），幂等操作。建议先 dry_run 预演确认。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
     RequiredScopes = ["drive:drive"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1DrivePermissions) + "." + nameof(IFeishuV1DrivePermissions.UpdatePermissionMemberAsync))]
@@ -203,7 +212,7 @@ public interface IFeishuTenantDriveUpdatePermissionMemberTool
 
 /// <summary>工具接口：drive.remove_permission（映射 <c>IFeishuV1DrivePermissions.DeletePermissionMemberAsync</c>）。</summary>
 [FeishuTool("drive.remove_permission",
-    Description = "删除指定协作者的权限（删除天然幂等）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
+    Description = "删除指定协作者的权限（删除天然幂等）。建议先 dry_run 预演确认。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
     RequiredScopes = ["drive:drive"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1DrivePermissions) + "." + nameof(IFeishuV1DrivePermissions.DeletePermissionMemberAsync))]
@@ -232,6 +241,7 @@ public interface IFeishuTenantDriveTransferOwnerTool
     Task<string> TransferOwnerPermissionMemberAsync(
         [ToolParameter("token", "云文档 token", Required = true)] string token,
         [ToolParameter("type", "云文档类型（doc/docx/sheet/file/wiki/bitable/folder/mindnote/slides）", Required = true)] string type,
+        [ToolParameter("member_type", "新所有者的 ID 类型（openid/email/userid/chatid/departmentid）", Required = true)] string member_type,
         [ToolParameter("member_id", "新所有者的协作者 ID", Required = true)] string member_id,
         [ToolParameter("dry_run", "仅预演不转移（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);

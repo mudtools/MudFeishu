@@ -9,6 +9,9 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\Mud.Feishu.AI.Tools\Mud.Feishu.AI.Tools.csproj" />
+		<!-- R7 / C6b：MCP server（可选包）的协议层与守卫同批验证——工具面测试工程是它的
+		     天然宿主（MCP 的全部行为都建立在注册表 + 执行链之上）。 -->
+		<ProjectReference Include="..\..\Mud.Feishu.AI.Mcp\Mud.Feishu.AI.Mcp.csproj" />
 	</ItemGroup>
 
 </Project>

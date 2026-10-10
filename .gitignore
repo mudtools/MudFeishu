@@ -52,6 +52,8 @@
 /Mud.Feishu.AI.Tools/obj
 /Mud.Feishu.AI.FeishuTools/bin
 /Mud.Feishu.AI.FeishuTools/obj
+/Mud.Feishu.AI.Mcp/bin
+/Mud.Feishu.AI.Mcp/obj
 /docs
 /Mud.Feishu.Redis/obj
 /Mud.Feishu.Webhook.Demo/bin

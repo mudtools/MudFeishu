@@ -1,5 +1,50 @@
 # Mud.Feishu 更新日志
 
+## [Unreleased] - R7 Batch-8：MCP server 可选包 + 妙记逐字稿分窗口修复 + 主线 A 链路用例补齐（2026-10-10）
+
+> 方案与落地核验见 `.docs/MudFeishu-AI工具面功能完善方案-六域补齐与Agent可用性硬伤及遗留任务-R7.md` §10.9。
+> **AI 模块尚未发布，无兼容负担**；工具面**工具数不变（163）**——本批新增的是**可选包**、一处行为修复与用例。
+
+### ✨ 新增
+
+- **`Mud.Feishu.AI.Mcp`（可选包，R7 / C6b · Batch-8）**：把**白名单已启用**的飞书工具面经
+  stdio JSON-RPC 2.0（MCP 2024-11-05 / 2025-03-26 / 2025-06-18）暴露给进程外 Agent。
+  - **工具集同源**：== `FeishuAgent:Tools` + `FeishuAgent:WriteAllowList`，**不新增开关**；未启用工具在
+    `tools/list` 不可见，调用只回"不存在或未启用"（不回显已启用清单）。
+  - **执行链零旁路**：`tools/call` → `FeishuToolAIFunction` → 既有 `FeishuToolBinding`
+    （授权门禁 / `BeginScope` 租户切换 / 出站净化 / 内容安全 / 审计 / 截断全部不变）。本包**不引用 SDK 强类型客户端**，
+    由反射守卫断言"包内不存在来自 `Mud.Feishu` 程序集的成员签名"（含金丝雀自证）。
+  - **租户上下文**：每次调用前 `IFeishuToolContextAccessor.Begin` 重建并成对释放；`appKey` **只来自配置**
+    （协议层传 appKey 等于把切租户交给客户端），缺失即启动期 fail-fast；跨租户宿主应每租户一个 stdio 进程。
+  - **工具名映射**：契约名 `bitable.query_records` → MCP 名 `bitable_query_records`
+    （严格客户端只接受 `[a-zA-Z0-9_-]{1,64}`）；契约名经 `title` 原样透出；映射冲突/超长构造期 fail-fast。
+  - **生态位**：`initialize.instructions` 下发已启用域的 guidance（与进程内 Agent 同一份编译期常量与预算装配器），
+    `annotations`（`readOnlyHint` / `destructiveHint`）由 `is_write` / `risk` 派生。
+  - **写工具 HITL**：不套用 MAF 的 `ApprovalRequiredAIFunction`（经核实它**只是标记、不强制**，强制点在
+    `FunctionInvokingChatClient`，而 MCP 不走该管线）；真实门禁是授权器三态——`NeedsUserConfirmation` ⇒
+    `isError=true` + `needs_user_confirmation` + **零调用下游**；未注册授权器 ⇒ `authorization_denied`。
+
+### 🐞 修复
+
+- **`minutes.get_artifacts` 的逐字稿窗口"声明了但没人读"**：`transcript_offset` / `transcript_limit` 早已进 Schema
+  （描述还承诺返回总长与 `has_more`），但执行器**只用了 `minute_token`**——逐字稿仍按 200 字符预览截断，
+  模型传参被静默丢弃、后半段逐字稿**永远取不到**。改为真分窗口：默认 10,000 / 上限 50,000 字符，
+  返回 `transcript_total_length` + `has_more` + `next_offset`（续读游标）+ `offset_out_of_range`，
+  移除 `transcript_truncated`；**越界参数在下游调用之前拒绝**（不消耗 5 次/秒限速）。
+  连带更新 golden、`Guidance/minutes.md`（同时修掉"本域没有列出妙记工具"的过时表述——`minutes.search` 早已策展）、
+  `skills/feishu-minutes/SKILL.md`。
+
+### 🔒 契约/守卫/用例
+
+- 新增用例 **73 条**：Minutes 15（窗口切片逐字比对 / 续读游标 / 三条负例零调用下游 / search 实参 / media 只回 URL）、
+  MCP 30（白名单同源、版本协商、初始化前 fail-closed、**审计 `allowed` 证明走了执行链**、上下文重建、
+  写工具三条 fail-closed 路径、stdio 顺序与 EOF、包边界反射守卫）、
+  Drive 协作面 10（权限域 6 工具全部写面 + high-risk、后果句、`fetch_all` 真翻页、扁平文本组装请求体、三条负例）、
+  Board 12（`dsl_type→SyntaxType` 映射、幂等键 → `client_token`、三条负例）、Docx 群公告 6（广播面纪律 + 负例）。
+- `SilentCatchContractGuards` 扫描面扩入 `Mud.Feishu.AI.Mcp`（协议面静默 catch 的后果更重）。
+- 测试基线：`AI.Tools.Tests` 763 → **836**（net8.0 与 net10.0 双 TFM 全绿）、`AI.Tests` 357、`Agent.Demo.Tests` 114 全绿；
+  Release 全 TFM 构建 0 错误，三个工程 AOT 严格模式 `IL2026` / `IL3050` / `AOT00x` = **0**。
+
 ## [Unreleased] - R7 Batch-7：Bitable 事件上下文 + RAG-B 自建检索 + Skills 导出 + NDJSON 事件外桥（2026-10-10）
 
 > 方案与落地核验见 `.docs/MudFeishu-AI工具面功能完善方案-六域补齐与Agent可用性硬伤及遗留任务-R7.md` §10.8。

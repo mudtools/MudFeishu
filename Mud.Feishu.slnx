@@ -24,6 +24,9 @@
     <Project Path="Mud.Feishu.AI.Tools/Mud.Feishu.AI.Tools.csproj">
       <Build Solution="Debug|*" Project="false" />
     </Project>
+    <!-- R7 / C6b（DP-C6-1）：MCP server 是**可选包**，不入主依赖链的工具包引用图
+         （只有本目录引用 AI/AI.Tools，反向不存在）。 -->
+    <Project Path="Mud.Feishu.AI.Mcp/Mud.Feishu.AI.Mcp.csproj" />
     <Project Path="Mud.Feishu.AI/Mud.Feishu.AI.csproj">
       <Build Solution="Debug|*" Project="false" />
     </Project>

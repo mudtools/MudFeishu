@@ -420,6 +420,31 @@ await bridge.WriteAsync(new FeishuEventEnvelope(
 - **高频提醒**：宿主不注册即完全不生效；注册即"每条订阅表变更跑一轮模型"——请据此收窄平台订阅面；
 - 配套装配器 `BitableRecordContextAssembler`（Order = 200）在 `Mud.Feishu.AI` 包内。
 
+### 7.6 进程外 Agent：MCP server（R7 / C6b · 可选包）
+
+工具面除了进程内模型，还可经 **MCP（stdio JSON-RPC 2.0）**交给进程外 Agent，
+实现在**独立可选包** `Mud.Feishu.AI.Mcp`（不引用 SDK 强类型客户端、不被任何核心包引用）：
+
+```csharp
+builder.Services.AddFeishuTools();                       // 工具面（白名单经 FeishuAgent:Tools/WriteAllowList）
+builder.Services.AddFeishuMcpServer(o => o.AppKey = "cli_xxx");  // 进程级租户（必填）
+await app.Services.RunFeishuMcpStdioAsync();             // 阻塞到客户端关闭 stdin
+```
+
+- **白名单同源**：MCP 暴露的工具 == `FeishuAgent:Tools` + `WriteAllowList`，**不新增开关**；
+- **执行链零旁路**：每个 tool call 走同一个 `FeishuToolBinding`（授权 / 租户切换 / 净化 / 审计不变）；
+- **租户边界 = 进程**：appKey 只来自配置（协议层传 appKey 等于把切租户交给客户端），
+  跨租户宿主请**每租户一个 stdio 进程**；缺 appKey 启动期即抛（fail-closed）；
+- **写工具 HITL**：授权器返回"需人工确认" ⇒ `isError` + `needs_user_confirmation` + **零调用下游**
+  （MCP 不走 MAF 审批管线，故不依赖 `ApprovalRequiredAIFunction` 这个**仅标记**的类型）；
+- **名字映射**：契约名 `.` → `_`（严格客户端只接受 `[a-zA-Z0-9_-]{1,64}`），契约名经 `title` 透出；
+- **stdio 注意事项**：stdout 是协议通道，日志必须写 stderr/文件。
+
+> **依赖选型**：本包 MCP 协议层为**自研**（不引官方 `ModelContextProtocol` SDK），仅覆盖
+> `tools` 能力 + stdio。裁决依据、**已证伪的常见理由**（TFM 兼容性 / AOT / 预览版三条均不成立）
+> 与**翻转触发条件**（HTTP-SSE / 多能力 / 客户端侧 / 新修订差异化语义）见
+> `.docs/AI/MudFeishu-AI-Mcp-协议层依赖选型-ADR.md`。
+
 ---
 
 ## 8. 编译期契约出口与域 guidance（R4/WP2/WP6）

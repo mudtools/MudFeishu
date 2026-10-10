@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFrameworks>netstandard2.0;net6.0;net8.0;net10.0</TargetFrameworks>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<AssemblyName>Mud.Feishu.AI.Mcp</AssemblyName>
+		<GenerateDocumentationFile>True</GenerateDocumentationFile>
+		<PackageProjectUrl>http://www.mudtools.cn/</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/mudtools/MudFeishu</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageIcon>Icon.png</PackageIcon>
+		<BaseOutputPath>..\bin</BaseOutputPath>
+		<Description>Mud.Feishu AI MCP server（可选包）：把已策展的飞书工具面（FeishuAgent:Tools / WriteAllowList 白名单）经 stdio JSON-RPC 2.0 暴露给进程外 Agent；每个 tool call 仍走既有工具执行链（授权门禁 / 租户切换 / 出站净化 / 审计），租户上下文缺失即 fail-closed，net8.0+ 原生 AOT 兼容。</Description>
+		<PackageTags>Feishu;Lark;飞书;MCP;ModelContextProtocol;Agent;AI;Tool;AOT;NativeAOT;MudFeishu</PackageTags>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- 依赖方向（DP-C6-1）：只引用 AI 底座（FeishuToolContext / AIFunction 契约 + guidance 装配）
+		     与工具面（注册表 / 执行链 / 编译期 Schema）。**刻意不引用 Mud.Feishu（SDK 客户端）**：
+		     MCP 包若直连强类型飞书接口，就绕开了授权/审计/净化，等于在进程内开了一条旁路
+		     （守卫 McpServerContractTests.Mcp_ShouldNotReferenceSdkClientTypes 断言本目录内不出现 IFeishu* 客户端调用）。 -->
+		<ProjectReference Include="..\Mud.Feishu.AI\Mud.Feishu.AI.csproj" />
+		<ProjectReference Include="..\Mud.Feishu.AI.Tools\Mud.Feishu.AI.Tools.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- M.E.* 与 Mud.Feishu.AI 同步钉版（防 NU1603 版本漂移）。 -->
+		<PackageReference Update="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+		<PackageReference Update="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+		<PackageReference Update="Microsoft.Extensions.Options" Version="10.0.11" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="..\Icon.png" Pack="true" PackagePath="\" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Mud.Feishu.AI.Tools.Tests" />
+	</ItemGroup>
+
+	<!-- 公共 API 兼容门禁（与其余包同款：未发布窗口期零成本建基线）。 -->
+	<ItemGroup>
+		<PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="4.14.0">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
+
+	<ItemGroup>
+		<AdditionalFiles Include="PublicAPI.Shipped.txt" />
+		<AdditionalFiles Include="PublicAPI.Unshipped.txt" />
+	</ItemGroup>
+
+</Project>

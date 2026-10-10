@@ -86,8 +86,25 @@ public enum ToolSchemaDialect
 /// 工具 Schema 导出器（AI-FD-D12 P1D-4）：按方言把全部已注册工具导出为模型侧 tools 载荷。
 /// </summary>
 /// <remarks>
+/// <para>
 /// 数据源 = 编译期 <c>FeishuToolSchemas</c> 常量（零反射零成本）；输出为合法 JSON 文本，
 /// 可被标准 OpenAI tools Schema 校验。
+/// </para>
+/// <para>
+/// <b>生态位声明（R-10 / D-5 决策落地）</b>：本接口是库<b>面向仓外 Agent</b> 的<b>唯一</b>导出出口——
+/// 导出结果在<b>进程内无消费方</b>（宿主的工具面走 <c>FeishuAgentToolSource</c>，
+/// 不经过"导出为 JSON 文本再解析"这条往返）。承诺范围与边界如下：
+/// <list type="bullet">
+/// <item><b>承诺</b>：Agent Skills 产物随 NuGet 包分发（<c>skills/**</c>，对标官方布局
+/// <c>skills/{name}/SKILL.md</c>），使"只装包、不取源码"的用户同样能拿到生态位产物；</item>
+/// <item><b>不承诺</b>：库本身<b>不做文件 IO</b>（<see cref="Export"/> 恒返回清单 JSON 文本，落盘由宿主/脚本完成），
+/// 也不承诺进程内的"导出 → 消费"闭环；</item>
+/// <item><b>不新建包</b>：导出数据源（<c>FeishuToolSchemas</c>/<c>FeishuToolGuidance</c>）与工具面同程序集同 pass，
+/// 拆包只会引入版本漂移而换不来任何隔离收益。</item>
+/// </list>
+/// 该声明与打包路径互为约束：删掉打包项会让"生态位"退化为"只服务从仓库取源码的用户"，
+/// 故由 <c>SkillsExportContractTests.Package_ShouldShipSkillsTree</c> 机械锁定。
+/// </para>
 /// </remarks>
 public interface IToolSchemaExporter
 {

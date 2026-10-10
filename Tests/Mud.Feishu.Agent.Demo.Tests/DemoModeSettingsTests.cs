@@ -166,9 +166,29 @@ public class DemoModeSettingsTests
         settings.Model.ApiKey.Should().Be("sk-test");
     }
 
+    /// <summary>演示：R-13 领域事件模式的开关 + 模型三项（凭证从 <c>FeishuDemo</c> 统一节读取）。</summary>
+    [Fact]
+    public void DomainEventsDemoSettings_FromConfiguration_ShouldReadEveryKey()
+    {
+        var config = Config(
+            ("FeishuDemo:ModelId", "glm-4-flash"),
+            ("FeishuDemo:ApiKey", "sk-test"),
+            ("FeishuDemo:AppId", "cli_demo"),
+            ("FeishuDemo:AppSecret", "dsk_demo"),
+            ("FeishuDomainEventsDemo:Enabled", "true"),
+            ("FeishuDomainEventsDemo:StreamChatId", "oc_demo_chat"));
+
+        var settings = DomainEventsDemoSettings.FromConfiguration(config);
+
+        settings.Enabled.Should().BeTrue();
+        settings.Model.ModelId.Should().Be("glm-4-flash");
+        settings.AppId.Should().Be("cli_demo");
+        settings.StreamChatId.Should().Be("oc_demo_chat");
+    }
+
     // ──────────────────────────── 节名契约 ────────────────────────────
 
-    /// <summary>三个模式的配置节/开关键必须互异（模式分派按节名判定，撞名会静默串线）。</summary>
+    /// <summary>各模式的配置节/开关键必须互异（模式分派按节名判定，撞名会静默串线）。</summary>
     [Fact]
     public void ModeSections_ShouldBeDistinct()
     {
@@ -178,6 +198,7 @@ public class DemoModeSettingsTests
             DocAgentSettings.SectionName,
             ToolsDemoSettings.SectionName,
             ImHandlerDemoSettings.SectionName,
+            DomainEventsDemoSettings.SectionName,
         ];
 
         sections.Should().OnlyHaveUniqueItems();
@@ -187,6 +208,7 @@ public class DemoModeSettingsTests
             DocAgentSettings.ConfigEnabledKey,
             ToolsDemoSettings.EnabledKey,
             ImHandlerDemoSettings.EnabledKey,
+            DomainEventsDemoSettings.EnabledKey,
         ];
 
         enabledKeys.Should().OnlyHaveUniqueItems();

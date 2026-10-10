@@ -9,17 +9,23 @@
 
 ---
 
-## 1. 四个运行模式（互不干扰）
+## 1. 五个运行模式（互不干扰）
 
 | 模式 | 开关（配置文件） | 内容 |
 | --- | --- | --- |
 | Phase 0 裸模型 | 默认（不设任何开关，读 `FeishuDemo` 节） | 一问一答，不含任何飞书能力 |
 | Phase 1/2 工具冒烟 | `FeishuToolsDemo:Enabled=true` | 全域只读工具，打印工具名 + 只读问答 |
 | P2D-5a 事件接入 | `FeishuImHandlerDemo:Enabled=true` | 打印 IM 会话处理器的注册面代码文本 |
+| R-13 领域事件 | `FeishuDomainEventsDemo:Enabled=true`（可选 `StreamChatId`） | 三个领域会话处理器（审批 / 多维表格记录变更 / 任务更新）各派发一轮真实事件 + 流式通道降级链走一轮真实流式回复 |
 | **文档业务智能体** | **`FeishuDocAgent:Enabled=true`** | **本文件描述的模式** |
 
-四个模式**互斥**，按上表顺序判定，命中即返回。**参数与模式开关全部来自配置文件（`appsettings*.json`），
+五个模式**互斥**，按上表顺序判定，命中即返回。**参数与模式开关全部来自配置文件（`appsettings*.json`），
 环境变量不再参与**。
+
+> **R-13 领域事件模式的两节演示**：① 事件载荷由代码构造（`evt-demo-*`）并直接派发——不依赖
+> WebSocket/Webhook 通道与真实平台投递；可投递时回复下发到对应单聊，不可投递（如演示用任务 id
+> 在平台上不存在）时在**调用模型之前**短路。② 流式链（`CardStreamMessageChannel` → `EditMessageChannel`）
+> 走一轮真实流式回复，并对**增量落点次数**做断言：为 0 时抛错（"走了一轮"与"增量没落通道"必须可区分）。
 
 ---
 
@@ -263,7 +269,7 @@ tenant 身份无 wiki 关键词搜索（改用 `search.doc_wiki`）；工具结�
 | --- | --- | --- |
 | 启动即报 `请先设置 FeishuDemo:XXX` 或 `FeishuDocAgent:XXX` | 配置文件中缺少该必填项 | 对照 §3.2 补齐 |
 | 改了 `appsettings.local.json` 但不生效 | ① 本 Demo **不监听文件变更**（`reloadOnChange: false`），必须重启；② 文件是新加的、还没被复制到输出目录 → 重新 `dotnet run` / `dotnet build`；③ 键名拼错（对照 §3.2） | 看横幅"配置来源"行确认文件是否被加载；再核对键名 |
-| 配置文件里 `FeishuDocAgent:Enabled=true` 却没进本模式 | 更早优先级的模式开关也被置 `true`（四模式互斥，按 §1 顺序判定：工具冒烟 → IM 事件接入 → 文档智能体） | 检查并关闭其它模式的 `Enabled`，或只保留目标模式 |
+| 配置文件里 `FeishuDocAgent:Enabled=true` 却没进本模式 | 更早优先级的模式开关也被置 `true`（五模式互斥，按 §1 顺序判定：工具冒烟 → IM 事件接入 → 领域事件 → 文档智能体） | 检查并关闭其它模式的 `Enabled`，或只保留目标模式 |
 | 横幅"配置来源"只显示 `（未发现 appsettings*.json）` | 两个 `appsettings*.json` 都不在**输出目录** | 确认 `Demos/Mud.Feishu.Agent.Demo/bin/<配置>/net10.0/` 下有 `appsettings.json`（csproj 的 `None Update + CopyToOutputDirectory` 负责复制） |
 | `AppId 长度无效` / `AppId 格式无效` / `AppSecret 长度必须至少为 16 字符` | SDK 的租户配置校验（在 Demo 的 `Validate()` **之后**） | AppId 须以 `cli_`/`app_` 开头且 ≥20 字符；AppSecret ≥16 字符 |
 | `工具白名单与当前注册的域客户端不匹配：… 未注册工具 'x.y'` | 对应域客户端没注册（域缺席 ⇒ 该域工具不注册） | 检查 `DocAgentDemo` 的 `AddFeishuServices` 是否注册了该域 |
@@ -310,7 +316,7 @@ Demo **不接 OTel Exporter**（零额外依赖），采用「控制台 Trace + 
 | 编号 | 自检 |
 | --- | --- |
 | F1 | `FeishuDocAgent:Enabled=true` 启动后 30 秒内打印能力面横幅（配置来源 / 工具数 / 身份闭集 / 风险上限 / 授权强制 / guidance / 通道） |
-| F2 | 四个模式均按配置节开关与参数运行，**无环境变量参与**（参数、模式开关全部来自 `appsettings*.json`） |
+| F2 | 五个模式均按配置节开关与参数运行，**无环境变量参与**（参数、模式开关全部来自 `appsettings*.json`） |
 | F3 | `/scenario kb` 无人工干预跑通，回答含来源标注 |
 | F4 | `/scenario author` 端到端跑通，且出现**恰好 2 次** 🔒 审批 |
 | F5 | `/scenario del`：`dry_run` 零副作用 → 🔒 → `strict` 下授权器独立拒绝 → `/policy ask` 后真删 |
@@ -348,7 +354,7 @@ dotnet test Tests/Mud.Feishu.Agent.Demo.Tests
 
 ## 13. 项目结构
 
-按功能归类：`Common/`（跨模式公共层）、`Modes/`（三个轻量模式）、`DocAgent/`（文档业务智能体），
+按功能归类：`Common/`（跨模式公共层）、`Modes/`（四个轻量模式）、`DocAgent/`（文档业务智能体），
 入口 `Program.cs` 只做模式判定与分发。
 
 ```
@@ -362,11 +368,13 @@ Mud.Feishu.Agent.Demo/
 │   ├── DemoLogging.cs            # 运行时日志装配（Serilog，见 §10.1）
 │   ├── DemoChatLoop.cs           # 通用对话循环（Phase 0 / 工具冒烟共用）
 │   ├── ConsoleRenderer.cs        # ANSI 渲染器（横幅/工具卡片/表格/密钥掩码）
+│   ├── DemoAppKeyAccessor.cs     # 演示应用键访问器（R-13：事件处理器的 appKey 事实来源）
 │   └── DemoAttachmentStager.cs   # 附件落盘器（drive.upload_file 的宿主注入件）
-├── Modes/                        # 三个轻量模式入口
+├── Modes/                        # 四个轻量模式入口
 │   ├── BareModelDemo.cs          # Phase 0 裸模型一问一答
 │   ├── ToolsDemo.cs              # Phase 1/2 全域只读工具冒烟
-│   └── ImConversationDemo.cs     # P2D-5a IM 会话处理器注册面演示
+│   ├── ImConversationDemo.cs     # P2D-5a IM 会话处理器注册面演示
+│   └── DomainEventsDemo.cs       # R-13 领域事件处理器 + 流式通道降级链
 └── DocAgent/                     # 文档业务智能体
     ├── DocAgentDemo.cs           # 装配根：DI 组合 + 能力面横幅
     ├── DocAgentSettings.cs       # FeishuDocAgent 节设置

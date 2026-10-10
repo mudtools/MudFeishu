@@ -301,3 +301,81 @@ internal sealed record ImHandlerDemoSettings
     /// <exception cref="InvalidOperationException">存在非法取值。</exception>
     public void Validate() => Model.Validate(FeishuDemoSettings.SectionName);
 }
+
+/// <summary>
+/// <b>R-13</b>：领域事件处理器 + 流式通道降级链的演示配置。
+/// </summary>
+/// <remarks>
+/// <para>
+/// 与工具冒烟同构：模式开关与 <c>StreamChatId</c> 来自本节，模型三项与飞书凭证来自统一节
+/// <c>FeishuDemo</c>（<see cref="FeishuDemoSettings"/>）。
+/// </para>
+/// <para>
+/// <b>为什么必须要求飞书凭证</b>：本模式会真投递回复（审批事件发给操作人单聊、任务事件发给负责人），
+/// 凭证缺失时在装配期 fail-fast 比"跑到回复那一步才失败"更早暴露配置问题。
+/// </para>
+/// </remarks>
+internal sealed record DomainEventsDemoSettings
+{
+    /// <summary>配置节名。</summary>
+    public const string SectionName = "FeishuDomainEventsDemo";
+
+    /// <summary>模式开关键。</summary>
+    public const string EnabledKey = SectionName + ":Enabled";
+
+    /// <summary>模式开关。</summary>
+    public bool Enabled { get; init; }
+
+    /// <summary>模型三参数。</summary>
+    public required ChatModelSettings Model { get; init; }
+
+    /// <summary>飞书应用 AppId。</summary>
+    public required string AppId { get; init; }
+
+    /// <summary>飞书应用 AppSecret。</summary>
+    public required string AppSecret { get; init; }
+
+    /// <summary>流式演示的目标群 chat_id（可选；留空 = 只跑三个领域处理器，跳过流式一节）。</summary>
+    public string? StreamChatId { get; init; }
+
+    /// <summary>从配置文件读取领域事件演示模式配置。</summary>
+    /// <param name="configuration">配置来源。</param>
+    /// <exception cref="ArgumentNullException"><paramref name="configuration"/> 为 <see langword="null"/>。</exception>
+    /// <exception cref="InvalidOperationException">缺少必填配置项。</exception>
+    public static DomainEventsDemoSettings FromConfiguration(IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        var shared = FeishuDemoSettings.FromConfiguration(configuration);
+
+        return new DomainEventsDemoSettings
+        {
+            Enabled = configuration.GetValue<bool?>(EnabledKey) is true,
+            Model = shared.Model,
+            AppId = Require(shared.AppId, FeishuDemoSettings.KeyAppId),
+            AppSecret = Require(shared.AppSecret, FeishuDemoSettings.KeyAppSecret),
+            StreamChatId = DemoConfigGuards.NullIfBlank(configuration[$"{SectionName}:StreamChatId"]),
+        };
+    }
+
+    /// <summary>校验配置合法（fail-fast）。</summary>
+    /// <exception cref="InvalidOperationException">存在非法取值。</exception>
+    public void Validate()
+    {
+        Model.Validate(FeishuDemoSettings.SectionName);
+
+        if (string.IsNullOrWhiteSpace(AppId))
+        {
+            throw new InvalidOperationException($"请先设置 {FeishuDemoSettings.SectionName}:{FeishuDemoSettings.KeyAppId}");
+        }
+
+        if (string.IsNullOrWhiteSpace(AppSecret))
+        {
+            throw new InvalidOperationException($"请先设置 {FeishuDemoSettings.SectionName}:{FeishuDemoSettings.KeyAppSecret}");
+        }
+    }
+
+    private static string Require(string? value, string key)
+        => value ?? throw new InvalidOperationException(
+            $"请先设置 {FeishuDemoSettings.SectionName}:{key}");
+}

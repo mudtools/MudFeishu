@@ -11,14 +11,15 @@ using Serilog;
 namespace Mud.Feishu.Agent.Demo;
 
 /// <summary>
-/// 四个运行模式的入口分发（参数与模式开关**全部来自配置文件**，环境变量不再参与）；
-/// 具体实现按功能归档：<c>Modes/</c>（工具冒烟、IM 接入、裸模型）与 <c>DocAgent/</c>（文档业务智能体）。
+/// 运行模式的入口分发（参数与模式开关**全部来自配置文件**，环境变量不再参与）；
+/// 具体实现按功能归档：<c>Modes/</c>（工具冒烟、IM 接入、领域事件、裸模型）与 <c>DocAgent/</c>（文档业务智能体）。
 /// </summary>
 /// <remarks>
 /// 模式判定顺序（见 <c>appsettings.json</c> 头注释）：
 /// <list type="number">
 ///   <item><description><c>FeishuToolsDemo:Enabled</c> → 工具冒烟（全域只读工具 + 飞书客户端）；</description></item>
 ///   <item><description><c>FeishuImHandlerDemo:Enabled</c> → IM 会话处理器接入演示；</description></item>
+///   <item><description><c>FeishuDomainEventsDemo:Enabled</c> → 领域事件处理器 + 流式通道降级链（R-13）；</description></item>
 ///   <item><description><c>FeishuDocAgent:Enabled</c> → 文档业务智能体控制台；</description></item>
 ///   <item><description>均未启用 → Phase 0 裸模型一问一答（读 <c>FeishuDemo</c> 节）。</description></item>
 /// </list>
@@ -49,6 +50,13 @@ public static class Program
             if (configuration.GetValue<bool?>(ImHandlerDemoSettings.EnabledKey) is true)
             {
                 await ImConversationDemo.RunAsync(configuration);
+                return;
+            }
+
+            // R-13 领域事件演示：三个领域处理器 + 上下文装配器 + 流式通道降级链的真实调用点。
+            if (configuration.GetValue<bool?>(DomainEventsDemoSettings.EnabledKey) is true)
+            {
+                await DomainEventsDemo.RunAsync(configuration);
                 return;
             }
 

@@ -246,6 +246,51 @@ public class FeishuAgentApprovalContinuationTests
         harness.Executed.Should().BeFalse("不得执行任何工具");
     }
 
+    /// <summary>
+    /// R7 / C4a：装配了待确认快照存储时，<b>已被消费/已过期</b>的批准必须 fail-closed 丢弃——
+    /// 同一 <c>RequestId</c> 只生效一次（重复回灌批准不得二次执行写操作）。
+    /// </summary>
+    [Fact]
+    public async Task RunApprovalContinuation_ShouldFailClosed_WhenSnapshotAlreadyConsumed()
+    {
+        var client = new ScriptedChatClient(ApprovalFirstResponse, "已完成写入");
+        var (harness, approval) = await ArrangePendingApprovalAsync(client);
+
+        // 模拟「该快照已被消费/已过期」：登记后立即消费掉（幂等消费只成功一次）。
+        var store = new InMemoryPendingApprovalStore();
+        await store.SaveAsync(PendingApprovalSnapshot.FromRequest(approval, DateTimeOffset.UtcNow));
+        (await store.TryConsumeAsync(approval.AppKey, approval.RequestId)).Should().BeTrue(
+            "前置：首次消费必须成功，否则本用例测的不是「已消费」路径");
+
+        var act = async () => await harness.Agent.RunApprovalContinuationAsync(
+            harness.Accessor, approval, approved: true, pendingApprovalStore: store, cancellationToken: default);
+
+        await act.Should().ThrowAsync<InvalidOperationException>(
+            "已被消费的确认不得再次生效（同一 RequestId 只生效一次，fail-closed 不重放）");
+        harness.Executed.Should().BeFalse("丢弃迟到批准 ⇒ 写工具绝不执行");
+    }
+
+    /// <summary>
+    /// R7 / C4a：装配存储且快照<b>有效</b>时，续跑正常执行并把快照消费掉（不再出现在待办）。
+    /// </summary>
+    [Fact]
+    public async Task RunApprovalContinuation_ShouldConsumeSnapshot_WhenApproved()
+    {
+        var client = new ScriptedChatClient(ApprovalFirstResponse, "已完成写入");
+        var (harness, approval) = await ArrangePendingApprovalAsync(client);
+
+        var store = new InMemoryPendingApprovalStore();
+        await store.SaveAsync(PendingApprovalSnapshot.FromRequest(approval, DateTimeOffset.UtcNow));
+
+        var response = await harness.Agent.RunApprovalContinuationAsync(
+            harness.Accessor, approval, approved: true, pendingApprovalStore: store, cancellationToken: default);
+
+        response.Text.Should().Contain("已完成");
+        harness.Executed.Should().BeTrue("批准的写工具必须执行（批准 + 显式重建上下文 = 放行）");
+        (await store.ListPendingAsync(approval.AppKey)).Should().BeEmpty(
+            "续跑成功后快照必须被消费（否则待办列表会永久堆积已处理项）");
+    }
+
     [Fact]
     public async Task RunApprovalContinuation_ShouldRejectIncompleteApprovalElements()
     {

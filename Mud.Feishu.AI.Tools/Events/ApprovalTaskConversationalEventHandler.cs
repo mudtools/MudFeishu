@@ -84,9 +84,42 @@ public sealed class ApprovalTaskConversationalEventHandler(
             SubjectId: subjectId,
             SenderId: eventData.OpenId ?? eventData.UserId ?? string.Empty,
             MessageId: string.Empty,
-            MentionedText: BuildApprovalNotification(eventData));
+            MentionedText: BuildApprovalNotification(eventData),
+
+            // R7 / C2（T3-5）：填入事件维度，供 ApprovalContextAssembler 装配结构化片段。
+            // 宿主在构造本处理器时把 ApprovalContextAssembler 放进 contextAssemblers 即可启用
+            // （不传则本字段无消费者，行为与既有完全一致）。
+            EventKey: ApprovalContextAssembler.ApprovalEventKey,
+            EventFacts: BuildApprovalFacts(eventData));
 
         return Task.FromResult(request);
+    }
+
+    /// <summary>
+    /// 审批事件 → 结构化事实（键值对；空值不登记，由装配器跳过）。
+    /// </summary>
+    /// <remarks>
+    /// <b>只放平台事实，不做推断</b>：值取自事件载荷本身（实例/任务/状态/定义/操作人）。
+    /// "当前节点""待办人""表单要点"不在 <see cref="ApprovalTaskResult"/> 载荷里
+    /// （需另调 <c>approval.get_instance</c>）——<b>不臆造</b>这些键（模型会以为事件自带）。
+    /// </remarks>
+    private static Dictionary<string, string?> BuildApprovalFacts(ApprovalTaskResult eventData)
+    {
+        var facts = new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            ["instance_code"] = eventData.InstanceCode,
+            ["task_id"] = eventData.TaskId,
+            ["status"] = eventData.Status,
+            ["approval_code"] = eventData.ApprovalCode,
+        };
+
+        var operatorId = !string.IsNullOrEmpty(eventData.OpenId) ? eventData.OpenId : eventData.UserId;
+        if (!string.IsNullOrEmpty(operatorId))
+        {
+            facts["operator"] = operatorId;
+        }
+
+        return facts;
     }
 
     /// <inheritdoc />

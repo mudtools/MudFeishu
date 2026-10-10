@@ -8,6 +8,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
+using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.AI.Tools.Tools;
 using Mud.Feishu.DataModels;
 using Mud.Feishu.DataModels.Board;
@@ -211,10 +212,15 @@ internal sealed class BoardTools(Mud.Feishu.IFeishuTenantV1Board? boardClient = 
 
             // 解析节点 JSON（模型传入的节点数组 JSON 字符串）→ WhiteboardNode[]。
             // CreateWhiteboardNodeRequest.Nodes 是 WhiteboardNode[]?（不是 JsonNode）。
+            // ⚠️ 必须走 FeishuJsonAot（AOT-3）：泛型 JsonSerializer.Deserialize<T>(string, options) 重载带
+            // RequiresUnreferencedCode/RequiresDynamicCode 标注，在 net8+ 产生 IL2026/IL3050 ⇒ 破坏
+            // "AOT 严格模式 0 诊断" 的质量门禁（本仓唯一一处此类调用点）。
+            // DTO 全部字段带 [JsonPropertyName]，故与解析器链的命名策略无关。
             List<WhiteboardNode> nodeList;
             try
             {
-                nodeList = JsonSerializer.Deserialize<List<WhiteboardNode>>(args.NodesJson)
+                nodeList = Mud.Feishu.Abstractions.Utilities.FeishuJsonAot
+                    .Deserialize<List<WhiteboardNode>>(args.NodesJson, FeishuJsonDefaults.DeserializerOptions)
                     ?? throw new ArgumentException("nodes_json 反序列化结果为 null");
                 if (nodeList.Count == 0)
                 {

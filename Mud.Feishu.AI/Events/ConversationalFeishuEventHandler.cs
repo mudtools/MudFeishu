@@ -70,7 +70,12 @@ public abstract class ConversationalFeishuEventHandler<T>(
     IConversationGate? conversationGate = null,
     IAppKeyAccessor? appKeyAccessor = null,
     IFeishuToolApprovalChannel? approvalChannel = null,
-    IFeishuAppContextScopeFactory? appContextScopeFactory = null) : IdempotentFeishuEventHandler<T>(
+    IFeishuAppContextScopeFactory? appContextScopeFactory = null,
+
+    // R7 / C4a：待确认快照存储（可空 ⇒ 退化为「只通知不落库」）。
+    // 追加为**末尾可选参数**：既有派生处理器的位置参数与命名参数调用点全部源码兼容；
+    // DI 侧由容器按「可选参数默认值」语义处理（未注册 ⇒ null，不抛解析失败）。
+    IFeishuPendingApprovalStore? pendingApprovalStore = null) : IdempotentFeishuEventHandler<T>(
         businessDeduplicator, logger ?? NullLogger.Instance, appKeyAccessor)
     where T : class, IEventResult, new()
 {
@@ -101,6 +106,12 @@ public abstract class ConversationalFeishuEventHandler<T>(
     /// P4-1：宿主人工批准通道（可空；未注册时写工具停在「等待确认」——fail-closed，绝不自动放行）。
     /// </summary>
     protected IFeishuToolApprovalChannel? ApprovalChannel { get; } = approvalChannel;
+
+    /// <summary>
+    /// R7 / C4a：待确认快照存储（可空；未注册时只通知不落库——宿主重进进程后列不出待办，
+    /// 但写工具仍保持未执行，fail-closed 不变）。
+    /// </summary>
+    protected IFeishuPendingApprovalStore? PendingApprovalStore { get; } = pendingApprovalStore;
 
     /// <summary>
     /// 会话闸门（可空；P2D-1 会话串行化——<c>AddFeishuAgent</c> 默认注册
@@ -713,7 +724,8 @@ public abstract class ConversationalFeishuEventHandler<T>(
     private Task NotifyApprovalRequestsAsync(
         IReadOnlyList<FrameworkToolApprovalRequest> pending,
         CancellationToken cancellationToken)
-        => FeishuApprovalRequestProjector.NotifyAsync(ApprovalChannel, _logger, pending, cancellationToken);
+        => FeishuApprovalRequestProjector.NotifyAsync(
+            ApprovalChannel, PendingApprovalStore, _logger, pending, cancellationToken);
 
     /// <summary>
     /// P4-1：构造「等待人工确认」的用户可见答复。

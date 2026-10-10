@@ -40,11 +40,11 @@ public sealed class KnowledgeContextAssembler : IContextAssembler
     /// <summary>默认装配顺序（默认装配器之后）。</summary>
     public const int DefaultOrder = 100;
 
-    /// <summary>单条切片注入截断长度。</summary>
-    public const int ChunkPreviewLength = 500;
+    /// <summary>单条切片注入截断长度（唯一来源：<see cref="ContextBudgets"/>）。</summary>
+    public const int ChunkPreviewLength = ContextBudgets.KnowledgeChunkPreviewLength;
 
     /// <summary>单次注入的最大切片条数（R3-8：防召回条数失控把 prompt 预算吃光）。</summary>
-    private const int MaxInjectedChunks = 8;
+    private const int MaxInjectedChunks = ContextBudgets.KnowledgeMaxChunks;
 
     /// <summary>
     /// 单次注入的总长度上限（字符；R3-8：三级闸中真正约束"长切片"的那一级）。
@@ -53,8 +53,11 @@ public sealed class KnowledgeContextAssembler : IContextAssembler
     /// <b>为什么是 3000 而不是 6000</b>：条数闸（8）× 单条闸（500）= 4000 已是硬上限，
     /// 总预算若取 6000 则<b>永不触发</b>（死闸，且其用例只能是假绿）。取 3000 使三闸各自可达：
     /// 短切片由条数闸约束、长切片由总预算约束、超长单条由单条闸约束。
+    /// <para>
+    /// R7 / C2 起取值集中在 <see cref="ContextBudgets"/>（预算单一源）——本常量不再写裸数字。
+    /// </para>
     /// </remarks>
-    private const int MaxInjectedTotalLength = 3000;
+    private const int MaxInjectedTotalLength = ContextBudgets.KnowledgeTotalLength;
 
     /// <summary>
     /// 注入块头部（R5-8）：<b>显式 untrusted 标注</b>。

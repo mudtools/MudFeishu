@@ -7,6 +7,7 @@
 
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
+using Mud.Feishu.AI.Agents;
 
 namespace Mud.Feishu.AI.Tools;
 
@@ -104,12 +105,22 @@ internal static class FeishuApprovalRequestProjector
     /// <summary>
     /// 把待确认项交给宿主批准通道（未注册即静默跳过 = 降级为「纯提示」），并逐项记 Warning。
     /// </summary>
+    /// <remarks>
+    /// <b>R7 / C4a：先落快照，再通知通道</b>——顺序不可颠倒。若先通知后落库，宿主可能在
+    /// 「已收到通知」与「快照可查」之间重启进程，表现为「宿主说审批过、待办列表里却没有」的
+    /// 不一致（且 R5-12 的孤儿审批自愈只需要会话侧信息，快照缺失只会让宿主少一次可查询的机会）。
+    /// 落库失败<b>不阻断</b>通知（best-effort：宿主通道才是主路径），但会记 Warning。
+    /// </remarks>
     /// <param name="channel">宿主批准通道（可空）。</param>
+    /// <param name="store">
+    /// 待确认快照存储（可空；未注册 ⇒ 退化为「只通知不落库」，单进程内仍可用）。
+    /// </param>
     /// <param name="logger">日志（可空）。</param>
     /// <param name="pending">待确认项。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     internal static async Task NotifyAsync(
         IFeishuToolApprovalChannel? channel,
+        IFeishuPendingApprovalStore? store,
         ILogger? logger,
         IReadOnlyList<FrameworkToolApprovalRequest> pending,
         CancellationToken cancellationToken)
@@ -119,6 +130,31 @@ internal static class FeishuApprovalRequestProjector
             logger?.LogWarning(
                 "写工具待人工确认（工具: {ToolName}, requestId: {RequestId}, appKey: {AppKey}）——工具尚未执行，宿主批准后回灌批准响应方可继续",
                 item.ToolName, item.RequestId, item.AppKey);
+        }
+
+        // R7 / C4a：登记待确认快照（宿主重启后仍能列出的唯一来源）。
+        if (store is not null)
+        {
+            foreach (var item in pending)
+            {
+                try
+                {
+                    await store
+                        .SaveAsync(PendingApprovalSnapshot.FromRequest(item, DateTimeOffset.UtcNow), cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    // 与通道故障同侧哲学：落库失败只失去「可查询」能力，写工具保持未执行（不自动放行）。
+                    logger?.LogWarning(ex,
+                        "待确认快照登记失败（工具: {ToolName}, requestId: {RequestId}）——写工具保持未执行",
+                        item.ToolName, item.RequestId);
+                }
+            }
         }
 
         if (channel is null)

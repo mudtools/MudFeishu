@@ -148,7 +148,7 @@ public class ToolArgumentShapeContractGuards
     }
 
     /// <summary>
-    /// <b>R5 / F-1</b>：基线 + <b>反向自证</b> —— <c>Curation/</c> 恰有 16 个声明文件、114 个契约接口。
+    /// <b>R5 / F-1</b>：基线 + <b>反向自证</b> —— <c>Curation/</c> 恰有 21 个声明文件、163 个契约接口（R7/C3 后）。
     /// </summary>
     [Fact]
     public void CurationDirectory_ShouldMatchRegisteredBaseline()
@@ -162,7 +162,7 @@ public class ToolArgumentShapeContractGuards
             .ToArray();
 
         files.Should().HaveCount(
-            20,
+            21,
             "Curation/ 的声明文件数从 16 变为 {0}：{1}。新增/拆分域声明文件属**有意的契约变更**，"
             + "请确认新文件只含工具契约并更新本基线",
             files.Length,
@@ -178,8 +178,8 @@ public class ToolArgumentShapeContractGuards
             .ToArray();
 
         interfaces.Should().HaveCount(
-            161,
-            "Curation/ 的工具契约接口数从 161 变为 {0}——新增/删除工具属有意的契约变更，请同步更新本基线"
+            163,
+            "Curation/ 的工具契约接口数从 163 变为 {0}——新增/删除工具属有意的契约变更，请同步更新本基线"
             + "（若同时看到『文件数没变而接口数变了』，说明有文件被塞进了非契约内容）",
             interfaces.Length);
     }

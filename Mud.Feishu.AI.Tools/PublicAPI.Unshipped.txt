@@ -963,3 +963,86 @@ static readonly Mud.Feishu.AI.Tools.FeishuToolNames.ReadonlyAll -> string![]!
 static readonly Mud.Feishu.AI.Tools.FeishuToolNames.WriteAll -> string![]!
 virtual Mud.Feishu.AI.Tools.Channels.BufferedMessageChannel.OnFlushed(string! messageId) -> void
 virtual Mud.Feishu.AI.Tools.Channels.BufferedMessageChannel.OnUpdateFailedAsync(string! messageId, System.Exception! exception) -> System.Threading.Tasks.Task!
+~override Mud.Feishu.AI.Tools.BinaryArtifact.Equals(object obj) -> bool
+~override Mud.Feishu.AI.Tools.BinaryArtifact.ToString() -> string
+~override Mud.Feishu.AI.Tools.BinaryArtifactRequest.Equals(object obj) -> bool
+~override Mud.Feishu.AI.Tools.BinaryArtifactRequest.ToString() -> string
+~override Mud.Feishu.AI.Tools.ResolvedBinaryArtifact.Equals(object obj) -> bool
+~override Mud.Feishu.AI.Tools.ResolvedBinaryArtifact.ToString() -> string
+~override Mud.Feishu.AI.Tools.StoredArtifact.Equals(object obj) -> bool
+~override Mud.Feishu.AI.Tools.StoredArtifact.ToString() -> string
+const Mud.Feishu.AI.Tools.FeishuToolNames.AiDetectLanguage = "ai.detect_language" -> string!
+const Mud.Feishu.AI.Tools.FeishuToolNames.AiTranslateText = "ai.translate_text" -> string!
+const Mud.Feishu.AI.Tools.Generated.FeishuToolSchemas.ai_detect_languageSchemaJson = "{\"name\":\"ai.detect_language\",\"description\":\"识别一段文本的语种（飞书机器翻译语种识别），返回 ISO 639-1 语言代码与可读语言名（如 en / 英语）。用于在翻译、检索、审阅前先确定内容语言。只读，需 translation:text。\",\"parameters\":{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\",\"description\":\"待识别语种的文本\"}},\"required\":[\"text\"]},\"x-feishu\":{\"risk\":\"read\",\"is_write\":false,\"identity\":\"tenant\",\"required_scopes\":[\"translation:text\"],\"source\":{\"sdk\":\"IFeishuTenantV1AITranslation.DetectTextAsync\",\"http\":\"POST\",\"route\":\"/open-apis/translation/v1/text/detect\"},\"output_schema\":{\"type\":\"object\",\"properties\":{\"language\":{\"type\":\"string\"}},\"required\":[\"language\"]}}}" -> string!
+const Mud.Feishu.AI.Tools.Generated.FeishuToolSchemas.ai_translate_textSchemaJson = "{\"name\":\"ai.translate_text\",\"description\":\"把文本翻译成目标语言（飞书机器翻译）。text 上限 1000 字符（超限本地拒绝，不会下发）；source_language / target_language 用语言代码（zh / zh-Hant / en / ja / ru / de / fr / it / pl / th / hi / id / es / pt / ko / vi，大小写不敏感），不确定源语言时先用 ai.detect_language 识别。可选 glossary 传本次生效的术语表（JSON 数组字符串，形如 [{\\\"from\\\":\\\"飞书\\\",\\\"to\\\":\\\"Lark\\\"}]，最多 128 项）。只读，需 translation:text。\",\"parameters\":{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\",\"description\":\"待翻译文本（上限 1000 字符）\"},\"source_language\":{\"type\":\"string\",\"description\":\"源语言代码（如 zh / en / ja；大小写不敏感）\"},\"target_language\":{\"type\":\"string\",\"description\":\"目标语言代码（如 en / zh-Hant；大小写不敏感）\"},\"glossary\":{\"type\":\"string\",\"description\":\"可选术语表（JSON 数组字符串，形如 [{\\\"from\\\":\\\"飞书\\\",\\\"to\\\":\\\"Lark\\\"}]，最多 128 项）\"}},\"required\":[\"text\",\"source_language\",\"target_language\"]},\"x-feishu\":{\"risk\":\"read\",\"is_write\":false,\"identity\":\"tenant\",\"required_scopes\":[\"translation:text\"],\"source\":{\"sdk\":\"IFeishuTenantV1AITranslation.TranslateTextAsync\",\"http\":\"POST\",\"route\":\"/open-apis/translation/v1/text/translate\"},\"output_schema\":{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\"}},\"required\":[\"text\"]}}}" -> string!
+Mud.Feishu.AI.Tools.BinaryArtifact
+Mud.Feishu.AI.Tools.BinaryArtifact.BinaryArtifact() -> void
+Mud.Feishu.AI.Tools.BinaryArtifact.BinaryArtifact(string! FileName, System.ReadOnlyMemory<byte> Content, string? ContentType) -> void
+Mud.Feishu.AI.Tools.BinaryArtifact.Content.get -> System.ReadOnlyMemory<byte>
+Mud.Feishu.AI.Tools.BinaryArtifact.Content.init -> void
+Mud.Feishu.AI.Tools.BinaryArtifact.ContentType.get -> string?
+Mud.Feishu.AI.Tools.BinaryArtifact.ContentType.init -> void
+Mud.Feishu.AI.Tools.BinaryArtifact.Deconstruct(out string! FileName, out System.ReadOnlyMemory<byte> Content, out string? ContentType) -> void
+Mud.Feishu.AI.Tools.BinaryArtifact.Equals(Mud.Feishu.AI.Tools.BinaryArtifact other) -> bool
+Mud.Feishu.AI.Tools.BinaryArtifact.FileName.get -> string!
+Mud.Feishu.AI.Tools.BinaryArtifact.FileName.init -> void
+Mud.Feishu.AI.Tools.BinaryArtifactRequest
+Mud.Feishu.AI.Tools.BinaryArtifactRequest.BinaryArtifactRequest() -> void
+Mud.Feishu.AI.Tools.BinaryArtifactRequest.BinaryArtifactRequest(string? Url, System.ReadOnlyMemory<byte>? Content, string? FileName, string? ContentType) -> void
+Mud.Feishu.AI.Tools.BinaryArtifactRequest.Content.get -> System.ReadOnlyMemory<byte>?
+Mud.Feishu.AI.Tools.BinaryArtifactRequest.Content.init -> void
+Mud.Feishu.AI.Tools.BinaryArtifactRequest.ContentType.get -> string?
+Mud.Feishu.AI.Tools.BinaryArtifactRequest.ContentType.init -> void
+Mud.Feishu.AI.Tools.BinaryArtifactRequest.Deconstruct(out string? Url, out System.ReadOnlyMemory<byte>? Content, out string? FileName, out string? ContentType) -> void
+Mud.Feishu.AI.Tools.BinaryArtifactRequest.Equals(Mud.Feishu.AI.Tools.BinaryArtifactRequest other) -> bool
+Mud.Feishu.AI.Tools.BinaryArtifactRequest.FileName.get -> string?
+Mud.Feishu.AI.Tools.BinaryArtifactRequest.FileName.init -> void
+Mud.Feishu.AI.Tools.BinaryArtifactRequest.Url.get -> string?
+Mud.Feishu.AI.Tools.BinaryArtifactRequest.Url.init -> void
+Mud.Feishu.AI.Tools.Curation.IFeishuTenantAiDetectLanguageTool
+Mud.Feishu.AI.Tools.Curation.IFeishuTenantAiDetectLanguageTool.DetectTextAsync(string! text, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+Mud.Feishu.AI.Tools.Curation.IFeishuTenantAiTranslateTextTool
+Mud.Feishu.AI.Tools.Curation.IFeishuTenantAiTranslateTextTool.TranslateTextAsync(string! text, string! source_language, string! target_language, string? glossary = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+Mud.Feishu.AI.Tools.IFeishuBinaryArtifactSink
+Mud.Feishu.AI.Tools.IFeishuBinaryArtifactSink.StoreAsync(Mud.Feishu.AI.Tools.BinaryArtifact artifact, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Mud.Feishu.AI.Tools.StoredArtifact?>!
+Mud.Feishu.AI.Tools.IFeishuBinaryArtifactSource
+Mud.Feishu.AI.Tools.IFeishuBinaryArtifactSource.ResolveAsync(Mud.Feishu.AI.Tools.BinaryArtifactRequest request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Mud.Feishu.AI.Tools.ResolvedBinaryArtifact?>!
+Mud.Feishu.AI.Tools.ResolvedBinaryArtifact
+Mud.Feishu.AI.Tools.ResolvedBinaryArtifact.Cleanup.get -> System.Func<System.Threading.Tasks.ValueTask>!
+Mud.Feishu.AI.Tools.ResolvedBinaryArtifact.Cleanup.init -> void
+Mud.Feishu.AI.Tools.ResolvedBinaryArtifact.ContentType.get -> string?
+Mud.Feishu.AI.Tools.ResolvedBinaryArtifact.ContentType.init -> void
+Mud.Feishu.AI.Tools.ResolvedBinaryArtifact.Deconstruct(out Mud.Feishu.DataModels.AI.FileUploadRequest! Upload, out long Size, out string? ContentType, out System.Func<System.Threading.Tasks.ValueTask>! Cleanup) -> void
+Mud.Feishu.AI.Tools.ResolvedBinaryArtifact.Equals(Mud.Feishu.AI.Tools.ResolvedBinaryArtifact other) -> bool
+Mud.Feishu.AI.Tools.ResolvedBinaryArtifact.ResolvedBinaryArtifact() -> void
+Mud.Feishu.AI.Tools.ResolvedBinaryArtifact.ResolvedBinaryArtifact(Mud.Feishu.DataModels.AI.FileUploadRequest! Upload, long Size, string? ContentType, System.Func<System.Threading.Tasks.ValueTask>! Cleanup) -> void
+Mud.Feishu.AI.Tools.ResolvedBinaryArtifact.Size.get -> long
+Mud.Feishu.AI.Tools.ResolvedBinaryArtifact.Size.init -> void
+Mud.Feishu.AI.Tools.ResolvedBinaryArtifact.Upload.get -> Mud.Feishu.DataModels.AI.FileUploadRequest!
+Mud.Feishu.AI.Tools.ResolvedBinaryArtifact.Upload.init -> void
+Mud.Feishu.AI.Tools.StoredArtifact
+Mud.Feishu.AI.Tools.StoredArtifact.ContentType.get -> string?
+Mud.Feishu.AI.Tools.StoredArtifact.ContentType.init -> void
+Mud.Feishu.AI.Tools.StoredArtifact.Deconstruct(out string! Handle, out long Size, out string? ContentType) -> void
+Mud.Feishu.AI.Tools.StoredArtifact.Equals(Mud.Feishu.AI.Tools.StoredArtifact other) -> bool
+Mud.Feishu.AI.Tools.StoredArtifact.Handle.get -> string!
+Mud.Feishu.AI.Tools.StoredArtifact.Handle.init -> void
+Mud.Feishu.AI.Tools.StoredArtifact.Size.get -> long
+Mud.Feishu.AI.Tools.StoredArtifact.Size.init -> void
+Mud.Feishu.AI.Tools.StoredArtifact.StoredArtifact() -> void
+Mud.Feishu.AI.Tools.StoredArtifact.StoredArtifact(string! Handle, long Size, string? ContentType) -> void
+override Mud.Feishu.AI.Tools.BinaryArtifact.GetHashCode() -> int
+override Mud.Feishu.AI.Tools.BinaryArtifactRequest.GetHashCode() -> int
+override Mud.Feishu.AI.Tools.ResolvedBinaryArtifact.GetHashCode() -> int
+override Mud.Feishu.AI.Tools.StoredArtifact.GetHashCode() -> int
+static Mud.Feishu.AI.Tools.BinaryArtifact.operator !=(Mud.Feishu.AI.Tools.BinaryArtifact left, Mud.Feishu.AI.Tools.BinaryArtifact right) -> bool
+static Mud.Feishu.AI.Tools.BinaryArtifact.operator ==(Mud.Feishu.AI.Tools.BinaryArtifact left, Mud.Feishu.AI.Tools.BinaryArtifact right) -> bool
+static Mud.Feishu.AI.Tools.BinaryArtifactRequest.operator !=(Mud.Feishu.AI.Tools.BinaryArtifactRequest left, Mud.Feishu.AI.Tools.BinaryArtifactRequest right) -> bool
+static Mud.Feishu.AI.Tools.BinaryArtifactRequest.operator ==(Mud.Feishu.AI.Tools.BinaryArtifactRequest left, Mud.Feishu.AI.Tools.BinaryArtifactRequest right) -> bool
+static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuTranslationTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Mud.Feishu.AI.Tools.FeishuToolRegistry!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Mud.Feishu.AI.Tools.Generated.FeishuToolContracts.AiDetectLanguage.get -> Mud.Feishu.AI.Tools.Generated.FeishuToolContract!
+static Mud.Feishu.AI.Tools.Generated.FeishuToolContracts.AiTranslateText.get -> Mud.Feishu.AI.Tools.Generated.FeishuToolContract!
+static Mud.Feishu.AI.Tools.ResolvedBinaryArtifact.operator !=(Mud.Feishu.AI.Tools.ResolvedBinaryArtifact left, Mud.Feishu.AI.Tools.ResolvedBinaryArtifact right) -> bool
+static Mud.Feishu.AI.Tools.ResolvedBinaryArtifact.operator ==(Mud.Feishu.AI.Tools.ResolvedBinaryArtifact left, Mud.Feishu.AI.Tools.ResolvedBinaryArtifact right) -> bool
+static Mud.Feishu.AI.Tools.StoredArtifact.operator !=(Mud.Feishu.AI.Tools.StoredArtifact left, Mud.Feishu.AI.Tools.StoredArtifact right) -> bool
+static Mud.Feishu.AI.Tools.StoredArtifact.operator ==(Mud.Feishu.AI.Tools.StoredArtifact left, Mud.Feishu.AI.Tools.StoredArtifact right) -> bool

@@ -136,6 +136,10 @@ public static class FeishuAgentServiceCollectionExtensions
         // 多实例部署经 Mud.Feishu.Redis 的 AddFeishuRedisConversationGate 替换本注册。
         services.TryAddSingleton<IConversationGate, KeyedConversationGate>();
 
+        // R7 / C4a：待确认快照的进程内实现（软缺席契约的默认实现）——让「宿主重进进程后仍能列出待办」
+        // 在单进程部署下开箱可用；多实例部署由宿主替换为分布式实现（键必须含 AppKey 以隔离租户）。
+        services.TryAddSingleton<IFeishuPendingApprovalStore, InMemoryPendingApprovalStore>();
+
         services.TryAddSingleton(static sp =>
         {
             var options = sp.GetRequiredService<IOptions<FeishuAgentOptions>>().Value;

@@ -107,6 +107,17 @@ public static class FeishuToolsServiceCollectionExtensions
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure).AddFeishuMinutesReadToolsCore();
 
+    /// <summary>按域注册 AI 文本面工具（2 个只读：ai.translate_text / ai.detect_language，R7/C3）。</summary>
+    /// <remarks>
+    /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**：
+    /// 少任何一处都会让 ai.* 工具在对应入口下静默缺席（S-13）。
+    /// 需宿主已启用飞书 AI 翻译能力（<c>IFeishuTenantV1AITranslation</c>）——缺席时本域工具软缺席。
+    /// </remarks>
+    public static IServiceCollection AddFeishuTranslationTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure).AddFeishuTranslationToolsCore();
+
     /// <summary>按域注册 Board 画板工具（2 个只读 + 4 个写，R7/A4）。</summary>
     /// <remarks>
     /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**：
@@ -539,6 +550,11 @@ public static class FeishuToolsServiceCollectionExtensions
                     // 两个执行器类各出一枚 Core——**两行都不可漏**（漏一行即该域一半工具静默缺席）。
                     .AddFeishuSparkAppToolsCore()
                     .AddFeishuSparkTableToolsCore()
+
+                    // R7 / C3：AI 文本面执行器 TranslationTools（2 个工具：翻译 / 语种识别，全只读）。
+                    // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，
+                    // 漏加即「工具静默不入注册表」（ToolDomainCoresWiringContractTests 会报红）。
+                    .AddFeishuTranslationToolsCore()
 
                     // R6 / S2：OKR 域只读执行器 OkrTools（9 个工具）。
                     // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，

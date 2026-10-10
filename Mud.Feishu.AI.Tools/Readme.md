@@ -8,7 +8,7 @@
 
 ---
 
-## 1. 工具面现状（161 个：86 只读 + 75 写类）
+## 1. 工具面现状（163 个：88 只读 + 75 写类）
 
 | 域 | 只读 | 写类 | 小计 |
 | --- | ---: | ---: | ---: |
@@ -31,8 +31,9 @@
 | **画板 Board**（R7/A4） | 2 | 4 | 6 |
 | **考勤 Attendance**（R7/A5） | 7 | 1 | 8 |
 | **妙搭 Spark**（R7/A6） | 5 | 5 | 10 |
+| **AI 文本**（R7/C3） | 2 | — | 2 |
 | 元工具 | 4 | 1 | 5 |
-| **合计** | **86** | **75** | **161** |
+| **合计** | **88** | **75** | **163** |
 
 > **逐工具清单**：以《工具权限对照表》（`documents/AIAgent/工具权限对照表.md`）为准——
 > 本表只给域级汇总，不再逐工具列举（逐工具列举会与契约表漂移）。
@@ -124,6 +125,17 @@ services.AddFeishuTools();                 // 引入全部域（含元工具）
 | 宿主授权器                 | 记为挂起；用户批准后建立"已批准"上下文；**下次同 `(tool, argsDigest, appKey, userId)` 调用返回 `Allowed`** ⇒ 执行链放行                                                                                                                     |
 | 未注册通道                 | HITL **降级为纯提示**（fail-closed）：模型只会收到"需要用户确认"，拿不到任何凭据                                                                                                                                                            |
 
+**待确认快照（R7 / C4a）**：通道是"通知宿主"的同步点，通知完即返回；进程重启后宿主无从得知还有哪些写操作
+停在等待确认。SDK 因此提供 `IFeishuPendingApprovalStore`（宿主契约 + 进程内默认实现 `InMemoryPendingApprovalStore`）：
+
+- 执行链在通知通道**之前**把 `PendingApprovalSnapshot`（请求标识/工具名/appKey/userId/会话键/入参摘要/过期时间，
+  **不含任何凭据**）落库；落库失败**不阻断**通知（best-effort，写工具仍保持未执行）；
+- 宿主用 `ListPendingAsync(appKey)` 列出未过期待办、`FindAsync` 查单条、`RemoveAsync` 取消（放弃该次写操作）；
+- `RunApprovalContinuationAsync(..., pendingApprovalStore: store)` 启用**幂等消费**：同一 `RequestId` 的批准
+  只生效一次；不存在 / 已过期 / 已被消费三者一律 fail-closed（**丢弃迟到批准，绝不重放**）；
+- 默认有效期 10 分钟（`PendingApprovalSnapshot.DefaultTtl`）；多实例部署由宿主替换为分布式实现
+  （键必须含 `AppKey` 以隔离租户）。
+
 ### 审批时序：MAF 管线在前，执行链在后（**R4-1 订正**）
 
 写类工具会被 MEAI `ApprovalRequiredAIFunction` 包装，**写调用到达拦截点的时序前移**：
@@ -180,13 +192,13 @@ var response = await agent.RunApprovalContinuationAsync(
 
 ## 4. 模型看不到的能力，出路在哪
 
-本包刻意**不**做"每个 SDK 方法一个工具"（1228 无差别暴露），而是按高频工作流**策展**为 161 个工具。
+本包刻意**不**做"每个 SDK 方法一个工具"（1228 无差别暴露），而是按高频工作流**策展**为 163 个工具。
 对于未策展的方法，提供两层兜底（而非变相暴露全部 1228 方法）：
 
 | 层 | 内容 | 模型可见？ |
 | --- | --- | --- |
 | L1 能力目录 | 编译期聚合事实（SDK 方法总数 / 分组分布 / 策展计数），`build_property.FeishuToolCatalog=true` 时产出 | ❌（`internal`） |
-| L2 暴露策展 | 标注了 `[FeishuTool]` 的 161 个工具 | ✅（白名单启用后） |
+| L2 暴露策展 | 标注了 `[FeishuTool]` 的 163 个工具 | ✅（白名单启用后） |
 | **L3 能力出路** | **`feishu.capability_lookup`**：按关键字回答"这个能力在 SDK 里有几个分组 / 是否已策展成工具" | ✅（默认不启用） |
 | **L3.1 方法签名** | **`feishu.schema_read`**：查任意 SDK 方法的签名事实（HTTP/路由/参数/令牌/风险/是否已策展） | ✅（只读，`feishu:base` scope） |
 | **L3.2 兜底调用** | **`feishu.api_call`**：未策展方法的万能兜底（方法名 + 参数 → HTTP 调度），默认 `dry_run=true`，四条 fail-closed 边界 | ✅（归写链，`WriteAllowList` 键控） |
@@ -308,6 +320,37 @@ services.AddSingleton<IFeishuAttachmentStager>(sp => sp.GetRequiredService<DemoA
 
 **软缺席语义（宿主未实现 stager 时）**：`im.send_image` / `im.send_file` 不注册（模型看不到这两个工具），
 不报错、不静默失败——与"域客户端缺席 → 该域工具不注册"同一机制。
+
+### 7.2 二进制**出入成对**通道（R7 / §3.B6）
+
+工具面禁止二进制穿越（A10，机械守卫），但真实业务两个方向都需要宿主接缝。三者**方向不同、不可互相替代**
+（RV-4 要求显式区分）：
+
+| 契约 | 方向 | 语义 | 未注册时 |
+| --- | --- | --- | --- |
+| `IFeishuAttachmentStager`（既有） | 入向（宿主 → SDK） | URL/字节 → **本地路径**，供**工具参数**（`im.send_image` 等）消费 | 依赖它的**工具不注册** |
+| `IFeishuBinaryArtifactSource`（R7 新增） | 入向（宿主 → SDK） | URL/字节 → `FileUploadRequest`（+ 清理钩子），供**宿主代码**调用 OCR / 文档识别 / STT 时使用 | **不影响任何工具注册**（按 DP-C3-1，这些能力不策展） |
+| `IFeishuBinaryArtifactSink`（R7 新增） | 出向（SDK → 宿主） | `byte[]` → **宿主侧句柄**（`StoredArtifact`：句柄 + 大小 + 类型，**零字节进 JSON**） | 依赖它的二进制工具**不注册**（今天尚无此类工具——见下） |
+
+```csharp
+public interface IFeishuBinaryArtifactSink   // 出向：宿主实现
+{
+    Task<StoredArtifact?> StoreAsync(BinaryArtifact artifact, CancellationToken cancellationToken = default);
+}
+public interface IFeishuBinaryArtifactSource // 入向：宿主实现
+{
+    Task<ResolvedBinaryArtifact?> ResolveAsync(BinaryArtifactRequest request, CancellationToken cancellationToken = default);
+}
+```
+
+- **SDK 不提供默认实现**（落盘位置/上云目标/大小上限/MIME 白名单/域名白名单全是宿主策略）；
+  用例机械断言"默认未注册"（软缺席的前提：宿主不实现 ⇒ 相关能力不出现）。
+- **字节绝不进工具结果**：`StoredArtifact` 只有句柄，由用例反射断言"结果类型不含 `byte[]`/`Memory<byte>`/`Stream`"。
+- **当前消费者状态（诚实登记）**：`IFeishuBinaryArtifactSink` 暂无消费工具——策展 `board.download_image`
+  等二进制工具的前提是先有本契约，且需同批解除 `NonCuratedToolRegistryContractGuards` 中对应方法的登记；
+  `IFeishuBinaryArtifactSource` 的消费方是**宿主代码**（Agent 侧只拿到 OCR 的文本结果）。
+- **生命周期显式**：`ResolvedBinaryArtifact.Cleanup` 由**调用方**在 `finally` 中释放
+  （与 `StagedAttachment.Cleanup` 同款语义）。
 
 ---
 

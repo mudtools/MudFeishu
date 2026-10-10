@@ -82,6 +82,9 @@ public class DomainRegistrarTests
             FeishuToolNames.DriveListFolderFiles, FeishuToolNames.DriveGetFileMetas,
             FeishuToolNames.KnowledgeSearch,
             FeishuToolNames.SheetsListSheets, FeishuToolNames.SheetsGetRangeValues,
+
+            // R7 / C3：AI 文本面两个工具（独立只读域）——纳入等价性对比，避免"新域未被覆盖"的假绿。
+            FeishuToolNames.AiTranslateText, FeishuToolNames.AiDetectLanguage,
         };
 
         var mockClients = new Action<IServiceCollection>(services =>
@@ -112,6 +115,7 @@ public class DomainRegistrarTests
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4CalendarEvent>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4Calendar>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3User>().Object);
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1AITranslation>().Object);
         });
 
         using var singleEntryProvider = new ServiceCollection()
@@ -145,6 +149,9 @@ public class DomainRegistrarTests
     .AddFeishuSparkTools()
     // R6 / S2：Okr 只读域同样是独立入口（写面由 AddFeishuWriteTools 覆盖）。
     .AddFeishuOkrTools()
+            // R7 / C3：AI 文本面（翻译 / 语种识别）是新增的独立只读域，
+            // "全域 = 逐域联合"的等价性要求这里也显式调一次。
+            .AddFeishuTranslationTools()
             // R6 / S3：VideoConferencing 只读域同理（写面含 user 身份工具，由 AddFeishuWriteTools 覆盖）。
             .AddFeishuVcTools()
             // 能力出处元工具是一个独立入口：它不属于任何业务域，

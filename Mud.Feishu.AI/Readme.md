@@ -52,3 +52,10 @@ WP3 后，HITL 的批准状态所有权**单一化**到宿主授权器——SDK 
 - `IToolExecutionAuthorizer`：批准状态的唯一所有者。每次工具调用时被咨询。
 - `ToolApprovalRequest`：待确认要素（不含令牌，只含参数摘要与原因）。
 - `FeishuAgent.RunApprovalContinuationAsync`：批准回灌续跑的 SDK 闭环（R5-11；见上方续跑义务）。
+- `IFeishuPendingApprovalStore` + `PendingApprovalSnapshot`（R7 / C4a）：待确认项的**持久化 / 查询 / 取消**契约
+  （默认实现 `InMemoryPendingApprovalStore` 已由 `AddFeishuAgent` 注册）。执行链在通知宿主通道**之前**落快照；
+  `RunApprovalContinuationAsync(..., pendingApprovalStore: store)` 启用幂等消费（同一 `RequestId` 只生效一次，
+  过期项自动放弃、迟到批准丢弃）。快照**不含任何凭据**（由用例反射断言）。
+- `IContextAssembler` / `ContextBudgets`（R7 / C2）：事件上下文的装配位与**预算单一源**；
+  `ApprovalContextAssembler`（Order = 200）把审批事件载荷转成结构化片段（带 untrusted 标注、超预算截断）。
+  宿主把装配器传给事件处理器的 `contextAssemblers` 参数即启用（不传则行为与既有完全一致）。

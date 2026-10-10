@@ -1,6 +1,7 @@
 {
   "source": "飞书开放平台 · 应用权限（scope 名称与官方文档核对；每次新增工具引入新 scope 时必须同批回填本清单并在「核对」栏留痕）",
   "lastReviewed": "2026-10-10",
+  "_R7_C3": "R7/C3 新增：translation:text（AI 机器翻译，官方《Translate text》《Detect text》文档「权限要求」栏明确列出）——两项工具均为只读，标 ✅ 已核对。",
   "_R5T0_2": "R5 WP0-T0-2 核对结果：aily:knowledge:readonly 与 im:resource 两项 ⚠️ 维持——无法在无控制台权限时定论；下次宿主接入时由控制台二次确认后回写。",
   "_R7_A5A6": "R7 A5/A6 新增：attendance:* / spark:* / board:* 共 8 个 scope——按官方 API 文档取值与核对，控制台开通前请在「权限管理」页按名称搜索确认（本批标 ⚠️ 待核对）。",
   "scopes": {
@@ -49,6 +50,7 @@
     "sheets:spreadsheet:readonly": "电子表格 · 只读（sheets.list_sheets / get_range_values 使用）",
     "task:task": "任务 · 读写（task.create_task 使用）",
     "task:task:readonly": "任务 · 只读（task.list_my_tasks 使用）",
+    "translation:text": "AI（机器翻译） · 只读调用（R7/C3 新增：ai.translate_text / ai.detect_language 使用；名称已对照官方《Translate text》/《Detect text》文档的「权限要求」栏核实为 translation:text）",
     "feishu:base": "元工具 · 只读（feishu.capability_lookup / feishu.guidance_read 使用）",
     "minutes:minutes:readonly": "妙记 · 只读（R5/F-11 新增：minutes.get / minutes.get_artifacts 使用）",
     "wiki:wiki:readonly": "知识库 · 只读（wiki.get_node / list_nodes 使用）",

@@ -70,6 +70,10 @@ public static class FeishuAgentApprovalExtensions
     /// <param name="conversationGate">会话闸门（可空；建议传入与事件层同款实例以保证同会话串行）。</param>
     /// <param name="approvalChannel">宿主批准通道（可空；续跑轮再产出审批请求时使用）。</param>
     /// <param name="logger">日志（可空）。</param>
+    /// <param name="pendingApprovalStore">
+    /// R7 / C4a：待确认快照存储（可空）。传入时启用<b>幂等消费</b>——同一 <c>RequestId</c> 的批准只生效一次；
+    /// 不存在 / 已过期 / 已被消费三者一律 fail-closed（丢弃迟到批准）。未传入则保持既有行为。
+    /// </param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>续跑轮的模型回应（含可能新增的审批请求内容）。</returns>
     /// <exception cref="ArgumentNullException"><paramref name="agent"/> 或 <paramref name="approval"/> 为 null。</exception>
@@ -84,6 +88,10 @@ public static class FeishuAgentApprovalExtensions
         IConversationGate? conversationGate = null,
         IFeishuToolApprovalChannel? approvalChannel = null,
         ILogger? logger = null,
+
+        // R7 / C4a：待确认快照存储（可空 ⇒ 不做幂等消费，保持既有行为）。
+        // 追加为**末尾可选参数**：既有调用点全部使用命名实参，源码兼容。
+        IFeishuPendingApprovalStore? pendingApprovalStore = null,
         CancellationToken cancellationToken = default)
     {
         if (agent is null)
@@ -141,6 +149,23 @@ public static class FeishuAgentApprovalExtensions
                     + "会话可能已被重建，或该确认已被放弃/已处理。请引导用户重新发起该操作（fail-closed，不凭空放行）");
             }
 
+            // R7 / C4a：快照幂等消费（仅在宿主装配了 IFeishuPendingApprovalStore 时生效）。
+            // 放在「框架记录已确认存在」之后：此时续跑必然发生，消费失败只可能是
+            // 「不存在 / 已过期 / 已被消费」三种情形 —— 一律按「迟到的批准」丢弃（fail-closed，绝不重放）。
+            if (pendingApprovalStore is not null)
+            {
+                var consumable = await pendingApprovalStore
+                    .TryConsumeAsync(approval.AppKey!, approval.RequestId!, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (!consumable)
+                {
+                    throw new InvalidOperationException(
+                        $"待人工确认项已过期或已被处理（requestId: {approval.RequestId}）——"
+                        + "同一确认只生效一次；过期项自动放弃，不重放（fail-closed）");
+                }
+            }
+
             // CreateResponse 由框架记录的原始请求派生：CallId 与入参同源，
             // 免去宿主自行拼装 ToolApprovalResponseContent 时「调用与批准不一致」的风险。
             var responseContent = pending.CreateResponse(approved, reason);
@@ -168,7 +193,7 @@ public static class FeishuAgentApprovalExtensions
             if (nextPending.Count > 0)
             {
                 await FeishuApprovalRequestProjector
-                    .NotifyAsync(approvalChannel, logger, nextPending, cancellationToken)
+                    .NotifyAsync(approvalChannel, pendingApprovalStore, logger, nextPending, cancellationToken)
                     .ConfigureAwait(false);
             }
 

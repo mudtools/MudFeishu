@@ -41,4 +41,12 @@ public sealed record ConversationRequest(
     // im.reply_message 的 reply_in_thread 在真实场景里拿不到必要入参。
     // 追加为**末尾可选参数** ⇒ 既有 8 个位置参数的调用点全部源码兼容。
     // 不变式：**流式目标恒为 chat_id**（thread 只作上下文与路由维度，不改流式目标）。
-    string? ThreadId = null);
+    string? ThreadId = null,
+
+    // R7 / C2（T3-5）：事件维度。上下文装配器只拿到本记录（见 IContextAssembler），
+    // 故"把事件载荷转成结构化 prompt 片段"必须先有载体的接缝：
+    // EventKey = 事件类型键（如 approval_task / task_updated），EventFacts = 已归一化的事实键值对。
+    // 追加为**末尾可选参数** ⇒ 既有调用点全部源码兼容；未填充时相关装配器返回空片段（降级为既有行为）。
+    // ⚠️ EventFacts 的值可能含用户内容 ⇒ 消费方（装配器）必须带 untrusted 标注（ContextBudgets.UntrustedHeader）。
+    string? EventKey = null,
+    IReadOnlyDictionary<string, string?>? EventFacts = null);

@@ -1,5 +1,51 @@
 # Mud.Feishu 更新日志
 
+## [Unreleased] - R7 批次：AI 文本工具 + HITL 待确认快照 + 事件上下文装配 + 二进制出入向契约（2026-10-10）
+
+> 方案与落地核验见 `.docs/MudFeishu-AI工具面功能完善方案-六域补齐与Agent可用性硬伤及遗留任务-R7.md` §10.7。
+> 工具面 **161 → 163**（88 只读 + 75 写类）；合约面新增 4 个宿主契约；**AI 模块尚未发布，无兼容负担**。
+
+### ✨ 新增
+
+- **`ai.translate_text` / `ai.detect_language`（R7 / C3，+2 只读工具）**：飞书机器翻译与语种识别
+  （`IFeishuTenantV1AITranslation`）。语言代码**大小写不敏感**归一化为平台口径；`text` 超 1000 字符
+  （平台上限）与术语表超 128 项在**本地**拒绝并回填合法值清单；scope 为官方文档核实的 `translation:text`。
+  新域 `ai` 随 L1 guidance（`Guidance/ai.md`）与新入口 `AddFeishuTranslationTools()` 交付。
+  OCR / 文档识别 / STT **不策展**（入参为 base64 / 本地文件路径），改由宿主侧通道承担。
+- **`IFeishuPendingApprovalStore` + `PendingApprovalSnapshot` + `InMemoryPendingApprovalStore`（R7 / C4a）**：
+  HITL 待确认项的持久化 / 查询 / 取消契约。执行链在通知宿主通道**之前**落快照（best-effort，落库失败不阻断通知
+  也不放行写工具）；`RunApprovalContinuationAsync(..., pendingApprovalStore: store)` 启用**幂等消费**
+  （同一 `RequestId` 只生效一次；不存在 / 已过期 / 已被消费一律 fail-closed 丢弃迟到批准）。
+  快照**不含任何凭据**；默认有效期 10 分钟；键为 `(AppKey, RequestId)`（租户隔离）。
+- **`ApprovalContextAssembler` + `ContextBudgets`（R7 / C2 · T3-5）**：审批事件载荷 → 结构化 prompt 片段
+  （untrusted 标注 + 逐行预算扣减 + 截断标记 + 缺字段降级为空片段）。`ConversationRequest` 追加
+  `EventKey` / `EventFacts` 两个**末尾可选参数**（既有调用点源码兼容）；预算常量收敛为单一源
+  （`KnowledgeContextAssembler` 的三级闸改为引用 `ContextBudgets`）。
+- **`IFeishuBinaryArtifactSink`（出向）/ `IFeishuBinaryArtifactSource`（入向）（R7 / §3.B6）**：
+  二进制出入成对宿主契约——出向把 SDK 的 `byte[]` 经宿主落盘后只回传**句柄**（零字节进工具结果），
+  入向把 URL/字节转成 SDK 可用的上传载体（供宿主调用 OCR/STT）。两者**均无 SDK 默认实现**
+  （软缺席：宿主不实现 ⇒ 相关能力不出现），方向差异已在 `Readme.md` §7.2 显式区分。
+
+### 🐞 修复
+
+- **AOT 破口（既有）**：`BoardTools.CreateWhiteboardNodeAsync` 直接调用
+  `JsonSerializer.Deserialize<T>(string, options)`（带 `RequiresUnreferencedCode`/`RequiresDynamicCode`），
+  在 net8+ 产生 **IL2026 + IL3050** ⇒ 违反"0 诊断"的 AOT 严格模式门禁。改用 AOT 安全入口
+  `FeishuJsonAot.Deserialize<T>` + `FeishuJsonDefaults.DeserializerOptions`（DTO 全字段带
+  `[JsonPropertyName]`，与命名策略无关）。
+- **`Release` 全 TFM 编译破口（既有）**：`foreach (var (k, v) in <KeyValuePair 集合>)` 在 **netstandard2.0**
+  目标不可用（`KeyValuePair.Deconstruct` 扩展缺失 ⇒ CS8129/CS8130），改为显式 `fact.Key` / `fact.Value`。
+- **PublicAPI 基线漂移**：`Mud.Feishu.AI` 与 `Mud.Feishu.AI.Tools` 的 `PublicAPI.Unshipped.txt` 与真实公开面
+  脱钩（RS0016 ×48 + RS0017 ×6，长期以警告形式刷屏、淹没真实漂移信号）。按工程过滤后补齐 185 条并清理 6 条陈旧项，
+  两个工程现为 **RS0016/RS0017 = 0**。
+
+### 🔒 契约/守卫
+
+- 新增行为与守卫用例 47 条：`TranslationToolsTests`(17)、`PendingApprovalStoreTests`(15)、
+  `ApprovalContextAssemblerTests`(8)、`BinaryArtifactContractTests`(5)、续跑幂等 2 条（含金丝雀式反向自证）。
+- 规模基线同批更新：工具契约接口 161→163、`Source` 声明 155→157、Curation 文件 20→21、
+  声明 scope 49→50（新增 `translation:text`，已对照官方文档 ✅）；golden 快照重新固化（仅 +2 行）。
+
 ## [Unreleased] - `Mud.Feishu.AI.FeishuTools` 更名为 `Mud.Feishu.AI.Tools`（2026-10-08）
 
 ### ⚠️ 破坏性变更登记

@@ -32,7 +32,7 @@
         <!-- 可观测性共享装配内核（MudObservabilityBootstrap / MudObservabilityDefaults 等）由上游包提供；
              本包不再直接引用 Mud.HttpUtils（MudHttpActivitySource/MudHttpMeter 由内核内部使用）。
              ⚠ 全仓 Mud.HttpUtils* 必须同版本（守卫 TokenMultiAppContractGuards.MudHttpUtils_PackageReference_ShouldBeSingleVersion）。 -->
-        <PackageReference Include="Mud.HttpUtils.OpenTelemetry" Version="3.0.4" />
+        <PackageReference Include="Mud.HttpUtils.OpenTelemetry" Version="3.0.5" />
         <PackageReference Include="OpenTelemetry" Version="1.16.0" />
         <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.16.0" />
         <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.16.0" />

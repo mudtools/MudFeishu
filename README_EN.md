@@ -830,8 +830,8 @@ dotnet publish -r win-x64 -c Release /p:PublishAot=true
 
 | Package                                       | Version          | Description                                           |
 | --------------------------------------------- | ---------------- | ----------------------------------------------------- |
-| **Mud.HttpUtils**                             | v3.0.0           | HTTP client utilities with source generator (incl. resilience policies) |
-| **Mud.HttpUtils.Generator**                   | v3.0.0           | HTTP client code generator (compile-time)             |
+| **Mud.HttpUtils**                             | v3.0.5           | HTTP client utilities with source generator (incl. resilience policies) |
+| **Mud.HttpUtils.Generator**                   | v3.0.5           | HTTP client code generator (compile-time)             |
 | **System.Text.Json**                          | v10.0.9          | High-performance JSON serialization (netstandard2.0 target) |
 | **Microsoft.Extensions.***                    | v10.0.11         | Dependency injection, logging, configuration binding, options |
 | **Microsoft.Agents.AI**                       | v1.20.0          | AI foundation (referenced by Mud.Feishu.AI only; core stays MAF-free) |

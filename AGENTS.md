@@ -67,8 +67,9 @@ asserted for the diagnostic whitelist afterwards (`.github/workflows/dotnet-publ
 
 ## Dependency version policy (Mud.HttpUtils)
 
-This repo consumes `Mud.HttpUtils` **3.0.3** (HttpUtils and Generator **must stay on the same
-version**) — the release line that carries **BC-27**: `IAppContextSwitcher` no longer declares
+This repo consumes `Mud.HttpUtils` **3.0.5** (HttpUtils and Generator **must stay on the same
+version**; see `.docs/MudFeishu-MudHttpUtils-3.0.5-升级改造方案-v1.md`) — the 3.0.x release line carries
+**BC-27**: `IAppContextSwitcher` no longer declares
 `UseApp(string)` / `UseDefaultApp()` / `BeginScope(string)`, and the generator no longer emits them
 by default — **plus the tool-surface generation engine** (`ToolSurface/` in
 `Mud.HttpUtils.Generator` + `ISdkToolProfile` in `Mud.HttpUtils.Abstractions` +
@@ -88,11 +89,10 @@ by default — **plus the tool-surface generation engine** (`ToolSurface/` in
   `Mud.HttpUtils 2.0.8`), so demo `BeginScope("hr-app")` calls are intentionally untouched until the
   rebuilt package ships.
 
-At the time of writing 3.0.3 is **not yet on nuget.org**, so `nuget.config` carries a temporary local
-source (`MudHttpUtils-local` → `D:/Repos/MudHttpUtils/artifacts-debug`, i.e. the **Debug** build
-produced by `pack_debug.ps1`); remove it once the official Release package is published. The tool
-surface is generated **only** by the component-side engine: the local generator project and its
-driver tests were retired in the R-1+2c migration, and
+Mud.HttpUtils **3.0.5 is published on nuget.org**; the temporary local source
+(`mudhttputils-local` → `D:/Repos/MudHttpUtils/artifacts`) has been removed from `nuget.config`
+(2026-10-10). The tool surface is generated **only** by the component-side engine: the local
+generator project and its driver tests were retired in the R-1+2c migration, and
 `Tests/Mud.Feishu.AI.Tools.Tests/ContractGuards/FeishuToolProfileContractGuards.cs` asserts
 that no local generator implementation returns — by **capability**, not by project name
 (no `[Generator]`-annotated source anywhere, no legacy engine type names, the `ProjectReference`

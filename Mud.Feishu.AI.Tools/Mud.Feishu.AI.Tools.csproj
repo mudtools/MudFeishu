@@ -46,18 +46,19 @@
 		<!-- 内置 IM 会话事件处理器（P2D-5a）的事件 DTO 来源：MessageReceiveResult/MentionUser 强类型面。 -->
 		<ProjectReference Include="..\Mud.Feishu.EventCallback\Mud.Feishu.EventCallback.csproj" />
 		<!-- [FeishuTool] 源生成器（已决策⑤ → R-1+2c 上游化）：本地生成器工程已删除，
-		     改用组件侧 Mud.HttpUtils.Generator 3.0.3 的通用 ToolSurface 引擎（分析器形态）。
+		     改用组件侧 Mud.HttpUtils.Generator 3.0.5 的通用 ToolSurface 引擎（分析器形态）。
 		     工具面规模（条目数 / 签名）不在此处写死数字——数字漂移无法被编译器发现，改为唯一真相源：
 		     FeishuToolSchemas.golden.txt 与生成的 FeishuToolContracts（三者一致性由
-		     ToolSurfaceScaleContractGuards 机械断言，见 R2-09/G4）。 -->
-		<PackageReference Include="Mud.HttpUtils.Generator" Version="3.0.4"
+		     ToolSurfaceScaleContractGuards 机械断言，见 R2-09/G4）。
+		     ⚠ 全仓 Mud.HttpUtils* 必须同版本（守卫 TokenMultiAppContractGuards.MudHttpUtils_PackageReference_ShouldBeSingleVersion）。 -->
+		<PackageReference Include="Mud.HttpUtils.Generator" Version="3.0.5"
 		                  PrivateAssets="all"
 		                  OutputItemType="Analyzer"
 		                  ReferenceOutputAssembly="false" />
 		<!-- 剖面契约：[SdkToolProfile]（数据载体）+ ISdkToolProfile / SdkTokenKind（标记接口与枚举）。
 		     见 SdkProfile/FeishuToolProfile.cs —— 旧本地引擎的全部飞书硬编码收拢于此。 -->
-		<PackageReference Include="Mud.HttpUtils.Attributes" Version="3.0.4" />
-		<PackageReference Include="Mud.HttpUtils.Abstractions" Version="3.0.4" />
+		<PackageReference Include="Mud.HttpUtils.Attributes" Version="3.0.5" />
+		<PackageReference Include="Mud.HttpUtils.Abstractions" Version="3.0.5" />
 	</ItemGroup>
 
 	<ItemGroup>

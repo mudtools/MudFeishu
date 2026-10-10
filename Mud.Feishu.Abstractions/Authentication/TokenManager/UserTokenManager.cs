@@ -320,32 +320,6 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
 
     /// <inheritdoc />
     /// <remarks>
-    /// 登出语义 = 「内存 + 持久层」双清（TMA-01）。
-    /// <para>
-    /// 基类 <see cref="UserTokenManagerBase.RemoveTokenAsync"/> 的内存整条移除经桥接器<b>会</b>写穿删除持久层槽位，
-    /// 但桥接器的写穿由<b>镜像条目</b>驱动（<c>TryRemove</c>）—— 多实例 / 冷启动下本地镜像可能为空，
-    /// 此时不会产生任何持久层删除。故此处保留一次<b>显式</b>的持久层删除（幂等：与桥接写穿重复时无害），
-    /// 保证"登出必须落到持久层"不依赖本地镜像状态。
-    /// </para>
-    /// </remarks>
-    public override async Task<bool> RemoveTokenAsync(string userId, CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrEmpty(userId))
-            return false;
-
-        // 内存整条移除（含全部作用域 + 锁退休 + 退避清除 + 写入代际作废）
-        await base.RemoveTokenAsync(userId, cancellationToken).ConfigureAwait(false);
-
-        if (_userTokenStore != null)
-        {
-            await _userTokenStore.RemoveAsync(userId, _tokenTypeKey, cancellationToken).ConfigureAwait(false);
-        }
-
-        return true;
-    }
-
-    /// <inheritdoc />
-    /// <remarks>
     /// D1 契约例外（TMA-01）：只失效<b>访问令牌字段</b>，保留 store 中的 refresh_token ——
     /// 401 恢复链路依赖 store 的 refresh 可达（清 store 会使恢复彻底无路，表现为必然 401）。
     /// <para>
@@ -614,6 +588,13 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
     /// <c>(userId, "UserAccessToken:{AppKey}")</c> ⇒ 物理键
     /// <c>{KeyPrefix}:user:{userId}:UserAccessToken\:{AppKey}:access</c>，与改造前逐字节一致。
     /// <b>禁止</b>使用 <c>DefaultUserKeyMapper</c>（裸键会被映射为 <c>(userId, userId)</c>，写出全新键格式）。
+    /// </para>
+    /// <para>
+    /// F-06（Mud.HttpUtils ≥3.0.4，B3）：用户维度的移除/登出语义完全依赖基类
+    /// <c>UserTokenManagerBase.RemoveTokenAsync</c> 的<b>异步写穿</b>——桥接器
+    /// <see cref="TokenStoreBackedTokenCache{UserTokenInfo}"/> 的 <c>RemoveAsync</c> 无条件透传至
+    /// <see cref="PurgeGateUserTokenStoreDecorator"/>，不再依赖本地镜像条目（多实例/冷启动一致落库）。
+    /// 本类因此<b>不再覆写</b> <c>RemoveTokenAsync</c>；如需恢复覆写须同步提供冷启动对照测试。
     /// </para>
     /// </remarks>
     private static ITokenCache<UserTokenInfo>? BuildUserTokenCache(

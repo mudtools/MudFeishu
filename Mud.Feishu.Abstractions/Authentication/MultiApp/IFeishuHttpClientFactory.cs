@@ -105,8 +105,11 @@ public class FeishuHttpClientFactory : IFeishuHttpClientFactory
 
         // ARC-2：以 DI 中注册的 EnhancedHttpClientOptions 编程式配置为基线（与 AddMudHttpClient 路径同源），
         // 避免此前"手工 new EnhancedHttpClientOptions"导致 10 个字段静默取默认值的问题。
+        // F-05（Mud.HttpUtils 3.0.5+）：EnhancedHttpClientOptions 提供公开的全字段浅拷贝 Clone()
+        // （含 5 个 DI 解析面属性 + JsonEncoder 等），取代本仓库手写字段清单式 Clone——
+        // 上游新增属性（如 3.0.5 的 JsonEncoder）不再需要在 MudFeishu 侧同步补拷贝。
         var baseline = _serviceProvider.GetService<IOptions<EnhancedHttpClientOptions>>()?.Value;
-        var options = baseline != null ? Clone(baseline) : new EnhancedHttpClientOptions();
+        var options = baseline?.Clone() ?? new EnhancedHttpClientOptions();
 
         options.Logger = _serviceProvider.GetService<ILogger<HttpClientFactoryEnhancedClient>>() ?? options.Logger;
         options.RequestInterceptors = _serviceProvider.GetServices<IHttpRequestInterceptor>();
@@ -126,36 +129,4 @@ public class FeishuHttpClientFactory : IFeishuHttpClientFactory
     /// 构建命名客户端名称，与 <c>AddMudHttpClient</c> 注册时使用的名称保持一致。
     /// </summary>
     internal static string BuildClientName(string appKey) => $"feishu-{appKey}";
-
-    /// <summary>
-    /// 复制基线配置。
-    /// <see cref="EnhancedHttpClientOptions"/> 为 sealed 且未提供公开克隆方法，
-    /// 此处按字段显式复制；新增字段时必须同步补充，并由
-    /// <c>FeishuHttpClientFactoryTests</c> 的字段等价性测试守护。
-    /// </summary>
-    private static EnhancedHttpClientOptions Clone(EnhancedHttpClientOptions source) => new()
-    {
-        Logger = source.Logger,
-        RequestInterceptors = source.RequestInterceptors,
-        ResponseInterceptors = source.ResponseInterceptors,
-        SensitiveDataMasker = source.SensitiveDataMasker,
-        AllowCustomBaseUrls = source.AllowCustomBaseUrls,
-        RequestBodySerialization = source.RequestBodySerialization,
-        ExceptionRedactor = source.ExceptionRedactor,
-        MaxExceptionContentLength = source.MaxExceptionContentLength,
-        CaptureRequestContent = source.CaptureRequestContent,
-        UrlResolution = source.UrlResolution,
-        MaxSuccessResponseBytes = source.MaxSuccessResponseBytes,
-        HttpRequestMessageOptions = source.HttpRequestMessageOptions,
-        // Mud.HttpUtils 2.0.4 既有：应用访问授权器。由 FeishuHttpClientFactoryTests 的
-        // 属性契约守卫发现——若不在此同步，该能力会在 MudFeishu 路径上被静默丢弃。
-        AppAccessAuthorizer = source.AppAccessAuthorizer,
-#if NET6_0_OR_GREATER
-        HttpVersion = source.HttpVersion,
-        HttpVersionPolicy = source.HttpVersionPolicy,
-#endif
-#if NET8_0_OR_GREATER
-        JsonTypeInfoResolver = source.JsonTypeInfoResolver,
-#endif
-    };
 }

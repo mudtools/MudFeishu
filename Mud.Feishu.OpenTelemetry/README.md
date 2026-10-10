@@ -196,7 +196,7 @@ builder.Services.AddFeishuOpenTelemetry(builder.Configuration);
 | 包 | 版本 | 说明 |
 | --- | --- | --- |
 | **Mud.Feishu.Abstractions** | * | 飞书 SDK 抽象层（提供 ActivitySource 和 Meter 定义） |
-| **Mud.HttpUtils.OpenTelemetry** | 3.0.3 | 可观测性**共享装配内核**（`MudObservabilityBootstrap` 等），并负责注册 Mud.HttpUtils 的源与 Meter（`MudHttpActivitySource` / `MudHttpMeter`） |
+| **Mud.HttpUtils.OpenTelemetry** | 3.0.5 | 可观测性**共享装配内核**（`MudObservabilityBootstrap` 等），并负责注册 Mud.HttpUtils 的源与 Meter（`MudHttpActivitySource` / `MudHttpMeter`） |
 | **OpenTelemetry** | 1.16.0 | OpenTelemetry .NET SDK |
 | **OpenTelemetry.Extensions.Hosting** | 1.16.0 | 主机集成 |
 | **OpenTelemetry.Exporter.OpenTelemetryProtocol** | 1.16.0 | OTLP 导出器 |

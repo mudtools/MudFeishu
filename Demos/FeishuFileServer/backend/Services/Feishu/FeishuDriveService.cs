@@ -225,7 +225,7 @@ public class FeishuDriveService : IFeishuDriveService
 
         try
         {
-            var result = await _driveFiles.DeleteFileByFileTokenAsync(fileToken, "file", cancellationToken);
+            var result = await _driveFiles.DeleteFileByFileTokenAsync(fileToken, "file", cancellationToken: cancellationToken);
 
             if (result == null)
             {
@@ -274,7 +274,7 @@ public class FeishuDriveService : IFeishuDriveService
 
         try
         {
-            var result = await _driveFiles.DeleteFileByFileTokenAsync(folderToken, "folder", cancellationToken);
+            var result = await _driveFiles.DeleteFileByFileTokenAsync(folderToken, "folder", cancellationToken: cancellationToken);
 
             if (result == null)
             {

@@ -10,6 +10,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Moq;
 using Mud.Feishu.Abstractions.Authentication.MultiApp;
+using System.Net;
+using System.Reflection;
+using System.Text.Encodings.Web;
 using Xunit;
 
 namespace Mud.Feishu.Abstractions.Tests.Authentication;
@@ -120,50 +123,80 @@ public class FeishuHttpClientFactoryTests
     }
 
     /// <summary>
-    /// 防退化守卫：<see cref="FeishuHttpClientFactory"/> 的 Clone 必须覆盖
-    /// <see cref="EnhancedHttpClientOptions"/> 的**全部**公共属性。
+    /// F-05 防退化守卫：<see cref="EnhancedHttpClientOptions.Clone"/>（上游 3.0.5 公开 API）
+    /// 必须复制全部公共可写属性，且 <c>FeishuHttpClientFactory.CreateOptions</c> 走该路径。
     /// </summary>
     /// <remarks>
-    /// 组件升级（如 2.0.4 → 2.0.5）若新增配置属性而本仓库 Clone 未同步补全，
-    /// 会导致新属性在 MudFeishu 路径上被静默丢弃（且不会有任何编译错误）。
-    /// 本用例把属性清单固化为契约：组件新增字段时此处会失败，强制同步 Clone。
-    /// 期望清单需与 <c>EnhancedHttpClientOptions</c> 中按 TFM 的 <c>#if</c> 条件保持一致。
+    /// <para>
+    /// 原「硬编码属性清单契约」（2.0.4 时代守护手写 Clone）已废弃：手写清单在上游 3.0.5 新增
+    /// <c>JsonEncoder</c> 时即漏拷（阶段 0 门禁实测红于本类
+    /// <c>EnhancedHttpClientOptions_PropertySet_ShouldMatchClonedContract</c>），证明清单式守护
+    /// 不可持续。现改为两层反射断言：
+    /// </para>
+    /// <para>
+    /// ① <b>哨兵覆盖完整性</b>：枚举全部公共可写属性，要求哨兵源均为非默认值——上游新增属性而
+    /// 下方初始化器未登记哨兵时在此失败，强制补齐；<br/>
+    /// ② <b>全字段复制</b>：Clone 后逐属性一致（浅拷贝共享引用）。
+    /// </para>
     /// </remarks>
     [Fact]
-    public void EnhancedHttpClientOptions_PropertySet_ShouldMatchClonedContract()
+    public void Clone_ShouldCopyAllWritableProperties_WhenSourceHasNonDefaultSentinels()
     {
-        var expected = new List<string>
+        // 哨兵源：所有公共可写属性均赋予非默认值（上游新增属性时，下方覆盖完整性断言失败并提示补哨兵）。
+        var source = new EnhancedHttpClientOptions
         {
-            "AllowCustomBaseUrls",
-            "AppAccessAuthorizer",
-            "CaptureRequestContent",
-            "ExceptionRedactor",
-            "HttpRequestMessageOptions",
-            "Logger",
-            "MaxExceptionContentLength",
-            "MaxSuccessResponseBytes",
-            "RequestBodySerialization",
-            "RequestInterceptors",
-            "ResponseInterceptors",
-            "SensitiveDataMasker",
-            "UrlResolution",
+            Logger = Mock.Of<ILogger>(),
+            RequestInterceptors = new[] { Mock.Of<IHttpRequestInterceptor>() },
+            ResponseInterceptors = new[] { Mock.Of<IHttpResponseInterceptor>() },
+            SensitiveDataMasker = Mock.Of<ISensitiveDataMasker>(),
+            AppAccessAuthorizer = Mock.Of<IAppAccessAuthorizer>(),
+            AllowCustomBaseUrls = true,
+            RequestBodySerialization = RequestBodySerializationMode.Buffered,
+            ExceptionRedactor = Mock.Of<IExceptionRedactor>(),
+            MaxExceptionContentLength = 2048,
+            CaptureRequestContent = true,
+            UrlResolution = UrlResolutionMode.Rfc3986,
+            MaxSuccessResponseBytes = 4096,
+            HttpRequestMessageOptions = new Dictionary<string, object?> { ["sentinel"] = "value" },
 #if NET6_0_OR_GREATER
-            "HttpVersion",
-            "HttpVersionPolicy",
+            HttpVersion = new Version(2, 0),
+            HttpVersionPolicy = System.Net.Http.HttpVersionPolicy.RequestVersionExact,
 #endif
 #if NET8_0_OR_GREATER
-            "JsonTypeInfoResolver",
+            JsonTypeInfoResolver = Mock.Of<System.Text.Json.Serialization.Metadata.IJsonTypeInfoResolver>(),
 #endif
+            JsonEncoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         };
 
-        var actual = typeof(EnhancedHttpClientOptions)
-            .GetProperties()
-            .Select(p => p.Name)
-            .OrderBy(n => n, StringComparer.Ordinal)
-            .ToList();
+        var clone = source.Clone();
 
-        actual.Should().Equal(expected.OrderBy(n => n, StringComparer.Ordinal).ToList(),
-            "组件新增/删除配置属性时必须同步更新 FeishuHttpClientFactory.Clone 与本清单，否则新属性会被静默丢弃");
+        var writable = typeof(EnhancedHttpClientOptions)
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.CanWrite)
+            .ToList();
+        writable.Should().NotBeEmpty();
+
+        // ① 覆盖完整性：哨兵源不得残留默认值（上游新增可写属性而哨兵未同步时在此失败）。
+        foreach (var prop in writable)
+        {
+            var value = prop.GetValue(source);
+            if (prop.PropertyType.IsValueType)
+            {
+                value.Should().NotBe(Activator.CreateInstance(prop.PropertyType),
+                    $"哨兵源必须为属性 {prop.Name} 赋非默认值（上游新增属性需在此测试初始化器中登记哨兵）");
+            }
+            else
+            {
+                value.Should().NotBeNull($"哨兵源必须为引用属性 {prop.Name} 赋非 null 值（上游新增属性需在此测试初始化器中登记哨兵）");
+            }
+        }
+
+        // ② 全字段复制：Clone 后逐属性一致。
+        foreach (var prop in writable)
+        {
+            prop.GetValue(clone).Should().Be(prop.GetValue(source),
+                $"Clone 必须复制属性 {prop.Name}（F-05：CreateOptions 使用上游公开 Clone，禁止回退手写字段清单式拷贝）");
+        }
     }
 
     /// <summary>

@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Moq;
 using Mud.Feishu.Abstractions.Authentication;
 using Mud.Feishu.Abstractions.Authentication.MultiApp;
 using Mud.HttpUtils;
@@ -168,6 +169,11 @@ public class FeishuServiceCollectionExtensionsTests
     /// 该节被**静默忽略**，RecoveryMaxRetries / RefreshTimeoutSeconds 等在配置中设置后不生效，
     /// 与 <c>AddFeishuAppBaseServices</c> 中"可通过 IConfiguration 的 MudHttpTokenRecovery 节自定义"的注释不符。
     /// </summary>
+    /// <remarks>
+    /// F-04（Mud.HttpUtils 3.0.x，B6）：绑定路径改为「纯 DTO 投影 <c>TokenRecoveryConfiguration</c>
+    /// + Apply 逐字段映射」（消除 SYSLIB1100/1101），本用例同时覆盖数值/字符串/枚举三类字段，
+    /// 证明 Apply 映射链与原直接绑定等价。
+    /// </remarks>
     [Fact]
     public void AddFeishuApp_ShouldBindTokenRecoveryOptions_FromConfigurationSection()
     {
@@ -180,7 +186,10 @@ public class FeishuServiceCollectionExtensionsTests
                 ["FeishuApps:0:AppSecret"] = "default_secret_123456",
                 ["FeishuApps:0:IsDefault"] = "true",
                 ["MudHttpTokenRecovery:RecoveryMaxRetries"] = "5",
-                ["MudHttpTokenRecovery:RefreshTimeoutSeconds"] = "7.5"
+                ["MudHttpTokenRecovery:RefreshTimeoutSeconds"] = "7.5",
+                ["MudHttpTokenRecovery:TokenScheme"] = "Bearer",
+                ["MudHttpTokenRecovery:BufferingMode"] = "MemoryOnly",
+                ["MudHttpTokenRecovery:MaxCachedRequestBodyBytes"] = "2097152"
             })
             .Build();
         var services = CreateServiceCollection();
@@ -195,6 +204,11 @@ public class FeishuServiceCollectionExtensionsTests
             "MudHttpTokenRecovery:RecoveryMaxRetries 必须绑定（否则该配置节被静默忽略）");
         options.RefreshTimeoutSeconds.Should().Be(7.5,
             "MudHttpTokenRecovery:RefreshTimeoutSeconds 必须绑定");
+        options.TokenScheme.Should().Be("Bearer", "F-04：字符串字段经 TokenRecoveryConfiguration 投影仍须绑定");
+        options.BufferingMode.Should().Be(RequestBodyBufferingMode.MemoryOnly,
+            "F-04：枚举字段经 TokenRecoveryConfiguration 投影仍须绑定");
+        options.MaxCachedRequestBodyBytes.Should().Be(2097152,
+            "F-04：数值字段经 TokenRecoveryConfiguration 投影仍须绑定");
 
         // 与组件 AddMudHttpTokenRecoveryFromConfiguration 对齐：校验器 + 可直接解析的实例。
         provider.GetServices<IValidateOptions<Mud.HttpUtils.TokenRecoveryOptions>>()
@@ -202,6 +216,42 @@ public class FeishuServiceCollectionExtensionsTests
                 "应注册组件的 TokenRecoveryOptionsValidator，使非法取值在选项解析期暴露而非静默生效");
         provider.GetRequiredService<Mud.HttpUtils.TokenRecoveryOptions>().RecoveryMaxRetries.Should().Be(5,
             "TMR-07：TokenRecoveryOptions 应可直接解析，且与 IOptions<T> 同源");
+    }
+
+    /// <summary>
+    /// F-04 防退化守卫：配置绑定路径（纯 DTO 投影 + <c>TokenRecoveryOptionsExtensions.Apply</c>）
+    /// <b>不得触碰</b> <c>TokenInvalidationDetector</c> 等编程式注入面——Apply 契约约定只映射
+    /// <c>TokenRecoveryConfiguration</c> 携带的基元字段，宿主以 <c>PostConfigure</c> 注入的判定器
+    /// 必须原样保留。
+    /// </summary>
+    [Fact]
+    public void AddFeishuApp_ShouldPreserveProgrammaticDetector_WhenConfigurationBound()
+    {
+        // Arrange
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["FeishuApps:0:AppKey"] = "default",
+                ["FeishuApps:0:AppId"] = "cli_default_id_1234567890",
+                ["FeishuApps:0:AppSecret"] = "default_secret_123456",
+                ["FeishuApps:0:IsDefault"] = "true",
+                ["MudHttpTokenRecovery:RecoveryMaxRetries"] = "5"
+            })
+            .Build();
+        var services = CreateServiceCollection();
+        services.AddFeishuApp(configuration);
+        var detector = new Mock<ITokenInvalidationDetector>().Object;
+        // PostConfigure 晚于 Configure 链（含 Apply）执行，模拟宿主编程式注入。
+        services.PostConfigure<Mud.HttpUtils.TokenRecoveryOptions>(o => o.TokenInvalidationDetector = detector);
+
+        // Act
+        using var provider = services.BuildServiceProvider();
+        var options = provider.GetRequiredService<IOptions<Mud.HttpUtils.TokenRecoveryOptions>>().Value;
+
+        // Assert
+        options.TokenInvalidationDetector.Should().BeSameAs(detector,
+            "F-04：Apply 不得触碰 TokenInvalidationDetector 等编程式注入面（否则宿主注入的判定器被静默丢弃）");
+        options.RecoveryMaxRetries.Should().Be(5, "配置绑定路径仍须生效");
     }
 
     // ============================================================
@@ -227,6 +277,7 @@ public class FeishuServiceCollectionExtensionsTests
             ["FeishuApps:0:AppSecret"] = "default_secret_123456",
             ["FeishuApps:0:IsDefault"] = "true",
             ["MudHttpTokenRecovery:RecoveryMaxRetries"] = "3",
+            ["MudHttpTokenRecovery:TokenScheme"] = "S1",
         });
         var configuration = new ConfigurationBuilder()
             .Add(reloadableSource)
@@ -730,5 +781,120 @@ public class FeishuServiceCollectionExtensionsTests
         var hostedRefreshService = hostedServices.OfType<ITokenRefreshBackgroundService>().FirstOrDefault();
         hostedRefreshService.Should().BeSameAs(refreshService,
             "FeishuTokenRegistrationService 注入的 ITokenRefreshBackgroundService 应与 DI 容器中的单例一致");
+    }
+
+    // ============================================================
+    // F-07：域名单并集语义（增量注入，不覆盖宿主域名）
+    // ============================================================
+
+    /// <summary>
+    /// F-07 防退化守卫：AddFeishuApp 注入飞书域名必须为<b>并集</b>语义——宿主在注册前
+    /// 自行 <c>UrlValidator.AddAllowedDomain</c> 的自定义域名不得被清掉
+    /// （旧 <c>ConfigureAllowedDomains</c> 整体替换语义会静默丢弃宿主域名的回归面）。
+    /// </summary>
+    [Fact]
+    public void AddFeishuApp_ShouldPreserveHostAllowedDomains_WhenMergingFeishuDomains()
+    {
+        var original = UrlValidator.GetAllowedDomains().ToArray();
+        try
+        {
+            // Arrange：宿主在 AddFeishuApp 之前注册自定义域名。
+            UrlValidator.AddAllowedDomain("work.weixin.qq.com");
+            var services = CreateServiceCollection();
+
+            // Act
+            services.AddFeishuApp(CreateDefaultConfigs());
+
+            // Assert
+            var domains = UrlValidator.GetAllowedDomains();
+            domains.Should().Contain("work.weixin.qq.com", "宿主预注册的自定义域名必须保留（并集语义）");
+            domains.Should().Contain("open.feishu.cn", "飞书默认域名必须注入");
+        }
+        finally
+        {
+            // 还原全局白名单，避免污染同进程其他 UrlValidator 相关用例。
+            UrlValidator.ConfigureAllowedDomains(original);
+        }
+    }
+
+    // ============================================================
+    // F-09：默认授权器 = 注册表白名单（IFeishuAppManager.HasApp 谓词）
+    // ============================================================
+
+    /// <summary>
+    /// F-09 防退化守卫：AddFeishuApp 必须注册默认 <see cref="IAppAccessAuthorizer"/>（注册表白名单语义）：
+    /// 已注册 appKey 放行；未注册 / 空白 / null appKey 一律拒绝（fail-closed）。
+    /// 回归面：退回放行型授权器（AllowAllAppAccessAuthorizer）或取消默认注册（BC-18 默认拒绝）。
+    /// </summary>
+    [Fact]
+    public void AddFeishuApp_ShouldAuthorizeOnlyRegisteredAppKeys_WhenDefaultAuthorizerResolved()
+    {
+        // Arrange
+        var services = CreateServiceCollection();
+        services.AddFeishuApp(CreateDefaultConfigs());
+        using var provider = services.BuildServiceProvider();
+
+        // Act
+        var authorizer = provider.GetRequiredService<IAppAccessAuthorizer>();
+
+        // Assert
+        authorizer.CanSwitchTo("default").Should().BeTrue("已注册的默认应用必须获得授权");
+        authorizer.CanSwitchTo("unregistered-app").Should().BeFalse("未注册 appKey 必须拒绝");
+        authorizer.CanSwitchTo("").Should().BeFalse("空白 appKey 必须 fail-closed 拒绝");
+        authorizer.CanSwitchTo(null!).Should().BeFalse("null appKey 必须 fail-closed 拒绝");
+    }
+
+    /// <summary>
+    /// F-09 动态性：运行时 <c>AddApp</c> 新增的应用必须<b>即时</b>获得授权——
+    /// 谓词经 IFeishuAppManager.HasApp 每次调用现算，不是注册期快照。
+    /// </summary>
+    [Fact]
+    public void AddFeishuApp_ShouldAuthorizeRuntimeAddedApp_AfterAddApp()
+    {
+        // Arrange — AddApp 会急切创建应用上下文（命名 HttpClient 走 IHttpClientFactory），测试补 mock 基建。
+        var services = CreateServiceCollection();
+        var httpClientFactoryMock = new Mock<IHttpClientFactory>();
+        httpClientFactoryMock
+            .Setup(x => x.CreateClient(It.IsAny<string>()))
+            .Returns(new HttpClient());
+        services.AddSingleton(httpClientFactoryMock.Object);
+        services.AddFeishuApp(CreateDefaultConfigs());
+        using var provider = services.BuildServiceProvider();
+
+        var authorizer = provider.GetRequiredService<IAppAccessAuthorizer>();
+        authorizer.CanSwitchTo("runtime-app").Should().BeFalse("新增前必须拒绝");
+
+        // Act
+        var appManager = provider.GetRequiredService<IFeishuAppManager>();
+        appManager.AddApp(new FeishuAppConfig
+        {
+            AppKey = "runtime-app",
+            AppId = "cli_runtime_id_12345678",
+            AppSecret = "runtime_secret_123456"
+        });
+
+        // Assert
+        authorizer.CanSwitchTo("runtime-app").Should().BeTrue("AddApp 后必须即时获得授权（谓词动态判定）");
+    }
+
+    /// <summary>
+    /// F-09 宿主优先：宿主在 AddFeishuApp 之前注册的 <see cref="IAppAccessAuthorizer"/> 必须胜出
+    /// （TryAdd 语义，先注册者胜），默认白名单不得覆盖宿主的更严格授权策略。
+    /// </summary>
+    [Fact]
+    public void AddFeishuApp_ShouldKeepHostAuthorizer_WhenRegisteredBeforeAddFeishuApp()
+    {
+        // Arrange — 宿主授权器只放行 "host-managed"（比默认注册表白名单更严格）。
+        var services = CreateServiceCollection();
+        services.AddSingleton<IAppAccessAuthorizer>(new AppKeyAllowListAuthorizer(new[] { "host-managed" }));
+
+        // Act
+        services.AddFeishuApp(CreateDefaultConfigs());
+        using var provider = services.BuildServiceProvider();
+
+        // Assert
+        var authorizer = provider.GetRequiredService<IAppAccessAuthorizer>();
+        authorizer.CanSwitchTo("host-managed").Should().BeTrue("宿主授权器名单内放行");
+        authorizer.CanSwitchTo("default").Should().BeFalse("宿主授权器必须胜出：默认应用虽已注册，但不在宿主名单内");
     }
 }

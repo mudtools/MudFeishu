@@ -88,6 +88,9 @@ public class DomainRegistrarTests
 
             // F-1：MDM 国家/地区只读域（首个补域切片）——同上，必须纳入等价性对比。
             FeishuToolNames.MdmGetCountries,
+
+            // F-1 P0：Security 行为审计日志（PII，默认不启用；等价性只关心注册面）。
+            FeishuToolNames.SecurityQueryAuditLogs,
         };
 
         var mockClients = new Action<IServiceCollection>(services =>
@@ -122,6 +125,8 @@ public class DomainRegistrarTests
             // F-1：MDM 国家/地区客户端——白名单里已列 mdm.get_countries，客户端缺席会让
             // BuildRegistry 在白名单映射期 fail-fast（"未注册工具"），故必须在场。
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3MDMCountryRegion>().Object);
+            // F-1 P0：Security 审计日志客户端（同上，白名单里已列 security.query_audit_logs）。
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1SecurityAuditLog>().Object);
         });
 
         using var singleEntryProvider = new ServiceCollection()
@@ -160,6 +165,8 @@ public class DomainRegistrarTests
             .AddFeishuTranslationTools()
             // F-1：MDM 国家/地区只读域是新增的独立只读域，同上。
             .AddFeishuMdmCountryRegionTools()
+            // F-1 P0：Security 行为审计日志（独立只读域，同上）。
+            .AddFeishuSecurityAuditLogTools()
             // R6 / S3：VideoConferencing 只读域同理（写面含 user 身份工具，由 AddFeishuWriteTools 覆盖）。
             .AddFeishuVcTools()
             // 能力出处元工具是一个独立入口：它不属于任何业务域，

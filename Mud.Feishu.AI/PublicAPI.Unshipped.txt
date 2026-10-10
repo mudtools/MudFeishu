@@ -12,7 +12,7 @@ abstract Mud.Feishu.AI.Channels.BufferedMessageChannel.UpdateCoreAsync(string! a
 abstract Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.BuildRequestAsync(T! eventData, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Mud.Feishu.AI.Conversations.ConversationRequest!>!
 abstract Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.ReplyAsync(Mud.Feishu.AI.Conversations.ConversationRequest! request, string! responseText, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 const Mud.Feishu.AI.Agents.FeishuAgentOptions.SectionName = "FeishuAgent" -> string!
-const Mud.Feishu.AI.Agents.FeishuGuidanceComposer.MaxGuidanceLength = 24576 -> int
+const Mud.Feishu.AI.Agents.FeishuGuidanceComposer.MaxGuidanceLength = 32768 -> int
 const Mud.Feishu.AI.AgentTools.ContentSafetyModes.AllowedValuesText = "off / warn / block" -> string!
 const Mud.Feishu.AI.AgentTools.ContentSafetyModes.Block = "block" -> string!
 const Mud.Feishu.AI.AgentTools.ContentSafetyModes.Off = "off" -> string!

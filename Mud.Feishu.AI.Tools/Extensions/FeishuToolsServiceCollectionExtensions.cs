@@ -116,6 +116,25 @@ public static class FeishuToolsServiceCollectionExtensions
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure).AddFeishuCountryRegionToolsCore();
 
+    /// <summary>
+    /// 按域注册 Security 行为审计日志工具（1 个只读：<c>security.query_audit_logs</c>，F-1 P0 批）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**：
+    /// 少任何一处都会让 security 工具在对应入口下静默缺席（S-13 同款失败形态）。
+    /// </para>
+    /// <para>
+    /// ⚠️ <b>PII 敏感且默认不启用</b>（DP-A5-1 档位 ①）：结果含他人 user_id / IP / 设备与地理位置，
+    /// 宿主须显式加入 <c>FeishuAgent:Tools</c> 并确认合规口径；需已启用
+    /// <c>IFeishuTenantV1SecurityAuditLog</c>（缺席时本域工具软缺席）。
+    /// </para>
+    /// </remarks>
+    public static IServiceCollection AddFeishuSecurityAuditLogTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure).AddFeishuSecurityAuditLogToolsCore();
+
     /// <summary>按域注册 AI 文本面工具（2 个只读：ai.translate_text / ai.detect_language，R7/C3）。</summary>
     /// <remarks>
     /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**：
@@ -348,6 +367,11 @@ public static class FeishuToolsServiceCollectionExtensions
                     // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，
                     // 漏加即「工具静默不入注册表」（ToolDomainCoresWiringContractTests 会报红）。
                     .AddFeishuCountryRegionToolsCore()
+
+                    // F-1 P0 批：Security 行为审计日志执行器 SecurityAuditLogTools（1 个只读，PII 默认不启用）。
+                    // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，
+                    // 漏加即「工具静默不入注册表」（ToolDomainCoresWiringContractTests 会报红）。
+                    .AddFeishuSecurityAuditLogToolsCore()
 
                     // R7 / A4：Board 画板域执行器 BoardTools（6 个工具：2 只读 + 4 写）。
                     // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，

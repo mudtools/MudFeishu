@@ -49,6 +49,20 @@ public class NonCuratedToolRegistryContractGuards
         ("BindUserAuthDataRelationAsync", "mdm：写类（用户数据维度绑定，涉及用户 ID）——写面需宿主显式授权，另立批次"),
         ("UnbindUserAuthDataRelationAsync", "mdm：写类（解绑），同上"),
         ("ListCountryRegionsAsync", "mdm：带 filter 表达式体的分页查询——首个切片只策展 mdm.get_countries，本方法留待下一片"),
+
+        // F-1 P0（Security）：只策展只读的"行为审计日志"；其余 12 个方法显式登记（写类 / PII 读 / 留待下一片）。
+        ("ListOpenApiLogDataAsync", "security：OpenAPI 审计日志（PII：app_id/IP/调用详情）——留待下一片，需同批做 PII 登记"),
+        ("CreateUserMigrationAsync", "security：用户数据迁移（写类 + 跨 geo 合规敏感）——另立批次"),
+        ("CancelUserMigrationAsync", "security：取消迁移（写类）——同上"),
+        ("SearchUserMigrationsAsync", "security：迁移记录检索（POST 检索、含用户 PII）——同上"),
+        ("GetMultiGeoEntityTenantAsync", "security：多 geo 实体查询（PII）——同上"),
+        ("GetUserMigrationAsync", "security：迁移详情（PII）——同上"),
+        ("CreateDeviceRecordAsync", "security：设备登记（写类 + 设备指纹 PII）——同上"),
+        ("UpdateDeviceRecordAsync", "security：设备更新（写类）——同上"),
+        ("DeleteDeviceRecordAsync", "security：设备删除（写类，高风险）——同上"),
+        ("ListDeviceRecordsAsync", "security：设备列表（设备 PII）——同上"),
+        ("GetDeviceRecordAsync", "security：设备详情（设备 PII）——同上"),
+        ("UpdateDeviceApplyRecordAsync", "security：设备申请审核（写类）——同上"),
     ];
 
     [Fact]
@@ -126,6 +140,7 @@ public class NonCuratedToolRegistryContractGuards
 
                      // F-1：登记了"不策展方法"的域必须真的已策展（防伪登记）。
                      FeishuToolNames.MdmGetCountries,
+                     FeishuToolNames.SecurityQueryAuditLogs,
                  })
         {
             FeishuToolNames.All.Should().Contain(toolName,

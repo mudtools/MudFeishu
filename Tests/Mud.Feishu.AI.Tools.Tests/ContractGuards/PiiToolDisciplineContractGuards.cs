@@ -56,6 +56,9 @@ public class PiiToolDisciplineContractGuards
         "mail.list_messages",
         "mail.get_message",
         "minutes.get_artifacts",
+
+        // F-1 P0：Security 行为审计日志（含他人 user_id / IP / 设备与地理位置），默认不启用。
+        "security.query_audit_logs",
     ];
 
     private sealed record PiiEntry(string Tool, string Category, bool DefaultDisabled, string Note);

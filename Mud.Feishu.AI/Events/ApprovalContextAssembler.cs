@@ -41,8 +41,8 @@ namespace Mud.Feishu.AI.Events;
 /// </remarks>
 public sealed class ApprovalContextAssembler : IContextAssembler
 {
-    /// <summary>审批任务事件键（由审批事件处理器写入 <see cref="ConversationRequest.EventKey"/>）。</summary>
-    public const string ApprovalEventKey = "approval_task";
+    /// <summary>审批任务事件键（由审批事件处理器写入 <see cref="ConversationRequest.EventKey"/>；取值单一源）。</summary>
+    public const string ApprovalEventKey = FeishuEventKeys.ApprovalTask;
 
     /// <summary>默认装配顺序（知识切片之后）。</summary>
     public const int DefaultOrder = 200;

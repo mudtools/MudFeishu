@@ -1046,3 +1046,43 @@ static Mud.Feishu.AI.Tools.ResolvedBinaryArtifact.operator !=(Mud.Feishu.AI.Tool
 static Mud.Feishu.AI.Tools.ResolvedBinaryArtifact.operator ==(Mud.Feishu.AI.Tools.ResolvedBinaryArtifact left, Mud.Feishu.AI.Tools.ResolvedBinaryArtifact right) -> bool
 static Mud.Feishu.AI.Tools.StoredArtifact.operator !=(Mud.Feishu.AI.Tools.StoredArtifact left, Mud.Feishu.AI.Tools.StoredArtifact right) -> bool
 static Mud.Feishu.AI.Tools.StoredArtifact.operator ==(Mud.Feishu.AI.Tools.StoredArtifact left, Mud.Feishu.AI.Tools.StoredArtifact right) -> bool
+~override Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.Equals(object obj) -> bool
+~override Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.ToString() -> string
+Mud.Feishu.AI.Tools.Events.BitableRecordChangedConversationalEventHandler
+Mud.Feishu.AI.Tools.Events.BitableRecordChangedConversationalEventHandler.BitableRecordChangedConversationalEventHandler(Mud.Feishu.AI.Agents.FeishuAgent! agent, Mud.Feishu.Abstractions.Services.IFeishuEventDeduplicator! businessDeduplicator, Mud.Feishu.IFeishuTenantV1Message? messageClient, Microsoft.Extensions.Logging.ILogger? logger = null, System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Events.IContextAssembler!>? contextAssemblers = null, Mud.Feishu.AI.Tools.IFeishuToolContextAccessor? toolContextAccessor = null, Mud.Feishu.AI.Channels.IMessageChannel? messageChannel = null, Mud.Feishu.Abstractions.Conversations.IConversationGate? conversationGate = null, Mud.Feishu.Abstractions.Services.IAppKeyAccessor? appKeyAccessor = null, Mud.Feishu.AI.Tools.IFeishuToolApprovalChannel? approvalChannel = null, Mud.Feishu.AI.Tools.IFeishuAppContextScopeFactory? appContextScopeFactory = null, Mud.Feishu.AI.Agents.IFeishuPendingApprovalStore? pendingApprovalStore = null) -> void
+Mud.Feishu.AI.Tools.Events.FeishuEventCatalog
+Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope
+Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.AppKey.get -> string?
+Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.AppKey.init -> void
+Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.Deconstruct(out string! EventKey, out string! PayloadJson, out string? AppKey, out string? EventId, out System.DateTimeOffset? ReceivedAt) -> void
+Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.Equals(Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope other) -> bool
+Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.EventId.get -> string?
+Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.EventId.init -> void
+Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.EventKey.get -> string!
+Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.EventKey.init -> void
+Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.FeishuEventEnvelope() -> void
+Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.FeishuEventEnvelope(string! EventKey, string! PayloadJson, string? AppKey = null, string? EventId = null, System.DateTimeOffset? ReceivedAt = null) -> void
+Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.PayloadJson.get -> string!
+Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.PayloadJson.init -> void
+Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.ReceivedAt.get -> System.DateTimeOffset?
+Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.ReceivedAt.init -> void
+Mud.Feishu.AI.Tools.Events.FeishuEventNdjsonBridge
+Mud.Feishu.AI.Tools.Events.FeishuEventNdjsonBridge.Dispose() -> void
+Mud.Feishu.AI.Tools.Events.FeishuEventNdjsonBridge.FeishuEventNdjsonBridge(System.IO.TextWriter? output = null, Mud.Feishu.AI.Tools.Events.IFeishuEventFileRouter? router = null, Microsoft.Extensions.Logging.ILogger? logger = null, bool ownsWriter = false) -> void
+Mud.Feishu.AI.Tools.Events.FeishuEventNdjsonBridge.WriteAsync(Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope envelope, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+Mud.Feishu.AI.Tools.Events.FeishuEventNdjsonBridge.WrittenCount.get -> long
+Mud.Feishu.AI.Tools.Events.IFeishuEventFileRouter
+Mud.Feishu.AI.Tools.Events.IFeishuEventFileRouter.RouteAsync(string! eventKey, string! line, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<bool>
+Mud.Feishu.AI.Tools.Events.IFeishuEventSink
+Mud.Feishu.AI.Tools.Events.IFeishuEventSink.WriteAsync(Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope envelope, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+Mud.Feishu.AI.Tools.Events.RegexEventFileRouter
+Mud.Feishu.AI.Tools.Events.RegexEventFileRouter.RegexEventFileRouter(string! baseDirectory, params (string! Pattern, string! Directory)[]! routes) -> void
+Mud.Feishu.AI.Tools.Events.RegexEventFileRouter.RouteAsync(string! eventKey, string! line, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<bool>
+override Mud.Feishu.AI.Tools.Events.BitableRecordChangedConversationalEventHandler.SupportedEventType.get -> string!
+override Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.GetHashCode() -> int
+static Mud.Feishu.AI.Tools.Events.FeishuEventCatalog.ListEventKeys() -> System.Collections.Generic.IReadOnlyList<string!>!
+static Mud.Feishu.AI.Tools.Events.FeishuEventCatalog.ListEventKeysAsNdjson() -> System.Collections.Generic.IEnumerable<string!>!
+static Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.operator !=(Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope left, Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope right) -> bool
+static Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope.operator ==(Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope left, Mud.Feishu.AI.Tools.Events.FeishuEventEnvelope right) -> bool
+static Mud.Feishu.AI.Tools.Events.FeishuEventNdjsonBridge.AllowConcurrentWithConversational(string! reason) -> void
+static Mud.Feishu.AI.Tools.Events.FeishuEventNdjsonBridge.EnsureNotConversational(int conversationalHandlerCount) -> void

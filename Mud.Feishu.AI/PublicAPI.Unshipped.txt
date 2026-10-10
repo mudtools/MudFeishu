@@ -173,9 +173,7 @@ Mud.Feishu.AI.Knowledge.KnowledgeContextAssembler.KnowledgeContextAssembler(Mud.
 Mud.Feishu.AI.Knowledge.KnowledgeContextAssembler.Order.get -> int
 Mud.Feishu.AI.Knowledge.RetrievedChunk
 Mud.Feishu.AI.Knowledge.RetrievedChunk.<Clone>$() -> Mud.Feishu.AI.Knowledge.RetrievedChunk!
-Mud.Feishu.AI.Knowledge.RetrievedChunk.Deconstruct(out string! Text, out string? Source, out double? Score) -> void
 Mud.Feishu.AI.Knowledge.RetrievedChunk.Equals(Mud.Feishu.AI.Knowledge.RetrievedChunk? other) -> bool
-Mud.Feishu.AI.Knowledge.RetrievedChunk.RetrievedChunk(string! Text, string? Source = null, double? Score = null) -> void
 Mud.Feishu.AI.Knowledge.RetrievedChunk.Score.get -> double?
 Mud.Feishu.AI.Knowledge.RetrievedChunk.Score.init -> void
 Mud.Feishu.AI.Knowledge.RetrievedChunk.Source.get -> string?
@@ -610,9 +608,6 @@ Mud.Feishu.AI.Agents.ToolRetryOptions.MaxAttempts.set -> void
 Mud.Feishu.AI.Agents.ToolRetryOptions.MaxDelayMilliseconds.get -> int
 Mud.Feishu.AI.Agents.ToolRetryOptions.MaxDelayMilliseconds.set -> void
 Mud.Feishu.AI.Agents.ToolRetryOptions.ToolRetryOptions() -> void
-Mud.Feishu.AI.Conversations.ConversationRequest.ConversationRequest(string! AppKey, Mud.Feishu.Abstractions.Conversations.ConversationScope Scope, string! SubjectId, string! SenderId, string! MessageId, string? MentionedText, string? ChatId = null, string? ParentId = null, string? ThreadId = null, string? EventKey = null, System.Collections.Generic.IReadOnlyDictionary<string!, string?>? EventFacts = null) -> void
-Mud.Feishu.AI.Conversations.ConversationRequest.Deconstruct(out string! AppKey, out Mud.Feishu.Abstractions.Conversations.ConversationScope Scope, out string! SubjectId, out string! SenderId, out string! MessageId, out string? MentionedText, out string? ChatId, out string? ParentId, out string? ThreadId, out string? EventKey, out System.Collections.Generic.IReadOnlyDictionary<string!, string?>? EventFacts) -> void
-Mud.Feishu.AI.Conversations.ConversationRequest.EventFacts.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string?>?
 Mud.Feishu.AI.Conversations.ConversationRequest.EventFacts.init -> void
 Mud.Feishu.AI.Conversations.ConversationRequest.EventKey.get -> string?
 Mud.Feishu.AI.Conversations.ConversationRequest.EventKey.init -> void
@@ -634,3 +629,112 @@ static Mud.Feishu.AI.Agents.PendingApprovalSnapshot.operator !=(Mud.Feishu.AI.Ag
 static Mud.Feishu.AI.Agents.PendingApprovalSnapshot.operator ==(Mud.Feishu.AI.Agents.PendingApprovalSnapshot? left, Mud.Feishu.AI.Agents.PendingApprovalSnapshot? right) -> bool
 static Mud.Feishu.AI.Tools.FeishuToolResult.FromError(Mud.Feishu.AI.Tools.ToolError! error, string! humanReadableText) -> Mud.Feishu.AI.Tools.FeishuToolResult!
 static readonly Mud.Feishu.AI.Agents.PendingApprovalSnapshot.DefaultTtl -> System.TimeSpan
+~override Mud.Feishu.AI.Events.FeishuEventFact.Equals(object obj) -> bool
+~override Mud.Feishu.AI.Events.FeishuEventFact.ToString() -> string
+~override Mud.Feishu.AI.Knowledge.CorpusDocument.Equals(object obj) -> bool
+~override Mud.Feishu.AI.Knowledge.CorpusDocument.ToString() -> string
+const Mud.Feishu.AI.Events.BitableRecordContextAssembler.ActionPrefix = "action." -> string!
+const Mud.Feishu.AI.Events.BitableRecordContextAssembler.DefaultOrder = 200 -> int
+const Mud.Feishu.AI.Events.BitableRecordContextAssembler.DiffPrefix = "diff." -> string!
+const Mud.Feishu.AI.Events.BitableRecordContextAssembler.EmptyValueToken = "(空)" -> string!
+const Mud.Feishu.AI.Events.BitableRecordContextAssembler.FileTokenKey = "file_token" -> string!
+const Mud.Feishu.AI.Events.BitableRecordContextAssembler.OperatorKey = "operator" -> string!
+const Mud.Feishu.AI.Events.BitableRecordContextAssembler.RevisionKey = "revision" -> string!
+const Mud.Feishu.AI.Events.BitableRecordContextAssembler.TableIdKey = "table_id" -> string!
+const Mud.Feishu.AI.Events.FeishuEventKeys.ApprovalTask = "approval_task" -> string!
+const Mud.Feishu.AI.Events.FeishuEventKeys.BitableRecordChanged = "bitable_record_changed" -> string!
+const Mud.Feishu.AI.Knowledge.VectorRetriever.DefaultTopK = 5 -> int
+Mud.Feishu.AI.Conversations.ConversationRequest.ConversationRequest(string! AppKey, Mud.Feishu.Abstractions.Conversations.ConversationScope Scope, string! SubjectId, string! SenderId, string! MessageId, string? MentionedText, string? ChatId = null, string? ParentId = null, string? ThreadId = null, string? EventKey = null, System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Events.FeishuEventFact>? EventFacts = null) -> void
+Mud.Feishu.AI.Conversations.ConversationRequest.Deconstruct(out string! AppKey, out Mud.Feishu.Abstractions.Conversations.ConversationScope Scope, out string! SubjectId, out string! SenderId, out string! MessageId, out string? MentionedText, out string? ChatId, out string? ParentId, out string? ThreadId, out string? EventKey, out System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Events.FeishuEventFact>? EventFacts) -> void
+Mud.Feishu.AI.Conversations.ConversationRequest.EventFacts.get -> System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Events.FeishuEventFact>?
+Mud.Feishu.AI.Events.BitableRecordContextAssembler
+Mud.Feishu.AI.Events.BitableRecordContextAssembler.AssembleAsync(Mud.Feishu.AI.Conversations.ConversationRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
+Mud.Feishu.AI.Events.BitableRecordContextAssembler.BitableRecordContextAssembler() -> void
+Mud.Feishu.AI.Events.BitableRecordContextAssembler.Order.get -> int
+Mud.Feishu.AI.Events.FeishuEventFact
+Mud.Feishu.AI.Events.FeishuEventFact.Deconstruct(out string! Key, out string? Value) -> void
+Mud.Feishu.AI.Events.FeishuEventFact.Equals(Mud.Feishu.AI.Events.FeishuEventFact other) -> bool
+Mud.Feishu.AI.Events.FeishuEventFact.FeishuEventFact() -> void
+Mud.Feishu.AI.Events.FeishuEventFact.FeishuEventFact(string! Key, string? Value) -> void
+Mud.Feishu.AI.Events.FeishuEventFact.Key.get -> string!
+Mud.Feishu.AI.Events.FeishuEventFact.Key.init -> void
+Mud.Feishu.AI.Events.FeishuEventFact.Value.get -> string?
+Mud.Feishu.AI.Events.FeishuEventFact.Value.init -> void
+Mud.Feishu.AI.Events.FeishuEventKeys
+Mud.Feishu.AI.Knowledge.ChunkingOptions
+Mud.Feishu.AI.Knowledge.ChunkingOptions.ChunkingOptions() -> void
+Mud.Feishu.AI.Knowledge.ChunkingOptions.MaxChunkLength.get -> int
+Mud.Feishu.AI.Knowledge.ChunkingOptions.MaxChunkLength.set -> void
+Mud.Feishu.AI.Knowledge.ChunkingOptions.MaxTokens.get -> int
+Mud.Feishu.AI.Knowledge.ChunkingOptions.MaxTokens.set -> void
+Mud.Feishu.AI.Knowledge.ChunkingOptions.MinChunkLength.get -> int
+Mud.Feishu.AI.Knowledge.ChunkingOptions.MinChunkLength.set -> void
+Mud.Feishu.AI.Knowledge.ChunkingOptions.OverlapLength.get -> int
+Mud.Feishu.AI.Knowledge.ChunkingOptions.OverlapLength.set -> void
+Mud.Feishu.AI.Knowledge.ChunkingOptions.Validate() -> void
+Mud.Feishu.AI.Knowledge.CorpusChunk
+Mud.Feishu.AI.Knowledge.CorpusChunk.<Clone>$() -> Mud.Feishu.AI.Knowledge.CorpusChunk!
+Mud.Feishu.AI.Knowledge.CorpusChunk.CorpusChunk(string! SourceToken, string! Text, string? TitlePath = null, string? Url = null, string? ScopeKey = null, int Index = 0) -> void
+Mud.Feishu.AI.Knowledge.CorpusChunk.Deconstruct(out string! SourceToken, out string! Text, out string? TitlePath, out string? Url, out string? ScopeKey, out int Index) -> void
+Mud.Feishu.AI.Knowledge.CorpusChunk.Equals(Mud.Feishu.AI.Knowledge.CorpusChunk? other) -> bool
+Mud.Feishu.AI.Knowledge.CorpusChunk.Index.get -> int
+Mud.Feishu.AI.Knowledge.CorpusChunk.Index.init -> void
+Mud.Feishu.AI.Knowledge.CorpusChunk.ScopeKey.get -> string?
+Mud.Feishu.AI.Knowledge.CorpusChunk.ScopeKey.init -> void
+Mud.Feishu.AI.Knowledge.CorpusChunk.SourceToken.get -> string!
+Mud.Feishu.AI.Knowledge.CorpusChunk.SourceToken.init -> void
+Mud.Feishu.AI.Knowledge.CorpusChunk.Text.get -> string!
+Mud.Feishu.AI.Knowledge.CorpusChunk.Text.init -> void
+Mud.Feishu.AI.Knowledge.CorpusChunk.TitlePath.get -> string?
+Mud.Feishu.AI.Knowledge.CorpusChunk.TitlePath.init -> void
+Mud.Feishu.AI.Knowledge.CorpusChunk.Url.get -> string?
+Mud.Feishu.AI.Knowledge.CorpusChunk.Url.init -> void
+Mud.Feishu.AI.Knowledge.CorpusDocument
+Mud.Feishu.AI.Knowledge.CorpusDocument.CorpusDocument() -> void
+Mud.Feishu.AI.Knowledge.CorpusDocument.CorpusDocument(string! SourceToken, string! Text, string? Title = null, string? Url = null, string? ScopeKey = null) -> void
+Mud.Feishu.AI.Knowledge.CorpusDocument.Deconstruct(out string! SourceToken, out string! Text, out string? Title, out string? Url, out string? ScopeKey) -> void
+Mud.Feishu.AI.Knowledge.CorpusDocument.Equals(Mud.Feishu.AI.Knowledge.CorpusDocument other) -> bool
+Mud.Feishu.AI.Knowledge.CorpusDocument.ScopeKey.get -> string?
+Mud.Feishu.AI.Knowledge.CorpusDocument.ScopeKey.init -> void
+Mud.Feishu.AI.Knowledge.CorpusDocument.SourceToken.get -> string!
+Mud.Feishu.AI.Knowledge.CorpusDocument.SourceToken.init -> void
+Mud.Feishu.AI.Knowledge.CorpusDocument.Text.get -> string!
+Mud.Feishu.AI.Knowledge.CorpusDocument.Text.init -> void
+Mud.Feishu.AI.Knowledge.CorpusDocument.Title.get -> string?
+Mud.Feishu.AI.Knowledge.CorpusDocument.Title.init -> void
+Mud.Feishu.AI.Knowledge.CorpusDocument.Url.get -> string?
+Mud.Feishu.AI.Knowledge.CorpusDocument.Url.init -> void
+Mud.Feishu.AI.Knowledge.CorpusIndexer
+Mud.Feishu.AI.Knowledge.CorpusIndexer.CorpusIndexer(Mud.Feishu.AI.Knowledge.ICorpusSource! source, Mud.Feishu.AI.Knowledge.IVectorStore! store, Mud.Feishu.AI.Knowledge.ChunkingOptions? options = null) -> void
+Mud.Feishu.AI.Knowledge.CorpusIndexer.IndexAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+Mud.Feishu.AI.Knowledge.DocumentChunker
+Mud.Feishu.AI.Knowledge.FeishuVectorKnowledgeExtensions
+Mud.Feishu.AI.Knowledge.ICorpusSource
+Mud.Feishu.AI.Knowledge.ICorpusSource.PullAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Knowledge.CorpusDocument>!>!
+Mud.Feishu.AI.Knowledge.IVectorStore
+Mud.Feishu.AI.Knowledge.IVectorStore.QueryAsync(string! query, int topK, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Knowledge.RetrievedChunk!>!>!
+Mud.Feishu.AI.Knowledge.IVectorStore.UpsertAsync(System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Knowledge.CorpusChunk!>! chunks, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Mud.Feishu.AI.Knowledge.RetrievedChunk.Deconstruct(out string! Text, out string? Source, out double? Score, out string? TitlePath) -> void
+Mud.Feishu.AI.Knowledge.RetrievedChunk.RetrievedChunk(string! Text, string? Source = null, double? Score = null, string? TitlePath = null) -> void
+Mud.Feishu.AI.Knowledge.RetrievedChunk.TitlePath.get -> string?
+Mud.Feishu.AI.Knowledge.RetrievedChunk.TitlePath.init -> void
+Mud.Feishu.AI.Knowledge.TokenEstimator
+Mud.Feishu.AI.Knowledge.VectorRetriever
+Mud.Feishu.AI.Knowledge.VectorRetriever.RetrieveAsync(string! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Knowledge.RetrievedChunk!>!>!
+Mud.Feishu.AI.Knowledge.VectorRetriever.VectorRetriever(Mud.Feishu.AI.Knowledge.IVectorStore! store, int topK = 5, int maxChunkLength = 500, int maxTotalLength = 3000) -> void
+Mud.Feishu.AI.Tools.ToolSchemaDialect.Skills = 2 -> Mud.Feishu.AI.Tools.ToolSchemaDialect
+override Mud.Feishu.AI.Events.FeishuEventFact.GetHashCode() -> int
+override Mud.Feishu.AI.Knowledge.CorpusChunk.Equals(object? obj) -> bool
+override Mud.Feishu.AI.Knowledge.CorpusChunk.GetHashCode() -> int
+override Mud.Feishu.AI.Knowledge.CorpusChunk.ToString() -> string!
+override Mud.Feishu.AI.Knowledge.CorpusDocument.GetHashCode() -> int
+static Mud.Feishu.AI.Events.FeishuEventFact.operator !=(Mud.Feishu.AI.Events.FeishuEventFact left, Mud.Feishu.AI.Events.FeishuEventFact right) -> bool
+static Mud.Feishu.AI.Events.FeishuEventFact.operator ==(Mud.Feishu.AI.Events.FeishuEventFact left, Mud.Feishu.AI.Events.FeishuEventFact right) -> bool
+static Mud.Feishu.AI.Knowledge.CorpusChunk.operator !=(Mud.Feishu.AI.Knowledge.CorpusChunk? left, Mud.Feishu.AI.Knowledge.CorpusChunk? right) -> bool
+static Mud.Feishu.AI.Knowledge.CorpusChunk.operator ==(Mud.Feishu.AI.Knowledge.CorpusChunk? left, Mud.Feishu.AI.Knowledge.CorpusChunk? right) -> bool
+static Mud.Feishu.AI.Knowledge.CorpusDocument.operator !=(Mud.Feishu.AI.Knowledge.CorpusDocument left, Mud.Feishu.AI.Knowledge.CorpusDocument right) -> bool
+static Mud.Feishu.AI.Knowledge.CorpusDocument.operator ==(Mud.Feishu.AI.Knowledge.CorpusDocument left, Mud.Feishu.AI.Knowledge.CorpusDocument right) -> bool
+static Mud.Feishu.AI.Knowledge.DocumentChunker.Chunk(Mud.Feishu.AI.Knowledge.CorpusDocument document, Mud.Feishu.AI.Knowledge.ChunkingOptions? options = null) -> System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Knowledge.CorpusChunk!>!
+static Mud.Feishu.AI.Knowledge.FeishuVectorKnowledgeExtensions.AddFeishuCorpusIndexing(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Mud.Feishu.AI.Knowledge.ICorpusSource! source) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Mud.Feishu.AI.Knowledge.FeishuVectorKnowledgeExtensions.AddFeishuVectorKnowledge(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Mud.Feishu.AI.Knowledge.IVectorStore! store, System.Action<Mud.Feishu.AI.Knowledge.ChunkingOptions!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Mud.Feishu.AI.Knowledge.TokenEstimator.Estimate(string? value) -> int

@@ -1,5 +1,54 @@
 # Mud.Feishu 更新日志
 
+## [Unreleased] - R7 Batch-7：Bitable 事件上下文 + RAG-B 自建检索 + Skills 导出 + NDJSON 事件外桥（2026-10-10）
+
+> 方案与落地核验见 `.docs/MudFeishu-AI工具面功能完善方案-六域补齐与Agent可用性硬伤及遗留任务-R7.md` §10.8。
+> **AI 模块尚未发布，无兼容负担**；工具面**工具数不变（163）**，本批新增的是宿主契约、装配器与生态产物。
+
+### ✨ 新增
+
+- **多维表格记录变更 → 会话链路（R7 / C2 补齐）**：核实结论是**官方 SDK 事件侧本就完整**
+  （`BitableRecordChangedResult` + `FeishuEventTypes.BitableRecordChanged` + 源生成 JSON 上下文 + 生成的
+  处理器基类），真实缺口在 AI 侧没有生产者。补齐：`BitableRecordContextAssembler`（Order=200，
+  **仅变化字段**前后 diff + untrusted 标注 + 逐行预算扣减）与
+  `BitableRecordChangedConversationalEventHandler`（**覆写 `SupportedEventType` 精确路由**；单聊投递给操作人；
+  缺消息客户端/缺操作人 ⇒ 模型调用前短路；幂等键 `feishu.agent.bitable_record:{EventId}`）。
+- **事件事实载体改为有序列表**：`ConversationRequest.EventFacts` 由 `Dictionary` 改为
+  `IReadOnlyList<FeishuEventFact>`（新增 `FeishuEventFact` 与 `FeishuEventKeys` 单一源）——
+  `Dictionary` 枚举顺序在契约上未定义，会让同一事件两次装配产出不同 prompt。
+- **RAG-B 自建检索（R7 / C5）**：`ICorpusSource` / `IVectorStore`（宿主契约）、`DocumentChunker`
+  （标题层级 → 空行块边界 → 定长窗口含重叠；回链三件套 + `ScopeKey` 逐块携带）、`TokenEstimator`
+  （可解释近似，不引入分词器依赖）、`VectorRetriever`（`IRetriever` 第二实现，空查询不触达向量库）、
+  `CorpusIndexer`（拉取→切片→写入，空语料不写库）、DI 入口 `AddFeishuVectorKnowledge` /
+  `AddFeishuCorpusIndexing`。与 RAG-A（Aily）**并存**（`TryAddSingleton`，先注册者生效）。
+- **`ToolSchemaDialect.Skills`（R7 / C6a）**：把 `Guidance/` 资产 + 工具面导出为
+  `skills/feishu-{domain}/SKILL.md` + `references/*.md`（**35 个文件已入库**，仓外 Agent 可直接加载）。
+  数据源全为编译期常量（零反射零 IO），guidance 正文**原样嵌入**（唯一真相源不加工）；
+  `Export` 返回**清单 JSON**（返回契约是 `string`，而 Skills 是目录树）。
+  **随 NuGet 包分发**（`PackagePath="skills\"`）⇒ 只装包的用户也能拿到技能包；打包路径由守卫钉住
+  （`PackagePath` 少写末尾反斜杠会让 NuGet 与递归目录叠加成 `skills/x/x/SKILL.md`，写成拍平形式则 21 个域的
+  同名 `SKILL.md` 互相覆盖）。
+- **NDJSON 事件外桥（R7 / C7）**：`FeishuEventNdjsonBridge`（payload **原始文本原样嵌入**、非法载荷
+  fail-fast、写入串行化）+ `RegexEventFileRouter`（每（目录 × 事件键）一个稳定文件、追加写）+ 互斥闸门
+  `EnsureNotConversational` / `AllowConcurrentWithConversational` + `FeishuEventCatalog`（事件键清单）。
+
+### 🐞 修复
+
+- **多 TFM 编译破口（本轮新增代码触发，已修）**：`File.AppendAllLinesAsync`、`string.Replace(a,b,StringComparison)`、
+  `IReadOnlySet<T>`、`ArgumentNullException.ThrowIfNull`、`KeyValuePair` 解构在 **netstandard2.0** 目标上不可用。
+- **AOT 破口**：`JsonArray.Add<T>(T)` 标注了 `RequiresDynamicCode/RequiresUnreferencedCode`，且泛型重载会被
+  C# 优先选中 ⇒ 严格模式直接 **IL2026 + IL3050**；必须显式转 `JsonNode` 走非泛型重载。
+- **新增守卫钉住的既有异常**：`FeishuEventTypes` 中 `ChatUpdated` 与 `GroupUpdated` 指向**同一事件键**
+  （历史别名）——已登记白名单，并锁"事件键 ↔ 常量名一对一"，新增别名必须先合并。
+
+### 🔒 契约/守卫
+
+- 新增用例 **67 条**：Bitable 装配器 12 + Bitable 事件处理器 7（含"变化字段进 prompt / 未变字段不进"端到端）、
+  RAG-B 34（切片边界/标题层级/重叠/预算/确定性/token 估算 + 检索裁剪 + 索引编排 + 装配互斥）、
+  Skills 导出守卫 8、NDJSON 外桥 17；SDK 侧新增 bitable 载荷反序列化用例 1。
+- 测试基线：`AI.Tools.Tests` 730 → **762**，`AI.Tests` 311 → **357**，`Abstractions.Tests` 794 → **795**，
+  `Agent.Demo.Tests` 114 全绿；Release 全 TFM 构建 0 错误、AOT 严格模式 `IL2026/IL3050/AOT00x = 0`。
+
 ## [Unreleased] - R7 批次：AI 文本工具 + HITL 待确认快照 + 事件上下文装配 + 二进制出入向契约（2026-10-10）
 
 > 方案与落地核验见 `.docs/MudFeishu-AI工具面功能完善方案-六域补齐与Agent可用性硬伤及遗留任务-R7.md` §10.7。

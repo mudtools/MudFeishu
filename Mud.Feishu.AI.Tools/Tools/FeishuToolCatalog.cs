@@ -100,21 +100,29 @@ public sealed class FeishuToolCatalog : IToolCatalog
 
 /// <summary>
 /// 工具 Schema 导出实现（AI-FD-D12 P1D-4）：数据源 = 编译期 <see cref="FeishuToolSchemas"/> 常量，
-/// 零反射零成本；首版方言 <see cref="ToolSchemaDialect.OpenAiFunctions"/>。
+/// 零反射零成本；方言 = <see cref="ToolSchemaDialect.OpenAiFunctions"/>（OpenAI tools 数组）与
+/// <see cref="ToolSchemaDialect.Skills"/>（R7 / C6a：<c>SKILL.md</c> 产物清单）。
 /// </summary>
 public sealed class FeishuToolSchemaExporter : IToolSchemaExporter
 {
     /// <inheritdoc />
     public string Export(ToolSchemaDialect dialect)
     {
-        if (dialect != ToolSchemaDialect.OpenAiFunctions)
+        // R3-19 复核：fail-fast 有意为之——非法方言不得降级为"空列表"（静默产出空 Schema 会让
+        // 消费方以为"该方言下无工具"）。既有用例 FeishuToolCatalogTests.Export_ShouldRejectUnsupportedDialect
+        // 已断言本异常，非缺陷。
+        return dialect switch
         {
-            // R3-19 复核：fail-fast 有意为之——非法方言不得降级为"空列表"（静默产出空 Schema 会让
-            // 消费方以为"该方言下无工具"）。既有用例 FeishuToolCatalogTests.Export_ShouldRejectUnsupportedDialect
-            // 已断言本异常，非缺陷。
-            throw new ArgumentOutOfRangeException(nameof(dialect), $"暂不支持的导出方言: {dialect}（Skills/Aily/MCP 归 Phase 4）");
-        }
+            ToolSchemaDialect.OpenAiFunctions => ExportOpenAiFunctions(),
+            ToolSchemaDialect.Skills => FeishuSkillDocumentBuilder.BuildManifestJson(),
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(dialect),
+                $"暂不支持的导出方言: {dialect}（Aily/MCP 归后续批次；未实现方言不得降级为空产物）"),
+        };
+    }
 
+    private static string ExportOpenAiFunctions()
+    {
         var array = new JsonArray();
         foreach (var pair in FeishuToolSchemas.SchemaByToolName.OrderBy(static p => p.Key, StringComparer.Ordinal))
         {

@@ -57,5 +57,14 @@ WP3 后，HITL 的批准状态所有权**单一化**到宿主授权器——SDK 
   `RunApprovalContinuationAsync(..., pendingApprovalStore: store)` 启用幂等消费（同一 `RequestId` 只生效一次，
   过期项自动放弃、迟到批准丢弃）。快照**不含任何凭据**（由用例反射断言）。
 - `IContextAssembler` / `ContextBudgets`（R7 / C2）：事件上下文的装配位与**预算单一源**；
-  `ApprovalContextAssembler`（Order = 200）把审批事件载荷转成结构化片段（带 untrusted 标注、超预算截断）。
+  `ApprovalContextAssembler`（审批任务事件）与 `BitableRecordContextAssembler`（多维表格记录变更事件，
+  Order = 200）把事件载荷转成结构化片段（带 untrusted 标注、超预算截断、缺字段降级为空片段）。
   宿主把装配器传给事件处理器的 `contextAssemblers` 参数即启用（不传则行为与既有完全一致）。
+- `FeishuEventFact` / `FeishuEventKeys`（R7 / C2）：事件 → 装配器的**有序**事实载体（`Dictionary` 枚举顺序
+  在契约上未定义 ⇒ 用它会让同一事件两次装配产出不同 prompt）。
+- RAG-B 自建检索（R7 / C5）：`ICorpusSource` / `IVectorStore`（**宿主契约**）、`DocumentChunker`
+  （结构优先切片：标题层级 → 空行块边界 → 定长窗口含重叠）、`TokenEstimator`（可解释的 token 近似）、
+  `VectorRetriever`（`IRetriever` 的第二实现）、`CorpusIndexer`（拉取→切片→写入），
+  DI 入口 `AddFeishuVectorKnowledge` / `AddFeishuCorpusIndexing`。向量库与嵌入由宿主提供（SDK 不引入依赖），
+  `CorpusChunk.ScopeKey` 必须由实现方按它隔离（跨租户召回即数据泄露）。与 RAG-A（Aily）**并存**：两个检索面
+  都用 `TryAddSingleton`，先注册者生效。

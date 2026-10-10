@@ -10,6 +10,7 @@ using System.Text.Json;
 using FluentAssertions;
 using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.DataModels;
+using Mud.Feishu.EventCallback.Bitable;
 using Mud.Feishu.EventCallback.Drive;
 using Mud.Feishu.EventCallback.Extensions;
 using Mud.Feishu.EventCallback.IM;
@@ -77,6 +78,60 @@ public class FeishuEventCallbackJsonResolverExtensionsTests
         result.UserList!.Length.Should().Be(1);
         result.UserList[0].UserId.Should().Be("u1");
         result.UserList[0].OpenId.Should().Be("ou1");
+    }
+
+    /// <summary>
+    /// R7：多维表格记录变更事件（<c>drive.file.bitable_record_changed_v1</c>）载荷必须能经
+    /// resolver 链完整反序列化——<b>这是 C2 事件上下文装配的上游依赖</b>：
+    /// 载荷一旦反序列化不出来，AI 侧的 <c>BitableRecordChangedConversationalEventHandler</c>
+    /// 只会看到空 DTO（表现为"事件到了但什么都不说"），而这条链路此前<b>没有任何用例</b>。
+    /// </summary>
+    [Fact]
+    public void ConfigureEventCallbackResolver_ShouldEnableBitableRecordChangedDeserialization()
+    {
+        // Arrange：官方载荷形态（含 before/after 字段值，均为 JSON 序列化后的字符串）
+        FeishuEventCallbackJsonResolverExtensions.ConfigureEventCallbackResolver();
+        var json = """
+        {
+          "file_type": "bitable",
+          "file_token": "bascnTbl123",
+          "table_id": "tblABC",
+          "revision": 12,
+          "operator_id": { "open_id": "ou_op", "union_id": "on_op", "user_id": "u_op" },
+          "action_list": [
+            {
+              "record_id": "rec1",
+              "action": "record_edited",
+              "before_value": [ { "field_id": "fldA", "field_value": "\"旧\"" } ],
+              "after_value": [ { "field_id": "fldA", "field_value": "\"新\"" } ]
+            }
+          ],
+          "subscriber_id_list": [ { "open_id": "ou_sub" } ],
+          "update_time": 1759990000
+        }
+        """;
+
+        // Act
+        var result = JsonSerializer.Deserialize<BitableRecordChangedResult>(
+            json, FeishuJsonDefaults.DeserializerOptions);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.FileType.Should().Be("bitable");
+        result.FileToken.Should().Be("bascnTbl123");
+        result.TableId.Should().Be("tblABC");
+        result.Revision.Should().Be(12);
+        result.OperatorId.Should().NotBeNull();
+        result.OperatorId!.OpenId.Should().Be("ou_op", "操作人是事件投递目标（无 chat_id 的行级事件）");
+        result.ActionList.Should().NotBeNull();
+        result.ActionList!.Length.Should().Be(1);
+        result.ActionList[0].RecordId.Should().Be("rec1");
+        result.ActionList[0].Action.Should().Be("record_edited");
+        result.ActionList[0].BeforeValue![0].FieldId.Should().Be("fldA");
+        result.ActionList[0].BeforeValue![0].FieldValue.Should().Be("\"旧\"", "字段值是 JSON 序列化后的字符串（不二次解析）");
+        result.ActionList[0].AfterValue![0].FieldValue.Should().Be("\"新\"");
+        result.SubscriberIdList!.Length.Should().Be(1);
+        result.UpdateTime.Should().Be(1759990000);
     }
 
     [Fact]

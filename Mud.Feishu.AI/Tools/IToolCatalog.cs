@@ -56,11 +56,30 @@ public interface IToolCatalog
     ToolCatalogEntry? Find(string toolName);
 }
 
-/// <summary>Schema 导出方言（AI-FD-D12 P1D-4：首版仅 OpenAI-compatible；Skills/Aily/MCP 归 Phase 4，接口位预留）。</summary>
+/// <summary>
+/// Schema 导出方言：首版仅 OpenAI-compatible；R7 / C6a 起新增 <see cref="Skills"/>
+/// （对标官方 Agent Skills 的 <c>SKILL.md</c> 产物）；Aily/MCP 归后续批次。
+/// </summary>
 public enum ToolSchemaDialect
 {
     /// <summary>OpenAI-compatible <c>tools</c> JSON 数组（chat completions 请求体可直接使用）。</summary>
     OpenAiFunctions = 1,
+
+    /// <summary>
+    /// Skills 产物清单（JSON）：<c>{"dialect":"skills","files":[{"path":…,"content":…}]}</c>。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么清单是 JSON 而不是"一个路径"</b>：<see cref="IToolSchemaExporter"/> 的返回契约是
+    /// <see cref="string"/>（PublicAPI 已锁定），而 Skills 是<b>目录树</b>。清单让"导出结果"保持可序列化、
+    /// 可逐字节比对（守卫），落盘则由宿主 / 脚本 / 测试完成。
+    /// </para>
+    /// <para>
+    /// 产物形态：<c>skills/feishu-{domain}/SKILL.md</c>（guidance L1 正文 + 命令清单）+
+    /// <c>skills/feishu-{domain}/references/{topic}.md</c>（guidance L2 资产原样落地）。
+    /// </para>
+    /// </remarks>
+    Skills = 2,
 }
 
 /// <summary>

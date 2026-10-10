@@ -354,6 +354,74 @@ public interface IFeishuBinaryArtifactSource // 入向：宿主实现
 
 ---
 
+### 7.3 Skills 产物导出（R7 / C6a · 生态位）
+
+仓外 Agent（Claude Code / Cursor / 自建 harness）**接不进本仓进程**，只能读文件。为此提供第二个导出方言：
+
+```csharp
+IToolSchemaExporter.Export(ToolSchemaDialect.Skills);
+// => {"dialect":"skills","files":[{"path":"skills/feishu-im/SKILL.md","content":"…"}, …]}
+```
+
+- **产物形态**（已入库，可用 `npx skills add` 之类的机制直接加载）：
+  `skills/feishu-{domain}/SKILL.md`（frontmatter `name/description/version` + **L1 guidance 原样嵌入** +
+  命令清单〔工具名 + 只读/写 + Schema 描述〕+ references 索引）与
+  `skills/feishu-{domain}/references/{topic}.md`（**L2 资产逐字落地**）。
+- **为什么是清单 JSON 而不是"一个路径"**：`IToolSchemaExporter.Export` 的返回契约是 `string`
+  （PublicAPI 已锁定），而 Skills 是**目录树**。清单让导出结果可序列化、可逐字节比对（守卫），
+  落盘由宿主 / 脚本 / 测试完成——**库不做文件 IO** 是既有纪律。
+- **数据源全是编译期常量**（`FeishuToolGuidance.ByDomain` / `References` / `FeishuToolSchemas` /
+  `FeishuToolNames`）⇒ 零反射、零 IO、确定性（同输入必然同产物）。
+- **guidance 是唯一真相源**：导出层**原样嵌入**正文，不做摘要/改写——加工一次就多一份真相源。
+- **守卫**（`SkillsExportContractTests`）：产物树**逐字节**一致（陈旧文件也会被逮住）、工具清单与
+  `FeishuToolNames.All` **双向**一致（只查单向会漏掉"新增工具没更新产物"）、references 逐字一致、
+  frontmatter 形态、确定性、**打包路径存在**。重固化：`FeishuSkillsUpdate=true` 后重跑该测试类。
+- **随包分发**：`skills/` 在仓库根（对标官方布局的默认扫描路径），并由 csproj 的
+  `<None Include="..\skills\**\*" Pack="true" PackagePath="skills\" />` **打进 NuGet 包** ⇒
+  只装包的用户也能拿到技能包（库本身不做文件 IO，这一行是"生态位"落到用户手里的唯一通道）。
+  ⚠️ `PackagePath` 末尾的**反斜杠不能省**：省掉（或写成 `skills\%(RecursiveDir)`）会让 NuGet 与递归目录
+  叠加成 `skills/feishu-ai/feishu-ai/SKILL.md`；反过来写成 `skills\%(Filename)%(Extension)` 则会把 21 个域的
+  同名 `SKILL.md` 拍平覆盖。两种坏法都由 `Package_ShouldShipSkillsTree` 守卫挡下。
+
+### 7.4 事件外桥：NDJSON（R7 / C7 · 生态位）
+
+事件此前只能进**本进程内模型**；外桥把同一条事件以 NDJSON 交给仓外任意进程：
+
+```csharp
+var bridge = new FeishuEventNdjsonBridge(
+    output: Console.Out,
+    router: new RegexEventFileRouter("./events", ("^im\\.", "im"), ("^approval\\.", "approval")));
+
+await bridge.WriteAsync(new FeishuEventEnvelope(
+    eventKey: "im.message.receive_v1",
+    payloadJson: rawJson,      // ← 传输层原始文本，原样嵌入
+    appKey: appKey, eventId: eventId));
+```
+
+- **一行一事件**：`{"event_key":…,"app_key":…,"event_id":…,"received_at":…,"payload":{…}}`。
+  `payload` **原样嵌入**（不再序列化）——避免字段丢失、AOT 反射序列化破口，以及"本仓 JSON 上下文
+  成了外桥的格式瓶颈"。
+- **非法载荷 fail-fast**：外桥丢事件是最难发现的故障（表现为"某个订阅一直没数据"），宁可接入时就崩。
+- **互斥闸门**：同一事件既进模型又外桥 = 双重副作用。`EnsureNotConversational(注册数)` 会显式抛错，
+  确认事件面互斥后用 `AllowConcurrentWithConversational("IM 进模型、审批外桥")` 放行（必须给理由）。
+- **路由落盘**：每（目录 × 事件键）一个稳定 `.ndjson`、**追加**写（可 tail）；未命中不落盘也不建空目录。
+- **事件目录自省**：`FeishuEventCatalog.ListEventKeys()` 给出全部事件键（反射 `FeishuEventTypes` 常量，
+  唯一真相源），供配置路由正则时对齐命名。**偏差登记**：只提供事件键，不提供"载荷 schema 摘要"
+  ——载荷↔事件键的映射只存在于源生成阶段，运行期要么手抄（会漂移）要么反射实例化（更糟）。
+
+### 7.5 多维表格记录变更 → 会话（R7 / C2 配套）
+
+`BitableRecordChangedConversationalEventHandler` 把 `drive.file.bitable_record_changed_v1`
+变成"模型可用的上下文 + 单聊回复"：
+
+- **精确路由**：覆写 `SupportedEventType`（记录变更是高频事件，其它事件不进本处理器）；
+- **只登记变化字段**：`EventFacts` 里逐字段给 `diff`（前后值），未变字段不进 prompt；
+- **单聊投递给操作人**（行级事件无 `chat_id`）；缺消息客户端 / 解析不出操作人 ⇒ **模型调用前短路**；
+- **高频提醒**：宿主不注册即完全不生效；注册即"每条订阅表变更跑一轮模型"——请据此收窄平台订阅面；
+- 配套装配器 `BitableRecordContextAssembler`（Order = 200）在 `Mud.Feishu.AI` 包内。
+
+---
+
 ## 8. 编译期契约出口与域 guidance（R4/WP2/WP6）
 
 生成器在**同一 pass** 发射（都只进本程序集）：

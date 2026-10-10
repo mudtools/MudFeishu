@@ -148,6 +148,12 @@ public sealed class KnowledgeContextAssembler : IContextAssembler
                 builder.Append("source=").Append(adopted[i].Source).Append(' ');
             }
 
+            // RAG-B：标题层级路径同样属于回链信息（有 Source 的 URL 往往很长，模型据此定位到"哪一节"更实用）。
+            if (!string.IsNullOrWhiteSpace(adopted[i].TitlePath))
+            {
+                builder.Append("title=").Append(adopted[i].TitlePath).Append(' ');
+            }
+
             builder.AppendLine(text);
         }
 

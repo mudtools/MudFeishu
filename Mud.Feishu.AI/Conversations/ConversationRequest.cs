@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.Feishu.AI.Events;
+
 namespace Mud.Feishu.AI.Conversations;
 
 /// <summary>
@@ -45,8 +47,8 @@ public sealed record ConversationRequest(
 
     // R7 / C2（T3-5）：事件维度。上下文装配器只拿到本记录（见 IContextAssembler），
     // 故"把事件载荷转成结构化 prompt 片段"必须先有载体的接缝：
-    // EventKey = 事件类型键（如 approval_task / task_updated），EventFacts = 已归一化的事实键值对。
+    // EventKey = 事件族判别键（取值单一源：FeishuEventKeys），EventFacts = **有序**事实列表。
     // 追加为**末尾可选参数** ⇒ 既有调用点全部源码兼容；未填充时相关装配器返回空片段（降级为既有行为）。
     // ⚠️ EventFacts 的值可能含用户内容 ⇒ 消费方（装配器）必须带 untrusted 标注（ContextBudgets.UntrustedHeader）。
     string? EventKey = null,
-    IReadOnlyDictionary<string, string?>? EventFacts = null);
+    IReadOnlyList<FeishuEventFact>? EventFacts = null);

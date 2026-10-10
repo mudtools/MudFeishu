@@ -103,20 +103,20 @@ public sealed class ApprovalTaskConversationalEventHandler(
     /// "当前节点""待办人""表单要点"不在 <see cref="ApprovalTaskResult"/> 载荷里
     /// （需另调 <c>approval.get_instance</c>）——<b>不臆造</b>这些键（模型会以为事件自带）。
     /// </remarks>
-    private static Dictionary<string, string?> BuildApprovalFacts(ApprovalTaskResult eventData)
+    private static List<FeishuEventFact> BuildApprovalFacts(ApprovalTaskResult eventData)
     {
-        var facts = new Dictionary<string, string?>(StringComparer.Ordinal)
+        var facts = new List<FeishuEventFact>(capacity: 5)
         {
-            ["instance_code"] = eventData.InstanceCode,
-            ["task_id"] = eventData.TaskId,
-            ["status"] = eventData.Status,
-            ["approval_code"] = eventData.ApprovalCode,
+            new("instance_code", eventData.InstanceCode),
+            new("task_id", eventData.TaskId),
+            new("status", eventData.Status),
+            new("approval_code", eventData.ApprovalCode),
         };
 
         var operatorId = !string.IsNullOrEmpty(eventData.OpenId) ? eventData.OpenId : eventData.UserId;
         if (!string.IsNullOrEmpty(operatorId))
         {
-            facts["operator"] = operatorId;
+            facts.Add(new FeishuEventFact("operator", operatorId));
         }
 
         return facts;

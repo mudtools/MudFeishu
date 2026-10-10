@@ -13,7 +13,15 @@ namespace Mud.Feishu.AI.Knowledge;
 /// <param name="Text">切片文本（召回内容）。</param>
 /// <param name="Source">来源标识（Aily 数据知识 ID / 文档标题等，可空；RAG-B 为 wiki 回链 URL）。</param>
 /// <param name="Score">相关性得分（可空；Aily 托管问答不返回得分）。</param>
-public sealed record RetrievedChunk(string Text, string? Source = null, double? Score = null);
+/// <param name="TitlePath">
+/// RAG-B 标题层级路径（可空，如 <c>手册 / 部署 / 环境变量</c>）。
+/// 追加为<b>末尾可选参数</b> ⇒ 既有调用点（RAG-A Aily、既有检索实现）源码兼容。
+/// </param>
+public sealed record RetrievedChunk(
+    string Text,
+    string? Source = null,
+    double? Score = null,
+    string? TitlePath = null);
 
 /// <summary>
 /// 知识问答结果：答案文本 + 召回切片（供「带引用的回答」注入 Prompt 与回传 sources）。

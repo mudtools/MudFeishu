@@ -28,7 +28,7 @@ public class ApprovalContextAssemblerTests
 {
     private static ConversationRequest Request(
         string? eventKey = ApprovalContextAssembler.ApprovalEventKey,
-        IReadOnlyDictionary<string, string?>? facts = null)
+        IReadOnlyList<FeishuEventFact>? facts = null)
         => new(
             AppKey: "cli_app_a",
             Scope: ConversationScope.P2P(),
@@ -39,14 +39,14 @@ public class ApprovalContextAssemblerTests
             EventKey: eventKey,
             EventFacts: facts);
 
-    private static Dictionary<string, string?> Facts() => new(StringComparer.Ordinal)
-    {
-        ["instance_code"] = "inst-1",
-        ["task_id"] = "task-1",
-        ["status"] = "PENDING",
-        ["approval_code"] = "approval-x",
-        ["operator"] = "ou_operator",
-    };
+    private static List<FeishuEventFact> Facts() =>
+    [
+        new("instance_code", "inst-1"),
+        new("task_id", "task-1"),
+        new("status", "PENDING"),
+        new("approval_code", "approval-x"),
+        new("operator", "ou_operator"),
+    ];
 
     [Fact]
     public async Task Assemble_Should_IncludeFactsAndUntrustedHeader()
@@ -79,13 +79,12 @@ public class ApprovalContextAssemblerTests
         var assembler = new ApprovalContextAssembler();
 
         (await assembler.AssembleAsync(Request(facts: null))).Should().BeNull();
-        (await assembler.AssembleAsync(Request(facts: new Dictionary<string, string?>(StringComparer.Ordinal))))
-            .Should().BeNull();
+        (await assembler.AssembleAsync(Request(facts: []))).Should().BeNull();
 
-        var blankOnly = new Dictionary<string, string?>(StringComparer.Ordinal)
+        var blankOnly = new List<FeishuEventFact>
         {
-            ["instance_code"] = null,
-            ["task_id"] = " ",
+            new("instance_code", null),
+            new("task_id", " "),
         };
         (await assembler.AssembleAsync(Request(facts: blankOnly))).Should().BeNull(
             "全部字段为空时等价于无载荷——不得注入一个只有标题的片段");
@@ -96,9 +95,9 @@ public class ApprovalContextAssemblerTests
     public async Task Assemble_Should_TruncateLongFieldValue_WithMarker()
     {
         var assembler = new ApprovalContextAssembler();
-        var facts = new Dictionary<string, string?>(StringComparer.Ordinal)
+        var facts = new List<FeishuEventFact>
         {
-            ["form_summary"] = new string('x', ContextBudgets.ApprovalFieldPreviewLength * 3),
+            new("form_summary", new string('x', ContextBudgets.ApprovalFieldPreviewLength * 3)),
         };
 
         var fragment = await assembler.AssembleAsync(Request(facts: facts));
@@ -115,10 +114,10 @@ public class ApprovalContextAssemblerTests
     public async Task Assemble_Should_BoundFactCount_AndTotalLength()
     {
         var assembler = new ApprovalContextAssembler();
-        var facts = new Dictionary<string, string?>(StringComparer.Ordinal);
+        var facts = new List<FeishuEventFact>();
         for (var i = 0; i < ContextBudgets.MaxFactsPerAssembler * 3; i++)
         {
-            facts[$"field_{i}"] = new string('y', 120);
+            facts.Add(new FeishuEventFact($"field_{i}", new string('y', 120)));
         }
 
         var fragment = await assembler.AssembleAsync(Request(facts: facts));

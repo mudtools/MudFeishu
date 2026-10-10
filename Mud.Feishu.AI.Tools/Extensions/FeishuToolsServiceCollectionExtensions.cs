@@ -135,6 +135,25 @@ public static class FeishuToolsServiceCollectionExtensions
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure).AddFeishuSecurityAuditLogToolsCore();
 
+    /// <summary>
+    /// 按域注册 org 组织元数据工具（2 个只读：<c>org.list_job_titles</c> / <c>org.get_job_title</c>，F-1 第三个补域）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**：
+    /// 少任何一处都会让 org 工具在对应入口下静默缺席（S-13 同款失败形态）。
+    /// </para>
+    /// <para>
+    /// 补齐"通讯录返回的 <c>job_title</c> 职务 ID → 可读名称"缺口（与 <c>mdm.get_countries</c> 同类）。
+    /// <b>非 PII</b>（职务是组织元数据），复用通讯录用户只读权限 <c>contact:user.base:readonly</c>；
+    /// 需已启用 <c>IFeishuTenantV3JobTitle</c>（缺席时本域工具软缺席）。
+    /// </para>
+    /// </remarks>
+    public static IServiceCollection AddFeishuOrgJobTitleTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure).AddFeishuOrgJobTitleToolsCore();
+
     /// <summary>按域注册 AI 文本面工具（2 个只读：ai.translate_text / ai.detect_language，R7/C3）。</summary>
     /// <remarks>
     /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**：
@@ -372,6 +391,11 @@ public static class FeishuToolsServiceCollectionExtensions
                     // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，
                     // 漏加即「工具静默不入注册表」（ToolDomainCoresWiringContractTests 会报红）。
                     .AddFeishuSecurityAuditLogToolsCore()
+
+                    // F-1 第三个补域：org 组织元数据执行器 OrgJobTitleTools（2 个只读，非 PII）。
+                    // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，
+                    // 漏加即「工具静默不入注册表」（ToolDomainCoresWiringContractTests 会报红）。
+                    .AddFeishuOrgJobTitleToolsCore()
 
                     // R7 / A4：Board 画板域执行器 BoardTools（6 个工具：2 只读 + 4 写）。
                     // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，

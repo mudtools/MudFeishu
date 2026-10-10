@@ -91,6 +91,9 @@ public class DomainRegistrarTests
 
             // F-1 P0：Security 行为审计日志（PII，默认不启用；等价性只关心注册面）。
             FeishuToolNames.SecurityQueryAuditLogs,
+
+            // F-1：org 组织元数据（职务目录，独立只读域）。
+            FeishuToolNames.OrgListJobTitles, FeishuToolNames.OrgGetJobTitle,
         };
 
         var mockClients = new Action<IServiceCollection>(services =>
@@ -127,6 +130,8 @@ public class DomainRegistrarTests
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3MDMCountryRegion>().Object);
             // F-1 P0：Security 审计日志客户端（同上，白名单里已列 security.query_audit_logs）。
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1SecurityAuditLog>().Object);
+            // F-1：org 职务客户端（同上，白名单里已列 org.list_job_titles / org.get_job_title）。
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3JobTitle>().Object);
         });
 
         using var singleEntryProvider = new ServiceCollection()
@@ -167,6 +172,8 @@ public class DomainRegistrarTests
             .AddFeishuMdmCountryRegionTools()
             // F-1 P0：Security 行为审计日志（独立只读域，同上）。
             .AddFeishuSecurityAuditLogTools()
+            // F-1：org 组织元数据（职务目录，独立只读域，同上）。
+            .AddFeishuOrgJobTitleTools()
             // R6 / S3：VideoConferencing 只读域同理（写面含 user 身份工具，由 AddFeishuWriteTools 覆盖）。
             .AddFeishuVcTools()
             // 能力出处元工具是一个独立入口：它不属于任何业务域，

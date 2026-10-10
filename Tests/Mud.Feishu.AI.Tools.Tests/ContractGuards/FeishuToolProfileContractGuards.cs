@@ -438,8 +438,8 @@ public class FeishuToolProfileContractGuards
         literalCount.Should().Be(0,
             "仍有 Source 魔法字符串字面量——SDK 接口改名时它们不会随 IDE 重命名联动（R-1 的收益目标）");
 
-        nameofCount.Should().Be(159,
-            "Source 声明数必须恒为 159（新增/删除 Source 时同步本基线——不得改成下限断言，那会让覆盖缩水静默通过）");
+        nameofCount.Should().Be(161,
+            "Source 声明数必须恒为 161（新增/删除 Source 时同步本基线——不得改成下限断言，那会让覆盖缩水静默通过）");
     }
 
     // ────────── 读取与定位 ──────────

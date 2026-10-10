@@ -59,6 +59,83 @@ public class ToolErrorContractGuards
     }
 
     /// <summary>
+    /// 守卫 ②b（PM 裁定 DP-R7-4）：<c>ToolErrorSubtype</c> 的每个常量都必须有<b>产出点或用途</b>。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么要机械断言</b>：错误子类是对宿主的承诺（"你可以按 subtype 分支"）。
+    /// 一个声明了却从不产出的子类，等于承诺了一条走不通的分支：宿主写了 <c>if</c> 却永远不进，
+    /// 而文档表格里它看起来"已实现"。实测（2026-10-10）发现两处幽灵子类
+    /// （<c>missing_scope</c> / <c>sanitizer_rejected</c>），已按裁定删除。
+    /// </para>
+    /// <para>
+    /// <b>口径（刻意宽松）</b>：常量被引用一次即算"有用途"——既可以是 <c>Subtype</c> 实参，
+    /// 也可以是策略拒绝的<b>文案前缀</b>（如 <c>$"{Token}: …"</c>）。目的是拦住"完全没人用"的常量，
+    /// 而不是限制使用形态。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void ToolErrorSubtype_Constants_ShouldAllHaveProducers()
+    {
+        var root = FindRepositoryRoot();
+
+        var sources = new[] { "Mud.Feishu.AI.Tools", "Mud.Feishu.AI" }
+            .Select(relative => Path.Combine(root, relative))
+            .Where(Directory.Exists)
+            .SelectMany(directory => Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
+            .Select(File.ReadAllText)
+            .ToArray();
+
+        sources.Should().NotBeEmpty("扫描面不得为空（否则本守卫恒绿）");
+
+        var constantNames = typeof(ToolErrorSubtype)
+            .GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+            .Select(static field => field.Name)
+            .ToArray();
+        constantNames.Should().NotBeEmpty("ToolErrorSubtype 必须有常量定义（空集会让本守卫恒绿）");
+
+        var ghosts = FindGhostSubtypes(constantNames, string.Join('\n', sources));
+
+        ghosts.Should().BeEmpty(
+            "以下错误子类常量全仓无引用（幽灵子类）——它们对宿主是「承诺了却永远走不到」的分支。"
+            + "修法：接线到真实产出点，或删除（新增需评审 + 本守卫覆盖）：{0}",
+            string.Join(" | ", ghosts));
+    }
+
+    /// <summary>守卫 ②b 的自证：判据必须真的能报出"无人引用"的常量（否则本条是假门禁）。</summary>
+    [Fact]
+    public void GhostSubtypeDetection_ShouldReportUnreferencedConstant()
+    {
+        var ghosts = FindGhostSubtypes(
+            ["UsedSubtype", "GhostSubtype"],
+            "var x = ToolErrorSubtype.UsedSubtype; var y = ToolErrorSubtype.GhostSubtypeX;");
+
+        ghosts.Should().ContainSingle().Which.Should().Be(
+            "GhostSubtype",
+            "判据必须精确匹配（GhostSubtypeX 不得让 GhostSubtype 被误判为已引用）");
+    }
+
+    /// <summary>幽灵子类判据（纯函数，便于自证）：返回在给定源码里找不到引用的常量名。</summary>
+    private static IReadOnlyList<string> FindGhostSubtypes(
+        IEnumerable<string> constantNames,
+        string combinedSource)
+        => [.. constantNames.Where(name => !System.Text.RegularExpressions.Regex.IsMatch(
+            combinedSource,
+            $@"ToolErrorSubtype\.{System.Text.RegularExpressions.Regex.Escape(name)}\b"))];
+
+    private static string FindRepositoryRoot()
+    {
+        var directory = AppContext.BaseDirectory;
+        while (!string.IsNullOrEmpty(directory) && !File.Exists(Path.Combine(directory, "Mud.Feishu.slnx")))
+        {
+            directory = Path.GetDirectoryName(directory);
+        }
+
+        directory.Should().NotBeNullOrEmpty("测试必须能定位仓库根目录（以 Mud.Feishu.slnx 为锚）");
+        return directory!;
+    }
+
+    /// <summary>
     /// 守卫 ③：ToolErrorPayloadSerializer.Serialize 的输出必须是合法 JSON 首行。
     /// </summary>
     [Fact]
@@ -144,16 +221,5 @@ public class ToolErrorContractGuards
                 $"CategoryLiteral 必须为 {category} 返回非空字符串");
         }
     }
-
-    private static string FindRepositoryRoot()
-    {
-        var directory = AppContext.BaseDirectory;
-        while (!string.IsNullOrEmpty(directory) && !File.Exists(Path.Combine(directory, "Mud.Feishu.slnx")))
-        {
-            directory = Path.GetDirectoryName(directory);
-        }
-
-        directory.Should().NotBeNullOrEmpty("测试必须能定位仓库根目录（以 Mud.Feishu.slnx 为锚）");
-        return directory!;
-    }
 }
+

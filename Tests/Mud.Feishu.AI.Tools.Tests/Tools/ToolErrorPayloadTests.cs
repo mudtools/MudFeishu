@@ -206,7 +206,9 @@ public class ToolErrorPayloadTests
 
         // Authorization
         ToolErrorSubtype.AuthorizationDenied.Should().Be("authorization_denied");
-        ToolErrorSubtype.MissingScope.Should().Be("missing_scope");
+
+        // ⚠️ missing_scope 已按 PM 裁定 DP-R7-4 删除（无产出点 + 平台侧无可靠判据）。
+        //    本清单只列**真实产出**的子类：多一个幽灵子类 = 多一条走不通的宿主分支。
 
         // Confirmation
         ToolErrorSubtype.NeedsUserConfirmation.Should().Be("needs_user_confirmation");
@@ -221,7 +223,6 @@ public class ToolErrorPayloadTests
 
         // Internal
         ToolErrorSubtype.Unexpected.Should().Be("unexpected");
-        ToolErrorSubtype.SanitizerRejected.Should().Be("sanitizer_rejected");
 
         // ContentSafety
         ToolErrorSubtype.InjectedContentBlocked.Should().Be("injected_content_blocked");

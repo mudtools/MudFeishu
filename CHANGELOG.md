@@ -1,5 +1,49 @@
 # Mud.Feishu 更新日志
 
+## [Unreleased] - R7 收尾：PM 最终裁定（§8.5）+ 两个重叠契约清理 + 错误子类闭集诚实化（2026-10-10）
+
+> 决策记录见 `.docs/MudFeishu-AI工具面功能完善方案-六域补齐与Agent可用性硬伤及遗留任务-R7.md` §8.5。
+> **AI 模块尚未发布，无兼容负担**；工具面**工具数不变（163）**——本批是**契约清理 + 错误契约收敛**，不新增能力。
+
+### 🗑️ 移除
+
+- **`IFeishuBinaryArtifactSink` / `IFeishuBinaryArtifactSource`（R7 §3.B6 的两个"出入成对"宿主契约）**：
+  代码级调研结论是二者**零消费方且无可行路径**——出向（字节 → 宿主）已由既有 `IFeishuAttachmentStager`
+  覆盖（且"受控下载出口"的豁免**必须挣得**：非可空 stager 注入 + `DownloadedContentGuard.ShouldRejectForJsonErrorBody`），
+  入向的对手是"宿主手搓"而非真实缺口；且所有字节型工具还卡在**组件仓的 `output_schema` 表达能力**上
+  （字节型 Source 会推导出 `format=binary` 的 Schema，与实现自相矛盾 ⇒ 对模型是假事实）。
+  未发布窗口清理 ⇒ 零兼容成本；设计与依据留档于 §3.B6。守卫改判为 `ByteBearingSurfaceContractGuards`
+  （锁"参数侧不得出现承载字节的类型"，不再依赖被删类型）。
+- **`ToolErrorSubtype.MissingScope` / `SanitizerRejected`**（幽灵子类：声明但全仓无产出点）：
+  99991663/99991661 在三层被解释成三种不同语义（工具层=权限类 / WebSocket=机器人被禁用 / 令牌层=令牌错误），
+  据此认定"控制台未开通权限"属**猜测**，与"不得编造"的纪律冲突 ⇒ 删除；拿到实证样本后再新增。
+
+### 🐞 修复
+
+- **策略拒绝的原因前缀改用常量**：`FeishuToolBinding.EvaluatePolicy` 的 `risk_exceeded:` /
+  `identity_mismatch:` / `tool_not_allowed:` 由字面量改为引用 `ToolErrorSubtype.*`（消除"文案与闭集"双源漂移）。
+- **MCP 包仓库注释引用了不存在的守卫名**（`Mcp_ShouldNotReferenceSdkClientTypes` →
+  `Mcp_ShouldNotDependOnSdkClientTypes`）——注释里的假事实与代码里的假事实同样有害。
+
+### 🔒 契约/守卫
+
+- 新增守卫 **`ToolErrorSubtype_Constants_ShouldAllHaveProducers`**：每个错误子类常量必须至少有一个引用
+  （`Subtype` 实参或文案前缀皆可），否则报红——把"错误闭集不得有幽灵成员"从约定升级为机械约束；
+  含自证用例（判据用 `\b` 词边界，防 `GhostSubtypeX` 冒名顶替 `GhostSubtype`）。
+- 新增守卫 **`ToolParameters_ShouldNeverBeByteBearing`**（A10 参数侧）：工具契约面不得出现
+  `byte[]` / `Memory<byte>` / `Stream` 参数 + 判据自证。
+- 测试基线：`AI.Tools.Tests` 836 → **835**（删 5 例契约用例、增 2 例新守卫；net8.0 全绿）。
+
+### 📌 裁定（不改代码的部分）
+
+| 事项 | 裁定 |
+| --- | --- |
+| `board.download_image`（出向产物） | **维持不策展**；前置 = 组件仓补齐 `output_schema` 表达力，前置完成后与 `drive.download_file`（F-10）同批落地（通道 = stager 挣得豁免） |
+| 新 scope 控制台核对（10 项 ⚠️） | **发布硬门禁**：逐项核对并回写 `scope-authority.json`；不通过按平台真名修正，禁止别名兼容 |
+| C4b 卡片回灌 / C7 载荷 schema 摘要 / PII 单一真相源 | 确认既有裁定（延后 / 接受偏差 / 批准） |
+| MCP 包发布面 | 随 AI 三包同版本发布、默认不启用、不入核心依赖；**发布前**三包统一补 `PackageReadmeFile` + README |
+| 工具面扩张治理 | 新增工具三前置继续有效；新增"域"须证明 ≥2 个真实高频场景；任何情况下不得为过构建而放宽守卫 |
+
 ## [Unreleased] - R7 Batch-8：MCP server 可选包 + 妙记逐字稿分窗口修复 + 主线 A 链路用例补齐（2026-10-10）
 
 > 方案与落地核验见 `.docs/MudFeishu-AI工具面功能完善方案-六域补齐与Agent可用性硬伤及遗留任务-R7.md` §10.9。

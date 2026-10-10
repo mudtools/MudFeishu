@@ -860,19 +860,19 @@ public sealed class FeishuToolBinding
         if (!FeishuToolRiskNames.TryParse(_options.MaxToolRisk, out var maxRisk))
         {
             // 配置非法：fail-closed（Validate() 应在启动期拦住；此处是运行期最后一道）。
-            return $"tool_not_allowed: 宿主配置 {nameof(FeishuAgentOptions.MaxToolRisk)}='{_options.MaxToolRisk}' 非法，"
+            return $"{ToolErrorSubtype.ToolNotAllowed}: 宿主配置 {nameof(FeishuAgentOptions.MaxToolRisk)}='{_options.MaxToolRisk}' 非法，"
                 + $"合法值为 {FeishuToolRiskNames.AllowedValuesText}——按 fail-closed 拒绝";
         }
 
         if (tool.Risk > maxRisk)
         {
-            return $"risk_exceeded: 工具 '{tool.Name}' 的风险为 {FeishuToolRiskNames.ToLiteral(tool.Risk)}，"
+            return $"{ToolErrorSubtype.RiskExceeded}: 工具 '{tool.Name}' 的风险为 {FeishuToolRiskNames.ToLiteral(tool.Risk)}，"
                 + $"超过宿主配置上限 '{_options.MaxToolRisk}'";
         }
 
         if (!_allowedIdentities.Contains(tool.Identity))
         {
-            return $"identity_mismatch: 工具 '{tool.Name}' 的身份为 '{tool.Identity}'，"
+            return $"{ToolErrorSubtype.IdentityMismatch}: 工具 '{tool.Name}' 的身份为 '{tool.Identity}'，"
                 + $"不在宿主允许集合 [{string.Join(",", _options.AllowedIdentities)}] 内"
                 + $"（配置键 {FeishuAgentOptions.SectionName}:{nameof(FeishuAgentOptions.AllowedIdentities)}）";
         }

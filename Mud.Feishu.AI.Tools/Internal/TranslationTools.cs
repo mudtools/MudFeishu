@@ -26,7 +26,8 @@ namespace Mud.Feishu.AI.Tools.Internal;
 /// <para>
 /// <b>二进制防线（A10 / DP-C3-1）</b>：OCR（base64 图片）、文档识别（<c>[FormContent]</c> 本地文件）、
 /// STT（base64 音频）<b>不策展</b>——它们的入参在进程内库中无法由模型表达，
-/// 正确形态是宿主侧转换（见 <c>IFeishuBinaryArtifactSource</c>）。
+/// 正确形态是宿主侧转换（宿主把 URL/本地文件直接交给 SDK 的 <c>[FormContent]</c>/base64 参数，
+/// 再把得到的<b>文本</b>放进模型上下文；见 Guidance/ai.md）。
 /// </para>
 /// </remarks>
 internal sealed class TranslationTools(

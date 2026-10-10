@@ -105,7 +105,12 @@
 
 > **状态更新（2026-10-10，R7 收尾轮）**：下列 1~4 项**均已落地**，逐项证据见
 > `.docs/MudFeishu-AI工具面功能完善方案-六域补齐与Agent可用性硬伤及遗留任务-R7.md` §10.7 / §10.8 / §10.9。
-> 唯一仍待产品的决策是 `board.download_image` 是否解除"不策展"（出向二进制通道的首个消费工具）。
+> **`board.download_image` 的裁决（2026-10-10，PM 裁定 DP-R7-1）**：**维持不策展**。
+> 依据：出向工具的真正前置不是"缺契约"，而是**组件仓 `Mud.HttpUtils.Generator` 的 `output_schema` 表达能力**——
+> 字节型 Source 会推导出 `{"type":"string","format":"binary"}`，与该工具实际返回的"路径/大小/类型"自相矛盾
+> （对模型是假事实）。同批裁定的 DP-R7-2 已删除 R7 新增的两个二进制宿主契约
+> （`IFeishuBinaryArtifactSink` / `IFeishuBinaryArtifactSource`：零消费方 + 与 `IFeishuAttachmentStager` 重叠）。
+> 详见 R7 方案 **§8.5**。
 
 1. ~~**T3-5/T3-6 业务事件 + 多模态**~~ → **已完成**：`ApprovalContextAssembler` + `BitableRecordContextAssembler`（含生产者
    `BitableRecordChangedConversationalEventHandler`）；多模态按 PM 裁决（DP-C3-1）**缩为 2 条纯文本工具**

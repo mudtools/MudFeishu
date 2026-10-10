@@ -321,36 +321,31 @@ services.AddSingleton<IFeishuAttachmentStager>(sp => sp.GetRequiredService<DemoA
 **软缺席语义（宿主未实现 stager 时）**：`im.send_image` / `im.send_file` 不注册（模型看不到这两个工具），
 不报错、不静默失败——与"域客户端缺席 → 该域工具不注册"同一机制。
 
-### 7.2 二进制**出入成对**通道（R7 / §3.B6）
+### 7.2 二进制边界：**字节两侧都不进工具面**（R7 / §3.B6 + DP-R7-2 修订）
 
-工具面禁止二进制穿越（A10，机械守卫），但真实业务两个方向都需要宿主接缝。三者**方向不同、不可互相替代**
-（RV-4 要求显式区分）：
+工具面禁止二进制穿越（A10，机械守卫）。**本轮（DP-R7-2，2026-10-10）裁定的结论是：这条边界只需要一个
+宿主接缝** —— `IFeishuAttachmentStager`（既有、已被 `im.send_image`/`im.send_file` 与受控下载出口使用，
+且由守卫核验"豁免必须挣得"）：
 
-| 契约 | 方向 | 语义 | 未注册时 |
-| --- | --- | --- | --- |
-| `IFeishuAttachmentStager`（既有） | 入向（宿主 → SDK） | URL/字节 → **本地路径**，供**工具参数**（`im.send_image` 等）消费 | 依赖它的**工具不注册** |
-| `IFeishuBinaryArtifactSource`（R7 新增） | 入向（宿主 → SDK） | URL/字节 → `FileUploadRequest`（+ 清理钩子），供**宿主代码**调用 OCR / 文档识别 / STT 时使用 | **不影响任何工具注册**（按 DP-C3-1，这些能力不策展） |
-| `IFeishuBinaryArtifactSink`（R7 新增） | 出向（SDK → 宿主） | `byte[]` → **宿主侧句柄**（`StoredArtifact`：句柄 + 大小 + 类型，**零字节进 JSON**） | 依赖它的二进制工具**不注册**（今天尚无此类工具——见下） |
+| 方向 | 做法 | 约束 |
+| --- | --- | --- |
+| **入向**（模型要发文件/图片） | 模型只给 **URL**；宿主 `IFeishuAttachmentStager` 落盘 → SDK 上传 → 发送 | 未注册 stager ⇒ 相关工具**不注册**（软缺席）；模型给本地路径 ⇒ `invalid_args` |
+| **出向**（模型要拿产物：画板缩略图 / 文件下载 / 妙记附件） | **受控下载出口**：执行器取字节 → `DownloadedContentGuard.ShouldRejectForJsonErrorBody` 拦平台错误体 → stager 落盘 → 结果只回**路径 + 大小 + Content-Type**（`no-bytes-in-context`） | 豁免**必须挣得**：守卫核验"注入非可空 stager + 调用错误体防线"，光改描述无效（`BinaryDownloadToolExposureContractTests.FindUnearnedExemptions`） |
+| **宿主自用**（宿主自己调 OCR / 文档识别 / STT） | 宿主把 URL/本地文件直接交给 SDK 的 `[FormContent]`/base64 参数，再把**文本**结果放进模型上下文 | 不需要任何 SDK 侧契约 —— 这些能力**不策展**（DP-C3-1） |
 
-```csharp
-public interface IFeishuBinaryArtifactSink   // 出向：宿主实现
-{
-    Task<StoredArtifact?> StoreAsync(BinaryArtifact artifact, CancellationToken cancellationToken = default);
-}
-public interface IFeishuBinaryArtifactSource // 入向：宿主实现
-{
-    Task<ResolvedBinaryArtifact?> ResolveAsync(BinaryArtifactRequest request, CancellationToken cancellationToken = default);
-}
-```
+> **撤销记录（DP-R7-2）**：R7 曾新增两个"出入成对"契约（`IFeishuBinaryArtifactSink` 出向 /
+> `IFeishuBinaryArtifactSource` 入向）。本轮代码级调研发现二者**零消费方且无可行路径**：出向已由
+> stager 覆盖（受控出口已选定 stager，与 sink 职责重叠），入向的对手是"宿主手搓"而非真实缺口；
+> 且所有字节型工具还卡在下面这个**更根本**的前置上。因此**发布前删除两者**，设计与依据留存于
+> §3.B6 的撤销记录 —— 避免发布面出现"不可能被调用"的公开接口，也避免宿主面对三条路的选择困难。
 
-- **SDK 不提供默认实现**（落盘位置/上云目标/大小上限/MIME 白名单/域名白名单全是宿主策略）；
-  用例机械断言"默认未注册"（软缺席的前提：宿主不实现 ⇒ 相关能力不出现）。
-- **字节绝不进工具结果**：`StoredArtifact` 只有句柄，由用例反射断言"结果类型不含 `byte[]`/`Memory<byte>`/`Stream`"。
-- **当前消费者状态（诚实登记）**：`IFeishuBinaryArtifactSink` 暂无消费工具——策展 `board.download_image`
-  等二进制工具的前提是先有本契约，且需同批解除 `NonCuratedToolRegistryContractGuards` 中对应方法的登记；
-  `IFeishuBinaryArtifactSource` 的消费方是**宿主代码**（Agent 侧只拿到 OCR 的文本结果）。
-- **生命周期显式**：`ResolvedBinaryArtifact.Cleanup` 由**调用方**在 `finally` 中释放
-  （与 `StagedAttachment.Cleanup` 同款语义）。
+- **出向工具尚未落地的真实阻塞点（DP-R7-1）**：`output_schema` 由 **Source 方法的返回类型**推导，
+  而字节型方法的返回类型是 `Task<byte[]?>` ⇒ 生成的 Schema 会告诉模型"本工具返回二进制"，
+  与该工具实际返回的"路径/大小/类型"**互相矛盾（假事实）**；`[FeishuTool]` 目前没有 output_schema
+  覆盖能力。该能力（`OutputSchema` 覆盖，或对二进制 Source 跳过推导）落在**组件仓
+  `Mud.HttpUtils.Generator`**，是本仓 `drive.download_file` / `board.download_image` 等出向工具的**共同前置**。
+- **SDK 不提供落盘实现**：域名白名单（防 SSRF）、大小上限、扩展名/MIME 校验、落盘目录**全是宿主策略**。
+- **生命周期显式**：`StagedAttachment.Cleanup` 由调用方/执行链在 `finally` 中释放（成功与失败路径都清理）。
 
 ---
 

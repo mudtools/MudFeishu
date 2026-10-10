@@ -97,6 +97,25 @@ public static class FeishuToolsServiceCollectionExtensions
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure).AddFeishuMinutesReadToolsCore();
 
+    /// <summary>
+    /// 按域注册 MDM 国家/地区工具（1 个只读：<c>mdm.get_countries</c>，F-1 首个补域切片）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**：
+    /// 少任何一处都会让 mdm 工具在对应入口下静默缺席（S-13 同款失败形态）。
+    /// </para>
+    /// <para>
+    /// 需宿主已启用 MDM API（<c>IFeishuTenantV3MDMCountryRegion</c>）——缺席时本域工具软缺席。
+    /// 国家/地区属<b>公共参考数据</b>（非 PII），故不进 PII 登记。
+    /// 同域的用户数据维度绑定/解绑为写类，按写面纪律另立批次。
+    /// </para>
+    /// </remarks>
+    public static IServiceCollection AddFeishuMdmCountryRegionTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure).AddFeishuCountryRegionToolsCore();
+
     /// <summary>按域注册 AI 文本面工具（2 个只读：ai.translate_text / ai.detect_language，R7/C3）。</summary>
     /// <remarks>
     /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**：
@@ -324,6 +343,11 @@ public static class FeishuToolsServiceCollectionExtensions
                     // 但只有本清单会调用它。这张表是**人工维护**的，故已加守卫
                     // ToolDomainCores_ShouldAllBeWiredIntoTheAggregator 锁死"生成的 Core 必须被聚合"。
                     .AddFeishuMinutesReadToolsCore()
+
+                    // F-1 首个补域：MDM 国家/地区执行器 CountryRegionTools（1 个只读）。
+                    // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，
+                    // 漏加即「工具静默不入注册表」（ToolDomainCoresWiringContractTests 会报红）。
+                    .AddFeishuCountryRegionToolsCore()
 
                     // R7 / A4：Board 画板域执行器 BoardTools（6 个工具：2 只读 + 4 写）。
                     // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，

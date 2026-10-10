@@ -53,6 +53,7 @@
     "translation:text": "AI（机器翻译） · 只读调用（R7/C3 新增：ai.translate_text / ai.detect_language 使用；名称已对照官方《Translate text》/《Detect text》文档的「权限要求」栏核实为 translation:text）",
     "feishu:base": "元工具 · 只读（feishu.capability_lookup / feishu.guidance_read 使用）",
     "minutes:minutes:readonly": "妙记 · 只读（R5/F-11 新增：minutes.get / minutes.get_artifacts 使用）",
+    "mdm:country_region:read": "主数据 · 国家/地区只读（F-1 新增：mdm.get_countries 使用；公共参考数据，非 PII）",
     "wiki:wiki:readonly": "知识库 · 只读（wiki.get_node / list_nodes 使用）",
     "wiki:wiki": "知识库 · 读写（R5/F-11 新增：wiki.create_node / move_node / move_docs_to_space 使用）"
   },

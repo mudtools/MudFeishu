@@ -62,7 +62,7 @@ public class ToolScopeDeclarationContractTests
     [Fact]
     public void DeclaredScopeSet_ShouldMatchRegisteredBaseline()
     {
-        const int ExpectedScopeCount = 50; // 2026-10-10 实测（R7/C3：translation:text 新增 scope；R7/A4~A6：Board 2 + Attendance 3 + Spark 3）
+        const int ExpectedScopeCount = 51; // 2026-10-10 实测（F-1：mdm:country_region:read 新增）
 
         var declared = ReadDeclaredScopes();
         declared.Should().HaveCount(

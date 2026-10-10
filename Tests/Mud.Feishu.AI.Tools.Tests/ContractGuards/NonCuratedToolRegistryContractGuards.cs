@@ -44,6 +44,11 @@ public class NonCuratedToolRegistryContractGuards
         ("BatchUpdateTableRecordsAsync", "spark：约束反直觉（不同行字段须一致）且与 spark.update_table_records 重叠"),
         ("DownloadWhiteboardImageAsync", "board：画板缩略图（返回 byte[]）→ A10 二进制防线"),
         ("GetMinuteTranscriptAsync", "minutes：逐字稿原文（长文本 + 附件通道）——结论/待办已由 minutes.get_artifacts 覆盖"),
+
+        // F-1 首个补域（MDM）：只策展只读的国家/地区批量查询，其余方法显式登记为"有意不策展"。
+        ("BindUserAuthDataRelationAsync", "mdm：写类（用户数据维度绑定，涉及用户 ID）——写面需宿主显式授权，另立批次"),
+        ("UnbindUserAuthDataRelationAsync", "mdm：写类（解绑），同上"),
+        ("ListCountryRegionsAsync", "mdm：带 filter 表达式体的分页查询——首个切片只策展 mdm.get_countries，本方法留待下一片"),
     ];
 
     [Fact]
@@ -118,6 +123,9 @@ public class NonCuratedToolRegistryContractGuards
                      FeishuToolNames.SparkCreateApp,
                      FeishuToolNames.BoardGetTheme,
                      FeishuToolNames.AttendanceQueryMyFlow,
+
+                     // F-1：登记了"不策展方法"的域必须真的已策展（防伪登记）。
+                     FeishuToolNames.MdmGetCountries,
                  })
         {
             FeishuToolNames.All.Should().Contain(toolName,

@@ -470,11 +470,11 @@ internal sealed class MailTools(
                     + $"msg={nullDataResult.Msg ?? "(无错误信息)"}");
             }
 
-            return FeishuToolResult.FromText(ToolResultJson.ToText(new JsonObject
+            return ToolResultPipeline.OkReceipt(new JsonObject
             {
                 ["message_id"] = args.MessageId,
                 ["read"] = read,
-            }));
+            });
         });
     }
 

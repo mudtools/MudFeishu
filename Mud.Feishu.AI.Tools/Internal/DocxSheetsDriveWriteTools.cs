@@ -559,7 +559,7 @@ internal sealed class DocxWriteTools(
     /// 这类数组随文档规模膨胀。故手工路径也必须过同一道预算。
     /// </remarks>
     private FeishuToolResult FromEnvelope(JsonObject envelope)
-        => FeishuToolResult.FromText(ToolResultText.TruncateJson(ToolResultJson.ToText(envelope), _maxResultLength));
+        => ToolResultPipeline.OkJson(envelope, _maxResultLength);
 
     /// <summary>
     /// 统计某父块下的子块总数（翻页累加）。
@@ -618,14 +618,14 @@ internal sealed class DocxWriteTools(
     /// 是让失败可恢复的最低成本手段。
     /// </remarks>
     private static FeishuToolResult Untouched(string toolName, string step, string? errorText)
-        => FeishuToolResult.FromText(ToolResultJson.ToText(new JsonObject
+        => ToolResultPipeline.OkReceipt(new JsonObject
         {
             ["partial_failure"] = true,
             ["step"] = step,
             ["tool"] = toolName,
             ["message"] =
                 $"{step}失败：{errorText}。文档**未被修改**（旧内容完整、新内容未写入），可安全重试。",
-        }));
+        });
 
     /// <summary>校验删除区间；返回待删条数。<b>非法区间必须提前拒绝</b>（否则平台会按意外区间删除）。</summary>
     private static int ValidateRange(int startIndex, int endIndex)

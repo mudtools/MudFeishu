@@ -1,5 +1,79 @@
 # Mud.Feishu 更新日志
 
+## [Unreleased] - AI 工具面架构重构 R1（阶段 0/1/1B/2）：出站唯一出口 + 删除 api_call + 风险词表单源 + 模块边界归位（2026-10-10）
+
+> 方案与多维评审见 `.docs/AI/MudFeishu-AI-Tools-架构审查与重构方案-R1.md`（§13 评审结论、§14 落地核验）。
+> **AI 模块尚未发布，无兼容负担**；工具面 **163 → 162**（删除 `feishu.api_call`）。
+
+### 💥 破坏性变更
+
+- **删除万能兜底通道 `feishu.api_call`（R-12）**：删执行器 `Internal/GenericApiTools.cs`（384 行）、
+  Curation 声明 `IFeishuTenantApiCallTool`、写链注册行、5 个 `[ToolCall]` 测试用例。
+  删除理由（代码级复核）：① 与策展工具构成**双轨调用路径**（同一能力两条路径，投影/幂等/风险语义不同）；
+  ② 它是全工具面**风险最高的面**（任意已登记方法的 HTTP 动态调度）；③ **零外部消费**（Demos 未启用，仅测试覆盖）。
+  未策展能力的模型侧语义从「可兜底」收敛为「如实告知用户」。
+  **连带清理**（同批，否则模型会照指引臆造调用）：`Guidance/feishu.md`（重写五节，删 `api_call` 四条边界）、
+  `Guidance/spark/publish.md`、`feishu.schema_read` 的 `Description` 与 note 文案、
+  `documents/AIAgent/工具权限对照表.md`（删行）、`Readme.md`（§1 表 / §4 L3 层表 / 数字 163→162）、
+  golden 重固化 + `sync-publicapi.ps1` + `skills/` 重生成。
+- **`feishu.schema_read` 的语义收窄**：不再指向任何调用通道（原文案"再用 feishu.api_call 发起调用"已删）；
+  `curated=false` 现在明确表达「本工具集没有调用它的通道」。
+
+### 🐛 修复
+
+- **B-1（P1）出站截断对模型完全不可见**：8 处手拼信封在把**已截断**文本回填模型时
+  `FeishuToolResult.Truncated` 恒为 `false`、`TruncationReason` 恒为 `null`——模型把不完整 JSON
+  当完整事实（假事实），且 `tag_truncated` 恒 false 使监控对截断率失明。
+  涉及 `SchemaReadTools` / `CapabilityLookupTools`（×2）/ `ToolSearchTools` / `KnowledgeSearchTools` /
+  `DocxSheetsDriveWriteTools`（`FromEnvelope`）。**根因是守卫盲区**：原
+  `TruncationVisibilityContractGuards` 只扫 `ToolExecutor.cs` 单文件，这 8 个"绕过助手"的执行器不在视野内。
+- **B-1 二类**：12 处写工具回执信封**完全无预算意识**（`Board` / `DocxSheetsDriveWrite` / `Mail` /
+  `MessageAndApproval` / `Spark` / `DriveCollab`），且同一文件内 `FromEnvelope`（截断留痕）与
+  `Untouched`（不截断）态度自相矛盾。
+- **B-3/B-6**：`PaginationContractGuards` 文案指向生产零调用的 `ToolPagination.AggregateAsync`；
+  该"仅测试使用的适配包装"已删除，测试直连唯一翻页实现 `AggregateOutcomesAsync`。
+- **截断判据修正**：`ToolExecutor.FromApi/FromPlainText` 原用「截断后长度 < 原文长度」判定，
+  而两个截断器都会**附加**标记文本（101 字符截到 100 再附约 80 字符提示 ⇒ 判据为假）——
+  新出口改用「是否超预算」判定（`maxLength > 0 && text.Length > maxLength`）。
+
+### ♻️ 重构
+
+- **R-1 出站出口唯一化**：新增 `Tools/ToolResultPipeline.cs`（无状态静态工厂 + 显式长度参数）
+  = `Ok` / `OkJson` / `OkReceipt` / `Error` / `FromErrorText`；20 处手拼信封全部改走它，
+  截断/标记成为**出口的性质**而非"记得写的一步"。⚠️ **净化仍留在 `FeishuToolBinding` 的
+  「模型可见」边界**（成功路径第 ⑥ 步 + `EgressResult`），不在 Pipeline 内——两条边界职责不同。
+- **B-2 错误载荷单一构造点**：新增 `ToolErrorFactory`，**4 处**同构拷贝（`ToolExecutor.FromStructuredError`、
+  `FeishuToolBinding.EgressResult`、catch 路径、`InvokeWithRetryAsync` 的 transient 载荷）归一；
+  `new ToolError(...)` 现只允许出现在工厂内（守卫机械拦截）。
+- **R-5 风险/身份字面量单源**：`FeishuToolRiskNames.ToLiteral(int)` 新增（目录的 risk 字段是 int），
+  删除 `SchemaReadTools` 的私有 `RiskLabel`（其与 `GenericApiTools` 的副本逐字重复，且与
+  词汇表构成第三份同源映射）；`FeishuToolBinding.IdentityUser` 改引 `FeishuToolIdentityNames.User`。
+- **R-6 模块边界归位**：`FeishuApiResultReader.cs` 拆出 `Tools/ToolArgs.cs`（入参读取）与
+  `Tools/ToolResultText.cs`（出站截断）。⚠️ 评审订正：原文称 `ToolResultText` 与 `ToolResultJson`
+  构成"循环协作"——**不成立**（依赖单向），本项只是归属与命名整理。
+
+### 🔒 契约/守卫
+
+- **Q-1 既有守卫扩面（先红后绿）**：`TruncationVisibilityContractGuards` 从"扫单文件"改为
+  **① 行为断言**（`ToolResultPipeline.Ok/OkJson` 超预算必须回填标记 + 边界回归 + 无预算语义）
+  **② 结构断言**（`Internal/` **全目录**不得出现「裸 `Truncate*` + `FromText`」或
+  「`FromText(ToolResultJson.ToText(...))`」，白名单为空）+ **③ 反向自证金丝雀**。
+- 新增 **`GuidanceToolReferenceContractGuards`**（R-12 防复发）：`Guidance/**/*.md` 里的
+  `feishu.{name}` 引用必须存在于 `FeishuToolNames.All`——"删了工具却留下指引"这一缺陷形态
+  在编译期与既有 44 个守卫里原本**没有任何信号**。
+- 新增 **`ToolError_ShouldBeConstructedOnlyAtTheSingleFactory`** + **`ToolErrorFactory_ShouldProduceTheFrozenPayloadShape`**
+  （Q-4 三处归一的等价性基线：字段语义漂移即红）。
+- 「出站唯一出口」的既有守卫同步上移判据（`ErrorRecoverabilityTests` 的序列化点判据从
+  `ToolExecutor.cs` → `ToolResultPipeline.cs`，否则会盯一个已不负责序列化的文件 = 假门禁）；
+  `ToolErrorContractGuards` 守卫 ⑤ 改为"执行器委派出口 + 出口自身序列化"；
+  `ToolArgumentShapeContractGuards` 白名单随 R-6 拆分同步（`ToolArgs.cs` / `ToolResultText.cs`）。
+
+### 📊 测试基线
+
+- `Tests/Mud.Feishu.AI.Tools.Tests`：**837 × 2 TFM 全绿**（新增 7 例：截断出口行为 5 +
+  `ToolErrorFactory` 冻结 1 + guidance 工具名引用自证 1）。
+- 相关工程：`Mud.Feishu.AI.Tests` 357、`Mud.Feishu.Agent.Demo.Tests` 114 全绿；`dotnet build Mud.Feishu.slnx` 0 错误。
+
 ## [Unreleased] - R7 收尾：PM 最终裁定（§8.5）+ 两个重叠契约清理 + 错误子类闭集诚实化（2026-10-10）
 
 > 决策记录见 `.docs/MudFeishu-AI工具面功能完善方案-六域补齐与Agent可用性硬伤及遗留任务-R7.md` §8.5。

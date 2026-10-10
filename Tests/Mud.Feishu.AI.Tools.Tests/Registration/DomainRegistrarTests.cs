@@ -157,7 +157,8 @@ public class DomainRegistrarTests
             // 能力出处元工具是一个独立入口：它不属于任何业务域，
             // 故"全域 = 逐域联合"的等价性要求这里也显式调一次。
             .AddFeishuCapabilityTools()
-            // R6/S5：运行时 schema 自省同属元工具独立入口（api_call 在 AddFeishuWriteTools 内）。
+            // R6/S5：运行时 schema 自省同属元工具独立入口。
+            // R-12：万能兜底 api_call 已整条删除，写链不再含任何兜底调用执行器。
             .AddFeishuSchemaReadTools()
             .AddFeishuWriteTools()
             .BuildServiceProvider();

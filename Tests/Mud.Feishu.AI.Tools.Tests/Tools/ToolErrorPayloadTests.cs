@@ -138,7 +138,7 @@ public class ToolErrorPayloadTests
             Subtype: "unexpected",
             Retryable: false,
             Trace: new string('x', 500),  // 远超 MaxPayloadBytes
-            Tool: "feishu.api_call");
+            Tool: "feishu.schema_read");
 
         var json = ToolErrorPayloadSerializer.Serialize(error);
 

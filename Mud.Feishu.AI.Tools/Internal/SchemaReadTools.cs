@@ -115,11 +115,12 @@ internal sealed class SchemaReadTools(IOptions<FeishuAgentOptions> options)
                 ["methods"] = array,
                 ["note"] = "每条方法含：interface/method/http/route/token_kind/module/path_params/query_params/body_type/risk/curated/curated_tool。"
                     + "curated=true 表示已有策展工具可直接调用（curated_tool 给出工具名）；"
-                    + "curated=false 表示未策展，可用 feishu.api_call 万能兜底调用。",
+                    + "curated=false 表示该方法未策展为工具，**本工具集没有调用它的通道**——"
+                    + "请如实告知用户该能力暂不可用（可建议宿主策展），不要臆造调用。",
             };
 
-            return Task.FromResult(FeishuToolResult.FromText(
-                ToolResultText.TruncateJson(ToolResultJson.ToText(envelope), _maxResultLength)));
+            // R-1：出站唯一出口（B-1 一类——此前 TruncateJson 的截断对模型不可见）。
+            return Task.FromResult(ToolResultPipeline.OkJson(envelope, _maxResultLength));
         });
     }
 
@@ -149,17 +150,11 @@ internal sealed class SchemaReadTools(IOptions<FeishuAgentOptions> options)
             ["path_params"] = pathParams,
             ["query_params"] = queryParams,
             ["body_type"] = entry.BodyType,
-            ["risk"] = RiskLabel(entry.Risk),
+            // R-5：风险词表单源（此前本类私有一份 RiskLabel，与 GenericApiTools 的另一份逐字重复，
+            // 并与 FeishuToolRiskNames.ToLiteral 构成三份同源映射）。
+            ["risk"] = FeishuToolRiskNames.ToLiteral(entry.Risk),
             ["curated"] = entry.Curated,
             ["curated_tool"] = entry.CuratedTool,
         };
     }
-
-    private static string RiskLabel(int risk) => risk switch
-    {
-        0 => "read",
-        1 => "write",
-        2 => "high-risk-write",
-        _ => $"unknown({risk})",
-    };
 }

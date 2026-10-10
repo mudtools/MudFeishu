@@ -180,7 +180,7 @@ public class ToolErrorContractGuards
             ApiCode: 99991663,
             Attempts: 99,
             Trace: new string('x', 64),  // 模拟较长的 trace
-            Tool: "feishu.api_call");
+            Tool: "feishu.schema_read");
 
         var json = ToolErrorPayloadSerializer.Serialize(error);
 
@@ -192,7 +192,15 @@ public class ToolErrorContractGuards
     /// 守卫 ⑤：ToolExecutor 的错误路径必须经过 FromStructuredError（源码结构断言）。
     /// </summary>
     /// <remarks>
+    /// <para>
     /// 金丝雀：注掉 <c>FromApiOutcomeError</c> 中的 <c>FromStructuredError</c> 调用即红。
+    /// </para>
+    /// <para>
+    /// <b>R-1 修订</b>：载荷序列化与 <c>FromError</c> 构造<b>已下沉到唯一出口</b>
+    /// （<c>ToolErrorFactory</c> / <c>ToolResultPipeline</c>），故本守卫的判据同步改为
+    /// "执行器骨架<b>委派</b>唯一出口 + 出口自身确实序列化"——原判据盯的是执行器骨架里的实现细节，
+    /// 收口后它会变成"要求重复实现"的反向约束。
+    /// </para>
     /// </remarks>
     [Fact]
     public void ToolExecutor_ErrorPaths_ShouldUseFromStructuredError()
@@ -201,11 +209,17 @@ public class ToolErrorContractGuards
             FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Internal", "ToolExecutor.cs"));
 
         source.Should().Contain("FromStructuredError(",
-            "ToolExecutor 的错误路径必须经过 FromStructuredError（唯一结构化载荷出口）");
-        source.Should().Contain("ToolErrorPayloadSerializer.Serialize(",
-            "ToolExecutor 必须调用 ToolErrorPayloadSerializer.Serialize 构造首行 JSON");
-        source.Should().Contain("FeishuToolResult.FromError(errorPayload,",
-            "ToolExecutor 必须通过 FeishuToolResult.FromError(ToolError, ...) 构造带结构化载荷的结果");
+            "ToolExecutor 的错误路径必须经过 FromStructuredError（工具名 + 分类文案的唯一入口）");
+        source.Should().Contain("ToolResultPipeline.Error(",
+            "ToolExecutor 必须把载荷构造委派给唯一出口 ToolResultPipeline（R-1 起不再自行拼装）");
+
+        var pipeline = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Tools", "ToolResultPipeline.cs"));
+
+        pipeline.Should().Contain("ToolErrorPayloadSerializer.Serialize(",
+            "唯一出口必须调用 ToolErrorPayloadSerializer.Serialize 构造首行 JSON");
+        pipeline.Should().Contain("FeishuToolResult.FromError(",
+            "唯一出口必须通过 FeishuToolResult.FromError(ToolError, ...) 构造带结构化载荷的结果");
     }
 
     /// <summary>

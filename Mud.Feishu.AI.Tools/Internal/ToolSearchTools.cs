@@ -170,8 +170,9 @@ internal sealed class ToolSearchTools(
                     + "调整 keyword/domain 重试，或用 feishu.capability_lookup 查 SDK 是否有该能力。";
             }
 
-            return Task.FromResult(FeishuToolResult.FromText(
-                ToolResultText.TruncateJson(ToolResultJson.ToText(envelope), _maxResultLength)));
+            // R-1：出站唯一出口（B-1 一类——本文件此前还被翻页守卫整体豁免，
+            // 见 PaginationContractGuards：豁免与截断失守叠加在同一处）。
+            return Task.FromResult(ToolResultPipeline.OkJson(envelope, _maxResultLength));
         });
     }
 

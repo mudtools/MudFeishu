@@ -40,7 +40,7 @@ public class NonCuratedToolRegistryContractGuards
         ("UploadAppIconAsync", "spark：入参为 [FormContent] 本地图标文件路径——同上"),
         ("UploadStorageAsync", "spark：对象存储上传（含 byte[]）→ A10 二进制防线"),
         ("DownloadStorageAsync", "spark：对象存储下载（返回 byte[]）→ A10 二进制防线"),
-        ("ExecuteSqlAsync", "spark：任意 SQL 执行 = 比 feishu.api_call 更宽的越权通道，无法机械校验表归属"),
+        ("ExecuteSqlAsync", "spark：任意 SQL 执行 = 越权通道，无法机械校验表归属"),
         ("BatchUpdateTableRecordsAsync", "spark：约束反直觉（不同行字段须一致）且与 spark.update_table_records 重叠"),
         ("DownloadWhiteboardImageAsync", "board：画板缩略图（返回 byte[]）→ A10 二进制防线"),
         ("GetMinuteTranscriptAsync", "minutes：逐字稿原文（长文本 + 附件通道）——结论/待办已由 minutes.get_artifacts 覆盖"),

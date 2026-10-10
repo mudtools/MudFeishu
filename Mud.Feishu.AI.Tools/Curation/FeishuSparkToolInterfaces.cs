@@ -16,7 +16,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // ⚠️ 不策展项（R7 DP-A6-2，A10 二进制/本地文件防线）：
 //   · upload_html_release / upload_app_icon —— 入参为 [FormContent] 本地文件路径，模型无文件系统；
 //   · upload_storage / download_storage —— 含 byte[]；
-//   · execute_sql —— 任意 SQL 执行是比 feishu.api_call 更宽的越权通道，无法机械校验表归属；
+//   · execute_sql —— 任意 SQL 执行是越权通道（无法机械校验表归属），且工具面不提供任何通用调用通道（R-12）；
 //   · batch_update_table_records —— 约束反直觉且与 update_table_records 重叠。
 
 /// <summary>

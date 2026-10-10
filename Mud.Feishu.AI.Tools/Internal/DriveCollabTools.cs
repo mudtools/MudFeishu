@@ -178,12 +178,12 @@ internal sealed class DriveCommentTools(
                 return failure;
             }
 
-            return FeishuToolResult.FromText(ToolResultJson.ToText(new JsonObject
+            return ToolResultPipeline.OkReceipt(new JsonObject
             {
                 ["resolved"] = true,
                 ["comment_id"] = args.CommentId,
                 ["is_solved"] = args.IsSolved.Value,
-            }));
+            });
         });
     }
 
@@ -426,11 +426,11 @@ internal sealed class DrivePermissionTools(
                 return failure;
             }
 
-            return FeishuToolResult.FromText(ToolResultJson.ToText(new JsonObject
+            return ToolResultPipeline.OkReceipt(new JsonObject
             {
                 ["removed"] = true,
                 ["member_id"] = args.MemberId,
-            }));
+            });
         });
     }
 
@@ -471,11 +471,11 @@ internal sealed class DrivePermissionTools(
                 return failure;
             }
 
-            return FeishuToolResult.FromText(ToolResultJson.ToText(new JsonObject
+            return ToolResultPipeline.OkReceipt(new JsonObject
             {
                 ["transferred"] = true,
                 ["member_id"] = args.MemberId,
-            }));
+            });
         });
     }
 

@@ -22,7 +22,8 @@ namespace Mud.Feishu.AI.Tools.Internal;
 /// <para>
 /// <b>二进制/本地文件防线（A10 + DP-A6-2）</b>：<c>upload_html_release</c>（<c>[FormContent]</c> 本地 tar）、
 /// <c>upload_app_icon</c>（本地文件）、<c>upload_storage</c>/<c>download_storage</c>（<c>byte[]</c>）、
-/// <c>execute_sql</c>（任意 SQL）<b>均不策展</b>——模型无文件系统，且 SQL 是比 <c>feishu.api_call</c> 更宽的越权通道。
+/// <c>execute_sql</c>（任意 SQL）<b>均不策展</b>——模型无文件系统，且 SQL 是越权通道
+/// （工具面亦不提供任何通用调用通道，见 R-12 删除 <c>feishu.api_call</c>）。
 /// </para>
 /// </remarks>
 internal sealed class SparkAppTools(
@@ -237,12 +238,12 @@ internal sealed class SparkAppTools(
                 return failure;
             }
 
-            return FeishuToolResult.FromText(ToolResultJson.ToText(new JsonObject
+            return ToolResultPipeline.OkReceipt(new JsonObject
             {
                 ["app_id"] = args.AppId,
                 ["scope"] = request.Scope,
                 ["updated"] = true,
-            }));
+            });
         });
     }
 

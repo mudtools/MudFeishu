@@ -42,6 +42,20 @@ public class PaginationAggregationTests
     private static (bool HasMore, string? NextToken) ReadPageState(FakePage page)
         => (page.HasMore, page.NextToken);
 
+    /// <summary>
+    /// 裸页函数 → 解包结果形态的适配（R-4：<c>AggregateAsync</c> 已被删除，
+    /// 原「仅测试使用的适配包装」下沉到测试侧——测试因此直连生产的唯一翻页实现）。
+    /// </summary>
+    private static Func<string?, CancellationToken, Task<FeishuApiOutcome<FakePage>>> Adapter(
+        Func<string?, CancellationToken, Task<FakePage?>> fetchPage)
+        => async (token, ct) =>
+        {
+            var page = await fetchPage(token, ct).ConfigureAwait(false);
+            return page is null
+                ? FeishuApiOutcome<FakePage>.Fail("下游返回空结果")
+                : FeishuApiOutcome<FakePage>.Success(page);
+        };
+
     // ────────── 测试用例 ──────────
 
     [Fact]
@@ -69,8 +83,8 @@ public class PaginationAggregationTests
         }
 
         // Act
-        var result = await ToolPagination.AggregateAsync(
-            fetchPage, ReadPageState, ExtractItems,
+        var result = await ToolPagination.AggregateOutcomesAsync(
+            Adapter(fetchPage), ReadPageState, ExtractItems,
             maxItems: 100, maxPages: 10, CancellationToken.None);
 
         // Assert
@@ -100,8 +114,8 @@ public class PaginationAggregationTests
         }
 
         // Act
-        var result = await ToolPagination.AggregateAsync(
-            fetchPage, ReadPageState, ExtractItems,
+        var result = await ToolPagination.AggregateOutcomesAsync(
+            Adapter(fetchPage), ReadPageState, ExtractItems,
             maxItems: 5, maxPages: 10, CancellationToken.None);
 
         // Assert
@@ -131,8 +145,8 @@ public class PaginationAggregationTests
         }
 
         // Act
-        var result = await ToolPagination.AggregateAsync(
-            fetchPage, ReadPageState, ExtractItems,
+        var result = await ToolPagination.AggregateOutcomesAsync(
+            Adapter(fetchPage), ReadPageState, ExtractItems,
             maxItems: 100, maxPages: 2, CancellationToken.None);
 
         // Assert
@@ -165,8 +179,8 @@ public class PaginationAggregationTests
         }
 
         // Act
-        var result = await ToolPagination.AggregateAsync(
-            fetchPage, ReadPageState, ExtractItems,
+        var result = await ToolPagination.AggregateOutcomesAsync(
+            Adapter(fetchPage), ReadPageState, ExtractItems,
             maxItems: 100, maxPages: 10, CancellationToken.None);
 
         // Assert
@@ -188,7 +202,7 @@ public class PaginationAggregationTests
         var fetchAll = ToolPagination.ReadFetchAll(arguments);
         fetchAll.Should().BeFalse("fetch_all=false");
 
-        // 不调用 AggregateAsync → 单次请求行为等价
+        // 不调用 AggregateOutcomesAsync → 单次请求行为等价
         await Task.CompletedTask;
     }
 
@@ -196,7 +210,7 @@ public class PaginationAggregationTests
     public async Task FetchAll_Should_Not_Paginate_When_DryRun()
     {
         // dry_run 模式不翻页——这是执行器的职责，这里验证 ToolPagination 不被调用
-        // （dry_run 在执行器层短路，AggregateAsync 不会被调用）
+        // （dry_run 在执行器层短路，AggregateOutcomesAsync 不会被调用）
         // 此用例作为文档性断言
         await Task.CompletedTask;
         true.Should().BeTrue("dry_run 短路在执行器层，ToolPagination 不被调用");

@@ -606,10 +606,12 @@ public static class FeishuToolsServiceCollectionExtensions
             // R6 / S3：VideoConferencing 写入执行器 VcWriteTools（4 个工具，其中含 2 个 user 身份工具）。
             .AddFeishuVcWriteToolsCore()
 
-            // R6 / S4：万能兜底调用执行器 GenericApiTools（feishu.api_call）。
-            // 归写链的原因：它有侧效应（IsWrite=true）⇒ 必须经 WriteAllowList 键控 + 授权门禁，
-            // 且**不**出现在只读链里（默认装配不会意外获得"任意调用"的能力）。
-            .AddFeishuGenericApiToolsCore()
+            // R-12（2026-10-10 评审决策）：万能兜底调用执行器 GenericApiTools（feishu.api_call）
+            // 已**整条删除**。删除理由：① 与策展工具构成双轨调用路径（同一能力两条路径，
+            // 投影/幂等/风险语义不同）；② 它是整个工具面风险最高的面（任意已登记方法的 HTTP 调度）；
+            // ③ 零外部消费（Demos 未启用，仅测试覆盖）。未策展能力的正确处置是"如实告知用户"。
+            // ⚠️ 删除后 AddFeishuGenericApiToolsCore 由生成器自动收敛（声明面消失即产物消失），
+            // 本清单不得再引用它（否则域核心聚合守卫 ToolDomainCoresWiringContractTests 会红）。
 
             // MUDFT022：Drive 协作面执行器 DriveCommentTools（评论 4）+ DrivePermissionTools（权限 6）。
             // 与 MailTools 同属「读写混合域」（含只读的 list_comments / get_permission_public）——
@@ -678,8 +680,8 @@ public static class FeishuToolsServiceCollectionExtensions
     /// 也不随域缺席而软缺席。全域入口 <see cref="AddFeishuTools"/> 已包含它。
     /// </para>
     /// <para>
-    /// 万能兜底 <c>feishu.api_call</c> 在<b>写链</b>（<see cref="AddFeishuWriteTools"/>）——
-    /// 它有侧效应，需 <c>WriteAllowList</c> 键控与授权器放行，不在本入口内。
+    /// <b>本工具只读、不提供任何调用通道</b>（R-12：万能兜底 <c>feishu.api_call</c> 已整条删除）——
+    /// 它回答"这个方法怎么调"，但查到的未策展方法<b>无法执行</b>，正确处置是如实告知用户。
     /// </para>
     /// </remarks>
     public static IServiceCollection AddFeishuSchemaReadTools(

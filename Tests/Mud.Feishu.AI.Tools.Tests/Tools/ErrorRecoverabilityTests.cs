@@ -119,21 +119,32 @@ public class ErrorRecoverabilityTests
     }
 
     /// <summary>
-    /// <b>S-10 防回潮</b>：工具结果的<b>中心序列化点</b>（<c>ToolExecutor</c>）不得再直接
-    /// 调用 <c>ToJsonString()</c>（那会重新引入转义）。
+    /// <b>S-10 防回潮</b>：工具结果的<b>中心序列化点</b>不得直接调用 <c>ToJsonString()</c>
+    /// （那会重新引入转义）。
     /// </summary>
+    /// <remarks>
+    /// <b>R-1 修订</b>：中心序列化点已从 <c>Internal/ToolExecutor.cs</c> 上移到唯一出口
+    /// <c>Tools/ToolResultPipeline.cs</c>（<c>OkJson</c>/<c>OkReceipt</c> 经 <c>ToolResultJson.ToText</c>）。
+    /// 判据随实现上移——否则本守卫会盯一个"已经不再负责序列化"的文件，变成假门禁。
+    /// </remarks>
     [Fact]
     public void ToolExecutor_ShouldSerializeViaToolResultJson_NotRawToJsonString()
     {
-        var source = File.ReadAllText(
+        var pipeline = File.ReadAllText(
+            Path.Combine(FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Tools", "ToolResultPipeline.cs"));
+
+        pipeline.Should().Contain(
+            "ToolResultJson.ToText",
+            "唯一出口是工具结果的中心序列化点，必须走 ToolResultJson（否则中文被转义，抵消 F-8 收益）");
+
+        pipeline.Should().NotContain(
+            ".ToJsonString()",
+            "唯一出口出现裸 ToJsonString() —— 会绕过保留中文的编码器（S-10 回潮）");
+
+        // 反向自证：执行器骨架不再持有序列化职责（形态单源），故不得出现裸 ToJsonString()。
+        var executor = File.ReadAllText(
             Path.Combine(FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Internal", "ToolExecutor.cs"));
 
-        source.Should().Contain(
-            "ToolResultJson.ToText",
-            "ToolExecutor 是工具结果的中心序列化点，必须走 ToolResultJson（否则中文被转义，抵消 F-8 收益）");
-
-        source.Should().NotContain(
-            ".ToJsonString()",
-            "ToolExecutor 出现裸 ToJsonString() —— 会绕过保留中文的编码器（S-10 回潮）");
+        executor.Should().NotContain(".ToJsonString()", "执行器骨架不得自行序列化（S-10 回潮）");
     }
 }

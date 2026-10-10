@@ -19,7 +19,7 @@ namespace Mud.Feishu.AI.Tools;
 /// </para>
 /// <para>
 /// 与 <see cref="FeishuToolRisk"/> 的关系：枚举供代码内比较（单调序关系），本词汇表供配置面/Error 消息
-/// 使用——两者由 <see cref="TryParse"/> / <see cref="ToLiteral"/> 单向对应，不构成双真相源。
+/// 使用——两者由 <see cref="TryParse"/> / <see cref="ToLiteral(FeishuToolRisk)"/> 单向对应，不构成双真相源。
 /// </para>
 /// </remarks>
 public static class FeishuToolRiskNames
@@ -65,6 +65,31 @@ public static class FeishuToolRiskNames
         FeishuToolRisk.Write => Write,
         FeishuToolRisk.HighRiskWrite => HighRiskWrite,
         _ => Read,
+    };
+
+    /// <summary>
+    /// 把<b>整型</b>风险值转回 Schema 词汇（R-5 单源）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 存在的理由：编译期目录（<c>FeishuToolMethodCatalog.Entry.Risk</c>、
+    /// <c>FeishuToolCapabilityCatalog</c>）的风险字段是 <see cref="int"/> 而不是枚举，
+    /// 于是执行器各自写了一份私有 <c>RiskLabel(int)</c>——实测有 <b>2 份逐字相同</b>的副本
+    /// （<c>SchemaReadTools</c> / <c>GenericApiTools</c>），与 <see cref="ToLiteral(FeishuToolRisk)"/>
+    /// 构成<b>三份同源映射</b>。风险分级演进时它们会静默漂移，故收口到本重载。
+    /// </para>
+    /// <para>
+    /// 非法值<b>不抛</b>而回填 <c>unknown(n)</c>：目录是编译期产物，越界只可能是生成器缺陷；
+    /// 让模型看到一个可读的异常标记比让工具整体失败更有诊断价值（原私有实现的取舍，保持不变）。
+    /// </para>
+    /// </remarks>
+    /// <param name="risk">风险整型值（0=read / 1=write / 2=high-risk-write）。</param>
+    public static string ToLiteral(int risk) => risk switch
+    {
+        0 => Read,
+        1 => Write,
+        2 => HighRiskWrite,
+        _ => $"unknown({risk})",
     };
 }
 

@@ -10,14 +10,13 @@ using Mud.Feishu.AI.Tools.Internal;
 namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>
-/// 方法级自省与万能兜底（R6 / S4-S5）：<c>feishu.schema_read</c> 与 <c>feishu.api_call</c>。
+/// 方法级自省（R6 / S4）：<c>feishu.schema_read</c>。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>本文件锁的是"兜底通道的安全边界"</b>，不是 happy path 的字段堆砌。
-/// <c>api_call</c> 的价值是补未策展能力，风险是它绕过了每工具一策展的审查 ——
-/// 故四条 fail-closed 边界（用户态拒绝 / 高危拒绝 / 路由参数强校验 / 默认预演）
-/// 每条都要有对应用例：任何一条被后人改软，测试立刻红。
+/// <b>R-12（2026-10-10 评审决策）</b>：本文件曾同时覆盖万能兜底通道 <c>feishu.api_call</c>
+/// 的四条 fail-closed 边界。该工具已<b>整条删除</b>（双轨调用路径 + 全工具面最高风险面 + 零外部消费），
+/// 故其用例同批删除——保留"已删工具的测试"会让后来者以为该工具仍存在。
 /// </para>
 /// <para>
 /// 用例里的方法限定名全部取自编译期目录（<c>FeishuToolMethodCatalog</c>），
@@ -34,9 +33,6 @@ public class FeishuSelfInspectionToolsTests
 
     private static SchemaReadTools CreateSchemaReadTools()
         => new(Options.Create(AgentOptions()));
-
-    private static GenericApiTools CreateApiTools(Mud.Feishu.Abstractions.IFeishuAppManager? appManager = null)
-        => new(Options.Create(AgentOptions()), appManager);
 
     // ───────────────────── schema_read：方法级事实 ─────────────────────
 
@@ -90,115 +86,21 @@ public class FeishuSelfInspectionToolsTests
         }
     }
 
-    // ───────────────────── api_call：默认预演 ─────────────────────
-
+    /// <summary>
+    /// R-12 回归：schema_read 的模型可见文案<b>不得</b>再指引任何兜底调用通道。
+    /// </summary>
+    /// <remarks>
+    /// 这是"删了工具却留下指引"这一缺陷形态的<b>行为级</b>断言（<c>R-12</c> 的
+    /// "Guidance 工具名引用"守卫只覆盖 <c>Guidance/**/*.md</c>，不覆盖运行期产出的 note 文案）。
+    /// 指引残留会让模型持续臆造一个不存在的工具名。
+    /// </remarks>
     [Fact]
-    public async Task ApiCall_DryRunByDefault_ShouldNotTouchDownstream()
+    public async Task SchemaRead_Note_ShouldNotReferenceRemovedTool()
     {
-        var appManager = new Mock<Mud.Feishu.Abstractions.IFeishuAppManager>();
+        var result = await CreateSchemaReadTools().SchemaReadAsync(
+            Args(("method", "IFeishuTenantV1OkrPeriod.ListPeriodsAsync")), CancellationToken.None);
 
-        var result = await CreateApiTools(appManager.Object).ApiCallAsync(
-            Args(
-                ("method", "IFeishuTenantV1OkrPeriod.ListPeriodsAsync"),
-                ("query_params", "{\"page_size\":20}")),
-            CancellationToken.None);
-
-        using var document = JsonDocument.Parse(result.ToString()!);
-        var root = document.RootElement;
-
-        root.GetProperty("dry_run").GetBoolean().Should().BeTrue("dry_run 缺省必须是 true");
-        root.GetProperty("http").GetString().Should().Be("GET");
-        root.GetProperty("url").GetString().Should().Be("/open-apis/okr/v1/periods?page_size=20");
-        root.GetProperty("curated_tool").GetString().Should().Be("okr.list_periods");
-
-        appManager.VerifyNoOtherCalls();
-    }
-
-    [Fact]
-    public async Task ApiCall_RealCallWithoutAppManager_ShouldFailClosed()
-    {
-        var result = await CreateApiTools().ApiCallAsync(
-            Args(
-                ("method", "IFeishuTenantV1OkrPeriod.ListPeriodsAsync"),
-                ("dry_run", false)),
-            CancellationToken.None);
-
-        var text = result.ToString()!;
-        text.Should().Contain("[tool_error] feishu.api_call");
-        text.Should().Contain("IFeishuAppManager",
-            "缺少应用管理器时必须给出可操作的错误（并说明 dry_run=true 仍可用）");
-    }
-
-    // ───────────────────── api_call：fail-closed 边界 ─────────────────────
-
-    [Fact]
-    public async Task ApiCall_UserTokenKindMethod_ShouldBeRefused()
-    {
-        var result = await CreateApiTools().ApiCallAsync(
-            Args(("method", "IFeishuUserV4ApprovalInstance.GetInitiatedInstancePageListAsync")),
-            CancellationToken.None);
-
-        var text = result.ToString()!;
-        text.Should().Contain("用户态",
-            "user 身份方法不得经兜底调用：本工具身份轴派定为 tenant，会静默造成身份错配");
-        text.Should().Contain("feishu.schema_read");
-    }
-
-    [Fact]
-    public async Task ApiCall_HighRiskMethod_ShouldBeRefused()
-    {
-        var result = await CreateApiTools().ApiCallAsync(
-            Args(("method", "IFeishuTenantV4ApprovalTask.TransferApprovalAsync")),
-            CancellationToken.None);
-
-        result.ToString().Should().Contain("high-risk-write",
-            "高危方法不走兜底——它的授权门禁与 dry_run 摘要属于策展工具");
-    }
-
-    [Fact]
-    public async Task ApiCall_MissingPathParams_ShouldBeRejectedWithRequiredNames()
-    {
-        var result = await CreateApiTools().ApiCallAsync(
-            Args(("method", "IFeishuTenantV1AcsUser.GetUserAsync")),
-            CancellationToken.None);
-
-        var text = result.ToString()!;
-        text.Should().Contain("user_id",
-            "路由占位符未覆盖时必须本地拒绝（否则会把带 {user_id} 字面量的 URL 发出去）");
-    }
-
-    [Fact]
-    public async Task ApiCall_UnexpectedPathParams_ShouldBeRejected()
-    {
-        var result = await CreateApiTools().ApiCallAsync(
-            Args(
-                ("method", "IFeishuTenantV1AcsUser.GetUserAsync"),
-                ("path_params", "{\"user_id\":\"ou_1\",\"typo_id\":\"x\"}")),
-            CancellationToken.None);
-
-        result.ToString().Should().Contain("typo_id",
-            "多传路径参数说明模型调错方法或写错参数名——比让它变成一个奇怪的 404 好");
-    }
-
-    [Fact]
-    public async Task ApiCall_InvalidJsonParams_ShouldBeRejectedNotSilentlyIgnored()
-    {
-        var result = await CreateApiTools().ApiCallAsync(
-            Args(("method", "IFeishuTenantV1OkrPeriod.ListPeriodsAsync"), ("query_params", "not json")),
-            CancellationToken.None);
-
-        result.ToString().Should().Contain("JSON",
-            "非法 JSON 不得静默降级为空对象（那就是'看起来成功、实际调错'）");
-    }
-
-    [Fact]
-    public async Task ApiCall_UnknownMethod_ShouldPointToSchemaRead()
-    {
-        var result = await CreateApiTools().ApiCallAsync(
-            Args(("method", "IFeishuTenantV9NoSuchMethod.DoAsync")), CancellationToken.None);
-
-        var text = result.ToString()!;
-        text.Should().Contain("不在 SDK 方法目录中");
-        text.Should().Contain("feishu.schema_read");
+        result.ToString().Should().NotContain("api_call",
+            "R-12：万能兜底通道已删除，模型可见文案不得再引用它（否则模型会持续臆造调用）");
     }
 }

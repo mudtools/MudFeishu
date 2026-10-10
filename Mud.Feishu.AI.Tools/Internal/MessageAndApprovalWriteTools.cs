@@ -308,11 +308,11 @@ internal sealed class ApprovalWriteTools(
                     $"飞书接口返回错误 code={nullDataResult.Code.ToString(CultureInfo.InvariantCulture)}, msg={nullDataResult.Msg ?? "(无错误信息)"}"));
             }
 
-            return FeishuToolResult.FromText(ToolResultJson.ToText(new JsonObject
+            return ToolResultPipeline.OkReceipt(new JsonObject
             {
                 ["approved"] = true,
                 ["task_id"] = args.TaskId,
-            }));
+            });
         });
     }
 
@@ -355,11 +355,11 @@ internal sealed class ApprovalWriteTools(
 
             RequireNullDataSuccess(executor.ToolName, nullDataResult);
 
-            return FeishuToolResult.FromText(ToolResultJson.ToText(new JsonObject
+            return ToolResultPipeline.OkReceipt(new JsonObject
             {
                 ["rejected"] = true,
                 ["task_id"] = args.TaskId,
-            }));
+            });
         });
     }
 
@@ -415,12 +415,12 @@ internal sealed class ApprovalWriteTools(
 
             RequireNullDataSuccess(executor.ToolName, nullDataResult);
 
-            return FeishuToolResult.FromText(ToolResultJson.ToText(new JsonObject
+            return ToolResultPipeline.OkReceipt(new JsonObject
             {
                 ["transferred"] = true,
                 ["task_id"] = args.TaskId,
                 ["transfer_user_id"] = args.TransferUserId,
-            }));
+            });
         });
     }
 

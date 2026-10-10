@@ -23,7 +23,9 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// <item><c>ToolArgumentNormalizer.cs</c> — 形态认知的唯一中心（WP1 落地）；</item>
 /// <item><c>ToolArgumentSanitizer.cs</c> — 净化入口，经 <c>ToolArgumentNormalizer.EnumerateTexts</c> 遍历；</item>
 /// <item><c>ToolArgsDigester.cs</c> — 审计摘要的值形态描述（区分 str/array/json）；</item>
-/// <item><c>FeishuApiResultReader.cs</c> — <c>ToolArgs</c> 值类型转换（提取标量，不涉及净化/摘要遍历）。</item>
+/// <item><c>FeishuApiResultReader.cs</c> — API outcome 解包；</item>
+/// <item><c>ToolArgs.cs</c> — <c>ToolArgs</c> 值类型转换（提取标量，不涉及净化/摘要遍历）；</item>
+/// <item><c>ToolResultText.cs</c> — 出站截断与 <c>JsonElement</c> → <c>JsonNode</c> 转换。</item>
 /// </list>
 /// </para>
 /// <para>
@@ -48,7 +50,9 @@ public class ToolArgumentShapeContractGuards
             "ToolArgumentNormalizer.cs",
             "ToolArgumentSanitizer.cs",
             "ToolArgsDigester.cs",
-            "FeishuApiResultReader.cs", // ToolArgs 值类型转换
+            "FeishuApiResultReader.cs", // API outcome 解包
+            "ToolArgs.cs", // 模型入参取值转换（R-6 从 FeishuApiResultReader.cs 拆出）
+            "ToolResultText.cs", // 出站截断 + JsonElement 形态转换（R-6 从 FeishuApiResultReader.cs 拆出）
         };
 
         // R5 / F-1：声明面已迁到 Curation/（工具契约与运行时基础设施分目录），
@@ -148,7 +152,8 @@ public class ToolArgumentShapeContractGuards
     }
 
     /// <summary>
-    /// <b>R5 / F-1</b>：基线 + <b>反向自证</b> —— <c>Curation/</c> 恰有 21 个声明文件、163 个契约接口（R7/C3 后）。
+    /// <b>R5 / F-1</b>：基线 + <b>反向自证</b> —— <c>Curation/</c> 恰有 21 个声明文件、162 个契约接口
+    /// （R7/C3 后 163，R-12 删除 <c>feishu.api_call</c> 后为 162）。
     /// </summary>
     [Fact]
     public void CurationDirectory_ShouldMatchRegisteredBaseline()
@@ -178,8 +183,8 @@ public class ToolArgumentShapeContractGuards
             .ToArray();
 
         interfaces.Should().HaveCount(
-            163,
-            "Curation/ 的工具契约接口数从 163 变为 {0}——新增/删除工具属有意的契约变更，请同步更新本基线"
+            162,
+            "Curation/ 的工具契约接口数从 162 变为 {0}——新增/删除工具属有意的契约变更，请同步更新本基线"
             + "（若同时看到『文件数没变而接口数变了』，说明有文件被塞进了非契约内容）",
             interfaces.Length);
     }

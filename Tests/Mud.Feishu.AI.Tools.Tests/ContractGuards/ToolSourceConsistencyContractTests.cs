@@ -97,8 +97,9 @@ public class ToolSourceConsistencyContractTests
         // 覆盖数用**精确基线**而非下限：一条"永远为绿"的守卫与没有守卫等价，却会让人以为已守住。
         // 基线取值来自 golden 的权威口径（`source.sdk` 非空者 119 / 125，与声明面 Source 计数一致）。
         executorByInterface.Count.Should().Be(
-            163,
-            "163 个工具必须都能反查到执行器（MUDFT022/023 已在构建期保证一一绑定）；此处骤降说明反查机制失效");
+            162,
+            "162 个工具必须都能反查到执行器（MUDFT022/023 已在构建期保证一一绑定）；此处骤降说明反查机制失效。"
+            + "R-12：原 163 包含 feishu.api_call，该工具已整条删除");
 
         checkedCount.Should().Be(
             157,

@@ -56,7 +56,8 @@ internal sealed class KnowledgeSearchTools(IRetriever retriever, IOptions<Feishu
                 }
             }
 
-            return FeishuToolResult.FromText(ToolResultText.Truncate(builder.ToString(), _maxResultLength));
+            // R-1：出站唯一出口（B-1 一类）。
+            return ToolResultPipeline.Ok(builder.ToString(), _maxResultLength);
         });
     }
 }

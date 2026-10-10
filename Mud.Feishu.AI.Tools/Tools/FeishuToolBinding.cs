@@ -35,8 +35,11 @@ namespace Mud.Feishu.AI.Tools;
 /// </remarks>
 public sealed class FeishuToolBinding
 {
-    /// <summary>user 身份字面量（与契约 <c>identity</c> 派生值一致：tenant / user）。</summary>
-    private const string IdentityUser = "user";
+    /// <summary>
+    /// user 身份字面量（R-5：单源取自 <see cref="FeishuToolIdentityNames"/>——
+    /// 此前本类私有一份 <c>"user"</c> 字面量，与契约/配置面构成第二真相源）。
+    /// </summary>
+    private const string IdentityUser = FeishuToolIdentityNames.User;
 
     private readonly IFeishuAppContextScopeFactory _scopeFactory;
     private readonly FeishuAgentOptions _options;
@@ -283,15 +286,9 @@ public sealed class FeishuToolBinding
             // **审计出口不改**（下方 WriteAuditWithIsolationAsync 仍传 ex.Message）：
             // 审计是宿主内网出口，两条出口的判据不同（R1 §7 纪律 4）。
             var (category, subtype) = ToolErrorClassifier.Classify(ex);
-            var errorPayload = new ToolError(
-                Category: CategoryLiteral(category),
-                Subtype: subtype,
-                Retryable: category == ToolErrorCategory.Retryable,
-                RetryAfterSeconds: null,
-                ApiCode: null,
-                Attempts: 1,
-                Trace: trace,
-                Tool: tool.Name);
+
+            // R-1 / B-2：载荷构造收口到唯一工厂（此前是本类的第 3 份同构拷贝）。
+            var errorPayload = ToolErrorFactory.Create(tool.Name, category, subtype, trace: trace);
             var humanReadable = StructuredError(
                 tool.Name,
                 category,
@@ -377,15 +374,12 @@ public sealed class FeishuToolBinding
             catch (Exception ex)
             {
                 var (category, subtype) = ToolErrorClassifier.Classify(ex);
-                var transient = new ToolError(
-                    Category: CategoryLiteral(category),
-                    Subtype: subtype,
-                    Retryable: category == ToolErrorCategory.Retryable,
-                    RetryAfterSeconds: null,
-                    ApiCode: null,
-                    Attempts: attempt + 1,
-                    Trace: null,
-                    Tool: tool.Name);
+
+                // R-1 / B-2：第 4 份同构拷贝（本处此前内联 new ToolError；tests 的
+                // TruncationVisibilityContractGuards.ToolError_ShouldBeConstructedOnlyAtTheSingleFactory
+                // 机械拦截任何新的内联构造点）。载荷只用于策略判定，不进模型出口。
+                var transient = ToolErrorFactory.Create(
+                    tool.Name, category, subtype, attempts: attempt + 1);
 
                 // 不可重试（或已耗尽预算）⇒ 原样上抛，交外层 catch 归一。
                 if (!_retryPolicy.ShouldRetry(transient, tool.IsWrite, isDryRun, hasIdempotencyKey, attempt))
@@ -456,7 +450,7 @@ public sealed class FeishuToolBinding
         var body = newlineIndex >= 0 ? text.Substring(newlineIndex + 1) : string.Empty;
         var payload = result.Error with { Attempts = attempts };
         var jsonLine = ToolErrorPayloadSerializer.Serialize(payload);
-        var rebuilt = FeishuToolResult.FromError(payload, body.Length > 0 ? jsonLine + "\n" + body : jsonLine);
+        var rebuilt = FeishuToolResult.FromError(payload, body.Length > 0 ? ToolErrorFactory.Compose(payload, body) : jsonLine);
 
         // 出站净化：重试路径是"新拼出来的模型可见文本"，与成功路径同属出口——
         // 不得因为"原文已净化过"就跳过（纵深防御；ToolEgressPurificationContractGuards 断言本行存在）。
@@ -516,22 +510,16 @@ public sealed class FeishuToolBinding
     }
 
     /// <summary>带错误语义分类的出口（B2 错误契约：首行 JSON 载荷 + 人类可读正文，经唯一闸门净化 + 截断）。</summary>
+    /// <remarks>
+    /// R-1 / B-2：载荷构造经 <see cref="ToolErrorFactory"/>(唯一构造点)、文本经
+    /// <see cref="ToolResultPipeline.Error"/>（预算与标记单源）；术后净化仍在本方法内施加——
+    /// 这是<b>"模型可见"边界</b>的要求（详见 <c>ToolResultPipeline</c> 的 remarks）。
+    /// </remarks>
     private FeishuToolResult EgressResult(string toolName, ToolErrorCategory category, string subtype, string reason, int? apiCode = null)
     {
-        var humanReadable = StructuredError(toolName, category, reason, apiCode);
-        var errorPayload = new ToolError(
-            Category: CategoryLiteral(category),
-            Subtype: subtype,
-            Retryable: category == ToolErrorCategory.Retryable,
-            RetryAfterSeconds: null,
-            ApiCode: apiCode,
-            Attempts: 1,
-            Trace: null,
-            Tool: toolName);
-        var jsonLine = ToolErrorPayloadSerializer.Serialize(errorPayload);
-        var combined = jsonLine + "\n" + humanReadable;
-        var safe = ToolResultText.Truncate(ToolResultSanitizer.Sanitize(combined), _options.MaxToolResultLength);
-        return FeishuToolResult.FromError(errorPayload, safe);
+        var payload = ToolErrorFactory.Create(toolName, category, subtype, apiCode);
+        var combined = ToolErrorFactory.Compose(payload, StructuredError(toolName, category, reason, apiCode));
+        return ToolResultPipeline.FromErrorText(payload, ToolResultSanitizer.Sanitize(combined), _options.MaxToolResultLength);
     }
 
     /// <summary>无分类的出口（等价 <see cref="StructuredError(string, string)"/> 文案，用于上下文缺失等通用失败）。</summary>

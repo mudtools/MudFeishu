@@ -140,12 +140,12 @@ internal sealed class BoardTools(Mud.Feishu.IFeishuTenantV1Board? boardClient = 
                 .ConfigureAwait(false);
             RequireNullDataSuccess(executor.ToolName, result);
 
-            return FeishuToolResult.FromText(ToolResultJson.ToText(new JsonObject
+            return ToolResultPipeline.OkReceipt(new JsonObject
             {
                 ["whiteboard_id"] = args.WhiteboardId,
                 ["theme"] = args.ThemeId,
                 ["updated"] = true,
-            }));
+            });
         });
     }
 
@@ -188,12 +188,12 @@ internal sealed class BoardTools(Mud.Feishu.IFeishuTenantV1Board? boardClient = 
                 .ConfigureAwait(false);
             RequireNullDataSuccess(executor.ToolName, result);
 
-            return FeishuToolResult.FromText(ToolResultJson.ToText(new JsonObject
+            return ToolResultPipeline.OkReceipt(new JsonObject
             {
                 ["whiteboard_id"] = args.WhiteboardId,
                 ["dsl_type"] = args.DslType,
                 ["rendered"] = true,
-            }));
+            });
         });
     }
 
@@ -308,12 +308,12 @@ internal sealed class BoardTools(Mud.Feishu.IFeishuTenantV1Board? boardClient = 
                 .ConfigureAwait(false);
             RequireResultCode(executor.ToolName, deleteResult);
 
-            return FeishuToolResult.FromText(ToolResultJson.ToText(new JsonObject
+            return ToolResultPipeline.OkReceipt(new JsonObject
             {
                 ["whiteboard_id"] = args.WhiteboardId,
                 ["deleted_count"] = args.NodeIds.Length,
                 ["deleted"] = true,
-            }));
+            });
         });
     }
 

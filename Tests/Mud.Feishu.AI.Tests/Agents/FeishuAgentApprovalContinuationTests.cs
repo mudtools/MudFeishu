@@ -21,6 +21,14 @@ namespace Mud.Feishu.AI.Tests.Agents;
 /// fake <see cref="IChatClient"/> 首轮返回工具调用，由框架把它改写成审批请求并写入会话状态袋。
 /// 不用桩替身替代框架绑定层——那会绕开本组用例真正要验证的东西（批准资格归框架记录所有）。
 /// </para>
+/// <para>
+/// <b>本组用例同时是"审批拦截依赖 MAF 默认管线"的守卫（F-6 / N-1）</b>：本仓<b>没有</b>显式
+/// <c>UseFunctionInvocation()</c>，审批强制点来自 <c>ChatClientAgent</c> 构建管线时的<b>默认注入</b>
+/// （<c>Mud.Feishu.AI</c> 全仓 grep 无 <c>FunctionInvokingChatClient</c> 构造）。因此：
+/// <b>MAF 主版本升级后本组用例必须保持绿</b>——若上游把这两层装饰器改成 opt-in，这里会报红
+/// （"首轮必须把待确认项交给宿主批准通道"断言失败），而不是在生产里静默放行写工具。
+/// ⚠️ 纪律：<b>不得</b>为了"让用例过"而把真实管线换成桩替身——那等于删掉这条守卫。
+/// </para>
 /// </remarks>
 public class FeishuAgentApprovalContinuationTests
 {

@@ -2,7 +2,6 @@
 ~override Mud.Feishu.AI.Tools.AttachmentSource.ToString() -> string
 ~override Mud.Feishu.AI.Tools.StagedAttachment.Equals(object obj) -> bool
 ~override Mud.Feishu.AI.Tools.StagedAttachment.ToString() -> string
-const Mud.Feishu.AI.Tools.BitableFilterParser.MaxClauses = 5 -> int
 const Mud.Feishu.AI.Tools.FeishuToolNames.AiDetectLanguage = "ai.detect_language" -> string!
 const Mud.Feishu.AI.Tools.FeishuToolNames.AiTranslateText = "ai.translate_text" -> string!
 const Mud.Feishu.AI.Tools.FeishuToolNames.ApprovalApproveTask = "approval.approve_task" -> string!
@@ -351,7 +350,6 @@ Mud.Feishu.AI.Tools.AuthorizationResult.Deconstruct(out Mud.Feishu.AI.Tools.Auth
 Mud.Feishu.AI.Tools.AuthorizationResult.Equals(Mud.Feishu.AI.Tools.AuthorizationResult? other) -> bool
 Mud.Feishu.AI.Tools.AuthorizationResult.Reason.get -> string?
 Mud.Feishu.AI.Tools.AuthorizationResult.Reason.init -> void
-Mud.Feishu.AI.Tools.BitableFilterParser
 Mud.Feishu.AI.Tools.Curation.IFeishuTenantAiDetectLanguageTool
 Mud.Feishu.AI.Tools.Curation.IFeishuTenantAiDetectLanguageTool.DetectTextAsync(string! text, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
 Mud.Feishu.AI.Tools.Curation.IFeishuTenantAiTranslateTextTool
@@ -870,7 +868,6 @@ static Mud.Feishu.AI.Tools.AuthorizationResult.Confirm(string! reason) -> Mud.Fe
 static Mud.Feishu.AI.Tools.AuthorizationResult.Deny(string! reason) -> Mud.Feishu.AI.Tools.AuthorizationResult!
 static Mud.Feishu.AI.Tools.AuthorizationResult.operator !=(Mud.Feishu.AI.Tools.AuthorizationResult? left, Mud.Feishu.AI.Tools.AuthorizationResult? right) -> bool
 static Mud.Feishu.AI.Tools.AuthorizationResult.operator ==(Mud.Feishu.AI.Tools.AuthorizationResult? left, Mud.Feishu.AI.Tools.AuthorizationResult? right) -> bool
-static Mud.Feishu.AI.Tools.BitableFilterParser.TryParse(string? filter, out Mud.Feishu.DataModels.Bitable.RecordQueryFilterInfo? parsed, out string? error) -> bool
 static Mud.Feishu.AI.Tools.FeishuToolDefinition.operator !=(Mud.Feishu.AI.Tools.FeishuToolDefinition? left, Mud.Feishu.AI.Tools.FeishuToolDefinition? right) -> bool
 static Mud.Feishu.AI.Tools.FeishuToolDefinition.operator ==(Mud.Feishu.AI.Tools.FeishuToolDefinition? left, Mud.Feishu.AI.Tools.FeishuToolDefinition? right) -> bool
 static Mud.Feishu.AI.Tools.FeishuToolNames.IsWriteTool(string! name) -> bool

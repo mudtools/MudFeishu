@@ -98,6 +98,14 @@ public class NonCuratedToolRegistryContractGuards
         ("ChangeTalentBlockAsync", "hire：候选人写类（拉黑/解黑，高风险）——同上"),
         ("GetInterviewByTalentAsync", "hire：按候选人查全部面试（不分页，含评价与面试官）——已由 hire.list_interviews 覆盖（分页 + 可按投递/时间窗收窄），故不单独策展"),
 
+        // hire Offer：只策展"列表看状态"一条；写类与**含薪资条件的详情**显式登记。
+        ("CreateOfferAsync", "hire：Offer 写类（创建，带薪资条件）——写面需宿主显式授权，另立批次"),
+        ("UpdateOfferAsync", "hire：Offer 写类（更新，带薪资条件）——同上"),
+        ("ChangeOfferStatusAsync", "hire：Offer 写类（改审批/收发状态）——同上"),
+        ("ChangeInternOfferStatusAsync", "hire：实习 Offer 写类——同上"),
+        ("GetOfferAsync", "hire：Offer 详情（含 ApplicationOfferSalaryPlan 薪资条件）——**不策展**：状态由 hire.list_offers 回答，薪资条件不进模型上下文（纪律 26/28）"),
+        ("GetApplicationOfferAsync", "hire：按投递取 Offer 详情（同样含薪资条件）——同上"),
+
         // F-1（contact 部门面）：只策展两条缺失方向（上级链 / 按名搜索），其余留待下一片。
         ("GetDepartmentInfoByIdAsync", "contact：按 ID 查部门（只读）——已有 list/search/parents 三条路径，暂不重复"),
         ("GetDepartmentsPageListAsync", "contact：部门全量分页（只读）——可由 list_departments 下钻替代"),

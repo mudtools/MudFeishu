@@ -69,6 +69,9 @@ public class PiiToolDisciplineContractGuards
 
         // hire：面试安排（"某人正在应聘"的事实），默认不启用；投影只留时间/轮次/阶段。
         "hire.list_interviews",
+
+        // hire：Offer 列表（"某人是否获得 Offer"的事实），默认不启用；接口结构性不含薪资条件。
+        "hire.list_offers",
     ];
 
     private sealed record PiiEntry(string Tool, string Category, bool DefaultDisabled, string Note);

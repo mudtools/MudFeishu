@@ -184,7 +184,8 @@ public static class FeishuToolsServiceCollectionExtensions
             .AddFeishuHireJobToolsCore()
             .AddFeishuHireJobRequirementToolsCore()
             .AddFeishuHireTalentToolsCore()
-            .AddFeishuHireInterviewToolsCore();
+            .AddFeishuHireInterviewToolsCore()
+            .AddFeishuHireOfferToolsCore();
 
 
 
@@ -359,6 +360,9 @@ public static class FeishuToolsServiceCollectionExtensions
 
                     // hire 面试安排执行器 HireInterviewTools（1 个只读，**PII**：默认不启用）。
                     .AddFeishuHireInterviewToolsCore()
+
+                    // hire Offer 执行器 HireOfferTools（1 个只读，**PII**：只给状态，结构性不含金额）。
+                    .AddFeishuHireOfferToolsCore()
 
                     // R7 / A4：Board 画板域执行器 BoardTools（6 个工具：2 只读 + 4 写）。
                     // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，

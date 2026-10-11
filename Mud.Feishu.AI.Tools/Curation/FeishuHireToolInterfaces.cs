@@ -91,6 +91,38 @@ public interface IFeishuTenantHireListJobRequirementsTool
         CancellationToken cancellationToken = default);
 }
 
+// ─────────────── hire · Offer（offer，PII：只给状态，不给条件） ───────────────
+
+/// <summary>
+/// 工具接口：hire.list_offers（映射 <c>IFeishuTenantV1HireCandidate.GetOfferListAsync</c>）。
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>为什么补它</b>：招聘链路问得最多的最后一环是"这人 Offer 到哪一步了"（审批中 / 已发送 / 已接受 / 被拒）。
+/// 缺它时模型只能答到"面试"为止。
+/// </para>
+/// <para>
+/// <b>PII 且"只给状态不给条件"</b>：某人是否拿到 Offer 属个人信息 ⇒ <b>默认不启用</b>（piiTools 登记）。
+/// 好消息是本接口返回的 <see cref="OfferListInfo"/> <b>结构上就不含薪资与 Offer 条件</b>
+/// （薪资在 <c>ApplicationOfferSalaryPlan</c>，只在 Offer 详情结构里）——故本工具天然落在
+/// 纪律 26/28 的"最小充分集"上：只回状态相关字段，不做任何金额投影。
+/// </para>
+/// <para><b>DP-B1-0</b>：只暴露 <c>page_token</c>（页大小走 SDK 默认）。</para>
+/// </remarks>
+[FeishuTool("hire.list_offers",
+    Description = "按人才 ID 查询其【Offer 列表】（Offer ID、投递 ID、岗位 ID/名称、Offer 状态、Offer 类型、创建时间）。offer_status 含义：2=审批中 / 3=审批已撤回 / 4=审批通过 / 5=审批不通过 / 6=已发送 / 7=被接受 / 8=被拒绝 / 9=已失效 / 10=已创建。⚠️ 该工具属 PII：某人是否获得 Offer 属个人信息，会进入【第三方模型上下文】；【默认不启用】，需宿主显式加入白名单并确认合规口径；**Offer 薪资与条件一律不返回**（本接口亦不含）。只读，需 hire:offer:readonly。",
+    RequiredScopes = ["hire:offer:readonly"],
+    Source = nameof(IFeishuTenantV1HireCandidate) + "." + nameof(IFeishuTenantV1HireCandidate.GetOfferListAsync))]
+public interface IFeishuTenantHireListOffersTool
+{
+    /// <summary>按人才 ID 分页查询 Offer 列表（只回状态相关字段）。</summary>
+    /// <returns>白名单投影后的 JSON 文本（分页信封 items/has_more/page_token；条目含 offer_id/application_id/job_id/job_name/offer_status/offer_type/create_time）。</returns>
+    Task<string> ListOffersAsync(
+        [ToolParameter("talent_id", "人才 ID（必填，来自 hire.list_talents 或面试安排里的候选人）", Required = true)] string talent_id,
+        [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        CancellationToken cancellationToken = default);
+}
+
 // ─────────────── hire · 面试安排（interview，PII） ───────────────
 
 /// <summary>

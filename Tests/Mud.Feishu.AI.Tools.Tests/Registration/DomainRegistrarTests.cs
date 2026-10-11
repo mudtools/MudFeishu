@@ -115,6 +115,9 @@ public class DomainRegistrarTests
 
             // hire 面试安排（**PII**，默认不启用）。
             FeishuToolNames.HireListInterviews,
+
+            // hire Offer 列表（**PII**，默认不启用；只给状态不给条件）。
+            FeishuToolNames.HireListOffers,
         };
 
         var mockClients = new Action<IServiceCollection>(services =>

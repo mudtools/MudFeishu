@@ -38,14 +38,14 @@ public static class Program
 
         try
         {
-            // Phase 1/2 工具模式：全域只读工具 + 飞书客户端。
+            // 工具模式：全域只读工具 + 飞书客户端。
             if (configuration.GetValue<bool?>(ToolsDemoSettings.EnabledKey) is true)
             {
                 await ToolsDemo.RunAsync(configuration);
                 return;
             }
 
-            // AI-FD-D12 P2D-5a 零自定义接入演示（内置 IM 会话事件处理器一行接入）。
+            // 零自定义接入演示（内置 IM 会话事件处理器一行接入）。
             if (configuration.GetValue<bool?>(ImHandlerDemoSettings.EnabledKey) is true)
             {
                 await ImConversationDemo.RunAsync(configuration);

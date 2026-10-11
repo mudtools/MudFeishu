@@ -66,6 +66,9 @@ public class PiiToolDisciplineContractGuards
         // hire：候选人（人才）检索与详情（姓名/手机/邮箱），默认不启用；投影已丢弃身份证/学历/经历等。
         "hire.list_talents",
         "hire.get_talent",
+
+        // hire：面试安排（"某人正在应聘"的事实），默认不启用；投影只留时间/轮次/阶段。
+        "hire.list_interviews",
     ];
 
     private sealed record PiiEntry(string Tool, string Category, bool DefaultDisabled, string Note);

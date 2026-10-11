@@ -96,7 +96,7 @@ public class NonCuratedToolRegistryContractGuards
         ("AddTalentToTalentPoolAsync", "hire：候选人写类（加入人才库）——同上"),
         ("BatchChangeTalentPoolAsync", "hire：候选人写类（批量调整人才库）——同上"),
         ("ChangeTalentBlockAsync", "hire：候选人写类（拉黑/解黑，高风险）——同上"),
-        ("GetInterviewByTalentAsync", "hire：按候选人查面试（只读，含面试评价与面试官）——留待面试批次（PII 面更宽）"),
+        ("GetInterviewByTalentAsync", "hire：按候选人查全部面试（不分页，含评价与面试官）——已由 hire.list_interviews 覆盖（分页 + 可按投递/时间窗收窄），故不单独策展"),
 
         // F-1（contact 部门面）：只策展两条缺失方向（上级链 / 按名搜索），其余留待下一片。
         ("GetDepartmentInfoByIdAsync", "contact：按 ID 查部门（只读）——已有 list/search/parents 三条路径，暂不重复"),

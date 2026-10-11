@@ -112,6 +112,9 @@ public class DomainRegistrarTests
 
             // hire 招聘需求（非 PII：裁剪掉负责人/薪资后）。
             FeishuToolNames.HireListJobRequirements,
+
+            // hire 面试安排（**PII**，默认不启用）。
+            FeishuToolNames.HireListInterviews,
         };
 
         var mockClients = new Action<IServiceCollection>(services =>

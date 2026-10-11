@@ -59,7 +59,8 @@
     "admin:audit_info:readonly": "安全合规 · 行为审计日志只读（F-1 P0 新增：security.query_audit_logs / security.list_openapi_logs 使用）",
     "hire:job:readonly": "招聘 · 职位只读（F-1 P0 新增：hire.list_jobs / hire.get_job 使用；岗位是对外招聘信息，非 PII）",
     "hire:talent:readonly": "招聘 · 人才（候选人）只读（新增：hire.list_talents / hire.get_talent 使用；**PII 出口**，默认不启用——SDK 接口文档「所需权限」栏明确列出 hire:talent:readonly）",
-    "hire:job_requirement:readonly": "招聘 · 招聘需求只读（新增：hire.list_job_requirements 使用；裁剪掉负责人/创建人/薪资后为**非 PII**——SDK 接口文档「所需权限」栏列出 hire:job_requirement:readonly）"
+    "hire:job_requirement:readonly": "招聘 · 招聘需求只读（新增：hire.list_job_requirements 使用；裁剪掉负责人/创建人/薪资后为**非 PII**——SDK 接口文档「所需权限」栏列出 hire:job_requirement:readonly）",
+    "hire:interview:readonly": "招聘 · 面试只读（新增：hire.list_interviews 使用；**PII 出口**、默认不启用——SDK 接口文档「所需权限」栏明确列出 hire:interview:readonly）"
   },
   "piiTools": [
     {
@@ -139,6 +140,12 @@
       "category": "候选人（人才）检索",
       "defaultDisabled": true,
       "note": "DP-A5-1 档位 ①：候选人属个人信息主体，默认不在任何白名单。列表投影仅 talent_id/姓名/是否已入职——翻页找人是索引用途，不携带联系方式与档案"
+    },
+    {
+      "tool": "hire.list_interviews",
+      "category": "面试安排（面试/投递 ID、轮次、阶段、起止时间）",
+      "defaultDisabled": true,
+      "note": "DP-A5-1 档位 ①：面试安排即「某人正在应聘某职位」的事实，默认不在任何白名单。只保留安排三要素（时间/轮次/阶段）；面试记录与评价正文、备注、联系人手机、面试官、会议室/地址一律不返回"
     },
     {
       "tool": "hire.get_talent",

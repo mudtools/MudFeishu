@@ -91,6 +91,43 @@ public interface IFeishuTenantHireListJobRequirementsTool
         CancellationToken cancellationToken = default);
 }
 
+// ─────────────── hire · 面试安排（interview，PII） ───────────────
+
+/// <summary>
+/// 工具接口：hire.list_interviews（映射 <c>IFeishuTenantV1HireCandidate.GetInterviewListAsync</c>）。
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>为什么补它</b>：招聘日常最高频的问题是"今天/本周有哪些面试""某候选人面到哪一轮了"。
+/// 缺它时模型只能拿职位/候选人硬凑，答不出**安排**。
+/// </para>
+/// <para>
+/// <b>PII（DP-A5-1 档位 ①）</b>：面试安排本身即"某人正在应聘某职位"的事实 ⇒ <b>默认不启用</b>，
+/// 需宿主显式加白名单；描述必须声明后果。
+/// </para>
+/// <para>
+/// <b>投影纪律（纪律 26"目的判据"）</b>：只保留**安排三要素**——时间（起止）、轮次（<c>round</c> +
+/// <c>round_type</c>）、阶段（<c>stage</c>）；<b>面试记录 / 评价正文 / 备注 / 联系人手机 / 面试官 /
+/// 会议室与地址一律不返回</b>：评价是对人的主观判断，地址与联系人手机与"知不知道面试安排"无关。
+/// </para>
+/// <para><b>DP-B1-0</b>：只暴露 <c>page_token</c>；<c>application_id</c> / 时间窗是业务过滤，可下发。</para>
+/// </remarks>
+[FeishuTool("hire.list_interviews",
+    Description = "分页查询【面试安排】（面试 ID、投递 ID、轮次 round 与 round_type 名称、阶段 stage、开始/结束时间（毫秒时间戳）、安排状态）——用于回答「今天/本周有哪些面试」「某投递面到哪一轮」。可用 application_id 只查某投递，用 start_time/end_time（毫秒时间戳字符串）限定时间窗。⚠️ 该工具属 PII：面试安排即「某人正在应聘」的事实，会进入【第三方模型上下文】；【默认不启用】，需宿主显式加入白名单并确认合规口径；面试评价/记录/备注/联系人手机/面试官/会议室一律不返回。只读，需 hire:interview:readonly。",
+    RequiredScopes = ["hire:interview:readonly"],
+    Source = nameof(IFeishuTenantV1HireCandidate) + "." + nameof(IFeishuTenantV1HireCandidate.GetInterviewListAsync))]
+public interface IFeishuTenantHireListInterviewsTool
+{
+    /// <summary>分页查询面试安排（可限定投递与时间窗）。</summary>
+    /// <returns>白名单投影后的 JSON 文本（分页信封 items/has_more/page_token；条目含 interview_id/application_id/round/round_type/stage/begin_time/end_time/arrangement_status）。</returns>
+    Task<string> ListInterviewsAsync(
+        [ToolParameter("application_id", "投递 ID 过滤（可选，缩小到某个候选人的某次投递）")] string? application_id = null,
+        [ToolParameter("start_time", "时间窗起点（可选，毫秒时间戳字符串，如 \\\"1704067200000\\\"；与 end_time 成对使用）")] string? start_time = null,
+        [ToolParameter("end_time", "时间窗终点（可选，毫秒时间戳字符串）")] string? end_time = null,
+        [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        CancellationToken cancellationToken = default);
+}
+
 // ─────────────── hire · 候选人（talent）：PII 首批切片 ───────────────
 //
 // 与"职位"不同，候选人**是个人信息**：姓名、手机、邮箱、学历、工作经历、身份证号……

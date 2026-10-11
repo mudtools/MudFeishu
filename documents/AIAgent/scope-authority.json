@@ -58,7 +58,8 @@
     "wiki:wiki": "知识库 · 读写（R5/F-11 新增：wiki.create_node / move_node / move_docs_to_space 使用）",
     "admin:audit_info:readonly": "安全合规 · 行为审计日志只读（F-1 P0 新增：security.query_audit_logs / security.list_openapi_logs 使用）",
     "hire:job:readonly": "招聘 · 职位只读（F-1 P0 新增：hire.list_jobs / hire.get_job 使用；岗位是对外招聘信息，非 PII）",
-    "hire:talent:readonly": "招聘 · 人才（候选人）只读（新增：hire.list_talents / hire.get_talent 使用；**PII 出口**，默认不启用——SDK 接口文档「所需权限」栏明确列出 hire:talent:readonly）"
+    "hire:talent:readonly": "招聘 · 人才（候选人）只读（新增：hire.list_talents / hire.get_talent 使用；**PII 出口**，默认不启用——SDK 接口文档「所需权限」栏明确列出 hire:talent:readonly）",
+    "hire:job_requirement:readonly": "招聘 · 招聘需求只读（新增：hire.list_job_requirements 使用；裁剪掉负责人/创建人/薪资后为**非 PII**——SDK 接口文档「所需权限」栏列出 hire:job_requirement:readonly）"
   },
   "piiTools": [
     {

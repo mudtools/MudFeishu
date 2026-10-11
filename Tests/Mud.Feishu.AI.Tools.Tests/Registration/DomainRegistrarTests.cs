@@ -109,6 +109,9 @@ public class DomainRegistrarTests
 
             // hire 候选人首批（**PII**，默认不启用；等价性只关心注册面）。
             FeishuToolNames.HireListTalents, FeishuToolNames.HireGetTalent,
+
+            // hire 招聘需求（非 PII：裁剪掉负责人/薪资后）。
+            FeishuToolNames.HireListJobRequirements,
         };
 
         var mockClients = new Action<IServiceCollection>(services =>
@@ -155,6 +158,7 @@ public class DomainRegistrarTests
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3Departments>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1HireJob>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1HireCandidate>().Object);
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1HireJobRequirement>().Object);
         });
 
         using var singleEntryProvider = new ServiceCollection()

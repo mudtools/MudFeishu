@@ -182,6 +182,7 @@ public static class FeishuToolsServiceCollectionExtensions
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure)
             .AddFeishuHireJobToolsCore()
+            .AddFeishuHireJobRequirementToolsCore()
             .AddFeishuHireTalentToolsCore();
 
 
@@ -348,6 +349,9 @@ public static class FeishuToolsServiceCollectionExtensions
 
                     // F-1 P0：hire 招聘岗位执行器 HireJobTools（2 个只读，非 PII）。
                     .AddFeishuHireJobToolsCore()
+
+                    // hire 招聘需求执行器 HireJobRequirementTools（1 个只读，非 PII：投影已裁掉负责人/薪资）。
+                    .AddFeishuHireJobRequirementToolsCore()
 
                     // hire 候选人执行器 HireTalentTools（2 个只读，**PII**：默认不启用，需宿主显式加白名单）。
                     .AddFeishuHireTalentToolsCore()

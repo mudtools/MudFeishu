@@ -83,7 +83,8 @@ public class NonCuratedToolRegistryContractGuards
         ("CombinedUpdateJobAsync", "hire：职位写类（复合更新）——同上"),
         ("UpdateJobConfigAsync", "hire：职位配置写类——同上"),
         ("BatchUpdateJobManagerAsync", "hire：职位负责人批量写类——同上"),
-        ("GetJobRequirementListAsync", "hire：招聘需求列表（只读）——留待下一片（需求与职位是两套对象，不可混用）"),
+        // 招聘需求列表 GetJobRequirementListAsync **已策展**为 hire.list_job_requirements，故从本表移出
+        //（纪律 25：留在本表会被 NonCuratedMethods_ShouldNotBeToolSource 判为越权通道）。
         ("SearchJobRequirementAsync", "hire：招聘需求搜索（只读）——留待下一片"),
         ("CreateJobRequirementAsync", "hire：招聘需求写类——写面另立批次"),
         ("UpdateJobRequirementAsync", "hire：招聘需求写类——同上"),

@@ -51,7 +51,8 @@ public class NonCuratedToolRegistryContractGuards
         ("ListCountryRegionsAsync", "mdm：带 filter 表达式体的分页查询——首个切片只策展 mdm.get_countries，本方法留待下一片"),
 
         // F-1 P0（Security）：只策展只读的"行为审计日志"；其余 12 个方法显式登记（写类 / PII 读 / 留待下一片）。
-        ("ListOpenApiLogDataAsync", "security：OpenAPI 审计日志（PII：app_id/IP/调用详情）——留待下一片，需同批做 PII 登记"),
+        // F-1 收官：ListOpenApiLogDataAsync **已策展**为 security.list_openapi_logs（含 PII 登记三处），
+        // 故从"有意不策展"表移出——留在本表会被 NonCuratedMethods_ShouldNotBeToolSource 判为越权通道。
         ("CreateUserMigrationAsync", "security：用户数据迁移（写类 + 跨 geo 合规敏感）——另立批次"),
         ("CancelUserMigrationAsync", "security：取消迁移（写类）——同上"),
         ("SearchUserMigrationsAsync", "security：迁移记录检索（POST 检索、含用户 PII）——同上"),
@@ -73,6 +74,24 @@ public class NonCuratedToolRegistryContractGuards
         ("CreateJobFamilyAsync", "org：职务族写类（新增）——同上"),
         ("UpdateJobFamilyAsync", "org：职务族写类（更新）——同上"),
         ("DeleteJobFamilyByIdAsync", "org：职务族写类（删除，高风险）——同上"),
+
+        // F-1（hire）：首批只策展"职位"两条（list_jobs / get_job）；其余显式登记。
+        // Hire 是 SDK 最大域（165 方法），候选/投递/面试/Offer 均属 PII 批次，不在本批范围。
+        ("GetJobDetailAsync", "hire：职位扩展详情（只读）——留待下一片（list 精简 / get 完整的分层已建立）"),
+        ("GetJobConfigAsync", "hire：职位配置（只读）——留待下一片"),
+        ("CombinedCreateJobAsync", "hire：职位写类（复合创建）——写面需宿主显式授权，另立批次"),
+        ("CombinedUpdateJobAsync", "hire：职位写类（复合更新）——同上"),
+        ("UpdateJobConfigAsync", "hire：职位配置写类——同上"),
+        ("BatchUpdateJobManagerAsync", "hire：职位负责人批量写类——同上"),
+        ("GetJobRequirementListAsync", "hire：招聘需求列表（只读）——留待下一片（需求与职位是两套对象，不可混用）"),
+        ("SearchJobRequirementAsync", "hire：招聘需求搜索（只读）——留待下一片"),
+        ("CreateJobRequirementAsync", "hire：招聘需求写类——写面另立批次"),
+        ("UpdateJobRequirementAsync", "hire：招聘需求写类——同上"),
+        ("DeleteJobRequirementAsync", "hire：招聘需求写类（删除）——同上"),
+
+        // F-1（contact 部门面）：只策展两条缺失方向（上级链 / 按名搜索），其余留待下一片。
+        ("GetDepartmentInfoByIdAsync", "contact：按 ID 查部门（只读）——已有 list/search/parents 三条路径，暂不重复"),
+        ("GetDepartmentsPageListAsync", "contact：部门全量分页（只读）——可由 list_departments 下钻替代"),
     ];
 
     [Fact]
@@ -155,6 +174,9 @@ public class NonCuratedToolRegistryContractGuards
                      FeishuToolNames.OrgListJobLevels,
                      FeishuToolNames.OrgListJobFamilies,
                      FeishuToolNames.OrgListWorkCities,
+                     FeishuToolNames.SecurityListOpenapiLogs,
+                     FeishuToolNames.ContactGetDepartmentParents,
+                     FeishuToolNames.HireListJobs,
                  })
         {
             FeishuToolNames.All.Should().Contain(toolName,

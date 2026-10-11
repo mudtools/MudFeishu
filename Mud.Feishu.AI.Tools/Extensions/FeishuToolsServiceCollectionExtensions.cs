@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -68,34 +68,58 @@ public static class FeishuToolsServiceCollectionExtensions
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure).AddFeishuBitableToolsCore();
 
-    /// <summary>按域注册 Docx 工具（基础 2 个只读 + R7/A2 深化 9 个：读 5 + 写 4）。</summary>
+    /// <summary>
+    /// 按【域组】注册云文档工具（docx + docxDeep + wiki + minutesRead + sheets + drive + driveComment + drivePermission + translation）。
+    /// </summary>
     /// <remarks>
-    /// 两个 Core 都必须在此登记：<c>AddFeishuDocxToolsCore</c>（基础只读）+
-    /// <c>AddFeishuDocxDeepToolsCore</c>（块级编辑 / Markdown 正文 / 群公告，单执行器混合域）。
-    /// 这也保证"逐域扩展 == 全域入口"的等价性（DomainRegistrarTests 断言）。
+    /// F-3 / R1 §15.3：原 9 个细粒度入口合并为本入口——它们在飞书产品面同属"云文档域"，
+    /// 权限与评论是 drive 的子能力。宿主只要子集时，用 <c>FeishuAgent:Tools</c> 白名单裁剪即可，
+    /// 不必回到"一域一入口"的粒度（那正是本轮要收敛的公开面）。
     /// </remarks>
-    public static IServiceCollection AddFeishuDocxTools(
+    public static IServiceCollection AddFeishuCloudDocTools(
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure)
             .AddFeishuDocxToolsCore()
-            .AddFeishuDocxDeepToolsCore();
+            .AddFeishuDocxDeepToolsCore()
+            .AddFeishuWikiToolsCore()
+            .AddFeishuMinutesReadToolsCore()
+            .AddFeishuSheetsToolsCore()
+            .AddFeishuDriveToolsCore()
 
-    /// <summary>按域注册 Wiki 工具（2 个只读）。</summary>
-    public static IServiceCollection AddFeishuWikiTools(
+            // ⚠️ 不要在此列 AddFeishuDriveCommentToolsCore / AddFeishuDrivePermissionToolsCore：
+            // Drive 协作面是「读写混合域」，按既有链拆分其 Core **只在写链**登记（见 AddFeishuWriteToolCores）。
+            // 两链同时登记 ⇒ 域注册器被装配两次 ⇒ FeishuToolRegistry 抛"工具已注册"（客户端缺席时不可见，
+            // 宿主补齐客户端才整域炸掉——与 DocxDeep 同款陷阱）。
+            .AddFeishuTranslationToolsCore();
+
+    /// <summary>
+    /// 按【域组】注册"目标与任务"工具（task + okr）。
+    /// </summary>
+    /// <remarks>F-3 / R1 §15.3：任务与 OKR 在飞书产品面同属"目标与任务"，合并为一个公开入口。</remarks>
+    public static IServiceCollection AddFeishuTaskOkrTools(
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuWikiToolsCore();
+        => AddFeishuToolInfrastructure(services, configure)
+            .AddFeishuTaskToolsCore()
+            .AddFeishuOkrToolsCore();
 
-    /// <summary>按域注册 Minutes 工具（5 个只读：get/get_artifacts/search/get_statistics/get_media，R5/F-11 + R7/A3）。</summary>
+    /// <summary>
+    /// 按域注册【安全合规】工具（2 个只读：<c>security.query_audit_logs</c> + <c>security.list_openapi_logs</c>）。
+    /// </summary>
     /// <remarks>
-    /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**：
-    /// 少任何一处都会让 minutes 工具在对应入口下静默缺席（S-13）。
+    /// F-3：原 security 两个单工具入口合并为域入口（同一授权面、同一 PII 口径）。
+    /// 两者均为 <b>PII 且默认不启用</b>，需宿主显式加入 <c>FeishuAgent:Tools</c> 白名单。
     /// </remarks>
-    public static IServiceCollection AddFeishuMinutesReadTools(
+    public static IServiceCollection AddFeishuSecurityTools(
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuMinutesReadToolsCore();
+        => AddFeishuToolInfrastructure(services, configure)
+            .AddFeishuSecurityAuditLogToolsCore()
+            .AddFeishuSecurityOpenApiLogToolsCore();
+
+
+
 
     /// <summary>
     /// 按域注册 MDM 国家/地区工具（1 个只读：<c>mdm.get_countries</c>，F-1 首个补域切片）。
@@ -116,24 +140,6 @@ public static class FeishuToolsServiceCollectionExtensions
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure).AddFeishuCountryRegionToolsCore();
 
-    /// <summary>
-    /// 按域注册 Security 行为审计日志工具（1 个只读：<c>security.query_audit_logs</c>，F-1 P0 批）。
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**：
-    /// 少任何一处都会让 security 工具在对应入口下静默缺席（S-13 同款失败形态）。
-    /// </para>
-    /// <para>
-    /// ⚠️ <b>PII 敏感且默认不启用</b>（DP-A5-1 档位 ①）：结果含他人 user_id / IP / 设备与地理位置，
-    /// 宿主须显式加入 <c>FeishuAgent:Tools</c> 并确认合规口径；需已启用
-    /// <c>IFeishuTenantV1SecurityAuditLog</c>（缺席时本域工具软缺席）。
-    /// </para>
-    /// </remarks>
-    public static IServiceCollection AddFeishuSecurityAuditLogTools(
-        this IServiceCollection services,
-        Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuSecurityAuditLogToolsCore();
 
     /// <summary>
     /// 按域注册 org 组织元数据工具（8 个只读：职务 / 职级 / 职务族 / 工作城市，F-1 第三个补域）。
@@ -155,26 +161,18 @@ public static class FeishuToolsServiceCollectionExtensions
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure).AddFeishuOrgMetadataToolsCore();
 
-    /// <summary>按域注册 AI 文本面工具（2 个只读：ai.translate_text / ai.detect_language，R7/C3）。</summary>
-    /// <remarks>
-    /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**：
-    /// 少任何一处都会让 ai.* 工具在对应入口下静默缺席（S-13）。
-    /// 需宿主已启用飞书 AI 翻译能力（<c>IFeishuTenantV1AITranslation</c>）——缺席时本域工具软缺席。
-    /// </remarks>
-    public static IServiceCollection AddFeishuTranslationTools(
-        this IServiceCollection services,
-        Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuTranslationToolsCore();
 
-    /// <summary>按域注册 Board 画板工具（2 个只读 + 4 个写，R7/A4）。</summary>
-    /// <remarks>
-    /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**：
-    /// 少任何一处都会让 board 工具在对应入口下静默缺席（S-13 同款失败形态）。
-    /// </remarks>
-    public static IServiceCollection AddFeishuBoardTools(
+
+    /// <summary>
+    /// 按域注册 hire 招聘岗位工具（2 个只读：<c>hire.list_jobs</c> / <c>hire.get_job</c>，F-1 P0 Hire 首批）。
+    /// </summary>
+    /// <remarks><b>非 PII</b>（岗位是对外招聘信息）；候选/投递/面试/Offer 属后续 PII 批次。</remarks>
+    public static IServiceCollection AddFeishuHireJobTools(
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuBoardToolsCore();
+        => AddFeishuToolInfrastructure(services, configure).AddFeishuHireJobToolsCore();
+
+
 
     /// <summary>按域注册 Attendance 考勤工具（7 个只读 + 1 个写，R7/A5）。</summary>
     /// <remarks>
@@ -199,15 +197,6 @@ public static class FeishuToolsServiceCollectionExtensions
             .AddFeishuSparkAppToolsCore()
             .AddFeishuSparkTableToolsCore();
 
-    /// <summary>按域注册 OKR 只读工具（9 个只读，R6/S2；写工具经 <see cref="AddFeishuWriteTools"/>）。</summary>
-    /// <remarks>
-    /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**：
-    /// 少任何一处都会让 okr 只读工具在对应入口下静默缺席（S-13 的同款失败形态）。
-    /// </remarks>
-    public static IServiceCollection AddFeishuOkrTools(
-        this IServiceCollection services,
-        Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuOkrToolsCore();
 
     /// <summary>按域注册 VideoConferencing 只读工具（6 个只读，R6/S3；写工具经 <see cref="AddFeishuWriteTools"/>）。</summary>
     /// <remarks>
@@ -224,47 +213,21 @@ public static class FeishuToolsServiceCollectionExtensions
     public static IServiceCollection AddFeishuSearchTools(
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuSearchToolsCore();
+        => AddFeishuToolInfrastructure(services, configure)
+            .AddFeishuSearchToolsCore()
+            .AddFeishuKnowledgeSearchToolsCore();
 
     /// <summary>按域注册 IM 工具（2 个只读；写工具经 <see cref="AddFeishuWriteTools"/>）。</summary>
     public static IServiceCollection AddFeishuImTools(
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuImToolsCore();
-
-    /// <summary>按域注册 Sheets 工具（2 个只读）。</summary>
-    public static IServiceCollection AddFeishuSheetsTools(
-        this IServiceCollection services,
-        Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuSheetsToolsCore();
-
-    /// <summary>按域注册 Drive 工具（2 个只读，AI-FD-D12 P1D-1b 批次 A 新域）。</summary>
-    /// <remarks>
-    /// 评论/权限协作面（drive.list_comments / add_comment / reply_comment / resolve_comment /
-    /// get_permission_public / update_permission_public / grant_permission / update_permission_member /
-    /// remove_permission / transfer_owner）由 <see cref="AddFeishuDriveCollabTools"/> 单独装配——
-    /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**（S-13 的同款失败形态）。
-    /// </remarks>
-    public static IServiceCollection AddFeishuDriveTools(
-        this IServiceCollection services,
-        Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuDriveToolsCore();
-
-    /// <summary>
-    /// 按域注册 Drive 协作面工具（评论 4 + 权限 6，MUDFT022 批次）：只读 3 + 写 7。
-    /// </summary>
-    /// <remarks>
-    /// <c>DriveCommentTools</c> / <c>DrivePermissionTools</c> 与 MailTools 同属「读写混合域」——
-    /// 两个 Core 整体挂写链（<see cref="AddFeishuWriteToolCores"/>），按链拆分的取舍见其 remarks。
-    /// 权限域工具被引擎风险分级一律 <c>high-risk-write</c>（含底层 GET 的 get_permission_public，
-    /// MUDFT017），启用须过 <c>WriteAllowList</c> 键控 + 授权门禁。
-    /// </remarks>
-    public static IServiceCollection AddFeishuDriveCollabTools(
-        this IServiceCollection services,
-        Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure)
-            .AddFeishuDriveCommentToolsCore()
-            .AddFeishuDrivePermissionToolsCore();
+            .AddFeishuImToolsCore()
+            .AddFeishuAttachmentToolsCore()
+            .AddFeishuBoardToolsCore();
+
+
+
 
     /// <summary>
     /// 按域注册通讯录工具（P0：<c>contact.resolve_user</c> / <c>contact.get_user</c> / <c>contact.batch_get</c>）。
@@ -273,13 +236,14 @@ public static class FeishuToolsServiceCollectionExtensions
     public static IServiceCollection AddFeishuContactTools(
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuContactToolsCore();
+        => AddFeishuToolInfrastructure(services, configure)
+            .AddFeishuContactToolsCore()
 
-    /// <summary>按域注册 Knowledge 工具（<c>knowledge.search</c>；要求宿主已注册 <see cref="IRetriever"/> 实现，如 <c>AddFeishuAilyKnowledge</c>）。</summary>
-    public static IServiceCollection AddFeishuKnowledgeTools(
-        this IServiceCollection services,
-        Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuKnowledgeSearchToolsCore();
+            // ⚠️ 同上：AddFeishuContactDepartmentToolsCore（list_departments / list_department_members）
+            // 属「读写混合域」，其 Core **只在写链**登记，此处不得再列一次（重复装配会抛"工具已注册"）。
+            // 本入口吸收的是 F-1 新增的部门查询执行器（上级链 / 按名搜索，纯只读）。
+            .AddFeishuContactDepartmentQueryToolsCore();
+
 
     /// <summary>
     /// 按域注册邮件工具（WP5：<c>mail.list_messages</c>/<c>mail.get_message</c> 只读 + <c>mail.send_message</c> 写）。
@@ -293,17 +257,6 @@ public static class FeishuToolsServiceCollectionExtensions
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure).AddFeishuMailToolsCore();
 
-    /// <summary>
-    /// 按域注册通讯录部门轴工具（WP5：<c>contact.list_departments</c>/<c>contact.list_department_members</c>）。
-    /// </summary>
-    /// <remarks>
-    /// 部门列表需 <c>IFeishuTenantV3Departments</c>，部门成员需 <c>IFeishuTenantV1Employees</c>——
-    /// 两者均可软缺席（客户端缺席时对应工具不注册）。
-    /// </remarks>
-    public static IServiceCollection AddFeishuContactDepartmentTools(
-        this IServiceCollection services,
-        Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuContactDepartmentToolsCore();
 
     /// <summary>
     /// 按域注册日历工具（WP5 / AT-F04：<c>calendar.create_event</c> 写 + <c>find_free_slots</c>/<c>list_events</c> 只读）。
@@ -314,30 +267,7 @@ public static class FeishuToolsServiceCollectionExtensions
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure).AddFeishuCalendarToolsCore();
 
-    /// <summary>
-    /// 按域注册任务工具（WP5 / AT-F17：<c>task.create_task</c> 写 + <c>task.list_my_tasks</c> <b>user 身份</b>）。
-    /// </summary>
-    /// <remarks>
-    /// tenant 客户端（<c>IFeishuTenantV2Task</c>）缺席 → 整域不注册；user 客户端
-    /// （<c>IFeishuUserV2Task</c>）缺席 → 仅 <c>list_my_tasks</c> 缺席（工具级软缺席）。
-    /// <c>list_my_tasks</c> 还要求宿主在执行上下文提供当前用户（<c>FeishuToolContext.UserId</c>）。
-    /// </remarks>
-    public static IServiceCollection AddFeishuTaskTools(
-        this IServiceCollection services,
-        Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuTaskToolsCore();
 
-    /// <summary>
-    /// 按域注册附件上传工具（WP7：<c>im.send_image</c> / <c>im.send_file</c>，三步链路 落盘→上传→发送）。
-    /// </summary>
-    /// <remarks>
-    /// 要求宿主注册 <c>IFeishuAttachmentStager</c> 与 <c>IFeishuTenantV1Message</c>；
-    /// <b>落盘器缺席 → 两个工具不注册</b>（软缺席：SDK 不实现下载/落盘，见 U-5）。
-    /// </remarks>
-    public static IServiceCollection AddFeishuAttachmentTools(
-        this IServiceCollection services,
-        Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuAttachmentToolsCore();
 
     /// <summary>
     /// 注册写域工具（Phase 2：<c>im.send_message</c>/<c>bitable.add_record</c>/<c>approval.create_instance</c> +
@@ -397,6 +327,15 @@ public static class FeishuToolsServiceCollectionExtensions
                     // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，
                     // 漏加即「工具静默不入注册表」（ToolDomainCoresWiringContractTests 会报红）。
                     .AddFeishuOrgMetadataToolsCore()
+
+                    // F-1 收官：security 应用 API 调用日志执行器 SecurityOpenApiLogTools（1 个只读，PII）。
+                    .AddFeishuSecurityOpenApiLogToolsCore()
+
+                    // F-1 P0：contact 部门查询执行器 ContactDepartmentQueryTools（2 个只读，非 PII）。
+                    .AddFeishuContactDepartmentQueryToolsCore()
+
+                    // F-1 P0：hire 招聘岗位执行器 HireJobTools（2 个只读，非 PII）。
+                    .AddFeishuHireJobToolsCore()
 
                     // R7 / A4：Board 画板域执行器 BoardTools（6 个工具：2 只读 + 4 写）。
                     // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，

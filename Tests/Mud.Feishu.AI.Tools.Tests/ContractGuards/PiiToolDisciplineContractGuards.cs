@@ -59,6 +59,9 @@ public class PiiToolDisciplineContractGuards
 
         // F-1 P0：Security 行为审计日志（含他人 user_id / IP / 设备与地理位置），默认不启用。
         "security.query_audit_logs",
+
+        // F-1 收官：Security 应用 API 调用日志（含调用方 IP；原始载荷已丢弃），默认不启用。
+        "security.list_openapi_logs",
     ];
 
     private sealed record PiiEntry(string Tool, string Category, bool DefaultDisabled, string Note);

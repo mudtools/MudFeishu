@@ -164,13 +164,25 @@ public static class FeishuToolsServiceCollectionExtensions
 
 
     /// <summary>
-    /// 按域注册 hire 招聘岗位工具（2 个只读：<c>hire.list_jobs</c> / <c>hire.get_job</c>，F-1 P0 Hire 首批）。
+    /// 按域注册 hire 招聘工具（4 个只读：岗位 2 + 候选人 2）。
     /// </summary>
-    /// <remarks><b>非 PII</b>（岗位是对外招聘信息）；候选/投递/面试/Offer 属后续 PII 批次。</remarks>
-    public static IServiceCollection AddFeishuHireJobTools(
+    /// <remarks>
+    /// <para>
+    /// <b>岗位</b>（<c>hire.list_jobs</c> / <c>hire.get_job</c>）非 PII——组织对外招聘信息。
+    /// </para>
+    /// <para>
+    /// <b>候选人</b>（<c>hire.list_talents</c> / <c>hire.get_talent</c>）属 <b>PII（DP-A5-1 档位 ①）</b>：
+    /// 默认不启用，需宿主显式加入 <c>FeishuAgent:Tools</c>；投影已白名单化（身份证号/性别/年龄/籍贯/学历/经历等不返回）。
+    /// 同入口提供两者是有意为之——宿主启用招聘域时一次性看到全部招聘面（含 PII 提示），
+    /// 避免"只装了岗位入口、以为招聘面只有这么点"的错觉；"是否真的可用"仍由白名单决定。
+    /// </para>
+    /// </remarks>
+    public static IServiceCollection AddFeishuHireTools(
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuHireJobToolsCore();
+        => AddFeishuToolInfrastructure(services, configure)
+            .AddFeishuHireJobToolsCore()
+            .AddFeishuHireTalentToolsCore();
 
 
 
@@ -336,6 +348,9 @@ public static class FeishuToolsServiceCollectionExtensions
 
                     // F-1 P0：hire 招聘岗位执行器 HireJobTools（2 个只读，非 PII）。
                     .AddFeishuHireJobToolsCore()
+
+                    // hire 候选人执行器 HireTalentTools（2 个只读，**PII**：默认不启用，需宿主显式加白名单）。
+                    .AddFeishuHireTalentToolsCore()
 
                     // R7 / A4：Board 画板域执行器 BoardTools（6 个工具：2 只读 + 4 写）。
                     // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，

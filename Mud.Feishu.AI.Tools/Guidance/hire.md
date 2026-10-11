@@ -1,36 +1,38 @@
 
-# 招聘 · 岗位（hire.*）
+# 招聘（hire.*：职位 / 候选人）
 
 ## 路由优先级（先判断对象属于哪个域）
-- **在招岗位/职位**（标题、编码、JD、任职要求）→ `hire.*`；**候选人简历、投递、面试、Offer** 尚未开放，
-  不要臆造相关工具或改用其它域近似作答（可先用 `feishu.capability_lookup` 确认）。
-- **员工**（已在职的人）在 `contact.*`；**部门**在 `contact.list_departments`；两者与招聘岗位不是同一批数据。
+- **岗位/职位**（标题、编码、JD、要求）→ `hire.list_jobs` / `hire.get_job`（非 PII）。
+- **候选人**（人才档案、联系方式）→ `hire.list_talents` / `hire.get_talent`（**PII，默认不启用**）。
+- **在职业员工**在 `contact.*`（已入职的人不是候选人）；**部门**在 `contact.*`；面试/Offer/投递未开放，
+  不要臆造工具，可先用 `feishu.capability_lookup` 确认。
 
 ## 前置链
-（不知职位 ID）`hire.list_jobs` 翻页取岗位列表 → 按 `title` / `code` 匹配 → 取 `id`；`has_more=true` 用 `page_token` 续页。
-（要看岗位正文）先 `hire.list_jobs` 拿到 `id` → `hire.get_job` 取 `description` / `requirement` → 据此回答。
-（要回答"我们有哪些在招岗位"）`hire.list_jobs()` → 汇总 `title`（列表不含正文，不要为了看正文而逐条 get）。
+（不知职位 ID）`hire.list_jobs` 翻页 → 按 `title`/`code` 匹配取 `id`；要看 JD 正文再 `hire.get_job`。
+（找候选人）`hire.list_talents`（可用 `keyword`）→ 取 `talent_id` → `hire.get_talent` 取手机/邮箱等联系字段。
+（回答"我们有哪些在招岗位"）`hire.list_jobs()` → 汇总 `title`（列表不含正文，不要为了看正文逐条 get）。
 
 ## 降级策略
-- `found=false`：① 详情查不到 → 核对 `job_id` 是否来自列表返回的 `id`；② 列表为空 → 租户可能尚未创建岗位，
-  如实说明，不要反复换 token 重试。
-- 工具报"未注册客户端（软缺席）"→ 宿主未启用招聘（Hire）API；如实告知，不要改用其它域近似作答。
-- 结果被截断（`truncated=true`）→ 说明岗位正文较长：只取与问题相关的段落，或缩小范围后再问，不要要求"全部列出"。
+- `found=false`：详情 → 核对 ID 来源与列表返回一致；列表为空 → 换更短关键字，或省略过滤重翻一页。
+- 报"未注册客户端（软缺席）"→ 宿主未启用对应招聘 API（岗位 / 候选人各自独立）；如实告知缺哪一类。
+- 报"工具不在白名单"或不可见 → 该工具**默认不启用**（PII）：请宿主按需显式加入白名单，不要改用其它域近似作答。
+- 结果 `truncated=true` → 正文较长：只取与问题相关的段落，不要要求"全部列出"。
 
 ## 避坑
-- **列表不含正文**：`hire.list_jobs` 只给定位字段（id/title/code/状态/更新时间）；JD 与任职要求要用 `hire.get_job` 单条取，
-  不要因为列表里"看不到描述"就认为岗位没有描述。
-- **岗位 vs 人**：本域只有岗位信息，没有候选人/投递/面试数据；不要回答"谁投了这个岗位"之类问题。
-- **页大小不可调**：`hire.list_jobs` 只接受 `page_token`（页大小由宿主固定）；要拿全就按 `has_more` 续页。
-- **停用岗位仍在列表里**：`active_status` 表示启用状态，非"启用"的岗位可能是历史岗位，回答"在招岗位"时应按状态筛选。
-- **岗位创建人不含在内**：投影不带创建人信息，不要试图从岗位数据推断"谁发布的"。
+- **列表不含正文/联系方式**：`hire.list_jobs` 无 JD，`hire.list_talents` 无手机邮箱——需要就用对应的 `get` 单条取。
+- **候选人数据不得扩散**：`hire.get_talent` 只返回联系所需字段（姓名/手机/邮箱/工作年限/是否已入职）；
+  身份证号、性别、年龄、籍贯、学历、工作经历、简历附件**本域不返回**，不要试图从其它字段拼凑。
+- **岗位 vs 人**：职位表里没有候选人；不要回答"谁投了这个岗位"（投递数据未开放）。
+- **页大小不可调**：`list_*` 只接受 `page_token`（页大小由宿主固定）；`keyword` 是业务过滤，与页大小不是一类东西。
+- **停用岗位仍在列表里**：`active_status` 表示启用状态；回答"在招岗位"时应按状态筛选。
 
 ## 安全规则
-- 本域为**只读**、属**非 PII**（岗位是组织对外招聘信息），需 `hire:job:readonly`。
-- 只使用本域真实工具名（`hire.list_jobs` / `hire.get_job`），不臆造不存在的工具或 API。
-- 岗位正文可能含内部信息：仅在用户授权的会话内使用，不要把完整 JD 扩散到无关会话。
+- 职位类工具为**只读、非 PII**；候选人工具为**只读但属 PII**（默认不启用，需宿主显式授权并确认合规口径）。
+- 只使用本域真实工具名（`hire.list_jobs` / `hire.get_job` / `hire.list_talents` / `hire.get_talent`），不臆造工具或 API。
+- 候选人信息仅在用户授权的会话内使用：不得转存、不得跨会话扩散、不得与无关人员共享。
 
 ## 示例
 - 「我们有哪些在招岗位？」→ `hire.list_jobs()` → 汇总 `title`；`has_more=true` 时续页。
-- 「这个岗位的任职要求是什么？」→ `hire.list_jobs`（拿 id）→ `hire.get_job(job_id=...)` → 取 `requirement` 回答。
-- 用户问「张三投了哪个岗位」→ 本域**不支持**（候选人数据未开放）：如实说明并建议走招聘系统的投递管理。
+- 「这个岗位的任职要求是什么？」→ `hire.list_jobs`（拿 id）→ `hire.get_job(job_id=...)` → 取 `requirement`。
+- 「帮我找一下张伟的联系方式」→ `hire.list_talents(keyword="张伟")` → `hire.get_talent(talent_id=...)` → 取 `mobile`/`email`。
+- 用户问「张三投了哪个岗位」→ 本域**不支持**（投递数据未开放）：如实说明并建议走招聘系统的投递管理。

@@ -55,3 +55,88 @@ public interface IFeishuTenantHireGetJobTool
         [ToolParameter("job_id", "职位 ID（必填，来自 hire.list_jobs 返回的 id）", Required = true)] string job_id,
         CancellationToken cancellationToken = default);
 }
+
+// ─────────────── hire · 招聘需求（job_requirement，非 PII） ───────────────
+
+/// <summary>
+/// 工具接口：hire.list_job_requirements（映射 <c>IFeishuTenantV1HireJobRequirement.GetJobRequirementListAsync</c>）。
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>为什么补它</b>："职位（job）"是**对外发布的岗位**，"招聘需求（job_requirement）"是**内部的用人计划**
+/// （需求人数 / 职级区间 / 部门 / 起止时间 / 审批状态 / 关联职位）——两者是两套对象：招聘团队问"这个季度还缺几个人"、
+/// "某职位挂在哪个需求下"时，只有需求能回答。缺它时模型只能拿职位数硬凑，答不准。
+/// </para>
+/// <para>
+/// <b>非 PII（裁剪后）</b>：需求本体是组织用人信息；但接口同时返回<b>招聘负责人 / 用人经理 / 直属上级</b>
+/// （<c>recruiter_list</c> / <c>jr_hiring_managers</c> / <c>direct_leader_list</c>）与 <c>creator_id</c>、
+/// 以及 <c>min_salary</c> / <c>max_salary</c> 薪酬区间 ⇒ <b>三类都按"与本工具目的无关"丢弃</b>
+/// （目的：定位与概览需求）。裁剪后本工具不进 PII 登记。
+/// </para>
+/// <para>
+/// <b>DP-B1-0</b>：只暴露 <c>page_token</c>（+ 业务过滤 <c>job_id</c>），页大小走 SDK 默认。
+/// </para>
+/// </remarks>
+[FeishuTool("hire.list_job_requirements",
+    Description = "分页列出【招聘需求】（需求 ID、编码、名称、需求人数 head_count、优先级、进度、部门、职级区间、起止时间、审批状态、关联职位 ID 列表），可用 job_id 只看某职位挂的需求。用于回答「这个季度还缺几个人」「某职位对应哪条招聘需求」。⚠️ 为最小暴露：招聘负责人/用人经理/直属上级、创建人、薪资区间一律不返回（需这些信息请在招聘系统查看）。page_token 续页。只读，需 hire:job_requirement:readonly。",
+    RequiredScopes = ["hire:job_requirement:readonly"],
+    Source = nameof(IFeishuTenantV1HireJobRequirement) + "." + nameof(IFeishuTenantV1HireJobRequirement.GetJobRequirementListAsync))]
+public interface IFeishuTenantHireListJobRequirementsTool
+{
+    /// <summary>分页列出招聘需求（可按职位 ID 过滤）。</summary>
+    /// <returns>白名单投影后的 JSON 文本（分页信封 items/has_more/page_token；条目含 id/short_code/name/head_count/priority/display_progress/department/min_level/max_level/start_time/deadline/approval_status/job_id_list/update_time）。</returns>
+    Task<string> ListJobRequirementsAsync(
+        [ToolParameter("job_id", "职位 ID 过滤（可选，来自 hire.list_jobs 的 id；只返回挂在该职位下的需求）")] string? job_id = null,
+        [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        CancellationToken cancellationToken = default);
+}
+
+// ─────────────── hire · 候选人（talent）：PII 首批切片 ───────────────
+//
+// 与"职位"不同，候选人**是个人信息**：姓名、手机、邮箱、学历、工作经历、身份证号……
+// 故本批按 DP-A5-1 档位 ① 落地（三处登记缺一不可，由 PiiToolDisciplineContractGuards 机械锁定）：
+//   ① 默认不启用——piiTools 登记（scope-authority.json），需宿主显式加入 FeishuAgent:Tools；
+//   ② 描述必须声明"结果进第三方模型上下文"的后果；
+//   ③ 投影**白名单化**——身份证号 / 性别 / 年龄 / 国籍 / 籍贯 / 学历 / 工作经历 / 作品 / 获奖 / 附件
+//      一律不返回；只给"定位与联系"所需的最小集。
+
+/// <summary>
+/// 工具接口：hire.list_talents（映射 <c>IFeishuTenantV1HireCandidate.GetTalentListAsync</c>）。
+/// </summary>
+/// <remarks>
+/// 列表投影<b>极小</b>（talent_id / 姓名 / 是否已入职）：翻页找人是"索引"用途，不需要把每人档案带出。
+/// </remarks>
+[FeishuTool("hire.list_talents",
+    Description = "分页检索【候选人（人才）】列表（人才 ID、姓名、是否已入职），支持 keyword 按姓名/手机号等检索。用于「找人」拿到 talent_id 后再用 hire.get_talent 取联系人字段。⚠️ 该工具属 PII：结果是候选人个人信息，会进入【第三方模型上下文】；【默认不启用】，需宿主显式加入白名单并确认合规口径；身份证号/性别/年龄/籍贯/学历/经历等一律不返回。只读，需 hire:talent:readonly。",
+    RequiredScopes = ["hire:talent:readonly"],
+    Source = nameof(IFeishuTenantV1HireCandidate) + "." + nameof(IFeishuTenantV1HireCandidate.GetTalentListAsync))]
+public interface IFeishuTenantHireListTalentsTool
+{
+    /// <summary>分页检索候选人列表（最小投影）。</summary>
+    /// <returns>白名单投影后的 JSON 文本（分页信封 items/has_more/page_token；条目含 talent_id/name/is_onboarded）。</returns>
+    Task<string> ListTalentsAsync(
+        [ToolParameter("keyword", "检索关键字（可选，按人才姓名/手机号等匹配；不填=按更新时间倒序翻页）")] string? keyword = null,
+        [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：hire.get_talent（映射 <c>IFeishuTenantV1HireCandidate.GetTalentAsync</c>）。
+/// </summary>
+/// <remarks>
+/// 单条候选人**联系人字段**通道（姓名 / 手机 / 邮箱 / 工作年限 / 是否入职 / 是否在职期间为猎头渠道）。
+/// 这是"联系候选人"这一正当用途所需的最小集；档案类字段（学历/经历/作品/获奖/附件/自定义字段）与敏感标识
+/// （身份证号/性别/年龄/国籍/籍贯）**不返回**——它们与本工具目的无关，却显著扩大泄露面。
+/// </remarks>
+[FeishuTool("hire.get_talent",
+    Description = "按人才 ID 查询单个【候选人】的联系与在职字段（姓名、手机号、邮箱、工作年限、是否已入职）——已从 hire.list_talents 拿到 talent_id 时用它取联系方式。⚠️ 该工具属 PII：结果是候选人个人信息，会进入【第三方模型上下文】；【默认不启用】，需宿主显式加入白名单并确认合规口径；身份证号/学历/工作经历/备注等一律不返回。查不到时返回 found=false。只读，需 hire:talent:readonly。",
+    RequiredScopes = ["hire:talent:readonly"],
+    Source = nameof(IFeishuTenantV1HireCandidate) + "." + nameof(IFeishuTenantV1HireCandidate.GetTalentAsync))]
+public interface IFeishuTenantHireGetTalentTool
+{
+    /// <summary>按 ID 查询单个候选人的联系与在职字段。</summary>
+    /// <returns>白名单投影后的 JSON 文本（talent_id/name/mobile/email/experience_years/is_onboarded），查不到时含 found=false 哨兵。</returns>
+    Task<string> GetTalentAsync(
+        [ToolParameter("talent_id", "人才 ID（必填，来自 hire.list_talents 返回的 talent_id）", Required = true)] string talent_id,
+        CancellationToken cancellationToken = default);
+}

@@ -62,6 +62,10 @@ public class PiiToolDisciplineContractGuards
 
         // F-1 收官：Security 应用 API 调用日志（含调用方 IP；原始载荷已丢弃），默认不启用。
         "security.list_openapi_logs",
+
+        // hire：候选人（人才）检索与详情（姓名/手机/邮箱），默认不启用；投影已丢弃身份证/学历/经历等。
+        "hire.list_talents",
+        "hire.get_talent",
     ];
 
     private sealed record PiiEntry(string Tool, string Category, bool DefaultDisabled, string Note);

@@ -106,6 +106,9 @@ public class DomainRegistrarTests
 
             // F-1 P0：hire 招聘岗位首批（非 PII）。
             FeishuToolNames.HireListJobs, FeishuToolNames.HireGetJob,
+
+            // hire 候选人首批（**PII**，默认不启用；等价性只关心注册面）。
+            FeishuToolNames.HireListTalents, FeishuToolNames.HireGetTalent,
         };
 
         var mockClients = new Action<IServiceCollection>(services =>
@@ -151,6 +154,7 @@ public class DomainRegistrarTests
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1SecurityOpenApiLog>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3Departments>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1HireJob>().Object);
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1HireCandidate>().Object);
         });
 
         using var singleEntryProvider = new ServiceCollection()
@@ -185,8 +189,8 @@ public class DomainRegistrarTests
             .AddFeishuOrgMetadataTools()
             // F-1：security 安全合规（行为审计 + 应用调用日志，均 PII 且默认不启用）。
             .AddFeishuSecurityTools()
-            // F-1 P0：hire 招聘岗位（非 PII，首批）。
-            .AddFeishuHireJobTools()
+            // F-1 P0 + 后续：hire 招聘（岗位 2 + 候选人 2，候选人属 PII）。
+            .AddFeishuHireTools()
             // R6 / S3：VideoConferencing 只读域同理（写面含 user 身份工具，由 AddFeishuWriteTools 覆盖）。
             .AddFeishuVcTools()
             // 能力出处元工具是一个独立入口：它不属于任何业务域，

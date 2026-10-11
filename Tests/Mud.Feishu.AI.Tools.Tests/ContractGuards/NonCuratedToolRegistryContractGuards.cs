@@ -89,6 +89,14 @@ public class NonCuratedToolRegistryContractGuards
         ("UpdateJobRequirementAsync", "hire：招聘需求写类——同上"),
         ("DeleteJobRequirementAsync", "hire：招聘需求写类（删除）——同上"),
 
+        // hire 候选人：只策展"检索 + 联系字段"两条；候选人写类与档案类显式登记。
+        ("CombinedCreateTalentAsync", "hire：候选人写类（复合创建，含档案）——写面需宿主显式授权，另立批次"),
+        ("CombinedUpdateTalentAsync", "hire：候选人写类（复合更新，含档案）——同上"),
+        ("AddTalentToTalentPoolAsync", "hire：候选人写类（加入人才库）——同上"),
+        ("BatchChangeTalentPoolAsync", "hire：候选人写类（批量调整人才库）——同上"),
+        ("ChangeTalentBlockAsync", "hire：候选人写类（拉黑/解黑，高风险）——同上"),
+        ("GetInterviewByTalentAsync", "hire：按候选人查面试（只读，含面试评价与面试官）——留待面试批次（PII 面更宽）"),
+
         // F-1（contact 部门面）：只策展两条缺失方向（上级链 / 按名搜索），其余留待下一片。
         ("GetDepartmentInfoByIdAsync", "contact：按 ID 查部门（只读）——已有 list/search/parents 三条路径，暂不重复"),
         ("GetDepartmentsPageListAsync", "contact：部门全量分页（只读）——可由 list_departments 下钻替代"),
@@ -177,6 +185,7 @@ public class NonCuratedToolRegistryContractGuards
                      FeishuToolNames.SecurityListOpenapiLogs,
                      FeishuToolNames.ContactGetDepartmentParents,
                      FeishuToolNames.HireListJobs,
+                     FeishuToolNames.HireListTalents,
                  })
         {
             FeishuToolNames.All.Should().Contain(toolName,

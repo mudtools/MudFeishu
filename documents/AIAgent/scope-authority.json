@@ -57,7 +57,8 @@
     "wiki:wiki:readonly": "知识库 · 只读（wiki.get_node / list_nodes 使用）",
     "wiki:wiki": "知识库 · 读写（R5/F-11 新增：wiki.create_node / move_node / move_docs_to_space 使用）",
     "admin:audit_info:readonly": "安全合规 · 行为审计日志只读（F-1 P0 新增：security.query_audit_logs / security.list_openapi_logs 使用）",
-    "hire:job:readonly": "招聘 · 职位只读（F-1 P0 新增：hire.list_jobs / hire.get_job 使用；岗位是对外招聘信息，非 PII）"
+    "hire:job:readonly": "招聘 · 职位只读（F-1 P0 新增：hire.list_jobs / hire.get_job 使用；岗位是对外招聘信息，非 PII）",
+    "hire:talent:readonly": "招聘 · 人才（候选人）只读（新增：hire.list_talents / hire.get_talent 使用；**PII 出口**，默认不启用——SDK 接口文档「所需权限」栏明确列出 hire:talent:readonly）"
   },
   "piiTools": [
     {
@@ -131,6 +132,18 @@
       "category": "应用 API 调用日志（调用方 IP / 接口路径 / 状态码）",
       "defaultDisabled": true,
       "note": "DP-A5-1 档位 ① 新增（F-1 收官）：集成排障数据，含调用方 IP；默认不在任何白名单，需宿主显式启用并确认合规口径。投影已丢弃 payload / response / query_param 三个原始载荷字段——避免业务数据与个人信息经模型上下文外泄"
+    },
+    {
+      "tool": "hire.list_talents",
+      "category": "候选人（人才）检索",
+      "defaultDisabled": true,
+      "note": "DP-A5-1 档位 ①：候选人属个人信息主体，默认不在任何白名单。列表投影仅 talent_id/姓名/是否已入职——翻页找人是索引用途，不携带联系方式与档案"
+    },
+    {
+      "tool": "hire.get_talent",
+      "category": "候选人联系方式与在职字段（姓名/手机/邮箱/工作年限）",
+      "defaultDisabled": true,
+      "note": "DP-A5-1 档位 ①：「联系候选人」这一正当用途所需的最小集；身份证号 / 性别 / 年龄 / 国籍 / 籍贯 / 学历 / 工作经历 / 作品 / 获奖 / 简历附件 / 自定义字段一律不返回（与本工具目的无关却显著放大泄露面）"
     }
   ]
 }

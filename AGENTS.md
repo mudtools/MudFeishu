@@ -67,14 +67,39 @@ asserted for the diagnostic whitelist afterwards (`.github/workflows/dotnet-publ
 
 ## Dependency version policy (Mud.HttpUtils)
 
-This repo consumes `Mud.HttpUtils` **3.0.5** (HttpUtils and Generator **must stay on the same
-version**; see `.docs/MudFeishu-MudHttpUtils-3.0.5-升级改造方案-v1.md`) — the 3.0.x release line carries
-**BC-27**: `IAppContextSwitcher` no longer declares
+`Mud.HttpUtils` and `Mud.HttpUtils.Generator` **must stay on the same version** — enforced by
+`TokenMultiAppContractGuards.MudHttpUtils_PackageReference_ShouldBeSingleVersion`, which asserts
+"exactly one version across the repo" and does **not** hardcode the number (bumps never edit it).
+The authoritative value is the one actually written in the `PackageReference`s.
+
+- **Pinned now: `3.0.6`** — the per-tool affordance slice (profile slot `AffordanceDirectory`,
+  `x-feishu.affordance` emission, diagnostics `MUDFT028–031`) **has been taken in and is published**
+  (2026-10-11). `3.0.6` is on nuget.org, and the intake-period temporary local source line
+  (`MudHttpUtils-local → D:/Repos/MudHttpUtils/artifacts`) **has been deleted** from `nuget.config` —
+  restore now comes from nuget.org only.
+  Intake trail (for future component bumps): intake was verified against the **Release** pack, not a
+  Debug pack — `pack.ps1 Release` produced the 10-package set with post-pack validation (package-set
+  match + every DLL SHA256-identical to `bin\Release` + the Generator DLL carrying
+  `ToolSurfaceSourceGenerator`); the same-version cache entries were cleared (mandatory —
+  key = id+version), the solution cleaned and rebuilt, the cached `Mud.HttpUtils.Generator.dll` hash
+  asserted equal to `bin\Release` (≠ `bin\Debug`), and the full gate re-run **after** the local source
+  was removed (build 0 errors, ≈10,836 tests green, AOT strict-mode net-zero).
+  Evidence: `.docs/AI/状态基线.md` §五 (F-7) and
+  `documents/AIAgent/MudFeishu-AI-per-tool-affordance-组件侧生成器改造方案.md`.
+- **Do not pre-bump without a resolvable source**: bumping the `PackageReference`s while the version is
+  neither on nuget.org **nor** reachable through a temporary local source makes `dotnet restore` fail
+  outright. The two must ship in the same batch (that is exactly what the local source above is for).
+- ⚠️ **Never reuse `3.1.0`.** That number was a *prepared* component version that was never released;
+  it is occupied in the component `CHANGELOG.md` (see the "编号说明" note in its `3.1.0` section).
+
+The 3.0.x release line carries **BC-27**: `IAppContextSwitcher` no longer declares
 `UseApp(string)` / `UseDefaultApp()` / `BeginScope(string)`, and the generator no longer emits them
 by default — **plus the tool-surface generation engine** (`ToolSurface/` in
 `Mud.HttpUtils.Generator` + `ISdkToolProfile` in `Mud.HttpUtils.Abstractions` +
-`[SdkToolProfile]` in `Mud.HttpUtils.Attributes`). Adaptation (plan:
-`.docs/MudHttpUtils-3.0.0-破坏性变更改造计划.md`, §10):
+`[SdkToolProfile]` in `Mud.HttpUtils.Attributes`). The component-side original is the "已移除成员"
+table in the component repo's `CHANGELOG.md` `3.0.0` section (the previously referenced
+`.docs/MudHttpUtils-3.0.0-破坏性变更改造计划.md` **does not exist**; that dangling reference is removed).
+Adaptation:
 
 - `IFeishuAppContextSwitcher` **re-declares** the three legacy members with `[Obsolete]`
   (upstream "self-declared ⇒ exempt" mechanism keeps 188+ generated classes emitting them).
@@ -89,9 +114,15 @@ by default — **plus the tool-surface generation engine** (`ToolSurface/` in
   `Mud.HttpUtils 2.0.8`), so demo `BeginScope("hr-app")` calls are intentionally untouched until the
   rebuilt package ships.
 
-Mud.HttpUtils **3.0.5 is published on nuget.org**; the temporary local source
-(`mudhttputils-local` → `D:/Repos/MudHttpUtils/artifacts`) has been removed from `nuget.config`
-(2026-10-10). The tool surface is generated **only** by the component-side engine: the local
+Mud.HttpUtils **3.0.5 is what nuget.org currently serves** — it is the newest *published* version
+(`3.0.6` is not published yet). A **temporary** local folder source is therefore active in
+`nuget.config` for the `3.0.6` intake: key `MudHttpUtils-local` →
+`D:/Repos/MudHttpUtils/artifacts-debug` (a **Debug** pack produced by `pack_debug.ps1`, local intake
+verification only; **re-added 2026-10-11**). That line must be deleted once the upstream
+`pack.ps1 Release` publish lands — release baselines must never come from `artifacts-debug`.
+⚠️ The current key is `MudHttpUtils-local`, **not** the historical `mudhttputils-local` (the older
+local source was removed on 2026-10-10); do not confuse the two when auditing `nuget.config`.
+The tool surface is generated **only** by the component-side engine: the local
 generator project and its driver tests were retired in the R-1+2c migration, and
 `Tests/Mud.Feishu.AI.Tools.Tests/ContractGuards/FeishuToolProfileContractGuards.cs` asserts
 that no local generator implementation returns — by **capability**, not by project name

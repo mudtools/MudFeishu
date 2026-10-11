@@ -530,10 +530,38 @@ await app.Services.RunFeishuMcpStdioAsync();             // 阻塞到客户端�
 | `FeishuToolNames`         | 工具名契约表（只读/写分离）                                                                     | 白名单、守卫                                                                                         |
 | **`FeishuToolContracts`** | **类型化契约**（`Risk`/`Identity`/`IsWrite`/`RequiredScopes`/`SdkSource`/`HttpMethod`/`Route`） | 注册器（直接构造定义，**零运行期解析**）、目录、守卫、权威 scope 清单校验                            |
 | **`FeishuToolGuidance`**  | 域 guidance（素材 `Guidance/{domain}.md`，AdditionalFiles）                                     | `FeishuGuidanceComposer`（宿主指令之后追加，2 KB 上限，超限按域截断并在返回值上给 `Truncated` 信号） |
+| **`x-feishu.affordance`** | per-tool 决策指导（素材 `Affordance/{工具名}.md`，AdditionalFiles；R-3 / F-7）                  | 工具 `Description`（进程内与 MCP 同源）+ `McpEnvelope` 导出方言；四键 `when` / `avoid_when` / `prerequisites` / `tips` |
 
 **scope 权威性**：`documents/AIAgent/scope-authority.json`（人工从控制台核对回填）与契约表构成
 **双向守卫**——契约里的 scope 必须在清单中（缺口即红），清单里未标 `⚠️` 的必须被至少一个工具使用
 （防僵尸权限），`⚠️` 项必须持续可见。
+
+### 8.0 per-tool affordance 资产（R-3 / F-7）
+
+工具的"何时用 / 何时别用 / 前置条件 / 踩坑提示"以**单工具资产**形式策展，由生成器同 pass 发射进
+`x-feishu.affordance`（四键恒出现；未配资产的工具**整键不出现**，golden 逐字节不变）：
+
+```text
+Mud.Feishu.AI.Tools/Affordance/{契约工具名}.md      # 如 out: Affordance/vc.delete_reserve.md
+```
+
+- **四节固定**：`## WHEN` / `## Avoid when` / `## Prerequisites` / `## Tips`（标题大小写不敏感），
+  四节**都必须存在且各至少一个条目**（条目 = `-` / `*` / `+` 开头的行，或普通行）；
+- ⚠️ **不得写一级标题**：引擎把**任何** `#` 开头的行当作小节标题，`# vc.delete_reserve` 会被报成
+  `MUDFT028 未知小节`（本仓接入时实测踩到）；四节之前的说明文字只能写成普通行；
+- ⚠️ **`Affordance/` 目录里不得放其它 `.md`**（README 也会被当成资产 ⇒ `MUDFT029` 文件名不命中工具名）；
+- **反引号里的 `域.工具` 会被机械校验**（`MUDFT030`）：要引用别的工具就写全名，写错即构建失败；
+  非 `域.工具` 形态的反引号片段（参数名、字段名）不参与校验；
+- **预算**：单资产 ≤ 1024 字符、单小节 ≤ 320 字符（超限 = `MUDFT031` Warning，走
+  `scripts/mudft-warning-baseline.txt` 基线拦增量；处置是**压缩文案**而不是抬预算）；
+- **接线三件套**：剖面槽 `AffordanceDirectory` ↔ csproj 的 `<AdditionalFiles Include="Affordance\**\*.md" />`
+  ↔ 磁盘目录名。任一不一致 ⇒ 引擎收不到资产 ⇒ 整键消失**而构建全绿**（`MUDFT014` 会因 golden 漂移报错，
+  `AffordanceContractGuards` 也会报红——这两道门是刻意的冗余）；
+- **强制集合**：`high-risk-write` 工具（16 个）**必须**有资产——`AffordanceContractGuards` 机械断言，
+  新增高危工具时不同批补资产即报红；
+- **模型可见面**：`FeishuToolAIFunction.Description` 尾部追加（进程内 Agent 与 MCP 链共用同一实例
+  ⇒ 逐字节一致），另经 `McpEnvelope` 方言结构化透传（`affordance` 字段）。
+  之所以走描述：`x-feishu` 刻意**不进**参数 Schema 关键字空间（MEAI 的 `JsonSchema` 契约要求纯参数 Schema）。
 
 ### 8.1 写工具幂等能力表（R7/WP2-T2-4）
 

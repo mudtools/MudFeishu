@@ -152,7 +152,7 @@ internal sealed class FeishuToolSchemaExporter : IToolSchemaExporter
                 continue;
             }
 
-            tools.AddNode(new JsonObject
+            var tool = new JsonObject
             {
                 ["name"] = ToMcpToolName(name),
 
@@ -169,7 +169,17 @@ internal sealed class FeishuToolSchemaExporter : IToolSchemaExporter
                     ["destructiveHint"] = contract.Risk == FeishuToolRisk.HighRiskWrite,
                     ["openWorldHint"] = true,
                 },
-            });
+            };
+
+            // R-3 / F-7：per-tool affordance 结构化透传（仅配了资产的工具有该字段 ⇒ 未配资产的
+            // 工具导出结果逐字节不变）。它**不**进 inputSchema（那是纯参数 Schema），而是并列字段：
+            // 让宿主 / CI / 桥接器能按 `when` / `avoid_when` 机械消费，而不必读模型侧描述文本。
+            if (ToolAffordanceText.TryGetNode(schema) is { } affordance)
+            {
+                tool["affordance"] = affordance.DeepClone();
+            }
+
+            tools.AddNode(tool);
         }
 
         return new JsonObject

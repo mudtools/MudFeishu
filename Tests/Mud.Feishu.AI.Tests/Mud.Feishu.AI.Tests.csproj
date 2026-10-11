@@ -11,12 +11,12 @@
          的通用 ToolSurface 引擎（分析器形态）。
          注意：包引用形态的分析器**不会**经 ProjectReference 传递到下游，故此处必须显式声明。
          ⚠ 全仓 Mud.HttpUtils* 必须同版本（守卫 TokenMultiAppContractGuards.MudHttpUtils_PackageReference_ShouldBeSingleVersion）。 -->
-    <PackageReference Include="Mud.HttpUtils.Generator" Version="3.0.5"
+    <PackageReference Include="Mud.HttpUtils.Generator" Version="3.0.6"
                       PrivateAssets="all"
                       OutputItemType="Analyzer"
                       ReferenceOutputAssembly="false" />
-    <PackageReference Include="Mud.HttpUtils.Attributes" Version="3.0.5" />
-    <PackageReference Include="Mud.HttpUtils.Abstractions" Version="3.0.5" />
+    <PackageReference Include="Mud.HttpUtils.Attributes" Version="3.0.6" />
+    <PackageReference Include="Mud.HttpUtils.Abstractions" Version="3.0.6" />
   </ItemGroup>
 
   <ItemGroup>

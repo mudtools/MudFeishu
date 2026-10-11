@@ -107,7 +107,16 @@ namespace Mud.Feishu.AI.Tools.SdkProfile;
     CapabilityCatalogPropertyName = "FeishuToolCatalog",
     GoldenFileName = "FeishuToolSchemas.golden.txt",
     GoldenUpdatePropertyName = "FeishuToolGoldenUpdate",
-    GuidanceDirectory = "/Guidance/")]
+    GuidanceDirectory = "/Guidance/",
+
+    // R-3 / F-7（上游 3.0.6 新增槽）：per-tool affordance 资产目录片段。
+    // 资产 = `Affordance/{契约工具名}.md`（四节 WHEN / Avoid when / Prerequisites / Tips，
+    // 各节非空）⇒ 由引擎同 pass 发射进 `x-feishu.affordance`（四键恒出现，位置在 source 之后、
+    // output_schema 之前），并对以下三类失败报 Error 级诊断：028 结构非法 / 029 文件名不命中工具名 /
+    // 030 反引号包裹的 `域.工具` 引用不存在（预算超界 = 031 Warning，走基线拦增量）。
+    // 与 GuidanceDirectory 的分工：guidance 是**域级**工作流（键 = 域/主题，按域读取、按需拉取）；
+    // affordance 是**单工具**的选型与前置条件（随描述符推给模型可见面）。同一结论不得两处互斥表述。
+    AffordanceDirectory = "/Affordance/")]
 internal sealed class FeishuToolProfile : ISdkToolProfile
 {
     // 空标记实现：数据全部由 [SdkToolProfile] 承载（引擎只能读编译期常量，不能执行 getter）。

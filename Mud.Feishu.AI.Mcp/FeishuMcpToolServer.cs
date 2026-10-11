@@ -419,10 +419,15 @@ public sealed class FeishuMcpToolServer
             // R-7：经窄接缝构桥（不再 new 实现类型；接缝内部复用 DI 的上下文访问器单例，
             // 与 InvokeAsync 里 Begin 的访问器是同一实例——这是"上下文可见"的前提）。
             var function = _functionFactory.Create(definition, schemaJson);
+
+            // R-3 / F-7：描述**取自同一个 AIFunction 实例**（而非 definition.Description）。
+            // 差别只在配了 per-tool affordance 的工具上：affordance 由 FeishuToolAIFunction 在构造期
+            // 追加到 Description（`x-feishu` 刻意不进参数 Schema，故必须走描述），两链共用同一类型
+            // ⇒ 进程内与 MCP 的工具描述逐字节一致，外部 Agent 也拿得到同一份决策指导。
             var info = new McpToolInfo(
                 mcpName,
                 definition.Name,
-                definition.Description,
+                function.Description,
                 definition.IsWrite,
                 definition.Risk,
                 definition.Identity);

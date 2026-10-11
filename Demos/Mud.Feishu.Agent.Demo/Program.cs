@@ -21,6 +21,7 @@ namespace Mud.Feishu.Agent.Demo;
 ///   <item><description><c>FeishuImHandlerDemo:Enabled</c> → IM 会话处理器接入演示；</description></item>
 ///   <item><description><c>FeishuDomainEventsDemo:Enabled</c> → 领域事件处理器 + 流式通道降级链（R-13）；</description></item>
 ///   <item><description><c>FeishuDocAgent:Enabled</c> → 文档业务智能体控制台；</description></item>
+///   <item><description><c>FeishuSkillsDemo:Enabled</c> → Skills 产物消费演示（不连飞书，R-3 / F-8）；</description></item>
 ///   <item><description>均未启用 → Phase 0 裸模型一问一答（读 <c>FeishuDemo</c> 节）。</description></item>
 /// </list>
 /// 运行时日志由 <see cref="DemoLogging"/> 提供（Serilog：控制台 Warning / 文件全量 Information），
@@ -65,6 +66,14 @@ public static class Program
             if (DocAgentSettings.IsEnabledByConfiguration(configuration))
             {
                 await DocAgentDemo.RunAsync(sources);
+                return;
+            }
+
+            // R-3 / F-8：Skills 产物消费演示（不连飞书、不需要模型）——放在凭证型模式之后、
+            // 裸模型之前：它的目的是"验证随包分发的产物可被消费"，不与任何凭证型模式争优先级。
+            if (configuration.GetValue<bool?>(SkillsDemoSettings.EnabledKey) is true)
+            {
+                await SkillsDemo.RunAsync(configuration);
                 return;
             }
 

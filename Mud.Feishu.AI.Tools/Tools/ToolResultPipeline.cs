@@ -130,6 +130,7 @@ internal static class ToolResultPipeline
     /// <param name="apiCode">飞书业务 code（可空）。</param>
     /// <param name="trace">追踪号（可空；仅 catch 路径携带）。</param>
     /// <param name="attempts">尝试次数（默认 1；重试路径回填实际次数）。</param>
+    /// <param name="suggestions">恢复候选（BUG-8；可空——无<b>事实</b>来源时不得杜撰）。</param>
     /// <returns>带结构化载荷的错误结果（<b>未净化</b>——净化由调用方按各自出口纪律施加）。</returns>
     public static FeishuToolResult Error(
         string toolName,
@@ -139,9 +140,10 @@ internal static class ToolResultPipeline
         int maxLength,
         int? apiCode = null,
         string? trace = null,
-        int attempts = 1)
+        int attempts = 1,
+        IReadOnlyList<string>? suggestions = null)
     {
-        var payload = ToolErrorFactory.Create(toolName, category, subtype, apiCode, trace, attempts);
+        var payload = ToolErrorFactory.Create(toolName, category, subtype, apiCode, trace, attempts, suggestions);
         return FromErrorText(payload, ToolErrorFactory.Compose(payload, reason), maxLength);
     }
 
@@ -197,6 +199,7 @@ internal static class ToolErrorFactory
     /// <param name="apiCode">飞书业务 code（可空）。</param>
     /// <param name="trace">追踪号（可空）。</param>
     /// <param name="attempts">尝试次数（默认 1）。</param>
+    /// <param name="suggestions">恢复候选（BUG-8；可空）。</param>
     /// <returns>错误载荷。</returns>
     public static ToolError Create(
         string toolName,
@@ -204,7 +207,8 @@ internal static class ToolErrorFactory
         string subtype,
         int? apiCode = null,
         string? trace = null,
-        int attempts = 1)
+        int attempts = 1,
+        IReadOnlyList<string>? suggestions = null)
         => new(
             Category: FeishuToolBinding.CategoryLiteral(category),
             Subtype: subtype,
@@ -213,7 +217,8 @@ internal static class ToolErrorFactory
             ApiCode: apiCode,
             Attempts: attempts,
             Trace: trace,
-            Tool: toolName);
+            Tool: toolName,
+            Suggestions: suggestions);
 
     /// <summary>拼装"首行结构化 JSON 载荷 + 人类可读正文"。</summary>
     /// <param name="payload">错误载荷。</param>

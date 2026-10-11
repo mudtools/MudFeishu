@@ -2,6 +2,7 @@
 name: feishu-mail
 description: 飞书 mail 域工具集：7 个工具（只读 5 / 写 2）。邮件（mailbox / thread）→ `mail.*`；即时消息 → `im.*`。同一收件人不代表同一渠道。
 version: 1.0.0
+package_version: 3.0.1
 ---
 
 # 邮件（mail.*）

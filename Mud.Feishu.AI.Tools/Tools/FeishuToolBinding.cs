@@ -169,7 +169,8 @@ internal sealed class FeishuToolBinding
         {
             return await DenyAsync(
                 tool, context, gate.Category, gate.Subtype, gate.Reason,
-                arguments, executionStopwatch, activity, cancellationToken).ConfigureAwait(false);
+                arguments, executionStopwatch, activity, cancellationToken,
+                DenySuggestions(gate.Category, tool)).ConfigureAwait(false);
         }
 
         activity?.SetTag(FeishuToolDiagnostics.TagDecision, FeishuToolDiagnostics.DecisionAllowed);
@@ -288,7 +289,14 @@ internal sealed class FeishuToolBinding
             var (category, subtype) = ToolErrorClassifier.Classify(ex);
 
             // R-1 / B-2：载荷构造收口到唯一工厂（此前是本类的第 3 份同构拷贝）。
-            var errorPayload = ToolErrorFactory.Create(tool.Name, category, subtype, trace: trace);
+            // R-3 / BUG-8：参数校验失败（闭集非法值）携带的结构化候选随载荷回填模型——
+            // 模型据此直接换参，无需解析人类可读正文（候选只来自事实，见 ToolArgumentException）。
+            var errorPayload = ToolErrorFactory.Create(
+                tool.Name,
+                category,
+                subtype,
+                trace: trace,
+                suggestions: (ex as ToolArgumentException)?.Suggestions);
             var humanReadable = StructuredError(
                 tool.Name,
                 category,
@@ -463,7 +471,7 @@ internal sealed class FeishuToolBinding
     /// 确保"新增一个拒绝分支必然带上审计"（否则审计会成为可选步骤而被遗漏）。
     /// </summary>
     /// <remarks>
-    /// R3-4：模型可见文案经 <see cref="EgressResult(string, ToolErrorCategory, string, string, int?)"/> 返回——
+    /// R3-4：模型可见文案经 <see cref="EgressResult(string, ToolErrorCategory, string, string, int?, IReadOnlyList{string}?)"/> 返回——
     /// 与成功路径同源净化 + 截断（审计侧仍记原始 <paramref name="reason"/>，两条出口判据不同）。
     /// </remarks>
     private async Task<FeishuToolResult> DenyAsync(
@@ -475,7 +483,8 @@ internal sealed class FeishuToolBinding
         IReadOnlyDictionary<string, object?> arguments,
         System.Diagnostics.Stopwatch executionStopwatch,
         Activity? activity,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IReadOnlyList<string>? suggestions = null)
     {
         activity?.SetTag(FeishuToolDiagnostics.TagDecision, FeishuToolDiagnostics.DecisionDenied);
         FeishuToolDiagnostics.RecordExecution(tool.Name, context.AppKey, FeishuMetrics.ToolOutcomes.Denied);
@@ -486,7 +495,28 @@ internal sealed class FeishuToolBinding
 
         // R3-4：审计仍记**原始** reason（内部事实，非模型可见——R1 §7 纪律 4 的两条出口判据不同），
         // 回填模型的文本则必须经唯一出口净化 + 截断。
-        return EgressResult(tool.Name, category, subtype, reason);
+        return EgressResult(tool.Name, category, subtype, reason, suggestions: suggestions);
+    }
+
+    /// <summary>
+    /// R-3 / BUG-8：拒绝路径的<b>恢复候选</b>——只由<b>事实</b>构成（工具声明的所需权限），
+    /// 不猜测"到底缺哪个权限"（那会让结构化字段退化成猜测记录，与幽灵子类纪律同源）。
+    /// </summary>
+    /// <remarks>
+    /// 授权拒绝的两个成因（未注册授权器 / 授权器拒绝）对宿主的修法不同，文案覆盖两者但不作断言式归因。
+    /// </remarks>
+    private static IReadOnlyList<string>? DenySuggestions(ToolErrorCategory category, FeishuToolDefinition tool)
+    {
+        if (category != ToolErrorCategory.Authorization)
+        {
+            return null;
+        }
+
+        var scopes = tool.RequiredScopes.Count > 0
+            ? string.Join("、", tool.RequiredScopes)
+            : "（该工具未声明 scope）";
+
+        return [$"请确认：① 应用已在飞书开放平台开通该工具所需权限（{scopes}）；② 写类工具已注册 IToolExecutionAuthorizer 并返回 Allowed"];
     }
 
     /// <summary>
@@ -515,9 +545,15 @@ internal sealed class FeishuToolBinding
     /// <see cref="ToolResultPipeline.Error"/>（预算与标记单源）；术后净化仍在本方法内施加——
     /// 这是<b>"模型可见"边界</b>的要求（详见 <c>ToolResultPipeline</c> 的 remarks）。
     /// </remarks>
-    private FeishuToolResult EgressResult(string toolName, ToolErrorCategory category, string subtype, string reason, int? apiCode = null)
+    private FeishuToolResult EgressResult(
+        string toolName,
+        ToolErrorCategory category,
+        string subtype,
+        string reason,
+        int? apiCode = null,
+        IReadOnlyList<string>? suggestions = null)
     {
-        var payload = ToolErrorFactory.Create(toolName, category, subtype, apiCode);
+        var payload = ToolErrorFactory.Create(toolName, category, subtype, apiCode, suggestions: suggestions);
         var combined = ToolErrorFactory.Compose(payload, StructuredError(toolName, category, reason, apiCode));
         return ToolResultPipeline.FromErrorText(payload, ToolResultSanitizer.Sanitize(combined), _options.MaxToolResultLength);
     }
@@ -553,6 +589,7 @@ internal sealed class FeishuToolBinding
                 decision,
                 reason,
                 tool.IsWrite,
+                FeishuToolRiskNames.ToLiteral(tool.Risk),
                 argsDigest,
                 durationMs,
                 context.ConversationKey), cancellationToken).ConfigureAwait(false);
@@ -634,7 +671,7 @@ internal sealed class FeishuToolBinding
     /// </para>
     /// <para>
     /// <b>B2 错误契约</b>：此方法返回人类可读正文；结构化 JSON 载荷由调用方
-    /// （<see cref="EgressResult(string, ToolErrorCategory, string, string, int?)"/>）
+    /// （<see cref="EgressResult(string, ToolErrorCategory, string, string, int?, IReadOnlyList{string}?)"/>）
     /// 置于正文首行。老用例的 <c>Contain</c> 断言不受影响（正文形态保持不变）。
     /// </para>
     /// </remarks>

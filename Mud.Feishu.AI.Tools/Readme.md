@@ -386,9 +386,25 @@ IToolSchemaExporter.Export(ToolSchemaDialect.Skills);
 ```
 
 - **产物形态**（已入库，可用 `npx skills add` 之类的机制直接加载）：
-  `skills/feishu-{domain}/SKILL.md`（frontmatter `name/description/version` + **L1 guidance 原样嵌入** +
+  `skills/feishu-{domain}/SKILL.md`（frontmatter `name/description/version/package_version` + **L1 guidance 原样嵌入** +
   命令清单〔工具名 + 只读/写 + Schema 描述〕+ references 索引）与
   `skills/feishu-{domain}/references/{topic}.md`（**L2 资产逐字落地**）。
+  > `version` 是**产物形态**版本（结构变了才动）；`package_version` 是**包**版本（随 `<Version>` 走）。
+  > 二者分开的原因：宿主拿到的是目录树、看不到包元数据，没有 `package_version` 就无法判断
+  > "手上这份 `SKILL.md` 是否与当前包配套"。该字段由 `SkillsVersionConsistencyContractGuards` 锁定
+  > （已提交产物与当前包版本漂移即报红 ⇒ 版本 bump 后必须重固化 `skills/`）。
+- **读取接缝（R-3 / F-8）**：`ISkillDocumentReader`（DI 注册）按域读取产物，**不做文件 IO**——
+  内容直接来自与导出同一份编译期常量：
+  ```csharp
+  var reader = provider.GetRequiredService<ISkillDocumentReader>();
+  reader.PackageVersion;                 // 产物所属包版本
+  reader.ReadSkill("im");                // skills/feishu-im/SKILL.md 全文
+  reader.ReadReference("im", "topics-and-replies");
+  reader.Paths;                          // 全部产物路径（Ordinal 升序）
+  ```
+  > 面向"按需取一篇"的场景（宿主 Agent 注入 guidance）；`IToolSchemaExporter.Export(Skills)`
+  > 面向"整套搬运/落盘"。二者数据源同一，一致性由 `SkillsVersionConsistencyContractGuards` 逐条断言。
+  > 首个真实消费方是 `Demos/Mud.Feishu.Agent.Demo` 的 `SkillsDemo` 模式（不连飞书即可运行）。
 - **为什么是清单 JSON 而不是"一个路径"**：`IToolSchemaExporter.Export` 的返回契约是 `string`
   （PublicAPI 已锁定），而 Skills 是**目录树**。清单让导出结果可序列化、可逐字节比对（守卫），
   落盘由宿主 / 脚本 / 测试完成——**库不做文件 IO** 是既有纪律。
@@ -398,11 +414,15 @@ IToolSchemaExporter.Export(ToolSchemaDialect.Skills);
 - **守卫**（`SkillsExportContractTests`）：产物树**逐字节**一致（陈旧文件也会被逮住）、工具清单与
   `FeishuToolNames.All` **双向**一致（只查单向会漏掉"新增工具没更新产物"）、references 逐字一致、
   frontmatter 形态、确定性、**打包路径存在**。重固化：`FeishuSkillsUpdate=true` 后重跑该测试类。
+- **MCP envelope 导出（R-3 / F-9）**：`Export(ToolSchemaDialect.McpEnvelope)` 一次性导出**全部已策展工具**
+  的 MCP `tools/list` 形信封（`{"dialect":"mcp-envelope","tools":[{"name","title","description","inputSchema","annotations"}]}`），
+  供宿主 / CI / 桥接器做静态差异比对。与 MCP server 的 `tools/list` **刻意不同**：后者是协议内方法、
+  只列**已启用**工具；本方言回的是"**能力存在**"语义（不受 `FeishuAgent:Tools` / `WriteAllowList` 影响）。
 - **随包分发**：`skills/` 在仓库根（对标官方布局的默认扫描路径），并由 csproj 的
   `<None Include="..\skills\**\*" Pack="true" PackagePath="skills\" />` **打进 NuGet 包** ⇒
   只装包的用户也能拿到技能包（库本身不做文件 IO，这一行是"生态位"落到用户手里的唯一通道）。
   ⚠️ `PackagePath` 末尾的**反斜杠不能省**：省掉（或写成 `skills\%(RecursiveDir)`）会让 NuGet 与递归目录
-  叠加成 `skills/feishu-ai/feishu-ai/SKILL.md`；反过来写成 `skills\%(Filename)%(Extension)` 则会把 21 个域的
+  叠加成 `skills/feishu-ai/feishu-ai/SKILL.md`；反过来写成 `skills\%(Filename)%(Extension)` 则会把 25 个域的
   同名 `SKILL.md` 拍平覆盖。两种坏法都由 `Package_ShouldShipSkillsTree` 守卫挡下。
 
 ### 7.4 事件外桥：NDJSON（R7 / C7 · 生态位）
@@ -474,6 +494,29 @@ await app.Services.RunFeishuMcpStdioAsync();             // 阻塞到客户端�
 > `tools` 能力 + stdio。裁决依据、**已证伪的常见理由**（TFM 兼容性 / AOT / 预览版三条均不成立）
 > 与**翻转触发条件**（HTTP-SSE / 多能力 / 客户端侧 / 新修订差异化语义）见
 > `.docs/AI/MudFeishu-AI-Mcp-协议层依赖选型-ADR.md`。
+
+### 7.7 凭据隔离：**这是宿主的职责**（R-3 / F-10 登记）
+
+官方 `lark-cli` 有 sidecar 模式（HMAC 签名 + 占位符凭据 + 由可信进程注入真实凭据），
+适用于"**进程外 CLI** 被不可信编排方启动"的场景。本仓**不内置**同类服务，理由与替代路径如下：
+
+- **为什么不内置**：sidecar 的价值在于"凭据不进被调用进程"；而进程内 SDK 的凭据
+  （`FeishuApp:AppSecret` / 令牌）本就在**宿主自己的信任域**内，另起一个进程只会增加部署面
+  而不改变信任边界。同时硬约束禁止"新增程序集 / 新增进程"，故本项**登记为宿主职责**（零代码）。
+- **宿主需要时怎么做（零 SDK 改动）**：SDK 已把"凭据来源"与"令牌存取"都留成了接缝，
+  宿主在 CI / 沙箱 / 多租户场景可任选一层替换：
+
+  | 接缝 | 替换后得到 |
+  | --- | --- |
+  | `IAppKeyAccessor` | 应用标识不再来自 `appsettings`，而来自宿主策略（如按请求路由 / 从代理进程取） |
+  | `FeishuAppOptions`（`AppSecret` 的配置来源） | 从 Secret Manager / 环境注入 / 代理进程在启动时下发，磁盘与配置文件中不留明文 |
+  | `IFeishuTokenStoreFactory` | 令牌不由本进程持久化，而由宿主的代理存储读写 |
+  | `IFeishuAuthenticationFactory` | 认证客户端整体换成宿主的代理实现（连 `tenant_access_token` 的换取也走代理） |
+
+- **安全默认不因本项削弱**：缺 `AppKey` 即失败（fail-closed）、令牌缓存按 appKey 隔离、
+  `AppSecret` 不进审计载荷 —— 这些约束与"凭据由谁提供"无关，宿主的代理实现同样受约束。
+- **本项不产生 SDK 变更**（登记性质）：若将来产品判定需要 SDK 侧统一形态，应走独立议题
+  （需回答"多一层接口换来的是哪条具体的失败模式消失"），而不是在本包内加一个"凭据开关"。
 
 ---
 

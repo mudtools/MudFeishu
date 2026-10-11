@@ -2,6 +2,7 @@
 name: feishu-task
 description: 飞书 task 域工具集：8 个工具（只读 1 / 写 7）。「待办」来自任务清单 → `task.list_my_tasks`；来自审批流程 → `approval.*`。
 version: 1.0.0
+package_version: 3.0.1
 ---
 
 # 任务（task.*）

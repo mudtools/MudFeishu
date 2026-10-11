@@ -2,6 +2,7 @@
 name: feishu-vc
 description: 飞书 vc 域工具集：10 个工具（只读 6 / 写 4）。会议本身（谁参加了、开了多久、有没有录制、会议室）→ `vc.*`；会议纪要内容 → `minutes.*`；
 version: 1.0.0
+package_version: 3.0.1
 ---
 
 # 视频会议（vc.*）

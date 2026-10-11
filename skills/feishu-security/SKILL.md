@@ -2,6 +2,7 @@
 name: feishu-security
 description: 飞书 security 域工具集：2 个工具（只读 2 / 写 0）。"谁动了这份文档 / 谁的权限被改了 / 谁删了什么 / 某人的异常操作" → `security.*`；
 version: 1.0.0
+package_version: 3.0.1
 ---
 
 # 安全与合规 · 行为审计日志（security.*）

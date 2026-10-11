@@ -108,7 +108,10 @@ internal sealed class HireJobRequirementTools(
             var array = new JsonArray();
             foreach (var jobId in requirement.JobIdList)
             {
-                array.Add(jobId);
+                // ⚠️ 必须显式转成 JsonNode：`JsonArray.Add<T>(T)` 是泛型重载，带
+                // RequiresDynamicCode/RequiresUnreferencedCode（C# 会优先选中它）⇒ AOT 严格模式下
+                // 直接 IL2026/IL3050 报错（与 FeishuSkillDocumentBuilder.BuildManifestJson 同一坑）。
+                array.Add((JsonNode?)jobId);
             }
 
             jobIds = array;

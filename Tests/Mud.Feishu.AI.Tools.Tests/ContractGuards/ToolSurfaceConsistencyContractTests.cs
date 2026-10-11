@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using System.Text.Json.Nodes;
+
 using Microsoft.Extensions.AI;
 using Mud.Feishu.AI.Mcp;
 
@@ -167,6 +169,72 @@ public class ToolSurfaceConsistencyContractTests
         provider.GetServices<FeishuAgentToolSource>()
             .SelectMany(source => source.GetTools(provider))
             .ToArray();
+
+    /// <summary>
+    /// R-3 / BUG-8 验收③：MCP <c>tools/call</c> 的工具错误与<b>进程内执行链</b>分类逐字段一致。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 两条链共用 <c>FeishuToolBinding</c>，但<b>模型可见文本的装配点</b>不同
+    /// （进程内直接回填；MCP 走 <c>content[0].text</c>）。若哪天任一侧自行加工错误文案，
+    /// 就会出现"同一失败在 MCP 里是 <c>validation</c>、在 Agent 里是 <c>api</c>"的语义分裂，
+    /// 而这种分裂在各自单测里都看不出来。本用例把两侧拉到一起逐字节比对。
+    /// </para>
+    /// <para>
+    /// <b>为什么用"入站净化拒绝"作为同一个失败</b>：它是两条链<b>共用的</b>阶段
+    /// （都在 <c>FeishuToolBinding</c> 内），无需让下游客户端真的抛异常——
+    /// 于是本用例只考察"错误语义装配"这一件事。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task BothChains_ShouldProduceTheSameErrorClassification()
+    {
+        using var provider = BuildProvider();
+
+        var registry = provider.GetRequiredService<FeishuToolRegistry>();
+        var binding = provider.GetRequiredService<FeishuToolBinding>();
+        var definition = registry.AllTools.Single(t => t.Name == ReadTool);
+
+        // 控制字符会被入站净化拒绝（两条链共用的拒绝路径）。
+        var arguments = new Dictionary<string, object?>(StringComparer.Ordinal) { ["method"] = "\u0007bad" };
+
+        var inProcess = await binding.ExecuteAsync(
+            definition,
+            arguments,
+            new FeishuToolContext(AppKey),
+            _ => Task.FromResult(FeishuToolResult.FromText("下游不应被调用")));
+
+        inProcess.Error.Should().NotBeNull("前置：入站净化必须拒绝控制字符（否则本用例看不到错误面）");
+
+        var server = provider.GetRequiredService<FeishuMcpToolServer>();
+        var initialized = await server.HandleMessageAsync(
+            """{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","clientInfo":{"name":"t","version":"1"}}}""");
+        initialized.Should().NotBeNull();
+
+        var response = JsonNode.Parse(
+            await server.HandleMessageAsync(
+                """{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"feishu_schema_read","arguments":{"method":"\u0007bad"}}}""")!)!;
+
+        response["result"]!["isError"]!.GetValue<bool>().Should().BeTrue(
+            "MCP 必须把工具错误如实标记为 isError（否则客户端会把它当成功结果）");
+
+        var mcpText = response["result"]!["content"]!.AsArray()[0]!["text"]!.GetValue<string>();
+
+        FirstLine(mcpText).Should().Be(
+            FirstLine(inProcess.ToString()),
+            "两条链的模型可见错误载荷必须逐字节一致（BUG-8：不得各写一份错误语义）");
+
+        var payload = JsonNode.Parse(FirstLine(mcpText)!)!["tool_error"]!;
+        payload["category"]!.GetValue<string>().Should().Be("validation");
+        payload["subtype"]!.GetValue<string>().Should().Be("invalid_args");
+    }
+
+    /// <summary>取文本首行（结构化错误载荷所在行；无换行时即全文）。</summary>
+    private static string FirstLine(string text)
+    {
+        var index = text.IndexOf('\n');
+        return (index < 0 ? text : text.Substring(0, index)).TrimEnd('\r');
+    }
 }
 
 /// <summary>两条链的"能力对齐"比较器（纯函数，便于用合成数据自证）。</summary>

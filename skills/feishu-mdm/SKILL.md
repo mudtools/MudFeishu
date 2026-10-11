@@ -2,6 +2,7 @@
 name: feishu-mdm
 description: 飞书 mdm 域工具集：1 个工具（只读 1 / 写 0）。国家 / 地区 / ISO 代码 / 国际区号 / 大洲 → `mdm.*`；时区换算、日期本地化不属于本域，
 version: 1.0.0
+package_version: 3.0.1
 ---
 
 # 主数据 · 国家/地区（mdm.*）

@@ -100,6 +100,45 @@ public class ErrorRecoverabilityTests
     }
 
     /// <summary>
+    /// <b>R-3 / BUG-8</b>：参数类错误的恢复候选必须进入<b>结构化载荷</b>（模型可直接分支，
+    /// 无需解析人类可读正文）。
+    /// </summary>
+    /// <remarks>
+    /// 判据刻意断言"载荷里的候选含全部合法取值"——只是"有 suggestions"不够：
+    /// 候选若被截断成残缺清单，模型照它换参仍会失败（等于给了半条路）。
+    /// </remarks>
+    [Fact]
+    public async Task ClosedSetInvalidValue_ShouldCarryStructuredSuggestions()
+    {
+        var tools = new Mud.Feishu.AI.Tools.Internal.DocxWriteTools(
+            new Moq.Mock<Mud.Feishu.IFeishuTenantV1Docx>().Object,
+            new Moq.Mock<Mud.Feishu.IFeishuTenantV1DocxBlocks>().Object,
+            Microsoft.Extensions.Options.Options.Create(new Mud.Feishu.AI.Agents.FeishuAgentOptions()));
+
+        var result = await tools.AppendBlocksAsync(
+            new Dictionary<string, object?>(StringComparer.Ordinal)
+            {
+                ["document_id"] = "doxcn1",
+                ["block_type"] = "Nope",
+            },
+            CancellationToken.None);
+
+        var suggestions = result.Error?.Suggestions;
+        suggestions.Should().NotBeNullOrEmpty(
+            "参数错误必须带机器可读候选（BUG-8：模型不该为了拿到合法取值去解析人类可读正文）");
+
+        var joined = string.Join(" ", suggestions!);
+        foreach (var legal in new[] { "Text", "Heading1", "Divider" })
+        {
+            joined.Should().Contain(legal, "候选必须是完整合法取值清单，不能是残缺提示");
+        }
+
+        // 载荷首行必须真的带上该字段（否则"有 suggestions"只存在于对象里，模型看不到）。
+        result.ToString().Should().Contain("\"suggestions\":[",
+            "候选必须进入首行 JSON 载荷（只挂对象不上线等于没给模型）");
+    }
+
+    /// <summary>
     /// <b>S-10</b>：工具结果 JSON 必须<b>保留中文原文</b>（不得转义成 <c>\uXXXX</c>）。
     /// </summary>
     [Fact]

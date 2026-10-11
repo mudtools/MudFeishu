@@ -2,6 +2,7 @@
 name: feishu-contact
 description: 飞书 contact 域工具集：8 个工具（只读 8 / 写 0）。把「人」换成 open_id / 查部门 → `contact.*`；拿到 open_id 之后的动作（发消息、建任务、发邮件）
 version: 1.0.0
+package_version: 3.0.1
 ---
 
 # 通讯录（contact.*）

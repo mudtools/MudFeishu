@@ -87,7 +87,10 @@ internal readonly struct ToolExecutor(string toolName, int maxResultLength)
         {
             // 有意静默（守卫白名单）：异常被**转换**为模型可见的结构化错误文本（换了一条上报通道：
             // 回填模型 + FeishuToolBinding 侧同样计 Error 指标与审计），不是吞掉。
-            return FromStructuredError(ToolErrorCategory.Validation, ToolErrorSubtype.InvalidArgs, ex.Message);
+            // R-3 / BUG-8：闭集非法值携带的候选（ToolArgumentException.Suggestions）随载荷回填模型。
+            return FromStructuredError(
+                ToolErrorCategory.Validation, ToolErrorSubtype.InvalidArgs, ex.Message,
+                suggestions: (ex as ToolArgumentException)?.Suggestions);
         }
         catch (JsonException ex)
         {
@@ -206,14 +209,20 @@ internal readonly struct ToolExecutor(string toolName, int maxResultLength)
     /// R-1 / B-2：载荷构造收口到 <see cref="ToolErrorFactory"/>（唯一构造点），
     /// 本方法只负责"人类可读正文由执行链的分类文案生成"这一层。
     /// </remarks>
-    private FeishuToolResult FromStructuredError(ToolErrorCategory category, string subtype, string reason, int? apiCode = null)
+    private FeishuToolResult FromStructuredError(
+        ToolErrorCategory category,
+        string subtype,
+        string reason,
+        int? apiCode = null,
+        IReadOnlyList<string>? suggestions = null)
         => ToolResultPipeline.Error(
             toolName,
             category,
             subtype,
             FeishuToolBinding.StructuredError(toolName, category, reason, apiCode),
             maxResultLength,
-            apiCode);
+            apiCode,
+            suggestions: suggestions);
 
     /// <summary>从飞书 API outcome 构造错误结果（分类器自动映射）。</summary>
     private FeishuToolResult FromApiOutcomeError(int? apiCode, string errorText)

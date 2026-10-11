@@ -2,6 +2,7 @@
 name: feishu-feishu
 description: 飞书 feishu 域工具集：4 个工具（只读 4 / 写 0）。「这个能力有没有」→ `feishu.capability_lookup`（分组级存在性）；
 version: 1.0.0
+package_version: 3.0.1
 ---
 
 # 能力出处与元工具（feishu.*）
@@ -28,6 +29,8 @@ version: 1.0.0
   工具面刻意不提供万能兜底调用（R-12 决策）：一条"任意方法 + 任意参数"的通道会绕开每工具一策展的
   授权、幂等与风险分级，是全工具面风险最高的面。
 - `tool_search` 只返回**已注册**工具（含未启用）；未启用的会给出提示，**不要**把它当作「不存在」。
+- 工具报错时，结果首行是结构化载荷（`category` / `subtype` / `retryable` / `suggestions`）：
+  直接按它决定「重试 / 换参 / 放弃」，不必先解析后面的人类可读正文。
 
 ## 安全规则
 - 元工具全部**只读**（`feishu:base` scope），不发起任何飞书业务请求，也不产生侧效应。

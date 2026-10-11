@@ -72,8 +72,10 @@ internal static class ToolArgs
         if (!System.Enum.TryParse<TEnum>(raw, ignoreCase: false, out var parsed)
             || !System.Enum.IsDefined(typeof(TEnum), parsed))
         {
-            throw new ArgumentException(
-                $"参数 {name} 的值 '{raw}' 不在允许取值内。合法取值：{string.Join(" / ", LegalValues<TEnum>())}");
+            var legal = LegalValues<TEnum>().ToArray();
+            throw new ToolArgumentException(
+                $"参数 {name} 的值 '{raw}' 不在允许取值内。合法取值：{string.Join(" / ", legal)}",
+                [$"参数 {name} 的合法取值：{string.Join(" / ", legal)}"]);
         }
 
         return parsed;
@@ -122,8 +124,10 @@ internal static class ToolArgs
 
         if (!nameToValue.TryGetValue(raw, out var value))
         {
-            throw new ArgumentException(
-                $"参数 {name} 的值 '{raw}' 不在允许取值内。合法取值：{string.Join(" / ", nameToValue.Keys)}");
+            var legal = nameToValue.Keys.ToArray();
+            throw new ToolArgumentException(
+                $"参数 {name} 的值 '{raw}' 不在允许取值内。合法取值：{string.Join(" / ", legal)}",
+                [$"参数 {name} 的合法取值：{string.Join(" / ", legal)}"]);
         }
 
         return value;

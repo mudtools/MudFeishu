@@ -2,6 +2,7 @@
 name: feishu-docx
 description: 飞书 docx 域工具集：17 个工具（只读 8 / 写 9）。新版文档正文（块结构） → `docx.*`；电子表格 → `sheets.*`；知识库节点定位 → `wiki.*`；
 version: 1.0.0
+package_version: 3.0.1
 ---
 
 # 云文档（docx.*）

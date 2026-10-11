@@ -826,6 +826,12 @@ Mud.Feishu.AI.Tools.IFeishuAttachmentStager
 Mud.Feishu.AI.Tools.IFeishuAttachmentStager.StageAsync(Mud.Feishu.AI.Tools.AttachmentSource source, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Mud.Feishu.AI.Tools.StagedAttachment?>!
 Mud.Feishu.AI.Tools.IFeishuToolFunctionFactory
 Mud.Feishu.AI.Tools.IFeishuToolFunctionFactory.Create(Mud.Feishu.AI.Tools.FeishuToolDefinition! definition, string! schemaJson) -> Microsoft.Extensions.AI.AIFunction!
+Mud.Feishu.AI.Tools.ISkillDocumentReader
+Mud.Feishu.AI.Tools.ISkillDocumentReader.PackageVersion.get -> string!
+Mud.Feishu.AI.Tools.ISkillDocumentReader.Paths.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Mud.Feishu.AI.Tools.ISkillDocumentReader.Read(string! path) -> string?
+Mud.Feishu.AI.Tools.ISkillDocumentReader.ReadReference(string! domain, string! topic) -> string?
+Mud.Feishu.AI.Tools.ISkillDocumentReader.ReadSkill(string! domain) -> string?
 Mud.Feishu.AI.Tools.IToolCatalog
 Mud.Feishu.AI.Tools.IToolCatalog.Entries.get -> System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Tools.ToolCatalogEntry!>!
 Mud.Feishu.AI.Tools.IToolCatalog.Find(string! toolName) -> Mud.Feishu.AI.Tools.ToolCatalogEntry?
@@ -881,7 +887,7 @@ Mud.Feishu.AI.Tools.ToolError.Attempts.get -> int
 Mud.Feishu.AI.Tools.ToolError.Attempts.init -> void
 Mud.Feishu.AI.Tools.ToolError.Category.get -> string!
 Mud.Feishu.AI.Tools.ToolError.Category.init -> void
-Mud.Feishu.AI.Tools.ToolError.Deconstruct(out string! Category, out string! Subtype, out bool Retryable, out int? RetryAfterSeconds, out int? ApiCode, out int Attempts, out string? Trace, out string? Tool) -> void
+Mud.Feishu.AI.Tools.ToolError.Deconstruct(out string! Category, out string! Subtype, out bool Retryable, out int? RetryAfterSeconds, out int? ApiCode, out int Attempts, out string? Trace, out string? Tool, out System.Collections.Generic.IReadOnlyList<string!>? Suggestions) -> void
 Mud.Feishu.AI.Tools.ToolError.Equals(Mud.Feishu.AI.Tools.ToolError? other) -> bool
 Mud.Feishu.AI.Tools.ToolError.Retryable.get -> bool
 Mud.Feishu.AI.Tools.ToolError.Retryable.init -> void
@@ -889,9 +895,11 @@ Mud.Feishu.AI.Tools.ToolError.RetryAfterSeconds.get -> int?
 Mud.Feishu.AI.Tools.ToolError.RetryAfterSeconds.init -> void
 Mud.Feishu.AI.Tools.ToolError.Subtype.get -> string!
 Mud.Feishu.AI.Tools.ToolError.Subtype.init -> void
+Mud.Feishu.AI.Tools.ToolError.Suggestions.get -> System.Collections.Generic.IReadOnlyList<string!>?
+Mud.Feishu.AI.Tools.ToolError.Suggestions.init -> void
 Mud.Feishu.AI.Tools.ToolError.Tool.get -> string?
 Mud.Feishu.AI.Tools.ToolError.Tool.init -> void
-Mud.Feishu.AI.Tools.ToolError.ToolError(string! Category, string! Subtype, bool Retryable, int? RetryAfterSeconds = null, int? ApiCode = null, int Attempts = 1, string? Trace = null, string? Tool = null) -> void
+Mud.Feishu.AI.Tools.ToolError.ToolError(string! Category, string! Subtype, bool Retryable, int? RetryAfterSeconds = null, int? ApiCode = null, int Attempts = 1, string? Trace = null, string? Tool = null, System.Collections.Generic.IReadOnlyList<string!>? Suggestions = null) -> void
 Mud.Feishu.AI.Tools.ToolError.Trace.get -> string?
 Mud.Feishu.AI.Tools.ToolError.Trace.init -> void
 Mud.Feishu.AI.Tools.ToolExecutionAuditRecord
@@ -904,7 +912,7 @@ Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.ConversationKey.get -> string?
 Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.ConversationKey.init -> void
 Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.Decision.get -> string!
 Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.Decision.init -> void
-Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.Deconstruct(out string! ToolName, out string! AppKey, out System.Collections.Generic.IReadOnlyList<string!>! RequiredScopes, out string! Decision, out string? Reason, out bool IsWrite, out string? ArgsDigest, out long DurationMs, out string? ConversationKey) -> void
+Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.Deconstruct(out string! ToolName, out string! AppKey, out System.Collections.Generic.IReadOnlyList<string!>! RequiredScopes, out string! Decision, out string? Reason, out bool IsWrite, out string! Risk, out string? ArgsDigest, out long DurationMs, out string? ConversationKey) -> void
 Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.DurationMs.get -> long
 Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.DurationMs.init -> void
 Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.Equals(Mud.Feishu.AI.Tools.ToolExecutionAuditRecord? other) -> bool
@@ -914,10 +922,13 @@ Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.Reason.get -> string?
 Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.Reason.init -> void
 Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.RequiredScopes.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.RequiredScopes.init -> void
-Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.ToolExecutionAuditRecord(string! ToolName, string! AppKey, System.Collections.Generic.IReadOnlyList<string!>! RequiredScopes, string! Decision, string? Reason, bool IsWrite, string? ArgsDigest, long DurationMs, string? ConversationKey) -> void
+Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.Risk.get -> string!
+Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.Risk.init -> void
+Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.ToolExecutionAuditRecord(string! ToolName, string! AppKey, System.Collections.Generic.IReadOnlyList<string!>! RequiredScopes, string! Decision, string? Reason, bool IsWrite, string! Risk, string? ArgsDigest, long DurationMs, string? ConversationKey) -> void
 Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.ToolName.get -> string!
 Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.ToolName.init -> void
 Mud.Feishu.AI.Tools.ToolSchemaDialect
+Mud.Feishu.AI.Tools.ToolSchemaDialect.McpEnvelope = 3 -> Mud.Feishu.AI.Tools.ToolSchemaDialect
 Mud.Feishu.AI.Tools.ToolSchemaDialect.OpenAiFunctions = 1 -> Mud.Feishu.AI.Tools.ToolSchemaDialect
 Mud.Feishu.AI.Tools.ToolSchemaDialect.Skills = 2 -> Mud.Feishu.AI.Tools.ToolSchemaDialect
 override Mud.Feishu.AI.Tools.AttachmentSource.GetHashCode() -> int

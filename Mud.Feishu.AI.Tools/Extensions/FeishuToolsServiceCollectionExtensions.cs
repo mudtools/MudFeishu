@@ -469,6 +469,10 @@ public static class FeishuToolsServiceCollectionExtensions
         services.TryAddSingleton<IToolCatalog>(static sp => FeishuToolCatalog.From(sp.GetRequiredService<FeishuToolRegistry>()));
         services.TryAddSingleton<IToolSchemaExporter, FeishuToolSchemaExporter>();
 
+        // R-3 / F-8：Skills 产物读取接缝。与导出接口同源（编译期常量），但面向"按域取一篇"——
+        // 此前 skills/** 随包分发却零仓内消费者，"包内产物 == 读取内容"没有任何路径验证过。
+        services.TryAddSingleton<ISkillDocumentReader, FeishuSkillDocumentReader>();
+
         // R-7 窄接缝：实现类型（FeishuToolAIFunction / FeishuToolBinding）已退出公开面，
         // 周边包（Mud.Feishu.AI.Mcp）改经这两条接缝消费，故必须在此注册——缺注册会让
         // MCP 的 tools/list 静默变空（接缝解析失败被当作"没有工具"）。
@@ -552,6 +556,11 @@ public static class FeishuToolsServiceCollectionExtensions
 
         configure?.Invoke(registry);
 
+        // R-4 / F-13：高危写（删除 / 撤回）**已实际启用**时的装配期告警。
+        // 位置说明：必须在 configure 回调之后——回调可以 MapTool 启用更多工具，
+        // 放在白名单映射之后就漏掉"经回调启用"这条路径。
+        WarnOnHighRiskWriteEnablement(sp, registry);
+
         // 身份白名单的装配期 fail-fast（T2-4 / 决策 D-1 ⓑ，R4.1 评审 R-3）：白名单
         // （Tools / WriteAllowList / configure 回调）启用了 identity 不在 AllowedIdentities
         // 闭集内的工具时，启动即抛可读异常——而不是等运行期被策略轴逐请求拒绝
@@ -571,6 +580,53 @@ public static class FeishuToolsServiceCollectionExtensions
         }
 
         return registry;
+    }
+
+    /// <summary>
+    /// R-4 / F-13：<b>高危写（删除 / 撤回）能力受控启用</b>的装配期告警。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么是"告知"而不是"开关"</b>：启用/禁用删除的真相源唯一——
+    /// <c>FeishuAgent:WriteAllowList</c>（列名启用）与 <c>FeishuAgent:MaxToolRisk</c>（`write` 一键拒掉全部
+    /// <c>high-risk-write</c>）。再引入一个"删除开关"会形成第二个启用源（R5：同一语义只能有一个配置节）。
+    /// 本方法补的是<b>可观测性</b>：把"静默往白名单里加了删除工具"升级为"装配期显式告知"。
+    /// </para>
+    /// <para>
+    /// <b>为什么只 Warning 不阻断</b>：强制力来自 <c>IToolExecutionAuthorizer</c> 与 HITL（写工具默认
+    /// fail-closed），日志只负责让运维/宿主在启动那一刻看见。把它做成异常会让"合法启用删除"的宿主
+    /// 无法启动——那是把安全默认偷换成"禁止使用"。
+    /// </para>
+    /// <para>
+    /// 日志是<b>可选</b>协作件（宿主未 <c>AddLogging</c> 时 <see cref="ILoggerFactory"/> 不存在）——
+    /// 告警不得把装配变成失败源。
+    /// </para>
+    /// </remarks>
+    private static void WarnOnHighRiskWriteEnablement(IServiceProvider sp, FeishuToolRegistry registry)
+    {
+        var highRisk = registry.EnabledTools
+            .Where(static t => t.Risk == FeishuToolRisk.HighRiskWrite)
+            .Select(static t => t.Name)
+            .OrderBy(static n => n, StringComparer.Ordinal)
+            .ToArray();
+
+        if (highRisk.Length == 0)
+        {
+            return;
+        }
+
+        sp.GetService<ILoggerFactory>()?.CreateLogger("Mud.Feishu.AI.Tools").LogWarning(
+            "装配期告警：已启用 {Count} 个高危写工具（{RiskLiteral}，不可撤销）：{Tools}。"
+            + "它们默认全部关闭，仅因出现在 {Section}:{AllowList} 而启用——请确认："
+            + "① 已注册 IToolExecutionAuthorizer 且对这些工具返回 Allowed（未注册时写工具默认拒绝）；"
+            + "② 如需一键收回，把 {Section}:{MaxRisk} 设为 'write'（或更低），全部高危写工具会被 risk_exceeded 拒绝。",
+            highRisk.Length,
+            FeishuToolRiskNames.HighRiskWrite,
+            string.Join("、", highRisk),
+            FeishuAgentOptions.SectionName,
+            nameof(FeishuAgentOptions.WriteAllowList),
+            FeishuAgentOptions.SectionName,
+            nameof(FeishuAgentOptions.MaxToolRisk));
     }
 
     private static void MapWhitelist(

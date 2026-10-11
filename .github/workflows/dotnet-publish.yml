@@ -49,8 +49,11 @@ jobs:
 
     steps:
       # 步骤1：检出你的代码
+      # R-3 / F-11：fetch-depth 0 —— 语义审查步骤需要 base 提交的 diff（浅克隆取不到 base 会跳过）。
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # 步骤2：安装.NET SDK（多版本支持）
       - name: Setup .NET
@@ -160,6 +163,15 @@ jobs:
       - name: Config key audit (strict)
         shell: pwsh
         run: '& ./scripts/audit-config-keys.ps1 -Strict'
+
+      # 步骤4.7：AI 面变更的规则式语义审查（R-3 / F-11）。
+      # 现有的 44+ 契约守卫锁的是"状态自洽"；本步骤补的是"**变更集**完整"——
+      # 新增 [FeishuTool] / 改 guidance / 改 Curation 时，golden、skills、权限对照表、
+      # PublicAPI、状态基线、引导资产必须同批更新。没有可用 LLM 接入，故按方案 F-11
+      # 落成规则式替代（判据见脚本头部）；取不到 base diff 时脚本自行跳过。
+      - name: AI change review (rule-based, F-11)
+        shell: pwsh
+        run: '& ./scripts/review-ai-changes.ps1 -BaseRef "${{ github.event.pull_request.base.sha }}"'
 
       # P3-1：AOT 发布验证（仅 Linux，net8.0）
       - name: AOT Publish Verification

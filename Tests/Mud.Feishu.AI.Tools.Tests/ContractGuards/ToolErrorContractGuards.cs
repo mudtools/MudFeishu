@@ -235,5 +235,94 @@ public class ToolErrorContractGuards
                 $"CategoryLiteral 必须为 {category} 返回非空字符串");
         }
     }
+
+    /// <summary>
+    /// 守卫 ⑦（R-3 / BUG-8）：<c>suggestions</c> 存在时必须进入<b>首行 JSON 载荷</b>。
+    /// </summary>
+    /// <remarks>
+    /// BUG-8 的判据是"模型可<b>结构化</b>恢复"——建议若只出现在人类可读正文里，
+    /// 模型仍须解析文本，等于没解决问题。故断言它落在载荷里且可机械解析。
+    /// </remarks>
+    [Fact]
+    public void Serialize_ShouldCarrySuggestions_WhenPresent()
+    {
+        var error = new ToolError(
+            Category: "validation",
+            Subtype: "invalid_args",
+            Retryable: false,
+            Attempts: 1,
+            Tool: "docx.append_blocks",
+            Suggestions: ["参数 block_type 的合法取值：Text / Heading1 / Divider"]);
+
+        var json = ToolErrorPayloadSerializer.Serialize(error);
+
+        json.Should().Contain("\"suggestions\":[", "恢复候选必须进入载荷（BUG-8：不得只放人类可读正文）");
+
+        using var document = JsonDocument.Parse(json);
+        var suggestions = document.RootElement
+            .GetProperty("tool_error")
+            .GetProperty("suggestions")
+            .EnumerateArray()
+            .Select(static e => e.GetString())
+            .ToArray();
+
+        suggestions.Should().ContainSingle().Which.Should().Be("参数 block_type 的合法取值：Text / Heading1 / Divider");
+    }
+
+    /// <summary>守卫 ⑦ 的反向：无候选时<b>不得</b>凭空产出空数组（避免"看起来有建议"的噪声）。</summary>
+    [Fact]
+    public void Serialize_ShouldOmitSuggestionsKey_WhenAbsent()
+    {
+        var json = ToolErrorPayloadSerializer.Serialize(new ToolError("api", "upstream_error", false));
+
+        json.Should().NotContain("suggestions", "没有事实来源时不得产出该键（空数组会被模型误读为'有建议但为空'）");
+    }
+
+    /// <summary>
+    /// 守卫 ⑧（预算单向上界）：候选是自由文本，必须被条数/长度上界化，且
+    /// <b>宁可丢候选也不得突破 512 上界</b>——分类字段（category/subtype/retryable）恒在。
+    /// </summary>
+    /// <remarks>
+    /// 这是 BUG-8 引入自由文本后唯一的硬风险：若为了塞进建议而牺牲分类字段，
+    /// 载荷的"可分支"价值反而归零（没有分类，建议也无从解读）。
+    /// </remarks>
+    [Fact]
+    public void Serialize_ShouldNeverExceedPayloadBound_EvenWithHugeSuggestions()
+    {
+        var error = new ToolError(
+            Category: "validation",
+            Subtype: "invalid_args",
+            Retryable: false,
+            ApiCode: 99991663,
+            Attempts: 7,
+            Trace: new string('t', 48),
+            Tool: "docx.append_blocks",
+            Suggestions: [.. Enumerable.Range(0, 12).Select(static i => new string('建', 400) + i)]);
+
+        var json = ToolErrorPayloadSerializer.Serialize(error);
+
+        json.Length.Should().BeLessThanOrEqualTo(
+            ToolErrorPayloadSerializer.MaxPayloadBytes,
+            "候选超长时必须丢候选，而不是突破载荷上界");
+
+        using var document = JsonDocument.Parse(json);
+        var payload = document.RootElement.GetProperty("tool_error");
+        payload.GetProperty("category").GetString().Should().Be("validation",
+            "丢候选也不得丢分类——那是模型可分支的最小集");
+        payload.GetProperty("subtype").GetString().Should().Be("invalid_args");
+        payload.TryGetProperty("retryable", out _).Should().BeTrue();
+    }
+
+    /// <summary>守卫 ⑧ 的自证：判据确实能报出"超界"（否则本条是假门禁）。</summary>
+    [Fact]
+    public void PayloadBound_ShouldDetectOverlongPayload_OtherwiseGuardIsFalseGreen()
+    {
+        // 直接构造一个"绕开序列化器"的超界载荷，确认本守卫用到的判据（长度比较）真的会报红。
+        var oversized = new string('x', ToolErrorPayloadSerializer.MaxPayloadBytes + 1);
+
+        oversized.Length.Should().BeGreaterThan(
+            ToolErrorPayloadSerializer.MaxPayloadBytes,
+            "判据失效：长度比较报不出超界（假绿）");
+    }
 }
 

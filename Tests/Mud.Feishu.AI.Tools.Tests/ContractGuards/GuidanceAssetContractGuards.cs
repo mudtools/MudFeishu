@@ -50,6 +50,64 @@ public class GuidanceAssetContractGuards
             string.Join(", ", orphans));
     }
 
+    /// <summary>
+    /// <b>正向</b>覆盖：工具面的每个域都必须有 L1 guidance 资产。
+    /// </summary>
+    /// <remarks>
+    /// 与上一条用例<b>方向相反、缺一不可</b>：上一条防"僵尸资产"（有 md 无工具），本条防"静默失导"
+    /// （有工具无 md）——后者<b>不会触发任何构建诊断</b>：工具装配正常、描述正常、模型却不知道
+    /// "这类问题该走哪个域、先调哪个工具、失败怎么退"，表现为"能用但用不对"，从日志上完全看不出来。
+    /// </remarks>
+    [Fact]
+    public void EveryContractDomain_ShouldHaveAL1GuidanceAsset()
+    {
+        // 自证（防"过滤器写坏 ⇒ 零缺失假绿"）：域数与工具条目数一起锁基线。
+        // 新增域时必须同批补 Guidance/{domain}.md 并更新这里的 25；工具增减时更新 181。
+        var contractDomains = FeishuToolContracts.AllNames
+            .Select(DomainOf)
+            .ToHashSet(StringComparer.Ordinal);
+        contractDomains.Should().HaveCount(
+            25, "工具面当前 25 个域（含元工具域 feishu）——新增域须同批补 L1 资产并更新本基线");
+        FeishuToolContracts.AllNames.Should().HaveCount(
+            181, "工具条目基线（与 FeishuToolSchemas.golden.txt 同源）");
+
+        var missing = FindDomainsWithoutGuidance(FeishuToolContracts.AllNames, FeishuToolGuidance.ByDomain);
+
+        missing.Should().BeEmpty(
+            "以下域有工具却无 L1 guidance 资产（有工具无 md）——模型拿得到工具却不知何时该用，"
+            + "且这类缺口不触发任何构建诊断：{0}",
+            string.Join(", ", missing));
+    }
+
+    /// <summary>
+    /// 检查器自证：喂入"某域有工具但无资产"的合成输入，检查器<b>必须</b>报出该域。
+    /// （没有这条，"过滤器永远返回空数组"这类坏法会让上面那条用例长期假绿。）
+    /// </summary>
+    [Fact]
+    public void Scanner_ShouldFlagDomainWithoutGuidance_WhenToolHasNoAsset()
+    {
+        var guidance = new Dictionary<string, string>(StringComparer.Ordinal) { ["im"] = "im.md 的内容" };
+
+        var missing = FindDomainsWithoutGuidance(["im.send_message", "brandnew.do_x"], guidance);
+
+        missing.Should().Equal(["brandnew"], "有工具但无资产的域必须被点名；已有资产（im）不得误报");
+    }
+
+    /// <summary>从工具名取域前缀（`im.send_message` → `im`）。</summary>
+    private static string DomainOf(string toolName)
+        => toolName.Substring(0, toolName.IndexOf(".", StringComparison.Ordinal));
+
+    /// <summary>正向覆盖检查器（纯函数，便于自证）：返回"有工具却无 L1 资产"的域（有序）。</summary>
+    private static string[] FindDomainsWithoutGuidance(
+        IEnumerable<string> toolNames,
+        IReadOnlyDictionary<string, string> guidanceByDomain)
+        => toolNames
+            .Select(DomainOf)
+            .Distinct(StringComparer.Ordinal)
+            .Where(domain => !guidanceByDomain.ContainsKey(domain))
+            .OrderBy(static domain => domain, StringComparer.Ordinal)
+            .ToArray();
+
     /// <summary>每个域资产必须非空且足够精简（超过预算的域会在装配期被整体丢弃）。</summary>
     [Fact]
     public void GuidanceBlocks_ShouldBeNonEmptyAndConcise()

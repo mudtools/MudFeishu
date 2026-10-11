@@ -36,7 +36,13 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 public class GeneratedCodeMarkerContractGuards
 {
     /// <summary>生成器标识（生成器 <c>GeneratedCodeMarker.GeneratorName</c> 的字面量）。</summary>
-    private const string GeneratorName = "Mud.Feishu.AI.Tools.FeishuToolSchemaGenerator";
+    /// <remarks>
+    /// BUG-2 后该字面量随剖面槽 <c>ToolAttributeNamespace</c> 变更（组件侧生成器把
+    /// 「工具特性所在命名空间」拼进 <c>[GeneratedCode]</c> 的工具名）：
+    /// <c>Mud.Feishu.AI.Tools</c> → <c>Mud.Feishu.AI.AgentTools</c>。
+    /// 这是**生成标记**而非公开契约，故只需同步本基线。
+    /// </remarks>
+    private const string GeneratorName = "Mud.Feishu.AI.AgentTools.FeishuToolSchemaGenerator";
 
     /// <summary>固定名产物类型（每类发射器一个；新增固定名产物须在此登记）。</summary>
     private static readonly HashSet<string> FixedArtifactTypeNames = new(StringComparer.Ordinal)

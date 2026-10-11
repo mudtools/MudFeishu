@@ -1,14 +1,28 @@
 # Mud.Feishu.AI.Tools
 
 把 `Mud.Feishu` 的强类型接口以**编译期 Schema** 暴露为模型可调用的 FunctionCall 工具，
-并内置多租户授权执行链、出站净化、内容安全与流式回复通道。
+并内置多租户授权执行链与出站净化。
 
 > 本文档聚焦"工具面"这一件事：**当前有哪些工具、怎么加一个新工具、模型看不到的能力怎么办、
 > 安全边界在哪**。Agent 运行时（会话、流式、知识检索装配）见 `Mud.Feishu.AI` 的 Readme。
+>
+> **⚠️ R-9（2026-10-10）：飞书 Agent 集成面已并入 `Mud.Feishu.AI`。** 本包现在**只**承载工具面
+> （策展 + 执行链 + 编译期契约），下列内容换了落点，改代码前先看：
+>
+> | 内容 | 现落点（命名空间 / 入口） |
+> | --- | --- |
+> | 流式消息通道（`EditMessageChannel` / `CardStreamMessageChannel` / `StreamingChannelChain`） | `Mud.Feishu.AI.Channels`（`Mud.Feishu.AI` 程序集） |
+> | 会话事件处理器与装配器（`ImMessage…` / `ApprovalTask…` / `TaskUpdated…` / `BitableRecordChanged…` / `SenderInfo…` / `QuoteMessage…`） | `Mud.Feishu.AI.Events` |
+> | 事件外桥与事件目录（`FeishuEventNdjsonBridge` / `FeishuEventCatalog` / `FeishuEventEnvelope`） | `Mud.Feishu.AI.Events` |
+> | Aily 托管知识问答（`AilyKnowledgeProvider`） | `Mud.Feishu.AI.Knowledge` |
+> | 装配入口 `AddFeishuEditMessageChannel` / `AddFeishuStreamingChannel` / `AddFeishuImConversationHandler` / `AddFeishuKnowledgeContext` / `AddFeishuAilyKnowledge` | `Mud.Feishu.AI.Extensions`（`AddFeishuAgent` 所在文件） |
+>
+> 收益：本包**不再引用** `Mud.Feishu.EventCallback`——"只接工具面"的宿主不必再背事件 DTO 面
+> （由守卫 `AgentContractGuards.ToolPackage_ShouldNotReferenceEventCallback` 机械锁定）。
 
 ---
 
-## 1. 工具面现状（163 个：88 只读 + 75 写类）
+## 1. 工具面现状（182 个：108 只读 + 74 写类）
 
 | 域 | 只读 | 写类 | 小计 |
 | --- | ---: | ---: | ---: |
@@ -32,8 +46,12 @@
 | **考勤 Attendance**（R7/A5） | 7 | 1 | 8 |
 | **妙搭 Spark**（R7/A6） | 5 | 5 | 10 |
 | **AI 文本**（R7/C3） | 2 | — | 2 |
-| 元工具 | 4 | 1 | 5 |
-| **合计** | **88** | **75** | **163** |
+| 元工具 | 4 | — | 4 |
+| **合计** | **88** | **74** | **162** |
+
+> **R-12（2026-10-10）**：万能兜底通道 `feishu.api_call` 已**整条删除**（双轨调用路径 + 全工具面风险最高的面
+> + 零外部消费）。未策展能力的正确处置是「先用 `feishu.capability_lookup` 判断是不存在还是未策展，
+> 再如实告知用户」，而不是提供一条绕开策展审查的调用通道。
 
 > **逐工具清单**：以《工具权限对照表》（`documents/AIAgent/工具权限对照表.md`）为准——
 > 本表只给域级汇总，不再逐工具列举（逐工具列举会与契约表漂移）。
@@ -192,22 +210,31 @@ var response = await agent.RunApprovalContinuationAsync(
 
 ## 4. 模型看不到的能力，出路在哪
 
-本包刻意**不**做"每个 SDK 方法一个工具"（1228 无差别暴露），而是按高频工作流**策展**为 163 个工具。
+本包刻意**不**做"每个 SDK 方法一个工具"（1228 无差别暴露），而是按高频工作流**策展**为 182 个工具。
 对于未策展的方法，提供两层兜底（而非变相暴露全部 1228 方法）：
 
 | 层 | 内容 | 模型可见？ |
 | --- | --- | --- |
 | L1 能力目录 | 编译期聚合事实（SDK 方法总数 / 分组分布 / 策展计数），`build_property.FeishuToolCatalog=true` 时产出 | ❌（`internal`） |
-| L2 暴露策展 | 标注了 `[FeishuTool]` 的 163 个工具 | ✅（白名单启用后） |
+| L2 暴露策展 | 标注了 `[FeishuTool]` 的 182 个工具 | ✅（白名单启用后） |
 | **L3 能力出路** | **`feishu.capability_lookup`**：按关键字回答"这个能力在 SDK 里有几个分组 / 是否已策展成工具" | ✅（默认不启用） |
 | **L3.1 方法签名** | **`feishu.schema_read`**：查任意 SDK 方法的签名事实（HTTP/路由/参数/令牌/风险/是否已策展） | ✅（只读，`feishu:base` scope） |
-| **L3.2 兜底调用** | **`feishu.api_call`**：未策展方法的万能兜底（方法名 + 参数 → HTTP 调度），默认 `dry_run=true`，四条 fail-closed 边界 | ✅（归写链，`WriteAllowList` 键控） |
-| **L3.3 guidance** | **`feishu.guidance_read`**：按需读取 L2 references（`{域}/{主题}`），键不存在时列出全部候选 | ✅（只读） |
+| **L3.2 guidance** | **`feishu.guidance_read`**：按需读取 L2 references（`{域}/{主题}`），键不存在时列出全部候选 | ✅（只读） |
 
 所以模型遇到不认识的域时，正确动作是**先问 `feishu.capability_lookup`**，据此判断
 "是不存在（放弃）"还是"存在但宿主没启用（如实告知用户）"，而不是臆造一次调用。
-若需查方法签名细节用 `feishu.schema_read`；若该方法未策展且宿主放行了 `feishu.api_call`，
-可用其做兜底调用（默认只预演）。
+若需查方法签名细节用 `feishu.schema_read`——但查到**不等于能调用**：未策展的方法
+没有执行通道，必须**如实告知用户该能力暂不可用**（可建议宿主策展）。
+
+> **R-12（2026-10-10）**：原先的 **L3.2 兜底调用 `feishu.api_call`**（方法名 + 参数 → HTTP 动态调度）
+> 已**整条删除**。删除理由：① 与策展工具构成**双轨调用路径**（同一能力两条路径，
+> 投影/幂等/风险语义不同，是长期维护负担）；② 它是全工具面**风险最高的面**（任意已登记方法的调度）；
+> ③ **零外部消费**（Demos 未启用，仅测试覆盖）。删除后"未策展能力"的模型侧语义从
+> 「可兜底」收敛为「如实告知」——这正是"不妄称能力"的最小权限形态。
+> 连带清理：`Guidance/feishu.md` 与 `Guidance/spark/publish.md` 的兜底指引、
+> `schema_read` 的 Description 与 note 文案、`schema_read` 的 `IFeishuAppManager` 依赖；
+> 并由新增守卫 `GuidanceToolReferenceContractGuards` 机械锁定
+> 「guidance 里的 `feishu.*` 引用必须存在于 `FeishuToolNames.All`」防同类复发。
 
 ---
 
@@ -321,36 +348,31 @@ services.AddSingleton<IFeishuAttachmentStager>(sp => sp.GetRequiredService<DemoA
 **软缺席语义（宿主未实现 stager 时）**：`im.send_image` / `im.send_file` 不注册（模型看不到这两个工具），
 不报错、不静默失败——与"域客户端缺席 → 该域工具不注册"同一机制。
 
-### 7.2 二进制**出入成对**通道（R7 / §3.B6）
+### 7.2 二进制边界：**字节两侧都不进工具面**（R7 / §3.B6 + DP-R7-2 修订）
 
-工具面禁止二进制穿越（A10，机械守卫），但真实业务两个方向都需要宿主接缝。三者**方向不同、不可互相替代**
-（RV-4 要求显式区分）：
+工具面禁止二进制穿越（A10，机械守卫）。**本轮（DP-R7-2，2026-10-10）裁定的结论是：这条边界只需要一个
+宿主接缝** —— `IFeishuAttachmentStager`（既有、已被 `im.send_image`/`im.send_file` 与受控下载出口使用，
+且由守卫核验"豁免必须挣得"）：
 
-| 契约 | 方向 | 语义 | 未注册时 |
-| --- | --- | --- | --- |
-| `IFeishuAttachmentStager`（既有） | 入向（宿主 → SDK） | URL/字节 → **本地路径**，供**工具参数**（`im.send_image` 等）消费 | 依赖它的**工具不注册** |
-| `IFeishuBinaryArtifactSource`（R7 新增） | 入向（宿主 → SDK） | URL/字节 → `FileUploadRequest`（+ 清理钩子），供**宿主代码**调用 OCR / 文档识别 / STT 时使用 | **不影响任何工具注册**（按 DP-C3-1，这些能力不策展） |
-| `IFeishuBinaryArtifactSink`（R7 新增） | 出向（SDK → 宿主） | `byte[]` → **宿主侧句柄**（`StoredArtifact`：句柄 + 大小 + 类型，**零字节进 JSON**） | 依赖它的二进制工具**不注册**（今天尚无此类工具——见下） |
+| 方向 | 做法 | 约束 |
+| --- | --- | --- |
+| **入向**（模型要发文件/图片） | 模型只给 **URL**；宿主 `IFeishuAttachmentStager` 落盘 → SDK 上传 → 发送 | 未注册 stager ⇒ 相关工具**不注册**（软缺席）；模型给本地路径 ⇒ `invalid_args` |
+| **出向**（模型要拿产物：画板缩略图 / 文件下载 / 妙记附件） | **受控下载出口**：执行器取字节 → `DownloadedContentGuard.ShouldRejectForJsonErrorBody` 拦平台错误体 → stager 落盘 → 结果只回**路径 + 大小 + Content-Type**（`no-bytes-in-context`） | 豁免**必须挣得**：守卫核验"注入非可空 stager + 调用错误体防线"，光改描述无效（`BinaryDownloadToolExposureContractTests.FindUnearnedExemptions`） |
+| **宿主自用**（宿主自己调 OCR / 文档识别 / STT） | 宿主把 URL/本地文件直接交给 SDK 的 `[FormContent]`/base64 参数，再把**文本**结果放进模型上下文 | 不需要任何 SDK 侧契约 —— 这些能力**不策展**（DP-C3-1） |
 
-```csharp
-public interface IFeishuBinaryArtifactSink   // 出向：宿主实现
-{
-    Task<StoredArtifact?> StoreAsync(BinaryArtifact artifact, CancellationToken cancellationToken = default);
-}
-public interface IFeishuBinaryArtifactSource // 入向：宿主实现
-{
-    Task<ResolvedBinaryArtifact?> ResolveAsync(BinaryArtifactRequest request, CancellationToken cancellationToken = default);
-}
-```
+> **撤销记录（DP-R7-2）**：R7 曾新增两个"出入成对"契约（`IFeishuBinaryArtifactSink` 出向 /
+> `IFeishuBinaryArtifactSource` 入向）。本轮代码级调研发现二者**零消费方且无可行路径**：出向已由
+> stager 覆盖（受控出口已选定 stager，与 sink 职责重叠），入向的对手是"宿主手搓"而非真实缺口；
+> 且所有字节型工具还卡在下面这个**更根本**的前置上。因此**发布前删除两者**，设计与依据留存于
+> §3.B6 的撤销记录 —— 避免发布面出现"不可能被调用"的公开接口，也避免宿主面对三条路的选择困难。
 
-- **SDK 不提供默认实现**（落盘位置/上云目标/大小上限/MIME 白名单/域名白名单全是宿主策略）；
-  用例机械断言"默认未注册"（软缺席的前提：宿主不实现 ⇒ 相关能力不出现）。
-- **字节绝不进工具结果**：`StoredArtifact` 只有句柄，由用例反射断言"结果类型不含 `byte[]`/`Memory<byte>`/`Stream`"。
-- **当前消费者状态（诚实登记）**：`IFeishuBinaryArtifactSink` 暂无消费工具——策展 `board.download_image`
-  等二进制工具的前提是先有本契约，且需同批解除 `NonCuratedToolRegistryContractGuards` 中对应方法的登记；
-  `IFeishuBinaryArtifactSource` 的消费方是**宿主代码**（Agent 侧只拿到 OCR 的文本结果）。
-- **生命周期显式**：`ResolvedBinaryArtifact.Cleanup` 由**调用方**在 `finally` 中释放
-  （与 `StagedAttachment.Cleanup` 同款语义）。
+- **出向工具尚未落地的真实阻塞点（DP-R7-1）**：`output_schema` 由 **Source 方法的返回类型**推导，
+  而字节型方法的返回类型是 `Task<byte[]?>` ⇒ 生成的 Schema 会告诉模型"本工具返回二进制"，
+  与该工具实际返回的"路径/大小/类型"**互相矛盾（假事实）**；`[FeishuTool]` 目前没有 output_schema
+  覆盖能力。该能力（`OutputSchema` 覆盖，或对二进制 Source 跳过推导）落在**组件仓
+  `Mud.HttpUtils.Generator`**，是本仓 `drive.download_file` / `board.download_image` 等出向工具的**共同前置**。
+- **SDK 不提供落盘实现**：域名白名单（防 SSRF）、大小上限、扩展名/MIME 校验、落盘目录**全是宿主策略**。
+- **生命周期显式**：`StagedAttachment.Cleanup` 由调用方/执行链在 `finally` 中释放（成功与失败路径都清理）。
 
 ---
 
@@ -364,9 +386,25 @@ IToolSchemaExporter.Export(ToolSchemaDialect.Skills);
 ```
 
 - **产物形态**（已入库，可用 `npx skills add` 之类的机制直接加载）：
-  `skills/feishu-{domain}/SKILL.md`（frontmatter `name/description/version` + **L1 guidance 原样嵌入** +
+  `skills/feishu-{domain}/SKILL.md`（frontmatter `name/description/version/package_version` + **L1 guidance 原样嵌入** +
   命令清单〔工具名 + 只读/写 + Schema 描述〕+ references 索引）与
   `skills/feishu-{domain}/references/{topic}.md`（**L2 资产逐字落地**）。
+  > `version` 是**产物形态**版本（结构变了才动）；`package_version` 是**包**版本（随 `<Version>` 走）。
+  > 二者分开的原因：宿主拿到的是目录树、看不到包元数据，没有 `package_version` 就无法判断
+  > "手上这份 `SKILL.md` 是否与当前包配套"。该字段由 `SkillsVersionConsistencyContractGuards` 锁定
+  > （已提交产物与当前包版本漂移即报红 ⇒ 版本 bump 后必须重固化 `skills/`）。
+- **读取接缝（R-3 / F-8）**：`ISkillDocumentReader`（DI 注册）按域读取产物，**不做文件 IO**——
+  内容直接来自与导出同一份编译期常量：
+  ```csharp
+  var reader = provider.GetRequiredService<ISkillDocumentReader>();
+  reader.PackageVersion;                 // 产物所属包版本
+  reader.ReadSkill("im");                // skills/feishu-im/SKILL.md 全文
+  reader.ReadReference("im", "topics-and-replies");
+  reader.Paths;                          // 全部产物路径（Ordinal 升序）
+  ```
+  > 面向"按需取一篇"的场景（宿主 Agent 注入 guidance）；`IToolSchemaExporter.Export(Skills)`
+  > 面向"整套搬运/落盘"。二者数据源同一，一致性由 `SkillsVersionConsistencyContractGuards` 逐条断言。
+  > 首个真实消费方是 `Demos/Mud.Feishu.Agent.Demo` 的 `SkillsDemo` 模式（不连飞书即可运行）。
 - **为什么是清单 JSON 而不是"一个路径"**：`IToolSchemaExporter.Export` 的返回契约是 `string`
   （PublicAPI 已锁定），而 Skills 是**目录树**。清单让导出结果可序列化、可逐字节比对（守卫），
   落盘由宿主 / 脚本 / 测试完成——**库不做文件 IO** 是既有纪律。
@@ -376,14 +414,22 @@ IToolSchemaExporter.Export(ToolSchemaDialect.Skills);
 - **守卫**（`SkillsExportContractTests`）：产物树**逐字节**一致（陈旧文件也会被逮住）、工具清单与
   `FeishuToolNames.All` **双向**一致（只查单向会漏掉"新增工具没更新产物"）、references 逐字一致、
   frontmatter 形态、确定性、**打包路径存在**。重固化：`FeishuSkillsUpdate=true` 后重跑该测试类。
+- **MCP envelope 导出（R-3 / F-9）**：`Export(ToolSchemaDialect.McpEnvelope)` 一次性导出**全部已策展工具**
+  的 MCP `tools/list` 形信封（`{"dialect":"mcp-envelope","tools":[{"name","title","description","inputSchema","annotations"}]}`），
+  供宿主 / CI / 桥接器做静态差异比对。与 MCP server 的 `tools/list` **刻意不同**：后者是协议内方法、
+  只列**已启用**工具；本方言回的是"**能力存在**"语义（不受 `FeishuAgent:Tools` / `WriteAllowList` 影响）。
 - **随包分发**：`skills/` 在仓库根（对标官方布局的默认扫描路径），并由 csproj 的
   `<None Include="..\skills\**\*" Pack="true" PackagePath="skills\" />` **打进 NuGet 包** ⇒
   只装包的用户也能拿到技能包（库本身不做文件 IO，这一行是"生态位"落到用户手里的唯一通道）。
   ⚠️ `PackagePath` 末尾的**反斜杠不能省**：省掉（或写成 `skills\%(RecursiveDir)`）会让 NuGet 与递归目录
-  叠加成 `skills/feishu-ai/feishu-ai/SKILL.md`；反过来写成 `skills\%(Filename)%(Extension)` 则会把 21 个域的
+  叠加成 `skills/feishu-ai/feishu-ai/SKILL.md`；反过来写成 `skills\%(Filename)%(Extension)` 则会把 25 个域的
   同名 `SKILL.md` 拍平覆盖。两种坏法都由 `Package_ShouldShipSkillsTree` 守卫挡下。
 
 ### 7.4 事件外桥：NDJSON（R7 / C7 · 生态位）
+
+> **⚠️ R-9**：`FeishuEventNdjsonBridge` / `RegexEventFileRouter` / `FeishuEventEnvelope` /
+> `IFeishuEventSink` / `IFeishuEventFileRouter` / `FeishuEventCatalog` 已迁到
+> **`Mud.Feishu.AI.Events`**（程序集 `Mud.Feishu.AI`）。语义不变，只改命名空间与程序集引用。
 
 事件此前只能进**本进程内模型**；外桥把同一条事件以 NDJSON 交给仓外任意进程：
 
@@ -411,6 +457,10 @@ await bridge.WriteAsync(new FeishuEventEnvelope(
 
 ### 7.5 多维表格记录变更 → 会话（R7 / C2 配套）
 
+> **⚠️ R-9**：`BitableRecordChangedConversationalEventHandler` 与 `BitableRecordContextAssembler`
+> 现同处 `Mud.Feishu.AI.Events`（处理器）/ `Mud.Feishu.AI.Events`（装配器）——即**两者已同程序集**，
+> 不再需要"工具包 → 集成面"的跨包引用来让装配器与处理器配对。
+
 `BitableRecordChangedConversationalEventHandler` 把 `drive.file.bitable_record_changed_v1`
 变成"模型可用的上下文 + 单聊回复"：
 
@@ -419,6 +469,54 @@ await bridge.WriteAsync(new FeishuEventEnvelope(
 - **单聊投递给操作人**（行级事件无 `chat_id`）；缺消息客户端 / 解析不出操作人 ⇒ **模型调用前短路**；
 - **高频提醒**：宿主不注册即完全不生效；注册即"每条订阅表变更跑一轮模型"——请据此收窄平台订阅面；
 - 配套装配器 `BitableRecordContextAssembler`（Order = 200）在 `Mud.Feishu.AI` 包内。
+
+### 7.6 进程外 Agent：MCP server（R7 / C6b · 可选包）
+
+工具面除了进程内模型，还可经 **MCP（stdio JSON-RPC 2.0）**交给进程外 Agent，
+实现在**独立可选包** `Mud.Feishu.AI.Mcp`（不引用 SDK 强类型客户端、不被任何核心包引用）：
+
+```csharp
+builder.Services.AddFeishuTools();                       // 工具面（白名单经 FeishuAgent:Tools/WriteAllowList）
+builder.Services.AddFeishuMcpServer(o => o.AppKey = "cli_xxx");  // 进程级租户（必填）
+await app.Services.RunFeishuMcpStdioAsync();             // 阻塞到客户端关闭 stdin
+```
+
+- **白名单同源**：MCP 暴露的工具 == `FeishuAgent:Tools` + `WriteAllowList`，**不新增开关**；
+- **执行链零旁路**：每个 tool call 走同一个 `FeishuToolBinding`（授权 / 租户切换 / 净化 / 审计不变）；
+- **租户边界 = 进程**：appKey 只来自配置（协议层传 appKey 等于把切租户交给客户端），
+  跨租户宿主请**每租户一个 stdio 进程**；缺 appKey 启动期即抛（fail-closed）；
+- **写工具 HITL**：授权器返回"需人工确认" ⇒ `isError` + `needs_user_confirmation` + **零调用下游**
+  （MCP 不走 MAF 审批管线，故不依赖 `ApprovalRequiredAIFunction` 这个**仅标记**的类型）；
+- **名字映射**：契约名 `.` → `_`（严格客户端只接受 `[a-zA-Z0-9_-]{1,64}`），契约名经 `title` 透出；
+- **stdio 注意事项**：stdout 是协议通道，日志必须写 stderr/文件。
+
+> **依赖选型**：本包 MCP 协议层为**自研**（不引官方 `ModelContextProtocol` SDK），仅覆盖
+> `tools` 能力 + stdio。裁决依据、**已证伪的常见理由**（TFM 兼容性 / AOT / 预览版三条均不成立）
+> 与**翻转触发条件**（HTTP-SSE / 多能力 / 客户端侧 / 新修订差异化语义）见
+> `.docs/AI/MudFeishu-AI-Mcp-协议层依赖选型-ADR.md`。
+
+### 7.7 凭据隔离：**这是宿主的职责**（R-3 / F-10 登记）
+
+官方 `lark-cli` 有 sidecar 模式（HMAC 签名 + 占位符凭据 + 由可信进程注入真实凭据），
+适用于"**进程外 CLI** 被不可信编排方启动"的场景。本仓**不内置**同类服务，理由与替代路径如下：
+
+- **为什么不内置**：sidecar 的价值在于"凭据不进被调用进程"；而进程内 SDK 的凭据
+  （`FeishuApp:AppSecret` / 令牌）本就在**宿主自己的信任域**内，另起一个进程只会增加部署面
+  而不改变信任边界。同时硬约束禁止"新增程序集 / 新增进程"，故本项**登记为宿主职责**（零代码）。
+- **宿主需要时怎么做（零 SDK 改动）**：SDK 已把"凭据来源"与"令牌存取"都留成了接缝，
+  宿主在 CI / 沙箱 / 多租户场景可任选一层替换：
+
+  | 接缝 | 替换后得到 |
+  | --- | --- |
+  | `IAppKeyAccessor` | 应用标识不再来自 `appsettings`，而来自宿主策略（如按请求路由 / 从代理进程取） |
+  | `FeishuAppOptions`（`AppSecret` 的配置来源） | 从 Secret Manager / 环境注入 / 代理进程在启动时下发，磁盘与配置文件中不留明文 |
+  | `IFeishuTokenStoreFactory` | 令牌不由本进程持久化，而由宿主的代理存储读写 |
+  | `IFeishuAuthenticationFactory` | 认证客户端整体换成宿主的代理实现（连 `tenant_access_token` 的换取也走代理） |
+
+- **安全默认不因本项削弱**：缺 `AppKey` 即失败（fail-closed）、令牌缓存按 appKey 隔离、
+  `AppSecret` 不进审计载荷 —— 这些约束与"凭据由谁提供"无关，宿主的代理实现同样受约束。
+- **本项不产生 SDK 变更**（登记性质）：若将来产品判定需要 SDK 侧统一形态，应走独立议题
+  （需回答"多一层接口换来的是哪条具体的失败模式消失"），而不是在本包内加一个"凭据开关"。
 
 ---
 
@@ -432,10 +530,38 @@ await bridge.WriteAsync(new FeishuEventEnvelope(
 | `FeishuToolNames`         | 工具名契约表（只读/写分离）                                                                     | 白名单、守卫                                                                                         |
 | **`FeishuToolContracts`** | **类型化契约**（`Risk`/`Identity`/`IsWrite`/`RequiredScopes`/`SdkSource`/`HttpMethod`/`Route`） | 注册器（直接构造定义，**零运行期解析**）、目录、守卫、权威 scope 清单校验                            |
 | **`FeishuToolGuidance`**  | 域 guidance（素材 `Guidance/{domain}.md`，AdditionalFiles）                                     | `FeishuGuidanceComposer`（宿主指令之后追加，2 KB 上限，超限按域截断并在返回值上给 `Truncated` 信号） |
+| **`x-feishu.affordance`** | per-tool 决策指导（素材 `Affordance/{工具名}.md`，AdditionalFiles；R-3 / F-7）                  | 工具 `Description`（进程内与 MCP 同源）+ `McpEnvelope` 导出方言；四键 `when` / `avoid_when` / `prerequisites` / `tips` |
 
 **scope 权威性**：`documents/AIAgent/scope-authority.json`（人工从控制台核对回填）与契约表构成
 **双向守卫**——契约里的 scope 必须在清单中（缺口即红），清单里未标 `⚠️` 的必须被至少一个工具使用
 （防僵尸权限），`⚠️` 项必须持续可见。
+
+### 8.0 per-tool affordance 资产（R-3 / F-7）
+
+工具的"何时用 / 何时别用 / 前置条件 / 踩坑提示"以**单工具资产**形式策展，由生成器同 pass 发射进
+`x-feishu.affordance`（四键恒出现；未配资产的工具**整键不出现**，golden 逐字节不变）：
+
+```text
+Mud.Feishu.AI.Tools/Affordance/{契约工具名}.md      # 如 out: Affordance/vc.delete_reserve.md
+```
+
+- **四节固定**：`## WHEN` / `## Avoid when` / `## Prerequisites` / `## Tips`（标题大小写不敏感），
+  四节**都必须存在且各至少一个条目**（条目 = `-` / `*` / `+` 开头的行，或普通行）；
+- ⚠️ **不得写一级标题**：引擎把**任何** `#` 开头的行当作小节标题，`# vc.delete_reserve` 会被报成
+  `MUDFT028 未知小节`（本仓接入时实测踩到）；四节之前的说明文字只能写成普通行；
+- ⚠️ **`Affordance/` 目录里不得放其它 `.md`**（README 也会被当成资产 ⇒ `MUDFT029` 文件名不命中工具名）；
+- **反引号里的 `域.工具` 会被机械校验**（`MUDFT030`）：要引用别的工具就写全名，写错即构建失败；
+  非 `域.工具` 形态的反引号片段（参数名、字段名）不参与校验；
+- **预算**：单资产 ≤ 1024 字符、单小节 ≤ 320 字符（超限 = `MUDFT031` Warning，走
+  `scripts/mudft-warning-baseline.txt` 基线拦增量；处置是**压缩文案**而不是抬预算）；
+- **接线三件套**：剖面槽 `AffordanceDirectory` ↔ csproj 的 `<AdditionalFiles Include="Affordance\**\*.md" />`
+  ↔ 磁盘目录名。任一不一致 ⇒ 引擎收不到资产 ⇒ 整键消失**而构建全绿**（`MUDFT014` 会因 golden 漂移报错，
+  `AffordanceContractGuards` 也会报红——这两道门是刻意的冗余）；
+- **强制集合**：`high-risk-write` 工具（16 个）**必须**有资产——`AffordanceContractGuards` 机械断言，
+  新增高危工具时不同批补资产即报红；
+- **模型可见面**：`FeishuToolAIFunction.Description` 尾部追加（进程内 Agent 与 MCP 链共用同一实例
+  ⇒ 逐字节一致），另经 `McpEnvelope` 方言结构化透传（`affordance` 字段）。
+  之所以走描述：`x-feishu` 刻意**不进**参数 Schema 关键字空间（MEAI 的 `JsonSchema` 契约要求纯参数 Schema）。
 
 ### 8.1 写工具幂等能力表（R7/WP2-T2-4）
 

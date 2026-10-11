@@ -36,9 +36,9 @@ internal sealed class TaskTools(
         ?? throw new ArgumentNullException(nameof(taskClient));
     private readonly Mud.Feishu.IFeishuUserV2Task? _userTaskClient = userTaskClient;
     private readonly Mud.Feishu.IFeishuTenantV2TaskComments? _taskCommentsClient = taskCommentsClient;
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
-    private readonly int _maxAutoFetchItems = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchItems;
-    private readonly int _maxAutoFetchPages = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchPages;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
+    private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
     /// <summary>task.create_task：创建任务（<c>dry_run=true</c> 时只预演）。</summary>
     /// <remarks>幂等键（T4-1 同款）：<c>idempotency_key</c> → <c>CreateTaskRequest.ClientToken</c>（平台原生幂等）。</remarks>
@@ -244,15 +244,8 @@ internal sealed class TaskTools(
     /// <summary>list_my_tasks 投影：items（guid/summary/due/completed_at）+ 翻页契约。</summary>
     private static JsonObject ProjectMyTasks(ApiPageListResult<ListTaskInfo> data)
     {
-        var envelope = new JsonObject
-        {
-            ["items"] = new JsonArray(),
-            ["has_more"] = data.HasMore,
-        };
-        if (!string.IsNullOrEmpty(data.PageToken))
-        {
-            envelope["page_token"] = data.PageToken;
-        }
+        // R-3：信封形态单源（ToolResultJsons.PageEnvelope）。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
 
         foreach (var task in data.Items ?? [])
         {

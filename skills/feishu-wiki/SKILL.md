@@ -2,6 +2,7 @@
 name: feishu-wiki
 description: 飞书 wiki 域工具集：5 个工具（只读 2 / 写 3）。知识库节点树的定位与移动 → `wiki.*`；取正文 → `docx.*`（文档）或 `sheets.*`（表格）；
 version: 1.0.0
+package_version: 3.0.1
 ---
 
 # 知识库（wiki.*）

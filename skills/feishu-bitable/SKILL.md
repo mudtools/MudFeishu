@@ -2,6 +2,7 @@
 name: feishu-bitable
 description: 飞书 bitable 域工具集：9 个工具（只读 6 / 写 3）。多维表格（记录/字段/视图）→ `bitable.*`；电子表格（A1 单元格区域）→ `sheets.*`。
 version: 1.0.0
+package_version: 3.0.1
 ---
 
 # 多维表格（bitable.*）

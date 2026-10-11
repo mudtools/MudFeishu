@@ -194,6 +194,7 @@ internal static class GuardProviderFactory
             services.AddSingleton(new Mock<Mud.Feishu.AI.Tools.IFeishuAttachmentStager>().Object);
         }
 
-        return services.AddFeishuReadonlyTools().BuildServiceProvider();
+        // R-8：同义入口 AddFeishuReadonlyTools 已删除，全域入口只有 AddFeishuTools。
+        return services.AddFeishuTools().BuildServiceProvider();
     }
 }

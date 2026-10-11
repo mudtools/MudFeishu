@@ -35,9 +35,9 @@ internal sealed class CalendarTools(
         ?? throw new ArgumentNullException(nameof(calendarEventClient));
     private readonly Mud.Feishu.IFeishuTenantV4Calendar _calendarClient = calendarClient
         ?? throw new ArgumentNullException(nameof(calendarClient));
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
-    private readonly int _maxAutoFetchItems = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchItems;
-    private readonly int _maxAutoFetchPages = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchPages;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
+    private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
     /// <summary>calendar.create_event：创建日程（<c>dry_run=true</c> 时只预演）。</summary>
     /// <remarks>幂等键（T4-1 同款）：<c>idempotency_key</c> → 直通平台查询参数（平台原生幂等）。</remarks>
@@ -168,15 +168,8 @@ internal sealed class CalendarTools(
     /// <summary>list_events 投影：items（event_id/summary/start/end）+ 翻页契约。</summary>
     private static JsonObject ProjectEvents(ApiPageListResult<CalendarEventListDetailInfo> data)
     {
-        var envelope = new JsonObject
-        {
-            ["items"] = new JsonArray(),
-            ["has_more"] = data.HasMore,
-        };
-        if (!string.IsNullOrEmpty(data.PageToken))
-        {
-            envelope["page_token"] = data.PageToken;
-        }
+        // R-3：信封形态单源（ToolResultJsons.PageEnvelope）。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
 
         foreach (var item in data.Items ?? [])
         {
@@ -329,15 +322,8 @@ internal sealed class CalendarTools(
     /// <summary>list_event_attendees 投影：items（attendee_id/name/type）+ 翻页契约。</summary>
     private static JsonObject ProjectAttendees(ApiPageListResult<CalendarEventAttendeeInfoResult> data)
     {
-        var envelope = new JsonObject
-        {
-            ["items"] = new JsonArray(),
-            ["has_more"] = data.HasMore,
-        };
-        if (!string.IsNullOrEmpty(data.PageToken))
-        {
-            envelope["page_token"] = data.PageToken;
-        }
+        // R-3：信封形态单源（ToolResultJsons.PageEnvelope）。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
 
         foreach (var item in data.Items ?? [])
         {

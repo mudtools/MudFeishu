@@ -38,9 +38,9 @@ internal sealed class DocxDeepTools(
         ?? throw new ArgumentNullException(nameof(announcementClient));
     private readonly Mud.Feishu.IFeishuTenantV1DriveFiles _driveFilesClient = driveFilesClient
         ?? throw new ArgumentNullException(nameof(driveFilesClient));
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
-    private readonly int _maxAutoFetchItems = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchItems;
-    private readonly int _maxAutoFetchPages = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchPages;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
+    private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
     // ─────────────────────────── 只读面（4 个） ───────────────────────────
 
@@ -373,15 +373,8 @@ internal sealed class DocxDeepTools(
     /// <summary>投影 Block 列表（分页信封）：items（block_id/block_type/text 预览）+ 翻页契约。</summary>
     private static JsonObject ProjectBlockList(ApiPageListResult<Block> data)
     {
-        var envelope = new JsonObject
-        {
-            ["items"] = new JsonArray(),
-            ["has_more"] = data.HasMore,
-        };
-        if (!string.IsNullOrEmpty(data.PageToken))
-        {
-            envelope["page_token"] = data.PageToken;
-        }
+        // R-3：信封形态单源（ToolResultJsons.PageEnvelope）。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
 
         foreach (var block in data.Items ?? [])
         {

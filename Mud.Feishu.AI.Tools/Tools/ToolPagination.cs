@@ -35,6 +35,13 @@ internal static class ToolPagination
     public const int HardMaxPages = 50;
 
     /// <summary>
+    /// 聚合层截断的<b>统一原因字面量</b>（B-1 口径单源）：触达 <c>max_items</c> 或 <c>max_pages</c>
+    /// 时回填给模型与审计的 <c>TruncationReason</c>。具体是哪一个由信封内的
+    /// <c>truncation_reason</c> 细化（见 <see cref="BuildEnvelope"/>）。
+    /// </summary>
+    public const string AggregateTruncationReason = "fetch_all 预算上限";
+
+    /// <summary>
     /// 聚合分页结果。
     /// </summary>
     /// <param name="Items">已聚合的全部条目（JSON 数组）。</param>
@@ -54,44 +61,6 @@ internal static class ToolPagination
         string? Error,
         int? FailedPageIndex,
         int? ApiCode = null);
-
-    /// <summary>
-    /// 自动翻页聚合：循环调用 <paramref name="fetchPage"/> 直到 <c>has_more=false</c> 或触达预算上限。
-    /// </summary>
-    /// <typeparam name="TPage">单页数据类型（须为 class，因为来自 SDK 返回）。</typeparam>
-    /// <param name="fetchPage">翻页函数：接收 pageToken，返回单页结果（null 表示下游失败）。</param>
-    /// <param name="readPageState">从单页结果读取 (HasMore, NextToken)。</param>
-    /// <param name="extractItems">从单页结果提取条目列表（JsonArray 形态）。</param>
-    /// <param name="maxItems">结果预算上限（条目数）。</param>
-    /// <param name="maxPages">页数上限。</param>
-    /// <param name="cancellationToken">取消令牌。</param>
-    /// <returns>聚合结果。</returns>
-    public static Task<PagedFetchResult> AggregateAsync<TPage>(
-        Func<string?, CancellationToken, Task<TPage?>> fetchPage,
-        Func<TPage, (bool HasMore, string? NextToken)> readPageState,
-        Func<TPage, JsonArray> extractItems,
-        int maxItems,
-        int maxPages,
-        CancellationToken cancellationToken)
-        where TPage : class
-    {
-        if (fetchPage is null) throw new ArgumentNullException(nameof(fetchPage));
-
-        // 裸页函数（返回 null = 下游失败）适配为解包结果形态，复用同一份翻页核心。
-        return AggregateOutcomesAsync<TPage>(
-            async (token, ct) =>
-            {
-                var page = await fetchPage(token, ct).ConfigureAwait(false);
-                return page is null
-                    ? FeishuApiOutcome<TPage>.Fail("下游返回空结果")
-                    : FeishuApiOutcome<TPage>.Success(page);
-            },
-            readPageState,
-            extractItems,
-            maxItems,
-            maxPages,
-            cancellationToken);
-    }
 
     /// <summary>
     /// 自动翻页聚合（<b>解包结果</b>形态，执行器实际使用）：保留失败页的飞书业务 code，
@@ -272,14 +241,24 @@ internal static class ToolPagination
     /// <summary>
     /// 从参数字典读取 <c>fetch_all</c> 参数（默认 false）。
     /// </summary>
+    /// <remarks>
+    /// R-2：取值经唯一门面 <see cref="ToolArgs.OptionalBool"/>（此前本类型自带一份 <c>TryReadBool</c>，
+    /// 只认 <c>bool</c> / JSON <c>true|false</c>，而生成的 <c>*Args.Unpack</c> 走 <c>ToolArgs</c>——
+    /// 同一入参在两条路径上被判成不同形态，属 S1 同类根因）。
+    /// </remarks>
     public static bool ReadFetchAll(IReadOnlyDictionary<string, object?> arguments)
-        => TryReadBool(arguments, "fetch_all") ?? false;
+        => ToolArgs.OptionalBool(arguments, "fetch_all") ?? false;
 
     /// <summary>
     /// 从参数字典读取 <c>max_items</c> 参数（默认 null → 由 Options 填充）。
     /// </summary>
+    /// <remarks>
+    /// R-2：取值经唯一门面 <see cref="ToolArgs.OptionalInt"/>——语义随之与生成的 <c>*Args.Unpack</c>
+    /// 对齐：<b>参数存在但无法解析为整数时抛</b>（由执行链转结构化错误），不再静默降级为
+    /// "未提供"。"0 / 非法" 与 "未提供" 是两种语义（见 <see cref="ToolArgs.OptionalInt"/> 的 remarks）。
+    /// </remarks>
     public static int? ReadMaxItems(IReadOnlyDictionary<string, object?> arguments)
-        => TryReadInt(arguments, "max_items");
+        => ToolArgs.OptionalInt(arguments, "max_items");
 
     /// <summary>
     /// 解析实际 maxItems：用户传入 → Options 默认 → 硬上限钳制。
@@ -301,38 +280,5 @@ internal static class ToolPagination
     public static int ResolveMaxPages(int optionsDefault)
     {
         return Math.Min(Math.Max(optionsDefault, 1), HardMaxPages);
-    }
-
-    private static bool? TryReadBool(IReadOnlyDictionary<string, object?> arguments, string key)
-    {
-        if (!arguments.TryGetValue(key, out var value) || value is null)
-        {
-            return null;
-        }
-
-        return value switch
-        {
-            bool b => b,
-            System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.True } => true,
-            System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.False } => false,
-            _ => null,
-        };
-    }
-
-    private static int? TryReadInt(IReadOnlyDictionary<string, object?> arguments, string key)
-    {
-        if (!arguments.TryGetValue(key, out var value) || value is null)
-        {
-            return null;
-        }
-
-        return value switch
-        {
-            int i => i,
-            long l => (int)l,
-            System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.Number } e
-                when e.TryGetInt32(out var i) => i,
-            _ => null,
-        };
     }
 }

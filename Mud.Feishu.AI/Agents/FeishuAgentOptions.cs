@@ -70,7 +70,8 @@ public sealed class FeishuAgentOptions
 
     /// <summary>
     /// 工具白名单——<c>MapTool</c> 的配置面等价物（消费点：
-    /// <c>Mud.Feishu.AI.Tools</c> 的 <c>AddFeishuReadonlyTools</c> 逐名启用注册表工具）。
+    /// <c>Mud.Feishu.AI.Tools</c> 的全域入口 <c>AddFeishuTools</c> 逐名启用注册表工具；
+    /// R-8 已删除同义入口 <c>AddFeishuReadonlyTools</c>）。
     /// </summary>
     /// <remarks>
     /// <para>

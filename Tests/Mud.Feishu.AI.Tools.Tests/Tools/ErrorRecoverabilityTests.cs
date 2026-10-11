@@ -100,6 +100,45 @@ public class ErrorRecoverabilityTests
     }
 
     /// <summary>
+    /// <b>R-3 / BUG-8</b>：参数类错误的恢复候选必须进入<b>结构化载荷</b>（模型可直接分支，
+    /// 无需解析人类可读正文）。
+    /// </summary>
+    /// <remarks>
+    /// 判据刻意断言"载荷里的候选含全部合法取值"——只是"有 suggestions"不够：
+    /// 候选若被截断成残缺清单，模型照它换参仍会失败（等于给了半条路）。
+    /// </remarks>
+    [Fact]
+    public async Task ClosedSetInvalidValue_ShouldCarryStructuredSuggestions()
+    {
+        var tools = new Mud.Feishu.AI.Tools.Internal.DocxWriteTools(
+            new Moq.Mock<Mud.Feishu.IFeishuTenantV1Docx>().Object,
+            new Moq.Mock<Mud.Feishu.IFeishuTenantV1DocxBlocks>().Object,
+            Microsoft.Extensions.Options.Options.Create(new Mud.Feishu.AI.Agents.FeishuAgentOptions()));
+
+        var result = await tools.AppendBlocksAsync(
+            new Dictionary<string, object?>(StringComparer.Ordinal)
+            {
+                ["document_id"] = "doxcn1",
+                ["block_type"] = "Nope",
+            },
+            CancellationToken.None);
+
+        var suggestions = result.Error?.Suggestions;
+        suggestions.Should().NotBeNullOrEmpty(
+            "参数错误必须带机器可读候选（BUG-8：模型不该为了拿到合法取值去解析人类可读正文）");
+
+        var joined = string.Join(" ", suggestions!);
+        foreach (var legal in new[] { "Text", "Heading1", "Divider" })
+        {
+            joined.Should().Contain(legal, "候选必须是完整合法取值清单，不能是残缺提示");
+        }
+
+        // 载荷首行必须真的带上该字段（否则"有 suggestions"只存在于对象里，模型看不到）。
+        result.ToString().Should().Contain("\"suggestions\":[",
+            "候选必须进入首行 JSON 载荷（只挂对象不上线等于没给模型）");
+    }
+
+    /// <summary>
     /// <b>S-10</b>：工具结果 JSON 必须<b>保留中文原文</b>（不得转义成 <c>\uXXXX</c>）。
     /// </summary>
     [Fact]
@@ -119,21 +158,32 @@ public class ErrorRecoverabilityTests
     }
 
     /// <summary>
-    /// <b>S-10 防回潮</b>：工具结果的<b>中心序列化点</b>（<c>ToolExecutor</c>）不得再直接
-    /// 调用 <c>ToJsonString()</c>（那会重新引入转义）。
+    /// <b>S-10 防回潮</b>：工具结果的<b>中心序列化点</b>不得直接调用 <c>ToJsonString()</c>
+    /// （那会重新引入转义）。
     /// </summary>
+    /// <remarks>
+    /// <b>R-1 修订</b>：中心序列化点已从 <c>Internal/ToolExecutor.cs</c> 上移到唯一出口
+    /// <c>Tools/ToolResultPipeline.cs</c>（<c>OkJson</c>/<c>OkReceipt</c> 经 <c>ToolResultJson.ToText</c>）。
+    /// 判据随实现上移——否则本守卫会盯一个"已经不再负责序列化"的文件，变成假门禁。
+    /// </remarks>
     [Fact]
     public void ToolExecutor_ShouldSerializeViaToolResultJson_NotRawToJsonString()
     {
-        var source = File.ReadAllText(
+        var pipeline = File.ReadAllText(
+            Path.Combine(FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Tools", "ToolResultPipeline.cs"));
+
+        pipeline.Should().Contain(
+            "ToolResultJson.ToText",
+            "唯一出口是工具结果的中心序列化点，必须走 ToolResultJson（否则中文被转义，抵消 F-8 收益）");
+
+        pipeline.Should().NotContain(
+            ".ToJsonString()",
+            "唯一出口出现裸 ToJsonString() —— 会绕过保留中文的编码器（S-10 回潮）");
+
+        // 反向自证：执行器骨架不再持有序列化职责（形态单源），故不得出现裸 ToJsonString()。
+        var executor = File.ReadAllText(
             Path.Combine(FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Internal", "ToolExecutor.cs"));
 
-        source.Should().Contain(
-            "ToolResultJson.ToText",
-            "ToolExecutor 是工具结果的中心序列化点，必须走 ToolResultJson（否则中文被转义，抵消 F-8 收益）");
-
-        source.Should().NotContain(
-            ".ToJsonString()",
-            "ToolExecutor 出现裸 ToJsonString() —— 会绕过保留中文的编码器（S-10 回潮）");
+        executor.Should().NotContain(".ToJsonString()", "执行器骨架不得自行序列化（S-10 回潮）");
     }
 }

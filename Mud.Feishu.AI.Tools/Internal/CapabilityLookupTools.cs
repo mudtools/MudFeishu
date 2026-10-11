@@ -38,7 +38,7 @@ namespace Mud.Feishu.AI.Tools.Internal;
 /// </remarks>
 internal sealed class CapabilityLookupTools(IOptions<FeishuAgentOptions> options)
 {
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>feishu.capability_lookup：按关键字检索能力分组。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantCapabilityLookupTool))]
@@ -91,11 +91,12 @@ internal sealed class CapabilityLookupTools(IOptions<FeishuAgentOptions> options
                 ["actionable"] = curatedTools.Count > 0,
                 ["note"] = "回答能力分组级的存在性。要查方法级签名（HTTP/路由/参数），用 feishu.schema_read。"
                     + "curated_tools 为空表示该能力尚未被策展为工具，本宿主的工具集里没有它——不要臆造调用。"
-                    + "actionable=true 表示有对应工具可直接调用；actionable=false 表示能力存在但未策展，可用 feishu.schema_read + feishu.api_call 兜底。",
+                    + "actionable=true 表示有对应工具可直接调用；actionable=false 表示能力存在但未策展为工具，"
+                    + "**本工具集没有调用通道**：请如实告知用户该能力暂不可用（可建议宿主策展）。",
             };
 
-            return Task.FromResult(FeishuToolResult.FromText(
-                ToolResultText.TruncateJson(ToolResultJson.ToText(envelope), _maxResultLength)));
+            // R-1：出站唯一出口（B-1 一类——此前 TruncateJson 的截断对模型不可见）。
+            return Task.FromResult(ToolResultPipeline.OkJson(envelope, _maxResultLength));
         });
     }
 
@@ -156,8 +157,8 @@ internal sealed class CapabilityLookupTools(IOptions<FeishuAgentOptions> options
 
             if (Mud.Feishu.AI.Tools.Generated.FeishuToolGuidance.TryGetReference(key, out var text))
             {
-                return Task.FromResult(FeishuToolResult.FromText(
-                    ToolResultText.Truncate(text, _maxResultLength)));
+                // R-1：出站唯一出口（B-1 一类）。
+                return Task.FromResult(ToolResultPipeline.Ok(text, _maxResultLength));
             }
 
             var available = Mud.Feishu.AI.Tools.Generated.FeishuToolGuidance.ReferenceKeys;

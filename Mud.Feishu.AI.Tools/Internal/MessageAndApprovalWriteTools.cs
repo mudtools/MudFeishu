@@ -152,9 +152,9 @@ internal sealed class ApprovalWriteTools(
     private readonly Mud.Feishu.IFeishuTenantV4ApprovalQuery? _approvalQueryClient = approvalQueryClient;
     private readonly Mud.Feishu.IFeishuTenantV4ApprovalTask? _approvalTaskClient = approvalTaskClient;
     private readonly Mud.Feishu.IFeishuUserV4ApprovalInstance? _approvalInstanceUserClient = approvalInstanceUserClient;
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
-    private readonly int _maxAutoFetchItems = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchItems;
-    private readonly int _maxAutoFetchPages = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchPages;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
+    private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
     /// <summary>审批表单 JSON 的预览截断长度（get_instance 的 <c>form_preview</c> 落点；字面量常数，I16 纪律）。</summary>
     private const int FormPreviewLength = 500;
@@ -308,11 +308,11 @@ internal sealed class ApprovalWriteTools(
                     $"飞书接口返回错误 code={nullDataResult.Code.ToString(CultureInfo.InvariantCulture)}, msg={nullDataResult.Msg ?? "(无错误信息)"}"));
             }
 
-            return FeishuToolResult.FromText(ToolResultJson.ToText(new JsonObject
+            return ToolResultPipeline.OkReceipt(new JsonObject
             {
                 ["approved"] = true,
                 ["task_id"] = args.TaskId,
-            }));
+            });
         });
     }
 
@@ -355,11 +355,11 @@ internal sealed class ApprovalWriteTools(
 
             RequireNullDataSuccess(executor.ToolName, nullDataResult);
 
-            return FeishuToolResult.FromText(ToolResultJson.ToText(new JsonObject
+            return ToolResultPipeline.OkReceipt(new JsonObject
             {
                 ["rejected"] = true,
                 ["task_id"] = args.TaskId,
-            }));
+            });
         });
     }
 
@@ -415,12 +415,12 @@ internal sealed class ApprovalWriteTools(
 
             RequireNullDataSuccess(executor.ToolName, nullDataResult);
 
-            return FeishuToolResult.FromText(ToolResultJson.ToText(new JsonObject
+            return ToolResultPipeline.OkReceipt(new JsonObject
             {
                 ["transferred"] = true,
                 ["task_id"] = args.TaskId,
                 ["transfer_user_id"] = args.TransferUserId,
-            }));
+            });
         });
     }
 
@@ -482,15 +482,8 @@ internal sealed class ApprovalWriteTools(
     /// <summary>list_pending_tasks 投影：items（task_id/instance_code/approval_name/title/status）+ 翻页契约。</summary>
     private static JsonObject ProjectPendingTasks(ApprovalInstancesTaskQueryResult data)
     {
-        var envelope = new JsonObject
-        {
-            ["items"] = new JsonArray(),
-            ["has_more"] = data.HasMore,
-        };
-        if (!string.IsNullOrEmpty(data.PageToken))
-        {
-            envelope["page_token"] = data.PageToken;
-        }
+        // R-3：信封形态单源（ToolResultJsons.PageEnvelope）。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
 
         foreach (var item in data.TaskLists ?? [])
         {

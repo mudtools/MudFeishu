@@ -22,8 +22,14 @@ namespace Mud.Feishu.AI.Tools;
 /// 注意：GeneratedRegexAttribute 仅 net7+，本包面向 ns2.0~net10 多 TFM，
 /// 使用经典 <see cref="Regex"/> 静态字段。
 /// </para>
+/// <para>
+/// <b>可见性（F-2 公开面裁剪决策）</b>：本类型是<b>实现细节</b>——简化文法只服务
+/// <c>bitable</c> 执行器的下行参数构造，宿主不消费（全仓消费方审计：工具包与其测试之外零命中），
+/// 且其姊妹解析器 <c>BitableSortParser</c> 一直是 internal。故一并收回 internal
+/// （测试经 <c>InternalsVisibleTo</c> 仍可断言），避免"同一类工具两个相反的可见性"。
+/// </para>
 /// </remarks>
-public static class BitableFilterParser
+internal static class BitableFilterParser
 {
     /// <summary>最大子句数。</summary>
     public const int MaxClauses = 5;

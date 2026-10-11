@@ -36,7 +36,7 @@ public sealed record FeishuGuidanceResult(
 /// <para>
 /// <b>为什么是纯字符串函数（依赖方向）</b>：guidance 的真相源由源生成器发射进工具面实现包
 /// （<c>Mud.Feishu.AI.Tools.Generated.FeishuToolGuidance</c>），而本类在 AI 底座包
-/// （工具包单向依赖 AI，不可反向）。故工具包经 <see cref="Tools.FeishuAgentToolSource.GetGuidance"/>
+/// （工具包单向依赖 AI，不可反向）。故工具包经 <see cref="AgentTools.FeishuAgentToolSource.GetGuidance"/>
 /// 把<b>已启用域</b>的 guidance 传进来，本类只做装配与截断——零反向依赖，且截断逻辑可独立单测。
 /// </para>
 /// <para>
@@ -91,11 +91,17 @@ public static class FeishuGuidanceComposer
     /// 而复现 R5/B-12 已修过的失败形态。24576 对 20,079 留 ≈22% 余量（≈4 个新域）。
     /// </para>
     /// <para>
+    /// <b>F-1（补域）</b>：24576 → <b>32768</b>。F-1 新增两域（<c>mdm</c> ≈1,579 + <c>security</c> ≈1,901 字符，
+    /// 实测 23 个 L1 资产合计 <b>≈25,209 字符</b>（含块间分隔符）——维持 24576 会让尾部域被<b>整域丢弃</b>
+    /// （复现 R5/B-12 已修过的失败形态）。32768 对 25,209 留 ≈30% 余量（≈4 个新域，
+    /// 与 R7 的"留出 4 个域"口径一致）。
+    /// </para>
+    /// <para>
     /// 守卫：<c>GuidanceAssetContractGuards</c> 的"全域拼装零丢弃"用例锁死该不变量——
     /// 未来再加长 md 会立刻报红，迫使本常量与内容长度同批评审。
     /// </para>
     /// </remarks>
-    public const int MaxGuidanceLength = 24576;
+    public const int MaxGuidanceLength = 32768;
 
     private const string Separator = "\n\n";
 

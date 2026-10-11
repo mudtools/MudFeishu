@@ -115,11 +115,13 @@ internal static class TestDoubles
     /// <param name="toolName">工具名。</param>
     /// <param name="decision">判定。</param>
     /// <param name="isWrite">是否写操作。</param>
+    /// <param name="risk">风险字面量（可空 ⇒ 按契约表推导，R-4 / F-13 新增字段）。</param>
     /// <returns>审计记录。</returns>
     public static ToolExecutionAuditRecord CreateAuditRecord(
         string toolName = "docx.delete_blocks",
         string decision = "denied",
-        bool isWrite = true)
+        bool isWrite = true,
+        string? risk = null)
         => new(
             ToolName: toolName,
             AppKey: DocAgentSettings.DefaultAppKey,
@@ -127,6 +129,7 @@ internal static class TestDoubles
             Decision: decision,
             Reason: "测试原因",
             IsWrite: isWrite,
+            Risk: risk ?? DocAgentToolFacts.RiskLiteralOf(toolName, isWrite),
             ArgsDigest: "document_id=<27 字符>",
             DurationMs: 12,
             ConversationKey: "feishu:demo-app:conversation:user:ou_console_demo_user");

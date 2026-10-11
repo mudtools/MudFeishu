@@ -15,6 +15,14 @@ global using FluentAssertions;
 global using Microsoft.Agents.AI;
 global using Microsoft.Extensions.AI;
 global using Microsoft.Extensions.DependencyInjection;
+
+// R-9（阶段 5）：Channels / Events / Knowledge 的用例随集成面迁入本工程后，
+// 下面三条成为常规依赖（Options.Create 造 Agent 选项、DataModels 的 FeishuApiResult<T> 造客户端返回、
+// Knowledge 的 AilyKnowledgeOptions/IRetriever）——集中登记，避免 9 个文件各写一遍。
+global using Microsoft.Extensions.Options;
+global using Mud.Feishu.DataModels;
+global using Mud.Feishu.AI.Knowledge;
+
 global using Moq;
 global using Mud.Feishu.AI;
 global using Mud.Feishu.AI.Agents;
@@ -23,5 +31,7 @@ global using Mud.Feishu.AI.Extensions;
 global using Mud.Feishu.Abstractions.Configuration;
 global using Mud.Feishu.Abstractions.Conversations;
 global using Mud.Feishu.Abstractions.Services;
-global using Mud.Feishu.AI.Tools;
+// BUG-1：集成面用例消费的接缝类型在 Mud.Feishu.AI.AgentTools；工具契约类型（FeishuToolRegistry 等）
+// 已回迁工具包，其用例随迁至 Mud.Feishu.AI.Tools.Tests。
+global using Mud.Feishu.AI.AgentTools;
 global using Xunit;

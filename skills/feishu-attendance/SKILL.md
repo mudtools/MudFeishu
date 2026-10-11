@@ -2,6 +2,7 @@
 name: feishu-attendance
 description: 飞书 attendance 域工具集：8 个工具（只读 7 / 写 1）。查打卡记录（"我昨天几点打的卡"）→ `attendance.query_my_flow`（user 身份，只能查本人）；
 version: 1.0.0
+package_version: 3.0.1
 ---
 
 # 考勤（attendance.*）

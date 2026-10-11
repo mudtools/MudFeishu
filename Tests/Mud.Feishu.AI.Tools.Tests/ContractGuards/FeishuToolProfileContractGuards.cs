@@ -26,7 +26,7 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// <list type="number">
 /// <item><b>剖面逐槽冻结</b>：剖面的每个槽都直接进 golden、生成代码（命名空间/类型名）
 /// 或诊断 ID——写错不会编译失败，只会表现为 golden 漂移、<c>CS0246/CS0103</c> 或诊断口径分叉。
-/// 故此处把 31 个槽逐一冻结（见 <see cref="ExpectedSlots"/>），任一槽被改即红，必须显式评审。</item>
+/// 故此处把 32 个槽逐一冻结（见 <see cref="ExpectedSlots"/>），任一槽被改即红，必须显式评审。</item>
 /// <item><b>上游槽位镜像</b>：零容忍诊断集、严重级别、门禁三集合的真相源已上移到组件侧
 /// <c>ToolSurfaceDiagnostics.Slots</c>。本仓无法符号引用该 internal 类型，故镜像为
 /// <see cref="UpstreamSlotMirror"/> 并与 <c>scripts/diagnostics-gate.ps1</c> 逐集合比对；
@@ -69,10 +69,12 @@ public class FeishuToolProfileContractGuards
         ["Name"] = "Feishu",
         // 1. 特性识别（旧 Extractors.GetFeishuToolAttribute / ToolHandlerScanner.*）
         ["ToolAttributeName"] = "FeishuTool",
-        ["ToolAttributeNamespace"] = "Mud.Feishu.AI.Tools",
+        ["ToolAttributeNamespace"] = "Mud.Feishu.AI.AgentTools",
         ["ToolHandlerAttributeName"] = "FeishuToolHandler",
-        // 本工程更名后根命名空间与 [FeishuTool] 所在的 Mud.Feishu.AI.Tools 同名，故 handler 特性
-        // 独占 .Handlers 子命名空间——两槽塌陷为同值会让引擎失去「声明面 vs 执行器绑定面」的可寻址性。
+        // 两槽塌陷为同值会让引擎失去「声明面 vs 执行器绑定面」的可寻址性，故 handler 特性
+        // 独占 .Handlers 子命名空间。声明契约（[FeishuTool]）按 BUG-1 落在
+        // Mud.Feishu.AI 程序集的 Mud.Feishu.AI.AgentTools —— 非 owner 声明程序集
+        // （AI.Tests 样例）不能引用 owner 程序集（CS0433），必须从依赖方向下游拿到该特性。
         ["ToolHandlerAttributeNamespace"] = "Mud.Feishu.AI.Tools.Handlers",
         ["ParameterAttributeName"] = "ToolParameter",
         // 2. 源解析（旧 Extractors.ResolveSourceMember 的 "Mud.Feishu." 前缀）
@@ -96,7 +98,7 @@ public class FeishuToolProfileContractGuards
         ["GeneratedNamespace"] = "Mud.Feishu.AI.Tools.Generated",
         ["ContractNamespace"] = "Mud.Feishu.AI.Tools",
         ["RegistrationNamespace"] = "Mud.Feishu.AI.Tools.Registration",
-        ["RiskEnumFullName"] = "Mud.Feishu.AI.Tools.FeishuToolRisk",
+        ["RiskEnumFullName"] = "Mud.Feishu.AI.AgentTools.FeishuToolRisk",
         // 12-17. 执行器 / 输出 / 聚合事实（旧 ToolHandlerScanner 返回类型名、ToolRegistrarEmitter
         //        绑定类型名、TypeSchemaResolver 解包表、CapabilityCatalogEmitter 接口前缀）
         ["ResultTypeName"] = "FeishuToolResult",
@@ -109,6 +111,12 @@ public class FeishuToolProfileContractGuards
         ["GoldenFileName"] = "FeishuToolSchemas.golden.txt",
         ["GoldenUpdatePropertyName"] = "FeishuToolGoldenUpdate",
         ["GuidanceDirectory"] = "/Guidance/",
+
+        // R-3 / F-7（上游 3.0.6 新增的**可空**槽）：per-tool affordance 资产目录片段。
+        // 空串 = 不启用（既有消费方零影响）；本仓显式给出后，`Affordance/{工具名}.md` 会被
+        // 同 pass 发射进 `x-feishu.affordance`。改这个值必须与 csproj 的 AdditionalFiles 目录、
+        // 资产目录名三者同批——三者不一致的症状是"资产写了但整键消失且构建全绿"。
+        ["AffordanceDirectory"] = "/Affordance/",
     };
 
     /// <summary>剖面的每个槽必须逐字节等于冻结契约（改槽即改工具面的编译期命名事实）。</summary>
@@ -174,7 +182,7 @@ public class FeishuToolProfileContractGuards
     /// </summary>
     /// <remarks>
     /// <para>
-    /// 来源：<c>Mud.HttpUtils.Generator/ToolSurface/ToolSurfaceDiagnostics.cs</c>（组件侧 3.0.3）。
+    /// 来源：<c>Mud.HttpUtils.Generator/ToolSurface/ToolSurfaceDiagnostics.cs</c>（组件侧 3.0.6）。
     /// 本仓无法符号引用该 internal 表，故镜像冻结于此；<b>引擎升级若改动槽位/级别/零容忍列，
     /// 必须显式评审并同步本表与 <c>scripts/diagnostics-gate.ps1</c></b>。
     /// </para>
@@ -209,6 +217,14 @@ public class FeishuToolProfileContractGuards
         ("025", "Error", true),    // 执行器构造参数不可解析
         ("026", "Error", true),    // 生成器内部异常兜底（category = Tooling）
         ("027", "Error", true),    // 派生常量名冲突
+
+        // ── R-3 / F-7（上游 3.0.6）：per-tool affordance 资产诊断 ──
+        // 前三条是**策展错误**（人把资产写错了），必须零容忍：它们不会让构建失败以外的方式
+        // 暴露，症状是"资产写了但模型看不到"，从日志上完全看不出来。
+        ("028", "Error", true),    // affordance 资产结构非法（缺节/未知节/空节/同工具名重复占用）
+        ("029", "Error", true),    // affordance 资产文件名不命中任何已策展工具名（资产不会生效）
+        ("030", "Error", true),    // affordance 资产引用了不存在的工具名（反引号 `域.工具`）
+        ("031", "Warning", false), // affordance 资产超字符预算（聚合单条，基线集）
     ];
 
     /// <summary>镜像是零容忍的<b>唯一入口</b>：零容忍集必须全部是 Error（否则"构建期阻断"名不副实）。</summary>
@@ -224,8 +240,8 @@ public class FeishuToolProfileContractGuards
             "零容忍 ⇒ 必须 Error 级，Warning/Info ⇒ 不得零容忍（否则会把截断告警升级为构建阻断，"
             + "或让 Error 悄悄脱离门禁）：{0}", string.Join(", ", inconsistent));
 
-        UpstreamSlotMirror.Where(static s => s.ZeroTolerance).Should().HaveCount(19,
-            "零容忍槽位数为 19（引擎侧 ZeroToleranceSlots 的镜像：24 槽 − 5 个 Warning/Info 槽；数量变化即需显式评审）");
+        UpstreamSlotMirror.Where(static s => s.ZeroTolerance).Should().HaveCount(22,
+            "零容忍槽位数为 22（引擎侧 ZeroToleranceSlots 的镜像：28 槽 − 6 个 Warning/Info 槽；数量变化即需显式评审）");
     }
 
     /// <summary>已删除的槽位（007/012/013）不得在本仓镜像中复活——它们是"指向不存在机制的僵尸定义"。</summary>
@@ -436,8 +452,8 @@ public class FeishuToolProfileContractGuards
         literalCount.Should().Be(0,
             "仍有 Source 魔法字符串字面量——SDK 接口改名时它们不会随 IDE 重命名联动（R-1 的收益目标）");
 
-        nameofCount.Should().Be(157,
-            "Source 声明数必须恒为 157（新增/删除 Source 时同步本基线——不得改成下限断言，那会让覆盖缩水静默通过）");
+        nameofCount.Should().Be(177,
+            "Source 声明数必须恒为 177（新增/删除 Source 时同步本基线——不得改成下限断言，那会让覆盖缩水静默通过）");
     }
 
     // ────────── 读取与定位 ──────────

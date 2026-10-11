@@ -38,23 +38,26 @@ public interface IFeishuTenantMinutesGetTool
 /// 总结 / 章节 / 待办 / 关键词，模型无需再自行归纳全文。
 /// </para>
 /// <para>
-/// <b>为什么逐字稿要截断</b>：<c>Transcript</c> 是完整逐字稿，长度可达数万字；
-/// 原样回填会挤爆上下文。故按消息预览长度截断并标记 <c>transcript_truncated</c>，
-/// 让模型知道"还有更多"（对齐 B-3 的截断口径纪律）。
+/// <b>逐字稿为什么是"分窗口"而不是"截断"</b>（R7 / A3）：<c>Transcript</c> 是完整逐字稿，
+/// 长度可达数万字，原样回填会挤爆上下文；但"截断 + 布尔标记"的口径有个死结——
+/// 模型<b>永远拿不到</b>后半段（没有任何参数能把它取回来）。故改为窗口化：
+/// <c>transcript_offset</c> + <c>transcript_limit</c> 分段读，并回填
+/// <c>transcript_total_length</c> / <c>has_more</c> / <c>next_offset</c> 作为续读依据。
+/// 总结 / 章节 / 待办不受影响（它们本来就很短）。
 /// </para>
 /// </remarks>
 [FeishuTool("minutes.get_artifacts",
-    Description = "按 minute_token 获取妙记的智能产物：AI 总结、章节摘要、待办事项、关键词——'总结这周会议'这类请求的首选入口（无需自行归纳全文）。逐字稿会截断以适应上下文。只读，需 minutes:minutes:readonly。",
+    Description = "按 minute_token 获取妙记的智能产物：AI 总结、章节摘要、待办事项、关键词——'总结这周会议'这类请求的首选入口（无需自行归纳全文）。逐字稿按窗口返回（transcript_offset/transcript_limit，默认 1 万字符），并给出 transcript_total_length 与 has_more/next_offset，可据此续读后续片段。只读，需 minutes:minutes:readonly。",
     RequiredScopes = ["minutes:minutes:readonly"],
     Source = nameof(IFeishuTenantV1MinutesMinute) + "." + nameof(IFeishuTenantV1MinutesMinute.GetMinuteArtifactsAsync))]
 public interface IFeishuTenantMinutesGetArtifactsTool
 {
     /// <summary>获取妙记智能产物。</summary>
-    /// <returns>白名单投影后的 JSON 文本（summary / chapters / todos / keywords / transcript 截断）。</returns>
+    /// <returns>白名单投影后的 JSON 文本（summary / chapters / todos / keywords / transcript 窗口 + 续读游标）。</returns>
     Task<string> GetMinuteArtifactsAsync(
         [ToolParameter("minute_token", "妙记 token（形如 obcnXxx）", Required = true)] string minute_token,
-        [ToolParameter("transcript_offset", "逐字稿分窗口偏移（可选，默认 0；配合 transcript_limit 分段读取长逐字稿）")] int? transcript_offset = null,
-        [ToolParameter("transcript_limit", "逐字稿分窗口上限字符数（可选，默认 10000；返回 transcript_total_length + has_more 以便续读）")] int? transcript_limit = null,
+        [ToolParameter("transcript_offset", "逐字稿分窗口偏移（可选，默认 0；配合 transcript_limit 分段读取长逐字稿，续读时取上一轮的 next_offset）")] int? transcript_offset = null,
+        [ToolParameter("transcript_limit", "逐字稿分窗口上限字符数（可选，默认 10000，范围 1~50000；返回 transcript_total_length + has_more 以便续读）")] int? transcript_limit = null,
         CancellationToken cancellationToken = default);
 }
 

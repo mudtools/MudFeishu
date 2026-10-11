@@ -103,7 +103,23 @@
 
 ## 下一批次（Phase 3 待启动项）
 
-1. **T3-5/T3-6 业务事件 + 多模态**：`ApprovalContextAssembler`/`BitableRecordContextAssembler`（`IContextAssembler` 插件位已就绪）；OCR/STT/翻译三工具（`[FeishuTool]` 清单扩容，Phase 3 §3.3）。
-2. **T3-7 HITL 确认门**：`AuthorizationResult.NeedsUserConfirmation` 三态已统一（Phase 2 执行链已回填「需确认」）；补确认卡片挂起/恢复流（`IConversationStore` 存 pending 快照）。
-3. **T3-1~4 RAG-B（条件交付，已决策⑨）**：仅离线/敏感域/自定义检索策略场景启动；`IRetriever` 抽象与 `RetrievedChunk` 引用 DTO 本批已就位，RAG-B 实现并存于 `IFeishuKnowledgeBase` 门面下。
-4. **MCP 消费侧评估备忘**（已决策⑧：Phase2+ 可选评估，不进 DoD）——仍未启动，顺延。
+> **状态更新（2026-10-10，R7 收尾轮）**：下列 1~4 项**均已落地**，逐项证据见
+> `.docs/MudFeishu-AI工具面功能完善方案-六域补齐与Agent可用性硬伤及遗留任务-R7.md` §10.7 / §10.8 / §10.9。
+> **`board.download_image` 的裁决（2026-10-10，PM 裁定 DP-R7-1）**：**维持不策展**。
+> 依据：出向工具的真正前置不是"缺契约"，而是**组件仓 `Mud.HttpUtils.Generator` 的 `output_schema` 表达能力**——
+> 字节型 Source 会推导出 `{"type":"string","format":"binary"}`，与该工具实际返回的"路径/大小/类型"自相矛盾
+> （对模型是假事实）。同批裁定的 DP-R7-2 已删除 R7 新增的两个二进制宿主契约
+> （`IFeishuBinaryArtifactSink` / `IFeishuBinaryArtifactSource`：零消费方 + 与 `IFeishuAttachmentStager` 重叠）。
+> 详见 R7 方案 **§8.5**。
+
+1. ~~**T3-5/T3-6 业务事件 + 多模态**~~ → **已完成**：`ApprovalContextAssembler` + `BitableRecordContextAssembler`（含生产者
+   `BitableRecordChangedConversationalEventHandler`）；多模态按 PM 裁决（DP-C3-1）**缩为 2 条纯文本工具**
+   （`ai.translate_text` / `ai.detect_language`），OCR/STT/文档识别改由宿主入向通道承担（`IFeishuBinaryArtifactSource`）。
+2. ~~**T3-7 HITL 确认门**~~ → **C4a 已完成**（`IFeishuPendingApprovalStore` + `InMemoryPendingApprovalStore` +
+   `PendingApprovalSnapshot` + 投影落快照 + 续跑幂等消费 + 过期放弃）；**C4b 卡片回灌按 PM 裁决延后**
+   （`Mud.Feishu.EventCallback` 无卡片动作事件类型，需 3 层新增，重启条件见方案 §8.2 DP-C4-1）。
+3. ~~**T3-1~4 RAG-B（条件交付）**~~ → **已完成**：`ICorpusSource` / `DocumentChunker` / `IVectorStore` / `VectorRetriever` /
+   `CorpusIndexer`（**不做向量库、不引入嵌入依赖**，向量化与存储交宿主，DP-C5-1）。
+4. ~~**MCP 消费侧评估备忘**~~ → **已完成**（R7 / C6b · Batch-8）：新增可选包 `Mud.Feishu.AI.Mcp`
+   （stdio JSON-RPC 2.0；工具集与 `FeishuAgent:Tools`/`WriteAllowList` 同源；每个 tool call 经既有执行链；
+   appKey 只来自配置、缺即 fail-fast；写工具 HITL 走授权器三态 fail-closed）。

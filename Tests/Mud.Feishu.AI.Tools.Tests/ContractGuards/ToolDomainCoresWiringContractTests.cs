@@ -55,6 +55,21 @@ public class ToolDomainCoresWiringContractTests
         return expected;
     }
 
+    /// <summary>
+    /// 生成产物里<b>真实存在</b>的 Core 方法名（反射，非源码正则推断）——R-8 / Q-2 方向 B 的判据来源。
+    /// </summary>
+    private static HashSet<string> ReadGeneratedCoreNames()
+        => typeof(FeishuToolNames).Assembly
+            .GetTypes()
+            .SelectMany(static type => type.GetMethods(
+                System.Reflection.BindingFlags.Public
+                | System.Reflection.BindingFlags.NonPublic
+                | System.Reflection.BindingFlags.Static))
+            .Select(static method => method.Name)
+            .Where(static name => name.StartsWith("AddFeishu", StringComparison.Ordinal)
+                && name.EndsWith("Core", StringComparison.Ordinal))
+            .ToHashSet(StringComparer.Ordinal);
+
     /// <summary>聚合入口里实际被调用到的 Core 方法名。</summary>
     private static HashSet<string> ReadWiredCoreNames()
     {
@@ -82,6 +97,47 @@ public class ToolDomainCoresWiringContractTests
             + "后果是该域工具静默不入注册表（能力目录里没有、FeishuToolNames.All 里却有，"
             + "且 MUDFT022/025 全绿、没有任何构建期信号）——R5/S-13",
             string.Join(" | ", missing));
+    }
+
+    /// <summary>
+    /// <b>R-8 / Q-2 方向 B</b>：聚合清单与<b>生成产物</b>必须双向闭合——判据取自反射
+    /// （真实存在的 Core 方法），而不是"从执行器类名反推"的源码正则。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么方向 A 不够（既有守卫的盲区）</b>：方向 A 的期望集合由
+    /// <c>internal sealed class XxxTools</c> 的<b>类名</b>正则推断。若生成器因任何原因产出一枚
+    /// 不匹配该命名规则的 Core（改名、新增执行器基类、产物落在别的目录），方向 A
+    /// <b>根本不会把它算进期望集</b> ⇒ 漏聚合时它仍报绿。
+    /// </para>
+    /// <para>
+    /// <b>方向 B 的两条断言</b>：
+    /// ① 生成产物 → 必须被聚合（否则该域工具在各入口都进不了注册表，且无任何构建期信号）；
+    /// ② 聚合里出现的 Core 名 → 必须在生成产物里真实存在（防"清单里写了幽灵方法"，例如
+    /// 聚合改表驱动后名字靠字符串拼装）。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void GeneratedCores_ShouldBeMutuallyClosedWithTheAggregator()
+    {
+        var generated = ReadGeneratedCoreNames();
+        var wired = ReadWiredCoreNames();
+
+        generated.Should().NotBeEmpty(
+            "未能经反射找到任何 AddFeishu*Core——生成产物缺失或反射判据坏了（假绿），请先修守卫");
+
+        var unaggregated = generated.Except(wired, StringComparer.Ordinal)
+            .OrderBy(static n => n, StringComparer.Ordinal).ToArray();
+        unaggregated.Should().BeEmpty(
+            "以下生成产物 Core 未被聚合入口调用（该域工具静默不入注册表；"
+            + "注意本判据取自反射，不依赖执行器类名规则）：{0}",
+            string.Join(" | ", unaggregated));
+
+        var ghosts = wired.Except(generated, StringComparer.Ordinal)
+            .OrderBy(static n => n, StringComparer.Ordinal).ToArray();
+        ghosts.Should().BeEmpty(
+            "聚合入口引用了生成产物里不存在的 Core 名（幽灵方法——表驱动/字符串拼装后极易发生）：{0}",
+            string.Join(" | ", ghosts));
     }
 
     /// <summary>反向自证：守卫必须真的看得见 Core 名，否则上例会因"扫不到 ⇒ 空集合"而假绿。</summary>

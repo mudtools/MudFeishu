@@ -13,12 +13,19 @@ global using System.Globalization;
 global using System.Linq;
 global using System.Text;
 global using System.Text.Json;
+global using System.Text.Json.Nodes;
 global using System.Threading;
 global using System.Threading.Tasks;
 global using Microsoft.Agents.AI;
 global using Microsoft.Extensions.AI;
 global using Microsoft.Extensions.Logging;
 global using Microsoft.Extensions.Logging.Abstractions;
+
+// R-9（阶段 5）：Channels / Events / Knowledge 的实现并入本工程后，这两条成为"跨子命名空间的
+// 常规依赖"（`Mud.Feishu.AI.Channels` 等不是 `Mud.Feishu.AI.Agents` 的封闭命名空间，
+// 且 Options 是本工程 4 个实现类型的构造依赖）——与其在 8 个文件里各写一遍，不如统一到全局。
+global using Microsoft.Extensions.Options;
+global using Mud.Feishu.AI.Agents;
 global using Mud.Feishu.Abstractions.Observability;
 global using Mud.Feishu.Abstractions;
 global using Mud.Feishu.Abstractions.Configuration;
@@ -26,4 +33,9 @@ global using Mud.Feishu.Abstractions.Conversations;
 global using Mud.Feishu.Abstractions.EventHandlers;
 global using Mud.Feishu.Abstractions.Services;
 global using Mud.Feishu.AI.Conversations;
-global using Mud.Feishu.AI.Tools;
+// BUG-1 / 方案 C：本包保留的"AI 运行时 ↔ 工具面共享接缝"（工具源、租户作用域工厂、
+// 上下文访问器、审批通道、风险/身份/内容安全词汇、诊断、API 结果读取）落在本包自有命名空间
+// Mud.Feishu.AI.AgentTools；工具契约与实现（注册表/结果/属性/目录/授权/审计/错误/附件暂存）
+// 已回迁 Mud.Feishu.AI.Tools 并保持命名空间 Mud.Feishu.AI.Tools（归属唯一，由
+// PackageOwnershipContractGuards 锁定）。
+global using Mud.Feishu.AI.AgentTools;

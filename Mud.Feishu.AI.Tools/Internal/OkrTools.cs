@@ -49,7 +49,7 @@ internal sealed class OkrTools(
     private readonly Mud.Feishu.IFeishuTenantV2OkrProgress? _okrProgressClient = okrProgressClient;
     private readonly Mud.Feishu.IFeishuTenantV1OkrPeriod? _okrPeriodClient = okrPeriodClient;
     private readonly Mud.Feishu.IFeishuTenantV2OkrCategory? _okrCategoryClient = okrCategoryClient;
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>okr.list_cycles：列出用户的 OKR 周期。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantOkrListCyclesTool))]
@@ -368,15 +368,8 @@ internal sealed class OkrTools(
     /// <summary>翻页信封（items + has_more + 可选 page_token）。</summary>
     private static JsonObject PageHeader<T>(ApiPageListResult<T> data)
     {
-        var envelope = new JsonObject
-        {
-            ["items"] = new JsonArray(),
-            ["has_more"] = data.HasMore,
-        };
-        if (!string.IsNullOrEmpty(data.PageToken))
-        {
-            envelope["page_token"] = data.PageToken;
-        }
+        // R-3：信封形态单源（ToolResultJsons.PageEnvelope）。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
 
         return envelope;
     }

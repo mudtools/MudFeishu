@@ -58,6 +58,28 @@ internal static class FeishuSkillDocumentBuilder
     /// <summary>frontmatter 版本号（随方言落地递增；变更即意味着产物形态变化）。</summary>
     internal const string SkillVersion = "1.0.0";
 
+    /// <summary>
+    /// R-3 / F-8：产物所属<b>包版本</b>（frontmatter 的 <c>package_version</c>）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么不能与 <see cref="SkillVersion"/> 合一</b>：<see cref="SkillVersion"/> 是<b>产物形态</b>版本
+    /// （方言结构变了才动，如 1.0.0 → 2.0.0），本值随<b>包</b>变化。二者合一会让"结构没变、包版本变了"
+    /// 与"结构变了"在消费者眼里同形。
+    /// </para>
+    /// <para>
+    /// <b>为什么必须写进产物</b>：<c>skills/**</c> 随 NuGet 包分发，宿主拿到的是一个目录树、
+    /// 看不到包元数据。没有该字段，消费者无法判断"手上这份 SKILL.md 是不是当前包的"——
+    /// 官方 <c>lark-cli</c> 的 <c>skillscheck</c> 正是为这类漂移而存在。
+    /// </para>
+    /// <para>
+    /// 取值来自程序集版本（<c>&lt;Version&gt;</c> ⇒ <c>AssemblyVersion</c>），故"产物版本 == 包版本"
+    /// 在生成期即成立；<b>已提交的产物是否与之同步</b>由
+    /// <c>SkillsVersionConsistencyContractGuards</c> 机械断言（漂移即报红）。
+    /// </para>
+    /// </remarks>
+    internal static readonly string PackageVersion = ResolvePackageVersion();
+
     /// <summary>工具描述在命令清单里的最大长度（超长截断——SKILL.md 要能被人快速扫读）。</summary>
     internal const int DescriptionMaxLength = 240;
 
@@ -140,6 +162,7 @@ internal static class FeishuSkillDocumentBuilder
             .Append(Flatten(FirstSentence(guidance)))
             .Append('\n');
         builder.Append("version: ").Append(SkillVersion).Append('\n');
+        builder.Append("package_version: ").Append(PackageVersion).Append('\n');
         builder.Append("---").Append('\n');
         builder.Append('\n');
 
@@ -262,4 +285,16 @@ internal static class FeishuSkillDocumentBuilder
 
     private static string Flatten(string value)
         => value.Replace('\r', ' ').Replace('\n', ' ').Trim();
+
+    /// <summary>从程序集版本推导包版本（<c>3.0.1.0</c> ⇒ <c>3.0.1</c>）。</summary>
+    /// <remarks>
+    /// 用 <c>AssemblyVersion</c>（而非 <c>AssemblyInformationalVersion</c>）：后者在启用 SourceLink 时
+    /// 带 <c>+&lt;commit sha&gt;</c> 后缀，会让"同一包版本"在不同构建机器上产出不同产物——
+    /// 那会引爆 <c>SkillsExportContractTests</c> 的逐字节比对（假红）。
+    /// </remarks>
+    private static string ResolvePackageVersion()
+    {
+        var version = typeof(FeishuSkillDocumentBuilder).Assembly.GetName().Version;
+        return version is null ? "0.0.0" : version.ToString(3);
+    }
 }

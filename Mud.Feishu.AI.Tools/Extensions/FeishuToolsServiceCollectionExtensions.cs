@@ -11,9 +11,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Mud.Feishu.AI.Channels;
 using Mud.Feishu.AI.Events;
 using Mud.Feishu.AI.Knowledge;
-using Mud.Feishu.AI.Tools.Channels;
-using Mud.Feishu.AI.Tools.Events;
-using Mud.Feishu.AI.Tools.Knowledge;
 using Mud.Feishu.AI.Tools.Registration;
 using Mud.Feishu.AI.Tools.Tools;
 
@@ -57,17 +54,10 @@ public static class FeishuToolsServiceCollectionExtensions
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuWriteToolCores(AddFeishuReadonlyToolCores(AddFeishuToolInfrastructure(services, configure)));
 
-    /// <summary>
-    /// 注册只读工具包（Phase 1 兼容入口；现等价 <see cref="AddFeishuTools"/>——写工具同批注册但
-    /// 默认不启用，仅 <c>FeishuAgent:WriteAllowList</c> 显式启用，安全默认不变）。
-    /// </summary>
-    /// <param name="services">服务集合。</param>
-    /// <param name="configure">注册表回调（可空）。</param>
-    /// <returns>服务集合。</returns>
-    public static IServiceCollection AddFeishuReadonlyTools(
-        this IServiceCollection services,
-        Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuTools(services, configure);
+    // R-8（B-4 处置）：原 `AddFeishuReadonlyTools` 是 `AddFeishuTools` 的**同义转发**
+    // （方法名承诺"只读"，实现却注册含写工具链），名字与行为不符会误导宿主据名推断
+    // "未引入写能力"。未发布窗口期零成本删除：全域入口只保留 `AddFeishuTools` 一个，
+    // "写工具是否可用"由 `FeishuAgent:WriteAllowList` 白名单表达（安全默认不变）。
 
     /// <summary>
     /// 按域注册 Bitable 工具（P1D-1c）：4 个只读工具执行器 + 写执行器缺席。
@@ -78,55 +68,126 @@ public static class FeishuToolsServiceCollectionExtensions
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure).AddFeishuBitableToolsCore();
 
-    /// <summary>按域注册 Docx 工具（基础 2 个只读 + R7/A2 深化 9 个：读 5 + 写 4）。</summary>
+    /// <summary>
+    /// 按【域组】注册云文档工具（docx + docxDeep + wiki + minutesRead + sheets + drive + driveComment + drivePermission + translation）。
+    /// </summary>
     /// <remarks>
-    /// 两个 Core 都必须在此登记：<c>AddFeishuDocxToolsCore</c>（基础只读）+
-    /// <c>AddFeishuDocxDeepToolsCore</c>（块级编辑 / Markdown 正文 / 群公告，单执行器混合域）。
-    /// 这也保证"逐域扩展 == 全域入口"的等价性（DomainRegistrarTests 断言）。
+    /// F-3 / R1 §15.3：原 9 个细粒度入口合并为本入口——它们在飞书产品面同属"云文档域"，
+    /// 权限与评论是 drive 的子能力。宿主只要子集时，用 <c>FeishuAgent:Tools</c> 白名单裁剪即可，
+    /// 不必回到"一域一入口"的粒度（那正是本轮要收敛的公开面）。
     /// </remarks>
-    public static IServiceCollection AddFeishuDocxTools(
+    public static IServiceCollection AddFeishuCloudDocTools(
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure)
             .AddFeishuDocxToolsCore()
-            .AddFeishuDocxDeepToolsCore();
+            .AddFeishuDocxDeepToolsCore()
+            .AddFeishuWikiToolsCore()
+            .AddFeishuMinutesReadToolsCore()
+            .AddFeishuSheetsToolsCore()
+            .AddFeishuDriveToolsCore()
 
-    /// <summary>按域注册 Wiki 工具（2 个只读）。</summary>
-    public static IServiceCollection AddFeishuWikiTools(
+            // ⚠️ 不要在此列 AddFeishuDriveCommentToolsCore / AddFeishuDrivePermissionToolsCore：
+            // Drive 协作面是「读写混合域」，按既有链拆分其 Core **只在写链**登记（见 AddFeishuWriteToolCores）。
+            // 两链同时登记 ⇒ 域注册器被装配两次 ⇒ FeishuToolRegistry 抛"工具已注册"（客户端缺席时不可见，
+            // 宿主补齐客户端才整域炸掉——与 DocxDeep 同款陷阱）。
+            .AddFeishuTranslationToolsCore();
+
+    /// <summary>
+    /// 按【域组】注册"目标与任务"工具（task + okr）。
+    /// </summary>
+    /// <remarks>F-3 / R1 §15.3：任务与 OKR 在飞书产品面同属"目标与任务"，合并为一个公开入口。</remarks>
+    public static IServiceCollection AddFeishuTaskOkrTools(
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuWikiToolsCore();
+        => AddFeishuToolInfrastructure(services, configure)
+            .AddFeishuTaskToolsCore()
+            .AddFeishuOkrToolsCore();
 
-    /// <summary>按域注册 Minutes 工具（5 个只读：get/get_artifacts/search/get_statistics/get_media，R5/F-11 + R7/A3）。</summary>
+    /// <summary>
+    /// 按域注册【安全合规】工具（2 个只读：<c>security.query_audit_logs</c> + <c>security.list_openapi_logs</c>）。
+    /// </summary>
     /// <remarks>
-    /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**：
-    /// 少任何一处都会让 minutes 工具在对应入口下静默缺席（S-13）。
+    /// F-3：原 security 两个单工具入口合并为域入口（同一授权面、同一 PII 口径）。
+    /// 两者均为 <b>PII 且默认不启用</b>，需宿主显式加入 <c>FeishuAgent:Tools</c> 白名单。
     /// </remarks>
-    public static IServiceCollection AddFeishuMinutesReadTools(
+    public static IServiceCollection AddFeishuSecurityTools(
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuMinutesReadToolsCore();
+        => AddFeishuToolInfrastructure(services, configure)
+            .AddFeishuSecurityAuditLogToolsCore()
+            .AddFeishuSecurityOpenApiLogToolsCore();
 
-    /// <summary>按域注册 AI 文本面工具（2 个只读：ai.translate_text / ai.detect_language，R7/C3）。</summary>
-    /// <remarks>
-    /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**：
-    /// 少任何一处都会让 ai.* 工具在对应入口下静默缺席（S-13）。
-    /// 需宿主已启用飞书 AI 翻译能力（<c>IFeishuTenantV1AITranslation</c>）——缺席时本域工具软缺席。
-    /// </remarks>
-    public static IServiceCollection AddFeishuTranslationTools(
-        this IServiceCollection services,
-        Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuTranslationToolsCore();
 
-    /// <summary>按域注册 Board 画板工具（2 个只读 + 4 个写，R7/A4）。</summary>
+
+
+    /// <summary>
+    /// 按域注册 MDM 国家/地区工具（1 个只读：<c>mdm.get_countries</c>，F-1 首个补域切片）。
+    /// </summary>
     /// <remarks>
+    /// <para>
     /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**：
-    /// 少任何一处都会让 board 工具在对应入口下静默缺席（S-13 同款失败形态）。
+    /// 少任何一处都会让 mdm 工具在对应入口下静默缺席（S-13 同款失败形态）。
+    /// </para>
+    /// <para>
+    /// 需宿主已启用 MDM API（<c>IFeishuTenantV3MDMCountryRegion</c>）——缺席时本域工具软缺席。
+    /// 国家/地区属<b>公共参考数据</b>（非 PII），故不进 PII 登记。
+    /// 同域的用户数据维度绑定/解绑为写类，按写面纪律另立批次。
+    /// </para>
     /// </remarks>
-    public static IServiceCollection AddFeishuBoardTools(
+    public static IServiceCollection AddFeishuMdmCountryRegionTools(
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuBoardToolsCore();
+        => AddFeishuToolInfrastructure(services, configure).AddFeishuCountryRegionToolsCore();
+
+
+    /// <summary>
+    /// 按域注册 org 组织元数据工具（8 个只读：职务 / 职级 / 职务族 / 工作城市，F-1 第三个补域）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**：
+    /// 少任何一处都会让 org 工具在对应入口下静默缺席（S-13 同款失败形态）。
+    /// </para>
+    /// <para>
+    /// 补齐"通讯录返回的 <c>job_title</c> / <c>job_level_id</c> / <c>job_family_id</c> / <c>city</c> 等 ID
+    /// → 可读组织元数据"缺口（与 <c>mdm.get_countries</c> 同类）。
+    /// <b>非 PII</b>（组织元数据），复用通讯录用户只读权限（与 <c>contact.*</c> 同一授权面）；
+    /// 四个 SDK 客户端均软依赖——对应客户端缺席时**只有该客户端**的工具软缺席。
+    /// </para>
+    /// </remarks>
+    public static IServiceCollection AddFeishuOrgMetadataTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure).AddFeishuOrgMetadataToolsCore();
+
+
+
+    /// <summary>
+    /// 按域注册 hire 招聘工具（4 个只读：岗位 2 + 候选人 2）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>岗位</b>（<c>hire.list_jobs</c> / <c>hire.get_job</c>）非 PII——组织对外招聘信息。
+    /// </para>
+    /// <para>
+    /// <b>候选人</b>（<c>hire.list_talents</c> / <c>hire.get_talent</c>）属 <b>PII（DP-A5-1 档位 ①）</b>：
+    /// 默认不启用，需宿主显式加入 <c>FeishuAgent:Tools</c>；投影已白名单化（身份证号/性别/年龄/籍贯/学历/经历等不返回）。
+    /// 同入口提供两者是有意为之——宿主启用招聘域时一次性看到全部招聘面（含 PII 提示），
+    /// 避免"只装了岗位入口、以为招聘面只有这么点"的错觉；"是否真的可用"仍由白名单决定。
+    /// </para>
+    /// </remarks>
+    public static IServiceCollection AddFeishuHireTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure)
+            .AddFeishuHireJobToolsCore()
+            .AddFeishuHireJobRequirementToolsCore()
+            .AddFeishuHireTalentToolsCore()
+            .AddFeishuHireInterviewToolsCore()
+            .AddFeishuHireOfferToolsCore();
+
+
 
     /// <summary>按域注册 Attendance 考勤工具（7 个只读 + 1 个写，R7/A5）。</summary>
     /// <remarks>
@@ -151,15 +212,6 @@ public static class FeishuToolsServiceCollectionExtensions
             .AddFeishuSparkAppToolsCore()
             .AddFeishuSparkTableToolsCore();
 
-    /// <summary>按域注册 OKR 只读工具（9 个只读，R6/S2；写工具经 <see cref="AddFeishuWriteTools"/>）。</summary>
-    /// <remarks>
-    /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**：
-    /// 少任何一处都会让 okr 只读工具在对应入口下静默缺席（S-13 的同款失败形态）。
-    /// </remarks>
-    public static IServiceCollection AddFeishuOkrTools(
-        this IServiceCollection services,
-        Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuOkrToolsCore();
 
     /// <summary>按域注册 VideoConferencing 只读工具（6 个只读，R6/S3；写工具经 <see cref="AddFeishuWriteTools"/>）。</summary>
     /// <remarks>
@@ -176,47 +228,21 @@ public static class FeishuToolsServiceCollectionExtensions
     public static IServiceCollection AddFeishuSearchTools(
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuSearchToolsCore();
+        => AddFeishuToolInfrastructure(services, configure)
+            .AddFeishuSearchToolsCore()
+            .AddFeishuKnowledgeSearchToolsCore();
 
     /// <summary>按域注册 IM 工具（2 个只读；写工具经 <see cref="AddFeishuWriteTools"/>）。</summary>
     public static IServiceCollection AddFeishuImTools(
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuImToolsCore();
-
-    /// <summary>按域注册 Sheets 工具（2 个只读）。</summary>
-    public static IServiceCollection AddFeishuSheetsTools(
-        this IServiceCollection services,
-        Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuSheetsToolsCore();
-
-    /// <summary>按域注册 Drive 工具（2 个只读，AI-FD-D12 P1D-1b 批次 A 新域）。</summary>
-    /// <remarks>
-    /// 评论/权限协作面（drive.list_comments / add_comment / reply_comment / resolve_comment /
-    /// get_permission_public / update_permission_public / grant_permission / update_permission_member /
-    /// remove_permission / transfer_owner）由 <see cref="AddFeishuDriveCollabTools"/> 单独装配——
-    /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**（S-13 的同款失败形态）。
-    /// </remarks>
-    public static IServiceCollection AddFeishuDriveTools(
-        this IServiceCollection services,
-        Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuDriveToolsCore();
-
-    /// <summary>
-    /// 按域注册 Drive 协作面工具（评论 4 + 权限 6，MUDFT022 批次）：只读 3 + 写 7。
-    /// </summary>
-    /// <remarks>
-    /// <c>DriveCommentTools</c> / <c>DrivePermissionTools</c> 与 MailTools 同属「读写混合域」——
-    /// 两个 Core 整体挂写链（<see cref="AddFeishuWriteToolCores"/>），按链拆分的取舍见其 remarks。
-    /// 权限域工具被引擎风险分级一律 <c>high-risk-write</c>（含底层 GET 的 get_permission_public，
-    /// MUDFT017），启用须过 <c>WriteAllowList</c> 键控 + 授权门禁。
-    /// </remarks>
-    public static IServiceCollection AddFeishuDriveCollabTools(
-        this IServiceCollection services,
-        Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure)
-            .AddFeishuDriveCommentToolsCore()
-            .AddFeishuDrivePermissionToolsCore();
+            .AddFeishuImToolsCore()
+            .AddFeishuAttachmentToolsCore()
+            .AddFeishuBoardToolsCore();
+
+
+
 
     /// <summary>
     /// 按域注册通讯录工具（P0：<c>contact.resolve_user</c> / <c>contact.get_user</c> / <c>contact.batch_get</c>）。
@@ -225,13 +251,14 @@ public static class FeishuToolsServiceCollectionExtensions
     public static IServiceCollection AddFeishuContactTools(
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuContactToolsCore();
+        => AddFeishuToolInfrastructure(services, configure)
+            .AddFeishuContactToolsCore()
 
-    /// <summary>按域注册 Knowledge 工具（<c>knowledge.search</c>；要求宿主已注册 <see cref="IRetriever"/> 实现，如 <c>AddFeishuAilyKnowledge</c>）。</summary>
-    public static IServiceCollection AddFeishuKnowledgeTools(
-        this IServiceCollection services,
-        Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuKnowledgeSearchToolsCore();
+            // ⚠️ 同上：AddFeishuContactDepartmentToolsCore（list_departments / list_department_members）
+            // 属「读写混合域」，其 Core **只在写链**登记，此处不得再列一次（重复装配会抛"工具已注册"）。
+            // 本入口吸收的是 F-1 新增的部门查询执行器（上级链 / 按名搜索，纯只读）。
+            .AddFeishuContactDepartmentQueryToolsCore();
+
 
     /// <summary>
     /// 按域注册邮件工具（WP5：<c>mail.list_messages</c>/<c>mail.get_message</c> 只读 + <c>mail.send_message</c> 写）。
@@ -245,17 +272,6 @@ public static class FeishuToolsServiceCollectionExtensions
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure).AddFeishuMailToolsCore();
 
-    /// <summary>
-    /// 按域注册通讯录部门轴工具（WP5：<c>contact.list_departments</c>/<c>contact.list_department_members</c>）。
-    /// </summary>
-    /// <remarks>
-    /// 部门列表需 <c>IFeishuTenantV3Departments</c>，部门成员需 <c>IFeishuTenantV1Employees</c>——
-    /// 两者均可软缺席（客户端缺席时对应工具不注册）。
-    /// </remarks>
-    public static IServiceCollection AddFeishuContactDepartmentTools(
-        this IServiceCollection services,
-        Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuContactDepartmentToolsCore();
 
     /// <summary>
     /// 按域注册日历工具（WP5 / AT-F04：<c>calendar.create_event</c> 写 + <c>find_free_slots</c>/<c>list_events</c> 只读）。
@@ -266,30 +282,7 @@ public static class FeishuToolsServiceCollectionExtensions
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure).AddFeishuCalendarToolsCore();
 
-    /// <summary>
-    /// 按域注册任务工具（WP5 / AT-F17：<c>task.create_task</c> 写 + <c>task.list_my_tasks</c> <b>user 身份</b>）。
-    /// </summary>
-    /// <remarks>
-    /// tenant 客户端（<c>IFeishuTenantV2Task</c>）缺席 → 整域不注册；user 客户端
-    /// （<c>IFeishuUserV2Task</c>）缺席 → 仅 <c>list_my_tasks</c> 缺席（工具级软缺席）。
-    /// <c>list_my_tasks</c> 还要求宿主在执行上下文提供当前用户（<c>FeishuToolContext.UserId</c>）。
-    /// </remarks>
-    public static IServiceCollection AddFeishuTaskTools(
-        this IServiceCollection services,
-        Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuTaskToolsCore();
 
-    /// <summary>
-    /// 按域注册附件上传工具（WP7：<c>im.send_image</c> / <c>im.send_file</c>，三步链路 落盘→上传→发送）。
-    /// </summary>
-    /// <remarks>
-    /// 要求宿主注册 <c>IFeishuAttachmentStager</c> 与 <c>IFeishuTenantV1Message</c>；
-    /// <b>落盘器缺席 → 两个工具不注册</b>（软缺席：SDK 不实现下载/落盘，见 U-5）。
-    /// </remarks>
-    public static IServiceCollection AddFeishuAttachmentTools(
-        this IServiceCollection services,
-        Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuAttachmentToolsCore();
 
     /// <summary>
     /// 注册写域工具（Phase 2：<c>im.send_message</c>/<c>bitable.add_record</c>/<c>approval.create_instance</c> +
@@ -300,214 +293,12 @@ public static class FeishuToolsServiceCollectionExtensions
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuWriteToolCores(AddFeishuToolInfrastructure(services, configure));
 
-    /// <summary>
-    /// 注册分片编辑流式通道（Phase 2 T2-1 兼容入口，保持不变）：
-    /// 仅注册 <see cref="EditMessageChannel"/> 单通道（不走卡片流降级链）。
-    /// </summary>
-    /// <param name="services">服务集合。</param>
-    /// <returns>服务集合。</returns>
-    public static IServiceCollection AddFeishuEditMessageChannel(this IServiceCollection services)
-    {
-        if (services is null)
-            throw new ArgumentNullException(nameof(services));
-
-        services.TryAddSingleton<EditMessageChannel>();
-        services.TryAddSingleton<IMessageChannel>(static sp => sp.GetRequiredService<EditMessageChannel>());
-        return services;
-    }
-
-    /// <summary>
-    /// 注册流式通道降级链（AI-FD-D12 P2D-2a）：首选应用消息卡片流通道
-    /// （<see cref="CardStreamMessageChannel"/>，单聊按用户投放），Begin 失败自动降级
-    /// <see cref="EditMessageChannel"/>（分片编辑）——事件处理器零感知。
-    /// </summary>
-    /// <remarks>
-    /// 要求宿主已注册 <c>IFeishuTenantV1Message</c>（编辑通道必需）；卡片流客户端
-    /// <c>IFeishuTenantV2AppCardMessageStream</c> 缺席时链内仅剩编辑通道（注册期软缺席）。
-    /// 群聊场景卡片流目标解析为不适用，直接走编辑通道。
-    /// </remarks>
-    /// <param name="services">服务集合。</param>
-    /// <returns>服务集合。</returns>
-    public static IServiceCollection AddFeishuStreamingChannel(this IServiceCollection services)
-    {
-        if (services is null)
-            throw new ArgumentNullException(nameof(services));
-
-        // 卡片流客户端缺席 → 通道缺席（链内仅编辑通道），与写执行器同一软缺席模式。
-        services.TryAddSingleton(static sp => sp.GetService<Mud.Feishu.IFeishuTenantV2AppCardMessageStream>() is { } card
-            ? new CardStreamMessageChannel(
-                card,
-                sp.GetRequiredService<IFeishuAppContextScopeFactory>(),
-                sp.GetRequiredService<IOptions<FeishuAgentOptions>>(),
-                sp.GetService<ILogger<CardStreamMessageChannel>>())
-            : null!);
-        services.TryAddSingleton<EditMessageChannel>();
-
-        services.TryAddSingleton<IMessageChannel>(static sp =>
-        {
-            var card = sp.GetService<CardStreamMessageChannel>();
-            var edit = sp.GetRequiredService<EditMessageChannel>();
-            return card is not null
-                ? new StreamingChannelChain(sp.GetService<ILogger<StreamingChannelChain>>(), card, edit)
-                : new StreamingChannelChain(sp.GetService<ILogger<StreamingChannelChain>>(), edit);
-        });
-
-        return services;
-    }
-
-    /// <summary>
-    /// 注册知识检索上下文装配器（AI-FD-D12 P2D-4a 注入模式）：每轮把 <see cref="IRetriever"/>
-    /// 召回切片注入 Prompt。宿主<b>显式装配</b>（不默认开启，省 token）——工具模式见
-    /// <see cref="AddFeishuKnowledgeTools"/>；并用合法（注入给背景、工具给深挖）。
-    /// </summary>
-    /// <param name="services">服务集合。</param>
-    /// <param name="order">装配顺序（缺省 100：默认装配器之后，问题文本先于知识注入）。</param>
-    /// <returns>服务集合。</returns>
-    public static IServiceCollection AddFeishuKnowledgeContext(this IServiceCollection services, int order = KnowledgeContextAssembler.DefaultOrder)
-    {
-        if (services is null)
-            throw new ArgumentNullException(nameof(services));
-
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IContextAssembler>(sp =>
-            new KnowledgeContextAssembler(
-                sp.GetRequiredService<IRetriever>(),
-                order)));
-        return services;
-    }
-
-    /// <summary>
-    /// 一行接入内置 IM 会话事件处理器（AI-FD-D12 P2D-5a）：消息 → 会话 → 模型 → 回复/流式。
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// 注册 <see cref="ImConversationOptions"/>（配置节 <c>FeishuAgent:ImConversation</c>）与
-    /// <see cref="ImMessageConversationalEventHandler"/>（含 Bot 自激过滤、群聊 @ 过滤安全内建）。
-    /// 内置上下文装配器集默认只启用 <see cref="ImConversationAssemblers.SenderInfo"/>（零外部调用）；
-    /// 其余经 <paramref name="assemblers"/> 显式装配（P2D-5b）。事件订阅侧由宿主在
-    /// WebSocket/Webhook 通道上 <c>AddHandler&lt;ImMessageConversationalEventHandler&gt;()</c>
-    /// （通道工厂从自身注册表解析，不读全局 <c>IFeishuEventHandler</c> 注册）。
-    /// </para>
-    /// </remarks>
-    /// <param name="services">服务集合。</param>
-    /// <param name="configuration">应用配置（可空；提供时绑定 <c>FeishuAgent:ImConversation</c> 节）。</param>
-    /// <param name="configure">编程式配置覆盖（可空；在配置绑定之后执行）。</param>
-    /// <param name="assemblers">内置装配器集（默认仅 SenderInfo；QuoteMessage 需 Message 客户端、Knowledge 需 IRetriever）。</param>
-    /// <returns>服务集合。</returns>
-    public static IServiceCollection AddFeishuImConversationHandler(
-        this IServiceCollection services,
-        IConfiguration? configuration = null,
-        Action<ImConversationOptions>? configure = null,
-        ImConversationAssemblers assemblers = ImConversationAssemblers.SenderInfo)
-    {
-        if (services is null)
-            throw new ArgumentNullException(nameof(services));
-
-        var builder = services.AddOptions<ImConversationOptions>();
-        if (configuration is not null)
-        {
-            // 源生成绑定（AOT-3）：Bind 调用点可被配置绑定源生成器拦截（net8+ 由根 props 启用）。
-            var section = configuration.GetSection(ImConversationOptions.SectionName);
-            builder.Configure(options => section.Bind(options));
-        }
-
-        if (configure is not null)
-        {
-            builder.Configure(configure);
-        }
-
-        services.TryAddSingleton(static sp =>
-        {
-            var options = sp.GetRequiredService<IOptions<ImConversationOptions>>().Value;
-            options.Validate();
-            return Options.Create(options);
-        });
-
-        // 内置装配器集（P2D-5b）：默认只启用 SenderInfo（零外部调用）；其余宿主显式装配。
-        if (assemblers.HasFlag(ImConversationAssemblers.SenderInfo))
-        {
-            services.TryAddEnumerable(ServiceDescriptor.Singleton<IContextAssembler, SenderInfoContextAssembler>());
-        }
-
-        if (assemblers.HasFlag(ImConversationAssemblers.QuoteMessage))
-        {
-            services.TryAddEnumerable(ServiceDescriptor.Singleton<IContextAssembler>(static sp =>
-                new QuoteMessageContextAssembler(
-                    sp.GetRequiredService<Mud.Feishu.IFeishuTenantV1Message>(),
-                    sp.GetRequiredService<IFeishuAppContextScopeFactory>(),
-                    sp.GetService<ILogger<QuoteMessageContextAssembler>>())));
-        }
-
-        if (assemblers.HasFlag(ImConversationAssemblers.Knowledge))
-        {
-            // 注入模式（P2D-4a）：要求宿主已注册 IRetriever（如 AddFeishuAilyKnowledge）。
-            services.AddFeishuKnowledgeContext();
-        }
-
-        // R3-1：回复前切租户依赖作用域工厂——本入口是 IM 会话处理器的「一行接入」装配点，
-        // 若此处不注册，多应用宿主会在回复时 fail-closed 抛错（有 appKey 无工厂）。
-        services.TryAddSingleton<IFeishuAppContextScopeFactory, FeishuAppContextScopeFactory>();
-
-        // 处理器本体：宿主经通道 AddHandler<ImMessageConversationalEventHandler>() 挂载（AddScoped 语义由通道补齐）。
-        services.TryAddScoped<ImMessageConversationalEventHandler>();
-
-        return services;
-    }
-
-    /// <summary>
-    /// 注册 Aily 托管知识问答（RAG-A 默认路径，Phase 2 T2-6）：
-    /// <see cref="IFeishuKnowledgeBase"/> + <see cref="IRetriever"/> 单实现双接口。
-    /// </summary>
-    /// <param name="services">服务集合。</param>
-    /// <param name="configuration">应用配置（可空；提供时绑定 <c>FeishuAilyKnowledge</c> 节）。</param>
-    /// <param name="configure">编程式配置覆盖（可空；在配置绑定之后执行）。</param>
-    /// <returns>服务集合。</returns>
-    public static IServiceCollection AddFeishuAilyKnowledge(
-        this IServiceCollection services,
-        IConfiguration? configuration = null,
-        Action<AilyKnowledgeOptions>? configure = null)
-    {
-        if (services is null)
-            throw new ArgumentNullException(nameof(services));
-
-        var builder = services.AddOptions<AilyKnowledgeOptions>();
-        if (configuration is not null)
-        {
-            // 源生成绑定（AOT-3）：Bind 调用点可被配置绑定源生成器拦截（net8+ 由根 props 启用）。
-            var section = configuration.GetSection(AilyKnowledgeOptions.SectionName);
-            builder.Configure(options => section.Bind(options));
-        }
-
-        if (configure is not null)
-        {
-            builder.Configure(configure);
-        }
-
-        // R2-10：与 FeishuAgentOptions 同等对待——Options 管线接入 Validate()，
-        // 使"AppId 未配置"在**启动期**响亮失败，而不是等第一次知识提问时在 Provider 工厂里炸。
-        // 此处是 Aily 选项的**注册点**（AI 底座不注册 Aily，故校验器也必须在工具包侧登记）。
-        services.TryAddSingleton<IValidateOptions<AilyKnowledgeOptions>, AilyKnowledgeOptionsValidator>();
-#if NET6_0_OR_GREATER
-        services.AddOptions<AilyKnowledgeOptions>().ValidateOnStart();
-#endif
-
-        // R3-07：注册幂等——改为 TryAddSingleton，与前后行一致，避免重复调用产生多条描述符。
-        services.TryAddSingleton<AilyKnowledgeProvider>(static sp =>
-        {
-            var options = sp.GetRequiredService<IOptions<AilyKnowledgeOptions>>().Value;
-            options.Validate();
-
-            return new AilyKnowledgeProvider(
-                sp.GetRequiredService<Mud.Feishu.IFeishuTenantV1AilyDataKnowledge>(),
-                sp.GetRequiredService<IFeishuAppContextScopeFactory>(),
-                Options.Create(options),
-                sp.GetService<IFeishuToolContextAccessor>(),
-                sp.GetService<ILogger<AilyKnowledgeProvider>>());
-        });
-        services.TryAddSingleton<IFeishuKnowledgeBase>(static sp => sp.GetRequiredService<AilyKnowledgeProvider>());
-        services.TryAddSingleton<IRetriever>(static sp => sp.GetRequiredService<AilyKnowledgeProvider>());
-
-        return services;
-    }
+    // R-9（阶段 5）：原在本文件的 5 个**集成面**装配入口已随 Channels / Events / Knowledge 一并迁到
+    // Mud.Feishu.AI（同命名空间下同名的 FeishuToolsServiceCollectionExtensions 曾承载它们）：
+    //   AddFeishuEditMessageChannel / AddFeishuStreamingChannel / AddFeishuImConversationHandler /
+    //   AddFeishuKnowledgeContext / AddFeishuAilyKnowledge —— 现落点 Mud.Feishu.AI/Extensions/FeishuAgentServiceCollectionExtensions.cs。
+    // ⚠️ 不要在此处重新声明它们：这些入口注册的是集成面实现（流式通道 / 会话事件处理器 / 知识 Provider），
+    // 而本包**不得**再引用 Mud.Feishu.EventCallback（迁移后已摘除该引用），重新声明会连带把事件 DTO 面拉回工具包。
 
     /// <summary>
     /// 只读域工具核心批量注册（W4 抽取：消除 AddFeishuTools 与 AddFeishuWriteTools 的重复链）。
@@ -536,6 +327,42 @@ public static class FeishuToolsServiceCollectionExtensions
                     // 但只有本清单会调用它。这张表是**人工维护**的，故已加守卫
                     // ToolDomainCores_ShouldAllBeWiredIntoTheAggregator 锁死"生成的 Core 必须被聚合"。
                     .AddFeishuMinutesReadToolsCore()
+
+                    // F-1 首个补域：MDM 国家/地区执行器 CountryRegionTools（1 个只读）。
+                    // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，
+                    // 漏加即「工具静默不入注册表」（ToolDomainCoresWiringContractTests 会报红）。
+                    .AddFeishuCountryRegionToolsCore()
+
+                    // F-1 P0 批：Security 行为审计日志执行器 SecurityAuditLogTools（1 个只读，PII 默认不启用）。
+                    // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，
+                    // 漏加即「工具静默不入注册表」（ToolDomainCoresWiringContractTests 会报红）。
+                    .AddFeishuSecurityAuditLogToolsCore()
+
+                    // F-1 第三个补域：org 组织元数据执行器 OrgMetadataTools（8 个只读，非 PII）。
+                    // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，
+                    // 漏加即「工具静默不入注册表」（ToolDomainCoresWiringContractTests 会报红）。
+                    .AddFeishuOrgMetadataToolsCore()
+
+                    // F-1 收官：security 应用 API 调用日志执行器 SecurityOpenApiLogTools（1 个只读，PII）。
+                    .AddFeishuSecurityOpenApiLogToolsCore()
+
+                    // F-1 P0：contact 部门查询执行器 ContactDepartmentQueryTools（2 个只读，非 PII）。
+                    .AddFeishuContactDepartmentQueryToolsCore()
+
+                    // F-1 P0：hire 招聘岗位执行器 HireJobTools（2 个只读，非 PII）。
+                    .AddFeishuHireJobToolsCore()
+
+                    // hire 招聘需求执行器 HireJobRequirementTools（1 个只读，非 PII：投影已裁掉负责人/薪资）。
+                    .AddFeishuHireJobRequirementToolsCore()
+
+                    // hire 候选人执行器 HireTalentTools（2 个只读，**PII**：默认不启用，需宿主显式加白名单）。
+                    .AddFeishuHireTalentToolsCore()
+
+                    // hire 面试安排执行器 HireInterviewTools（1 个只读，**PII**：默认不启用）。
+                    .AddFeishuHireInterviewToolsCore()
+
+                    // hire Offer 执行器 HireOfferTools（1 个只读，**PII**：只给状态，结构性不含金额）。
+                    .AddFeishuHireOfferToolsCore()
 
                     // R7 / A4：Board 画板域执行器 BoardTools（6 个工具：2 只读 + 4 写）。
                     // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，
@@ -606,10 +433,12 @@ public static class FeishuToolsServiceCollectionExtensions
             // R6 / S3：VideoConferencing 写入执行器 VcWriteTools（4 个工具，其中含 2 个 user 身份工具）。
             .AddFeishuVcWriteToolsCore()
 
-            // R6 / S4：万能兜底调用执行器 GenericApiTools（feishu.api_call）。
-            // 归写链的原因：它有侧效应（IsWrite=true）⇒ 必须经 WriteAllowList 键控 + 授权门禁，
-            // 且**不**出现在只读链里（默认装配不会意外获得"任意调用"的能力）。
-            .AddFeishuGenericApiToolsCore()
+            // R-12（2026-10-10 评审决策）：万能兜底调用执行器 GenericApiTools（feishu.api_call）
+            // 已**整条删除**。删除理由：① 与策展工具构成双轨调用路径（同一能力两条路径，
+            // 投影/幂等/风险语义不同）；② 它是整个工具面风险最高的面（任意已登记方法的 HTTP 调度）；
+            // ③ 零外部消费（Demos 未启用，仅测试覆盖）。未策展能力的正确处置是"如实告知用户"。
+            // ⚠️ 删除后 AddFeishuGenericApiToolsCore 由生成器自动收敛（声明面消失即产物消失），
+            // 本清单不得再引用它（否则域核心聚合守卫 ToolDomainCoresWiringContractTests 会红）。
 
             // MUDFT022：Drive 协作面执行器 DriveCommentTools（评论 4）+ DrivePermissionTools（权限 6）。
             // 与 MailTools 同属「读写混合域」（含只读的 list_comments / get_permission_public）——
@@ -639,6 +468,16 @@ public static class FeishuToolsServiceCollectionExtensions
         // 工具目录与 Schema 导出（P1D-4）：注册表之上的稳定契约（Phase 4 前置件）。
         services.TryAddSingleton<IToolCatalog>(static sp => FeishuToolCatalog.From(sp.GetRequiredService<FeishuToolRegistry>()));
         services.TryAddSingleton<IToolSchemaExporter, FeishuToolSchemaExporter>();
+
+        // R-3 / F-8：Skills 产物读取接缝。与导出接口同源（编译期常量），但面向"按域取一篇"——
+        // 此前 skills/** 随包分发却零仓内消费者，"包内产物 == 读取内容"没有任何路径验证过。
+        services.TryAddSingleton<ISkillDocumentReader, FeishuSkillDocumentReader>();
+
+        // R-7 窄接缝：实现类型（FeishuToolAIFunction / FeishuToolBinding）已退出公开面，
+        // 周边包（Mud.Feishu.AI.Mcp）改经这两条接缝消费，故必须在此注册——缺注册会让
+        // MCP 的 tools/list 静默变空（接缝解析失败被当作"没有工具"）。
+        services.TryAddSingleton<IFeishuToolFunctionFactory, FeishuToolFunctionFactory>();
+        services.TryAddSingleton<IToolErrorTextFormatter, ToolErrorTextFormatter>();
 
         return services;
     }
@@ -678,8 +517,8 @@ public static class FeishuToolsServiceCollectionExtensions
     /// 也不随域缺席而软缺席。全域入口 <see cref="AddFeishuTools"/> 已包含它。
     /// </para>
     /// <para>
-    /// 万能兜底 <c>feishu.api_call</c> 在<b>写链</b>（<see cref="AddFeishuWriteTools"/>）——
-    /// 它有侧效应，需 <c>WriteAllowList</c> 键控与授权器放行，不在本入口内。
+    /// <b>本工具只读、不提供任何调用通道</b>（R-12：万能兜底 <c>feishu.api_call</c> 已整条删除）——
+    /// 它回答"这个方法怎么调"，但查到的未策展方法<b>无法执行</b>，正确处置是如实告知用户。
     /// </para>
     /// </remarks>
     public static IServiceCollection AddFeishuSchemaReadTools(
@@ -717,6 +556,11 @@ public static class FeishuToolsServiceCollectionExtensions
 
         configure?.Invoke(registry);
 
+        // R-4 / F-13：高危写（删除 / 撤回）**已实际启用**时的装配期告警。
+        // 位置说明：必须在 configure 回调之后——回调可以 MapTool 启用更多工具，
+        // 放在白名单映射之后就漏掉"经回调启用"这条路径。
+        WarnOnHighRiskWriteEnablement(sp, registry);
+
         // 身份白名单的装配期 fail-fast（T2-4 / 决策 D-1 ⓑ，R4.1 评审 R-3）：白名单
         // （Tools / WriteAllowList / configure 回调）启用了 identity 不在 AllowedIdentities
         // 闭集内的工具时，启动即抛可读异常——而不是等运行期被策略轴逐请求拒绝
@@ -736,6 +580,53 @@ public static class FeishuToolsServiceCollectionExtensions
         }
 
         return registry;
+    }
+
+    /// <summary>
+    /// R-4 / F-13：<b>高危写（删除 / 撤回）能力受控启用</b>的装配期告警。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么是"告知"而不是"开关"</b>：启用/禁用删除的真相源唯一——
+    /// <c>FeishuAgent:WriteAllowList</c>（列名启用）与 <c>FeishuAgent:MaxToolRisk</c>（`write` 一键拒掉全部
+    /// <c>high-risk-write</c>）。再引入一个"删除开关"会形成第二个启用源（R5：同一语义只能有一个配置节）。
+    /// 本方法补的是<b>可观测性</b>：把"静默往白名单里加了删除工具"升级为"装配期显式告知"。
+    /// </para>
+    /// <para>
+    /// <b>为什么只 Warning 不阻断</b>：强制力来自 <c>IToolExecutionAuthorizer</c> 与 HITL（写工具默认
+    /// fail-closed），日志只负责让运维/宿主在启动那一刻看见。把它做成异常会让"合法启用删除"的宿主
+    /// 无法启动——那是把安全默认偷换成"禁止使用"。
+    /// </para>
+    /// <para>
+    /// 日志是<b>可选</b>协作件（宿主未 <c>AddLogging</c> 时 <see cref="ILoggerFactory"/> 不存在）——
+    /// 告警不得把装配变成失败源。
+    /// </para>
+    /// </remarks>
+    private static void WarnOnHighRiskWriteEnablement(IServiceProvider sp, FeishuToolRegistry registry)
+    {
+        var highRisk = registry.EnabledTools
+            .Where(static t => t.Risk == FeishuToolRisk.HighRiskWrite)
+            .Select(static t => t.Name)
+            .OrderBy(static n => n, StringComparer.Ordinal)
+            .ToArray();
+
+        if (highRisk.Length == 0)
+        {
+            return;
+        }
+
+        sp.GetService<ILoggerFactory>()?.CreateLogger("Mud.Feishu.AI.Tools").LogWarning(
+            "装配期告警：已启用 {Count} 个高危写工具（{RiskLiteral}，不可撤销）：{Tools}。"
+            + "它们默认全部关闭，仅因出现在 {Section}:{AllowList} 而启用——请确认："
+            + "① 已注册 IToolExecutionAuthorizer 且对这些工具返回 Allowed（未注册时写工具默认拒绝）；"
+            + "② 如需一键收回，把 {Section}:{MaxRisk} 设为 'write'（或更低），全部高危写工具会被 risk_exceeded 拒绝。",
+            highRisk.Length,
+            FeishuToolRiskNames.HighRiskWrite,
+            string.Join("、", highRisk),
+            FeishuAgentOptions.SectionName,
+            nameof(FeishuAgentOptions.WriteAllowList),
+            FeishuAgentOptions.SectionName,
+            nameof(FeishuAgentOptions.MaxToolRisk));
     }
 
     private static void MapWhitelist(

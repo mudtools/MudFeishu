@@ -54,7 +54,8 @@ internal sealed class InMemoryAuditSink : IToolExecutionAuditSink
     /// <remarks>
     /// <b>刻意不注入 <c>FeishuToolRegistry</c></b>：本 sink 由 <c>FeishuToolBinding</c> 可选注入，
     /// 而注册表的构造又会解析 Binding——反向依赖会形成运行期循环依赖（启动期无输出卡死）。
-    /// 风险事实改从编译期契约表读取（见 <see cref="DocAgentToolFacts"/>）。
+    /// 风险事实由审计记录自身携带（R-4 / F-13 为 <c>ToolExecutionAuditRecord</c> 增加了
+    /// <c>Risk</c> 字段），故既不需要注册表，也不需要反查契约表。
     /// </remarks>
     public InMemoryAuditSink(ConsoleRenderer renderer)
     {
@@ -71,7 +72,10 @@ internal sealed class InMemoryAuditSink : IToolExecutionAuditSink
 
         _renderer.ToolCallCard(new ToolCallViewModel(
             ToolName: record.ToolName,
-            RiskLiteral: DocAgentToolFacts.RiskLiteralOf(record.ToolName, record.IsWrite),
+
+            // R-4 / F-13：风险字面量直接取审计记录（SDK 已随记录下发）——
+            // 宿主不再自行反查契约表，避免"SDK 的风险分级改了、宿主卡片还显示旧值"的静默漂移。
+            RiskLiteral: record.Risk,
             Decision: record.Decision,
             DurationMs: record.DurationMs,
             ArgsDigest: record.ArgsDigest,

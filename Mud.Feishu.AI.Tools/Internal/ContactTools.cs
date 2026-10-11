@@ -36,7 +36,7 @@ internal sealed class ContactTools(
 
     private readonly Mud.Feishu.IFeishuTenantV3User _userClient = userClient
         ?? throw new ArgumentNullException(nameof(userClient));
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>contact.resolve_user：邮箱/手机号 → 用户 ID。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantContactResolveUserTool))]
@@ -142,7 +142,8 @@ internal sealed class ContactTools(
     /// <summary>resolve_user 投影：items 列表（email/mobile/user_id/status）。</summary>
     private static JsonObject ProjectResolveUsers(UserQueryListResult data)
     {
-        var envelope = new JsonObject { ["items"] = new JsonArray() };
+        // R-3：信封形态单源（无翻页契约的列表信封）。
+        var envelope = ToolResultJsons.ItemsEnvelope();
         foreach (var user in data.UserList ?? [])
         {
             envelope["items"]!.AsArray().AddNode(new JsonObject
@@ -160,15 +161,8 @@ internal sealed class ContactTools(
     /// <summary>search_user 投影：items + has_more + page_token（翻页契约）。</summary>
     private static JsonObject ProjectSearchUsers(UserSearchListResult data)
     {
-        var envelope = new JsonObject
-        {
-            ["items"] = new JsonArray(),
-            ["has_more"] = data.HasMore,
-        };
-        if (!string.IsNullOrEmpty(data.PageToken))
-        {
-            envelope["page_token"] = data.PageToken;
-        }
+        // R-3：信封形态单源（ToolResultJsons.PageEnvelope）。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
 
         foreach (var user in data.Users ?? [])
         {
@@ -187,7 +181,8 @@ internal sealed class ContactTools(
     /// <summary>batch_get 投影：items 列表（完整用户详情白名单）。</summary>
     private static JsonObject ProjectBatchGetUsers(GetUserInfosResult data)
     {
-        var envelope = new JsonObject { ["items"] = new JsonArray() };
+        // R-3：信封形态单源（无翻页契约的列表信封）。
+        var envelope = ToolResultJsons.ItemsEnvelope();
         foreach (var user in data.Items ?? [])
         {
             envelope["items"]!.AsArray().AddNode(ProjectUser(user));

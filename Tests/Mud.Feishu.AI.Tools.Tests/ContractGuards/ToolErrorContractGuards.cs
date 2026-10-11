@@ -59,6 +59,83 @@ public class ToolErrorContractGuards
     }
 
     /// <summary>
+    /// 守卫 ②b（PM 裁定 DP-R7-4）：<c>ToolErrorSubtype</c> 的每个常量都必须有<b>产出点或用途</b>。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么要机械断言</b>：错误子类是对宿主的承诺（"你可以按 subtype 分支"）。
+    /// 一个声明了却从不产出的子类，等于承诺了一条走不通的分支：宿主写了 <c>if</c> 却永远不进，
+    /// 而文档表格里它看起来"已实现"。实测（2026-10-10）发现两处幽灵子类
+    /// （<c>missing_scope</c> / <c>sanitizer_rejected</c>），已按裁定删除。
+    /// </para>
+    /// <para>
+    /// <b>口径（刻意宽松）</b>：常量被引用一次即算"有用途"——既可以是 <c>Subtype</c> 实参，
+    /// 也可以是策略拒绝的<b>文案前缀</b>（如 <c>$"{Token}: …"</c>）。目的是拦住"完全没人用"的常量，
+    /// 而不是限制使用形态。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void ToolErrorSubtype_Constants_ShouldAllHaveProducers()
+    {
+        var root = FindRepositoryRoot();
+
+        var sources = new[] { "Mud.Feishu.AI.Tools", "Mud.Feishu.AI" }
+            .Select(relative => Path.Combine(root, relative))
+            .Where(Directory.Exists)
+            .SelectMany(directory => Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
+            .Select(File.ReadAllText)
+            .ToArray();
+
+        sources.Should().NotBeEmpty("扫描面不得为空（否则本守卫恒绿）");
+
+        var constantNames = typeof(ToolErrorSubtype)
+            .GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+            .Select(static field => field.Name)
+            .ToArray();
+        constantNames.Should().NotBeEmpty("ToolErrorSubtype 必须有常量定义（空集会让本守卫恒绿）");
+
+        var ghosts = FindGhostSubtypes(constantNames, string.Join('\n', sources));
+
+        ghosts.Should().BeEmpty(
+            "以下错误子类常量全仓无引用（幽灵子类）——它们对宿主是「承诺了却永远走不到」的分支。"
+            + "修法：接线到真实产出点，或删除（新增需评审 + 本守卫覆盖）：{0}",
+            string.Join(" | ", ghosts));
+    }
+
+    /// <summary>守卫 ②b 的自证：判据必须真的能报出"无人引用"的常量（否则本条是假门禁）。</summary>
+    [Fact]
+    public void GhostSubtypeDetection_ShouldReportUnreferencedConstant()
+    {
+        var ghosts = FindGhostSubtypes(
+            ["UsedSubtype", "GhostSubtype"],
+            "var x = ToolErrorSubtype.UsedSubtype; var y = ToolErrorSubtype.GhostSubtypeX;");
+
+        ghosts.Should().ContainSingle().Which.Should().Be(
+            "GhostSubtype",
+            "判据必须精确匹配（GhostSubtypeX 不得让 GhostSubtype 被误判为已引用）");
+    }
+
+    /// <summary>幽灵子类判据（纯函数，便于自证）：返回在给定源码里找不到引用的常量名。</summary>
+    private static IReadOnlyList<string> FindGhostSubtypes(
+        IEnumerable<string> constantNames,
+        string combinedSource)
+        => [.. constantNames.Where(name => !System.Text.RegularExpressions.Regex.IsMatch(
+            combinedSource,
+            $@"ToolErrorSubtype\.{System.Text.RegularExpressions.Regex.Escape(name)}\b"))];
+
+    private static string FindRepositoryRoot()
+    {
+        var directory = AppContext.BaseDirectory;
+        while (!string.IsNullOrEmpty(directory) && !File.Exists(Path.Combine(directory, "Mud.Feishu.slnx")))
+        {
+            directory = Path.GetDirectoryName(directory);
+        }
+
+        directory.Should().NotBeNullOrEmpty("测试必须能定位仓库根目录（以 Mud.Feishu.slnx 为锚）");
+        return directory!;
+    }
+
+    /// <summary>
     /// 守卫 ③：ToolErrorPayloadSerializer.Serialize 的输出必须是合法 JSON 首行。
     /// </summary>
     [Fact]
@@ -103,7 +180,7 @@ public class ToolErrorContractGuards
             ApiCode: 99991663,
             Attempts: 99,
             Trace: new string('x', 64),  // 模拟较长的 trace
-            Tool: "feishu.api_call");
+            Tool: "feishu.schema_read");
 
         var json = ToolErrorPayloadSerializer.Serialize(error);
 
@@ -115,7 +192,15 @@ public class ToolErrorContractGuards
     /// 守卫 ⑤：ToolExecutor 的错误路径必须经过 FromStructuredError（源码结构断言）。
     /// </summary>
     /// <remarks>
+    /// <para>
     /// 金丝雀：注掉 <c>FromApiOutcomeError</c> 中的 <c>FromStructuredError</c> 调用即红。
+    /// </para>
+    /// <para>
+    /// <b>R-1 修订</b>：载荷序列化与 <c>FromError</c> 构造<b>已下沉到唯一出口</b>
+    /// （<c>ToolErrorFactory</c> / <c>ToolResultPipeline</c>），故本守卫的判据同步改为
+    /// "执行器骨架<b>委派</b>唯一出口 + 出口自身确实序列化"——原判据盯的是执行器骨架里的实现细节，
+    /// 收口后它会变成"要求重复实现"的反向约束。
+    /// </para>
     /// </remarks>
     [Fact]
     public void ToolExecutor_ErrorPaths_ShouldUseFromStructuredError()
@@ -124,11 +209,17 @@ public class ToolErrorContractGuards
             FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Internal", "ToolExecutor.cs"));
 
         source.Should().Contain("FromStructuredError(",
-            "ToolExecutor 的错误路径必须经过 FromStructuredError（唯一结构化载荷出口）");
-        source.Should().Contain("ToolErrorPayloadSerializer.Serialize(",
-            "ToolExecutor 必须调用 ToolErrorPayloadSerializer.Serialize 构造首行 JSON");
-        source.Should().Contain("FeishuToolResult.FromError(errorPayload,",
-            "ToolExecutor 必须通过 FeishuToolResult.FromError(ToolError, ...) 构造带结构化载荷的结果");
+            "ToolExecutor 的错误路径必须经过 FromStructuredError（工具名 + 分类文案的唯一入口）");
+        source.Should().Contain("ToolResultPipeline.Error(",
+            "ToolExecutor 必须把载荷构造委派给唯一出口 ToolResultPipeline（R-1 起不再自行拼装）");
+
+        var pipeline = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Tools", "ToolResultPipeline.cs"));
+
+        pipeline.Should().Contain("ToolErrorPayloadSerializer.Serialize(",
+            "唯一出口必须调用 ToolErrorPayloadSerializer.Serialize 构造首行 JSON");
+        pipeline.Should().Contain("FeishuToolResult.FromError(",
+            "唯一出口必须通过 FeishuToolResult.FromError(ToolError, ...) 构造带结构化载荷的结果");
     }
 
     /// <summary>
@@ -145,15 +236,93 @@ public class ToolErrorContractGuards
         }
     }
 
-    private static string FindRepositoryRoot()
+    /// <summary>
+    /// 守卫 ⑦（R-3 / BUG-8）：<c>suggestions</c> 存在时必须进入<b>首行 JSON 载荷</b>。
+    /// </summary>
+    /// <remarks>
+    /// BUG-8 的判据是"模型可<b>结构化</b>恢复"——建议若只出现在人类可读正文里，
+    /// 模型仍须解析文本，等于没解决问题。故断言它落在载荷里且可机械解析。
+    /// </remarks>
+    [Fact]
+    public void Serialize_ShouldCarrySuggestions_WhenPresent()
     {
-        var directory = AppContext.BaseDirectory;
-        while (!string.IsNullOrEmpty(directory) && !File.Exists(Path.Combine(directory, "Mud.Feishu.slnx")))
-        {
-            directory = Path.GetDirectoryName(directory);
-        }
+        var error = new ToolError(
+            Category: "validation",
+            Subtype: "invalid_args",
+            Retryable: false,
+            Attempts: 1,
+            Tool: "docx.append_blocks",
+            Suggestions: ["参数 block_type 的合法取值：Text / Heading1 / Divider"]);
 
-        directory.Should().NotBeNullOrEmpty("测试必须能定位仓库根目录（以 Mud.Feishu.slnx 为锚）");
-        return directory!;
+        var json = ToolErrorPayloadSerializer.Serialize(error);
+
+        json.Should().Contain("\"suggestions\":[", "恢复候选必须进入载荷（BUG-8：不得只放人类可读正文）");
+
+        using var document = JsonDocument.Parse(json);
+        var suggestions = document.RootElement
+            .GetProperty("tool_error")
+            .GetProperty("suggestions")
+            .EnumerateArray()
+            .Select(static e => e.GetString())
+            .ToArray();
+
+        suggestions.Should().ContainSingle().Which.Should().Be("参数 block_type 的合法取值：Text / Heading1 / Divider");
+    }
+
+    /// <summary>守卫 ⑦ 的反向：无候选时<b>不得</b>凭空产出空数组（避免"看起来有建议"的噪声）。</summary>
+    [Fact]
+    public void Serialize_ShouldOmitSuggestionsKey_WhenAbsent()
+    {
+        var json = ToolErrorPayloadSerializer.Serialize(new ToolError("api", "upstream_error", false));
+
+        json.Should().NotContain("suggestions", "没有事实来源时不得产出该键（空数组会被模型误读为'有建议但为空'）");
+    }
+
+    /// <summary>
+    /// 守卫 ⑧（预算单向上界）：候选是自由文本，必须被条数/长度上界化，且
+    /// <b>宁可丢候选也不得突破 512 上界</b>——分类字段（category/subtype/retryable）恒在。
+    /// </summary>
+    /// <remarks>
+    /// 这是 BUG-8 引入自由文本后唯一的硬风险：若为了塞进建议而牺牲分类字段，
+    /// 载荷的"可分支"价值反而归零（没有分类，建议也无从解读）。
+    /// </remarks>
+    [Fact]
+    public void Serialize_ShouldNeverExceedPayloadBound_EvenWithHugeSuggestions()
+    {
+        var error = new ToolError(
+            Category: "validation",
+            Subtype: "invalid_args",
+            Retryable: false,
+            ApiCode: 99991663,
+            Attempts: 7,
+            Trace: new string('t', 48),
+            Tool: "docx.append_blocks",
+            Suggestions: [.. Enumerable.Range(0, 12).Select(static i => new string('建', 400) + i)]);
+
+        var json = ToolErrorPayloadSerializer.Serialize(error);
+
+        json.Length.Should().BeLessThanOrEqualTo(
+            ToolErrorPayloadSerializer.MaxPayloadBytes,
+            "候选超长时必须丢候选，而不是突破载荷上界");
+
+        using var document = JsonDocument.Parse(json);
+        var payload = document.RootElement.GetProperty("tool_error");
+        payload.GetProperty("category").GetString().Should().Be("validation",
+            "丢候选也不得丢分类——那是模型可分支的最小集");
+        payload.GetProperty("subtype").GetString().Should().Be("invalid_args");
+        payload.TryGetProperty("retryable", out _).Should().BeTrue();
+    }
+
+    /// <summary>守卫 ⑧ 的自证：判据确实能报出"超界"（否则本条是假门禁）。</summary>
+    [Fact]
+    public void PayloadBound_ShouldDetectOverlongPayload_OtherwiseGuardIsFalseGreen()
+    {
+        // 直接构造一个"绕开序列化器"的超界载荷，确认本守卫用到的判据（长度比较）真的会报红。
+        var oversized = new string('x', ToolErrorPayloadSerializer.MaxPayloadBytes + 1);
+
+        oversized.Length.Should().BeGreaterThan(
+            ToolErrorPayloadSerializer.MaxPayloadBytes,
+            "判据失效：长度比较报不出超界（假绿）");
     }
 }
+

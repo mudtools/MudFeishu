@@ -35,6 +35,10 @@ public class SilentCatchContractGuards
     [
         "Mud.Feishu.AI",
         "Mud.Feishu.AI.Tools",
+
+        // R7 / C6b：MCP 包同属"协议面"，静默 catch 在这里的后果更重——
+        // 吞掉异常会让客户端只看到"连接没响应"，而缺陷在服务端毫无痕迹。
+        "Mud.Feishu.AI.Mcp",
     ];
 
     /// <summary>生产源码中不得存在"未标注理由的静默 catch"。</summary>

@@ -65,7 +65,12 @@ internal static class ToolErrorSubtype
 
     // Authorization
     public const string AuthorizationDenied = "authorization_denied";
-    public const string MissingScope = "missing_scope";
+
+    // ⚠️ PM 裁定 DP-R7-4（§8.5）：曾声明 `missing_scope`（平台权限未开通）——**已删除**。
+    //    依据：全仓无产出点（幽灵子类），且平台侧并无可靠的"scope 缺失"判据可用：
+    //    99991663 / 99991661 在三个层被解释成三种不同的东西（工具层=权限类 / WebSocket 层=机器人被禁用 /
+    //    Abstractions 层=令牌错误）⇒ 拿它当"控制台未开通权限"是**猜测**，与本仓"不得编造"的纪律冲突。
+    //    若将来拿到平台 scope 错误的**实证样本**，再新增（新增需评审 + 生产者守卫）。
 
     // Confirmation
     public const string NeedsUserConfirmation = "needs_user_confirmation";
@@ -80,7 +85,10 @@ internal static class ToolErrorSubtype
 
     // Internal
     public const string Unexpected = "unexpected";
-    public const string SanitizerRejected = "sanitizer_rejected";
+
+    // ⚠️ PM 裁定 DP-R7-4（§8.5）：曾声明 `sanitizer_rejected`——**已删除**（无产出点）。
+    //    出站净化当前的行为是"整形/截断/标注"（`ToolResultSanitizer` / `ToolResultContentSafety`），
+    //    不存在"净化器拒绝"这条路径；等内容安全轴真的出现硬拒绝时再新增（附产出点）。
 
     // ContentSafety
     public const string InjectedContentBlocked = "injected_content_blocked";

@@ -17,7 +17,8 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// <b>R7 / C3（DP-C3-1）</b>：多模态能力里<b>唯一</b>能进工具面的形态是"纯文本入参"。
 /// OCR（base64 图片）/ 文档识别（<c>[FormContent]</c> 本地文件）/ STT（base64 音频）三者
 /// 的入参在进程内库中无法由模型表达（模型没有文件系统、也不该把 MB 级 base64 塞进参数），
-/// 故<b>不策展</b>，改由宿主侧通道承担（见 <c>IFeishuBinaryArtifactSource</c> 与 Guidance/ai.md）。
+/// 故<b>不策展</b>，改由宿主侧承担（宿主自行调用 SDK 的 OCR/文档识别/STT 方法，再把文本结果交给模型；
+/// 见 Guidance/ai.md）。
 /// </para>
 /// <para>
 /// <b>为什么语言代码不用 <c>EnumType</c> 闭集</b>：平台文档里同一语言值的<b>大小写并不一致</b>

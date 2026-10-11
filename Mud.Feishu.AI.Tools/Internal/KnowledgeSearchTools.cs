@@ -28,7 +28,7 @@ internal sealed class KnowledgeSearchTools(IRetriever retriever, IOptions<Feishu
     private const int ChunkPreviewLength = 500;
 
     private readonly IRetriever _retriever = retriever ?? throw new ArgumentNullException(nameof(retriever));
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>knowledge.search：知识检索（编号切片回填）。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantKnowledgeSearchTool))]
@@ -56,7 +56,8 @@ internal sealed class KnowledgeSearchTools(IRetriever retriever, IOptions<Feishu
                 }
             }
 
-            return FeishuToolResult.FromText(ToolResultText.Truncate(builder.ToString(), _maxResultLength));
+            // R-1：出站唯一出口（B-1 一类）。
+            return ToolResultPipeline.Ok(builder.ToString(), _maxResultLength);
         });
     }
 }

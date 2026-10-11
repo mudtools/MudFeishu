@@ -166,9 +166,66 @@ public class DemoModeSettingsTests
         settings.Model.ApiKey.Should().Be("sk-test");
     }
 
+    /// <summary>演示：R-13 领域事件模式的开关 + 模型三项（凭证从 <c>FeishuDemo</c> 统一节读取）。</summary>
+    [Fact]
+    public void DomainEventsDemoSettings_FromConfiguration_ShouldReadEveryKey()
+    {
+        var config = Config(
+            ("FeishuDemo:ModelId", "glm-4-flash"),
+            ("FeishuDemo:ApiKey", "sk-test"),
+            ("FeishuDemo:AppId", "cli_demo"),
+            ("FeishuDemo:AppSecret", "dsk_demo"),
+            ("FeishuDomainEventsDemo:Enabled", "true"),
+            ("FeishuDomainEventsDemo:StreamChatId", "oc_demo_chat"));
+
+        var settings = DomainEventsDemoSettings.FromConfiguration(config);
+
+        settings.Enabled.Should().BeTrue();
+        settings.Model.ModelId.Should().Be("glm-4-flash");
+        settings.AppId.Should().Be("cli_demo");
+        settings.StreamChatId.Should().Be("oc_demo_chat");
+    }
+
+    // ──────────────────────────── SkillsDemoSettings（R-3 / F-8）────────────────────────────
+
+    /// <summary>F-8：Skills 消费演示只读一个开关与一个域（不连飞书、不需要模型）。</summary>
+    [Fact]
+    public void SkillsDemoSettings_ShouldReadSwitchAndDomain_WithoutCredentials()
+    {
+        var config = Config(
+            (SkillsDemoSettings.EnabledKey, "true"),
+            ($"{SkillsDemoSettings.SectionName}:Domain", "bitable"));
+
+        var settings = SkillsDemoSettings.FromConfiguration(config);
+
+        settings.Enabled.Should().BeTrue();
+        settings.Domain.Should().Be("bitable");
+
+        // 缺省域回落（演示必须在"零配置 + 开关即可跑"的前提下可用）。
+        SkillsDemoSettings.FromConfiguration(Config((SkillsDemoSettings.EnabledKey, "true")))
+            .Domain.Should().Be(SkillsDemoSettings.DefaultDomain);
+    }
+
+    /// <summary>空域名必须 fail-fast（空白域会让演示静默退化为"没有产物"）。</summary>
+    [Fact]
+    public void SkillsDemoSettings_ShouldFailFast_WhenDomainBlank()
+    {
+        var fromConfiguration = SkillsDemoSettings.FromConfiguration(
+            Config((SkillsDemoSettings.EnabledKey, "true"), ($"{SkillsDemoSettings.SectionName}:Domain", " ")));
+
+        fromConfiguration.Domain.Should().Be(SkillsDemoSettings.DefaultDomain,
+            "空白值必须回落默认域，而不是把空白当域名用");
+
+        var invalid = new SkillsDemoSettings { Domain = " " };
+        var act = () => invalid.Validate();
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage($"*{SkillsDemoSettings.SectionName}:Domain*");
+    }
+
     // ──────────────────────────── 节名契约 ────────────────────────────
 
-    /// <summary>三个模式的配置节/开关键必须互异（模式分派按节名判定，撞名会静默串线）。</summary>
+    /// <summary>各模式的配置节/开关键必须互异（模式分派按节名判定，撞名会静默串线）。</summary>
     [Fact]
     public void ModeSections_ShouldBeDistinct()
     {
@@ -178,6 +235,8 @@ public class DemoModeSettingsTests
             DocAgentSettings.SectionName,
             ToolsDemoSettings.SectionName,
             ImHandlerDemoSettings.SectionName,
+            DomainEventsDemoSettings.SectionName,
+            SkillsDemoSettings.SectionName,
         ];
 
         sections.Should().OnlyHaveUniqueItems();
@@ -187,6 +246,8 @@ public class DemoModeSettingsTests
             DocAgentSettings.ConfigEnabledKey,
             ToolsDemoSettings.EnabledKey,
             ImHandlerDemoSettings.EnabledKey,
+            DomainEventsDemoSettings.EnabledKey,
+            SkillsDemoSettings.EnabledKey,
         ];
 
         enabledKeys.Should().OnlyHaveUniqueItems();

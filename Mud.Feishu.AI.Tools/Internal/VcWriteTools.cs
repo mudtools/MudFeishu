@@ -45,7 +45,7 @@ internal sealed class VcWriteTools(
     private readonly Mud.Feishu.IFeishuTenantV1VideoConferencingMeeting? _meetingClient = vcMeetingClient;
     private readonly Mud.Feishu.IFeishuUserV1VideoConferencingMeeting? _userMeetingClient = vcUserMeetingClient;
     private readonly Mud.Feishu.IFeishuTenantV1VideoConferencingReserves? _reservesClient = vcReservesClient;
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>vc.set_host：改设进行中会议的主持人（<c>dry_run=true</c> 时只预演）。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantVcSetHostTool))]

@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using System.Collections.Concurrent;
+using Mud.Feishu.AI.AgentTools;
 using Mud.Feishu.AI.Tools;
 
 namespace Mud.Feishu.Agent.Demo;

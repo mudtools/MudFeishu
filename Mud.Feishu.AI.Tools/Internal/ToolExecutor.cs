@@ -19,7 +19,12 @@ namespace Mud.Feishu.AI.Tools.Internal;
 /// <para>
 /// <b>边界（与 R3 判断一致，理由加固）</b>：投影（<c>ProjectXxx</c> 的字段点选）是<b>有意策展</b>，
 /// 留在各执行器；骨架（catch/回填/截断）是<b>纯机械</b>，收拢于此。本类型是 internal 值结构 +
-/// 两个方法，<b>零新抽象层次、零新契约面</b>。
+/// 数个方法，<b>零新抽象层次、零新契约面</b>。
+/// </para>
+/// <para>
+/// <b>R-1 起：出站预算与标记委托给 <see cref="ToolResultPipeline"/></b>（唯一出口）。
+/// 本类型不再自行比较长度/拼装标记——那是"截断成为出口的性质"的必要条件
+/// （此前 8 处手拼信封绕过本类型产出静默截断，见 B-1）。
 /// </para>
 /// <para>
 /// <b>per-method 实例</b>：工具名 + 截断上限在构造时绑定一次，执行器方法内
@@ -27,7 +32,7 @@ namespace Mud.Feishu.AI.Tools.Internal;
 /// </para>
 /// </remarks>
 /// <param name="toolName">工具名（结构化错误的锚点）。</param>
-/// <param name="maxResultLength">结果截断上限（来自 <c>FeishuAgentOptions.MaxToolResultLength</c>）。</param>
+/// <param name="maxResultLength">结果截断上限（来自 <c>FeishuAgentOptions.MaxToolResultLength</c>；≤ 0 = 无预算）。</param>
 internal readonly struct ToolExecutor(string toolName, int maxResultLength)
 {
     /// <summary>写工具构造：写工具载荷小（单 ID），无截断语义，不注入截断上限。</summary>
@@ -37,10 +42,33 @@ internal readonly struct ToolExecutor(string toolName, int maxResultLength)
     }
 
     /// <summary>
+    /// <b>R-4：<c>IOptions</c> 空值守卫的唯一地点</b>——执行器只声明"工具名 + 依赖"，
+    /// 构造参数校验集中于此。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 此前该守卫在 <b>27 个执行器</b>里逐行重写（<c>(options ?? throw …).Value.MaxXxx</c>，
+    /// 其中含 3 个预算项的域写 3 遍），由守卫
+    /// <c>ToolExecutorSkeletonGuards.OptionsNullGuard_ShouldLiveOnlyInToolExecutor</c> 机械锁定不回潮。
+    /// </para>
+    /// <para>
+    /// <b>为什么返回 <see cref="FeishuAgentOptions"/> 而不是只给单个数值</b>：执行器需要三个
+    /// 预算（<c>MaxToolResultLength</c> / <c>MaxAutoFetchItems</c> / <c>MaxAutoFetchPages</c>），
+    /// 若按值分别开放三个方法，每处都要过一次空值守卫（正是重复的来源）；返回已校验的
+    /// Options 让"守卫一次、读取多次"成为唯一形态。
+    /// </para>
+    /// </remarks>
+    /// <param name="options">宿主注入的 Agent 选项（<see langword="null"/> ⇒ 立即抛，构造期即暴露配置错误）。</param>
+    /// <returns>已校验的选项值。</returns>
+    public static FeishuAgentOptions Require(IOptions<FeishuAgentOptions> options)
+        => (options ?? throw new ArgumentNullException(nameof(options))).Value;
+
+    /// <summary>
     /// 工具名（方法体内<b>策展错误路径</b>复用：dry-run 摘要、filter/sort 解析错误等——
     /// 保证 <c>FeishuToolNames.X</c> 在每个执行器方法中只出现 1 处，其余经本属性）。
     /// </summary>
     public string ToolName => toolName;
+
     /// <summary>
     /// 统一执行骨架：参数校验失败（<see cref="ArgumentException"/>）与 JSON 解析失败
     /// （<see cref="JsonException"/>）的结构化回填（取代 24 + 2 处 catch）。
@@ -59,7 +87,10 @@ internal readonly struct ToolExecutor(string toolName, int maxResultLength)
         {
             // 有意静默（守卫白名单）：异常被**转换**为模型可见的结构化错误文本（换了一条上报通道：
             // 回填模型 + FeishuToolBinding 侧同样计 Error 指标与审计），不是吞掉。
-            return FromStructuredError(ToolErrorCategory.Validation, ToolErrorSubtype.InvalidArgs, ex.Message);
+            // R-3 / BUG-8：闭集非法值携带的候选（ToolArgumentException.Suggestions）随载荷回填模型。
+            return FromStructuredError(
+                ToolErrorCategory.Validation, ToolErrorSubtype.InvalidArgs, ex.Message,
+                suggestions: (ex as ToolArgumentException)?.Suggestions);
         }
         catch (JsonException ex)
         {
@@ -79,10 +110,7 @@ internal readonly struct ToolExecutor(string toolName, int maxResultLength)
             return FromApiOutcomeError(outcome.Code, outcome.ErrorText!);
         }
 
-        var fullText = text(outcome.Data!) ?? string.Empty;
-        var truncatedText = ToolResultText.Truncate(fullText, maxResultLength);
-        var truncated = truncatedText.Length < fullText.Length;
-        return FeishuToolResult.FromText(truncatedText, truncated, truncated ? "文本超长截断" : null);
+        return ToolResultPipeline.Ok(text(outcome.Data!), maxResultLength);
     }
 
     /// <summary>
@@ -96,7 +124,8 @@ internal readonly struct ToolExecutor(string toolName, int maxResultLength)
             return FromApiOutcomeError(outcome.Code, outcome.ErrorText!);
         }
 
-        return FeishuToolResult.FromText(ToolResultJson.ToText(project(outcome.Data!)));
+        // maxLength = 0 ⇒ 无预算（与单参构造的语义一致）。
+        return ToolResultPipeline.OkJson(project(outcome.Data!), 0);
     }
 
     /// <summary>
@@ -135,11 +164,7 @@ internal readonly struct ToolExecutor(string toolName, int maxResultLength)
             return FromApiOutcomeError(outcome.Code, outcome.ErrorText!);
         }
 
-        var envelope = project(outcome.Data!);
-        var fullText = ToolResultJson.ToText(envelope);
-        var truncatedText = ToolResultText.TruncateJson(fullText, maxResultLength);
-        var truncated = truncatedText.Length < fullText.Length;
-        return FeishuToolResult.FromText(truncatedText, truncated, truncated ? "JSON 感知截断" : null);
+        return ToolResultPipeline.OkJson(project(outcome.Data!), maxResultLength);
     }
 
     /// <summary>
@@ -164,38 +189,40 @@ internal readonly struct ToolExecutor(string toolName, int maxResultLength)
         }
 
         var envelope = ToolPagination.BuildEnvelope(result, maxItems);
-        var fullText = ToolResultJson.ToText(envelope);
 
-        var bounded = maxResultLength > 0
-            ? ToolResultText.TruncateJson(fullText, maxResultLength)
-            : fullText;
-        var lengthTruncated = bounded.Length < fullText.Length;
+        // R-1：长度维度经唯一出口（截断与标记同源），聚合维度由上面的信封自述。
+        var lengthBounded = ToolResultPipeline.OkJson(envelope, maxResultLength);
+        if (!result.Truncated)
+        {
+            return lengthBounded;
+        }
 
-        var reason = result.Truncated
-            ? "fetch_all 预算上限"
-            : lengthTruncated ? "JSON 感知截断" : null;
-
-        return FeishuToolResult.FromText(bounded, result.Truncated || lengthTruncated, reason);
+        // 聚合层已截断：原因以聚合层为准（信封内已带具体预算/页数原因），标记合并为真。
+        return FeishuToolResult.FromText(
+            lengthBounded.ToString(), truncated: true, ToolPagination.AggregateTruncationReason);
     }
 
     /// <summary>
     /// 构造带结构化错误载荷的错误结果（B2 错误契约：首行 JSON + 人类可读正文）。
     /// </summary>
-    private FeishuToolResult FromStructuredError(ToolErrorCategory category, string subtype, string reason, int? apiCode = null)
-    {
-        var humanReadable = FeishuToolBinding.StructuredError(toolName, category, reason, apiCode);
-        var errorPayload = new ToolError(
-            Category: FeishuToolBinding.CategoryLiteral(category),
-            Subtype: subtype,
-            Retryable: category == ToolErrorCategory.Retryable,
-            RetryAfterSeconds: null,
-            ApiCode: apiCode,
-            Attempts: 1,
-            Trace: null,
-            Tool: toolName);
-        var jsonLine = ToolErrorPayloadSerializer.Serialize(errorPayload);
-        return FeishuToolResult.FromError(errorPayload, jsonLine + "\n" + humanReadable);
-    }
+    /// <remarks>
+    /// R-1 / B-2：载荷构造收口到 <see cref="ToolErrorFactory"/>（唯一构造点），
+    /// 本方法只负责"人类可读正文由执行链的分类文案生成"这一层。
+    /// </remarks>
+    private FeishuToolResult FromStructuredError(
+        ToolErrorCategory category,
+        string subtype,
+        string reason,
+        int? apiCode = null,
+        IReadOnlyList<string>? suggestions = null)
+        => ToolResultPipeline.Error(
+            toolName,
+            category,
+            subtype,
+            FeishuToolBinding.StructuredError(toolName, category, reason, apiCode),
+            maxResultLength,
+            apiCode,
+            suggestions: suggestions);
 
     /// <summary>从飞书 API outcome 构造错误结果（分类器自动映射）。</summary>
     private FeishuToolResult FromApiOutcomeError(int? apiCode, string errorText)
@@ -203,5 +230,4 @@ internal readonly struct ToolExecutor(string toolName, int maxResultLength)
         var (category, subtype) = ToolErrorClassifier.ClassifyCode(apiCode);
         return FromStructuredError(category, subtype, errorText, apiCode);
     }
-
 }

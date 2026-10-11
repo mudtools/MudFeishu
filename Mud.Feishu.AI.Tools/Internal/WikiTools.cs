@@ -19,9 +19,9 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
 {
     private readonly Mud.Feishu.IFeishuTenantV2WikiNodes _wikiNodesClient = wikiNodesClient
         ?? throw new ArgumentNullException(nameof(wikiNodesClient));
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
-    private readonly int _maxAutoFetchItems = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchItems;
-    private readonly int _maxAutoFetchPages = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchPages;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
+    private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
     /// <summary>wiki.get_node：解析节点信息（单对象）。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantWikiGetNodeTool))]
@@ -77,15 +77,8 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
     /// <summary>list_nodes 投影：items（节点白名单）+ 翻页契约。</summary>
     private static JsonObject ProjectNodes(ApiPageListResult<SpaceNodeInfo> data)
     {
-        var envelope = new JsonObject
-        {
-            ["items"] = new JsonArray(),
-            ["has_more"] = data.HasMore,
-        };
-        if (!string.IsNullOrEmpty(data.PageToken))
-        {
-            envelope["page_token"] = data.PageToken;
-        }
+        // R-3：信封形态单源（ToolResultJsons.PageEnvelope）。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
 
         foreach (var node in data.Items ?? [])
         {

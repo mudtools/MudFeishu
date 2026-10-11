@@ -22,7 +22,8 @@ namespace Mud.Feishu.AI.Tools.Internal;
 /// <para>
 /// <b>二进制/本地文件防线（A10 + DP-A6-2）</b>：<c>upload_html_release</c>（<c>[FormContent]</c> 本地 tar）、
 /// <c>upload_app_icon</c>（本地文件）、<c>upload_storage</c>/<c>download_storage</c>（<c>byte[]</c>）、
-/// <c>execute_sql</c>（任意 SQL）<b>均不策展</b>——模型无文件系统，且 SQL 是比 <c>feishu.api_call</c> 更宽的越权通道。
+/// <c>execute_sql</c>（任意 SQL）<b>均不策展</b>——模型无文件系统，且 SQL 是越权通道
+/// （工具面亦不提供任何通用调用通道，见 R-12 删除 <c>feishu.api_call</c>）。
 /// </para>
 /// </remarks>
 internal sealed class SparkAppTools(
@@ -32,9 +33,9 @@ internal sealed class SparkAppTools(
 {
     private readonly Mud.Feishu.IFeishuTenantV1SparkApp? _tenantAppClient = tenantAppClient;
     private readonly Mud.Feishu.IFeishuUserV1SparkApp? _userAppClient = userAppClient;
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
-    private readonly int _maxAutoFetchItems = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchItems;
-    private readonly int _maxAutoFetchPages = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchPages;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
+    private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
     // ─────────────────────────── 只读面（3 个） ───────────────────────────
 
@@ -237,12 +238,12 @@ internal sealed class SparkAppTools(
                 return failure;
             }
 
-            return FeishuToolResult.FromText(ToolResultJson.ToText(new JsonObject
+            return ToolResultPipeline.OkReceipt(new JsonObject
             {
                 ["app_id"] = args.AppId,
                 ["scope"] = request.Scope,
                 ["updated"] = true,
-            }));
+            });
         });
     }
 
@@ -251,15 +252,8 @@ internal sealed class SparkAppTools(
     /// <summary>应用列表投影：items（app_id/name/status/online_url/updated_at）+ 翻页契约。</summary>
     private static JsonObject ProjectAppList(GetAppListResult data)
     {
-        var envelope = new JsonObject
-        {
-            ["items"] = new JsonArray(),
-            ["has_more"] = data.HasMore,
-        };
-        if (!string.IsNullOrEmpty(data.PageToken))
-        {
-            envelope["page_token"] = data.PageToken;
-        }
+        // R-3：信封形态单源（ToolResultJsons.PageEnvelope）。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
 
         foreach (var app in data.Items ?? [])
         {
@@ -503,9 +497,9 @@ internal sealed class SparkTableTools(
     Mud.Feishu.IFeishuUserV1SparkAppTable? tableClient = null)
 {
     private readonly Mud.Feishu.IFeishuUserV1SparkAppTable? _tableClient = tableClient;
-    private readonly int _maxResultLength = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxToolResultLength;
-    private readonly int _maxAutoFetchItems = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchItems;
-    private readonly int _maxAutoFetchPages = (options ?? throw new ArgumentNullException(nameof(options))).Value.MaxAutoFetchPages;
+    private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
+    private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
     /// <summary>单次 add_table_records 的记录数上限（官方限制）。</summary>
     private const int MaxRecordsPerRequest = 500;
@@ -673,15 +667,8 @@ internal sealed class SparkTableTools(
     /// <summary>数据表列表投影：items（name/description/columns）+ 翻页契约。</summary>
     private static JsonObject ProjectTableList(GetTableListResult data)
     {
-        var envelope = new JsonObject
-        {
-            ["items"] = new JsonArray(),
-            ["has_more"] = data.HasMore,
-        };
-        if (!string.IsNullOrEmpty(data.PageToken))
-        {
-            envelope["page_token"] = data.PageToken;
-        }
+        // R-3：信封形态单源（ToolResultJsons.PageEnvelope）。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
 
         foreach (var table in data.Items ?? [])
         {
@@ -711,16 +698,11 @@ internal sealed class SparkTableTools(
     /// <summary>记录列表投影：items（记录数组）+ total + 翻页契约。</summary>
     private static JsonObject ProjectRecordList(GetTableRecordListResult data)
     {
-        var envelope = new JsonObject
-        {
-            ["items"] = ParseRecords(data.Items),
-            ["total"] = data.Total,
-            ["has_more"] = data.HasMore,
-        };
-        if (!string.IsNullOrEmpty(data.PageToken))
-        {
-            envelope["page_token"] = data.PageToken;
-        }
+        // R-3：信封形态单源（ToolResultJsons.PageEnvelope）。items 由平台载荷解析而来
+        // （不是空数组起手），故建信封后整体替换 items 并补本域附加标量 total。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
+        envelope["items"] = ParseRecords(data.Items);
+        envelope["total"] = data.Total;
 
         return envelope;
     }

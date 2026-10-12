@@ -15,14 +15,26 @@ namespace Mud.Feishu.AI.Tools.Tests.Tools;
 /// 使「人工确认」由 MAF 审批管线在<b>工具调用之前</b>拦截（批准只能来自宿主，模型无法自批）。
 /// </summary>
 /// <remarks>
+/// <para>
 /// 详见 <c>FeishuToolAIFunction.ApplyApprovalGate</c> 的实测依据：包装后首轮模型回应是
 /// <c>ToolApprovalRequestContent</c>、工具不执行；须由宿主回灌
 /// <c>request.CreateResponse(approved: true, ...)</c> 才在下一轮真正执行。
+/// </para>
+/// <para>
+/// <b>T4 / D4 后的读取口径</b>：工具面返回的每个函数都套了预算装饰器
+/// （<c>ToolBudgetAIFunction</c>，单轮调用上限），而审批标记必须在<b>最外层</b>才被 MAF 看见——
+/// 故"某工具是否进入审批"的判据是<b>不剥壳</b>的顶层类型，而"工具桥形态"的判据需先
+/// <see cref="UnwrapBudget"/> 剥掉预算装饰器（本类用后者表达"只读工具没被审批标记包裹"）。
+/// </para>
 /// </remarks>
 public class FeishuToolApprovalWrappingTests
 {
     private const string ReadTool = "bitable.query_records";
     private const string WriteTool = "bitable.add_record";
+
+    /// <summary>剥掉最内层的预算装饰器（T4 / D4：它位于审批标记之内、工具桥之外）。</summary>
+    private static AIFunction UnwrapBudget(AIFunction function)
+        => function is ToolBudgetAIFunction budget ? budget.Inner : function;
 
     private static FeishuToolDefinition Definition(string name, bool isWrite) => new(
         Name: name,
@@ -54,8 +66,10 @@ public class FeishuToolApprovalWrappingTests
         var tools = GetTools();
 
         tools.Should().HaveCount(2);
-        tools.Single(t => t.Name == ReadTool).Should().BeOfType<FeishuToolAIFunction>(
-            "只读工具不进入审批流程（无副作用，无需人工确认）");
+        UnwrapBudget(tools.Single(t => t.Name == ReadTool)).Should().BeOfType<FeishuToolAIFunction>(
+            "只读工具不进入审批流程（无副作用，无需人工确认）——剥掉预算装饰器后应直接是工具桥");
+        tools.Single(t => t.Name == ReadTool).Should().NotBeOfType<ApprovalRequiredAIFunction>(
+            "只读工具的顶层不得是审批标记（MAF 只看顶层类型）");
         tools.Single(t => t.Name == WriteTool).Should().BeOfType<ApprovalRequiredAIFunction>(
             "写工具必须包装——否则 MAF 的 FunctionInvokingChatClient 不会把它转成审批请求，"
             + "似曾相识的『模型自批复』面又会回来");

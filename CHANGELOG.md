@@ -818,7 +818,7 @@ InvalidOperationException or NotSupportedException`）收口为 `when (ex is not
 
 ### 🌟 新增
 
-- **`FrameworkToolApprovalRequest`** record（`Mud.Feishu.AI/Tools/`）：框架原生审批请求要素
+- **`FrameworkToolApprovalRequest`** record（`Mud.Feishu.AI/AgentTools/`）：框架原生审批请求要素
   （`RequestId` / `ToolName` / `ToolCallId` / `AppKey` / `UserId` / `ConversationKey` / `RequiredScopes`）——
   **不含任何确认令牌**。
 - **`ConversationalFeishuEventHandler.BuildApprovalPendingReply`**（`protected virtual`）：
@@ -887,7 +887,7 @@ InvalidOperationException or NotSupportedException`）收口为 `when (ex is not
 
 ### 🌟 新增
 
-- **`IFeishuToolApprovalChannel` / `ToolApprovalRequest`**（`Mud.Feishu.AI/Tools/`）：宿主人工批准通道契约
+- **`IFeishuToolApprovalChannel` / `ToolApprovalRequest`**（`Mud.Feishu.AI/AgentTools/`）：宿主人工批准通道契约
   （SDK 只定契约、不内实现，与 `IToolExecutionAuthorizer` 同款定位）。
 - **`FeishuAgentDiagnostics`**：`TagSummarizeUnconverged`；OTel GenAI 语义约定附加面
   `gen_ai.agent.name` / `gen_ai.operation.name`（**只增不改**，`feishu.*` 面保持不变）。
@@ -1101,6 +1101,85 @@ InvalidOperationException or NotSupportedException`）收口为 `when (ex is not
 | `AllowP2pConversation`  | `FeishuAgent:ImConversation` | `true`             | 同上                                  |
 
 ---
+## [3.0.2] - 2026-10-12
+
+> 主题：**事件回调大规模补齐**（业务域 10 → 24，事件总数 205）与 **适配 `Mud.HttpUtils` 3.0.5**。
+> 本版**无对外契约移除**；含三处行为修正（授权域名并集注册、令牌恢复配置热更新链路、用户令牌移除语义）。
+
+### 依赖升级
+
+- `Mud.HttpUtils` / `Mud.HttpUtils.Generator`：`3.0.0` → **`3.0.5`**（两者必须同版本）。
+  6 个源工程的 8 处 `Mud.HttpUtils*` 声明统一，`README.md` / `README_EN.md` / `Mud.Feishu/README.md` /
+  `Mud.Feishu.OpenTelemetry/README.md` 与 `AGENTS.md` 依赖表同步。
+- 示例项目 `Mud.Feishu.*` 包引用：`3.0.0` / `3.0.0-rc3` → **`3.0.1`**（`Demos/Directory.Build.props` 与 8 个 Demo 工程）。
+
+### 新增（Added）
+
+**事件回调（`Mud.Feishu.EventCallback`）**
+
+- **业务域 10 → 24、事件总数 205 个**：新增 14 个业务域 —— `Application`（应用）、`Auth`、
+  `MeetingRoom`（会议室）、`Moments`（动态）、`ELearning`（学习）、`SecurityCompliance`（安全合规）、
+  `Compensation`（薪酬）、`Payroll`（发薪）、`CoreHr` / `CoreHrV2`（核心人事 v1 / v2）、`Hire`（招聘）、
+  `Performance`（绩效）、`Acs`（智能门禁）、`Helpdesk`（服务台）。
+- 新增 **219 个事件模型文件**、**124 个 `FeishuEventTypes` 常量**，18 个 `Generated/*JsonContext.g.cs`
+  增量注册 443 项 `[JsonSerializable]`（AOT 源生成链路同步，无 AOT005 遗留）。
+- 主要事件族：
+  - **招聘**：`hire.application.deleted_v1` / `stage_changed_v1`、`hire.offer.status_changed_v1`、
+    `hire.ehr_import_task.imported_v1` 与 `.for_internship_offer.imported_v1`、`hire.talent.deleted_v1` /
+    `tag_subscription_v1`、`hire.eco_account.created_v1`、`hire.eco_background_check.created_v1` / `canceled_v1`、
+    `hire.eco_exam.created_v1`、`hire.referral_account.assets_update_v1`。
+  - **核心人事**：`corehr.*` v1（部门 / 职务 / 任职 / 合同 / 预入职 / 调岗 / 离职 / 权限）与 v2
+    （地点 / 公司 / 成本中心 / 自定义组织 / 职族职级职位 / 试用期 / 入职任务 / 离职清单 / 流程节点与审批抄送 /
+    签署文件等 40+ 事件）。
+  - **审批与任务**：`approval.task.status_changed_v4`、`task.task.comment.updated_v1` 等。
+  - **通讯录与群组**：`contact.scope.updated_v3`、`im.chat.access_event.bot_p2p_chat_entered_v1`、群成员变动。
+  - **会议与会议室**：`vc.bot.meeting_started_v1`、会议室创建 / 更新 / 删除。
+  - **安全合规**：设备登记与设备变更事件。另含邮箱、动态（发帖 / 评论 / 表情回复）、学习（课程报名）、
+    薪酬与发薪活动、绩效（`performance.stage_task.open_result_v2`、`performance.review_data.changed_v2`）、
+    门禁（`acs.user.updated_v1`、`acs.access_record.created_v1`）、服务台（工单创建 / 更新 / 留言 / 审批通知）。
+
+**适配上游（`Mud.HttpUtils` 3.0.5）**
+
+- **`FeishuHttpClientFactory` 改用上游 `EnhancedHttpClientOptions.Clone()`**：删除本仓手写「字段清单式 Clone」，
+  上游新增属性（如 3.0.5 的 `JsonEncoder`）不再需要在此同步补拷贝，消除「新属性被静默丢弃」这一类漂移。
+- **`UrlValidator` 域名注册改增量并集**：由整体替换语义的 `ConfigureAllowedDomains` 改为逐项 `AddAllowedDomain`
+  （清单提取为 `FeishuAllowedDomains`），宿主在 `AddFeishuApp` 之前注册的自定义域名不再被静默丢弃。
+
+### 变更（Changed）
+
+- **用户令牌移除语义改由基类承担**：`Mud.HttpUtils` ≥3.0.4 起桥接器 `RemoveAsync` 无条件写穿持久层，
+  `UserTokenManager` **不再覆写** `RemoveTokenAsync`，移除 / 登出在多实例与冷启动下同样落到持久层
+  （`PurgeGate` 语义不变），并补冷启动对照测试与注释约束。
+- **`TokenRecoveryOptions` 配置绑定改为「捕获 section + 现场 Bind + Apply」单级方案**：不再经
+  `IOptionsMonitor<TDep>` 二级管线间接读取（实测配置重载后该管线会返回陈旧 DTO），热更新只依赖单个
+  `ChangeTokenSource`；「禁止 `Configure<T>(IConfiguration)` 反射绑定」的 AOT 约束不变。
+- `FeishuAppManager` 默认拒绝对应的提示更新为「注册表白名单」授权器
+  （`AppKeyAllowListAuthorizer.FromPredicate` + `IFeishuAppManager.HasApp`），仅错误信息与注释表述变化。
+
+### 修复（Fixed）
+
+- **事件模型「文件名与主类名不一致」8 处重命名**：`ApprovalResult` → `ApprovalTaskResult`、
+  `DriveFilePermissionMemberAdded` → `DriveFilePermissionMemberAddedResult`、
+  `ChatMemberUserAddedResult` → `ChatMemberUserDeletedResult` / `ChatMemberUserWithdrawnResult`、
+  `Mail` 目录下误置的 `MeetingMeetingEndedResult` → `MessageReceivedResult`、
+  `DepartmentCreatedEventResult` → `DepartmentCreatedResult`、`DepartmentDeleteResult` → `DepartmentUpdateResult`、
+  `RoomCreatedResult` → `RoomUpdatedResult`。类名漂移会让 `Generated/*JsonContext.g.cs` 的 `[JsonSerializable]`
+  与实类脱节，现已由契约守卫拦截。
+- **示例工程 `FeishuDriveService` 删除文件 / 文件夹**：显式指定 `cancellationToken` 实参
+  （此前参数位置错位导致取消令牌传递错误）。
+- `.gitignore` 忽略 `/.scratch` 本地暂存目录。
+
+### 文档与测试
+
+- `Mud.Feishu.EventCallback/README.md` 重建为全量事件表（205 事件 / 24 域，54 → 205 行），
+  表格由源码 `[GenerateEventHandler]` 标注直接汇总，新增事件必须同步该表。
+- 新增契约守卫 `EventCallbackContractGuards`（5 条）：常量必须被 `[GenerateEventHandler]` 接线（防止死常量）、
+  文件名必须与主类名一致、每个域必须有 `Generated/{域}JsonContext.g.cs` 且已挂进 resolver 链、
+  每个 `*Result` 必须能反射找到生成的处理器、已接线事件类型必须出现在 README 事件表。
+- 新增事件负载冒烟测试 `EventPayloadSmokeTests` + `TestData/EventCallback/event-examples.json`
+  （官方文档「事件体示例」原文回放，对示例中每个非空键做 1:1 建模覆盖校验，字段名错配当场失败）。
+- `FeishuHttpClientFactoryTests` / `UserTokenManagerTests` / `FeishuServiceCollectionExtensionsTests`
+  随上游适配同步扩充（字段等价性、配置热更新语义与冷启动对照回归）。
 
 ## [3.0.1] - 2026-10-07
 
@@ -1132,7 +1211,7 @@ InvalidOperationException or NotSupportedException`）收口为 `when (ex is not
   `UseApp(appKey)` / `UseDefaultApp()` 改为 `IAppContextHolder.SwitchToApp(appKey, this, serviceProvider)` /
   `SwitchToDefaultApp(this)`（**语义等价**：完整守卫 + 立即切换 + 不归还 + 返回上下文）。
   对外行为不变（仍返回 DI 解析到的服务实例，且其 `Current` 已绑定目标应用）。
-- **`EventData.Event` 写侧统一为 JSON 原文**字符串**（原 WebSocket 通道写 `JsonElement`）。
+- **`EventData.Event` 写侧统一为 JSON 原文**字符串\*\*（原 WebSocket 通道写 `JsonElement`）。
   属性类型保持 `object?` 不变；读取请改用扩展 `GetEventRawJson()`，下一 major 收敛为 `string?`。
 - **行为变更**：`EventData.CreateTime` 语义由「秒」修正为**毫秒**（与 XML 注释对齐，v1.0 `ts` 一并纳入统一启发式）。
   按秒消费的宿主请 ×1000 或改用 `DateTimeOffset.FromUnixTimeMilliseconds`。

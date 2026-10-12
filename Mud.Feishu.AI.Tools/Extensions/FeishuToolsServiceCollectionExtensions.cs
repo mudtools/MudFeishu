@@ -13,7 +13,6 @@ using Mud.Feishu.AI.Channels;
 using Mud.Feishu.AI.Events;
 using Mud.Feishu.AI.Knowledge;
 using Mud.Feishu.AI.Tools.Registration;
-using Mud.Feishu.AI.Tools.Tools;
 
 namespace Mud.Feishu.AI.Tools;
 
@@ -449,7 +448,14 @@ public static class FeishuToolsServiceCollectionExtensions
 
         // T1 / D1：用户令牌就绪探测器（internal sealed，按需注入 FeishuToolBinding 构造函数）。
         // IFeishuTokenManagerResolver 可空——未注册时探测降级为 fail-open 放行（由装配诊断 Warning 提示）。
-        services.TryAddSingleton<UserTokenPrecheck>();
+        // ⚠️ 必须是**工厂注册**：MS DI 不把可空引用注解当作"可缺席"，只有工厂（或带默认值的构造参数）
+        //    才能在服务缺失时传入 null。若改回 TryAddSingleton<UserTokenPrecheck>()，未注册
+        //    IFeishuTokenManagerResolver 的宿主（按域装配 + 全部既有用例）会在构建注册表时崩在激活期，
+        //    "fail-open 放行"这条语义随之消失。
+        services.TryAddSingleton(static sp => new UserTokenPrecheck(
+            sp.GetService<IFeishuTokenManagerResolver>(),
+            sp.GetRequiredService<IOptions<FeishuAgentOptions>>(),
+            sp.GetService<ILogger<UserTokenPrecheck>>()));
 
         return services;
     }
@@ -485,7 +491,7 @@ public static class FeishuToolsServiceCollectionExtensions
     /// <remarks>
     /// <para>
     /// 与 <see cref="AddFeishuCapabilityTools"/> 同属"元工具显式入口"：数据源是编译期方法目录
-    /// （<c>FeishuToolMethodCatalog</c>，1228 个方法的结构化事实），<b>不依赖任何飞书客户端</b>，
+    /// （<c>FeishuToolMethodCatalog</c>，1268 个方法的结构化事实），<b>不依赖任何飞书客户端</b>，
     /// 也不随域缺席而软缺席。全域入口 <see cref="AddFeishuTools"/> 已包含它。
     /// </para>
     /// <para>

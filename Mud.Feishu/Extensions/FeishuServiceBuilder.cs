@@ -37,6 +37,8 @@ public class FeishuServiceBuilder
             [FeishuModule.Organization] = new FeishuModuleRegistrar(FeishuModule.Organization, s => s.AddOrganizationWebApiHttpClient()),
             [FeishuModule.Message] = new FeishuModuleRegistrar(FeishuModule.Message, s => s.AddMessageWebApiHttpClient()),
             [FeishuModule.ChatGroup] = new FeishuModuleRegistrar(FeishuModule.ChatGroup, s => s.AddChatGroupWebApiHttpClient()),
+            [FeishuModule.Bot] = new FeishuModuleRegistrar(FeishuModule.Bot, s => s.AddBotWebApiHttpClient()),
+            [FeishuModule.Application] = new FeishuModuleRegistrar(FeishuModule.Application, s => s.AddApplicationWebApiHttpClient()),
             [FeishuModule.Approval] = new FeishuModuleRegistrar(FeishuModule.Approval, s => s.AddApprovalWebApiHttpClient()),
             [FeishuModule.Task] = new FeishuModuleRegistrar(FeishuModule.Task, s => s.AddTaskWebApiHttpClient()),
             [FeishuModule.Card] = new FeishuModuleRegistrar(FeishuModule.Card, s => s.AddCardsWebApiHttpClient()),
@@ -86,6 +88,18 @@ public class FeishuServiceBuilder
     /// </summary>
     /// <returns>建造者实例，支持链式调用</returns>
     public FeishuServiceBuilder AddChatGroupApi() => AddModule(FeishuModule.ChatGroup);
+
+    /// <summary>
+    /// 添加机器人管理 API 服务
+    /// </summary>
+    /// <returns>建造者实例，支持链式调用</returns>
+    public FeishuServiceBuilder AddBotApi() => AddModule(FeishuModule.Bot);
+
+    /// <summary>
+    /// 添加应用信息管理 API 服务
+    /// </summary>
+    /// <returns>建造者实例，支持链式调用</returns>
+    public FeishuServiceBuilder AddApplicationApi() => AddModule(FeishuModule.Application);
 
     /// <summary>
     /// 添加流程审批管理 API 服务

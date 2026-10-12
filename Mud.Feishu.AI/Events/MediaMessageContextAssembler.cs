@@ -238,6 +238,8 @@ public sealed class MediaMessageContextAssembler : IContextAssembler
         }
         catch (JsonException)
         {
+            // 有意静默（守卫白名单）：富文本 post 载荷非 JSON 属正常形态（纯函数，无 logger 面），
+            // 降级文案确定；记日志只会把"用户发了非 JSON 卡片"变成告警噪声。
             return "[用户发送了一条富文本消息]";
         }
     }
@@ -271,7 +273,8 @@ public sealed class MediaMessageContextAssembler : IContextAssembler
         }
         catch (JsonException)
         {
-            // 非法 JSON 无法解析。
+            // 有意静默（守卫白名单）：纯函数（无 logger 面），返回 null 即"该键不存在"的确定降级语义，
+            // 调用方按"未取到"处理；非法 JSON 无法解析。
         }
 
         return null;

@@ -9,7 +9,6 @@ using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
 using Mud.Feishu.AI.AgentTools;
-using Mud.Feishu.AI.Tools.Tools;
 
 namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
@@ -51,9 +50,10 @@ public class AffordanceContractGuards
     private const int MaxSectionLength = 320;
 
     // ── 规模冻结（R-3/F-7 接入批实测；增减资产必须同批改这里的数字并说明理由）──
+    // 字符总数按 LF 归一化口径测量（ReadAssets 统一 \r\n → \n），Windows(CRLF) 与 CI(LF) 同值。
     private const int ExpectedAssetCount = 16;
 
-    private const int ExpectedTotalAssetCharacters = 6087;
+    private const int ExpectedTotalAssetCharacters = 5797;
 
     [Fact]
     public void EveryAffordanceAsset_ShouldSatisfyTheUpstreamStructureContract()
@@ -331,7 +331,9 @@ public class AffordanceContractGuards
                 .Select(path => (
                     Path.GetFileName(path),
                     Path.GetFileNameWithoutExtension(path),
-                    File.ReadAllText(path)))
+                    // 行尾归一化：字符预算是**内容**度量——Windows 检出 CRLF、CI 检出 LF，
+                    // 不归一会让基线随检出平台漂移（差异 = 精确总行数）。
+                    File.ReadAllText(path).Replace("\r\n", "\n")))
         ];
     }
 

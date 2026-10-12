@@ -8,8 +8,6 @@
 
 using System.Text.Json;
 
-using Mud.Feishu.AI.Tools.Tools;
-
 namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>

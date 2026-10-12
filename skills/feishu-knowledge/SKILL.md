@@ -2,7 +2,7 @@
 name: feishu-knowledge
 description: 飞书 knowledge 域工具集：1 个工具（只读 1 / 写 0）。「文档里写过什么、流程怎么走」→ `knowledge.search`；「数据现在是多少」 → docx / sheets / bitable。
 version: 1.0.0
-package_version: 3.0.1
+package_version: 3.0.2
 ---
 
 # 知识库问答（knowledge.search）

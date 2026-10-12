@@ -6,7 +6,7 @@
 //  任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.AI.Tools.Tools;
+namespace Mud.Feishu.AI.Tools;
 
 /// <summary>
 /// 用户令牌就绪探测结果（T1 / D1）。
@@ -51,10 +51,19 @@ public readonly record struct UserTokenPrecheckResult
     /// <summary>探测结果字面量闭集。</summary>
     public static class Outcomes
     {
+        /// <summary>令牌有效（<c>ready</c>）。</summary>
         public const string Ready = "ready";
+
+        /// <summary>令牌可续期（<c>refreshable</c>）。</summary>
         public const string Refreshable = "refreshable";
+
+        /// <summary>需要用户授权（<c>auth_required</c>）。</summary>
         public const string AuthRequired = "auth_required";
+
+        /// <summary>探测被关闭（<c>skipped</c>）。</summary>
         public const string Skipped = "skipped";
+
+        /// <summary>探测异常、fail-open 放行（<c>error</c>；载荷另有 <see cref="UserTokenPrecheckResult.Error"/> 描述）。</summary>
         public const string Error = "error";
     }
 }

@@ -9,7 +9,6 @@
 using Microsoft.Extensions.Logging;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.Metrics;
-using Mud.Feishu.AI.Tools.Tools;
 
 namespace Mud.Feishu.AI.Tools;
 

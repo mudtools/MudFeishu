@@ -9,7 +9,7 @@
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.Metrics;
 
-namespace Mud.Feishu.AI.Tools.Tools;
+namespace Mud.Feishu.AI.Tools;
 
 /// <summary>
 /// 用户令牌就绪探测器（T1 / D1 核心）。
@@ -50,7 +50,13 @@ internal sealed class UserTokenPrecheck
     /// <summary>
     /// 初始化 <see cref="UserTokenPrecheck"/>。
     /// </summary>
-    /// <param name="resolver">令牌管理器解析器（可空——未注册时探测降级为 fail-open 放行）。</param>
+    /// <param name="resolver">
+    /// 令牌管理器解析器（可空——未注册时探测降级为 fail-open 放行）。
+    /// <b>注意</b>：MS DI 不把可空引用注解当作"可缺席"，本类型的"未注册即 fail-open"
+    /// 由 <c>AddFeishuToolInfrastructure</c> 的**工厂注册**兜住（显式传 <c>null</c>）——
+    /// 若改成 <c>TryAddSingleton&lt;UserTokenPrecheck&gt;()</c>，未注册 resolver 的宿主
+    /// 会在构建注册表时抛激活期异常，fail-open 语义随之消失。
+    /// </param>
     /// <param name="options">Agent 配置（<see cref="FeishuAgentOptions.UserTokenPrecheck"/> 消费点）。</param>
     /// <param name="logger">日志（可空）。</param>
     public UserTokenPrecheck(

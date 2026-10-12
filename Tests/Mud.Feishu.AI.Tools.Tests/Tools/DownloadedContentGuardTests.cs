@@ -7,8 +7,6 @@
 
 using System.Text;
 
-using Mud.Feishu.AI.Tools.Tools;
-
 namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>

@@ -9,7 +9,6 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 
 using Mud.Feishu.Abstractions.Utilities;
-using Mud.Feishu.AI.Tools.Tools;
 using Mud.Feishu.DataModels;
 using Mud.Feishu.DataModels.Board;
 

@@ -6,7 +6,6 @@
 // -----------------------------------------------------------------------
 
 using System.Text;
-using Mud.Feishu.AI.Tools.Tools;
 using Mud.Feishu.DataModels.Docx;
 
 namespace Mud.Feishu.AI.Tools.Internal;

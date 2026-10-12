@@ -8,7 +8,6 @@
 using System.Text.Json;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
-using Mud.Feishu.AI.Tools.Tools;
 
 namespace Mud.Feishu.AI.Tools;
 
@@ -121,11 +120,15 @@ internal sealed class FeishuToolsToolSource : FeishuAgentToolSource
                 continue;
             }
 
-            // T4 / D4：装饰顺序 = 预算（最外层）→ 审批包装 → 工具桥。
-            // 预算耗尽时应拦截一切工具调用（含需审批的写工具），不应先走审批管线再被预算拒绝。
-            var function = new FeishuToolAIFunction(definition, schemaJson, accessor);
-            var approvalGated = ApplyApprovalGate(function, definition);
-            tools.Add(new ToolBudgetAIFunction(approvalGated));
+            // T4 / D4 + P4-1：装饰顺序 = 审批标记（最外层）→ 预算 → 工具桥。
+            // ⚠️ 审批标记**必须**留在最外层：MAF 的 FunctionInvokingChatClient 用
+            //    `function is ApprovalRequiredAIFunction` 判定"这次调用要先走人工审批"，
+            //    把预算装饰器套在它外面会让标记对 MAF 不可见 ⇒ 写工具的 HITL **静默失效**
+            //    （模型可直接执行写操作，R2-1 之前那类"模型自批复"面会回来）。
+            //    代价：预算耗尽时用户可能先被问一次审批——正确性优先于少一次交互。
+            var toolBridge = new FeishuToolAIFunction(definition, schemaJson, accessor);
+            var budgetedBridge = new ToolBudgetAIFunction(toolBridge);
+            tools.Add(ApplyApprovalGate(budgetedBridge, definition));
         }
 
         return tools;

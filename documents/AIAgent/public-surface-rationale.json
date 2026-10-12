@@ -287,6 +287,19 @@
                      "Mud.Feishu.AI.Tools.ToolSchemaDialect"
                  ],
     "reasons":  {
+                     "Mud.Feishu.AI.AgentTools.FeishuToolCallBudget":  "T4 / D4：单轮工具调用预算闸门（AsyncLocal 承载，随事件入口的 using 释放）。消费方：① AI 运行时 ConversationalFeishuEventHandler（每个事件入口 Begin 开启预算）；② 工具面 ToolBudgetAIFunction（每次调用 TryConsume，越限短路返回 tool_budget_exceeded）；③ ToolBudgetContractGuards / ToolBudgetTests。它是 Mud.Feishu.AI ↔ Mud.Feishu.AI.Tools 之间的共享接缝（与 FeishuToolContext 同款归属），跨程序集消费故必须公开。",
+                     "Mud.Feishu.AI.AgentTools.UserTokenPrecheckModes":  "T1 / D1：用户令牌前置探测模式的闭集字面量（配置键 FeishuAgent:UserTokenPrecheck）。消费方：① FeishuAgentOptions.UserTokenPrecheck 的默认值与 Validate() 闭集校验（宿主配置面要能引用字面量）；② Mud.Feishu.AI.Tools 的 UserTokenPrecheck 与装配期诊断分支；③ UserToolWiringContractGuards。",
+                     "Mud.Feishu.AI.Conversations.BusyModes":  "T5 / D5：全局并发背压的忙时策略闭集（WaitForSlot / FailFast）。消费方：① GlobalConcurrencyGate 的构造参数；② FeishuAgentOptions 的队列策略配置面；③ GlobalConcurrencyGateTests。",
+                     "Mud.Feishu.AI.Conversations.GlobalConcurrencyGate":  "T5 / D5：进程级并发闸门（实现 IConversationGate，先取全局信号量再委托内层 KeyedConversationGate）。消费方：FeishuAgentServiceCollectionExtensions.AddFeishuAgent 的装配（装饰顺序见该处注释）+ GlobalConcurrencyGateTests；与同层 KeyedConversationGate 保持同一可见性口径（宿主可替换/包装闸门链）。",
+                     "Mud.Feishu.AI.Events.GroupHistoryContextAssembler":  "群聊上文装配器（按 ImConversationAssemblers.GroupHistory 位启用）。消费方：① FeishuAgentServiceCollectionExtensions 按位注册 IContextAssembler；② GroupHistoryContextAssemblerTests（三级闸/脱敏/注入面）；③ 宿主可复用同一装配器自组上下文管线。",
+                     "Mud.Feishu.AI.Events.IFeishuMediaTranscriber":  "宿主媒体转写扩展点（软缺席契约：未注册时装配器降级为占位文本，SDK 不内建 ASR/OCR 通道）。消费方：① 宿主实现并注册（如 Demo）；② MediaMessageContextAssembler 消费；③ MediaMessageContextAssemblerTests。",
+                     "Mud.Feishu.AI.Events.MediaInputOptions":  "媒体输入配置节（FeishuAgent:MediaInput）。消费方：宿主配置绑定（SectionName 常量）+ MediaMessageContextAssembler 的输入预算消费。",
+                     "Mud.Feishu.AI.Events.MediaMessageContextAssembler":  "媒体消息上下文装配器（按 ImConversationAssemblers.MediaMessage 位启用；软缺席转写器时为占位文本）。消费方：① FeishuAgentServiceCollectionExtensions 按位注册；② MediaMessageContextAssemblerTests。",
+                     "Mud.Feishu.AI.Events.MediaTranscription":  "转写结果值对象（Text / Kind / Truncated）。消费方：IFeishuMediaTranscriber.TranscribeAsync 的返回类型——宿主实现方与装配器之间的数据契约，必须公开才能被宿主实现引用。",
+                     "Mud.Feishu.AI.Events.MediaTranscriptionRequest":  "转写请求 DTO（AppKey / MessageId / FileKey / MediaKind / FileName）。消费方：同 MediaTranscription——它是宿主实现 IFeishuMediaTranscriber 的入参契约。",
+                     "Mud.Feishu.AI.Tools.IFeishuUserAuthorizationLinkProvider":  "T1 / D1：宿主授权入口链接提供者（软缺席契约——未注册时 user_auth_required 文案只有文字指引，SDK 不拼授权页 URL）。消费方：① 宿主注册（授权入口是宿主 UX 决策）；② FeishuToolBinding 的错误文案装配；③ UserTokenPrecheckContractGuards。",
+                     "Mud.Feishu.AI.Tools.UserTokenPrecheckResult":  "T1 / D1：用户令牌就绪探测的四态结果（Ready / Refreshable / AuthRequired / Skipped + FromError 的 fail-open 标记）。消费方：① UserTokenPrecheck.ProbeAsync 的返回类型；② FeishuToolBinding 的放行/短路判定（IsAuthRequired）；③ UserTokenPrecheckTests / UserToolTokenSemanticsTests。",
+                     "Mud.Feishu.AI.Tools.UserTokenPrecheckResult.Outcomes":  "同 UserTokenPrecheckResult：结果字面量闭集（Outcome 字段的取值域）。消费方：① 类型自身的四态判定（IsAuthRequired / ShouldProceed）；② UserTokenPrecheckContractGuards（锁定 5 态闭集）；③ UserToolTokenSemanticsTests。",
                      "Mud.Feishu.AI.Tools.ISkillDocumentReader":  "R-3 / F-8：Skills 产物的读取接缝（宿主 Agent 按域读取 SKILL.md / references，内容与 IToolSchemaExporter.Export(Skills) 同源，库不做文件 IO）。消费方：① Demos/Mud.Feishu.Agent.Demo 的 SkillsDemo 模式（首个真实消费方，用于闭环验证产物格式与 guidance 注入）；② SkillsVersionConsistencyContractGuards（逐条比对读取内容与导出清单、并锁定 package_version）。"
                 }
 }

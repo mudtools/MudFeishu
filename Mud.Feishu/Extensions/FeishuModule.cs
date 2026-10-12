@@ -28,6 +28,16 @@ public enum FeishuModule
     ChatGroup,
 
     /// <summary>
+    /// 机器人管理
+    /// </summary>
+    Bot,
+
+    /// <summary>
+    /// 应用信息管理
+    /// </summary>
+    Application,
+
+    /// <summary>
     /// 流程审批管理
     /// </summary>
     Approval,

@@ -9,7 +9,7 @@ using System.Text.Json;
 using Microsoft.Extensions.AI;
 using Mud.Feishu.AI.AgentTools;
 
-namespace Mud.Feishu.AI.Tools.Tools;
+namespace Mud.Feishu.AI.Tools;
 
 /// <summary>
 /// 工具预算装饰器（T4 / D4）：包装 <see cref="AIFunction"/>，在调用前检查
@@ -18,9 +18,11 @@ namespace Mud.Feishu.AI.Tools.Tools;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>装饰顺序</b>：预算装饰器在<b>最外层</b>（先预算、后审批包装）——
-/// 预算耗尽时应拦截一切工具调用（含需审批的写工具），不应先走审批管线再被预算拒绝
-/// （那会浪费一次审批交互）。
+/// <b>装饰顺序</b>：预算装饰器在<b>审批标记之内、工具桥之外</b>——
+/// 写工具的最终外层必须是 MEAI <see cref="ApprovalRequiredAIFunction"/>（MAF 用类型判定审批），
+/// 预算装饰器若套在其外会让审批标记不可见、HITL 静默失效（见 <c>FeishuToolsToolSource.GetTools</c>）。
+/// 后果是"预算耗尽"发生在审批之后：用户可能先被问一次审批再被预算拒绝，这是为保住人工确认语义
+/// 付出的可接受代价（正确性优先于少一次交互）。
 /// </para>
 /// <para>
 /// <b>为什么用结构化错误而非抛异常</b>：异常触发幂等回滚 + 重投递 ⇒ 重复计费
@@ -52,6 +54,15 @@ internal sealed class ToolBudgetAIFunction : AIFunction
 
     /// <inheritdoc />
     public override JsonElement JsonSchema => _inner.JsonSchema;
+
+    /// <summary>
+    /// 被包装的内层函数（契约守卫与诊断用——预算装饰器位于审批标记之内、工具桥之外）。
+    /// </summary>
+    /// <remarks>
+    /// 供守卫"剥掉预算装饰器再判定真实包装形态"（如只读工具是否被审批标记包裹）。
+    /// 不参与运行时执行路径。
+    /// </remarks>
+    internal AIFunction Inner => _inner;
 
     /// <inheritdoc />
     protected override async ValueTask<object?> InvokeCoreAsync(

@@ -7,7 +7,6 @@
 
 using Microsoft.Extensions.AI;
 using Mud.Feishu.AI.AgentTools;
-using Mud.Feishu.AI.Tools.Tools;
 
 namespace Mud.Feishu.AI.Tools.Tests.Tools;
 

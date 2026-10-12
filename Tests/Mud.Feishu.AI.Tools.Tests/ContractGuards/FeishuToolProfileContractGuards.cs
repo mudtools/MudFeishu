@@ -388,7 +388,9 @@ public class FeishuToolProfileContractGuards
 
         var unregisteredTargets = Scan(RepositoryProjectFiles)
             .SelectMany(static path => ProjectReferences(path)
-                .Select(include => (Owner: Path.GetFileName(path), Target: Path.GetFileName(include))))
+                // csproj 的 Include 惯用 `\` 分隔，而 Linux 的 Path.GetFileName 不识别 `\`
+                // （会把整段相对路径当文件名，CI 上所有引用都会被误判未登记）——先归一化再取名。
+                .Select(include => (Owner: Path.GetFileName(path), Target: Path.GetFileName(include.Replace('\\', '/')))))
             .Where(reference => !registered.Contains(reference.Target))
             .Select(static reference => $"{reference.Owner} → {reference.Target}")
             .Distinct(StringComparer.Ordinal)

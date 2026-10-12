@@ -2,7 +2,7 @@
 name: feishu-spark
 description: 飞书 spark 域工具集：10 个工具（只读 5 / 写 5）。建应用 / 改应用（名称、描述、图标）→ `spark.create_app` / `spark.patch_app`。
 version: 1.0.0
-package_version: 3.0.1
+package_version: 3.0.2
 ---
 
 # 妙搭（spark.*）

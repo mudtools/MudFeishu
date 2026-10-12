@@ -2,6 +2,8 @@
 ~override Mud.Feishu.AI.Tools.AttachmentSource.ToString() -> string
 ~override Mud.Feishu.AI.Tools.StagedAttachment.Equals(object obj) -> bool
 ~override Mud.Feishu.AI.Tools.StagedAttachment.ToString() -> string
+~override Mud.Feishu.AI.Tools.UserTokenPrecheckResult.Equals(object obj) -> bool
+~override Mud.Feishu.AI.Tools.UserTokenPrecheckResult.ToString() -> string
 const Mud.Feishu.AI.Tools.FeishuToolNames.AiDetectLanguage = "ai.detect_language" -> string!
 const Mud.Feishu.AI.Tools.FeishuToolNames.AiTranslateText = "ai.translate_text" -> string!
 const Mud.Feishu.AI.Tools.FeishuToolNames.ApprovalApproveTask = "approval.approve_task" -> string!
@@ -366,6 +368,11 @@ const Mud.Feishu.AI.Tools.Generated.FeishuToolSchemas.wiki_get_nodeSchemaJson = 
 const Mud.Feishu.AI.Tools.Generated.FeishuToolSchemas.wiki_list_nodesSchemaJson = "{\"name\":\"wiki.list_nodes\",\"description\":\"列出知识空间（或某父节点下）的子节点列表；node_token 可传给 wiki.get_node 解析详情。只读，需 wiki:wiki:readonly。\",\"parameters\":{\"type\":\"object\",\"properties\":{\"space_id\":{\"type\":\"string\",\"description\":\"知识空间 ID（形如 7xxx）\"},\"parent_node_token\":{\"type\":\"string\",\"description\":\"父节点 token（可选；缺省列出空间顶层节点）\"},\"page_token\":{\"type\":\"string\",\"description\":\"分页游标（可选）\"},\"fetch_all\":{\"type\":\"boolean\",\"description\":\"自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token\"},\"max_items\":{\"type\":\"integer\",\"description\":\"结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效\"}},\"required\":[\"space_id\"]},\"x-feishu\":{\"risk\":\"read\",\"is_write\":false,\"identity\":\"tenant\",\"required_scopes\":[\"wiki:wiki:readonly\"],\"source\":{\"sdk\":\"IFeishuTenantV2WikiNodes.GetSpaceNodesPageListAsync\",\"http\":\"GET\",\"route\":\"/open-apis/wiki/v2/spaces/{space_id}/nodes\"},\"output_schema\":{\"type\":\"object\",\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"space_id\":{\"type\":\"string\"},\"node_token\":{\"type\":\"string\"},\"obj_token\":{\"type\":\"string\"},\"obj_type\":{\"type\":\"string\"},\"parent_node_token\":{\"type\":\"string\"},\"node_type\":{\"type\":\"string\"},\"origin_node_token\":{\"type\":\"string\"},\"origin_space_id\":{\"type\":\"string\"},\"has_child\":{\"type\":\"boolean\"},\"title\":{\"type\":\"string\"},\"obj_create_time\":{\"type\":\"string\"},\"obj_edit_time\":{\"type\":\"string\"},\"node_create_time\":{\"type\":\"string\"},\"creator\":{\"type\":\"string\"},\"owner\":{\"type\":\"string\"},\"node_creator\":{\"type\":\"string\"}},\"required\":[\"obj_type\",\"node_type\"]}},\"has_more\":{\"type\":\"boolean\"},\"page_token\":{\"type\":\"string\"}},\"required\":[\"items\",\"has_more\"]}}}" -> string!
 const Mud.Feishu.AI.Tools.Generated.FeishuToolSchemas.wiki_move_docs_to_spaceSchemaJson = "{\"name\":\"wiki.move_docs_to_space\",\"description\":\"把已有云文档（docx/sheet/bitable 等）迁移进知识空间，成为 wiki 节点——'把这份文档挪进知识库'的首选入口。⚠️ 平台以异步任务执行，返回 task_id。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 wiki:wiki。\",\"parameters\":{\"type\":\"object\",\"properties\":{\"space_id\":{\"type\":\"string\",\"description\":\"目标知识空间 ID\"},\"obj_token\":{\"type\":\"string\",\"description\":\"要迁入的文档 token（形如 doxcnXxx）\"},\"parent_wiki_token\":{\"type\":\"string\",\"description\":\"目标父节点 token（可选；缺省放到空间顶层）\"},\"obj_type\":{\"type\":\"string\",\"description\":\"文档类型（可选：docx / sheet / bitable / mindnote / file，默认 docx）\"},\"dry_run\":{\"type\":\"boolean\",\"description\":\"仅预演不写入（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游\"}},\"required\":[\"space_id\",\"obj_token\"]},\"x-feishu\":{\"risk\":\"write\",\"is_write\":true,\"identity\":\"tenant\",\"required_scopes\":[\"wiki:wiki\"],\"source\":{\"sdk\":\"IFeishuTenantV2WikiNodes.MoveDocsToWikiSpaceNodeAsync\",\"http\":\"POST\",\"route\":\"/open-apis/wiki/v2/spaces/{space_id}/nodes/move_docs_to_wiki\"},\"output_schema\":{\"type\":\"object\",\"properties\":{\"wiki_token\":{\"type\":\"string\"},\"task_id\":{\"type\":\"string\"},\"applied\":{\"type\":\"boolean\"}}}}}" -> string!
 const Mud.Feishu.AI.Tools.Generated.FeishuToolSchemas.wiki_move_nodeSchemaJson = "{\"name\":\"wiki.move_node\",\"description\":\"移动知识空间节点（改父节点或换空间）——用于知识库整理、归档。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 wiki:wiki。\",\"parameters\":{\"type\":\"object\",\"properties\":{\"space_id\":{\"type\":\"string\",\"description\":\"节点当前所在空间 ID\"},\"node_token\":{\"type\":\"string\",\"description\":\"要移动的节点 token\"},\"target_parent_token\":{\"type\":\"string\",\"description\":\"目标父节点 token（可选；缺省移到目标空间顶层）\"},\"target_space_id\":{\"type\":\"string\",\"description\":\"目标空间 ID（可选；缺省在当前空间内移动）\"},\"dry_run\":{\"type\":\"boolean\",\"description\":\"仅预演不写入（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游\"}},\"required\":[\"space_id\",\"node_token\"]},\"x-feishu\":{\"risk\":\"write\",\"is_write\":true,\"identity\":\"tenant\",\"required_scopes\":[\"wiki:wiki\"],\"source\":{\"sdk\":\"IFeishuTenantV2WikiNodes.MoveSpaceNodeAsync\",\"http\":\"POST\",\"route\":\"/open-apis/wiki/v2/spaces/{space_id}/nodes/{node_token}/move\"},\"output_schema\":{\"type\":\"object\",\"properties\":{\"node\":{\"type\":\"object\",\"properties\":{\"space_id\":{\"type\":\"string\"},\"node_token\":{\"type\":\"string\"},\"obj_token\":{\"type\":\"string\"},\"obj_type\":{\"type\":\"string\"},\"parent_node_token\":{\"type\":\"string\"},\"node_type\":{\"type\":\"string\"},\"origin_node_token\":{\"type\":\"string\"},\"origin_space_id\":{\"type\":\"string\"},\"has_child\":{\"type\":\"boolean\"},\"title\":{\"type\":\"string\"},\"obj_create_time\":{\"type\":\"string\"},\"obj_edit_time\":{\"type\":\"string\"},\"node_create_time\":{\"type\":\"string\"},\"creator\":{\"type\":\"string\"},\"owner\":{\"type\":\"string\"},\"node_creator\":{\"type\":\"string\"}},\"required\":[\"obj_type\",\"node_type\"]}}}}}" -> string!
+const Mud.Feishu.AI.Tools.UserTokenPrecheckResult.Outcomes.AuthRequired = "auth_required" -> string!
+const Mud.Feishu.AI.Tools.UserTokenPrecheckResult.Outcomes.Error = "error" -> string!
+const Mud.Feishu.AI.Tools.UserTokenPrecheckResult.Outcomes.Ready = "ready" -> string!
+const Mud.Feishu.AI.Tools.UserTokenPrecheckResult.Outcomes.Refreshable = "refreshable" -> string!
+const Mud.Feishu.AI.Tools.UserTokenPrecheckResult.Outcomes.Skipped = "skipped" -> string!
 Mud.Feishu.AI.Tools.AttachmentSource
 Mud.Feishu.AI.Tools.AttachmentSource.AttachmentSource() -> void
 Mud.Feishu.AI.Tools.AttachmentSource.AttachmentSource(string? Url, System.ReadOnlyMemory<byte>? Content, string? FileName) -> void
@@ -824,10 +831,10 @@ Mud.Feishu.AI.Tools.Generated.FeishuToolGuidance
 Mud.Feishu.AI.Tools.Generated.FeishuToolSchemas
 Mud.Feishu.AI.Tools.IFeishuAttachmentStager
 Mud.Feishu.AI.Tools.IFeishuAttachmentStager.StageAsync(Mud.Feishu.AI.Tools.AttachmentSource source, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Mud.Feishu.AI.Tools.StagedAttachment?>!
-Mud.Feishu.AI.Tools.IFeishuUserAuthorizationLinkProvider
-Mud.Feishu.AI.Tools.IFeishuUserAuthorizationLinkProvider.GetAuthorizationLinkAsync(string! appKey, string? userId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>
 Mud.Feishu.AI.Tools.IFeishuToolFunctionFactory
 Mud.Feishu.AI.Tools.IFeishuToolFunctionFactory.Create(Mud.Feishu.AI.Tools.FeishuToolDefinition! definition, string! schemaJson) -> Microsoft.Extensions.AI.AIFunction!
+Mud.Feishu.AI.Tools.IFeishuUserAuthorizationLinkProvider
+Mud.Feishu.AI.Tools.IFeishuUserAuthorizationLinkProvider.GetAuthorizationLinkAsync(string! appKey, string? userId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
 Mud.Feishu.AI.Tools.ISkillDocumentReader
 Mud.Feishu.AI.Tools.ISkillDocumentReader.PackageVersion.get -> string!
 Mud.Feishu.AI.Tools.ISkillDocumentReader.Paths.get -> System.Collections.Generic.IReadOnlyList<string!>!
@@ -933,6 +940,14 @@ Mud.Feishu.AI.Tools.ToolSchemaDialect
 Mud.Feishu.AI.Tools.ToolSchemaDialect.McpEnvelope = 3 -> Mud.Feishu.AI.Tools.ToolSchemaDialect
 Mud.Feishu.AI.Tools.ToolSchemaDialect.OpenAiFunctions = 1 -> Mud.Feishu.AI.Tools.ToolSchemaDialect
 Mud.Feishu.AI.Tools.ToolSchemaDialect.Skills = 2 -> Mud.Feishu.AI.Tools.ToolSchemaDialect
+Mud.Feishu.AI.Tools.UserTokenPrecheckResult
+Mud.Feishu.AI.Tools.UserTokenPrecheckResult.Equals(Mud.Feishu.AI.Tools.UserTokenPrecheckResult other) -> bool
+Mud.Feishu.AI.Tools.UserTokenPrecheckResult.Error.get -> string?
+Mud.Feishu.AI.Tools.UserTokenPrecheckResult.IsAuthRequired.get -> bool
+Mud.Feishu.AI.Tools.UserTokenPrecheckResult.Outcome.get -> string!
+Mud.Feishu.AI.Tools.UserTokenPrecheckResult.Outcomes
+Mud.Feishu.AI.Tools.UserTokenPrecheckResult.ShouldProceed.get -> bool
+Mud.Feishu.AI.Tools.UserTokenPrecheckResult.UserTokenPrecheckResult() -> void
 override Mud.Feishu.AI.Tools.AttachmentSource.GetHashCode() -> int
 override Mud.Feishu.AI.Tools.AuthorizationResult.Equals(object? obj) -> bool
 override Mud.Feishu.AI.Tools.AuthorizationResult.GetHashCode() -> int
@@ -954,6 +969,7 @@ override Mud.Feishu.AI.Tools.ToolError.ToString() -> string!
 override Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.Equals(object? obj) -> bool
 override Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.GetHashCode() -> int
 override Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.ToString() -> string!
+override Mud.Feishu.AI.Tools.UserTokenPrecheckResult.GetHashCode() -> int
 static Mud.Feishu.AI.Tools.AttachmentSource.operator !=(Mud.Feishu.AI.Tools.AttachmentSource left, Mud.Feishu.AI.Tools.AttachmentSource right) -> bool
 static Mud.Feishu.AI.Tools.AttachmentSource.operator ==(Mud.Feishu.AI.Tools.AttachmentSource left, Mud.Feishu.AI.Tools.AttachmentSource right) -> bool
 static Mud.Feishu.AI.Tools.AuthorizationResult.Allowed.get -> Mud.Feishu.AI.Tools.AuthorizationResult!
@@ -975,8 +991,8 @@ static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuCloud
 static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuContactTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Mud.Feishu.AI.Tools.FeishuToolRegistry!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuImTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Mud.Feishu.AI.Tools.FeishuToolRegistry!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuMailTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Mud.Feishu.AI.Tools.FeishuToolRegistry!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
-static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuPeopleTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Mud.Feishu.AI.Tools.FeishuToolRegistry!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuMeetingTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Mud.Feishu.AI.Tools.FeishuToolRegistry!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuPeopleTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Mud.Feishu.AI.Tools.FeishuToolRegistry!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuSchemaReadTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Mud.Feishu.AI.Tools.FeishuToolRegistry!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuSearchTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Mud.Feishu.AI.Tools.FeishuToolRegistry!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Mud.Feishu.AI.Tools.FeishuToolsServiceCollectionExtensions.AddFeishuSecurityTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Mud.Feishu.AI.Tools.FeishuToolRegistry!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
@@ -1185,6 +1201,13 @@ static Mud.Feishu.AI.Tools.ToolError.operator !=(Mud.Feishu.AI.Tools.ToolError? 
 static Mud.Feishu.AI.Tools.ToolError.operator ==(Mud.Feishu.AI.Tools.ToolError? left, Mud.Feishu.AI.Tools.ToolError? right) -> bool
 static Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.operator !=(Mud.Feishu.AI.Tools.ToolExecutionAuditRecord? left, Mud.Feishu.AI.Tools.ToolExecutionAuditRecord? right) -> bool
 static Mud.Feishu.AI.Tools.ToolExecutionAuditRecord.operator ==(Mud.Feishu.AI.Tools.ToolExecutionAuditRecord? left, Mud.Feishu.AI.Tools.ToolExecutionAuditRecord? right) -> bool
+static Mud.Feishu.AI.Tools.UserTokenPrecheckResult.AuthRequired.get -> Mud.Feishu.AI.Tools.UserTokenPrecheckResult
+static Mud.Feishu.AI.Tools.UserTokenPrecheckResult.FromError.get -> Mud.Feishu.AI.Tools.UserTokenPrecheckResult
+static Mud.Feishu.AI.Tools.UserTokenPrecheckResult.operator !=(Mud.Feishu.AI.Tools.UserTokenPrecheckResult left, Mud.Feishu.AI.Tools.UserTokenPrecheckResult right) -> bool
+static Mud.Feishu.AI.Tools.UserTokenPrecheckResult.operator ==(Mud.Feishu.AI.Tools.UserTokenPrecheckResult left, Mud.Feishu.AI.Tools.UserTokenPrecheckResult right) -> bool
+static Mud.Feishu.AI.Tools.UserTokenPrecheckResult.Ready.get -> Mud.Feishu.AI.Tools.UserTokenPrecheckResult
+static Mud.Feishu.AI.Tools.UserTokenPrecheckResult.Refreshable.get -> Mud.Feishu.AI.Tools.UserTokenPrecheckResult
+static Mud.Feishu.AI.Tools.UserTokenPrecheckResult.Skipped.get -> Mud.Feishu.AI.Tools.UserTokenPrecheckResult
 static readonly Mud.Feishu.AI.Tools.FeishuToolNames.All -> string![]!
 static readonly Mud.Feishu.AI.Tools.FeishuToolNames.ReadonlyAll -> string![]!
 static readonly Mud.Feishu.AI.Tools.FeishuToolNames.WriteAll -> string![]!

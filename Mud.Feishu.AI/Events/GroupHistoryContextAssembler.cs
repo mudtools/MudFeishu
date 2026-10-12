@@ -180,6 +180,8 @@ public sealed class GroupHistoryContextAssembler : IContextAssembler
         }
         catch (JsonException)
         {
+            // 有意静默（守卫白名单）：这是"消息体不是 text JSON"的正常分支（纯函数，无 logger 面），
+            // 降级输出确定为原文；为非 JSON 的历史消息记日志只会产生噪声。
             // 非法 JSON 按原文展示。
         }
 

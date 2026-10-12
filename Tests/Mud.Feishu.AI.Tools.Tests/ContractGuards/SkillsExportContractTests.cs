@@ -71,7 +71,9 @@ public class SkillsExportContractTests
                 // 且守卫会误判"陈旧文件"——这正是本守卫第一次运行就抓到的形态）。
                 FeishuSkillDocumentBuilder.RootDirectory + "/" +
                 path.Substring(root.Length + 1).Replace(Path.DirectorySeparatorChar, '/'),
-                File.ReadAllText(path)))
+                // 磁盘侧按**内容**比较、行尾归一（复用 Normalize 的既有语义）：产物恒为 LF，
+                // Windows 检出是 CRLF——不归一会让守卫随 autocrlf 漂移（Linux 绿 / Windows 红）。
+                Normalize(File.ReadAllText(path))))
             .ToDictionary(static d => d.Path, StringComparer.Ordinal);
 
         var expectedMap = expected.ToDictionary(static d => d.Path, StringComparer.Ordinal);

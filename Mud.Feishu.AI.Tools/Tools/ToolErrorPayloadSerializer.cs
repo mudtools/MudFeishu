@@ -9,7 +9,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 
-namespace Mud.Feishu.AI.Tools.Tools;
+namespace Mud.Feishu.AI.Tools;
 
 /// <summary>
 /// B2 错误契约：将 <see cref="ToolError"/> 序列化为紧凑 JSON 首行（≤ 512 字节）。

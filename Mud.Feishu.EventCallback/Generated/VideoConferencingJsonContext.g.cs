@@ -44,6 +44,10 @@ namespace Mud.Feishu.EventCallback.VideoConferencing;
 [JsonSerializable(typeof(global::Mud.Feishu.EventCallback.VideoConferencing.RoomLevelDeletedResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.EventCallback.VideoConferencing.RoomLevelUpdatedResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.EventCallback.VideoConferencing.RoomUpdatedResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.EventCallback.VideoConferencing.VcBotMeetingStartedResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.EventCallback.VideoConferencing.VideoConferencingMeetingAgentEventMeeting))]
+[JsonSerializable(typeof(global::Mud.Feishu.EventCallback.VideoConferencing.VideoConferencingMeetingAgentEventUser))]
+[JsonSerializable(typeof(global::Mud.Feishu.EventCallback.VideoConferencing.VideoConferencingUserId))]
 [JsonSerializable(typeof(global::Mud.Feishu.EventCallback.VideoConferencing.VcNoteGeneratedResult))]
 internal partial class VideoConferencingJsonContext : JsonSerializerContext
 {

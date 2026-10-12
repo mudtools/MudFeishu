@@ -12,7 +12,6 @@ using Microsoft.Extensions.Options;
 using Moq;
 using Mud.Feishu.AI.Agents;
 using Mud.Feishu.AI.Tools.Internal;
-using Mud.Feishu.AI.Tools.Tools;
 
 namespace Mud.Feishu.AI.Tools.Tests.Tools;
 

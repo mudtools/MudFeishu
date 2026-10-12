@@ -33,7 +33,11 @@ public class PublicSurfaceRationaleContractGuards
     // R-10（2026-10-12）：290 → **284**——NDJSON 事件外桥与事件目录共 6 个 public 类型
     // （FeishuEventEnvelope / IFeishuEventSink / IFeishuEventFileRouter / FeishuEventNdjsonBridge /
     //  RegexEventFileRouter / FeishuEventCatalog）移出库发布面（降为 Demo 参考实现）。
-    private const int BaselineTypeCount = 284;
+    // T1/D1 + T4/D4 + T5/D5（2026-10-12）：284 → **297**——用户令牌前置探测、单轮工具预算、
+    // 全局并发背压、群聊/媒体上下文装配共 13 个新 public 类型。基线（283 + 1 条既有理由）
+    // 不重打快照：13 个类型全部按"冻结基线 + 增量理由"两段式登记在
+    // public-surface-rationale.json 的 reasons 段（键=类型全名，值=消费方说明）。
+    private const int BaselineTypeCount = 297;
 
     private static readonly string[] ApiFiles =
     [
@@ -42,7 +46,7 @@ public class PublicSurfaceRationaleContractGuards
         "Mud.Feishu.AI.Mcp/PublicAPI.Unshipped.txt",
     ];
 
-    /// <summary>类型级条目：形如 <c>Mud.Feishu.AI.Tools.Tools.FeishuToolRegistry</c>（无括号、无箭头）。</summary>
+    /// <summary>类型级条目：形如 <c>Mud.Feishu.AI.Tools.FeishuToolRegistry</c>（无括号、无箭头）。</summary>
     private static readonly Regex TypeLinePattern = new(
         @"^Mud\.Feishu\.AI\.[A-Za-z0-9_.+<>,\[\] ]+$",
         RegexOptions.Compiled);
@@ -91,13 +95,13 @@ public class PublicSurfaceRationaleContractGuards
     [Fact]
     public void Scanner_ShouldFlagUnaccountedType_AndAcceptBothSources()
     {
-        string[] publicTypes = ["Mud.Feishu.AI.Tools.Tools.Known", "Mud.Feishu.AI.Tools.Tools.BrandNew"];
-        var baseline = new HashSet<string>(StringComparer.Ordinal) { "Mud.Feishu.AI.Tools.Tools.Known" };
-        var reasons = new HashSet<string>(StringComparer.Ordinal) { "Mud.Feishu.AI.Tools.Tools.Explained" };
+        string[] publicTypes = ["Mud.Feishu.AI.Tools.Known", "Mud.Feishu.AI.Tools.BrandNew"];
+        var baseline = new HashSet<string>(StringComparer.Ordinal) { "Mud.Feishu.AI.Tools.Known" };
+        var reasons = new HashSet<string>(StringComparer.Ordinal) { "Mud.Feishu.AI.Tools.Explained" };
 
         var unaccounted = FindUnaccounted(publicTypes, baseline, reasons);
 
-        unaccounted.Should().Equal(["Mud.Feishu.AI.Tools.Tools.BrandNew"], "基线内不得误报；无理由的新类型必须点名");
+        unaccounted.Should().Equal(["Mud.Feishu.AI.Tools.BrandNew"], "基线内不得误报；无理由的新类型必须点名");
     }
 
     /// <summary>检查器（纯函数）：返回"既不在基线、也无理由"的公开类型（有序）。</summary>

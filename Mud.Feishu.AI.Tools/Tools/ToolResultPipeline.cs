@@ -7,7 +7,7 @@
 
 using System.Text.Json.Nodes;
 
-namespace Mud.Feishu.AI.Tools.Tools;
+namespace Mud.Feishu.AI.Tools;
 
 /// <summary>
 /// R-1：<b>工具出站唯一出口</b>——一切回填模型的文本（成功信封 / 手拼信封 / 错误载荷）都经此完成

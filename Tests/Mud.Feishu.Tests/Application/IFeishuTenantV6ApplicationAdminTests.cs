@@ -25,6 +25,76 @@ public class IFeishuTenantV6ApplicationAdminTests
     }
 
     /// <summary>
+    /// 用于测试<see cref="IFeishuTenantV6ApplicationAdmin.GetAppAdminUsersAsync(CancellationToken)"/>等应用管理员函数的返回结果反序列化。
+    /// </summary>
+    [Fact]
+    public void Test_AppAdmin_Results()
+    {
+        string adminUsersResultStr = """
+                        {
+                            "code": 0,
+                            "msg": "ok",
+                            "data": {
+                                "user_list": [
+                                    {
+                                        "open_id": "ou_a3b5bea08516cc528cd5546030344a",
+                                        "union_id": "on_8ed6aa67826108097d9ee143819da2",
+                                        "user_id": "e33ggbsd"
+                                    }
+                                ]
+                            }
+                        }
+                        """;
+        var adminUsersResult = JsonSerializer.Deserialize<FeishuApiResult<GetAppAdminUsersResult>>(adminUsersResultStr, _jsonSerializerOptions);
+
+        Assert.NotNull(adminUsersResult);
+        Assert.Equal(0, adminUsersResult.Code);
+        Assert.NotNull(adminUsersResult.Data);
+        Assert.NotNull(adminUsersResult.Data.UserList);
+        Assert.Single(adminUsersResult.Data.UserList);
+        Assert.Equal("ou_a3b5bea08516cc528cd5546030344a", adminUsersResult.Data.UserList[0].OpenId);
+        Assert.Equal("on_8ed6aa67826108097d9ee143819da2", adminUsersResult.Data.UserList[0].UnionId);
+        Assert.Equal("e33ggbsd", adminUsersResult.Data.UserList[0].UserId);
+
+        string adminScopeResultStr = """
+                        {
+                            "code": 0,
+                            "msg": "success",
+                            "data": {
+                                "is_all": false,
+                                "departments_list": [
+                                    "od-a140b4eeb892b90a0ab3e616fc2054d6",
+                                    "od-a140b4eeb892b90a0ab3e616fc205477"
+                                ]
+                            }
+                        }
+                        """;
+        var adminScopeResult = JsonSerializer.Deserialize<FeishuApiResult<GetAppAdminScopeResult>>(adminScopeResultStr, _jsonSerializerOptions);
+
+        Assert.NotNull(adminScopeResult);
+        Assert.NotNull(adminScopeResult.Data);
+        Assert.False(adminScopeResult.Data.IsAll);
+        Assert.NotNull(adminScopeResult.Data.DepartmentsList);
+        Assert.Equal(2, adminScopeResult.Data.DepartmentsList.Count);
+        Assert.Contains("od-a140b4eeb892b90a0ab3e616fc2054d6", adminScopeResult.Data.DepartmentsList);
+
+        string verifyAdminResultStr = """
+                        {
+                            "code": 0,
+                            "msg": "ok",
+                            "data": {
+                                "is_app_admin": false
+                            }
+                        }
+                        """;
+        var verifyAdminResult = JsonSerializer.Deserialize<FeishuApiResult<VerifyAppAdminResult>>(verifyAdminResultStr, _jsonSerializerOptions);
+
+        Assert.NotNull(verifyAdminResult);
+        Assert.NotNull(verifyAdminResult.Data);
+        Assert.False(verifyAdminResult.Data.IsAppAdmin);
+    }
+
+    /// <summary>
     /// 用于测试<see cref="IFeishuTenantV6ApplicationAdmin.GetApplicationsPageListAsync(string, int?, string?, int?, int?, int?, string?, CancellationToken)"/>函数的返回结果反序列化。
     /// </summary>
     [Fact]

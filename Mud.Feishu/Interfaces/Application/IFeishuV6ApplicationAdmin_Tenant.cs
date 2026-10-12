@@ -10,7 +10,7 @@ using Mud.Feishu.DataModels.Application;
 namespace Mud.Feishu;
 
 /// <summary>
-/// 飞书应用管理接口，用于查询企业安装的应用列表、用户可用的应用、应用可用范围，检查可用/禁用名单，以及更新应用可用范围与通讯录权限范围。
+/// 飞书应用管理接口，用于查询企业安装的应用列表、用户可用的应用、应用可用范围，检查可用/禁用名单，更新应用可用范围与通讯录权限范围，以及查询应用管理员信息。
 /// <para><see href="https://open.feishu.cn/document/application-v6/admin/list">接口文档</see></para>
 /// </summary>
 [HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "Application")]
@@ -148,5 +148,43 @@ public interface IFeishuTenantV6ApplicationAdmin : IFeishuAppContextSwitcher
       [Body] UpdateApplicationContactsRangeRequest request,
       [Query] string? user_id_type = Consts.User_Id_Type,
       [Query] string? department_id_type = Consts.Department_Id_Type,
+      CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 查询应用管理员列表。
+    /// <para>查询审核该应用的管理员列表，返回最近的 10 个管理员账号的 ID。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/application-v6/admin/query-app-administrator-list">接口文档</see></para>
+    /// </summary>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/user/v4/app_admin_user/list")]
+    Task<FeishuApiResult<GetAppAdminUsersResult>?> GetAppAdminUsersAsync(
+      CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取应用管理员管理范围。
+    /// <para>获取应用管理员的管理范围，即应用管理员管理哪些部门。employee_id 与 open_id 二选一传入。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/application-v6/admin/obtain-an-app-admin%E2%80%99s-management-permissions">接口文档</see></para>
+    /// </summary>
+    /// <param name="open_id">管理员的 open_id，与 employee_id 二选一传入</param>
+    /// <param name="employee_id">管理员的 employee_id（等价于通讯录 v3 中的 user_id），与 open_id 二选一传入</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/contact/v1/user/admin_scope/get")]
+    Task<FeishuApiResult<GetAppAdminScopeResult>?> GetAppAdminScopeAsync(
+      [Query] string? open_id = null,
+      [Query] string? employee_id = null,
+      CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 校验应用管理员。
+    /// <para>查询用户是否为应用管理员。此处的管理员指可进入企业管理后台审核与管理应用的管理员，而非应用开发者。open_id 与 employee_id 至少传一个，同时传入时以 open_id 为准。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/application-v6/admin/verify-app-admin">接口文档</see></para>
+    /// </summary>
+    /// <param name="open_id">用户的 open_id，与 employee_id 至少传一个，同时传入时以 open_id 为准</param>
+    /// <param name="employee_id">用户的 employee_id（等价于通讯录 v3 中的 user_id），与 open_id 至少传一个</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Get("/open-apis/application/v3/is_user_admin")]
+    Task<FeishuApiResult<VerifyAppAdminResult>?> VerifyAppAdminAsync(
+      [Query] string? open_id = null,
+      [Query] string? employee_id = null,
       CancellationToken cancellationToken = default);
 }

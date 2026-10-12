@@ -6,7 +6,6 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.DataModels.Calendar;
-using Mud.Feishu.AI.Tools.Tools;
 
 namespace Mud.Feishu.AI.Tools.Internal;
 

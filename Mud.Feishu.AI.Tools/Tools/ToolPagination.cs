@@ -8,7 +8,7 @@
 
 using System.Text.Json.Nodes;
 
-namespace Mud.Feishu.AI.Tools.Tools;
+namespace Mud.Feishu.AI.Tools;
 
 /// <summary>
 /// 自动分页聚合器（B1）：把多次翻页调用的结果合并为单个信封，在预算内自动取完。

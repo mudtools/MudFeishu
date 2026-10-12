@@ -8,7 +8,7 @@
 
 using Mud.Feishu.AI.Agents;
 
-namespace Mud.Feishu.AI.Tools.Tools;
+namespace Mud.Feishu.AI.Tools;
 
 /// <summary>
 /// 工具重试策略（B3 限流退避）：对只读工具的 retryable 错误自动重试，写工具默认零重试。

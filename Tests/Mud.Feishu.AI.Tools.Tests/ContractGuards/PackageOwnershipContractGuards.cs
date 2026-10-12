@@ -96,7 +96,7 @@ public class PackageOwnershipContractGuards
         var shared = PackageOwnershipScanner.FindSharedExportedNamespaces(
         [
             ("Mud.Feishu.AI", ["Mud.Feishu.AI.AgentTools", "Mud.Feishu.AI.Tools"]),
-            ("Mud.Feishu.AI.Tools", ["Mud.Feishu.AI.Tools", "Mud.Feishu.AI.Tools.Tools"]),
+            ("Mud.Feishu.AI.Tools", ["Mud.Feishu.AI.Tools", "Mud.Feishu.AI.Tools.Curation"]),
         ]);
 
         shared.Should().HaveCount(1, "检查器必须能定位跨程序集重名命名空间（找不到说明检查器坏了——那是假绿）");
@@ -118,10 +118,10 @@ public class PackageOwnershipContractGuards
         var shared = PackageOwnershipScanner.FindSharedExportedNamespaces(
         [
             ("Mud.Feishu.AI", ["Mud.Feishu.AI.Tools"]),
-            ("Mud.Feishu.AI.Tools", ["Mud.Feishu.AI.Tools.Tools"]),
+            ("Mud.Feishu.AI.Tools", ["Mud.Feishu.AI.Tools.Generated"]),
         ]);
 
-        shared.Should().BeEmpty("唯一重名的命名空间不构成跨程序集公开面（判据为 public 类型）");
+        shared.Should().BeEmpty("两包导出的公开命名空间互异时不得报红（判据只看 public 类型）");
     }
 }
 

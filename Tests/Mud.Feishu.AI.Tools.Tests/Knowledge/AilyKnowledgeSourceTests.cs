@@ -7,7 +7,6 @@
 
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Mud.Feishu.AI.Tools.Tools;
 using Mud.Feishu.AI.Knowledge;
 
 namespace Mud.Feishu.AI.Tools.Tests.Knowledge;

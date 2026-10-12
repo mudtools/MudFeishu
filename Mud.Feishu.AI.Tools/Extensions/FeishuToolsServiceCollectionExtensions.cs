@@ -12,7 +12,6 @@ using Mud.Feishu.AI.Channels;
 using Mud.Feishu.AI.Events;
 using Mud.Feishu.AI.Knowledge;
 using Mud.Feishu.AI.Tools.Registration;
-using Mud.Feishu.AI.Tools.Tools;
 
 namespace Mud.Feishu.AI.Tools;
 

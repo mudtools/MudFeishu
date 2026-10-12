@@ -19,7 +19,6 @@ global using Mud.Feishu.AI.Tools.Generated;
 // 剖面靠这两个命名空间差异区分「工具声明面」与「执行器绑定面」，塌陷即失去可寻址性）。
 global using Mud.Feishu.AI.Tools.Handlers;
 global using Mud.Feishu.AI.Tools.Internal;
-global using Mud.Feishu.AI.Tools.Tools;
 global using Mud.Feishu.Abstractions.Observability;
 global using Mud.Feishu.DataModels;
 global using Xunit;

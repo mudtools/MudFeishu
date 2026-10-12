@@ -7,7 +7,6 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.AI.Agents;
-using Mud.Feishu.AI.Tools.Tools;
 
 namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 

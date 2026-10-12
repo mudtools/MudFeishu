@@ -8,7 +8,6 @@
 using System.Text.Json;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
-using Mud.Feishu.AI.Tools.Tools;
 
 namespace Mud.Feishu.AI.Tools;
 

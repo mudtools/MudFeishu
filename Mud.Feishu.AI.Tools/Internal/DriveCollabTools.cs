@@ -240,7 +240,7 @@ internal sealed class DriveCommentTools(
 /// <remarks>
 /// <para>
 /// 权限域按引擎风险分级一律 <c>high-risk-write</c>（方法名触发危险词表 <c>permission</c>；
-/// 含底层为 GET 的 get_permission_public——见 Curation/FeishuDriveToolInterfaces.cs 的 MUDFT017 修复记录），
+/// 含底层为 GET 的 get_permission_public——见 Curation/Docs/FeishuDriveToolInterfaces.cs 的 MUDFT017 修复记录），
 /// 全部走写面授权门禁；写工具默认空名单不启用，启用前须经宿主授权。
 /// </para>
 /// <para>

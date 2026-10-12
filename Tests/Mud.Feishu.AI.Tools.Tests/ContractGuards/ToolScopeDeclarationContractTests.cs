@@ -107,7 +107,9 @@ public class ToolScopeDeclarationContractTests
     {
         var result = new SortedSet<string>(StringComparer.Ordinal);
 
-        foreach (var file in Directory.EnumerateFiles(ToolInterfacesDirectory, "*.cs", SearchOption.TopDirectoryOnly))
+        // D-1（2026-10-12）：Curation/ 已分为六个组目录，枚举必须递归，否则声明集为空——
+        // 空集会让 HaveCountGreaterThan(0) 与基线计数同时失去意义（守卫静默变成不变量）。
+        foreach (var file in Directory.EnumerateFiles(ToolInterfacesDirectory, "*.cs", SearchOption.AllDirectories))
         {
             var source = File.ReadAllText(file);
             foreach (System.Text.RegularExpressions.Match list in Regex.Matches(

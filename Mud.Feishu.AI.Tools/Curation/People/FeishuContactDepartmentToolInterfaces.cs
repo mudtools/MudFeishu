@@ -57,3 +57,40 @@ public interface IFeishuTenantContactSearchDepartmentsTool
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
         CancellationToken cancellationToken = default);
 }
+
+// ─────────────────────────── Contact 部门轴补齐（2 个只读，tenant） ───────────────────────────
+
+/// <summary>工具接口：contact.list_departments（映射 <c>IFeishuTenantV3Departments.GetDepartmentsByParentIdAsync</c>）。</summary>
+[FeishuTool("contact.list_departments",
+    Description = "列出指定部门下的子部门（返回 department_id/name/parent_department_id）。department_id 为 0 时列出根部门。只读，需 contact:department.base:readonly。",
+    RequiredScopes = ["contact:department.base:readonly"],
+    Source = nameof(IFeishuTenantV3Departments) + "." + nameof(IFeishuTenantV3Departments.GetDepartmentsByParentIdAsync))]
+public interface IFeishuTenantContactListDepartmentsTool
+{
+    /// <summary>列出子部门（分页）。</summary>
+    /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token），超长截断并标记 truncated。</returns>
+    Task<string> ListDepartmentsAsync(
+        [ToolParameter("department_id", "部门 ID（0=根部门，或来自上一次结果的 department_id）", Required = true)] string department_id,
+        [ToolParameter("fetch_child", "是否递归获取全部子部门（可选，默认 false）")] bool? fetch_child = null,
+        [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：contact.list_department_members（映射 <c>IFeishuTenantV1Employees.QueryEmployeePageListAsync</c>，按 department_id 过滤）。</summary>
+[FeishuTool("contact.list_department_members",
+    Description = "按部门 ID 列出该部门下的员工（返回 open_id/name/employee_id）。department_id 来自 contact.list_departments。只读，需 contact:user.base:readonly。",
+    RequiredScopes = ["contact:user.base:readonly"],
+    Source = nameof(IFeishuTenantV1Employees) + "." + nameof(IFeishuTenantV1Employees.QueryEmployeePageListAsync))]
+public interface IFeishuTenantContactListDepartmentMembersTool
+{
+    /// <summary>按部门列出员工（分页）。</summary>
+    /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token），超长截断并标记 truncated。</returns>
+    Task<string> ListDepartmentMembersAsync(
+        [ToolParameter("department_id", "部门 ID（来自 contact.list_departments）", Required = true)] string department_id,
+        [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
+        CancellationToken cancellationToken = default);
+}

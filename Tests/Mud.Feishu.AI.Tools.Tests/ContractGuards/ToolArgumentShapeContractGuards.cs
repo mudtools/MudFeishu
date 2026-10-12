@@ -111,10 +111,14 @@ public class ToolArgumentShapeContractGuards
         var curation = Path.Combine(projDir, "Curation");
         var tools = Path.Combine(projDir, "Tools");
 
+        // D-1（2026-10-12）：声明面按关注域分为六个组目录（Im/Docs/Collab/People/Platform/Core），
+        // 组内仍是「一个域声明一个 *ToolInterfaces.cs」。枚举必须**递归**——组目录结构下
+        // TopDirectoryOnly 会退化成"只看 Curation/ 顶层的 0 个文件"，约束被静默削弱（"漏掉任一
+        // 目录即假绿"的老账）。身份改用**相对路径**，否则同名文件跨组移动对报告不可见。
         var mixedIn = Directory
-            .EnumerateFiles(curation, "*.cs", SearchOption.TopDirectoryOnly)
+            .EnumerateFiles(curation, "*.cs", SearchOption.AllDirectories)
             .Where(static path => !Path.GetFileName(path).EndsWith("ToolInterfaces.cs", StringComparison.Ordinal))
-            .Select(static path => Path.GetFileName(path))
+            .Select(path => Path.GetRelativePath(curation, path))
             .ToArray();
 
         mixedIn.Should().BeEmpty(
@@ -221,14 +225,14 @@ public class ToolArgumentShapeContractGuards
         var curation = Path.Combine(FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Curation");
 
         var offenders = Directory
-            .EnumerateFiles(curation, "*.cs", SearchOption.TopDirectoryOnly)
+            .EnumerateFiles(curation, "*.cs", SearchOption.AllDirectories)
             .Where(path =>
             {
                 var match = Regex.Match(
                     File.ReadAllText(path), @"^namespace\s+(?<ns>[\w.]+)", RegexOptions.Multiline);
                 return !match.Success || match.Groups["ns"].Value != Expected;
             })
-            .Select(static path => Path.GetFileName(path))
+            .Select(path => Path.GetRelativePath(curation, path))
             .ToArray();
 
         offenders.Should().BeEmpty(
@@ -236,26 +240,113 @@ public class ToolArgumentShapeContractGuards
     }
 
     /// <summary>
-    /// <b>R5 / F-1</b>：基线 + <b>反向自证</b> —— <c>Curation/</c> 恰有 21 个声明文件、162 个契约接口
+    /// <b>D-1 伴随守卫</b>：<b>特性与声明不得分家</b> —— 每个声明文件里 <c>[FeishuTool]</c>
+    /// 特性数必须等于 <c>public interface</c> 数（且不为 0）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么必须机械锁定</b>：本约束是 2026-10-12 声明面重组（原 27 文件平铺 → 六组目录 +
+    /// 跨域混装文件按域拆分）过程中<b>实际踩中</b>的故障形态——按"向上回溯连续 <c>//</c> 行"切块时，
+    /// 特性与接口签名之间不是注释行（是 <c>Source = …)]</c>），回溯停在签名上，于是每个
+    /// <c>[FeishuTool]</c> + XML 注释被切给<b>前一个</b>接口，接口与其特性落入不同文件。
+    /// </para>
+    /// <para>
+    /// <b>后果是静默的</b>：特性缺失不是编译错误（生成器只是少出一个工具、少一条 Schema），
+    /// golden 与规模守卫按<b>工具名集合</b>计数，丢的是"整个工具"而不是"某个字段"，
+    /// 只有本守卫这类<b>同文件内 1:1 计数</b>才能在切块阶段立刻报红。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void CurationFiles_ShouldKeepEachInterfaceWithItsAttribute()
+    {
+        var curation = Path.Combine(FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Curation");
+
+        var offenders = Directory
+            .EnumerateFiles(curation, "*.cs", SearchOption.AllDirectories)
+            .Select(path => new
+            {
+                Rel = Path.GetRelativePath(curation, path),
+                Text = File.ReadAllText(path),
+            })
+            .Select(static x => new
+            {
+                x.Rel,
+                Interfaces = Regex.Matches(x.Text, @"\bpublic\s+interface\s+I\w+Tool\b").Count,
+                Attributes = Regex.Matches(x.Text, @"\[FeishuTool\s*\(").Count,
+            })
+            .Where(static x => x.Interfaces != x.Attributes || x.Interfaces == 0)
+            .Select(static x => $"{x.Rel} (interface={x.Interfaces}, [FeishuTool]={x.Attributes})")
+            .ToArray();
+
+        offenders.Should().BeEmpty(
+            "每个声明文件里 [FeishuTool] 特性数必须与 public interface 数相等且不为 0——不相等即意味着"
+            + "某个工具的特性与声明被切到了不同文件（生成器静默少出工具，编译仍通过）：{0}",
+            string.Join(" | ", offenders));
+    }
+
+    /// <summary>
+    /// <b>R5 / F-1</b>：基线 + <b>反向自证</b> —— <c>Curation/</c> 恰有 16 个声明文件、162 个契约接口
     /// （R7/C3 后 163，R-12 删除 <c>feishu.api_call</c> 后为 162）。
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>D-1（2026-10-12）修订</b>：声明面从「27 文件平铺」改为「六组目录 + 域声明文件」——
+    /// 4 个<b>跨域混装</b>文件按域拆分（<c>FeishuToolInterfaces.cs</c> 一个文件里混了
+    /// Bitable/Docx/Wiki/Search/IM/Sheets 六域；<c>FeishuWriteToolInterfaces.cs</c> 混了
+    /// IM 写与 Approval；<c>FeishuDocxSheetsDriveToolInterfaces.cs</c> 混了 Docx/Sheets/Drive 写；
+    /// <c>FeishuMailToolInterfaces.cs</c> 混了 Mail/Contact 部门轴/Approval 实例详情），
+    /// 归位为「组目录 = 关注域、组内一域一文件」：35 文件 / 182 接口。
+    /// </para>
+    /// <para>
+    /// <b>身份改用相对路径</b>：文件名相同、组不同的情形（<c>Docs/…</c> vs <c>Collab/…</c>）
+    /// 用文件名做身份会让"文件跨组挪动"这类结构变更对基线不可见。
+    /// </para>
+    /// <para>
+    /// <b>组目录白名单 + 恰好一层</b>：顶层平铺（旧态）与更深嵌套都被机械拦截——六组结构本身
+    /// 是被守卫锁住的不变量，而不是一条口头约定。
+    /// </para>
+    /// </remarks>
     [Fact]
     public void CurationDirectory_ShouldMatchRegisteredBaseline()
     {
         var curation = Path.Combine(FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Curation");
 
         var files = Directory
-            .EnumerateFiles(curation, "*.cs", SearchOption.TopDirectoryOnly)
-            .Select(static path => Path.GetFileName(path))
-            .OrderBy(static name => name, StringComparer.Ordinal)
+            .EnumerateFiles(curation, "*.cs", SearchOption.AllDirectories)
+            .Select(path => Path.GetRelativePath(curation, path))
+            .OrderBy(static path => path, StringComparer.Ordinal)
             .ToArray();
 
         files.Should().HaveCount(
-            27,
-            "Curation/ 的声明文件数从 16 变为 {0}：{1}。新增/拆分域声明文件属**有意的契约变更**，"
+            35,
+            "Curation/ 的声明文件数从 27 变为 {0}：{1}。新增/拆分域声明文件属**有意的契约变更**，"
             + "请确认新文件只含工具契约并更新本基线",
             files.Length,
             string.Join(" | ", files));
+
+        // 结构不变量：Curation/<Group>/<File>.cs —— 恰好一层组目录。
+        var wrongDepth = files
+            .Where(static path => path.Split(Path.DirectorySeparatorChar).Length != 2)
+            .ToArray();
+
+        wrongDepth.Should().BeEmpty(
+            "Curation/ 的声明文件必须恰好位于一层组目录内（Curation/<Group>/<File>.cs）——"
+            + "顶层平铺（旧态 27 文件散列）或更深嵌套都会让「按域定位」失效：{0}",
+            string.Join(" | ", wrongDepth));
+
+        var allowedGroups = new[] { "Collab", "Core", "Docs", "Im", "People", "Platform" };
+        var unknownGroups = files
+            .Select(static path => path.Split(Path.DirectorySeparatorChar)[0])
+            .Distinct(StringComparer.Ordinal)
+            .Where(group => !allowedGroups.Contains(group, StringComparer.Ordinal))
+            .OrderBy(static group => group, StringComparer.Ordinal)
+            .ToArray();
+
+        unknownGroups.Should().BeEmpty(
+            "Curation/ 只允许六个关注域组目录（{0}）——新增组属有意的结构变更，"
+            + "请同步更新本白名单与该守卫的说明：{1}",
+            string.Join("/", allowedGroups),
+            string.Join(" | ", unknownGroups));
 
         var interfaces = files
             .SelectMany(path => Regex.Matches(

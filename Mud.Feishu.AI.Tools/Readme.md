@@ -264,7 +264,27 @@ var response = await agent.RunApprovalContinuationAsync(
    （R-1 起为 `nameof` 常量拼接：编译期求值结果与旧字面量 `"IFeishuTenantV4CalendarEvent.CreateCalendarEventAsync"` 逐字节相同，
    但 SDK 改名可随 IDE 重命名联动。⚠️ **单段 `nameof(接口.方法)` 只产出方法名**（丢接口名），会被判为 `MUDFT019`）。
    ⚠️ 双令牌派生接口（`IFeishuTenantV*`/`IFeishuUserV*`）是**空**接口，方法在基接口上。
-2. **写工具接口声明**（手写）：`Curation/Feishu{Domain}ToolInterfaces.cs` ——
+2. **写工具接口声明**（手写）：`Curation/{Group}/Feishu{Domain}ToolInterfaces.cs` ——
+   `{Group}` 是六个**关注域组**之一（D-1，2026-10-12 起声明面由 27 文件平铺改为组目录，
+   组内仍是「一个域声明一个文件」；组白名单与 `Curation/<Group>/<File>.cs` **恰一层**深度由
+   `CurationDirectory_ShouldMatchRegisteredBaseline` 机械锁定，非 .cs 契约文件由
+   `CurationDirectory_ShouldContainOnlyToolContractDeclarations` 拦截）：
+
+   | 组 | 语义 | 现有域声明文件 |
+   |---|---|---|
+   | `Im/` | 即时通信与邮件 | attachment、im、im-write、mail |
+   | `Docs/` | 文档与文件载体 | docx（read/deep/write）、sheets（read/write）、wiki、drive（read/write）、bitable（read/write） |
+   | `Collab/` | 协作与流程 | calendar、board、minutes、vc、task、okr |
+   | `People/` | 人与组织 | contact、contact-department、hire、org、attendance、mdm |
+   | `Platform/` | 平台能力与治理 | ai、capability、schema、security、security-openapi-log、spark、knowledge |
+   | `Core/` | 横跨多个业务域的能力 | search（跨 docx/wiki）、approval（跨全部业务流） |
+
+   ⚠️ **不要把跨域内容塞进一个域文件**：跨域混装（一个 `FeishuToolInterfaces.cs` 里混 Bitable/
+   Docx/Wiki/Search/IM/Sheets，或只读文件里混写工具）是 D-1 前的老态，已按域拆分——文件级
+   `<summary>`/`<remarks>` 的语义单位是「域」，混装会让它失真。接口与特性必须同文件：
+   `CurationFiles_ShouldKeepEachInterfaceWithItsAttribute` 断言每个文件里 `[FeishuTool]` 数
+   == `public interface` 数（切块失误会让生成器静默少出工具而编译仍通过）。
+
    `[FeishuTool("域.动作", Description=…, RequiredScopes=[…], IsWrite=…, Source=…)]` +
    `[ToolParameter("名", "说明", Required=…)]` 扁平参数。
    分页尺寸/排序/容器类型等**运维参数不进 Schema**（绑定层补齐并钳制）；`page_token` 例外保留。

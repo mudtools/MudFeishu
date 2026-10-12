@@ -1,5 +1,47 @@
 # Mud.Feishu 更新日志
 
+## [Unreleased] - Curation 声明面分六组目录（D-1，2026-10-12）
+
+> 方案与守卫改造见 `documents/AIAgent/MudFeishu-AI-Tools-Tools目录重组方案.md` §八（D-1 修订）。
+> **纯结构重组**：公开类型/成员名、工具名集合、Schema 与 golden 全部零变更
+> （`PublicAPI.Unshipped.txt` 与 `FeishuToolSchemas.golden.txt` 零 diff；`MUDFT014` 未触发）。
+
+### ♻️ 结构调整
+
+- **声明面从 27 文件平铺改为六组关注域目录**：`Im/`（即时通信与邮件）、`Docs/`（文档与文件载体）、
+  `Collab/`（协作与流程）、`People/`（人与组织）、`Platform/`（平台能力与治理）、
+  `Core/`（横跨多个业务域：search / approval）。组内仍是「一个域声明一个文件」；
+  **命名空间保持扁平** `Mud.Feishu.AI.Tools.Curation`（FQN 不变 ⇒ `PublicAPI` 零改写）。
+- **4 个跨域混装文件按域拆分**（27 → 35 文件，接口数与工具名集合恒为 182）：
+  - `FeishuToolInterfaces.cs`（一个文件混了 Bitable/Docx/Wiki/Search/IM/Sheets 六域，且标题自称"只读"
+    却含 Wiki/IM 写面）→ `Docs/FeishuBitableReadToolInterfaces.cs`、`Docs/FeishuDocxReadToolInterfaces.cs`、
+    `Docs/FeishuSheetsReadToolInterfaces.cs`、`Docs/FeishuWikiToolInterfaces.cs`、
+    `Im/FeishuImToolInterfaces.cs`、`Core/FeishuSearchToolInterfaces.cs`；
+  - `FeishuWriteToolInterfaces.cs`（IM 写 + Approval）→ `Im/FeishuImWriteToolInterfaces.cs` +
+    `Core/FeishuApprovalToolInterfaces.cs`；
+  - `FeishuDocxSheetsDriveToolInterfaces.cs` → `Docs/FeishuDocxWriteToolInterfaces.cs` +
+    `Docs/FeishuSheetsWriteToolInterfaces.cs` + `Docs/FeishuDriveWriteToolInterfaces.cs`
+    （原文件末尾的 F-10 回滚说明随 Drive 写面归位）；
+  - `FeishuMailToolInterfaces.cs` 的 Contact 部门轴 2 条与 Approval 实例详情 1 条分别归位
+    `People/FeishuContactDepartmentToolInterfaces.cs` 与 `Core/FeishuApprovalToolInterfaces.cs`。
+- 源文件 namespace 之前的 `using`（`FeishuDriveToolInterfaces.cs` 的 `using Mud.Feishu.Interfaces;`）
+  随迁移保留到其所有目标文件。
+
+### 🧪 测试与门禁
+
+- **3 处 `SearchOption.TopDirectoryOnly` → `AllDirectories`**（`ToolArgumentShapeContractGuards` 内 2 处、
+  `ToolScopeDeclarationContractTests`、`ExecutorDomainPurityContractTests`）：组目录结构下 `Curation/`
+  顶层恒 0 个 `.cs`，旧枚举会让「只收契约声明」「命名空间一致」「基线文件数/接口数」
+  三类不变量**以 `0 == 0` 的形式空过**（比报红更危险）。
+- **基线身份改用相对路径**（`Curation/<Group>/<File>.cs`，否则跨组移动对基线不可见）+ 新增
+  「恰一层组目录 + 组名白名单」断言（六组结构本身被机械锁定）；新增
+  `CurationFiles_ShouldKeepEachInterfaceWithItsAttribute`：同文件内 `[FeishuTool]` 数必须等于
+  `public interface` 数 —— 按"注释行回溯"切块会把特性切给相邻接口，生成器随即**静默少出工具**
+  而编译仍通过，本轮首次拆分即踩中该形态。
+- **验证**：解决方案 `0 错误`；`Mud.Feishu.AI.Tools.Tests` 948×2 TFM 与 `Mud.Feishu.AI.Tests`
+  469×2 TFM 全绿；182 个接口段逐字节一致（XML 注释 + `[FeishuTool]` 特性 + 签名 + 体）、
+  目录级非样板行多集哈希一致、`[FeishuTool]` 特性 182 / 唯一工具名 182。
+
 ## [Unreleased] - AI 工具面 per-tool affordance 接入（R-3 / F-7）+ 组件升级 Mud.HttpUtils 3.0.6（2026-10-11）
 
 > 方案与组件侧改造见 `documents/AIAgent/MudFeishu-AI-per-tool-affordance-组件侧生成器改造方案.md`；

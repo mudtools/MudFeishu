@@ -278,7 +278,7 @@ Hosting ──→ Execution（可选注入：授权器/审计/落盘器/链接�
 | `PublicAPI.Unshipped.txt` 手工改写遗漏 | 中 | 脚本化替换 + RS0016 编译器兜底（遗漏即红，不会静默）；P2 独立提交便于二分 |
 | 生成器按**全限定名**引用 `FeishuToolResult`/`FeishuToolBinding`（而非简单名） | 低 | P1 构建即暴露；缓解 = global using（§4.1-1）。剖面槽均为简单名（`FeishuToolProfile.cs` L97-98），风险本身很低 |
 | `PackageOwnershipContractGuards` 断言工具包含 `Mud.Feishu.AI.Tools` 命名空间 | 低 | 生成类型（`FeishuToolNames` 等）与 `Extensions/` 仍在根 ns，断言继续成立；注释文案同批订正 |
-| 守卫扫描面未扩展导致"假绿" | 中 | §4.3-9/10 明确列为必改项；新增"目录=命名空间"守卫一并固化 |
+| 守卫扫描面未扩展导致"假绿" | 中 | §4.3-9/10 明确列为必改项；新增"目录=命名空间"守卫一并固化。**D-1（2026-10-12）已兑现**：Curation 六组目录改造同批把 3 处 `TopDirectoryOnly` 改 `AllDirectories`，见 §八 修订段 |
 | 大规模 diff 淹没 review | 低 | 单提交 + 纯搬迁声明；`git diff --stat` 应显示 44 renames + 少量内容行 |
 | 回滚 | — | 单提交 `git revert`；无行为变更，回滚无数据/兼容性后果 |
 
@@ -289,6 +289,33 @@ Hosting ──→ Execution（可选注入：授权器/审计/落盘器/链接�
 - 不动 `Internal/`、`Curation/`、`SdkProfile/`、`Guidance/`、`Affordance/`、`skills/`、golden；
 - 不动 `Extensions/FeishuToolsServiceCollectionExtensions.cs` 的位置（宿主 DI 第一触点，刻意留根命名空间）；
 - 不借机引入新抽象——本次是**结构归位**，不是重构。
+
+> **D-1（2026-10-12）修订**：本节的「不动 `Curation/`」与「不拆分多类型文件」两条对
+> `Curation/` 声明面**已被后续有意解禁**（本次重组本身不动 `Curation/`，其余条目继续有效）：
+>
+> 1. **结构**：声明面从「27 文件平铺」改为「六组关注域目录（`Im` / `Docs` / `Collab` / `People` /
+>    `Platform` / `Core`）+ 组内一域一文件」。4 个**跨域混装**文件按域拆分
+>    （`FeishuToolInterfaces.cs` 混了 Bitable/Docx/Wiki/Search/IM/Sheets 六域、`FeishuWriteToolInterfaces.cs`
+>    混了 IM 写与 Approval、`FeishuDocxSheetsDriveToolInterfaces.cs` 混了 Docx/Sheets/Drive 写、
+>    `FeishuMailToolInterfaces.cs` 混了 Mail/Contact 部门轴/Approval 实例详情）：27 → 35 文件，
+>    接口数与工具名集合恒为 182。
+> 2. **命名空间保持扁平** `Mud.Feishu.AI.Tools.Curation`：不产生 FQN 变更 ⇒
+>    `PublicAPI.Unshipped.txt`、`documents/AIAgent/public-surface-rationale.json`、
+>    `PackageOwnershipContractGuards`（按命名空间断言）**零改动**；代价是 `dotnet_style_namespace_match_folder`
+>    给出 IDE0130 suggestion（不报红）。
+> 3. **守卫同批加固（否则本次改造会制造假绿）**：`ToolArgumentShapeContractGuards` 的
+>    `CurationDirectory_ShouldContainOnlyToolContractDeclarations` / `CurationFiles_ShouldDeclareTheCurationNamespace` /
+>    `CurationDirectory_ShouldMatchRegisteredBaseline`，以及 `ToolScopeDeclarationContractTests`、
+>    `ExecutorDomainPurityContractTests` 的 `SearchOption.TopDirectoryOnly` 全部改 `AllDirectories`
+>    ——组目录结构下顶层恒 0 个 `.cs`，旧枚举会让「只收契约声明」「命名空间一致」「27 文件 / 182 接口」
+>    三类不变量**以 0 == 0 的形式空过**。基线身份同时改用**相对路径**（否则跨组移动不可见），
+>    并新增两条断言：**恰一层组目录 + 组名白名单**（六组结构本身被机械锁定）、
+>    **`CurationFiles_ShouldKeepEachInterfaceWithItsAttribute`**（同文件内 `[FeishuTool]` 数 ==
+>    `public interface` 数——拆分时按"注释行回溯"切块会把特性切给相邻接口，生成器随即静默少出工具
+>    而编译仍通过，本仓首轮拆分即踩中该形态）。
+> 4. **零语义变更证据**：182 个接口段逐字节一致（XML 注释 + `[FeishuTool]` 特性 + 签名 + 体）、
+>    目录级"非样板行多集"哈希一致、`[FeishuTool]` 特性 182 / 唯一工具名 182、源生成器 golden
+>    零漂移（`MUDFT014` 未触发）、`Mud.Feishu.AI.Tools.Tests` 948×2 TFM 全绿。
 
 ---
 

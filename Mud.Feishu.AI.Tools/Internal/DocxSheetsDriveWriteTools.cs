@@ -1032,6 +1032,7 @@ internal sealed class DriveWriteTools(
     /// R5 / F-10 <b>本轮未落地</b>：B-2 的零容忍守卫规定 Source 不得指向返回二进制的 SDK 方法，
     /// 而受控下载出口必须调用 DownloadFileAsync（返回二进制数组）。
     /// stager 已作为软依赖挂在本类上，无需扩展契约 —— 缺的只是与 B-2 和解的表达方式。
-    /// 详见 Curation/FeishuDocxSheetsDriveToolInterfaces.cs 末尾的回滚说明与三条候选出路。
+    /// 详见 Curation/Docs/FeishuDriveWriteToolInterfaces.cs 末尾的回滚说明与三条候选出路
+    /// （D-1 拆分后，原 FeishuDocxSheetsDriveToolInterfaces.cs 的尾部说明随 Drive 写面归位）。
     /// </summary>
 }

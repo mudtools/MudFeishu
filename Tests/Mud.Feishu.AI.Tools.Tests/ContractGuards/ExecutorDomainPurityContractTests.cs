@@ -182,7 +182,9 @@ public class ExecutorDomainPurityContractTests
     {
         var map = new Dictionary<string, string>(StringComparer.Ordinal);
 
-        foreach (var file in Directory.EnumerateFiles(ToolInterfacesDirectory, "*.cs", SearchOption.TopDirectoryOnly))
+        // D-1（2026-10-12）：Curation/ 已分为六个组目录（Im/Docs/Collab/People/Platform/Core），
+        // 枚举必须递归，否则映射为空——NotBeEmpty 会以"正则失效"的口径报错，归因误导。
+        foreach (var file in Directory.EnumerateFiles(ToolInterfacesDirectory, "*.cs", SearchOption.AllDirectories))
         {
             var source = File.ReadAllText(file);
 

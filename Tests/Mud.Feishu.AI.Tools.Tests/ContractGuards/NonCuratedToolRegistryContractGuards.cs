@@ -65,7 +65,7 @@ public class NonCuratedToolRegistryContractGuards
         ("GetDeviceRecordAsync", "security：设备详情（设备 PII）——同上"),
         ("UpdateDeviceApplyRecordAsync", "security：设备申请审核（写类）——同上"),
 
-        // F-1（org）：只读面已全量策展（职务 / 职级 / 职务族 / 工作城市 共 8 条，见 FeishuOrgToolInterfaces.cs）；
+        // F-1（org）：只读面已全量策展（职务 / 职级 / 职务族 / 工作城市 共 8 条，见 People/FeishuOrgToolInterfaces.cs）；
         // GetJobLevel* / GetJobFamilies* / GetWorkCities* 六个只读方法**已移出本登记表**（它们现在是策展工具）。
         // 下表仅保留写类——它们需要宿主显式授权，**产品裁定不策展**：HR/组织主数据写入属管理后台职责（AI 走「提议 → 人工执行」）。
         ("CreateJobLevelAsync", "org：职级写类（新增）——**产品裁定不策展**：HR/组织主数据写入属管理后台职责（AI 走「提议 → 人工执行」）"),

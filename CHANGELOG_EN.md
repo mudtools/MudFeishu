@@ -1,5 +1,48 @@
 # Mud.Feishu Change Log
 
+## [Unreleased] - Curation declaration surface grouped into six concern directories (D-1, 2026-10-12)
+
+> Plan and guard rework: `documents/AIAgent/MudFeishu-AI-Tools-Tools目录重组方案.md` §八 (D-1 revision).
+> **Structure only**: public type/member names, the tool-name set, every Schema and the golden
+> snapshot are unchanged (`PublicAPI.Unshipped.txt` and `FeishuToolSchemas.golden.txt` diff = 0;
+> `MUDFT014` not raised).
+
+### ♻️ Structural changes
+
+- **27 flat `Curation/Feishu*ToolInterfaces.cs` files → six concern directories**: `Im/` (IM + mail),
+  `Docs/` (docx / sheets / wiki / drive / bitable), `Collab/` (calendar / board / minutes / vc /
+  task / okr), `People/` (contact / hire / org / attendance / mdm), `Platform/` (ai / capability /
+  schema / security / spark / knowledge), `Core/` (cross-domain: search / approval). One file per
+  domain is kept inside each group; the namespace stays **flat**
+  (`Mud.Feishu.AI.Tools.Curation`) ⇒ no FQN changes, `PublicAPI` needs no rewrite.
+- **4 cross-domain mixed files split by domain** (27 → 35 files; 182 interfaces and 182 tool names
+  unchanged): `FeishuToolInterfaces.cs` (six domains in one file) →
+  `Docs/Feishu{Bitable,Docx,Sheets}Read*` + `Docs/FeishuWikiToolInterfaces.cs` +
+  `Im/FeishuImToolInterfaces.cs` + `Core/FeishuSearchToolInterfaces.cs`; `FeishuWriteToolInterfaces.cs`
+  → `Im/FeishuImWriteToolInterfaces.cs` + `Core/FeishuApprovalToolInterfaces.cs`;
+  `FeishuDocxSheetsDriveToolInterfaces.cs` → `Docs/Feishu{Docx,Sheets,Drive}WriteToolInterfaces.cs`;
+  `FeishuMailToolInterfaces.cs`'s Contact-department and Approval-instance tools moved to
+  `People/FeishuContactDepartmentToolInterfaces.cs` and `Core/FeishuApprovalToolInterfaces.cs`.
+- Pre-namespace `using` directives (e.g. `using Mud.Feishu.Interfaces;`) are carried over to every
+  target file.
+
+### 🧪 Tests and gates
+
+- **3 `SearchOption.TopDirectoryOnly` → `AllDirectories`** (`ToolArgumentShapeContractGuards` ×2,
+  `ToolScopeDeclarationContractTests`, `ExecutorDomainPurityContractTests`): with group directories
+  the top level holds 0 `.cs` files, so the old enumeration let "contract-only", "namespace match"
+  and "baseline file/interface counts" invariants **pass vacuously (`0 == 0`)**.
+- Baseline identity now uses **relative paths** (`Curation/<Group>/<File>.cs`) plus a new
+  "exactly one group level + group whitelist" assertion; new
+  `CurationFiles_ShouldKeepEachInterfaceWithItsAttribute` (per-file `[FeishuTool]` count must equal
+  `public interface` count — a mis-sliced split leaves an interface without its attribute, and the
+  generator then silently emits one tool fewer while the build stays green; this was hit during the
+  first split attempt).
+- **Verification**: solution builds with `0` errors; `Mud.Feishu.AI.Tools.Tests` 948 × 2 TFMs and
+  `Mud.Feishu.AI.Tests` 469 × 2 TFMs green; all 182 interface segments byte-identical
+  (XML doc + `[FeishuTool]` attribute + signature + body) and the non-boilerplate line multiset of
+  the directory is hash-identical before and after.
+
 ## [Unreleased] - `Mud.Feishu.AI.FeishuTools` renamed to `Mud.Feishu.AI.Tools` (2026-10-08)
 
 ### ⚠️ Breaking changes

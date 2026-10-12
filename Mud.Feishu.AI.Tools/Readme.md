@@ -13,7 +13,7 @@
 > | --- | --- |
 > | 流式消息通道（`EditMessageChannel` / `CardStreamMessageChannel` / `StreamingChannelChain`） | `Mud.Feishu.AI.Channels`（`Mud.Feishu.AI` 程序集） |
 > | 会话事件处理器与装配器（`ImMessage…` / `ApprovalTask…` / `TaskUpdated…` / `BitableRecordChanged…` / `SenderInfo…` / `QuoteMessage…`） | `Mud.Feishu.AI.Events` |
-> | 事件外桥与事件目录（`FeishuEventNdjsonBridge` / `FeishuEventCatalog` / `FeishuEventEnvelope`） | `Mud.Feishu.AI.Events` |
+> | 事件外桥与事件目录（`FeishuEventNdjsonBridge` / `FeishuEventCatalog` / `FeishuEventEnvelope`） | **已移出本库**：R-10 起作为 Demo 参考实现（`Demos/Mud.Feishu.Agent.Demo/Events/`），库不再承诺该生态位 |
 > | Aily 托管知识问答（`AilyKnowledgeProvider`） | `Mud.Feishu.AI.Knowledge` |
 > | 装配入口 `AddFeishuEditMessageChannel` / `AddFeishuStreamingChannel` / `AddFeishuImConversationHandler` / `AddFeishuKnowledgeContext` / `AddFeishuAilyKnowledge` | `Mud.Feishu.AI.Extensions`（`AddFeishuAgent` 所在文件） |
 >
@@ -71,7 +71,16 @@
 
 ```csharp
 services.AddFeishuTools();                 // 引入全部域（含元工具）
-// 或按域装配：AddFeishuBitableTools() / AddFeishuImTools() / AddFeishuContactTools() / ...
+// 或按域装配（12 个逐域入口；R-8 收敛后同产品面的域已合并为域组）：
+//   云文档组 AddFeishuCloudDocTools（docx/wiki/minutes/sheets/drive/translation）
+//   即时消息组 AddFeishuImTools（im/attachment/board）
+//   通讯录组 AddFeishuContactTools（contact/部门查询）
+//   目标任务组 AddFeishuTaskOkrTools（task/okr）
+//   检索组 AddFeishuSearchTools（search/knowledge）
+//   组织人事组 AddFeishuPeopleTools（mdm/org/hire）
+//   会务考勤组 AddFeishuMeetingTools（attendance/vc）
+//   单域 AddFeishuBitableTools / AddFeishuSecurityTools / AddFeishuSparkTools
+//        / AddFeishuMailTools / AddFeishuCalendarTools
 ```
 
 ```jsonc
@@ -427,9 +436,15 @@ IToolSchemaExporter.Export(ToolSchemaDialect.Skills);
 
 ### 7.4 事件外桥：NDJSON（R7 / C7 · 生态位）
 
-> **⚠️ R-9**：`FeishuEventNdjsonBridge` / `RegexEventFileRouter` / `FeishuEventEnvelope` /
-> `IFeishuEventSink` / `IFeishuEventFileRouter` / `FeishuEventCatalog` 已迁到
-> **`Mud.Feishu.AI.Events`**（程序集 `Mud.Feishu.AI`）。语义不变，只改命名空间与程序集引用。
+> **⚠️ R-10（2026-10-12）：该生态位已从库中移出。** `FeishuEventNdjsonBridge` /
+> `RegexEventFileRouter` / `FeishuEventEnvelope` / `IFeishuEventSink` / `IFeishuEventFileRouter` /
+> `FeishuEventCatalog` 现为 **Demo 参考实现**（`Demos/Mud.Feishu.Agent.Demo/Events/`，
+> 命名空间 `Mud.Feishu.Agent.Demo.Events`），并在 `Modes/DomainEventsDemo.cs` 有**真实调用点**
+> （三条事件落本地 NDJSON + 落点数/落盘文件断言）。
+>
+> 理由：外桥是"把事件交给仓外进程"的**产品主张**，而库本身不做 IO；把它留在发布面等于承诺一条
+> 无人验证的路径。需要该能力的宿主可直接复制 Demo 实现（约 370 行，零 SDK 依赖，仅 System.Text.Json）。
+> 本节内容保留作为**设计说明**（格式 / 载荷原样嵌入 / fail-fast / 互斥闸门四条纪律在 Demo 版中逐字保持）。
 
 事件此前只能进**本进程内模型**；外桥把同一条事件以 NDJSON 交给仓外任意进程：
 

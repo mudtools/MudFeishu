@@ -1,4 +1,4 @@
-﻿{
+{
     "source":  "F-2 收官（机械化评审规则）：新增 public 类型必须登记\"消费方\"——本文件是\"冻结基线 + 增量理由\"两段式。baseline 为 2026-10-11 实测快照；之后新增的 public 类型必须出现在 reasons 里（键=类型全名，值=消费方说明），否则 PublicSurfaceRationaleContractGuards 报红。",
     "baselineGeneratedAt":  "2026-10-11",
     "baseline":  [
@@ -44,19 +44,13 @@
                      "Mud.Feishu.AI.Events.BitableRecordContextAssembler",
                      "Mud.Feishu.AI.Events.ContextBudgets",
                      "Mud.Feishu.AI.Events.ConversationalFeishuEventHandler\u003cT\u003e",
-                     "Mud.Feishu.AI.Events.FeishuEventCatalog",
-                     "Mud.Feishu.AI.Events.FeishuEventEnvelope",
                      "Mud.Feishu.AI.Events.FeishuEventFact",
                      "Mud.Feishu.AI.Events.FeishuEventKeys",
-                     "Mud.Feishu.AI.Events.FeishuEventNdjsonBridge",
                      "Mud.Feishu.AI.Events.IContextAssembler",
-                     "Mud.Feishu.AI.Events.IFeishuEventFileRouter",
-                     "Mud.Feishu.AI.Events.IFeishuEventSink",
                      "Mud.Feishu.AI.Events.ImConversationAssemblers",
                      "Mud.Feishu.AI.Events.ImConversationOptions",
                      "Mud.Feishu.AI.Events.ImMessageConversationalEventHandler",
                      "Mud.Feishu.AI.Events.QuoteMessageContextAssembler",
-                     "Mud.Feishu.AI.Events.RegexEventFileRouter",
                      "Mud.Feishu.AI.Events.SenderInfoContextAssembler",
                      "Mud.Feishu.AI.Events.TaskUpdatedConversationalEventHandler",
                      "Mud.Feishu.AI.Extensions.FeishuAgentServiceCollectionExtensions",

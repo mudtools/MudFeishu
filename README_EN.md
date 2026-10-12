@@ -53,7 +53,7 @@ AI capability is not a patch on the sample layer — it is a **first-class citiz
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  ⑤ Ecosystem  MCP Server (stdio)  ·  Skills export  ·  NDJSON│
+│  ⑤ Ecosystem  MCP Server (stdio)  ·  Skills export          │
 ├─────────────────────────────────────────────────────────────┤
 │  ④ Agent     Session management  ·  Streaming channel       │
 │              Event-driven conversation                      │
@@ -154,7 +154,7 @@ builder.Services.AddFeishuAgent(builder.Configuration) // Agent runtime
   approval request → rebuild tenant context → continue the run → persist. The sole owner of approval state is the host authorizer;
   the SDK issues no credentials whatsoever, so the model cannot self-approve.
 
-### ⑤ Ecosystem: MCP server + Skills export + NDJSON event bridge
+### ⑤ Ecosystem: MCP server + Skills export
 
 **MCP server** (`Mud.Feishu.AI.Mcp`, an independent optional package):
 
@@ -179,8 +179,11 @@ IToolSchemaExporter.Export(ToolSchemaDialect.Skills);
 `skills/feishu-{domain}/SKILL.md` plus `references/{topic}.md` for all 25 domains, loadable directly by out-of-repo agents
 (Claude Code / Cursor) to obtain Feishu domain knowledge. Every data source is a compile-time constant ⇒ zero reflection, zero IO, deterministic.
 
-**NDJSON event bridge**: `FeishuEventNdjsonBridge` hands Feishu events to any out-of-repo process as one-event-per-line NDJSON, with
-`payload` embedded verbatim (no longer re-serialized), which avoids field loss and AOT reflection back doors.
+**NDJSON event bridge** (a Demo reference implementation; not part of the shipped API since R-10): `FeishuEventNdjsonBridge`
+hands Feishu events to any out-of-repo process as one-event-per-line NDJSON, with `payload` embedded verbatim
+(no longer re-serialized), which avoids field loss and AOT reflection back doors. The implementation lives in
+`Demos/Mud.Feishu.Agent.Demo/Events/FeishuEventNdjsonBridge.cs` (~370 lines, zero SDK dependency) and has a real call
+site in `Modes/DomainEventsDemo.cs`.
 
 ---
 
@@ -272,7 +275,7 @@ systematic implementation yet, and MudFeishu is the **first complete realization
 | Multi-tenancy | Global static container, process-level singleton | appKey scope switching + AsyncLocal user context + cross-tenant recall is a data leak |
 | Serialization | `Newtonsoft.Json` reflection (unusable under AOT) | Source-generated `JsonSerializerContext`, AOT strict net-zero |
 | MCP tooling | None, or a reflection-based invoker | Self-implemented protocol-layer stdio server, zero bypass of the execution chain, tenant boundary = process |
-| Ecosystem integration | None | Skills artifacts shipped with the package (Claude Code / Cursor load them directly) + NDJSON event bridge |
+| Ecosystem integration | None | Skills artifacts shipped with the package (Claude Code / Cursor load them directly) + NDJSON event bridge (Demo reference implementation) |
 | Knowledge retrieval | None | Aily hosted + self-hosted RAG (structure-first chunking + vector retrieval), coexisting without conflict |
 | Streaming replies | None | EditMessageChannel / CardStreamMessageChannel / StreamingChannelChain |
 | Event-driven | Callback handler with a single-turn reply | Event → context assembly → Agent conversation → tool call → streamed reply |

@@ -141,7 +141,7 @@ builder.Services.AddFeishuAgent(builder.Configuration) // Agent 运行时
   加载会话 → 取原始审批请求 → 重建租户上下文 → 续跑 → 落库。批准状态唯一所有者是宿主授权器，
   SDK 不签发任何凭据，模型无法自批复。
 
-### ⑤ 生态位：MCP 服务器 + Skills 导出 + NDJSON 事件外桥
+### ⑤ 生态位：MCP 服务器 + Skills 导出
 
 **MCP 服务器**（`Mud.Feishu.AI.Mcp`，独立可选包）：
 
@@ -166,8 +166,10 @@ IToolSchemaExporter.Export(ToolSchemaDialect.Skills);
 25 个域的 `skills/feishu-{domain}/SKILL.md` + `references/{topic}.md`，仓外 Agent（Claude Code / Cursor）
 直接加载即获得飞书域知识。数据源全是编译期常量 ⇒ 零反射、零 IO、确定性。
 
-**NDJSON 事件外桥**：`FeishuEventNdjsonBridge` 把飞书事件以一行一事件的 NDJSON 交给仓外任意进程，
-`payload` 原样嵌入（不再序列化），避免字段丢失与 AOT 反射破口。
+**NDJSON 事件外桥**（Demo 参考实现，R-10 起不在库发布面）：把飞书事件以一行一事件的 NDJSON
+交给仓外任意进程，`payload` 原样嵌入（不再序列化），避免字段丢失与 AOT 反射破口。
+实现见 `Demos/Mud.Feishu.Agent.Demo/Events/FeishuEventNdjsonBridge.cs`（约 370 行、零 SDK 依赖），
+并在 `Modes/DomainEventsDemo.cs` 有真实调用点。库侧不再承诺该生态位——需要它的宿主复制 Demo 实现即可。
 
 ---
 
@@ -256,7 +258,7 @@ MudFeishu 是 AI 原生路线的**首个完整落地**。
 | 多租户 | 全局静态容器，进程级单例 | appKey 作用域切换 + 用户上下文 AsyncLocal + 跨租户召回即数据泄露 |
 | 序列化 | `Newtonsoft.Json` 反射（AOT 不可用） | 源生成 `JsonSerializerContext`，AOT strict 净零 |
 | MCP 工具 | 无，或反射调用器 | 自研协议层 stdio server，执行链零旁路，租户边界 = 进程 |
-| 生态对接 | 无 | Skills 产物随包分发（Claude Code / Cursor 直接加载）+ NDJSON 事件外桥 |
+| 生态对接 | 无 | Skills 产物随包分发（Claude Code / Cursor 直接加载）+ NDJSON 事件外桥（Demo 参考实现） |
 | 知识检索 | 无 | Aily 托管 + 自建 RAG（结构优先切片 + 向量检索），并存不冲突 |
 | 流式回复 | 无 | EditMessageChannel / CardStreamMessageChannel / StreamingChannelChain |
 | 事件驱动 | 回调处理器单轮回复 | 事件 → 上下文装配 → Agent 对话 → 工具调用 → 流式回复 |

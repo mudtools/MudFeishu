@@ -122,83 +122,54 @@ public static class FeishuToolsServiceCollectionExtensions
 
 
     /// <summary>
-    /// 按域注册 MDM 国家/地区工具（1 个只读：<c>mdm.get_countries</c>，F-1 首个补域切片）。
+    /// 按【域组】注册"组织与人事"工具（mdm 国家/地区 + org 组织元数据 + hire 招聘）。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**：
-    /// 少任何一处都会让 mdm 工具在对应入口下静默缺席（S-13 同款失败形态）。
+    /// F-3 / R1 §15.3（R-8 收尾）：原 3 个细粒度入口合并为本入口——三者在飞书产品面同属
+    /// "组织人事主数据"（国家/地区参考数据、职务/职级/职务族/工作城市、招聘岗位与候选人），
+    /// 且**共用同一授权面**（通讯录用户只读权限）。宿主只要子集时用 <c>FeishuAgent:Tools</c>
+    /// 白名单裁剪，不必回到"一域一入口"的粒度。
     /// </para>
     /// <para>
-    /// 需宿主已启用 MDM API（<c>IFeishuTenantV3MDMCountryRegion</c>）——缺席时本域工具软缺席。
-    /// 国家/地区属<b>公共参考数据</b>（非 PII），故不进 PII 登记。
-    /// 同域的用户数据维度绑定/解绑为写类，按写面纪律另立批次。
+    /// <b>PII 提示</b>：hire 候选人 / 面试 / Offer、以及 attendance 的流水查询默认不启用，
+    /// 需宿主显式加白名单（DP-A5-1 档位 ①）；投影已白名单化（身份证号/性别/年龄/籍贯/学历/经历不返回）。
     /// </para>
     /// </remarks>
-    public static IServiceCollection AddFeishuMdmCountryRegionTools(
-        this IServiceCollection services,
-        Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuCountryRegionToolsCore();
-
-
-    /// <summary>
-    /// 按域注册 org 组织元数据工具（8 个只读：职务 / 职级 / 职务族 / 工作城市，F-1 第三个补域）。
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**：
-    /// 少任何一处都会让 org 工具在对应入口下静默缺席（S-13 同款失败形态）。
-    /// </para>
-    /// <para>
-    /// 补齐"通讯录返回的 <c>job_title</c> / <c>job_level_id</c> / <c>job_family_id</c> / <c>city</c> 等 ID
-    /// → 可读组织元数据"缺口（与 <c>mdm.get_countries</c> 同类）。
-    /// <b>非 PII</b>（组织元数据），复用通讯录用户只读权限（与 <c>contact.*</c> 同一授权面）；
-    /// 四个 SDK 客户端均软依赖——对应客户端缺席时**只有该客户端**的工具软缺席。
-    /// </para>
-    /// </remarks>
-    public static IServiceCollection AddFeishuOrgMetadataTools(
-        this IServiceCollection services,
-        Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuOrgMetadataToolsCore();
-
-
-
-    /// <summary>
-    /// 按域注册 hire 招聘工具（4 个只读：岗位 2 + 候选人 2）。
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>岗位</b>（<c>hire.list_jobs</c> / <c>hire.get_job</c>）非 PII——组织对外招聘信息。
-    /// </para>
-    /// <para>
-    /// <b>候选人</b>（<c>hire.list_talents</c> / <c>hire.get_talent</c>）属 <b>PII（DP-A5-1 档位 ①）</b>：
-    /// 默认不启用，需宿主显式加入 <c>FeishuAgent:Tools</c>；投影已白名单化（身份证号/性别/年龄/籍贯/学历/经历等不返回）。
-    /// 同入口提供两者是有意为之——宿主启用招聘域时一次性看到全部招聘面（含 PII 提示），
-    /// 避免"只装了岗位入口、以为招聘面只有这么点"的错觉；"是否真的可用"仍由白名单决定。
-    /// </para>
-    /// </remarks>
-    public static IServiceCollection AddFeishuHireTools(
+    public static IServiceCollection AddFeishuPeopleTools(
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure)
+            .AddFeishuCountryRegionToolsCore()
+            .AddFeishuOrgMetadataToolsCore()
             .AddFeishuHireJobToolsCore()
             .AddFeishuHireJobRequirementToolsCore()
             .AddFeishuHireTalentToolsCore()
             .AddFeishuHireInterviewToolsCore()
             .AddFeishuHireOfferToolsCore();
 
-
-
-    /// <summary>按域注册 Attendance 考勤工具（7 个只读 + 1 个写，R7/A5）。</summary>
+    /// <summary>
+    /// 按【域组】注册"会务与考勤"工具（attendance 考勤 + vc 视频会议）。
+    /// </summary>
     /// <remarks>
-    /// ⚠️ <c>attendance.query_user_flow</c> / <c>attendance.get_flow</c> 是 <b>PII 敏感</b>且<b>默认不启用</b>
-    /// （DP-A5-1 档位 ①）——宿主须显式加白名单；<c>attendance.query_my_flow</c> 是 <b>user 身份</b>工具，
+    /// <para>
+    /// F-3 / R1 §15.3（R-8 收尾）：两者在飞书产品面同属"效率套件"的<b>人与时间</b>管理面
+    /// （出勤流水 / 会议预约与参会人），且都含 <b>user 身份</b>工具
+    /// （<c>attendance.query_my_flow</c> / <c>vc.invite_participants</c> / <c>vc.end_meeting</c>）——
     /// 启用时必须在 <c>FeishuAgent:AllowedIdentities</c> 放行 <c>user</c>，否则装配期 fail-fast。
+    /// </para>
+    /// <para>
+    /// ⚠️ attendance 的流水查询与 vc 的写工具默认不启用（PII / 副作用），需宿主显式加白名单。
+    /// vc 的写工具（invite / end）按写面纪律经 <see cref="AddFeishuWriteTools"/> 登记。
+    /// </para>
     /// </remarks>
-    public static IServiceCollection AddFeishuAttendanceTools(
+    public static IServiceCollection AddFeishuMeetingTools(
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuAttendanceToolsCore();
+        => AddFeishuToolInfrastructure(services, configure)
+            .AddFeishuAttendanceToolsCore()
+            .AddFeishuVcToolsCore();
+
 
     /// <summary>按域注册 Spark 妙搭工具（10 个：应用面 6 + 数据表面 4，R7/A6）。</summary>
     /// <remarks>
@@ -212,17 +183,6 @@ public static class FeishuToolsServiceCollectionExtensions
             .AddFeishuSparkAppToolsCore()
             .AddFeishuSparkTableToolsCore();
 
-
-    /// <summary>按域注册 VideoConferencing 只读工具（6 个只读，R6/S3；写工具经 <see cref="AddFeishuWriteTools"/>）。</summary>
-    /// <remarks>
-    /// 与 <see cref="AddFeishuReadonlyToolCores"/> 中的登记**成对存在**（S-13 的同款失败形态）。
-    /// 注意：<c>vc.invite_participants</c> / <c>vc.end_meeting</c> 是 <b>user 身份</b>工具，
-    /// 宿主启用它们时必须在 <c>FeishuAgent:AllowedIdentities</c> 放行 <c>user</c>，否则装配期 fail-fast。
-    /// </remarks>
-    public static IServiceCollection AddFeishuVcTools(
-        this IServiceCollection services,
-        Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuVcToolsCore();
 
     /// <summary>按域注册 Search 工具（1 个只读）。</summary>
     public static IServiceCollection AddFeishuSearchTools(
@@ -266,6 +226,13 @@ public static class FeishuToolsServiceCollectionExtensions
     /// <remarks>
     /// 读侧（list/get）需 <c>IFeishuTenantV1MailMessage</c>（租户令牌），发信需 <c>IFeishuUserV1MailDraft</c>（用户令牌）——
     /// 两者均可软缺席（客户端缺席时对应工具不注册）。
+    /// <para>
+    /// ⚠️ <b>与全域/写域入口不可叠加</b>：mail 是「读写混合域」，其 Core（<c>AddFeishuMailToolsCore</c>）
+    /// <b>只在写链</b>（<see cref="AddFeishuWriteToolCores"/>）登记；本入口再登记一次 ⇒ 同一个域注册器被装配两次 ⇒
+    /// <c>FeishuToolRegistry</c> 抛"工具已注册"（与 CloudDoc 的评论/权限、Contact 的 contactDepartment 同款陷阱）。
+    /// 宿主要么只调本入口，要么调 <see cref="AddFeishuTools"/>/<see cref="AddFeishuWriteTools"/>
+    /// （后者同样包含 mail 读侧）——二者取一，再用 <c>FeishuAgent:Tools</c> 白名单裁剪。
+    /// </para>
     /// </remarks>
     public static IServiceCollection AddFeishuMailTools(
         this IServiceCollection services,

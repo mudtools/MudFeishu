@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.Conversations;
 using Mud.Feishu.Abstractions.Services;
+using Mud.Feishu.Agent.Demo.Events;
 using Mud.Feishu.AI.Agents;
 using Mud.Feishu.AI.Channels;
 using Mud.Feishu.AI.Events;
@@ -50,9 +51,11 @@ namespace Mud.Feishu.Agent.Demo;
 /// 生产形态是"通道派发 + 应用键访问器提供键"，本模式用 <see cref="DemoAppKeyAccessor"/> 提供等价事实。
 /// </para>
 /// <para>
-/// <b>两节演示</b>：① 三个领域处理器各走一轮真实事件（含上下文装配器端到端）；
-/// ② 流式通道降级链走一轮真实流式回复，并对"增量落点次数"做断言（0 次即抛——链路没被走通）。
-/// 未配置 <c>StreamChatId</c> 时跳过 ② 并打印提示（不静默降级成"看起来跑过了"）。
+/// <b>三节演示</b>：① 三个领域处理器各走一轮真实事件（含上下文装配器端到端）；
+/// ② 同一条事件经 <b>NDJSON 外桥</b>（<see cref="FeishuEventNdjsonBridge"/>，R-10 起作为 Demo 参考实现）
+/// 落到本地目录——演示"事件交给仓外进程消费"的生态位；③ 流式通道降级链走一轮真实流式回复，
+/// 并对"增量落点次数"做断言（0 次即抛——链路没被走通）。
+/// 未配置 <c>StreamChatId</c> 时跳过 ③ 并打印提示（不静默降级成"看起来跑过了"）。
 /// </para>
 /// </remarks>
 public static class DomainEventsDemo
@@ -160,7 +163,10 @@ public static class DomainEventsDemo
             "任务更新（task.task.updated_v1）",
             ct => provider.GetRequiredService<TaskUpdatedConversationalEventHandler>().HandleAsync(TaskEvent(), ct));
 
-        // ── ② 流式通道降级链走一轮真实流式回复 ──
+        // ── ② NDJSON 外桥：同一条事件以"原始载荷"交给仓外进程（R-10 起为 Demo 参考实现）──
+        await BridgeEventsAsync(settings);
+
+        // ── ③ 流式通道降级链走一轮真实流式回复 ──
         if (channel is null || string.IsNullOrEmpty(settings.StreamChatId))
         {
             Console.WriteLine(
@@ -215,6 +221,88 @@ public static class DomainEventsDemo
         await dispatch(CancellationToken.None);
         Console.WriteLine($"  {label} 已处理（可投递 ⇒ 回复已下发；不可投递 ⇒ 已在模型调用前短路）");
     }
+
+    /// <summary>
+    /// <b>② NDJSON 外桥</b>：把本节构造的三条事件以<b>原始载荷</b>写入本地目录
+    /// （一行一个 JSON 对象），演示"事件交给仓外任意进程消费"的生态位。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 为什么用<b>原始载荷</b>而不是二次序列化对象：外桥的职责是"把线上看到的原样给出"——
+    /// 避免字段丢失、AOT 反射序列化破口，以及"本仓 JSON 上下文成为格式瓶颈"。
+    /// 生产接入点通常挂在 WebSocket/Webhook 通道的事件出口处（<c>IFeishuEventSink</c>），
+    /// 本 Demo 不经通道，故直接构造信封写入。
+    /// </para>
+    /// <para>
+    /// <b>互斥闸门</b>：本模式上方已经装配了会话式事件处理器，因此这里必须显式声明
+    /// "事件面互斥"（<see cref="FeishuEventNdjsonBridge.AllowConcurrentWithConversational"/>）——
+    /// 默认路径会抛错，强制宿主想清楚"同一事件既进模型又外桥"的双重副作用。
+    /// </para>
+    /// </remarks>
+    private static async Task BridgeEventsAsync(DomainEventsDemoSettings settings)
+    {
+        // 三条处理器已在上面装配 ⇒ 默认互斥检查必然抛错，这里按演示语义显式放行（理由即上面这句注释）。
+        FeishuEventNdjsonBridge.AllowConcurrentWithConversational(
+            "本 Demo 的事件载荷由代码构造：同一事件既进处理器（①）又落外桥（②），"
+            + "两侧副作用不同（回复发给操作人 / 落本地 NDJSON），事件面不重叠");
+
+        var outputDirectory = Path.Combine(
+            AppContext.BaseDirectory, "events-demo", DomainEventsDemoSettings.SectionName);
+
+        using var bridge = new FeishuEventNdjsonBridge(
+            output: null, // 只走路由落盘（不往 stdout 刷 NDJSON，避免污染 REPL 输出）
+            router: new RegexEventFileRouter(
+                outputDirectory,
+                ("^approval\\.", "approval"),
+                ("^bitable\\.", "bitable"),
+                ("^task\\.", "task")));
+
+        await bridge.WriteAsync(new FeishuEventEnvelope(
+            EventKey: "approval.task.updated_v1",
+            PayloadJson: ApprovalPayloadJson(),
+            AppKey: DemoAgentDefaults.DefaultAppKey,
+            EventId: "evt-demo-approval"));
+
+        await bridge.WriteAsync(new FeishuEventEnvelope(
+            EventKey: "bitable.record_changed_v1",
+            PayloadJson: BitablePayloadJson(),
+            AppKey: DemoAgentDefaults.DefaultAppKey,
+            EventId: "evt-demo-bitable"));
+
+        await bridge.WriteAsync(new FeishuEventEnvelope(
+            EventKey: "task.task.updated_v1",
+            PayloadJson: TaskPayloadJson(),
+            AppKey: DemoAgentDefaults.DefaultAppKey,
+            EventId: "evt-demo-task"));
+
+        // 落点断言（与流式链路同款纪律）：写了几条、落在哪，必须当场可见。
+        if (bridge.WrittenCount != 3)
+        {
+            throw new InvalidOperationException(
+                $"NDJSON 外桥写入了 {bridge.WrittenCount} 条事件（期望 3）——外桥丢事件是最难发现的故障，宁可接入时就抛");
+        }
+
+        var landed = Directory.GetFiles(outputDirectory, "*.ndjson", SearchOption.AllDirectories);
+        if (landed.Length == 0)
+        {
+            throw new InvalidOperationException(
+                $"NDJSON 外桥报告写入 {bridge.WrittenCount} 条，但 {outputDirectory} 下没有任何 .ndjson 落盘——"
+                + "路由未命中（正则与事件键不匹配）时外桥会静默不落盘，必须在此暴露");
+        }
+
+        Console.WriteLine(
+            $"NDJSON 外桥完成：{bridge.WrittenCount} 条事件 → {outputDirectory}（{landed.Length} 个 .ndjson："
+            + string.Join("、", landed.Select(static f => Path.GetFileName(f))) + "）");
+    }
+
+    /// <summary>审批事件的<b>原始</b>载荷文本（模拟传输层原文；外桥原样嵌入，不二次序列化）。</summary>
+    private static string ApprovalPayloadJson() => """{"instance_code":"inst-demo-1","task_id":"task-demo-1","status":"PENDING"}""";
+
+    /// <summary>多维表格记录变更事件的原始载荷文本。</summary>
+    private static string BitablePayloadJson() => """{"file_token":"bascnDemoAppToken","table_id":"tblDemo","revision":1}""";
+
+    /// <summary>任务更新事件的原始载荷文本。</summary>
+    private static string TaskPayloadJson() => """{"task_id":"task-demo-2","obj_type":1}""";
 
     /// <summary>审批任务事件载荷（<c>PENDING</c>：操作人 open_id 非空 ⇒ 可投递到其单聊）。</summary>
     private static EventData ApprovalEvent() => new()

@@ -149,6 +149,52 @@ public class DomainEventsDemoContractGuards
             "必须提供应用键事实——缺它时处理器会因『有工具链 + 无 appKey』fail-closed（R2-3）");
     }
 
+    /// <summary>⑤ 事件外桥（R-10）：Demo 必须真的写 NDJSON，并对落点数/落盘文件做断言。</summary>
+    /// <remarks>
+    /// 与流式链路同款纪律："存在即可"不算通过——外桥丢事件是最难发现的故障形态
+    /// （表现为"某个订阅一直没数据"），故守卫断言 Demo 既调用 <c>WriteAsync</c>，
+    /// 又对 <c>WrittenCount</c> 与实际 <c>.ndjson</c> 文件做<b>零容忍</b>断言。
+    /// 互斥闸门（<c>AllowConcurrentWithConversational</c>）必须显式出现——本模式上方装配了
+    /// 会话式处理器，默认路径会抛错，这正是该闸门存在的理由。
+    /// </remarks>
+    [Fact]
+    public void EventBridge_ShouldBeInvoked_WithLandingAssertions()
+    {
+        var source = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(), DemoModeFile.Replace('/', Path.DirectorySeparatorChar)));
+
+        source.Should().Contain("FeishuEventNdjsonBridge", "Demo 必须构造 NDJSON 外桥（R-10 的落点）");
+        source.Should().Contain(".WriteAsync(", "外桥必须被真实调用（只 new 不写 = 没有调用点）");
+        source.Should().Contain("WrittenCount", "必须对写出条数做断言（外桥丢事件无其它信号）");
+        source.Should().Contain(
+            "AllowConcurrentWithConversational",
+            "本模式同时装配了会话式处理器，必须显式声明事件面互斥（默认路径抛错——闸门的意义）");
+    }
+
+    /// <summary>⑥ 事件外桥的类型面：桥本体与路由必须是 Demo 内的公开参考实现。</summary>
+    /// <remarks>
+    /// R-10：外桥与事件目录从 `Mud.Feishu.AI` 迁出后，库**不再承诺**该生态位（公开面 -37 条）；
+    /// 它们作为 Demo 参考实现存在，故其类型必须真的在 Demo 程序集内且可构造。
+    /// </remarks>
+    [Fact]
+    public void EventBridgeTypes_ShouldLiveInTheDemoAssembly()
+    {
+        var assembly = typeof(DomainEventsDemo).Assembly;
+
+        assembly.GetType("Mud.Feishu.Agent.Demo.Events.FeishuEventNdjsonBridge").Should().NotBeNull(
+            "外桥实现必须随 Demo 分发（R-10：库不再承诺该生态位）");
+        assembly.GetType("Mud.Feishu.Agent.Demo.Events.RegexEventFileRouter").Should().NotBeNull();
+        assembly.GetType("Mud.Feishu.Agent.Demo.Events.FeishuEventEnvelope").Should().NotBeNull();
+        assembly.GetType("Mud.Feishu.Agent.Demo.Events.FeishuEventCatalog").Should().NotBeNull();
+
+        // 反向自证：桥必须真的在 Demo 里被引用（而不是"迁了个文件没人用"）。
+        assembly.GetType("Mud.Feishu.Agent.Demo.Events.FeishuEventNdjsonBridge")!
+            .Should().NotBeNull();
+        typeof(Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<>).Assembly
+            .GetType("Mud.Feishu.AI.Events.FeishuEventNdjsonBridge").Should().BeNull(
+            "R-10 防回流：库程序集不得再暴露外桥类型（否则生态位承诺又回到发布面上）");
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = AppContext.BaseDirectory;

@@ -45,13 +45,29 @@
   `009-tools = 68`（= 基线）、全量测试 **≈10,836 全绿**、AOT 严格模式净零、
   `review-ai-changes.ps1` / `audit-config-keys.ps1 -Strict` 通过。此后还原一律来自 nuget.org。
 
-## [Unreleased] - AI 工具面架构重构 R1（阶段 0/1/1B/2/3/4/6 + 阶段 5）：出站唯一出口 + 删 api_call + 执行层收敛 + 公开面收敛 + 集成面并入 AI（2026-10-10）
+## [Unreleased] - AI 工具面架构重构 R1（阶段 0–6 全关）：出站唯一出口 + 删 api_call + 执行层收敛 + 公开面收敛 + 集成面并入 AI + 入口/生态位收尾（2026-10-12）
 
 > 方案与多维评审见 `.docs/AI/MudFeishu-AI-Tools-架构审查与重构方案-R1.md`（§13 评审结论、§14/§15 落地核验）。
 > **AI 模块尚未发布，无兼容负担**；工具面 **163 → 162**（删除 `feishu.api_call`）。
 
 ### 💥 破坏性变更
 
+- **R-8 收尾：装配入口收敛到 12 个逐域入口**：在 F-3 的 5 个域组（云文档 / 即时消息 / 通讯录 / 目标任务 / 检索）
+  + 10 个单域基础上，再合并 **组织与人事**（`AddFeishuPeopleTools` = mdm 国家/地区 + org 组织元数据 + hire 招聘）
+  与 **会务与考勤**（`AddFeishuMeetingTools` = attendance + vc）⇒ 逐域入口 **12 个**，公开 `Add*` 合计 **16 个**
+  （12 逐域 + 全域 `AddFeishuTools`/`AddFeishuWriteTools` + 元工具 `AddFeishuCapabilityTools`/`AddFeishuSchemaReadTools`）。
+  删除的 5 个细粒度入口：`AddFeishuMdmCountryRegionTools` / `AddFeishuOrgMetadataTools` / `AddFeishuHireTools` /
+  `AddFeishuAttendanceTools` / `AddFeishuVcTools`。**实测逮到的真陷阱**：mail 是"读写混合域"但其 Core 只在写链登记，
+  等价性用例同时调 `AddFeishuMailTools` 与 `AddFeishuWriteTools` 会双注册 ⇒ `FeishuToolRegistry` 抛"工具已注册"
+  （与云文档的评论/权限、通讯录的部门轴同款形态）——已在入口 XML 注释与用例注释双向登记。
+- **R-10 收尾：NDJSON 事件外桥与事件目录移出库发布面**：`FeishuEventNdjsonBridge` / `RegexEventFileRouter` /
+  `FeishuEventEnvelope` / `IFeishuEventSink` / `IFeishuEventFileRouter` / `FeishuEventCatalog` 共 **37 条公开面**
+  从 `Mud.Feishu.AI` 移出，落点 `Demos/Mud.Feishu.Agent.Demo/Events/`（命名空间 `Mud.Feishu.Agent.Demo.Events`），
+  并在 `Modes/DomainEventsDemo.cs` 获得**真实调用点**（三条事件落本地 NDJSON + 落点数/落盘文件断言 + 互斥闸门显式放行）；
+  测试随迁至 `Tests/Mud.Feishu.Agent.Demo.Tests/Events/`，新增两条守卫（外桥被真实调用且带落点断言 /
+  外桥类型在 Demo 程序集内**且库程序集不得再暴露**——防回流）。
+  理由：外桥是"把事件交给仓外进程"的**产品主张**，而库本身不做 IO；留在发布面等于承诺一条无人验证的路径。
+  **Skills 导出仍保留**（`IToolSchemaExporter` + 随包分发，生态位声明已写入该接口 remarks）。
 - **R-9：飞书 Agent 集成面并入 `Mud.Feishu.AI`（阶段 5，最高价值项）**：
   - **迁移**：`Channels/`（4 类：`BufferedMessageChannel` / `CardStreamMessageChannel` / `EditMessageChannel` /
     `StreamingChannelChain`）、`Events/`（8 类：三个领域会话处理器 + `ImMessageConversationalEventHandler` +
@@ -175,12 +191,13 @@
 
 ### 📊 测试基线
 
-- `Tests/Mud.Feishu.AI.Tools.Tests`：**800 × 2 TFM 全绿**（R-9 后：集成面 9 个测试文件迁出至 `Mud.Feishu.AI.Tests`；
+- `Tests/Mud.Feishu.AI.Tools.Tests`：**894 × 2 TFM 全绿**（R-9 后：集成面 9 个测试文件迁出至 `Mud.Feishu.AI.Tests`；
   本轮新增 35 例形态等价 + 3 条守卫）。
 - `Tests/Mud.Feishu.AI.Tests`：**434 × 2 TFM 全绿**（原 357 + 迁入的通道/事件/知识用例 77）。
-- `Tests/Mud.Feishu.Agent.Demo.Tests`：**119 全绿**（新增 R-13 的 4 条链路守卫 + 领域事件模式配置键断言）。
+- `Tests/Mud.Feishu.Agent.Demo.Tests`：**143 全绿**（R-13 的 4 条链路守卫 + 领域事件模式配置键断言 +
+  R-10 的 2 条外桥守卫 + 迁入的 22 例外桥用例）。
 - 构建：`Mud.Feishu.AI` / `Mud.Feishu.AI.Tools` / `Mud.Feishu.AI.Mcp` 四 TFM **0 错误**；
-  两包 `RS0016/RS0017` 均为 **0**（公开面基线已同步：AI.Tools 894、AI 845）。
+  两包 `RS0016/RS0017` 均为 **0**（公开面基线：AI.Tools **1188**、AI **611**——后者含 R-10 移出的 37 条外桥条目）。
 
 
 ## [Unreleased] - R7 收尾：PM 最终裁定（§8.5）+ 两个重叠契约清理 + 错误子类闭集诚实化（2026-10-10）

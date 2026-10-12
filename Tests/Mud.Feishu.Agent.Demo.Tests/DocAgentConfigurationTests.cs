@@ -360,12 +360,51 @@ public class TemplateFileTests
         settings.SummaryThreshold.Should().Be(DocAgentSettings.DefaultSummaryThreshold);
     }
 
-    /// <summary>模板默认不启用本模式（避免"拉下代码就自动进 Demo 模式"）。</summary>
+    /// <summary>
+    /// 模板**至多启用一个**模式（互斥分发的前提），且默认模式必须是文档业务智能体。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么允许模板启用一个模式</b>（2026-10-12 修订）：原判据是"模板不得启用任何模式"，
+    /// 随后 Demo 的默认体验被有意改为"clone 即进入文档业务智能体"（commit 8e62367b）——
+    /// 原判据与该决策冲突。真正要防的是<b>多个模式同时启用</b>（互斥分发按序命中，
+    /// 后置开关静默失效 ⇒ 开发者以为配了却没进对应模式）。
+    /// </para>
+    /// <para>
+    /// 默认模式固定为 <see cref="DocAgentSettings"/>：它是唯一需要完整飞书凭证 + 白名单联调的模式，
+    /// 也是 README 的主线；其余模式（工具冒烟 / IM 接入 / 领域事件）须由开发者显式打开。
+    /// </para>
+    /// </remarks>
     [Fact]
-    public void Template_ShouldNotEnableTheDemo()
+    public void Template_ShouldEnableAtMostOneMode_AndDefaultToDocAgent()
     {
-        DocAgentSettings.IsEnabledByConfiguration(TemplateConfiguration())
-            .Should().BeFalse();
+        var template = TemplateConfiguration();
+
+        var enabledModes = new List<string>();
+        if (DocAgentSettings.IsEnabledByConfiguration(template))
+        {
+            enabledModes.Add(DocAgentSettings.SectionName);
+        }
+
+        if (template.GetValue<bool?>(ToolsDemoSettings.EnabledKey) is true)
+        {
+            enabledModes.Add(ToolsDemoSettings.SectionName);
+        }
+
+        if (template.GetValue<bool?>(ImHandlerDemoSettings.EnabledKey) is true)
+        {
+            enabledModes.Add(ImHandlerDemoSettings.SectionName);
+        }
+
+        if (template.GetValue<bool?>(DomainEventsDemoSettings.EnabledKey) is true)
+        {
+            enabledModes.Add(DomainEventsDemoSettings.SectionName);
+        }
+
+        enabledModes.Should().BeEquivalentTo(
+            new[] { DocAgentSettings.SectionName },
+            "模板必须恰好启用一个模式（文档业务智能体）：多启用会让互斥分发静默吃掉后置开关，"
+            + "零启用则违背『clone 即可体验主线』的默认体验决策");
     }
 
     /// <summary>模板里的密钥字段必须留空（提交真实密钥是最高危的疏漏）。</summary>

@@ -375,6 +375,9 @@ Mud.Feishu.Agent.Demo/
 │   ├── ToolsDemo.cs              # Phase 1/2 全域只读工具冒烟
 │   ├── ImConversationDemo.cs     # P2D-5a IM 会话处理器注册面演示
 │   └── DomainEventsDemo.cs       # R-13 领域事件处理器 + 流式通道降级链
+├── Events/                       # R-10：NDJSON 事件外桥参考实现（库不再承诺该生态位）
+│   ├── FeishuEventNdjsonBridge.cs # 外桥 + 信封 + 文件路由（约 370 行，零 SDK 依赖）
+│   └── FeishuEventCatalog.cs      # 事件键自省（反射 FeishuEventTypes 常量）
 └── DocAgent/                     # 文档业务智能体
     ├── DocAgentDemo.cs           # 装配根：DI 组合 + 能力面横幅
     ├── DocAgentSettings.cs       # FeishuDocAgent 节设置

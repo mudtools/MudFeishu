@@ -7,10 +7,10 @@
 
 using System.Text;
 using Microsoft.Extensions.Logging.Abstractions;
-using Mud.Feishu.AI.Events;
+using Mud.Feishu.Agent.Demo.Events;
 using Mud.Feishu.EventCallback;
 
-namespace Mud.Feishu.AI.Tests.Events;
+namespace Mud.Feishu.Agent.Demo.Tests.Events;
 
 /// <summary>
 /// R7 / C7：NDJSON 事件外桥——行格式、载荷原样嵌入、非法载荷 fail-fast、正则路由落盘、

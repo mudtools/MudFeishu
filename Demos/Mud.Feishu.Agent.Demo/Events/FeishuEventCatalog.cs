@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -8,7 +8,7 @@
 using System.Reflection;
 using Mud.Feishu.EventCallback;
 
-namespace Mud.Feishu.AI.Events;
+namespace Mud.Feishu.Agent.Demo.Events;
 
 /// <summary>
 /// 事件目录（R7 / C7 的"事件自省"面）：列出本 SDK 支持的<b>全部事件键</b>。

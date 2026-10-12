@@ -28,9 +28,12 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// </remarks>
 public class PublicSurfaceRationaleContractGuards
 {
-    // R-3 / F-8：289 → 290（新增 ISkillDocumentReader 一个公开类型；理由已登记在
+    // F-2 收官：289 → 290（新增 ISkillDocumentReader 一个公开类型；理由已登记在
     // public-surface-rationale.json 的 reasons 段，本常量与公开面总数同步）。
-    private const int BaselineTypeCount = 290;
+    // R-10（2026-10-12）：290 → **284**——NDJSON 事件外桥与事件目录共 6 个 public 类型
+    // （FeishuEventEnvelope / IFeishuEventSink / IFeishuEventFileRouter / FeishuEventNdjsonBridge /
+    //  RegexEventFileRouter / FeishuEventCatalog）移出库发布面（降为 Demo 参考实现）。
+    private const int BaselineTypeCount = 284;
 
     private static readonly string[] ApiFiles =
     [

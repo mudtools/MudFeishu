@@ -176,33 +176,33 @@ public class DomainRegistrarTests
         using var perDomainProvider = new ServiceCollection()
             .AddSingleton(Options.Create(new FeishuAgentOptions { Instructions = "test", Tools = allDomainOptions }))
             .Apply(mockClients)
-            // ── F-3 收敛后的公开入口清单（19 个：域组 5 + 单域 10 + 全域 2 + 元工具 2）──
+            // ── 公开入口清单（16 个：逐域 12 + 全域 2 + 元工具 2）──
             // "全域 = 逐域联合"的等价性要求**每个公开入口都被显式调一次**；
-            // 过去这里的清单就是"入口清单真相源"，F-3 后仍保持该性质（漏一个入口 ⇒ 本用例报红）。
+            // 过去这里的清单就是"入口清单真相源"，F-3/R-8 收敛后仍保持该性质（漏一个入口 ⇒ 本用例报红）。
             .AddFeishuBitableTools()
-            // 域组①：云文档（docx + docxDeep + wiki + minutesRead + sheets + drive + 评论 + 权限 + 翻译）。
+            // 域组①：云文档（docx + docxDeep + wiki + minutesRead + sheets + drive + 翻译；
+            //         评论 / 权限是 drive 的读写混合子能力，按链拆分只在写链登记，避免重复装配）。
             .AddFeishuCloudDocTools()
             // 域组②：即时消息（im + attachment + board）。
             .AddFeishuImTools()
-            // 域组③：通讯录（contact + contactDepartment + contactDepartmentQuery）。
+            // 域组③：通讯录（contact + contactDepartmentQuery；contactDepartment 读侧随写链登记）。
             .AddFeishuContactTools()
             // 域组④：目标与任务（task + okr）。
             .AddFeishuTaskOkrTools()
             // 域组⑤：检索（search + knowledge）。
             .AddFeishuSearchTools()
+            // 域组⑥：组织与人事（mdm 国家/地区 + org 组织元数据 + hire 招聘；R-8 收尾合并）。
+            .AddFeishuPeopleTools()
+            // 域组⑦：会务与考勤（attendance + vc；R-8 收尾合并——同为"人与时间"管理面且都含 user 身份工具）。
+            .AddFeishuMeetingTools()
             .AddFeishuCalendarTools()
-            .AddFeishuAttendanceTools()
             .AddFeishuSparkTools()
-            // F-1：MDM 国家/地区只读域（非 PII）。
-            .AddFeishuMdmCountryRegionTools()
-            // F-1：org 组织元数据（职务 / 职级 / 职务族 / 工作城市，非 PII）。
-            .AddFeishuOrgMetadataTools()
             // F-1：security 安全合规（行为审计 + 应用调用日志，均 PII 且默认不启用）。
             .AddFeishuSecurityTools()
-            // F-1 P0 + 后续：hire 招聘（岗位 2 + 候选人 2，候选人属 PII）。
-            .AddFeishuHireTools()
-            // R6 / S3：VideoConferencing 只读域同理（写面含 user 身份工具，由 AddFeishuWriteTools 覆盖）。
-            .AddFeishuVcTools()
+            // ⚠️ mail **不**在本清单里显式调用：它是「读写混合域」，其 Core 只在写链登记
+            // （与 CloudDoc 的评论/权限、Contact 的 contactDepartment 同款陷阱）——
+            // 本清单已调 AddFeishuWriteTools，再调 AddFeishuMailTools 会双注册 ⇒
+            // FeishuToolRegistry 抛"工具已注册"（这正是本轮实测逮到的形态）。
             // 能力出处元工具是一个独立入口：它不属于任何业务域，
             // 故"全域 = 逐域联合"的等价性要求这里也显式调一次。
             .AddFeishuCapabilityTools()

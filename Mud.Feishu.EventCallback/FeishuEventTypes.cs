@@ -630,7 +630,7 @@ public static class FeishuEventTypes
     public const string MeetingRoomDeleted = "meeting_room.meeting_room.deleted_v1";
     #endregion
 
-#region Moments Events
+    #region Moments Events
     /// <summary>
     /// 发布帖子
     /// </summary>
@@ -715,7 +715,7 @@ public static class FeishuEventTypes
     public const string PayrollPaymentActivityApproved = "payroll.payment_activity.approved_v1";
 
     #endregion
-#region CoreHr Events
+    #region CoreHr Events
     /// <summary>
     /// 元数据信息变更
     /// </summary>
@@ -857,7 +857,7 @@ public static class FeishuEventTypes
     public const string CoreHrOffboardingUpdated = "corehr.offboarding.updated_v1";
 
     #endregion
-#region CoreHrV2 Events
+    #region CoreHrV2 Events
     /// <summary>
     /// 人员信息变更
     /// </summary>

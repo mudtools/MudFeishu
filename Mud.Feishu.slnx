@@ -17,13 +17,14 @@
     <File Path="icon.png" />
     <File Path="README.md" />
   </Folder>
-  <Folder Name="/Sources/">
-    <Project Path="Mud.Feishu.Abstractions/Mud.Feishu.Abstractions.csproj" Id="b04973d2-c477-49a7-a00f-04288a8cabac" />
-    <Project Path="Mud.Feishu.AI.Tools/Mud.Feishu.AI.Tools.csproj" />
-    <!-- R7 / C6b（DP-C6-1）：MCP server 是**可选包**，不入主依赖链的工具包引用图
-         （只有本目录引用 AI/AI.Tools，反向不存在）。 -->
+  <Folder Name="/Sources/" />
+  <Folder Name="/Sources/AI/">
     <Project Path="Mud.Feishu.AI.Mcp/Mud.Feishu.AI.Mcp.csproj" />
+    <Project Path="Mud.Feishu.AI.Tools/Mud.Feishu.AI.Tools.csproj" />
     <Project Path="Mud.Feishu.AI/Mud.Feishu.AI.csproj" />
+  </Folder>
+  <Folder Name="/Sources/SDK/">
+    <Project Path="Mud.Feishu.Abstractions/Mud.Feishu.Abstractions.csproj" Id="b04973d2-c477-49a7-a00f-04288a8cabac" />
     <Project Path="Mud.Feishu.Authentication/Mud.Feishu.Authentication.csproj" />
     <Project Path="Mud.Feishu.DataModels/Mud.Feishu.DataModels.csproj" Id="d1068109-7be0-4c64-a97e-c7aba02d132b" />
     <Project Path="Mud.Feishu.EventCallback/Mud.Feishu.EventCallback.csproj" Id="21f330ea-c8c3-4d9e-9f72-0e9e9f4d28c1" />

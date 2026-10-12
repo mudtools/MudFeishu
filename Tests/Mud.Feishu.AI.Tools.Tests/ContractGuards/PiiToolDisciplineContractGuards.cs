@@ -56,6 +56,22 @@ public class PiiToolDisciplineContractGuards
         "mail.list_messages",
         "mail.get_message",
         "minutes.get_artifacts",
+
+        // F-1 P0：Security 行为审计日志（含他人 user_id / IP / 设备与地理位置），默认不启用。
+        "security.query_audit_logs",
+
+        // F-1 收官：Security 应用 API 调用日志（含调用方 IP；原始载荷已丢弃），默认不启用。
+        "security.list_openapi_logs",
+
+        // hire：候选人（人才）检索与详情（姓名/手机/邮箱），默认不启用；投影已丢弃身份证/学历/经历等。
+        "hire.list_talents",
+        "hire.get_talent",
+
+        // hire：面试安排（"某人正在应聘"的事实），默认不启用；投影只留时间/轮次/阶段。
+        "hire.list_interviews",
+
+        // hire：Offer 列表（"某人是否获得 Offer"的事实），默认不启用；接口结构性不含薪资条件。
+        "hire.list_offers",
     ];
 
     private sealed record PiiEntry(string Tool, string Category, bool DefaultDisabled, string Note);

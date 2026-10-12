@@ -55,9 +55,11 @@ public class ToolEgressPurificationContractGuards
             RegexOptions.Singleline);
         coreSink.Success.Should().BeTrue(
             "R3-4：必须存在模型可见出口的唯一闸门 EgressResult(string message)");
+        // ⚠️ `\(\s*string` 而非 `\(string`：R-3/BUG-8 给分类出口加了可选形参（suggestions）后
+        // 形参列表换行书写，紧邻式正则会把"出口存在"误判为"不存在"（假红）。
         var classifiedSink = Regex.Match(
             source,
-            @"private\s+FeishuToolResult\s+EgressResult\(string\s+toolName,\s*ToolErrorCategory\s+category[^)]*\)\s*\{[^{}]*\}",
+            @"private\s+FeishuToolResult\s+EgressResult\(\s*string\s+toolName,\s*ToolErrorCategory\s+category[^)]*\)\s*\{[^{}]*\}",
             RegexOptions.Singleline);
         classifiedSink.Success.Should().BeTrue(
             "B2：必须存在带 ToolErrorCategory 的分类出口（首行 JSON 载荷 + 净化正文）");
@@ -225,7 +227,7 @@ public class ToolEgressPurificationContractGuards
         // ③ 带分类的出口唯一：ToolErrorCategory → 模型文本只有一条路径，且它必须自净化。
         var classified = Regex.Match(
             source,
-            @"private\s+FeishuToolResult\s+EgressResult\(string\s+toolName,\s*ToolErrorCategory\s+category,\s*string\s+subtype,\s*string\s+reason[^)]*\)\s*(?<body>=>[^;]*;|\{.*?\})",
+            @"private\s+FeishuToolResult\s+EgressResult\(\s*string\s+toolName,\s*ToolErrorCategory\s+category,\s*string\s+subtype,\s*string\s+reason[^)]*\)\s*(?<body>=>[^;]*;|\{.*?\})",
             RegexOptions.Singleline);
         classified.Success.Should().BeTrue(
             "带 ToolErrorCategory 的分类出口必须存在（拒绝路径与 catch 分支共用，R3-4 收口）");

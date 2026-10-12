@@ -379,3 +379,58 @@ internal sealed record DomainEventsDemoSettings
         => value ?? throw new InvalidOperationException(
             $"请先设置 {FeishuDemoSettings.SectionName}:{key}");
 }
+
+/// <summary>
+/// R-3 / F-8：Skills 产物消费演示的配置（<b>不需要飞书凭证与模型配置</b>——本模式不连飞书）。
+/// </summary>
+/// <remarks>
+/// <para>
+/// 本模式是 <c>skills/**</c> 产物的<b>首个真实消费方</b>：把包内 <c>SKILL.md</c> 读出来并注入域 guidance，
+/// 用来闭环验证"产物格式有效、内容可消费"——此前该产物树随 NuGet 包分发，但仓内零消费者，
+/// "包内产物 == 读取内容"从未被任何路径验证过。
+/// </para>
+/// <para>
+/// 因此它只需要一个开关与一个域：<c>FeishuSkillsDemo:Enabled</c> / <c>FeishuSkillsDemo:Domain</c>。
+/// </para>
+/// </remarks>
+internal sealed record SkillsDemoSettings
+{
+    /// <summary>配置节名。</summary>
+    public const string SectionName = "FeishuSkillsDemo";
+
+    /// <summary>模式开关键。</summary>
+    public const string EnabledKey = SectionName + ":Enabled";
+
+    /// <summary>默认演示域（<c>im</c>：工具面最大、guidance 最长，最能暴露预算问题）。</summary>
+    public const string DefaultDomain = "im";
+
+    /// <summary>模式开关。</summary>
+    public bool Enabled { get; init; }
+
+    /// <summary>要展开的演示域（可空 ⇒ <see cref="DefaultDomain"/>）。</summary>
+    public string Domain { get; init; } = DefaultDomain;
+
+    /// <summary>从配置文件读取 Skills 消费演示配置。</summary>
+    /// <param name="configuration">配置来源。</param>
+    /// <exception cref="ArgumentNullException"><paramref name="configuration"/> 为 <see langword="null"/>。</exception>
+    public static SkillsDemoSettings FromConfiguration(IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        return new SkillsDemoSettings
+        {
+            Enabled = configuration.GetValue<bool?>(EnabledKey) is true,
+            Domain = DemoConfigGuards.NullIfBlank(configuration[$"{SectionName}:Domain"]) ?? DefaultDomain,
+        };
+    }
+
+    /// <summary>校验配置合法（fail-fast）。</summary>
+    /// <exception cref="InvalidOperationException">域名为空。</exception>
+    public void Validate()
+    {
+        if (string.IsNullOrWhiteSpace(Domain))
+        {
+            throw new InvalidOperationException($"请先设置 {SectionName}:Domain（如 {DefaultDomain}）");
+        }
+    }
+}

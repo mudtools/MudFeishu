@@ -44,6 +44,71 @@ public class NonCuratedToolRegistryContractGuards
         ("BatchUpdateTableRecordsAsync", "spark：约束反直觉（不同行字段须一致）且与 spark.update_table_records 重叠"),
         ("DownloadWhiteboardImageAsync", "board：画板缩略图（返回 byte[]）→ A10 二进制防线"),
         ("GetMinuteTranscriptAsync", "minutes：逐字稿原文（长文本 + 附件通道）——结论/待办已由 minutes.get_artifacts 覆盖"),
+
+        // F-1 首个补域（MDM）：只策展只读的国家/地区批量查询，其余方法显式登记为"有意不策展"。
+        ("BindUserAuthDataRelationAsync", "mdm：写类（用户数据维度绑定，涉及用户 ID）——**产品裁定不策展**：HR/组织主数据写入属管理后台职责（AI 走「提议 → 人工执行」）"),
+        ("UnbindUserAuthDataRelationAsync", "mdm：写类（解绑），同上"),
+        ("ListCountryRegionsAsync", "mdm：带 filter 表达式体的分页查询——首个切片只策展 mdm.get_countries，本方法留待下一片"),
+
+        // F-1 P0（Security）：只策展只读的"行为审计日志"；其余 12 个方法显式登记（写类 / PII 读 / 留待下一片）。
+        // F-1 收官：ListOpenApiLogDataAsync **已策展**为 security.list_openapi_logs（含 PII 登记三处），
+        // 故从"有意不策展"表移出——留在本表会被 NonCuratedMethods_ShouldNotBeToolSource 判为越权通道。
+        ("CreateUserMigrationAsync", "security：用户数据迁移（写类 + 跨 geo 合规敏感）——**产品裁定不策展**：HR/组织主数据写入属管理后台职责（AI 走「提议 → 人工执行」）"),
+        ("CancelUserMigrationAsync", "security：取消迁移（写类）——同上"),
+        ("SearchUserMigrationsAsync", "security：迁移记录检索（POST 检索、含用户 PII）——同上"),
+        ("GetMultiGeoEntityTenantAsync", "security：多 geo 实体查询（PII）——同上"),
+        ("GetUserMigrationAsync", "security：迁移详情（PII）——同上"),
+        ("CreateDeviceRecordAsync", "security：设备登记（写类 + 设备指纹 PII）——同上"),
+        ("UpdateDeviceRecordAsync", "security：设备更新（写类）——同上"),
+        ("DeleteDeviceRecordAsync", "security：设备删除（写类，高风险）——同上"),
+        ("ListDeviceRecordsAsync", "security：设备列表（设备 PII）——同上"),
+        ("GetDeviceRecordAsync", "security：设备详情（设备 PII）——同上"),
+        ("UpdateDeviceApplyRecordAsync", "security：设备申请审核（写类）——同上"),
+
+        // F-1（org）：只读面已全量策展（职务 / 职级 / 职务族 / 工作城市 共 8 条，见 FeishuOrgToolInterfaces.cs）；
+        // GetJobLevel* / GetJobFamilies* / GetWorkCities* 六个只读方法**已移出本登记表**（它们现在是策展工具）。
+        // 下表仅保留写类——它们需要宿主显式授权，**产品裁定不策展**：HR/组织主数据写入属管理后台职责（AI 走「提议 → 人工执行」）。
+        ("CreateJobLevelAsync", "org：职级写类（新增）——**产品裁定不策展**：HR/组织主数据写入属管理后台职责（AI 走「提议 → 人工执行」）"),
+        ("UpdateJobLevelAsync", "org：职级写类（更新）——同上"),
+        ("DeleteJobLevelByIdAsync", "org：职级写类（删除，高风险）——同上"),
+        ("CreateJobFamilyAsync", "org：职务族写类（新增）——同上"),
+        ("UpdateJobFamilyAsync", "org：职务族写类（更新）——同上"),
+        ("DeleteJobFamilyByIdAsync", "org：职务族写类（删除，高风险）——同上"),
+
+        // F-1（hire）：首批只策展"职位"两条（list_jobs / get_job）；其余显式登记。
+        // Hire 是 SDK 最大域（165 方法），候选/投递/面试/Offer 均属 PII 批次，不在本批范围。
+        ("GetJobDetailAsync", "hire：职位扩展详情（只读）——留待下一片（list 精简 / get 完整的分层已建立）"),
+        ("GetJobConfigAsync", "hire：职位配置（只读）——留待下一片"),
+        ("CombinedCreateJobAsync", "hire：职位写类（复合创建）——**产品裁定不策展**：HR/组织主数据写入属管理后台职责（AI 走「提议 → 人工执行」）"),
+        ("CombinedUpdateJobAsync", "hire：职位写类（复合更新）——同上"),
+        ("UpdateJobConfigAsync", "hire：职位配置写类——同上"),
+        ("BatchUpdateJobManagerAsync", "hire：职位负责人批量写类——同上"),
+        // 招聘需求列表 GetJobRequirementListAsync **已策展**为 hire.list_job_requirements，故从本表移出
+        //（纪律 25：留在本表会被 NonCuratedMethods_ShouldNotBeToolSource 判为越权通道）。
+        ("SearchJobRequirementAsync", "hire：招聘需求搜索（只读）——留待下一片"),
+        ("CreateJobRequirementAsync", "hire：招聘需求写类——写面**产品裁定不策展**：HR/组织主数据写入属管理后台职责（AI 走「提议 → 人工执行」）"),
+        ("UpdateJobRequirementAsync", "hire：招聘需求写类——同上"),
+        ("DeleteJobRequirementAsync", "hire：招聘需求写类（删除）——同上"),
+
+        // hire 候选人：只策展"检索 + 联系字段"两条；候选人写类与档案类显式登记。
+        ("CombinedCreateTalentAsync", "hire：候选人写类（复合创建，含档案）——**产品裁定不策展**：HR/组织主数据写入属管理后台职责（AI 走「提议 → 人工执行」）"),
+        ("CombinedUpdateTalentAsync", "hire：候选人写类（复合更新，含档案）——同上"),
+        ("AddTalentToTalentPoolAsync", "hire：候选人写类（加入人才库）——同上"),
+        ("BatchChangeTalentPoolAsync", "hire：候选人写类（批量调整人才库）——同上"),
+        ("ChangeTalentBlockAsync", "hire：候选人写类（拉黑/解黑，高风险）——同上"),
+        ("GetInterviewByTalentAsync", "hire：按候选人查全部面试（不分页，含评价与面试官）——已由 hire.list_interviews 覆盖（分页 + 可按投递/时间窗收窄），故不单独策展"),
+
+        // hire Offer：只策展"列表看状态"一条；写类与**含薪资条件的详情**显式登记。
+        ("CreateOfferAsync", "hire：Offer 写类（创建，带薪资条件）——**产品裁定不策展**：HR/组织主数据写入属管理后台职责（AI 走「提议 → 人工执行」）"),
+        ("UpdateOfferAsync", "hire：Offer 写类（更新，带薪资条件）——同上"),
+        ("ChangeOfferStatusAsync", "hire：Offer 写类（改审批/收发状态）——同上"),
+        ("ChangeInternOfferStatusAsync", "hire：实习 Offer 写类——同上"),
+        ("GetOfferAsync", "hire：Offer 详情（含 ApplicationOfferSalaryPlan 薪资条件）——**不策展**：状态由 hire.list_offers 回答，薪资条件不进模型上下文（纪律 26/28）"),
+        ("GetApplicationOfferAsync", "hire：按投递取 Offer 详情（同样含薪资条件）——同上"),
+
+        // F-1（contact 部门面）：只策展两条缺失方向（上级链 / 按名搜索），其余留待下一片。
+        ("GetDepartmentInfoByIdAsync", "contact：按 ID 查部门（只读）——已有 list/search/parents 三条路径，暂不重复"),
+        ("GetDepartmentsPageListAsync", "contact：部门全量分页（只读）——可由 list_departments 下钻替代"),
     ];
 
     [Fact]
@@ -118,6 +183,18 @@ public class NonCuratedToolRegistryContractGuards
                      FeishuToolNames.SparkCreateApp,
                      FeishuToolNames.BoardGetTheme,
                      FeishuToolNames.AttendanceQueryMyFlow,
+
+                     // F-1：登记了"不策展方法"的域必须真的已策展（防伪登记）。
+                     FeishuToolNames.MdmGetCountries,
+                     FeishuToolNames.SecurityQueryAuditLogs,
+                     FeishuToolNames.OrgListJobTitles,
+                     FeishuToolNames.OrgListJobLevels,
+                     FeishuToolNames.OrgListJobFamilies,
+                     FeishuToolNames.OrgListWorkCities,
+                     FeishuToolNames.SecurityListOpenapiLogs,
+                     FeishuToolNames.ContactGetDepartmentParents,
+                     FeishuToolNames.HireListJobs,
+                     FeishuToolNames.HireListTalents,
                  })
         {
             FeishuToolNames.All.Should().Contain(toolName,

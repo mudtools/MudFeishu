@@ -1,5 +1,50 @@
 # Mud.Feishu 更新日志
 
+## [Unreleased] - AI 工具面 per-tool affordance 接入（R-3 / F-7）+ 组件升级 Mud.HttpUtils 3.0.6（2026-10-11）
+
+> 方案与组件侧改造见 `documents/AIAgent/MudFeishu-AI-per-tool-affordance-组件侧生成器改造方案.md`；
+> 状态基线见 `.docs/AI/状态基线.md`。**非破坏**：未配 affordance 的 166 个工具描述逐字节不变、
+> 公开类型数不变（三份 `PublicAPI` 合计仍 1892）。
+
+### ✨ 新增
+
+- **组件升级 `Mud.HttpUtils 3.0.5 → 3.0.6`**（全仓单一版本）：新增**可选**剖面槽 `AffordanceDirectory` 与
+  四条 affordance 诊断（`MUDFT028–031`）；槽默认空串 ⇒ 未声明的消费方零影响。
+- **per-tool affordance（`x-feishu.affordance`）**：剖面加槽 `AffordanceDirectory = "/Affordance/"`
+  + csproj `<AdditionalFiles Include="Affordance\**\*.md" />`；资产 = `Affordance/{契约工具名}.md`
+  （四节 `WHEN` / `Avoid when` / `Prerequisites` / `Tips`，各节非空）。
+  **首版 16 份 = 全部 `high-risk-write` 工具**（删除/撤回 + 云文档权限面 + 审批转交），合计 6087 字符
+  （单资产上界 1024 / 单小节 320，全部在界内）。
+- **模型可见面**：`FeishuToolAIFunction.Description` 尾部追加决策指导块——进程内 Agent 与 MCP 链
+  **共用同一 AIFunction 实例** ⇒ 描述逐字节一致（`x-feishu` 刻意不进参数 Schema 关键字空间，
+  故必须走描述）；`McpEnvelope` 导出方言**结构化透传** `affordance` 字段供宿主 / CI / 桥接器消费。
+
+### 🧪 测试与门禁
+
+- **`AffordanceContractGuards`（12 用例）**：接线三件套（剖面槽 ↔ csproj `AdditionalFiles` ↔ 目录名）、
+  全部 `high-risk-write` 工具必有资产（**自收紧**：新增高危工具不补资产即红）、四节结构、
+  反引号 `域.工具` 引用存在、预算测量（16 份 / 6087 字符冻结）、模型可见性、
+  **未配资产工具描述逐字节不变**（升级回归锚）、`McpEnvelope` 透传、扩展键与剖面槽单源绑定，
+  外加 3 条判据负例自证。
+- **门禁更新**：`scripts/diagnostics-gate.ps1` 把 `MUDFT028/029/030` 纳入零容忍、`031` 纳入基线；
+  上游槽位镜像 24 → **28 槽**（零容忍 19 → 22），三集合一致性由
+  `FeishuToolProfileContractGuards.MudftGateSets_ShouldMatchTheUpstreamSlotMirror` 机械锁定。
+- **修正一处存量基线漂移**：`scripts/mudft-warning-baseline.txt` 的 `009-tools` 41 → **68**
+  （F-1 补域把工具面抬到 182 后从未重测；升级前后两次全量构建实测均为 68，与本轮无关）。
+- **验证**：全解决方案 Release `0 错误`（警告数回到基线 343）；`RS0016/0017`、`MUDFT014`、
+  `MUDFT028–031`、`IL2026/IL3050` 全 0；全量测试 **≈10,836 全绿**；AOT 严格模式净零。
+  **负例自证**：摘掉 csproj 的 `AdditionalFiles` 行 ⇒ `MUDFT014` 立刻报错（接线断裂不会静默失效）。
+- **发布基线 = Release 包（不是 Debug 包）**：上游 `pack.ps1 Release` 已产出并校验 `artifacts/`
+  （10 包 + DLL 与 `bin\Release` 逐字节一致 + Generator 含工具面生成器符号）；本仓 `nuget.config`
+  的临时本地源从 `artifacts-debug` 切到 `artifacts`，并按"同版本覆盖必须清缓存"清掉陈旧 `3.0.6`
+  缓存项后 `clean` + 重建——重建前断言缓存里 `Mud.HttpUtils.Generator.dll` 的 SHA256
+  == `bin\Release`（≠ `bin\Debug`），即本节所有验证数字都来自 Release 位。
+- **上游 3.0.6 已发布到 nuget.org，接入期临时本地源行已删除**：清缓存 + `clean` 后**从 nuget.org
+  重新还原**并全量复验（缓存里 Generator DLL 的 SHA256 仍 == `bin\Release`、≠ `bin\Debug`）——
+  结论不变：构建 `0 错误`、`RS0016/0017`、`MUDFT014`、`MUDFT028–031`、`IL2026/IL3050` 全 0、
+  `009-tools = 68`（= 基线）、全量测试 **≈10,836 全绿**、AOT 严格模式净零、
+  `review-ai-changes.ps1` / `audit-config-keys.ps1 -Strict` 通过。此后还原一律来自 nuget.org。
+
 ## [Unreleased] - AI 工具面架构重构 R1（阶段 0/1/1B/2/3/4/6 + 阶段 5）：出站唯一出口 + 删 api_call + 执行层收敛 + 公开面收敛 + 集成面并入 AI（2026-10-10）
 
 > 方案与多维评审见 `.docs/AI/MudFeishu-AI-Tools-架构审查与重构方案-R1.md`（§13 评审结论、§14/§15 落地核验）。

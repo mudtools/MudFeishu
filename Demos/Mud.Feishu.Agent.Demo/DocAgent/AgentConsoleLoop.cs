@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using Mud.Feishu.Abstractions.Conversations;
 using Mud.Feishu.AI.Agents;
 using Mud.Feishu.AI.Channels;
+using Mud.Feishu.AI.AgentTools;
 using Mud.Feishu.AI.Tools;
 using Mud.Feishu.AI.Tools.Generated;
 
@@ -932,7 +933,8 @@ internal sealed class AgentConsoleLoop
     }
 
     private static string ResolveRisk(ToolExecutionAuditRecord record)
-        => DocAgentToolFacts.RiskLiteralOf(record.ToolName, record.IsWrite);
+        // R-4 / F-13：审计记录已携带风险字面量（SDK 是唯一真相源），宿主不再反查契约表。
+        => record.Risk;
 
     private static string TailKey(string? conversationKey)
         => string.IsNullOrEmpty(conversationKey)

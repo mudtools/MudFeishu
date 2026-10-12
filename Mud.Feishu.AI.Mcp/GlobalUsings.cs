@@ -11,6 +11,7 @@ global using Microsoft.Extensions.Logging;
 global using Microsoft.Extensions.Options;
 global using Mud.Feishu.AI.Agents;
 global using Mud.Feishu.AI.Mcp;
+global using Mud.Feishu.AI.AgentTools;
 global using Mud.Feishu.AI.Tools;
 global using Mud.Feishu.AI.Tools.Generated;
 global using System;

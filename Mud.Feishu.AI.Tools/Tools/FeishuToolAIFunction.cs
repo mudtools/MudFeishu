@@ -27,12 +27,20 @@ namespace Mud.Feishu.AI.Tools;
 /// 信封的 <c>name</c>/<c>description</c> 分别由 <see cref="Name"/>/<see cref="Description"/> 承载，
 /// <c>x-feishu</c> 元数据由注册表定义承载——不重复进入 Schema 关键字空间。
 /// </para>
+/// <para>
+/// <b>唯一例外：per-tool affordance（R-3 / F-7）</b>——它是<b>给模型看的决策指导</b>，必须落到
+/// 模型必然读到的字段上。既然 <c>x-feishu</c> 不进 Schema 关键字空间，就由
+/// <see cref="Description"/> 承载（<see cref="ToolAffordanceText.ForDescription"/> 追加，无资产时
+/// 空串 ⇒ 描述逐字节不变）。两链（进程内 Agent / MCP 桥）共用本类型 ⇒ 描述逐字节一致，
+/// 不存在"只改一条链"的退化面。
+/// </para>
 /// </remarks>
 internal sealed class FeishuToolAIFunction : AIFunction
 {
     private readonly FeishuToolDefinition _definition;
     private readonly IFeishuToolContextAccessor? _contextAccessor;
     private readonly JsonElement _cachedParameterSchema;
+    private readonly string _description;
 
     /// <summary>
     /// 初始化 <see cref="FeishuToolAIFunction"/>。
@@ -52,13 +60,16 @@ internal sealed class FeishuToolAIFunction : AIFunction
         _contextAccessor = contextAccessor;
         // 构造时提取一次并缓存（修复 AI-FD-GAP P0-1 附注：每次调用 JsonDocument.Parse 的性能问题）。
         _cachedParameterSchema = ToolSchemaJson.ExtractParameters(schemaJson);
+
+        // R-3 / F-7：affordance 同样在构造期解析一次并缓存（无资产 ⇒ 空串 ⇒ 描述逐字节不变）。
+        _description = _definition.Description + ToolAffordanceText.ForDescription(schemaJson);
     }
 
     /// <inheritdoc />
     public override string Name => _definition.Name;
 
     /// <inheritdoc />
-    public override string Description => _definition.Description;
+    public override string Description => _description;
 
     /// <inheritdoc />
     public override JsonElement JsonSchema => _cachedParameterSchema;

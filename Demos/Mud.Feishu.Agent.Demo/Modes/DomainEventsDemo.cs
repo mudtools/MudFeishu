@@ -16,6 +16,7 @@ using Mud.Feishu.AI.Agents;
 using Mud.Feishu.AI.Channels;
 using Mud.Feishu.AI.Events;
 using Mud.Feishu.AI.Extensions;
+using Mud.Feishu.AI.AgentTools;
 using Mud.Feishu.AI.Tools;
 using Mud.Feishu.AI.Events;
 using Mud.Feishu.DataModels;

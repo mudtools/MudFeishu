@@ -39,9 +39,25 @@ public interface IToolExecutionAuditSink
 /// <param name="Decision">判定结果：<c>allowed</c> / <c>denied</c> / <c>error</c>。</param>
 /// <param name="Reason">拒绝或错误原因（可空；不含敏感原文）。</param>
 /// <param name="IsWrite">是否写操作。</param>
+/// <param name="Risk">
+/// R-4 / F-13：风险等级字面量（<c>read</c> / <c>write</c> / <c>high-risk-write</c>，
+/// 取自 <c>FeishuToolRiskNames</c>）。
+/// </param>
 /// <param name="ArgsDigest">入参摘要（SDK 侧脱敏：参数名 + 值长度 + 敏感键名掩码，截断）。</param>
 /// <param name="DurationMs">执行耗时（毫秒；拒绝路径为授权耗时）。</param>
 /// <param name="ConversationKey">会话键（可空；键维度允许进审计载荷，不进 Metrics tag——原则 8）。</param>
+/// <remarks>
+/// <para>
+/// <paramref name="Risk"/> 的用途（F-13）：让"删除 / 撤回"这类<b>不可撤销</b>的高危写操作在审计里
+/// <b>可分辨、可聚合</b>——此前审计只有 <c>IsWrite</c>（真假），无法把"发一条消息"与"删一条记录"
+/// 分开告警。它与 <paramref name="Decision"/> 同为<b>字面量</b>（而非枚举），
+/// 因为审计载荷会被宿主直接落库/转 JSONL，字面量无需额外序列化约定即可读。
+/// </para>
+/// <para>
+/// 该字段<b>不改变</b>任何启用语义：是否对模型可见仍由 <c>FeishuAgent:WriteAllowList</c> 与
+/// <c>MaxToolRisk</c> 决定；本字段只让"已经启用了高危写"这件事在审计侧显形。
+/// </para>
+/// </remarks>
 public sealed record ToolExecutionAuditRecord(
     string ToolName,
     string AppKey,
@@ -49,6 +65,7 @@ public sealed record ToolExecutionAuditRecord(
     string Decision,
     string? Reason,
     bool IsWrite,
+    string Risk,
     string? ArgsDigest,
     long DurationMs,
     string? ConversationKey);

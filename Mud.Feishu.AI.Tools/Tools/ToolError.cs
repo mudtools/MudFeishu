@@ -22,6 +22,7 @@ namespace Mud.Feishu.AI.Tools;
 /// <item>载荷 ≤ 512 字节（首行 JSON，正文截断不得吃掉载荷）。</item>
 /// <item><see cref="Category"/> 与 <see cref="Subtype"/> 为闭集常量（新增需评审 + 守卫断言）。</item>
 /// <item>载荷字段是闭集枚举 + 数字 + 短字符串，无凭据面——出站净化不作用于载荷本身。</item>
+/// <item><see cref="Suggestions"/> 超预算时<b>整体省略</b>（分类字段优先），保证上界不被突破。</item>
 /// </list>
 /// </para>
 /// </remarks>
@@ -33,6 +34,11 @@ namespace Mud.Feishu.AI.Tools;
 /// <param name="Attempts">已尝试次数（重试场景，默认 1）。</param>
 /// <param name="Trace">追踪号（与日志/Span 可关联，白名单化的代价补偿）。</param>
 /// <param name="Tool">工具名（载荷锚点，便于宿主按工具聚合）。</param>
+/// <param name="Suggestions">
+/// 恢复候选（BUG-8：模型可执行的下一步，<b>无需解析人类可读正文</b>）。
+/// 生产者只允许是<b>事实</b>来源——闭集参数的合法取值清单、工具声明的所需权限；
+/// 不得把"猜测的缺失权限"写成候选（与 <c>ToolErrorSubtype</c> 的"幽灵子类"纪律同源）。
+/// </param>
 public sealed record ToolError(
     string Category,
     string Subtype,
@@ -41,4 +47,5 @@ public sealed record ToolError(
     int? ApiCode = null,
     int Attempts = 1,
     string? Trace = null,
-    string? Tool = null);
+    string? Tool = null,
+    IReadOnlyList<string>? Suggestions = null);

@@ -31,5 +31,7 @@ global using Mud.Feishu.AI.Extensions;
 global using Mud.Feishu.Abstractions.Configuration;
 global using Mud.Feishu.Abstractions.Conversations;
 global using Mud.Feishu.Abstractions.Services;
-global using Mud.Feishu.AI.Tools;
+// BUG-1：集成面用例消费的接缝类型在 Mud.Feishu.AI.AgentTools；工具契约类型（FeishuToolRegistry 等）
+// 已回迁工具包，其用例随迁至 Mud.Feishu.AI.Tools.Tests。
+global using Mud.Feishu.AI.AgentTools;
 global using Xunit;

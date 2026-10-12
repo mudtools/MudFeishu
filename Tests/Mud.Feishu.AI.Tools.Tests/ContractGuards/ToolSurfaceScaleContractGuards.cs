@@ -39,6 +39,10 @@ public class ToolSurfaceScaleContractGuards
         "Mud.Feishu.AI.Tools/Mud.Feishu.AI.Tools.csproj",
         "Mud.Feishu.AI.Tools/Readme.md",
         "Mud.Feishu.AI/Readme.md",
+
+        // BUG-6：状态真相源文档纳入扫描面——它是"当前规模"的唯一声明处，
+        // 若它自己写错数字，整个系列的漂移治理就落空（本行即该治理的机械保障）。
+        ".docs/AI/状态基线.md",
     ];
 
     /// <summary>三个真相源必须两两一致（golden 快照 / 名字契约表 / 类型化契约表）。</summary>

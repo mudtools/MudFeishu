@@ -9,7 +9,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Mud.Feishu.AI.Agents;
 
-namespace Mud.Feishu.AI.Tools;
+namespace Mud.Feishu.AI.AgentTools;
 
 /// <summary>
 /// 框架审批请求（<see cref="ToolApprovalRequestContent"/>）→ 宿主可见投影

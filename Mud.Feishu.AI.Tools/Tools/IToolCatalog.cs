@@ -58,8 +58,14 @@ public interface IToolCatalog
 
 /// <summary>
 /// Schema 导出方言：首版仅 OpenAI-compatible；R7 / C6a 起新增 <see cref="Skills"/>
-/// （对标官方 Agent Skills 的 <c>SKILL.md</c> 产物）；Aily/MCP 归后续批次。
+/// （对标官方 Agent Skills 的 <c>SKILL.md</c> 产物）；R-3 / F-9 新增 <see cref="McpEnvelope"/>
+/// （面向<b>进程外消费者</b>的 MCP 工具清单）；Aily 归后续批次。
 /// </summary>
+/// <remarks>
+/// <b>命名说明（F-9）</b>：方案文档把本方言记作 <c>MoonEnvelope</c>；本仓按其章节标题
+/// "（MCP envelope 导出）"与语义取可读名 <see cref="McpEnvelope"/>——
+/// 枚举成员是公开 API，opaque 名字的长期成本高于与文档一字不差的收益。
+/// </remarks>
 public enum ToolSchemaDialect
 {
     /// <summary>OpenAI-compatible <c>tools</c> JSON 数组（chat completions 请求体可直接使用）。</summary>
@@ -80,6 +86,28 @@ public enum ToolSchemaDialect
     /// </para>
     /// </remarks>
     Skills = 2,
+
+    /// <summary>
+    /// MCP 工具清单信封（一次性导出<b>全部</b>已策展工具的 MCP <c>tools/list</c> 形载荷）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>与 MCP server 的区别（为什么需要它）</b>：<c>Mud.Feishu.AI.Mcp</c> 的 <c>tools/list</c> 是
+    /// <b>协议内方法</b>，只能列出<b>当前已启用</b>（白名单内）的工具，且需要跑一个进程；
+    /// 本方言是<b>纯导出</b>——不启服务、不看白名单，把"工具面存在什么"一次性交给宿主 / CI / 桥接器，
+    /// 供它们做差异比对、文档生成或自建 MCP 网关。
+    /// </para>
+    /// <para>
+    /// <b>与 <see cref="Skills"/> 的区别</b>：Skills 面向"读文档的 Agent"（人类可读的 SKILL.md），
+    /// 本方言面向"读协议的工具链"（机器可读的 tools 数组）。
+    /// </para>
+    /// <para>
+    /// 载荷形态：<c>{"dialect":"mcp-envelope","tools":[{"name":…,"title":…,"description":…,
+    /// "inputSchema":…,"annotations":{"readOnlyHint":…,"destructiveHint":…,"openWorldHint":…}}]}</c>——
+    /// 条目字段与 MCP server 的 <c>tools/list</c> 逐字段同形，可直接喂给 MCP 客户端。
+    /// </para>
+    /// </remarks>
+    McpEnvelope = 3,
 }
 
 /// <summary>

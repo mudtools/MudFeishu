@@ -4,1656 +4,453 @@
 
 ![MudFeishu Logo](icon.png)
 
-企业级 .NET 飞书 API 集成 SDK
+飞书生态的 **AI 原生** .NET SDK —— 182 个策展工具 + Agent 运行时 + MCP 服务器 + 人工确认管线，
+让 AI Agent 经自然语言直接操作飞书组织、文档、审批、日历、任务、多维表格等 25 个业务域。
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Mud.Feishu](https://img.shields.io/nuget/v/Mud.Feishu?label=Mud.Feishu "Mud.Feishu")](https://www.nuget.org/packages/Mud.Feishu/ "Mud.Feishu") [![downloads](https://img.shields.io/nuget/dt/Mud.Feishu "downloads")](https://www.nuget.org/packages/Mud.Feishu/ "downloads")
-[![Mud.Feishu.WebSocket](https://img.shields.io/nuget/v/Mud.Feishu.WebSocket?label=Mud.Feishu.WebSocket "Mud.Feishu.WebSocket")](https://www.nuget.org/packages/Mud.Feishu.WebSocket/ "Mud.Feishu.WebSocket") [![downloads](https://img.shields.io/nuget/dt/Mud.Feishu.WebSocket "downloads")](https://www.nuget.org/packages/Mud.Feishu.WebSocket/ "downloads")
-[![Mud.Feishu.Webhook](https://img.shields.io/nuget/v/Mud.Feishu.Webhook?label=Mud.Feishu.Webhook "Mud.Feishu.Webhook")](https://www.nuget.org/packages/Mud.Feishu.Webhook/ "Mud.Feishu.Webhook") [![downloads](https://img.shields.io/nuget/dt/Mud.Feishu.Webhook "downloads")](https://www.nuget.org/packages/Mud.Feishu.Webhook/ "downloads")
-[![Mud.Feishu.Abstractions](https://img.shields.io/nuget/v/Mud.Feishu.Abstractions?label=Mud.Feishu.Abstractions "Mud.Feishu.Abstractions")](https://www.nuget.org/packages/Mud.Feishu.Abstractions/ "Mud.Feishu.Abstractions") [![downloads](https://img.shields.io/nuget/dt/Mud.Feishu.Abstractions "downloads")](https://www.nuget.org/packages/Mud.Feishu.Abstractions/ "downloads")
-[![Mud.Feishu.Authentication](https://img.shields.io/nuget/v/Mud.Feishu.Authentication?label=Mud.Feishu.Authentication "Mud.Feishu.Authentication")](https://www.nuget.org/packages/Mud.Feishu.Authentication/ "Mud.Feishu.Authentication") [![downloads](https://img.shields.io/nuget/dt/Mud.Feishu.Authentication "downloads")](https://www.nuget.org/packages/Mud.Feishu.Authentication/ "downloads")
-[![Mud.Feishu.EventCallback](https://img.shields.io/nuget/v/Mud.Feishu.EventCallback?label=Mud.Feishu.EventCallback "Mud.Feishu.EventCallback")](https://www.nuget.org/packages/Mud.Feishu.EventCallback/ "Mud.Feishu.EventCallback") [![downloads](https://img.shields.io/nuget/dt/Mud.Feishu.EventCallback "downloads")](https://www.nuget.org/packages/Mud.Feishu.EventCallback/ "downloads")
-[![Mud.Feishu.Redis](https://img.shields.io/nuget/v/Mud.Feishu.Redis?label=Mud.Feishu.Redis "Mud.Feishu.Redis")](https://www.nuget.org/packages/Mud.Feishu.Redis/ "Mud.Feishu.Redis") [![downloads](https://img.shields.io/nuget/dt/Mud.Feishu.Redis "downloads")](https://www.nuget.org/packages/Mud.Feishu.Redis/ "downloads")
-
-**完整的 HTTP API、WebSocket 实时事件订阅和 Webhook 事件处理解决方案**
-
-[快速开始](#-快速开始) • [API 模块](#-api-模块) • [使用示例](#-使用示例) • [文档](#-详细文档)
+[![Mud.Feishu](https://img.shields.io/nuget/v/Mud.Feishu?label=Mud.Feishu "Mud.Feishu")](https://www.nuget.org/packages/Mud.Feishu/)
+[![Mud.Feishu.AI](https://img.shields.io/nuget/v/Mud.Feishu.AI?label=Mud.Feishu.AI "Mud.Feishu.AI")](https://www.nuget.org/packages/Mud.Feishu.AI/)
+[![Mud.Feishu.AI.Tools](https://img.shields.io/nuget/v/Mud.Feishu.AI.Tools?label=Mud.Feishu.AI.Tools "Mud.Feishu.AI.Tools")](https://www.nuget.org/packages/Mud.Feishu.AI.Tools/)
+[![Mud.Feishu.WebSocket](https://img.shields.io/nuget/v/Mud.Feishu.WebSocket?label=Mud.Feishu.WebSocket "Mud.Feishu.WebSocket")](https://www.nuget.org/packages/Mud.Feishu.WebSocket/)
+[![Mud.Feishu.Webhook](https://img.shields.io/nuget/v/Mud.Feishu.Webhook?label=Mud.Feishu.Webhook "Mud.Feishu.Webhook")](https://www.nuget.org/packages/Mud.Feishu.Webhook/)
 
 </div>
 
 ---
 
-## 📖 项目简介
+## 为什么做这个
 
-MudFeishu 是一套现代化的企业级 .NET 飞书 API 集成 SDK，提供完整的 HTTP API 调用、WebSocket 实时事件订阅和 Webhook 事件处理能力。SDK 采用策略模式和工厂模式设计，内置自动令牌管理、智能重试、高性能缓存等企业级特性，大幅简化飞书应用的开发难度。
+.NET 生态里飞书 SDK 长期是空白。仅有的一个社区项目停留在「能调通几个接口」的阶段——
+覆盖面窄、无多应用支持、无实时事件、无 AOT、更无 AI 能力。当 AI Agent 要**自主操作飞书**
+（创建审批、更新多维表格、发送邮件、管理日历）时，这套底子根本接不上：
 
-### ✨ 核心优势
+- Agent 需要强类型参数 Schema，而不是 `Dictionary<string, object>` + 反射。
+- 写操作需要权限分级、幂等保证、人工确认，而不是无差别放行。
+- 多租户场景需要作用域隔离，而不是进程级全局单例。
+- MCP 工具服务器需要 Native AOT 单文件冷启动，而不是 `Newtonsoft.Json` 反射序列化。
 
-- 🚀 **极简 API** - 一行代码完成服务注册，开箱即用
-- 🏗️ **类型安全** - 强类型数据模型，编译时类型检查
-- 🔄 **自动令牌管理** - 智能缓存和刷新，无需手动维护
-- 🛡️ **企业级稳定** - 统一异常处理、智能重试、详细日志
-- 🎯 **事件驱动** - 策略模式事件处理，灵活扩展
-- 📊 **多框架支持** - .NET Standard 2.0、.NET 6.0、.NET 8.0、.NET 10.0
-- ⚡ **原生 AOT 支持** - net8.0+ 一等公民支持 Native AOT 发布，全链路源生成 JSON 序列化与配置绑定，严格模式下 IL 警告归零
-- 🔒 **安全防护** - SSRF 防护、URL 白名单验证、签名验证、加密解密
-- 📈 **可观测性** - 内置 FeishuMetrics 指标收集，支持 OpenTelemetry 集成
+MudFeishu 填的就是这个空白——不是「又一个能调接口的 SDK」，而是 **.NET 上第一个为 AI Agent 时代设计的飞书底座**：
 
----
+- **182 个策展工具**把飞书 API 编译期暴露为模型可调用的 Function Call，每个工具都有强类型 Schema、
+  风险等级、权限范围、幂等语义——不是把 1228 个 SDK 方法无差别扔给模型。
+- **七步执行链**在每次工具调用时依次过：上下文校验 → 入站净化 → 策略轴 → 授权门禁 → 租户切换 →
+  内容安全 → 出站净化，**fail-closed 默认**，写工具未经授权一律拒绝。
+- **人工确认管线**让高风险操作（发消息、创建审批、删除记录）先经宿主批准再执行，批准状态单一所有权，
+  模型无法自批复。
+- **MCP 服务器**把同一套工具面经 stdio JSON-RPC 暴露给进程外 Agent（Claude Code / Cursor / 自建 harness），
+  执行链零旁路。
+- **Skills 产物**随 NuGet 包分发，仓外 Agent 直接 `npx skills add` 即可获得飞书域知识。
 
-## 📦 项目概览
-
-| 组件                          | 描述                                                                                             | NuGet                                                                                                                               | 下载                                                                    |
-| ----------------------------- | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| **Mud.Feishu.Abstractions**   | 事件订阅抽象层，提供策略模式和工厂模式的事件处理架构，内置 FeishuMetrics 指标收集和事件去重      | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Abstractions.svg)](https://www.nuget.org/packages/Mud.Feishu.Abstractions/)     | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.Abstractions.svg)   |
-| **Mud.Feishu**                | 核心 HTTP API 客户端库，支持组织架构、消息、群聊、云文档、画板、电子表格、多维表格等完整飞书功能 | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.svg)](https://www.nuget.org/packages/Mud.Feishu/)                               | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.svg)                |
-| **Mud.Feishu.DataModels**     | 飞书 HTTP API 强类型数据模型库，覆盖全部 API 模块的请求/响应模型                                 | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.DataModels.svg)](https://www.nuget.org/packages/Mud.Feishu.DataModels/)         | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.DataModels.svg)     |
-| **Mud.Feishu.Authentication** | 飞书用户认证中间件，基于 AsyncLocal 实现线程安全的用户上下文管理                                 | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Authentication.svg)](https://www.nuget.org/packages/Mud.Feishu.Authentication/) | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.Authentication.svg) |
-| **Mud.Feishu.EventCallback**  | 飞书事件回调强类型数据模型，支持源代码生成器自动生成事件处理器                                   | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.EventCallback.svg)](https://www.nuget.org/packages/Mud.Feishu.EventCallback/)   | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.EventCallback.svg)  |
-| **Mud.Feishu.WebSocket**      | 飞书 WebSocket 客户端，支持实时事件订阅、事件去重、消息序号验证和智能重连                        | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.WebSocket.svg)](https://www.nuget.org/packages/Mud.Feishu.WebSocket/)           | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.WebSocket.svg)      |
-| **Mud.Feishu.Webhook**        | 飞书 Webhook 事件处理组件，支持自定义验证器、频率限制、多应用模式和健康检查                      | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Webhook.svg)](https://www.nuget.org/packages/Mud.Feishu.Webhook/)               | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.Webhook.svg)        |
-| **Mud.Feishu.Redis**          | Redis 分布式去重扩展，支持事件/Nonce/SeqID 去重、降级策略和多应用隔离                            | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Redis.svg)](https://www.nuget.org/packages/Mud.Feishu.Redis/)                   | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.Redis.svg)          |
-| **Mud.Feishu.OpenTelemetry**  | OpenTelemetry 适配包，一键开启飞书 SDK 的分布式追踪与指标采集                                    | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.OpenTelemetry.svg)](https://www.nuget.org/packages/Mud.Feishu.OpenTelemetry/)   | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.OpenTelemetry.svg)  |
+AI 能力不是 Sample 层的补丁，是 SDK 的**第一公民**。
 
 ---
 
-## 🚀 快速开始
+## AI 底座：五层架构
 
-### 1️⃣ 安装 NuGet 包
+```
+┌─────────────────────────────────────────────────────────────┐
+│  ⑤ 生态位    MCP Server (stdio)  ·  Skills 导出  ·  NDJSON  │
+├─────────────────────────────────────────────────────────────┤
+│  ④ Agent     会话管理  ·  流式消息通道  ·  事件驱动对话     │
+│              知识检索 (Aily + RAG)  ·  HITL 审批续跑        │
+├─────────────────────────────────────────────────────────────┤
+│  ③ 工具面    182 策展工具 (25 域)  ·  编译期 Schema         │
+│              风险分级  ·  幂等键  ·  affordance 资产         │
+├─────────────────────────────────────────────────────────────┤
+│  ② 执行链    入站净化 → 策略轴 → 授权 → 租户切换            │
+│              → 内容安全 → 出站净化 → 审计                   │
+├─────────────────────────────────────────────────────────────┤
+│  ① SDK 基座  1228 强类型接口  ·  源生成 JSON  ·  AOT 净零   │
+│              多应用作用域  ·  令牌全生命周期托管            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### ① SDK 基座：1228 个强类型接口，Agent 看不到，工具面看得到
+
+飞书全部 20+ API 模块（组织架构、消息、群聊、审批、任务、日历、视频会议、文档、知识库、云盘、
+画板、电子表格、多维表格、考勤、卡片、AI 能力、邮箱、搜索、服务台、OKR、妙记、妙搭……）
+均为声明式接口 + 源生成实现类。Agent 不直接调这些接口——**工具面从中策展 182 个高频操作**暴露给模型。
+
+### ② 执行链：七步不可变，fail-closed 默认
+
+```
+① appKey 上下文校验
+①' 入站净化        —— 控制字符/危险 Unicode/独立 CR → 拒绝（invalid_args），零调用下游
+② 策略轴           —— MaxToolRisk / AllowedIdentities → 拒绝（policy_denied: reason_code）
+③ 授权门禁         —— IToolExecutionAuthorizer → 拒绝（authorization_denied）
+                     NeedsUserConfirmation → 通知宿主批准通道，中性拒绝（不含任何凭据）
+④ 租户上下文切换    —— BeginScope(appKey)
+④' 用户上下文       —— 仅 identity=user 工具：写入 AsyncLocal，finally 清理
+⑤ 内容安全         —— 4 条注入规则扫描原始结果（off | warn | block）
+⑥ 出站净化（强制）  —— ANSI/控制字符剥离 + 凭据与手机号脱敏；无开关、不可绕过
+⑦ 整形钩子 + 审计   —— IToolResultShaper（可空）+ IToolExecutionAuditSink（允许/拒绝/错误三类投递）
+```
+
+**关键安全属性**：入站是「拒绝」而非「剥离」（剥离会静默改写用户内容）；出站净化无开关不可绕过；
+授权器未返回 `Allowed` 的待确认调用**读、写工具同路径**走挂起解析；`dry_run=true` 的写工具不消耗幂等键。
+
+### ③ 工具面：182 个策展工具，不是 1228 个裸方法
+
+| 域 | 只读 | 写类 | 小计 | | 域 | 只读 | 写类 | 小计 |
+| --- | ---: | ---: | ---: | --- | --- | ---: | ---: | ---: |
+| 多维表格 | 6 | 3 | 9 | | OKR | 9 | 6 | 15 |
+| 云文档 | 8 | 9 | 17 | | 视频会议 | 6 | 4 | 10 |
+| Wiki | 2 | 3 | 5 | | 知识库 | 1 | — | 1 |
+| 搜索 | 1 | — | 1 | | 画板 | 2 | 4 | 6 |
+| IM | 8 | 8 | 16 | | 考勤 | 7 | 1 | 8 |
+| 云空间 | 3 | 12 | 15 | | 妙搭 | 5 | 5 | 10 |
+| 电子表格 | 2 | 2 | 4 | | AI 文本 | 2 | — | 2 |
+| 通讯录 | 8 | — | 8 | | 邮件 | 5 | 2 | 7 |
+| 审批 | 2 | 4 | 6 | | 妙记 | 5 | — | 5 |
+| 日历 | 3 | 4 | 7 | | 任务 | 1 | 7 | 8 |
+| 组织 | 8 | — | 8 | | 招聘 | 7 | — | 7 |
+| 安全 | 2 | — | 2 | | 终端管理 | 1 | — | 1 |
+| 元工具 | 4 | — | 4 | | **合计** | **108** | **74** | **182** |
+
+**策展而非全暴露**：把 1228 个 SDK 方法无差别暴露给模型 = 模型上下文爆炸 + 无法做权限分级。
+MudFeishu 按高频工作流策展为 182 个工具，每个工具都有：
+- **编译期 Schema**（`FeishuToolSchemas`）：参数、风险等级、权限范围、是否写操作、SDK 源锚点
+- **类型化契约**（`FeishuToolContracts`）：零运行期解析，注册器直接构造定义
+- **per-tool affordance**（`x-feishu.affordance`）：何时用 / 何时别用 / 前置条件 / 踩坑提示
+- **域 guidance**（25 个域 + 子主题 references）：宿主指令之后追加，2 KB 预算截断
+
+模型遇到未策展的能力时，正确动作是问 `feishu.capability_lookup`（判断不存在 vs 未策展），
+再**如实告知用户**——而不是臆造一次调用。**不存在万能兜底通道**（已整条删除，双轨调用路径风险最高）。
+
+### ④ Agent 运行时：会话、流式、知识、事件驱动
+
+```csharp
+builder.Services.AddFeishuApp(builder.Configuration);
+builder.Services.AddFeishuTools();                    // 工具面
+builder.Services.AddFeishuAgent(builder.Configuration) // Agent 运行时
+    .AddFeishuEditMessageChannel()                    // 流式消息通道（编辑已发消息）
+    .AddFeishuImConversationHandler();                // IM 事件 → 对话
+```
+
+- **流式消息通道**：`EditMessageChannel`（流式编辑已发消息）、`CardStreamMessageChannel`（卡片流）、
+  `StreamingChannelChain`（链式组合）——让 Agent 的流式回复直接呈现为飞书消息的实时更新。
+- **事件驱动对话**：`ConversationalFeishuEventHandler` 把飞书事件（IM 收消息 / 审批任务 / 任务变更 /
+  多维表格记录变更）变成模型可处理的上下文 + 回复，事件载荷经 `IContextAssembler` 装配为结构化片段
+  （带 untrusted 标注、超预算截断、缺字段降级）。
+- **知识检索**：
+  - **RAG-A（Aily 托管）**：`AilyKnowledgeProvider` 接飞书 Aily 知识问答，零基础设施。
+  - **RAG-B（自建检索）**：`DocumentChunker`（结构优先切片）→ `VectorRetriever` → `CorpusIndexer`，
+    向量库与嵌入由宿主提供（SDK 不引入依赖），`CorpusChunk.ScopeKey` 必须按租户隔离。
+  - 两个检索面用 `TryAddSingleton`，先注册者生效，**并存不冲突**。
+- **HITL 审批续跑**：`FeishuAgent.RunApprovalContinuationAsync` 一次调用完成
+  加载会话 → 取原始审批请求 → 重建租户上下文 → 续跑 → 落库。批准状态唯一所有者是宿主授权器，
+  SDK 不签发任何凭据，模型无法自批复。
+
+### ⑤ 生态位：MCP 服务器 + Skills 导出 + NDJSON 事件外桥
+
+**MCP 服务器**（`Mud.Feishu.AI.Mcp`，独立可选包）：
+
+```csharp
+builder.Services.AddFeishuTools();
+builder.Services.AddFeishuMcpServer(o => o.AppKey = "cli_xxx");
+await app.Services.RunFeishuMcpStdioAsync();   // 阻塞到客户端关闭 stdin
+```
+
+- 白名单同源（MCP 暴露的工具 == `FeishuAgent:Tools` + `WriteAllowList`，不新增开关）
+- 执行链零旁路（每个 tool call 走同一个 `FeishuToolBinding`）
+- 租户边界 = 进程（appKey 只来自配置，协议层传 appKey 等于把切租户交给客户端）
+- 协议层自研（不引官方 `ModelContextProtocol` SDK，仅覆盖 `tools` 能力 + stdio）
+
+**Skills 产物**（随 NuGet 包分发）：
+
+```csharp
+IToolSchemaExporter.Export(ToolSchemaDialect.Skills);
+// => {"dialect":"skills","files":[{"path":"skills/feishu-im/SKILL.md","content":"…"}, …]}
+```
+
+25 个域的 `skills/feishu-{domain}/SKILL.md` + `references/{topic}.md`，仓外 Agent（Claude Code / Cursor）
+直接加载即获得飞书域知识。数据源全是编译期常量 ⇒ 零反射、零 IO、确定性。
+
+**NDJSON 事件外桥**：`FeishuEventNdjsonBridge` 把飞书事件以一行一事件的 NDJSON 交给仓外任意进程，
+`payload` 原样嵌入（不再序列化），避免字段丢失与 AOT 反射破口。
+
+---
+
+## 完整飞书 API 覆盖
+
+| 模块 | API 版本 | 主要功能 |
+| --- | --- | --- |
+| 认证授权 | V3 | 应用/租户/用户令牌、OAuth 2.0、多应用管理 |
+| 组织架构 | V1/V3 | 用户、部门、员工、用户组、职级、职务、角色 |
+| 消息服务 | V1 | 文本/图片/卡片消息、批量发送、群聊管理 |
+| 审批流程 | V4 | 审批定义、实例、任务、消息、订阅 |
+| 任务管理 | V2 | 任务创建、更新、分组、附件、评论、自定义字段 |
+| 日程会议 | V4 | 日历管理、日程事件、ACL 访问控制 |
+| 视频会议 | V1 | 会议、会议室、配置、导出、录制、纪要、报告 |
+| 文档管理 | V1 | 飞书文档、文档块、内容转换 |
+| 知识库 | V2 | 知识空间、节点管理、复制移动 |
+| 云盘管理 | V1 | 云空间、文件夹、上传、版本、权限、评论、订阅 |
+| 画板管理 | V1 | 画板主题、缩略图、节点、语法解析 |
+| 电子表格 | V2/V3 | 电子表格、区域、筛选、数据验证、条件格式 |
+| 多维表格 | V1/V2 | 数据表、记录、字段、视图、表单、仪表盘、角色、自动化 |
+| 考勤管理 | V1 | 考勤组、打卡、班次、请假、统计、档案 |
+| 卡片管理 | V1/V2 | 卡片、卡片元素、消息流卡片 |
+| AI 能力 | V1 | 文档解析、OCR（18 种证件票据）、语音转文字、文本翻译 |
+| 邮箱管理 | V1 | 邮件消息、别名、联系人、草稿、文件夹、邮件组、标签、模板、规则、会话 |
+| 搜索 | V2 | 数据源搜索、文档/知识库搜索、套件搜索 |
+| 服务台 | V1 | 客服、技能、排班、工单、工单消息 |
+| OKR | V1 | 目标、关键结果、周期、进展 |
+| 妙记 | V1 | 妙记创建、管理、附件 |
+| 妙搭 | V1 | 妙搭应用、页面、组件 |
+
+---
+
+## 实时事件：WebSocket + Webhook 双通道
+
+| 通道 | 包 | 特性 |
+| --- | --- | --- |
+| **WebSocket** | `Mud.Feishu.WebSocket` | 长连接实时订阅、指数退避重连（可插拔策略）、消息序号验证（重放/丢失/回退检测）、事件去重（内存/Redis）、SSL/TLS 证书校验、24h 会话管理 |
+| **Webhook** | `Mud.Feishu.Webhook` | HTTP 回调、签名验证 + 时间戳 + Nonce 三道 fail-closed 闸、AES-256-CBC 解密、频率限制、多应用独立路由、失败事件重试、健康检查 |
+
+两通道共享同一套事件处理器接口（`IFeishuEventHandler<T>`）与事件去重抽象，处理器代码零差异复用。
+
+---
+
+## 安全默认不可协商
+
+| 闸 | 约束 |
+| --- | --- |
+| 工具授权 | 写工具默认不启用；启用后未注册 `IToolExecutionAuthorizer` → 默认拒绝；`NeedsUserConfirmation` → 通知宿主 + 中性拒绝（不含凭据） |
+| 入站净化 | 控制字符 / 危险 Unicode / 独立 CR → 拒绝（`invalid_args`），零调用下游；换行 / Tab / Emoji（含 ZWJ 序列）不误伤 |
+| 出站净化 | ANSI/控制字符剥离 + 凭据与手机号脱敏；**无开关、不可绕过**；在整形钩子之前 |
+| 内容安全 | 4 条注入规则扫描原始结果（`off` / `warn`（默认）/ `block`）；命中标注 `[untrusted_content: 规则]` |
+| 幂等键 | 74 个写工具中 21 个暴露 `idempotency_key`（其中 11 个对应平台侧 `client_token` 去重）；`dry_run=true` 不消耗幂等键 |
+| 多租户 | appKey 上下文校验 → 租户切换 `BeginScope(appKey)`；用户上下文仅 `identity=user` 工具写入 AsyncLocal，finally 清理；跨租户召回即数据泄露 |
+| Webhook | 签名 + 时间戳 ±30s + Nonce 三道 fail-closed；生产环境未注册分布式 Nonce 去重 → **启动即失败**（不静默退化） |
+| SSRF | `BaseUrl` 强制 HTTPS + 主机白名单；工具面多模态附件落盘由宿主 `IFeishuAttachmentStager` 实现（域名白名单 / 大小上限 / 扩展名校验全是宿主策略） |
+| 凭据不外泄 | `AppSecret` / 令牌不进审计载荷；待确认快照不含任何凭据（由用例反射断言） |
+| 二进制边界 | 字节两侧都不进工具面：入向模型只给 URL → 宿主落盘 → SDK 上传；出向受控下载出口 → 结果只回路径+大小+类型 |
+
+---
+
+## Native AOT：MCP Server 单文件冷启动
+
+全线 DTO 标 `[HttpJsonSerializable]`，`JsonSerializerContext` 由源生成器编译期发射，序列化零反射。
+`net8.0` / `net10.0` 下逐工程 `AotStrictMode`（10 类反射诊断升为错误）保持净零。
 
 ```bash
-# HTTP API 客户端 (核心模块)
+dotnet publish -r win-x64 -c Release /p:PublishAot=true   # 单文件原生二进制，冷启动 < 100ms
+```
+
+**这意味着**：MCP 工具服务器可以 Native AOT 发布，AI Agent 频繁拉起工具进程的性能前提成立。
+反射序列化（如 `Newtonsoft.Json`）在 AOT 下不可用，这条路根本走不通——源生成是唯一可行路径。
+
+---
+
+## AI 原生 vs 外挂式：两条路线的根本差异
+
+「在回调处理器里接一个大模型」和「让 Agent 自主操作飞书」是两条完全不同的技术路线。
+下表列的是**架构路线的差异**，不是产品对比——.NET 生态里外挂式路线尚无成体系实现，
+MudFeishu 是 AI 原生路线的**首个完整落地**。
+
+| 维度 | 外挂式集成（行业常见做法） | AI 原生（MudFeishu） |
+| --- | --- | --- |
+| AI 定位 | Sample 层补丁：回调处理器里调大模型回复消息，单轮问答 | SDK 第一公民：五层架构（基座 → 执行链 → 工具 → Agent → 生态） |
+| 工具暴露 | 无，或反射扫描全部方法（`Type.GetType` + `method.Invoke`，AOT 不可用 + RCE 风险） | 182 个策展工具，编译期 Schema + 类型化契约，零运行期解析 |
+| 权限控制 | 无 | 七步执行链 + 风险分级 + 授权门禁 + HITL 审批管线，fail-closed 默认 |
+| 多租户 | 全局静态容器，进程级单例 | appKey 作用域切换 + 用户上下文 AsyncLocal + 跨租户召回即数据泄露 |
+| 序列化 | `Newtonsoft.Json` 反射（AOT 不可用） | 源生成 `JsonSerializerContext`，AOT strict 净零 |
+| MCP 工具 | 无，或反射调用器 | 自研协议层 stdio server，执行链零旁路，租户边界 = 进程 |
+| 生态对接 | 无 | Skills 产物随包分发（Claude Code / Cursor 直接加载）+ NDJSON 事件外桥 |
+| 知识检索 | 无 | Aily 托管 + 自建 RAG（结构优先切片 + 向量检索），并存不冲突 |
+| 流式回复 | 无 | EditMessageChannel / CardStreamMessageChannel / StreamingChannelChain |
+| 事件驱动 | 回调处理器单轮回复 | 事件 → 上下文装配 → Agent 对话 → 工具调用 → 流式回复 |
+| 契约校验 | 运行期发现路由 / 字段漂移 | 编译期 golden 门禁 + Public API 分析器 + 契约守卫 |
+| 目标框架 | `net462` + `netstandard2.0` + `LangVersion 10` | `netstandard2.0` / `net6.0` / `net8.0` / `net10.0` + `LangVersion 13` |
+
+---
+
+## 安装
+
+```bash
+# 核心 HTTP API
 dotnet add package Mud.Feishu
+dotnet add package Mud.Feishu.Abstractions      # 事件处理抽象层（自动依赖）
 
-# 事件处理抽象层 (核心模块，Mud.Feishu/WebSocket/Webhook 依赖)
-dotnet add package Mud.Feishu.Abstractions
+# AI Agent 全栈
+dotnet add package Mud.Feishu.AI                 # Agent 运行时（会话/流式/知识/HITL）
+dotnet add package Mud.Feishu.AI.Tools           # 182 策展工具 + 执行链 + 编译期 Schema
+dotnet add package Mud.Feishu.AI.Mcp             # MCP stdio server（进程外 Agent）
 
-# HTTP API 强类型数据模型 (Mud.Feishu 隐式依赖，通常无需单独安装)
-dotnet add package Mud.Feishu.DataModels
+# 实时事件
+dotnet add package Mud.Feishu.WebSocket          # 长连接实时订阅
+dotnet add package Mud.Feishu.Webhook            # HTTP 回调事件处理
 
-# WebSocket 实时事件订阅 (可选)
-dotnet add package Mud.Feishu.WebSocket
-
-# Webhook HTTP 回调事件处理 (可选)
-dotnet add package Mud.Feishu.Webhook
-
-# 用户认证中间件 (可选)
-dotnet add package Mud.Feishu.Authentication
-
-# 事件回调强类型数据模型 (可选)
-dotnet add package Mud.Feishu.EventCallback
-
-# Redis 分布式去重扩展 (可选)
-dotnet add package Mud.Feishu.Redis
-
-# OpenTelemetry 可观测性扩展 (可选)
-dotnet add package Mud.Feishu.OpenTelemetry
+# 横向扩展
+dotnet add package Mud.Feishu.Authentication     # 用户认证中间件
+dotnet add package Mud.Feishu.EventCallback      # 事件回调强类型模型
+dotnet add package Mud.Feishu.Redis              # 分布式去重（事件/Nonce/SeqID）
+dotnet add package Mud.Feishu.OpenTelemetry      # 可观测性
 ```
 
-> 💡 **提示**：根据实际需求安装对应包，`Mud.Feishu` 是核心包，`Mud.Feishu.Abstractions` 和 `Mud.Feishu.DataModels` 已作为 Mud.Feishu\WebSocket\Webhook 的依赖自动安装。
+---
 
-### 2️⃣ 配置文件 (appsettings.json)
+## 快速开始
 
-```json
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Mud.Feishu": "Debug"
-    }
-  },
-  "FeishuApps": [
-    {
-      "AppKey": "default",
-      "AppId": "your_feishu_app_id",
-      "AppSecret": "your_feishu_app_secret",
-      "BaseUrl": "https://open.feishu.cn",
-      "AllowCustomBaseUrl": false,
-      "TimeoutSeconds": 30,
-      "HttpRetry": {
-        "MaxAttempts": 3,
-        "DelayMs": 1000
-      },
-      "CircuitBreaker": {
-        "Enabled": true,
-        "FailureThreshold": 20,
-        "SamplingDurationSeconds": 60,
-        "BreakDurationSeconds": 60,
-        "MinimumThroughput": 10
-      },
-      "TokenRefreshThreshold": 300,
-      "IsDefault": true
-    }
-  ],
-  "FeishuWebSocket": {
-    "Reconnect": {
-      "Auto": true,
-      "MaxAttempts": 5,
-      "MaxAuthRetryAttempts": 5,
-      "BaseDelayMs": 5000,
-      "MaxDelayMs": 30000,
-      "TotalBudget": "00:30:00",
-      "Cooldown": "00:00:05"
-    },
-    "Certificate": {
-      "Mode": "Strict",
-      "AllowInsecureWebSocket": false,
-      "ValidateServerCertificate": true,
-      "AllowSelfSignedCertificates": false,
-      "AllowCertificateNameMismatch": false
-    },
-    "EnableReconnectMetrics": true,
-    "HeartbeatIntervalMs": 25000,
-    "ConnectionTimeoutMs": 10000,
-    "HealthCheckIntervalMs": 60000,
-    "InitialReceiveBufferSize": 4096,
-    "MessageHandlerTimeoutMs": 30000,
-    "AllowedHostSuffixes": "*.feishu.cn;*.larksuite.com",
-    "SequenceGapThreshold": 0,
-    "MessageSizeLimits": {
-      "MaxTextMessageSize": 1048576,
-      "MaxBinaryMessageSize": 10485760
-    },
-    "EventDeduplication": {
-      "Mode": "InMemory",
-      "CacheExpiration": "2.00:00:00",
-      "CleanupInterval": "00:05:00",
-      "ProcessingTimeout": "00:10:00",
-      "MaxCacheSize": 100000
-    }
-  },
-  "FeishuWebhook": {
-    "GlobalRoutePrefix": "feishu",
-    "MaxConcurrentEvents": 10,
-    "EnforceHeaderSignatureValidation": true,
-    "TimestampToleranceSeconds": 30,
-    "EventHandlingTimeoutMs": 30000,
-    "MaxRequestBodySize": 10485760,
-    "Apps": {
-      "app1": {
-        "AppKey": "cli_a1b2c3d4e5f6g7h8",
-        "VerificationToken": "your_app1_verification_token",
-        "EncryptKey": "your_app1_encrypt_key_32_bytes_long"
-      },
-      "app2": {
-        "AppKey": "cli_h8g7f6e5d4c3b2a1",
-        "VerificationToken": "your_app2_verification_token",
-        "EncryptKey": "your_app2_encrypt_key_32_bytes_long"
-      }
-    },
-    "Retry": {
-      "EnableRetry": false,
-      "MaxRetryCount": 3,
-      "InitialRetryDelaySeconds": 10,
-      "RetryDelayMultiplier": 2.0,
-      "MaxRetryDelaySeconds": 300,
-      "RetryPollIntervalSeconds": 30,
-      "MaxRetryPerPoll": 10
-    },
-    "RateLimit": {
-      "EnableRateLimit": false,
-      "WindowSizeSeconds": 60,
-      "MaxRequestsPerWindow": 100,
-      "EnableIpRateLimit": true,
-      "TooManyRequestsStatusCode": 429,
-      "TooManyRequestsMessage": "请求过于频繁，请稍后再试"
-    }
-  }
-}
-```
-
-<details>
-<summary>📋 WebSocket 高级配置参考</summary>
-
-| 配置项                        | 类型     | 默认值  | 说明                                                               |
-| ----------------------------- | -------- | ------- | ------------------------------------------------------------------ |
-| `Reconnect.MaxDelayMs`        | int      | 30000   | 最大重连延迟时间（毫秒）                                           |
-| `Reconnect.TotalBudget`       | TimeSpan | 30 分钟 | 最大重连总时间                                                     |
-| `Reconnect.Cooldown`          | TimeSpan | 5 秒    | 两次重连之间的冷却时间                                             |
-| `EnableReconnectMetrics`      | bool     | true    | 是否启用重连指标收集                                               |
-| `ConnectionTimeoutMs`         | int      | 10000   | 连接超时时间（毫秒）                                               |
-| `InitialReceiveBufferSize`    | int      | 4096    | 初始接收缓冲区大小（字节）                                         |
-| `Certificate.Mode`            | enum     | Strict  | 证书校验模式：Strict / Dev / Custom                                |
-| `Certificate.ValidateServerCertificate` | bool | true | 是否验证 SSL 证书                                                  |
-| `Certificate.AllowSelfSignedCertificates` | bool | false | 是否允许自签名证书                                               |
-| `Certificate.AllowCertificateNameMismatch` | bool | false | 是否允许证书名称不匹配                                           |
-| `Certificate.AllowInsecureWebSocket` | bool | false | 是否允许 ws:// 不安全连接（仅开发/测试）                           |
-| `AllowedHostSuffixes`         | string   | `*.feishu.cn;*.larksuite.com` | 主机白名单（`*.` 通配后缀或精确主机名，分号分隔）；置空表示不限制 |
-| `HealthCheckIntervalMs`       | int      | 60000   | 健康检查间隔（毫秒）                                               |
-| `MessageHandlerTimeoutMs`     | int      | 30000   | 单条消息处理超时（毫秒），0 表示不限制                             |
-| `SequenceGapThreshold`        | ulong    | 0       | 消息序号跳跃阈值，0 表示禁用跳跃检测                               |
-| `MessageSizeLimits`           | object   | 见下方  | 消息大小限制配置                                                   |
-| `EventDeduplication`          | object   | 见下方  | 事件去重配置                                                       |
-| `RejectEmptyEventIds`         | bool     | true    | 事件 EventId 为空时是否拒绝处理（fail-closed，对齐 Webhook WHF-05） |
-| `IgnoreUnknownEventTypes`     | bool     | false   | 未注册事件类型是否静默忽略（推荐 true，对齐 Webhook WHF-09；默认 false 保持兼容；Webhook 通道默认为 true，两者不一致会启动告警；支持热更新） |
-| `FailedEventInitialRetryDelaySeconds` | int | 10 | 失败事件落盘的初始重试延迟（秒，R-E1）；仅在注册 `IFailedEventStore`（`AddFailedEventStore`）后生效，重试主路径仍为服务端重发 |
-
-> ℹ️ **迁移提示**：旧版本的 `TokenRefreshInterval` / `TokenRefreshAhead` 配置已移除。令牌刷新现由 `FeishuAppConfig.TokenRefreshThreshold`（HTTP 层）统一控制，WebSocket 连接复用同一应用的令牌管理器，无需单独配置。
-
-**MessageSizeLimits 子配置：**
-
-| 配置项                 | 类型 | 默认值 | 说明                       |
-| ---------------------- | ---- | ------ | -------------------------- |
-| `MaxTextMessageSize`   | int  | 1MB    | 最大文本消息大小（字符数） |
-| `MaxTextMessageBytes`  | int  | 0      | 最大文本消息大小（UTF-8 字节），0 = 3 × `MaxTextMessageSize` 自动推导（发送/接收同源） |
-| `MaxBinaryMessageSize` | long | 10MB   | 最大二进制消息大小（字节），发送与接收均校验 |
-
-**EventDeduplication 子配置：**
-
-| 配置项              | 类型     | 默认值   | 说明                                                                                     |
-| ------------------- | -------- | -------- | ---------------------------------------------------------------------------------------- |
-| `Mode`              | enum     | InMemory | 去重模式：None（禁用）/ InMemory（内存）/ Distributed（需注入 IFeishuEventDeduplicator） |
-| `CacheExpiration`   | TimeSpan | 48 小时  | 缓存过期时间（最小 60 秒）。建议与飞书事件重试窗口一致                                   |
-| `CleanupInterval`   | TimeSpan | 5 分钟   | 缓存清理间隔（最小 60 秒）                                                               |
-| `ProcessingTimeout` | TimeSpan | 10 分钟  | 处理中超时时间（最小 10 秒），超时后允许重新处理事件                                     |
-| `MaxCacheSize`      | int      | 100000   | 内存缓存最大条目数，0 表示不限制                                                         |
-
-> 🔧 **Mode 实现说明**：
->
-> - `None`：注册 `NoopFeishuEventDeduplicator` 空实现，所有去重方法均不执行实际操作（`TryMarkAsProcessingAsync` 直接返回 Success、`IsProcessedAsync` 返回 false、`GetStatusAsync` 返回 Pending），事件直接处理不抛异常，输出 Debug 日志便于观测。适用于调试场景或对去重不敏感的事件流。
-> - `InMemory`：注册 `FeishuEventDeduplicator` 内存实现，进程内缓存事件 ID，重启后失效。
-> - `Distributed`：需通过 `services.AddSingleton<IFeishuEventDeduplicator, RedisFeishuEventDistributedDeduplicator>()` 手动注册分布式实现。若未注册，SDK 将记录警告并降级为内存实现（不抛异常以保证启动可用性）。
-
-> 💡 TimeSpan 配置说明：`Microsoft.Extensions.Configuration` 绑定 TimeSpan 时使用 `TypeDescriptor` 解析，`"hh:mm:ss"` 三段格式的首段是**小时**（如 `"24:00:00"` 表示 24 小时）；需要按天配置时使用 `"d.hh:mm:ss"` 四段格式（如 `"2.00:00:00"` 表示 48 小时），注意四段格式首段是**天**而非小时。
-
-> 💡 更多配置详情请参考 [Mud.Feishu.WebSocket 详细文档](./Mud.Feishu.WebSocket/Readme.md)
-
-</details>
-
-<details>
-<summary>📋 模块日志级别说明（EnableLogging 已移除，统一由 Logging:LogLevel 控制）</summary>
-
-R4 起，`FeishuAppConfig` 与 `FeishuWebSocketOptions` 上的 `EnableLogging` 开关已**移除**，各模块日志统一通过标准 `Logging:LogLevel` 控制：
-
-| 模块                                     | 日志控制位置                                                                      |
-| ---------------------------------------- | --------------------------------------------------------------------------------- |
-| HTTP API 客户端层（`Mud.Feishu`）        | `Logging:LogLevel:Mud.Feishu`（令牌相关：`Mud.Feishu.Abstractions.TokenManager`） |
-| WebSocket 模块（`Mud.Feishu.WebSocket`） | `Logging:LogLevel:Mud.Feishu.WebSocket`                                           |
-| Webhook 模块（`Mud.Feishu.Webhook`）     | `Logging:LogLevel:Mud.Feishu.Webhook`                                             |
-
-> 💡 **说明**：
->
-> - 各模块日志级别**各自独立**，不存在覆盖或继承关系。
-> - 旧配置键 `FeishuApps[*].EnableLogging`、`FeishuWebSocket:EnableLogging` 仍可被绑定读取，但已不产生任何效果（属性已移除）；请改用 `Logging:LogLevel`。
-> - 推荐生产环境将级别设为 `Information` 或 `Warning` 以减少日志量。
-
-</details>
-
-<details>
-<summary>📋 弹性策略配置参考（FeishuApps）</summary>
-
-| 配置项                                  | 类型 | 默认值 | 说明                                 |
-| --------------------------------------- | ---- | ------ | ------------------------------------ |
-| `TimeoutSeconds`                         | int  | 30     | HTTP 请求超时时间（秒），范围 1-300  |
-| `HttpRetry.MaxAttempts`                  | int  | 3      | 重试次数，范围 0-10                  |
-| `HttpRetry.DelayMs`                      | int  | 1000   | 重试延迟时间（毫秒），范围 100-60000 |
-| `CircuitBreaker.Enabled`                 | bool | true   | 是否启用熔断器                       |
-| `CircuitBreaker.FailureThreshold`        | int  | 20     | 熔断失败率阈值（百分比），范围 1-100 |
-| `CircuitBreaker.SamplingDurationSeconds` | int  | 60     | 熔断采样窗口时间（秒），范围 10-300  |
-| `CircuitBreaker.BreakDurationSeconds`    | int  | 60     | 熔断持续时间（秒），范围 10-300      |
-| `CircuitBreaker.MinimumThroughput`       | int  | 10     | 熔断最小吞吐量，范围 2-1000          |
-
-> ⚠️ 多应用模式下，弹性策略为全局共享，仅默认应用（`IsDefault=true`）的配置生效。非默认应用的弹性策略配置将被忽略。
-
-</details>
-
-<details>
-<summary>📋 Webhook 安全配置参考</summary>
-
-| 配置项                             | 类型                  | 默认值 | 说明                                                         |
-| ---------------------------------- | --------------------- | ------ | ------------------------------------------------------------ |
-| `AllowedSourceIPs`                 | HashSet&lt;string&gt; | 空     | 允许的源 IP 白名单，支持 CIDR 格式。非空时自动启用 IP 验证   |
-| `EnforceHeaderSignatureValidation` | bool                  | true   | 是否强制验证 X-Lark-Signature 请求头签名（生产环境必须启用） |
-| `TimestampToleranceSeconds`        | int                   | 30     | 时间戳容差（秒），超过此时间视为无效请求                     |
-| `MaxConcurrentEvents`              | int                   | 10     | 最大并发事件处理数                                           |
-| `MaxRequestBodySize`               | long                  | 10MB   | 最大请求体大小（字节）                                       |
-| `EventHandlingTimeoutMs`           | int                   | 30000  | 事件处理**软超时**（毫秒）：仅取消令牌，不强制中断处理器     |
-| `EnableTokenBackgroundRefresh`     | bool?                 | null   | 是否覆盖基座令牌后台刷新（null=不干预；替代已移除的 `EnableBackgroundProcessing`） |
-| `AllowInMemoryNonceDedupInProduction` | bool               | false  | 生产环境是否允许内存 Nonce 去重（默认阻断，见下方部署约束）  |
-| `InterceptionAckMode`              | `Ack` / `Retryable`   | Ack    | 拦截器中断事件时的 ACK 语义（`Ack`→200 已消费；`Retryable`→503 要求重推） |
-
-> 🔒 生产环境强烈建议保持 `EnforceHeaderSignatureValidation=true`，配置 `AllowedSourceIPs` 限制来源 IP，并将 `TimestampToleranceSeconds` 设置为 30 秒或更短以减少重放攻击时间窗口。
-
-#### 多实例部署约束（必读）
-
-内存实现只对**单实例**有效。生产环境（`ASPNETCORE_ENVIRONMENT=Production`）若未注册分布式
-Nonce 去重（`AddFeishuRedisDeduplicators()`），**宿主启动即失败**——这是一种静默的安全退化，
-默认必须由代码阻断而非文档建议。确为单实例部署时，显式设置
-`AllowInMemoryNonceDedupInProduction=true` 承担风险（仍会输出 Warning）。
-
-| 能力                | 单实例                     | 多实例（负载均衡）                       |
-| ------------------- | -------------------------- | ---------------------------------------- |
-| Nonce 防重放        | 内存可用（生产需显式豁免） | **必须 Redis**（否则跨实例重放不可检测） |
-| 事件去重（EventId） | 内存可用                   | 建议 Redis（否则重复消费面扩大）         |
-| 请求限流            | 内存可用                   | 每实例独立（等效配额 ×N）                |
-| 并发闸              | 单进程有效                 | 每实例独立                               |
-| 失败事件重投        | 进程内（重启即丢）         | 需自定义 `IFailedEventStore`             |
-
-</details>
-
-<details>
-<summary>📋 Redis 分布式去重配置参考（RedisOptions）</summary>
-
-> 当引用 `Mud.Feishu.Redis` 包并启用分布式去重时，以下配置在 `FeishuRedis` 节点下生效。
-
-| 配置项                 | 类型     | 默认值           | 说明                                                    |
-| ---------------------- | -------- | ---------------- | ------------------------------------------------------- |
-| `Connection.ServerAddress`   | string   | "localhost:6379" | Redis 连接地址，格式 `host:port` 或 `redis://host:port` |
-| `Connection.Password`        | string   | 空               | Redis 密码                                              |
-| `Connection.DefaultDatabase` | int?     | null             | 默认数据库索引（null 表示使用服务端默认）               |
-| `Advanced.ClientName`        | string?  | null             | 客户端名称（便于在 Redis 端识别连接来源）               |
-| `Connection.ConnectTimeout`  | int      | 5000             | 连接超时（毫秒），最小 1000                             |
-| `Connection.SyncTimeout`     | int      | 5000             | 同步操作超时（毫秒），最小 1000                         |
-| `Connection.Ssl`             | bool     | false            | 是否启用 TLS/SSL                                        |
-| `Connection.AbortOnConnectFail` | bool  | true             | 连接失败时是否中止                                      |
-| `Advanced.AllowAdmin`        | bool     | false            | 是否允许管理员操作（如 FLUSHDB），生产环境应保持 false  |
-| `Connection.ConnectRetry`    | int      | 3                | 连接重试次数，不能为负数                                |
-| `EventKeyPrefix`       | string   | "feishu:event:"  | 事件去重键前缀（用于应用/环境隔离）                     |
-| `NonceKeyPrefix`       | string   | "feishu:nonce:"  | Nonce 去重键前缀                                        |
-| `SeqIdKeyPrefix`       | string   | "feishu:seqid:"  | SeqID 去重键前缀                                        |
-| `EventCacheExpiration` | TimeSpan | "2.00:00:00"    | 事件去重缓存过期时间                                    |
-| `NonceTtl`             | TimeSpan | "00:05:00"      | Nonce 有效期                                            |
-| `SeqIdCacheExpiration` | TimeSpan | "2.00:00:00"    | SeqID 去重缓存过期时间                                  |
-
-> ℹ️ **高级去重参数**：推荐使用统一节 `FeishuDeduplication`（`Event` / `Nonce` / `SeqId` 子节点）配置 TTL 与键前缀；`FeishuRedis:Deduplication` 仍可绑定 `ProcessingTimeout` / `CleanupInterval` / `MaxCacheSize`（类型 `DeduplicationOptions`）。注意：`CacheExpiration` 和 `KeyPrefix` 由上表中的 `EventCacheExpiration` / `EventKeyPrefix` 优先覆盖；`AllowProcessingOnFallback` / `MaxRetryCount` / `InitialRetryDelay` / `MaxRetryDelay` 已在 R4 移除（Redis 主路径不消费），失败事件重试请改用 `FeishuWebhook:Retry`（`FailedEventRetryOptions`）。
-
-**配置示例：**
-
-```json
-{
-  "FeishuRedis": {
-    "Connection": {
-      "ServerAddress": "redis://prod-redis.internal:6380",
-      "Password": "your-password",
-      "DefaultDatabase": 1,
-      "ConnectTimeout": 5000,
-      "SyncTimeout": 5000,
-      "Ssl": true,
-      "AbortOnConnectFail": true,
-      "ConnectRetry": 3
-    },
-    "EventKeyPrefix": "prod:feishu:event:",
-    "NonceKeyPrefix": "prod:feishu:nonce:",
-    "SeqIdKeyPrefix": "prod:feishu:seqid:",
-    "EventCacheExpiration": "2.00:00:00",
-    "NonceTtl": "00:05:00",
-    "SeqIdCacheExpiration": "2.00:00:00"
-  }
-}
-```
-
-> 🔒 生产环境建议启用 `Connection.Ssl=true`，配置独立 `Connection.Password`，并为多租户场景设置不同的键前缀（`EventKeyPrefix`/`NonceKeyPrefix`/`SeqIdKeyPrefix`）以实现隔离。
-
-</details>
-
-<details>
-<summary>📋 用户认证配置参考（FeishuUserAuthenticationOptions）</summary>
-
-> 当引用 `Mud.Feishu.Authentication` 包并启用用户认证中间件时，以下配置在 `FeishuUserAuthentication` 节点下生效。
-
-| 配置项                     | 类型   | 默认值                    | 说明                                                        |
-| -------------------------- | ------ | ------------------------- | ----------------------------------------------------------- |
-| `OpenIdClaimType`          | string | "open_id"                 | OpenId 的 Claim 类型名称                                    |
-| `OpenIdFallbackClaimType`  | string | ClaimTypes.NameIdentifier | OpenId 的备用 Claim 类型名称                                |
-| `UnionIdClaimType`         | string | "union_id"                | UnionId 的 Claim 类型名称                                   |
-| `UserIdClaimType`          | string | "user_id"                 | UserId 的 Claim 类型名称                                    |
-| `NameClaimType`            | string | ClaimTypes.Name           | 用户名称的 Claim 类型名称                                   |
-| `EnableDistributedTracing` | bool   | true                      | 是否启用分布式追踪（创建 Activity 并设置用户相关标签）      |
-| `EnableSensitiveLog`       | bool   | false                     | 是否在日志中记录敏感信息（如 OpenId），生产环境应保持 false |
-
-**配置示例：**
-
-```json
-{
-  "FeishuUserAuthentication": {
-    "OpenIdClaimType": "open_id",
-    "UnionIdClaimType": "union_id",
-    "UserIdClaimType": "user_id",
-    "EnableDistributedTracing": true,
-    "EnableSensitiveLog": false
-  }
-}
-```
-
-**服务注册：**
+### 1. AI Agent 操作飞书
 
 ```csharp
-// 方式一：从 IConfiguration 绑定（推荐，与上方 appsettings.json 配合使用）
-builder.Services.AddFeishuApp(builder.Configuration, "FeishuApps");
-builder.Services.AddFeishuUserContext(builder.Configuration);
-
-// 方式二：代码配置
-builder.Services.AddFeishuUserContext(options =>
+// appsettings.json
 {
-    options.OpenIdClaimType = "custom_open_id";
-    options.EnableSensitiveLog = false;
-});
-```
-
-> 🔒 生产环境强烈建议保持 `EnableSensitiveLog=false`，避免在日志中泄露用户 OpenId/UnionId 等敏感信息。
-
-</details>
-
-<details>
-<summary>📋 失败事件重试配置参考（FailedEventRetryOptions）</summary>
-
-> Webhook 模块支持失败事件的自动重试，以下配置在 `FeishuWebhook:Retry` 节点下生效（R5.1 起真实生效；此前这些键静默无效，升级前请核对取值，详见 `documents/Configuration/ConfigMigration-R5.md`）。
-
-| 配置项                     | 类型   | 默认值 | 说明                         |
-| -------------------------- | ------ | ------ | ---------------------------- |
-| `EnableRetry`              | bool   | false  | 是否启用失败事件重试         |
-| `MaxRetryCount`            | int    | 3      | 最大重试次数                 |
-| `InitialRetryDelaySeconds` | int    | 10     | 初始重试延迟（秒）           |
-| `RetryDelayMultiplier`     | double | 2.0    | 重试延迟倍数（指数退避）     |
-| `MaxRetryDelaySeconds`     | int    | 300    | 最大重试延迟（秒，5 分钟）   |
-| `RetryPollIntervalSeconds` | int    | 30     | 重试轮询间隔（秒）           |
-| `MaxRetryPerPoll`          | int    | 10     | 每次轮询处理的最大失败事件数 |
-
-**配置示例：**
-
-```json
-{
-  "FeishuWebhook": {
-    "Retry": {
-      "EnableRetry": true,
-      "MaxRetryCount": 5,
-      "InitialRetryDelaySeconds": 10,
-      "RetryDelayMultiplier": 2.0,
-      "MaxRetryDelaySeconds": 300,
-      "RetryPollIntervalSeconds": 30,
-      "MaxRetryPerPoll": 10
-    }
+  "FeishuApps": [{
+    "AppKey": "default", "AppId": "cli_xxx", "AppSecret": "dsk_xxx", "IsDefault": true
+  }],
+  "FeishuAgent": {
+    "Tools": ["bitable.list_tables", "contact.search_user", "docx.get_document"],
+    "WriteAllowList": ["im.send_message"],
+    "MaxToolRisk": "high-risk-write"
   }
 }
 ```
-
-> ℹ️ 当 `EnableRetry=false` 时，子配置不会影响运行时行为，但仍会进行范围校验（如 `MaxRetryCount >= 0`），以确保配置值在启用时立即可用。无需强制保持默认值，便于热更新场景下动态切换。
-
-</details>
-
-<details>
-<summary>📋 Webhook 应用级配置参考（FeishuAppWebhookOptions）</summary>
-
-> 多应用模式下，每个应用在 `FeishuWebhook:Apps:{appKey}` 节点下独立配置。未显式设置的数值/布尔字段将自动继承全局 `FeishuWebhookOptions` 中对应的配置。
-
-| 配置项                             | 类型   | 默认值 | 说明                                                                    |
-| ---------------------------------- | ------ | ------ | ----------------------------------------------------------------------- |
-| `AppKey`                           | string | 必填   | 飞书应用 AppId（如 `cli_xxx`）                                          |
-| `VerificationToken`                | string | 必填   | 应用事件订阅 Verification Token                                         |
-| `EncryptKey`                       | string | 必填   | 事件加密 Key（长度必须为 32 字符）                                      |
-| `TimestampToleranceSeconds`        | int?   | null   | 时间戳容差（秒）。`null`/`-1`/`0` 继承全局，正整数覆盖全局              |
-| `EventHandlingTimeoutMs`           | int?   | null   | 事件处理超时（毫秒）。`null`/`-1`/`0` 继承全局，正整数（≥1000）覆盖全局 |
-| `EnforceHeaderSignatureValidation` | bool?  | null   | 是否强制验证请求头签名。`null` 继承全局                                 |
-| `EnableExceptionHandling`          | bool?  | null   | 是否启用异常捕获。`null` 继承全局                                       |
-
-**配置示例：**
-
-```json
-{
-  "FeishuWebhook": {
-    "TimestampToleranceSeconds": 30,
-    "EventHandlingTimeoutMs": 30000,
-    "Apps": {
-      "app1": {
-        "AppKey": "cli_a1b2c3d4e5f6g7h8",
-        "VerificationToken": "your_app1_verification_token",
-        "EncryptKey": "your_app1_encrypt_key_32_bytes_long",
-        "Description": "默认应用（继承全局配置）"
-      },
-      "app2": {
-        "AppKey": "cli_h8g7f6e5d4c3b2a1",
-        "VerificationToken": "your_app2_verification_token",
-        "EncryptKey": "your_app2_encrypt_key_32_bytes_long",
-        "TimestampToleranceSeconds": 60,
-        "EventHandlingTimeoutMs": 60000,
-        "EnforceHeaderSignatureValidation": false
-      }
-    }
-  }
-}
-```
-
-> 💡 **继承语义说明**：
->
-> - 数值字段（`TimestampToleranceSeconds`、`EventHandlingTimeoutMs`）：推荐使用 `null` 表示继承全局；`-1` 与 `0` 为向后兼容值，仍被识别为继承。
-> - 布尔字段：`null` 表示继承全局，`true`/`false` 表示覆盖全局。
-> - 推荐统一使用 `null` 表示继承，以与其他可空字段保持一致。
-
-</details>
-
-<details>
-<summary>📋 Webhook 频率限制配置参考（RateLimitOptions）</summary>
-
-> 在 `FeishuWebhook:RateLimit` 节点下配置请求频率限制，防止异常客户端打垮 Webhook 端点。
-
-| 配置项                      | 类型                  | 默认值                     | 说明                                         |
-| --------------------------- | --------------------- | -------------------------- | -------------------------------------------- |
-| `EnableRateLimit`           | bool                  | false                      | 是否启用频率限制                             |
-| `WindowSizeSeconds`         | int                   | 60                         | 时间窗口大小（秒），最小 1                   |
-| `MaxRequestsPerWindow`      | int                   | 100                        | 每个时间窗口内允许的最大请求数，最小 1       |
-| `EnableIpRateLimit`         | bool                  | true                       | 是否基于 IP 维度限流（false 则基于全局维度） |
-| `TooManyRequestsStatusCode` | int                   | 429                        | 超出限制时的 HTTP 状态码，范围 400-599       |
-| `TooManyRequestsMessage`    | string                | "请求过于频繁，请稍后再试" | 超出限制时的响应消息                         |
-| `WhitelistIPs`              | HashSet&lt;string&gt; | 空                         | 白名单 IP 列表（不参与限流），支持单个 IP    |
-
-**配置示例：**
-
-```json
-{
-  "FeishuWebhook": {
-    "RateLimit": {
-      "EnableRateLimit": true,
-      "WindowSizeSeconds": 60,
-      "MaxRequestsPerWindow": 100,
-      "EnableIpRateLimit": true,
-      "TooManyRequestsStatusCode": 429,
-      "TooManyRequestsMessage": "请求过于频繁，请稍后再试",
-      "WhitelistIPs": ["10.0.0.1", "10.0.0.2"]
-    }
-  }
-}
-```
-
-> ℹ️ 当 `EnableRateLimit=false` 时，子配置不会影响运行时行为，但仍会进行范围校验（如 `WindowSizeSeconds >= 1`），以确保配置值在启用时立即可用。无需强制保持默认值，便于热更新场景下动态切换。
-
-</details>
-
-### 3️⃣ 服务注册 (Program.cs)
 
 ```csharp
-using Mud.Feishu;
-using Mud.Feishu.WebSocket;
-using Mud.Feishu.Webhook;
-
-var builder = WebApplication.CreateBuilder(args);
-
-// 注册多应用模式（方式一：从配置文件加载）
 builder.Services.AddFeishuApp(builder.Configuration);
+builder.Services.CreateFeishuServicesBuilder().AddAllApis().Build();
+builder.Services.AddFeishuTools();
+builder.Services.AddFeishuAgent(builder.Configuration)
+    .AddFeishuEditMessageChannel()
+    .AddFeishuImConversationHandler();
 
-// 注册多应用模式（方式二：代码配置）
-builder.Services.AddFeishuApp(configure =>
+// 注入 FeishuAgent，在事件处理器或 API 端点中调用
+public class ChatController(IFeishuAgent agent) : ControllerBase
 {
-    configure.AddDefaultApp("default", "cli_xxx", "dsk_xxx");
-    configure.AddApp("hr-app", "cli_yyy", "dsk_yyy", opt =>
+    [HttpPost("chat")]
+    public async Task<IActionResult> Chat([FromBody] string userMessage, CancellationToken ct)
     {
-        opt.TimeoutSeconds = 45;
-        opt.HttpRetry.MaxAttempts = 5;
-        opt.HttpRetry.DelayMs = 2000; // 自定义重试延迟
-        opt.TokenRefreshThreshold = 300; // Token 刷新阈值（秒）
-    });
-});
-
-// 注册多应用模式（方式三：使用预构建的配置列表）
-var configs = new List<FeishuAppConfig>
-{
-    new FeishuAppConfig { AppKey = "default", AppId = "cli_xxx", AppSecret = "dsk_xxx" }, // IsDefault 自动推断
-    new FeishuAppConfig { AppKey = "hr-app", AppId = "cli_yyy", AppSecret = "dsk_yyy" }
-};
-builder.Services.AddFeishuApp(configs);
-
-// 注册 HTTP API 服务（懒人模式 - 注册所有服务）
-builder.Services.CreateFeishuServicesBuilder()
-    .AddAllApis()
-    .Build();
-
-// 注册 HTTP API 服务（构造者模式 - 按需注册）
-builder.Services.CreateFeishuServicesBuilder()
-    .AddOrganizationApi()
-    .AddMessageApi()
-    .AddChatGroupApi()
-    .AddApprovalApi()
-    .AddTaskApi()
-    .AddCardApi()
-    .AddAttendanceApi()
-    .AddDriveApi()
-    .AddWikiApi()
-    .AddDocxApi()
-    .AddSpreadsheetsApi()
-    .AddBiTableApi()
-    .AddCalendarApi()
-    .AddVideoConferencingApi()
-    .AddMailApi()
-    .AddAIApi()
-    .AddSearchApi()
-    .AddHelpDeskApi()
-    .Build();
-
-// 注册 HTTP API 服务（按模块注册）
-builder.Services.AddFeishuServices(
-    FeishuModule.Organization,
-    FeishuModule.Message,
-    FeishuModule.ChatGroup,
-    FeishuModule.Spreadsheets,
-    FeishuModule.Bitable,
-    FeishuModule.Calendar,
-    FeishuModule.VideoConferencing,
-    FeishuModule.Mail,
-    FeishuModule.AI,
-    FeishuModule.Search,
-    FeishuModule.HelpDesk
-);
-
-// 注册 WebSocket 事件订阅服务
-builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration, "default")
-    .AddHandler<MessageEventHandler>()
-    .Build();
-
-// 注册 Webhook HTTP 回调事件服务
-builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
-    .AddHandler<MessageReceiveEventHandler>()
-    .AddHandler<DepartmentCreatedEventHandler>()
-    .Build();
-
-var app = builder.Build();
-
-// 添加 Webhook 中间件
-app.UseFeishuWebhook();
-
-app.Run();
-```
-
-#### `FeishuAppOptions` 一次性读取语义清单
-
-`FeishuAppOptions` 经 `IOptions<T>` 注入时为**启动快照**（IOptions 缓存不随 `IConfiguration` 变更失效），修改配置源后不热更，需重启进程：
-
-| 选项 | 读取点 | 实际语义 |
-| ---- | ---- | ---- |
-| `EnableConfigReload` | `FeishuAppManager` 构造函数（IOptions） | 仅启动时生效 |
-| `ContextRetireDelaySeconds` | `FeishuAppManager` 构造函数（IOptions） | 仅启动时生效 |
-| `WarmUpAllAppsOnStartup` | `FeishuTokenRegistrationService`（IOptions 注入） | 仅启动时生效 |
-| `RemoveRuntimeAddedAppsOnReload` | 热更新时读 `IOptions<>.Value` | 值仍是启动快照——改此项需重启 |
-| `EnablePerAppAuthenticationClient` | `CreateAppContext` 读 `IOptions<>.Value` | 每次上下文创建时求值，但值本身不热更 |
-| `EnableTokenEncryption` | 存储工厂首次解析时读取（一次性） | 中途开启 → 旧明文解密失败 → 删脏键并重新获取 → 重写密文（自愈）；建议重启后开启 |
-
-> 应用配置本身（`FeishuApps` 节点：AppId/AppSecret/BaseUrl/超时等）支持热更新（`EnableConfigReload`，默认开启）；上表仅针对 `FeishuAppOptions` 行为开关。
-
-### 4️⃣ 验证配置
-
-```csharp
-// 获取用户信息测试
-public class TestController : ControllerBase
-{
-    private readonly IFeishuTenantV3User _userApi;
-
-    public TestController(IFeishuTenantV3User userApi)
-    {
-        _userApi = userApi;
-    }
-
-    [HttpGet("test")]
-    public async Task<IActionResult> TestConnection()
-    {
-        var result = await _userApi.GetUserInfoByIdAsync("test_user_id");
-        return Ok(new { code = result.Code, message = result.Msg });
+        var response = await agent.RunAsync(userMessage, ct);
+        return Ok(response.Text);
     }
 }
 ```
 
----
-
-## 🎯 API 模块
-
-Mud.Feishu 提供完整的飞书 HTTP API 覆盖，支持以下模块：
-
-### 📋 API 模块总览
-
-| 模块分类        | API 版本 | 主要功能                                             |
-| --------------- | -------- | ---------------------------------------------------- |
-| **🔐 认证授权** | V3       | 应用令牌、租户令牌、用户令牌、OAuth 2.0、多应用管理  |
-| **👥 组织架构** | V1/V3    | 用户、部门、员工、用户组、职级、职务、角色           |
-| **💬 消息服务** | V1       | 文本/图片/卡片消息、批量发送、群聊管理               |
-| **📋 审批流程** | V4       | 审批定义、审批实例、审批任务、审批消息、审批订阅     |
-| **📝 任务管理** | V2       | 任务创建、更新、分组、附件、评论、自定义字段         |
-| **📅 日程会议** | V4       | 日历管理、日程事件、ACL 访问控制                     |
-| **📹 视频会议** | V1       | 会议管理、会议室、配置、导出、会议数据、纪要、录制、报告 |
-| **📄 文档管理** | V1       | 飞书文档、文档块、内容转换                           |
-| **📚 知识库**   | V2       | 知识空间、节点管理、节点复制移动                     |
-| **☁️ 云盘管理** | V1       | 云空间、文件夹、文件上传、版本管理、权限、评论、订阅 |
-| **🎨 画板管理** | V1       | 画板主题、缩略图、节点创建、语法解析                 |
-| **📊 电子表格** | V2/V3    | 电子表格、区域操作、筛选、数据验证、条件格式         |
-| **📋 多维表格** | V1/V2    | 数据表、记录、字段、视图、表单、仪表盘、角色、自动化 |
-| **⏰ 考勤管理** | V1       | 考勤组、打卡记录、班次、请假审批、考勤统计、档案     |
-| **🎴 卡片管理** | V1/V2    | 卡片管理、卡片元素、消息流卡片                       |
-| **🤖 AI 能力**  | V1       | 文档解析、OCR 识别、语音转文字、文本翻译             |
-| **📧 邮箱管理** | V1       | 邮件别名、联系人、草稿、文件夹、邮件组、标签、模板、消息、公共邮箱、规则、会话 |
-| **🔍 搜索**     | V2       | 数据源搜索、文档/知识库搜索、套件搜索               |
-| **🎧 服务台**   | V1       | 客服管理、技能、排班、工单、工单消息                 |
-
-### 📄 文档管理 (Docx)
-
-飞书文档 API，支持文档创建、编辑、块操作等。
+### 2. MCP Server（进程外 Agent）
 
 ```csharp
-public interface IFeishuV1Docx
-{
-    // 文档基础操作
-}
-
-public interface IFeishuV1DocxBlocks
-{
-    // 文档块操作
-}
+builder.Services.AddFeishuTools();
+builder.Services.AddFeishuMcpServer(o => o.AppKey = "default");
+await app.Services.RunFeishuMcpStdioAsync();
 ```
 
-**功能列表**：
+Claude Code / Cursor / 自建 harness 经 stdio 连接即可调用 182 个飞书工具，
+授权 / 租户切换 / 净化 / 审计与进程内 Agent **完全一致**。
 
-- 文档创建和获取
-- 文档块读取和更新
-- 批量操作文档块
-- 内容转换
-
-### 📚 知识库 (Wiki)
-
-知识空间和节点管理 API。
+### 3. HTTP API 调用
 
 ```csharp
-public interface IFeishuV2Wiki
-{
-    // 知识空间管理
-}
-
-public interface IFeishuV2WikiNodes
-{
-    // 知识节点管理
-}
-```
-
-**功能列表**：
-
-- 知识空间创建和查询
-- 节点树结构管理
-- 节点复制和移动
-- 文档导入知识库
-
-### ☁️ 云盘管理 (Drive)
-
-云空间文件和文件夹管理 API。
-
-```csharp
-public interface IFeishuV1DriveFiles
-{
-    // 文件操作
-}
-
-public interface IFeishuV1DriveFolder
-{
-    // 文件夹操作
-}
-
-public interface IFeishuV1DriveFilesVersions
-{
-    // 文件版本管理
-}
-
-public interface IFeishuV1DrivePermissions
-{
-    // 云文档权限管理
-}
-
-public interface IFeishuV1DriveSubscribe
-{
-    // 云文档事件订阅
-}
-
-public interface IFeishuV1DriveComments
-{
-    // 云文档评论管理
-}
-```
-
-**功能列表**：
-
-- 文件上传和下载
-- 文件夹创建和管理
-- 文件版本控制
-- 媒体文件处理
-- 云文档权限管理（协作者增删改查、所有者转移、权限设置）
-- 云文档密码管理（启用、刷新、停用）
-- 云文档评论管理（评论/回复增删改查、表情回应）
-- 云文档事件订阅（文件/用户事件订阅管理）
-
-### ⏰ 考勤管理 (Attendance)
-
-企业考勤全流程管理 API。
-
-```csharp
-public interface IFeishuV1AttendanceGroups
-{
-    // 考勤组管理
-}
-
-public interface IFeishuTenantV1AttendanceUserFlows
-{
-    // 打卡流水
-}
-
-public interface IFeishuTenantV1AttendanceStats
-{
-    // 考勤统计
-}
-```
-
-**功能列表**：
-
-- 考勤组配置管理
-- 打卡记录查询
-- 班次管理
-- 请假审批
-- 补卡申请
-- 考勤统计报表
-
-### 📋 审批流程 (Approval)
-
-企业审批全流程管理 API。
-
-```csharp
-public interface IFeishuTenantV4Approval
-{
-    // 审批定义和实例
-}
-
-public interface IFeishuTenantV4ApprovalTask
-{
-    // 审批任务管理
-}
-```
-
-**功能列表**：
-
-- 审批定义创建
-- 审批实例发起
-- 审批任务处理
-- 审批评论
-- 第三方审批集成
-
-### 📝 任务管理 (Task)
-
-飞书任务全功能 API。
-
-```csharp
-public interface IFeishuV2Task
-{
-    // 任务管理
-}
-
-public interface IFeishuV2TaskCustomFields
-{
-    // 自定义字段
-}
-```
-
-**功能列表**：
-
-- 任务创建和更新
-- 任务列表管理
-- 任务分组
-- 任务评论和附件
-- 自定义字段
-
-### 👥 组织架构 (Organization)
-
-完整的组织架构管理 API。
-
-```csharp
-public interface IFeishuTenantV3User
-{
-    // 用户管理
-}
-
-public interface IFeishuTenantV3Departments
-{
-    // 部门管理
-}
-```
-
-**功能列表**：
-
-- 用户 CRUD 操作
-- 部门树管理
-- 用户组管理
-- 职级职务管理
-- 角色权限管理
-
-### 💬 消息服务 (Messages)
-
-消息发送和批量消息 API。
-
-```csharp
-public interface IFeishuV1Message
-{
-    // 消息发送
-}
-
-public interface IFeishuTenantV1BatchMessage
-{
-    // 批量消息
-}
-```
-
-**功能列表**：
-
-- 文本/图片/卡片消息
-- 批量发送
-- 消息撤回
-- 已读状态查询
-
-### 🎴 卡片管理 (Cards)
-
-卡片和消息流卡片 API。
-
-```csharp
-public interface IFeishuTenantV1Card
-{
-    // 卡片管理
-}
-
-public interface IFeishuTenantV1CardElements
-{
-    // 卡片元素
-}
-```
-
-**功能列表**：
-
-- 卡片创建和更新
-- 卡片元素管理
-- 消息流卡片
-
-### 🏢 群聊管理 (ChatGroup)
-
-群组和会话管理 API。
-
-```csharp
-public interface IFeishuTenantV1ChatGroup
-{
-    // 群组管理
-}
-```
-
-**功能列表**：
-
-- 群组创建和管理
-- 群成员管理
-- 群公告
-- 会话标签
-
-### 🎨 画板管理 (Board)
-
-飞书画板（白板）API，支持画板主题、节点管理和语法解析。
-
-```csharp
-public interface IFeishuV1Board
-{
-    // 画板管理
-}
-```
-
-**功能列表**：
-
-- 获取和更新画板主题
-- 获取画板缩略图片
-- 解析画板语法（PlantUML/Mermaid）
-- 创建和管理画板节点
-
-### 📊 电子表格 (Spreadsheets)
-
-飞书电子表格 API，支持完整的电子表格操作。
-
-```csharp
-public interface IFeishuV3Spreadsheets
-{
-    // 电子表格基础操作
-}
-
-public interface IFeishuV3SpreadsheetRange
-{
-    // 区域操作
-}
-
-public interface IFeishuV3SpreadsheetData
-{
-    // 数据操作
-}
-
-public interface IFeishuV3SpreadsheetCell
-{
-    // 单元格操作
-}
-
-public interface IFeishuV3SpreadsheetFilter
-{
-    // 筛选操作
-}
-```
-
-**功能列表**：
-
-- 电子表格创建和获取
-- 区域读写和格式化
-- 数据查询和更新
-- 单元格样式设置
-- 筛选器和筛选视图
-- 浮动图片管理
-- 保护范围和数据验证
-- 条件格式
-
-### 📋 多维表格 (Bitable)
-
-飞书多维表格 API，支持完整的多维表格数据管理。
-
-```csharp
-public interface IFeishuV1Bitable
-{
-    // 多维表格应用管理
-}
-
-public interface IFeishuV1BitableAppTable
-{
-    // 数据表管理
-}
-
-public interface IFeishuV1BitableRecord
-{
-    // 记录管理
-}
-
-public interface IFeishuV1BitableField
-{
-    // 字段管理
-}
-
-public interface IFeishuV1BitableView
-{
-    // 视图管理
-}
-```
-
-**功能列表**：
-
-- 多维表格应用管理
-- 数据表 CRUD 操作
-- 记录增删改查
-- 字段类型管理
-- 视图配置
-- 表单管理
-- 仪表盘统计
-- 角色权限控制
-- 自动化流程管理
-
-### 📅 日历日程 (Calendar)
-
-飞书日历 API，支持日历管理和日程事件管理。
-
-```csharp
-public interface IFeishuV4Calendar
-{
-    // 日历管理
-}
-
-public interface IFeishuV4CalendarAcl
-{
-    // 日历访问控制
-}
-
-public interface IFeishuV4CalendarEvent
-{
-    // 日程事件管理
-}
-```
-
-**功能列表**：
-
-- 主日历和次要日历管理
-- 日程事件创建、更新、查询
-- 日历访问控制（ACL）
-- 日历共享和权限管理
-
-### 📹 视频会议 (VideoConferencing)
-
-飞书视频会议 API，支持会议管理、会议室、配置和导出等。
-
-```csharp
-public interface IFeishuV1VideoConferencingMeeting
-{
-    // 会议管理
-}
-
-public interface IFeishuTenantV1VideoConferencingConfig
-{
-    // 会议配置
-}
-
-public interface IFeishuTenantV1VideoConferencingRoom
-{
-    // 会议室管理
-}
-
-public interface IFeishuV1VideoConferencingRecording
-{
-    // 录制管理
-}
-
-public interface IFeishuV1VideoConferencingReserves
-{
-    // 会议室预定
-}
-```
-
-**功能列表**：
-
-- 会议查询、邀请、踢出、设置主持人
-- 会议室管理和会议室层级管理
-- 会议配置和预定管理
-- 会议数据导出和报表
-- 会议录制和纪要管理
-
-### 🤖 AI 能力 (AI)
-
-飞书 AI 能力 API，支持文档解析、OCR 识别、语音转文字和文本翻译。
-
-```csharp
-public interface IFeishuTenantV1AIDocument
-{
-    // AI 文档解析
-}
-
-public interface IFeishuTenantV1AIOpticalCharRecognition
-{
-    // OCR 识别
-}
-
-public interface IFeishuTenantV1AISpeechToText
-{
-    // 语音转文字
-}
-
-public interface IFeishuTenantV1AITranslation
-{
-    // 文本翻译
-}
-```
-
-**功能列表**：
-
-- 文档解析（简历解析、合同字段提取）
-- OCR 识别（身份证、银行卡、营业执照、驾驶证等 18 种证件票据）
-- 语音转文字（文件识别、流式识别）
-- 文本翻译和多语言检测
-
-### 📧 邮箱管理 (Mail)
-
-飞书邮箱管理 API，支持邮件消息、联系人、草稿、文件夹、邮件组等全功能。
-
-```csharp
-public interface IFeishuV1MailMessage
-{
-    // 邮件消息管理
-}
-
-public interface IFeishuV1MailGroup
-{
-    // 邮件组管理
-}
-
-public interface IFeishuV1MailPublicMailbox
-{
-    // 公共邮箱管理
-}
-
-public interface IFeishuV1MailTemplate
-{
-    // 邮件模板管理
-}
-```
-
-**功能列表**：
-
-- 邮件消息发送和管理
-- 邮件别名和联系人管理
-- 草稿和文件夹管理
-- 邮件组、标签、规则管理
-- 公共邮箱和邮件模板管理
-- 邮件会话和事件订阅
-
-### 🔍 搜索 (Search)
-
-飞书搜索 API，支持数据源搜索、文档/知识库搜索和套件搜索。
-
-```csharp
-public interface IFeishuTenantV2SearchDataSource
-{
-    // 数据源管理
-}
-
-public interface IFeishuV2SearchDocWiki
-{
-    // 文档/知识库搜索
-}
-
-public interface IFeishuUserV2SearchSuite
-{
-    // 套件搜索
-}
-```
-
-**功能列表**：
-
-- 搜索数据源管理
-- 文档和知识库内容搜索
-- 套件搜索
-
-### 🎧 服务台 (HelpDesk)
-
-飞书服务台 API，支持客服管理、技能配置和工单处理。
-
-```csharp
-public interface IFeishuV1HelpDeskAgent
-{
-    // 客服管理
-}
-
-public interface IFeishuV1HelpDeskTicket
-{
-    // 工单管理
-}
-```
-
-**功能列表**：
-
-- 客服信息和技能管理
-- 客服排班管理
-- 工单创建、更新和查询
-- 工单消息和自定义字段管理
-
----
-
-## 🎯 核心功能
-
-### 🏛️ Mud.Feishu.Abstractions - 事件处理抽象层
-
-**统一的事件处理架构，WebSocket 和 Webhook 共享相同的处理器接口**
-
-| 功能特性       | 说明                                                        |
-| -------------- | ----------------------------------------------------------- |
-| **策略模式**   | 可扩展的事件处理器架构                                      |
-| **工厂模式**   | 动态注册和发现处理器                                        |
-| **类型安全**   | 强类型数据模型，编译时检查                                  |
-| **自动去重**   | 内置事件 ID 去重机制（内存/分布式）                         |
-| **事件拦截器** | 支持事件处理前后的拦截逻辑                                  |
-| **基类处理器** | 简化开发的专用基类                                          |
-| **性能指标**   | 内置 FeishuMetrics 指标收集（Token、事件、HTTP、WebSocket） |
-| **SSRF 防护**  | URL 白名单验证和私有 IP 检测                                |
-| **SeqID 去重** | WebSocket 二进制消息序列号去重                              |
-
-**核心工具类**：
-
-- `FeishuMetrics` / `FeishuMetricsHelper` - 统一性能指标收集（Token 缓存、事件处理、HTTP 请求、WebSocket 连接）
-- `FeishuEventDeduplicator` - 事件去重服务（支持内存和分布式模式）
-- `FeishuSeqIDDeduplicator` - WebSocket 消息序列号去重
-- `IFeishuAppContext.GetTokenManager(tokenType)` - 令牌管理器入口（按 `FeishuTokenTypes` 常量获取租户/应用/用户令牌管理器，令牌管理实现位于 Mud.HttpUtils）
-- `UrlValidator` - URL 白名单验证和 SSRF 防护（来自 Mud.HttpUtils）
-
-### 🌐 Mud.Feishu - HTTP API 客户端
-
-**企业级特性**：
-
-- ✅ 自动令牌缓存和刷新
-- ✅ 智能重试机制（可配置重试次数和延迟）
-- ✅ 高性能缓存（解决缓存击穿）
-- ✅ 统一异常处理
-- ✅ 连接池管理
-- ✅ 详细日志记录
-- ✅ 多应用上下文切换支持
-- ✅ 性能指标监控（内置 FeishuMetrics 指标收集）
-- ✅ SSRF 防护（URL 白名单验证和私有 IP 检测）
-- ✅ 自定义模块注册器（IFeishuModuleRegistrar 扩展）
-
-> 💡 **提示**：[查看完整 API 文档](./Mud.Feishu/README.md)
-
-### 🔌 Mud.Feishu.WebSocket - 实时事件订阅
-
-**企业级 WebSocket 客户端**：
-
-- ✅ 智能连接管理（自动重连、心跳检测、状态监控）
-- ✅ 指数退避重连策略（可插拔 IReconnectStrategy，双重限制：次数和时间）
-- ✅ 事件去重（InMemory/Distributed 模式，支持 Redis 分布式去重）
-- ✅ 消息序号验证（重放攻击检测、消息丢失检测、序号回退检测）
-- ✅ 会话管理（session_id 管理、断线恢复、24 小时有效期）
-- ✅ 连接指标监控（FeishuMetrics 集成，实时统计吞吐量）
-- ✅ SSL/TLS 证书验证（可配置验证策略、自定义验证回调）
-- ✅ 访问令牌自动刷新（缓存和提前刷新避免过期）
-
-> 💡 **提示**：[查看完整文档](./Mud.Feishu.WebSocket/Readme.md)
-
-### 🪝 Mud.Feishu.Webhook - HTTP 回调事件处理
-
-**企业级 Webhook 处理**：
-
-- ✅ 安全验证（签名验证、时间戳验证、Nonce 验证、订阅验证、空标识符 fail-closed、日志清洗防注入）
-- ✅ 加密解密（内置 AES-256-CBC 解密，自动处理飞书加密事件）
-- ✅ 自定义验证器（ISignatureValidator、ITimestampValidator、INonceValidator、IEncryptKeyProvider）
-- ✅ 请求频率限制（内置滑动窗口限流中间件）
-- ✅ 多应用模式（独立路由、处理器、拦截器和配置）
-- ✅ 应用级配置继承（全局配置自动继承到应用级）
-- ✅ 后台处理模式（异步事件处理，不阻塞 HTTP 响应）
-- ✅ 事件重试机制（可配置重试次数、延迟和策略）
-- ✅ 健康检查（内置 FeishuWebhookHealthCheck）
-- ✅ 性能监控（可选性能指标收集）
-
-> ⚠️ **加密链路前提**：Webhook 模块仅支持**加密模式**的事件订阅验证（明文 `url_verification` 一律 403）。
-> 请在飞书开放平台为订阅应用启用加密并配置 Encrypt Key。详见 [Webhook 文档](./Mud.Feishu.Webhook/README.md)。
-
-> 💡 **提示**：[查看完整文档](./Mud.Feishu.Webhook/README.md)
-
-### 🔑 Mud.Feishu.Authentication - 用户认证中间件
-
-- ✅ 基于 AsyncLocal 的线程安全用户上下文管理
-- ✅ 从 JWT Claims 自动提取飞书用户信息
-- ✅ 支持分布式追踪 (ActivitySource)
-- ✅ 请求结束后自动清理用户上下文
-
-> 💡 **提示**：[查看完整文档](./Mud.Feishu.Authentication/README.md)
-
-### 📋 Mud.Feishu.EventCallback - 事件回调强类型模型
-
-- ✅ 强类型数据模型（所有事件数据均有完整类型定义和 XML 文档注释）
-- ✅ 源代码生成器（自动生成事件处理器基类）
-- ✅ 完整事件覆盖（组织架构、即时通讯、审批、任务等主要业务场景）
-
-> 💡 **提示**：[查看完整文档](./Mud.Feishu.EventCallback/README.md)
-
-### 📦 Mud.Feishu.Redis - Redis 分布式去重
-
-- ✅ 事件去重（Redis Hash + Lua 脚本状态机模式）
-- ✅ Nonce 去重（SETNX + EXPIRE 防止重放攻击）
-- ✅ SeqID 去重（Sorted Set 支持范围查询）
-- ✅ 降级策略（Redis 故障时自动降级到内存去重）
-- ✅ 多应用隔离（所有去重器支持 appKey 参数）
-- ✅ 健康检查（内置 Redis 健康检查）
-
-> 💡 **提示**：[查看完整文档](./Mud.Feishu.Redis/README.md)
-
-### 📊 Mud.Feishu.OpenTelemetry - 可观测性扩展
-
-- ✅ 一键开启飞书 SDK 分布式追踪与指标采集
-- ✅ 自动注册 Feishu ActivitySource 和 Meter（事件处理、Webhook、WebSocket）
-- ✅ 自动注册 Mud.HttpUtils 可观测性源（HTTP 请求、Token 刷新、重试）
-- ✅ OTLP gRPC 导出，支持 Jaeger/Tempo/Prometheus/Grafana
-- ✅ 采样策略配置（ParentBased + TraceIdRatioBased）
-- ✅ 资源标签自动填充（service.name、service.version、deployment.environment）
-
-> 💡 **提示**：[查看完整文档](./Mud.Feishu.OpenTelemetry/README.md)
-
-### 📦 Mud.Feishu.DataModels - 强类型数据模型
-
-- ✅ 覆盖全部飞书 API 模块的请求/响应数据模型
-- ✅ 强类型设计，编译时类型安全保障
-- ✅ 完整 JSON 标注和 XML 文档注释
-- ✅ 按模块分目录组织，结构清晰
-- ✅ 公共模型复用（分页、筛选等）
-
-> 💡 **提示**：[查看完整文档](./Mud.Feishu.DataModels/README.md)
-
----
-
-## 💡 快速开始示例
-
-### HTTP API 调用
-
-```csharp
-// 创建用户
-[HttpPost("users")]
-public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
-{
-    // 多应用场景下切换应用：UseAppScope 为作用域式（using 结束自动恢复上下文）
-    // （旧入口 UseApp / UseDefaultApp 自 Mud.HttpUtils 3.0.0 起已标 [Obsolete]）
-    using (_userApi.UseAppScope("hr-app"))
-    {
-        var result = await _userApi.CreateUserAsync(request);
-        return result.Code == 0 ? Ok(result.Data) : BadRequest(result.Msg);
-    }
-}
-
-// 多应用场景下使用 IFeishuAppManager
-var tenantJobTitleApi = _feishuAppManager.GetWebApi<IFeishuTenantV3JobTitle>("hr-app");
-var result = await tenantJobTitleApi.GetJobTitlesListAsync(10, null);
-
-// 使用作用域切换应用上下文，using 结束后自动恢复
-var userApi = _feishuAppManager.GetDefaultWebApi<IFeishuTenantV3User>();
+builder.Services.AddFeishuApp(builder.Configuration);
+builder.Services.CreateFeishuServicesBuilder().AddAllApis().Build();
+
+// 注入即调用，令牌全生命周期托管
+app.MapGet("/users/{userId}",
+    (IFeishuTenantV3User userApi, string userId, CancellationToken ct) =>
+        userApi.GetUserInfoByIdAsync(userId, ct));
+
+// 多应用作用域切换
 using (userApi.UseAppScope("hr-app"))
 {
-    var userResult = await userApi.GetUserInfoByIdAsync("user_123");
+    return await userApi.GetUserInfoByIdAsync(userId, ct);
 }
 ```
 
-### 事件处理
+### 4. Webhook 事件处理
 
 ```csharp
-// WebSocket 实时事件订阅
-builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration, "default")
-    .AddHandler<MessageEventHandler>()
-    .Build();
-
-// Webhook HTTP 回调事件处理
 builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
     .AddHandler<DepartmentCreatedEventHandler>()
     .Build();
-
 app.UseFeishuWebhook();
 ```
 
-### 多应用事件处理
+### 5. WebSocket 实时订阅
 
 ```csharp
-// WebSocket 多应用事件订阅
 builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration, "default")
-    .AddHandler<DefaultAppEventHandler>()
-    .Build();
-
-builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration, "hr-app")
-    .AddHandler<HrAppEventHandler>()
-    .Build();
-
-// Webhook 多应用事件处理（独立路由、处理器和拦截器）
-builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
-    .AddHandler<App1Handler>("app1")
-    .AddInterceptor<App1LoggingInterceptor>("app1")
-    .AddHandler<App2Handler>("app2")
+    .AddHandler<MessageEventHandler>()
     .Build();
 ```
 
-### 多租户部署指引
-
-> **多租户 = 多应用**。每个租户对应一个 `FeishuAppConfig`（独立 AppId/AppSecret），通过 `UseAppScope`（或 `IFeishuAppManager.GetWebApi`）切换应用上下文。
-
-**最小装配片段**：
+### 6. 可观测性
 
 ```csharp
-// 1. 为每个租户注册应用配置
-builder.Services.AddFeishuApp(configure =>
-{
-    configure.AddDefaultApp("tenant-a", "cli_aaa", "dsk_aaa");
-    configure.AddApp("tenant-b", "cli_bbb", "dsk_bbb");
-});
-
-// 2. 注册 HTTP API 服务
-builder.Services.CreateFeishuServicesBuilder()
-    .AddAllApis()
-    .Build();
-
-// 3. 在请求中按租户切换应用上下文
-public class TenantController : ControllerBase
-{
-    private readonly IFeishuAppManager _appManager;
-
-    public TenantController(IFeishuAppManager appManager)
-    {
-        _appManager = appManager;
-    }
-
-    [HttpGet("tenant/{tenantKey}/users/{userId}")]
-    public async Task<IActionResult> GetUser(string tenantKey, string userId)
-    {
-        // 使用 using 确保作用域结束后自动恢复默认应用
-        var userApi = _appManager.GetDefaultWebApi<IFeishuTenantV3User>();
-        using var scope = userApi.UseAppScope(tenantKey);
-        var result = await userApi.GetUserInfoByIdAsync(userId);
-        return Ok(result);
-    }
-}
+builder.Services.AddFeishuOpenTelemetry(o => o.OtlpEndpoint = new Uri("http://localhost:4317"));
 ```
 
-> ⚠️ **安全提示**：`UseAppScope` 仅切换应用上下文（令牌/端点），**不做租户隔离授权**。
-> 如需限制请求方只能访问其所属租户的数据，应在业务层注册自定义授权逻辑（如基于 Claim 的租户校验中间件）。
-> 组件侧的 `IAppAccessAuthorizer` 已对缺失给出错误提示，但本 SDK 不内置授权实现。
+---
 
-> 🔒 **多租户 Redis 隔离**：使用 Redis 分布式去重时，应为每个租户设置独立的键前缀
-> （`EventKeyPrefix`/`NonceKeyPrefix`/`SeqIdKeyPrefix`），避免跨租户事件冲突。
+## 包家族
 
-> 🔄 **凭据轮换与令牌清库（D10）**：配置热更新检测到某应用的 `AppId` 或 `AppSecret` 变更时，
-> 会立即清除该应用在令牌存储后端的**全部**持久化令牌（租户令牌 + 全部用户令牌，Memory 与 Redis
-> 后端语义一致），旧凭据换取的令牌不会经存储恢复路径「复活」。仅 `BaseUrl`/`TimeoutSeconds`/弹性参数等
-> 非凭据字段变更时保留令牌热迁移。
->
-> ℹ️ **残余窗口**：热更新清库后、旧上下文退休宽限期（`ContextRetireDelaySeconds`，默认 300s）结束前，
-> 旧上下文的在途请求仍可能以旧凭据刷新并写入新令牌条目（将在下一次凭据变更时清除）。
->
-> ℹ️ **短 TTL 部署提示**：令牌存储恢复路径（跨进程重启恢复）中的令牌签发时间不可知，其有效性
-> 按配置阈值保守判定；若用户令牌 TTL ≤ `TokenRefreshThreshold`（默认 300s），不应依赖 store 恢复路径。
+| 包 | 职责 |
+| --- | --- |
+| `Mud.Feishu.Abstractions` | 事件处理抽象层、策略模式 + 工厂模式、FeishuMetrics 指标收集、事件去重、SSRF 防护 |
+| `Mud.Feishu` | 核心 HTTP API 客户端（20+ 模块），自动令牌管理、智能重试、熔断器、多应用上下文 |
+| `Mud.Feishu.DataModels` | 全线强类型请求/响应模型 + 源生成 `JsonSerializerContext` |
+| `Mud.Feishu.Authentication` | 基于 AsyncLocal 的线程安全用户上下文 + JWT Claims 提取 + 分布式追踪 |
+| `Mud.Feishu.EventCallback` | 事件回调强类型模型 + 源生成器自动生成处理器基类 |
+| `Mud.Feishu.WebSocket` | 长连接实时订阅、指数退避重连、序号验证、事件去重、SSL/TLS 校验 |
+| `Mud.Feishu.Webhook` | HTTP 回调、签名/时间戳/Nonce 三道闸、AES-256-CBC 解密、频率限制、多应用、重试 |
+| `Mud.Feishu.Redis` | 分布式去重（事件/Nonce/SeqID）+ 降级策略 + 多应用隔离 + 健康检查 |
+| `Mud.Feishu.OpenTelemetry` | 一键开启分布式追踪与指标采集（OTLP gRPC，Jaeger/Tempo/Prometheus） |
+| **`Mud.Feishu.AI`** | **Agent 运行时**：会话管理、流式消息通道、事件驱动对话、知识检索（Aily + RAG）、HITL 审批续跑 |
+| **`Mud.Feishu.AI.Tools`** | **182 策展工具**：编译期 Schema + 类型化契约 + 七步执行链 + affordance 资产 + Skills 导出 |
+| **`Mud.Feishu.AI.Mcp`** | **MCP stdio server**：进程外 Agent 工具面，执行链零旁路，租户边界 = 进程 |
+
+目标框架：`netstandard2.0` / `net6.0` / `net8.0` / `net10.0`，`LangVersion 13.0`。
+AI 底座依赖 `Microsoft.Agents.AI` v1.20.0 + `Microsoft.Agents.AI.OpenAI` v1.20.0（仅 AI 包引用，核心包不依赖）。
 
 ---
 
-## 📸 演示界面展示
-
-以下是 **FeishuWikiManager**（飞书知识库管理 Demo）的实际运行界面截图，展示了 SDK 在实际项目中的应用效果：
-
-### 用户认证与登录
-
-| 飞书 OAuth 授权                                    | 系统登录界面                                     |
-| :------------------------------------------------- | :----------------------------------------------- |
-| ![飞书认证授权](./Images/wiki飞书认证授权界面.png) | ![登录界面](./Images/飞书云文档管理登陆界面.png) |
-
-### 知识库管理核心功能
-
-| 主界面                                         | 知识空间                                   |
-| :--------------------------------------------- | :----------------------------------------- |
-| ![知识库主界面](./Images/Wiki知识库主界面.png) | ![知识空间](./Images/Wiki知识空间界面.png) |
-
-| 搜索功能                                     | 云空间同步                                               |
-| :------------------------------------------- | :------------------------------------------------------- |
-| ![搜索界面](./Images/Wiki知识库搜索界面.png) | ![云空间同步](./Images/飞书云文档管理云空间同步功能.png) |
-
-### 云文档管理
-
-| 文档管理主界面                                       | 文件上传                                             |
-| :--------------------------------------------------- | :--------------------------------------------------- |
-| ![文档管理主界面](./Images/飞书云文档管理主界面.png) | ![文件上传](./Images/飞书云文档管理文件上传界面.png) |
-
-> 💡 **提示**：以上界面均基于 **Mud.Feishu** SDK 开发，完整展示了飞书 OAuth 认证、知识库管理、文档搜索、云空间同步等核心功能。[查看 Demo 源码](./Demos/FeishuWikiManager)
-
----
-
-## 📖 详细文档
-
-- [Mud.Feishu.Abstractions 详细文档](./Mud.Feishu.Abstractions/README.md) - 事件处理抽象层使用指南
-- [Mud.Feishu 详细文档](./Mud.Feishu/README.md) - HTTP API 完整使用指南
-- [Mud.Feishu.DataModels 详细文档](./Mud.Feishu.DataModels/README.md) - HTTP API 强类型数据模型使用指南
-- [Mud.Feishu.EventCallback 详细文档](./Mud.Feishu.EventCallback/README.md) - 飞书事件回调强类型数据模型使用指南
-- [Mud.Feishu.WebSocket 详细文档](./Mud.Feishu.WebSocket/Readme.md) - WebSocket 实时事件订阅指南
-- [Mud.Feishu.Webhook 详细文档](./Mud.Feishu.Webhook/README.md) - Webhook HTTP 回调事件处理指南
-- [Mud.Feishu.Authentication 详细文档](./Mud.Feishu.Authentication/README.md) - 飞书用户认证中间件使用指南
-- [Mud.Feishu.Redis 详细文档](./Mud.Feishu.Redis/README.md) - Redis 分布式去重扩展指南
-- [Mud.Feishu.OpenTelemetry 详细文档](./Mud.Feishu.OpenTelemetry/README.md) - OpenTelemetry 可观测性扩展指南
-
----
-
-## 🛠️ 技术栈
-
-### 框架支持
-
-- **.NET Standard 2.0** - 兼容 .NET Framework 4.6.1+
-- **.NET 6.0** - LTS 长期支持版本
-- **.NET 8.0** - LTS 长期支持版本（推荐，支持 Native AOT 发布）
-- **.NET 10.0** - LTS 长期支持版本（推荐，支持 Native AOT 发布）
-
-## ⚡ Native AOT 支持
-
-MudFeishu 自 3.0.0 起全面适配 .NET **Native AOT**（net8.0 及以上目标框架一等公民支持），可直接发布为自包含单文件原生二进制：
-
-- **全链路源生成 JSON 序列化** - 所有包内置 `JsonSerializerContext`（`FeishuJsonContext`、`WebSocketJsonContext`、`EventCallbackJsonContext` 等），运行时零反射序列化/反序列化
-- **源生成配置绑定** - 启用 `EnableConfigurationBindingGenerator`，配置 DTO（如 `FeishuAppConfig`）在编译期生成绑定代码；配置 DTO 不使用 `required` 修饰，改为 `Validate()` 方法校验
-- **全局 AOT 分析管控** - net8.0+ 全部工程启用 `IsAotCompatible` / `EnableAotAnalyzer` / `EnableTrimAnalyzer` / `TrimMode=full`，并提供 `FeishuJsonAot` AOT 安全序列化辅助类与 rd.xml 裁剪兜底
-- **质量门禁保障** - `verify-build.ps1` 集成 AOT 严格模式冒烟构建（逐工程 `AotStrictMode` + `--no-incremental`），断言构建成功且 `AOT00x` / `IL2026` / `IL3050` 诊断为 0
-- **专用验证工程** - `Demos/Mud.Feishu.AotVerification` 覆盖 JSON 序列化、HTTP 客户端、事件处理、WebSocket 协议消息在 AOT 下的端到端验证（win-x64 / linux-x64 双 RID）
-
-发布 AOT 应用示例：
+## 质量门禁
 
 ```bash
-dotnet publish -r win-x64 -c Release /p:PublishAot=true
+powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/verify-build.ps1    # 构建 + AOT strict + 测试
+powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/audit-config-keys.ps1 # 配置消费点审计
 ```
 
-> ⚠️ **注意事项**：
-> - Native AOT 仅支持 net8.0+ 目标框架；netstandard2.0 / net6.0 目标不启用 AOT 分析
-> - 自定义类型的序列化请通过 `FeishuJsonDefaults.ConfigureUserResolver` 等入口注册自定义 `JsonSerializerContext`，避免运行时反射序列化
-> - 扩展配置 DTO 时不要使用 `required` 修饰（源生成绑定器通过 `new T()` 构造），请在 `Validate()` 方法中完成必填校验
-
-### 核心依赖
-
-| 包                            | 版本             | 说明                                |
-| ----------------------------- | ---------------- | ----------------------------------- |
-| **Mud.HttpUtils**             | v3.0.5  | HTTP 客户端工具类（含源代码生成器） |
-| **Mud.HttpUtils.Generator**   | v3.0.5  | HTTP 客户端代码生成器（编译时）     |
-| **Microsoft.Extensions.Http** | v8.0.1 / v10.0.9 | HTTP 客户端工厂                     |
-| **Microsoft.Agents.AI**       | v1.20.0 | AI 底座（仅 Mud.Feishu.AI 引用；核心项目不依赖） |
-| **Microsoft.Agents.AI.OpenAI** | v1.20.0 | OpenAI-compatible 模型接入（仅 Mud.Feishu.AI 引用） |
+- **12 个测试工程**覆盖全部包 + AI 工具面 + Agent Demo。
+- **编译期契约**：`FeishuToolSchemas` / `FeishuToolNames` / `FeishuToolContracts` / `FeishuToolGuidance`
+  由源生成器同一 pass 发射，golden 逐字节比对（`MUDFT014` 中断构建）。
+- **不变量守卫**（A1~A10）：Schema ↔ Names ↔ Contracts ↔ Registry ↔ 权限对照表五向一致；
+  每个零容忍诊断有上报点且有可触发反例；出站净化在整形钩子之前；入站净化先于授权门禁。
+- **防假绿铁律**：「工具存在」不算通过（必须有断言 method/path/body 的链路用例）；
+  「必经」类性质不得用源码扫描验证（改用运行时行为断言）。
+- **Public API 兼容门禁**：`PublicAPI.Shipped.txt` / `PublicAPI.Unshipped.txt` + Microsoft.CodeAnalysis.PublicApiAnalyzers。
 
 ---
 
-## 📄 许可证
+## 目录结构
+
+```
+MudFeishu/
+├── Mud.Feishu/                    # 核心 HTTP API 客户端
+├── Mud.Feishu.Abstractions/       # 事件处理抽象层
+├── Mud.Feishu.DataModels/         # 强类型数据模型 + 源生成 JsonContext
+├── Mud.Feishu.AI/                 # Agent 运行时（会话/流式/知识/HITL）
+├── Mud.Feishu.AI.Tools/           # 182 策展工具 + 执行链 + 编译期 Schema
+├── Mud.Feishu.AI.Mcp/             # MCP stdio server
+├── Mud.Feishu.WebSocket/          # 长连接实时订阅
+├── Mud.Feishu.Webhook/            # HTTP 回调事件处理
+├── Mud.Feishu.Authentication/     # 用户认证中间件
+├── Mud.Feishu.EventCallback/      # 事件回调强类型模型
+├── Mud.Feishu.Redis/              # 分布式去重
+├── Mud.Feishu.OpenTelemetry/      # 可观测性
+├── skills/                        # 25 域 Skills 产物（随包分发）
+├── Tests/                         # 12 个测试工程
+├── Demos/                         # 示例（含 AI Agent Demo / AOT 验证）
+├── documents/                     # 官方文档镜像 + 工具权限对照表
+├── scripts/                       # verify-build / audit-config-keys / GenerateJsonContext / ...
+└── Directory.Build.props          # 全局 MSBuild 属性（Version 3.0.1 唯一来源）
+```
+
+---
+
+## 许可证
 
 本项目遵循 [MIT 许可证](./LICENSE)，允许商业和非商业用途。
-
----
-
-## 🔗 相关链接
-
-### 📖 官方文档
-
-- [飞书开放平台文档](https://open.feishu.cn/document/) - 飞书 API 官方文档和最佳实践
-- [NuGet 包管理器](https://www.nuget.org/) - .NET 包管理官方平台
-
-### 📦 NuGet 包
-
-- [Mud.Feishu.Abstractions](https://www.nuget.org/packages/Mud.Feishu.Abstractions/) - 事件处理抽象层
-- [Mud.Feishu](https://www.nuget.org/packages/Mud.Feishu/) - 核心 HTTP API 客户端库
-- [Mud.Feishu.DataModels](https://www.nuget.org/packages/Mud.Feishu.DataModels/) - HTTP API 强类型数据模型库
-- [Mud.Feishu.WebSocket](https://www.nuget.org/packages/Mud.Feishu.WebSocket/) - WebSocket 实时事件订阅库
-- [Mud.Feishu.Webhook](https://www.nuget.org/packages/Mud.Feishu.Webhook/) - Webhook HTTP 回调事件处理库
-- [Mud.Feishu.Authentication](https://www.nuget.org/packages/Mud.Feishu.Authentication/) - 飞书用户认证中间件库
-- [Mud.Feishu.EventCallback](https://www.nuget.org/packages/Mud.Feishu.EventCallback/) - 飞书事件回调强类型数据模型
-- [Mud.Feishu.Redis](https://www.nuget.org/packages/Mud.Feishu.Redis/) - Redis 分布式去重扩展库
-- [Mud.Feishu.OpenTelemetry](https://www.nuget.org/packages/Mud.Feishu.OpenTelemetry/) - OpenTelemetry 可观测性扩展库
-
-### 🛠️ 开发资源
-
-- [项目仓库](https://gitee.com/mudtools/MudFeishu) - 源代码和开发文档
-- [Mud.ServiceCodeGenerator](https://gitee.com/mudtools/mud-code-generator) - HTTP 客户端代码生成器
-- [示例项目](./Demos) - 完整的使用示例和演示代码
-  - [Mud.Feishu.Demo](./Demos/Mud.Feishu.Demo) - HTTP API 完整功能示例（REST API + ASP.NET Core）
-  - [Mud.Feishu.Webhook.Demo](./Demos/Mud.Feishu.Webhook.Demo) - Webhook HTTP 回调事件处理示例（**原生支持AOT发布**）
-  - [WebSocket Demo](./Demos/Mud.Feishu.WebSocket.Demo) - WebSocket 实时事件订阅演示（含 Redis 分布式去重）（**原生支持AOT发布**）
-  - [FeishuOAuthDemo](./Demos/FeishuOAuthDemo) - OAuth 2.0 用户身份认证与统一登录 Demo（Vue3 + .NET）
-  - [FeishuWikiManager](./Demos/FeishuWikiManager) - 飞书知识库管理 Demo（Vue3 + .NET）
-  - [FeishuFileServer](./Demos/FeishuFileServer) - 飞书云文档文件服务 Demo（Vue3 + .NET）
-  - [TaskManageDemo](./Demos/TaskManageDemo) - 飞书任务管理 Demo（Vue3 + .NET）
-  - [AotVerification](./Demos/Mud.Feishu.AotVerification) - Native AOT 兼容性验证工程（win-x64 / linux-x64 双 RID）
-- [测试项目](./Tests) - 完整的单元测试和集成测试
-
-### 🤝 社区支持
-
-- [问题反馈](https://gitee.com/mudtools/MudFeishu/issues) - Bug 报告和功能请求
-- [贡献指南](./CONTRIBUTING.md) - 如何参与项目贡献
-- [更新日志](./CHANGELOG.md) - 版本更新记录和变更说明
 
 ---
 
@@ -1661,6 +458,6 @@ dotnet publish -r win-x64 -c Release /p:PublishAot=true
 
 **如果觉得 MudFeishu 对你有帮助，请给个 ⭐Star 支持一下！**
 
-Made with ❤️ by MudTools
+Made with ❤️ by Mud Studio
 
 </div>

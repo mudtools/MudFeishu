@@ -7,7 +7,7 @@
 
 using Mud.Feishu.DataModels;
 
-namespace Mud.Feishu.AI.Tools;
+namespace Mud.Feishu.AI.AgentTools;
 
 // R-9 / 阶段 5.0（下沉批）：本类型从 `Mud.Feishu.AI.Tools` 下沉到本程序集（保持 internal + IVT 回 AI.Tools）。
 //

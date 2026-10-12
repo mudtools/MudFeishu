@@ -71,4 +71,34 @@ internal static class ToolSchemaJson
             ? parameters.GetRawText()
             : EmptyParametersJson;
     }
+
+    /// <summary>
+    /// 取厂商扩展块里的 per-tool affordance（<c>x-{sdk}.affordance</c>），原始文本形态。
+    /// </summary>
+    /// <param name="schemaJson">编译期完整信封常量。</param>
+    /// <param name="extensionKey">扩展键（剖面槽 <c>SchemaExtensionKey</c>，本仓为 <c>x-feishu</c>）。</param>
+    /// <returns>affordance 对象的 JSON 文本；无该键（工具未配 affordance 资产）时返回 <see langword="null"/>。</returns>
+    /// <exception cref="JsonException">常量不是合法 JSON。</exception>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么需要它</b>：<see cref="ExtractParameters"/> 刻意只取 <c>parameters</c>——MEAI 的
+    /// <c>JsonSchema</c> 契约要求纯参数 Schema，故 <c>x-{sdk}</c> 元数据（含 affordance）<b>不进模型 Schema 关键字空间</b>。
+    /// 但 affordance 是<b>给模型看的决策指导</b>，必须有第二条出口；本方法把"信封 → affordance"的取法收敛成
+    /// 单一入口（与 <see cref="ExtractParameters"/> 同源同解析），避免各处各写一遍路径拼串。
+    /// </para>
+    /// <para>
+    /// 纯字符串查找 + 一次 <c>JsonDocument.Parse</c>：调用方在<b>构造期</b>调用一次并缓存，
+    /// 不在每次请求里解析（与 <c>FeishuToolAIFunction</c> 缓存参数 Schema 同款纪律）。
+    /// </para>
+    /// </remarks>
+    public static string? ExtractAffordanceJson(string schemaJson, string extensionKey)
+    {
+        using var document = JsonDocument.Parse(schemaJson);
+        return document.RootElement.TryGetProperty(extensionKey, out var extension)
+               && extension.ValueKind == JsonValueKind.Object
+               && extension.TryGetProperty("affordance", out var affordance)
+               && affordance.ValueKind == JsonValueKind.Object
+            ? affordance.GetRawText()
+            : null;
+    }
 }

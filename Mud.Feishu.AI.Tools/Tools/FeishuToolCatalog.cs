@@ -115,11 +115,88 @@ internal sealed class FeishuToolSchemaExporter : IToolSchemaExporter
         {
             ToolSchemaDialect.OpenAiFunctions => ExportOpenAiFunctions(),
             ToolSchemaDialect.Skills => FeishuSkillDocumentBuilder.BuildManifestJson(),
+            ToolSchemaDialect.McpEnvelope => ExportMcpEnvelope(),
             _ => throw new ArgumentOutOfRangeException(
                 nameof(dialect),
-                $"暂不支持的导出方言: {dialect}（Aily/MCP 归后续批次；未实现方言不得降级为空产物）"),
+                $"暂不支持的导出方言: {dialect}（Aily 归后续批次；未实现方言不得降级为空产物）"),
         };
     }
+
+    /// <summary>
+    /// R-3 / F-9：导出<b>全部已策展工具</b>的 MCP <c>tools/list</c> 形信封。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>数据源全部是编译期常量</b>（<c>FeishuToolNames.All</c> + <c>FeishuToolSchemas</c> +
+    /// <c>FeishuToolContracts</c>），零反射零运行期依赖——AOT 安全，且导出结果与
+    /// "工具面真实存在什么"逐条同源（守卫断言条目双向相等）。
+    /// </para>
+    /// <para>
+    /// 与 MCP server 的 <c>tools/list</c> 的<b>关键差异</b>：本导出不受
+    /// <c>FeishuAgent:Tools</c> / <c>WriteAllowList</c> 影响（那是"启用"语义，属宿主运行期配置）；
+    /// 本方言回的是"能力存在"语义——正因如此它才适合 CI / 桥接器做静态差异比对。
+    /// </para>
+    /// </remarks>
+    private static string ExportMcpEnvelope()
+    {
+        var tools = new JsonArray();
+
+        foreach (var name in FeishuToolNames.All.OrderBy(static n => n, StringComparer.Ordinal))
+        {
+            if (!FeishuToolSchemas.SchemaByToolName.TryGetValue(name, out var schemaJson)
+                || JsonNode.Parse(schemaJson) is not JsonObject schema
+                || !FeishuToolContracts.ByToolName.TryGetValue(name, out var contract))
+            {
+                // 编译期常量正常时不可达（契约守卫锁死"工具名 ⊆ Schema 常量表 ⊆ 契约表"）；
+                // 防御性跳过而不是让整份导出失败——单条缺失不该使下游拿不到其余工具。
+                continue;
+            }
+
+            var tool = new JsonObject
+            {
+                ["name"] = ToMcpToolName(name),
+
+                // title 保留契约名：与《工具权限对照表》同名，排查时不必再做"下划线/点"的心算
+                //（与 MCP server 的 tools/list 同口径）。
+                ["title"] = name,
+                ["description"] = schema["description"]?.GetValue<string>(),
+                ["inputSchema"] = schema["parameters"] is { } parameters
+                    ? JsonNode.Parse(parameters.ToJsonString())
+                    : new JsonObject(),
+                ["annotations"] = new JsonObject
+                {
+                    ["readOnlyHint"] = !contract.IsWrite,
+                    ["destructiveHint"] = contract.Risk == FeishuToolRisk.HighRiskWrite,
+                    ["openWorldHint"] = true,
+                },
+            };
+
+            // R-3 / F-7：per-tool affordance 结构化透传（仅配了资产的工具有该字段 ⇒ 未配资产的
+            // 工具导出结果逐字节不变）。它**不**进 inputSchema（那是纯参数 Schema），而是并列字段：
+            // 让宿主 / CI / 桥接器能按 `when` / `avoid_when` 机械消费，而不必读模型侧描述文本。
+            if (ToolAffordanceText.TryGetNode(schema) is { } affordance)
+            {
+                tool["affordance"] = affordance.DeepClone();
+            }
+
+            tools.AddNode(tool);
+        }
+
+        return new JsonObject
+        {
+            ["dialect"] = "mcp-envelope",
+            ["tools"] = tools,
+        }.ToJsonString();
+    }
+
+    /// <summary>契约名 → MCP 工具名（<c>.</c> → <c>_</c>）。</summary>
+    /// <remarks>
+    /// 与 <c>Mud.Feishu.AI.Mcp</c> 的 <c>McpToolNames.ToMcpName</c> 是<b>同一行为的两处实现</b>：
+    /// 依赖方向（Mcp → 本包）禁止反向引用，故无法直接复用。
+    /// 二者一致性由 <c>McpEnvelopeExportContractGuards</c>（测试工程同时引用两包）机械锁定——
+    /// 任一实现漂移即报红，而不是靠注释约定。
+    /// </remarks>
+    private static string ToMcpToolName(string contractName) => contractName.Replace('.', '_');
 
     private static string ExportOpenAiFunctions()
     {

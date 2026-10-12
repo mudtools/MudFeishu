@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 global using FluentAssertions;
+global using Mud.Feishu.AI.AgentTools;
 global using Mud.Feishu.AI.Tools;
 global using Mud.Feishu.AI.Tools.Generated;
 global using Xunit;

@@ -11,9 +11,11 @@ using Mud.Feishu.DataModels;
 using Mud.Feishu.DataModels.AI;
 using Mud.Feishu.DataModels.Acs;
 using Mud.Feishu.DataModels.Aily;
+using Mud.Feishu.DataModels.Application;
 using Mud.Feishu.DataModels.ApprovalComments;
 using Mud.Feishu.DataModels.AttendanceApprovals;
 using Mud.Feishu.DataModels.Bitable;
+using Mud.Feishu.DataModels.Bot;
 using Mud.Feishu.DataModels.Board;
 using Mud.Feishu.DataModels.Calendar;
 using Mud.Feishu.DataModels.CardElements;
@@ -46,13 +48,13 @@ namespace Mud.Feishu.Extensions;
 
 /// <summary>
 /// Feishu JSON 解析器扩展，用于配置 DataModels 源生成上下文。
-/// 在 net8.0+ 下将 34 个已生成的 DataModels Context 合并为一个解析器并注入到 FeishuJsonDefaults。
+/// 在 net8.0+ 下将 36 个已生成的 DataModels Context 合并为一个解析器并注入到 FeishuJsonDefaults。
 /// </summary>
 public static class FeishuJsonResolverExtensions
 {
     /// <summary>
     /// 配置 DataModels 的 JSON 解析器。
-    /// 将 34 个已生成的 DataModels Context 合并为一个解析器并注入到 FeishuJsonDefaults。
+    /// 将 36 个已生成的 DataModels Context 合并为一个解析器并注入到 FeishuJsonDefaults。
     /// 必须在应用程序启动时、任何 JSON 序列化/反序列化发生前调用。
     /// </summary>
     public static void ConfigureDataModelsResolver()
@@ -64,6 +66,7 @@ public static class FeishuJsonResolverExtensions
             ApprovalJsonContext.Default,
             AttendanceJsonContext.Default,
             BitableJsonContext.Default,
+            BotJsonContext.Default,
             BoardJsonContext.Default,
             CalendarJsonContext.Default,
             CardJsonContext.Default,
@@ -81,6 +84,7 @@ public static class FeishuJsonResolverExtensions
             VideoConferencingJsonContext.Default,
             WikiJsonContext.Default,
             AilyJsonContext.Default,
+            ApplicationJsonContext.Default,
             SparkJsonContext.Default,
             MinutesJsonContext.Default,
             HireJsonContext.Default,

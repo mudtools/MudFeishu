@@ -33,6 +33,11 @@ public enum FeishuModule
     Bot,
 
     /// <summary>
+    /// 应用信息管理
+    /// </summary>
+    Application,
+
+    /// <summary>
     /// 流程审批管理
     /// </summary>
     Approval,

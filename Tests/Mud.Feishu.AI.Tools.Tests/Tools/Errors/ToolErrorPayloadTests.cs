@@ -8,7 +8,7 @@
 
 using System.Text.Json;
 
-namespace Mud.Feishu.AI.Tools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools.Errors;
 
 /// <summary>
 /// B2 错误契约载荷测试：分类映射矩阵、subtype 穷举、载荷首行 JSON、截断保护。

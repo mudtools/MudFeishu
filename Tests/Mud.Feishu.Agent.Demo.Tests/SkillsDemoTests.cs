@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 
 using Mud.Feishu.AI.Agents;
 using Mud.Feishu.AI.Tools;
-
+using Mud.Feishu.AI.Tools.Catalog;
 namespace Mud.Feishu.Agent.Demo.Tests;
 
 /// <summary>

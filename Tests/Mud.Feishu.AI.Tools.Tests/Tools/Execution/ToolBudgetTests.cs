@@ -8,7 +8,7 @@
 using Microsoft.Extensions.AI;
 using Mud.Feishu.AI.AgentTools;
 
-namespace Mud.Feishu.AI.Tools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools.Execution;
 
 /// <summary>
 /// T4 / D4 单轮工具预算行为用例。

@@ -162,7 +162,7 @@ public class PaginationContractGuards
     /// <b>为什么拦这两条形态</b>：它们正是"逐字重写信封"的最小指纹——29 处 / 18 个文件的
     /// 重复在此收敛；任一处重新出现即意味着某执行器又自带了一套信封口径
     /// （键名/空 token 语义可静默漂移，模型续不上页且无任何信号）。
-    /// 白名单为空：<c>ToolResultJsons</c> 是唯一实现，且在 <c>Tools/</c>（不在本守卫扫描面内）。
+    /// 白名单为空：<c>ToolResultJsons</c> 是唯一实现，且在 <c>Results/</c>（不在本守卫扫描面内）。
     /// </para>
     /// </remarks>
     [Fact]

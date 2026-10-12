@@ -5,7 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.AI.Tools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools.Args;
 
 /// <summary>
 /// <b>R5 / F-2</b>：取值闭集读取器（<c>ToolArgs</c> 的 4 个新 helper）的运行时行为断言。

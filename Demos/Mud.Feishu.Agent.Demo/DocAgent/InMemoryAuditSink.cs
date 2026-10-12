@@ -10,7 +10,8 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using Mud.Feishu.AI.Tools;
-
+using Mud.Feishu.AI.Tools.Catalog;
+using Mud.Feishu.AI.Tools.Hosting;
 namespace Mud.Feishu.Agent.Demo;
 
 /// <summary>审计计数快照（<c>/usage</c> 展示用）。</summary>

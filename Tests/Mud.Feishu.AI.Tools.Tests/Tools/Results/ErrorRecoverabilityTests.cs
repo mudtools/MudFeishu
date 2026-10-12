@@ -8,7 +8,7 @@
 
 using System.Text.Json.Nodes;
 
-namespace Mud.Feishu.AI.Tools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools.Results;
 
 /// <summary>
 /// R5 / F-8（错误可恢复性）+ S-10（工具结果中文可读性）断言。
@@ -161,14 +161,14 @@ public class ErrorRecoverabilityTests
     /// </summary>
     /// <remarks>
     /// <b>R-1 修订</b>：中心序列化点已从 <c>Internal/ToolExecutor.cs</c> 上移到唯一出口
-    /// <c>Tools/ToolResultPipeline.cs</c>（<c>OkJson</c>/<c>OkReceipt</c> 经 <c>ToolResultJson.ToText</c>）。
+    /// <c>Results/ToolResultPipeline.cs</c>（<c>OkJson</c>/<c>OkReceipt</c> 经 <c>ToolResultJson.ToText</c>）。
     /// 判据随实现上移——否则本守卫会盯一个"已经不再负责序列化"的文件，变成假门禁。
     /// </remarks>
     [Fact]
     public void ToolExecutor_ShouldSerializeViaToolResultJson_NotRawToJsonString()
     {
         var pipeline = File.ReadAllText(
-            Path.Combine(FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Tools", "ToolResultPipeline.cs"));
+            Path.Combine(FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Results", "ToolResultPipeline.cs"));
 
         pipeline.Should().Contain(
             "ToolResultJson.ToText",

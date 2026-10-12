@@ -7,7 +7,7 @@
 
 using Mud.Feishu.Abstractions;
 
-namespace Mud.Feishu.AI.Tools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools.Execution;
 
 /// <summary>
 /// T1.3 用户令牌语义端到端用例：AuthRequired ⇒ 零调用下游 + 载荷可区分于 forbidden。

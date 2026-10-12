@@ -7,7 +7,7 @@
 
 using Mud.Feishu.Abstractions;
 
-namespace Mud.Feishu.AI.Tools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools.Execution;
 
 /// <summary>
 /// T1.2 用户令牌就绪探测器行为用例。

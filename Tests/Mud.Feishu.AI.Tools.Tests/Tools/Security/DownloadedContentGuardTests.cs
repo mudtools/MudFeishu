@@ -7,7 +7,7 @@
 
 using System.Text;
 
-namespace Mud.Feishu.AI.Tools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools.Security;
 
 /// <summary>
 /// <b>R5 / B-2 + F-10</b>：字节型下载的"错误体伪装成文件"防线（<see cref="DownloadedContentGuard"/>）。

@@ -17,6 +17,16 @@ namespace Mud.Feishu.AI.Tools;
 /// </summary>
 /// <remarks>
 /// <para>
+/// <b>为什么本类型留在根命名空间（Tools/ 目录的唯一住户）</b>：上游生成器
+/// （<c>Mud.HttpUtils.Generator</c> 3.0.6 的 <c>ToolRegistrarEmitter</c>）把剖面槽
+/// <c>ContractNamespace</c> + <c>BindingTypeName</c> 拼成<b>全限定名</b>
+/// （<c>Mud.Feishu.AI.Tools.FeishuToolBinding</c>）发射进 <c>FeishuToolsServiceCollectionCoreExtensions.g.cs</c>——
+/// 全限定名不经 using 解析，故本类型一旦迁往子命名空间，生成代码立即 CS0234。
+/// 该槽值被 <c>FeishuToolProfileContractGuards</c> 反射锁定（逐字节忠实），不可为迁目录而改。
+/// 守卫 <c>ToolArgumentShapeContractGuards</c> 系将 <c>Tools/</c> 锁定为
+/// 「仅含生成器钉死的根命名空间类型」的白名单目录——新增文件落入即红。
+/// </para>
+/// <para>
 /// 执行顺序（不可变式）：
 /// ① 上下文校验（缺 <c>AppKey</c> 即失败——多租户隔离禁止默认应用兜底，TMA2-20）→
 /// ② 授权门禁（<see cref="IToolExecutionAuthorizer"/>；写类工具在

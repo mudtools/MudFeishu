@@ -7,7 +7,7 @@
 
 using System.Text.Json.Nodes;
 
-namespace Mud.Feishu.AI.Tools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools.Results;
 
 /// <summary>
 /// B4 截断标记回填测试（方案 §3.B4）：超长 JSON → 标记 + 合法 JSON；纯文本 → 标记；未超长 → 零标记。

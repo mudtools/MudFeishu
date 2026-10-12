@@ -46,7 +46,7 @@ public class PublicSurfaceRationaleContractGuards
         "Mud.Feishu.AI.Mcp/PublicAPI.Unshipped.txt",
     ];
 
-    /// <summary>类型级条目：形如 <c>Mud.Feishu.AI.Tools.FeishuToolRegistry</c>（无括号、无箭头）。</summary>
+    /// <summary>类型级条目：形如 <c>Mud.Feishu.AI.Tools.Catalog.FeishuToolRegistry</c>（无括号、无箭头）。</summary>
     private static readonly Regex TypeLinePattern = new(
         @"^Mud\.Feishu\.AI\.[A-Za-z0-9_.+<>,\[\] ]+$",
         RegexOptions.Compiled);

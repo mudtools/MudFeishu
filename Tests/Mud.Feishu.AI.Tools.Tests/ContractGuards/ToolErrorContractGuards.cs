@@ -212,7 +212,7 @@ public class ToolErrorContractGuards
             "ToolExecutor 必须把载荷构造委派给唯一出口 ToolResultPipeline（R-1 起不再自行拼装）");
 
         var pipeline = File.ReadAllText(Path.Combine(
-            FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Tools", "ToolResultPipeline.cs"));
+            FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Results", "ToolResultPipeline.cs"));
 
         pipeline.Should().Contain("ToolErrorPayloadSerializer.Serialize(",
             "唯一出口必须调用 ToolErrorPayloadSerializer.Serialize 构造首行 JSON");

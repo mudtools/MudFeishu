@@ -68,7 +68,7 @@ public class UserTokenPrecheckContractGuards
     [InlineData(@"\brefresh_token\b")]
     public void UserTokenPrecheck_ShouldNotReference_TokenLiterals(string tokenPattern)
     {
-        var source = ReadSourceFile("Mud.Feishu.AI.Tools/Tools/UserTokenPrecheck.cs");
+        var source = ReadSourceFile("Mud.Feishu.AI.Tools/Execution/UserTokenPrecheck.cs");
 
         // 排除注释中的字面量（// 或 /// 行）
         var nonCommentLines = source

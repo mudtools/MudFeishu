@@ -56,7 +56,7 @@ public class ToolBudgetContractGuards
         var source = File.ReadAllText(Path.Combine(
             FindRepositoryRoot(),
             "Mud.Feishu.AI.Tools",
-            "Tools",
+            "Execution",
             "FeishuToolAIFunction.cs"));
 
         source.Should().Contain(

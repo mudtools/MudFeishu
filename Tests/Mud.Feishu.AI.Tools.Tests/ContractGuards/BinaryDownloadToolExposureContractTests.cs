@@ -16,7 +16,7 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// <para>
 /// <b>架构事实（决定了防线该建在哪）</b>：本仓的工具体面是<b>两层、且目录分离</b>的——
 /// <list type="bullet">
-/// <item><b>工具接口</b>（<c>Mud.Feishu.AI.Tools/Tools/Feishu*ToolInterfaces.cs</c>）声明
+/// <item><b>工具接口</b>（<c>Mud.Feishu.AI.Tools/Curation/Feishu*ToolInterfaces.cs</c>）声明
 /// <c>[FeishuTool]</c> 方法，返回 JSON 可序列化类型；</item>
 /// <item><b>SDK 接口</b>（<c>Mud.Feishu/Interfaces/**</c>）提供底层能力，<b>从不</b>携带
 /// <c>[FeishuTool]</c>（实测：含二进制方法的 13 个接口，工具计数全为 0）。</item>

@@ -15,6 +15,8 @@ using Mud.Feishu.AI.Agents;
 using Mud.Feishu.AI.Channels;
 using Mud.Feishu.AI.AgentTools;
 using Mud.Feishu.AI.Tools;
+using Mud.Feishu.AI.Tools.Catalog;
+using Mud.Feishu.AI.Tools.Hosting;
 using Mud.Feishu.AI.Tools.Generated;
 
 namespace Mud.Feishu.Agent.Demo;

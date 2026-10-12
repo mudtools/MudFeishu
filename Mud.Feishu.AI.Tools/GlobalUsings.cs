@@ -25,6 +25,19 @@ global using Mud.Feishu.AI.Tools.Handlers;
 // 之所以用全局 using 而非逐文件添加：这批接口是本程序集的核心词汇（每个执行器都实现其中几个），
 // 逐文件添加会产生 24+ 处无信息量的 using 行；GlobalUsings.cs 已是本仓既有机制。
 global using Mud.Feishu.AI.Tools.Curation;
+// R-1+2c 后续重组（Tools/ 按关注面解散为 9 目录）：Args/Results/Errors/Execution/Catalog/
+// Hosting/Security/Parsers/Constants 各自声明子命名空间，经全局 using 保持"简单名即可引用"——
+// 源生成器按简单名引用 FeishuToolResult/FeishuToolBinding（剖面 ResultTypeName/BindingTypeName 槽），
+// 本批 using 是生成代码与全包词汇表不掉线的保证。
+global using Mud.Feishu.AI.Tools.Args;
+global using Mud.Feishu.AI.Tools.Catalog;
+global using Mud.Feishu.AI.Tools.Constants;
+global using Mud.Feishu.AI.Tools.Errors;
+global using Mud.Feishu.AI.Tools.Execution;
+global using Mud.Feishu.AI.Tools.Hosting;
+global using Mud.Feishu.AI.Tools.Parsers;
+global using Mud.Feishu.AI.Tools.Results;
+global using Mud.Feishu.AI.Tools.Security;
 global using Mud.Feishu.DataModels;
 // R-1+2c：Curation/ 的 [FeishuTool(Source = …)] 由字面量改为「nameof(接口) + "." + nameof(接口.方法)」
 // 常量拼接形态（符号锚定 → IDE 重命名自动联动）。SDK 接口全部落在 Mud.Feishu 命名空间，故引入本 using

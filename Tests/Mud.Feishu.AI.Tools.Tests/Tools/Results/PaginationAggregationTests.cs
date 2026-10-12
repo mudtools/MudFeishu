@@ -8,7 +8,7 @@
 
 using System.Text.Json.Nodes;
 
-namespace Mud.Feishu.AI.Tools.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools.Results;
 
 /// <summary>
 /// B1 自动分页聚合测试（方案 §3.B1 测试要求）。

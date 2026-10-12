@@ -8,7 +8,7 @@
 using Mud.Feishu.AI.Events;
 using Mud.Feishu.AI.Tools;
 
-namespace Mud.Feishu.AI.Tests.Tools;
+namespace Mud.Feishu.AI.Tools.Tests.Tools.Catalog;
 
 /// <summary>
 /// 工具注册表白名单语义（收进注册表不启用，MapTool 显式启用）。

@@ -138,7 +138,19 @@ public static class FeishuAgentServiceCollectionExtensions
 
         // 默认进程内会话闸门（P2D-1：同键串行，防并发 Run 丢历史）；
         // 多实例部署经 Mud.Feishu.Redis 的 AddFeishuRedisConversationGate 替换本注册。
-        services.TryAddSingleton<IConversationGate, KeyedConversationGate>();
+        // T5 / D5：注册顺序 = KeyedConversationGate（内层）→ GlobalConcurrencyGate（外层装饰器）。
+        // GlobalConcurrencyGate 实现 IConversationGate 接口，先获取全局信号量再委托内层闸门，
+        // 事件入口代码零改动（仍注入 IConversationGate）。
+        services.TryAddSingleton<KeyedConversationGate>();
+        services.TryAddSingleton<IConversationGate>(sp =>
+        {
+            var inner = sp.GetRequiredService<KeyedConversationGate>();
+            var options = sp.GetRequiredService<IOptions<FeishuAgentOptions>>().Value;
+            return new GlobalConcurrencyGate(
+                inner,
+                options.MaxConcurrentTurns,
+                options.TurnQueueTimeoutSeconds);
+        });
 
         // R7 / C4a：待确认快照的进程内实现（软缺席契约的默认实现）——让「宿主重进进程后仍能列出待办」
         // 在单进程部署下开箱可用；多实例部署由宿主替换为分布式实现（键必须含 AppKey 以隔离租户）。
@@ -355,6 +367,28 @@ public static class FeishuAgentServiceCollectionExtensions
         {
             // 注入模式（P2D-4a）：要求宿主已注册 IRetriever（如 AddFeishuAilyKnowledge）。
             services.AddFeishuKnowledgeContext();
+        }
+
+        if (assemblers.HasFlag(ImConversationAssemblers.GroupHistory))
+        {
+            // T2 / D2：群聊历史装配器——直调 SDK GetHistoryMessageAsync，不经工具面。
+            services.TryAddEnumerable(ServiceDescriptor.Singleton<IContextAssembler>(static sp =>
+                new GroupHistoryContextAssembler(
+                    sp.GetRequiredService<IFeishuTenantV1Message>(),
+                    sp.GetRequiredService<IFeishuAppContextScopeFactory>(),
+                    sp.GetService<ILogger<GroupHistoryContextAssembler>>())));
+        }
+
+        if (assemblers.HasFlag(ImConversationAssemblers.MediaMessage))
+        {
+            // T3 / D3：媒体消息装配器——图片/音频/文件转写为文本。
+            services.TryAddEnumerable(ServiceDescriptor.Singleton<IContextAssembler>(static sp =>
+                new MediaMessageContextAssembler(
+                    sp.GetRequiredService<IFeishuTenantV1Message>(),
+                    sp.GetRequiredService<IFeishuAppContextScopeFactory>(),
+                    sp.GetService<IFeishuMediaTranscriber>(),
+                    sp.GetRequiredService<IOptions<MediaInputOptions>>().Value,
+                    sp.GetService<ILogger<MediaMessageContextAssembler>>())));
         }
 
         // R3-1：回复前切租户依赖作用域工厂——本入口是 IM 会话处理器的「一行接入」装配点，

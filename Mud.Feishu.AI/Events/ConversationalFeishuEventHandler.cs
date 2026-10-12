@@ -376,6 +376,12 @@ public abstract class ConversationalFeishuEventHandler<T>(
                 // 能自动取自当前会话。ChatId 仍走 ResolveStreamTargetChatId ⇒ **流式目标不变**。
                 ThreadId: request.ThreadId));
 
+            // T4 / D4：单轮工具调用预算——在模型调用前开启、随 using 释放。
+            // 预算 = FeishuAgentOptions.MaxToolCallsPerTurn（0 = 不限制，A15 零差异）。
+            using var _budgetScope = _agent.MaxToolCallsPerTurn > 0
+                ? new FeishuToolCallBudget(_agent.MaxToolCallsPerTurn).Begin()
+                : null;
+
             var userMessage = await AssembleUserMessageAsync(request, cancellationToken).ConfigureAwait(false);
 
             // 空用户消息守卫（P2-7）：空 user 消息会被 OpenAI 兼容端点拒绝（400）且已计费。
@@ -477,6 +483,10 @@ public abstract class ConversationalFeishuEventHandler<T>(
 
         var fullText = new StringBuilder();
         var pendingApprovals = new List<FrameworkToolApprovalRequest>();
+        // T10 / D10：流式文本抑制——DeferTextUntilTurnComplete=true 时缓存全部文本增量，
+        // 仅在本轮无工具调用时一次性 Flush；出现 FunctionCallContent 则清空缓冲（并入终态）。
+        var deferText = _agent.DeferTextUntilTurnComplete;
+        var hadToolCall = false;
         try
         {
             await foreach (var update in _agent
@@ -486,6 +496,16 @@ public abstract class ConversationalFeishuEventHandler<T>(
                 // 审批请求同样经流式更新下发（内容是 ToolApprovalRequestContent，无文本增量）。
                 CollectApprovalRequests(update.Contents, request, pendingApprovals);
 
+                // T10：检测工具调用——出现 FunctionCallContent 标记并清空已缓冲文本。
+                // 「并入终态」语义：工具调用前的文本不是最终答案，丢弃后等最终文本。
+                if (deferText && update.Contents is not null &&
+                    update.Contents.Any(static c => c is FunctionCallContent))
+                {
+                    hadToolCall = true;
+                    fullText.Clear();
+                    continue;
+                }
+
                 var delta = update.Text;
                 if (string.IsNullOrEmpty(delta))
                 {
@@ -493,6 +513,12 @@ public abstract class ConversationalFeishuEventHandler<T>(
                 }
 
                 fullText.Append(delta);
+
+                // T10：deferText=true 时延迟到循环结束后一次性推送。
+                if (deferText)
+                {
+                    continue;
+                }
 
                 // 调用方兜底（R2-7）：契约要求通道实现自带失败隔离，但第三方通道未必遵守——
                 // 单次写入失败只跳过该分片，绝不升级为"补偿 Flush + 幂等回滚 + 重投递（模型重复计费）"。
@@ -508,6 +534,24 @@ public abstract class ConversationalFeishuEventHandler<T>(
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "流式增量写入失败，已跳过该分片（通道未按契约隔离；messageId: {MessageId}）", messageId);
+                }
+            }
+
+            // T10：deferText=true 且本轮无工具调用时，一次性推送全部缓存的文本。
+            if (deferText && !hadToolCall && fullText.Length > 0)
+            {
+                try
+                {
+                    await MessageChannel.WriteStreamAsync(
+                        request.AppKey, streamTarget!, messageId, fullText.ToString(), cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "流式延迟推送失败（messageId: {MessageId}）", messageId);
                 }
             }
 

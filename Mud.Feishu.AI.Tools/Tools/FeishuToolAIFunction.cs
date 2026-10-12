@@ -121,7 +121,11 @@ internal sealed class FeishuToolsToolSource : FeishuAgentToolSource
                 continue;
             }
 
-            tools.Add(ApplyApprovalGate(new FeishuToolAIFunction(definition, schemaJson, accessor), definition));
+            // T4 / D4：装饰顺序 = 预算（最外层）→ 审批包装 → 工具桥。
+            // 预算耗尽时应拦截一切工具调用（含需审批的写工具），不应先走审批管线再被预算拒绝。
+            var function = new FeishuToolAIFunction(definition, schemaJson, accessor);
+            var approvalGated = ApplyApprovalGate(function, definition);
+            tools.Add(new ToolBudgetAIFunction(approvalGated));
         }
 
         return tools;

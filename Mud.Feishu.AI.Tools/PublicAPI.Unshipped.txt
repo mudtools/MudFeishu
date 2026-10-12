@@ -824,6 +824,8 @@ Mud.Feishu.AI.Tools.Generated.FeishuToolGuidance
 Mud.Feishu.AI.Tools.Generated.FeishuToolSchemas
 Mud.Feishu.AI.Tools.IFeishuAttachmentStager
 Mud.Feishu.AI.Tools.IFeishuAttachmentStager.StageAsync(Mud.Feishu.AI.Tools.AttachmentSource source, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Mud.Feishu.AI.Tools.StagedAttachment?>!
+Mud.Feishu.AI.Tools.IFeishuUserAuthorizationLinkProvider
+Mud.Feishu.AI.Tools.IFeishuUserAuthorizationLinkProvider.GetAuthorizationLinkAsync(string! appKey, string? userId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>
 Mud.Feishu.AI.Tools.IFeishuToolFunctionFactory
 Mud.Feishu.AI.Tools.IFeishuToolFunctionFactory.Create(Mud.Feishu.AI.Tools.FeishuToolDefinition! definition, string! schemaJson) -> Microsoft.Extensions.AI.AIFunction!
 Mud.Feishu.AI.Tools.ISkillDocumentReader

@@ -68,6 +68,9 @@ public sealed class ConversationSummarizer
     /// <summary>参与摘要的每条历史文本截断长度（P2D-3b 摘要输入压缩：纪要质量由「条数多、要点全」补偿）。</summary>
     internal const int TranscriptPerMessageLimit = 500;
 
+    /// <summary>T7 / D7：工具轨迹行上限（200 字符）。</summary>
+    internal const int ToolTraceLineLimit = 200;
+
     /// <summary>摘要模型调用超时钳制（P2D-3b：超时视为失败跳过，不让摘要拖死主对话）。</summary>
     internal static readonly TimeSpan SummaryCallTimeout = TimeSpan.FromSeconds(30);
 
@@ -316,12 +319,27 @@ public sealed class ConversationSummarizer
             : retain;
     }
 
-    /// <summary>一次模型调用生成要点纪要（只取消息文本；工具调用噪声不入摘要输入）。</summary>
+    /// <summary>
+    /// 一次模型调用生成要点纪要（含工具轨迹压缩行；工具结果正文/参数值不入摘要输入——A17）。
+    /// </summary>
+    /// <remarks>
+    /// T7 / D7：摘要不仅取 <c>message.Text</c>，还生成工具调用压缩行
+    /// （<c>[tool] name(标识类键) → 结果条数/长度</c>），使摘要后「做过什么」可追溯。
+    /// 不回填结果正文（防大结果灌进摘要调用）和参数值（A17）。
+    /// </remarks>
     private async Task<string?> SummarizeCoreAsync(IReadOnlyList<ChatMessage> older, CancellationToken cancellationToken)
     {
         var transcript = new StringBuilder();
         foreach (var message in older)
         {
+            // T7 / D7：先生成工具轨迹行（来自 assistant 消息的 FunctionCallContent）。
+            var toolLines = BuildToolTraceLines(message);
+            if (toolLines is not null)
+            {
+                transcript.Append(toolLines);
+                continue;
+            }
+
             var text = message.Text;
             if (string.IsNullOrWhiteSpace(text))
             {
@@ -351,5 +369,74 @@ public sealed class ConversationSummarizer
             .ConfigureAwait(false);
 
         return response.Text;
+    }
+
+    /// <summary>
+    /// T7 / D7：从 assistant 消息的 <c>FunctionCallContent</c> 生成压缩工具轨迹行。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 格式：<c>[tool] name(标识类键=值, ...) → 结果条数/长度</c>。
+    /// </para>
+    /// <para>
+    /// <b>不回填</b>：结果正文（防大结果灌进摘要调用）、参数值（A17）。
+    /// 只保留标识类键（app_token/table_id/chat_id/message_id 等），其余键名保留、值省略。
+    /// </para>
+    /// <para>
+    /// 工具行上限 <see cref="ToolTraceLineLimit"/>（200 字符）。
+    /// </para>
+    /// </remarks>
+    private static string? BuildToolTraceLines(ChatMessage message)
+    {
+        var functionCalls = message.Contents.OfType<FunctionCallContent>().ToList();
+        if (functionCalls.Count == 0)
+            return null;
+
+        // 查找后续 FunctionResultContent 的长度（如有）
+        var resultContents = message.Contents.OfType<FunctionResultContent>().ToList();
+
+        var sb = new StringBuilder();
+        for (var i = 0; i < functionCalls.Count; i++)
+        {
+            var call = functionCalls[i];
+            var toolName = call.Name ?? "unknown";
+
+            // 标识类参数键白名单——只保留这些键的值，其余键名保留、值省略
+            var idKeys = new HashSet<string>(StringComparer.Ordinal)
+            {
+                "app_token", "table_id", "chat_id", "message_id", "record_id",
+                "file_token", "task_guid", "doc_token", "wiki_token",
+            };
+
+            var args = call.Arguments ?? new Dictionary<string, object?>();
+            var idArgs = args
+                .Where(kv => idKeys.Contains(kv.Key))
+                .Select(kv => $"{kv.Key}={kv.Value}")
+                .ToList();
+            var argSummary = idArgs.Count > 0
+                ? $"({string.Join(", ", idArgs)})"
+                : string.Empty;
+
+            // 结果条数/长度（如有对应的 FunctionResultContent）
+            var resultSummary = string.Empty;
+            if (i < resultContents.Count && resultContents[i].Result is { } result)
+            {
+                var resultStr = result.ToString();
+                if (!string.IsNullOrEmpty(resultStr))
+                {
+                    resultSummary = $" → {resultStr.Length} 字符";
+                }
+            }
+
+            var line = $"[tool] {toolName}{argSummary}{resultSummary}";
+            if (line.Length > ToolTraceLineLimit)
+            {
+                line = line.Substring(0, ToolTraceLineLimit);
+            }
+
+            sb.AppendLine(line);
+        }
+
+        return sb.ToString();
     }
 }

@@ -35,6 +35,12 @@ public enum ImConversationAssemblers
 
     /// <summary>知识检索装配器（每轮检索注入；省 token 请改用 knowledge.search 工具模式）。</summary>
     Knowledge = 4,
+
+    /// <summary>群聊历史装配器（T2 / D2：群聊场景自动拉取前 N 条消息注入 prompt）。</summary>
+    GroupHistory = 8,
+
+    /// <summary>媒体消息装配器（T3 / D3：图片/音频/文件转写为文本注入 prompt）。</summary>
+    MediaMessage = 16,
 }
 
 /// <summary>

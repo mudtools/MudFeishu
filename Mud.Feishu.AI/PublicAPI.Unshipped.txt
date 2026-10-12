@@ -22,6 +22,10 @@ const Mud.Feishu.AI.AgentTools.FeishuToolRiskNames.AllowedValuesText = "read / w
 const Mud.Feishu.AI.AgentTools.FeishuToolRiskNames.HighRiskWrite = "high-risk-write" -> string!
 const Mud.Feishu.AI.AgentTools.FeishuToolRiskNames.Read = "read" -> string!
 const Mud.Feishu.AI.AgentTools.FeishuToolRiskNames.Write = "write" -> string!
+const Mud.Feishu.AI.AgentTools.UserTokenPrecheckModes.AllowedValuesText = "off / cache_only / full" -> string!
+const Mud.Feishu.AI.AgentTools.UserTokenPrecheckModes.CacheOnly = "cache_only" -> string!
+const Mud.Feishu.AI.AgentTools.UserTokenPrecheckModes.Full = "full" -> string!
+const Mud.Feishu.AI.AgentTools.UserTokenPrecheckModes.Off = "off" -> string!
 const Mud.Feishu.AI.Channels.BufferedMessageChannel.MinUpdateIntervalMs = 800 -> int
 const Mud.Feishu.AI.Events.ApprovalContextAssembler.ApprovalEventKey = "approval_task" -> string!
 const Mud.Feishu.AI.Events.ApprovalContextAssembler.DefaultOrder = 200 -> int
@@ -39,6 +43,9 @@ const Mud.Feishu.AI.Events.ContextBudgets.BitableRecordFieldPreviewLength = 300 
 const Mud.Feishu.AI.Events.ContextBudgets.BitableRecordTotalLength = 2000 -> int
 const Mud.Feishu.AI.Events.ContextBudgets.CalendarFieldPreviewLength = 200 -> int
 const Mud.Feishu.AI.Events.ContextBudgets.CalendarTotalLength = 800 -> int
+const Mud.Feishu.AI.Events.ContextBudgets.GroupHistoryMessageCount = 15 -> int
+const Mud.Feishu.AI.Events.ContextBudgets.GroupHistoryPerMessageLength = 200 -> int
+const Mud.Feishu.AI.Events.ContextBudgets.GroupHistoryTotalLength = 2000 -> int
 const Mud.Feishu.AI.Events.ContextBudgets.KnowledgeChunkPreviewLength = 500 -> int
 const Mud.Feishu.AI.Events.ContextBudgets.KnowledgeMaxChunks = 8 -> int
 const Mud.Feishu.AI.Events.ContextBudgets.KnowledgeTotalLength = 3000 -> int
@@ -66,6 +73,8 @@ Mud.Feishu.AI.Agents.FeishuAgentOptions.AllowedIdentities.get -> string![]!
 Mud.Feishu.AI.Agents.FeishuAgentOptions.AllowedIdentities.set -> void
 Mud.Feishu.AI.Agents.FeishuAgentOptions.ContentSafetyMode.get -> string!
 Mud.Feishu.AI.Agents.FeishuAgentOptions.ContentSafetyMode.set -> void
+Mud.Feishu.AI.Agents.FeishuAgentOptions.DeferTextUntilTurnComplete.get -> bool
+Mud.Feishu.AI.Agents.FeishuAgentOptions.DeferTextUntilTurnComplete.set -> void
 Mud.Feishu.AI.Agents.FeishuAgentOptions.EnforceToolAuthorization.get -> bool
 Mud.Feishu.AI.Agents.FeishuAgentOptions.EnforceToolAuthorization.set -> void
 Mud.Feishu.AI.Agents.FeishuAgentOptions.FeishuAgentOptions() -> void
@@ -75,6 +84,8 @@ Mud.Feishu.AI.Agents.FeishuAgentOptions.MaxAutoFetchItems.get -> int
 Mud.Feishu.AI.Agents.FeishuAgentOptions.MaxAutoFetchItems.set -> void
 Mud.Feishu.AI.Agents.FeishuAgentOptions.MaxAutoFetchPages.get -> int
 Mud.Feishu.AI.Agents.FeishuAgentOptions.MaxAutoFetchPages.set -> void
+Mud.Feishu.AI.Agents.FeishuAgentOptions.MaxConcurrentTurns.get -> int
+Mud.Feishu.AI.Agents.FeishuAgentOptions.MaxConcurrentTurns.set -> void
 Mud.Feishu.AI.Agents.FeishuAgentOptions.MaxHistoryMessages.get -> int
 Mud.Feishu.AI.Agents.FeishuAgentOptions.MaxHistoryMessages.set -> void
 Mud.Feishu.AI.Agents.FeishuAgentOptions.MaxHistoryTokens.get -> int
@@ -83,6 +94,8 @@ Mud.Feishu.AI.Agents.FeishuAgentOptions.MaxStreamChunkLength.get -> int
 Mud.Feishu.AI.Agents.FeishuAgentOptions.MaxStreamChunkLength.set -> void
 Mud.Feishu.AI.Agents.FeishuAgentOptions.MaxToolResultLength.get -> int
 Mud.Feishu.AI.Agents.FeishuAgentOptions.MaxToolResultLength.set -> void
+Mud.Feishu.AI.Agents.FeishuAgentOptions.MaxToolCallsPerTurn.get -> int
+Mud.Feishu.AI.Agents.FeishuAgentOptions.MaxToolCallsPerTurn.set -> void
 Mud.Feishu.AI.Agents.FeishuAgentOptions.MaxToolRisk.get -> string!
 Mud.Feishu.AI.Agents.FeishuAgentOptions.MaxToolRisk.set -> void
 Mud.Feishu.AI.Agents.FeishuAgentOptions.ModelServiceKey.get -> string?
@@ -93,6 +106,10 @@ Mud.Feishu.AI.Agents.FeishuAgentOptions.SummaryThreshold.get -> int
 Mud.Feishu.AI.Agents.FeishuAgentOptions.SummaryThreshold.set -> void
 Mud.Feishu.AI.Agents.FeishuAgentOptions.ToolRetry.get -> Mud.Feishu.AI.Agents.ToolRetryOptions!
 Mud.Feishu.AI.Agents.FeishuAgentOptions.ToolRetry.set -> void
+Mud.Feishu.AI.Agents.FeishuAgentOptions.TurnQueueTimeoutSeconds.get -> int
+Mud.Feishu.AI.Agents.FeishuAgentOptions.TurnQueueTimeoutSeconds.set -> void
+Mud.Feishu.AI.Agents.FeishuAgentOptions.UserTokenPrecheck.get -> string!
+Mud.Feishu.AI.Agents.FeishuAgentOptions.UserTokenPrecheck.set -> void
 Mud.Feishu.AI.Agents.FeishuAgentOptions.Tools.get -> string![]!
 Mud.Feishu.AI.Agents.FeishuAgentOptions.Tools.set -> void
 Mud.Feishu.AI.Agents.FeishuAgentOptions.Validate() -> void
@@ -282,6 +299,8 @@ Mud.Feishu.AI.AgentTools.ToolParameterAttribute.Name.get -> string!
 Mud.Feishu.AI.AgentTools.ToolParameterAttribute.Required.get -> bool
 Mud.Feishu.AI.AgentTools.ToolParameterAttribute.Required.init -> void
 Mud.Feishu.AI.AgentTools.ToolParameterAttribute.ToolParameterAttribute(string! name, string! description) -> void
+Mud.Feishu.AI.AgentTools.UserTokenPrecheckModes
+static Mud.Feishu.AI.AgentTools.UserTokenPrecheckModes.IsValid(string? mode) -> bool
 Mud.Feishu.AI.Channels.BufferedMessageChannel
 Mud.Feishu.AI.Channels.BufferedMessageChannel.BufferedMessageChannel(Microsoft.Extensions.Options.IOptions<Mud.Feishu.AI.Agents.FeishuAgentOptions!>! options, System.TimeSpan? minUpdateInterval = null) -> void
 Mud.Feishu.AI.Channels.BufferedMessageChannel.ChunkLength.get -> int
@@ -381,6 +400,47 @@ Mud.Feishu.AI.Events.IContextAssembler
 Mud.Feishu.AI.Events.IContextAssembler.AssembleAsync(Mud.Feishu.AI.Conversations.ConversationRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
 Mud.Feishu.AI.Events.IContextAssembler.Order.get -> int
 Mud.Feishu.AI.Events.ImConversationAssemblers
+Mud.Feishu.AI.Events.GroupHistoryContextAssembler
+Mud.Feishu.AI.Events.GroupHistoryContextAssembler.AssembleAsync(Mud.Feishu.AI.Conversations.ConversationRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
+Mud.Feishu.AI.Events.GroupHistoryContextAssembler.GroupHistoryContextAssembler(Mud.Feishu.IFeishuTenantV1Message! messageClient, Mud.Feishu.AI.AgentTools.IFeishuAppContextScopeFactory! scopeFactory, Microsoft.Extensions.Logging.ILogger<Mud.Feishu.AI.Events.GroupHistoryContextAssembler!>? logger = null) -> void
+Mud.Feishu.AI.Events.GroupHistoryContextAssembler.Order.get -> int
+const Mud.Feishu.AI.Events.GroupHistoryContextAssembler.DefaultOrder = 30 -> int
+Mud.Feishu.AI.Events.IFeishuMediaTranscriber
+Mud.Feishu.AI.Events.IFeishuMediaTranscriber.TranscribeAsync(Mud.Feishu.AI.Events.MediaTranscriptionRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Mud.Feishu.AI.Events.MediaTranscription?>!
+Mud.Feishu.AI.Events.MediaInputOptions
+Mud.Feishu.AI.Events.MediaInputOptions.EnableAudioStt.get -> bool
+Mud.Feishu.AI.Events.MediaInputOptions.EnableAudioStt.set -> void
+Mud.Feishu.AI.Events.MediaInputOptions.EnableImageOcr.get -> bool
+Mud.Feishu.AI.Events.MediaInputOptions.EnableImageOcr.set -> void
+Mud.Feishu.AI.Events.MediaInputOptions.MaxBytes.get -> int
+Mud.Feishu.AI.Events.MediaInputOptions.MaxBytes.set -> void
+Mud.Feishu.AI.Events.MediaInputOptions.MaxDurationSeconds.get -> int
+Mud.Feishu.AI.Events.MediaInputOptions.MaxDurationSeconds.set -> void
+Mud.Feishu.AI.Events.MediaInputOptions.MediaInputOptions() -> void
+Mud.Feishu.AI.Events.MediaInputOptions.PerItemLength.get -> int
+Mud.Feishu.AI.Events.MediaInputOptions.PerItemLength.set -> void
+Mud.Feishu.AI.Events.MediaInputOptions.TotalLengthBudget.get -> int
+Mud.Feishu.AI.Events.MediaInputOptions.TotalLengthBudget.set -> void
+Mud.Feishu.AI.Events.MediaInputOptions.Validate() -> void
+const Mud.Feishu.AI.Events.MediaInputOptions.SectionName = "FeishuAgent:MediaInput" -> string!
+Mud.Feishu.AI.Events.MediaMessageContextAssembler
+Mud.Feishu.AI.Events.MediaMessageContextAssembler.AssembleAsync(Mud.Feishu.AI.Conversations.ConversationRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
+Mud.Feishu.AI.Events.MediaMessageContextAssembler.MediaMessageContextAssembler(Mud.Feishu.IFeishuTenantV1Message! messageClient, Mud.Feishu.AI.AgentTools.IFeishuAppContextScopeFactory! scopeFactory, Mud.Feishu.AI.Events.IFeishuMediaTranscriber? transcriber, Mud.Feishu.AI.Events.MediaInputOptions! options, Microsoft.Extensions.Logging.ILogger<Mud.Feishu.AI.Events.MediaMessageContextAssembler!>? logger = null) -> void
+Mud.Feishu.AI.Events.MediaMessageContextAssembler.Order.get -> int
+const Mud.Feishu.AI.Events.MediaMessageContextAssembler.DefaultOrder = 15 -> int
+Mud.Feishu.AI.Events.MediaTranscription
+Mud.Feishu.AI.Events.MediaTranscription.MediaTranscription(string! Text, string! Kind, bool Truncated) -> void
+Mud.Feishu.AI.Events.MediaTranscription.Kind.get -> string!
+Mud.Feishu.AI.Events.MediaTranscription.Text.get -> string!
+Mud.Feishu.AI.Events.MediaTranscription.Truncated.get -> bool
+Mud.Feishu.AI.Events.MediaTranscriptionRequest
+Mud.Feishu.AI.Events.MediaTranscriptionRequest.AppKey.get -> string!
+Mud.Feishu.AI.Events.MediaTranscriptionRequest.FileKey.get -> string!
+Mud.Feishu.AI.Events.MediaTranscriptionRequest.FileName.get -> string?
+Mud.Feishu.AI.Events.MediaTranscriptionRequest.MediaKind.get -> string!
+Mud.Feishu.AI.Events.MediaTranscriptionRequest.MessageId.get -> string!
+Mud.Feishu.AI.Events.ImConversationAssemblers.GroupHistory = 8 -> Mud.Feishu.AI.Events.ImConversationAssemblers
+Mud.Feishu.AI.Events.ImConversationAssemblers.MediaMessage = 16 -> Mud.Feishu.AI.Events.ImConversationAssemblers
 Mud.Feishu.AI.Events.ImConversationAssemblers.Knowledge = 4 -> Mud.Feishu.AI.Events.ImConversationAssemblers
 Mud.Feishu.AI.Events.ImConversationAssemblers.None = 0 -> Mud.Feishu.AI.Events.ImConversationAssemblers
 Mud.Feishu.AI.Events.ImConversationAssemblers.QuoteMessage = 2 -> Mud.Feishu.AI.Events.ImConversationAssemblers
@@ -609,3 +669,9 @@ virtual Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.BuildApprovalPe
 virtual Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.ResolveStreamTarget(Mud.Feishu.AI.Conversations.ConversationRequest! request) -> string?
 virtual Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.ResolveStreamTargetChatId(Mud.Feishu.AI.Conversations.ConversationRequest! request) -> string?
 virtual Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.TryFindDeliveryBlockAsync(Mud.Feishu.AI.Conversations.ConversationRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<string?>!
+Mud.Feishu.AI.AgentTools.FeishuToolCallBudget.FeishuToolCallBudget(int maxToolCalls) -> void
+Mud.Feishu.AI.AgentTools.FeishuToolCallBudget.Begin() -> System.IDisposable!
+Mud.Feishu.AI.AgentTools.FeishuToolCallBudget.Current -> Mud.Feishu.AI.AgentTools.FeishuToolCallBudget?
+Mud.Feishu.AI.AgentTools.FeishuToolCallBudget.TryConsume() -> bool
+Mud.Feishu.AI.AgentTools.FeishuToolCallBudget.Used -> int
+Mud.Feishu.AI.AgentTools.FeishuToolCallBudget.Max -> int

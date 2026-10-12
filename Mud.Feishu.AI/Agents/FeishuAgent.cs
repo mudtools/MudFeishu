@@ -152,14 +152,24 @@ public sealed class FeishuAgent : AIAgent
         _innerAgent = new ChatClientAgent(chatClient, agentOptions, loggerFactory, services);
     }
 
-    /// <summary>
-    /// 域 guidance 装配结果（含 <see cref="FeishuGuidanceResult.Truncated"/> 与丢弃清单；构造期一次性求值）。
-    /// </summary>
+    /// <summary>域 guidance 装配结果（含 <see cref="FeishuGuidanceResult.Truncated"/> 与丢弃清单；构造期一次性求值）。</summary>
     /// <remarks>
     /// R5 消费点：宿主启动冒烟/健康检查与 <c>FeishuGuidanceComposerTests</c> 的可断言面——
     /// 超限丢弃不再只以日志形式存在。
     /// </remarks>
     public FeishuGuidanceResult Guidance { get; }
+
+    /// <summary>
+    /// T4 / D4：单轮工具调用预算上限（从 <see cref="FeishuAgentOptions.MaxToolCallsPerTurn"/> 透传；
+    /// 事件入口 <c>ConversationalFeishuEventHandler</c> 读取此值开启 <c>FeishuToolCallBudget</c>）。
+    /// </summary>
+    internal int MaxToolCallsPerTurn => _options.MaxToolCallsPerTurn;
+
+    /// <summary>
+    /// T10 / D10：流式文本抑制选项（从 <see cref="FeishuAgentOptions.DeferTextUntilTurnComplete"/> 透传；
+    /// 事件入口 <c>ConversationalFeishuEventHandler</c> 读取此值决定流式增量推送策略）。
+    /// </summary>
+    internal bool DeferTextUntilTurnComplete => _options.DeferTextUntilTurnComplete;
 
     /// <summary>Agent 展示名（覆写 <see cref="AIAgent.Name"/>；不可用 <c>new</c> 遮蔽——那会使经 <see cref="AIAgent"/> 引用取值恒为基类默认 <see langword="null"/>）。</summary>
     public override string? Name => _options.Name;

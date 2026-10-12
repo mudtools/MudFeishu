@@ -1,0 +1,1506 @@
+{
+ "application.bot.menu_v6": {
+  "operator": {
+   "operator_name": "张三",
+   "operator_id": {
+    "union_id": "on_8ed6aa67826108097d9ee143816345",
+    "user_id": "e33ggbyz",
+    "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+   }
+  },
+  "event_key": "menu2022********67dfc8b885136",
+  "timestamp": 1669364458
+ },
+ "application.application.created_v6": {
+  "operator_id": {
+   "union_id": "on_8ed6aa67826108097d9ee143816345",
+   "user_id": "e33ggbyz",
+   "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+  },
+  "app_id": "cli_9f5343c580712544",
+  "name": "应用名称",
+  "description": "应用描述",
+  "avatar": "https://s1-imfile.feishucdn.com/static-resource/v1/c1f2f629-65e5-462c-be6a-bf327f971edg",
+  "app_scene_type": 0,
+  "primary_language": "zh_cn",
+  "create_source": "developer_console"
+ },
+ "application.application.visibility.added_v6": {
+  "source": 1,
+  "users": [
+   {
+    "user_id": {
+     "open_id": "ou_f370aea2baf6ffc69a6762d31cfaf96a",
+     "union_id": "on_6bc1e6c0e9ad8193fa4391278eb76891"
+    }
+   }
+  ]
+ },
+ "application.application.feedback.created_v6": {
+  "user_id": {
+   "union_id": "on_8ed6aa67826108097d9ee143816345",
+   "user_id": "e33ggbyz",
+   "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+  },
+  "app_id": "cli_9b445f5258795107",
+  "feedback_time": "2022-01-30 11:30:12",
+  "tenant_name": "字节跳动",
+  "feedback_type": 1,
+  "fault_type": [
+   1,
+   2,
+   3
+  ],
+  "fault_time": "2022-01-30 11:30:12",
+  "source": 1,
+  "contact": "wang@bytedance.com",
+  "description": "反馈的详细信息",
+  "images": [
+   "https://p6-lark-openplatform-image-sign.byteimg.com/*"
+  ],
+  "feedback_id": "7057888018203574291",
+  "feedback_path": "page/index"
+ },
+ "application.application.feedback.updated_v6": {
+  "feedback_ids": [
+   "7057888018203574291"
+  ],
+  "status": 1,
+  "app_id": "cli_9b445f5258795107",
+  "update_time": "2021-07-01 17:00:00",
+  "operator_id": {
+   "union_id": "on_8ed6aa67826108097d9ee143816345",
+   "user_id": "e33ggbyz",
+   "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+  }
+ },
+ "application.application.app_version.publish_apply_v6": {
+  "operator_id": {
+   "union_id": "on_8ed6aa67826108097d9ee143816345",
+   "user_id": "e33ggbyz",
+   "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+  },
+  "online_version": {
+   "app_id": "cli_9f3ca975326b501b",
+   "version": "1.0.0",
+   "version_id": "oav_d317f090b7258ad0372aa53963cda70d",
+   "app_name": "应用名称",
+   "avatar_url": "https://www.example.com",
+   "description": "应用描述",
+   "scopes": [
+    {
+     "scope": "contact:user.base",
+     "description": "获取应用信息",
+     "level": 1,
+     "token_types": [
+      "user"
+     ]
+    }
+   ],
+   "back_home_url": "https://www.example.com",
+   "i18n": [
+    {
+     "i18n_key": "zh_cn",
+     "name": "应用名称",
+     "description": "应用描述",
+     "help_use": "https://www.example.com"
+    }
+   ],
+   "common_categories": [
+    "分析工具"
+   ],
+   "events": [
+    "应用审核事件"
+   ],
+   "status": 1,
+   "create_time": "1610462759",
+   "publish_time": "1610462759",
+   "ability": {
+    "gadget": {
+     "enable_pc_mode": 1,
+     "schema_urls": [
+      "*:*"
+     ],
+     "pc_use_mobile_pkg": false,
+     "pc_version": "1.0.0",
+     "mobile_version": "1.0.0",
+     "mobile_min_lark_version": "2.0",
+     "pc_min_lark_version": "2.0"
+    },
+    "web_app": {
+     "pc_url": "https://www.example.com",
+     "mobile_url": "https://www.example.com"
+    },
+    "bot": {
+     "card_request_url": "https://www.example.com"
+    },
+    "workplace_widgets": [
+     {
+      "min_lark_version": "1.0.0"
+     }
+    ],
+    "navigate": {
+     "pc": {
+      "version": "1.0.0",
+      "image_url": "https://www.example.com",
+      "hover_image_url": "https://www.example.com"
+     },
+     "mobile": {
+      "version": "1.0.0",
+      "image_url": "https://www.example.com",
+      "hover_image_url": "https://www.example.com"
+     }
+    },
+    "cloud_doc": {
+     "space_url": "https://www.example.com",
+     "i18n": [
+      {
+       "i18n_key": "zh_cn",
+       "name": "名称",
+       "read_description": "读权限说明",
+       "write_description": "写权限说明"
+      }
+     ],
+     "icon_url": "https://www.example.com",
+     "mode": 1
+    },
+    "docs_blocks": [
+     {
+      "block_type_id": "blk_4fb61568435880110854c1d0",
+      "i18n": [
+       {
+        "i18n_key": "zh_cn",
+        "name": "名称"
+       }
+      ],
+      "mobile_icon_url": "https://www.example.com",
+      "pc_icon_url": "https://www.example.com"
+     }
+    ],
+    "message_action": {
+     "pc_app_link": "https://www.example.com",
+     "mobile_app_link": "https://www.example.com",
+     "i18n": [
+      {
+       "i18n_key": "zh_cn",
+       "name": "名称"
+      }
+     ]
+    },
+    "plus_menu": {
+     "pc_app_link": "https://www.example.com",
+     "mobile_app_link": "https://www.example.com"
+    }
+   },
+   "remark": {
+    "remark": "备注说明",
+    "update_remark": "更新说明",
+    "visibility": {
+     "is_all": false,
+     "visible_list": {
+      "open_ids": [
+       {
+        "union_id": "on_8ed6aa67826108097d9ee143816345",
+        "user_id": "e33ggbyz",
+        "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+       }
+      ],
+      "department_ids": [
+       "od-ddee42c0f8a948a5e650341e2153243b"
+      ]
+     },
+     "invisible_list": {
+      "open_ids": [
+       {
+        "union_id": "on_8ed6aa67826108097d9ee143816345",
+        "user_id": "e33ggbyz",
+        "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+       }
+      ],
+      "department_ids": [
+       "od-ddee42c0f8a948a5e650341e2153243b"
+      ]
+     }
+    }
+   }
+  },
+  "under_audit_version": {
+   "app_id": "cli_9f3ca975326b501b",
+   "version": "1.0.0",
+   "version_id": "oav_d317f090b7258ad0372aa53963cda70d",
+   "app_name": "应用名称",
+   "avatar_url": "https://www.example.com",
+   "description": "应用描述",
+   "scopes": [
+    {
+     "scope": "contact:user.base",
+     "description": "获取应用信息",
+     "level": 1,
+     "token_types": [
+      "user"
+     ]
+    }
+   ],
+   "back_home_url": "https://www.example.com",
+   "i18n": [
+    {
+     "i18n_key": "zh_cn",
+     "name": "应用名称",
+     "description": "应用描述",
+     "help_use": "https://www.example.com"
+    }
+   ],
+   "common_categories": [
+    "分析工具"
+   ],
+   "events": [
+    "应用审核事件"
+   ],
+   "status": 1,
+   "create_time": "1610462759",
+   "publish_time": "1610462759",
+   "ability": {
+    "gadget": {
+     "enable_pc_mode": 1,
+     "schema_urls": [
+      "*:*"
+     ],
+     "pc_use_mobile_pkg": false,
+     "pc_version": "1.0.0",
+     "mobile_version": "1.0.0",
+     "mobile_min_lark_version": "2.0",
+     "pc_min_lark_version": "2.0"
+    },
+    "web_app": {
+     "pc_url": "https://www.example.com",
+     "mobile_url": "https://www.example.com"
+    },
+    "bot": {
+     "card_request_url": "https://www.example.com"
+    },
+    "workplace_widgets": [
+     {
+      "min_lark_version": "1.0.0"
+     }
+    ],
+    "navigate": {
+     "pc": {
+      "version": "1.0.0",
+      "image_url": "https://www.example.com",
+      "hover_image_url": "https://www.example.com"
+     },
+     "mobile": {
+      "version": "1.0.0",
+      "image_url": "https://www.example.com",
+      "hover_image_url": "https://www.example.com"
+     }
+    },
+    "cloud_doc": {
+     "space_url": "https://www.example.com",
+     "i18n": [
+      {
+       "i18n_key": "zh_cn",
+       "name": "名称",
+       "read_description": "读权限说明",
+       "write_description": "写权限说明"
+      }
+     ],
+     "icon_url": "https://www.example.com",
+     "mode": 1
+    },
+    "docs_blocks": [
+     {
+      "block_type_id": "blk_4fb61568435880110854c1d0",
+      "i18n": [
+       {
+        "i18n_key": "zh_cn",
+        "name": "名称"
+       }
+      ],
+      "mobile_icon_url": "https://www.example.com",
+      "pc_icon_url": "https://www.example.com"
+     }
+    ],
+    "message_action": {
+     "pc_app_link": "https://www.example.com",
+     "mobile_app_link": "https://www.example.com",
+     "i18n": [
+      {
+       "i18n_key": "zh_cn",
+       "name": "名称"
+      }
+     ]
+    },
+    "plus_menu": {
+     "pc_app_link": "https://www.example.com",
+     "mobile_app_link": "https://www.example.com"
+    }
+   },
+   "remark": {
+    "remark": "备注说明",
+    "update_remark": "更新说明",
+    "visibility": {
+     "is_all": false,
+     "visible_list": {
+      "open_ids": [
+       {
+        "union_id": "on_8ed6aa67826108097d9ee143816345",
+        "user_id": "e33ggbyz",
+        "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+       }
+      ],
+      "department_ids": [
+       "od-ddee42c0f8a948a5e650341e2153243b"
+      ]
+     },
+     "invisible_list": {
+      "open_ids": [
+       {
+        "union_id": "on_8ed6aa67826108097d9ee143816345",
+        "user_id": "e33ggbyz",
+        "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+       }
+      ],
+      "department_ids": [
+       "od-ddee42c0f8a948a5e650341e2153243b"
+      ]
+     }
+    }
+   }
+  },
+  "app_status": 1
+ },
+ "application.application.app_version.publish_revoke_v6": {
+  "operator_id": {
+   "union_id": "on_8ed6aa67826108097d9ee143816345",
+   "user_id": "e33ggbyz",
+   "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+  },
+  "creator_id": {
+   "union_id": "on_8ed6aa67826108097d9ee143816345",
+   "user_id": "e33ggbyz",
+   "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+  },
+  "app_id": "cli_9b445f5258795107",
+  "version_id": "oav_d317f090b7258ad0372aa53963cda70d"
+ },
+ "application.application.app_version.audit_v6": {
+  "operator_id": {
+   "union_id": "on_8ed6aa67826108097d9ee143816345",
+   "user_id": "e33ggbyz",
+   "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+  },
+  "version_id": "oav_d317f090b7258ad0372aa53963cda70d",
+  "creator_id": {
+   "union_id": "on_8ed6aa67826108097d9ee143816345",
+   "user_id": "e33ggbyz",
+   "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+  },
+  "app_id": "cli_9b445f5258795107",
+  "operation": "audited",
+  "remark": "拒绝理由",
+  "audit_source": "administrator"
+ },
+ "auth.user_access_token.revoked_v4": {
+  "revoke_token_type": "user_access_token refresh_token",
+  "revoke_reason": "Revoked by security and risk control action.",
+  "open_id": "ou_c99c5f35d542efc7ee492afe11af19ef",
+  "union_id": "on_cad4860e7af114fb4ff6c5d496d1dd76",
+  "user_id": "gg895344"
+ },
+ "contact.scope.updated_v3": {
+  "added": {
+   "departments": [
+    {
+     "name": "DemoName",
+     "i18n_name": {
+      "zh_cn": "Demo名称",
+      "ja_jp": "デモ名",
+      "en_us": "Demo Name"
+     },
+     "parent_department_id": "D067",
+     "department_id": "D096",
+     "open_department_id": "od-4e6ac4d14bcd5071a37a39de902c7141",
+     "leader_user_id": "ou_7dab8a3d3cdcc9da365777c7ad535d62",
+     "chat_id": "oc_5ad11d72b830411d72b836c20",
+     "order": "100",
+     "unit_ids": [
+      "custom_unit_id"
+     ],
+     "member_count": 100,
+     "status": {
+      "is_deleted": false
+     },
+     "leaders": [
+      {
+       "leaderType": 1,
+       "leaderID": "ou_7dab8a3d3cdcc9da365777c7ad535d62"
+      }
+     ],
+     "group_chat_employee_types": [
+      1,
+      2,
+      3
+     ],
+     "primary_member_count": 100
+    }
+   ],
+   "users": [
+    {
+     "union_id": "on_94a1ee5551019f18cd73d9f111898cf2",
+     "user_id": "3e3cf96b",
+     "open_id": "ou_7dab8a3d3cdcc9da365777c7ad535d62",
+     "name": "张三",
+     "en_name": "San Zhang",
+     "nickname": "Alex Zhang",
+     "email": "zhangsan@gmail.com",
+     "mobile": "130xxxx1111",
+     "gender": 1,
+     "avatar": {
+      "avatar_72": "https://foo.icon.com/xxxx",
+      "avatar_240": "https://foo.icon.com/xxxx",
+      "avatar_640": "https://foo.icon.com/xxxx",
+      "avatar_origin": "https://foo.icon.com/xxxx"
+     },
+     "status": {
+      "is_frozen": false,
+      "is_resigned": false,
+      "is_activated": true,
+      "is_exited": false,
+      "is_unjoin": false
+     },
+     "leader_user_id": "ou_7dab8a3d3cdcc9da365777c7ad535d62",
+     "city": "杭州",
+     "country": "CN",
+     "work_station": "北楼-H34",
+     "join_time": 2147483647,
+     "employee_no": "1",
+     "employee_type": 1,
+     "custom_attrs": [
+      {
+       "type": "TEXT",
+       "id": "DemoId",
+       "value": {
+        "text": "DemoText",
+        "url": "http://www.fs.cn",
+        "pc_url": "http://www.fs.cn",
+        "option_id": "edcvfrtg",
+        "option_value": "option",
+        "name": "name",
+        "picture_url": "https://xxxxxxxxxxxxxxxxxx",
+        "generic_user": {
+         "id": "9b2fabg5",
+         "type": 1
+        }
+       }
+      }
+     ],
+     "enterprise_email": "demo@mail.com",
+     "job_title": "xxxxx",
+     "is_frozen": false,
+     "job_level_id": "mga5oa8ayjlp9rb",
+     "job_family_id": "mga5oa8ayjlp9rb",
+     "subscription_ids": [
+      "7179609168571645971"
+     ],
+     "assign_info": [
+      {
+       "subscription_id": "7079609167680782300",
+       "license_plan_key": "suite_enterprise_e5",
+       "product_name": "旗舰版 E5",
+       "i18n_name": {
+        "zh_cn": "zh_cn_name",
+        "ja_jp": "ja_jp_name",
+        "en_us": "en_name"
+       },
+       "start_time": "1674981000",
+       "end_time": "1674991000"
+      }
+     ],
+     "department_path": [
+      {
+       "department_id": "od-4e6ac4d14bcd5071a37a39de902c7141",
+       "department_name": {
+        "name": "测试部门名1",
+        "i18n_name": {
+         "zh_cn": "Demo名称",
+         "ja_jp": "デモ名",
+         "en_us": "Demo Name"
+        }
+       },
+       "department_path": {
+        "department_ids": [
+         "od-4e6ac4d14bcd5071a37a39de902c7141"
+        ],
+        "department_path_name": {
+         "name": "测试部门名1",
+         "i18n_name": {
+          "zh_cn": "Demo名称",
+          "ja_jp": "デモ名",
+          "en_us": "Demo Name"
+         }
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "user_groups": [
+    {
+     "user_group_id": "test",
+     "name": "userGroupName",
+     "type": 1,
+     "member_count": 10,
+     "status": 1
+    }
+   ]
+  },
+  "removed": {
+   "departments": [
+    {
+     "name": "DemoName",
+     "i18n_name": {
+      "zh_cn": "Demo名称",
+      "ja_jp": "デモ名",
+      "en_us": "Demo Name"
+     },
+     "parent_department_id": "D067",
+     "department_id": "D096",
+     "open_department_id": "od-4e6ac4d14bcd5071a37a39de902c7141",
+     "leader_user_id": "ou_7dab8a3d3cdcc9da365777c7ad535d62",
+     "chat_id": "oc_5ad11d72b830411d72b836c20",
+     "order": "100",
+     "unit_ids": [
+      "custom_unit_id"
+     ],
+     "member_count": 100,
+     "status": {
+      "is_deleted": false
+     },
+     "leaders": [
+      {
+       "leaderType": 1,
+       "leaderID": "ou_7dab8a3d3cdcc9da365777c7ad535d62"
+      }
+     ],
+     "group_chat_employee_types": [
+      1,
+      2,
+      3
+     ],
+     "primary_member_count": 100
+    }
+   ],
+   "users": [
+    {
+     "union_id": "on_94a1ee5551019f18cd73d9f111898cf2",
+     "user_id": "3e3cf96b",
+     "open_id": "ou_7dab8a3d3cdcc9da365777c7ad535d62",
+     "name": "张三",
+     "en_name": "San Zhang",
+     "nickname": "Alex Zhang",
+     "email": "zhangsan@gmail.com",
+     "mobile": "130xxxx1111",
+     "gender": 1,
+     "avatar": {
+      "avatar_72": "https://foo.icon.com/xxxx",
+      "avatar_240": "https://foo.icon.com/xxxx",
+      "avatar_640": "https://foo.icon.com/xxxx",
+      "avatar_origin": "https://foo.icon.com/xxxx"
+     },
+     "status": {
+      "is_frozen": false,
+      "is_resigned": false,
+      "is_activated": true,
+      "is_exited": false,
+      "is_unjoin": false
+     },
+     "leader_user_id": "ou_7dab8a3d3cdcc9da365777c7ad535d62",
+     "city": "杭州",
+     "country": "CN",
+     "work_station": "北楼-H34",
+     "join_time": 2147483647,
+     "employee_no": "1",
+     "employee_type": 1,
+     "custom_attrs": [
+      {
+       "type": "TEXT",
+       "id": "DemoId",
+       "value": {
+        "text": "DemoText",
+        "url": "http://www.fs.cn",
+        "pc_url": "http://www.fs.cn",
+        "option_id": "edcvfrtg",
+        "option_value": "option",
+        "name": "name",
+        "picture_url": "https://xxxxxxxxxxxxxxxxxx",
+        "generic_user": {
+         "id": "9b2fabg5",
+         "type": 1
+        }
+       }
+      }
+     ],
+     "enterprise_email": "demo@mail.com",
+     "job_title": "xxxxx",
+     "is_frozen": false,
+     "job_level_id": "mga5oa8ayjlp9rb",
+     "job_family_id": "mga5oa8ayjlp9rb",
+     "subscription_ids": [
+      "7179609168571645971"
+     ],
+     "assign_info": [
+      {
+       "subscription_id": "7079609167680782300",
+       "license_plan_key": "suite_enterprise_e5",
+       "product_name": "旗舰版 E5",
+       "i18n_name": {
+        "zh_cn": "zh_cn_name",
+        "ja_jp": "ja_jp_name",
+        "en_us": "en_name"
+       },
+       "start_time": "1674981000",
+       "end_time": "1674991000"
+      }
+     ],
+     "department_path": [
+      {
+       "department_id": "od-4e6ac4d14bcd5071a37a39de902c7141",
+       "department_name": {
+        "name": "测试部门名1",
+        "i18n_name": {
+         "zh_cn": "Demo名称",
+         "ja_jp": "デモ名",
+         "en_us": "Demo Name"
+        }
+       },
+       "department_path": {
+        "department_ids": [
+         "od-4e6ac4d14bcd5071a37a39de902c7141"
+        ],
+        "department_path_name": {
+         "name": "测试部门名1",
+         "i18n_name": {
+          "zh_cn": "Demo名称",
+          "ja_jp": "デモ名",
+          "en_us": "Demo Name"
+         }
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "user_groups": [
+    {
+     "user_group_id": "test",
+     "name": "userGroupName",
+     "type": 1,
+     "member_count": 10,
+     "status": 1
+    }
+   ]
+  }
+ },
+ "im.chat.access_event.bot_p2p_chat_entered_v1": {
+  "chat_id": "oc_413871888e0d5492e25b173f0812efb7",
+  "operator_id": {
+   "union_id": "on_8ed6aa67826108097d9ee143816345",
+   "user_id": "e33ggbyz",
+   "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+  },
+  "last_message_id": "om_dc13264520392913993dd051dba21dcf",
+  "last_message_create_time": "1615380573411"
+ },
+ "vc.bot.meeting_started_v1": {
+  "meeting": {
+   "id": "7628148899983674909",
+   "topic": "周会",
+   "meeting_no": "123456789",
+   "start_time": "1712345678",
+   "end_time": "1712349278",
+   "host_user": {
+    "id": {
+     "union_id": "on_8ed6aa67826108097d9ee143816345",
+     "user_id": "e33ggbyz",
+     "open_id": "ou_84aad35d084aa403a838cf73ee18467",
+     "user_key": "749112601802809xxxx"
+    },
+    "user_type": 1,
+    "user_role": 1,
+    "user_name": "张三"
+   }
+  }
+ },
+ "meeting_room.meeting_room.created_v1": {
+  "room_name": "room1",
+  "room_id": "omb_8d020b12fe49e82847c2af3c193d5754"
+ },
+ "meeting_room.meeting_room.updated_v1": {
+  "room_name": "room1",
+  "room_id": "omb_8d020b12fe49e82847c2af3c193d5754"
+ },
+ "meeting_room.meeting_room.deleted_v1": {
+  "room_name": "room1",
+  "room_id": "omb_8d020b12fe49e82847c2af3c193d5754"
+ },
+ "approval.task.status_changed_v4": {
+  "approval_code": "7C468A54-8745-2245-9675-08B7C63E7A85",
+  "instance_code": "81D31358-93AF-92D6-7425-01A5D67C4E71",
+  "task_id": "7659648374676655071",
+  "task_external_id": "2f719dfd-bbdf-440b-9947-e79665a18c20",
+  "assigned_user": {
+   "union_id": "on_8ed6aa67826108097d9ee143816345",
+   "user_id": "e33ggbyz",
+   "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+  },
+  "status": "PENDING",
+  "operate_time": "1782882600000"
+ },
+ "corehr.common_data.meta_data.updated_v1": {
+  "api_name": "person",
+  "field_changes": [
+   "address"
+  ],
+  "metadata_type": "Enum",
+  "enum_value_changes": [
+   "other"
+  ]
+ },
+ "corehr.common_data.id.user_mapping_changed_v1": {
+  "change_type": "insert",
+  "id_transform_type": 1,
+  "corehr_id": "6814523528021526024",
+  "people_admin_id": "6894136542327997966",
+  "feishu_id": {
+   "union_id": "on_8ed6aa67826108097d9ee143816345",
+   "user_id": "e33ggbyz",
+   "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+  }
+ },
+ "corehr.person.created_v1": {
+  "person_id": "201571108"
+ },
+ "corehr.person.updated_v1": {
+  "person_id": "646465654545",
+  "field_changes": [
+   "working_years"
+  ]
+ },
+ "corehr.person.deleted_v1": {
+  "person_id": "201571108"
+ },
+ "corehr.employment.created_v1": {
+  "employment_id": "201571108",
+  "target_user_id": {
+   "union_id": "on_8ed6aa67826108097d9ee143816345",
+   "user_id": "e33ggbyz",
+   "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+  }
+ },
+ "corehr.employment.updated_v1": {
+  "employment_id": "7043711771159341206",
+  "target_user_id": {
+   "union_id": "on_8ed6aa67826108097d9ee143816345",
+   "user_id": "e33ggbyz",
+   "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+  },
+  "field_changes": [
+   "tenure"
+  ]
+ },
+ "corehr.employment.deleted_v1": {
+  "employment_id": "201571108",
+  "target_user_id": {
+   "union_id": "on_8ed6aa67826108097d9ee143816345",
+   "user_id": "e33ggbyz",
+   "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+  }
+ },
+ "corehr.employment.converted_v1": {
+  "employment_id": "7072306364927985196"
+ },
+ "corehr.employment.resigned_v1": {
+  "employment_id": "7072306364927985196"
+ },
+ "corehr.job_data.created_v1": {
+  "job_data_id": "201571108"
+ },
+ "corehr.job_data.updated_v1": {
+  "job_data_id": "201571108"
+ },
+ "corehr.job_data.deleted_v1": {
+  "job_data_id": "201571108"
+ },
+ "corehr.job_data.employed_v1": {
+  "job_data_id": "7072306364927985196",
+  "employment_id": "7072306364927985196",
+  "target_user_id": {
+   "union_id": "on_8ed6aa67826108097d9ee143816345",
+   "user_id": "e33ggbyz",
+   "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+  }
+ },
+ "corehr.job_data.changed_v1": {
+  "job_data_id": "7072306364927985196",
+  "employment_id": "7072306364927985196",
+  "target_user_id": {
+   "union_id": "on_8ed6aa67826108097d9ee143816345",
+   "user_id": "e33ggbyz",
+   "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+  },
+  "job_change_id": "7072306364927985196"
+ },
+ "corehr.department.created_v1": {
+  "department_id": "6969828847121885087"
+ },
+ "corehr.department.updated_v1": {
+  "department_id": "6969828847121885087",
+  "field_changes": [
+   "subtype"
+  ]
+ },
+ "corehr.department.deleted_v1": {
+  "department_id": "6969828847121885087",
+  "code": "A0001"
+ },
+ "corehr.job.created_v1": {
+  "job_id": "201571108"
+ },
+ "corehr.job.updated_v1": {
+  "job_id": "201571108"
+ },
+ "corehr.job.deleted_v1": {
+  "job_id": "201571108"
+ },
+ "corehr.pre_hire.updated_v1": {
+  "pre_hire_id": "7043711771159341206",
+  "field_changes": [
+   "work_station"
+  ]
+ },
+ "corehr.job_change.updated_v1": {
+  "employment_id": "7072306364927985196",
+  "target_user_id": {
+   "union_id": "on_8ed6aa67826108097d9ee143816345",
+   "user_id": "e33ggbyz",
+   "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+  },
+  "job_change_id": "7044427347159746085",
+  "transfer_mode": 1,
+  "transfer_type_unique_identifier": "internal_transfer",
+  "transfer_reason_unique_identifier": "internal_transfer",
+  "process_id": "7090409013925398060",
+  "effective_date": "2022-04-03",
+  "status": 1,
+  "transfer_key": "transfer_3627531"
+ },
+ "corehr.contract.created_v1": {
+  "contract_id": "7371271712380618284"
+ },
+ "corehr.contract.updated_v1": {
+  "contract_id": "201571108"
+ },
+ "corehr.contract.deleted_v1": {
+  "contract_id": "201571108"
+ },
+ "corehr.org_role_authorization.updated_v1": {
+  "role_id": "7072306364927985196",
+  "management_scope_list": [
+   {
+    "management_dimension": "department",
+    "obj_id": "7023318326176777742"
+   }
+  ],
+  "employment_id_list": [
+   "707230636492884196,748383458492845524"
+  ]
+ },
+ "corehr.offboarding.updated_v1": {
+  "employment_id": "7072306364927985196",
+  "target_user_id": {
+   "union_id": "on_8ed6aa67826108097d9ee143816345",
+   "user_id": "e33ggbyz",
+   "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+  },
+  "offboarding_id": "7044427347159746085",
+  "process_id": "7090409013925398060",
+  "status": 1
+ },
+ "corehr.employee.domain_event_v2": {
+  "event_type": 1,
+  "sub_event_type": 1001,
+  "operator_user_id": "7216228370772919852",
+  "opt_scene": "OpenAPIAddEmployee",
+  "opt_desc": "开放平台创建任职记录V1接口入职员工",
+  "opt_time": "1697701824",
+  "opt_id": "7291571779879978540",
+  "employment_id": "7324965529786844716",
+  "data": [
+   {
+    "id": "7291573441955235372",
+    "entity": "email",
+    "agg_entity": "person",
+    "agg_entity_id": "7291273149417948716",
+    "opt_type": 1,
+    "fields": [
+     "fields apiname"
+    ]
+   }
+  ]
+ },
+ "corehr.department.created_v2": {
+  "department_id": "7043711774159341101"
+ },
+ "corehr.department.updated_v2": {
+  "department_id": "7043711774159341101",
+  "field_changes": [
+   "manager"
+  ]
+ },
+ "corehr.location.created_v2": {
+  "location_id": "6969828847121885087"
+ },
+ "corehr.location.updated_v2": {
+  "location_id": "201571101",
+  "field_changes": [
+   "address"
+  ],
+  "sub_events": [
+   {
+    "id": "7818231238918192",
+    "entity": "address",
+    "agg_entity": "company",
+    "agg_entity_id": "7291273149417948716",
+    "agg_entity_field": "registered_office_address",
+    "opt_type": 2,
+    "field_changes": [
+     "active"
+    ]
+   }
+  ]
+ },
+ "corehr.location.deleted_v2": {
+  "location_id": "6969828847121885087"
+ },
+ "corehr.company.created_v2": {
+  "company_id": "6969828847121885087"
+ },
+ "corehr.company.updated_v2": {
+  "company_id": "7291273149417948716",
+  "field_changes": [
+   "registered_office_address"
+  ],
+  "sub_events": [
+   {
+    "id": "7818231238918192",
+    "entity": "address",
+    "agg_entity": "company",
+    "agg_entity_id": "7291273149417948716",
+    "agg_entity_field": "registered_office_address",
+    "opt_type": 2,
+    "field_changes": [
+     "active"
+    ]
+   }
+  ]
+ },
+ "corehr.company.deleted_v2": {
+  "company_id": "6969828847121885087"
+ },
+ "corehr.cost_center.created_v2": {
+  "cost_center_id": "6969828847121885087"
+ },
+ "corehr.cost_center.updated_v2": {
+  "cost_center_id": "6969828847121885087",
+  "field_changes": [
+   "organization_id"
+  ]
+ },
+ "corehr.cost_center.deleted_v2": {
+  "cost_center_id": "6969828847121885087"
+ },
+ "corehr.custom_org.created_v2": {
+  "org_id": "7436668377630295596",
+  "object_api_name": "custom_org_01"
+ },
+ "corehr.custom_org.updated_v2": {
+  "org_id": "7436668377630295596",
+  "field_changes": [
+   "name"
+  ],
+  "object_api_name": "custom_org_01"
+ },
+ "corehr.custom_org.deleted_v2": {
+  "org_id": "7436668377630295596",
+  "object_api_name": "custom_org_01"
+ },
+ "corehr.approval_groups.updated_v2": {
+  "approval_group_id": "6991776076699549697",
+  "process_id": "6991776076699549697",
+  "approval_group_status": 1,
+  "topic": "测试组织架构调整",
+  "adjust_reason": "测试",
+  "effective_date": "2022-03-01",
+  "created_by": "6974641477444060708",
+  "draft_id": "6991776076699549697",
+  "draft_status": 1,
+  "approval_group_status_v2": 1
+ },
+ "corehr.job_family.created_v2": {
+  "job_family_id": "6969828847121885087"
+ },
+ "corehr.job_family.updated_v2": {
+  "job_family_id": "6969828847121885087",
+  "field_changes": [
+   "name"
+  ]
+ },
+ "corehr.job_family.deleted_v2": {
+  "job_family_id": "6969828847121885087"
+ },
+ "corehr.job_level.created_v2": {
+  "job_level_id": "6969828847121885087"
+ },
+ "corehr.job_level.updated_v2": {
+  "job_level_id": "6969828847121885087",
+  "field_changes": [
+   "name"
+  ]
+ },
+ "corehr.job_level.deleted_v2": {
+  "job_level_id": "6969828847121885087"
+ },
+ "corehr.job_grade.created_v2": {
+  "job_grade_id": "6969828847121885087"
+ },
+ "corehr.job_grade.updated_v2": {
+  "job_grade_id": "7043711774159341101",
+  "field_changes": [
+   "code"
+  ]
+ },
+ "corehr.job_grade.deleted_v2": {
+  "job_grade_id": "6969828847121885087"
+ },
+ "corehr.pathway.created_v2": {
+  "pathway_id": "201571101"
+ },
+ "corehr.pathway.updated_v2": {
+  "pathway_id": "7043711774159341101",
+  "field_changes": [
+   "code"
+  ]
+ },
+ "corehr.pathway.deleted_v2": {
+  "pathway_id": "201571101"
+ },
+ "corehr.position.created_v2": {
+  "position_id": "201571101"
+ },
+ "corehr.position.updated_v2": {
+  "position_id": "7043711774159341101",
+  "field_changes": [
+   "job"
+  ]
+ },
+ "corehr.position.deleted_v2": {
+  "position_id": "201571101"
+ },
+ "corehr.pre_hire.onboarding_task_changed_v2": {
+  "tenant_id": "6685321562717324807",
+  "pre_hire_id": "7225204420787144236",
+  "onboarding_task_changes": [
+   {
+    "after_status": "in_progress",
+    "task_code": "2"
+   }
+  ],
+  "onboarding_flow_change": {
+   "after_status": "in_progress"
+  },
+  "onboarding_flow_id": "65c245b7859c6e77d2290e00",
+  "flow_info": {
+   "id": "628caefb0eb4ac9c806982ee",
+   "name": {
+    "zh_cn": "王冰",
+    "en_us": "Bob"
+   }
+  }
+ },
+ "corehr.probation.updated_v2": {
+  "employment_id": "7043711771159341206",
+  "probation_status": "converted",
+  "actual_probation_end_date": "2023-05-25"
+ },
+ "corehr.job_change.status_updated_v2": {
+  "employment_id": "7072306364927985196",
+  "target_user_id": {
+   "union_id": "on_8ed6aa67826108097d9ee143816345",
+   "user_id": "e33ggbyz",
+   "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+  },
+  "job_change_id": "7044427347159746085",
+  "transfer_mode": 1,
+  "transfer_type_unique_identifier": "internal_transfer",
+  "transfer_reason_unique_identifier": "internal_transfer",
+  "process_id": "7090409013925398060",
+  "effective_date": "2022-04-03",
+  "status": 1,
+  "transfer_key": "transfer_3627531"
+ },
+ "corehr.job_change.updated_v2": {
+  "employment_id": "7072306364927985196",
+  "tenant_id": "7072306364927985196",
+  "process_id": "7072306364927985196",
+  "initiator": "7072306364927985196",
+  "operator": "7072306364927985196",
+  "updated_time": "1714985958000",
+  "job_change_id": "7072306364927985196",
+  "status": 1,
+  "operate_reason": "操作原因",
+  "transfer_type": 1,
+  "updated_fields": [
+   "effective_time"
+  ],
+  "transform_type": "assignment_start_reason_option1",
+  "transform_reason": "reason_for_job_change_option1"
+ },
+ "corehr.offboarding.updated_v2": {
+  "tenant_id": "7072306364927985196",
+  "offboarding_info_id": "7072306364927985196",
+  "process_id": "7072306364927985196",
+  "checklist_process_id": "7072306364927985196",
+  "employment_id": "7072306364927985196",
+  "operator": "7072306364927985196",
+  "status": 1,
+  "checklist_status": 1,
+  "updated_time": "1714985958000",
+  "updated_fields": [
+   "offboarding_date"
+  ],
+  "target_user_id": {
+   "union_id": "on_8ed6aa67826108097d9ee143816345",
+   "user_id": "e33ggbyz",
+   "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+  }
+ },
+ "corehr.offboarding.status_updated_v2": {
+  "employment_id": "7072306364927985196",
+  "target_user_id": {
+   "union_id": "on_8ed6aa67826108097d9ee143816345",
+   "user_id": "e33ggbyz",
+   "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+  },
+  "offboarding_id": "7044427347159746085",
+  "process_id": "7090409013925398060",
+  "status": 1
+ },
+ "corehr.offboarding.checklist_updated_v2": {
+  "employment_id": "7072306364927985196",
+  "target_user_id": {
+   "union_id": "on_8ed6aa67826108097d9ee143816345",
+   "user_id": "e33ggbyz",
+   "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+  },
+  "offboarding_id": "7044427347159746085",
+  "checklist_process_id": "7090409013925398060",
+  "checklist_status": 1
+ },
+ "corehr.signature_file.status_updated_v2": {
+  "signature_file_id": "123124341",
+  "before_status": "pending_review",
+  "after_status": "reviewing",
+  "biz_process_id": "1c339287-7c6a-43b3-b924-d56118185dcc"
+ },
+ "corehr.process.status.update_v2": {
+  "process_id": "7072306364927985196",
+  "status": 1,
+  "biz_type": "renewal_record",
+  "flow_definition_id": "people_7023711013443944467_7379576600867884844v",
+  "properties": 1
+ },
+ "corehr.process.updated_v2": {
+  "process_id": "7072306364927985196",
+  "status": 1,
+  "biz_type": "renewal_record",
+  "flow_definition_id": "people_7023711013443944467_7379576600867884844v",
+  "properties": 1
+ },
+ "corehr.process.node.updated_v2": {
+  "flow_definition_id": "people_7182520625066475540_7222929439175839532",
+  "node_definition_id": "approval_7c7d9c4d25b",
+  "process_id": "7312658016791168538",
+  "process_node_id": "7311696871833994796",
+  "node_type": 1,
+  "node_status": 1,
+  "biz_type": "renewal_record"
+ },
+ "corehr.process.approver.updated_v2": {
+  "process_id": "7072306364927985196",
+  "approver_id": "7072306364927985187",
+  "type": 1,
+  "status": 1,
+  "biz_type": "renewal_record",
+  "flow_definition_id": "people_7182520625066475540_7222929439175839532",
+  "node_definition_id": "approval_7c7d9c4d25b",
+  "node_id": "7369419552616089132",
+  "node_id_str": "7369419552616089132"
+ },
+ "corehr.process.cc.updated_v2": {
+  "process_id": "7072306364927985196",
+  "approver_id": "7072306364927985187",
+  "status": 5,
+  "biz_type": "renewal_record"
+ },
+ "corehr.process_comment_info.updated_v2": {
+  "process_id": "7546513162022012460",
+  "comment_id": "7546513162022012460",
+  "type": 1
+ },
+ "moments.post.created_v1": {
+  "id": "248381241",
+  "user_id": {
+   "union_id": "on_8ed6aa67826108097d9ee143816345",
+   "user_id": "e33ggbyz",
+   "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+  },
+  "create_time": "2022-05-23T00:00:00+08:00",
+  "category_ids": [
+   "71123"
+  ],
+  "link": "https://applink.feishu.cn/client/moments/detail?postId=7254",
+  "user_type": 1
+ },
+ "moments.post.deleted_v1": {
+  "id": "248381241"
+ },
+ "moments.comment.created_v1": {
+  "user_id": {
+   "union_id": "on_8ed6aa67826108097d9ee143816345",
+   "user_id": "e33ggbyz",
+   "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+  },
+  "id": "248381240",
+  "create_time": "2022-05-23T00:00:00+08:00",
+  "post_id": "248381241",
+  "reply_comment_id": "248381242",
+  "root_comment_id": "248381243",
+  "user_type": 1
+ },
+ "moments.comment.deleted_v1": {
+  "id": "248381240",
+  "post_id": "248381241"
+ },
+ "moments.reaction.created_v1": {
+  "type": "OK",
+  "user_id": {
+   "union_id": "on_8ed6aa67826108097d9ee143816345",
+   "user_id": "e33ggbyz",
+   "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+  },
+  "entity_id": "248381241",
+  "id": "248381243",
+  "entity_type": 1,
+  "user_type": 1,
+  "create_time": "2022-05-23T00:00:00+08:00"
+ },
+ "moments.reaction.deleted_v1": {
+  "type": "OK",
+  "user_id": {
+   "union_id": "on_8ed6aa67826108097d9ee143816345",
+   "user_id": "e33ggbyz",
+   "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+  },
+  "entity_id": "248381241",
+  "id": "248381243",
+  "entity_type": 1,
+  "user_type": 1
+ },
+ "moments.post_statistics.updated_v1": {
+  "post_id": "111111",
+  "statistics_type": 1,
+  "statistics": {
+   "share_count": 10
+  }
+ },
+ "elearning.course_registration.created_v2": {
+  "course_id": "5fd087e96dbe3a73394188ae",
+  "learner": {
+   "user_id": {
+    "union_id": "on_8ed6aa67826108097d9ee143816345",
+    "user_id": "e33ggbyz",
+    "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+   },
+   "email": "abc@bytedance.com",
+   "phone": "+8618912345678"
+  },
+  "enroll_at": 1708428972,
+  "enroll_type": 1,
+  "learning_duration": 213,
+  "finished_at": 1708428972,
+  "learning_state": 4,
+  "compulsory_lesson_ids": [
+   "9qJNKjB7U"
+  ],
+  "learned_compulsory_lesson_ids": [
+   "9qJNKjB7U"
+  ],
+  "optional_lesson_ids": [
+   "8qJNKjB7U"
+  ],
+  "learned_optional_lesson_ids": [
+   "8qJNKjB7U"
+  ]
+ },
+ "elearning.course_registration.updated_v2": {
+  "course_id": "5fd087e96dbe3a73394188ae",
+  "learner": {
+   "user_id": {
+    "union_id": "on_8ed6aa67826108097d9ee143816345",
+    "user_id": "e33ggbyz",
+    "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+   },
+   "email": "abc@bytedance.com",
+   "phone": "+8618912345678"
+  },
+  "enroll_at": 1708428972,
+  "enroll_type": 1,
+  "learning_duration": 213,
+  "finished_at": 1708428972,
+  "learning_state": 4,
+  "compulsory_lesson_ids": [
+   "9qJNKjB7U"
+  ],
+  "learned_compulsory_lesson_ids": [
+   "9qJNKjB7U"
+  ],
+  "optional_lesson_ids": [
+   "8qJNKjB7U"
+  ],
+  "learned_optional_lesson_ids": [
+   "8qJNKjB7U"
+  ]
+ },
+ "elearning.course_registration.deleted_v2": {
+  "course_id": "5fd087e96dbe3a73394188ae",
+  "learner": {
+   "user_id": {
+    "union_id": "on_8ed6aa67826108097d9ee143816345",
+    "user_id": "e33ggbyz",
+    "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+   },
+   "email": "abc@bytedance.com",
+   "phone": "+8618912345678"
+  }
+ },
+ "security_and_compliance.device_record.device_change_event_v2": {
+  "device_record_id": "7089353870308032531",
+  "version": "0",
+  "change_type": 1,
+  "before": {
+   "device_record_id": "7089353870308032531",
+   "version": "0",
+   "current_user_id": {
+    "union_id": "on_8ed6aa67826108097d9ee143816345",
+    "user_id": "e33ggbyz",
+    "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+   },
+   "device_name": "Q9C6RYMFDK",
+   "model": "iPhone13,2",
+   "device_system": 0,
+   "serial_number": "C02DTHRMML7H",
+   "disk_serial_number": "CC344362-5990-5A68-8DDD-64A23C99FA0C",
+   "uuid": "621CDFF0-13D0-5AB1-9ADC-5F560095F6ED",
+   "mac_address": "ac:de:48:00:11:21",
+   "android_id": "02a11ac4a83b918e",
+   "idfv": "968F0E5C-C297-4122-ACB6-102494DEFD9A",
+   "aaid": "ff3c2237-cd76-4331-9d72-0a4470854567",
+   "device_ownership": 0,
+   "device_status": 0,
+   "certification_level": 0,
+   "device_terminal_type": 0,
+   "is_managed": true,
+   "mdm_device_id": "123abc",
+   "mdm_provider_name": "Workspace_ONE",
+   "device_env_detect_status": 0,
+   "is_public": false
+  },
+  "after": {
+   "device_record_id": "7089353870308032531",
+   "version": "0",
+   "current_user_id": {
+    "union_id": "on_8ed6aa67826108097d9ee143816345",
+    "user_id": "e33ggbyz",
+    "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+   },
+   "device_name": "Q9C6RYMFDK",
+   "model": "iPhone13,2",
+   "device_system": 0,
+   "serial_number": "C02DTHRMML7H",
+   "disk_serial_number": "CC344362-5990-5A68-8DDD-64A23C99FA0C",
+   "uuid": "621CDFF0-13D0-5AB1-9ADC-5F560095F6ED",
+   "mac_address": "ac:de:48:00:11:21",
+   "android_id": "02a11ac4a83b918e",
+   "idfv": "968F0E5C-C297-4122-ACB6-102494DEFD9A",
+   "aaid": "ff3c2237-cd76-4331-9d72-0a4470854567",
+   "device_ownership": 0,
+   "device_status": 0,
+   "certification_level": 0,
+   "device_terminal_type": 0,
+   "is_managed": true,
+   "mdm_device_id": "123abc",
+   "mdm_provider_name": "Workspace_ONE",
+   "device_env_detect_status": 0,
+   "is_public": false
+  }
+ },
+ "security_and_compliance.device_apply_record.device_apply_event_v2": {
+  "device_apply_record_id": "7088763625288187923",
+  "device_record": {
+   "device_record_id": "7089353870308032531",
+   "version": "0",
+   "current_user_id": {
+    "union_id": "on_8ed6aa67826108097d9ee143816345",
+    "user_id": "e33ggbyz",
+    "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+   },
+   "device_name": "Q9C6RYMFDK",
+   "model": "iPhone13,2",
+   "device_system": 0,
+   "serial_number": "C02DTHRMML7H",
+   "disk_serial_number": "CC344362-5990-5A68-8DDD-64A23C99FA0C",
+   "uuid": "621CDFF0-13D0-5AB1-9ADC-5F560095F6ED",
+   "mac_address": "ac:de:48:00:11:21",
+   "android_id": "02a11ac4a83b918e",
+   "idfv": "968F0E5C-C297-4122-ACB6-102494DEFD9A",
+   "aaid": "ff3c2237-cd76-4331-9d72-0a4470854567",
+   "device_ownership": 0,
+   "device_status": 0,
+   "certification_level": 0,
+   "device_terminal_type": 0
+  },
+  "apply_time": "2022-11-28 17:21:26",
+  "apply_status": 0,
+  "operator": {
+   "union_id": "on_8ed6aa67826108097d9ee143816345",
+   "user_id": "e33ggbyz",
+   "open_id": "ou_84aad35d084aa403a838cf73ee18467"
+  },
+  "apply_device_ownership": 0
+ },
+ "compensation.archive.changed_v1": {
+  "operate_type": "add",
+  "employment_id": "7185121880616011308",
+  "effective_date": "2024-10-23",
+  "before_tid": "7026250586485114406",
+  "after_tid": "7026250586485123406"
+ },
+ "payroll.payment_activity.status_changed_v1": {
+  "activity_id": "7433255159377444875",
+  "status": 2
+ },
+ "payroll.payment_activity.approved_v1": {
+  "activity_id": "7202076988667019308"
+ }
+}

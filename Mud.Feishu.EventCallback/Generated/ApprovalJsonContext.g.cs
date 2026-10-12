@@ -23,6 +23,7 @@ namespace Mud.Feishu.EventCallback.Approval;
 [JsonSerializable(typeof(global::Mud.Feishu.EventCallback.Approval.TripObjectSuffix))]
 [JsonSerializable(typeof(global::Mud.Feishu.EventCallback.Approval.TripUser))]
 [JsonSerializable(typeof(global::Mud.Feishu.EventCallback.Approval.ApprovalTaskResult))]
+[JsonSerializable(typeof(global::Mud.Feishu.EventCallback.Approval.ApprovalTaskStatusChangedResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.EventCallback.Approval.LeaveApprovalResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.EventCallback.Approval.LeaveApprovalRevertResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.EventCallback.Approval.LeaveApprovalV2Result))]

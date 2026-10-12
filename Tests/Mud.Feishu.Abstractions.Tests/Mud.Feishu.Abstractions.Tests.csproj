@@ -11,4 +11,9 @@
     <ProjectReference Include="..\..\Mud.Feishu.EventCallback\Mud.Feishu.EventCallback.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- 官方文档「事件体示例」原文，供 EventPayloadSmokeTests 回放 -->
+    <Content Include="TestData\EventCallback\event-examples.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

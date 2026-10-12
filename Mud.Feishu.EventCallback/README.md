@@ -106,6 +106,23 @@
 | `attendance.user_flow.created_v1` | `AttendanceUserFlowCreatedEventHandler` | 考勤用户打卡流水事件 |
 | `attendance.user_task.updated_v1` | `AttendanceUserTaskUpdatedEventHandler` | 考勤用户任务更新事件 |
 
+### 🧑‍💼 招聘事件（Hire）
+
+| 事件类型                                                | 事件委托类                                                        | 事件说明                 |
+| ------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------ |
+| `hire.application.deleted_v1`                           | `HireApplicationDeletedEventHandler`                              | 投递删除事件             |
+| `hire.application.stage_changed_v1`                     | `HireApplicationStageChangedEventHandler`                         | 投递阶段变更事件         |
+| `hire.offer.status_changed_v1`                          | `HireOfferStatusChangedEventHandler`                              | Offer 状态变更事件       |
+| `hire.ehr_import_task.imported_v1`                      | `HireEhrImportTaskImportedEventHandler`                           | 导入 e-HR 事件           |
+| `hire.ehr_import_task_for_internship_offer.imported_v1` | `HireEhrImportTaskForInternshipOfferImportedEventHandler`         | 实习 Offer 导入 e-HR     |
+| `hire.talent.tag_subscription_v1`                       | `HireTalentTagSubscriptionEventHandler`                           | 人才标签订阅事件         |
+| `hire.talent.deleted_v1`                                | `HireTalentDeletedEventHandler`                                   | 人才删除事件             |
+| `hire.eco_account.created_v1`                           | `HireEcoAccountCreatedEventHandler`                               | 账号创建事件             |
+| `hire.eco_background_check.created_v1`                  | `HireEcoBackgroundCheckCreatedEventHandler`                       | 背调创建事件             |
+| `hire.eco_background_check.canceled_v1`                 | `HireEcoBackgroundCheckCanceledEventHandler`                      | 背调取消事件             |
+| `hire.eco_exam.created_v1`                              | `HireEcoExamCreatedEventHandler`                                  | 创建笔试事件             |
+| `hire.referral_account.assets_update_v1`                | `HireReferralAccountAssetsUpdateEventHandler`                     | 内推账户余额变更事件     |
+
 ## 安装
 
 ### 通过 NuGet 安装
@@ -338,6 +355,19 @@ Mud.Feishu.EventCallback/
 ├── Attendance/                       # 考勤事件
 │   ├── AttendanceUserFlowCreatedResult.cs   # 考勤流水创建
 │   └── AttendanceUserTaskUpdatedResult.cs   # 考勤任务更新
+├── Hire/                             # 招聘事件
+│   ├── ApplicationDeletedEvent/                      # 投递删除
+│   ├── ApplicationStageChangedEvent/                # 投递阶段变更
+│   ├── OfferStatusChangedEvent/                     # Offer 状态变更
+│   ├── EhrImportTaskImportedEvent/                  # 导入 e-HR
+│   ├── EhrImportTaskForInternshipOfferImportedEvent/# 实习 Offer 导入 e-HR
+│   ├── TalentTagSubscriptionEvent/                  # 人才标签订阅
+│   ├── TalentDeletedEvent/                          # 人才删除
+│   ├── EcoAccountCreatedEvent/                      # 账号创建
+│   ├── EcoBackgroundCheckCreatedEvent/              # 背调创建
+│   ├── EcoBackgroundCheckCanceledEvent/             # 背调取消
+│   ├── EcoExamCreatedEvent/                         # 创建笔试
+│   └── ReferralAccountAssetsUpdateEvent/            # 内推账户余额变更
 └── GlobalUsings.cs                   # 全局引用
 ```
 

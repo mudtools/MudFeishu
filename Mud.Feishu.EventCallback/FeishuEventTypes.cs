@@ -436,6 +436,68 @@ public static class FeishuEventTypes
     public const string MessageReceived = "mail.user_mailbox.event.message_received_v1";
     #endregion
 
+    #region Hire Events
+    /// <summary>
+    /// 投递删除事件
+    /// </summary>
+    public const string HireApplicationDeleted = "hire.application.deleted_v1";
+
+    /// <summary>
+    /// 投递阶段变更事件
+    /// </summary>
+    public const string HireApplicationStageChanged = "hire.application.stage_changed_v1";
+
+    /// <summary>
+    /// Offer 状态变更事件
+    /// </summary>
+    public const string HireOfferStatusChanged = "hire.offer.status_changed_v1";
+
+    /// <summary>
+    /// 导入 e-HR 事件
+    /// </summary>
+    public const string HireEhrImportTaskImported = "hire.ehr_import_task.imported_v1";
+
+    /// <summary>
+    /// 实习 Offer 导入 e-HR 事件
+    /// </summary>
+    public const string HireEhrImportTaskForInternshipOfferImported = "hire.ehr_import_task_for_internship_offer.imported_v1";
+
+    /// <summary>
+    /// 人才标签订阅事件
+    /// </summary>
+    public const string HireTalentTagSubscription = "hire.talent.tag_subscription_v1";
+
+    /// <summary>
+    /// 人才删除事件
+    /// </summary>
+    public const string HireTalentDeleted = "hire.talent.deleted_v1";
+
+    /// <summary>
+    /// 账号创建事件
+    /// </summary>
+    public const string HireEcoAccountCreated = "hire.eco_account.created_v1";
+
+    /// <summary>
+    /// 背调创建事件
+    /// </summary>
+    public const string HireEcoBackgroundCheckCreated = "hire.eco_background_check.created_v1";
+
+    /// <summary>
+    /// 背调取消事件
+    /// </summary>
+    public const string HireEcoBackgroundCheckCanceled = "hire.eco_background_check.canceled_v1";
+
+    /// <summary>
+    /// 创建笔试事件
+    /// </summary>
+    public const string HireEcoExamCreated = "hire.eco_exam.created_v1";
+
+    /// <summary>
+    /// 内推账户余额变更事件
+    /// </summary>
+    public const string HireReferralAccountAssetsUpdate = "hire.referral_account.assets_update_v1";
+    #endregion
+
     /// <summary>
     /// 用户加入群聊事件
     /// </summary>

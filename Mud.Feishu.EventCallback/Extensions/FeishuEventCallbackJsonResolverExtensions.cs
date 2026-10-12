@@ -13,6 +13,7 @@ using Mud.Feishu.EventCallback.Attendance;
 using Mud.Feishu.EventCallback.Bitable;
 using Mud.Feishu.EventCallback.Calendar;
 using Mud.Feishu.EventCallback.Drive;
+using Mud.Feishu.EventCallback.Hire;
 using Mud.Feishu.EventCallback.IM;
 using Mud.Feishu.EventCallback.Mail;
 using Mud.Feishu.EventCallback.Organization;
@@ -41,6 +42,7 @@ public static class FeishuEventCallbackJsonResolverExtensions
             BitableJsonContext.Default,
             CalendarJsonContext.Default,
             DriveJsonContext.Default,
+            HireJsonContext.Default,
             IMJsonContext.Default,
             MailJsonContext.Default,
             OrganizationJsonContext.Default,

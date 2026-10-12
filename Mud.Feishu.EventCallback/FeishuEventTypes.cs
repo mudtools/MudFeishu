@@ -498,6 +498,52 @@ public static class FeishuEventTypes
     public const string HireReferralAccountAssetsUpdate = "hire.referral_account.assets_update_v1";
     #endregion
 
+    #region Performance Events
+    /// <summary>
+    /// 绩效结果开通事件
+    /// </summary>
+    public const string PerformanceStageTaskOpenResult = "performance.stage_task.open_result_v2";
+
+    /// <summary>
+    /// 绩效数据变更事件
+    /// </summary>
+    public const string PerformanceReviewDataChanged = "performance.review_data.changed_v2";
+    #endregion
+
+    #region Acs Events
+    /// <summary>
+    /// 门禁用户信息变更事件
+    /// </summary>
+    public const string AcsUserUpdated = "acs.user.updated_v1";
+
+    /// <summary>
+    /// 门禁通行记录创建事件
+    /// </summary>
+    public const string AcsAccessRecordCreated = "acs.access_record.created_v1";
+    #endregion
+
+    #region Helpdesk Events
+    /// <summary>
+    /// 服务台工单创建事件
+    /// </summary>
+    public const string HelpdeskTicketCreated = "helpdesk.ticket.created_v1";
+
+    /// <summary>
+    /// 服务台工单更新事件
+    /// </summary>
+    public const string HelpdeskTicketUpdated = "helpdesk.ticket.updated_v1";
+
+    /// <summary>
+    /// 服务台工单消息创建事件
+    /// </summary>
+    public const string HelpdeskTicketMessageCreated = "helpdesk.ticket_message.created_v1";
+
+    /// <summary>
+    /// 服务台推送审批通知事件
+    /// </summary>
+    public const string HelpdeskNotificationApprove = "helpdesk.notification.approve_v1";
+    #endregion
+
     /// <summary>
     /// 用户加入群聊事件
     /// </summary>

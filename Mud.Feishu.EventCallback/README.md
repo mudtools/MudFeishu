@@ -123,6 +123,29 @@
 | `hire.eco_exam.created_v1`                              | `HireEcoExamCreatedEventHandler`                                  | 创建笔试事件             |
 | `hire.referral_account.assets_update_v1`                | `HireReferralAccountAssetsUpdateEventHandler`                     | 内推账户余额变更事件     |
 
+### 📊 绩效事件（Performance）
+
+| 事件类型                                  | 事件委托类                                     | 事件说明         |
+| ----------------------------------------- | ---------------------------------------------- | ---------------- |
+| `performance.stage_task.open_result_v2`   | `PerformanceStageTaskOpenEventHandler`         | 绩效结果开通事件 |
+| `performance.review_data.changed_v2`      | `PerformanceReviewDataChangedEventHandler`     | 绩效数据变更事件 |
+
+### 🚪 智能门禁事件（Acs）
+
+| 事件类型                          | 事件委托类                              | 事件说明             |
+| --------------------------------- | --------------------------------------- | -------------------- |
+| `acs.user.updated_v1`             | `AcsUserUpdatedEventHandler`            | 门禁用户信息变更事件 |
+| `acs.access_record.created_v1`    | `AcsAccessRecordCreatedEventHandler`    | 门禁通行记录创建事件 |
+
+### 🎧 服务台事件（Helpdesk）
+
+| 事件类型                                | 事件委托类                                          | 事件说明             |
+| --------------------------------------- | --------------------------------------------------- | -------------------- |
+| `helpdesk.ticket.created_v1`            | `HelpdeskTicketCreatedEventHandler`                 | 工单创建事件         |
+| `helpdesk.ticket.updated_v1`            | `HelpdeskTicketUpdatedEventHandler`                 | 工单更新事件         |
+| `helpdesk.ticket_message.created_v1`    | `HelpdeskTicketMessageCreatedEventHandler`          | 工单消息创建事件     |
+| `helpdesk.notification.approve_v1`      | `HelpdeskNotificationApproveEventHandler`           | 推送审批通知事件     |
+
 ## 安装
 
 ### 通过 NuGet 安装
@@ -368,6 +391,18 @@ Mud.Feishu.EventCallback/
 │   ├── EcoBackgroundCheckCanceledEvent/             # 背调取消
 │   ├── EcoExamCreatedEvent/                         # 创建笔试
 │   └── ReferralAccountAssetsUpdateEvent/            # 内推账户余额变更
+├── Performance/                      # 绩效事件
+│   ├── StageTaskOpenResultEvent/     # 绩效结果开通
+│   └── ReviewDataChangedEvent/       # 绩效数据变更
+├── Acs/                              # 智能门禁事件
+│   ├── UserUpdatedEvent/             # 用户信息变更
+│   └── AccessRecordCreatedEvent/     # 通行记录创建
+├── Helpdesk/                         # 服务台事件
+│   ├── Common/                       # 工单等共用模型
+│   ├── TicketCreatedEvent/           # 工单创建
+│   ├── TicketUpdatedEvent/           # 工单更新
+│   ├── TicketMessageCreatedEvent/    # 工单消息创建
+│   └── NotificationApproveEvent/     # 推送审批通知
 └── GlobalUsings.cs                   # 全局引用
 ```
 

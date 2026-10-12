@@ -8,15 +8,18 @@
 #if NET8_0_OR_GREATER
 using System.Text.Json.Serialization.Metadata;
 using Mud.Feishu.Abstractions.Utilities;
+using Mud.Feishu.EventCallback.Acs;
 using Mud.Feishu.EventCallback.Approval;
 using Mud.Feishu.EventCallback.Attendance;
 using Mud.Feishu.EventCallback.Bitable;
 using Mud.Feishu.EventCallback.Calendar;
 using Mud.Feishu.EventCallback.Drive;
+using Mud.Feishu.EventCallback.Helpdesk;
 using Mud.Feishu.EventCallback.Hire;
 using Mud.Feishu.EventCallback.IM;
 using Mud.Feishu.EventCallback.Mail;
 using Mud.Feishu.EventCallback.Organization;
+using Mud.Feishu.EventCallback.Performance;
 using Mud.Feishu.EventCallback.Task;
 using Mud.Feishu.EventCallback.VideoConferencing;
 
@@ -37,15 +40,18 @@ public static class FeishuEventCallbackJsonResolverExtensions
     {
         // 合并所有事件回调域的 JsonContext（由 mud-jsonctx 工具生成）
         var eventCallbackResolver = JsonTypeInfoResolver.Combine(
+            AcsJsonContext.Default,
             ApprovalJsonContext.Default,
             AttendanceJsonContext.Default,
             BitableJsonContext.Default,
             CalendarJsonContext.Default,
             DriveJsonContext.Default,
+            HelpdeskJsonContext.Default,
             HireJsonContext.Default,
             IMJsonContext.Default,
             MailJsonContext.Default,
             OrganizationJsonContext.Default,
+            PerformanceJsonContext.Default,
             TaskJsonContext.Default,
             VideoConferencingJsonContext.Default
         );

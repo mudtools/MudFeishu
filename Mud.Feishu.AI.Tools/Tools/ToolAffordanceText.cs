@@ -8,7 +8,7 @@
 using System.Text;
 using System.Text.Json.Nodes;
 
-namespace Mud.Feishu.AI.Tools.Tools;
+namespace Mud.Feishu.AI.Tools;
 
 /// <summary>
 /// per-tool affordance 的<b>读取与渲染</b>（R-3 / F-7）：把编译期信封常量里的

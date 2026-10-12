@@ -818,7 +818,7 @@ InvalidOperationException or NotSupportedException`）收口为 `when (ex is not
 
 ### 🌟 新增
 
-- **`FrameworkToolApprovalRequest`** record（`Mud.Feishu.AI/Tools/`）：框架原生审批请求要素
+- **`FrameworkToolApprovalRequest`** record（`Mud.Feishu.AI/AgentTools/`）：框架原生审批请求要素
   （`RequestId` / `ToolName` / `ToolCallId` / `AppKey` / `UserId` / `ConversationKey` / `RequiredScopes`）——
   **不含任何确认令牌**。
 - **`ConversationalFeishuEventHandler.BuildApprovalPendingReply`**（`protected virtual`）：
@@ -887,7 +887,7 @@ InvalidOperationException or NotSupportedException`）收口为 `when (ex is not
 
 ### 🌟 新增
 
-- **`IFeishuToolApprovalChannel` / `ToolApprovalRequest`**（`Mud.Feishu.AI/Tools/`）：宿主人工批准通道契约
+- **`IFeishuToolApprovalChannel` / `ToolApprovalRequest`**（`Mud.Feishu.AI/AgentTools/`）：宿主人工批准通道契约
   （SDK 只定契约、不内实现，与 `IToolExecutionAuthorizer` 同款定位）。
 - **`FeishuAgentDiagnostics`**：`TagSummarizeUnconverged`；OTel GenAI 语义约定附加面
   `gen_ai.agent.name` / `gen_ai.operation.name`（**只增不改**，`feishu.*` 面保持不变）。

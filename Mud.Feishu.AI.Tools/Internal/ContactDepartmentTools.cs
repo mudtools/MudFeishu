@@ -7,7 +7,6 @@
 
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
-using Mud.Feishu.AI.Tools.Tools;
 using Mud.Feishu.AI.Tools;
 using Mud.Feishu.DataModels;
 using Mud.Feishu.DataModels.Departments;

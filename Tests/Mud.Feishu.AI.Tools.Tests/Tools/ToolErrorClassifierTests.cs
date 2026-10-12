@@ -6,8 +6,6 @@
 //  任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Mud.Feishu.AI.Tools.Tools;
-
 namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>

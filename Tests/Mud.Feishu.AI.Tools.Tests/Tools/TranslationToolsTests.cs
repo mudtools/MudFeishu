@@ -6,7 +6,6 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.AI.Tools.Internal;
-using Mud.Feishu.AI.Tools.Tools;
 using Mud.Feishu.DataModels.AI;
 
 namespace Mud.Feishu.AI.Tools.Tests.Tools;

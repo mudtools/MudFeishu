@@ -139,8 +139,13 @@ graph is closed against `Mud.Feishu.slnx`, and no project references
 **linked** into `Tests/Mud.Feishu.AI.Tests` (`Compile Include`) because profiles are discovered per
 compilation unit. Note that `[FeishuToolHandler]` deliberately lives in its own sub-namespace
 (`Mud.Feishu.AI.Tools.Handlers`) so that the profile's `ToolAttributeNamespace` /
-`ToolHandlerAttributeNamespace` slots stay distinct — the project root namespace collides with
-`Mud.Feishu.AI`'s own `Mud.Feishu.AI.Tools`, which is where `[FeishuTool]` lives. To consume a newer
+`ToolHandlerAttributeNamespace` slots stay distinct — collapsing them into one namespace would drop
+the engine's ability to address "declaration surface" vs "executor-binding surface" separately.
+`[FeishuTool]` / `[ToolParameter]` themselves live in the **`Mud.Feishu.AI`** assembly, under the
+`Mud.Feishu.AI.AgentTools` namespace (BUG-1 / 方案 C; folder `Mud.Feishu.AI/AgentTools/`) — **not**
+in the tool-surface project: a non-owner declaration assembly (e.g. `Tests/Mud.Feishu.AI.Tests`)
+must see them without referencing `Mud.Feishu.AI.Tools`, which would make its own generated
+`FeishuToolSchemas` ambiguous (CS0433). To consume a newer
 component version: bump the
 version in the `PackageReference`s and, optionally, sync `AGENTS.md` / the README dependency tables
 (`README.md` / `README_EN.md` / `Mud.Feishu/README.md`) — the docs are **not** gated (a wrong version

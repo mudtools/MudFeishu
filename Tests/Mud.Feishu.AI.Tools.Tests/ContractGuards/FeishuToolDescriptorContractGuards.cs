@@ -6,7 +6,6 @@
 // -----------------------------------------------------------------------
 
 using System.Text.Json;
-using Mud.Feishu.AI.Tools.Tools;
 using Mud.Feishu.AI.Tools.Generated;
 
 namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;

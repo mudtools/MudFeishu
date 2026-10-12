@@ -7,7 +7,6 @@
 
 using System.Text.Json.Nodes;
 
-using Mud.Feishu.AI.Tools.Tools;
 using Mud.Feishu.DataModels.AttendanceRemedys;
 using Mud.Feishu.DataModels.AttendanceShifts;
 using Mud.Feishu.DataModels.AttendanceStats;

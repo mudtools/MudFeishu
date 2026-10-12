@@ -17,7 +17,7 @@
 
 ## 支持的事件类型
 
-> 共 205 个事件、24 个业务域。下表由源码中的 `[GenerateEventHandler]` 标注直接汇总。
+> 共 206 个事件、25 个业务域。下表由源码中的 `[GenerateEventHandler]` 标注直接汇总。
 
 ### 👥 组织架构事件（Organization）
 
@@ -344,6 +344,17 @@
 | --- | --- | --- |
 | `compensation.archive.changed_v1` | `CompensationArchiveChangedEventHandler` | 薪资档案变更 |
 
+### 🎴 卡片事件回调（Card）
+
+| 事件类型 | 事件委托类 | 事件说明 |
+| --- | --- | --- |
+| `card.action.trigger` | `CardActionTriggerEventHandler` | 卡片请求回调（用户点击回调交互组件） |
+
+> 卡片事件回调与常规事件订阅不同：它由**卡片交互**触发、经 **Webhook** 投递，且业务服务器**必须在 3 秒内响应**。
+> 请求体模型见 `CardActionTriggerResult`（`operator` / `token` / `action` / `host` / `delivery_type` / `context`），
+> 响应体模型见 `CardCallbackResponse`（`toast` + `card`，`card.data` 支持 `raw` 与 `template` 两种形态）。
+> 详见[飞书卡片事件回调文档](https://open.feishu.cn/document/feishu-cards/card-callback-communication)。
+
 ### 📌 说明
 
 - `meeting_room.meeting_room.status_changed_v1`（`RoomStatusChangedEventHandler`）按存量实现归属 **Calendar** 域，即会议室事件分布在 Calendar 与 MeetingRoom 两个域。
@@ -488,6 +499,56 @@ public class UserCreatedHandler : UserCreateEventHandler
 }
 ```
 
+### 4. 处理卡片事件回调
+
+卡片事件回调（`card.action.trigger`）由**卡片交互**触发、经 **Webhook** 投递，业务服务器**必须在 3 秒内响应**。
+处理器内可读取交互数据，响应体用 `CardCallbackResponse` 构造后写回 HTTP 响应（不得返回 3xx 重定向）：
+
+```csharp
+using System.Text.Json;
+using Mud.Feishu.Abstractions;
+using Mud.Feishu.Abstractions.Services;
+using Mud.Feishu.Abstractions.Utilities;
+using Mud.Feishu.EventCallback;
+using Mud.Feishu.EventCallback.Card;
+
+public class MyCardActionHandler : CardActionTriggerEventHandler
+{
+    public MyCardActionHandler(IFeishuEventDeduplicator businessDeduplicator, ILogger<MyCardActionHandler> logger)
+        : base(businessDeduplicator, logger)
+    {
+    }
+
+    protected override async Task ProcessBusinessLogicAsync(
+        EventData eventData,
+        CardActionTriggerResult? eventEntity,
+        FeishuEventHeader? header,
+        CancellationToken cancellationToken = default)
+    {
+        var action = eventEntity?.Action;
+        _logger.LogInformation("卡片交互：tag={Tag}, operator={OpenId}", action?.Tag, eventEntity?.Operator?.OpenId);
+
+        // 构造响应：Toast 提示 + 更新卡片（raw 或 template）
+        var response = new CardCallbackResponse
+        {
+            Toast = new CardCallbackToast
+            {
+                Type = "success",
+                Content = "处理成功",
+                I18n = new CardCallbackToastI18n { ZhCn = "处理成功", EnUs = "Success" }
+            },
+            Card = CardCallbackCard.Template("AAqi6xJ8rabcd", "1.0.0",
+                new Dictionary<string, object?> { ["open_id"] = eventEntity?.Operator?.OpenId })
+        };
+
+        // 由宿主把响应写回 HTTP 响应体（AOT 安全入口）
+        var json = FeishuJsonAot.Serialize(response, FeishuJsonDefaults.SerializerOptions);
+
+        await Task.CompletedTask;
+    }
+}
+```
+
 ## 数据模型结构
 
 每个事件数据模型都实现了 `IEventResult` 接口，并包含：
@@ -608,6 +669,13 @@ Mud.Feishu.EventCallback/
 │   ├── TicketUpdatedEvent/           # 工单更新
 │   ├── TicketMessageCreatedEvent/    # 工单消息创建
 │   └── NotificationApproveEvent/     # 推送审批通知
+├── Card/                             # 卡片事件回调（请求回调）
+│   ├── CardActionTriggerEvent/       # 卡片交互回调（operator/action/context 等）
+│   ├── CardCallbackResponse.cs       # 回调响应体（toast + card）
+│   ├── CardCallbackToast.cs          # Toast 弹窗
+│   ├── CardCallbackToastI18n.cs      # Toast 多语言
+│   ├── CardCallbackCard.cs           # 响应卡片（raw / template）
+│   └── CardCallbackTemplateData.cs   # 模板卡片数据
 └── GlobalUsings.cs                   # 全局引用
 ```
 

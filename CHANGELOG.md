@@ -37,6 +37,12 @@
     薪酬与发薪活动、绩效（`performance.stage_task.open_result_v2`、`performance.review_data.changed_v2`）、
     门禁（`acs.user.updated_v1`、`acs.access_record.created_v1`）、服务台（工单创建 / 更新 / 留言 / 审批通知）。
 
+  - **卡片事件回调（新增 `Card` 业务域）**：`card.action.trigger`（用户点击卡片「请求回调」交互组件）的
+    请求体模型 `CardActionTriggerResult`（`operator` / `token` / `action` / `host` / `delivery_type` / `context`，
+    覆盖 `value`、`form_value`、`input_value`、`option`、`options`、`timezone`、`name` 等交互字段），
+    以及响应体模型 `CardCallbackResponse` / `CardCallbackToast`（含 16 语言 `i18n`）/ `CardCallbackCard`
+    （`raw` 与 `template` 两种形态）+ `CardCallbackTemplateData`；同步落实「3 秒内响应、禁止 3xx 重定向」约束。
+
 **适配上游（`Mud.HttpUtils` 3.0.5）**
 
 - **`FeishuHttpClientFactory` 改用上游 `EnhancedHttpClientOptions.Clone()`**：删除本仓手写「字段清单式 Clone」，

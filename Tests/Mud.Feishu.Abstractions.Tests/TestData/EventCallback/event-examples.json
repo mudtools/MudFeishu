@@ -1502,5 +1502,43 @@
  },
  "payroll.payment_activity.approved_v1": {
   "activity_id": "7202076988667019308"
+ },
+ "card.action.trigger": {
+  "operator": {
+   "tenant_key": "2df73991750*****",
+   "user_id": "867*****",
+   "open_id": "ou_3c14f3a59eaf2825dbe25359f15*****",
+   "union_id": "on_cad4860e7af114fb4ff6c5d496d*****"
+  },
+  "token": "c-295ee57216a5dc9de90fefd0aadb4b1d7d******",
+  "action": {
+   "value": {
+    "key": "value"
+   },
+   "tag": "button",
+   "timezone": "Asia/Shanghai",
+   "form_value": {
+    "field name1": [
+     "selectDemo1",
+     "selectDemo2"
+    ],
+    "field name2": "value2",
+    "DatePicker_bpqdq5puvn4": "2024-04-01 +0800",
+    "DateTimePicker_ihz2d7a74i": "2024-04-29 07:07 +0800",
+    "Input_lf4fmxwfrd9": "1234",
+    "PersonSelect_2ejys7ype7m": "ou_3c14f3a59eaf2825dbe25359f1595b00",
+    "Select_a2d5b7l3zd": "1",
+    "TimePicker_7ecsf6xkqsq": "00:00 +0800"
+   },
+   "name": "Button_lvkepfu3"
+  },
+  "host": "im_message",
+  "delivery_type": "url_preview",
+  "context": {
+   "url": "xxx",
+   "preview_token": "xxx",
+   "open_message_id": "om_574d639e4a44e4dd646eaf628e2*****",
+   "open_chat_id": "oc_e4d2605ca917e695f54f11aaf56*****"
+  }
  }
 }

@@ -1084,6 +1084,15 @@ public static class FeishuEventTypes
     public const string CoreHrV2ProcessCommentInfoUpdated = "corehr.process_comment_info.updated_v2";
 
     #endregion
+    #region Card Events
+    /// <summary>
+    /// 卡片事件回调（请求回调）
+    /// <para>当终端用户点击卡片上的「请求回调」交互组件时，向开发者后台注册的回调请求地址推送；
+    /// 业务服务器须在 3 秒内响应，响应体见 <c>CardCallbackResponse</c>。</para>
+    /// </summary>
+    public const string CardActionTrigger = "card.action.trigger";
+
+    #endregion
     /// <summary>
     /// 用户加入群聊事件
     /// </summary>

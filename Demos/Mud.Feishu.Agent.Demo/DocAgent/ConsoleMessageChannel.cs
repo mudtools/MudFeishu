@@ -17,7 +17,7 @@ namespace Mud.Feishu.Agent.Demo;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>为什么不继承 <c>Mud.Feishu.AI.Tools.Channels.BufferedMessageChannel</c></b>（ADR-05）：
+/// <b>为什么不继承 <c>Mud.Feishu.AI.Channels.BufferedMessageChannel</c></b>（ADR-05；R-9 后该基类随集成面并入 `Mud.Feishu.AI`）：
 /// 该基类的节流双阈值（<c>ChunkLength = MaxStreamChunkLength</c> 默认 200 字符 +
 /// <c>MinUpdateIntervalMs = 800</c>）是<b>为飞书「编辑消息」API 限频</b>设计的（避免 429）。
 /// 控制台没有 429 风险，套用 800ms 节流会让终端「一顿一顿」；且继承会连带依赖

@@ -72,6 +72,11 @@ public static class FeishuEventTypes
     /// 部门删除事件
     /// </summary>
     public const string DepartmentDeleted = "contact.department.deleted_v3";
+
+    /// <summary>
+    /// 通讯录权限范围变更事件
+    /// </summary>
+    public const string ContactScopeUpdated = "contact.scope.updated_v3";
     #endregion
 
     #region IM Events
@@ -134,6 +139,11 @@ public static class FeishuEventTypes
     /// 机器人被移出群事件
     /// </summary>
     public const string ChatMemberBotDeleted = "im.chat.member.bot.deleted_v1";
+
+    /// <summary>
+    /// 用户进入与机器人的会话事件
+    /// </summary>
+    public const string ChatBotP2pChatEntered = "im.chat.access_event.bot_p2p_chat_entered_v1";
     #endregion
 
     #region Task Events
@@ -219,6 +229,11 @@ public static class FeishuEventTypes
     /// 请假审批通过并撤销事件
     /// </summary>
     public const string LeaveApprovalRevert = "leave_approval_revert";
+
+    /// <summary>
+    /// 审批任务状态变更事件（新版 v4）
+    /// </summary>
+    public const string ApprovalTaskStatusChanged = "approval.task.status_changed_v4";
     #endregion
 
     #region Attendance Events
@@ -427,6 +442,11 @@ public static class FeishuEventTypes
     /// 预约配置更新
     /// </summary>
     public const string ReserveConfigUpdated = "vc.reserve_config.updated_v1";
+
+    /// <summary>
+    /// 会议开始事件（机器人维度）
+    /// </summary>
+    public const string VcBotMeetingStarted = "vc.bot.meeting_started_v1";
     #endregion
 
     #region Mail Events
@@ -436,33 +456,667 @@ public static class FeishuEventTypes
     public const string MessageReceived = "mail.user_mailbox.event.message_received_v1";
     #endregion
 
+    #region Hire Events
+    /// <summary>
+    /// 投递删除事件
+    /// </summary>
+    public const string HireApplicationDeleted = "hire.application.deleted_v1";
+
+    /// <summary>
+    /// 投递阶段变更事件
+    /// </summary>
+    public const string HireApplicationStageChanged = "hire.application.stage_changed_v1";
+
+    /// <summary>
+    /// Offer 状态变更事件
+    /// </summary>
+    public const string HireOfferStatusChanged = "hire.offer.status_changed_v1";
+
+    /// <summary>
+    /// 导入 e-HR 事件
+    /// </summary>
+    public const string HireEhrImportTaskImported = "hire.ehr_import_task.imported_v1";
+
+    /// <summary>
+    /// 实习 Offer 导入 e-HR 事件
+    /// </summary>
+    public const string HireEhrImportTaskForInternshipOfferImported = "hire.ehr_import_task_for_internship_offer.imported_v1";
+
+    /// <summary>
+    /// 人才标签订阅事件
+    /// </summary>
+    public const string HireTalentTagSubscription = "hire.talent.tag_subscription_v1";
+
+    /// <summary>
+    /// 人才删除事件
+    /// </summary>
+    public const string HireTalentDeleted = "hire.talent.deleted_v1";
+
+    /// <summary>
+    /// 账号创建事件
+    /// </summary>
+    public const string HireEcoAccountCreated = "hire.eco_account.created_v1";
+
+    /// <summary>
+    /// 背调创建事件
+    /// </summary>
+    public const string HireEcoBackgroundCheckCreated = "hire.eco_background_check.created_v1";
+
+    /// <summary>
+    /// 背调取消事件
+    /// </summary>
+    public const string HireEcoBackgroundCheckCanceled = "hire.eco_background_check.canceled_v1";
+
+    /// <summary>
+    /// 创建笔试事件
+    /// </summary>
+    public const string HireEcoExamCreated = "hire.eco_exam.created_v1";
+
+    /// <summary>
+    /// 内推账户余额变更事件
+    /// </summary>
+    public const string HireReferralAccountAssetsUpdate = "hire.referral_account.assets_update_v1";
+    #endregion
+
+    #region Performance Events
+    /// <summary>
+    /// 绩效结果开通事件
+    /// </summary>
+    public const string PerformanceStageTaskOpenResult = "performance.stage_task.open_result_v2";
+
+    /// <summary>
+    /// 绩效数据变更事件
+    /// </summary>
+    public const string PerformanceReviewDataChanged = "performance.review_data.changed_v2";
+    #endregion
+
+    #region Acs Events
+    /// <summary>
+    /// 门禁用户信息变更事件
+    /// </summary>
+    public const string AcsUserUpdated = "acs.user.updated_v1";
+
+    /// <summary>
+    /// 门禁通行记录创建事件
+    /// </summary>
+    public const string AcsAccessRecordCreated = "acs.access_record.created_v1";
+    #endregion
+
+    #region Helpdesk Events
+    /// <summary>
+    /// 服务台工单创建事件
+    /// </summary>
+    public const string HelpdeskTicketCreated = "helpdesk.ticket.created_v1";
+
+    /// <summary>
+    /// 服务台工单更新事件
+    /// </summary>
+    public const string HelpdeskTicketUpdated = "helpdesk.ticket.updated_v1";
+
+    /// <summary>
+    /// 服务台工单消息创建事件
+    /// </summary>
+    public const string HelpdeskTicketMessageCreated = "helpdesk.ticket_message.created_v1";
+
+    /// <summary>
+    /// 服务台推送审批通知事件
+    /// </summary>
+    public const string HelpdeskNotificationApprove = "helpdesk.notification.approve_v1";
+    #endregion
+
+    #region Application Events
+    /// <summary>
+    /// 机器人自定义菜单事件
+    /// </summary>
+    public const string ApplicationBotMenu = "application.bot.menu_v6";
+
+    /// <summary>
+    /// 应用创建事件
+    /// </summary>
+    public const string ApplicationCreated = "application.application.created_v6";
+
+    /// <summary>
+    /// 员工免审安装应用事件
+    /// </summary>
+    public const string ApplicationVisibilityAdded = "application.application.visibility.added_v6";
+
+    /// <summary>
+    /// 新增应用反馈事件
+    /// </summary>
+    public const string ApplicationFeedbackCreated = "application.application.feedback.created_v6";
+
+    /// <summary>
+    /// 应用反馈更新事件
+    /// </summary>
+    public const string ApplicationFeedbackUpdated = "application.application.feedback.updated_v6";
+
+    /// <summary>
+    /// 申请发布应用事件
+    /// </summary>
+    public const string ApplicationAppVersionPublishApply = "application.application.app_version.publish_apply_v6";
+
+    /// <summary>
+    /// 撤回应用发布申请事件
+    /// </summary>
+    public const string ApplicationAppVersionPublishRevoke = "application.application.app_version.publish_revoke_v6";
+
+    /// <summary>
+    /// 应用审核事件
+    /// </summary>
+    public const string ApplicationAppVersionAudit = "application.application.app_version.audit_v6";
+    #endregion
+
+    #region Auth Events
+    /// <summary>
+    /// 撤销用户授权事件
+    /// </summary>
+    public const string AuthUserAccessTokenRevoked = "auth.user_access_token.revoked_v4";
+    #endregion
+
+    #region MeetingRoom Events
+    /// <summary>
+    /// 会议室创建事件
+    /// </summary>
+    public const string MeetingRoomCreated = "meeting_room.meeting_room.created_v1";
+
+    /// <summary>
+    /// 会议室属性变更事件
+    /// </summary>
+    public const string MeetingRoomUpdated = "meeting_room.meeting_room.updated_v1";
+
+    /// <summary>
+    /// 会议室删除事件
+    /// </summary>
+    public const string MeetingRoomDeleted = "meeting_room.meeting_room.deleted_v1";
+    #endregion
+
+    #region Moments Events
+    /// <summary>
+    /// 发布帖子
+    /// </summary>
+    public const string MomentsPostCreated = "moments.post.created_v1";
+
+    /// <summary>
+    /// 删除帖子
+    /// </summary>
+    public const string MomentsPostDeleted = "moments.post.deleted_v1";
+
+    /// <summary>
+    /// 发布评论
+    /// </summary>
+    public const string MomentsCommentCreated = "moments.comment.created_v1";
+
+    /// <summary>
+    /// 删除评论
+    /// </summary>
+    public const string MomentsCommentDeleted = "moments.comment.deleted_v1";
+
+    /// <summary>
+    /// 表情互动
+    /// </summary>
+    public const string MomentsReactionCreated = "moments.reaction.created_v1";
+
+    /// <summary>
+    /// 取消表情互动
+    /// </summary>
+    public const string MomentsReactionDeleted = "moments.reaction.deleted_v1";
+
+    /// <summary>
+    /// 帖子统计数据变更
+    /// </summary>
+    public const string MomentsPostStatisticsUpdated = "moments.post_statistics.updated_v1";
+
+    #endregion
+    #region ELearning Events
+    /// <summary>
+    /// 课程学习进度新增事件
+    /// </summary>
+    public const string ELearningCourseRegistrationCreated = "elearning.course_registration.created_v2";
+
+    /// <summary>
+    /// 课程学习进度更新事件
+    /// </summary>
+    public const string ELearningCourseRegistrationUpdated = "elearning.course_registration.updated_v2";
+
+    /// <summary>
+    /// 课程学习进度删除事件
+    /// </summary>
+    public const string ELearningCourseRegistrationDeleted = "elearning.course_registration.deleted_v2";
+
+    #endregion
+    #region SecurityCompliance Events
+    /// <summary>
+    /// 设备信息变更事件
+    /// </summary>
+    public const string SecurityComplianceDeviceChanged = "security_and_compliance.device_record.device_change_event_v2";
+
+    /// <summary>
+    /// 设备申报事件
+    /// </summary>
+    public const string SecurityComplianceDeviceApplied = "security_and_compliance.device_apply_record.device_apply_event_v2";
+
+    #endregion
+    #region Compensation Events
+    /// <summary>
+    /// 薪资档案变更
+    /// </summary>
+    public const string CompensationArchiveChanged = "compensation.archive.changed_v1";
+
+    #endregion
+    #region Payroll Events
+    /// <summary>
+    /// 发薪活动变更事件
+    /// </summary>
+    public const string PayrollPaymentActivityStatusChanged = "payroll.payment_activity.status_changed_v1";
+
+    /// <summary>
+    /// 发薪活动封存
+    /// </summary>
+    public const string PayrollPaymentActivityApproved = "payroll.payment_activity.approved_v1";
+
+    #endregion
+    #region CoreHr Events
+    /// <summary>
+    /// 元数据信息变更
+    /// </summary>
+    public const string CoreHrMetaDataUpdated = "corehr.common_data.meta_data.updated_v1";
+
+    /// <summary>
+    /// 用户ID映射变更
+    /// </summary>
+    public const string CoreHrUserIdMappingChanged = "corehr.common_data.id.user_mapping_changed_v1";
+
+    /// <summary>
+    /// 【事件】个人信息创建
+    /// </summary>
+    public const string CoreHrPersonCreated = "corehr.person.created_v1";
+
+    /// <summary>
+    /// 【事件】更新个人信息
+    /// </summary>
+    public const string CoreHrPersonUpdated = "corehr.person.updated_v1";
+
+    /// <summary>
+    /// 【事件】个人信息删除
+    /// </summary>
+    public const string CoreHrPersonDeleted = "corehr.person.deleted_v1";
+
+    /// <summary>
+    /// 【事件】创建雇佣信息
+    /// </summary>
+    public const string CoreHrEmploymentCreated = "corehr.employment.created_v1";
+
+    /// <summary>
+    /// 【事件】更新雇佣信息
+    /// </summary>
+    public const string CoreHrEmploymentUpdated = "corehr.employment.updated_v1";
+
+    /// <summary>
+    /// 【事件】删除雇佣信息
+    /// </summary>
+    public const string CoreHrEmploymentDeleted = "corehr.employment.deleted_v1";
+
+    /// <summary>
+    /// 员工完成转正
+    /// </summary>
+    public const string CoreHrEmploymentConverted = "corehr.employment.converted_v1";
+
+    /// <summary>
+    /// 员工完成离职
+    /// </summary>
+    public const string CoreHrEmploymentResigned = "corehr.employment.resigned_v1";
+
+    /// <summary>
+    /// 任职信息创建
+    /// </summary>
+    public const string CoreHrJobDataCreated = "corehr.job_data.created_v1";
+
+    /// <summary>
+    /// 任职信息更新
+    /// </summary>
+    public const string CoreHrJobDataUpdated = "corehr.job_data.updated_v1";
+
+    /// <summary>
+    /// 任职信息删除
+    /// </summary>
+    public const string CoreHrJobDataDeleted = "corehr.job_data.deleted_v1";
+
+    /// <summary>
+    /// 员工完成入职
+    /// </summary>
+    public const string CoreHrJobDataEmployed = "corehr.job_data.employed_v1";
+
+    /// <summary>
+    /// 员工完成异动
+    /// </summary>
+    public const string CoreHrJobDataChanged = "corehr.job_data.changed_v1";
+
+    /// <summary>
+    /// 【事件】创建部门
+    /// </summary>
+    public const string CoreHrDepartmentCreated = "corehr.department.created_v1";
+
+    /// <summary>
+    /// 【事件】更新部门
+    /// </summary>
+    public const string CoreHrDepartmentUpdated = "corehr.department.updated_v1";
+
+    /// <summary>
+    /// 【事件】删除部门
+    /// </summary>
+    public const string CoreHrDepartmentDeleted = "corehr.department.deleted_v1";
+
+    /// <summary>
+    /// 【事件】创建职务
+    /// </summary>
+    public const string CoreHrJobCreated = "corehr.job.created_v1";
+
+    /// <summary>
+    /// 【事件】更新职务
+    /// </summary>
+    public const string CoreHrJobUpdated = "corehr.job.updated_v1";
+
+    /// <summary>
+    /// 【事件】删除职务
+    /// </summary>
+    public const string CoreHrJobDeleted = "corehr.job.deleted_v1";
+
+    /// <summary>
+    /// 入职信息变更
+    /// </summary>
+    public const string CoreHrPreHireUpdated = "corehr.pre_hire.updated_v1";
+
+    /// <summary>
+    /// 异动状态变更
+    /// </summary>
+    public const string CoreHrJobChangeUpdated = "corehr.job_change.updated_v1";
+
+    /// <summary>
+    /// 合同创建
+    /// </summary>
+    public const string CoreHrContractCreated = "corehr.contract.created_v1";
+
+    /// <summary>
+    /// 合同更新
+    /// </summary>
+    public const string CoreHrContractUpdated = "corehr.contract.updated_v1";
+
+    /// <summary>
+    /// 合同删除
+    /// </summary>
+    public const string CoreHrContractDeleted = "corehr.contract.deleted_v1";
+
+    /// <summary>
+    /// 组织角色授权变更
+    /// </summary>
+    public const string CoreHrOrgRoleAuthorizationUpdated = "corehr.org_role_authorization.updated_v1";
+
+    /// <summary>
+    /// 离职申请状态变更
+    /// </summary>
+    public const string CoreHrOffboardingUpdated = "corehr.offboarding.updated_v1";
+
+    #endregion
+    #region CoreHrV2 Events
+    /// <summary>
+    /// 人员信息变更
+    /// </summary>
+    public const string CoreHrV2EmployeeDomainEvent = "corehr.employee.domain_event_v2";
+
+    /// <summary>
+    /// 【事件】创建部门
+    /// </summary>
+    public const string CoreHrV2DepartmentCreated = "corehr.department.created_v2";
+
+    /// <summary>
+    /// 【事件】更新部门
+    /// </summary>
+    public const string CoreHrV2DepartmentUpdated = "corehr.department.updated_v2";
+
+    /// <summary>
+    /// 【事件】创建地点
+    /// </summary>
+    public const string CoreHrV2LocationCreated = "corehr.location.created_v2";
+
+    /// <summary>
+    /// 【事件】更新地点
+    /// </summary>
+    public const string CoreHrV2LocationUpdated = "corehr.location.updated_v2";
+
+    /// <summary>
+    /// 【事件】删除地点
+    /// </summary>
+    public const string CoreHrV2LocationDeleted = "corehr.location.deleted_v2";
+
+    /// <summary>
+    /// 创建公司
+    /// </summary>
+    public const string CoreHrV2CompanyCreated = "corehr.company.created_v2";
+
+    /// <summary>
+    /// 【事件】更新公司
+    /// </summary>
+    public const string CoreHrV2CompanyUpdated = "corehr.company.updated_v2";
+
+    /// <summary>
+    /// 【事件】删除公司
+    /// </summary>
+    public const string CoreHrV2CompanyDeleted = "corehr.company.deleted_v2";
+
+    /// <summary>
+    /// 【事件】创建成本中心
+    /// </summary>
+    public const string CoreHrV2CostCenterCreated = "corehr.cost_center.created_v2";
+
+    /// <summary>
+    /// 【事件】更新成本中心
+    /// </summary>
+    public const string CoreHrV2CostCenterUpdated = "corehr.cost_center.updated_v2";
+
+    /// <summary>
+    /// 【事件】删除成本中心
+    /// </summary>
+    public const string CoreHrV2CostCenterDeleted = "corehr.cost_center.deleted_v2";
+
+    /// <summary>
+    /// 【事件】创建自定义组织
+    /// </summary>
+    public const string CoreHrV2CustomOrgCreated = "corehr.custom_org.created_v2";
+
+    /// <summary>
+    /// 【事件】更新自定义组织
+    /// </summary>
+    public const string CoreHrV2CustomOrgUpdated = "corehr.custom_org.updated_v2";
+
+    /// <summary>
+    /// 【事件】删除自定义组织
+    /// </summary>
+    public const string CoreHrV2CustomOrgDeleted = "corehr.custom_org.deleted_v2";
+
+    /// <summary>
+    /// 组织架构调整状态变更事件
+    /// </summary>
+    public const string CoreHrV2ApprovalGroupsUpdated = "corehr.approval_groups.updated_v2";
+
+    /// <summary>
+    /// 【事件】创建序列
+    /// </summary>
+    public const string CoreHrV2JobFamilyCreated = "corehr.job_family.created_v2";
+
+    /// <summary>
+    /// 【事件】更新序列
+    /// </summary>
+    public const string CoreHrV2JobFamilyUpdated = "corehr.job_family.updated_v2";
+
+    /// <summary>
+    /// 【事件】删除序列
+    /// </summary>
+    public const string CoreHrV2JobFamilyDeleted = "corehr.job_family.deleted_v2";
+
+    /// <summary>
+    /// 【事件】创建职级
+    /// </summary>
+    public const string CoreHrV2JobLevelCreated = "corehr.job_level.created_v2";
+
+    /// <summary>
+    /// 【事件】更新职级
+    /// </summary>
+    public const string CoreHrV2JobLevelUpdated = "corehr.job_level.updated_v2";
+
+    /// <summary>
+    /// 【事件】删除职级
+    /// </summary>
+    public const string CoreHrV2JobLevelDeleted = "corehr.job_level.deleted_v2";
+
+    /// <summary>
+    /// 【事件】创建职等
+    /// </summary>
+    public const string CoreHrV2JobGradeCreated = "corehr.job_grade.created_v2";
+
+    /// <summary>
+    /// 【事件】更新职等
+    /// </summary>
+    public const string CoreHrV2JobGradeUpdated = "corehr.job_grade.updated_v2";
+
+    /// <summary>
+    /// 【事件】删除职等
+    /// </summary>
+    public const string CoreHrV2JobGradeDeleted = "corehr.job_grade.deleted_v2";
+
+    /// <summary>
+    /// 通道创建事件
+    /// </summary>
+    public const string CoreHrV2PathwayCreated = "corehr.pathway.created_v2";
+
+    /// <summary>
+    /// 通道更新事件
+    /// </summary>
+    public const string CoreHrV2PathwayUpdated = "corehr.pathway.updated_v2";
+
+    /// <summary>
+    /// 通道删除事件
+    /// </summary>
+    public const string CoreHrV2PathwayDeleted = "corehr.pathway.deleted_v2";
+
+    /// <summary>
+    /// 创建岗位事件
+    /// </summary>
+    public const string CoreHrV2PositionCreated = "corehr.position.created_v2";
+
+    /// <summary>
+    /// 更新岗位事件
+    /// </summary>
+    public const string CoreHrV2PositionUpdated = "corehr.position.updated_v2";
+
+    /// <summary>
+    /// 删除岗位事件
+    /// </summary>
+    public const string CoreHrV2PositionDeleted = "corehr.position.deleted_v2";
+
+    /// <summary>
+    /// 入职流程状态变更
+    /// </summary>
+    public const string CoreHrV2OnboardingTaskChanged = "corehr.pre_hire.onboarding_task_changed_v2";
+
+    /// <summary>
+    /// 试用期状态变更
+    /// </summary>
+    public const string CoreHrV2ProbationUpdated = "corehr.probation.updated_v2";
+
+    /// <summary>
+    /// 异动状态变更
+    /// </summary>
+    public const string CoreHrV2JobChangeStatusUpdated = "corehr.job_change.status_updated_v2";
+
+    /// <summary>
+    /// 异动信息变更
+    /// </summary>
+    public const string CoreHrV2JobChangeUpdated = "corehr.job_change.updated_v2";
+
+    /// <summary>
+    /// 离职信息变更
+    /// </summary>
+    public const string CoreHrV2OffboardingUpdated = "corehr.offboarding.updated_v2";
+
+    /// <summary>
+    /// 离职申请状态变更
+    /// </summary>
+    public const string CoreHrV2OffboardingStatusUpdated = "corehr.offboarding.status_updated_v2";
+
+    /// <summary>
+    /// 离职流转状态变更
+    /// </summary>
+    public const string CoreHrV2OffboardingChecklistUpdated = "corehr.offboarding.checklist_updated_v2";
+
+    /// <summary>
+    /// 电子签文件状态变更事件
+    /// </summary>
+    public const string CoreHrV2SignatureFileStatusUpdated = "corehr.signature_file.status_updated_v2";
+
+    /// <summary>
+    /// 流程实例状态变化
+    /// </summary>
+    public const string CoreHrV2ProcessStatusUpdate = "corehr.process.status.update_v2";
+
+    /// <summary>
+    /// 流程实例信息变更
+    /// </summary>
+    public const string CoreHrV2ProcessUpdated = "corehr.process.updated_v2";
+
+    /// <summary>
+    /// 流程节点状态变更
+    /// </summary>
+    public const string CoreHrV2ProcessNodeUpdated = "corehr.process.node.updated_v2";
+
+    /// <summary>
+    /// 审批任务状态变更
+    /// </summary>
+    public const string CoreHrV2ProcessApproverUpdated = "corehr.process.approver.updated_v2";
+
+    /// <summary>
+    /// 抄送单据状态变更
+    /// </summary>
+    public const string CoreHrV2ProcessCcUpdated = "corehr.process.cc.updated_v2";
+
+    /// <summary>
+    /// 流程评论事件
+    /// </summary>
+    public const string CoreHrV2ProcessCommentInfoUpdated = "corehr.process_comment_info.updated_v2";
+
+    #endregion
     /// <summary>
     /// 用户加入群聊事件
     /// </summary>
+    [Obsolete("已由 " + nameof(ChatMemberUserAdd) + " 取代，将在 4.0 移除")]
     public const string UserAddedToGroup = "im.chat.member.user_added_v1";
 
     /// <summary>
     /// 用户离开群聊事件
     /// </summary>
+    [Obsolete("已由 " + nameof(ChatMemberUserDelete) + " 取代，将在 4.0 移除")]
     public const string UserRemovedFromGroup = "im.chat.member.user_deleted_v1";
 
     /// <summary>
     /// 群聊信息更新事件
     /// </summary>
+    [Obsolete("已由 " + nameof(ChatUpdated) + " 取代，将在 4.0 移除")]
     public const string GroupUpdated = "im.chat.updated_v1";
 
     /// <summary>
     /// 日程事件
     /// </summary>
+    [Obsolete("已由 " + nameof(CalendarEventChanged) + " 取代，将在 4.0 移除")]
     public const string CalendarEvent = "calendar.event.updated_v4";
 
     /// <summary>
     /// 会议开始事件
     /// </summary>
+    [Obsolete("已由 " + nameof(MeetingMeetingStarted) + " 取代，将在 4.0 移除")]
     public const string MeetingStart = "meeting.meeting.started_v1";
 
     /// <summary>
     /// 会议结束事件
     /// </summary>
+    [Obsolete("已由 " + nameof(MeetingMeetingEnded) + " 取代，将在 4.0 移除")]
     public const string MeetingEnd = "meeting.meeting.ended_v1";
 }

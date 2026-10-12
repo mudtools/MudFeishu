@@ -2,7 +2,7 @@
 name: feishu-search
 description: 飞书 search 域工具集：1 个工具（只读 1 / 写 0）。不知道东西在哪、先定位 → `search.doc_wiki`；已知位置、要取数 → docx / sheets / bitable。
 version: 1.0.0
-package_version: 3.0.1
+package_version: 3.0.2
 ---
 
 # 搜索（search.doc_wiki）

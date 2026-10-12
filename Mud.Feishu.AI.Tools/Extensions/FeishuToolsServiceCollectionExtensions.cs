@@ -8,6 +8,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Mud.Feishu.Abstractions;
 using Mud.Feishu.AI.Channels;
 using Mud.Feishu.AI.Events;
 using Mud.Feishu.AI.Knowledge;
@@ -445,6 +446,17 @@ public static class FeishuToolsServiceCollectionExtensions
         services.TryAddSingleton<IFeishuToolFunctionFactory, FeishuToolFunctionFactory>();
         services.TryAddSingleton<IToolErrorTextFormatter, ToolErrorTextFormatter>();
 
+        // T1 / D1：用户令牌就绪探测器（internal sealed，按需注入 FeishuToolBinding 构造函数）。
+        // IFeishuTokenManagerResolver 可空——未注册时探测降级为 fail-open 放行（由装配诊断 Warning 提示）。
+        // ⚠️ 必须是**工厂注册**：MS DI 不把可空引用注解当作"可缺席"，只有工厂（或带默认值的构造参数）
+        //    才能在服务缺失时传入 null。若改回 TryAddSingleton<UserTokenPrecheck>()，未注册
+        //    IFeishuTokenManagerResolver 的宿主（按域装配 + 全部既有用例）会在构建注册表时崩在激活期，
+        //    "fail-open 放行"这条语义随之消失。
+        services.TryAddSingleton(static sp => new UserTokenPrecheck(
+            sp.GetService<IFeishuTokenManagerResolver>(),
+            sp.GetRequiredService<IOptions<FeishuAgentOptions>>(),
+            sp.GetService<ILogger<UserTokenPrecheck>>()));
+
         return services;
     }
 
@@ -479,7 +491,7 @@ public static class FeishuToolsServiceCollectionExtensions
     /// <remarks>
     /// <para>
     /// 与 <see cref="AddFeishuCapabilityTools"/> 同属"元工具显式入口"：数据源是编译期方法目录
-    /// （<c>FeishuToolMethodCatalog</c>，1228 个方法的结构化事实），<b>不依赖任何飞书客户端</b>，
+    /// （<c>FeishuToolMethodCatalog</c>，1268 个方法的结构化事实），<b>不依赖任何飞书客户端</b>，
     /// 也不随域缺席而软缺席。全域入口 <see cref="AddFeishuTools"/> 已包含它。
     /// </para>
     /// <para>
@@ -545,6 +557,10 @@ public static class FeishuToolsServiceCollectionExtensions
                 + "——请把对应身份加入 AllowedIdentities，或从白名单移除这些工具（装配期 fail-fast，防运行期静默拒绝）");
         }
 
+        // T1.1 装配期接线诊断：已启用 user 身份工具时，校验运行时依赖是否就绪。
+        // 落点在 identityViolations 之后——只有 identity 校验通过（user 在闭集内）才需要检查接线。
+        DiagnoseUserToolWiring(sp, registry, options);
+
         return registry;
     }
 
@@ -593,6 +609,90 @@ public static class FeishuToolsServiceCollectionExtensions
             nameof(FeishuAgentOptions.WriteAllowList),
             FeishuAgentOptions.SectionName,
             nameof(FeishuAgentOptions.MaxToolRisk));
+    }
+
+    /// <summary>
+    /// T1.1 装配期接线诊断：已启用 user 身份工具时，校验运行时依赖是否就绪。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 当白名单启用了 <c>identity == user</c> 的工具时，以下三个依赖必须在装配期就绪：
+    /// <list type="number">
+    /// <item><c>IFeishuCurrentUserContext</c> 已注册——执行链需要它写入当前用户（令牌缓存查找键来源）。</item>
+    /// <item><c>IFeishuTokenManagerResolver</c> 已注册——用户令牌探测器需要它解析用户令牌管理器。</item>
+    /// <item><c>UserTokenPrecheck</c> 模式非 <c>Off</c>——如果 <c>Off</c>，则前置探测被关闭，用户令牌就绪语义不生效。</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// <b>为什么是 Warning 而不是 fail-fast</b>：user 身份工具的接线缺失会在运行期被
+    /// <c>FeishuToolBinding</c> 逐请求拦截（返回 <c>authorization_denied</c>），装配期诊断是
+    /// <b>可观测性增强</b>——把"运行期逐请求报错"提前到"启动时一次性告知"。强制异常会让
+    /// "合法启用 user 工具但宿主尚未完成 OAuth 接入"的场景无法启动。
+    /// </para>
+    /// </remarks>
+    private static void DiagnoseUserToolWiring(
+        IServiceProvider sp, FeishuToolRegistry registry, FeishuAgentOptions options)
+    {
+        // 只在启用了 user 身份工具时触发。
+        var hasUserTools = registry.EnabledTools
+            .Any(static t => string.Equals(t.Identity, FeishuToolIdentityNames.User, StringComparison.Ordinal));
+        if (!hasUserTools)
+        {
+            return;
+        }
+
+        var logger = sp.GetService<ILoggerFactory>()?.CreateLogger("Mud.Feishu.AI.Tools");
+
+        // 检查 1：IFeishuCurrentUserContext 已注册。
+        var currentUserContext = sp.GetService<IFeishuCurrentUserContext>();
+        if (currentUserContext is null)
+        {
+            logger?.LogWarning(
+                "装配期诊断：已启用 user 身份工具，但 IFeishuCurrentUserContext 未注册——"
+                + "运行期每次调用 user 工具都会返回 authorization_denied。"
+                + "请注册 IFeishuCurrentUserContext（AddFeishu() 默认已注册；自建管线请手动注册）");
+        }
+
+        // 检查 2：IFeishuTokenManagerResolver 已注册。
+        var resolver = sp.GetService<IFeishuTokenManagerResolver>();
+        if (resolver is null)
+        {
+            logger?.LogWarning(
+                "装配期诊断：已启用 user 身份工具，但 IFeishuTokenManagerResolver 未注册——"
+                + "用户令牌探测器将 fail-open 放行（由下游 401 + TokenRecoveryExecutor 兜底）。"
+                + "如需前置 user_auth_required 语义，请注册 IFeishuTokenManagerResolver（AddFeishu() 默认已注册）");
+        }
+        else if (options.UserTokenPrecheck is not UserTokenPrecheckModes.Off)
+        {
+            // 检查 3：默认应用的 UserTokenManager 可达（仅 resolver 已注册且探测非 Off 时检查）。
+            // 用 ConfiguredAppKeys 取第一个已配置 appKey 做探测——不触发实例化（TMA-08）。
+            var appManager = sp.GetService<IFeishuAppManager>();
+            if (appManager is not null)
+            {
+                foreach (var appKey in appManager.ConfiguredAppKeys)
+                {
+                    var userTokenManager = resolver.TryGetUserTokenManager(appKey);
+                    if (userTokenManager is null)
+                    {
+                        logger?.LogWarning(
+                            "装配期诊断：应用 '{AppKey}' 的用户令牌管理器不可达（TryGetUserTokenManager 返回 null）——"
+                            + "可能原因：应用未初始化 / 已退休 / 未配置 OAuth 凭据。"
+                            + "该应用上的 user 身份工具探测将 fail-open 放行", appKey);
+                    }
+                    break; // 只检查第一个已配置应用
+                }
+            }
+        }
+
+        // 检查 4：UserTokenPrecheck 模式为 Off 时的告知。
+        if (options.UserTokenPrecheck is UserTokenPrecheckModes.Off)
+        {
+            logger?.LogWarning(
+                "装配期诊断：已启用 user 身份工具，但 {Section}:{Property} = 'off'——"
+                + "用户令牌前置探测被关闭，user_auth_required 语义不生效（改造前行为：由下游 401 兜底）",
+                FeishuAgentOptions.SectionName,
+                nameof(FeishuAgentOptions.UserTokenPrecheck));
+        }
     }
 
     private static void MapWhitelist(

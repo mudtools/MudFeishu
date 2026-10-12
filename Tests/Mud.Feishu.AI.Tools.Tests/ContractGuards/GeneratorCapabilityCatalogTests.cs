@@ -50,10 +50,21 @@ public class GeneratorCapabilityCatalogTests
     /// （那正是本次修复要消除的假绿形态）。
     /// </para>
     /// </remarks>
-    private const int ExpectedSdkMethodCount = 1228;
+    /// <remarks>
+    /// 1228 → <b>1268</b>（2026-10-12，随 v3.1 合入的 SDK 面扩张重新评审后固化）：
+    /// <c>Mud.Feishu</c> 新增 Application（v1/v6/v7）与 Bot（v3/v4）共 16 个接口文件、
+    /// +40 个方法 ⇒ SDK 方法总数 1228 → 1268。本次评审结论：增量来自真实的 SDK 接口新增
+    /// （非扫描器口径变化），故按新实测值重新锁定。
+    /// </remarks>
+    private const int ExpectedSdkMethodCount = 1268;
 
-    /// <summary>能力分组个数（分组轴 = 接口名的 domain+resource 段）——精确值（AT-B17）。</summary>
-    private const int ExpectedDomainCount = 192;
+    /// <summary>
+    /// 能力分组个数（分组轴 = 接口名的 domain+resource 段）——精确值（AT-B17）。
+    /// </summary>
+    /// <remarks>
+    /// 192 → <b>204</b>（同上批次，+12 个 domain+resource 段）。
+    /// </remarks>
+    private const int ExpectedDomainCount = 204;
 
     /// <summary>SDK 能力总数与 <c>Mud.Feishu</c> 的实际规模一致（精确锁定，非下界）。</summary>
     [Fact]

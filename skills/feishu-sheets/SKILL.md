@@ -2,7 +2,7 @@
 name: feishu-sheets
 description: 飞书 sheets 域工具集：4 个工具（只读 2 / 写 2）。A1 单元格区域（行列网格） → `sheets.*`；多维表格（字段 / 记录 / 视图） → `bitable.*`。
 version: 1.0.0
-package_version: 3.0.1
+package_version: 3.0.2
 ---
 
 # 电子表格（sheets.*）

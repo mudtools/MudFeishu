@@ -120,7 +120,15 @@ internal sealed class FeishuToolsToolSource : FeishuAgentToolSource
                 continue;
             }
 
-            tools.Add(ApplyApprovalGate(new FeishuToolAIFunction(definition, schemaJson, accessor), definition));
+            // T4 / D4 + P4-1：装饰顺序 = 审批标记（最外层）→ 预算 → 工具桥。
+            // ⚠️ 审批标记**必须**留在最外层：MAF 的 FunctionInvokingChatClient 用
+            //    `function is ApprovalRequiredAIFunction` 判定"这次调用要先走人工审批"，
+            //    把预算装饰器套在它外面会让标记对 MAF 不可见 ⇒ 写工具的 HITL **静默失效**
+            //    （模型可直接执行写操作，R2-1 之前那类"模型自批复"面会回来）。
+            //    代价：预算耗尽时用户可能先被问一次审批——正确性优先于少一次交互。
+            var toolBridge = new FeishuToolAIFunction(definition, schemaJson, accessor);
+            var budgetedBridge = new ToolBudgetAIFunction(toolBridge);
+            tools.Add(ApplyApprovalGate(budgetedBridge, definition));
         }
 
         return tools;

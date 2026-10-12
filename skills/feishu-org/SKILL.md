@@ -2,7 +2,7 @@
 name: feishu-org
 description: 飞书 org 域工具集：8 个工具（只读 8 / 写 0）。拿到的是组织元数据 ID → 本域：`job_title` → 职务；`job_level_id` → 职级；`job_family_id` → 职务族；`city` → 工作城市。
 version: 1.0.0
-package_version: 3.0.1
+package_version: 3.0.2
 ---
 
 # 组织元数据（org.*：职务 / 职级 / 职务族 / 工作城市）

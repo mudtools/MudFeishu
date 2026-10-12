@@ -546,6 +546,9 @@ public static class FeishuMetrics
         /// <summary>通道单次更新失败（子类钩子记录，不中断模型流）。</summary>
         public const string ChannelUpdateFailed = "channel_update_failed";
 
+        /// <summary>用户令牌探测异常（T1/D1：fail-open 放行，由下游 401 兜底）。</summary>
+        public const string UserTokenPrecheckError = "user_token_precheck_error";
+
         /// <summary>内容安全 warn 模式命中（只加标注，不阻断）。</summary>
         public const string ContentSafetyWarn = "content_safety_warn";
     }
@@ -720,5 +723,52 @@ public static class FeishuMetrics
 
         /// <summary>令牌持久化存储</summary>
         public const string Token = "token";
+    }
+
+    /// <summary>
+    /// T8 / D8：审批生命周期指标计数器（维度：app_key + outcome）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 审批请求 → <see cref="ApprovalOutcomes.Requested"/> → 通道缺失 →
+    /// <see cref="ApprovalOutcomes.ChannelMissing"/> → 放弃 → <see cref="ApprovalOutcomes.Abandoned"/>
+    /// → 过期 → <see cref="ApprovalOutcomes.Expired"/> → 补发 → <see cref="ApprovalOutcomes.Replayed"/>
+    /// → 消费 → <see cref="ApprovalOutcomes.Consumed"/>。
+    /// </para>
+    /// <para>
+    /// 高基数纪律（原则 8）：维度仅 <c>app_key + outcome</c>，<b>不含</b>
+    /// requestId/conversationKey/userId（A17 + 原则 8）。
+    /// </para>
+    /// </remarks>
+    public static readonly Counter<long> AgentApprovalCount = Instance.CreateCounter<long>(
+        "feishu.agent.approval",
+        unit: "{event}",
+        description: "飞书 Agent 审批生命周期事件计数");
+
+    /// <summary>
+    /// T8 / D8：<see cref="AgentApprovalCount"/> 的 outcome 取值（受控枚举，防高基数）。
+    /// </summary>
+    /// <remarks>
+    /// 六态对应审批生命周期的六个关键节点，维度只含 <c>app_key + outcome</c>。
+    /// </remarks>
+    public static class ApprovalOutcomes
+    {
+        /// <summary>通知宿主（NotifyAsync 成功）。</summary>
+        public const string Requested = "requested";
+
+        /// <summary>未注册通道（降级纯提示）。</summary>
+        public const string ChannelMissing = "channel_missing";
+
+        /// <summary>R5-12 放弃（事件取消或无法投递）。</summary>
+        public const string Abandoned = "abandoned";
+
+        /// <summary>outbox 补发（重投递场景）。</summary>
+        public const string Replayed = "replayed";
+
+        /// <summary>快照过期（TTL 到期后命中）。</summary>
+        public const string Expired = "expired";
+
+        /// <summary>幂等消费成功（审批后续轮完成）。</summary>
+        public const string Consumed = "consumed";
     }
 }

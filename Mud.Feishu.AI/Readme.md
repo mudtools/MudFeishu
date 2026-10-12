@@ -37,6 +37,39 @@ WP3 后，HITL 的批准状态所有权**单一化**到宿主授权器——SDK 
   （通知宿主通道 + 中性拒绝），**不**存在"框架已批准 ⇒ 执行链放行"的旁路。
   ⇒ 宿主在 MAF 批准回调中**必须同步把授权器状态置为已批准**，否则表现为「框架已批准、执行链仍拒绝」。
 
+### HITL 时间常量关系（T12 / D12）
+
+三个时间常量决定了审批快照、会话存活与确认提示的时序关系：
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  会话存活期（SessionTtl = 24h）                                   │
+│  ┌───────────────────────────────────────────┐                  │
+│  │  审批快照有效期（DefaultTtl = 10min）      │                  │
+│  │  ┌─────────────────────────────────────┐  │                  │
+│  │  │  确认提示有效期（ConfirmationLifetime） │  │                  │
+│  │  │  = DefaultTtl = 10min                │  │                  │
+│  │  └─────────────────────────────────────┘  │                  │
+│  └───────────────────────────────────────────┘                  │
+│  ← 不变式：DefaultTtl ≤ SessionTtl（审批必须在会话存活期内有效） →  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+| 常量 | 值 | 定义位置 | 选型说明 |
+| --- | --- | --- | --- |
+| `ConfirmationLifetime` | 10 min | `PendingApprovalSnapshot.DefaultTtl` | 审批提示的有效期——超过则快照过期、续跑拒绝。10 分钟覆盖「走开倒杯水」场景，又能避免长期挂起。 |
+| `DefaultTtl` | 10 min | `PendingApprovalSnapshot.DefaultTtl` | 审批快照在存储中的存活时间——与 `ConfirmationLifetime` 同值（快照即提示的持久化镜像）。 |
+| `SessionTtl` | 24 h | `FeishuConversationOptions.DefaultSessionTtl` | 会话上下文的存活时间——审批快照必须在此之前有效（不变式），否则续跑时找不到审批。24h 覆盖跨工作日场景。 |
+
+**不变式**（由 `ApprovalTtlInvariantContractGuards` 锁定）：
+
+```csharp
+PendingApprovalSnapshot.DefaultTtl <= FeishuConversationOptions.DefaultSessionTtl
+// 10 min <= 24 h ✓
+```
+
+违反此不变式意味着审批落库后快照先于会话过期，宿主续跑时找不到审批 → 用户批准了但系统不认。
+
 ### DI 生命周期约束（R4-6）
 
 `FeishuAgent` 是 **Singleton**（对齐 AGENTS.md TMA-13）。SDK 自身的装配（`AddFeishuAgent`）

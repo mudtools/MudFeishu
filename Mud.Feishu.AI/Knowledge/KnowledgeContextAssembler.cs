@@ -73,16 +73,22 @@ public sealed class KnowledgeContextAssembler : IContextAssembler
 
     private readonly IRetriever _retriever;
     private readonly int _order;
+    private readonly double? _minScore;
 
     /// <summary>
     /// 初始化 <see cref="KnowledgeContextAssembler"/>。
     /// </summary>
     /// <param name="retriever">知识检索门面（Aily 托管/RAG-B 自建均可）。</param>
     /// <param name="order">装配顺序（缺省 <see cref="DefaultOrder"/>）。</param>
-    public KnowledgeContextAssembler(IRetriever retriever, int order = DefaultOrder)
+    /// <param name="minScore">
+    /// T9 / D9：相关性门槛——<see cref="RetrievedChunk.Score"/> 低于此值的切片被过滤。
+    /// <c>null</c>（默认）= 不过滤（A15 零差异）；有分值时按分值过滤，无分值的切片保留（Aily 托管问答不返回得分）。
+    /// </param>
+    public KnowledgeContextAssembler(IRetriever retriever, int order = DefaultOrder, double? minScore = null)
     {
         _retriever = retriever ?? throw new ArgumentNullException(nameof(retriever));
         _order = order;
+        _minScore = minScore;
     }
 
     /// <inheritdoc />
@@ -103,7 +109,14 @@ public sealed class KnowledgeContextAssembler : IContextAssembler
             return null;
         }
 
-        var chunks = await _retriever.RetrieveAsync(query!, cancellationToken).ConfigureAwait(false);
+        IEnumerable<RetrievedChunk> chunks = await _retriever.RetrieveAsync(query!, cancellationToken).ConfigureAwait(false);
+
+        // T9 / D9：相关性门槛过滤——minScore 非空时过滤低分切片；
+        // Score 为 null 的切片保留（Aily 托管问答不返回得分，A15 零差异）。
+        if (_minScore is { } threshold)
+        {
+            chunks = chunks.Where(c => !c.Score.HasValue || c.Score.Value >= threshold).ToList();
+        }
 
         // R3-8 ①：先按条数收敛（同时跳过空白切片）——条数与长度是两条独立的预算闸。
         var adopted = new List<RetrievedChunk>();

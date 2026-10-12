@@ -63,8 +63,18 @@ internal static class ToolErrorSubtype
     public const string IdentityMismatch = "identity_mismatch";
     public const string ToolNotAllowed = "tool_not_allowed";
 
+    // T4 / D4：单轮工具预算耗尽——模型应基于已有信息直接回答，不要再次调用工具。
+    /// <summary>本轮工具调用预算已用尽——不可重试，模型应基于已有信息直接回答。</summary>
+    public const string ToolBudgetExceeded = "tool_budget_exceeded";
+
     // Authorization
     public const string AuthorizationDenied = "authorization_denied";
+
+    // T1 / D1：用户令牌就绪语义闭环——与 forbidden（权限不足）语义区分。
+    /// <summary>用户未授权：无有效令牌且无 refresh token——模型应转告用户去完成飞书授权，不得换工具或重试。</summary>
+    public const string UserAuthRequired = "user_auth_required";
+    /// <summary>用户令牌续期失败：下游 401 且 TokenRecoveryExecutor 恢复后仍失败——探测漏网路径的兜底出口。</summary>
+    public const string UserTokenRefreshFailed = "user_token_refresh_failed";
 
     // ⚠️ PM 裁定 DP-R7-4（§8.5）：曾声明 `missing_scope`（平台权限未开通）——**已删除**。
     //    依据：全仓无产出点（幽灵子类），且平台侧并无可靠的"scope 缺失"判据可用：

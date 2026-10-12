@@ -2,7 +2,7 @@
 name: feishu-approval
 description: 飞书 approval 域工具集：6 个工具（只读 2 / 写 4）。出现「待办 / 待批」时先分域：来自审批流程才用 `approval.*`；来自任务清单用 `task.*`。
 version: 1.0.0
-package_version: 3.0.1
+package_version: 3.0.2
 ---
 
 # 审批（approval.*）

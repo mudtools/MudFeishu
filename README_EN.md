@@ -36,7 +36,7 @@ MudFeishu fills exactly that blank — not "yet another SDK that can call endpoi
 AI agent era on .NET**:
 
 - **182 curated tools** expose the Feishu API to models as Function Calls at compile time. Every tool carries a strongly-typed schema,
-  a risk level, a permission scope and idempotency semantics — this is not dumping 1228 SDK methods onto the model indiscriminately.
+  a risk level, a permission scope and idempotency semantics — this is not dumping 1268 SDK methods onto the model indiscriminately.
 - A **seven-step execution chain** runs on every tool call: context validation → inbound sanitization → policy axis → authorization gate →
   tenant switch → content safety → outbound sanitization, **fail-closed by default**: an unauthorized write tool is always rejected.
 - A **human-confirmation pipeline** makes high-risk operations (send message, create approval, delete record) wait for host approval
@@ -67,13 +67,13 @@ AI capability is not a patch on the sample layer — it is a **first-class citiz
 │              → authorization → tenant switch                │
 │              → content safety → outbound sanitization → audit│
 ├─────────────────────────────────────────────────────────────┤
-│  ① SDK Base  1228 strongly-typed interfaces                 │
+│  ① SDK Base  1268 strongly-typed interfaces                 │
 │              Source-generated JSON  ·  AOT net-zero         │
 │              Multi-app scopes  ·  Full token lifecycle      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### ① SDK base: 1228 strongly-typed interfaces, invisible to agents, visible to the tool surface
+### ① SDK base: 1268 strongly-typed interfaces, invisible to agents, visible to the tool surface
 
 All 20+ Feishu API modules (org structure, messaging, group chat, approvals, tasks, calendar, video conferencing, docs, wiki, drive,
 whiteboard, spreadsheets, Bitable, attendance, cards, AI capabilities, mail, search, help desk, OKR, Minutes, Miaoda, …) are
@@ -100,7 +100,7 @@ declarative interfaces plus source-generated implementations. Agents never call 
 sanitization has no switch and cannot be bypassed; a pending-confirmation call whose authorizer did not return `Allowed` is
 suspended and resolved through **the same path for read and write tools**; `dry_run=true` on a write tool does not consume an idempotency key.
 
-### ③ Tool surface: 182 curated tools, not 1228 bare methods
+### ③ Tool surface: 182 curated tools, not 1268 bare methods
 
 | Domain | Read | Write | Total | | Domain | Read | Write | Total |
 | --- | ---: | ---: | ---: | --- | --- | ---: | ---: | ---: |
@@ -118,7 +118,7 @@ suspended and resolved through **the same path for read and write tools**; `dry_
 | Security | 2 | — | 2 | | MDM | 1 | — | 1 |
 | Meta tools | 4 | — | 4 | | **Total** | **108** | **74** | **182** |
 
-**Curated, not fully exposed**: dumping 1228 SDK methods onto the model indiscriminately means context explosion plus impossible
+**Curated, not fully exposed**: dumping 1268 SDK methods onto the model indiscriminately means context explosion plus impossible
 permission tiering. MudFeishu curates 182 tools around high-frequency workflows, and every tool has:
 
 - **Compile-time schema** (`FeishuToolSchemas`): parameters, risk level, permission scope, whether it writes, SDK source anchor

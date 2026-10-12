@@ -2,7 +2,7 @@
 name: feishu-feishu
 description: 飞书 feishu 域工具集：4 个工具（只读 4 / 写 0）。「这个能力有没有」→ `feishu.capability_lookup`（分组级存在性）；
 version: 1.0.0
-package_version: 3.0.1
+package_version: 3.0.2
 ---
 
 # 能力出处与元工具（feishu.*）

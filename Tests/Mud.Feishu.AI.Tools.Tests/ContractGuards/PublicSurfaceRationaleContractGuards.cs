@@ -33,7 +33,11 @@ public class PublicSurfaceRationaleContractGuards
     // R-10（2026-10-12）：290 → **284**——NDJSON 事件外桥与事件目录共 6 个 public 类型
     // （FeishuEventEnvelope / IFeishuEventSink / IFeishuEventFileRouter / FeishuEventNdjsonBridge /
     //  RegexEventFileRouter / FeishuEventCatalog）移出库发布面（降为 Demo 参考实现）。
-    private const int BaselineTypeCount = 284;
+    // T1/D1 + T4/D4 + T5/D5（2026-10-12）：284 → **297**——用户令牌前置探测、单轮工具预算、
+    // 全局并发背压、群聊/媒体上下文装配共 13 个新 public 类型。基线（283 + 1 条既有理由）
+    // 不重打快照：13 个类型全部按"冻结基线 + 增量理由"两段式登记在
+    // public-surface-rationale.json 的 reasons 段（键=类型全名，值=消费方说明）。
+    private const int BaselineTypeCount = 297;
 
     private static readonly string[] ApiFiles =
     [

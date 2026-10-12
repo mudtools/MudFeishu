@@ -220,6 +220,79 @@ public sealed class FeishuAgentOptions
     public ToolRetryOptions ToolRetry { get; set; } = new();
 
     /// <summary>
+    /// 单轮工具调用预算上限（T4 / D4；消费点：<c>FeishuToolCallBudget</c> + <c>ToolBudgetAIFunction</c>）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 一轮 <c>RunAsync</c> 内工具调用的总次数上限。越限时工具装饰器短路返回
+    /// <c>tool_budget_exceeded</c> 结构化错误（不抛异常，防重复计费），模型应基于已有信息直接回答。
+    /// </para>
+    /// <para>
+    /// <b>默认 <c>10</c></b>：在成本控制与工具链完成度之间取平衡。
+    /// <c>0</c> = 不限制（依赖 MAF 内建上限约 40 次，文档化风险）。
+    /// </para>
+    /// </remarks>
+    public int MaxToolCallsPerTurn { get; set; } = 10;
+
+    /// <summary>
+    /// 全局最大并发轮数（T5 / D5；消费点：<c>GlobalConcurrencyGate</c>）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 进程内同时处理的最大对话轮数。超过此值的请求排队等待（<see cref="TurnQueueTimeoutSeconds"/> 控制超时）。
+    /// </para>
+    /// <para>
+    /// <b>默认 <c>32</c></b>：单实例通常处理 4~8 个活跃会话，32 留有余量。
+    /// 多实例部署仍需 Redis 闸门做集群总量限制（本闸门是进程内兜底）。
+    /// </para>
+    /// </remarks>
+    public int MaxConcurrentTurns { get; set; } = 32;
+
+    /// <summary>
+    /// 全局闸门队列等待超时（秒；T5 / D5；消费点：<c>GlobalConcurrencyGate</c>）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 全局并发已满时，新请求排队等待空位的超时时间。超时抛 <c>ConversationBusyException</c>
+    /// （幂等回滚 + 重投递）。<c>0</c> = 不限等待（等待至获得空位或被外部取消）。
+    /// </para>
+    /// <para>
+    /// <b>默认 <c>30</c></b>：与既有 Redis 闸门语义一致，避免无限排队。
+    /// </para>
+    /// </remarks>
+    public int TurnQueueTimeoutSeconds { get; set; } = 30;
+
+    /// <summary>
+    /// 流式文本抑制选项（T10 / D10；消费点：<c>ConversationalFeishuEventHandler.RunConversationAsync</c>）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>true</c> 时缓存本轮全部文本增量，仅在本轮无工具调用时一次性 Flush；
+    /// 出现工具调用则该轮文本并入终态（工具结果后的最终文本才是用户可见答案）。
+    /// </para>
+    /// <para>
+    /// <b>默认 <c>false</c></b>（A15 零差异）：既有流式行为逐字节推送。
+    /// 权衡：首字延迟 ↑ / 观感一致性 ↑。
+    /// </para>
+    /// </remarks>
+    public bool DeferTextUntilTurnComplete { get; set; } = false;
+
+    /// <summary>
+    /// 用户令牌就绪探测模式（T1 / D1；消费点：<c>UserTokenPrecheck.ProbeAsync</c>）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 取值：<c>off</c>（跳过探测，改造前行为）/ <c>cache_only</c>（<b>默认</b>：只调
+    /// <c>HasValidTokenAsync</c>，内存镜像命中即零 IO）/ <c>full</c>（先 HasValid 再 CanRefresh）。
+    /// </para>
+    /// <para>
+    /// <b>默认 <c>cache_only</c></b>：在零 IO 与前置诊断之间取平衡——内存镜像未命中时放行，
+    /// 由下游 401 + <c>TokenRecoveryExecutor</c> 兜底（A15 零差异）。
+    /// </para>
+    /// </remarks>
+    public string UserTokenPrecheck { get; set; } = UserTokenPrecheckModes.CacheOnly;
+
+    /// <summary>
     /// 校验配置合法性（注册时与 <see cref="FeishuAgent"/> 构造时双触发，fail-fast）。
     /// </summary>
     /// <exception cref="InvalidOperationException">存在非法取值。</exception>
@@ -320,5 +393,28 @@ public sealed class FeishuAgentOptions
             throw new InvalidOperationException(
                 $"FeishuAgent:{nameof(ToolRetry)}.{nameof(ToolRetry.MaxDelayMilliseconds)} ({ToolRetry.MaxDelayMilliseconds.ToString(CultureInfo.InvariantCulture)}) "
                 + $"不得小于 {nameof(ToolRetry.BaseDelayMilliseconds)} ({ToolRetry.BaseDelayMilliseconds.ToString(CultureInfo.InvariantCulture)})");
+
+        // T1 / D1：用户令牌探测模式闭集校验（防拼写错误静默降级为 off 语义）。
+        if (!UserTokenPrecheckModes.IsValid(UserTokenPrecheck))
+            throw new InvalidOperationException(
+                $"FeishuAgent:{nameof(UserTokenPrecheck)} 取值非法: '{UserTokenPrecheck}'——"
+                + $"合法值为 {UserTokenPrecheckModes.AllowedValuesText}");
+
+        // T4 / D4：单轮工具预算校验（0 = 不限制；>0 时须 ≤ 100 防配置打字吃光预算）。
+        if (MaxToolCallsPerTurn is < 0 or > 100)
+            throw new InvalidOperationException(
+                $"FeishuAgent:{nameof(MaxToolCallsPerTurn)} 为 0（不限制）或 1..100，实际值: {MaxToolCallsPerTurn.ToString(CultureInfo.InvariantCulture)}"
+                + "（上界防配置打字把 10 写成 1000 造成成本爆炸；MAF 内建上限约 40 是最终兜底）");
+
+        // T5 / D5：全局并发背压闸门校验（R3-9：数值项须同时有下界与上界）。
+        if (MaxConcurrentTurns is < 1 or > 1024)
+            throw new InvalidOperationException(
+                $"FeishuAgent:{nameof(MaxConcurrentTurns)} 须在 1..1024 之间，实际值: {MaxConcurrentTurns.ToString(CultureInfo.InvariantCulture)}"
+                + "（上界防配置打字吃光线程池；下界 1 保证至少串行处理）");
+
+        if (TurnQueueTimeoutSeconds is < 0 or > 600)
+            throw new InvalidOperationException(
+                $"FeishuAgent:{nameof(TurnQueueTimeoutSeconds)} 为 0（不限等待）或 1..600，实际值: {TurnQueueTimeoutSeconds.ToString(CultureInfo.InvariantCulture)}"
+                + "（上界防无效请求长期占用排队位置）");
     }
 }

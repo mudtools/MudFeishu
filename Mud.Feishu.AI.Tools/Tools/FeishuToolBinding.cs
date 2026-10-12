@@ -47,6 +47,12 @@ internal sealed class FeishuToolBinding
     private readonly IToolExecutionAuditSink? _auditSink;
     private readonly IFeishuCurrentUserContext? _currentUserContext;
 
+    /// <summary>T1 / D1：用户令牌就绪探测器（可空——未注册时跳过探测，由下游 401 兜底）。</summary>
+    private readonly UserTokenPrecheck? _userTokenPrecheck;
+
+    /// <summary>T1 / D1：用户授权入口链接提供者（可空——软缺席，未注册时错误文案只有文字指引）。</summary>
+    private readonly IFeishuUserAuthorizationLinkProvider? _authLinkProvider;
+
     /// <summary>宿主人工批准通道（R2-1：确认令牌的唯一出模型面出口；未注册时 HITL 降级为纯提示）。</summary>
     private readonly IFeishuToolApprovalChannel? _approvalChannel;
 
@@ -79,6 +85,8 @@ internal sealed class FeishuToolBinding
     /// 未注册 = HITL 降级为纯提示：模型只会收到"需要用户确认"，拿不到任何凭据，无法自批复。
     /// DI 场景无需显式注册：未注册的可空构造参数由容器传 <see langword="null"/>。
     /// </param>
+    /// <param name="userTokenPrecheck">T1 / D1 用户令牌探测器（可空；未注册时跳过前置探测）。</param>
+    /// <param name="authLinkProvider">T1 / D1 授权链接提供者（可空；软缺席）。</param>
     /// <param name="logger">日志（可空）。</param>
     /// <param name="utcClock">UTC 时钟（可空；确认有效期计算用，测试注入固定时钟——R-5）。</param>
     public FeishuToolBinding(
@@ -89,6 +97,8 @@ internal sealed class FeishuToolBinding
         IToolExecutionAuditSink? auditSink = null,
         IFeishuCurrentUserContext? currentUserContext = null,
         IFeishuToolApprovalChannel? approvalChannel = null,
+        UserTokenPrecheck? userTokenPrecheck = null,
+        IFeishuUserAuthorizationLinkProvider? authLinkProvider = null,
         ILogger<FeishuToolBinding>? logger = null,
         Func<DateTimeOffset>? utcClock = null)
     {
@@ -99,6 +109,8 @@ internal sealed class FeishuToolBinding
         _auditSink = auditSink;
         _currentUserContext = currentUserContext;
         _approvalChannel = approvalChannel;
+        _userTokenPrecheck = userTokenPrecheck;
+        _authLinkProvider = authLinkProvider;
         _logger = logger;
         _utcClock = utcClock ?? (() => DateTimeOffset.UtcNow);
         _allowedIdentities = new HashSet<string>(_options.AllowedIdentities, StringComparer.Ordinal);
@@ -223,6 +235,26 @@ internal sealed class FeishuToolBinding
                 userContextApplied = true;
             }
 
+            // ④'½ T1 / D1：用户令牌就绪探测——在 SetUser 之后（令牌缓存查找键可用）、
+            //    下游调用之前。仅 identity==user 且非 dry_run 时触发；tenant 路径零触碰。
+            //    AuthRequired ⇒ 短路返回结构化错误（零调用下游）；
+            //    fail-open（Error/Skipped/Refreshable/Ready）⇒ 放行，由下游 401 + TokenRecoveryExecutor 兜底。
+            if (userContextRequired && _userTokenPrecheck is not null && !ToolDryRun.IsRequested(arguments))
+            {
+                var precheckResult = await _userTokenPrecheck
+                    .ProbeAsync(context.AppKey, context.UserId!, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (precheckResult.IsAuthRequired)
+                {
+                    return await DenyAsync(
+                        tool, context, ToolErrorCategory.Authorization, ToolErrorSubtype.UserAuthRequired,
+                        BuildUserAuthRequiredMessage(context.AppKey, context.UserId!),
+                        arguments, executionStopwatch, activity, cancellationToken,
+                        BuildUserAuthRequiredSuggestions(context.AppKey, context.UserId)).ConfigureAwait(false);
+                }
+            }
+
             // ④'' B3 限流退避：只读工具的 retryable 错误在此自动重放（唯一编排点，新增执行器零成本）。
             var result = await InvokeWithRetryAsync(tool, arguments, invokeDownstream, activity, cancellationToken)
                 .ConfigureAwait(false);
@@ -287,6 +319,17 @@ internal sealed class FeishuToolBinding
             // 审计是宿主内网出口，两条出口的判据不同（R1 §7 纪律 4）。
             var (category, subtype) = ToolErrorClassifier.Classify(ex);
 
+            // T1 / D1：user 身份工具的 401 映射为 user_token_refresh_failed（探测漏网路径的兜底出口）。
+            // 探测放行（Refreshable/Error/Skipped）后，下游 401 经 TokenRecoveryExecutor 恢复——
+            // 恢复后仍失败时在此捕获。与 forbidden（权限不足）语义区分：
+            // user_token_refresh_failed 是「令牌续期失败」，模型应转告用户重新授权。
+            if (userContextRequired
+                && category is ToolErrorCategory.Authorization
+                && subtype is ToolErrorSubtype.AuthorizationDenied)
+            {
+                subtype = ToolErrorSubtype.UserTokenRefreshFailed;
+            }
+
             // R-1 / B-2：载荷构造收口到唯一工厂（此前是本类的第 3 份同构拷贝）。
             // R-3 / BUG-8：参数校验失败（闭集非法值）携带的结构化候选随载荷回填模型——
             // 模型据此直接换参，无需解析人类可读正文（候选只来自事实，见 ToolArgumentException）。
@@ -299,7 +342,8 @@ internal sealed class FeishuToolBinding
             var humanReadable = StructuredError(
                 tool.Name,
                 category,
-                $"工具执行异常（{category}，追踪号 {trace}）——请检查参数后重试；若反复失败请联系管理员并提供该追踪号");
+                $"工具执行异常（{category}，追踪号 {trace}）——请检查参数后重试；若反复失败请联系管理员并提供该追踪号",
+                subtype: subtype);
             var bounded = ToolResultText.Truncate(ToolResultSanitizer.Sanitize(humanReadable), _options.MaxToolResultLength);
 
             FeishuToolDiagnostics.RecordExecution(tool.Name, context.AppKey, FeishuMetrics.ToolOutcomes.Error);
@@ -519,6 +563,58 @@ internal sealed class FeishuToolBinding
     }
 
     /// <summary>
+    /// T1 / D1：构造 <c>user_auth_required</c> 的 reason 文案。
+    /// </summary>
+    /// <remarks>
+    /// 与 <c>forbidden</c>（权限不足 ⇒ 放弃/换只读方案）的差异：
+    /// user_auth_required 是「用户本人未完成飞书授权」，模型应转告用户去授权——不是换工具或放弃。
+    /// 文案经 EgressResult 唯一闸门净化（零凭据，A17）。
+    /// </remarks>
+    private string BuildUserAuthRequiredMessage(string appKey, string userId)
+    {
+        // 软缺席：授权链接提供者未注册 ⇒ 只有文字指引。
+        if (_authLinkProvider is null)
+        {
+            return "user_auth_required: 当前用户未完成飞书授权（无有效令牌且无 refresh token）——"
+                + "请转告用户在飞书内完成授权后重试；不要换工具替代或重试本调用";
+        }
+
+        // 同步获取链接（构造期不阻塞——链接提供者的实现由宿主决定，通常只是拼 URL）
+        try
+        {
+            var link = _authLinkProvider.GetAuthorizationLinkAsync(appKey, userId, CancellationToken.None)
+                .GetAwaiter().GetResult();
+            return string.IsNullOrEmpty(link)
+                ? "user_auth_required: 当前用户未完成飞书授权——请转告用户在飞书内完成授权后重试；不要换工具替代或重试本调用"
+                : $"user_auth_required: 当前用户未完成飞书授权——请转告用户访问以下链接完成授权后重试：{link}；不要换工具替代或重试本调用";
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "授权链接提供者调用失败，降级为纯文字指引（appKey: {AppKey}）", appKey);
+            return "user_auth_required: 当前用户未完成飞书授权——请转告用户在飞书内完成授权后重试；不要换工具替代或重试本调用";
+        }
+    }
+
+    /// <summary>
+    /// T1 / D1：构造 <c>user_auth_required</c> 的恢复候选——只含事实（工具声明的身份），
+    /// 不猜测"到底缺什么授权"（与 <see cref="DenySuggestions"/> 同款纪律）。
+    /// </summary>
+    private IReadOnlyList<string>? BuildUserAuthRequiredSuggestions(string appKey, string? userId)
+    {
+        // userId 为空时不产出候选（无事实来源——A17：不猜测）。
+        if (string.IsNullOrEmpty(userId))
+        {
+            return null;
+        }
+
+        return
+        [
+            "该调用需要用户本人完成飞书授权（User Access Token），不是应用权限问题",
+            "请告知用户完成授权后重试同一调用——不需要更换工具或修改参数",
+        ];
+    }
+
+    /// <summary>
     /// 模型可见出口的**唯一构造点**（R3-4）：一切回填模型的文本都必须经此净化 + 截断。
     /// </summary>
     /// <remarks>
@@ -553,7 +649,7 @@ internal sealed class FeishuToolBinding
         IReadOnlyList<string>? suggestions = null)
     {
         var payload = ToolErrorFactory.Create(toolName, category, subtype, apiCode, suggestions: suggestions);
-        var combined = ToolErrorFactory.Compose(payload, StructuredError(toolName, category, reason, apiCode));
+        var combined = ToolErrorFactory.Compose(payload, StructuredError(toolName, category, reason, apiCode, subtype));
         return ToolResultPipeline.FromErrorText(payload, ToolResultSanitizer.Sanitize(combined), _options.MaxToolResultLength);
     }
 
@@ -674,16 +770,34 @@ internal sealed class FeishuToolBinding
     /// 置于正文首行。老用例的 <c>Contain</c> 断言不受影响（正文形态保持不变）。
     /// </para>
     /// </remarks>
-    internal static string StructuredError(string toolName, ToolErrorCategory category, string reason, int? apiCode = null)
+    internal static string StructuredError(string toolName, ToolErrorCategory category, string reason, int? apiCode = null, string? subtype = null)
     {
         // 无 code 时不产出空槽（保持既有文案形态不变，老用例的 Contain 断言不受影响）。
         var codeSegment = apiCode.HasValue ? $" code={apiCode.Value}" : string.Empty;
+
+        // T1 / D1：user_auth_required / user_token_refresh_failed 与 forbidden 语义不同——
+        // 前者是「用户本人未完成飞书授权」，后者是「权限不足」；标签需区分以防模型混淆动作。
+        var authLabel = subtype switch
+        {
+            ToolErrorSubtype.UserAuthRequired => "user_auth_required",
+            ToolErrorSubtype.UserTokenRefreshFailed => "user_token_refresh_failed",
+            _ => "forbidden",
+        };
+        var authNextStep = subtype switch
+        {
+            ToolErrorSubtype.UserAuthRequired => "请告知用户完成飞书授权后重试——不是权限不足，无需放弃或换只读方案",
+            ToolErrorSubtype.UserTokenRefreshFailed => "请告知用户重新完成飞书授权后重试——令牌续期失败，不是权限不足",
+            _ => "授权被拒绝，请放弃或改用只读方案",
+        };
 
         return category switch
         {
             ToolErrorCategory.Retryable => $"[tool_error] {toolName} (retryable){codeSegment}: {reason}——服务端繁忙/网络异常，可稍后重试同一调用",
             ToolErrorCategory.Validation => $"[tool_error] {toolName} (invalid_args){codeSegment}: {reason}——{InvalidArgsNextStep}",
-            ToolErrorCategory.Authorization => $"[tool_error] {toolName} (forbidden){codeSegment}: {reason}——授权被拒绝，请放弃或改用只读方案",
+            ToolErrorCategory.Authorization => $"[tool_error] {toolName} ({authLabel}){codeSegment}: {reason}——{authNextStep}",
+            // T4 / D4：tool_budget_exceeded 是策略拒绝（非授权、非参数）——模型应基于已有信息直接回答。
+            ToolErrorCategory.Policy when subtype == ToolErrorSubtype.ToolBudgetExceeded
+                => $"[tool_error] {toolName} (tool_budget_exceeded){codeSegment}: {reason}",
             // R2-1（P0）：删除「若结果中提供了确认令牌…重试即可继续」——该文案把批准所需的全部要素
             // 交给了模型，使模型可自行带令牌重试并放行写操作（HITL 退化为「取决于模型是否听话」）。
             // 确认令牌只经 IFeishuToolApprovalChannel 交给宿主，模型侧恒为中性语义。

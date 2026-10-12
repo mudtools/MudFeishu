@@ -8,7 +8,7 @@
 namespace Mud.Feishu.AI.AgentTools;
 
 /// <summary>
-/// 工具源抽象：工具包向 <see cref="Agents.FeishuAgent"/> 暴露已启用工具的桥。
+/// 工具源抽象：工具包向 <see cref="FeishuAgent"/> 暴露已启用工具的桥。
 /// </summary>
 /// <remarks>
 /// <para>

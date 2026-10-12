@@ -10,7 +10,7 @@ using Mud.Feishu.DataModels.Application;
 namespace Mud.Feishu.Interfaces;
 
 /// <summary>
-/// 飞书应用协作者管理接口，用于转移应用所有者、更新应用协作者（添加/移除）以及查询应用协作者列表。
+/// 飞书应用协作者与启停用管理接口，用于转移应用所有者、更新应用协作者（添加/移除）、查询应用协作者列表以及启用/停用应用。
 /// <para>当前接口不能直接调用，仅为子接口的公共方法抽象</para>
 /// <para><see href="https://open.feishu.cn/document/application-v6/application/update-2">接口文档</see></para>
 /// </summary>
@@ -71,5 +71,22 @@ public interface IFeishuV6Application : IFeishuAppContextSwitcher
     Task<FeishuApiResult<GetApplicationCollaboratorsResult>?> GetApplicationCollaboratorsAsync(
       [Path] string app_id,
       [Query] string? user_id_type = Consts.User_Id_Type,
+      CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 启停用应用。
+    /// <para>停用或启用企业内已安装的自建应用与商店应用。以用户身份调用时需具备相应管理权限。</para>
+    /// <para><see href="https://open.feishu.cn/document/application-v6/admin/update">接口文档</see></para>
+    /// </summary>
+    /// <param name="app_id">
+    /// <para>应用 App ID</para>
+    /// <para>示例值：cli_a4517c8461f8100a</para>
+    /// </param>
+    /// <param name="request">启停用应用请求体</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Put("/open-apis/application/v6/applications/{app_id}/management")]
+    Task<FeishuNullDataApiResult?> UpdateApplicationManagementAsync(
+      [Path] string app_id,
+      [Body] UpdateApplicationManagementRequest request,
       CancellationToken cancellationToken = default);
 }

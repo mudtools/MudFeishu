@@ -97,4 +97,35 @@ public interface IFeishuTenantV6ApplicationAppVersion : IFeishuAppContextSwitche
       [Query] string? department_id_type = Consts.Department_Id_Type,
       [Query] string? user_id_type = Consts.User_Id_Type,
       CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 更新应用版本审核状态。
+    /// <para>更新应用版本的审核结果：通过后应用可以直接上架；拒绝后则开发者可以看到拒绝理由，并在修改后再次申请发布。将版本状态置为「审核拒绝」时必须传入 reject_reason。</para>
+    /// <para><see href="https://open.feishu.cn/document/server-docs/application-v6/application/patch-2">接口文档</see></para>
+    /// </summary>
+    /// <param name="app_id">
+    /// <para>应用 App ID</para>
+    /// <para>示例值：cli_9f3ca975326b501b</para>
+    /// </param>
+    /// <param name="version_id">
+    /// <para>应用版本 ID，唯一标识一个应用版本</para>
+    /// <para>示例值：oav_d317f090b7258ad0372aa53963cda70d</para>
+    /// </param>
+    /// <param name="request">更新应用版本审核状态请求体</param>
+    /// <param name="operator_id">
+    /// <para>操作者的 open_id</para>
+    /// <para>示例值：ou_4065981088f8ef67a504ba8bd6b24d85</para>
+    /// </param>
+    /// <param name="reject_reason">将版本状态置为「审核拒绝」时的拒绝理由。将版本状态置为其他状态时可不传</param>
+    /// <param name="user_id_type">用户 ID 类型，默认值：open_id。当值为 user_id 时，需要申请「获取用户 user ID」权限</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
+    [Patch("/open-apis/application/v6/applications/{app_id}/app_versions/{version_id}")]
+    Task<FeishuNullDataApiResult?> UpdateAppVersionStatusAsync(
+      [Path] string app_id,
+      [Path] string version_id,
+      [Body] UpdateAppVersionStatusRequest request,
+      [Query] string operator_id,
+      [Query] string? reject_reason = null,
+      [Query] string? user_id_type = Consts.User_Id_Type,
+      CancellationToken cancellationToken = default);
 }

@@ -217,6 +217,27 @@ public class IFeishuTenantV6ApplicationAppVersionTests
     }
 
     /// <summary>
+    /// 用于测试<see cref="IFeishuTenantV6ApplicationAppVersion.UpdateAppVersionStatusAsync(string, string, UpdateAppVersionStatusRequest, string, string?, string?, CancellationToken)"/>函数的请求体序列化。
+    /// </summary>
+    [Fact]
+    public void Test_UpdateAppVersionStatusAsync_RequestBody()
+    {
+        string bodyStr = """
+                        {
+                            "status": 1
+                        }
+                        """;
+        var requestBody = JsonSerializer.Deserialize<UpdateAppVersionStatusRequest>(bodyStr, _jsonSerializerOptions);
+
+        Assert.NotNull(requestBody);
+        Assert.Equal(1, requestBody.Status);
+
+        var serialized = JsonSerializer.Serialize(requestBody, _jsonSerializerOptions);
+        using var document = JsonDocument.Parse(serialized);
+        Assert.Equal(1, document.RootElement.GetProperty("status").GetInt32());
+    }
+
+    /// <summary>
     /// 用于测试<see cref="IFeishuTenantV6ApplicationAppVersion.GetContactsRangeSuggestAsync(string, string, string?, string?, CancellationToken)"/>函数的返回结果反序列化。
     /// </summary>
     [Fact]

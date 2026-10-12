@@ -81,6 +81,19 @@ public class IFeishuTenantV6ApplicationTests
     }
 
     /// <summary>
+    /// 用于测试<see cref="IFeishuTenantV6Application.UpdateApplicationManagementAsync(string, UpdateApplicationManagementRequest, CancellationToken)"/>函数的请求体序列化。
+    /// </summary>
+    [Fact]
+    public void Test_UpdateApplicationManagementAsync_RequestBody()
+    {
+        var requestBody = new UpdateApplicationManagementRequest { Enable = true };
+
+        var serialized = JsonSerializer.Serialize(requestBody, _jsonSerializerOptions);
+        using var document = JsonDocument.Parse(serialized);
+        Assert.True(document.RootElement.GetProperty("enable").GetBoolean());
+    }
+
+    /// <summary>
     /// 用于测试<see cref="IFeishuTenantV6Application.GetApplicationCollaboratorsAsync(string, string?, CancellationToken)"/>函数的返回结果反序列化。
     /// </summary>
     [Fact]

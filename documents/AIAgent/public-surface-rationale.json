@@ -287,6 +287,11 @@
                      "Mud.Feishu.AI.Tools.Catalog.ToolSchemaDialect"
                  ],
     "reasons":  {
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantLingoCreateEntityTool":  "专题一 B1 Lingo 写面：lingo.create_entity 的工具契约（写操作；**免审直写**，需宿主授权）。消费方：① FeishuToolRegistry 白名单装配；② MCP server tools/list；③ LingoToolsTests（dry_run 零调用 + 参数校验 + 回执投影）与 DryRunContractGuards。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantLingoUpdateEntityTool":  "同 IFeishuTenantLingoCreateEntityTool：lingo.update_entity 的工具契约（**覆盖式**语义，未传的释义/别名会被清空，描述与回执 notice 双写）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantLingoDeleteEntityTool":  "同 IFeishuTenantLingoCreateEntityTool：lingo.delete_entity 的工具契约（**high-risk-write**——命中危险词 delete，配 Affordance 四节资产 + 描述含 dry_run 预演指引）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantLingoCreateDraftTool":  "同 IFeishuTenantLingoCreateEntityTool：lingo.create_draft 的工具契约（走**审核流程**——需词典管理员审核通过后才写入词库；scope 为「任一即可」的双 scope）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantLingoUpdateDraftTool":  "同 IFeishuTenantLingoCreateEntityTool：lingo.update_draft 的工具契约（已审批的草稿无法编辑；覆盖式提交）。消费方同上。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantChatgroupCreateChatTool":  "专题一 B1 ChatGroup 写面：chatgroup.create_chat 的工具契约（写操作；默认不启用，需宿主授权）。消费方：① FeishuToolRegistry 白名单装配；② MCP server tools/list；③ ChatGroupToolsTests（dry_run 零调用 + 回执投影）与 DryRunContractGuards。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantChatgroupUpdateChatTool":  "同 IFeishuTenantChatgroupCreateChatTool：chatgroup.update_chat 的工具契约（**增量更新**语义，未传字段保持原值）。消费方同上。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantChatgroupDeleteChatTool":  "同 IFeishuTenantChatgroupCreateChatTool：chatgroup.delete_chat 的工具契约（**high-risk-write**——命中危险词 delete，配 Affordance 四节资产 + 描述含 dry_run 预演指引）。消费方同上。",

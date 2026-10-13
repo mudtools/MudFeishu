@@ -35,14 +35,25 @@ internal sealed class LingoTools(
     IOptions<FeishuAgentOptions> options,
     Mud.Feishu.IFeishuTenantV1LingoRepo? repoClient = null,
     Mud.Feishu.IFeishuTenantV1LingoClassification? classificationClient = null,
-    Mud.Feishu.IFeishuTenantV1LingoEntity? entityClient = null)
+    Mud.Feishu.IFeishuTenantV1LingoEntity? entityClient = null,
+
+    // 写面（草稿申请）新增客户端：**带默认值**是刻意的——既有直接构造点（测试）不被破坏，
+    // 生产路径由 DI 注入非空实例（软缺席语义不变）。
+    Mud.Feishu.IFeishuTenantV1LingoDraft? draftClient = null)
 {
     /// <summary>词条正文预览的截断长度（复用消息预览口径：摘要够用，正文仍可 get_entity 取全）。</summary>
     private const int DescriptionPreviewLength = 200;
 
+    /// <summary>释义长度上界（SDK 注释口径：纯文本 1~5000、富文本 ≤5000）。</summary>
+    private const int MaxDescriptionLength = 5000;
+
+    /// <summary>别名个数上界（SDK 注释口径：最多 10 个）。</summary>
+    private const int MaxAliasCount = 10;
+
     private readonly Mud.Feishu.IFeishuTenantV1LingoRepo? _repoClient = repoClient;
     private readonly Mud.Feishu.IFeishuTenantV1LingoClassification? _classificationClient = classificationClient;
     private readonly Mud.Feishu.IFeishuTenantV1LingoEntity? _entityClient = entityClient;
+    private readonly Mud.Feishu.IFeishuTenantV1LingoDraft? _draftClient = draftClient;
 
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
@@ -426,4 +437,314 @@ internal sealed class LingoTools(
                 toolName,
                 $"未注册 {ClientName} 客户端——企业词典能力需宿主启用词典 API（软缺席，不影响其它域工具）"))
             : null;
+
+    // ─────────────────────────── 写面：免审词条 CRUD + 草稿申请 ───────────────────────────
+
+    /// <summary>lingo.create_entity：创建词条（免审直写）。</summary>
+    [FeishuToolHandler(typeof(IFeishuTenantLingoCreateEntityTool))]
+    public Task<FeishuToolResult> CreateEntityAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.LingoCreateEntity, _maxResultLength);
+        if (Absent(executor.ToolName, _entityClient) is { } unavailable)
+        {
+            return Task.FromResult(unavailable);
+        }
+
+        return executor.RunAsync(async () =>
+        {
+            var args = LingoCreateEntityArgs.Unpack(arguments);
+            if (ValidateEntity(executor.ToolName, args.MainKey, args.Aliases, args.Description, args.RichText) is { } invalid)
+            {
+                return invalid;
+            }
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName,
+                    "POST",
+                    "/open-apis/lingo/v1/entities",
+                    ToolDryRun.IdempotencyNote(null),
+                    ("main_key", args.MainKey?.Length ?? 0),
+                    ("aliases", args.Aliases?.Length ?? 0),
+                    ("description", args.Description?.Length ?? 0)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _entityClient!
+                .CreateEntityAsync(
+                    BuildEntityRequest(args.MainKey, args.Aliases, args.Description, args.RichText, args.AllowHighlight, args.AllowSearch),
+                    repo_id: args.RepoId,
+                    user_id_type: args.UserIdType,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+
+            return executor.FromApi(outcome, data => new JsonObject
+            {
+                ["entity_id"] = data.Entity?.Id,
+                ["main_key"] = data.Entity?.MainKeys is { Length: > 0 } keys ? keys[0].Key : args.MainKey,
+                ["created"] = true,
+                ["notice"] = "**免审直写**：该词条未经过词典管理员审核，已直接进入词库；"
+                    + "若需要留痕或没有免审权限，请改用 lingo.create_draft。",
+            });
+        });
+    }
+
+    /// <summary>lingo.update_entity：更新词条（免审直写 + 覆盖式）。</summary>
+    [FeishuToolHandler(typeof(IFeishuTenantLingoUpdateEntityTool))]
+    public Task<FeishuToolResult> UpdateEntityAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.LingoUpdateEntity, _maxResultLength);
+        if (Absent(executor.ToolName, _entityClient) is { } unavailable)
+        {
+            return Task.FromResult(unavailable);
+        }
+
+        return executor.RunAsync(async () =>
+        {
+            var args = LingoUpdateEntityArgs.Unpack(arguments);
+
+            // 注意：main_key 是**必填参数**（平台请求体口径），缺它时由参数校验层先拦
+            // （invalid_args），到不了这里；故此处不再做"一个字段都不传"的重复判断。
+            if (ValidateEntity(executor.ToolName, args.MainKey, args.Aliases, args.Description, args.RichText) is { } invalid)
+            {
+                return invalid;
+            }
+
+            var changed = CountSet(args.MainKey, args.Description, args.RichText) + (args.Aliases?.Length ?? 0);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName,
+                    "PUT",
+                    "/open-apis/lingo/v1/entities/{entity_id}",
+                    ToolDryRun.IdempotencyNote(null),
+                    ("entity_id", args.EntityId?.Length ?? 0),
+                    ("changed_fields", changed)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _entityClient!
+                .UpdateEntityAsync(
+                    args.EntityId,
+                    BuildEntityRequest(args.MainKey, args.Aliases, args.Description, args.RichText, args.AllowHighlight, args.AllowSearch),
+                    user_id_type: args.UserIdType,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+
+            return executor.FromApi(outcome, data => new JsonObject
+            {
+                ["entity_id"] = data.Entity?.Id ?? args.EntityId,
+                ["updated_fields"] = changed,
+                ["updated"] = true,
+                ["notice"] = "已按**覆盖式**语义提交：未传的释义/别名会被清空。"
+                    + "只想改一项时，请先 lingo.get_entity 读出原值、合并后再整份提交。",
+            });
+        });
+    }
+
+    /// <summary>lingo.delete_entity：删除词条（high-risk-write）。</summary>
+    [FeishuToolHandler(typeof(IFeishuTenantLingoDeleteEntityTool))]
+    public Task<FeishuToolResult> DeleteEntityAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.LingoDeleteEntity, _maxResultLength);
+        if (Absent(executor.ToolName, _entityClient) is { } unavailable)
+        {
+            return Task.FromResult(unavailable);
+        }
+
+        return executor.RunAsync(async () =>
+        {
+            var args = LingoDeleteEntityArgs.Unpack(arguments);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName,
+                    "DELETE",
+                    "/open-apis/lingo/v1/entities/{entity_id}",
+                    ToolDryRun.IdempotencyNote(null),
+                    ("entity_id", args.EntityId?.Length ?? 0)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _entityClient!
+                .DeleteEntityAsync(args.EntityId, cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+
+            return executor.FromApi(outcome, _ => new JsonObject
+            {
+                ["entity_id"] = args.EntityId,
+                ["deleted"] = true,
+                ["notice"] = "删除不可逆：词条已从词库移除，外部系统里引用该 entity_id 的地方会全部失效"
+                    + "（平台不提供恢复入口，只能重建且会拿到新 entity_id）。",
+            });
+        });
+    }
+
+    /// <summary>lingo.create_draft：发起创建词条的草稿申请（走审核）。</summary>
+    [FeishuToolHandler(typeof(IFeishuTenantLingoCreateDraftTool))]
+    public Task<FeishuToolResult> CreateDraftAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.LingoCreateDraft, _maxResultLength);
+        if (Absent(executor.ToolName, _draftClient) is { } unavailable)
+        {
+            return Task.FromResult(unavailable);
+        }
+
+        return executor.RunAsync(async () =>
+        {
+            var args = LingoCreateDraftArgs.Unpack(arguments);
+            if (ValidateEntity(executor.ToolName, args.MainKey, args.Aliases, args.Description, args.RichText) is { } invalid)
+            {
+                return invalid;
+            }
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName,
+                    "POST",
+                    "/open-apis/lingo/v1/drafts",
+                    ToolDryRun.IdempotencyNote(null),
+                    ("main_key", args.MainKey?.Length ?? 0),
+                    ("aliases", args.Aliases?.Length ?? 0)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _draftClient!
+                .CreateDraftAsync(
+                    BuildEntityRequest(args.MainKey, args.Aliases, args.Description, args.RichText, args.AllowHighlight, args.AllowSearch),
+                    repo_id: args.RepoId,
+                    user_id_type: args.UserIdType,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+
+            return executor.FromApi(outcome, data => new JsonObject
+            {
+                ["draft_id"] = data.Draft?.DraftId,
+                ["entity_id"] = data.Draft?.Entity?.Id,
+                ["submitted"] = true,
+                ["notice"] = "草稿**需经词典管理员审核通过后**才写入词库；审核结果请在管理后台或让管理员确认。",
+            });
+        });
+    }
+
+    /// <summary>lingo.update_draft：更新草稿（已审批的不可编辑 + 覆盖式）。</summary>
+    [FeishuToolHandler(typeof(IFeishuTenantLingoUpdateDraftTool))]
+    public Task<FeishuToolResult> UpdateDraftAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.LingoUpdateDraft, _maxResultLength);
+        if (Absent(executor.ToolName, _draftClient) is { } unavailable)
+        {
+            return Task.FromResult(unavailable);
+        }
+
+        return executor.RunAsync(async () =>
+        {
+            var args = LingoUpdateDraftArgs.Unpack(arguments);
+
+            // 同上：main_key 必填，缺它时参数校验层先拦。
+            if (ValidateEntity(executor.ToolName, args.MainKey, args.Aliases, args.Description, args.RichText) is { } invalid)
+            {
+                return invalid;
+            }
+
+            var changed = CountSet(args.MainKey, args.Description, args.RichText) + (args.Aliases?.Length ?? 0);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName,
+                    "PUT",
+                    "/open-apis/lingo/v1/drafts/{draft_id}",
+                    ToolDryRun.IdempotencyNote(null),
+                    ("draft_id", args.DraftId?.Length ?? 0),
+                    ("changed_fields", changed)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _draftClient!
+                .UpdateDraftAsync(
+                    args.DraftId,
+                    BuildEntityRequest(args.MainKey, args.Aliases, args.Description, args.RichText, args.AllowHighlight, args.AllowSearch),
+                    user_id_type: args.UserIdType,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+
+            return executor.FromApi(outcome, data => new JsonObject
+            {
+                ["draft_id"] = data.Draft?.DraftId ?? args.DraftId,
+                ["entity_id"] = data.Draft?.Entity?.Id,
+                ["updated_fields"] = changed,
+                ["updated"] = true,
+                ["notice"] = "**已审批的草稿无法编辑**（平台限制，会直接报错）；"
+                    + "且本次按覆盖式语义提交，未传的释义/别名会被清空。",
+            });
+        });
+    }
+
+    // ─────────────────────────── 写面内部工具 ───────────────────────────
+
+    /// <summary>合成词条请求体：主词 + 别名 + 释义 + 展示状态（未传的字段不下发）。</summary>
+    private static CreateOrUpdateEntityRequest BuildEntityRequest(
+        string? mainKey,
+        string[]? aliases,
+        string? description,
+        string? richText,
+        bool? allowHighlight,
+        bool? allowSearch)
+    {
+        LingoDisplayStatus? displayStatus = allowHighlight is null && allowSearch is null
+            ? null
+            : new LingoDisplayStatus { AllowHighlight = allowHighlight, AllowSearch = allowSearch };
+
+        return new CreateOrUpdateEntityRequest
+        {
+            MainKeys = string.IsNullOrEmpty(mainKey)
+                ? null
+                : [new LingoTerm { Key = mainKey, DisplayStatus = displayStatus }],
+            Aliases = aliases is { Length: > 0 }
+                ? [.. aliases.Select(static alias => new LingoTerm { Key = alias })]
+                : null,
+            Description = description,
+            RichText = richText,
+        };
+    }
+
+    /// <summary>
+    /// 词条参数校验（<b>早于 dry_run</b>）：这些是平台会直接拒绝的形状，
+    /// 放行预演只会让模型拿着"预演成功"的信心去改参数。
+    /// </summary>
+    private static FeishuToolResult? ValidateEntity(
+        string toolName, string? mainKey, string[]? aliases, string? description, string? richText)
+    {
+        if (string.IsNullOrWhiteSpace(mainKey))
+        {
+            return Invalid(toolName, "main_key 不能为空——词条名是必填项（最多 1 个）。");
+        }
+
+        if (aliases is { Length: > MaxAliasCount })
+        {
+            return Invalid(toolName, $"别名最多 {MaxAliasCount} 个（当前 {aliases.Length}）——平台硬约束。");
+        }
+
+        if (string.IsNullOrEmpty(description) && string.IsNullOrEmpty(richText))
+        {
+            return Invalid(toolName,
+                "description 与 rich_text 至少填一个——两者都空时平台会报 1540001（释义缺失）。");
+        }
+
+        if (description is { Length: > MaxDescriptionLength } || richText is { Length: > MaxDescriptionLength })
+        {
+            return Invalid(toolName,
+                $"释义长度超限：纯文本 1~{MaxDescriptionLength} 字符、富文本 ≤{MaxDescriptionLength} 字符。");
+        }
+
+        return null;
+    }
+
+    /// <summary>数一下本次实际传了几个字段（dry_run 与回执只报条数，不回原文）。</summary>
+    private static int CountSet(params string?[] values)
+        => values.Count(static value => !string.IsNullOrEmpty(value));
+
+    /// <summary>参数非法：结构化错误（不是异常——异常会逃出执行链，模型看不到可执行信息）。</summary>
+    private static FeishuToolResult Invalid(string toolName, string message)
+        => FeishuToolResult.FromError(FeishuToolBinding.StructuredError(toolName, message));
 }

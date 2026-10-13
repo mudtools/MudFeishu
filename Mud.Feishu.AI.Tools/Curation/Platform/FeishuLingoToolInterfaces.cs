@@ -157,3 +157,156 @@ public interface IFeishuTenantLingoMatchEntitiesTool
         [ToolParameter("repo_id", "词库 ID（可选，来自 lingo.list_repos）")] string? repo_id = null,
         CancellationToken cancellationToken = default);
 }
+
+// ─────────────────── 写面（免审词条 CRUD + 草稿申请） ───────────────────
+//
+// 与 ChatGroup 写面的**关键差别**：本域 SDK XML 注释里 **scope 字面量齐全**
+//   · baike:entity:exempt_review —— 创建 / 更新免审词条
+//   · baike:entity:exempt_delete —— 免审删除词条
+//   · baike:entity（或 exempt_review，任一即可）—— 草稿创建 / 更新
+// 故权限对照表本域区段**不标 ⚠️**（TrustParty 同款口径）。
+//
+// ⚠️ 本轮**刻意不做**的两处（理由写进 Guidance，不做静默缺口）：
+//    · lingo.upload_file：入参是**本地绝对文件路径**（[FilePath]），模型侧无法可靠构造
+//      （与 vc 域"有意不策展 apply_reserve"同款纪律）；
+//    · 请求体的嵌套字段 related_meta（分类/图片/关联）/ outer_info（外部系统关联）/
+//      i18n_descs（国际化释义）：扁平参数无法无损表达，需先引入结构化入参形态。
+
+/// <summary>
+/// 工具接口：lingo.create_entity（映射 <c>IFeishuTenantV1LingoEntity.CreateEntityAsync</c>）。
+/// </summary>
+/// <remarks>
+/// <b>免审直写</b>：经此接口创建的词条**不经过词典管理员审核**，直接写入词库——
+/// SDK 注释原文"调用时应当慎重操作"。若希望走审核流程，请用 <c>lingo.create_draft</c>。
+/// </remarks>
+[FeishuTool("lingo.create_entity",
+    Description = "创建词典词条（⚠️ 免审直写：不经过词典管理员审核，直接写入词库——要审核流程请改用 lingo.create_draft）。写操作：默认不启用，需宿主授权（IToolExecutionAuthorizer），需 baike:entity:exempt_review。建议先 dry_run 预演。",
+    RequiredScopes = ["baike:entity:exempt_review"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1LingoEntity) + "." + nameof(IFeishuTenantV1LingoEntity.CreateEntityAsync))]
+public interface IFeishuTenantLingoCreateEntityTool
+{
+    /// <summary>创建词条。</summary>
+    /// <returns>白名单投影后的 JSON 回执（entity_id + main_key + created），超长截断并标记 truncated。</returns>
+    Task<string> CreateEntityAsync(
+        [ToolParameter("main_key", "词条名（必填，最多 1 个）", Required = true)] string main_key,
+        [ToolParameter("repo_id", "词库 ID（可选，来自 lingo.list_repos；不传则写入默认词库）")] string? repo_id = null,
+        [ToolParameter("aliases", "别名列表（可选，最多 10 个）")] string[]? aliases = null,
+        [ToolParameter("description", "纯文本释义（可选，1~5000 字符；与 rich_text 至少填一个）")] string? description = null,
+        [ToolParameter("rich_text", "富文本释义（可选，≤5000 字符；填了可覆盖 description）")] string? rich_text = null,
+        [ToolParameter("allow_highlight", "是否允许智能高亮（可选，默认 true）")] bool? allow_highlight = null,
+        [ToolParameter("allow_search", "是否允许被搜索命中（可选，默认 true）")] bool? allow_search = null,
+        [ToolParameter("user_id_type", "user_id 类型（可选：open_id / user_id / union_id）")] string? user_id_type = null,
+        [ToolParameter("dry_run", "仅预演不下发（可选，默认 false）：返回将要创建的词条名与别名数，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：lingo.update_entity（映射 <c>UpdateEntityAsync</c>）。
+/// </summary>
+/// <remarks>
+/// <b>覆盖式语义</b>（与互通规则同款）：请求体整份提交，<b>未传的释义/别名会被清空</b>。
+/// <b><c>main_key</c> 必填</b>（平台请求体口径：<c>main_keys</c> 是必填项）——只想改释义时
+/// 也要把原词条名一起带上：先 <c>lingo.get_entity</c> 读出原值、合并后再整份提交。
+/// </remarks>
+[FeishuTool("lingo.update_entity",
+    Description = "更新词典词条（⚠️ 免审直写，且为**覆盖式**：未传的释义/别名会被清空——只改一项请先 lingo.get_entity 读出原值再整份提交；main_key 必填，与平台口径一致）。写操作：默认不启用，需宿主授权，需 baike:entity:exempt_review。建议先 dry_run 预演。",
+    RequiredScopes = ["baike:entity:exempt_review"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1LingoEntity) + "." + nameof(IFeishuTenantV1LingoEntity.UpdateEntityAsync))]
+public interface IFeishuTenantLingoUpdateEntityTool
+{
+    /// <summary>更新词条。</summary>
+    /// <returns>白名单投影后的 JSON 回执（entity_id + updated_fields + updated），超长截断并标记 truncated。</returns>
+    Task<string> UpdateEntityAsync(
+        [ToolParameter("entity_id", "词条 ID（必填，来自 lingo.search_entities / lingo.get_entity）", Required = true)] string entity_id,
+        [ToolParameter("main_key", "词条名（必填，与平台口径一致——只想改释义也要带上原词条名）", Required = true)] string main_key,
+        [ToolParameter("aliases", "新别名列表（可选；覆盖式，不传则清空原有别名）")] string[]? aliases = null,
+        [ToolParameter("description", "新纯文本释义（可选，1~5000 字符；与 rich_text 至少填一个）")] string? description = null,
+        [ToolParameter("rich_text", "新富文本释义（可选，≤5000 字符）")] string? rich_text = null,
+        [ToolParameter("allow_highlight", "是否允许智能高亮（可选）")] bool? allow_highlight = null,
+        [ToolParameter("allow_search", "是否允许被搜索命中（可选）")] bool? allow_search = null,
+        [ToolParameter("user_id_type", "user_id 类型（可选：open_id / user_id / union_id）")] string? user_id_type = null,
+        [ToolParameter("dry_run", "仅预演不下发（可选，默认 false）：返回 entity_id 与将要修改的字段数，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：lingo.delete_entity（映射 <c>DeleteEntityAsync</c>）。
+/// </summary>
+/// <remarks>
+/// <b>high-risk-write</b>（命中危险词 <c>delete</c>）：删除后词条**直接从词库移除**，
+/// 外部系统里引用该 <c>entity_id</c> 的地方会全部失效，且平台不提供"恢复已删词条"入口。
+/// </remarks>
+[FeishuTool("lingo.delete_entity",
+    Description = "删除词典词条（⚠️ 不可逆：词条直接从词库移除，引用该 entity_id 的外部系统会全部失效——务必先 dry_run 预演并确认 entity_id 无误）。写操作：默认不启用，需宿主授权，需 baike:entity:exempt_delete。",
+    RequiredScopes = ["baike:entity:exempt_delete"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1LingoEntity) + "." + nameof(IFeishuTenantV1LingoEntity.DeleteEntityAsync))]
+public interface IFeishuTenantLingoDeleteEntityTool
+{
+    /// <summary>删除词条。</summary>
+    /// <returns>白名单投影后的 JSON 回执（entity_id + deleted），超长截断并标记 truncated。</returns>
+    Task<string> DeleteEntityAsync(
+        [ToolParameter("entity_id", "要删除的词条 ID（必填，来自 lingo.search_entities / lingo.get_entity）", Required = true)] string entity_id,
+        [ToolParameter("dry_run", "仅预演不下发（可选，默认 false）：返回将要删除的词条 ID，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：lingo.create_draft（映射 <c>IFeishuTenantV1LingoDraft.CreateDraftAsync</c>）。
+/// </summary>
+/// <remarks>
+/// 与 <c>create_entity</c> 的核心差别：草稿**需经词典管理员审核通过后**才写入词库。
+/// 这是"没有免审权限"或"改动需要留痕"时的正确路径。
+/// </remarks>
+[FeishuTool("lingo.create_draft",
+    Description = "发起创建词条的**草稿申请**（需经词典管理员审核通过后才写入词库）——没有免审权限或需要留痕时的正确路径。写操作：默认不启用，需宿主授权，需 baike:entity 或 baike:entity:exempt_review（任一即可）。",
+    RequiredScopes = ["baike:entity", "baike:entity:exempt_review"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1LingoDraft) + "." + nameof(IFeishuTenantV1LingoDraft.CreateDraftAsync))]
+public interface IFeishuTenantLingoCreateDraftTool
+{
+    /// <summary>发起创建草稿。</summary>
+    /// <returns>白名单投影后的 JSON 回执（draft_id + entity_id + submitted），超长截断并标记 truncated。</returns>
+    Task<string> CreateDraftAsync(
+        [ToolParameter("main_key", "词条名（必填，最多 1 个）", Required = true)] string main_key,
+        [ToolParameter("repo_id", "词库 ID（可选，来自 lingo.list_repos）")] string? repo_id = null,
+        [ToolParameter("aliases", "别名列表（可选，最多 10 个）")] string[]? aliases = null,
+        [ToolParameter("description", "纯文本释义（可选，1~5000 字符；与 rich_text 至少填一个）")] string? description = null,
+        [ToolParameter("rich_text", "富文本释义（可选，≤5000 字符）")] string? rich_text = null,
+        [ToolParameter("allow_highlight", "是否允许智能高亮（可选，默认 true）")] bool? allow_highlight = null,
+        [ToolParameter("allow_search", "是否允许被搜索命中（可选，默认 true）")] bool? allow_search = null,
+        [ToolParameter("user_id_type", "user_id 类型（可选：open_id / user_id / union_id）")] string? user_id_type = null,
+        [ToolParameter("dry_run", "仅预演不下发（可选，默认 false）：返回将要提交的词条名与别名数，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：lingo.update_draft（映射 <c>UpdateDraftAsync</c>）。
+/// </summary>
+/// <remarks>
+/// <b>已审批的草稿无法编辑</b>（SDK 注释原文）；同样按<b>覆盖式</b>语义提交，
+/// 且 <c>main_key</c> 必填（平台请求体口径）。
+/// </remarks>
+[FeishuTool("lingo.update_draft",
+    Description = "更新词条草稿（⚠️ 已审批的草稿无法编辑；且为覆盖式提交，未传的释义/别名会被清空；main_key 必填）。写操作：默认不启用，需宿主授权，需 baike:entity 或 baike:entity:exempt_review（任一即可）。",
+    RequiredScopes = ["baike:entity", "baike:entity:exempt_review"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1LingoDraft) + "." + nameof(IFeishuTenantV1LingoDraft.UpdateDraftAsync))]
+public interface IFeishuTenantLingoUpdateDraftTool
+{
+    /// <summary>更新草稿。</summary>
+    /// <returns>白名单投影后的 JSON 回执（draft_id + entity_id + updated），超长截断并标记 truncated。</returns>
+    Task<string> UpdateDraftAsync(
+        [ToolParameter("draft_id", "草稿 ID（必填）", Required = true)] string draft_id,
+        [ToolParameter("main_key", "词条名（必填，与平台口径一致）", Required = true)] string main_key,
+        [ToolParameter("aliases", "新别名列表（可选；覆盖式，不传则清空原有别名）")] string[]? aliases = null,
+        [ToolParameter("description", "新纯文本释义（可选，1~5000 字符；与 rich_text 至少填一个）")] string? description = null,
+        [ToolParameter("rich_text", "新富文本释义（可选，≤5000 字符）")] string? rich_text = null,
+        [ToolParameter("allow_highlight", "是否允许智能高亮（可选）")] bool? allow_highlight = null,
+        [ToolParameter("allow_search", "是否允许被搜索命中（可选）")] bool? allow_search = null,
+        [ToolParameter("user_id_type", "user_id 类型（可选：open_id / user_id / union_id）")] string? user_id_type = null,
+        [ToolParameter("dry_run", "仅预演不下发（可选，默认 false）：返回 draft_id 与将要修改的字段数，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}

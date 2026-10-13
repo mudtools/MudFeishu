@@ -62,7 +62,7 @@ public class ToolScopeDeclarationContractTests
     [Fact]
     public void DeclaredScopeSet_ShouldMatchRegisteredBaseline()
     {
-        const int ExpectedScopeCount = 67; // 2026-10-11 实测（F-1：mdm:country_region:read + admin:audit_info:readonly + hire:job/job_requirement/talent/interview/offer:readonly；专题一 B1 五域：baike:entity:readonly + application:application[:.app_version]:readonly + helpdesk:faq/ticket/agent:readonly + trust_party:collaboration.tenant:readonly + trust_party:collaboration_rule:read/write + im:chat（ChatGroup 写面，⚠️ 待核对））
+        const int ExpectedScopeCount = 70; // 2026-10-11 实测（F-1：mdm:country_region:read + admin:audit_info:readonly + hire:job/job_requirement/talent/interview/offer:readonly；专题一 B1 五域：baike:entity:readonly + application:application[:.app_version]:readonly + helpdesk:faq/ticket/agent:readonly + trust_party:collaboration.tenant:readonly + trust_party:collaboration_rule:read/write + im:chat（ChatGroup 写面，⚠️ 待核对）+ Lingo 写面 3 个 baike:* 写 scope（字面量齐全，✅））
 
         var declared = ReadDeclaredScopes();
         declared.Should().HaveCount(

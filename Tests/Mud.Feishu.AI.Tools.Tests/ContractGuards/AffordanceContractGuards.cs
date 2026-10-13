@@ -42,9 +42,9 @@ public class AffordanceContractGuards
 
     // ── 规模冻结（R-3/F-7 接入批实测；增减资产必须同批改这里的数字并说明理由）──
     // 字符总数按 LF 归一化口径测量（ReadAssets 统一 \r\n → \n），Windows(CRLF) 与 CI(LF) 同值。
-    private const int ExpectedAssetCount = 17;
+    private const int ExpectedAssetCount = 22;
 
-    private const int ExpectedTotalAssetCharacters = 6476;
+    private const int ExpectedTotalAssetCharacters = 9243;
 
     // B2 瘦身（测试体系治理，见 documents/AI/单元测试体系过度测试分析与解决方案.md §三.5）：
     // 与上游诊断**同一判定**的仓库侧副本已删除——

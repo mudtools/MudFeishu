@@ -113,3 +113,305 @@ public interface IFeishuTenantChatgroupGetMenuTool
         [ToolParameter("chat_id", "群 ID（必填，形如 oc_xxx）", Required = true)] string chat_id,
         CancellationToken cancellationToken = default);
 }
+
+// ─────────────────────────── 写面（群设置 / 成员 / 管理员 / 置顶 / 菜单删除） ───────────────────────────
+//
+// 三条纪律（沿用 TrustParty 写面已沉淀的结论）：
+// ① **scope 全部标 ⚠️ 待核对**：本域 SDK XML 注释里**没有任何 scope 字面量**
+//    （与 TrustParty 形成决定性对比），故按官方 API 文档取群管理写权限 im:chat 并标注待核对；
+// ② **写工具默认不启用**：授权门禁（IToolExecutionAuthorizer）与 MaxToolRisk 在执行链，
+//    执行器只负责「参数校验早于 dry_run」+ dry_run 短路 + 白名单回执；
+// ③ **本域不碰群公告**（归 docx 域，见上方域边界②）——建群/改群工具也不要写公告块。
+//
+// ⚠️ 本轮**刻意不做**的三个写能力（理由写进 Guidance，不做静默缺口）：
+//    · add_menu / update_menu：请求体是**嵌套树**（menu_tree → top_levels → children），
+//      扁平参数无法表达，需先引入 JSON 参数形态并配套 dry_run 形状校验；
+//    · get_chat_group_share_link_by_id：POST 但语义是**只读**（取群分享链接），
+//      混进写面会让「POST ⇒ 写」的推断失效，单独评审后再定。
+
+/// <summary>
+/// 工具接口：chatgroup.create_chat（映射 <c>IFeishuTenantV1ChatGroup.CreateChatGroupAsync</c>）。
+/// </summary>
+/// <remarks>
+/// 群主默认是**当前应用/机器人身份**。群主转让（<c>owner_id</c>）刻意不暴露——那是高危语义，
+/// 应走独立工具而不是混在建群参数里。
+/// </remarks>
+[FeishuTool("chatgroup.create_chat",
+    Description = "创建一个群（返回 chat_id 与无效成员 ID 列表）——「拉个群沟通」的第一落点。写操作：默认不启用，需宿主授权（IToolExecutionAuthorizer），需 im:chat（⚠️ scope 名待控制台核对）。",
+    RequiredScopes = ["im:chat"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1ChatGroup) + "." + nameof(IFeishuTenantV1ChatGroup.CreateChatGroupAsync))]
+public interface IFeishuTenantChatgroupCreateChatTool
+{
+    /// <summary>创建群。</summary>
+    /// <returns>白名单投影后的 JSON 回执（chat_id + invalid_user_id_list），超长截断并标记 truncated。</returns>
+    Task<string> CreateChatAsync(
+        [ToolParameter("name", "群名称（必填）", Required = true)] string name,
+        [ToolParameter("description", "群描述（可选）")] string? description = null,
+        [ToolParameter("user_id_list", "建群时邀请的成员 ID 列表（可选；类型由 user_id_type 指定，不填则只拉机器人自己）")] string[]? user_id_list = null,
+        [ToolParameter("chat_type", "群类型（可选：private=私有群 / public=公开群；默认 private）")] string? chat_type = null,
+        [ToolParameter("group_message_type", "群消息模式（可选：chat=对话消息 / thread=话题消息；默认 chat）")] string? group_message_type = null,
+        [ToolParameter("edit_permission", "群编辑权限（可选：all_members=所有成员 / only_owner=仅群主与管理员；默认 all_members）")] string? edit_permission = null,
+        [ToolParameter("membership_approval", "入群审批（可选：no_approval_required=无需审批 / approval_required=需要审批）")] string? membership_approval = null,
+        [ToolParameter("user_id_type", "user_id_list 的 ID 类型（可选：open_id / user_id / union_id；默认 open_id）")] string? user_id_type = null,
+        [ToolParameter("dry_run", "仅预演不下发（可选，默认 false）：返回将要创建的群名与邀请人数，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：chatgroup.update_chat（映射 <c>UpdateChatGroupByIdAsync</c>）。
+/// </summary>
+/// <remarks>
+/// <b>只改传入的字段</b>（未传的保持原值）——与互通规则的覆盖式语义不同，这里是**增量更新**。
+/// </remarks>
+[FeishuTool("chatgroup.update_chat",
+    Description = "更新群设置（群名/描述/编辑权限/拉人权限/分享名片权限/@所有人权限/消息模式）——未传的字段保持原值。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。",
+    RequiredScopes = ["im:chat"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1ChatGroup) + "." + nameof(IFeishuTenantV1ChatGroup.UpdateChatGroupByIdAsync))]
+public interface IFeishuTenantChatgroupUpdateChatTool
+{
+    /// <summary>更新群设置。</summary>
+    /// <returns>白名单投影后的 JSON 回执（chat_id + updated + 本次改动的字段数），超长截断并标记 truncated。</returns>
+    Task<string> UpdateChatAsync(
+        [ToolParameter("chat_id", "群 ID（必填，形如 oc_xxx）", Required = true)] string chat_id,
+        [ToolParameter("name", "新群名称（可选；不传则保持原值）")] string? name = null,
+        [ToolParameter("description", "新群描述（可选）")] string? description = null,
+        [ToolParameter("edit_permission", "群编辑权限（可选：all_members / only_owner）")] string? edit_permission = null,
+        [ToolParameter("add_member_permission", "拉人权限（可选：all_members / only_owner）")] string? add_member_permission = null,
+        [ToolParameter("share_card_permission", "分享名片权限（可选：all_members / not_anyone）")] string? share_card_permission = null,
+        [ToolParameter("at_all_permission", "@所有人权限（可选：all_members / only_owner）")] string? at_all_permission = null,
+        [ToolParameter("group_message_type", "群消息模式（可选：chat / thread）")] string? group_message_type = null,
+        [ToolParameter("user_id_type", "user_id_list 的 ID 类型（可选：open_id / user_id / union_id）")] string? user_id_type = null,
+        [ToolParameter("dry_run", "仅预演不下发（可选，默认 false）：返回 chat_id 与将要修改的字段数，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：chatgroup.delete_chat（映射 <c>DeleteChatGroupAsync</c>）。
+/// </summary>
+/// <remarks>
+/// <b>high-risk-write</b>（命中危险词 <c>delete</c>）：解散群是**不可逆**操作——
+/// 群内历史消息随群一起消失，且只能重建（新 chat_id）。
+/// </remarks>
+[FeishuTool("chatgroup.delete_chat",
+    Description = "解散一个群（⚠️ 不可逆：群内历史消息随群一起消失，且只能重建、会拿到新 chat_id——务必先 dry_run 预演并确认 chat_id 无误）。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。",
+    RequiredScopes = ["im:chat"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1ChatGroup) + "." + nameof(IFeishuTenantV1ChatGroup.DeleteChatGroupAsync))]
+public interface IFeishuTenantChatgroupDeleteChatTool
+{
+    /// <summary>解散群。</summary>
+    /// <returns>白名单投影后的 JSON 回执（chat_id + deleted），超长截断并标记 truncated。</returns>
+    Task<string> DeleteChatAsync(
+        [ToolParameter("chat_id", "要解散的群 ID（必填，形如 oc_xxx）", Required = true)] string chat_id,
+        [ToolParameter("dry_run", "仅预演不下发（可选，默认 false）：返回将要解散的群 ID，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：chatgroup.update_moderation（映射 <c>UpdateChatModerationAsync</c>）。
+/// </summary>
+/// <remarks>
+/// ⚠️ 方法名里没有危险词（不命中 <c>permission</c>），故生成器**不会**把它判为 high-risk-write；
+/// 但"改群发言权限"实质是高危语义（可一句话禁言全群），故在描述里自行标注后果。
+/// </remarks>
+[FeishuTool("chatgroup.update_moderation",
+    Description = "更新群的发言权限（⚠️ 高危语义：可一句话把全群改成「仅群主与管理员可发言」——moderation_setting=all_members / only_owner / moderator_list；选 moderator_list 时用 moderator_added_list / moderator_removed_list 增删可发言成员）。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。建议先 dry_run 预演。",
+    RequiredScopes = ["im:chat"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1ChatGroup) + "." + nameof(IFeishuTenantV1ChatGroup.UpdateChatModerationAsync))]
+public interface IFeishuTenantChatgroupUpdateModerationTool
+{
+    /// <summary>更新发言权限。</summary>
+    /// <returns>白名单投影后的 JSON 回执（chat_id + updated + 生效的发言模式），超长截断并标记 truncated。</returns>
+    Task<string> UpdateModerationAsync(
+        [ToolParameter("chat_id", "群 ID（必填，形如 oc_xxx）", Required = true)] string chat_id,
+        [ToolParameter("moderation_setting", "发言模式（必填：all_members=所有成员可发言 / only_owner=仅群主与管理员 / moderator_list=指定成员可发言）", Required = true)] string moderation_setting,
+        [ToolParameter("moderator_added_list", "指定发言成员时**新增**的成员 ID 列表（可选；类型由 member_id_type 指定）")] string[]? moderator_added_list = null,
+        [ToolParameter("moderator_removed_list", "指定发言成员时**移除**的成员 ID 列表（可选）")] string[]? moderator_removed_list = null,
+        [ToolParameter("member_id_type", "成员 ID 类型（可选：open_id / user_id / union_id；默认 open_id）")] string? member_id_type = null,
+        [ToolParameter("dry_run", "仅预演不下发（可选，默认 false）：返回 chat_id 与将要设置的发言模式，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：chatgroup.add_member（映射 <c>IFeishuTenantV1ChatGroupMember.AddMemberAsync</c>）。
+/// </summary>
+/// <remarks>
+/// 入群失败的成员会进 <c>invalid_id_list</c>（用户不存在 / 已退群 / 类型不匹配）——
+/// 回执必须把它带回，否则模型会以为"全员拉进去了"。
+/// </remarks>
+[FeishuTool("chatgroup.add_member",
+    Description = "把成员拉进群（返回无效成员 ID 列表）——「把人加进群沟通」。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。",
+    RequiredScopes = ["im:chat"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1ChatGroupMember) + "." + nameof(IFeishuTenantV1ChatGroupMember.AddMemberAsync))]
+public interface IFeishuTenantChatgroupAddMemberTool
+{
+    /// <summary>拉成员入群。</summary>
+    /// <returns>白名单投影后的 JSON 回执（chat_id + invalid_id_list），超长截断并标记 truncated。</returns>
+    Task<string> AddMemberAsync(
+        [ToolParameter("chat_id", "群 ID（必填，形如 oc_xxx）", Required = true)] string chat_id,
+        [ToolParameter("id_list", "要拉入群的成员 ID 列表（必填；类型由 member_id_type 指定）", Required = true)] string[] id_list,
+        [ToolParameter("member_id_type", "成员 ID 类型（可选：open_id / user_id / union_id；默认 open_id）")] string? member_id_type = null,
+        [ToolParameter("succeed_type", "部分失败时的策略（可选：0=有无效 ID 就整体失败 / 1=拉入可用的并返回剩余 / 2=任一无效即失败；默认 0）")] int? succeed_type = null,
+        [ToolParameter("dry_run", "仅预演不下发（可选，默认 false）：返回 chat_id 与将要拉入的成员数，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：chatgroup.remove_member（映射 <c>RemoveMemberAsync</c>）。
+/// </summary>
+/// <remarks>
+/// <b>high-risk-write</b>（命中危险词 <c>remove</c>）：把成员移出群——对方会立即失去群内可见性，
+/// 且**不会**收到"你被移出了"的单独通知（只有群成员数变化）。
+/// </remarks>
+[FeishuTool("chatgroup.remove_member",
+    Description = "把成员移出群（⚠️ 对方立即失去群内可见性，且不会收到单独通知——务必先 dry_run 预演并确认 id_list 无误）。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。",
+    RequiredScopes = ["im:chat"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1ChatGroupMember) + "." + nameof(IFeishuTenantV1ChatGroupMember.RemoveMemberAsync))]
+public interface IFeishuTenantChatgroupRemoveMemberTool
+{
+    /// <summary>移成员出群。</summary>
+    /// <returns>白名单投影后的 JSON 回执（chat_id + invalid_id_list），超长截断并标记 truncated。</returns>
+    Task<string> RemoveMemberAsync(
+        [ToolParameter("chat_id", "群 ID（必填，形如 oc_xxx）", Required = true)] string chat_id,
+        [ToolParameter("id_list", "要移出群的成员 ID 列表（必填；类型由 member_id_type 指定）", Required = true)] string[] id_list,
+        [ToolParameter("member_id_type", "成员 ID 类型（可选：open_id / user_id / union_id；默认 open_id）")] string? member_id_type = null,
+        [ToolParameter("dry_run", "仅预演不下发（可选，默认 false）：返回 chat_id 与将要移出的成员数，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：chatgroup.me_join_chat（映射 <c>MeJoinChatGroupAsync</c>）。
+/// </summary>
+[FeishuTool("chatgroup.me_join_chat",
+    Description = "让当前应用/机器人身份加入一个群（公开群可直接加入；私密群需已在群内或被邀请）——用于「机器人进群后先自证在群内」的前置步骤。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。",
+    RequiredScopes = ["im:chat"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1ChatGroupMember) + "." + nameof(IFeishuTenantV1ChatGroupMember.MeJoinChatGroupAsync))]
+public interface IFeishuTenantChatgroupMeJoinChatTool
+{
+    /// <summary>当前身份加入群。</summary>
+    /// <returns>白名单投影后的 JSON 回执（chat_id + joined），超长截断并标记 truncated。</returns>
+    Task<string> MeJoinChatAsync(
+        [ToolParameter("chat_id", "要加入的群 ID（必填，形如 oc_xxx）", Required = true)] string chat_id,
+        [ToolParameter("dry_run", "仅预演不下发（可选，默认 false）：返回将要加入的群 ID，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：chatgroup.add_manager（映射 <c>AddManagersAsync</c>）。
+/// </summary>
+[FeishuTool("chatgroup.add_manager",
+    Description = "把成员设为群管理员（可多人；返回无效 ID 列表）——「给群加管理员」。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。",
+    RequiredScopes = ["im:chat"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1ChatGroupMember) + "." + nameof(IFeishuTenantV1ChatGroupMember.AddManagersAsync))]
+public interface IFeishuTenantChatgroupAddManagerTool
+{
+    /// <summary>设置群管理员。</summary>
+    /// <returns>白名单投影后的 JSON 回执（chat_id + invalid_manager_id_list），超长截断并标记 truncated。</returns>
+    Task<string> AddManagerAsync(
+        [ToolParameter("chat_id", "群 ID（必填，形如 oc_xxx）", Required = true)] string chat_id,
+        [ToolParameter("manager_ids", "要设为管理员的成员 ID 列表（必填；类型由 member_id_type 指定）", Required = true)] string[] manager_ids,
+        [ToolParameter("member_id_type", "成员 ID 类型（可选：open_id / user_id / union_id；默认 open_id）")] string? member_id_type = null,
+        [ToolParameter("dry_run", "仅预演不下发（可选，默认 false）：返回 chat_id 与将要设为管理员的成员数，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：chatgroup.delete_manager（映射 <c>DeleteManagersAsync</c>）。
+/// </summary>
+/// <remarks>
+/// <b>high-risk-write</b>（命中危险词 <c>delete</c>）：撤销管理员身份——对方失去群管理能力
+/// （改设置、踢人、置顶等），且**不会**收到通知。
+/// </remarks>
+[FeishuTool("chatgroup.delete_manager",
+    Description = "撤销成员的群管理员身份（⚠️ 对方立即失去群管理能力且不会收到通知——务必先 dry_run 预演并确认 manager_ids 无误）。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。",
+    RequiredScopes = ["im:chat"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1ChatGroupMember) + "." + nameof(IFeishuTenantV1ChatGroupMember.DeleteManagersAsync))]
+public interface IFeishuTenantChatgroupDeleteManagerTool
+{
+    /// <summary>撤销群管理员。</summary>
+    /// <returns>白名单投影后的 JSON 回执（chat_id + invalid_manager_id_list），超长截断并标记 truncated。</returns>
+    Task<string> DeleteManagerAsync(
+        [ToolParameter("chat_id", "群 ID（必填，形如 oc_xxx）", Required = true)] string chat_id,
+        [ToolParameter("manager_ids", "要撤销管理员身份的成员 ID 列表（必填；类型由 member_id_type 指定）", Required = true)] string[] manager_ids,
+        [ToolParameter("member_id_type", "成员 ID 类型（可选：open_id / user_id / union_id；默认 open_id）")] string? member_id_type = null,
+        [ToolParameter("dry_run", "仅预演不下发（可选，默认 false）：返回 chat_id 与将要撤销的成员数，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：chatgroup.put_top_notice（映射 <c>PutChatGroupTopNoticeAsync</c>）。
+/// </summary>
+/// <remarks>
+/// <c>action_type=1</c> 必须配 <c>message_id</c>（置顶某条消息）；<c>action_type=2</c> 是置顶群公告
+/// （**不需要** message_id，但要求群已开通公告——公告内容本身仍归 docx 域工具写）。
+/// </remarks>
+[FeishuTool("chatgroup.put_top_notice",
+    Description = "设置群置顶（action_type=1 置顶某条消息，需配 message_id；action_type=2 置顶群公告，不需 message_id）——「把重要内容钉在群顶部」。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。",
+    RequiredScopes = ["im:chat"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1ChatGroup) + "." + nameof(IFeishuTenantV1ChatGroup.PutChatGroupTopNoticeAsync))]
+public interface IFeishuTenantChatgroupPutTopNoticeTool
+{
+    /// <summary>设置群置顶。</summary>
+    /// <returns>白名单投影后的 JSON 回执（chat_id + action_type），超长截断并标记 truncated。</returns>
+    Task<string> PutTopNoticeAsync(
+        [ToolParameter("chat_id", "群 ID（必填，形如 oc_xxx）", Required = true)] string chat_id,
+        [ToolParameter("action_type", "置顶类型（必填：1=消息类型，需配 message_id / 2=群公告类型）", Required = true)] string action_type,
+        [ToolParameter("message_id", "要置顶的消息 ID（action_type=1 时必填）")] string? message_id = null,
+        [ToolParameter("dry_run", "仅预演不下发（可选，默认 false）：返回 chat_id 与置顶类型，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：chatgroup.delete_top_notice（映射 <c>DeleteChatGroupTopNoticeAsync</c>）。
+/// </summary>
+/// <remarks>
+/// <b>high-risk-write</b>（命中危险词 <c>delete</c>）：取消群置顶——影响面是全群可见性
+/// （所有人看到的"钉在顶部"消失），但不丢消息本身。
+/// </remarks>
+[FeishuTool("chatgroup.delete_top_notice",
+    Description = "取消群置顶（⚠️ 全群可见的置顶会消失，消息本身不丢失——务必先 dry_run 预演并确认 chat_id 无误）。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。",
+    RequiredScopes = ["im:chat"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1ChatGroup) + "." + nameof(IFeishuTenantV1ChatGroup.DeleteChatGroupTopNoticeAsync))]
+public interface IFeishuTenantChatgroupDeleteTopNoticeTool
+{
+    /// <summary>取消群置顶。</summary>
+    /// <returns>白名单投影后的 JSON 回执（chat_id + deleted），超长截断并标记 truncated。</returns>
+    Task<string> DeleteTopNoticeAsync(
+        [ToolParameter("chat_id", "群 ID（必填，形如 oc_xxx）", Required = true)] string chat_id,
+        [ToolParameter("dry_run", "仅预演不下发（可选，默认 false）：返回将要取消置顶的群 ID，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：chatgroup.delete_menu（映射 <c>IFeishuTenantV1ChatGroupMenu.DeleteMenuByIdAsync</c>）。
+/// </summary>
+/// <remarks>
+/// 只删**一级菜单**（传 <c>chat_menu_top_level_ids</c>），其下二级菜单随父级一起消失。
+/// 新增/修改菜单（<c>add_menu</c> / <c>update_menu</c>）的请求体是**嵌套树结构**，
+/// 扁平参数无法表达，故本轮不策展（见 Guidance）。
+/// </remarks>
+[FeishuTool("chatgroup.delete_menu",
+    Description = "删除群的快捷菜单一级入口（⚠️ 二级菜单会随父级一起消失——务必先 dry_run 预演并确认 chat_menu_top_level_ids 无误）。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。",
+    RequiredScopes = ["im:chat"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1ChatGroupMenu) + "." + nameof(IFeishuTenantV1ChatGroupMenu.DeleteMenuByIdAsync))]
+public interface IFeishuTenantChatgroupDeleteMenuTool
+{
+    /// <summary>删除群菜单一级入口。</summary>
+    /// <returns>白名单投影后的 JSON 回执（chat_id + deleted_menu_count），超长截断并标记 truncated。</returns>
+    Task<string> DeleteMenuAsync(
+        [ToolParameter("chat_id", "群 ID（必填，形如 oc_xxx）", Required = true)] string chat_id,
+        [ToolParameter("chat_menu_top_level_ids", "要删除的一级菜单 ID 列表（必填，来自 chatgroup.get_menu）", Required = true)] string[] chat_menu_top_level_ids,
+        [ToolParameter("dry_run", "仅预演不下发（可选，默认 false）：返回 chat_id 与将要删除的菜单数，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}

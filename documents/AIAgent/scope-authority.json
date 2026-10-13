@@ -1,6 +1,7 @@
 {
   "source": "飞书开放平台 · 应用权限（scope 名称与官方文档核对；每次新增工具引入新 scope 时必须同批回填本清单并在「核对」栏留痕）",
   "lastReviewed": "2026-10-13",
+  "_B1_CHATGROUP_WRITE": "专题一 B1 ChatGroup 写面：新增 im:chat（群管理写权限，12 个写工具使用）——**SDK XML 注释无 scope 字面量**（全目录搜 im:/chat:/scope 零命中），按官方 API 文档「获取与更新群信息」取值，标 ⚠️ 待核对；控制台开通前请在「权限管理」页按名称搜索确认。本批同时交付 5 个 high-risk-write 的 Affordance 四节资产。",
   "_R7_C3": "R7/C3 新增：translation:text（AI 机器翻译，官方《Translate text》《Detect text》文档「权限要求」栏明确列出）——两项工具均为只读，标 ✅ 已核对。",
   "_B1_TRUSTPARTY_WRITE": "专题一 B1 收官域写面：新增 trust_party:collaboration_rule:write（create/update/delete_collaboration_rule 三个写工具使用）——scope 名取自 SDK XML 注释原文（IFeishuV1DirectoryCollaborationRule.cs:42/59/78），标 ✅ 已核对；delete_collaboration_rule 命中危险词归 high-risk-write，已配 Affordance 四节资产。",
   "_R5T0_2": "R5 WP0-T0-2 核对结果：aily:knowledge:readonly 与 im:resource 两项 ⚠️ 维持——无法在无控制台权限时定论；下次宿主接入时由控制台二次确认后回写。",
@@ -25,6 +26,7 @@
     "drive:drive": "云空间 · 读写（drive.create_folder / move_file / upload_file 使用）",
     "drive:drive:readonly": "云空间 · 只读（drive.list_folder_files / get_file_metas 使用）",
     "im:chat:readonly": "获取群成员信息 · 只读（im.list_chat_members 使用）",
+    "im:chat": "⚠️ 待核对：获取与更新群信息 · 读写（专题一 B1 ChatGroup 写面 12 个工具使用：create_chat / update_chat / delete_chat / update_moderation / add_member / remove_member / me_join_chat / add_manager / delete_manager / put_top_notice / delete_top_notice / delete_menu；SDK 注释无字面量，按官方 API 文档取值，控制台开通前请按名称搜索确认）",
     "im:message": "发送与回复消息 · 读写（im.reply_message 使用）",
     "im:message:readonly": "获取与查看单聊、群组消息 · 只读（im.get_history_messages / get_message_content / search_messages 使用）",
     "im:message:send_as_bot": "以应用身份发消息（im.send_message / im.send_image / im.send_file 使用）",

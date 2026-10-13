@@ -41,7 +41,7 @@ public class PublicSurfaceRationaleContractGuards
     // （S-1 的 FeishuToolPolicyOptions / FeishuToolPolicyDomainOptions、BUG-4 的 GuidanceModes /
     //  GuidanceRoutingSummary、M-2 的 FeishuMcpResourceCatalog / McpResourceInfo）= 303
     // （全部登记在 reasons 段）。
-    private const int BaselineTypeCount = 337;
+    private const int BaselineTypeCount = 349;
 
     private static readonly string[] ApiFiles =
     [

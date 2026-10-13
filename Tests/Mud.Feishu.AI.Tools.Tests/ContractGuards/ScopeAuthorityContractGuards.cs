@@ -103,11 +103,8 @@ public class ScopeAuthorityContractGuards
     {
         var authority = LoadAuthority();
         var doc = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "documents", "AIAgent", "工具权限对照表.md"));
-        var docScopes = Regex.Matches(doc, @"[a-z]+:[a-z_.:\-]+[a-z]")
-            .Select(static m => m.Value)
-            .Where(static s => s.Contains(':'))
+        var docScopes = ExtractScopes(doc)
             .Where(static s => !s.StartsWith("http", StringComparison.Ordinal))
-            .Distinct(StringComparer.Ordinal)
             .ToArray();
 
         var gaps = docScopes
@@ -117,6 +114,41 @@ public class ScopeAuthorityContractGuards
         gaps.Should().BeEmpty(
             "《工具权限对照表》中的以下 scope 未进入权威清单（两文档必须同批维护）：{0}",
             string.Join(", ", gaps));
+    }
+
+    /// <summary>从任意文本里提取 scope 形态的 token。</summary>
+    /// <remarks>
+    /// <para>
+    /// <b>实测教训（首段带下划线）</b>：首版正则是 <c>[a-z]+:[a-z_.:\-]+[a-z]</c>——首段只允许纯小写字母，
+    /// 于是 <c>trust_party:collaboration_rule:read</c> 被截成 <c>party:collaboration_rule:read</c>，
+    /// 判据报"《权限对照表》里的 scope 未进权威清单"，而**两文档其实都写对了**（假红）。
+    /// 修法：首段允许下划线（<c>[a-z][a-z_]*</c>），并加 <c>\b</c> 保证从 token 起点开始匹配。
+    /// </para>
+    /// <para>
+    /// 由 <see cref="ScopeScanner_ShouldReadScopesWithUnderscoreSegments"/> 自证：判据坏掉时它会先红，
+    /// 而不是让"文档与权威清单脱钩"这类**真问题**被假红淹没。
+    /// </para>
+    /// </remarks>
+    internal static string[] ExtractScopes(string text)
+        => Regex.Matches(text, @"\b[a-z][a-z_]*:[a-z_][a-z_.:\-]*[a-z]")
+            .Select(static m => m.Value)
+            .Where(static s => s.Contains(':'))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+    /// <summary>判据自证：首段带下划线的 scope 必须完整提取（不得被截断）。</summary>
+    [Fact]
+    public void ScopeScanner_ShouldReadScopesWithUnderscoreSegments()
+    {
+        ExtractScopes("`trust_party:collaboration_rule:read`")
+            .Should().Equal(["trust_party:collaboration_rule:read"],
+                "首段带下划线的 scope 是最新一批域的真实形态（trust_party:*），截断即假红");
+
+        ExtractScopes("`im:chat:readonly` 与 `admin:audit_info:readonly`")
+            .Should().Equal(["im:chat:readonly", "admin:audit_info:readonly"]);
+
+        ExtractScopes("文档见 https://open.feishu.cn/document 说明")
+            .Should().BeEmpty("URL 不得被当成 scope（也不得因去噪而漏掉真实 scope）");
     }
 
     // ────────── 读取与定位 ──────────

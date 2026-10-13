@@ -43,7 +43,7 @@ public class FeishuToolApprovalWrappingTests
         IsWrite: isWrite,
         Risk: isWrite ? FeishuToolRisk.Write : FeishuToolRisk.Read,
         Identity: FeishuToolIdentityNames.Tenant,
-        Handler: (_, _, _) => Task.FromResult(FeishuToolResult.FromText("ok")));
+        Handler: (_, _, _) => Task.FromResult(ToolResult.FromText("ok")));
 
     private static IReadOnlyList<AIFunction> GetTools()
     {

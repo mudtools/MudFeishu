@@ -34,7 +34,7 @@ public class BoardToolsTests
     private static BoardTools CreateTools(Mock<Mud.Feishu.IFeishuTenantV1Board>? client = null)
         => new(client?.Object);
 
-    private static JsonObject Payload(FeishuToolResult result)
+    private static JsonObject Payload(ToolResult result)
         => JsonNode.Parse(result.ToString())!.AsObject();
 
     // ───────────────────── 契约面 ─────────────────────

@@ -18,7 +18,7 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// <para>
 /// <b>为什么原守卫失效（Q-1，R1.3 评审发现）</b>：上一版守卫的三条断言把扫描目标
 /// <b>写死为单文件</b> <c>Internal/ToolExecutor.cs</c>，于是 8 个"绕过 <c>ToolExecutor</c> 助手、
-/// 直调 <c>FeishuToolResult.FromText</c>"的执行器（<c>SchemaReadTools</c> / <c>CapabilityLookupTools</c> /
+/// 直调 <c>ToolResult.FromText</c>"的执行器（<c>SchemaReadTools</c> / <c>CapabilityLookupTools</c> /
 /// <c>ToolSearchTools</c> / <c>KnowledgeSearchTools</c> / <c>DocxSheetsDriveWriteTools</c> …）
 /// <b>完全不在守卫视野内</b>——这才是 B-1 长期存活的机制原因。本版把扫描面扩到
 /// <c>Internal/</c> <b>全目录</b>，并补上行为级断言（不只做文本匹配）。
@@ -143,7 +143,7 @@ public class TruncationVisibilityContractGuards
         files.Should().NotBeEmpty("未扫到执行器源文件——路径错了（假绿），请先修守卫");
 
         var pattern = new Regex(
-            @"FeishuToolResult\.FromText\([^;]*?(ToolResultText\.Truncate|ToolResultJson\.ToText)",
+            @"ToolResult\.FromText\([^;]*?(ToolResultText\.Truncate|ToolResultJson\.ToText)",
             RegexOptions.Singleline);
 
         var violations = new List<string>();
@@ -169,10 +169,10 @@ public class TruncationVisibilityContractGuards
     public void Guard_ShouldActuallyMatchTheBannedShape()
     {
         const string canary =
-            "return FeishuToolResult.FromText(\n    ToolResultText.TruncateJson(ToolResultJson.ToText(envelope), n));";
+            "return ToolResult.FromText(\n    ToolResultText.TruncateJson(ToolResultJson.ToText(envelope), n));";
 
         new Regex(
-            @"FeishuToolResult\.FromText\([^;]*?(ToolResultText\.Truncate|ToolResultJson\.ToText)",
+            @"ToolResult\.FromText\([^;]*?(ToolResultText\.Truncate|ToolResultJson\.ToText)",
             RegexOptions.Singleline)
             .IsMatch(canary)
             .Should().BeTrue("金丝雀：判据或形态变了，④ 会静默失效");
@@ -184,8 +184,9 @@ public class TruncationVisibilityContractGuards
     [Fact]
     public void ToolExecutor_ShouldDelegateBudgetToTheSingleEgress()
     {
+        // v2.3 P1-D：执行器骨架随中立化上移 Mud.AI.Agent/Tools。
         var source = File.ReadAllText(Path.Combine(
-            FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Internal", "ToolExecutor.cs"));
+            FindRepositoryRoot(), "Mud.AI.Agent", "Tools", "ToolExecutor.cs"));
 
         source.Should().Contain("ToolResultPipeline.",
             "FromApi/FromPlainText/FromPagedResult 必须委托唯一出口（R-1）");
@@ -202,7 +203,9 @@ public class TruncationVisibilityContractGuards
     public void ToolError_ShouldBeConstructedOnlyAtTheSingleFactory()
     {
         var withNewToolError = new List<string>();
-        foreach (var project in new[] { "Mud.Feishu.AI.Tools" })
+        // v2.3 P1-D：错误契约族（含 ToolErrorFactory 所在文件）中立化上移 Mud.AI.Agent——
+        // 扫描面须含新家（唯一合法构造点 = Mud.AI.Agent/Tools/ToolErrorFactory.cs）。
+        foreach (var project in new[] { "Mud.Feishu.AI.Tools", "Mud.AI.Agent" })
         {
             foreach (var file in Directory.GetFiles(
                          Path.Combine(FindRepositoryRoot(), project), "*.cs", SearchOption.AllDirectories))
@@ -213,8 +216,10 @@ public class TruncationVisibilityContractGuards
                     continue;
                 }
 
-                // 唯一合法构造点：工厂自身。
-                if (string.Equals(Path.GetFileName(file), "ToolResultPipeline.cs", StringComparison.Ordinal))
+                // 唯一合法构造点：工厂自身（v2.3 起为独立文件 ToolErrorFactory.cs；
+                // ToolResultPipeline.cs 是搬迁前的历史文件名，保留排除以防回归）。
+                if (string.Equals(Path.GetFileName(file), "ToolErrorFactory.cs", StringComparison.Ordinal)
+                    || string.Equals(Path.GetFileName(file), "ToolResultPipeline.cs", StringComparison.Ordinal))
                 {
                     continue;
                 }

@@ -10,7 +10,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // ─────────────────────────── IM（5 个：2 只读 + 1 只读会话治理 + 1 写会话治理 + 1 只读搜索） ───────────────────────────
 
 /// <summary>工具接口：im.get_history_messages（映射 <c>IFeishuTenantV1Message.GetHistoryMessageAsync</c>）。</summary>
-[FeishuTool("im.get_history_messages",
+[AgentTool("im.get_history_messages",
     Description = "读取群聊的历史消息（chat_id 可由事件上下文获得），按创建时间倒序返回最近消息预览。只读，需 im:message:readonly。",
     RequiredScopes = ["im:message:readonly"],
     Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.GetHistoryMessageAsync))]
@@ -29,7 +29,7 @@ public interface IFeishuTenantImHistoryTool
 }
 
 /// <summary>工具接口：im.get_message_content（映射 <c>IFeishuTenantV1Message.GetContentListByMessageIdAsync</c>）。</summary>
-[FeishuTool("im.get_message_content",
+[AgentTool("im.get_message_content",
     Description = "按 message_id 回查单条消息的完整内容——与 im.get_history_messages 组成两步链（历史消息列表 → 指定消息内容）。只读，需 im:message:readonly。",
     RequiredScopes = ["im:message:readonly"],
     Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.GetContentListByMessageIdAsync))]
@@ -43,7 +43,7 @@ public interface IFeishuTenantImMessageContentTool
 }
 
 /// <summary>工具接口：im.list_chat_members（映射 <c>IFeishuTenantV1ChatGroupMember.GetMemberPageListByIdAsync</c>）。</summary>
-[FeishuTool("im.list_chat_members",
+[AgentTool("im.list_chat_members",
     Description = "分页列出群聊成员（member_id/name/tenant_key）——'这个群里有哪些人'的多步流程地基。chat_id 可由事件上下文获得。只读，需 im:chat:readonly。",
     RequiredScopes = ["im:chat:readonly"],
     Source = nameof(IFeishuTenantV1ChatGroupMember) + "." + nameof(IFeishuTenantV1ChatGroupMember.GetMemberPageListByIdAsync))]
@@ -60,7 +60,7 @@ public interface IFeishuTenantImListChatMembersTool
 }
 
 /// <summary>工具接口：im.reply_message（映射 <c>IFeishuTenantV1Message.ReplyMessageAsync</c>）。</summary>
-[FeishuTool("im.reply_message",
+[AgentTool("im.reply_message",
     Description = "回复指定消息，形成话题串避免刷屏。message_id 来自 im.get_history_messages 或事件上下文；content 为 JSON 字符串（msg_type=text 时如 {\"text\":\"回复内容\"}）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。",
     RequiredScopes = ["im:message"],
     IsWrite = true,
@@ -79,7 +79,7 @@ public interface IFeishuTenantImReplyMessageTool
 }
 
 /// <summary>工具接口：im.search_messages（映射 <c>IFeishuTenantV1Message.SearchMessageAsync</c>）。</summary>
-[FeishuTool("im.search_messages",
+[AgentTool("im.search_messages",
     Description = "按关键词搜索可见会话中的消息——支持按会话/发送者/时间过滤。返回消息 ID 与命中片段预览，可用 im.get_message_content 回查完整内容。只读，需 im:message:readonly。",
     RequiredScopes = ["im:message:readonly"],
     Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.SearchMessageAsync))]
@@ -106,7 +106,7 @@ public interface IFeishuTenantImSearchMessagesTool
 //   · 群信息落到 GetChatGroupInoByIdAsync（"Ino" 应为 "Info"）
 
 /// <summary>im.get_thread_messages：读取话题（thread）内的消息。</summary>
-[FeishuTool("im.get_thread_messages",
+[AgentTool("im.get_thread_messages",
     Description = "读取某个话题（thread）内的消息——群话题场景下用 thread_id 取代 chat_id 读话题内容。thread_id 可由事件上下文获得。只读，需 im:message:readonly。",
     RequiredScopes = ["im:message:readonly"],
     Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.GetHistoryMessageAsync))]
@@ -123,7 +123,7 @@ public interface IFeishuTenantImSearchMessagesTool
 }
 
 /// <summary>im.revoke_message：撤回自己发出的消息。</summary>
-[FeishuTool("im.revoke_message", IsWrite = true,
+[AgentTool("im.revoke_message", IsWrite = true,
     Description = "撤回一条自己发出的消息（发错内容时纠正）。只能撤回本 Bot 发送的消息；message_id 来自事件上下文或 im.get_history_messages。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。建议先 dry_run 预演确认目标消息。",
     RequiredScopes = ["im:message"],
     Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.RevokeMessageAsync))]
@@ -138,7 +138,7 @@ public interface IFeishuTenantImSearchMessagesTool
 }
 
 /// <summary>im.forward_message：转发单条消息到指定会话。</summary>
-[FeishuTool("im.forward_message", IsWrite = true,
+[AgentTool("im.forward_message", IsWrite = true,
     Description = "把一条消息转发给用户或群。receive_id 来自 im.search_user / 事件上下文。⚠️ 底层 SDK 方法名为 ReceiveMessageAsync 但语义是转发（POST /messages/{id}/forward），不是接收消息。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message:send_as_bot。",
     RequiredScopes = ["im:message:send_as_bot"],
     Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.ReceiveMessageAsync))]
@@ -156,7 +156,7 @@ public interface IFeishuTenantImForwardMessageTool
 }
 
 /// <summary>im.forward_thread：转发整个话题。</summary>
-[FeishuTool("im.forward_thread", IsWrite = true,
+[AgentTool("im.forward_thread", IsWrite = true,
     Description = "把整个话题（thread）转发给用户或群——一次性把讨论上下文带过去。thread_id 来自事件上下文。⚠️ 底层 SDK 方法名为 ReceiveThreadsAsync 但语义是转发话题。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message:send_as_bot。",
     RequiredScopes = ["im:message:send_as_bot"],
     Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.ReceiveThreadsAsync))]
@@ -174,7 +174,7 @@ public interface IFeishuTenantImForwardMessageTool
 }
 
 /// <summary>im.get_message_read_users：查询消息已读用户。</summary>
-[FeishuTool("im.get_message_read_users",
+[AgentTool("im.get_message_read_users",
     Description = "查询某条消息已被哪些人读到（user_id + 读取时间）。⚠️ 底层 SDK 方法名拼写为 GetMessageReadUsesAsync（Uses 应为 Users），此处按正确语义命名。只读，需 im:message:readonly。",
     RequiredScopes = ["im:message:readonly"],
     Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.GetMessageReadUsesAsync))]
@@ -191,7 +191,7 @@ public interface IFeishuTenantImForwardMessageTool
 }
 
 /// <summary>im.get_chat：读取群基础信息。</summary>
-[FeishuTool("im.get_chat",
+[AgentTool("im.get_chat",
     Description = "读取群基础信息（群名/描述/成员数/群主）。chat_id 可由事件上下文获得。⚠️ 底层 SDK 方法名拼写为 GetChatGroupInoByIdAsync（Ino 应为 Info），此处按正确语义命名。只读，需 im:chat:readonly。",
     RequiredScopes = ["im:chat:readonly"],
     Source = nameof(IFeishuTenantV1ChatGroup) + "." + nameof(IFeishuTenantV1ChatGroup.GetChatGroupInoByIdAsync))]
@@ -205,7 +205,7 @@ public interface IFeishuTenantImForwardMessageTool
 }
 
 /// <summary>im.search_chats：按关键词搜索群。</summary>
-[FeishuTool("im.search_chats",
+[AgentTool("im.search_chats",
     Description = "按关键词搜索群聊（返回 chat_id/name/描述）——用户只记得群名片段时的入口。只读，需 im:chat:readonly。",
     RequiredScopes = ["im:chat:readonly"],
     Source = nameof(IFeishuTenantV1ChatGroup) + "." + nameof(IFeishuTenantV1ChatGroup.GetChatGroupPageListByKeywordAsync))]

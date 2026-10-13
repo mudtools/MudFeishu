@@ -35,8 +35,8 @@ public class ToolBudgetTests
         var result2 = await decorated.InvokeAsync(new AIFunctionArguments());
 
         // Assert：越限不抛异常，返回结构化错误
-        result2.Should().BeOfType<FeishuToolResult>();
-        var errorResult = (FeishuToolResult)result2!;
+        result2.Should().BeOfType<ToolResult>();
+        var errorResult = (ToolResult)result2!;
         errorResult.Text.Should().Contain("tool_error");
         errorResult.Text.Should().Contain("test.echo");
         errorResult.Text.Should().Contain("tool_budget_exceeded");
@@ -94,7 +94,7 @@ public class ToolBudgetTests
             _ = await decorated.InvokeAsync(new AIFunctionArguments());
             // 第三次越限
             var over = await decorated.InvokeAsync(new AIFunctionArguments());
-            over.Should().BeOfType<FeishuToolResult>();
+            over.Should().BeOfType<ToolResult>();
         }
 
         // 第二轮：新预算 = 2，从 0 开始
@@ -104,7 +104,7 @@ public class ToolBudgetTests
             _ = await decorated.InvokeAsync(new AIFunctionArguments());
             // 第三次越限
             var over = await decorated.InvokeAsync(new AIFunctionArguments());
-            over.Should().BeOfType<FeishuToolResult>();
+            over.Should().BeOfType<ToolResult>();
         }
     }
 
@@ -161,7 +161,7 @@ public class ToolBudgetTests
         _ = await decorated.InvokeAsync(new AIFunctionArguments());
         var over = await decorated.InvokeAsync(new AIFunctionArguments());
 
-        var errorResult = over as FeishuToolResult;
+        var errorResult = over as ToolResult;
         errorResult.Should().NotBeNull();
         errorResult!.Text.Should().Contain("tool_budget_exceeded");
         // 文案中应明确「不要再次调用工具」——模型不可重试

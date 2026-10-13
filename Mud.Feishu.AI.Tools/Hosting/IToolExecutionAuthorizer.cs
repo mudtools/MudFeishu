@@ -59,7 +59,7 @@ public interface IToolExecutionAuthorizer
     /// 判定是否允许执行工具。
     /// </summary>
     /// <param name="toolName">工具名（注册表契约名）。</param>
-    /// <param name="requiredScopes">工具声明的权限点（来自 <see cref="FeishuToolAttribute.RequiredScopes"/>）。</param>
+    /// <param name="requiredScopes">工具声明的权限点（来自 <see cref="AgentToolAttribute.RequiredScopes"/>）。</param>
     /// <param name="isWrite">是否写操作。</param>
     /// <param name="arguments">工具入参（模型 tool_call 反序列化结果）。</param>
     /// <param name="context">执行上下文（appKey/chat/user）。</param>

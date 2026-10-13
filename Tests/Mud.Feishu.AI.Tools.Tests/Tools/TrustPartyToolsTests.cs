@@ -47,10 +47,10 @@ public class TrustPartyToolsTests
             directoryTenant?.Object,
             collaborationRule?.Object);
 
-    private static JsonObject Payload(FeishuToolResult result)
+    private static JsonObject Payload(ToolResult result)
         => JsonNode.Parse(result.ToString())!.AsObject();
 
-    // FeishuApiResult<T> 带 where T : class 约束（FeishuApiOutcome<T> 承载 T? 数据）。
+    // FeishuApiResult<T> 带 where T : class 约束（ToolApiOutcome<T> 承载 T? 数据）。
     private static FeishuApiResult<T> Ok<T>(T data) where T : class => new() { Code = 0, Data = data };
 
     // ─────────────────── 1. 关联组织列表（互通面第一跳） ───────────────────
@@ -694,7 +694,7 @@ public class TrustPartyToolsTests
     {
         var tools = CreateTools();
 
-        foreach (var call in new Func<Task<FeishuToolResult>>[]
+        foreach (var call in new Func<Task<ToolResult>>[]
         {
             () => tools.ListCollaborationTenantsAsync(Args(), CancellationToken.None),
             () => tools.ListShareEntitiesAsync(Args(), CancellationToken.None),

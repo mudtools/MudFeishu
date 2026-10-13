@@ -86,7 +86,7 @@ internal sealed class ToolBudgetAIFunction : AIFunction
                 ToolErrorCategory.Policy,
                 reason,
                 subtype: ToolErrorSubtype.ToolBudgetExceeded);
-            return FeishuToolResult.FromError(errorText);
+            return ToolResult.FromError(errorText);
         }
 
         return await _inner.InvokeAsync(arguments, cancellationToken).ConfigureAwait(false);

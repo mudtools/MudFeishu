@@ -64,8 +64,8 @@ internal sealed class ApplicationTools(
     // ─────────────────────────── application.list_apps ───────────────────────────
 
     /// <summary>application.list_apps：分页列出应用（本域第一跳）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantApplicationListAppsTool))]
-    public Task<FeishuToolResult> ListAppsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantApplicationListAppsTool))]
+    public Task<ToolResult> ListAppsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ApplicationListApps, _maxResultLength);
         if (Absent(executor.ToolName, _adminClient) is { } unavailable)
@@ -80,7 +80,7 @@ internal sealed class ApplicationTools(
             // page_size 刻意不下发（保持 SDK 默认）——运维参数不进模型可见面（DP-B1-0）。
             // GetApplicationsResult 是"自带 has_more/page_token/total_count 但不继承
             // ApiPageListResult"的历史 DTO（HasMore 为 bool?），故走显式页状态重载。
-            async Task<FeishuApiOutcome<GetApplicationsResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<GetApplicationsResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _adminClient!
                     .GetApplicationsPageListAsync(
                         lang: args.Lang ?? DefaultLang,
@@ -138,8 +138,8 @@ internal sealed class ApplicationTools(
     // ─────────────────────────── application.get_app ───────────────────────────
 
     /// <summary>application.get_app：按 ID 查应用详情。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantApplicationGetAppTool))]
-    public Task<FeishuToolResult> GetAppAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantApplicationGetAppTool))]
+    public Task<ToolResult> GetAppAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ApplicationGetApp, _maxResultLength);
         if (Absent(executor.ToolName, _appInfoClient) is { } unavailable)
@@ -184,8 +184,8 @@ internal sealed class ApplicationTools(
     // ─────────────────────────── application.get_app_visibility ───────────────────────────
 
     /// <summary>application.get_app_visibility：查询应用可用范围。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantApplicationGetAppVisibilityTool))]
-    public Task<FeishuToolResult> GetAppVisibilityAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantApplicationGetAppVisibilityTool))]
+    public Task<ToolResult> GetAppVisibilityAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ApplicationGetAppVisibility, _maxResultLength);
         if (Absent(executor.ToolName, _adminClient) is { } unavailable)
@@ -261,8 +261,8 @@ internal sealed class ApplicationTools(
     // ─────────────────────────── application.list_collaborators ───────────────────────────
 
     /// <summary>application.list_collaborators：列出应用协作者。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantApplicationListCollaboratorsTool))]
-    public Task<FeishuToolResult> ListCollaboratorsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantApplicationListCollaboratorsTool))]
+    public Task<ToolResult> ListCollaboratorsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ApplicationListCollaborators, _maxResultLength);
         if (Absent(executor.ToolName, _applicationClient) is { } unavailable)
@@ -311,8 +311,8 @@ internal sealed class ApplicationTools(
     // ─────────────────────────── application.get_scopes ───────────────────────────
 
     /// <summary>application.get_scopes：查询本应用已申请的权限点。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantApplicationGetScopesTool))]
-    public Task<FeishuToolResult> GetScopesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantApplicationGetScopesTool))]
+    public Task<ToolResult> GetScopesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ApplicationGetScopes, _maxResultLength);
         if (Absent(executor.ToolName, _scopeClient) is { } unavailable)
@@ -369,8 +369,8 @@ internal sealed class ApplicationTools(
     // ─────────────────────────── application.list_app_versions ───────────────────────────
 
     /// <summary>application.list_app_versions：分页列出应用版本。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantApplicationListAppVersionsTool))]
-    public Task<FeishuToolResult> ListAppVersionsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantApplicationListAppVersionsTool))]
+    public Task<ToolResult> ListAppVersionsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ApplicationListAppVersions, _maxResultLength);
         if (Absent(executor.ToolName, _appVersionClient) is { } unavailable)
@@ -383,7 +383,7 @@ internal sealed class ApplicationTools(
             var args = ApplicationListAppVersionsArgs.Unpack(arguments);
 
             // page_size 不下发（DP-B1-0）；lang / order 是 SDK 原生业务参数（可下发）。
-            async Task<FeishuApiOutcome<ApiPageListResult<AppVersionInfo>>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<ApiPageListResult<AppVersionInfo>>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _appVersionClient!
                     .GetAppVersionsPageListAsync(
                         args.AppId,
@@ -423,8 +423,8 @@ internal sealed class ApplicationTools(
     // ─────────────────────────── application.get_app_version ───────────────────────────
 
     /// <summary>application.get_app_version：按 ID 查版本详情。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantApplicationGetAppVersionTool))]
-    public Task<FeishuToolResult> GetAppVersionAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantApplicationGetAppVersionTool))]
+    public Task<ToolResult> GetAppVersionAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ApplicationGetAppVersion, _maxResultLength);
         if (Absent(executor.ToolName, _appVersionClient) is { } unavailable)
@@ -498,9 +498,9 @@ internal sealed class ApplicationTools(
     /// 软缺席：客户端为空时给出<b>可执行的错误结果</b>而不是抛异常
     /// （异常会逃出执行链抛给宿主，而这里要的是"模型看到一条明确的不可用说明"）。
     /// </summary>
-    private static FeishuToolResult? Absent(string toolName, object? client)
+    private static ToolResult? Absent(string toolName, object? client)
         => client is null
-            ? FeishuToolResult.FromError(FeishuToolBinding.StructuredError(
+            ? ToolResult.FromError(FeishuToolBinding.StructuredError(
                 toolName,
                 $"未注册 {ClientName} 客户端——应用管理能力需宿主启用应用管理 API（软缺席，不影响其它域工具）"))
             : null;

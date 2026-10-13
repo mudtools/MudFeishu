@@ -11,7 +11,7 @@ namespace Mud.Feishu.AI.Tools.Constants;
 /// 绑定层固定分页大小（隐藏参数：模型不可见，绑定层给默认值并钳制上限，§3.3.2）。
 /// </summary>
 /// <remarks>
-/// 与工具名契约表分离：工具名/读写分类由源生成器从 <c>[FeishuTool]</c> 特性派生
+/// 与工具名契约表分离：工具名/读写分类由源生成器从 <c>[AgentTool]</c> 特性派生
 /// （<c>FeishuToolNames.g.cs</c>），而分页尺寸是执行层的实现细节，属于手写常量。
 /// </remarks>
 internal static class PageSizes

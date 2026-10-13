@@ -54,7 +54,7 @@ public class ToolSearchTests
             registry.Register(new FeishuToolDefinition(
                 entry.Name, entry.Description, entry.RequiredScopes,
                 entry.IsWrite, entry.Risk, entry.Identity,
-                (_, _, _) => Task.FromResult(FeishuToolResult.FromText(""))));
+                (_, _, _) => Task.FromResult(ToolResult.FromText(""))));
         }
 
         foreach (var name in enabledTools)
@@ -79,7 +79,7 @@ public class ToolSearchTests
         return new(DefaultOptions(), provider.Object);
     }
 
-    private static JsonDocument ParseResult(FeishuToolResult result)
+    private static JsonDocument ParseResult(ToolResult result)
     {
         var text = result.ToString();
         // The text may be truncated JSON, but for our tests it should be small enough

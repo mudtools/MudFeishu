@@ -8,7 +8,7 @@
 namespace Mud.Feishu.AI.Tests.Tools;
 
 /// <summary>
-/// [FeishuTool] 源生成器闭环验证样例——仅测试载体，不属于生产 API 面。
+/// [AgentTool] 源生成器闭环验证样例——仅测试载体，不属于生产 API 面。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -28,7 +28,7 @@ namespace Mud.Feishu.AI.Tests.Tools;
 /// 本样例因此随迁移改名为 <c>IFeishuTenantBitableQueryTool</c>。
 /// </para>
 /// </remarks>
-[FeishuTool("bitable.query_records",
+[AgentTool("bitable.query_records",
     Description = "按条件查询多维表格记录（先经 bitable.list_tables 获取 table_id）",
     RequiredScopes = ["bitable:app:readonly"])]
 public interface IFeishuTenantBitableQueryTool

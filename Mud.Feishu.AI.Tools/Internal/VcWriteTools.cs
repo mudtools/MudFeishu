@@ -47,8 +47,8 @@ internal sealed class VcWriteTools(
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>vc.set_host：改设进行中会议的主持人（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantVcSetHostTool))]
-    public Task<FeishuToolResult> SetHostAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantVcSetHostTool))]
+    public Task<ToolResult> SetHostAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.VcSetHost, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -59,7 +59,7 @@ internal sealed class VcWriteTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "PATCH", "/open-apis/vc/v1/meetings/{meeting_id}/set_host",
                     null,
                     ("meeting_id", args.MeetingId.Length),
@@ -88,8 +88,8 @@ internal sealed class VcWriteTools(
     }
 
     /// <summary>vc.invite_participants：邀请用户入会（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuUserVcInviteParticipantsTool))]
-    public Task<FeishuToolResult> InviteParticipantsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuUserVcInviteParticipantsTool))]
+    public Task<ToolResult> InviteParticipantsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.VcInviteParticipants, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -108,7 +108,7 @@ internal sealed class VcWriteTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "PATCH", "/open-apis/vc/v1/meetings/{meeting_id}/invite",
                     null,
                     ("meeting_id", args.MeetingId.Length),
@@ -148,8 +148,8 @@ internal sealed class VcWriteTools(
     }
 
     /// <summary>vc.end_meeting：结束进行中的会议（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuUserVcEndMeetingTool))]
-    public Task<FeishuToolResult> EndMeetingAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuUserVcEndMeetingTool))]
+    public Task<ToolResult> EndMeetingAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.VcEndMeeting);
         return executor.RunAsync(async () =>
@@ -161,7 +161,7 @@ internal sealed class VcWriteTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "PATCH", "/open-apis/vc/v1/meetings/{meeting_id}/end",
                     null,
                     ("meeting_id", args.MeetingId.Length)));
@@ -179,8 +179,8 @@ internal sealed class VcWriteTools(
     }
 
     /// <summary>vc.delete_reserve：删除预约（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantVcDeleteReserveTool))]
-    public Task<FeishuToolResult> DeleteReserveAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantVcDeleteReserveTool))]
+    public Task<ToolResult> DeleteReserveAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.VcDeleteReserve);
         return executor.RunAsync(async () =>
@@ -191,7 +191,7 @@ internal sealed class VcWriteTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "DELETE", "/open-apis/vc/v1/reserves/{reserve_id}",
                     null,
                     ("reserve_id", args.ReserveId.Length)));

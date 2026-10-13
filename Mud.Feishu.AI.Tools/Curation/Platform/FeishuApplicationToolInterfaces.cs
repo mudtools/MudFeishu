@@ -30,7 +30,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// 宿主开通前请按名称在开发者后台搜索确认（与仓库既有 ⚠️ 口径一致）。
 /// </para>
 /// </remarks>
-[FeishuTool("application.list_apps",
+[AgentTool("application.list_apps",
     Description = "分页列出企业自建/商店应用（返回 app_id/名称/状态/场景类型/在线版本 ID）——进入「应用管理」域的第一步：拿到 app_id 才能查详情、可用范围、协作者与版本。可按 status / payment_type / owner_type 过滤。只读，需 application:application:readonly。",
     RequiredScopes = ["application:application:readonly"],
     Source = nameof(IFeishuTenantV6ApplicationAdmin) + "." + nameof(IFeishuTenantV6ApplicationAdmin.GetApplicationsPageListAsync))]
@@ -57,7 +57,7 @@ public interface IFeishuTenantApplicationListAppsTool
 /// 它们是应用的凭据与安全配置，进模型上下文即等于把密钥写进对话历史与第三方模型。
 /// 本工具只回答"这个应用叫什么、什么状态、开了哪些能力"。
 /// </remarks>
-[FeishuTool("application.get_app",
+[AgentTool("application.get_app",
     Description = "按 app_id 查询应用详情（名称/描述/状态/场景类型/主语言/在线与待审版本 ID/移动端与 PC 端默认能力/已申请权限的 scope 名）。⚠️ 不返回应用密钥、加密配置与负责人联系方式（出站净化）。只读，需 application:application:readonly。",
     RequiredScopes = ["application:application:readonly"],
     Source = nameof(IFeishuTenantV6ApplicationAppInfo) + "." + nameof(IFeishuTenantV6ApplicationAppInfo.GetApplicationAsync))]
@@ -79,7 +79,7 @@ public interface IFeishuTenantApplicationGetAppTool
 /// <b>只给标识符</b>（department_id / group_id / user_id·open_id），不给姓名——
 /// 名字与联系方式由通讯录域按各自的 PII 口径解析。
 /// </remarks>
-[FeishuTool("application.get_app_visibility",
+[AgentTool("application.get_app_visibility",
     Description = "查询应用可用范围（是否全员可见 + 可见/不可见的部门、用户组、用户列表）。回答「这个应用谁能看到」用它；成员过多时按 has_more_users/user_page_token 继续取用户列表。只读，需 application:application:readonly。",
     RequiredScopes = ["application:application:readonly"],
     Source = nameof(IFeishuTenantV6ApplicationAdmin) + "." + nameof(IFeishuTenantV6ApplicationAdmin.GetAppVisibilityAsync))]
@@ -101,7 +101,7 @@ public interface IFeishuTenantApplicationGetAppVisibilityTool
 /// 返回 <c>type</c> + <c>user_id</c>：这是**权限治理的关键事实**（"谁能动这个应用"），
 /// 但同样只给标识符不给姓名。
 /// </remarks>
-[FeishuTool("application.list_collaborators",
+[AgentTool("application.list_collaborators",
     Description = "列出应用协作者（谁能进开发者后台改这个应用；返回 type=管理员/开发/运营 + user_id）——用于回答「这个应用谁能改」。只读，需 application:application:readonly。",
     RequiredScopes = ["application:application:readonly"],
     Source = nameof(IFeishuTenantV6Application) + "." + nameof(IFeishuTenantV6Application.GetApplicationCollaboratorsAsync))]
@@ -122,7 +122,7 @@ public interface IFeishuTenantApplicationListCollaboratorsTool
 /// 注意与 <c>feishu.capability_lookup</c> 的区别：后者回答"工具有哪些能力"，
 /// 本工具回答"这个应用在飞书侧开了哪些权限"。
 /// </remarks>
-[FeishuTool("application.get_scopes",
+[AgentTool("application.get_scopes",
     Description = "查询本应用已申请的权限点及授权状态（scope_name/grant_status/scope_type）——回答「这个应用现在开了哪些权限」「某权限是否已生效」。只读，需 application:application:readonly。",
     RequiredScopes = ["application:application:readonly"],
     Source = nameof(IFeishuTenantV6ApplicationScope) + "." + nameof(IFeishuTenantV6ApplicationScope.GetScopesAsync))]
@@ -140,7 +140,7 @@ public interface IFeishuTenantApplicationGetScopesTool
 /// 版本列表是"发布历史"的主入口：配合 <c>online_version_id</c>/<c>unaudit_version_id</c>
 /// 判断"线上跑的是哪一版、有没有待审版本"。
 /// </remarks>
-[FeishuTool("application.list_app_versions",
+[AgentTool("application.list_app_versions",
     Description = "分页列出应用的版本历史（version_id/version/status/创建与发布时间）——用于回答「线上是哪一版」「有没有待审版本」。只读，需 application:application.app_version:readonly。",
     RequiredScopes = ["application:application.app_version:readonly"],
     Source = nameof(IFeishuTenantV6ApplicationAppVersion) + "." + nameof(IFeishuTenantV6ApplicationAppVersion.GetAppVersionsPageListAsync))]
@@ -165,7 +165,7 @@ public interface IFeishuTenantApplicationListAppVersionsTool
 /// 版本详情含该版本的<b>能力开关</b>与<b>可用范围</b>（<c>remark.visibility</c>）——
 /// 回答"这一版上了哪些能力、对谁可见"。
 /// </remarks>
-[FeishuTool("application.get_app_version",
+[AgentTool("application.get_app_version",
     Description = "按 version_id 查询单个应用版本的详情（版本号/状态/创建与发布时间/备注/该版本申请的能力与可用范围）。只读，需 application:application.app_version:readonly。",
     RequiredScopes = ["application:application.app_version:readonly"],
     Source = nameof(IFeishuTenantV6ApplicationAppVersion) + "." + nameof(IFeishuTenantV6ApplicationAppVersion.GetAppVersionAsync))]

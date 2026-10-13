@@ -38,13 +38,13 @@ internal sealed class HireInterviewTools(
     private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
     /// <summary>hire.list_interviews：分页查询面试安排（可限定投递与时间窗）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantHireListInterviewsTool))]
-    public Task<FeishuToolResult> ListInterviewsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantHireListInterviewsTool))]
+    public Task<ToolResult> ListInterviewsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.HireListInterviews, _maxResultLength);
         if (_hireCandidateClient is null)
         {
-            return Task.FromResult(FeishuToolResult.FromError(FeishuToolBinding.StructuredError(
+            return Task.FromResult(ToolResult.FromError(FeishuToolBinding.StructuredError(
                 executor.ToolName,
                 "未注册 IFeishuTenantV1HireCandidate 客户端——面试安排能力需宿主启用招聘（Hire）候选人 API（软缺席）")));
         }
@@ -55,7 +55,7 @@ internal sealed class HireInterviewTools(
 
             // application_id / 时间窗是 SDK 原生业务过滤（可下发）；page_size 不下发（DP-B1-0）。
             // P-3：统一分页出口——聚合路径与单页路径共用**同一次调用定义**与**同一份投影**。
-            async Task<FeishuApiOutcome<GetInterviewListResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<GetInterviewListResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _hireCandidateClient
                     .GetInterviewListAsync(
                         query: new InterviewListQuery

@@ -43,8 +43,8 @@ internal sealed class TranslationTools(
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>ai.translate_text：把文本翻译成目标语言（机器翻译）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantAiTranslateTextTool))]
-    public Task<FeishuToolResult> TranslateTextAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantAiTranslateTextTool))]
+    public Task<ToolResult> TranslateTextAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.AiTranslateText, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -81,8 +81,8 @@ internal sealed class TranslationTools(
     }
 
     /// <summary>ai.detect_language：识别文本语种（ISO 639-1 + 可读语言名）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantAiDetectLanguageTool))]
-    public Task<FeishuToolResult> DetectTextAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantAiDetectLanguageTool))]
+    public Task<ToolResult> DetectTextAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.AiDetectLanguage, _maxResultLength);
         return executor.RunAsync(async () =>

@@ -67,8 +67,8 @@ internal sealed class TrustPartyTools(
     // ─────────────────── trustparty.list_collaboration_tenants ───────────────────
 
     /// <summary>trustparty.list_collaboration_tenants：列出已互通关联组织（本域第一跳）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantTrustpartyListCollaborationTenantsTool))]
-    public Task<FeishuToolResult> ListCollaborationTenantsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantTrustpartyListCollaborationTenantsTool))]
+    public Task<ToolResult> ListCollaborationTenantsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.TrustpartyListCollaborationTenants, _maxResultLength);
         if (Absent(executor.ToolName, _collaborationTenantClient) is { } unavailable)
@@ -80,7 +80,7 @@ internal sealed class TrustPartyTools(
         {
             var args = TrustpartyListCollaborationTenantsArgs.Unpack(arguments);
 
-            async Task<FeishuApiOutcome<GetCollaborationTenantListResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<GetCollaborationTenantListResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _collaborationTenantClient!
                     .GetCollaborationTenantListAsync(page_token: token, cancellationToken: ct)
                     .ConfigureAwait(false));
@@ -132,8 +132,8 @@ internal sealed class TrustPartyTools(
     // ─────────────────── trustparty.get_collaboration_tenant ───────────────────
 
     /// <summary>trustparty.get_collaboration_tenant：查询单个关联组织详情。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantTrustpartyGetCollaborationTenantTool))]
-    public Task<FeishuToolResult> GetCollaborationTenantAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantTrustpartyGetCollaborationTenantTool))]
+    public Task<ToolResult> GetCollaborationTenantAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.TrustpartyGetCollaborationTenant, _maxResultLength);
         if (Absent(executor.ToolName, _collaborationTenantClient) is { } unavailable)
@@ -159,8 +159,8 @@ internal sealed class TrustPartyTools(
     // ─────────────────── trustparty.list_visible_organization ───────────────────
 
     /// <summary>trustparty.list_visible_organization：查询对端可见组织实体。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantTrustpartyListVisibleOrganizationTool))]
-    public Task<FeishuToolResult> ListVisibleOrganizationAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantTrustpartyListVisibleOrganizationTool))]
+    public Task<ToolResult> ListVisibleOrganizationAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.TrustpartyListVisibleOrganization, _maxResultLength);
         if (Absent(executor.ToolName, _collaborationTenantClient) is { } unavailable)
@@ -172,7 +172,7 @@ internal sealed class TrustPartyTools(
         {
             var args = TrustpartyListVisibleOrganizationArgs.Unpack(arguments);
 
-            async Task<FeishuApiOutcome<GetVisibleOrganizationResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<GetVisibleOrganizationResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _collaborationTenantClient!
                     .GetVisibleOrganizationAsync(
                         args.TargetTenantKey,
@@ -237,8 +237,8 @@ internal sealed class TrustPartyTools(
     // ─────────────────── trustparty.get_collaboration_department ───────────────────
 
     /// <summary>trustparty.get_collaboration_department：查询外部部门详情。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantTrustpartyGetCollaborationDepartmentTool))]
-    public Task<FeishuToolResult> GetCollaborationDepartmentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantTrustpartyGetCollaborationDepartmentTool))]
+    public Task<ToolResult> GetCollaborationDepartmentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.TrustpartyGetCollaborationDepartment, _maxResultLength);
         if (Absent(executor.ToolName, _collaborationTenantClient) is { } unavailable)
@@ -297,8 +297,8 @@ internal sealed class TrustPartyTools(
     // ─────────────────── trustparty.get_collaboration_user ───────────────────
 
     /// <summary>trustparty.get_collaboration_user：查询外部成员详情（强 PII 净化）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantTrustpartyGetCollaborationUserTool))]
-    public Task<FeishuToolResult> GetCollaborationUserAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantTrustpartyGetCollaborationUserTool))]
+    public Task<ToolResult> GetCollaborationUserAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.TrustpartyGetCollaborationUser, _maxResultLength);
         if (Absent(executor.ToolName, _collaborationTenantClient) is { } unavailable)
@@ -363,8 +363,8 @@ internal sealed class TrustPartyTools(
     // ─────────────────── trustparty.list_share_entities ───────────────────
 
     /// <summary>trustparty.list_share_entities：查询被共享的目录实体（三份清单）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantTrustpartyListShareEntitiesTool))]
-    public Task<FeishuToolResult> ListShareEntitiesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantTrustpartyListShareEntitiesTool))]
+    public Task<ToolResult> ListShareEntitiesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.TrustpartyListShareEntities, _maxResultLength);
         if (Absent(executor.ToolName, _shareEntityClient) is { } unavailable)
@@ -376,7 +376,7 @@ internal sealed class TrustPartyTools(
         {
             var args = TrustpartyListShareEntitiesArgs.Unpack(arguments);
 
-            async Task<FeishuApiOutcome<GetShareEntityListResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<GetShareEntityListResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _shareEntityClient!
                     .GetShareEntityListAsync(
                         new ShareEntityListQuery
@@ -483,8 +483,8 @@ internal sealed class TrustPartyTools(
     // ─────────────────── trustparty.list_all_collaboration_tenants ───────────────────
 
     /// <summary>trustparty.list_all_collaboration_tenants：目录侧关联组织列表。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantTrustpartyListAllCollaborationTenantsTool))]
-    public Task<FeishuToolResult> ListAllCollaborationTenantsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantTrustpartyListAllCollaborationTenantsTool))]
+    public Task<ToolResult> ListAllCollaborationTenantsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.TrustpartyListAllCollaborationTenants, _maxResultLength);
         if (Absent(executor.ToolName, _directoryTenantClient) is { } unavailable)
@@ -496,7 +496,7 @@ internal sealed class TrustPartyTools(
         {
             var args = TrustpartyListAllCollaborationTenantsArgs.Unpack(arguments);
 
-            async Task<FeishuApiOutcome<GetAllCollaborationTenantListResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<GetAllCollaborationTenantListResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _directoryTenantClient!
                     .GetAllCollaborationTenantListAsync(page_token: token, cancellationToken: ct)
                     .ConfigureAwait(false));
@@ -544,8 +544,8 @@ internal sealed class TrustPartyTools(
     // ─────────────────── trustparty.list_collaboration_rules ───────────────────
 
     /// <summary>trustparty.list_collaboration_rules：互通规则列表。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantTrustpartyListCollaborationRulesTool))]
-    public Task<FeishuToolResult> ListCollaborationRulesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantTrustpartyListCollaborationRulesTool))]
+    public Task<ToolResult> ListCollaborationRulesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.TrustpartyListCollaborationRules, _maxResultLength);
         if (Absent(executor.ToolName, _collaborationRuleClient) is { } unavailable)
@@ -557,7 +557,7 @@ internal sealed class TrustPartyTools(
         {
             var args = TrustpartyListCollaborationRulesArgs.Unpack(arguments);
 
-            async Task<FeishuApiOutcome<GetCollaborationRuleListResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<GetCollaborationRuleListResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _collaborationRuleClient!
                     .GetCollaborationRuleListAsync(
                         args.TargetTenantKey,
@@ -671,9 +671,9 @@ internal sealed class TrustPartyTools(
     /// 软缺席：客户端为空时给出<b>可执行的错误结果</b>而不是抛异常
     /// （异常会逃出执行链抛给宿主，而这里要的是"模型看到一条明确的不可用说明"）。
     /// </summary>
-    private static FeishuToolResult? Absent(string toolName, object? client)
+    private static ToolResult? Absent(string toolName, object? client)
         => client is null
-            ? FeishuToolResult.FromError(FeishuToolBinding.StructuredError(
+            ? ToolResult.FromError(FeishuToolBinding.StructuredError(
                 toolName,
                 $"未注册 {ClientName} 客户端——跨组织互通能力需宿主启用互通 API（软缺席，不影响其它域工具）"))
             : null;
@@ -681,8 +681,8 @@ internal sealed class TrustPartyTools(
     // ─────────────────── 写面：互通规则 CRUD ───────────────────
 
     /// <summary>trustparty.create_collaboration_rule：新建互通规则。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantTrustpartyCreateCollaborationRuleTool))]
-    public Task<FeishuToolResult> CreateCollaborationRuleAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantTrustpartyCreateCollaborationRuleTool))]
+    public Task<ToolResult> CreateCollaborationRuleAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.TrustpartyCreateCollaborationRule, _maxResultLength);
         if (Absent(executor.ToolName, _collaborationRuleClient) is { } unavailable)
@@ -715,7 +715,7 @@ internal sealed class TrustPartyTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName,
                     "POST",
                     "/open-apis/directory/v1/collaboration_rules",
@@ -744,8 +744,8 @@ internal sealed class TrustPartyTools(
     }
 
     /// <summary>trustparty.update_collaboration_rule：覆盖式更新互通规则。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantTrustpartyUpdateCollaborationRuleTool))]
-    public Task<FeishuToolResult> UpdateCollaborationRuleAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantTrustpartyUpdateCollaborationRuleTool))]
+    public Task<ToolResult> UpdateCollaborationRuleAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.TrustpartyUpdateCollaborationRule, _maxResultLength);
         if (Absent(executor.ToolName, _collaborationRuleClient) is { } unavailable)
@@ -777,7 +777,7 @@ internal sealed class TrustPartyTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName,
                     "PUT",
                     "/open-apis/directory/v1/collaboration_rules/{collaboration_rule_id}",
@@ -812,8 +812,8 @@ internal sealed class TrustPartyTools(
     }
 
     /// <summary>trustparty.delete_collaboration_rule：删除互通规则（high-risk-write）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantTrustpartyDeleteCollaborationRuleTool))]
-    public Task<FeishuToolResult> DeleteCollaborationRuleAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantTrustpartyDeleteCollaborationRuleTool))]
+    public Task<ToolResult> DeleteCollaborationRuleAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.TrustpartyDeleteCollaborationRule, _maxResultLength);
         if (Absent(executor.ToolName, _collaborationRuleClient) is { } unavailable)
@@ -827,7 +827,7 @@ internal sealed class TrustPartyTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName,
                     "DELETE",
                     "/open-apis/directory/v1/collaboration_rules/{collaboration_rule_id}",
@@ -877,8 +877,8 @@ internal sealed class TrustPartyTools(
         => (users?.Length ?? 0) + (departments?.Length ?? 0) + (groups?.Length ?? 0);
 
     /// <summary>参数非法：结构化错误（不是异常——异常会逃出执行链，模型看不到可执行信息）。</summary>
-    private static FeishuToolResult Invalid(string toolName, string message)
-        => FeishuToolResult.FromError(FeishuToolBinding.StructuredError(toolName, message));
+    private static ToolResult Invalid(string toolName, string message)
+        => ToolResult.FromError(FeishuToolBinding.StructuredError(toolName, message));
 
     /// <summary>
     /// 空数据结果的成功判定（update / delete 返回 <see cref="FeishuNullDataApiResult"/>，

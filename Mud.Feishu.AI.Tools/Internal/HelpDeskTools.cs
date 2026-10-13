@@ -69,8 +69,8 @@ internal sealed class HelpdeskTools(
     // ─────────────────────────── helpdesk.search_faqs ───────────────────────────
 
     /// <summary>helpdesk.search_faqs：关键词检索服务台 FAQ（本域主力）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantHelpdeskSearchFaqsTool))]
-    public Task<FeishuToolResult> SearchFaqsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantHelpdeskSearchFaqsTool))]
+    public Task<ToolResult> SearchFaqsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.HelpdeskSearchFaqs, _maxResultLength);
         if (Absent(executor.ToolName, _faqClient) is { } unavailable)
@@ -83,7 +83,7 @@ internal sealed class HelpdeskTools(
             var args = HelpdeskSearchFaqsArgs.Unpack(arguments);
 
             // page_size 刻意不下发（保持 SDK 默认）——运维参数不进模型可见面（DP-B1-0）。
-            async Task<FeishuApiOutcome<SearchFaqResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<SearchFaqResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _faqClient!
                     .SearchFaqAsync(args.Query, page_token: token, cancellationToken: ct)
                     .ConfigureAwait(false));
@@ -104,8 +104,8 @@ internal sealed class HelpdeskTools(
     // ─────────────────────────── helpdesk.list_faqs ───────────────────────────
 
     /// <summary>helpdesk.list_faqs：浏览服务台 FAQ（分页）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantHelpdeskListFaqsTool))]
-    public Task<FeishuToolResult> ListFaqsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantHelpdeskListFaqsTool))]
+    public Task<ToolResult> ListFaqsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.HelpdeskListFaqs, _maxResultLength);
         if (Absent(executor.ToolName, _faqClient) is { } unavailable)
@@ -117,7 +117,7 @@ internal sealed class HelpdeskTools(
         {
             var args = HelpdeskListFaqsArgs.Unpack(arguments);
 
-            async Task<FeishuApiOutcome<GetFaqListResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<GetFaqListResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _faqClient!
                     .GetFaqListAsync(
                         category_id: args.CategoryId,
@@ -143,8 +143,8 @@ internal sealed class HelpdeskTools(
     // ─────────────────────────── helpdesk.get_faq ───────────────────────────
 
     /// <summary>helpdesk.get_faq：查单条 FAQ 全文。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantHelpdeskGetFaqTool))]
-    public Task<FeishuToolResult> GetFaqAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantHelpdeskGetFaqTool))]
+    public Task<ToolResult> GetFaqAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.HelpdeskGetFaq, _maxResultLength);
         if (Absent(executor.ToolName, _faqClient) is { } unavailable)
@@ -176,8 +176,8 @@ internal sealed class HelpdeskTools(
     // ─────────────────────────── helpdesk.list_categories ───────────────────────────
 
     /// <summary>helpdesk.list_categories：列出 FAQ 分类目录树。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantHelpdeskListCategoriesTool))]
-    public Task<FeishuToolResult> ListCategoriesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantHelpdeskListCategoriesTool))]
+    public Task<ToolResult> ListCategoriesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.HelpdeskListCategories, _maxResultLength);
         if (Absent(executor.ToolName, _categoryClient) is { } unavailable)
@@ -212,8 +212,8 @@ internal sealed class HelpdeskTools(
     // ─────────────────────────── helpdesk.get_ticket ───────────────────────────
 
     /// <summary>helpdesk.get_ticket：查工单状态与流转（不含工单正文）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantHelpdeskGetTicketTool))]
-    public Task<FeishuToolResult> GetTicketAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantHelpdeskGetTicketTool))]
+    public Task<ToolResult> GetTicketAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.HelpdeskGetTicket, _maxResultLength);
         if (Absent(executor.ToolName, _ticketClient) is { } unavailable)
@@ -244,8 +244,8 @@ internal sealed class HelpdeskTools(
     // ─────────────────────────── helpdesk.list_agent_skills ───────────────────────────
 
     /// <summary>helpdesk.list_agent_skills：列出客服技能组（路由配置）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantHelpdeskListAgentSkillsTool))]
-    public Task<FeishuToolResult> ListAgentSkillsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantHelpdeskListAgentSkillsTool))]
+    public Task<ToolResult> ListAgentSkillsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.HelpdeskListAgentSkills, _maxResultLength);
         if (Absent(executor.ToolName, _agentClient) is { } unavailable)
@@ -473,9 +473,9 @@ internal sealed class HelpdeskTools(
     /// 软缺席：客户端为空时给出<b>可执行的错误结果</b>而不是抛异常
     /// （异常会逃出执行链抛给宿主，而这里要的是"模型看到一条明确的不可用说明"）。
     /// </summary>
-    private static FeishuToolResult? Absent(string toolName, object? client)
+    private static ToolResult? Absent(string toolName, object? client)
         => client is null
-            ? FeishuToolResult.FromError(FeishuToolBinding.StructuredError(
+            ? ToolResult.FromError(FeishuToolBinding.StructuredError(
                 toolName,
                 $"未注册 {ClientName} 客户端——服务台能力需宿主启用服务台 API（软缺席，不影响其它域工具）"))
             : null;

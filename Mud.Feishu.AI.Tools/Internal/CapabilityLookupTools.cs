@@ -46,8 +46,8 @@ internal sealed class CapabilityLookupTools(IOptions<FeishuAgentOptions> options
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>feishu.capability_lookup：按关键字检索能力分组。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantCapabilityLookupTool))]
-    public Task<FeishuToolResult> LookupAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantCapabilityLookupTool))]
+    public Task<ToolResult> LookupAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.FeishuCapabilityLookup, _maxResultLength);
         return executor.RunAsync(() =>
@@ -162,8 +162,8 @@ internal sealed class CapabilityLookupTools(IOptions<FeishuAgentOptions> options
     /// <b>键不存在时必须给候选清单</b>：只回"未找到"会让模型反复试错；
     /// 把可用的 <c>{domain}/{topic}</c> 全列出来，模型一次就能选对（对齐 F-8 的可恢复性要求）。
     /// </remarks>
-    [FeishuToolHandler(typeof(IFeishuTenantGuidanceReadTool))]
-    public Task<FeishuToolResult> GuidanceReadAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantGuidanceReadTool))]
+    public Task<ToolResult> GuidanceReadAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.FeishuGuidanceRead, _maxResultLength);
         return executor.RunAsync(() =>

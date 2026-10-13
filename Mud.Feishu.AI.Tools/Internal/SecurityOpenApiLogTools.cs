@@ -43,13 +43,13 @@ internal sealed class SecurityOpenApiLogTools(
     private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
     /// <summary>security.list_openapi_logs：按时间窗查询应用 API 调用日志。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantSecurityListOpenapiLogsTool))]
-    public Task<FeishuToolResult> ListOpenApiLogsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantSecurityListOpenapiLogsTool))]
+    public Task<ToolResult> ListOpenApiLogsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.SecurityListOpenapiLogs, _maxResultLength);
         if (_openApiLogClient is null)
         {
-            return Task.FromResult(FeishuToolResult.FromError(FeishuToolBinding.StructuredError(
+            return Task.FromResult(ToolResult.FromError(FeishuToolBinding.StructuredError(
                 executor.ToolName,
                 "未注册 IFeishuTenantV1SecurityOpenApiLog 客户端——应用调用日志能力需宿主启用安全合规 API（软缺席，不影响其它域工具）")));
         }
@@ -66,7 +66,7 @@ internal sealed class SecurityOpenApiLogTools(
 
             // P-0 补齐：统一分页出口——聚合路径与单页路径共用同一次调用定义与同一份投影。
             // 请求体每页重建（token 是唯一变量）；page_size 仍刻意不下发（DP-B1-0）。
-            async Task<FeishuApiOutcome<ListOpenApiLogDataResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<ListOpenApiLogDataResult>> FetchPageAsync(string? token, CancellationToken ct)
             {
                 var request = new ListOpenApiLogDataRequest
                 {

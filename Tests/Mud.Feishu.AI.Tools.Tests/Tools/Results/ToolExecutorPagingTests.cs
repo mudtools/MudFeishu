@@ -84,10 +84,10 @@ public class ToolExecutorPagingTests
     private static (bool HasMore, string? PageToken) ReadStandalonePageState(StandalonePage page)
         => (page.HasMore == true, page.PageToken);
 
-    private static JsonArray ItemsOf(FeishuToolResult result)
+    private static JsonArray ItemsOf(ToolResult result)
         => JsonNode.Parse(result.Text!)!.AsObject()["items"]!.AsArray();
 
-    private static bool TruncatedOf(FeishuToolResult result)
+    private static bool TruncatedOf(ToolResult result)
         => JsonNode.Parse(result.Text!)!.AsObject()["truncated"]!.GetValue<bool>();
 
     // ─────────────────────────── 约束版重载 ───────────────────────────
@@ -108,7 +108,7 @@ public class ToolExecutorPagingTests
                     "t2" => Page(hasMore: true, token: "t3", "b"),
                     _ => Page(hasMore: false, token: null, "c"),
                 };
-                return Task.FromResult(FeishuApiOutcome<ApiPageListResult<JsonObject>>.Success(page));
+                return Task.FromResult(ToolApiOutcome<ApiPageListResult<JsonObject>>.Success(page));
             },
             Project,
             fetchAll: true,
@@ -140,7 +140,7 @@ public class ToolExecutorPagingTests
             (_, _) =>
             {
                 calls++;
-                return Task.FromResult(FeishuApiOutcome<ApiPageListResult<JsonObject>>.Success(
+                return Task.FromResult(ToolApiOutcome<ApiPageListResult<JsonObject>>.Success(
                     Page(hasMore: true, token: "t2", "a")));
             },
             Project,
@@ -170,7 +170,7 @@ public class ToolExecutorPagingTests
             (token, _) =>
             {
                 calls++;
-                return Task.FromResult(FeishuApiOutcome<ApiPageListResult<JsonObject>>.Success(
+                return Task.FromResult(ToolApiOutcome<ApiPageListResult<JsonObject>>.Success(
                     Page(hasMore: true, token: "t2", "a", "b")));
             },
             Project,
@@ -215,7 +215,7 @@ public class ToolExecutorPagingTests
                         PageToken = null,
                         Total = 2,
                     };
-                return Task.FromResult(FeishuApiOutcome<StandalonePage>.Success(page));
+                return Task.FromResult(ToolApiOutcome<StandalonePage>.Success(page));
             },
             ProjectStandalone,
             ReadStandalonePageState,
@@ -244,7 +244,7 @@ public class ToolExecutorPagingTests
             (_, _) =>
             {
                 calls++;
-                return Task.FromResult(FeishuApiOutcome<StandalonePage>.Success(new StandalonePage
+                return Task.FromResult(ToolApiOutcome<StandalonePage>.Success(new StandalonePage
                 {
                     Items = [new JsonObject { ["id"] = "a" }],
                     HasMore = null,
@@ -274,8 +274,8 @@ public class ToolExecutorPagingTests
         // ⚠️ 每次调用都必须**新建**页对象：投影会把条目挂进新信封，而 JsonNode 有单亲约束
         //    （复用同一份页对象会抛"The node already has a parent"）。
         //    这正对应生产纪律——投影**每次调用都新建节点**，绝不缓存 JsonNode。
-        Task<FeishuApiOutcome<StandalonePage>> Fetch(string? _, CancellationToken __)
-            => Task.FromResult(FeishuApiOutcome<StandalonePage>.Success(new StandalonePage
+        Task<ToolApiOutcome<StandalonePage>> Fetch(string? _, CancellationToken __)
+            => Task.FromResult(ToolApiOutcome<StandalonePage>.Success(new StandalonePage
             {
                 Items = [.. Enumerable.Range(0, 60).Select(static i => new JsonObject { ["id"] = $"item-{i}" })],
                 HasMore = false,

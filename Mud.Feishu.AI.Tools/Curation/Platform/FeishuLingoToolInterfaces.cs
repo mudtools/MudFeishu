@@ -24,7 +24,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// 创建人 / 更新人，故也不需要该参数——少一个参数，少一类 PII 面（出站净化纪律）。
 /// </para>
 /// </remarks>
-[FeishuTool("lingo.list_repos",
+[AgentTool("lingo.list_repos",
     Description = "列出企业词典的全部词库（返回 repo_id/name）——进入词典域的第一步：拿到 repo_id 后才能列分类、列词条或收窄搜索范围。只读，需 baike:entity:readonly。",
     RequiredScopes = ["baike:entity:readonly"],
     Source = nameof(IFeishuTenantV1LingoRepo) + "." + nameof(IFeishuTenantV1LingoRepo.GetRepoListAsync))]
@@ -42,7 +42,7 @@ public interface IFeishuTenantLingoListReposTool
 /// 分类是词条的"栏目"（如"业务术语"/"技术缩写"）。它只提供**目录结构**，
 /// 不返回词条本体——要词条用 <c>lingo.list_entities</c> / <c>lingo.search_entities</c>。
 /// </remarks>
-[FeishuTool("lingo.list_classifications",
+[AgentTool("lingo.list_classifications",
     Description = "列出企业词典的分类（栏目）目录，可按 repo_id 收窄；返回 classification_id/name/father_id，用 father_id 可还原层级。只读，需 baike:entity:readonly。",
     RequiredScopes = ["baike:entity:readonly"],
     Source = nameof(IFeishuTenantV1LingoClassification) + "." + nameof(IFeishuTenantV1LingoClassification.GetClassificationListAsync))]
@@ -65,7 +65,7 @@ public interface IFeishuTenantLingoListClassificationsTool
 /// <b>与 <c>search_entities</c> 的分工</b>：本工具是**无关键字**的浏览（按词库/来源列举），
 /// 适合"这个租户都有哪些术语"；要按关键词找词条用 <c>lingo.search_entities</c>（更准）。
 /// </remarks>
-[FeishuTool("lingo.list_entities",
+[AgentTool("lingo.list_entities",
     Description = "分页列出企业词典词条（返回 entity_id/main_keys/aliases/description）——用于浏览「这个租户有哪些术语」，不按关键词过滤。按关键词查词条请用 lingo.search_entities。只读，需 baike:entity:readonly。",
     RequiredScopes = ["baike:entity:readonly"],
     Source = nameof(IFeishuTenantV1LingoEntity) + "." + nameof(IFeishuTenantV1LingoEntity.GetEntityListAsync))]
@@ -89,7 +89,7 @@ public interface IFeishuTenantLingoListEntitiesTool
 /// 二义性处理：<c>entity_id</c> 与 <c>outer_id</c> 是**两条入口**（平台侧二选一）。
 /// 只给 <c>entity_id</c> 时 <c>outer_id</c> 会被忽略；同传两者以 <c>entity_id</c> 为准。
 /// </remarks>
-[FeishuTool("lingo.get_entity",
+[AgentTool("lingo.get_entity",
     Description = "按 entity_id 查询单个词条的完整信息（主词/别名/描述/富文本/点赞统计/多语言描述）——拿到 main_keys 与 description 后可回答「这个词是什么意思」。只读，需 baike:entity:readonly。",
     RequiredScopes = ["baike:entity:readonly"],
     Source = nameof(IFeishuTenantV1LingoEntity) + "." + nameof(IFeishuTenantV1LingoEntity.GetEntityAsync))]
@@ -117,7 +117,7 @@ public interface IFeishuTenantLingoGetEntityTool
 /// 属于<b>入参</b>而非出站内容，故不违反出站净化纪律（出站仍不带 creator/updater 字段）。
 /// </para>
 /// </remarks>
-[FeishuTool("lingo.search_entities",
+[AgentTool("lingo.search_entities",
     Description = "按关键词搜索企业词典词条（返回 entity_id/main_keys/aliases/description）——回答「我们内部说的 XX 是什么」的首选工具；可用 repo_id 收窄词库、creators 只看指定创建人建的词条。只读，需 baike:entity:readonly。",
     RequiredScopes = ["baike:entity:readonly"],
     Source = nameof(IFeishuTenantV1LingoEntity) + "." + nameof(IFeishuTenantV1LingoEntity.SearchEntityAsync))]
@@ -144,7 +144,7 @@ public interface IFeishuTenantLingoSearchEntitiesTool
 /// 它<b>不返回词条正文</b>。所以"这个词是不是我们的术语"用它，"这个词什么意思"用
 /// <c>search_entities</c> + <c>get_entity</c>。
 /// </remarks>
-[FeishuTool("lingo.match_entities",
+[AgentTool("lingo.match_entities",
     Description = "把一段词/短语与企业词典做精确匹配（返回命中的 entity_id/type）——用于判断「这个词是不是我们的专有术语」，不返回词条正文；要词条含义请改用 lingo.search_entities + lingo.get_entity。只读，需 baike:entity:readonly。",
     RequiredScopes = ["baike:entity:readonly"],
     Source = nameof(IFeishuTenantV1LingoEntity) + "." + nameof(IFeishuTenantV1LingoEntity.MatchEntityAsync))]
@@ -179,7 +179,7 @@ public interface IFeishuTenantLingoMatchEntitiesTool
 /// <b>免审直写</b>：经此接口创建的词条**不经过词典管理员审核**，直接写入词库——
 /// SDK 注释原文"调用时应当慎重操作"。若希望走审核流程，请用 <c>lingo.create_draft</c>。
 /// </remarks>
-[FeishuTool("lingo.create_entity",
+[AgentTool("lingo.create_entity",
     Description = "创建词典词条（⚠️ 免审直写：不经过词典管理员审核，直接写入词库——要审核流程请改用 lingo.create_draft）。写操作：默认不启用，需宿主授权（IToolExecutionAuthorizer），需 baike:entity:exempt_review。建议先 dry_run 预演。",
     RequiredScopes = ["baike:entity:exempt_review"],
     IsWrite = true,
@@ -209,7 +209,7 @@ public interface IFeishuTenantLingoCreateEntityTool
 /// <b><c>main_key</c> 必填</b>（平台请求体口径：<c>main_keys</c> 是必填项）——只想改释义时
 /// 也要把原词条名一起带上：先 <c>lingo.get_entity</c> 读出原值、合并后再整份提交。
 /// </remarks>
-[FeishuTool("lingo.update_entity",
+[AgentTool("lingo.update_entity",
     Description = "更新词典词条（⚠️ 免审直写，且为**覆盖式**：未传的释义/别名会被清空——只改一项请先 lingo.get_entity 读出原值再整份提交；main_key 必填，与平台口径一致）。写操作：默认不启用，需宿主授权，需 baike:entity:exempt_review。建议先 dry_run 预演。",
     RequiredScopes = ["baike:entity:exempt_review"],
     IsWrite = true,
@@ -238,7 +238,7 @@ public interface IFeishuTenantLingoUpdateEntityTool
 /// <b>high-risk-write</b>（命中危险词 <c>delete</c>）：删除后词条**直接从词库移除**，
 /// 外部系统里引用该 <c>entity_id</c> 的地方会全部失效，且平台不提供"恢复已删词条"入口。
 /// </remarks>
-[FeishuTool("lingo.delete_entity",
+[AgentTool("lingo.delete_entity",
     Description = "删除词典词条（⚠️ 不可逆：词条直接从词库移除，引用该 entity_id 的外部系统会全部失效——务必先 dry_run 预演并确认 entity_id 无误）。写操作：默认不启用，需宿主授权，需 baike:entity:exempt_delete。",
     RequiredScopes = ["baike:entity:exempt_delete"],
     IsWrite = true,
@@ -260,7 +260,7 @@ public interface IFeishuTenantLingoDeleteEntityTool
 /// 与 <c>create_entity</c> 的核心差别：草稿**需经词典管理员审核通过后**才写入词库。
 /// 这是"没有免审权限"或"改动需要留痕"时的正确路径。
 /// </remarks>
-[FeishuTool("lingo.create_draft",
+[AgentTool("lingo.create_draft",
     Description = "发起创建词条的**草稿申请**（需经词典管理员审核通过后才写入词库）——没有免审权限或需要留痕时的正确路径。写操作：默认不启用，需宿主授权，需 baike:entity 或 baike:entity:exempt_review（任一即可）。",
     RequiredScopes = ["baike:entity", "baike:entity:exempt_review"],
     IsWrite = true,
@@ -289,7 +289,7 @@ public interface IFeishuTenantLingoCreateDraftTool
 /// <b>已审批的草稿无法编辑</b>（SDK 注释原文）；同样按<b>覆盖式</b>语义提交，
 /// 且 <c>main_key</c> 必填（平台请求体口径）。
 /// </remarks>
-[FeishuTool("lingo.update_draft",
+[AgentTool("lingo.update_draft",
     Description = "更新词条草稿（⚠️ 已审批的草稿无法编辑；且为覆盖式提交，未传的释义/别名会被清空；main_key 必填）。写操作：默认不启用，需宿主授权，需 baike:entity 或 baike:entity:exempt_review（任一即可）。",
     RequiredScopes = ["baike:entity", "baike:entity:exempt_review"],
     IsWrite = true,

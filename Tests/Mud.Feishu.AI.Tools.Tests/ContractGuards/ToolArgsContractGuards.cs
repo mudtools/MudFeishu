@@ -51,7 +51,7 @@ public class ToolArgsContractGuards
 
         generated.Keys.Should().BeEquivalentTo(
             FeishuToolNames.All,
-            "每枚 [FeishuTool] 工具都必须有生成的参数解包类型（少则执行器编译失败，多则僵尸产物）");
+            "每枚 [AgentTool] 工具都必须有生成的参数解包类型（少则执行器编译失败，多则僵尸产物）");
     }
 
     /// <summary>每个生成的 Args 类型必须提供 <c>Unpack</c> 静态方法（执行器唯一消费点）。</summary>

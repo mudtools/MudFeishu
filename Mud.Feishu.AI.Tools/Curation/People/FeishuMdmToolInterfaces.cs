@@ -28,7 +28,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// <c>ListCountryRegionsAsync</c>（带 filter 表达式体的分页查询）留待下一片（先验证本切片流水线）。
 /// </para>
 /// </remarks>
-[FeishuTool("mdm.get_countries",
+[AgentTool("mdm.get_countries",
     Description = "按主数据编码批量查询国家/地区主数据（多语言名称、ISO 两位/三位/数字代码、国际电话区号、所属大洲、状态）——把 MDCTxxxx 编码或地区口径变成可读名称时用它。ids 最多 100 个；languages 决定返回语言（zh-CN / en-US / ja-JP），name/full_name 取其中排序第一的语言。只读，需 mdm:country_region:read。",
     RequiredScopes = ["mdm:country_region:read"],
     Source = nameof(IFeishuTenantV3MDMCountryRegion) + "." + nameof(IFeishuTenantV3MDMCountryRegion.GetBatchCountryRegionAsync))]

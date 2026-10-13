@@ -45,14 +45,14 @@ public class PaginationAggregationTests
     /// 裸页函数 → 解包结果形态的适配（R-4：<c>AggregateAsync</c> 已被删除，
     /// 原「仅测试使用的适配包装」下沉到测试侧——测试因此直连生产的唯一翻页实现）。
     /// </summary>
-    private static Func<string?, CancellationToken, Task<FeishuApiOutcome<FakePage>>> Adapter(
+    private static Func<string?, CancellationToken, Task<ToolApiOutcome<FakePage>>> Adapter(
         Func<string?, CancellationToken, Task<FakePage?>> fetchPage)
         => async (token, ct) =>
         {
             var page = await fetchPage(token, ct).ConfigureAwait(false);
             return page is null
-                ? FeishuApiOutcome<FakePage>.Fail("下游返回空结果")
-                : FeishuApiOutcome<FakePage>.Success(page);
+                ? ToolApiOutcome<FakePage>.Fail("下游返回空结果")
+                : ToolApiOutcome<FakePage>.Success(page);
         };
 
     // ────────── 测试用例 ──────────
@@ -198,7 +198,7 @@ public class PaginationAggregationTests
             ["fetch_all"] = false,
         };
 
-        var fetchAll = ToolPagination.ReadFetchAll(arguments);
+        var fetchAll = ToolArgsReaders.ReadFetchAll(arguments);
         fetchAll.Should().BeFalse("fetch_all=false");
 
         // 不调用 AggregateOutcomesAsync → 单次请求行为等价
@@ -273,13 +273,13 @@ public class PaginationAggregationTests
     public void ReadFetchAll_ShouldReturnFalse_WhenNotPresent()
     {
         var arguments = new Dictionary<string, object?>();
-        ToolPagination.ReadFetchAll(arguments).Should().BeFalse("默认 false");
+        ToolArgsReaders.ReadFetchAll(arguments).Should().BeFalse("默认 false");
     }
 
     [Fact]
     public void ReadMaxItems_ShouldReturnNull_WhenNotPresent()
     {
         var arguments = new Dictionary<string, object?>();
-        ToolPagination.ReadMaxItems(arguments).Should().BeNull("默认 null（由 Options 填充）");
+        ToolArgsReaders.ReadMaxItems(arguments).Should().BeNull("默认 null（由 Options 填充）");
     }
 }

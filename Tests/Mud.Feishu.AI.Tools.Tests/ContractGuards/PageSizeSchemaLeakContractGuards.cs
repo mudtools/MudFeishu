@@ -26,7 +26,7 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 public class PageSizeSchemaLeakContractGuards
 {
     /// <summary>
-    /// Curation 目录下所有 <c>[FeishuTool]</c> 接口文件中，不得出现 <c>ToolParameter("page_size"</c>。
+    /// Curation 目录下所有 <c>[AgentTool]</c> 接口文件中，不得出现 <c>ToolParameter("page_size"</c>。
     /// </summary>
     [Fact]
     public void Curation_ShouldNotContainPageSizeToolParameter()

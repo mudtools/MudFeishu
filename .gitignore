@@ -53,7 +53,17 @@
 /Mud.Feishu.AI.Tools/obj
 /Mud.Feishu.AI.Mcp/bin
 /Mud.Feishu.AI.Mcp/obj
+/Mud.AI.Generator/bin
+/Mud.AI.Generator/obj
+/Mud.AI.Abstractions/bin
+/Mud.AI.Abstractions/obj
+/Mud.AI.Agent/bin
+/Mud.AI.Agent/obj
 /docs
+/Demos/Mud.Demo.Sdk/bin
+/Demos/Mud.Demo.Sdk/obj
+/Demos/ToolSurfaceDemo/bin
+/Demos/ToolSurfaceDemo/obj
 /Mud.Feishu.Redis/obj
 /Mud.Feishu.Webhook.Demo/bin
 /Demos/Mud.Feishu.Demo/bin
@@ -95,6 +105,8 @@
 /Tests/Mud.Feishu.AI.Tools.Tests/TestResults
 /Tests/Mud.Feishu.Agent.Demo.Tests/bin
 /Tests/Mud.Feishu.Agent.Demo.Tests/obj
+/Tests/Mud.AI.Generator.Tests/bin
+/Tests/Mud.AI.Generator.Tests/obj
 node_modules
 ################################################################################
 # 敏感配置文件

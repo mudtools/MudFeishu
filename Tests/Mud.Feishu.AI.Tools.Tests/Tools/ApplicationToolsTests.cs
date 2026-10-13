@@ -44,7 +44,7 @@ public class ApplicationToolsTests
             scope?.Object,
             appVersion?.Object);
 
-    private static JsonObject Payload(FeishuToolResult result)
+    private static JsonObject Payload(ToolResult result)
         => JsonNode.Parse(result.ToString())!.AsObject();
 
     private static FeishuApiResult<T> Ok<T>(T data)

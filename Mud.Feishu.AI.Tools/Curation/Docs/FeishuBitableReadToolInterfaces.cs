@@ -33,7 +33,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // ─────────────────────────── Bitable（4 个） ───────────────────────────
 
 /// <summary>工具接口：bitable.list_tables（映射 <c>IFeishuTenantV1BitableAppTable.GetAppTablePageListAsync</c>）。</summary>
-[FeishuTool("bitable.list_tables",
+[AgentTool("bitable.list_tables",
     Description = "列出多维表格中的全部数据表，返回 table_id/name/revision；先于 bitable.list_fields、bitable.query_records 使用。只读，需 bitable:app:readonly。",
     RequiredScopes = ["bitable:app:readonly"],
     Source = nameof(IFeishuTenantV1BitableAppTable) + "." + nameof(IFeishuTenantV1BitableAppTable.GetAppTablePageListAsync))]
@@ -50,7 +50,7 @@ public interface IFeishuTenantBitableListTablesTool
 }
 
 /// <summary>工具接口：bitable.list_fields（映射 <c>IFeishuTenantV1BitableField.GetFieldsPageListAsync</c>）。</summary>
-[FeishuTool("bitable.list_fields",
+[AgentTool("bitable.list_fields",
     Description = "列出数据表的字段定义（field_id/name/type），查询前先了解字段结构，配合 bitable.query_records 的 field_names/filter 使用。只读，需 bitable:app:readonly。",
     RequiredScopes = ["bitable:app:readonly"],
     Source = nameof(IFeishuTenantV1BitableField) + "." + nameof(IFeishuTenantV1BitableField.GetFieldsPageListAsync))]
@@ -69,7 +69,7 @@ public interface IFeishuTenantBitableListFieldsTool
 }
 
 /// <summary>工具接口：bitable.query_records（映射 <c>IFeishuTenantV1BitableRecord.QueryRecordsPageListAsync</c>）。</summary>
-[FeishuTool("bitable.query_records",
+[AgentTool("bitable.query_records",
     Description = "按条件查询多维表格记录（先经 bitable.list_tables 获取 table_id，经 bitable.list_fields 了解字段）；filter 为简化筛选式，如 status = \"done\" and owner contains 张三。只读，需 bitable:app:readonly。",
     RequiredScopes = ["bitable:app:readonly"],
     Source = nameof(IFeishuTenantV1BitableRecord) + "." + nameof(IFeishuTenantV1BitableRecord.QueryRecordsPageListAsync))]
@@ -91,7 +91,7 @@ public interface IFeishuTenantBitableQueryRecordsTool
 }
 
 /// <summary>工具接口：bitable.get_records_by_ids（映射 <c>IFeishuTenantV1BitableRecord.GetRecordsAsync</c>）。</summary>
-[FeishuTool("bitable.get_records_by_ids",
+[AgentTool("bitable.get_records_by_ids",
     Description = "按 record_id 批量获取多维表格记录（最多 100 条）——bitable.query_records 翻页后的精取链。只读，需 bitable:app:readonly。",
     RequiredScopes = ["bitable:app:readonly"],
     Source = nameof(IFeishuTenantV1BitableRecord) + "." + nameof(IFeishuTenantV1BitableRecord.GetRecordsAsync))]
@@ -113,7 +113,7 @@ public interface IFeishuTenantBitableRecordsByIdsTool
 /// R5 / F-11：补齐"**先看视图、再取记录**"的链路首环。此前模型的唯一路径是
 /// <c>bitable.query_records</c>（面向整表），无法按视图（筛选/分组后的视角）取数。
 /// </remarks>
-[FeishuTool("bitable.list_views",
+[AgentTool("bitable.list_views",
     Description = "列出数据表下的全部视图（名称/类型/可见范围）。取记录前先用它确定 view_id，再传给 bitable.query_records 按视图取数。只读，需 bitable:app:readonly。",
     RequiredScopes = ["bitable:app:readonly"],
     Source = nameof(IFeishuTenantV1BitableView) + "." + nameof(IFeishuTenantV1BitableView.GetViewsPageListAsync))]
@@ -130,7 +130,7 @@ public interface IFeishuTenantBitableListViewsTool
 /// <summary>
 /// 工具接口：bitable.get_view（映射 <c>IFeishuTenantV1BitableView.GetViewAsync</c>）。
 /// </summary>
-[FeishuTool("bitable.get_view",
+[AgentTool("bitable.get_view",
     Description = "按 view_id 获取单个视图的详情（名称/类型/可见范围）。确认某个视图的具体配置时使用。只读，需 bitable:app:readonly。",
     RequiredScopes = ["bitable:app:readonly"],
     Source = nameof(IFeishuTenantV1BitableView) + "." + nameof(IFeishuTenantV1BitableView.GetViewAsync))]

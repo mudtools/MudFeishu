@@ -33,8 +33,8 @@ internal sealed class SchemaReadTools(IOptions<FeishuAgentOptions> options)
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>feishu.schema_read：查询 SDK 方法签名事实。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantSchemaReadTool))]
-    public Task<FeishuToolResult> SchemaReadAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantSchemaReadTool))]
+    public Task<ToolResult> SchemaReadAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.FeishuSchemaRead, _maxResultLength);
         return executor.RunAsync(() =>

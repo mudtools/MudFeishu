@@ -30,7 +30,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// 故与 <c>knowledge.search</c> 同属"绑定本地面"的一类——生成器对无 <c>Source</c> 的工具
 /// 取 <c>risk=read</c> / <c>identity=tenant</c>，符合其真实语义。
 /// </remarks>
-[FeishuTool("feishu.capability_lookup",
+[AgentTool("feishu.capability_lookup",
     Description = "查询飞书开放平台能力在 SDK 中是否存在（按能力分组回答：组名 / 方法数 / 该组所属模块是否已有可用工具）。当所需能力不在当前工具集内时用它判断\"是没有还是没启用\"，避免凭空猜测调用不存在的接口。只返回元数据，不返回请求构造。",
     RequiredScopes = [])]
 public interface IFeishuTenantCapabilityLookupTool
@@ -59,7 +59,7 @@ public interface IFeishuTenantCapabilityLookupTool
 /// 这也是官方 <c>lark-cli skills read</c> 的等价物。
 /// </para>
 /// </remarks>
-[FeishuTool("feishu.guidance_read",
+[AgentTool("feishu.guidance_read",
     Description = "按需读取某个域的深层避坑/示例文本（如 im/topics-and-replies、docx/block-editing）。常驻 guidance 只放要点；当某个工具连续失败或你不确定某域的约束时，先读它再重试。只读，需 feishu:base。",
     RequiredScopes = ["feishu:base"])]
 // Source 刻意留空：本工具读取的是**编译期内嵌的 guidance 资产**，不调用任何 SDK 接口。
@@ -94,7 +94,7 @@ public interface IFeishuTenantGuidanceReadTool
 /// 默认启用（元工具，只读，<c>feishu:base</c> scope，与 <c>capability_lookup</c> 同档）。
 /// </para>
 /// </remarks>
-[FeishuTool("feishu.tool_search",
+[AgentTool("feishu.tool_search",
     Description = "在已策展的飞书工具中按关键字/域/读写过滤搜索。返回工具名、域、是否写操作、风险等级、所需参数、是否已启用。当工具变多后用它快速定位能用哪个工具，以及该工具是否在当前宿主已启用（未启用的会给出原因提示）。只读，需 feishu:base。",
     RequiredScopes = ["feishu:base"])]
 public interface IFeishuTenantToolSearchTool

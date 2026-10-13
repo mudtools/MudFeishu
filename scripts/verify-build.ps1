@@ -356,11 +356,14 @@ else {
 #  ② 只断言 AOT00x 计数会掩盖上述失败（构建失败时 AOT00x 天然为 0），必须同时断言错误数=0。
 #     历史实现即因此长期输出 [ OK ]，实际从未完成过一次严格的 AOT 冒烟。
 # 因此改为逐个构建**源项目**（均含 net8.0 目标），并同时断言错误数与 IL2026/IL3050。
-# 注意：只取仓库根下的 Mud.Feishu* **源项目目录**（Tests/Demos 不在 AOT-3 范围内：
+# 注意：只取仓库根下的 Mud.* **源项目目录**（Tests/Demos 不在 AOT-3 范围内：
 #   - Tests 被 Tests/Directory.Build.props 遮蔽，不启用 AOT 分析器；
 #   - Demos 被 Demos/Directory.Build.props 遮蔽，且 Mud.Feishu.AotVerification 有意保留反射调用
 #     以验证「用户自行使用反射 JsonSerializer 仍可工作」，纳入严格模式只会产生与库无关的噪音）。
-$sourceRoots = @(Get-ChildItem -Path $repoRoot -Directory -Filter 'Mud.Feishu*' -ErrorAction SilentlyContinue)
+# v2.3：glob 由 'Mud.Feishu*' 放宽为 'Mud.*'——Mud.AI.Agent / Mud.AI.Abstractions 等新包族
+#   同样是需要 AOT 严格冒烟的**发布面源项目**；沿用旧 glob 会让它们成为门禁盲区
+#   （新增包族即静默逃过 IL2026/IL3050 断言）。
+$sourceRoots = @(Get-ChildItem -Path $repoRoot -Directory -Filter 'Mud.*' -ErrorAction SilentlyContinue)
 $strictProjects = @($sourceRoots |
     ForEach-Object { Get-ChildItem -Path $_.FullName -Filter '*.csproj' -File -ErrorAction SilentlyContinue } |
     Where-Object { $_.FullName -notmatch '\\(obj|bin)\\' } |

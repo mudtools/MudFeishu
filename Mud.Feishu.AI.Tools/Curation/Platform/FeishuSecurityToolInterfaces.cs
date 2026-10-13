@@ -32,7 +32,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// 设备管理（device_record / device_apply_record）与用户数据迁移（user_migration）均为<b>写类</b>，另立批次。
 /// </para>
 /// </remarks>
-[FeishuTool("security.query_audit_logs",
+[AgentTool("security.query_audit_logs",
     Description = "查询企业成员的【行为审计日志】——谁在什么时间、从哪个 IP/城市、对哪个对象（文档/会话/权限/应用）做了什么（事件名如 space_edit_doc、permission_change）。用于合规排查与异常操作复盘。⚠️ 该工具属 PII：结果含成员 user_id、IP 与设备/地理位置，会进入【第三方模型上下文】；【默认不启用】，需宿主显式加入白名单并确认合规口径。时间范围起止相差不能超过 30 天；建议 user_id_type 传 open_id（否则需字段权限 contact:user.employee_id:readonly）。只读，需 admin:audit_info:readonly。",
     RequiredScopes = ["admin:audit_info:readonly"],
     Source = nameof(IFeishuTenantV1SecurityAuditLog) + "." + nameof(IFeishuTenantV1SecurityAuditLog.GetAuditLogDataAsync))]

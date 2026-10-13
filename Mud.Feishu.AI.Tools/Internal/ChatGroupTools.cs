@@ -65,8 +65,8 @@ internal sealed class ChatGroupTools(
     // ─────────────────────────── chatgroup.list_chats ───────────────────────────
 
     /// <summary>chatgroup.list_chats：列出机器人所在的群（本域第一跳）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantChatgroupListChatsTool))]
-    public Task<FeishuToolResult> ListChatsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantChatgroupListChatsTool))]
+    public Task<ToolResult> ListChatsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ChatgroupListChats, _maxResultLength);
         if (Absent(executor.ToolName, _chatGroupClient) is { } unavailable)
@@ -79,7 +79,7 @@ internal sealed class ChatGroupTools(
             var args = ChatgroupListChatsArgs.Unpack(arguments);
 
             // page_size 刻意不下发（保持 SDK 默认）——运维参数不进模型可见面（DP-B1-0）。
-            async Task<FeishuApiOutcome<ApiPageListResult<ChatItemInfo>>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<ApiPageListResult<ChatItemInfo>>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _chatGroupClient!
                     .GetChatGroupPageListAsync(
                         sort_type: args.SortType ?? DefaultSortType,
@@ -126,8 +126,8 @@ internal sealed class ChatGroupTools(
     // ─────────────────────────── chatgroup.list_moderators ───────────────────────────
 
     /// <summary>chatgroup.list_moderators：查询发言权限名单（分页）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantChatgroupListModeratorsTool))]
-    public Task<FeishuToolResult> ListModeratorsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantChatgroupListModeratorsTool))]
+    public Task<ToolResult> ListModeratorsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ChatgroupListModerators, _maxResultLength);
         if (Absent(executor.ToolName, _chatGroupClient) is { } unavailable)
@@ -139,7 +139,7 @@ internal sealed class ChatGroupTools(
         {
             var args = ChatgroupListModeratorsArgs.Unpack(arguments);
 
-            async Task<FeishuApiOutcome<ChatGroupModeratorPageListResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<ChatGroupModeratorPageListResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _chatGroupClient!
                     .GetChatGroupModeratorPageListByIdAsync(args.ChatId, page_token: token, cancellationToken: ct)
                     .ConfigureAwait(false));
@@ -179,8 +179,8 @@ internal sealed class ChatGroupTools(
     // ─────────────────────────── chatgroup.is_in_chat ───────────────────────────
 
     /// <summary>chatgroup.is_in_chat：发消息前的在群预检。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantChatgroupIsInChatTool))]
-    public Task<FeishuToolResult> IsInChatAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantChatgroupIsInChatTool))]
+    public Task<ToolResult> IsInChatAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ChatgroupIsInChat, _maxResultLength);
         if (Absent(executor.ToolName, _memberClient) is { } unavailable)
@@ -212,8 +212,8 @@ internal sealed class ChatGroupTools(
     // ─────────────────────────── chatgroup.get_menu ───────────────────────────
 
     /// <summary>chatgroup.get_menu：查询群快捷菜单配置。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantChatgroupGetMenuTool))]
-    public Task<FeishuToolResult> GetMenuAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantChatgroupGetMenuTool))]
+    public Task<ToolResult> GetMenuAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ChatgroupGetMenu, _maxResultLength);
         if (Absent(executor.ToolName, _menuClient) is { } unavailable)
@@ -282,9 +282,9 @@ internal sealed class ChatGroupTools(
     /// 软缺席：客户端为空时给出<b>可执行的错误结果</b>而不是抛异常
     /// （异常会逃出执行链抛给宿主，而这里要的是"模型看到一条明确的不可用说明"）。
     /// </summary>
-    private static FeishuToolResult? Absent(string toolName, object? client)
+    private static ToolResult? Absent(string toolName, object? client)
         => client is null
-            ? FeishuToolResult.FromError(FeishuToolBinding.StructuredError(
+            ? ToolResult.FromError(FeishuToolBinding.StructuredError(
                 toolName,
                 $"未注册 {ClientName} 客户端——群管理能力需宿主启用群管理 API（软缺席，不影响其它域工具）"))
             : null;
@@ -292,8 +292,8 @@ internal sealed class ChatGroupTools(
     // ─────────────────── 写面：群设置 / 成员 / 管理员 / 置顶 / 菜单删除 ───────────────────
 
     /// <summary>chatgroup.create_chat：创建群。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantChatgroupCreateChatTool))]
-    public Task<FeishuToolResult> CreateChatAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantChatgroupCreateChatTool))]
+    public Task<ToolResult> CreateChatAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ChatgroupCreateChat, _maxResultLength);
         if (Absent(executor.ToolName, _chatGroupClient) is { } unavailable)
@@ -307,7 +307,7 @@ internal sealed class ChatGroupTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName,
                     "POST",
                     "/open-apis/im/v1/chats",
@@ -345,8 +345,8 @@ internal sealed class ChatGroupTools(
     }
 
     /// <summary>chatgroup.update_chat：增量更新群设置（未传字段保持原值）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantChatgroupUpdateChatTool))]
-    public Task<FeishuToolResult> UpdateChatAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantChatgroupUpdateChatTool))]
+    public Task<ToolResult> UpdateChatAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ChatgroupUpdateChat, _maxResultLength);
         if (Absent(executor.ToolName, _chatGroupClient) is { } unavailable)
@@ -369,7 +369,7 @@ internal sealed class ChatGroupTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName,
                     "PUT",
                     "/open-apis/im/v1/chats/{chat_id}",
@@ -406,8 +406,8 @@ internal sealed class ChatGroupTools(
     }
 
     /// <summary>chatgroup.delete_chat：解散群（high-risk-write）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantChatgroupDeleteChatTool))]
-    public Task<FeishuToolResult> DeleteChatAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantChatgroupDeleteChatTool))]
+    public Task<ToolResult> DeleteChatAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ChatgroupDeleteChat, _maxResultLength);
         if (Absent(executor.ToolName, _chatGroupClient) is { } unavailable)
@@ -421,7 +421,7 @@ internal sealed class ChatGroupTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName,
                     "DELETE",
                     "/open-apis/im/v1/chats/{chat_id}",
@@ -445,8 +445,8 @@ internal sealed class ChatGroupTools(
     }
 
     /// <summary>chatgroup.update_moderation：更新群发言权限。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantChatgroupUpdateModerationTool))]
-    public Task<FeishuToolResult> UpdateModerationAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantChatgroupUpdateModerationTool))]
+    public Task<ToolResult> UpdateModerationAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ChatgroupUpdateModeration, _maxResultLength);
         if (Absent(executor.ToolName, _chatGroupClient) is { } unavailable)
@@ -471,7 +471,7 @@ internal sealed class ChatGroupTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName,
                     "PUT",
                     "/open-apis/im/v1/chats/{chat_id}/moderation",
@@ -510,8 +510,8 @@ internal sealed class ChatGroupTools(
     }
 
     /// <summary>chatgroup.add_member：拉成员入群。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantChatgroupAddMemberTool))]
-    public Task<FeishuToolResult> AddMemberAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantChatgroupAddMemberTool))]
+    public Task<ToolResult> AddMemberAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ChatgroupAddMember, _maxResultLength);
         if (Absent(executor.ToolName, _memberClient) is { } unavailable)
@@ -525,7 +525,7 @@ internal sealed class ChatGroupTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName,
                     "POST",
                     "/open-apis/im/v1/chats/{chat_id}/members",
@@ -558,8 +558,8 @@ internal sealed class ChatGroupTools(
     }
 
     /// <summary>chatgroup.remove_member：移成员出群（high-risk-write）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantChatgroupRemoveMemberTool))]
-    public Task<FeishuToolResult> RemoveMemberAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantChatgroupRemoveMemberTool))]
+    public Task<ToolResult> RemoveMemberAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ChatgroupRemoveMember, _maxResultLength);
         if (Absent(executor.ToolName, _memberClient) is { } unavailable)
@@ -573,7 +573,7 @@ internal sealed class ChatGroupTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName,
                     "DELETE",
                     "/open-apis/im/v1/chats/{chat_id}/members",
@@ -601,8 +601,8 @@ internal sealed class ChatGroupTools(
     }
 
     /// <summary>chatgroup.me_join_chat：当前身份加入群。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantChatgroupMeJoinChatTool))]
-    public Task<FeishuToolResult> MeJoinChatAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantChatgroupMeJoinChatTool))]
+    public Task<ToolResult> MeJoinChatAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ChatgroupMeJoinChat, _maxResultLength);
         if (Absent(executor.ToolName, _memberClient) is { } unavailable)
@@ -616,7 +616,7 @@ internal sealed class ChatGroupTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName,
                     "PATCH",
                     "/open-apis/im/v1/chats/{chat_id}/members/me_join",
@@ -640,8 +640,8 @@ internal sealed class ChatGroupTools(
     }
 
     /// <summary>chatgroup.add_manager：设置群管理员。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantChatgroupAddManagerTool))]
-    public Task<FeishuToolResult> AddManagerAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantChatgroupAddManagerTool))]
+    public Task<ToolResult> AddManagerAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ChatgroupAddManager, _maxResultLength);
         if (Absent(executor.ToolName, _memberClient) is { } unavailable)
@@ -655,7 +655,7 @@ internal sealed class ChatGroupTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName,
                     "POST",
                     "/open-apis/im/v1/chats/{chat_id}/managers/add_managers",
@@ -683,8 +683,8 @@ internal sealed class ChatGroupTools(
     }
 
     /// <summary>chatgroup.delete_manager：撤销群管理员（high-risk-write）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantChatgroupDeleteManagerTool))]
-    public Task<FeishuToolResult> DeleteManagerAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantChatgroupDeleteManagerTool))]
+    public Task<ToolResult> DeleteManagerAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ChatgroupDeleteManager, _maxResultLength);
         if (Absent(executor.ToolName, _memberClient) is { } unavailable)
@@ -698,7 +698,7 @@ internal sealed class ChatGroupTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName,
                     "POST",
                     "/open-apis/im/v1/chats/{chat_id}/managers/delete_managers",
@@ -727,8 +727,8 @@ internal sealed class ChatGroupTools(
     }
 
     /// <summary>chatgroup.put_top_notice：设置群置顶。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantChatgroupPutTopNoticeTool))]
-    public Task<FeishuToolResult> PutTopNoticeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantChatgroupPutTopNoticeTool))]
+    public Task<ToolResult> PutTopNoticeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ChatgroupPutTopNotice, _maxResultLength);
         if (Absent(executor.ToolName, _chatGroupClient) is { } unavailable)
@@ -751,7 +751,7 @@ internal sealed class ChatGroupTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName,
                     "POST",
                     "/open-apis/im/v1/chats/{chat_id}/top_notice/put_top_notice",
@@ -784,8 +784,8 @@ internal sealed class ChatGroupTools(
     }
 
     /// <summary>chatgroup.delete_top_notice：取消群置顶（high-risk-write）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantChatgroupDeleteTopNoticeTool))]
-    public Task<FeishuToolResult> DeleteTopNoticeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantChatgroupDeleteTopNoticeTool))]
+    public Task<ToolResult> DeleteTopNoticeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ChatgroupDeleteTopNotice, _maxResultLength);
         if (Absent(executor.ToolName, _chatGroupClient) is { } unavailable)
@@ -799,7 +799,7 @@ internal sealed class ChatGroupTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName,
                     "POST",
                     "/open-apis/im/v1/chats/{chat_id}/top_notice/delete_top_notice",
@@ -823,8 +823,8 @@ internal sealed class ChatGroupTools(
     }
 
     /// <summary>chatgroup.delete_menu：删除群菜单一级入口（high-risk-write）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantChatgroupDeleteMenuTool))]
-    public Task<FeishuToolResult> DeleteMenuAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantChatgroupDeleteMenuTool))]
+    public Task<ToolResult> DeleteMenuAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ChatgroupDeleteMenu, _maxResultLength);
         if (Absent(executor.ToolName, _menuClient) is { } unavailable)
@@ -838,7 +838,7 @@ internal sealed class ChatGroupTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName,
                     "DELETE",
                     "/open-apis/im/v1/chats/{chat_id}/menu_tree",
@@ -885,8 +885,8 @@ internal sealed class ChatGroupTools(
     }
 
     /// <summary>参数非法：结构化错误（不是异常——异常会逃出执行链，模型看不到可执行信息）。</summary>
-    private static FeishuToolResult Invalid(string toolName, string message)
-        => FeishuToolResult.FromError(FeishuToolBinding.StructuredError(toolName, message));
+    private static ToolResult Invalid(string toolName, string message)
+        => ToolResult.FromError(FeishuToolBinding.StructuredError(toolName, message));
 
     /// <summary>
     /// 空数据结果的成功判定（delete / me_join / moderation / top_notice 返回

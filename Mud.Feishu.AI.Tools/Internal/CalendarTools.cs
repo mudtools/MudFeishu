@@ -40,8 +40,8 @@ internal sealed class CalendarTools(
 
     /// <summary>calendar.create_event：创建日程（<c>dry_run=true</c> 时只预演）。</summary>
     /// <remarks>幂等键（T4-1 同款）：<c>idempotency_key</c> → 直通平台查询参数（平台原生幂等）。</remarks>
-    [FeishuToolHandler(typeof(IFeishuTenantCalendarCreateEventTool))]
-    public Task<FeishuToolResult> CreateEventAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantCalendarCreateEventTool))]
+    public Task<ToolResult> CreateEventAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.CalendarCreateEvent, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -59,7 +59,7 @@ internal sealed class CalendarTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/calendar/v4/calendars/{calendar_id}/events",
                     ToolDryRun.IdempotencyNote(args.IdempotencyKey),
                     ("calendar_id", args.CalendarId.Length), ("summary", args.Summary.Length),
@@ -85,8 +85,8 @@ internal sealed class CalendarTools(
     }
 
     /// <summary>calendar.find_free_slots：查询单用户/会议室忙闲（user_id/room_id 二选一）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantCalendarFindFreeSlotsTool))]
-    public Task<FeishuToolResult> FindFreeSlotsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantCalendarFindFreeSlotsTool))]
+    public Task<ToolResult> FindFreeSlotsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.CalendarFindFreeSlots, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -117,8 +117,8 @@ internal sealed class CalendarTools(
     }
 
     /// <summary>calendar.list_events：列出日程（分页）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantCalendarListEventsTool))]
-    public Task<FeishuToolResult> ListEventsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantCalendarListEventsTool))]
+    public Task<ToolResult> ListEventsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.CalendarListEvents, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -187,8 +187,8 @@ internal sealed class CalendarTools(
     // ────────── R7/WP4 写面成环 ──────────
 
     /// <summary>calendar.update_event：更新日程（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantCalendarUpdateEventTool))]
-    public Task<FeishuToolResult> UpdateEventAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantCalendarUpdateEventTool))]
+    public Task<ToolResult> UpdateEventAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.CalendarUpdateEvent, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -214,7 +214,7 @@ internal sealed class CalendarTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "PATCH", $"/open-apis/calendar/v4/calendars/{args.CalendarId}/events/{args.EventId}",
                     null,
                     ("summary", args.Summary?.Length ?? 0), ("description", args.Description?.Length ?? 0),
@@ -243,8 +243,8 @@ internal sealed class CalendarTools(
     }
 
     /// <summary>calendar.delete_event：取消日程（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantCalendarDeleteEventTool))]
-    public Task<FeishuToolResult> DeleteEventAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantCalendarDeleteEventTool))]
+    public Task<ToolResult> DeleteEventAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.CalendarDeleteEvent);
         return executor.RunAsync(async () =>
@@ -253,7 +253,7 @@ internal sealed class CalendarTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "DELETE", $"/open-apis/calendar/v4/calendars/{args.CalendarId}/events/{args.EventId}"));
             }
 
@@ -269,8 +269,8 @@ internal sealed class CalendarTools(
     }
 
     /// <summary>calendar.add_event_attendees：添加与会者（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantCalendarAddEventAttendeesTool))]
-    public Task<FeishuToolResult> AddEventAttendeesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantCalendarAddEventAttendeesTool))]
+    public Task<ToolResult> AddEventAttendeesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.CalendarAddEventAttendees, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -279,7 +279,7 @@ internal sealed class CalendarTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", $"/open-apis/calendar/v4/calendars/{args.CalendarId}/events/{args.EventId}/attendees",
                     null,
                     ("attendee_ids", args.AttendeeIds.Length)));
@@ -303,8 +303,8 @@ internal sealed class CalendarTools(
     }
 
     /// <summary>calendar.list_event_attendees：列出现有与会者（分页）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantCalendarListEventAttendeesTool))]
-    public Task<FeishuToolResult> ListEventAttendeesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantCalendarListEventAttendeesTool))]
+    public Task<ToolResult> ListEventAttendeesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.CalendarListEventAttendees, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -312,7 +312,7 @@ internal sealed class CalendarTools(
             var args = CalendarListEventAttendeesArgs.Unpack(arguments);
 
             // P-0 补齐：统一分页出口——聚合路径与单页路径共用同一次调用定义与同一份投影。
-            async Task<FeishuApiOutcome<ApiPageListResult<CalendarEventAttendeeInfoResult>>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<ApiPageListResult<CalendarEventAttendeeInfoResult>>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _calendarEventClient
                     .GetCalendarEventAttendeePageListAsync(args.CalendarId, args.EventId, page_size: PageSizes.CalendarEventAttendees, page_token: token, cancellationToken: ct)
                     .ConfigureAwait(false));

@@ -56,8 +56,8 @@ internal sealed class OrgMetadataTools(
     // ───────────────────────────── 职务（job_title） ─────────────────────────────
 
     /// <summary>org.list_job_titles：分页列出职务目录。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantOrgListJobTitlesTool))]
-    public Task<FeishuToolResult> ListJobTitlesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantOrgListJobTitlesTool))]
+    public Task<ToolResult> ListJobTitlesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.OrgListJobTitles, _maxResultLength);
         if (Absent(_jobTitleClient, executor.ToolName, "IFeishuTenantV3JobTitle") is { } unavailable)
@@ -71,7 +71,7 @@ internal sealed class OrgMetadataTools(
 
             // page_size 刻意不下发（保持 SDK 默认）——运维参数不进模型可见面（DP-B1-0）。
             // P-0 补齐：统一分页出口——聚合路径与单页路径共用同一次调用定义与同一份投影。
-            async Task<FeishuApiOutcome<ApiPageListResult<JobTitle>>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<ApiPageListResult<JobTitle>>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _jobTitleClient!
                     .GetJobTitlesListAsync(page_token: token, cancellationToken: ct)
                     .ConfigureAwait(false));
@@ -95,8 +95,8 @@ internal sealed class OrgMetadataTools(
     }
 
     /// <summary>org.get_job_title：按 ID 查询单个职务。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantOrgGetJobTitleTool))]
-    public Task<FeishuToolResult> GetJobTitleAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantOrgGetJobTitleTool))]
+    public Task<ToolResult> GetJobTitleAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.OrgGetJobTitle, _maxResultLength);
         if (Absent(_jobTitleClient, executor.ToolName, "IFeishuTenantV3JobTitle") is { } unavailable)
@@ -129,8 +129,8 @@ internal sealed class OrgMetadataTools(
     // ───────────────────────────── 职级（job_level） ─────────────────────────────
 
     /// <summary>org.list_job_levels：分页列出职务族目录（支持 name 模糊过滤）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantOrgListJobLevelsTool))]
-    public Task<FeishuToolResult> ListJobLevelsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantOrgListJobLevelsTool))]
+    public Task<ToolResult> ListJobLevelsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.OrgListJobLevels, _maxResultLength);
         if (Absent(_jobLevelClient, executor.ToolName, "IFeishuTenantV3JobLevel") is { } unavailable)
@@ -144,7 +144,7 @@ internal sealed class OrgMetadataTools(
 
             // name 是 SDK 原生业务过滤（可下发）；page_size 不下发（DP-B1-0）。
             // P-0 补齐：统一分页出口——聚合路径与单页路径共用同一次调用定义与同一份投影。
-            async Task<FeishuApiOutcome<ApiPageListResult<JobLevelInfo>>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<ApiPageListResult<JobLevelInfo>>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _jobLevelClient!
                     .GetJobLevelListAsync(name: args.Name, page_token: token, cancellationToken: ct)
                     .ConfigureAwait(false));
@@ -170,8 +170,8 @@ internal sealed class OrgMetadataTools(
     }
 
     /// <summary>org.get_job_level：按 ID 查询单个职级。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantOrgGetJobLevelTool))]
-    public Task<FeishuToolResult> GetJobLevelAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantOrgGetJobLevelTool))]
+    public Task<ToolResult> GetJobLevelAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.OrgGetJobLevel, _maxResultLength);
         if (Absent(_jobLevelClient, executor.ToolName, "IFeishuTenantV3JobLevel") is { } unavailable)
@@ -206,8 +206,8 @@ internal sealed class OrgMetadataTools(
     // ───────────────────────────── 职务族（job_family） ─────────────────────────────
 
     /// <summary>org.list_job_families：分页列出职务族目录（支持 name 模糊过滤）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantOrgListJobFamiliesTool))]
-    public Task<FeishuToolResult> ListJobFamiliesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantOrgListJobFamiliesTool))]
+    public Task<ToolResult> ListJobFamiliesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.OrgListJobFamilies, _maxResultLength);
         if (Absent(_jobFamiliesClient, executor.ToolName, "IFeishuTenantV3JobFamilies") is { } unavailable)
@@ -220,7 +220,7 @@ internal sealed class OrgMetadataTools(
             var args = OrgListJobFamiliesArgs.Unpack(arguments);
 
             // P-0 补齐：统一分页出口——聚合路径与单页路径共用同一次调用定义与同一份投影。
-            async Task<FeishuApiOutcome<ApiPageListResult<JobFamilyInfo>>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<ApiPageListResult<JobFamilyInfo>>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _jobFamiliesClient!
                     .GetJobFamilesListAsync(name: args.Name, page_token: token, cancellationToken: ct)
                     .ConfigureAwait(false));
@@ -246,8 +246,8 @@ internal sealed class OrgMetadataTools(
     }
 
     /// <summary>org.get_job_family：按 ID 查询单个职务族。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantOrgGetJobFamilyTool))]
-    public Task<FeishuToolResult> GetJobFamilyAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantOrgGetJobFamilyTool))]
+    public Task<ToolResult> GetJobFamilyAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.OrgGetJobFamily, _maxResultLength);
         if (Absent(_jobFamiliesClient, executor.ToolName, "IFeishuTenantV3JobFamilies") is { } unavailable)
@@ -282,8 +282,8 @@ internal sealed class OrgMetadataTools(
     // ───────────────────────────── 工作城市（work_city） ─────────────────────────────
 
     /// <summary>org.list_work_cities：分页列出工作城市目录。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantOrgListWorkCitiesTool))]
-    public Task<FeishuToolResult> ListWorkCitiesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantOrgListWorkCitiesTool))]
+    public Task<ToolResult> ListWorkCitiesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.OrgListWorkCities, _maxResultLength);
         if (Absent(_workCityClient, executor.ToolName, "IFeishuTenantV3WorkCity") is { } unavailable)
@@ -296,7 +296,7 @@ internal sealed class OrgMetadataTools(
             var args = OrgListWorkCitiesArgs.Unpack(arguments);
 
             // P-0 补齐：统一分页出口——聚合路径与单页路径共用同一次调用定义与同一份投影。
-            async Task<FeishuApiOutcome<ApiPageListResult<WorkCity>>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<ApiPageListResult<WorkCity>>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _workCityClient!
                     .GetWorkCitesListAsync(page_token: token, cancellationToken: ct)
                     .ConfigureAwait(false));
@@ -320,8 +320,8 @@ internal sealed class OrgMetadataTools(
     }
 
     /// <summary>org.get_work_city：按 ID 查询单个工作城市。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantOrgGetWorkCityTool))]
-    public Task<FeishuToolResult> GetWorkCityAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantOrgGetWorkCityTool))]
+    public Task<ToolResult> GetWorkCityAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.OrgGetWorkCity, _maxResultLength);
         if (Absent(_workCityClient, executor.ToolName, "IFeishuTenantV3WorkCity") is { } unavailable)
@@ -354,9 +354,9 @@ internal sealed class OrgMetadataTools(
     // ───────────────────────────── 公共投影 ─────────────────────────────
 
     /// <summary>软缺席（与 BoardTools / CountryRegionTools / SecurityAuditLogTools 同口径）：可执行错误文本，不抛异常。</summary>
-    private static FeishuToolResult? Absent(object? client, string toolName, string clientName)
+    private static ToolResult? Absent(object? client, string toolName, string clientName)
         => client is null
-            ? FeishuToolResult.FromError(FeishuToolBinding.StructuredError(
+            ? ToolResult.FromError(FeishuToolBinding.StructuredError(
                 toolName,
                 $"未注册 {clientName} 客户端——该组织元数据能力需宿主启用对应通讯录 API（软缺席，不影响 org 域其它工具）"))
             : null;

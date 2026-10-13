@@ -202,7 +202,7 @@ public class ToolSurfaceConsistencyContractTests
             definition,
             arguments,
             new FeishuToolContext(AppKey),
-            _ => Task.FromResult(FeishuToolResult.FromText("下游不应被调用")));
+            _ => Task.FromResult(ToolResult.FromText("下游不应被调用")));
 
         inProcess.Error.Should().NotBeNull("前置：入站净化必须拒绝控制字符（否则本用例看不到错误面）");
 

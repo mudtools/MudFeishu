@@ -44,8 +44,8 @@ internal sealed class CountryRegionTools(
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>mdm.get_countries：按 mdmcode 批量查国家/地区主数据。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantMdmGetCountriesTool))]
-    public Task<FeishuToolResult> GetCountriesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantMdmGetCountriesTool))]
+    public Task<ToolResult> GetCountriesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.MdmGetCountries, _maxResultLength);
         var client = _countryRegionClient;
@@ -54,7 +54,7 @@ internal sealed class CountryRegionTools(
             // 软缺席（与 BoardTools / MailTools / DocxSheetsDriveWriteTools 同口径）：
             // 这是**可执行的错误结果**而不是异常——异常会逃出执行链抛给宿主，而这里要的是
             // "模型看到一条明确的不可用说明"，且不影响其它域工具。
-            return Task.FromResult(FeishuToolResult.FromError(FeishuToolBinding.StructuredError(
+            return Task.FromResult(ToolResult.FromError(FeishuToolBinding.StructuredError(
                 executor.ToolName,
                 "未注册 IFeishuTenantV3MDMCountryRegion 客户端——MDM 国家/地区能力需宿主启用该 API（软缺席，不影响其它域工具）")));
         }

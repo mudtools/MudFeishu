@@ -10,7 +10,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // ─────────────────────────── Sheets 写（2 个） ───────────────────────────
 
 /// <summary>工具接口：sheets.update_range（映射 <c>IFeishuTenantV3SpreadsheetData.RangeWriteDataAsync</c>）。</summary>
-[FeishuTool("sheets.update_range",
+[AgentTool("sheets.update_range",
     Description = "向电子表格指定区域写入数据（覆盖写，天然幂等——同一区域重复写入结果一致）。spreadsheet_token 来自 sheets.list_sheets；range 形如 ShtXxx!A1:B2。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 sheets:spreadsheet。",
     RequiredScopes = ["sheets:spreadsheet"],
     IsWrite = true,
@@ -28,7 +28,7 @@ public interface IFeishuTenantSheetsUpdateRangeTool
 }
 
 /// <summary>工具接口：sheets.append_rows（映射 <c>IFeishuTenantV3SpreadsheetData.AppendDataAsync</c>）。</summary>
-[FeishuTool("sheets.append_rows",
+[AgentTool("sheets.append_rows",
     Description = "向电子表格追加行数据（在指定区域末尾追加，不清空既有行）。spreadsheet_token 来自 sheets.list_sheets。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 sheets:spreadsheet。",
     RequiredScopes = ["sheets:spreadsheet"],
     IsWrite = true,

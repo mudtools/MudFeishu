@@ -83,7 +83,7 @@ public class ToolArgumentShapeContractGuards
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>不变量</b>：人工<b>策展</b>的东西（<c>[FeishuTool]</c>/<c>[ToolParameter]</c> 契约，
+    /// <b>不变量</b>：人工<b>策展</b>的东西（<c>[AgentTool]</c>/<c>[ToolParameter]</c> 契约，
     /// 即"我们把什么能力交给模型"）必须与框架<b>提供</b>的东西（参数净化、结果裁剪、错误分类、
     /// DI 装配、Args 生成）在<b>目录层面</b>分开：前者集中在 <c>Curation/</c>，后者按关注面
     /// 分居 Args/Results/Errors/Execution/Catalog/Hosting/Security/Parsers/Constants。
@@ -240,7 +240,7 @@ public class ToolArgumentShapeContractGuards
     }
 
     /// <summary>
-    /// <b>D-1 伴随守卫</b>：<b>特性与声明不得分家</b> —— 每个声明文件里 <c>[FeishuTool]</c>
+    /// <b>D-1 伴随守卫</b>：<b>特性与声明不得分家</b> —— 每个声明文件里 <c>[AgentTool]</c>
     /// 特性数必须等于 <c>public interface</c> 数（且不为 0）。
     /// </summary>
     /// <remarks>
@@ -248,7 +248,7 @@ public class ToolArgumentShapeContractGuards
     /// <b>为什么必须机械锁定</b>：本约束是 2026-10-12 声明面重组（原 27 文件平铺 → 六组目录 +
     /// 跨域混装文件按域拆分）过程中<b>实际踩中</b>的故障形态——按"向上回溯连续 <c>//</c> 行"切块时，
     /// 特性与接口签名之间不是注释行（是 <c>Source = …)]</c>），回溯停在签名上，于是每个
-    /// <c>[FeishuTool]</c> + XML 注释被切给<b>前一个</b>接口，接口与其特性落入不同文件。
+    /// <c>[AgentTool]</c> + XML 注释被切给<b>前一个</b>接口，接口与其特性落入不同文件。
     /// </para>
     /// <para>
     /// <b>后果是静默的</b>：特性缺失不是编译错误（生成器只是少出一个工具、少一条 Schema），
@@ -272,14 +272,15 @@ public class ToolArgumentShapeContractGuards
             {
                 x.Rel,
                 Interfaces = Regex.Matches(x.Text, @"\bpublic\s+interface\s+I\w+Tool\b").Count,
-                Attributes = Regex.Matches(x.Text, @"\[FeishuTool\s*\(").Count,
+                // v2.3 P1-E：声明特性硬改名 [FeishuTool] → [AgentTool]（锚点随改名同批改）。
+                Attributes = Regex.Matches(x.Text, @"\[AgentTool\s*\(").Count,
             })
             .Where(static x => x.Interfaces != x.Attributes || x.Interfaces == 0)
-            .Select(static x => $"{x.Rel} (interface={x.Interfaces}, [FeishuTool]={x.Attributes})")
+            .Select(static x => $"{x.Rel} (interface={x.Interfaces}, [AgentTool]={x.Attributes})")
             .ToArray();
 
         offenders.Should().BeEmpty(
-            "每个声明文件里 [FeishuTool] 特性数必须与 public interface 数相等且不为 0——不相等即意味着"
+            "每个声明文件里 [AgentTool] 特性数必须与 public interface 数相等且不为 0——不相等即意味着"
             + "某个工具的特性与声明被切到了不同文件（生成器静默少出工具，编译仍通过）：{0}",
             string.Join(" | ", offenders));
     }

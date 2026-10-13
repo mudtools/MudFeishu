@@ -23,14 +23,14 @@ public class FeishuToolContractGuards
     /// 生成器产出的 Schema 键集必须与<b>编译期派生的</b>工具名契约表（<c>FeishuToolNames</c>）完全一致。
     /// </summary>
     /// <remarks>
-    /// 契约表本身由源生成器从 <c>[FeishuTool]</c> 特性派生（D2 单一真相源），故本用例锁定的是
+    /// 契约表本身由源生成器从 <c>[AgentTool]</c> 特性派生（D2 单一真相源），故本用例锁定的是
     /// "生成器两条产物路径（Schema 常量 / 名字表）不漂移"，而非手写清单——手写清单已被删除。
     /// </remarks>
     [Fact]
     public void SchemaRegistry_ShouldContainExactlyTheContractTools()
     {
         SchemaByToolName.Keys.Should().BeEquivalentTo(FeishuToolNames.All,
-            "Schema 注册表键集必须与 [FeishuTool] 派生的工具名契约表一致（增删/改名必须同批更新守卫与 golden）");
+            "Schema 注册表键集必须与 [AgentTool] 派生的工具名契约表一致（增删/改名必须同批更新守卫与 golden）");
     }
 
     [Fact]
@@ -126,7 +126,7 @@ public class FeishuToolContractGuards
     /// <remarks>
     /// <para>
     /// <b>手抄期望表已删除（原 AT-B21 的 24 行字典）</b>：scope 期望值不再存在于守卫代码中——
-    /// 契约侧真相 = 生成器（<c>[FeishuTool]</c> + SDK 符号），文档侧真相 = 对照表（人读），
+    /// 契约侧真相 = 生成器（<c>[AgentTool]</c> + SDK 符号），文档侧真相 = 对照表（人读），
     /// 权威清单 = <c>scope-authority.json</c>（<see cref="ScopeAuthorityContractGuards"/> 锁三方关系）。
     /// </para>
     /// </remarks>

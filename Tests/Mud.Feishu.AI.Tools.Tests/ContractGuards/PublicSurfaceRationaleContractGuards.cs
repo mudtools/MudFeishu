@@ -41,7 +41,13 @@ public class PublicSurfaceRationaleContractGuards
     // （S-1 的 FeishuToolPolicyOptions / FeishuToolPolicyDomainOptions、BUG-4 的 GuidanceModes /
     //  GuidanceRoutingSummary、M-2 的 FeishuMcpResourceCatalog / McpResourceInfo）= 303
     // （全部登记在 reasons 段）。
-    private const int BaselineTypeCount = 354;
+    // v2.3 P1-D（2026-10-13）：354 → **350**——执行器骨架中立化上移 Mud.AI.Agent（决策⑮）：
+    // FeishuToolResult / IToolResultShaper / ToolError / IToolErrorTextFormatter 四个 public 类型
+    // 迁出飞书发布面（新家 = Mud.AI.Agent.Tools，由该包自己的 PublicAPI 台账登记）。
+    // v2.3 P1-E：350 → **348**——声明契约中立化上移 Mud.AI.Abstractions：
+    // AgentToolAttribute（原 FeishuToolAttribute）与 ToolParameterAttribute 两个 public 类型
+    // 迁出 Mud.Feishu.AI 发布面（新家 = Mud.AI.Abstractions.Tools）。
+    private const int BaselineTypeCount = 348;
 
     private static readonly string[] ApiFiles =
     [

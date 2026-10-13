@@ -43,15 +43,15 @@ internal sealed class SecurityAuditLogTools(
     private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
     /// <summary>security.query_audit_logs：查询成员行为审计日志。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantSecurityQueryAuditLogsTool))]
-    public Task<FeishuToolResult> QueryAuditLogsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantSecurityQueryAuditLogsTool))]
+    public Task<ToolResult> QueryAuditLogsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.SecurityQueryAuditLogs, _maxResultLength);
         var client = _auditLogClient;
         if (client is null)
         {
             // 软缺席（与 BoardTools / CountryRegionTools 同口径）：可执行的错误文本，不是异常。
-            return Task.FromResult(FeishuToolResult.FromError(FeishuToolBinding.StructuredError(
+            return Task.FromResult(ToolResult.FromError(FeishuToolBinding.StructuredError(
                 executor.ToolName,
                 "未注册 IFeishuTenantV1SecurityAuditLog 客户端——行为审计日志能力需宿主启用该 API（软缺席，不影响其它域工具）")));
         }
@@ -63,7 +63,7 @@ internal sealed class SecurityAuditLogTools(
 
             // P-0 补齐：统一分页出口——聚合路径与单页路径共用同一次调用定义与同一份投影。
             // token 每页覆写（query 复用：BuildQuery 的参数校验只做一次，翻页时不再重复抛错路径）。
-            async Task<FeishuApiOutcome<GetAuditLogDataResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<GetAuditLogDataResult>> FetchPageAsync(string? token, CancellationToken ct)
             {
                 query.PageToken = token;
                 return FeishuApiResultReader.Read(await client

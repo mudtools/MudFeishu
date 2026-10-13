@@ -15,7 +15,7 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>要解决什么</b>：<c>[FeishuTool(RequiredScopes = […])]</c> 的字符串会
+/// <b>要解决什么</b>：<c>[AgentTool(RequiredScopes = […])]</c> 的字符串会
 /// ① 进入 <c>x-feishu.required_scopes</c> 供 <c>IToolExecutionAuthorizer</c> 判权、
 /// ② 进入工具描述给模型看。scope 拼错时授权器会<b>永远拒绝</b>（工具永不可用）或<b>过宽</b>
 /// （授权失效），而两者都<b>不会在构建期报错</b>——SDK 侧没有 scope 的编译期清单。

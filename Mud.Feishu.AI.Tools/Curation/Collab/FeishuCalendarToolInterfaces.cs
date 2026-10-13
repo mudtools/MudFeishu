@@ -24,7 +24,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // </remarks>
 
 /// <summary>工具接口：calendar.create_event（映射 <c>IFeishuTenantV4CalendarEvent.CreateCalendarEventAsync</c>）。</summary>
-[FeishuTool("calendar.create_event",
+[AgentTool("calendar.create_event",
     Description = "在指定日历上创建一个日程（start/end 为 RFC3339 时间，如 2026-10-01T14:00:00+08:00）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 calendar:calendar。",
     RequiredScopes = ["calendar:calendar"],
     IsWrite = true,
@@ -47,7 +47,7 @@ public interface IFeishuTenantCalendarCreateEventTool
 
 /// <summary>工具接口：calendar.find_free_slots（映射 <c>IFeishuTenantV4Calendar.GetFreebusyCalendarAsync</c>）。</summary>
 /// <remarks>R-1：body 为单 user_id/room_id 形态，不接受用户列表；多人场景由模型逐人调用。</remarks>
-[FeishuTool("calendar.find_free_slots",
+[AgentTool("calendar.find_free_slots",
     Description = "查询一个用户主日历或一间会议室在指定时间窗内的忙闲（time_min/time_max 为 RFC3339；user_id 与 room_id 二选一）。多人场景请逐人调用。只读，需 calendar:calendar:readonly。",
     RequiredScopes = ["calendar:calendar:readonly"],
     IsWrite = false,
@@ -70,7 +70,7 @@ public interface IFeishuTenantCalendarFindFreeSlotsTool
 }
 
 /// <summary>工具接口：calendar.list_events（映射 <c>IFeishuTenantV4CalendarEvent.GetCalendarEventPageListAsync</c>）。</summary>
-[FeishuTool("calendar.list_events",
+[AgentTool("calendar.list_events",
     Description = "列出指定日历上的日程（按开始时间返回，含 summary/start/end/event_id），可翻页。只读，需 calendar:calendar:readonly。",
     RequiredScopes = ["calendar:calendar:readonly"],
     IsWrite = false,
@@ -90,7 +90,7 @@ public interface IFeishuTenantCalendarListEventsTool
 // ─────────────────────────── Calendar 写面成环（R7/WP4，4 个） ───────────────────────────
 
 /// <summary>工具接口：calendar.update_event（映射 <c>IFeishuTenantV4CalendarEvent.UpdateCalendarEventAsync</c>）。</summary>
-[FeishuTool("calendar.update_event",
+[AgentTool("calendar.update_event",
     Description = "更新指定日程的信息（summary/description/start/end 等字段，至少传一个要更新的字段）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 calendar:calendar。start/end 为 RFC3339 时间。",
     RequiredScopes = ["calendar:calendar"],
     IsWrite = true,
@@ -111,7 +111,7 @@ public interface IFeishuTenantCalendarUpdateEventTool
 }
 
 /// <summary>工具接口：calendar.delete_event（映射 <c>IFeishuTenantV4CalendarEvent.DeleteCalendarEventAsync</c>）。</summary>
-[FeishuTool("calendar.delete_event",
+[AgentTool("calendar.delete_event",
     Description = "取消（删除）指定日程——取消日程会通知所有与会者。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 calendar:calendar。建议先 dry_run 预演确认。",
     RequiredScopes = ["calendar:calendar"],
     IsWrite = true,
@@ -128,7 +128,7 @@ public interface IFeishuTenantCalendarDeleteEventTool
 }
 
 /// <summary>工具接口：calendar.add_event_attendees（映射 <c>IFeishuTenantV4CalendarEvent.CreateCalendarEventAttendeeAsync</c>）。</summary>
-[FeishuTool("calendar.add_event_attendees",
+[AgentTool("calendar.add_event_attendees",
     Description = "向指定日程添加与会者（attendee_ids 为 open_id 数组，每位参会人会收到日程邀请）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 calendar:calendar。",
     RequiredScopes = ["calendar:calendar"],
     IsWrite = true,
@@ -146,7 +146,7 @@ public interface IFeishuTenantCalendarAddEventAttendeesTool
 }
 
 /// <summary>工具接口：calendar.list_event_attendees（映射 <c>IFeishuTenantV4CalendarEvent.GetCalendarEventAttendeePageListAsync</c>）。</summary>
-[FeishuTool("calendar.list_event_attendees",
+[AgentTool("calendar.list_event_attendees",
     Description = "分页列出指定日程的与会者（attendee_id/name/type/is_optional），可翻页。只读，需 calendar:calendar:readonly。",
     RequiredScopes = ["calendar:calendar:readonly"],
     IsWrite = false,

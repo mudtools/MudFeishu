@@ -23,7 +23,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// <b>自下而上</b>的部门链：给定部门 ID 返回其<b>所有上级</b>（由近及远）。
 /// 缺它时模型只能从根部门逐层下钻反推——既慢又容易猜错归属。
 /// </remarks>
-[FeishuTool("contact.get_department_parents",
+[AgentTool("contact.get_department_parents",
     Description = "查询指定部门的【全部上级部门】（由近及远，含部门 ID/名称/父部门 ID/成员数）——用于回答「这个部门归哪个中心/事业部管」「它的上级链是什么」。结果按层级由近到远排列，第一个是直属上级。查不到上级说明该部门已是顶层。只读，需 contact:department.base:readonly。",
     RequiredScopes = ["contact:department.base:readonly"],
     Source = nameof(IFeishuTenantV3Departments) + "." + nameof(IFeishuTenantV3Departments.GetParentDepartmentsByIdAsync))]
@@ -46,7 +46,7 @@ public interface IFeishuTenantContactGetDepartmentParentsTool
 /// <b>按名称找部门</b>（SDK 侧为 POST 搜索）：用户说"研发中心"时，必须先拿到部门 ID 才能取成员或上级链。
 /// 与 <c>contact.list_departments</c>（按父部门下钻）互补，不是替代。
 /// </remarks>
-[FeishuTool("contact.search_departments",
+[AgentTool("contact.search_departments",
     Description = "按部门名称关键字【搜索部门】（返回部门 ID/名称/父部门 ID/成员数）——用户只说了部门名（如「研发中心」）而要继续取成员或上级链时，先用它拿到 department_id。同名部门可能不止一个，需结合 parent_department_id / member_count 判断；搜不到可换更短的关键字。只读，需 contact:department.base:readonly。",
     RequiredScopes = ["contact:department.base:readonly"],
     Source = nameof(IFeishuTenantV3Departments) + "." + nameof(IFeishuTenantV3Departments.SearchDepartmentsAsync))]
@@ -65,7 +65,7 @@ public interface IFeishuTenantContactSearchDepartmentsTool
 // ─────────────────────────── Contact 部门轴补齐（2 个只读，tenant） ───────────────────────────
 
 /// <summary>工具接口：contact.list_departments（映射 <c>IFeishuTenantV3Departments.GetDepartmentsByParentIdAsync</c>）。</summary>
-[FeishuTool("contact.list_departments",
+[AgentTool("contact.list_departments",
     Description = "列出指定部门下的子部门（返回 department_id/name/parent_department_id）。department_id 为 0 时列出根部门。只读，需 contact:department.base:readonly。",
     RequiredScopes = ["contact:department.base:readonly"],
     Source = nameof(IFeishuTenantV3Departments) + "." + nameof(IFeishuTenantV3Departments.GetDepartmentsByParentIdAsync))]
@@ -83,7 +83,7 @@ public interface IFeishuTenantContactListDepartmentsTool
 }
 
 /// <summary>工具接口：contact.list_department_members（映射 <c>IFeishuTenantV1Employees.QueryEmployeePageListAsync</c>，按 department_id 过滤）。</summary>
-[FeishuTool("contact.list_department_members",
+[AgentTool("contact.list_department_members",
     Description = "按部门 ID 列出该部门下的员工（返回 open_id/name/employee_id）。department_id 来自 contact.list_departments。只读，需 contact:user.base:readonly。",
     RequiredScopes = ["contact:user.base:readonly"],
     Source = nameof(IFeishuTenantV1Employees) + "." + nameof(IFeishuTenantV1Employees.QueryEmployeePageListAsync))]

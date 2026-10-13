@@ -12,7 +12,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // </summary>
 // <remarks>
 // <para>
-// 复用 Phase 1 <c>[FeishuTool]</c> 源生成器（<c>IsWrite</c> 经 Schema 扩展 <c>x-feishu.is_write</c>
+// 复用 Phase 1 <c>[AgentTool]</c> 源生成器（<c>IsWrite</c> 经 Schema 扩展 <c>x-feishu.is_write</c>
 // 产出）；执行链（<c>FeishuToolBinding</c>）对写工具强制授权门禁——
 // <c>EnforceToolAuthorization=true</c> 且未注册 <c>IToolExecutionAuthorizer</c> 即拒绝（安全默认），
 // 白名单单独键控（<c>FeishuAgent:WriteAllowList</c>，默认空=不启用任何写工具）。
@@ -26,7 +26,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // ─────────────────────────── IM 写（1 个） ───────────────────────────
 
 /// <summary>工具接口：im.send_message（映射 <c>IFeishuTenantV1Message.SendMessageAsync</c>）。</summary>
-[FeishuTool("im.send_message",
+[AgentTool("im.send_message",
     Description = "发送文本消息到指定群聊或用户。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。首次面向陌生接收者时建议先以 dry_run=true 预演。",
     RequiredScopes = ["im:message:send_as_bot"],
     IsWrite = true,
@@ -64,7 +64,7 @@ public interface IFeishuTenantImSendMessageTool
 /// 也不做用户可写表达式 DSL（官方 27KB 规模）。
 /// </para>
 /// </remarks>
-[FeishuTool("im.send_card",
+[AgentTool("im.send_card",
     Description = "发送一张交互式卡片（标题＋正文＋按钮），用于让对方一眼看到要点并能直接点按钮——比纯文本更适合通知、待办、审批提醒。⚠️ 用结构化语法描述内容，**不要写 JSON**：body 每行一个元素（text:内容 / quote:内容 / code:内容 / divider），buttons 每行一个按钮（按钮文本|url|链接 或 按钮文本|value|回调值）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。",
     RequiredScopes = ["im:message:send_as_bot"],
     IsWrite = true,

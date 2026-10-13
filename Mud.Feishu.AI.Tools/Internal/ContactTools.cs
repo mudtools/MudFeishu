@@ -42,8 +42,8 @@ internal sealed class ContactTools(
     private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
     /// <summary>contact.resolve_user：邮箱/手机号 → 用户 ID。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantContactResolveUserTool))]
-    public Task<FeishuToolResult> ResolveUsersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantContactResolveUserTool))]
+    public Task<ToolResult> ResolveUsersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ContactResolveUser, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -87,8 +87,8 @@ internal sealed class ContactTools(
     /// <b>投影纪律（C-7）</b>：<c>open_id</c> <b>必须</b>回填——它是下一跳
     /// <c>im.send_message(receive_id_type=open_id)</c> 的入参；<c>avatar</c> 有意省略（长 URL，纯上下文开销）。
     /// </remarks>
-    [FeishuToolHandler(typeof(IFeishuTenantContactSearchUserTool))]
-    public Task<FeishuToolResult> SearchUsersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantContactSearchUserTool))]
+    public Task<ToolResult> SearchUsersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ContactSearchUser, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -96,7 +96,7 @@ internal sealed class ContactTools(
             var args = ContactSearchUserArgs.Unpack(arguments);
 
             // P-4：统一分页出口——fetch_all 聚合与单页共用**同一次调用定义**与**同一份投影**。
-            async Task<FeishuApiOutcome<UserSearchListResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<UserSearchListResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _userClient
                     .GetUsersByKeywordAsync(args.Query, PageSizes.ContactSearch, token, ct)
                     .ConfigureAwait(false));
@@ -108,8 +108,8 @@ internal sealed class ContactTools(
     }
 
     /// <summary>contact.get_user：单个用户详情。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantContactGetUserTool))]
-    public Task<FeishuToolResult> GetUserAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantContactGetUserTool))]
+    public Task<ToolResult> GetUserAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ContactGetUser, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -125,8 +125,8 @@ internal sealed class ContactTools(
     }
 
     /// <summary>contact.batch_get：按 ID 批量取详情。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantContactBatchGetTool))]
-    public Task<FeishuToolResult> BatchGetUsersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantContactBatchGetTool))]
+    public Task<ToolResult> BatchGetUsersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ContactBatchGet, _maxResultLength);
         return executor.RunAsync(async () =>

@@ -10,7 +10,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // ─────────────────────────── Docx（2 个） ───────────────────────────
 
 /// <summary>工具接口：docx.get_raw_content（映射 <c>IFeishuTenantV1Docx.GetDocumentRawContentAsync</c>）。</summary>
-[FeishuTool("docx.get_raw_content",
+[AgentTool("docx.get_raw_content",
     Description = "读取飞书文档的纯文本正文；document_id 可来自 wiki.get_node 的 obj_token 或 search.doc_wiki 结果的 token。只读，需 docx:document:readonly。",
     RequiredScopes = ["docx:document:readonly"],
     Source = nameof(IFeishuTenantV1Docx) + "." + nameof(IFeishuTenantV1Docx.GetDocumentRawContentAsync))]
@@ -25,7 +25,7 @@ public interface IFeishuTenantDocxRawContentTool
 }
 
 /// <summary>工具接口：docx.get_document_blocks（映射 <c>IFeishuTenantV1Docx.GetDocumentBlocksPageListAsync</c>）。</summary>
-[FeishuTool("docx.get_document_blocks",
+[AgentTool("docx.get_document_blocks",
     Description = "分块读取飞书文档结构（block_id/block_type/文本），表格/代码块等结构化场景使用；document_id 可来自 wiki.get_node 的 obj_token。只读，需 docx:document:readonly。",
     RequiredScopes = ["docx:document:readonly"],
     Source = nameof(IFeishuTenantV1Docx) + "." + nameof(IFeishuTenantV1Docx.GetDocumentBlocksPageListAsync))]

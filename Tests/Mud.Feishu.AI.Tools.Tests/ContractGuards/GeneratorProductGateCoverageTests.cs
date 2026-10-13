@@ -7,7 +7,8 @@
 
 using System.Reflection;
 using Mud.Feishu.AI.Tools.SdkProfile;
-using Mud.HttpUtils.Attributes;
+// v2.3 P1-E：引导契约随声明契约上移 Mud.AI.Abstractions（命名空间 Mud.AI.Attributes）。
+using Mud.AI.Attributes;
 
 namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 

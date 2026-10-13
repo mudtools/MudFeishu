@@ -25,7 +25,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // </remarks>
 
 /// <summary>工具接口：task.create_task（映射 <c>IFeishuTenantV2Task.CreateTaskAsync</c>）。</summary>
-[FeishuTool("task.create_task",
+[AgentTool("task.create_task",
     Description = "创建一条任务（summary 必填；due 为 RFC3339 时间由工具层转换为毫秒时间戳；assignee_ids 为被指派人 open_id 列表）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
@@ -45,7 +45,7 @@ public interface IFeishuTenantTaskCreateTaskTool
 }
 
 /// <summary>工具接口：task.list_my_tasks（映射 <c>IFeishuUserV2Task.GetTasksPageListByIdAsync</c>）。</summary>
-[FeishuTool("task.list_my_tasks",
+[AgentTool("task.list_my_tasks",
     Description = "以用户令牌身份读取「我负责的」任务列表（按用户在任务界面的自定义排序返回；可翻页）。要求宿主已提供当前用户身份与该用户的用户令牌。只读，需 task:task:readonly。",
     RequiredScopes = ["task:task:readonly"],
     IsWrite = false,
@@ -65,7 +65,7 @@ public interface IFeishuUserTaskListMyTasksTool
 // ─────────────────────────── Task 写（2 个，WP4 动作面） ───────────────────────────
 
 /// <summary>工具接口：task.update_task（映射 <c>IFeishuTenantV2Task.UpdateTaskAsync</c>）。</summary>
-[FeishuTool("task.update_task",
+[AgentTool("task.update_task",
     Description = "更新任务信息（summary/description/due 等字段，至少传一个要更新的字段）。task_guid 来自 task.create_task 或 task.list_my_tasks。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
@@ -90,7 +90,7 @@ public interface IFeishuTenantTaskUpdateTaskTool
 }
 
 /// <summary>工具接口：task.complete_task（映射 <c>IFeishuTenantV2Task.UpdateTaskAsync</c>，update_fields=["completed_at"]）。</summary>
-[FeishuTool("task.complete_task",
+[AgentTool("task.complete_task",
     Description = "将任务标记为已完成（通过 update_task 设置 completed_at 字段）。task_guid 来自 task.create_task 或 task.list_my_tasks。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
@@ -108,7 +108,7 @@ public interface IFeishuTenantTaskCompleteTaskTool
 // ─────────────────────────── Task 写面成环（R7/WP5，4 个） ───────────────────────────
 
 /// <summary>工具接口：task.delete_task（映射 <c>IFeishuTenantV2Task.DeleteTaskByIdAsync</c>）。</summary>
-[FeishuTool("task.delete_task",
+[AgentTool("task.delete_task",
     Description = "删除指定任务（删除后任务无法再被获取到）。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。建议先 dry_run 预演确认。task_guid 来自 task.create_task 或 task.list_my_tasks。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
@@ -124,7 +124,7 @@ public interface IFeishuTenantTaskDeleteTaskTool
 }
 
 /// <summary>工具接口：task.create_subtask（映射 <c>IFeishuTenantV2Task.CreateSubTaskAsync</c>）。</summary>
-[FeishuTool("task.create_subtask",
+[AgentTool("task.create_subtask",
     Description = "为指定父任务创建子任务（summary 必填；接口功能除了额外需要父任务 GUID 外，和创建任务完全一致）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
@@ -144,7 +144,7 @@ public interface IFeishuTenantTaskCreateSubtaskTool
 }
 
 /// <summary>工具接口：task.add_comment（映射 <c>IFeishuTenantV2TaskComments.CreateCommentAsync</c>）。</summary>
-[FeishuTool("task.add_comment",
+[AgentTool("task.add_comment",
     Description = "为指定任务添加评论（content 必填，最长 3000 个 utf8 字符）。可通过 reply_to_comment_id 回复已有评论。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
@@ -162,7 +162,7 @@ public interface IFeishuTenantTaskAddCommentTool
 }
 
 /// <summary>工具接口：task.add_members（映射 <c>IFeishuTenantV2Task.AddMembersByIdAsync</c>）。</summary>
-[FeishuTool("task.add_members",
+[AgentTool("task.add_members",
     Description = "向指定任务添加成员（负责人或关注人，member_ids 为 open_id 数组，role 指定角色 assignee 或 follower）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
     RequiredScopes = ["task:task"],
     IsWrite = true,

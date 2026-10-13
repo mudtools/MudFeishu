@@ -9,7 +9,7 @@ using System.Text.Json;
 
 namespace Mud.Feishu.AI.Tools.Args;
 
-// R-6（模块边界归位）：本类型原先与 FeishuApiOutcome / ToolResultText 混居
+// R-6（模块边界归位）：本类型原先与 ToolApiOutcome / ToolResultText 混居
 // FeishuApiResultReader.cs——该文件名只描述"API 结果解包"，而本类型是**入参读取**、
 // ToolResultText 是**出站截断**，三者职责互不相干。拆出后：
 //   FeishuApiResultReader.cs → API outcome 解包（唯一）

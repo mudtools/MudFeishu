@@ -22,7 +22,7 @@ public class FeishuToolRegistryTests
         IsWrite: false,
         Risk: FeishuToolRisk.Read,
         Identity: "tenant",
-        Handler: (_, _, _) => Task.FromResult(FeishuToolResult.FromText("ok")));
+        Handler: (_, _, _) => Task.FromResult(ToolResult.FromText("ok")));
 
     [Fact]
     public void Register_ThenMapTool_ShouldEnable()

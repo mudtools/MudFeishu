@@ -5,11 +5,13 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-// 契约命名空间实测（R-1+2c）：标记接口 ISdkToolProfile / SdkTokenKind / InterfaceIdentity 位于
-// 包 Mud.HttpUtils.Abstractions 内，但**命名空间是 Mud.HttpUtils**（不是 Mud.HttpUtils.Abstractions）；
-// 数据特性 [SdkToolProfile] 位于包 Mud.HttpUtils.Attributes，命名空间 Mud.HttpUtils.Attributes。
-using Mud.HttpUtils;
-using Mud.HttpUtils.Attributes;
+// 契约命名空间实测：标记接口 ISdkToolProfile / SdkTokenKind / InterfaceIdentity 的**命名空间是
+// Mud.AI**（不是包/程序集名后缀）；数据特性 [SdkToolProfile] 在命名空间 Mud.AI.Attributes。
+// v2.3 P1-E：二者随「引导/声明契约」由组件包 Mud.HttpUtils.* 迁入本仓 Mud.AI.Abstractions，
+// 剖面改引仓内契约（引擎 ProfileDiscovery 按 `Mud.AI.ISdkToolProfile` +
+// `Mud.AI.Attributes.SdkToolProfileAttribute` 发现剖面，指向组件包会零产出）。
+using Mud.AI;
+using Mud.AI.Attributes;
 
 namespace Mud.Feishu.AI.Tools.SdkProfile;
 
@@ -34,7 +36,7 @@ namespace Mud.Feishu.AI.Tools.SdkProfile;
 /// </para>
 /// <para>
 /// <b>发现粒度</b>：剖面经 <c>CompilationProvider</c> 按<b>编译单元</b>发现 ⇒
-/// 凡声明了 <c>[FeishuTool]</c> 接口、且需要生成产物落在自己程序集内的工程，都必须携带本类型
+/// 凡声明了 <c>[AgentTool]</c> 接口、且需要生成产物落在自己程序集内的工程，都必须携带本类型
 /// （当前：<c>Mud.Feishu.AI.Tools</c> 本体 + <c>Tests/Mud.Feishu.AI.Tests</c> 样例工程，
 /// 后者以 <c>Compile Include</c> 链接本文件共享同一份真相源）。
 /// </para>
@@ -47,19 +49,20 @@ namespace Mud.Feishu.AI.Tools.SdkProfile;
     "Feishu",
 
     // ────────── 1. 特性识别（扫描目标）──────────
-    ToolAttributeName = "FeishuTool",
-    // BUG-1 / 方案 C：声明契约（[FeishuTool] / [ToolParameter]）必须能被**任何声明工具的
-    // 程序集**看到——包括**非 owner 声明程序集**（如 Tests/Mud.Feishu.AI.Tests 样例：
-    // 它自带同一份剖面、在同名命名空间 Mud.Feishu.AI.Tools.Generated 里生成自己的
-    // FeishuToolSchemas，故**不能**引用 owner 程序集 Mud.Feishu.AI.Tools —— 引用即 CS0433
-    // 同名类型歧义）。因此声明契约按依赖方向落在 Mud.Feishu.AI 程序集，命名空间改投
-    // Mud.Feishu.AI.AgentTools（与 FeishuToolContext / 接缝接口同处一包）。
-    ToolAttributeNamespace = "Mud.Feishu.AI.AgentTools",
-    ToolHandlerAttributeName = "FeishuToolHandler",
-    // 注意：handler 特性与工具特性**必须处于不同命名空间**，否则引擎无法靠 (命名空间, 特性名)
-    // 二元组把 [FeishuTool]（声明面，命名空间 = Mud.Feishu.AI.AgentTools）与 [FeishuToolHandler]
-    // （执行器绑定面）区分开。故 handler 特性独占 Handlers/ 子命名空间以保住该可寻址性。
-    ToolHandlerAttributeNamespace = "Mud.Feishu.AI.Tools.Handlers",
+    // v2.3 P1-E：声明契约中立化（决策：工具声明面 = 产品族中立）——
+    // [FeishuTool] → [AgentTool]、[FeishuToolHandler] → [ToolHandler]，两者随声明契约
+    // 上移 `Mud.AI.Abstractions`（`Mud.AI.Abstractions.Tools(.Handlers)`）。
+    // 门槛理由不变（BUG-1 / 方案 C）：声明契约必须能被**任何声明工具的程序集**看到，
+    // 包括非 owner 声明程序集（如 Tests/Mud.Feishu.AI.Tests 自带同一份剖面、在同名命名空间
+    // 生成自己的 Schemas，不能引用 owner 程序集否则 CS0433）——`Mud.AI.Abstractions`
+    // 位于依赖图最底层，天然满足该门槛（比原 Mud.Feishu.AI 更靠下，覆盖面只增不减）。
+    ToolAttributeName = "AgentTool",
+    ToolAttributeNamespace = "Mud.AI.Abstractions.Tools",
+    ToolHandlerAttributeName = "ToolHandler",
+    // handler 特性与工具特性**必须处于不同命名空间**，否则引擎无法靠 (命名空间, 特性名)
+    // 二元组把 [AgentTool]（声明面）与 [ToolHandler]（执行器绑定面）区分开
+    // ——故 handler 特性独占 `.Tools.Handlers` 子命名空间以保住该可寻址性。
+    ToolHandlerAttributeNamespace = "Mud.AI.Abstractions.Tools.Handlers",
     ParameterAttributeName = "ToolParameter",
 
     // ────────── 2. 源符号解析 ──────────
@@ -94,7 +97,9 @@ namespace Mud.Feishu.AI.Tools.SdkProfile;
     RiskEnumFullName = "Mud.Feishu.AI.AgentTools.FeishuToolRisk",
 
     // ────────── 12-17. 执行器 / 输出 / 聚合事实 ──────────
-    ResultTypeName = "FeishuToolResult",
+    // v2.3 P1-D：执行器骨架中立化上移 Mud.AI.Agent.Tools（决策⑮）——FeishuToolResult → ToolResult
+    // 硬改名（AI 族未发布，无 Obsolete 转发）；生成产物（域注册器/Args 的 handler 签名）随槽同批改。
+    ResultTypeName = "ToolResult",
     BindingTypeName = "FeishuToolBinding",
     OutputWrapperNamespace = "Mud.Feishu.DataModels",
     // 旧 TypeSchemaResolver 的 4 个泛型信封 + FeishuNullDataApiResult（非泛型 → 无载荷）。

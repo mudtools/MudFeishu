@@ -40,13 +40,13 @@ internal sealed class HireJobTools(
     private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
     /// <summary>hire.list_jobs：分页列出招聘岗位（精简投影）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantHireListJobsTool))]
-    public Task<FeishuToolResult> ListJobsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantHireListJobsTool))]
+    public Task<ToolResult> ListJobsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.HireListJobs, _maxResultLength);
         if (_hireJobClient is null)
         {
-            return Task.FromResult(FeishuToolResult.FromError(FeishuToolBinding.StructuredError(
+            return Task.FromResult(ToolResult.FromError(FeishuToolBinding.StructuredError(
                 executor.ToolName,
                 "未注册 IFeishuTenantV1HireJob 客户端——招聘岗位能力需宿主启用招聘（Hire）API（软缺席）")));
         }
@@ -56,7 +56,7 @@ internal sealed class HireJobTools(
             var args = HireListJobsArgs.Unpack(arguments);
 
             // P-3：统一分页出口——聚合路径与单页路径共用**同一次调用定义**与**同一份投影**。
-            async Task<FeishuApiOutcome<GetJobListResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<GetJobListResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _hireJobClient
                     .GetJobListAsync(
                         query: new JobListQuery { PageToken = token },
@@ -70,13 +70,13 @@ internal sealed class HireJobTools(
     }
 
     /// <summary>hire.get_job：按 ID 查询单个岗位（完整投影）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantHireGetJobTool))]
-    public Task<FeishuToolResult> GetJobAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantHireGetJobTool))]
+    public Task<ToolResult> GetJobAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.HireGetJob, _maxResultLength);
         if (_hireJobClient is null)
         {
-            return Task.FromResult(FeishuToolResult.FromError(FeishuToolBinding.StructuredError(
+            return Task.FromResult(ToolResult.FromError(FeishuToolBinding.StructuredError(
                 executor.ToolName,
                 "未注册 IFeishuTenantV1HireJob 客户端——招聘岗位能力需宿主启用招聘（Hire）API（软缺席）")));
         }

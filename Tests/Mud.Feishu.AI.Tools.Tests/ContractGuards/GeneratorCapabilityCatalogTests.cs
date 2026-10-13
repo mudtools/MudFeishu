@@ -15,13 +15,13 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// <remarks>
 /// <para>
 /// 这组用例是"生成器未接线"（原审查 G1/G2）的<b>可验证回归面</b>：在此之前，
-/// 生成器只扫描 <c>[FeishuTool]</c> 接口，对 SDK 的 1000+ 个方法一无所知，
+/// 生成器只扫描 <c>[AgentTool]</c> 接口，对 SDK 的 1000+ 个方法一无所知，
 /// "能力面差距"只能靠人肉统计。现在它是构建期产出的事实，并由本用例在 CI 中锁定。
 /// </para>
 /// <para>
 /// <b>扫描路径的真实分工（AT-B18 修正）</b>：本类锁定的是<b>路径②</b>——SDK 接口
 /// （<c>IFeishu[Tenant|User]V*</c>）<b>仅</b>聚合为能力目录事实，<b>不产任何工具</b>；
-/// 产工具的唯一路径是手写 <c>[FeishuTool]</c> 接口（路径①，经 <c>CuratedToolScanner</c>）。
+/// 产工具的唯一路径是手写 <c>[AgentTool]</c> 接口（路径①，经 <c>CuratedToolScanner</c>）。
 /// 原注释/原 <c>Extractors</c> 类注释声称"SDK 接口自动派生 Tier R 工具"，与实现不符——
 /// 该误解会诱导后续开发者按"能力已存在"的错误前提重复建设，故此处显式纠正。
 /// </para>
@@ -72,7 +72,7 @@ public class GeneratorCapabilityCatalogTests
     {
         FeishuToolCapabilityCatalog.SdkMethodCount.Should().Be(ExpectedSdkMethodCount,
             "SDK 方法总数是「能力面差距」的量化依据，必须精确锁定（原 BeGreaterThan(200) 是假绿："
-            + "生成器退化成只看 [FeishuTool] 也照样通过）。变更该值须先评审。");
+            + "生成器退化成只看 [AgentTool] 也照样通过）。变更该值须先评审。");
     }
 
     /// <summary>策展工具数必须与契约表一致（两条派生路径同源）。</summary>
@@ -80,7 +80,7 @@ public class GeneratorCapabilityCatalogTests
     public void CuratedToolCount_ShouldMatchTheDerivedContractTable()
     {
         FeishuToolCapabilityCatalog.CuratedToolCount.Should().Be(FeishuToolNames.All.Length,
-            "能力目录的策展计数与工具名契约表必须同源（都从 [FeishuTool] 派生）");
+            "能力目录的策展计数与工具名契约表必须同源（都从 [AgentTool] 派生）");
     }
 
     /// <summary>分组数与分布一致性（精确锁定 + 组内求和自洽）。</summary>

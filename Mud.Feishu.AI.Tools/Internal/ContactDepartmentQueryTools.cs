@@ -40,13 +40,13 @@ internal sealed class ContactDepartmentQueryTools(
     private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
     /// <summary>contact.get_department_parents：查询部门的上级链（自下而上）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantContactGetDepartmentParentsTool))]
-    public Task<FeishuToolResult> GetDepartmentParentsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantContactGetDepartmentParentsTool))]
+    public Task<ToolResult> GetDepartmentParentsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ContactGetDepartmentParents, _maxResultLength);
         if (_departmentsClient is null)
         {
-            return Task.FromResult(FeishuToolResult.FromError(FeishuToolBinding.StructuredError(
+            return Task.FromResult(ToolResult.FromError(FeishuToolBinding.StructuredError(
                 executor.ToolName,
                 "未注册 IFeishuTenantV3Departments 客户端——部门查询能力需宿主启用通讯录部门 API（软缺席）")));
         }
@@ -56,7 +56,7 @@ internal sealed class ContactDepartmentQueryTools(
             var args = ContactGetDepartmentParentsArgs.Unpack(arguments);
 
             // P-0 补齐：统一分页出口——聚合路径与单页路径共用同一次调用定义与同一份投影。
-            async Task<FeishuApiOutcome<ApiPageListResult<GetDepartmentInfo>>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<ApiPageListResult<GetDepartmentInfo>>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _departmentsClient
                     .GetParentDepartmentsByIdAsync(
                         args.DepartmentId,
@@ -71,13 +71,13 @@ internal sealed class ContactDepartmentQueryTools(
     }
 
     /// <summary>contact.search_departments：按名称搜索部门。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantContactSearchDepartmentsTool))]
-    public Task<FeishuToolResult> SearchDepartmentsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantContactSearchDepartmentsTool))]
+    public Task<ToolResult> SearchDepartmentsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ContactSearchDepartments, _maxResultLength);
         if (_departmentsClient is null)
         {
-            return Task.FromResult(FeishuToolResult.FromError(FeishuToolBinding.StructuredError(
+            return Task.FromResult(ToolResult.FromError(FeishuToolBinding.StructuredError(
                 executor.ToolName,
                 "未注册 IFeishuTenantV3Departments 客户端——部门查询能力需宿主启用通讯录部门 API（软缺席）")));
         }
@@ -87,7 +87,7 @@ internal sealed class ContactDepartmentQueryTools(
             var args = ContactSearchDepartmentsArgs.Unpack(arguments);
 
             // P-0 补齐：统一分页出口——聚合路径与单页路径共用同一次调用定义与同一份投影。
-            async Task<FeishuApiOutcome<ApiPageListResult<GetDepartmentInfo>>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<ApiPageListResult<GetDepartmentInfo>>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _departmentsClient
                     .SearchDepartmentsAsync(
                         new SearchDepartmentRequest { Query = args.Query },

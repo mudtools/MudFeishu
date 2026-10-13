@@ -45,7 +45,7 @@ public class ToolPolicyContractGuards
             Definition("bitable.list_tables"),
             Args(),
             new FeishuToolContext("appA"),
-            _ => { downstreamCalled = true; return Task.FromResult(FeishuToolResult.FromText("ok")); });
+            _ => { downstreamCalled = true; return Task.FromResult(ToolResult.FromText("ok")); });
 
         downstreamCalled.Should().BeFalse("Deny 命中必须零调用下游");
         result.ToString().Should().Contain("policy_denied");
@@ -68,7 +68,7 @@ public class ToolPolicyContractGuards
             Definition("im.send_message", isWrite: true),
             Args(),
             new FeishuToolContext("appA"),
-            _ => Task.FromResult(FeishuToolResult.FromText("ok")));
+            _ => Task.FromResult(ToolResult.FromText("ok")));
         denied.ToString().Should().Contain("policy_denied");
         denied.ToString().Should().Contain(ToolErrorSubtype.WriteNotAllowed,
             "写工具被 Allow 白名单拒 → reason_code = write_not_allowed（与只读工具的排障路径区分）");
@@ -77,7 +77,7 @@ public class ToolPolicyContractGuards
             Definition("bitable.list_fields"),
             Args(),
             new FeishuToolContext("appA"),
-            _ => Task.FromResult(FeishuToolResult.FromText("ok")));
+            _ => Task.FromResult(ToolResult.FromText("ok")));
         allowed.ToString().Should().Be("ok", "命中的白名单工具必须放行");
     }
 
@@ -92,7 +92,7 @@ public class ToolPolicyContractGuards
             Definition("payroll.list_paygroups"),
             Args(),
             new FeishuToolContext("appA"),
-            _ => Task.FromResult(FeishuToolResult.FromText("ok")));
+            _ => Task.FromResult(ToolResult.FromText("ok")));
 
         result.ToString().Should().Contain(ToolErrorSubtype.DomainNotAllowed);
         result.ToString().Should().Contain(
@@ -112,7 +112,7 @@ public class ToolPolicyContractGuards
             Definition("im.send_message", isWrite: true),
             Args(),
             new FeishuToolContext("appA"),
-            _ => Task.FromResult(FeishuToolResult.FromText("ok")));
+            _ => Task.FromResult(ToolResult.FromText("ok")));
         allowed.ToString().Should().Be(
             "ok", "只拉黑名单（Allow 为空）时，未命中 Deny 的工具必须放行——空 Allow ≠ 全拒");
 
@@ -120,7 +120,7 @@ public class ToolPolicyContractGuards
             Definition("payroll.list_paygroups"),
             Args(),
             new FeishuToolContext("appA"),
-            _ => Task.FromResult(FeishuToolResult.FromText("ok")));
+            _ => Task.FromResult(ToolResult.FromText("ok")));
         denied.ToString().Should().Contain("policy_denied");
     }
 
@@ -134,7 +134,7 @@ public class ToolPolicyContractGuards
             Definition("payroll.list_paygroups"),
             Args(),
             new FeishuToolContext("appA"),
-            _ => Task.FromResult(FeishuToolResult.FromText("ok")));
+            _ => Task.FromResult(ToolResult.FromText("ok")));
 
         result.ToString().Should().Be("ok", "未配置 ToolPolicy 时不得产生任何新的拒绝");
     }
@@ -149,14 +149,14 @@ public class ToolPolicyContractGuards
             Definition("bitable.delete_record", isWrite: true, risk: FeishuToolRisk.HighRiskWrite),
             Args(),
             new FeishuToolContext("appA"),
-            _ => Task.FromResult(FeishuToolResult.FromText("ok")));
+            _ => Task.FromResult(ToolResult.FromText("ok")));
         denied.ToString().Should().Contain(ToolErrorSubtype.WriteNotAllowed);
 
         var allowed = await binding.ExecuteAsync(
             Definition("bitable.query_records"),
             Args(),
             new FeishuToolContext("appA"),
-            _ => Task.FromResult(FeishuToolResult.FromText("ok")));
+            _ => Task.FromResult(ToolResult.FromText("ok")));
         allowed.ToString().Should().Be("ok", "通配域 + 危险动词模式不得误伤只读工具");
     }
 
@@ -172,7 +172,7 @@ public class ToolPolicyContractGuards
             Definition("payroll.query_payment_details"),
             Args(),
             new FeishuToolContext("appA"),
-            _ => Task.FromResult(FeishuToolResult.FromText("ok")));
+            _ => Task.FromResult(ToolResult.FromText("ok")));
 
         records.Should().ContainSingle();
         records[0].Reason.Should().Contain(ToolErrorSubtype.DomainNotAllowed);
@@ -353,7 +353,7 @@ public class ToolPolicyContractGuards
             isWrite,
             risk,
             "tenant",
-            (_, _, _) => Task.FromResult(FeishuToolResult.FromText("downstream")));
+            (_, _, _) => Task.FromResult(ToolResult.FromText("downstream")));
 
     private static IReadOnlyDictionary<string, object?> Args()
         => new Dictionary<string, object?> { ["app_token"] = "bascnXxx" };

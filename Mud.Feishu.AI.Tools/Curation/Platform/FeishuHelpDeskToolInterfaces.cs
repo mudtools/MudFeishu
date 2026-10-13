@@ -24,7 +24,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// 选错工具会拿到"看起来像答案但不是服务台口径"的内容。
 /// </para>
 /// </remarks>
-[FeishuTool("helpdesk.search_faqs",
+[AgentTool("helpdesk.search_faqs",
     Description = "按关键词检索飞书服务台 FAQ（返回 faq_id/问题/答案摘要/分类/标签）——回答「这个问题客户服务台有没有现成答复」的首选；与 knowledge.search（Aily 知识）、wiki.*（云文档知识库）数据源不同，别混用。只读，需 helpdesk:faq:readonly。",
     RequiredScopes = ["helpdesk:faq:readonly"],
     Source = nameof(IFeishuTenantV1HelpDeskFaq) + "." + nameof(IFeishuTenantV1HelpDeskFaq.SearchFaqAsync))]
@@ -47,7 +47,7 @@ public interface IFeishuTenantHelpdeskSearchFaqsTool
 /// 与 <c>search_faqs</c> 的分工：本工具是**浏览**（可按分类 / 状态过滤，或用 <c>search</c> 做粗过滤），
 /// 适合"这个服务台有哪些常见问题"；按关键词精确找答复用 <c>search_faqs</c>。
 /// </remarks>
-[FeishuTool("helpdesk.list_faqs",
+[AgentTool("helpdesk.list_faqs",
     Description = "分页列出服务台 FAQ（可选按 category_id / status 过滤，或用 search 做粗过滤）——用于浏览「这个服务台有哪些常见问题」；按关键词找具体答复请用 helpdesk.search_faqs。只读，需 helpdesk:faq:readonly。",
     RequiredScopes = ["helpdesk:faq:readonly"],
     Source = nameof(IFeishuTenantV1HelpDeskFaq) + "." + nameof(IFeishuTenantV1HelpDeskFaq.GetFaqListAsync))]
@@ -72,7 +72,7 @@ public interface IFeishuTenantHelpdeskListFaqsTool
 /// <b>不返回 FAQ 的创建人 / 更新人</b>（出站净化）：那属员工身份信息，
 /// 而"这条问答写了什么"才是本工具的用途。
 /// </remarks>
-[FeishuTool("helpdesk.get_faq",
+[AgentTool("helpdesk.get_faq",
     Description = "按 faq_id 查询单条服务台 FAQ 的完整内容（问题/答案全文/富文本片段/分类/标签/生效与过期时间）。⚠️ 不返回创建人与更新人（出站净化）。只读，需 helpdesk:faq:readonly。",
     RequiredScopes = ["helpdesk:faq:readonly"],
     Source = nameof(IFeishuTenantV1HelpDeskFaq) + "." + nameof(IFeishuTenantV1HelpDeskFaq.GetFaqAsync))]
@@ -92,7 +92,7 @@ public interface IFeishuTenantHelpdeskGetFaqTool
 /// 分类是 FAQ 的目录树（<c>parent_id</c> + <c>children</c>）——先拿分类 ID 再按类浏览 FAQ，
 /// 比直接全量翻 FAQ 更省往返。
 /// </remarks>
-[FeishuTool("helpdesk.list_categories",
+[AgentTool("helpdesk.list_categories",
     Description = "列出服务台 FAQ 分类目录树（category_id/name/parent_id/children）——用于回答「服务台都有哪些分类」或拿 category_id 收窄 helpdesk.list_faqs。只读，需 helpdesk:faq:readonly。",
     RequiredScopes = ["helpdesk:faq:readonly"],
     Source = nameof(IFeishuTenantV1HelpDeskCategory) + "." + nameof(IFeishuTenantV1HelpDeskCategory.GetCategoryListAsync))]
@@ -120,7 +120,7 @@ public interface IFeishuTenantHelpdeskListCategoriesTool
 /// （半开比不开更危险：模型会以为"这就是全部工单信息"）。
 /// </para>
 /// </remarks>
-[FeishuTool("helpdesk.get_ticket",
+[AgentTool("helpdesk.get_ticket",
     Description = "按 ticket_id 查询工单的状态与流转信息（状态/类型/渠道/评分/是否解决/创建·更新·关闭时间/标签/客户与客服的 user_id 与姓名/处理时长）。⚠️ 不返回备注正文、对话消息与客户联系方式（工单内容属敏感面，另行评审）。只读，需 helpdesk:ticket:readonly。",
     RequiredScopes = ["helpdesk:ticket:readonly"],
     Source = nameof(IFeishuTenantV1HelpDeskTicket) + "." + nameof(IFeishuTenantV1HelpDeskTicket.GetTicketAsync))]
@@ -140,7 +140,7 @@ public interface IFeishuTenantHelpdeskGetTicketTool
 /// 客服技能（技能组）是服务台的<b>路由配置</b>：回答"这类问题该转给哪个技能组"、
 /// "服务台配了哪些技能"。纯配置数据，不含任何个人信息。
 /// </remarks>
-[FeishuTool("helpdesk.list_agent_skills",
+[AgentTool("helpdesk.list_agent_skills",
     Description = "列出服务台的客服技能（技能组）配置（skill_id/name/is_default）——回答「服务台配了哪些技能组」「这类问题该转给哪一组」。只读，需 helpdesk:agent:readonly。",
     RequiredScopes = ["helpdesk:agent:readonly"],
     Source = nameof(IFeishuTenantV1HelpDeskAgent) + "." + nameof(IFeishuTenantV1HelpDeskAgent.GetAgentSkillListAsync))]

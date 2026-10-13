@@ -31,7 +31,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// 不由模型控制——否则模型会把 page_size 调到上限以"少翻几页"，反而更早触发结果截断。
 /// </para>
 /// </remarks>
-[FeishuTool("org.list_job_titles",
+[AgentTool("org.list_job_titles",
     Description = "分页列出当前租户的【职务】目录（职务 ID、名称、多语言名称、启用状态）——用于把通讯录返回的 job_title 职务 ID 换成可读名称，或确认组织内有哪些职务。page_token 续页（页大小由宿主固定，模型不可调）；结果为空说明租户未配置职务。只读，需 contact:user.base:readonly。",
     RequiredScopes = ["contact:user.base:readonly"],
     Source = nameof(IFeishuTenantV3JobTitle) + "." + nameof(IFeishuTenantV3JobTitle.GetJobTitlesListAsync))]
@@ -52,7 +52,7 @@ public interface IFeishuTenantOrgListJobTitlesTool
 /// <remarks>
 /// 已知职务 ID 时的精确取值通道：比翻页列表更省上下文，也避免"猜 ID"。与 <c>org.list_job_titles</c> 同权限口径。
 /// </remarks>
-[FeishuTool("org.get_job_title",
+[AgentTool("org.get_job_title",
     Description = "按职务 ID 查询单个【职务】详情（名称、多语言名称、启用状态）——已从通讯录拿到 job_title ID 时用它精确取值，不必翻页。ID 形如 od-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx（也可能是数字串）；查不到时返回 found=false。只读，需 contact:user.base:readonly。",
     RequiredScopes = ["contact:user.base:readonly"],
     Source = nameof(IFeishuTenantV3JobTitle) + "." + nameof(IFeishuTenantV3JobTitle.GetJobTitleByIdAsync))]
@@ -76,7 +76,7 @@ public interface IFeishuTenantOrgGetJobTitleTool
 /// <remarks>
 /// 支持 SDK 原生的 <c>name</c> **模糊过滤**（业务参数，可下发）；<c>page_size</c> 仍不下发（DP-B1-0）。
 /// </remarks>
-[FeishuTool("org.list_job_levels",
+[AgentTool("org.list_job_levels",
     Description = "分页列出/按名称模糊匹配【职级】目录（职级 ID、名称、说明、排序序号 order、启用状态）——用于把通讯录返回的 job_level_id 换成可读名称，或确认组织职级序列。name 为可选模糊过滤；page_token 续页（页大小由宿主固定）。只读，需 contact:user.base:readonly。",
     RequiredScopes = ["contact:user.base:readonly"],
     Source = nameof(IFeishuTenantV3JobLevel) + "." + nameof(IFeishuTenantV3JobLevel.GetJobLevelListAsync))]
@@ -93,7 +93,7 @@ public interface IFeishuTenantOrgListJobLevelsTool
 }
 
 /// <summary>工具接口：org.get_job_level（映射 <c>IFeishuTenantV3JobLevel.GetJobLevelByIdAsync</c>）。</summary>
-[FeishuTool("org.get_job_level",
+[AgentTool("org.get_job_level",
     Description = "按职级 ID 查询单个【职级】详情（名称、说明、排序序号、启用状态）——已从通讯录拿到 job_level_id 时用它精确取值。查不到时返回 found=false。只读，需 contact:user.base:readonly。",
     RequiredScopes = ["contact:user.base:readonly"],
     Source = nameof(IFeishuTenantV3JobLevel) + "." + nameof(IFeishuTenantV3JobLevel.GetJobLevelByIdAsync))]
@@ -112,7 +112,7 @@ public interface IFeishuTenantOrgGetJobLevelTool
 /// <remarks>
 /// <b>职务族有层级</b>（<c>parent_job_family_id</c>）：返回里带父族 ID，模型可据此还原树，不要臆造层级。
 /// </remarks>
-[FeishuTool("org.list_job_families",
+[AgentTool("org.list_job_families",
     Description = "分页列出/按名称模糊匹配【职务族】目录（职务族 ID、名称、说明、父职务族 ID、启用状态）——用于把通讯录返回的 job_family_id 换成可读名称。职务族有层级：parent_job_family_id 为空者即顶层。name 为可选模糊过滤；page_token 续页。只读，需 contact:user.base:readonly。",
     RequiredScopes = ["contact:user.base:readonly"],
     Source = nameof(IFeishuTenantV3JobFamilies) + "." + nameof(IFeishuTenantV3JobFamilies.GetJobFamilesListAsync))]
@@ -129,7 +129,7 @@ public interface IFeishuTenantOrgListJobFamiliesTool
 }
 
 /// <summary>工具接口：org.get_job_family（映射 <c>IFeishuTenantV3JobFamilies.GetJobFamilyByIdAsync</c>）。</summary>
-[FeishuTool("org.get_job_family",
+[AgentTool("org.get_job_family",
     Description = "按职务族 ID 查询单个【职务族】详情（名称、说明、父职务族 ID、启用状态）——已从通讯录拿到 job_family_id 时用它精确取值。查不到时返回 found=false。只读，需 contact:user.base:readonly。",
     RequiredScopes = ["contact:user.base:readonly"],
     Source = nameof(IFeishuTenantV3JobFamilies) + "." + nameof(IFeishuTenantV3JobFamilies.GetJobFamilyByIdAsync))]
@@ -150,7 +150,7 @@ public interface IFeishuTenantOrgGetJobFamilyTool
 /// 前者是"租户在通讯录里为该员工登记的工作城市"（含中国城市层级）。模型问"XX 在哪个城市办公"用本工具，
 /// 问"某国家代码代表哪个国家"用 mdm。
 /// </remarks>
-[FeishuTool("org.list_work_cities",
+[AgentTool("org.list_work_cities",
     Description = "分页列出【工作城市】目录（城市 ID、名称、多语言名称、启用状态）——用于把通讯录返回的 city 城市 ID 换成可读城市名。注意与 mdm.get_countries（国家/地区参考表）不同：本工具是员工工作城市。page_token 续页（页大小由宿主固定）。只读，需 contact:user.base:readonly。",
     RequiredScopes = ["contact:user.base:readonly"],
     Source = nameof(IFeishuTenantV3WorkCity) + "." + nameof(IFeishuTenantV3WorkCity.GetWorkCitesListAsync))]
@@ -166,7 +166,7 @@ public interface IFeishuTenantOrgListWorkCitiesTool
 }
 
 /// <summary>工具接口：org.get_work_city（映射 <c>IFeishuTenantV3WorkCity.GetWorkCityByIdAsync</c>）。</summary>
-[FeishuTool("org.get_work_city",
+[AgentTool("org.get_work_city",
     Description = "按城市 ID 查询单个【工作城市】详情（名称、多语言名称、启用状态）——已从通讯录拿到 city 城市 ID 时用它精确取值。查不到时返回 found=false。只读，需 contact:user.base:readonly。",
     RequiredScopes = ["contact:user.base:readonly"],
     Source = nameof(IFeishuTenantV3WorkCity) + "." + nameof(IFeishuTenantV3WorkCity.GetWorkCityByIdAsync))]

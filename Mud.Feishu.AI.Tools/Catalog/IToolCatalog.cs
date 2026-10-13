@@ -28,7 +28,7 @@ namespace Mud.Feishu.AI.Tools.Catalog;
 /// <param name="Risk">风险分级（策略轴 <c>MaxToolRisk</c> 的判定输入，由契约 <c>risk</c> 派生）。</param>
 /// <param name="Identity">工具身份（<c>tenant</c> / <c>user</c>，策略轴 <c>AllowedIdentities</c> 的判定输入）。</param>
 /// <param name="SdkSource">SDK 源符号（<c>类型.方法</c>；契约 <c>source.sdk</c>，宿主可据此定位实现与文档）。</param>
-/// <param name="ParameterSchemaJson">参数 JSON Schema（编译期 <c>[FeishuTool]</c> 常量原文）。</param>
+/// <param name="ParameterSchemaJson">参数 JSON Schema（编译期 <c>[AgentTool]</c> 常量原文）。</param>
 public sealed record ToolCatalogEntry(
     string Name,
     string Description,

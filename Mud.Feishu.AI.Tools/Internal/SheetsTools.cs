@@ -26,8 +26,8 @@ internal sealed class SheetsTools(
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>sheets.list_sheets：列出工作表（白名单 sheet_id/title/index）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantSheetsListTool))]
-    public Task<FeishuToolResult> ListSheetsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantSheetsListTool))]
+    public Task<ToolResult> ListSheetsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.SheetsListSheets, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -42,8 +42,8 @@ internal sealed class SheetsTools(
     }
 
     /// <summary>sheets.get_range_values：读取单元格区域数据。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantSheetsRangeTool))]
-    public Task<FeishuToolResult> GetRangeValuesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantSheetsRangeTool))]
+    public Task<ToolResult> GetRangeValuesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.SheetsGetRangeValues, _maxResultLength);
         return executor.RunAsync(async () =>

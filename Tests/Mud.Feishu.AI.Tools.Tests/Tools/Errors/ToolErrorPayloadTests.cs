@@ -151,7 +151,7 @@ public class ToolErrorPayloadTests
         act.Should().NotThrow("截断后的载荷必须保持 JSON 合法性");
     }
 
-    // ────────── FeishuToolResult.FromError 行为 ──────────
+    // ────────── ToolResult.FromError 行为 ──────────
 
     [Fact]
     public void FromError_WithToolError_ShouldSetErrorProperty()
@@ -162,7 +162,7 @@ public class ToolErrorPayloadTests
             Retryable: true,
             Tool: "test.tool");
 
-        var result = FeishuToolResult.FromError(error, "human readable text");
+        var result = ToolResult.FromError(error, "human readable text");
 
         result.Error.Should().NotBeNull();
         result.Error!.Category.Should().Be("retryable");
@@ -175,7 +175,7 @@ public class ToolErrorPayloadTests
     [Fact]
     public void FromError_WithStringOnly_ShouldHaveNullError()
     {
-        var result = FeishuToolResult.FromError("just a text error");
+        var result = ToolResult.FromError("just a text error");
 
         result.Error.Should().BeNull("FromError(string) 不设置结构化载荷");
         result.Text.Should().Be("just a text error");
@@ -184,7 +184,7 @@ public class ToolErrorPayloadTests
     [Fact]
     public void FromText_ShouldHaveNullError()
     {
-        var result = FeishuToolResult.FromText("success text");
+        var result = ToolResult.FromText("success text");
 
         result.Error.Should().BeNull("成功路径不应有错误载荷");
         result.Text.Should().Be("success text");

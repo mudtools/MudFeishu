@@ -35,4 +35,7 @@ global using Mud.Feishu.Abstractions.Services;
 // BUG-1：集成面用例消费的接缝类型在 Mud.Feishu.AI.AgentTools；工具契约类型（FeishuToolRegistry 等）
 // 已回迁工具包，其用例随迁至 Mud.Feishu.AI.Tools.Tests。
 global using Mud.Feishu.AI.AgentTools;
+// v2.3 P1-E：本工程的**样例策展接口**（Tools/FeishuToolInterfaces.cs）与生产侧同口径改用
+// 中立声明契约（[AgentTool] / [ToolParameter]，随契约上移 Mud.AI.Abstractions）。
+global using Mud.AI.Abstractions.Tools;
 global using Xunit;

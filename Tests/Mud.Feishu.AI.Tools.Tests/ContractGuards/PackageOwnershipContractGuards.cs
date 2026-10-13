@@ -76,7 +76,7 @@ public class PackageOwnershipContractGuards
         var aiNamespaces = PackageOwnershipScanner.ExportedNamespaces(ai);
         var toolNamespaces = PackageOwnershipScanner.ExportedNamespaces(tools);
 
-        // AI 包：宿主扩展点与执行上下文接缝（含声明契约 [FeishuTool] / [ToolParameter]）。
+        // AI 包：宿主扩展点与执行上下文接缝（含声明契约 [AgentTool] / [ToolParameter]）。
         aiNamespaces.Should().Contain("Mud.Feishu.AI.AgentTools",
             "工具源 / 租户作用域工厂 / 上下文访问器 / 审批通道 / 声明契约 都在此处");
         aiNamespaces.Should().NotContain("Mud.Feishu.AI.Tools",

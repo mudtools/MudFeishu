@@ -188,10 +188,10 @@ public class ExecutorDomainPurityContractTests
         {
             var source = File.ReadAllText(file);
 
-            // 形如：[FeishuTool("docx.append_blocks", …)]  …  public interface IFeishuTenantDocxAppendBlocksTool
+            // 形如：[AgentTool("docx.append_blocks", …)]  …  public interface IFeishuTenantDocxAppendBlocksTool
             foreach (System.Text.RegularExpressions.Match m in Regex.Matches(
                 source,
-                @"\[FeishuTool\s*\(\s*""(?<tool>[^""]+)""[\s\S]{0,600}?interface\s+(?<iface>I\w+Tool)\b"))
+                @"\[AgentTool\s*\(\s*""(?<tool>[^""]+)""[\s\S]{0,600}?interface\s+(?<iface>I\w+Tool)\b"))
             {
                 var tool = m.Groups["tool"].Value;
                 var dot = tool.IndexOf('.', StringComparison.Ordinal);

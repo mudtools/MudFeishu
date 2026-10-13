@@ -317,7 +317,7 @@ public sealed class FeishuMcpResourceCatalog
     {
         var builder = new StringBuilder();
         builder.Append("# ").Append(domain).Append(" 域的权限与风险对照\n\n");
-        builder.Append("> 本文件由工具面的**声明**生成（`[FeishuTool] RequiredScopes` / 风险 / 身份）。\n");
+        builder.Append("> 本文件由工具面的**声明**生成（`[AgentTool] RequiredScopes` / 风险 / 身份）。\n");
         builder.Append("> `required_scopes` 是工具声明需要哪些权限，**不代表**平台已为应用开通——\n");
         builder.Append("> 人读的开放平台权限名与开通指引见仓库文档《工具权限对照表》。\n\n");
 

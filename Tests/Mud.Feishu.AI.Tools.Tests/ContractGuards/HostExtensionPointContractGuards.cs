@@ -81,13 +81,13 @@ public class HostExtensionPointContractGuards
             IsWrite: false,
             FeishuToolRisk.Read,
             "tenant",
-            (_, _, _) => Task.FromResult(FeishuToolResult.FromText("原始结果")));
+            (_, _, _) => Task.FromResult(ToolResult.FromText("原始结果")));
 
         var result = await binding.ExecuteAsync(
             tool,
             new Dictionary<string, object?>(StringComparer.Ordinal) { ["app_token"] = "bascn" },
             new FeishuToolContext("app-a"),
-            _ => Task.FromResult(FeishuToolResult.FromText("原始结果")));
+            _ => Task.FromResult(ToolResult.FromText("原始结果")));
 
         authorizerCalls.Should().Be(1, "写/读工具都必须经授权门禁（扩展点 ① 被调用）");
         shaperCalls.Should().Be(1, "结果在回填模型前必须过整形钩子（扩展点 ② 被调用）");

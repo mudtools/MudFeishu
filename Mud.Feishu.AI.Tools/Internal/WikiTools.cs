@@ -23,8 +23,8 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
     private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
     /// <summary>wiki.get_node：解析节点信息（单对象）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantWikiGetNodeTool))]
-    public Task<FeishuToolResult> GetNodeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantWikiGetNodeTool))]
+    public Task<ToolResult> GetNodeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.WikiGetNode, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -42,8 +42,8 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
     }
 
     /// <summary>wiki.list_nodes：列出子节点（分页）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantWikiListNodesTool))]
-    public Task<FeishuToolResult> ListNodesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantWikiListNodesTool))]
+    public Task<ToolResult> ListNodesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.WikiListNodes, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -100,8 +100,8 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
     // ────────── R5 / F-11：wiki 写面（此前本域只有读） ──────────
 
     /// <summary>wiki.create_node：在知识空间下创建节点。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantWikiCreateNodeTool))]
-    public Task<FeishuToolResult> CreateNodeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantWikiCreateNodeTool))]
+    public Task<ToolResult> CreateNodeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.WikiCreateNode, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -110,7 +110,7 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", $"/open-apis/wiki/v2/spaces/{args.SpaceId}/nodes",
                     ToolDryRun.IdempotencyNote(null),
                     ("space_id", args.SpaceId.Length), ("title", args.Title.Length)));
@@ -134,8 +134,8 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
     }
 
     /// <summary>wiki.move_node：移动节点（改父节点或换空间）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantWikiMoveNodeTool))]
-    public Task<FeishuToolResult> MoveNodeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantWikiMoveNodeTool))]
+    public Task<ToolResult> MoveNodeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.WikiMoveNode, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -152,7 +152,7 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST",
                     $"/open-apis/wiki/v2/spaces/{args.SpaceId}/nodes/{args.NodeToken}/move",
                     ToolDryRun.IdempotencyNote(null),
@@ -182,8 +182,8 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
     /// <b>为何必须如实回传 <c>applied</c> 与 <c>task_id</c></b>：平台以异步任务执行，
     /// 立即返回并不代表已生效。只回"成功"会让模型误以为文档已在知识库里。
     /// </remarks>
-    [FeishuToolHandler(typeof(IFeishuTenantWikiMoveDocsToSpaceTool))]
-    public Task<FeishuToolResult> MoveDocsToSpaceAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantWikiMoveDocsToSpaceTool))]
+    public Task<ToolResult> MoveDocsToSpaceAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.WikiMoveDocsToSpace, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -192,7 +192,7 @@ internal sealed class WikiTools(Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesCli
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", $"/open-apis/wiki/v2/spaces/{args.SpaceId}/nodes/move_docs_to_wiki",
                     "平台以**异步任务**执行：立即返回不代表已生效，applied 字段为真实状态。"
                     + ToolDryRun.IdempotencyNote(null),

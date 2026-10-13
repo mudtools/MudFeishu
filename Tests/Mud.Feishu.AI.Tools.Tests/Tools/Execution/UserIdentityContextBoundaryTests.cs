@@ -60,7 +60,7 @@ public class UserIdentityContextBoundaryTests
             false,
             FeishuToolRisk.Read,
             identity,
-            (_, _, _) => Task.FromResult(FeishuToolResult.FromText("downstream-result")));
+            (_, _, _) => Task.FromResult(ToolResult.FromText("downstream-result")));
 
     private static IReadOnlyDictionary<string, object?> Args()
         => new Dictionary<string, object?> { ["app_token"] = "bascnXxx" };
@@ -78,7 +78,7 @@ public class UserIdentityContextBoundaryTests
             _ =>
             {
                 _callLog.Add("downstream");
-                return Task.FromResult(FeishuToolResult.FromText("ok"));
+                return Task.FromResult(ToolResult.FromText("ok"));
             });
 
         result.ToString().Should().Be("ok");
@@ -103,7 +103,7 @@ public class UserIdentityContextBoundaryTests
             Definition("tenant", "bitable.list_tables"),
             Args(),
             new FeishuToolContext("appA", UserId: "ou_1"),
-            _ => Task.FromResult(FeishuToolResult.FromText("ok")));
+            _ => Task.FromResult(ToolResult.FromText("ok")));
 
         userContext.Verify(
             c => c.SetUser(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()),
@@ -127,7 +127,7 @@ public class UserIdentityContextBoundaryTests
             _ =>
             {
                 downstreamCalled = true;
-                return Task.FromResult(FeishuToolResult.FromText("ok"));
+                return Task.FromResult(ToolResult.FromText("ok"));
             });
 
         downstreamCalled.Should().BeFalse();
@@ -159,7 +159,7 @@ public class UserIdentityContextBoundaryTests
             _ =>
             {
                 downstreamCalled = true;
-                return Task.FromResult(FeishuToolResult.FromText("ok"));
+                return Task.FromResult(ToolResult.FromText("ok"));
             });
 
         downstreamCalled.Should().BeFalse();
@@ -180,7 +180,7 @@ public class UserIdentityContextBoundaryTests
             _ =>
             {
                 downstreamCalled = true;
-                return Task.FromResult(FeishuToolResult.FromText("ok"));
+                return Task.FromResult(ToolResult.FromText("ok"));
             });
 
         downstreamCalled.Should().BeFalse();

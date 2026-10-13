@@ -83,9 +83,9 @@ Mud.Feishu.AI.Agents.FeishuAgentOptions.DeferTextUntilTurnComplete.get -> bool
 Mud.Feishu.AI.Agents.FeishuAgentOptions.DeferTextUntilTurnComplete.set -> void
 Mud.Feishu.AI.Agents.FeishuAgentOptions.EnforceToolAuthorization.get -> bool
 Mud.Feishu.AI.Agents.FeishuAgentOptions.EnforceToolAuthorization.set -> void
+Mud.Feishu.AI.Agents.FeishuAgentOptions.FeishuAgentOptions() -> void
 Mud.Feishu.AI.Agents.FeishuAgentOptions.GuidanceMode.get -> string!
 Mud.Feishu.AI.Agents.FeishuAgentOptions.GuidanceMode.set -> void
-Mud.Feishu.AI.Agents.FeishuAgentOptions.FeishuAgentOptions() -> void
 Mud.Feishu.AI.Agents.FeishuAgentOptions.Instructions.get -> string!
 Mud.Feishu.AI.Agents.FeishuAgentOptions.Instructions.set -> void
 Mud.Feishu.AI.Agents.FeishuAgentOptions.MaxAutoFetchItems.get -> int
@@ -151,7 +151,6 @@ Mud.Feishu.AI.Agents.FeishuGuidanceResult.OmittedDomains.get -> System.Collectio
 Mud.Feishu.AI.Agents.FeishuGuidanceResult.OmittedDomains.init -> void
 Mud.Feishu.AI.Agents.FeishuGuidanceResult.Truncated.get -> bool
 Mud.Feishu.AI.Agents.FeishuGuidanceResult.Truncated.init -> void
-Mud.Feishu.AI.Agents.IFeishuPendingApprovalStore
 Mud.Feishu.AI.Agents.FeishuToolPolicyDomainOptions
 Mud.Feishu.AI.Agents.FeishuToolPolicyDomainOptions.Allow.get -> string![]!
 Mud.Feishu.AI.Agents.FeishuToolPolicyDomainOptions.Allow.set -> void
@@ -168,6 +167,7 @@ Mud.Feishu.AI.Agents.FeishuToolPolicyOptions.Domains.set -> void
 Mud.Feishu.AI.Agents.FeishuToolPolicyOptions.FeishuToolPolicyOptions() -> void
 Mud.Feishu.AI.Agents.FeishuToolPolicyOptions.IsConfigured.get -> bool
 Mud.Feishu.AI.Agents.FeishuToolPolicyOptions.Validate() -> void
+Mud.Feishu.AI.Agents.IFeishuPendingApprovalStore
 Mud.Feishu.AI.Agents.IFeishuPendingApprovalStore.FindAsync(string! appKey, string! requestId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Mud.Feishu.AI.Agents.PendingApprovalSnapshot?>!
 Mud.Feishu.AI.Agents.IFeishuPendingApprovalStore.ListPendingAsync(string! appKey, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Agents.PendingApprovalSnapshot!>!>!
 Mud.Feishu.AI.Agents.IFeishuPendingApprovalStore.RemoveAsync(string! appKey, string! requestId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
@@ -227,19 +227,6 @@ Mud.Feishu.AI.Agents.ToolRetryOptions.ToolRetryOptions() -> void
 Mud.Feishu.AI.AgentTools.ContentSafetyModes
 Mud.Feishu.AI.AgentTools.FeishuAgentToolSource
 Mud.Feishu.AI.AgentTools.FeishuAgentToolSource.FeishuAgentToolSource() -> void
-Mud.Feishu.AI.AgentTools.FeishuToolAttribute
-Mud.Feishu.AI.AgentTools.FeishuToolAttribute.AnyOf.get -> string![]!
-Mud.Feishu.AI.AgentTools.FeishuToolAttribute.AnyOf.init -> void
-Mud.Feishu.AI.AgentTools.FeishuToolAttribute.Description.get -> string!
-Mud.Feishu.AI.AgentTools.FeishuToolAttribute.Description.init -> void
-Mud.Feishu.AI.AgentTools.FeishuToolAttribute.FeishuToolAttribute(string! name) -> void
-Mud.Feishu.AI.AgentTools.FeishuToolAttribute.IsWrite.get -> bool
-Mud.Feishu.AI.AgentTools.FeishuToolAttribute.IsWrite.init -> void
-Mud.Feishu.AI.AgentTools.FeishuToolAttribute.Name.get -> string!
-Mud.Feishu.AI.AgentTools.FeishuToolAttribute.RequiredScopes.get -> string![]!
-Mud.Feishu.AI.AgentTools.FeishuToolAttribute.RequiredScopes.init -> void
-Mud.Feishu.AI.AgentTools.FeishuToolAttribute.Source.get -> string?
-Mud.Feishu.AI.AgentTools.FeishuToolAttribute.Source.init -> void
 Mud.Feishu.AI.AgentTools.FeishuToolCallBudget
 Mud.Feishu.AI.AgentTools.FeishuToolCallBudget.Begin() -> System.IDisposable!
 Mud.Feishu.AI.AgentTools.FeishuToolCallBudget.FeishuToolCallBudget(int maxToolCalls) -> void
@@ -294,6 +281,7 @@ Mud.Feishu.AI.AgentTools.FrameworkToolApprovalRequest.ToolName.get -> string!
 Mud.Feishu.AI.AgentTools.FrameworkToolApprovalRequest.ToolName.init -> void
 Mud.Feishu.AI.AgentTools.FrameworkToolApprovalRequest.UserId.get -> string?
 Mud.Feishu.AI.AgentTools.FrameworkToolApprovalRequest.UserId.init -> void
+Mud.Feishu.AI.AgentTools.GuidanceModes
 Mud.Feishu.AI.AgentTools.IFeishuAppContextScopeFactory
 Mud.Feishu.AI.AgentTools.IFeishuAppContextScopeFactory.BeginScope(string! appKey) -> System.IDisposable!
 Mud.Feishu.AI.AgentTools.IFeishuToolApprovalChannel
@@ -323,15 +311,6 @@ Mud.Feishu.AI.AgentTools.ToolApprovalRequest.ToolName.get -> string!
 Mud.Feishu.AI.AgentTools.ToolApprovalRequest.ToolName.init -> void
 Mud.Feishu.AI.AgentTools.ToolApprovalRequest.UserId.get -> string?
 Mud.Feishu.AI.AgentTools.ToolApprovalRequest.UserId.init -> void
-Mud.Feishu.AI.AgentTools.ToolParameterAttribute
-Mud.Feishu.AI.AgentTools.ToolParameterAttribute.Description.get -> string!
-Mud.Feishu.AI.AgentTools.ToolParameterAttribute.EnumType.get -> System.Type?
-Mud.Feishu.AI.AgentTools.ToolParameterAttribute.EnumType.init -> void
-Mud.Feishu.AI.AgentTools.ToolParameterAttribute.Name.get -> string!
-Mud.Feishu.AI.AgentTools.ToolParameterAttribute.Required.get -> bool
-Mud.Feishu.AI.AgentTools.ToolParameterAttribute.Required.init -> void
-Mud.Feishu.AI.AgentTools.ToolParameterAttribute.ToolParameterAttribute(string! name, string! description) -> void
-Mud.Feishu.AI.AgentTools.GuidanceModes
 Mud.Feishu.AI.AgentTools.UserTokenPrecheckModes
 Mud.Feishu.AI.Channels.BufferedMessageChannel
 Mud.Feishu.AI.Channels.BufferedMessageChannel.BufferedMessageChannel(Microsoft.Extensions.Options.IOptions<Mud.Feishu.AI.Agents.FeishuAgentOptions!>! options, System.TimeSpan? minUpdateInterval = null) -> void
@@ -687,9 +666,9 @@ static Mud.Feishu.AI.AgentTools.FeishuToolRiskNames.ToLiteral(Mud.Feishu.AI.Agen
 static Mud.Feishu.AI.AgentTools.FeishuToolRiskNames.TryParse(string? value, out Mud.Feishu.AI.AgentTools.FeishuToolRisk risk) -> bool
 static Mud.Feishu.AI.AgentTools.FrameworkToolApprovalRequest.operator !=(Mud.Feishu.AI.AgentTools.FrameworkToolApprovalRequest? left, Mud.Feishu.AI.AgentTools.FrameworkToolApprovalRequest? right) -> bool
 static Mud.Feishu.AI.AgentTools.FrameworkToolApprovalRequest.operator ==(Mud.Feishu.AI.AgentTools.FrameworkToolApprovalRequest? left, Mud.Feishu.AI.AgentTools.FrameworkToolApprovalRequest? right) -> bool
+static Mud.Feishu.AI.AgentTools.GuidanceModes.IsValid(string? mode) -> bool
 static Mud.Feishu.AI.AgentTools.ToolApprovalRequest.operator !=(Mud.Feishu.AI.AgentTools.ToolApprovalRequest? left, Mud.Feishu.AI.AgentTools.ToolApprovalRequest? right) -> bool
 static Mud.Feishu.AI.AgentTools.ToolApprovalRequest.operator ==(Mud.Feishu.AI.AgentTools.ToolApprovalRequest? left, Mud.Feishu.AI.AgentTools.ToolApprovalRequest? right) -> bool
-static Mud.Feishu.AI.AgentTools.GuidanceModes.IsValid(string? mode) -> bool
 static Mud.Feishu.AI.AgentTools.UserTokenPrecheckModes.IsValid(string? mode) -> bool
 static Mud.Feishu.AI.Channels.StreamingRequestContext.Begin(Mud.Feishu.AI.Conversations.ConversationRequest! request) -> System.IDisposable!
 static Mud.Feishu.AI.Channels.StreamingRequestContext.Current.get -> Mud.Feishu.AI.Conversations.ConversationRequest?

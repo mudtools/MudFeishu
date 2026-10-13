@@ -85,7 +85,7 @@ public static class ToolsDemo
                 .AddTaskApi())
             .AddDemoAgent(model, "FeishuAgentToolsDemo", InstructionsText, options =>
             {
-                // Demo 启用全部只读工具（ReadonlyAll，由生成器从 [FeishuTool] 派生）；生产由宿主按需裁剪白名单。
+                // Demo 启用全部只读工具（ReadonlyAll，由生成器从 [AgentTool] 派生）；生产由宿主按需裁剪白名单。
                 options.Tools = [.. FeishuToolNames.ReadonlyAll];
                 // 身份闭集（R4 WP2 / T2-4 决策 D-1 ⓑ）：只读面含 task.list_my_tasks（identity=user），
                 // 必须在 AllowedIdentities 内显式放行，否则装配期 fail-fast（而不是运行期静默 policy_denied）。

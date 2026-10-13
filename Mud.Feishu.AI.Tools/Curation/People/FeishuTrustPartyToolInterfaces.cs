@@ -25,7 +25,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// <b>本域第一跳</b>：<c>target_tenant_key</c> 是后续所有互通查询（组织 / 部门 / 成员 / 规则）的作用域句柄，
 /// 而它只能从"关联组织列表"里拿到。
 /// </remarks>
-[FeishuTool("trustparty.list_collaboration_tenants",
+[AgentTool("trustparty.list_collaboration_tenants",
     Description = "分页列出本租户已建立互通关系的**关联组织**（返回 target_tenant_key/组织名/短名/连接时间/标签）——「我们和哪些组织有互通」的第一跳；拿到 target_tenant_key 才能查对端可见组织、外部部门与成员。只读，需 trust_party:collaboration.tenant:readonly。",
     RequiredScopes = ["trust_party:collaboration.tenant:readonly"],
     Source = nameof(IFeishuTenantV1TrustPartyCollaborationTenant) + "." + nameof(IFeishuTenantV1TrustPartyCollaborationTenant.GetCollaborationTenantListAsync))]
@@ -43,7 +43,7 @@ public interface IFeishuTenantTrustpartyListCollaborationTenantsTool
 /// <summary>
 /// 工具接口：trustparty.get_collaboration_tenant（映射 <c>GetCollaborationTenantAsync</c>）。
 /// </summary>
-[FeishuTool("trustparty.get_collaboration_tenant",
+[AgentTool("trustparty.get_collaboration_tenant",
     Description = "按 target_tenant_key 查询单个关联组织的详情（组织名/短名/连接时间/标签/品牌）——「这个外部组织是谁、什么时候连上的」。只读，需 trust_party:collaboration.tenant:readonly。",
     RequiredScopes = ["trust_party:collaboration.tenant:readonly"],
     Source = nameof(IFeishuTenantV1TrustPartyCollaborationTenant) + "." + nameof(IFeishuTenantV1TrustPartyCollaborationTenant.GetCollaborationTenantAsync))]
@@ -63,7 +63,7 @@ public interface IFeishuTenantTrustpartyGetCollaborationTenantTool
 /// 回答"对端组织对我们开放了哪些人 / 部门 / 群"——返回的实体带<b>名称与标识</b>
 /// （姓名在本仓工具面是既有口径，如 <c>contact</c> 域；联系方式类字段不在本结果里）。
 /// </remarks>
-[FeishuTool("trustparty.list_visible_organization",
+[AgentTool("trustparty.list_visible_organization",
     Description = "分页查询关联组织**对本租户可见**的组织实体（成员 / 部门 / 群，含名称与 open_id|department_id|group_id）——「对端开放了哪些人、哪些部门」。可用 target_department_id / target_group_id 收窄到某个分支。只读，需 trust_party:collaboration.tenant:readonly。",
     RequiredScopes = ["trust_party:collaboration.tenant:readonly"],
     Source = nameof(IFeishuTenantV1TrustPartyCollaborationTenant) + "." + nameof(IFeishuTenantV1TrustPartyCollaborationTenant.GetVisibleOrganizationAsync))]
@@ -90,7 +90,7 @@ public interface IFeishuTenantTrustpartyListVisibleOrganizationTool
 /// 直属上级只给<b>负责人标识</b>（<c>leader_type</c> + user_id/open_id），不含姓名——
 /// 要姓名请先用本工具拿到 ID，再走 <c>trustparty.get_collaboration_user</c>。
 /// </remarks>
-[FeishuTool("trustparty.get_collaboration_department",
+[AgentTool("trustparty.get_collaboration_department",
     Description = "按 target_tenant_key + target_department_id 查询关联组织的外部部门详情（部门名/排序/负责人标识/上级部门标识）——「对端这个部门是什么、谁负责」。只读，需 trust_party:collaboration.tenant:readonly。",
     RequiredScopes = ["trust_party:collaboration.tenant:readonly"],
     Source = nameof(IFeishuTenantV1TrustPartyCollaborationTenant) + "." + nameof(IFeishuTenantV1TrustPartyCollaborationTenant.GetCollaborationDepartmentAsync))]
@@ -120,7 +120,7 @@ public interface IFeishuTenantTrustpartyGetCollaborationDepartmentTool
 /// 不含个人联系方式。
 /// </para>
 /// </remarks>
-[FeishuTool("trustparty.get_collaboration_user",
+[AgentTool("trustparty.get_collaboration_user",
     Description = "按 target_tenant_key + target_user_id 查询关联组织的外部成员详情（姓名/职务/所属部门标识/上级标识）——「对端这个联系人是谁、在哪个部门」。⚠️ 不返回手机号、工号、自定义属性与在职状态（出站净化）。只读，需 trust_party:collaboration.tenant:readonly。",
     RequiredScopes = ["trust_party:collaboration.tenant:readonly"],
     Source = nameof(IFeishuTenantV1TrustPartyCollaborationTenant) + "." + nameof(IFeishuTenantV1TrustPartyCollaborationTenant.GetCollaborationUserAsync))]
@@ -142,7 +142,7 @@ public interface IFeishuTenantTrustpartyGetCollaborationUserTool
 /// 三份清单（共享的<b>部门 / 用户组 / 用户</b>）来自同一个结果对象，投影时合成一份带 <c>kind</c> 的
 /// <c>items</c>（统一分页出口按 <c>items</c> 聚合），同时保留三份分类清单便于直接读。
 /// </remarks>
-[FeishuTool("trustparty.list_share_entities",
+[AgentTool("trustparty.list_share_entities",
     Description = "分页查询目录里**被共享出去**的实体（部门 / 用户组 / 用户三份清单，含名称与 open_id|open_department_id|open_group_id）——「我们把哪些组织单元共享给了关联组织」。可用 target_tenant_key / target_department_id / target_group_id 收窄，is_select_subject 区分主体侧与客体侧。只读，需 trust_party:collaboration_rule:read。",
     RequiredScopes = ["trust_party:collaboration_rule:read"],
     Source = nameof(IFeishuTenantV1DirectoryShareEntity) + "." + nameof(IFeishuTenantV1DirectoryShareEntity.GetShareEntityListAsync))]
@@ -169,7 +169,7 @@ public interface IFeishuTenantTrustpartyListShareEntitiesTool
 /// <c>trust_party</c> 面的"已互通组织"，本工具是 <c>directory</c> 面的**目录侧可见关联组织**
 /// （同一批关系、不同接口与字段口径）。两者都读；要写规则用 <c>directory</c> 面所需的 key。
 /// </remarks>
-[FeishuTool("trustparty.list_all_collaboration_tenants",
+[AgentTool("trustparty.list_all_collaboration_tenants",
     Description = "分页列出目录侧的全部关联组织（返回 target_tenant_key/名称/短名/连接时间/品牌）——与 trustparty.list_collaboration_tenants（互通面）口径不同：本工具是 directory 面，用于核对「目录里关联了哪些组织」。只读，需 trust_party:collaboration_rule:read。",
     RequiredScopes = ["trust_party:collaboration_rule:read"],
     Source = nameof(IFeishuTenantV1DirectoryCollaborationTenant) + "." + nameof(IFeishuTenantV1DirectoryCollaborationTenant.GetAllCollaborationTenantListAsync))]
@@ -193,7 +193,7 @@ public interface IFeishuTenantTrustpartyListAllCollaborationTenantsTool
 /// （<c>subject_is_valid</c> / <c>object_is_valid</c>——实体被删除或离职后规则会失效，这是排查
 /// "规则配了却不生效"的关键信号）。
 /// </remarks>
-[FeishuTool("trustparty.list_collaboration_rules",
+[AgentTool("trustparty.list_collaboration_rules",
     Description = "分页列出某个关联组织的互通规则（rule_id + 主体与客体的成员/部门/群标识集合 + 两侧是否仍有效）——回答「我们和对端开了哪些互通规则」「规则为什么没生效」（看 subject_is_valid/object_is_valid）。只读，需 trust_party:collaboration_rule:read。",
     RequiredScopes = ["trust_party:collaboration_rule:read"],
     Source = nameof(IFeishuTenantV1DirectoryCollaborationRule) + "." + nameof(IFeishuTenantV1DirectoryCollaborationRule.GetCollaborationRuleListAsync))]
@@ -225,7 +225,7 @@ public interface IFeishuTenantTrustpartyListCollaborationRulesTool
 /// 主体（subject）= **我方**组织实体，客体（object）= **对端**组织实体；两侧各至少一类非空，
 /// 且主客体实体数之和须 &lt; 100（平台约束）。
 /// </remarks>
-[FeishuTool("trustparty.create_collaboration_rule",
+[AgentTool("trustparty.create_collaboration_rule",
     Description = "在关联组织间新建一条互通规则（主体=我方实体，客体=对端实体；主客体实体数之和须 <100；返回 rule_id）。写操作：默认不启用，需宿主授权（IToolExecutionAuthorizer），需 trust_party:collaboration_rule:write。建议先 dry_run 预演核对两侧实体。",
     RequiredScopes = ["trust_party:collaboration_rule:write"],
     IsWrite = true,
@@ -254,7 +254,7 @@ public interface IFeishuTenantTrustpartyCreateCollaborationRuleTool
 /// 未传的一侧会被清空。想"只加一个成员"必须先读出原规则（<c>trustparty.list_collaboration_rules</c>）、
 /// 合并后再整份提交。
 /// </remarks>
-[FeishuTool("trustparty.update_collaboration_rule",
+[AgentTool("trustparty.update_collaboration_rule",
     Description = "更新一条互通规则（按 rule_id；⚠️ 主体/客体为覆盖式替换，未传的一侧会被清空——只加成员请先 list_collaboration_rules 读出原值再整份提交）。写操作：默认不启用，需宿主授权，需 trust_party:collaboration_rule:write。建议先 dry_run 预演。",
     RequiredScopes = ["trust_party:collaboration_rule:write"],
     IsWrite = true,
@@ -285,7 +285,7 @@ public interface IFeishuTenantTrustpartyUpdateCollaborationRuleTool
 /// 故本工具必须有 <c>Affordance/trustparty.delete_collaboration_rule.md</c> 四节资产，
 /// 且描述里必须同时出现 <c>dry_run</c> 与「预演 / 确认」。
 /// </remarks>
-[FeishuTool("trustparty.delete_collaboration_rule",
+[AgentTool("trustparty.delete_collaboration_rule",
     Description = "删除一条互通规则（⚠️ 不可撤销：删除后对端立即失去互通能力，且只能重建、rule_id 会变——务必先 dry_run 预演并确认 rule_id 与 target_tenant_key 无误）。写操作：默认不启用，需宿主授权，需 trust_party:collaboration_rule:write。",
     RequiredScopes = ["trust_party:collaboration_rule:write"],
     IsWrite = true,

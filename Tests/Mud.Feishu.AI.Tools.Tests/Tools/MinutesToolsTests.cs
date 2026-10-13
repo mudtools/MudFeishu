@@ -63,7 +63,7 @@ public class MinutesToolsTests
     }
 
     /// <summary>把工具结果文本解析回 JSON 对象（断言字段值而不是字符串包含，避免"文案碰巧一样"的假绿）。</summary>
-    private static JsonObject Payload(FeishuToolResult result)
+    private static JsonObject Payload(ToolResult result)
         => JsonNode.Parse(result.ToString())!.AsObject();
 
     // ───────────────────── 契约面 ─────────────────────

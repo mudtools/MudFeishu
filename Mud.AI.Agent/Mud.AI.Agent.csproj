@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFrameworks>netstandard2.0;net6.0;net8.0;net10.0</TargetFrameworks>
+		<AssemblyName>Mud.AI.Agent</AssemblyName>
+		<Description>Mud.AI 运行期：工具执行骨架区（ToolExecutor / ToolPagination / ToolDryRun / ToolResult / ToolApiOutcome / ToolResultPipeline / ToolErrorFactory / ToolErrorText / ToolErrorClassifier 等，v2.3 自 Mud.Feishu.AI.Tools 执行器层中立化上移——决策⑥「授权执行链尾两段：强类型直连 + 结果裁剪/错误回填」的承载）；会话管线 / 授权执行链骨架实现随 P1-H 移植。net8.0+ 原生 AOT 兼容。</Description>
+		<PackageTags>Mud.AI;Agent;Tools;ToolExecutor;ToolResult;MudFeishu;AOT</PackageTags>
+		<BaseOutputPath>..\bin</BaseOutputPath>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Mud.AI.Abstractions\Mud.AI.Abstractions.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- v2.3 P1-D：ToolErrorClassifier 按 ApiException（Mud.HttpUtils 传输层错误）分类——
+		     ApiException 是 Mud.HttpUtils 生成客户端抛出的传输错误类型，错误分类是运行期通用关注点；
+		     Mud.HttpUtils 是全仓单一版本 HTTP 组件（无生成器），与「引擎不得进消费方」纪律无关。
+		     版本与全仓 Mud.HttpUtils* 同一条版本线（守卫 TokenMultiAppContractGuards 锁定）。 -->
+		<PackageReference Include="Mud.HttpUtils" Version="3.0.6" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(TargetFramework)' == 'net6.0'">
+		<!-- net6.0 的箱内 System.Text.Json（6.0）缺 JsonNode.DeepClone；与根 props 对 netstandard2.0 的
+		     钉版同版本线（10.0.9）。net8.0+ 用箱内版本，无需显式引用。 -->
+		<PackageReference Include="System.Text.Json" Version="10.0.9" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- R3-11：公共 API 兼容门禁（AI 族未发布窗口期零成本建基线）。 -->
+		<PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="4.14.0">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
+
+	<ItemGroup>
+		<AdditionalFiles Include="PublicAPI.Shipped.txt" />
+		<AdditionalFiles Include="PublicAPI.Unshipped.txt" />
+	</ItemGroup>
+
+</Project>

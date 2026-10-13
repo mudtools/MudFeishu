@@ -23,7 +23,10 @@
 		<!-- R-9（阶段 5）：飞书 Agent **集成面**（Channels / Events / Knowledge）并入本工程，因此新增三条纵向引用。
 		     无环（已核实）：core → {Abstractions, DataModels}，不引用本工程；EventCallback → Abstractions。
 		     ⚠️ 本工程**不得**引用 Mud.Feishu.AI.Tools / Mud.Feishu.AI.Mcp（防环；保持"工具面依赖集成面"单向），
-		     由 AgentContractGuards 的两条负向断言机械锁定。 -->
+		     由 AgentContractGuards 的两条负向断言机械锁定。
+		     v2.3 P1-D：Mud.AI.Agent（执行器骨架 + 引导/声明契约的运行时侧）——集成面（FeishuApiResultReader）
+		     与骨架共用 ToolApiOutcome<T> 解包产物，依赖方向 AI → Mud.AI.Agent → Mud.AI.Abstractions（单向）。 -->
+		<ProjectReference Include="..\Mud.AI.Agent\Mud.AI.Agent.csproj" />
 		<ProjectReference Include="..\Mud.Feishu\Mud.Feishu.csproj" />
 		<ProjectReference Include="..\Mud.Feishu.DataModels\Mud.Feishu.DataModels.csproj" />
 		<ProjectReference Include="..\Mud.Feishu.EventCallback\Mud.Feishu.EventCallback.csproj" />

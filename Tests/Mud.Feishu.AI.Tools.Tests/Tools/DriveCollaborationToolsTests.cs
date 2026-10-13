@@ -41,7 +41,7 @@ public class DriveCollaborationToolsTests
     private static DrivePermissionTools CreatePermissionTools(Mock<Mud.Feishu.IFeishuTenantV1DrivePermissions> client)
         => new(client.Object, Options.Create(AgentOptions()));
 
-    private static JsonObject Payload(FeishuToolResult result)
+    private static JsonObject Payload(ToolResult result)
         => JsonNode.Parse(result.ToString())!.AsObject();
 
     // ───────────────────── 契约面（安全事实） ─────────────────────

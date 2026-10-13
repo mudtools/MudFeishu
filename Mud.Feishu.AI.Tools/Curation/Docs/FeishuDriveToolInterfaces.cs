@@ -14,7 +14,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // </summary>
 
 /// <summary>工具接口：drive.list_folder_files（映射 <c>IFeishuTenantV1DriveFolder.GetFilesPageListAsync</c>）。</summary>
-[FeishuTool("drive.list_folder_files",
+[AgentTool("drive.list_folder_files",
     Description = "列出云空间文件夹内的文件与子文件夹（token/name/type/url）；folder_token 缺省列根目录。与 search.doc_wiki 互补（浏览 vs 搜索）。只读，需 drive:drive:readonly。",
     RequiredScopes = ["drive:drive:readonly"],
     Source = nameof(IFeishuTenantV1DriveFolder) + "." + nameof(IFeishuTenantV1DriveFolder.GetFilesPageListAsync))]
@@ -31,7 +31,7 @@ public interface IFeishuTenantDriveFolderFilesTool
 }
 
 /// <summary>工具接口：drive.get_file_metas（映射 <c>IFeishuTenantV1DriveFiles.BatchQueryMetasAsync</c>）。</summary>
-[FeishuTool("drive.get_file_metas",
+[AgentTool("drive.get_file_metas",
     Description = "按 token 批量查询文件元信息（类型/标题/链接/所有者，最多 200 个）；支撑后续读文档链（docx.get_raw_content 等）。只读，需 drive:drive:readonly。",
     RequiredScopes = ["drive:drive:readonly"],
     Source = nameof(IFeishuTenantV1DriveFiles) + "." + nameof(IFeishuTenantV1DriveFiles.BatchQueryMetasAsync))]
@@ -48,7 +48,7 @@ public interface IFeishuTenantDriveFileMetasTool
 // ─────────────────────────── Drive 协作面：评论（4 个） ───────────────────────────
 
 /// <summary>工具接口：drive.list_comments（映射 <c>IFeishuV1DriveComments.GetCommentsPageListAsync</c>）。</summary>
-[FeishuTool("drive.list_comments",
+[AgentTool("drive.list_comments",
     Description = "列出云文档的所有评论（comment_id/user_id/is_solved/reply_count/created_at）。先获取评论列表，再用 drive.reply_comment 或 drive.resolve_comment 操作。只读，需 drive:drive:readonly。",
     RequiredScopes = ["drive:drive:readonly"],
     Source = nameof(IFeishuTenantV1DriveComments) + "." + nameof(IFeishuV1DriveComments.GetCommentsPageListAsync))]
@@ -67,7 +67,7 @@ public interface IFeishuTenantDriveListCommentsTool
 }
 
 /// <summary>工具接口：drive.add_comment（映射 <c>IFeishuV1DriveComments.CreateFileCommentAsync</c>）。</summary>
-[FeishuTool("drive.add_comment",
+[AgentTool("drive.add_comment",
     Description = "向云文档添加一条全文评论（不支持局部评论）。参数为 file_token + file_type + text，请求体由绑定层组装（模型零 JSON 串）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
     RequiredScopes = ["drive:drive"],
     IsWrite = true,
@@ -85,7 +85,7 @@ public interface IFeishuTenantDriveAddCommentTool
 }
 
 /// <summary>工具接口：drive.reply_comment（映射 <c>IFeishuV1DriveComments.CreateFileCommentReplyAsync</c>）。</summary>
-[FeishuTool("drive.reply_comment",
+[AgentTool("drive.reply_comment",
     Description = "回复指定评论（需 comment_id + text）。空文本会在下发前被拒绝。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
     RequiredScopes = ["drive:drive"],
     IsWrite = true,
@@ -104,7 +104,7 @@ public interface IFeishuTenantDriveReplyCommentTool
 }
 
 /// <summary>工具接口：drive.resolve_comment（映射 <c>IFeishuV1DriveComments.PatchFileCommentAsync</c>）。</summary>
-[FeishuTool("drive.resolve_comment",
+[AgentTool("drive.resolve_comment",
     Description = "解决或恢复评论（is_solved 三态），不是删除——天然幂等。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
     RequiredScopes = ["drive:drive"],
     IsWrite = true,
@@ -133,7 +133,7 @@ public interface IFeishuTenantDriveResolveCommentTool
 /// 故跟随引擎契约声明写面：调用须过 <c>IToolExecutionAuthorizer</c> 门禁。
 /// </para>
 /// </remarks>
-[FeishuTool("drive.get_permission_public",
+[AgentTool("drive.get_permission_public",
     Description = "获取云文档的公开链接权限设置（link_share_entity/external_access 等），用于分享前确认当前文档的可见范围。实际只读（GET），但因权限域风险分级须过授权门禁，建议先 dry_run 预演确认调用面，需 drive:drive:readonly。",
     RequiredScopes = ["drive:drive:readonly"],
     IsWrite = true,
@@ -150,7 +150,7 @@ public interface IFeishuTenantDriveGetPermissionPublicTool
 }
 
 /// <summary>工具接口：drive.update_permission_public（映射 <c>IFeishuV1DrivePermissions.UpdatePermissionPublicAsync</c>）。</summary>
-[FeishuTool("drive.update_permission_public",
+[AgentTool("drive.update_permission_public",
     Description = "更新云文档的公开链接权限设置。⚠️ 此操作可能使文档对组织外可见——请先 drive.get_permission_public 确认当前设置，并优先使用 dry_run 预演。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
     RequiredScopes = ["drive:drive"],
     IsWrite = true,
@@ -172,7 +172,7 @@ public interface IFeishuTenantDriveUpdatePermissionPublicTool
 }
 
 /// <summary>工具接口：drive.grant_permission（映射 <c>IFeishuV1DrivePermissions.CreatePermissionMemberAsync</c>）。</summary>
-[FeishuTool("drive.grant_permission",
+[AgentTool("drive.grant_permission",
     Description = "为指定云文档添加单个协作者权限（member_type 为 openid/email/userid/chatid/departmentid）。⚠️ 此操作可扩大数据可达范围，建议先 dry_run 预演确认。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
     RequiredScopes = ["drive:drive"],
     IsWrite = true,
@@ -192,7 +192,7 @@ public interface IFeishuTenantDriveGrantPermissionTool
 }
 
 /// <summary>工具接口：drive.update_permission_member（映射 <c>IFeishuV1DrivePermissions.UpdatePermissionMemberAsync</c>）。</summary>
-[FeishuTool("drive.update_permission_member",
+[AgentTool("drive.update_permission_member",
     Description = "更新指定协作者的权限档位（view/edit/full_access），幂等操作。建议先 dry_run 预演确认。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
     RequiredScopes = ["drive:drive"],
     IsWrite = true,
@@ -211,7 +211,7 @@ public interface IFeishuTenantDriveUpdatePermissionMemberTool
 }
 
 /// <summary>工具接口：drive.remove_permission（映射 <c>IFeishuV1DrivePermissions.DeletePermissionMemberAsync</c>）。</summary>
-[FeishuTool("drive.remove_permission",
+[AgentTool("drive.remove_permission",
     Description = "删除指定协作者的权限（删除天然幂等）。建议先 dry_run 预演确认。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
     RequiredScopes = ["drive:drive"],
     IsWrite = true,
@@ -229,7 +229,7 @@ public interface IFeishuTenantDriveRemovePermissionTool
 }
 
 /// <summary>工具接口：drive.transfer_owner（映射 <c>IFeishuV1DrivePermissions.TransferOwnerPermissionMemberAsync</c>）。</summary>
-[FeishuTool("drive.transfer_owner",
+[AgentTool("drive.transfer_owner",
     Description = "转移云文档所有者（不可逆！转移后原所有者降为编辑者）。必须过授权器。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。建议先 dry_run 预演确认。",
     RequiredScopes = ["drive:drive"],
     IsWrite = true,

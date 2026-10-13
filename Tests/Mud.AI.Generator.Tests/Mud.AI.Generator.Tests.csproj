@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<!-- v2.3 P1-B：工具面引擎（ToolSurface 竖井）自组件仓 Mud.HttpUtils.Generator 迁入飞书仓
+	     Mud.AI.Generator，其单测随引擎整批迁入（原位 Tests/Mud.AI.Generator.Tests）。
+	     为什么是仓内工程而不是留在组件仓：调优期（v2.x）仓内闭环改引擎才不需要跨仓发版；
+	     P3 上游化时本工程随引擎一起回迁（EngineTestProject 常量在
+	     SingleToolSurfaceEngineContractGuards 中已预留豁免）。 -->
+
+	<PropertyGroup>
+		<!-- TFM 由 Tests/Directory.Build.props 统一为 net8.0 单 TFM（此处不得覆写，避免成为门禁盲区） -->
+		<AssemblyName>Mud.AI.Generator.Tests</AssemblyName>
+		<RootNamespace>Mud.AI.Generator.Tests</RootNamespace>
+		<!-- 引用分析器程序集（netstandard2.0）会产生 NU1701/CS1701 类告警；本工程刻意引用 Roslyn 组件。 -->
+		<NoWarn>$(NoWarn);NU1701;CS1701;CS1702</NoWarn>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- 被测引擎：以普通 ProjectReference 引用（测试内用 CSharpGeneratorDriver 直接驱动生成器，
+		     需要拿到程序集本身；TestHelper 亦按程序集名 Mud.AI.Generator 反射定位类型）。
+		     ⚠️ 不可用 OutputItemType="Analyzer"：那会让生成器在本工程编译时也跑一遍（双引擎污染）。 -->
+		<ProjectReference Include="..\..\Mud.AI.Generator\Mud.AI.Generator.csproj" />
+		<!-- 声明契约（SdkToolProfileAttribute / ISdkToolProfile / AgentToolAttribute …）所在包。 -->
+		<ProjectReference Include="..\..\Mud.AI.Abstractions\Mud.AI.Abstractions.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Roslyn 编译器 API：CSharpGeneratorDriver / AnalyzerConfigOptionsProvider 等驱动面。
+		     版本与 Mud.AI.Generator 引用保持一致（4.11.0）——跨版本会令 Driver 无法加载本引擎。 -->
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" />
+		<!-- 编译断言的输入 fixture 需要 HTTP 客户端基座与特性（HttpClientUtils / GetAttribute / PathAttribute）。 -->
+		<PackageReference Include="Mud.HttpUtils" Version="3.0.6" />
+		<!-- TestHelper.BasicReferenceAssemblies 引用 IMemoryCache（组件侧 HTTP 管线的缓存面）。 -->
+		<PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.11" />
+	</ItemGroup>
+
+</Project>

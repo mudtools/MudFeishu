@@ -8,7 +8,7 @@
 namespace Mud.Feishu.AI.Tools.Curation;
 
 /// <summary>工具接口：bitable.add_record（映射 <c>IFeishuTenantV1BitableRecord.AddRecordAsync</c>）。</summary>
-[FeishuTool("bitable.add_record",
+[AgentTool("bitable.add_record",
     Description = "向多维表格数据表新增一条记录，fields 为「字段名 → 值」JSON 对象（字段名先经 bitable.list_fields 确认；字段名拼错会在下发前被拒绝）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 bitable:app。",
     RequiredScopes = ["bitable:app"],
     IsWrite = true,
@@ -27,7 +27,7 @@ public interface IFeishuTenantBitableAddRecordTool
 }
 
 /// <summary>工具接口：bitable.update_record（映射 <c>IFeishuTenantV1BitableRecord.UpdateRecordAsync</c>）。</summary>
-[FeishuTool("bitable.update_record",
+[AgentTool("bitable.update_record",
     Description = "更新多维表格中的指定记录（按 record_id 更新 fields）。fields 为「字段名 → 值」JSON 对象字符串。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 bitable:app。",
     RequiredScopes = ["bitable:app"],
     IsWrite = true,
@@ -47,7 +47,7 @@ public interface IFeishuTenantBitableUpdateRecordTool
 }
 
 /// <summary>工具接口：bitable.delete_record（映射 <c>IFeishuTenantV1BitableRecord.DeleteRecordAsync</c>）。</summary>
-[FeishuTool("bitable.delete_record",
+[AgentTool("bitable.delete_record",
     Description = "删除多维表格中的指定记录（不可恢复！请谨慎使用，建议先 dry_run 预演确认）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 bitable:app。",
     RequiredScopes = ["bitable:app"],
     IsWrite = true,

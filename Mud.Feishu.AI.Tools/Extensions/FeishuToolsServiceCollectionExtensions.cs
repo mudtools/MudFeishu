@@ -118,6 +118,26 @@ public static class FeishuToolsServiceCollectionExtensions
             .AddFeishuSecurityAuditLogToolsCore()
             .AddFeishuSecurityOpenApiLogToolsCore();
 
+    /// <summary>
+    /// 按域注册【应用管理】工具（B1 第二批，7 个只读：<c>application.*</c>）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 面向企业管理台场景（应用列表 / 详情 / 可用范围 / 协作者 / 权限点 / 版本历史）。
+    /// 全部<b>只读</b>，非 PII：投影已裁掉 app_secret、加密配置、安全配置与负责人联系方式
+    /// （仅留 <c>owner_id</c> 标识符）。
+    /// </para>
+    /// <para>
+    /// ⚠️ 与全域入口的同步纪律：本入口与 <c>AddFeishuReadonlyToolCores</c> 的清单必须**同进同出**，
+    /// 否则两条装配路径的工具集不等价（<c>DomainRegistrarTests</c> 会直接点出差异）。
+    /// </para>
+    /// </remarks>
+    public static IServiceCollection AddFeishuApplicationTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure)
+            .AddFeishuApplicationToolsCore();
+
 
 
 
@@ -336,6 +356,12 @@ public static class FeishuToolsServiceCollectionExtensions
 
                     // hire Offer 执行器 HireOfferTools（1 个只读，**PII**：只给状态，结构性不含金额）。
                     .AddFeishuHireOfferToolsCore()
+
+                    // B1 补域：Application 飞书应用管理执行器 ApplicationTools（首批 7 个只读）。
+                    // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，
+                    // 漏加即「工具静默不入注册表」（ToolDomainCoresWiringContractTests 会报红）；
+                    // 且必须与 AddFeishuApplicationTools 入口同进同出（DomainRegistrarTests 锁等价性）。
+                    .AddFeishuApplicationToolsCore()
 
                     // B1 补域：Lingo 企业词典执行器 LingoTools（首批 6 个只读）。
                     // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，

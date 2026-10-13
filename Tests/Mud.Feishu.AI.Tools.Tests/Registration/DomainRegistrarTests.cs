@@ -198,6 +198,8 @@ public class DomainRegistrarTests
             .AddFeishuSparkTools()
             // F-1：security 安全合规（行为审计 + 应用调用日志，均 PII 且默认不启用）。
             .AddFeishuSecurityTools()
+            // 专题一 B1：Application 应用管理（7 个只读）——必须与 AddFeishuReadonlyToolCores 同进同出。
+            .AddFeishuApplicationTools()
             // ⚠️ mail **不**在本清单里显式调用：它是「读写混合域」，其 Core 只在写链登记
             // （与 CloudDoc 的评论/权限、Contact 的 contactDepartment 同款陷阱）——
             // 本清单已调 AddFeishuWriteTools，再调 AddFeishuMailTools 会双注册 ⇒

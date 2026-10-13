@@ -287,6 +287,13 @@
                      "Mud.Feishu.AI.Tools.Catalog.ToolSchemaDialect"
                  ],
     "reasons":  {
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantApplicationListAppsTool":  "专题一 B1（Application 应用管理）第二个补域：application.list_apps 的工具契约（本域第一跳，app_id 从这里来）。消费方：① FeishuToolRegistry 白名单装配（宿主显式启用后模型可见）；② MCP server tools/list；③ ApplicationToolsTests 与工具面守卫（golden / 权限对照表 / scope-authority / descriptor 契约）。与既有契约接口同口径——工具契约接口是宿主与模型之间的可寻址面。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantApplicationGetAppTool":  "同 IFeishuTenantApplicationListAppsTool：application.get_app 的工具契约（应用详情投影，已裁掉 secret/encryption/security 与负责人联系方式）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantApplicationGetAppVisibilityTool":  "同 IFeishuTenantApplicationListAppsTool：application.get_app_visibility 的工具契约（可用范围，标识符级）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantApplicationListCollaboratorsTool":  "同 IFeishuTenantApplicationListAppsTool：application.list_collaborators 的工具契约（后台协作者，用于权限治理评审）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantApplicationGetScopesTool":  "同 IFeishuTenantApplicationListAppsTool：application.get_scopes 的工具契约（本应用已申请的权限点）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantApplicationListAppVersionsTool":  "同 IFeishuTenantApplicationListAppsTool：application.list_app_versions 的工具契约（版本历史与分页契约）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantApplicationGetAppVersionTool":  "同 IFeishuTenantApplicationListAppsTool：application.get_app_version 的工具契约（版本详情）。消费方同上。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantLingoListReposTool":  "专题一 B1（Lingo 企业词典）首个补域：lingo.list_repos 的工具契约（无入参的「第一跳」，repo_id 从这里来）。消费方：① FeishuToolRegistry 白名单装配（宿主显式启用后模型可见）；② MCP server tools/list；③ LingoToolsTests 与工具面守卫（golden / 权限对照表 / scope-authority / descriptor 契约）。与既有 182 个契约接口同口径——工具契约接口是宿主与模型之间的可寻址面。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantLingoListClassificationsTool":  "同 IFeishuTenantLingoListReposTool：lingo.list_classifications 的工具契约（分类目录，分页见 fetch_all/max_items）。消费方同上。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantLingoListEntitiesTool":  "同 IFeishuTenantLingoListReposTool：lingo.list_entities 的工具契约（无关键字浏览词条）。消费方同上。",

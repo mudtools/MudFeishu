@@ -19,18 +19,18 @@ MudFeishu 本来是个挺规矩的 .NET 飞书 SDK。一千两百多个强类型
 「`Mud.Feishu.AI`」严格说是三个包：
 
 -   **`Mud.Feishu.AI`**——运行时本体。`FeishuAgent`、装配扩展、会话存储、知识检索、流式通道都在这里。它同时还是「共享接缝」的归属地：`[FeishuTool]` / `[ToolParameter]` 特性、`IFeishuToolContextAccessor`、`IFeishuToolApprovalChannel` 这些放在 `Mud.Feishu.AI.AgentTools` 命名空间下。之所以不塞进 Tools 包，是因为测试项目也要用 `[FeishuTool]`，但它不该去引 `Mud.Feishu.AI.Tools`——一引，它自己生成的工具 Schema 就和基座撞名了。
--   **`Mud.Feishu.AI.Tools`**——工具面。205 个 `[FeishuTool]` 声明按域放在 `Curation/`，配套的 `[FeishuToolHandler]` 独占 `Handlers/` 命名空间。两者刻意不同名，是为了让生成引擎能分别寻址「声明面」和「执行面」。
+-   **`Mud.Feishu.AI.Tools`**——工具面。213 个 `[FeishuTool]` 声明按域放在 `Curation/`，配套的 `[FeishuToolHandler]` 独占 `Handlers/` 命名空间。两者刻意不同名，是为了让生成引擎能分别寻址「声明面」和「执行面」。
 -   **`Mud.Feishu.AI.Mcp`**——进程外的 MCP 服务器，可选，不装也不影响前两个。
 
 依赖是单向的：`Mcp → Tools → AI`。这是有意为之——想让工具面单独演进时，不必牵动运行时。
 
 ![关键指标](images/02-stats.png)
 
-## 205 不是「少暴露」，是「重新编排」
+## 213 不是「少暴露」，是「重新编排」
 
-先看几个数：**205** 个工具，其中 **131** 只读、**74** 写；写里面又分普通写 **58** 个、高风险写 **16** 个；按身份分，**190** 个走租户令牌、**15** 个走用户令牌；覆盖 **29** 个域（含 4 个元工具）。
+先看几个数：**213** 个工具，其中 **139** 只读、**74** 写；写里面又分普通写 **58** 个、高风险写 **16** 个；按身份分，**198** 个走租户令牌、**15** 个走用户令牌；覆盖 **29** 个业务域 + 4 个元工具。
 
-这 205 是怎么来的？不是按 OpenAPI 资源「一资源一工具」切出来的——飞书开放平台光端点就有两千多个，这么切模型根本记不住。我们是**按高频工作流策展**的。
+这 213 是怎么来的？不是按 OpenAPI 资源「一资源一工具」切出来的——飞书开放平台光端点就有两千多个，这么切模型根本记不住。我们是**按高频工作流策展**的。
 
 举个具体例子。多维表格相关的接口有几十个，但模型真正要干的活其实就那几件：读记录、查字段、写记录、批量写入。那就给这几个；至于「查某个视图的筛选条件详情」这种接口，收起来。招聘模块更明显，OpenAPI 层面能拆出二十来个资源，我们最后收到按功能子域组织的几个工具就够用了。
 
@@ -62,7 +62,7 @@ MudFeishu 本来是个挺规矩的 .NET 飞书 SDK。一千两百多个强类型
 3.  **工具编排**——MEAI 的 `FunctionInvokingChatClient` 负责自动 Function Call，同时用调用预算把它框住（默认单轮最多 10 次工具调用）。
 4.  **审批绑定**——MAF 的 `ApprovalResponseBindingChatClient` 负责把「写操作的人工确认」和原始请求配对。这一层是 HITL 能成立的关键，后面单独讲。
 5.  **模型适配**——通过 `IChatClient`（`AsIChatClient()`）对接任意 OpenAI-compatible 端点，模型可插拔，换个 `modelId` 和端点即可。
-6.  **工具基座**——205 个策展工具落到 `Mud.Feishu` 的 1268 个强类型方法上，全程零反射。
+6.  **工具基座**——213 个策展工具落到 `Mud.Feishu` 的 1268 个强类型方法上，全程零反射。
 
 ![技术架构](images/05-arch.png)
 
@@ -84,6 +84,8 @@ builder.Services.AddFeishuAgent(builder.Configuration, o =>
     o.AllowedIdentities = ["tenant", "user"];        // 默认只有 tenant
     o.WriteAllowList    = ["approval.approve_task"]; // 写工具必须逐个列名
 });
+
+
 
 ```
 
@@ -166,7 +168,7 @@ MAF 的做法是把「批准响应」和「原始审批请求」做绑定校验�
 |  | 飞书官方 CLI | [Mud.Feishu.AI](http://Mud.Feishu.AI) |
 | --- | --- | --- |
 | 交互对象 | 人 · 运维脚本 | 大模型 · Agent 主循环 |
-| 能力面 | 可直发任意开放平台端点 | 205 个编译期策展工具，**无通用裸 api** |
+| 能力面 | 可直发任意开放平台端点 | 213 个编译期策展工具，**无通用裸 api** |
 | 凭证 · 租户 | 本地凭证 · 人工运维 | 多租户进程内隔离 · 令牌全生命周期托管 |
 | 写操作确认 | 人工执行即视为确认 | HITL 审批绑定 · 执行链 fail-closed |
 | 契约约束 | 运行时解释，无编译期契约 | `source` 交叉校验（MUDFT019）· 禁与 SDK 脱钩 |
@@ -182,11 +184,101 @@ MAF 的做法是把「批准响应」和「原始审批请求」做绑定校验�
 dotnet add package Mud.Feishu.AI
 dotnet add package Mud.Feishu.AI.Mcp   # 需要给进程外 Agent 用时再加
 
+
+
 ```
 
 然后按前面那段 `AddFeishuOpenAIChatClient` + `AddFeishuAgent` 注册，配上 `FeishuAgent` 配置节，就可以跑了。第一版建议先只开 `tenant` 身份、写工具一个不开，让它在读场景里跑顺了，再按需逐个放写工具——每个放开的写工具，都值得单独想一想「万一它真调了，后果是什么」。
 
 配置项都集中在 `FeishuAgentOptions` 里，几个默认值值得记一下：`MaxToolCallsPerTurn = 10`、`MaxConcurrentTurns = 32`、`MaxToolResultLength = 4000`、`MaxToolRisk = "high-risk-write"`、`AllowedIdentities = ["tenant"]`、`ContentSafetyMode = Warn`。想收紧，直接改这些。
+
+## 完整跑一遍：读多维表格，再写回记录
+
+前面讲的都是设计，这节把一条真实链路从头走到尾：把多维表格里状态为「待办」的记录捞出来，处理完再改回「已完成」。挑这个场景，是因为它一个来回就把「读」「写」「人工确认」三件事都串上了。
+
+先把这 9 个多维表格工具的位置摆清楚：`list_tables`、`list_fields`、`list_views`、`get_view`、`query_records`、`get_records_by_ids` 只读；`add_record`、`update_record` 是普通写；`delete_record` 归 high-risk-write。
+
+**第一步，把写工具点名启用。** 写工具默认关着，要用 `update_record`，得在装配时列名：
+
+```csharp
+builder.Services.AddFeishuAgent(builder.Configuration, o =>
+{
+    o.ModelServiceKey   = "feishu-chat";
+    o.Instructions      = "你是多维表格助手：先查再改，改前说明改哪条。";
+    o.AllowedIdentities = ["tenant"];
+    o.WriteAllowList    = ["bitable.update_record"];   // 写工具逐个点名
+});
+```
+
+这里只放了 `update_record`，没放 `delete_record`。模型能改、删不了——从名单上就把删记录这条路断了。
+
+**第二步，宿主实现批准通道。** 写工具要跑，光点名不够：执行链的「授权门禁」那步会找 `IToolExecutionAuthorizer`，「登记待确认」那步会找 `IFeishuToolApprovalChannel`。两个都是 SDK 只定契约、宿主自己实现。批准通道最省事的写法就是先登记下来：
+
+```csharp
+public sealed class HostApprovalChannel : IFeishuToolApprovalChannel
+{
+    private readonly ConcurrentDictionary<string, FrameworkToolApprovalRequest> _pending = new();
+
+    // 框架原生审批请求：写工具在「执行前」被 MAF 拦下，在这里登记
+    public Task<string?> RequestFrameworkApprovalAsync(
+        FrameworkToolApprovalRequest request, CancellationToken ct = default)
+    {
+        _pending[request.RequestId] = request;                // 内含 ToolName / AppKey / ChatId
+        return Task.FromResult<string?>(request.RequestId);   // 登记后立刻返回
+    }
+
+    // 老式「确认令牌」路径，保留兼容；新链路走上面那个
+    public Task<string?> RequestApprovalAsync(
+        ToolApprovalRequest request, CancellationToken ct = default)
+        => Task.FromResult<string?>(null);
+}
+```
+
+注意这个方法**不阻塞等人**——它只登记，登记完这一轮就结束，工具并没执行。人的决定是后面的事。
+
+**第三步，正常起一轮，让模型自己去读。**
+
+```csharp
+var session  = await agent.GetOrCreateSessionAsync(conversationKey);
+var response = await agent.RunAsync(
+    "把多维表格 bascnAbc 里状态是「待办」的记录找出来，读一下「任务名称」。",
+    session, options: null, cancellationToken);
+```
+
+这一轮模型会自己走：先 `list_tables` 拿 `table_id`，再 `query_records` 带上 `filter = "状态 = \"待办\""`、`field_names = ["任务名称"]` 取数和 `record_id`。它不会一上来就硬写——字段名拼错的话在本地就被拒了，不会白打一次飞书。
+
+**第四步，一旦要写，工具会「停」在审批上。** 用户接着说「把第一条改成已完成」，模型要调：
+
+```text
+bitable.update_record(
+    app_token = "bascnAbc",
+    table_id  = "tblXxx",
+    record_id = "recXxx",
+    fields    = { "状态": "已完成" })
+```
+
+因为 `update_record` 在写名单里，`ApprovalResponseBindingChatClient` 会在调用**之前**把这次工具调用改写成审批请求，落到第二步那个通道里登记。这一轮返回的文本是空的——不是模型没说话，是「已发起确认」。宿主该做的，是把 `_pending` 里那条捞出来，在飞书卡片或工单里摆给用户看。
+
+**第五步，人点同意，回灌续跑。**
+
+```csharp
+await agent.RunApprovalContinuationAsync(
+    toolContextAccessor: sp.GetRequiredService<IFeishuToolContextAccessor>(),
+    approval:            pendingRequest,      // 第四步登记的那条，原样回传
+    approved:            true,
+    reason:              "用户在卡片上确认",
+    conversationGate:    gate,                // 与事件层同款闸门，保证同会话串行
+    approvalChannel:     approvalChannel);
+```
+
+到这一步工具才真的执行，按 `record_id` 把 `fields` 写成「已完成」。要是续跑这轮模型又想调第二个写工具，它会**再要一次**审批，不会因为「刚批过」就一路放行。拒绝（`approved: false`）同样走完整流程，理由回填给模型。
+
+最后两个参数在多维表格写工具的 schema 里是真实存在的，值得单独记一笔：
+
+-   **`idempotency_key`**：写操作都带。同一个键重复提交只落一次、返回同一条记录。给个稳定值（比如「单据号+动作」），别用随机数——批准重试、网络重发全靠它兜底。
+-   **`dry_run`**：开上它，工具只回「将要下发的 `PUT /…/records/{record_id}` 和请求体字段摘要」，不真调下游。拿不准时先预演，比改完再回滚便宜。
+
+把这条链拉直了看，每一步都有它的用处：`WriteAllowList` 让删记录从源头不可能；「先 `query_records` 拿 `record_id` 再写」是 affordance 里写死的顺序；审批绑定让「同意」没法被模型自己伪造；`idempotency_key` 兜住重试。读是查出来的，写是点过头的，每一格也都留了痕——这就是 213 个工具在真实业务里跑起来的样子。
 
 ## 我们没做的事
 
@@ -195,7 +287,7 @@ dotnet add package Mud.Feishu.AI.Mcp   # 需要给进程外 Agent 用时再加
 -   **没有通用裸 `api` 工具**。如上所说，是故意的。想要「什么都能调」的灵活性，这个包不提供。
 -   **写工具默认关着，授权要宿主自己实现**。`IToolExecutionAuthorizer` 只给了契约，SDK 不带现成的审批 UI、也不带租户级鉴权实现。这些是宿主业务的事。
 -   **Skills 产物还没有仓外使用者**。目前只是把域知识导出成标准形态，方便外部 Agent 接。
--   **文档和 README 里的工具数可能对不上**。仓库根 `README.md` 里写的是 182，那是上一轮的旧数；以 `FeishuToolSchemas.golden.txt` 为准，是 205（131 读 + 74 写）。这篇文里的数字都按 golden 文件校准过。
+-   **工具数一律以 `FeishuToolSchemas.golden.txt` 为准**。它是生成产物，别手改；文档里的数字对不上时也以它为准（当前 213：139 读 + 74 写）。这篇文里的数字都按 golden 文件校准过。
 -   **它不解决「模型靠不靠谱」**。工具面再整齐、执行链再严，也只是把「模型出错时的损失」控制在一个可接受范围里。它管的是安全边界，不是模型质量。
 
 ## 结语

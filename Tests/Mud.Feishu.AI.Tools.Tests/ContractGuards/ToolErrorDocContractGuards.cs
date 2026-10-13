@@ -8,7 +8,7 @@
 namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
-/// <b>E-4：对外错误契约文档守卫</b>——<c>.docs/AI/工具错误契约.md</c> 的闭集清单必须与代码闭集
+/// <b>E-4：对外错误契约文档守卫</b>——<c>documents/AI/工具错误契约.md</c> 的闭集清单必须与代码闭集
 /// <b>逐一相等</b>（防文档漂移：这是对外承诺，不是内部笔记）。
 /// </summary>
 /// <remarks>
@@ -18,6 +18,11 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// （与"幽灵子类"同罪）。两种漂移都不会被编译发现，故必须机械比对。
 /// </para>
 /// <para>
+/// <b>为什么在 <c>documents/</c> 而不是 <c>.docs/</c></b>：<c>.gitignore</c> 忽略了整个
+/// <c>/.docs</c>（本地工作笔记），而本文档是<b>对外契约</b>——放进去 CI 上永远缺失，
+/// 守卫会在每个新 runner 上假红。守卫要求的文档必须入库。
+/// </para>
+/// <para>
 /// <b>解析约定</b>（文档侧必须遵守，否则本守卫报红）：
 /// 在形如 <c>### Category 闭集</c> / <c>### Subtype 闭集</c> 的小节后，第一个 <c>```text</c>
 /// 代码块内<b>每行一个字面量</b>；以 <c>#</c> 开头的行是注释（忽略），空行忽略。
@@ -25,7 +30,7 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// </remarks>
 public class ToolErrorDocContractGuards
 {
-    private const string DocRelativePath = ".docs/AI/工具错误契约.md";
+    private const string DocRelativePath = "documents/AI/工具错误契约.md";
 
     /// <summary>文档必须存在且含两个闭集小节（缺失 = 对外契约面消失，不得降级为跳过）。</summary>
     [Fact]

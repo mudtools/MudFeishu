@@ -287,6 +287,14 @@
                      "Mud.Feishu.AI.Tools.Catalog.ToolSchemaDialect"
                  ],
     "reasons":  {
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantTrustpartyListCollaborationTenantsTool":  "专题一 B1 收官域（TrustParty 跨组织互通）：trustparty.list_collaboration_tenants 的工具契约（互通面第一跳，target_tenant_key 从这里来）。消费方：① FeishuToolRegistry 白名单装配；② MCP server tools/list；③ TrustPartyToolsTests 与工具面守卫（golden / 权限对照表 / scope-authority / descriptor 契约）。与既有契约接口同口径。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantTrustpartyGetCollaborationTenantTool":  "同 IFeishuTenantTrustpartyListCollaborationTenantsTool：trustparty.get_collaboration_tenant 的工具契约（单个关联组织详情）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantTrustpartyListVisibleOrganizationTool":  "同 IFeishuTenantTrustpartyListCollaborationTenantsTool：trustparty.list_visible_organization 的工具契约（对端可见成员/部门/群）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantTrustpartyGetCollaborationDepartmentTool":  "同 IFeishuTenantTrustpartyListCollaborationTenantsTool：trustparty.get_collaboration_department 的工具契约（外部部门详情，负责人只给标识）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantTrustpartyGetCollaborationUserTool":  "同 IFeishuTenantTrustpartyListCollaborationTenantsTool：trustparty.get_collaboration_user 的工具契约（外部成员详情；**出站净化**：手机号/工号/自定义属性/头像/在职状态一律不返回）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantTrustpartyListShareEntitiesTool":  "同 IFeishuTenantTrustpartyListCollaborationTenantsTool：trustparty.list_share_entities 的工具契约（共享部门/用户组/用户；directory 面）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantTrustpartyListAllCollaborationTenantsTool":  "同 IFeishuTenantTrustpartyListCollaborationTenantsTool：trustparty.list_all_collaboration_tenants 的工具契约（directory 面关联组织列表）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantTrustpartyListCollaborationRulesTool":  "同 IFeishuTenantTrustpartyListCollaborationTenantsTool：trustparty.list_collaboration_rules 的工具契约（互通规则 + 两侧有效性）。消费方同上。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantChatgroupListChatsTool":  "专题一 B1（ChatGroup 群管理）第四个补域：chatgroup.list_chats 的工具契约（机器人所在群列表＝本域第一跳，同时补上既有多处描述引用的 im.list_chats 幻影入口）。消费方：① FeishuToolRegistry 白名单装配；② MCP server tools/list；③ ChatGroupToolsTests 与工具面守卫（golden / 权限对照表 / descriptor 契约）。与既有契约接口同口径——工具契约接口是宿主与模型之间的可寻址面。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantChatgroupListModeratorsTool":  "同 IFeishuTenantChatgroupListChatsTool：chatgroup.list_moderators 的工具契约（发言权限设置与可发言名单，与 im.get_chat 互补）。消费方同上。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantChatgroupIsInChatTool":  "同 IFeishuTenantChatgroupListChatsTool：chatgroup.is_in_chat 的工具契约（发消息前的在群预检）。消费方同上。",

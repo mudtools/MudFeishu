@@ -74,6 +74,12 @@ internal static class CapabilityModuleAliases
             // 否则 capability_lookup 会把已策展的群管理域说成"尚未策展"。
             ["Chat"] = ["chatgroup"],
 
+            // 跨组织互通（TrustPartyCollaborationTenant → 首段 "Trust"；Directory* 三个接口 → 首段 "Directory"）
+            // 都落 trustparty 模块。两条键都必须登记：本域的工具**同时**来自这两族接口，
+            // 少登记一条 ⇒ capability_lookup 会把该族能力误报为"尚未策展"。
+            ["Trust"] = ["trustparty"],
+            ["Directory"] = ["trustparty"],
+
             // 单条消息（Message）落 im 模块。
             ["Message"] = ["im"],
 

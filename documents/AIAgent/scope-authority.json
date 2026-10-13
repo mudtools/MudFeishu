@@ -60,6 +60,8 @@
     "helpdesk:faq:readonly": "服务台 · FAQ 只读（专题一 B1 第三个补域：helpdesk.list_faqs / search_faqs / get_faq / list_categories 共 4 个只读工具使用；⚠️ SDK 注释未给 scope 字面量，开通前请按名称核对；常见要求「仅自建应用」；投影已裁掉 FAQ 创建人/更新人，故为非 PII）",
     "helpdesk:ticket:readonly": "服务台 · 工单只读（专题一 B1：helpdesk.get_ticket 使用；⚠️ scope 字面量待控制台核对；**只返回状态与流转事实**——不返回备注正文、工单对话、自定义字段值与客户联系方式，故未登记 PII 工具）",
     "helpdesk:agent:readonly": "服务台 · 客服（技能组）只读（专题一 B1：helpdesk.list_agent_skills 使用；⚠️ scope 字面量待控制台核对；纯路由配置，无个人信息）",
+    "trust_party:collaboration.tenant:readonly": "跨组织互通 · 关联组织只读（专题一 B1 收官域：trustparty.list_collaboration_tenants / get_collaboration_tenant / list_visible_organization / get_collaboration_department / get_collaboration_user 共 5 个只读工具使用；**scope 名取自 SDK 注释原文**，无需 ⚠️；投影已裁掉手机号/工号/自定义属性/头像/在职状态）",
+    "trust_party:collaboration_rule:read": "跨组织互通 · 关联组织规则只读（专题一 B1：trustparty.list_share_entities / list_all_collaboration_tenants / list_collaboration_rules 共 3 个只读工具使用；scope 名取自 SDK 注释原文；写面（create/update/delete_collaboration_rule）需 trust_party:collaboration_rule:write，尚未纳入工具面）",
     "wiki:wiki:readonly": "知识库 · 只读（wiki.get_node / list_nodes 使用）",
     "wiki:wiki": "知识库 · 读写（R5/F-11 新增：wiki.create_node / move_node / move_docs_to_space 使用）",
     "admin:audit_info:readonly": "安全合规 · 行为审计日志只读（F-1 P0 新增：security.query_audit_logs / security.list_openapi_logs 使用）",

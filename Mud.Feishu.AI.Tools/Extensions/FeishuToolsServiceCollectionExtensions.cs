@@ -178,6 +178,25 @@ public static class FeishuToolsServiceCollectionExtensions
         => AddFeishuToolInfrastructure(services, configure)
             .AddFeishuChatGroupToolsCore();
 
+    /// <summary>
+    /// 按域注册【跨组织互通】工具（B1 收官第五域，8 个只读：<c>trustparty.*</c>）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 面向跨组织协作场景：关联组织列表/详情、对端可见组织、外部部门与成员、共享成员范围、互通规则。
+    /// 全部<b>只读</b>（写面 3 个方法——建/改/删规则——另行评审，其中删除命中危险词需 affordance）。
+    /// </para>
+    /// <para>
+    /// ⚠️ 与全域入口的同步纪律：本入口与 <c>AddFeishuReadonlyToolCores</c> 的清单必须**同进同出**
+    /// （<c>DomainRegistrarTests</c> 锁等价性）。
+    /// </para>
+    /// </remarks>
+    public static IServiceCollection AddFeishuTrustPartyTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure)
+            .AddFeishuTrustPartyToolsCore();
+
 
 
 
@@ -396,6 +415,11 @@ public static class FeishuToolsServiceCollectionExtensions
 
                     // hire Offer 执行器 HireOfferTools（1 个只读，**PII**：只给状态，结构性不含金额）。
                     .AddFeishuHireOfferToolsCore()
+
+                    // B1 收官域：TrustParty 跨组织互通执行器 TrustPartyTools（首批 8 个只读）。
+                    // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方；
+                    // 且必须与 AddFeishuTrustPartyTools 入口同进同出（DomainRegistrarTests 锁等价性）。
+                    .AddFeishuTrustPartyToolsCore()
 
                     // B1 补域：ChatGroup 群管理执行器 ChatGroupTools（首批 4 个只读）。
                     // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方；

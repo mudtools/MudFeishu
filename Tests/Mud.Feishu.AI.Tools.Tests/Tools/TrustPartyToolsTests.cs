@@ -500,6 +500,192 @@ public class TrustPartyToolsTests
         payload["notice"]!.GetValue<string>().Should().Contain("失效");
     }
 
+    // ─────────────────── 10. 写面：互通规则 CRUD ───────────────────
+
+    private static Mock<Mud.Feishu.IFeishuTenantV1DirectoryCollaborationRule> RuleClient(
+        Action<CreateCollaborationRuleRequest, string>? onCreate = null,
+        Action<string, UpdateCollaborationRuleRequest, string>? onUpdate = null,
+        Action<string, string>? onDelete = null,
+        int updateCode = 0,
+        int deleteCode = 0)
+    {
+        var client = new Mock<Mud.Feishu.IFeishuTenantV1DirectoryCollaborationRule>();
+        client.Setup(c => c.CreateCollaborationRuleAsync(
+                It.IsAny<CreateCollaborationRuleRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((CreateCollaborationRuleRequest request, string tenantKey, CancellationToken _) =>
+            {
+                onCreate?.Invoke(request, tenantKey);
+                return Ok(new CreateCollaborationRuleResult { AddRuleId = "r_new" });
+            });
+
+        client.Setup(c => c.UpdateCollaborationRuleAsync(
+                It.IsAny<string>(), It.IsAny<UpdateCollaborationRuleRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string ruleId, UpdateCollaborationRuleRequest request, string tenantKey, CancellationToken _) =>
+            {
+                onUpdate?.Invoke(ruleId, request, tenantKey);
+                return new FeishuNullDataApiResult { Code = updateCode, Msg = updateCode == 0 ? "success" : "boom" };
+            });
+
+        client.Setup(c => c.DeleteCollaborationRuleAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string ruleId, string tenantKey, CancellationToken _) =>
+            {
+                onDelete?.Invoke(ruleId, tenantKey);
+                return new FeishuNullDataApiResult { Code = deleteCode, Msg = deleteCode == 0 ? "success" : "boom" };
+            });
+
+        return client;
+    }
+
+    private static IReadOnlyDictionary<string, object?> RuleArgs(
+        string tool, params (string Key, object? Value)[] items)
+        => Args([("target_tenant_key", "tk_dir"), .. items]);
+
+    /// <summary>dry_run 必须**零调用下游**（这是写工具的第一道防线）。</summary>
+    [Fact]
+    public async Task Create_DryRun_Should_Not_Call_Downstream()
+    {
+        var calls = 0;
+        var client = RuleClient(onCreate: (_, _) => calls++);
+
+        var result = await CreateTools(collaborationRule: client).CreateCollaborationRuleAsync(
+            RuleArgs("create",
+                ("subject_open_user_ids", new[] { "ou_a", "ou_a2" }),
+                ("object_open_department_ids", new[] { "od_b" }),
+                ("dry_run", true)),
+            CancellationToken.None);
+
+        calls.Should().Be(0, "dry_run=true 时不得调用下游");
+        result.Text.Should().Contain("未调用下游", "预演结果必须显式说明没有真发请求");
+        result.Text.Should().Contain("POST", "预演要给出 HTTP 方法");
+        result.Text.Should().Contain("subject_entities", "预演要给出主体条数（不回原文 ID）");
+    }
+
+    /// <summary>实发：回执带 rule_id + 两侧条数，且请求体按白名单合成。</summary>
+    [Fact]
+    public async Task Create_Should_Project_Receipt_With_RuleId()
+    {
+        CreateCollaborationRuleRequest? captured = null;
+        var client = RuleClient(onCreate: (request, _) => captured = request);
+
+        var payload = Payload(await CreateTools(collaborationRule: client).CreateCollaborationRuleAsync(
+            RuleArgs("create",
+                ("subject_open_user_ids", new[] { "ou_a" }),
+                ("object_open_group_ids", new[] { "oc_b" })),
+            CancellationToken.None));
+
+        captured.Should().NotBeNull();
+        captured!.Subjects!.OpenUserIds.Should().Equal(["ou_a"], "主体侧必须按 open_user_ids 合成");
+        captured.Objects!.OpenGroupIds.Should().Equal(["oc_b"], "客体侧必须按 open_group_ids 合成");
+
+        payload["rule_id"]!.GetValue<string>().Should().Be("r_new");
+        payload["subject_entities"]!.GetValue<int>().Should().Be(1);
+        payload["object_entities"]!.GetValue<int>().Should().Be(1);
+        payload["created"]!.GetValue<bool>().Should().BeTrue();
+    }
+
+    /// <summary>空侧必须**在 dry_run 之前**被拒（否则模型会拿着"预演成功"的信心去改参数）。</summary>
+    [Fact]
+    public async Task Create_With_Empty_Side_Should_Reject_Before_DryRun()
+    {
+        var calls = 0;
+        var client = RuleClient(onCreate: (_, _) => calls++);
+
+        var result = await CreateTools(collaborationRule: client).CreateCollaborationRuleAsync(
+            RuleArgs("create",
+                ("subject_open_user_ids", new[] { "ou_a" }),
+                ("dry_run", true)),
+            CancellationToken.None);
+
+        calls.Should().Be(0, "参数非法时连预演都不放行");
+        result.Text.Should().Contain("tool_error", "必须是结构化错误，模型才能自查");
+        result.Text.Should().Contain("object_*", "错误信息要点名缺的是哪一侧");
+    }
+
+    /// <summary>实体数之和 ≥100 必须被拒（平台硬约束，超了必被拒）。</summary>
+    [Fact]
+    public async Task Create_Exceeding_Entity_Budget_Should_Reject()
+    {
+        var users = Enumerable.Range(0, 60).Select(i => $"ou_{i}").ToArray();
+        var departments = Enumerable.Range(0, 60).Select(i => $"od_{i}").ToArray();
+        var client = RuleClient();
+
+        var result = await CreateTools(collaborationRule: client).CreateCollaborationRuleAsync(
+            RuleArgs("create",
+                ("subject_open_user_ids", users),
+                ("object_open_department_ids", departments)),
+            CancellationToken.None);
+
+        result.Text.Should().Contain("tool_error");
+        result.Text.Should().Contain("100", "要报出平台上限，模型才知道该拆批");
+    }
+
+    /// <summary>update 是覆盖式语义：请求体两侧按传入合成，回执带覆盖提醒。</summary>
+    [Fact]
+    public async Task Update_Should_Project_Receipt_And_Warn_About_Replace()
+    {
+        string? capturedRuleId = null;
+        UpdateCollaborationRuleRequest? captured = null;
+        var client = RuleClient(onUpdate: (ruleId, request, _) =>
+        {
+            capturedRuleId = ruleId;
+            captured = request;
+        });
+
+        var payload = Payload(await CreateTools(collaborationRule: client).UpdateCollaborationRuleAsync(
+            RuleArgs("update",
+                ("collaboration_rule_id", "r1"),
+                ("subject_open_department_ids", new[] { "od_a", "od_a2" }),
+                ("object_open_user_ids", new[] { "ou_b" })),
+            CancellationToken.None));
+
+        capturedRuleId.Should().Be("r1");
+        captured!.Subjects!.OpenDepartmentIds.Should().Equal(["od_a", "od_a2"]);
+        captured.Objects!.OpenUserIds.Should().Equal(["ou_b"]);
+
+        payload["rule_id"]!.GetValue<string>().Should().Be("r1");
+        payload["updated"]!.GetValue<bool>().Should().BeTrue();
+        payload["notice"]!.GetValue<string>().Should().Contain("覆盖式", "必须提醒未传的一侧会被清空");
+    }
+
+    /// <summary>delete（high-risk-write）：dry_run 零调用，实发回执带不可撤销提醒。</summary>
+    [Fact]
+    public async Task Delete_DryRun_Then_Real_Should_Return_Receipt()
+    {
+        var calls = 0;
+        var client = RuleClient(onDelete: (_, _) => calls++);
+
+        var preview = await CreateTools(collaborationRule: client).DeleteCollaborationRuleAsync(
+            RuleArgs("delete", ("collaboration_rule_id", "r1"), ("dry_run", true)),
+            CancellationToken.None);
+
+        calls.Should().Be(0, "高危写的第一跳必须是 dry_run");
+        preview.Text.Should().Contain("未调用下游");
+        preview.Text.Should().Contain("DELETE", "预演要给出 HTTP 方法");
+
+        var payload = Payload(await CreateTools(collaborationRule: client).DeleteCollaborationRuleAsync(
+            RuleArgs("delete", ("collaboration_rule_id", "r1")),
+            CancellationToken.None));
+
+        calls.Should().Be(1, "dry_run=false 时才真发");
+        payload["rule_id"]!.GetValue<string>().Should().Be("r1");
+        payload["deleted"]!.GetValue<bool>().Should().BeTrue();
+        payload["notice"]!.GetValue<string>().Should().Contain("不可撤销", "高危写必须复述后果");
+    }
+
+    /// <summary>平台返回非 0 必须转成结构化错误（而不是静默回执成功）。</summary>
+    [Fact]
+    public async Task Delete_With_Platform_Error_Should_Fail_Structured()
+    {
+        var client = RuleClient(deleteCode: 1390005);
+
+        var result = await CreateTools(collaborationRule: client).DeleteCollaborationRuleAsync(
+            RuleArgs("delete", ("collaboration_rule_id", "r_ghost")),
+            CancellationToken.None);
+
+        result.Text.Should().Contain("1390005", "错误码必须透出，宿主才能按码处置");
+    }
+
     // ─────────────────── 9. 软缺席 ───────────────────
 
     /// <summary>四个客户端全部未注册时，四个面各测一个代表工具：必须给结构化错误，不得抛异常。</summary>

@@ -208,3 +208,95 @@ public interface IFeishuTenantTrustpartyListCollaborationRulesTool
         [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
+
+// ─────────────────── 写面（互通规则 CRUD） ───────────────────
+//
+// 三条纪律（与域内 8 个只读工具同源）：
+// ① scope 字面量同样来自 SDK 注释（`trust_party:collaboration_rule:write`），不标 ⚠️；
+// ② **写面默认不启用**：授权门禁（`IToolExecutionAuthorizer`）与 `MaxToolRisk` 在执行链，
+//    执行器只负责 `dry_run` 短路与白名单投影；
+// ③ `delete_collaboration_rule` 命中危险词 ⇒ high-risk-write ⇒ 必须有 `Affordance/` 四节资产
+//    （描述里必须同时出现 `dry_run` 与「预演 / 确认」，由 DryRunContractGuards 断言）。
+
+/// <summary>
+/// 工具接口：trustparty.create_collaboration_rule（映射 <c>IFeishuTenantV1DirectoryCollaborationRule.CreateCollaborationRuleAsync</c>）。
+/// </summary>
+/// <remarks>
+/// 主体（subject）= **我方**组织实体，客体（object）= **对端**组织实体；两侧各至少一类非空，
+/// 且主客体实体数之和须 &lt; 100（平台约束）。
+/// </remarks>
+[FeishuTool("trustparty.create_collaboration_rule",
+    Description = "在关联组织间新建一条互通规则（主体=我方实体，客体=对端实体；主客体实体数之和须 <100；返回 rule_id）。写操作：默认不启用，需宿主授权（IToolExecutionAuthorizer），需 trust_party:collaboration_rule:write。建议先 dry_run 预演核对两侧实体。",
+    RequiredScopes = ["trust_party:collaboration_rule:write"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1DirectoryCollaborationRule) + "." + nameof(IFeishuTenantV1DirectoryCollaborationRule.CreateCollaborationRuleAsync))]
+public interface IFeishuTenantTrustpartyCreateCollaborationRuleTool
+{
+    /// <summary>新建互通规则。</summary>
+    /// <returns>白名单投影后的 JSON 回执（rule_id + 主体/客体条数），超长截断并标记 truncated。</returns>
+    Task<string> CreateCollaborationRuleAsync(
+        [ToolParameter("target_tenant_key", "关联组织的租户标识（必填，来自 trustparty.list_all_collaboration_tenants）", Required = true)] string target_tenant_key,
+        [ToolParameter("subject_open_user_ids", "主体侧（我方）用户 open_id 列表（可选）")] string[]? subject_open_user_ids = null,
+        [ToolParameter("subject_open_department_ids", "主体侧（我方）部门 open_id 列表（可选；填 0 表示全部成员）")] string[]? subject_open_department_ids = null,
+        [ToolParameter("subject_open_group_ids", "主体侧（我方）用户组 open_id 列表（可选）")] string[]? subject_open_group_ids = null,
+        [ToolParameter("object_open_user_ids", "客体侧（对端）用户 open_id 列表（可选）")] string[]? object_open_user_ids = null,
+        [ToolParameter("object_open_department_ids", "客体侧（对端）部门 open_id 列表（可选；填 0 表示全部成员）")] string[]? object_open_department_ids = null,
+        [ToolParameter("object_open_group_ids", "客体侧（对端）用户组 open_id 列表（可选）")] string[]? object_open_group_ids = null,
+        [ToolParameter("dry_run", "仅预演不下发（可选，默认 false）：返回将要创建的规则主体/客体条数，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：trustparty.update_collaboration_rule（映射 <c>UpdateCollaborationRuleAsync</c>）。
+/// </summary>
+/// <remarks>
+/// <b>语义警告</b>：这是<b>覆盖式更新</b>——请求体里的主体/客体会**整体替换**原规则的对应字段，
+/// 未传的一侧会被清空。想"只加一个成员"必须先读出原规则（<c>trustparty.list_collaboration_rules</c>）、
+/// 合并后再整份提交。
+/// </remarks>
+[FeishuTool("trustparty.update_collaboration_rule",
+    Description = "更新一条互通规则（按 rule_id；⚠️ 主体/客体为覆盖式替换，未传的一侧会被清空——只加成员请先 list_collaboration_rules 读出原值再整份提交）。写操作：默认不启用，需宿主授权，需 trust_party:collaboration_rule:write。建议先 dry_run 预演。",
+    RequiredScopes = ["trust_party:collaboration_rule:write"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1DirectoryCollaborationRule) + "." + nameof(IFeishuTenantV1DirectoryCollaborationRule.UpdateCollaborationRuleAsync))]
+public interface IFeishuTenantTrustpartyUpdateCollaborationRuleTool
+{
+    /// <summary>更新互通规则。</summary>
+    /// <returns>白名单投影后的 JSON 回执（rule_id + updated），超长截断并标记 truncated。</returns>
+    Task<string> UpdateCollaborationRuleAsync(
+        [ToolParameter("target_tenant_key", "关联组织的租户标识（必填，来自 trustparty.list_all_collaboration_tenants）", Required = true)] string target_tenant_key,
+        [ToolParameter("collaboration_rule_id", "要更新的互通规则 ID（必填，来自 trustparty.list_collaboration_rules）", Required = true)] string collaboration_rule_id,
+        [ToolParameter("subject_open_user_ids", "主体侧（我方）用户 open_id 列表（可选；覆盖式）")] string[]? subject_open_user_ids = null,
+        [ToolParameter("subject_open_department_ids", "主体侧（我方）部门 open_id 列表（可选；覆盖式）")] string[]? subject_open_department_ids = null,
+        [ToolParameter("subject_open_group_ids", "主体侧（我方）用户组 open_id 列表（可选；覆盖式）")] string[]? subject_open_group_ids = null,
+        [ToolParameter("object_open_user_ids", "客体侧（对端）用户 open_id 列表（可选；覆盖式）")] string[]? object_open_user_ids = null,
+        [ToolParameter("object_open_department_ids", "客体侧（对端）部门 open_id 列表（可选；覆盖式）")] string[]? object_open_department_ids = null,
+        [ToolParameter("object_open_group_ids", "客体侧（对端）用户组 open_id 列表（可选；覆盖式）")] string[]? object_open_group_ids = null,
+        [ToolParameter("dry_run", "仅预演不下发（可选，默认 false）：返回将要更新的规则 ID 与主体/客体条数，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：trustparty.delete_collaboration_rule（映射 <c>DeleteCollaborationRuleAsync</c>）。
+/// </summary>
+/// <remarks>
+/// <b>high-risk-write</b>（命中危险词 <c>delete</c>）：删除后**对端立即失去互通能力**，
+/// 且平台不提供"恢复已删规则"的入口（只能按原主体/客体重建，<c>rule_id</c> 会变）。
+/// 故本工具必须有 <c>Affordance/trustparty.delete_collaboration_rule.md</c> 四节资产，
+/// 且描述里必须同时出现 <c>dry_run</c> 与「预演 / 确认」。
+/// </remarks>
+[FeishuTool("trustparty.delete_collaboration_rule",
+    Description = "删除一条互通规则（⚠️ 不可撤销：删除后对端立即失去互通能力，且只能重建、rule_id 会变——务必先 dry_run 预演并确认 rule_id 与 target_tenant_key 无误）。写操作：默认不启用，需宿主授权，需 trust_party:collaboration_rule:write。",
+    RequiredScopes = ["trust_party:collaboration_rule:write"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1DirectoryCollaborationRule) + "." + nameof(IFeishuTenantV1DirectoryCollaborationRule.DeleteCollaborationRuleAsync))]
+public interface IFeishuTenantTrustpartyDeleteCollaborationRuleTool
+{
+    /// <summary>删除互通规则。</summary>
+    /// <returns>白名单投影后的 JSON 回执（rule_id + deleted），超长截断并标记 truncated。</returns>
+    Task<string> DeleteCollaborationRuleAsync(
+        [ToolParameter("target_tenant_key", "关联组织的租户标识（必填，来自 trustparty.list_all_collaboration_tenants）", Required = true)] string target_tenant_key,
+        [ToolParameter("collaboration_rule_id", "要删除的互通规则 ID（必填，来自 trustparty.list_collaboration_rules）", Required = true)] string collaboration_rule_id,
+        [ToolParameter("dry_run", "仅预演不下发（可选，默认 false）：返回将要删除的规则 ID，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}

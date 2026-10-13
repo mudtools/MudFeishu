@@ -287,6 +287,9 @@
                      "Mud.Feishu.AI.Tools.Catalog.ToolSchemaDialect"
                  ],
     "reasons":  {
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantTrustpartyCreateCollaborationRuleTool":  "专题一 B1 收官域写面：trustparty.create_collaboration_rule 的工具契约（写操作；默认不启用，需宿主 IToolExecutionAuthorizer 授权）。消费方：① FeishuToolRegistry 白名单装配；② MCP server tools/list；③ TrustPartyToolsTests（dry_run 零调用 + 参数校验 + 回执投影）与 DryRunContractGuards。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantTrustpartyUpdateCollaborationRuleTool":  "同 IFeishuTenantTrustpartyCreateCollaborationRuleTool：trustparty.update_collaboration_rule 的工具契约（覆盖式语义，描述里已写明「未传的一侧会被清空」）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantTrustpartyDeleteCollaborationRuleTool":  "同 IFeishuTenantTrustpartyCreateCollaborationRuleTool：trustparty.delete_collaboration_rule 的工具契约（**high-risk-write**——命中危险词 delete，配 Affordance 四节资产 + 描述含 dry_run 预演指引，由 DryRunContractGuards / AffordanceContractGuards 双门禁锁住）。消费方同上。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantTrustpartyListCollaborationTenantsTool":  "专题一 B1 收官域（TrustParty 跨组织互通）：trustparty.list_collaboration_tenants 的工具契约（互通面第一跳，target_tenant_key 从这里来）。消费方：① FeishuToolRegistry 白名单装配；② MCP server tools/list；③ TrustPartyToolsTests 与工具面守卫（golden / 权限对照表 / scope-authority / descriptor 契约）。与既有契约接口同口径。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantTrustpartyGetCollaborationTenantTool":  "同 IFeishuTenantTrustpartyListCollaborationTenantsTool：trustparty.get_collaboration_tenant 的工具契约（单个关联组织详情）。消费方同上。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantTrustpartyListVisibleOrganizationTool":  "同 IFeishuTenantTrustpartyListCollaborationTenantsTool：trustparty.list_visible_organization 的工具契约（对端可见成员/部门/群）。消费方同上。",

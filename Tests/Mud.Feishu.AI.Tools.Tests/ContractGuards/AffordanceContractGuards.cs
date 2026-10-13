@@ -51,9 +51,9 @@ public class AffordanceContractGuards
 
     // ── 规模冻结（R-3/F-7 接入批实测；增减资产必须同批改这里的数字并说明理由）──
     // 字符总数按 LF 归一化口径测量（ReadAssets 统一 \r\n → \n），Windows(CRLF) 与 CI(LF) 同值。
-    private const int ExpectedAssetCount = 16;
+    private const int ExpectedAssetCount = 17;
 
-    private const int ExpectedTotalAssetCharacters = 5797;
+    private const int ExpectedTotalAssetCharacters = 6476;
 
     [Fact]
     public void EveryAffordanceAsset_ShouldSatisfyTheUpstreamStructureContract()

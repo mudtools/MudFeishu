@@ -1,7 +1,8 @@
 {
   "source": "飞书开放平台 · 应用权限（scope 名称与官方文档核对；每次新增工具引入新 scope 时必须同批回填本清单并在「核对」栏留痕）",
-  "lastReviewed": "2026-10-10",
+  "lastReviewed": "2026-10-13",
   "_R7_C3": "R7/C3 新增：translation:text（AI 机器翻译，官方《Translate text》《Detect text》文档「权限要求」栏明确列出）——两项工具均为只读，标 ✅ 已核对。",
+  "_B1_TRUSTPARTY_WRITE": "专题一 B1 收官域写面：新增 trust_party:collaboration_rule:write（create/update/delete_collaboration_rule 三个写工具使用）——scope 名取自 SDK XML 注释原文（IFeishuV1DirectoryCollaborationRule.cs:42/59/78），标 ✅ 已核对；delete_collaboration_rule 命中危险词归 high-risk-write，已配 Affordance 四节资产。",
   "_R5T0_2": "R5 WP0-T0-2 核对结果：aily:knowledge:readonly 与 im:resource 两项 ⚠️ 维持——无法在无控制台权限时定论；下次宿主接入时由控制台二次确认后回写。",
   "_R7_A5A6": "R7 A5/A6 新增：attendance:* / spark:* / board:* 共 8 个 scope——按官方 API 文档取值与核对，控制台开通前请在「权限管理」页按名称搜索确认（本批标 ⚠️ 待核对）。",
   "scopes": {
@@ -61,7 +62,8 @@
     "helpdesk:ticket:readonly": "服务台 · 工单只读（专题一 B1：helpdesk.get_ticket 使用；⚠️ scope 字面量待控制台核对；**只返回状态与流转事实**——不返回备注正文、工单对话、自定义字段值与客户联系方式，故未登记 PII 工具）",
     "helpdesk:agent:readonly": "服务台 · 客服（技能组）只读（专题一 B1：helpdesk.list_agent_skills 使用；⚠️ scope 字面量待控制台核对；纯路由配置，无个人信息）",
     "trust_party:collaboration.tenant:readonly": "跨组织互通 · 关联组织只读（专题一 B1 收官域：trustparty.list_collaboration_tenants / get_collaboration_tenant / list_visible_organization / get_collaboration_department / get_collaboration_user 共 5 个只读工具使用；**scope 名取自 SDK 注释原文**，无需 ⚠️；投影已裁掉手机号/工号/自定义属性/头像/在职状态）",
-    "trust_party:collaboration_rule:read": "跨组织互通 · 关联组织规则只读（专题一 B1：trustparty.list_share_entities / list_all_collaboration_tenants / list_collaboration_rules 共 3 个只读工具使用；scope 名取自 SDK 注释原文；写面（create/update/delete_collaboration_rule）需 trust_party:collaboration_rule:write，尚未纳入工具面）",
+    "trust_party:collaboration_rule:read": "跨组织互通 · 关联组织规则只读（专题一 B1：trustparty.list_share_entities / list_all_collaboration_tenants / list_collaboration_rules 共 3 个只读工具使用；scope 名取自 SDK 注释原文；写面 create/update/delete_collaboration_rule 已纳入工具面，需 trust_party:collaboration_rule:write）",
+    "trust_party:collaboration_rule:write": "跨组织互通 · 关联组织规则写（专题一 B1 写面：trustparty.create_collaboration_rule / update_collaboration_rule / delete_collaboration_rule 共 3 个写工具使用；**scope 名取自 SDK 注释原文**，无需 ⚠️；**写工具默认不启用**——需宿主 IToolExecutionAuthorizer 授权且未被 MaxToolRisk 挡掉；delete_collaboration_rule 命中危险词 ⇒ high-risk-write，已配 Affordance 四节资产并强制 dry_run 预演）",
     "wiki:wiki:readonly": "知识库 · 只读（wiki.get_node / list_nodes 使用）",
     "wiki:wiki": "知识库 · 读写（R5/F-11 新增：wiki.create_node / move_node / move_docs_to_space 使用）",
     "admin:audit_info:readonly": "安全合规 · 行为审计日志只读（F-1 P0 新增：security.query_audit_logs / security.list_openapi_logs 使用）",

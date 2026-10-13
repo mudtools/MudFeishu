@@ -37,7 +37,7 @@ package_version: 3.0.2
 - `docx.create_document`（写）：在云空间中创建一个飞书文档（返回 document_id，可用 docx.get_raw_content 读回）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。
 - `docx.delete_blocks`（写）：删除某个父块下指定索引区间的子块（如删掉文档里过时的一批段落）。索引是父块下的子块序号（从 0 开始），可由 docx.get_raw_content 或 docx.append_blocks 的返回推算。⚠️ 删除不可撤销——务必先用 dry_run 确认区间。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。
 - `docx.get_block`（只读）：获取文档中指定块的详情（块类型/文本/子块结构）。用于精确定位块后再编辑。只读，需 docx:document:readonly。
-- `docx.get_chat_announcement`（只读）：读取群公告的块内容（分页）。群公告以文档形式存储，chat_id 来自 im.list_chats。只读，需 docx:document:readonly。
+- `docx.get_chat_announcement`（只读）：读取群公告的块内容（分页）。群公告以文档形式存储，chat_id 来自 chatgroup.list_chats / im.search_chats。只读，需 docx:document:readonly。
 - `docx.get_document_blocks`（只读）：分块读取飞书文档结构（block_id/block_type/文本），表格/代码块等结构化场景使用；document_id 可来自 wiki.get_node 的 obj_token。只读，需 docx:document:readonly。
 - `docx.get_document_info`（只读）：获取文档基本信息（标题/版本号/文档 ID）。改文档前先确认目标的链路首环。只读，需 docx:document:readonly。
 - `docx.get_markdown_content`（只读）：读取飞书文档的 Markdown 正文（仅支持新版文档 docx）。跨域使用 Drive 接口获取内容，需 drive:drive:readonly。返回的 Markdown 可用于编辑后通过 docx.replace_document 写回。

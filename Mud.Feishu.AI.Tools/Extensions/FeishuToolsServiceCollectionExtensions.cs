@@ -158,6 +158,26 @@ public static class FeishuToolsServiceCollectionExtensions
         => AddFeishuToolInfrastructure(services, configure)
             .AddFeishuHelpdeskToolsCore();
 
+    /// <summary>
+    /// 按域注册【群管理】工具（B1 第四批，4 个只读：<c>chatgroup.*</c>）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 只补既有工具面缺的那半边：群列表（补上"chat_id 来自 im.list_chats"这个**幻影引用**所缺的入口）、
+    /// 发言权限名单、发消息前的在群预检、群快捷菜单。
+    /// 群详情 / 关键词搜群 / 成员列表仍归 im 域，群公告仍归 docx 域（见 Curation 文件的去重评审结论）。
+    /// </para>
+    /// <para>
+    /// ⚠️ 与全域入口的同步纪律：本入口与 <c>AddFeishuReadonlyToolCores</c> 的清单必须**同进同出**
+    /// （<c>DomainRegistrarTests</c> 锁等价性）。
+    /// </para>
+    /// </remarks>
+    public static IServiceCollection AddFeishuChatgroupTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure)
+            .AddFeishuChatGroupToolsCore();
+
 
 
 
@@ -376,6 +396,11 @@ public static class FeishuToolsServiceCollectionExtensions
 
                     // hire Offer 执行器 HireOfferTools（1 个只读，**PII**：只给状态，结构性不含金额）。
                     .AddFeishuHireOfferToolsCore()
+
+                    // B1 补域：ChatGroup 群管理执行器 ChatGroupTools（首批 4 个只读）。
+                    // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方；
+                    // 且必须与 AddFeishuChatgroupTools 入口同进同出（DomainRegistrarTests 锁等价性）。
+                    .AddFeishuChatGroupToolsCore()
 
                     // B1 补域：HelpDesk 服务台执行器 HelpDeskTools（首批 6 个只读）。
                     // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方；

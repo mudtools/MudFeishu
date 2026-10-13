@@ -140,12 +140,14 @@ public class CapabilityAliasContractGuards
         table["Job"].Should().Contain("org");
         table["Employee"].Should().Contain("org");
 
-        // 注：方案原文的 `ChatGroup→im` 在本仓**尚未可用**——chatgroup 域还没策展为工具模块，
-        // 先登记"目标模块必须已有工具"的纪律（AliasTargets_ShouldEachOwnAtLeastOneTool），
-        // 待该域落地后再把 Chat 别名加回来（届时本用例同步补断言）。
-        table.Should().NotContainKey(
-            "Chat",
-            "chatgroup 模块尚不存在 ⇒ 不得先登记别名（先登记后落地会让 AliasTargets 守卫报红，这正是别名不得虚构的保证）");
+        // 专题一 B1 第四域（chatgroup）落地后，按本用例原先的备注把 Chat 别名断言**改回正向**：
+        // 群管理（ChatGroup*）的分组首段是 "Chat"，工具模块名是 chatgroup ⇒ 必须登记别名，
+        // 否则 capability_lookup 会把已策展的群管理域说成"尚未策展"。
+        // 注：方案原文写的是 `ChatGroup→im`（因为当时只有 im 域下三个群读工具）；
+        // 本仓现状是**独立 chatgroup 模块**（群列表/发言名单/在群预检/群菜单），
+        // 而群详情/搜群/成员列表仍在 im 域 ⇒ 别名指向 chatgroup，im 侧的既有映射不受影响。
+        table.Should().ContainKey("Chat");
+        table["Chat"].Should().Contain("chatgroup", "ChatGroup* 分组的能力落 chatgroup 模块");
     }
 
     /// <summary>

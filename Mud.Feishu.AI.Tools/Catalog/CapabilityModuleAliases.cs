@@ -69,6 +69,11 @@ internal static class CapabilityModuleAliases
             // Video/Aily 等"首段即完整单词"的域的差别，必须显式登记。
             ["Help"] = ["helpdesk"],
 
+            // 群管理（ChatGroup / ChatGroupMember / ChatGroupMenu / ChatGroupAnnouncement）同理：
+            // 首段只截到 "Chat"（C-h-a-t 后遇 G 停），而工具模块名是 chatgroup ⇒ 必须登记，
+            // 否则 capability_lookup 会把已策展的群管理域说成"尚未策展"。
+            ["Chat"] = ["chatgroup"],
+
             // 单条消息（Message）落 im 模块。
             ["Message"] = ["im"],
 

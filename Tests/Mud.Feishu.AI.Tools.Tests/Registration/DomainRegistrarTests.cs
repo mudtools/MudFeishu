@@ -202,6 +202,8 @@ public class DomainRegistrarTests
             .AddFeishuApplicationTools()
             // 专题一 B1：HelpDesk 服务台（6 个只读）——同上。
             .AddFeishuHelpdeskTools()
+            // 专题一 B1：ChatGroup 群管理（4 个只读）——同上。
+            .AddFeishuChatgroupTools()
             // ⚠️ mail **不**在本清单里显式调用：它是「读写混合域」，其 Core 只在写链登记
             // （与 CloudDoc 的评论/权限、Contact 的 contactDepartment 同款陷阱）——
             // 本清单已调 AddFeishuWriteTools，再调 AddFeishuMailTools 会双注册 ⇒

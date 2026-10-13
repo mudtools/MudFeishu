@@ -159,7 +159,7 @@ public interface IFeishuTenantDocxUpdateBlockTool
 
 /// <summary>工具接口：docx.get_chat_announcement（映射 <c>IFeishuTenantV1DocxAnnouncement.GetChatAnnouncementBlocksPageListAsync</c>）。</summary>
 [FeishuTool("docx.get_chat_announcement",
-    Description = "读取群公告的块内容（分页）。群公告以文档形式存储，chat_id 来自 im.list_chats。只读，需 docx:document:readonly。",
+    Description = "读取群公告的块内容（分页）。群公告以文档形式存储，chat_id 来自 chatgroup.list_chats / im.search_chats。只读，需 docx:document:readonly。",
     RequiredScopes = ["docx:document:readonly"],
     Source = nameof(IFeishuTenantV1DocxAnnouncement) + "." + nameof(IFeishuTenantV1DocxAnnouncement.GetChatAnnouncementBlocksPageListAsync))]
 public interface IFeishuTenantDocxGetChatAnnouncementTool
@@ -167,7 +167,7 @@ public interface IFeishuTenantDocxGetChatAnnouncementTool
     /// <summary>读取群公告块内容（分页）。</summary>
     /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token）。</returns>
     Task<string> GetChatAnnouncementBlocksPageListAsync(
-        [ToolParameter("chat_id", "群 ID（来自 im.list_chats）", Required = true)] string chat_id,
+        [ToolParameter("chat_id", "群 ID（来自 chatgroup.list_chats / im.search_chats）", Required = true)] string chat_id,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
         [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
         [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
@@ -189,7 +189,7 @@ public interface IFeishuTenantDocxSetChatAnnouncementTool
     /// <summary>批量更新群公告块文本。</summary>
     /// <returns>结构化文本（updated=成功条数）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
     Task<string> BatchUpdateChatAnnouncementBlocksAsync(
-        [ToolParameter("chat_id", "群 ID（来自 im.list_chats）", Required = true)] string chat_id,
+        [ToolParameter("chat_id", "群 ID（来自 chatgroup.list_chats / im.search_chats）", Required = true)] string chat_id,
         [ToolParameter("blocks", "要更新的块列表（JSON 数组字符串）。每项形如 {\"block_id\":\"doxcnXxx\",\"text\":\"新文本\"}", Required = true)] string blocks,
         [ToolParameter("idempotency_key", "幂等键（可选）：相同 client_token 在 24 小时内至多成功一次")] string? idempotency_key = null,
         [ToolParameter("dry_run", "仅预演不更新（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,

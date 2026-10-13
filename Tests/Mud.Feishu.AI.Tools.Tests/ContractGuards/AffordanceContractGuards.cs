@@ -269,6 +269,71 @@ public class AffordanceContractGuards
             "剖面槽的目录片段必须与磁盘目录名一致（csproj 的 AdditionalFiles 目录亦然）");
     }
 
+    // ── AD-2：affordance 不得复述工具描述 ──────────────────────────────────
+
+    /// <summary>
+    /// <b>AD-2（防重复门禁第 2 条）</b>：affordance 的 <c>WHEN</c> 首条不得与工具 <c>description</c>
+    /// 逐字重复（对齐官方 <c>content_embed_affordance_test.go</c> 的 "use_when ≠ description"）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>要防的形态</b>：把工具描述原句搬进 affordance 的 <c>WHEN</c> 节。此时资产"看起来写了"，
+    /// 但对模型<b>零信息增量</b>——描述已经在 tools/list 里给过一遍，而 affordance 的价值恰恰是
+    /// 决策边界（"什么情况下该用 / 什么情况下别用"），不是再来一遍"这个工具做什么"。
+    /// </para>
+    /// <para>
+    /// <b>判据（归一化后子串包含，长度 ≥ 24）</b>：去空白、去 markdown 强调与标点后比较——
+    /// 否则"加个反引号/换个标点"就能绕过门禁（那是断言宽容度的漏洞，不是内容差异）。
+    /// 长度阈值避免"用"、"调用"这类短词造成假红。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void AffordanceWhen_ShouldNotRepeatTheToolDescription()
+    {
+        var violations = new List<string>();
+
+        foreach (var (fileName, toolName, text) in ReadAssets())
+        {
+            var contract = FeishuToolContracts.ByToolName[toolName];
+            var when = ParseSections(text).First(section => section.Heading == "WHEN").Body;
+            var probe = Normalize(FirstItem(when) ?? string.Empty);
+            var description = Normalize(contract.Description);
+
+            if (probe.Length >= 24 && description.Contains(probe, StringComparison.Ordinal))
+            {
+                violations.Add($"{fileName}: WHEN 首条与工具 description 逐字重复（{probe.Length} 字符）");
+            }
+        }
+
+        violations.Should().BeEmpty(
+            "以下资产的 WHEN 节复述了工具描述——affordance 必须给「决策边界」而不是「工具做什么」：{0}",
+            string.Join(" | ", violations));
+    }
+
+    /// <summary>AD-2 判据的自证（合成输入必须能被点名；否则本条是假门禁）。</summary>
+    [Fact]
+    public void RepetitionScanner_ShouldDetectCondensedDuplicate()
+    {
+        var description = Normalize("删除一个预约（Reserve）——预约对应的会议号随即失效且不可恢复。");
+        var repeated = Normalize("- 删除一个预约( Reserve )——预约对应的会议号随即失效且不可恢复。");
+
+        description.Contains(repeated, StringComparison.Ordinal).Should().BeTrue(
+            "归一化必须抹平标点/空白差异，否则加一个空格就能绕过门禁");
+
+        Normalize("讨论冲突日程时先查忙闲").Length.Should().BeGreaterThan(0);
+        description.Contains(Normalize("讨论冲突日程时先查忙闲"), StringComparison.Ordinal).Should().BeFalse(
+            "真正的决策边界句不得被误判为复述");
+    }
+
+    /// <summary>归一化：去空白/markdown 强调/常见中英标点（仅用于 AD-2 的重复判据）。</summary>
+    private static string Normalize(string text)
+        => new([.. text.Where(static ch => !char.IsWhiteSpace(ch) && !IsNoise(ch))]);
+
+    private static bool IsNoise(char ch)
+        => ch is '`' or '*' or '_' or '-' or '—' or '～' or '~' or '（' or '）' or '(' or ')'
+            or '，' or ',' or '。' or '.' or '：' or ':' or '；' or ';' or '、' or '/' or '｜' or '|'
+            or '"' or '\'' or '“' or '”' or '‘' or '’';
+
     // ── 检查器自证（每条判据都必须能报红，否则是假门禁）──────────────────────
 
     [Fact]

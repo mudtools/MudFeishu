@@ -175,12 +175,13 @@ internal sealed class FeishuToolBinding
                 arguments, executionStopwatch, activity, cancellationToken).ConfigureAwait(false);
         }
 
-        // ② 策略轴（AT-B13）：风险上限 / 身份闭集——早于授权门禁（优先级见 EvaluatePolicy）。
-        var policyFailure = EvaluatePolicy(tool);
+        // ② 策略轴（AT-B13 + S-1）：风险上限 / 身份闭集 / glob·域级策略——早于授权门禁
+        //   （优先级见 EvaluatePolicy）。拒绝原因闭集见 EvaluateToolPolicy 的 reason_code 映射。
+        var (policyFailure, policySubtype) = EvaluatePolicy(tool);
         if (policyFailure is not null)
         {
             return await DenyAsync(
-                tool, context, ToolErrorCategory.Policy, ToolErrorSubtype.ToolNotAllowed, $"policy_denied: {policyFailure}",
+                tool, context, ToolErrorCategory.Policy, policySubtype, $"policy_denied: {policyFailure}",
                 arguments, executionStopwatch, activity, cancellationToken).ConfigureAwait(false);
         }
 
@@ -348,7 +349,11 @@ internal sealed class FeishuToolBinding
                 category,
                 subtype,
                 trace: trace,
-                suggestions: (ex as ToolArgumentException)?.Suggestions);
+                suggestions: (ex as ToolArgumentException)?.Suggestions,
+                // E-1：异常归一后仍属授权语义时同样投影工具声明的 scope（与 DenyAsync 同一判据）。
+                requiredScopes: category == ToolErrorCategory.Authorization ? tool.RequiredScopes : null,
+                // E-5：可重试类错误带"建议等待秒数"，让模型不必自己猜退避。
+                retryAfterSeconds: category == ToolErrorCategory.Retryable ? SuggestedRetryDelaySeconds() : null);
             var humanReadable = StructuredError(
                 tool.Name,
                 category,
@@ -495,6 +500,12 @@ internal sealed class FeishuToolBinding
         => ToolArgs.OptionalString(arguments, "idempotency_key") is { Length: > 0 };
 
     /// <summary>把实际尝试次数回填进错误载荷（首行 JSON 重建，人类可读正文原样保留）。</summary>
+    /// <remarks>
+    /// <b>E-3 修正</b>：重建时跳过的"前缀行"不止载荷一行——<c>Compose</c> 自 E-3 起产出
+    /// <c>载荷行 + hint 行 + 正文</c>，若只跳首行，正文里就带着<b>旧 hint</b>，
+    /// 再经 <c>Compose</c> 会拼出两条 hint（模板演化后还会出现新旧不一致的 hint）。
+    /// 故此处按"载荷 JSON 行 / <c>[next]</c> 行"逐行剥离，只保留正文。
+    /// </remarks>
     private static FeishuToolResult WithAttempts(FeishuToolResult result, int attempts)
     {
         if (result.Error is null || attempts <= 1)
@@ -502,13 +513,7 @@ internal sealed class FeishuToolBinding
             return result;
         }
 
-        var text = result.ToString();
-#if NETSTANDARD2_0
-        var newlineIndex = text.IndexOf('\n');
-#else
-        var newlineIndex = text.IndexOf('\n', StringComparison.Ordinal);
-#endif
-        var body = newlineIndex >= 0 ? text.Substring(newlineIndex + 1) : string.Empty;
+        var body = StripStructuredPrefixLines(result.ToString());
         var payload = result.Error with { Attempts = attempts };
         var jsonLine = ToolErrorPayloadSerializer.Serialize(payload);
         var rebuilt = FeishuToolResult.FromError(payload, body.Length > 0 ? ToolErrorFactory.Compose(payload, body) : jsonLine);
@@ -519,12 +524,70 @@ internal sealed class FeishuToolBinding
     }
 
     /// <summary>
+    /// <b>E-5</b>：可重试类错误的"建议等待秒数"。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>唯一来源 = 本地退避策略的首次退避</b>（<c>BaseDelayMilliseconds</c>）。
+    /// 传输层不暴露 <c>Retry-After</c> 响应头（<c>ApiException</c> 只带 StatusCode/Content/RequestUri），
+    /// 故服务端权威值在现行依赖下不可达——本方法产出的是<b>建议值</b>，
+    /// 与 <see cref="ToolError.RetryAfterSeconds"/> 的语义校准一致（"建议等这么久"，非"平台要求"）。
+    /// </para>
+    /// <para>
+    /// <b>为什么是首次退避而不是最后一次</b>：模型看到这条错误时正要发起<b>下一次</b>尝试，
+    /// 对应的等待量恰是退避序列的第一档（后续档位随尝试次数指数增长，由重试策略在链内决定）。
+    /// 策略关闭退避（<c>BaseDelayMilliseconds=0</c>）时不产出该字段——不编造一个 0 秒的"建议"。
+    /// </para>
+    /// </remarks>
+    private int? SuggestedRetryDelaySeconds()
+    {
+        var delayMs = _retryPolicy.ComputeDelay(attempt: 0);
+        return delayMs <= 0 ? null : (int)Math.Ceiling(delayMs / 1000.0);
+    }
+
+    /// <summary>
+    /// 剥离结构化前缀行（载荷 JSON 行与 hint 行），返回人类可读正文。
+    /// </summary>
+    /// <remarks>
+    /// 判据按"行的形态"而不是"行号"：载荷行以 <c>{</c> 开头（首行 JSON 不变量），
+    /// hint 行以 <see cref="ToolErrorHintRenderer.HintPrefix"/> 开头。
+    /// 这样即使将来调整了行序或多加一层前缀行，本方法仍只保留正文（不产生重复前缀）。
+    /// </remarks>
+    private static string StripStructuredPrefixLines(string text)
+    {
+        var body = text;
+
+        while (true)
+        {
+#if NETSTANDARD2_0
+            var newlineIndex = body.IndexOf('\n');
+#else
+            var newlineIndex = body.IndexOf('\n', StringComparison.Ordinal);
+#endif
+            if (newlineIndex < 0)
+            {
+                return string.Empty;
+            }
+
+            var firstLine = body.Substring(0, newlineIndex);
+            var isPayload = firstLine.StartsWith("{", StringComparison.Ordinal);
+            var isHint = firstLine.StartsWith(ToolErrorHintRenderer.HintPrefix, StringComparison.Ordinal);
+            if (!isPayload && !isHint)
+            {
+                return body;
+            }
+
+            body = body.Substring(newlineIndex + 1);
+        }
+    }
+
+    /// <summary>
     /// 统一的拒绝出口（AT-B13 / R3 评审 C-4）：指标 + Span 判定 + 审计投递 + 结构化错误文本，
     /// <b>零调用下游、不切租户</b>。入站净化 / 策略轴 / 授权门禁 / 内容安全阻断四条路径共用，
     /// 确保"新增一个拒绝分支必然带上审计"（否则审计会成为可选步骤而被遗漏）。
     /// </summary>
     /// <remarks>
-    /// R3-4：模型可见文案经 <see cref="EgressResult(string, ToolErrorCategory, string, string, int?, IReadOnlyList{string}?)"/> 返回——
+    /// R3-4：模型可见文案经 <see cref="EgressResult(string, ToolErrorCategory, string, string, int?, IReadOnlyList{string}?, IReadOnlyList{string}?)"/> 返回——
     /// 与成功路径同源净化 + 截断（审计侧仍记原始 <paramref name="reason"/>，两条出口判据不同）。
     /// </remarks>
     private async Task<FeishuToolResult> DenyAsync(
@@ -548,7 +611,13 @@ internal sealed class FeishuToolBinding
 
         // R3-4：审计仍记**原始** reason（内部事实，非模型可见——R1 §7 纪律 4 的两条出口判据不同），
         // 回填模型的文本则必须经唯一出口净化 + 截断。
-        return EgressResult(tool.Name, category, subtype, reason, suggestions: suggestions);
+        //
+        // E-1：授权类拒绝**唯一**的结构化 scope 投影点——从 `tool.RequiredScopes`（工具面事实）取，
+        // 不推断"平台是否已开通"（无可靠判据，见 ToolError.RequiredScopes 的 remarks）。
+        return EgressResult(
+            tool.Name, category, subtype, reason,
+            suggestions: suggestions,
+            requiredScopes: category == ToolErrorCategory.Authorization ? tool.RequiredScopes : null);
     }
 
     /// <summary>
@@ -656,9 +725,11 @@ internal sealed class FeishuToolBinding
         string subtype,
         string reason,
         int? apiCode = null,
-        IReadOnlyList<string>? suggestions = null)
+        IReadOnlyList<string>? suggestions = null,
+        IReadOnlyList<string>? requiredScopes = null)
     {
-        var payload = ToolErrorFactory.Create(toolName, category, subtype, apiCode, suggestions: suggestions);
+        var payload = ToolErrorFactory.Create(
+            toolName, category, subtype, apiCode, suggestions: suggestions, requiredScopes: requiredScopes);
         var combined = ToolErrorFactory.Compose(payload, StructuredError(toolName, category, reason, apiCode, subtype));
         return ToolResultPipeline.FromErrorText(payload, ToolResultSanitizer.Sanitize(combined), _options.MaxToolResultLength);
     }
@@ -776,7 +847,7 @@ internal sealed class FeishuToolBinding
     /// </para>
     /// <para>
     /// <b>B2 错误契约</b>：此方法返回人类可读正文；结构化 JSON 载荷由调用方
-    /// （<see cref="EgressResult(string, ToolErrorCategory, string, string, int?, IReadOnlyList{string}?)"/>）
+    /// （<see cref="EgressResult(string, ToolErrorCategory, string, string, int?, IReadOnlyList{string}?, IReadOnlyList{string}?)"/>）
     /// 置于正文首行。老用例的 <c>Contain</c> 断言不受影响（正文形态保持不变）。
     /// </para>
     /// </remarks>
@@ -806,8 +877,13 @@ internal sealed class FeishuToolBinding
             ToolErrorCategory.Validation => $"[tool_error] {toolName} (invalid_args){codeSegment}: {reason}——{InvalidArgsNextStep}",
             ToolErrorCategory.Authorization => $"[tool_error] {toolName} ({authLabel}){codeSegment}: {reason}——{authNextStep}",
             // T4 / D4：tool_budget_exceeded 是策略拒绝（非授权、非参数）——模型应基于已有信息直接回答。
+            // 注：本分支**必须**排在通用 Policy 分支之前（switch 自上而下匹配，`when` 是更具体的子形态）。
             ToolErrorCategory.Policy when subtype == ToolErrorSubtype.ToolBudgetExceeded
                 => $"[tool_error] {toolName} (tool_budget_exceeded){codeSegment}: {reason}",
+            // S-2 修复：**除预算耗尽外的策略拒绝此前落到 default（api_error）**——那会给出
+            // "确认无误后重试同一调用"的下一步指引，与策略拒绝的**确定性**语义直接矛盾
+            // （策略拒绝重试一百次也是拒绝）。现补上专属标签与"放弃/换方案"的下一步。
+            ToolErrorCategory.Policy => $"[tool_error] {toolName} (policy_denied){codeSegment}: {reason}——{PolicyNextStep}",
             // R2-1（P0）：删除「若结果中提供了确认令牌…重试即可继续」——该文案把批准所需的全部要素
             // 交给了模型，使模型可自行带令牌重试并放行写操作（HITL 退化为「取决于模型是否听话」）。
             // 确认令牌只经 IFeishuToolApprovalChannel 交给宿主，模型侧恒为中性语义。
@@ -845,6 +921,19 @@ internal sealed class FeishuToolBinding
     /// 该态此前是纯 <c>{reason}</c>，模型只能盲试。补上后可形成确定的三步路径：
     /// 先核实只读事实 → 再重试 → 仍失败则带上 code 上报。
     /// </remarks>
+    /// <summary>
+    /// <b>S-2：策略拒绝的可执行下一步</b>（<c>policy_denied</c>：风险超限 / 身份不符 /
+    /// glob·域级策略 / 配置非法）。
+    /// </summary>
+    /// <remarks>
+    /// <b>为什么要单列</b>：策略拒绝是<b>确定性</b>的（同一调用在同一配置下永远被拒），
+    /// 而默认分支的 <c>api_error</c> 文案会引导"核实后重试"——那会让模型在确定性失败上
+    /// 白白消耗一轮。此处明确"放弃或改方案"，与 <c>ToolErrorHintRenderer</c> 的同名指引一致。
+    /// </remarks>
+    private const string PolicyNextStep =
+        "宿主策略禁止该调用（重试不会改变结果）：请放弃该工具，或改用其他（通常只读的）方案；"
+        + "若确需该能力，请宿主调整 FeishuAgent 的策略配置";
+
     private const string ApiErrorNextStep =
         "该调用已被下游拒绝。建议顺序：① 先用同域只读工具核实目标是否存在/参数是否正确；"
         + "② 确认无误后重试同一调用；③ 仍失败请把上面的 code 一并提供给用户（code 是排查所需的唯一标识）";
@@ -1000,31 +1089,140 @@ internal sealed class FeishuToolBinding
     /// </para>
     /// <para>
     /// 拒绝原因闭集（写入审计 <c>reason</c> 与模型可见文本）：<c>risk_exceeded</c> / <c>identity_mismatch</c> /
-    /// <c>tool_not_allowed</c>（配置非法时 fail-closed）。
+    /// <c>tool_not_allowed</c> / <c>domain_not_allowed</c> / <c>write_not_allowed</c>（配置非法时 fail-closed）。
+    /// </para>
+    /// <para>
+    /// <b>S-3（策略可观测）</b>：返回的 <c>Failure</c> 文本<b>回显命中的规则原文</b>
+    /// （如"命中 Deny 规则 'payroll.*'"），该文本原样进审计 <c>reason</c> 与模型可见正文——
+    /// 企业排障时不必再去猜"是哪一条 glob 拒的"（对齐官方 <c>denial.go</c> 的规则回显）。
     /// </para>
     /// </remarks>
-    private string? EvaluatePolicy(FeishuToolDefinition tool)
+    private (string? Failure, string Subtype) EvaluatePolicy(FeishuToolDefinition tool)
     {
         if (!FeishuToolRiskNames.TryParse(_options.MaxToolRisk, out var maxRisk))
         {
             // 配置非法：fail-closed（Validate() 应在启动期拦住；此处是运行期最后一道）。
-            return $"{ToolErrorSubtype.ToolNotAllowed}: 宿主配置 {nameof(FeishuAgentOptions.MaxToolRisk)}='{_options.MaxToolRisk}' 非法，"
-                + $"合法值为 {FeishuToolRiskNames.AllowedValuesText}——按 fail-closed 拒绝";
+            return (
+                $"{ToolErrorSubtype.ToolNotAllowed}: 宿主配置 {nameof(FeishuAgentOptions.MaxToolRisk)}='{_options.MaxToolRisk}' 非法，"
+                    + $"合法值为 {FeishuToolRiskNames.AllowedValuesText}——按 fail-closed 拒绝",
+                ToolErrorSubtype.ToolNotAllowed);
         }
 
         if (tool.Risk > maxRisk)
         {
-            return $"{ToolErrorSubtype.RiskExceeded}: 工具 '{tool.Name}' 的风险为 {FeishuToolRiskNames.ToLiteral(tool.Risk)}，"
-                + $"超过宿主配置上限 '{_options.MaxToolRisk}'";
+            return (
+                $"{ToolErrorSubtype.RiskExceeded}: 工具 '{tool.Name}' 的风险为 {FeishuToolRiskNames.ToLiteral(tool.Risk)}，"
+                    + $"超过宿主配置上限 '{_options.MaxToolRisk}'",
+                ToolErrorSubtype.RiskExceeded);
         }
 
         if (!_allowedIdentities.Contains(tool.Identity))
         {
-            return $"{ToolErrorSubtype.IdentityMismatch}: 工具 '{tool.Name}' 的身份为 '{tool.Identity}'，"
-                + $"不在宿主允许集合 [{string.Join(",", _options.AllowedIdentities)}] 内"
-                + $"（配置键 {FeishuAgentOptions.SectionName}:{nameof(FeishuAgentOptions.AllowedIdentities)}）";
+            return (
+                $"{ToolErrorSubtype.IdentityMismatch}: 工具 '{tool.Name}' 的身份为 '{tool.Identity}'，"
+                    + $"不在宿主允许集合 [{string.Join(",", _options.AllowedIdentities)}] 内"
+                    + $"（配置键 {FeishuAgentOptions.SectionName}:{nameof(FeishuAgentOptions.AllowedIdentities)}）",
+                ToolErrorSubtype.IdentityMismatch);
         }
 
-        return null;
+        return EvaluateToolPolicy(tool);
+    }
+
+    /// <summary>
+    /// <b>S-1：glob / 域级策略轴</b>——判定顺序与空集语义见 <c>FeishuToolPolicyOptions</c> 的 remarks。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么域轴先于工具名轴</b>：域轴更便宜（单段字符串比较）且拒绝原因更精确——
+    /// "该域被宿主禁用"比"该工具未列明"更接近宿主的配置意图，排障路径更短。
+    /// </para>
+    /// <para>
+    /// <b>reason_code 选择</b>：域轴恒为 <c>domain_not_allowed</c>；工具名轴按工具读写性分
+    /// <c>write_not_allowed</c>（写工具）与 <c>tool_not_allowed</c>（只读工具）——
+    /// 写工具被策略拒绝通常是"安全收敛"，与只读工具"未列明"的排障路径不同，故分开。
+    /// </para>
+    /// <para>
+    /// <b>未配置即零开销</b>：<c>IsConfigured=false</c> 时直接返回不拒绝（等价改造前行为），
+    /// 且不做任何 glob 匹配（默认部署的工具调用热路径不承担策略面的成本）。
+    /// </para>
+    /// </remarks>
+    private (string? Failure, string Subtype) EvaluateToolPolicy(FeishuToolDefinition tool)
+    {
+        var policy = _options.ToolPolicy;
+        if (policy is null || !policy.IsConfigured)
+        {
+            return (null, string.Empty);
+        }
+
+        var domain = DomainOf(tool.Name);
+        var toolSubtype = tool.IsWrite ? ToolErrorSubtype.WriteNotAllowed : ToolErrorSubtype.ToolNotAllowed;
+
+        // ① 域 Deny（优先于域 Allow）
+        foreach (var pattern in policy.Domains.Deny)
+        {
+            if (ToolNamePattern.IsMatch(pattern, domain))
+            {
+                return (
+                    $"{ToolErrorSubtype.DomainNotAllowed}: 域 '{domain}' 命中 {nameof(FeishuAgentOptions.ToolPolicy)}"
+                        + $".{nameof(FeishuToolPolicyOptions.Domains)}.{nameof(FeishuToolPolicyDomainOptions.Deny)} 规则 '{pattern}'"
+                        + $"（工具 {tool.Name}）",
+                    ToolErrorSubtype.DomainNotAllowed);
+            }
+        }
+
+        // ② 域 Allow（非空时未命中即拒）
+        if (policy.Domains.Allow.Length > 0 && !MatchesAny(policy.Domains.Allow, domain))
+        {
+            return (
+                $"{ToolErrorSubtype.DomainNotAllowed}: 域 '{domain}' 不在 {nameof(FeishuAgentOptions.ToolPolicy)}"
+                    + $".{nameof(FeishuToolPolicyOptions.Domains)}.{nameof(FeishuToolPolicyDomainOptions.Allow)} 白名单"
+                    + $" [{string.Join(",", policy.Domains.Allow)}] 内（工具 {tool.Name}）",
+                ToolErrorSubtype.DomainNotAllowed);
+        }
+
+        // ③ 工具名 Deny（优先于工具名 Allow）
+        foreach (var pattern in policy.Deny)
+        {
+            if (ToolNamePattern.IsMatch(pattern, tool.Name))
+            {
+                return (
+                    $"{toolSubtype}: 工具 '{tool.Name}' 命中 {nameof(FeishuAgentOptions.ToolPolicy)}"
+                        + $".{nameof(FeishuToolPolicyOptions.Deny)} 规则 '{pattern}'",
+                    toolSubtype);
+            }
+        }
+
+        // ④ 工具名 Allow（非空时未命中即拒）
+        if (policy.Allow.Length > 0 && !MatchesAny(policy.Allow, tool.Name))
+        {
+            return (
+                $"{toolSubtype}: 工具 '{tool.Name}' 不在 {nameof(FeishuAgentOptions.ToolPolicy)}"
+                    + $".{nameof(FeishuToolPolicyOptions.Allow)} 白名单 [{string.Join(",", policy.Allow)}] 内",
+                toolSubtype);
+        }
+
+        return (null, string.Empty);
+    }
+
+    /// <summary>任一模式命中即真（<b>空集合恒假</b>——调用方须先判"该轴是否启用"）。</summary>
+    private static bool MatchesAny(string[] patterns, string value)
+    {
+        foreach (var pattern in patterns)
+        {
+            if (ToolNamePattern.IsMatch(pattern, value))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>取工具名所属域（首个 <c>.</c> 之前的部分）。</summary>
+    private static string DomainOf(string toolName)
+    {
+        // 注：netstandard2.0 没有 IndexOf(char, StringComparison)，用字符串重载。
+        var index = toolName.IndexOf(".", StringComparison.Ordinal);
+        return index > 0 ? toolName.Substring(0, index) : toolName;
     }
 }

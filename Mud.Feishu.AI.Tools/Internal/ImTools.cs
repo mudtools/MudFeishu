@@ -51,6 +51,11 @@ internal sealed class ImTools(
     private readonly IFeishuTenantV1ChatGroupMember _chatMemberClient = chatMemberClient
         ?? throw new ArgumentNullException(nameof(chatMemberClient));
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
+
+    /// <summary>P-1（统一分页语义）：<c>fetch_all</c> 的条目/页数预算（来自宿主配置）。</summary>
+    private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
+
     private readonly IFeishuToolContextAccessor? _toolContextAccessor = toolContextAccessor;
 
     /// <summary>
@@ -94,17 +99,36 @@ internal sealed class ImTools(
             var startTime = ToUnixSeconds(args.StartTime, "start_time");
             var endTime = ToUnixSeconds(args.EndTime, "end_time");
 
-            var outcome = FeishuApiResultReader.Read(await _messageClient
-                .GetHistoryMessageAsync(
-                    ContainerIdTypeChat,
-                    args.ChatId,
-                    startTime,
-                    endTime,
-                    SortTypeByCreateTimeDesc,
-                    PageSizes.History,
-                    args.PageToken,
-                    cancellationToken)
-                .ConfigureAwait(false));
+            // B1 / P-1：fetch_all=true 时循环翻页（唯一翻页实现 ToolPagination）。
+            // 单页调用与聚合共用同一次调用定义（避免两处参数面漂移）。
+            async Task<FeishuApiOutcome<ApiPageListResult<HistoryMessageData>>> FetchPageAsync(
+                string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await _messageClient
+                    .GetHistoryMessageAsync(
+                        ContainerIdTypeChat,
+                        args.ChatId,
+                        startTime,
+                        endTime,
+                        SortTypeByCreateTimeDesc,
+                        PageSizes.History,
+                        token,
+                        ct)
+                    .ConfigureAwait(false));
+
+            if (args.FetchAll == true)
+            {
+                var maxItems = ToolPagination.ResolveMaxItems(args.MaxItems, _maxAutoFetchItems);
+                var aggregated = await ToolPagination.AggregateOutcomesAsync(
+                    FetchPageAsync,
+                    page => (page.HasMore, page.PageToken),
+                    page => ProjectHistory(page)["items"]!.AsArray(),
+                    maxItems,
+                    ToolPagination.ResolveMaxPages(_maxAutoFetchPages),
+                    cancellationToken).ConfigureAwait(false);
+                return executor.FromPagedResult(aggregated, maxItems);
+            }
+
+            var outcome = await FetchPageAsync(args.PageToken, cancellationToken).ConfigureAwait(false);
             return executor.FromApi(outcome, ProjectHistory);
         });
     }
@@ -137,17 +161,34 @@ internal sealed class ImTools(
         {
             var args = ImGetThreadMessagesArgs.Unpack(arguments);
 
-            var outcome = FeishuApiResultReader.Read(await _messageClient
-                .GetHistoryMessageAsync(
-                    ContainerIdTypeThread,
-                    args.ThreadId,
-                    start_time: null,
-                    end_time: null,
-                    sort_type: SortTypeByCreateTimeDesc,
-                    page_size: PageSizes.History,
-                    page_token: args.PageToken,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
+            async Task<FeishuApiOutcome<ApiPageListResult<HistoryMessageData>>> FetchPageAsync(
+                string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await _messageClient
+                    .GetHistoryMessageAsync(
+                        ContainerIdTypeThread,
+                        args.ThreadId,
+                        start_time: null,
+                        end_time: null,
+                        sort_type: SortTypeByCreateTimeDesc,
+                        page_size: PageSizes.History,
+                        page_token: token,
+                        cancellationToken: ct)
+                    .ConfigureAwait(false));
+
+            if (args.FetchAll == true)
+            {
+                var maxItems = ToolPagination.ResolveMaxItems(args.MaxItems, _maxAutoFetchItems);
+                var aggregated = await ToolPagination.AggregateOutcomesAsync(
+                    FetchPageAsync,
+                    page => (page.HasMore, page.PageToken),
+                    page => ProjectHistory(page)["items"]!.AsArray(),
+                    maxItems,
+                    ToolPagination.ResolveMaxPages(_maxAutoFetchPages),
+                    cancellationToken).ConfigureAwait(false);
+                return executor.FromPagedResult(aggregated, maxItems);
+            }
+
+            var outcome = await FetchPageAsync(args.PageToken, cancellationToken).ConfigureAwait(false);
             return executor.FromApi(outcome, ProjectHistory);
         });
     }
@@ -251,13 +292,30 @@ internal sealed class ImTools(
         {
             var args = ImGetMessageReadUsersArgs.Unpack(arguments);
 
-            var outcome = FeishuApiResultReader.Read(await _messageClient
-                .GetMessageReadUsesAsync(
-                    args.MessageId,
-                    PageSizes.History,
-                    args.PageToken,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
+            async Task<FeishuApiOutcome<ApiPageListResult<ReadMessageUser>>> FetchPageAsync(
+                string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await _messageClient
+                    .GetMessageReadUsesAsync(
+                        args.MessageId,
+                        PageSizes.History,
+                        token,
+                        cancellationToken: ct)
+                    .ConfigureAwait(false));
+
+            if (args.FetchAll == true)
+            {
+                var maxItems = ToolPagination.ResolveMaxItems(args.MaxItems, _maxAutoFetchItems);
+                var aggregated = await ToolPagination.AggregateOutcomesAsync(
+                    FetchPageAsync,
+                    page => (page.HasMore, page.PageToken),
+                    page => ProjectReadUsers(page)["items"]!.AsArray(),
+                    maxItems,
+                    ToolPagination.ResolveMaxPages(_maxAutoFetchPages),
+                    cancellationToken).ConfigureAwait(false);
+                return executor.FromPagedResult(aggregated, maxItems);
+            }
+
+            var outcome = await FetchPageAsync(args.PageToken, cancellationToken).ConfigureAwait(false);
             return executor.FromApi(outcome, ProjectReadUsers);
         });
     }
@@ -298,11 +356,31 @@ internal sealed class ImTools(
             var args = ImSearchChatsArgs.Unpack(arguments);
             var client = RequireChatGroupClient();
 
-            var outcome = FeishuApiResultReader.Read(await client
-                .GetChatGroupPageListByKeywordAsync(
-                    args.Query,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
+            // P-1 顺带修复：此前本方法**声明了 page_token 却从未下传**（模型翻不了页）。
+            // 现经同一次调用定义下传 token，并接入 fetch_all 聚合。
+            async Task<FeishuApiOutcome<ApiPageListResult<DataModels.ChatGroup.ChatItemInfo>>> FetchPageAsync(
+                string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await client
+                    .GetChatGroupPageListByKeywordAsync(
+                        args.Query,
+                        page_token: token,
+                        cancellationToken: ct)
+                    .ConfigureAwait(false));
+
+            if (args.FetchAll == true)
+            {
+                var maxItems = ToolPagination.ResolveMaxItems(args.MaxItems, _maxAutoFetchItems);
+                var aggregated = await ToolPagination.AggregateOutcomesAsync(
+                    FetchPageAsync,
+                    page => (page.HasMore, page.PageToken),
+                    page => ProjectChats(page)["items"]!.AsArray(),
+                    maxItems,
+                    ToolPagination.ResolveMaxPages(_maxAutoFetchPages),
+                    cancellationToken).ConfigureAwait(false);
+                return executor.FromPagedResult(aggregated, maxItems);
+            }
+
+            var outcome = await FetchPageAsync(args.PageToken, cancellationToken).ConfigureAwait(false);
             return executor.FromApi(outcome, ProjectChats);
         });
     }
@@ -358,8 +436,10 @@ internal sealed class ImTools(
     private static JsonObject ProjectChats(
         ApiPageListResult<DataModels.ChatGroup.ChatItemInfo> data)
     {
-        // R-3：信封形态单源（无翻页契约的列表信封）。
-        var envelope = ToolResultJsons.ItemsEnvelope();
+        // R-3：信封形态单源（ToolResultJsons.PageEnvelope）。
+        // P-1 修复：此前用无语义翻页契约的 ItemsEnvelope，而接口**是分页的**——
+        // 模型拿到结果后既看不到 has_more 也拿不到 page_token，等于"工具声明了 page_token 却翻不了页"。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
         foreach (var chat in data.Items ?? [])
         {
             envelope["items"]!.AsArray().AddNode(new JsonObject
@@ -432,13 +512,30 @@ internal sealed class ImTools(
         {
             var args = ImListChatMembersArgs.Unpack(arguments);
 
-            var outcome = FeishuApiResultReader.Read(await _chatMemberClient
-                .GetMemberPageListByIdAsync(
-                    args.ChatId,
-                    page_size: PageSizes.History,
-                    page_token: args.PageToken,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
+            async Task<FeishuApiOutcome<GetMemberPageListResult>> FetchPageAsync(
+                string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await _chatMemberClient
+                    .GetMemberPageListByIdAsync(
+                        args.ChatId,
+                        page_size: PageSizes.History,
+                        page_token: token,
+                        cancellationToken: ct)
+                    .ConfigureAwait(false));
+
+            if (args.FetchAll == true)
+            {
+                var maxItems = ToolPagination.ResolveMaxItems(args.MaxItems, _maxAutoFetchItems);
+                var aggregated = await ToolPagination.AggregateOutcomesAsync(
+                    FetchPageAsync,
+                    page => (page.HasMore, page.PageToken),
+                    page => ProjectChatMembers(page)["items"]!.AsArray(),
+                    maxItems,
+                    ToolPagination.ResolveMaxPages(_maxAutoFetchPages),
+                    cancellationToken).ConfigureAwait(false);
+                return executor.FromPagedResult(aggregated, maxItems);
+            }
+
+            var outcome = await FetchPageAsync(args.PageToken, cancellationToken).ConfigureAwait(false);
             return executor.FromApi(outcome, ProjectChatMembers);
         });
     }
@@ -495,13 +592,30 @@ internal sealed class ImTools(
                 Filter = BuildSearchFilter(args),
             };
 
-            var outcome = FeishuApiResultReader.Read(await _messageClient
-                .SearchMessageAsync(
-                    searchRequest,
-                    page_size: PageSizes.Search,
-                    page_token: args.PageToken,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
+            async Task<FeishuApiOutcome<SearchMessageResult>> FetchPageAsync(
+                string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await _messageClient
+                    .SearchMessageAsync(
+                        searchRequest,
+                        page_size: PageSizes.Search,
+                        page_token: token,
+                        cancellationToken: ct)
+                    .ConfigureAwait(false));
+
+            if (args.FetchAll == true)
+            {
+                var maxItems = ToolPagination.ResolveMaxItems(args.MaxItems, _maxAutoFetchItems);
+                var aggregated = await ToolPagination.AggregateOutcomesAsync(
+                    FetchPageAsync,
+                    page => (page.HasMore == true, page.PageToken),
+                    page => ProjectSearchResults(page)["items"]!.AsArray(),
+                    maxItems,
+                    ToolPagination.ResolveMaxPages(_maxAutoFetchPages),
+                    cancellationToken).ConfigureAwait(false);
+                return executor.FromPagedResult(aggregated, maxItems);
+            }
+
+            var outcome = await FetchPageAsync(args.PageToken, cancellationToken).ConfigureAwait(false);
             return executor.FromApi(outcome, ProjectSearchResults);
         });
     }

@@ -29,7 +29,21 @@ namespace Mud.Feishu.AI.Tools.Errors;
 /// <param name="Category">错误大类（8 类闭集，见 <c>ToolErrorCategory</c>）。</param>
 /// <param name="Subtype">错误子类（闭集常量，见 <c>ToolErrorSubtype</c>）。</param>
 /// <param name="Retryable">是否可重试（模型据此决定"稍后重试"还是"放弃/换参"）。</param>
-/// <param name="RetryAfterSeconds">重试前建议等待秒数（来自 <c>Retry-After</c> 头；null = 不提供）。</param>
+/// <param name="RetryAfterSeconds">
+/// 重试前<b>建议</b>等待秒数（null = 不提供）。
+/// </param>
+/// <remarks>
+/// <b>语义澄清（E-5 校准，2026-10-13）</b>：本字段是"建议"，<b>不宣称</b>"服务端指示"。
+/// 两个来源按优先级取用：
+/// <list type="number">
+/// <item><c>Retry-After</c> 响应头（服务端权威值）——⚠️ <b>当前传输层不暴露响应头</b>：
+/// <c>Mud.HttpUtils.ApiException</c> 只携带 <c>StatusCode</c> / <c>Content</c> / <c>RequestUri</c>，
+/// 故该来源在现行依赖下不可达（已登记为开放项，不是遗漏）；</item>
+/// <item>本地退避策略给出的建议值（<c>ToolRetryPolicy.ComputeDelay</c> 的首次退避）——
+/// 这是<b>唯一</b>现行产出点，只在 <c>Retryable</c> 类错误上产出。</item>
+/// </list>
+/// 消费者应把本字段读成"建议等这么久再试"，而不是"平台要求等这么久"。
+/// </remarks>
 /// <param name="ApiCode">飞书业务 code（如有）。</param>
 /// <param name="Attempts">已尝试次数（重试场景，默认 1）。</param>
 /// <param name="Trace">追踪号（与日志/Span 可关联，白名单化的代价补偿）。</param>
@@ -39,6 +53,26 @@ namespace Mud.Feishu.AI.Tools.Errors;
 /// 生产者只允许是<b>事实</b>来源——闭集参数的合法取值清单、工具声明的所需权限；
 /// 不得把"猜测的缺失权限"写成候选（与 <c>ToolErrorSubtype</c> 的"幽灵子类"纪律同源）。
 /// </param>
+/// <param name="RequiredScopes">
+/// <b>E-1：工具<b>声明</b>的所需权限（结构化 scope 事实投影）。</b>
+/// </param>
+/// <remarks>
+/// <para>
+/// <b><see cref="RequiredScopes"/> 的语义边界（DP-R7-4 纪律的延续）</b>：这里投影的是
+/// <b>"该工具声明需要哪些 scope"这一工具面事实</b>，<b>不是</b>"平台是否已为应用开通"这一判断
+/// ——后者在本地无可靠判据（<c>99991663</c>/<c>99991661</c> 在三个层被解释成三种不同的东西），
+/// 故本字段的文档与错误文本都不得把它读成"缺的就是这些"。
+/// 因此它也<b>不</b>复活已删除的 <c>missing_scope</c> subtype：字段是"工具声明"，subtype 是"平台判据"。
+/// </para>
+/// <para>
+/// <b>产出点唯一</b>：授权类拒绝路径（<c>FeishuToolBinding</c> 的 <c>DenyAsync</c> 与异常归一路径）
+/// 从 <c>tool.RequiredScopes</c> 投影，其他分类不产出该字段（避免把无关错误染上权限语义）。
+/// </para>
+/// <para>
+/// <b>预算优先级</b>（≤512 字节不变量）：省略顺序为 <c>Suggestions</c> → <c>RequiredScopes</c> →
+/// <c>Trace</c>，而 <c>category</c>/<c>subtype</c>/<c>retryable</c> 恒在（模型可分支的最小集）。
+/// </para>
+/// </remarks>
 public sealed record ToolError(
     string Category,
     string Subtype,
@@ -48,4 +82,5 @@ public sealed record ToolError(
     int Attempts = 1,
     string? Trace = null,
     string? Tool = null,
-    IReadOnlyList<string>? Suggestions = null);
+    IReadOnlyList<string>? Suggestions = null,
+    IReadOnlyList<string>? RequiredScopes = null);

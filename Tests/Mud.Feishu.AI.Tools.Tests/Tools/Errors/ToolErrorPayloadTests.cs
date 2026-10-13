@@ -25,7 +25,10 @@ public class ToolErrorPayloadTests
     [InlineData(99991663, nameof(ToolErrorCategory.Authorization), "authorization_denied")]
     [InlineData(99991661, nameof(ToolErrorCategory.Authorization), "authorization_denied")]
     [InlineData(0, nameof(ToolErrorCategory.Api), "upstream_error")]
-    [InlineData(99991400, nameof(ToolErrorCategory.Api), "upstream_error")]
+    // E-2（2026-10-13）：99991400 = 平台系统繁忙（实证见 documents/ApiDocs 的接口文档
+    // "如 99991400 系统繁忙…"）——它可能以 **HTTP 200 + JSON 错误体**返回，故不走 HTTP 段位判定；
+    // 按码修正为可重试，避免模型放弃一个"本该退避重试"的调用。
+    [InlineData(99991400, nameof(ToolErrorCategory.Retryable), "rate_limited")]
     [InlineData(null, nameof(ToolErrorCategory.Api), "upstream_error")]
     public void ClassifyCode_ShouldMapKnownApiCodes(int? apiCode, string expectedCategory, string expectedSubtype)
     {

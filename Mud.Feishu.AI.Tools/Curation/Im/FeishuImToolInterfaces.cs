@@ -23,6 +23,8 @@ public interface IFeishuTenantImHistoryTool
         [ToolParameter("start_time", "起始时间（可选，RFC3339，如 2026-09-27T00:00:00+08:00）")] string? start_time = null,
         [ToolParameter("end_time", "结束时间（可选，RFC3339）")] string? end_time = null,
         [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -52,6 +54,8 @@ public interface IFeishuTenantImListChatMembersTool
     Task<string> GetMemberPageListByIdAsync(
         [ToolParameter("chat_id", "群聊 ID（形如 ocXxx）", Required = true)] string chat_id,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -90,6 +94,8 @@ public interface IFeishuTenantImSearchMessagesTool
         [ToolParameter("from_ids", "限定发送者 ID 列表（可选，字符串数组）")] string[]? from_ids = null,
         [ToolParameter("chat_type", "会话类型过滤（可选：p2p=单聊 / group=群聊）")] string? chat_type = null,
         [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -111,6 +117,8 @@ public interface IFeishuTenantImSearchMessagesTool
     Task<string> GetThreadMessagesAsync(
         [ToolParameter("thread_id", "话题 ID（形如 omt_xxx，来自事件上下文或 im.reply_message 返回）", Required = true)] string thread_id,
         [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -177,6 +185,8 @@ public interface IFeishuTenantImForwardMessageTool
     Task<string> GetMessageReadUsersAsync(
         [ToolParameter("message_id", "目标消息 ID（形如 omXxx）", Required = true)] string message_id,
         [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -206,5 +216,7 @@ public interface IFeishuTenantImForwardMessageTool
     Task<string> SearchChatsAsync(
         [ToolParameter("query", "搜索关键词（群名片段）", Required = true)] string query,
         [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }

@@ -34,6 +34,21 @@ public interface IToolErrorTextFormatter
     /// <param name="reason">人类可读原因（调用方负责不泄漏凭据——净化在执行链出口）。</param>
     /// <returns>可直接回填模型的错误文本。</returns>
     string Format(string toolName, string reason);
+
+    /// <summary>
+    /// <b>E-3：渲染"下一步做什么"的一行恢复提示</b>（<c>internal/recovery/hint.go</c> 的本地等价物）。
+    /// </summary>
+    /// <param name="error">结构化错误载荷（分类 + 子类 + scope 事实 + 码表命中决定提示内容）。</param>
+    /// <returns>
+    /// 一行中文指引（含 <c>[next]</c> 前缀、<b>不含换行</b>）；
+    /// 任何分类都产出非空行——空提示会把消费者退回"解析正文"，等于该能力不存在。
+    /// </returns>
+    /// <remarks>
+    /// 与 <see cref="Format"/> 的分工：<c>Format</c> 产"是什么错了"（载荷 + 正文），
+    /// 本方法产"接下来怎么做"（模型可零解析成本消费）。协议层在"未预期异常"分支也用它，
+    /// 从而与执行链共用同一份提示口径（不造第二份文案）。
+    /// </remarks>
+    string RenderHint(ToolError error);
 }
 
 /// <summary>
@@ -48,4 +63,7 @@ internal sealed class ToolErrorTextFormatter : IToolErrorTextFormatter
     /// <inheritdoc />
     public string Format(string toolName, string reason)
         => FeishuToolBinding.StructuredError(toolName, reason);
+
+    /// <inheritdoc />
+    public string RenderHint(ToolError error) => ToolErrorHintRenderer.Render(error);
 }

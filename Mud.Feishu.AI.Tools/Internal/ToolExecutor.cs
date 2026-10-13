@@ -151,6 +151,68 @@ internal readonly struct ToolExecutor(string toolName, int maxResultLength)
             : FromApiOutcomeError(outcome.Code, outcome.ErrorText!);
 
     /// <summary>
+    /// <b>P-0/P-5：统一"单页 / 自动翻页"出口</b>——把 <c>fetch_all</c> 分支与单页分支收口到一处，
+    /// 使每个列表工具只需要提供"一次分页调用"的定义。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么要它（统一分页语义的结构保证）</b>：B1 之后每个列表工具都手写一遍
+    /// <c>if (args.FetchAll == true) { … AggregateOutcomesAsync … FromPagedResult }</c> +
+    /// 单页 <c>FromApi</c> 两段（实测每处 ≈25 行）。手写两段会带来三类漂移：
+    /// ① 漏传 <c>max_items</c>；② 聚合用 <c>max_pages</c> 而单页忘了 <c>page_token</c>（翻页形同虚设）；
+    /// ③ 聚合分支的投影与单页分支的投影用了不同的字段白名单。
+    /// 收口后这三类在结构上不可能发生——<b>同一份 <paramref name="project"/> 与同一份
+    /// <paramref name="fetchPage"/> 同时服务两条路径</b>。
+    /// </para>
+    /// <para>
+    /// <b>行为等价性</b>：<paramref name="fetchAll"/> 为 <see langword="false"/>/<see langword="null"/> 时，
+    /// 走的就是原来的"单次请求 + <c>FromApi</c>"路径（逐字节等价）；只有显式
+    /// <c>true</c> 才进入聚合（信封换成 <c>ToolPagination.BuildEnvelope</c> 的形态）。
+    /// </para>
+    /// <para>
+    /// <b>为什么约束到 <see cref="ApiPageListResult"/></b>：翻页契约（<c>has_more</c>/<c>page_token</c>）
+    /// 就是它的语义；非分页列表（<c>ApiListResult&lt;T&gt;</c>）不该出现 <c>fetch_all</c> 参数
+    /// （由 <c>PaginationContractGuards</c> 的"写工具无 fetch_all / 声明即真分页"断言兜住）。
+    /// </para>
+    /// </remarks>
+    /// <typeparam name="TPage">单页结果类型（必须携带翻页契约）。</typeparam>
+    /// <param name="fetchPage">单次分页调用（<c>page_token</c> 为 <see langword="null"/> 表示首页）。</param>
+    /// <param name="project"><b>唯一</b>的字段白名单投影（两条路径共用）。</param>
+    /// <param name="fetchAll">模型传入的 <c>fetch_all</c>。</param>
+    /// <param name="maxItems">模型传入的 <c>max_items</c>（可空 ⇒ 用宿主默认）。</param>
+    /// <param name="pageToken">模型传入的 <c>page_token</c>（首页为 <see langword="null"/>）。</param>
+    /// <param name="optionsDefaultMaxItems">宿主默认条目预算（<c>FeishuAgentOptions.MaxAutoFetchItems</c>）。</param>
+    /// <param name="optionsDefaultMaxPages">宿主默认页数预算（<c>FeishuAgentOptions.MaxAutoFetchPages</c>）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    public async Task<FeishuToolResult> FromPagedApiAsync<TPage>(
+        Func<string?, CancellationToken, Task<FeishuApiOutcome<TPage>>> fetchPage,
+        Func<TPage, JsonObject> project,
+        bool? fetchAll,
+        int? maxItems,
+        string? pageToken,
+        int optionsDefaultMaxItems,
+        int optionsDefaultMaxPages,
+        CancellationToken cancellationToken)
+        where TPage : ApiPageListResult
+    {
+        if (fetchAll == true)
+        {
+            var budget = ToolPagination.ResolveMaxItems(maxItems, optionsDefaultMaxItems);
+            var aggregated = await ToolPagination.AggregateOutcomesAsync(
+                fetchPage,
+                static page => (page.HasMore, page.PageToken),
+                page => project(page)["items"]!.AsArray(),
+                budget,
+                ToolPagination.ResolveMaxPages(optionsDefaultMaxPages),
+                cancellationToken).ConfigureAwait(false);
+
+            return FromPagedResult(aggregated, budget);
+        }
+
+        return FromApi(await fetchPage(pageToken, cancellationToken).ConfigureAwait(false), project);
+    }
+
+    /// <summary>
     /// 统一 ApiResult 解包路径：失败回填 + 成功投影 + 截断（取代 22 处 <c>if (!outcome.Ok)</c>）。
     /// </summary>
     /// <typeparam name="T">业务载荷类型。</typeparam>

@@ -26,13 +26,19 @@ namespace Mud.Feishu.AI.Tools.Internal;
 /// "circular dependency"）。用静态编译期常量从结构上消除该问题，而不是靠懒解析绕开。
 /// </para>
 /// <para>
-/// <b>"是否已策展"是启发式（如实记录）</b>：分组键形如 <c>{Domain}{Resource}</c>
+/// <b>"是否已策展"的判据（BUG-3 修复后）</b>：分组键形如 <c>{Domain}{Resource}</c>
 /// （如 <c>BitableAppTable</c>/<c>CalendarEvent</c>），而工具名前缀是小写模块名
-/// （<c>bitable</c>/<c>calendar</c>）。本执行器取分组键的<b>首个 Pascal 段</b>与工具名前缀
-/// 做大小写不敏感比对，据此标出 <c>module_curated</c> 并回填该模块下的工具名。
-/// 该启发式会在命名跨模块的场景失真（例如 Aily 能力被策展成 <c>knowledge.search</c>，
-/// 分组键却是 <c>AilyDataKnowledge</c>，会被判为"未策展"）——故结果中同时回填
-/// <c>curated_tools</c> 全集，让模型可以自行核对，而不是只信一个布尔位。
+/// （<c>bitable</c>/<c>calendar</c>）。本执行器取分组键的<b>首个 Pascal 段</b>，
+/// 先经<b>模块别名表</b> <see cref="CapabilityModuleAliases"/> 解析为"该能力实际落在哪些模块"
+/// （如 <c>AilyDataKnowledge</c> → <c>knowledge</c>、<c>ChatGroupAnnouncement</c> → <c>chatgroup</c>/<c>docx</c>），
+/// 再与工具名前缀做大小写不敏感比对，据此标出 <c>module_curated</c> 并回填
+/// <c>curated_modules</c>（解析结果）与 <c>curated_tools</c>（该模块下的工具名全集）。
+/// </para>
+/// <para>
+/// <b>为什么需要别名表</b>：纯"首段 vs 模块前缀"的启发式在<b>跨命名</b>场景必然失真——
+/// Aily 的能力已被策展为 <c>knowledge.search</c>，分组键却是 <c>AilyDataKnowledge</c>，
+/// 模型会被误导为"该能力未策展/不可用"（而事实上可用）。
+/// 别名表是编译期常量并由 <c>CapabilityAliasContractGuards</c> 锁定，不是运行期猜测。
 /// </para>
 /// </remarks>
 internal sealed class CapabilityLookupTools(IOptions<FeishuAgentOptions> options)
@@ -59,12 +65,23 @@ internal sealed class CapabilityLookupTools(IOptions<FeishuAgentOptions> options
                 }
 
                 var leadingSegment = LeadingPascalSegment(pair.Key);
-                matchedModules.Add(leadingSegment);
+
+                // BUG-3：跨命名分组经别名表解析到真实模块（如 AilyDataKnowledge → knowledge），
+                // 否则 module_curated 会因"首段 ≠ 模块前缀"而误报"未策展"，让模型以为能力不可用。
+                var modules = CapabilityModuleAliases.ResolveModules(leadingSegment);
+
+                // 别名命中的模块也计入 matched：curated_tools 回填必须覆盖"该分组实际对应的工具"。
+                foreach (var module in modules)
+                {
+                    matchedModules.Add(module);
+                }
+
                 matched.AddNode(new JsonObject
                 {
                     ["group"] = pair.Key,
                     ["methods"] = pair.Value,
-                    ["module_curated"] = curatedByModule.ContainsKey(leadingSegment),
+                    ["module_curated"] = modules.Any(curatedByModule.ContainsKey),
+                    ["curated_modules"] = new JsonArray([.. modules.Select(static m => (JsonNode?)JsonValue.Create(m))]),
                 });
             }
 

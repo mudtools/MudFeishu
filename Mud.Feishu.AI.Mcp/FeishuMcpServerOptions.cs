@@ -73,6 +73,42 @@ public sealed class FeishuMcpServerOptions
     public bool IncludeGuidance { get; set; } = true;
 
     /// <summary>
+    /// 是否暴露 <c>resources</c> 能力（M-1；默认 <c>true</c>）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 开启后：<c>initialize.capabilities</c> 增 <c>resources.listChanged=false</c>，
+    /// 且 <c>resources/list</c> / <c>resources/read</c> 可用——把域 guidance / per-tool affordance /
+    /// 域 scope / 错误契约<b>按需读取</b>（渐进披露），而不是全量灌进 instructions。
+    /// </para>
+    /// <para>
+    /// <b>为什么可关</b>：老客户端（或不理解 <c>resources</c> 的客户端）在能力声明里看到它
+    /// 不会有副作用，但宿主可能希望"能力面严格等于改造前"（逐字节回归）——故留显式开关。
+    /// 资源自身的数据源与 instructions <b>同源</b>（编译期常量），关闭只是"少一个入口"。
+    /// </para>
+    /// </remarks>
+    public bool IncludeResources { get; set; } = true;
+
+    /// <summary>
+    /// <c>initialize.instructions</c> 的形态（M-3；取值与 <see cref="GuidanceModes"/> 一致，默认 <c>routing</c>）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>routing</c>（默认）：每域<b>一行路由摘要</b>（≤256 字符/域），全文经
+    /// <c>resources/read feishu-guidance://{domain}</c> 按需读取——总量恒定、不随域数增长。
+    /// <c>full</c>：每域 L1 全文拼接（改造前行为；域多时会按预算整域丢弃）。
+    /// </para>
+    /// <para>
+    /// <b>与 <see cref="FeishuAgentOptions.GuidanceMode"/> 的关系</b>：两者取值闭集相同、语义相同，
+    /// 但作用域不同——前者管<b>进程内 Agent</b> 的系统提示，后者管 <b>MCP 协议层</b>下发的
+    /// <c>initialize.instructions</c>（同一宿主可能同时跑两条链，各自需要不同的形态：
+    /// 进程内没有翻页成本、MCP 客户端有工具列表开销）。
+    /// 两条链<b>共用同一份摘要推导实现</b>（<c>GuidanceRoutingSummary</c>），故形态不同但内容同源。
+    /// </para>
+    /// </remarks>
+    public string InstructionsMode { get; set; } = GuidanceModes.Routing;
+
+    /// <summary>
     /// 校验配置；非法即抛（装配期/启动期 fail-fast，不留到运行期）。
     /// </summary>
     /// <exception cref="InvalidOperationException">缺少 appKey，或服务端标识非法。</exception>
@@ -89,6 +125,14 @@ public sealed class FeishuMcpServerOptions
         {
             throw new InvalidOperationException(
                 $"{SectionName}:{nameof(ServerName)} 不能为空（它是 initialize.serverInfo.name，客户端据此标识本服务）");
+        }
+
+        // M-3：形态闭集校验（拼写错误会静默退回全文拼接——域数增长后表现为整域丢弃）。
+        if (!GuidanceModes.IsValid(InstructionsMode))
+        {
+            throw new InvalidOperationException(
+                $"{SectionName}:{nameof(InstructionsMode)} 取值非法: '{InstructionsMode}'——"
+                + $"合法值为 {GuidanceModes.AllowedValuesText}（与 FeishuAgent:{nameof(FeishuAgentOptions.GuidanceMode)} 同闭集）");
         }
     }
 }

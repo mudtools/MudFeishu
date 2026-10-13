@@ -37,7 +37,11 @@ public class PublicSurfaceRationaleContractGuards
     // 全局并发背压、群聊/媒体上下文装配共 13 个新 public 类型。基线（283 + 1 条既有理由）
     // 不重打快照：13 个类型全部按"冻结基线 + 增量理由"两段式登记在
     // public-surface-rationale.json 的 reasons 段（键=类型全名，值=消费方说明）。
-    private const int BaselineTypeCount = 297;
+    // 差距补齐批次（2026-10-13）：冻结基线（283）+ 既有 reasons（14）+ 本批新增 6 个 public 类型
+    // （S-1 的 FeishuToolPolicyOptions / FeishuToolPolicyDomainOptions、BUG-4 的 GuidanceModes /
+    //  GuidanceRoutingSummary、M-2 的 FeishuMcpResourceCatalog / McpResourceInfo）= 303
+    // （全部登记在 reasons 段）。
+    private const int BaselineTypeCount = 303;
 
     private static readonly string[] ApiFiles =
     [

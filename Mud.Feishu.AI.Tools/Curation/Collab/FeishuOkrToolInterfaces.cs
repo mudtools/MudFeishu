@@ -52,6 +52,8 @@ public interface IFeishuTenantOkrListCyclesTool
     Task<string> ListCyclesAsync(
         [ToolParameter("user_id", "OKR 归属用户 ID（open_id，形如 ou_xxx）", Required = true)] string user_id,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -68,6 +70,8 @@ public interface IFeishuTenantOkrListObjectivesTool
     Task<string> ListObjectivesAsync(
         [ToolParameter("cycle_id", "OKR 周期 ID（来自 okr.list_cycles）", Required = true)] string cycle_id,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -99,6 +103,8 @@ public interface IFeishuTenantOkrListKeyResultsTool
     Task<string> ListKeyResultsAsync(
         [ToolParameter("objective_id", "目标 ID（来自 okr.list_objectives）", Required = true)] string objective_id,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -130,6 +136,8 @@ public interface IFeishuTenantOkrListObjectiveProgressesTool
     Task<string> ListObjectiveProgressesAsync(
         [ToolParameter("objective_id", "目标 ID（来自 okr.list_objectives）", Required = true)] string objective_id,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -146,6 +154,8 @@ public interface IFeishuTenantOkrListKeyResultProgressesTool
     Task<string> ListKeyResultProgressesAsync(
         [ToolParameter("key_result_id", "关键结果 ID（来自 okr.list_key_results）", Required = true)] string key_result_id,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -161,6 +171,8 @@ public interface IFeishuTenantOkrListPeriodsTool
     /// <returns>白名单投影后的 JSON 文本（items: period_id/zh_name/en_name/status/period_start_time/period_end_time + 翻页契约）。</returns>
     Task<string> ListPeriodsAsync(
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -177,6 +189,8 @@ public interface IFeishuTenantOkrListCategoriesTool
     Task<string> ListCategoriesAsync(
         [ToolParameter("owner_type", "分类归属类型（可选，默认 user）：user 员工 / department 部门")] string? owner_type = null,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 

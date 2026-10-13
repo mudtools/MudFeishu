@@ -21,6 +21,10 @@ internal sealed class SearchTools(Mud.Feishu.IFeishuTenantV2SearchDocWiki search
         ?? throw new ArgumentNullException(nameof(searchClient));
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
+    /// <summary>P-4（统一分页语义）：<c>fetch_all</c> 的条目/页数预算（来自宿主配置）。</summary>
+    private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
+
     /// <summary>search.doc_wiki：云文档与知识库搜索（白名单 title/url/owner/doc_type）。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantSearchDocWikiTool))]
     public Task<FeishuToolResult> SearchAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
@@ -37,34 +41,41 @@ internal sealed class SearchTools(Mud.Feishu.IFeishuTenantV2SearchDocWiki search
 
             var searchIn = (args.SearchIn ?? "both").ToLowerInvariant();
 
-            var request = new SearchDocWikiRequest
+            // search_in 的闭集校验保持**一次**（在构造首个请求之前），两条路径共用同一判定。
+            if (searchIn is not ("doc" or "wiki" or "both"))
             {
-                Query = args.Query,
-                PageToken = args.PageToken,
-                PageSize = PageSizes.Search,
-            };
-
-            switch (searchIn)
-            {
-                case "doc":
-                    request.DocFilter = new DocFilterParam { FolderTokens = args.FolderTokens };
-                    break;
-                case "wiki":
-                    request.WikiFilter = new WikiFilterParam { SpaceIds = args.SpaceIds };
-                    break;
-                case "both":
-                    // 两者都下发（空过滤对象），folder_tokens/space_ids 分别入对应 filter。
-                    request.DocFilter = new DocFilterParam { FolderTokens = args.FolderTokens };
-                    request.WikiFilter = new WikiFilterParam { SpaceIds = args.SpaceIds };
-                    break;
-                default:
-                    return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(executor.ToolName, $"search_in 仅支持 doc/wiki/both，实际: {searchIn}"));
+                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(executor.ToolName, $"search_in 仅支持 doc/wiki/both，实际: {searchIn}"));
             }
 
-            var outcome = FeishuApiResultReader.Read(await _searchClient
-                .SearchDocWikiAsync(request, cancellationToken)
-                .ConfigureAwait(false));
-            return executor.FromApi(outcome, ProjectSearch);
+            // P-4：统一分页出口——fetch_all 聚合与单页共用**同一次调用定义**与**同一份投影**。
+            // 每次翻页都按同一个 search_in 重建请求（token 只影响 PageToken）。
+            async Task<FeishuApiOutcome<SearchDocWikiResult>> FetchPageAsync(string? token, CancellationToken ct)
+            {
+                var request = new SearchDocWikiRequest
+                {
+                    Query = args.Query,
+                    PageToken = token,
+                    PageSize = PageSizes.Search,
+                };
+
+                if (searchIn is "doc" or "both")
+                {
+                    request.DocFilter = new DocFilterParam { FolderTokens = args.FolderTokens };
+                }
+
+                if (searchIn is "wiki" or "both")
+                {
+                    request.WikiFilter = new WikiFilterParam { SpaceIds = args.SpaceIds };
+                }
+
+                return FeishuApiResultReader.Read(await _searchClient
+                    .SearchDocWikiAsync(request, ct)
+                    .ConfigureAwait(false));
+            }
+
+            return await executor.FromPagedApiAsync(
+                FetchPageAsync, ProjectSearch, args.FetchAll, args.MaxItems, args.PageToken,
+                _maxAutoFetchItems, _maxAutoFetchPages, cancellationToken).ConfigureAwait(false);
         });
     }
 

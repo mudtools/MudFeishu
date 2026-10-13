@@ -322,5 +322,125 @@ public class ToolErrorContractGuards
             ToolErrorPayloadSerializer.MaxPayloadBytes,
             "判据失效：长度比较报不出超界（假绿）");
     }
+
+    // ────────── E-1 / E-2 / E-5（差距补齐批次） ──────────
+
+    /// <summary>
+    /// <b>E-1</b>：授权类拒绝必须带 <c>required_scopes</c>（工具声明的 scope 事实投影）。
+    /// </summary>
+    /// <remarks>
+    /// 判据落在<b>载荷</b>而非正文：模型要能"机械地"读到权限事实（正文可能被预算截断）。
+    /// </remarks>
+    [Fact]
+    public async Task AuthorizationDenial_ShouldCarryRequiredScopes_InPayload()
+    {
+        var binding = new FeishuToolBinding(
+            new NoopScopeFactory(),
+            Options.Create(new FeishuAgentOptions { Instructions = "test" }));
+
+        var result = await binding.ExecuteAsync(
+            new FeishuToolDefinition(
+                "im.send_message", "发消息", ["im:message"], true, FeishuToolRisk.Write, "tenant",
+                (_, _, _) => Task.FromResult(FeishuToolResult.FromText("ok"))),
+            new Dictionary<string, object?> { ["text"] = "hi" },
+            new FeishuToolContext("appA"),
+            _ => Task.FromResult(FeishuToolResult.FromText("ok")));
+
+        var text = result.ToString()!;
+        text.Should().Contain("\"category\":\"authorization\"");
+        text.Should().Contain("\"required_scopes\":[\"im:message\"]",
+            "授权拒绝必须投影工具声明的 scope（E-1：结构化事实，不是猜测的缺失权限）");
+    }
+
+    /// <summary>
+    /// <b>E-2</b>：码表（codemeta）命中的码必须给出"语义 + 行动"候选；未收录的码<b>不得</b>猜测。
+    /// </summary>
+    [Fact]
+    public void CodeMeta_ShouldEnrichKnownCode_AndStayNeutralForUnknownCode()
+    {
+        var known = ToolErrorCodeMeta.BuildSuggestions(99991400);
+        known.Should().NotBeNull("99991400（系统繁忙）有实证：必须给出语义 + 行动");
+        known!.Should().ContainSingle().Which.Should().Contain("系统繁忙").And.Contain("建议：");
+
+        ToolErrorCodeMeta.BuildSuggestions(99999999).Should().BeNull(
+            "未收录的码不得产出候选（猜测性码表会把模型引向错误处置）");
+        ToolErrorCodeMeta.BuildSuggestions(null).Should().BeNull();
+    }
+
+    /// <summary>码表条目必须有域标注、含义与行动（缺一即为不可用条目）。</summary>
+    [Fact]
+    public void CodeMeta_Entries_ShouldAllBeUsable()
+    {
+        ToolErrorCodeMeta.All.Should().NotBeEmpty("码表不得为空（空表 = E-2 未落地）");
+
+        foreach (var entry in ToolErrorCodeMeta.All)
+        {
+            entry.Code.Should().BeGreaterThan(0);
+            entry.Meaning.Should().NotBeNullOrWhiteSpace($"码 {entry.Code} 必须给出含义");
+            entry.Action.Should().NotBeNullOrWhiteSpace($"码 {entry.Code} 必须给出行动（否则模型只知道「错在哪」）");
+
+            // 域标注为 null 表示"跨域通用码"（平台级），非 null 时必须是真实工具域。
+            if (entry.Domain is not null)
+            {
+                FeishuToolNames.All
+                    .Select(static name => name.Substring(0, name.IndexOf(".", StringComparison.Ordinal)))
+                    .Should().Contain(
+                        entry.Domain,
+                        $"码 {entry.Code} 标注的域「{entry.Domain}」必须是真实工具域（僵尸域标注 = 该码的适用面不可信）");
+            }
+        }
+    }
+
+    /// <summary>
+    /// <b>E-5</b>：可重试类错误必须带 <c>retry_after_seconds</c>（有产出点时），
+    /// 且该字段只在可重试类出现（不得给确定性失败一个"建议等待"）。
+    /// </summary>
+    [Fact]
+    public void RetryAfterSeconds_ShouldBeProducedForRetryable_AndAbsentOtherwise()
+    {
+        var retryable = ToolErrorFactory.Create(
+            "mail.list_messages", ToolErrorCategory.Retryable, ToolErrorSubtype.RateLimited,
+            retryAfterSeconds: 3);
+        retryable.RetryAfterSeconds.Should().Be(3);
+        retryable.Retryable.Should().BeTrue();
+
+        var validation = ToolErrorFactory.Create(
+            "mail.list_messages", ToolErrorCategory.Validation, ToolErrorSubtype.InvalidArgs);
+        validation.RetryAfterSeconds.Should().BeNull("确定性失败不得带「建议等待」（那会诱导模型无意义重试）");
+    }
+
+    /// <summary>码表命中的码即使载荷预算吃紧，也要优先保住分类字段（降级顺序单向）。</summary>
+    [Fact]
+    public void PayloadDegradation_ShouldDropScopesBeforeCategories()
+    {
+        var error = new ToolError(
+            Category: "authorization",
+            Subtype: "authorization_denied",
+            Retryable: false,
+            Attempts: 1,
+            Tool: "im.send_message",
+            Suggestions: [new string('建', 400)],
+            RequiredScopes: [.. Enumerable.Range(0, 6).Select(static i => $"scope:very_long_{i}")]);
+
+        var json = ToolErrorPayloadSerializer.Serialize(error);
+
+        json.Length.Should().BeLessThanOrEqualTo(ToolErrorPayloadSerializer.MaxPayloadBytes);
+        using var document = JsonDocument.Parse(json);
+        var payload = document.RootElement.GetProperty("tool_error");
+        payload.GetProperty("category").GetString().Should().Be("authorization");
+        payload.GetProperty("subtype").GetString().Should().Be("authorization_denied");
+    }
+
+    private sealed class NoopScopeFactory : IFeishuAppContextScopeFactory
+    {
+        public IDisposable BeginScope(string appKey) => new NoopScope();
+
+        private sealed class NoopScope : IDisposable
+        {
+            public void Dispose()
+            {
+            }
+        }
+    }
 }
 

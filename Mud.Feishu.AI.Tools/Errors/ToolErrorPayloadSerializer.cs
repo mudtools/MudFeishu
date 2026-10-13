@@ -40,29 +40,45 @@ internal static class ToolErrorPayloadSerializer
     /// <summary>单条建议字符上界（超出截断；保持载荷有界）。</summary>
     public const int MaxSuggestionLength = 96;
 
+    /// <summary>E-1：权限清单条数上界（scope 是短标识符，条数上界即长度上界）。</summary>
+    public const int MaxScopeCount = 6;
+
     /// <summary>
     /// 将 <see cref="ToolError"/> 序列化为紧凑 JSON 行（无换行符）。
     /// </summary>
+    /// <remarks>
+    /// <b>降级顺序（E-1 扩展，单向不可逆）</b>：完整 → 丢 <c>suggestions</c> → 丢 <c>required_scopes</c>
+    /// → 丢 <c>trace</c>。三级降级都不触碰 <c>category</c>/<c>subtype</c>/<c>retryable</c>——
+    /// 它们是"模型可分支的最小集"（没有分类，建议与权限清单也无从解读）。
+    /// </remarks>
     public static string Serialize(ToolError error)
     {
-        var withSuggestions = SerializeCore(error, includeSuggestions: true);
-        if (withSuggestions.Length <= MaxPayloadBytes)
+        var full = SerializeCore(error, includeSuggestions: true, includeRequiredScopes: true);
+        if (full.Length <= MaxPayloadBytes)
         {
-            return withSuggestions;
+            return full;
         }
 
-        // 上界保护（BUG-8）：先丢 suggestions（次要恢复信息），保留分类与 trace（排查所需）。
-        var withoutSuggestions = SerializeCore(error, includeSuggestions: false);
+        // 上界保护（BUG-8）：先丢 suggestions（次要恢复信息），保留权限事实与 trace。
+        var withoutSuggestions = SerializeCore(error, includeSuggestions: false, includeRequiredScopes: true);
         if (withoutSuggestions.Length <= MaxPayloadBytes)
         {
             return withoutSuggestions;
         }
 
-        // 仍超界 ⇒ trace 是唯一无界字段，去掉它。
-        return SerializeCore(error with { Trace = null }, includeSuggestions: false);
+        // E-1：再丢 required_scopes（权限清单比 trace 更容易从宿主配置侧复原）。
+        var coreOnly = SerializeCore(error, includeSuggestions: false, includeRequiredScopes: false);
+        if (coreOnly.Length <= MaxPayloadBytes)
+        {
+            return coreOnly;
+        }
+
+        // 仍超界 ⇒ trace 是最后一个无界字段，去掉它。
+        return SerializeCore(
+            error with { Trace = null }, includeSuggestions: false, includeRequiredScopes: false);
     }
 
-    private static string SerializeCore(ToolError error, bool includeSuggestions)
+    private static string SerializeCore(ToolError error, bool includeSuggestions, bool includeRequiredScopes)
     {
         // 手工拼接 JSON：字段闭集、值短，不需要转义（category/subtype/tool/trace 均为 ASCII 闭集或白名单化的短串）。
         var sb = new StringBuilder(256);
@@ -99,6 +115,12 @@ internal static class ToolErrorPayloadSerializer
             AppendSuggestions(sb, suggestions);
         }
 
+        // E-1：工具**声明**的所需权限（结构化事实投影；不是"平台已开通什么"的判断）。
+        if (includeRequiredScopes && error.RequiredScopes is { Count: > 0 } scopes)
+        {
+            AppendStringArray(sb, "required_scopes", scopes, MaxScopeCount);
+        }
+
         sb.Append("}}");
         return sb.ToString();
     }
@@ -106,17 +128,25 @@ internal static class ToolErrorPayloadSerializer
     /// <summary>
     /// 追加 <c>suggestions</c> 数组（条数与单条长度均上界化）。
     /// </summary>
-    /// <remarks>
-    /// 与其它字段不同，建议是<b>自由文本</b>，故必须经 <see cref="JsonEncodedText"/> 转义
-    /// （引号/反斜杠/控制字符），不能沿用直拼。
-    /// </remarks>
     private static void AppendSuggestions(StringBuilder sb, IReadOnlyList<string> suggestions)
-    {
-        var rendered = new List<string>(MaxSuggestionCount);
+        => AppendStringArray(sb, "suggestions", suggestions, MaxSuggestionCount);
 
-        foreach (var raw in suggestions)
+    /// <summary>
+    /// 追加字符串数组字段（条数与单条长度均上界化；<b>必然转义</b>）。
+    /// </summary>
+    /// <remarks>
+    /// 与其它字段不同，建议与 scope 清单里的值都可能是<b>自由文本/外部输入</b>，
+    /// 故必须经 <see cref="JsonEncodedText"/> 转义（引号/反斜杠/控制字符），不能沿用直拼。
+    /// <c>suggestions</c>（BUG-8）与 <c>required_scopes</c>（E-1）共用本实现——两处口径不会漂移。
+    /// </remarks>
+    private static void AppendStringArray(
+        StringBuilder sb, string key, IReadOnlyList<string> values, int maxCount)
+    {
+        var rendered = new List<string>(maxCount);
+
+        foreach (var raw in values)
         {
-            if (rendered.Count == MaxSuggestionCount)
+            if (rendered.Count == maxCount)
             {
                 break;
             }
@@ -135,7 +165,7 @@ internal static class ToolErrorPayloadSerializer
             return;
         }
 
-        sb.Append(",\"suggestions\":[");
+        sb.Append(",\"").Append(key).Append("\":[");
         for (var i = 0; i < rendered.Count; i++)
         {
             if (i > 0)

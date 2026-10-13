@@ -44,6 +44,14 @@ namespace Mud.Feishu.AI.Mcp;
 /// 缺 appKey 时构造期即抛（fail-closed，禁止默认应用兜底）。
 /// </para>
 /// <para>
+/// <b>M-2（resources 能力）</b>：除 <c>tools</c> 外，本服务在装配期还有<b>资源目录</b>
+/// （<see cref="FeishuMcpResourceCatalog"/>）——域 guidance 全文 / per-tool affordance /
+/// 域 scope 对照 / 错误契约。资源目录与工具面<b>同一次装配、同一份白名单</b>
+/// （未启用域的资源不可见），且内容全为编译期常量，故 <c>resources/read</c> 无 IO、无租户依赖。
+/// 这条能力的意义是"上下文预算结构性可控"：instructions 只下发一行摘要，正文按需读
+/// （见 <see cref="FeishuMcpServerOptions.InstructionsMode"/>）。
+/// </para>
+/// <para>
 /// <b>线程模型</b>：单连接顺序处理（<see cref="FeishuMcpStdioHost"/> 逐行 await），
 /// <c>_initialized</c> 标记无需加锁；若宿主自行并发投递，请自行串行化。
 /// </para>
@@ -80,6 +88,15 @@ public sealed class FeishuMcpToolServer
     private readonly Dictionary<string, JsonNode> _inputSchemas = new(StringComparer.Ordinal);
     private readonly Dictionary<string, McpToolInfo> _byMcpName = new(StringComparer.Ordinal);
 
+    /// <summary>
+    /// M-2：资源目录（<c>IncludeResources=false</c> 或工具面缺席时为 <see langword="null"/>）。
+    /// </summary>
+    /// <remarks>
+    /// 与工具面<b>同一次装配</b>构建（域集合来自同一份白名单），故"资源可见性 == 工具可见性"
+    /// 是结构事实而不是纪律（守卫 <c>McpResourceContractGuards</c> 另做机械断言）。
+    /// </remarks>
+    private readonly FeishuMcpResourceCatalog? _resources;
+
     private bool _initialized;
 
     /// <summary>
@@ -114,10 +131,24 @@ public sealed class FeishuMcpToolServer
 
         Instructions = _options.IncludeGuidance ? BuildInstructions(_services) : string.Empty;
         BuildToolSurface();
+
+        _resources = _options.IncludeResources && _tools.Count > 0
+            ? BuildResources(_services)
+            : null;
     }
 
     /// <summary>暴露给客户端的工具（<c>tools/list</c> 的内容来源）。</summary>
     public IReadOnlyList<McpToolInfo> Tools => _tools;
+
+    /// <summary>暴露给客户端的资源（<c>resources/list</c> 的内容来源；未启用时为只读空集）。</summary>
+    public IReadOnlyList<McpResourceInfo> Resources => _resources?.Resources ?? [];
+
+    /// <summary>
+    /// 合法资源 URI 形态清单（未知 URI 错误文案与守卫用）。
+    /// </summary>
+    /// <remarks>未启用 <c>resources</c> 时仍返回模板（错误文案一致性）；它只是"URI 长什么样"的说明。</remarks>
+    public IReadOnlyList<string> ResourcesUriPrefixes
+        => _resources?.UriPrefixes ?? FeishuMcpResourceCatalog.UriTemplates;
 
     /// <summary>
     /// 会话是否已初始化（收到 <c>initialize</c> 或 <c>notifications/initialized</c>）。
@@ -202,11 +233,17 @@ public sealed class FeishuMcpToolServer
                 case McpProtocol.MethodToolsCall:
                     return isNotification ? null : await CallToolAsync(id!, parameters, cancellationToken).ConfigureAwait(false);
 
+                case McpProtocol.MethodResourcesList:
+                    return isNotification ? null : ResultEnvelope(id, BuildResourcesListResult());
+
+                case McpProtocol.MethodResourcesRead:
+                    return isNotification ? null : ReadResource(id!, parameters);
+
                 default:
                     // 未知**通知**静默（协议允许扩展通知）；未知**请求**回方法不存在。
                     return isNotification
                         ? null
-                        : ErrorEnvelope(id, McpProtocol.ErrorMethodNotFound, $"未知方法 '{method}'（本服务提供 tools/list 与 tools/call）");
+                        : ErrorEnvelope(id, McpProtocol.ErrorMethodNotFound, $"未知方法 '{method}'（本服务提供 tools/list、tools/call、resources/list 与 resources/read）");
             }
         }
         catch (OperationCanceledException)
@@ -234,11 +271,7 @@ public sealed class FeishuMcpToolServer
         {
             // 版本协商：闭集内回显，闭集外回落本服务默认版本（见 McpProtocol 的注释）。
             ["protocolVersion"] = McpProtocol.Negotiate(requested),
-            ["capabilities"] = new JsonObject
-            {
-                // listChanged=false：白名单在装配期固定（进程生命周期内不变），无需通知客户端刷新。
-                ["tools"] = new JsonObject { ["listChanged"] = false },
-            },
+            ["capabilities"] = BuildCapabilities(),
             ["serverInfo"] = new JsonObject
             {
                 ["name"] = _options.ServerName,
@@ -254,6 +287,107 @@ public sealed class FeishuMcpToolServer
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// 能力声明（M-1）：<c>tools</c> 恒在；<c>resources</c> 在启用且有可读资源时声明。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么 <c>resources</c> 与"是否有资源"绑定</b>：声明了 <c>resources</c> 却让
+    /// <c>resources/list</c> 恒返回空列表，会让客户端在 UI 上显示一个永远为空的资源面板
+    /// （"能力声明"与"实际内容"不一致）。真实装配空集（无启用工具）时不声明该能力，
+    /// 客户端据此也不会去问。
+    /// </para>
+    /// <para>
+    /// <b>两个能力都是 <c>listChanged=false</c></b>：白名单与资产在装配期固定
+    /// （进程生命周期内不变），无需通知客户端刷新——这也让"不发通知"成为契约而不是遗漏。
+    /// </para>
+    /// </remarks>
+    private JsonObject BuildCapabilities()
+    {
+        var capabilities = new JsonObject
+        {
+            ["tools"] = new JsonObject { ["listChanged"] = false },
+        };
+
+        if (_resources is { Resources.Count: > 0 })
+        {
+            capabilities["resources"] = new JsonObject { ["listChanged"] = false };
+        }
+
+        return capabilities;
+    }
+
+    /// <summary><c>resources/list</c> 结果（资源清单；不提供分页——清单规模远小于需要的阈值）。</summary>
+    private JsonObject BuildResourcesListResult()
+    {
+        var resources = new JsonArray();
+
+        foreach (var resource in Resources)
+        {
+            resources.AddNode(new JsonObject
+            {
+                ["uri"] = resource.Uri,
+                ["name"] = resource.Name,
+                ["description"] = resource.Description,
+                ["mimeType"] = resource.MimeType,
+
+                // 体积估算（方案 §10：防"客户端盲目全读"）——非协议标准字段，
+                // 客户端可忽略；给得出来比"读之前不知道多大"更有用。
+                ["sizeBytes"] = resource.SizeBytes,
+            });
+        }
+
+        return new JsonObject { ["resources"] = resources };
+    }
+
+    /// <summary>
+    /// <c>resources/read</c>：按 URI 取正文；未知 URI 回 <c>-32602</c> + <b>合法前缀清单</b>。
+    /// </summary>
+    /// <remarks>
+    /// 未知 URI 的文案风格刻意与 <c>tools/call</c> 的"不存在或未启用"一致：
+    /// <b>不回显已启用资源全集</b>（那等于给出一条枚举通道，与工具面的纪律相同），
+    /// 只给出"URI 长什么样"的可修指引。
+    /// </remarks>
+    private string ReadResource(JsonNode id, JsonObject? parameters)
+    {
+        var uri = parameters?["uri"]?.GetValue<string>();
+        if (string.IsNullOrWhiteSpace(uri))
+        {
+            return ErrorEnvelope(
+                id,
+                McpProtocol.ErrorInvalidParams,
+                "resources/read 缺少 params.uri");
+        }
+
+        if (_resources is null)
+        {
+            return ErrorEnvelope(
+                id,
+                McpProtocol.ErrorInvalidParams,
+                "本服务未启用 resources 能力"
+                + $"（{FeishuMcpServerOptions.SectionName}:{nameof(FeishuMcpServerOptions.IncludeResources)}）——请改用 instructions 与 tools");
+        }
+
+        if (!_resources.TryRead(uri, out var text))
+        {
+            return ErrorEnvelope(
+                id,
+                McpProtocol.ErrorInvalidParams,
+                $"资源 '{uri}' 不存在或未启用——MCP 只暴露已启用工具所属域的资源。"
+                + $"合法 URI 形态：{string.Join(" / ", _resources.UriPrefixes)}");
+        }
+
+        var contents = new JsonArray();
+        contents.AddNode(new JsonObject
+        {
+            ["uri"] = uri,
+            ["mimeType"] = "text/markdown",
+            ["text"] = text,
+        });
+
+        return ResultEnvelope(id, new JsonObject { ["contents"] = contents });
     }
 
     private JsonObject BuildToolsListResult()
@@ -498,10 +632,50 @@ public sealed class FeishuMcpToolServer
         return dictionary;
     }
 
-    /// <summary>装配域 guidance（与 <c>FeishuAgent</c> 用同一份常量与同一预算装配器）。</summary>
-    private static string BuildInstructions(IServiceProvider services)
+    /// <summary>
+    /// 构建资源目录（M-2）：域集合与工具面同源（同一份白名单的注册表条目）。
+    /// </summary>
+    private FeishuMcpResourceCatalog BuildResources(IServiceProvider services)
     {
-        var blocks = new List<FeishuGuidanceBlock>();
+        var registry = services.GetService<FeishuToolRegistry>();
+        if (registry is null)
+        {
+            return FeishuMcpResourceCatalog.Build(
+                [], new Dictionary<string, string>(StringComparer.Ordinal));
+        }
+
+        // 描述取自**已构桥的工具**（与 tools/list 逐字节同源）：affordance 是执行链在构造期
+        // 追加到描述上的，故"资源里的 affordance" == "模型在 tools/list 里看到的那一段"。
+        var descriptions = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var info in _tools)
+        {
+            descriptions[info.ContractName] = info.Description;
+        }
+
+        return FeishuMcpResourceCatalog.Build(registry.EnabledTools, descriptions);
+    }
+
+    /// <summary>
+    /// 装配域 guidance（与 <c>FeishuAgent</c> 用同一份常量、同一预算装配器与<b>同一份摘要推导</b>）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>M-3（instructions 瘦身）</b>：域集合与优先级顺序取自工具源（<see cref="FeishuAgentToolSource.GetGuidance"/>，
+    /// 与进程内 Agent 完全一致的"工具数降序 + 域名序"），但<b>内容形态</b>由
+    /// <see cref="FeishuMcpServerOptions.InstructionsMode"/> 决定——
+    /// <c>routing</c>（默认）用与进程内同一个 <see cref="GuidanceRoutingSummary"/> 产出的一行摘要；
+    /// <c>full</c> 用生成器发射的 L1 全文。
+    /// </para>
+    /// <para>
+    /// <b>为什么内容重新取自 <c>FeishuToolGuidance</c> 而不是直接用源返回的块</b>：
+    /// 源返回块的内容形态由 <see cref="FeishuAgentOptions.GuidanceMode"/> 决定（进程内链的开关），
+    /// 而 MCP 链有<b>自己的</b>开关。两条链共用"域集合 + 顺序"（那份逻辑有白名单语义，必须同源），
+    /// 各自决定"发摘要还是发全文"——否则宿主无法为两条链做不同取舍。
+    /// </para>
+    /// </remarks>
+    private string BuildInstructions(IServiceProvider services)
+    {
+        var sourceBlocks = new List<FeishuGuidanceBlock>();
         foreach (var source in services.GetServices<FeishuAgentToolSource>())
         {
             if (source is null)
@@ -512,8 +686,26 @@ public sealed class FeishuMcpToolServer
             var guidance = source.GetGuidance(services);
             if (guidance is { Count: > 0 })
             {
-                blocks.AddRange(guidance);
+                sourceBlocks.AddRange(guidance);
             }
+        }
+
+        var fullMode = string.Equals(
+            _options.InstructionsMode, GuidanceModes.Full, StringComparison.Ordinal);
+
+        var blocks = new List<FeishuGuidanceBlock>(sourceBlocks.Count);
+        foreach (var block in sourceBlocks)
+        {
+            if (!FeishuToolGuidance.ByDomain.TryGetValue(block.Domain, out var full))
+            {
+                // 无 L1 资产的域（不应发生：装配守卫断言"有工具必有资产"）——保持源内容，不丢域。
+                blocks.Add(block);
+                continue;
+            }
+
+            blocks.Add(new FeishuGuidanceBlock(
+                block.Domain,
+                fullMode ? full : GuidanceRoutingSummary.Create(block.Domain, full)));
         }
 
         return FeishuGuidanceComposer.Compose(null, blocks).Instructions;

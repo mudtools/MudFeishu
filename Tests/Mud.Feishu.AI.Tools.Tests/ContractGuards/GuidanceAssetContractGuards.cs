@@ -148,6 +148,10 @@ public class GuidanceAssetContractGuards
     }
 
     /// <summary>启用某域工具 → 恰好得到该域 guidance（域去重、按名排序）。</summary>
+    /// <remarks>
+    /// BUG-4 起默认形态是 <c>routing</c>（一行摘要），故本用例断言"摘要形态"，并另有一条
+    /// 用例（<see cref="GetGuidance_WithFullMode_ShouldReturnTheWholeL1Asset"/>）锁定 <c>full</c> 回退开关。
+    /// </remarks>
     [Fact]
     public void GetGuidance_WithEnabledDomainTool_ShouldReturnThatDomainOnly()
     {
@@ -157,7 +161,120 @@ public class GuidanceAssetContractGuards
         var blocks = provider.GetRequiredService<FeishuAgentToolSource>().GetGuidance(provider);
 
         blocks.Select(static b => b.Domain).Should().Equal(new[] { "bitable" }, "同域多工具只注入一份 guidance");
-        blocks[0].Content.Should().Be(FeishuToolGuidance.ByDomain["bitable"]);
+        blocks[0].Content.Should().Be(
+            GuidanceRoutingSummary.Create("bitable", FeishuToolGuidance.ByDomain["bitable"]),
+            "默认 routing 形态：内容必须与摘要推导函数的输出逐字节一致（同源同 pass）");
+    }
+
+    /// <summary>
+    /// <b>BUG-4 回退开关</b>：<c>GuidanceMode=full</c> 时必须恢复"每域 L1 全文"的既有形态。
+    /// </summary>
+    /// <remarks>
+    /// 没有这条，"routing 化"会变成不可回退的行为变更——宿主遇到模型侧观感退化时无退路。
+    /// </remarks>
+    [Fact]
+    public void GetGuidance_WithFullMode_ShouldReturnTheWholeL1Asset()
+    {
+        using var provider = GuardProviderFactory.CreateProvider(options =>
+        {
+            options.Tools = [FeishuToolNames.BitableListTables];
+            options.GuidanceMode = GuidanceModes.Full;
+        });
+
+        var blocks = provider.GetRequiredService<FeishuAgentToolSource>().GetGuidance(provider);
+
+        blocks.Should().ContainSingle();
+        blocks[0].Content.Should().Be(
+            FeishuToolGuidance.ByDomain["bitable"],
+            "full 形态必须逐字节等于 L1 资产全文（回退开关生效）");
+    }
+
+    /// <summary>
+    /// <b>BUG-4 核心守卫</b>：<c>routing</c> 形态下<b>全域启用也不得触发截断</b>
+    /// （<c>Truncated=false</c> 且丢弃清单为空），且每域摘要 ≤ 256 字符。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么是"零丢弃"而非"≤ 预算"</b>：超限策略是整域丢弃且失败方式为静默——
+    /// 域扩容（专题一新增 5~10 域）后若仍走全文形态，25→32 域的总量会越过 32,768 而静默丢尾。
+    /// 本用例把"任何域数下零丢弃"钉死为路由摘要形态的性质。
+    /// </para>
+    /// <para>
+    /// 与 <see cref="GetGuidance_WithAllDomainsEnabled_ShouldNeverDropAnyDomain"/> 的分工：那条断言的是
+    /// <b>装配结果</b>（走默认形态），本条额外锁<b>单域预算</b>与"摘要非空/含指引"这些
+    /// 让摘要真正可用的性质（一条空摘要在装配层面同样是"零丢弃"）。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void RoutingSummaries_ShouldBeConciseUsable_AndNeverTruncate()
+    {
+        using var provider = GuardProviderFactory.CreateProvider(EnableAllTools);
+
+        var blocks = provider.GetRequiredService<FeishuAgentToolSource>().GetGuidance(provider);
+        blocks.Should().HaveCount(FeishuToolGuidance.ByDomain.Count, "全域启用应覆盖全部 guidance 域");
+
+        foreach (var block in blocks)
+        {
+            block.Content.Should().NotBeNullOrWhiteSpace($"{block.Domain} 的路由摘要不得为空");
+            block.Content.Length.Should().BeLessThanOrEqualTo(
+                GuidanceRoutingSummary.MaxSummaryLength,
+                $"{block.Domain} 的路由摘要超过单域硬预算——28 域 × 256 ≈ 7 KB 是「恒定可控」的前提");
+            block.Content.Should().Contain($"feishu-guidance://{block.Domain}",
+                $"{block.Domain} 的摘要必须给出全文获取指引（否则模型只能猜）");
+            block.Content.Should().Contain($"【{block.Domain}】",
+                "摘要必须以域名开头（模型按域路由时的锚点）");
+        }
+
+        var result = FeishuGuidanceComposer.Compose("宿主指令", blocks);
+
+        result.Truncated.Should().BeFalse(
+            "routing 形态下全域装配不得触发任何截断（这就是 BUG-4 的修复判据）");
+        result.OmittedDomains.Should().BeEmpty("routing 形态下丢弃清单必须为空");
+
+        // 预算对照自证：摘要形态总量必须显著小于全文形态（否则"改造"是名义性的）。
+        var fullTotal = FeishuToolGuidance.ByDomain.Values.Sum(static v => v.Length);
+        var summaryTotal = blocks.Sum(static b => b.Content.Length);
+        summaryTotal.Should().BeLessThan(
+            fullTotal,
+            "摘要形态的总量必须小于全文形态（否则本用例证不了 BUG-4 被修）");
+    }
+
+    /// <summary>
+    /// 摘要里的工具名引用必须真实存在（防"摘要指向已改名工具"——摘要由全文推导，
+    /// 但推导只取片段，工具名可能落在片段里，故仍需独立断言）。
+    /// </summary>
+    [Fact]
+    public void RoutingSummaries_ToolReferences_ShouldAllExistInContracts()
+    {
+        var validNames = FeishuToolNames.All.ToHashSet(StringComparer.Ordinal);
+        var violations = new List<string>();
+
+        foreach (var (domain, content) in FeishuToolGuidance.ByDomain)
+        {
+            var summary = GuidanceRoutingSummary.Create(domain, content);
+            foreach (var reference in GuidanceReferenceScanner.FindToolReferences(summary))
+            {
+                if (!validNames.Contains(reference))
+                {
+                    violations.Add($"{domain} 的路由摘要引用了不存在的工具 '{reference}'");
+                }
+            }
+        }
+
+        violations.Should().BeEmpty(
+            "路由摘要中的工具引用必须全部存在（防推导片段截出半个工具名）：{0}",
+            string.Join(" | ", violations));
+    }
+
+    /// <summary>推导函数必须对"无 H1 标题"的输入响亮回落（绝不产出空摘要）。</summary>
+    [Fact]
+    public void RoutingSummary_ShouldFallBackToDomainName_WhenTitleMissing()
+    {
+        var summary = GuidanceRoutingSummary.Create("brandnew", "没有标题也没有路由小节的资产");
+
+        summary.Should().StartWith("【brandnew】");
+        summary.Should().Contain("feishu-guidance://brandnew");
+        summary.Length.Should().BeLessThanOrEqualTo(GuidanceRoutingSummary.MaxSummaryLength);
     }
 
     /// <summary>

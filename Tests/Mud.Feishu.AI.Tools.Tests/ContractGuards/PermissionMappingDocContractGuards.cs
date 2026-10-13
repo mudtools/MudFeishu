@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
@@ -81,6 +82,85 @@ public class PermissionMappingDocContractGuards
             "《工具权限对照表》必须与工具名契约表逐一对应：新增/删除工具时文档与守卫同批更新"
             + "（该声称此前不成立——对照表长期缺 contact 三工具）");
     }
+
+    /// <summary>
+    /// <b>BUG-1 守卫</b>：对照表<b>散文（prose）里的总数</b>必须等于契约表实际计数。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么需要它</b>：表格数据行早就靠 <see cref="PermissionDoc_ShouldCoverExactlyAllContractTools"/>
+    /// 锁死了（182 行 = 182 工具），但文档头部/小节的<b>散文数字</b>长期漂移——
+    /// 实际是"总数 163（88 只读 + 75 写类）"，而真值是 182（108 只读 + 74 写类）。
+    /// 读者（宿主/评审者）会据此误判权限面规模，且这种漂移<b>不触发任何门禁</b>。
+    /// </para>
+    /// <para>
+    /// 判据（纯文本扫描，不解析 markdown 结构）：
+    /// <list type="bullet">
+    /// <item>文中出现的 <c>全部 **N 个工具**（A 只读 + B 写类）</c> 形态必须与契约计数相等；</item>
+    /// <item><c>合计 N</c> 形态的只读/写类小计必须与对应计数相等。</item>
+    /// </list>
+    /// 扫描面自证：一条都没匹配到时必须报红（防正则写坏后静默假绿）。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void PermissionDoc_ProseTotals_ShouldMatchContractCounts()
+    {
+        var docPath = Path.Combine(FindRepositoryRoot(), DocRelativePath.Replace('/', Path.DirectorySeparatorChar));
+        var content = File.ReadAllText(docPath);
+
+        var readOnly = FeishuToolNames.ReadonlyAll.Length;
+        var write = FeishuToolNames.WriteAll.Length;
+        var total = FeishuToolNames.All.Length;
+
+        var examined = 0;
+        var violations = new List<string>();
+
+        // 形态 ①：全部 **182 个工具**（108 只读 + 74 写类）
+        // 注：显式写全限定名——本文件同时 using 了 Moq（其 Match 静态类）与正则，裸 `Match` 会 CS0104。
+        foreach (System.Text.RegularExpressions.Match match in ProseGrandTotal.Matches(content))
+        {
+            examined++;
+            var parsed = (Total: int.Parse(match.Groups["total"].Value, CultureInfo.InvariantCulture),
+                Read: int.Parse(match.Groups["read"].Value, CultureInfo.InvariantCulture),
+                Write: int.Parse(match.Groups["write"].Value, CultureInfo.InvariantCulture));
+            if (parsed.Total != total || parsed.Read != readOnly || parsed.Write != write)
+            {
+                violations.Add(
+                    $"散文总数 {parsed.Total}（{parsed.Read} 只读 + {parsed.Write} 写类）"
+                    + $"≠ 契约实测 {total}（{readOnly} 只读 + {write} 写类）");
+            }
+        }
+
+        // 形态 ②：合计 108 / 合计 74（只读表 / 写类表的小节标题）
+        foreach (System.Text.RegularExpressions.Match match in ProseSectionTotal.Matches(content))
+        {
+            examined++;
+            var label = match.Groups["label"].Value;
+            var value = int.Parse(match.Groups["count"].Value, CultureInfo.InvariantCulture);
+            var expected = label.Contains("只读", StringComparison.Ordinal) ? readOnly : write;
+            if (value != expected)
+            {
+                violations.Add($"小节合计「{label}」= {value}，契约实测 = {expected}");
+            }
+        }
+
+        examined.Should().BeGreaterThan(0,
+            "对照表散文总数扫描一条都没命中——正则失效（假绿）。本守卫至少要覆盖「全部 N 个工具（A 只读 + B 写类）」与两个小节合计");
+
+        violations.Should().BeEmpty(
+            "对照表散文总数必须与编译期契约计数一致（BUG-1：表格行早已锁定，散文数字长期漂移）：{0}",
+            string.Join(" | ", violations));
+    }
+
+    /// <summary>散文「全部 **N 个工具**（A 只读 + B 写类）」形态。</summary>
+    private static readonly Regex ProseGrandTotal = new(
+        @"全部\s*\*\*(?<total>\d+)\s*个工具\*\*\s*（(?<read>\d+)\s*只读\s*\+\s*(?<write>\d+)\s*写类）",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    /// <summary>小节合计「…，合计 N）」形态（只读表 / 写类表标题）。</summary>
+    private static readonly Regex ProseSectionTotal = new(
+        @"#+\s*(?<label>只读工具|写类工具)[^\r\n]*?合计\s*(?<count>\d+)\s*）",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     /// <summary>
     /// 契约 vs 文档交叉验证（WP2）：对照表每行的 RequiredScopes 列必须与

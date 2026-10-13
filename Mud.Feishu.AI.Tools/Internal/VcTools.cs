@@ -44,6 +44,10 @@ internal sealed class VcTools(
     private readonly Mud.Feishu.IFeishuTenantV1VideoConferencingRoom? _roomClient = vcRoomClient;
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
+    /// <summary>P-2（统一分页语义）：<c>fetch_all</c> 的条目/页数预算（来自宿主配置）。</summary>
+    private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
+
     /// <summary>vc.list_meetings：按时间范围查询会议列表。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantVcListMeetingsTool))]
     public Task<FeishuToolResult> ListMeetingsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
@@ -55,18 +59,35 @@ internal sealed class VcTools(
                 ?? throw new ArgumentException("vc.list_meetings 需要 IFeishuTenantV1VideoConferencingMeetinData——宿主须启用 VC 域客户端");
             var args = VcListMeetingsArgs.Unpack(arguments);
 
-            var outcome = FeishuApiResultReader.Read(await client
-                .GetMeetingPageListAsync(
-                    args.StartTime,
-                    args.EndTime,
-                    meeting_status: args.MeetingStatus,
-                    meeting_no: args.MeetingNo,
-                    user_id: args.UserId,
-                    room_id: args.RoomId,
-                    page_size: DefaultPageSize,
-                    page_token: args.PageToken,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
+            async Task<FeishuApiOutcome<GetMeetingListResult>> FetchPageAsync(string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await client
+                    .GetMeetingPageListAsync(
+                        args.StartTime,
+                        args.EndTime,
+                        meeting_status: args.MeetingStatus,
+                        meeting_no: args.MeetingNo,
+                        user_id: args.UserId,
+                        room_id: args.RoomId,
+                        page_size: DefaultPageSize,
+                        page_token: token,
+                        cancellationToken: ct)
+                    .ConfigureAwait(false));
+
+            // B1 / P-2：fetch_all=true 时循环翻页（唯一翻页实现 ToolPagination）。
+            if (args.FetchAll == true)
+            {
+                var maxItems = ToolPagination.ResolveMaxItems(args.MaxItems, _maxAutoFetchItems);
+                var aggregated = await ToolPagination.AggregateOutcomesAsync(
+                    FetchPageAsync,
+                    page => (page.HasMore, page.PageToken),
+                    page => ProjectMeetings(page)["items"]!.AsArray(),
+                    maxItems,
+                    ToolPagination.ResolveMaxPages(_maxAutoFetchPages),
+                    cancellationToken).ConfigureAwait(false);
+                return executor.FromPagedResult(aggregated, maxItems);
+            }
+
+            var outcome = await FetchPageAsync(args.PageToken, cancellationToken).ConfigureAwait(false);
             return executor.FromApi(outcome, ProjectMeetings);
         });
     }
@@ -100,18 +121,34 @@ internal sealed class VcTools(
                 ?? throw new ArgumentException("vc.list_participants 需要 IFeishuTenantV1VideoConferencingMeetinData——宿主须启用 VC 域客户端");
             var args = VcListParticipantsArgs.Unpack(arguments);
 
-            var outcome = FeishuApiResultReader.Read(await client
-                .GetParticipantPageListAsync(
-                    args.MeetingStartTime,
-                    args.MeetingEndTime,
-                    args.MeetingNo,
-                    meeting_status: args.MeetingStatus,
-                    user_id: args.UserId,
-                    room_id: args.RoomId,
-                    page_size: DefaultPageSize,
-                    page_token: args.PageToken,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
+            async Task<FeishuApiOutcome<GetParticipantListResult>> FetchPageAsync(string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await client
+                    .GetParticipantPageListAsync(
+                        args.MeetingStartTime,
+                        args.MeetingEndTime,
+                        args.MeetingNo,
+                        meeting_status: args.MeetingStatus,
+                        user_id: args.UserId,
+                        room_id: args.RoomId,
+                        page_size: DefaultPageSize,
+                        page_token: token,
+                        cancellationToken: ct)
+                    .ConfigureAwait(false));
+
+            if (args.FetchAll == true)
+            {
+                var maxItems = ToolPagination.ResolveMaxItems(args.MaxItems, _maxAutoFetchItems);
+                var aggregated = await ToolPagination.AggregateOutcomesAsync(
+                    FetchPageAsync,
+                    page => (page.HasMore, page.PageToken),
+                    page => ProjectParticipants(page)["items"]!.AsArray(),
+                    maxItems,
+                    ToolPagination.ResolveMaxPages(_maxAutoFetchPages),
+                    cancellationToken).ConfigureAwait(false);
+                return executor.FromPagedResult(aggregated, maxItems);
+            }
+
+            var outcome = await FetchPageAsync(args.PageToken, cancellationToken).ConfigureAwait(false);
             return executor.FromApi(outcome, ProjectParticipants);
         });
     }
@@ -165,13 +202,29 @@ internal sealed class VcTools(
 
             // ⚠️ 该接口返回 FeishuApiPageListResult<T>（page_size 非空 + 独立 page_token），
             // 与其余 VC 接口的 FeishuApiResult<T> 形状不同——解包后 T = ApiPageListResult<MeetingRoomInfo>。
-            var outcome = FeishuApiResultReader.Read(await client
-                .GetMeetingRoomsPageListAsync(
-                    room_level_id: args.RoomLevelId,
-                    page_size: DefaultPageSize,
-                    page_token: args.PageToken,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
+            async Task<FeishuApiOutcome<ApiPageListResult<MeetingRoomInfo>>> FetchPageAsync(string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await client
+                    .GetMeetingRoomsPageListAsync(
+                        room_level_id: args.RoomLevelId,
+                        page_size: DefaultPageSize,
+                        page_token: token,
+                        cancellationToken: ct)
+                    .ConfigureAwait(false));
+
+            if (args.FetchAll == true)
+            {
+                var maxItems = ToolPagination.ResolveMaxItems(args.MaxItems, _maxAutoFetchItems);
+                var aggregated = await ToolPagination.AggregateOutcomesAsync(
+                    FetchPageAsync,
+                    page => (page.HasMore, page.PageToken),
+                    page => ProjectRooms(page)["items"]!.AsArray(),
+                    maxItems,
+                    ToolPagination.ResolveMaxPages(_maxAutoFetchPages),
+                    cancellationToken).ConfigureAwait(false);
+                return executor.FromPagedResult(aggregated, maxItems);
+            }
+
+            var outcome = await FetchPageAsync(args.PageToken, cancellationToken).ConfigureAwait(false);
             return executor.FromApi(outcome, ProjectRooms);
         });
     }

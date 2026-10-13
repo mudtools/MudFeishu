@@ -52,6 +52,8 @@ public interface IFeishuTenantVcListMeetingsTool
         [ToolParameter("user_id", "按参会人用户 ID 过滤（可选）")] string? user_id = null,
         [ToolParameter("room_id", "按会议室 ID 过滤（可选）")] string? room_id = null,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -96,6 +98,8 @@ public interface IFeishuTenantVcListParticipantsTool
         [ToolParameter("user_id", "按参会人用户 ID 过滤（可选）")] string? user_id = null,
         [ToolParameter("room_id", "按会议室 ID 过滤（可选）")] string? room_id = null,
         [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -153,6 +157,8 @@ public interface IFeishuTenantVcListRoomsTool
     Task<string> ListRoomsAsync(
         [ToolParameter("room_level_id", "会议室层级 ID（可选，来自层级列表；省略则返回全部可见层级）")] string? room_level_id = null,
         [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 

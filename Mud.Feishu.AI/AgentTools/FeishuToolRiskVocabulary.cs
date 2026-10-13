@@ -143,3 +143,43 @@ public static class ContentSafetyModes
     /// <param name="mode">模式字面量。</param>
     public static bool IsValid(string? mode) => mode is Off or Warn or Block;
 }
+
+/// <summary>
+/// 域 guidance 的<b>下发形态</b>闭集（BUG-4 / 方案 §7.4；配置键 <c>FeishuAgent:GuidanceMode</c>）。
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>要解决的问题（BUG-4）</b>：L1 域资产在 instructions 里<b>全文拼接</b>，总量随域数线性增长——
+/// 实测 23 域 ≈25,209 字符 / 预算 32,768，专题一新增 5~7 域后<b>必然触顶</b>；
+/// 而超限策略是<b>整域丢弃</b>（尾部域静默失去引导，R5/B-12 已修过的失败形态会复现）。
+/// </para>
+/// <para>
+/// <b>routing（默认）</b>：每域只下发<b>一行路由摘要</b>（域职责 + 全文获取指引，≤256 字符/域），
+/// 全文退居"被引用资产"——进程内经 <c>feishu.guidance_read</c> 按需读 L2 主题，
+/// MCP 客户端经 <c>resources/read feishu-guidance://{domain}</c> 读 L1 全文。
+/// 这正是官方 lark-cli"渐进披露"的本地等价物，且<b>不随域数线性增长</b>。
+/// </para>
+/// <para>
+/// <b>full</b>：保持改造前的全文拼接形态（宿主可回退；域数多时会触发整域丢弃，
+/// 故 <c>Truncated</c>/<c>OmittedDomains</c> 信号必须被宿主消费）。
+/// </para>
+/// <para>
+/// <b>默认取 routing 的理由</b>：它是"任何域数下都零丢弃"的形态，且两条链（进程内 / MCP）
+/// 共用同一份常量与同一份摘要（不造第二真相源）；full 保留为显式回退开关而非默认。
+/// </para>
+/// </remarks>
+public static class GuidanceModes
+{
+    /// <summary>全量下发（每域 L1 全文；域多时会按预算整域丢弃）。</summary>
+    public const string Full = "full";
+
+    /// <summary><b>默认</b>：每域一行路由摘要（≤256 字符/域），全文按需读取。</summary>
+    public const string Routing = "routing";
+
+    /// <summary>合法取值清单（错误消息用）。</summary>
+    public const string AllowedValuesText = $"{Full} / {Routing}";
+
+    /// <summary>是否合法取值。</summary>
+    /// <param name="mode">模式字面量。</param>
+    public static bool IsValid(string? mode) => mode is Full or Routing;
+}

@@ -117,6 +117,10 @@ internal static class ToolResultPipeline
     /// 错误出口（<b>唯一</b>的错误载荷构造点）：F 首行结构化 JSON + 人类可读正文，经预算截断。
     /// </summary>
     /// <remarks>
+    /// E-1 扩展：<paramref name="requiredScopes"/> 只在<b>确有 scope 事实</b>时传入
+    /// （授权类拒绝路径从工具声明投影），其他分类恒为 <see langword="null"/>。
+    /// </remarks>
+    /// <remarks>
     /// B-2 的三处同构构造（<c>ToolExecutor.FromStructuredError</c>、
     /// <c>FeishuToolBinding.EgressResult(toolName, category, subtype, reason, apiCode)</c> 与
     /// <c>FeishuToolBinding</c> 的 catch 路径）全部收敛到此处——错误契约演进时只需改一处。
@@ -131,6 +135,8 @@ internal static class ToolResultPipeline
     /// <param name="trace">追踪号（可空；仅 catch 路径携带）。</param>
     /// <param name="attempts">尝试次数（默认 1；重试路径回填实际次数）。</param>
     /// <param name="suggestions">恢复候选（BUG-8；可空——无<b>事实</b>来源时不得杜撰）。</param>
+    /// <param name="requiredScopes">E-1：工具声明的所需权限（仅授权类拒绝路径传入；可空）。</param>
+    /// <param name="retryAfterSeconds">建议等待秒数（可空）。</param>
     /// <returns>带结构化载荷的错误结果（<b>未净化</b>——净化由调用方按各自出口纪律施加）。</returns>
     public static FeishuToolResult Error(
         string toolName,
@@ -141,9 +147,12 @@ internal static class ToolResultPipeline
         int? apiCode = null,
         string? trace = null,
         int attempts = 1,
-        IReadOnlyList<string>? suggestions = null)
+        IReadOnlyList<string>? suggestions = null,
+        IReadOnlyList<string>? requiredScopes = null,
+        int? retryAfterSeconds = null)
     {
-        var payload = ToolErrorFactory.Create(toolName, category, subtype, apiCode, trace, attempts, suggestions);
+        var payload = ToolErrorFactory.Create(
+            toolName, category, subtype, apiCode, trace, attempts, suggestions, requiredScopes, retryAfterSeconds);
         return FromErrorText(payload, ToolErrorFactory.Compose(payload, reason), maxLength);
     }
 
@@ -200,7 +209,20 @@ internal static class ToolErrorFactory
     /// <param name="trace">追踪号（可空）。</param>
     /// <param name="attempts">尝试次数（默认 1）。</param>
     /// <param name="suggestions">恢复候选（BUG-8；可空）。</param>
+    /// <param name="requiredScopes">E-1：工具声明的所需权限（仅授权类拒绝路径传入；可空）。</param>
+    /// <param name="retryAfterSeconds">建议等待秒数（见 <see cref="ToolError.RetryAfterSeconds"/> 的语义说明）。</param>
     /// <returns>错误载荷。</returns>
+    /// <remarks>
+    /// <para>
+    /// <b>E-2（codemeta 接入的<b>唯一</b>消费点）</b>：<paramref name="apiCode"/> 命中码表时，
+    /// 把"语义 + 行动"并入 <c>suggestions</c>（未收录的码<b>不产出</b>候选——保持中性 <c>upstream_error</c> 语义）。
+    /// 放在本工厂而不是各调用点，是为了让"新增一条错误路径"自动获得码表增强（漏接线不可能发生）。
+    /// </para>
+    /// <para>
+    /// <b>合并顺序</b>：码表候选在前（它是码级事实）、调用方候选在后（更具体，如闭集参数取值）；
+    /// 载荷侧仍有条数上界（<c>MaxSuggestionCount</c>），故两段都可能被截。
+    /// </para>
+    /// </remarks>
     public static ToolError Create(
         string toolName,
         ToolErrorCategory category,
@@ -208,22 +230,63 @@ internal static class ToolErrorFactory
         int? apiCode = null,
         string? trace = null,
         int attempts = 1,
-        IReadOnlyList<string>? suggestions = null)
+        IReadOnlyList<string>? suggestions = null,
+        IReadOnlyList<string>? requiredScopes = null,
+        int? retryAfterSeconds = null)
         => new(
             Category: FeishuToolBinding.CategoryLiteral(category),
             Subtype: subtype,
             Retryable: category == ToolErrorCategory.Retryable,
-            RetryAfterSeconds: null,
+            RetryAfterSeconds: retryAfterSeconds,
             ApiCode: apiCode,
             Attempts: attempts,
             Trace: trace,
             Tool: toolName,
-            Suggestions: suggestions);
+            Suggestions: MergeSuggestions(ToolErrorCodeMeta.BuildSuggestions(apiCode), suggestions),
+            RequiredScopes: requiredScopes);
 
-    /// <summary>拼装"首行结构化 JSON 载荷 + 人类可读正文"。</summary>
+    /// <summary>
+    /// 合并码表候选与调用方候选（先码表后调用方；两者都空时为 <see langword="null"/>——
+    /// 不得产出空数组，那会被模型读成"有建议但为空"）。
+    /// </summary>
+    private static IReadOnlyList<string>? MergeSuggestions(
+        IReadOnlyList<string>? codeMetaSuggestions,
+        IReadOnlyList<string>? callerSuggestions)
+    {
+        var hasCodeMeta = codeMetaSuggestions is { Count: > 0 };
+        var hasCaller = callerSuggestions is { Count: > 0 };
+
+        if (!hasCodeMeta)
+        {
+            return hasCaller ? callerSuggestions : null;
+        }
+
+        if (!hasCaller)
+        {
+            return codeMetaSuggestions;
+        }
+
+        var merged = new List<string>(codeMetaSuggestions!.Count + callerSuggestions!.Count);
+        merged.AddRange(codeMetaSuggestions);
+        merged.AddRange(callerSuggestions);
+        return merged;
+    }
+
+    /// <summary>
+    /// 拼装"首行结构化 JSON 载荷 + 恢复提示行 + 人类可读正文"。
+    /// </summary>
     /// <param name="payload">错误载荷。</param>
     /// <param name="humanReadable">人类可读正文（<c>[tool_error] …</c> 形态）。</param>
     /// <returns>组合文本（未净化、未截断）。</returns>
+    /// <remarks>
+    /// <b>E-3</b>：hint 行插在载荷之后、正文之前——模型与宿主都<b>不需要解析载荷结构</b>
+    /// 就能拿到"下一步做什么"（<c>internal/recovery/hint.go</c> 的本地等价物）。
+    /// 该插入点唯一，故"新增错误路径自动带 hint"与"载荷 ≤512 字节首行"两个不变量同时成立。
+    /// </remarks>
     public static string Compose(ToolError payload, string humanReadable)
-        => ToolErrorPayloadSerializer.Serialize(payload) + "\n" + humanReadable;
+        => ToolErrorPayloadSerializer.Serialize(payload)
+            + "\n"
+            + ToolErrorHintRenderer.Render(payload)
+            + "\n"
+            + humanReadable;
 }

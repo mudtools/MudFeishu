@@ -50,6 +50,10 @@ internal sealed class OkrTools(
     private readonly Mud.Feishu.IFeishuTenantV2OkrCategory? _okrCategoryClient = okrCategoryClient;
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
+    /// <summary>P-3/P-4 (unified pagination): fetch_all item/page budgets come from host options.</summary>
+    private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
+
     /// <summary>okr.list_cycles：列出用户的 OKR 周期。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantOkrListCyclesTool))]
     public Task<FeishuToolResult> ListCyclesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
@@ -61,10 +65,16 @@ internal sealed class OkrTools(
                 ?? throw new ArgumentException("okr.list_cycles 需要 IFeishuTenantV2OkrCycle——宿主须启用 OKR 域客户端");
             var args = OkrListCyclesArgs.Unpack(arguments);
 
-            var outcome = FeishuApiResultReader.Read(await client
-                .ListCyclesAsync(args.UserId, page_size: DefaultPageSize, page_token: args.PageToken, cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
-            return executor.FromApi(outcome, ProjectCycles);
+            // P-3（统一分页语义）：聚合路径与单页路径共用**同一次调用定义**与**同一份投影**
+            // （避免"两套参数面/两套白名单"漂移；也是"fetch_all=false 逐字节回归"的结构保证）。
+            async Task<FeishuApiOutcome<ListCyclesResult>> FetchPageAsync(string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await client
+                    .ListCyclesAsync(args.UserId, page_size: DefaultPageSize, page_token: token, cancellationToken: ct)
+                    .ConfigureAwait(false));
+
+            return await executor.FromPagedApiAsync(
+                FetchPageAsync, ProjectCycles, args.FetchAll, args.MaxItems, args.PageToken,
+                _maxAutoFetchItems, _maxAutoFetchPages, cancellationToken).ConfigureAwait(false);
         });
     }
 
@@ -79,10 +89,16 @@ internal sealed class OkrTools(
                 ?? throw new ArgumentException("okr.list_objectives 需要 IFeishuTenantV2OkrCycle——宿主须启用 OKR 域客户端");
             var args = OkrListObjectivesArgs.Unpack(arguments);
 
-            var outcome = FeishuApiResultReader.Read(await client
-                .ListCycleObjectivesAsync(args.CycleId, page_size: DefaultPageSize, page_token: args.PageToken, cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
-            return executor.FromApi(outcome, ProjectObjectives);
+            // P-3（统一分页语义）：聚合路径与单页路径共用**同一次调用定义**与**同一份投影**
+            // （避免"两套参数面/两套白名单"漂移；也是"fetch_all=false 逐字节回归"的结构保证）。
+            async Task<FeishuApiOutcome<ListCycleObjectivesResult>> FetchPageAsync(string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await client
+                    .ListCycleObjectivesAsync(args.CycleId, page_size: DefaultPageSize, page_token: token, cancellationToken: ct)
+                    .ConfigureAwait(false));
+
+            return await executor.FromPagedApiAsync(
+                FetchPageAsync, ProjectObjectives, args.FetchAll, args.MaxItems, args.PageToken,
+                _maxAutoFetchItems, _maxAutoFetchPages, cancellationToken).ConfigureAwait(false);
         });
     }
 
@@ -115,10 +131,16 @@ internal sealed class OkrTools(
                 ?? throw new ArgumentException("okr.list_key_results 需要 IFeishuTenantV2OkrKeyResult——宿主须启用 OKR 域客户端");
             var args = OkrListKeyResultsArgs.Unpack(arguments);
 
-            var outcome = FeishuApiResultReader.Read(await client
-                .ListObjectiveKeyResultsAsync(args.ObjectiveId, page_size: DefaultPageSize, page_token: args.PageToken, cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
-            return executor.FromApi(outcome, ProjectKeyResults);
+            // P-3（统一分页语义）：聚合路径与单页路径共用**同一次调用定义**与**同一份投影**
+            // （避免"两套参数面/两套白名单"漂移；也是"fetch_all=false 逐字节回归"的结构保证）。
+            async Task<FeishuApiOutcome<ListObjectiveKeyResultsResult>> FetchPageAsync(string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await client
+                    .ListObjectiveKeyResultsAsync(args.ObjectiveId, page_size: DefaultPageSize, page_token: token, cancellationToken: ct)
+                    .ConfigureAwait(false));
+
+            return await executor.FromPagedApiAsync(
+                FetchPageAsync, ProjectKeyResults, args.FetchAll, args.MaxItems, args.PageToken,
+                _maxAutoFetchItems, _maxAutoFetchPages, cancellationToken).ConfigureAwait(false);
         });
     }
 
@@ -151,10 +173,16 @@ internal sealed class OkrTools(
                 ?? throw new ArgumentException("okr.list_objective_progresses 需要 IFeishuTenantV2OkrProgress——宿主须启用 OKR 域客户端");
             var args = OkrListObjectiveProgressesArgs.Unpack(arguments);
 
-            var outcome = FeishuApiResultReader.Read(await client
-                .ListObjectiveProgressesAsync(args.ObjectiveId, page_size: DefaultPageSize, page_token: args.PageToken, cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
-            return executor.FromApi(outcome, ProjectProgresses);
+            // P-3（统一分页语义）：聚合路径与单页路径共用**同一次调用定义**与**同一份投影**
+            // （避免"两套参数面/两套白名单"漂移；也是"fetch_all=false 逐字节回归"的结构保证）。
+            async Task<FeishuApiOutcome<ListProgressesResult>> FetchPageAsync(string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await client
+                    .ListObjectiveProgressesAsync(args.ObjectiveId, page_size: DefaultPageSize, page_token: token, cancellationToken: ct)
+                    .ConfigureAwait(false));
+
+            return await executor.FromPagedApiAsync(
+                FetchPageAsync, ProjectProgresses, args.FetchAll, args.MaxItems, args.PageToken,
+                _maxAutoFetchItems, _maxAutoFetchPages, cancellationToken).ConfigureAwait(false);
         });
     }
 
@@ -169,10 +197,16 @@ internal sealed class OkrTools(
                 ?? throw new ArgumentException("okr.list_key_result_progresses 需要 IFeishuTenantV2OkrProgress——宿主须启用 OKR 域客户端");
             var args = OkrListKeyResultProgressesArgs.Unpack(arguments);
 
-            var outcome = FeishuApiResultReader.Read(await client
-                .ListKeyResultProgressesAsync(args.KeyResultId, page_size: DefaultPageSize, page_token: args.PageToken, cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
-            return executor.FromApi(outcome, ProjectProgresses);
+            // P-3（统一分页语义）：聚合路径与单页路径共用**同一次调用定义**与**同一份投影**
+            // （避免"两套参数面/两套白名单"漂移；也是"fetch_all=false 逐字节回归"的结构保证）。
+            async Task<FeishuApiOutcome<ListProgressesResult>> FetchPageAsync(string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await client
+                    .ListKeyResultProgressesAsync(args.KeyResultId, page_size: DefaultPageSize, page_token: token, cancellationToken: ct)
+                    .ConfigureAwait(false));
+
+            return await executor.FromPagedApiAsync(
+                FetchPageAsync, ProjectProgresses, args.FetchAll, args.MaxItems, args.PageToken,
+                _maxAutoFetchItems, _maxAutoFetchPages, cancellationToken).ConfigureAwait(false);
         });
     }
 
@@ -187,10 +221,16 @@ internal sealed class OkrTools(
                 ?? throw new ArgumentException("okr.list_periods 需要 IFeishuTenantV1OkrPeriod——宿主须启用 OKR 域客户端");
             var args = OkrListPeriodsArgs.Unpack(arguments);
 
-            var outcome = FeishuApiResultReader.Read(await client
-                .ListPeriodsAsync(page_size: DefaultPageSize, page_token: args.PageToken, cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
-            return executor.FromApi(outcome, ProjectPeriods);
+            // P-3（统一分页语义）：聚合路径与单页路径共用**同一次调用定义**与**同一份投影**
+            // （避免"两套参数面/两套白名单"漂移；也是"fetch_all=false 逐字节回归"的结构保证）。
+            async Task<FeishuApiOutcome<ListPeriodsResult>> FetchPageAsync(string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await client
+                    .ListPeriodsAsync(page_size: DefaultPageSize, page_token: token, cancellationToken: ct)
+                    .ConfigureAwait(false));
+
+            return await executor.FromPagedApiAsync(
+                FetchPageAsync, ProjectPeriods, args.FetchAll, args.MaxItems, args.PageToken,
+                _maxAutoFetchItems, _maxAutoFetchPages, cancellationToken).ConfigureAwait(false);
         });
     }
 
@@ -211,10 +251,16 @@ internal sealed class OkrTools(
                 throw new ArgumentException($"owner_type 只接受 user 或 department，实际: {ownerType}");
             }
 
-            var outcome = FeishuApiResultReader.Read(await client
-                .ListCategoriesAsync(page_size: DefaultPageSize, page_token: args.PageToken, owner_type: ownerType, cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
-            return executor.FromApi(outcome, ProjectCategories);
+            // P-3（统一分页语义）：聚合路径与单页路径共用**同一次调用定义**与**同一份投影**
+            // （避免"两套参数面/两套白名单"漂移；也是"fetch_all=false 逐字节回归"的结构保证）。
+            async Task<FeishuApiOutcome<ListCategoriesResult>> FetchPageAsync(string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await client
+                    .ListCategoriesAsync(page_size: DefaultPageSize, page_token: token, owner_type: ownerType, cancellationToken: ct)
+                    .ConfigureAwait(false));
+
+            return await executor.FromPagedApiAsync(
+                FetchPageAsync, ProjectCategories, args.FetchAll, args.MaxItems, args.PageToken,
+                _maxAutoFetchItems, _maxAutoFetchPages, cancellationToken).ConfigureAwait(false);
         });
     }
 

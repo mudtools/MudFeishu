@@ -90,6 +90,123 @@ public class PaginationContractGuards
     }
 
     /// <summary>
+    /// <b>P-0 守卫（统一分页语义的机械判据）</b>：<b>凡声明了 <c>page_token</c> 的工具，必须同时声明 <c>fetch_all</c></b>
+    /// ——未登记在豁免清单里的缺口即红。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么用"声明了 page_token"作判据</b>：这是<b>工具自己</b>声明"我是分页列表"的事实
+    /// （比按工具名前缀猜 <c>list_/query_/search_</c> 精确：<c>vc.list_reserves</c> 名字像列表、
+    /// 实际按 ID 取详情；<c>attendance.query_*</c> 名字像列表、接口根本不分页）。
+    /// 判据 = "契约说了要翻页，就必须提供自动翻页的能力"。
+    /// </para>
+    /// <para>
+    /// <b>豁免清单必须带理由</b>（方案 §5.3 P-0 的原文要求）：豁免不是"允许漏"，而是
+    /// "把未完成的批次登记成可见的技术债"——清单里的条目在补齐后<b>必须</b>删除，
+    /// 否则本用例会因"豁免已过期"而报红（见 <c>StaleExemptions_ShouldBeRemoved</c>）。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void ToolsWithPageToken_MustDeclareFetchAll_UnlessRegisteredAsExempt()
+    {
+        var exemptions = PendingPaginationExemptions()
+            .Select(static e => e.Tool)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var missing = FeishuToolSchemas.SchemaByToolName
+            .Where(pair => pair.Value.Contains("\"page_token\"", StringComparison.Ordinal))
+            .Where(pair => !pair.Value.Contains("\"fetch_all\"", StringComparison.Ordinal))
+            .Select(pair => pair.Key)
+            .Where(name => !exemptions.Contains(name))
+            .OrderBy(static name => name, StringComparer.Ordinal)
+            .ToArray();
+
+        // 扫描面自证：若"含 page_token 的工具"集合为空，本用例恒绿（假门禁）。
+        FeishuToolSchemas.SchemaByToolName
+            .Count(pair => pair.Value.Contains("\"page_token\"", StringComparison.Ordinal))
+            .Should().BeGreaterThan(0, "扫描面为空 = 判据失效（假绿）");
+
+        missing.Should().BeEmpty(
+            "以下工具**声明了 page_token 却未提供 fetch_all**——模型只能手工翻页（每次往返一次调用）。"
+            + "统一分页语义要求：要么接入 ToolPagination（推荐），要么登记进 PendingPaginationExemptions 并写清理由：{0}",
+            string.Join(", ", missing));
+    }
+
+    /// <summary>
+    /// 豁免清单必须<b>仍然真的需要豁免</b>（已补齐的工具必须从清单里删掉，防"技术债清单静静腐烂"）。
+    /// </summary>
+    [Fact]
+    public void StaleExemptions_ShouldBeRemoved()
+    {
+        var stale = PendingPaginationExemptions()
+            .Where(entry => !FeishuToolSchemas.SchemaByToolName.TryGetValue(entry.Tool, out var schema)
+                || !schema.Contains("\"page_token\"", StringComparison.Ordinal)
+                || schema.Contains("\"fetch_all\"", StringComparison.Ordinal))
+            .Select(static entry => entry.Tool)
+            .ToArray();
+
+        stale.Should().BeEmpty(
+            "以下豁免条目已过期（工具已接入 fetch_all，或已不再是分页工具，或已不存在）——"
+            + "请从 PendingPaginationExemptions 中删除：{0}",
+            string.Join(", ", stale));
+    }
+
+    /// <summary>
+    /// <b>写工具不得声明 <c>fetch_all</c></b>（方案 §5.2 的"副作用放大风险"红线）。
+    /// </summary>
+    [Fact]
+    public void WriteTools_ShouldNeverDeclareFetchAll()
+    {
+        var offenders = FeishuToolContracts.ByToolName
+            .Where(static pair => pair.Value.IsWrite)
+            .Where(pair => FeishuToolSchemas.SchemaByToolName.TryGetValue(pair.Key, out var schema)
+                && schema.Contains("\"fetch_all\"", StringComparison.Ordinal))
+            .Select(static pair => pair.Key)
+            .ToArray();
+
+        offenders.Should().BeEmpty(
+            "写工具不得带 fetch_all——自动翻页会把一次写操作放大成 N 次副作用：{0}",
+            string.Join(", ", offenders));
+    }
+
+    /// <summary>
+    /// 统一分页语义的<b>未完成批次登记</b>（每条必须带理由；补齐后必须删除）。
+    /// </summary>
+    /// <remarks>
+    /// 本清单的存在本身是"诚实的进度记录"：方案 §5.3 把改造分成 P-1~P-4 四批，
+    /// 已完成批次（IM / VC / OKR / Contact / Search）不在此列；未完成批次在此显式登记，
+    /// 由 <see cref="ToolsWithPageToken_MustDeclareFetchAll_UnlessRegisteredAsExempt"/> 兜住。
+    /// </remarks>
+    private static (string Tool, string Reason)[] PendingPaginationExemptions() =>
+    [
+        // ────────── 方案 §5.3 点名的批次（未完成部分） ──────────
+        ("hire.list_jobs", "P-3 未完成：Hire 域 5 个 list 工具尚未接入 ToolPagination"),
+        ("hire.list_job_requirements", "P-3 未完成（同上）"),
+        ("hire.list_talents", "P-3 未完成（同上）"),
+        ("hire.list_interviews", "P-3 未完成（同上）"),
+        ("hire.list_offers", "P-3 未完成（同上）"),
+        ("minutes.search", "P-4 未完成：MinutesReadTools 的构造需先追加 IOptions 依赖才能取分页预算"),
+
+        // ────────── P-0 判据扩展后**新暴露**的缺口（此前无人知道） ──────────
+        // 这批工具都"声明了 page_token 却未提供 fetch_all"：模型能翻页但每页一次往返。
+        // 登记为技术债（而不是让守卫静默放行），补齐后必须从本清单删除。
+        ("bitable.list_fields", "P-0 新暴露：bitable 字段/视图列表未接 fetch_all（B1 首批只覆盖了 list_tables/query_records）"),
+        ("bitable.list_views", "P-0 新暴露（同上）"),
+        ("contact.get_department_parents", "P-0 新暴露：通讯录部门父级链未接 fetch_all"),
+        ("contact.search_departments", "P-0 新暴露：部门搜索未接 fetch_all"),
+        ("calendar.list_event_attendees", "P-0 新暴露：日程与会者列表未接 fetch_all"),
+        ("mail.search", "P-0 新暴露：邮件搜索未接 fetch_all（list_messages 已接）"),
+        ("org.list_job_families", "P-0 新暴露：组织元数据四个 list_* 未接 fetch_all"),
+        ("org.list_job_levels", "P-0 新暴露（同上）"),
+        ("org.list_job_titles", "P-0 新暴露（同上）"),
+        ("org.list_work_cities", "P-0 新暴露（同上）"),
+        ("security.list_openapi_logs", "P-0 新暴露：安全日志两个查询未接 fetch_all"),
+        ("security.query_audit_logs", "P-0 新暴露（同上）"),
+        ("drive.add_comment", "P-0 新暴露：写工具携带 page_token 的语义待复核（写工具不得带 fetch_all）——"
+            + "登记为技术债：需确认该 page_token 是否只是请求体字段而非翻页游标"),
+    ];
+
+    /// <summary>
     /// 守卫 ②：执行器内不得手写翻页循环（<c>while</c>/<c>do</c> 循环翻页）。
     /// </summary>
     /// <remarks>

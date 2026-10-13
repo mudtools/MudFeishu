@@ -63,6 +63,18 @@ internal static class ToolErrorSubtype
     public const string IdentityMismatch = "identity_mismatch";
     public const string ToolNotAllowed = "tool_not_allowed";
 
+    // S-2 / S-1（glob 策略轴）：域级拒绝与写工具拒绝各占一个 reason_code。
+    /// <summary>域级策略拒绝（S-1 的 <c>ToolPolicy:Domains</c> 命中；比"工具未列明"更精确）。</summary>
+    public const string DomainNotAllowed = "domain_not_allowed";
+    /// <summary>写工具被策略拒绝（命中 Deny glob 或未列明于 Allow；与只读拒绝区分，便于宿主定位）。</summary>
+    public const string WriteNotAllowed = "write_not_allowed";
+
+    // ⚠️ S-2 登记（**不适用**，防后人误补）：官方 taxonomy 里还有一个 `risk_not_annotated`
+    //    （"工具没有风险注解"）。**本仓不适用**：所有工具的风险都由生成器产出
+    //    （WriteVerbKeywords 危险词 + 人工注解，见 FeishuToolProfile.WriteVerbKeywords），
+    //    不存在"无注解的工具"这一形态——补一个永不产出的常量就是幽灵子类（DP-R7-4 明文禁止）。
+    //    若将来出现"运行期动态注册的工具"，再补该码并附产出点。
+
     // T4 / D4：单轮工具预算耗尽——模型应基于已有信息直接回答，不要再次调用工具。
     /// <summary>本轮工具调用预算已用尽——不可重试，模型应基于已有信息直接回答。</summary>
     public const string ToolBudgetExceeded = "tool_budget_exceeded";
@@ -116,6 +128,18 @@ internal static class ToolErrorClassifier
     /// <summary>飞书权限类业务码（99991663=无权限操作 / 99991661=权限不足，控制台权限未开通同段位）。</summary>
     private static readonly int[] ForbiddenApiCodes = [99991663, 99991661];
 
+    /// <summary>
+    /// 飞书<b>可重试</b>业务码（E-2 扩展）：<c>99991400</c> = 平台系统繁忙（限流/过载）。
+    /// </summary>
+    /// <remarks>
+    /// <b>证据</b>：<c>documents/ApiDocs</c> 的接口文档明确写"…（如 <b>99991400 系统繁忙</b>、
+    /// 99991672 无权限等业务错误）"；语义是"服务端暂时无法处理"，与 429/5xx 同类。
+    /// 该码可能以 <b>HTTP 200 + JSON 错误体</b>形态返回（见同一文档），即不会走 HTTP 段位判定——
+    /// 若只靠 <see cref="ClassifyHttpStatus"/>，它会被误判为不可重试的 <c>api/upstream_error</c>，
+    /// 模型因此放弃一个"本该退避重试"的调用。故按码补一条可重试路径。
+    /// </remarks>
+    private static readonly int[] RetryableApiCodes = [99991400];
+
     /// <summary>从异常类型分类（执行链 catch 路径；取消异常由调用方先行放行，不入此分类）。</summary>
     public static (ToolErrorCategory Category, string Subtype) Classify(Exception exception) => exception switch
     {
@@ -127,11 +151,19 @@ internal static class ToolErrorClassifier
         _ => (ToolErrorCategory.Internal, ToolErrorSubtype.Unexpected),
     };
 
-    /// <summary>从飞书 API code 分类（<c>FeishuApiOutcome</c> 解包路径）。</summary>
+    /// <summary>
+    /// 从飞书 API code 分类（<c>FeishuApiOutcome</c> 解包路径）。
+    /// </summary>
+    /// <remarks>
+    /// 判定顺序：<b>权限类 → 可重试类 → 其余业务错误</b>。权限与可重试互斥（码表不重叠），
+    /// 顺序只影响可读性；真正的纪律是<b>未收录的码一律落到中性的 <c>api/upstream_error</c></b>——
+    /// 不猜语义（DP-R7-4）。
+    /// </remarks>
     public static (ToolErrorCategory Category, string Subtype) ClassifyCode(int? code) => code switch
     {
         null => (ToolErrorCategory.Api, ToolErrorSubtype.UpstreamError),
         { } value when ForbiddenApiCodes.Contains(value) => (ToolErrorCategory.Authorization, ToolErrorSubtype.AuthorizationDenied),
+        { } value when RetryableApiCodes.Contains(value) => (ToolErrorCategory.Retryable, ToolErrorSubtype.RateLimited),
         _ => (ToolErrorCategory.Api, ToolErrorSubtype.UpstreamError),
     };
 

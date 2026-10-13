@@ -36,6 +36,64 @@ public class GuidanceToolReferenceContractGuards
     private static readonly Regex ToolReference =
         new(@"feishu\.([a-z][a-z0-9_]*)", RegexOptions.Compiled);
 
+    /// <summary>
+    /// <b>AD-3（防重复门禁第 3 条）：L2 主题必须在其所属域 L1 中被引用</b>（引用完整性闭环）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>要防的形态</b>：新增一篇 <c>Guidance/{domain}/{topic}.md</c> 却忘了在 <c>{domain}.md</c> 里
+    /// 给出"什么时候该读它"的指引——资产存在、<c>guidance_read</c> 也读得到，但模型<b>永远不知道该去读</b>
+    /// （属于"有资产无入口"，与"有工具无 guidance"是同一类静默失导）。
+    /// </para>
+    /// <para>
+    /// <b>判据（宽进严出）</b>：L1 文本里出现 <c>{domain}/{topic}</c> 或主题 slug 即算被引用
+    /// （两种形态在本仓都真实存在：既写键又写主题名）。不要求特定句式——
+    /// 强制句式会让资产写作变成"装配给正则看的文本"，而非给模型看的引导。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void Level2Topics_ShouldBeReferencedFromTheirDomainL1()
+    {
+        var guidanceRoot = Path.Combine(FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Guidance");
+        var referenced = 0;
+        var orphans = new List<string>();
+
+        foreach (var domainDirectory in Directory.GetDirectories(guidanceRoot))
+        {
+            var domain = Path.GetFileName(domainDirectory);
+            var l1Path = Path.Combine(guidanceRoot, domain + ".md");
+            if (!File.Exists(l1Path))
+            {
+                orphans.Add($"{domain}/：缺少 {domain}.md（L2 没有所属域的 L1 入口）");
+                continue;
+            }
+
+            var l1 = File.ReadAllText(l1Path);
+            foreach (var topicFile in Directory.GetFiles(domainDirectory, "*.md", SearchOption.AllDirectories))
+            {
+                var topic = Path.GetFileNameWithoutExtension(topicFile);
+                var isReferenced = l1.Contains($"{domain}/{topic}", StringComparison.Ordinal)
+                    || l1.Contains(topic, StringComparison.Ordinal);
+
+                if (isReferenced)
+                {
+                    referenced++;
+                }
+                else
+                {
+                    orphans.Add($"{domain}/{topic}");
+                }
+            }
+        }
+
+        referenced.Should().BeGreaterThan(0, "扫描面为空 = 判据失效（没有 L2 资产或路径错了 ⇒ 假绿）");
+
+        orphans.Should().BeEmpty(
+            "以下 L2 主题在其所属域 L1 中没有任何引用——模型拿到 L1 也不知道「该去读它」，"
+            + "资产等于不存在（请在 {domain}.md 的路由/避坑节里指出何时读该主题）：{0}",
+            string.Join(", ", orphans));
+    }
+
     [Fact]
     public void GuidanceToolReferences_ShouldAllExistInToolContracts()
     {

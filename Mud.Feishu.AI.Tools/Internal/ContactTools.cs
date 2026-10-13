@@ -37,6 +37,10 @@ internal sealed class ContactTools(
         ?? throw new ArgumentNullException(nameof(userClient));
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
+    /// <summary>P-4（统一分页语义）：<c>fetch_all</c> 的条目/页数预算（来自宿主配置）。</summary>
+    private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
+
     /// <summary>contact.resolve_user：邮箱/手机号 → 用户 ID。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantContactResolveUserTool))]
     public Task<FeishuToolResult> ResolveUsersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
@@ -91,10 +95,15 @@ internal sealed class ContactTools(
         {
             var args = ContactSearchUserArgs.Unpack(arguments);
 
-            var outcome = FeishuApiResultReader.Read(await _userClient
-                .GetUsersByKeywordAsync(args.Query, PageSizes.ContactSearch, args.PageToken, cancellationToken)
-                .ConfigureAwait(false));
-            return executor.FromApi(outcome, ProjectSearchUsers);
+            // P-4：统一分页出口——fetch_all 聚合与单页共用**同一次调用定义**与**同一份投影**。
+            async Task<FeishuApiOutcome<UserSearchListResult>> FetchPageAsync(string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await _userClient
+                    .GetUsersByKeywordAsync(args.Query, PageSizes.ContactSearch, token, ct)
+                    .ConfigureAwait(false));
+
+            return await executor.FromPagedApiAsync(
+                FetchPageAsync, ProjectSearchUsers, args.FetchAll, args.MaxItems, args.PageToken,
+                _maxAutoFetchItems, _maxAutoFetchPages, cancellationToken).ConfigureAwait(false);
         });
     }
 

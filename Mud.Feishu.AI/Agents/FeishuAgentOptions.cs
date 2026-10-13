@@ -278,6 +278,36 @@ public sealed class FeishuAgentOptions
     public bool DeferTextUntilTurnComplete { get; set; } = false;
 
     /// <summary>
+    /// 工具策略（S-1：glob / 域级；消费点：<c>FeishuToolBinding</c> 策略轴，早于授权门禁）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 与 <see cref="Tools"/> / <see cref="WriteAllowList"/> <b>叠加收敛</b>（任一拒绝即拒）：
+    /// 白名单决定"哪些工具被启用"（装配期），本策略决定"已启用的工具里哪些允许执行"（运行期）。
+    /// </para>
+    /// <para>
+    /// <b>默认（四集合全空）不生效</b>——逐字节等价改造前行为；详见 <see cref="FeishuToolPolicyOptions"/>。
+    /// </para>
+    /// </remarks>
+    public FeishuToolPolicyOptions ToolPolicy { get; set; } = new();
+
+    /// <summary>
+    /// 域 guidance 下发形态（BUG-4 / 方案 §7.4；消费点：
+    /// <c>FeishuToolAIFunction.GetGuidance</c>——进程内 Agent 与 MCP <c>initialize.instructions</c> 共用同一份）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 取值：<c>full</c>（每域 L1 全文拼接）/ <c>routing</c>（<b>默认</b>：每域一行路由摘要 ≤256 字符，
+    /// 全文经 <c>feishu.guidance_read</c> 或 MCP <c>resources/read feishu-guidance://{domain}</c> 按需读取）。
+    /// </para>
+    /// <para>
+    /// <b>为什么默认 routing</b>：L1 全文总量随域数线性增长（实测 23 域 ≈25,209 / 预算 32,768），
+    /// 域扩容后必然触顶，而超限策略是<b>整域丢弃</b>（尾部域静默失导）——routing 在任何域数下都零丢弃。
+    /// </para>
+    /// </remarks>
+    public string GuidanceMode { get; set; } = GuidanceModes.Routing;
+
+    /// <summary>
     /// 用户令牌就绪探测模式（T1 / D1；消费点：<c>UserTokenPrecheck.ProbeAsync</c>）。
     /// </summary>
     /// <remarks>
@@ -394,7 +424,18 @@ public sealed class FeishuAgentOptions
                 $"FeishuAgent:{nameof(ToolRetry)}.{nameof(ToolRetry.MaxDelayMilliseconds)} ({ToolRetry.MaxDelayMilliseconds.ToString(CultureInfo.InvariantCulture)}) "
                 + $"不得小于 {nameof(ToolRetry.BaseDelayMilliseconds)} ({ToolRetry.BaseDelayMilliseconds.ToString(CultureInfo.InvariantCulture)})");
 
+        // S-1：工具策略合法性（glob 语法非法即拒——"拼错一个字符 ⇒ 策略静默不生效"是策略面
+        // 最危险的失败形态：宿主以为已收敛，实际零约束）。
+        (ToolPolicy ?? throw new InvalidOperationException(
+            $"FeishuAgent:{nameof(ToolPolicy)} 不得为 null（省略该节即「未配置」，无需显式置 null）")).Validate();
+
         // T1 / D1：用户令牌探测模式闭集校验（防拼写错误静默降级为 off 语义）。
+        if (!GuidanceModes.IsValid(GuidanceMode))
+            throw new InvalidOperationException(
+                $"FeishuAgent:{nameof(GuidanceMode)} 取值非法: '{GuidanceMode}'——"
+                + $"合法值为 {GuidanceModes.AllowedValuesText}（拼写错误会静默退回全文拼接，"
+                + "在域数增长后表现为整域丢弃——故必须装配期 fail-fast）");
+
         if (!UserTokenPrecheckModes.IsValid(UserTokenPrecheck))
             throw new InvalidOperationException(
                 $"FeishuAgent:{nameof(UserTokenPrecheck)} 取值非法: '{UserTokenPrecheck}'——"

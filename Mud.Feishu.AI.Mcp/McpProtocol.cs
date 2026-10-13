@@ -51,6 +51,16 @@ internal static class McpProtocol
     /// <summary><c>tools/call</c>：调用工具。</summary>
     public const string MethodToolsCall = "tools/call";
 
+    /// <summary>
+    /// <c>resources/list</c>：列出可读资源（M-2；资源清单为装配期常量，故无分页）。
+    /// </summary>
+    public const string MethodResourcesList = "resources/list";
+
+    /// <summary>
+    /// <c>resources/read</c>：读取资源正文（M-2；未知 URI 回 <c>-32602</c> + 合法前缀清单）。
+    /// </summary>
+    public const string MethodResourcesRead = "resources/read";
+
     /// <summary>JSON-RPC 2.0：请求体不是合法 JSON。</summary>
     public const int ErrorParseError = -32700;
 

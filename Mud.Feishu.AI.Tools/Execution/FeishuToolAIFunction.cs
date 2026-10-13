@@ -195,7 +195,14 @@ internal sealed class FeishuToolsToolSource : FeishuAgentToolSource
     /// </list>
     /// <b>零人工配置</b>：优先级完全由 <see cref="FeishuToolRegistry.EnabledTools"/> 派生
     /// （无需新增配置键，也不违反 R-4 "上限固化常量、不设公开配置键"的治理）。
-    /// 该顺序在"预算充足"（当前 16384 全域零丢弃）与"预算被调小"两种场景下都给出可断言的行为。
+    /// 该顺序在"预算充足"与"预算被调小"两种场景下都给出可断言的行为。
+    /// </para>
+    /// <para>
+    /// <b>BUG-4 / §7.4：下发形态由 <see cref="FeishuAgentOptions.GuidanceMode"/> 决定</b>——
+    /// <c>routing</c>（默认）时每域只注入一行路由摘要（≤256 字符），全文退居"被引用资产"
+    /// （进程内经 <c>feishu.guidance_read</c>，MCP 经 <c>resources/read</c>）；
+    /// <c>full</c> 时保持既有全文拼接。**排序语义在两种形态下都不变**（丢弃优先级仍按工具数降序），
+    /// 故"预算被调小丢的是长尾域"这一可断言语义不因形态切换而改变。
     /// </para>
     /// </remarks>
     public override IReadOnlyList<FeishuGuidanceBlock> GetGuidance(IServiceProvider serviceProvider)
@@ -229,12 +236,20 @@ internal sealed class FeishuToolsToolSource : FeishuAgentToolSource
             .OrderByDescending(static pair => pair.Value)
             .ThenBy(static pair => pair.Key, StringComparer.Ordinal);
 
+        // BUG-4 / §7.4：下发形态（routing = 每域一行路由摘要，全文按需读；full = 既有全文拼接）。
+        // 未解析到 Options 时按**默认值** routing 处理（与 FeishuAgentOptions 的默认一致，
+        // 不因"装配缺失"悄悄退回全文拼接——那正是域扩容后整域丢弃的失败形态）。
+        var mode = serviceProvider.GetService<IOptions<FeishuAgentOptions>>()?.Value?.GuidanceMode;
+        var routing = !string.Equals(mode, GuidanceModes.Full, StringComparison.Ordinal);
+
         var blocks = new List<FeishuGuidanceBlock>();
         foreach (var domain in domains)
         {
             if (FeishuToolGuidance.ByDomain.TryGetValue(domain.Key, out var content))
             {
-                blocks.Add(new FeishuGuidanceBlock(domain.Key, content));
+                blocks.Add(new FeishuGuidanceBlock(
+                    domain.Key,
+                    routing ? GuidanceRoutingSummary.Create(domain.Key, content) : content));
             }
         }
 

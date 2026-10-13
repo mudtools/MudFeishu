@@ -36,12 +36,14 @@ public class LingoToolsTests
     private static LingoTools CreateTools(
         Mock<Mud.Feishu.IFeishuTenantV1LingoRepo>? repo = null,
         Mock<Mud.Feishu.IFeishuTenantV1LingoClassification>? classification = null,
-        Mock<Mud.Feishu.IFeishuTenantV1LingoEntity>? entity = null)
+        Mock<Mud.Feishu.IFeishuTenantV1LingoEntity>? entity = null,
+        Mock<Mud.Feishu.IFeishuTenantV1LingoDraft>? draft = null)
         => new(
             Options.Create(new FeishuAgentOptions { Instructions = "test" }),
             repo?.Object,
             classification?.Object,
-            entity?.Object);
+            entity?.Object,
+            draft?.Object);
 
     private static JsonObject Payload(FeishuToolResult result)
         => JsonNode.Parse(result.ToString())!.AsObject();
@@ -252,6 +254,266 @@ public class LingoToolsTests
             result.Text.Should().NotBeNull("软缺席必须给可执行说明，而不是抛异常");
             result.Text.Should().Contain("未注册", "文案要说清是宿主未启用该 API，而不是模型参数错");
             result.Text.Should().Contain("tool_error", "必须是结构化错误（第一行紧凑 JSON），便于模型与宿主统一处理");
+        }
+    }
+
+    // ───────────────────── 写面（免审词条 CRUD + 草稿申请） ─────────────────────
+
+    private static Mock<Mud.Feishu.IFeishuTenantV1LingoEntity> WriteEntityClient(
+        Action? onCreate = null,
+        Action? onUpdate = null,
+        Action? onDelete = null)
+    {
+        var client = new Mock<Mud.Feishu.IFeishuTenantV1LingoEntity>();
+        client.Setup(c => c.CreateEntityAsync(
+                It.IsAny<CreateOrUpdateEntityRequest>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((CreateOrUpdateEntityRequest _, string? __, string? ___, CancellationToken ____) =>
+            {
+                onCreate?.Invoke();
+                return Ok(new CreateEntityResult { Entity = SampleEntity("ent_new", "OKR", "目标与关键结果") });
+            });
+
+        client.Setup(c => c.UpdateEntityAsync(
+                It.IsAny<string>(), It.IsAny<CreateOrUpdateEntityRequest>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string _, CreateOrUpdateEntityRequest __, string? ___, CancellationToken ____) =>
+            {
+                onUpdate?.Invoke();
+                return Ok(new UpdateEntityResult { Entity = SampleEntity("ent_1", "OKR", "目标与关键结果（改）") });
+            });
+
+        client.Setup(c => c.DeleteEntityAsync(
+                It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string _, string? __, string? ___, CancellationToken ____) =>
+            {
+                onDelete?.Invoke();
+                return Ok(new DeleteEntityResult());
+            });
+
+        return client;
+    }
+
+    private static Mock<Mud.Feishu.IFeishuTenantV1LingoDraft> WriteDraftClient(
+        Action? onCreate = null,
+        Action? onUpdate = null)
+    {
+        var client = new Mock<Mud.Feishu.IFeishuTenantV1LingoDraft>();
+        client.Setup(c => c.CreateDraftAsync(
+                It.IsAny<CreateOrUpdateEntityRequest>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((CreateOrUpdateEntityRequest _, string? __, string? ___, CancellationToken ____) =>
+            {
+                onCreate?.Invoke();
+                return Ok(new CreateDraftResult { Draft = new LingoDraft { DraftId = "dft_new", Entity = SampleEntity("ent_new", "OKR", "草稿释义") } });
+            });
+
+        client.Setup(c => c.UpdateDraftAsync(
+                It.IsAny<string>(), It.IsAny<CreateOrUpdateEntityRequest>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string _, CreateOrUpdateEntityRequest __, string? ___, CancellationToken ____) =>
+            {
+                onUpdate?.Invoke();
+                return Ok(new UpdateDraftResult { Draft = new LingoDraft { DraftId = "dft_1", Entity = SampleEntity("ent_1", "OKR", "草稿释义（改）") } });
+            });
+
+        return client;
+    }
+
+    /// <summary>dry_run 必须零调用下游（写工具第一道防线）。</summary>
+    [Fact]
+    public async Task CreateEntity_DryRun_Should_Not_Call_Downstream()
+    {
+        var calls = 0;
+        var client = WriteEntityClient(onCreate: () => calls++);
+
+        var result = await CreateTools(entity: client).CreateEntityAsync(
+            Args(("main_key", "OKR"), ("description", "目标与关键结果"), ("aliases", new[] { "Objectives" }), ("dry_run", true)),
+            CancellationToken.None);
+
+        calls.Should().Be(0, "dry_run=true 不得调用下游");
+        result.Text.Should().Contain("未调用下游");
+        result.Text.Should().Contain("POST");
+        result.Text.Should().Contain("main_key", "预演只报字段长度，不回原文");
+    }
+
+    /// <summary>实发：回执带 entity_id，且请求体按白名单合成（含展示状态）。</summary>
+    [Fact]
+    public async Task CreateEntity_Should_Project_EntityId_And_Build_Request()
+    {
+        CreateOrUpdateEntityRequest? captured = null;
+        var client = new Mock<Mud.Feishu.IFeishuTenantV1LingoEntity>();
+        client.Setup(c => c.CreateEntityAsync(
+                It.IsAny<CreateOrUpdateEntityRequest>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((CreateOrUpdateEntityRequest request, string? _, string? __, CancellationToken ___) =>
+            {
+                captured = request;
+                return Ok(new CreateEntityResult { Entity = SampleEntity("ent_new", "OKR", "目标与关键结果") });
+            });
+
+        var payload = Payload(await CreateTools(entity: client).CreateEntityAsync(
+            Args(
+                ("main_key", "OKR"),
+                ("description", "目标与关键结果"),
+                ("aliases", new[] { "Objectives", "O-K-R" }),
+                ("allow_highlight", false),
+                ("allow_search", true)),
+            CancellationToken.None));
+
+        captured!.MainKeys!.Length.Should().Be(1, "main_keys 最多 1 个");
+        captured.MainKeys[0].Key.Should().Be("OKR");
+        captured.MainKeys[0].DisplayStatus!.AllowHighlight.Should().BeFalse("allow_highlight 必须下发给平台");
+        captured.MainKeys[0].DisplayStatus.AllowSearch.Should().BeTrue();
+        captured.Aliases!.Length.Should().Be(2);
+        captured.Description.Should().Be("目标与关键结果");
+
+        payload["entity_id"]!.GetValue<string>().Should().Be("ent_new");
+        payload["created"]!.GetValue<bool>().Should().BeTrue();
+        payload["notice"]!.GetValue<string>().Should().Contain("免审", "必须复述免审直写这一后果");
+    }
+
+    /// <summary>description 与 rich_text 都空 ⇒ 平台会报 1540001，必须在 dry_run 之前拦下。</summary>
+    [Fact]
+    public async Task CreateEntity_Without_Description_Should_Reject_Before_DryRun()
+    {
+        var calls = 0;
+        var client = WriteEntityClient(onCreate: () => calls++);
+
+        var result = await CreateTools(entity: client).CreateEntityAsync(
+            Args(("main_key", "OKR"), ("dry_run", true)), CancellationToken.None);
+
+        calls.Should().Be(0, "参数非法时连预演都不放行");
+        result.Text.Should().Contain("tool_error");
+        result.Text.Should().Contain("1540001", "错误信息要带平台错误码，便于模型自查");
+    }
+
+    /// <summary>别名超 10 个 ⇒ 平台硬约束，必须拦。</summary>
+    [Fact]
+    public async Task CreateEntity_With_Too_Many_Aliases_Should_Reject()
+    {
+        var client = WriteEntityClient();
+
+        var result = await CreateTools(entity: client).CreateEntityAsync(
+            Args(
+                ("main_key", "OKR"),
+                ("description", "释义"),
+                ("aliases", Enumerable.Range(0, 11).Select(i => $"alias-{i}").ToArray())),
+            CancellationToken.None);
+
+        result.Text.Should().Contain("tool_error");
+        result.Text.Should().Contain("10", "要报出平台上限");
+    }
+
+    /// <summary>update_entity：覆盖式语义，回执给改动字段数 + 覆盖提醒。</summary>
+    [Fact]
+    public async Task UpdateEntity_Should_Project_Replace_Semantics()
+    {
+        var client = WriteEntityClient();
+
+        var payload = Payload(await CreateTools(entity: client).UpdateEntityAsync(
+            Args(("entity_id", "ent_1"), ("main_key", "OKR"), ("description", "新释义")),
+            CancellationToken.None));
+
+        payload["entity_id"]!.GetValue<string>().Should().Be("ent_1");
+        payload["updated_fields"]!.GetValue<int>().Should().Be(2);
+        payload["updated"]!.GetValue<bool>().Should().BeTrue();
+        payload["notice"]!.GetValue<string>().Should().Contain("覆盖式");
+    }
+
+    /// <summary>update_entity 缺 main_key ⇒ 由必填参数校验层拦（平台请求体口径：main_keys 必填）。</summary>
+    /// <remarks>
+    /// 这条用例同时钉住一个**设计修正**：最初我把 <c>main_key</c> 标成可选并写了
+    /// "不传则沿用原名"——但平台请求体要求 <c>main_keys</c> 必填，缺了必被拒。
+    /// 故改为必填参数（Required = true），由框架校验层统一拦，
+    /// 执行器里那个"一个字段都不传"的自定义分支随之成为死代码并被删除。
+    /// </remarks>
+    [Fact]
+    public async Task UpdateEntity_Without_MainKey_Should_Reject_As_InvalidArgs()
+    {
+        var calls = 0;
+        var client = WriteEntityClient(onUpdate: () => calls++);
+
+        var result = await CreateTools(entity: client).UpdateEntityAsync(
+            Args(("entity_id", "ent_1"), ("description", "只改释义")), CancellationToken.None);
+
+        calls.Should().Be(0, "平台要求 main_keys 必填，缺了必被拒，不该放行");
+        result.Text.Should().Contain("tool_error");
+        result.Text.Should().Contain("invalid_args", "缺必填参数由校验层拦，subtype 是 invalid_args");
+    }
+
+    /// <summary>delete_entity（高危）：两段式——先 dry_run 零调用，再实发回执。</summary>
+    [Fact]
+    public async Task DeleteEntity_DryRun_Then_Real_Should_Return_Receipt()
+    {
+        var calls = 0;
+        var client = WriteEntityClient(onDelete: () => calls++);
+
+        var preview = await CreateTools(entity: client).DeleteEntityAsync(
+            Args(("entity_id", "ent_1"), ("dry_run", true)), CancellationToken.None);
+
+        calls.Should().Be(0);
+        preview.Text.Should().Contain("未调用下游");
+        preview.Text.Should().Contain("DELETE");
+
+        var payload = Payload(await CreateTools(entity: client).DeleteEntityAsync(
+            Args(("entity_id", "ent_1")), CancellationToken.None));
+
+        calls.Should().Be(1);
+        payload["entity_id"]!.GetValue<string>().Should().Be("ent_1");
+        payload["deleted"]!.GetValue<bool>().Should().BeTrue();
+        payload["notice"]!.GetValue<string>().Should().Contain("不可逆");
+    }
+
+    /// <summary>草稿走审核流程：回执给 draft_id + 需审核提醒。</summary>
+    [Fact]
+    public async Task CreateDraft_Should_Project_DraftId_And_Review_Notice()
+    {
+        var client = WriteDraftClient();
+
+        var payload = Payload(await CreateTools(draft: client).CreateDraftAsync(
+            Args(("main_key", "OKR"), ("description", "目标与关键结果")),
+            CancellationToken.None));
+
+        payload["draft_id"]!.GetValue<string>().Should().Be("dft_new");
+        payload["submitted"]!.GetValue<bool>().Should().BeTrue();
+        payload["notice"]!.GetValue<string>().Should().Contain("审核", "草稿必须说明要过审核");
+    }
+
+    /// <summary>update_draft：dry_run 零调用 + 实发回执带"已审批不可编辑"提醒。</summary>
+    [Fact]
+    public async Task UpdateDraft_DryRun_Then_Real_Should_Return_Receipt()
+    {
+        var calls = 0;
+        var client = WriteDraftClient(onUpdate: () => calls++);
+
+        var preview = await CreateTools(draft: client).UpdateDraftAsync(
+            Args(("draft_id", "dft_1"), ("main_key", "OKR"), ("description", "新释义"), ("dry_run", true)), CancellationToken.None);
+
+        calls.Should().Be(0);
+        preview.Text.Should().Contain("未调用下游");
+
+        var payload = Payload(await CreateTools(draft: client).UpdateDraftAsync(
+            Args(("draft_id", "dft_1"), ("main_key", "OKR"), ("description", "新释义")), CancellationToken.None));
+
+        calls.Should().Be(1);
+        payload["draft_id"]!.GetValue<string>().Should().Be("dft_1");
+        payload["updated"]!.GetValue<bool>().Should().BeTrue();
+        payload["notice"]!.GetValue<string>().Should().Contain("已审批", "必须复述平台限制");
+    }
+
+    /// <summary>写面客户端软缺席：必须给结构化错误，不得抛异常。</summary>
+    [Fact]
+    public async Task Write_Face_Missing_Clients_Should_Return_Structured_Error()
+    {
+        var tools = CreateTools();
+
+        foreach (var result in new[]
+        {
+            await tools.CreateEntityAsync(Args(("main_key", "x"), ("description", "y")), CancellationToken.None),
+            await tools.UpdateEntityAsync(Args(("entity_id", "e"), ("description", "y")), CancellationToken.None),
+            await tools.DeleteEntityAsync(Args(("entity_id", "e")), CancellationToken.None),
+            await tools.CreateDraftAsync(Args(("main_key", "x"), ("description", "y")), CancellationToken.None),
+            await tools.UpdateDraftAsync(Args(("draft_id", "d"), ("description", "y")), CancellationToken.None),
+        })
+        {
+            result.Text.Should().Contain("未注册", "写面软缺席同样要给可执行说明");
+            result.Text.Should().Contain("tool_error");
         }
     }
 }

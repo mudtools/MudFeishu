@@ -80,6 +80,7 @@ if ($addedDeclarations.Count -gt 0) {
     $companions = @(
         @{ Path = 'Mud.Feishu.AI.Tools/FeishuToolSchemas.golden.txt'; Why = 'golden 快照重固化（MUDFT014 是 Error 级）' },
         @{ Path = 'skills/'; Why = 'skills 产物重固化（$env:FeishuSkillsUpdate=true）' },
+        # 注：受治理文档的代码侧位置真相源是 Tests/Shared/Docs/FeishuDocs.cs（本脚本为 PowerShell，无法引用 C# 常量）
         @{ Path = 'documents/AIAgent/工具权限对照表.md'; Why = '权限对照表增行（数据行数被守卫机械锁定）' },
         @{ Path = 'Mud.Feishu.AI.Tools/PublicAPI.Unshipped.txt'; Why = 'PublicAPI 同步（RS0016）' }
         # 2026-10-13：原要求同批更新「状态基线」文档 —— 该文档已被删除（不存在于 git 历史），

@@ -23,6 +23,12 @@
          不复制第二份声明。本工程非 owner 程序集，只得到 FeishuToolSchemas（样例工具 Schema）。 -->
     <Compile Include="..\..\Mud.Feishu.AI.Tools\SdkProfile\FeishuToolProfile.cs"
              Link="SdkProfile\FeishuToolProfile.cs" />
+
+    <!-- 受治理文档的位置注册表（测试库资产，生产零引用）：以 Compile Include 链接进两个消费方
+         测试工程（本工程 + AI.Tools.Tests），不建共享工程（否则落入 verify-build 步骤 4 的
+         "每个 Tests/** 工程必须产出 TRX"断言）、不复制第二份（位置只许一个真相源）。 -->
+    <Compile Include="..\Shared\Docs\FeishuDocs.cs"
+             Link="Shared\Docs\FeishuDocs.cs" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0' or '$(TargetFramework)' == 'net9.0' or '$(TargetFramework)' == 'net8.0'">

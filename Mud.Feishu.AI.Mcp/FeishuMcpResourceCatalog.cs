@@ -64,7 +64,8 @@ public sealed class FeishuMcpResourceCatalog
     /// <remarks>
     /// <para>
     /// <b>为什么内联而不读文件</b>：MCP 服务是<b>进程外</b>形态（stdio 独占），
-    /// 其工作目录由客户端决定——读仓库里的 <c>documents/AIAgent/工具错误契约.md</c> 在部署环境中必然找不到。
+    /// 其工作目录由客户端决定——读仓库文件在部署环境中必然找不到，故本摘要只引<b>文档标题</b>、不引仓库路径
+    /// （文档位置真相源：<c>Tests/Shared/Docs/FeishuDocs.cs</c>；嵌路径会让"搬文档"变成公开 API 变更）。
     /// 故这里放"消费侧最小集"（闭集 + 决策树），完整契约仍以仓库文档为准。
     /// </para>
     /// <para>
@@ -125,7 +126,7 @@ public sealed class FeishuMcpResourceCatalog
         - content_safety：放弃该结果，不要改写参数重试。
         - internal：如实报告用户并附追踪号，不要臆造结果。
 
-        完整契约（字段表 / 生产者纪律 / 版本演进规则）见仓库文档 `documents/AIAgent/工具错误契约.md`。
+        完整契约（字段表 / 生产者纪律 / 版本演进规则）见仓库文档《工具错误契约》。
         """;
 
     private readonly Dictionary<string, McpResourceInfo> _byUri;
@@ -318,7 +319,7 @@ public sealed class FeishuMcpResourceCatalog
         builder.Append("# ").Append(domain).Append(" 域的权限与风险对照\n\n");
         builder.Append("> 本文件由工具面的**声明**生成（`[FeishuTool] RequiredScopes` / 风险 / 身份）。\n");
         builder.Append("> `required_scopes` 是工具声明需要哪些权限，**不代表**平台已为应用开通——\n");
-        builder.Append("> 人读的开放平台权限名与开通指引见仓库文档 `documents/AIAgent/工具权限对照表.md`。\n\n");
+        builder.Append("> 人读的开放平台权限名与开通指引见仓库文档《工具权限对照表》。\n\n");
 
         foreach (var tool in tools.OrderBy(static t => t.Name, StringComparer.Ordinal))
         {

@@ -13,4 +13,12 @@
 		<ProjectReference Include="..\..\Mud.Feishu.AI.Mcp\Mud.Feishu.AI.Mcp.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<!-- 受治理文档的位置注册表（测试库资产，生产零引用）：与 Mud.Feishu.AI.Tests 共用同一份
+		     物理文件（Compile Include 链接），不建共享工程（否则落入 verify-build 步骤 4 的
+		     "每个 Tests/** 工程必须产出 TRX"断言）、不复制第二份（位置只许一个真相源）。 -->
+		<Compile Include="..\Shared\Docs\FeishuDocs.cs"
+		         Link="Shared\Docs\FeishuDocs.cs" />
+	</ItemGroup>
+
 </Project>

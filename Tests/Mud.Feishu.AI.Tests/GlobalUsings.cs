@@ -22,6 +22,7 @@ global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Options;
 global using Mud.Feishu.DataModels;
 global using Mud.Feishu.AI.Knowledge;
+global using Mud.Feishu.Tests.Docs;
 
 global using Moq;
 global using Mud.Feishu.AI;

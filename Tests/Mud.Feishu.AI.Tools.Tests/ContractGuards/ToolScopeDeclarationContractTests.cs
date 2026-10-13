@@ -80,7 +80,7 @@ public class ToolScopeDeclarationContractTests
     /// <remarks>
     /// <b>为什么必须允许点号</b>：飞书确有含点号的真实 scope，如
     /// <c>contact:user.base:readonly</c> / <c>contact:department.base:readonly</c>
-    /// （已登记于 <c>documents/AIAgent/工具权限对照表.md</c>）。本守卫首版按
+    /// （已登记于《工具权限对照表》，位置见 <see cref="FeishuDocs.ToolPermissionTable"/>）。本守卫首版按
     /// <c>^[a-z][a-z0-9_]*(:[a-z0-9_]+)+$</c> 判定，把这两个<b>正确</b>的 scope 误报为形态异常
     /// —— 教训同 §13.3：<b>守卫的正则必须先用真实语料验证</b>，否则守卫本身是假红源。
     /// </remarks>

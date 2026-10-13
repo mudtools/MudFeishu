@@ -39,7 +39,7 @@ public class FeishuToolDescriptorContractGuards
     }
 
     // 原 AllTools_ShouldHaveNonEmptyDescription 已删除（测试体系治理 B2，见
-    // documents/AIAgent/单元测试体系过度测试分析与解决方案.md §三.5）：它是 **MUDFT005 的运行时等价断言**
+    // 《单元测试体系过度测试分析与解决方案》§三.5）：它是 **MUDFT005 的运行时等价断言**
     // （方法 XML 注释自认），MUDFT005 为 Warning 恒 0 集，由 CI / verify-build -DenyToolWarnings
     // 在构建期断言——运行期副本不提供增量信息。
 

@@ -34,7 +34,7 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// </remarks>
 public class PermissionMappingDocContractGuards
 {
-    private const string DocRelativePath = "documents/AIAgent/工具权限对照表.md";
+    private const string DocRelativePath = FeishuDocs.ToolPermissionTable;
 
     /// <summary>整格匹配"形如 <c>a.b.c</c> 的工具名"（锚定整格，故表头/正文片段不会被误取）。</summary>
     private static readonly Regex ToolNameCell = new(

@@ -16,9 +16,10 @@ namespace Mud.Feishu.AI.Tests.ContractGuards;
 public class McpRunbookContractGuards
 {
     // 测试运行时工作目录可能是 bin/Debug/net8.0/，需向上回溯到仓库根
+    // （文档位置经 FeishuDocs 注册表单点化，不在此处硬编码路径）
     private static readonly string RunbookPath = Path.GetFullPath(
         Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
-            "documents/AIAgent/MCP多租户部署Runbook.md"));
+            FeishuDocs.McpMultiTenantRunbook.Replace('/', Path.DirectorySeparatorChar)));
 
     [Fact]
     public void Runbook_ShouldExist()

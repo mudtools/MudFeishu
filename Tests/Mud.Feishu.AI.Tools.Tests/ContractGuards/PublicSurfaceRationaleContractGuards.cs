@@ -18,7 +18,7 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// <b>为什么是守卫而不是清单</b>：F-2 的消费方审计已证伪"可裁 30%–40%"——零仓内消费方的 public 类型
 /// 全是宿主扩展点与导出管线的缝（删即删产品面）。既然答案是"保留"，那么可执行的动作就只剩一件：
 /// <b>让"新增 public 要说明消费方"不再依赖评审者的记性</b>。本守卫用"冻结基线 + 增量理由"两段式实现：
-/// <c>documents/AIAgent/public-surface-rationale.json</c> 的 <c>baseline</c> 是实测快照，
+/// <c>public-surface-rationale.json</c>（位置见 <see cref="FeishuDocs.PublicSurfaceRationale"/>）的 <c>baseline</c> 是实测快照，
 /// 之后新增的类型必须出现在 <c>reasons</c> 里（值＝消费方说明），否则报红。
 /// </para>
 /// <para>
@@ -160,7 +160,9 @@ public class PublicSurfaceRationaleContractGuards
     }
 
     private static string RationaleFilePath()
-        => Path.Combine(FindRepositoryRoot(), "documents", "AIAgent", "public-surface-rationale.json");
+        => Path.Combine(
+            FindRepositoryRoot(),
+            FeishuDocs.PublicSurfaceRationale.Replace('/', Path.DirectorySeparatorChar));
 
     private static string FindRepositoryRoot()
     {

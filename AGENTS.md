@@ -243,7 +243,7 @@ signals. Stress/long-running cases carry
 `[Trait("Category","Stress")]` (excluded from the gate; run manually with `--filter
 "Category=Stress"`); wall-clock assertions carry `[Trait("Category","Timing")]` (`-Full` only).
 
-### Test Suite Governance (2026-10-13; analysis: `documents/AIAgent/单元测试体系过度测试分析与解决方案.md`)
+### Test Suite Governance (2026-10-13; analysis: 《单元测试体系过度测试分析与解决方案》; doc locations: `Tests/Shared/Docs/FeishuDocs.cs`)
 
 - **Test TFMs are net8.0-only** (`Tests/Directory.Build.props`). No per-project
   `<TargetFrameworks>` overrides; sole exception `Mud.Feishu.Agent.Demo.Tests` (net10.0 demo).
@@ -252,8 +252,12 @@ signals. Stress/long-running cases carry
   ("guard the guard") tests: one `[Theory]` per parser, not standalone `[Fact]`s.
 - **Single-point closure equality**: exactly one guard asserts "artifact ↔ code" equality per closed
   set; count-only assertions fully subsumed by an equality guard must not be added.
-- **Guard-read files must be tracked**: any file read via `File.Exists/ReadAllText` lives under
-  `documents/…` — never `.docs/` (gitignored ⇒ structurally red on CI).
+- **Guard-read files must be tracked and registered**: any file read via
+  `File.Exists/ReadAllText` lives under `documents/…` — never `.docs/` (gitignored ⇒ structurally
+  red on CI) — **and its path is registered in `FeishuDocs`** (`Tests/Shared/Docs/`, test-only
+  asset, zero production references), so a
+  doc move is a one-line change verified by `FeishuDocsRegistryContractGuards`. Runtime/public
+  constants (e.g. MCP `ErrorContractSummary`) reference docs **by title only**, never by path.
 - **Budgets**: ≤ ~5 test files touched per feature commit (baseline ≈ 10); `ContractGuards/` ≤ 30%
   of a test project; a test that flakes twice in the full gate gets a threshold review or a Timing
   trait — never a blind retry loop.

@@ -1,6 +1,6 @@
 <Project>
 	<PropertyGroup>
-		<!-- 测试 TFM 收敛（2026-10-13，见 documents/AIAgent/单元测试体系过度测试分析与解决方案.md §三.1）：
+		<!-- 测试 TFM 收敛（2026-10-13，见《单元测试体系过度测试分析与解决方案》§三.1）：
 		     全部测试工程统一 net8.0 单 TFM——SDK 的 TFM 差异分支（#if NET6/NET8）在 net8.0 上已全编译，
 		     多 TFM 重复执行对纯逻辑用例收益趋零，只付出 2–3 倍编译/执行成本。
 		     netstandard2.0/net6.0 的行为差异由源项目 AOT 构建兜底；

@@ -17,7 +17,7 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// </summary>
 /// <remarks>
 /// <para>
-/// 权威清单 = <c>documents/AIAgent/scope-authority.json</c>（版本化文件，人工从开放平台
+/// 权威清单 = <c>scope-authority.json</c>（位置见 <see cref="FeishuDocs.ScopeAuthority"/>；版本化文件，人工从开放平台
 /// 控制台核对回填）。三方关系被机械锁定：
 /// </para>
 /// <list type="number">
@@ -31,7 +31,7 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// </remarks>
 public class ScopeAuthorityContractGuards
 {
-    private const string AuthorityFilePath = "documents/AIAgent/scope-authority.json";
+    private const string AuthorityFilePath = FeishuDocs.ScopeAuthority;
 
     /// <summary>存疑标记前缀（值以它开头的条目豁免"必须被使用"检查，但必须持续可见）。</summary>
     private const string PendingReviewPrefix = "⚠️";

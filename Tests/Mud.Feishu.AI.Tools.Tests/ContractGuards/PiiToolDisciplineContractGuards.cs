@@ -23,7 +23,7 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// 而在本守卫之前，"哪些工具是 PII 工具"只存在于评审者的记忆里：新增工具不会触发任何信号。
 /// </para>
 /// <para>
-/// <b>唯一真相源</b>：<c>documents/AIAgent/scope-authority.json</c> 的 <c>piiTools</c> 数组
+/// <b>唯一真相源</b>：<c>scope-authority.json</c>（位置见 <see cref="FeishuDocs.ScopeAuthority"/>）的 <c>piiTools</c> 数组
 /// （与 scope 清单同一份权威文件——两者都是"人从控制台/合规口径核对后回填"的登记）。
 /// 本守卫锁三件事：
 /// <list type="number">
@@ -35,7 +35,7 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// </remarks>
 public class PiiToolDisciplineContractGuards
 {
-    private const string AuthorityFilePath = "documents/AIAgent/scope-authority.json";
+    private const string AuthorityFilePath = FeishuDocs.ScopeAuthority;
 
     /// <summary>
     /// PII 工具集合基线（2026-10-10 实测）。

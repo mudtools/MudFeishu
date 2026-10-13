@@ -3,10 +3,10 @@ title: 考勤用户设置接口（租户令牌）| MudFeishu
 description: 该接口用于管理飞书考勤用户设置，主要实现修改用户人脸识别信息、批量查询用户人脸识别信息，以及上传与下载用户人脸识别照片。
 ---
 
-# 考勤用户设置接口 - FeishuTenantV1AttendanceUserSettings
+# 考勤用户设置接口 - IFeishuTenantV1AttendanceUserSettings
 
 ## 接口名称
-**考勤用户设置** - (FeishuTenantV1AttendanceUserSettings)
+**考勤用户设置** - (IFeishuTenantV1AttendanceUserSettings)
 
 ## 功能描述
 考勤用户管理接口主要实现了修改用户人脸识别信息、批量查询用户人脸识别信息以及上传下载用户人脸识别照片。

@@ -3,10 +3,10 @@ title: 考勤组管理接口（用户令牌）| MudFeishu
 description: 该接口用于以用户身份管理飞书考勤组，对部门或员工在特定场所与时间段的出勤规则进行设定，可从部门、员工两个维度设定考勤方式、时间与地点等规则。
 ---
 
-# 考勤组管理接口（用户） - FeishuUserV1AttendanceGroups
+# 考勤组管理接口（用户） - IFeishuUserV1AttendanceGroups
 
 ## 接口名称
-**考勤组管理（用户令牌）** - (FeishuUserV1AttendanceGroups)
+**考勤组管理（用户令牌）** - (IFeishuUserV1AttendanceGroups)
 
 ## 功能描述
 考勤组是对部门或者员工在某个特定场所及特定时间段内的出勤情况的一种规则设定，包括上下班、迟到、早退、病假、婚假、丧假、公休、工作时间、加班情况等。通过设置考勤组，可以从部门、员工两个维度，来设定考勤方式、考勤时间、考勤地点等考勤规则。
@@ -18,7 +18,7 @@ description: 该接口用于以用户身份管理飞书考勤组，对部门或�
 
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
 |---------|---------|---------|----------|----------|
-| （继承自 FeishuV1AttendanceGroups） | 参见父接口文档 | 用户令牌 | - |
+| （继承自 IFeishuV1AttendanceGroups） | 参见父接口文档 | 用户令牌 | - |
 
 ---
 
@@ -55,7 +55,7 @@ public class UserAttendanceGroupService
     public async Task GetCurrentUserGroupAsync()
     {
         // 获取当前用户所在的考勤组
-        // 注意：具体方法取决于 FeishuV1AttendanceGroups 的定义
+        // 注意：具体方法取决于 IFeishuV1AttendanceGroups 的定义
         var currentUserId = ((ICurrentUserId)_groupsClient).CurrentUserId;
         Console.WriteLine($"当前用户ID: {currentUserId}");
         

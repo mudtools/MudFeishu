@@ -3,10 +3,10 @@ title: 考勤归档报表接口（用户令牌）| MudFeishu
 description: 该接口用于以用户身份管理飞书考勤归档报表，对应后台假勤管理-考勤统计-报表-归档报表功能，支持引用系统报表、设置归档时间与数据归档周期，并支持按多维条件进行人员圈选。
 ---
 
-# 考勤归档报表管理接口（用户） - FeishuUserV1AttendanceArchives
+# 考勤归档报表管理接口（用户） - IFeishuUserV1AttendanceArchives
 
 ## 接口名称
-**考勤归档报表管理（用户令牌）** - (FeishuUserV1AttendanceArchives)
+**考勤归档报表管理（用户令牌）** - (IFeishuUserV1AttendanceArchives)
 
 ## 功能描述
 归档报表用于对应后台假勤管理-考勤统计-报表-归档报表功能。支持引用系统报表，可设置归档时间和数据归档周期，并且支持根据部门/人员、国家/地区、人员类型、工作地点、职级、序列、职务进行人员圈选。
@@ -18,7 +18,7 @@ description: 该接口用于以用户身份管理飞书考勤归档报表，对�
 
 | 函数名称 | 功能描述 | 认证方式 | HTTP 方法 | 接口文档 |
 |---------|---------|---------|----------|----------|
-| （继承自 FeishuV1AttendanceArchives） | 查询归档报表表头 / 删除归档报表行数据 / 查询所有归档规则 | 用户令牌 | POST/GET |
+| （继承自 IFeishuV1AttendanceArchives） | 查询归档报表表头 / 删除归档报表行数据 / 查询所有归档规则 | 用户令牌 | POST/GET |
 
 > 注意：写入归档报表结果（upload_report）按飞书官方元数据仅支持**租户令牌**，已从本接口中移除，请使用 `IFeishuTenantV1AttendanceArchives.UploadReportArchiveRuleAsync`。
 
@@ -52,7 +52,7 @@ public class UserArchiveService
     public async Task GetUserArchiveReportAsync()
     {
         // 调用父接口定义的方法
-        // 注意：具体方法取决于 FeishuV1AttendanceArchives 的定义
+        // 注意：具体方法取决于 IFeishuV1AttendanceArchives 的定义
         // 当前用户只能访问自己有权限的归档数据
     }
 }

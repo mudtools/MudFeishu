@@ -3,10 +3,10 @@ title: 考勤排班管理接口（租户令牌）| MudFeishu
 description: 该接口用于管理飞书考勤排班表，描述考勤组内人员每天按哪个班次上班，支持按日期对一位或多位人员进行排班，排班数据不存在时创建、存在时按入参修改。
 ---
 
-# 考勤排班管理接口 - FeishuTenantV1AttendanceUserDailyShifts
+# 考勤排班管理接口 - IFeishuTenantV1AttendanceUserDailyShifts
 
 ## 接口名称
-**考勤排班管理** - (FeishuTenantV1AttendanceUserDailyShifts)
+**考勤排班管理** - (IFeishuTenantV1AttendanceUserDailyShifts)
 
 ## 功能描述
 排班表是用来描述考勤组内人员每天按哪个班次进行上班。目前排班表支持按x月y日对一位或多位人员进行排班。当用户的排班数据不存在时会进行创建，当用户的排班数据存在时会按照入参信息进行修改。

@@ -3,7 +3,7 @@ title: 审批地理库接口（用户令牌）| MudFeishu
 description: 该接口用于以用户身份获取飞书审批的地理库数据，以便在发起审批时填写地址控件的区域信息，与租户令牌版本功能一致，区别在于使用用户身份令牌（UserAccessToken）调用。
 ---
 
-# 审批地理库（用户令牌） - FeishuV4ApprovalDistrict_User
+# 审批地理库（用户令牌） - IFeishuUserV4ApprovalDistrict
 
 ## 接口名称
 
@@ -11,7 +11,7 @@ description: 该接口用于以用户身份获取飞书审批的地理库数据�
 
 ## 功能描述
 
-与租户令牌版本的 [FeishuV4ApprovalDistrict_Tenant](./FeishuV4ApprovalDistrict_Tenant.md) 完全一致，区别仅在于使用**用户身份令牌**（`UserAccessToken`）调用，实现 `ICurrentUserId` 以携带当前用户身份。
+与租户令牌版本的 [IFeishuTenantV4ApprovalDistrict](./FeishuV4ApprovalDistrict_Tenant.md) 完全一致，区别仅在于使用**用户身份令牌**（`UserAccessToken`）调用，实现 `ICurrentUserId` 以携带当前用户身份。
 
 ## 参考文档
 
@@ -27,7 +27,7 @@ description: 该接口用于以用户身份获取飞书审批的地理库数据�
 
 ## 函数详细内容
 
-函数签名、参数、请求/响应示例与 [FeishuV4ApprovalDistrict_Tenant](./FeishuV4ApprovalDistrict_Tenant.md) 一致（列表接口分页大小默认 20，搜索接口仅支持 locale 查询参数）。
+函数签名、参数、请求/响应示例与 [IFeishuTenantV4ApprovalDistrict](./FeishuV4ApprovalDistrict_Tenant.md) 一致（列表接口分页大小默认 20，搜索接口仅支持 locale 查询参数）。
 
 #### 认证
 

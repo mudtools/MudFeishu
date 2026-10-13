@@ -3,10 +3,10 @@ title: 考勤补卡管理接口（租户令牌）| MudFeishu
 description: 该接口用于管理飞书考勤补卡，针对仅使用飞书考勤系统而未使用飞书审批系统的企业，将三方审批系统中的补卡审批数据同步到飞书考勤系统，支持创建补卡审批、查询可补卡时间以及查询补卡记录。
 ---
 
-# 考勤补卡管理接口 - FeishuTenantV1AttendanceRemedys
+# 考勤补卡管理接口 - IFeishuTenantV1AttendanceRemedys
 
 ## 接口名称
-**考勤补卡管理** - (FeishuTenantV1AttendanceRemedys)
+**考勤补卡管理** - (IFeishuTenantV1AttendanceRemedys)
 
 ## 功能描述
 对于只使用飞书考勤系统而未使用飞书审批系统的企业，可以通过该接口，将在三方审批系统中补卡审批数据，同步到飞书考勤系统中。支持创建补卡审批、查询可补卡时间以及查询补卡记录。

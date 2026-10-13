@@ -3,7 +3,7 @@ title: 飞书妙搭应用管理接口（租户令牌）| MudFeishu
 description: 该接口用于以租户身份调用飞书妙搭（Spark）应用的只读端点，包括批量获取应用、查询 AI 额度消耗、获取运营数据总览与趋势。
 ---
 
-# 飞书妙搭应用管理 - 租户令牌（FeishuTenantV1SparkApp）
+# 飞书妙搭应用管理 - 租户令牌（IFeishuTenantV1SparkApp）
 
 ## 接口名称
 
@@ -31,7 +31,7 @@ description: 该接口用于以租户身份调用飞书妙搭（Spark）应用�
 
 ## 函数详细内容
 
-4 个只读端点均继承自 `IFeishuV1SparkApp`，签名与参数同 [FeishuUserV1SparkApp](./FeishuUserV1SparkApp.md) 中对应章节，仅认证方式为租户令牌。
+4 个只读端点均继承自 `IFeishuV1SparkApp`，签名与参数同 [IFeishuUserV1SparkApp](./FeishuUserV1SparkApp.md) 中对应章节，仅认证方式为租户令牌。
 
 ### 批量获取妙搭应用
 

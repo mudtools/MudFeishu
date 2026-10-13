@@ -64,7 +64,7 @@ public sealed class FeishuMcpResourceCatalog
     /// <remarks>
     /// <para>
     /// <b>为什么内联而不读文件</b>：MCP 服务是<b>进程外</b>形态（stdio 独占），
-    /// 其工作目录由客户端决定——读仓库里的 <c>.docs/AI/工具错误契约.md</c> 在部署环境中必然找不到。
+    /// 其工作目录由客户端决定——读仓库里的 <c>documents/AI/工具错误契约.md</c> 在部署环境中必然找不到。
     /// 故这里放"消费侧最小集"（闭集 + 决策树），完整契约仍以仓库文档为准。
     /// </para>
     /// <para>
@@ -125,7 +125,7 @@ public sealed class FeishuMcpResourceCatalog
         - content_safety：放弃该结果，不要改写参数重试。
         - internal：如实报告用户并附追踪号，不要臆造结果。
 
-        完整契约（字段表 / 生产者纪律 / 版本演进规则）见仓库文档 `.docs/AI/工具错误契约.md`。
+        完整契约（字段表 / 生产者纪律 / 版本演进规则）见仓库文档 `documents/AI/工具错误契约.md`。
         """;
 
     private readonly Dictionary<string, McpResourceInfo> _byUri;

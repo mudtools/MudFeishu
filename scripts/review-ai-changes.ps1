@@ -82,7 +82,7 @@ if ($addedDeclarations.Count -gt 0) {
         @{ Path = 'skills/'; Why = 'skills 产物重固化（$env:FeishuSkillsUpdate=true）' },
         @{ Path = 'documents/AIAgent/工具权限对照表.md'; Why = '权限对照表增行（数据行数被守卫机械锁定）' },
         @{ Path = 'Mud.Feishu.AI.Tools/PublicAPI.Unshipped.txt'; Why = 'PublicAPI 同步（RS0016）' }
-        # 2026-10-13：原要求同批更新 `.docs/AI/状态基线.md` —— 该文档已被删除（不存在于 git 历史），
+        # 2026-10-13：原要求同批更新「状态基线」文档 —— 该文档已被删除（不存在于 git 历史），
         # 保留它会让每个新增工具的 PR 恒违规。工具面规模的真相源现为
         # Mud.Feishu.AI.Tools/FeishuToolSchemas.golden.txt（MUDFT014 逐字节锁定）。
     )
@@ -119,7 +119,7 @@ if ($violations.Count -gt 0) {
         Write-Host ("  - {0}" -f $violation) -ForegroundColor Red
     }
     Write-Host ''
-    Write-Host 'F-1 的"新增域 12 处触点"清单见 .docs/MudFeishu-AI系列-Bug修复与功能完善方案.md §三 F-1。'
+    Write-Host 'F-1 的"新增域 12 处触点"清单即本脚本规则 A 的 $companions 表（AGENTS.md「Test Suite Governance」同源）。'
     exit 1
 }
 

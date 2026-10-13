@@ -38,7 +38,7 @@ public class WebSocketCertificateModeOptionsTests
     /// <remarks>
     /// 原 <c>FlatAndNested_ShouldShareStorage</c> 已删除：它是**恒真断言**（先赋
     /// <c>true</c> 再断言 <c>true</c>），且其名暗示的「扁平/嵌套共享存储」契约已随 R4 删除扁平属性而消失，
-    /// 属假安全网（见 .docs/配置面可用性修复与收敛方案-R5.md §0.5.4）。
+    /// 属假安全网（R5 配置面收敛的判定，见 AGENTS.md「配置面治理」）。
     /// 运行时行为改由 <c>WebSocketCertificateModeRuntimeTests</c> 按优先级矩阵逐格锁定。
     /// </remarks>
     [Fact]

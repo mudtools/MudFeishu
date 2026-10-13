@@ -71,7 +71,7 @@
 |---|---|---|
 | Skills 数量 | 21 个域产物（`SKILL.md` + references JSON） | **28 个** skill（含 `lark-shared`/`lark-skill-maker`/`lark-openapi-explorer` 元能力） |
 | Skills 分发 | 随 NuGet 包 `<None Include="..\skills\**\*" Pack="true">` | `go:embed` 编译进二进制，`lark-cli skills list/read` 暴露 |
-| Skills 外部消费者 | ⚠️ 架构报告自评"**尚无外部消费者**"（`.docs/AI/MudFeishu-AI系列-架构分析报告.md:151-155`） | ✅ `npx skills add larksuite/cli`，兼容主流 AI 工具，有版本漂移检测 |
+| Skills 外部消费者 | ⚠️ 架构报告自评"**尚无外部消费者**"（`MudFeishu-AI系列-架构分析报告.md:151-155`） | ✅ `npx skills add larksuite/cli`，兼容主流 AI 工具，有版本漂移检测 |
 | Suite 聚合路由 | ❌ 无对应物 | ✅ `isolated-skills/lark-suite/` + `skill-template/` 模板合成 |
 | 自定义 skill 框架 | ❌ 无 | ✅ `lark-skill-maker` skill 教 AI 创建新 skill |
 | Affordance（per-command 决策指导） | ❌ 无独立 affordance 层 | ✅ `affordance/*.md`（8 域），运行时懒加载注入 `--help` 和 `schema` |
@@ -245,7 +245,7 @@
 
 | 主题 | 文件（相对仓库根） |
 |---|---|
-| 架构分析报告 | `.docs/AI/MudFeishu-AI系列-架构分析报告.md` |
+| 架构分析报告 | `MudFeishu-AI系列-架构分析报告.md` |
 | 与 lark-cli 同场景对比（早期备忘） | `documents/AIAgent/lark-cli-同场景对比备忘.md` |
 | 工具权限对照表（163 工具） | `documents/AIAgent/工具权限对照表.md` |
 | scope 权威清单 | `documents/AIAgent/scope-authority.json` |

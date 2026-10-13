@@ -27,7 +27,7 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 public class ToolErrorContractGuards
 {
     // 守卫 ①（原 ToolErrorCategory_ShouldHaveExactlyEightValues）已删除（测试体系治理 B1，
-    // 见 documents/AI/单元测试体系过度测试分析与解决方案.md §三.4）："恰好 8 个值"被两处
+    // 见 documents/AIAgent/单元测试体系过度测试分析与解决方案.md §三.4）："恰好 8 个值"被两处
     // **等式守卫**完全包含——ToolErrorDocContractGuards.DocumentCategories_ShouldEqual_CodeClosedSet
     // 与 McpResourceContractGuards.ErrorContractSummary_ClosedSets_ShouldMatchCodeClosure
     // 都把 CategoryLiteral 映射结果与 8 字面量闭集逐一比对，多一个/少一个值都报红。

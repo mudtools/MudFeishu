@@ -1,7 +1,7 @@
 # AI-Native 实施进度与交接备忘（Phase 2 完成）
 
 > **日期**：2026-09-27（本批次：Phase 2——流式回复 + 会话摘要 + 写工具授权 + RAG-A）
-> **关联**：[路线图](../../.docs/AI/AI-Native-Agent-Roadmap-v1.md) · [总体功能设计](../../.docs/AI/AI-Native-Agent-Functional-Design.md) · [Phase 2 设计](../../.docs/AI/AI-Native-Agent-Phase2-Design.md) · [Phase 0-1 进度](./AI-Native-实施进度-Phase0-1.md)
+> **关联**：[Phase 0-1 进度](./AI-Native-实施进度-Phase0-1.md)
 
 ## Phase 2（流式 + 记忆 + 写工具 + RAG-A）—— ✅ 全部任务落地（2026-09-27 批次）
 
@@ -62,7 +62,7 @@
 
 ## 审查缺陷修复批次（R1-R2 复核修订，2026-09-28）
 
-> 依据：[`Mud.Feishu.AI 审查缺陷修复与能力完善方案-R1`](../../.docs/AI/Mud.Feishu.AI-审查缺陷修复与能力完善方案-R1.md)（含 R1-R2 复核修订与 §0 否决项证据）。
+> 依据：`Mud.Feishu.AI 审查缺陷修复与能力完善方案-R1`（含 R1-R2 复核修订与 §0 否决项证据）。
 
 ### 落地项
 
@@ -104,7 +104,7 @@
 ## 下一批次（Phase 3 待启动项）
 
 > **状态更新（2026-10-10，R7 收尾轮）**：下列 1~4 项**均已落地**，逐项证据见
-> `.docs/MudFeishu-AI工具面功能完善方案-六域补齐与Agent可用性硬伤及遗留任务-R7.md` §10.7 / §10.8 / §10.9。
+> 依据 R7 方案 §10.7 / §10.8 / §10.9。
 > **`board.download_image` 的裁决（2026-10-10，PM 裁定 DP-R7-1）**：**维持不策展**。
 > 依据：出向工具的真正前置不是"缺契约"，而是**组件仓 `Mud.HttpUtils.Generator` 的 `output_schema` 表达能力**——
 > 字节型 Source 会推导出 `{"type":"string","format":"binary"}`，与该工具实际返回的"路径/大小/类型"自相矛盾

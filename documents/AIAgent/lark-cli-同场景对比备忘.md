@@ -1,7 +1,7 @@
 # 与官方 lark-cli 同场景对比备忘（T1-11）
 
 > **日期**：2026-09-27
-> **任务**：Phase 1 T1-11（DoD：[AI-Native-Agent-Phase1-Design.md](../../.docs/AI/AI-Native-Agent-Phase1-Design.md) §5「与官方 `lark-cli` 的同场景对比备忘」）
+> **任务**：Phase 1 T1-11（DoD：`AI-Native-Agent-Phase1-Design.md` §5「与官方 `lark-cli` 的同场景对比备忘」）
 > **场景**：「查多维表格里的记录」——同一业务目标，两条实现路径
 > **对比口径**：①延迟 ②权限模型 ③类型安全（Phase 1 §5 DoD 三维度）
 > **结论前置**：分层互补、非替代（已决策⑥）。**本框架不要求运行期依赖 lark-cli**（对比仅作文档备忘）；进程内多租户授权执行链是官方 CLI 不承担的职责，也是本规划的护城河。

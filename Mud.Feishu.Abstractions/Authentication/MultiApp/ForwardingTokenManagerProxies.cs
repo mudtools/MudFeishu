@@ -18,7 +18,7 @@ namespace Mud.Feishu.Abstractions.Authentication.MultiApp;
 /// 使 <c>SetDefaultApp</c> / 配置热更新 / <c>RemoveApp</c> 的变更对已注入消费者立即生效。
 /// 修复前桥接为「实例桥接」（工厂委托仅在首次解析时执行，容器永久缓存该实例）：
 /// 热更新重建默认应用后注入方持已释放管理器（ODE），<c>SetDefaultApp</c> 后注入方继续返回
-/// 旧应用的令牌（跨应用凭据串号）。详见 .docs/令牌与多应用管理-审查修复与完善方案.md §2.1。
+/// 旧应用的令牌（跨应用凭据串号）。
 /// </para>
 /// <para>
 /// 代理本身<b>无状态、不持有令牌、不实现 IDisposable 释放语义</b>（<see cref="IDisposable.Dispose"/> 为显式

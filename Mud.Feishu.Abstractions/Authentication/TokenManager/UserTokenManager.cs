@@ -475,7 +475,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             // （TMX-22 语义）。默认配置（TTL 7200s ≫ 阈值 300s）下判定结果与 TTL 感知完全一致
             // （恢复令牌必为过去签发，纯阈值判定偏保守但正确）；短 TTL（ttl ≤ TokenRefreshThreshold）
             // 部署不应依赖跨重启的 store 恢复路径（README 部署提示同步声明）。
-            // 格式升级备选（方案 B，短 TTL 场景真实落地时启用）见 .docs/令牌与多应用管理-审查修复与完善方案.md §七。
+            // 格式升级备选（方案 B，短 TTL 场景真实落地时启用）。
             return new UserTokenInfo
             {
                 UserId = userId,

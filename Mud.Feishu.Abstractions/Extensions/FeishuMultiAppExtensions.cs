@@ -578,8 +578,7 @@ public static class FeishuMultiAppExtensions
         // 原实现工厂委托仅在首次解析时执行，容器永久缓存该实例——热更新重建默认应用后
         // 注入方持已释放管理器（ODE），SetDefaultApp 后注入方继续返回旧应用令牌（凭据串号）。
         // 代理每次成员调用现取当前默认应用的管理器，代理本身无状态、无资源、Dispose 为 no-op。
-        // 详见 .docs/令牌与多应用管理-审查修复与完善方案.md §2.1 与
-        // MultiApp/ForwardingTokenManagerProxies.cs。
+        // 详见 MultiApp/ForwardingTokenManagerProxies.cs。
         services.TryAddSingleton<ITenantTokenManager>(sp =>
             new ForwardingTenantTokenManager(
                 () => sp.GetRequiredService<IFeishuTokenManagerResolver>().GetTenantTokenManager()));

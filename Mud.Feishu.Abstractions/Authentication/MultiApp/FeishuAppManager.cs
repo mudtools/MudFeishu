@@ -713,8 +713,7 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
 
     // TMF-04：RebuildAppContext 已删除——产品代码零调用方（唯一热更新路径为
     // ApplyConfigurationChanges，测试经 OnConfigurationChanged 间接触发同等逻辑），
-    // 且其内部维护第二份 D10 比对+清库副本，与主路径双份漂移。详见
-    // .docs/令牌与多应用管理-审查修复与完善方案.md §五。
+    // 且其内部维护第二份 D10 比对+清库副本，与主路径双份漂移。
 
     /// <summary>
     /// TMA2-05 / D10：清除指定 appKey 的持久化令牌。

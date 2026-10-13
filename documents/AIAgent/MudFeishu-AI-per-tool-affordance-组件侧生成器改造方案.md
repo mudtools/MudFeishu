@@ -2,7 +2,7 @@
 
 > 角色：高级程序员 + 系统架构师
 > 日期：2026-10-11
-> 需求来源：`.docs/MudFeishu-AI系列-Bug修复与功能完善方案.md` §三 **F-7【P1·R-3 新增】per-tool affordance 决策指导层**
+> 需求来源：`MudFeishu-AI系列-Bug修复与功能完善方案` §三 **F-7【P1·R-3 新增】per-tool affordance 决策指导层**
 > 参照系：`documents/AIAgent/MudFeishu-AI-vs-lark-cli-对比分析报告.md` §五 P0.2；官方 `lark-cli` 的 `affordance/*.md`
 > 结论先行：**本仓无法单独落地 F-7**——它必须改组件仓库 `D:/Repos/MudHttpUtils` 的通用工具面引擎
 > （`Mud.HttpUtils.Generator` 的 `ToolSurface` 家族），本仓只做"剖面槽同步 + 资产编写 + 守卫 + 重固化"。
@@ -12,7 +12,7 @@
 > **发布基线 = Release 包**：上游 `pack.ps1 Release` 已产出并校验 `artifacts/`（10 包、与
 > `bin\Release` 的 DLL 逐字节一致、Generator DLL 含 `ToolSurfaceSourceGenerator` 符号）；本仓
 > `nuget.config` 的本地源已从 `artifacts-debug` 切到 `artifacts`，并按"同版本覆盖必须清缓存"
-> 清理了陈旧的 `3.0.6` 缓存项、`dotnet clean` 重建后重跑全部门禁（结论见 `.docs/AI/状态基线.md`）。
+> 清理了陈旧的 `3.0.6` 缓存项、`dotnet clean` 重建后重跑全部门禁（结论见 `AGENTS.md` 依赖版本策略段）。
 > **✅ 上游已发布到 nuget.org**（flat-container 端点确认三包均有 3.0.6），本仓本地源行已删除，
 > 并在**从 nuget.org 重新还原**的位上复验全部门禁（缓存里 Generator DLL 的 SHA256 仍 ==
 > `bin\Release`、≠ `bin\Debug` ⇒ nuget.org 的包与验证位逐字节相同）。
@@ -328,8 +328,8 @@ Mud.Feishu.AI.Tools/
 | 12 | 更新 Warning 基线 | `scripts/mudft-warning-baseline.txt` | ✅ `031=0`（16 份资产全部在 1024/320 上界内）、`009-tools=68` |
 | 13 | 更新剖面冻结表 | `FeishuToolProfileContractGuards.ExpectedSlots:66-114` | ✅ 加 `["AffordanceDirectory"] = "/Affordance/"`。⚠️ 该守卫的存在性检查只覆盖**已列出**的槽 ⇒ 不加不会红，但新槽从此**无人守**（这就是它必须进清单的原因） |
 | 14 | 版本升级 **3.0.5 → 3.0.6**（**不得用 3.1.0**，见 §七） | 全仓 `Mud.HttpUtils*` 的 `PackageReference`（**9 工程 15 处**） | ✅ 全为 `3.0.6`；`TokenMultiAppContractGuards.MudHttpUtils_PackageReference_ShouldBeSingleVersion` 只断言"全仓唯一"、不硬编码版本号 ⇒ 无需改守卫 |
-| 15 | 升级方案文档 + `AGENTS.md` 同步 | `.docs/MudFeishu-MudHttpUtils-3.0.6-升级改造方案-v1.md`、`AGENTS.md` 版本策略段落 | ✅ 已建并互相引用；同批移除**两条悬空引用**（`.docs/MudFeishu-MudHttpUtils-3.0.5-升级改造方案-v1.md`、`.docs/MudHttpUtils-3.0.0-破坏性变更改造计划.md` **均不存在**） |
-| 16 | 文档计数 | `Mud.Feishu.AI.Tools/Readme.md`、`.docs/AI/状态基线.md` | ✅ 已同步（`ToolSurfaceScaleContractGuards` 的裸数字扫描面） |
+| 15 | 升级方案文档 + `AGENTS.md` 同步 | `MudFeishu-MudHttpUtils-3.0.6-升级改造方案-v1.md`、`AGENTS.md` 版本策略段落 | ✅ 已建并互相引用；同批移除**两条悬空引用**（`MudFeishu-MudHttpUtils-3.0.5-升级改造方案-v1.md`、`MudHttpUtils-3.0.0-破坏性变更改造计划.md` **均不存在**） |
+| 16 | 文档计数 | `Mud.Feishu.AI.Tools/Readme.md` | ✅ 已同步（`ToolSurfaceScaleContractGuards` 的裸数字扫描面） |
 | 17 | **收尾（发布后必做）** | 上游 `pack.ps1 Release`、本仓 `nuget.config` | ⬜ 上游发布 `3.0.6` 到 nuget.org → **删除** `MudHttpUtils-local` 本地源行（发布基线不得来自 `artifacts-debug`）→ 重跑 `scripts/verify-build.ps1`（Release + `--no-incremental`，保证 MUDFT 为全量口径）与四 TFM 测试 |
 
 > ⚠️ 第 14 项（版本升级）是**跨仓联动的硬约束**：组件新版本必须 `pack.ps1 Release` 产出并**发布到 nuget.org**。
@@ -375,7 +375,7 @@ Mud.Feishu.AI.Tools/
 | 用例 | 判据 |
 | --- | --- |
 | `Affordance_ShouldReachModelVisibleSurface` | 端到端：资产 → 描述符 → **宿主渲染（工具 `description` 含 affordance）** → `McpEnvelope` 导出透传，各段同源。（**订正**：原设计的「MCP `_meta`」与「`guidance_read` 按工具键」两段已改判/取消，见 §四 #6/#7） |
-| `AffordanceBudget_ShouldBeLockedByScaleGuard` | 「合计字符数 / 单工具增量字节数 / 语义量」写进 `.docs/AI/状态基线.md`，并由 `ToolSurfaceScaleContractGuards`（或同款裸数字扫描）机械锁定，不得只靠人工记录 |
+| `AffordanceBudget_ShouldBeLockedByScaleGuard` | 「合计字符数 / 单工具增量字节数 / 语义量」写进规模基线，并由 `ToolSurfaceScaleContractGuards`（或同款裸数字扫描）机械锁定，不得只靠人工记录 |
 
 > **为什么这组守卫必须存在**：affordance 的失败模式与 guidance 同款且**更隐蔽**——
 > 资产写了但没生效（文件名/节名写错）不会触发任何诊断，表现为"模型还是不看这些提示"，

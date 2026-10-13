@@ -101,6 +101,8 @@ public interface IFeishuUserMailSearchTool
         [ToolParameter("user_mailbox_id", "用户邮箱 ID（形如 xxx@xxx）", Required = true)] string user_mailbox_id,
         [ToolParameter("query", "搜索关键字", Required = true)] string query,
         [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 

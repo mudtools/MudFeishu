@@ -9,6 +9,7 @@ Mud.Feishu.AI.Mcp.FeishuMcpResourceCatalog.Contains(string? uri) -> bool
 Mud.Feishu.AI.Mcp.FeishuMcpResourceCatalog.Resources.get -> System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Mcp.McpResourceInfo!>!
 Mud.Feishu.AI.Mcp.FeishuMcpResourceCatalog.TryRead(string? uri, out string! text) -> bool
 Mud.Feishu.AI.Mcp.FeishuMcpResourceCatalog.UriPrefixes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+static Mud.Feishu.AI.Mcp.FeishuMcpResourceCatalog.UriTemplates.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Mud.Feishu.AI.Mcp.FeishuMcpServerOptions
 Mud.Feishu.AI.Mcp.FeishuMcpServerOptions.AppKey.get -> string!
 Mud.Feishu.AI.Mcp.FeishuMcpServerOptions.AppKey.set -> void
@@ -39,6 +40,7 @@ Mud.Feishu.AI.Mcp.FeishuMcpToolServer.HandleMessageAsync(string? json, System.Th
 Mud.Feishu.AI.Mcp.FeishuMcpToolServer.Instructions.get -> string!
 Mud.Feishu.AI.Mcp.FeishuMcpToolServer.IsInitialized.get -> bool
 Mud.Feishu.AI.Mcp.FeishuMcpToolServer.Resources.get -> System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Mcp.McpResourceInfo!>!
+Mud.Feishu.AI.Mcp.FeishuMcpToolServer.ResourcesUriPrefixes.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Mud.Feishu.AI.Mcp.FeishuMcpToolServer.Tools.get -> System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Mcp.McpToolInfo!>!
 Mud.Feishu.AI.Mcp.McpResourceInfo
 Mud.Feishu.AI.Mcp.McpResourceInfo.<Clone>$() -> Mud.Feishu.AI.Mcp.McpResourceInfo!

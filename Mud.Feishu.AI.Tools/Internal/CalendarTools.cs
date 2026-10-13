@@ -311,10 +311,15 @@ internal sealed class CalendarTools(
         {
             var args = CalendarListEventAttendeesArgs.Unpack(arguments);
 
-            var outcome = FeishuApiResultReader.Read(await _calendarEventClient
-                .GetCalendarEventAttendeePageListAsync(args.CalendarId, args.EventId, page_size: PageSizes.CalendarEventAttendees, page_token: args.PageToken, cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
-            return executor.FromApi(outcome, ProjectAttendees);
+            // P-0 补齐：统一分页出口——聚合路径与单页路径共用同一次调用定义与同一份投影。
+            async Task<FeishuApiOutcome<ApiPageListResult<CalendarEventAttendeeInfoResult>>> FetchPageAsync(string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await _calendarEventClient
+                    .GetCalendarEventAttendeePageListAsync(args.CalendarId, args.EventId, page_size: PageSizes.CalendarEventAttendees, page_token: token, cancellationToken: ct)
+                    .ConfigureAwait(false));
+
+            return await executor.FromPagedApiAsync(
+                FetchPageAsync, ProjectAttendees, args.FetchAll, args.MaxItems, args.PageToken,
+                _maxAutoFetchItems, _maxAutoFetchPages, cancellationToken).ConfigureAwait(false);
         });
     }
 

@@ -97,6 +97,36 @@ internal sealed class MailTools(
         });
     }
 
+    /// <summary><c>mail.search</c> 的单页投影（items: message_id/preview + total + 翻页契约）。</summary>
+    /// <remarks>
+    /// P-0 补齐：从内联 lambda 提为静态方法，使聚合路径与单页路径共用<b>同一份</b>投影
+    /// （内容与改造前逐字节一致）。
+    /// </remarks>
+    private static JsonObject ProjectSearch(SearchUserMailboxMessageResult data)
+    {
+        var items = new JsonArray();
+        foreach (var hit in data.Items ?? [])
+        {
+            // AddNode（而非 Add）：见 ToolResultText.AddNode——泛型 Add<T>(T) 的裁剪/AOT 注解会红。
+            items.AddNode(new JsonObject
+            {
+                // MailSearchItem 只有 Id / DisplayInfo / MetaData 三个字段
+                // （标题、线程、时间都在 MetaData 里），故按实际可得字段投影。
+                ["message_id"] = hit.Id,
+                ["preview"] = ToolResultText.Truncate(hit.DisplayInfo, PageSizes.MessagePreviewLength),
+            });
+        }
+
+        // R-3：信封形态单源（ToolResultJsons.PageEnvelope）。⚠️ 与更早写法的**有意差异**：
+        // 旧写法无条件写出 page_token（空值时是 ""/null），模型会把它当"可续游标"照抄回传，
+        // 而平台对空 token 的处理是"从头再来"（表现为重复拉第一页且模型无法自查）；
+        // 统一出口只在非空时写出。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
+        envelope["items"] = items;
+        envelope["total"] = data.Total;
+        return envelope;
+    }
+
     /// <summary>list_messages 投影：items（message_id）+ 翻页契约。</summary>
     private static JsonObject ProjectMessages(ApiPageListResult<string> data)
     {
@@ -301,38 +331,28 @@ internal sealed class MailTools(
                 _mailUserMessageClient, executor.ToolName, "IFeishuUserV1MailMessage", "AddMailApi 的 user 身份侧");
             var args = MailSearchArgs.Unpack(arguments);
 
-            var outcome = FeishuApiResultReader.Read(await client
-                .SearchUserMailboxMessageAsync(
-                    args.UserMailboxId,
-                    new SearchUserMailboxMessageRequest { Query = args.Query },
-                    page_token: args.PageToken,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
+            // P-0 补齐：统一分页出口——聚合路径与单页路径共用**同一次调用定义**与**同一份投影**。
+            // SearchUserMailboxMessageResult 是"自带 has_more/page_token 但不继承 ApiPageListResult"
+            // 的历史 DTO，故走显式页状态重载。
+            async Task<FeishuApiOutcome<SearchUserMailboxMessageResult>> FetchPageAsync(string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await client
+                    .SearchUserMailboxMessageAsync(
+                        args.UserMailboxId,
+                        new SearchUserMailboxMessageRequest { Query = args.Query },
+                        page_token: token,
+                        cancellationToken: ct)
+                    .ConfigureAwait(false));
 
-            return executor.FromApi(outcome, data =>
-            {
-                var items = new JsonArray();
-                foreach (var hit in data.Items ?? [])
-                {
-                    // AddNode（而非 Add）：见 ToolResultText.AddNode——泛型 Add<T>(T) 的裁剪/AOT 注解会红。
-                    items.AddNode(new JsonObject
-                    {
-                        // MailSearchItem 只有 Id / DisplayInfo / MetaData 三个字段
-                        // （标题、线程、时间都在 MetaData 里），故按实际可得字段投影。
-                        ["message_id"] = hit.Id,
-                        ["preview"] = ToolResultText.Truncate(hit.DisplayInfo, PageSizes.MessagePreviewLength),
-                    });
-                }
-
-                // R-3：信封形态单源（ToolResultJsons.PageEnvelope）。⚠️ 与旧写法的**有意差异**：
-                // 旧写法无条件写出 page_token（空值时是 ""/null），模型会把它当"可续游标"照抄回传，
-                // 而平台对空 token 的处理是"从头再来"（表现为重复拉第一页且模型无法自查）；
-                // 统一出口只在非空时写出。
-                var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
-                envelope["items"] = items;
-                envelope["total"] = data.Total;
-                return envelope;
-            });
+            return await executor.FromPagedApiAsync(
+                FetchPageAsync,
+                ProjectSearch,
+                static data => (data.HasMore == true, data.PageToken),
+                args.FetchAll,
+                args.MaxItems,
+                args.PageToken,
+                _maxAutoFetchItems,
+                _maxAutoFetchPages,
+                cancellationToken).ConfigureAwait(false);
         });
     }
 

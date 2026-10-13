@@ -35,6 +35,10 @@ internal sealed class HireJobTools(
 
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
+    /// <summary>P-3（统一分页语义）：<c>fetch_all</c> 的条目/页数预算（来自宿主配置）。</summary>
+    private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
+
     /// <summary>hire.list_jobs：分页列出招聘岗位（精简投影）。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantHireListJobsTool))]
     public Task<FeishuToolResult> ListJobsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
@@ -51,13 +55,17 @@ internal sealed class HireJobTools(
         {
             var args = HireListJobsArgs.Unpack(arguments);
 
-            var outcome = FeishuApiResultReader.Read(await _hireJobClient
-                .GetJobListAsync(
-                    query: new JobListQuery { PageToken = args.PageToken },
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
+            // P-3：统一分页出口——聚合路径与单页路径共用**同一次调用定义**与**同一份投影**。
+            async Task<FeishuApiOutcome<GetJobListResult>> FetchPageAsync(string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await _hireJobClient
+                    .GetJobListAsync(
+                        query: new JobListQuery { PageToken = token },
+                        cancellationToken: ct)
+                    .ConfigureAwait(false));
 
-            return executor.FromApi(outcome, result => ProjectPage(result, brief: true));
+            return await executor.FromPagedApiAsync(
+                FetchPageAsync, result => ProjectPage(result, brief: true), args.FetchAll, args.MaxItems, args.PageToken,
+                _maxAutoFetchItems, _maxAutoFetchPages, cancellationToken).ConfigureAwait(false);
         });
     }
 

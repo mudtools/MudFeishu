@@ -184,7 +184,7 @@ internal readonly struct ToolExecutor(string toolName, int maxResultLength)
     /// <param name="optionsDefaultMaxItems">宿主默认条目预算（<c>FeishuAgentOptions.MaxAutoFetchItems</c>）。</param>
     /// <param name="optionsDefaultMaxPages">宿主默认页数预算（<c>FeishuAgentOptions.MaxAutoFetchPages</c>）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
-    public async Task<FeishuToolResult> FromPagedApiAsync<TPage>(
+    public Task<FeishuToolResult> FromPagedApiAsync<TPage>(
         Func<string?, CancellationToken, Task<FeishuApiOutcome<TPage>>> fetchPage,
         Func<TPage, JsonObject> project,
         bool? fetchAll,
@@ -194,13 +194,55 @@ internal readonly struct ToolExecutor(string toolName, int maxResultLength)
         int optionsDefaultMaxPages,
         CancellationToken cancellationToken)
         where TPage : ApiPageListResult
+        // 约束到 ApiPageListResult 的重载把"页状态怎么读"固化为唯一的真相（HasMore/PageToken），
+        // 于是 22 个工具都不必各自写一遍读法（写错一处就是"永远只翻一页"的静默缺陷）。
+        => FromPagedApiAsync(
+            fetchPage,
+            project,
+            static page => (page.HasMore, page.PageToken),
+            fetchAll,
+            maxItems,
+            pageToken,
+            optionsDefaultMaxItems,
+            optionsDefaultMaxPages,
+            cancellationToken);
+
+    /// <summary>
+    /// <b>统一分页出口（页状态显式版）</b>：给<b>翻页契约字段名与基类不一致</b>的历史 DTO 用。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么需要它</b>：仓内少数结果类型是"自带 <c>items</c>/<c>total</c>/<c>has_more</c>/<c>page_token</c>
+    /// 但<b>不继承</b> <c>ApiPageListResult</c>"的独立 DTO（如 <c>SearchMinutesResult</c>）。
+    /// 没有本重载时，这类工具只能退回"手写两段（聚合 + 单页）"——正是本方法要消灭的形态。
+    /// </para>
+    /// <para>
+    /// <b>纪律</b>：<paramref name="readPageState"/> 必须读<b>该 DTO 自己声明的</b>那两个字段
+    /// （而不是另找等价字段猜值）；空值语义按"<c>has_more == true</c> 才算有下一页"处理
+    /// （可空布尔的历史 DTO 里，<c>null</c> 表示"未知"，此时停在第 N 页而不要无限翻）。
+    /// </para>
+    /// </remarks>
+    public async Task<FeishuToolResult> FromPagedApiAsync<TPage>(
+        Func<string?, CancellationToken, Task<FeishuApiOutcome<TPage>>> fetchPage,
+        Func<TPage, JsonObject> project,
+        Func<TPage, (bool HasMore, string? PageToken)> readPageState,
+        bool? fetchAll,
+        int? maxItems,
+        string? pageToken,
+        int optionsDefaultMaxItems,
+        int optionsDefaultMaxPages,
+        CancellationToken cancellationToken,
+        bool untruncated = false)
+        // 引用类型约束来自 FeishuApiOutcome<T>（它承载 T? 数据）；不继承 ApiPageListResult 的
+        // 历史 DTO 也满足它，故本重载的适用面比约束版更宽。
+        where TPage : class
     {
         if (fetchAll == true)
         {
             var budget = ToolPagination.ResolveMaxItems(maxItems, optionsDefaultMaxItems);
             var aggregated = await ToolPagination.AggregateOutcomesAsync(
                 fetchPage,
-                static page => (page.HasMore, page.PageToken),
+                readPageState,
                 page => project(page)["items"]!.AsArray(),
                 budget,
                 ToolPagination.ResolveMaxPages(optionsDefaultMaxPages),
@@ -209,7 +251,12 @@ internal readonly struct ToolExecutor(string toolName, int maxResultLength)
             return FromPagedResult(aggregated, budget);
         }
 
-        return FromApi(await fetchPage(pageToken, cancellationToken).ConfigureAwait(false), project);
+        var single = await fetchPage(pageToken, cancellationToken).ConfigureAwait(false);
+
+        // untruncated：少数工具的**单页**语义是"不截断"（如 minutes.search 的逐条预览已自带窗口）。
+        // 显式开关而不是"顺手统一成 FromApi"——那会把既有单页行为从"不截断"静默改成"截断"，
+        // 正是 P-6 红线要拦的形态。
+        return untruncated ? FromApiUntruncated(single, project) : FromApi(single, project);
     }
 
     /// <summary>

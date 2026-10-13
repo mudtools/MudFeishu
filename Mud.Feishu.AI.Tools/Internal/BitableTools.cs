@@ -33,6 +33,8 @@ internal sealed class BitableTools(
         ?? throw new ArgumentNullException(nameof(recordClient));
     private readonly Mud.Feishu.IFeishuTenantV1BitableView? _viewClient = viewClient;
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
+
+    /// <summary>P-0 补齐（统一分页语义）：<c>fetch_all</c> 的条目/页数预算（来自宿主配置）。</summary>
     private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
     private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
@@ -78,10 +80,15 @@ internal sealed class BitableTools(
         {
             var args = BitableListFieldsArgs.Unpack(arguments);
 
-            var outcome = FeishuApiResultReader.Read(await _fieldClient
-                .GetFieldsPageListAsync(args.AppToken, args.TableId, args.ViewId, text_field_as_array: null, PageSizes.BitableFields, args.PageToken, cancellationToken)
-                .ConfigureAwait(false));
-            return executor.FromApi(outcome, ProjectFields);
+            // P-0 补齐：统一分页出口——聚合路径与单页路径共用同一次调用定义与同一份投影。
+            async Task<FeishuApiOutcome<ApiPageListTotalResult<AppTableFieldInfo>>> FetchPageAsync(string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await _fieldClient
+                    .GetFieldsPageListAsync(args.AppToken, args.TableId, args.ViewId, text_field_as_array: null, PageSizes.BitableFields, token, ct)
+                    .ConfigureAwait(false));
+
+            return await executor.FromPagedApiAsync(
+                FetchPageAsync, ProjectFields, args.FetchAll, args.MaxItems, args.PageToken,
+                _maxAutoFetchItems, _maxAutoFetchPages, cancellationToken).ConfigureAwait(false);
         });
     }
 

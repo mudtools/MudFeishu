@@ -33,6 +33,8 @@ public interface IFeishuTenantHireListJobsTool
     /// <returns>白名单投影后的 JSON 文本（分页信封 items/has_more/page_token；条目含 id/title/code/active_status/update_time）。</returns>
     Task<string> ListJobsAsync(
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -88,6 +90,8 @@ public interface IFeishuTenantHireListJobRequirementsTool
     Task<string> ListJobRequirementsAsync(
         [ToolParameter("job_id", "职位 ID 过滤（可选，来自 hire.list_jobs 的 id；只返回挂在该职位下的需求）")] string? job_id = null,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -120,6 +124,8 @@ public interface IFeishuTenantHireListOffersTool
     Task<string> ListOffersAsync(
         [ToolParameter("talent_id", "人才 ID（必填，来自 hire.list_talents 或面试安排里的候选人）", Required = true)] string talent_id,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -157,6 +163,8 @@ public interface IFeishuTenantHireListInterviewsTool
         [ToolParameter("start_time", "时间窗起点（可选，毫秒时间戳字符串，如 \\\"1704067200000\\\"；与 end_time 成对使用）")] string? start_time = null,
         [ToolParameter("end_time", "时间窗终点（可选，毫秒时间戳字符串）")] string? end_time = null,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -186,6 +194,8 @@ public interface IFeishuTenantHireListTalentsTool
     Task<string> ListTalentsAsync(
         [ToolParameter("keyword", "检索关键字（可选，按人才姓名/手机号等匹配；不填=按更新时间倒序翻页）")] string? keyword = null,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 

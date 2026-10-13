@@ -28,7 +28,13 @@ namespace Mud.Feishu.AI.Tools.Internal;
 /// 后者失败会被<b>软缺席机制静默吞掉</b>。改软依赖后问题消失。
 /// </para>
 /// </remarks>
-internal sealed class MinutesReadTools(Mud.Feishu.IFeishuTenantV1MinutesMinute? minutesClient = null)
+internal sealed class MinutesReadTools(
+    Mud.Feishu.IFeishuTenantV1MinutesMinute? minutesClient = null,
+
+    // P-4（统一分页语义）：取分页预算需要宿主配置。**带默认值**是刻意的——
+    // 既有构造点（测试直接 new、以及生成器按"声明顺序"传参）不会被破坏；
+    // 生产路径由生成器注入非空实例，故 Require 的前置断言仍然成立。
+    IOptions<FeishuAgentOptions> options = null!)
 {
     /// <summary>逐字稿窗口的默认长度（字符）。</summary>
     /// <remarks>
@@ -42,6 +48,10 @@ internal sealed class MinutesReadTools(Mud.Feishu.IFeishuTenantV1MinutesMinute? 
     private const int MaxTranscriptWindow = 50000;
 
     private readonly Mud.Feishu.IFeishuTenantV1MinutesMinute? _minutesClient = minutesClient;
+
+    /// <summary>P-4（统一分页语义）：<c>fetch_all</c> 的条目/页数预算（来自宿主配置）。</summary>
+    private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
     [FeishuToolHandler(typeof(IFeishuTenantMinutesGetTool))]
     public Task<FeishuToolResult> GetMinuteAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
@@ -265,34 +275,62 @@ internal sealed class MinutesReadTools(Mud.Feishu.IFeishuTenantV1MinutesMinute? 
                 request.Filter = filter;
             }
 
-            var outcome = FeishuApiResultReader.Read(await Require(executor.ToolName)
-                .SearchMinutesAsync(request, page_token: args.PageToken, cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
+            // P-4：统一分页出口——聚合路径与单页路径共用**同一次调用定义**与**同一份投影**。
+            // SearchMinutesResult 是"自带 has_more/page_token 但不继承 ApiPageListResult"的历史 DTO，
+            // 故走显式页状态重载（读它自己声明的字段）。
+            async Task<FeishuApiOutcome<SearchMinutesResult>> FetchPageAsync(string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await Require(executor.ToolName)
+                    .SearchMinutesAsync(request, page_token: token, cancellationToken: ct)
+                    .ConfigureAwait(false));
 
-            return executor.FromApiUntruncated(outcome, data =>
-            {
-                var items = new JsonArray();
-                foreach (var item in data.Items ?? [])
-                {
-                    items.AddNode(new JsonObject
-                    {
-                        ["minute_token"] = item.Token,
-                        ["display_info"] = ToolResultText.Truncate(item.DisplayInfo, PageSizes.MessagePreviewLength),
-                        ["description"] = item.MetaData?.Description,
-                        ["app_link"] = item.MetaData?.AppLink,
-                    });
-                }
-
-                // R-3：信封形态单源（ToolResultJsons.PageEnvelope）。⚠️ 与旧写法的**有意差异**：
-                // 旧写法无条件写出 page_token（空值时是 ""/null）——模型会当成可续游标照抄回传，
-                // 平台按"从头再来"处理（重复拉第一页）；统一出口只在非空时写出。
-                var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
-                envelope["items"] = items;
-                envelope["total"] = data.Total;
-                envelope["notice"] = data.Notice;
-                return envelope;
-            });
+            return await executor.FromPagedApiAsync(
+                FetchPageAsync,
+                ProjectSearchPage,
+                static data => (data.HasMore == true, data.PageToken),
+                args.FetchAll,
+                args.MaxItems,
+                args.PageToken,
+                _maxAutoFetchItems,
+                _maxAutoFetchPages,
+                cancellationToken,
+                // 单页语义保持"不截断"（与改造前的 FromApiUntruncated 逐字节等价）。
+                untruncated: true).ConfigureAwait(false);
         });
+    }
+
+    /// <summary>
+    /// <c>minutes.search</c> 的单页投影（信封形态单源 <c>ToolResultJsons.PageEnvelope</c>）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// P-4：统一分页出口要求"聚合路径与单页路径<b>共用同一份投影</b>"，故把它从内联 lambda
+    /// 提为静态方法——<b>内容与改造前逐字节一致</b>（含 <c>total</c>/<c>notice</c> 两个本域标量）。
+    /// </para>
+    /// <para>
+    /// ⚠️ 与更早写法的**有意差异**（已在本次改造之前落地）：旧写法无条件写出 <c>page_token</c>
+    /// （空值时为 ""/null），模型会把它当成可续游标照抄回传，平台按"从头再来"处理（重复拉第一页）；
+    /// 统一信封只在非空时写出。
+    /// </para>
+    /// </remarks>
+    private static JsonObject ProjectSearchPage(SearchMinutesResult data)
+    {
+        var items = new JsonArray();
+        foreach (var item in data.Items ?? [])
+        {
+            items.AddNode(new JsonObject
+            {
+                ["minute_token"] = item.Token,
+                ["display_info"] = ToolResultText.Truncate(item.DisplayInfo, PageSizes.MessagePreviewLength),
+                ["description"] = item.MetaData?.Description,
+                ["app_link"] = item.MetaData?.AppLink,
+            });
+        }
+
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
+        envelope["items"] = items;
+        envelope["total"] = data.Total;
+        envelope["notice"] = data.Notice;
+        return envelope;
     }
 
     [FeishuToolHandler(typeof(IFeishuTenantMinutesGetStatisticsTool))]

@@ -114,20 +114,20 @@ public class PaginationContractGuards
             .ToHashSet(StringComparer.Ordinal);
 
         var missing = FeishuToolSchemas.SchemaByToolName
-            .Where(pair => pair.Value.Contains("\"page_token\"", StringComparison.Ordinal))
-            .Where(pair => !pair.Value.Contains("\"fetch_all\"", StringComparison.Ordinal))
+            .Where(pair => DeclaresPageTokenParameter(pair.Value))
+            .Where(pair => !DeclaresFetchAllParameter(pair.Value))
             .Select(pair => pair.Key)
             .Where(name => !exemptions.Contains(name))
             .OrderBy(static name => name, StringComparer.Ordinal)
             .ToArray();
 
-        // 扫描面自证：若"含 page_token 的工具"集合为空，本用例恒绿（假门禁）。
+        // 扫描面自证：若"含 page_token 入参的工具"集合为空，本用例恒绿（假门禁）。
         FeishuToolSchemas.SchemaByToolName
-            .Count(pair => pair.Value.Contains("\"page_token\"", StringComparison.Ordinal))
+            .Count(pair => DeclaresPageTokenParameter(pair.Value))
             .Should().BeGreaterThan(0, "扫描面为空 = 判据失效（假绿）");
 
         missing.Should().BeEmpty(
-            "以下工具**声明了 page_token 却未提供 fetch_all**——模型只能手工翻页（每次往返一次调用）。"
+            "以下工具**声明了 page_token 入参却未提供 fetch_all**——模型只能手工翻页（每次往返一次调用）。"
             + "统一分页语义要求：要么接入 ToolPagination（推荐），要么登记进 PendingPaginationExemptions 并写清理由：{0}",
             string.Join(", ", missing));
     }
@@ -140,8 +140,8 @@ public class PaginationContractGuards
     {
         var stale = PendingPaginationExemptions()
             .Where(entry => !FeishuToolSchemas.SchemaByToolName.TryGetValue(entry.Tool, out var schema)
-                || !schema.Contains("\"page_token\"", StringComparison.Ordinal)
-                || schema.Contains("\"fetch_all\"", StringComparison.Ordinal))
+                || !DeclaresPageTokenParameter(schema)
+                || DeclaresFetchAllParameter(schema))
             .Select(static entry => entry.Tool)
             .ToArray();
 
@@ -149,6 +149,108 @@ public class PaginationContractGuards
             "以下豁免条目已过期（工具已接入 fetch_all，或已不再是分页工具，或已不存在）——"
             + "请从 PendingPaginationExemptions 中删除：{0}",
             string.Join(", ", stale));
+    }
+
+    /// <summary>
+    /// 工具是否<b>声明了 <c>page_token</c> 入参</b>（只看 <c>parameters</c> 区）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么必须只看 parameters 区（实测教训）</b>：首版判据是在整份 schema 文本里找
+    /// <c>"page_token"</c>，结果把 <c>drive.add_comment</c>（写工具）误报成"分页工具"——
+    /// 它的命中来自<b>输出投影</b>里的 <c>has_more</c>/<c>page_token</c> 字段（返回体结构），
+    /// 与"入参能不能翻页"毫无关系。而这会让"写工具不得带 fetch_all"与"分页工具必须带 fetch_all"
+    /// 形成**互相矛盾的强制要求**（该工具无论怎么做都报红）——假红比漏报更糟：它会逼人放宽判据。
+    /// </para>
+    /// <para>
+    /// 实现上做 JSON 字符串感知的花括号配对（描述文本里可能含 <c>{}</c>），
+    /// 并由 <see cref="ParameterSectionScanner_ShouldIsolateParametersOnly"/> 自证。
+    /// </para>
+    /// </remarks>
+    internal static bool DeclaresPageTokenParameter(string schema)
+        => ParametersSection(schema).Contains("\"page_token\":", StringComparison.Ordinal);
+
+    /// <summary>工具是否声明了 <c>fetch_all</c> 入参（同样只看 parameters 区）。</summary>
+    internal static bool DeclaresFetchAllParameter(string schema)
+        => ParametersSection(schema).Contains("\"fetch_all\":", StringComparison.Ordinal);
+
+    /// <summary>取出 schema 的 <c>"parameters":{...}</c> 对象（含花括号；找不到返回空串）。</summary>
+    internal static string ParametersSection(string schema)
+    {
+        const string marker = "\"parameters\":{";
+        var start = schema.IndexOf(marker, StringComparison.Ordinal);
+        if (start < 0)
+        {
+            return string.Empty;
+        }
+
+        var open = start + marker.Length - 1;
+        var depth = 0;
+        var inString = false;
+        var escaped = false;
+
+        for (var p = open; p < schema.Length; p++)
+        {
+            var ch = schema[p];
+            if (inString)
+            {
+                if (escaped)
+                {
+                    escaped = false;
+                }
+                else if (ch == '\\')
+                {
+                    escaped = true;
+                }
+                else if (ch == '"')
+                {
+                    inString = false;
+                }
+
+                continue;
+            }
+
+            if (ch == '"')
+            {
+                inString = true;
+            }
+            else if (ch == '{')
+            {
+                depth++;
+            }
+            else if (ch == '}')
+            {
+                depth--;
+                if (depth == 0)
+                {
+                    return schema.Substring(open, p - open + 1);
+                }
+            }
+        }
+
+        return string.Empty;
+    }
+
+    /// <summary>判据自证：只认参数区（输出投影里的同名字段不得计入）。</summary>
+    [Fact]
+    public void ParameterSectionScanner_ShouldIsolateParametersOnly()
+    {
+        const string withParamOnly =
+            """{"name":"x.y","parameters":{"type":"object","properties":{"page_token":{"type":"string"}}},"output_schema":{"page_token":{"type":"string"}}}""";
+        const string withOutputOnly =
+            """{"name":"x.z","parameters":{"type":"object","properties":{"file_token":{"type":"string"}}},"output_schema":{"has_more":{"type":"boolean"},"page_token":{"type":"string"}}}""";
+
+        DeclaresPageTokenParameter(withParamOnly).Should().BeTrue("入参区声明了 page_token 必须被认出");
+        DeclaresPageTokenParameter(withOutputOnly).Should().BeFalse(
+            "page_token 只出现在输出投影里 ⇒ 不是分页入参（drive.add_comment 的实测形态）");
+
+        ParametersSection(withParamOnly).Should()
+            .Contain("\"page_token\":")
+            .And.NotContain("output_schema", "参数区切片不得越界到后面的键");
+
+        DeclaresFetchAllParameter(
+            """{"parameters":{"properties":{"fetch_all":{"type":"boolean"}}}}""")
+            .Should().BeTrue("fetch_all 入参必须被认出");
     }
 
     /// <summary>
@@ -179,31 +281,20 @@ public class PaginationContractGuards
     /// </remarks>
     private static (string Tool, string Reason)[] PendingPaginationExemptions() =>
     [
-        // ────────── 方案 §5.3 点名的批次（未完成部分） ──────────
-        ("hire.list_jobs", "P-3 未完成：Hire 域 5 个 list 工具尚未接入 ToolPagination"),
-        ("hire.list_job_requirements", "P-3 未完成（同上）"),
-        ("hire.list_talents", "P-3 未完成（同上）"),
-        ("hire.list_interviews", "P-3 未完成（同上）"),
-        ("hire.list_offers", "P-3 未完成（同上）"),
-        ("minutes.search", "P-4 未完成：MinutesReadTools 的构造需先追加 IOptions 依赖才能取分页预算"),
+        // 注：方案 §5.3 点名的 P-1~P-4 批次已全部落地（IM / VC / OKR / Hire / Minutes / Contact / Search），
+        // 故原"批次未完成"条目已按本守卫的纪律**删除**（StaleExemptions 会点名任何过期条目）。
 
         // ────────── P-0 判据扩展后**新暴露**的缺口（此前无人知道） ──────────
         // 这批工具都"声明了 page_token 却未提供 fetch_all"：模型能翻页但每页一次往返。
         // 登记为技术债（而不是让守卫静默放行），补齐后必须从本清单删除。
-        ("bitable.list_fields", "P-0 新暴露：bitable 字段/视图列表未接 fetch_all（B1 首批只覆盖了 list_tables/query_records）"),
-        ("bitable.list_views", "P-0 新暴露（同上）"),
         ("contact.get_department_parents", "P-0 新暴露：通讯录部门父级链未接 fetch_all"),
         ("contact.search_departments", "P-0 新暴露：部门搜索未接 fetch_all"),
-        ("calendar.list_event_attendees", "P-0 新暴露：日程与会者列表未接 fetch_all"),
-        ("mail.search", "P-0 新暴露：邮件搜索未接 fetch_all（list_messages 已接）"),
         ("org.list_job_families", "P-0 新暴露：组织元数据四个 list_* 未接 fetch_all"),
         ("org.list_job_levels", "P-0 新暴露（同上）"),
         ("org.list_job_titles", "P-0 新暴露（同上）"),
         ("org.list_work_cities", "P-0 新暴露（同上）"),
         ("security.list_openapi_logs", "P-0 新暴露：安全日志两个查询未接 fetch_all"),
         ("security.query_audit_logs", "P-0 新暴露（同上）"),
-        ("drive.add_comment", "P-0 新暴露：写工具携带 page_token 的语义待复核（写工具不得带 fetch_all）——"
-            + "登记为技术债：需确认该 page_token 是否只是请求体字段而非翻页游标"),
     ];
 
     /// <summary>

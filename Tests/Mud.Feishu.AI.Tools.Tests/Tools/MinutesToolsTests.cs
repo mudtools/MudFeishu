@@ -36,7 +36,11 @@ public class MinutesToolsTests
         => items.ToDictionary(p => p.Key, p => p.Value);
 
     private static MinutesReadTools CreateTools(Mock<Mud.Feishu.IFeishuTenantV1MinutesMinute>? client = null)
-        => new(client?.Object);
+        // P-4：执行器新增了 IOptions<FeishuAgentOptions> 依赖（取统一分页预算），
+        // 故直接构造点必须显式给出宿主配置（生产路径由 DI 注入）。
+        => new(
+            client?.Object,
+            Microsoft.Extensions.Options.Options.Create(new Mud.Feishu.AI.Agents.FeishuAgentOptions { Instructions = "test" }));
 
     private static Mock<Mud.Feishu.IFeishuTenantV1MinutesMinute> ClientWithArtifacts(GetMinuteArtifactsResult data)
     {

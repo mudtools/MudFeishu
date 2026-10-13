@@ -34,6 +34,10 @@ internal sealed class HireOfferTools(
 
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
+    /// <summary>P-3（统一分页语义）：<c>fetch_all</c> 的条目/页数预算（来自宿主配置）。</summary>
+    private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
+
     /// <summary>hire.list_offers：按人才 ID 查询其 Offer 列表（只回状态相关字段）。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantHireListOffersTool))]
     public Task<FeishuToolResult> ListOffersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
@@ -51,11 +55,15 @@ internal sealed class HireOfferTools(
             var args = HireListOffersArgs.Unpack(arguments);
 
             // page_size 刻意不下发（保持 SDK 默认）——运维参数不进模型可见面（DP-B1-0）。
-            var outcome = FeishuApiResultReader.Read(await _hireCandidateClient
-                .GetOfferListAsync(args.TalentId, page_token: args.PageToken, cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
+            // P-3：统一分页出口——聚合路径与单页路径共用**同一次调用定义**与**同一份投影**。
+            async Task<FeishuApiOutcome<GetOfferListResult>> FetchPageAsync(string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await _hireCandidateClient
+                    .GetOfferListAsync(args.TalentId, page_token: token, cancellationToken: ct)
+                    .ConfigureAwait(false));
 
-            return executor.FromApi(outcome, ProjectPage);
+            return await executor.FromPagedApiAsync(
+                FetchPageAsync, ProjectPage, args.FetchAll, args.MaxItems, args.PageToken,
+                _maxAutoFetchItems, _maxAutoFetchPages, cancellationToken).ConfigureAwait(false);
         });
     }
 

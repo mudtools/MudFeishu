@@ -5,12 +5,13 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using System.Globalization;
 using Mud.Feishu.DataModels.TrustParty;
 
 namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
-/// TrustParty「信任方 / 跨组织互通」只读工具执行器（B1 收官域：8 个只读工具）。
+/// TrustParty「信任方 / 跨组织互通」工具执行器（B1 收官域：8 个只读 + 3 个写）。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -676,4 +677,228 @@ internal sealed class TrustPartyTools(
                 toolName,
                 $"未注册 {ClientName} 客户端——跨组织互通能力需宿主启用互通 API（软缺席，不影响其它域工具）"))
             : null;
+
+    // ─────────────────── 写面：互通规则 CRUD ───────────────────
+
+    /// <summary>trustparty.create_collaboration_rule：新建互通规则。</summary>
+    [FeishuToolHandler(typeof(IFeishuTenantTrustpartyCreateCollaborationRuleTool))]
+    public Task<FeishuToolResult> CreateCollaborationRuleAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.TrustpartyCreateCollaborationRule, _maxResultLength);
+        if (Absent(executor.ToolName, _collaborationRuleClient) is { } unavailable)
+        {
+            return Task.FromResult(unavailable);
+        }
+
+        return executor.RunAsync(async () =>
+        {
+            var args = TrustpartyCreateCollaborationRuleArgs.Unpack(arguments);
+
+            // 参数校验只做一次，且**先于 dry_run**：非法形状连预演都不该放行
+            // （否则模型会拿着"预演成功"的信心去改参数，反而多绕一轮）。
+            var subjects = BuildEntities(args.SubjectOpenUserIds, args.SubjectOpenDepartmentIds, args.SubjectOpenGroupIds);
+            var objects = BuildEntities(args.ObjectOpenUserIds, args.ObjectOpenDepartmentIds, args.ObjectOpenGroupIds);
+            if (subjects is null || objects is null)
+            {
+                return Invalid(executor.ToolName,
+                    "主体（subject_*）与客体（object_*）两侧都必须至少填一类 open_id 列表"
+                    + "——平台会因空侧直接报错，且错误信息对模型不可执行。");
+            }
+
+            var total = CountEntities(args.SubjectOpenUserIds, args.SubjectOpenDepartmentIds, args.SubjectOpenGroupIds)
+                + CountEntities(args.ObjectOpenUserIds, args.ObjectOpenDepartmentIds, args.ObjectOpenGroupIds);
+            if (total >= EntityBudget)
+            {
+                return Invalid(executor.ToolName,
+                    $"主客体实体数之和须 < {EntityBudget}（当前 {total}）——平台硬约束，超了必被拒。");
+            }
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName,
+                    "POST",
+                    "/open-apis/directory/v1/collaboration_rules",
+                    ToolDryRun.IdempotencyNote(null),
+                    ("target_tenant_key", args.TargetTenantKey?.Length ?? 0),
+                    ("subject_entities", CountEntities(args.SubjectOpenUserIds, args.SubjectOpenDepartmentIds, args.SubjectOpenGroupIds)),
+                    ("object_entities", CountEntities(args.ObjectOpenUserIds, args.ObjectOpenDepartmentIds, args.ObjectOpenGroupIds))));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _collaborationRuleClient!
+                .CreateCollaborationRuleAsync(
+                    new CreateCollaborationRuleRequest { Subjects = subjects, Objects = objects },
+                    args.TargetTenantKey,
+                    cancellationToken)
+                .ConfigureAwait(false));
+
+            return executor.FromApi(outcome, data => new JsonObject
+            {
+                ["rule_id"] = data.AddRuleId,
+                ["target_tenant_key"] = args.TargetTenantKey,
+                ["subject_entities"] = CountEntities(args.SubjectOpenUserIds, args.SubjectOpenDepartmentIds, args.SubjectOpenGroupIds),
+                ["object_entities"] = CountEntities(args.ObjectOpenUserIds, args.ObjectOpenDepartmentIds, args.ObjectOpenGroupIds),
+                ["created"] = true,
+            });
+        });
+    }
+
+    /// <summary>trustparty.update_collaboration_rule：覆盖式更新互通规则。</summary>
+    [FeishuToolHandler(typeof(IFeishuTenantTrustpartyUpdateCollaborationRuleTool))]
+    public Task<FeishuToolResult> UpdateCollaborationRuleAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.TrustpartyUpdateCollaborationRule, _maxResultLength);
+        if (Absent(executor.ToolName, _collaborationRuleClient) is { } unavailable)
+        {
+            return Task.FromResult(unavailable);
+        }
+
+        return executor.RunAsync(async () =>
+        {
+            var args = TrustpartyUpdateCollaborationRuleArgs.Unpack(arguments);
+
+            var subjects = BuildEntities(args.SubjectOpenUserIds, args.SubjectOpenDepartmentIds, args.SubjectOpenGroupIds);
+            var objects = BuildEntities(args.ObjectOpenUserIds, args.ObjectOpenDepartmentIds, args.ObjectOpenGroupIds);
+            var total = CountEntities(args.SubjectOpenUserIds, args.SubjectOpenDepartmentIds, args.SubjectOpenGroupIds)
+                + CountEntities(args.ObjectOpenUserIds, args.ObjectOpenDepartmentIds, args.ObjectOpenGroupIds);
+
+            if (subjects is null && objects is null)
+            {
+                return Invalid(executor.ToolName,
+                    "至少填一侧的 open_id 列表（subject_* 或 object_*）——两侧都空等于把规则清成空规则，"
+                    + "平台会因空侧报错。若确实要作废规则，请用 delete_collaboration_rule。");
+            }
+
+            if (total >= EntityBudget)
+            {
+                return Invalid(executor.ToolName,
+                    $"主客体实体数之和须 < {EntityBudget}（当前 {total}）——平台硬约束，超了必被拒。");
+            }
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName,
+                    "PUT",
+                    "/open-apis/directory/v1/collaboration_rules/{collaboration_rule_id}",
+                    ToolDryRun.IdempotencyNote(null),
+                    ("target_tenant_key", args.TargetTenantKey?.Length ?? 0),
+                    ("collaboration_rule_id", args.CollaborationRuleId?.Length ?? 0),
+                    ("subject_entities", CountEntities(args.SubjectOpenUserIds, args.SubjectOpenDepartmentIds, args.SubjectOpenGroupIds)),
+                    ("object_entities", CountEntities(args.ObjectOpenUserIds, args.ObjectOpenDepartmentIds, args.ObjectOpenGroupIds))));
+            }
+
+            var result = await _collaborationRuleClient!
+                .UpdateCollaborationRuleAsync(
+                    args.CollaborationRuleId,
+                    new UpdateCollaborationRuleRequest { Subjects = subjects, Objects = objects },
+                    args.TargetTenantKey,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            RequireNullDataSuccess(executor.ToolName, result);
+
+            return ToolResultPipeline.OkReceipt(new JsonObject
+            {
+                ["rule_id"] = args.CollaborationRuleId,
+                ["target_tenant_key"] = args.TargetTenantKey,
+                ["subject_entities"] = CountEntities(args.SubjectOpenUserIds, args.SubjectOpenDepartmentIds, args.SubjectOpenGroupIds),
+                ["object_entities"] = CountEntities(args.ObjectOpenUserIds, args.ObjectOpenDepartmentIds, args.ObjectOpenGroupIds),
+                ["updated"] = true,
+                ["notice"] = "已按覆盖式语义提交：未传的一侧会被清空。若只想追加成员，请先 list_collaboration_rules"
+                    + "读出原主体/客体，合并后再整份提交。",
+            });
+        });
+    }
+
+    /// <summary>trustparty.delete_collaboration_rule：删除互通规则（high-risk-write）。</summary>
+    [FeishuToolHandler(typeof(IFeishuTenantTrustpartyDeleteCollaborationRuleTool))]
+    public Task<FeishuToolResult> DeleteCollaborationRuleAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.TrustpartyDeleteCollaborationRule, _maxResultLength);
+        if (Absent(executor.ToolName, _collaborationRuleClient) is { } unavailable)
+        {
+            return Task.FromResult(unavailable);
+        }
+
+        return executor.RunAsync(async () =>
+        {
+            var args = TrustpartyDeleteCollaborationRuleArgs.Unpack(arguments);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName,
+                    "DELETE",
+                    "/open-apis/directory/v1/collaboration_rules/{collaboration_rule_id}",
+                    ToolDryRun.IdempotencyNote(null),
+                    ("target_tenant_key", args.TargetTenantKey?.Length ?? 0),
+                    ("collaboration_rule_id", args.CollaborationRuleId?.Length ?? 0)));
+            }
+
+            var result = await _collaborationRuleClient!
+                .DeleteCollaborationRuleAsync(
+                    args.CollaborationRuleId,
+                    args.TargetTenantKey,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            RequireNullDataSuccess(executor.ToolName, result);
+
+            return ToolResultPipeline.OkReceipt(new JsonObject
+            {
+                ["rule_id"] = args.CollaborationRuleId,
+                ["target_tenant_key"] = args.TargetTenantKey,
+                ["deleted"] = true,
+                ["notice"] = "删除不可撤销：对端已失去该规则下的互通能力。如需恢复，只能按原主体/客体重新创建"
+                    + "（新规则会有新的 rule_id）。",
+            });
+        });
+    }
+
+    // ─────────────────── 写面内部工具 ───────────────────
+
+    /// <summary>平台约束：主客体实体数之和须 &lt; 100（SDK 注释口径）。</summary>
+    private const int EntityBudget = 100;
+
+    /// <summary>三类 open_id 清单合成一个规则侧；全空返回 <c>null</c>（表示"该侧未提供"）。</summary>
+    private static CollaborationRuleEntities? BuildEntities(string[]? users, string[]? departments, string[]? groups)
+        => users is { Length: > 0 } || departments is { Length: > 0 } || groups is { Length: > 0 }
+            ? new CollaborationRuleEntities
+            {
+                OpenUserIds = users,
+                OpenDepartmentIds = departments,
+                OpenGroupIds = groups,
+            }
+            : null;
+
+    /// <summary>数一侧的实体条数（dry_run 与回执只报条数，不回原文 ID）。</summary>
+    private static int CountEntities(string[]? users, string[]? departments, string[]? groups)
+        => (users?.Length ?? 0) + (departments?.Length ?? 0) + (groups?.Length ?? 0);
+
+    /// <summary>参数非法：结构化错误（不是异常——异常会逃出执行链，模型看不到可执行信息）。</summary>
+    private static FeishuToolResult Invalid(string toolName, string message)
+        => FeishuToolResult.FromError(FeishuToolBinding.StructuredError(toolName, message));
+
+    /// <summary>
+    /// 空数据结果的成功判定（update / delete 返回 <see cref="FeishuNullDataApiResult"/>，
+    /// 其 Data 天然为 null，不能用 <c>FeishuApiResultReader.Read</c>——那会把"无载荷"误判为失败）。
+    /// </summary>
+    private static void RequireNullDataSuccess(string toolName, FeishuNullDataApiResult? result)
+    {
+        if (result is null)
+        {
+            throw new ArgumentException("飞书接口无响应（result 为空）");
+        }
+
+        if (result.Code != 0)
+        {
+            throw new ArgumentException(
+                FeishuToolBinding.StructuredError(
+                    toolName,
+                    result.Code,
+                    $"飞书接口返回错误 code={result.Code.ToString(CultureInfo.InvariantCulture)}, "
+                    + $"msg={result.Msg ?? "(无错误信息)"}"));
+        }
+    }
 }

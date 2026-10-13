@@ -1,6 +1,11 @@
 <Project>
 	<PropertyGroup>
-		<TargetFrameworks>net6.0;net8.0;net10.0</TargetFrameworks>
+		<!-- 测试 TFM 收敛（2026-10-13，见 documents/AI/单元测试体系过度测试分析与解决方案.md §三.1）：
+		     全部测试工程统一 net8.0 单 TFM——SDK 的 TFM 差异分支（#if NET6/NET8）在 net8.0 上已全编译，
+		     多 TFM 重复执行对纯逻辑用例收益趋零，只付出 2–3 倍编译/执行成本。
+		     netstandard2.0/net6.0 的行为差异由源项目 AOT 构建兜底；
+		     例外：Mud.Feishu.Agent.Demo.Tests 保持 net10.0（被测 Demo 工程为 net10.0 单 TFM，依赖约束）。 -->
+		<TargetFrameworks>net8.0</TargetFrameworks>
 		<Version>2.1.0</Version>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>

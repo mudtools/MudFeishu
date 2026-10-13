@@ -40,57 +40,20 @@ public class AffordanceContractGuards
     /// <summary>资产目录（相对仓库根）。</summary>
     private const string AssetDirectory = "Mud.Feishu.AI.Tools/Affordance";
 
-    /// <summary>上游契约的四个固定小节标题（大小写不敏感匹配）。</summary>
-    private static readonly string[] ContractHeadings = ["WHEN", "Avoid when", "Prerequisites", "Tips"];
-
-    /// <summary>单份资产字符上界（镜像上游 <c>AffordanceAssets.MaxAssetLength</c>）。</summary>
-    private const int MaxAssetLength = 1024;
-
-    /// <summary>单个小节字符上界（镜像上游 <c>AffordanceAssets.MaxSectionLength</c>）。</summary>
-    private const int MaxSectionLength = 320;
-
     // ── 规模冻结（R-3/F-7 接入批实测；增减资产必须同批改这里的数字并说明理由）──
     // 字符总数按 LF 归一化口径测量（ReadAssets 统一 \r\n → \n），Windows(CRLF) 与 CI(LF) 同值。
     private const int ExpectedAssetCount = 17;
 
     private const int ExpectedTotalAssetCharacters = 6476;
 
-    [Fact]
-    public void EveryAffordanceAsset_ShouldSatisfyTheUpstreamStructureContract()
-    {
-        var violations = new List<string>();
-        foreach (var (fileName, _, text) in ReadAssets())
-        {
-            var error = CheckStructure(text);
-            if (error.Length > 0)
-            {
-                violations.Add($"{fileName}: {error}");
-            }
-        }
-
-        violations.Should().BeEmpty(
-            "以下 affordance 资产不符合上游词法契约（四节固定且各节非空；不得出现非契约小节的 '#' 行）：\n{0}",
-            string.Join("\n", violations));
-    }
-
-    [Fact]
-    public void EveryAffordanceAsset_ShouldTargetAnExistingTool()
-    {
-        var known = FeishuToolNames.All.ToHashSet(StringComparer.Ordinal);
-        var orphans = ReadAssets()
-            .Where(asset => !known.Contains(asset.ToolName))
-            .Select(asset => asset.FileName)
-            .ToArray();
-
-        orphans.Should().BeEmpty(
-            "以下资产的文件名不命中任何已策展工具名（等价于 MUDFT029，且改工具名时最容易踩）：{0}",
-            string.Join(", ", orphans));
-
-        // 扫描面自证：目录里读到 0 份资产时，上面那条会因"空集"而假绿。
-        ReadAssets().Should().HaveCount(
-            ExpectedAssetCount,
-            "资产份数是冻结基线——增减必须同批更新本数字（防“资产被误删后守卫静默变空”）");
-    }
+    // B2 瘦身（测试体系治理，见 documents/AI/单元测试体系过度测试分析与解决方案.md §三.5）：
+    // 与上游诊断**同一判定**的仓库侧副本已删除——
+    //   · 资产结构（四节固定/空节/未知节）= MUDFT028（Error，构建即断）
+    //   · 资产文件名命中契约工具名         = MUDFT029（Error，构建即断）
+    //   · 资产内反引号引用存在性           = MUDFT030（Error，构建即断）
+    //   · 单资产/单小节字符上界            = MUDFT031（Warning，基线恒 0，CI/Standard 档断言）
+    // 本类只守 MUDFT 看不到的两段：接线（资产 → 模型可见面）与规模冻结（目录被整体清空时
+    // 上述诊断全部静默——没有文件就没有诊断，故冻结计数是唯一防线）。
 
     [Fact]
     public void EveryHighRiskWriteTool_ShouldDeclareAffordance()
@@ -143,49 +106,22 @@ public class AffordanceContractGuards
     }
 
     [Fact]
-    public void AffordanceReferences_ShouldExistInTheToolNameContract()
+    public void AffordanceBudget_TotalScale_ShouldStayAtTheFrozenMeasurement()
     {
-        var known = FeishuToolNames.All.ToHashSet(StringComparer.Ordinal);
-        var dangling = new List<string>();
-
-        foreach (var (fileName, _, text) in ReadAssets())
-        {
-            foreach (var reference in FindDanglingReferences(text, known))
-            {
-                dangling.Add($"{fileName} → {reference}");
-            }
-        }
-
-        dangling.Should().BeEmpty(
-            "以下 affordance 资产引用了工具名契约表里不存在的工具（等价于 MUDFT030；"
-            + "改工具名时最容易漏改资产里的反引号引用）：{0}",
-            string.Join(", ", dangling));
-    }
-
-    [Fact]
-    public void AffordanceBudget_ShouldStayWithinBounds_AndBeMeasured()
-    {
+        // 上界本身由上游 MUDFT031 判定（Warning + 基线，CI/Standard 档断言）；
+        // 本守卫只冻结**规模测量**：affordance 是模型可见 token 预算的一部分，
+        // 总字符数变化必须同批更新本数字（顺带强制评审“这份新增资产值不值这些 token”）。
+        // 同时兼任扫描面防呆：目录被清空/改名时，MUDFT029–031 都静默，只有这里的份数会红。
         var assets = ReadAssets();
 
-        foreach (var (fileName, _, text) in assets)
-        {
-            text.Length.Should().BeLessThanOrEqualTo(
-                MaxAssetLength, $"'{fileName}' 超单资产上界（上游 MUDFT031 的口径；处置是压缩文案，不是抬预算）");
-        }
+        assets.Should().HaveCount(
+            ExpectedAssetCount,
+            "资产份数是冻结基线——增减必须同批更新本数字（防“资产被误删后守卫静默变空”）");
 
         assets.Sum(asset => asset.Text.Length).Should().Be(
             ExpectedTotalAssetCharacters,
             "affordance 是模型可见 token 预算的一部分——总字符数是**测量记录**，"
-            + "变化必须同批更新本数字（顺带强制评审“这份新增资产值不值这些 token”）");
-
-        foreach (var (fileName, _, text) in assets)
-        {
-            foreach (var (heading, body) in ParseSections(text))
-            {
-                body.Length.Should().BeLessThanOrEqualTo(
-                    MaxSectionLength, $"'{fileName}' 的 '{heading}' 小节超上界（上游口径：单小节 ≤ {MaxSectionLength}）");
-            }
-        }
+            + "变化必须同批更新本数字");
     }
 
     // ── 模型可见性（"接线"的最后一段）────────────────────────────────────────
@@ -416,39 +352,6 @@ public class AffordanceContractGuards
             or '，' or ',' or '。' or '.' or '：' or ':' or '；' or ';' or '、' or '/' or '｜' or '|'
             or '"' or '\'' or '“' or '”' or '‘' or '’';
 
-    // ── 检查器自证（每条判据都必须能报红，否则是假门禁）──────────────────────
-
-    [Fact]
-    public void StructureScanner_ShouldReportUnknownHeading()
-    {
-        CheckStructure("## WHEN\n- 用\n## Avoid when\n- 别\n## Prerequisites\n- 先\n## Tips\n- 注意\n")
-            .Should().BeEmpty("合法资产不得报红（否则会误伤正确资产）");
-
-        CheckStructure("#im.send_message\n## WHEN\n- 用\n## Avoid when\n- 别\n## Prerequisites\n- 先\n## Tips\n- 注意\n")
-            .Should().Contain("未知小节", "非契约小节的 '#' 行必须报红（上游把任何 '#' 行当小节标题）");
-
-        CheckStructure("## WHEN\n- 用\n## Avoid when\n- 别\n## Prerequisites\n- 先\n")
-            .Should().Contain("缺少小节", "缺节必须报红");
-
-        CheckStructure("## WHEN\n## Avoid when\n- 别\n## Prerequisites\n- 先\n## Tips\n- 注意\n")
-            .Should().Contain("为空", "空节必须报红");
-    }
-
-    [Fact]
-    public void ReferenceScanner_ShouldReportDanglingToolName()
-    {
-        var known = new HashSet<string>(["im.send_message"], StringComparer.Ordinal);
-
-        FindDanglingReferences("- 改用 `im.send_message` 发送。", known).Should().BeEmpty(
-            "存在的工具名不得报红");
-
-        FindDanglingReferences("- 改用 `im.not_a_tool` 发送。", known).Should().ContainSingle().Which.Should().Be(
-            "im.not_a_tool", "不存在的工具名必须被点名（MUDFT030 的仓库侧等价判据）");
-
-        FindDanglingReferences("- 参数 `dry_run` 与字段 `link_share_entity` 不参与校验。", known).Should().BeEmpty(
-            "非“域.工具”形态的反引号片段（参数名 / 字段名）不参与校验——否则正常散文会变成假红");
-    }
-
     // ── 实现 ──
 
     private static FeishuToolAIFunction CreateFunction(string toolName)
@@ -482,43 +385,6 @@ public class AffordanceContractGuards
                     // 不归一会让基线随检出平台漂移（差异 = 精确总行数）。
                     File.ReadAllText(path).Replace("\r\n", "\n")))
         ];
-    }
-
-    /// <summary>上游词法的仓库侧复算：四节固定、各节非空、无未知/重复小节。</summary>
-    private static string CheckStructure(string text)
-    {
-        var sections = ParseSections(text);
-
-        if (sections.Count == 0)
-        {
-            return "未识别到任何小节（须为 WHEN / Avoid when / Prerequisites / Tips）";
-        }
-
-        foreach (var (heading, _) in sections)
-        {
-            if (!ContractHeadings.Contains(heading, StringComparer.OrdinalIgnoreCase))
-            {
-                return $"未知小节 '{heading}'（可用小节：{string.Join(" / ", ContractHeadings)}）";
-            }
-        }
-
-        foreach (var expected in ContractHeadings)
-        {
-            var found = sections.FirstOrDefault(section =>
-                string.Equals(section.Heading, expected, StringComparison.OrdinalIgnoreCase));
-
-            if (found == default)
-            {
-                return $"缺少小节 '{expected}'（四节均为必填）";
-            }
-
-            if (string.IsNullOrWhiteSpace(found.Body))
-            {
-                return $"小节 '{expected}' 为空（四节均须至少一个条目）";
-            }
-        }
-
-        return string.Empty;
     }
 
     /// <summary>取全部小节（标题 + 体），并恢复"重复小节"这一错误形态。</summary>
@@ -563,55 +429,6 @@ public class AffordanceContractGuards
             .Split('\n', StringSplitOptions.RemoveEmptyEntries)
             .Select(static line => line.Trim().TrimStart('-', '*', '+').Trim())
             .FirstOrDefault(static line => line.Length > 0);
-
-    /// <summary>反引号包裹且形如 <c>域.工具</c>、但不在工具名契约表内的引用。</summary>
-    internal static IReadOnlyList<string> FindDanglingReferences(string text, IReadOnlyCollection<string> known)
-    {
-        var dangling = new List<string>();
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-        var index = 0;
-
-        while (index < text.Length)
-        {
-            var open = text.IndexOf('`', index);
-            if (open < 0)
-            {
-                break;
-            }
-
-            var close = text.IndexOf('`', open + 1);
-            if (close < 0)
-            {
-                break;
-            }
-
-            var span = text.Substring(open + 1, close - open - 1).Trim();
-            if (LooksLikeToolName(span) && !known.Contains(span) && seen.Add(span))
-            {
-                dangling.Add(span);
-            }
-
-            index = close + 1;
-        }
-
-        return dangling;
-    }
-
-    private static bool LooksLikeToolName(string value)
-    {
-        var dot = value.IndexOf('.');
-        if (dot <= 0 || dot == value.Length - 1 || value.IndexOf('.', dot + 1) >= 0)
-        {
-            return false;
-        }
-
-        return IsIdentifier(value[..dot]) && IsIdentifier(value[(dot + 1)..]);
-    }
-
-    private static bool IsIdentifier(string value)
-        => value.Length > 0
-            && value[0] >= 'a' && value[0] <= 'z'
-            && value.All(static ch => (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_');
 
     /// <summary>读取 <c>Guidance/</c> 下的 L1 域资产（域 → 归一化正文）。</summary>
     /// <remarks>

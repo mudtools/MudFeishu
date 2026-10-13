@@ -61,21 +61,9 @@ public class FeishuToolGoldenTests
             "确属有意变更时按测试类注释重新固化并同步 CHANGELOG");
     }
 
-    /// <summary>
-    /// 快照必须覆盖全部契约工具（防"快照只剩一条"的退化，使比对沦为恒真）。
-    /// </summary>
-    [Fact]
-    public void GoldenSnapshot_ShouldCoverEveryContractTool()
-    {
-        var lines = BuildGoldenText()
-            .Split('\n', StringSplitOptions.RemoveEmptyEntries);
-
-        lines.Should().HaveCount(FeishuToolSchemas.SchemaByToolName.Count,
-            "快照行数必须等于 Schema 注册表条目数");
-
-        lines.Should().OnlyContain(line => line.Contains('\t', StringComparison.Ordinal),
-            "每行形如 <toolName>\\t<schema>（缺分隔符说明格式被破坏）");
-    }
+    // 原 GoldenSnapshot_ShouldCoverEveryContractTool（快照行数 == 注册表条目数）已删除
+    // （测试体系治理 B2，见 documents/AI/单元测试体系过度测试分析与解决方案.md §三.4）：
+    // 行数计数被上面的逐字节等式**完全包含**——快照少一行/多一行/格式破坏都会使逐字节比对报红。
 
     /// <summary>构造与生成器完全一致的快照文本（按工具名序数排序，一行一工具）。</summary>
     private static string BuildGoldenText()

@@ -32,6 +32,18 @@
     仅执行步骤 0（依赖缓存新鲜度自检）后退出。供 CI 在 Restore 之前调用
     （CI runner 为全新环境，本地源通常不存在，此时会输出 [SKIP] 并通过）。
 
+.PARAMETER Fast
+    日常开发快速档（测试体系治理 §三.2，见 documents/AI/单元测试体系过度测试分析与解决方案.md）：
+    增量构建 + 单元测试（排除 Timing/ stress 用例），跳过诊断计数断言（步骤 2）、
+    AOT 严格冒烟（步骤 3）、Redis 集成（步骤 5）与格式校验（步骤 6）。
+    ⚠️ 诊断断言在增量构建下必然失真：源生成器会被整体跳过 ⇒ 日志里一条 MUDFT 都没有，
+    所有计数断言在"0 个诊断"上假绿——故 Fast 档**必须**跳过它们而不是照跑，
+    诊断回归由 Standard/Full 档（或 CI）拦截。
+
+.PARAMETER Full
+    发版/夜间全量档：在默认档之上包含 Category=Timing 计时敏感用例，
+    并把格式校验差异升级为门禁失败（等价 -StrictFormat）。
+
 .PARAMETER DenyToolWarnings
     把 Warning/Info 级 MUDFT 诊断纳入门禁（R5 / B-11）：
     MUDFT005/006/018 绝对 0；MUDFT009/021 按 scripts/mudft-warning-baseline.txt 的基线拦增量。
@@ -43,6 +55,8 @@
     ./scripts/verify-build.ps1 -CacheCheckOnly
     ./scripts/verify-build.ps1 -DenyToolWarnings
     ./scripts/verify-build.ps1 -WithPackCheck
+    ./scripts/verify-build.ps1 -Fast        # 日常开发快速档
+    ./scripts/verify-build.ps1 -Full        # 发版/夜间全量档
 #>
 [CmdletBinding()]
 param(
@@ -50,8 +64,18 @@ param(
     [switch]$StrictFormat,
     [switch]$CacheCheckOnly,
     [switch]$DenyToolWarnings,
-    [switch]$WithPackCheck
+    [switch]$WithPackCheck,
+    [switch]$Fast,
+    [switch]$Full
 )
+
+# 档位互斥：-Fast 与 -Full 语义冲突（一个最小化一个最大化）。
+if ($Fast -and $Full) {
+    Write-Host '-Fast 与 -Full 不能同时使用。' -ForegroundColor Red
+    exit 1
+}
+# -Full 隐含 StrictFormat（发版档的格式要求）
+if ($Full) { $StrictFormat = $true }
 
 $ErrorActionPreference = 'Continue'
 $repoRoot = Split-Path -Parent $PSScriptRoot
@@ -211,7 +235,13 @@ $buildLog = Join-Path $env:TEMP "mudfeishu-verify-build-$([guid]::NewGuid().ToSt
 #    CI 在全新 runner 上构建（必然全量），因此基线必须按**全量**口径取值；
 #    本地若用增量构建测，会得到与 CI 不同的数，从而把 CI 变红却无人察觉
 #    （本次的基线 009=0 就是这样写下的：它是在"生成器被跳过"的热构建上测出来的）。
-dotnet build $solution -c Release --nologo --no-incremental 2>&1 | Tee-Object -FilePath $buildLog | Out-Null
+#
+#    Fast 档（测试体系治理 §三.2）走增量构建换取反馈速度，代价是步骤 2 的诊断计数
+#    全部失真（生成器被跳过 ⇒ 恒 0 ⇒ 假绿）——故 Fast 档同时跳过步骤 2/3 断言，
+#    诊断回归由 Standard/Full 档或 CI 拦截（见下方 $Fast 分支的显式告警）。
+$buildArgs = @('build', $solution, '-c', 'Release', '--nologo')
+if (-not $Fast) { $buildArgs += '--no-incremental' }
+dotnet @buildArgs 2>&1 | Tee-Object -FilePath $buildLog | Out-Null
 
 $cs1750 = (Select-String -Path $buildLog -Pattern 'error CS1750' -AllMatches).Count
 $nu1603 = (Select-String -Path $buildLog -Pattern 'NU1603' -AllMatches).Count
@@ -223,6 +253,13 @@ Assert-Zero -Name 'NU1603 版本漂移' -Count $nu1603 -Hint '声明版本与解
 
 # ---------------------------------------------------------------- 步骤 2
 Write-Host "[步骤 2] 诊断白名单断言" -ForegroundColor Cyan
+if ($Fast) {
+    # Fast 档的构建是增量的：源生成器被整体跳过 ⇒ 日志里一条 MUDFT/HTTPCLIENT 都没有，
+    # 以下所有计数断言都会在"0 个诊断"上假绿（一个不可能失败的测量，见 verify-build 历史）。
+    # 故本步骤显式跳过并告警，诊断回归由 Standard/Full 档或 CI 拦截。
+    Write-Host "  [SKIP] Fast 档：诊断计数断言在增量构建下必然假绿，已跳过（由 Standard/Full 档或 CI 拦截）" -ForegroundColor Yellow
+}
+else {
 Assert-Zero -Name 'HTTPCLIENT0xx' -Count ((Select-String -Path $buildLog -Pattern 'HTTPCLIENT0\d\d' -AllMatches).Count)
 Assert-Zero -Name 'MUD001/002'    -Count ((Select-String -Path $buildLog -Pattern 'MUD00[12]' -AllMatches).Count)
 Assert-Zero -Name 'FORM0xx'       -Count ((Select-String -Path $buildLog -Pattern 'FORM0\d\d' -AllMatches).Count)
@@ -294,6 +331,7 @@ if ($DenyToolWarnings) {
         }
     }
 }
+}
 
 # golden 快照门禁的"非空"防呆：描述符快照必须存在且被测试消费——
 # 若有人删掉 AdditionalFiles 声明或快照文件，构建期 MUDFT014 会静默失效，
@@ -308,6 +346,10 @@ if (-not (Test-Path $goldenSnapshot)) {
 
 # ---------------------------------------------------------------- 步骤 3
 Write-Host "[步骤 3] AotStrictMode 冒烟（net8.0，源项目）" -ForegroundColor Cyan
+if ($Fast) {
+    Write-Host "  [SKIP] Fast 档：AOT 严格冒烟跳过（由 Standard/Full 档或 CI 执行）" -ForegroundColor Yellow
+}
+else {
 # 两处必须注意，否则本步骤会「假绿」：
 #  ① 不能对整个解决方案使用 -f net8.0。Demos 下存在单 TFM 项目（net9.0/net10.0/net8.0 各不相同），
 #     MSBuild 会报 NETSDK1005「资产文件没有 net8.0 的目标」，构建实际失败；
@@ -364,6 +406,7 @@ else {
     Assert-Zero -Name 'AotStrictMode AOT00x'    -Count ((Select-String -Path $strictLog -Pattern 'AOT00[1-7]' -AllMatches).Count) -Hint "详见 $strictLog"
     Assert-Zero -Name 'AotStrictMode IL2026'    -Count ((Select-String -Path $strictLog -Pattern 'IL2026' -AllMatches).Count) -Hint "详见 $strictLog"
     Assert-Zero -Name 'AotStrictMode IL3050'    -Count ((Select-String -Path $strictLog -Pattern 'IL3050' -AllMatches).Count) -Hint "详见 $strictLog"
+}
 }
 
 # ---------------------------------------------------------------- 步骤 4
@@ -472,7 +515,11 @@ foreach ($run in $testRuns) {
     # WSR2-14：xUnit 的 [Trait] **不会**自动排除用例——`dotnet test` 无 --filter 时执行全部。
     # 压力/长稳用例（Category=Stress：突发帧、静默存活等待）必须显式排除，否则全量门禁
     # 会变慢并引入不稳定性。手工执行方式见 documents/WebSocket/故障排查手册.md §6。
-    $testArgs += @('--filter', 'Category!=Stress')
+    # Timing（测试体系治理 §三.3）：计时敏感用例在高负载全量门禁下会抖动出假红
+    # （实测 AcquireAsync_FailFast 500ms 阈值在门禁负载下实测 2.6s），
+    # Standard/Fast 档与 CI 一律排除，仅 -Full 档包含。
+    $testFilter = if ($Full) { 'Category!=Stress' } else { 'Category!=Stress&Category!=Timing' }
+    $testArgs += @('--filter', $testFilter)
     dotnet @testArgs 2>&1 | Tee-Object -FilePath $testLog -Append | Out-Null
     if ($LASTEXITCODE -ne 0) { $testExit = $LASTEXITCODE }
     $executedLabels.Add($run.Label)
@@ -602,6 +649,10 @@ if (Test-Path $trxDir) {
 }
 
 # ---------------------------------------------------------------- 步骤 5
+if ($Fast) {
+    Write-Host "[步骤 5] Redis 集成测试（Fast 档跳过）" -ForegroundColor Cyan
+}
+else {
 Write-Host "[步骤 5] Redis 集成测试（条件必跑）" -ForegroundColor Cyan
 
 # T-R2-04：真实 Redis 集成测试（Testcontainers.Redis）需要 Docker。
@@ -715,6 +766,12 @@ else {
 }
 
 # ---------------------------------------------------------------- 步骤 6
+}
+
+if ($Fast) {
+    Write-Host "[步骤 6] 代码格式校验（Fast 档跳过）" -ForegroundColor Cyan
+}
+else {
 Write-Host "[步骤 6] 代码格式校验" -ForegroundColor Cyan
 dotnet format $solution --verify-no-changes --no-restore 2>&1 | Out-Null
 if ($LASTEXITCODE -ne 0) {
@@ -729,6 +786,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 else {
     Write-Host "  [ OK ] 格式校验通过" -ForegroundColor Green
+}
 }
 
 # ---------------------------------------------------------------- 步骤 7

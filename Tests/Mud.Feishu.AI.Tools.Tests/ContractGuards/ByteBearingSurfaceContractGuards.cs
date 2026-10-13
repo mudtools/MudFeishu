@@ -25,6 +25,12 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// 直接锁"承载字节的类型"这一<b>与具体契约无关</b>的不变量：这样即使将来有人新造字节载体，
 /// 只要它进了工具参数就被拦下。
 /// </para>
+/// <para>
+/// <b>B2 单点化合并（2026-10-13）</b>：原 <c>BinaryArgumentShapeContractTests</c>（R5/F-12+F-6）
+/// 扫描同一目录、同一不变量，判据与本守卫互有独家——它多一条"参数名含 base64/file_bytes 等语义"
+/// 的判定与 <c>MemoryStream</c> 禁词，本守卫多 <c>IFormFile</c>、空白容忍正则与"代码行"过滤。
+/// 按闭集单点规则合并进本类（删除副本、判据取并集），二进制输入侧防线自此**一个守卫**。
+/// </para>
 /// </remarks>
 public class ByteBearingSurfaceContractGuards
 {
@@ -35,6 +41,19 @@ public class ByteBearingSurfaceContractGuards
     /// </summary>
     private const string ByteBearingPattern =
         @"(?:byte\s*\[\s*\]|Memory\s*<\s*byte\s*>|Stream\b|IFormFile\b)";
+
+    /// <summary>参数名里出现即判 base64/字节语义的片段（合并自原 BinaryArgumentShapeContractTests）。</summary>
+    private static readonly string[] ForbiddenNameFragments =
+    [
+        "base64",
+        "base_64",
+        "file_bytes",
+        "filebytes",
+        "raw_bytes",
+    ];
+
+    /// <summary>参数声明行特征：本仓体例为参数声明与特性在同一行。</summary>
+    private const string ToolParameterMarker = "[ToolParameter(";
 
     [Fact]
     public void ToolParameters_ShouldNeverBeByteBearing()
@@ -49,19 +68,44 @@ public class ByteBearingSurfaceContractGuards
         var violations = new List<string>();
         foreach (var file in files)
         {
+            var fileName = Path.GetFileName(file);
+
             // 只扫代码行：XML 注释里解释"为什么这些入参不可策展"是正确写法，一并扫会把合规文档判成违规。
             var code = ReadCodeLines(file);
 
             if (System.Text.RegularExpressions.Regex.IsMatch(code, ByteBearingPattern))
             {
-                violations.Add(Path.GetFileName(file));
+                violations.Add($"{fileName}: 出现承载字节的类型（byte[] / Memory<byte> / Stream / IFormFile）");
+            }
+
+            // 判据二（原 BinaryArgumentShape 的独家面）：参数名含 base64/字节语义。
+            // 类型判据管"怎么装的"，本判据管"装的是什么"——`string file_base64` 同样是二进制通道。
+            foreach (var line in code.Split('\n'))
+            {
+                if (!line.Contains(ToolParameterMarker, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                var nameMatch = System.Text.RegularExpressions.Regex.Match(
+                    line, @"\[ToolParameter\(""(?<name>[^""]+)""");
+                if (!nameMatch.Success)
+                {
+                    continue;
+                }
+
+                var name = nameMatch.Groups["name"].Value;
+                if (ForbiddenNameFragments.Any(f => name.Contains(f, StringComparison.OrdinalIgnoreCase)))
+                {
+                    violations.Add(
+                        $"{fileName}: 参数名 '{name}' 含 base64/字节语义 ⇒ 二进制绝不许进入模型上下文");
+                }
             }
         }
 
         violations.Should().BeEmpty(
-            "以下契约文件出现了承载字节的类型（byte[] / Memory<byte> / Stream）——"
-            + "字节不得穿越工具面（A10）：模型的工具入参在进程内库中无法表达 MB 级内容，"
-            + "且会击穿上下文与 SSE 帧。正确形态是宿主侧转换（宿主把 URL/本地文件交给 SDK 的 "
+            "字节不得穿越工具面（A10）：模型的工具入参在进程内库中无法表达 MB 级内容，"
+            + "且会击穿上下文与 SSE 帧。正确形态是宿主侧转换（宿主把 URL/本地文件交给 SDK的 "
             + "[FormContent]/base64 参数），工具面只接受文本：{0}",
             string.Join(" | ", violations));
     }
@@ -83,6 +127,15 @@ public class ByteBearingSurfaceContractGuards
         System.Text.RegularExpressions.Regex
             .IsMatch("""Task<string> QueryAsync(string token, int limit);""", ByteBearingPattern)
             .Should().BeFalse("普通参数不得被误判（误报会让守卫被绕过或删除）");
+
+        // 判据二自证（合并自原 BinaryArgumentShape 的自证）：参数名语义必须真的能报红。
+        var nameMatch = System.Text.RegularExpressions.Regex.Match(
+            """[ToolParameter("file_base64", "文件内容（base64）")] string file_base64,""",
+            @"\[ToolParameter\(""(?<name>[^""]+)""");
+        nameMatch.Success.Should().BeTrue("样本必须能解析出参数名");
+        ForbiddenNameFragments.Should().Contain(
+            f => nameMatch.Groups["name"].Value.Contains(f, StringComparison.OrdinalIgnoreCase),
+            "参数名判据必须真的能识别 base64 语义（string 类型的 base64 参数同样是二进制通道）");
     }
 
     /// <summary>读取源码的代码行（丢弃 <c>///</c> 注释行与行内注释后的内容）。</summary>

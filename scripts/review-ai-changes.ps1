@@ -81,8 +81,10 @@ if ($addedDeclarations.Count -gt 0) {
         @{ Path = 'Mud.Feishu.AI.Tools/FeishuToolSchemas.golden.txt'; Why = 'golden 快照重固化（MUDFT014 是 Error 级）' },
         @{ Path = 'skills/'; Why = 'skills 产物重固化（$env:FeishuSkillsUpdate=true）' },
         @{ Path = 'documents/AIAgent/工具权限对照表.md'; Why = '权限对照表增行（数据行数被守卫机械锁定）' },
-        @{ Path = 'Mud.Feishu.AI.Tools/PublicAPI.Unshipped.txt'; Why = 'PublicAPI 同步（RS0016）' },
-        @{ Path = '.docs/AI/状态基线.md'; Why = '状态基线（唯一真相源）同批更新' }
+        @{ Path = 'Mud.Feishu.AI.Tools/PublicAPI.Unshipped.txt'; Why = 'PublicAPI 同步（RS0016）' }
+        # 2026-10-13：原要求同批更新 `.docs/AI/状态基线.md` —— 该文档已被删除（不存在于 git 历史），
+        # 保留它会让每个新增工具的 PR 恒违规。工具面规模的真相源现为
+        # Mud.Feishu.AI.Tools/FeishuToolSchemas.golden.txt（MUDFT014 逐字节锁定）。
     )
 
     foreach ($companion in $companions) {

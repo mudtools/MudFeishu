@@ -2,8 +2,7 @@
 
   <PropertyGroup>
     <!-- 集成测试仅针对 net8.0/net10.0（Testcontainers 需要 Docker，不在 net6.0/ns2.0 上运行） -->
-    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
-    <IsPackable>false</IsPackable>
+        <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>

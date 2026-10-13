@@ -68,7 +68,13 @@ public class GlobalConcurrencyGateTests
     /// <summary>
     /// FailFast 模式：满额时立即失败。
     /// </summary>
+    /// <remarks>
+    /// 计时敏感（Category=Timing，测试体系治理 §三.3）：断言的是硬性墙钟阈值（500ms），
+    /// 在全量门禁高负载下实测可达 2.6s 而抖动出假红；Standard/Fast 档与 CI 排除，
+    /// 仅 verify-build.ps1 -Full 档执行。
+    /// </remarks>
     [Fact]
+    [Trait("Category", "Timing")]
     public async Task AcquireAsync_FailFast_ShouldThrowImmediately()
     {
         var inner = new KeyedConversationGate();

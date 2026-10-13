@@ -1,251 +1,102 @@
 # AGENTS.md
 
-Guidance for AI coding agents working on the MudFeishu codebase.
+Guidance for AI coding agents working on the MudFeishu codebase. Enterprise-grade .NET SDK for
+Feishu (Lark): HTTP API clients, WebSocket real-time events, Webhook handling.
 
-## Project Overview
-
-MudFeishu is an enterprise-grade .NET SDK for Feishu (Lark) API integration, providing HTTP API clients, WebSocket real-time events, and Webhook handling.
-
-## Build Commands
+## Commands
 
 ```bash
-dotnet build Mud.Feishu.slnx                      # Build solution
-dotnet build Mud.Feishu.slnx -c Release           # Release build
-dotnet build Mud.Feishu/Mud.Feishu.csproj         # Build specific project
+dotnet build Mud.Feishu.slnx                       # Build solution
+dotnet build Mud.Feishu/Mud.Feishu.csproj          # Build specific project
+dotnet test  Tests/Mud.Feishu.Abstractions.Tests   # Test project (add --filter "FullyQualifiedName~X" for one test)
+dotnet format Mud.Feishu.slnx                      # Lint/format (.editorconfig; TreatWarningsAsErrors off)
 ```
-
-## Test Commands
-
-```bash
-dotnet test Mud.Feishu.slnx                       # Run all tests
-dotnet test Mud.Feishu.slnx --logger "console;verbosity=detailed"
-dotnet test Tests/Mud.Feishu.Abstractions.Tests   # Run specific test project
-dotnet test Tests/Mud.Feishu.Abstractions.Tests --filter "FullyQualifiedName~DefaultFeishuEventHandlerTests"  # Single test class
-dotnet test Tests/Mud.Feishu.Abstractions.Tests --filter "FullyQualifiedName~DefaultFeishuEventHandlerTests.HandleAsync_ShouldCallProcessBusinessLogic_WhenEventDataIsValid"  # Single test
-dotnet test Mud.Feishu.slnx --collect:"XPlat Code Coverage"
-```
-
-## Lint and Format
-
-```bash
-dotnet format Mud.Feishu.slnx
-```
-
-Project uses `.editorconfig` for code style. `TreatWarningsAsErrors` is disabled.
 
 ## Quality Gate
 
 ```bash
-pwsh ./scripts/verify-build.ps1                  # Full gate (build + diagnostics + tests + format)
-pwsh ./scripts/verify-build.ps1 -ClearStaleCache # Also auto-clear a stale Mud.HttpUtils package cache
-pwsh ./scripts/verify-build.ps1 -CacheCheckOnly  # Step 0 only (used by CI before restore)
-pwsh ./scripts/verify-build.ps1 -StrictFormat    # Promote format diffs to a gate failure
+pwsh ./scripts/verify-build.ps1                  # Standard: full build + diagnostics + tests + format
+pwsh ./scripts/verify-build.ps1 -Fast            # Daily loop: incremental build + tests only
+pwsh ./scripts/verify-build.ps1 -Full            # Release/nightly: + Timing tests + strict format
+pwsh ./scripts/verify-build.ps1 -CacheCheckOnly  # Step 0 only (CI, before restore)
 ```
 
-The gate enforces: 0 build errors, 0 `CS1750`, 0 `NU1603` (version drift), and 0
-`HTTPCLIENT0xx` / `MUD001-002` / `FORM0xx` / `AOT001-007` diagnostics.
+| Profile | Build | Diagnostics (steps 2–3) | Tests | Format |
+|---|---|---|---|---|
+| `-Fast` | incremental | **skipped** (generators skipped ⇒ counts structurally 0 = false green) | `Category!=Stress&Category!=Timing` | skipped |
+| Standard | `--no-incremental` | full (MUDFT/SDKT/RS/AOT baselines) | `Category!=Stress&Category!=Timing` | warn-only |
+| `-Full` | `--no-incremental` | full | all incl. `Timing` | strict (`-StrictFormat`) |
 
-Step 3 (`AotStrictMode` smoke, net8.0) builds the **9 source projects one by one** — never the whole
-solution with `-f net8.0`: `Demos/` contains single-TFM projects (net9.0 / net10.0) that make MSBuild
-fail with `NETSDK1005`. The step asserts **0 build errors** _and_ `AOT00x` / `IL2026` / `IL3050` = 0 —
-asserting only the diagnostic counts is a false green when the build itself fails.
-It must also pass `--no-incremental`: MSBuild's `CoreCompile` up-to-date check compares only input/output
-timestamps and **not the csc command line**, so a strict-mode build issued right after the step-1 build
-skips compilation entirely and reports 0 diagnostics (this was a long-standing false green; see
-§F1 of the historical upstream report `documents/MudHttpUtils-2.0.7-升级验证报告.md`, which is **not
-committed to this repo** — the conclusion is now enforced by the `--no-incremental` flag in
-`scripts/verify-build.ps1`).
-
-Step 4 runs `dotnet test` **per (test project, TFM)** with a dedicated TRX per combination, and asserts both
-"TRX exists" and `Counters.total > 0` (a testhost that fails to start still writes an empty TRX with exit
-code 1). TFMs are resolved via `dotnet msbuild -getProperty:TargetFrameworks`, because several test projects
-inherit `<TargetFrameworks>` from `Tests/Directory.Build.props`. Combinations whose .NET runtime is not
-installed are reported as skipped (this machine only has .NET 8/9/10, so all `net6.0` test runs are skipped).
-
-CI runs the same checks: `Restore dependencies` is preceded by `-CacheCheckOnly`, and the `Build` log is
-asserted for the diagnostic whitelist afterwards (`.github/workflows/dotnet-publish.yml`).
+Enforced: 0 build errors, 0 `CS1750`, 0 `NU1603`, 0 `HTTPCLIENT0xx` / `MUD001-002` / `FORM0xx` /
+`AOT001-007`. Two false-green rules are load-bearing (AGENTS.md has recorded the
+"只断言诊断计数而构建失败即假绿" lesson): (1) the standard build **must** use
+`--no-incremental` (incremental skips source generators ⇒ zero diagnostics); (2) AOT strict-mode
+step builds the **9 source projects one by one** (`Demos/` has single-TFM projects ⇒ `NETSDK1005`
+on `-f net8.0`) and asserts **both** 0 errors **and** `AOT00x`/`IL2026`/`IL3050` = 0 — diagnostic
+counts alone are a false green when the build itself failed. Step 4 runs per (project, TFM) with a
+dedicated TRX and asserts `total > 0` (a dead testhost writes an empty TRX with exit code 1).
+TFMs resolve via `dotnet msbuild -getProperty:TargetFrameworks` (test projects inherit from
+`Tests/Directory.Build.props`). CI mirrors this: `-CacheCheckOnly` before restore, then the build
+log is asserted against the same whitelist (`.github/workflows/dotnet-publish.yml`).
 
 ## Dependency version policy (Mud.HttpUtils)
 
-`Mud.HttpUtils` and `Mud.HttpUtils.Generator` **must stay on the same version** — enforced by
-`TokenMultiAppContractGuards.MudHttpUtils_PackageReference_ShouldBeSingleVersion`, which asserts
-"exactly one version across the repo" and does **not** hardcode the number (bumps never edit it).
-The authoritative value is the one actually written in the `PackageReference`s.
-
-- **Pinned now: `3.0.6`** — the per-tool affordance slice (profile slot `AffordanceDirectory`,
-  `x-feishu.affordance` emission, diagnostics `MUDFT028–031`) **has been taken in and is published**
-  (2026-10-11). `3.0.6` is on nuget.org, and the intake-period temporary local source line
-  (`MudHttpUtils-local → D:/Repos/MudHttpUtils/artifacts`) **has been deleted** from `nuget.config` —
-  restore now comes from nuget.org only.
-  Intake trail (for future component bumps): intake was verified against the **Release** pack, not a
-  Debug pack — `pack.ps1 Release` produced the 10-package set with post-pack validation (package-set
-  match + every DLL SHA256-identical to `bin\Release` + the Generator DLL carrying
-  `ToolSurfaceSourceGenerator`); the same-version cache entries were cleared (mandatory —
-  key = id+version), the solution cleaned and rebuilt, the cached `Mud.HttpUtils.Generator.dll` hash
-  asserted equal to `bin\Release` (≠ `bin\Debug`), and the full gate re-run **after** the local source
-  was removed (build 0 errors, ≈10,836 tests green, AOT strict-mode net-zero).
-  Evidence: `.docs/AI/状态基线.md` §五 (F-7) and
+- `Mud.HttpUtils` + `Mud.HttpUtils.Generator` **must stay on the same version** — the
+  「同一组件单版本」contract, enforced by
+  `TokenMultiAppContractGuards.MudHttpUtils_PackageReference_ShouldBeSingleVersion` (asserts one
+  version repo-wide, never hardcodes the number — bumps need no guard edit).
+- **Pinned: `3.0.6`** — published on nuget.org (2026-10-11). `nuget.config` restores from
+  **nuget.org only**; the intake-time local source was deleted. Never pre-bump without a resolvable
+  source (nuget.org **or** a temporary local folder source) — restore fails outright otherwise.
+  Intake trail (Release-pack verification, cache-clear discipline):
   `documents/AIAgent/MudFeishu-AI-per-tool-affordance-组件侧生成器改造方案.md`.
-- **Do not pre-bump without a resolvable source**: bumping the `PackageReference`s while the version is
-  neither on nuget.org **nor** reachable through a temporary local source makes `dotnet restore` fail
-  outright. The two must ship in the same batch (that is exactly what the local source above is for).
-- ⚠️ **Never reuse `3.1.0`.** That number was a *prepared* component version that was never released;
-  it is occupied in the component `CHANGELOG.md` (see the "编号说明" note in its `3.1.0` section).
+- ⚠️ **Never reuse `3.1.0`** (prepared but never released; occupied in the component CHANGELOG).
+- **BC-27 (3.0.x line)**: `IAppContextSwitcher` no longer declares `UseApp`/`UseDefaultApp`/
+  `BeginScope`. Adaptation: `IFeishuAppContextSwitcher` **re-declares** the three legacy members
+  `[Obsolete]` — do not delete before the next major, keep signatures verbatim (a mismatch drops the
+  upstream "self-declared ⇒ exempt" status ⇒ `HTTPCLIENT024` + `NotSupportedException` placeholders;
+  `GeneratedAppSwitchContractTests` asserts the five switch members reflectively). New code uses
+  `IAppScopeSwitcher.UseAppScope`/`UseDefaultAppScope`, or
+  `IAppContextHolder.SwitchToApp(appKey, appManager, sp)` for switch-and-stay semantics.
+- `Demos/` still consume the published `Mud.Feishu 3.0.0` package (depends on `Mud.HttpUtils 2.0.8`),
+  so demo `BeginScope(...)` calls are intentionally untouched until the rebuilt package ships.
+- Packaging (component repo): release = `pack.ps1 Release` → nuget.org only. `pack_debug.ps1` output
+  is local-debug only, never for release baselines. NuGet caches by `id + version`: re-packing the
+  same version does **not** invalidate downstream caches (symptom: source fixed but build still
+  `CS1750`) — **always bump when packing**. Manual refresh = clear global-packages → `dotnet clean`
+  (mandatory; stale incremental builds surface as `TypeLoadException`) → rebuild.
+- Tool surface is generated **only** by the component-side engine (local generator retired;
+  `FeishuToolProfileContractGuards` locks that no `[Generator]` source or `Microsoft.CodeAnalysis.
+  CSharp` reference returns). `FeishuToolProfile.cs` (`Mud.Feishu.AI.Tools/SdkProfile/`) is the
+  single source of Feishu naming facts, linked into `Tests/Mud.Feishu.AI.Tests` (profiles are
+  per-compilation). `[FeishuTool]`/`[ToolParameter]` live in **`Mud.Feishu.AI`**
+  (`Mud.Feishu.AI.AgentTools`), not in the tool-surface project (avoids CS0433 ambiguity).
 
-The 3.0.x release line carries **BC-27**: `IAppContextSwitcher` no longer declares
-`UseApp(string)` / `UseDefaultApp()` / `BeginScope(string)`, and the generator no longer emits them
-by default — **plus the tool-surface generation engine** (`ToolSurface/` in
-`Mud.HttpUtils.Generator` + `ISdkToolProfile` in `Mud.HttpUtils.Abstractions` +
-`[SdkToolProfile]` in `Mud.HttpUtils.Attributes`). The component-side original is the "已移除成员"
-table in the component repo's `CHANGELOG.md` `3.0.0` section (the previously referenced
-`.docs/MudHttpUtils-3.0.0-破坏性变更改造计划.md` **does not exist**; that dangling reference is removed).
-Adaptation:
+## Target Frameworks & MSBuild
 
-- `IFeishuAppContextSwitcher` **re-declares** the three legacy members with `[Obsolete]`
-  (upstream "self-declared ⇒ exempt" mechanism keeps 188+ generated classes emitting them).
-  Do **not** delete them before the next major version, and keep their signatures verbatim —
-  a mismatched signature drops the exemption and turns into `HTTPCLIENT024` + `NotSupportedException`
-  placeholders. The contract guard `GeneratedAppSwitchContractTests` (in `Tests/Mud.Feishu.Tests`)
-  asserts the five switch members reflectively on all generated classes.
-- New code must use `IAppScopeSwitcher.UseAppScope` / `UseDefaultAppScope`; for the
-  "guarded + switch-and-stay" semantics use `IAppContextHolder.SwitchToApp(appKey, appManager, sp)`
-  (upstream `SW-15`) — as done in `FeishuAppManager.GetWebApi`/`GetDefaultWebApi`.
-  `Demos/` still consume the **published** `Mud.Feishu 3.0.0` package (which depends on
-  `Mud.HttpUtils 2.0.8`), so demo `BeginScope("hr-app")` calls are intentionally untouched until the
-  rebuilt package ships.
+`netstandard2.0`, `net6.0`, `net8.0` (recommended), `net10.0`; `#if NET7_0_OR_GREATER` for
+framework-specific code. AOT analyzers on net8.0+ only (`AOT006` suppressed on ns2.0/net6.0 where
+source-generated `JsonSerializerContext` files are not compiled). `Tests/Directory.Build.props` and
+`Demos/Directory.Build.props` **shadow** the root props — governance properties (e.g.
+`WarningsAsErrors`) must be repeated there or tests/demos become gate blind spots.
 
-Mud.HttpUtils **3.0.5 is what nuget.org currently serves** — it is the newest *published* version
-(`3.0.6` is not published yet). A **temporary** local folder source is therefore active in
-`nuget.config` for the `3.0.6` intake: key `MudHttpUtils-local` →
-`D:/Repos/MudHttpUtils/artifacts-debug` (a **Debug** pack produced by `pack_debug.ps1`, local intake
-verification only; **re-added 2026-10-11**). That line must be deleted once the upstream
-`pack.ps1 Release` publish lands — release baselines must never come from `artifacts-debug`.
-⚠️ The current key is `MudHttpUtils-local`, **not** the historical `mudhttputils-local` (the older
-local source was removed on 2026-10-10); do not confuse the two when auditing `nuget.config`.
-The tool surface is generated **only** by the component-side engine: the local
-generator project and its driver tests were retired in the R-1+2c migration, and
-`Tests/Mud.Feishu.AI.Tools.Tests/ContractGuards/FeishuToolProfileContractGuards.cs` asserts
-that no local generator implementation returns — by **capability**, not by project name
-(no `[Generator]`-annotated source anywhere, no legacy engine type names, the `ProjectReference`
-graph is closed against `Mud.Feishu.slnx`, and no project references
-`Microsoft.CodeAnalysis.CSharp`). `scripts/verify-pack.ps1` check ① mirrors the last criterion.
-> **Naming-collision caveat**: the retired generator engine was **itself named
-> `Mud.Feishu.AI.Tools`**, and the tool-surface project has since been renamed from
-> `Mud.Feishu.AI.FeishuTools` to `Mud.Feishu.AI.Tools`, so the two now share a name. Everywhere
-> below (and in the CHANGELOG history), `Mud.Feishu.AI.Tools` as a *generator* means the deleted
-> engine; as a *project* it means the current tool-surface assembly.
-`FeishuToolProfile.cs`
-(`Mud.Feishu.AI.Tools/SdkProfile/`) is the single source of the Feishu naming facts and is
-**linked** into `Tests/Mud.Feishu.AI.Tests` (`Compile Include`) because profiles are discovered per
-compilation unit. Note that `[FeishuToolHandler]` deliberately lives in its own sub-namespace
-(`Mud.Feishu.AI.Tools.Handlers`) so that the profile's `ToolAttributeNamespace` /
-`ToolHandlerAttributeNamespace` slots stay distinct — collapsing them into one namespace would drop
-the engine's ability to address "declaration surface" vs "executor-binding surface" separately.
-`[FeishuTool]` / `[ToolParameter]` themselves live in the **`Mud.Feishu.AI`** assembly, under the
-`Mud.Feishu.AI.AgentTools` namespace (BUG-1 / 方案 C; folder `Mud.Feishu.AI/AgentTools/`) — **not**
-in the tool-surface project: a non-owner declaration assembly (e.g. `Tests/Mud.Feishu.AI.Tests`)
-must see them without referencing `Mud.Feishu.AI.Tools`, which would make its own generated
-`FeishuToolSchemas` ambiguous (CS0433). To consume a newer
-component version: bump the
-version in the `PackageReference`s and, optionally, sync `AGENTS.md` / the README dependency tables
-(`README.md` / `README_EN.md` / `Mud.Feishu/README.md`) — the docs are **not** gated (a wrong version
-number there has no runtime impact and must not block an upgrade). The contract guard
-`TokenMultiAppContractGuards.MudHttpUtils_PackageReference_ShouldBeSingleVersion` only asserts that
-every `Mud.HttpUtils*` declaration across the repo agrees on **one** version (guarding the
-mixed-assembly `TypeLoadException` class of failure); it never hard-codes the version, so it needs no
-edit on upgrade.
+## AOT rules (IL2026 / IL3050 must stay 0 — `-p:AotStrictMode=true` is in the gate)
 
-> **Packaging rules (component repo `D:/Repos/MudHttpUtils`)**: release packages must be produced by
-> `pack.ps1 Release` (writes to `artifacts/`) **and published to nuget.org**. `pack_debug.ps1` produces
-> **Debug** builds into `artifacts-debug/` for local debugging only — never publish them or use them
-> for release verification. `pack.ps1` verifies after packing that (a) the package set matches the
-> expected list (10 packages, including `Mud.HttpUtils.Xml` / `Mud.HttpUtils.JsonContextScaffolder`)
-> and (b) every DLL inside every package is SHA256-identical to its `bin/<Configuration>/…` build
-> output (prevents "Debug posing as Release" and stale-cache mis-packs).
-> Details: `documents/MudHttpUtils-2.0.7-升级验证报告.md` (the report filename keeps its pre-release
-> iteration label; the file itself is **not committed to this repo** — the rules above are enforced
-> by `pack.ps1`'s post-pack validation and by `scripts/verify-build.ps1` step 0).
+1. **Never** call the reflection `JsonSerializer.Serialize<TValue>(TValue, JsonSerializerOptions)` /
+   `Deserialize<TValue>(string, JsonSerializerOptions)` overloads. Use
+   `Mud.Feishu.Abstractions.Utilities.FeishuJsonAot.Serialize/Deserialize` (resolves `JsonTypeInfo`
+   from options on net8+; falls back to reflection only when `TypeInfoResolver` is null).
+2. Configuration DTOs **must not use `required`** — binding is source-generated
+   (`EnableConfigurationBindingGenerator=true`) and constructs via `new T()` (`CS9035`). Validate in
+   a `Validate()` method instead (see `FeishuAppConfig`).
+3. `UnconditionalSuppressMessageAttribute` is `internal` on net10.0 — use
+   `#pragma warning disable IL2026, IL3050` with a justification comment. Demos are exempt by
+   design (that is the AGENTS.md **pragma 模式**); see `Demos/*/Program.cs`.
 
-**During local component development** (fix not yet on nuget.org): temporarily re-add the local
-folder source to `nuget.config`
-(`<add key="MudHttpUtils-local" value="D:/Repos/MudHttpUtils/artifacts" />`), and remember that NuGet
-keys the global package cache by `id + version`, so re-packing under the _same_ version does **not**
-invalidate the downstream cache. Symptom: the component source is already fixed, but the build still
-fails with `CS1750`. This anti-pattern occurred three times during 2.0.4
-(23:16 / 20:59 / 21:23 re-packs), each polluting every downstream cache.
-**Always bump the component version when packing.**
+## Code style
 
-When you must refresh the cache manually (local component development), do it as a
-three-step sequence:
-
-```bash
-dotnet nuget locals global-packages --clear
-dotnet clean  Mud.Feishu.slnx -c Release
-dotnet build  Mud.Feishu.slnx -c Release
-```
-
-The clean step is **mandatory**. An incremental build after a cache refresh leaves old
-component assemblies next to new ones, which surfaces at runtime as:
-
-```
-System.TypeLoadException : Method 'set_Current' in type '...' does not have an implementation.
-```
-
-(Observed: 54 test failures from a stale incremental build; all green after `dotnet clean`.)
-
-`scripts/verify-build.ps1` detects the stale cache (step 0, SHA256 comparison) and runs
-`dotnet clean` automatically when it clears the cache (`-ClearStaleCache`).
-
-## Target Frameworks
-
-`netstandard2.0`, `net6.0`, `net8.0` (recommended), `net10.0`
-
-Use conditional compilation: `#if NET7_0_OR_GREATER` for framework-specific code.
-
-Notes:
-
-- `IsAotCompatible` / AOT analyzers are enabled only for `net8.0+` (`Directory.Build.props`).
-  `AOT006` is suppressed for `netstandard2.0` / `net6.0`, where the source-generated
-  `JsonSerializerContext` files are not compiled.
-- `IL2026` / `IL3050` must stay at **0** (`-p:AotStrictMode=true` is part of the quality gate).
-  Rules for keeping it that way:
-  - **Never** call the reflection `JsonSerializer.Serialize<TValue>(TValue, JsonSerializerOptions)` /
-    `Deserialize<TValue>(string, JsonSerializerOptions)` overloads. Use
-    `Mud.Feishu.Abstractions.Utilities.FeishuJsonAot.Serialize/Deserialize` instead — it resolves
-    `JsonTypeInfo` from the options on net8+ (AOT-safe) and transparently falls back to the
-    reflection overload only when `options.TypeInfoResolver` is `null` (where the AOT path is
-    impossible anyway).
-  - Configuration binding is source-generated
-    (`EnableConfigurationBindingGenerator=true`). Consequence: **configuration DTOs must not use
-    `required`** — the generator constructs via `new T()` and emits `CS9035` otherwise. Validate in a
-    `Validate()` method instead (see `FeishuAppConfig`).
-  - `UnconditionalSuppressMessageAttribute` is `internal` on `net10.0` and cannot be referenced from
-    user code; use `#pragma warning disable IL2026, IL3050` with a justification comment.
-- `Tests/Directory.Build.props` and `Demos/Directory.Build.props` **shadow** the root
-  `Directory.Build.props`. Any governance property (e.g. `WarningsAsErrors`) must be
-  repeated there, otherwise tests/demos become gate blind spots.
-
-## Project Structure
-
-```
-MudFeishu/
-├── Mud.Feishu/               # Core HTTP API client
-├── Mud.Feishu.Abstractions/  # Event handling abstractions
-├── Mud.Feishu.Authentication/# User authentication middleware
-├── Mud.Feishu.Redis/         # Redis distributed deduplication
-├── Mud.Feishu.Webhook/       # Webhook event handling
-├── Mud.Feishu.WebSocket/     # WebSocket real-time events
-├── Tests/                    # Test projects (mirror source structure)
-├── Demos/                    # Example applications
-├── Directory.Build.props     # Global MSBuild properties
-└── Mud.Feishu.slnx           # Solution file
-```
-
-## Code Style Guidelines
-
-### File Header
-
-All source files must start with the copyright header:
+- **File header** (every source file, enforced by `SourceConventionTests`): the copyright block below;
+  **filename == type name** (`文件头规范`).
 
 ```csharp
 // -----------------------------------------------------------------------
@@ -256,280 +107,177 @@ All source files must start with the copyright header:
 // -----------------------------------------------------------------------
 ```
 
-### Namespaces and Imports
+- File-scoped namespaces; `GlobalUsings.cs`; import order System → Microsoft → third-party → project.
+- Naming: types/methods/properties PascalCase; interfaces `I`+PascalCase; private fields `_camelCase`;
+  parameters camelCase. Nullable enabled (`?`); async methods end in `Async` with a
+  `CancellationToken ct = default`. Constructor injection, `readonly` fields.
+- Errors: `ArgumentNullException` / `InvalidOperationException`; `ExceptionUtils.ThrowIfNull()`.
+- XML docs on public APIs; file-download interfaces (`Task<byte[]?>`) must declare
+  `<exception cref="ApiException">` and note the "HTTP 200 + JSON error body" residual risk.
 
-- Use **file-scoped namespaces** (C# 10+)
-- Use `GlobalUsings.cs` for common imports
-- Import order: System → Microsoft → Third-party → Project namespaces
+### SDK interface conventions (`Mud.Feishu/Interfaces/{Module}/`)
 
-### Naming Conventions
+Two parallel naming systems — file name ≠ interface name:
 
-| Element                   | Convention       | Example               |
-| ------------------------- | ---------------- | --------------------- |
-| Classes, Records, Structs | PascalCase       | `FeishuEventHandler`  |
-| Interfaces                | `I` + PascalCase | `IFeishuEventHandler` |
-| Methods                   | PascalCase       | `HandleAsync`         |
-| Properties                | PascalCase       | `SupportedEventType`  |
-| Private fields            | `_camelCase`     | `_logger`             |
-| Parameters                | camelCase        | `eventData`           |
+| Token form | File names | Interface names |
+|---|---|---|
+| Dual | `IFeishuV{n}{D}{R}.cs` + `_Tenant.cs` + `_User.cs` | `IFeishuV{n}{D}{R}` (base, `IsAbstract=true`, methods here) + empty `IFeishuTenantV{n}{D}{R}` / `IFeishuUserV{n}{D}{R}` (`RegistryGroupName`, `InheritedFrom`) |
+| Tenant only | `IFeishuV{n}{D}{R}_Tenant.cs` | `IFeishuTenantV{n}{D}{R}` (`: IFeishuAppContextSwitcher`, no `IsAbstract`/`InheritedFrom`) |
+| User only | `IFeishuV{n}{D}{R}_User.cs` | `IFeishuUserV{n}{D}{R}` (also `: ICurrentUserId`) |
 
-### 接口文件与接口命名（Interfaces）
+Rules: `Tenant`/`User` sit after `IFeishu` (before `V{n}`) in the **interface name**, but as
+`_Tenant`/`_User` **file suffix**; single-token files without a suffix are forbidden.
+`{n}{D}{R}` maps the OpenAPI path (`hire/v1/jobs` → `HireJob`); `{Module}` matches the
+`FeishuModule` enum. Generated client = interface name minus `I`; docs at
+`documents/{Module}/FeishuTenantV{n}{D}{R}.md`; test class `{Interface}Tests`. New interface ⇒ update
+in the same batch: `FeishuModule`, `FeishuServiceBuilder` + `Add{Module}Api()`,
+`FeishuJsonResolverExtensions`, regenerate via `scripts/GenerateJsonContext.ps1`.
 
-`Mud.Feishu/Interfaces/{Module}/` 下的 SDK 接口有**两套并行的命名**——文件名与接口名**不相同**，必须同时满足：
+**Sub-domain merging** (no one-interface-per-OpenAPI-resource): interfaces organize by
+module × token × sub-domain, **3–6 sub-domain interfaces per (module × token)** (Hire = 8,
+reference implementation); method names carry the resource prefix and stay unique within the
+interface; `DataModels/{Module}` folders mirror the sub-domains (namespace stays module-level);
+shared base types go to `Common/`.
 
-| 令牌形态   | 文件名（3 个或 1 个）                                                                                                | 接口名                                          | 结构                                                                                                                                                        |
-| ---------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 双令牌     | `IFeishuV{n}{Domain}{Resource}.cs`<br>`IFeishuV{n}{Domain}{Resource}_Tenant.cs`<br>`IFeishuV{n}{Domain}{Resource}_User.cs` | `IFeishuV{n}{Domain}{Resource}`<br>`IFeishuTenantV{n}{Domain}{Resource}`<br>`IFeishuUserV{n}{Domain}{Resource}` | 基接口 `[HttpClientApi(TokenManage = nameof(IFeishuAppManager), IsAbstract = true)]`（**无** `RegistryGroupName`），方法全部写在基接口；`_Tenant`/`_User` 为**空**派生接口，标 `[HttpClientApi(..., RegistryGroupName = "{Module}", InheritedFrom = nameof(FeishuV{n}{Domain}{Resource}))]`，`_User` 额外 `: ICurrentUserId` |
-| 仅租户令牌 | `IFeishuV{n}{Domain}{Resource}_Tenant.cs`                                                                             | `IFeishuTenantV{n}{Domain}{Resource}`           | 方法直接写在该接口，`: IFeishuAppContextSwitcher`；`[HttpClientApi(TokenManage = nameof(IFeishuAppManager), RegistryGroupName = "{Module}")]`（**不带** `IsAbstract`/`InheritedFrom`） |
-| 仅用户令牌 | `IFeishuV{n}{Domain}{Resource}_User.cs`                                                                              | `IFeishuUserV{n}{Domain}{Resource}`             | 同上，但接口额外 `: ICurrentUserId`                                                                                                                         |
+**Query parameters (API-2)** — new interfaces only (no migration of the 259 existing ones):
+≥ 6 query params ⇒ a DTO implementing `Mud.HttpUtils.IQueryParameter` with `[Query] MyQuery query`
+(generator expands it via `ToQueryParameters()`; no AOT005). < 6 ⇒ per-parameter
+`[Query("name")]` binding. Interface docs must list the DTO fields ↔ query names.
 
-要点：
+## Token & multi-app management (TMA series)
 
-- 令牌词 `Tenant`/`User` 在**接口名**中紧随 `IFeishu`（位于 `V{n}` 之前），在**文件名**中改为**后缀** `_Tenant`/`_User`。**禁止**出现「无令牌后缀的单令牌接口文件」（即文件名与接口名只差首字母 `I` 且不构成双令牌基接口）。
-- `{n}{Domain}{Resource}` 忠实映射 OpenAPI 路径（如 `hire/v1/jobs` → `HireJob`）；`{Module}` 与 `FeishuModule` 枚举、`Interfaces/` 目录名一致。**大模块例外按下方「接口子域合并」执行。**
-- 令牌统一 `[Token(FeishuTokenTypes.TenantAccessToken 或 UserAccessToken, Name = Consts.Authorization)]`。
-- 生成的客户端类名 = 接口名去掉首字母 `I`（`IFeishuTenantV1HireJob` → `FeishuTenantV1HireJob`）；`Add{Module}WebApiHttpClient` 由生成器按 `[HttpClientApi]` 自动产出。
-- 接口文档文件名同样跟随接口名去 `I`：`documents/{Module}/FeishuTenantV{n}{Domain}{Resource}.md`；测试类名为 `{接口名}Tests`（如 `IFeishuTenantV1ApprovalMessageTests`）。
-- 新增接口后需同批更新：`FeishuModule` 枚举、`FeishuServiceBuilder` 注册器 + `Add{Module}Api()`、`FeishuJsonResolverExtensions` 的 JsonContext 合并、`scripts/GenerateJsonContext.ps1` 再生成。
+- `FeishuAppManager` is a **Singleton**; it injects `IServiceScopeFactory` and scopes per
+  `FeishuAppContext` — never resolve Scoped services from the root provider inside `CreateAppContext`.
+- Retired contexts go to the retirement queue and are Disposed after a grace period (300s default);
+  Timer roots the graph — never rely on GC. New `IDisposable` members **must** be disposed in
+  `FeishuAppContext.Dispose()`.
+- `GetAllApps()` returns only **instantiated** apps; use `ConfiguredAppKeys` for all configured keys.
+- `InvalidateTokenAsync` cascades to `ITokenStore` (memory + store double-clear; disable via
+  `PurgeStoreOnTokenInvalidation`). Stored values must carry an expiry
+  (`{expireTimestampMs}|{token}` via `TokenStoreHelper.EncodeStoredToken`).
+- `PerAppFeishuAuthenticationFactory` uses `ActivatorUtilities.CreateInstance`; interface/abstract
+  registrations fall back to the DI singleton.
 
-### 接口子域合并（方案 B，Hire 为参照实现）
+### Contract addenda (D8–D15)
 
-大模块禁止按 OpenAPI 资源「一资源一接口」无限拆分（Hire 曾拆到 21 个接口、其中 15 个仅含 1 个方法；全仓库一度 307 个接口）。接口按 **「模块 × 令牌类型 × 功能子域」** 组织，每个（模块 × 令牌）组合保留 **3~6 个**子域接口（Hire 租户态现为 8 个，后续新增资源并入既有子域，分组以飞书文档章节 candidate-management / recruitment-related-configuration 等为准）：
+- **D8** token keys only via `TokenKeyBuilder`; never inline key concatenation in stores.
+- **D9** refresh threshold == cache validity threshold (`TokenRefreshThreshold`); no second set.
+- **D10** credential change (`ApplyConfigurationChanges`) must purge that appKey's persisted tokens
+  (tenant via `ClearAsync`, user via `IFeishuUserTokenStorePurge.ClearAllUsersAsync`); BaseUrl/
+  Timeout changes keep tokens.
+- **D11** `RefreshUserTokenAsync` classifies via `FeishuOAuthErrorClassifier`: non-retryable
+  (`invalid_grant`) clears the refresh token and returns null; retryable throws.
+- **D12** first app access must raise `AppInstantiated` (background refresh subscribes to it);
+  no startup-wide prewarming.
+- **D13** `OnConfigurationChanged` is two-phase: Phase-P pre-purge outside `_configApplyLock`
+  (credential change is IO), Phase-B reference swap inside `_lazyRebuildLock`; never run purge IO
+  or full assembly inside a lock.
+- **D14** exception filtering in `CreateAppContext`/`TryGetApp` must use the
+  `IsTransientInitFailure` whitelist; no `catch (Exception ex) when (ex is not OperationCanceledException)`.
+- **D15** compensating dedup calls (`Rollback*`/`Mark*`) must use `CancellationToken.None` at the
+  backend call site (a cancelled rollback = server resend judged duplicate and ACKed = event loss;
+  R2-P0-1), must not swallow the original business exception; `TryMark*` propagates cancellation.
 
-| 模块 | 子域接口 | 合并范围 |
-| ---- | -------- | -------- |
-| Hire | `IFeishuTenantV1HireJob` | 职位、职位类别、职能分类、职位模板、职位发布记录、职位广告 |
-| Hire | `IFeishuTenantV1HireJobRequirement` | 招聘需求（创建/更新/查询/删除/需求模板） |
-| Hire | `IFeishuTenantV1HireInterview` | 面试轮次类型、面试反馈表、面试登记表模板、面试官 |
-| Hire | `IFeishuTenantV1HireOffer` | Offer 申请表、Offer 自定义字段、Offer 审批模板 |
-| Hire | `IFeishuTenantV1HireSetting` | 招聘流程、科目、信息登记表、人才标签、地点、角色、用户角色 |
-| Hire | `IFeishuTenantV1HireCandidate` | 内推信息与内推官网职位、招聘官网（列表/推广渠道/官网用户/官网职位）、官网投递与投递任务、官网申请表模板、人才管理（人才池/文件夹/标签/黑名单/组合创建更新/入职状态）、投递流程管理（面试信息与评价记录、Offer、背调订单、三方协议、入职与员工）、人才备注、评估/阅卷/面试任务、简历来源 |
+### Multi-tenant (TMA2-20)
 
-规则：
+Each tenant = its own `FeishuAppConfig`; `UseApp`/`BeginScope` switch token + endpoint but do **not**
+enforce tenant authorization (implement custom authorization in the business layer). Redis
+deduplication: distinct `EventKeyPrefix`/`NonceKeyPrefix`/`SeqIdKeyPrefix` per tenant.
 
-- 文件名仍遵循上表令牌后缀规则；子域接口的 `{Resource}` 对应**飞书文档的资源分组**（如 `interview-settings` → `Interview`、`offer-settings` → `Offer`），不再要求一个接口只映射单一 OpenAPI 路径；单资源接口仍按路径映射。
-- 合并接口内方法名必须带资源前缀（`GetJobTypeListAsync` 而非 `GetListAsync`），并保证**全接口唯一**（合并前先做重名检查）。
-- `Mud.Feishu.DataModels/{Module}` 按同一子域分文件夹组织（如 `DataModels/Hire/{Common|Job|JobRequirement|Interview|Offer|Setting}/`），**命名空间保持模块级不变**（`Mud.Feishu.DataModels.Hire`）；跨子域共享的基础类型（`I18n`、`IdNameObject`、`CommonSchema*` 等）放 `Common/`。
-- 新模块创建时直接按此规则分组（每模块 3~6 个接口），不再逐资源建接口。
+## WebSocket module invariants (I13–I16 / D5 / I9 / F5 / I1 / FU-2)
 
-### Types and Nullability
+Enforced by `Tests/Mud.Feishu.WebSocket.Tests/ContractGuards/WebSocketContractGuards.cs`; semantics
+in `documents/WebSocket/架构与并发模型.md` §7. New/changed code in this module self-checks each:
 
-- **Nullable reference types enabled** - use `?` for nullable types
-- Use `required` keyword for required properties (NET7+)
+- **I13** every path that stops socket reading (server close, client disconnect, receive-loop exit
+  incl. cancellation, Dispose) must go through `TryClaimDisconnected`; active disconnect claims
+  **before** the close handshake.
+- **I14** the receive loop claims its slot atomically (`Interlocked.CompareExchange`); never
+  check-then-use `_receiveTask`; the loop task must be registered in `_receiveTask`.
+- **I15** the caller's `CancellationToken` covers handshake + auth only, never the connection
+  lifetime (client-owned CTS).
+- **I16** numeric configs validate both bounds; any non-literal `new
+  CancellationTokenSource(TimeSpan)` / `Task.Delay(TimeSpan)` must pass `Core/TimeSpanGuards.cs`
+  clamping (fail-fast discipline; `Math.Clamp` is banned on netstandard2.0 — use Min/Max).
+- **D5** inbound frames log only structured fields + `LogSanitizer.CleanMessage` preview; connection
+  URL logs strip the query entirely.
+- **I9** semaphores are never released on Dispose (sole exception:
+  `FeishuWebSocketConcurrencyService` hot-update retains the old semaphore for
+  `max(60s, 2 × MessageHandlerTimeoutMs)`).
+- **F5** every new "actively discard" path must call `RecordWebSocketFramesDiscarded(appKey,
+  reason)` with `reason` from `FeishuMetrics.DiscardReasons`.
+- **I1** no user events may be dispatched while holding `_connectionLock` or `_connectLock`
+  (defer + flush after unlock: `BeginDeferConnectionEvents`/`FlushDeferredConnectionEvents`).
+- **FU-2** SeqID dedup keys are app-less (assumes single-app default binding); introducing
+  multi-app WebSocket assembly **must** add the app dimension to the key.
 
-```csharp
-public class FeishuAppConfig
-{
-    public required string AppKey { get; set; } = string.Empty;
-    public string? Description { get; set; }
-}
+## Configuration surface — 配置面治理 (R4 / R5)
+
+Nested Options are the only public config shape (flat legacy properties deleted):
+
+| Area | Shape | Section |
+|---|---|---|
+| App HTTP/circuit-breaker | `FeishuAppConfig.TimeoutSeconds` / `HttpRetry` / `CircuitBreaker` | `FeishuApps:0:*`, `HttpRetry:*`, `CircuitBreaker:*` |
+| Event dedup | `FeishuDeduplicationOptions` | `FeishuDeduplication:*` |
+| Redis connection | `RedisOptions.Connection` / `Advanced` | `FeishuRedis:Connection:*` |
+| WebSocket reconnect/cert | `FeishuWebSocketOptions.Reconnect` / `Certificate` | `FeishuWebSocket:Reconnect:*`, `Certificate:Mode` |
+| WebSocket event guards | `RejectEmptyEventIds` (default true) / `IgnoreUnknownEventTypes` (default false, recommend true) | `FeishuWebSocket:*` |
+| Webhook token refresh | `EnableTokenBackgroundRefresh` (bool?) | `FeishuWebhook:*` |
+| Webhook timeout | global `EventHandlingTimeoutMs` + app-level override | — |
+
+Governance (R5, locked by `ConfigSurfaceContractGuards`): **no new logging switches** — levels come
+only from `Logging:LogLevel:{Category}`; every public config property must have a real consumer
+(`Validate`/`ToString` don't count); binding must use `Configure<T>(o => section.Bind(o))`, never
+the `IConfiguration` overload (breaks IL2026/IL3050); one config section per semantic (aliases need
+field-level fallback + migration table + `[Obsolete]`); behavior changes go to
+`documents/Configuration/CHANGELOG-Config.md`; delete a key ⇒ add it to `audit-config-keys.ps1`
+`$strictPatterns` in the same batch. Multi-tenant: the three dedup KeyPrefixes must be distinct;
+`NonceTtl >= TimestampToleranceSeconds` (WHF-03). Audit script: `Demos/` excluded; allowlist is
+inline `// audit-allow: <reason>`; paths use `/`.
+
+## Test guidelines — 测试规范
+
+xUnit + FluentAssertions + Moq; tests mirror source folders; `{ClassName}Tests`;
+`{Method}_Should{Behavior}_When{Condition}`. No `Thread.Sleep` in test harnesses — use gate
+signals. Stress/long-running cases carry
+`[Trait("Category","Stress")]` (excluded from the gate; run manually with `--filter
+"Category=Stress"`); wall-clock assertions carry `[Trait("Category","Timing")]` (`-Full` only).
+
+### Test Suite Governance (2026-10-13; analysis: `documents/AI/单元测试体系过度测试分析与解决方案.md`)
+
+- **Test TFMs are net8.0-only** (`Tests/Directory.Build.props`). No per-project
+  `<TargetFrameworks>` overrides; sole exception `Mud.Feishu.Agent.Demo.Tests` (net10.0 demo).
+- **Guard admission**: a new `ContractGuards/` test must cite the real regression it intercepts
+  (commit/incident id) in its XML docs, else it is demoted to `-Full` or rejected. Self-proof
+  ("guard the guard") tests: one `[Theory]` per parser, not standalone `[Fact]`s.
+- **Single-point closure equality**: exactly one guard asserts "artifact ↔ code" equality per closed
+  set; count-only assertions fully subsumed by an equality guard must not be added.
+- **Guard-read files must be tracked**: any file read via `File.Exists/ReadAllText` lives under
+  `documents/…` — never `.docs/` (gitignored ⇒ structurally red on CI).
+- **Budgets**: ≤ ~5 test files touched per feature commit (baseline ≈ 10); `ContractGuards/` ≤ 30%
+  of a test project; a test that flakes twice in the full gate gets a threshold review or a Timing
+  trait — never a blind retry loop.
+
+## Security
+
+Never log/expose `AppSecret` or tokens (`MaskSensitiveData()`); validate URLs (SSRF); never weaken
+the secure defaults (wss, Strict certificate, `EnforceHeaderSignatureValidation`,
+`RejectEmptyIdentifiers`, three-prefix isolation, BaseUrl HTTPS allowlist).
+
+## Project structure
+
 ```
-
-### Async/Await
-
-- All async methods must end with `Async` suffix
-- Include `CancellationToken` parameter with default value
-
-```csharp
-public Task HandleAsync(EventData eventData, CancellationToken cancellationToken = default);
+MudFeishu/
+├── Mud.Feishu/                # Core HTTP API client (Interfaces/, DataModels/)
+├── Mud.Feishu.Abstractions/   # Event handling abstractions, token/multi-app
+├── Mud.Feishu.Authentication/ # User authentication middleware
+├── Mud.Feishu.Redis/          # Redis distributed deduplication
+├── Mud.Feishu.Webhook/        # Webhook event handling
+├── Mud.Feishu.WebSocket/      # WebSocket real-time events
+├── Mud.Feishu.AI/             # Agent tools ([FeishuTool]/[ToolParameter] in AgentTools/)
+├── Mud.Feishu.AI.Tools/       # Tool surface (SdkProfile/, Curation/, Guidance/, Affordance/)
+├── Mud.Feishu.AI.Mcp/         # MCP server + resources
+├── Tests/  Demos/  scripts/  skills/  documents/
+├── Directory.Build.props      # Global MSBuild properties (shadowed by Tests/ and Demos/)
+└── Mud.Feishu.slnx
 ```
-
-### Error Handling
-
-- Use `ArgumentNullException` for null parameters, `InvalidOperationException` for invalid state
-- Use `ExceptionUtils.ThrowIfNull()` helper for validation
-
-### Dependency Injection
-
-- Use constructor injection, mark dependencies as `readonly`
-
-```csharp
-public class DefaultFeishuEventHandler : IFeishuEventHandler
-{
-    protected readonly ILogger _logger;
-    public DefaultFeishuEventHandler(ILogger logger) => _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-}
-```
-
-### Documentation
-
-- Use XML documentation for public APIs with `<summary>`, `<param>`, `<returns>`, `<exception>` tags
-- 文件下载类接口（返回 `Task<byte[]?>`）必须声明 `<exception cref="ApiException">`，
-  并说明「HTTP 200 + JSON 错误体」这一残余风险（参见 `documents/ErrorHandling.md`）
-
-### 接口查询参数规范（API-2）
-
-**仅对新增接口生效，不迁移存量接口**（改造 259 个接口的公共签名收益不成比例）。
-
-- 查询参数 ≥ 6 个时，优先采用**查询对象模式**：定义一个实现 `Mud.HttpUtils.IQueryParameter`
-  的 DTO，接口签名写 `[Query] MyQuery query`。
-  - 生成器会识别 `IQueryParameter` 实现并调用 `ToQueryParameters()` 整体展开
-    （`Mud.HttpUtils.Generator/Generators/Implementation/Binders/QueryParameterBinder.cs`），
-    不会把 DTO 序列化成单个查询值；该类型也不会触发 AOT005（不涉及 JSON 序列化）。
-  - 收益：飞书新增可选参数时只改 DTO，接口签名与调用方不变。
-- 参数 < 6 个时继续使用逐参 `[Query("name")]` 绑定，保持与存量接口一致的风格。
-- 接口文档（`documents/`）需同步给出 DTO 的字段与对应查询参数名。
-
-## Test Guidelines
-
-- xUnit with FluentAssertions and Moq
-- Tests mirror source folder structure
-- Test class: `{ClassName}Tests`
-- Test method: `{MethodName}_Should{Behavior}_When{Condition}`
-
-```csharp
-public class TokenUtilsTests
-{
-    private readonly TokenUtils _sut;
-    public TokenUtilsTests() => _sut = new TokenUtils(new Mock<ILogger>().Object);
-
-    [Fact]
-    public async Task HandleAsync_ShouldReturnSuccess_WhenValidInput()
-    {
-        // Arrange
-        var eventData = new EventData { /* ... */ };
-        // Act
-        var result = await _sut.HandleAsync(eventData);
-        // Assert
-        result.Should().NotBeNull();
-    }
-}
-```
-
-## Security Guidelines
-
-- Never log or expose `AppSecret` or tokens
-- Use `MaskSensitiveData()` when logging configuration
-- Validate URLs to prevent SSRF
-
-## Token & Multi-App Management (TMA Series)
-
-- `FeishuAppManager` is a **Singleton**; it injects `IServiceScopeFactory` and creates a scope per `FeishuAppContext` to avoid Captive Dependency (TMA-13). Never resolve Scoped services directly from the root `IServiceProvider` inside `CreateAppContext`.
-- Old `FeishuAppContext` instances enter the **retirement queue** (`FeishuAppContextRetirement`) and are Disposed after a grace period (default 300s). Never assume GC will reclaim them—Timer roots the object graph (TMA-07/TMA-24).
-- `GetAllApps()` returns only **instantiated** apps; it does not trigger lazy initialization (TMA-08). Use `ConfiguredAppKeys` for all configured app keys without instantiation.
-- `InvalidateTokenAsync` cascades to `ITokenStore` (memory + store double-clear, TMA-01). The `PurgeStoreOnTokenInvalidation` option (default `true`) can disable store purge.
-- Store values must include an expiry timestamp (`{expireTimestampMs}|{token}` format via `TokenStoreHelper.EncodeStoredToken`). Values without expiry are treated as miss (TMA-15).
-- `PerAppFeishuAuthenticationFactory` uses `ActivatorUtilities.CreateInstance<IFeishuAuthentication>`; if the registered type is an interface/abstract, it falls back to the DI singleton (TMA-09).
-- New `IDisposable` members on `FeishuAppContext` **must** be disposed in `FeishuAppContext.Dispose()` to prevent leaks through the retirement queue (TMA-24 maintenance constraint).
-
-## Multi-Tenant Deployment (TMA2-20)
-
-Multi-tenant scenarios use the same multi-app infrastructure: each tenant maps to a `FeishuAppConfig` with its own `AppId`/`AppSecret`. Context switching via `UseApp`/`BeginScope` switches token and endpoint, but does **not** enforce tenant-level authorization. Business layers must implement custom authorization (e.g., Claim-based tenant validation middleware) to restrict access. The component-side `IAppAccessAuthorizer` provides error prompts when missing, but this SDK does not bundle an authorization implementation. For Redis deduplication, set distinct key prefixes (`EventKeyPrefix`/`NonceKeyPrefix`/`SeqIdKeyPrefix`) per tenant to prevent cross-tenant event conflicts.
-
-## Contract Addenda (TMA2-22 / D8–D14)
-
-1. **D8 键布局**：令牌键只允许由 `TokenKeyBuilder` 构造；变更须同步两后端 + 等价与回灌测试。禁止在各 Store 中内联键拼接逻辑。
-2. **D9 阈值同源**：恢复阈值必须等于缓存有效性阈值（`TokenRefreshThreshold`）；禁止第二套阈值（如 `threshold/2`）。
-3. **D10 凭据变更清库**：配置热更新（`ApplyConfigurationChanges`；TMF-04：原 `RebuildAppContext` 死代码已删除）检测到 `(AppId, AppSecret)` 变更时必须清除该 appKey 的持久化令牌——租户经 `ClearAsync`、用户经 `IFeishuUserTokenStorePurge.ClearAllUsersAsync` 能力探测（TMF-01 共享记账保证工厂新实例可清干净）。仅 `BaseUrl`/`TimeoutSeconds` 等变更保留令牌热迁移。
-4. **事件去重分层所有权**：传输层（WebSocket `BinaryMessageProcessor`）归 **SeqID/序列验证器**；事件层（`FeishuEventMessageHandler` / Webhook）归 **EventId**。失败时两侧各自回滚本层幂等状态；Idempotent 业务键必须自带命名空间（禁止裸 `EventId`）。投递语义为 at-least-once，不追求严格一次。
-
-## 配置面约定（R4）
-
-MudFeishu 配置面以**嵌套 Options** 为唯一公共 API（旧扁平属性已删除）：
-
-| 区域                | 权威形状                                                                                     | 配置节示例                                                                                                                  |
-| ------------------- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| 应用 HTTP/熔断      | `FeishuAppConfig.TimeoutSeconds` / `HttpRetry` / `CircuitBreaker`                            | `FeishuApps:0:TimeoutSeconds`、`HttpRetry:MaxAttempts`、`CircuitBreaker:Enabled`                                            |
-| 事件去重            | `FeishuDeduplicationOptions`（Mode/Profile/Event/Nonce/SeqId 三前缀）                        | `FeishuDeduplication:*`；双读期旧 `FeishuRedis:Event*` 等仍可绑                                                             |
-| Redis 连接          | `RedisOptions.Connection` / `Advanced`                                                       | `FeishuRedis:Connection:ServerAddress`；旧扁平键由 `ApplyLegacyFlatConnectionKeys` 回填                                     |
-| WebSocket 重连/证书 | `FeishuWebSocketOptions.Reconnect` / `Certificate`                                           | `FeishuWebSocket:Reconnect:*`、`Certificate:Mode`                                                                           |
-| WebSocket 事件防线  | `FeishuWebSocketOptions.RejectEmptyEventIds` / `IgnoreUnknownEventTypes`                     | `FeishuWebSocket:RejectEmptyEventIds`（默认 true）、`IgnoreUnknownEventTypes`（默认 false，推荐 true；支持热更新，R2-P1-3） |
-| Webhook 令牌刷新    | `EnableTokenBackgroundRefresh`（bool?；null=不干预基座）                                     | `FeishuWebhook:EnableTokenBackgroundRefresh`                                                                                |
-| Webhook 超时        | 全局 `EventHandlingTimeoutMs` + 应用级同名键（正整数覆盖）；过渡闸 `LegacyGlobalTimeoutOnly` | —                                                                                                                           |
-
-**日志**：**禁止**再新增任何「日志开关」类配置属性（历史上曾以 `Enable*Logging` / `Enable*Monitoring` 之类的名字出现，其中若干从未被运行时读取，属死配置）。日志级别统一由 `Logging:LogLevel:{Category}` 控制，例如：
-
-```jsonc
-"Logging": {
-  "LogLevel": {
-    "Mud.Feishu.WebSocket": "Information",
-    "Mud.Feishu.Webhook": "Information",
-    "Mud.Feishu.Abstractions.TokenManager": "Warning"
-  }
-}
-```
-
-**去重主路径仅消费**：`CacheExpiration` / `ProcessingTimeout` / `CleanupInterval` / `KeyPrefix` / `MaxCacheSize`。事件失败重试用 `FailedEventRetryOptions`，勿与去重键混淆。
-
-**多租户**：`FeishuDeduplication` / Redis 去重键 **Event/Nonce/SeqId 三个 KeyPrefix 必须互异**（TMA2-20）。
-
-**包安全跨校验**：`NonceTtl >= TimestampToleranceSeconds`（WHF-03）由宿主在同时引用 Webhook+Redis 时通过 `AddFeishuConfigurationConsistencyChecks` 注入 Webhook 容差后校验；Redis/Webhook 单包不做跨包类型耦合。
-
-**配置审计**：`scripts/audit-config-keys.ps1` 扫描仓库内是否出现已删除的旧配置键/属性名，
-分两档：`$strictPatterns`（精确的「已删除键名」，`-Strict` 与 CI 门禁以此为判据）与
-`$warnPatterns`（R4 遗留的宽口径启发式，含已知误报，仅告警）。
-脚本排除 `Demos/`（演示刻意保留旧形态）；`allowlist` **不再整文件豁免**，改为行内
-`// audit-allow: <reason>`（匹配行或其上一行）。路径片段**必须用 `/` 书写**（脚本会对被扫描路径
-做分隔符归一化）——用 `\` 时在 ubuntu-latest runner 上会全部失配，使排除/豁免在 CI 静默失效。
-**新增死键模式必须与「删除该键」同阶段落地**，否则门禁会对仍受支持的配置面误报。
-
-### 配置面治理（R5）
-
-1. **禁止新增「日志开关」类配置属性**：日志级别只能由 `Logging:LogLevel:{Category}` 控制。
-   历史上 `Enable*Logging` / `Enable*Monitoring` 之类开关多次出现「配了但运行时从不读取」，
-   属死配置，已按 R5 逐步删除。
-2. **每个公开配置属性必须有真实消费点**：新增属性必须同时接线（README 表格里的每一项都要能
-   在源码中找到读取处，`Validate` / `ToString` **不算**）。由
-   `Tests/**/ContractGuards/ConfigSurfaceContractGuards.cs` 锁定。
-3. **配置 DTO 必须有配置节绑定**：仅 `services.AddOptions<T>()` **不会**绑定任何节。
-   绑定必须走 `Configure<T>(o => section.Bind(o))`（**不要**用 `Configure<T>(IConfiguration)`
-   重载——其反射绑定调用点无法被配置绑定源生成器拦截，会破坏 `IL2026`/`IL3050` 净零，见
-   `FeishuServiceCollectionExtensions.cs` 中 `TokenRecoveryOptions` 的 AOT-3 记录），
-   并按需显式注册 `IOptionsChangeTokenSource` 以保留热更新语义。
-4. **两处「同名配置」不得并存**：同一个语义只能有一个配置节（真相源）。新增别名必须同时提供
-   字段级回填与迁移表，并标注 `[Obsolete]` 的下线版本。
-5. **行为变更必须可回滚**：使某项此前静默无效的配置**首次生效**，与「删除从未生效的开关」
-   同属对外可见行为变更，必须写入 `documents/Configuration/CHANGELOG-Config.md` 与发布说明。
-6. **审计脚本与契约守卫同批更新**：删除键 → 同一批次把模式加入 `$strictPatterns`；
-   新增配置属性 → 同一批次补契约守卫登记。`audit-config-keys.ps1 -Strict` 是 CI 门禁的一部分。
-
-**安全默认不得削弱**：wss、Strict 证书、`EnforceHeaderSignatureValidation`、`RejectEmptyIdentifiers`、三键前缀隔离、BaseUrl HTTPS 白名单。4. **D11 OAuth 失败语义**：`RefreshUserTokenAsync` 必须通过 `FeishuOAuthErrorClassifier` 区分可重试/不可重试错误。`invalid_grant` 等不可重试错误清除 refresh token 并返回 null；可重试错误抛异常。5. **D12 AppInstantiated 事件**：首次访问应用时必须触发 `AppInstantiated` 事件，后台令牌刷新订阅此事件实现增量注册。禁止启动期全量预热。6. **D13 两阶段事务化**：`OnConfigurationChanged` 必须拆为 Phase-P（`_configApplyLock` 外预清库——凭据变更是 IO，禁止锁内执行；TMF-02）、Phase-A 预构造（纯内存装配）、Phase-B 提交（`_lazyRebuildLock` 内仅引用交换）。禁止在锁内执行清库 IO 或完整装配。7. **D14 异常过滤白名单**：`CreateAppContext` / `TryGetApp` 的异常过滤必须使用 `IsTransientInitFailure` 白名单。禁止 `catch (Exception ex) when (ex is not OperationCanceledException)` 的宽过滤。8. **D15 补偿性去重操作**：通道层对 `IFeishuEventDeduplicator` / `IUnifiedDeduplicationMiddleware` 的 `Rollback*` / `Mark*` 调用属补偿/终态操作——落至后端调用点必须使用 `CancellationToken.None`（调用链可接收调用方 token，但补偿不得被取消中断），且补偿失败不得替换/吞没原始业务异常（记日志后继续，键停留 processing 由 ProcessingTimeout/TTL 兜底）。`TryMark*`（进入处理态）不受此约束，取消应即时传播。依据：R2-P0-1（Redis 后端入口 ThrowIfCancellationRequested + 已取消 token = 回滚失效 → 服务端重发被判重跳过并 ACK 200 → 事件丢失）。
-
-## WebSocket 模块强制约束（R2：I13–I16 / D5 / I9）
-
-适用于 `Mud.Feishu.WebSocket`。**新增/修改该模块代码必须逐条自检**；违反者由
-`Tests/Mud.Feishu.WebSocket.Tests/ContractGuards/WebSocketContractGuards.cs`（7 条源码守卫）拦截。
-权威语义见 `documents/WebSocket/架构与并发模型.md` §7。
-
-1. **I13 连接终止路径穷尽占位**：任何"使 socket 不再被读取"的路径（服务端关闭帧、客户端主动断开、
-   接收循环异常、**接收循环因取消退出**、`Dispose`/`DisposeAsync`）都必须经过
-   `WebSocketConnectionManager.TryClaimDisconnected`；**主动断开必须先占位、后关闭握手**。
-2. **I14 接收循环唯一性**：启动必须使用**原子占位**（`Interlocked.CompareExchange`），
-   **禁止**"先检查后使用"地读 `_receiveTask`；循环 Task 必须登记到 `_receiveTask`
-   （否则停机等待与存活判定都失效）。
-3. **I15 令牌归属**：调用方 `CancellationToken` **只约束建连阶段**（握手 + 认证），
-   不得链接为连接生命周期令牌。连接生命周期由客户端自持 CTS 控制。
-4. **I16 配置双向约束**：数值配置必须同时校验下界与上界；任何
-   `new CancellationTokenSource(<TimeSpan>)` / `Task.Delay(<TimeSpan>)` 的**非字面量**参数
-   必须先经 `Core/TimeSpanGuards.cs` 钳制。`netstandard2.0` **禁用 `Math.Clamp`**（用 `Math.Min/Max`）。
-5. **D5 日志最小暴露**：入站报文只能记"结构化字段 + `LogSanitizer.CleanMessage` 脱敏截断预览"；
-   连接 URL 日志**整体剥离 query**（`Uri.GetLeftPart(UriPartial.Path)`）。
-6. **I9 信号量释放**：一律不随 `Dispose` 释放；例外必须在类型 XML 注释中登记。
-   当前**唯一例外**：`FeishuWebSocketConcurrencyService` 热更新时延迟释放**旧**信号量，
-   阈值为 `max(60s, 2 × MessageHandlerTimeoutMs)`（见 `ResolveLegacySemaphoreRetention`）。
-7. **F5 受控丢弃必须可计数**：任何"主动丢弃帧/消息"的新增路径都必须调用
-   `FeishuMetricsHelper.RecordWebSocketFramesDiscarded(appKey, reason)`，
-   且 `reason` **必须**取 `FeishuMetrics.DiscardReasons` 常量（告警规则按该维度聚合，裸字符串会静默改变指标序列）。
-   新增原因时同步登记常量、`Readme.md` 告警表与守卫清单。
-8. **I1 覆盖"两层锁"**：`WebSocketConnectionManager._connectionLock` **与** `FeishuWebSocketClient._connectLock`
-   的持有期内都**不得**派发用户事件。客户端层的做法是"入队 + 出锁后按原顺序冲刷"
-   （`BeginDeferConnectionEvents` / `FlushDeferredConnectionEvents`）——
-   新增用户事件或改派发点时，必须确认它不在上述任一锁的持有期内，且冲刷路径自带异常隔离。
-9. **FU-2 隐性耦合**：SeqID 去重键是裸 `SeqID`（无应用维度），前提是"同进程单客户端 + 只绑定默认应用"。
-   **若引入多应用 WebSocket 装配，必须同时给去重键加应用维度**，否则会造成静默事件丢失。
-   该耦合由守卫 `SeqIdDeduplication_ShouldStaySingleAppScoped_OrGainAppDimension` 守护，
-   口径见 `documents/WebSocket/架构与并发模型.md` §8。
-
-> 压力/长稳用例（`Category=Stress`）**不进全量门禁**：xUnit 的 `Trait` 不会自动排除用例，
-> `scripts/verify-build.ps1` 步骤 4 已显式传入 `--filter "Category!=Stress"`。
-> 手工执行：`dotnet test Tests/Mud.Feishu.WebSocket.Tests -c Release -f net8.0 --filter "Category=Stress"`。
-
-## MSBuild Configuration
-
-`Directory.Build.props`: `LangVersion`: 13.0, `Nullable`: enable, `ImplicitUsings`: enable
-
-## Target Frameworks
-
-`netstandard2.0`, `net6.0`, `net8.0` (recommended), `net10.0`
-
-Use conditional compilation: `#if NET7_0_OR_GREATER` for framework-specific code.

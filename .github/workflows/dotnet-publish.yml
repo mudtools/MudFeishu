@@ -222,11 +222,13 @@ jobs:
           }
 
           # --results-directory + --logger trx 的组合下，VSTest 为每个（测试工程, TFM）组合各落盘一个
-          # TRX；同名时自动追加 [1]/[2] 后缀而非覆盖（实测 Mud.Feishu.slnx 的 8 个测试工程共
-          # 20 个 (工程, TFM) 组合 —— Abstractions/Authentication/OpenTelemetry/Redis.IntegrationTests
-          # 为 net8.0/net10.0（4×2），Redis/主包/Webhook/WebSocket 为 net6.0/net8.0/net10.0（4×3），
-          # 结果集 20 个 TRX 全部保留）。故无需逐工程调用。
-          dotnet test $env:SOLUTION_FILE --no-build --configuration $env:CONFIGURATION --results-directory $resultsDir --logger trx --verbosity normal 2>&1 |
+          # TRX；同名时自动追加 [1]/[2] 后缀而非覆盖。TFM 已收敛为 net8.0（Agent.Demo.Tests 例外
+          # net10.0），组合数随 TFM 收敛减少，结果集全部保留。
+          #
+          # 过滤口径与 scripts/verify-build.ps1 步骤 4 对齐（WSR2-14 + 测试体系治理 §三.3）：
+          #   Category!=Stress  压力/长稳用例不进门禁（慢且引入不稳定性）
+          #   Category!=Timing  计时敏感用例在高负载下抖动出假红（500ms 阈值实测 2.6s），仅本地 -Full 档执行
+          dotnet test $env:SOLUTION_FILE --no-build --configuration $env:CONFIGURATION --results-directory $resultsDir --logger trx --verbosity normal --filter "Category!=Stress&Category!=Timing" 2>&1 |
             Tee-Object -FilePath $log
           if ($LASTEXITCODE -ne 0) {
             Write-Host ''

@@ -26,17 +26,12 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// </remarks>
 public class ToolErrorContractGuards
 {
-    /// <summary>
-    /// 守卫 ①：ToolErrorCategory 必须恰好有 8 个值（闭集，新增需评审 + 守卫更新）。
-    /// </summary>
-    [Fact]
-    public void ToolErrorCategory_ShouldHaveExactlyEightValues()
-    {
-        var enumValues = Enum.GetValues<ToolErrorCategory>();
-        enumValues.Should().HaveCount(8,
-            "ToolErrorCategory 必须为 8 类闭集（validation/policy/authorization/confirmation/retryable/api/internal/content_safety），"
-            + "新增需评审并同批更新本断言");
-    }
+    // 守卫 ①（原 ToolErrorCategory_ShouldHaveExactlyEightValues）已删除（测试体系治理 B1，
+    // 见 documents/AI/单元测试体系过度测试分析与解决方案.md §三.4）："恰好 8 个值"被两处
+    // **等式守卫**完全包含——ToolErrorDocContractGuards.DocumentCategories_ShouldEqual_CodeClosedSet
+    // 与 McpResourceContractGuards.ErrorContractSummary_ClosedSets_ShouldMatchCodeClosure
+    // 都把 CategoryLiteral 映射结果与 8 字面量闭集逐一比对，多一个/少一个值都报红。
+    // 计数型断言只留一份真相语义，不再有独立副本。
 
     /// <summary>
     /// 守卫 ②：ToolErrorSubtype 的常量不得为空字符串。
@@ -220,19 +215,9 @@ public class ToolErrorContractGuards
             "唯一出口必须通过 FeishuToolResult.FromError(ToolError, ...) 构造带结构化载荷的结果");
     }
 
-    /// <summary>
-    /// 守卫 ⑥：ToolErrorCategory 的枚举值必须与 CategoryLiteral 映射一致。
-    /// </summary>
-    [Fact]
-    public void CategoryLiteral_ShouldMapAllEnumValues()
-    {
-        foreach (var category in Enum.GetValues<ToolErrorCategory>())
-        {
-            var literal = FeishuToolBinding.CategoryLiteral(category);
-            literal.Should().NotBeNullOrEmpty(
-                $"CategoryLiteral 必须为 {category} 返回非空字符串");
-        }
-    }
+    // 守卫 ⑥（原 CategoryLiteral_ShouldMapAllEnumValues）已删除（同守卫 ①，测试体系治理 B1）：
+    // 两处等式守卫把 CategoryLiteral 的输出与字面量闭集逐一比对——空串/错映射/未映射
+    // （CategoryLiteral 的 `_` 兜底返回 "internal"）都会使等式破缺而报红，独立非空断言被完全包含。
 
     /// <summary>
     /// 守卫 ⑦（R-3 / BUG-8）：<c>suggestions</c> 存在时必须进入<b>首行 JSON 载荷</b>。

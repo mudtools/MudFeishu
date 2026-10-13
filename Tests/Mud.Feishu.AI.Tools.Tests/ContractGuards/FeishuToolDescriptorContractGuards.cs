@@ -38,26 +38,10 @@ public class FeishuToolDescriptorContractGuards
             "（生成器产出与契约表的漂移必须可见）");
     }
 
-    /// <summary>
-    /// 每个工具的 description 不得为空
-    /// （MUDFT005 的运行时等价断言：生成器可能跳过空 description，但契约表要求全量覆盖）。
-    /// </summary>
-    [Fact]
-    public void AllTools_ShouldHaveNonEmptyDescription()
-    {
-        foreach (var (toolName, schemaJson) in SchemaByToolName)
-        {
-            using var document = JsonDocument.Parse(schemaJson);
-            var root = document.RootElement;
-
-            root.TryGetProperty("description", out var descElement).Should().BeTrue(
-                $"工具 {toolName} 必须有 description 字段");
-
-            var description = descElement.GetString();
-            description.Should().NotBeNullOrWhiteSpace(
-                $"工具 {toolName} 的 description 不得为空（MUDFT005 的运行时等价断言）");
-        }
-    }
+    // 原 AllTools_ShouldHaveNonEmptyDescription 已删除（测试体系治理 B2，见
+    // documents/AI/单元测试体系过度测试分析与解决方案.md §三.5）：它是 **MUDFT005 的运行时等价断言**
+    // （方法 XML 注释自认），MUDFT005 为 Warning 恒 0 集，由 CI / verify-build -DenyToolWarnings
+    // 在构建期断言——运行期副本不提供增量信息。
 
     /// <summary>
     /// 每个工具的 parameters 必须含 type=object 且 properties 非空

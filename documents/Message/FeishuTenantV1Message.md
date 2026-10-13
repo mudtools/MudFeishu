@@ -457,7 +457,7 @@ Task<FeishuApiResult<MessageUrgentResult>?> MessageUrgentAppAsync(
 |-------|------|-----|------|
 | message_id | string | ✅ | 待加急的消息 ID |
 | sendMessageRequest | MessageUrgentRequest | ✅ | 加急请求体 |
-| └─ UserIdList | List<string> | ✅ | 需要加急的用户ID列表 |
+| └─ UserIdList | `List<string>` | ✅ | 需要加急的用户ID列表 |
 | user_id_type | string | ⚪ | 用户ID类型，默认 open_id |
 | cancellationToken | CancellationToken | ⚪ | 取消操作令牌 |
 

@@ -62,6 +62,13 @@ internal static class CapabilityModuleAliases
             // 主数据（MDMCountryRegion 等）首段是字母 "M"，模块名是 mdm。
             ["M"] = ["mdm"],
 
+            // 服务台（HelpDeskAgent / HelpDeskTicket / HelpDeskFaq …）**首段只截到 "Help"**
+            // （LeadingPascalSegment 在第二个大写字母前截断：H-e-l-p 连续小写，遇 D 停），
+            // 而工具模块名是 helpdesk ⇒ 不登记别名则 module_curated 恒为 false，
+            // capability_lookup 会把"已策展的服务台域"说成"尚未策展"。这是 HelpDesk 域与
+            // Video/Aily 等"首段即完整单词"的域的差别，必须显式登记。
+            ["Help"] = ["helpdesk"],
+
             // 单条消息（Message）落 im 模块。
             ["Message"] = ["im"],
 

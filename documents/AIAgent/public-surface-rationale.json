@@ -287,6 +287,12 @@
                      "Mud.Feishu.AI.Tools.Catalog.ToolSchemaDialect"
                  ],
     "reasons":  {
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantHelpdeskSearchFaqsTool":  "专题一 B1（HelpDesk 服务台）第三个补域：helpdesk.search_faqs 的工具契约（本域主力，服务台自助问答检索）。消费方：① FeishuToolRegistry 白名单装配（宿主显式启用后模型可见）；② MCP server tools/list；③ HelpDeskToolsTests 与工具面守卫（golden / 权限对照表 / scope-authority / descriptor 契约）。与既有契约接口同口径——工具契约接口是宿主与模型之间的可寻址面。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantHelpdeskListFaqsTool":  "同 IFeishuTenantHelpdeskSearchFaqsTool：helpdesk.list_faqs 的工具契约（按分类/状态浏览 FAQ，含 fetch_all 分页契约）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantHelpdeskGetFaqTool":  "同 IFeishuTenantHelpdeskSearchFaqsTool：helpdesk.get_faq 的工具契约（FAQ 全文，已裁掉创建人/更新人）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantHelpdeskListCategoriesTool":  "同 IFeishuTenantHelpdeskSearchFaqsTool：helpdesk.list_categories 的工具契约（FAQ 分类目录树）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantHelpdeskGetTicketTool":  "同 IFeishuTenantHelpdeskSearchFaqsTool：helpdesk.get_ticket 的工具契约（工单状态与流转；**只读且不含工单正文**——内容属敏感面，另行评审）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantHelpdeskListAgentSkillsTool":  "同 IFeishuTenantHelpdeskSearchFaqsTool：helpdesk.list_agent_skills 的工具契约（客服技能组路由配置；平台接口无入参，属 descriptor 守卫的机械例外）。消费方同上。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantApplicationListAppsTool":  "专题一 B1（Application 应用管理）第二个补域：application.list_apps 的工具契约（本域第一跳，app_id 从这里来）。消费方：① FeishuToolRegistry 白名单装配（宿主显式启用后模型可见）；② MCP server tools/list；③ ApplicationToolsTests 与工具面守卫（golden / 权限对照表 / scope-authority / descriptor 契约）。与既有契约接口同口径——工具契约接口是宿主与模型之间的可寻址面。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantApplicationGetAppTool":  "同 IFeishuTenantApplicationListAppsTool：application.get_app 的工具契约（应用详情投影，已裁掉 secret/encryption/security 与负责人联系方式）。消费方同上。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantApplicationGetAppVisibilityTool":  "同 IFeishuTenantApplicationListAppsTool：application.get_app_visibility 的工具契约（可用范围，标识符级）。消费方同上。",

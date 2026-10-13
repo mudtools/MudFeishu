@@ -80,22 +80,65 @@ public class FeishuToolDescriptorContractGuards
             paramsElement.TryGetProperty("properties", out var propsElement).Should().BeTrue(
                 $"工具 {toolName} 必须有 parameters.properties");
 
-            // 知识库检索工具允许零参数（仅靠检索引擎语义匹配），不强制 properties 非空。
-            // 其余工具至少应有一个参数。
-            // 允许零参数的例外（每条都必须"平台 API 本身就无入参"，不是为了绕门禁）：
-            //   · KnowledgeSearch：仅靠检索引擎语义匹配，无业务入参；
-            //   · LingoListRepos：枚举"租户有哪些词库"，飞书 GET /lingo/v1/repos 本身不带任何查询参数，
-            //     它是词典域的**第一跳**（后续工具的 repo_id 全从这里来），加无意义参数只会污染模型可见面；
-            //   · ApplicationGetScopes：POST/GET /application/v6/scopes 查"本应用已申请了哪些权限点"，
-            //     平台接口无入参（应用身份即隐式主体）。
-            if (toolName != FeishuToolNames.KnowledgeSearch
-                && toolName != FeishuToolNames.LingoListRepos
-                && toolName != FeishuToolNames.ApplicationGetScopes)
+            // 零参数的唯一合法理由是：**平台侧本来就没有入参**（不是"为了绕门禁"）。判据机械化：
+            //   · 非 SDK 工具（无 Source）：KnowledgeSearch 走检索引擎语义匹配，无业务入参；
+            //   · SDK 工具：其源方法除 CancellationToken 外**没有任何参数**（反射判定，见下方 helper）。
+            // 这条规则取代了原先"逐个登记工具名"的清单——清单会随新域增长变成垃圾桶，
+            // 而反射判据对新域自动生效、且骗不过去（源方法有参数就必须把参数给模型）。
+            if (toolName != FeishuToolNames.KnowledgeSearch && !SourceMethodTakesNoParameters(schemaJson))
             {
                 propsElement.EnumerateObject().Count().Should().BeGreaterThan(0,
-                    $"工具 {toolName} 的 parameters.properties 不得为空（知识库检索除外）");
+                    $"工具 {toolName} 的 parameters.properties 不得为空——"
+                    + "除非其 SDK 源方法本身无入参（Source 声明里能看出来），或它是 KnowledgeSearch 这类非 SDK 工具");
             }
         }
+    }
+
+    /// <summary>
+    /// 工具的 <c>x-feishu.source.sdk</c>（形如 <c>Iface.Method</c>）所指方法是否<b>除 CancellationToken 外无参数</b>。
+    /// </summary>
+    /// <remarks>
+    /// <b>失败方向是刻意选的</b>：解析失败 / 无 Source / 反射找不到 ⇒ 一律返回 <c>false</c>
+    /// （"无法证明无入参"就按有入参要求）。这样反射或格式一旦写坏，会立刻有一批工具报红，
+    /// 而不是静默放行零参数工具——守卫宁可吵，不可哑。
+    /// </remarks>
+    internal static bool SourceMethodTakesNoParameters(string schemaJson)
+    {
+        using var document = JsonDocument.Parse(schemaJson);
+        if (!document.RootElement.TryGetProperty("x-feishu", out var extension)
+            || !extension.TryGetProperty("source", out var source)
+            || !source.TryGetProperty("sdk", out var sdk)
+            || sdk.GetString() is not { Length: > 0 } reference)
+        {
+            return false;
+        }
+
+        var separator = reference.LastIndexOf('.');
+        if (separator <= 0 || separator == reference.Length - 1)
+        {
+            return false;
+        }
+
+        var interfaceName = reference[..separator];
+        var methodName = reference[(separator + 1)..];
+
+        var interfaceType = typeof(Mud.Feishu.IFeishuTenantV1HelpDeskFaq).Assembly
+            .GetTypes()
+            .FirstOrDefault(type => type.IsInterface && string.Equals(type.Name, interfaceName, StringComparison.Ordinal));
+
+        if (interfaceType is null)
+        {
+            return false;
+        }
+
+        // 方法可能声明在**基接口**上（如 IFeishuV1LingoRepo 上的 GetRepoListAsync），故把继承链一起扫。
+        var method = interfaceType.GetInterfaces()
+            .Prepend(interfaceType)
+            .SelectMany(static type => type.GetMethods())
+            .FirstOrDefault(candidate => string.Equals(candidate.Name, methodName, StringComparison.Ordinal));
+
+        return method is not null
+            && method.GetParameters().All(static parameter => parameter.ParameterType == typeof(CancellationToken));
     }
 
     /// <summary>

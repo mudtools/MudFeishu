@@ -63,11 +63,39 @@ public class PageSizeSchemaLeakContractGuards
 
         File.Exists(goldenPath).Should().BeTrue("golden 快照必须存在");
 
-        var content = File.ReadAllText(goldenPath);
-        var matches = Regex.Matches(content, @"""page_size""");
+        // ⚠️ 判据只看每行的 **parameters 区**（复用 PaginationContractGuards.ParametersSection）：
+        //    响应侧本来就可能回显 page_size（如 HelpDesk 的 GetFaqListResult.PageSize 直接进输出 Schema），
+        //    那是**下游信封字段**、不是模型入参——按全文扫描会把"平台回显"误判成"参数泄漏"，
+        //    而假红会逼人放宽这条真正重要的门禁。
+        var leaks = new List<string>();
+        foreach (var line in File.ReadAllLines(goldenPath))
+        {
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                continue;
+            }
 
-        matches.Count.Should().Be(0,
-            "golden 快照中不得出现 page_size 属性——它是运维参数，不应暴露给模型（DP-B1-0）。");
+            var tab = line.IndexOf('\t');
+            if (tab < 0)
+            {
+                continue;
+            }
+
+            if (PaginationContractGuards.ParametersSection(line[(tab + 1)..])
+                .Contains("\"page_size\"", StringComparison.Ordinal))
+            {
+                leaks.Add(line[..tab]);
+            }
+        }
+
+        // 扫描面自证：一条 parameters 区都没切出来（切分逻辑写坏）时本用例会恒绿。
+        FeishuToolSchemas.SchemaByToolName.Count.Should().BeGreaterThan(0,
+            "扫描面为空 = 判据失效（假绿）");
+
+        leaks.Should().BeEmpty(
+            "以下工具的 **parameters 区** 含 page_size 属性——它是运维参数，不应暴露给模型（DP-B1-0）。"
+            + "泄漏工具: {0}",
+            string.Join(", ", leaks));
     }
 
     private static string FindRepositoryRoot()

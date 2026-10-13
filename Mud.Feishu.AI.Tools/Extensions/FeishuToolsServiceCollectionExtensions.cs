@@ -138,6 +138,26 @@ public static class FeishuToolsServiceCollectionExtensions
         => AddFeishuToolInfrastructure(services, configure)
             .AddFeishuApplicationToolsCore();
 
+    /// <summary>
+    /// 按域注册【服务台】工具（B1 第三批，6 个只读：<c>helpdesk.*</c>）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 面向客服/服务台场景（FAQ 检索与浏览 / FAQ 分类 / 工单状态 / 客服技能组）。
+    /// 全部<b>只读</b>；工单工具只给状态与流转事实，<b>不返回</b>备注正文、对话消息、
+    /// 客户自定义字段值与客户联系方式（工单内容属敏感面，另行评审）。
+    /// </para>
+    /// <para>
+    /// ⚠️ 与全域入口的同步纪律：本入口与 <c>AddFeishuReadonlyToolCores</c> 的清单必须**同进同出**
+    /// （<c>DomainRegistrarTests</c> 锁等价性）。
+    /// </para>
+    /// </remarks>
+    public static IServiceCollection AddFeishuHelpdeskTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure)
+            .AddFeishuHelpdeskToolsCore();
+
 
 
 
@@ -356,6 +376,11 @@ public static class FeishuToolsServiceCollectionExtensions
 
                     // hire Offer 执行器 HireOfferTools（1 个只读，**PII**：只给状态，结构性不含金额）。
                     .AddFeishuHireOfferToolsCore()
+
+                    // B1 补域：HelpDesk 服务台执行器 HelpDeskTools（首批 6 个只读）。
+                    // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方；
+                    // 且必须与 AddFeishuHelpdeskTools 入口同进同出（DomainRegistrarTests 锁等价性）。
+                    .AddFeishuHelpdeskToolsCore()
 
                     // B1 补域：Application 飞书应用管理执行器 ApplicationTools（首批 7 个只读）。
                     // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，

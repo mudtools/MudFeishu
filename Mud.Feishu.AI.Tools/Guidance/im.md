@@ -15,6 +15,7 @@
 - `forward_message`（单条）与 `forward_thread`（整条话题）是两个工具，选错会丢上下文。
 - `revoke_message` 只能撤自己的。
 - 话题/回复 vs 消息的判别 → `feishu.guidance_read(im, topics-and-replies)`。
+- 交互式卡片（`send_card` 的结构化语法）→ `feishu.guidance_read(im, cards)`。
 
 ## 安全规则
 - 写工具首次调用一律 `dry_run=true` 预演；确认 method/path 与字段摘要无误后，以 `dry_run=false` 重放**同一参数**。

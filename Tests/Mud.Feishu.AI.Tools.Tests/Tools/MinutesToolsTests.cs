@@ -247,6 +247,60 @@ public class MinutesToolsTests
 
     // ───────────────────── 搜索（A3：找会议入口） ─────────────────────
 
+    /// <summary>
+    /// P-4 多页回归：<c>minutes.search</c> 是"<b>页状态显式</b>"重载（<c>SearchMinutesResult</c> 不继承
+    /// <c>ApiPageListResult</c>）的真实消费者，本用例同时钉住三件事：
+    /// ① 聚合与单页共用同一份投影；② <c>has_more=true</c> 时确实继续翻页；③ 聚合信封带预算字段。
+    /// </summary>
+    [Fact]
+    public async Task Search_FetchAll_Should_Aggregate_All_Pages()
+    {
+        var calls = 0;
+        var client = new Mock<Mud.Feishu.IFeishuTenantV1MinutesMinute>();
+        client.Setup(c => c.SearchMinutesAsync(
+                It.IsAny<SearchMinutesRequest>(), It.IsAny<int?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((SearchMinutesRequest _, int? __, string? pageToken, CancellationToken ___) =>
+            {
+                calls++;
+                return pageToken is null
+                    ? new FeishuApiResult<SearchMinutesResult>
+                    {
+                        Code = 0,
+                        Data = new SearchMinutesResult
+                        {
+                            Items = [new MinutesSearchItem { Token = "obcn1", DisplayInfo = "第一页" }],
+                            Total = 2,
+                            HasMore = true,
+                            PageToken = "t2",
+                        },
+                    }
+                    : new FeishuApiResult<SearchMinutesResult>
+                    {
+                        Code = 0,
+                        Data = new SearchMinutesResult
+                        {
+                            Items = [new MinutesSearchItem { Token = "obcn2", DisplayInfo = "第二页" }],
+                            Total = 2,
+                            HasMore = false,
+                            PageToken = null,
+                        },
+                    };
+            });
+
+        var result = await CreateTools(client).SearchMinutesAsync(
+            Args(("query", "季度复盘"), ("fetch_all", true)), CancellationToken.None);
+
+        calls.Should().Be(2, "has_more=true 时聚合路径必须继续翻页（页 token 由闭包传入下一次调用）");
+
+        var payload = Payload(result);
+        var items = payload["items"]!.AsArray();
+        items.Count.Should().Be(2, "两页条目必须合并，且两条都经同一份投影");
+        items[0]!["minute_token"]!.GetValue<string>().Should().Be("obcn1");
+        items[1]!["minute_token"]!.GetValue<string>().Should().Be("obcn2");
+        payload["truncated"]!.GetValue<bool>().Should().BeFalse();
+        payload["pages_fetched"]!.GetValue<int>().Should().Be(2);
+    }
+
     [Fact]
     public async Task Search_Should_Map_Keyword_And_TimeRange()
     {

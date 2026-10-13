@@ -47,5 +47,7 @@ public interface IFeishuTenantSecurityListOpenapiLogsTool
         [ToolParameter("api_key", "按开放平台 API 名称筛选（可选，如 im/v1/messages；不填=全部接口）")] string? api_key = null,
         [ToolParameter("app_id", "按调用方应用 ID 筛选（可选；排查某个自建应用时传）")] string? app_id = null,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }

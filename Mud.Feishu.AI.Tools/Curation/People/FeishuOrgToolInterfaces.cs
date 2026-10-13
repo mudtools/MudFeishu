@@ -41,6 +41,8 @@ public interface IFeishuTenantOrgListJobTitlesTool
     /// <returns>白名单投影后的 JSON 文本（分页信封 items/has_more/page_token；条目含 job_title_id/name/i18n_name/status），超长截断并标记 truncated。</returns>
     Task<string> ListJobTitlesAsync(
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -85,6 +87,8 @@ public interface IFeishuTenantOrgListJobLevelsTool
     Task<string> ListJobLevelsAsync(
         [ToolParameter("name", "职级名称关键字（可选，模糊匹配）")] string? name = null,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -119,6 +123,8 @@ public interface IFeishuTenantOrgListJobFamiliesTool
     Task<string> ListJobFamiliesAsync(
         [ToolParameter("name", "职务族名称关键字（可选，模糊匹配）")] string? name = null,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -154,6 +160,8 @@ public interface IFeishuTenantOrgListWorkCitiesTool
     /// <returns>白名单投影后的 JSON 文本（分页信封 items/has_more/page_token；条目含 work_city_id/name/status/i18n_name）。</returns>
     Task<string> ListWorkCitiesAsync(
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
 

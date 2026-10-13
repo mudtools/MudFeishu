@@ -35,6 +35,10 @@ internal sealed class ContactDepartmentQueryTools(
 
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
+    /// <summary>P-0 补齐（统一分页语义）：<c>fetch_all</c> 的条目/页数预算（来自宿主配置）。</summary>
+    private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
+
     /// <summary>contact.get_department_parents：查询部门的上级链（自下而上）。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantContactGetDepartmentParentsTool))]
     public Task<FeishuToolResult> GetDepartmentParentsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
@@ -51,14 +55,18 @@ internal sealed class ContactDepartmentQueryTools(
         {
             var args = ContactGetDepartmentParentsArgs.Unpack(arguments);
 
-            var outcome = FeishuApiResultReader.Read(await _departmentsClient
-                .GetParentDepartmentsByIdAsync(
-                    args.DepartmentId,
-                    page_token: args.PageToken,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
+            // P-0 补齐：统一分页出口——聚合路径与单页路径共用同一次调用定义与同一份投影。
+            async Task<FeishuApiOutcome<ApiPageListResult<GetDepartmentInfo>>> FetchPageAsync(string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await _departmentsClient
+                    .GetParentDepartmentsByIdAsync(
+                        args.DepartmentId,
+                        page_token: token,
+                        cancellationToken: ct)
+                    .ConfigureAwait(false));
 
-            return executor.FromApi(outcome, result => Project(result, topLevelHint: true));
+            return await executor.FromPagedApiAsync(
+                FetchPageAsync, result => Project(result, topLevelHint: true), args.FetchAll, args.MaxItems, args.PageToken,
+                _maxAutoFetchItems, _maxAutoFetchPages, cancellationToken).ConfigureAwait(false);
         });
     }
 
@@ -78,14 +86,18 @@ internal sealed class ContactDepartmentQueryTools(
         {
             var args = ContactSearchDepartmentsArgs.Unpack(arguments);
 
-            var outcome = FeishuApiResultReader.Read(await _departmentsClient
-                .SearchDepartmentsAsync(
-                    new SearchDepartmentRequest { Query = args.Query },
-                    page_token: args.PageToken,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
+            // P-0 补齐：统一分页出口——聚合路径与单页路径共用同一次调用定义与同一份投影。
+            async Task<FeishuApiOutcome<ApiPageListResult<GetDepartmentInfo>>> FetchPageAsync(string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await _departmentsClient
+                    .SearchDepartmentsAsync(
+                        new SearchDepartmentRequest { Query = args.Query },
+                        page_token: token,
+                        cancellationToken: ct)
+                    .ConfigureAwait(false));
 
-            return executor.FromApi(outcome, result => Project(result, topLevelHint: false));
+            return await executor.FromPagedApiAsync(
+                FetchPageAsync, result => Project(result, topLevelHint: false), args.FetchAll, args.MaxItems, args.PageToken,
+                _maxAutoFetchItems, _maxAutoFetchPages, cancellationToken).ConfigureAwait(false);
         });
     }
 

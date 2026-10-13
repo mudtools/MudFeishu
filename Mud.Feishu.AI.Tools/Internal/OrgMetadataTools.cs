@@ -49,6 +49,10 @@ internal sealed class OrgMetadataTools(
 
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
+    /// <summary>P-0 补齐（统一分页语义）：<c>fetch_all</c> 的条目/页数预算（来自宿主配置）。</summary>
+    private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
+
     // ───────────────────────────── 职务（job_title） ─────────────────────────────
 
     /// <summary>org.list_job_titles：分页列出职务目录。</summary>
@@ -66,11 +70,13 @@ internal sealed class OrgMetadataTools(
             var args = OrgListJobTitlesArgs.Unpack(arguments);
 
             // page_size 刻意不下发（保持 SDK 默认）——运维参数不进模型可见面（DP-B1-0）。
-            var outcome = FeishuApiResultReader.Read(await _jobTitleClient!
-                .GetJobTitlesListAsync(page_token: args.PageToken, cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
+            // P-0 补齐：统一分页出口——聚合路径与单页路径共用同一次调用定义与同一份投影。
+            async Task<FeishuApiOutcome<ApiPageListResult<JobTitle>>> FetchPageAsync(string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await _jobTitleClient!
+                    .GetJobTitlesListAsync(page_token: token, cancellationToken: ct)
+                    .ConfigureAwait(false));
 
-            return executor.FromApi(outcome, result => ProjectPage(
+            Func<ApiPageListResult<JobTitle>, JsonObject> project = result => ProjectPage(
                 result,
                 item => new JsonObject
                 {
@@ -80,7 +86,11 @@ internal sealed class OrgMetadataTools(
                     ["status"] = item.Status,
                 },
                 "职务",
-                "① 租户尚未在管理后台配置职务；② page_token 已到末页。可省略 page_token 从第一页重新确认。"));
+                "① 租户尚未在管理后台配置职务；② page_token 已到末页。可省略 page_token 从第一页重新确认。");
+
+            return await executor.FromPagedApiAsync(
+                FetchPageAsync, project, args.FetchAll, args.MaxItems, args.PageToken,
+                _maxAutoFetchItems, _maxAutoFetchPages, cancellationToken).ConfigureAwait(false);
         });
     }
 
@@ -133,11 +143,13 @@ internal sealed class OrgMetadataTools(
             var args = OrgListJobLevelsArgs.Unpack(arguments);
 
             // name 是 SDK 原生业务过滤（可下发）；page_size 不下发（DP-B1-0）。
-            var outcome = FeishuApiResultReader.Read(await _jobLevelClient!
-                .GetJobLevelListAsync(name: args.Name, page_token: args.PageToken, cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
+            // P-0 补齐：统一分页出口——聚合路径与单页路径共用同一次调用定义与同一份投影。
+            async Task<FeishuApiOutcome<ApiPageListResult<JobLevelInfo>>> FetchPageAsync(string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await _jobLevelClient!
+                    .GetJobLevelListAsync(name: args.Name, page_token: token, cancellationToken: ct)
+                    .ConfigureAwait(false));
 
-            return executor.FromApi(outcome, result => ProjectPage(
+            Func<ApiPageListResult<JobLevelInfo>, JsonObject> project = result => ProjectPage(
                 result,
                 item => new JsonObject
                 {
@@ -149,7 +161,11 @@ internal sealed class OrgMetadataTools(
                     ["i18n_name"] = ProjectI18n(item.I18nName),
                 },
                 "职级",
-                "① 租户尚未配置职级；② name 过滤过窄（可去掉 name 重试）；③ page_token 已到末页。"));
+                "① 租户尚未配置职级；② name 过滤过窄（可去掉 name 重试）；③ page_token 已到末页。");
+
+            return await executor.FromPagedApiAsync(
+                FetchPageAsync, project, args.FetchAll, args.MaxItems, args.PageToken,
+                _maxAutoFetchItems, _maxAutoFetchPages, cancellationToken).ConfigureAwait(false);
         });
     }
 
@@ -203,11 +219,13 @@ internal sealed class OrgMetadataTools(
         {
             var args = OrgListJobFamiliesArgs.Unpack(arguments);
 
-            var outcome = FeishuApiResultReader.Read(await _jobFamiliesClient!
-                .GetJobFamilesListAsync(name: args.Name, page_token: args.PageToken, cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
+            // P-0 补齐：统一分页出口——聚合路径与单页路径共用同一次调用定义与同一份投影。
+            async Task<FeishuApiOutcome<ApiPageListResult<JobFamilyInfo>>> FetchPageAsync(string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await _jobFamiliesClient!
+                    .GetJobFamilesListAsync(name: args.Name, page_token: token, cancellationToken: ct)
+                    .ConfigureAwait(false));
 
-            return executor.FromApi(outcome, result => ProjectPage(
+            Func<ApiPageListResult<JobFamilyInfo>, JsonObject> project = result => ProjectPage(
                 result,
                 item => new JsonObject
                 {
@@ -219,7 +237,11 @@ internal sealed class OrgMetadataTools(
                     ["i18n_name"] = ProjectI18n(item.I18nName),
                 },
                 "职务族",
-                "① 租户尚未配置职务族；② name 过滤过窄（可去掉 name 重试）；③ page_token 已到末页。"));
+                "① 租户尚未配置职务族；② name 过滤过窄（可去掉 name 重试）；③ page_token 已到末页。");
+
+            return await executor.FromPagedApiAsync(
+                FetchPageAsync, project, args.FetchAll, args.MaxItems, args.PageToken,
+                _maxAutoFetchItems, _maxAutoFetchPages, cancellationToken).ConfigureAwait(false);
         });
     }
 
@@ -273,11 +295,13 @@ internal sealed class OrgMetadataTools(
         {
             var args = OrgListWorkCitiesArgs.Unpack(arguments);
 
-            var outcome = FeishuApiResultReader.Read(await _workCityClient!
-                .GetWorkCitesListAsync(page_token: args.PageToken, cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
+            // P-0 补齐：统一分页出口——聚合路径与单页路径共用同一次调用定义与同一份投影。
+            async Task<FeishuApiOutcome<ApiPageListResult<WorkCity>>> FetchPageAsync(string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await _workCityClient!
+                    .GetWorkCitesListAsync(page_token: token, cancellationToken: ct)
+                    .ConfigureAwait(false));
 
-            return executor.FromApi(outcome, result => ProjectPage(
+            Func<ApiPageListResult<WorkCity>, JsonObject> project = result => ProjectPage(
                 result,
                 item => new JsonObject
                 {
@@ -287,7 +311,11 @@ internal sealed class OrgMetadataTools(
                     ["i18n_name"] = ProjectI18n(item.I18nName),
                 },
                 "工作城市",
-                "① 租户尚未启用工作城市；② page_token 已到末页。可省略 page_token 从第一页重新确认。"));
+                "① 租户尚未启用工作城市；② page_token 已到末页。可省略 page_token 从第一页重新确认。");
+
+            return await executor.FromPagedApiAsync(
+                FetchPageAsync, project, args.FetchAll, args.MaxItems, args.PageToken,
+                _maxAutoFetchItems, _maxAutoFetchPages, cancellationToken).ConfigureAwait(false);
         });
     }
 

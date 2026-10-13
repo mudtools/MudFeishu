@@ -17,6 +17,7 @@
 - `upload_file` 只接受 http/https 绝对地址（不接受本地路径），且宿主须实现附件暂存件；
   未实现时该工具**不注册**（软缺席，不是参数错误）。
 - 上传 / 移动 / 导入的差别与前置件 → `feishu.guidance_read(drive, upload-and-import)`。
+- 链接分享 vs 成员授权（改权限前先读现状）→ `feishu.guidance_read(drive, permission-model)`。
 
 ## 安全规则
 - 写工具首次调用一律 `dry_run=true` 预演；确认 method/path 与字段摘要无误后，以 `dry_run=false` 重放**同一参数**。

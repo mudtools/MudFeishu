@@ -38,6 +38,10 @@ internal sealed class SecurityAuditLogTools(
 
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
+    /// <summary>P-0 补齐（统一分页语义）：<c>fetch_all</c> 的条目/页数预算（来自宿主配置）。</summary>
+    private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
+
     /// <summary>security.query_audit_logs：查询成员行为审计日志。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantSecurityQueryAuditLogsTool))]
     public Task<FeishuToolResult> QueryAuditLogsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
@@ -57,11 +61,28 @@ internal sealed class SecurityAuditLogTools(
             var args = SecurityQueryAuditLogsArgs.Unpack(arguments);
             var query = BuildQuery(args);
 
-            var outcome = FeishuApiResultReader.Read(await client
-                .GetAuditLogDataAsync(query, cancellationToken)
-                .ConfigureAwait(false));
+            // P-0 补齐：统一分页出口——聚合路径与单页路径共用同一次调用定义与同一份投影。
+            // token 每页覆写（query 复用：BuildQuery 的参数校验只做一次，翻页时不再重复抛错路径）。
+            async Task<FeishuApiOutcome<GetAuditLogDataResult>> FetchPageAsync(string? token, CancellationToken ct)
+            {
+                query.PageToken = token;
+                return FeishuApiResultReader.Read(await client
+                    .GetAuditLogDataAsync(query, ct)
+                    .ConfigureAwait(false));
+            }
 
-            return executor.FromApi(outcome, Project);
+            // GetAuditLogDataResult 是不继承 ApiPageListResult 的历史 DTO（HasMore 为 bool?），
+            // 故走显式页状态重载。
+            return await executor.FromPagedApiAsync(
+                FetchPageAsync,
+                Project,
+                static page => (page.HasMore == true, page.PageToken),
+                args.FetchAll,
+                args.MaxItems,
+                args.PageToken,
+                _maxAutoFetchItems,
+                _maxAutoFetchPages,
+                cancellationToken).ConfigureAwait(false);
         });
     }
 

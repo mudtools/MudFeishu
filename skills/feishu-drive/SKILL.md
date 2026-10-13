@@ -23,6 +23,7 @@ package_version: 3.0.2
 - `upload_file` 只接受 http/https 绝对地址（不接受本地路径），且宿主须实现附件暂存件；
   未实现时该工具**不注册**（软缺席，不是参数错误）。
 - 上传 / 移动 / 导入的差别与前置件 → `feishu.guidance_read(drive, upload-and-import)`。
+- 链接分享 vs 成员授权（改权限前先读现状）→ `feishu.guidance_read(drive, permission-model)`。
 
 ## 安全规则
 - 写工具首次调用一律 `dry_run=true` 预演；确认 method/path 与字段摘要无误后，以 `dry_run=false` 重放**同一参数**。
@@ -50,4 +51,5 @@ package_version: 3.0.2
 - `drive.upload_file`（写）：将网络文件上传到云空间（file_url 为 http/https 绝对地址，由宿主负责下载落盘——与 im.send_image 同机制）。返回 file_token。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。
 
 ## 参考文档（细则）
+- `references/permission-model.md`：`drive/permission-model`
 - `references/upload-and-import.md`：`drive/upload-and-import`

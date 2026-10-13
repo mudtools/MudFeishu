@@ -20,6 +20,7 @@ package_version: 3.0.2
 - `update_blocks` 只能改文本，不支持表格结构与富样式。
 - `import_markdown` **只转换不写入**：先预览块，再 `append_blocks` 落笔。
 - 块索引语义与 `get_raw_content` 推断索引 → `feishu.guidance_read(docx, block-editing)`。
+- Markdown 导入/导出（`import_markdown` 只转换不落盘）→ `feishu.guidance_read(docx, markdown-import)`。
 
 ## 安全规则
 - 写工具首次调用一律 `dry_run=true` 预演；确认 method/path 与字段摘要无误后，以 `dry_run=false` 重放**同一参数**。
@@ -50,3 +51,4 @@ package_version: 3.0.2
 
 ## 参考文档（细则）
 - `references/block-editing.md`：`docx/block-editing`
+- `references/markdown-import.md`：`docx/markdown-import`

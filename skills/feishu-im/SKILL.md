@@ -21,6 +21,7 @@ package_version: 3.0.2
 - `forward_message`（单条）与 `forward_thread`（整条话题）是两个工具，选错会丢上下文。
 - `revoke_message` 只能撤自己的。
 - 话题/回复 vs 消息的判别 → `feishu.guidance_read(im, topics-and-replies)`。
+- 交互式卡片（`send_card` 的结构化语法）→ `feishu.guidance_read(im, cards)`。
 
 ## 安全规则
 - 写工具首次调用一律 `dry_run=true` 预演；确认 method/path 与字段摘要无误后，以 `dry_run=false` 重放**同一参数**。
@@ -49,4 +50,5 @@ package_version: 3.0.2
 - `im.send_message`（写）：发送文本消息到指定群聊或用户。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。首次面向陌生接收者时建议先以 dry_run=true 预演。
 
 ## 参考文档（细则）
+- `references/cards.md`：`im/cards`
 - `references/topics-and-replies.md`：`im/topics-and-replies`

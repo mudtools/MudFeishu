@@ -38,6 +38,10 @@ internal sealed class SecurityOpenApiLogTools(
 
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
+    /// <summary>P-0 补齐（统一分页语义）：<c>fetch_all</c> 的条目/页数预算（来自宿主配置）。</summary>
+    private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
+    private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
+
     /// <summary>security.list_openapi_logs：按时间窗查询应用 API 调用日志。</summary>
     [FeishuToolHandler(typeof(IFeishuTenantSecurityListOpenapiLogsTool))]
     public Task<FeishuToolResult> ListOpenApiLogsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
@@ -60,22 +64,36 @@ internal sealed class SecurityOpenApiLogTools(
                 throw new ArgumentException($"时间窗不能超过 30 天（当前 oldest={oldest}、latest={latest}）；请缩小范围后重试。");
             }
 
-            var request = new ListOpenApiLogDataRequest
+            // P-0 补齐：统一分页出口——聚合路径与单页路径共用同一次调用定义与同一份投影。
+            // 请求体每页重建（token 是唯一变量）；page_size 仍刻意不下发（DP-B1-0）。
+            async Task<FeishuApiOutcome<ListOpenApiLogDataResult>> FetchPageAsync(string? token, CancellationToken ct)
             {
-                StartTime = args.Oldest,
-                EndTime = args.Latest,
-                ApiKeys = string.IsNullOrEmpty(args.ApiKey) ? null : [args.ApiKey!],
-                AppId = args.AppId,
-                PageToken = args.PageToken,
+                var request = new ListOpenApiLogDataRequest
+                {
+                    StartTime = args.Oldest,
+                    EndTime = args.Latest,
+                    ApiKeys = string.IsNullOrEmpty(args.ApiKey) ? null : [args.ApiKey!],
+                    AppId = args.AppId,
+                    PageToken = token,
+                };
 
-                // page_size 刻意不下发（保持 SDK 默认）——运维参数不进模型可见面（DP-B1-0）。
-            };
+                return FeishuApiResultReader.Read(await _openApiLogClient
+                    .ListOpenApiLogDataAsync(request, ct)
+                    .ConfigureAwait(false));
+            }
 
-            var outcome = FeishuApiResultReader.Read(await _openApiLogClient
-                .ListOpenApiLogDataAsync(request, cancellationToken)
-                .ConfigureAwait(false));
-
-            return executor.FromApi(outcome, Project);
+            // ListOpenApiLogDataResult 是不继承 ApiPageListResult 的历史 DTO（HasMore 为 bool?），
+            // 故走显式页状态重载。
+            return await executor.FromPagedApiAsync(
+                FetchPageAsync,
+                Project,
+                static page => (page.HasMore == true, page.PageToken),
+                args.FetchAll,
+                args.MaxItems,
+                args.PageToken,
+                _maxAutoFetchItems,
+                _maxAutoFetchPages,
+                cancellationToken).ConfigureAwait(false);
         });
     }
 

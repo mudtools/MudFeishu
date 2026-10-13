@@ -12,6 +12,14 @@
 - 排序字段必须是可排序类型；多字段排序按给定顺序生效。
 - 结果分页：`has_more=true` 时带上返回的 `page_token` 续取，不要重发同一请求。
 
+## 按视图取数
+- `bitable.list_views` 列出视图（名称 / 类型 / 可见范围）：拿到 `view_id` 后传给 `bitable.query_records`。
+- 视图自带的过滤与排序**会一起生效**：不要再传一份表达同一条件的 `filter`——
+  条件叠加后更严，最容易"明明有记录却查出空结果"。
+- 视图的可见范围可能本身就限制了可见记录；取数前先用 `list_views` 确认。
+- 表结构变更后视图可能仍引用旧字段：先 `list_fields` 核对字段名，再取数。
+
 ## 示例
 - 「状态=进行中 的记录」→ `list_fields` 确认状态字段名与类型 → `query_records(filter=…)`
 - 「按截止时间倒序」→ `query_records(sort=…)`
+- 「按'我负责的'视图取数」→ `list_views` 拿 `view_id` → `query_records(view_id=…)`（不要再加 filter）

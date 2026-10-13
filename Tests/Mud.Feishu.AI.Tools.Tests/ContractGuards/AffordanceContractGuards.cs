@@ -325,6 +325,88 @@ public class AffordanceContractGuards
             "真正的决策边界句不得被误判为复述");
     }
 
+    /// <summary>
+    /// <b>AD-1</b>：affordance 的 <c>Tips</c> 不得与<b>同域 L1 guidance</b> 大段互含
+    /// （归一化后任一 ≥30 字符连续片段不得互含）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么需要这条</b>：affordance 与 L1 guidance 是<b>两条独立的装配路径</b>
+    /// （前者随工具描述进上下文，后者经 routing 摘要 / <c>guidance_read</c>）。
+    /// 一旦把 L1 的段落抄进 <c>Tips</c>，同一份内容会在上下文里出现两次——
+    /// 既白烧预算，又让"两处说法漂移"成为可能（改一处忘一处 ⇒ 模型拿到自相矛盾的指引）。
+    /// </para>
+    /// <para>
+    /// <b>阈值由来</b>：30 字符（方案 §7.3 判据列原文）。低于这个长度时，"都提到 <c>dry_run</c>"
+    /// 这类**必然共现的术语**会造成假红；30 字符≈一个完整短句，只有真抄段落才会撞上。
+    /// </para>
+    /// <para>
+    /// <b>未接入的域</b>（无同名 L1 文件）跳过：那些域的"有资产无入口"由
+    /// <see cref="GuidanceToolReferenceContractGuards"/> 独立断言，不在这里混判。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void AffordanceTips_ShouldNotOverlapSameDomainGuidanceL1()
+    {
+        const int WindowLength = 30;
+        var l1ByDomain = ReadDomainL1Assets();
+        var violations = new List<string>();
+        var measured = new List<string>();
+
+        foreach (var (fileName, toolName, text) in ReadAssets())
+        {
+            var domain = toolName.Split('.')[0];
+            if (!l1ByDomain.TryGetValue(domain, out var l1))
+            {
+                continue;
+            }
+
+            var tips = Normalize(string.Join(
+                " ",
+                ParseSections(text).Where(static s => s.Heading == "Tips").Select(static s => s.Body)));
+
+            var (length, fragment) = LongestCommonFragment(tips, l1);
+            measured.Add($"{fileName}={length}");
+
+            if (length >= WindowLength)
+            {
+                violations.Add($"{fileName} 与 Guidance/{domain}.md 有 {length} 字符重叠片段：「{fragment}」"
+                    + $"（Tips {tips.Length} 字符 / L1 {l1.Length} 字符）");
+            }
+        }
+
+        // 扫描面自证：若一条都没量到（目录改名 / 域解析写坏），本用例会恒绿。
+        measured.Should().NotBeEmpty(
+            "扫描面为空 = 判据失效（假绿）：{0} 下必须有资产，且其域名必须能在 Guidance/ 找到同名 L1",
+            AssetDirectory);
+
+        violations.Should().BeEmpty(
+            "affordance 的 Tips 与同域 L1 guidance 出现了 ≥{0} 字符的重叠——同一内容不得在两条装配路径上重复：{1}",
+            WindowLength, string.Join(" | ", violations));
+    }
+
+    /// <summary>AD-1 判据的自证（合成输入必须能被点名；阈值两侧都要能区分）。</summary>
+    /// <remarks>
+    /// 合成数据<b>必须够长</b>：首版手写样例归一化后只有 20 字符重合，于是"整句抄 L1"这条自证先红了
+    /// （判据本身没错，是样例太短）——所以这里显式断言合成片段长度 ≥40。
+    /// </remarks>
+    [Fact]
+    public void OverlapScanner_ShouldMeasureLongestCommonFragment()
+    {
+        var shared = Normalize("群发前先确认接收方；单聊与群聊走同一个工具，接收方类型由 receive_id_type 决定。");
+        shared.Length.Should().BeGreaterThanOrEqualTo(40, "合成片段太短则本自证无意义（阈值是 30）");
+
+        var l1 = Normalize("## 发送消息\n- ") + shared;
+        var copied = Normalize("- ") + shared[..40] + Normalize(" 然后按需截断");
+
+        LongestCommonFragment(copied, l1).Length.Should().BeGreaterThanOrEqualTo(30, "整句抄自 L1 必须被测出来");
+
+        LongestCommonFragment(Normalize("- 该工具只支持文本消息，富文本请改用 post 类型发送。"), l1).Length
+            .Should().BeLessThan(30, "真正的 Tips（决策边界）不得被误判");
+
+        LongestCommonFragment(string.Empty, l1).Length.Should().Be(0, "空输入必须短路（不得抛）");
+    }
+
     /// <summary>归一化：去空白/markdown 强调/常见中英标点（仅用于 AD-2 的重复判据）。</summary>
     private static string Normalize(string text)
         => new([.. text.Where(static ch => !char.IsWhiteSpace(ch) && !IsNoise(ch))]);
@@ -530,6 +612,66 @@ public class AffordanceContractGuards
         => value.Length > 0
             && value[0] >= 'a' && value[0] <= 'z'
             && value.All(static ch => (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_');
+
+    /// <summary>读取 <c>Guidance/</c> 下的 L1 域资产（域 → 归一化正文）。</summary>
+    /// <remarks>
+    /// 只扫<b>顶层</b> <c>*.md</c>：L2 主题在子目录里，且 AD-3 已单独管"L2 必须被 L1 引用"，
+    /// 混进来会让"L2 与 affordance 的正常呼应"变成假红。
+    /// </remarks>
+    private static Dictionary<string, string> ReadDomainL1Assets()
+    {
+        const string GuidanceDirectory = "Mud.Feishu.AI.Tools/Guidance";
+        var directory = Path.Combine(FindRepositoryRoot(), GuidanceDirectory.Replace('/', Path.DirectorySeparatorChar));
+        Directory.Exists(directory).Should().BeTrue($"{GuidanceDirectory} 必须存在（否则 AD-1 退化为空扫描）");
+
+        var map = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var path in Directory.EnumerateFiles(directory, "*.md", SearchOption.TopDirectoryOnly))
+        {
+            // 行尾归一化：字符度量不得随检出平台漂移（与 ReadAssets 同口径）。
+            map[Path.GetFileNameWithoutExtension(path)] =
+                Normalize(File.ReadAllText(path).Replace("\r\n", "\n"));
+        }
+
+        return map;
+    }
+
+    /// <summary>两段文本的最长公共<b>连续</b>片段（长度 + 片段本身，用于 AD-1 的度量与报错定位）。</summary>
+    /// <remarks>
+    /// 经典后缀 DP，滚动数组降到 O(min(n,m)) 空间。选"最长公共连续片段"而不是"最长公共子序列"：
+    /// 后者对"抄了但要拆散重排"不敏感，而 AD-1 要抓的正是<b>整句照抄</b>。
+    /// </remarks>
+    internal static (int Length, string Fragment) LongestCommonFragment(string a, string b)
+    {
+        if (a.Length == 0 || b.Length == 0)
+        {
+            return (0, string.Empty);
+        }
+
+        var previous = new int[b.Length + 1];
+        var current = new int[b.Length + 1];
+        var best = 0;
+        var bestEndInA = 0;
+
+        for (var i = 1; i <= a.Length; i++)
+        {
+            for (var j = 1; j <= b.Length; j++)
+            {
+                current[j] = a[i - 1] == b[j - 1] ? previous[j - 1] + 1 : 0;
+                if (current[j] > best)
+                {
+                    best = current[j];
+                    bestEndInA = i;
+                }
+            }
+
+            (previous, current) = (current, previous);
+
+            // 换过来的数组是上一轮的行，必须清零——否则本轮未赋值的格子会带着陈旧长度参与下一轮。
+            Array.Clear(current, 0, current.Length);
+        }
+
+        return (best, best == 0 ? string.Empty : a.Substring(bestEndInA - best, best));
+    }
 
     private static string FindRepositoryRoot()
     {

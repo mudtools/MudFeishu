@@ -275,27 +275,27 @@ public class PaginationContractGuards
     /// 统一分页语义的<b>未完成批次登记</b>（每条必须带理由；补齐后必须删除）。
     /// </summary>
     /// <remarks>
+    /// <para>
     /// 本清单的存在本身是"诚实的进度记录"：方案 §5.3 把改造分成 P-1~P-4 四批，
-    /// 已完成批次（IM / VC / OKR / Contact / Search）不在此列；未完成批次在此显式登记，
+    /// 已完成批次不在此列；未完成批次在此显式登记，
     /// 由 <see cref="ToolsWithPageToken_MustDeclareFetchAll_UnlessRegisteredAsExempt"/> 兜住。
+    /// </para>
+    /// <para>
+    /// <b>当前为空（全部清零）</b>——这是有意的常态，不是"守卫被架空"：
+    /// <list type="bullet">
+    /// <item>P-1~P-4（方案 §5.3 点名批次）：IM / VC / OKR / Hire / Minutes / Contact / Search 全部落地；</item>
+    /// <item>P-0 判据扩展后新暴露的 13 个缺口：8 个已补齐（`bitable.list_fields`、`calendar.list_event_attendees`、
+    /// `mail.search`、`contact.get_department_parents`、`contact.search_departments`、`org.list_job_*` 4 个、
+    /// `security.list_openapi_logs`、`security.query_audit_logs`），另 2 个（`bitable.list_views`、`drive.add_comment`）
+    /// 经复核属<b>假阳性</b>（命中来自输出投影而非入参，判据已修正），3 个在更早批次已补。</item>
+    /// </list>
+    /// <b>新增豁免的唯一合法姿势</b>：必须是"确实声明了 page_token 入参、且本次确实来不及接"，
+    /// 并写清理由（含糊的"以后再补"会让清单变成垃圾桶）；一旦接入 fetch_all，
+    /// <see cref="StaleExemptions_ShouldBeRemoved"/> 会立刻点名要求删除。
+    /// </para>
     /// </remarks>
     private static (string Tool, string Reason)[] PendingPaginationExemptions() =>
-    [
-        // 注：方案 §5.3 点名的 P-1~P-4 批次已全部落地（IM / VC / OKR / Hire / Minutes / Contact / Search），
-        // 故原"批次未完成"条目已按本守卫的纪律**删除**（StaleExemptions 会点名任何过期条目）。
-
-        // ────────── P-0 判据扩展后**新暴露**的缺口（此前无人知道） ──────────
-        // 这批工具都"声明了 page_token 却未提供 fetch_all"：模型能翻页但每页一次往返。
-        // 登记为技术债（而不是让守卫静默放行），补齐后必须从本清单删除。
-        ("contact.get_department_parents", "P-0 新暴露：通讯录部门父级链未接 fetch_all"),
-        ("contact.search_departments", "P-0 新暴露：部门搜索未接 fetch_all"),
-        ("org.list_job_families", "P-0 新暴露：组织元数据四个 list_* 未接 fetch_all"),
-        ("org.list_job_levels", "P-0 新暴露（同上）"),
-        ("org.list_job_titles", "P-0 新暴露（同上）"),
-        ("org.list_work_cities", "P-0 新暴露（同上）"),
-        ("security.list_openapi_logs", "P-0 新暴露：安全日志两个查询未接 fetch_all"),
-        ("security.query_audit_logs", "P-0 新暴露（同上）"),
-    ];
+        [];
 
     /// <summary>
     /// 守卫 ②：执行器内不得手写翻页循环（<c>while</c>/<c>do</c> 循环翻页）。

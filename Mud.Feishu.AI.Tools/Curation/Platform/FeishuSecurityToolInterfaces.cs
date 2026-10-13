@@ -49,5 +49,7 @@ public interface IFeishuTenantSecurityQueryAuditLogsTool
         [ToolParameter("operator_value", "操作者值（可选；与 operator_type 成对使用）")] string? operator_value = null,
         [ToolParameter("user_id_type", "返回 ID 类型（可选：open_id / union_id / user_id；默认 user_id，需字段权限 contact:user.employee_id:readonly；建议传 open_id 以便与其它工具衔接）")] string? user_id_type = null,
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }

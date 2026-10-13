@@ -54,6 +54,7 @@
     "feishu:base": "元工具 · 只读（feishu.capability_lookup / feishu.guidance_read 使用）",
     "minutes:minutes:readonly": "妙记 · 只读（R5/F-11 新增：minutes.get / minutes.get_artifacts 使用）",
     "mdm:country_region:read": "主数据 · 国家/地区只读（F-1 新增：mdm.get_countries 使用；公共参考数据，非 PII）",
+    "baike:entity:readonly": "企业词典 · 词条只读（专题一 B1 首个补域：lingo.list_repos / list_classifications / list_entities / get_entity / search_entities / match_entities 共 6 个只读工具使用；SDK 接口注释标注「查看词典词条」，控制台开通前请按名称搜索确认——投影已裁掉 creator/updater/related_meta，故为非 PII）",
     "wiki:wiki:readonly": "知识库 · 只读（wiki.get_node / list_nodes 使用）",
     "wiki:wiki": "知识库 · 读写（R5/F-11 新增：wiki.create_node / move_node / move_docs_to_space 使用）",
     "admin:audit_info:readonly": "安全合规 · 行为审计日志只读（F-1 P0 新增：security.query_audit_logs / security.list_openapi_logs 使用）",

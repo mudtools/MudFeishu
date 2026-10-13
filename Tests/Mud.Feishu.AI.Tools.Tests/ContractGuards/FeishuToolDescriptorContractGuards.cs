@@ -82,7 +82,11 @@ public class FeishuToolDescriptorContractGuards
 
             // 知识库检索工具允许零参数（仅靠检索引擎语义匹配），不强制 properties 非空。
             // 其余工具至少应有一个参数。
-            if (toolName != FeishuToolNames.KnowledgeSearch)
+            // 允许零参数的例外（每条都必须"平台 API 本身就无入参"，不是为了绕门禁）：
+            //   · KnowledgeSearch：仅靠检索引擎语义匹配，无业务入参；
+            //   · LingoListRepos：枚举"租户有哪些词库"，飞书 GET /lingo/v1/repos 本身不带任何查询参数，
+            //     它是词典域的**第一跳**（后续工具的 repo_id 全从这里来），加无意义参数只会污染模型可见面。
+            if (toolName != FeishuToolNames.KnowledgeSearch && toolName != FeishuToolNames.LingoListRepos)
             {
                 propsElement.EnumerateObject().Count().Should().BeGreaterThan(0,
                     $"工具 {toolName} 的 parameters.properties 不得为空（知识库检索除外）");

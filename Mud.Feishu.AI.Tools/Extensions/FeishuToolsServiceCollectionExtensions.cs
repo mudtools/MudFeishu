@@ -190,7 +190,13 @@ public static class FeishuToolsServiceCollectionExtensions
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure)
             .AddFeishuSearchToolsCore()
-            .AddFeishuKnowledgeSearchToolsCore();
+            .AddFeishuKnowledgeSearchToolsCore()
+
+            // 专题一 B1：Lingo 企业词典（6 个只读）归"检索 / 知识"面。
+            // ⚠️ 必须与 AddFeishuReadonlyToolCores 的清单**同进同出**：
+            // 两条装配路径（全域入口 vs 逐域扩展）都要拿到同一份工具集，
+            // 否则 DomainRegistrarTests 的等价性断言会把差异点出来（实测就是这样发现的）。
+            .AddFeishuLingoToolsCore();
 
     /// <summary>按域注册 IM 工具（2 个只读；写工具经 <see cref="AddFeishuWriteTools"/>）。</summary>
     public static IServiceCollection AddFeishuImTools(
@@ -330,6 +336,11 @@ public static class FeishuToolsServiceCollectionExtensions
 
                     // hire Offer 执行器 HireOfferTools（1 个只读，**PII**：只给状态，结构性不含金额）。
                     .AddFeishuHireOfferToolsCore()
+
+                    // B1 补域：Lingo 企业词典执行器 LingoTools（首批 6 个只读）。
+                    // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，
+                    // 漏加即「工具静默不入注册表」（ToolDomainCoresWiringContractTests 会报红）。
+                    .AddFeishuLingoToolsCore()
 
                     // R7 / A4：Board 画板域执行器 BoardTools（6 个工具：2 只读 + 4 写）。
                     // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，

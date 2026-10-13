@@ -3,7 +3,7 @@ title: 词典文件接口（用户令牌）| MudFeishu
 description: 该接口用于以用户身份管理飞书词典图片文件，支持词条图片的上传与下载。
 ---
 
-# 词典文件 - 用户令牌（FeishuUserV1LingoFile）
+# 词典文件 - 用户令牌（IFeishuUserV1LingoFile）
 
 ## 接口名称
 

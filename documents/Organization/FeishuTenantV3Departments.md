@@ -3,7 +3,7 @@ title: 部门管理接口（租户 V3）| MudFeishu
 description: 该接口用于以租户身份管理飞书通讯录 V3 版本的部门，支持部门创建、更新（部分/全部）、删除、查询、ID 变更及部门群解绑。
 ---
 
-# 租户V3部门管理 - FeishuTenantV3Departments
+# 租户V3部门管理 - IFeishuTenantV3Departments
 
 ## 接口名称
 **租户V3部门管理 - (IFeishuTenantV3Departments)**

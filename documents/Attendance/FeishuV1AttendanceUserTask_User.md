@@ -3,7 +3,7 @@ title: 考勤打卡结果接口（用户令牌）| MudFeishu
 description: 该接口用于以用户身份获取企业内员工的实际打卡结果，包括打卡任务列表、打卡记录 id、用户信息、考勤组 ID、班次 ID、考勤记录、上下班打卡结果与时间，以及无效和无权限用户 ID 列表。
 ---
 
-# 考勤打卡结果（用户令牌） - FeishuV1AttendanceUserTask_User
+# 考勤打卡结果（用户令牌） - IFeishuUserV1AttendanceUserTask
 
 ## 接口名称
 
@@ -13,7 +13,7 @@ description: 该接口用于以用户身份获取企业内员工的实际打卡�
 
 获取企业内员工的实际打卡结果，包括打卡任务列表、打卡记录 id、用户信息、考勤组 ID、班次 ID、考勤记录、上/下班打卡结果、上/下班打卡时间、无效用户 ID 列表、没有权限用户 ID 列表。
 
-> 飞书考勤 `POST /user_tasks/query` 同时支持租户令牌与用户令牌。租户令牌版本见 `IFeishuTenantV1AttendanceUserFlows.QueryUserTaskAsync`（文档：[FeishuTenantV1AttendanceUserFlows](./FeishuTenantV1AttendanceUserFlows.md)），本接口为用户令牌版本。
+> 飞书考勤 `POST /user_tasks/query` 同时支持租户令牌与用户令牌。租户令牌版本见 `IFeishuTenantV1AttendanceUserFlows.QueryUserTaskAsync`（文档：[IFeishuTenantV1AttendanceUserFlows](./FeishuTenantV1AttendanceUserFlows.md)），本接口为用户令牌版本。
 
 ## 参考文档
 

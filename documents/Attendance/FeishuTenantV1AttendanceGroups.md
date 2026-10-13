@@ -3,10 +3,10 @@ title: 考勤组管理接口（租户令牌）| MudFeishu
 description: 该接口用于管理飞书考勤组，对部门或员工在特定场所与时间段的出勤规则进行设定，包括上下班、迟到、早退、各类假期、工作时间与加班情况等，可从部门、员工两个维度设定考勤方式、时间与地点等规则。
 ---
 
-# 考勤组管理接口（租户） - FeishuTenantV1AttendanceGroups
+# 考勤组管理接口（租户） - IFeishuTenantV1AttendanceGroups
 
 ## 接口名称
-**考勤组管理（租户令牌）** - (FeishuTenantV1AttendanceGroups)
+**考勤组管理（租户令牌）** - (IFeishuTenantV1AttendanceGroups)
 
 ## 功能描述
 考勤组是对部门或者员工在某个特定场所及特定时间段内的出勤情况的一种规则设定，包括上下班、迟到、早退、病假、婚假、丧假、公休、工作时间、加班情况等。通过设置考勤组，可以从部门、员工两个维度，来设定考勤方式、考勤时间、考勤地点等考勤规则。

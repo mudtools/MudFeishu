@@ -3,7 +3,7 @@ title: 单位管理接口（租户 V3）| MudFeishu
 description: 该接口用于以租户身份管理飞书通讯录单位（Unit，如子公司/分支机构），支持单位的创建、修改、部门绑定/解绑、查询与删除。
 ---
 
-# 租户V3单位管理 - FeishuTenantV3Unit
+# 租户V3单位管理 - IFeishuTenantV3Unit
 
 ## 接口名称
 **租户V3单位管理 - (IFeishuTenantV3Unit)**

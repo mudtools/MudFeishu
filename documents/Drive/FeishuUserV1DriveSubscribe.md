@@ -3,7 +3,7 @@ title: 云文档事件订阅接口（用户令牌）| MudFeishu
 description: 该接口用于以用户身份订阅飞书云文档事件，支持订阅/取消订阅、查询订阅状态、用户级订阅管理以及文件订阅状态配置，当文档发生变更时推送通知。
 ---
 
-# 云文档事件订阅 - 用户令牌（FeishuUserV1DriveSubscribe）
+# 云文档事件订阅 - 用户令牌（IFeishuUserV1DriveSubscribe）
 
 ## 接口名称
 **云文档事件订阅（用户令牌）** -（`IFeishuUserV1DriveSubscribe`）

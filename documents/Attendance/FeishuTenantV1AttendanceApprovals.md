@@ -3,10 +3,10 @@ title: 考勤审批管理接口（租户令牌）| MudFeishu
 description: 该接口用于管理三方系统假勤审批的请假、加班、外出和出差四种审批数据，支持获取员工在某段时间内的审批数据、将三方审批结果回写到飞书考勤系统，以及更新审批状态。
 ---
 
-# 考勤审批管理接口 - FeishuTenantV1AttendanceApprovals
+# 考勤审批管理接口 - IFeishuTenantV1AttendanceApprovals
 
 ## 接口名称
-**三方系统假勤审批管理** - (FeishuTenantV1AttendanceApprovals)
+**三方系统假勤审批管理** - (IFeishuTenantV1AttendanceApprovals)
 
 ## 功能描述
 用于管理三方系统假勤审批的请假、加班、外出和出差四种审批数据。支持获取员工在某段时间内的审批数据、将三方审批结果回写到飞书考勤系统，以及更新审批状态。

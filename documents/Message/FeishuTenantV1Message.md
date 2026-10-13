@@ -3,7 +3,7 @@ title: 消息管理接口（租户令牌）| MudFeishu
 description: 该接口用于以租户身份对飞书消息进行发送、回复、编辑、撤回、转发与查询，支持文本、富文本、卡片、图片等多种消息类型。
 ---
 
-# 消息管理（租户令牌）-（FeishuTenantV1Message）
+# 消息管理（租户令牌）-（IFeishuTenantV1Message）
 
 ## 功能描述
 
@@ -457,7 +457,7 @@ Task<FeishuApiResult<MessageUrgentResult>?> MessageUrgentAppAsync(
 |-------|------|-----|------|
 | message_id | string | ✅ | 待加急的消息 ID |
 | sendMessageRequest | MessageUrgentRequest | ✅ | 加急请求体 |
-| └─ UserIdList | List<string> | ✅ | 需要加急的用户ID列表 |
+| └─ UserIdList | `List<string>` | ✅ | 需要加急的用户ID列表 |
 | user_id_type | string | ⚪ | 用户ID类型，默认 open_id |
 | cancellationToken | CancellationToken | ⚪ | 取消操作令牌 |
 

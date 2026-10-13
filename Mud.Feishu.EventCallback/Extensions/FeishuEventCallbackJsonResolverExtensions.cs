@@ -15,6 +15,7 @@ using Mud.Feishu.EventCallback.Attendance;
 using Mud.Feishu.EventCallback.Auth;
 using Mud.Feishu.EventCallback.Bitable;
 using Mud.Feishu.EventCallback.Calendar;
+using Mud.Feishu.EventCallback.Card;
 using Mud.Feishu.EventCallback.Compensation;
 using Mud.Feishu.EventCallback.CoreHr;
 using Mud.Feishu.EventCallback.CoreHrV2;
@@ -57,6 +58,7 @@ public static class FeishuEventCallbackJsonResolverExtensions
             AuthJsonContext.Default,
             BitableJsonContext.Default,
             CalendarJsonContext.Default,
+            CardJsonContext.Default,
             CompensationJsonContext.Default,
             CoreHrJsonContext.Default,
             CoreHrV2JsonContext.Default,

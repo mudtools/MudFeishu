@@ -3,10 +3,10 @@ title: 考勤班次管理接口（租户令牌）| MudFeishu
 description: 该接口用于管理飞书考勤班次，班次描述一次考勤任务的时间规则，如每天打卡次数、上下班时间、迟到与缺卡判定等，支持创建、删除与查询班次信息。
 ---
 
-# 考勤班次管理接口 - FeishuTenantV1AttendanceShifts
+# 考勤班次管理接口 - IFeishuTenantV1AttendanceShifts
 
 ## 接口名称
-**考勤班次管理** - (FeishuTenantV1AttendanceShifts)
+**考勤班次管理** - (IFeishuTenantV1AttendanceShifts)
 
 ## 功能描述
 考勤班次是描述一次考勤任务时间规则的统称，比如一天打多少次卡，每次卡的上下班时间，晚到多长时间算迟到，晚到多长时间算缺卡等。支持创建、删除、查询班次信息。

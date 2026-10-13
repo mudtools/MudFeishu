@@ -540,8 +540,7 @@ await app.Services.RunFeishuMcpStdioAsync();             // 阻塞到客户端�
 
 > **依赖选型**：本包 MCP 协议层为**自研**（不引官方 `ModelContextProtocol` SDK），仅覆盖
 > `tools` 能力 + stdio。裁决依据、**已证伪的常见理由**（TFM 兼容性 / AOT / 预览版三条均不成立）
-> 与**翻转触发条件**（HTTP-SSE / 多能力 / 客户端侧 / 新修订差异化语义）见
-> `.docs/AI/MudFeishu-AI-Mcp-协议层依赖选型-ADR.md`。
+> 与**翻转触发条件**（HTTP-SSE / 多能力 / 客户端侧 / 新修订差异化语义）如上。
 
 ### 7.7 凭据隔离：**这是宿主的职责**（R-3 / F-10 登记）
 

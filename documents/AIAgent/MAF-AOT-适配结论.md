@@ -2,7 +2,7 @@
 
 > **文档编号**：AI-FD-P0-N1
 > **日期**：2026-09-27
-> **关联**：[Phase 0 设计 §5/§7](../../.docs/AI/AI-Native-Agent-Phase0-Design.md)（DoD：AotStrictMode 冒烟 + MAF AOT 适配结论备忘）
+> **关联**：Phase 0 设计 §5/§7（DoD：AotStrictMode 冒烟 + MAF AOT 适配结论备忘）
 > **基线**：`Microsoft.Agents.AI` / `Microsoft.Agents.AI.OpenAI` **1.20.0**（nuget.org；`Microsoft.Extensions.AI` 10.9.0 传递）
 
 ## 结论

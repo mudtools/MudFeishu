@@ -18,7 +18,7 @@ namespace Mud.Feishu.Webhook.Tests.ContractGuards;
 /// </summary>
 /// <remarks>
 /// <para>
-/// 设计要点（见 <c>.docs/配置面可用性修复与收敛方案-R5.md</c> §0.5.2 G-04、§5.3）：
+/// 设计要点（R5 配置面收敛 G-04 / §5.3，见 AGENTS.md「配置面治理」）：
 /// </para>
 /// <list type="bullet">
 ///   <item>

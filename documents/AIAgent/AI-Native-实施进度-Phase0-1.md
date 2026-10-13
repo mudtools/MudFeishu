@@ -1,7 +1,7 @@
 # AI-Native 实施进度与交接备忘（Phase 0 完成 / Phase 1 完成）
 
 > **日期**：2026-09-27（本批次：Phase 1 收尾——工具执行链 + 10 只读工具 + 护城河硬验收）
-> **关联**：[路线图](../../.docs/AI/AI-Native-Agent-Roadmap-v1.md) · [总体功能设计](../../.docs/AI/AI-Native-Agent-Functional-Design.md) · [Phase 0 设计](../../.docs/AI/AI-Native-Agent-Phase0-Design.md) · [Phase 1 设计](../../.docs/AI/AI-Native-Agent-Phase1-Design.md) · [lark-cli 对比备忘](./lark-cli-同场景对比备忘.md)
+> **关联**：[lark-cli 对比备忘](./lark-cli-同场景对比备忘.md)
 
 ## Phase 0（Agent 底座）—— ✅ 全部 DoD 达成
 

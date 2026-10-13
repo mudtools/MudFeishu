@@ -3,7 +3,7 @@
 # Purpose: stop a *removed* config API / config key from silently reappearing in source.
 #
 # ---------------------------------------------------------------------------
-# R5 redesign (see .docs/配置面可用性修复与收敛方案-R5.md, G-03 / RK13)
+# R5 redesign (G-03 / RK13; 迁移记录见 documents/Configuration/ConfigMigration-R5.md)
 # ---------------------------------------------------------------------------
 # Three problems were found while trying to wire this script into CI as a gate:
 #

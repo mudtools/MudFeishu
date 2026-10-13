@@ -176,7 +176,7 @@ public static class FeishuServiceCollectionExtensions
             // 为什么不用组件 HttpClientFactoryEnhancedClient.WithBaseAddress：
             // TokenRecoveryEnhancedClient（sealed）未重写 WithBaseAddress，基类实现返回的是
             // **普通 HttpClientFactoryEnhancedClient**，既丢失令牌恢复能力又会令 (TokenRecoveryEnhancedClient)
-            // 强制转换抛 InvalidCastException。详见 .docs/MudHttpUtils-2.0.4-Review-Remediation-Plan.md 附录 B-1。
+            // 强制转换抛 InvalidCastException。
             httpClientBuilder.ConfigureHttpClient((sp, client) =>
             {
                 var latest = ResolveLatestAppConfig(sp, appKey);

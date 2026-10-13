@@ -243,7 +243,7 @@ signals. Stress/long-running cases carry
 `[Trait("Category","Stress")]` (excluded from the gate; run manually with `--filter
 "Category=Stress"`); wall-clock assertions carry `[Trait("Category","Timing")]` (`-Full` only).
 
-### Test Suite Governance (2026-10-13; analysis: `documents/AI/单元测试体系过度测试分析与解决方案.md`)
+### Test Suite Governance (2026-10-13; analysis: `documents/AIAgent/单元测试体系过度测试分析与解决方案.md`)
 
 - **Test TFMs are net8.0-only** (`Tests/Directory.Build.props`). No per-project
   `<TargetFrameworks>` overrides; sole exception `Mud.Feishu.Agent.Demo.Tests` (net10.0 demo).

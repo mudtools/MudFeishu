@@ -287,6 +287,18 @@
                      "Mud.Feishu.AI.Tools.Catalog.ToolSchemaDialect"
                  ],
     "reasons":  {
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantChatgroupCreateChatTool":  "专题一 B1 ChatGroup 写面：chatgroup.create_chat 的工具契约（写操作；默认不启用，需宿主授权）。消费方：① FeishuToolRegistry 白名单装配；② MCP server tools/list；③ ChatGroupToolsTests（dry_run 零调用 + 回执投影）与 DryRunContractGuards。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantChatgroupUpdateChatTool":  "同 IFeishuTenantChatgroupCreateChatTool：chatgroup.update_chat 的工具契约（**增量更新**语义，未传字段保持原值）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantChatgroupDeleteChatTool":  "同 IFeishuTenantChatgroupCreateChatTool：chatgroup.delete_chat 的工具契约（**high-risk-write**——命中危险词 delete，配 Affordance 四节资产 + 描述含 dry_run 预演指引）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantChatgroupUpdateModerationTool":  "同 IFeishuTenantChatgroupCreateChatTool：chatgroup.update_moderation 的工具契约（**实质高危**——可一句话禁言全群，故参数校验要求 moderator_list 必须配名单）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantChatgroupAddMemberTool":  "同 IFeishuTenantChatgroupCreateChatTool：chatgroup.add_member 的工具契约（回执带无效 ID 清单）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantChatgroupRemoveMemberTool":  "同 IFeishuTenantChatgroupCreateChatTool：chatgroup.remove_member 的工具契约（**high-risk-write**——命中危险词 remove）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantChatgroupMeJoinChatTool":  "同 IFeishuTenantChatgroupCreateChatTool：chatgroup.me_join_chat 的工具契约（加群的是当前应用/机器人身份）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantChatgroupAddManagerTool":  "同 IFeishuTenantChatgroupCreateChatTool：chatgroup.add_manager 的工具契约。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantChatgroupDeleteManagerTool":  "同 IFeishuTenantChatgroupCreateChatTool：chatgroup.delete_manager 的工具契约（**high-risk-write**——命中危险词 delete）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantChatgroupPutTopNoticeTool":  "同 IFeishuTenantChatgroupCreateChatTool：chatgroup.put_top_notice 的工具契约（action_type=1 必须配 message_id，参数校验已拦）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantChatgroupDeleteTopNoticeTool":  "同 IFeishuTenantChatgroupCreateChatTool：chatgroup.delete_top_notice 的工具契约（**high-risk-write**——命中危险词 delete）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantChatgroupDeleteMenuTool":  "同 IFeishuTenantChatgroupCreateChatTool：chatgroup.delete_menu 的工具契约（**high-risk-write**——命中危险词 delete；二级菜单级联消失）。消费方同上。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantTrustpartyCreateCollaborationRuleTool":  "专题一 B1 收官域写面：trustparty.create_collaboration_rule 的工具契约（写操作；默认不启用，需宿主 IToolExecutionAuthorizer 授权）。消费方：① FeishuToolRegistry 白名单装配；② MCP server tools/list；③ TrustPartyToolsTests（dry_run 零调用 + 参数校验 + 回执投影）与 DryRunContractGuards。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantTrustpartyUpdateCollaborationRuleTool":  "同 IFeishuTenantTrustpartyCreateCollaborationRuleTool：trustparty.update_collaboration_rule 的工具契约（覆盖式语义，描述里已写明「未传的一侧会被清空」）。消费方同上。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantTrustpartyDeleteCollaborationRuleTool":  "同 IFeishuTenantTrustpartyCreateCollaborationRuleTool：trustparty.delete_collaboration_rule 的工具契约（**high-risk-write**——命中危险词 delete，配 Affordance 四节资产 + 描述含 dry_run 预演指引，由 DryRunContractGuards / AffordanceContractGuards 双门禁锁住）。消费方同上。",

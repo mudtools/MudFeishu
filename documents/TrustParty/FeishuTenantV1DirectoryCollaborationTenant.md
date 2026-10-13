@@ -3,7 +3,7 @@ title: 关联组织管理端接口（租户令牌）| MudFeishu
 description: 该接口用于以租户身份查询本租户所有已建联的关联组织（返回名称与简称），为创建可搜可见规则提供有效的 tenant key。
 ---
 
-# 关联组织管理端 - 租户令牌（FeishuTenantV1DirectoryCollaborationTenant）
+# 关联组织管理端 - 租户令牌（IFeishuTenantV1DirectoryCollaborationTenant）
 
 ## 接口名称
 

@@ -3,7 +3,7 @@ title: 审批任务接口（用户令牌）| MudFeishu
 description: 该接口用于以用户身份操作飞书审批任务，对应审批中心「待办/已办」页面的操作能力，支持加签、转交审批任务，获取审批任务列表，以及同意、拒绝审批任务。
 ---
 
-# 审批任务（用户令牌） - FeishuV4ApprovalTask_User
+# 审批任务（用户令牌） - IFeishuUserV4ApprovalTask
 
 ## 接口名称
 

@@ -3,7 +3,7 @@ title: 批量消息管理接口（租户令牌）| MudFeishu
 description: 该接口用于以租户身份向多个用户或部门批量发送消息（文本、富文本、卡片、图片等多种类型），支持批量发送、撤回、查询已读状态与发送进度。
 ---
 
-# 批量消息管理 -（FeishuTenantV1BatchMessage）
+# 批量消息管理 -（IFeishuTenantV1BatchMessage）
 
 ## 功能描述
 
@@ -48,10 +48,10 @@ Task<FeishuApiResult<BatchMessageResult>?> BatchSendTextMessageAsync(
 | 参数名 | 类型 | 必填 | 说明 |
 |-------|------|-----|------|
 | sendMessageRequest | BatchSenderTextMessageRequest | ✅ | 批量发送文本消息请求体 |
-| ├─ UserIds | List<string> | ⚪ | 用户 user_id 列表，示例：["7cdcc7c2","ca51d83b"] |
-| ├─ UnionIds | List<string> | ⚪ | 用户 union_id 列表 |
-| ├─ OpenIds | List<string> | ⚪ | 用户 open_id 列表 |
-| ├─ DepartmentIds | List<string> | ⚪ | 部门 ID 列表 |
+| ├─ UserIds | `List<string>` | ⚪ | 用户 user_id 列表，示例：["7cdcc7c2","ca51d83b"] |
+| ├─ UnionIds | `List<string>` | ⚪ | 用户 union_id 列表 |
+| ├─ OpenIds | `List<string>` | ⚪ | 用户 open_id 列表 |
+| ├─ DepartmentIds | `List<string>` | ⚪ | 部门 ID 列表 |
 | ├─ MsgType | string | ✅ | 消息类型，固定为 "text" |
 | └─ Content | MessageTextContent | ✅ | 文本内容，包含 text 字段 |
 | cancellationToken | CancellationToken | ⚪ | 取消操作令牌 |
@@ -134,10 +134,10 @@ Task<FeishuApiResult<BatchMessageResult>?> BatchSendRichTextMessageAsync(
 | 参数名 | 类型 | 必填 | 说明 |
 |-------|------|-----|------|
 | sendMessageRequest | BatchSenderRichTextMessageRequest | ✅ | 批量发送富文本消息请求体 |
-| ├─ UserIds | List<string> | ⚪ | 用户 user_id 列表 |
-| ├─ UnionIds | List<string> | ⚪ | 用户 union_id 列表 |
-| ├─ OpenIds | List<string> | ⚪ | 用户 open_id 列表 |
-| ├─ DepartmentIds | List<string> | ⚪ | 部门 ID 列表 |
+| ├─ UserIds | `List<string>` | ⚪ | 用户 user_id 列表 |
+| ├─ UnionIds | `List<string>` | ⚪ | 用户 union_id 列表 |
+| ├─ OpenIds | `List<string>` | ⚪ | 用户 open_id 列表 |
+| ├─ DepartmentIds | `List<string>` | ⚪ | 部门 ID 列表 |
 | ├─ MsgType | string | ✅ | 消息类型，固定为 "post" |
 | └─ Content | MessagePostContent | ✅ | 富文本内容，支持图文混排 |
 | cancellationToken | CancellationToken | ⚪ | 取消操作令牌 |
@@ -209,10 +209,10 @@ Task<FeishuApiResult<BatchMessageResult>?> BatchSendImageMessageAsync(
 | 参数名 | 类型 | 必填 | 说明 |
 |-------|------|-----|------|
 | sendMessageRequest | BatchSenderMessageImageRequest | ✅ | 批量发送图片消息请求体 |
-| ├─ UserIds | List<string> | ⚪ | 用户 user_id 列表 |
-| ├─ UnionIds | List<string> | ⚪ | 用户 union_id 列表 |
-| ├─ OpenIds | List<string> | ⚪ | 用户 open_id 列表 |
-| ├─ DepartmentIds | List<string> | ⚪ | 部门 ID 列表 |
+| ├─ UserIds | `List<string>` | ⚪ | 用户 user_id 列表 |
+| ├─ UnionIds | `List<string>` | ⚪ | 用户 union_id 列表 |
+| ├─ OpenIds | `List<string>` | ⚪ | 用户 open_id 列表 |
+| ├─ DepartmentIds | `List<string>` | ⚪ | 部门 ID 列表 |
 | ├─ MsgType | string | ✅ | 消息类型，固定为 "image" |
 | └─ Content | MessageImageContent | ✅ | 图片内容，包含 image_key 字段 |
 | cancellationToken | CancellationToken | ⚪ | 取消操作令牌 |
@@ -238,10 +238,10 @@ Task<FeishuApiResult<BatchMessageResult>?> BatchSendGroupShareMessageAsync(
 | 参数名 | 类型 | 必填 | 说明 |
 |-------|------|-----|------|
 | sendMessageRequest | BatchSenderMessageGroupShareRequest | ✅ | 批量发送群分享消息请求体 |
-| ├─ UserIds | List<string> | ⚪ | 用户 user_id 列表 |
-| ├─ UnionIds | List<string> | ⚪ | 用户 union_id 列表 |
-| ├─ OpenIds | List<string> | ⚪ | 用户 open_id 列表 |
-| ├─ DepartmentIds | List<string> | ⚪ | 部门 ID 列表 |
+| ├─ UserIds | `List<string>` | ⚪ | 用户 user_id 列表 |
+| ├─ UnionIds | `List<string>` | ⚪ | 用户 union_id 列表 |
+| ├─ OpenIds | `List<string>` | ⚪ | 用户 open_id 列表 |
+| ├─ DepartmentIds | `List<string>` | ⚪ | 部门 ID 列表 |
 | ├─ MsgType | string | ✅ | 消息类型，固定为 "share_chat" |
 | └─ Content | MessageGroupShareContent | ✅ | 群分享内容，包含 chat_id 字段 |
 | cancellationToken | CancellationToken | ⚪ | 取消操作令牌 |

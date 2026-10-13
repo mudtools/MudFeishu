@@ -3,7 +3,7 @@ title: 考勤排班接口（用户令牌）| MudFeishu
 description: 该接口用于以用户身份创建或修改飞书考勤临时排班，可在排班表上创建或修改临时班次并用于排班，支持按日期对一位或多位人员进行排临时班次。
 ---
 
-# 考勤排班（用户令牌） - FeishuV1AttendanceUserDailyShifts_User
+# 考勤排班（用户令牌） - IFeishuUserV1AttendanceUserDailyShifts
 
 ## 接口名称
 
@@ -13,7 +13,7 @@ description: 该接口用于以用户身份创建或修改飞书考勤临时排�
 
 创建或修改临时排班：可在排班表上创建或修改临时班次，并用于排班。目前支持按日期对一位或多位人员进行排临时班次。
 
-> 飞书考勤 `POST /user_daily_shifts/batch_create_temp` 同时支持租户令牌与用户令牌。租户令牌版本见 `IFeishuTenantV1AttendanceUserDailyShifts.BatchCreateTempUserDailyShiftAsync`（文档：[FeishuTenantV1AttendanceUserDailyShifts](./FeishuTenantV1AttendanceUserDailyShifts.md)），本接口为用户令牌版本。
+> 飞书考勤 `POST /user_daily_shifts/batch_create_temp` 同时支持租户令牌与用户令牌。租户令牌版本见 `IFeishuTenantV1AttendanceUserDailyShifts.BatchCreateTempUserDailyShiftAsync`（文档：[IFeishuTenantV1AttendanceUserDailyShifts](./FeishuTenantV1AttendanceUserDailyShifts.md)），本接口为用户令牌版本。
 
 ## 参考文档
 

@@ -3,10 +3,10 @@ title: 考勤休假管理接口（租户令牌）| MudFeishu
 description: 该接口用于管理飞书考勤休假，包含通过过期时间获取休假发放记录、获取休假过期时间，以及修改发放记录的发放数量与失效日期。
 ---
 
-# 考勤休假管理接口 - FeishuV1AttendanceLeave_Tenant
+# 考勤休假管理接口 - IFeishuTenantV1AttendanceLeave
 
 ## 接口名称
-**考勤休假管理** - (FeishuV1AttendanceLeave_Tenant)
+**考勤休假管理** - (IFeishuTenantV1AttendanceLeave)
 
 ## 功能描述
 考勤休假管理，包含休假过期时间获取发放记录、休假发放记录接口。支持通过过期时间获取发放记录，以及修改发放记录的发放数量和失效日期。

@@ -3,10 +3,10 @@ title: 考勤打卡管理接口（租户令牌）| MudFeishu
 description: 该接口用于管理飞书考勤打卡信息，支持导入、查询、删除员工的打卡流水记录，导入后会根据员工所在考勤组班次规则计算最终的打卡状态与结果。
 ---
 
-# 考勤打卡管理接口 - FeishuTenantV1AttendanceUserFlows
+# 考勤打卡管理接口 - IFeishuTenantV1AttendanceUserFlows
 
 ## 接口名称
-**考勤打卡管理** - (FeishuTenantV1AttendanceUserFlows)
+**考勤打卡管理** - (IFeishuTenantV1AttendanceUserFlows)
 
 ## 功能描述
 打卡信息管理，可以导入、查询、删除员工的打卡流水记录。导入后会根据员工所在的考勤组班次规则，计算最终的打卡状态与结果。

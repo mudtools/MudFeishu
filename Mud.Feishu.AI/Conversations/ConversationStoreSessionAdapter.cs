@@ -16,25 +16,16 @@ namespace Mud.Feishu.AI.Conversations;
 /// <c>Mud.Feishu.Abstractions</c>）桥接到中立端口 <see cref="ISessionStore"/> 的防腐层。
 /// </summary>
 /// <remarks>
+/// <b>为什么需要这一层（不是冗余）</b>：会话门面（<c>Mud.AI.Agent.Sessions.AgentSessionStore</c>）住在<b>产品中立</b>的 AI 运行期包里，
+/// 而它的存储契约两处都搬不动——① 搬进 <c>Mud.AI.Abstractions</c> ⇒ <c>Mud.Feishu.Abstractions</c> / <c>Mud.Feishu.Redis</c> 必须反向引用
+/// AI 包族，既撞 <c>CoreSdkProjects_ShouldNotDependOnMudAiFamily</c>（核心 SDK 不得依赖 <c>Mud.AI.*</c>），又把<b>未发布</b>的 AI 族拖进
+/// <b>已发布</b>包的依赖图；② 让门面直接引用 <see cref="IConversationStore"/> ⇒ 中立包反向依赖产品契约，上游化（迁独立包）当场不可能。
 /// <para>
-/// <b>为什么需要这一层（P1-H3 的定式，不是冗余）</b>：会话门面
-/// （<c>Mud.AI.Agent.Sessions.AgentSessionStore</c>）住在<b>产品中立</b>的 AI 运行期包里，
-/// 而它的存储契约不可能搬动：
-/// <list type="bullet">
-/// <item>搬进 <c>Mud.AI.Abstractions</c> ⇒ <c>Mud.Feishu.Abstractions</c> /
-/// <c>Mud.Feishu.Redis</c> 必须反向引用 AI 包族——既撞
-/// <c>SingleToolSurfaceEngineContractGuards.CoreSdkProjects_ShouldNotDependOnMudAiFamily</c>
-/// （核心 SDK 不得依赖 <c>Mud.AI.*</c>），又把<b>未发布</b>的 AI 族拖进<b>已发布</b>包的依赖图；</item>
-/// <item>让门面直接引用 <see cref="IConversationStore"/> ⇒ 中立包反向依赖产品契约，
-/// P3 上游化（迁独立 Mud.AI 仓与包）当场不可能。</item>
-/// </list>
-/// 两者的接口形状相同，但<b>生命周期与版本纪律完全不同</b>（一个随已发布 SDK 冻结、
-/// 一个在未发布窗口可自由变更）——所以这里是<u>有意的接缝</u>，不是可以合并的重复类型。
-/// 合并的代价在 P1-I 才到期（届时 AI 族已发布，可做政策级重评）。
+/// 两者接口形状相同，但<b>生命周期与版本纪律完全不同</b>（一个随已发布 SDK 冻结、一个在未发布窗口可自由变更）⇒ 这里是<u>有意的接缝</u>，
+/// 不是可以合并的重复类型；合并的代价要等 AI 族发布后才到期（届时可做政策级重评）。
 /// </para>
 /// <para>
-/// 本类型是 <c>internal</c>：它是实现细节，宿主看到的仍是
-/// <see cref="IConversationStore"/>（<c>FeishuAgent</c> 的公开构造签名未变）。
+/// 本类型是 <c>internal</c>：它是实现细节，宿主看到的仍是 <see cref="IConversationStore"/>（<c>FeishuAgent</c> 的公开构造签名未变）。
 /// </para>
 /// </remarks>
 internal sealed class ConversationStoreSessionAdapter : ISessionStore

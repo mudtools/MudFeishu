@@ -24,9 +24,19 @@ namespace Mud.Feishu.AI.Conversations;
 /// （中立默认 TTL 与本产品默认值必须只有一处来源，否则两份字面量会各自漂移）。
 /// </para>
 /// <para>
-/// <b>能力边界（继承中立实现）</b>：清扫只回收<b>已过期</b>条目；TTL 窗口内的新鲜条目仍无数量上限。
-/// 仅适合单实例部署与测试；分布式部署请使用 Mud.Feishu.Redis 的 <c>RedisConversationStore</c>
-/// （接口注入替换本实现）。
+/// <b>过期回收</b>：软过期只在<b>读同一键</b>时删除，<b>不再被读取</b>的键（一次性会话、
+/// 被移出群的用户）永不回收 ⇒ 长跑宿主的内存随会话数单调增长。故在写入路径按阈值 + 节流触发一次
+/// <b>惰性分摊清扫</b>：≤<c>SweepThreshold</c> 条目时 O(1)；超过后按 <c>SweepEveryWrites</c> 次写入节流，
+/// 单次成本上界 <c>SweepMaxRemoval</c>，<b>不引入后台线程/定时器</b>（保持"纯库、零宿主假设"品格），
+/// 语义与 Redis 服务端过期一致（读侧软过期兜底不变）。
+/// </para>
+/// <para>
+/// <b>能力边界</b>：清扫只回收<b>已过期</b>条目——TTL 窗口内的<b>新鲜</b>条目仍无数量上限
+/// （TTL 缓存的固有语义）。需要按数量/字节上限淘汰的宿主应改用 Redis 后端或自定义实现。
+/// </para>
+/// <para>
+/// 仅适合单实例部署与测试；分布式部署请使用 Mud.Feishu.Redis 的
+/// <c>RedisConversationStore</c>（接口注入替换本实现）。
 /// </para>
 /// </remarks>
 public sealed class MemoryConversationStore : IConversationStore
@@ -34,10 +44,10 @@ public sealed class MemoryConversationStore : IConversationStore
     /// <summary>清扫触发阈值（条目数；转发中立实现的常量，保持测试与守卫的既有锚点可用）。</summary>
     internal const int SweepThreshold = MemorySessionStore.SweepThreshold;
 
-    /// <summary>R3-06：两次清扫之间的最少写入次数（节流）。</summary>
+    /// <summary>两次清扫之间的最少写入次数（节流）。</summary>
     internal const int SweepEveryWrites = MemorySessionStore.SweepEveryWrites;
 
-    /// <summary>R3-06：单次清扫最多回收的条目数（成本上界）。</summary>
+    /// <summary>单次清扫最多回收的条目数（成本上界）。</summary>
     internal const int SweepMaxRemoval = MemorySessionStore.SweepMaxRemoval;
 
     private readonly MemorySessionStore _inner;
@@ -66,6 +76,6 @@ public sealed class MemoryConversationStore : IConversationStore
     /// <summary>当前驻留条目数（含已过期未回收者；诊断与用例观测面）。</summary>
     internal int Count => _inner.Count;
 
-    /// <summary>R3-06：清扫调用计数（诊断/测试观测面，用于断言节流效果）。</summary>
+    /// <summary>清扫调用计数（诊断/测试观测面，用于断言节流效果）。</summary>
     internal int SweepCallCount => _inner.SweepCallCount;
 }

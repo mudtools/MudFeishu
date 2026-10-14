@@ -8,43 +8,22 @@
 namespace Mud.AI.Agent.Approvals;
 
 /// <summary>
-/// 框架（MAF <c>ApprovalResponseBindingChatClient</c>）记录的「待人工确认的工具调用」状态桥（R5-11 / R5-12）。
+/// 框架（MAF <c>ApprovalResponseBindingChatClient</c>）记录的「待人工确认的工具调用」状态桥。
 /// </summary>
 /// <remarks>
+/// <b>为什么读框架自身的记录而非 SDK 另建一份</b>：MAF 绑定层在<b>产出审批请求的那一轮</b>就把模型原始
+/// <see cref="ToolApprovalRequestContent"/>（含真实 <see cref="ToolCallContent"/>）写进<b>会话状态袋</b>，并在下一轮按
+/// <c>RequestId</c> 绑定人类响应——这是批准资格的唯一权威。SDK 再存副本会产生<b>两个真相来源</b>：MAF 的消费/清理时机
+/// （成功轮之后、callId 冲突毒化、会话重建）SDK 无法完整观测 ⇒ 副本必然漂移，后果是 SDK 以为「仍待确认」而框架已遗忘，
+/// 续跑轮被绑定层丢弃响应 ⇒ 框架抛错。故本类只做「读取 + 清理」的桥接，<b>不新增任何 SDK 状态键</b>。
 /// <para>
-/// <b>为什么读取框架自身的记录、而不是另建一份</b>（R5 审查的架构裁决）：MAF 的绑定层在
-/// <b>模型产出审批请求的那一轮</b>就把模型原始 <c>ToolApprovalRequestContent</c>
-/// （含真实 <c>ToolCallContent</c>）写进<b>会话状态袋</b>，并且在<b>下一轮</b>按
-/// <c>RequestId</c> 绑定人类响应——这是批准资格的唯一权威来源（"批准只能来自框架记录过的请求"）。
-/// 若再存一份自己的副本，会产生<b>两个真相来源</b>：MAF 消费/清理的时机（成功轮之后、
-/// callId 冲突毒化、会话重建）本层无法完整观测，副本必然漂移——漂移的后果是本层以为「仍待确认」
-/// 而框架已遗忘，续跑轮被绑定层丢弃响应 ⇒ 框架抛错。故本类只做「读取 + 清理」的桥接，
-/// <b>不新增任何状态键</b>。
+/// <b>对框架内部键的耦合与守卫</b>：<see cref="FrameworkStateKey"/> 取自 MAF 的
+/// <c>ApprovalResponseBindingChatClient.StateBagKey</c>（该类型为 <c>internal</c>，无法在编译期引用）；
+/// 耦合由契约守卫以反射锁定——MAF 改名即用例转红，避免静默失效。
 /// </para>
 /// <para>
-/// <b>MAF 预研结论（方案 v2 §0.2 A2，1.20.0 源码实测）</b>：
-/// <c>ApprovalResponseBindingChatClient</c>（internal sealed）在 1.20.0 由
-/// <c>ChatClientAgent</c> 管线<b>默认装配</b>（开关 <c>DisableApprovalResponseBinding</c> 默认
-/// <see langword="false"/>；<c>UseProvidedChatClientAsIs = true</c> 时不装配），其
-/// <c>StateBagKey = "_pendingApprovalRequests"</c> 与本类 <see cref="FrameworkStateKey"/> 一致，
-/// 且 MAF <b>无公开查询 API</b>。故「改读 StateBag」的答案就是<b>现状</b>：保持本自有桥，
-/// 反射契约守卫锁定键值（改名即转红）。
-/// </para>
-/// <para>
-/// <b>对框架内部键的耦合与守卫</b>：<see cref="FrameworkStateKey"/> 取自 MAF
-/// <c>ApprovalResponseBindingChatClient.StateBagKey</c>（该类型为 internal，无法在编译期引用）。
-/// 此耦合由契约守卫用例
-/// <c>AgentContractGuards.FrameworkPendingApprovalStateKey_ShouldMatchMachineAgentsAiConstant</c>
-/// 以反射方式锁定：MAF 改名即用例转红，避免静默失效。
-/// </para>
-/// <para>
-/// <b>历史状态键参数化（①式）</b>：会话历史在状态袋内的命名空间是<b>产品事实</b>
-/// （飞书侧是 <c>feishu.agent.history</c>），由构造参数注入；本类不含任何产品字面量
-/// （守卫与 <c>AgentSessionStore</c> 同款断言：中立实现不得出现 <c>"feishu."</c>）。
-/// </para>
-/// <para>
-/// <b>读失败一律按「无待确认项」处理</b>（R4-7 同款收口：状态袋值是惰性反序列化的，
-/// 坏值只在首次类型化读取时抛，不得让本桥成为新的毒化点；取消原样传播）。
+/// <b>读失败一律按「无待确认项」处理</b>：状态袋值是惰性反序列化的，坏值只在首次类型化读取时抛，不得让本桥成为新的毒化点；
+/// 取消原样传播。
 /// </para>
 /// </remarks>
 /// <param name="historyStateKey">会话历史在 MAF 状态袋内的状态键（产品事实，由宿主注入）。</param>

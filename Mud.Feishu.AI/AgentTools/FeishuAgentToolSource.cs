@@ -36,7 +36,7 @@ public abstract class FeishuAgentToolSource
     public abstract IReadOnlyList<AIFunction> GetTools(IServiceProvider serviceProvider);
 
     /// <summary>
-    /// 返回<b>已启用工具所属域</b>的 guidance 资产（WP6 / AT-F09；装配为宿主指令之后的补充）。
+    /// 返回<b>已启用工具所属域</b>的 guidance 资产（装配为宿主指令之后的补充）。
     /// </summary>
     /// <remarks>
     /// <para>

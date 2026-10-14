@@ -15,37 +15,21 @@ using Mud.Feishu.DataModels.CardMessageStream;
 namespace Mud.Feishu.AI.Channels;
 
 /// <summary>
-/// 应用消息卡片流通道（AI-FD-D12 P2D-2a 流式正解）：Create 占位卡片（得 <c>biz_id</c>）→
-/// 增量更新 <c>preview</c>（分片缓冲语义与 <see cref="EditMessageChannel"/> 同构：达
-/// <see cref="FeishuAgentOptions.MaxStreamChunkLength"/> 才更新一次）→ 终态落地完整文本。
+/// 应用消息卡片流通道（流式正解）：Create 占位卡片（得 <c>biz_id</c>）→ 增量更新 <c>preview</c>（分片缓冲语义与
+/// <see cref="EditMessageChannel"/> 同构：达 <see cref="FeishuAgentOptions.MaxStreamChunkLength"/> 才更新一次）→ 终态落地完整文本。
 /// </summary>
 /// <remarks>
+/// <b>目标语义</b>：应用消息卡片（feed card）按<b>用户 open_id</b> 投放（<c>user_ids</c>），与编辑通道的 chat_id 不同——本通道实现
+/// <see cref="IChannelTargetResolver"/>，单聊解析为发送者 open_id（<see cref="ConversationRequest.SenderId"/>）；群聊不适用（返回 null，
+/// 降级链/事件处理器回退编辑通道）。降级链（<see cref="StreamingChannelChain"/>）经流式环境量按子通道各自重解析，事件处理器零感知。
 /// <para>
-/// <b>目标语义</b>：应用消息卡片（feed card）按<b>用户 open_id</b> 投放（<c>user_ids</c>），
-/// 与编辑通道的 chat_id 不同——本通道实现 <see cref="IChannelTargetResolver"/>，
-/// 单聊场景解析为发送者 open_id（<see cref="ConversationRequest.SenderId"/>）；
-/// 群聊不适用（返回 null，降级链/事件处理器回退编辑通道）。
-/// 降级链（<see cref="StreamingChannelChain"/>）经流式环境量按子通道各自重解析，事件处理器零感知。
+/// <b>失败语义</b>（与 <see cref="EditMessageChannel"/> 同一接口契约）：<see cref="BeginAsync"/> 失败向上抛（调用方/降级链回退下一通道
+/// 或非流式路径，模型尚未调用、零重复成本）；单次增量更新失败只记日志（<see cref="BufferedMessageChannel"/> 异常隔离契约，不中断模型流）
+/// ——卡片停留在上一次成功内容。
 /// </para>
 /// <para>
-/// <b>失败语义</b>（与 <see cref="EditMessageChannel"/> 完全一致，同一接口契约）：
-/// <see cref="BeginAsync"/> 失败向上抛（调用方/降级链回退下一通道或非流式路径，模型尚未调用、
-/// 零重复成本）；单次增量更新失败只记日志（<see cref="BufferedMessageChannel"/> 异常隔离契约，
-/// 不中断模型流）——卡片停留在上一次成功内容。
+/// 每次下游调用前经 <see cref="IFeishuAppContextScopeFactory.BeginScope"/> 切换租户上下文（与工具执行链同一事实来源），<c>finally</c> 释放。
 /// </para>
-/// <para>
-/// 每次下游调用前经 <see cref="IFeishuAppContextScopeFactory.BeginScope"/> 切换租户上下文
-/// （与工具执行链同一事实来源；TMA2-20），finally 释放。
-/// </para>
-/// <para>
-/// <b>N2-b 中立化</b>：缓冲基类已迁 <c>Mud.AI.Agent.Channels.BufferedMessageChannel</c>（① 式：
-/// 分片阈值由 <see cref="FeishuAgentOptions.MaxStreamChunkLength"/> 经构造参数注入）。
-/// 降级指标的 app_key 维度经 <see cref="OnUpdateDegraded"/> 覆写保留（中立端口只收 reason 文案，
-/// 产品指标名与维度留在产品侧——R3-12 行为逐字节不变）。
-/// </para>
-/// </remarks>
-/// <remarks>
-/// 初始化 <see cref="CardStreamMessageChannel"/>。
 /// </remarks>
 /// <param name="cardClient">应用消息卡片流客户端（Tenant 身份）。</param>
 /// <param name="scopeFactory">租户上下文作用域工厂。</param>
@@ -181,8 +165,8 @@ public sealed class CardStreamMessageChannel(
 
     /// <inheritdoc />
     /// <remarks>
-    /// R2-02：终结态落地后移除"bizId → 投放用户 open_id"登记。该键是<b>每次新会话单调新增的业务 ID</b>
-    /// （永不重复），此前无移除点 ⇒ 单例字典随流式回复次数线性增长。
+    /// 终结态落地后必须移除"bizId → 投放用户 open_id"登记：该键是<b>每次新会话单调新增的业务 ID</b>
+    /// （永不重复），漏移除即让单例字典随流式回复次数线性增长。
     /// </remarks>
     protected override void OnFlushed(string messageId) => _bizIdToTarget.TryRemove(messageId, out _);
 

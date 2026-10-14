@@ -14,11 +14,11 @@ using Mud.Feishu.AI.Knowledge;
 namespace Mud.Feishu.AI.Events;
 
 /// <summary>
-/// 内置 IM 会话事件处理器可选装配的上下文装配器集（AI-FD-D12 P2D-5b 位标记）。
+/// 内置 IM 会话事件处理器可选装配的上下文装配器集（位标记）。
 /// </summary>
 /// <remarks>
 /// <c>AddFeishuImConversationHandler</c> 默认只启用 <see cref="ImConversationAssemblers.SenderInfo"/>（零外部调用）；
-/// <see cref="QuoteMessage"/> 依赖 P1D-1a 路由修复后的消息内容回查（失败自动跳过）；
+/// <see cref="QuoteMessage"/> 依赖消息内容回查（失败自动跳过）；
 /// <see cref="Knowledge"/> 依赖宿主已注册 <c>IRetriever</c>（如 <c>AddFeishuAilyKnowledge</c>）。
 /// </remarks>
 [Flags]
@@ -36,23 +36,22 @@ public enum ImConversationAssemblers
     /// <summary>知识检索装配器（每轮检索注入；省 token 请改用 knowledge.search 工具模式）。</summary>
     Knowledge = 4,
 
-    /// <summary>群聊历史装配器（T2 / D2：群聊场景自动拉取前 N 条消息注入 prompt）。</summary>
+    /// <summary>群聊历史装配器（群聊场景自动拉取前 N 条消息注入 prompt）。</summary>
     GroupHistory = 8,
 
-    /// <summary>媒体消息装配器（T3 / D3：图片/音频/文件转写为文本注入 prompt）。</summary>
+    /// <summary>媒体消息装配器（图片/音频/文件转写为文本注入 prompt）。</summary>
     MediaMessage = 16,
 }
 
 /// <summary>
-/// 引用消息上下文装配器（P2D-5b）：请求引用的父消息 → <c>im.get_message_content</c> 取内容预览
+/// 引用消息上下文装配器：请求引用的父消息 → <c>im.get_message_content</c> 取内容预览
 /// （截断 300 字）。失败跳过（异常隔离由事件层承接，本装配器自身亦不抛业务异常）。
 /// </summary>
 /// <remarks>
-/// <b>N4（E8）</b>：<c>SenderInfoContextAssembler</c> 已上移中立包
-/// <c>Mud.AI.Agent.Context</c>（零产品语义；产品侧经 global using 保持简单名引用）。
-/// 本文件保留的 <see cref="QuoteMessageContextAssembler"/> 依赖飞书消息回查——留产品侧。
+/// 发送者信息装配器已迁入中立包 <c>Mud.AI.Agent.Context</c>（零产品语义；产品侧经 global using
+/// 保持简单名引用）；本类依赖飞书消息回查，故留产品侧。
 /// </remarks>
-/// <remarks>依赖 P1D-1a 修复后的 <c>GetContentListByMessageIdAsync</c> 路由。</remarks>
+/// <remarks>依赖 <c>GetContentListByMessageIdAsync</c> 的消息内容回查路由。</remarks>
 public sealed class QuoteMessageContextAssembler : IContextAssembler
 {
     /// <summary>引用内容预览截断长度。</summary>

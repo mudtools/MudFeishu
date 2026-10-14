@@ -206,10 +206,10 @@ public static class FeishuAgentServiceCollectionExtensions
         if (string.Equals(endpoint.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
             return;
 
-        // R5-7：IPv6 字面量经 System.Uri 规范化后 Host **带方括号且为零压缩的完整形态**
+        // IPv6 字面量经 System.Uri 规范化后 Host **带方括号且为零压缩的完整形态**
         // （http://[::1]:8000/v1 ⇒ "[0000:0000:0000:0000:0000:0000:0000:0001]"），
-        // 故原先的 "::1" 字面量比较恒不成立、IPAddress.TryParse("[::1]") 也恒失败——
-        // 「环回地址例外」在 IPv6 写法下被静默破坏（fail-closed 方向，纯可用性缺陷）。
+        // 故不得用 "::1" 字面量比较、也不得直接 IPAddress.TryParse("[::1]")——
+        // 那会让「环回地址例外」在 IPv6 写法下被静默破坏（fail-closed 方向，纯可用性缺陷）。
         // 先剥方括号再 TryParse，同时覆盖 "[::1]" 与 "[0:0:0:0:0:0:0:1]" 两种书写。
         var host = endpoint.Host.Trim('[', ']');
         var isLoopback = string.Equals(endpoint.Host, "localhost", StringComparison.OrdinalIgnoreCase)
@@ -321,7 +321,7 @@ public static class FeishuAgentServiceCollectionExtensions
     /// 注册 <see cref="ImConversationOptions"/>（配置节 <c>FeishuAgent:ImConversation</c>）与
     /// <see cref="ImMessageConversationalEventHandler"/>（含 Bot 自激过滤、群聊 @ 过滤安全内建）。
     /// 内置上下文装配器集默认只启用 <see cref="ImConversationAssemblers.SenderInfo"/>（零外部调用）；
-    /// 其余经 <paramref name="assemblers"/> 显式装配（P2D-5b）。事件订阅侧由宿主在
+    /// 其余经 <paramref name="assemblers"/> 显式装配。事件订阅侧由宿主在
     /// WebSocket/Webhook 通道上 <c>AddHandler&lt;ImMessageConversationalEventHandler&gt;()</c>
     /// （通道工厂从自身注册表解析，不读全局 <c>IFeishuEventHandler</c> 注册）。
     /// </para>
@@ -360,7 +360,7 @@ public static class FeishuAgentServiceCollectionExtensions
             return Options.Create(options);
         });
 
-        // 内置装配器集（P2D-5b）：默认只启用 SenderInfo（零外部调用）；其余宿主显式装配。
+        // 内置装配器集：默认只启用 SenderInfo（零外部调用）；其余宿主显式装配。
         if (assemblers.HasFlag(ImConversationAssemblers.SenderInfo))
         {
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IContextAssembler, SenderInfoContextAssembler>());
@@ -383,7 +383,7 @@ public static class FeishuAgentServiceCollectionExtensions
 
         if (assemblers.HasFlag(ImConversationAssemblers.GroupHistory))
         {
-            // T2 / D2：群聊历史装配器——直调 SDK GetHistoryMessageAsync，不经工具面。
+            // 群聊历史装配器——直调 SDK GetHistoryMessageAsync，不经工具面。
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IContextAssembler>(static sp =>
                 new GroupHistoryContextAssembler(
                     sp.GetRequiredService<IFeishuTenantV1Message>(),
@@ -393,7 +393,7 @@ public static class FeishuAgentServiceCollectionExtensions
 
         if (assemblers.HasFlag(ImConversationAssemblers.MediaMessage))
         {
-            // T3 / D3：媒体消息装配器——图片/音频/文件转写为文本。
+            // 媒体消息装配器——图片/音频/文件转写为文本。
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IContextAssembler>(static sp =>
                 new MediaMessageContextAssembler(
                     sp.GetRequiredService<IFeishuTenantV1Message>(),
@@ -442,14 +442,14 @@ public static class FeishuAgentServiceCollectionExtensions
             builder.Configure(configure);
         }
 
-        // R2-10：与 FeishuAgentOptions 同等对待——Options 管线接入 Validate()，
+        // 与 FeishuAgentOptions 同等对待——Options 管线接入 Validate()，
         // 使"AppId 未配置"在**启动期**响亮失败，而不是等第一次知识提问时在 Provider 工厂里炸。
         services.TryAddSingleton<IValidateOptions<AilyKnowledgeOptions>, AilyKnowledgeOptionsValidator>();
 #if NET6_0_OR_GREATER
         services.AddOptions<AilyKnowledgeOptions>().ValidateOnStart();
 #endif
 
-        // R3-07：注册幂等——改为 TryAddSingleton，与前后行一致，避免重复调用产生多条描述符。
+        // 注册幂等（TryAddSingleton，与前后行一致）：避免重复调用产生多条描述符。
         services.TryAddSingleton<AilyKnowledgeProvider>(static sp =>
         {
             var options = sp.GetRequiredService<IOptions<AilyKnowledgeOptions>>().Value;

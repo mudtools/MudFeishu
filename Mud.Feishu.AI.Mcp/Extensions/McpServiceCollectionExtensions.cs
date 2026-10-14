@@ -14,38 +14,19 @@ namespace Mud.Feishu.AI.Mcp;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>前置</b>：宿主已装配飞书工具面（<c>AddFeishuTools</c> 或逐域入口）与
-/// <c>FeishuAgentOptions</c>（<c>AddFeishuAgent</c>）——本入口<b>不</b>替你装配工具面
-/// （否则会隐式拉全量域，与"宿主显式装配"的既有契约冲突）。
+/// <b>前置</b>：宿主已装配工具面（<c>AddFeishuTools</c> 或逐域入口）与 <c>FeishuAgentOptions</c>（<c>AddFeishuAgent</c>）；
+/// 本入口<b>不</b>替你装配工具面，否则会隐式拉全量域，与"宿主显式装配"的既有契约冲突。
 /// </para>
 /// <para>
-/// <b>白名单同源</b>：暴露给 MCP 客户端的工具集 = <c>FeishuAgent:Tools</c> +
-/// <c>FeishuAgent:WriteAllowList</c>（装配期注册表白名单），本包<b>不新增</b>任何开关。
+/// <b>白名单同源</b>：暴露给 MCP 客户端的工具集 = <c>FeishuAgent:Tools</c> + <c>FeishuAgent:WriteAllowList</c>
+/// （装配期注册表白名单），本包<b>不新增</b>任何开关；<b>stdio 传输下 stdout 是协议通道</b>，
+/// 日志必须写 stderr 或文件，否则日志行会被客户端当成非法 JSON-RPC 消息。
 /// </para>
-/// <para>
-/// 最小可用示例（宿主进程 <c>Program.cs</c>）：
 /// <code>
-/// var builder = Host.CreateApplicationBuilder(args);
-/// builder.Services.AddFeishuAgent(...);                 // 飞书 Agent 运行时
-/// builder.Services.AddFeishuTools();                    // 工具面（全部域，默认不启用）
-/// builder.Services.AddFeishuMcpServer(o =&gt;               // 本包
-/// {
-///     o.AppKey = "cli_xxx";                            // 必填：进程级租户
-///     // o.UserId = "ou_xxx";                          // 用到 user 身份工具时必填
-/// });
-/// await builder.Build().RunFeishuMcpStdioAsync();       // 阻塞直到客户端关闭 stdin
+/// builder.Services.AddFeishuMcpServer(o =&gt; o.AppKey = "cli_xxx");   // 先 AddFeishuAgent + AddFeishuTools
+/// await builder.Build().RunFeishuMcpStdioAsync();                    // 阻塞直到客户端关闭 stdin
 /// </code>
-/// 并在 <c>appsettings.json</c> 里给工具面白名单（MCP 与进程内 Agent 共用同一份配置）：
-/// <code>
-/// "FeishuAgent": { "Tools": [ "bitable.query_records", "docx.get_raw_content" ],
-///                  "WriteAllowList": [ "im.send_message" ] },
-/// "FeishuMcp": { "AppKey": "cli_xxx" }
-/// </code>
-/// </para>
-/// <para>
-/// <b>stdio 与日志</b>：stdio 传输下 <b>stdout 是协议通道</b>，日志必须写 stderr 或文件，
-/// 否则日志行会被客户端当成非法 JSON-RPC 消息（服务端会回 parse error，客户端会看到噪声）。
-/// </para>
+/// 租户与用户身份（<c>AppKey</c> 必填、<c>UserId</c> 语义）见 <see cref="FeishuMcpServerOptions"/>。
 /// </remarks>
 public static class McpServiceCollectionExtensions
 {

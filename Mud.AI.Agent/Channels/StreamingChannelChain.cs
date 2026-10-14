@@ -140,7 +140,7 @@ public sealed class StreamingChannelChain : IMessageChannel, IChannelTargetResol
 
     /// <inheritdoc />
     /// <remarks>
-    /// R2-02：本链不继承 <c>BufferedMessageChannel</c>（无缓冲语义），故自行承担「终结态落地后清空
+    /// 本链不继承 <c>BufferedMessageChannel</c>（无缓冲语义），故自行承担「终结态落地后清空
     /// 本 messageId 的归属登记」——且必须在 <c>finally</c> 中：Flush 抛异常时归属同样已终结，
     /// 留着会让单例字典随流式回复次数线性增长，且额外钉住整条子通道实例引用。
     /// </remarks>
@@ -161,8 +161,8 @@ public sealed class StreamingChannelChain : IMessageChannel, IChannelTargetResol
     /// 解析 messageId 的归属子通道。
     /// </summary>
     /// <remarks>
-    /// <b>未登记即抛（R3-15）</b>：此前未命中回退 <c>_channels[0]</c>——把「未经本链 Begin 的
-    /// messageId」静默路由到首选通道，可能把增量写到错误的通道（如降级期由编辑通道承载的
+    /// <b>未登记即抛</b>：<b>不得</b>回退到首选通道（<c>_channels[0]</c>）——把「未经本链 Begin 的
+    /// messageId」静默路由过去，可能把增量写到错误的通道（如降级期由编辑通道承载的
     /// messageId 落到卡片流）。归属登记是本链的<b>唯一</b>路由依据，缺失即契约违背，fail-fast
     /// 比静默错投更安全。
     /// </remarks>

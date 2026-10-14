@@ -9,7 +9,7 @@
 namespace Mud.Feishu.AI.Events;
 
 /// <summary>
-/// 媒体输入配置（T3 / D3，配置节 <c>FeishuAgent:MediaInput</c>）。
+/// 媒体输入配置（配置节 <c>FeishuAgent:MediaInput</c>）。
 /// </summary>
 /// <remarks>
 /// <para>

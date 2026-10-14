@@ -14,26 +14,18 @@ namespace Mud.Feishu.AI.Conversations;
 /// 会话维度范围的<b>接缝适配器</b>：中立副本 ↔ 已发布 SDK 的冻结契约。
 /// </summary>
 /// <remarks>
+/// <b>为什么需要这个 3 行映射</b>：会话请求（<see cref="ConversationRequest"/>）已中立化，其 <see cref="ConversationRequest.Scope"/>
+/// 是中立的 <see cref="ConversationScope"/>；而飞书侧会话键构造器（<c>Mud.Feishu.Abstractions.Conversations.ConversationKeyBuilder</c>）
+/// 是<b>已发布 SDK</b> 的冻结契约，只接受它自己的 <see cref="FeishuScope"/>。两者不可能合并（已发布 SDK 不得引用 <c>Mud.AI.*</c>；
+/// <c>Mud.AI.*</c> 不得引用 <c>Mud.Feishu*</c>）⇒ 两个世界之间必须有一处显式转换。
 /// <para>
-/// <b>为什么需要这个 3 行的映射函数（N1 定式 §三.2 的"刻意接缝"落地）</b>：
-/// 会话请求（<see cref="ConversationRequest"/>）已中立化，其 <see cref="ConversationRequest.Scope"/>
-/// 是中立的 <see cref="ConversationScope"/>；而飞书侧的会话键构造器
-/// （<c>Mud.Feishu.Abstractions.Conversations.ConversationKeyBuilder</c>）是<b>已发布 SDK</b>
-/// 的冻结契约，只接受它自己的 <see cref="FeishuScope"/>。两者不可能合并
-/// （已发布 SDK 不得引用 <c>Mud.AI.*</c>；<c>Mud.AI.*</c> 不得引用 <c>Mud.Feishu*</c>），
-/// 故在两个世界之间必须有一处显式转换。
-/// </para>
-/// <para>
-/// <b>⚠️ 本文件是唯一允许同时引用两个 <c>ConversationScope</c> 的地方</b>：
-/// 它用文件级别名 <c>FeishuScope</c> 消歧。其它文件请勿模仿——
+/// <b>⚠️ 本文件是唯一允许同时引用两个 <c>ConversationScope</c> 的地方</b>：它用文件级别名 <c>FeishuScope</c> 消歧；其它文件请勿模仿——
 /// 需要飞书侧冻结契约时应当反思"这个类型是不是本来就该留在产品侧"。
 /// </para>
 /// <para>
-/// <b>为什么是 public（而不是 internal + IVT）</b>：宿主与 Demo 也会自建会话键
-/// （定制工作台、运维脚本、跨包联调）。若只给 IVT，外部消费者就只能自己去拼
-/// <c>ConversationKeyBuilder.Build(appKey, FeishuScope.Group(), …)</c>——而这恰好要求他们
-/// 同时认识两份 <c>ConversationScope</c> 并手工挑对的那份（"编译不过才发现挑错"是运气，
-/// 挑错成"群聊写成 user 段"则是**编译期无声**的会话串号）。把桥接点公开，是让接缝**可知可信**。
+/// <b>为什么是 public（而不是 internal + IVT）</b>：宿主与 Demo 也会自建会话键（定制工作台、运维脚本、跨包联调）；若只给 IVT，
+/// 外部消费者只能自己拼 <c>ConversationKeyBuilder.Build(appKey, FeishuScope.Group(), …)</c>——而这恰好要求他们同时认识两份
+/// <c>ConversationScope</c> 并手工挑对的那份（挑错成"群聊写成 user 段"是<b>编译期无声</b>的会话串号）。把桥接点公开，是让接缝<b>可知可信</b>。
 /// </para>
 /// </remarks>
 public static class ConversationScopeMapper

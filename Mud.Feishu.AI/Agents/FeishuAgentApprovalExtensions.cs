@@ -14,17 +14,12 @@ namespace Mud.Feishu.AI.Agents;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>N2-c 中立化</b>：闭环机制（四个易错点：同键加载会话 → 取框架记录的原始审批请求 →
-/// 重建工具执行上下文 → 续跑并落库）已迁 <c>Mud.AI.Agent.Approvals.AgentApprovalContinuation</c>。
-/// 本类只做<b>产品事实的适配</b>：
-/// <list type="bullet">
-/// <item>飞书工具上下文访问器（<see cref="IFeishuToolContextAccessor"/>）→ 中立
-/// <see cref="Mud.AI.Agent.Events.ITurnScopeFactory"/>（<see cref="FeishuTurnScopeFactory"/>）；</item>
-/// <item>飞书会话闸门（<c>IConversationGate</c>，已发布 SDK 的宿主可替换契约）→ ③ 式委托
-/// <c>acquireGate</c>（方案 v2 §5.4.1：中立侧不命名产品闸门类型）；</item>
-/// <item>批准通道门面 <see cref="IFeishuToolApprovalChannel"/>（继承中立
-/// <c>IToolApprovalChannel</c>）原样透传。</item>
-/// </list>
+/// <b>要解决的问题</b>：写工具经 MEAI <c>ApprovalRequiredAIFunction</c> 包装后由框架
+/// <c>FunctionInvokingChatClient</c> 在调用前转成审批请求，SDK 把要素交给宿主批准通道；但「批准之后如何继续」
+/// 若交给宿主自行领悟则必然踩坑：续跑轮<b>不在事件流内</b>，<c>IFeishuToolContextAccessor</c> 的
+/// <c>AsyncLocal</c> 执行上下文（唯一建立点在 <c>ConversationalFeishuEventHandler</c>）并不存在，
+/// 于是宿主即使正确回灌批准，工具仍会因缺少租户上下文而 100% 结构化拒绝——
+/// <see cref="Mud.Feishu.AI.Events.ConversationalFeishuEventHandler{T}"/> 向用户承诺的「确认后会自动继续」不可达。
 /// </para>
 /// <para>
 /// <b>宿主调用点零改</b>：方法签名（含全部可选参数与顺序）与中立化前逐字一致。
@@ -37,8 +32,28 @@ namespace Mud.Feishu.AI.Agents;
 public static class FeishuAgentApprovalExtensions
 {
     /// <summary>
-    /// 回灌一次人工批准（或拒绝）并续跑同一会话（R5-11）。
+    /// 回灌一次人工批准（或拒绝）并续跑同一会话。
     /// </summary>
+    /// <remarks>
+    /// <b>调用时机</b>：宿主在自有界面（卡片/工单/审批单）拿到人的决定后调用<b>一次</b>；实现内不得阻塞等待人类操作
+    /// （审批通道的会话语义即「登记后异步返回」）。
+    /// <para>
+    /// <b>会话串行</b>：续跑轮与事件轮共享同一会话状态，传入 <paramref name="conversationGate"/>
+    /// （<c>AddFeishuAgent</c> 默认注册的实例）可与事件路径同款闸门串行；为 <see langword="null"/> 时不串行化，
+    /// 由调用方自行保证互斥（与事件层「闸门缺席」同口径）。
+    /// </para>
+    /// <para>
+    /// <b>续跑轮可能再产出审批请求</b>（模型连发多个写工具）：经 <paramref name="approvalChannel"/> 再次提交宿主
+    /// （通道缺席只记 Warning，绝不自动放行）；此时返回的 <see cref="AgentResponse"/> 文本为空，宿主应提示
+    /// 「仍需人工确认」。<b>回复投递仍归宿主</b>（属派生事件处理器的 <c>ReplyAsync</c>），本方法只负责模型轮次与会话落库。
+    /// </para>
+    /// <para>
+    /// <b>fail-closed 边界（显式抛错，绝不静默降级或凭空放行）</b>：<paramref name="toolContextAccessor"/>
+    /// 为 <see langword="null"/> ⇒ 装配缺陷，显式抛错；<paramref name="approval"/> 缺 <c>RequestId</c>/
+    /// <c>ConversationKey</c>/<c>AppKey</c> ⇒ <see cref="ArgumentException"/>（无键即无法定位会话与绑定）；
+    /// 框架已不再记录该 <c>RequestId</c> ⇒ <see cref="InvalidOperationException"/>，引导用户重新发起。
+    /// </para>
+    /// </remarks>
     /// <param name="agent">目标 Agent（须与发起确认时同一实例/同一会话存储）。</param>
     /// <param name="toolContextAccessor">工具执行上下文访问器（宿主持有；续跑轮必须重建租户上下文）。</param>
     /// <param name="approval">宿主批准通道收到的框架审批请求要素（须原样回传）。</param>
@@ -48,7 +63,7 @@ public static class FeishuAgentApprovalExtensions
     /// <param name="approvalChannel">宿主批准通道（可空；续跑轮再产出审批请求时使用）。</param>
     /// <param name="logger">日志（可空）。</param>
     /// <param name="pendingApprovalStore">
-    /// R7 / C4a：待确认快照存储（可空）。传入时启用<b>幂等消费</b>——同一 <c>RequestId</c> 的批准只生效一次；
+    /// 待确认快照存储（可空）。传入时启用<b>幂等消费</b>——同一 <c>RequestId</c> 的批准只生效一次；
     /// 不存在 / 已过期 / 已被消费三者一律 fail-closed（丢弃迟到批准）。未传入则保持既有行为。
     /// </param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -66,7 +81,6 @@ public static class FeishuAgentApprovalExtensions
         IFeishuToolApprovalChannel? approvalChannel = null,
         ILogger? logger = null,
 
-        // R7 / C4a：待确认快照存储（可空 ⇒ 不做幂等消费，保持既有行为）。
         // 追加为**末尾可选参数**：既有调用点全部使用命名实参，源码兼容。
         IPendingApprovalStore? pendingApprovalStore = null,
         CancellationToken cancellationToken = default)

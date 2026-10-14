@@ -22,9 +22,8 @@ namespace Mud.AI.Agent.Tools;
 /// 数个方法，<b>零新抽象层次、零新契约面</b>。
 /// </para>
 /// <para>
-/// <b>R-1 起：出站预算与标记委托给 <see cref="ToolResultPipeline"/></b>（唯一出口）。
-/// 本类型不再自行比较长度/拼装标记——那是"截断成为出口的性质"的必要条件
-/// （此前 8 处手拼信封绕过本类型产出静默截断，见 B-1）。
+/// <b>出站预算与标记委托给 <see cref="ToolResultPipeline"/></b>（唯一出口）。
+/// 本类型不再自行比较长度/拼装标记——"截断是出口的性质，而不是某个执行器记得写的一步"。
 /// </para>
 /// <para>
 /// <b>per-method 实例</b>：工具名 + 截断上限在构造时绑定一次，执行器方法内
@@ -47,8 +46,8 @@ public readonly struct ToolExecutor(string toolName, int maxResultLength)
     /// </summary>
     /// <remarks>
     /// <para>
-    /// 此前该守卫在 <b>27 个执行器</b>里逐行重写（<c>(options ?? throw …).Value.MaxXxx</c>，
-    /// 其中含 3 个预算项的域写 3 遍），由守卫
+    /// 该守卫只允许存在于此处：执行器各自重写（<c>(options ?? throw …).Value.MaxXxx</c>，含多个预算项的域
+    /// 就写多遍）会让判据分裂。由守卫
     /// <c>ToolExecutorSkeletonGuards.OptionsNullGuard_ShouldLiveOnlyInToolExecutor</c> 机械锁定不回潮。
     /// </para>
     /// <para>

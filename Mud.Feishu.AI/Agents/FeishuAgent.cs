@@ -18,26 +18,20 @@ namespace Mud.Feishu.AI.Agents;
 /// 飞书 Agent 主循环：<c>MAF <see cref="DelegatingAIAgent"/></c> 的产品派生。
 /// </summary>
 /// <remarks>
+/// <c>ChatClientAgent</c> 负责「模型→生成」，本类负责「会话解析 + 选项装配 + 飞书遥测注入」（组合而非继承，在进入 MAF 前插入飞书特有装配）；
+/// 内部经 <see cref="InMemoryChatHistoryProvider"/> + <see cref="MessageCountingChatReducer"/> 施加
+/// <see cref="FeishuAgentOptions.MaxHistoryMessages"/> 历史裁剪窗。
 /// <para>
-/// <c>ChatClientAgent</c> 负责「模型→生成」，本类负责「会话解析 + 选项装配 + 飞书遥测注入」
-/// （Phase 0 §3.2：组合而非继承，在进入 MAF 前插入飞书特有装配）。
-/// 内部经 <see cref="InMemoryChatHistoryProvider"/> + <see cref="MessageCountingChatReducer"/>
-/// 施加 <see cref="FeishuAgentOptions.MaxHistoryMessages"/> 历史裁剪窗。
+/// <b>委托语义的归属</b>：内层仍是<b>组合</b>（<c>ChatClientAgent</c> 实例），而 <c>Id</c>/<c>Name</c>/<c>Description</c>/<c>GetService</c>/
+/// 会话三钩子/Run 两钩子由上游 <see cref="DelegatingAIAgent"/> 提供——本类<b>不再手写</b>这些转发成员。前置条件是上游 <c>GetService</c>
+/// 必须「先判自身」：否则 <c>GetService(typeof(AIAgent))</c> 命中内层 <c>ChatClientAgent</c>，宿主经该引用调用将绕过本类注入的飞书遥测与摘要
+/// （由 <c>AgentContractGuards</c> 的行为断言 + <c>FeishuAgentTests</c> 锁定）。
 /// </para>
 /// <para>
-/// <b>组合的形态（H1 起）</b>：内层仍是<b>组合</b>（<c>ChatClientAgent</c> 实例），
-/// 而「委托语义」（<c>Id</c>/<c>Name</c>/<c>Description</c>/<c>GetService</c>/会话三钩子/Run 两钩子）
-/// 由上游 <see cref="DelegatingAIAgent"/> 提供——本类<b>不再手写</b>这 5 个转发成员。
-/// 前置条件是上游的 <c>GetService</c> 必须「先判自身」：否则 <c>GetService(typeof(AIAgent))</c>
-/// 会命中内层 <c>ChatClientAgent</c>，宿主经该引用调用将绕过本类注入的飞书遥测与摘要
-/// （等价性由 <c>AgentContractGuards</c> 的行为断言 + <c>FeishuAgentTests</c> 锁定）。
-/// </para>
-/// <para>
-/// 会话持久化：<see cref="IConversationStore"/> 只存取序列化后的会话 JSON，本类是
-/// 序列化的唯一归属（<c>SerializeSessionAsync</c>/<c>DeserializeSessionAsync</c> 经
-/// <see cref="DelegatingAIAgent"/> 委托内层 MAF Agent），<see cref="GetOrCreateSessionAsync"/> /
-/// <see cref="SaveSessionAsync"/> 为事件入口（Phase 1）提供按键存取门面。会话 JSON 损坏时按
-/// miss 处理并重建（Phase 0 §8 回滚策略），保证旧格式数据不会让事件循环崩溃。
+/// <b>会话持久化</b>：<see cref="IConversationStore"/> 只存取序列化后的会话 JSON，本类是序列化的唯一归属
+/// （<c>SerializeSessionAsync</c>/<c>DeserializeSessionAsync</c> 经 <see cref="DelegatingAIAgent"/> 委托内层 MAF Agent）；
+/// <see cref="GetOrCreateSessionAsync"/> / <see cref="SaveSessionAsync"/> 为事件入口提供按键存取门面；会话 JSON 损坏时按 miss 处理并重建，
+/// 保证旧格式数据不会让事件循环崩溃。
 /// </para>
 /// </remarks>
 public sealed class FeishuAgent : DelegatingAIAgent, IAgentSessionFacade
@@ -116,7 +110,7 @@ public sealed class FeishuAgent : DelegatingAIAgent, IAgentSessionFacade
     /// <param name="tools">暴露给模型的工具（可空）。来源：容器内全部 <see cref="AIFunction"/>
     /// 注册（如 <c>Mud.Feishu.AI.Tools</c> 经白名单 MapTool 后桥接产出）；
     /// 为空/空集时保持 Phase 0 裸模型行为。</param>
-    /// <param name="domainGuidance">已启用工具所属域的 guidance 资产（可空；WP6 / AT-F09）。
+    /// <param name="domainGuidance">已启用工具所属域的 guidance 资产（可空）。
     /// 追加在宿主 <c>Instructions</c> <b>之后</b>（宿主指令优先）；为空/空集时指令与 Phase 0 完全一致。</param>
     /// <param name="summarizer">渐进式会话摘要器（可空；R3-13 DI 化——为空时按阈值自动创建，非空时直接使用）。</param>
     /// <exception cref="InvalidOperationException">配置非法（fail-fast）。</exception>
@@ -207,10 +201,8 @@ public sealed class FeishuAgent : DelegatingAIAgent, IAgentSessionFacade
 
         var logger = loggerFactory?.CreateLogger<FeishuAgent>();
 
-        // 精确计数可观测（R2-4）：原先 ChatTokenCounter 的初始化失败被 catch 静默吞掉，
-        // 「token 预算实际走字符估算」这一配置/依赖不匹配完全不可见。此处借宿主 logger 告警一次
-        //（ChatTokenCounter 是 static 无状态工具类，不引入日志面——R1 否决 3；H2 起该类位于
-        // Mud.AI.Agent.Conversations，故可观测性仍由本条告警 + InitializationFailure 断言承载）。
+        // 精确计数可观测：ChatTokenCounter 是 static 无状态工具类（不引入日志面），故「token 预算实际
+        // 走字符估算」这一配置/依赖不匹配由本条告警 + ChatTokenCounter.InitializationFailure 断言暴露。
         // 仅在 MaxHistoryTokens 实际启用时告警：未启用时估算与否无后果，避免噪声。
         if (options.MaxHistoryTokens > 0 && !ChatTokenCounter.IsExactCount)
         {
@@ -280,7 +272,7 @@ public sealed class FeishuAgent : DelegatingAIAgent, IAgentSessionFacade
     internal int MaxToolCallsPerTurn => _runtime.MaxToolCallsPerTurn;
 
     /// <summary>
-    /// T10 / D10：流式文本抑制选项（源 <see cref="FeishuAgentOptions.DeferTextUntilTurnComplete"/>；
+    /// 流式文本抑制选项（源 <see cref="FeishuAgentOptions.DeferTextUntilTurnComplete"/>；
     /// 事件入口读取此值决定流式增量推送策略）。
     /// </summary>
     internal bool DeferTextUntilTurnComplete => _runtime.DeferTextUntilTurnComplete;
@@ -375,13 +367,11 @@ public sealed class FeishuAgent : DelegatingAIAgent, IAgentSessionFacade
             await _summarizer.SummarizeIfNeededAsync(session, cancellationToken).ConfigureAwait(false);
         }
 
-        // 失败可见性（P2-8 / B3.3）：迭代器不能在含 catch 的 try 内 yield（CS1626），
-        // 故把「枚举 + 异常时标记 Span Error」下沉到非迭代器包装层。
-        //
-        // R3-7：流式路径同样记录模型调用耗时（与非流式 RunCoreAsync 对齐）——
-        // 此前只有非流式入直方图，流式（IM 会话默认路径）的 P95/P99 因此缺失。
-        // try/finally 在迭代器中**合法**（CS1626 只禁止 try 块内 yield 与 catch 共存）。
-        // 纪律：时长只进数值直方图（维度 agent），不得新增 appKey/sessionId 等 tag（原则 8：键只进 Span）。
+        // 失败可见性：迭代器不能在含 catch 的 try 内 yield（CS1626），故把「枚举 + 异常时标记 Span Error」
+        // 下沉到非迭代器包装层；try/finally 在迭代器中合法。
+        // 纪律：本流式路径与 RunCoreAsync 必须同样记录耗时与 token 用量（否则 IM 会话默认路径的
+        // P95/P99 与用量可观测性出现缺口），且时长只进数值直方图（维度 agent）——
+        // 不得新增 appKey/sessionId 等 tag（键只进 Span）。
         var llmStopwatch = System.Diagnostics.Stopwatch.StartNew();
         UsageDetails? lastUsage = null;
         try
@@ -390,10 +380,9 @@ public sealed class FeishuAgent : DelegatingAIAgent, IAgentSessionFacade
                 InnerAgent.RunStreamingAsync(messages, session, options, cancellationToken), activity)
                 .ConfigureAwait(false))
             {
-                // R4-8：流式路径同样记录 token 用量（与非流式 RunCoreAsync 对齐）——此前流式
-                // （IM 会话默认路径）的输入/输出 token 从不进 Span，用量可观测性出现一半缺口。
-                // MAF 在流中经 UsageContent 上报，取最后一次（其 Details 即本轮累计值）；
-                // 累积逻辑放在循环体内（MarkFailureOnEnumerateAsync 是无状态静态包装，不承载状态）。
+                // token 用量（与 RunCoreAsync 对齐）：MAF 在流中经 UsageContent 上报，取最后一次
+                // （其 Details 即本轮累计值）；累积逻辑必须放在循环体内——
+                // MarkFailureOnEnumerateAsync 是无状态静态包装，不承载状态。
                 if (update.Contents.OfType<UsageContent>().LastOrDefault() is { } usage)
                 {
                     lastUsage = usage.Details;

@@ -13,35 +13,22 @@ using Mud.AI.Abstractions.Observability;
 namespace Mud.AI.Agent.Channels;
 
 /// <summary>
-/// 分片缓冲流式通道基类（AI-FD-D12 P2D-2c 抽取）：增量缓冲达 <b>分片长度</b> <b>且</b>
-/// 距上次下游更新 ≥ <see cref="MinUpdateInterval"/>（常量 800ms，防平台频率限制——时间常数为字面量）
-/// 才更新一次下游；<see cref="FlushAsync"/> 终态无条件落地。
+/// 分片缓冲流式通道基类：增量缓冲达 <see cref="FeishuAgentOptions.MaxStreamChunkLength"/> <b>且</b>距上次下游更新 ≥
+/// <see cref="MinUpdateInterval"/>（常量 800ms，防飞书频率限制）才更新一次下游；<see cref="FlushAsync"/> 终态无条件落地。
 /// </summary>
 /// <remarks>
+/// <b>双阈值语义</b>：分片长度为「量」阈值、最小间隔为「率」阈值——长增量按分片更新；短增量连发被间隔钳制继续缓冲
+/// （牺牲字粒度，换频率安全）。两通道（<see cref="EditMessageChannel"/> / <see cref="CardStreamMessageChannel"/>）
+/// 缓冲语义同构，用例参数化覆盖。
 /// <para>
-/// <b>中立化说明（N2-b，方案 v2 §5.3 C3）</b>：本类型自产品适配层原样迁入，产品事实按定式剥离——
-/// ① 分片阈值由构造参数 <c>chunkLength</c> 注入（产品侧传自己的配置值，中立侧不留产品默认值）；
-/// ② 降级可观测经 <see cref="IAgentTelemetry"/> 端口（默认 Noop），降级<b>原因文案</b>由
-/// <see cref="DegradedReason"/> 虚拟属性给出（中立默认值；产品子类可覆写为自己的指标枚举值）。
-/// 产品侧若需在降级指标上带租户维度（如 app_key tag），覆写 <see cref="OnUpdateDegraded"/>
-/// 而不是改端口签名——维度纪律（键只进 Span 属性）是端口侧契约。
+/// <b>失败语义</b>（接口契约，子类共用）：<see cref="BeginAsync"/> 失败向上抛（调用方/降级链回退，模型尚未调用、零重复成本）；
+/// 单次更新的异常经 <see cref="UpdateWithIsolationAsync"/> 隔离——占位消息停留上一次成功内容，不中断模型流；子类
+/// <see cref="UpdateCoreAsync"/> 内的业务级失败（如 <c>outcome.Ok=false</c>）自行记日志返回，同样不中断模型流。
 /// </para>
 /// <para>
-/// <b>双阈值语义</b>：分片长度为「量」阈值、最小间隔为「率」阈值——长增量场景按分片更新；
-/// 短增量连发场景被间隔钳制继续缓冲（不出字粒度略粗，换频率安全）。两个产品通道
-/// （编辑消息 / 卡片流）缓冲语义同构，用例参数化覆盖。
-/// </para>
-/// <para>
-/// <b>失败语义</b>（接口契约，子类共用）：<see cref="BeginAsync"/> 失败向上抛（调用方/降级链回退，
-/// 模型尚未调用、零重复成本）；单次更新的异常经 <see cref="UpdateWithIsolationAsync"/> 隔离——
-/// 占位消息停留上一次成功内容，不中断模型流。子类 <see cref="UpdateCoreAsync"/> 内的业务级失败
-/// （如 outcome.Ok=false）自行记日志返回，同样不中断模型流。
-/// </para>
-/// <para>
-/// <b>状态生命周期契约（R2-02 / 根因 R-B）</b>：通道注册为 <c>Singleton</c>（进程寿命），故
-/// <b>子类新增的任何 per-messageId 状态（字典/集合）必须在 <see cref="OnFlushed"/> 中移除</b>——
-/// 基类在 <c>FlushAsync</c> 的终态落地之后无条件调用该钩子。未覆写即泄漏，且由
-/// <c>ChannelStateLifecycleContractGuards</c> 反射断言（Begin→Write→Flush 后全部
+/// <b>状态生命周期契约</b>：通道注册为 <c>Singleton</c>（进程寿命），故<b>子类新增的任何 per-messageId 状态（字典/集合）
+/// 必须在 <see cref="OnFlushed"/> 中移除</b>——基类在 <c>FlushAsync</c> 终态落地之后无条件调用该钩子；未覆写即泄漏，
+/// 由 <c>ChannelStateLifecycleContractGuards</c> 反射断言（Begin→Write→Flush 后全部
 /// <c>ConcurrentDictionary&lt;string, *&gt;</c> 字段计数归零）兜住。
 /// </para>
 /// </remarks>
@@ -115,8 +102,8 @@ public abstract class BufferedMessageChannel : IMessageChannel
         {
             buffer.Append(delta);
 
-            // R2-11：率阈值判定与时间戳登记必须在<b>同一把锁</b>内完成——此前登记在锁外的
-            // UpdateBufferedAsync 中，两次并发写可同时看到"间隔已过"而各自触发一次下游更新。
+            // 率阈值判定与时间戳登记必须在<b>同一把锁</b>内完成：分开写时两次并发写可同时看到
+            // "间隔已过"而各自触发一次下游更新。
             // 先登记再更新（失败也消耗本窗口，防失败风暴式重试）的语义保持不变。
             var now = _clock().Ticks;
             shouldUpdate = buffer.Length >= _chunkLength && IntervalElapsed(messageId, now);
@@ -147,16 +134,16 @@ public abstract class BufferedMessageChannel : IMessageChannel
         }
         finally
         {
-            // R2-02（根因 R-B）：子类登记的 per-messageId 状态与基类状态<b>同生命周期</b>——
-            // 由基类统一触发清理，子类不可能漏（清理职责从"谁定义"上移为"谁新增谁覆写钩子"）。
-            // 位置必须在**终态落地之后**：终态更新本身仍需要子类状态
+            // 子类登记的 per-messageId 状态与基类状态<b>同生命周期</b>——由基类统一触发清理，
+            // 子类不可能漏（清理职责从"谁定义"上移为"谁新增谁覆写钩子"）。
+            // 位置必须在<b>终态落地之后</b>：终态更新本身仍需要子类状态
             // （如卡片流通道要用 Begin 期登记的投放目标 open_id），提前清理会让终态更新静默跳过。
             OnFlushed(messageId);
         }
     }
 
     /// <summary>
-    /// 状态清理钩子（R2-02）：<b>子类新增的任何 per-messageId 状态必须在此移除</b>。
+    /// 状态清理钩子：<b>子类新增的任何 per-messageId 状态必须在此移除</b>。
     /// </summary>
     /// <remarks>
     /// <para>

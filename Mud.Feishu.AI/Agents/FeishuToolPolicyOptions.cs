@@ -14,36 +14,23 @@ namespace Mud.Feishu.AI.Agents;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>与既有 <see cref="FeishuAgentOptions.Tools"/> / <see cref="FeishuAgentOptions.WriteAllowList"/>
-/// 的关系 = <b>叠加收敛</b></b>：三者同时生效，任一拒绝即拒。既有白名单回答"哪些工具被启用"
-/// （装配期，未启用者根本不在注册表里），本策略回答"已启用的工具里，哪些**允许执行**"
-/// （运行期，早于授权门禁）。两轴不重叠，故不构成双白名单。
+/// <b>与 <see cref="FeishuAgentOptions.Tools"/> / <see cref="FeishuAgentOptions.WriteAllowList"/> 叠加收敛</b>：
+/// 三者同时生效，任一拒绝即拒。既有白名单管装配期"哪些工具进注册表"，本策略管运行期
+/// "已启用的工具里哪些允许执行"（早于授权门禁）——两轴不重叠，故不构成双白名单。
 /// </para>
 /// <para>
-/// <b>判定顺序（先便宜且拒绝原因更精确的轴）</b>：
-/// <list type="number">
-/// <item><b>域 Deny</b>（命中即拒，reason_code = <c>domain_not_allowed</c>）；</item>
-/// <item><b>域 Allow</b>（非空时未命中即拒，reason_code = <c>domain_not_allowed</c>）；</item>
-/// <item><b>工具名 Deny</b>（命中即拒；写工具 → <c>write_not_allowed</c>，只读 → <c>tool_not_allowed</c>）；</item>
-/// <item><b>工具名 Allow</b>（非空时未命中即拒；同上分类）。</item>
-/// </list>
-/// <b>Deny 恒优先于 Allow</b>（同一轴上先判 Deny）——这与"fail-closed 默认拒未列明"一致：
-/// 一旦配了 Allow，未列明者被拒；而 Deny 的存在保证"就算列进了 Allow 也能被显式否决"。
+/// <b>判定顺序</b>：域 Deny → 域 Allow → 工具名 Deny → 工具名 Allow，拒绝原因分别为
+/// <c>domain_not_allowed</c> / <c>write_not_allowed</c> / <c>tool_not_allowed</c>；<b>Deny 恒优先于 Allow</b>——
+/// 配了 Allow 后未列明者被拒，而 Deny 的存在保证"就算列进 Allow 也能被显式否决"。
 /// </para>
 /// <para>
-/// <b>空集合语义（易误读，逐条写明）</b>：
-/// <list type="bullet">
-/// <item><b>四个集合全空</b> ⇒ 本策略<b>不生效</b>（逐字节等价改造前行为；这是默认值）。</item>
-/// <item><b>Allow 为空、Deny 非空</b> ⇒ <b>该轴不启用</b>（即"只拉黑名单"模式）。
-/// 理由：把空 Allow 读成"全拒"会让最常见的 <c>"Deny": ["payroll.*"]</c> 变成
-/// <b>全工具不可用</b>——那是方案 §10 风险登记里"glob 策略误配置导致生产不可用"的形态，
-/// 必须由语义本身排除，而不是靠宿主不犯错。</item>
-/// <item><b>Allow 非空</b> ⇒ 未命中即拒（真正的白名单模式）。</item>
-/// </list>
+/// <b>空集合语义（易误读）</b>：四个集合全空 ⇒ 本策略不生效（默认值）；
+/// <b>Allow 为空、Deny 非空 ⇒ 该轴不启用</b>（"只拉黑名单"模式）——把空 Allow 读成"全拒"会让
+/// 最常见的 <c>"Deny": ["payroll.*"]</c> 变成全工具不可用。
 /// </para>
 /// <para>
-/// <b>非法模式 fail-closed</b>：任何模式非法（见 <c>ToolNamePattern</c> 的语法）都在
-/// <see cref="Validate"/> 期抛——拼错一个字符不会静默变成"不命中"（那会让宿主以为策略生效了）。
+/// <b>非法模式 fail-closed</b>：任何模式非法（语法见 <c>ToolNamePattern</c>）都在 <see cref="Validate"/>
+/// 期抛——拼错一个字符不会静默变成"不命中"（那会让宿主误以为策略生效）。
 /// </para>
 /// </remarks>
 public sealed class FeishuToolPolicyOptions

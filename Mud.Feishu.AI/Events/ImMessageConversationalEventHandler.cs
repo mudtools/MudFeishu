@@ -19,35 +19,26 @@ using Mud.Feishu.EventCallback.IM;
 namespace Mud.Feishu.AI.Events;
 
 /// <summary>
-/// 内置 IM 会话事件处理器（AI-FD-D12 P2D-5a，「零自定义接入」参考实现）：
-/// <c>im.message.receive_v1</c> 消息 → 会话 → 模型 → 回复/流式，一行接入
-/// （<c>AddFeishuImConversationHandler</c> + 通道 <c>AddHandler</c>）。
+/// 内置 IM 会话事件处理器（「零自定义接入」参考实现）：<c>im.message.receive_v1</c> 消息 →
+/// 会话 → 模型 → 回复/流式，一行接入（<c>AddFeishuImConversationHandler</c> + 通道 <c>AddHandler</c>）。
 /// </summary>
 /// <remarks>
+/// <b>事件规范化</b>：<c>Message.ChatType</c>（p2p/group）判定 <see cref="ConversationScope"/> 与会话主体
+/// （群聊 = chat_id、单聊 = 发送者 open_id）；<c>ChatId</c> 填 <see cref="ConversationRequest.ChatId"/>
+/// （单聊流式据此解锁）；<c>Mentions</c> 提取 @文本到 <see cref="ConversationRequest.MentionedText"/>。
 /// <para>
-/// <b>事件规范化</b>（<see cref="ConversationalFeishuEventHandler{T}.BuildRequestAsync"/>）：
-/// <c>Message.ChatType</c>（p2p/group）判定 <see cref="ConversationScope"/> 与会话主体
-/// （群聊 = chat_id、单聊 = 发送者 open_id）；<c>Message.ChatId</c> 填
-/// <see cref="ConversationRequest.ChatId"/>（P2D-2b，单聊流式解锁）；<c>Mentions</c> 提取
-/// @文本（<see cref="ConversationRequest.MentionedText"/>）。
+/// <b>安全内建</b>（通用逻辑权威化，非策略下放）：<c>sender_type == "app"</c> 跳过（防 Bot 自激事件风暴）；
+/// <see cref="ImConversationOptions.RequireMentionInGroup"/> 默认仅响应群聊 @Bot 消息
+/// （配 <see cref="ImConversationOptions.BotName"/> 后收紧为「必须 @ 到 Bot 本人」，未配时等价
+/// 「<c>mentions</c> 非空即视为 @Bot」）；<see cref="ImConversationOptions.AllowP2pConversation"/> 控单聊。
 /// </para>
 /// <para>
-/// <b>安全内建</b>（通用逻辑权威化，非策略下放）：
-/// Bot 自激过滤——<c>sender_type == "app"</c> 跳过（防 Bot 回复自己触发的事件风暴）；
-/// 群聊 @ 过滤——<see cref="ImConversationOptions.RequireMentionInGroup"/> 默认仅响应
-/// @Bot 消息（单聊不受影响；配置 <see cref="ImConversationOptions.BotName"/> 后收紧为「必须 @ 到 Bot 本人」，
-/// 未配置时等价旧行为「<c>mentions</c> 非空即视为 @Bot」——R3-3）；
-/// 单聊开关 <see cref="ImConversationOptions.AllowP2pConversation"/>。
-/// 过滤在业务幂等标记<b>之前</b>……由于基类 <c>HandleAsync</c> 已密封，过滤落在
-/// <see cref="ProcessBusinessLogicAsync"/> 入口：被过滤消息按「已消费」落幂等终态（不重投递）。
+/// <b>过滤先于业务幂等标记</b>：基类 <c>HandleAsync</c> 已密封，故过滤落在
+/// <see cref="ProcessBusinessLogicAsync"/> 入口；被过滤消息按「已消费」落幂等终态（不重投递）。
 /// </para>
 /// <para>
-/// <b>回复</b>：<c>IFeishuTenantV1Message.ReplyMessageAsync</c> 文本回复（以触发消息为父消息）；
-/// <b>流式</b>：注入 <see cref="IMessageChannel"/> 时启用（目标 = <see cref="ConversationRequest.ChatId"/>，
-/// 卡片流通道经目标解析器取发送者 open_id），复用基类全部既有语义。
-/// </para>
-/// <para>
-/// 事件订阅侧由宿主挂 WebSocket/Webhook 既有通道（不改变事件接入方式，已决策④）。
+/// <b>回复与流式</b>：<c>ReplyMessageAsync</c> 文本回复（以触发消息为父消息）；注入 <see cref="IMessageChannel"/>
+/// 即启用流式（目标 = <see cref="ConversationRequest.ChatId"/>，卡片流通道经目标解析器取发送者 open_id）。
 /// </para>
 /// </remarks>
 public sealed class ImMessageConversationalEventHandler(

@@ -12,7 +12,7 @@ using Mud.Feishu.AI.Conversations;
 namespace Mud.Feishu.AI.Events;
 
 /// <summary>
-/// 媒体消息上下文装配器（T3 / D3）：把用户发送的图片/音频/文件转写为文本注入 prompt。
+/// 媒体消息上下文装配器：把用户发送的图片/音频/文件转写为文本注入 prompt。
 /// </summary>
 /// <remarks>
 /// <para>

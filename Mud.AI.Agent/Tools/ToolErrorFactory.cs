@@ -12,9 +12,8 @@ namespace Mud.AI.Agent.Tools;
 /// </summary>
 /// <remarks>
 /// <para>
-/// 此前该模板在 3 处逐字复制（<c>ToolExecutor.FromStructuredError</c>、<c>FeishuToolBinding.EgressResult</c>、
-/// <c>FeishuToolBinding</c> catch 路径）。三处当前输出一致（除 <c>Trace</c>），
-/// 但任何契约演进（新增字段、改 <c>Attempts</c> 语义）都要改 3 处且漏改不被编译发现。
+/// 载荷模板只允许在这里存在：多处逐字复制时，任何契约演进（新增字段、改 <c>Attempts</c> 语义）
+/// 都要同步多处，且漏改不会被编译发现（副本间的差异只有 <c>Trace</c> 这类隐蔽项）。
 /// </para>
 /// <para>
 /// <b>不变量</b>：<c>Retryable</c> 由 <c>category</c> 派生（不得由调用方各写一份判断）；
@@ -38,10 +37,9 @@ public static class ToolErrorFactory
     /// <param name="retryAfterSeconds">建议等待秒数（见 <see cref="ToolError.RetryAfterSeconds"/> 的语义说明）。</param>
     /// <returns>错误载荷。</returns>
     /// <remarks>
-    /// <b>为什么这里不再合并"码表候选"（独立产品线纪律，2026-10-14）</b>：此前本工厂是
-    /// <c>ToolErrorCodeMeta</c>（产品码表）的唯一消费点，即中立包持有产品码语义。现在码表在
-    /// 产品适配层，码级候选随 <c>suggestions</c> 形参一并传入——本工厂只做<b>空集归一</b>
-    /// （空数组会被模型读成"有建议但为空"，故归一为 <see langword="null"/>）。
+    /// <b>本工厂不持有任何产品码语义</b>（独立产品线纪律）：码表在产品适配层，码级候选随
+    /// <c>suggestions</c> 形参传入。本工厂只做<b>空集归一</b>——空数组会被模型读成"有建议但为空"，
+    /// 故归一为 <see langword="null"/>。
     /// </remarks>
     public static ToolError Create(
         string toolName,

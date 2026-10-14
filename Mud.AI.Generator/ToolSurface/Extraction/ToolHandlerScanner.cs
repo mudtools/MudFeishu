@@ -39,22 +39,28 @@ namespace Mud.AI.ToolSurface.Extraction;
 /// </remarks>
 internal static class ToolHandlerScanner
 {
-    /// <summary>
-    /// P2-2 验证钩子：仅供测试程序集（<c>InternalsVisibleTo</c>）注入异常源，驱动 <c>{prefix}026</c>
-    /// 兜底路径——实参为剖面名，返回非空异常即在扫描体起点抛出。常态为 <see langword="null"/>，零开销。
-    /// </summary>
-    internal static Func<string, Exception?>? FaultInjectionForTests;
-
     /// <summary>扫描一个候选方法；非 handler 特性标注的方法返回 <see langword="null"/>。</summary>
+    /// <param name="context">语法上下文（语义模型取自 <c>context.SemanticModel</c>）。</param>
+    /// <param name="profile">当前剖面。</param>
+    /// <param name="factory">当前剖面的诊断工厂（动态槽位描述符）。</param>
+    /// <param name="faultInjection">
+    /// P2-2 验证钩子（仅供测试程序集经 <c>InternalsVisibleTo</c> 注入）：实参为剖面名，返回非空异常即在
+    /// 扫描体起点抛出。<b>由调用方（生成器实例）持有并传入，本层不保存</b>——曾用进程级静态字段，
+    /// 而 xUnit 默认并行跑测试类 ⇒ 注入期内的<b>并发测试</b>扫描一并被打挂（表现为产物静默缺席、
+    /// 只剩一条 026），且只在负载下偶发。常态为 <see langword="null"/>，零开销。
+    /// </param>
+    /// <param name="cancellationToken">取消令牌（CA1068：须为末位参数）。</param>
+    /// <returns>扫描结果（<see cref="ScannedHandler.Faulted"/> 或 <see langword="null"/>）。</returns>
     public static ScannedHandler? Scan(
         GeneratorSyntaxContext context,
         SdkToolProfileModel profile,
         ToolSurfaceDiagnostics.Factory factory,
+        Func<string, Exception?>? faultInjection,
         System.Threading.CancellationToken cancellationToken)
     {
         try
         {
-            if (FaultInjectionForTests?.Invoke(profile.Name) is { } fault)
+            if (faultInjection?.Invoke(profile.Name) is { } fault)
             {
                 throw fault;
             }

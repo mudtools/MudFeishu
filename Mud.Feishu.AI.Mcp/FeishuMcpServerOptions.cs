@@ -22,7 +22,7 @@ namespace Mud.Feishu.AI.Mcp;
 /// <b>为什么工具白名单不在这里</b>：暴露哪些工具的唯一真相源是
 /// <see cref="FeishuAgentOptions.Tools"/> / <see cref="FeishuAgentOptions.WriteAllowList"/>
 /// （装配期的注册表白名单）。本包<b>不新增</b>第二个开关——否则会出现"MCP 说没有、Agent 说有"
-/// 的双真相源（DP-C6-1）。
+/// 的双真相源。
 /// </para>
 /// <para>
 /// 配置绑定注意：本类型不得使用 <c>required</c>（源生成的配置绑定经 <c>new T()</c> 构造，

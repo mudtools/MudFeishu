@@ -16,8 +16,8 @@ namespace Mud.AI.Agent.Tools;
 /// 骨架 <c>ToolExecutor.RunAsync</c> 的 catch 分支与产品侧 <c>ToolArgs.RequireEnum</c>（抛出点）分处两个程序集）。
 /// </para>
 /// <para>
-/// <b>为什么需要它</b>：参数类错误此前只有 <see cref="System.ArgumentException"/> 的文本消息，
-/// 执行链的 catch 路径只能把整段文案塞进正文；模型要拿到"合法取值有哪些"必须<b>解析人类可读文本</b>。
+/// <b>为什么需要它</b>：参数类错误的恢复信息不能只靠人类可读文本——否则模型要拿到"合法取值有哪些"
+/// 必须<b>解析文案</b>，而执行链的 catch 路径只能把整段文案塞进正文。
 /// 本类型把候选值做成结构化字段，经 <c>ToolError.Suggestions</c> 进入错误载荷首行 JSON，
 /// 模型可直接分支（对齐官方 <c>lark-cli</c> 的 <c>Suggestions []string</c> 语义）。
 /// </para>

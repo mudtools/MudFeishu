@@ -119,7 +119,7 @@ public static class FeishuToolIdentityNames
 }
 
 /// <summary>
-/// 出站内容安全模式闭集（AT-F14；配置键 <c>FeishuAgent:ContentSafetyMode</c>）。
+/// 出站内容安全模式闭集（配置键 <c>FeishuAgent:ContentSafetyMode</c>）。
 /// </summary>
 /// <remarks>
 /// 与"净化"的边界：净化是<b>安全基线</b>（强制、无开关），内容安全是<b>策略</b>

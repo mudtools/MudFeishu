@@ -8,14 +8,14 @@
 namespace Mud.Feishu.AI.AgentTools;
 
 /// <summary>
-/// <see cref="IFeishuAppContextScopeFactory"/> 默认实现（R3-5：零业务客户端依赖 + 无 Transient 捕获）。
+/// <see cref="IFeishuAppContextScopeFactory"/> 默认实现（零业务客户端依赖 + 无 Transient 捕获）。
 /// </summary>
 /// <remarks>
 /// <para>
 /// <b>为什么不经业务域客户端</b>：生成的 HTTP 客户端注册为<b>瞬时</b>（<c>AddTransient</c>），而本工厂
-/// 以单例注册——旧实现直接持有 <c>IFeishuTenantV1Message</c>，既构成 Captive Dependency（TMA-13），
-/// 又要求宿主必须注册 IM 域客户端，使「按域装配」（如只调 <c>AddFeishuBitableTools()</c>）在解析
-/// <c>FeishuToolBinding</c> 时失败。
+/// 以单例注册——本工厂<b>不得</b>直接持有 <c>IFeishuTenantV1Message</c>：那既构成 Captive Dependency
+/// （TMA-13），又强制宿主注册 IM 域客户端，使「按域装配」（如只调 <c>AddFeishuBitableTools()</c>）
+/// 在解析 <c>FeishuToolBinding</c> 时失败。
 /// </para>
 /// <para>
 /// 本实现改为依赖两个<b>单例</b>：<c>IAppContextHolder</c>（切换器本体，

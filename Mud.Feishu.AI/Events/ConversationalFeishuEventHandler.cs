@@ -13,37 +13,21 @@ using Mud.Feishu.Abstractions.Services;
 namespace Mud.Feishu.AI.Events;
 
 /// <summary>
-/// 会话式事件处理器基类：飞书事件 → 会话 → 模型 → 回复 的入口（路线图主线① M1）。
+/// 会话式事件处理器基类：飞书事件 → 会话 → 模型 → 回复 的入口。
 /// </summary>
 /// <remarks>
+/// 本类是<b>薄壳</b>：11 阶段回合状态机与四类补偿路径在中立 <see cref="ConversationalTurnPipeline"/>，
+/// 这里只留产品事实与产品策略——事件规范化、回复下发（<see cref="IConversationReplySink"/> 端口，
+/// 首次回复与 outbox 补发共用）、多租户分级（<see cref="ConversationalTurnOptions.ValidateRequestPolicies"/>
+/// 委托注入，管线零产品政策）、可投递性前置判定与会话键治理。
 /// <para>
-/// <b>N4 管线中立化后的薄壳形态</b>：回合机制（会话闸门 → 会话 → outbox 补发 → 孤儿审批放弃 →
-/// 前置判定 → 上下文装配 → Run/RunStreaming → 落库 → 回复的 11 阶段状态机与四类补偿路径）
-/// 已上移中立 <see cref="ConversationalTurnPipeline"/>（Mud.AI.Agent）；本类只保留
-/// <b>产品事实与产品策略</b>：
-/// <list type="bullet">
-/// <item><b>事件规范化</b>（<see cref="BuildRequestAsync"/>，抽象钩子）：</item>
-/// <item><b>回复下发</b>（<see cref="ReplyAsync"/>，抽象钩子——经 <see cref="IConversationReplySink"/>
-/// 端口交给管线，首次回复与 outbox 补发共用）；</item>
-/// <item><b>多租户分级政策</b>（<see cref="AllowMissingAppKey"/> / <see cref="AllowToolsWithoutAppKey"/>，
-/// 经 <see cref="ConversationalTurnOptions.ValidateRequestPolicies"/> 委托注入——管线零产品政策）；</item>
-/// <item><b>下发可行性前置判定</b>（<see cref="TryFindDeliveryBlockAsync"/>，R2-01）；</item>
-/// <item><b>会话键治理</b>（<see cref="ConversationScopeMapper.BuildKey"/>，③ 式委托注入）。</item>
-/// </list>
+/// 次序约束（勿改）：①非流式<b>先落库、再回复</b>——反序会让用户收到两条；②流式 Begin 失败回退非流式，
+/// 流中失败须先用<b>不可取消令牌</b>补一次 <see cref="IMessageChannel.FlushAsync"/>，把占位消息落到终结态
+/// 再向上传播。
 /// </para>
 /// <para>
-/// 继承 <see cref="IdempotentFeishuEventHandler{T}"/> 复用 EventId 幂等（同一事件不二次调模型、
-/// 不重复扣费）；业务去重键自带命名空间（D 系契约：禁止裸 EventId）。
-/// </para>
-/// <para>
-/// 流式回复：注入 <see cref="IMessageChannel"/> 且会话主体可解析出 chat_id 时由管线走流式
-/// （Begin → 增量 → Flush；Begin 失败回退非流式；流中失败先补偿收尾再向上传播——
-/// 补偿 Flush 用不可取消令牌）。不再调 <see cref="ReplyAsync"/>。
-/// </para>
-/// <para>
-/// <b>落库 / 回复次序的取舍（R2-8，已决策，勿改次序）</b>：非流式路径<b>先持久化会话、再回复</b>
-/// ——「用户可见的重复」比「历史内部多一轮（用户不可见）」严重得多。outbox（P4-4）消除的是
-/// 重投递时的「重跑模型」，不是重投递本身。该次序由中立管线承载。
+/// 幂等沿用 <see cref="IdempotentFeishuEventHandler{T}"/>（同一事件不二次调模型、不重复扣费）；
+/// 业务去重键自带命名空间，禁止裸 EventId。
 /// </para>
 /// </remarks>
 /// <typeparam name="T">强类型事件 DTO（须实现 <see cref="IEventResult"/>）。</typeparam>
@@ -179,7 +163,7 @@ public abstract class ConversationalFeishuEventHandler<T> : IdempotentFeishuEven
     /// 会以<b>默认应用身份</b>发出（TMA2-20 跨租户错发的「读」方向）。
     /// </para>
     /// <para>
-    /// 需要平台解析时，按 R2-01 的约定把结果写入 <see cref="ConversationRequest.SenderId"/> /
+    /// 需要平台解析时，把结果写入 <see cref="ConversationRequest.SenderId"/> /
     /// <see cref="ConversationRequest.SubjectId"/>，<see cref="TryFindDeliveryBlockAsync"/> 只做纯判定。
     /// </para>
     /// </remarks>
@@ -222,24 +206,19 @@ public abstract class ConversationalFeishuEventHandler<T> : IdempotentFeishuEven
     protected IDisposable? BeginAppScope(string? appKey) => _scopeHolder.BeginAppScope(appKey);
 
     /// <summary>
-    /// 下发可行性前置判定（R2-01）：在<b>装配上下文与调用模型之前</b>执行，返回非 <see langword="null"/>
-    /// 表示本轮不可投递，管线按「<b>已消费</b>」短路（不调模型、不落历史、不重投递），原因进 Warning 日志。
+    /// 下发可行性前置判定：在<b>装配上下文与调用模型之前</b>执行，返回非 <see langword="null"/> 表示本轮
+    /// 不可投递，管线按「<b>已消费</b>」短路（不调模型、不落历史、不重投递），原因进 Warning 日志。
     /// </summary>
     /// <remarks>
+    /// 部分事件形态（如 <c>task.task.updated_v1</c>）的回投目标须经平台 API 解析，若到<b>回复阶段</b>才发现
+    /// 解析不出收件人，本轮已付过一次完整模型调用；本钩子的唯一目的就是把「能不能送出去」前移到<b>花钱之前</b>。
     /// <para>
-    /// <b>要解决的问题</b>：部分事件形态（如 <c>task.task.updated_v1</c>）的回投目标必须经平台 API 解析，
-    /// 而"解析不出收件人"若在<b>回复阶段</b>才发现，则本轮已经付过一次完整模型调用（计费 + 延迟 + 一轮历史落库）。
-    /// 该判定把"能不能送出去"前移到<b>花钱之前</b>——这是本钩子的唯一目的。
+    /// 用钩子而不是「抛终态异常」：基类异常语义是幂等回滚 + 重投递（at-least-once，被多个用例锁定），
+    /// 加一类「不重投递的异常」等于改全局契约；钩子表达力等价（可携带原因）且<b>零异常语义变更</b>。
     /// </para>
     /// <para>
-    /// <b>为什么用钩子而不是"抛终态异常 + 改异常语义"</b>：异常语义是<b>幂等回滚 + 重投递</b>
-    /// （at-least-once 契约，被多个用例锁定）；引入"某类异常不重投递"需要改这条全局契约。
-    /// 钩子返回值的表达力等价（可携带原因），却<b>零异常语义变更</b>。
-    /// </para>
-    /// <para>
-    /// <b>实现方约定</b>：需要平台 API 解析投递目标时，在 <see cref="BuildRequestAsync"/> 内解析并把目标
-    /// 写入 <see cref="ConversationRequest.SenderId"/>（或 <see cref="ConversationRequest.SubjectId"/>），
-    /// 本钩子只做纯判定（不再重复 I/O）。
+    /// <b>实现方约定</b>：需要平台 API 解析投递目标时，在 <see cref="BuildRequestAsync"/> 内解析并写入
+    /// <see cref="ConversationRequest.SenderId"/>（或 <see cref="ConversationRequest.SubjectId"/>），本钩子只做纯判定。
     /// </para>
     /// </remarks>
     /// <param name="request">已规范化的会话请求。</param>
@@ -367,9 +346,9 @@ public abstract class ConversationalFeishuEventHandler<T> : IdempotentFeishuEven
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>R2-01b</b>：触发文本（每个派生类的 <c>MentionedText</c>）<b>必须进入模型</b>——
-    /// 内建装配把触发文本放在最前。派生类（如 IM 处理器）<b>不得</b>为同一语义再写一遍覆写
-    /// （「每个派生类都必须记得覆写一次同样的三行」是机制缺失；基类默认 + 管线内建装配已保证正确）。
+    /// 触发文本（每个派生类的 <c>MentionedText</c>）<b>必须进入模型</b>——内建装配把它放在最前。
+    /// 派生类（如 IM 处理器）<b>不得</b>为同一语义再写一遍覆写（「每个派生类都得记得覆写同样三行」是机制缺失；
+    /// 基类默认 + 管线内建装配已保证正确）。
     /// </para>
     /// <para>
     /// 空消息守卫由管线承载：它拦的是"装配器与触发文本都空"的真实异常形态

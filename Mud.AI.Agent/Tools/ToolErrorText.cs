@@ -29,7 +29,7 @@ public static class ToolErrorText
     /// </summary>
     /// <remarks>
     /// <para>
-    /// AT-B12：<see cref="ToolErrorCategory.Confirmation"/> 是<b>独立</b>语义，
+    /// <see cref="ToolErrorCategory.Confirmation"/> 是<b>独立</b>语义，
     /// 不得复用 <see cref="ToolErrorCategory.Validation"/> 的"请修正参数"后缀——待确认不是参数错，
     /// 让模型去改参数会让它陷入无意义的重试循环。
     /// </para>

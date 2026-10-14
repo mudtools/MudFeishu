@@ -11,26 +11,18 @@ namespace Mud.AI.Abstractions.Conversations;
 /// 会话持久化端口（<b>产品中立</b>：Get / Save / Delete 三方法，零依赖）。
 /// </summary>
 /// <remarks>
-/// <para>
-/// <b>载荷形态</b>：存的是 <c>AIAgent.SerializeSessionAsync</c> 产出的会话 JSON <b>字符串</b>——
-/// 序列化 / 反序列化由持有 <c>AgentSession</c> 的 Agent 负责（见
-/// <c>Mud.AI.Agent.Sessions.AgentSessionStore</c>），本端口只做「原始字符串 + TTL」存取，
+/// <b>载荷形态</b>：存的是 <c>AIAgent.SerializeSessionAsync</c> 产出的会话 JSON <b>字符串</b>——序列化/反序列化由持有
+/// <c>AgentSession</c> 的 Agent 负责（见 <c>Mud.AI.Agent.Sessions.AgentSessionStore</c>），本端口只做「原始字符串 + TTL」存取，
 /// 从而内存 / Redis / 任意后端的行为逐字节一致。
+/// <para>
+/// <b>为什么端口在中立包而不是各产品包里</b>：会话门面（<c>AgentSessionStore</c>）住在中立的 AI 运行期包，若它依赖某个<b>产品</b>的
+/// 存储契约，依赖方向就倒置（中立包 → 产品契约），上游化当场不可能；反过来把产品侧契约搬进 <c>Mud.AI.*</c> 也不行——那会让
+/// <b>已发布</b>的核心 SDK 包反向依赖<b>未发布</b>的 AI 包族（由 <c>CoreSdkProjects_ShouldNotDependOnMudAiFamily</c> 机械锁定）。
+/// ⇒ 正解是「中立端口在此 + 产品侧适配器」：产品包（<c>Mud.Feishu.AI</c>）用一个 internal 适配器桥接，核心 SDK 与已发布包<b>一个字节都不用改</b>。
 /// </para>
 /// <para>
-/// <b>为什么端口在中立包而不是各产品包里（P1-H3 的定式）</b>：会话门面
-/// （<c>AgentSessionStore</c>）住在中立的 AI 运行期包里，若它依赖某个<b>产品</b>的存储契约，
-/// 依赖方向就倒置（中立包 → 产品契约），P3 上游化当场不可能。反过来把产品侧的存储契约搬到
-/// <c>Mud.AI.*</c> 也不行：那会让<b>已发布</b>的核心 SDK 包反向依赖<b>未发布</b>的 AI 包族
-/// （由 <c>CoreSdkProjects_ShouldNotDependOnMudAiFamily</c> 机械锁定）。
-/// ⇒ 正解是「中立端口在此 + 产品侧适配器」：
-/// 产品包（<c>Mud.Feishu.AI</c>）用一个 internal 适配器把它的存储契约桥接到本端口，
-/// 核心 SDK 与已发布包<b>一个字节都不用改</b>。
-/// </para>
-/// <para>
-/// <b>键的所有权</b>：键的构造规则（租户 / 会话维度前缀）是产品的键治理，不属于本端口；
-/// 本端口只按调用方给的字符串存取。键的<b>状态键</b>（会话历史在状态袋内的命名空间）同理——
-/// 由产品侧注入给门面，中立包不硬编码任何产品前缀。
+/// <b>键的所有权</b>：键的构造规则（租户 / 会话维度前缀）是产品的键治理，不属于本端口——本端口只按调用方给的字符串存取；
+/// 键的<b>状态键</b>（会话历史在状态袋内的命名空间）同理，由产品侧注入给门面，中立包不硬编码任何产品前缀。
 /// </para>
 /// </remarks>
 public interface ISessionStore

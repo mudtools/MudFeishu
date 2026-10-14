@@ -13,10 +13,9 @@ namespace Mud.AI.Agent.Tools.Errors;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>为什么需要它（B-7 / R-7）</b>：周边包（MCP 协议层）在"未预期异常"分支需要回填一条
-/// 与执行链同构的错误文本，此前直接调用 <c>ToolErrorText.StructuredError</c>——
-/// 该类型是实现细节（含授权/审计/重试/上下文切换的完整执行链），却被下游当作工具函数使用。
-/// 抽成一句能力后，实现类型可以 <c>internal</c> 化。
+/// <b>为什么需要它</b>：周边包（MCP 协议层）在"未预期异常"分支要回填一条与执行链同构的错误文本，
+/// <b>不得</b>直接调用 <c>ToolErrorText.StructuredError</c>——该类型是实现细节
+/// （含授权/审计/重试/上下文切换的完整执行链），被下游当工具函数用会让它无法 <c>internal</c> 化。
 /// </para>
 /// <para>
 /// <b>为什么不让调用方自己拼 JSON</b>：错误载荷的字段集（<c>category</c>/<c>subtype</c>/<c>retryable</c>/

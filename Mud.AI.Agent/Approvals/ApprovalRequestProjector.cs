@@ -11,13 +11,12 @@ namespace Mud.AI.Agent.Approvals;
 
 /// <summary>
 /// 框架审批请求（<see cref="ToolApprovalRequestContent"/>）→ 宿主可见投影
-/// （<see cref="FrameworkToolApprovalRequest"/>）的<b>唯一</b>实现（R5-11 抽取）。
+/// （<see cref="FrameworkToolApprovalRequest"/>）的<b>唯一</b>实现。
 /// </summary>
 /// <remarks>
 /// <para>
-/// 抽取动机与 R2-01b 同款：投影 + 通知此前只存在于事件处理器内，R5-11 的续跑闭环需要同一份逻辑
-/// ——「每个新入口各写一遍」正是机制缺失，缺陷表现为「续跑轮的审批请求静默丢失」。
-/// 抽取后：事件层（非流式/流式两处收集点）与续跑闭环共用同一实现。
+/// 投影 + 通知只允许存在于这一处：事件层（非流式/流式两处收集点）与续跑扩展必须共用同一实现——
+/// 「每个新入口各写一遍」是机制缺失，其缺陷表现为「续跑轮的审批请求静默丢失」。
 /// </para>
 /// <para>
 /// <b>fail-closed 不变</b>：宿主批准通道未注册或抛异常时，写工具保持未执行，绝不降级为「自动批准」。

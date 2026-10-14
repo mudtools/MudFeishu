@@ -50,6 +50,25 @@ namespace Mud.AI.ToolSurface;
 [Generator]
 public sealed class ToolSurfaceSourceGenerator : TransitiveCodeGenerator
 {
+    /// <summary>
+    /// 工具扫描的故障注入钩子（仅供测试程序集经 <c>InternalsVisibleTo</c> 注入）：实参为剖面名，
+    /// 返回非空异常即在扫描体起点抛出，用于驱动 <c>{prefix}026</c> 兜底路径。
+    /// </summary>
+    /// <remarks>
+    /// <b>为什么是实例槽而不是进程级静态字段</b>：本钩子是「验证一条失败路径」的测试 seam，
+    /// 而 xUnit 默认<b>并行执行测试类</b>。静态字段的作用域是整个测试进程 ⇒ 注入期内的并发测试
+    /// 扫描会被一并打挂：产物静默缺席、诊断只剩一条 026（affordance 资产则从 028 退化为
+    /// 「文件名不命中工具名」029），症状是与被测行为无关的用例偶发红（2026-10-14 windows-latest
+    /// CI 实测：<c>Affordance_MissingSectionAndEmptySection_ReportStructureError</c> 取不到 028）。
+    /// 实例槽 ⇒ 作用域收敛为「本生成器实例 ⇒ 本次 driver 运行 ⇒ 本测试」，跨测试串味在结构上不可达。
+    /// </remarks>
+    internal Func<string, Exception?>? ScanFaultInjectionForTests { get; set; }
+
+    /// <summary>
+    /// 执行器扫描的故障注入钩子（语义同 <see cref="ScanFaultInjectionForTests"/>，命中 <c>ScanHandler</c> 路径）。
+    /// </summary>
+    internal Func<string, Exception?>? HandlerFaultInjectionForTests { get; set; }
+
     /// <inheritdoc />
     public override void Initialize(IncrementalGeneratorInitializationContext context)
     {
@@ -69,15 +88,19 @@ public sealed class ToolSurfaceSourceGenerator : TransitiveCodeGenerator
         var additionalTexts = context.AdditionalTextsProvider.Collect();
 
         // ── L1：工具特性扫描（语法候选 → 剖面归属 → 值模型；空剖面在变换内短路）──
+        // 故障注入钩子在 Initialize 读取一次并由变换闭包捕获：捕获的是**局部**（不捕获 this，
+        // 保持变换的值语义/增量缓存纪律），且作用域收敛到本生成器实例 ⇒ 无跨测试串味。
+        var scanFault = ScanFaultInjectionForTests;
         var scanned = context.SyntaxProvider
-            .CreateSyntaxProvider(IsToolCandidate, ScanTool)
+            .CreateSyntaxProvider(IsToolCandidate, (ctx, ct) => ScanTool(ctx, scanFault, ct))
             .Where(static result => result is not null)
             .Select(static (result, _) => result!)
             .WithTrackingName("ToolSurface_ToolScan");
 
         // ── L1：执行器绑定扫描（handler 特性 → 工具名 + 执行器构造签名）──
+        var handlerFault = HandlerFaultInjectionForTests;
         var handlers = context.SyntaxProvider
-            .CreateSyntaxProvider(IsHandlerCandidate, ScanHandler)
+            .CreateSyntaxProvider(IsHandlerCandidate, (ctx, ct) => ScanHandler(ctx, handlerFault, ct))
             .Where(static result => result is not null)
             .Select(static (result, _) => result!)
             .WithTrackingName("ToolSurface_HandlerScan");
@@ -175,7 +198,13 @@ public sealed class ToolSurfaceSourceGenerator : TransitiveCodeGenerator
     /// 工具接口扫描：解析剖面 → 找到「工具特性命中」的唯一剖面 → 扫描。
     /// 空剖面 / 无命中 / 缺槽剖面（SDKT002 已接管）一律返回 <see langword="null"/>。
     /// </summary>
-    private static ProfiledScan? ScanTool(GeneratorSyntaxContext context, CancellationToken cancellationToken)
+    /// <param name="context">语法上下文。</param>
+    /// <param name="faultInjection">故障注入钩子（实例级；见 <see cref="ScanFaultInjectionForTests"/>）。</param>
+    /// <param name="cancellationToken">取消令牌（CA1068：须为末位参数）。</param>
+    private static ProfiledScan? ScanTool(
+        GeneratorSyntaxContext context,
+        Func<string, Exception?>? faultInjection,
+        CancellationToken cancellationToken)
     {
         // P2-2：符号与剖面归属提升到 try 外——catch 据此把可归属异常折算为 {prefix}026 随流上报。
         INamedTypeSymbol? symbol = null;
@@ -209,7 +238,9 @@ public sealed class ToolSurfaceSourceGenerator : TransitiveCodeGenerator
                     continue;
                 }
 
-                return new ProfiledScan(profile, ToolSurfaceScanner.Scan(symbol, compilation, profile, ToolSurfaceDiagnostics.For(profile)));
+                return new ProfiledScan(
+                    profile,
+                    ToolSurfaceScanner.Scan(symbol, compilation, profile, ToolSurfaceDiagnostics.For(profile), faultInjection));
             }
 
             return null;
@@ -238,7 +269,13 @@ public sealed class ToolSurfaceSourceGenerator : TransitiveCodeGenerator
     }
 
     /// <summary>执行器方法扫描（按 handler 特性槽归属剖面；同 ScanTool 的短路纪律）。</summary>
-    private static ProfiledHandler? ScanHandler(GeneratorSyntaxContext context, CancellationToken cancellationToken)
+    /// <param name="context">语法上下文。</param>
+    /// <param name="faultInjection">故障注入钩子（实例级；见 <see cref="HandlerFaultInjectionForTests"/>）。</param>
+    /// <param name="cancellationToken">取消令牌（CA1068：须为末位参数）。</param>
+    private static ProfiledHandler? ScanHandler(
+        GeneratorSyntaxContext context,
+        Func<string, Exception?>? faultInjection,
+        CancellationToken cancellationToken)
     {
         // P2-2：剖面归属提升到 try 外（同 ScanTool）。
         SdkToolProfileModel? attributedProfile = null;
@@ -259,7 +296,12 @@ public sealed class ToolSurfaceSourceGenerator : TransitiveCodeGenerator
                 }
 
                 attributedProfile = profile;
-                var scan = ToolHandlerScanner.Scan(context, profile, ToolSurfaceDiagnostics.For(profile), cancellationToken);
+                var scan = ToolHandlerScanner.Scan(
+                    context,
+                    profile,
+                    ToolSurfaceDiagnostics.For(profile),
+                    faultInjection,
+                    cancellationToken);
                 if (scan is not null)
                 {
                     return new ProfiledHandler(profile, scan);

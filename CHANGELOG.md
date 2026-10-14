@@ -1,5 +1,69 @@
 # Mud.Feishu 更新日志
 
+## [Unreleased] - 注释纪律门禁与注释审计落地（2026-10-14）
+
+> 新增契约守卫 `CommentConventionContractGuards`（`Tests/Mud.Feishu.AI.Tests/ContractGuards/`）、
+> 冻结台账 `documents/AIAgent/comment-budget-baseline.json`、审计脚本 `scripts/comment-audit.ps1`，
+> 规范条目见 `AGENTS.md` 的「Comment discipline — 注释纪律」。
+
+### 🧹 注释治理
+
+- **三条机械判据**（作用域 = 手写运行时层 4 工程 / 120 文件）：①注释里的评审编号必须能在
+  `documents/**` 或 `CHANGELOG.md` 里解析；②叙述过程的注释块必须给出**存在**的文档链接；
+  ③逐文件注释行数与最长叙述块冻结、只允许下压，新文件硬上限「最长块 ≤ 20 行、≤ 120 注释行」。
+- **违规面清零**（全部为真实清理，不是放宽判据）：首轮冻结的 38 条悬空编号与 30 处未链接过程叙述
+  已全部改写为「现在必须怎样」的约束或删除——**台账当前 anchors = 0 / narration = 0**；
+  注释行数 7233 → 7187 → 6837（含两轮样板文件 -137 行），最长块 > 20 的文件 68 → 46
+  （其中 > 24 的 6 个），**最长块 > 30 的文件已清零**，当前最大值 26。
+- **决策外移**：新增 `documents/AIAgent/decisions/`（`ADR-0001`：会话摘要器与 MAF 压缩管线取舍，
+  由 `ConversationSummarizer` 的类注释迁出），代码侧只留一行路径引用；错误契约的取舍一律指向
+  `documents/AIAgent/工具错误契约.md`（`missing_scope` / `sanitizer_rejected` 的"不得新增"依据）。
+- **样板清理**：`ConversationSummarizer.cs` 442 → 388 行（注释 152 → 99，最长块 48 → 18）；
+  `ConversationalFeishuEventHandler.cs` 897 → 841 行（最长块 44 → 22）；本轮共清理 35 个文件——
+  删掉全部**评审批次编号**（24 处，含内存会话清扫、幂等状态生命周期、切片保护、媒体装配、
+  内容安全模式等模块）与**过程叙事**（30 处「此前/原先/旧实现/已删除…」，改写为「现在必须怎样」
+  的约束或删除）。**保留**平台怪癖与次序约束（ns2.0 缺 NotNullWhen 注解、状态袋惰性反序列化、
+  锁内登记、catch 面收口、投递次序等）——这些正是「读代码看不出来」的部分。
+- **长块续清理（同轮续批，28 个文件；数值为最长叙述块行数）**：首批 `TaskUpdatedConversationalEventHandler` 43 → 20、
+  `BitableRecordContextAssembler` 39 → 26、`McpServiceCollectionExtensions` 38 → 19、`FeishuToolPolicyOptions` 37 → 24、
+  `AgentToolAttribute` 34 → 22、`AgentSessionStore` 34 → 25、`FeishuToolCallBudget` 32 → 22、
+  `ImMessageConversationalEventHandler` 32 → 23、`FeishuAgentApprovalExtensions` 31 → 23、`ApprovalContextAssembler` 30 → 23；
+  续批 `ToolResultPipeline` 30 → 24、`ApprovalTaskConversationalEventHandler` 30 → 24、`FeishuMcpToolServer` 30 → 22、
+  `SdkToolProfileAttribute` 29 → 24、`KeyedConversationGate` 29 → 24、`GroupHistoryContextAssembler` 29 → 20；
+  第三批 `GuidanceComposer` 28 → 22、`CardStreamMessageChannel` 27 → 17、`ToolParameterAttribute` 27 → 15、
+  `FeishuAgent` 26 → 20、`FeishuPendingApprovalState` 26 → 20、`ToolNamePattern` 26 → 20；
+  第四批（同为 26 行块）`BufferedMessageChannel` → 20、`ConversationScopeMapper` → 18、`ConversationStoreSessionAdapter` → 17、
+  `BitableRecordChangedConversationalEventHandler` → 19、`IToolApprovalChannel` → 21、`ISessionStore` → 18。
+  手法一致：删批次号回声与可从代码读出的事实，保「读代码看不出来」的约束
+  （装配前置契约、stdio 下 stdout 即协议通道、策略空集合语义与 Deny 优先、AsyncLocal per-run 生命周期与
+  0 = 不限制、投递目标解析与模型前短路、预算**截断**优先于整段丢弃、untrusted 头、事实键约定、
+  条件必填组的 anyOf 产出与构建期校验、安全内建过滤次序、批准续跑的三条 fail-closed 抛错、
+  会话闸门「取消不 Release」的运行时契约、MCP 白名单真相源与 ApprovalRequiredAIFunction 陷阱等），
+  并把「方案文档链接」替换为指向仓内权威声明（如剖面类型）或 ADR。
+- **判据精度修正 3 处**（本轮实测发现，均已加自证用例）：①`任务已删除`/`引用消息可能已删除/无权限`
+  属**运行期状态**而非代码演进史，叙述判据加前后视排除；②最长块只度量**叙述块**——`<param>`/`<typeparam>`
+  起首行视为块分隔符，否则十参数的公开方法/record 即使每项各写一行也必然超限，等于逼迫作者删合法文档；
+  ③编号前后视收紧（`(?<![\w-])…(?![\w-])`）并把决策记录号单列一条——原先会把决策记录号截成
+  普通批次号上报，诊断指向错的东西；收紧后另行清掉 13 处悬空决策号/批次号引用（错误契约、
+  投递可行性前置判定、群聊历史装配、MCP 依赖方向等）。
+- ⚠️ **过程留痕（供后来者避坑）**：本轮两次踩到「CHANGELOG 是编号解析源」的副作用——在变更日志里
+  枚举评审批次编号会给代码里的同号引用**发通行证**（一次让冻结清单从 38 条"变成"24 条，一次反向
+  让已清干净的号重新变成违规）。故本条目只以内容描述批次，不再列举编号。
+
+### 🧪 测试与门禁
+
+- `CommentConventionContractGuards`：3 条事实断言（锚点可解析 / 过程叙述须有存在的链接 / 预算冻结）
+  + 4 条 `[Theory]` 自证（检查器失效即报红），并含防自我认证断言：编号解析源必须**排除冻结基线自身**，
+  否则基线与 CHANGELOG 互相印刷编号会让编号凭空"可解析"（首次固化时实测踩中，故加断言锁定）。
+- 重新固化入口：`pwsh ./scripts/comment-audit.ps1 -UpdateBaseline`（判据只有一处实现 = 守卫自身；
+  脚本只呈现台账，不重复实现规则）。脚本为 ASCII-only——CJK 字面量在无 BOM 的 UTF-8 脚本里会让
+  Windows PowerShell 5.1 直接解析失败，与 `audit-config-keys.ps1` 同一理由。
+- **固化不可用于放行**：重新固化先按旧基线校验，树上仍有悬空编号/未链接叙述/预算越界时**拒绝写入**
+  （否则"再固化一次"就是放行通道，违规会被原样记入台账）。已用故意违规金丝雀实测三条判据全部报红
+  且固化被拒，删除金丝雀后恢复全绿；`FeishuDocsRegistryContractGuards` 4/4 过。
+- 回归：`Mud.Feishu.AI.Tests` 484/484（含注释纪律守卫 29）、`Mud.AI.Agent.Tests` 55/55、
+  解决方案 `--no-incremental` build 0 错误且被改文件的注释未引入新告警。
+
 ## [Unreleased] - Curation 声明面分六组目录（D-1，2026-10-12）
 
 > 方案与守卫改造见 `documents/AIAgent/MudFeishu-AI-Tools-Tools目录重组方案.md` §八（D-1 修订）。

@@ -61,21 +61,24 @@ public class DeferTextContractGuards
     }
 
     /// <summary>
-    /// 守卫 ④：ConversationalFeishuEventHandler 源码中必须引用 DeferTextUntilTurnComplete（真实消费点）。
+    /// 守卫 ④：中立回合管线源码中必须引用 DeferTextUntilTurnComplete（真实消费点）。
     /// </summary>
+    /// <remarks>
+    /// <b>N4 改锚</b>：流式文本抑制的消费点随回合机制迁入中立
+    /// <c>ConversationalTurnPipeline</c>（Mud.AI.Agent）——断言锚点随实现迁移。
+    /// </remarks>
     [Fact]
-    public void ConversationalFeishuEventHandler_ShouldConsume_DeferTextUntilTurnComplete()
+    public void ConversationalTurnPipeline_ShouldConsume_DeferTextUntilTurnComplete()
     {
-        // ConversationalFeishuEventHandler<T> 是泛型类，用未绑定泛型获取程序集位置。
-        var unbound = typeof(ConversationalFeishuEventHandler<>);
+        var unbound = typeof(Mud.AI.Agent.Events.ConversationalTurnPipeline);
         var sourcePath = FindSourceFile(
             unbound.Assembly.Location,
-            "ConversationalFeishuEventHandler.cs");
+            "ConversationalTurnPipeline.cs");
 
-        sourcePath.Should().NotBeNull("必须能定位 ConversationalFeishuEventHandler.cs 源文件");
+        sourcePath.Should().NotBeNull("必须能定位 ConversationalTurnPipeline.cs 源文件");
         var source = File.ReadAllText(sourcePath!);
         source.Should().Contain("DeferTextUntilTurnComplete",
-            "ConversationalFeishuEventHandler.RunConversationAsync 必须消费 DeferTextUntilTurnComplete 选项");
+            "ConversationalTurnPipeline.RunConversationAsync 必须消费 DeferTextUntilTurnComplete 选项");
         source.Should().Contain("FunctionCallContent",
             "DeferTextUntilTurnComplete=true 时必须检测 FunctionCallContent 以决定是否丢弃文本");
     }

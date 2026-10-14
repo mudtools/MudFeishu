@@ -5,6 +5,9 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.AI.Abstractions.Context;
+using Mud.AI.Abstractions.Knowledge;
+
 namespace Mud.Feishu.AI.Events;
 
 /// <summary>
@@ -26,17 +29,26 @@ namespace Mud.Feishu.AI.Events;
 /// 而每个公开配置属性都必须有真实消费点与守卫登记；当前没有第二个取值需求。
 /// 超限策略是<b>截断</b>（不是整段丢弃），见各装配器实现。
 /// </para>
+/// <para>
+/// <b>N2-e 拆分（方案 v2 §5.5 E4）</b>：与产品语义无关的三个组已下沉中立包，本文件以
+/// <b>常量转发</b>保持既有引用面不变（单一源在中立侧，避免两份字面量漂移）：
+/// ① 知识三闸 → <see cref="RetrievalBudgets"/>（供中立 <c>VectorRetriever</c> 与产品
+/// <c>KnowledgeContextAssembler</c> 消费；N4 拆分装配器后删除本组转发）；
+/// ② <see cref="MaxFactsPerAssembler"/> / <see cref="TruncationMarker"/> →
+/// <see cref="AssemblerBudgets"/>（N4 起由中立 <c>FactListContextAssembler</c> 直接消费）。
+/// <b>留产品侧</b>：审批 / 多维表格 / 日程 / 群历史预算与 untrusted 标注文案（含飞书事件载荷表述）。
+/// </para>
 /// </remarks>
 public static class ContextBudgets
 {
     /// <summary>知识检索切片：单条预览上限（字符）。</summary>
-    public const int KnowledgeChunkPreviewLength = 500;
+    public const int KnowledgeChunkPreviewLength = RetrievalBudgets.ChunkPreviewLength;
 
     /// <summary>知识检索切片：单轮注入总上限（字符）。</summary>
-    public const int KnowledgeTotalLength = 3000;
+    public const int KnowledgeTotalLength = RetrievalBudgets.TotalLength;
 
     /// <summary>知识检索切片：单轮注入条数上限。</summary>
-    public const int KnowledgeMaxChunks = 8;
+    public const int KnowledgeMaxChunks = RetrievalBudgets.MaxChunks;
 
     /// <summary>审批事件：单个字段值预览上限（字符）。</summary>
     public const int ApprovalFieldPreviewLength = 300;
@@ -59,7 +71,7 @@ public static class ContextBudgets
     /// <summary>
     /// 单次装配最多注入的事实条数（防止"事件载荷字段爆炸"把预算吃光）。
     /// </summary>
-    public const int MaxFactsPerAssembler = 16;
+    public const int MaxFactsPerAssembler = AssemblerBudgets.MaxFactsPerAssembler;
 
     /// <summary>
     /// 所有装配器共用的 <b>untrusted 标注</b>（硬约束 ②）：来自事件/用户内容的一切片段必须显式声明
@@ -84,5 +96,5 @@ public static class ContextBudgets
     public const int GroupHistoryTotalLength = 2000;
 
     /// <summary>截断标记（超预算时追加，让模型知道还有内容未注入）。</summary>
-    public const string TruncationMarker = "…（内容超预算已截断）";
+    public const string TruncationMarker = AssemblerBudgets.TruncationMarker;
 }

@@ -135,12 +135,38 @@ internal static class FeishuToolDiagnostics
     /// <param name="appKey">应用唯一标识。</param>
     /// <param name="reason">降级原因（<see cref="FeishuMetrics.DegradedReasons"/> 受控枚举）。</param>
     public static void RecordDegraded(string appKey, string reason)
+        => RecordDegradedCore(appKey, reason);
+
+    /// <summary>
+    /// N2-f：记录一次<b>中立机制</b>发起的降级（来源侧不知道租户，如中立流式通道基类）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么省略 app_key 维度而不是填空串</b>：中立机制（<c>IAgentTelemetry.Degraded</c>）的签名
+    /// 刻意不带租户键（高基数纪律 + 中立侧不认识租户语义）。若填空串，宿主既有按 <c>app_key</c>
+    /// 过滤的仪表盘会看到一条"空租户"的伪时间序列，把「未归属」误读成「某租户」——
+    /// 省略维度则明确表达"未归属"，且不影响产品侧原有调用点的时间序列。
+    /// </para>
+    /// <para>
+    /// 归属信息并非丢失：中立通道基类的降级由<b>产品侧包装类</b>在更外层记租户维度
+    /// （产品通道知道 appKey），本方法只承担"降级发生了"这一事实的可观测性。
+    /// </para>
+    /// </remarks>
+    /// <param name="reason">降级原因（<see cref="FeishuMetrics.DegradedReasons"/> 受控枚举）。</param>
+    public static void RecordDegraded(string reason)
+        => RecordDegradedCore(null, reason);
+
+    private static void RecordDegradedCore(string? appKey, string reason)
     {
-        var tags = new TagList
+        // 标签顺序与改造前保持一致（app_key 在前）——时间序列维度的顺序不影响语义，
+        // 但保持现状可避免任何按标签序列比对的外部断言意外失配。
+        var tags = new TagList();
+        if (!string.IsNullOrEmpty(appKey))
         {
-            { FeishuMetrics.Tags.AppKey, appKey },
-            { FeishuMetrics.Tags.Reason, reason },
-        };
+            tags.Add(FeishuMetrics.Tags.AppKey, appKey);
+        }
+
+        tags.Add(FeishuMetrics.Tags.Reason, reason);
         FeishuMetrics.ToolDegradedCount.Add(1, tags);
     }
 }

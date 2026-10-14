@@ -8,11 +8,11 @@
 using System.Reflection;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.AI;
+// N2-b：流式降级链上移 Mud.AI.Agent.Channels（产品通道实现仍在 Mud.Feishu.AI.Channels）。
+using Mud.AI.Agent.Channels;
 using Mud.Feishu.AI.Channels;
 using Mud.Feishu.AI.Events;
 using Mud.Feishu.AI.Tools;
-using Mud.Feishu.AI.Channels;
-using Mud.Feishu.AI.Events;
 
 namespace Mud.Feishu.Agent.Demo.Tests.ContractGuards;
 

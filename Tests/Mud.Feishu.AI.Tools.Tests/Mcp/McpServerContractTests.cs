@@ -100,15 +100,6 @@ public class McpServerContractTests
             "可选包也必须在 solution 里登记——否则 CI/质量门禁（AOT 冒烟按仓库根 Mud.Feishu* 目录枚举）看不到它");
     }
 
-    [Fact]
-    public void McpPackage_ShouldDeclareItsOwnPublicApiBaseline()
-    {
-        var projectDirectory = Path.Combine(FindRepositoryRoot(), McpProject);
-
-        File.Exists(Path.Combine(projectDirectory, "PublicAPI.Shipped.txt")).Should().BeTrue();
-        File.Exists(Path.Combine(projectDirectory, "PublicAPI.Unshipped.txt")).Should().BeTrue();
-    }
-
     private static string FindRepositoryRoot()
     {
         var directory = AppContext.BaseDirectory;

@@ -67,6 +67,34 @@ public interface IAgentTelemetry
     /// <remarks>降级必须可观测——否则"静默零注入"这类缺陷只能靠读日志发现。</remarks>
     /// <param name="reason">降级原因（产品侧决定具体文案与指标名）。</param>
     void Degraded(string reason);
+
+    /// <summary>
+    /// 开启一次「会话历史摘要」阶段作用域（N2-f：会话摘要器经端口埋点，命名面由产品实现决定）。
+    /// </summary>
+    /// <remarks>
+    /// <b>为什么需要独立入口而不是复用 <see cref="StartTurn"/></b>：摘要是<b>嵌套在回合内</b>的
+    /// 子阶段（回合 → 摘要 → 模型调用），产品侧的 Span 名与标签集合都不同
+    /// （条数标签 + 「是否已摘要」「是否不可收敛」两个结果标记）；复用回合作用域会把子阶段
+    /// 的语义塞进父 Span，宿主仪表盘再也分不出「这一轮到底摘要了没有」。
+    /// </remarks>
+    /// <param name="summarizedCount">被压缩的旧消息条数。</param>
+    /// <param name="retainedCount">保留的最近消息条数。</param>
+    /// <returns>作用域（实现返回 <see langword="null"/> 表示不采集）。</returns>
+    IDisposable? StartSummarize(int summarizedCount, int retainedCount);
+
+    /// <summary>
+    /// 收口一次摘要作用域。
+    /// </summary>
+    /// <remarks>
+    /// <b>为什么结果要经回调而不是让调用方自己写标签</b>：标签名是产品资产（如
+    /// <c>feishu.agent.summarized_unconverged</c>），中立侧不得知道；调用方只回答"收敛了吗"。
+    /// </remarks>
+    /// <param name="scope"><see cref="StartSummarize"/> 返回的作用域（可空）。</param>
+    /// <param name="converged">
+    /// 重建后是否已收敛到 token 预算内。<see langword="false"/> 表示「单条消息即超预算」这类
+    /// 配置与内容不匹配的形态——产品侧应标记出来，使宿主能区分它与"摘要失效"。
+    /// </param>
+    void SummarizeCompleted(IDisposable? scope, bool converged);
 }
 
 /// <summary>
@@ -110,6 +138,14 @@ public sealed class NoopAgentTelemetry : IAgentTelemetry
 
     /// <inheritdoc />
     public void Degraded(string reason)
+    {
+    }
+
+    /// <inheritdoc />
+    public IDisposable? StartSummarize(int summarizedCount, int retainedCount) => null;
+
+    /// <inheritdoc />
+    public void SummarizeCompleted(IDisposable? scope, bool converged)
     {
     }
 }

@@ -7,6 +7,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
+using Mud.AI.Agent.Tools;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.Metrics;
 
@@ -1034,13 +1035,11 @@ internal sealed class FeishuToolBinding
     }
 
     /// <summary>
-    /// <b>S-1：glob / 域级策略轴</b>——判定顺序与空集语义见 <c>FeishuToolPolicyOptions</c> 的 remarks。
+    /// <b>S-1：glob / 域级策略轴</b>——匹配算法在中立 <c>ToolPolicyMatcher</c>（N2-d 抽出），
+    /// 本方法只做「判定 → reason_code / 拒绝文案」的产品映射。判定顺序与空集语义见
+    /// <c>FeishuToolPolicyOptions</c> 的 remarks 与 <c>ToolPolicyMatcher</c> 的 remarks。
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// <b>为什么域轴先于工具名轴</b>：域轴更便宜（单段字符串比较）且拒绝原因更精确——
-    /// "该域被宿主禁用"比"该工具未列明"更接近宿主的配置意图，排障路径更短。
-    /// </para>
     /// <para>
     /// <b>reason_code 选择</b>：域轴恒为 <c>domain_not_allowed</c>；工具名轴按工具读写性分
     /// <c>write_not_allowed</c>（写工具）与 <c>tool_not_allowed</c>（只读工具）——
@@ -1059,75 +1058,63 @@ internal sealed class FeishuToolBinding
             return (null, string.Empty);
         }
 
-        var domain = DomainOf(tool.Name);
+        var domain = ToolPolicyMatcher.DomainOf(tool.Name);
         var toolSubtype = tool.IsWrite ? ToolErrorSubtype.WriteNotAllowed : ToolErrorSubtype.ToolNotAllowed;
 
-        // ① 域 Deny（优先于域 Allow）
-        foreach (var pattern in policy.Domains.Deny)
+        // N2-d：四步匹配顺序（域 Deny → 域 Allow → 工具名 Deny → 工具名 Allow）在中立匹配器；
+        // 产品侧按判定结果映射 reason_code 与回显文案（含命中的规则模式——企业排障不必猜是哪条 glob 拒的）。
+        var decision = ToolPolicyMatcher.Evaluate(tool.Name, new ToolPolicyRules(
+            ToolAllow: policy.Allow,
+            ToolDeny: policy.Deny,
+            DomainAllow: policy.Domains.Allow,
+            DomainDeny: policy.Domains.Deny));
+
+        switch (decision)
         {
-            if (ToolNamePattern.IsMatch(pattern, domain))
-            {
+            case ToolPolicyDecision.DomainDenied:
+                var deniedPattern = FirstMatch(policy.Domains.Deny, domain) ?? string.Empty;
                 return (
                     $"{ToolErrorSubtype.DomainNotAllowed}: 域 '{domain}' 命中 {nameof(FeishuAgentOptions.ToolPolicy)}"
-                        + $".{nameof(FeishuToolPolicyOptions.Domains)}.{nameof(FeishuToolPolicyDomainOptions.Deny)} 规则 '{pattern}'"
+                        + $".{nameof(FeishuToolPolicyOptions.Domains)}.{nameof(FeishuToolPolicyDomainOptions.Deny)} 规则 '{deniedPattern}'"
                         + $"（工具 {tool.Name}）",
                     ToolErrorSubtype.DomainNotAllowed);
-            }
-        }
 
-        // ② 域 Allow（非空时未命中即拒）
-        if (policy.Domains.Allow.Length > 0 && !MatchesAny(policy.Domains.Allow, domain))
-        {
-            return (
-                $"{ToolErrorSubtype.DomainNotAllowed}: 域 '{domain}' 不在 {nameof(FeishuAgentOptions.ToolPolicy)}"
-                    + $".{nameof(FeishuToolPolicyOptions.Domains)}.{nameof(FeishuToolPolicyDomainOptions.Allow)} 白名单"
-                    + $" [{string.Join(",", policy.Domains.Allow)}] 内（工具 {tool.Name}）",
-                ToolErrorSubtype.DomainNotAllowed);
-        }
+            case ToolPolicyDecision.DomainNotAllowed:
+                return (
+                    $"{ToolErrorSubtype.DomainNotAllowed}: 域 '{domain}' 不在 {nameof(FeishuAgentOptions.ToolPolicy)}"
+                        + $".{nameof(FeishuToolPolicyOptions.Domains)}.{nameof(FeishuToolPolicyDomainOptions.Allow)} 白名单"
+                        + $" [{string.Join(",", policy.Domains.Allow)}] 内（工具 {tool.Name}）",
+                    ToolErrorSubtype.DomainNotAllowed);
 
-        // ③ 工具名 Deny（优先于工具名 Allow）
-        foreach (var pattern in policy.Deny)
-        {
-            if (ToolNamePattern.IsMatch(pattern, tool.Name))
-            {
+            case ToolPolicyDecision.ToolDenied:
+                var toolDeniedPattern = FirstMatch(policy.Deny, tool.Name) ?? string.Empty;
                 return (
                     $"{toolSubtype}: 工具 '{tool.Name}' 命中 {nameof(FeishuAgentOptions.ToolPolicy)}"
-                        + $".{nameof(FeishuToolPolicyOptions.Deny)} 规则 '{pattern}'",
+                        + $".{nameof(FeishuToolPolicyOptions.Deny)} 规则 '{toolDeniedPattern}'",
                     toolSubtype);
-            }
-        }
 
-        // ④ 工具名 Allow（非空时未命中即拒）
-        if (policy.Allow.Length > 0 && !MatchesAny(policy.Allow, tool.Name))
-        {
-            return (
-                $"{toolSubtype}: 工具 '{tool.Name}' 不在 {nameof(FeishuAgentOptions.ToolPolicy)}"
-                    + $".{nameof(FeishuToolPolicyOptions.Allow)} 白名单 [{string.Join(",", policy.Allow)}] 内",
-                toolSubtype);
-        }
+            case ToolPolicyDecision.ToolNotAllowed:
+                return (
+                    $"{toolSubtype}: 工具 '{tool.Name}' 不在 {nameof(FeishuAgentOptions.ToolPolicy)}"
+                        + $".{nameof(FeishuToolPolicyOptions.Allow)} 白名单 [{string.Join(",", policy.Allow)}] 内",
+                    toolSubtype);
 
-        return (null, string.Empty);
+            default:
+                return (null, string.Empty);
+        }
     }
 
-    /// <summary>任一模式命中即真（<b>空集合恒假</b>——调用方须先判"该轴是否启用"）。</summary>
-    private static bool MatchesAny(string[] patterns, string value)
+    /// <summary>取第一个命中值的模式（拒绝文案回显用；未命中返回 <see langword="null"/>）。</summary>
+    private static string? FirstMatch(string[] patterns, string value)
     {
         foreach (var pattern in patterns)
         {
             if (ToolNamePattern.IsMatch(pattern, value))
             {
-                return true;
+                return pattern;
             }
         }
 
-        return false;
-    }
-
-    /// <summary>取工具名所属域（首个 <c>.</c> 之前的部分）。</summary>
-    private static string DomainOf(string toolName)
-    {
-        // 注：netstandard2.0 没有 IndexOf(char, StringComparison)，用字符串重载。
-        var index = toolName.IndexOf(".", StringComparison.Ordinal);
-        return index > 0 ? toolName.Substring(0, index) : toolName;
+        return null;
     }
 }

@@ -1,0 +1,5 @@
+== scripted-updates ==
+update#1 len=10 text=一二三四五六七八九十
+update#2 len=20 text=一二三四五六七八九十十一十二十三十四十五
+update#3 len=20 text=一二三四五六七八九十十一十二十三十四十五
+failing-update-attempts=2

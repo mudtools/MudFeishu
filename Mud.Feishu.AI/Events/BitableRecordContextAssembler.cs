@@ -5,7 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using System.Text;
+using Mud.AI.Agent.Context;
 
 namespace Mud.Feishu.AI.Events;
 
@@ -16,9 +16,9 @@ namespace Mud.Feishu.AI.Events;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>触发条件</b>：<see cref="ConversationRequest.EventKey"/> ==
-/// <see cref="FeishuEventKeys.BitableRecordChanged"/>（由
-/// <c>BitableRecordChangedConversationalEventHandler</c> 填充）。其他事件返回 <see langword="null"/>。
+/// <b>N4 拆分（E6）</b>：机制已上移中立 <see cref="FactListContextAssembler"/>；本类提供
+/// <b>产品事实</b>（事件键 / 事实键约定 / 中文标签 / 行操作措辞翻译 / 建议）与两个钩子覆写
+/// （<see cref="LabelOf"/> 前缀标签、<see cref="RenderValue"/> 行操作翻译）。行为与拆分前逐字节一致。
 /// </para>
 /// <para>
 /// <b>为什么不灌全量字段</b>：一张表的整行可能有几十个字段、字段值又是 JSON 字符串（长文本/附件/人员/关联），
@@ -38,17 +38,8 @@ namespace Mud.Feishu.AI.Events;
 /// </list>
 /// 未登记的键按原样展示键名（不臆造语义）。
 /// </para>
-/// <para>
-/// <b>预算与截断</b>：单行 ≤ <see cref="ContextBudgets.BitableRecordFieldPreviewLength"/>，
-/// 整段 ≤ <see cref="ContextBudgets.BitableRecordTotalLength"/>，行数 ≤
-/// <see cref="ContextBudgets.MaxFactsPerAssembler"/>；超限<b>截断</b>并留 <see cref="ContextBudgets.TruncationMarker"/>。
-/// </para>
-/// <para>
-/// <b>untrusted 标注</b>：字段值是<b>表格内容</b>（他人可写），整段以
-/// <see cref="ContextBudgets.UntrustedHeader"/> 开头（防提示注入）。
-/// </para>
 /// </remarks>
-public sealed class BitableRecordContextAssembler : IContextAssembler
+public sealed class BitableRecordContextAssembler : FactListContextAssembler
 {
     /// <summary>多维表格 token 事实键。</summary>
     public const string FileTokenKey = "file_token";
@@ -83,81 +74,29 @@ public sealed class BitableRecordContextAssembler : IContextAssembler
         [OperatorKey] = "操作人",
     };
 
-    /// <inheritdoc />
-    public int Order => DefaultOrder;
-
-    /// <inheritdoc />
-    public Task<string?> AssembleAsync(ConversationRequest request, CancellationToken cancellationToken = default)
+    /// <summary>初始化多维表格记录变更装配器（产品事实注入中立机制）。</summary>
+    public BitableRecordContextAssembler()
+        : base(
+            eventKey: FeishuEventKeys.BitableRecordChanged,
+            order: DefaultOrder,
+            totalLength: ContextBudgets.BitableRecordTotalLength,
+            fieldPreviewLength: ContextBudgets.BitableRecordFieldPreviewLength,
+            untrustedHeader: ContextBudgets.UntrustedHeader,
+            factLabels: FactLabels,
+            hint: "- 建议: 用 bitable.get_records_by_ids 取变更记录详情，或用 bitable.query_records 在该表内检索。")
     {
-        if (request is null)
-        {
-            return Task.FromResult<string?>(null);
-        }
-
-        if (!string.Equals(request.EventKey, FeishuEventKeys.BitableRecordChanged, StringComparison.Ordinal)
-            || request.EventFacts is null
-            || request.EventFacts.Count == 0)
-        {
-            return Task.FromResult<string?>(null);
-        }
-
-        var builder = new StringBuilder();
-        builder.AppendLine(ContextBudgets.UntrustedHeader);
-
-        var budget = ContextBudgets.BitableRecordTotalLength;
-        var written = 0;
-
-        foreach (var fact in request.EventFacts)
-        {
-            if (written == ContextBudgets.MaxFactsPerAssembler || budget <= 0)
-            {
-                builder.AppendLine(ContextBudgets.TruncationMarker);
-                break;
-            }
-
-            if (string.IsNullOrWhiteSpace(fact.Value))
-            {
-                // 缺字段降级：跳过空值（不输出"数据表: "这样的半截行）。
-                continue;
-            }
-
-            var line = $"- {LabelOf(fact.Key)}: {Truncate(RenderValue(fact.Key, fact.Value!), ContextBudgets.BitableRecordFieldPreviewLength)}";
-
-            if (line.Length > budget)
-            {
-                line = line.Substring(0, budget) + ContextBudgets.TruncationMarker;
-            }
-
-            builder.AppendLine(line);
-            budget -= line.Length;
-            written++;
-        }
-
-        if (written == 0)
-        {
-            return Task.FromResult<string?>(null);
-        }
-
-        var hint = "- 建议: 用 bitable.get_records_by_ids 取变更记录详情，或用 bitable.query_records 在该表内检索。";
-        if (hint.Length <= budget)
-        {
-            builder.AppendLine(hint);
-        }
-
-        return Task.FromResult<string?>(builder.ToString().TrimEnd());
     }
 
-    private static string LabelOf(string key)
+    /// <inheritdoc />
+    protected override string LabelOf(string key)
         => FactLabels.TryGetValue(key, out var known)
             ? known
             : key.StartsWith(ActionPrefix, StringComparison.Ordinal) ? "变更"
             : key.StartsWith(DiffPrefix, StringComparison.Ordinal) ? "字段差异"
             : key;
 
-    /// <summary>
-    /// 值渲染：把平台枚举码翻成中文（<b>装配层职责</b>——生产者只登记平台事实，不做措辞）。
-    /// </summary>
-    private static string RenderValue(string key, string value)
+    /// <inheritdoc />
+    protected override string RenderValue(string key, string value)
     {
         if (!key.StartsWith(ActionPrefix, StringComparison.Ordinal))
         {
@@ -165,6 +104,7 @@ public sealed class BitableRecordContextAssembler : IContextAssembler
         }
 
         // 形如 "record_edited recABC"：只翻第一个词，其余（记录 ID）原样保留。
+        // 值渲染是<b>装配层职责</b>——生产者只登记平台事实，不做措辞。
         var separator = value.IndexOf(' ');
         var action = separator < 0 ? value : value.Substring(0, separator);
         var rest = separator < 0 ? string.Empty : value.Substring(separator);
@@ -179,7 +119,4 @@ public sealed class BitableRecordContextAssembler : IContextAssembler
 
         return label + rest;
     }
-
-    private static string Truncate(string value, int maxLength)
-        => value.Length <= maxLength ? value : value.Substring(0, maxLength) + "…";
 }

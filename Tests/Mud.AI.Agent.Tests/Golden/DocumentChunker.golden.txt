@@ -1,0 +1,6 @@
+count=3
+[0] index=0 title=部署手册 source=doc-1 url=https://example.invalid/doc-1 scope=tenant-a len=35 head=环境变量需要按节配置。
+连接串含密码时不落日志。
+大小与峰值并发相关。
+[1] index=1 title=部署手册 / 数据库 / 连接池 source=doc-1 url=https://example.invalid/doc-1 scope=tenant-a len=800 head=默默默默默默默默默默默默默默默默默默默默默默默默默默默默默默默默默默默默默默默默
+[2] index=2 title=部署手册 / 数据库 / 连接池 source=doc-1 url=https://example.invalid/doc-1 scope=tenant-a len=200 head=默默默默默默默默默默默默默默默默默默默默默默默默默默默默默默默默默默默默默默默默

@@ -25,7 +25,7 @@ public class SummarizerToolTraceContractGuards
         // 通过反射获取 internal 常量
         var field = typeof(ConversationSummarizer)
             .GetField("ToolTraceLineLimit",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
         field.Should().NotBeNull("ToolTraceLineLimit 常量必须定义");
         var value = (int?)field!.GetValue(null);
         value.Should().Be(200, "工具轨迹行上限为 200 字符");
@@ -52,14 +52,19 @@ public class SummarizerToolTraceContractGuards
             })
             .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, "摘要：用户查询了考勤")));
 
-        var options = new FeishuAgentOptions
+        var options = new AgentRuntimeOptions
         {
-            Instructions = "你是助手",
             MaxHistoryMessages = 10,
             SummaryThreshold = 5,
         };
 
-        var summarizer = new ConversationSummarizer(mockClient.Object, options);
+        // N2-f：摘要机制已中立化——配置面（AgentRuntimeOptions）+ 产品事实（历史键/提示词/标识键）分别注入。
+        var summarizer = new ConversationSummarizer(
+            mockClient.Object,
+            options,
+            "test.summarizer.history",
+            summaryInstruction: FeishuSummarizerFacts.SummaryInstruction,
+            idKeys: FeishuSummarizerFacts.IdKeys);
 
         // 构造含工具调用的历史
         var history = new List<ChatMessage>
@@ -113,14 +118,19 @@ public class SummarizerToolTraceContractGuards
             })
             .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, "摘要")));
 
-        var options = new FeishuAgentOptions
+        var options = new AgentRuntimeOptions
         {
-            Instructions = "你是助手",
             MaxHistoryMessages = 10,
             SummaryThreshold = 5,
         };
 
-        var summarizer = new ConversationSummarizer(mockClient.Object, options);
+        // N2-f：摘要机制已中立化——配置面（AgentRuntimeOptions）+ 产品事实（历史键/提示词/标识键）分别注入。
+        var summarizer = new ConversationSummarizer(
+            mockClient.Object,
+            options,
+            "test.summarizer.history",
+            summaryInstruction: FeishuSummarizerFacts.SummaryInstruction,
+            idKeys: FeishuSummarizerFacts.IdKeys);
 
         var history = new List<ChatMessage>
         {

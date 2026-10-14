@@ -243,7 +243,7 @@ public class PendingApprovalStoreTests
         var store = RealClockStore();
         var channel = new RecordingApprovalChannel();
 
-        await FeishuApprovalRequestProjector.NotifyAsync(
+        await ApprovalRequestProjector.NotifyAsync(
             channel,
             store,
             logger: null,
@@ -262,7 +262,7 @@ public class PendingApprovalStoreTests
     {
         var store = RealClockStore();
 
-        await FeishuApprovalRequestProjector.NotifyAsync(
+        await ApprovalRequestProjector.NotifyAsync(
             channel: null,
             store,
             logger: null,
@@ -278,7 +278,7 @@ public class PendingApprovalStoreTests
     {
         var channel = new RecordingApprovalChannel();
 
-        await FeishuApprovalRequestProjector.NotifyAsync(
+        await ApprovalRequestProjector.NotifyAsync(
             channel,
             new ThrowingPendingApprovalStore(),
             logger: null,

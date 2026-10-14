@@ -30,9 +30,6 @@ public static class ChatTokenCounter
     /// <summary>编码器锚定模型（BPE 词表近似通用，仅估算精度差异）。</summary>
     private const string EncoderModel = "gpt-4o";
 
-    /// <summary>估算回退：非 CJK 字符的平均字符/token 比。</summary>
-    private const int CharsPerToken = 4;
-
     /// <summary>
     /// 编码器初始化失败原因（成功为 <see langword="null"/>）。
     /// </summary>
@@ -119,7 +116,7 @@ public static class ChatTokenCounter
 
     /// <summary>
     /// 估算 token 数（编码器不可用时的回退路径）：CJK 表意文字按 ~1 token/字符，
-    /// 其余字符按 <see cref="CharsPerToken"/> 字符/token。
+    /// 其余字符按 4 字符/token。
     /// </summary>
     /// <param name="text">待估算文本（非空）。</param>
     /// <returns>估算 token 数。</returns>
@@ -130,36 +127,18 @@ public static class ChatTokenCounter
     /// 校正方向是「更接近真实 token 量」，故中文长会话的摘要触发会变早——这是正确行为。
     /// </para>
     /// <para>
+    /// <b>N2-e 单一实现收敛（方案 v2 P2 订正）</b>：估算逻辑收敛到中立
+    /// <c>Mud.AI.Agent.Knowledge.TokenEstimator</c>（联合字符集）——迁入前仓内两份估算器
+    /// 字符集不同（本回退路径不含中文标点 U+3000–U+303F、产品分块器不含谚文），
+    /// 「两份一致」不可同时成立。收敛后本方法对<b>含中文标点</b>的文本估算值略高
+    /// （标点计 1 token 而非 1/4）——方向是更接近真实 token 量，属刻意接受的估算差。
+    /// </para>
+    /// <para>
     /// <b>为什么公开</b>：net8+ 且编码器可用时 <see cref="Count"/> 恒走精确路径，
     /// 估算分支在生产路径上不可达——故本方法必须可直接单测（与 <see cref="IsExactCount"/>
     /// 同属可断言面），否则"中文密度校正"这一修复会失去回归防线。
     /// </para>
     /// </remarks>
     public static int Estimate(string text)
-    {
-        var cjk = 0;
-        foreach (var ch in text)
-        {
-            if (IsCjk(ch))
-            {
-                cjk++;
-            }
-        }
-
-        var other = text.Length - cjk;
-        var otherTokens = other / CharsPerToken;
-        if (other % CharsPerToken != 0)
-        {
-            otherTokens++;
-        }
-
-        return cjk + otherTokens;
-    }
-
-    /// <summary>是否 CJK 表意文字/假名/谚文/全角标点（按 ~1 token/字符 估算的字符集）。</summary>
-    private static bool IsCjk(char ch)
-        => (ch >= '\u2E80' && ch <= '\u9FFF')   // CJK 部首扩展 ~ 统一表意文字
-           || (ch >= '\uAC00' && ch <= '\uD7AF') // 谚文音节
-           || (ch >= '\uF900' && ch <= '\uFAFF') // CJK 兼容表意文字
-           || (ch >= '\uFF00' && ch <= '\uFF60'); // 全角形式
+        => Knowledge.TokenEstimator.Estimate(text);
 }

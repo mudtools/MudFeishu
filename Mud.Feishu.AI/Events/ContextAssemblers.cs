@@ -44,37 +44,14 @@ public enum ImConversationAssemblers
 }
 
 /// <summary>
-/// 发送者信息装配器（P2D-5b）：发送者 ID 形态注入 Prompt。
-/// </summary>
-/// <remarks>
-/// 脱敏边界：只输出 ID 形态（open_id/user_id），<b>不取昵称原文</b>（防 PII 入模型上下文）。
-/// 零外部调用。
-/// </remarks>
-public sealed class SenderInfoContextAssembler : IContextAssembler
-{
-    /// <summary>默认装配顺序（问题文本之前的基础事实）。</summary>
-    public const int DefaultOrder = 10;
-
-    /// <inheritdoc />
-    public int Order => DefaultOrder;
-
-    /// <inheritdoc />
-    public Task<string?> AssembleAsync(ConversationRequest request, CancellationToken cancellationToken = default)
-    {
-        if (request is null || string.IsNullOrEmpty(request.SenderId))
-        {
-            return Task.FromResult<string?>(null);
-        }
-
-        var scopeText = request.Scope.IsGroup ? "群聊" : "单聊";
-        return Task.FromResult<string?>($"[发送者] 用户 ID: {request.SenderId}（{scopeText}会话）");
-    }
-}
-
-/// <summary>
 /// 引用消息上下文装配器（P2D-5b）：请求引用的父消息 → <c>im.get_message_content</c> 取内容预览
 /// （截断 300 字）。失败跳过（异常隔离由事件层承接，本装配器自身亦不抛业务异常）。
 /// </summary>
+/// <remarks>
+/// <b>N4（E8）</b>：<c>SenderInfoContextAssembler</c> 已上移中立包
+/// <c>Mud.AI.Agent.Context</c>（零产品语义；产品侧经 global using 保持简单名引用）。
+/// 本文件保留的 <see cref="QuoteMessageContextAssembler"/> 依赖飞书消息回查——留产品侧。
+/// </remarks>
 /// <remarks>依赖 P1D-1a 修复后的 <c>GetContentListByMessageIdAsync</c> 路由。</remarks>
 public sealed class QuoteMessageContextAssembler : IContextAssembler
 {

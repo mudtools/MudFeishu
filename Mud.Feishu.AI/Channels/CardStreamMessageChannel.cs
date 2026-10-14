@@ -7,7 +7,8 @@
 
 using System.Collections.Concurrent;
 using System.Text;
-using Mud.Feishu.AI.Channels;
+using Mud.Feishu.Abstractions.Metrics;
+using Mud.Feishu.AI.AgentTools;
 using Mud.Feishu.AI.Conversations;
 using Mud.Feishu.DataModels.CardMessageStream;
 
@@ -36,6 +37,12 @@ namespace Mud.Feishu.AI.Channels;
 /// 每次下游调用前经 <see cref="IFeishuAppContextScopeFactory.BeginScope"/> 切换租户上下文
 /// （与工具执行链同一事实来源；TMA2-20），finally 释放。
 /// </para>
+/// <para>
+/// <b>N2-b 中立化</b>：缓冲基类已迁 <c>Mud.AI.Agent.Channels.BufferedMessageChannel</c>（① 式：
+/// 分片阈值由 <see cref="FeishuAgentOptions.MaxStreamChunkLength"/> 经构造参数注入）。
+/// 降级指标的 app_key 维度经 <see cref="OnUpdateDegraded"/> 覆写保留（中立端口只收 reason 文案，
+/// 产品指标名与维度留在产品侧——R3-12 行为逐字节不变）。
+/// </para>
 /// </remarks>
 /// <remarks>
 /// 初始化 <see cref="CardStreamMessageChannel"/>。
@@ -50,7 +57,11 @@ public sealed class CardStreamMessageChannel(
     IFeishuAppContextScopeFactory scopeFactory,
     IOptions<FeishuAgentOptions> options,
     ILogger<CardStreamMessageChannel>? logger = null,
-    TimeSpan? minUpdateInterval = null) : BufferedMessageChannel(options, minUpdateInterval), IChannelTargetResolver
+    TimeSpan? minUpdateInterval = null,
+    IAgentTelemetry? telemetry = null) : BufferedMessageChannel(
+        options?.Value.MaxStreamChunkLength ?? throw new ArgumentNullException(nameof(options)),
+        minUpdateInterval: minUpdateInterval,
+        telemetry: telemetry), IChannelTargetResolver
 {
     /// <summary>占位卡片初始预览文本（可见的「正在输入」占位）。</summary>
     private const string PlaceholderPreview = "…";
@@ -160,6 +171,13 @@ public sealed class CardStreamMessageChannel(
         _logger?.LogWarning(exception, "应用消息卡片流增量更新异常（bizId: {BizId}）——停留上一次成功内容", messageId);
         return Task.CompletedTask;
     }
+
+    /// <summary>
+    /// R3-12：降级指标（<c>feishu.agent.tool.degraded</c>，维度 app_key/reason）——
+    /// 产品指标名与 app_key 维度留在产品侧（中立端口只承载 reason 文案）。
+    /// </summary>
+    protected override void OnUpdateDegraded(string appKey, string messageId, Exception exception)
+        => FeishuToolDiagnostics.RecordDegraded(appKey, FeishuMetrics.DegradedReasons.ChannelUpdateFailed);
 
     /// <inheritdoc />
     /// <remarks>

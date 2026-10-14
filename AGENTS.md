@@ -137,6 +137,33 @@ hard cut (no `[Obsolete]` forwards, no shims). Four invariants are mechanically 
 `verify-build.ps1` step 4). Guard evidence must live with the implementation — moving code without
 moving its guard anchors is how a guard silently starts asserting something else.
 
+## AI neutralization N4–N6 closure (2026-10-14)
+
+The neutralization plan (`.docs/AI/MudFeishu-AI-公共功能中立化重构方案-v2.md`, status: ✅ complete) finished
+its remaining waves. Decisions recorded here so they are not re-litigated:
+
+- **Turn pipeline is neutral-owned**: `ConversationalTurnPipeline` (`Mud.AI.Agent/Events/`) owns the
+  11-stage turn state machine + the 4 compensation paths (streaming-cancel/exception compensating
+  Flush MUST use `CancellationToken.None`; save-after-stream/replay uses non-cancellable tokens).
+  `ConversationalFeishuEventHandler` is a thin shell (~330 lines) keeping product policy
+  (`AllowMissingAppKey`/`AllowToolsWithoutAppKey`, injected as `ValidateRequestPolicies` delegates —
+  the pipeline must contain zero product policy; guarded by `TurnPipeline_ShouldNotHardcodeProductPolicy`).
+- **Neutral vocabulary guard** (`NeutralVocabularyContractGuards`): `Mud.AI.*` non-comment lines must
+  not contain `feishu`/`appKey` (camelCase). The single whitelist is the `ConversationRequest.AppKey`
+  property name — do not "fix" it.
+- **Owning-tests guard** (`NeutralPublicTypesOwningContractGuards` in Agent.Tests): every public type
+  of `Mud.AI.Agent` needs a `<Type>Tests` class or an `OwningEvidence` entry; the map is self-verifying
+  (pointers to non-existent test classes fail). Adding a neutral public type without an owning test
+  fails the build — that is intended (Q4 anti-drift).
+- **PublicAPI ledger files were deleted repo-wide** (user ruling: "对开发者没屁用"; D5). Do NOT recreate
+  `PublicAPI.Shipped/Unshipped.txt` or re-add `Microsoft.CodeAnalysis.PublicApiAnalyzers`. The
+  consumer-rationale mechanism survives as reflection-based
+  `PublicSurfaceRationaleContractGuards` (baseline 326 = reflection count over the three Feishu
+  assemblies; bump the constant in the same batch as any public-surface change).
+- **Golden snapshots moved to `Tests/Mud.AI.Agent.Tests/Golden`** (D2; 6 snapshots byte-identical).
+  The summarizer golden uses neutral-default instruction/idKeys; the retrieval golden replicates the
+  product header/footer literals — keep them byte-identical when touching either side.
+
 ## Target Frameworks & MSBuild
 
 `netstandard2.0`, `net6.0`, `net8.0` (recommended), `net10.0`; `#if NET7_0_OR_GREATER` for

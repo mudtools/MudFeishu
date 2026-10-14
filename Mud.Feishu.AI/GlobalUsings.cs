@@ -34,6 +34,14 @@ global using Mud.AI.Agent.Conversations;
 global using Mud.AI.Agent.Sessions;
 // N2 中立化：待确认快照的进程内默认实现（InMemoryPendingApprovalStore）上移 Mud.AI.Agent.Approvals。
 global using Mud.AI.Agent.Approvals;
+// N2-b 中立化：分片缓冲流式通道基类（BufferedMessageChannel）与降级链（StreamingChannelChain）
+// 上移 Mud.AI.Agent.Channels——产品子类（EditMessageChannel / CardStreamMessageChannel）经此派生。
+global using Mud.AI.Agent.Channels;
+// N4（E5/E6/E8）中立化：事实列表装配器基类与发送者信息装配器上移 Mud.AI.Agent.Context
+// ——产品子类与 DI 注册经全局 using 保持简单名引用零改动。
+global using Mud.AI.Agent.Context;
+// N2-c 中立化：审批态桥 / 投影 / 续跑闭环上移 Mud.AI.Agent.Approvals（产品事实经构造参数注入）。
+global using Mud.AI.Agent.Approvals;
 global using Mud.Feishu.AI.Agents;
 global using Mud.Feishu.Abstractions.Observability;
 global using Mud.Feishu.Abstractions;

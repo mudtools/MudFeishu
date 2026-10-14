@@ -5,7 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Mud.Feishu.AI.Channels;
+using Mud.Feishu.Abstractions.Metrics;
+using Mud.Feishu.AI.AgentTools;
 using Mud.Feishu.DataModels.Messages;
 
 namespace Mud.Feishu.AI.Channels;
@@ -30,6 +31,12 @@ namespace Mud.Feishu.AI.Channels;
 /// 每次下游调用前经 <see cref="IFeishuAppContextScopeFactory.BeginScope"/> 切换租户上下文
 /// （与工具执行链同一事实来源；TMA2-20），finally 释放。
 /// </para>
+/// <para>
+/// <b>N2-b 中立化</b>：缓冲基类已迁 <c>Mud.AI.Agent.Channels.BufferedMessageChannel</c>（① 式：
+/// 分片阈值由 <see cref="FeishuAgentOptions.MaxStreamChunkLength"/> 经构造参数注入）。
+/// 降级指标的 app_key 维度经 <see cref="OnUpdateDegraded"/> 覆写保留（中立端口只收 reason 文案，
+/// 产品指标名与维度留在产品侧——R3-12 行为逐字节不变）。
+/// </para>
 /// </remarks>
 /// <param name="messageClient">消息客户端（Tenant 身份）。</param>
 /// <param name="scopeFactory">租户上下文作用域工厂。</param>
@@ -41,7 +48,11 @@ public sealed class EditMessageChannel(
     IFeishuAppContextScopeFactory scopeFactory,
     IOptions<FeishuAgentOptions> options,
     ILogger<EditMessageChannel>? logger = null,
-    TimeSpan? minUpdateInterval = null) : BufferedMessageChannel(options, minUpdateInterval)
+    TimeSpan? minUpdateInterval = null,
+    IAgentTelemetry? telemetry = null) : BufferedMessageChannel(
+        options?.Value.MaxStreamChunkLength ?? throw new ArgumentNullException(nameof(options)),
+        minUpdateInterval: minUpdateInterval,
+        telemetry: telemetry)
 {
     /// <summary>占位消息初始文本（可见的「正在输入」占位；空文本会被飞书拒绝）。</summary>
     private const string PlaceholderText = "…";
@@ -93,6 +104,13 @@ public sealed class EditMessageChannel(
         _logger?.LogWarning(exception, "流式分片编辑异常（messageId: {MessageId}）——停留上一次成功内容", messageId);
         return Task.CompletedTask;
     }
+
+    /// <summary>
+    /// R3-12：降级指标（<c>feishu.agent.tool.degraded</c>，维度 app_key/reason）——
+    /// 产品指标名与 app_key 维度留在产品侧（中立端口只承载 reason 文案）。
+    /// </summary>
+    protected override void OnUpdateDegraded(string appKey, string messageId, Exception exception)
+        => FeishuToolDiagnostics.RecordDegraded(appKey, FeishuMetrics.DegradedReasons.ChannelUpdateFailed);
 
     private static SendMessageRequest BuildTextRequest(string chatId, string text)
         => new()

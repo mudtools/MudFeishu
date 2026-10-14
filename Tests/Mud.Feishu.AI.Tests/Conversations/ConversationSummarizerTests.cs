@@ -49,14 +49,16 @@ public class ConversationSummarizerTests
         Mock<IChatClient>? client = null, int summaryThreshold = 6, int maxHistoryMessages = 8, int maxHistoryTokens = 8000)
         => new(
             (client ?? CreateSummaryClient()).Object,
-            new FeishuAgentOptions
+            new AgentRuntimeOptions
             {
-                Instructions = "x",
                 SummaryThreshold = summaryThreshold,
                 MaxHistoryMessages = maxHistoryMessages,
                 MaxHistoryTokens = maxHistoryTokens,
             },
-            NullLogger.Instance);
+            StateKey,
+            summaryInstruction: FeishuSummarizerFacts.SummaryInstruction,
+            idKeys: FeishuSummarizerFacts.IdKeys,
+            logger: NullLogger.Instance);
 
     // ───────────────────── R2-2②：摘要器对损坏历史状态的纵深防御 ─────────────────────
 

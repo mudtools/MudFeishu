@@ -10,6 +10,8 @@ using Mud.Feishu.AI.Diagnostics;
 
 using Mud.Feishu.Abstractions.Conversations;
 
+using Mud.AI.Agent.Events;
+
 namespace Mud.Feishu.AI.Agents;
 
 /// <summary>
@@ -38,7 +40,7 @@ namespace Mud.Feishu.AI.Agents;
 /// miss 处理并重建（Phase 0 §8 回滚策略），保证旧格式数据不会让事件循环崩溃。
 /// </para>
 /// </remarks>
-public sealed class FeishuAgent : DelegatingAIAgent
+public sealed class FeishuAgent : DelegatingAIAgent, IAgentSessionFacade
 {
     /// <summary>ChatHistoryProvider 的状态键（会话历史在 MAF 状态袋内的命名空间）。</summary>
     /// <remarks>
@@ -79,6 +81,15 @@ public sealed class FeishuAgent : DelegatingAIAgent
     private readonly AgentSessionStore _sessionStore;
     private readonly ConversationSummarizer? _summarizer;
     private readonly ILogger? _logger;
+
+    /// <summary>
+    /// N2-f/N5：中立遥测端口（<c>IAgentTelemetry</c>）的飞书实现——无状态，故为共享单例。
+    /// </summary>
+    /// <remarks>
+    /// 命名面（<c>feishu.agent.*</c> Span / 指标）由实现决定，中立机制只经端口埋点（②式）：
+    /// 这使「迁了机制就丢了可观测性」不再可能（摘要器是最先消费它的中立类型）。
+    /// </remarks>
+    internal static readonly FeishuAgentTelemetry AgentTelemetry = new();
 
     /// <summary>
     /// 构造期装配产物（内层 Agent + guidance 装配结果）。
@@ -157,8 +168,17 @@ public sealed class FeishuAgent : DelegatingAIAgent
             _logger);
 
         // R3-13：Summarizer DI 化——接受外部注入的替身实例；未注入时按阈值自动创建（保留既有语义）。
+        // N2-f：摘要机制已中立化（Mud.AI.Agent.Conversations），此处注入四个产品事实——
+        // ① 配置投影（ToRuntimeOptions）；② 历史状态键；③ 飞书提示词；④ 工具轨迹标识键白名单。
         _summarizer = summarizer ?? (options.SummaryThreshold > 0 || options.MaxHistoryTokens > 0
-            ? new ConversationSummarizer(chatClient, options, loggerFactory?.CreateLogger<ConversationSummarizer>())
+            ? new ConversationSummarizer(
+                chatClient,
+                options.ToRuntimeOptions(),
+                ChatHistoryStateKey,
+                telemetry: AgentTelemetry,
+                summaryInstruction: FeishuSummarizerFacts.SummaryInstruction,
+                idKeys: FeishuSummarizerFacts.IdKeys,
+                logger: loggerFactory?.CreateLogger<ConversationSummarizer>())
             : null);
     }
 
@@ -277,11 +297,19 @@ public sealed class FeishuAgent : DelegatingAIAgent
     /// <summary>
     /// 按会话键读取会话；miss（不存在、TTL 过期、载荷损坏）时创建新会话。
     /// </summary>
+    /// <remarks>
+    /// N2-c：本方法与 <see cref="SaveSessionAsync"/> 的签名与中立端口
+    /// <see cref="Mud.AI.Agent.Events.IAgentSessionFacade"/> 逐字一致 ⇒ 本类直接实现该端口
+    /// （零改造），中立管线与审批续跑闭环因此不需引用任何产品类型。
+    /// </remarks>
     /// <param name="conversationKey">由 <see cref="ConversationKeyBuilder"/> 构造的会话键。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>可用会话。</returns>
     public Task<AgentSession> GetOrCreateSessionAsync(string conversationKey, CancellationToken cancellationToken = default)
         => _sessionStore.GetOrCreateAsync(conversationKey, cancellationToken);
+
+    /// <summary>会话历史在框架状态袋内的状态键（产品事实；<see cref="IAgentSessionFacade"/> 的实现）。</summary>
+    public string HistoryStateKey => ChatHistoryStateKey;
 
     /// <summary>
     /// 序列化并保存会话（刷新存储 TTL）。

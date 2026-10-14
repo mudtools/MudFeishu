@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -7,6 +7,8 @@
 
 using System.Runtime.CompilerServices;
 using Mud.Feishu.AI.Diagnostics;
+
+using Mud.Feishu.Abstractions.Conversations;
 
 namespace Mud.Feishu.AI.Agents;
 
@@ -63,6 +65,17 @@ public sealed class FeishuAgent : DelegatingAIAgent
     internal const string PendingReplyTurnStateKey = "feishu.agent.pending_reply_turn";
 
     private readonly FeishuAgentOptions _options;
+
+    /// <summary>
+    /// N3：中立运行期配置（由 <see cref="FeishuAgentOptions.ToRuntimeOptions"/> 投影）。
+    /// </summary>
+    /// <remarks>
+    /// 事件入口与中立机制读这个，而不是直接读产品 Options——这样「产品事实 →
+    /// 中立值类型」只有<b>一处</b>翻译点（本属性），后续把机制搬进 <c>Mud.AI.Agent</c>
+    /// 时不需要再回来改编排层。
+    /// </remarks>
+    private readonly AgentRuntimeOptions _runtime;
+
     private readonly AgentSessionStore _sessionStore;
     private readonly ConversationSummarizer? _summarizer;
     private readonly ILogger? _logger;
@@ -128,6 +141,7 @@ public sealed class FeishuAgent : DelegatingAIAgent
         : base(assembly.InnerAgent)
     {
         _options = options;
+        _runtime = options.ToRuntimeOptions();
         _logger = loggerFactory?.CreateLogger<FeishuAgent>();
         Guidance = assembly.Guidance;
 
@@ -235,16 +249,21 @@ public sealed class FeishuAgent : DelegatingAIAgent
     public GuidanceResult Guidance { get; }
 
     /// <summary>
-    /// T4 / D4：单轮工具调用预算上限（从 <see cref="FeishuAgentOptions.MaxToolCallsPerTurn"/> 透传；
-    /// 事件入口 <c>ConversationalFeishuEventHandler</c> 读取此值开启 <c>FeishuToolCallBudget</c>）。
+    /// N3：中立运行期配置（投影产物）——事件入口 / 中立机制的唯一配置读取面。
     /// </summary>
-    internal int MaxToolCallsPerTurn => _options.MaxToolCallsPerTurn;
+    internal AgentRuntimeOptions RuntimeOptions => _runtime;
 
     /// <summary>
-    /// T10 / D10：流式文本抑制选项（从 <see cref="FeishuAgentOptions.DeferTextUntilTurnComplete"/> 透传；
-    /// 事件入口 <c>ConversationalFeishuEventHandler</c> 读取此值决定流式增量推送策略）。
+    /// T4 / D4：单轮工具调用预算上限（源 <see cref="FeishuAgentOptions.MaxToolCallsPerTurn"/>；
+    /// 事件入口读取此值开启工具调用预算作用域）。
     /// </summary>
-    internal bool DeferTextUntilTurnComplete => _options.DeferTextUntilTurnComplete;
+    internal int MaxToolCallsPerTurn => _runtime.MaxToolCallsPerTurn;
+
+    /// <summary>
+    /// T10 / D10：流式文本抑制选项（源 <see cref="FeishuAgentOptions.DeferTextUntilTurnComplete"/>；
+    /// 事件入口读取此值决定流式增量推送策略）。
+    /// </summary>
+    internal bool DeferTextUntilTurnComplete => _runtime.DeferTextUntilTurnComplete;
 
     /// <summary>Agent 展示名（覆写 <see cref="AIAgent.Name"/>；不可用 <c>new</c> 遮蔽——那会使经 <see cref="AIAgent"/> 引用取值恒为基类默认 <see langword="null"/>）。</summary>
     /// <remarks>

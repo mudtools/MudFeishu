@@ -17,6 +17,14 @@ global using Mud.AI.Agent.Tools.Errors;
 // v2.3 P1-E：声明契约（[AgentTool] / [ToolParameter] / [ToolHandler]）上移 Mud.AI.Abstractions。
 global using Mud.AI.Abstractions.Tools;
 global using Mud.AI.Abstractions.Tools.Handlers;
+// N1 中立化：被工具面消费的中立契约与配置面上移 Mud.AI.Abstractions（与被测工程同口径）。
+global using Mud.AI.Abstractions.Approvals;
+global using Mud.AI.Abstractions.Channels;
+global using Mud.AI.Abstractions.Configuration;
+global using Mud.AI.Abstractions.Context;
+global using Mud.AI.Abstractions.Conversations;
+global using Mud.AI.Abstractions.Knowledge;
+global using Mud.AI.Abstractions.Media;
 // H2 中立化：域 guidance 装配机制上移 Mud.AI.Agent.Guidance（预算常量留在 FeishuGuidanceBudget）。
 global using Mud.AI.Agent.Guidance;
 global using Mud.Feishu.AI.Agents;

@@ -16,6 +16,16 @@ global using Mud.AI.Agent.Tools.Errors;
 // Mud.AI.Abstractions——策展接口与执行器绑定面经全局 using 直接引用新名（308 + 244 处调用点零改动）。
 global using Mud.AI.Abstractions.Tools;
 global using Mud.AI.Abstractions.Tools.Handlers;
+// N1 中立化：工具面消费的中立契约与配置面（知识检索 IRetriever/RetrievedChunk、
+// 工具重试策略 ToolRetryOptions、宿主批准通道 IToolApprovalChannel、会话请求 ConversationRequest…）
+// 上移 Mud.AI.Abstractions——工具面的 233 个执行器经全局 using 保持"简单名即可引用"。
+global using Mud.AI.Abstractions.Approvals;
+global using Mud.AI.Abstractions.Channels;
+global using Mud.AI.Abstractions.Configuration;
+global using Mud.AI.Abstractions.Context;
+global using Mud.AI.Abstractions.Conversations;
+global using Mud.AI.Abstractions.Knowledge;
+global using Mud.AI.Abstractions.Media;
 // H2 中立化：域 guidance 装配机制上移 Mud.AI.Agent.Guidance（FeishuGuidanceBlock/Result/Composer
 // 随之硬改名 GuidanceBlock/GuidanceResult/GuidanceComposer）；飞书侧只保留预算常量。
 global using Mud.AI.Agent.Guidance;

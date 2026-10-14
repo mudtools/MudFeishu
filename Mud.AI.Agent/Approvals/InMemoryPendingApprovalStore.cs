@@ -5,15 +5,17 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.AI.Agents;
+using Mud.AI.Abstractions.Approvals;
+
+namespace Mud.AI.Agent.Approvals;
 
 /// <summary>
-/// 待确认快照的<b>进程内实现</b>（R7 / C4a 默认实现）。
+/// 待确认快照的<b>进程内实现</b>（宿主契约 <see cref="IPendingApprovalStore"/> 的默认实现）。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>键</b>：<c>(AppKey, RequestId)</c> 复合键——多租户宿主下不同租户恰好用了同一个
-/// 框架请求标识时<b>不得</b>互相覆盖或互相消费（跨租户误伤，与令牌域 F2-1 同类形态）。
+/// <b>键</b>：<c>(TenantKey, RequestId)</c> 复合键——多租户宿主下不同租户恰好用了同一个
+/// 框架请求标识时<b>不得</b>互相覆盖或互相消费（跨租户误伤）。
 /// </para>
 /// <para>
 /// <b>时钟可注入</b>：<c>clock</c> 参数（默认 <see cref="DateTimeOffset.UtcNow"/>）让过期语义
@@ -23,10 +25,14 @@ namespace Mud.Feishu.AI.Agents;
 /// <b>并发</b>：单把锁保护「查—判—摘」的原子性。消费必须原子（否则两个并发批准可能都返回 true
 /// ⇒ 同一次写操作被执行两次）；本实现刻意不追求无锁，因为该路径是低频人工操作。
 /// </para>
+/// <para>
+/// <b>中立化说明</b>：本类型自产品适配层原样迁入（零产品语义——复合键用中立 <c>TenantKey</c>，
+/// 全部字段类型都由被中立化的值类型承载）。多实例部署由宿主替换为分布式实现。
+/// </para>
 /// </remarks>
-public sealed class InMemoryPendingApprovalStore : IFeishuPendingApprovalStore
+public sealed class InMemoryPendingApprovalStore : IPendingApprovalStore
 {
-    private readonly Dictionary<(string AppKey, string RequestId), PendingApprovalSnapshot> _items = [];
+    private readonly Dictionary<(string TenantKey, string RequestId), PendingApprovalSnapshot> _items = [];
     private readonly object _gate = new();
     private readonly Func<DateTimeOffset> _clock;
 
@@ -49,7 +55,7 @@ public sealed class InMemoryPendingApprovalStore : IFeishuPendingApprovalStore
 
         lock (_gate)
         {
-            _items[(snapshot.AppKey, snapshot.RequestId)] = snapshot;
+            _items[(snapshot.TenantKey, snapshot.RequestId)] = snapshot;
         }
 
         return Task.CompletedTask;
@@ -57,12 +63,12 @@ public sealed class InMemoryPendingApprovalStore : IFeishuPendingApprovalStore
 
     /// <inheritdoc />
     public Task<IReadOnlyList<PendingApprovalSnapshot>> ListPendingAsync(
-        string appKey,
+        string tenantKey,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(appKey))
+        if (string.IsNullOrEmpty(tenantKey))
         {
-            throw new ArgumentException("必须给出应用唯一标识（多租户隔离维度）", nameof(appKey));
+            throw new ArgumentException("必须给出租户/应用标识（隔离维度）", nameof(tenantKey));
         }
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -71,7 +77,7 @@ public sealed class InMemoryPendingApprovalStore : IFeishuPendingApprovalStore
         lock (_gate)
         {
             var pending = _items.Values
-                .Where(item => string.Equals(item.AppKey, appKey, StringComparison.Ordinal)
+                .Where(item => string.Equals(item.TenantKey, tenantKey, StringComparison.Ordinal)
                     && !item.IsExpired(now))
                 .ToArray();
 
@@ -81,20 +87,20 @@ public sealed class InMemoryPendingApprovalStore : IFeishuPendingApprovalStore
 
     /// <inheritdoc />
     public Task<PendingApprovalSnapshot?> FindAsync(
-        string appKey,
+        string tenantKey,
         string requestId,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(appKey))
+        if (string.IsNullOrEmpty(tenantKey))
         {
-            throw new ArgumentException("必须给出应用唯一标识（多租户隔离维度）", nameof(appKey));
+            throw new ArgumentException("必须给出租户/应用标识（隔离维度）", nameof(tenantKey));
         }
 
         cancellationToken.ThrowIfCancellationRequested();
 
         lock (_gate)
         {
-            var found = _items.TryGetValue((appKey, requestId), out var snapshot)
+            var found = _items.TryGetValue((tenantKey, requestId), out var snapshot)
                 && !snapshot.IsExpired(_clock())
                 ? snapshot
                 : null;
@@ -105,43 +111,43 @@ public sealed class InMemoryPendingApprovalStore : IFeishuPendingApprovalStore
 
     /// <inheritdoc />
     public Task<bool> TryConsumeAsync(
-        string appKey,
+        string tenantKey,
         string requestId,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(appKey))
+        if (string.IsNullOrEmpty(tenantKey))
         {
-            throw new ArgumentException("必须给出应用唯一标识（多租户隔离维度）", nameof(appKey));
+            throw new ArgumentException("必须给出租户/应用标识（隔离维度）", nameof(tenantKey));
         }
 
         cancellationToken.ThrowIfCancellationRequested();
 
         lock (_gate)
         {
-            if (!_items.TryGetValue((appKey, requestId), out var snapshot))
+            if (!_items.TryGetValue((tenantKey, requestId), out var snapshot))
             {
                 return Task.FromResult(false);
             }
 
             // 「查—判—摘」在同一把锁内：过期项一并摘除（不再出现在待办里），且消费失败。
-            _items.Remove((appKey, requestId));
+            _items.Remove((tenantKey, requestId));
             return Task.FromResult(!snapshot.IsExpired(_clock()));
         }
     }
 
     /// <inheritdoc />
-    public Task<bool> RemoveAsync(string appKey, string requestId, CancellationToken cancellationToken = default)
+    public Task<bool> RemoveAsync(string tenantKey, string requestId, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(appKey))
+        if (string.IsNullOrEmpty(tenantKey))
         {
-            throw new ArgumentException("必须给出应用唯一标识（多租户隔离维度）", nameof(appKey));
+            throw new ArgumentException("必须给出租户/应用标识（隔离维度）", nameof(tenantKey));
         }
 
         cancellationToken.ThrowIfCancellationRequested();
 
         lock (_gate)
         {
-            return Task.FromResult(_items.Remove((appKey, requestId)));
+            return Task.FromResult(_items.Remove((tenantKey, requestId)));
         }
     }
 

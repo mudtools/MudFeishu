@@ -34,8 +34,24 @@ global using Mud.Feishu.AI.Agents;
 global using Mud.Feishu.AI.Conversations;
 global using Mud.Feishu.AI.Extensions;
 global using Mud.Feishu.Abstractions.Configuration;
-global using Mud.Feishu.Abstractions.Conversations;
 global using Mud.Feishu.Abstractions.Services;
+// ⚠️ N1 中立化：与生产工程同款纪律——**不得**全局导入
+// `Mud.Feishu.Abstractions.Conversations`（其 `ConversationScope` 与中立副本同名 ⇒ CS0104）。
+// 需要飞书侧冻结契约的类型用**全局别名**取用（与生产侧 GlobalUsings.cs 同口径）。
+global using ConversationKeyBuilder = Mud.Feishu.Abstractions.Conversations.ConversationKeyBuilder;
+global using IConversationGate = Mud.Feishu.Abstractions.Conversations.IConversationGate;
+global using IConversationGateHandle = Mud.Feishu.Abstractions.Conversations.IConversationGateHandle;
+global using IConversationStore = Mud.Feishu.Abstractions.Conversations.IConversationStore;
+global using SessionStoreEncoding = Mud.Feishu.Abstractions.Conversations.SessionStoreEncoding;
+global using Mud.AI.Abstractions.Approvals;
+global using Mud.AI.Abstractions.Channels;
+global using Mud.AI.Abstractions.Configuration;
+global using Mud.AI.Abstractions.Context;
+global using Mud.AI.Abstractions.Conversations;
+global using Mud.AI.Abstractions.Knowledge;
+global using Mud.AI.Abstractions.Media;
+global using Mud.AI.Abstractions.Observability;
+global using Mud.AI.Agent.Approvals;
 // BUG-1：集成面用例消费的接缝类型在 Mud.Feishu.AI.AgentTools；工具契约类型（FeishuToolRegistry 等）
 // 已回迁工具包，其用例随迁至 Mud.Feishu.AI.Tools.Tests。
 global using Mud.Feishu.AI.AgentTools;

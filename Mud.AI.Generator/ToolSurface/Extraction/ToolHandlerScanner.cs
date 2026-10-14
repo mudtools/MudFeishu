@@ -235,7 +235,16 @@ internal static class ToolHandlerScanner
             : (optional ? ToolDependencyKind.OptionalService : ToolDependencyKind.RequiredService);
     }
 
-    /// <summary>命名空间是否为 <c>{SdkNamespaceRoot}</c> 或其子命名空间（软缺席候选的判定前提，剖面槽驱动）。</summary>
+    /// <summary>
+    /// 命名空间是否为「可软缺席」命名空间（软缺席候选的判定前提，剖面槽驱动）。
+    /// </summary>
+    /// <remarks>
+    /// <b>两个槽而非一个（中立化的直接后果）</b>：<see cref="SdkToolProfileModel.SdkNamespaceRoot"/>
+    /// 还承担「SDK 程序集定位」与 <c>Source</c> 前缀剥离，不能为推动软缺席判定而放宽；
+    /// 中立契约（如 <c>Mud.AI.Abstractions.Knowledge.IRetriever</c>）经
+    /// <see cref="SdkToolProfileModel.SoftAbsentNamespaceRoots"/> 追加。
+    /// 两者取<b>并集</b>：命中任一根即软缺席候选。
+    /// </remarks>
     private static bool IsSdkNamespace(INamespaceSymbol? ns, SdkToolProfileModel profile)
     {
         if (ns is null || ns.IsGlobalNamespace)
@@ -244,10 +253,26 @@ internal static class ToolHandlerScanner
         }
 
         var name = ns.ToDisplayString();
-        var root = profile.SdkNamespaceRoot;
-        return root.Length > 0
-            && (name == root || name.StartsWith(root + ".", StringComparison.Ordinal));
+        if (IsUnderRoot(name, profile.SdkNamespaceRoot))
+        {
+            return true;
+        }
+
+        foreach (var root in profile.SoftAbsentNamespaceRoots)
+        {
+            if (IsUnderRoot(name, root))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
+
+    /// <summary>命名空间是否等于某根或为其子命名空间（<c>root</c> 或 <c>root.</c> 前缀）。</summary>
+    private static bool IsUnderRoot(string namespaceName, string root)
+        => root.Length > 0
+            && (namespaceName == root || namespaceName.StartsWith(root + ".", StringComparison.Ordinal));
 
     /// <summary>
     /// 参数类型能否作为 DI 服务类型（类/接口，非开放泛型、非元组、非值类型、<b>非 BCL 内建类型</b>）。

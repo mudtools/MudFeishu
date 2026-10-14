@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者:Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -18,7 +18,7 @@ public class MemoryConversationStoreTests
     public async Task SaveGet_ShouldRoundTrip()
     {
         var store = new MemoryConversationStore(ttl: TimeSpan.FromHours(1));
-        var key = ConversationKeyBuilder.Build("app-a", ConversationScope.Group(), "oc_1");
+        var key = ConversationScopeMapper.BuildKey("app-a", ConversationScope.Group(), "oc_1");
 
         await store.SaveAsync(key, "{\"s\":1}");
         var loaded = await store.GetAsync(key);
@@ -30,7 +30,7 @@ public class MemoryConversationStoreTests
     public async Task Get_ShouldReturnNull_WhenMissing()
     {
         var store = new MemoryConversationStore();
-        var key = ConversationKeyBuilder.Build("app-a", ConversationScope.Group(), "oc_missing");
+        var key = ConversationScopeMapper.BuildKey("app-a", ConversationScope.Group(), "oc_missing");
 
         (await store.GetAsync(key)).Should().BeNull();
     }
@@ -40,7 +40,7 @@ public class MemoryConversationStoreTests
     {
         var now = DateTimeOffset.UtcNow;
         var store = new MemoryConversationStore(ttl: TimeSpan.FromSeconds(10), utcNow: () => now);
-        var key = ConversationKeyBuilder.Build("app-a", ConversationScope.Group(), "oc_1");
+        var key = ConversationScopeMapper.BuildKey("app-a", ConversationScope.Group(), "oc_1");
 
         await store.SaveAsync(key, "{\"s\":1}");
 
@@ -61,7 +61,7 @@ public class MemoryConversationStoreTests
     {
         var now = DateTimeOffset.UtcNow;
         var store = new MemoryConversationStore(ttl: TimeSpan.FromSeconds(10), utcNow: () => now);
-        var key = ConversationKeyBuilder.Build("app-a", ConversationScope.Group(), "oc_1");
+        var key = ConversationScopeMapper.BuildKey("app-a", ConversationScope.Group(), "oc_1");
 
         await store.SaveAsync(key, "{\"v\":1}");
         now += TimeSpan.FromSeconds(6);
@@ -75,7 +75,7 @@ public class MemoryConversationStoreTests
     public async Task Delete_ShouldRemoveEntry()
     {
         var store = new MemoryConversationStore();
-        var key = ConversationKeyBuilder.Build("app-a", ConversationScope.Group(), "oc_1");
+        var key = ConversationScopeMapper.BuildKey("app-a", ConversationScope.Group(), "oc_1");
 
         await store.SaveAsync(key, "{\"s\":1}");
         await store.DeleteAsync(key);

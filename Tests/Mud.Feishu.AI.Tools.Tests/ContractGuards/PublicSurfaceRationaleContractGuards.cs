@@ -59,7 +59,14 @@ public class PublicSurfaceRationaleContractGuards
     // 飞书发布面（−3），飞书侧只留预算常量 FeishuGuidanceBudget（+1）。
     // 新家 = Mud.AI.Agent.Guidance，由该包自己的 PublicAPI 台账登记（本守卫只数飞书发布面，
     // 这是「中立包自带台账」而非遗漏——见 ApiFiles 的工程白名单）。
-    private const int BaselineTypeCount = 355;
+    // N1/N2 中立化（2026-10-14）：355 → **335**——本轮把「AI 运行时机制」的公共面整批迁出
+    // Mud.Feishu.AI 发布面：契约与值类型 → Mud.AI.Abstractions（会话请求 / 上下文事实 /
+    // 流式通道 / 宿主批准通道 / 媒体转写 / 知识检索），机制实现 → Mud.AI.Agent（会话摘要器 /
+    // 待确认快照存储 / 工具预算与名字模式 / 文档分块与向量检索）。
+    // 这些类型的新家各自有 PublicAPI 台账（本守卫只数飞书发布面，见 ApiFiles 白名单），
+    // 故 −20 是**搬迁的结果**而不是公开面收缩。
+    // +1：ConversationScopeMapper（N1 的中立化接缝适配器，理由登记在 reasons 段）。
+    private const int BaselineTypeCount = 335;
 
     private static readonly string[] ApiFiles =
     [

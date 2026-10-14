@@ -150,6 +150,7 @@ internal sealed class SdkToolProfileModel : IEquatable<SdkToolProfileModel>
         ToolHandlerAttributeNamespace = string.Empty;
         ParameterAttributeName = string.Empty;
         SdkNamespaceRoot = string.Empty;
+        SoftAbsentNamespaceRoots = ImmutableArray<string>.Empty;
         InterfaceNameRegex = string.Empty;
         TokenKindMarkers = ImmutableArray<TokenKindMarker>.Empty;
         ProductPrefix = string.Empty;
@@ -191,6 +192,16 @@ internal sealed class SdkToolProfileModel : IEquatable<SdkToolProfileModel>
     // ────────── 2-4. 源解析 / 接口范式 / 令牌身份 ──────────
 
     public string SdkNamespaceRoot { get; private set; }
+
+    /// <summary>
+    /// 额外「可软缺席」命名空间根（剖面槽 <c>SoftAbsentNamespaceRoots</c>）。
+    /// </summary>
+    /// <remarks>
+    /// 见 <c>SdkToolProfileAttribute.SoftAbsentNamespaceRoots</c>：软缺席判定 =
+    /// <see cref="SdkNamespaceRoot"/> 或本集合任一根的前缀命中。
+    /// </remarks>
+    public ImmutableArray<string> SoftAbsentNamespaceRoots { get; private set; }
+
     public string InterfaceNameRegex { get; private set; }
     public ToolSurfaceTokenKindStrategy TokenKindStrategy { get; private set; }
     public ImmutableArray<TokenKindMarker> TokenKindMarkers { get; private set; }
@@ -267,6 +278,7 @@ internal sealed class SdkToolProfileModel : IEquatable<SdkToolProfileModel>
                 case nameof(ToolHandlerAttributeNamespace): model.ToolHandlerAttributeNamespace = value ?? string.Empty; break;
                 case nameof(ParameterAttributeName): model.ParameterAttributeName = value ?? string.Empty; break;
                 case nameof(SdkNamespaceRoot): model.SdkNamespaceRoot = value ?? string.Empty; break;
+                case nameof(SoftAbsentNamespaceRoots): model.SoftAbsentNamespaceRoots = SplitList(value); break;
                 case nameof(InterfaceNameRegex): model.InterfaceNameRegex = value ?? string.Empty; break;
                 case nameof(TokenKindStrategy):
                     model.TokenKindStrategy = named.Value.Value is int strategy
@@ -414,6 +426,7 @@ internal sealed class SdkToolProfileModel : IEquatable<SdkToolProfileModel>
             && ToolHandlerAttributeNamespace == other.ToolHandlerAttributeNamespace
             && ParameterAttributeName == other.ParameterAttributeName
             && SdkNamespaceRoot == other.SdkNamespaceRoot
+            && SoftAbsentNamespaceRoots.SequenceEqual(other.SoftAbsentNamespaceRoots)
             && InterfaceNameRegex == other.InterfaceNameRegex
             && TokenKindStrategy == other.TokenKindStrategy
             && TokenKindMarkers.SequenceEqual(other.TokenKindMarkers)
@@ -460,6 +473,11 @@ internal sealed class SdkToolProfileModel : IEquatable<SdkToolProfileModel>
                 hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(ToolHandlerAttributeNamespace);
                 hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(ParameterAttributeName);
                 hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(SdkNamespaceRoot);
+                foreach (var softRoot in SoftAbsentNamespaceRoots)
+                {
+                    hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(softRoot);
+                }
+
                 hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(InterfaceNameRegex);
                 hash = (hash * 31) + (int)TokenKindStrategy;
                 foreach (var marker in TokenKindMarkers)

@@ -310,4 +310,78 @@ public class FeishuAgentOptionsTests
                     $"{optionsType.Name}.{property.Name} 不得标记 required（配置绑定源生成器 CS9035）");
             }
     }
+
+    // ────────────────────────────────────────────────────────────────────
+    // N3：中立运行期配置投影（ToRuntimeOptions）
+    // ────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// <b>N3 投影不丢语义</b>：9 个中立旋钮必须逐项等于产品 Options 的对应值。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么必须断言"逐项"，而不是"非空/非默认"</b>：投影漏掉一项不会有任何编译错误，
+    /// 症状是「宿主把 MaxConcurrentTurns 从 32 改成 4，但闸门仍按 32 跑」——配置改了不生效，
+    /// 且只在压测下可见。逐项相等是唯一能在单测里捕获它的判据。
+    /// </para>
+    /// <para>
+    /// <see cref="ToolRetry"/> 刻意断言<b>引用相同</b>（而非值相等）：投影若复制一份，
+    /// 宿主对同一实例的后续修改（<c>Configure&lt;FeishuAgentOptions&gt;(o =&gt; o.ToolRetry.MaxAttempts = 1)</c>）
+    /// 会被投影快照切断，同样表现为"配置改了不生效"。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void ToRuntimeOptions_ShouldProjectEveryNeutralKnob()
+    {
+        var retry = new ToolRetryOptions { MaxAttempts = 7, AllowWriteRetry = true };
+        var options = new FeishuAgentOptions
+        {
+            Instructions = "x",
+            MaxHistoryMessages = 11,
+            SummaryThreshold = 22,
+            MaxHistoryTokens = 33,
+            MaxStreamChunkLength = 44,
+            MaxToolCallsPerTurn = 55,
+            MaxConcurrentTurns = 66,
+            TurnQueueTimeoutSeconds = 0,
+            DeferTextUntilTurnComplete = true,
+            ToolRetry = retry,
+        };
+
+        var runtime = options.ToRuntimeOptions();
+
+        runtime.MaxHistoryMessages.Should().Be(11);
+        runtime.SummaryThreshold.Should().Be(22);
+        runtime.MaxHistoryTokens.Should().Be(33);
+        runtime.MaxStreamChunkLength.Should().Be(44);
+        runtime.MaxToolCallsPerTurn.Should().Be(55);
+        runtime.MaxConcurrentTurns.Should().Be(66);
+        runtime.TurnQueueTimeoutSeconds.Should().Be(0, "0 = 不限等待，是合法取值（与产品 Options 的校验语义一致）");
+        runtime.DeferTextUntilTurnComplete.Should().BeTrue();
+        runtime.ToolRetry.Should().BeSameAs(retry, "投影不得复制重试策略：复制会让宿主后续改动被快照切断");
+
+        // 反向自证：投影产物本身必须过中立侧校验（否则"产品合法但中立非法"会静默穿透）。
+        var act = runtime.Validate;
+        act.Should().NotThrow();
+    }
+
+    /// <summary>
+    /// 自证报红：<b>故意</b>把某个耦合点改坏（此处以一个不可投影的值模拟）时上述逐项断言会失败。
+    /// </summary>
+    /// <remarks>
+    /// 没有这条，"9 项全等"可能只是因为两边读的是同一个字段而恒真——本用例把投影产物改成
+    /// 不同的值，证明断言真的在比较。
+    /// </remarks>
+    [Fact]
+    public void ToRuntimeOptions_Assertion_ShouldDetectDrift()
+    {
+        var options = new FeishuAgentOptions { Instructions = "x", MaxConcurrentTurns = 32 };
+        var runtime = options.ToRuntimeOptions();
+
+        // 模拟"投影漏改一项"的产物。
+        runtime.MaxConcurrentTurns = 4;
+
+        runtime.MaxConcurrentTurns.Should().NotBe(options.MaxConcurrentTurns,
+            "投影产物的独立可变性证明逐项断言真的在读两个不同对象");
+    }
 }

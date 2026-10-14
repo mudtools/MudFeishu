@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -7,7 +7,6 @@
 
 using Microsoft.Extensions.Logging;
 using Mud.Feishu.Abstractions;
-using Mud.Feishu.Abstractions.Conversations;
 using Mud.Feishu.Abstractions.EventHandlers;
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.AI.Channels;
@@ -103,9 +102,9 @@ public sealed class ApprovalTaskConversationalEventHandler(
     /// "当前节点""待办人""表单要点"不在 <see cref="ApprovalTaskResult"/> 载荷里
     /// （需另调 <c>approval.get_instance</c>）——<b>不臆造</b>这些键（模型会以为事件自带）。
     /// </remarks>
-    private static List<FeishuEventFact> BuildApprovalFacts(ApprovalTaskResult eventData)
+    private static List<EventFact> BuildApprovalFacts(ApprovalTaskResult eventData)
     {
-        var facts = new List<FeishuEventFact>(capacity: 5)
+        var facts = new List<EventFact>(capacity: 5)
         {
             new("instance_code", eventData.InstanceCode),
             new("task_id", eventData.TaskId),
@@ -116,7 +115,7 @@ public sealed class ApprovalTaskConversationalEventHandler(
         var operatorId = !string.IsNullOrEmpty(eventData.OpenId) ? eventData.OpenId : eventData.UserId;
         if (!string.IsNullOrEmpty(operatorId))
         {
-            facts.Add(new FeishuEventFact("operator", operatorId));
+            facts.Add(new EventFact("operator", operatorId));
         }
 
         return facts;

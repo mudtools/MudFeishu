@@ -90,7 +90,7 @@ internal static class GuardProviderFactory
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4CalendarEvent>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4Calendar>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV2Task>().Object)
-            .AddSingleton(new Mock<Mud.Feishu.AI.Knowledge.IRetriever>().Object);
+            .AddSingleton(new Mock<Mud.AI.Abstractions.Knowledge.IRetriever>().Object);
 
         if (withUserTaskClient)
         {

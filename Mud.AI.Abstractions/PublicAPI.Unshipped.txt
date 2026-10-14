@@ -1,8 +1,298 @@
-#nullable enable
+﻿#nullable enable
+~override Mud.AI.Abstractions.Context.EventFact.Equals(object obj) -> bool
+~override Mud.AI.Abstractions.Context.EventFact.ToString() -> string
+~override Mud.AI.Abstractions.Conversations.ConversationScope.Equals(object obj) -> bool
+~override Mud.AI.Abstractions.Conversations.ConversationScope.ToString() -> string
+~override Mud.AI.Abstractions.Knowledge.CorpusDocument.Equals(object obj) -> bool
+~override Mud.AI.Abstractions.Knowledge.CorpusDocument.ToString() -> string
+const Mud.AI.Abstractions.Conversations.ConversationScope.ChatTypeGroup = "group" -> string!
+const Mud.AI.Abstractions.Conversations.ConversationScope.ChatTypeP2P = "p2p" -> string!
+Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest
+Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest.<Clone>$() -> Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest!
+Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest.ArgumentsDigest.get -> string?
+Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest.ArgumentsDigest.init -> void
+Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest.ChatId.get -> string?
+Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest.ChatId.init -> void
+Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest.ConversationKey.get -> string?
+Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest.ConversationKey.init -> void
+Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest.Deconstruct(out string! RequestId, out string! ToolName, out string? ToolCallId, out string! TenantKey, out string? UserId, out string? ConversationKey, out string? ArgumentsDigest, out System.Collections.Generic.IReadOnlyList<string!>! RequiredScopes, out string? ChatId) -> void
+Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest.Equals(Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest? other) -> bool
+Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest.FrameworkToolApprovalRequest(string! RequestId, string! ToolName, string? ToolCallId, string! TenantKey, string? UserId, string? ConversationKey, string? ArgumentsDigest, System.Collections.Generic.IReadOnlyList<string!>! RequiredScopes, string? ChatId = null) -> void
+Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest.RequestId.get -> string!
+Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest.RequestId.init -> void
+Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest.RequiredScopes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest.RequiredScopes.init -> void
+Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest.TenantKey.get -> string!
+Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest.TenantKey.init -> void
+Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest.ToolCallId.get -> string?
+Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest.ToolCallId.init -> void
+Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest.ToolName.get -> string!
+Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest.ToolName.init -> void
+Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest.UserId.get -> string?
+Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest.UserId.init -> void
+Mud.AI.Abstractions.Approvals.IPendingApprovalStore
+Mud.AI.Abstractions.Approvals.IPendingApprovalStore.FindAsync(string! tenantKey, string! requestId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot?>!
+Mud.AI.Abstractions.Approvals.IPendingApprovalStore.ListPendingAsync(string! tenantKey, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot!>!>!
+Mud.AI.Abstractions.Approvals.IPendingApprovalStore.RemoveAsync(string! tenantKey, string! requestId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Mud.AI.Abstractions.Approvals.IPendingApprovalStore.RemoveExpiredAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+Mud.AI.Abstractions.Approvals.IPendingApprovalStore.SaveAsync(Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot! snapshot, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Mud.AI.Abstractions.Approvals.IPendingApprovalStore.TryConsumeAsync(string! tenantKey, string! requestId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Mud.AI.Abstractions.Approvals.IToolApprovalChannel
+Mud.AI.Abstractions.Approvals.IToolApprovalChannel.RequestApprovalAsync(Mud.AI.Abstractions.Approvals.ToolApprovalRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
+Mud.AI.Abstractions.Approvals.IToolApprovalChannel.RequestFrameworkApprovalAsync(Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
+Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot
+Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.<Clone>$() -> Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot!
+Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.ArgumentsDigest.get -> string?
+Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.ArgumentsDigest.init -> void
+Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.ChatId.get -> string?
+Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.ChatId.init -> void
+Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.ConversationKey.get -> string?
+Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.ConversationKey.init -> void
+Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.CreatedAt.get -> System.DateTimeOffset
+Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.CreatedAt.init -> void
+Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.Deconstruct(out string! RequestId, out string! ToolName, out string! TenantKey, out string? UserId, out string? ConversationKey, out string? ChatId, out string? ToolCallId, out string? ArgumentsDigest, out System.Collections.Generic.IReadOnlyList<string!>! RequiredScopes, out System.DateTimeOffset CreatedAt, out System.DateTimeOffset ExpiresAt) -> void
+Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.Equals(Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot? other) -> bool
+Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.ExpiresAt.get -> System.DateTimeOffset
+Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.ExpiresAt.init -> void
+Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.IsExpired(System.DateTimeOffset now) -> bool
+Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.PendingApprovalSnapshot(string! RequestId, string! ToolName, string! TenantKey, string? UserId, string? ConversationKey, string? ChatId, string? ToolCallId, string? ArgumentsDigest, System.Collections.Generic.IReadOnlyList<string!>! RequiredScopes, System.DateTimeOffset CreatedAt, System.DateTimeOffset ExpiresAt) -> void
+Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.RequestId.get -> string!
+Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.RequestId.init -> void
+Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.RequiredScopes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.RequiredScopes.init -> void
+Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.TenantKey.get -> string!
+Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.TenantKey.init -> void
+Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.ToolCallId.get -> string?
+Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.ToolCallId.init -> void
+Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.ToolName.get -> string!
+Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.ToolName.init -> void
+Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.UserId.get -> string?
+Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.UserId.init -> void
+Mud.AI.Abstractions.Approvals.ToolApprovalRequest
+Mud.AI.Abstractions.Approvals.ToolApprovalRequest.<Clone>$() -> Mud.AI.Abstractions.Approvals.ToolApprovalRequest!
+Mud.AI.Abstractions.Approvals.ToolApprovalRequest.ArgumentsDigest.get -> string!
+Mud.AI.Abstractions.Approvals.ToolApprovalRequest.ArgumentsDigest.init -> void
+Mud.AI.Abstractions.Approvals.ToolApprovalRequest.ConversationKey.get -> string?
+Mud.AI.Abstractions.Approvals.ToolApprovalRequest.ConversationKey.init -> void
+Mud.AI.Abstractions.Approvals.ToolApprovalRequest.Deconstruct(out string! ToolName, out string! TenantKey, out string? UserId, out string? ConversationKey, out string! ArgumentsDigest, out System.Collections.Generic.IReadOnlyList<string!>! RequiredScopes, out string? Reason, out System.DateTimeOffset ExpiresAt) -> void
+Mud.AI.Abstractions.Approvals.ToolApprovalRequest.Equals(Mud.AI.Abstractions.Approvals.ToolApprovalRequest? other) -> bool
+Mud.AI.Abstractions.Approvals.ToolApprovalRequest.ExpiresAt.get -> System.DateTimeOffset
+Mud.AI.Abstractions.Approvals.ToolApprovalRequest.ExpiresAt.init -> void
+Mud.AI.Abstractions.Approvals.ToolApprovalRequest.Reason.get -> string?
+Mud.AI.Abstractions.Approvals.ToolApprovalRequest.Reason.init -> void
+Mud.AI.Abstractions.Approvals.ToolApprovalRequest.RequiredScopes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Mud.AI.Abstractions.Approvals.ToolApprovalRequest.RequiredScopes.init -> void
+Mud.AI.Abstractions.Approvals.ToolApprovalRequest.TenantKey.get -> string!
+Mud.AI.Abstractions.Approvals.ToolApprovalRequest.TenantKey.init -> void
+Mud.AI.Abstractions.Approvals.ToolApprovalRequest.ToolApprovalRequest(string! ToolName, string! TenantKey, string? UserId, string? ConversationKey, string! ArgumentsDigest, System.Collections.Generic.IReadOnlyList<string!>! RequiredScopes, string? Reason, System.DateTimeOffset ExpiresAt) -> void
+Mud.AI.Abstractions.Approvals.ToolApprovalRequest.ToolName.get -> string!
+Mud.AI.Abstractions.Approvals.ToolApprovalRequest.ToolName.init -> void
+Mud.AI.Abstractions.Approvals.ToolApprovalRequest.UserId.get -> string?
+Mud.AI.Abstractions.Approvals.ToolApprovalRequest.UserId.init -> void
+Mud.AI.Abstractions.Channels.IChannelTargetResolver
+Mud.AI.Abstractions.Channels.IChannelTargetResolver.ResolveStreamTarget(Mud.AI.Abstractions.Conversations.ConversationRequest! request) -> string?
+Mud.AI.Abstractions.Channels.IMessageChannel
+Mud.AI.Abstractions.Channels.IMessageChannel.BeginAsync(string! tenantKey, string! chatId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+Mud.AI.Abstractions.Channels.IMessageChannel.FlushAsync(string! tenantKey, string! chatId, string! messageId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Mud.AI.Abstractions.Channels.IMessageChannel.WriteStreamAsync(string! tenantKey, string! chatId, string! messageId, string! delta, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Mud.AI.Abstractions.Channels.StreamingRequestContext
+Mud.AI.Abstractions.Configuration.AgentRuntimeOptions
+Mud.AI.Abstractions.Configuration.AgentRuntimeOptions.AgentRuntimeOptions() -> void
+Mud.AI.Abstractions.Configuration.AgentRuntimeOptions.DeferTextUntilTurnComplete.get -> bool
+Mud.AI.Abstractions.Configuration.AgentRuntimeOptions.DeferTextUntilTurnComplete.set -> void
+Mud.AI.Abstractions.Configuration.AgentRuntimeOptions.MaxConcurrentTurns.get -> int
+Mud.AI.Abstractions.Configuration.AgentRuntimeOptions.MaxConcurrentTurns.set -> void
+Mud.AI.Abstractions.Configuration.AgentRuntimeOptions.MaxHistoryMessages.get -> int
+Mud.AI.Abstractions.Configuration.AgentRuntimeOptions.MaxHistoryMessages.set -> void
+Mud.AI.Abstractions.Configuration.AgentRuntimeOptions.MaxHistoryTokens.get -> int
+Mud.AI.Abstractions.Configuration.AgentRuntimeOptions.MaxHistoryTokens.set -> void
+Mud.AI.Abstractions.Configuration.AgentRuntimeOptions.MaxStreamChunkLength.get -> int
+Mud.AI.Abstractions.Configuration.AgentRuntimeOptions.MaxStreamChunkLength.set -> void
+Mud.AI.Abstractions.Configuration.AgentRuntimeOptions.MaxToolCallsPerTurn.get -> int
+Mud.AI.Abstractions.Configuration.AgentRuntimeOptions.MaxToolCallsPerTurn.set -> void
+Mud.AI.Abstractions.Configuration.AgentRuntimeOptions.SummaryThreshold.get -> int
+Mud.AI.Abstractions.Configuration.AgentRuntimeOptions.SummaryThreshold.set -> void
+Mud.AI.Abstractions.Configuration.AgentRuntimeOptions.ToolRetry.get -> Mud.AI.Abstractions.Configuration.ToolRetryOptions!
+Mud.AI.Abstractions.Configuration.AgentRuntimeOptions.ToolRetry.set -> void
+Mud.AI.Abstractions.Configuration.AgentRuntimeOptions.TurnQueueTimeoutSeconds.get -> int
+Mud.AI.Abstractions.Configuration.AgentRuntimeOptions.TurnQueueTimeoutSeconds.set -> void
+Mud.AI.Abstractions.Configuration.AgentRuntimeOptions.Validate() -> void
+Mud.AI.Abstractions.Configuration.ToolRetryOptions
+Mud.AI.Abstractions.Configuration.ToolRetryOptions.AllowWriteRetry.get -> bool
+Mud.AI.Abstractions.Configuration.ToolRetryOptions.AllowWriteRetry.set -> void
+Mud.AI.Abstractions.Configuration.ToolRetryOptions.BaseDelayMilliseconds.get -> int
+Mud.AI.Abstractions.Configuration.ToolRetryOptions.BaseDelayMilliseconds.set -> void
+Mud.AI.Abstractions.Configuration.ToolRetryOptions.Enabled.get -> bool
+Mud.AI.Abstractions.Configuration.ToolRetryOptions.Enabled.set -> void
+Mud.AI.Abstractions.Configuration.ToolRetryOptions.Jitter.get -> bool
+Mud.AI.Abstractions.Configuration.ToolRetryOptions.Jitter.set -> void
+Mud.AI.Abstractions.Configuration.ToolRetryOptions.MaxAttempts.get -> int
+Mud.AI.Abstractions.Configuration.ToolRetryOptions.MaxAttempts.set -> void
+Mud.AI.Abstractions.Configuration.ToolRetryOptions.MaxDelayMilliseconds.get -> int
+Mud.AI.Abstractions.Configuration.ToolRetryOptions.MaxDelayMilliseconds.set -> void
+Mud.AI.Abstractions.Configuration.ToolRetryOptions.ToolRetryOptions() -> void
+Mud.AI.Abstractions.Context.EventFact
+Mud.AI.Abstractions.Context.EventFact.Deconstruct(out string! Key, out string? Value) -> void
+Mud.AI.Abstractions.Context.EventFact.Equals(Mud.AI.Abstractions.Context.EventFact other) -> bool
+Mud.AI.Abstractions.Context.EventFact.EventFact() -> void
+Mud.AI.Abstractions.Context.EventFact.EventFact(string! Key, string? Value) -> void
+Mud.AI.Abstractions.Context.EventFact.Key.get -> string!
+Mud.AI.Abstractions.Context.EventFact.Key.init -> void
+Mud.AI.Abstractions.Context.EventFact.Value.get -> string?
+Mud.AI.Abstractions.Context.EventFact.Value.init -> void
+Mud.AI.Abstractions.Context.IContextAssembler
+Mud.AI.Abstractions.Context.IContextAssembler.AssembleAsync(Mud.AI.Abstractions.Conversations.ConversationRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
+Mud.AI.Abstractions.Context.IContextAssembler.Order.get -> int
+Mud.AI.Abstractions.Conversations.ConversationRequest
+Mud.AI.Abstractions.Conversations.ConversationRequest.<Clone>$() -> Mud.AI.Abstractions.Conversations.ConversationRequest!
+Mud.AI.Abstractions.Conversations.ConversationRequest.AppKey.get -> string!
+Mud.AI.Abstractions.Conversations.ConversationRequest.AppKey.init -> void
+Mud.AI.Abstractions.Conversations.ConversationRequest.ChatId.get -> string?
+Mud.AI.Abstractions.Conversations.ConversationRequest.ChatId.init -> void
+Mud.AI.Abstractions.Conversations.ConversationRequest.ConversationRequest(string! AppKey, Mud.AI.Abstractions.Conversations.ConversationScope Scope, string! SubjectId, string! SenderId, string! MessageId, string? MentionedText, string? ChatId = null, string? ParentId = null, string? ThreadId = null, string? EventKey = null, System.Collections.Generic.IReadOnlyList<Mud.AI.Abstractions.Context.EventFact>? EventFacts = null) -> void
+Mud.AI.Abstractions.Conversations.ConversationRequest.Deconstruct(out string! AppKey, out Mud.AI.Abstractions.Conversations.ConversationScope Scope, out string! SubjectId, out string! SenderId, out string! MessageId, out string? MentionedText, out string? ChatId, out string? ParentId, out string? ThreadId, out string? EventKey, out System.Collections.Generic.IReadOnlyList<Mud.AI.Abstractions.Context.EventFact>? EventFacts) -> void
+Mud.AI.Abstractions.Conversations.ConversationRequest.Equals(Mud.AI.Abstractions.Conversations.ConversationRequest? other) -> bool
+Mud.AI.Abstractions.Conversations.ConversationRequest.EventFacts.get -> System.Collections.Generic.IReadOnlyList<Mud.AI.Abstractions.Context.EventFact>?
+Mud.AI.Abstractions.Conversations.ConversationRequest.EventFacts.init -> void
+Mud.AI.Abstractions.Conversations.ConversationRequest.EventKey.get -> string?
+Mud.AI.Abstractions.Conversations.ConversationRequest.EventKey.init -> void
+Mud.AI.Abstractions.Conversations.ConversationRequest.MentionedText.get -> string?
+Mud.AI.Abstractions.Conversations.ConversationRequest.MentionedText.init -> void
+Mud.AI.Abstractions.Conversations.ConversationRequest.MessageId.get -> string!
+Mud.AI.Abstractions.Conversations.ConversationRequest.MessageId.init -> void
+Mud.AI.Abstractions.Conversations.ConversationRequest.ParentId.get -> string?
+Mud.AI.Abstractions.Conversations.ConversationRequest.ParentId.init -> void
+Mud.AI.Abstractions.Conversations.ConversationRequest.Scope.get -> Mud.AI.Abstractions.Conversations.ConversationScope
+Mud.AI.Abstractions.Conversations.ConversationRequest.Scope.init -> void
+Mud.AI.Abstractions.Conversations.ConversationRequest.SenderId.get -> string!
+Mud.AI.Abstractions.Conversations.ConversationRequest.SenderId.init -> void
+Mud.AI.Abstractions.Conversations.ConversationRequest.SubjectId.get -> string!
+Mud.AI.Abstractions.Conversations.ConversationRequest.SubjectId.init -> void
+Mud.AI.Abstractions.Conversations.ConversationRequest.ThreadId.get -> string?
+Mud.AI.Abstractions.Conversations.ConversationRequest.ThreadId.init -> void
+Mud.AI.Abstractions.Conversations.ConversationScope
+Mud.AI.Abstractions.Conversations.ConversationScope.ChatType.get -> string!
+Mud.AI.Abstractions.Conversations.ConversationScope.ChatType.init -> void
+Mud.AI.Abstractions.Conversations.ConversationScope.ConversationScope() -> void
+Mud.AI.Abstractions.Conversations.ConversationScope.ConversationScope(string! ChatType, bool IsGroup) -> void
+Mud.AI.Abstractions.Conversations.ConversationScope.Deconstruct(out string! ChatType, out bool IsGroup) -> void
+Mud.AI.Abstractions.Conversations.ConversationScope.Equals(Mud.AI.Abstractions.Conversations.ConversationScope other) -> bool
+Mud.AI.Abstractions.Conversations.ConversationScope.IsGroup.get -> bool
+Mud.AI.Abstractions.Conversations.ConversationScope.IsGroup.init -> void
 Mud.AI.Abstractions.Conversations.ISessionStore
 Mud.AI.Abstractions.Conversations.ISessionStore.DeleteAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Mud.AI.Abstractions.Conversations.ISessionStore.GetAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
 Mud.AI.Abstractions.Conversations.ISessionStore.SaveAsync(string! key, string! serializedSession, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Mud.AI.Abstractions.Knowledge.CorpusChunk
+Mud.AI.Abstractions.Knowledge.CorpusChunk.<Clone>$() -> Mud.AI.Abstractions.Knowledge.CorpusChunk!
+Mud.AI.Abstractions.Knowledge.CorpusChunk.CorpusChunk(string! SourceToken, string! Text, string? TitlePath = null, string? Url = null, string? ScopeKey = null, int Index = 0) -> void
+Mud.AI.Abstractions.Knowledge.CorpusChunk.Deconstruct(out string! SourceToken, out string! Text, out string? TitlePath, out string? Url, out string? ScopeKey, out int Index) -> void
+Mud.AI.Abstractions.Knowledge.CorpusChunk.Equals(Mud.AI.Abstractions.Knowledge.CorpusChunk? other) -> bool
+Mud.AI.Abstractions.Knowledge.CorpusChunk.Index.get -> int
+Mud.AI.Abstractions.Knowledge.CorpusChunk.Index.init -> void
+Mud.AI.Abstractions.Knowledge.CorpusChunk.ScopeKey.get -> string?
+Mud.AI.Abstractions.Knowledge.CorpusChunk.ScopeKey.init -> void
+Mud.AI.Abstractions.Knowledge.CorpusChunk.SourceToken.get -> string!
+Mud.AI.Abstractions.Knowledge.CorpusChunk.SourceToken.init -> void
+Mud.AI.Abstractions.Knowledge.CorpusChunk.Text.get -> string!
+Mud.AI.Abstractions.Knowledge.CorpusChunk.Text.init -> void
+Mud.AI.Abstractions.Knowledge.CorpusChunk.TitlePath.get -> string?
+Mud.AI.Abstractions.Knowledge.CorpusChunk.TitlePath.init -> void
+Mud.AI.Abstractions.Knowledge.CorpusChunk.Url.get -> string?
+Mud.AI.Abstractions.Knowledge.CorpusChunk.Url.init -> void
+Mud.AI.Abstractions.Knowledge.CorpusDocument
+Mud.AI.Abstractions.Knowledge.CorpusDocument.CorpusDocument() -> void
+Mud.AI.Abstractions.Knowledge.CorpusDocument.CorpusDocument(string! SourceToken, string! Text, string? Title = null, string? Url = null, string? ScopeKey = null) -> void
+Mud.AI.Abstractions.Knowledge.CorpusDocument.Deconstruct(out string! SourceToken, out string! Text, out string? Title, out string? Url, out string? ScopeKey) -> void
+Mud.AI.Abstractions.Knowledge.CorpusDocument.Equals(Mud.AI.Abstractions.Knowledge.CorpusDocument other) -> bool
+Mud.AI.Abstractions.Knowledge.CorpusDocument.ScopeKey.get -> string?
+Mud.AI.Abstractions.Knowledge.CorpusDocument.ScopeKey.init -> void
+Mud.AI.Abstractions.Knowledge.CorpusDocument.SourceToken.get -> string!
+Mud.AI.Abstractions.Knowledge.CorpusDocument.SourceToken.init -> void
+Mud.AI.Abstractions.Knowledge.CorpusDocument.Text.get -> string!
+Mud.AI.Abstractions.Knowledge.CorpusDocument.Text.init -> void
+Mud.AI.Abstractions.Knowledge.CorpusDocument.Title.get -> string?
+Mud.AI.Abstractions.Knowledge.CorpusDocument.Title.init -> void
+Mud.AI.Abstractions.Knowledge.CorpusDocument.Url.get -> string?
+Mud.AI.Abstractions.Knowledge.CorpusDocument.Url.init -> void
+Mud.AI.Abstractions.Knowledge.ICorpusSource
+Mud.AI.Abstractions.Knowledge.ICorpusSource.PullAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Mud.AI.Abstractions.Knowledge.CorpusDocument>!>!
+Mud.AI.Abstractions.Knowledge.IKnowledgeBase
+Mud.AI.Abstractions.Knowledge.IKnowledgeBase.AskAsync(string! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Mud.AI.Abstractions.Knowledge.KnowledgeAnswer!>!
+Mud.AI.Abstractions.Knowledge.IRetriever
+Mud.AI.Abstractions.Knowledge.IRetriever.RetrieveAsync(string! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Mud.AI.Abstractions.Knowledge.RetrievedChunk!>!>!
+Mud.AI.Abstractions.Knowledge.IVectorStore
+Mud.AI.Abstractions.Knowledge.IVectorStore.QueryAsync(string! query, int topK, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Mud.AI.Abstractions.Knowledge.RetrievedChunk!>!>!
+Mud.AI.Abstractions.Knowledge.IVectorStore.UpsertAsync(System.Collections.Generic.IReadOnlyList<Mud.AI.Abstractions.Knowledge.CorpusChunk!>! chunks, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Mud.AI.Abstractions.Knowledge.KnowledgeAnswer
+Mud.AI.Abstractions.Knowledge.KnowledgeAnswer.<Clone>$() -> Mud.AI.Abstractions.Knowledge.KnowledgeAnswer!
+Mud.AI.Abstractions.Knowledge.KnowledgeAnswer.AnswerText.get -> string?
+Mud.AI.Abstractions.Knowledge.KnowledgeAnswer.AnswerText.init -> void
+Mud.AI.Abstractions.Knowledge.KnowledgeAnswer.Chunks.get -> System.Collections.Generic.IReadOnlyList<Mud.AI.Abstractions.Knowledge.RetrievedChunk!>!
+Mud.AI.Abstractions.Knowledge.KnowledgeAnswer.Chunks.init -> void
+Mud.AI.Abstractions.Knowledge.KnowledgeAnswer.Deconstruct(out string! Question, out string? AnswerText, out bool HasAnswer, out System.Collections.Generic.IReadOnlyList<Mud.AI.Abstractions.Knowledge.RetrievedChunk!>! Chunks) -> void
+Mud.AI.Abstractions.Knowledge.KnowledgeAnswer.Equals(Mud.AI.Abstractions.Knowledge.KnowledgeAnswer? other) -> bool
+Mud.AI.Abstractions.Knowledge.KnowledgeAnswer.HasAnswer.get -> bool
+Mud.AI.Abstractions.Knowledge.KnowledgeAnswer.HasAnswer.init -> void
+Mud.AI.Abstractions.Knowledge.KnowledgeAnswer.KnowledgeAnswer(string! Question, string? AnswerText, bool HasAnswer, System.Collections.Generic.IReadOnlyList<Mud.AI.Abstractions.Knowledge.RetrievedChunk!>! Chunks) -> void
+Mud.AI.Abstractions.Knowledge.KnowledgeAnswer.Question.get -> string!
+Mud.AI.Abstractions.Knowledge.KnowledgeAnswer.Question.init -> void
+Mud.AI.Abstractions.Knowledge.KnowledgeAnswer.Sources.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Mud.AI.Abstractions.Knowledge.RetrievedChunk
+Mud.AI.Abstractions.Knowledge.RetrievedChunk.<Clone>$() -> Mud.AI.Abstractions.Knowledge.RetrievedChunk!
+Mud.AI.Abstractions.Knowledge.RetrievedChunk.Deconstruct(out string! Text, out string? Source, out double? Score, out string? TitlePath) -> void
+Mud.AI.Abstractions.Knowledge.RetrievedChunk.Equals(Mud.AI.Abstractions.Knowledge.RetrievedChunk? other) -> bool
+Mud.AI.Abstractions.Knowledge.RetrievedChunk.RetrievedChunk(string! Text, string? Source = null, double? Score = null, string? TitlePath = null) -> void
+Mud.AI.Abstractions.Knowledge.RetrievedChunk.Score.get -> double?
+Mud.AI.Abstractions.Knowledge.RetrievedChunk.Score.init -> void
+Mud.AI.Abstractions.Knowledge.RetrievedChunk.Source.get -> string?
+Mud.AI.Abstractions.Knowledge.RetrievedChunk.Source.init -> void
+Mud.AI.Abstractions.Knowledge.RetrievedChunk.Text.get -> string!
+Mud.AI.Abstractions.Knowledge.RetrievedChunk.Text.init -> void
+Mud.AI.Abstractions.Knowledge.RetrievedChunk.TitlePath.get -> string?
+Mud.AI.Abstractions.Knowledge.RetrievedChunk.TitlePath.init -> void
+Mud.AI.Abstractions.Media.IMediaTranscriber
+Mud.AI.Abstractions.Media.IMediaTranscriber.TranscribeAsync(Mud.AI.Abstractions.Media.MediaTranscriptionRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Mud.AI.Abstractions.Media.MediaTranscription?>!
+Mud.AI.Abstractions.Media.MediaTranscription
+Mud.AI.Abstractions.Media.MediaTranscription.<Clone>$() -> Mud.AI.Abstractions.Media.MediaTranscription!
+Mud.AI.Abstractions.Media.MediaTranscription.Deconstruct(out string! Text, out string! Kind, out bool Truncated) -> void
+Mud.AI.Abstractions.Media.MediaTranscription.Equals(Mud.AI.Abstractions.Media.MediaTranscription? other) -> bool
+Mud.AI.Abstractions.Media.MediaTranscription.Kind.get -> string!
+Mud.AI.Abstractions.Media.MediaTranscription.Kind.init -> void
+Mud.AI.Abstractions.Media.MediaTranscription.MediaTranscription(string! Text, string! Kind, bool Truncated) -> void
+Mud.AI.Abstractions.Media.MediaTranscription.Text.get -> string!
+Mud.AI.Abstractions.Media.MediaTranscription.Text.init -> void
+Mud.AI.Abstractions.Media.MediaTranscription.Truncated.get -> bool
+Mud.AI.Abstractions.Media.MediaTranscription.Truncated.init -> void
+Mud.AI.Abstractions.Media.MediaTranscriptionRequest
+Mud.AI.Abstractions.Media.MediaTranscriptionRequest.<Clone>$() -> Mud.AI.Abstractions.Media.MediaTranscriptionRequest!
+Mud.AI.Abstractions.Media.MediaTranscriptionRequest.Deconstruct(out string! TenantKey, out string! MessageId, out string! FileKey, out string! MediaKind, out string? FileName) -> void
+Mud.AI.Abstractions.Media.MediaTranscriptionRequest.Equals(Mud.AI.Abstractions.Media.MediaTranscriptionRequest? other) -> bool
+Mud.AI.Abstractions.Media.MediaTranscriptionRequest.FileKey.get -> string!
+Mud.AI.Abstractions.Media.MediaTranscriptionRequest.FileKey.init -> void
+Mud.AI.Abstractions.Media.MediaTranscriptionRequest.FileName.get -> string?
+Mud.AI.Abstractions.Media.MediaTranscriptionRequest.FileName.init -> void
+Mud.AI.Abstractions.Media.MediaTranscriptionRequest.MediaKind.get -> string!
+Mud.AI.Abstractions.Media.MediaTranscriptionRequest.MediaKind.init -> void
+Mud.AI.Abstractions.Media.MediaTranscriptionRequest.MediaTranscriptionRequest(string! TenantKey, string! MessageId, string! FileKey, string! MediaKind, string? FileName) -> void
+Mud.AI.Abstractions.Media.MediaTranscriptionRequest.MessageId.get -> string!
+Mud.AI.Abstractions.Media.MediaTranscriptionRequest.MessageId.init -> void
+Mud.AI.Abstractions.Media.MediaTranscriptionRequest.TenantKey.get -> string!
+Mud.AI.Abstractions.Media.MediaTranscriptionRequest.TenantKey.init -> void
+Mud.AI.Abstractions.Observability.IAgentTelemetry
+Mud.AI.Abstractions.Observability.IAgentTelemetry.Degraded(string! reason) -> void
+Mud.AI.Abstractions.Observability.IAgentTelemetry.GateWaited(System.IDisposable? turn, double milliseconds) -> void
+Mud.AI.Abstractions.Observability.IAgentTelemetry.LlmDuration(string! agentName, long milliseconds) -> void
+Mud.AI.Abstractions.Observability.IAgentTelemetry.Replayed(System.IDisposable? turn) -> void
+Mud.AI.Abstractions.Observability.IAgentTelemetry.StartTurn(string! conversationKey, string? tenantKey) -> System.IDisposable?
+Mud.AI.Abstractions.Observability.IAgentTelemetry.Streamed(System.IDisposable? turn) -> void
+Mud.AI.Abstractions.Observability.NoopAgentTelemetry
+Mud.AI.Abstractions.Observability.NoopAgentTelemetry.Degraded(string! reason) -> void
+Mud.AI.Abstractions.Observability.NoopAgentTelemetry.GateWaited(System.IDisposable? turn, double milliseconds) -> void
+Mud.AI.Abstractions.Observability.NoopAgentTelemetry.LlmDuration(string! agentName, long milliseconds) -> void
+Mud.AI.Abstractions.Observability.NoopAgentTelemetry.Replayed(System.IDisposable? turn) -> void
+Mud.AI.Abstractions.Observability.NoopAgentTelemetry.StartTurn(string! conversationKey, string? tenantKey) -> System.IDisposable?
+Mud.AI.Abstractions.Observability.NoopAgentTelemetry.Streamed(System.IDisposable? turn) -> void
 Mud.AI.Abstractions.Tools.AgentToolAttribute
 Mud.AI.Abstractions.Tools.AgentToolAttribute.AgentToolAttribute(string! name) -> void
 Mud.AI.Abstractions.Tools.AgentToolAttribute.AnyOf.get -> string![]!
@@ -78,6 +368,8 @@ Mud.AI.Attributes.SdkToolProfileAttribute.SdkInterfacePrefix.set -> void
 Mud.AI.Attributes.SdkToolProfileAttribute.SdkNamespaceRoot.get -> string!
 Mud.AI.Attributes.SdkToolProfileAttribute.SdkNamespaceRoot.set -> void
 Mud.AI.Attributes.SdkToolProfileAttribute.SdkToolProfileAttribute(string! name) -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.SoftAbsentNamespaceRoots.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.SoftAbsentNamespaceRoots.set -> void
 Mud.AI.Attributes.SdkToolProfileAttribute.TokenKindMarkers.get -> string!
 Mud.AI.Attributes.SdkToolProfileAttribute.TokenKindMarkers.set -> void
 Mud.AI.Attributes.SdkToolProfileAttribute.TokenKindStrategy.get -> Mud.AI.Attributes.TokenKindDerivationStrategy
@@ -117,6 +409,68 @@ Mud.AI.SdkTokenKind.ThirdParty = 3 -> Mud.AI.SdkTokenKind
 Mud.AI.SdkTokenKind.Unspecified = 0 -> Mud.AI.SdkTokenKind
 Mud.AI.SdkTokenKind.User = 2 -> Mud.AI.SdkTokenKind
 Mud.AI.SdkTokenKindContract
+override Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest.Equals(object? obj) -> bool
+override Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest.GetHashCode() -> int
+override Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest.ToString() -> string!
+override Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.Equals(object? obj) -> bool
+override Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.GetHashCode() -> int
+override Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.ToString() -> string!
+override Mud.AI.Abstractions.Approvals.ToolApprovalRequest.Equals(object? obj) -> bool
+override Mud.AI.Abstractions.Approvals.ToolApprovalRequest.GetHashCode() -> int
+override Mud.AI.Abstractions.Approvals.ToolApprovalRequest.ToString() -> string!
+override Mud.AI.Abstractions.Context.EventFact.GetHashCode() -> int
+override Mud.AI.Abstractions.Conversations.ConversationRequest.Equals(object? obj) -> bool
+override Mud.AI.Abstractions.Conversations.ConversationRequest.GetHashCode() -> int
+override Mud.AI.Abstractions.Conversations.ConversationRequest.ToString() -> string!
+override Mud.AI.Abstractions.Conversations.ConversationScope.GetHashCode() -> int
+override Mud.AI.Abstractions.Knowledge.CorpusChunk.Equals(object? obj) -> bool
+override Mud.AI.Abstractions.Knowledge.CorpusChunk.GetHashCode() -> int
+override Mud.AI.Abstractions.Knowledge.CorpusChunk.ToString() -> string!
+override Mud.AI.Abstractions.Knowledge.CorpusDocument.GetHashCode() -> int
+override Mud.AI.Abstractions.Knowledge.KnowledgeAnswer.Equals(object? obj) -> bool
+override Mud.AI.Abstractions.Knowledge.KnowledgeAnswer.GetHashCode() -> int
+override Mud.AI.Abstractions.Knowledge.KnowledgeAnswer.ToString() -> string!
+override Mud.AI.Abstractions.Knowledge.RetrievedChunk.Equals(object? obj) -> bool
+override Mud.AI.Abstractions.Knowledge.RetrievedChunk.GetHashCode() -> int
+override Mud.AI.Abstractions.Knowledge.RetrievedChunk.ToString() -> string!
+override Mud.AI.Abstractions.Media.MediaTranscription.Equals(object? obj) -> bool
+override Mud.AI.Abstractions.Media.MediaTranscription.GetHashCode() -> int
+override Mud.AI.Abstractions.Media.MediaTranscription.ToString() -> string!
+override Mud.AI.Abstractions.Media.MediaTranscriptionRequest.Equals(object? obj) -> bool
+override Mud.AI.Abstractions.Media.MediaTranscriptionRequest.GetHashCode() -> int
+override Mud.AI.Abstractions.Media.MediaTranscriptionRequest.ToString() -> string!
 override Mud.AI.InterfaceIdentity.Equals(object? obj) -> bool
 override Mud.AI.InterfaceIdentity.GetHashCode() -> int
+static Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest.operator !=(Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest? left, Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest? right) -> bool
+static Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest.operator ==(Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest? left, Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest? right) -> bool
+static Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.FromRequest(Mud.AI.Abstractions.Approvals.FrameworkToolApprovalRequest! request, System.DateTimeOffset now, System.TimeSpan? ttl = null) -> Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot!
+static Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.operator !=(Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot? left, Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot? right) -> bool
+static Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.operator ==(Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot? left, Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot? right) -> bool
+static Mud.AI.Abstractions.Approvals.ToolApprovalRequest.operator !=(Mud.AI.Abstractions.Approvals.ToolApprovalRequest? left, Mud.AI.Abstractions.Approvals.ToolApprovalRequest? right) -> bool
+static Mud.AI.Abstractions.Approvals.ToolApprovalRequest.operator ==(Mud.AI.Abstractions.Approvals.ToolApprovalRequest? left, Mud.AI.Abstractions.Approvals.ToolApprovalRequest? right) -> bool
+static Mud.AI.Abstractions.Channels.StreamingRequestContext.Begin(Mud.AI.Abstractions.Conversations.ConversationRequest! request) -> System.IDisposable!
+static Mud.AI.Abstractions.Channels.StreamingRequestContext.Current.get -> Mud.AI.Abstractions.Conversations.ConversationRequest?
+static Mud.AI.Abstractions.Context.EventFact.operator !=(Mud.AI.Abstractions.Context.EventFact left, Mud.AI.Abstractions.Context.EventFact right) -> bool
+static Mud.AI.Abstractions.Context.EventFact.operator ==(Mud.AI.Abstractions.Context.EventFact left, Mud.AI.Abstractions.Context.EventFact right) -> bool
+static Mud.AI.Abstractions.Conversations.ConversationRequest.operator !=(Mud.AI.Abstractions.Conversations.ConversationRequest? left, Mud.AI.Abstractions.Conversations.ConversationRequest? right) -> bool
+static Mud.AI.Abstractions.Conversations.ConversationRequest.operator ==(Mud.AI.Abstractions.Conversations.ConversationRequest? left, Mud.AI.Abstractions.Conversations.ConversationRequest? right) -> bool
+static Mud.AI.Abstractions.Conversations.ConversationScope.Group() -> Mud.AI.Abstractions.Conversations.ConversationScope
+static Mud.AI.Abstractions.Conversations.ConversationScope.operator !=(Mud.AI.Abstractions.Conversations.ConversationScope left, Mud.AI.Abstractions.Conversations.ConversationScope right) -> bool
+static Mud.AI.Abstractions.Conversations.ConversationScope.operator ==(Mud.AI.Abstractions.Conversations.ConversationScope left, Mud.AI.Abstractions.Conversations.ConversationScope right) -> bool
+static Mud.AI.Abstractions.Conversations.ConversationScope.P2P() -> Mud.AI.Abstractions.Conversations.ConversationScope
+static Mud.AI.Abstractions.Knowledge.CorpusChunk.operator !=(Mud.AI.Abstractions.Knowledge.CorpusChunk? left, Mud.AI.Abstractions.Knowledge.CorpusChunk? right) -> bool
+static Mud.AI.Abstractions.Knowledge.CorpusChunk.operator ==(Mud.AI.Abstractions.Knowledge.CorpusChunk? left, Mud.AI.Abstractions.Knowledge.CorpusChunk? right) -> bool
+static Mud.AI.Abstractions.Knowledge.CorpusDocument.operator !=(Mud.AI.Abstractions.Knowledge.CorpusDocument left, Mud.AI.Abstractions.Knowledge.CorpusDocument right) -> bool
+static Mud.AI.Abstractions.Knowledge.CorpusDocument.operator ==(Mud.AI.Abstractions.Knowledge.CorpusDocument left, Mud.AI.Abstractions.Knowledge.CorpusDocument right) -> bool
+static Mud.AI.Abstractions.Knowledge.KnowledgeAnswer.NoAnswer(string! question) -> Mud.AI.Abstractions.Knowledge.KnowledgeAnswer!
+static Mud.AI.Abstractions.Knowledge.KnowledgeAnswer.operator !=(Mud.AI.Abstractions.Knowledge.KnowledgeAnswer? left, Mud.AI.Abstractions.Knowledge.KnowledgeAnswer? right) -> bool
+static Mud.AI.Abstractions.Knowledge.KnowledgeAnswer.operator ==(Mud.AI.Abstractions.Knowledge.KnowledgeAnswer? left, Mud.AI.Abstractions.Knowledge.KnowledgeAnswer? right) -> bool
+static Mud.AI.Abstractions.Knowledge.RetrievedChunk.operator !=(Mud.AI.Abstractions.Knowledge.RetrievedChunk? left, Mud.AI.Abstractions.Knowledge.RetrievedChunk? right) -> bool
+static Mud.AI.Abstractions.Knowledge.RetrievedChunk.operator ==(Mud.AI.Abstractions.Knowledge.RetrievedChunk? left, Mud.AI.Abstractions.Knowledge.RetrievedChunk? right) -> bool
+static Mud.AI.Abstractions.Media.MediaTranscription.operator !=(Mud.AI.Abstractions.Media.MediaTranscription? left, Mud.AI.Abstractions.Media.MediaTranscription? right) -> bool
+static Mud.AI.Abstractions.Media.MediaTranscription.operator ==(Mud.AI.Abstractions.Media.MediaTranscription? left, Mud.AI.Abstractions.Media.MediaTranscription? right) -> bool
+static Mud.AI.Abstractions.Media.MediaTranscriptionRequest.operator !=(Mud.AI.Abstractions.Media.MediaTranscriptionRequest? left, Mud.AI.Abstractions.Media.MediaTranscriptionRequest? right) -> bool
+static Mud.AI.Abstractions.Media.MediaTranscriptionRequest.operator ==(Mud.AI.Abstractions.Media.MediaTranscriptionRequest? left, Mud.AI.Abstractions.Media.MediaTranscriptionRequest? right) -> bool
 static Mud.AI.SdkTokenKindContract.ToLiteral(Mud.AI.SdkTokenKind kind) -> string!
+static readonly Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot.DefaultTtl -> System.TimeSpan
+static readonly Mud.AI.Abstractions.Observability.NoopAgentTelemetry.Instance -> Mud.AI.Abstractions.Observability.NoopAgentTelemetry!

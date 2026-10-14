@@ -93,7 +93,7 @@ internal static class FeishuApprovalRequestProjector
                 RequestId: approval.RequestId,
                 ToolName: toolName ?? "(unknown)",
                 ToolCallId: approval.ToolCall?.CallId,
-                AppKey: appKey ?? string.Empty,
+                TenantKey: appKey ?? string.Empty,
                 UserId: userId,
                 ConversationKey: conversationKey,
                 ArgumentsDigest: null,
@@ -120,7 +120,7 @@ internal static class FeishuApprovalRequestProjector
     /// <param name="cancellationToken">取消令牌。</param>
     internal static async Task NotifyAsync(
         IFeishuToolApprovalChannel? channel,
-        IFeishuPendingApprovalStore? store,
+        IPendingApprovalStore? store,
         ILogger? logger,
         IReadOnlyList<FrameworkToolApprovalRequest> pending,
         CancellationToken cancellationToken)
@@ -129,7 +129,7 @@ internal static class FeishuApprovalRequestProjector
         {
             logger?.LogWarning(
                 "写工具待人工确认（工具: {ToolName}, requestId: {RequestId}, appKey: {AppKey}）——工具尚未执行，宿主批准后回灌批准响应方可继续",
-                item.ToolName, item.RequestId, item.AppKey);
+                item.ToolName, item.RequestId, item.TenantKey);
         }
 
         // R7 / C4a：登记待确认快照（宿主重启后仍能列出的唯一来源）。

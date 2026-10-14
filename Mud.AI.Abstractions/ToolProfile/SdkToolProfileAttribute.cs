@@ -99,6 +99,27 @@ public sealed class SdkToolProfileAttribute : Attribute
     /// <summary>SDK 根命名空间（<c>Mud.Feishu</c> / <c>Mud.Wechat</c>），用于 <c>Source</c> 挂钩的类型名解析。</summary>
     public string SdkNamespaceRoot { get; set; } = string.Empty;
 
+    /// <summary>
+    /// 额外「可软缺席」命名空间根（<c>|</c> 分隔，如 <c>Mud.Feishu|Mud.AI</c>），
+    /// 用于执行器构造参数的 DI 依赖分类。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么必须与 <see cref="SdkNamespaceRoot"/> 分开</b>：后者承担三种语义——
+    /// <c>Source</c> 挂钩的类型名解析、SDK 程序集定位（按程序集名 == 根名）、以及
+    /// <b>软缺席判定</b>。中立化后「能力域接口」不再只住在 SDK 根命名空间里：
+    /// 知识检索器之类的<b>中立契约</b>（<c>Mud.AI.Abstractions.Knowledge.IRetriever</c>）
+    /// 同样表达「该能力域缺席 → 该域工具不进注册表」的软缺席语义。
+    /// 若不新增本槽而把 <see cref="SdkNamespaceRoot"/> 放宽到 <c>Mud</c>，
+    /// 会同时破坏前面两种语义（程序集定位会去找名为 <c>Mud</c> 的程序集）。
+    /// </para>
+    /// <para>
+    /// 判定规则（引擎侧）：命中 <see cref="SdkNamespaceRoot"/> 或本槽任一根的接口参数 ⇒ 软缺席候选。
+    /// 未设置本槽时行为与旧版完全一致（等价于只认 <see cref="SdkNamespaceRoot"/>）。
+    /// </para>
+    /// </remarks>
+    public string SoftAbsentNamespaceRoots { get; set; } = string.Empty;
+
     // ────────── 3. 接口命名范式 ──────────
 
     /// <summary>接口名解析正则（含 <c>domain</c>/<c>resource</c> 命名组；飞书 <c>^IFeishu(?:Tenant|User)?V\d+…$</c>）。</summary>

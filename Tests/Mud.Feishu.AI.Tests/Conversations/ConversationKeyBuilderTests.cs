@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者:Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -15,8 +15,8 @@ public class ConversationKeyBuilderTests
     [Fact]
     public void Build_ShouldBeDeterministic_WhenSameInput()
     {
-        var a = ConversationKeyBuilder.Build("app-a", ConversationScope.Group(), "oc_1");
-        var b = ConversationKeyBuilder.Build("app-a", ConversationScope.Group(), "oc_1");
+        var a = ConversationScopeMapper.BuildKey("app-a", ConversationScope.Group(), "oc_1");
+        var b = ConversationScopeMapper.BuildKey("app-a", ConversationScope.Group(), "oc_1");
 
         a.Should().Be(b, "同输入必须产出同键（等价性）");
         a.Should().Be("feishu:app-a:conversation:chat:oc_1");
@@ -26,8 +26,8 @@ public class ConversationKeyBuilderTests
     public void Build_ShouldIsolateGroupAndUserDimensions()
     {
         // 同一主体 ID 在群聊（chat 段）与单聊（user 段）下键互异。
-        var group = ConversationKeyBuilder.Build("app-a", ConversationScope.Group(), "oc_1");
-        var p2p = ConversationKeyBuilder.Build("app-a", ConversationScope.P2P(), "oc_1");
+        var group = ConversationScopeMapper.BuildKey("app-a", ConversationScope.Group(), "oc_1");
+        var p2p = ConversationScopeMapper.BuildKey("app-a", ConversationScope.P2P(), "oc_1");
 
         group.Should().NotBe(p2p);
         group.Should().Contain(":conversation:chat:");
@@ -38,8 +38,8 @@ public class ConversationKeyBuilderTests
     public void Build_ShouldIsolateApps()
     {
         // FU-2 教训：键必须带应用/租户维度，不同 appKey 键互异。
-        var a = ConversationKeyBuilder.Build("app-a", ConversationScope.Group(), "oc_1");
-        var b = ConversationKeyBuilder.Build("app-b", ConversationScope.Group(), "oc_1");
+        var a = ConversationScopeMapper.BuildKey("app-a", ConversationScope.Group(), "oc_1");
+        var b = ConversationScopeMapper.BuildKey("app-b", ConversationScope.Group(), "oc_1");
 
         a.Should().NotBe(b);
     }
@@ -47,7 +47,7 @@ public class ConversationKeyBuilderTests
     [Fact]
     public void Build_ShouldFallbackAppKeyToDefault_WhenBlank()
     {
-        var key = ConversationKeyBuilder.Build(string.Empty, ConversationScope.Group(), "oc_1");
+        var key = ConversationScopeMapper.BuildKey(string.Empty, ConversationScope.Group(), "oc_1");
 
         key.Should().StartWith("feishu:default:", "空白 appKey 兜底 default（对齐 TokenKeyBuilder 语义）");
     }
@@ -55,7 +55,7 @@ public class ConversationKeyBuilderTests
     [Fact]
     public void Build_ShouldThrow_WhenSubjectIdBlank()
     {
-        var act = () => ConversationKeyBuilder.Build("app-a", ConversationScope.Group(), " ");
+        var act = () => ConversationScopeMapper.BuildKey("app-a", ConversationScope.Group(), " ");
 
         act.Should().Throw<ArgumentException>();
     }
@@ -69,7 +69,7 @@ public class ConversationKeyBuilderTests
     [InlineData("oc\\:1")]
     public void Build_ShouldEscapeSeparatorAndGlobMetacharacters(string subjectId)
     {
-        var key = ConversationKeyBuilder.Build("app:a", ConversationScope.Group(), subjectId);
+        var key = ConversationScopeMapper.BuildKey("app:a", ConversationScope.Group(), subjectId);
 
         // 键的固定形态段不能被注入破坏：恰好 5 段。
         var rawSegments = key.Split(':');
@@ -84,7 +84,7 @@ public class ConversationKeyBuilderTests
     [Fact]
     public void Build_ShouldRoundTripViaTryParse()
     {
-        var key = ConversationKeyBuilder.Build("my-app", ConversationScope.P2P(), "ou_42", keyPrefix: "env1");
+        var key = ConversationScopeMapper.BuildKey("my-app", ConversationScope.P2P(), "ou_42", keyPrefix: "env1");
 
         var parsed = ConversationKeyBuilder.TryParse(key, out var appKey, out var scope, out var subjectId, out var keyPrefix);
 
@@ -95,6 +95,8 @@ public class ConversationKeyBuilderTests
         keyPrefix.Should().Be("env1");
 
         // 回灌再构造：逐字节一致。
+        // ⚠️ N1 中立化后此处必须直调**冻结契约**的 Build：`TryParse` 的 out 参数是飞书侧的
+        // ConversationScope，而 ConversationScopeMapper 的入参是中立副本——接缝只朝一个方向。
         ConversationKeyBuilder.Build(appKey!, scope, subjectId!, keyPrefix)
             .Should().Be(key);
     }
@@ -113,7 +115,7 @@ public class ConversationKeyBuilderTests
     [Fact]
     public void Build_ShouldThrow_WhenSegmentTooLong()
     {
-        var act = () => ConversationKeyBuilder.Build("app-a", ConversationScope.Group(), new string('x', 257));
+        var act = () => ConversationScopeMapper.BuildKey("app-a", ConversationScope.Group(), new string('x', 257));
 
         act.Should().Throw<ArgumentException>("超长键段防 DoS（对齐 TokenKeyBuilder）");
     }
@@ -121,7 +123,7 @@ public class ConversationKeyBuilderTests
     [Fact]
     public void ComposeNamespace_ShouldPrefixAndValidate()
     {
-        var key = ConversationKeyBuilder.Build("app-a", ConversationScope.Group(), "oc_1");
+        var key = ConversationScopeMapper.BuildKey("app-a", ConversationScope.Group(), "oc_1");
         var composed = ConversationKeyBuilder.ComposeNamespace("feishu:conversation", key);
 
         composed.Should().Be("feishu:conversation:" + key);

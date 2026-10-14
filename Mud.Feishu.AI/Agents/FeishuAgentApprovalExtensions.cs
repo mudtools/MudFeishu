@@ -91,7 +91,7 @@ public static class FeishuAgentApprovalExtensions
 
         // R7 / C4a：待确认快照存储（可空 ⇒ 不做幂等消费，保持既有行为）。
         // 追加为**末尾可选参数**：既有调用点全部使用命名实参，源码兼容。
-        IFeishuPendingApprovalStore? pendingApprovalStore = null,
+        IPendingApprovalStore? pendingApprovalStore = null,
         CancellationToken cancellationToken = default)
     {
         if (agent is null)
@@ -123,7 +123,7 @@ public static class FeishuAgentApprovalExtensions
             throw new ArgumentException("审批请求缺少 ConversationKey——无法定位待续跑的会话", nameof(approval));
         }
 
-        if (string.IsNullOrWhiteSpace(approval.AppKey))
+        if (string.IsNullOrWhiteSpace(approval.TenantKey))
         {
             throw new ArgumentException("审批请求缺少 AppKey——多租户隔离禁止默认应用兜底（TMA2-20）", nameof(approval));
         }
@@ -149,13 +149,13 @@ public static class FeishuAgentApprovalExtensions
                     + "会话可能已被重建，或该确认已被放弃/已处理。请引导用户重新发起该操作（fail-closed，不凭空放行）");
             }
 
-            // R7 / C4a：快照幂等消费（仅在宿主装配了 IFeishuPendingApprovalStore 时生效）。
+            // R7 / C4a：快照幂等消费（仅在宿主装配了 IPendingApprovalStore 时生效）。
             // 放在「框架记录已确认存在」之后：此时续跑必然发生，消费失败只可能是
             // 「不存在 / 已过期 / 已被消费」三种情形 —— 一律按「迟到的批准」丢弃（fail-closed，绝不重放）。
             if (pendingApprovalStore is not null)
             {
                 var consumable = await pendingApprovalStore
-                    .TryConsumeAsync(approval.AppKey!, approval.RequestId!, cancellationToken)
+                    .TryConsumeAsync(approval.TenantKey!, approval.RequestId!, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (!consumable)
@@ -173,7 +173,7 @@ public static class FeishuAgentApprovalExtensions
 
             // 续跑轮不在事件流内：工具执行上下文必须在此显式重建（否则工具 fail-closed 结构化拒绝）。
             using var _toolScope = toolContextAccessor.Begin(new FeishuToolContext(
-                approval.AppKey,
+                approval.TenantKey,
                 conversationKey,
                 ChatId: approval.ChatId,
                 UserId: approval.UserId));
@@ -185,7 +185,7 @@ public static class FeishuAgentApprovalExtensions
             // 续跑轮可能再产出审批请求（模型连发多个写工具）：与事件层同款口径提交宿主 + 记 Warning。
             var nextPending = FeishuApprovalRequestProjector.FromMessages(
                 response.Messages,
-                approval.AppKey,
+                approval.TenantKey,
                 conversationKey,
                 approval.ChatId,
                 approval.UserId);

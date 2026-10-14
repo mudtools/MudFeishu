@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -13,6 +13,8 @@ using Mud.Feishu.AI.Agents;
 using Mud.Feishu.AI.Channels;
 using Mud.Feishu.AI.Conversations;
 using Mud.Feishu.AI.Diagnostics;
+
+using Mud.Feishu.Abstractions.Conversations;
 
 namespace Mud.Feishu.AI.Events;
 
@@ -75,7 +77,7 @@ public abstract class ConversationalFeishuEventHandler<T>(
     // R7 / C4a：待确认快照存储（可空 ⇒ 退化为「只通知不落库」）。
     // 追加为**末尾可选参数**：既有派生处理器的位置参数与命名参数调用点全部源码兼容；
     // DI 侧由容器按「可选参数默认值」语义处理（未注册 ⇒ null，不抛解析失败）。
-    IFeishuPendingApprovalStore? pendingApprovalStore = null) : IdempotentFeishuEventHandler<T>(
+    IPendingApprovalStore? pendingApprovalStore = null) : IdempotentFeishuEventHandler<T>(
         businessDeduplicator, logger ?? NullLogger.Instance, appKeyAccessor)
     where T : class, IEventResult, new()
 {
@@ -111,7 +113,7 @@ public abstract class ConversationalFeishuEventHandler<T>(
     /// R7 / C4a：待确认快照存储（可空；未注册时只通知不落库——宿主重进进程后列不出待办，
     /// 但写工具仍保持未执行，fail-closed 不变）。
     /// </summary>
-    protected IFeishuPendingApprovalStore? PendingApprovalStore { get; } = pendingApprovalStore;
+    protected IPendingApprovalStore? PendingApprovalStore { get; } = pendingApprovalStore;
 
     /// <summary>
     /// 会话闸门（可空；P2D-1 会话串行化——<c>AddFeishuAgent</c> 默认注册
@@ -291,7 +293,7 @@ public abstract class ConversationalFeishuEventHandler<T>(
                 request.SubjectId);
         }
 
-        var conversationKey = ConversationKeyBuilder.Build(request.AppKey, request.Scope, request.SubjectId);
+        var conversationKey = ConversationScopeMapper.BuildKey(request.AppKey, request.Scope, request.SubjectId);
 
         using var activity = FeishuAgentDiagnostics.StartConversationActivity(conversationKey, request.AppKey);
 
@@ -744,7 +746,7 @@ public abstract class ConversationalFeishuEventHandler<T>(
         => FeishuApprovalRequestProjector.FromMessages(
             messages,
             request.AppKey,
-            ConversationKeyBuilder.Build(request.AppKey, request.Scope, request.SubjectId),
+            ConversationScopeMapper.BuildKey(request.AppKey, request.Scope, request.SubjectId),
             ResolveStreamTargetChatId(request),
             request.SenderId);
 
@@ -753,7 +755,7 @@ public abstract class ConversationalFeishuEventHandler<T>(
         => FeishuApprovalRequestProjector.Collect(
             contents,
             request.AppKey,
-            ConversationKeyBuilder.Build(request.AppKey, request.Scope, request.SubjectId),
+            ConversationScopeMapper.BuildKey(request.AppKey, request.Scope, request.SubjectId),
             ResolveStreamTargetChatId(request),
             request.SenderId,
             sink);
@@ -783,7 +785,7 @@ public abstract class ConversationalFeishuEventHandler<T>(
            + "已通知审批人，确认后会自动继续。";
 
     /// <summary>
-    /// 解析流式回复目标：通道实现 <see cref="IMessageChannelTargetResolver"/> 时按其语义解析
+    /// 解析流式回复目标：通道实现 <see cref="IChannelTargetResolver"/> 时按其语义解析
     /// （卡片流 = 接收用户 open_id）；否则缺省 <see cref="ResolveStreamTargetChatId"/>
     /// （<see cref="ConversationRequest.ChatId"/> 优先，群聊回退会话主体）。
     /// </summary>
@@ -798,14 +800,14 @@ public abstract class ConversationalFeishuEventHandler<T>(
     /// </para>
     /// <para>
     /// 原 XML 注释（"返回 null 表示本次事件不适用流式，回退非流式路径"）与实现矛盾，曾足以误导
-    /// 第三方通道作者按错误语义实现；本口径与 <see cref="IMessageChannelTargetResolver"/> 的接口文档、
+    /// 第三方通道作者按错误语义实现；本口径与 <see cref="IChannelTargetResolver"/> 的接口文档、
     /// `StreamingChannelChain` 的链实现三方一致。
     /// </para>
     /// </remarks>
     /// <param name="request">规范化会话请求。</param>
     /// <returns>流式目标（通道自解释；可空——为空时回退默认解析值）。</returns>
     protected virtual string? ResolveStreamTarget(ConversationRequest request)
-        => MessageChannel is IMessageChannelTargetResolver resolver
+        => MessageChannel is IChannelTargetResolver resolver
             ? resolver.ResolveStreamTarget(request) ?? ResolveStreamTargetChatId(request)
             : ResolveStreamTargetChatId(request);
 

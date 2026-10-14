@@ -7,7 +7,6 @@
 
 using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
-using Mud.Feishu.Abstractions.Conversations;
 using Mud.Feishu.AI.Conversations;
 using Mud.Feishu.AI.Channels;
 using Mud.Feishu.DataModels.CardMessageStream;

@@ -121,7 +121,7 @@ public class ConversationalFeishuEventHandlerApprovalTests
         channel.Requests[0].ToolName.Should().Be("bitable.add_record");
         channel.Requests[0].RequestId.Should().Be("ficc_call-1",
             "RequestId 必须原样携带：回灌响应时要靠它把批准绑定到框架请求");
-        channel.Requests[0].AppKey.Should().Be("app-a");
+        channel.Requests[0].TenantKey.Should().Be("app-a");
         channel.Requests[0].ConversationKey.Should().NotBeNullOrEmpty("会话键供宿主关联审批界面");
 
         handler.LastReply.Should().NotBeNullOrEmpty("必须给用户一个可见的『等待确认』答复，而不是静默");

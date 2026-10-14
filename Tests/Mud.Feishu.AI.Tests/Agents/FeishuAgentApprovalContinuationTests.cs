@@ -184,7 +184,9 @@ public class FeishuAgentApprovalContinuationTests
     }
 
     private static string ConversationKey
-        => ConversationKeyBuilder.Build("app-a", ConversationScope.Group(), "oc_1");
+        // N1 中立化：会话请求的会话维度已是**中立副本**，故键构造必须经接缝适配器
+        // （ConversationScopeMapper）而不是直调冻结契约的 ConversationKeyBuilder。
+        => ConversationScopeMapper.BuildKey("app-a", ConversationScope.Group(), "oc_1");
 
     /// <summary>跑一轮事件，制造「框架已记录待审批请求」的前置状态。</summary>
     private static async Task<(Harness Harness, FrameworkToolApprovalRequest Approval)> ArrangePendingApprovalAsync(
@@ -267,7 +269,7 @@ public class FeishuAgentApprovalContinuationTests
         // 模拟「该快照已被消费/已过期」：登记后立即消费掉（幂等消费只成功一次）。
         var store = new InMemoryPendingApprovalStore();
         await store.SaveAsync(PendingApprovalSnapshot.FromRequest(approval, DateTimeOffset.UtcNow));
-        (await store.TryConsumeAsync(approval.AppKey, approval.RequestId)).Should().BeTrue(
+        (await store.TryConsumeAsync(approval.TenantKey, approval.RequestId)).Should().BeTrue(
             "前置：首次消费必须成功，否则本用例测的不是「已消费」路径");
 
         var act = async () => await harness.Agent.RunApprovalContinuationAsync(
@@ -295,7 +297,7 @@ public class FeishuAgentApprovalContinuationTests
 
         response.Text.Should().Contain("已完成");
         harness.Executed.Should().BeTrue("批准的写工具必须执行（批准 + 显式重建上下文 = 放行）");
-        (await store.ListPendingAsync(approval.AppKey)).Should().BeEmpty(
+        (await store.ListPendingAsync(approval.TenantKey)).Should().BeEmpty(
             "续跑成功后快照必须被消费（否则待办列表会永久堆积已处理项）");
     }
 
@@ -308,7 +310,7 @@ public class FeishuAgentApprovalContinuationTests
         var missingKey = async () => await harness.Agent.RunApprovalContinuationAsync(
             harness.Accessor, approval with { ConversationKey = null }, approved: true, cancellationToken: default);
         var missingAppKey = async () => await harness.Agent.RunApprovalContinuationAsync(
-            harness.Accessor, approval with { AppKey = string.Empty }, approved: true, cancellationToken: default);
+            harness.Accessor, approval with { TenantKey = string.Empty }, approved: true, cancellationToken: default);
 
         await missingKey.Should().ThrowAsync<ArgumentException>("无会话键即无法定位待续跑的会话");
         await missingAppKey.Should().ThrowAsync<ArgumentException>("无 appKey 禁止默认应用兜底（TMA2-20）");

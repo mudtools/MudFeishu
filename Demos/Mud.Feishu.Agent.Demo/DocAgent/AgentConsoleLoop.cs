@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -10,7 +10,6 @@ using System.Globalization;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
-using Mud.Feishu.Abstractions.Conversations;
 using Mud.Feishu.AI.Agents;
 using Mud.Feishu.AI.Channels;
 using Mud.Feishu.AI.AgentTools;
@@ -164,7 +163,7 @@ internal sealed class AgentConsoleLoop
         _logger = logger;
 
         // 会话键：{prefix}:{appKey}:conversation:user:{subjectId}（/help 会打印完整键以展示键布局）。
-        _conversationKey = ConversationKeyBuilder.Build(
+        _conversationKey = ConversationScopeMapper.BuildKey(
             settings.AppKey, ConversationScope.P2P(), settings.UserId);
     }
 

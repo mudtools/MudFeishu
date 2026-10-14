@@ -138,7 +138,7 @@ public class DomainRegistrarTests
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3SpreadsheetData>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DriveFolder>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DriveFiles>().Object);
-            services.AddSingleton(new Mock<Mud.Feishu.AI.Knowledge.IRetriever>().Object);
+            services.AddSingleton(new Mock<Mud.AI.Abstractions.Knowledge.IRetriever>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4Approval>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4ApprovalQuery>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4ApprovalTask>().Object);

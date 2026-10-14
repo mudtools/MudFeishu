@@ -67,6 +67,12 @@ namespace Mud.Feishu.AI.Tools.SdkProfile;
 
     // ────────── 2. 源符号解析 ──────────
     SdkNamespaceRoot = "Mud.Feishu",
+    // 中立化（N1/N2）：执行器的**软缺席**依赖不再只住在 `Mud.Feishu*` 里——
+    // 知识检索器（`Mud.AI.Abstractions.Knowledge.IRetriever`）等中立契约同样表达
+    // 「该能力域缺席 ⇒ 该域工具不进注册表」。不放宽 SdkNamespaceRoot 而新增本槽，
+    // 是因为前者还承担「SDK 程序集定位」（按程序集名 == 根名）与 `Source` 前缀剥离，
+    // 放宽到 "Mud" 会让程序集定位去找名为 Mud 的程序集而静默零产出。
+    SoftAbsentNamespaceRoots = "Mud.AI",
 
     // ────────── 3. 接口命名范式（与旧 Extractors.SdkInterfaceNameRegex 逐字符一致）──────────
     InterfaceNameRegex = @"^IFeishu(?:Tenant|User)?V\d+(?<domain>[A-Z][a-zA-Z0-9]*)(?<resource>[A-Z][a-zA-Z0-9]*)?$",

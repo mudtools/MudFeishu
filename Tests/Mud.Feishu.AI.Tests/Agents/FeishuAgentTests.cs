@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者:Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -82,7 +82,7 @@ public class FeishuAgentTests
         var mock = CreateMockClient("ok");
         var store = new MemoryConversationStore();
         var agent = new FeishuAgent(mock.Object, ValidOptions(), conversationStore: store);
-        var key = ConversationKeyBuilder.Build("app-a", ConversationScope.P2P(), "ou_1");
+        var key = ConversationScopeMapper.BuildKey("app-a", ConversationScope.P2P(), "ou_1");
 
         var first = await agent.GetOrCreateSessionAsync(key);
         await agent.RunAsync("第一轮", first);
@@ -99,7 +99,7 @@ public class FeishuAgentTests
         var mock = CreateMockClient("ok");
         var store = new MemoryConversationStore();
         var agent = new FeishuAgent(mock.Object, ValidOptions(), conversationStore: store);
-        var key = ConversationKeyBuilder.Build("app-a", ConversationScope.Group(), "oc_9");
+        var key = ConversationScopeMapper.BuildKey("app-a", ConversationScope.Group(), "oc_9");
 
         await store.SaveAsync(key, "{not-valid-json");
 
@@ -180,7 +180,7 @@ public class FeishuAgentTests
         var mock = CreateMockClient("ok");
         var store = new MemoryConversationStore();
         var agent = new FeishuAgent(mock.Object, ValidOptions(), conversationStore: store);
-        var key = ConversationKeyBuilder.Build("app-a", ConversationScope.Group(), "oc_array");
+        var key = ConversationScopeMapper.BuildKey("app-a", ConversationScope.Group(), "oc_array");
 
         await store.SaveAsync(key, "[]");
 
@@ -195,7 +195,7 @@ public class FeishuAgentTests
         var mock = CreateMockClient("ok");
         var store = new MemoryConversationStore();
         var agent = new FeishuAgent(mock.Object, ValidOptions(), conversationStore: store);
-        var key = ConversationKeyBuilder.Build("app-a", ConversationScope.Group(), "oc_corrupt");
+        var key = ConversationScopeMapper.BuildKey("app-a", ConversationScope.Group(), "oc_corrupt");
 
         await store.SaveAsync(key, "[]");
         await agent.GetOrCreateSessionAsync(key);
@@ -301,7 +301,7 @@ public class FeishuAgentTests
         var mock = CreateMockClient("ok");
         var store = new MemoryConversationStore();
         var agent = new FeishuAgent(mock.Object, ValidOptions(), store);
-        var key = ConversationKeyBuilder.Build("app-a", ConversationScope.P2P(), "ou_corrupt");
+        var key = ConversationScopeMapper.BuildKey("app-a", ConversationScope.P2P(), "ou_corrupt");
 
         // 直接写入「外层合法 + 内层损坏」的载荷（等价于历史数据在库中被破坏/跨版本残留）。
         await store.SaveAsync(key, CorruptedInnerStatePayload);
@@ -329,7 +329,7 @@ public class FeishuAgentTests
         var mock = CreateMockClient("ok");
         var store = new MemoryConversationStore();
         var agent = new FeishuAgent(mock.Object, ValidOptions(), store);
-        var key = ConversationKeyBuilder.Build("app-a", ConversationScope.P2P(), "ou_nre_payload");
+        var key = ConversationScopeMapper.BuildKey("app-a", ConversationScope.P2P(), "ou_nre_payload");
 
         await store.SaveAsync(key, "{\"stateBag\":{\"feishu.agent.history\":null}}");
 
@@ -347,7 +347,7 @@ public class FeishuAgentTests
         var mock = CreateMockClient("ok");
         var store = new MemoryConversationStore();
         var agent = new FeishuAgent(mock.Object, ValidOptions(), store);
-        var key = ConversationKeyBuilder.Build("app-a", ConversationScope.P2P(), "ou_intact");
+        var key = ConversationScopeMapper.BuildKey("app-a", ConversationScope.P2P(), "ou_intact");
 
         var session = await agent.GetOrCreateSessionAsync(key);
         session.SetInMemoryChatHistory(

@@ -82,9 +82,9 @@ public class ConsoleApprovalChannelTests
         var state = new ConsoleApprovalChannelState();
         var channel = new ConsoleApprovalChannel(state, renderer);
 
-        var request = new Mud.Feishu.AI.AgentTools.ToolApprovalRequest(
+        var request = new Mud.AI.Abstractions.Approvals.ToolApprovalRequest(
             ToolName: "docx.delete_blocks",
-            AppKey: DocAgentSettings.DefaultAppKey,
+            TenantKey: DocAgentSettings.DefaultAppKey,
             UserId: DocAgentSettings.DefaultConsoleUserId,
             ConversationKey: "feishu:demo-app:conversation:user:ou_console_demo_user",
             ArgumentsDigest: "document_id=<27 字符>",

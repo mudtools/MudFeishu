@@ -1,17 +1,8 @@
-#nullable enable
-Mud.AI.Agent.Sessions.AgentSessionStore
-Mud.AI.Agent.Sessions.AgentSessionStore.AgentSessionStore(Microsoft.Agents.AI.AIAgent! codec, Mud.AI.Abstractions.Conversations.ISessionStore? store, string! historyStateKey, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
-Mud.AI.Agent.Sessions.AgentSessionStore.GetOrCreateAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Agents.AI.AgentSession!>!
-Mud.AI.Agent.Sessions.AgentSessionStore.SaveAsync(string! key, Microsoft.Agents.AI.AgentSession! session, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-Mud.AI.Agent.Tools.ToolApiFailure.<Clone>$() -> Mud.AI.Agent.Tools.ToolApiFailure!
-Mud.AI.Agent.Tools.ToolApiFailure.Deconstruct(out Mud.AI.Agent.Tools.Errors.ToolErrorCategory Category, out string! Subtype, out System.Collections.Generic.IReadOnlyList<string!>? Suggestions) -> void
-Mud.AI.Agent.Tools.ToolApiFailure.Equals(Mud.AI.Agent.Tools.ToolApiFailure? other) -> bool
+﻿#nullable enable
 ~Mud.AI.Agent.Tools.ToolApiOutcome<T>.<Clone>$() -> Mud.AI.Agent.Tools.ToolApiOutcome<T>!
 ~Mud.AI.Agent.Tools.ToolApiOutcome<T>.Equals(Mud.AI.Agent.Tools.ToolApiOutcome<T>? other) -> bool
 ~override Mud.AI.Agent.Guidance.GuidanceBlock.Equals(object obj) -> bool
 ~override Mud.AI.Agent.Guidance.GuidanceBlock.ToString() -> string
-static Mud.AI.Agent.Tools.ToolApiFailure.operator !=(Mud.AI.Agent.Tools.ToolApiFailure? left, Mud.AI.Agent.Tools.ToolApiFailure? right) -> bool
-static Mud.AI.Agent.Tools.ToolApiFailure.operator ==(Mud.AI.Agent.Tools.ToolApiFailure? left, Mud.AI.Agent.Tools.ToolApiFailure? right) -> bool
 ~static Mud.AI.Agent.Tools.ToolApiOutcome<T>.operator !=(Mud.AI.Agent.Tools.ToolApiOutcome<T>? left, Mud.AI.Agent.Tools.ToolApiOutcome<T>? right) -> bool
 ~static Mud.AI.Agent.Tools.ToolApiOutcome<T>.operator ==(Mud.AI.Agent.Tools.ToolApiOutcome<T>? left, Mud.AI.Agent.Tools.ToolApiOutcome<T>? right) -> bool
 const Mud.AI.Agent.Tools.Errors.ToolErrorHintRenderer.HintPrefix = "[next] " -> string!
@@ -44,6 +35,14 @@ const Mud.AI.Agent.Tools.ToolPagination.HardMaxPages = 50 -> int
 const Mud.AI.Agent.Tools.ToolResultPipeline.JsonTruncationReason = "JSON 感知截断" -> string!
 const Mud.AI.Agent.Tools.ToolResultPipeline.PlainTextTruncationReason = "文本超长截断" -> string!
 const Mud.AI.Agent.Tools.ToolResultText.TruncatedMarker = "…[truncated" -> string!
+Mud.AI.Agent.Approvals.InMemoryPendingApprovalStore
+Mud.AI.Agent.Approvals.InMemoryPendingApprovalStore.FindAsync(string! tenantKey, string! requestId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot?>!
+Mud.AI.Agent.Approvals.InMemoryPendingApprovalStore.InMemoryPendingApprovalStore(System.Func<System.DateTimeOffset>? clock = null) -> void
+Mud.AI.Agent.Approvals.InMemoryPendingApprovalStore.ListPendingAsync(string! tenantKey, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot!>!>!
+Mud.AI.Agent.Approvals.InMemoryPendingApprovalStore.RemoveAsync(string! tenantKey, string! requestId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Mud.AI.Agent.Approvals.InMemoryPendingApprovalStore.RemoveExpiredAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+Mud.AI.Agent.Approvals.InMemoryPendingApprovalStore.SaveAsync(Mud.AI.Abstractions.Approvals.PendingApprovalSnapshot! snapshot, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Mud.AI.Agent.Approvals.InMemoryPendingApprovalStore.TryConsumeAsync(string! tenantKey, string! requestId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
 Mud.AI.Agent.Conversations.ChatTokenCounter
 Mud.AI.Agent.Guidance.GuidanceBlock
 Mud.AI.Agent.Guidance.GuidanceBlock.Content.get -> string!
@@ -68,6 +67,10 @@ Mud.AI.Agent.Guidance.GuidanceResult.OmittedDomains.get -> System.Collections.Ge
 Mud.AI.Agent.Guidance.GuidanceResult.OmittedDomains.init -> void
 Mud.AI.Agent.Guidance.GuidanceResult.Truncated.get -> bool
 Mud.AI.Agent.Guidance.GuidanceResult.Truncated.init -> void
+Mud.AI.Agent.Sessions.AgentSessionStore
+Mud.AI.Agent.Sessions.AgentSessionStore.AgentSessionStore(Microsoft.Agents.AI.AIAgent! codec, Mud.AI.Abstractions.Conversations.ISessionStore? store, string! historyStateKey, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+Mud.AI.Agent.Sessions.AgentSessionStore.GetOrCreateAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Agents.AI.AgentSession!>!
+Mud.AI.Agent.Sessions.AgentSessionStore.SaveAsync(string! key, Microsoft.Agents.AI.AgentSession! session, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Mud.AI.Agent.Tools.Errors.IToolErrorTextFormatter
 Mud.AI.Agent.Tools.Errors.IToolErrorTextFormatter.Format(string! toolName, string! reason) -> string!
 Mud.AI.Agent.Tools.Errors.IToolErrorTextFormatter.RenderHint(Mud.AI.Agent.Tools.Errors.ToolError! error) -> string!
@@ -116,12 +119,15 @@ Mud.AI.Agent.Tools.Errors.ToolErrorTextFormatter.ToolErrorTextFormatter() -> voi
 Mud.AI.Agent.Tools.IToolResultShaper
 Mud.AI.Agent.Tools.IToolResultShaper.ShapeAsync(string! toolName, string! projectedResult, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
 Mud.AI.Agent.Tools.ToolApiFailure
+Mud.AI.Agent.Tools.ToolApiFailure.<Clone>$() -> Mud.AI.Agent.Tools.ToolApiFailure!
 Mud.AI.Agent.Tools.ToolApiFailure.Category.get -> Mud.AI.Agent.Tools.Errors.ToolErrorCategory
 Mud.AI.Agent.Tools.ToolApiFailure.Category.init -> void
-Mud.AI.Agent.Tools.ToolApiFailure.Suggestions.get -> System.Collections.Generic.IReadOnlyList<string!>?
-Mud.AI.Agent.Tools.ToolApiFailure.Suggestions.init -> void
+Mud.AI.Agent.Tools.ToolApiFailure.Deconstruct(out Mud.AI.Agent.Tools.Errors.ToolErrorCategory Category, out string! Subtype, out System.Collections.Generic.IReadOnlyList<string!>? Suggestions) -> void
+Mud.AI.Agent.Tools.ToolApiFailure.Equals(Mud.AI.Agent.Tools.ToolApiFailure? other) -> bool
 Mud.AI.Agent.Tools.ToolApiFailure.Subtype.get -> string!
 Mud.AI.Agent.Tools.ToolApiFailure.Subtype.init -> void
+Mud.AI.Agent.Tools.ToolApiFailure.Suggestions.get -> System.Collections.Generic.IReadOnlyList<string!>?
+Mud.AI.Agent.Tools.ToolApiFailure.Suggestions.init -> void
 Mud.AI.Agent.Tools.ToolApiFailure.ToolApiFailure(Mud.AI.Agent.Tools.Errors.ToolErrorCategory Category, string! Subtype, System.Collections.Generic.IReadOnlyList<string!>? Suggestions = null) -> void
 Mud.AI.Agent.Tools.ToolApiOutcome<T>
 Mud.AI.Agent.Tools.ToolApiOutcome<T>.Code.get -> int?
@@ -151,8 +157,8 @@ Mud.AI.Agent.Tools.ToolExecutor.FromPagedResult(Mud.AI.Agent.Tools.ToolPaginatio
 Mud.AI.Agent.Tools.ToolExecutor.FromPlainText<T>(Mud.AI.Agent.Tools.ToolApiOutcome<T!>! outcome, System.Func<T!, string?>! text) -> Mud.AI.Agent.Tools.ToolResult!
 Mud.AI.Agent.Tools.ToolExecutor.RunAsync(System.Func<System.Threading.Tasks.Task<Mud.AI.Agent.Tools.ToolResult!>!>! body) -> System.Threading.Tasks.Task<Mud.AI.Agent.Tools.ToolResult!>!
 Mud.AI.Agent.Tools.ToolExecutor.ToolExecutor() -> void
-Mud.AI.Agent.Tools.ToolExecutor.ToolExecutor(string! toolName, int maxResultLength) -> void
 Mud.AI.Agent.Tools.ToolExecutor.ToolExecutor(string! toolName) -> void
+Mud.AI.Agent.Tools.ToolExecutor.ToolExecutor(string! toolName, int maxResultLength) -> void
 Mud.AI.Agent.Tools.ToolExecutor.ToolName.get -> string!
 Mud.AI.Agent.Tools.ToolPagination
 Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult
@@ -224,6 +230,8 @@ static Mud.AI.Agent.Tools.Errors.ToolError.operator ==(Mud.AI.Agent.Tools.Errors
 static Mud.AI.Agent.Tools.Errors.ToolErrorClassifier.Classify(System.Exception! exception, Mud.AI.Abstractions.Tools.Errors.ITransportFault? transportFault = null) -> (Mud.AI.Agent.Tools.Errors.ToolErrorCategory Category, string! Subtype)
 static Mud.AI.Agent.Tools.Errors.ToolErrorHintRenderer.Render(Mud.AI.Agent.Tools.Errors.ToolError! error) -> string!
 static Mud.AI.Agent.Tools.Errors.ToolErrorPayloadSerializer.Serialize(Mud.AI.Agent.Tools.Errors.ToolError! error) -> string!
+static Mud.AI.Agent.Tools.ToolApiFailure.operator !=(Mud.AI.Agent.Tools.ToolApiFailure? left, Mud.AI.Agent.Tools.ToolApiFailure? right) -> bool
+static Mud.AI.Agent.Tools.ToolApiFailure.operator ==(Mud.AI.Agent.Tools.ToolApiFailure? left, Mud.AI.Agent.Tools.ToolApiFailure? right) -> bool
 static Mud.AI.Agent.Tools.ToolApiFailure.Unclassified.get -> Mud.AI.Agent.Tools.ToolApiFailure!
 static Mud.AI.Agent.Tools.ToolApiOutcome<T>.Fail(string! errorText, int? code = null, Mud.AI.Agent.Tools.ToolApiFailure? failure = null) -> Mud.AI.Agent.Tools.ToolApiOutcome<T!>!
 static Mud.AI.Agent.Tools.ToolApiOutcome<T>.Success(T! data) -> Mud.AI.Agent.Tools.ToolApiOutcome<T!>!

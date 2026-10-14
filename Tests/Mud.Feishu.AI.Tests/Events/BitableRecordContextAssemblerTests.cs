@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者:Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -25,7 +25,7 @@ public class BitableRecordContextAssemblerTests
 {
     private static ConversationRequest Request(
         string? eventKey = FeishuEventKeys.BitableRecordChanged,
-        IReadOnlyList<FeishuEventFact>? facts = null)
+        IReadOnlyList<EventFact>? facts = null)
         => new(
             AppKey: "cli_app_a",
             Scope: ConversationScope.P2P(),
@@ -36,7 +36,7 @@ public class BitableRecordContextAssemblerTests
             EventKey: eventKey,
             EventFacts: facts);
 
-    private static List<FeishuEventFact> Facts() =>
+    private static List<EventFact> Facts() =>
     [
         new(BitableRecordContextAssembler.FileTokenKey, "bascnTbl123"),
         new(BitableRecordContextAssembler.TableIdKey, "tblABC"),
@@ -69,7 +69,7 @@ public class BitableRecordContextAssemblerTests
     [InlineData("record_edited", "修改记录 rec9")]
     public async Task Assemble_Should_TranslateActionCodes(string action, string expected)
     {
-        var facts = new List<FeishuEventFact>
+        var facts = new List<EventFact>
         {
             new(BitableRecordContextAssembler.ActionPrefix + "0", $"{action} rec9"),
         };
@@ -84,7 +84,7 @@ public class BitableRecordContextAssemblerTests
     [Fact]
     public async Task Assemble_Should_KeepUnknownActionCode()
     {
-        var facts = new List<FeishuEventFact>
+        var facts = new List<EventFact>
         {
             new(BitableRecordContextAssembler.ActionPrefix + "0", "record_teleported rec9"),
         };
@@ -114,7 +114,7 @@ public class BitableRecordContextAssemblerTests
         (await assembler.AssembleAsync(Request(facts: null))).Should().BeNull();
         (await assembler.AssembleAsync(Request(facts: []))).Should().BeNull();
 
-        var blankOnly = new List<FeishuEventFact>
+        var blankOnly = new List<EventFact>
         {
             new(BitableRecordContextAssembler.FileTokenKey, null),
             new(BitableRecordContextAssembler.TableIdKey, " "),
@@ -127,7 +127,7 @@ public class BitableRecordContextAssemblerTests
     [Fact]
     public async Task Assemble_Should_TruncateLongFieldValue_WithMarker()
     {
-        var facts = new List<FeishuEventFact>
+        var facts = new List<EventFact>
         {
             new(
                 BitableRecordContextAssembler.DiffPrefix + "0.0",
@@ -147,10 +147,10 @@ public class BitableRecordContextAssemblerTests
     [Fact]
     public async Task Assemble_Should_BoundFactCount_AndTotalLength()
     {
-        var facts = new List<FeishuEventFact>();
+        var facts = new List<EventFact>();
         for (var i = 0; i < ContextBudgets.MaxFactsPerAssembler * 3; i++)
         {
-            facts.Add(new FeishuEventFact(BitableRecordContextAssembler.DiffPrefix + $"0.{i}", $"fld{i}: 甲 → 乙"));
+            facts.Add(new EventFact(BitableRecordContextAssembler.DiffPrefix + $"0.{i}", $"fld{i}: 甲 → 乙"));
         }
 
         var fragment = await new BitableRecordContextAssembler().AssembleAsync(Request(facts: facts));

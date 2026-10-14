@@ -323,6 +323,43 @@ public sealed class FeishuAgentOptions
     public string UserTokenPrecheck { get; set; } = UserTokenPrecheckModes.CacheOnly;
 
     /// <summary>
+    /// 投影出<b>中立运行期配置</b>（N3）：把「与产品语义无关的运行时旋钮」交给中立机制消费。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么是投影而不是"让中立实现直接读本类"</b>：中立实现（会话摘要器 / 流式通道 /
+    /// 回合管线）若读产品配置类，就形成 <c>Mud.AI.*</c> → 产品配置的隐式依赖——编译期不报错，
+    /// P3 上游化（迁独立 Mud.AI 仓）时才爆炸。本方法把产品事实<b>在边界上</b>翻译成中立值类型。
+    /// </para>
+    /// <para>
+    /// <b>本类的公开面一个字节都不变</b>：配置节名、属性名、异常文案全是宿主可见面；
+    /// 宿主<b>不</b>直接配置 <see cref="AgentRuntimeOptions"/>，它只由本投影产生。
+    /// </para>
+    /// <para>
+    /// <b>为什么不再单独写一个 <c>AgentRuntimeOptionsValidator</c></b>（对方案 §4.1 A3 的评审订正）：
+    /// 投影的<b>来源</b>已在校验之后（<see cref="Validate"/> + 注册期
+    /// <see cref="IValidateOptions{T}"/> 双触发），再写第二份校验必然与第一份漂移，
+    /// 而漂移无法被编译器发现（两份规则同时"看起来对"）。中立侧只保留
+    /// <see cref="AgentRuntimeOptions.Validate"/> 作为独立构造时的兜底。
+    /// </para>
+    /// </remarks>
+    /// <returns>中立运行期配置（含 9 个中立旋钮）。</returns>
+    internal AgentRuntimeOptions ToRuntimeOptions() => new()
+    {
+        MaxHistoryMessages = MaxHistoryMessages,
+        SummaryThreshold = SummaryThreshold,
+        MaxHistoryTokens = MaxHistoryTokens,
+        MaxStreamChunkLength = MaxStreamChunkLength,
+        MaxToolCallsPerTurn = MaxToolCallsPerTurn,
+        MaxConcurrentTurns = MaxConcurrentTurns,
+        TurnQueueTimeoutSeconds = TurnQueueTimeoutSeconds,
+        DeferTextUntilTurnComplete = DeferTextUntilTurnComplete,
+        // 重试策略本身已是中立值类型（N1 随契约下沉），直接传递引用——刻意不复制，
+        // 否则宿主对 ToolRetry 的后续改动会被投影快照切断（"配置改了但不生效"）。
+        ToolRetry = ToolRetry,
+    };
+
+    /// <summary>
     /// 校验配置合法性（注册时与 <see cref="FeishuAgent"/> 构造时双触发，fail-fast）。
     /// </summary>
     /// <exception cref="InvalidOperationException">存在非法取值。</exception>

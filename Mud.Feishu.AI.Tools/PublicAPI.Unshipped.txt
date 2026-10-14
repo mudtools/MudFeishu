@@ -1,3 +1,4 @@
+﻿#nullable enable
 ~override Mud.Feishu.AI.Tools.Execution.UserTokenPrecheckResult.Equals(object obj) -> bool
 ~override Mud.Feishu.AI.Tools.Execution.UserTokenPrecheckResult.ToString() -> string
 ~override Mud.Feishu.AI.Tools.Hosting.AttachmentSource.Equals(object obj) -> bool

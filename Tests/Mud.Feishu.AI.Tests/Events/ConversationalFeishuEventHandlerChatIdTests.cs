@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -143,14 +143,14 @@ public class ConversationalFeishuEventHandlerChatIdTests
         var channel = new Mock<IMessageChannel>();
         channel.Setup(c => c.BeginAsync("app-a", "oc_chatid", It.IsAny<CancellationToken>())).ReturnsAsync("om_s4");
         channel
-            .As<IMessageChannelTargetResolver>()
+            .As<IChannelTargetResolver>()
             .Setup(r => r.ResolveStreamTarget(It.IsAny<ConversationRequest>()))
             .Returns((string?)null);
 
         var handler = new RecordingHandler(CreateAgent(), CreateDeduplicator().Object, channel.Object);
         await handler.HandleAsync(DemoEventData("group_with-chat"), default);
 
-        channel.As<IMessageChannelTargetResolver>().Verify(
+        channel.As<IChannelTargetResolver>().Verify(
             r => r.ResolveStreamTarget(It.IsAny<ConversationRequest>()), Times.Once,
             "通道实现了解析器接口 ⇒ 事件处理器必须先咨询它");
         channel.Verify(c => c.BeginAsync("app-a", "oc_chatid", It.IsAny<CancellationToken>()), Times.Once,
@@ -163,7 +163,7 @@ public class ConversationalFeishuEventHandlerChatIdTests
         // 对照组：解析器返回 null 且默认解析值也为 null（单聊无 ChatId）⇒ 才真正回退非流式。
         var channel = new Mock<IMessageChannel>();
         channel
-            .As<IMessageChannelTargetResolver>()
+            .As<IChannelTargetResolver>()
             .Setup(r => r.ResolveStreamTarget(It.IsAny<ConversationRequest>()))
             .Returns((string?)null);
 

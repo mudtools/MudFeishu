@@ -8,89 +8,20 @@
 namespace Mud.Feishu.AI.Knowledge;
 
 /// <summary>
-/// 单个召回知识切片（引用回链的最小单元，Phase 2 §3.4 RAG-A）。
-/// </summary>
-/// <param name="Text">切片文本（召回内容）。</param>
-/// <param name="Source">来源标识（Aily 数据知识 ID / 文档标题等，可空；RAG-B 为 wiki 回链 URL）。</param>
-/// <param name="Score">相关性得分（可空；Aily 托管问答不返回得分）。</param>
-/// <param name="TitlePath">
-/// RAG-B 标题层级路径（可空，如 <c>手册 / 部署 / 环境变量</c>）。
-/// 追加为<b>末尾可选参数</b> ⇒ 既有调用点（RAG-A Aily、既有检索实现）源码兼容。
-/// </param>
-public sealed record RetrievedChunk(
-    string Text,
-    string? Source = null,
-    double? Score = null,
-    string? TitlePath = null);
-
-/// <summary>
-/// 知识问答结果：答案文本 + 召回切片（供「带引用的回答」注入 Prompt 与回传 sources）。
-/// </summary>
-/// <param name="Question">原始问题。</param>
-/// <param name="AnswerText">答案文本（可空——<see cref="HasAnswer"/> 为 <see langword="false"/> 时无答案）。</param>
-/// <param name="HasAnswer">是否有结果（false 表示未命中配置知识，答案不可信）。</param>
-/// <param name="Chunks">召回切片（引用回链来源）。</param>
-public sealed record KnowledgeAnswer(
-    string Question,
-    string? AnswerText,
-    bool HasAnswer,
-    IReadOnlyList<RetrievedChunk> Chunks)
-{
-    /// <summary>构造未命中结果（HasAnswer=false）。</summary>
-    public static KnowledgeAnswer NoAnswer(string question) => new(question, null, false, []);
-
-    /// <summary>
-    /// 引用回链投影（AI-FD-D12 P2D-4c）：编号来源列表（形如 <c>[1] aily:data_asset_xxx</c>），
-    /// 供回复文本尾注。仅含 <see cref="RetrievedChunk.Source"/> 非空的切片——
-    /// RAG-B（Phase 3 条件交付）天然携带 wiki URL 强回链，本字段即为其契约位。
-    /// </summary>
-    public IReadOnlyList<string> Sources
-    {
-        get
-        {
-            var sources = new List<string>();
-            for (var i = 0; i < Chunks.Count; i++)
-            {
-                var chunk = Chunks[i];
-                if (!string.IsNullOrEmpty(chunk.Source))
-                {
-                    sources.Add($"[{(i + 1).ToString(CultureInfo.InvariantCulture)}] {chunk.Source}");
-                }
-            }
-
-            return sources;
-        }
-    }
-}
-
-/// <summary>
-/// 知识库数据面门面（路线图主线③）：宿主经此做问答与数据同步，不感知托管（RAG-A）/自建（RAG-B）差异。
+/// 飞书侧知识库数据面门面的<b>派生命名契约</b>（N1 中立化后的 ④ 式保留）。
 /// </summary>
 /// <remarks>
-/// Phase 2 交付 RAG-A（Aily 托管问答）；RAG-B 自建检索为条件交付（已决策⑨，Phase 3），
-/// 届时新增第二实现并存（<c>IRetriever</c> 检索面正交）。
+/// <para>
+/// 数据面（<c>AskAsync</c>）、检索面（<c>IRetriever</c>）与值类型
+/// （<c>RetrievedChunk</c>/<c>KnowledgeAnswer</c>）已中立化上移
+/// <see cref="Mud.AI.Abstractions.Knowledge.IKnowledgeBase"/>；本接口保留产品命名，
+/// 使「飞书托管知识（Aily）」的宿主装配点与既有消费方零改动。
+/// </para>
+/// <para>
+/// <b>⚠️ 不得新增成员</b>——产品特有的能力（如 Aily 专有的流式事件形态）应由
+/// <c>AilyKnowledgeProvider</c> 自身的公开面承载，而不是把这个门面撑成"飞书专用接口"。
+/// </para>
 /// </remarks>
-public interface IFeishuKnowledgeBase
+public interface IFeishuKnowledgeBase : Mud.AI.Abstractions.Knowledge.IKnowledgeBase
 {
-    /// <summary>
-    /// 执行知识问答（RAG-A：Aily 数据知识问答，SSE 流式）。
-    /// </summary>
-    /// <param name="query">用户问题。</param>
-    /// <param name="cancellationToken">取消令牌。</param>
-    /// <returns>答案 + 召回切片（引用回链）。</returns>
-    Task<KnowledgeAnswer> AskAsync(string query, CancellationToken cancellationToken = default);
-}
-
-/// <summary>
-/// 知识库检索面（与数据面正交）：把问题检索为切片列表，供 Agent 组装「召回块 + 引用」上下文。
-/// </summary>
-public interface IRetriever
-{
-    /// <summary>
-    /// 检索与问题相关的知识切片。
-    /// </summary>
-    /// <param name="query">用户问题。</param>
-    /// <param name="cancellationToken">取消令牌。</param>
-    /// <returns>召回切片（按相关性排序）。</returns>
-    Task<IReadOnlyList<RetrievedChunk>> RetrieveAsync(string query, CancellationToken cancellationToken = default);
 }

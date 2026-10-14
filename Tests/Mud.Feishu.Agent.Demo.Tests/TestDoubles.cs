@@ -104,7 +104,7 @@ internal static class TestDoubles
             RequestId: requestId,
             ToolName: toolName,
             ToolCallId: "call_1",
-            AppKey: DocAgentSettings.DefaultAppKey,
+            TenantKey: DocAgentSettings.DefaultAppKey,
             UserId: DocAgentSettings.DefaultConsoleUserId,
             ConversationKey: "feishu:demo-app:conversation:user:ou_console_demo_user",
             ArgumentsDigest: "document_id=<27 字符>, start_index=1, end_index=6",

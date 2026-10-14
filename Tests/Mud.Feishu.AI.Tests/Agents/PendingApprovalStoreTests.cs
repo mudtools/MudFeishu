@@ -35,7 +35,7 @@ public class PendingApprovalStoreTests
         return new PendingApprovalSnapshot(
             RequestId: requestId,
             ToolName: "im.send_message",
-            AppKey: appKey,
+            TenantKey: appKey,
             UserId: "ou_user",
             ConversationKey: "feishu.agent.cli_app_a.p2p.ou_user",
             ChatId: "oc_chat",
@@ -74,7 +74,7 @@ public class PendingApprovalStoreTests
 
         pending.Should().ContainSingle();
         pending[0].RequestId.Should().Be("ficc_call_1");
-        pending[0].AppKey.Should().Be("cli_app_a");
+        pending[0].TenantKey.Should().Be("cli_app_a");
     }
 
     /// <summary>
@@ -192,7 +192,7 @@ public class PendingApprovalStoreTests
             RequestId: "ficc_call_9",
             ToolName: "drive.transfer_owner",
             ToolCallId: "call_9",
-            AppKey: "cli_app_a",
+            TenantKey: "cli_app_a",
             UserId: "ou_user",
             ConversationKey: "conv",
             ArgumentsDigest: "file_token=<masked>",
@@ -293,7 +293,7 @@ public class PendingApprovalStoreTests
             RequestId: requestId,
             ToolName: "im.send_message",
             ToolCallId: "call_1",
-            AppKey: "cli_app_a",
+            TenantKey: "cli_app_a",
             UserId: "ou_user",
             ConversationKey: "conv",
             ArgumentsDigest: "text=<len=12>",
@@ -316,7 +316,7 @@ public class PendingApprovalStoreTests
         }
     }
 
-    private sealed class ThrowingPendingApprovalStore : IFeishuPendingApprovalStore
+    private sealed class ThrowingPendingApprovalStore : IPendingApprovalStore
     {
         public Task SaveAsync(PendingApprovalSnapshot snapshot, CancellationToken cancellationToken = default)
             => throw new InvalidOperationException("模拟持久化后端故障");

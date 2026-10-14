@@ -12,4 +12,12 @@ global using Mud.Feishu.AI.Tools;
 global using Mud.Feishu.AI.Tools.Catalog;
 global using Mud.Feishu.AI.Tools.Hosting;
 global using Mud.Feishu.AI.Tools.Generated;
+// N1 中立化：宿主批准通道契约与流式通道抽象上移 Mud.AI.Abstractions（Demo 的替身实现按新命名空间实现）。
+global using Mud.AI.Abstractions.Approvals;
+global using Mud.AI.Abstractions.Channels;
+global using Mud.AI.Abstractions.Configuration;
+global using Mud.AI.Abstractions.Context;
+global using Mud.AI.Abstractions.Conversations;
+global using Mud.AI.Abstractions.Knowledge;
+global using Mud.AI.Abstractions.Media;
 global using Xunit;

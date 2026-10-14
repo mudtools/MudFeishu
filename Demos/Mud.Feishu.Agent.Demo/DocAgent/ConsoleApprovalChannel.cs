@@ -172,7 +172,7 @@ internal sealed class ConsoleApprovalChannel : IFeishuToolApprovalChannel
             RequestId: $"legacy-{correlationId}",
             ToolName: request.ToolName,
             ToolCallId: null,
-            AppKey: request.AppKey,
+            TenantKey: request.TenantKey,
             UserId: request.UserId,
             ConversationKey: request.ConversationKey,
             ArgumentsDigest: request.ArgumentsDigest,

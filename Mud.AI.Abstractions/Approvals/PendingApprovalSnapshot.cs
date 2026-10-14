@@ -5,22 +5,21 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.AI.Agents;
+namespace Mud.AI.Abstractions.Approvals;
 
 /// <summary>
-/// 待人工确认（HITL）项的可持久化快照（R7 / C4a）。
+/// 待人工确认（HITL）项的可持久化快照。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>为什么需要它</b>：<c>IFeishuToolApprovalChannel</c> 是「通知宿主」的同步点，通知完即返回；
-/// 进程重启后宿主<b>无从得知</b>还有哪些写操作停在「等待确认」——这正是 R5-12 的孤儿审批形态
+/// <b>为什么需要它</b>：批准通道是「通知宿主」的同步点，通知完即返回；
+/// 进程重启后宿主<b>无从得知</b>还有哪些写操作停在「等待确认」——这正是孤儿审批形态
 /// （会话历史里有未应答的审批请求）。本快照把待确认项落成<b>可查询、可过期、可幂等消费</b>的数据，
 /// 宿主据此做「重进进程后仍能列出待办」。
 /// </para>
 /// <para>
 /// <b>不含任何凭据（铁律不变）</b>：快照只带工具名、脱敏入参摘要、租户/会话维度标识与时间——
-/// SDK 不签发批准凭据，也不缓存批准状态；批准状态的所有者仍是宿主授权器
-/// （<c>IToolExecutionAuthorizer</c>）。
+/// SDK 不签发批准凭据，也不缓存批准状态；批准状态的所有者仍是宿主授权器。
 /// </para>
 /// <para>
 /// <b>入参摘要（<see cref="ArgumentsDigest"/>）</b>来自既有投影，已由执行链脱敏；
@@ -31,22 +30,22 @@ namespace Mud.Feishu.AI.Agents;
 /// 框架请求标识（回灌批准响应时必须原样带回，否则框架无法把响应绑定到原始请求）。
 /// </param>
 /// <param name="ToolName">工具名（注册表契约名）。</param>
-/// <param name="AppKey">应用唯一标识（多租户隔离维度：查询与消费都按它分区）。</param>
+/// <param name="TenantKey">租户/应用标识（隔离维度：查询与消费都按它分区）。</param>
 /// <param name="UserId">触发用户（可空）。</param>
 /// <param name="ConversationKey">会话键（可空；续跑必须用同一个键加载会话）。</param>
-/// <param name="ChatId">触发会话的 chat_id（可空；续跑重建工具上下文用）。</param>
+/// <param name="ChatId">触发会话的目标 ID（可空；续跑重建工具上下文用）。</param>
 /// <param name="ToolCallId">模型原始调用 ID（可空；排障用）。</param>
 /// <param name="ArgumentsDigest">入参摘要（可空；已脱敏，仅供审批界面展示，不得回灌模型）。</param>
 /// <param name="RequiredScopes">工具声明的权限点（查不到目录时为空集合）。</param>
 /// <param name="CreatedAt">登记时间（UTC）。</param>
 /// <param name="ExpiresAt">
 /// 过期时间（UTC）：过期后<b>自动放弃</b>——不得出现「过期的批准仍生效」
-/// （见 <see cref="IFeishuPendingApprovalStore"/> 的消费语义）。
+/// （见 <see cref="IPendingApprovalStore"/> 的消费语义）。
 /// </param>
 public sealed record PendingApprovalSnapshot(
     string RequestId,
     string ToolName,
-    string AppKey,
+    string TenantKey,
     string? UserId,
     string? ConversationKey,
     string? ChatId,
@@ -57,11 +56,9 @@ public sealed record PendingApprovalSnapshot(
     DateTimeOffset ExpiresAt)
 {
     /// <summary>
-    /// 默认确认有效期（10 分钟）——与 <c>ToolApprovalRequest.ExpiresAt</c> 的既有默认值同口径。
+    /// 默认确认有效期（10 分钟）——与 <see cref="ToolApprovalRequest.ExpiresAt"/> 的既有默认值同口径。
     /// </summary>
-    /// <remarks>
-    /// 宿主可在宿主侧通道实现里按业务调整（本常量只是 SDK 自动登记的默认值）。
-    /// </remarks>
+    /// <remarks>宿主可在宿主侧通道实现里按业务调整（本常量只是 SDK 自动登记的默认值）。</remarks>
     public static readonly TimeSpan DefaultTtl = TimeSpan.FromMinutes(10);
 
     /// <summary>快照是否已过期（<paramref name="now"/> 达到或超过 <see cref="ExpiresAt"/>）。</summary>
@@ -91,7 +88,7 @@ public sealed record PendingApprovalSnapshot(
         return new PendingApprovalSnapshot(
             RequestId: request.RequestId,
             ToolName: request.ToolName,
-            AppKey: request.AppKey,
+            TenantKey: request.TenantKey,
             UserId: request.UserId,
             ConversationKey: request.ConversationKey,
             ChatId: request.ChatId,

@@ -81,6 +81,11 @@ public class FeishuToolProfileContractGuards
         ["ParameterAttributeName"] = "ToolParameter",
         // 2. 源解析（旧 Extractors.ResolveSourceMember 的 "Mud.Feishu." 前缀）
         ["SdkNamespaceRoot"] = "Mud.Feishu",
+        // N1/N2 中立化：能力域接口不再只住在 Mud.Feishu*（知识检索器等中立契约
+        // Mud.AI.Abstractions.Knowledge.IRetriever 同样表达"该域可软缺席"）——
+        // 该事实经**独立槽**表达，而不是放宽 SdkNamespaceRoot
+        //（后者还承担 SDK 程序集定位，放宽会让能力目录静默零产出）。
+        ["SoftAbsentNamespaceRoots"] = "Mud.AI",
         // 3. 接口范式（旧 Extractors.SdkInterfaceNameRegex，逐字符一致）
         ["InterfaceNameRegex"] = @"^IFeishu(?:Tenant|User)?V\d+(?<domain>[A-Z][a-zA-Z0-9]*)(?<resource>[A-Z][a-zA-Z0-9]*)?$",
         // 4. 令牌身份（旧 CuratedToolScanner.DeriveIdentityFromSource 的 StartsWith 语义）

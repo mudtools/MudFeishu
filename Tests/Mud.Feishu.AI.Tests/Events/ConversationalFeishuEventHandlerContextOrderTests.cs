@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -113,7 +113,7 @@ public class ConversationalFeishuEventHandlerContextOrderTests
             "工具上下文必须前置于上下文装配（否则知识/引用装配器读不到 appKey，静默零注入）");
         probe.Observed!.AppKey.Should().Be("app-a");
         probe.Observed.ConversationKey.Should().Be(
-            ConversationKeyBuilder.Build("app-a", ConversationScope.Group(), "oc_1"));
+            ConversationScopeMapper.BuildKey("app-a", ConversationScope.Group(), "oc_1"));
         probe.Observed.UserId.Should().Be("ou_sender");
     }
 

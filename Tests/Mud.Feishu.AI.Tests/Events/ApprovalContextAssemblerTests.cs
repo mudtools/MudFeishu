@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者:Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -28,7 +28,7 @@ public class ApprovalContextAssemblerTests
 {
     private static ConversationRequest Request(
         string? eventKey = ApprovalContextAssembler.ApprovalEventKey,
-        IReadOnlyList<FeishuEventFact>? facts = null)
+        IReadOnlyList<EventFact>? facts = null)
         => new(
             AppKey: "cli_app_a",
             Scope: ConversationScope.P2P(),
@@ -39,7 +39,7 @@ public class ApprovalContextAssemblerTests
             EventKey: eventKey,
             EventFacts: facts);
 
-    private static List<FeishuEventFact> Facts() =>
+    private static List<EventFact> Facts() =>
     [
         new("instance_code", "inst-1"),
         new("task_id", "task-1"),
@@ -81,7 +81,7 @@ public class ApprovalContextAssemblerTests
         (await assembler.AssembleAsync(Request(facts: null))).Should().BeNull();
         (await assembler.AssembleAsync(Request(facts: []))).Should().BeNull();
 
-        var blankOnly = new List<FeishuEventFact>
+        var blankOnly = new List<EventFact>
         {
             new("instance_code", null),
             new("task_id", " "),
@@ -95,7 +95,7 @@ public class ApprovalContextAssemblerTests
     public async Task Assemble_Should_TruncateLongFieldValue_WithMarker()
     {
         var assembler = new ApprovalContextAssembler();
-        var facts = new List<FeishuEventFact>
+        var facts = new List<EventFact>
         {
             new("form_summary", new string('x', ContextBudgets.ApprovalFieldPreviewLength * 3)),
         };
@@ -114,10 +114,10 @@ public class ApprovalContextAssemblerTests
     public async Task Assemble_Should_BoundFactCount_AndTotalLength()
     {
         var assembler = new ApprovalContextAssembler();
-        var facts = new List<FeishuEventFact>();
+        var facts = new List<EventFact>();
         for (var i = 0; i < ContextBudgets.MaxFactsPerAssembler * 3; i++)
         {
-            facts.Add(new FeishuEventFact($"field_{i}", new string('y', 120)));
+            facts.Add(new EventFact($"field_{i}", new string('y', 120)));
         }
 
         var fragment = await assembler.AssembleAsync(Request(facts: facts));

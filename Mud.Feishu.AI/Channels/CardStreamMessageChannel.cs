@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -21,7 +21,7 @@ namespace Mud.Feishu.AI.Channels;
 /// <remarks>
 /// <para>
 /// <b>目标语义</b>：应用消息卡片（feed card）按<b>用户 open_id</b> 投放（<c>user_ids</c>），
-/// 与编辑通道的 chat_id 不同——本通道实现 <see cref="IMessageChannelTargetResolver"/>，
+/// 与编辑通道的 chat_id 不同——本通道实现 <see cref="IChannelTargetResolver"/>，
 /// 单聊场景解析为发送者 open_id（<see cref="ConversationRequest.SenderId"/>）；
 /// 群聊不适用（返回 null，降级链/事件处理器回退编辑通道）。
 /// 降级链（<see cref="StreamingChannelChain"/>）经流式环境量按子通道各自重解析，事件处理器零感知。
@@ -50,7 +50,7 @@ public sealed class CardStreamMessageChannel(
     IFeishuAppContextScopeFactory scopeFactory,
     IOptions<FeishuAgentOptions> options,
     ILogger<CardStreamMessageChannel>? logger = null,
-    TimeSpan? minUpdateInterval = null) : BufferedMessageChannel(options, minUpdateInterval), IMessageChannelTargetResolver
+    TimeSpan? minUpdateInterval = null) : BufferedMessageChannel(options, minUpdateInterval), IChannelTargetResolver
 {
     /// <summary>占位卡片初始预览文本（可见的「正在输入」占位）。</summary>
     private const string PlaceholderPreview = "…";

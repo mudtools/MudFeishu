@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -8,7 +8,6 @@
 using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Mud.Feishu.Abstractions;
-using Mud.Feishu.Abstractions.Conversations;
 using Mud.Feishu.Abstractions.EventHandlers;
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.AI.Channels;
@@ -31,7 +30,7 @@ namespace Mud.Feishu.AI.Events;
 /// 靠投递判定短路兜底；本类是新增能力，直接走精确路由，更省一次无效反序列化）。
 /// </para>
 /// <para>
-/// <b>平台事实 → 结构化事实（<see cref="FeishuEventFact"/>）</b>：只登记事件载荷里真实存在的字段
+/// <b>平台事实 → 结构化事实（<see cref="EventFact"/>）</b>：只登记事件载荷里真实存在的字段
 /// （表格 token / 数据表 / 版本号 / 操作人 / 每条行操作 / <b>仅变化字段</b>的前后值）。
 /// 表名、字段名<b>不在</b>事件载荷里（需另调 <c>bitable.list_tables</c> / <c>bitable.list_fields</c>）——
 /// 不臆造这些事实（模型会以为事件自带）。
@@ -57,7 +56,7 @@ public sealed class BitableRecordChangedConversationalEventHandler(
     IAppKeyAccessor? appKeyAccessor = null,
     IFeishuToolApprovalChannel? approvalChannel = null,
     IFeishuAppContextScopeFactory? appContextScopeFactory = null,
-    IFeishuPendingApprovalStore? pendingApprovalStore = null)
+    IPendingApprovalStore? pendingApprovalStore = null)
     : ConversationalFeishuEventHandler<BitableRecordChangedResult>(
         agent, businessDeduplicator, logger, contextAssemblers, toolContextAccessor, messageChannel, conversationGate, appKeyAccessor,
         approvalChannel, appContextScopeFactory: appContextScopeFactory, pendingApprovalStore: pendingApprovalStore)
@@ -111,9 +110,9 @@ public sealed class BitableRecordChangedConversationalEventHandler(
     /// <remarks>
     /// 键约定见 <see cref="BitableRecordContextAssembler"/>（单一源）：标量键 + <c>action.n</c> + <c>diff.n.m</c>。
     /// </remarks>
-    private static List<FeishuEventFact> BuildFacts(BitableRecordChangedResult eventData)
+    private static List<EventFact> BuildFacts(BitableRecordChangedResult eventData)
     {
-        var facts = new List<FeishuEventFact>(capacity: 8);
+        var facts = new List<EventFact>(capacity: 8);
 
         AddFact(facts, BitableRecordContextAssembler.FileTokenKey, eventData.FileToken);
         AddFact(facts, BitableRecordContextAssembler.TableIdKey, eventData.TableId);
@@ -134,13 +133,13 @@ public sealed class BitableRecordChangedConversationalEventHandler(
         {
             if (actionIndex >= MaxActions)
             {
-                facts.Add(new FeishuEventFact(
+                facts.Add(new EventFact(
                     BitableRecordContextAssembler.ActionPrefix + "truncated",
                     $"仅登记前 {MaxActions} 条变更（本次共 {actions.Length} 条）"));
                 break;
             }
 
-            facts.Add(new FeishuEventFact(
+            facts.Add(new EventFact(
                 BitableRecordContextAssembler.ActionPrefix + actionIndex.ToString(CultureInfo.InvariantCulture),
                 $"{(string.IsNullOrEmpty(action.Action) ? "unknown" : action.Action)} {action.RecordId}".TrimEnd()));
 
@@ -154,7 +153,7 @@ public sealed class BitableRecordChangedConversationalEventHandler(
     /// <summary>
     /// 登记<b>仅变化字段</b>的前后值（同名未变字段不登记——防"灌全量"）。
     /// </summary>
-    private static void AddDiffFacts(List<FeishuEventFact> facts, int actionIndex, BitableTableRecordAction action)
+    private static void AddDiffFacts(List<EventFact> facts, int actionIndex, BitableTableRecordAction action)
     {
         var before = IndexFields(action.BeforeValue);
         var after = IndexFields(action.AfterValue);
@@ -181,13 +180,13 @@ public sealed class BitableRecordChangedConversationalEventHandler(
 
             if (diffIndex >= MaxDiffsPerAction)
             {
-                facts.Add(new FeishuEventFact(
+                facts.Add(new EventFact(
                     $"{BitableRecordContextAssembler.DiffPrefix}{actionIndex}.more",
                     $"仅登记前 {MaxDiffsPerAction} 个变化字段"));
                 break;
             }
 
-            facts.Add(new FeishuEventFact(
+            facts.Add(new EventFact(
                 $"{BitableRecordContextAssembler.DiffPrefix}{actionIndex}.{diffIndex.ToString(CultureInfo.InvariantCulture)}",
                 $"{fieldId}: {RenderValue(oldValue)} → {RenderValue(newValue)}"));
 
@@ -222,11 +221,11 @@ public sealed class BitableRecordChangedConversationalEventHandler(
     private static string RenderValue(string? value)
         => string.IsNullOrEmpty(value) ? BitableRecordContextAssembler.EmptyValueToken : value!;
 
-    private static void AddFact(List<FeishuEventFact> facts, string key, string? value)
+    private static void AddFact(List<EventFact> facts, string key, string? value)
     {
         if (!string.IsNullOrWhiteSpace(value))
         {
-            facts.Add(new FeishuEventFact(key, value));
+            facts.Add(new EventFact(key, value));
         }
     }
 

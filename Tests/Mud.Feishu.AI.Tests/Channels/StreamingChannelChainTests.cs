@@ -6,7 +6,6 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.AI.Channels;
-using Mud.Feishu.Abstractions.Conversations;
 using Mud.Feishu.AI.Conversations;
 using Mud.Feishu.AI.Channels;
 using Mud.Feishu.AI.Events;
@@ -51,7 +50,7 @@ public class StreamingChannelChainTests
             .ReturnsAsync("om_edit_2");
 
         var resolverCard = new Mock<IMessageChannel>();
-        resolverCard.As<IMessageChannelTargetResolver>()
+        resolverCard.As<IChannelTargetResolver>()
             .Setup(r => r.ResolveStreamTarget(It.IsAny<ConversationRequest>()))
             .Returns<ConversationRequest>(request => request.Scope.IsGroup ? null : request.SenderId);
 
@@ -69,7 +68,7 @@ public class StreamingChannelChainTests
     public async Task Begin_ShouldUseCardTarget_ForP2pEvent_ViaAmbientContext()
     {
         var card = new Mock<IMessageChannel>();
-        card.As<IMessageChannelTargetResolver>()
+        card.As<IChannelTargetResolver>()
             .Setup(r => r.ResolveStreamTarget(It.IsAny<ConversationRequest>()))
             .Returns<ConversationRequest>(request => request.Scope.IsGroup ? null : request.SenderId);
         card.Setup(c => c.BeginAsync("appA", "ou_sender", It.IsAny<CancellationToken>()))

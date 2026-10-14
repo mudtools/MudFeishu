@@ -5,17 +5,23 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Mud.Feishu.AI.Conversations;
+using Mud.AI.Abstractions.Conversations;
 
-namespace Mud.Feishu.AI.Events;
+namespace Mud.AI.Abstractions.Context;
 
 /// <summary>
 /// 会话上下文装配器：把结构化事件事实拼进 Prompt 的插件（可多注册）。
 /// </summary>
 /// <remarks>
 /// <para>
-/// 只放已脱敏的非敏感内容（Phase 1 §3.1）；实现方按注册顺序依次产出片段，
-/// 由 <see cref="ConversationalFeishuEventHandler{T}"/> 统一拼接为用户消息。
+/// 只放已脱敏的非敏感内容；实现方按注册顺序依次产出片段，由会话管线
+/// （<c>Mud.AI.Agent.Events.ConversationalTurnPipeline</c>）统一拼接为用户消息。
+/// 单个装配器失败被隔离（记 Warning 后跳过），不得中断整轮对话。
+/// </para>
+/// <para>
+/// <b>⚠️ 租户上下文前置条件</b>：需要租户上下文的实现（如知识检索）依赖调用方在装配
+/// <b>之前</b>已建立工具/租户作用域；次序颠倒会让实现抛错并被隔离吞为 Warning，
+/// 表现为"每轮零知识注入"且仅日志可见。该次序由管线保证，并由契约守卫以行为锚锁定。
 /// </para>
 /// </remarks>
 public interface IContextAssembler

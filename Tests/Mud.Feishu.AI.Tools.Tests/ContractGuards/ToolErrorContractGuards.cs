@@ -351,25 +351,29 @@ public class ToolErrorContractGuards
     /// <summary>
     /// <b>E-2</b>：码表（codemeta）命中的码必须给出"语义 + 行动"候选；未收录的码<b>不得</b>猜测。
     /// </summary>
+    /// <remarks>
+    /// 码表自 2026-10-14 起在<b>飞书侧</b>（<c>FeishuApiErrorVocabulary</c>；独立产品线纪律）——
+    /// 候选经 <c>ToolApiFailure.Suggestions</c> 随解包结果进入中立层，故断言改在读数上。
+    /// </remarks>
     [Fact]
     public void CodeMeta_ShouldEnrichKnownCode_AndStayNeutralForUnknownCode()
     {
-        var known = ToolErrorCodeMeta.BuildSuggestions(99991400);
+        var known = FeishuApiErrorVocabulary.Classify(99991400).Suggestions;
         known.Should().NotBeNull("99991400（系统繁忙）有实证：必须给出语义 + 行动");
         known!.Should().ContainSingle().Which.Should().Contain("系统繁忙").And.Contain("建议：");
 
-        ToolErrorCodeMeta.BuildSuggestions(99999999).Should().BeNull(
+        FeishuApiErrorVocabulary.Classify(99999999).Suggestions.Should().BeNull(
             "未收录的码不得产出候选（猜测性码表会把模型引向错误处置）");
-        ToolErrorCodeMeta.BuildSuggestions(null).Should().BeNull();
+        FeishuApiErrorVocabulary.Classify(null).Suggestions.Should().BeNull();
     }
 
     /// <summary>码表条目必须有域标注、含义与行动（缺一即为不可用条目）。</summary>
     [Fact]
     public void CodeMeta_Entries_ShouldAllBeUsable()
     {
-        ToolErrorCodeMeta.All.Should().NotBeEmpty("码表不得为空（空表 = E-2 未落地）");
+        FeishuApiErrorVocabulary.All.Should().NotBeEmpty("码表不得为空（空表 = E-2 未落地）");
 
-        foreach (var entry in ToolErrorCodeMeta.All)
+        foreach (var entry in FeishuApiErrorVocabulary.All)
         {
             entry.Code.Should().BeGreaterThan(0);
             entry.Meaning.Should().NotBeNullOrWhiteSpace($"码 {entry.Code} 必须给出含义");
@@ -466,6 +470,37 @@ public class ToolErrorContractGuards
         var text = result.ToString()!;
         text.Should().Contain("(forbidden)");
         text.Should().NotContain("(retryable)", "确定性失败不得被回填成可重试语义");
+    }
+
+    /// <summary>
+    /// <b>业务码读数的接线（独立产品线纪律的第二条端到端证据）</b>：中立的 <c>Mud.AI.Agent</c>
+    /// 已不认识飞书码表，"码 → 段位 + 码级候选"必须由 <c>FeishuApiResultReader</c> 经
+    /// <c>ToolApiFailure</c> 随解包结果带出，再由执行器填进载荷。
+    /// </summary>
+    /// <remarks>
+    /// 漏接读数时 99991400（系统繁忙；可能以 <b>HTTP 200 + JSON 错误体</b>返回，故不走 HTTP 段位判定）
+    /// 会落到中性的 <c>api/upstream_error</c>——模型因此放弃一个"本该退避重试"的调用。
+    /// 从<b>读信封</b>一路断言到载荷，故"读取器忘了带读数"或"执行器忘了转发读数"任一处漂移都会报红。
+    /// </remarks>
+    [Fact]
+    public void ApiCodeReading_ShouldTravelFromReaderToPayload()
+    {
+        var outcome = FeishuApiResultReader.Read(new FeishuApiResult<System.Text.Json.Nodes.JsonObject>
+        {
+            Code = 99991400,
+            Msg = "系统繁忙",
+        });
+
+        var result = new ToolExecutor("mail.list_messages", 4096)
+            .FromApi(outcome, static _ => new System.Text.Json.Nodes.JsonObject());
+
+        result.Error.Should().NotBeNull();
+        result.Error!.Category.Should().Be("retryable", "99991400 有实证（系统繁忙）⇒ 必须可重试");
+        result.Error.Subtype.Should().Be("rate_limited");
+        result.Error.ApiCode.Should().Be(99991400, "code 必须透出（宿主/模型按码排查）");
+        result.Error.Suggestions.Should().NotBeNull("码级候选（语义 + 行动）必须随读数透出（E-2）");
+
+        result.ToString().Should().Contain("(retryable)");
     }
 
     private sealed class NoopScopeFactory : IFeishuAppContextScopeFactory

@@ -15,19 +15,38 @@ namespace Mud.AI.Agent.Tools;
 /// v2.3 中立化迁入（原 <c>Mud.Feishu.AI.AgentTools.FeishuApiOutcome&lt;T&gt;</c>，internal → public：
 /// 飞书侧 <c>FeishuApiResultReader</c>（读 <c>FeishuApiResult&lt;T&gt;</c> 产品信封）与本骨架共用同一产物形状）。
 /// 信封读取器本身产品间差异大，留各生态适配层（YAGNI 不进共享层）。
+/// <para>
+/// <b>业务码语义的归属（独立产品线纪律）</b>：本类型<b>只携带</b>产品业务码（<see cref="Code"/>，进载荷的
+/// <c>api_code</c>）与产品侧的读数（<see cref="Failure"/>）；<b>码表在产品的读取器里</b>，
+/// 中立层不再认识任何产品码段位。
+/// </para>
 /// </remarks>
 /// <typeparam name="T">业务载荷类型。</typeparam>
 /// <param name="Ok">是否成功（<c>code == 0</c> 且载荷非空）。</param>
 /// <param name="Data">业务载荷（成功时非空）。</param>
 /// <param name="ErrorText">失败原因（可读文本，回填模型）。</param>
-/// <param name="Code">产品业务 code（错误分类消费；无 code 场景为 null）。</param>
-public sealed record ToolApiOutcome<T>(bool Ok, T? Data, string? ErrorText, int? Code = null) where T : class
+/// <param name="Code">产品业务 code（进载荷 <c>api_code</c>；无 code 场景为 null）。</param>
+/// <param name="Failure">
+/// 产品侧对业务码的读数（分类段位 + 码级候选）；产品不认识该码时为 <see langword="null"/>
+/// ⇒ 中立层回落 <c>api/upstream_error</c>。
+/// </param>
+public sealed record ToolApiOutcome<T>(
+    bool Ok,
+    T? Data,
+    string? ErrorText,
+    int? Code = null,
+    ToolApiFailure? Failure = null) where T : class
 {
     /// <summary>构造成功结果。</summary>
     public static ToolApiOutcome<T> Success(T data) => new(true, data, null);
 
     /// <summary>构造失败结果。</summary>
     /// <param name="errorText">可读错误文本（回填模型）。</param>
-    /// <param name="code">产品业务 code（错误分类消费）。</param>
-    public static ToolApiOutcome<T> Fail(string errorText, int? code = null) => new(false, null, errorText, code);
+    /// <param name="code">产品业务 code（进载荷 <c>api_code</c>）。</param>
+    /// <param name="failure">
+    /// 产品侧对业务码的读数（分类段位 + 码级候选）——由产品的信封读取器给出；
+    /// 无法分类时传 <see langword="null"/>（中立层回落 <c>api/upstream_error</c>）。
+    /// </param>
+    public static ToolApiOutcome<T> Fail(string errorText, int? code = null, ToolApiFailure? failure = null)
+        => new(false, null, errorText, code, failure);
 }

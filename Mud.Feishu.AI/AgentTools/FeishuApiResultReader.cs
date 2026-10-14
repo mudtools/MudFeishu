@@ -43,9 +43,12 @@ internal static class FeishuApiResultReader
 
         if (result.Code != 0)
         {
+            // 业务码的语义由产品侧读出（独立产品线纪律）：中立层不认识飞书码表，
+            // 只消费 ToolApiFailure（分类段位 + 码级候选）。
             return ToolApiOutcome<T>.Fail(
                 $"飞书接口返回错误 code={result.Code.ToString(CultureInfo.InvariantCulture)}, msg={result.Msg ?? "(无错误信息)"}",
-                result.Code);
+                result.Code,
+                FeishuApiErrorVocabulary.Classify(result.Code));
         }
 
         if (result.Data is null)

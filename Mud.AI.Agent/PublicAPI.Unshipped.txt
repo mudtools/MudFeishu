@@ -3,10 +3,15 @@ Mud.AI.Agent.Sessions.AgentSessionStore
 Mud.AI.Agent.Sessions.AgentSessionStore.AgentSessionStore(Microsoft.Agents.AI.AIAgent! codec, Mud.AI.Abstractions.Conversations.ISessionStore? store, string! historyStateKey, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
 Mud.AI.Agent.Sessions.AgentSessionStore.GetOrCreateAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Agents.AI.AgentSession!>!
 Mud.AI.Agent.Sessions.AgentSessionStore.SaveAsync(string! key, Microsoft.Agents.AI.AgentSession! session, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Mud.AI.Agent.Tools.ToolApiFailure.<Clone>$() -> Mud.AI.Agent.Tools.ToolApiFailure!
+Mud.AI.Agent.Tools.ToolApiFailure.Deconstruct(out Mud.AI.Agent.Tools.Errors.ToolErrorCategory Category, out string! Subtype, out System.Collections.Generic.IReadOnlyList<string!>? Suggestions) -> void
+Mud.AI.Agent.Tools.ToolApiFailure.Equals(Mud.AI.Agent.Tools.ToolApiFailure? other) -> bool
 ~Mud.AI.Agent.Tools.ToolApiOutcome<T>.<Clone>$() -> Mud.AI.Agent.Tools.ToolApiOutcome<T>!
 ~Mud.AI.Agent.Tools.ToolApiOutcome<T>.Equals(Mud.AI.Agent.Tools.ToolApiOutcome<T>? other) -> bool
 ~override Mud.AI.Agent.Guidance.GuidanceBlock.Equals(object obj) -> bool
 ~override Mud.AI.Agent.Guidance.GuidanceBlock.ToString() -> string
+static Mud.AI.Agent.Tools.ToolApiFailure.operator !=(Mud.AI.Agent.Tools.ToolApiFailure? left, Mud.AI.Agent.Tools.ToolApiFailure? right) -> bool
+static Mud.AI.Agent.Tools.ToolApiFailure.operator ==(Mud.AI.Agent.Tools.ToolApiFailure? left, Mud.AI.Agent.Tools.ToolApiFailure? right) -> bool
 ~static Mud.AI.Agent.Tools.ToolApiOutcome<T>.operator !=(Mud.AI.Agent.Tools.ToolApiOutcome<T>? left, Mud.AI.Agent.Tools.ToolApiOutcome<T>? right) -> bool
 ~static Mud.AI.Agent.Tools.ToolApiOutcome<T>.operator ==(Mud.AI.Agent.Tools.ToolApiOutcome<T>? left, Mud.AI.Agent.Tools.ToolApiOutcome<T>? right) -> bool
 const Mud.AI.Agent.Tools.Errors.ToolErrorHintRenderer.HintPrefix = "[next] " -> string!
@@ -101,20 +106,6 @@ Mud.AI.Agent.Tools.Errors.ToolErrorCategory.Policy = 1 -> Mud.AI.Agent.Tools.Err
 Mud.AI.Agent.Tools.Errors.ToolErrorCategory.Retryable = 4 -> Mud.AI.Agent.Tools.Errors.ToolErrorCategory
 Mud.AI.Agent.Tools.Errors.ToolErrorCategory.Validation = 0 -> Mud.AI.Agent.Tools.Errors.ToolErrorCategory
 Mud.AI.Agent.Tools.Errors.ToolErrorClassifier
-Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta
-Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry
-Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.<Clone>$() -> Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry!
-Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.Action.get -> string!
-Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.Action.init -> void
-Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.Code.get -> int
-Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.Code.init -> void
-Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.Deconstruct(out int Code, out string? Domain, out string! Meaning, out string! Action) -> void
-Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.Domain.get -> string?
-Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.Domain.init -> void
-Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.Entry(int Code, string? Domain, string! Meaning, string! Action) -> void
-Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.Equals(Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry? other) -> bool
-Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.Meaning.get -> string!
-Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.Meaning.init -> void
 Mud.AI.Agent.Tools.Errors.ToolErrorHintRenderer
 Mud.AI.Agent.Tools.Errors.ToolErrorPayloadSerializer
 Mud.AI.Agent.Tools.Errors.ToolErrorSubtype
@@ -124,17 +115,27 @@ Mud.AI.Agent.Tools.Errors.ToolErrorTextFormatter.RenderHint(Mud.AI.Agent.Tools.E
 Mud.AI.Agent.Tools.Errors.ToolErrorTextFormatter.ToolErrorTextFormatter() -> void
 Mud.AI.Agent.Tools.IToolResultShaper
 Mud.AI.Agent.Tools.IToolResultShaper.ShapeAsync(string! toolName, string! projectedResult, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
+Mud.AI.Agent.Tools.ToolApiFailure
+Mud.AI.Agent.Tools.ToolApiFailure.Category.get -> Mud.AI.Agent.Tools.Errors.ToolErrorCategory
+Mud.AI.Agent.Tools.ToolApiFailure.Category.init -> void
+Mud.AI.Agent.Tools.ToolApiFailure.Suggestions.get -> System.Collections.Generic.IReadOnlyList<string!>?
+Mud.AI.Agent.Tools.ToolApiFailure.Suggestions.init -> void
+Mud.AI.Agent.Tools.ToolApiFailure.Subtype.get -> string!
+Mud.AI.Agent.Tools.ToolApiFailure.Subtype.init -> void
+Mud.AI.Agent.Tools.ToolApiFailure.ToolApiFailure(Mud.AI.Agent.Tools.Errors.ToolErrorCategory Category, string! Subtype, System.Collections.Generic.IReadOnlyList<string!>? Suggestions = null) -> void
 Mud.AI.Agent.Tools.ToolApiOutcome<T>
 Mud.AI.Agent.Tools.ToolApiOutcome<T>.Code.get -> int?
 Mud.AI.Agent.Tools.ToolApiOutcome<T>.Code.init -> void
 Mud.AI.Agent.Tools.ToolApiOutcome<T>.Data.get -> T?
 Mud.AI.Agent.Tools.ToolApiOutcome<T>.Data.init -> void
-Mud.AI.Agent.Tools.ToolApiOutcome<T>.Deconstruct(out bool Ok, out T? Data, out string? ErrorText, out int? Code) -> void
+Mud.AI.Agent.Tools.ToolApiOutcome<T>.Deconstruct(out bool Ok, out T? Data, out string? ErrorText, out int? Code, out Mud.AI.Agent.Tools.ToolApiFailure? Failure) -> void
 Mud.AI.Agent.Tools.ToolApiOutcome<T>.ErrorText.get -> string?
 Mud.AI.Agent.Tools.ToolApiOutcome<T>.ErrorText.init -> void
+Mud.AI.Agent.Tools.ToolApiOutcome<T>.Failure.get -> Mud.AI.Agent.Tools.ToolApiFailure?
+Mud.AI.Agent.Tools.ToolApiOutcome<T>.Failure.init -> void
 Mud.AI.Agent.Tools.ToolApiOutcome<T>.Ok.get -> bool
 Mud.AI.Agent.Tools.ToolApiOutcome<T>.Ok.init -> void
-Mud.AI.Agent.Tools.ToolApiOutcome<T>.ToolApiOutcome(bool Ok, T? Data, string? ErrorText, int? Code = null) -> void
+Mud.AI.Agent.Tools.ToolApiOutcome<T>.ToolApiOutcome(bool Ok, T? Data, string? ErrorText, int? Code = null, Mud.AI.Agent.Tools.ToolApiFailure? Failure = null) -> void
 Mud.AI.Agent.Tools.ToolArgumentException
 Mud.AI.Agent.Tools.ToolArgumentException.Suggestions.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Mud.AI.Agent.Tools.ToolArgumentException.ToolArgumentException(string! message, System.Collections.Generic.IReadOnlyList<string!>! suggestions) -> void
@@ -158,17 +159,19 @@ Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult
 Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.<Clone>$() -> Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult!
 Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.ApiCode.get -> int?
 Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.ApiCode.init -> void
-Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.Deconstruct(out System.Text.Json.Nodes.JsonArray! Items, out bool Truncated, out string? NextPageToken, out int TotalFetched, out int PagesFetched, out string? Error, out int? FailedPageIndex, out int? ApiCode) -> void
+Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.Deconstruct(out System.Text.Json.Nodes.JsonArray! Items, out bool Truncated, out string? NextPageToken, out int TotalFetched, out int PagesFetched, out string? Error, out int? FailedPageIndex, out int? ApiCode, out Mud.AI.Agent.Tools.ToolApiFailure? Failure) -> void
 Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.Equals(Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult? other) -> bool
 Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.Error.get -> string?
 Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.Error.init -> void
 Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.FailedPageIndex.get -> int?
 Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.FailedPageIndex.init -> void
+Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.Failure.get -> Mud.AI.Agent.Tools.ToolApiFailure?
+Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.Failure.init -> void
 Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.Items.get -> System.Text.Json.Nodes.JsonArray!
 Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.Items.init -> void
 Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.NextPageToken.get -> string?
 Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.NextPageToken.init -> void
-Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.PagedFetchResult(System.Text.Json.Nodes.JsonArray! Items, bool Truncated, string? NextPageToken, int TotalFetched, int PagesFetched, string? Error, int? FailedPageIndex, int? ApiCode = null) -> void
+Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.PagedFetchResult(System.Text.Json.Nodes.JsonArray! Items, bool Truncated, string? NextPageToken, int TotalFetched, int PagesFetched, string? Error, int? FailedPageIndex, int? ApiCode = null, Mud.AI.Agent.Tools.ToolApiFailure? Failure = null) -> void
 Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.PagesFetched.get -> int
 Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.PagesFetched.init -> void
 Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.TotalFetched.get -> int
@@ -196,9 +199,9 @@ override Mud.AI.Agent.Guidance.GuidanceResult.ToString() -> string!
 override Mud.AI.Agent.Tools.Errors.ToolError.Equals(object? obj) -> bool
 override Mud.AI.Agent.Tools.Errors.ToolError.GetHashCode() -> int
 override Mud.AI.Agent.Tools.Errors.ToolError.ToString() -> string!
-override Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.Equals(object? obj) -> bool
-override Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.GetHashCode() -> int
-override Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.ToString() -> string!
+override Mud.AI.Agent.Tools.ToolApiFailure.Equals(object? obj) -> bool
+override Mud.AI.Agent.Tools.ToolApiFailure.GetHashCode() -> int
+override Mud.AI.Agent.Tools.ToolApiFailure.ToString() -> string!
 override Mud.AI.Agent.Tools.ToolApiOutcome<T>.Equals(object? obj) -> bool
 override Mud.AI.Agent.Tools.ToolApiOutcome<T>.GetHashCode() -> int
 override Mud.AI.Agent.Tools.ToolApiOutcome<T>.ToString() -> string!
@@ -219,15 +222,10 @@ static Mud.AI.Agent.Guidance.GuidanceResult.operator ==(Mud.AI.Agent.Guidance.Gu
 static Mud.AI.Agent.Tools.Errors.ToolError.operator !=(Mud.AI.Agent.Tools.Errors.ToolError? left, Mud.AI.Agent.Tools.Errors.ToolError? right) -> bool
 static Mud.AI.Agent.Tools.Errors.ToolError.operator ==(Mud.AI.Agent.Tools.Errors.ToolError? left, Mud.AI.Agent.Tools.Errors.ToolError? right) -> bool
 static Mud.AI.Agent.Tools.Errors.ToolErrorClassifier.Classify(System.Exception! exception, Mud.AI.Abstractions.Tools.Errors.ITransportFault? transportFault = null) -> (Mud.AI.Agent.Tools.Errors.ToolErrorCategory Category, string! Subtype)
-static Mud.AI.Agent.Tools.Errors.ToolErrorClassifier.ClassifyCode(int? code) -> (Mud.AI.Agent.Tools.Errors.ToolErrorCategory Category, string! Subtype)
-static Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.All.get -> System.Collections.Generic.IReadOnlyList<Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry!>!
-static Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.BuildSuggestions(int? code) -> System.Collections.Generic.IReadOnlyList<string!>?
-static Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.operator !=(Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry? left, Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry? right) -> bool
-static Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.operator ==(Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry? left, Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry? right) -> bool
-static Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Find(int? code) -> Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry?
 static Mud.AI.Agent.Tools.Errors.ToolErrorHintRenderer.Render(Mud.AI.Agent.Tools.Errors.ToolError! error) -> string!
 static Mud.AI.Agent.Tools.Errors.ToolErrorPayloadSerializer.Serialize(Mud.AI.Agent.Tools.Errors.ToolError! error) -> string!
-static Mud.AI.Agent.Tools.ToolApiOutcome<T>.Fail(string! errorText, int? code = null) -> Mud.AI.Agent.Tools.ToolApiOutcome<T!>!
+static Mud.AI.Agent.Tools.ToolApiFailure.Unclassified.get -> Mud.AI.Agent.Tools.ToolApiFailure!
+static Mud.AI.Agent.Tools.ToolApiOutcome<T>.Fail(string! errorText, int? code = null, Mud.AI.Agent.Tools.ToolApiFailure? failure = null) -> Mud.AI.Agent.Tools.ToolApiOutcome<T!>!
 static Mud.AI.Agent.Tools.ToolApiOutcome<T>.Success(T! data) -> Mud.AI.Agent.Tools.ToolApiOutcome<T!>!
 static Mud.AI.Agent.Tools.ToolDryRun.Describe(string! toolName, string! httpMethod, string! route, string? extraNote = null, params (string! Name, int Length)[]! bodyFields) -> string!
 static Mud.AI.Agent.Tools.ToolDryRun.IdempotencyNote(string? idempotencyKey) -> string!
@@ -235,7 +233,6 @@ static Mud.AI.Agent.Tools.ToolDryRun.IsRequested(bool? dryRun) -> bool
 static Mud.AI.Agent.Tools.ToolErrorFactory.Compose(Mud.AI.Agent.Tools.Errors.ToolError! payload, string! humanReadable) -> string!
 static Mud.AI.Agent.Tools.ToolErrorFactory.Create(string! toolName, Mud.AI.Agent.Tools.Errors.ToolErrorCategory category, string! subtype, int? apiCode = null, string? trace = null, int attempts = 1, System.Collections.Generic.IReadOnlyList<string!>? suggestions = null, System.Collections.Generic.IReadOnlyList<string!>? requiredScopes = null, int? retryAfterSeconds = null) -> Mud.AI.Agent.Tools.Errors.ToolError!
 static Mud.AI.Agent.Tools.ToolErrorText.CategoryLiteral(Mud.AI.Agent.Tools.Errors.ToolErrorCategory category) -> string!
-static Mud.AI.Agent.Tools.ToolErrorText.StructuredError(string! toolName, int? apiCode, string! reason) -> string!
 static Mud.AI.Agent.Tools.ToolErrorText.StructuredError(string! toolName, Mud.AI.Agent.Tools.Errors.ToolErrorCategory category, string! reason, int? apiCode = null, string? subtype = null) -> string!
 static Mud.AI.Agent.Tools.ToolErrorText.StructuredError(string! toolName, string! reason) -> string!
 static Mud.AI.Agent.Tools.ToolExecutor.Require<TOptions>(Microsoft.Extensions.Options.IOptions<TOptions!>! options) -> TOptions!

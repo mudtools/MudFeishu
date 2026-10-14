@@ -39,7 +39,7 @@ public enum ToolErrorCategory
     /// <summary>可重试：HTTP 5xx / 429 / 网络异常——模型可稍后重试同一调用。</summary>
     Retryable,
 
-    /// <summary>飞书业务错误（code != 0 且非权限段位）——模型应报告或换参数。</summary>
+    /// <summary>下游业务错误（code != 0 且非权限段位）——模型应报告或换参数。</summary>
     Api,
 
     /// <summary>内部错误：未预期异常/净化器拒绝——模型应报告追踪号。</summary>
@@ -85,16 +85,17 @@ public static class ToolErrorSubtype
     public const string AuthorizationDenied = "authorization_denied";
 
     // T1 / D1：用户令牌就绪语义闭环——与 forbidden（权限不足）语义区分。
-    /// <summary>用户未授权：无有效令牌且无 refresh token——模型应转告用户去完成飞书授权，不得换工具或重试。</summary>
+    /// <summary>用户未授权：无有效令牌且无 refresh token——模型应转告用户去完成授权，不得换工具或重试。</summary>
     public const string UserAuthRequired = "user_auth_required";
     /// <summary>用户令牌续期失败：下游 401 且 TokenRecoveryExecutor 恢复后仍失败——探测漏网路径的兜底出口。</summary>
     public const string UserTokenRefreshFailed = "user_token_refresh_failed";
 
     // ⚠️ PM 裁定 DP-R7-4（§8.5）：曾声明 `missing_scope`（平台权限未开通）——**已删除**。
     //    依据：全仓无产出点（幽灵子类），且平台侧并无可靠的"scope 缺失"判据可用：
-    //    99991663 / 99991661 在三个层被解释成三种不同的东西（工具层=权限类 / WebSocket 层=机器人被禁用 /
+    //    权限段的同一个业务码在三个层被解释成三种不同的东西（工具层=权限类 / WebSocket 层=机器人被禁用 /
     //    Abstractions 层=令牌错误）⇒ 拿它当"控制台未开通权限"是**猜测**，与本仓"不得编造"的纪律冲突。
-    //    若将来拿到平台 scope 错误的**实证样本**，再新增（新增需评审 + 生产者守卫）。
+    //    若将来拿到平台 scope 错误的**实证样本**，再新增（新增需评审 + 生产者守卫）——
+    //    届时落在产品侧的码表（本层不再持有任何产品码）。
 
     // Confirmation
     public const string NeedsUserConfirmation = "needs_user_confirmation";
@@ -120,29 +121,22 @@ public static class ToolErrorSubtype
 
 /// <summary>
 /// 工具错误分类器（B2 错误契约）：纯函数——从异常类型 / 传输故障状态码（中立端口
-/// <see cref="ITransportFault"/>）/ 产品业务 code 段位映射到
-/// <see cref="ToolErrorCategory"/> 与 <see cref="ToolErrorSubtype"/>，无配置。
+/// <see cref="ITransportFault"/>）映射到 <see cref="ToolErrorCategory"/> 与
+/// <see cref="ToolErrorSubtype"/>，无配置，<b>不认识任何产品的码表</b>。
 /// </summary>
 /// <remarks>
+/// <para>
 /// <b>授权拒绝与参数错误必须可区分</b>——这是模型自我修正（重试 or 换参数 or 放弃）的前提。
+/// </para>
+/// <para>
+/// <b>产品业务码不在这里（独立产品线纪律，2026-10-14）</b>：产品码 → 段位的映射<b>由产品侧</b>
+/// 在读取自家信封时完成（读数载体 = <see cref="ToolApiFailure"/>），中立层只消费已分类的结果。
+/// 本类此前自带的 <c>ForbiddenApiCodes</c> / <c>RetryableApiCodes</c> 已随该纪律下线
+/// （码表搬到产品适配层——否则 P3 上游化时码表会被一并带走，且只能由"知道全部产品"的中立包维护）。
+/// </para>
 /// </remarks>
 public static class ToolErrorClassifier
 {
-    /// <summary>飞书权限类业务码（99991663=无权限操作 / 99991661=权限不足，控制台权限未开通同段位）。</summary>
-    private static readonly int[] ForbiddenApiCodes = [99991663, 99991661];
-
-    /// <summary>
-    /// 飞书<b>可重试</b>业务码（E-2 扩展）：<c>99991400</c> = 平台系统繁忙（限流/过载）。
-    /// </summary>
-    /// <remarks>
-    /// <b>证据</b>：<c>documents/ApiDocs</c> 的接口文档明确写"…（如 <b>99991400 系统繁忙</b>、
-    /// 99991672 无权限等业务错误）"；语义是"服务端暂时无法处理"，与 429/5xx 同类。
-    /// 该码可能以 <b>HTTP 200 + JSON 错误体</b>形态返回（见同一文档），即不会走 HTTP 段位判定——
-    /// 若只靠 <see cref="ClassifyHttpStatus"/>，它会被误判为不可重试的 <c>api/upstream_error</c>，
-    /// 模型因此放弃一个"本该退避重试"的调用。故按码补一条可重试路径。
-    /// </remarks>
-    private static readonly int[] RetryableApiCodes = [99991400];
-
     /// <summary>从异常类型分类（执行链 catch 路径；取消异常由调用方先行放行，不入此分类）。</summary>
     /// <param name="exception">被分类的异常。</param>
     /// <param name="transportFault">
@@ -174,22 +168,6 @@ public static class ToolErrorClassifier
             _ => (ToolErrorCategory.Internal, ToolErrorSubtype.Unexpected),
         };
     }
-
-    /// <summary>
-    /// 从飞书 API code 分类（<c>ToolApiOutcome</c> 解包路径）。
-    /// </summary>
-    /// <remarks>
-    /// 判定顺序：<b>权限类 → 可重试类 → 其余业务错误</b>。权限与可重试互斥（码表不重叠），
-    /// 顺序只影响可读性；真正的纪律是<b>未收录的码一律落到中性的 <c>api/upstream_error</c></b>——
-    /// 不猜语义（DP-R7-4）。
-    /// </remarks>
-    public static (ToolErrorCategory Category, string Subtype) ClassifyCode(int? code) => code switch
-    {
-        null => (ToolErrorCategory.Api, ToolErrorSubtype.UpstreamError),
-        { } value when ForbiddenApiCodes.Contains(value) => (ToolErrorCategory.Authorization, ToolErrorSubtype.AuthorizationDenied),
-        { } value when RetryableApiCodes.Contains(value) => (ToolErrorCategory.Retryable, ToolErrorSubtype.RateLimited),
-        _ => (ToolErrorCategory.Api, ToolErrorSubtype.UpstreamError),
-    };
 
     /// <summary>HTTP 状态段位：5xx/429 可重试，401/403 权限类，其余业务错误。</summary>
     private static (ToolErrorCategory Category, string Subtype) ClassifyHttpStatus(int? statusCode) => statusCode switch

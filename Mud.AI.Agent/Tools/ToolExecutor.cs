@@ -118,7 +118,7 @@ public readonly struct ToolExecutor(string toolName, int maxResultLength)
     {
         if (!outcome.Ok)
         {
-            return FromApiOutcomeError(outcome.Code, outcome.ErrorText!);
+            return FromApiOutcomeError(outcome.Code, outcome.ErrorText!, outcome.Failure);
         }
 
         return ToolResultPipeline.Ok(text(outcome.Data!), maxResultLength);
@@ -132,7 +132,7 @@ public readonly struct ToolExecutor(string toolName, int maxResultLength)
     {
         if (!outcome.Ok)
         {
-            return FromApiOutcomeError(outcome.Code, outcome.ErrorText!);
+            return FromApiOutcomeError(outcome.Code, outcome.ErrorText!, outcome.Failure);
         }
 
         // maxLength = 0 ⇒ 无预算（与单参构造的语义一致）。
@@ -160,7 +160,7 @@ public readonly struct ToolExecutor(string toolName, int maxResultLength)
     public ToolResult? FailIfError<T>(ToolApiOutcome<T> outcome) where T : class
         => outcome.Ok
             ? null
-            : FromApiOutcomeError(outcome.Code, outcome.ErrorText!);
+            : FromApiOutcomeError(outcome.Code, outcome.ErrorText!, outcome.Failure);
 
     /// <summary>
     /// <b>统一分页出口（页状态显式版）</b>：给<b>翻页契约字段名与基类不一致</b>的历史 DTO 用。
@@ -224,15 +224,15 @@ public readonly struct ToolExecutor(string toolName, int maxResultLength)
     {
         if (!outcome.Ok)
         {
-            return FromApiOutcomeError(outcome.Code, outcome.ErrorText!);
+            return FromApiOutcomeError(outcome.Code, outcome.ErrorText!, outcome.Failure);
         }
 
         return ToolResultPipeline.OkJson(project(outcome.Data!), maxResultLength);
     }
 
     /// <summary>
-    /// 统一 <c>fetch_all</c> 聚合信封出口（B1）：首页即失败 → 回到结构化错误分类路径
-    /// （保留飞书 code → <see cref="ToolErrorClassifier.ClassifyCode"/>）；
+    /// 统一 <c>fetch_all</c> 聚合信封出口（B1）：首页即失败 → 回到结构化错误路径
+    /// （保留产品 code 与<b>产品侧读数</b> → <see cref="ToolApiFailure"/>）；
     /// 其余情况 → 聚合信封（items/has_more/truncated/next_page_token/_budget/partial_error）。
     /// </summary>
     /// <remarks>
@@ -247,8 +247,7 @@ public readonly struct ToolExecutor(string toolName, int maxResultLength)
         // 首页即失败：没有任何已取数据 ⇒ 不是"部分成功"，而是该调用的确定性失败。
         if (result.Error is not null && result.PagesFetched == 0)
         {
-            var (category, subtype) = ToolErrorClassifier.ClassifyCode(result.ApiCode);
-            return FromStructuredError(category, subtype, result.Error, result.ApiCode);
+            return FromApiOutcomeError(result.ApiCode, result.Error, result.Failure);
         }
 
         var envelope = ToolPagination.BuildEnvelope(result, maxItems);
@@ -287,10 +286,15 @@ public readonly struct ToolExecutor(string toolName, int maxResultLength)
             apiCode,
             suggestions: suggestions);
 
-    /// <summary>从飞书 API outcome 构造错误结果（分类器自动映射）。</summary>
-    private ToolResult FromApiOutcomeError(int? apiCode, string errorText)
+    /// <summary>
+    /// 从产品 API outcome 构造错误结果（分类取<b>产品侧读数</b>——中立层不认识任何产品码表）。
+    /// </summary>
+    /// <param name="apiCode">产品业务 code（进载荷 <c>api_code</c>）。</param>
+    /// <param name="errorText">可读错误文本。</param>
+    /// <param name="failure">产品侧读数；<see langword="null"/> 时回落 <c>api/upstream_error</c>。</param>
+    private ToolResult FromApiOutcomeError(int? apiCode, string errorText, ToolApiFailure? failure)
     {
-        var (category, subtype) = ToolErrorClassifier.ClassifyCode(apiCode);
-        return FromStructuredError(category, subtype, errorText, apiCode);
+        var reading = failure ?? ToolApiFailure.Unclassified;
+        return FromStructuredError(reading.Category, reading.Subtype, errorText, apiCode, reading.Suggestions);
     }
 }

@@ -51,7 +51,11 @@ public static class ToolPagination
     /// <param name="PagesFetched">已请求页数。</param>
     /// <param name="Error">中途失败时的错误信息（null = 全部成功）。</param>
     /// <param name="FailedPageIndex">失败页的序号（0 起；未失败时为 null）。</param>
-    /// <param name="ApiCode">失败页的飞书业务 code（错误分类消费；非 API 失败为 null）。</param>
+    /// <param name="ApiCode">失败页的产品业务 code（进载荷 <c>api_code</c>；非 API 失败为 null）。</param>
+    /// <param name="Failure">
+    /// 失败页的<b>产品侧读数</b>（<see cref="ToolApiOutcome{T}.Failure"/> 原样带出；
+    /// 首页即失败时由执行器据此构造结构化错误）。
+    /// </param>
     public sealed record PagedFetchResult(
         JsonArray Items,
         bool Truncated,
@@ -60,11 +64,13 @@ public static class ToolPagination
         int PagesFetched,
         string? Error,
         int? FailedPageIndex,
-        int? ApiCode = null);
+        int? ApiCode = null,
+        ToolApiFailure? Failure = null);
 
     /// <summary>
-    /// 自动翻页聚合（<b>解包结果</b>形态，执行器实际使用）：保留失败页的飞书业务 code，
-    /// 使"首页即失败"能回到既有的结构化错误分类路径（<c>ToolErrorClassifier.ClassifyCode</c>）。
+    /// 自动翻页聚合（<b>解包结果</b>形态，执行器实际使用）：保留失败页的产品业务 code 与
+    /// <b>产品侧读数</b>（<see cref="ToolApiOutcome{T}.Failure"/>），
+    /// 使"首页即失败"能回到既有的结构化错误路径（分类由产品侧完成，中立层不持有码表）。
     /// </summary>
     /// <typeparam name="TPage">单页数据类型（须为 class）。</typeparam>
     /// <param name="fetchPage">翻页函数：接收 pageToken，返回解包结果（<c>Ok=false</c> 视为该页失败）。</param>
@@ -145,7 +151,8 @@ public static class ToolPagination
                     allItems, truncated, currentPageToken, totalFetched, pagesFetched,
                     outcome?.ErrorText ?? "下游返回空结果",
                     pagesFetched,
-                    outcome?.Code);
+                    outcome?.Code,
+                    outcome?.Failure);
             }
 
             var page = outcome.Data;

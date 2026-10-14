@@ -103,12 +103,12 @@ public static class ToolErrorHintRenderer
     {
         if (error.Subtype == ToolErrorSubtype.UserAuthRequired)
         {
-            return "该调用需要用户本人完成飞书授权：请转告用户授权后重试同一调用；不要换工具替代";
+            return "该调用需要用户本人完成授权：请转告用户授权后重试同一调用；不要换工具替代";
         }
 
         if (error.Subtype == ToolErrorSubtype.UserTokenRefreshFailed)
         {
-            return "用户令牌续期失败：请转告用户重新完成飞书授权后再试；不要重试同一调用";
+            return "用户令牌续期失败：请转告用户重新完成授权后再试；不要重试同一调用";
         }
 
         if (error.RequiredScopes is { Count: > 0 } scopes)
@@ -120,16 +120,18 @@ public static class ToolErrorHintRenderer
         return "该调用被授权拒绝：请宿主确认应用权限与授权器配置；模型侧不要重试同一调用";
     }
 
-    /// <summary>下游业务错误：命中码表时给"码级行动"，否则保持中性（不猜测）。</summary>
+    /// <summary>
+    /// 下游业务错误：有<b>码级候选</b>时直接沿用（产品侧按实证码表给出的"语义 + 行动"），
+    /// 否则保持中性（<b>不猜测</b>）。
+    /// </summary>
+    /// <remarks>
+    /// <b>为什么复用 <see cref="ToolError.Suggestions"/> 而不是自带码表</b>：产品码语义只存在于产品侧
+    /// （独立产品线纪律，2026-10-14）——码级候选已随载荷一并传入，本渲染层据此成行即可；
+    /// 中立包因此不再持有任何产品码。
+    /// </remarks>
     private static string RenderApi(ToolError error)
-    {
-        var meta = ToolErrorCodeMeta.Find(error.ApiCode);
-        if (meta is not null)
-        {
-            return $"{meta.Meaning}。建议：{meta.Action}";
-        }
-
-        return "下游返回业务错误：请如实报告用户（可附 api_code 与追踪号）；"
-            + "不要原样重试——先核对参数或对象是否存在/可见";
-    }
+        => error.Suggestions is { Count: > 0 } suggestions
+            ? suggestions[0]
+            : "下游返回业务错误：请如实报告用户（可附 api_code 与追踪号）；"
+                + "不要原样重试——先核对参数或对象是否存在/可见";
 }

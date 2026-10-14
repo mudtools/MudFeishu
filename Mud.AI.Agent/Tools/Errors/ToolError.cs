@@ -47,7 +47,7 @@ namespace Mud.AI.Agent.Tools.Errors;
 /// </list>
 /// 消费者应把本字段读成"建议等这么久再试"，而不是"平台要求等这么久"。
 /// </remarks>
-/// <param name="ApiCode">飞书业务 code（如有）。</param>
+/// <param name="ApiCode">产品业务 code（如有；透出以便宿主/模型按码排查）。</param>
 /// <param name="Attempts">已尝试次数（重试场景，默认 1）。</param>
 /// <param name="Trace">追踪号（与日志/Span 可关联，白名单化的代价补偿）。</param>
 /// <param name="Tool">工具名（载荷锚点，便于宿主按工具聚合）。</param>
@@ -63,7 +63,7 @@ namespace Mud.AI.Agent.Tools.Errors;
 /// <para>
 /// <b><see cref="RequiredScopes"/> 的语义边界（DP-R7-4 纪律的延续）</b>：这里投影的是
 /// <b>"该工具声明需要哪些 scope"这一工具面事实</b>，<b>不是</b>"平台是否已为应用开通"这一判断
-/// ——后者在本地无可靠判据（<c>99991663</c>/<c>99991661</c> 在三个层被解释成三种不同的东西），
+/// ——后者在本地无可靠判据（权限段业务码在不同层被解释成不同的东西，见产品侧码表），
 /// 故本字段的文档与错误文本都不得把它读成"缺的就是这些"。
 /// 因此它也<b>不</b>复活已删除的 <c>missing_scope</c> subtype：字段是"工具声明"，subtype 是"平台判据"。
 /// </para>

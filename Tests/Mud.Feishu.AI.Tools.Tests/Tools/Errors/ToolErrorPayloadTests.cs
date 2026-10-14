@@ -30,12 +30,14 @@ public class ToolErrorPayloadTests
     // 按码修正为可重试，避免模型放弃一个"本该退避重试"的调用。
     [InlineData(99991400, nameof(ToolErrorCategory.Retryable), "rate_limited")]
     [InlineData(null, nameof(ToolErrorCategory.Api), "upstream_error")]
-    public void ClassifyCode_ShouldMapKnownApiCodes(int? apiCode, string expectedCategory, string expectedSubtype)
+    public void ProductCodeTable_ShouldMapKnownApiCodes(int? apiCode, string expectedCategory, string expectedSubtype)
     {
-        var (category, subtype) = ToolErrorClassifier.ClassifyCode(apiCode);
+        // 码表在飞书侧（独立产品线纪律，2026-10-14）：中立骨架不再持有产品码语义，
+        // 读数经 ToolApiFailure 传入——本用例锁定产品侧码表本身。
+        var reading = FeishuApiErrorVocabulary.Classify(apiCode);
 
-        category.ToString().Should().Be(expectedCategory);
-        subtype.Should().Be(expectedSubtype);
+        reading.Category.ToString().Should().Be(expectedCategory);
+        reading.Subtype.Should().Be(expectedSubtype);
     }
 
     [Fact]

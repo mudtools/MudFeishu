@@ -115,6 +115,14 @@ hard cut (no `[Obsolete]` forwards, no shims). Four invariants are mechanically 
   `Mud.Feishu.AI.AgentTools.FeishuTransportFaultAdapter` (internal), with the wiring locked
   end-to-end by `ToolErrorContractGuards.TransportForbidden_ShouldBeClassifiedAsAuthorization`
   (behaviour, not source text — a missing adapter silently degrades 403 to `retryable/transient`).
+  The **same cut covers product business codes**: `ToolErrorClassifier.ClassifyCode` +
+  `ForbiddenApiCodes`/`RetryableApiCodes`/`ToolErrorCodeMeta` left the neutral package; the code table
+  now lives in `Mud.Feishu.AI.AgentTools.FeishuApiErrorVocabulary` and reaches the neutral layer as a
+  *reading* (`ToolApiFailure`, carried by `ToolApiOutcome<T>.Failure` →
+  `ToolPagination.PagedFetchResult.Failure` → payload/`suggestions`/hint). Locked by
+  `ToolErrorContractGuards.ApiCodeReading_ShouldTravelFromReaderToPayload` (end-to-end: reader → payload)
+  plus the tripwire `NeutralPackageProductFactGuards` (no known product code literals in
+  `Mud.AI.Agent` source; a sentinel, not a proof).
 - **`FeishuAgent : DelegatingAIAgent`** (MAF-provided). Do not hand-write `IdCore` / the three
   session hooks / `GetService` again — `FeishuAgent_ShouldDelegateIdentityToInnerAgent` and
   `FeishuAgent_GetService_ShouldReturnOuterInstance` lock the semantics (reflection + behaviour,

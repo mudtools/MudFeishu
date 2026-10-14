@@ -131,7 +131,7 @@ public static class ToolResultPipeline
     /// <param name="subtype">错误子类型（机器可读）。</param>
     /// <param name="reason">原因（人类可读；由调用方决定是原始事实还是白名单化文案）。</param>
     /// <param name="maxLength">模型出口的预算上限；≤ 0 表示无预算。</param>
-    /// <param name="apiCode">飞书业务 code（可空）。</param>
+    /// <param name="apiCode">产品业务 code（可空；进载荷 <c>api_code</c>）。</param>
     /// <param name="trace">追踪号（可空；仅 catch 路径携带）。</param>
     /// <param name="attempts">尝试次数（默认 1；重试路径回填实际次数）。</param>
     /// <param name="suggestions">恢复候选（BUG-8；可空——无<b>事实</b>来源时不得杜撰）。</param>

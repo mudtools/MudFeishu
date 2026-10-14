@@ -97,10 +97,6 @@ public static class ToolErrorText
         "该调用已被下游拒绝。建议顺序：① 先用同域只读工具核实目标是否存在/参数是否正确；"
         + "② 确认无误后重试同一调用；③ 仍失败请把上面的 code 一并提供给用户（code 是排查所需的唯一标识）";
 
-    /// <summary>按产品业务 code 分类构造错误回填（<c>ToolApiOutcome</c> 解包路径共用；分类器 internal，宿主不可见）。</summary>
-    public static string StructuredError(string toolName, int? apiCode, string reason)
-        => StructuredError(toolName, ToolErrorClassifier.ClassifyCode(apiCode).Category, reason, apiCode);
-
     /// <summary>
     /// 将 <see cref="ToolErrorCategory"/> 映射为 JSON 载荷中的 <c>category</c> 字面量。
     /// </summary>

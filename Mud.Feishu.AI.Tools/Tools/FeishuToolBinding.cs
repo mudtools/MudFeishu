@@ -846,9 +846,15 @@ internal sealed class FeishuToolBinding
     internal static string StructuredError(string toolName, ToolErrorCategory category, string reason, int? apiCode = null, string? subtype = null)
         => ToolErrorText.StructuredError(toolName, category, reason, apiCode, subtype);
 
-    /// <summary>按产品业务 code 分类构造错误回填（<c>ToolApiOutcome</c> 解包路径共用；分类器 internal，宿主不可见）。</summary>
+    /// <summary>
+    /// 按产品业务 code 分类构造错误回填（<c>ToolApiOutcome</c> 解包路径共用；读数 internal，宿主不可见）。
+    /// </summary>
+    /// <remarks>
+    /// 码 → 段位的映射由<b>产品侧码表</b>给出（<c>FeishuApiErrorVocabulary</c>，独立产品线纪律）：
+    /// 中立骨架 <c>Mud.AI.Agent</c> 不再持有任何产品码语义。
+    /// </remarks>
     internal static string StructuredError(string toolName, int? apiCode, string reason)
-        => StructuredError(toolName, ToolErrorClassifier.ClassifyCode(apiCode).Category, reason, apiCode);
+        => StructuredError(toolName, FeishuApiErrorVocabulary.Classify(apiCode).Category, reason, apiCode);
 
     /// <summary>
     /// 将 <see cref="ToolErrorCategory"/> 映射为 JSON 载荷中的 <c>category</c> 字面量。

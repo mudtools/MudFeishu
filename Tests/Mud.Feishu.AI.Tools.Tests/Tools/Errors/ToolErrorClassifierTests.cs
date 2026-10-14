@@ -73,14 +73,15 @@ public class ToolErrorClassifierTests
     /// </summary>
     /// <remarks>
     /// 数值：<c>Validation=0 / Policy=1 / Authorization=2 / Confirmation=3 / Retryable=4 / Api=5 / Internal=6 / ContentSafety=7</c>。
+    /// 码表自 2026-10-14 起在<b>飞书侧</b>（独立产品线纪律）——本用例锁定产品读数而非中立分类器。
     /// </remarks>
     [Theory]
     [InlineData(99991663, 2)]
     [InlineData(99991661, 2)]
     [InlineData(230001, 5)]
     [InlineData(null, 5)]
-    public void ClassifyCode_ShouldMapPermissionCodes(int? code, int expectedCategory)
-        => ((int)ToolErrorClassifier.ClassifyCode(code).Category).Should().Be(expectedCategory);
+    public void ProductCodeTable_ShouldMapPermissionCodes(int? code, int expectedCategory)
+        => ((int)FeishuApiErrorVocabulary.Classify(code).Category).Should().Be(expectedCategory);
 
     /// <summary>
     /// 三态语义各有一套文案：待确认<b>既不是</b> forbidden（放弃）<b>也不是</b> invalid_args（改参重试）。

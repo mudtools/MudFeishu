@@ -14,5 +14,8 @@ global using System.Text.Json;
 global using System.Text.Json.Nodes;
 global using System.Threading;
 global using System.Threading.Tasks;
+global using Microsoft.Agents.AI;
+global using Microsoft.Extensions.AI;
+global using Microsoft.Extensions.Logging;
 global using Microsoft.Extensions.Options;
 global using Mud.AI.Agent.Tools.Errors;

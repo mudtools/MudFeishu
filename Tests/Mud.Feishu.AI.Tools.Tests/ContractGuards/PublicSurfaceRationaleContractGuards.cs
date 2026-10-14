@@ -47,7 +47,12 @@ public class PublicSurfaceRationaleContractGuards
     // v2.3 P1-E：350 → **348**——声明契约中立化上移 Mud.AI.Abstractions：
     // AgentToolAttribute（原 FeishuToolAttribute）与 ToolParameterAttribute 两个 public 类型
     // 迁出 Mud.Feishu.AI 发布面（新家 = Mud.AI.Abstractions.Tools）。
-    private const int BaselineTypeCount = 348;
+    // P1-H2a（2026-10-14）：348 → **346**——域 guidance 装配机制中立化上移 Mud.AI.Agent：
+    // FeishuGuidanceBlock / FeishuGuidanceResult / FeishuGuidanceComposer 三个 public 类型
+    // 迁出飞书发布面（-3），飞书侧只留预算常量 FeishuGuidanceBudget（+1）；净值 -2。
+    // 新家 = Mud.AI.Agent.Guidance，由该包自己的 PublicAPI 台账登记（本守卫只数飞书发布面，
+    // 这是「中立包自带台账」而非遗漏——见 ApiFiles 的工程白名单）。
+    private const int BaselineTypeCount = 346;
 
     private static readonly string[] ApiFiles =
     [

@@ -1,5 +1,3 @@
-~override Mud.Feishu.AI.Agents.FeishuGuidanceBlock.Equals(object obj) -> bool
-~override Mud.Feishu.AI.Agents.FeishuGuidanceBlock.ToString() -> string
 ~override Mud.Feishu.AI.Events.FeishuEventFact.Equals(object obj) -> bool
 ~override Mud.Feishu.AI.Events.FeishuEventFact.ToString() -> string
 ~override Mud.Feishu.AI.Knowledge.CorpusDocument.Equals(object obj) -> bool
@@ -10,7 +8,6 @@ abstract Mud.Feishu.AI.Channels.BufferedMessageChannel.UpdateCoreAsync(string! a
 abstract Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.BuildRequestAsync(T! eventData, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Mud.Feishu.AI.Conversations.ConversationRequest!>!
 abstract Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.ReplyAsync(Mud.Feishu.AI.Conversations.ConversationRequest! request, string! responseText, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 const Mud.Feishu.AI.Agents.FeishuAgentOptions.SectionName = "FeishuAgent" -> string!
-const Mud.Feishu.AI.Agents.FeishuGuidanceComposer.MaxGuidanceLength = 32768 -> int
 const Mud.Feishu.AI.AgentTools.ContentSafetyModes.AllowedValuesText = "off / warn / block" -> string!
 const Mud.Feishu.AI.AgentTools.ContentSafetyModes.Block = "block" -> string!
 const Mud.Feishu.AI.AgentTools.ContentSafetyModes.Off = "off" -> string!
@@ -69,9 +66,7 @@ const Mud.Feishu.AI.Knowledge.KnowledgeContextAssembler.ChunkPreviewLength = 500
 const Mud.Feishu.AI.Knowledge.KnowledgeContextAssembler.DefaultOrder = 100 -> int
 const Mud.Feishu.AI.Knowledge.VectorRetriever.DefaultTopK = 5 -> int
 Mud.Feishu.AI.Agents.FeishuAgent
-Mud.Feishu.AI.Agents.FeishuAgent.FeishuAgent(Microsoft.Extensions.AI.IChatClient! chatClient, Mud.Feishu.AI.Agents.FeishuAgentOptions! options, Mud.Feishu.Abstractions.Conversations.IConversationStore? conversationStore = null, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null, System.IServiceProvider? services = null, System.Collections.Generic.IReadOnlyList<Microsoft.Extensions.AI.AIFunction!>? tools = null, System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Agents.FeishuGuidanceBlock>? domainGuidance = null, Mud.Feishu.AI.Conversations.ConversationSummarizer? summarizer = null) -> void
 Mud.Feishu.AI.Agents.FeishuAgent.GetOrCreateSessionAsync(string! conversationKey, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Agents.AI.AgentSession!>!
-Mud.Feishu.AI.Agents.FeishuAgent.Guidance.get -> Mud.Feishu.AI.Agents.FeishuGuidanceResult!
 Mud.Feishu.AI.Agents.FeishuAgent.SaveSessionAsync(string! conversationKey, Microsoft.Agents.AI.AgentSession! session, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Mud.Feishu.AI.Agents.FeishuAgentApprovalExtensions
 Mud.Feishu.AI.Agents.FeishuAgentOptions
@@ -128,29 +123,6 @@ Mud.Feishu.AI.Agents.FeishuAgentOptions.WriteAllowList.set -> void
 Mud.Feishu.AI.Agents.FeishuAgentOptionsValidator
 Mud.Feishu.AI.Agents.FeishuAgentOptionsValidator.FeishuAgentOptionsValidator() -> void
 Mud.Feishu.AI.Agents.FeishuAgentOptionsValidator.Validate(string? name, Mud.Feishu.AI.Agents.FeishuAgentOptions! options) -> Microsoft.Extensions.Options.ValidateOptionsResult!
-Mud.Feishu.AI.Agents.FeishuGuidanceBlock
-Mud.Feishu.AI.Agents.FeishuGuidanceBlock.Content.get -> string!
-Mud.Feishu.AI.Agents.FeishuGuidanceBlock.Content.init -> void
-Mud.Feishu.AI.Agents.FeishuGuidanceBlock.Deconstruct(out string! Domain, out string! Content) -> void
-Mud.Feishu.AI.Agents.FeishuGuidanceBlock.Domain.get -> string!
-Mud.Feishu.AI.Agents.FeishuGuidanceBlock.Domain.init -> void
-Mud.Feishu.AI.Agents.FeishuGuidanceBlock.Equals(Mud.Feishu.AI.Agents.FeishuGuidanceBlock other) -> bool
-Mud.Feishu.AI.Agents.FeishuGuidanceBlock.FeishuGuidanceBlock() -> void
-Mud.Feishu.AI.Agents.FeishuGuidanceBlock.FeishuGuidanceBlock(string! Domain, string! Content) -> void
-Mud.Feishu.AI.Agents.FeishuGuidanceComposer
-Mud.Feishu.AI.Agents.FeishuGuidanceResult
-Mud.Feishu.AI.Agents.FeishuGuidanceResult.<Clone>$() -> Mud.Feishu.AI.Agents.FeishuGuidanceResult!
-Mud.Feishu.AI.Agents.FeishuGuidanceResult.Deconstruct(out string! Instructions, out bool Truncated, out System.Collections.Generic.IReadOnlyList<string!>! IncludedDomains, out System.Collections.Generic.IReadOnlyList<string!>! OmittedDomains) -> void
-Mud.Feishu.AI.Agents.FeishuGuidanceResult.Equals(Mud.Feishu.AI.Agents.FeishuGuidanceResult? other) -> bool
-Mud.Feishu.AI.Agents.FeishuGuidanceResult.FeishuGuidanceResult(string! Instructions, bool Truncated, System.Collections.Generic.IReadOnlyList<string!>! IncludedDomains, System.Collections.Generic.IReadOnlyList<string!>! OmittedDomains) -> void
-Mud.Feishu.AI.Agents.FeishuGuidanceResult.IncludedDomains.get -> System.Collections.Generic.IReadOnlyList<string!>!
-Mud.Feishu.AI.Agents.FeishuGuidanceResult.IncludedDomains.init -> void
-Mud.Feishu.AI.Agents.FeishuGuidanceResult.Instructions.get -> string!
-Mud.Feishu.AI.Agents.FeishuGuidanceResult.Instructions.init -> void
-Mud.Feishu.AI.Agents.FeishuGuidanceResult.OmittedDomains.get -> System.Collections.Generic.IReadOnlyList<string!>!
-Mud.Feishu.AI.Agents.FeishuGuidanceResult.OmittedDomains.init -> void
-Mud.Feishu.AI.Agents.FeishuGuidanceResult.Truncated.get -> bool
-Mud.Feishu.AI.Agents.FeishuGuidanceResult.Truncated.init -> void
 Mud.Feishu.AI.Agents.FeishuToolPolicyDomainOptions
 Mud.Feishu.AI.Agents.FeishuToolPolicyDomainOptions.Allow.get -> string![]!
 Mud.Feishu.AI.Agents.FeishuToolPolicyDomainOptions.Allow.set -> void
@@ -604,12 +576,7 @@ Mud.Feishu.AI.Knowledge.TokenEstimator
 Mud.Feishu.AI.Knowledge.VectorRetriever
 Mud.Feishu.AI.Knowledge.VectorRetriever.RetrieveAsync(string! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Knowledge.RetrievedChunk!>!>!
 Mud.Feishu.AI.Knowledge.VectorRetriever.VectorRetriever(Mud.Feishu.AI.Knowledge.IVectorStore! store, int topK = 5, int maxChunkLength = 500, int maxTotalLength = 3000) -> void
-override Mud.Feishu.AI.Agents.FeishuAgent.GetService(System.Type! serviceType, object? serviceKey = null) -> object?
 override Mud.Feishu.AI.Agents.FeishuAgent.Name.get -> string?
-override Mud.Feishu.AI.Agents.FeishuGuidanceBlock.GetHashCode() -> int
-override Mud.Feishu.AI.Agents.FeishuGuidanceResult.Equals(object? obj) -> bool
-override Mud.Feishu.AI.Agents.FeishuGuidanceResult.GetHashCode() -> int
-override Mud.Feishu.AI.Agents.FeishuGuidanceResult.ToString() -> string!
 override Mud.Feishu.AI.Agents.PendingApprovalSnapshot.Equals(object? obj) -> bool
 override Mud.Feishu.AI.Agents.PendingApprovalSnapshot.GetHashCode() -> int
 override Mud.Feishu.AI.Agents.PendingApprovalSnapshot.ToString() -> string!
@@ -648,11 +615,6 @@ override Mud.Feishu.AI.Knowledge.RetrievedChunk.Equals(object? obj) -> bool
 override Mud.Feishu.AI.Knowledge.RetrievedChunk.GetHashCode() -> int
 override Mud.Feishu.AI.Knowledge.RetrievedChunk.ToString() -> string!
 static Mud.Feishu.AI.Agents.FeishuAgentApprovalExtensions.RunApprovalContinuationAsync(this Mud.Feishu.AI.Agents.FeishuAgent! agent, Mud.Feishu.AI.AgentTools.IFeishuToolContextAccessor! toolContextAccessor, Mud.Feishu.AI.AgentTools.FrameworkToolApprovalRequest! approval, bool approved, string? reason = null, Mud.Feishu.Abstractions.Conversations.IConversationGate? conversationGate = null, Mud.Feishu.AI.AgentTools.IFeishuToolApprovalChannel? approvalChannel = null, Microsoft.Extensions.Logging.ILogger? logger = null, Mud.Feishu.AI.Agents.IFeishuPendingApprovalStore? pendingApprovalStore = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Agents.AI.AgentResponse!>!
-static Mud.Feishu.AI.Agents.FeishuGuidanceBlock.operator !=(Mud.Feishu.AI.Agents.FeishuGuidanceBlock left, Mud.Feishu.AI.Agents.FeishuGuidanceBlock right) -> bool
-static Mud.Feishu.AI.Agents.FeishuGuidanceBlock.operator ==(Mud.Feishu.AI.Agents.FeishuGuidanceBlock left, Mud.Feishu.AI.Agents.FeishuGuidanceBlock right) -> bool
-static Mud.Feishu.AI.Agents.FeishuGuidanceComposer.Compose(string? hostInstructions, System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Agents.FeishuGuidanceBlock>? blocks) -> Mud.Feishu.AI.Agents.FeishuGuidanceResult!
-static Mud.Feishu.AI.Agents.FeishuGuidanceResult.operator !=(Mud.Feishu.AI.Agents.FeishuGuidanceResult? left, Mud.Feishu.AI.Agents.FeishuGuidanceResult? right) -> bool
-static Mud.Feishu.AI.Agents.FeishuGuidanceResult.operator ==(Mud.Feishu.AI.Agents.FeishuGuidanceResult? left, Mud.Feishu.AI.Agents.FeishuGuidanceResult? right) -> bool
 static Mud.Feishu.AI.Agents.PendingApprovalSnapshot.FromRequest(Mud.Feishu.AI.AgentTools.FrameworkToolApprovalRequest! request, System.DateTimeOffset now, System.TimeSpan? ttl = null) -> Mud.Feishu.AI.Agents.PendingApprovalSnapshot!
 static Mud.Feishu.AI.Agents.PendingApprovalSnapshot.operator !=(Mud.Feishu.AI.Agents.PendingApprovalSnapshot? left, Mud.Feishu.AI.Agents.PendingApprovalSnapshot? right) -> bool
 static Mud.Feishu.AI.Agents.PendingApprovalSnapshot.operator ==(Mud.Feishu.AI.Agents.PendingApprovalSnapshot? left, Mud.Feishu.AI.Agents.PendingApprovalSnapshot? right) -> bool
@@ -701,7 +663,6 @@ static Mud.Feishu.AI.Knowledge.RetrievedChunk.operator !=(Mud.Feishu.AI.Knowledg
 static Mud.Feishu.AI.Knowledge.RetrievedChunk.operator ==(Mud.Feishu.AI.Knowledge.RetrievedChunk? left, Mud.Feishu.AI.Knowledge.RetrievedChunk? right) -> bool
 static Mud.Feishu.AI.Knowledge.TokenEstimator.Estimate(string? value) -> int
 static readonly Mud.Feishu.AI.Agents.PendingApprovalSnapshot.DefaultTtl -> System.TimeSpan
-virtual Mud.Feishu.AI.AgentTools.FeishuAgentToolSource.GetGuidance(System.IServiceProvider! serviceProvider) -> System.Collections.Generic.IReadOnlyList<Mud.Feishu.AI.Agents.FeishuGuidanceBlock>!
 virtual Mud.Feishu.AI.Channels.BufferedMessageChannel.OnFlushed(string! messageId) -> void
 virtual Mud.Feishu.AI.Channels.BufferedMessageChannel.OnUpdateFailedAsync(string! messageId, System.Exception! exception) -> System.Threading.Tasks.Task!
 virtual Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.AllowMissingAppKey.get -> bool
@@ -711,3 +672,8 @@ virtual Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.BuildApprovalPe
 virtual Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.ResolveStreamTarget(Mud.Feishu.AI.Conversations.ConversationRequest! request) -> string?
 virtual Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.ResolveStreamTargetChatId(Mud.Feishu.AI.Conversations.ConversationRequest! request) -> string?
 virtual Mud.Feishu.AI.Events.ConversationalFeishuEventHandler<T>.TryFindDeliveryBlockAsync(Mud.Feishu.AI.Conversations.ConversationRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<string?>!
+const Mud.Feishu.AI.Agents.FeishuGuidanceBudget.MaxGuidanceLength = 32768 -> int
+Mud.Feishu.AI.Agents.FeishuAgent.FeishuAgent(Microsoft.Extensions.AI.IChatClient! chatClient, Mud.Feishu.AI.Agents.FeishuAgentOptions! options, Mud.Feishu.Abstractions.Conversations.IConversationStore? conversationStore = null, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null, System.IServiceProvider? services = null, System.Collections.Generic.IReadOnlyList<Microsoft.Extensions.AI.AIFunction!>? tools = null, System.Collections.Generic.IReadOnlyList<Mud.AI.Agent.Guidance.GuidanceBlock>? domainGuidance = null, Mud.Feishu.AI.Conversations.ConversationSummarizer? summarizer = null) -> void
+Mud.Feishu.AI.Agents.FeishuAgent.Guidance.get -> Mud.AI.Agent.Guidance.GuidanceResult!
+Mud.Feishu.AI.Agents.FeishuGuidanceBudget
+virtual Mud.Feishu.AI.AgentTools.FeishuAgentToolSource.GetGuidance(System.IServiceProvider! serviceProvider) -> System.Collections.Generic.IReadOnlyList<Mud.AI.Agent.Guidance.GuidanceBlock>!

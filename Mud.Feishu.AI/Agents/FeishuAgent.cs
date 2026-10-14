@@ -11,7 +11,7 @@ using Mud.Feishu.AI.Diagnostics;
 namespace Mud.Feishu.AI.Agents;
 
 /// <summary>
-/// 飞书 Agent 主循环：<c>MAF <see cref="AIAgent"/></c> 的组合实现。
+/// 飞书 Agent 主循环：<c>MAF <see cref="DelegatingAIAgent"/></c> 的产品派生。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -21,17 +21,29 @@ namespace Mud.Feishu.AI.Agents;
 /// 施加 <see cref="FeishuAgentOptions.MaxHistoryMessages"/> 历史裁剪窗。
 /// </para>
 /// <para>
+/// <b>组合的形态（H1 起）</b>：内层仍是<b>组合</b>（<c>ChatClientAgent</c> 实例），
+/// 而「委托语义」（<c>Id</c>/<c>Name</c>/<c>Description</c>/<c>GetService</c>/会话三钩子/Run 两钩子）
+/// 由上游 <see cref="DelegatingAIAgent"/> 提供——本类<b>不再手写</b>这 5 个转发成员。
+/// 前置条件是上游的 <c>GetService</c> 必须「先判自身」：否则 <c>GetService(typeof(AIAgent))</c>
+/// 会命中内层 <c>ChatClientAgent</c>，宿主经该引用调用将绕过本类注入的飞书遥测与摘要
+/// （等价性由 <c>AgentContractGuards</c> 的行为断言 + <c>FeishuAgentTests</c> 锁定）。
+/// </para>
+/// <para>
 /// 会话持久化：<see cref="IConversationStore"/> 只存取序列化后的会话 JSON，本类是
-/// 序列化的唯一归属（<c>SerializeSessionAsync</c>/<c>DeserializeSessionAsync</c> 委托内部
-/// MAF Agent），<see cref="GetOrCreateSessionAsync"/> / <see cref="SaveSessionAsync"/>
-/// 为事件入口（Phase 1）提供按键存取门面。会话 JSON 损坏时按 miss 处理并重建
-/// （Phase 0 §8 回滚策略），保证旧格式数据不会让事件循环崩溃。
+/// 序列化的唯一归属（<c>SerializeSessionAsync</c>/<c>DeserializeSessionAsync</c> 经
+/// <see cref="DelegatingAIAgent"/> 委托内层 MAF Agent），<see cref="GetOrCreateSessionAsync"/> /
+/// <see cref="SaveSessionAsync"/> 为事件入口（Phase 1）提供按键存取门面。会话 JSON 损坏时按
+/// miss 处理并重建（Phase 0 §8 回滚策略），保证旧格式数据不会让事件循环崩溃。
 /// </para>
 /// </remarks>
-public sealed class FeishuAgent : AIAgent
+public sealed class FeishuAgent : DelegatingAIAgent
 {
     /// <summary>ChatHistoryProvider 的状态键（会话历史在 MAF 状态袋内的命名空间）。</summary>
-    /// <remarks>会话摘要器（<c>ConversationSummarizer</c>）经 MAF 扩展按同一键读写历史，键须同源。</remarks>
+    /// <remarks>
+    /// 会话摘要器（<c>ConversationSummarizer</c>）经 MAF 扩展按同一键读写历史，键须同源。
+    /// D4：字面量是**产品事实**，故常量声明留在飞书侧；中性门面（<c>AgentSessionStore</c>）
+    /// 只以参数接收，绝不硬编码本前缀。
+    /// </remarks>
     internal const string ChatHistoryStateKey = "feishu.agent.history";
 
     /// <summary>
@@ -50,11 +62,21 @@ public sealed class FeishuAgent : AIAgent
     /// </summary>
     internal const string PendingReplyTurnStateKey = "feishu.agent.pending_reply_turn";
 
-    private readonly ChatClientAgent _innerAgent;
     private readonly FeishuAgentOptions _options;
-    private readonly IConversationStore? _conversationStore;
+    private readonly AgentSessionStore _sessionStore;
     private readonly ConversationSummarizer? _summarizer;
     private readonly ILogger? _logger;
+
+    /// <summary>
+    /// 构造期装配产物（内层 Agent + guidance 装配结果）。
+    /// </summary>
+    /// <remarks>
+    /// 为什么需要它：基类 <see cref="DelegatingAIAgent"/> 的构造需要内层 Agent，
+    /// 而基类构造初始化器先于本类构造体执行——装配必须在<b>公开构造的初始化器</b>里完成。
+    /// 用本类型把「内层 Agent」与「guidance 结果」一并带回私有构造，
+    /// 保证 <c>Compose</c> 只求值一次（否则截断告警会重复一次）。
+    /// </remarks>
+    private sealed record AgentAssembly(ChatClientAgent InnerAgent, GuidanceResult Guidance);
 
     /// <summary>
     /// 初始化 <see cref="FeishuAgent"/>。
@@ -81,8 +103,65 @@ public sealed class FeishuAgent : AIAgent
         ILoggerFactory? loggerFactory = null,
         IServiceProvider? services = null,
         IReadOnlyList<AIFunction>? tools = null,
-        IReadOnlyList<FeishuGuidanceBlock>? domainGuidance = null,
+        IReadOnlyList<GuidanceBlock>? domainGuidance = null,
         ConversationSummarizer? summarizer = null)
+        : this(
+            Assemble(chatClient, options, loggerFactory, services, tools, domainGuidance),
+            chatClient,
+            options,
+            conversationStore,
+            loggerFactory,
+            summarizer)
+    {
+    }
+
+    /// <summary>
+    /// 装配构造（H1）：接收集中式装配产物并把内层 Agent 交给基类。
+    /// </summary>
+    private FeishuAgent(
+        AgentAssembly assembly,
+        IChatClient chatClient,
+        FeishuAgentOptions options,
+        IConversationStore? conversationStore,
+        ILoggerFactory? loggerFactory,
+        ConversationSummarizer? summarizer)
+        : base(assembly.InnerAgent)
+    {
+        _options = options;
+        _logger = loggerFactory?.CreateLogger<FeishuAgent>();
+        Guidance = assembly.Guidance;
+
+        // P1-H3：会话门面中性化——「按键存取 + 坏值自愈 + 序列化往返」的机制搬进
+        // Mud.AI.Agent.Sessions.AgentSessionStore；飞书侧只提供两个产品事实：
+        // ① 存储契约的防腐层（IConversationStore → 中立端口 ISessionStore，公开签名因此零变化）；
+        // ② 历史状态键 ChatHistoryStateKey（字面量留在本类，绝不进中立包）。
+        // codec 传 this：序列化/反序列化的归属方是本 Agent（经基类委托内层 ChatClientAgent）。
+        _sessionStore = new AgentSessionStore(
+            this,
+            conversationStore is null ? null : new ConversationStoreSessionAdapter(conversationStore),
+            ChatHistoryStateKey,
+            _logger);
+
+        // R3-13：Summarizer DI 化——接受外部注入的替身实例；未注入时按阈值自动创建（保留既有语义）。
+        _summarizer = summarizer ?? (options.SummaryThreshold > 0 || options.MaxHistoryTokens > 0
+            ? new ConversationSummarizer(chatClient, options, loggerFactory?.CreateLogger<ConversationSummarizer>())
+            : null);
+    }
+
+    /// <summary>
+    /// 构造期一次性装配：fail-fast 校验 → guidance 组装 → 内层 <c>ChatClientAgent</c>。
+    /// </summary>
+    /// <remarks>
+    /// 在公开构造的初始化器里调用 ⇒ 基类构造体执行前即抛 <see cref="InvalidOperationException"/>
+    /// （Phase 0 §8：工厂启动即失败，不透传非法状态）。
+    /// </remarks>
+    private static AgentAssembly Assemble(
+        IChatClient chatClient,
+        FeishuAgentOptions options,
+        ILoggerFactory? loggerFactory,
+        IServiceProvider? services,
+        IReadOnlyList<AIFunction>? tools,
+        IReadOnlyList<GuidanceBlock>? domainGuidance)
     {
         if (chatClient is null)
             throw new ArgumentNullException(nameof(chatClient));
@@ -91,18 +170,13 @@ public sealed class FeishuAgent : AIAgent
 
         // 构造即校验（Phase 0 §8：工厂启动即失败，不透传非法状态）。
         options.Validate();
-        _options = options;
-        _conversationStore = conversationStore;
-        _logger = loggerFactory?.CreateLogger<FeishuAgent>();
 
-        // R3-13：Summarizer DI 化——接受外部注入的替身实例；未注入时按阈值自动创建（保留既有语义）。
-        _summarizer = summarizer ?? (options.SummaryThreshold > 0 || options.MaxHistoryTokens > 0
-            ? new ConversationSummarizer(chatClient, options, loggerFactory?.CreateLogger<ConversationSummarizer>())
-            : null);
+        var logger = loggerFactory?.CreateLogger<FeishuAgent>();
 
         // 精确计数可观测（R2-4）：原先 ChatTokenCounter 的初始化失败被 catch 静默吞掉，
         // 「token 预算实际走字符估算」这一配置/依赖不匹配完全不可见。此处借宿主 logger 告警一次
-        //（ChatTokenCounter 是 internal static 工具类，不引入日志面——R1 否决 3）。
+        //（ChatTokenCounter 是 static 无状态工具类，不引入日志面——R1 否决 3；H2 起该类位于
+        // Mud.AI.Agent.Conversations，故可观测性仍由本条告警 + InitializationFailure 断言承载）。
         // 仅在 MaxHistoryTokens 实际启用时告警：未启用时估算与否无后果，避免噪声。
         if (options.MaxHistoryTokens > 0 && !ChatTokenCounter.IsExactCount)
         {
@@ -111,23 +185,24 @@ public sealed class FeishuAgent : AIAgent
 #else
             const string reason = "当前 TFM 不支持精确计数（netstandard2.0 / net6.0 走字符估算回退）";
 #endif
-            _logger?.LogWarning(
+            logger?.LogWarning(
                 "token 精确计数不可用，MaxHistoryTokens={Budget} 的预算将走字符估算（CJK≈1 token/字）：{Reason}",
                 options.MaxHistoryTokens, reason);
         }
 
         // 指令装配的唯一消费点（WP6）：宿主指令 + 已启用域的 guidance。
-        // 截断信号落在返回值上（FeishuGuidanceResult.Truncated），此处只把"丢了哪些域"写进日志——
+        // 截断信号落在返回值上（GuidanceResult.Truncated），此处只把"丢了哪些域"写进日志——
         // 断言口在 Guidance 属性与 Compose 的返回值上（用例不依赖日志基建）。
-        var guidance = FeishuGuidanceComposer.Compose(options.Instructions, domainGuidance);
-        Guidance = guidance;
+        // 预算由飞书侧显式注入（H2 中立化：中性装配器不持有产品预算）。
+        var guidance = GuidanceComposer.Compose(
+            options.Instructions, domainGuidance, FeishuGuidanceBudget.MaxGuidanceLength);
         if (guidance.Truncated)
         {
-            _logger?.LogWarning(
+            logger?.LogWarning(
                 "域 guidance 超过上限 {MaxLength} 字符（宿主指令 {HostLength} 字符，guidance {GuidanceLength} 字符），"
                 + "已丢弃 {OmittedCount} 个域：{OmittedDomains}——请精简 Guidance/*.md 或减少同时启用的域"
                 + "（guidance 段长度含分隔符）",
-                FeishuGuidanceComposer.MaxGuidanceLength,
+                FeishuGuidanceBudget.MaxGuidanceLength,
                 options.Instructions.Length,
                 guidance.Instructions.Length - options.Instructions.Length,
                 guidance.OmittedDomains.Count,
@@ -149,15 +224,15 @@ public sealed class FeishuAgent : AIAgent
             }),
         };
 
-        _innerAgent = new ChatClientAgent(chatClient, agentOptions, loggerFactory, services);
+        return new AgentAssembly(new ChatClientAgent(chatClient, agentOptions, loggerFactory, services), guidance);
     }
 
-    /// <summary>域 guidance 装配结果（含 <see cref="FeishuGuidanceResult.Truncated"/> 与丢弃清单；构造期一次性求值）。</summary>
+    /// <summary>域 guidance 装配结果（含 <see cref="GuidanceResult.Truncated"/> 与丢弃清单；构造期一次性求值）。</summary>
     /// <remarks>
-    /// R5 消费点：宿主启动冒烟/健康检查与 <c>FeishuGuidanceComposerTests</c> 的可断言面——
+    /// R5 消费点：宿主启动冒烟/健康检查与 <c>GuidanceComposerTests</c> 的可断言面——
     /// 超限丢弃不再只以日志形式存在。
     /// </remarks>
-    public FeishuGuidanceResult Guidance { get; }
+    public GuidanceResult Guidance { get; }
 
     /// <summary>
     /// T4 / D4：单轮工具调用预算上限（从 <see cref="FeishuAgentOptions.MaxToolCallsPerTurn"/> 透传；
@@ -172,15 +247,13 @@ public sealed class FeishuAgent : AIAgent
     internal bool DeferTextUntilTurnComplete => _options.DeferTextUntilTurnComplete;
 
     /// <summary>Agent 展示名（覆写 <see cref="AIAgent.Name"/>；不可用 <c>new</c> 遮蔽——那会使经 <see cref="AIAgent"/> 引用取值恒为基类默认 <see langword="null"/>）。</summary>
-    public override string? Name => _options.Name;
-
-    /// <inheritdoc />
     /// <remarks>
-    /// 对齐 MAF <c>DelegatingAIAgent.IdCore</c> 的组合约定（委托内层）：本类与内层 <c>ChatClientAgent</c>
-    /// 是同一逻辑 Agent 的两层，Id 必须一致——否则 <c>AgentResponse.AgentId</c>（由内层 Id 打标）
-    /// 与 <c>FeishuAgent.Id</c> 指向不同标识，宿主按 AgentId 关联遥测/编排指标会得到「未知 Agent」。
+    /// 取值与上游 <see cref="DelegatingAIAgent.Name"/>（<c>InnerAgent.Name</c>）一致（内层
+    /// <c>ChatClientAgentOptions.Name</c> 即 <see cref="FeishuAgentOptions.Name"/>）；
+    /// 保留显式覆写是为了让「本类是名字的所有者」这一事实在源码上可见，并由
+    /// <c>FeishuAgent_Name_ShouldBeOverrideNotHide</c> 锁定。
     /// </remarks>
-    protected override string? IdCore => _innerAgent.Id;
+    public override string? Name => _options.Name;
 
     /// <summary>
     /// 按会话键读取会话；miss（不存在、TTL 过期、载荷损坏）时创建新会话。
@@ -188,61 +261,8 @@ public sealed class FeishuAgent : AIAgent
     /// <param name="conversationKey">由 <see cref="ConversationKeyBuilder"/> 构造的会话键。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>可用会话。</returns>
-    public async Task<AgentSession> GetOrCreateSessionAsync(string conversationKey, CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrEmpty(conversationKey))
-            throw new ArgumentException("会话键不能为空", nameof(conversationKey));
-
-        var stored = _conversationStore is null
-            ? null
-            : await _conversationStore.GetAsync(conversationKey, cancellationToken).ConfigureAwait(false);
-
-        if (!string.IsNullOrEmpty(stored))
-        {
-            try
-            {
-                using var document = JsonDocument.Parse(stored!);
-                var session = await DeserializeSessionAsync(
-                    document.RootElement.Clone(),
-                    jsonSerializerOptions: null,
-                    cancellationToken).ConfigureAwait(false);
-
-                // 急切校验（R2-2）：状态袋的值是**惰性**反序列化的（MAF AgentSessionStateBagValue 只包
-                // JsonElement、不解析）——内层载荷损坏要到首次类型化读取才抛，而首次读取发生在
-                // ConversationSummarizer.SummarizeIfNeededAsync（无 catch）与 Provider 内部，均在本守护区之外。
-                // 不在此触发 ⇒ 异常逃出守护区 ⇒ 坏值永不删除 ⇒ 会话在其 TTL 内永久毒化（每次重投递同点再抛）。
-                // 代价：每次会话恢复多一次历史反序列化（历史经 MessageCountingChatReducer 有界，成本可接受）。
-                _ = session.TryGetInMemoryChatHistory(out _, ChatHistoryStateKey, null);
-                return session;
-            }
-            // R4-7：坏值自愈的 catch 面必须**收口**，不得是枚举白名单。
-            // 原白名单（JsonException/ArgumentException/InvalidOperationException/NotSupportedException）
-            // 与注释自称的"覆盖全部"矛盾：FormatException/KeyNotFoundException/IndexOutOfRangeException/
-            // NullReferenceException 等残余类型会逃出守护区 ⇒ 坏载荷每次重投递都在区外再抛 ⇒ 会话永久毒化。
-            // 现改为 `not OperationCanceledException`：取消必须原样传播（否则调用方取消被吞成"重建"），
-            // 其余异常一律走「删除坏值 + 重建」——对结构不符/旧格式/未知反序列化失败都是安全处置。
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                _logger?.LogWarning(ex, "会话载荷不可用，已删除并重建（conversationKey: {ConversationKey}）", conversationKey);
-                if (_conversationStore is not null)
-                {
-                    try
-                    {
-                        // 用 None 而非调用方 token：清库是坏值自愈的必要动作，不得被取消中断
-                        // （否则坏值残留，会话在其 TTL 内继续毒化）。
-                        await _conversationStore.DeleteAsync(conversationKey, CancellationToken.None).ConfigureAwait(false);
-                    }
-                    catch (Exception deleteEx)
-                    {
-                        // 删除失败不得掩盖"重建"主路径：坏值由 TTL 兜底，但必须可观测（R4-7）。
-                        _logger?.LogWarning(deleteEx, "删除损坏会话失败（conversationKey: {ConversationKey}）", conversationKey);
-                    }
-                }
-            }
-        }
-
-        return await CreateSessionAsync(cancellationToken).ConfigureAwait(false);
-    }
+    public Task<AgentSession> GetOrCreateSessionAsync(string conversationKey, CancellationToken cancellationToken = default)
+        => _sessionStore.GetOrCreateAsync(conversationKey, cancellationToken);
 
     /// <summary>
     /// 序列化并保存会话（刷新存储 TTL）。
@@ -250,18 +270,8 @@ public sealed class FeishuAgent : AIAgent
     /// <param name="conversationKey">由 <see cref="ConversationKeyBuilder"/> 构造的会话键。</param>
     /// <param name="session">要持久化的会话（须由本 Agent 创建）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
-    public async Task SaveSessionAsync(string conversationKey, AgentSession session, CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrEmpty(conversationKey))
-            throw new ArgumentException("会话键不能为空", nameof(conversationKey));
-        if (session is null)
-            throw new ArgumentNullException(nameof(session));
-        if (_conversationStore is null)
-            return;
-
-        var serialized = await SerializeSessionAsync(session, jsonSerializerOptions: null, cancellationToken).ConfigureAwait(false);
-        await _conversationStore.SaveAsync(conversationKey, serialized.GetRawText(), cancellationToken).ConfigureAwait(false);
-    }
+    public Task SaveSessionAsync(string conversationKey, AgentSession session, CancellationToken cancellationToken = default)
+        => _sessionStore.SaveAsync(conversationKey, session, cancellationToken);
 
     /// <inheritdoc />
     protected override async Task<AgentResponse> RunCoreAsync(
@@ -284,7 +294,7 @@ public sealed class FeishuAgent : AIAgent
         var llmStopwatch = System.Diagnostics.Stopwatch.StartNew();
         try
         {
-            var response = await _innerAgent
+            var response = await InnerAgent
                 .RunAsync(messages, session, options, cancellationToken)
                 .ConfigureAwait(false);
 
@@ -330,7 +340,7 @@ public sealed class FeishuAgent : AIAgent
         try
         {
             await foreach (var update in MarkFailureOnEnumerateAsync(
-                _innerAgent.RunStreamingAsync(messages, session, options, cancellationToken), activity)
+                InnerAgent.RunStreamingAsync(messages, session, options, cancellationToken), activity)
                 .ConfigureAwait(false))
             {
                 // R4-8：流式路径同样记录 token 用量（与非流式 RunCoreAsync 对齐）——此前流式
@@ -386,48 +396,5 @@ public sealed class FeishuAgent : AIAgent
             // yield 位于 catch 之外（CS1626 约束）。
             yield return current;
         }
-    }
-
-    /// <inheritdoc />
-    protected override async ValueTask<AgentSession> CreateSessionCoreAsync(CancellationToken cancellationToken = default)
-        => await _innerAgent.CreateSessionAsync(cancellationToken).ConfigureAwait(false);
-
-    /// <inheritdoc />
-    protected override async ValueTask<JsonElement> SerializeSessionCoreAsync(
-        AgentSession session,
-        JsonSerializerOptions? jsonSerializerOptions,
-        CancellationToken cancellationToken = default)
-        => await _innerAgent
-            .SerializeSessionAsync(session, jsonSerializerOptions, cancellationToken)
-            .ConfigureAwait(false);
-
-    /// <inheritdoc />
-    protected override async ValueTask<AgentSession> DeserializeSessionCoreAsync(
-        JsonElement serializedState,
-        JsonSerializerOptions? jsonSerializerOptions,
-        CancellationToken cancellationToken = default)
-        => await _innerAgent
-            .DeserializeSessionAsync(serializedState, jsonSerializerOptions, cancellationToken)
-            .ConfigureAwait(false);
-
-    /// <inheritdoc />
-    /// <remarks>
-    /// 次序对齐 MAF <see cref="AIAgent.GetService"/>：**先判自身**再退内层。
-    /// 否则 <c>GetService(typeof(AIAgent))</c> 会命中内层 <c>ChatClientAgent</c>（它也是 <see cref="AIAgent"/>），
-    /// 宿主经该引用调用将绕过本类注入的飞书遥测与摘要。
-    /// </remarks>
-    public override object? GetService(Type serviceType, object? serviceKey = null)
-    {
-        if (serviceType is null)
-        {
-            throw new ArgumentNullException(nameof(serviceType));
-        }
-
-        if (serviceKey is null && serviceType.IsInstanceOfType(this))
-        {
-            return this;
-        }
-
-        return _innerAgent.GetService(serviceType, serviceKey) ?? base.GetService(serviceType, serviceKey);
     }
 }

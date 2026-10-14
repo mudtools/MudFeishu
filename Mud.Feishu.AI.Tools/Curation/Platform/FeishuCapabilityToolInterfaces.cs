@@ -48,13 +48,13 @@ public interface IFeishuTenantCapabilityLookupTool
 /// <remarks>
 /// <para>
 /// <b>为什么归入既有 <c>feishu</c> 域而非新开 <c>guidance</c> 域</b>（评审点④）：
-/// 新开域需同步 <c>FeishuGuidanceComposer</c> 优先级表、<c>GuidanceAssetContractGuards</c>
+/// 新开域需同步 <c>GuidanceComposer</c> 优先级表、<c>GuidanceAssetContractGuards</c>
 /// 域清单与 golden 三处，且它本身不属于任何业务域——与 <c>feishu.capability_lookup</c>
 /// 同属"元工具"，放在同一域语义一致。
 /// </para>
 /// <para>
 /// <b>为什么需要 L2（按需读取）</b>：L1 是常驻 guidance，受
-/// <c>FeishuGuidanceComposer</c> 预算（B-12 → R6/S1 已升到 16384）硬约束；16 个域的避坑文本全量预拼
+/// <c>GuidanceComposer</c> 预算（B-12 → R6/S1 已升到 16384）硬约束；16 个域的避坑文本全量预拼
 /// 仍会逼近上限。L2 把深层文本（命令级避坑、完整示例）挪到按需读取，<b>由模型在调用失败后主动拉取</b>——
 /// 这也是官方 <c>lark-cli skills read</c> 的等价物。
 /// </para>

@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
+using Mud.AI.Agent.Guidance;
 using Mud.Feishu.AI.Agents;
 using Mud.Feishu.AI.Tools;
 using Mud.Feishu.AI.Tools.Catalog;
@@ -109,14 +110,15 @@ internal static class SkillsDemo
         // 闭环：产物 → guidance 注入。**只注入所选域**——SKILL.md 正文含 frontmatter 与命令清单，
         // 规模大于域级 guidance 本体，把全部 25 个域一次性塞进指令面本就该触达预算；
         // 演示要回答的是"这个产物能不能作为 guidance 被消费"，而不是"能不能全塞进一次 prompt"。
-        var composed = FeishuGuidanceComposer.Compose(
+        var composed = GuidanceComposer.Compose(
             "（宿主指令占位）",
-            [new FeishuGuidanceBlock(domain, skill)]);
+            [new GuidanceBlock(domain, skill)],
+            FeishuGuidanceBudget.MaxGuidanceLength);
 
         lines.Add(string.Empty);
         lines.Add(
             $"guidance 注入：域 {domain} → {composed.Instructions.Length} 字符"
-            + $"（预算 {FeishuGuidanceComposer.MaxGuidanceLength}；截断={composed.Truncated}）");
+            + $"（预算 {FeishuGuidanceBudget.MaxGuidanceLength}；截断={composed.Truncated}）");
 
         // 全量产物规模只作**信息**输出（不作注入、不告警）：SKILL.md 是给外部 Agent 读的，
         // 它本来就不该被整批塞进指令面——把它当"预算超限"会让演示输出给出错误的行动建议。
@@ -128,7 +130,7 @@ internal static class SkillsDemo
         if (composed.Truncated)
         {
             lines.Add(
-                "[warn] 单域产物已触达 guidance 预算——按域裁剪内容，或与 FeishuGuidanceComposer.MaxGuidanceLength 同批评审调整。");
+                "[warn] 单域产物已触达 guidance 预算——按域裁剪内容，或与 FeishuGuidanceBudget.MaxGuidanceLength 同批评审调整。");
         }
 
         return lines;

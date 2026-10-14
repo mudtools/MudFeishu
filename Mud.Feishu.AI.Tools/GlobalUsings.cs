@@ -16,6 +16,9 @@ global using Mud.AI.Agent.Tools.Errors;
 // Mud.AI.Abstractions——策展接口与执行器绑定面经全局 using 直接引用新名（308 + 244 处调用点零改动）。
 global using Mud.AI.Abstractions.Tools;
 global using Mud.AI.Abstractions.Tools.Handlers;
+// H2 中立化：域 guidance 装配机制上移 Mud.AI.Agent.Guidance（FeishuGuidanceBlock/Result/Composer
+// 随之硬改名 GuidanceBlock/GuidanceResult/GuidanceComposer）；飞书侧只保留预算常量。
+global using Mud.AI.Agent.Guidance;
 global using Mud.Feishu.Abstractions.Observability;
 global using Mud.Feishu.AI.Agents;
 // BUG-1 / 方案 C：AI 包侧"共享接缝"命名空间（FeishuToolContext / IFeishuToolContextAccessor /

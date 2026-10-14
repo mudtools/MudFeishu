@@ -576,7 +576,7 @@ await app.Services.RunFeishuMcpStdioAsync();             // 阻塞到客户端�
 | `FeishuToolSchemas`       | 模型侧 JSON 载荷（参数 + `x-feishu` 元数据）                                                    | 工具桥 + golden 门禁                                                                                 |
 | `FeishuToolNames`         | 工具名契约表（只读/写分离）                                                                     | 白名单、守卫                                                                                         |
 | **`FeishuToolContracts`** | **类型化契约**（`Risk`/`Identity`/`IsWrite`/`RequiredScopes`/`SdkSource`/`HttpMethod`/`Route`） | 注册器（直接构造定义，**零运行期解析**）、目录、守卫、权威 scope 清单校验                            |
-| **`FeishuToolGuidance`**  | 域 guidance（素材 `Guidance/{domain}.md`，AdditionalFiles）                                     | `FeishuGuidanceComposer`（宿主指令之后追加，2 KB 上限，超限按域截断并在返回值上给 `Truncated` 信号） |
+| **`FeishuToolGuidance`**  | 域 guidance（素材 `Guidance/{domain}.md`，AdditionalFiles）                                     | `GuidanceComposer`（宿主指令之后追加，2 KB 上限，超限按域截断并在返回值上给 `Truncated` 信号） |
 | **`x-feishu.affordance`** | per-tool 决策指导（素材 `Affordance/{工具名}.md`，AdditionalFiles；R-3 / F-7）                  | 工具 `Description`（进程内与 MCP 同源）+ `McpEnvelope` 导出方言；四键 `when` / `avoid_when` / `prerequisites` / `tips` |
 
 **scope 权威性**：`documents/AIAgent/scope-authority.json`（人工从控制台核对回填）与契约表构成

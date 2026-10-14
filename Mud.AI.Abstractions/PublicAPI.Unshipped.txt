@@ -1,4 +1,8 @@
 #nullable enable
+Mud.AI.Abstractions.Conversations.ISessionStore
+Mud.AI.Abstractions.Conversations.ISessionStore.DeleteAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Mud.AI.Abstractions.Conversations.ISessionStore.GetAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
+Mud.AI.Abstractions.Conversations.ISessionStore.SaveAsync(string! key, string! serializedSession, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Mud.AI.Abstractions.Tools.AgentToolAttribute
 Mud.AI.Abstractions.Tools.AgentToolAttribute.AgentToolAttribute(string! name) -> void
 Mud.AI.Abstractions.Tools.AgentToolAttribute.AnyOf.get -> string![]!

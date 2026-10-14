@@ -20,6 +20,46 @@
 		<PackageReference Include="Mud.HttpUtils" Version="3.0.6" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<!-- P1-H3：MAF 运行期（会话管线骨架）。本包是"AI 运行期"层——MAF 是**产品中立**的运行时框架，
+		     不是产品契约，故「MAF 单点直引」铁律在此**收敛式放宽**为白名单
+		     {Mud.Feishu.AI, Mud.AI.Agent}。收敛而非放开（三条反向断言同批落地，见 AgentContractGuards）：
+		     ① Mud.AI.Abstractions 仍禁 MAF（编译期契约层，被源生成器剖面与声明契约消费）；
+		     ② 所有非 AI 的 Mud.Feishu* 工程仍禁直接声明 MAF；③ MAF 版本仍全仓单点 1.20.0。
+		     ⚠️ 本包**不得**因此获得任何对 Mud.Feishu* 的引用
+		     （由 SingleToolSurfaceEngineContractGuards.MudAiFamily_ShouldNotDependOnFeishuProjects 反向锁定）。 -->
+		<PackageReference Include="Microsoft.Agents.AI" Version="1.20.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- MAF 1.20.0 传递依赖要求 M.E.* ≥ 10.0.11：与 Mud.Feishu.AI 同款 Update 钉版，
+		     避免 NU1603 版本漂移（门禁断言 = 0）。ns2.0/net6.0 亦统一到 10.x
+		     （均提供 ns2.0 资产，根 props 对这两个 TFM 已设 SuppressTfmSupportBuildWarnings）。 -->
+		<PackageReference Update="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+		<PackageReference Update="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+		<PackageReference Update="Microsoft.Extensions.Options" Version="10.0.11" />
+		<PackageReference Update="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.11" />
+		<PackageReference Update="Microsoft.Extensions.Configuration.Binder" Version="10.0.11" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- H2 中立化（P1-H2b）：会话 token 计数器 ChatTokenCounter 消费 MEAI 的 ChatMessage
+		     ——"直接使用的 API 必须直接声明"（P2-5）。版本与 MAF 1.20.0 的传递解析同线
+		     （microsoft.agents.ai.abstractions 1.20.0 → Microsoft.Extensions.AI.Abstractions 10.9.0），
+		     显式钉住以避免 NU1603 版本漂移（门禁断言 = 0）。
+		     该包提供 netstandard2.0 资产 ⇒ ns2.0/net6.0 目标同图可用。 -->
+		<PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="10.9.0" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(TargetFramework)' == 'net8.0' or '$(TargetFramework)' == 'net10.0'">
+		<!-- H2 中立化（P1-H2b）：自 Mud.Feishu.AI 随 ChatTokenCounter 迁入。
+		     net8+ 直接调用 TiktokenTokenizer 计数；词表数据（EncoderModel "gpt-4o" → o200k_base）
+		     是**独立包**，缺失时 CreateForModel 抛异常 ⇒ IsExactCount 恒 false 且只有
+		     InitializationFailure 一处可观测。版本与 MAF 1.20.0 传递解析同线（2.0.0）。 -->
+		<PackageReference Include="Microsoft.ML.Tokenizers" Version="2.0.0" />
+		<PackageReference Include="Microsoft.ML.Tokenizers.Data.O200kBase" Version="2.0.0" />
+	</ItemGroup>
+
 	<ItemGroup Condition="'$(TargetFramework)' == 'net6.0'">
 		<!-- net6.0 的箱内 System.Text.Json（6.0）缺 JsonNode.DeepClone；与根 props 对 netstandard2.0 的
 		     钉版同版本线（10.0.9）。net8.0+ 用箱内版本，无需显式引用。 -->

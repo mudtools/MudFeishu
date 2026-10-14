@@ -129,7 +129,8 @@ public class GuidanceAssetContractGuards
     {
         foreach (var (domain, content) in FeishuToolGuidance.ByDomain)
         {
-            var result = FeishuGuidanceComposer.Compose("宿主指令", [new FeishuGuidanceBlock(domain, content)]);
+            var result = GuidanceComposer.Compose(
+                "宿主指令", [new GuidanceBlock(domain, content)], FeishuGuidanceBudget.MaxGuidanceLength);
 
             result.Truncated.Should().BeFalse($"{domain} 单域注入不应超限");
             result.Instructions.Should().Contain(content);
@@ -225,7 +226,7 @@ public class GuidanceAssetContractGuards
                 "摘要必须以域名开头（模型按域路由时的锚点）");
         }
 
-        var result = FeishuGuidanceComposer.Compose("宿主指令", blocks);
+        var result = GuidanceComposer.Compose("宿主指令", blocks, FeishuGuidanceBudget.MaxGuidanceLength);
 
         result.Truncated.Should().BeFalse(
             "routing 形态下全域装配不得触发任何截断（这就是 BUG-4 的修复判据）");
@@ -331,13 +332,13 @@ public class GuidanceAssetContractGuards
             FeishuToolGuidance.ByDomain.Count,
             "全域启用时每个 guidance 域都应被注入（启用集合覆盖全部工具 ⇒ 覆盖全部域）");
 
-        var result = FeishuGuidanceComposer.Compose("宿主指令", blocks);
+        var result = GuidanceComposer.Compose("宿主指令", blocks, FeishuGuidanceBudget.MaxGuidanceLength);
 
         result.Truncated.Should().BeFalse(
             "全域启用时不得因预算丢弃任何域——被丢弃域的避坑知识从未进入 prompt");
         result.OmittedDomains.Should().BeEmpty(
             "全域启用时的丢弃清单必须为空（预算 {0}，实测全域 {1} 字符）",
-            FeishuGuidanceComposer.MaxGuidanceLength,
+            FeishuGuidanceBudget.MaxGuidanceLength,
             blocks.Sum(static b => b.Content.Length));
     }
 
@@ -355,7 +356,7 @@ public class GuidanceAssetContractGuards
         // 复现"预算被调小"的场景：用一个必然超限的额度装配（不改生产常量——额度只计guidance 本体，
         // 故直接按字符预算语义构造：按排序后的顺序累加，超出即丢弃）。
         var budget = blocks.Sum(static b => b.Content.Length) - 1;
-        var accepted = new List<FeishuGuidanceBlock>();
+        var accepted = new List<GuidanceBlock>();
         var used = 0;
         foreach (var block in blocks)
         {

@@ -57,31 +57,74 @@ public class AgentContractGuards
 
     /// <summary>
     /// 核心项目（Mud.Feishu 等）不得直接声明 Microsoft.Agents.AI* 引用——
-    /// MAF 只允许进入 Mud.Feishu.AI（总体设计 §3.1：AI → 核心单向，核心不被 Agent 运行时污染）。
-    /// 其他项目经 Mud.Feishu.AI 的<b>项目引用</b>传递获得（如 Mud.Feishu.Redis），不违反本守卫。
+    /// MAF 只允许进入 <b>白名单</b>{<c>Mud.Feishu.AI</c>（产品适配层）、<c>Mud.AI.Agent</c>（AI 运行期）}
+    /// （总体设计 §3.1：AI → 核心单向，核心不被 Agent 运行时污染）。
+    /// 其他项目经项目引用<b>传递</b>获得（如 Mud.Feishu.Redis），不违反本守卫。
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>P1-H3 的收敛式放宽（白名单从 1 → 2）</b>：MAF 是<b>产品中立</b>的运行时框架，
+    /// 而 <c>Mud.AI.Agent</c> 的定位就是"AI 运行期"（会话门面 <c>AgentSessionStore</c> 需要
+    /// <c>AIAgent</c> 做序列化归属方）。不放宽则会话管线无法中立化。
+    /// </para>
+    /// <para>
+    /// <b>放宽必须配反向断言，否则是净放松</b>（见 <see cref="MudAiAbstractions_ShouldNotDeclareMafPackages"/>
+    /// 与非 AI 的 <c>Mud.Feishu*</c> 工程仍被本条拒绝）：
+    /// ① <c>Mud.AI.Abstractions</c> 是编译期契约层，被源生成器剖面与声明契约消费，必须保持零 MAF；
+    /// ② 全部核心 SDK 工程（含 Mud.Feishu.WebSocket / Webhook / Redis …）仍禁直接声明；
+    /// ③ MAF 版本仍由 <see cref="AgentsAi_PackageReferences_ShouldBeSingleVersion"/> 锁单点。
+    /// </para>
+    /// </remarks>
     [Fact]
-    public void AgentsAi_PackageReferences_ShouldBeDeclaredOnlyInMudFeishuAI()
+    public void AgentsAi_PackageReferences_ShouldBeDeclaredOnlyInAllowListedProjects()
     {
-        var csprojFiles = Directory.GetFiles(GetSolutionRoot(), "*.csproj", SearchOption.AllDirectories)
-            .Where(p => !p.Contains("obj") && !p.Contains("bin"))
-            .ToList();
+        // MAF 允许集（收敛式放宽，非放开）：产品适配层 + AI 运行期。新增成员必须同批扩本集合，
+        // 并在 MudAiAbstractions_ShouldNotDeclareMafPackages 处论证"为什么它也需要 MAF"。
+        string[] allowed = ["Mud.Feishu.AI.csproj", "Mud.AI.Agent.csproj"];
 
         var offenders = new List<string>();
-
-        foreach (var csproj in csprojFiles)
+        foreach (var csproj in ProjectFiles())
         {
-            var content = Regex.Replace(File.ReadAllText(csproj), "<!--.*?-->", string.Empty, RegexOptions.Singleline);
+            var content = StripXmlComments(File.ReadAllText(csproj));
             if (!Regex.IsMatch(content, @"Include=""Microsoft\.Agents\.AI[^""]*""", RegexOptions.IgnoreCase))
                 continue;
 
             var projectName = Path.GetFileName(csproj);
-            if (!string.Equals(projectName, "Mud.Feishu.AI.csproj", StringComparison.OrdinalIgnoreCase))
+            if (!allowed.Contains(projectName, StringComparer.OrdinalIgnoreCase))
                 offenders.Add(projectName);
         }
 
-        offenders.Should().BeEmpty("Microsoft.Agents.AI* 的直接 PackageReference 只允许出现在 Mud.Feishu.AI");
+        offenders.Should().BeEmpty(
+            "Microsoft.Agents.AI* 的直接 PackageReference 只允许出现在 {0}（其余工程经项目引用传递获得）",
+            string.Join(" / ", allowed));
     }
+
+    /// <summary>
+    /// <b>P1-H3 反向断言</b>：<c>Mud.AI.Abstractions</c> 必须保持<b>零 MAF</b>。
+    /// </summary>
+    /// <remarks>
+    /// 该包是最底层的编译期契约层：源生成器按 <c>Mud.AI.*</c> 硬编码命名空间发现剖面、
+    /// 声明契约（<c>[AgentTool]</c>/<c>[ToolParameter]</c>/<c>[ToolHandler]</c>）被 233 个策展接口消费。
+    /// 它一旦引入 MAF，生成器被测工程与全部非 AI 工程都会被拖进 Agent 运行时的版本面——
+    /// 这正是「MAF 单点直引」原铁律要防的事，放宽白名单不应把它一并放开。
+    /// </remarks>
+    [Fact]
+    public void MudAiAbstractions_ShouldNotDeclareMafPackages()
+    {
+        var csproj = Path.Combine(GetSolutionRoot(), "Mud.AI.Abstractions", "Mud.AI.Abstractions.csproj");
+        File.Exists(csproj).Should().BeTrue();
+
+        StripXmlComments(File.ReadAllText(csproj)).Should().NotContain(
+            "Microsoft.Agents.AI",
+            "Mud.AI.Abstractions 是编译期契约层（被源生成器与声明契约消费），必须保持零 MAF 依赖");
+    }
+
+    private static IEnumerable<string> ProjectFiles()
+        => Directory.GetFiles(GetSolutionRoot(), "*.csproj", SearchOption.AllDirectories)
+            .Where(p => !p.Contains("obj") && !p.Contains("bin"));
+
+    private static string StripXmlComments(string content)
+        => Regex.Replace(content, "<!--.*?-->", string.Empty, RegexOptions.Singleline);
 
     // ────────────────────────────────────────────────────────────────────
     // 守卫 3：配置面（R5）——SectionName 必须真的被 GetSection 使用
@@ -227,6 +270,9 @@ public class AgentContractGuards
                 "Mud.Feishu.EventCallback.csproj",
                 // v2.3 P1-D：Mud.AI.Agent（执行器骨架 + ToolApiOutcome）——AI → Mud.AI.* 单向。
                 "Mud.AI.Agent.csproj",
+                // P1-H3：ConversationStoreSessionAdapter 直接实现中立端口 ISessionStore
+                // （"直接使用的 API 必须直接声明"，P2-5）。方向不变：AI 适配层 → Mud.AI.*（单向）。
+                "Mud.AI.Abstractions.csproj",
             ],
             ["Mud.Feishu.Redis.csproj"] = ["Mud.Feishu.Abstractions.csproj"],
         };
@@ -363,11 +409,26 @@ public class AgentContractGuards
     // 守卫 6：顺序类缺陷回归锁（P0-1 / P2-1 / P2-2）
     // ────────────────────────────────────────────────────────────────────
 
-    private static string ReadAiSource(params string[] relativeParts)
+    /// <summary>飞书 AI 适配层工程名（产品语义所在）。</summary>
+    private const string AiProject = "Mud.Feishu.AI";
+
+    /// <summary>中立 AI 运行期工程名（H2 起承载 token 计数 / guidance 装配 / 会话门面）。</summary>
+    private const string MudAiAgentProject = "Mud.AI.Agent";
+
+    /// <summary>
+    /// 按<b>工程名 + 相对路径</b>读取生产源码。
+    /// </summary>
+    /// <remarks>
+    /// <b>为什么必须显式给工程名（H4′）</b>：P1-H2/H3 把可复用机制搬出 <c>Mud.Feishu.AI</c> 后，
+    /// 原实现（硬编码 <c>Mud.Feishu.AI</c>）会让断言去读<b>已经不存在的文件</b>——
+    /// 要么直接抛（响亮），要么更隐蔽地读到空壳。显式工程名把"这条断言锚在谁的实现上"
+    /// 变成源码上可见的事实，搬迁时无法漏改。
+    /// </remarks>
+    private static string ReadSource(string projectName, params string[] relativeParts)
     {
         var parts = new string[relativeParts.Length + 2];
         parts[0] = GetSolutionRoot();
-        parts[1] = "Mud.Feishu.AI";
+        parts[1] = projectName;
         relativeParts.CopyTo(parts, 2);
         return File.ReadAllText(Path.Combine(parts));
     }
@@ -382,7 +443,7 @@ public class AgentContractGuards
     [Fact]
     public void ToolContext_Begin_ShouldPrecedeContextAssembly()
     {
-        var source = ReadAiSource("Events", "ConversationalFeishuEventHandler.cs");
+        var source = ReadSource(AiProject, "Events", "ConversationalFeishuEventHandler.cs");
 
         var beginIndex = source.IndexOf("ToolContextAccessor?.Begin", StringComparison.Ordinal);
         var assembleCallIndex = source.IndexOf(
@@ -400,7 +461,7 @@ public class AgentContractGuards
     [Fact]
     public void FeishuAgent_Name_ShouldBeOverrideNotHide()
     {
-        var source = ReadAiSource("Agents", "FeishuAgent.cs");
+        var source = ReadSource(AiProject, "Agents", "FeishuAgent.cs");
 
         source.Should().Contain("override string? Name",
             "AIAgent.Name 是 virtual：override 才能让经 AIAgent 引用（含 MAF 内部诊断）取到真实名字");
@@ -410,22 +471,29 @@ public class AgentContractGuards
     /// <summary>
     /// <c>FeishuAgent.GetService</c> 必须**先判自身**再退内层（P2-2）。
     /// </summary>
+    /// <remarks>
+    /// <b>H1 起改为行为断言（锁语义，不锁文本）</b>：委托成员已由上游
+    /// <see cref="DelegatingAIAgent"/> 提供，本类不再手写 <c>GetService</c>——
+    /// 原源码文本判据（<c>IsInstanceOfType(this)</c> 早于 <c>_innerAgent.GetService(</c>）
+    /// 在删除覆写后必然失真。行为判据等价且抗重构：
+    /// <c>GetService(typeof(AIAgent))</c> 必须返回<b>外层实例</b>（命中内层即绕过飞书遥测/摘要）。
+    /// </remarks>
     [Fact]
-    public void FeishuAgent_GetService_ShouldCheckSelfFirst()
+    public void FeishuAgent_GetService_ShouldReturnOuterInstance()
     {
-        var source = ReadAiSource("Agents", "FeishuAgent.cs");
+        var options = new FeishuAgentOptions
+        {
+            Name = "guard-agent",
+            Instructions = "x",
+        };
+        var agent = new FeishuAgent(new Mock<Microsoft.Extensions.AI.IChatClient>().Object, options);
 
-        var declaration = source.IndexOf("object? GetService(", StringComparison.Ordinal);
-        declaration.Should().BeGreaterThan(-1);
+        agent.GetService(typeof(AIAgent)).Should().BeSameAs(agent,
+            "GetService(typeof(AIAgent)) 必须返回外层 FeishuAgent；命中内层 ChatClientAgent 会让宿主"
+            + "绕过飞书遥测/摘要（上游 DelegatingAIAgent 的「先判自身」次序是本不变式的前提）");
 
-        var body = source[declaration..];
-        var selfCheck = body.IndexOf("IsInstanceOfType(this)", StringComparison.Ordinal);
-        var innerCall = body.IndexOf("_innerAgent.GetService(", StringComparison.Ordinal);
-
-        selfCheck.Should().BeGreaterThan(-1, "必须先判自身");
-        innerCall.Should().BeGreaterThan(-1);
-        selfCheck.Should().BeLessThan(innerCall,
-            "否则 GetService(typeof(AIAgent)) 返回内部 ChatClientAgent，宿主将绕过飞书遥测/摘要");
+        agent.GetService(typeof(FeishuAgent)).Should().BeSameAs(agent, "自身类型必须命中自身");
+        agent.GetService(typeof(AIAgent), "some-key").Should().NotBeSameAs(agent, "带键查询必须退内层（键语义未知）");
     }
 
     /// <summary>
@@ -439,7 +507,7 @@ public class AgentContractGuards
     [Fact]
     public void AgentStateKeys_ShouldBeUniqueAndConsumed()
     {
-        var source = ReadAiSource("Agents", "FeishuAgent.cs");
+        var source = ReadSource(AiProject, "Agents", "FeishuAgent.cs");
 
         var keys = Regex.Matches(source, @"const string (\w*StateKey) = ""([^""]+)""")
             .Select(m => m.Groups[2].Value)
@@ -455,10 +523,23 @@ public class AgentContractGuards
         keys.Should().Contain("feishu.agent.pending_reply");
         keys.Should().Contain("feishu.agent.pending_reply_turn");
 
-        var handlerSource = ReadAiSource("Events", "ConversationalFeishuEventHandler.cs");
+        var handlerSource = ReadSource(AiProject, "Events", "ConversationalFeishuEventHandler.cs");
         handlerSource.Should().Contain("PendingReplyStateKey",
             "outbox 状态键必须在会话处理器中被真实消费（补发/写入/摘除）");
         handlerSource.Should().Contain("PendingReplyTurnStateKey");
+
+        // P1-H3 / D4：状态键的**字面量**是产品事实（留在上方的 FeishuAgent 常量里），
+        // 机制（读取状态袋）在**中立包**的会话门面里——故中立门面必须以参数接收该键，
+        // 且绝不能出现任何 `feishu.` 前缀（否则等于把产品命名面焊进包族底层，
+        // P3 上游化时它会跟着 Mud.AI.Agent 一起走）。
+        var storeSource = ReadSource(MudAiAgentProject, "Sessions", "AgentSessionStore.cs");
+        storeSource.Should().Contain("_historyStateKey", "中立门面必须以参数接收历史状态键（D4：来源参数化）");
+        storeSource.Should().NotContain("\"feishu.",
+            "中立包不得硬编码任何产品状态键前缀——键的字面量归产品侧所有");
+
+        // 飞书侧必须真的把键**注入**门面（否则参数化只是签名装饰）。
+        source.Should().Contain("ChatHistoryStateKey",
+            "飞书侧必须把历史状态键注入中立门面，否则门面读的状态袋与 Provider 写的不是同一格");
     }
 
     // ────────────────────────────────────────────────────────────────────
@@ -708,9 +789,13 @@ public class AgentContractGuards
     [Fact]
     public void SessionRestore_ShouldEagerlyValidateHistoryState()
     {
-        var source = ReadAiSource("Agents", "FeishuAgent.cs");
+        // P1-H3：实现已搬到中立门面 Mud.AI.Agent/Sessions/AgentSessionStore.cs
+        // （FeishuAgent 的两个公开方法退化为一行转发，source 里已无 try/catch 与急切读取）。
+        // 锚点必须跟着实现走——留在 FeishuAgent.cs 会让断言读到不含这些字面量的文件，
+        // 从"报红"退化为"测了另一件事"。
+        var source = ReadSource(MudAiAgentProject, "Sessions", "AgentSessionStore.cs");
 
-        var restoreMethod = source.IndexOf("GetOrCreateSessionAsync(string conversationKey", StringComparison.Ordinal);
+        var restoreMethod = source.IndexOf("GetOrCreateAsync(string key", StringComparison.Ordinal);
         restoreMethod.Should().BeGreaterThan(-1);
         var body = source[restoreMethod..];
 
@@ -726,6 +811,10 @@ public class AgentContractGuards
             "catch 面必须收口为 `when (ex is not OperationCanceledException)`（R4-7）");
         eagerRead.Should().BeLessThan(guard,
             "急切读取必须落在坏值自愈的 catch 面**之内**——否则内层损坏在摘要器/Provider 内抛出，坏值永不删除");
+
+        // 清库必须用 CancellationToken.None（自愈动作不得被调用方取消中断，R4-7 第 2 条语义）。
+        body.Should().Contain("DeleteAsync(key, CancellationToken.None)",
+            "清库不得用调用方 token：调用方一取消就留下坏值，会话在其 TTL 内继续毒化");
     }
 
     /// <summary>
@@ -734,7 +823,7 @@ public class AgentContractGuards
     [Fact]
     public void AppKeyDegrade_ShouldFailFast_WhenToolChainPresent()
     {
-        var source = ReadAiSource("Events", "ConversationalFeishuEventHandler.cs");
+        var source = ReadSource(AiProject, "Events", "ConversationalFeishuEventHandler.cs");
 
         var degradeBranch = source.IndexOf("if (string.IsNullOrWhiteSpace(request.AppKey))", StringComparison.Ordinal);
         degradeBranch.Should().BeGreaterThan(-1);
@@ -749,26 +838,38 @@ public class AgentContractGuards
     }
 
     /// <summary>
-    /// R2-4：<c>ChatTokenCounter</c> 的 Tiktoken 词表数据包必须显式声明。
+    /// R2-4 / P1-H2b：<c>ChatTokenCounter</c> 的依赖面必须显式声明在<b>它自己所属的工程</b>里。
     /// </summary>
     /// <remarks>
-    /// 缺该包时 <c>TiktokenTokenizer.CreateForModel</c> 抛异常并被静默吞掉 ⇒
-    /// <c>MaxHistoryTokens</c> 维度全部退化为字符估算且无任何可观测信号。
+    /// <para>
+    /// 缺词表包时 <c>TiktokenTokenizer.CreateForModel</c> 抛异常并被回退路径吞掉 ⇒
+    /// <c>MaxHistoryTokens</c> 维度全部退化为字符估算（仅 <c>InitializationFailure</c> 一处可观测）。
+    /// </para>
+    /// <para>
+    /// <b>H2b 起锚点改到 <c>Mud.AI.Agent.csproj</c></b>：类型搬了，声明也必须跟着搬——
+    /// 否则本断言会继续对着已经不再使用 tokenizer 的 <c>Mud.Feishu.AI.csproj</c> 检查，
+    /// 而真正会出问题的工程反而无人守（"断言在跑但读旧锚"的典型假绿）。
+    /// 同时新增 MEAI 断言：<c>CountMessages(IEnumerable&lt;ChatMessage&gt;)</c> 消费 MEAI 类型，
+    /// 按 P2-5「直接使用的 API 必须直接声明」，缺它会让中性包依赖上游传递解析。
+    /// </para>
     /// </remarks>
     [Fact]
     public void ChatTokenCounter_ShouldDeclareTokenizerDataPackage()
     {
-        var csproj = Path.Combine(GetSolutionRoot(), "Mud.Feishu.AI", "Mud.Feishu.AI.csproj");
+        var csproj = Path.Combine(GetSolutionRoot(), MudAiAgentProject, "Mud.AI.Agent.csproj");
         File.Exists(csproj).Should().BeTrue();
 
         var content = File.ReadAllText(csproj);
         content.Should().Contain("Microsoft.ML.Tokenizers\"", "主包必须显式声明（P2-5）");
         content.Should().Contain("Microsoft.ML.Tokenizers.Data.O200kBase",
             "gpt-4o 的 o200k_base 词表在独立包中；缺失会让精确计数静默退化为估算（R2-4）");
+        content.Should().Contain("Microsoft.Extensions.AI.Abstractions",
+            "ChatTokenCounter.CountMessages 直接消费 MEAI 的 ChatMessage——"
+            + "直接使用的 API 必须直接声明，否则中性包会依赖 MAF 的传递解析（上游换实现即静默失效）");
 
         // 可观测面：不再静默吞掉。
-        ReadAiSource("Conversations", "ChatTokenCounter.cs").Should().Contain("InitializationFailure",
-            "编码器初始化失败必须留下可观测原因（由 FeishuAgent 构造期告警 + 用例断言）");
+        ReadSource(MudAiAgentProject, "Conversations", "ChatTokenCounter.cs").Should().Contain("InitializationFailure",
+            "编码器初始化失败必须留下可观测原因（由宿主构造期告警 + 用例断言）");
     }
 
     /// <summary>
@@ -777,7 +878,7 @@ public class AgentContractGuards
     [Fact]
     public void MemoryConversationStore_ShouldSweepExpiredEntries()
     {
-        var source = ReadAiSource("Conversations", "MemoryConversationStore.cs");
+        var source = ReadSource(AiProject, "Conversations", "MemoryConversationStore.cs");
 
         source.Should().Contain("SweepExpired", "必须有过期回收路径（未读键永不到达读侧软过期）");
 
@@ -789,16 +890,33 @@ public class AgentContractGuards
     }
 
     /// <summary>
-    /// R2-6：<c>FeishuAgent.IdCore</c> 必须委托内层 Agent（对齐 MAF <c>DelegatingAIAgent</c> 约定）。
+    /// R2-6：<c>FeishuAgent.Id</c> 必须与内层 Agent 同源（对齐 MAF <c>DelegatingAIAgent</c> 约定）。
     /// </summary>
+    /// <remarks>
+    /// <b>H1 起改为反射断言（锁语义，不锁文本）</b>：委托成员已由上游
+    /// <see cref="DelegatingAIAgent"/> 提供（其 <c>IdCore =&gt; InnerAgent.Id</c>），
+    /// 本类不再手写 <c>IdCore</c>——原源码文本判据 <c>"IdCore =&gt; _innerAgent.Id"</c>
+    /// 在删除覆写后必然失真且会误导维护者"把委托成员写回来"。
+    /// 不变式的真实形态是「本类是 <see cref="DelegatingAIAgent"/> 的派生」：只要成立，
+    /// <c>Id</c> 就恒等于内层 <c>ChatClientAgent.Id</c>（否则 <c>AgentResponse.AgentId</c>
+    /// 与 <c>FeishuAgent.Id</c> 指向不同标识，遥测/编排按 AgentId 关联时出现「未知 Agent」）。
+    /// 行为侧由 <c>FeishuAgentTests.Id_ShouldMatchInnerAgent_SoResponseAgentIdIsTraceable</c> 覆盖。
+    /// </remarks>
     [Fact]
-    public void FeishuAgent_IdCore_ShouldDelegateToInnerAgent()
+    public void FeishuAgent_ShouldDelegateIdentityToInnerAgent()
     {
-        var source = ReadAiSource("Agents", "FeishuAgent.cs");
+        typeof(DelegatingAIAgent).IsAssignableFrom(typeof(FeishuAgent)).Should().BeTrue(
+            "FeishuAgent 必须派生自上游 DelegatingAIAgent（委托语义的类型级对齐）；"
+            + "一旦退回 AIAgent + 手写转发，Id/Name/GetService/会话三钩子/Run 两钩子的"
+            + "一致性就退化为「注释级约定」，无人机械保证");
 
-        source.Should().Contain("IdCore => _innerAgent.Id",
-            "FeishuAgent 与内层 ChatClientAgent 是同一逻辑 Agent 的两层：Id 不一致会让 "
-            + "AgentResponse.AgentId 与 FeishuAgent.Id 指向不同标识（遥测/编排按 AgentId 关联时出现「未知 Agent」）");
+        typeof(FeishuAgent).GetProperty(nameof(AIAgent.Name))!.DeclaringType.Should().Be(
+            typeof(FeishuAgent),
+            "Name 仍必须由本类覆写（产品名字的所有者是本类，不是内层）");
+
+        // 判据自证（防过滤器恒真假绿）：一个**不**派生自 DelegatingAIAgent 的类型必须判 false。
+        typeof(DelegatingAIAgent).IsAssignableFrom(typeof(AgentContractGuards)).Should().BeFalse(
+            "反例必须被拒——否则上面那条断言只是恒真的装饰");
     }
 
     /// <summary>
@@ -812,7 +930,7 @@ public class AgentContractGuards
     [Fact]
     public void HistoryReducerSemantics_ShouldBeDocumented()
     {
-        var optionsSource = ReadAiSource("Agents", "FeishuAgentOptions.cs");
+        var optionsSource = ReadSource(AiProject, "Agents", "FeishuAgentOptions.cs");
 
         var property = optionsSource.IndexOf("public int MaxHistoryMessages", StringComparison.Ordinal);
         property.Should().BeGreaterThan(-1);
@@ -823,7 +941,7 @@ public class AgentContractGuards
         docs.Should().Contain("FunctionCallContent", "必须写明工具调用消息被永久丢弃");
 
         // 消费点（此前缺失守卫）。
-        ReadAiSource("Agents", "FeishuAgent.cs").Should().Contain(
+        ReadSource(AiProject, "Agents", "FeishuAgent.cs").Should().Contain(
             "new MessageCountingChatReducer(options.MaxHistoryMessages)",
             "MaxHistoryMessages 必须在 FeishuAgent 中被真实消费（MessageCountingChatReducer 裁剪窗）");
     }

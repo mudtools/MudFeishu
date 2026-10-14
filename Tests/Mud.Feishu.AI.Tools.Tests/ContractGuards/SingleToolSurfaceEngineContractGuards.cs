@@ -274,6 +274,68 @@ public class SingleToolSurfaceEngineContractGuards
         HasMudAiProjectReference(legal).Should().BeFalse("核心 SDK 的内部纵向引用不得误伤");
     }
 
+    // ────────────────────────────────────────────────────────────────────
+    // 断言 ⑤：中立性——Mud.AI.* 反向不得依赖任何飞书工程
+    // ────────────────────────────────────────────────────────────────────
+
+    /// <summary>中立 AI 包族工程（不得引用任何 <c>Mud.Feishu*</c>）。</summary>
+    private static readonly string[] MudAiFamilyProjects =
+    [
+        "Mud.AI.Abstractions.csproj",
+        "Mud.AI.Agent.csproj",
+    ];
+
+    /// <summary>
+    /// <b>P1-H3 反向断言</b>：<c>Mud.AI.Abstractions</c> / <c>Mud.AI.Agent</c> 不得 ProjectReference
+    /// 任何 <c>Mud.Feishu*</c> 工程。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 为什么与断言 ④ 配套：H3 把「会话门面」搬进 <c>Mud.AI.Agent</c>，同时把 MAF 白名单从
+    /// 1 个工程放宽到 2 个（<c>Mud.AI.Agent</c> 获得 MAF）。<b>放宽的方向必须只朝一边</b>：
+    /// 飞书 AI 适配层 → <c>Mud.AI.*</c>（合法），<c>Mud.AI.*</c> → 飞书工程（非法）。
+    /// 会话存储端口正是这条纪律的第一个真实考验：需求是"门面要能存取会话"，
+    /// 最省事的写法是让 <c>Mud.AI.Agent</c> 直接引用 <c>Mud.Feishu.Abstractions.IConversationStore</c>——
+    /// 编译通过、测试全绿、P3 上游化当场不可能。本断言把这条捷径机械封死。
+    /// </para>
+    /// <para>
+    /// 与断言 ④ 共同构成<b>双向锁</b>：核心 SDK ↛ Mud.AI.*，Mud.AI.* ↛ 飞书工程。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void MudAiFamily_ShouldNotDependOnFeishuProjects()
+    {
+        var root = FindRepositoryRoot();
+        var offenders = new List<string>();
+
+        foreach (var project in MudAiFamilyProjects)
+        {
+            var path = Path.Combine(root, Path.GetFileNameWithoutExtension(project), project);
+            if (!File.Exists(path))
+            {
+                continue;
+            }
+
+            if (ReferencesFeishuProjects(File.ReadAllText(path)))
+            {
+                offenders.Add(project);
+            }
+        }
+
+        offenders.Should().BeEmpty(
+            "Mud.AI.* 是产品中立的运行期 / 契约层，不得反向依赖任何 Mud.Feishu* 工程"
+            + "（H3 的会话存储端口正是为此另立，而不是直接引用 IConversationStore）：{0}",
+            string.Join(" | ", offenders));
+    }
+
+    /// <summary>检查器自证：合成「Mud.AI.* → Mud.Feishu*」必须被点名；纯 Mud.AI 内部引用不得误伤。</summary>
+    [Theory]
+    [InlineData("<Project><ItemGroup><ProjectReference Include=\"..\\Mud.Feishu.Abstractions\\Mud.Feishu.Abstractions.csproj\" /></ItemGroup></Project>", true)]
+    [InlineData("<Project><ItemGroup><ProjectReference Include=\"..\\Mud.AI.Abstractions\\Mud.AI.Abstractions.csproj\" /></ItemGroup></Project>", false)]
+    [InlineData("<Project><!-- <ProjectReference Include=\"..\\Mud.Feishu.AI\\Mud.Feishu.AI.csproj\" /> --></Project>", false)]
+    public void FeishuDependencyChecker_ShouldFlagMudAiToFeishuReferences(string csprojContent, bool expected)
+        => ReferencesFeishuProjects(csprojContent).Should().Be(expected);
+
     // ────────── 判据原语（[Theory] 自证直接驱动，勿内联正则字面量） ──────────
 
     /// <summary>
@@ -302,4 +364,8 @@ public class SingleToolSurfaceEngineContractGuards
 
     private static bool HasMudAiProjectReference(string csprojContent)
         => Regex.IsMatch(StripComments(csprojContent), @"<ProjectReference\s+Include=""[^""]*Mud\.AI\.[^""]*\.csproj""");
+
+    /// <summary>检查器原语：csproj 中是否存在指向任何 <c>Mud.Feishu*</c> 工程的运行时 ProjectReference。</summary>
+    private static bool ReferencesFeishuProjects(string csprojContent)
+        => Regex.IsMatch(StripComments(csprojContent), @"<ProjectReference\s+Include=""[^""]*Mud\.Feishu[^""]*\.csproj""");
 }

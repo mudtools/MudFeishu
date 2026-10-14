@@ -17,6 +17,8 @@ global using Mud.AI.Agent.Tools.Errors;
 // v2.3 P1-E：声明契约（[AgentTool] / [ToolParameter] / [ToolHandler]）上移 Mud.AI.Abstractions。
 global using Mud.AI.Abstractions.Tools;
 global using Mud.AI.Abstractions.Tools.Handlers;
+// H2 中立化：域 guidance 装配机制上移 Mud.AI.Agent.Guidance（预算常量留在 FeishuGuidanceBudget）。
+global using Mud.AI.Agent.Guidance;
 global using Mud.Feishu.AI.Agents;
 global using Mud.Feishu.AI.Knowledge;
 global using Mud.Feishu.AI.AgentTools;

@@ -115,13 +115,19 @@ public class CapabilityAliasContractGuards
     /// 群公告按去重决策落 <c>docx</c>——故目标为 <c>[chatgroup, docx]</c>（比单一 <c>im</c> 更精确）。</item>
     /// </list>
     /// </remarks>
+    /// <remarks>
+    /// <b>Aily→knowledge 已于 B2 补全域后删除</b>：aily.* 三个只读工具落地后，"Aily" 分组经
+    /// 大小写不敏感比对天然命中 aily 模块，该条目被 <c>AliasKeys_ShouldNotBeRealToolModules</c>
+    /// 点名为冗余（"键本身即模块"）。这是别名表的生命周期正例：<b>跨命名是暂态，域落地后即转正</b>。
+    /// </remarks>
     [Fact]
     public void PlanMandatedAliases_ShouldBePresent()
     {
         var table = CapabilityModuleAliases.ByGroupSegment;
 
-        table.Should().ContainKey("Aily");
-        table["Aily"].Should().Contain("knowledge", "Aily 的知识问答能力被策展为 knowledge.search");
+        // Aily 别名已按冗余纪律删除（见类级 remarks）——这里反向断言它**不再存在**，
+        // 防止有人照着旧方案原文把它加回来（加了就会被 AliasKeys_ShouldNotBeRealToolModules 拦）。
+        table.Should().NotContainKey("Aily", "aily.* 工具落地后该分组天然命中 aily 模块，别名已按冗余纪律删除");
 
         table.Should().ContainKey("Message");
         table["Message"].Should().Contain("im", "消息面能力落 im 模块");
@@ -159,7 +165,8 @@ public class CapabilityAliasContractGuards
     [Fact]
     public void ResolveModules_ShouldMapCrossNamedSegments_AndPassThroughOthers()
     {
-        CapabilityModuleAliases.ResolveModules("Aily").Should().Equal(["knowledge"]);
+        // Aily：别名删除后原样返回，靠大小写不敏感比对天然命中 aily 模块（B2 补全域后的事实）。
+        CapabilityModuleAliases.ResolveModules("Aily").Should().Equal(["Aily"]);
         CapabilityModuleAliases.ResolveModules("Video").Should().Equal(["vc"]);
 
         // 未登记段原样返回（既有启发式不变）——否则会改变已正确的分组判定。
@@ -167,7 +174,7 @@ public class CapabilityAliasContractGuards
         CapabilityModuleAliases.ResolveModules("Bitable").Should().Equal(["Bitable"]);
 
         // 大小写不敏感（分组首段是 Pascal，工具模块是小写，比对口径必须一致）。
-        CapabilityModuleAliases.ResolveModules("aily").Should().Equal(["knowledge"]);
+        CapabilityModuleAliases.ResolveModules("aily").Should().Equal(["aily"]);
     }
 
     /// <summary>

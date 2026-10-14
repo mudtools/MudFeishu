@@ -307,4 +307,113 @@ public class ApplicationToolsTests
         var text = payload.ToJsonString();
         text.Should().NotContain("s3cr3t-app-secret").And.NotContain("zhangsan@example.com").And.NotContain("13800000000");
     }
+
+    // ───────────────────── 写面（可见性 / 应用管理开关） ─────────────────────
+
+    private static Mock<Mud.Feishu.IFeishuTenantV6ApplicationAdmin> WriteAdminClient(Action? onUpdate = null, int code = 0)
+    {
+        var client = new Mock<Mud.Feishu.IFeishuTenantV6ApplicationAdmin>();
+        client.Setup(c => c.UpdateApplicationVisibilityAsync(
+                It.IsAny<string>(), It.IsAny<UpdateApplicationVisibilityRequest>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string _, UpdateApplicationVisibilityRequest _, string? __, string? ___, CancellationToken ____) =>
+            {
+                onUpdate?.Invoke();
+                return new FeishuNullDataApiResult { Code = code, Msg = "ok" };
+            });
+
+        return client;
+    }
+
+    /// <summary>dry_run 必须零调用下游（写工具第一道防线）。</summary>
+    [Fact]
+    public async Task UpdateVisibility_DryRun_Should_Not_Call_Downstream()
+    {
+        var calls = 0;
+        var client = WriteAdminClient(onUpdate: () => calls++);
+
+        var result = await CreateTools(admin: client).UpdateVisibilityAsync(
+            Args(("app_id", "cli_1"), ("add_visible_user_ids", new[] { "ou_a" }), ("dry_run", true)),
+            CancellationToken.None);
+
+        calls.Should().Be(0, "dry_run=true 不得调用下游");
+        result.Text.Should().Contain("未调用下游");
+        result.Text.Should().Contain("PATCH");
+        result.Text.Should().Contain("changed_ids", "预演只报改动条数，不回原文 ID");
+    }
+
+    /// <summary>四类名单全空且没给 is_visible_to_all ⇒ 拒（空更新没有意义）。</summary>
+    [Fact]
+    public async Task UpdateVisibility_With_Nothing_Should_Reject()
+    {
+        var client = WriteAdminClient();
+
+        var result = await CreateTools(admin: client).UpdateVisibilityAsync(
+            Args(("app_id", "cli_1")), CancellationToken.None);
+
+        result.Text.Should().Contain("tool_error");
+        result.Text.Should().Contain("至少给一个改动项", "错误信息要点名缺的是什么");
+    }
+
+    /// <summary>实发：请求体按四类名单合成，回执报条数并复述增量语义。</summary>
+    [Fact]
+    public async Task UpdateVisibility_Should_Build_Request_And_Project()
+    {
+        UpdateApplicationVisibilityRequest? captured = null;
+        var client = new Mock<Mud.Feishu.IFeishuTenantV6ApplicationAdmin>();
+        client.Setup(c => c.UpdateApplicationVisibilityAsync(
+                It.IsAny<string>(), It.IsAny<UpdateApplicationVisibilityRequest>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string _, UpdateApplicationVisibilityRequest request, string? __, string? ___, CancellationToken ____) =>
+            {
+                captured = request;
+                return new FeishuNullDataApiResult { Code = 0, Msg = "ok" };
+            });
+
+        var payload = Payload(await CreateTools(admin: client).UpdateVisibilityAsync(
+            Args(
+                ("app_id", "cli_1"),
+                ("is_visible_to_all", false),
+                ("add_visible_user_ids", new[] { "ou_a", "ou_b" }),
+                ("del_invisible_department_ids", new[] { "od_x" })),
+            CancellationToken.None));
+
+        captured!.IsVisibleToAll.Should().BeFalse();
+        captured.AddVisibleList!.UserIds.Should().Equal(["ou_a", "ou_b"]);
+        captured.AddVisibleList.DepartmentIds.Should().BeNull();
+        captured.DelInvisibleList!.DepartmentIds.Should().Equal(["od_x"]);
+        captured.DelVisibleList.Should().BeNull();
+
+        payload["changed_ids"]!.GetValue<int>().Should().Be(3);
+        payload["updated"]!.GetValue<bool>().Should().BeTrue();
+        payload["notice"]!.GetValue<string>().Should().Contain("增量", "必须与 Lingo 的覆盖式语义区分开");
+    }
+
+    /// <summary>update_management：enable 必填（漏掉时不能靠默认值），dry_run 两段式。</summary>
+    [Fact]
+    public async Task UpdateManagement_Should_Require_Enable_And_Project_Receipt()
+    {
+        var client = new Mock<Mud.Feishu.IFeishuTenantV6Application>();
+        client.Setup(c => c.UpdateApplicationManagementAsync(
+                It.IsAny<string>(), It.IsAny<UpdateApplicationManagementRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string _, UpdateApplicationManagementRequest _, CancellationToken __) =>
+                new FeishuNullDataApiResult { Code = 0, Msg = "ok" });
+
+        var missing = await CreateTools(application: client).UpdateManagementAsync(
+            Args(("app_id", "cli_1")), CancellationToken.None);
+
+        missing.Text.Should().Contain("tool_error");
+        missing.Text.Should().Contain("enable 必填", "停用是影响面极大的动作，不能靠默认值");
+
+        var preview = await CreateTools(application: client).UpdateManagementAsync(
+            Args(("app_id", "cli_1"), ("enable", false), ("dry_run", true)), CancellationToken.None);
+
+        preview.Text.Should().Contain("未调用下游", "高危语义先 dry_run");
+        preview.Text.Should().Contain("PUT");
+
+        var payload = Payload(await CreateTools(application: client).UpdateManagementAsync(
+            Args(("app_id", "cli_1"), ("enable", false)), CancellationToken.None));
+
+        payload["enable"]!.GetValue<bool>().Should().BeFalse();
+        payload["updated"]!.GetValue<bool>().Should().BeTrue();
+        payload["notice"]!.GetValue<string>().Should().Contain("停用");
+    }
 }

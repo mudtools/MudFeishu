@@ -479,4 +479,234 @@ internal sealed class HelpdeskTools(
                 toolName,
                 $"未注册 {ClientName} 客户端——服务台能力需宿主启用服务台 API（软缺席，不影响其它域工具）"))
             : null;
+
+    // ─────────────────── 写面：工单服务动作（tenant 侧） ───────────────────
+
+    /// <summary>helpdesk.start_service：工单转人工。</summary>
+    [ToolHandler(typeof(IFeishuTenantHelpdeskStartServiceTool))]
+    public Task<ToolResult> StartServiceAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.HelpdeskStartService, _maxResultLength);
+        if (Absent(executor.ToolName, _ticketClient) is { } unavailable)
+        {
+            return Task.FromResult(unavailable);
+        }
+
+        return executor.RunAsync(async () =>
+        {
+            var args = HelpdeskStartServiceArgs.Unpack(arguments);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return ToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName,
+                    "POST",
+                    "/open-apis/helpdesk/v1/start_service",
+                    ToolDryRun.IdempotencyNote(null),
+                    ("open_id", args.OpenId?.Length ?? 0),
+                    ("appointed_agents", args.AppointedAgents?.Length ?? 0)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _ticketClient!
+                .StartServiceTicketAsync(
+                    new StartServiceTicketRequest
+                    {
+                        OpenId = args.OpenId,
+                        HumanService = args.HumanService,
+                        AppointedAgents = args.AppointedAgents,
+                        CustomizedInfo = args.CustomizedInfo,
+                    },
+                    cancellationToken)
+                .ConfigureAwait(false));
+
+            return executor.FromApi(outcome, data => new JsonObject
+            {
+                ["chat_id"] = data.ChatId,
+                ["ticket_id"] = data.TicketId,
+                ["started"] = true,
+                ["notice"] = "转人工后由客服接管会话；指定客服未上线时服务台会按技能组重新分配。",
+            });
+        });
+    }
+
+    /// <summary>helpdesk.answer_user_query：回传用户提问命中的 FAQ。</summary>
+    [ToolHandler(typeof(IFeishuTenantHelpdeskAnswerUserQueryTool))]
+    public Task<ToolResult> AnswerUserQueryAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.HelpdeskAnswerUserQuery, _maxResultLength);
+        if (Absent(executor.ToolName, _ticketClient) is { } unavailable)
+        {
+            return Task.FromResult(unavailable);
+        }
+
+        return executor.RunAsync(async () =>
+        {
+            var args = HelpdeskAnswerUserQueryArgs.Unpack(arguments);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return ToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName,
+                    "POST",
+                    "/open-apis/helpdesk/v1/tickets/{ticket_id}/answer_user_query",
+                    ToolDryRun.IdempotencyNote(null),
+                    ("ticket_id", args.TicketId?.Length ?? 0),
+                    ("event_id", args.EventId?.Length ?? 0),
+                    ("faq_ids", args.FaqIds?.Length ?? 0)));
+            }
+
+            var result = await _ticketClient!
+                .AnswerUserQueryTicketAsync(
+                    args.TicketId,
+                    new AnswerUserQueryTicketRequest
+                    {
+                        EventId = args.EventId,
+                        Faqs = args.FaqIds is { Length: > 0 }
+                            ? [.. args.FaqIds.Select(static id => new UserQueryFaqInfo { Id = id })]
+                            : null,
+                    },
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            RequireNullDataSuccess(executor.ToolName, result);
+
+            return ToolResultPipeline.OkReceipt(new JsonObject
+            {
+                ["ticket_id"] = args.TicketId,
+                ["faq_count"] = args.FaqIds?.Length ?? 0,
+                ["answered"] = true,
+                ["notice"] = "已回传命中结果；本工具**不直接给用户发消息**——要回复用户请用 helpdesk.create_ticket_message。",
+            });
+        });
+    }
+
+    /// <summary>helpdesk.create_ticket_message：在工单里发消息（回复工单）。</summary>
+    [ToolHandler(typeof(IFeishuTenantHelpdeskCreateTicketMessageTool))]
+    public Task<ToolResult> CreateTicketMessageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.HelpdeskCreateTicketMessage, _maxResultLength);
+        if (Absent(executor.ToolName, _ticketClient) is { } unavailable)
+        {
+            return Task.FromResult(unavailable);
+        }
+
+        return executor.RunAsync(async () =>
+        {
+            var args = HelpdeskCreateTicketMessageArgs.Unpack(arguments);
+
+            // 参数校验早于 dry_run：msg_type 只接受 text/post，别的不该放行。
+            if (!string.Equals(args.MsgType, "text", StringComparison.Ordinal)
+                && !string.Equals(args.MsgType, "post", StringComparison.Ordinal))
+            {
+                return Invalid(executor.ToolName,
+                    "msg_type 只支持 text（纯文本）或 post（富文本）——工单消息不支 image/interactive，"
+                    + "那类请用 helpdesk.create_bot_message。");
+            }
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return ToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName,
+                    "POST",
+                    "/open-apis/helpdesk/v1/tickets/{ticket_id}/messages",
+                    ToolDryRun.IdempotencyNote(null),
+                    ("ticket_id", args.TicketId?.Length ?? 0),
+                    ("msg_type", args.MsgType?.Length ?? 0),
+                    ("content", args.Content?.Length ?? 0)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _ticketClient!
+                .CreateTicketMessageAsync(
+                    args.TicketId,
+                    new CreateTicketMessageRequest { MsgType = args.MsgType, Content = args.Content },
+                    cancellationToken)
+                .ConfigureAwait(false));
+
+            return executor.FromApi(outcome, data => new JsonObject
+            {
+                ["ticket_id"] = args.TicketId,
+                ["message_id"] = data.MessageId,
+                ["msg_type"] = args.MsgType,
+                ["sent"] = true,
+                // 富文本原文不回显（与读面"工单正文不出站"纪律一致）。
+            });
+        });
+    }
+
+    /// <summary>helpdesk.create_bot_message：以机器人身份发消息。</summary>
+    [ToolHandler(typeof(IFeishuTenantHelpdeskCreateBotMessageTool))]
+    public Task<ToolResult> CreateBotMessageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.HelpdeskCreateBotMessage, _maxResultLength);
+        if (Absent(executor.ToolName, _ticketClient) is { } unavailable)
+        {
+            return Task.FromResult(unavailable);
+        }
+
+        return executor.RunAsync(async () =>
+        {
+            var args = HelpdeskCreateBotMessageArgs.Unpack(arguments);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return ToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName,
+                    "POST",
+                    "/open-apis/helpdesk/v1/message",
+                    ToolDryRun.IdempotencyNote(null),
+                    ("msg_type", args.MsgType?.Length ?? 0),
+                    ("content", args.Content?.Length ?? 0),
+                    ("receiver_id", args.ReceiverId?.Length ?? 0)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _ticketClient!
+                .CreateBotMessageAsync(
+                    new CreateBotMessageRequest
+                    {
+                        MsgType = args.MsgType,
+                        Content = args.Content,
+                        ReceiverId = args.ReceiverId,
+                        ReceiveType = args.ReceiveType,
+                    },
+                    user_id_type: null,
+                    cancellationToken)
+                .ConfigureAwait(false));
+
+            return executor.FromApi(outcome, data => new JsonObject
+            {
+                ["message_id"] = data.MessageId,
+                ["msg_type"] = args.MsgType,
+                ["receive_type"] = args.ReceiveType,
+                ["sent"] = true,
+            });
+        });
+    }
+
+    // ─────────────────── 写面内部工具 ───────────────────
+
+    /// <summary>参数非法：结构化错误（不是异常——异常会逃出执行链，模型看不到可执行信息）。</summary>
+    private static ToolResult Invalid(string toolName, string message)
+        => ToolResult.FromError(FeishuToolBinding.StructuredError(toolName, message));
+
+    /// <summary>
+    /// 空数据结果的成功判定（返回 <see cref="FeishuNullDataApiResult"/>，Data 天然为 null，
+    /// 不能用 <c>FeishuApiResultReader.Read</c>——那会把"无载荷"误判为失败）。
+    /// </summary>
+    private static void RequireNullDataSuccess(string toolName, FeishuNullDataApiResult? result)
+    {
+        if (result is null)
+        {
+            throw new ArgumentException("飞书接口无响应（result 为空）");
+        }
+
+        if (result.Code != 0)
+        {
+            throw new ArgumentException(
+                FeishuToolBinding.StructuredError(
+                    toolName,
+                    result.Code,
+                    $"飞书接口返回错误 code={result.Code.ToString(CultureInfo.InvariantCulture)}, "
+                    + $"msg={result.Msg ?? "(无错误信息)"}"));
+        }
+    }
 }

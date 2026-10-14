@@ -13,5 +13,5 @@ namespace Mud.Feishu.DataModels.Hire;
 [HttpJsonSerializable(SerializerClassName = "Hire")]
 public class GetExamMarkingTaskListResult : ApiPageListResult<ExamMarkingTask>
 {
-   
+
 }

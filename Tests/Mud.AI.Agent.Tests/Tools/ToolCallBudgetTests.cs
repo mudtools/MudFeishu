@@ -20,7 +20,7 @@ public class ToolCallBudgetTests
     /// 计数原子：并发 TryConsume 不会超过 max。
     /// </summary>
     [Fact]
-    public void TryConsume_Concurrent_ShouldNotExceedMax()
+    public async Task TryConsume_Concurrent_ShouldNotExceedMax()
     {
         const int max = 100;
         const int threadCount = 10;
@@ -42,7 +42,7 @@ public class ToolCallBudgetTests
             }))
             .ToArray();
 
-        Task.WaitAll(tasks);
+        await Task.WhenAll(tasks);
 
         // 原子性：允许数 = max（不超过）
         allowed.Should().Be(max,

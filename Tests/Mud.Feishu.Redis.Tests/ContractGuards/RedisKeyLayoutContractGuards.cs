@@ -82,7 +82,7 @@ public class RedisKeyLayoutContractGuards
     /// 令牌键前缀：默认形态与 Memory 路径逐字节一致（ADR-13 的 TMF2-05 契约）。
     /// </summary>
     [Fact]
-    public void TokenKeyPrefix_Should_Be_ByteIdentical_Between_Memory_And_Redis()
+    public async Task TokenKeyPrefix_Should_Be_ByteIdentical_Between_Memory_And_Redis()
     {
         const string appKey = "cli_a";
 
@@ -104,7 +104,7 @@ public class RedisKeyLayoutContractGuards
             });
 
         var memoryStore = new FeishuTokenStore(cache.Object, appKey);
-        memoryStore.SetAccessTokenAsync("tenant:cli_a", "token-value", 3600).GetAwaiter().GetResult();
+        await memoryStore.SetAccessTokenAsync("tenant:cli_a", "token-value", 3600);
 
         capturedKeys.Should().ContainSingle();
         capturedKeys[0].Should().Be($"{redisPrefix}:tenant\\:cli_a:access",

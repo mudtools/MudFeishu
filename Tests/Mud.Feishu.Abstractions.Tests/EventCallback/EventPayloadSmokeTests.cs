@@ -95,34 +95,34 @@ public class EventPayloadSmokeTests
         switch (input)
         {
             case JsonObject io:
-            {
-                if (output is not JsonObject oo)
                 {
-                    if (io.Count > 0) missing.Add(path);
+                    if (output is not JsonObject oo)
+                    {
+                        if (io.Count > 0) missing.Add(path);
+                        return;
+                    }
+                    foreach (var (key, value) in io)
+                    {
+                        if (IsNull(value)) continue;
+                        if (!oo.ContainsKey(key)) missing.Add($"{path}.{key}");
+                        else CollectMissingKeys(value, oo[key], $"{path}.{key}", missing);
+                    }
                     return;
                 }
-                foreach (var (key, value) in io)
-                {
-                    if (IsNull(value)) continue;
-                    if (!oo.ContainsKey(key)) missing.Add($"{path}.{key}");
-                    else CollectMissingKeys(value, oo[key], $"{path}.{key}", missing);
-                }
-                return;
-            }
             case JsonArray ia when ia.Count > 0:
-            {
-                if (output is not JsonArray oa)
                 {
-                    missing.Add($"{path}[]");
+                    if (output is not JsonArray oa)
+                    {
+                        missing.Add($"{path}[]");
+                        return;
+                    }
+                    for (var i = 0; i < ia.Count; i++)
+                    {
+                        if (i >= oa.Count) break;
+                        CollectMissingKeys(ia[i], oa[i], $"{path}[{i}]", missing);
+                    }
                     return;
                 }
-                for (var i = 0; i < ia.Count; i++)
-                {
-                    if (i >= oa.Count) break;
-                    CollectMissingKeys(ia[i], oa[i], $"{path}[{i}]", missing);
-                }
-                return;
-            }
         }
     }
 

@@ -17,7 +17,7 @@ public static class TestHelper
     static TestHelper()
     {
         var assemblyName = "Mud.AI.Generator";
-        
+
         GeneratorAssembly = AppDomain.CurrentDomain.GetAssemblies()
             .FirstOrDefault(a => a.GetName().Name == assemblyName);
 
@@ -26,7 +26,7 @@ public static class TestHelper
             var assemblyPath = Path.Combine(
                 AppDomain.CurrentDomain.BaseDirectory,
                 $"{assemblyName}.dll");
-            
+
             if (File.Exists(assemblyPath))
             {
                 GeneratorAssembly = Assembly.LoadFrom(assemblyPath);

@@ -40,7 +40,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // ─────────────────────────── 只读（9 个） ───────────────────────────
 
 /// <summary>工具接口：okr.list_cycles（映射 <c>IFeishuTenantV2OkrCycle.ListCyclesAsync</c>）。</summary>
-[FeishuTool("okr.list_cycles",
+[AgentTool("okr.list_cycles",
     Description = "列出指定用户的 OKR 周期（Cycle）列表（含 id、周期状态、起止时间、得分），可翻页。只读，需 okr:okr.period:readonly。返回的 cycle_id 是 okr.list_objectives 的前置输入。",
     RequiredScopes = ["okr:okr.period:readonly"],
     IsWrite = false,
@@ -58,7 +58,7 @@ public interface IFeishuTenantOkrListCyclesTool
 }
 
 /// <summary>工具接口：okr.list_objectives（映射 <c>IFeishuTenantV2OkrCycle.ListCycleObjectivesAsync</c>）。</summary>
-[FeishuTool("okr.list_objectives",
+[AgentTool("okr.list_objectives",
     Description = "列出某个 OKR 周期（Cycle）下的目标（Objective）列表（含 id、富文本内容、归属者、序号、得分、权重、截止时间），可翻页。只读，需 okr:okr.content:readonly。cycle_id 来自 okr.list_cycles。",
     RequiredScopes = ["okr:okr.content:readonly"],
     IsWrite = false,
@@ -76,7 +76,7 @@ public interface IFeishuTenantOkrListObjectivesTool
 }
 
 /// <summary>工具接口：okr.get_objective（映射 <c>IFeishuTenantV2OkrObjective.GetObjectiveAsync</c>）。</summary>
-[FeishuTool("okr.get_objective",
+[AgentTool("okr.get_objective",
     Description = "获取单个目标（Objective）的详情（富文本内容、备注、归属者、得分、权重、截止时间、分类）。只读，需 okr:okr.content:readonly。",
     RequiredScopes = ["okr:okr.content:readonly"],
     IsWrite = false,
@@ -91,7 +91,7 @@ public interface IFeishuTenantOkrGetObjectiveTool
 }
 
 /// <summary>工具接口：okr.list_key_results（映射 <c>IFeishuTenantV2OkrKeyResult.ListObjectiveKeyResultsAsync</c>）。</summary>
-[FeishuTool("okr.list_key_results",
+[AgentTool("okr.list_key_results",
     Description = "列出某个目标（Objective）下的关键结果（Key Result）列表（含 id、内容、序号、得分、权重、截止时间），可翻页。只读，需 okr:okr.content:readonly。",
     RequiredScopes = ["okr:okr.content:readonly"],
     IsWrite = false,
@@ -109,7 +109,7 @@ public interface IFeishuTenantOkrListKeyResultsTool
 }
 
 /// <summary>工具接口：okr.get_key_result（映射 <c>IFeishuTenantV2OkrKeyResult.GetKeyResultAsync</c>）。</summary>
-[FeishuTool("okr.get_key_result",
+[AgentTool("okr.get_key_result",
     Description = "获取单个关键结果（Key Result）的详情（内容、归属者、序号、得分、权重、截止时间）。只读，需 okr:okr.content:readonly。",
     RequiredScopes = ["okr:okr.content:readonly"],
     IsWrite = false,
@@ -124,7 +124,7 @@ public interface IFeishuTenantOkrGetKeyResultTool
 }
 
 /// <summary>工具接口：okr.list_objective_progresses（映射 <c>IFeishuTenantV2OkrProgress.ListObjectiveProgressesAsync</c>）。</summary>
-[FeishuTool("okr.list_objective_progresses",
+[AgentTool("okr.list_objective_progresses",
     Description = "列出某个目标（Objective）下的进展记录列表（含进展内容、完成度、归属者、创建/更新时间），可翻页。只读，需 okr:okr.progress:readonly。",
     RequiredScopes = ["okr:okr.progress:readonly"],
     IsWrite = false,
@@ -142,7 +142,7 @@ public interface IFeishuTenantOkrListObjectiveProgressesTool
 }
 
 /// <summary>工具接口：okr.list_key_result_progresses（映射 <c>IFeishuTenantV2OkrProgress.ListKeyResultProgressesAsync</c>）。</summary>
-[FeishuTool("okr.list_key_result_progresses",
+[AgentTool("okr.list_key_result_progresses",
     Description = "列出某个关键结果（Key Result）下的进展记录列表（含进展内容、完成度、归属者、创建/更新时间），可翻页。只读，需 okr:okr.progress:readonly。",
     RequiredScopes = ["okr:okr.progress:readonly"],
     IsWrite = false,
@@ -160,7 +160,7 @@ public interface IFeishuTenantOkrListKeyResultProgressesTool
 }
 
 /// <summary>工具接口：okr.list_periods（映射 <c>IFeishuTenantV1OkrPeriod.ListPeriodsAsync</c>）。</summary>
-[FeishuTool("okr.list_periods",
+[AgentTool("okr.list_periods",
     Description = "列出当前租户下的 OKR 周期（Period）定义（id、中英文名称、启用状态、起止时间），可翻页。只读，需 okr:okr:readonly。period 是周期模板元数据，与用户 Cycle 不同（create 时需要的是 cycle_id）。",
     RequiredScopes = ["okr:okr:readonly"],
     IsWrite = false,
@@ -177,7 +177,7 @@ public interface IFeishuTenantOkrListPeriodsTool
 }
 
 /// <summary>工具接口：okr.list_categories（映射 <c>IFeishuTenantV2OkrCategory.ListCategoriesAsync</c>）。</summary>
-[FeishuTool("okr.list_categories",
+[AgentTool("okr.list_categories",
     Description = "列出系统中的全部 OKR 分类（id、多语言名称、颜色、类型、启用状态），可翻页。只读，需 okr:okr.setting:read。category_id 是 okr.create_objective / okr.update_objective 的可选输入。",
     RequiredScopes = ["okr:okr.setting:read"],
     IsWrite = false,
@@ -197,7 +197,7 @@ public interface IFeishuTenantOkrListCategoriesTool
 // ─────────────────────────── 写入（6 个） ───────────────────────────
 
 /// <summary>工具接口：okr.create_objective（映射 <c>IFeishuTenantV2OkrCycle.CreateCycleObjectiveAsync</c>）。</summary>
-[FeishuTool("okr.create_objective",
+[AgentTool("okr.create_objective",
     Description = "在指定 OKR 周期（Cycle）下创建一个目标（Objective）（content 为纯文本，工具层负责包装为飞书富文本块）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 okr:okr.content:writeonly。",
     RequiredScopes = ["okr:okr.content:writeonly"],
     IsWrite = true,
@@ -219,7 +219,7 @@ public interface IFeishuTenantOkrCreateObjectiveTool
 }
 
 /// <summary>工具接口：okr.update_objective（映射 <c>IFeishuTenantV2OkrObjective.UpdateObjectiveAsync</c>）。</summary>
-[FeishuTool("okr.update_objective",
+[AgentTool("okr.update_objective",
     Description = "修改指定目标（Objective）的字段（content/notes/deadline/score/category_id，至少传一个要更新的字段）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 okr:okr.content:writeonly。",
     RequiredScopes = ["okr:okr.content:writeonly"],
     IsWrite = true,
@@ -240,7 +240,7 @@ public interface IFeishuTenantOkrUpdateObjectiveTool
 }
 
 /// <summary>工具接口：okr.delete_objective（映射 <c>IFeishuTenantV2OkrObjective.DeleteObjectiveAsync</c>）。</summary>
-[FeishuTool("okr.delete_objective",
+[AgentTool("okr.delete_objective",
     Description = "删除指定目标（Objective），并连带删除其下的关键结果——不可恢复。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 okr:okr.content:writeonly。建议先 dry_run 预演确认。",
     RequiredScopes = ["okr:okr.content:writeonly"],
     IsWrite = true,
@@ -256,7 +256,7 @@ public interface IFeishuTenantOkrDeleteObjectiveTool
 }
 
 /// <summary>工具接口：okr.create_key_result（映射 <c>IFeishuTenantV2OkrKeyResult.CreateObjectiveKeyResultAsync</c>）。</summary>
-[FeishuTool("okr.create_key_result",
+[AgentTool("okr.create_key_result",
     Description = "在指定目标（Objective）下创建一个关键结果（Key Result）（content 为纯文本，工具层负责包装为飞书富文本块）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 okr:okr.content:writeonly。",
     RequiredScopes = ["okr:okr.content:writeonly"],
     IsWrite = true,
@@ -275,7 +275,7 @@ public interface IFeishuTenantOkrCreateKeyResultTool
 }
 
 /// <summary>工具接口：okr.update_key_result（映射 <c>IFeishuTenantV2OkrKeyResult.UpdateKeyResultAsync</c>）。</summary>
-[FeishuTool("okr.update_key_result",
+[AgentTool("okr.update_key_result",
     Description = "修改指定关键结果（Key Result）的内容、得分或截止时间（至少传一个要更新的字段）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 okr:okr.content:writeonly。",
     RequiredScopes = ["okr:okr.content:writeonly"],
     IsWrite = true,
@@ -294,7 +294,7 @@ public interface IFeishuTenantOkrUpdateKeyResultTool
 }
 
 /// <summary>工具接口：okr.delete_key_result（映射 <c>IFeishuTenantV2OkrKeyResult.DeleteKeyResultAsync</c>）。</summary>
-[FeishuTool("okr.delete_key_result",
+[AgentTool("okr.delete_key_result",
     Description = "删除指定关键结果（Key Result）——不可恢复。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 okr:okr.content:writeonly。建议先 dry_run 预演确认。",
     RequiredScopes = ["okr:okr.content:writeonly"],
     IsWrite = true,

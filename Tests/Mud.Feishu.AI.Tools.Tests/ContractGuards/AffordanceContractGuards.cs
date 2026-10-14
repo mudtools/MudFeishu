@@ -191,9 +191,10 @@ public class AffordanceContractGuards
     {
         // 线格式键在两处出现：剖面槽（编译期事实）与运行期读取常量。二者不一致 ⇒ 读不到 affordance
         // 而**不报任何错**（只是"资产配了却看不见"），故必须机械绑定。
+        // v2.3 P1-E：引导契约随声明契约上移 Mud.AI.Abstractions（命名空间 Mud.AI.Attributes）。
         var attribute = typeof(Mud.Feishu.AI.Tools.SdkProfile.FeishuToolProfile)
-            .GetCustomAttributes(typeof(Mud.HttpUtils.Attributes.SdkToolProfileAttribute), inherit: false)
-            .Cast<Mud.HttpUtils.Attributes.SdkToolProfileAttribute>()
+            .GetCustomAttributes(typeof(Mud.AI.Attributes.SdkToolProfileAttribute), inherit: false)
+            .Cast<Mud.AI.Attributes.SdkToolProfileAttribute>()
             .Single();
 
         ToolAffordanceText.ExtensionKey.Should().Be(
@@ -364,7 +365,7 @@ public class AffordanceContractGuards
             contract.IsWrite,
             contract.Risk,
             contract.Identity,
-            (_, _, _) => Task.FromResult(FeishuToolResult.FromText(string.Empty)));
+            (_, _, _) => Task.FromResult(ToolResult.FromText(string.Empty)));
 
         return new FeishuToolAIFunction(definition, FeishuToolSchemas.SchemaByToolName[toolName]);
     }

@@ -45,7 +45,7 @@ internal static class FeishuToolRegistration
         if (!FeishuToolContracts.ByToolName.TryGetValue(toolName, out var contract))
         {
             throw new InvalidOperationException(
-                $"工具 '{toolName}' 缺少编译期契约——接口须标注 [FeishuTool]（契约守卫防漂移）");
+                $"工具 '{toolName}' 缺少编译期契约——接口须标注 [AgentTool]（契约守卫防漂移）");
         }
 
         var definition = new FeishuToolDefinition(
@@ -78,14 +78,14 @@ internal static class FeishuToolRegistration
     /// </para>
     /// </remarks>
     /// <param name="registry">工具注册表。</param>
-    /// <param name="toolName">工具名（须与 <c>[FeishuTool]</c> 派生的契约名一致）。</param>
+    /// <param name="toolName">工具名（须与 <c>[AgentTool]</c> 派生的契约名一致）。</param>
     /// <param name="binding">工具执行链。</param>
     /// <param name="executorCall">分域执行器调用（入参 + 取消令牌 → 已投影/截断的结果）。</param>
     public static void RegisterExecution(
         FeishuToolRegistry registry,
         string toolName,
         FeishuToolBinding binding,
-        Func<IReadOnlyDictionary<string, object?>, CancellationToken, Task<FeishuToolResult>> executorCall)
+        Func<IReadOnlyDictionary<string, object?>, CancellationToken, Task<ToolResult>> executorCall)
         => RegisterTool(registry, toolName, (args, ctx, ct) => binding.ExecuteAsync(
             Def(registry, toolName), args, ctx, token => executorCall(args, token), ct));
 }

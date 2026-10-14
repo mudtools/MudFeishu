@@ -30,7 +30,7 @@ public class DocxAnnouncementToolsTests
     private static IReadOnlyDictionary<string, object?> Args(params (string Key, object? Value)[] items)
         => items.ToDictionary(p => p.Key, p => p.Value);
 
-    private static JsonObject Payload(FeishuToolResult result)
+    private static JsonObject Payload(ToolResult result)
         => JsonNode.Parse(result.ToString())!.AsObject();
 
     private static DocxDeepTools CreateTools(Mock<Mud.Feishu.IFeishuTenantV1DocxAnnouncement> announcement)

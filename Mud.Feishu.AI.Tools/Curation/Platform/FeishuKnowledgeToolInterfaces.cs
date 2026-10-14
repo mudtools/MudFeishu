@@ -12,7 +12,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // </summary>
 
 /// <summary>工具接口：knowledge.search（绑定 <c>IRetriever</c> 门面，Aily 数据知识问答）。</summary>
-[FeishuTool("knowledge.search",
+[AgentTool("knowledge.search",
     Description = "检索飞书知识库（Aily 数据知识），返回与问题相关的知识切片；当需要企业知识/文档内容作答时使用。只读。",
     RequiredScopes = ["aily:knowledge:readonly"])]
 public interface IFeishuTenantKnowledgeSearchTool

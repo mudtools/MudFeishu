@@ -10,7 +10,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // ─────────────────────────── Wiki（2 个） ───────────────────────────
 
 /// <summary>工具接口：wiki.get_node（映射 <c>IFeishuTenantV2WikiNodes.GetNodeSpaceInfoAsync</c>）。</summary>
-[FeishuTool("wiki.get_node",
+[AgentTool("wiki.get_node",
     Description = "解析知识库节点信息（node_token/title/obj_type/obj_token）；obj_token 可传给 docx.get_raw_content 读取正文。只读，需 wiki:wiki:readonly。",
     RequiredScopes = ["wiki:wiki:readonly"],
     Source = nameof(IFeishuTenantV2WikiNodes) + "." + nameof(IFeishuTenantV2WikiNodes.GetNodeSpaceInfoAsync))]
@@ -25,7 +25,7 @@ public interface IFeishuTenantWikiGetNodeTool
 }
 
 /// <summary>工具接口：wiki.list_nodes（映射 <c>IFeishuTenantV2WikiNodes.GetSpaceNodesPageListAsync</c>）。</summary>
-[FeishuTool("wiki.list_nodes",
+[AgentTool("wiki.list_nodes",
     Description = "列出知识空间（或某父节点下）的子节点列表；node_token 可传给 wiki.get_node 解析详情。只读，需 wiki:wiki:readonly。",
     RequiredScopes = ["wiki:wiki:readonly"],
     Source = nameof(IFeishuTenantV2WikiNodes) + "." + nameof(IFeishuTenantV2WikiNodes.GetSpaceNodesPageListAsync))]
@@ -50,7 +50,7 @@ public interface IFeishuTenantWikiListNodesTool
 /// <remarks>
 /// R5 / F-11：此前 wiki 域<b>只有读面</b>（get_node / list_nodes），模型能看知识库但不能改。
 /// </remarks>
-[FeishuTool("wiki.create_node",
+[AgentTool("wiki.create_node",
     Description = "在知识空间下创建节点（新建一篇 wiki 文档/普通页面）。space_id 可由 wiki.list_nodes 的结果推断。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 wiki:wiki。",
     RequiredScopes = ["wiki:wiki"],
     IsWrite = true,
@@ -72,7 +72,7 @@ public interface IFeishuTenantWikiCreateNodeTool
 /// <summary>
 /// 工具接口：wiki.move_node（映射 <c>IFeishuTenantV2WikiNodes.MoveSpaceNodeAsync</c>）。
 /// </summary>
-[FeishuTool("wiki.move_node",
+[AgentTool("wiki.move_node",
     Description = "移动知识空间节点（改父节点或换空间）——用于知识库整理、归档。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 wiki:wiki。",
     RequiredScopes = ["wiki:wiki"],
     IsWrite = true,
@@ -97,7 +97,7 @@ public interface IFeishuTenantWikiMoveNodeTool
 /// "**把文档挪进知识库**"是高频诉求，而 SDK 的节点移动只对已在 wiki 中的节点有效；
 /// 本工具走平台提供的<b>文档迁入</b>接口，是该场景的唯一正确入口。
 /// </remarks>
-[FeishuTool("wiki.move_docs_to_space",
+[AgentTool("wiki.move_docs_to_space",
     Description = "把已有云文档（docx/sheet/bitable 等）迁移进知识空间，成为 wiki 节点——'把这份文档挪进知识库'的首选入口。⚠️ 平台以异步任务执行，返回 task_id。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 wiki:wiki。",
     RequiredScopes = ["wiki:wiki"],
     IsWrite = true,

@@ -72,7 +72,9 @@ public class ToolErrorContractGuards
     {
         var root = FindRepositoryRoot();
 
-        var sources = new[] { "Mud.Feishu.AI.Tools", "Mud.Feishu.AI" }
+        // v2.3 P1-D：错误契约族（ToolError / ToolErrorClassifier / ToolErrorText / ToolResultPipeline…）
+        // 中立化上移 Mud.AI.Agent——扫描面必须含新家，否则「产出点随骨架搬迁」会被判成幽灵子类。
+        var sources = new[] { "Mud.Feishu.AI.Tools", "Mud.Feishu.AI", "Mud.AI.Agent" }
             .Select(relative => Path.Combine(root, relative))
             .Where(Directory.Exists)
             .SelectMany(directory => Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
@@ -198,8 +200,9 @@ public class ToolErrorContractGuards
     [Fact]
     public void ToolExecutor_ErrorPaths_ShouldUseFromStructuredError()
     {
+        // v2.3 P1-D：执行器骨架与唯一出口随骨架中立化上移 Mud.AI.Agent/Tools。
         var source = File.ReadAllText(Path.Combine(
-            FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Internal", "ToolExecutor.cs"));
+            FindRepositoryRoot(), "Mud.AI.Agent", "Tools", "ToolExecutor.cs"));
 
         source.Should().Contain("FromStructuredError(",
             "ToolExecutor 的错误路径必须经过 FromStructuredError（工具名 + 分类文案的唯一入口）");
@@ -207,12 +210,20 @@ public class ToolErrorContractGuards
             "ToolExecutor 必须把载荷构造委派给唯一出口 ToolResultPipeline（R-1 起不再自行拼装）");
 
         var pipeline = File.ReadAllText(Path.Combine(
-            FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Results", "ToolResultPipeline.cs"));
+            FindRepositoryRoot(), "Mud.AI.Agent", "Tools", "ToolResultPipeline.cs"));
 
-        pipeline.Should().Contain("ToolErrorPayloadSerializer.Serialize(",
-            "唯一出口必须调用 ToolErrorPayloadSerializer.Serialize 构造首行 JSON");
-        pipeline.Should().Contain("FeishuToolResult.FromError(",
-            "唯一出口必须通过 FeishuToolResult.FromError(ToolError, ...) 构造带结构化载荷的结果");
+        // v2.3 P1-D：载荷构造此前就在 ToolResultPipeline 内，中立化上移时拆出了独立工厂
+        // ToolErrorFactory（骨架装配的副产品）。判据随之追到事实：管道委派工厂 + 工厂确实序列化。
+        pipeline.Should().Contain("ToolErrorFactory.Create(",
+            "唯一出口必须把载荷构造委派给唯一工厂 ToolErrorFactory（不得自行 new ToolError）");
+        pipeline.Should().Contain("ToolResult.FromError(",
+            "唯一出口必须通过 ToolResult.FromError(ToolError, ...) 构造带结构化载荷的结果");
+
+        var factory = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(), "Mud.AI.Agent", "Tools", "ToolErrorFactory.cs"));
+
+        factory.Should().Contain("ToolErrorPayloadSerializer.Serialize(",
+            "唯一工厂必须调用 ToolErrorPayloadSerializer.Serialize 构造首行 JSON");
     }
 
     // 守卫 ⑥（原 CategoryLiteral_ShouldMapAllEnumValues）已删除（同守卫 ①，测试体系治理 B1）：
@@ -326,10 +337,10 @@ public class ToolErrorContractGuards
         var result = await binding.ExecuteAsync(
             new FeishuToolDefinition(
                 "im.send_message", "发消息", ["im:message"], true, FeishuToolRisk.Write, "tenant",
-                (_, _, _) => Task.FromResult(FeishuToolResult.FromText("ok"))),
+                (_, _, _) => Task.FromResult(ToolResult.FromText("ok"))),
             new Dictionary<string, object?> { ["text"] = "hi" },
             new FeishuToolContext("appA"),
-            _ => Task.FromResult(FeishuToolResult.FromText("ok")));
+            _ => Task.FromResult(ToolResult.FromText("ok")));
 
         var text = result.ToString()!;
         text.Should().Contain("\"category\":\"authorization\"");

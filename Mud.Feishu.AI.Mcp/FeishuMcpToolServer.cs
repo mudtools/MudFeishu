@@ -7,6 +7,8 @@
 
 using System.Reflection;
 using System.Text.Encodings.Web;
+using Mud.AI.Agent.Tools;
+using Mud.AI.Agent.Tools.Errors;
 
 namespace Mud.Feishu.AI.Mcp;
 
@@ -492,7 +494,7 @@ public sealed class FeishuMcpToolServer
                 .InvokeAsync(new AIFunctionArguments(arguments), cancellationToken)
                 .ConfigureAwait(false);
 
-            return result is FeishuToolResult toolResult
+            return result is ToolResult toolResult
                 ? (toolResult.ToString(), toolResult.Error is not null)
                 : (result?.ToString() ?? string.Empty, false);
         }

@@ -37,7 +37,7 @@ public class AilyToolsTests
             Options.Create(new FeishuAgentOptions { Instructions = "test" }),
             dataKnowledge?.Object);
 
-    private static JsonObject Payload(FeishuToolResult result)
+    private static JsonObject Payload(ToolResult result)
         => JsonNode.Parse(result.ToString())!.AsObject();
 
     private static FeishuApiResult<T> Ok<T>(T data) where T : class => new() { Code = 0, Data = data };

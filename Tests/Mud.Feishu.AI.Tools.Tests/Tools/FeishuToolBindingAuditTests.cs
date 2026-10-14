@@ -33,7 +33,7 @@ public class FeishuToolBindingAuditTests
     private static FeishuToolDefinition CreateTool(string name = "bitable.query_records", bool isWrite = false)
         => new(name, "描述", ["bitable:app:readonly"], isWrite,
             isWrite ? FeishuToolRisk.Write : FeishuToolRisk.Read, "tenant",
-            (_, _, _) => Task.FromResult(FeishuToolResult.FromText("结果")));
+            (_, _, _) => Task.FromResult(ToolResult.FromText("结果")));
 
     private static FeishuToolContext CreateContext()
         => new("app-a", ConversationKey: "feishu:app-a:conversation:chat:oc_1", ChatId: "oc_1", UserId: "ou_1");
@@ -58,7 +58,7 @@ public class FeishuToolBindingAuditTests
 
         var result = await binding.ExecuteAsync(
             tool, new Dictionary<string, object?> { ["app_token"] = "bascnXxx" }, CreateContext(),
-            _ => Task.FromResult(FeishuToolResult.FromText("结果文本")));
+            _ => Task.FromResult(ToolResult.FromText("结果文本")));
 
         result.ToString().Should().Be("结果文本");
         records.Should().ContainSingle();
@@ -118,7 +118,7 @@ public class FeishuToolBindingAuditTests
 
         var act = async () => await binding.ExecuteAsync(
             tool, new Dictionary<string, object?>(), CreateContext(),
-            _ => Task.FromResult(FeishuToolResult.FromText("结果文本")));
+            _ => Task.FromResult(ToolResult.FromText("结果文本")));
 
         await act.Should().NotThrowAsync("sink 异常只记日志、绝不影响执行链（异常隔离）");
     }

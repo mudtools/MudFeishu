@@ -25,8 +25,8 @@ internal sealed class DriveCommentTools(
     private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
     /// <summary>drive.list_comments：列出云文档评论（分页；白名单 comment_id/user_id/is_solved/reply_count/created_at）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantDriveListCommentsTool))]
-    public Task<FeishuToolResult> ListCommentsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDriveListCommentsTool))]
+    public Task<ToolResult> ListCommentsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DriveListComments, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -69,8 +69,8 @@ internal sealed class DriveCommentTools(
     }
 
     /// <summary>drive.add_comment：添加全文评论（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantDriveAddCommentTool))]
-    public Task<FeishuToolResult> AddCommentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDriveAddCommentTool))]
+    public Task<ToolResult> AddCommentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DriveAddComment, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -83,7 +83,7 @@ internal sealed class DriveCommentTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/drive/v1/files/{file_token}/comments",
                     ToolDryRun.IdempotencyNote(null),
                     ("file_type", args.FileType.Length), ("text", args.Text.Length)));
@@ -107,8 +107,8 @@ internal sealed class DriveCommentTools(
     }
 
     /// <summary>drive.reply_comment：回复指定评论（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantDriveReplyCommentTool))]
-    public Task<FeishuToolResult> ReplyCommentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDriveReplyCommentTool))]
+    public Task<ToolResult> ReplyCommentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DriveReplyComment, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -121,7 +121,7 @@ internal sealed class DriveCommentTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/drive/v1/files/{file_token}/comments/{comment_id}/replies",
                     ToolDryRun.IdempotencyNote(null),
                     ("file_type", args.FileType.Length), ("text", args.Text.Length)));
@@ -144,8 +144,8 @@ internal sealed class DriveCommentTools(
     /// <c>is_solved</c> 是必填布尔——引擎解包映射表暂不支持必填布尔（MUDFT020/021 约束），
     /// Schema 层未标 required，缺失时在此兜底拒绝（与「Schema 是提示不是安全边界」契约一致）。
     /// </remarks>
-    [FeishuToolHandler(typeof(IFeishuTenantDriveResolveCommentTool))]
-    public Task<FeishuToolResult> ResolveCommentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDriveResolveCommentTool))]
+    public Task<ToolResult> ResolveCommentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DriveResolveComment, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -158,7 +158,7 @@ internal sealed class DriveCommentTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "PATCH", "/open-apis/drive/v1/files/{file_token}/comments/{comment_id}",
                     ToolDryRun.IdempotencyNote(null),
                     ("file_type", args.FileType.Length)));
@@ -217,7 +217,7 @@ internal sealed class DriveCommentTools(
     /// 解包 <see cref="FeishuNullDataApiResult"/>（不走 <c>FeishuApiResultReader.Read&lt;T&gt;</c>，T 不可推断）。
     /// </summary>
     /// <returns>成功返回 <see langword="null"/>；失败返回结构化错误结果（由调用方直接作为工具结果返回）。</returns>
-    private static FeishuToolResult? RequireNullDataSuccess(string toolName, FeishuNullDataApiResult? result)
+    private static ToolResult? RequireNullDataSuccess(string toolName, FeishuNullDataApiResult? result)
     {
         if (result is null)
         {
@@ -226,7 +226,7 @@ internal sealed class DriveCommentTools(
 
         return result.Code == 0
             ? null
-            : FeishuToolResult.FromError(FeishuToolBinding.StructuredError(
+            : ToolResult.FromError(FeishuToolBinding.StructuredError(
                 toolName, result.Code,
                 $"飞书接口返回错误 code={result.Code.ToString(CultureInfo.InvariantCulture)}, msg={result.Msg ?? "(无错误信息)"}"));
     }
@@ -256,8 +256,8 @@ internal sealed class DrivePermissionTools(
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>drive.get_permission_public：获取公开权限设置（底层 GET 只读；风险分级见类注释）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantDriveGetPermissionPublicTool))]
-    public Task<FeishuToolResult> GetPermissionPublicAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDriveGetPermissionPublicTool))]
+    public Task<ToolResult> GetPermissionPublicAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DriveGetPermissionPublic, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -268,7 +268,7 @@ internal sealed class DrivePermissionTools(
             // 全部写工具一致生效：预演只回 method/path，不调用下游。
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "GET", "/open-apis/drive/v2/permissions/{token}/public",
                     ToolDryRun.IdempotencyNote(null),
                     ("type", args.Type.Length)));
@@ -282,8 +282,8 @@ internal sealed class DrivePermissionTools(
     }
 
     /// <summary>drive.update_permission_public：更新公开权限设置（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantDriveUpdatePermissionPublicTool))]
-    public Task<FeishuToolResult> UpdatePermissionPublicAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDriveUpdatePermissionPublicTool))]
+    public Task<ToolResult> UpdatePermissionPublicAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DriveUpdatePermissionPublic, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -292,7 +292,7 @@ internal sealed class DrivePermissionTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "PATCH", "/open-apis/drive/v2/permissions/{token}/public",
                     ToolDryRun.IdempotencyNote(null),
                     ("external_access", args.ExternalAccess?.Length ?? 0),
@@ -321,8 +321,8 @@ internal sealed class DrivePermissionTools(
     }
 
     /// <summary>drive.grant_permission：添加协作者权限（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantDriveGrantPermissionTool))]
-    public Task<FeishuToolResult> GrantPermissionAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDriveGrantPermissionTool))]
+    public Task<ToolResult> GrantPermissionAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DriveGrantPermission, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -333,7 +333,7 @@ internal sealed class DrivePermissionTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/drive/v1/permissions/{token}/members",
                     ToolDryRun.IdempotencyNote(null),
                     ("type", args.Type.Length),
@@ -359,8 +359,8 @@ internal sealed class DrivePermissionTools(
     }
 
     /// <summary>drive.update_permission_member：更新协作者权限档位（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantDriveUpdatePermissionMemberTool))]
-    public Task<FeishuToolResult> UpdatePermissionMemberAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDriveUpdatePermissionMemberTool))]
+    public Task<ToolResult> UpdatePermissionMemberAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DriveUpdatePermissionMember, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -369,7 +369,7 @@ internal sealed class DrivePermissionTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "PATCH", "/open-apis/drive/v1/permissions/{token}/members/{member_id}",
                     ToolDryRun.IdempotencyNote(null),
                     ("type", args.Type.Length),
@@ -389,8 +389,8 @@ internal sealed class DrivePermissionTools(
     }
 
     /// <summary>drive.remove_permission：删除协作者权限（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantDriveRemovePermissionTool))]
-    public Task<FeishuToolResult> RemovePermissionAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDriveRemovePermissionTool))]
+    public Task<ToolResult> RemovePermissionAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DriveRemovePermission, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -399,7 +399,7 @@ internal sealed class DrivePermissionTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "DELETE", "/open-apis/drive/v1/permissions/{token}/members/{member_id}",
                     ToolDryRun.IdempotencyNote(null),
                     ("type", args.Type.Length)));
@@ -427,8 +427,8 @@ internal sealed class DrivePermissionTools(
     }
 
     /// <summary>drive.transfer_owner：转移云文档所有者（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantDriveTransferOwnerTool))]
-    public Task<FeishuToolResult> TransferOwnerAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDriveTransferOwnerTool))]
+    public Task<ToolResult> TransferOwnerAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DriveTransferOwner, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -439,7 +439,7 @@ internal sealed class DrivePermissionTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/drive/v1/permissions/{token}/members/transfer_owner",
                     ToolDryRun.IdempotencyNote(null),
                     ("type", args.Type.Length),
@@ -513,7 +513,7 @@ internal sealed class DrivePermissionTools(
     /// 解包 <see cref="FeishuNullDataApiResult"/>（不走 <c>FeishuApiResultReader.Read&lt;T&gt;</c>，T 不可推断）。
     /// </summary>
     /// <returns>成功返回 <see langword="null"/>；失败返回结构化错误结果（由调用方直接作为工具结果返回）。</returns>
-    private static FeishuToolResult? RequireNullDataSuccess(string toolName, FeishuNullDataApiResult? result)
+    private static ToolResult? RequireNullDataSuccess(string toolName, FeishuNullDataApiResult? result)
     {
         if (result is null)
         {
@@ -522,7 +522,7 @@ internal sealed class DrivePermissionTools(
 
         return result.Code == 0
             ? null
-            : FeishuToolResult.FromError(FeishuToolBinding.StructuredError(
+            : ToolResult.FromError(FeishuToolBinding.StructuredError(
                 toolName, result.Code,
                 $"飞书接口返回错误 code={result.Code.ToString(CultureInfo.InvariantCulture)}, msg={result.Msg ?? "(无错误信息)"}"));
     }

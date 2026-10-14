@@ -1,0 +1,220 @@
+#nullable enable
+~Mud.AI.Agent.Tools.ToolApiOutcome<T>.<Clone>$() -> Mud.AI.Agent.Tools.ToolApiOutcome<T>!
+~Mud.AI.Agent.Tools.ToolApiOutcome<T>.Equals(Mud.AI.Agent.Tools.ToolApiOutcome<T>? other) -> bool
+~static Mud.AI.Agent.Tools.ToolApiOutcome<T>.operator !=(Mud.AI.Agent.Tools.ToolApiOutcome<T>? left, Mud.AI.Agent.Tools.ToolApiOutcome<T>? right) -> bool
+~static Mud.AI.Agent.Tools.ToolApiOutcome<T>.operator ==(Mud.AI.Agent.Tools.ToolApiOutcome<T>? left, Mud.AI.Agent.Tools.ToolApiOutcome<T>? right) -> bool
+const Mud.AI.Agent.Tools.Errors.ToolErrorHintRenderer.HintPrefix = "[next] " -> string!
+const Mud.AI.Agent.Tools.Errors.ToolErrorPayloadSerializer.MaxPayloadBytes = 512 -> int
+const Mud.AI.Agent.Tools.Errors.ToolErrorPayloadSerializer.MaxScopeCount = 6 -> int
+const Mud.AI.Agent.Tools.Errors.ToolErrorPayloadSerializer.MaxSuggestionCount = 3 -> int
+const Mud.AI.Agent.Tools.Errors.ToolErrorPayloadSerializer.MaxSuggestionLength = 96 -> int
+const Mud.AI.Agent.Tools.Errors.ToolErrorSubtype.AuthorizationDenied = "authorization_denied" -> string!
+const Mud.AI.Agent.Tools.Errors.ToolErrorSubtype.DomainNotAllowed = "domain_not_allowed" -> string!
+const Mud.AI.Agent.Tools.Errors.ToolErrorSubtype.IdentityMismatch = "identity_mismatch" -> string!
+const Mud.AI.Agent.Tools.Errors.ToolErrorSubtype.InjectedContentBlocked = "injected_content_blocked" -> string!
+const Mud.AI.Agent.Tools.Errors.ToolErrorSubtype.InvalidArgs = "invalid_args" -> string!
+const Mud.AI.Agent.Tools.Errors.ToolErrorSubtype.MissingRequired = "missing_required" -> string!
+const Mud.AI.Agent.Tools.Errors.ToolErrorSubtype.NeedsUserConfirmation = "needs_user_confirmation" -> string!
+const Mud.AI.Agent.Tools.Errors.ToolErrorSubtype.RateLimited = "rate_limited" -> string!
+const Mud.AI.Agent.Tools.Errors.ToolErrorSubtype.RiskExceeded = "risk_exceeded" -> string!
+const Mud.AI.Agent.Tools.Errors.ToolErrorSubtype.ShapeMismatch = "shape_mismatch" -> string!
+const Mud.AI.Agent.Tools.Errors.ToolErrorSubtype.Timeout = "timeout" -> string!
+const Mud.AI.Agent.Tools.Errors.ToolErrorSubtype.ToolBudgetExceeded = "tool_budget_exceeded" -> string!
+const Mud.AI.Agent.Tools.Errors.ToolErrorSubtype.ToolNotAllowed = "tool_not_allowed" -> string!
+const Mud.AI.Agent.Tools.Errors.ToolErrorSubtype.Transient = "transient" -> string!
+const Mud.AI.Agent.Tools.Errors.ToolErrorSubtype.Unexpected = "unexpected" -> string!
+const Mud.AI.Agent.Tools.Errors.ToolErrorSubtype.UpstreamError = "upstream_error" -> string!
+const Mud.AI.Agent.Tools.Errors.ToolErrorSubtype.UserAuthRequired = "user_auth_required" -> string!
+const Mud.AI.Agent.Tools.Errors.ToolErrorSubtype.UserTokenRefreshFailed = "user_token_refresh_failed" -> string!
+const Mud.AI.Agent.Tools.Errors.ToolErrorSubtype.WriteNotAllowed = "write_not_allowed" -> string!
+const Mud.AI.Agent.Tools.ToolPagination.AggregateTruncationReason = "fetch_all 预算上限" -> string!
+const Mud.AI.Agent.Tools.ToolPagination.HardMaxItems = 1000 -> int
+const Mud.AI.Agent.Tools.ToolPagination.HardMaxPages = 50 -> int
+const Mud.AI.Agent.Tools.ToolResultPipeline.JsonTruncationReason = "JSON 感知截断" -> string!
+const Mud.AI.Agent.Tools.ToolResultPipeline.PlainTextTruncationReason = "文本超长截断" -> string!
+const Mud.AI.Agent.Tools.ToolResultText.TruncatedMarker = "…[truncated" -> string!
+Mud.AI.Agent.Tools.Errors.IToolErrorTextFormatter
+Mud.AI.Agent.Tools.Errors.IToolErrorTextFormatter.Format(string! toolName, string! reason) -> string!
+Mud.AI.Agent.Tools.Errors.IToolErrorTextFormatter.RenderHint(Mud.AI.Agent.Tools.Errors.ToolError! error) -> string!
+Mud.AI.Agent.Tools.Errors.ToolError
+Mud.AI.Agent.Tools.Errors.ToolError.<Clone>$() -> Mud.AI.Agent.Tools.Errors.ToolError!
+Mud.AI.Agent.Tools.Errors.ToolError.ApiCode.get -> int?
+Mud.AI.Agent.Tools.Errors.ToolError.ApiCode.init -> void
+Mud.AI.Agent.Tools.Errors.ToolError.Attempts.get -> int
+Mud.AI.Agent.Tools.Errors.ToolError.Attempts.init -> void
+Mud.AI.Agent.Tools.Errors.ToolError.Category.get -> string!
+Mud.AI.Agent.Tools.Errors.ToolError.Category.init -> void
+Mud.AI.Agent.Tools.Errors.ToolError.Deconstruct(out string! Category, out string! Subtype, out bool Retryable, out int? RetryAfterSeconds, out int? ApiCode, out int Attempts, out string? Trace, out string? Tool, out System.Collections.Generic.IReadOnlyList<string!>? Suggestions, out System.Collections.Generic.IReadOnlyList<string!>? RequiredScopes) -> void
+Mud.AI.Agent.Tools.Errors.ToolError.Equals(Mud.AI.Agent.Tools.Errors.ToolError? other) -> bool
+Mud.AI.Agent.Tools.Errors.ToolError.RequiredScopes.get -> System.Collections.Generic.IReadOnlyList<string!>?
+Mud.AI.Agent.Tools.Errors.ToolError.RequiredScopes.init -> void
+Mud.AI.Agent.Tools.Errors.ToolError.Retryable.get -> bool
+Mud.AI.Agent.Tools.Errors.ToolError.Retryable.init -> void
+Mud.AI.Agent.Tools.Errors.ToolError.RetryAfterSeconds.get -> int?
+Mud.AI.Agent.Tools.Errors.ToolError.RetryAfterSeconds.init -> void
+Mud.AI.Agent.Tools.Errors.ToolError.Subtype.get -> string!
+Mud.AI.Agent.Tools.Errors.ToolError.Subtype.init -> void
+Mud.AI.Agent.Tools.Errors.ToolError.Suggestions.get -> System.Collections.Generic.IReadOnlyList<string!>?
+Mud.AI.Agent.Tools.Errors.ToolError.Suggestions.init -> void
+Mud.AI.Agent.Tools.Errors.ToolError.Tool.get -> string?
+Mud.AI.Agent.Tools.Errors.ToolError.Tool.init -> void
+Mud.AI.Agent.Tools.Errors.ToolError.ToolError(string! Category, string! Subtype, bool Retryable, int? RetryAfterSeconds = null, int? ApiCode = null, int Attempts = 1, string? Trace = null, string? Tool = null, System.Collections.Generic.IReadOnlyList<string!>? Suggestions = null, System.Collections.Generic.IReadOnlyList<string!>? RequiredScopes = null) -> void
+Mud.AI.Agent.Tools.Errors.ToolError.Trace.get -> string?
+Mud.AI.Agent.Tools.Errors.ToolError.Trace.init -> void
+Mud.AI.Agent.Tools.Errors.ToolErrorCategory
+Mud.AI.Agent.Tools.Errors.ToolErrorCategory.Api = 5 -> Mud.AI.Agent.Tools.Errors.ToolErrorCategory
+Mud.AI.Agent.Tools.Errors.ToolErrorCategory.Authorization = 2 -> Mud.AI.Agent.Tools.Errors.ToolErrorCategory
+Mud.AI.Agent.Tools.Errors.ToolErrorCategory.Confirmation = 3 -> Mud.AI.Agent.Tools.Errors.ToolErrorCategory
+Mud.AI.Agent.Tools.Errors.ToolErrorCategory.ContentSafety = 7 -> Mud.AI.Agent.Tools.Errors.ToolErrorCategory
+Mud.AI.Agent.Tools.Errors.ToolErrorCategory.Internal = 6 -> Mud.AI.Agent.Tools.Errors.ToolErrorCategory
+Mud.AI.Agent.Tools.Errors.ToolErrorCategory.Policy = 1 -> Mud.AI.Agent.Tools.Errors.ToolErrorCategory
+Mud.AI.Agent.Tools.Errors.ToolErrorCategory.Retryable = 4 -> Mud.AI.Agent.Tools.Errors.ToolErrorCategory
+Mud.AI.Agent.Tools.Errors.ToolErrorCategory.Validation = 0 -> Mud.AI.Agent.Tools.Errors.ToolErrorCategory
+Mud.AI.Agent.Tools.Errors.ToolErrorClassifier
+Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta
+Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry
+Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.<Clone>$() -> Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry!
+Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.Action.get -> string!
+Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.Action.init -> void
+Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.Code.get -> int
+Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.Code.init -> void
+Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.Deconstruct(out int Code, out string? Domain, out string! Meaning, out string! Action) -> void
+Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.Domain.get -> string?
+Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.Domain.init -> void
+Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.Entry(int Code, string? Domain, string! Meaning, string! Action) -> void
+Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.Equals(Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry? other) -> bool
+Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.Meaning.get -> string!
+Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.Meaning.init -> void
+Mud.AI.Agent.Tools.Errors.ToolErrorHintRenderer
+Mud.AI.Agent.Tools.Errors.ToolErrorPayloadSerializer
+Mud.AI.Agent.Tools.Errors.ToolErrorSubtype
+Mud.AI.Agent.Tools.Errors.ToolErrorTextFormatter
+Mud.AI.Agent.Tools.Errors.ToolErrorTextFormatter.Format(string! toolName, string! reason) -> string!
+Mud.AI.Agent.Tools.Errors.ToolErrorTextFormatter.RenderHint(Mud.AI.Agent.Tools.Errors.ToolError! error) -> string!
+Mud.AI.Agent.Tools.Errors.ToolErrorTextFormatter.ToolErrorTextFormatter() -> void
+Mud.AI.Agent.Tools.IToolResultShaper
+Mud.AI.Agent.Tools.IToolResultShaper.ShapeAsync(string! toolName, string! projectedResult, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
+Mud.AI.Agent.Tools.ToolApiOutcome<T>
+Mud.AI.Agent.Tools.ToolApiOutcome<T>.Code.get -> int?
+Mud.AI.Agent.Tools.ToolApiOutcome<T>.Code.init -> void
+Mud.AI.Agent.Tools.ToolApiOutcome<T>.Data.get -> T?
+Mud.AI.Agent.Tools.ToolApiOutcome<T>.Data.init -> void
+Mud.AI.Agent.Tools.ToolApiOutcome<T>.Deconstruct(out bool Ok, out T? Data, out string? ErrorText, out int? Code) -> void
+Mud.AI.Agent.Tools.ToolApiOutcome<T>.ErrorText.get -> string?
+Mud.AI.Agent.Tools.ToolApiOutcome<T>.ErrorText.init -> void
+Mud.AI.Agent.Tools.ToolApiOutcome<T>.Ok.get -> bool
+Mud.AI.Agent.Tools.ToolApiOutcome<T>.Ok.init -> void
+Mud.AI.Agent.Tools.ToolApiOutcome<T>.ToolApiOutcome(bool Ok, T? Data, string? ErrorText, int? Code = null) -> void
+Mud.AI.Agent.Tools.ToolArgumentException
+Mud.AI.Agent.Tools.ToolArgumentException.Suggestions.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Mud.AI.Agent.Tools.ToolArgumentException.ToolArgumentException(string! message, System.Collections.Generic.IReadOnlyList<string!>! suggestions) -> void
+Mud.AI.Agent.Tools.ToolDryRun
+Mud.AI.Agent.Tools.ToolErrorFactory
+Mud.AI.Agent.Tools.ToolErrorText
+Mud.AI.Agent.Tools.ToolExecutor
+Mud.AI.Agent.Tools.ToolExecutor.FailIfError<T>(Mud.AI.Agent.Tools.ToolApiOutcome<T!>! outcome) -> Mud.AI.Agent.Tools.ToolResult?
+Mud.AI.Agent.Tools.ToolExecutor.FromApi<T>(Mud.AI.Agent.Tools.ToolApiOutcome<T!>! outcome, System.Func<T!, System.Text.Json.Nodes.JsonObject!>! project) -> Mud.AI.Agent.Tools.ToolResult!
+Mud.AI.Agent.Tools.ToolExecutor.FromApiUntruncated<T>(Mud.AI.Agent.Tools.ToolApiOutcome<T!>! outcome, System.Func<T!, System.Text.Json.Nodes.JsonObject!>! project) -> Mud.AI.Agent.Tools.ToolResult!
+Mud.AI.Agent.Tools.ToolExecutor.FromPagedApiAsync<TPage>(System.Func<string?, System.Threading.CancellationToken, System.Threading.Tasks.Task<Mud.AI.Agent.Tools.ToolApiOutcome<TPage!>!>!>! fetchPage, System.Func<TPage!, System.Text.Json.Nodes.JsonObject!>! project, System.Func<TPage!, (bool HasMore, string? PageToken)>! readPageState, bool? fetchAll, int? maxItems, string? pageToken, int optionsDefaultMaxItems, int optionsDefaultMaxPages, System.Threading.CancellationToken cancellationToken, bool untruncated = false) -> System.Threading.Tasks.Task<Mud.AI.Agent.Tools.ToolResult!>!
+Mud.AI.Agent.Tools.ToolExecutor.FromPagedResult(Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult! result, int maxItems) -> Mud.AI.Agent.Tools.ToolResult!
+Mud.AI.Agent.Tools.ToolExecutor.FromPlainText<T>(Mud.AI.Agent.Tools.ToolApiOutcome<T!>! outcome, System.Func<T!, string?>! text) -> Mud.AI.Agent.Tools.ToolResult!
+Mud.AI.Agent.Tools.ToolExecutor.RunAsync(System.Func<System.Threading.Tasks.Task<Mud.AI.Agent.Tools.ToolResult!>!>! body) -> System.Threading.Tasks.Task<Mud.AI.Agent.Tools.ToolResult!>!
+Mud.AI.Agent.Tools.ToolExecutor.ToolExecutor() -> void
+Mud.AI.Agent.Tools.ToolExecutor.ToolExecutor(string! toolName) -> void
+Mud.AI.Agent.Tools.ToolExecutor.ToolExecutor(string! toolName, int maxResultLength) -> void
+Mud.AI.Agent.Tools.ToolExecutor.ToolName.get -> string!
+Mud.AI.Agent.Tools.ToolPagination
+Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult
+Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.<Clone>$() -> Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult!
+Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.ApiCode.get -> int?
+Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.ApiCode.init -> void
+Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.Deconstruct(out System.Text.Json.Nodes.JsonArray! Items, out bool Truncated, out string? NextPageToken, out int TotalFetched, out int PagesFetched, out string? Error, out int? FailedPageIndex, out int? ApiCode) -> void
+Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.Equals(Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult? other) -> bool
+Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.Error.get -> string?
+Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.Error.init -> void
+Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.FailedPageIndex.get -> int?
+Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.FailedPageIndex.init -> void
+Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.Items.get -> System.Text.Json.Nodes.JsonArray!
+Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.Items.init -> void
+Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.NextPageToken.get -> string?
+Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.NextPageToken.init -> void
+Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.PagedFetchResult(System.Text.Json.Nodes.JsonArray! Items, bool Truncated, string? NextPageToken, int TotalFetched, int PagesFetched, string? Error, int? FailedPageIndex, int? ApiCode = null) -> void
+Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.PagesFetched.get -> int
+Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.PagesFetched.init -> void
+Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.TotalFetched.get -> int
+Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.TotalFetched.init -> void
+Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.Truncated.get -> bool
+Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.Truncated.init -> void
+Mud.AI.Agent.Tools.ToolResult
+Mud.AI.Agent.Tools.ToolResult.Error.get -> Mud.AI.Agent.Tools.Errors.ToolError?
+Mud.AI.Agent.Tools.ToolResult.Error.init -> void
+Mud.AI.Agent.Tools.ToolResult.Text.get -> string?
+Mud.AI.Agent.Tools.ToolResult.Text.init -> void
+Mud.AI.Agent.Tools.ToolResult.ToolResult() -> void
+Mud.AI.Agent.Tools.ToolResult.Truncated.get -> bool
+Mud.AI.Agent.Tools.ToolResult.Truncated.init -> void
+Mud.AI.Agent.Tools.ToolResult.TruncationReason.get -> string?
+Mud.AI.Agent.Tools.ToolResult.TruncationReason.init -> void
+Mud.AI.Agent.Tools.ToolResultJson
+Mud.AI.Agent.Tools.ToolResultJsons
+Mud.AI.Agent.Tools.ToolResultPipeline
+Mud.AI.Agent.Tools.ToolResultText
+override Mud.AI.Agent.Tools.Errors.ToolError.Equals(object? obj) -> bool
+override Mud.AI.Agent.Tools.Errors.ToolError.GetHashCode() -> int
+override Mud.AI.Agent.Tools.Errors.ToolError.ToString() -> string!
+override Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.Equals(object? obj) -> bool
+override Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.GetHashCode() -> int
+override Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.ToString() -> string!
+override Mud.AI.Agent.Tools.ToolApiOutcome<T>.Equals(object? obj) -> bool
+override Mud.AI.Agent.Tools.ToolApiOutcome<T>.GetHashCode() -> int
+override Mud.AI.Agent.Tools.ToolApiOutcome<T>.ToString() -> string!
+override Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.Equals(object? obj) -> bool
+override Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.GetHashCode() -> int
+override Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.ToString() -> string!
+override Mud.AI.Agent.Tools.ToolResult.ToString() -> string!
+static Mud.AI.Agent.Tools.Errors.ToolError.operator !=(Mud.AI.Agent.Tools.Errors.ToolError? left, Mud.AI.Agent.Tools.Errors.ToolError? right) -> bool
+static Mud.AI.Agent.Tools.Errors.ToolError.operator ==(Mud.AI.Agent.Tools.Errors.ToolError? left, Mud.AI.Agent.Tools.Errors.ToolError? right) -> bool
+static Mud.AI.Agent.Tools.Errors.ToolErrorClassifier.Classify(System.Exception! exception) -> (Mud.AI.Agent.Tools.Errors.ToolErrorCategory Category, string! Subtype)
+static Mud.AI.Agent.Tools.Errors.ToolErrorClassifier.ClassifyCode(int? code) -> (Mud.AI.Agent.Tools.Errors.ToolErrorCategory Category, string! Subtype)
+static Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.All.get -> System.Collections.Generic.IReadOnlyList<Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry!>!
+static Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.BuildSuggestions(int? code) -> System.Collections.Generic.IReadOnlyList<string!>?
+static Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.operator !=(Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry? left, Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry? right) -> bool
+static Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry.operator ==(Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry? left, Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry? right) -> bool
+static Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Find(int? code) -> Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry?
+static Mud.AI.Agent.Tools.Errors.ToolErrorHintRenderer.Render(Mud.AI.Agent.Tools.Errors.ToolError! error) -> string!
+static Mud.AI.Agent.Tools.Errors.ToolErrorPayloadSerializer.Serialize(Mud.AI.Agent.Tools.Errors.ToolError! error) -> string!
+static Mud.AI.Agent.Tools.ToolApiOutcome<T>.Fail(string! errorText, int? code = null) -> Mud.AI.Agent.Tools.ToolApiOutcome<T!>!
+static Mud.AI.Agent.Tools.ToolApiOutcome<T>.Success(T! data) -> Mud.AI.Agent.Tools.ToolApiOutcome<T!>!
+static Mud.AI.Agent.Tools.ToolDryRun.Describe(string! toolName, string! httpMethod, string! route, string? extraNote = null, params (string! Name, int Length)[]! bodyFields) -> string!
+static Mud.AI.Agent.Tools.ToolDryRun.IdempotencyNote(string? idempotencyKey) -> string!
+static Mud.AI.Agent.Tools.ToolDryRun.IsRequested(bool? dryRun) -> bool
+static Mud.AI.Agent.Tools.ToolErrorFactory.Compose(Mud.AI.Agent.Tools.Errors.ToolError! payload, string! humanReadable) -> string!
+static Mud.AI.Agent.Tools.ToolErrorFactory.Create(string! toolName, Mud.AI.Agent.Tools.Errors.ToolErrorCategory category, string! subtype, int? apiCode = null, string? trace = null, int attempts = 1, System.Collections.Generic.IReadOnlyList<string!>? suggestions = null, System.Collections.Generic.IReadOnlyList<string!>? requiredScopes = null, int? retryAfterSeconds = null) -> Mud.AI.Agent.Tools.Errors.ToolError!
+static Mud.AI.Agent.Tools.ToolErrorText.CategoryLiteral(Mud.AI.Agent.Tools.Errors.ToolErrorCategory category) -> string!
+static Mud.AI.Agent.Tools.ToolErrorText.StructuredError(string! toolName, int? apiCode, string! reason) -> string!
+static Mud.AI.Agent.Tools.ToolErrorText.StructuredError(string! toolName, Mud.AI.Agent.Tools.Errors.ToolErrorCategory category, string! reason, int? apiCode = null, string? subtype = null) -> string!
+static Mud.AI.Agent.Tools.ToolErrorText.StructuredError(string! toolName, string! reason) -> string!
+static Mud.AI.Agent.Tools.ToolExecutor.Require<TOptions>(Microsoft.Extensions.Options.IOptions<TOptions!>! options) -> TOptions!
+static Mud.AI.Agent.Tools.ToolPagination.AggregateOutcomesAsync<TPage>(System.Func<string?, System.Threading.CancellationToken, System.Threading.Tasks.Task<Mud.AI.Agent.Tools.ToolApiOutcome<TPage!>!>!>! fetchPage, System.Func<TPage!, (bool HasMore, string? NextToken)>! readPageState, System.Func<TPage!, System.Text.Json.Nodes.JsonArray!>! extractItems, int maxItems, int maxPages, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult!>!
+static Mud.AI.Agent.Tools.ToolPagination.BuildEnvelope(Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult! result, int maxItems) -> System.Text.Json.Nodes.JsonObject!
+static Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.operator !=(Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult? left, Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult? right) -> bool
+static Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.operator ==(Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult? left, Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult? right) -> bool
+static Mud.AI.Agent.Tools.ToolPagination.ResolveMaxItems(int? userValue, int optionsDefault) -> int
+static Mud.AI.Agent.Tools.ToolPagination.ResolveMaxPages(int optionsDefault) -> int
+static Mud.AI.Agent.Tools.ToolResult.FromError(Mud.AI.Agent.Tools.Errors.ToolError! error, string! humanReadableText) -> Mud.AI.Agent.Tools.ToolResult!
+static Mud.AI.Agent.Tools.ToolResult.FromError(string! errorText) -> Mud.AI.Agent.Tools.ToolResult!
+static Mud.AI.Agent.Tools.ToolResult.FromText(string! text, bool truncated = false, string? truncationReason = null) -> Mud.AI.Agent.Tools.ToolResult!
+static Mud.AI.Agent.Tools.ToolResultJson.ToText(System.Text.Json.Nodes.JsonNode! node) -> string!
+static Mud.AI.Agent.Tools.ToolResultJsons.ItemsEnvelope() -> System.Text.Json.Nodes.JsonObject!
+static Mud.AI.Agent.Tools.ToolResultJsons.PageEnvelope(bool? hasMore, string? pageToken) -> System.Text.Json.Nodes.JsonObject!
+static Mud.AI.Agent.Tools.ToolResultJsons.WithPageToken(this System.Text.Json.Nodes.JsonObject! envelope, string? pageToken) -> System.Text.Json.Nodes.JsonObject!
+static Mud.AI.Agent.Tools.ToolResultPipeline.Error(string! toolName, Mud.AI.Agent.Tools.Errors.ToolErrorCategory category, string! subtype, string! reason, int maxLength, int? apiCode = null, string? trace = null, int attempts = 1, System.Collections.Generic.IReadOnlyList<string!>? suggestions = null, System.Collections.Generic.IReadOnlyList<string!>? requiredScopes = null, int? retryAfterSeconds = null) -> Mud.AI.Agent.Tools.ToolResult!
+static Mud.AI.Agent.Tools.ToolResultPipeline.FromErrorText(Mud.AI.Agent.Tools.Errors.ToolError! payload, string! combined, int maxLength) -> Mud.AI.Agent.Tools.ToolResult!
+static Mud.AI.Agent.Tools.ToolResultPipeline.Ok(string? text, int maxLength) -> Mud.AI.Agent.Tools.ToolResult!
+static Mud.AI.Agent.Tools.ToolResultPipeline.OkJson(System.Text.Json.Nodes.JsonNode! node, int maxLength) -> Mud.AI.Agent.Tools.ToolResult!
+static Mud.AI.Agent.Tools.ToolResultPipeline.OkReceipt(System.Text.Json.Nodes.JsonObject! receipt) -> Mud.AI.Agent.Tools.ToolResult!
+static Mud.AI.Agent.Tools.ToolResultText.AddNode(this System.Text.Json.Nodes.JsonArray! array, System.Text.Json.Nodes.JsonNode? node) -> void
+static Mud.AI.Agent.Tools.ToolResultText.IsTruncated(string! text) -> bool
+static Mud.AI.Agent.Tools.ToolResultText.ToJsonNode(object? value) -> System.Text.Json.Nodes.JsonNode?
+static Mud.AI.Agent.Tools.ToolResultText.Truncate(string? text, int maxLength) -> string!
+static Mud.AI.Agent.Tools.ToolResultText.TruncateJson(string! text, int maxLength) -> string!

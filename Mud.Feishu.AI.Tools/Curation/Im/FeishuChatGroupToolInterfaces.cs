@@ -35,7 +35,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// 按关键词找特定群用 <c>im.search_chats</c>。
 /// </para>
 /// </remarks>
-[FeishuTool("chatgroup.list_chats",
+[AgentTool("chatgroup.list_chats",
     Description = "分页列出**机器人所在**的群（返回 chat_id/群名/群描述/群主 ID/是否外部群/群状态）——「我们有哪些群」「这个 chat_id 对应哪个群」的第一跳；按关键词找群请用 im.search_chats。只读，需 im:chat:readonly。",
     RequiredScopes = ["im:chat:readonly"],
     Source = nameof(IFeishuTenantV1ChatGroup) + "." + nameof(IFeishuTenantV1ChatGroup.GetChatGroupPageListAsync))]
@@ -58,7 +58,7 @@ public interface IFeishuTenantChatgroupListChatsTool
 /// 返回群的<b>发言权限设置</b>与<b>可发言成员名单</b>——回答"这个群的发言权限是怎么配的、
 /// 谁被允许发言"。它是 <c>im.get_chat</c> 的补充：后者给群主/管理员，本工具给"发言白名单"。
 /// </remarks>
-[FeishuTool("chatgroup.list_moderators",
+[AgentTool("chatgroup.list_moderators",
     Description = "查询群的发言权限设置与可发言成员名单（返回 moderation_setting + user_id 列表，分页）——回答「这个群谁能发言」。与 im.get_chat（群主/管理员）互补。只读，需 im:chat:readonly。",
     RequiredScopes = ["im:chat:readonly"],
     Source = nameof(IFeishuTenantV1ChatGroup) + "." + nameof(IFeishuTenantV1ChatGroup.GetChatGroupModeratorPageListByIdAsync))]
@@ -81,7 +81,7 @@ public interface IFeishuTenantChatgroupListModeratorsTool
 /// <b>发消息前的预检</b>：<c>im.send_message</c> 到一个机器人不在的群会失败。
 /// 先用本工具确认"当前身份在不在这个群"，能把一次必然失败的调用省掉。
 /// </remarks>
-[FeishuTool("chatgroup.is_in_chat",
+[AgentTool("chatgroup.is_in_chat",
     Description = "判断当前身份（机器人/用户）是否在指定群内（返回 is_in_chat）——向某个群发消息前的预检：不在群里就别发，先让用户把应用拉进群。只读，需 im:chat:readonly。",
     RequiredScopes = ["im:chat:readonly"],
     Source = nameof(IFeishuTenantV1ChatGroupMember) + "." + nameof(IFeishuTenantV1ChatGroupMember.GetMemberInChatByIdAsync))]
@@ -101,7 +101,7 @@ public interface IFeishuTenantChatgroupIsInChatTool
 /// 群菜单是群会话里的**快捷入口**（点击跳到机器人或网页）。纯配置数据，不含任何个人信息——
 /// 用于回答"这个群有哪些快捷入口"或核对菜单配置是否生效。
 /// </remarks>
-[FeishuTool("chatgroup.get_menu",
+[AgentTool("chatgroup.get_menu",
     Description = "查询群的快捷菜单配置（一级/二级菜单的名称、类型与跳转链接）——回答「这个群的快捷入口有哪些」或核对菜单是否配置生效。只读，需 im:chat:readonly。",
     RequiredScopes = ["im:chat:readonly"],
     Source = nameof(IFeishuTenantV1ChatGroupMenu) + "." + nameof(IFeishuTenantV1ChatGroupMenu.GetMenuByIdAsync))]
@@ -136,7 +136,7 @@ public interface IFeishuTenantChatgroupGetMenuTool
 /// 群主默认是**当前应用/机器人身份**。群主转让（<c>owner_id</c>）刻意不暴露——那是高危语义，
 /// 应走独立工具而不是混在建群参数里。
 /// </remarks>
-[FeishuTool("chatgroup.create_chat",
+[AgentTool("chatgroup.create_chat",
     Description = "创建一个群（返回 chat_id 与无效成员 ID 列表）——「拉个群沟通」的第一落点。写操作：默认不启用，需宿主授权（IToolExecutionAuthorizer），需 im:chat（⚠️ scope 名待控制台核对）。",
     RequiredScopes = ["im:chat"],
     IsWrite = true,
@@ -164,7 +164,7 @@ public interface IFeishuTenantChatgroupCreateChatTool
 /// <remarks>
 /// <b>只改传入的字段</b>（未传的保持原值）——与互通规则的覆盖式语义不同，这里是**增量更新**。
 /// </remarks>
-[FeishuTool("chatgroup.update_chat",
+[AgentTool("chatgroup.update_chat",
     Description = "更新群设置（群名/描述/编辑权限/拉人权限/分享名片权限/@所有人权限/消息模式）——未传的字段保持原值。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。",
     RequiredScopes = ["im:chat"],
     IsWrite = true,
@@ -194,7 +194,7 @@ public interface IFeishuTenantChatgroupUpdateChatTool
 /// <b>high-risk-write</b>（命中危险词 <c>delete</c>）：解散群是**不可逆**操作——
 /// 群内历史消息随群一起消失，且只能重建（新 chat_id）。
 /// </remarks>
-[FeishuTool("chatgroup.delete_chat",
+[AgentTool("chatgroup.delete_chat",
     Description = "解散一个群（⚠️ 不可逆：群内历史消息随群一起消失，且只能重建、会拿到新 chat_id——务必先 dry_run 预演并确认 chat_id 无误）。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。",
     RequiredScopes = ["im:chat"],
     IsWrite = true,
@@ -216,7 +216,7 @@ public interface IFeishuTenantChatgroupDeleteChatTool
 /// ⚠️ 方法名里没有危险词（不命中 <c>permission</c>），故生成器**不会**把它判为 high-risk-write；
 /// 但"改群发言权限"实质是高危语义（可一句话禁言全群），故在描述里自行标注后果。
 /// </remarks>
-[FeishuTool("chatgroup.update_moderation",
+[AgentTool("chatgroup.update_moderation",
     Description = "更新群的发言权限（⚠️ 高危语义：可一句话把全群改成「仅群主与管理员可发言」——moderation_setting=all_members / only_owner / moderator_list；选 moderator_list 时用 moderator_added_list / moderator_removed_list 增删可发言成员）。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。建议先 dry_run 预演。",
     RequiredScopes = ["im:chat"],
     IsWrite = true,
@@ -242,7 +242,7 @@ public interface IFeishuTenantChatgroupUpdateModerationTool
 /// 入群失败的成员会进 <c>invalid_id_list</c>（用户不存在 / 已退群 / 类型不匹配）——
 /// 回执必须把它带回，否则模型会以为"全员拉进去了"。
 /// </remarks>
-[FeishuTool("chatgroup.add_member",
+[AgentTool("chatgroup.add_member",
     Description = "把成员拉进群（返回无效成员 ID 列表）——「把人加进群沟通」。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。",
     RequiredScopes = ["im:chat"],
     IsWrite = true,
@@ -267,7 +267,7 @@ public interface IFeishuTenantChatgroupAddMemberTool
 /// <b>high-risk-write</b>（命中危险词 <c>remove</c>）：把成员移出群——对方会立即失去群内可见性，
 /// 且**不会**收到"你被移出了"的单独通知（只有群成员数变化）。
 /// </remarks>
-[FeishuTool("chatgroup.remove_member",
+[AgentTool("chatgroup.remove_member",
     Description = "把成员移出群（⚠️ 对方立即失去群内可见性，且不会收到单独通知——务必先 dry_run 预演并确认 id_list 无误）。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。",
     RequiredScopes = ["im:chat"],
     IsWrite = true,
@@ -287,7 +287,7 @@ public interface IFeishuTenantChatgroupRemoveMemberTool
 /// <summary>
 /// 工具接口：chatgroup.me_join_chat（映射 <c>MeJoinChatGroupAsync</c>）。
 /// </summary>
-[FeishuTool("chatgroup.me_join_chat",
+[AgentTool("chatgroup.me_join_chat",
     Description = "让当前应用/机器人身份加入一个群（公开群可直接加入；私密群需已在群内或被邀请）——用于「机器人进群后先自证在群内」的前置步骤。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。",
     RequiredScopes = ["im:chat"],
     IsWrite = true,
@@ -305,7 +305,7 @@ public interface IFeishuTenantChatgroupMeJoinChatTool
 /// <summary>
 /// 工具接口：chatgroup.add_manager（映射 <c>AddManagersAsync</c>）。
 /// </summary>
-[FeishuTool("chatgroup.add_manager",
+[AgentTool("chatgroup.add_manager",
     Description = "把成员设为群管理员（可多人；返回无效 ID 列表）——「给群加管理员」。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。",
     RequiredScopes = ["im:chat"],
     IsWrite = true,
@@ -329,7 +329,7 @@ public interface IFeishuTenantChatgroupAddManagerTool
 /// <b>high-risk-write</b>（命中危险词 <c>delete</c>）：撤销管理员身份——对方失去群管理能力
 /// （改设置、踢人、置顶等），且**不会**收到通知。
 /// </remarks>
-[FeishuTool("chatgroup.delete_manager",
+[AgentTool("chatgroup.delete_manager",
     Description = "撤销成员的群管理员身份（⚠️ 对方立即失去群管理能力且不会收到通知——务必先 dry_run 预演并确认 manager_ids 无误）。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。",
     RequiredScopes = ["im:chat"],
     IsWrite = true,
@@ -353,7 +353,7 @@ public interface IFeishuTenantChatgroupDeleteManagerTool
 /// <c>action_type=1</c> 必须配 <c>message_id</c>（置顶某条消息）；<c>action_type=2</c> 是置顶群公告
 /// （**不需要** message_id，但要求群已开通公告——公告内容本身仍归 docx 域工具写）。
 /// </remarks>
-[FeishuTool("chatgroup.put_top_notice",
+[AgentTool("chatgroup.put_top_notice",
     Description = "设置群置顶（action_type=1 置顶某条消息，需配 message_id；action_type=2 置顶群公告，不需 message_id）——「把重要内容钉在群顶部」。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。",
     RequiredScopes = ["im:chat"],
     IsWrite = true,
@@ -377,7 +377,7 @@ public interface IFeishuTenantChatgroupPutTopNoticeTool
 /// <b>high-risk-write</b>（命中危险词 <c>delete</c>）：取消群置顶——影响面是全群可见性
 /// （所有人看到的"钉在顶部"消失），但不丢消息本身。
 /// </remarks>
-[FeishuTool("chatgroup.delete_top_notice",
+[AgentTool("chatgroup.delete_top_notice",
     Description = "取消群置顶（⚠️ 全群可见的置顶会消失，消息本身不丢失——务必先 dry_run 预演并确认 chat_id 无误）。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。",
     RequiredScopes = ["im:chat"],
     IsWrite = true,
@@ -400,7 +400,7 @@ public interface IFeishuTenantChatgroupDeleteTopNoticeTool
 /// 新增/修改菜单（<c>add_menu</c> / <c>update_menu</c>）的请求体是**嵌套树结构**，
 /// 扁平参数无法表达，故本轮不策展（见 Guidance）。
 /// </remarks>
-[FeishuTool("chatgroup.delete_menu",
+[AgentTool("chatgroup.delete_menu",
     Description = "删除群的快捷菜单一级入口（⚠️ 二级菜单会随父级一起消失——务必先 dry_run 预演并确认 chat_menu_top_level_ids 无误）。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。",
     RequiredScopes = ["im:chat"],
     IsWrite = true,

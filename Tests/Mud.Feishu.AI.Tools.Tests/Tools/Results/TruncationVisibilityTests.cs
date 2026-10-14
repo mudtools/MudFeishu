@@ -15,7 +15,7 @@ namespace Mud.Feishu.AI.Tools.Tests.Tools.Results;
 /// <remarks>
 /// <para>
 /// <b>为何不直接调 <c>ToolExecutor.FromApi</c></b>：<c>ToolExecutor</c> 是 internal struct，
-/// 且其输入 <c>FeishuApiOutcome&lt;T&gt;</c> 的构造需要真实 API 返回——
+/// 且其输入 <c>ToolApiOutcome&lt;T&gt;</c> 的构造需要真实 API 返回——
 /// 测试退化为"直接调 <c>TruncateJson</c>/<c>Truncate</c> + <c>IsTruncated</c> 判定逻辑"的等价断言，
 /// 与守卫 <c>TruncationVisibilityContractGuards</c> 互补（守卫锁源码结构，测试锁行为）。
 /// </para>
@@ -110,25 +110,25 @@ public class TruncationVisibilityTests
     }
 
     /// <summary>
-    /// FeishuToolResult.FromText 的 truncated 参数必须正确传入：
+    /// ToolResult.FromText 的 truncated 参数必须正确传入：
     /// 截断时 Truncated=true 且 TruncationReason 非空。
     /// </summary>
     [Fact]
     public void FromText_WithTruncated_ShouldBackfillMarker()
     {
-        var result = FeishuToolResult.FromText("some text", truncated: true, truncationReason: "JSON 感知截断");
+        var result = ToolResult.FromText("some text", truncated: true, truncationReason: "JSON 感知截断");
 
         result.Truncated.Should().BeTrue("FromText 必须正确回填 Truncated 标记");
         result.TruncationReason.Should().Be("JSON 感知截断");
     }
 
     /// <summary>
-    /// FeishuToolResult.FromText 默认不截断。
+    /// ToolResult.FromText 默认不截断。
     /// </summary>
     [Fact]
     public void FromText_WithoutTruncated_ShouldDefaultToFalse()
     {
-        var result = FeishuToolResult.FromText("some text");
+        var result = ToolResult.FromText("some text");
 
         result.Truncated.Should().BeFalse("默认未截断");
         result.TruncationReason.Should().BeNull();

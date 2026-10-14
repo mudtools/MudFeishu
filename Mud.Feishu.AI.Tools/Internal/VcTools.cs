@@ -49,8 +49,8 @@ internal sealed class VcTools(
     private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
     /// <summary>vc.list_meetings：按时间范围查询会议列表。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantVcListMeetingsTool))]
-    public Task<FeishuToolResult> ListMeetingsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantVcListMeetingsTool))]
+    public Task<ToolResult> ListMeetingsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.VcListMeetings, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -59,7 +59,7 @@ internal sealed class VcTools(
                 ?? throw new ArgumentException("vc.list_meetings 需要 IFeishuTenantV1VideoConferencingMeetinData——宿主须启用 VC 域客户端");
             var args = VcListMeetingsArgs.Unpack(arguments);
 
-            async Task<FeishuApiOutcome<GetMeetingListResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<GetMeetingListResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await client
                     .GetMeetingPageListAsync(
                         args.StartTime,
@@ -93,8 +93,8 @@ internal sealed class VcTools(
     }
 
     /// <summary>vc.get_meeting：获取单个会议详情。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantVcGetMeetingTool))]
-    public Task<FeishuToolResult> GetMeetingAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantVcGetMeetingTool))]
+    public Task<ToolResult> GetMeetingAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.VcGetMeeting, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -111,8 +111,8 @@ internal sealed class VcTools(
     }
 
     /// <summary>vc.list_participants：按会议号与时段时间查询参会人明细。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantVcListParticipantsTool))]
-    public Task<FeishuToolResult> ListParticipantsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantVcListParticipantsTool))]
+    public Task<ToolResult> ListParticipantsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.VcListParticipants, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -121,7 +121,7 @@ internal sealed class VcTools(
                 ?? throw new ArgumentException("vc.list_participants 需要 IFeishuTenantV1VideoConferencingMeetinData——宿主须启用 VC 域客户端");
             var args = VcListParticipantsArgs.Unpack(arguments);
 
-            async Task<FeishuApiOutcome<GetParticipantListResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<GetParticipantListResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await client
                     .GetParticipantPageListAsync(
                         args.MeetingStartTime,
@@ -154,8 +154,8 @@ internal sealed class VcTools(
     }
 
     /// <summary>vc.get_recording：获取会议录制文件信息。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantVcGetRecordingTool))]
-    public Task<FeishuToolResult> GetRecordingAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantVcGetRecordingTool))]
+    public Task<ToolResult> GetRecordingAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.VcGetRecording, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -172,8 +172,8 @@ internal sealed class VcTools(
     }
 
     /// <summary>vc.list_reserves：获取预约详情。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantVcListReservesTool))]
-    public Task<FeishuToolResult> ListReservesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantVcListReservesTool))]
+    public Task<ToolResult> ListReservesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.VcListReserves, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -190,8 +190,8 @@ internal sealed class VcTools(
     }
 
     /// <summary>vc.list_rooms：分页列出会议室。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantVcListRoomsTool))]
-    public Task<FeishuToolResult> ListRoomsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantVcListRoomsTool))]
+    public Task<ToolResult> ListRoomsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.VcListRooms, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -202,7 +202,7 @@ internal sealed class VcTools(
 
             // ⚠️ 该接口返回 FeishuApiPageListResult<T>（page_size 非空 + 独立 page_token），
             // 与其余 VC 接口的 FeishuApiResult<T> 形状不同——解包后 T = ApiPageListResult<MeetingRoomInfo>。
-            async Task<FeishuApiOutcome<ApiPageListResult<MeetingRoomInfo>>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<ApiPageListResult<MeetingRoomInfo>>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await client
                     .GetMeetingRoomsPageListAsync(
                         room_level_id: args.RoomLevelId,

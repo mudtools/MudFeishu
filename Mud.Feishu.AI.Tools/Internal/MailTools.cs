@@ -45,8 +45,8 @@ internal sealed class MailTools(
     private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
     /// <summary>mail.list_messages：列出用户邮箱中的邮件（分页，白名单 message_id）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantMailListMessagesTool))]
-    public Task<FeishuToolResult> ListMessagesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantMailListMessagesTool))]
+    public Task<ToolResult> ListMessagesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.MailListMessages, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -145,8 +145,8 @@ internal sealed class MailTools(
     }
 
     /// <summary>mail.get_message：获取邮件详情（白名单 subject/from/to/cc/body_preview/message_id）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantMailGetMessageTool))]
-    public Task<FeishuToolResult> GetMessageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantMailGetMessageTool))]
+    public Task<ToolResult> GetMessageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.MailGetMessage, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -176,8 +176,8 @@ internal sealed class MailTools(
     /// 模型不感知两步细节——工具层把 subject/body/to/cc/bcc 组装成 RFC 5822 EML → base64url 编码 →
     /// 创建草稿 → 发送草稿。草稿创建失败或发送失败均返回结构化错误。
     /// </remarks>
-    [FeishuToolHandler(typeof(IFeishuUserMailSendMessageTool))]
-    public Task<FeishuToolResult> SendMessageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuUserMailSendMessageTool))]
+    public Task<ToolResult> SendMessageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.MailSendMessage);
         return executor.RunAsync(async () =>
@@ -192,7 +192,7 @@ internal sealed class MailTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/drafts",
                     ToolDryRun.IdempotencyNote(null),
                     ("user_mailbox_id", args.UserMailboxId.Length),
@@ -321,8 +321,8 @@ internal sealed class MailTools(
             + "（软缺席，不影响 mail 其它工具）");
 
     /// <summary>mail.search：按关键字搜索邮件（<b>仅 user 身份接口</b>提供该能力）。</summary>
-    [FeishuToolHandler(typeof(IFeishuUserMailSearchTool))]
-    public Task<FeishuToolResult> SearchMailAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuUserMailSearchTool))]
+    public Task<ToolResult> SearchMailAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.MailSearch, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -334,7 +334,7 @@ internal sealed class MailTools(
             // P-0 补齐：统一分页出口——聚合路径与单页路径共用**同一次调用定义**与**同一份投影**。
             // SearchUserMailboxMessageResult 是"自带 has_more/page_token 但不继承 ApiPageListResult"
             // 的历史 DTO，故走显式页状态重载。
-            async Task<FeishuApiOutcome<SearchUserMailboxMessageResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<SearchUserMailboxMessageResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await client
                     .SearchUserMailboxMessageAsync(
                         args.UserMailboxId,
@@ -357,8 +357,8 @@ internal sealed class MailTools(
     }
 
     /// <summary>mail.list_labels：列出邮箱标签（供 mail.list_messages 的 label 过滤取 id）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantMailListLabelsTool))]
-    public Task<FeishuToolResult> ListLabelsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantMailListLabelsTool))]
+    public Task<ToolResult> ListLabelsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.MailListLabels, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -388,8 +388,8 @@ internal sealed class MailTools(
     }
 
     /// <summary>mail.get_thread：取会话线程（同一主题的往来邮件）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantMailGetThreadTool))]
-    public Task<FeishuToolResult> GetThreadAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantMailGetThreadTool))]
+    public Task<ToolResult> GetThreadAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.MailGetThread, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -436,8 +436,8 @@ internal sealed class MailTools(
     /// <b>为什么默认 true</b>：工具名即语义（mark_read）。若默认 false，模型忘记传参时
     /// 会把邮件标成<b>未读</b>——与调用方预期相反，属"静默反向"。
     /// </remarks>
-    [FeishuToolHandler(typeof(IFeishuTenantMailMarkReadTool))]
-    public Task<FeishuToolResult> MarkReadAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantMailMarkReadTool))]
+    public Task<ToolResult> MarkReadAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.MailMarkRead, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -448,7 +448,7 @@ internal sealed class MailTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "PATCH",
                     $"/open-apis/mail/v1/user_mailboxes/{args.UserMailboxId}/messages/{args.MessageId}",
                     ToolDryRun.IdempotencyNote(null),

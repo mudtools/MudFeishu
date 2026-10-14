@@ -99,7 +99,7 @@ public class HighRiskWriteEnablementContractGuards
                 _ =>
                 {
                     downstreamCalled = true;
-                    return Task.FromResult(FeishuToolResult.FromText("不应到达"));
+                    return Task.FromResult(ToolResult.FromText("不应到达"));
                 });
 
             downstreamCalled.Should().BeFalse("无授权器时写工具必须 fail-closed（零调用下游）");
@@ -131,7 +131,7 @@ public class HighRiskWriteEnablementContractGuards
                 definition,
                 new Dictionary<string, object?>(StringComparer.Ordinal) { ["app_token"] = "bascn" },
                 new FeishuToolContext(AppKey),
-                _ => Task.FromResult(FeishuToolResult.FromText("不应到达")));
+                _ => Task.FromResult(ToolResult.FromText("不应到达")));
 
             result.ToString().Should().Contain(
                 ToolErrorSubtype.RiskExceeded,

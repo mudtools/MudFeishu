@@ -38,13 +38,13 @@ internal sealed class HireJobRequirementTools(
     private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
     /// <summary>hire.list_job_requirements：分页列出招聘需求（可按职位 ID 过滤）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantHireListJobRequirementsTool))]
-    public Task<FeishuToolResult> ListJobRequirementsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantHireListJobRequirementsTool))]
+    public Task<ToolResult> ListJobRequirementsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.HireListJobRequirements, _maxResultLength);
         if (_hireJobRequirementClient is null)
         {
-            return Task.FromResult(FeishuToolResult.FromError(FeishuToolBinding.StructuredError(
+            return Task.FromResult(ToolResult.FromError(FeishuToolBinding.StructuredError(
                 executor.ToolName,
                 "未注册 IFeishuTenantV1HireJobRequirement 客户端——招聘需求能力需宿主启用招聘（Hire）需求 API（软缺席）")));
         }
@@ -55,7 +55,7 @@ internal sealed class HireJobRequirementTools(
 
             // job_id 是 SDK 原生业务过滤（可下发）；page_size 不下发（DP-B1-0）。
             // P-3：统一分页出口——聚合路径与单页路径共用**同一次调用定义**与**同一份投影**。
-            async Task<FeishuApiOutcome<GetJobRequirementListResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<GetJobRequirementListResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _hireJobRequirementClient
                     .GetJobRequirementListAsync(
                         query: new JobRequirementListQuery { JobId = args.JobId, PageToken = token },

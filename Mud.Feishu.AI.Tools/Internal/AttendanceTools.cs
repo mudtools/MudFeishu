@@ -57,8 +57,8 @@ internal sealed class AttendanceTools(
     // ─────────────────────────── 打卡流水面（3 个） ───────────────────────────
 
     /// <summary>attendance.query_my_flow：查询本人打卡结果（user 身份）。</summary>
-    [FeishuToolHandler(typeof(IFeishuUserAttendanceQueryMyFlowTool))]
-    public Task<FeishuToolResult> QueryUserTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuUserAttendanceQueryMyFlowTool))]
+    public Task<ToolResult> QueryUserTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.AttendanceQueryMyFlow, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -85,8 +85,8 @@ internal sealed class AttendanceTools(
     }
 
     /// <summary>attendance.query_user_flow：批量查询他人打卡流水（tenant 身份；PII 敏感）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantAttendanceQueryUserFlowTool))]
-    public Task<FeishuToolResult> QueryUserFlowAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantAttendanceQueryUserFlowTool))]
+    public Task<ToolResult> QueryUserFlowAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.AttendanceQueryUserFlow, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -116,8 +116,8 @@ internal sealed class AttendanceTools(
     }
 
     /// <summary>attendance.get_flow：单条打卡流水详情（tenant 身份；PII 敏感）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantAttendanceGetFlowTool))]
-    public Task<FeishuToolResult> GetUserFlowAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantAttendanceGetFlowTool))]
+    public Task<ToolResult> GetUserFlowAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.AttendanceGetFlow, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -141,8 +141,8 @@ internal sealed class AttendanceTools(
     // ─────────────────────────── 排班 / 统计 / 班次面（4 个） ───────────────────────────
 
     /// <summary>attendance.query_daily_shift：查询排班表（tenant 身份）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantAttendanceQueryDailyShiftTool))]
-    public Task<FeishuToolResult> QueryUserDailyShiftAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantAttendanceQueryDailyShiftTool))]
+    public Task<ToolResult> QueryUserDailyShiftAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.AttendanceQueryDailyShift, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -171,8 +171,8 @@ internal sealed class AttendanceTools(
     }
 
     /// <summary>attendance.query_stats_data：查询考勤统计报表（tenant 身份）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantAttendanceQueryStatsDataTool))]
-    public Task<FeishuToolResult> QueryUserStatsDataAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantAttendanceQueryStatsDataTool))]
+    public Task<ToolResult> QueryUserStatsDataAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.AttendanceQueryStatsData, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -206,8 +206,8 @@ internal sealed class AttendanceTools(
     }
 
     /// <summary>attendance.query_my_remedys：查询补卡记录（tenant 身份）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantAttendanceQueryMyRemedysTool))]
-    public Task<FeishuToolResult> QueryUserTaskRemedyAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantAttendanceQueryMyRemedysTool))]
+    public Task<ToolResult> QueryUserTaskRemedyAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.AttendanceQueryMyRemedys, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -238,8 +238,8 @@ internal sealed class AttendanceTools(
     }
 
     /// <summary>attendance.get_shift：按 ID 获取班次规则详情（tenant 身份）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantAttendanceGetShiftTool))]
-    public Task<FeishuToolResult> GetShiftByIdAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantAttendanceGetShiftTool))]
+    public Task<ToolResult> GetShiftByIdAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.AttendanceGetShift, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -260,8 +260,8 @@ internal sealed class AttendanceTools(
     // ─────────────────────────── 写面（1 个：补卡申请） ───────────────────────────
 
     /// <summary>attendance.submit_remedy：提交补卡申请（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantAttendanceSubmitRemedyTool))]
-    public Task<FeishuToolResult> CreateUserTaskRemedyAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantAttendanceSubmitRemedyTool))]
+    public Task<ToolResult> CreateUserTaskRemedyAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.AttendanceSubmitRemedy);
         return executor.RunAsync(async () =>
@@ -278,7 +278,7 @@ internal sealed class AttendanceTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/attendance/v1/user_task_remedy",
                     ToolDryRun.IdempotencyNote(null),
                     ("user_id", args.UserId.Length),

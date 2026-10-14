@@ -225,6 +225,8 @@ public class AgentContractGuards
                 "Mud.Feishu.csproj",
                 "Mud.Feishu.DataModels.csproj",
                 "Mud.Feishu.EventCallback.csproj",
+                // v2.3 P1-D：Mud.AI.Agent（执行器骨架 + ToolApiOutcome）——AI → Mud.AI.* 单向。
+                "Mud.AI.Agent.csproj",
             ],
             ["Mud.Feishu.Redis.csproj"] = ["Mud.Feishu.Abstractions.csproj"],
         };
@@ -242,7 +244,7 @@ public class AgentContractGuards
             {
                 var element = match.Value;
                 // OutputItemType="Analyzer"（ReferenceOutputAssembly=false）是编译期分析器形态，
-                // 不产生运行时程序集依赖，不属于引用治理范畴（如 [FeishuTool] 源生成器）。
+                // 不产生运行时程序集依赖，不属于引用治理范畴（如 [AgentTool] 源生成器）。
                 if (element.Contains("OutputItemType", StringComparison.OrdinalIgnoreCase)
                     || element.Contains("ReferenceOutputAssembly=\"false\"", StringComparison.OrdinalIgnoreCase))
                     continue;
@@ -476,11 +478,15 @@ public class AgentContractGuards
     [Fact]
     public void ConfirmationToken_ShouldNeverEnterModelVisiblePayload()
     {
+        // v2.3 P1-D：待确认**文案**随错误契约族中立化上移 Mud.AI.Agent/Tools/ToolErrorText.cs
+        // （FeishuToolBinding 只保留转发）；判据 ① 的锚点追到实现所在文件，
+        // 判据 ②（宿主批准通道）仍是飞书侧契约，锚点留在 FeishuToolBinding.cs。
+        var source = File.ReadAllText(Path.Combine(
+            GetSolutionRoot(), "Mud.AI.Agent", "Tools", "ToolErrorText.cs"));
+
         var bindingSource = Path.Combine(
             GetSolutionRoot(), "Mud.Feishu.AI.Tools", "Tools", "FeishuToolBinding.cs");
         File.Exists(bindingSource).Should().BeTrue();
-
-        var source = File.ReadAllText(bindingSource);
 
         // R3-02：切片方式从"取到行尾"改为"括号配平的方法体切片"——
         // 被守护文案跨两行（FeishuToolBinding.cs:416-417），单行切片会漏掉续行内容。
@@ -508,12 +514,13 @@ public class AgentContractGuards
         branch.Should().NotContain("confirmation_token", "不得以任何变体形式回灌令牌提示");
         branch.Should().Contain("需要用户确认", "待确认语义必须保留（三态文案不得退化）");
 
-        // ② 批准状态归宿主授权器，SDK 不签发任何凭据。
-        source.Should().Contain("ToolApprovalRequest", "待确认事件必须经 ToolApprovalRequest 投递给宿主");
-        source.Should().Contain("IFeishuToolApprovalChannel", "必须存在宿主批准通道契约（未注册即 fail-closed）");
-        source.Should().NotContain("ToolConfirmationToken", "WP3 已删除自研确认令牌，不得重新引入");
-        source.Should().NotContain("IToolConfirmationTokenSecretProvider", "WP3 已删除令牌密钥提供者契约");
-        source.Should().NotContain("#pragma warning disable CS0618", "WP3 已删除令牌过渡层，不再需要 CS0618 抑制");
+        // ② 批准状态归宿主授权器，SDK 不签发任何凭据（锚点：飞书侧绑定 —— v2.3 未随骨架上移）。
+        var binding = File.ReadAllText(bindingSource);
+        binding.Should().Contain("ToolApprovalRequest", "待确认事件必须经 ToolApprovalRequest 投递给宿主");
+        binding.Should().Contain("IFeishuToolApprovalChannel", "必须存在宿主批准通道契约（未注册即 fail-closed）");
+        binding.Should().NotContain("ToolConfirmationToken", "WP3 已删除自研确认令牌，不得重新引入");
+        binding.Should().NotContain("IToolConfirmationTokenSecretProvider", "WP3 已删除令牌密钥提供者契约");
+        binding.Should().NotContain("#pragma warning disable CS0618", "WP3 已删除令牌过渡层，不再需要 CS0618 抑制");
     }
 
     /// <summary>
@@ -525,14 +532,21 @@ public class AgentContractGuards
     [Fact]
     public void StructuredError_NeedsConfirmation_ShouldNotLeakCredentialInBehavior()
     {
+        // v2.3 P1-D：StructuredError 的实现上移 Mud.AI.Agent/Tools/ToolErrorText.cs（同前一条守卫）。
         var bindingSource = Path.Combine(
-            GetSolutionRoot(), "Mud.Feishu.AI.Tools", "Tools", "FeishuToolBinding.cs");
+            GetSolutionRoot(), "Mud.AI.Agent", "Tools", "ToolErrorText.cs");
         var source = File.ReadAllText(bindingSource);
 
         // 提取 StructuredError 方法体整体（从方法签名到下一个方法声明）。
-        var methodStart = source.IndexOf("internal static string StructuredError(string toolName, ToolErrorCategory category", StringComparison.Ordinal);
+        // v2.3 P1-D：visibility-agnostic——骨架里该方法为 public（FeishuToolBinding 侧为 internal 转发），
+        // 锚点只匹配 `static string StructuredError(…)`，改名/改可见性都不会让守卫假红。
+        var methodStart = source.IndexOf("static string StructuredError(string toolName, ToolErrorCategory category", StringComparison.Ordinal);
         methodStart.Should().BeGreaterThan(-1, "StructuredError 方法必须存在");
-        var methodEnd = source.IndexOf("\n    internal static string StructuredError(string toolName, int? apiCode", StringComparison.Ordinal);
+        var methodEnd = source.IndexOf("\n    static string StructuredError(string toolName, int? apiCode", StringComparison.Ordinal);
+        if (methodEnd < 0)
+        {
+            methodEnd = source.IndexOf("\n    public static string StructuredError(string toolName, int? apiCode", StringComparison.Ordinal);
+        }
         if (methodEnd < 0)
         {
             // fallback: 找下一个方法声明

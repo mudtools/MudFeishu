@@ -214,7 +214,7 @@ public class FeishuToolDescriptorContractGuards
     public void SchemaByToolName_ShouldNotBeEmpty()
     {
         SchemaByToolName.Should().NotBeEmpty(
-            "生成器产出为空意味着源生成器未扫描到任何 [FeishuTool] 接口——" +
+            "生成器产出为空意味着源生成器未扫描到任何 [AgentTool] 接口——" +
             "先断言产出非空，再断言诊断（防假绿）");
 
         SchemaByToolName.Count.Should().BeGreaterThan(0,

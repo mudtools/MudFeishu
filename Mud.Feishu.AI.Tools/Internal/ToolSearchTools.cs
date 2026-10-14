@@ -49,8 +49,8 @@ internal sealed class ToolSearchTools(
     private const int MaxLimit = 30;
 
     /// <summary>feishu.tool_search：在已策展工具中搜索。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantToolSearchTool))]
-    public Task<FeishuToolResult> SearchAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantToolSearchTool))]
+    public Task<ToolResult> SearchAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.FeishuToolSearch, _maxResultLength);
         return executor.RunAsync(() =>

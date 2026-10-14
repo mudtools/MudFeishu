@@ -10,7 +10,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // ─────────────────────────── Sheets（2 个） ───────────────────────────
 
 /// <summary>工具接口：sheets.list_sheets（映射 <c>IFeishuTenantV3Spreadsheets.GetSpreadsheetSheetsByTokenAsync</c>）。</summary>
-[FeishuTool("sheets.list_sheets",
+[AgentTool("sheets.list_sheets",
     Description = "列出电子表格的全部工作表（sheet_id/title/index）；sheet_id 供 sheets.get_range_values 构造 range。只读，需 sheets:spreadsheet:readonly。",
     RequiredScopes = ["sheets:spreadsheet:readonly"],
     Source = nameof(IFeishuTenantV3Spreadsheets) + "." + nameof(IFeishuTenantV3Spreadsheets.GetSpreadsheetSheetsByTokenAsync))]
@@ -24,7 +24,7 @@ public interface IFeishuTenantSheetsListTool
 }
 
 /// <summary>工具接口：sheets.get_range_values（映射 <c>IFeishuTenantV3SpreadsheetData.GetRangeDataAsync</c>）。</summary>
-[FeishuTool("sheets.get_range_values",
+[AgentTool("sheets.get_range_values",
     Description = "读取工作表单元格区域数据；range 形如 ShtXxx!A1:C100（sheet_id 来自 sheets.list_sheets），建议先小范围取数。只读，需 sheets:spreadsheet:readonly。",
     RequiredScopes = ["sheets:spreadsheet:readonly"],
     Source = nameof(IFeishuTenantV3SpreadsheetData) + "." + nameof(IFeishuTenantV3SpreadsheetData.GetRangeDataAsync))]

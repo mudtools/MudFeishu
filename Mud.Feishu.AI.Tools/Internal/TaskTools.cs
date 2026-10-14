@@ -41,8 +41,8 @@ internal sealed class TaskTools(
 
     /// <summary>task.create_task：创建任务（<c>dry_run=true</c> 时只预演）。</summary>
     /// <remarks>幂等键（T4-1 同款）：<c>idempotency_key</c> → <c>CreateTaskRequest.ClientToken</c>（平台原生幂等）。</remarks>
-    [FeishuToolHandler(typeof(IFeishuTenantTaskCreateTaskTool))]
-    public Task<FeishuToolResult> CreateTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantTaskCreateTaskTool))]
+    public Task<ToolResult> CreateTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.TaskCreateTask, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -53,7 +53,7 @@ internal sealed class TaskTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/task/v2/tasks",
                     ToolDryRun.IdempotencyNote(args.IdempotencyKey),
                     ("summary", args.Summary.Length),
@@ -91,8 +91,8 @@ internal sealed class TaskTools(
 
     /// <summary>task.list_my_tasks：以用户令牌身份读取「我负责的」任务（分页）。</summary>
     /// <remarks>用户客户端缺席（宿主未注册 <c>IFeishuUserV2Task</c>）→ 结构化错误（该工具不应被启用）。</remarks>
-    [FeishuToolHandler(typeof(IFeishuUserTaskListMyTasksTool))]
-    public Task<FeishuToolResult> ListMyTasksAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuUserTaskListMyTasksTool))]
+    public Task<ToolResult> ListMyTasksAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.TaskListMyTasks, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -137,8 +137,8 @@ internal sealed class TaskTools(
     }
 
     /// <summary>task.update_task：更新任务信息（summary/description/due，至少传一个；<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantTaskUpdateTaskTool))]
-    public Task<FeishuToolResult> UpdateTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantTaskUpdateTaskTool))]
+    public Task<ToolResult> UpdateTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.TaskUpdateTask);
         return executor.RunAsync(async () =>
@@ -172,7 +172,7 @@ internal sealed class TaskTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "PATCH", $"/open-apis/task/v2/tasks/{args.TaskGuid}",
                     ToolDryRun.IdempotencyNote("PATCH 按字段更新天然幂等——相同字段重复写入结果一致"),
                     ("task_guid", args.TaskGuid.Length),
@@ -202,8 +202,8 @@ internal sealed class TaskTools(
     /// 天然幂等：对已完成的任务重复调用 completed_at 不会产生副作用（只更新时间戳，不会"取消完成"）。
     /// </para>
     /// </remarks>
-    [FeishuToolHandler(typeof(IFeishuTenantTaskCompleteTaskTool))]
-    public Task<FeishuToolResult> CompleteTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantTaskCompleteTaskTool))]
+    public Task<ToolResult> CompleteTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.TaskCompleteTask);
         return executor.RunAsync(async () =>
@@ -212,7 +212,7 @@ internal sealed class TaskTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "PATCH", $"/open-apis/task/v2/tasks/{args.TaskGuid}",
                     ToolDryRun.IdempotencyNote("幂等——对已完成的任务重复调用不产生副作用"),
                     ("task_guid", args.TaskGuid.Length),
@@ -281,8 +281,8 @@ internal sealed class TaskTools(
     // ────────── R7/WP5 写面成环 ──────────
 
     /// <summary>task.delete_task：删除任务（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantTaskDeleteTaskTool))]
-    public Task<FeishuToolResult> DeleteTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantTaskDeleteTaskTool))]
+    public Task<ToolResult> DeleteTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.TaskDeleteTask);
         return executor.RunAsync(async () =>
@@ -291,7 +291,7 @@ internal sealed class TaskTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "DELETE", $"/open-apis/task/v2/tasks/{args.TaskGuid}"));
             }
 
@@ -308,8 +308,8 @@ internal sealed class TaskTools(
 
     /// <summary>task.create_subtask：创建子任务（<c>dry_run=true</c> 时只预演）。</summary>
     /// <remarks>幂等键：<c>idempotency_key</c> → <c>CreateSubTaskRequest.ClientToken</c>（平台原生幂等）。</remarks>
-    [FeishuToolHandler(typeof(IFeishuTenantTaskCreateSubtaskTool))]
-    public Task<FeishuToolResult> CreateSubtaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantTaskCreateSubtaskTool))]
+    public Task<ToolResult> CreateSubtaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.TaskCreateSubtask, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -320,7 +320,7 @@ internal sealed class TaskTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", $"/open-apis/task/v2/tasks/{args.TaskGuid}/subtasks",
                     ToolDryRun.IdempotencyNote(args.IdempotencyKey),
                     ("summary", args.Summary.Length),
@@ -349,8 +349,8 @@ internal sealed class TaskTools(
     }
 
     /// <summary>task.add_comment：添加评论（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantTaskAddCommentTool))]
-    public Task<FeishuToolResult> AddCommentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantTaskAddCommentTool))]
+    public Task<ToolResult> AddCommentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.TaskAddComment);
         return executor.RunAsync(async () =>
@@ -365,7 +365,7 @@ internal sealed class TaskTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/task/v2/comments",
                     null,
                     ("task_guid", args.TaskGuid.Length),
@@ -393,8 +393,8 @@ internal sealed class TaskTools(
 
     /// <summary>task.add_members：添加任务成员（<c>dry_run=true</c> 时只预演）。</summary>
     /// <remarks>幂等键：<c>idempotency_key</c> → <c>AddMembersRequest.ClientToken</c>（平台原生幂等）。</remarks>
-    [FeishuToolHandler(typeof(IFeishuTenantTaskAddMembersTool))]
-    public Task<FeishuToolResult> AddMembersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantTaskAddMembersTool))]
+    public Task<ToolResult> AddMembersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.TaskAddMembers);
         return executor.RunAsync(async () =>
@@ -405,7 +405,7 @@ internal sealed class TaskTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", $"/open-apis/task/v2/tasks/{args.TaskGuid}/add_members",
                     ToolDryRun.IdempotencyNote(args.IdempotencyKey),
                     ("member_ids", args.MemberIds.Length),

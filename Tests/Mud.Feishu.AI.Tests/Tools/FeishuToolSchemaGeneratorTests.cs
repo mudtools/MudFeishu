@@ -10,7 +10,7 @@ using Mud.Feishu.AI.Tools.Generated;
 namespace Mud.Feishu.AI.Tests.Tools;
 
 /// <summary>
-/// [FeishuTool] 源生成器产物契约：编译期 Schema 含 name/description/parameters/required
+/// [AgentTool] 源生成器产物契约：编译期 Schema 含 name/description/parameters/required
 /// 与 required_scopes 权限元数据；可空参数不进 required。
 /// </summary>
 public class FeishuToolSchemaGeneratorTests
@@ -19,7 +19,7 @@ public class FeishuToolSchemaGeneratorTests
     public void SchemaByToolName_ShouldContainAnnotatedTool()
     {
         FeishuToolSchemas.SchemaByToolName.Should().ContainKey("bitable.query_records",
-            "标注 [FeishuTool] 的接口必须在编译期产出 Schema 常量");
+            "标注 [AgentTool] 的接口必须在编译期产出 Schema 常量");
     }
 
     [Fact]

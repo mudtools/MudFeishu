@@ -136,11 +136,11 @@ internal sealed class FeishuToolBinding
     /// <param name="invokeDownstream">分域下游调用（参数映射 → 强类型接口 → 解包/投影/截断）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>工具执行结果（成功结果或结构化错误）。</returns>
-    public async Task<FeishuToolResult> ExecuteAsync(
+    public async Task<ToolResult> ExecuteAsync(
         FeishuToolDefinition tool,
         IReadOnlyDictionary<string, object?> arguments,
         FeishuToolContext context,
-        Func<CancellationToken, Task<FeishuToolResult>> invokeDownstream,
+        Func<CancellationToken, Task<ToolResult>> invokeDownstream,
         CancellationToken cancellationToken = default)
     {
         if (tool is null)
@@ -250,7 +250,7 @@ internal sealed class FeishuToolBinding
             //    下游调用之前。仅 identity==user 且非 dry_run 时触发；tenant 路径零触碰。
             //    AuthRequired ⇒ 短路返回结构化错误（零调用下游）；
             //    fail-open（Error/Skipped/Refreshable/Ready）⇒ 放行，由下游 401 + TokenRecoveryExecutor 兜底。
-            if (userContextRequired && _userTokenPrecheck is not null && !ToolDryRun.IsRequested(arguments))
+            if (userContextRequired && _userTokenPrecheck is not null && !ToolArgsReaders.IsDryRunRequested(arguments))
             {
                 var precheckResult = await _userTokenPrecheck
                     .ProbeAsync(context.AppKey, context.UserId!, cancellationToken)
@@ -291,7 +291,7 @@ internal sealed class FeishuToolBinding
             {
                 // R3-12：降级路径指标化——warn 模式只加标注不阻断，补计数使告警可量化。
                 FeishuToolDiagnostics.RecordDegraded(context.AppKey, FeishuMetrics.DegradedReasons.ContentSafetyWarn);
-                result = FeishuToolResult.FromText(annotation + result.ToString(), result.Truncated, result.TruncationReason);
+                result = ToolResult.FromText(annotation + result.ToString(), result.Truncated, result.TruncationReason);
             }
 
             activity?.SetTag(FeishuToolDiagnostics.TagTruncated, result.Truncated);
@@ -367,7 +367,7 @@ internal sealed class FeishuToolBinding
                 tool, context, FeishuMetrics.ToolOutcomes.Error, ex.Message,
                 ToolArgsDigester.Digest(arguments), executionStopwatch.ElapsedMilliseconds,
                 CancellationToken.None).ConfigureAwait(false);
-            return FeishuToolResult.FromError(errorPayload, bounded);
+            return ToolResult.FromError(errorPayload, bounded);
         }
         finally
         {
@@ -410,10 +410,10 @@ internal sealed class FeishuToolBinding
     /// <b>取消优先</b>：等待期间取消立即传播（<c>Task.Delay</c> 带取消令牌），不留"重试中"的中间态。
     /// </para>
     /// </remarks>
-    private async Task<FeishuToolResult> InvokeWithRetryAsync(
+    private async Task<ToolResult> InvokeWithRetryAsync(
         FeishuToolDefinition tool,
         IReadOnlyDictionary<string, object?> arguments,
-        Func<CancellationToken, Task<FeishuToolResult>> invokeDownstream,
+        Func<CancellationToken, Task<ToolResult>> invokeDownstream,
         Activity? activity,
         CancellationToken cancellationToken)
     {
@@ -422,13 +422,13 @@ internal sealed class FeishuToolBinding
             return await invokeDownstream(cancellationToken).ConfigureAwait(false);
         }
 
-        var isDryRun = ToolDryRun.IsRequested(arguments);
+        var isDryRun = ToolArgsReaders.IsDryRunRequested(arguments);
         var hasIdempotencyKey = HasIdempotencyKey(arguments);
         var attempt = 0;
 
         while (true)
         {
-            FeishuToolResult result;
+            ToolResult result;
             try
             {
                 result = await invokeDownstream(cancellationToken).ConfigureAwait(false);
@@ -506,7 +506,7 @@ internal sealed class FeishuToolBinding
     /// 再经 <c>Compose</c> 会拼出两条 hint（模板演化后还会出现新旧不一致的 hint）。
     /// 故此处按"载荷 JSON 行 / <c>[next]</c> 行"逐行剥离，只保留正文。
     /// </remarks>
-    private static FeishuToolResult WithAttempts(FeishuToolResult result, int attempts)
+    private static ToolResult WithAttempts(ToolResult result, int attempts)
     {
         if (result.Error is null || attempts <= 1)
         {
@@ -516,7 +516,7 @@ internal sealed class FeishuToolBinding
         var body = StripStructuredPrefixLines(result.ToString());
         var payload = result.Error with { Attempts = attempts };
         var jsonLine = ToolErrorPayloadSerializer.Serialize(payload);
-        var rebuilt = FeishuToolResult.FromError(payload, body.Length > 0 ? ToolErrorFactory.Compose(payload, body) : jsonLine);
+        var rebuilt = ToolResult.FromError(payload, body.Length > 0 ? ToolErrorFactory.Compose(payload, body) : jsonLine);
 
         // 出站净化：重试路径是"新拼出来的模型可见文本"，与成功路径同属出口——
         // 不得因为"原文已净化过"就跳过（纵深防御；ToolEgressPurificationContractGuards 断言本行存在）。
@@ -590,7 +590,7 @@ internal sealed class FeishuToolBinding
     /// R3-4：模型可见文案经 <see cref="EgressResult(string, ToolErrorCategory, string, string, int?, IReadOnlyList{string}?, IReadOnlyList{string}?)"/> 返回——
     /// 与成功路径同源净化 + 截断（审计侧仍记原始 <paramref name="reason"/>，两条出口判据不同）。
     /// </remarks>
-    private async Task<FeishuToolResult> DenyAsync(
+    private async Task<ToolResult> DenyAsync(
         FeishuToolDefinition tool,
         FeishuToolContext context,
         ToolErrorCategory category,
@@ -707,10 +707,10 @@ internal sealed class FeishuToolBinding
     /// 文案含**模型可控**键名（由 <c>ToolArgumentNormalizer</c> 的 <c>prop.Name</c> 拼成），不得双标。
     /// </para>
     /// </remarks>
-    private FeishuToolResult EgressResult(string message)
+    private ToolResult EgressResult(string message)
     {
         var safe = ToolResultText.Truncate(ToolResultSanitizer.Sanitize(message), _options.MaxToolResultLength);
-        return FeishuToolResult.FromError(safe);
+        return ToolResult.FromError(safe);
     }
 
     /// <summary>带错误语义分类的出口（B2 错误契约：首行 JSON 载荷 + 人类可读正文，经唯一闸门净化 + 截断）。</summary>
@@ -719,7 +719,7 @@ internal sealed class FeishuToolBinding
     /// <see cref="ToolResultPipeline.Error"/>（预算与标记单源）；术后净化仍在本方法内施加——
     /// 这是<b>"模型可见"边界</b>的要求（详见 <c>ToolResultPipeline</c> 的 remarks）。
     /// </remarks>
-    private FeishuToolResult EgressResult(
+    private ToolResult EgressResult(
         string toolName,
         ToolErrorCategory category,
         string subtype,
@@ -735,7 +735,7 @@ internal sealed class FeishuToolBinding
     }
 
     /// <summary>无分类的出口（等价 <see cref="StructuredError(string, string)"/> 文案，用于上下文缺失等通用失败）。</summary>
-    private FeishuToolResult EgressResult(string toolName, string reason)
+    private ToolResult EgressResult(string toolName, string reason)
         => EgressResult(StructuredError(toolName, reason));
 
     /// <summary>
@@ -790,7 +790,7 @@ internal sealed class FeishuToolBinding
     /// 无开关、无接口、不可被宿主绕过——见 <see cref="ToolResultSanitizer"/> 的取舍说明。
     /// 数据完整性优先：净化保持文本长度不变（掩码与正文等价替换位数可能不同，但不改变 JSON 结构）。
     /// </remarks>
-    private static FeishuToolResult SanitizeResult(FeishuToolResult result)
+    private static ToolResult SanitizeResult(ToolResult result)
     {
         var text = result.ToString();
         var sanitized = ToolResultSanitizer.Sanitize(text);
@@ -798,10 +798,10 @@ internal sealed class FeishuToolBinding
         // 无变化即复用原实例（避免每次调用都重建对象）。
         return string.Equals(sanitized, text, StringComparison.Ordinal)
             ? result
-            : FeishuToolResult.FromText(sanitized, result.Truncated, result.TruncationReason);
+            : ToolResult.FromText(sanitized, result.Truncated, result.TruncationReason);
     }
 
-    private async Task<FeishuToolResult> ShapeWithIsolationAsync(string toolName, FeishuToolResult result, CancellationToken cancellationToken)
+    private async Task<ToolResult> ShapeWithIsolationAsync(string toolName, ToolResult result, CancellationToken cancellationToken)
     {
         if (_resultShaper is null)
         {
@@ -816,7 +816,7 @@ internal sealed class FeishuToolBinding
                 .ConfigureAwait(false);
             return shaped is null
                 ? result
-                : FeishuToolResult.FromText(shaped, result.Truncated, result.TruncationReason);
+                : ToolResult.FromText(shaped, result.Truncated, result.TruncationReason);
         }
         catch (OperationCanceledException)
         {
@@ -832,131 +832,28 @@ internal sealed class FeishuToolBinding
     }
 
     /// <summary>构造结构化错误文本（模型可读、带工具名前缀）。</summary>
+    /// <remarks>v2.3：实现上移至中立骨架 <c>ToolErrorText</c>（执行器骨架与执行链共用）；此处保留转发，20+ 执行器调用点零改动。</remarks>
     public static string StructuredError(string toolName, string reason)
-        => $"[tool_error] {toolName}: {reason}";
+        => ToolErrorText.StructuredError(toolName, reason);
 
     /// <summary>
     /// 构造带错误语义分类的结构化错误文本（B2 错误契约：分类 + 原因 + 建议——
     /// 授权拒绝与参数错误可区分，模型据此自我修正：重试 or 换参数 or 放弃）。
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// AT-B12（R3 评审 C-1）：<see cref="ToolErrorCategory.Confirmation"/> 是<b>独立</b>语义，
-    /// 不得复用 <see cref="ToolErrorCategory.Validation"/> 的"请修正参数"后缀——待确认不是参数错，
-    /// 让模型去改参数会让它陷入无意义的重试循环。
-    /// </para>
-    /// <para>
-    /// <b>B2 错误契约</b>：此方法返回人类可读正文；结构化 JSON 载荷由调用方
-    /// （<see cref="EgressResult(string, ToolErrorCategory, string, string, int?, IReadOnlyList{string}?, IReadOnlyList{string}?)"/>）
-    /// 置于正文首行。老用例的 <c>Contain</c> 断言不受影响（正文形态保持不变）。
-    /// </para>
-    /// </remarks>
+    /// <remarks>v2.3：实现上移至中立骨架 <c>ToolErrorText.StructuredError</c>；此处保留转发，调用点零改动。</remarks>
     internal static string StructuredError(string toolName, ToolErrorCategory category, string reason, int? apiCode = null, string? subtype = null)
-    {
-        // 无 code 时不产出空槽（保持既有文案形态不变，老用例的 Contain 断言不受影响）。
-        var codeSegment = apiCode.HasValue ? $" code={apiCode.Value}" : string.Empty;
+        => ToolErrorText.StructuredError(toolName, category, reason, apiCode, subtype);
 
-        // T1 / D1：user_auth_required / user_token_refresh_failed 与 forbidden 语义不同——
-        // 前者是「用户本人未完成飞书授权」，后者是「权限不足」；标签需区分以防模型混淆动作。
-        var authLabel = subtype switch
-        {
-            ToolErrorSubtype.UserAuthRequired => "user_auth_required",
-            ToolErrorSubtype.UserTokenRefreshFailed => "user_token_refresh_failed",
-            _ => "forbidden",
-        };
-        var authNextStep = subtype switch
-        {
-            ToolErrorSubtype.UserAuthRequired => "请告知用户完成飞书授权后重试——不是权限不足，无需放弃或换只读方案",
-            ToolErrorSubtype.UserTokenRefreshFailed => "请告知用户重新完成飞书授权后重试——令牌续期失败，不是权限不足",
-            _ => "授权被拒绝，请放弃或改用只读方案",
-        };
-
-        return category switch
-        {
-            ToolErrorCategory.Retryable => $"[tool_error] {toolName} (retryable){codeSegment}: {reason}——服务端繁忙/网络异常，可稍后重试同一调用",
-            ToolErrorCategory.Validation => $"[tool_error] {toolName} (invalid_args){codeSegment}: {reason}——{InvalidArgsNextStep}",
-            ToolErrorCategory.Authorization => $"[tool_error] {toolName} ({authLabel}){codeSegment}: {reason}——{authNextStep}",
-            // T4 / D4：tool_budget_exceeded 是策略拒绝（非授权、非参数）——模型应基于已有信息直接回答。
-            // 注：本分支**必须**排在通用 Policy 分支之前（switch 自上而下匹配，`when` 是更具体的子形态）。
-            ToolErrorCategory.Policy when subtype == ToolErrorSubtype.ToolBudgetExceeded
-                => $"[tool_error] {toolName} (tool_budget_exceeded){codeSegment}: {reason}",
-            // S-2 修复：**除预算耗尽外的策略拒绝此前落到 default（api_error）**——那会给出
-            // "确认无误后重试同一调用"的下一步指引，与策略拒绝的**确定性**语义直接矛盾
-            // （策略拒绝重试一百次也是拒绝）。现补上专属标签与"放弃/换方案"的下一步。
-            ToolErrorCategory.Policy => $"[tool_error] {toolName} (policy_denied){codeSegment}: {reason}——{PolicyNextStep}",
-            // R2-1（P0）：删除「若结果中提供了确认令牌…重试即可继续」——该文案把批准所需的全部要素
-            // 交给了模型，使模型可自行带令牌重试并放行写操作（HITL 退化为「取决于模型是否听话」）。
-            // 确认令牌只经 IFeishuToolApprovalChannel 交给宿主，模型侧恒为中性语义。
-            ToolErrorCategory.Confirmation => $"[tool_error] {toolName} (needs_confirmation){codeSegment}: {reason}——该操作需要用户确认后方可执行；"
-                + "已交由宿主确认通道处理，未获得确认前不得重试同一调用，请告知用户确认进度",
-            // Api（default 分支）：此前**完全没有下一步**（F-8 点名的两态之一）。
-            _ => $"[tool_error] {toolName} (api_error){codeSegment}: {reason}——{ApiErrorNextStep}",
-        };
-    }
-
-    /// <summary>
-    /// R5 / F-8：<c>invalid_args</c> 的<b>可执行下一步</b>。
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// 官方 <c>lark-cli</c> 的 <c>Suggestions []string</c> 注释写明其用途是
-    /// "so an agent can retry <b>without parsing the human-facing hint</b>"。
-    /// 本仓的对应形态是：<b>F-2 的闭集</b>让"非法取值"类错误天然带合法值清单
-    /// （<c>ToolArgs.RequireNamedInt</c> 已输出"合法取值：…"），<b>B-6 的 anyOf</b>
-    /// 则让"缺一"类错误天然带构造模板。本后缀只补<b>这两者都覆盖不到</b>的剩余情形
-    /// （形状错、类型错、必填缺失），并明确指向上述机器可读来源。
-    /// </para>
-    /// <para>
-    /// 刻意<b>不</b>在这里重复罗列取值：那会与闭集读取器输出的具体清单形成第二份真相源。
-    /// </para>
-    /// </remarks>
-    private const string InvalidArgsNextStep =
-        "请修正参数后重试：取值范围见工具参数描述中的 enum 闭集（非法取值时错误会直接列出全部合法值）；"
-        + "多个参数'至少提供一个'的约束见 anyOf；仍是形状/类型错误请对照参数描述的类型重填";
-
-    /// <summary>
-    /// R5 / F-8：<c>api_error</c> 的<b>可执行下一步</b>。
-    /// </summary>
-    /// <remarks>
-    /// 该态此前是纯 <c>{reason}</c>，模型只能盲试。补上后可形成确定的三步路径：
-    /// 先核实只读事实 → 再重试 → 仍失败则带上 code 上报。
-    /// </remarks>
-    /// <summary>
-    /// <b>S-2：策略拒绝的可执行下一步</b>（<c>policy_denied</c>：风险超限 / 身份不符 /
-    /// glob·域级策略 / 配置非法）。
-    /// </summary>
-    /// <remarks>
-    /// <b>为什么要单列</b>：策略拒绝是<b>确定性</b>的（同一调用在同一配置下永远被拒），
-    /// 而默认分支的 <c>api_error</c> 文案会引导"核实后重试"——那会让模型在确定性失败上
-    /// 白白消耗一轮。此处明确"放弃或改方案"，与 <c>ToolErrorHintRenderer</c> 的同名指引一致。
-    /// </remarks>
-    private const string PolicyNextStep =
-        "宿主策略禁止该调用（重试不会改变结果）：请放弃该工具，或改用其他（通常只读的）方案；"
-        + "若确需该能力，请宿主调整 FeishuAgent 的策略配置";
-
-    private const string ApiErrorNextStep =
-        "该调用已被下游拒绝。建议顺序：① 先用同域只读工具核实目标是否存在/参数是否正确；"
-        + "② 确认无误后重试同一调用；③ 仍失败请把上面的 code 一并提供给用户（code 是排查所需的唯一标识）";
-
-    /// <summary>按飞书业务 code 分类构造错误回填（<c>FeishuApiOutcome</c> 解包路径共用；分类器 internal，宿主不可见）。</summary>
+    /// <summary>按产品业务 code 分类构造错误回填（<c>ToolApiOutcome</c> 解包路径共用；分类器 internal，宿主不可见）。</summary>
     internal static string StructuredError(string toolName, int? apiCode, string reason)
         => StructuredError(toolName, ToolErrorClassifier.ClassifyCode(apiCode).Category, reason, apiCode);
 
     /// <summary>
     /// 将 <see cref="ToolErrorCategory"/> 映射为 JSON 载荷中的 <c>category</c> 字面量。
     /// </summary>
-    internal static string CategoryLiteral(ToolErrorCategory category) => category switch
-    {
-        ToolErrorCategory.Validation => "validation",
-        ToolErrorCategory.Policy => "policy",
-        ToolErrorCategory.Authorization => "authorization",
-        ToolErrorCategory.Confirmation => "confirmation",
-        ToolErrorCategory.Retryable => "retryable",
-        ToolErrorCategory.Api => "api",
-        ToolErrorCategory.Internal => "internal",
-        ToolErrorCategory.ContentSafety => "content_safety",
-        _ => "internal",
-    };
+    /// <remarks>v2.3：实现上移至中立骨架 <c>ToolErrorText.CategoryLiteral</c>；此处保留转发。</remarks>
+    internal static string CategoryLiteral(ToolErrorCategory category)
+        => ToolErrorText.CategoryLiteral(category);
 
     /// <summary>授权门禁判定结果（AT-B12：<see cref="ToolErrorCategory"/> 随判定一起返回，避免调用方猜测语义）。</summary>
     private readonly record struct GateDecision(bool Allowed, string Reason, ToolErrorCategory Category, string Subtype)

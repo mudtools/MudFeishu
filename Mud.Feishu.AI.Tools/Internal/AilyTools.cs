@@ -50,8 +50,8 @@ internal sealed class AilyTools(
     // ─────────────────── aily.list_data_assets ───────────────────
 
     /// <summary>aily.list_data_assets：列出数据知识库。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantAilyListDataAssetsTool))]
-    public Task<FeishuToolResult> ListDataAssetsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantAilyListDataAssetsTool))]
+    public Task<ToolResult> ListDataAssetsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.AilyListDataAssets, _maxResultLength);
         if (Absent(executor.ToolName, _dataKnowledgeClient) is { } unavailable)
@@ -64,7 +64,7 @@ internal sealed class AilyTools(
             var args = AilyListDataAssetsArgs.Unpack(arguments);
 
             // P-4：统一分页出口——聚合路径与单页路径共用同一次调用定义与同一份投影。
-            async Task<FeishuApiOutcome<DataAssetPageListResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<DataAssetPageListResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _dataKnowledgeClient!
                     .GetDataAssetPageListAsync(
                         args.AppId,
@@ -134,8 +134,8 @@ internal sealed class AilyTools(
     // ─────────────────── aily.get_data_asset ───────────────────
 
     /// <summary>aily.get_data_asset：查询单个数据知识库详情。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantAilyGetDataAssetTool))]
-    public Task<FeishuToolResult> GetDataAssetAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantAilyGetDataAssetTool))]
+    public Task<ToolResult> GetDataAssetAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.AilyGetDataAsset, _maxResultLength);
         if (Absent(executor.ToolName, _dataKnowledgeClient) is { } unavailable)
@@ -179,8 +179,8 @@ internal sealed class AilyTools(
     // ─────────────────── aily.list_data_asset_tags ───────────────────
 
     /// <summary>aily.list_data_asset_tags：列出数据知识库标签。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantAilyListDataAssetTagsTool))]
-    public Task<FeishuToolResult> ListDataAssetTagsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantAilyListDataAssetTagsTool))]
+    public Task<ToolResult> ListDataAssetTagsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.AilyListDataAssetTags, _maxResultLength);
         if (Absent(executor.ToolName, _dataKnowledgeClient) is { } unavailable)
@@ -192,7 +192,7 @@ internal sealed class AilyTools(
         {
             var args = AilyListDataAssetTagsArgs.Unpack(arguments);
 
-            async Task<FeishuApiOutcome<DataAssetTagPageListResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<DataAssetTagPageListResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _dataKnowledgeClient!
                     .GetDataAssetTagPageListAsync(
                         args.AppId,
@@ -275,9 +275,9 @@ internal sealed class AilyTools(
     /// <summary>
     /// 软缺席：客户端为空时给出<b>可执行的错误结果</b>而不是抛异常。
     /// </summary>
-    private static FeishuToolResult? Absent(string toolName, object? client)
+    private static ToolResult? Absent(string toolName, object? client)
         => client is null
-            ? FeishuToolResult.FromError(FeishuToolBinding.StructuredError(
+            ? ToolResult.FromError(FeishuToolBinding.StructuredError(
                 toolName,
                 $"未注册 {ClientName} 客户端——Aily 数据知识能力需宿主启用 Aily API（软缺席，不影响其它域工具）"))
             : null;

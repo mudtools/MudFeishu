@@ -10,7 +10,7 @@ using System.Reflection;
 namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
-/// <b>R5 / S-20</b>：<c>[FeishuTool(Source = …)]</c> 的<b>语义正确性</b>守卫 ——
+/// <b>R5 / S-20</b>：<c>[AgentTool(Source = …)]</c> 的<b>语义正确性</b>守卫 ——
 /// 声明的 SDK 源接口必须是处理该工具的执行器<b>实际注入</b>的接口。
 /// </summary>
 /// <remarks>
@@ -52,7 +52,7 @@ public class ToolSourceConsistencyContractTests
 
         foreach (var toolInterface in assembly.GetTypes().Where(static t => t.IsInterface))
         {
-            var attribute = toolInterface.GetCustomAttribute<FeishuToolAttribute>();
+            var attribute = toolInterface.GetCustomAttribute<AgentToolAttribute>();
             if (attribute?.Source is not { Length: > 0 } source)
             {
                 continue; // 未声明 Source：由 MUDFT019 口径处理（无 Source 即无脱钩风险）。
@@ -72,7 +72,7 @@ public class ToolSourceConsistencyContractTests
             {
                 violations.Add(
                     $"工具 '{attribute.Name}'（{toolInterface.Name}）：声明 Source={sourceTypeSimple}，"
-                    + "但全程序集找不到标注 [FeishuToolHandler] 的执行器");
+                    + "但全程序集找不到标注 [ToolHandler] 的执行器");
                 continue;
             }
 
@@ -142,7 +142,7 @@ public class ToolSourceConsistencyContractTests
             "该判据的检出能力正建立在「未注入即违约」上——此处必须为真，否则判据恒真、守卫失效");
     }
 
-    /// <summary>工具接口 → 处理它的执行器类型（由 <c>[FeishuToolHandler(typeof(接口))]</c> 反查）。</summary>
+    /// <summary>工具接口 → 处理它的执行器类型（由 <c>[ToolHandler(typeof(接口))]</c> 反查）。</summary>
     private static Dictionary<Type, Type> MapExecutorByToolInterface(Assembly assembly)
     {
         var map = new Dictionary<Type, Type>();
@@ -157,7 +157,7 @@ public class ToolSourceConsistencyContractTests
             foreach (var method in type.GetMethods(
                 BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
             {
-                var handler = method.GetCustomAttribute<FeishuToolHandlerAttribute>();
+                var handler = method.GetCustomAttribute<ToolHandlerAttribute>();
                 if (handler is not null)
                 {
                     map[handler.ToolInterface] = method.DeclaringType!;

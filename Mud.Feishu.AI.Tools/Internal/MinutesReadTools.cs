@@ -53,8 +53,8 @@ internal sealed class MinutesReadTools(
     private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
     private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
-    [FeishuToolHandler(typeof(IFeishuTenantMinutesGetTool))]
-    public Task<FeishuToolResult> GetMinuteAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantMinutesGetTool))]
+    public Task<ToolResult> GetMinuteAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.MinutesGet);
         return executor.RunAsync(async () =>
@@ -93,8 +93,8 @@ internal sealed class MinutesReadTools(
         });
     }
 
-    [FeishuToolHandler(typeof(IFeishuTenantMinutesGetArtifactsTool))]
-    public Task<FeishuToolResult> GetMinuteArtifactsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantMinutesGetArtifactsTool))]
+    public Task<ToolResult> GetMinuteArtifactsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.MinutesGetArtifacts);
         return executor.RunAsync(async () =>
@@ -228,8 +228,8 @@ internal sealed class MinutesReadTools(
 
     // ─────────────────────────── Minutes 深化（R7 / A3） ───────────────────────────
 
-    [FeishuToolHandler(typeof(IFeishuTenantMinutesSearchTool))]
-    public Task<FeishuToolResult> SearchMinutesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantMinutesSearchTool))]
+    public Task<ToolResult> SearchMinutesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.MinutesSearch);
         return executor.RunAsync(async () =>
@@ -278,7 +278,7 @@ internal sealed class MinutesReadTools(
             // P-4：统一分页出口——聚合路径与单页路径共用**同一次调用定义**与**同一份投影**。
             // SearchMinutesResult 是"自带 has_more/page_token 但不继承 ApiPageListResult"的历史 DTO，
             // 故走显式页状态重载（读它自己声明的字段）。
-            async Task<FeishuApiOutcome<SearchMinutesResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<SearchMinutesResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await Require(executor.ToolName)
                     .SearchMinutesAsync(request, page_token: token, cancellationToken: ct)
                     .ConfigureAwait(false));
@@ -333,8 +333,8 @@ internal sealed class MinutesReadTools(
         return envelope;
     }
 
-    [FeishuToolHandler(typeof(IFeishuTenantMinutesGetStatisticsTool))]
-    public Task<FeishuToolResult> GetMinuteStatisticsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantMinutesGetStatisticsTool))]
+    public Task<ToolResult> GetMinuteStatisticsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.MinutesGetStatistics);
         return executor.RunAsync(async () =>
@@ -380,8 +380,8 @@ internal sealed class MinutesReadTools(
         });
     }
 
-    [FeishuToolHandler(typeof(IFeishuTenantMinutesGetMediaTool))]
-    public Task<FeishuToolResult> GetMinuteMediaAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantMinutesGetMediaTool))]
+    public Task<ToolResult> GetMinuteMediaAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.MinutesGetMedia);
         return executor.RunAsync(async () =>

@@ -31,13 +31,18 @@ Enforced: 0 build errors, 0 `CS1750`, 0 `NU1603`, 0 `HTTPCLIENT0xx` / `MUD001-00
 `AOT001-007`. Two false-green rules are load-bearing (AGENTS.md has recorded the
 "只断言诊断计数而构建失败即假绿" lesson): (1) the standard build **must** use
 `--no-incremental` (incremental skips source generators ⇒ zero diagnostics); (2) AOT strict-mode
-step builds the **9 source projects one by one** (`Demos/` has single-TFM projects ⇒ `NETSDK1005`
-on `-f net8.0`) and asserts **both** 0 errors **and** `AOT00x`/`IL2026`/`IL3050` = 0 — diagnostic
+step builds the **source projects one by one** (glob `Mud.*`; `Demos/` has single-TFM projects ⇒
+`NETSDK1005` on `-f net8.0`) and asserts **both** 0 errors **and** `AOT00x`/`IL2026`/`IL3050` = 0 — diagnostic
 counts alone are a false green when the build itself failed. Step 4 runs per (project, TFM) with a
 dedicated TRX and asserts `total > 0` (a dead testhost writes an empty TRX with exit code 1).
 TFMs resolve via `dotnet msbuild -getProperty:TargetFrameworks` (test projects inherit from
 `Tests/Directory.Build.props`). CI mirrors this: `-CacheCheckOnly` before restore, then the build
 log is asserted against the same whitelist (`.github/workflows/dotnet-publish.yml`).
+
+**Source-project discovery is glob-based, never a hardcoded count** (v2.3): `verify-build.ps1`
+step 3 enumerates root directories matching `Mud.*` (was `Mud.Feishu*`), so the new `Mud.AI.*`
+package family is AOT-smoked automatically. Any "N source projects" count in docs/CI is
+**stale by construction** — do not reintroduce one.
 
 ## Dependency version policy (Mud.HttpUtils)
 
@@ -65,12 +70,20 @@ log is asserted against the same whitelist (`.github/workflows/dotnet-publish.ym
   same version does **not** invalidate downstream caches (symptom: source fixed but build still
   `CS1750`) — **always bump when packing**. Manual refresh = clear global-packages → `dotnet clean`
   (mandatory; stale incremental builds surface as `TypeLoadException`) → rebuild.
-- Tool surface is generated **only** by the component-side engine (local generator retired;
-  `FeishuToolProfileContractGuards` locks that no `[Generator]` source or `Microsoft.CodeAnalysis.
-  CSharp` reference returns). `FeishuToolProfile.cs` (`Mud.Feishu.AI.Tools/SdkProfile/`) is the
-  single source of Feishu naming facts, linked into `Tests/Mud.Feishu.AI.Tests` (profiles are
-  per-compilation). `[FeishuTool]`/`[ToolParameter]` live in **`Mud.Feishu.AI`**
-  (`Mud.Feishu.AI.AgentTools`), not in the tool-surface project (avoids CS0433 ambiguity).
+- Tool surface is generated **only** by the in-repo engine `Mud.AI.Generator` (v2.3 P1-E: migrated
+  from the component-side `Mud.HttpUtils.Generator`; tuning window is repo-closed, re-upstreaming
+  is P3). `SingleToolSurfaceEngineContractGuards` locks that: (1) the only source-level
+  `[Generator]` host is `Mud.AI.Generator` and it is registered in `Mud.Feishu.slnx`; (2) no
+  project except that engine **and its test project** references `Microsoft.CodeAnalysis.CSharp`
+  (the test project drives the generator via `CSharpGeneratorDriver` — driving ≠ hosting a second
+  engine); (3) **no project may reference both** the in-repo engine and the component package
+  (same hintName products ⇒ CS8785/CS0101). Each assertion has a `[Theory]` self-test.
+  `FeishuToolProfile.cs` (`Mud.Feishu.AI.Tools/SdkProfile/`) is the single source of Feishu naming
+  facts, linked into `Tests/Mud.Feishu.AI.Tests` (profiles are per-compilation).
+  `[AgentTool]`/`[ToolParameter]`/`[ToolHandler]` live in **`Mud.AI.Abstractions`**
+  (`Mud.AI.Abstractions.Tools[.Handlers]`) — the bottom of the dependency graph, so non-owner
+  declaring assemblies (e.g. AI.Tests samples) can see them without referencing the owner
+  assembly (avoids CS0433 ambiguity).
 
 ## Target Frameworks & MSBuild
 

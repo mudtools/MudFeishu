@@ -10,7 +10,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // ─────────────────────────── Drive 写（3 个） ───────────────────────────
 
 /// <summary>工具接口：drive.create_folder（映射 <c>IFeishuTenantV1DriveFolder.CreateFolderAsync</c>）。</summary>
-[FeishuTool("drive.create_folder",
+[AgentTool("drive.create_folder",
     Description = "在云空间中创建文件夹（返回 folder_token，可用 drive.list_folder_files 验证）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
     RequiredScopes = ["drive:drive"],
     IsWrite = true,
@@ -27,7 +27,7 @@ public interface IFeishuTenantDriveCreateFolderTool
 }
 
 /// <summary>工具接口：drive.move_file（映射 <c>IFeishuTenantV1DriveFiles.MoveFileByFileTokenAsync</c>）。</summary>
-[FeishuTool("drive.move_file",
+[AgentTool("drive.move_file",
     Description = "将文件或文件夹移动到指定文件夹下（返回异步任务 ID——移动操作为异步执行，需后续轮询确认完成）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
     RequiredScopes = ["drive:drive"],
     IsWrite = true,
@@ -45,7 +45,7 @@ public interface IFeishuTenantDriveMoveFileTool
 }
 
 /// <summary>工具接口：drive.upload_file（映射 <c>IFeishuTenantV1DriveFiles.UploadAllFileAsync</c>）。</summary>
-[FeishuTool("drive.upload_file",
+[AgentTool("drive.upload_file",
     Description = "将网络文件上传到云空间（file_url 为 http/https 绝对地址，由宿主负责下载落盘——与 im.send_image 同机制）。返回 file_token。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
     RequiredScopes = ["drive:drive"],
     IsWrite = true,
@@ -84,9 +84,9 @@ public interface IFeishuTenantDriveUploadFileTool
 //   → TypeSchemaResolver.ResolveOutputSchema），而本工具的 Source 返回 `Task<byte[]?>` ⇒
 //   生成的 output_schema 是 `{"type":"string","format":"binary"}`，会**告诉模型"本工具返回二进制"**，
 //   与该工具实际返回的"本地路径/大小/Content-Type"元信息**矛盾**（对模型而言是假事实）。
-//   `[FeishuTool]` 目前**没有** output_schema 覆盖能力。
+//   `[AgentTool]` 目前**没有** output_schema 覆盖能力。
 //
 // ⇒ 落地 F-10 还差一个小能力（择一，属独立设计项）：
-//   ⓐ 给 `[FeishuTool]` 加 output_schema 覆盖（如 `OutputSchema = "…"` 或命名形态）；
+//   ⓐ 给 `[AgentTool]` 加 output_schema 覆盖（如 `OutputSchema = "…"` 或命名形态）；
 //   ⓑ 或让"受控二进制出口"这条路径**不推导** output_schema（留空），由 Description 描述结果形状。
 //   在选定之前不落 F-10 —— 避免交付一个"Schema 与实现互相矛盾"的工具。

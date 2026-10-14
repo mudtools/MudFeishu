@@ -88,8 +88,8 @@ internal sealed class ImTools(
     }
 
     /// <summary>im.get_history_messages：读取历史消息（白名单 message_id/create_time/sender_id/message_type/content 预览）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantImHistoryTool))]
-    public Task<FeishuToolResult> GetHistoryAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantImHistoryTool))]
+    public Task<ToolResult> GetHistoryAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ImGetHistoryMessages, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -101,7 +101,7 @@ internal sealed class ImTools(
 
             // B1 / P-1：fetch_all=true 时循环翻页（唯一翻页实现 ToolPagination）。
             // 单页调用与聚合共用同一次调用定义（避免两处参数面漂移）。
-            async Task<FeishuApiOutcome<ApiPageListResult<HistoryMessageData>>> FetchPageAsync(
+            async Task<ToolApiOutcome<ApiPageListResult<HistoryMessageData>>> FetchPageAsync(
                 string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _messageClient
                     .GetHistoryMessageAsync(
@@ -134,8 +134,8 @@ internal sealed class ImTools(
     }
 
     /// <summary>im.get_message_content：单条消息内容回查（白名单 message_id/msg_type/body/mentions）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantImMessageContentTool))]
-    public Task<FeishuToolResult> GetContentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantImMessageContentTool))]
+    public Task<ToolResult> GetContentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ImGetMessageContent, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -153,15 +153,15 @@ internal sealed class ImTools(
     // ────────── R5 / F-3：IM 域补齐（thread / 撤回 / 转发 / 已读 / 群管理） ──────────
 
     /// <summary>im.get_thread_messages：读取话题内消息（container_id_type 固定 thread）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantImGetThreadMessagesTool))]
-    public Task<FeishuToolResult> GetThreadMessagesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantImGetThreadMessagesTool))]
+    public Task<ToolResult> GetThreadMessagesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ImGetThreadMessages, _maxResultLength);
         return executor.RunAsync(async () =>
         {
             var args = ImGetThreadMessagesArgs.Unpack(arguments);
 
-            async Task<FeishuApiOutcome<ApiPageListResult<HistoryMessageData>>> FetchPageAsync(
+            async Task<ToolApiOutcome<ApiPageListResult<HistoryMessageData>>> FetchPageAsync(
                 string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _messageClient
                     .GetHistoryMessageAsync(
@@ -194,8 +194,8 @@ internal sealed class ImTools(
     }
 
     /// <summary>im.revoke_message：撤回本 Bot 发出的消息（写面：DELETE = high-risk-write）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantImRevokeMessageTool))]
-    public Task<FeishuToolResult> RevokeMessageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantImRevokeMessageTool))]
+    public Task<ToolResult> RevokeMessageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ImRevokeMessage, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -204,7 +204,7 @@ internal sealed class ImTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "DELETE", $"/open-apis/im/v1/messages/{args.MessageId}",
                     ToolDryRun.IdempotencyNote(null),
                     ("message_id", args.MessageId.Length)));
@@ -218,8 +218,8 @@ internal sealed class ImTools(
     }
 
     /// <summary>im.forward_message：转发单条消息（SDK 方法名 ReceiveMessageAsync，语义为转发）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantImForwardMessageTool))]
-    public Task<FeishuToolResult> ForwardMessageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantImForwardMessageTool))]
+    public Task<ToolResult> ForwardMessageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ImForwardMessage, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -229,7 +229,7 @@ internal sealed class ImTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", $"/open-apis/im/v1/messages/{args.MessageId}/forward",
                     ToolDryRun.IdempotencyNote(args.IdempotencyKey),
                     ("message_id", args.MessageId.Length), ("receive_id", args.ReceiveId.Length)));
@@ -251,8 +251,8 @@ internal sealed class ImTools(
     }
 
     /// <summary>im.forward_thread：转发整个话题（SDK 方法名 ReceiveThreadsAsync，语义为转发话题）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantImForwardThreadTool))]
-    public Task<FeishuToolResult> ForwardThreadAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantImForwardThreadTool))]
+    public Task<ToolResult> ForwardThreadAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ImForwardThread, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -262,7 +262,7 @@ internal sealed class ImTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", $"/open-apis/im/v1/threads/{args.ThreadId}/forward",
                     ToolDryRun.IdempotencyNote(args.IdempotencyKey),
                     ("thread_id", args.ThreadId.Length), ("receive_id", args.ReceiveId.Length)));
@@ -284,15 +284,15 @@ internal sealed class ImTools(
     }
 
     /// <summary>im.get_message_read_users：查询已读用户（SDK 方法名 GetMessageReadUsesAsync）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantImGetMessageReadUsersTool))]
-    public Task<FeishuToolResult> GetMessageReadUsersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantImGetMessageReadUsersTool))]
+    public Task<ToolResult> GetMessageReadUsersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ImGetMessageReadUsers, _maxResultLength);
         return executor.RunAsync(async () =>
         {
             var args = ImGetMessageReadUsersArgs.Unpack(arguments);
 
-            async Task<FeishuApiOutcome<ApiPageListResult<ReadMessageUser>>> FetchPageAsync(
+            async Task<ToolApiOutcome<ApiPageListResult<ReadMessageUser>>> FetchPageAsync(
                 string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _messageClient
                     .GetMessageReadUsesAsync(
@@ -321,8 +321,8 @@ internal sealed class ImTools(
     }
 
     /// <summary>im.get_chat：读取群基础信息（SDK 方法名 GetChatGroupInoByIdAsync）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantImGetChatTool))]
-    public Task<FeishuToolResult> GetChatAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantImGetChatTool))]
+    public Task<ToolResult> GetChatAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ImGetChat, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -347,8 +347,8 @@ internal sealed class ImTools(
     }
 
     /// <summary>im.search_chats：按关键词搜索群聊。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantImSearchChatsTool))]
-    public Task<FeishuToolResult> SearchChatsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantImSearchChatsTool))]
+    public Task<ToolResult> SearchChatsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ImSearchChats, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -358,7 +358,7 @@ internal sealed class ImTools(
 
             // P-1 顺带修复：此前本方法**声明了 page_token 却从未下传**（模型翻不了页）。
             // 现经同一次调用定义下传 token，并接入 fetch_all 聚合。
-            async Task<FeishuApiOutcome<ApiPageListResult<DataModels.ChatGroup.ChatItemInfo>>> FetchPageAsync(
+            async Task<ToolApiOutcome<ApiPageListResult<DataModels.ChatGroup.ChatItemInfo>>> FetchPageAsync(
                 string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await client
                     .GetChatGroupPageListByKeywordAsync(
@@ -504,15 +504,15 @@ internal sealed class ImTools(
     }
 
     /// <summary>im.list_chat_members：分页列出群成员（白名单 member_id/name/tenant_key）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantImListChatMembersTool))]
-    public Task<FeishuToolResult> ListChatMembersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantImListChatMembersTool))]
+    public Task<ToolResult> ListChatMembersAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ImListChatMembers, _maxResultLength);
         return executor.RunAsync(async () =>
         {
             var args = ImListChatMembersArgs.Unpack(arguments);
 
-            async Task<FeishuApiOutcome<GetMemberPageListResult>> FetchPageAsync(
+            async Task<ToolApiOutcome<GetMemberPageListResult>> FetchPageAsync(
                 string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _chatMemberClient
                     .GetMemberPageListByIdAsync(
@@ -542,8 +542,8 @@ internal sealed class ImTools(
 
     /// <summary>im.reply_message：回复指定消息（<c>dry_run=true</c> 时只预演）。</summary>
     /// <remarks>幂等键（uuid）：相同 uuid 在 1 小时内至多成功回复一条。</remarks>
-    [FeishuToolHandler(typeof(IFeishuTenantImReplyMessageTool))]
-    public Task<FeishuToolResult> ReplyMessageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantImReplyMessageTool))]
+    public Task<ToolResult> ReplyMessageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ImReplyMessage);
         return executor.RunAsync(async () =>
@@ -552,7 +552,7 @@ internal sealed class ImTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", $"/open-apis/im/v1/messages/{args.MessageId}/reply",
                     ToolDryRun.IdempotencyNote(args.IdempotencyKey),
                     ("message_id", args.MessageId.Length), ("msg_type", args.MsgType.Length), ("content", args.Content.Length)));
@@ -578,8 +578,8 @@ internal sealed class ImTools(
     }
 
     /// <summary>im.search_messages：按关键词搜索消息（白名单 id/display_info/meta_data）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantImSearchMessagesTool))]
-    public Task<FeishuToolResult> SearchMessagesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantImSearchMessagesTool))]
+    public Task<ToolResult> SearchMessagesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ImSearchMessages, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -592,7 +592,7 @@ internal sealed class ImTools(
                 Filter = BuildSearchFilter(args),
             };
 
-            async Task<FeishuApiOutcome<SearchMessageResult>> FetchPageAsync(
+            async Task<ToolApiOutcome<SearchMessageResult>> FetchPageAsync(
                 string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _messageClient
                     .SearchMessageAsync(

@@ -42,8 +42,8 @@ internal sealed class OkrWriteTools(
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>okr.create_objective：在周期下创建目标（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantOkrCreateObjectiveTool))]
-    public Task<FeishuToolResult> CreateObjectiveAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantOkrCreateObjectiveTool))]
+    public Task<ToolResult> CreateObjectiveAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.OkrCreateObjective, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -56,7 +56,7 @@ internal sealed class OkrWriteTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/okr/v2/cycles/{cycle_id}/objectives"));
             }
 
@@ -81,8 +81,8 @@ internal sealed class OkrWriteTools(
     }
 
     /// <summary>okr.update_objective：修改目标（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantOkrUpdateObjectiveTool))]
-    public Task<FeishuToolResult> UpdateObjectiveAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantOkrUpdateObjectiveTool))]
+    public Task<ToolResult> UpdateObjectiveAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.OkrUpdateObjective, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -99,7 +99,7 @@ internal sealed class OkrWriteTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "PATCH", "/open-apis/okr/v2/objectives/{objective_id}"));
             }
 
@@ -129,8 +129,8 @@ internal sealed class OkrWriteTools(
     }
 
     /// <summary>okr.delete_objective：删除目标及其关键结果（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantOkrDeleteObjectiveTool))]
-    public Task<FeishuToolResult> DeleteObjectiveAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantOkrDeleteObjectiveTool))]
+    public Task<ToolResult> DeleteObjectiveAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.OkrDeleteObjective);
         return executor.RunAsync(async () =>
@@ -141,7 +141,7 @@ internal sealed class OkrWriteTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "DELETE", "/open-apis/okr/v2/objectives/{objective_id}"));
             }
 
@@ -157,8 +157,8 @@ internal sealed class OkrWriteTools(
     }
 
     /// <summary>okr.create_key_result：在目标下创建关键结果（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantOkrCreateKeyResultTool))]
-    public Task<FeishuToolResult> CreateKeyResultAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantOkrCreateKeyResultTool))]
+    public Task<ToolResult> CreateKeyResultAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.OkrCreateKeyResult, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -170,7 +170,7 @@ internal sealed class OkrWriteTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/okr/v2/objectives/{objective_id}/key_results"));
             }
 
@@ -192,8 +192,8 @@ internal sealed class OkrWriteTools(
     }
 
     /// <summary>okr.update_key_result：修改关键结果（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantOkrUpdateKeyResultTool))]
-    public Task<FeishuToolResult> UpdateKeyResultAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantOkrUpdateKeyResultTool))]
+    public Task<ToolResult> UpdateKeyResultAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.OkrUpdateKeyResult, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -210,7 +210,7 @@ internal sealed class OkrWriteTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "PATCH", "/open-apis/okr/v2/key_results/{key_result_id}"));
             }
 
@@ -231,8 +231,8 @@ internal sealed class OkrWriteTools(
     }
 
     /// <summary>okr.delete_key_result：删除关键结果（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantOkrDeleteKeyResultTool))]
-    public Task<FeishuToolResult> DeleteKeyResultAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantOkrDeleteKeyResultTool))]
+    public Task<ToolResult> DeleteKeyResultAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.OkrDeleteKeyResult);
         return executor.RunAsync(async () =>
@@ -243,7 +243,7 @@ internal sealed class OkrWriteTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "DELETE", "/open-apis/okr/v2/key_results/{key_result_id}"));
             }
 

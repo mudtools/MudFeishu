@@ -96,7 +96,7 @@ public class UserToolTokenSemanticsTests
             false,
             FeishuToolRisk.Read,
             "user",
-            (_, _, _) => Task.FromResult(FeishuToolResult.FromText("downstream-result")));
+            (_, _, _) => Task.FromResult(ToolResult.FromText("downstream-result")));
 
     private static IReadOnlyDictionary<string, object?> Args()
         => new Dictionary<string, object?> { ["app_token"] = "bascnXxx" };
@@ -125,7 +125,7 @@ public class UserToolTokenSemanticsTests
             _ =>
             {
                 _callLog.Add("downstream");
-                return Task.FromResult(FeishuToolResult.FromText("should-not-reach"));
+                return Task.FromResult(ToolResult.FromText("should-not-reach"));
             });
 
         // Assert: result contains user_auth_required
@@ -163,7 +163,7 @@ public class UserToolTokenSemanticsTests
             UserToolDefinition(),
             Args(),
             new FeishuToolContext("appA", UserId: "ou_1"),
-            _ => Task.FromResult(FeishuToolResult.FromText("should-not-reach")));
+            _ => Task.FromResult(ToolResult.FromText("should-not-reach")));
 
         // Assert: payload must NOT contain "forbidden" or "authorization_denied"
         var text = result.ToString();
@@ -200,7 +200,7 @@ public class UserToolTokenSemanticsTests
             UserToolDefinition(),
             Args(),
             new FeishuToolContext("appA", UserId: "ou_1"),
-            _ => Task.FromResult(FeishuToolResult.FromText("should-not-reach")));
+            _ => Task.FromResult(ToolResult.FromText("should-not-reach")));
 
         // Assert: error message should include the authorization link
         var text = result.ToString();
@@ -230,7 +230,7 @@ public class UserToolTokenSemanticsTests
             UserToolDefinition(),
             Args(),
             new FeishuToolContext("appA", UserId: "ou_1"),
-            _ => Task.FromResult(FeishuToolResult.FromText("should-not-reach")));
+            _ => Task.FromResult(ToolResult.FromText("should-not-reach")));
 
         // Assert: error message should have text guidance without link
         var text = result.ToString();
@@ -259,7 +259,7 @@ public class UserToolTokenSemanticsTests
             _ =>
             {
                 _callLog.Add("downstream");
-                return Task.FromResult(FeishuToolResult.FromText("downstream-ok"));
+                return Task.FromResult(ToolResult.FromText("downstream-ok"));
             });
 
         // Assert: downstream was called
@@ -296,7 +296,7 @@ public class UserToolTokenSemanticsTests
             _ =>
             {
                 _callLog.Add("downstream");
-                return Task.FromResult(FeishuToolResult.FromText("dry-run-ok"));
+                return Task.FromResult(ToolResult.FromText("dry-run-ok"));
             });
 
         // Assert: downstream was called despite AuthRequired state
@@ -324,7 +324,7 @@ public class UserToolTokenSemanticsTests
             false,
             FeishuToolRisk.Read,
             "tenant",
-            (_, _, _) => Task.FromResult(FeishuToolResult.FromText("tenant-ok")));
+            (_, _, _) => Task.FromResult(ToolResult.FromText("tenant-ok")));
 
         // Act
         var result = await binding.ExecuteAsync(
@@ -334,7 +334,7 @@ public class UserToolTokenSemanticsTests
             _ =>
             {
                 _callLog.Add("downstream");
-                return Task.FromResult(FeishuToolResult.FromText("tenant-ok"));
+                return Task.FromResult(ToolResult.FromText("tenant-ok"));
             });
 
         // Assert: downstream was called, no precheck for tenant tools

@@ -26,8 +26,8 @@ internal sealed class MessageWriteTools(Mud.Feishu.IFeishuTenantV1Message messag
 
     /// <summary>im.send_message：发送文本消息（<c>dry_run=true</c> 时只预演）。</summary>
     /// <remarks>幂等键（T4-1 / F-1）：<c>idempotency_key</c> → <see cref="SendMessageRequest.Uuid"/>（平台侧 1 小时窗口去重）。</remarks>
-    [FeishuToolHandler(typeof(IFeishuTenantImSendMessageTool))]
-    public Task<FeishuToolResult> SendMessageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantImSendMessageTool))]
+    public Task<ToolResult> SendMessageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ImSendMessage);
         return executor.RunAsync(async () =>
@@ -42,7 +42,7 @@ internal sealed class MessageWriteTools(Mud.Feishu.IFeishuTenantV1Message messag
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/im/v1/messages",
                     ToolDryRun.IdempotencyNote(args.IdempotencyKey),
                     ("receive_id", args.ReceiveId.Length), ("text", args.Text.Length), ("receive_id_type", receiveIdType.Length)));
@@ -74,8 +74,8 @@ internal sealed class MessageWriteTools(Mud.Feishu.IFeishuTenantV1Message messag
     /// <b>模型全程零 JSON 字符串</b>（F-6 的目的）：入参是 DSL 文本，出参是编译好的卡片 JSON。
     /// 与 <c>im.send_message</c> 复用同一条 <c>SendMessageAsync</c> 发送路径（A-12）。
     /// </remarks>
-    [FeishuToolHandler(typeof(IFeishuTenantImSendCardTool))]
-    public Task<FeishuToolResult> SendCardAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantImSendCardTool))]
+    public Task<ToolResult> SendCardAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ImSendCard);
         return executor.RunAsync(async () =>
@@ -94,7 +94,7 @@ internal sealed class MessageWriteTools(Mud.Feishu.IFeishuTenantV1Message messag
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/im/v1/messages",
                     "卡片结构（由 body/buttons 编译，非模型手写）：" + content
                     + ToolDryRun.IdempotencyNote(args.IdempotencyKey),
@@ -160,8 +160,8 @@ internal sealed class ApprovalWriteTools(
 
     /// <summary>approval.create_instance：发起审批实例（<c>dry_run=true</c> 时只预演）。</summary>
     /// <remarks>幂等键（T4-1 / F-1）：<c>idempotency_key</c> → <see cref="CreateInstanceRequest.Uuid"/>（冲突返回 60012）。</remarks>
-    [FeishuToolHandler(typeof(IFeishuTenantApprovalCreateInstanceTool))]
-    public Task<FeishuToolResult> CreateInstanceAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantApprovalCreateInstanceTool))]
+    public Task<ToolResult> CreateInstanceAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ApprovalCreateInstance);
         return executor.RunAsync(async () =>
@@ -174,7 +174,7 @@ internal sealed class ApprovalWriteTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/approval/v4/instances",
                     ToolDryRun.IdempotencyNote(args.IdempotencyKey),
                     ("approval_code", args.ApprovalCode.Length), ("form", args.Form.Length), ("user_id", args.UserId?.Length ?? 0)));
@@ -200,8 +200,8 @@ internal sealed class ApprovalWriteTools(
 
     /// <summary>approval.list_pending_tasks：查询审批待办任务列表（分页，白名单 task_id/instance_code/approval_name/title/status）。</summary>
     /// <remarks>查询客户端缺席（宿主未注册 <c>IFeishuTenantV4ApprovalQuery</c>）→ 结构化错误。</remarks>
-    [FeishuToolHandler(typeof(IFeishuTenantApprovalListPendingTasksTool))]
-    public Task<FeishuToolResult> ListPendingTasksAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantApprovalListPendingTasksTool))]
+    public Task<ToolResult> ListPendingTasksAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ApprovalListPendingTasks, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -254,8 +254,8 @@ internal sealed class ApprovalWriteTools(
 
     /// <summary>approval.approve_task：同意审批任务（<c>dry_run=true</c> 时只预演）。</summary>
     /// <remarks>无幂等键（飞书审批同意操作天然不可重复——同意后任务状态即变）。</remarks>
-    [FeishuToolHandler(typeof(IFeishuTenantApprovalApproveTaskTool))]
-    public Task<FeishuToolResult> ApproveTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantApprovalApproveTaskTool))]
+    public Task<ToolResult> ApproveTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ApprovalApproveTask);
         return executor.RunAsync(async () =>
@@ -270,7 +270,7 @@ internal sealed class ApprovalWriteTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/approval/v4/tasks/approve",
                     ToolDryRun.IdempotencyNote(null),
                     ("approval_code", args.ApprovalCode.Length),
@@ -302,7 +302,7 @@ internal sealed class ApprovalWriteTools(
 
             if (nullDataResult.Code != 0)
             {
-                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(
+                return ToolResult.FromError(FeishuToolBinding.StructuredError(
                     executor.ToolName, nullDataResult.Code,
                     $"飞书接口返回错误 code={nullDataResult.Code.ToString(CultureInfo.InvariantCulture)}, msg={nullDataResult.Msg ?? "(无错误信息)"}"));
             }
@@ -318,8 +318,8 @@ internal sealed class ApprovalWriteTools(
     /// <summary>
     /// approval.reject_task：拒绝审批任务（R5 / F-11 —— 补齐"只能同意"这一硬缺陷）。
     /// </summary>
-    [FeishuToolHandler(typeof(IFeishuTenantApprovalRejectTaskTool))]
-    public Task<FeishuToolResult> RejectTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantApprovalRejectTaskTool))]
+    public Task<ToolResult> RejectTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ApprovalRejectTask);
         return executor.RunAsync(async () =>
@@ -329,7 +329,7 @@ internal sealed class ApprovalWriteTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/approval/v4/tasks/reject",
                     ToolDryRun.IdempotencyNote(null),
                     ("approval_code", args.ApprovalCode.Length),
@@ -369,8 +369,8 @@ internal sealed class ApprovalWriteTools(
     /// <b>转交给自己必须提前拒绝</b>：平台会接受但语义上是空操作（流程不前进），
     /// 模型若不察觉会误以为转交成功。这是"构建通过、调用成功、但结果无意义"的一类。
     /// </remarks>
-    [FeishuToolHandler(typeof(IFeishuTenantApprovalTransferTaskTool))]
-    public Task<FeishuToolResult> TransferTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantApprovalTransferTaskTool))]
+    public Task<ToolResult> TransferTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ApprovalTransferTask);
         return executor.RunAsync(async () =>
@@ -387,7 +387,7 @@ internal sealed class ApprovalWriteTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/approval/v4/tasks/transfer",
                     ToolDryRun.IdempotencyNote(null),
                     ("approval_code", args.ApprovalCode.Length),
@@ -454,8 +454,8 @@ internal sealed class ApprovalWriteTools(
 
     /// <summary>approval.get_instance：获取审批实例详情（白名单 instance_code/status/form/auditors，user-only）。</summary>
     /// <remarks>用户身份工具——宿主须在 AllowedIdentities 放行 user。客户端缺席时返回结构化错误。</remarks>
-    [FeishuToolHandler(typeof(IFeishuUserApprovalGetInstanceTool))]
-    public Task<FeishuToolResult> GetInstanceAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuUserApprovalGetInstanceTool))]
+    public Task<ToolResult> GetInstanceAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ApprovalGetInstance, _maxResultLength);
         return executor.RunAsync(async () =>

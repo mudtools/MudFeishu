@@ -167,8 +167,9 @@ public class ErrorRecoverabilityTests
     [Fact]
     public void ToolExecutor_ShouldSerializeViaToolResultJson_NotRawToJsonString()
     {
+        // v2.3 P1-D：唯一出口与执行器骨架随中立化上移 Mud.AI.Agent/Tools。
         var pipeline = File.ReadAllText(
-            Path.Combine(FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Results", "ToolResultPipeline.cs"));
+            Path.Combine(FindRepositoryRoot(), "Mud.AI.Agent", "Tools", "ToolResultPipeline.cs"));
 
         pipeline.Should().Contain(
             "ToolResultJson.ToText",
@@ -180,7 +181,7 @@ public class ErrorRecoverabilityTests
 
         // 反向自证：执行器骨架不再持有序列化职责（形态单源），故不得出现裸 ToJsonString()。
         var executor = File.ReadAllText(
-            Path.Combine(FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Internal", "ToolExecutor.cs"));
+            Path.Combine(FindRepositoryRoot(), "Mud.AI.Agent", "Tools", "ToolExecutor.cs"));
 
         executor.Should().NotContain(".ToJsonString()", "执行器骨架不得自行序列化（S-10 回潮）");
     }

@@ -1,0 +1,116 @@
+#nullable enable
+Mud.AI.Abstractions.Tools.AgentToolAttribute
+Mud.AI.Abstractions.Tools.AgentToolAttribute.AgentToolAttribute(string! name) -> void
+Mud.AI.Abstractions.Tools.AgentToolAttribute.AnyOf.get -> string![]!
+Mud.AI.Abstractions.Tools.AgentToolAttribute.AnyOf.set -> void
+Mud.AI.Abstractions.Tools.AgentToolAttribute.Description.get -> string!
+Mud.AI.Abstractions.Tools.AgentToolAttribute.Description.set -> void
+Mud.AI.Abstractions.Tools.AgentToolAttribute.IsWrite.get -> bool
+Mud.AI.Abstractions.Tools.AgentToolAttribute.IsWrite.set -> void
+Mud.AI.Abstractions.Tools.AgentToolAttribute.Name.get -> string!
+Mud.AI.Abstractions.Tools.AgentToolAttribute.RequiredScopes.get -> string![]!
+Mud.AI.Abstractions.Tools.AgentToolAttribute.RequiredScopes.set -> void
+Mud.AI.Abstractions.Tools.AgentToolAttribute.Source.get -> string?
+Mud.AI.Abstractions.Tools.AgentToolAttribute.Source.set -> void
+Mud.AI.Abstractions.Tools.Handlers.ToolHandlerAttribute
+Mud.AI.Abstractions.Tools.Handlers.ToolHandlerAttribute.ToolHandlerAttribute(System.Type! toolInterface) -> void
+Mud.AI.Abstractions.Tools.Handlers.ToolHandlerAttribute.ToolInterface.get -> System.Type!
+Mud.AI.Abstractions.Tools.ToolParameterAttribute
+Mud.AI.Abstractions.Tools.ToolParameterAttribute.Description.get -> string!
+Mud.AI.Abstractions.Tools.ToolParameterAttribute.EnumType.get -> System.Type?
+Mud.AI.Abstractions.Tools.ToolParameterAttribute.EnumType.set -> void
+Mud.AI.Abstractions.Tools.ToolParameterAttribute.Name.get -> string!
+Mud.AI.Abstractions.Tools.ToolParameterAttribute.Required.get -> bool
+Mud.AI.Abstractions.Tools.ToolParameterAttribute.Required.set -> void
+Mud.AI.Abstractions.Tools.ToolParameterAttribute.ToolParameterAttribute(string! name, string! description) -> void
+Mud.AI.Attributes.SdkToolProfileAttribute
+Mud.AI.Attributes.SdkToolProfileAttribute.AffordanceDirectory.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.AffordanceDirectory.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.BindingTypeName.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.BindingTypeName.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.CapabilityCatalogPropertyName.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.CapabilityCatalogPropertyName.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.ContractNamespace.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.ContractNamespace.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.DiagnosticCategory.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.DiagnosticCategory.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.DiagnosticPrefix.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.DiagnosticPrefix.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.GeneratedNamespace.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.GeneratedNamespace.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.GoldenFileName.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.GoldenFileName.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.GoldenUpdatePropertyName.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.GoldenUpdatePropertyName.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.GuidanceDirectory.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.GuidanceDirectory.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.InterfaceNameRegex.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.InterfaceNameRegex.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.Name.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.OutputWrapperNamespace.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.OutputWrapperNamespace.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.OutputWrapperTypeNames.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.OutputWrapperTypeNames.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.OwnerAssembly.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.OwnerAssembly.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.ParameterAttributeName.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.ParameterAttributeName.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.ProductPluralPrefix.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.ProductPluralPrefix.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.ProductPrefix.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.ProductPrefix.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.RegistrationNamespace.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.RegistrationNamespace.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.ResultTypeName.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.ResultTypeName.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.RiskEnumFullName.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.RiskEnumFullName.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.SchemaExtensionKey.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.SchemaExtensionKey.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.SdkInterfacePrefix.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.SdkInterfacePrefix.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.SdkNamespaceRoot.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.SdkNamespaceRoot.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.SdkToolProfileAttribute(string! name) -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.TokenKindMarkers.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.TokenKindMarkers.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.TokenKindStrategy.get -> Mud.AI.Attributes.TokenKindDerivationStrategy
+Mud.AI.Attributes.SdkToolProfileAttribute.TokenKindStrategy.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.ToolAttributeName.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.ToolAttributeName.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.ToolAttributeNamespace.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.ToolAttributeNamespace.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.ToolHandlerAttributeName.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.ToolHandlerAttributeName.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.ToolHandlerAttributeNamespace.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.ToolHandlerAttributeNamespace.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.ToolingDiagnosticCategory.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.ToolingDiagnosticCategory.set -> void
+Mud.AI.Attributes.SdkToolProfileAttribute.WriteVerbKeywords.get -> string!
+Mud.AI.Attributes.SdkToolProfileAttribute.WriteVerbKeywords.set -> void
+Mud.AI.Attributes.TokenKindDerivationStrategy
+Mud.AI.Attributes.TokenKindDerivationStrategy.InfixMarker = 3 -> Mud.AI.Attributes.TokenKindDerivationStrategy
+Mud.AI.Attributes.TokenKindDerivationStrategy.NamePrefix = 1 -> Mud.AI.Attributes.TokenKindDerivationStrategy
+Mud.AI.Attributes.TokenKindDerivationStrategy.SuffixMarker = 2 -> Mud.AI.Attributes.TokenKindDerivationStrategy
+Mud.AI.Attributes.TokenKindDerivationStrategy.Unspecified = 0 -> Mud.AI.Attributes.TokenKindDerivationStrategy
+Mud.AI.InterfaceIdentity
+Mud.AI.InterfaceIdentity.Domain.get -> string!
+Mud.AI.InterfaceIdentity.Equals(Mud.AI.InterfaceIdentity? other) -> bool
+Mud.AI.InterfaceIdentity.InterfaceIdentity(string! interfaceName, Mud.AI.SdkTokenKind kind, string! domain, string! resource, int? version, string! rawTokenMarker = "") -> void
+Mud.AI.InterfaceIdentity.InterfaceName.get -> string!
+Mud.AI.InterfaceIdentity.Kind.get -> Mud.AI.SdkTokenKind
+Mud.AI.InterfaceIdentity.RawTokenMarker.get -> string!
+Mud.AI.InterfaceIdentity.Resource.get -> string!
+Mud.AI.InterfaceIdentity.Version.get -> int?
+Mud.AI.ISdkToolProfile
+Mud.AI.SdkTokenKind
+Mud.AI.SdkTokenKind.Both = 5 -> Mud.AI.SdkTokenKind
+Mud.AI.SdkTokenKind.Internal = 4 -> Mud.AI.SdkTokenKind
+Mud.AI.SdkTokenKind.Tenant = 1 -> Mud.AI.SdkTokenKind
+Mud.AI.SdkTokenKind.ThirdParty = 3 -> Mud.AI.SdkTokenKind
+Mud.AI.SdkTokenKind.Unspecified = 0 -> Mud.AI.SdkTokenKind
+Mud.AI.SdkTokenKind.User = 2 -> Mud.AI.SdkTokenKind
+Mud.AI.SdkTokenKindContract
+override Mud.AI.InterfaceIdentity.Equals(object? obj) -> bool
+override Mud.AI.InterfaceIdentity.GetHashCode() -> int
+static Mud.AI.SdkTokenKindContract.ToLiteral(Mud.AI.SdkTokenKind kind) -> string!

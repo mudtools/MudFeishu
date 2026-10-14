@@ -50,8 +50,8 @@ internal sealed class AttachmentTools(
     private readonly ILogger? _logger = logger;
 
     /// <summary>im.send_image：落盘 → 上传图片 → 发送图片消息（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantImSendImageTool))]
-    public Task<FeishuToolResult> SendImageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantImSendImageTool))]
+    public Task<ToolResult> SendImageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ImSendImage);
         return executor.RunAsync(async () =>
@@ -62,7 +62,7 @@ internal sealed class AttachmentTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/im/v1/images → /open-apis/im/v1/messages",
                     ToolDryRun.IdempotencyNote(null),
                     ("receive_id", args.ReceiveId.Length), ("image_url", imageUrl.Length)));
@@ -105,8 +105,8 @@ internal sealed class AttachmentTools(
     }
 
     /// <summary>im.send_file：落盘 → 上传文件 → 发送文件消息（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantImSendFileTool))]
-    public Task<FeishuToolResult> SendFileAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantImSendFileTool))]
+    public Task<ToolResult> SendFileAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.ImSendFile);
         return executor.RunAsync(async () =>
@@ -117,7 +117,7 @@ internal sealed class AttachmentTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/im/v1/files → /open-apis/im/v1/messages",
                     ToolDryRun.IdempotencyNote(null),
                     ("receive_id", args.ReceiveId.Length), ("file_url", fileUrl.Length), ("file_name", args.FileName.Length)));
@@ -161,7 +161,7 @@ internal sealed class AttachmentTools(
     }
 
     /// <summary>以资源 key 发送消息（<c>msg_type</c> 为 image/file，content 为 <c>{"&lt;key 名&gt;": "..."}</c>）。</summary>
-    private async Task<FeishuToolResult> SendWithKeyAsync(
+    private async Task<ToolResult> SendWithKeyAsync(
         ToolExecutor executor,
         string receiveId,
         string receiveIdType,

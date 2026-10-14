@@ -32,8 +32,8 @@ internal sealed class DriveTools(
     private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
     /// <summary>drive.list_folder_files：列出文件夹内容（folder_token 缺省=根目录；白名单 token/name/type/url）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantDriveFolderFilesTool))]
-    public Task<FeishuToolResult> ListFolderFilesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDriveFolderFilesTool))]
+    public Task<ToolResult> ListFolderFilesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DriveListFolderFiles, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -64,8 +64,8 @@ internal sealed class DriveTools(
     }
 
     /// <summary>drive.get_file_metas：元信息批量查询（官方单请求上限 200；白名单 doc_token/doc_type/title/url/owner_id）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantDriveFileMetasTool))]
-    public Task<FeishuToolResult> GetFileMetasAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDriveFileMetasTool))]
+    public Task<ToolResult> GetFileMetasAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DriveGetFileMetas, _maxResultLength);
         return executor.RunAsync(async () =>

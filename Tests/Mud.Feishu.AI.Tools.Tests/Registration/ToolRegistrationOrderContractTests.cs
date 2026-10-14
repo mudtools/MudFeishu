@@ -62,7 +62,7 @@ public class ToolRegistrationOrderContractTests
 
         // 注册名必须是编译期契约的子集（否则"注册名 ⊆ Schema 常量表"的守卫链断了）。
         names.Should().BeSubsetOf(FeishuToolNames.All,
-            "注册名只能来自 [FeishuTool] 派生的契约表（RegisterTool 已 fail-fast，此处是第二道锁）");
+            "注册名只能来自 [AgentTool] 派生的契约表（RegisterTool 已 fail-fast，此处是第二道锁）");
 
         foreach (var name in names)
         {

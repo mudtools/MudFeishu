@@ -30,8 +30,8 @@ internal sealed class KnowledgeSearchTools(IRetriever retriever, IOptions<Feishu
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>knowledge.search：知识检索（编号切片回填）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantKnowledgeSearchTool))]
-    public Task<FeishuToolResult> SearchAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantKnowledgeSearchTool))]
+    public Task<ToolResult> SearchAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.KnowledgeSearch, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -41,7 +41,7 @@ internal sealed class KnowledgeSearchTools(IRetriever retriever, IOptions<Feishu
             var chunks = await _retriever.RetrieveAsync(args.Query, cancellationToken).ConfigureAwait(false);
             if (chunks.Count == 0)
             {
-                return FeishuToolResult.FromText($"{executor.ToolName}: 知识库未检索到与问题相关的内容（has_answer=false）——请基于既有上下文作答");
+                return ToolResult.FromText($"{executor.ToolName}: 知识库未检索到与问题相关的内容（has_answer=false）——请基于既有上下文作答");
             }
 
             var builder = new StringBuilder();

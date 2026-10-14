@@ -35,14 +35,16 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// </remarks>
 public class GeneratedCodeMarkerContractGuards
 {
-    /// <summary>生成器标识（生成器 <c>GeneratedCodeMarker.GeneratorName</c> 的字面量）。</summary>
+    /// <summary>生成器标识（生成器 <c>GeneratedCodeMarker.FullGeneratorName</c> 的字面量）。</summary>
     /// <remarks>
-    /// BUG-2 后该字面量随剖面槽 <c>ToolAttributeNamespace</c> 变更（组件侧生成器把
-    /// 「工具特性所在命名空间」拼进 <c>[GeneratedCode]</c> 的工具名）：
-    /// <c>Mud.Feishu.AI.Tools</c> → <c>Mud.Feishu.AI.AgentTools</c>。
-    /// 这是**生成标记**而非公开契约，故只需同步本基线。
+    /// 该串不是独立事实，而是引擎按 <c>{ToolAttributeNamespace}.{ProductPrefix}SchemaGenerator</c>
+    /// 派生的组合结果（组件侧生成器同样把「工具特性所在命名空间」拼进
+    /// <c>[GeneratedCode]</c> 的工具名）：BUG-2 时随槽改为 <c>Mud.Feishu.AI.AgentTools</c>；
+    /// v2.3 P1-E 声明契约上移 <c>Mud.AI.Abstractions</c> ⇒ 前缀再改为
+    /// <c>Mud.AI.Abstractions.Tools</c>（短名 <c>FeishuToolSchemaGenerator</c> 由 ProductPrefix
+    /// 决定，恒不变）。这是**生成标记**而非公开契约，故只需同步本基线。
     /// </remarks>
-    private const string GeneratorName = "Mud.Feishu.AI.AgentTools.FeishuToolSchemaGenerator";
+    private const string GeneratorName = "Mud.AI.Abstractions.Tools.FeishuToolSchemaGenerator";
 
     /// <summary>固定名产物类型（每类发射器一个；新增固定名产物须在此登记）。</summary>
     private static readonly HashSet<string> FixedArtifactTypeNames = new(StringComparer.Ordinal)

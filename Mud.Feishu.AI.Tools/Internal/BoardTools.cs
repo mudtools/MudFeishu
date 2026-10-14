@@ -35,8 +35,8 @@ internal sealed class BoardTools(Mud.Feishu.IFeishuTenantV1Board? boardClient = 
 
     // ─────────────────────────── 只读面（2 个） ───────────────────────────
 
-    [FeishuToolHandler(typeof(IFeishuTenantBoardGetThemeTool))]
-    public Task<FeishuToolResult> GetWhiteboardThemeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantBoardGetThemeTool))]
+    public Task<ToolResult> GetWhiteboardThemeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.BoardGetTheme);
         return executor.RunAsync(async () =>
@@ -71,8 +71,8 @@ internal sealed class BoardTools(Mud.Feishu.IFeishuTenantV1Board? boardClient = 
         });
     }
 
-    [FeishuToolHandler(typeof(IFeishuTenantBoardListNodesTool))]
-    public Task<FeishuToolResult> GetWhiteboardNodesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantBoardListNodesTool))]
+    public Task<ToolResult> GetWhiteboardNodesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.BoardListNodes);
         return executor.RunAsync(async () =>
@@ -109,8 +109,8 @@ internal sealed class BoardTools(Mud.Feishu.IFeishuTenantV1Board? boardClient = 
 
     // ─────────────────────────── 写面（4 个） ───────────────────────────
 
-    [FeishuToolHandler(typeof(IFeishuTenantBoardUpdateThemeTool))]
-    public Task<FeishuToolResult> UpdateWhiteboardThemeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantBoardUpdateThemeTool))]
+    public Task<ToolResult> UpdateWhiteboardThemeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.BoardUpdateTheme);
         return executor.RunAsync(async () =>
@@ -125,7 +125,7 @@ internal sealed class BoardTools(Mud.Feishu.IFeishuTenantV1Board? boardClient = 
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "PATCH", "/open-apis/board/v1/whiteboards/{whiteboard_id}",
                     ToolDryRun.IdempotencyNote(null),
                     ("theme", args.ThemeId.Length)));
@@ -148,8 +148,8 @@ internal sealed class BoardTools(Mud.Feishu.IFeishuTenantV1Board? boardClient = 
         });
     }
 
-    [FeishuToolHandler(typeof(IFeishuTenantBoardRenderDslTool))]
-    public Task<FeishuToolResult> CreatePlantumlWhiteboardNodeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantBoardRenderDslTool))]
+    public Task<ToolResult> CreatePlantumlWhiteboardNodeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.BoardRenderDsl);
         return executor.RunAsync(async () =>
@@ -175,7 +175,7 @@ internal sealed class BoardTools(Mud.Feishu.IFeishuTenantV1Board? boardClient = 
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/board/v1/whiteboards/{whiteboard_id}/nodes/plantuml",
                     ToolDryRun.IdempotencyNote(null),
                     ("dsl_type", args.DslType.Length), ("content", args.Content.Length)));
@@ -196,8 +196,8 @@ internal sealed class BoardTools(Mud.Feishu.IFeishuTenantV1Board? boardClient = 
         });
     }
 
-    [FeishuToolHandler(typeof(IFeishuTenantBoardCreateNodesTool))]
-    public Task<FeishuToolResult> CreateWhiteboardNodeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantBoardCreateNodesTool))]
+    public Task<ToolResult> CreateWhiteboardNodeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.BoardCreateNodes);
         return executor.RunAsync(async () =>
@@ -238,7 +238,7 @@ internal sealed class BoardTools(Mud.Feishu.IFeishuTenantV1Board? boardClient = 
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/board/v1/whiteboards/{whiteboard_id}/nodes",
                     ToolDryRun.IdempotencyNote(args.IdempotencyKey),
                     ("nodes", nodeList.Count)));
@@ -273,8 +273,8 @@ internal sealed class BoardTools(Mud.Feishu.IFeishuTenantV1Board? boardClient = 
         });
     }
 
-    [FeishuToolHandler(typeof(IFeishuTenantBoardDeleteNodesTool))]
-    public Task<FeishuToolResult> BatchDeleteWhiteboardNodeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantBoardDeleteNodesTool))]
+    public Task<ToolResult> BatchDeleteWhiteboardNodeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.BoardDeleteNodes);
         return executor.RunAsync(async () =>
@@ -294,7 +294,7 @@ internal sealed class BoardTools(Mud.Feishu.IFeishuTenantV1Board? boardClient = 
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "DELETE", "/open-apis/board/v1/whiteboards/{whiteboard_id}/nodes/batch_delete",
                     "预演不占坑：本操作无幂等键（删除不可撤销，请核对 node_ids 后去掉 dry_run 重放）",
                     ("node_ids", args.NodeIds.Length)));

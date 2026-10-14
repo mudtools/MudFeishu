@@ -39,7 +39,7 @@ namespace Mud.Feishu.Tests.Http;
 /// </para>
 /// <para>
 /// <b>与 AI 工具面的关系（R5 / B-2 核心结论）</b>：这 16 个下载方法<b>全部未暴露为 AI 工具</b>——
-/// 其所属 13 个接口的 <c>[FeishuTool]</c> 计数<b>均为 0</b>，因此二进制<b>当前不可能</b>进入工具
+/// 其所属 13 个接口的 <c>[AgentTool]</c> 计数<b>均为 0</b>，因此二进制<b>当前不可能</b>进入工具
 /// JSON 结果。该不变量由 <c>BinaryDownloadToolExposureContractTests</c> 机械锁定；
 /// 本测试则锁定其<b>错误语义</b>（非 2xx 抛 <c>ApiException</c>，错误体进入异常）。
 /// </para>

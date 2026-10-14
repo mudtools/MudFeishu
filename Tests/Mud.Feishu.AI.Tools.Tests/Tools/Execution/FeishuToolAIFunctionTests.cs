@@ -24,7 +24,7 @@ public class FeishuToolAIFunctionTests
             false,
             FeishuToolRisk.Read,
             "tenant",
-            (_, _, _) => Task.FromResult(FeishuToolResult.FromText("ok")));
+            (_, _, _) => Task.FromResult(ToolResult.FromText("ok")));
 
         var function = new FeishuToolAIFunction(definition, SchemaOf("bitable.query_records"));
 
@@ -51,7 +51,7 @@ public class FeishuToolAIFunctionTests
     {
         var definition = new FeishuToolDefinition(
             "bitable.query_records", "d", [], false, FeishuToolRisk.Read, "tenant",
-            (_, _, _) => Task.FromResult(FeishuToolResult.FromText("ok")));
+            (_, _, _) => Task.FromResult(ToolResult.FromText("ok")));
 
         var schema = new FeishuToolAIFunction(definition, SchemaOf("bitable.query_records")).JsonSchema;
 
@@ -85,7 +85,7 @@ public class FeishuToolAIFunctionTests
         var function = new FeishuToolAIFunction(definition, "{\"name\":\"test.tool\"}", contextAccessor: null);
 
         var result = await function.InvokeAsync(new AIFunctionArguments());
-        result.Should().BeOfType<FeishuToolResult>()
+        result.Should().BeOfType<ToolResult>()
             .Which.ToString().Should().Contain("[tool_error] test.tool").And.Contain("appKey");
     }
 
@@ -106,7 +106,7 @@ public class FeishuToolAIFunctionTests
             {
                 seenContext = context;
                 seenArguments = arguments;
-                return Task.FromResult(FeishuToolResult.FromText("handler-ok"));
+                return Task.FromResult(ToolResult.FromText("handler-ok"));
             });
 
         var function = new FeishuToolAIFunction(definition, "{\"name\":\"test.tool\"}", accessor);
@@ -114,7 +114,7 @@ public class FeishuToolAIFunctionTests
         using (accessor.Begin(new FeishuToolContext("appKeyA", "conv", "chat1", "user1")))
         {
             var result = await function.InvokeAsync(new AIFunctionArguments { ["app_token"] = "bascnXxx" });
-            result.Should().BeOfType<FeishuToolResult>().Which.ToString().Should().Be("handler-ok");
+            result.Should().BeOfType<ToolResult>().Which.ToString().Should().Be("handler-ok");
         }
 
         seenContext!.AppKey.Should().Be("appKeyA", "上下文经异步流注入（多租户隔离事实来源）");
@@ -125,7 +125,7 @@ public class FeishuToolAIFunctionTests
     [Fact]
     public void Invoke_WithInvalidSchemaConstant_ShouldFailFastOnConstruction()
     {
-        var definition = new FeishuToolDefinition("x", "d", [], false, FeishuToolRisk.Read, "tenant", (_, _, _) => Task.FromResult(FeishuToolResult.FromText("ok")));
+        var definition = new FeishuToolDefinition("x", "d", [], false, FeishuToolRisk.Read, "tenant", (_, _, _) => Task.FromResult(ToolResult.FromText("ok")));
 
         var act = () => new FeishuToolAIFunction(definition, "not-json");
 

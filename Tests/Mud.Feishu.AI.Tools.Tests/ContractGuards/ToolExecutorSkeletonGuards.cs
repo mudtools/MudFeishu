@@ -70,7 +70,7 @@ public class ToolExecutorSkeletonGuards
             var count = 0;
             foreach (var line in File.ReadLines(fileName))
             {
-                var methodMatch = Regex.Match(line, @"public\s+(?:async\s+)?Task<FeishuToolResult>\s+(\w+)");
+                var methodMatch = Regex.Match(line, @"public\s+(?:async\s+)?Task<ToolResult>\s+(\w+)");
                 if (methodMatch.Success)
                 {
                     if (count > 1)
@@ -318,12 +318,12 @@ public class ToolExecutorSkeletonGuards
 
                 scanned++;
 
-                // 窗口必须**限定在本方法体内**：到下个 [FeishuToolHandler] 或下个
+                // 窗口必须**限定在本方法体内**：到下个 [ToolHandler] 或下个
                 // new ToolExecutor( 为止。若用固定行数，会跨到下一个方法而误判
                 // （实测：delete_blocks 的窗口曾"看到"了 import_markdown 的出口）。
                 var end = i + 1;
                 while (end < lines.Length
-                    && !lines[end].Contains("[FeishuToolHandler(", StringComparison.Ordinal)
+                    && !lines[end].Contains("[ToolHandler(", StringComparison.Ordinal)
                     && !lines[end].Contains("new ToolExecutor(", StringComparison.Ordinal))
                 {
                     end++;

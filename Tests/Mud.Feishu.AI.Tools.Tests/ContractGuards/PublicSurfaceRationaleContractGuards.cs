@@ -41,7 +41,19 @@ public class PublicSurfaceRationaleContractGuards
     // （S-1 的 FeishuToolPolicyOptions / FeishuToolPolicyDomainOptions、BUG-4 的 GuidanceModes /
     //  GuidanceRoutingSummary、M-2 的 FeishuMcpResourceCatalog / McpResourceInfo）= 303
     // （全部登记在 reasons 段）。
-    private const int BaselineTypeCount = 363;
+    // v2.3 P1-D（2026-10-13）：354 → **350**——执行器骨架中立化上移 Mud.AI.Agent（决策⑮）：
+    // FeishuToolResult / IToolResultShaper / ToolError / IToolErrorTextFormatter 四个 public 类型
+    // 迁出飞书发布面（新家 = Mud.AI.Agent.Tools，由该包自己的 PublicAPI 台账登记）。
+    // v2.3 P1-E：350 → **348**——声明契约中立化上移 Mud.AI.Abstractions：
+    // AgentToolAttribute（原 FeishuToolAttribute）与 ToolParameterAttribute 两个 public 类型
+    // 迁出 Mud.Feishu.AI 发布面（新家 = Mud.AI.Abstractions.Tools）。
+    // 【合并两侧（2026-10-14）】：348（P1 迁出 6 个）**+ 本批新增 9 个策展接口 = 357**——
+    // Application 写面 2（update_visibility / update_management）+ HelpDesk 写面 4
+    // （start_service / answer_user_query / create_ticket_message / create_bot_message）
+    // + Aily 只读 3（list_data_assets / get_data_asset / list_data_asset_tags），
+    // 全部按"冻结基线 + 增量理由"两段式登记在 public-surface-rationale.json 的 reasons 段。
+    // 注意：两侧各自都从 354 出发（本地 +9、传入 −6），故**不能**取任一侧的值，必须相加。
+    private const int BaselineTypeCount = 357;
 
     private static readonly string[] ApiFiles =
     [

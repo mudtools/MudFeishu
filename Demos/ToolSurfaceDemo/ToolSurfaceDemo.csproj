@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<!-- 程序集名必须等于剖面 OwnerAssembly 槽：
+		     Names/Contracts/Args/Registrars/Guidance 只发射进 owner 程序集（§5.2-2 owner 门槛）。 -->
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- SDK 程序集：Tier R 能力目录按程序集名 == SdkNamespaceRoot 定位它 -->
+		<ProjectReference Include="..\Mud.Demo.Sdk\Mud.Demo.Sdk.csproj" />
+		<!-- 引导契约（ISdkToolProfile / [SdkToolProfile] / SdkTokenKind / TokenKindDerivationStrategy）
+		     所在包——v2.3 起随引擎进仓 Mud.AI.Abstractions（引擎按 `Mud.AI.ISdkToolProfile`
+		     + `Mud.AI.Attributes.SdkToolProfileAttribute` 发现剖面，指向组件包会零产出）。 -->
+		<ProjectReference Include="..\..\Mud.AI.Abstractions\Mud.AI.Abstractions.csproj" />
+		<!-- v2.3 P1-B：demo 随 ToolSurface 竖井自组件仓迁入飞书仓。
+		     [Get]/[Delete]/[Path] 仍是组件仓 HTTP 契约的编译期事实，故保留组件包引用
+		     （Mud.HttpUtils.Attributes 3.0.6，与全仓同版本）；工具面**引擎**则切到仓内
+		     Mud.AI.Generator——这才是「调优期仓内闭环」的意义：改引擎 → 跑本 demo 即得反馈。
+		     ⚠ 禁兼引：不得再引用组件侧 Mud.HttpUtils.Generator（同名 hintName 产物冲突）。 -->
+		<PackageReference Include="Mud.HttpUtils.Attributes" Version="3.0.6" />
+		<ProjectReference Include="..\..\Mud.AI.Generator\Mud.AI.Generator.csproj"
+		                  OutputItemType="Analyzer"
+		                  ReferenceOutputAssembly="false" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- 生成的 DI 装配产物引用 IServiceCollection / TryAddSingleton / GetRequiredService -->
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
+	</ItemGroup>
+
+	<PropertyGroup>
+		<!-- Tier R 能力目录开关值（剖面 CapabilityCatalogPropertyName 槽） -->
+		<DemoToolCatalog>true</DemoToolCatalog>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- Tier R 能力目录开关（剖面 CapabilityCatalogPropertyName 槽）：
+		     §5.3 v2.1 消费方注册义务——组件侧不预注册消费方属性，须由消费方自行
+		     CompilerVisibleProperty 注册（属性值定义见上方 PropertyGroup）。 -->
+		<CompilerVisibleProperty Include="DemoToolCatalog" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Guidance 资产：AdditionalFiles 进入编译，剖面 GuidanceDirectory 槽（/Guidance/）按路径归属 -->
+		<AdditionalFiles Include="Guidance\**\*.md" />
+		<!-- per-tool affordance 资产：剖面 AffordanceDirectory 槽（/Affordance/）按路径归属；
+		     文件名必须逐字符等于契约工具名（doc.list.md / doc.delete.md） -->
+		<AdditionalFiles Include="Affordance\**\*.md" />
+	</ItemGroup>
+
+</Project>

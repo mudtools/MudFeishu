@@ -39,8 +39,8 @@ internal sealed class SparkAppTools(
     // ─────────────────────────── 只读面（3 个） ───────────────────────────
 
     /// <summary>spark.list_apps：列出妙搭应用（分页，fetch_all 自动翻页）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantSparkListAppsTool))]
-    public Task<FeishuToolResult> GetAppListAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantSparkListAppsTool))]
+    public Task<ToolResult> GetAppListAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.SparkListApps, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -76,8 +76,8 @@ internal sealed class SparkAppTools(
     }
 
     /// <summary>spark.get_app_analytics：获取应用运营数据总览。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantSparkGetAppAnalyticsTool))]
-    public Task<FeishuToolResult> GetAppAnalyticsOverviewAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantSparkGetAppAnalyticsTool))]
+    public Task<ToolResult> GetAppAnalyticsOverviewAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.SparkGetAppAnalytics, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -106,8 +106,8 @@ internal sealed class SparkAppTools(
     }
 
     /// <summary>spark.get_app_visibility：获取应用可用范围。</summary>
-    [FeishuToolHandler(typeof(IFeishuUserSparkGetAppVisibilityTool))]
-    public Task<FeishuToolResult> GetAppVisibilityAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuUserSparkGetAppVisibilityTool))]
+    public Task<ToolResult> GetAppVisibilityAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.SparkGetAppVisibility, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -126,8 +126,8 @@ internal sealed class SparkAppTools(
     // ─────────────────────────── 写面（3 个） ───────────────────────────
 
     /// <summary>spark.create_app：创建妙搭应用（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuUserSparkCreateAppTool))]
-    public Task<FeishuToolResult> CreateAppAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuUserSparkCreateAppTool))]
+    public Task<ToolResult> CreateAppAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.SparkCreateApp);
         return executor.RunAsync(async () =>
@@ -141,7 +141,7 @@ internal sealed class SparkAppTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/spark/v1/apps",
                     ToolDryRun.IdempotencyNote(null),
                     ("name", args.Name.Length), ("app_type", args.AppType?.Length ?? 0), ("description", args.Desc?.Length ?? 0)));
@@ -166,8 +166,8 @@ internal sealed class SparkAppTools(
     }
 
     /// <summary>spark.patch_app：修改应用元信息（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuUserSparkPatchAppTool))]
-    public Task<FeishuToolResult> PatchAppAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuUserSparkPatchAppTool))]
+    public Task<ToolResult> PatchAppAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.SparkPatchApp);
         return executor.RunAsync(async () =>
@@ -181,7 +181,7 @@ internal sealed class SparkAppTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "PATCH", $"/open-apis/spark/v1/apps/{args.AppId}",
                     ToolDryRun.IdempotencyNote(null),
                     ("name", args.Name?.Length ?? 0), ("description", args.Desc?.Length ?? 0), ("icon_url", args.IconUrl?.Length ?? 0)));
@@ -206,8 +206,8 @@ internal sealed class SparkAppTools(
     }
 
     /// <summary>spark.update_app_visibility：修改应用可用范围（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuUserSparkUpdateAppVisibilityTool))]
-    public Task<FeishuToolResult> UpdateAppVisibilityAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuUserSparkUpdateAppVisibilityTool))]
+    public Task<ToolResult> UpdateAppVisibilityAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.SparkUpdateAppVisibility);
         return executor.RunAsync(async () =>
@@ -218,7 +218,7 @@ internal sealed class SparkAppTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "PUT", $"/open-apis/spark/v1/apps/{args.AppId}/access-scope",
                     ToolDryRun.IdempotencyNote(null),
                     ("scope", request.Scope.Length),
@@ -462,17 +462,17 @@ internal sealed class SparkAppTools(
     /// 解包 <c>FeishuNullDataApiResult</c>（<c>UpdateAppVisibilityAsync</c> 无业务载荷）：
     /// 成功返回 <see langword="null"/>，失败返回结构化错误结果。
     /// </summary>
-    private static FeishuToolResult? RequireNullDataSuccess(string toolName, FeishuNullDataApiResult? result)
+    private static ToolResult? RequireNullDataSuccess(string toolName, FeishuNullDataApiResult? result)
     {
         if (result is null)
         {
-            return FeishuToolResult.FromError(
+            return ToolResult.FromError(
                 FeishuToolBinding.StructuredError(toolName, "飞书接口无响应（result 为空）"));
         }
 
         if (result.Code != 0)
         {
-            return FeishuToolResult.FromError(
+            return ToolResult.FromError(
                 FeishuToolBinding.StructuredError(
                     toolName,
                     result.Code,
@@ -506,8 +506,8 @@ internal sealed class SparkTableTools(
     // ─────────────────────────── 只读面（2 个） ───────────────────────────
 
     /// <summary>spark.list_tables：列出数据表（分页，fetch_all 自动翻页）。</summary>
-    [FeishuToolHandler(typeof(IFeishuUserSparkListTablesTool))]
-    public Task<FeishuToolResult> GetTableListAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuUserSparkListTablesTool))]
+    public Task<ToolResult> GetTableListAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.SparkListTables, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -539,8 +539,8 @@ internal sealed class SparkTableTools(
     }
 
     /// <summary>spark.query_table_records：查询数据表记录（分页，fetch_all 自动翻页）。</summary>
-    [FeishuToolHandler(typeof(IFeishuUserSparkQueryTableRecordsTool))]
-    public Task<FeishuToolResult> GetTableRecordListAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuUserSparkQueryTableRecordsTool))]
+    public Task<ToolResult> GetTableRecordListAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.SparkQueryTableRecords, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -582,8 +582,8 @@ internal sealed class SparkTableTools(
     // ─────────────────────────── 写面（2 个） ───────────────────────────
 
     /// <summary>spark.add_table_records：添加记录（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuUserSparkAddTableRecordsTool))]
-    public Task<FeishuToolResult> PostTableRecordsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuUserSparkAddTableRecordsTool))]
+    public Task<ToolResult> PostTableRecordsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.SparkAddTableRecords);
         return executor.RunAsync(async () =>
@@ -594,7 +594,7 @@ internal sealed class SparkTableTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST",
                     $"/open-apis/spark/v1/apps/{args.AppId}/tables/{args.TableId}/records",
                     ToolDryRun.IdempotencyNote(null),
@@ -619,8 +619,8 @@ internal sealed class SparkTableTools(
     }
 
     /// <summary>spark.update_table_records：按 filter 条件更新记录（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuUserSparkUpdateTableRecordsTool))]
-    public Task<FeishuToolResult> PatchTableRecordsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuUserSparkUpdateTableRecordsTool))]
+    public Task<ToolResult> PatchTableRecordsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.SparkUpdateTableRecords);
         return executor.RunAsync(async () =>
@@ -637,7 +637,7 @@ internal sealed class SparkTableTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "PATCH",
                     $"/open-apis/spark/v1/apps/{args.AppId}/tables/{args.TableId}/records",
                     ToolDryRun.IdempotencyNote(null),

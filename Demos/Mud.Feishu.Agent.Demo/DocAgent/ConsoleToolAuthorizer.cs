@@ -177,7 +177,7 @@ internal sealed class ConsoleToolAuthorizer : IToolExecutionAuthorizer
         }
 
         // ④ 权限面白名单：requiredScopes 必须落在预授权集合内。
-        //    判据是 `[FeishuTool]` 声明的权限点（而非工具名硬编码），故工具改名不影响本判定。
+        //    判据是 `[AgentTool]` 声明的权限点（而非工具名硬编码），故工具改名不影响本判定。
         var unknown = requiredScopes
             .Where(scope => !_state.AllowedScopes.Contains(scope, StringComparer.Ordinal))
             .ToArray();

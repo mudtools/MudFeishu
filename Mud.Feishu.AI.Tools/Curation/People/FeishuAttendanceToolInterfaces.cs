@@ -24,7 +24,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// <remarks>
 /// R7 / A5："我的打卡结果"——user 身份。宿主须在 <c>AllowedIdentities</c> 放行 <c>user</c>，否则装配期 fail-fast。
 /// </remarks>
-[FeishuTool("attendance.query_my_flow",
+[AgentTool("attendance.query_my_flow",
     Description = "查询指定用户的考勤打卡结果（每日一条汇总，含上下班打卡时间与结果）。user 身份，仅能查当前登录用户自身数据。check_date_from/check_date_to 为 yyyyMMdd 整数日期（如 20240101）。需 attendance:task 权限；宿主须在 AllowedIdentities 放行 user。",
     RequiredScopes = ["attendance:task"],
     Source = nameof(IFeishuUserV1AttendanceUserTask) + "." + nameof(IFeishuUserV1AttendanceUserTask.QueryUserTaskAsync))]
@@ -48,7 +48,7 @@ public interface IFeishuUserAttendanceQueryMyFlowTool
 /// R7 / A5（DP-A5-1 档位 ①）：⚠️ <b>PII 敏感</b>——按 user_id + 时间窗查<b>他人</b>打卡流水。
 /// 默认不在任何白名单，需宿主显式加白名单；工具描述含后果句（结果将进入第三方模型上下文）。
 /// </remarks>
-[FeishuTool("attendance.query_user_flow",
+[AgentTool("attendance.query_user_flow",
     Description = "批量查询指定用户的考勤打卡流水（tenant 身份，可查他人）。check_time_from/check_time_to 为秒级时间戳字符串（如 \"1705312800\"）。⚠️ PII 敏感：打卡时间/地点属员工隐私数据，结果将进入第三方模型上下文，请确认已获合规授权。默认不启用，需宿主显式加白名单。需 attendance:task 权限。",
     RequiredScopes = ["attendance:task"],
     Source = nameof(IFeishuTenantV1AttendanceUserFlows) + "." + nameof(IFeishuTenantV1AttendanceUserFlows.QueryUserFlowAsync))]
@@ -69,7 +69,7 @@ public interface IFeishuTenantAttendanceQueryUserFlowTool
 /// 工具接口：attendance.get_flow（映射 <c>IFeishuTenantV1AttendanceUserFlows.GetUserFlowAsync</c>）。
 /// </summary>
 /// <remarks>R7 / A5（DP-A5-1 档位 ①）：⚠️ PII 敏感（单条打卡详情）。默认不启用，需宿主显式加白名单。</remarks>
-[FeishuTool("attendance.get_flow",
+[AgentTool("attendance.get_flow",
     Description = "获取单条考勤打卡流水详情（tenant 身份）。⚠️ PII 敏感：打卡时间/地点属员工隐私数据，结果将进入第三方模型上下文。默认不启用，需宿主显式加白名单。需 attendance:task 权限。",
     RequiredScopes = ["attendance:task"],
     Source = nameof(IFeishuTenantV1AttendanceUserFlows) + "." + nameof(IFeishuTenantV1AttendanceUserFlows.GetUserFlowAsync))]
@@ -86,7 +86,7 @@ public interface IFeishuTenantAttendanceGetFlowTool
 /// <summary>
 /// 工具接口：attendance.query_daily_shift（映射 <c>IFeishuTenantV1AttendanceUserDailyShifts.QueryUserDailyShiftAsync</c>）。
 /// </summary>
-[FeishuTool("attendance.query_daily_shift",
+[AgentTool("attendance.query_daily_shift",
     Description = "查询指定用户的排班表（某天应上哪个班次，口径：回答\"我今天几点上班\"）。check_date_from/check_date_to 为 yyyyMMdd 整数日期。查到的 shift_id 可再调 attendance.get_shift 取班次时间规则。需 attendance:task 权限。",
     RequiredScopes = ["attendance:task"],
     Source = nameof(IFeishuTenantV1AttendanceUserDailyShifts) + "." + nameof(IFeishuTenantV1AttendanceUserDailyShifts.QueryUserDailyShiftAsync))]
@@ -105,7 +105,7 @@ public interface IFeishuTenantAttendanceQueryDailyShiftTool
 /// <summary>
 /// 工具接口：attendance.query_stats_data（映射 <c>IFeishuTenantV1AttendanceStats.QueryUserStatsDataAsync</c>）。
 /// </summary>
-[FeishuTool("attendance.query_stats_data",
+[AgentTool("attendance.query_stats_data",
     Description = "查询考勤统计报表数据（tenant 身份）。stats_type 取值 day（按日）/ month（按月）；start_date/end_date 为 yyyyMMdd 整数日期。user_ids 缺省时按当前考勤组统计。需 attendance:stats 权限。",
     RequiredScopes = ["attendance:stats"],
     Source = nameof(IFeishuTenantV1AttendanceStats) + "." + nameof(IFeishuTenantV1AttendanceStats.QueryUserStatsDataAsync))]
@@ -126,7 +126,7 @@ public interface IFeishuTenantAttendanceQueryStatsDataTool
 /// <summary>
 /// 工具接口：attendance.query_my_remedys（映射 <c>IFeishuTenantV1AttendanceRemedys.QueryUserTaskRemedyAsync</c>）。
 /// </summary>
-[FeishuTool("attendance.query_my_remedys",
+[AgentTool("attendance.query_my_remedys",
     Description = "查询指定用户的补卡申请记录（tenant 身份）。check_time_from/check_time_to 为秒级时间戳字符串。需 attendance:task 权限。",
     RequiredScopes = ["attendance:task"],
     Source = nameof(IFeishuTenantV1AttendanceRemedys) + "." + nameof(IFeishuTenantV1AttendanceRemedys.QueryUserTaskRemedyAsync))]
@@ -150,7 +150,7 @@ public interface IFeishuTenantAttendanceQueryMyRemedysTool
 /// <remarks>
 /// R7 / A5：补卡申请（写入考勤系统，状态为审批中）。<b>非幂等</b>——描述中声明"重复提交会造成重复申请"。
 /// </remarks>
-[FeishuTool("attendance.submit_remedy",
+[AgentTool("attendance.submit_remedy",
     Description = "提交补卡申请（写入飞书考勤系统，状态为审批中；走补卡审批流）。remedy_date 为 yyyyMMdd 整数日期，remedy_time 为 HH:mm 字符串。⚠️ 非幂等：重复提交会造成重复申请（无幂等键可用）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 attendance:task 权限。",
     RequiredScopes = ["attendance:task"],
     IsWrite = true,
@@ -175,7 +175,7 @@ public interface IFeishuTenantAttendanceSubmitRemedyTool
 /// <summary>
 /// 工具接口：attendance.get_shift（映射 <c>IFeishuTenantV1AttendanceShifts.GetShiftByIdAsync</c>）。
 /// </summary>
-[FeishuTool("attendance.get_shift",
+[AgentTool("attendance.get_shift",
     Description = "按 shift_id 获取班次规则详情（上下班时间、弹性规则等，tenant 身份）。shift_id 来自 attendance.query_daily_shift。需 attendance:rule 权限。",
     RequiredScopes = ["attendance:rule"],
     Source = nameof(IFeishuTenantV1AttendanceShifts) + "." + nameof(IFeishuTenantV1AttendanceShifts.GetShiftByIdAsync))]

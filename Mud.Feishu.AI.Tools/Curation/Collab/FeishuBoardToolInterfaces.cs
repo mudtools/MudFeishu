@@ -16,7 +16,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// R7 / A4：获取画板主题（默认配色）。画板 whiteboard_id 来自文档块——
 /// <c>docx.get_document_blocks</c> 中 <c>block_type=43</c> 的 block.token 即画板 ID。
 /// </remarks>
-[FeishuTool("board.get_theme",
+[AgentTool("board.get_theme",
     Description = "获取画板主题信息（默认配色方案）。whiteboard_id 来自文档块：docx.get_document_blocks 中 block_type=43 的 block.token 即画板 ID。只读，需 board:whiteboard:readonly。",
     RequiredScopes = ["board:whiteboard:readonly"],
     Source = nameof(IFeishuTenantV1Board) + "." + nameof(IFeishuTenantV1Board.GetWhiteboardThemeAsync))]
@@ -35,7 +35,7 @@ public interface IFeishuTenantBoardGetThemeTool
 /// <remarks>
 /// R7 / A4：更新画板主题（幂等）。
 /// </remarks>
-[FeishuTool("board.update_theme",
+[AgentTool("board.update_theme",
     Description = "更新画板主题（配色方案）。幂等操作。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 board:whiteboard 权限。",
     RequiredScopes = ["board:whiteboard"],
     IsWrite = true,
@@ -58,7 +58,7 @@ public interface IFeishuTenantBoardUpdateThemeTool
 /// R7 / A4：<b>本域杀手工具</b>——PlantUML/Mermaid 源码 → 画板节点。
 /// 模型无需懂画板节点结构，只需输出 DSL 文本。
 /// </remarks>
-[FeishuTool("board.render_dsl",
+[AgentTool("board.render_dsl",
     Description = "将 PlantUML 或 Mermaid 源码解析为画板节点（协同编辑）。模型只需输出 DSL 文本，无需了解画板节点结构。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 board:whiteboard 权限。",
     RequiredScopes = ["board:whiteboard"],
     IsWrite = true,
@@ -81,7 +81,7 @@ public interface IFeishuTenantBoardRenderDslTool
 /// <remarks>
 /// R7 / A4：创建画板节点。底层支持 <c>client_token</c> 幂等 → 本工具暴露 <c>idempotency_key</c>。
 /// </remarks>
-[FeishuTool("board.create_nodes",
+[AgentTool("board.create_nodes",
     Description = "在画板中创建节点（支持批量创建、父子关系）。支持幂等：传入 idempotency_key 可安全重试。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 board:whiteboard 权限。",
     RequiredScopes = ["board:whiteboard"],
     IsWrite = true,
@@ -104,7 +104,7 @@ public interface IFeishuTenantBoardCreateNodesTool
 /// <remarks>
 /// R7 / A4：返回画板内所有节点，可通过 parent_id/children 组装成画板内容。
 /// </remarks>
-[FeishuTool("board.list_nodes",
+[AgentTool("board.list_nodes",
     Description = "获取画板内所有节点（返回节点数组，可通过 parent_id/children 组装画板结构）。只读，需 board:whiteboard:readonly。",
     RequiredScopes = ["board:whiteboard:readonly"],
     Source = nameof(IFeishuTenantV1Board) + "." + nameof(IFeishuTenantV1Board.GetWhiteboardNodesAsync))]
@@ -123,7 +123,7 @@ public interface IFeishuTenantBoardListNodesTool
 /// <remarks>
 /// R7 / A4：批量删除画板节点。<b>子节点会被递归删除</b>——描述中声明后果。
 /// </remarks>
-[FeishuTool("board.delete_nodes",
+[AgentTool("board.delete_nodes",
     Description = "批量删除画板节点。⚠️ 子节点会被递归删除，操作不可逆。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演确认；需 board:whiteboard 权限。",
     RequiredScopes = ["board:whiteboard"],
     IsWrite = true,

@@ -81,7 +81,7 @@ internal sealed class FeishuToolAIFunction : AIFunction
         var context = _contextAccessor?.Current;
         if (context is null)
         {
-            return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(
+            return ToolResult.FromError(FeishuToolBinding.StructuredError(
                 _definition.Name,
                 "工具执行上下文缺失（未设置 appKey）——请经 ConversationalFeishuEventHandler 或 IFeishuToolContextAccessor.Begin 注入"));
         }

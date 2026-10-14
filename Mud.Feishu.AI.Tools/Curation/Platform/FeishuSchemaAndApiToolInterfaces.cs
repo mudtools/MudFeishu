@@ -36,7 +36,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// 返回该方法的 HTTP 方法、路由模板、路径/查询/请求体参数、令牌身份、风险分级、是否已策展。
 /// 数据源是编译期 <c>FeishuToolMethodCatalog</c>，无下游调用。
 /// </remarks>
-[FeishuTool("feishu.schema_read",
+[AgentTool("feishu.schema_read",
     Description = "查询任意飞书 SDK 方法的签名事实（HTTP 方法 / 路由 / 参数 / 令牌 / 风险 / 是否已策展为工具）。当需要调用一个当前工具集未覆盖的 API 时，先用本工具查它的方法签名。本工具只读编译期目录、不调用下游，也不提供任何调用通道——查到的未策展方法无法调用，请如实告知用户。",
     RequiredScopes = ["feishu:base"])]
 public interface IFeishuTenantSchemaReadTool

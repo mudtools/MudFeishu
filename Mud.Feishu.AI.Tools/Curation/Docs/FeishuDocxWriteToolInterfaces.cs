@@ -12,7 +12,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // </summary>
 // <remarks>
 // <para>
-// 复用既有 [FeishuTool] 源生成器（IsWrite 经 Schema 扩展 x-feishu.is_write 产出）；
+// 复用既有 [AgentTool] 源生成器（IsWrite 经 Schema 扩展 x-feishu.is_write 产出）；
 // 执行链（FeishuToolBinding）对写工具强制授权门禁——
 // EnforceToolAuthorization=true 且未注册 IToolExecutionAuthorizer 即拒绝（安全默认），
 // 白名单单独键控（FeishuAgent:WriteAllowList，默认空=不启用任何写工具）。
@@ -25,7 +25,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // ─────────────────────────── Docx 写（2 个） ───────────────────────────
 
 /// <summary>工具接口：docx.create_document（映射 <c>IFeishuTenantV1Docx.CreateDocumentAsync</c>）。</summary>
-[FeishuTool("docx.create_document",
+[AgentTool("docx.create_document",
     Description = "在云空间中创建一个飞书文档（返回 document_id，可用 docx.get_raw_content 读回）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。",
     RequiredScopes = ["docx:document"],
     IsWrite = true,
@@ -42,7 +42,7 @@ public interface IFeishuTenantDocxCreateDocumentTool
 }
 
 /// <summary>工具接口：docx.append_blocks（映射 <c>IFeishuTenantV1DocxBlocks.CreateBlockAsync</c>）。</summary>
-[FeishuTool("docx.append_blocks",
+[AgentTool("docx.append_blocks",
     Description = "在文档根块下创建子块（向文档追加内容，如段落、标题等）。document_id 可由 docx.create_document 创建后获得或来自已有文档。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。",
     RequiredScopes = ["docx:document"],
     IsWrite = true,
@@ -71,7 +71,7 @@ public interface IFeishuTenantDocxAppendBlocksTool
 /// 每个都需要独立的参数面；塞进同一个工具会让模型面对 12 个互斥可选参数而难以正确选择。
 /// <b>这是有意的范围决策，不是遗漏</b>（登记于 §13.12）。
 /// </remarks>
-[FeishuTool("docx.update_blocks",
+[AgentTool("docx.update_blocks",
     Description = "更新文档中已有块的文本内容（改写段落/标题的文字）。block_id 来自 docx.append_blocks 或 docx.get_raw_content 的返回。⚠️ 只支持改文本，不支持改表格结构与富样式（见工具说明）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。",
     RequiredScopes = ["docx:document"],
     IsWrite = true,
@@ -89,7 +89,7 @@ public interface IFeishuTenantDocxUpdateBlocksTool
 }
 
 /// <summary>工具接口：docx.delete_blocks（映射 <c>IFeishuTenantV1DocxBlocks.BatchDeleteBlocksAsync</c>）。</summary>
-[FeishuTool("docx.delete_blocks",
+[AgentTool("docx.delete_blocks",
     Description = "删除某个父块下指定索引区间的子块（如删掉文档里过时的一批段落）。索引是父块下的子块序号（从 0 开始），可由 docx.get_raw_content 或 docx.append_blocks 的返回推算。⚠️ 删除不可撤销——务必先用 dry_run 确认区间。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。",
     RequiredScopes = ["docx:document"],
     IsWrite = true,
@@ -114,7 +114,7 @@ public interface IFeishuTenantDocxDeleteBlocksTool
 /// 返回可用的块结构；写入是另一跳。拆开的收益是模型可以先看转换结果（含图片 URL 映射）再决定是否写入，
 /// 而"一步替换整篇"由 <c>docx.replace_document</c> 承担。
 /// </remarks>
-[FeishuTool("docx.import_markdown",
+[AgentTool("docx.import_markdown",
     Description = "把 Markdown 内容转换成文档块结构（不写入文档）——用于先预览转换结果，再用 docx.append_blocks 写入。支持文本、一到九级标题、有序/无序列表、代码块、引用、待办、图片、表格。只读转换，需 docx:document。",
     RequiredScopes = ["docx:document"],
     Source = nameof(IFeishuTenantV1DocxBlocks) + "." + nameof(IFeishuTenantV1DocxBlocks.ContentConvertAsync))]
@@ -153,7 +153,7 @@ public interface IFeishuTenantDocxImportMarkdownTool
 /// 若没有稳定 client_token，会把新内容<b>再插一遍</b>并重复删除。必填让重试语义明确。
 /// </para>
 /// </remarks>
-[FeishuTool("docx.replace_document",
+[AgentTool("docx.replace_document",
     Description = "用 Markdown 内容整体替换文档正文（保留为新内容的旧块会被删除）。适用于'把这篇文章重建一遍'。执行顺序为先追加新块、再删除旧块，因此中途失败不会导致内容丢失。⚠️ 必须提供 idempotency_key（重试语义）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。",
     RequiredScopes = ["docx:document"],
     IsWrite = true,

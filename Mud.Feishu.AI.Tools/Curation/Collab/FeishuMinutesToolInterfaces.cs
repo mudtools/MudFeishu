@@ -16,7 +16,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// R5 / F-11：取出妙记的<b>元信息</b>（标题/时长/链接/创建时间）——模型拿到
 /// <c>minute_token</c> 后先确认"是不是这场会议"，再决定是否取内容。
 /// </remarks>
-[FeishuTool("minutes.get",
+[AgentTool("minutes.get",
     Description = "按 minute_token 获取妙记的元信息（标题、时长、链接、创建时间、所有者）。拿到 token 后先用它确认是不是目标会议，再用 minutes.get_artifacts 取总结与待办。只读，需 minutes:minutes:readonly。",
     RequiredScopes = ["minutes:minutes:readonly"],
     Source = nameof(IFeishuTenantV1MinutesMinute) + "." + nameof(IFeishuTenantV1MinutesMinute.GetMinuteAsync))]
@@ -46,7 +46,7 @@ public interface IFeishuTenantMinutesGetTool
 /// 总结 / 章节 / 待办不受影响（它们本来就很短）。
 /// </para>
 /// </remarks>
-[FeishuTool("minutes.get_artifacts",
+[AgentTool("minutes.get_artifacts",
     Description = "按 minute_token 获取妙记的智能产物：AI 总结、章节摘要、待办事项、关键词——'总结这周会议'这类请求的首选入口（无需自行归纳全文）。逐字稿按窗口返回（transcript_offset/transcript_limit，默认 1 万字符），并给出 transcript_total_length 与 has_more/next_offset，可据此续读后续片段。只读，需 minutes:minutes:readonly。",
     RequiredScopes = ["minutes:minutes:readonly"],
     Source = nameof(IFeishuTenantV1MinutesMinute) + "." + nameof(IFeishuTenantV1MinutesMinute.GetMinuteArtifactsAsync))]
@@ -70,7 +70,7 @@ public interface IFeishuTenantMinutesGetArtifactsTool
 /// R7 / A3：<b>"找会议"入口</b>——当前模型只能靠 minute_token 逐个查，无从搜索。
 /// 本工具按关键词 + 时间窗检索妙记列表，是"总结这周会议"链路的首环。
 /// </remarks>
-[FeishuTool("minutes.search",
+[AgentTool("minutes.search",
     Description = "按关键词、所有者、参与者与创建时间搜索妙记列表（分页）。query 关键词 10~50 字符；至少提供一个过滤条件。搜索时间范围最大 1 个月。只读，需 minutes:minutes:readonly。",
     RequiredScopes = ["minutes:minutes:readonly"],
     Source = nameof(IFeishuTenantV1MinutesMinute) + "." + nameof(IFeishuTenantV1MinutesMinute.SearchMinutesAsync))]
@@ -96,7 +96,7 @@ public interface IFeishuTenantMinutesSearchTool
 /// <remarks>
 /// R7 / A3：与会人/发言时长等统计，用于"谁说了什么"类问题。
 /// </remarks>
-[FeishuTool("minutes.get_statistics",
+[AgentTool("minutes.get_statistics",
     Description = "按 minute_token 获取妙记的访问统计数据（PV、UV、访问用户列表与访问时间）。用于了解妙记的访问情况。只读，需 minutes:minutes:readonly。",
     RequiredScopes = ["minutes:minutes:readonly"],
     Source = nameof(IFeishuTenantV1MinutesMinute) + "." + nameof(IFeishuTenantV1MinutesMinute.GetMinuteStatisticsAsync))]
@@ -116,7 +116,7 @@ public interface IFeishuTenantMinutesGetStatisticsTool
 /// R7 / A3：<b>只返回媒体下载 URL（文本），绝不返回字节</b>（A10 二进制防线）。
 /// 工具描述限定"返回的是需宿主落盘的临时链接"。
 /// </remarks>
-[FeishuTool("minutes.get_media",
+[AgentTool("minutes.get_media",
     Description = "按 minute_token 获取妙记音视频文件的下载链接（有效期 1 天）。返回的是需宿主落盘的临时 URL，不含二进制内容。只读，需 minutes:minutes:readonly。",
     RequiredScopes = ["minutes:minutes:readonly"],
     Source = nameof(IFeishuTenantV1MinutesMinute) + "." + nameof(IFeishuTenantV1MinutesMinute.GetMinuteMediaAsync))]

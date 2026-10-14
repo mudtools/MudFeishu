@@ -26,8 +26,8 @@ internal sealed class SearchTools(Mud.Feishu.IFeishuTenantV2SearchDocWiki search
     private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
     /// <summary>search.doc_wiki：云文档与知识库搜索（白名单 title/url/owner/doc_type）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantSearchDocWikiTool))]
-    public Task<FeishuToolResult> SearchAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantSearchDocWikiTool))]
+    public Task<ToolResult> SearchAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.SearchDocWiki, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -36,7 +36,7 @@ internal sealed class SearchTools(Mud.Feishu.IFeishuTenantV2SearchDocWiki search
 
             if (args.Query.Length > 30)
             {
-                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(executor.ToolName, "query 上限 30 字符，实际 " + args.Query.Length.ToString(CultureInfo.InvariantCulture) + " 字符"));
+                return ToolResult.FromError(FeishuToolBinding.StructuredError(executor.ToolName, "query 上限 30 字符，实际 " + args.Query.Length.ToString(CultureInfo.InvariantCulture) + " 字符"));
             }
 
             var searchIn = (args.SearchIn ?? "both").ToLowerInvariant();
@@ -44,12 +44,12 @@ internal sealed class SearchTools(Mud.Feishu.IFeishuTenantV2SearchDocWiki search
             // search_in 的闭集校验保持**一次**（在构造首个请求之前），两条路径共用同一判定。
             if (searchIn is not ("doc" or "wiki" or "both"))
             {
-                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(executor.ToolName, $"search_in 仅支持 doc/wiki/both，实际: {searchIn}"));
+                return ToolResult.FromError(FeishuToolBinding.StructuredError(executor.ToolName, $"search_in 仅支持 doc/wiki/both，实际: {searchIn}"));
             }
 
             // P-4：统一分页出口——fetch_all 聚合与单页共用**同一次调用定义**与**同一份投影**。
             // 每次翻页都按同一个 search_in 重建请求（token 只影响 PageToken）。
-            async Task<FeishuApiOutcome<SearchDocWikiResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<SearchDocWikiResult>> FetchPageAsync(string? token, CancellationToken ct)
             {
                 var request = new SearchDocWikiRequest
                 {

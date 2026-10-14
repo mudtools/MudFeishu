@@ -44,8 +44,8 @@ internal sealed class DocxDeepTools(
     // ─────────────────────────── 只读面（4 个） ───────────────────────────
 
     /// <summary>docx.get_document_info：获取文档基本信息。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantDocxGetDocumentInfoTool))]
-    public Task<FeishuToolResult> GetDocumentInfoAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDocxGetDocumentInfoTool))]
+    public Task<ToolResult> GetDocumentInfoAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DocxGetDocumentInfo, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -65,8 +65,8 @@ internal sealed class DocxDeepTools(
     }
 
     /// <summary>docx.get_markdown_content：跨域使用 Drive 接口获取 Markdown 正文。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantDocxGetMarkdownContentTool))]
-    public Task<FeishuToolResult> GetMarkdownContentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDocxGetMarkdownContentTool))]
+    public Task<ToolResult> GetMarkdownContentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DocxGetMarkdownContent, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -86,8 +86,8 @@ internal sealed class DocxDeepTools(
     }
 
     /// <summary>docx.get_block：获取单块详情。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantDocxGetBlockTool))]
-    public Task<FeishuToolResult> GetBlockInfoAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDocxGetBlockTool))]
+    public Task<ToolResult> GetBlockInfoAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DocxGetBlock, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -102,8 +102,8 @@ internal sealed class DocxDeepTools(
     }
 
     /// <summary>docx.list_block_children：列出子块（分页）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantDocxListBlockChildrenTool))]
-    public Task<FeishuToolResult> ListBlockChildrenAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDocxListBlockChildrenTool))]
+    public Task<ToolResult> ListBlockChildrenAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DocxListBlockChildren, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -147,8 +147,8 @@ internal sealed class DocxDeepTools(
     // ─────────────────────────── 写面（3 个） ───────────────────────────
 
     /// <summary>docx.create_block：在指定父块下创建单个子块。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantDocxCreateBlockTool))]
-    public Task<FeishuToolResult> CreateBlockAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDocxCreateBlockTool))]
+    public Task<ToolResult> CreateBlockAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DocxCreateBlock, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -157,7 +157,7 @@ internal sealed class DocxDeepTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST",
                     $"/open-apis/docx/v1/documents/{args.DocumentId}/blocks/{args.BlockId}/children",
                     ToolDryRun.IdempotencyNote(args.IdempotencyKey),
@@ -190,8 +190,8 @@ internal sealed class DocxDeepTools(
     }
 
     /// <summary>docx.create_descendant_blocks：创建结构化子树。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantDocxCreateDescendantBlocksTool))]
-    public Task<FeishuToolResult> CreateDescendantBlocksAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDocxCreateDescendantBlocksTool))]
+    public Task<ToolResult> CreateDescendantBlocksAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DocxCreateDescendantBlocks, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -207,7 +207,7 @@ internal sealed class DocxDeepTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST",
                     $"/open-apis/docx/v1/documents/{args.DocumentId}/blocks/{args.BlockId}/descendant",
                     ToolDryRun.IdempotencyNote(args.IdempotencyKey),
@@ -247,8 +247,8 @@ internal sealed class DocxDeepTools(
     }
 
     /// <summary>docx.update_block：更新单个块的文本内容。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantDocxUpdateBlockTool))]
-    public Task<FeishuToolResult> UpdateBlockAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDocxUpdateBlockTool))]
+    public Task<ToolResult> UpdateBlockAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DocxUpdateBlock, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -257,7 +257,7 @@ internal sealed class DocxDeepTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "PATCH",
                     $"/open-apis/docx/v1/documents/{args.DocumentId}/blocks/{args.BlockId}",
                     ToolDryRun.IdempotencyNote(args.IdempotencyKey),
@@ -298,8 +298,8 @@ internal sealed class DocxDeepTools(
     // ─────────────────────────── 群公告面（2 个） ───────────────────────────
 
     /// <summary>docx.get_chat_announcement：读取群公告块内容（分页）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantDocxGetChatAnnouncementTool))]
-    public Task<FeishuToolResult> GetChatAnnouncementBlocksPageListAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDocxGetChatAnnouncementTool))]
+    public Task<ToolResult> GetChatAnnouncementBlocksPageListAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DocxGetChatAnnouncement, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -338,8 +338,8 @@ internal sealed class DocxDeepTools(
     }
 
     /// <summary>docx.set_chat_announcement：批量更新群公告块文本。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantDocxSetChatAnnouncementTool))]
-    public Task<FeishuToolResult> BatchUpdateChatAnnouncementBlocksAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDocxSetChatAnnouncementTool))]
+    public Task<ToolResult> BatchUpdateChatAnnouncementBlocksAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DocxSetChatAnnouncement, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -349,7 +349,7 @@ internal sealed class DocxDeepTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "PATCH",
                     $"/open-apis/docx/v1/chats/{args.ChatId}/announcement/blocks/batch_update",
                     ToolDryRun.IdempotencyNote(args.IdempotencyKey),

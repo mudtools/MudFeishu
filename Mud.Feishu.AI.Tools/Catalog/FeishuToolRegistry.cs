@@ -15,7 +15,7 @@ namespace Mud.Feishu.AI.Tools.Catalog;
 /// <param name="context">执行上下文（appKey/chat/user）。</param>
 /// <param name="cancellationToken">取消令牌。</param>
 /// <returns>工具执行结果（含文本/截断标记，已投影/裁剪）。</returns>
-public delegate Task<FeishuToolResult> FeishuToolHandler(
+public delegate Task<ToolResult> FeishuToolHandler(
     IReadOnlyDictionary<string, object?> arguments,
     FeishuToolContext context,
     CancellationToken cancellationToken);

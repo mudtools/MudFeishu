@@ -16,7 +16,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// 只有"同意"会让 Agent 在应拒场景下强行通过。SDK 的 <c>RejectApprovalAsync</c> 已存在，
 /// 故本项<b>零 SDK 改动</b>。
 /// </remarks>
-[FeishuTool("approval.reject_task",
+[AgentTool("approval.reject_task",
     Description = "拒绝一个审批任务（拒绝后审批流程结束）。与 approval.approve_task 构成完整的双向决策面；task_id 来自 approval.list_pending_tasks。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 approval:approval。",
     RequiredScopes = ["approval:approval"],
     IsWrite = true,
@@ -42,7 +42,7 @@ public interface IFeishuTenantApprovalRejectTaskTool
 /// 与 reject 同批补齐：<b>转交</b>是审批场景的另一个高频动作（"这条我不该批，转给张三"），
 /// SDK 的 <c>TransferApprovalAsync</c> 已存在，零 SDK 改动。
 /// </remarks>
-[FeishuTool("approval.transfer_task",
+[AgentTool("approval.transfer_task",
     Description = "把一个审批任务转交给他人（转交后流程流转给被转交人）。适用于'这条不该我批/我无法判断'的场景。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 approval:approval。建议先 dry_run 预演确认转交对象。",
     RequiredScopes = ["approval:approval"],
     IsWrite = true,
@@ -65,7 +65,7 @@ public interface IFeishuTenantApprovalTransferTaskTool
 // ─────────────────────────── Approval 写（1 个） ───────────────────────────
 
 /// <summary>工具接口：approval.create_instance（映射 <c>IFeishuTenantV4Approval.CreateInstanceAsync</c>）。</summary>
-[FeishuTool("approval.create_instance",
+[AgentTool("approval.create_instance",
     Description = "按审批定义 Code 发起一个审批实例，form 为审批表单 Value（JSON 数组字符串，按定义的表单控件结构填写；非 JSON 数组会在下发前被拒绝）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 approval:approval。",
     RequiredScopes = ["approval:approval"],
     IsWrite = true,
@@ -86,7 +86,7 @@ public interface IFeishuTenantApprovalCreateInstanceTool
 // ─────────────────────────── Approval 只读（1 个） ───────────────────────────
 
 /// <summary>工具接口：approval.list_pending_tasks（映射 <c>IFeishuTenantV4ApprovalQuery.GetTasksPageListAsync</c>）。</summary>
-[FeishuTool("approval.list_pending_tasks",
+[AgentTool("approval.list_pending_tasks",
     Description = "查询审批待办任务列表（按用户 ID 过滤 PENDING 状态任务）。task_id/instance_code 可传给 approval.approve_task 完成同意操作。只读，需 approval:approval:readonly。",
     RequiredScopes = ["approval:approval:readonly"],
     Source = nameof(IFeishuTenantV4ApprovalQuery) + "." + nameof(IFeishuTenantV4ApprovalQuery.GetTasksPageListAsync))]
@@ -106,7 +106,7 @@ public interface IFeishuTenantApprovalListPendingTasksTool
 // ─────────────────────────── Approval 写补充（1 个） ───────────────────────────
 
 /// <summary>工具接口：approval.approve_task（映射 <c>IFeishuTenantV4ApprovalTask.AgreeApprovalAsync</c>）。</summary>
-[FeishuTool("approval.approve_task",
+[AgentTool("approval.approve_task",
     Description = "同意指定审批任务（需 approval_code/instance_code/task_id/user_id 四要素，task_id/instance_code 来自 approval.list_pending_tasks）。同意后审批流程流转到下一个审批人。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 approval:approval。",
     RequiredScopes = ["approval:approval"],
     IsWrite = true,
@@ -128,7 +128,7 @@ public interface IFeishuTenantApprovalApproveTaskTool
 // ─────────────────────────── Approval 实例详情（1 个只读，user-only，从 WP4 移入） ───────────────────────────
 
 /// <summary>工具接口：approval.get_instance（映射 <c>IFeishuUserV4ApprovalInstance.GetInstanceDetailAsync</c>）。</summary>
-[FeishuTool("approval.get_instance",
+[AgentTool("approval.get_instance",
     Description = "获取审批实例详情（含表单/状态/审批流程节点）。instance_code 来自 approval.list_pending_tasks 或审批事件。只读，需 approval:approval:readonly。用户身份工具——宿主须在 AllowedIdentities 放行 user。",
     RequiredScopes = ["approval:approval:readonly"],
     Source = nameof(IFeishuUserV4ApprovalInstance) + "." + nameof(IFeishuUserV4ApprovalInstance.GetInstanceDetailAsync))]

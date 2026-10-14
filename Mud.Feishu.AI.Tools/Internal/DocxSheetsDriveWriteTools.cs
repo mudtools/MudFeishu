@@ -46,8 +46,8 @@ internal sealed class DocxWriteTools(
         ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>docx.create_document：创建文档（<c>dry_run=true</c> 时只预演）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantDocxCreateDocumentTool))]
-    public Task<FeishuToolResult> CreateDocumentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDocxCreateDocumentTool))]
+    public Task<ToolResult> CreateDocumentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DocxCreateDocument, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -56,7 +56,7 @@ internal sealed class DocxWriteTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/docx/v1/documents",
                     ToolDryRun.IdempotencyNote(null),
                     ("folder_token", args.FolderToken?.Length ?? 0), ("title", args.Title?.Length ?? 0)));
@@ -76,8 +76,8 @@ internal sealed class DocxWriteTools(
 
     /// <summary>docx.append_blocks：在文档根块下创建子块（<c>dry_run=true</c> 时只预演）。</summary>
     /// <remarks>幂等键（client_token）：相同 client_token 在 24 小时内至多成功创建一次。</remarks>
-    [FeishuToolHandler(typeof(IFeishuTenantDocxAppendBlocksTool))]
-    public Task<FeishuToolResult> AppendBlocksAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDocxAppendBlocksTool))]
+    public Task<ToolResult> AppendBlocksAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DocxAppendBlocks, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -88,7 +88,7 @@ internal sealed class DocxWriteTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", $"/open-apis/docx/v1/documents/{args.DocumentId}/blocks/{parentBlockId}/children",
                     ToolDryRun.IdempotencyNote(args.IdempotencyKey),
                     ("document_id", args.DocumentId.Length), ("blocks", blocks.Count)));
@@ -322,8 +322,8 @@ internal sealed class DocxWriteTools(
         => string.IsNullOrWhiteSpace(modelSupplied) ? documentId : modelSupplied!;
 
     /// <summary>docx.update_blocks：批量替换块的文本元素（<c>update_text_elements</c> 面）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantDocxUpdateBlocksTool))]
-    public Task<FeishuToolResult> UpdateBlocksAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDocxUpdateBlocksTool))]
+    public Task<ToolResult> UpdateBlocksAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DocxUpdateBlocks, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -333,7 +333,7 @@ internal sealed class DocxWriteTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "PATCH", $"/open-apis/docx/v1/documents/{args.DocumentId}/blocks/batch_update",
                     ToolDryRun.IdempotencyNote(args.IdempotencyKey),
                     ("document_id", args.DocumentId.Length), ("blocks", requests.Length)));
@@ -351,8 +351,8 @@ internal sealed class DocxWriteTools(
     }
 
     /// <summary>docx.delete_blocks：删除父块下 [start_index, end_index) 的子块。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantDocxDeleteBlocksTool))]
-    public Task<FeishuToolResult> DeleteBlocksAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDocxDeleteBlocksTool))]
+    public Task<ToolResult> DeleteBlocksAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DocxDeleteBlocks, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -363,7 +363,7 @@ internal sealed class DocxWriteTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "DELETE",
                     $"/open-apis/docx/v1/documents/{args.DocumentId}/blocks/{parentBlockId}/children/batch_delete",
                     ToolDryRun.IdempotencyNote(args.IdempotencyKey),
@@ -383,8 +383,8 @@ internal sealed class DocxWriteTools(
     }
 
     /// <summary>docx.import_markdown：Markdown → 文档块（只转换、不写入）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantDocxImportMarkdownTool))]
-    public Task<FeishuToolResult> ImportMarkdownAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDocxImportMarkdownTool))]
+    public Task<ToolResult> ImportMarkdownAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         // 本类已持有 _maxResultLength（见字段注释）：用**有预算**的截断出口。
         // 转换结果体积由输入 markdown 决定，不设上限等于把上下文交给调用方。
@@ -424,8 +424,8 @@ internal sealed class DocxWriteTools(
     /// 的更难诊断的状态。既然"新旧并存"无损且给出精确修复指引，就<b>不做二次破坏性操作</b>。
     /// </para>
     /// </remarks>
-    [FeishuToolHandler(typeof(IFeishuTenantDocxReplaceDocumentTool))]
-    public Task<FeishuToolResult> ReplaceDocumentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDocxReplaceDocumentTool))]
+    public Task<ToolResult> ReplaceDocumentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DocxReplaceDocument, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -450,7 +450,7 @@ internal sealed class DocxWriteTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST+DELETE", $"{baseRoute}/convert → {baseRoute}/{parentBlockId}/children → {baseRoute}/{parentBlockId}/children/batch_delete",
                     "步骤：① 转换 Markdown ② 追加新块 ③ 删除旧块 [0, 原块数)。"
                     + "原块数在**执行时**读取（dry_run 不发起任何调用）。"
@@ -557,7 +557,7 @@ internal sealed class DocxWriteTools(
     /// 无法复用 <c>FromApi</c> 的投影形参；但**不截断**会让 <c>new_block_ids</c>
     /// 这类数组随文档规模膨胀。故手工路径也必须过同一道预算。
     /// </remarks>
-    private FeishuToolResult FromEnvelope(JsonObject envelope)
+    private ToolResult FromEnvelope(JsonObject envelope)
         => ToolResultPipeline.OkJson(envelope, _maxResultLength);
 
     /// <summary>
@@ -588,7 +588,7 @@ internal sealed class DocxWriteTools(
 
             if (!outcome.Ok || outcome.Data is null)
             {
-                // 返回元组而非 FeishuApiOutcome<int>：后者约束 T : class，int 不满足。
+                // 返回元组而非 ToolApiOutcome<int>：后者约束 T : class，int 不满足。
                 return (false, 0, outcome.ErrorText ?? "读取子块列表返回空数据");
             }
 
@@ -616,7 +616,7 @@ internal sealed class DocxWriteTools(
     /// 反而制造出真正的破损状态。<b>把"可安全重试"作为结果的一部分</b>，
     /// 是让失败可恢复的最低成本手段。
     /// </remarks>
-    private static FeishuToolResult Untouched(string toolName, string step, string? errorText)
+    private static ToolResult Untouched(string toolName, string step, string? errorText)
         => ToolResultPipeline.OkReceipt(new JsonObject
         {
             ["partial_failure"] = true,
@@ -779,8 +779,8 @@ internal sealed class SheetsWriteTools(Mud.Feishu.IFeishuTenantV3SpreadsheetData
         ?? throw new ArgumentNullException(nameof(dataClient));
 
     /// <summary>sheets.update_range：向指定区域写入数据（覆盖写，天然幂等）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantSheetsUpdateRangeTool))]
-    public Task<FeishuToolResult> UpdateRangeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantSheetsUpdateRangeTool))]
+    public Task<ToolResult> UpdateRangeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.SheetsUpdateRange);
         return executor.RunAsync(async () =>
@@ -792,7 +792,7 @@ internal sealed class SheetsWriteTools(Mud.Feishu.IFeishuTenantV3SpreadsheetData
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "PUT", $"/open-apis/sheets/v2/spreadsheets/{args.SpreadsheetToken}/values",
                     ToolDryRun.IdempotencyNote("覆盖写天然幂等"),
                     ("spreadsheet_token", args.SpreadsheetToken.Length), ("range", args.Range.Length), ("values", args.Values.Length)));
@@ -812,8 +812,8 @@ internal sealed class SheetsWriteTools(Mud.Feishu.IFeishuTenantV3SpreadsheetData
     }
 
     /// <summary>sheets.append_rows：追加行数据。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantSheetsAppendRowsTool))]
-    public Task<FeishuToolResult> AppendRowsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantSheetsAppendRowsTool))]
+    public Task<ToolResult> AppendRowsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.SheetsAppendRows);
         return executor.RunAsync(async () =>
@@ -824,7 +824,7 @@ internal sealed class SheetsWriteTools(Mud.Feishu.IFeishuTenantV3SpreadsheetData
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", $"/open-apis/sheets/v2/spreadsheets/{args.SpreadsheetToken}/values_append",
                     ToolDryRun.IdempotencyNote(null),
                     ("spreadsheet_token", args.SpreadsheetToken.Length), ("range", args.Range.Length), ("values", args.Values.Length)));
@@ -905,8 +905,8 @@ internal sealed class DriveWriteTools(
     private readonly ILogger? _logger = logger;
 
     /// <summary>drive.create_folder：创建文件夹。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantDriveCreateFolderTool))]
-    public Task<FeishuToolResult> CreateFolderAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDriveCreateFolderTool))]
+    public Task<ToolResult> CreateFolderAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DriveCreateFolder);
         return executor.RunAsync(async () =>
@@ -915,7 +915,7 @@ internal sealed class DriveWriteTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/drive/v1/files/create_folder",
                     ToolDryRun.IdempotencyNote(null),
                     ("name", args.Name.Length), ("folder_token", args.FolderToken?.Length ?? 0)));
@@ -934,8 +934,8 @@ internal sealed class DriveWriteTools(
     }
 
     /// <summary>drive.move_file：移动文件（返回异步任务 ID）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantDriveMoveFileTool))]
-    public Task<FeishuToolResult> MoveFileAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDriveMoveFileTool))]
+    public Task<ToolResult> MoveFileAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DriveMoveFile);
         return executor.RunAsync(async () =>
@@ -944,7 +944,7 @@ internal sealed class DriveWriteTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/drive/v1/files/move",
                     ToolDryRun.IdempotencyNote(null),
                     ("file_token", args.FileToken.Length), ("type", args.Type.Length), ("folder_token", args.FolderToken.Length)));
@@ -965,8 +965,8 @@ internal sealed class DriveWriteTools(
     }
 
     /// <summary>drive.upload_file：上传文件（需宿主落盘器）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantDriveUploadFileTool))]
-    public Task<FeishuToolResult> UploadFileAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantDriveUploadFileTool))]
+    public Task<ToolResult> UploadFileAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.DriveUploadFile);
         return executor.RunAsync(async () =>
@@ -976,7 +976,7 @@ internal sealed class DriveWriteTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST", "/open-apis/drive/v1/files/upload_all",
                     ToolDryRun.IdempotencyNote(null),
                     ("file_url", fileUrl.Length), ("file_name", args.FileName.Length), ("folder_token", args.FolderToken?.Length ?? 0)));
@@ -984,13 +984,13 @@ internal sealed class DriveWriteTools(
 
             if (_stager is null)
             {
-                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(executor.ToolName, "宿主未注册 IFeishuAttachmentStager，drive.upload_file 不可用"));
+                return ToolResult.FromError(FeishuToolBinding.StructuredError(executor.ToolName, "宿主未注册 IFeishuAttachmentStager，drive.upload_file 不可用"));
             }
 
             var staged = await _stager.StageAsync(new AttachmentSource(Url: fileUrl, Content: null, FileName: args.FileName), cancellationToken);
             if (staged is null)
             {
-                return FeishuToolResult.FromError(FeishuToolBinding.StructuredError(executor.ToolName, "来源不被宿主允许（安全域拒绝）"));
+                return ToolResult.FromError(FeishuToolBinding.StructuredError(executor.ToolName, "来源不被宿主允许（安全域拒绝）"));
             }
 
             var stagedValue = staged.Value;

@@ -15,8 +15,8 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// <remarks>
 /// <para>
 /// <b>缺陷原始形态</b>：<c>Mud.Feishu.AI.Tools.csproj</c> 写「产出本包 <b>24</b> 个工具接口的
-/// Schema 常量」，<c>Readme.md</c> 的 L2 层写「<b>24</b> 个工具」——实测 <c>[FeishuTool]</c> 与
-/// <c>[FeishuToolHandler]</c> 都是 <b>53</b>。这类漂移<b>没有任何编译器或现有门禁能发现</b>：
+/// Schema 常量」，<c>Readme.md</c> 的 L2 层写「<b>24</b> 个工具」——实测 <c>[AgentTool]</c> 与
+/// <c>[ToolHandler]</c> 都是 <b>53</b>。这类漂移<b>没有任何编译器或现有门禁能发现</b>：
 /// 数字写在注释/文档里，宿主据此判断"这个包能干什么"，误差 2 倍以上。
 /// </para>
 /// <para>
@@ -114,7 +114,7 @@ public class ToolSurfaceScaleContractGuards
     {
         var truth = ReadGoldenEntryCount();
         var found = ToolScaleScanner.FindToolCountDeclarations(
-            $"| L2 | 标注了 `[FeishuTool]` 的 {truth} 个工具 |", truth);
+            $"| L2 | 标注了 `[AgentTool]` 的 {truth} 个工具 |", truth);
 
         found.Should().HaveCount(1);
         found[0].IsConsistent.Should().BeTrue("与真相源一致的数字不得报红（否则守卫会误伤正确文档）");

@@ -46,7 +46,7 @@ public class ToolArgumentFormEquivalenceTests
     {
         var arguments = Arguments(("fetch_all", value));
 
-        ToolPagination.ReadFetchAll(arguments).Should().Be(
+        ToolArgsReaders.ReadFetchAll(arguments).Should().Be(
             expected,
             "fetch_all 的形态词汇必须与生成的 *Args.Unpack（走 ToolArgs）一致——"
             + "两条路径对同一入参判成不同形态，会让『自动翻页』在不同调用点上开关相反");
@@ -67,7 +67,7 @@ public class ToolArgumentFormEquivalenceTests
     {
         var arguments = Arguments(("dry_run", value));
 
-        ToolDryRun.IsRequested(arguments).Should().Be(
+        ToolArgsReaders.IsDryRunRequested(arguments).Should().Be(
             expected, "执行链读取 dry_run 的口径必须与执行器解包口径一致");
 
         (ToolArgs.OptionalBool(arguments, "dry_run") ?? false).Should().Be(expected, "取值门面是基准口径");
@@ -100,7 +100,7 @@ public class ToolArgumentFormEquivalenceTests
     {
         var arguments = Arguments(("max_items", value));
 
-        ToolPagination.ReadMaxItems(arguments).Should().Be(
+        ToolArgsReaders.ReadMaxItems(arguments).Should().Be(
             expected, "max_items 的形态词汇必须与生成的 *Args.Unpack（走 ToolArgs）一致");
 
         ToolArgs.OptionalInt(arguments, "max_items").Should().Be(expected, "取值门面是基准口径");
@@ -124,7 +124,7 @@ public class ToolArgumentFormEquivalenceTests
     {
         var arguments = Arguments(("max_items", value));
 
-        var act = () => ToolPagination.ReadMaxItems(arguments);
+        var act = () => ToolArgsReaders.ReadMaxItems(arguments);
 
         act.Should().Throw<ArgumentException>(
             "『提供但无法解析』不得静默降级为『未提供』——那是把模型的传参错误变成一次看似成功的默认行为"

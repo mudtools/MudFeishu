@@ -45,7 +45,7 @@ public class LingoToolsTests
             entity?.Object,
             draft?.Object);
 
-    private static JsonObject Payload(FeishuToolResult result)
+    private static JsonObject Payload(ToolResult result)
         => JsonNode.Parse(result.ToString())!.AsObject();
 
     private static FeishuApiResult<T> Ok<T>(T data)
@@ -249,7 +249,7 @@ public class LingoToolsTests
 
         foreach (var result in results)
         {
-            // 软缺席走的是**文本形态**的结构化错误（与 FeishuToolResult.FromError(string) 同款）：
+            // 软缺席走的是**文本形态**的结构化错误（与 ToolResult.FromError(string) 同款）：
             // 它不进 result.Error（那是宿主侧异常语义），而是让模型在正文里读到"不可用 + 为什么"。
             result.Text.Should().NotBeNull("软缺席必须给可执行说明，而不是抛异常");
             result.Text.Should().Contain("未注册", "文案要说清是宿主未启用该 API，而不是模型参数错");

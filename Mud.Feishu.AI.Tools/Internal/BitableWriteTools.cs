@@ -32,8 +32,8 @@ internal sealed class BitableWriteTools(Mud.Feishu.IFeishuTenantV1BitableRecord 
 
     /// <summary>bitable.add_record：新增记录（fields 为「字段名 → 值」JSON 对象字符串；<c>dry_run=true</c> 时只预演）。</summary>
     /// <remarks>幂等键（T4-1 / F-1）：<c>idempotency_key</c> → 透传查询参数 <c>client_token</c>（重复请求返回原记录）。</remarks>
-    [FeishuToolHandler(typeof(IFeishuTenantBitableAddRecordTool))]
-    public Task<FeishuToolResult> AddRecordAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantBitableAddRecordTool))]
+    public Task<ToolResult> AddRecordAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.BitableAddRecord);
         return executor.RunAsync(async () =>
@@ -46,7 +46,7 @@ internal sealed class BitableWriteTools(Mud.Feishu.IFeishuTenantV1BitableRecord 
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "POST",
                     "/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/records",
                     ToolDryRun.IdempotencyNote(args.IdempotencyKey),
@@ -102,8 +102,8 @@ internal sealed class BitableWriteRecordOps(Mud.Feishu.IFeishuTenantV1BitableRec
         ?? throw new ArgumentNullException(nameof(recordClient));
 
     /// <summary>bitable.update_record：更新记录（fields 为「字段名 → 值」JSON 对象字符串）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantBitableUpdateRecordTool))]
-    public Task<FeishuToolResult> UpdateRecordAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantBitableUpdateRecordTool))]
+    public Task<ToolResult> UpdateRecordAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.BitableUpdateRecord);
         return executor.RunAsync(async () =>
@@ -114,7 +114,7 @@ internal sealed class BitableWriteRecordOps(Mud.Feishu.IFeishuTenantV1BitableRec
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "PUT", $"/open-apis/bitable/v1/apps/{args.AppToken}/tables/{args.TableId}/records/{args.RecordId}",
                     ToolDryRun.IdempotencyNote(args.IdempotencyKey),
                     ("app_token", args.AppToken.Length), ("table_id", args.TableId.Length), ("record_id", args.RecordId.Length), ("fields", args.Fields.Length)));
@@ -131,8 +131,8 @@ internal sealed class BitableWriteRecordOps(Mud.Feishu.IFeishuTenantV1BitableRec
     }
 
     /// <summary>bitable.delete_record：删除记录（不可恢复，high-risk-write）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantBitableDeleteRecordTool))]
-    public Task<FeishuToolResult> DeleteRecordAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantBitableDeleteRecordTool))]
+    public Task<ToolResult> DeleteRecordAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.BitableDeleteRecord);
         return executor.RunAsync(async () =>
@@ -141,7 +141,7 @@ internal sealed class BitableWriteRecordOps(Mud.Feishu.IFeishuTenantV1BitableRec
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName, "DELETE", $"/open-apis/bitable/v1/apps/{args.AppToken}/tables/{args.TableId}/records/{args.RecordId}",
                     ToolDryRun.IdempotencyNote(null),
                     ("app_token", args.AppToken.Length), ("table_id", args.TableId.Length), ("record_id", args.RecordId.Length)));

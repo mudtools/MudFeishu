@@ -10,7 +10,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // ─────────────────────────── Search（1 个） ───────────────────────────
 
 /// <summary>工具接口：search.doc_wiki（映射 <c>IFeishuTenantV2SearchDocWiki.SearchDocWikiAsync</c>）。</summary>
-[FeishuTool("search.doc_wiki",
+[AgentTool("search.doc_wiki",
     Description = "云文档与知识库全文搜索，返回标题/摘要/URL；结果的 token 可传给 docx.get_raw_content、url 对应节点可传给 wiki.get_node。query 上限 30 字符。只读，需 search:docs:readonly。",
     RequiredScopes = ["search:docs:readonly"],
     Source = nameof(IFeishuTenantV2SearchDocWiki) + "." + nameof(IFeishuTenantV2SearchDocWiki.SearchDocWikiAsync))]

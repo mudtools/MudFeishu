@@ -55,8 +55,8 @@ internal sealed class OkrTools(
     private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
     /// <summary>okr.list_cycles：列出用户的 OKR 周期。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantOkrListCyclesTool))]
-    public Task<FeishuToolResult> ListCyclesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantOkrListCyclesTool))]
+    public Task<ToolResult> ListCyclesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.OkrListCycles, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -67,7 +67,7 @@ internal sealed class OkrTools(
 
             // P-3（统一分页语义）：聚合路径与单页路径共用**同一次调用定义**与**同一份投影**
             // （避免"两套参数面/两套白名单"漂移；也是"fetch_all=false 逐字节回归"的结构保证）。
-            async Task<FeishuApiOutcome<ListCyclesResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<ListCyclesResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await client
                     .ListCyclesAsync(args.UserId, page_size: DefaultPageSize, page_token: token, cancellationToken: ct)
                     .ConfigureAwait(false));
@@ -79,8 +79,8 @@ internal sealed class OkrTools(
     }
 
     /// <summary>okr.list_objectives：列出周期下的目标。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantOkrListObjectivesTool))]
-    public Task<FeishuToolResult> ListObjectivesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantOkrListObjectivesTool))]
+    public Task<ToolResult> ListObjectivesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.OkrListObjectives, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -91,7 +91,7 @@ internal sealed class OkrTools(
 
             // P-3（统一分页语义）：聚合路径与单页路径共用**同一次调用定义**与**同一份投影**
             // （避免"两套参数面/两套白名单"漂移；也是"fetch_all=false 逐字节回归"的结构保证）。
-            async Task<FeishuApiOutcome<ListCycleObjectivesResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<ListCycleObjectivesResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await client
                     .ListCycleObjectivesAsync(args.CycleId, page_size: DefaultPageSize, page_token: token, cancellationToken: ct)
                     .ConfigureAwait(false));
@@ -103,8 +103,8 @@ internal sealed class OkrTools(
     }
 
     /// <summary>okr.get_objective：获取目标详情。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantOkrGetObjectiveTool))]
-    public Task<FeishuToolResult> GetObjectiveAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantOkrGetObjectiveTool))]
+    public Task<ToolResult> GetObjectiveAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.OkrGetObjective, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -121,8 +121,8 @@ internal sealed class OkrTools(
     }
 
     /// <summary>okr.list_key_results：列出目标下的关键结果。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantOkrListKeyResultsTool))]
-    public Task<FeishuToolResult> ListKeyResultsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantOkrListKeyResultsTool))]
+    public Task<ToolResult> ListKeyResultsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.OkrListKeyResults, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -133,7 +133,7 @@ internal sealed class OkrTools(
 
             // P-3（统一分页语义）：聚合路径与单页路径共用**同一次调用定义**与**同一份投影**
             // （避免"两套参数面/两套白名单"漂移；也是"fetch_all=false 逐字节回归"的结构保证）。
-            async Task<FeishuApiOutcome<ListObjectiveKeyResultsResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<ListObjectiveKeyResultsResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await client
                     .ListObjectiveKeyResultsAsync(args.ObjectiveId, page_size: DefaultPageSize, page_token: token, cancellationToken: ct)
                     .ConfigureAwait(false));
@@ -145,8 +145,8 @@ internal sealed class OkrTools(
     }
 
     /// <summary>okr.get_key_result：获取关键结果详情。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantOkrGetKeyResultTool))]
-    public Task<FeishuToolResult> GetKeyResultAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantOkrGetKeyResultTool))]
+    public Task<ToolResult> GetKeyResultAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.OkrGetKeyResult, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -163,8 +163,8 @@ internal sealed class OkrTools(
     }
 
     /// <summary>okr.list_objective_progresses：列出目标下的进展记录。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantOkrListObjectiveProgressesTool))]
-    public Task<FeishuToolResult> ListObjectiveProgressesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantOkrListObjectiveProgressesTool))]
+    public Task<ToolResult> ListObjectiveProgressesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.OkrListObjectiveProgresses, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -175,7 +175,7 @@ internal sealed class OkrTools(
 
             // P-3（统一分页语义）：聚合路径与单页路径共用**同一次调用定义**与**同一份投影**
             // （避免"两套参数面/两套白名单"漂移；也是"fetch_all=false 逐字节回归"的结构保证）。
-            async Task<FeishuApiOutcome<ListProgressesResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<ListProgressesResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await client
                     .ListObjectiveProgressesAsync(args.ObjectiveId, page_size: DefaultPageSize, page_token: token, cancellationToken: ct)
                     .ConfigureAwait(false));
@@ -187,8 +187,8 @@ internal sealed class OkrTools(
     }
 
     /// <summary>okr.list_key_result_progresses：列出关键结果下的进展记录。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantOkrListKeyResultProgressesTool))]
-    public Task<FeishuToolResult> ListKeyResultProgressesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantOkrListKeyResultProgressesTool))]
+    public Task<ToolResult> ListKeyResultProgressesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.OkrListKeyResultProgresses, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -199,7 +199,7 @@ internal sealed class OkrTools(
 
             // P-3（统一分页语义）：聚合路径与单页路径共用**同一次调用定义**与**同一份投影**
             // （避免"两套参数面/两套白名单"漂移；也是"fetch_all=false 逐字节回归"的结构保证）。
-            async Task<FeishuApiOutcome<ListProgressesResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<ListProgressesResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await client
                     .ListKeyResultProgressesAsync(args.KeyResultId, page_size: DefaultPageSize, page_token: token, cancellationToken: ct)
                     .ConfigureAwait(false));
@@ -211,8 +211,8 @@ internal sealed class OkrTools(
     }
 
     /// <summary>okr.list_periods：列出租户下的 OKR 周期定义。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantOkrListPeriodsTool))]
-    public Task<FeishuToolResult> ListPeriodsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantOkrListPeriodsTool))]
+    public Task<ToolResult> ListPeriodsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.OkrListPeriods, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -223,7 +223,7 @@ internal sealed class OkrTools(
 
             // P-3（统一分页语义）：聚合路径与单页路径共用**同一次调用定义**与**同一份投影**
             // （避免"两套参数面/两套白名单"漂移；也是"fetch_all=false 逐字节回归"的结构保证）。
-            async Task<FeishuApiOutcome<ListPeriodsResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<ListPeriodsResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await client
                     .ListPeriodsAsync(page_size: DefaultPageSize, page_token: token, cancellationToken: ct)
                     .ConfigureAwait(false));
@@ -235,8 +235,8 @@ internal sealed class OkrTools(
     }
 
     /// <summary>okr.list_categories：列出 OKR 分类。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantOkrListCategoriesTool))]
-    public Task<FeishuToolResult> ListCategoriesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantOkrListCategoriesTool))]
+    public Task<ToolResult> ListCategoriesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.OkrListCategories, _maxResultLength);
         return executor.RunAsync(async () =>
@@ -253,7 +253,7 @@ internal sealed class OkrTools(
 
             // P-3（统一分页语义）：聚合路径与单页路径共用**同一次调用定义**与**同一份投影**
             // （避免"两套参数面/两套白名单"漂移；也是"fetch_all=false 逐字节回归"的结构保证）。
-            async Task<FeishuApiOutcome<ListCategoriesResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<ListCategoriesResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await client
                     .ListCategoriesAsync(page_size: DefaultPageSize, page_token: token, owner_type: ownerType, cancellationToken: ct)
                     .ConfigureAwait(false));

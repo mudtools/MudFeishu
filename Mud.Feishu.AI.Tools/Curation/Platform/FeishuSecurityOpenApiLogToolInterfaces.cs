@@ -33,7 +33,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// <b>DP-B1-0 页不进</b>：只暴露 <c>page_token</c>，页大小固定走 SDK 默认（10）。
 /// </para>
 /// </remarks>
-[FeishuTool("security.list_openapi_logs",
+[AgentTool("security.list_openapi_logs",
     Description = "查询企业应用的【OpenAPI 调用日志】——哪个 app_id/哪个接口（path+method）在什么时间被调用、返回什么状态码、来自哪个 IP。用于集成排障（接口报错/鉴权失败/调用异常）取证。⚠️ 该工具属 PII：结果含调用方 IP，会进入【第三方模型上下文】；【默认不启用】，需宿主显式加入白名单并确认合规口径；原始请求体 payload / 响应体 response / 查询参数不返回（避免业务数据入上下文）。时间范围起止相差不能超过 30 天。只读，需 admin:audit_info:readonly。",
     RequiredScopes = ["admin:audit_info:readonly"],
     Source = nameof(IFeishuTenantV1SecurityOpenApiLog) + "." + nameof(IFeishuTenantV1SecurityOpenApiLog.ListOpenApiLogDataAsync))]

@@ -25,7 +25,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // ─────────────────────────── Mail 只读（2 个，tenant） ───────────────────────────
 
 /// <summary>工具接口：mail.list_messages（映射 <c>IFeishuTenantV1MailMessage.GetUserMailboxMessagePageListAsync</c>）。</summary>
-[FeishuTool("mail.list_messages",
+[AgentTool("mail.list_messages",
     Description = "列出用户邮箱中的邮件（返回 message_id 列表，可传给 mail.get_message 获取详情）。user_mailbox_id 为用户邮箱地址。只读，需 mail:mailbox:readonly。",
     RequiredScopes = ["mail:mailbox:readonly"],
     Source = nameof(IFeishuTenantV1MailMessage) + "." + nameof(IFeishuTenantV1MailMessage.GetUserMailboxMessagePageListAsync))]
@@ -44,7 +44,7 @@ public interface IFeishuTenantMailListMessagesTool
 }
 
 /// <summary>工具接口：mail.get_message（映射 <c>IFeishuTenantV1MailMessage.GetUserMailboxMessageAsync</c>）。</summary>
-[FeishuTool("mail.get_message",
+[AgentTool("mail.get_message",
     Description = "获取邮件详情（主题/收发件人/正文预览）。message_id 来自 mail.list_messages。只读，需 mail:mailbox:readonly。",
     RequiredScopes = ["mail:mailbox:readonly"],
     Source = nameof(IFeishuTenantV1MailMessage) + "." + nameof(IFeishuTenantV1MailMessage.GetUserMailboxMessageAsync))]
@@ -62,7 +62,7 @@ public interface IFeishuTenantMailGetMessageTool
 // ─────────────────────────── Mail 写（1 个，user-only） ───────────────────────────
 
 /// <summary>工具接口：mail.send_message（映射 <c>IFeishuUserV1MailDraft.SendUserMailboxDraftAsync</c>，两步操作：先创建草稿再发送）。</summary>
-[FeishuTool("mail.send_message",
+[AgentTool("mail.send_message",
     Description = "以用户身份发送邮件（两步操作：先创建草稿再发送，模型无需感知中间态）。to/cc/bcc 为邮箱地址数组，subject 为主题，body 为纯文本正文。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 mail:mailbox。用户身份工具——宿主须在 AllowedIdentities 放行 user。",
     RequiredScopes = ["mail:mailbox"],
     IsWrite = true,
@@ -89,7 +89,7 @@ public interface IFeishuUserMailSendMessageTool
 /// R5 / F-11：<b>关键字搜索只在 user 身份接口上</b>（<c>IFeishuV1MailMessage_User.cs:76</c>），
 /// tenant 侧的 mail.list_messages 只有 folder/label/未读过滤 ⇒ 此前模型无法按关键词搜邮件。
 /// </remarks>
-[FeishuTool("mail.search",
+[AgentTool("mail.search",
     Description = "按关键字搜索邮箱邮件（如'找张三发的关于合同的邮件'）。user 身份接口，支持分页。只读，需 mail:mailbox:readonly。",
     RequiredScopes = ["mail:mailbox:readonly"],
     Source = nameof(IFeishuUserV1MailMessage) + "." + nameof(IFeishuUserV1MailMessage.SearchUserMailboxMessageAsync))]
@@ -107,7 +107,7 @@ public interface IFeishuUserMailSearchTool
 }
 
 /// <summary>工具接口：mail.list_labels（映射 <c>IFeishuTenantV1MailLabel.GetUserMailboxLabelListAsync</c>）。</summary>
-[FeishuTool("mail.list_labels",
+[AgentTool("mail.list_labels",
     Description = "列出邮箱的邮件标签（label）——用于查清可用的 label_id，再传给 mail.list_messages 做标签过滤。只读，需 mail:mailbox:readonly。",
     RequiredScopes = ["mail:mailbox:readonly"],
     Source = nameof(IFeishuTenantV1MailLabel) + "." + nameof(IFeishuTenantV1MailLabel.GetUserMailboxLabelListAsync))]
@@ -121,7 +121,7 @@ public interface IFeishuTenantMailListLabelsTool
 }
 
 /// <summary>工具接口：mail.get_thread（映射 <c>IFeishuTenantV1MailThread.GetUserMailboxThreadAsync</c>）。</summary>
-[FeishuTool("mail.get_thread",
+[AgentTool("mail.get_thread",
     Description = "取一封邮件的会话线程（同一主题下的往来邮件）——回复/追问类问题的完整上下文来源。只读，需 mail:mailbox:readonly。",
     RequiredScopes = ["mail:mailbox:readonly"],
     Source = nameof(IFeishuTenantV1MailThread) + "." + nameof(IFeishuTenantV1MailThread.GetUserMailboxThreadAsync))]
@@ -140,7 +140,7 @@ public interface IFeishuTenantMailGetThreadTool
 /// <b>为何需要它</b>：模型读完邮件后若不回写已读，用户邮箱会堆积大量"未读"，
 /// 与人工处理结果不一致（Agent 读过的邮件在用户眼里仍是未读）。
 /// </remarks>
-[FeishuTool("mail.mark_read",
+[AgentTool("mail.mark_read",
     Description = "把邮件标记为已读（或未读）——Agent 读完邮件后应回写，避免用户邮箱堆积未读。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 mail:mailbox。",
     RequiredScopes = ["mail:mailbox"],
     IsWrite = true,

@@ -41,7 +41,7 @@ public class ChatGroupToolsTests
             member?.Object,
             menu?.Object);
 
-    private static JsonObject Payload(FeishuToolResult result)
+    private static JsonObject Payload(ToolResult result)
         => JsonNode.Parse(result.ToString())!.AsObject();
 
     private static FeishuApiPageListResult<ChatItemInfo> ChatPage(

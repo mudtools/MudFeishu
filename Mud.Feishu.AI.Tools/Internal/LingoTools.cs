@@ -67,8 +67,8 @@ internal sealed class LingoTools(
     // ─────────────────────────── lingo.list_repos ───────────────────────────
 
     /// <summary>lingo.list_repos：列出词库（进入本域的第一跳）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantLingoListReposTool))]
-    public Task<FeishuToolResult> ListReposAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantLingoListReposTool))]
+    public Task<ToolResult> ListReposAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.LingoListRepos, _maxResultLength);
         if (Absent(executor.ToolName, _repoClient) is { } unavailable)
@@ -115,8 +115,8 @@ internal sealed class LingoTools(
     // ─────────────────────────── lingo.list_classifications ───────────────────────────
 
     /// <summary>lingo.list_classifications：列出分类目录（分页）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantLingoListClassificationsTool))]
-    public Task<FeishuToolResult> ListClassificationsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantLingoListClassificationsTool))]
+    public Task<ToolResult> ListClassificationsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.LingoListClassifications, _maxResultLength);
         if (Absent(executor.ToolName, _classificationClient) is { } unavailable)
@@ -129,7 +129,7 @@ internal sealed class LingoTools(
             var args = LingoListClassificationsArgs.Unpack(arguments);
 
             // page_size 刻意不下发（保持 SDK 默认）——运维参数不进模型可见面（DP-B1-0）。
-            async Task<FeishuApiOutcome<GetClassificationListResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<GetClassificationListResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _classificationClient!
                     .GetClassificationListAsync(page_token: token, repo_id: args.RepoId, cancellationToken: ct)
                     .ConfigureAwait(false));
@@ -161,8 +161,8 @@ internal sealed class LingoTools(
     // ─────────────────────────── lingo.list_entities ───────────────────────────
 
     /// <summary>lingo.list_entities：浏览词条（分页，无关键字）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantLingoListEntitiesTool))]
-    public Task<FeishuToolResult> ListEntitiesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantLingoListEntitiesTool))]
+    public Task<ToolResult> ListEntitiesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.LingoListEntities, _maxResultLength);
         if (Absent(executor.ToolName, _entityClient) is { } unavailable)
@@ -175,7 +175,7 @@ internal sealed class LingoTools(
             var args = LingoListEntitiesArgs.Unpack(arguments);
 
             // page_size 不下发（DP-B1-0）；provider 是 SDK 原生业务过滤（可下发）。
-            async Task<FeishuApiOutcome<GetEntityListResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<GetEntityListResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _entityClient!
                     .GetEntityListAsync(
                         page_token: token,
@@ -212,8 +212,8 @@ internal sealed class LingoTools(
     // ─────────────────────────── lingo.get_entity ───────────────────────────
 
     /// <summary>lingo.get_entity：按 ID 查单个词条（完整投影）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantLingoGetEntityTool))]
-    public Task<FeishuToolResult> GetEntityAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantLingoGetEntityTool))]
+    public Task<ToolResult> GetEntityAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.LingoGetEntity, _maxResultLength);
         if (Absent(executor.ToolName, _entityClient) is { } unavailable)
@@ -249,8 +249,8 @@ internal sealed class LingoTools(
     // ─────────────────────────── lingo.search_entities ───────────────────────────
 
     /// <summary>lingo.search_entities：按关键词搜索词条（分页）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantLingoSearchEntitiesTool))]
-    public Task<FeishuToolResult> SearchEntitiesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantLingoSearchEntitiesTool))]
+    public Task<ToolResult> SearchEntitiesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.LingoSearchEntities, _maxResultLength);
         if (Absent(executor.ToolName, _entityClient) is { } unavailable)
@@ -270,7 +270,7 @@ internal sealed class LingoTools(
 
             // page_size 不下发（DP-B1-0）。SearchEntityResult 是"自带 has_more/page_token
             // 但不继承 ApiPageListResult"的历史 DTO（HasMore 为 bool?），故走显式页状态重载。
-            async Task<FeishuApiOutcome<SearchEntityResult>> FetchPageAsync(string? token, CancellationToken ct)
+            async Task<ToolApiOutcome<SearchEntityResult>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _entityClient!
                     .SearchEntityAsync(
                         request,
@@ -321,8 +321,8 @@ internal sealed class LingoTools(
     // ─────────────────────────── lingo.match_entities ───────────────────────────
 
     /// <summary>lingo.match_entities：词形精确匹配（单次，无分页）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantLingoMatchEntitiesTool))]
-    public Task<FeishuToolResult> MatchEntitiesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantLingoMatchEntitiesTool))]
+    public Task<ToolResult> MatchEntitiesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.LingoMatchEntities, _maxResultLength);
         if (Absent(executor.ToolName, _entityClient) is { } unavailable)
@@ -431,9 +431,9 @@ internal sealed class LingoTools(
     /// 软缺席：客户端为空时给出<b>可执行的错误结果</b>而不是抛异常
     /// （异常会逃出执行链抛给宿主，而这里要的是"模型看到一条明确的不可用说明"）。
     /// </summary>
-    private static FeishuToolResult? Absent(string toolName, object? client)
+    private static ToolResult? Absent(string toolName, object? client)
         => client is null
-            ? FeishuToolResult.FromError(FeishuToolBinding.StructuredError(
+            ? ToolResult.FromError(FeishuToolBinding.StructuredError(
                 toolName,
                 $"未注册 {ClientName} 客户端——企业词典能力需宿主启用词典 API（软缺席，不影响其它域工具）"))
             : null;
@@ -441,8 +441,8 @@ internal sealed class LingoTools(
     // ─────────────────────────── 写面：免审词条 CRUD + 草稿申请 ───────────────────────────
 
     /// <summary>lingo.create_entity：创建词条（免审直写）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantLingoCreateEntityTool))]
-    public Task<FeishuToolResult> CreateEntityAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantLingoCreateEntityTool))]
+    public Task<ToolResult> CreateEntityAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.LingoCreateEntity, _maxResultLength);
         if (Absent(executor.ToolName, _entityClient) is { } unavailable)
@@ -460,7 +460,7 @@ internal sealed class LingoTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName,
                     "POST",
                     "/open-apis/lingo/v1/entities",
@@ -490,8 +490,8 @@ internal sealed class LingoTools(
     }
 
     /// <summary>lingo.update_entity：更新词条（免审直写 + 覆盖式）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantLingoUpdateEntityTool))]
-    public Task<FeishuToolResult> UpdateEntityAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantLingoUpdateEntityTool))]
+    public Task<ToolResult> UpdateEntityAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.LingoUpdateEntity, _maxResultLength);
         if (Absent(executor.ToolName, _entityClient) is { } unavailable)
@@ -514,7 +514,7 @@ internal sealed class LingoTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName,
                     "PUT",
                     "/open-apis/lingo/v1/entities/{entity_id}",
@@ -543,8 +543,8 @@ internal sealed class LingoTools(
     }
 
     /// <summary>lingo.delete_entity：删除词条（high-risk-write）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantLingoDeleteEntityTool))]
-    public Task<FeishuToolResult> DeleteEntityAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantLingoDeleteEntityTool))]
+    public Task<ToolResult> DeleteEntityAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.LingoDeleteEntity, _maxResultLength);
         if (Absent(executor.ToolName, _entityClient) is { } unavailable)
@@ -558,7 +558,7 @@ internal sealed class LingoTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName,
                     "DELETE",
                     "/open-apis/lingo/v1/entities/{entity_id}",
@@ -581,8 +581,8 @@ internal sealed class LingoTools(
     }
 
     /// <summary>lingo.create_draft：发起创建词条的草稿申请（走审核）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantLingoCreateDraftTool))]
-    public Task<FeishuToolResult> CreateDraftAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantLingoCreateDraftTool))]
+    public Task<ToolResult> CreateDraftAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.LingoCreateDraft, _maxResultLength);
         if (Absent(executor.ToolName, _draftClient) is { } unavailable)
@@ -600,7 +600,7 @@ internal sealed class LingoTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName,
                     "POST",
                     "/open-apis/lingo/v1/drafts",
@@ -628,8 +628,8 @@ internal sealed class LingoTools(
     }
 
     /// <summary>lingo.update_draft：更新草稿（已审批的不可编辑 + 覆盖式）。</summary>
-    [FeishuToolHandler(typeof(IFeishuTenantLingoUpdateDraftTool))]
-    public Task<FeishuToolResult> UpdateDraftAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuTenantLingoUpdateDraftTool))]
+    public Task<ToolResult> UpdateDraftAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
         var executor = new ToolExecutor(FeishuToolNames.LingoUpdateDraft, _maxResultLength);
         if (Absent(executor.ToolName, _draftClient) is { } unavailable)
@@ -651,7 +651,7 @@ internal sealed class LingoTools(
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                return ToolResult.FromText(ToolDryRun.Describe(
                     executor.ToolName,
                     "PUT",
                     "/open-apis/lingo/v1/drafts/{draft_id}",
@@ -712,7 +712,7 @@ internal sealed class LingoTools(
     /// 词条参数校验（<b>早于 dry_run</b>）：这些是平台会直接拒绝的形状，
     /// 放行预演只会让模型拿着"预演成功"的信心去改参数。
     /// </summary>
-    private static FeishuToolResult? ValidateEntity(
+    private static ToolResult? ValidateEntity(
         string toolName, string? mainKey, string[]? aliases, string? description, string? richText)
     {
         if (string.IsNullOrWhiteSpace(mainKey))
@@ -745,6 +745,6 @@ internal sealed class LingoTools(
         => values.Count(static value => !string.IsNullOrEmpty(value));
 
     /// <summary>参数非法：结构化错误（不是异常——异常会逃出执行链，模型看不到可执行信息）。</summary>
-    private static FeishuToolResult Invalid(string toolName, string message)
-        => FeishuToolResult.FromError(FeishuToolBinding.StructuredError(toolName, message));
+    private static ToolResult Invalid(string toolName, string message)
+        => ToolResult.FromError(FeishuToolBinding.StructuredError(toolName, message));
 }

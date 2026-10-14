@@ -23,7 +23,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// 投影<b>刻意不给 description / requirement 全文</b>——岗位描述通常很长（数百到数千字），
 /// 列表里逐条带出会瞬间打满结果预算；要正文请用 <c>hire.get_job</c> 单条取。
 /// </remarks>
-[FeishuTool("hire.list_jobs",
+[AgentTool("hire.list_jobs",
     Description = "分页列出【招聘岗位】（职位 ID、标题、编码、启用状态、更新时间）——用于回答「我们有哪些在招岗位」「某岗位 ID 是什么」。列表不含岗位描述正文（较长），需要正文请用 hire.get_job 按 ID 单条获取。page_token 续页（页大小由宿主固定）。只读，需 hire:job:readonly。",
     RequiredScopes = ["hire:job:readonly"],
     Source = nameof(IFeishuTenantV1HireJob) + "." + nameof(IFeishuTenantV1HireJob.GetJobListAsync))]
@@ -45,7 +45,7 @@ public interface IFeishuTenantHireListJobsTool
 /// 单条岗位的<b>完整</b>通道（含描述/要求正文）——与 list 的"精简投影"分工明确：
 /// 先 list 找到 ID，再 get 取正文，避免一上来就把整本岗位说明书灌进上下文。
 /// </remarks>
-[FeishuTool("hire.get_job",
+[AgentTool("hire.get_job",
     Description = "按职位 ID 查询单个【招聘岗位】详情（标题、编码、岗位描述、任职要求、启用状态、创建/更新时间）——已从 hire.list_jobs 拿到职位 ID 时用它取完整正文（列表不含正文）。描述可能很长（按结果预算截断并标记 truncated）。查不到时返回 found=false。只读，需 hire:job:readonly。",
     RequiredScopes = ["hire:job:readonly"],
     Source = nameof(IFeishuTenantV1HireJob) + "." + nameof(IFeishuTenantV1HireJob.GetJobAsync))]
@@ -79,7 +79,7 @@ public interface IFeishuTenantHireGetJobTool
 /// <b>DP-B1-0</b>：只暴露 <c>page_token</c>（+ 业务过滤 <c>job_id</c>），页大小走 SDK 默认。
 /// </para>
 /// </remarks>
-[FeishuTool("hire.list_job_requirements",
+[AgentTool("hire.list_job_requirements",
     Description = "分页列出【招聘需求】（需求 ID、编码、名称、需求人数 head_count、优先级、进度、部门、职级区间、起止时间、审批状态、关联职位 ID 列表），可用 job_id 只看某职位挂的需求。用于回答「这个季度还缺几个人」「某职位对应哪条招聘需求」。⚠️ 为最小暴露：招聘负责人/用人经理/直属上级、创建人、薪资区间一律不返回（需这些信息请在招聘系统查看）。page_token 续页。只读，需 hire:job_requirement:readonly。",
     RequiredScopes = ["hire:job_requirement:readonly"],
     Source = nameof(IFeishuTenantV1HireJobRequirement) + "." + nameof(IFeishuTenantV1HireJobRequirement.GetJobRequirementListAsync))]
@@ -113,7 +113,7 @@ public interface IFeishuTenantHireListJobRequirementsTool
 /// </para>
 /// <para><b>DP-B1-0</b>：只暴露 <c>page_token</c>（页大小走 SDK 默认）。</para>
 /// </remarks>
-[FeishuTool("hire.list_offers",
+[AgentTool("hire.list_offers",
     Description = "按人才 ID 查询其【Offer 列表】（Offer ID、投递 ID、岗位 ID/名称、Offer 状态、Offer 类型、创建时间）。offer_status 含义：2=审批中 / 3=审批已撤回 / 4=审批通过 / 5=审批不通过 / 6=已发送 / 7=被接受 / 8=被拒绝 / 9=已失效 / 10=已创建。⚠️ 该工具属 PII：某人是否获得 Offer 属个人信息，会进入【第三方模型上下文】；【默认不启用】，需宿主显式加入白名单并确认合规口径；**Offer 薪资与条件一律不返回**（本接口亦不含）。只读，需 hire:offer:readonly。",
     RequiredScopes = ["hire:offer:readonly"],
     Source = nameof(IFeishuTenantV1HireCandidate) + "." + nameof(IFeishuTenantV1HireCandidate.GetOfferListAsync))]
@@ -150,7 +150,7 @@ public interface IFeishuTenantHireListOffersTool
 /// </para>
 /// <para><b>DP-B1-0</b>：只暴露 <c>page_token</c>；<c>application_id</c> / 时间窗是业务过滤，可下发。</para>
 /// </remarks>
-[FeishuTool("hire.list_interviews",
+[AgentTool("hire.list_interviews",
     Description = "分页查询【面试安排】（面试 ID、投递 ID、轮次 round 与 round_type 名称、阶段 stage、开始/结束时间（毫秒时间戳）、安排状态）——用于回答「今天/本周有哪些面试」「某投递面到哪一轮」。可用 application_id 只查某投递，用 start_time/end_time（毫秒时间戳字符串）限定时间窗。⚠️ 该工具属 PII：面试安排即「某人正在应聘」的事实，会进入【第三方模型上下文】；【默认不启用】，需宿主显式加入白名单并确认合规口径；面试评价/记录/备注/联系人手机/面试官/会议室一律不返回。只读，需 hire:interview:readonly。",
     RequiredScopes = ["hire:interview:readonly"],
     Source = nameof(IFeishuTenantV1HireCandidate) + "." + nameof(IFeishuTenantV1HireCandidate.GetInterviewListAsync))]
@@ -183,7 +183,7 @@ public interface IFeishuTenantHireListInterviewsTool
 /// <remarks>
 /// 列表投影<b>极小</b>（talent_id / 姓名 / 是否已入职）：翻页找人是"索引"用途，不需要把每人档案带出。
 /// </remarks>
-[FeishuTool("hire.list_talents",
+[AgentTool("hire.list_talents",
     Description = "分页检索【候选人（人才）】列表（人才 ID、姓名、是否已入职），支持 keyword 按姓名/手机号等检索。用于「找人」拿到 talent_id 后再用 hire.get_talent 取联系人字段。⚠️ 该工具属 PII：结果是候选人个人信息，会进入【第三方模型上下文】；【默认不启用】，需宿主显式加入白名单并确认合规口径；身份证号/性别/年龄/籍贯/学历/经历等一律不返回。只读，需 hire:talent:readonly。",
     RequiredScopes = ["hire:talent:readonly"],
     Source = nameof(IFeishuTenantV1HireCandidate) + "." + nameof(IFeishuTenantV1HireCandidate.GetTalentListAsync))]
@@ -207,7 +207,7 @@ public interface IFeishuTenantHireListTalentsTool
 /// 这是"联系候选人"这一正当用途所需的最小集；档案类字段（学历/经历/作品/获奖/附件/自定义字段）与敏感标识
 /// （身份证号/性别/年龄/国籍/籍贯）**不返回**——它们与本工具目的无关，却显著扩大泄露面。
 /// </remarks>
-[FeishuTool("hire.get_talent",
+[AgentTool("hire.get_talent",
     Description = "按人才 ID 查询单个【候选人】的联系与在职字段（姓名、手机号、邮箱、工作年限、是否已入职）——已从 hire.list_talents 拿到 talent_id 时用它取联系方式。⚠️ 该工具属 PII：结果是候选人个人信息，会进入【第三方模型上下文】；【默认不启用】，需宿主显式加入白名单并确认合规口径；身份证号/学历/工作经历/备注等一律不返回。查不到时返回 found=false。只读，需 hire:talent:readonly。",
     RequiredScopes = ["hire:talent:readonly"],
     Source = nameof(IFeishuTenantV1HireCandidate) + "." + nameof(IFeishuTenantV1HireCandidate.GetTalentAsync))]

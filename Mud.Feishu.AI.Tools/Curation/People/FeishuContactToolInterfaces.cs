@@ -29,7 +29,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // </remarks>
 
 /// <summary>工具接口：contact.resolve_user（映射 <c>IFeishuTenantV3User.GetBatchUsersAsync</c>）。</summary>
-[FeishuTool("contact.resolve_user",
+[AgentTool("contact.resolve_user",
     Description = "把邮箱或手机号批量换成用户 ID（open_id/user_id/union_id）——发送消息、加群、指派任务前的第一步。emails 与 mobiles 至少填一个，合计不超过 50 项。已知姓名/昵称而非邮箱手机号时请改用 contact.search_user。只读，需 contact:user.base:readonly。",
     RequiredScopes = ["contact:user.base:readonly"],
     Source = nameof(IFeishuTenantV3User) + "." + nameof(IFeishuTenantV3User.GetBatchUsersAsync),
@@ -55,7 +55,7 @@ public interface IFeishuTenantContactResolveUserTool
 /// 而飞书全部写接口要的是 ID。SDK 方法早已存在（<c>GET /open-apis/search/v1/user</c>），
 /// 此前只是没有把它接成工具，故本项成本极低而收益直接落在写链路上。
 /// </remarks>
-[FeishuTool("contact.search_user",
+[AgentTool("contact.search_user",
     Description = "按姓名/关键字搜索用户，返回 open_id/user_id/姓名/所属部门——用户说\"发给张三\"时的第一步（拿到 open_id 后交给 im.send_message，receive_id_type 传 open_id）。只读，需 contact:user.base:readonly。",
     RequiredScopes = ["contact:user.base:readonly"],
     Source = nameof(IFeishuTenantV3User) + "." + nameof(IFeishuTenantV3User.GetUsersByKeywordAsync))]
@@ -72,7 +72,7 @@ public interface IFeishuTenantContactSearchUserTool
 }
 
 /// <summary>工具接口：contact.get_user（映射 <c>IFeishuTenantV3User.GetUserInfoByIdAsync</c>）。</summary>
-[FeishuTool("contact.get_user",
+[AgentTool("contact.get_user",
     Description = "按 user_id 或 open_id 读取单个用户的通讯录详情（姓名/邮箱/手机号/部门/上级/状态）。只读，需 contact:user.base:readonly。",
     RequiredScopes = ["contact:user.base:readonly"],
     Source = nameof(IFeishuTenantV3User) + "." + nameof(IFeishuTenantV3User.GetUserInfoByIdAsync))]
@@ -87,7 +87,7 @@ public interface IFeishuTenantContactGetUserTool
 }
 
 /// <summary>工具接口：contact.batch_get（映射 <c>IFeishuTenantV3User.GetUserByIdsAsync</c>）。</summary>
-[FeishuTool("contact.batch_get",
+[AgentTool("contact.batch_get",
     Description = "按 ID 批量读取用户通讯录详情（最多 50 个）——contact.resolve_user 拿到 ID 后的详情补全链。只读，需 contact:user.base:readonly。",
     RequiredScopes = ["contact:user.base:readonly"],
     Source = nameof(IFeishuTenantV3User) + "." + nameof(IFeishuTenantV3User.GetUserByIdsAsync))]

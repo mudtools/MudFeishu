@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFrameworks>netstandard2.0;net6.0;net8.0;net10.0</TargetFrameworks>
+		<AssemblyName>Mud.AI.Abstractions</AssemblyName>
+		<Description>Mud.AI 平台无关端口与工具面契约：会话端口 / 授权链骨架端口 / 通道抽象 / 审批状态机接口；声明契约族（[AgentTool]/[ToolParameter]/[ToolHandler]，任何声明工具的程序集可见——CS0433 教训的产品族解法）；工具面引导契约（ISdkToolProfile/[SdkToolProfile]/SdkTokenKind/TokenKindDerivationStrategy/InterfaceIdentity，供 Mud.AI.Generator 引擎按剖面驱动发现）。v2.3 自飞书 AI 族与组件仓 Mud.HttpUtils 中立化迁入。</Description>
+		<PackageTags>Mud.AI;Abstractions;Agent;Tools;ToolSurface;Profile;MudFeishu;AOT</PackageTags>
+		<BaseOutputPath>..\bin</BaseOutputPath>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- R3-11：公共 API 兼容门禁（AI 族未发布窗口期零成本建基线）。 -->
+		<PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="4.14.0">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
+
+	<ItemGroup>
+		<AdditionalFiles Include="PublicAPI.Shipped.txt" />
+		<AdditionalFiles Include="PublicAPI.Unshipped.txt" />
+	</ItemGroup>
+
+</Project>

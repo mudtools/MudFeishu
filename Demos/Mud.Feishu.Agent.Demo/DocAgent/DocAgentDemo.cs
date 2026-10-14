@@ -256,7 +256,7 @@ public static class DocAgentDemo
             ["工具结果截断"] = "4000 字符（MaxToolResultLength，大文档读取必然截断）",
             ["会话记忆"] = $"50 条 / 8000 token / 摘要阈值 {settings.SummaryThreshold}",
             ["指令装配"] = $"{guidance.IncludedDomains.Count} 个域 guidance，共 {guidanceLength} / "
-                + $"{FeishuGuidanceComposer.MaxGuidanceLength} 字符"
+                + $"{FeishuGuidanceBudget.MaxGuidanceLength} 字符"
                 + (guidance.Truncated ? "（已截断）" : "（未截断）"),
             ["回复通道"] = $"控制台（流式，唯一通道；分片阈值 {consoleChannel.ChunkLength} 字符 / "
                 + $"≥{ConsoleMessageChannel.MinUpdateIntervalMs}ms）",
@@ -270,7 +270,7 @@ public static class DocAgentDemo
         {
             renderer.Notice(
                 NoticeLevel.Warn,
-                $"域 guidance 超过 {FeishuGuidanceComposer.MaxGuidanceLength} 字符上限，已按域顺序丢弃尾部域："
+                $"域 guidance 超过 {FeishuGuidanceBudget.MaxGuidanceLength} 字符上限，已按域顺序丢弃尾部域："
                 + $"{string.Join("、", guidance.OmittedDomains)}——模型将失去这些域的避坑知识（减少同时启用的域可缓解）。");
         }
 

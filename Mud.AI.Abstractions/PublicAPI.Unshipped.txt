@@ -1,4 +1,8 @@
 #nullable enable
+Mud.AI.Abstractions.Conversations.ISessionStore
+Mud.AI.Abstractions.Conversations.ISessionStore.DeleteAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Mud.AI.Abstractions.Conversations.ISessionStore.GetAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
+Mud.AI.Abstractions.Conversations.ISessionStore.SaveAsync(string! key, string! serializedSession, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Mud.AI.Abstractions.Tools.AgentToolAttribute
 Mud.AI.Abstractions.Tools.AgentToolAttribute.AgentToolAttribute(string! name) -> void
 Mud.AI.Abstractions.Tools.AgentToolAttribute.AnyOf.get -> string![]!
@@ -12,6 +16,8 @@ Mud.AI.Abstractions.Tools.AgentToolAttribute.RequiredScopes.get -> string![]!
 Mud.AI.Abstractions.Tools.AgentToolAttribute.RequiredScopes.set -> void
 Mud.AI.Abstractions.Tools.AgentToolAttribute.Source.get -> string?
 Mud.AI.Abstractions.Tools.AgentToolAttribute.Source.set -> void
+Mud.AI.Abstractions.Tools.Errors.ITransportFault
+Mud.AI.Abstractions.Tools.Errors.ITransportFault.StatusCode.get -> int?
 Mud.AI.Abstractions.Tools.Handlers.ToolHandlerAttribute
 Mud.AI.Abstractions.Tools.Handlers.ToolHandlerAttribute.ToolHandlerAttribute(System.Type! toolInterface) -> void
 Mud.AI.Abstractions.Tools.Handlers.ToolHandlerAttribute.ToolInterface.get -> System.Type!

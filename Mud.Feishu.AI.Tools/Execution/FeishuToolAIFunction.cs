@@ -183,7 +183,7 @@ internal sealed class FeishuToolsToolSource : FeishuAgentToolSource
     /// 未启用任何工具 → 无 guidance → 指令装配与 Phase 0 一致。
     /// </para>
     /// <para>
-    /// <b>排序＝丢弃优先级（R5 / B-12）</b>：超限时 <see cref="FeishuGuidanceComposer.Compose"/>
+    /// <b>排序＝丢弃优先级（R5 / B-12）</b>：超限时 <see cref="GuidanceComposer.Compose"/>
     /// 按<b>输入顺序</b>整域丢弃尾部域，故输入顺序即"域重要性"。原实现按<b>域名字母序</b>，
     /// 一旦超限就<b>确定性地</b>丢掉字母序靠后的域——实测在原 2048 预算下从第 7 个域
     /// <c>feishu</c> 起共 8 个域的 guidance 从未进入过 prompt（含 <c>im</c>/<c>task</c>/<c>mail</c>/<c>wiki</c>）。
@@ -205,7 +205,7 @@ internal sealed class FeishuToolsToolSource : FeishuAgentToolSource
     /// 故"预算被调小丢的是长尾域"这一可断言语义不因形态切换而改变。
     /// </para>
     /// </remarks>
-    public override IReadOnlyList<FeishuGuidanceBlock> GetGuidance(IServiceProvider serviceProvider)
+    public override IReadOnlyList<GuidanceBlock> GetGuidance(IServiceProvider serviceProvider)
     {
         if (serviceProvider is null)
             throw new ArgumentNullException(nameof(serviceProvider));
@@ -242,12 +242,12 @@ internal sealed class FeishuToolsToolSource : FeishuAgentToolSource
         var mode = serviceProvider.GetService<IOptions<FeishuAgentOptions>>()?.Value?.GuidanceMode;
         var routing = !string.Equals(mode, GuidanceModes.Full, StringComparison.Ordinal);
 
-        var blocks = new List<FeishuGuidanceBlock>();
+        var blocks = new List<GuidanceBlock>();
         foreach (var domain in domains)
         {
             if (FeishuToolGuidance.ByDomain.TryGetValue(domain.Key, out var content))
             {
-                blocks.Add(new FeishuGuidanceBlock(
+                blocks.Add(new GuidanceBlock(
                     domain.Key,
                     routing ? GuidanceRoutingSummary.Create(domain.Key, content) : content));
             }

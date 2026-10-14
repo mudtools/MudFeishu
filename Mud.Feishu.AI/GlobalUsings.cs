@@ -25,6 +25,13 @@ global using Microsoft.Extensions.Logging.Abstractions;
 // 常规依赖"（`Mud.Feishu.AI.Channels` 等不是 `Mud.Feishu.AI.Agents` 的封闭命名空间，
 // 且 Options 是本工程 4 个实现类型的构造依赖）——与其在 8 个文件里各写一遍，不如统一到全局。
 global using Microsoft.Extensions.Options;
+// H2 中立化：域 guidance 装配机制（GuidanceBlock / GuidanceResult / GuidanceComposer）上移
+// Mud.AI.Agent.Guidance——预算常量（FeishuGuidanceBudget）留在本产品的 Agents 命名空间。
+global using Mud.AI.Agent.Guidance;
+// H2 中立化：会话 token 计数（ChatTokenCounter）上移 Mud.AI.Agent.Conversations 并转 public。
+global using Mud.AI.Agent.Conversations;
+// P1-H3：会话门面（AgentSessionStore：按键存取 + 坏值自愈）上移 Mud.AI.Agent.Sessions。
+global using Mud.AI.Agent.Sessions;
 global using Mud.Feishu.AI.Agents;
 global using Mud.Feishu.Abstractions.Observability;
 global using Mud.Feishu.Abstractions;

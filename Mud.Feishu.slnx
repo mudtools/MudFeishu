@@ -45,6 +45,9 @@
     <File Path="Tests/Directory.Build.props" />
     <Project Path="Tests/Mud.Feishu.Abstractions.Tests/Mud.Feishu.Abstractions.Tests.csproj" />
     <Project Path="Tests/Mud.AI.Generator.Tests/Mud.AI.Generator.Tests.csproj" />
+    <!-- P1-H2：Mud.AI.Agent（中性运行期）自带用例工程——中性类型不依赖任何飞书工程即可被验证，
+         保证 P3 上游化时覆盖不丢。登记后自动进 verify-build 步骤 4 的 TRX 矩阵（按 Tests/** 发现）。 -->
+    <Project Path="Tests/Mud.AI.Agent.Tests/Mud.AI.Agent.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.Agent.Demo.Tests/Mud.Feishu.Agent.Demo.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.AI.Tools.Tests/Mud.Feishu.AI.Tools.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.AI.Tests/Mud.Feishu.AI.Tests.csproj" />

@@ -9,6 +9,8 @@ global using Microsoft.Extensions.AI;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Logging;
 global using Microsoft.Extensions.Options;
+// H2 中立化：域 guidance 装配机制上移 Mud.AI.Agent.Guidance。
+global using Mud.AI.Agent.Guidance;
 global using Mud.Feishu.AI.Agents;
 global using Mud.Feishu.AI.Mcp;
 global using Mud.Feishu.AI.AgentTools;

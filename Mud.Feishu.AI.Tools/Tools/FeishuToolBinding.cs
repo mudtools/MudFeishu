@@ -328,7 +328,9 @@ internal sealed class FeishuToolBinding
             // 故此处把模型出口改为**白名单**：错误分类 + 稳定文案 + 追踪号，原文只进日志与审计。
             // **审计出口不改**（下方 WriteAuditWithIsolationAsync 仍传 ex.Message）：
             // 审计是宿主内网出口，两条出口的判据不同（R1 §7 纪律 4）。
-            var (category, subtype) = ToolErrorClassifier.Classify(ex);
+            // 传输层事实经产品适配层转成中立端口传入（Mud.AI.Agent 已不认识 ApiException——
+            // 独立产品线纪律）；漏接时 403 会落到 HttpRequestException 兜底被判成可重试。
+            var (category, subtype) = ToolErrorClassifier.Classify(ex, FeishuTransportFaultAdapter.Adapt(ex));
 
             // T1 / D1：user 身份工具的 401 映射为 user_token_refresh_failed（探测漏网路径的兜底出口）。
             // 探测放行（Refreshable/Error/Skipped）后，下游 401 经 TokenRecoveryExecutor 恢复——
@@ -439,7 +441,7 @@ internal sealed class FeishuToolBinding
             }
             catch (Exception ex)
             {
-                var (category, subtype) = ToolErrorClassifier.Classify(ex);
+                var (category, subtype) = ToolErrorClassifier.Classify(ex, FeishuTransportFaultAdapter.Adapt(ex));
 
                 // R-1 / B-2：第 4 份同构拷贝（本处此前内联 new ToolError；tests 的
                 // TruncationVisibilityContractGuards.ToolError_ShouldBeConstructedOnlyAtTheSingleFactory

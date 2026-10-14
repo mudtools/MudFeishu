@@ -427,6 +427,47 @@ public class ToolErrorContractGuards
         payload.GetProperty("subtype").GetString().Should().Be("authorization_denied");
     }
 
+    /// <summary>
+    /// <b>传输层状态码的接线（独立产品线纪律的端到端证据）</b>：中立的 <c>Mud.AI.Agent</c>
+    /// 已不认识 <c>Mud.HttpUtils.ApiException</c>，状态码必须由 <c>FeishuTransportFaultAdapter</c>
+    /// 经中立端口 <c>ITransportFault</c> 传入分类器。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么必须是行为断言（不是源码文本断言）</b>：漏接适配时异常会落到中立分类器的
+    /// <c>HttpRequestException</c> 兜底分支（<c>retryable/transient</c>），403 被误判为可重试，
+    /// 模型将对一个确定性失败无意义重试——而"<c>ToolErrorClassifier.Classify(ex)</c> 少了第二个实参"
+    /// 这种漂移在文本断言下极易假绿（注释里也写着同一个名字）。
+    /// </para>
+    /// <para>本用例同时是 <c>FeishuTransportFaultAdapter</c> 的防腐层证据：换任何 HTTP 组件（不只有飞书这套），
+    /// 只要适配层给出状态码，分类结果不变。</para>
+    /// </remarks>
+    [Fact]
+    public async Task TransportForbidden_ShouldBeClassifiedAsAuthorization()
+    {
+        var binding = new FeishuToolBinding(
+            new NoopScopeFactory(),
+            Options.Create(new FeishuAgentOptions { Instructions = "test" }));
+
+        var result = await binding.ExecuteAsync(
+            new FeishuToolDefinition(
+                "im.get_history_messages", "读消息", [], false, FeishuToolRisk.Read, "tenant",
+                (_, _, _) => Task.FromResult(ToolResult.FromText("ok"))),
+            new Dictionary<string, object?>(),
+            new FeishuToolContext("appA"),
+            _ => throw new Mud.HttpUtils.ApiException(System.Net.HttpStatusCode.Forbidden, "无权限"));
+
+        result.Error.Should().NotBeNull("异常路径必须产出结构化载荷（总体设计 §4 不变式：不抛裸异常）");
+        result.Error!.Category.Should().Be(
+            "authorization",
+            "403 必须由适配层经中立端口进入分类器（漏接 ⇒ 被判成 retryable/transient，模型会无意义重试）");
+        result.Error!.Subtype.Should().Be("authorization_denied");
+
+        var text = result.ToString()!;
+        text.Should().Contain("(forbidden)");
+        text.Should().NotContain("(retryable)", "确定性失败不得被回填成可重试语义");
+    }
+
     private sealed class NoopScopeFactory : IFeishuAppContextScopeFactory
     {
         public IDisposable BeginScope(string appKey) => new NoopScope();

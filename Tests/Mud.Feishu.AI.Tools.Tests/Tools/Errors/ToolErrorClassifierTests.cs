@@ -32,13 +32,35 @@ public class ToolErrorClassifierTests
         ((int)ToolErrorClassifier.Classify(new TimeoutException("执行超时")).Category).Should().Be(RetryableCategory);
     }
 
-    [Fact]
-    public void Classify_ApiException_ShouldFollowHttpStatusSegment()
+    /// <summary>
+    /// 传输异常经飞书适配层（<c>FeishuTransportFaultAdapter</c>）转成中立端口
+    /// （<c>Mud.AI.Abstractions.Tools.Errors.ITransportFault</c>）后，状态码段位映射不变：
+    /// 401/403 → 权限类，429/5xx → 可重试，其余 → 业务错误。
+    /// </summary>
+    /// <remarks>
+    /// 2026-10-14（独立产品线纪律）：中立分类器已<b>不再判定 <c>Mud.HttpUtils.ApiException</c> 类型</b>
+    /// （该依赖已从 <c>Mud.AI.Agent</c> 下线），故改经适配层取端口——本用例锁定替代路径成立。
+    /// </remarks>
+    [Theory]
+    [InlineData(System.Net.HttpStatusCode.Unauthorized, 2)]
+    [InlineData(System.Net.HttpStatusCode.Forbidden, 2)]
+    [InlineData(System.Net.HttpStatusCode.TooManyRequests, 4)]
+    [InlineData(System.Net.HttpStatusCode.InternalServerError, 4)]
+    [InlineData(System.Net.HttpStatusCode.BadRequest, 5)]
+    public void Classify_TransportExceptionViaAdapter_ShouldFollowHttpStatusSegment(
+        System.Net.HttpStatusCode statusCode, int expectedCategory)
     {
-        // Mud.HttpUtils.ApiException 携带 StatusCode：5xx/429 → 可重试，401/403 → 权限类。
-        var serverError = new Mud.HttpUtils.ApiException(System.Net.HttpStatusCode.InternalServerError, "内部错误");
-        ((int)ToolErrorClassifier.Classify(serverError).Category).Should().Be(RetryableCategory);
+        var apiException = new Mud.HttpUtils.ApiException(statusCode, "传输失败");
+
+        var classified = ToolErrorClassifier.Classify(apiException, FeishuTransportFaultAdapter.Adapt(apiException));
+
+        ((int)classified.Category).Should().Be(expectedCategory);
     }
+
+    /// <summary>非传输异常不得被适配层误报为传输故障（否则 <c>Exception</c> 分类会被整体劫持）。</summary>
+    [Fact]
+    public void Adapter_NonTransportException_ShouldReturnNoTransportFault()
+        => FeishuTransportFaultAdapter.Adapt(new ArgumentException("缺少必填参数")).Should().BeNull();
 
     [Fact]
     public void Classify_UnknownException_ShouldBeInternal()

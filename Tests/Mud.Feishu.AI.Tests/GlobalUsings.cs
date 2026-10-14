@@ -25,6 +25,10 @@ global using Mud.Feishu.AI.Knowledge;
 global using Mud.Feishu.Tests.Docs;
 
 global using Moq;
+// H2 中立化：域 guidance 装配机制上移 Mud.AI.Agent.Guidance（预算常量留在 FeishuGuidanceBudget）、
+// 会话 token 计数上移 Mud.AI.Agent.Conversations。
+global using Mud.AI.Agent.Conversations;
+global using Mud.AI.Agent.Guidance;
 global using Mud.Feishu.AI;
 global using Mud.Feishu.AI.Agents;
 global using Mud.Feishu.AI.Conversations;

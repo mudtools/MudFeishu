@@ -85,6 +85,50 @@ package family is AOT-smoked automatically. Any "N source projects" count in doc
   declaring assemblies (e.g. AI.Tests samples) can see them without referencing the owner
   assembly (avoids CS0433 ambiguity).
 
+## AI runtime layering (P1-H1/H2/H3, 2026-10-14)
+
+The AI family is **unpublished**, so the reusable mechanism moved to the neutral packages in one
+hard cut (no `[Obsolete]` forwards, no shims). Four invariants are mechanically locked:
+
+- **MAF allow-list = `{Mud.Feishu.AI, Mud.AI.Agent}`** (relaxed from "only `Mud.Feishu.AI`" in
+  P1-H3, because `Mud.AI.Agent` *is* the AI runtime and its session facade needs `AIAgent`).
+  Relaxation is **convergent, not open**: `Mud.AI.Abstractions` must stay MAF-free (compile-time
+  contract layer, consumed by the source generator) and every non-AI `Mud.Feishu*` project still
+  must not declare MAF directly. Guarded by
+  `AgentContractGuards.AgentsAi_PackageReferences_ShouldBeDeclaredOnlyInAllowListedProjects` +
+  `MudAiAbstractions_ShouldNotDeclareMafPackages`; MAF version stays single-point 1.20.0.
+- **Bidirectional neutrality lock**: core SDK ↛ `Mud.AI.*` (existing
+  `CoreSdkProjects_ShouldNotDependOnMudAiFamily`) **and** `Mud.AI.*` ↛ any `Mud.Feishu*`
+  (`MudAiFamily_ShouldNotDependOnFeishuProjects`). The session-storage port exists precisely
+  because the "obvious" shortcut (let `Mud.AI.Agent` reference
+  `Mud.Feishu.Abstractions.IConversationStore`) compiles, passes tests, and makes P3 upstreaming
+  impossible. Instead: neutral port `Mud.AI.Abstractions.Conversations.ISessionStore` +
+  `Mud.Feishu.AI.Conversations.ConversationStoreSessionAdapter` (internal). The published SDK
+  packages (`Mud.Feishu.Abstractions`, `Mud.Feishu.Redis`) are **byte-untouched**.
+  The lock has a **third axis** (2026-10-14): `Mud.AI.*` must not declare Mud **components**
+  either — `AgentContractGuards.MudAiFamily_ShouldNotDeclareMudHttpUtilsComponent` (scope = the exact
+  `Mud.HttpUtils` component id; sub-packages `.Attributes`/`.Abstractions` would need an explicit
+  scope widening + justification). Same "ports, not the obvious shortcut" reasoning:
+  `Mud.AI.Agent.ToolErrorClassifier` used to pattern-match `Mud.HttpUtils.ApiException`, which made
+  P3 upstreaming impossible and chained the neutral package to the component's single-version line.
+  Now: neutral port `Mud.AI.Abstractions.Tools.Errors.ITransportFault` (`int? StatusCode` only) +
+  `Mud.Feishu.AI.AgentTools.FeishuTransportFaultAdapter` (internal), with the wiring locked
+  end-to-end by `ToolErrorContractGuards.TransportForbidden_ShouldBeClassifiedAsAuthorization`
+  (behaviour, not source text — a missing adapter silently degrades 403 to `retryable/transient`).
+- **`FeishuAgent : DelegatingAIAgent`** (MAF-provided). Do not hand-write `IdCore` / the three
+  session hooks / `GetService` again — `FeishuAgent_ShouldDelegateIdentityToInnerAgent` and
+  `FeishuAgent_GetService_ShouldReturnOuterInstance` lock the semantics (reflection + behaviour,
+  not source text).
+- **Product facts never enter the neutral packages**: state keys (`feishu.agent.*`) and the
+  guidance budget (`FeishuGuidanceBudget.MaxGuidanceLength`) stay on the Feishu side;
+  `GuidanceComposer.Compose(..., maxGuidanceLength)` and `AgentSessionStore(..., historyStateKey, ...)`
+  take them as *parameters*.
+
+`Mud.AI.Agent` now carries `ChatTokenCounter` (public), `GuidanceComposer` and `AgentSessionStore`;
+`Tests/Mud.AI.Agent.Tests` is their owning test project (registered in the slnx, auto-discovered by
+`verify-build.ps1` step 4). Guard evidence must live with the implementation — moving code without
+moving its guard anchors is how a guard silently starts asserting something else.
+
 ## Target Frameworks & MSBuild
 
 `netstandard2.0`, `net6.0`, `net8.0` (recommended), `net10.0`; `#if NET7_0_OR_GREATER` for

@@ -1,6 +1,12 @@
 #nullable enable
+Mud.AI.Agent.Sessions.AgentSessionStore
+Mud.AI.Agent.Sessions.AgentSessionStore.AgentSessionStore(Microsoft.Agents.AI.AIAgent! codec, Mud.AI.Abstractions.Conversations.ISessionStore? store, string! historyStateKey, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+Mud.AI.Agent.Sessions.AgentSessionStore.GetOrCreateAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Agents.AI.AgentSession!>!
+Mud.AI.Agent.Sessions.AgentSessionStore.SaveAsync(string! key, Microsoft.Agents.AI.AgentSession! session, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 ~Mud.AI.Agent.Tools.ToolApiOutcome<T>.<Clone>$() -> Mud.AI.Agent.Tools.ToolApiOutcome<T>!
 ~Mud.AI.Agent.Tools.ToolApiOutcome<T>.Equals(Mud.AI.Agent.Tools.ToolApiOutcome<T>? other) -> bool
+~override Mud.AI.Agent.Guidance.GuidanceBlock.Equals(object obj) -> bool
+~override Mud.AI.Agent.Guidance.GuidanceBlock.ToString() -> string
 ~static Mud.AI.Agent.Tools.ToolApiOutcome<T>.operator !=(Mud.AI.Agent.Tools.ToolApiOutcome<T>? left, Mud.AI.Agent.Tools.ToolApiOutcome<T>? right) -> bool
 ~static Mud.AI.Agent.Tools.ToolApiOutcome<T>.operator ==(Mud.AI.Agent.Tools.ToolApiOutcome<T>? left, Mud.AI.Agent.Tools.ToolApiOutcome<T>? right) -> bool
 const Mud.AI.Agent.Tools.Errors.ToolErrorHintRenderer.HintPrefix = "[next] " -> string!
@@ -33,6 +39,30 @@ const Mud.AI.Agent.Tools.ToolPagination.HardMaxPages = 50 -> int
 const Mud.AI.Agent.Tools.ToolResultPipeline.JsonTruncationReason = "JSON 感知截断" -> string!
 const Mud.AI.Agent.Tools.ToolResultPipeline.PlainTextTruncationReason = "文本超长截断" -> string!
 const Mud.AI.Agent.Tools.ToolResultText.TruncatedMarker = "…[truncated" -> string!
+Mud.AI.Agent.Conversations.ChatTokenCounter
+Mud.AI.Agent.Guidance.GuidanceBlock
+Mud.AI.Agent.Guidance.GuidanceBlock.Content.get -> string!
+Mud.AI.Agent.Guidance.GuidanceBlock.Content.init -> void
+Mud.AI.Agent.Guidance.GuidanceBlock.Deconstruct(out string! Domain, out string! Content) -> void
+Mud.AI.Agent.Guidance.GuidanceBlock.Domain.get -> string!
+Mud.AI.Agent.Guidance.GuidanceBlock.Domain.init -> void
+Mud.AI.Agent.Guidance.GuidanceBlock.Equals(Mud.AI.Agent.Guidance.GuidanceBlock other) -> bool
+Mud.AI.Agent.Guidance.GuidanceBlock.GuidanceBlock() -> void
+Mud.AI.Agent.Guidance.GuidanceBlock.GuidanceBlock(string! Domain, string! Content) -> void
+Mud.AI.Agent.Guidance.GuidanceComposer
+Mud.AI.Agent.Guidance.GuidanceResult
+Mud.AI.Agent.Guidance.GuidanceResult.<Clone>$() -> Mud.AI.Agent.Guidance.GuidanceResult!
+Mud.AI.Agent.Guidance.GuidanceResult.Deconstruct(out string! Instructions, out bool Truncated, out System.Collections.Generic.IReadOnlyList<string!>! IncludedDomains, out System.Collections.Generic.IReadOnlyList<string!>! OmittedDomains) -> void
+Mud.AI.Agent.Guidance.GuidanceResult.Equals(Mud.AI.Agent.Guidance.GuidanceResult? other) -> bool
+Mud.AI.Agent.Guidance.GuidanceResult.GuidanceResult(string! Instructions, bool Truncated, System.Collections.Generic.IReadOnlyList<string!>! IncludedDomains, System.Collections.Generic.IReadOnlyList<string!>! OmittedDomains) -> void
+Mud.AI.Agent.Guidance.GuidanceResult.IncludedDomains.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Mud.AI.Agent.Guidance.GuidanceResult.IncludedDomains.init -> void
+Mud.AI.Agent.Guidance.GuidanceResult.Instructions.get -> string!
+Mud.AI.Agent.Guidance.GuidanceResult.Instructions.init -> void
+Mud.AI.Agent.Guidance.GuidanceResult.OmittedDomains.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Mud.AI.Agent.Guidance.GuidanceResult.OmittedDomains.init -> void
+Mud.AI.Agent.Guidance.GuidanceResult.Truncated.get -> bool
+Mud.AI.Agent.Guidance.GuidanceResult.Truncated.init -> void
 Mud.AI.Agent.Tools.Errors.IToolErrorTextFormatter
 Mud.AI.Agent.Tools.Errors.IToolErrorTextFormatter.Format(string! toolName, string! reason) -> string!
 Mud.AI.Agent.Tools.Errors.IToolErrorTextFormatter.RenderHint(Mud.AI.Agent.Tools.Errors.ToolError! error) -> string!
@@ -120,8 +150,8 @@ Mud.AI.Agent.Tools.ToolExecutor.FromPagedResult(Mud.AI.Agent.Tools.ToolPaginatio
 Mud.AI.Agent.Tools.ToolExecutor.FromPlainText<T>(Mud.AI.Agent.Tools.ToolApiOutcome<T!>! outcome, System.Func<T!, string?>! text) -> Mud.AI.Agent.Tools.ToolResult!
 Mud.AI.Agent.Tools.ToolExecutor.RunAsync(System.Func<System.Threading.Tasks.Task<Mud.AI.Agent.Tools.ToolResult!>!>! body) -> System.Threading.Tasks.Task<Mud.AI.Agent.Tools.ToolResult!>!
 Mud.AI.Agent.Tools.ToolExecutor.ToolExecutor() -> void
-Mud.AI.Agent.Tools.ToolExecutor.ToolExecutor(string! toolName) -> void
 Mud.AI.Agent.Tools.ToolExecutor.ToolExecutor(string! toolName, int maxResultLength) -> void
+Mud.AI.Agent.Tools.ToolExecutor.ToolExecutor(string! toolName) -> void
 Mud.AI.Agent.Tools.ToolExecutor.ToolName.get -> string!
 Mud.AI.Agent.Tools.ToolPagination
 Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult
@@ -159,6 +189,10 @@ Mud.AI.Agent.Tools.ToolResultJson
 Mud.AI.Agent.Tools.ToolResultJsons
 Mud.AI.Agent.Tools.ToolResultPipeline
 Mud.AI.Agent.Tools.ToolResultText
+override Mud.AI.Agent.Guidance.GuidanceBlock.GetHashCode() -> int
+override Mud.AI.Agent.Guidance.GuidanceResult.Equals(object? obj) -> bool
+override Mud.AI.Agent.Guidance.GuidanceResult.GetHashCode() -> int
+override Mud.AI.Agent.Guidance.GuidanceResult.ToString() -> string!
 override Mud.AI.Agent.Tools.Errors.ToolError.Equals(object? obj) -> bool
 override Mud.AI.Agent.Tools.Errors.ToolError.GetHashCode() -> int
 override Mud.AI.Agent.Tools.Errors.ToolError.ToString() -> string!
@@ -172,9 +206,19 @@ override Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.Equals(object? obj) 
 override Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.GetHashCode() -> int
 override Mud.AI.Agent.Tools.ToolPagination.PagedFetchResult.ToString() -> string!
 override Mud.AI.Agent.Tools.ToolResult.ToString() -> string!
+static Mud.AI.Agent.Conversations.ChatTokenCounter.Count(string? text) -> int
+static Mud.AI.Agent.Conversations.ChatTokenCounter.CountMessages(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.ChatMessage!>! history) -> int
+static Mud.AI.Agent.Conversations.ChatTokenCounter.Estimate(string! text) -> int
+static Mud.AI.Agent.Conversations.ChatTokenCounter.InitializationFailure.get -> string?
+static Mud.AI.Agent.Conversations.ChatTokenCounter.IsExactCount.get -> bool
+static Mud.AI.Agent.Guidance.GuidanceBlock.operator !=(Mud.AI.Agent.Guidance.GuidanceBlock left, Mud.AI.Agent.Guidance.GuidanceBlock right) -> bool
+static Mud.AI.Agent.Guidance.GuidanceBlock.operator ==(Mud.AI.Agent.Guidance.GuidanceBlock left, Mud.AI.Agent.Guidance.GuidanceBlock right) -> bool
+static Mud.AI.Agent.Guidance.GuidanceComposer.Compose(string? hostInstructions, System.Collections.Generic.IReadOnlyList<Mud.AI.Agent.Guidance.GuidanceBlock>? blocks, int maxGuidanceLength) -> Mud.AI.Agent.Guidance.GuidanceResult!
+static Mud.AI.Agent.Guidance.GuidanceResult.operator !=(Mud.AI.Agent.Guidance.GuidanceResult? left, Mud.AI.Agent.Guidance.GuidanceResult? right) -> bool
+static Mud.AI.Agent.Guidance.GuidanceResult.operator ==(Mud.AI.Agent.Guidance.GuidanceResult? left, Mud.AI.Agent.Guidance.GuidanceResult? right) -> bool
 static Mud.AI.Agent.Tools.Errors.ToolError.operator !=(Mud.AI.Agent.Tools.Errors.ToolError? left, Mud.AI.Agent.Tools.Errors.ToolError? right) -> bool
 static Mud.AI.Agent.Tools.Errors.ToolError.operator ==(Mud.AI.Agent.Tools.Errors.ToolError? left, Mud.AI.Agent.Tools.Errors.ToolError? right) -> bool
-static Mud.AI.Agent.Tools.Errors.ToolErrorClassifier.Classify(System.Exception! exception) -> (Mud.AI.Agent.Tools.Errors.ToolErrorCategory Category, string! Subtype)
+static Mud.AI.Agent.Tools.Errors.ToolErrorClassifier.Classify(System.Exception! exception, Mud.AI.Abstractions.Tools.Errors.ITransportFault? transportFault = null) -> (Mud.AI.Agent.Tools.Errors.ToolErrorCategory Category, string! Subtype)
 static Mud.AI.Agent.Tools.Errors.ToolErrorClassifier.ClassifyCode(int? code) -> (Mud.AI.Agent.Tools.Errors.ToolErrorCategory Category, string! Subtype)
 static Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.All.get -> System.Collections.Generic.IReadOnlyList<Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry!>!
 static Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.BuildSuggestions(int? code) -> System.Collections.Generic.IReadOnlyList<string!>?

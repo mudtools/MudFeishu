@@ -5,17 +5,22 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Mud.Feishu.AI.Conversations;
-
-namespace Mud.Feishu.AI.Tests.Conversations;
+namespace Mud.AI.Agent.Tests.Conversations;
 
 /// <summary>
-/// 会话历史 token 计数（P2-5）：net8+ 走 Tiktoken 精确路径，
+/// 会话历史 token 计数：net8+ 走 Tiktoken 精确路径，
 /// 估算回退路径的<b>中文密度校正</b>（原实现按 4 字符/token 会把中文低估约 3-4 倍）直接单测。
 /// </summary>
 /// <remarks>
+/// <para>
 /// 精确路径存在时 <see cref="ChatTokenCounter.Count"/> 不会走到估算分支，
-/// 故估算比由 <c>internal</c> 的 <c>Estimate</c> 直测（与 <c>IsExactCount</c> 同属可断言面）。
+/// 故估算比由公开的 <see cref="ChatTokenCounter.Estimate"/> 直测（与 <see cref="ChatTokenCounter.IsExactCount"/>
+/// 同属可断言面）。
+/// </para>
+/// <para>
+/// <b>归属（P1-H2b）</b>：本用例随 <see cref="ChatTokenCounter"/> 自 <c>Mud.Feishu.AI.Tests</c>
+/// 迁入中性包自带的测试工程——保证 P3 上游化时覆盖不丢。
+/// </para>
 /// </remarks>
 public class ChatTokenCounterTests
 {
@@ -62,7 +67,7 @@ public class ChatTokenCounterTests
         ChatTokenCounter.Count(string.Empty).Should().Be(0);
     }
 
-    // ===== R2-4：精确计数可用性与降级可观测 =====
+    // ===== 精确计数可用性与降级可观测 =====
 
 #if NET8_0_OR_GREATER
     [Fact]

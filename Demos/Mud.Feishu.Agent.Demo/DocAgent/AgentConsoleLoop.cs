@@ -386,7 +386,7 @@ internal sealed class AgentConsoleLoop
                 ["授权策略", _authorizerState.Current],
                 ["工具结果截断", "4000 字符（MaxToolResultLength）"],
                 ["会话记忆", $"条数 50 / token 8000 / 摘要阈值 {_settings.SummaryThreshold}"],
-                ["guidance", $"{guidance.IncludedDomains.Count} 个域，共 {guidanceLength} / {FeishuGuidanceComposer.MaxGuidanceLength} 字符"
+                ["guidance", $"{guidance.IncludedDomains.Count} 个域，共 {guidanceLength} / {FeishuGuidanceBudget.MaxGuidanceLength} 字符"
                     + (guidance.Truncated ? $"（已截断，丢弃：{string.Join("、", guidance.OmittedDomains)}）" : "（未截断）")],
                 ["回复通道", $"控制台（唯一通道；分片阈值 {_consoleChannel.ChunkLength} 字符 / ≥{ConsoleMessageChannel.MinUpdateIntervalMs}ms）"],
                 ["会话键", _conversationKey],

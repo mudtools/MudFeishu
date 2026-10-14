@@ -677,7 +677,7 @@ public sealed class FeishuMcpToolServer
     /// </remarks>
     private string BuildInstructions(IServiceProvider services)
     {
-        var sourceBlocks = new List<FeishuGuidanceBlock>();
+        var sourceBlocks = new List<GuidanceBlock>();
         foreach (var source in services.GetServices<FeishuAgentToolSource>())
         {
             if (source is null)
@@ -695,7 +695,7 @@ public sealed class FeishuMcpToolServer
         var fullMode = string.Equals(
             _options.InstructionsMode, GuidanceModes.Full, StringComparison.Ordinal);
 
-        var blocks = new List<FeishuGuidanceBlock>(sourceBlocks.Count);
+        var blocks = new List<GuidanceBlock>(sourceBlocks.Count);
         foreach (var block in sourceBlocks)
         {
             if (!FeishuToolGuidance.ByDomain.TryGetValue(block.Domain, out var full))
@@ -705,12 +705,12 @@ public sealed class FeishuMcpToolServer
                 continue;
             }
 
-            blocks.Add(new FeishuGuidanceBlock(
+            blocks.Add(new GuidanceBlock(
                 block.Domain,
                 fullMode ? full : GuidanceRoutingSummary.Create(block.Domain, full)));
         }
 
-        return FeishuGuidanceComposer.Compose(null, blocks).Instructions;
+        return GuidanceComposer.Compose(null, blocks, FeishuGuidanceBudget.MaxGuidanceLength).Instructions;
     }
 
     private static string ServerVersion()

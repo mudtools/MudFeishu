@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- H2（P1-H2）：Mud.AI.Agent 的中性用例工程。
+       为什么必须独立成工程（而不是继续挂在 Mud.Feishu.AI.Tests 下）：
+       Mud.Feishu.AI.Tests 直接 ProjectReference Mud.Feishu.AI，中性类型若只在那边被测，
+       一旦 Mud.AI.Agent 按 P3 上游化（迁独立 Mud.AI 仓），这些用例会被一起留在飞书仓 ⇒ 覆盖丢失。
+       门禁：verify-build.ps1 步骤 4 按 Mud.Feishu.slnx 的 Tests/** 逐工程发现（TRX total>0 纪律），
+       故本工程登记 slnx 后**自动纳入**，脚本无需改（v2.3 结论⑦同款）。
+
+       TFM 由 Tests/Directory.Build.props 统一为 net8.0 单 TFM。 -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\Mud.AI.Agent\Mud.AI.Agent.csproj" />
+    <!-- 会话端口中立化（P1-H3）后本工程直接断言 ISessionStore 的契约，故直接声明（P2-5）。 -->
+    <ProjectReference Include="..\..\Mud.AI.Abstractions\Mud.AI.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

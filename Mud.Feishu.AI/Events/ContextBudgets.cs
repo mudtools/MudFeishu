@@ -17,7 +17,7 @@ namespace Mud.Feishu.AI.Events;
 /// 常量集中在一处后，评审"再加一个装配器"时只需看本文件。
 /// </para>
 /// <para>
-/// <b>与 <c>FeishuGuidanceComposer.MaxGuidanceLength</c> 的关系</b>：那是"域 guidance 资产"的
+/// <b>与 <c>FeishuGuidanceBudget.MaxGuidanceLength</c> 的关系</b>：那是"域 guidance 资产"的
 /// 总预算（常驻指令面），本类是"事件上下文片段"的预算（每轮事件面），两者<b>相加</b>才是
 /// 单轮的注入上限。修改任一处都必须同批复算另一方（本文件的注释是唯一的复算依据）。
 /// </para>

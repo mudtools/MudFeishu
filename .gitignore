@@ -107,6 +107,8 @@
 /Tests/Mud.Feishu.Agent.Demo.Tests/obj
 /Tests/Mud.AI.Generator.Tests/bin
 /Tests/Mud.AI.Generator.Tests/obj
+/Tests/Mud.AI.Agent.Tests/bin
+/Tests/Mud.AI.Agent.Tests/obj
 node_modules
 ################################################################################
 # 敏感配置文件

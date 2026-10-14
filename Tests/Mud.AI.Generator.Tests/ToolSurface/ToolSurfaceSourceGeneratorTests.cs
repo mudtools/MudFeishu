@@ -6,7 +6,6 @@
 // -----------------------------------------------------------------------
 
 using Mud.AI.ToolSurface;
-using Mud.AI.ToolSurface.Extraction;
 
 namespace Mud.AI.Generator.Tests;
 
@@ -113,7 +112,13 @@ public class ToolSurfaceSourceGeneratorTests
         result.GeneratedSources.Should().BeEmpty();
     }
 
-    private static GeneratorRunResult RunToolSurface(string source)
+    /// <summary>驱动引擎一次。<paramref name="scanFaultInjection"/>/<paramref name="handlerFaultInjection"/>
+    /// 是<b>生成器实例级</b>的故障注入钩子（P2-2 的 026 路径验证）：随本方法创建的实例一同消亡，
+    /// 不会影响并行执行的其它测试类（这正是它们不能是进程级静态字段的原因）。</summary>
+    private static GeneratorRunResult RunToolSurface(
+        string source,
+        Func<string, Exception?>? scanFaultInjection = null,
+        Func<string, Exception?>? handlerFaultInjection = null)
     {
         var tree = CSharpSyntaxTree.ParseText(source, new CSharpParseOptions(LanguageVersion.Latest));
         var compilation = CSharpCompilation.Create(
@@ -122,7 +127,11 @@ public class ToolSurfaceSourceGeneratorTests
             BasicReferenceAssemblies.GetReferences(),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-        GeneratorDriver driver = CSharpGeneratorDriver.Create(new ToolSurfaceSourceGenerator());
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(new ToolSurfaceSourceGenerator
+        {
+            ScanFaultInjectionForTests = scanFaultInjection,
+            HandlerFaultInjectionForTests = handlerFaultInjection,
+        });
         driver = driver.RunGenerators(compilation);
         return driver.GetRunResult().Results.Single();
     }
@@ -198,30 +207,24 @@ public class ToolSurfaceSourceGeneratorTests
     {
         // P2-2 验证方式：注入异常源 → 断言收到 {prefix}026 且其余剖面产物不受影响。
         // 注入只命中 "Test" 剖面的工具扫描；"Other" 剖面必须照常扫描与发射。
-        try
-        {
-            ToolSurfaceScanner.FaultInjectionForTests =
-                profileName => profileName == "Test" ? new InvalidOperationException("boom-scan") : null;
+        // 注入是**实例级**（挂在本次 Run 创建的生成器上）⇒ 无需 try/finally 复位，也不会串味并发测试。
+        var result = RunToolSurface(
+            TwoProfilesWithTools,
+            scanFaultInjection: static profileName =>
+                profileName == "Test" ? new InvalidOperationException("boom-scan") : null);
 
-            var result = RunToolSurface(TwoProfilesWithTools);
+        var fault = result.Diagnostics.Where(static d => d.Id == "MUDTT026").ToList();
+        fault.Should().HaveCount(1, "扫描体异常必须折算为恰好一条 {prefix}026，而非静默吞掉");
+        fault[0].Severity.Should().Be(DiagnosticSeverity.Error);
+        fault[0].GetMessage().Should().Contain("InvalidOperationException")
+            .And.Contain("boom-scan", "026 消息必须携带异常类型与消息，否则无法定位生成器缺陷");
 
-            var fault = result.Diagnostics.Where(static d => d.Id == "MUDTT026").ToList();
-            fault.Should().HaveCount(1, "扫描体异常必须折算为恰好一条 {prefix}026，而非静默吞掉");
-            fault[0].Severity.Should().Be(DiagnosticSeverity.Error);
-            fault[0].GetMessage().Should().Contain("InvalidOperationException")
-                .And.Contain("boom-scan", "026 消息必须携带异常类型与消息，否则无法定位生成器缺陷");
+        result.Diagnostics.Where(static d => d.Id.StartsWith("MUDDD", StringComparison.Ordinal)).Should().BeEmpty(
+            "单剖面异常不得污染其余剖面的诊断");
 
-            result.Diagnostics.Where(static d => d.Id.StartsWith("MUDDD", StringComparison.Ordinal)).Should().BeEmpty(
-                "单剖面异常不得污染其余剖面的诊断");
-
-            var hintNames = result.GeneratedSources.Select(static s => s.HintName).ToList();
-            hintNames.Should().Contain("OtherToolSchemas.g.cs", "其余剖面的产物必须照常发射");
-            hintNames.Should().NotContain("TestToolSchemas.g.cs", "故障剖面的产物必须缺席（模型为 null）");
-        }
-        finally
-        {
-            ToolSurfaceScanner.FaultInjectionForTests = null;
-        }
+        var hintNames = result.GeneratedSources.Select(static s => s.HintName).ToList();
+        hintNames.Should().Contain("OtherToolSchemas.g.cs", "其余剖面的产物必须照常发射");
+        hintNames.Should().NotContain("TestToolSchemas.g.cs", "故障剖面的产物必须缺席（模型为 null）");
     }
 
     [Fact]
@@ -284,25 +287,18 @@ public class ToolSurfaceSourceGeneratorTests
             }
             """;
 
-        try
-        {
-            ToolHandlerScanner.FaultInjectionForTests =
-                profileName => profileName == "Test" ? new InvalidOperationException("boom-handler") : null;
+        var result = RunToolSurface(
+            source,
+            handlerFaultInjection: static profileName =>
+                profileName == "Test" ? new InvalidOperationException("boom-handler") : null);
 
-            var result = RunToolSurface(source);
+        var fault = result.Diagnostics.Where(static d => d.Id == "MUDTT026").ToList();
+        fault.Should().HaveCount(1, "执行器扫描体异常必须折算为恰好一条 {prefix}026");
+        fault[0].Severity.Should().Be(DiagnosticSeverity.Error);
+        fault[0].GetMessage().Should().Contain("InvalidOperationException").And.Contain("boom-handler");
 
-            var fault = result.Diagnostics.Where(static d => d.Id == "MUDTT026").ToList();
-            fault.Should().HaveCount(1, "执行器扫描体异常必须折算为恰好一条 {prefix}026");
-            fault[0].Severity.Should().Be(DiagnosticSeverity.Error);
-            fault[0].GetMessage().Should().Contain("InvalidOperationException").And.Contain("boom-handler");
-
-            result.GeneratedSources.Select(static s => s.HintName).Should().Contain(
-                "TestToolSchemas.g.cs",
-                "工具 Schema 产物不受执行器扫描异常影响");
-        }
-        finally
-        {
-            ToolHandlerScanner.FaultInjectionForTests = null;
-        }
+        result.GeneratedSources.Select(static s => s.HintName).Should().Contain(
+            "TestToolSchemas.g.cs",
+            "工具 Schema 产物不受执行器扫描异常影响");
     }
 }

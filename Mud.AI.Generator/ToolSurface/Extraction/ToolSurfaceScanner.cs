@@ -35,27 +35,28 @@ namespace Mud.AI.ToolSurface.Extraction;
 /// </remarks>
 internal static class ToolSurfaceScanner
 {
-    /// <summary>
-    /// P2-2 验证钩子：仅供测试程序集（<c>InternalsVisibleTo</c>）注入异常源，驱动 <c>{prefix}026</c>
-    /// 兜底路径——实参为剖面名，返回非空异常即在扫描体起点抛出。常态为 <see langword="null"/>，零开销。
-    /// </summary>
-    internal static Func<string, Exception?>? FaultInjectionForTests;
-
     /// <summary>扫描单个接口符号。</summary>
     /// <param name="symbol">标注工具特性的接口。</param>
     /// <param name="compilation">当前编译（<c>Source</c> 解析与类型推导用）。</param>
     /// <param name="profile">当前剖面。</param>
     /// <param name="factory">当前剖面的诊断工厂（动态槽位描述符）。</param>
+    /// <param name="faultInjection">
+    /// P2-2 验证钩子（仅供测试程序集经 <c>InternalsVisibleTo</c> 注入）：实参为剖面名，返回非空异常即在
+    /// 扫描体起点抛出。<b>由调用方（生成器实例）持有并传入，本层不保存</b>——曾用进程级静态字段，
+    /// 而 xUnit 默认并行跑测试类 ⇒ 注入期内的<b>并发测试</b>扫描一并被打挂（表现为产物静默缺席、
+    /// 只剩一条 026），且只在负载下偶发。常态为 <see langword="null"/>，零开销。
+    /// </param>
     /// <returns>扫描结果（模型 + 诊断）。</returns>
     public static ScannedTool Scan(
         INamedTypeSymbol symbol,
         Compilation compilation,
         SdkToolProfileModel profile,
-        ToolSurfaceDiagnostics.Factory factory)
+        ToolSurfaceDiagnostics.Factory factory,
+        Func<string, Exception?>? faultInjection = null)
     {
         try
         {
-            if (FaultInjectionForTests?.Invoke(profile.Name) is { } fault)
+            if (faultInjection?.Invoke(profile.Name) is { } fault)
             {
                 throw fault;
             }

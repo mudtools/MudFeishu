@@ -1132,8 +1132,29 @@ public class ToolSurfaceEmissionTests
     private static string Source((GeneratorDriverRunResult Result, Compilation Output) run, string hintName)
     {
         var generated = run.Result.Results[0].GeneratedSources.FirstOrDefault(s => s.HintName == hintName);
-        generated.HintName.Should().Be(hintName, $"应产出 {hintName}");
+
+        // 产物缺席时只报「应产出 X」等于从零排查：把实际产物清单与全部诊断一并带出。
+        // 必须带诊断的原因：生成器存在「零产物 + 只剩一条 026」的静默短路形态（扫描体故障兜底），
+        // 只报 hintName 会让「引擎短路」与「输入写错」两类失败在日志里不可区分。
+        // 注：动态内容一律走 becauseArgs（理由串本体是 string.Format 模板，诊断文本里的花括号会炸）。
+        generated.HintName.Should().Be(
+            hintName,
+            "应产出 {0}；实际产物 [{1}]；诊断 {2}",
+            hintName,
+            string.Join(", ", HintNames(run)),
+            DescribeDiagnostics(run));
+
         return generated.SourceText.ToString();
+    }
+
+    /// <summary>把本次运行的全部诊断拼成一行（失败消息用；无诊断显式写出 <c>(无)</c>，避免"空串=没问题"的误读）。</summary>
+    private static string DescribeDiagnostics((GeneratorDriverRunResult Result, Compilation Output) run)
+    {
+        var diagnostics = run.Result.Diagnostics;
+        return diagnostics.Length == 0
+            ? "(无)"
+            : string.Join(" | ", diagnostics.Select(static d =>
+                d.Id + " " + d.GetMessage(System.Globalization.CultureInfo.InvariantCulture)));
     }
 
     private static SdkToolProfileModel ResolveProfile(string source)

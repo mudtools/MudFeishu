@@ -78,4 +78,17 @@ internal static class FeishuDocs
     /// 由 <c>McpRunbookContractGuards</c> 断言存在与结构。
     /// </summary>
     public const string McpMultiTenantRunbook = "documents/AIAgent/MCP多租户部署Runbook.md";
+
+    /// <summary>
+    /// <c>decisions/ADR-0001</c>——会话摘要器与 MAF 压缩管线的取舍（决策记录的唯一家；
+    /// 代码侧只留一行路径引用）。
+    /// </summary>
+    public const string AdrSummarizerVsMafCompaction =
+        "documents/AIAgent/decisions/ADR-0001-summarizer-vs-maf-compaction.md";
+
+    /// <summary>
+    /// <c>comment-budget-baseline.json</c>——注释预算冻结基线（手写运行时层的注释行数、最长注释块、
+    /// 未解析评审编号与过程叙述清单），由 <c>CommentConventionContractGuards</c> 消费并重新固化。
+    /// </summary>
+    public const string CommentBudgetBaseline = "documents/AIAgent/comment-budget-baseline.json";
 }

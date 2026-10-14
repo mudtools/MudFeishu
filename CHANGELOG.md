@@ -1,5 +1,35 @@
 # Mud.Feishu 更新日志
 
+## [Unreleased] - 注释纪律门禁与注释审计落地（2026-10-14）
+
+> 新增契约守卫 `CommentConventionContractGuards`（`Tests/Mud.Feishu.AI.Tests/ContractGuards/`）、
+> 冻结台账 `documents/AIAgent/comment-budget-baseline.json`、审计脚本 `scripts/comment-audit.ps1`，
+> 规范条目见 `AGENTS.md` 的「Comment discipline — 注释纪律」。
+
+### 🧹 注释治理
+
+- **三条机械判据**（作用域 = 手写运行时层 4 工程 / 120 文件）：①注释里的评审编号必须能在
+  `documents/**` 或 `CHANGELOG.md` 里解析——当前冻结 38 条悬空引用（`R7-4`/`T2 / D2`/`R2-01`… 36 个编号）；
+  ②叙述过程的注释块必须给出**存在**的文档链接（当前冻结 30 处：`此前` x18、`已删除` x6、`原先` x4 …）；
+  ③逐文件注释行数与最长注释块冻结、只允许下压，新文件硬上限「最长块 ≤ 20 行、≤ 120 注释行」。
+- **决策外移**：新增 `documents/AIAgent/decisions/`（`ADR-0001`：会话摘要器与 MAF 压缩管线取舍，
+  由 `ConversationSummarizer` 的类注释迁出），代码侧只留一行路径引用。
+- **样板清理**（本轮）：`ConversationSummarizer.cs` 442 → 388 行（注释 152 → 99，最长块 48 → 18）；
+  `ConversationalFeishuEventHandler.cs` 897 → 841 行（注释 403 → 347，最长块 44 → 22）——
+  删除悬空编号（`R2-01b`/`P2D-3b`/`R3-09`/`P1-1`…）与「此前/已删除」类过程叙事，保留平台怪癖与次序约束。
+
+### 🧪 测试与门禁
+
+- `CommentConventionContractGuards`：3 条事实断言（锚点可解析 / 过程叙述须有存在的链接 / 预算冻结）
+  + 4 条 `[Theory]` 自证（检查器失效即报红），并含防自我认证断言：编号解析源必须**排除冻结基线自身**，
+  否则基线与 CHANGELOG 互相印刷编号会让编号凭空"可解析"（首次固化时实测踩中，故加断言锁定）。
+- 重新固化入口：`pwsh ./scripts/comment-audit.ps1 -UpdateBaseline`（判据只有一处实现 = 守卫自身；
+  脚本只呈现台账，不重复实现规则）。脚本为 ASCII-only——CJK 字面量在无 BOM 的 UTF-8 脚本里会让
+  Windows PowerShell 5.1 直接解析失败，与 `audit-config-keys.ps1` 同一理由。
+- **固化不可用于放行**：重新固化先按旧基线校验，树上仍有悬空编号/未链接叙述/预算越界时**拒绝写入**
+  （否则"再固化一次"就是放行通道，违规会被原样记入台账）。已用故意违规金丝雀实测三条判据全部报红
+  且固化被拒，删除金丝雀后恢复全绿；`Mud.Feishu.AI.Tests` 477 全过、`FeishuDocsRegistryContractGuards` 4/4 过。
+
 ## [Unreleased] - Curation 声明面分六组目录（D-1，2026-10-12）
 
 > 方案与守卫改造见 `documents/AIAgent/MudFeishu-AI-Tools-Tools目录重组方案.md` §八（D-1 修订）。

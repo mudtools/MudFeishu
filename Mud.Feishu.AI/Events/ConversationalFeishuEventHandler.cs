@@ -19,47 +19,20 @@ using Mud.Feishu.Abstractions.Conversations;
 namespace Mud.Feishu.AI.Events;
 
 /// <summary>
-/// 会话式事件处理器基类：飞书事件 → 会话 → 模型 → 回复 的入口（路线图主线① M1）。
+/// 会话式事件处理器基类：飞书事件 → 会话 → 模型 → 回复 的入口。
 /// </summary>
 /// <remarks>
+/// 流程：BuildRequest → <see cref="ConversationKeyBuilder"/> → 取/建会话 → 上下文装配 →
+/// <c>FeishuAgent.RunAsync</c> → 持久化会话 → <see cref="ReplyAsync"/>（回复机制由派生类实现）。
+/// 继承 <see cref="IdempotentFeishuEventHandler{T}"/> 复用 EventId 幂等；业务去重键自带命名空间。
 /// <para>
-/// 继承 <see cref="IdempotentFeishuEventHandler{T}"/> 复用 EventId 幂等（同一事件不二次调模型、
-/// 不重复扣费）；业务去重键自带命名空间（D 系契约：禁止裸 EventId）。
+/// 两条次序约束（勿改）：①非流式<b>先持久化会话、再回复</b>——反序时用户会收到两条回复，
+/// 本序最坏是重投递重跑模型（用户只收到一条，outbox 已消除这一环）；
+/// ②流式通道 Begin 失败回退非流式，流中失败须先用不可取消令牌补一次
+/// <see cref="IMessageChannel.FlushAsync"/> 把占位消息落到终结态，再向上传播。
 /// </para>
-/// <para>
-/// 流程（总体设计 §4）：BuildRequest（事件规范化）→ <see cref="ConversationKeyBuilder"/>
-/// → 取/建会话 → 上下文装配 → <c>FeishuAgent.RunAsync</c> → 持久化会话 →
-/// <see cref="ReplyAsync"/>。回复机制由派生类实现（SDK 不预设消息通道，
-/// 典型实现经 <c>IFeishuTenantV1Message.ReplyMessageAsync</c> 回复）。
-/// </para>
-/// <para>
-/// 流式回复（Phase 2 §3.1）：注入 <see cref="IMessageChannel"/> 且会话主体可解析出 chat_id
-/// （群聊默认取 <see cref="ConversationRequest.SubjectId"/>；单聊经
-/// <see cref="ResolveStreamTargetChatId"/> 覆写解析，缺省回退非流式）时，改走
-/// <c>RunStreamingAsync</c>——通道 Begin 占位 → 增量写入 → Flush 收尾，不再调
-/// <see cref="ReplyAsync"/>。通道 Begin 失败回退非流式（模型尚未调用，零重复成本）；
-/// 流中失败**先补偿收尾**（用不可取消令牌补一次 <see cref="IMessageChannel.FlushAsync"/>，
-/// 把占位消息落到终结态）再向上传播（幂等键回滚，事件重投递）。
-/// </para>
-/// <para>
-/// 多租户（TMA2-20）：<see cref="ConversationRequest.AppKey"/> 进入会话键命名空间，
-/// 缺失时的处置由 <see cref="AllowMissingAppKey"/> 分级决定（已装配
-/// <see cref="IAppKeyAccessor"/> 的宿主 fail-fast，未装配的单应用宿主降级并告警）；
-/// 若此时还装配了工具执行链，则由 <see cref="AllowToolsWithoutAppKey"/> 决定是否 fail-fast（R2-3）。
-/// </para>
-/// <para>
-/// <b>落库 / 回复次序的取舍（R2-8，已决策，勿改次序）</b>：非流式路径<b>先持久化会话、再回复</b>。
-/// 两种次序各有失败面，本次序的代价更小——
-/// <list type="bullet">
-/// <item>本次序：回复下发失败 ⇒ 幂等回滚 ⇒ 重投递<b>重跑模型</b>（多一次计费、历史内部多一轮），
-/// 但<b>用户只收到一条</b>回复；</item>
-/// <item>反序（先回复后落库）：落库失败 ⇒ 回滚重投递 ⇒ <b>用户收到两条回复</b>。</item>
-/// </list>
-/// 「用户可见的重复」比「历史内部多一轮（用户不可见）」严重得多，故维持现状。
-/// 根治已由 <b>P4-4（outbox）</b>完成：回复在下发<b>之前</b>随会话落盘，重投递时补发同一份文本
-/// 而非重跑模型（见 R2 方案 §4.1「P4-4 实施记录」）。次序仍维持「先落库、后回复」——
-/// outbox 消除的是「重跑模型」这一环，不是重投递本身（exactly-once 做不到，也不该假装有）。
-/// </para>
+/// 多租户：<see cref="ConversationRequest.AppKey"/> 进会话键命名空间，缺失时的处置由
+/// <see cref="AllowMissingAppKey"/> / <see cref="AllowToolsWithoutAppKey"/> 分级决定。
 /// </remarks>
 /// <typeparam name="T">强类型事件 DTO（须实现 <see cref="IEventResult"/>）。</typeparam>
 public abstract class ConversationalFeishuEventHandler<T>(
@@ -187,26 +160,20 @@ public abstract class ConversationalFeishuEventHandler<T>(
     }
 
     /// <summary>
-    /// 下发可行性前置判定（R2-01）：在<b>装配上下文与调用模型之前</b>执行，返回非 <see langword="null"/>
-    /// 表示本轮不可投递，基类按「<b>已消费</b>」短路（不调模型、不落历史、不重投递），原因进 Warning 日志。
+    /// 下发可行性前置判定：在装配上下文与调用模型之前执行，返回非 <see langword="null"/> 表示本轮不可投递，
+    /// 基类按「已消费」短路（不调模型、不落历史、不重投递），原因进 Warning 日志。
     /// </summary>
     /// <remarks>
+    /// 唯一目的：把「能不能送出去」前移到花钱之前。部分事件形态（如 <c>task.task.updated_v1</c>）的回投
+    /// 目标须经平台 API 解析，若到回复阶段才发现解析不出收件人，本轮已付过一次完整模型调用。
     /// <para>
-    /// <b>要解决的问题</b>：部分事件形态（如 <c>task.task.updated_v1</c>）的回投目标必须经平台 API 解析，
-    /// 而"解析不出收件人"若在<b>回复阶段</b>才发现，则本轮已经付过一次完整模型调用（计费 + 延迟 + 一轮历史落库）。
-    /// 该判定把"能不能送出去"前移到<b>花钱之前</b>——这是本钩子的唯一目的。
+    /// 用钩子而不是抛终态异常：基类的异常语义是幂等回滚 + 重投递（<see cref="ProcessBusinessLogicAsync"/>
+    /// 的 at-least-once 契约，被多个用例锁定），引入「某类异常不重投递」会改动覆盖全部派生处理器的全局
+    /// 契约；钩子表达力等价（可携带原因）且零异常语义变更。
     /// </para>
-    /// <para>
-    /// <b>为什么用钩子而不是"抛终态异常 + 改基类异常语义"</b>（与方案初稿的偏离，理由如下）：
-    /// 基类既有的异常语义是<b>幂等回滚 + 重投递</b>（<see cref="ProcessBusinessLogicAsync"/> 的
-    /// at-least-once 契约，被多个用例锁定）；引入"某类异常不重投递"需要改这条全局契约，
-    /// 影响面覆盖全部派生处理器。钩子返回值的表达力等价（可携带原因），却<b>零异常语义变更</b>。
-    /// </para>
-    /// <para>
-    /// <b>实现方约定</b>：需要平台 API 解析投递目标时，在
-    /// <see cref="BuildRequestAsync"/> 内解析并把目标写入 <see cref="ConversationRequest.SenderId"/>
-    /// （或 <see cref="ConversationRequest.SubjectId"/>），本钩子只做纯判定（不再重复 I/O）。
-    /// </para>
+    /// 实现方约定：需要平台 API 解析投递目标时，在 <see cref="BuildRequestAsync"/> 内解析并写入
+    /// <see cref="ConversationRequest.SenderId"/>（或 <see cref="ConversationRequest.SubjectId"/>），
+    /// 本钩子只做纯判定（不再重复 I/O）。
     /// </remarks>
     /// <param name="request">已规范化的会话请求。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -607,20 +574,13 @@ public abstract class ConversationalFeishuEventHandler<T>(
     }
 
     /// <summary>
-    /// 非流式单轮 Run：「审批判定先于空回复守卫」纪律的<b>唯一点</b>（R5-1）。
+    /// 非流式单轮 Run：所有非流式路径（含流式 Begin 失败的回退）必须共用本实现。
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// <b>为什么必须抽成单一实现</b>：本方法此前只被主非流式路径使用，流式 <c>BeginAsync</c> 失败的回退
-    /// 路径自己写了一行 <c>_agent.RunAsync</c> 就直接返回——「每条路径都得记得补审批三行」正是机制缺失
-    /// （与 R2-01b 把触发文本收进基类 <see cref="AssembleUserMessageAsync"/> 同款哲学）。缺陷后果：
-    /// 模型已产出 <see cref="ToolApprovalRequestContent"/>（工具未执行）、回退路径却把空文本当普通回复 ⇒
-    /// 命中 R2-9 空回复守卫后按「已消费」收尾——<b>用户收不到确认提示、宿主批准通道收不到回调、
-    /// 写工具静默挂起</b>。
-    /// </para>
-    /// <para>
-    /// 审批判定必须先于 R2-9 空回复守卫：这里的语义是「已发起确认」，不是「模型没说话」。
-    /// </para>
+    /// 两条约束：①审批判定必须发生在空回复守卫之前——模型已产出
+    /// <see cref="ToolApprovalRequestContent"/> 时工具并未执行，若把空文本当普通回复命中空回复守卫并按
+    /// 「已消费」收尾，则用户收不到确认提示、宿主批准通道收不到回调、写工具静默挂起；
+    /// ②回退路径不得自行重写 <c>_agent.RunAsync</c>（「每条路径都得记得补审批三行」是机制缺失）。
     /// </remarks>
     /// <returns>（模型最终回答文本, 是否已经流式送达）——本路径恒为 <see langword="false"/>。</returns>
     private async Task<(string ResponseText, bool Streamed)> RunNonStreamingTurnAsync(
@@ -836,24 +796,8 @@ public abstract class ConversationalFeishuEventHandler<T>(
     /// 装配器片段在后；派生类可覆写以改变次序或追加固定前缀。
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// <b>R2-01b（本轮审查新增发现，方案初稿未识别）</b>：本方法此前<b>只</b>返回装配器产物——
-    /// 于是"事件触发器文本"（每个派生类的 <c>MentionedText</c>：IM 的用户提问、审批/任务变更通知）
-    /// <b>永远进不了模型</b>，且在没有装配器的宿主上用户消息恒为空 ⇒ 基类的空消息守卫直接短路，
-    /// 模型<b>根本不会被调用</b>。真实缺陷因此比"白跑一次模型"更严重：
-    /// <c>TaskUpdatedConversationalEventHandler</c> 与 <c>ApprovalTaskConversationalEventHandler</c>
-    /// 是<b>端到端完全 no-op</b>（既不调模型，也不投递），只有
-    /// <c>ImMessageConversationalEventHandler</c> 因自行覆写本方法而幸免。
-    /// </para>
-    /// <para>
-    /// <b>为什么修在基类而不是各派生类各补一遍</b>：这正是根因 R-C 的形态——"每个派生类都必须记得
-    /// 覆写一次同样的三行"是机制缺失，不是实现疏忽。修在基类后<b>新增派生类自动正确</b>，
-    /// 且 <c>ImMessage…</c> 的重复覆写随之删除（同一语义只允许有一处实现）。
-    /// </para>
-    /// <para>
-    /// 空消息守卫（下方 <c>ProcessBusinessLogicAsync</c>）保持不变：它拦的是"装配器与触发文本都空"
-    /// 的真实异常形态（会被 OpenAI 兼容端点 400 拒绝且已计费）。
-    /// </para>
+    /// 触发文本必须进入用户消息：缺了它，无装配器的宿主上用户消息恒为空，基类空消息守卫直接短路、
+    /// 模型根本不会被调用。修复落在基类而非各派生类，新增派生类自动正确（派生类不必重复覆写）。
     /// </remarks>
     /// <param name="request">会话请求。</param>
     /// <param name="cancellationToken">取消令牌。</param>

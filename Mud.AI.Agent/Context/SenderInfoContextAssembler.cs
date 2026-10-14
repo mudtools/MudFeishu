@@ -11,7 +11,7 @@ using Mud.AI.Abstractions.Conversations;
 namespace Mud.AI.Agent.Context;
 
 /// <summary>
-/// 发送者信息装配器（P2D-5b）：发送者 ID 形态注入 Prompt。
+/// 发送者信息装配器：发送者 ID 形态注入 Prompt。
 /// </summary>
 /// <remarks>
 /// <para>

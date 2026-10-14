@@ -44,14 +44,13 @@ public enum ImConversationAssemblers
 }
 
 /// <summary>
-/// 引用消息上下文装配器：请求引用的父消息 → <c>im.get_message_content</c> 取内容预览
-/// （截断 300 字）。失败跳过（异常隔离由事件层承接，本装配器自身亦不抛业务异常）。
+/// 引用消息上下文装配器：请求引用的父消息 → <c>im.get_message_content</c> 取内容预览（截断 300 字）。
+/// 依赖 <c>GetContentListByMessageIdAsync</c> 的消息内容回查路由；失败跳过（异常隔离由事件层承接）。
 /// </summary>
 /// <remarks>
-/// 发送者信息装配器已迁入中立包 <c>Mud.AI.Agent.Context</c>（零产品语义；产品侧经 global using
-/// 保持简单名引用）；本类依赖飞书消息回查，故留产品侧。
+/// 发送者信息装配器在中立包 <c>Mud.AI.Agent.Context</c>（零产品语义，产品侧经 global using 保持简单名引用）；
+/// 本类依赖飞书消息回查，故留产品侧。
 /// </remarks>
-/// <remarks>依赖 <c>GetContentListByMessageIdAsync</c> 的消息内容回查路由。</remarks>
 public sealed class QuoteMessageContextAssembler : IContextAssembler
 {
     /// <summary>引用内容预览截断长度。</summary>

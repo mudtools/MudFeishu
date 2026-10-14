@@ -19,19 +19,14 @@ namespace Mud.Feishu.AI.Agents;
 /// </summary>
 /// <remarks>
 /// <c>ChatClientAgent</c> 负责「模型→生成」，本类负责「会话解析 + 选项装配 + 飞书遥测注入」（组合而非继承，在进入 MAF 前插入飞书特有装配）；
-/// 内部经 <see cref="InMemoryChatHistoryProvider"/> + <see cref="MessageCountingChatReducer"/> 施加
-/// <see cref="FeishuAgentOptions.MaxHistoryMessages"/> 历史裁剪窗。
+/// 内部经 <see cref="InMemoryChatHistoryProvider"/> + <see cref="MessageCountingChatReducer"/> 施加 <see cref="FeishuAgentOptions.MaxHistoryMessages"/> 历史裁剪窗。
 /// <para>
-/// <b>委托语义的归属</b>：内层仍是<b>组合</b>（<c>ChatClientAgent</c> 实例），而 <c>Id</c>/<c>Name</c>/<c>Description</c>/<c>GetService</c>/
-/// 会话三钩子/Run 两钩子由上游 <see cref="DelegatingAIAgent"/> 提供——本类<b>不再手写</b>这些转发成员。前置条件是上游 <c>GetService</c>
-/// 必须「先判自身」：否则 <c>GetService(typeof(AIAgent))</c> 命中内层 <c>ChatClientAgent</c>，宿主经该引用调用将绕过本类注入的飞书遥测与摘要
-/// （由 <c>AgentContractGuards</c> 的行为断言 + <c>FeishuAgentTests</c> 锁定）。
+/// <b>委托语义的归属</b>：<c>Id</c>/<c>Name</c>/<c>Description</c>/<c>GetService</c>/会话三钩子/Run 两钩子由上游 <see cref="DelegatingAIAgent"/> 提供——本类<b>不再手写</b>这些转发成员。
+/// 前置条件是上游 <c>GetService</c> 必须「先判自身」：否则 <c>GetService(typeof(AIAgent))</c> 命中内层 <c>ChatClientAgent</c>，宿主经该引用调用将绕过本类注入的飞书遥测与摘要（由 <c>AgentContractGuards</c> + <c>FeishuAgentTests</c> 锁定）。
 /// </para>
 /// <para>
-/// <b>会话持久化</b>：<see cref="IConversationStore"/> 只存取序列化后的会话 JSON，本类是序列化的唯一归属
-/// （<c>SerializeSessionAsync</c>/<c>DeserializeSessionAsync</c> 经 <see cref="DelegatingAIAgent"/> 委托内层 MAF Agent）；
-/// <see cref="GetOrCreateSessionAsync"/> / <see cref="SaveSessionAsync"/> 为事件入口提供按键存取门面；会话 JSON 损坏时按 miss 处理并重建，
-/// 保证旧格式数据不会让事件循环崩溃。
+/// <b>会话持久化</b>：<see cref="IConversationStore"/> 只存取序列化后的会话 JSON，本类是序列化的唯一归属；
+/// <see cref="GetOrCreateSessionAsync"/> / <see cref="SaveSessionAsync"/> 为事件入口提供按键存取门面；会话 JSON 损坏时按 miss 处理并重建，旧格式数据不会让事件循环崩溃。
 /// </para>
 /// </remarks>
 public sealed class FeishuAgent : DelegatingAIAgent, IAgentSessionFacade
@@ -44,14 +39,10 @@ public sealed class FeishuAgent : DelegatingAIAgent, IAgentSessionFacade
     /// </remarks>
     internal const string ChatHistoryStateKey = "feishu.agent.history";
 
-    /// <summary>
-    /// P4-4（outbox）：「已生成但未确认送达」的回复文本状态键。
-    /// </summary>
+    /// <summary>「已生成但未确认送达」的回复文本状态键（outbox）。</summary>
     /// <remarks>
-    /// 与 <see cref="PendingReplyTurnStateKey"/> 成对使用：后者记录该文本所属的轮次标识，
-    /// 用于判定重投递事件是否就是同一轮（否则是陈旧条目，应丢弃而非补发）。
-    /// 两个键都只存 <see cref="string"/>——刻意不引入自定义类型，避免 AOT 下为它准备
-    /// <c>JsonTypeInfo</c>（状态袋序列化走 MAF 自带解析器）。
+    /// 与 <see cref="PendingReplyTurnStateKey"/> 成对使用：后者记录该文本所属的轮次标识，用于判定重投递事件是否就是同一轮（否则是陈旧条目，应丢弃而非补发）。
+    /// 两个键都只存 <see cref="string"/>——刻意不引入自定义类型，避免 AOT 下为它准备 <c>JsonTypeInfo</c>（状态袋序列化走 MAF 自带解析器）。
     /// </remarks>
     internal const string PendingReplyStateKey = "feishu.agent.pending_reply";
 
@@ -265,10 +256,7 @@ public sealed class FeishuAgent : DelegatingAIAgent, IAgentSessionFacade
     /// </summary>
     internal AgentRuntimeOptions RuntimeOptions => _runtime;
 
-    /// <summary>
-    /// T4 / D4：单轮工具调用预算上限（源 <see cref="FeishuAgentOptions.MaxToolCallsPerTurn"/>；
-    /// 事件入口读取此值开启工具调用预算作用域）。
-    /// </summary>
+    /// <summary>单轮工具调用预算上限（源 <see cref="FeishuAgentOptions.MaxToolCallsPerTurn"/>；事件入口读取此值开启工具调用预算作用域）。</summary>
     internal int MaxToolCallsPerTurn => _runtime.MaxToolCallsPerTurn;
 
     /// <summary>

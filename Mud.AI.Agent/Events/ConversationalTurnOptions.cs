@@ -53,7 +53,7 @@ public sealed class ConversationalTurnOptions
     public Action<ConversationRequest>? ValidateRequestPolicies { get; init; }
 
     /// <summary>
-    /// 下发可行性前置判定（R2-01）：返回非空 = 本轮不可投递（管线按「已消费」短路）。
+    /// 下发可行性前置判定：返回非空 = 本轮不可投递（管线按「已消费」短路）。
     /// <see langword="null"/> ⇒ 无前置判定（保持既有默认行为）。
     /// </summary>
     public Func<ConversationRequest, CancellationToken, Task<string?>>? FindDeliveryBlockAsync { get; init; }
@@ -71,7 +71,7 @@ public sealed class ConversationalTurnOptions
     public Func<ConversationRequest, string?>? ResolveStreamTargetChatId { get; init; }
 
     /// <summary>
-    /// 用户消息装配（装配器循环 + 触发文本拼装；R2-01b：触发文本<b>必须</b>进入模型）。
+    /// 用户消息装配（装配器循环 + 触发文本拼装——触发文本<b>必须</b>进入模型）。
     /// <see langword="null"/> ⇒ 管线内建默认（与产品薄壳的历史默认实现逐字节一致）。
     /// </summary>
     public Func<ConversationRequest, CancellationToken, Task<string>>? AssembleUserMessageAsync { get; init; }

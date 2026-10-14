@@ -14,29 +14,20 @@ namespace Mud.AI.Agent.Channels;
 /// <summary>
 /// 流式通道降级链（AI-FD-D12 P2D-2a）：<see cref="IMessageChannel"/> 复合实现——
 /// <see cref="BeginAsync"/> 按注册顺序尝试各子通道（首选卡片流，失败自动尝试编辑通道），
-/// 选中的子通道承载本轮 messageId 生命周期（<see cref="WriteStreamAsync"/>/<see cref="FlushAsync"/>
-/// 定向委托）；事件处理器零感知。
+/// 选中的子通道承载本轮 messageId 生命周期（<see cref="WriteStreamAsync"/>/<see cref="FlushAsync"/> 定向委托）。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>中立化说明（N2-b）</b>：自产品适配层原样迁入——依赖面（<see cref="IMessageChannel"/> /
-/// <see cref="IChannelTargetResolver"/> / <see cref="StreamingRequestContext"/>）均已在 N1 下沉，
-/// 故本类零逻辑改造，仅参数名按中立接口口径统一（<c>appKey</c> → <c>tenantKey</c>）。
-/// </para>
-/// <para>
 /// <b>目标重解析</b>：子通道目标语义不同（卡片流 = 接收用户 open_id、编辑通道 = chat_id）。
 /// 链经 <see cref="StreamingRequestContext"/> 环境量拿到会话请求后，对每个子通道按其
-/// <see cref="IChannelTargetResolver"/> 各自解析目标；解析为 null 表示该子通道对本次
-/// 事件不适用（如卡片流不投群聊），直接跳到下一子通道。环境量缺失（外部直调）时按入参原样使用。
+/// <see cref="IChannelTargetResolver"/> 各自解析目标；解析为 null 表示该子通道对本次事件不适用
+/// （如卡片流不投群聊），直接跳到下一子通道。环境量缺失（外部直调）时按入参原样使用。
+/// <b>互斥语义</b>：同一 messageId 生命周期只落在一个子通道（Begin 时即锁定）；全部子通道 Begin
+/// 失败时抛最后一个异常——事件处理器回退非流式路径（模型尚未调用，零重复成本）。
 /// </para>
 /// <para>
-/// <b>互斥语义</b>：同一 messageId 生命周期只落在一个子通道（Begin 时即锁定），无混用态。
-/// 全部子通道 Begin 失败时抛最后一个异常——事件处理器回退非流式路径（模型尚未调用，零重复成本）。
-/// </para>
-/// <para>
-/// <b>归属契约（R3-15）</b>：<see cref="WriteStreamAsync"/>/<see cref="FlushAsync"/> 只接受本链
-/// <see cref="BeginAsync"/> 返回的 messageId——未登记的 messageId 一律 fail-fast（不回退首选通道），
-/// 杜绝「增量写到非归属子通道」的静默错投。
+/// <b>归属契约（R3-15）</b>：<see cref="WriteStreamAsync"/>/<see cref="FlushAsync"/> 只接受本链 <see cref="BeginAsync"/>
+/// 返回的 messageId——未登记的 messageId 一律 fail-fast（不回退首选通道），杜绝「增量写到非归属子通道」的静默错投。
 /// </para>
 /// </remarks>
 public sealed class StreamingChannelChain : IMessageChannel, IChannelTargetResolver

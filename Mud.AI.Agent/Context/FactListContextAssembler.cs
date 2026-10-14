@@ -12,29 +12,22 @@ using Mud.AI.Abstractions.Conversations;
 namespace Mud.AI.Agent.Context;
 
 /// <summary>
-/// 「事件事实列表 → 结构化 prompt 片段」装配器的<b>中立基类</b>（N4 · E5/E6 拆分）：
-/// 机制（事实排序、空值跳过、逐行扣预算、untrusted 头、截断标记、条数闸）在此一份实现；
-/// <b>产品事实</b>（事件族判别键、预算实测值、中文标签映射、建议文案）由产品子类以构造参数
-/// 注入（① 式 + ⑤ 式）。
+/// 「事件事实列表 → 结构化 prompt 片段」装配器的<b>中立基类</b>：机制（事实排序、空值跳过、逐行扣预算、
+/// untrusted 头、截断标记、条数闸）一份实现，<b>产品事实</b>（事件族判别键、预算实测值、中文标签映射、
+/// 建议文案）由产品子类以构造参数注入。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>拆分动机（方案 v2 §5.5 E5/E6）</b>：审批事件与多维表格记录变更两个装配器的主体是
-/// 同一份「事实列表 → 行列表」机制，此前每个事件各写一遍——「每个装配器都记得扣一遍预算」
-/// 正是机制缺失。上移后：新增事件族装配器只提供事实（键/标签/预算/文案），机制自动正确。
+/// 机制单体化的理由：审批事件与多维表格记录变更装配器的主体是同一份「事实列表 → 行列表」机制；
+/// 各自实现则「每个装配器都记得扣一遍预算」只能靠人记——单体化后新增事件族只提供事实。
 /// </para>
 /// <para>
-/// <b>预算与截断（硬约束，行为逐字节保留）</b>：单行 ≤ 字段预览上限，整段 ≤ 总预算，
-/// 条数 ≤ <see cref="AssemblerBudgets.MaxFactsPerAssembler"/>；超限<b>截断</b>而非整段丢弃，
-/// 并留 <see cref="AssemblerBudgets.TruncationMarker"/>。
+/// <b>预算与截断（硬约束，行为逐字节保留）</b>：单行 ≤ 字段预览上限，整段 ≤ 总预算，条数 ≤ <see cref="AssemblerBudgets.MaxFactsPerAssembler"/>；
+/// 超限<b>截断</b>而非整段丢弃并留 <see cref="AssemblerBudgets.TruncationMarker"/>。
 /// </para>
 /// <para>
-/// <b>untrusted 标注</b>：事件载荷含平台/用户数据，整段以 untrusted 头开头（防提示注入）；
-/// 头部文案是产品事实（⑤ 式），由构造参数注入。
-/// </para>
-/// <para>
-/// <b>失败隔离</b>：本类不抛业务异常；事件键不匹配 / 无载荷 / 全部字段为空返回
-/// <see langword="null"/>（「本装配器对本次事件无贡献」）。
+/// <b>untrusted 标注</b>：事件载荷含平台/用户数据，整段以 untrusted 头开头（防提示注入）；头部文案是产品事实。
+/// <b>失败隔离</b>：本类不抛业务异常；事件键不匹配 / 无载荷 / 全部字段为空返回 <see langword="null"/>。
 /// </para>
 /// </remarks>
 public abstract class FactListContextAssembler : IContextAssembler

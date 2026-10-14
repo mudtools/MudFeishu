@@ -28,28 +28,20 @@ public readonly record struct TurnScopeContext(
     string? ThreadId = null);
 
 /// <summary>
-/// <b>产品作用域端口</b>：中立管线在「工具执行上下文 / 租户隔离 / 预算」这类<b>产品事实</b>上的
-/// 唯一接缝（③ 式委托的接口化形态——产品实现持有 <c>AsyncLocal</c> 等具体手段，中立侧只知<b>进出</b>）。
+/// <b>产品作用域端口</b>：中立管线在「工具执行上下文 / 租户隔离 / 预算」这类<b>产品事实</b>上的唯一接缝
+/// （③ 式委托的接口化形态——产品实现持有 <c>AsyncLocal</c> 等具体手段，中立侧只知<b>进出</b>）。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>为什么必须由产品实现</b>：工具执行上下文承载租户凭证语义（飞书侧是
-/// <c>IFeishuToolContextAccessor</c> 的 <c>AsyncLocal</c>，唯一建立点在事件层）。中立管线不能
-/// 命名它（撞 `MudAiFamily_ShouldNotDependOnFeishuProjects`），也不该自建第二个上下文槽位
-/// （两个槽位 ⇒ 宿主该初始化哪个？与闸门同款推理，见方案 §5.4.1）。
+/// <b>为什么必须由产品实现</b>：工具执行上下文承载租户凭证语义（飞书侧是 <c>IFeishuToolContextAccessor</c>
+/// 的 <c>AsyncLocal</c>，唯一建立点在事件层）。中立管线不能命名它（撞 <c>MudAiFamily_ShouldNotDependOnFeishuProjects</c>），
+/// 也不该自建第二个上下文槽位（两个槽位 ⇒ 宿主该初始化哪个？）。
 /// </para>
 /// <para>
 /// <b>作用域语义</b>：<see cref="BeginToolScope"/> 返回的作用域释放时<b>必须</b>恢复进入前的状态
 /// （既有实现是 <c>AsyncLocal</c> 栈式恢复 + 所有权校验），否则嵌套回合（续跑轮嵌在事件轮之后）
-/// 会读到外层的租户上下文——多租户场景下这是越权读取。
-/// </para>
-/// <para>
-/// <b>续跑轮为什么也用它</b>：续跑不在事件流内，工具上下文不存在 ⇒ 工具会 fail-closed 结构化拒绝。
-/// 产线闭环（<c>AgentApprovalContinuation</c>）经本端口重建，正是「批准 ≠ 放行」的落地形态。
-/// </para>
-/// <para>
-/// <b>可空语义</b>：端口实现可空（未注册 ⇒ 中立管线不建立任何作用域，与既有「无工具上下文」
-/// 行为逐字节一致）；需要租户上下文的工具链路在缺上下文时自行 fail-closed。
+/// 会读到外层的租户上下文——多租户场景下这是越权读取。<b>可空语义</b>：端口实现可空（未注册 ⇒ 中立管线
+/// 不建立任何作用域，与既有「无工具上下文」行为逐字节一致）；需要租户上下文的工具链路缺上下文时自行 fail-closed。
 /// </para>
 /// </remarks>
 public interface ITurnScopeFactory

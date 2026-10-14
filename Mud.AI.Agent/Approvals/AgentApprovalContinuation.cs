@@ -11,43 +11,22 @@ using Mud.AI.Agent.Events;
 namespace Mud.AI.Agent.Approvals;
 
 /// <summary>
-/// 工具人工确认（HITL）的<b>批准回灌续跑</b>闭环（R5-11；N2-c 中立化）。
+/// 工具人工确认（HITL）的<b>批准回灌续跑</b>闭环（R5-11）：同键加载会话 → 取框架记录的原始审批请求 →
+/// 重建工具执行上下文 → 经框架绑定层续跑并落库。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>要解决的问题</b>：写工具经 MEAI <c>ApprovalRequiredAIFunction</c> 包装后由框架
-/// <c>FunctionInvokingChatClient</c> 在调用前转成审批请求，SDK 把要素交给宿主批准通道；但「批准之后如何继续」
-/// 完全靠宿主自行领悟——而续跑轮<b>不在事件流内</b>，工具执行上下文（<c>AsyncLocal</c>，唯一建立点在事件层）
-/// 并不存在，于是宿主即使正确回灌批准，工具仍会因缺少租户上下文而 100% 结构化拒绝。
+/// <b>为什么必须代劳</b>：续跑轮不在工具执行上下文内（<c>AsyncLocal</c> 唯一建立点在事件层）——宿主即使正确回灌批准，工具仍会 100% 结构化拒绝。
+/// <b>参数注入而非构造注入</b>：依赖显式、构造面零变更；闸门经产品委托（<paramref name="acquireGate"/>）消费，中立侧不命名闸门类型，满额上抛的产品异常原样传播。
 /// </para>
 /// <para>
-/// <b>本方法把四个易错点收进一次调用</b>：同键加载会话（<paramref name="sessions"/>）→ 取框架记录的原始审批请求
-/// （<b>批准资格的唯一权威</b>：MAF 绑定层在发起轮写入会话状态袋，按 <c>RequestId</c> 绑定人类响应）→
-/// 重建工具执行上下文（<paramref name="scopeFactory"/>；<b>批准 ≠ 放行</b>，多租户隔离禁止默认租户兜底）→
-/// 经框架绑定层续跑并落库。
+/// <b>fail-closed 边界（全部显式抛错，绝不静默降级或凭空放行）</b>：<paramref name="scopeFactory"/> 为 <see langword="null"/> ⇒ 装配缺陷抛错；
+/// <paramref name="approval"/> 缺 <c>RequestId</c>/<c>ConversationKey</c>/<c>TenantKey</c> ⇒ <see cref="ArgumentException"/>；
+/// 框架已不再记录该 <c>RequestId</c> ⇒ <see cref="InvalidOperationException"/>（引导用户重新发起，绝不凭空构造批准响应）。
 /// </para>
 /// <para>
-/// <b>为什么是静态方法 + 参数注入</b>（R4-6 / R5 §0.5 否决项 4 的中立化延续）：不向任何 Agent 构造函数
-/// 注入工具链依赖——依赖显式、构造面零变更，也不改变事件层的分层定位。
-/// </para>
-/// <para>
-/// <b>闸门经 ③ 式委托消费</b>（方案 v2 §5.4.1）：<paramref name="acquireGate"/> 为产品策略注入点，
-/// 中立侧<b>不命名</b>任何闸门类型——闸门满额上抛的产品异常穿过本方法原样传播。
-/// </para>
-/// <para><b>fail-closed 边界（全部显式抛错，绝不静默降级或凭空放行）</b>：</para>
-/// <list type="bullet">
-/// <item><paramref name="scopeFactory"/> 为 <see langword="null"/> ⇒ 装配缺陷，显式抛错；</item>
-/// <item><paramref name="approval"/> 的关键要素（<c>RequestId</c>/<c>ConversationKey</c>/<c>TenantKey</c>）缺失
-/// ⇒ <see cref="ArgumentException"/>——无键即无法定位会话与绑定；</item>
-/// <item>框架已不再记录该 <c>RequestId</c>（会话已重建、该确认已被放弃或已回灌过）⇒
-/// <see cref="InvalidOperationException"/>——<b>绝不凭空构造批准响应</b>，请引导用户重新发起。</item>
-/// </list>
-/// <para>
-/// <b>续跑轮可能再产出新的审批请求</b>（模型连发多个写工具）：此时经 <paramref name="approvalChannel"/>
-/// 再次提交宿主（fail-closed 语义与事件层完全一致——通道缺席即只记 Warning，绝不自动放行）。
-/// </para>
-/// <para>
-/// <b>回复下发不在闭环内</b>：投递属派生事件处理器的职责（回复通道），本方法只负责模型轮次与会话落库。
+/// <b>续跑轮可能再产出新审批请求</b>：经 <paramref name="approvalChannel"/> 再次提交宿主（通道缺席即只记 Warning）；
+/// <b>回复下发不在闭环内</b>——投递属派生事件处理器职责，本方法只负责模型轮次与会话落库。
 /// </para>
 /// </remarks>
 public static class AgentApprovalContinuation

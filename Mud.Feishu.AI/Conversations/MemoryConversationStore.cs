@@ -11,32 +11,23 @@ using Mud.Feishu.Abstractions.Conversations;
 namespace Mud.Feishu.AI.Conversations;
 
 /// <summary>
-/// 进程内内存会话存储（<see cref="IConversationStore"/> 的飞书侧薄壳；N2-g 中立化后仅做适配）。
+/// 进程内内存会话存储（<see cref="IConversationStore"/> 的飞书侧薄壳；仅做适配）。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>中立化说明（N2-g，④ 式）</b>：TTL 软过期 + 惰性分摊清扫的<b>机制</b>已迁
-/// <c>Mud.AI.Agent.Sessions.MemorySessionStore</c>（中立 <c>ISessionStore</c> 面）；
-/// 本类保留，因为 <see cref="IConversationStore"/> 是<b>已发布 SDK 的宿主可替换契约</b>
-/// （Redis 包与宿主实现都基于它），不能换成中立端口。本壳职责有二：
-/// ① 把冻结契约桥接到中立实现（签名不变 ⇒ 10 处引用零改动）；
-/// ② 注入飞书侧的 <b>TTL 单一阈值源</b> <see cref="FeishuConversationOptions.DefaultSessionTtl"/>
-/// （中立默认 TTL 与本产品默认值必须只有一处来源，否则两份字面量会各自漂移）。
+/// TTL 软过期 + 惰性分摊清扫的<b>机制</b>在中立 <c>Mud.AI.Agent.Sessions.MemorySessionStore</c>（中立 <c>ISessionStore</c> 面）。
+/// 本壳保留的原因：<see cref="IConversationStore"/> 是<b>已发布 SDK 的宿主可替换契约</b>（Redis 包与宿主实现都基于它），
+/// 不能换成中立端口。职责有二：① 把冻结契约桥接到中立实现（签名不变 ⇒ 引用零改动）；② 注入飞书侧的 <b>TTL 单一阈值源</b>
+/// <see cref="FeishuConversationOptions.DefaultSessionTtl"/>（中立默认 TTL 与本产品默认值必须只有一处来源）。
 /// </para>
 /// <para>
-/// <b>过期回收</b>：软过期只在<b>读同一键</b>时删除，<b>不再被读取</b>的键（一次性会话、
-/// 被移出群的用户）永不回收 ⇒ 长跑宿主的内存随会话数单调增长。故在写入路径按阈值 + 节流触发一次
-/// <b>惰性分摊清扫</b>：≤<c>SweepThreshold</c> 条目时 O(1)；超过后按 <c>SweepEveryWrites</c> 次写入节流，
-/// 单次成本上界 <c>SweepMaxRemoval</c>，<b>不引入后台线程/定时器</b>（保持"纯库、零宿主假设"品格），
-/// 语义与 Redis 服务端过期一致（读侧软过期兜底不变）。
+/// <b>过期回收</b>：软过期只在<b>读同一键</b>时删除，<b>不再被读取</b>的键永不回收 ⇒ 长跑宿主的内存随会话数单调增长。
+/// 故在写入路径按阈值 + 节流触发一次<b>惰性分摊清扫</b>：≤<c>SweepThreshold</c> 条目时 O(1)；超过后按 <c>SweepEveryWrites</c>
+/// 次写入节流，单次成本上界 <c>SweepMaxRemoval</c>，<b>不引入后台线程/定时器</b>，语义与 Redis 服务端过期一致。
 /// </para>
 /// <para>
-/// <b>能力边界</b>：清扫只回收<b>已过期</b>条目——TTL 窗口内的<b>新鲜</b>条目仍无数量上限
-/// （TTL 缓存的固有语义）。需要按数量/字节上限淘汰的宿主应改用 Redis 后端或自定义实现。
-/// </para>
-/// <para>
-/// 仅适合单实例部署与测试；分布式部署请使用 Mud.Feishu.Redis 的
-/// <c>RedisConversationStore</c>（接口注入替换本实现）。
+/// <b>能力边界</b>：清扫只回收<b>已过期</b>条目——TTL 窗口内的<b>新鲜</b>条目仍无数量上限；需要按数量/字节上限淘汰的宿主
+/// 应改用 Redis 后端（<c>RedisConversationStore</c>）。仅适合单实例部署与测试。
 /// </para>
 /// </remarks>
 public sealed class MemoryConversationStore : IConversationStore

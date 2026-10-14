@@ -11,10 +11,9 @@ using Mud.AI.Abstractions.Conversations;
 namespace Mud.AI.Agent.Context;
 
 /// <summary>
-/// <see cref="IContextAssembler"/> → MAF <c>AIContextProvider</c> 的<b>桥接适配器</b>（N4 产出物，方案 §1）：
-/// 让已写好的装配器族可被 MAF 原生 <c>AIContextProvider</c> 组合消费——宿主可二选一：
-/// 自有管线（<see cref="ConversationalTurnPipeline"/>，装配器在用户消息内联拼装），
-/// 或 MAF 原生组合（本桥接器 + <c>ChatClientAgentOptions.AIContextProvider</c>）。
+/// <see cref="IContextAssembler"/> → MAF <c>AIContextProvider</c> 的<b>桥接适配器</b>：让已写好的装配器族
+/// 可被 MAF 原生 <c>AIContextProvider</c> 组合消费——宿主可二选一：自有管线（<see cref="ConversationalTurnPipeline"/>，
+/// 装配器在用户消息内联拼装）或 MAF 原生组合（本桥接器 + <c>ChatClientAgentOptions.AIContextProvider</c>）。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -22,14 +21,11 @@ namespace Mud.AI.Agent.Context;
 /// 经<b>请求工厂</b>投影为 <see cref="ConversationRequest"/>（缺省工厂 = 仅 <c>MentionedText</c>，
 /// 其余字段为空），交给装配器族装配；产出文本作为一条附加 user 消息并入本轮上下文。
 /// 两种姿态的注入位置不同（自有管线 = 问题文本同段；MAF 组合 = 独立上下文消息），宿主按需选择。
+/// <b>失败隔离</b>：单个装配器失败记 Warning 后跳过（对齐回合管线内建装配的隔离纪律），绝不让装配故障中断模型调用。
 /// </para>
 /// <para>
-/// <b>失败隔离</b>：单个装配器失败记 Warning 后跳过（对齐回合管线内建装配的隔离纪律），
-/// 绝不让装配故障中断模型调用。
-/// </para>
-/// <para>
-/// <b>为什么是「每调用投影」而不是缓存请求</b>：<c>AIContextProvider</c> 是跨会话复用的单例；
-/// 请求是<b>每轮</b>事实，由工厂从本轮输入即时投影（宿主也可注入自定义工厂携带租户/会话维度）。
+/// <b>为什么是「每调用投影」而不是缓存请求</b>：<c>AIContextProvider</c> 是跨会话复用的单例；请求是<b>每轮</b>事实，
+/// 由工厂从本轮输入即时投影（宿主也可注入自定义工厂携带租户/会话维度）。
 /// </para>
 /// </remarks>
 public sealed class ContextAssemblerAIContextProvider : AIContextProvider

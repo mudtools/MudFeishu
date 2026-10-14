@@ -12,21 +12,18 @@ namespace Mud.AI.Agent.Tools;
 /// <see langword="using"/> 释放，工具执行链通过 <see cref="TryConsume"/> 原子递增并判定是否越限。
 /// </summary>
 /// <remarks>
-/// <b>归属</b>：本类型同时被 <c>Mud.Feishu.AI</c> 事件入口（<c>ConversationalFeishuEventHandler</c> Begin）
-/// 与 <c>Mud.Feishu.AI.Tools</c> 工具执行链（<c>ToolBudgetAIFunction</c>）引用，属"AI 运行时 ↔ 工具面共享接缝"，
-/// 故落在 <c>Mud.Feishu.AI.AgentTools</c>（与 <see cref="FeishuToolContext"/> 同位置）。
 /// <para>
 /// <b>为什么不用 MAF 内建上限</b>：MAF <c>ChatClientAgent</c> 的内建上限约 40 次且<b>不可配</b>，成本过高；
 /// 本类型给<b>可配的、更收紧的</b>每轮预算（默认 10），耗尽时短路返回结构化错误（不抛异常，防重复计费）。
 /// </para>
 /// <para>
 /// <b>per-run</b>：预算是「一轮 <c>RunAsync</c> 的总工具数」，由事件层开启、随 <c>finally</c> 释放
-/// （与 <c>FeishuToolContext</c> 同一生命周期与 AsyncLocal 纪律）。
+/// （与工具执行上下文同一生命周期与 AsyncLocal 纪律）。
 /// </para>
 /// <para>
 /// <b>并发与边界</b>：计数经 <see cref="Interlocked"/> 保证原子性——MAF 的工具调用同轮内可能并行
 /// （当前实现是串行的，但不可依赖该实现细节）；<c>maxToolCalls = 0</c> 视为「不限制」，
-/// 与 <c>FeishuAgentOptions.MaxToolCallsPerTurn = 0</c> 一致。
+/// 与宿主配置的 <c>MaxToolCallsPerTurn = 0</c> 一致。
 /// </para>
 /// </remarks>
 public sealed class ToolCallBudget

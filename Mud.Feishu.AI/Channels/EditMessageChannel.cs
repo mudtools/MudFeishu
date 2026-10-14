@@ -12,30 +12,22 @@ using Mud.Feishu.DataModels.Messages;
 namespace Mud.Feishu.AI.Channels;
 
 /// <summary>
-/// 分片编辑流式通道（Phase 2 §3.1 首版降级实现）：发送占位文本消息 → 模型增量经
-/// <see cref="BufferedMessageChannel"/> 缓冲（分片长度 + 最小更新间隔双阈值，P2D-2c）后用
-/// <c>EditMessageAsync</c> 以<b>累计全文</b>编辑一次 → 结束时落地最终文本。
+/// 分片编辑流式通道：发送占位文本消息 → 模型增量经 <see cref="BufferedMessageChannel"/> 缓冲
+/// （分片长度 + 最小更新间隔双阈值）后用 <c>EditMessageAsync</c> 以<b>累计全文</b>编辑一次 → 结束时落地最终文本。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>为什么不逐 token 编辑</b>：飞书编辑消息接口有频率限制，逐增量编辑必然触发限流；
-/// 分片缓冲（默认 200 字符）把编辑次数压到「每 200 字符一次」，P2D-2c 起附加最小更新间隔
-/// 钳制（800ms）。降级链（<see cref="StreamingChannelChain"/>）把本通道作为卡片流次选。
+/// <b>为什么不逐 token 编辑</b>：飞书编辑消息接口有频率限制，逐增量编辑必然触发限流；分片缓冲（默认 200 字符）
+/// 把编辑次数压到「每 200 字符一次」，并附加最小更新间隔钳制（800ms）。降级链（<see cref="StreamingChannelChain"/>）
+/// 把本通道作为卡片流次选。
 /// </para>
 /// <para>
-/// <b>失败语义</b>（<see cref="BufferedMessageChannel"/> 基类共用）：<see cref="BeginAsync"/>
-/// 失败向上抛（调用方回退非流式路径，模型尚未调用、零重复成本）；单次编辑失败只记日志
-/// （对齐 I1 异常隔离精神）——占位消息停留在上一次成功内容，不中断模型流。
+/// <b>失败语义</b>（<see cref="BufferedMessageChannel"/> 基类共用）：<see cref="BeginAsync"/> 失败向上抛
+/// （调用方回退非流式路径，模型尚未调用、零重复成本）；单次编辑失败只记日志——占位消息停留在上一次成功内容，不中断模型流。
 /// </para>
 /// <para>
-/// 每次下游调用前经 <see cref="IFeishuAppContextScopeFactory.BeginScope"/> 切换租户上下文
-/// （与工具执行链同一事实来源；TMA2-20），finally 释放。
-/// </para>
-/// <para>
-/// <b>N2-b 中立化</b>：缓冲基类已迁 <c>Mud.AI.Agent.Channels.BufferedMessageChannel</c>（① 式：
-/// 分片阈值由 <see cref="FeishuAgentOptions.MaxStreamChunkLength"/> 经构造参数注入）。
-/// 降级指标的 app_key 维度经 <see cref="OnUpdateDegraded"/> 覆写保留（中立端口只收 reason 文案，
-/// 产品指标名与维度留在产品侧——R3-12 行为逐字节不变）。
+/// <b>租户上下文</b>：每次下游调用前经 <see cref="IFeishuAppContextScopeFactory.BeginScope"/> 切换（与工具执行链同一事实来源），finally 释放。
+/// <b>降级指标</b>：app_key 维度经 <see cref="OnUpdateDegraded"/> 覆写保留——中立端口只收 reason 文案，产品指标名与维度留在产品侧。
 /// </para>
 /// </remarks>
 /// <param name="messageClient">消息客户端（Tenant 身份）。</param>

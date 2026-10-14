@@ -156,10 +156,7 @@ public sealed class CardStreamMessageChannel(
         return Task.CompletedTask;
     }
 
-    /// <summary>
-    /// R3-12：降级指标（<c>feishu.agent.tool.degraded</c>，维度 app_key/reason）——
-    /// 产品指标名与 app_key 维度留在产品侧（中立端口只承载 reason 文案）。
-    /// </summary>
+    /// <summary>降级指标（<c>feishu.agent.tool.degraded</c>，维度 app_key/reason）——产品指标名与 app_key 维度留在产品侧（中立端口只承载 reason 文案）。</summary>
     protected override void OnUpdateDegraded(string appKey, string messageId, Exception exception)
         => FeishuToolDiagnostics.RecordDegraded(appKey, FeishuMetrics.DegradedReasons.ChannelUpdateFailed);
 

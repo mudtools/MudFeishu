@@ -16,25 +16,18 @@ namespace Mud.Feishu.AI.Events;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>N4 拆分（E7）</b>：机制（事实提取 / text 短路 / 截断 / untrusted 头 / 失败隔离跳过）
-/// 已上移中立 <see cref="MediaContextAssembler"/>；本类只提供<b>产品事实</b>——媒体类型判定
-/// （image/audio/file/post…）、键提取、<see cref="IFeishuMediaTranscriber"/> 适配与各类占位降级文案。
-/// 行为与拆分前逐字节一致。
+/// 机制（事实提取 / text 短路 / 截断 / untrusted 头 / 失败隔离跳过）在中立 <see cref="MediaContextAssembler"/>；
+/// 本类只提供<b>产品事实</b>——媒体类型判定（image/audio/file/post…）、键提取、
+/// <see cref="IFeishuMediaTranscriber"/> 适配与各类占位降级文案。
 /// </para>
 /// <para>
-/// <b>设计原则</b>（R7/C3）：转换在装配器内部发生，模型只见到文本结果——
-/// 不把 OCR/STT 变成模型可调工具。
-/// </para>
-/// <para>
-/// <b>Order = 15</b>：SenderInfo=10 → <b>MediaMessage=15</b> → QuoteMessage=20 → GroupHistory=30 → Knowledge=100。
-/// 媒体先于引用（媒体转写是本轮消息自身的属性）。
-/// </para>
-/// <para>
-/// <b>软缺席</b>：<see cref="IFeishuMediaTranscriber"/> 未注册时，装配器降级为占位文本。
-/// </para>
-/// <para>
-/// <b>安全</b>：下载字节数上限 <see cref="MediaInputOptions.MaxBytes"/>；Content-Type 自检；
+/// <b>设计原则</b>：转换在装配器内部发生，模型只见到文本结果——不把 OCR/STT 变成模型可调工具。
+/// <b>软缺席</b>：<see cref="IFeishuMediaTranscriber"/> 未注册时降级为占位文本。
+/// <b>安全</b>：下载字节数上限 <see cref="MediaInputOptions.MaxBytes"/>、Content-Type 自检、
 /// 全部输出走 <see cref="ContextBudgets.UntrustedHeader"/> + 长度闸。
+/// </para>
+/// <para>
+/// <b>Order = 15</b>：SenderInfo=10 → <b>MediaMessage=15</b> → QuoteMessage=20 → GroupHistory=30 → Knowledge=100；媒体先于引用（媒体转写是本轮消息自身的属性）。
 /// </para>
 /// </remarks>
 public sealed class MediaMessageContextAssembler : MediaContextAssembler

@@ -11,25 +11,21 @@ using Mud.AI.Abstractions.Conversations;
 namespace Mud.AI.Agent.Context;
 
 /// <summary>
-/// 媒体消息上下文装配器（T3 / D3）的<b>中立基类</b>（N4 · E7 拆分）：
+/// 媒体消息上下文装配器的<b>中立基类</b>：
 /// 把用户发送的媒体内容转写为文本注入 prompt——「转换在装配器内发生，模型只见文本结果」
 /// （不把 OCR/STT 变成模型可调工具）。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>拆分说明（方案 v2 §5.5 E7）</b>：机制（事实提取 → 文本类型短路 → 转写调用 → 截断 →
-/// untrusted 头 → 失败隔离跳过）在此一份实现；<b>产品事实</b>（媒体类型判定、键提取、
-/// 转写器适配、各类占位降级文案）由产品子类经 <see cref="TranscribeAsync"/> 钩子提供（③ 式）。
+/// 机制（事实提取 → 文本类型短路 → 转写调用 → 截断 → untrusted 头 → 失败隔离跳过）在此一份实现；产品事实
+/// （媒体类型判定、键提取、转写器适配、占位降级文案）由产品子类经 <see cref="TranscribeAsync"/> 钩子提供。
 /// </para>
 /// <para>
 /// <b>软缺席</b>：转写器未注册是<b>产品侧</b>事实——子类以占位文本降级（绝不抛"缺能力"异常中断对话）。
 /// </para>
 /// <para>
-/// <b>失败隔离</b>：转写抛错（除取消外）记 Information 后返回 <see langword="null"/>（跳过装配，
-/// 不阻断对话）；取消原样传播。
-/// </para>
-/// <para>
-/// <b>安全</b>：输出走 untrusted 头 + 单条长度闸（<c>perItemLength</c>，产品实测值经构造参数注入）。
+/// <b>失败隔离</b>：转写抛错（除取消外）记 Information 后返回 <see langword="null"/>（跳过装配，不阻断对话）；
+/// 取消原样传播。<b>安全</b>：输出走 untrusted 头 + 单条长度闸（<c>perItemLength</c>，产品实测值经构造参数注入）。
 /// </para>
 /// </remarks>
 public abstract class MediaContextAssembler : IContextAssembler
@@ -82,7 +78,7 @@ public abstract class MediaContextAssembler : IContextAssembler
             return null;
         }
 
-        // text 类型不处理（触发文本已由回合管线装配，R2-01b）。
+        // text 类型不处理（触发文本已由回合管线装配）。
         if (string.Equals(msgType, "text", StringComparison.Ordinal))
         {
             return null;

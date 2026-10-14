@@ -21,9 +21,8 @@ global using Microsoft.Extensions.AI;
 global using Microsoft.Extensions.Logging;
 global using Microsoft.Extensions.Logging.Abstractions;
 
-// R-9（阶段 5）：Channels / Events / Knowledge 的实现并入本工程后，这两条成为"跨子命名空间的
-// 常规依赖"（`Mud.Feishu.AI.Channels` 等不是 `Mud.Feishu.AI.Agents` 的封闭命名空间，
-// 且 Options 是本工程 4 个实现类型的构造依赖）——与其在 8 个文件里各写一遍，不如统一到全局。
+// Channels / Events / Knowledge 的实现并入本工程后，这两条成为"跨子命名空间的常规依赖"
+// （`Mud.Feishu.AI.Channels` 等不是 `Mud.Feishu.AI.Agents` 的封闭命名空间，且 Options 是本工程 4 个实现类型的构造依赖）。
 global using Microsoft.Extensions.Options;
 // H2 中立化：域 guidance 装配机制（GuidanceBlock / GuidanceResult / GuidanceComposer）上移
 // Mud.AI.Agent.Guidance——预算常量（FeishuGuidanceBudget）留在本产品的 Agents 命名空间。
@@ -58,12 +57,10 @@ global using Mud.Feishu.Abstractions.Configuration;
 global using Mud.Feishu.Abstractions.EventHandlers;
 global using Mud.Feishu.Abstractions.Services;
 global using Mud.Feishu.AI.Conversations;
-// 飞书侧**冻结契约**中"无中立同名孪生"的两个类型，用**全局别名**取用（见上方 ⚠️ 说明的续篇）：
-// `ConversationKeyBuilder` 与 `IConversationStore` 被 13 个文件消费，逐文件加 using 会让
-// 「哪些文件还能看见冻结命名空间」变成散落的隐式事实；全局别名把它收成**一处可见的声明**。
-// ⚠️ 反过来说：除这两个（以及下述文件显式 using 的闸门类型）之外，
-// **不得**在本工程再引用 `Mud.Feishu.Abstractions.Conversations` 的其它成员——
-// 那会立刻把 `ConversationScope` 的 CS0104 歧义带回来。
+// 飞书侧**冻结契约**中"无中立同名孪生"的两个类型，用**全局别名**取用：`ConversationKeyBuilder` 与
+// `IConversationStore` 被 13 个文件消费，逐文件加 using 会让「哪些文件还能看见冻结命名空间」变成散落的隐式事实。
+// ⚠️ 反过来说：除这两个（以及下述文件显式 using 的闸门类型）之外，**不得**在本工程再引用
+// `Mud.Feishu.Abstractions.Conversations` 的其它成员——那会立刻把 `ConversationScope` 的 CS0104 歧义带回来。
 global using ConversationKeyBuilder = Mud.Feishu.Abstractions.Conversations.ConversationKeyBuilder;
 // N1 决策：会话闸门**不**中立化（见方案 §4.4 D3/D4 的评审订正）——它的
 // `IConversationGate` / `IConversationGateHandle` 是**已发布 SDK 的宿主可替换契约**

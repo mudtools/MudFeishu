@@ -77,7 +77,6 @@ public static class ToolErrorSubtype
     //    不存在"无注解的工具"这一形态——补一个永不产出的常量就是幽灵子类（本仓明文禁止）。
     //    若将来出现"运行期动态注册的工具"，再补该码并附产出点。
 
-    // T4 / D4：单轮工具预算耗尽——模型应基于已有信息直接回答，不要再次调用工具。
     /// <summary>本轮工具调用预算已用尽——不可重试，模型应基于已有信息直接回答。</summary>
     public const string ToolBudgetExceeded = "tool_budget_exceeded";
 

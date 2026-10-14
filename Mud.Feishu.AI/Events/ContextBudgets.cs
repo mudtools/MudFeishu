@@ -11,32 +11,21 @@ using Mud.AI.Abstractions.Knowledge;
 namespace Mud.Feishu.AI.Events;
 
 /// <summary>
-/// 上下文装配器的<b>预算常量单一源</b>（R7 / C2 T3-5 硬约束 ①）。
+/// 上下文装配器的<b>预算常量单一源</b>（硬约束 ①）。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>为什么集中定义</b>：装配器是"每轮都往 prompt 里塞内容"的插件，若各装配器自定魔数，
-/// 总预算就<b>不可控</b>——新增一个装配器时没有任何地方能看出"这一轮总共会注入多少字符"。
-/// 常量集中在一处后，评审"再加一个装配器"时只需看本文件。
+/// <b>为什么集中定义</b>：装配器是"每轮都往 prompt 里塞内容"的插件，若各装配器自定魔数，总预算就<b>不可控</b>——
+/// 新增一个装配器时没有任何地方能看出"这一轮总共会注入多少字符"。常量集中在一处后，评审"再加一个装配器"时只需看本文件。
 /// </para>
 /// <para>
-/// <b>与 <c>FeishuGuidanceBudget.MaxGuidanceLength</c> 的关系</b>：那是"域 guidance 资产"的
-/// 总预算（常驻指令面），本类是"事件上下文片段"的预算（每轮事件面），两者<b>相加</b>才是
-/// 单轮的注入上限。修改任一处都必须同批复算另一方（本文件的注释是唯一的复算依据）。
+/// <b>与 <c>FeishuGuidanceBudget.MaxGuidanceLength</c> 的关系</b>：那是"域 guidance 资产"的总预算（常驻指令面），
+/// 本类是"事件上下文片段"的预算（每轮事件面），两者<b>相加</b>才是单轮的注入上限——修改任一处都必须同批复算另一方。
 /// </para>
 /// <para>
-/// <b>为什么是常量而非配置键</b>：对齐 R4.1/R-4 与 R5 的治理口径——"可配"意味着新配置键，
-/// 而每个公开配置属性都必须有真实消费点与守卫登记；当前没有第二个取值需求。
-/// 超限策略是<b>截断</b>（不是整段丢弃），见各装配器实现。
-/// </para>
-/// <para>
-/// <b>N2-e 拆分（方案 v2 §5.5 E4）</b>：与产品语义无关的三个组已下沉中立包，本文件以
-/// <b>常量转发</b>保持既有引用面不变（单一源在中立侧，避免两份字面量漂移）：
-/// ① 知识三闸 → <see cref="RetrievalBudgets"/>（供中立 <c>VectorRetriever</c> 与产品
-/// <c>KnowledgeContextAssembler</c> 消费；N4 拆分装配器后删除本组转发）；
-/// ② <see cref="MaxFactsPerAssembler"/> / <see cref="TruncationMarker"/> →
-/// <see cref="AssemblerBudgets"/>（N4 起由中立 <c>FactListContextAssembler</c> 直接消费）。
-/// <b>留产品侧</b>：审批 / 多维表格 / 日程 / 群历史预算与 untrusted 标注文案（含飞书事件载荷表述）。
+/// <b>为什么是常量而非配置键</b>：每个公开配置属性都必须有真实消费点与守卫登记，当前没有第二个取值需求；
+/// 超限策略是<b>截断</b>（不是整段丢弃），见各装配器实现。与产品语义无关的组以<b>常量转发</b>指向中立单一源
+/// （<see cref="RetrievalBudgets"/> / <see cref="AssemblerBudgets"/>），避免两份字面量漂移。
 /// </para>
 /// </remarks>
 public static class ContextBudgets

@@ -8,34 +8,24 @@
 namespace Mud.Feishu.AI.AgentTools;
 
 /// <summary>
-/// 单轮工具调用预算（T4 / D4）：经 <see cref="System.Threading.AsyncLocal{T}"/>
-/// 在事件入口开启、随 <see langword="using"/> 释放，工具执行链通过
-/// <see cref="TryConsume"/> 原子递增并判定是否越限。
+/// 单轮工具调用预算：经 <see cref="System.Threading.AsyncLocal{T}"/> 在事件入口开启、随
+/// <see langword="using"/> 释放，工具执行链通过 <see cref="TryConsume"/> 原子递增并判定是否越限。
 /// </summary>
 /// <remarks>
+/// <b>归属</b>：本类型同时被 <c>Mud.Feishu.AI</c> 事件入口（<c>ConversationalFeishuEventHandler</c> Begin）
+/// 与 <c>Mud.Feishu.AI.Tools</c> 工具执行链（<c>ToolBudgetAIFunction</c>）引用，属"AI 运行时 ↔ 工具面共享接缝"，
+/// 故落在 <c>Mud.Feishu.AI.AgentTools</c>（与 <see cref="FeishuToolContext"/> 同位置）。
 /// <para>
-/// <b>归属（与 <see cref="FeishuToolContext"/> 同位置）</b>：本类型同时被
-/// <c>Mud.Feishu.AI</c> 事件入口（<c>ConversationalFeishuEventHandler</c> Begin）
-/// 与 <c>Mud.Feishu.AI.Tools</c> 工具执行链（<c>ToolBudgetAIFunction</c> 消费）
-/// 引用，属"AI 运行时 ↔ 工具面共享接缝"，故留在 <c>Mud.Feishu.AI</c> 并落在
-/// <c>Mud.Feishu.AI.AgentTools</c> 命名空间——与 <see cref="FeishuToolContext"/> 同款归属。
+/// <b>为什么不用 MAF 内建上限</b>：MAF <c>ChatClientAgent</c> 的内建上限约 40 次且<b>不可配</b>，成本过高；
+/// 本类型给<b>可配的、更收紧的</b>每轮预算（默认 10），耗尽时短路返回结构化错误（不抛异常，防重复计费）。
 /// </para>
 /// <para>
-/// <b>为什么用 AsyncLocal 而非依赖 MAF 内建上限</b>：T4.0 探针实测 MAF
-/// <c>ChatClientAgent</c> 有内建上限（约 40 次），但该上限<b>不可配</b>——
-/// 40 次工具调用在多数业务场景下成本过高。本类型提供<b>可配的、更收紧的</b>
-/// 每轮预算（默认 10），在预算耗尽时短路返回结构化错误（不抛异常，防重复计费）。
+/// <b>per-run</b>：预算是「一轮 <c>RunAsync</c> 的总工具数」，由事件层开启、随 <c>finally</c> 释放
+/// （与 <c>FeishuToolContext</c> 同一生命周期与 AsyncLocal 纪律）。
 /// </para>
 /// <para>
-/// <b>per-run 语义</b>：预算是「一轮 <c>RunAsync</c> 的总工具数」，由事件层开启、
-/// 随 <c>finally</c> 释放（与 <c>FeishuToolContext</c> 同一生命周期，复用其 AsyncLocal 纪律）。
-/// </para>
-/// <para>
-/// <b>线程安全</b>：计数经 <see cref="Interlocked"/> 操作保证原子性——
-/// MAF 的工具调用可能在同轮内并行（虽然当前实现是串行的，但不可依赖该实现细节）。
-/// </para>
-/// <para>
-/// <b>0 语义</b>：<c>maxToolCalls = 0</c> 视为「不限制」（文档化风险）——
+/// <b>并发与边界</b>：计数经 <see cref="Interlocked"/> 保证原子性——MAF 的工具调用同轮内可能并行
+/// （当前实现是串行的，但不可依赖该实现细节）；<c>maxToolCalls = 0</c> 视为「不限制」，
 /// 与 <c>FeishuAgentOptions.MaxToolCallsPerTurn = 0</c> 一致。
 /// </para>
 /// </remarks>

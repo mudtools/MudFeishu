@@ -13,49 +13,25 @@ using Mud.AI.Agent.Tools.Errors;
 namespace Mud.Feishu.AI.Mcp;
 
 /// <summary>
-/// 飞书工具面的 MCP 服务端（协议层）：把<b>白名单已启用</b>的注册表工具经
-/// JSON-RPC 2.0 / MCP <c>tools</c> 能力暴露给进程外 Agent。
+/// 飞书工具面的 MCP 服务端（协议层）：把<b>白名单已启用</b>的注册表工具经 JSON-RPC 2.0 / MCP <c>tools</c> 能力暴露给进程外 Agent。
 /// </summary>
 /// <remarks>
+/// <b>执行链复用（铁律）</b>：<c>tools/call</c> 只解析出 <see cref="Microsoft.Extensions.AI.AIFunction"/> 并调用它——授权门禁、租户上下文切换、
+/// 出站净化、内容安全、审计、流式/截断口径<b>全部沿用既有执行链</b>；本包只依赖两条窄接缝（<see cref="IFeishuToolFunctionFactory"/> 构桥 +
+/// <see cref="IToolErrorTextFormatter"/> 渲染错误文本），不 <c>new</c> 实现类型、不引用 SDK 强类型客户端（守卫断言本目录不出现 <c>IFeishu*</c> 调用）。
 /// <para>
-/// <b>执行链复用（DP-C6-1 铁律）</b>：<c>tools/call</c> 只解析出 <see cref="Microsoft.Extensions.AI.AIFunction"/>
-/// 并调用它——授权门禁、租户上下文切换（<c>BeginScope</c>）、出站净化、内容安全、审计、
-/// 流式/截断口径<b>全部沿用既有执行链</b>（经 <see cref="IFeishuToolFunctionFactory"/> 构造的桥 → 执行链类型）。
-/// <b>R-7 起该桥与执行链类型已 internal</b>：本包只依赖两条<b>窄接缝</b>
-/// （<see cref="IFeishuToolFunctionFactory"/> 构桥 + <see cref="IToolErrorTextFormatter"/> 渲染错误文本），
-/// 不再 <c>new</c> 实现类型。
-/// 本包<b>不</b>引用 SDK 强类型客户端，因此结构上无法旁路（守卫断言本目录不出现 <c>IFeishu*</c> 调用）。
+/// <b>工具集真相源 = 注册表白名单</b>（<c>FeishuToolRegistry.EnabledTools</c>）：未启用的工具在 <c>tools/list</c> 不可见、调用只回"不存在或未启用"，
+/// MCP <b>不提供第二条启用通道</b>。<b>不得</b>改用 <c>FeishuAgentToolSource.GetTools</c>——那条路径把写工具包进 MEAI 的
+/// <c>ApprovalRequiredAIFunction</c>，而该类型<b>只是标记</b>，强制点在 MAF 的 <c>FunctionInvokingChatClient</c>（MCP 不走该管线）⇒ 标记被静默丢弃；
+/// 真实门禁是执行链的授权门禁（写工具默认不在白名单，授权器返回 <c>NeedsUserConfirmation</c> 时拒绝且零调用下游）。
 /// </para>
 /// <para>
-/// <b>工具集真相源 = 注册表白名单</b>（<c>FeishuToolRegistry.EnabledTools</c>，即
-/// <c>FeishuAgent:Tools</c> + <c>FeishuAgent:WriteAllowList</c> 应用后的结果）。
-/// 未启用的工具在 <c>tools/list</c> 中<b>不可见</b>，调用时也只回"不存在或未启用"——
-/// MCP 不提供第二条启用通道。
+/// <b>租户上下文与资源能力</b>：每次调用前经 <see cref="IFeishuToolContextAccessor.Begin"/> 显式重建（MCP 调用不在事件流内，与续跑同构），
+/// 作用域在 <c>finally</c> 释放，缺 appKey 构造期即抛（禁止默认应用兜底）；资源目录（<see cref="FeishuMcpResourceCatalog"/>）与工具面同一次装配、
+/// 同一份白名单，内容全为编译期常量 ⇒ <c>resources/read</c> 无 IO、无租户依赖，instructions 只下发一行摘要。
 /// </para>
 /// <para>
-/// <b>为什么不用 <c>FeishuAgentToolSource.GetTools</c> 的列表</b>：那条路径会把写工具包进
-/// MEAI 的 <c>ApprovalRequiredAIFunction</c>，而该类型<b>只是标记</b>——它的强制点在同一条管线里的
-/// <c>FunctionInvokingChatClient</c>（MCP 不走 MAF 管线）。若照搬那条列表，写工具的"需要人工确认"
-/// 标记会被静默丢弃。此处改用注册表 + <see cref="IFeishuToolFunctionFactory"/> 构造的桥：
-/// 真实门禁是执行链的授权门禁（写工具默认不在白名单、授权器返回
-/// <c>NeedsUserConfirmation</c> 时拒绝且零调用下游——由用例锁定），因此本差别是<b>可测的</b>而不是隐含的。
-/// </para>
-/// <para>
-/// <b>租户上下文</b>：每次调用前经 <see cref="IFeishuToolContextAccessor.Begin"/> 显式重建
-/// （MCP 调用不在事件流内，与续跑同构），作用域在 <c>finally</c> 内释放；
-/// 缺 appKey 时构造期即抛（fail-closed，禁止默认应用兜底）。
-/// </para>
-/// <para>
-/// <b>M-2（resources 能力）</b>：除 <c>tools</c> 外，本服务在装配期还有<b>资源目录</b>
-/// （<see cref="FeishuMcpResourceCatalog"/>）——域 guidance 全文 / per-tool affordance /
-/// 域 scope 对照 / 错误契约。资源目录与工具面<b>同一次装配、同一份白名单</b>
-/// （未启用域的资源不可见），且内容全为编译期常量，故 <c>resources/read</c> 无 IO、无租户依赖。
-/// 这条能力的意义是"上下文预算结构性可控"：instructions 只下发一行摘要，正文按需读
-/// （见 <see cref="FeishuMcpServerOptions.InstructionsMode"/>）。
-/// </para>
-/// <para>
-/// <b>线程模型</b>：单连接顺序处理（<see cref="FeishuMcpStdioHost"/> 逐行 await），
-/// <c>_initialized</c> 标记无需加锁；若宿主自行并发投递，请自行串行化。
+/// <b>线程模型</b>：单连接顺序处理（<see cref="FeishuMcpStdioHost"/> 逐行 await），<c>_initialized</c> 标记无需加锁；宿主并发投递时须自行串行化。
 /// </para>
 /// </remarks>
 public sealed class FeishuMcpToolServer
@@ -77,12 +53,12 @@ public sealed class FeishuMcpToolServer
     private readonly ILogger? _logger;
 
     /// <summary>
-    /// R-7：构桥接缝（<c>null</c> = 宿主未装配工具面 ⇒ <c>tools/list</c> 为空，与"注册表缺席"同语义）。
+    /// 构桥接缝（<c>null</c> = 宿主未装配工具面 ⇒ <c>tools/list</c> 为空，与"注册表缺席"同语义）。
     /// </summary>
     private readonly IFeishuToolFunctionFactory? _functionFactory;
 
     /// <summary>
-    /// R-7：错误文案接缝（<c>null</c> 时退回纯文本原因——协议层不得因缺一个接缝而抛）。
+    /// 错误文案接缝（<c>null</c> 时退回纯文本原因——协议层不得因缺一个接缝而抛）。
     /// </summary>
     private readonly IToolErrorTextFormatter? _errorFormatter;
     private readonly List<McpToolInfo> _tools = [];

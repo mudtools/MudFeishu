@@ -19,46 +19,23 @@ using Mud.Feishu.EventCallback.Task;
 namespace Mud.Feishu.AI.Events;
 
 /// <summary>
-/// 任务更新会话事件处理器（WP7/R5 T7-2；回复链路 R2-01）：<c>task.task.updated_v1</c> 事件 →
-/// 会话 → 模型 → 回复（单聊投递给任务负责人）。
+/// 任务更新会话事件处理器（回复链路）：<c>task.task.updated_v1</c> 事件 → 会话 → 模型 → 单聊回复。
 /// </summary>
 /// <remarks>
+/// <b>事件规范化</b>：任务更新事件<b>不携带用户身份字段</b>（只有 <c>task_id</c> / <c>obj_type</c>），
+/// 故投递目标必须由任务详情解析（<c>GetTaskByIdAsync</c> → <c>Members</c> 中 <c>role=assignee</c> 的
+/// <c>open_id</c>，无负责人时回退创建者），结果写入 <see cref="ConversationRequest.SenderId"/>/
+/// <see cref="ConversationRequest.SubjectId"/>：会话键按负责人分桶，同时使 user 身份工具拿到正确的当前用户。
 /// <para>
-/// <b>事件规范化</b>：任务更新事件<b>不携带任何用户身份字段</b>（只有 <c>task_id</c> / <c>obj_type</c>），
-/// 故投递目标必须由任务详情解析：<c>IFeishuTenantV2Task.GetTaskByIdAsync</c>
-/// （<c>GetTaskByIdAsync</c> 声明于抽象基接口 <c>IFeishuV2Task</c>，见 <c>Mud.Feishu.Interfaces</c>）
-/// → <c>TaskOperationResult.Task.Members</c> 中 <c>role=assignee</c> 的 <c>open_id</c>
-/// （无负责人时回退创建者）。解析结果写入
-/// <see cref="ConversationRequest.SenderId"/>/<see cref="ConversationRequest.SubjectId"/>，
-/// 单聊维度（会话键按负责人分桶；同时使 user 身份工具拿到正确的当前用户）。
+/// <b>不可投递时在调用模型之前短路</b>：未注册消息/任务客户端、任务已删除或解析不出负责人时，
+/// <see cref="TryFindDeliveryBlockAsync"/> 返回原因，基类按「已消费」短路——<b>零模型计费、零历史落库</b>
+/// （否则白花一次完整调用，而回答只能写进日志，用户永远收不到）。
 /// </para>
+/// <b>投递语义</b>：<see cref="ReplyAsync"/> 以 <c>receive_id_type=open_id</c> 发单聊文本；发送失败向上抛 ⇒
+/// 基类幂等回滚 + 重投递（outbox 补发同一文本，不重跑模型）；多负责人只投递给<b>首位</b>负责人。
 /// <para>
-/// <b>不可投递时在调用模型之前短路（R2-01）</b>：未注册
-/// <c>IFeishuTenantV1Message</c>、未注册 <c>IFeishuTenantV2Task</c>、任务已删除或解析不出负责人
-/// 时，<see cref="TryFindDeliveryBlockAsync"/> 返回原因，基类按「已消费」短路——<b>零模型计费、零历史落库</b>。
-/// 此前这些形态会先花一次完整模型调用、再把回答写进日志（用户永远收不到）。
-/// </para>
-/// <para>
-/// <b>投递语义</b>：<see cref="ReplyAsync"/> 以 <c>receive_id_type=open_id</c> 发单聊文本
-/// （与同包 <c>ApprovalTaskConversationalEventHandler</c> 同款范式：无 <c>chat_id</c> 的事件
-/// 把解析出的用户 ID 当作接收方）。发送失败向上抛 ⇒ 基类幂等回滚 + 重投递，
-/// 且重投递由 outbox 补发同一文本（不重跑模型）。多负责人场景只投递给<b>首位</b>负责人
-/// （其余负责人需各自的会话轮次，属后续能力，不在本任务内）。
-/// </para>
-/// <para>
-/// <b>幂等业务键</b>：自带命名空间 <c>feishu.agent.task_updated:{EventId}</c>（D 系契约：禁止裸 EventId）。
-/// </para>
-/// <para>
-/// <b>obj_type 语义映射</b>：
-/// <list type="bullet">
-/// <item>1 = 任务详情变化</item>
-/// <item>2 = 协作者变化</item>
-/// <item>3 = 关注者变化</item>
-/// <item>4 = 提醒时间变化</item>
-/// <item>5 = 任务完成</item>
-/// <item>6 = 任务取消完成</item>
-/// <item>7 = 任务删除</item>
-/// </list>
+/// <b>幂等业务键</b>：<c>feishu.agent.task_updated:{EventId}</c>（自带命名空间，禁止裸 EventId）；
+/// <c>obj_type</c> 的平台语义映射见 <c>BuildTaskNotification</c>。
 /// </para>
 /// </remarks>
 public sealed class TaskUpdatedConversationalEventHandler(
@@ -92,7 +69,7 @@ public sealed class TaskUpdatedConversationalEventHandler(
     /// <inheritdoc />
     protected override async Task<ConversationRequest> BuildRequestAsync(TaskUpdatedResult eventData, CancellationToken cancellationToken)
     {
-        // 投递目标解析（R2-01）：任务事件不带 open_id，须经任务详情取成员。
+        // 投递目标解析：任务事件不带 open_id，须经任务详情取成员。
         // 解析失败时退回应用维度的默认主体（SubjectId 仍可用作会话键），
         // 「不可投递」由 TryFindDeliveryBlockAsync 判定并在调用模型前短路。
         var receiverOpenId = await ResolveReceiverAsync(eventData.TaskId, cancellationToken).ConfigureAwait(false);
@@ -115,7 +92,7 @@ public sealed class TaskUpdatedConversationalEventHandler(
     /// <inheritdoc />
     protected override Task<string?> TryFindDeliveryBlockAsync(ConversationRequest request, CancellationToken cancellationToken)
     {
-        // R2-01：三条"送不出去"的形态全部前移到模型调用之前（此前是花完模型再写日志）。
+        // 三条"送不出去"的形态全部前移到模型调用之前（否则先花完模型再写日志）。
         _ = cancellationToken;
 
         if (_messageClient is null)
@@ -149,7 +126,6 @@ public sealed class TaskUpdatedConversationalEventHandler(
         // 任务事件无 chat_id：经解析出的负责人以 open_id 发单聊（对齐 ApprovalTaskConversationalEventHandler 范式）。
         // content 用 JsonObject 构造（AOT 安全 + 正确转义），不手写 JSON 字符串。
         var receiveId = request.SenderId;
-        // R3-13：使用 SystemSenderId 常量替代硬编码 "system" 字面量。
         if (string.IsNullOrEmpty(receiveId) || receiveId == SystemSenderId)
         {
             throw new InvalidOperationException(

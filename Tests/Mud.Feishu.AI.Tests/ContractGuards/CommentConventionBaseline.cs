@@ -116,9 +116,16 @@ internal sealed record CommentBaseline(
 /// </summary>
 internal static class CommentBaselineJson
 {
+    /// <summary>
+    /// 解析源排除标记：只出现在本基线文件里，供守卫断言「台账没有被当成编号的解析源」
+    /// （台账印着全部未解析记号，一旦被当成解析源，编号就会自我认证）。
+    /// </summary>
+    internal const string ResolutionExclusionMarker = "comment-budget-baseline:not-a-resolution-source";
+
     private const string Note =
         "注释预算冻结基线（手写运行时层）。只允许下压：清理后重新固化，新违规必须解释而不是重新固化。"
-        + "重新固化：pwsh ./scripts/comment-audit.ps1 -UpdateBaseline";
+        + "重新固化：pwsh ./scripts/comment-audit.ps1 -UpdateBaseline。"
+        + "解析源排除标记（勿拷进任何文档）：" + ResolutionExclusionMarker;
 
     /// <summary>把扫描结果写成确定性 JSON。</summary>
     /// <param name="analysis">扫描结果。</param>

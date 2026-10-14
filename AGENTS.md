@@ -188,10 +188,15 @@ to the hand-written runtime layers (`Mud.Feishu.AI`, `Mud.AI.Agent`, `Mud.AI.Abs
 
 - **Anchors must resolve**: a review id in a comment (round ids like `R2-01`, `P2D-3b`, `AT-F14`…)
   must be findable in `documents/**` or `CHANGELOG.md` — otherwise state the constraint itself.
+  ⚠️ **Never enumerate round ids in a CHANGELOG entry** (e.g. while describing a cleanup): the
+  CHANGELOG is a resolution source, so listing them *legitimises* the same ids sitting in code —
+  measured twice during the 2026-10-14 rounds. Describe batches by content, not by id.
 - **Process narration needs a live link**: 「此前 / 原先 / 已删除 / 旧实现…」belongs in the commit
   message; kept in code, the block must cite an existing `documents/…` or `ADR-nnnn` path.
 - **Budgets are tighten-only**: per-file comment lines and longest comment block are frozen;
-  new files: block ≤ 20 lines, ≤ 120 comment lines. Decisions → `documents/AIAgent/decisions/`,
+  new files: block ≤ 20 lines, ≤ 120 comment lines. The block metric counts **prose runs only**
+  (`/// <param`/`<typeparam>`-led lines separate runs — otherwise a 10-parameter member could never
+  be documented within budget), and narration excludes runtime states (`任务已删除`). Decisions → `documents/AIAgent/decisions/`,
   contract rules → a `ContractGuards` test (with a `[Theory]` self-proof), traps that cannot be
   read off the code (platform quirks, ordering) stay inline. Re-freeze with
   `pwsh ./scripts/comment-audit.ps1 -UpdateBaseline`; it **refuses to freeze while any violation

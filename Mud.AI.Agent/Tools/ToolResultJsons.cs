@@ -12,11 +12,10 @@ namespace Mud.AI.Agent.Tools;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>为什么需要它</b>：<c>items</c>/<c>has_more</c>/<c>page_token</c> 三件套此前在
-/// <b>29 处 / 18 个文件</b>里被逐字重写（其中 <c>BitableTools</c> 已抽出私有副本，
-/// 但无人复用）。逐字重写的代价不是行数，而是<b>口径漂移</b>：任何一个执行器把
-/// <c>page_token</c> 写成 <c>next_page_token</c>、或忘了"空 token 不写"，模型就无法续页——
-/// 而这是<b>静默</b>的（信封仍然是合法 JSON，只是模型续不上）。
+/// <b>为什么需要它</b>：<c>items</c>/<c>has_more</c>/<c>page_token</c> 三件套<b>不得</b>逐字重写。
+/// 代价不是行数，而是<b>口径漂移</b>：任何一个执行器把 <c>page_token</c> 写成
+/// <c>next_page_token</c>、或忘了"空 token 不写"，模型就无法续页——而这是<b>静默</b>的
+/// （信封仍然是合法 JSON，只是模型续不上）。
 /// </para>
 /// <para>
 /// <b>与 <see cref="ToolPagination.BuildEnvelope"/> 的区别（不可混用）</b>：

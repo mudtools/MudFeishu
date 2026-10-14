@@ -14,32 +14,23 @@ namespace Mud.AI.Agent.Sessions;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>职责边界</b>：序列化 / 反序列化的归属方是持有 <c>AgentSession</c> 的那个 Agent
-/// （构造时以 <c>codec</c> 传入——通常是产品 Agent 自身，它经 MAF 的
-/// <c>DelegatingAIAgent</c> 把这两个动作委托给内层 <c>ChatClientAgent</c>）。
-/// 本门面只做三件事：① 键 → 会话的往返；② 载荷损坏时的「按 miss 处理并重建」；
-/// ③ 把「历史状态键」这类<b>产品事实</b>以参数接收，绝不硬编码。
+/// <b>职责边界</b>：序列化 / 反序列化的归属方是持有 <c>AgentSession</c> 的那个 Agent（构造时以 <c>codec</c> 传入，
+/// 通常是产品 Agent 自身——它经 MAF 的 <c>DelegatingAIAgent</c> 委托给内层 <c>ChatClientAgent</c>）。
+/// 本门面只做三件事：① 键 → 会话的往返；② 载荷损坏时「按 miss 处理并重建」；
+/// ③ 把「历史状态键」这类<b>产品事实</b>以参数接收，绝不硬编码（故是组合件而非基类）。
 /// </para>
 /// <para>
-/// <b>为什么是"服务"而不是"基类"</b>：可复用的瓶颈不是缺少基类，而是可复用的机制被写成了
-/// 某个产品的私有实现。门面是组合件 ⇒ 不占 C# 的单继承槽、不把产品语义固化到包族底层。
-/// </para>
-/// <para>
-/// <b>下列语义是踩过坑才定型的，迁移 / 重构时不得"顺手简化"</b>（由
-/// <c>Tests/Mud.AI.Agent.Tests/Sessions/AgentSessionStoreTests.cs</c> 与
-/// <c>AgentSessionStoreSelfHealingContractGuards</c> 锁定）：
+/// <b>下列语义由 <c>Tests/Mud.AI.Agent.Tests/Sessions/AgentSessionStoreTests.cs</c> 与
+/// <c>AgentSessionStoreSelfHealingContractGuards</c> 锁定，迁移 / 重构时不得"顺手简化"</b>：
 /// <list type="number">
-/// <item><b>收口式 catch</b>：坏值自愈的 catch 面必须是
-/// <c>when (ex is not OperationCanceledException)</c>。<b>枚举白名单会让残余异常类型逃出守护区</b>
-/// （FormatException / KeyNotFoundException / IndexOutOfRangeException / NullReferenceException …），
-/// 使坏载荷每次重投递都在区外再抛 ⇒ 会话在其 TTL 内<b>永久毒化</b>。取消必须原样传播，
-/// 不能被吞成"重建"。</item>
-/// <item><b>清库用 <see cref="CancellationToken.None"/></b>：删除坏值是自愈的必要动作，
-/// 若用调用方 token，调用方一取消就留下坏值（会话继续毒化）。</item>
+/// <item><b>收口式 catch</b>：catch 面必须是 <c>when (ex is not OperationCanceledException)</c>——
+/// 枚举白名单会让残余异常类型（FormatException / KeyNotFoundException / NullReferenceException …）
+/// 逃出守护区，坏载荷每次重投递都在区外再抛 ⇒ 会话在其 TTL 内<b>永久毒化</b>；取消必须原样传播。</item>
+/// <item><b>清库用 <see cref="CancellationToken.None"/></b>：用调用方 token 会因取消留下坏值（会话继续毒化）。</item>
 /// <item><b>删除失败不得掩盖重建主路径</b>：坏值由 TTL 兜底，但失败必须可观测（告警）。</item>
-/// <item><b>急切校验</b>：反序列化后必须立刻触发一次历史状态读取。
-/// 状态袋的值是<b>惰性</b>反序列化的（只包 JsonElement、不解析），内层载荷损坏要到首次类型化读取才抛，
-/// 而那次读取发生在本守护区<b>之外</b>（摘要器 / Provider 内部）⇒ 不在此触发就等于坏值永不删除。</item>
+/// <item><b>急切校验</b>：反序列化后必须立刻触发一次历史状态读取——状态袋的值<b>惰性</b>反序列化
+/// （只包 JsonElement、不解析），内层载荷损坏要到首次类型化读取才抛，而那次读取在本守护区<b>之外</b>
+/// （摘要器 / Provider 内部）⇒ 不触发就等于坏值永不删除。</item>
 /// </list>
 /// </para>
 /// </remarks>
@@ -106,10 +97,8 @@ public sealed class AgentSessionStore
                     .DeserializeSessionAsync(document.RootElement.Clone(), jsonSerializerOptions: null, cancellationToken)
                     .ConfigureAwait(false);
 
-                // 急切校验：状态袋的值是**惰性**反序列化的——内层载荷损坏要到首次类型化读取才抛，
-                // 而首次读取发生在摘要器（无 catch）与 Provider 内部，均在本守护区之外。
-                // 不在此触发 ⇒ 异常逃出守护区 ⇒ 坏值永不删除 ⇒ 会话在其 TTL 内永久毒化。
-                // 代价：每次会话恢复多一次历史反序列化（历史经裁剪器有界，成本可接受）。
+                // 急切校验（见类型 remarks 第 4 条）：代价是每次会话恢复多一次历史反序列化，
+                // 历史经裁剪器有界，成本可接受。
                 _ = session.TryGetInMemoryChatHistory(out _, _historyStateKey, null);
                 return session;
             }

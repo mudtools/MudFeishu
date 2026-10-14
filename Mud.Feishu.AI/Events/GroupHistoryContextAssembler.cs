@@ -13,32 +13,23 @@ using Mud.Feishu.DataModels.Messages;
 namespace Mud.Feishu.AI.Events;
 
 /// <summary>
-/// 群聊历史上下文装配器（T2 / D2）：群聊场景下自动拉取被 @ 之前的 N 条消息注入 prompt，
+/// 群聊历史上下文装配器：群聊场景下自动拉取被 @ 之前的 N 条消息注入 prompt，
 /// 使模型获得上下文以做指代消解——不依赖模型自觉调工具。
 /// </summary>
 /// <remarks>
+/// <b>数据源</b>：直调 SDK <c>IFeishuTenantV1Message.GetHistoryMessageAsync</c>，<b>不经工具面</b>——装配器是系统侧
+/// 动作，不应出现在模型可见工具清单里、也不消耗工具预算/审计面。
 /// <para>
-/// <b>数据源</b>：直调 SDK <c>IFeishuTenantV1Message.GetHistoryMessageAsync</c>——
-/// <b>不经工具面</b>：装配器是系统侧动作，不应出现在模型可见工具清单里、也不消耗工具预算/审计面。
+/// <b>触发条件与去重</b>：<c>Scope.IsGroup &amp;&amp; ChatId 非空 &amp;&amp; MessageId 非空</c>（单聊走会话历史已足够，
+/// 无 chat_id 直接返回 null）；排除 <c>MessageId</c>（本轮）与 <c>ParentId</c>（归 QuoteMessage 装配器）。
 /// </para>
 /// <para>
-/// <b>触发条件</b>（A15 零差异）：<c>request.Scope.IsGroup &amp;&amp; request.ChatId 非空 &amp;&amp; request.MessageId 非空</c>。
-/// 单聊走会话历史已足够；无 chat_id 直接返回 null。
+/// <b>过滤与安全</b>：跳过 <c>sender_type == "app"</c>（Bot 自身）与纯系统/媒体消息（无可读文本）；
+/// 只输出发送者 <b>ID</b>（不取昵称原文），文本经长度截断，输出带 <c>UntrustedHeader</c> 标注。
 /// </para>
 /// <para>
-/// <b>去重</b>：排除 <c>MessageId</c>（本轮）与 <c>ParentId</c>（由 QuoteMessage 装配器负责）。
-/// </para>
-/// <para>
-/// <b>过滤</b>：跳过 <c>sender_type == "app"</c>（Bot 自身消息）与纯系统/媒体消息（无可读文本）。
-/// </para>
-/// <para>
-/// <b>安全</b>：只输出发送者 <b>ID</b>（不取昵称原文）、文本经长度截断；输出带 <c>UntrustedHeader</c> 标注。
-/// </para>
-/// <para>
-/// <b>失败降级</b>：拉取失败/无权限 ⇒ 记 Information 日志 + 返回 null（<b>不阻断对话</b>）。
-/// </para>
-/// <para>
-/// <b>单租户作用域</b>：经 <see cref="IFeishuAppContextScopeFactory.BeginScope"/> 切租户（R3-1 同款纪律，防跨租户读）。
+/// <b>失败降级与租户作用域</b>：拉取失败/无权限 ⇒ 记 Information 日志 + 返回 null（<b>不阻断对话</b>）；
+/// 经 <see cref="IFeishuAppContextScopeFactory.BeginScope"/> 切租户，防跨租户读。
 /// </para>
 /// </remarks>
 public sealed class GroupHistoryContextAssembler : IContextAssembler

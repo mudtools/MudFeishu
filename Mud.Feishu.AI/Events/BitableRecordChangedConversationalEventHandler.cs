@@ -19,29 +19,22 @@ using Mud.Feishu.EventCallback.Bitable;
 namespace Mud.Feishu.AI.Events;
 
 /// <summary>
-/// 多维表格记录变更会话事件处理器（R7 / C2 配套的生产者）：
-/// <c>drive.file.bitable_record_changed_v1</c> → 会话 → 模型 → 回复（"这张表刚变了什么"，Agent 据此总结/追问/联动）。
+/// 多维表格记录变更会话事件处理器：<c>drive.file.bitable_record_changed_v1</c> → 会话 → 模型 → 回复
+/// （"这张表刚变了什么"，Agent 据此总结/追问/联动）。
 /// </summary>
 /// <remarks>
+/// <b>与审批/任务处理器的差异（事件类型精确匹配）</b>：本类<b>覆写</b> <see cref="SupportedEventType"/> 为
+/// <see cref="FeishuEventTypes.BitableRecordChanged"/>——事件分派器按事件类型路由，其它事件不会进入本处理器
+/// （既有审批/任务处理器是"通吃"式、靠投递判定短路兜底；本类走精确路由，省一次无效反序列化）。
 /// <para>
-/// <b>与审批/任务事件处理器的差异（事件类型精确匹配）</b>：本类<b>覆写</b>
-/// <see cref="SupportedEventType"/> 为 <see cref="FeishuEventTypes.BitableRecordChanged"/>——
-/// 事件分派器按事件类型路由，其它事件不会进入本处理器（既有的审批/任务处理器是"通吃"式，
-/// 靠投递判定短路兜底；本类是新增能力，直接走精确路由，更省一次无效反序列化）。
+/// <b>平台事实 → 结构化事实（<see cref="EventFact"/>）</b>：只登记事件载荷里<b>真实存在</b>的字段（表格 token / 数据表 /
+/// 版本号 / 操作人 / 每条行操作 / <b>仅变化字段</b>的前后值）；表名与字段名<b>不在</b>载荷里（需另调 <c>bitable.list_tables</c> /
+/// <c>bitable.list_fields</c>），不臆造这些事实（模型会以为事件自带）。
 /// </para>
 /// <para>
-/// <b>平台事实 → 结构化事实（<see cref="EventFact"/>）</b>：只登记事件载荷里真实存在的字段
-/// （表格 token / 数据表 / 版本号 / 操作人 / 每条行操作 / <b>仅变化字段</b>的前后值）。
-/// 表名、字段名<b>不在</b>事件载荷里（需另调 <c>bitable.list_tables</c> / <c>bitable.list_fields</c>）——
-/// 不臆造这些事实（模型会以为事件自带）。
-/// </para>
-/// <para>
-/// <b>事件频率与开通方式（重要）</b>：记录变更可以是<b>高频</b>事件（批量导入/脚本写入会让一次订阅
-/// 变成连续多轮模型调用）。故本处理器是<b>可选装配</b>：宿主不注册即完全不生效；注册即"每条订阅表变更
-/// 都跑一轮模型"。平台本身只对<b>被订阅</b>的多维表格投递事件，宿主应据此收窄订阅面。
-/// </para>
-/// <para>
-/// <b>幂等业务键</b>：自带命名空间 <c>feishu.agent.bitable_record:{EventId}</c>（D 系契约：禁止裸 EventId）。
+/// <b>事件频率与开通方式（重要）</b>：记录变更可以是<b>高频</b>事件（批量导入/脚本写入会让一次订阅变成连续多轮模型调用），
+/// 故本处理器为<b>可选装配</b>：不注册即完全不生效，注册即"每条订阅表变更都跑一轮模型"；平台只对<b>被订阅</b>的多维表格投递事件，
+/// 宿主应据此收窄订阅面。幂等业务键自带命名空间 <c>feishu.agent.bitable_record:{EventId}</c>（禁止裸 EventId）。
 /// </para>
 /// </remarks>
 public sealed class BitableRecordChangedConversationalEventHandler(

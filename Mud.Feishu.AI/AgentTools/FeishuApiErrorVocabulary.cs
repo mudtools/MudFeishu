@@ -22,7 +22,7 @@ namespace Mud.Feishu.AI.AgentTools;
 /// <c>ToolErrorCodeMeta</c> 三处即此表的旧家）。
 /// </para>
 /// <para>
-/// <b>收录纪律（DP-R7-4 的延续，比官方更严）</b>：<b>只收本仓有实证的码</b>——即能在仓库内找到
+/// <b>收录纪律（比官方更严）</b>：<b>只收本仓有实证的码</b>——即能在仓库内找到
 /// "该码 = 某语义"的书面依据（SDK 接口文档 / 官方文档摘录 / 既有代码注释）。<b>不得</b>凭记忆或
 /// 推测补码：猜错的码会把模型引向错误处置（例如把"系统繁忙"读成"权限不足"），而错误处置比
 /// "没有码表"更糟——后者至少保持中性的 <c>upstream_error</c> 语义。未收录的码<b>不产出</b>候选，
@@ -109,7 +109,7 @@ internal static class FeishuApiErrorVocabulary
     /// </summary>
     /// <remarks>
     /// 判定顺序：<b>权限类 → 可重试类 → 其余</b>（权限与可重试互斥，顺序只影响可读性）。
-    /// 真正的纪律是<b>未收录的码一律落到中性的 <c>api/upstream_error</c></b>——不猜语义（DP-R7-4）；
+    /// 真正的纪律是<b>未收录的码一律落到中性的 <c>api/upstream_error</c></b>——不猜语义；
     /// 但码级元数据（若有）仍随读数透出（分类不变、只做增强）。
     /// </remarks>
     /// <param name="code">飞书业务码（可能为 null——无 code 场景）。</param>

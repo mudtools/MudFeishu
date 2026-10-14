@@ -71,7 +71,7 @@ public sealed class FeishuAgentOptions
     /// <summary>
     /// 工具白名单——<c>MapTool</c> 的配置面等价物（消费点：
     /// <c>Mud.Feishu.AI.Tools</c> 的全域入口 <c>AddFeishuTools</c> 逐名启用注册表工具；
-    /// R-8 已删除同义入口 <c>AddFeishuReadonlyTools</c>）。
+    /// 只读子集不单独提供同义入口，一律经本名单收窄）。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -170,7 +170,7 @@ public sealed class FeishuAgentOptions
     public string[] AllowedIdentities { get; set; } = ["tenant"];
 
     /// <summary>
-    /// 出站内容安全模式（AT-F14；消费点：<c>FeishuToolBinding</c> 出站净化<b>之前</b>的扫描阶段）。
+    /// 出站内容安全模式（消费点：<c>FeishuToolBinding</c> 出站净化<b>之前</b>的扫描阶段）。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -263,7 +263,7 @@ public sealed class FeishuAgentOptions
     public int TurnQueueTimeoutSeconds { get; set; } = 30;
 
     /// <summary>
-    /// 流式文本抑制选项（T10 / D10；消费点：<c>ConversationalFeishuEventHandler.RunConversationAsync</c>）。
+    /// 流式文本抑制选项（消费点：<c>ConversationalFeishuEventHandler.RunConversationAsync</c>）。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -426,7 +426,7 @@ public sealed class FeishuAgentOptions
                 $"FeishuAgent:{nameof(AllowedIdentities)} 取值非法: [{string.Join(",", AllowedIdentities)}]——"
                 + $"合法值为 {FeishuToolIdentityNames.AllowedValuesText}（与 Schema 的 x-feishu.identity 词汇一致）");
 
-        // AT-F14 内容安全模式（策略开关，闭集校验防拼写错误静默降级为 off 语义）。
+        // 内容安全模式（策略开关，闭集校验防拼写错误静默降级为 off 语义）。
         if (!ContentSafetyModes.IsValid(ContentSafetyMode))
             throw new InvalidOperationException(
                 $"FeishuAgent:{nameof(ContentSafetyMode)} 取值非法: '{ContentSafetyMode}'——合法值为 {ContentSafetyModes.AllowedValuesText}");

@@ -107,7 +107,7 @@ public abstract class ConversationalFeishuEventHandler<T>(
     /// 会以<b>默认应用身份</b>发出（TMA2-20 跨租户错发的「读」方向）。
     /// </para>
     /// <para>
-    /// 需要平台解析时，按 R2-01 的约定把结果写入 <see cref="ConversationRequest.SenderId"/> /
+    /// 需要平台解析时，把结果写入 <see cref="ConversationRequest.SenderId"/> /
     /// <see cref="ConversationRequest.SubjectId"/>，<see cref="TryFindDeliveryBlockAsync"/> 只做纯判定。
     /// </para>
     /// </remarks>
@@ -316,7 +316,7 @@ public abstract class ConversationalFeishuEventHandler<T>(
                 await _agent.SaveSessionAsync(conversationKey, session, cancellationToken).ConfigureAwait(false);
             }
 
-            // 下发可行性前置判定（R2-01）：置于补发判定**之后**（补发不消耗模型，不该被本判定拦截），
+            // 下发可行性前置判定：置于补发判定**之后**（补发不消耗模型，不该被本判定拦截），
             // 模型调用（含上下文装配）**之前**。判定不通过即按「已消费」返回：幂等终态落 Completed，
             // 绝不重投递——重投递只会把同一轮白判一次，对"投递目标不存在"这一事实毫无改善。
             var deliveryBlock = await TryFindDeliveryBlockAsync(request, cancellationToken).ConfigureAwait(false);
@@ -353,7 +353,7 @@ public abstract class ConversationalFeishuEventHandler<T>(
 
             var userMessage = await AssembleUserMessageAsync(request, cancellationToken).ConfigureAwait(false);
 
-            // 空用户消息守卫（P2-7）：空 user 消息会被 OpenAI 兼容端点拒绝（400）且已计费。
+            // 空用户消息守卫：空 user 消息会被 OpenAI 兼容端点拒绝（400）且已计费。
             if (string.IsNullOrWhiteSpace(userMessage))
             {
                 _logger.LogWarning(
@@ -452,7 +452,7 @@ public abstract class ConversationalFeishuEventHandler<T>(
 
         var fullText = new StringBuilder();
         var pendingApprovals = new List<FrameworkToolApprovalRequest>();
-        // T10 / D10：流式文本抑制——DeferTextUntilTurnComplete=true 时缓存全部文本增量，
+        // 流式文本抑制——DeferTextUntilTurnComplete=true 时缓存全部文本增量，
         // 仅在本轮无工具调用时一次性 Flush；出现 FunctionCallContent 则清空缓冲（并入终态）。
         var deferText = _agent.DeferTextUntilTurnComplete;
         var hadToolCall = false;

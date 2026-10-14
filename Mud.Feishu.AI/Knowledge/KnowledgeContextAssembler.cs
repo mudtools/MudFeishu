@@ -81,7 +81,7 @@ public sealed class KnowledgeContextAssembler : IContextAssembler
     /// <param name="retriever">知识检索门面（Aily 托管/RAG-B 自建均可）。</param>
     /// <param name="order">装配顺序（缺省 <see cref="DefaultOrder"/>）。</param>
     /// <param name="minScore">
-    /// T9 / D9：相关性门槛——<see cref="RetrievedChunk.Score"/> 低于此值的切片被过滤。
+    /// 相关性门槛——<see cref="RetrievedChunk.Score"/> 低于此值的切片被过滤。
     /// <c>null</c>（默认）= 不过滤（A15 零差异）；有分值时按分值过滤，无分值的切片保留（Aily 托管问答不返回得分）。
     /// </param>
     public KnowledgeContextAssembler(IRetriever retriever, int order = DefaultOrder, double? minScore = null)
@@ -111,7 +111,7 @@ public sealed class KnowledgeContextAssembler : IContextAssembler
 
         IEnumerable<RetrievedChunk> chunks = await _retriever.RetrieveAsync(query!, cancellationToken).ConfigureAwait(false);
 
-        // T9 / D9：相关性门槛过滤——minScore 非空时过滤低分切片；
+        // 相关性门槛过滤——minScore 非空时过滤低分切片；
         // Score 为 null 的切片保留（Aily 托管问答不返回得分，A15 零差异）。
         if (_minScore is { } threshold)
         {

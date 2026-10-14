@@ -28,7 +28,7 @@ namespace Mud.AI.Agent.Tools;
 /// </para>
 /// <para>
 /// <b>默认值纪律</b>：产品未给读数（<see langword="null"/>）时使用 <see cref="Unclassified"/>
-/// ——中性的 <c>api/upstream_error</c>，<b>不猜语义</b>（DP-R7-4：猜错的处置比"没有分类"更糟）。
+/// ——中性的 <c>api/upstream_error</c>，<b>不猜语义</b>（猜错的处置比"没有分类"更糟）。
 /// </para>
 /// <para>
 /// <b>不是"分类的替身"</b>：本类型只承载<b>产品侧已经读出</b>的事实。中立的

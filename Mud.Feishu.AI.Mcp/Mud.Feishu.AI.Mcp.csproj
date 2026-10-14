@@ -16,7 +16,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<!-- 依赖方向（DP-C6-1）：只引用 AI 底座（FeishuToolContext / AIFunction 契约 + guidance 装配）
+		<!-- 依赖方向：只引用 AI 底座（FeishuToolContext / AIFunction 契约 + guidance 装配）
 		     与工具面（注册表 / 执行链 / 编译期 Schema）。
 		     **刻意不「直接引用」且不「暴露」Mud.Feishu（SDK 客户端）**：MCP 包若直连强类型飞书接口，
 		     就绕开了授权/审计/净化，等于在进程内开了一条旁路

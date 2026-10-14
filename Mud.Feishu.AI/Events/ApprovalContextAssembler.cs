@@ -10,32 +10,25 @@ using System.Text;
 namespace Mud.Feishu.AI.Events;
 
 /// <summary>
-/// 审批事件的上下文装配器（R7 / C2 · T3-5）：把审批事件载荷转成<b>结构化 prompt 片段</b>，
+/// 审批事件的上下文装配器：把审批事件载荷转成<b>结构化 prompt 片段</b>，
 /// 让模型"打开事件就知道上下文"，不必先调工具拼装。
 /// </summary>
 /// <remarks>
+/// <b>触发条件</b>：<see cref="ConversationRequest.EventKey"/> 为 <see cref="ApprovalEventKey"/>
+/// （由 <c>ApprovalTaskConversationalEventHandler</c> 填充）；其他事件或无载荷返回 <see langword="null"/>
+/// ——「本装配器对本次事件无贡献」，与既有装配器的空片段语义一致（不污染 prompt）。
 /// <para>
-/// <b>触发条件</b>：<see cref="ConversationRequest.EventKey"/> 为
-/// <see cref="ApprovalEventKey"/>（由 <c>ApprovalTaskConversationalEventHandler</c> 填充）。
-/// 其他事件（或无事件载荷）返回 <see langword="null"/>——「本装配器对本次事件无贡献」，
-/// 与既有装配器的空片段语义一致（不污染 prompt）。
+/// <b>预算与截断（硬约束）</b>：单字段值 ≤ <see cref="ContextBudgets.ApprovalFieldPreviewLength"/>、
+/// 整段 ≤ <see cref="ContextBudgets.ApprovalTotalLength"/>、事实条数 ≤ <see cref="ContextBudgets.MaxFactsPerAssembler"/>；
+/// 超限<b>截断</b>而非整段丢弃（整段丢弃会让"事件触发的提问"彻底失去上下文，比截断更差）。
 /// </para>
 /// <para>
-/// <b>预算与截断（硬约束）</b>：单字段值 ≤ <see cref="ContextBudgets.ApprovalFieldPreviewLength"/>，
-/// 整段 ≤ <see cref="ContextBudgets.ApprovalTotalLength"/>，事实条数 ≤
-/// <see cref="ContextBudgets.MaxFactsPerAssembler"/>；超限<b>截断</b>而非整段丢弃
-/// （整段丢弃会让"事件触发的提问"彻底失去上下文，比截断更差）。
+/// <b>untrusted 标注</b>：载荷含平台/用户数据，整段以 <see cref="ContextBudgets.UntrustedHeader"/> 开头
+/// 防提示注入（与知识切片同款纪律）。
 /// </para>
 /// <para>
-/// <b>untrusted 标注</b>：事件载荷含平台/用户数据，整段以
-/// <see cref="ContextBudgets.UntrustedHeader"/> 开头（防提示注入，与知识切片同款纪律）。
-/// </para>
-/// <para>
-/// <b>失败隔离</b>：本类不抛业务异常；载荷不完整（缺字段）返回 <see langword="null"/>
-/// （降级为既有行为），异常隔离由事件层统一承接。
-/// </para>
-/// <para>
-/// <b>Order = 200</b>：在发送者信息（10）/ 引用消息（20）/ 知识切片（100）之后——
+/// <b>失败隔离与顺序</b>：本类不抛业务异常，载荷缺字段即返回 <see langword="null"/>（降级为既有行为），
+/// 异常隔离由事件层统一承接；<c>Order = 200</c> 排在发送者信息（10）/ 引用消息（20）/ 知识切片（100）之后——
 /// 事件事实是"本轮问题的背景"，问题文本（<c>MentionedText</c>）在装配器之后拼入。
 /// </para>
 /// </remarks>

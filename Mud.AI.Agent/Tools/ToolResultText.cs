@@ -7,11 +7,8 @@
 
 namespace Mud.AI.Agent.Tools;
 
-// R-6（模块边界归位）：本类型原先住在 FeishuApiResultReader.cs 里——文件名描述"API 结果解包"，
-// 而本类型是"出站文本截断"，命名与归属不一致（读者按文件名找不到它）。
-// ⚠️ R1.3 评审订正：原文称本类型与 ToolResultJson 构成"循环协作"——**不成立**，
-// 依赖是单向的（TruncateJson → ToolResultJson.ToText），故本项只是**可读性与归属**整理，
-// 不含"消除循环依赖"这一收益。
+// 归属与依赖：本类型与 ToolResultJson 的依赖是<b>单向</b>的（TruncateJson → ToolResultJson.ToText），
+// 不构成循环协作；"出站文本截断"与 FeishuApiResultReader（"API 结果解包"）是两件事，勿合并。
 
 /// <summary>
 /// 工具结果文本工具：白名单投影（JsonNode 构建，AOT 安全——无反射序列化）与超长截断。

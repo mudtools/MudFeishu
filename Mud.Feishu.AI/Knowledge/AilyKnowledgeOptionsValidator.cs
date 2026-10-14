@@ -14,10 +14,10 @@ namespace Mud.Feishu.AI.Knowledge;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>为什么必须显式注册（R2-10）</b>：<c>AilyKnowledgeOptions</c> 早有 <c>Validate()</c>，但它此前<b>只</b>在
-/// 解析处（<c>AddFeishuAilyKnowledge</c> 的工厂里）被调用——即"用到才校验"。而该选项的解析点是
-/// <c>AilyKnowledgeProvider</c>，其唯一消费者是"知识检索"，于是<b>配错的宿主会在第一次真实提问时才炸</b>，
-/// 而不是启动期。与 <see cref="Agents.FeishuAgentOptions"/>（注册器 + <c>ValidateOnStart</c>）对齐后，
+/// <b>为什么必须显式注册</b>：<c>Validate()</c> 若<b>只</b>在解析处（<c>AddFeishuAilyKnowledge</c> 的工厂里）
+/// 被调用，就是"用到才校验"；而该选项的解析点是 <c>AilyKnowledgeProvider</c>，其唯一消费者是
+/// "知识检索"，于是<b>配错的宿主会在第一次真实提问时才炸</b>，而不是启动期。
+/// 与 <see cref="Agents.FeishuAgentOptions"/>（注册器 + <c>ValidateOnStart</c>）对齐后，
 /// 配置错误在启动期响亮失败。
 /// </para>
 /// <para>

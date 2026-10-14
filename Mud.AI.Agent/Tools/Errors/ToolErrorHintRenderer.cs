@@ -97,7 +97,7 @@ public static class ToolErrorHintRenderer
 
     /// <summary>
     /// 授权类：投射<b>工具声明的 scope</b>（事实）并给出宿主侧动作——
-    /// <b>不</b>断言平台是否已开通（无可靠判据，见 DP-R7-4）。
+    /// <b>不</b>断言平台是否已开通（无可靠判据）。
     /// </summary>
     private static string RenderAuthorization(ToolError error)
     {

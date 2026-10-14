@@ -10,29 +10,22 @@ using Microsoft.Extensions.AI;
 namespace Mud.Feishu.AI.Agents;
 
 /// <summary>
-/// 框架（MAF <c>ApprovalResponseBindingChatClient</c>）记录的「待人工确认的工具调用」状态桥（R5-11 / R5-12）。
+/// 框架（MAF <c>ApprovalResponseBindingChatClient</c>）记录的「待人工确认的工具调用」状态桥。
 /// </summary>
 /// <remarks>
+/// <b>为什么读框架自身的记录而非 SDK 另建一份</b>：MAF 绑定层在<b>产出审批请求的那一轮</b>就把模型原始
+/// <see cref="ToolApprovalRequestContent"/>（含真实 <see cref="ToolCallContent"/>）写进<b>会话状态袋</b>，并在下一轮按
+/// <c>RequestId</c> 绑定人类响应——这是批准资格的唯一权威。SDK 再存副本会产生<b>两个真相来源</b>：MAF 的消费/清理时机
+/// （成功轮之后、callId 冲突毒化、会话重建）SDK 无法完整观测 ⇒ 副本必然漂移，后果是 SDK 以为「仍待确认」而框架已遗忘，
+/// 续跑轮被绑定层丢弃响应 ⇒ 框架抛错。故本类只做「读取 + 清理」的桥接，<b>不新增任何 SDK 状态键</b>。
 /// <para>
-/// <b>为什么读取框架自身的记录、而不是 SDK 另建一份</b>（R5 审查的架构裁决）：
-/// MAF 的绑定层在<b>模型产出审批请求的那一轮</b>就把模型原始 <see cref="ToolApprovalRequestContent"/>
-/// （含真实 <see cref="ToolCallContent"/>）写进<b>会话状态袋</b>，并且在<b>下一轮</b>按
-/// <c>RequestId</c> 绑定人类响应——这是批准资格的唯一权威来源（"批准只能来自框架记录过的请求"）。
-/// SDK 若再存一份自己的副本，会产生<b>两个真相来源</b>：MAF 消费/清理的时机（成功轮之后、
-/// callId 冲突毒化、会话重建）SDK 无法完整观测，副本必然漂移——漂移的后果是 SDK 以为「仍待确认」
-/// 而框架已遗忘，续跑轮被绑定层丢弃响应 ⇒ 框架抛错。故本类只做「读取 + 清理」的桥接，
-/// <b>不新增任何 SDK 状态键</b>（对齐 R5 §0.4「不新增配置键」的克制精神）。
+/// <b>对框架内部键的耦合与守卫</b>：<see cref="FrameworkStateKey"/> 取自 MAF 的
+/// <c>ApprovalResponseBindingChatClient.StateBagKey</c>（该类型为 <c>internal</c>，无法在编译期引用）；
+/// 耦合由契约守卫以反射锁定——MAF 改名即用例转红，避免静默失效。
 /// </para>
 /// <para>
-/// <b>对框架内部键的耦合与守卫</b>：<see cref="FrameworkStateKey"/> 取自 MAF
-/// <c>Microsoft.Agents.AI.ApprovalResponseBindingChatClient.StateBagKey</c>（该类型为 internal，
-/// 无法在编译期引用）。此耦合由契约守卫用例
-/// <c>AgentContractGuards.FrameworkPendingApprovalStateKey_ShouldMatchMachineAgentsAiConstant</c>
-/// 以反射方式锁定：MAF 改名即用例转红，避免静默失效。
-/// </para>
-/// <para>
-/// <b>读失败一律按「无待确认项」处理</b>（R4-7 同款收口：状态袋值是惰性反序列化的，
-/// 坏值只在首次类型化读取时抛，不得让本桥成为新的毒化点；取消原样传播）。
+/// <b>读失败一律按「无待确认项」处理</b>：状态袋值是惰性反序列化的，坏值只在首次类型化读取时抛，不得让本桥成为新的毒化点；
+/// 取消原样传播。
 /// </para>
 /// </remarks>
 internal static class FeishuPendingApprovalState

@@ -11,45 +11,26 @@ namespace Mud.AI.Attributes;
 /// SDK 工具生成剖面数据载体：承载工具 Schema 生成引擎所需的<b>全部</b>编译期命名事实常量。
 /// </summary>
 /// <remarks>
+/// <b>命名空间即契约</b>：引擎（<c>ProfileContractGuard</c> / <c>SdkToolProfileModel</c>）以硬编码命名空间
+/// <c>Mud.AI.Attributes</c> 识别本特性——改名须同批改引擎常量；与 <see cref="ISdkToolProfile"/>
+/// （标记接口，命名空间 <c>Mud.AI</c>）成对使用（标了本特性就必须实现该接口，反之亦然，由诊断 <c>SDKT001</c> 强制）。
 /// <para>
-/// v2.3 随引擎进仓（原 <c>Mud.HttpUtils.Attributes.SdkToolProfileAttribute</c>）：
-/// 引擎（<c>ProfileContractGuard</c> / <c>SdkToolProfileModel</c>）以<b>硬编码命名空间
-/// <c>Mud.AI.Attributes</c></b> 识别本特性——命名空间即契约，改名须同批改引擎常量。
+/// <b>为什么全部是字符串常量</b>：源生成器运行在编译器进程内，无法执行任何用户代码、只能读编译期常量
+/// ⇒「策略」也只能表达为枚举值 + 分隔串标记表，而非委托。
 /// </para>
 /// <para>
-/// 与 <see cref="ISdkToolProfile"/>（标记接口，命名空间 <c>Mud.AI</c>）成对使用：标了本特性就必须实现该接口，反之亦然，
-/// 由编译期守卫诊断 <c>SDKT001</c> 强制。引擎经 <c>AttributeData</c> 读取本特性的构造参数与命名参数，
-/// 产出编译期值对象 <c>SdkToolProfileModel</c>。
+/// <b>有意不入槽的派生名</b>：凡能由 <see cref="ProductPrefix"/> / <see cref="ProductPluralPrefix"/> 完全推导的
+/// 产物名都不设槽（<c>{P}Schemas</c>、<c>{P}Names</c>、<c>{P}Contracts</c>、<c>{P}Args/*</c>、<c>{P}DomainRegistrars/*</c>、
+/// <c>{P}Guidance</c>、<c>{Plural}ServiceCollectionCoreExtensions</c>、<c>{P}CapabilityCatalog</c>）——消费方在源码中
+/// <b>硬引用</b>这些类型必须按派生名书写，否则 CS0103；完整槽清单与逐槽依据见本仓唯一剖面声明 <c>Mud.Feishu.AI.Tools.SdkProfile.FeishuToolProfile</c>。
 /// </para>
-/// <para>
-/// <b>为什么全部是字符串常量</b>：源生成器运行在编译器进程内，无法执行任何用户代码，
-/// 只能读编译期常量。因此「策略」也只能表达为枚举值 + 分隔串标记表，而非委托。
-/// </para>
-/// <para>
-/// <b>有意<b>不</b>入槽的派生名</b>：产物名中凡是能由
-/// <see cref="ProductPrefix"/> / <see cref="ProductPluralPrefix"/> 完全推导的，都不设槽：
-/// <c>{P}Schemas</c>、<c>{P}Names</c>、<c>{P}Contracts</c>、<c>{P}Args/*</c>、
-/// <c>{P}DomainRegistrars/*</c>、<c>{P}Guidance</c>、<c>{Plural}ServiceCollectionCoreExtensions</c>、
-/// <c>{P}CapabilityCatalog</c>。消费方若在源码中<b>硬引用</b>这些类型，必须按派生名书写，否则 CS0103。
-/// </para>
-/// </remarks>
 /// <example>
 /// <code>
-/// [SdkToolProfile("Feishu",
-///     SdkNamespaceRoot = "Mud.Feishu",
-///     ProductPrefix = "FeishuTool",
-///     DiagnosticPrefix = "MUDFT",
-///     DiagnosticCategory = "MudFeishu.AI",
-///     ToolAttributeName = "AgentTool",
-///     ToolAttributeNamespace = "Mud.AI.Abstractions.Tools",
-///     TokenKindStrategy = TokenKindDerivationStrategy.NamePrefix,
-///     TokenKindMarkers = "IFeishuTenant=Tenant;IFeishuUser=User",
-///     SchemaExtensionKey = "x-feishu",
-///     OwnerAssembly = "Mud.Feishu.AI.Tools",
-///     /* …其余槽见设计文档清单… */)]
-/// sealed class FeishuToolProfile : ISdkToolProfile { }
+/// [SdkToolProfile("Feishu", SdkNamespaceRoot = "Mud.Feishu", ProductPrefix = "FeishuTool", DiagnosticPrefix = "MUDFT", SchemaExtensionKey = "x-feishu", OwnerAssembly = "Mud.Feishu.AI.Tools")]
+/// public sealed class FeishuToolProfile : ISdkToolProfile { }
 /// </code>
 /// </example>
+/// </remarks>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
 public sealed class SdkToolProfileAttribute : Attribute
 {

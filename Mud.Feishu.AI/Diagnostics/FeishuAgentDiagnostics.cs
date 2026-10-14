@@ -55,7 +55,7 @@ internal static class FeishuAgentDiagnostics
     /// <summary>Span 属性（OTel GenAI 语义约定附加面）：Agent 名。</summary>
     /// <remarks>
     /// 与 <see cref="TagAgentName"/> 同值不同键：后者是项目自有面（宿主仪表盘已依赖，<b>不得改名</b>，
-    /// 改名属破坏性变更——见 R2-13「降级 1」）。本常量只做<b>附加式</b>对齐。
+    /// 改名属破坏性变更）。本常量只做<b>附加式</b>对齐。
     /// </remarks>
     public const string TagGenAiAgentName = "gen_ai.agent.name";
 
@@ -100,8 +100,8 @@ internal static class FeishuAgentDiagnostics
         var activity = FeishuActivitySource.Instance.StartActivity(
             $"feishu.agent.{operation}", ActivityKind.Internal);
 
-        // R2-13（可选）：附加 OTel GenAI 语义约定属性（**只增不改**——feishu.* 面保持不变，
-        // 改名会让已依赖它的宿主仪表盘失效）。agent 调用恒为 invoke_agent，
+        // 附加 OTel GenAI 语义约定属性：**只增不改**——feishu.* 面保持不变，
+        // 改名会让已依赖它的宿主仪表盘失效。agent 调用恒为 invoke_agent，
         // 流式/非流式的区分仍在 feishu.agent.operation 上。
         activity?.SetTag(TagAgentName, agentName)
                 .SetTag(TagGenAiAgentName, agentName)

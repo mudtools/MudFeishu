@@ -10,33 +10,27 @@ using System.Text.Json.Nodes;
 namespace Mud.AI.Agent.Tools;
 
 /// <summary>
-/// R-1：<b>工具出站唯一出口</b>——一切回填模型的文本（成功信封 / 手拼信封 / 错误载荷）都经此完成
+/// <b>工具出站唯一出口</b>——一切回填模型的文本（成功信封 / 手拼信封 / 错误载荷）都经此完成
 /// 「序列化 → <c>MaxToolResultLength</c> 截断 → <c>Truncated</c>/<c>TruncationReason</c> 标记」。
 /// </summary>
 /// <remarks>
+/// <b>为什么需要它</b>：截断必须是「出口的性质」而非「某几个执行器记得写的一步」——后者下，手拼信封
+/// <b>静默截断</b>（<c>Truncated</c> 恒 <c>false</c> ⇒ 模型把不完整结果当完整事实，OTel <c>tag_truncated</c>
+/// 恒 false 使监控对截断率失明），写工具回执信封则<b>完全无预算意识</b>；收口到本类型后这两种失败模式结构上不可能出现。
 /// <para>
-/// <b>为什么需要它（B-1 的根因）</b>：截断此前是"某几个执行器记得写的一步"，而不是"出口的性质"。
-/// 于是 8 处手拼信封产出<b>静默截断</b>（<c>Truncated</c> 恒 <c>false</c> ⇒ 模型把不完整结果当完整事实，
-/// 且 OTel 的 <c>tag_truncated</c> 恒 false 使监控对截断率完全失明），另有 12 处写工具回执信封
-/// <b>完全无预算意识</b>。收口到本类型后，这两个失败模式在结构上不可能再出现。
+/// <b>无状态（有意）</b>：全部方法显式接收 <c>maxLength</c>，<b>不</b>持有长度——库内有两个出口持有者
+/// （<c>ToolExecutor</c> 为 <c>readonly struct</c>，写工具用 <c>0</c> 表示无预算；<c>FeishuToolBinding</c>
+/// 为持 <c>FeishuAgentOptions</c> 的 <c>sealed class</c>），本类型若也持长度，两者各 new 一个实例 ⇒
+/// 「唯一出口」退化为「唯一实现」并多出两个状态持有者。
 /// </para>
 /// <para>
-/// <b>无状态（有意）</b>：全部方法显式接收 <c>maxLength</c> 形参，<b>不</b>持有长度。
-/// 原因：库内有两个出口持有者——<c>ToolExecutor</c>（<c>readonly struct</c>，per-method 实例，
-/// 写工具用 <c>0</c> 表示"无预算"）与 <c>FeishuToolBinding</c>（<c>sealed class</c>，持
-/// <c>FeishuAgentOptions</c>）。若本类型也持长度，两者各自 new 一个实例 ⇒ "唯一出口"退化为
-/// "唯一实现"，还多出两个状态持有者。
+/// <b>净化不在此处</b>：净化属「模型可见」边界而非「工具结果构造」边界——<c>FeishuToolBinding</c> 第 ⑥ 步
+/// 对所有执行器产出统一施加（无开关、不可绕过），执行链自身生成的拒绝/异常文本经 <c>EgressResult</c> 净化；
+/// 本类型只管<b>预算与标记</b>（含错误载荷的单一构造）。
 /// </para>
 /// <para>
-/// <b>为什么净化不在这里</b>：净化（<c>ToolResultSanitizer</c>）属于<b>"模型可见"边界</b>而非
-/// "工具结果构造"边界——它在 <c>FeishuToolBinding</c> 的第 ⑥ 步对所有执行器产出统一施加
-/// （无开关、不可绕过），拒绝/异常等<b>由执行链自身生成</b>的文本则由 <c>EgressResult</c> 净化。
-/// 本类型负责的是<b>预算与标记</b>（以及错误载荷的单一构造），职责边界清晰。
-/// </para>
-/// <para>
-/// <b><c>maxLength</c> ≤ 0 的语义 = 无预算</b>（不截断、不标记）——与
-/// <c>ToolExecutor(string toolName)</c> 单参构造（写工具载荷是单 ID 迷你信封）的既有语义一致。
-/// ⚠️ 不能直接把 0 传给 <c>ToolResultText.Truncate</c>：那里会把 &lt;1 的值钳制为 1 并截成 1 个字符。
+/// <b><c>maxLength</c> ≤ 0 = 无预算</b>（不截断、不标记），与 <c>ToolExecutor(string toolName)</c> 单参构造的
+/// 既有语义一致。⚠️ <b>不能把 0 直传 <c>ToolResultText.Truncate</c></b>——那里把 &lt;1 钳制为 1，会截成 1 个字符。
 /// </para>
 /// </remarks>
 public static class ToolResultPipeline
@@ -94,9 +88,8 @@ public static class ToolResultPipeline
     /// </summary>
     /// <remarks>
     /// <para>
-    /// 存在的理由（B-1 二类）：这些回执此前直接 <c>ToolResult.FromText(ToolResultJson.ToText(...))</c>，
-    /// 即"出口"由每个写执行器各写一次——<b>预算纪律在结构上无处可依</b>
-    /// （同一文件里 <c>FromEnvelope</c> 截断留痕、<c>Untouched</c> 不截断，态度自相矛盾）。
+    /// 存在的理由：写回执的"出口"<b>不得</b>由每个写执行器各写一次（<c>ToolResult.FromText(ToolResultJson.ToText(...))</c>）
+    /// ——那样<b>预算纪律在结构上无处可依</b>（同一个文件里可以既截断留痕又不截断，态度自相矛盾）。
     /// 收口到本方法后，"写回执无预算"是一个<b>被显式声明并被单一地点评审</b>的决策，
     /// 而不是"某处忘了截断"。
     /// </para>

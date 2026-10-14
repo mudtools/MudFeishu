@@ -10,42 +10,29 @@ using System.Text;
 namespace Mud.Feishu.AI.Events;
 
 /// <summary>
-/// 多维表格记录变更事件的上下文装配器（R7 / C2 · T3-5）：把
-/// <c>drive.file.bitable_record_changed_v1</c> 载荷转成结构化 prompt 片段——
-/// <b>只含变化字段的前后 diff</b>（不含全量字段值），让模型"看到变更就知道发生了什么"。
+/// 多维表格记录变更事件的上下文装配器：把 <c>drive.file.bitable_record_changed_v1</c> 载荷转成
+/// 结构化 prompt 片段——<b>只含变化字段的前后 diff</b>（不含全量字段值）。
 /// </summary>
 /// <remarks>
+/// <b>触发条件</b>：<see cref="ConversationRequest.EventKey"/> == <see cref="FeishuEventKeys.BitableRecordChanged"/>
+/// （由 <c>BitableRecordChangedConversationalEventHandler</c> 填充）；其他事件返回 <see langword="null"/>。
 /// <para>
-/// <b>触发条件</b>：<see cref="ConversationRequest.EventKey"/> ==
-/// <see cref="FeishuEventKeys.BitableRecordChanged"/>（由
-/// <c>BitableRecordChangedConversationalEventHandler</c> 填充）。其他事件返回 <see langword="null"/>。
-/// </para>
-/// <para>
-/// <b>为什么不灌全量字段</b>：一张表的整行可能有几十个字段、字段值又是 JSON 字符串（长文本/附件/人员/关联），
-/// 全量灌入会①吃掉 prompt 预算②淹没"到底哪个字段变了"这个唯一有用的信号。故生产者<b>只登记变化字段</b>
+/// <b>为什么不灌全量字段</b>：一张表整行可能有几十个字段、值又是 JSON 字符串（长文本/附件/人员/关联），
+/// 全量灌入会①吃掉 prompt 预算②淹没"到底哪个字段变了"这个唯一有用信号。故生产者<b>只登记变化字段</b>
 /// （见 <see cref="DiffPrefix"/> 约定），装配器再逐行截断。
 /// </para>
 /// <para>
-/// <b>事实键约定</b>（生产者 → 本装配器，单一源为本类的常量）：
-/// <list type="bullet">
-/// <item><term><see cref="FileTokenKey"/> / <see cref="TableIdKey"/> / <see cref="RevisionKey"/> / <see cref="OperatorKey"/></term>
-/// <description>标量事实（多维表格 token / 数据表 / 版本号 / 操作人）。</description></item>
-/// <item><term><see cref="ActionPrefix"/>n</term>
-/// <description>行操作：值为 <c>&lt;action&gt; &lt;record_id&gt;</c>（如 <c>record_edited recABC</c>），
-/// action 的官方取值是 <c>record_added</c>/<c>record_deleted</c>/<c>record_edited</c>。</description></item>
-/// <item><term><see cref="DiffPrefix"/>n</term>
-/// <description>字段差异：值为 <c>&lt;field_id&gt;: &lt;旧值&gt; → &lt;新值&gt;</c>（空侧渲染为 <see cref="EmptyValueToken"/>）。</description></item>
-/// </list>
-/// 未登记的键按原样展示键名（不臆造语义）。
+/// <b>事实键约定</b>（生产者 → 本装配器，单一源为本类常量）：标量键 <see cref="FileTokenKey"/> /
+/// <see cref="TableIdKey"/> / <see cref="RevisionKey"/> / <see cref="OperatorKey"/>；<see cref="ActionPrefix"/>n
+/// 为行操作 <c>&lt;action&gt; &lt;record_id&gt;</c>（action 官方取值 <c>record_added</c>/<c>record_deleted</c>/<c>record_edited</c>）；
+/// <see cref="DiffPrefix"/>n 为字段差异 <c>&lt;field_id&gt;: &lt;旧值&gt; → &lt;新值&gt;</c>（空侧渲染为
+/// <see cref="EmptyValueToken"/>）；未登记的键按原样展示键名（不臆造语义）。
 /// </para>
 /// <para>
-/// <b>预算与截断</b>：单行 ≤ <see cref="ContextBudgets.BitableRecordFieldPreviewLength"/>，
-/// 整段 ≤ <see cref="ContextBudgets.BitableRecordTotalLength"/>，行数 ≤
-/// <see cref="ContextBudgets.MaxFactsPerAssembler"/>；超限<b>截断</b>并留 <see cref="ContextBudgets.TruncationMarker"/>。
-/// </para>
-/// <para>
-/// <b>untrusted 标注</b>：字段值是<b>表格内容</b>（他人可写），整段以
-/// <see cref="ContextBudgets.UntrustedHeader"/> 开头（防提示注入）。
+/// <b>预算与 untrusted</b>：单行 ≤ <see cref="ContextBudgets.BitableRecordFieldPreviewLength"/>、整段 ≤
+/// <see cref="ContextBudgets.BitableRecordTotalLength"/>、行数 ≤ <see cref="ContextBudgets.MaxFactsPerAssembler"/>，
+/// 超限<b>截断</b>并留 <see cref="ContextBudgets.TruncationMarker"/>；字段值是<b>表格内容</b>（他人可写），
+/// 整段以 <see cref="ContextBudgets.UntrustedHeader"/> 开头防提示注入。
 /// </para>
 /// </remarks>
 public sealed class BitableRecordContextAssembler : IContextAssembler

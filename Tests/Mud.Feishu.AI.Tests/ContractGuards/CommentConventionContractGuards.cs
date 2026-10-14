@@ -53,7 +53,7 @@ public class CommentConventionContractGuards
         analysis.CommentLines.Should().BeGreaterThan(5000, "扫描到的注释行数下界（扫描面被截断即假绿）");
 
         var baseline = LoadBaseline(analysis);
-        AssertBaselineIsNotPartOfResolutionSource(baseline);
+        AssertBaselineIsNotPartOfResolutionSource();
 
         var introduced = analysis.UnresolvedAnchors.Except(baseline.Anchors).ToList();
 
@@ -112,6 +112,7 @@ public class CommentConventionContractGuards
     [InlineData("// P2D-3b：摘要输入压缩", "P2D-3b")]
     [InlineData("/// <item>AT-F14 判据</item>", "AT-F14")]
     [InlineData("/// T2 / D2 的结论", "T2 / D2")]
+    [InlineData("/// 按 DP-R7-4 的裁定", "DP-R7-4")]
     public void Scanner_ShouldReportUnresolvedAnchor(string source, string expected)
         => CommentConventionScanner.FindUnresolvedAnchors(source, static _ => false).Should().Contain(
             expected, "不可解析的评审编号必须报红，否则本守卫是假绿");
@@ -123,6 +124,7 @@ public class CommentConventionContractGuards
     [InlineData("/// 普通说明", false)]
     [InlineData("var token = \"R2-01\";", false)]
     [InlineData("var x = 1; // 见 R2-01", false)]
+    [InlineData("/// 标识符里的 xR7-4foo 不算编号", false)]
     public void Scanner_ShouldNotReportAnchor(string source, bool resolves)
         => CommentConventionScanner.FindUnresolvedAnchors(source, _ => resolves).Should().BeEmpty();
 
@@ -131,6 +133,9 @@ public class CommentConventionContractGuards
     [InlineData("/// 此前只被主路径使用", false, true)]
     [InlineData("/// 此前只被主路径使用\n/// 见 documents/AIAgent/decisions/ADR-0001-x.md", false, true)]
     [InlineData("/// 此前只被主路径使用\n/// 见 documents/AIAgent/decisions/ADR-0001-x.md", true, false)]
+    [InlineData("/// 已删除零调用的 Data / FromData", false, true)]
+    [InlineData("/// 任务已删除或解析不出负责人", false, false)]
+    [InlineData("/// 引用消息可能已删除/无权限，跳过即可", false, false)]
     [InlineData("/// 空 user 消息会被 400 拒绝", false, false)]
     public void Scanner_ShouldRequireExistingLink_ForNarration(string source, bool linkExists, bool expected)
     {
@@ -146,11 +151,12 @@ public class CommentConventionContractGuards
         }
     }
 
-    /// <summary>自证：度量口径与预算判据（冻结值不得增长、新文件受硬上限）。</summary>
+    /// <summary>自证：度量口径（代码行断开叙述块；逐参数文档行不计入块长但计入注释行数）。</summary>
     [Theory]
     [InlineData("// a\n// b\nvar x = 1;\n// c", 4, 3, 2)]
     [InlineData("var x = 1;", 1, 0, 0)]
     [InlineData("// a\n// b\n// c", 3, 3, 3)]
+    [InlineData("/// <summary>\n/// 一行说明\n/// </summary>\n/// <param name=\"x\">逐参数文档</param>\n/// <remarks>\n/// 叙述\n/// </remarks>", 7, 7, 3)]
     public void Scanner_ShouldMeasureComments(string source, int lines, int comments, int maxBlock)
         => CommentConventionScanner.Measure(source).Should().Be(new FileCommentStats(lines, comments, maxBlock));
 
@@ -188,17 +194,13 @@ public class CommentConventionContractGuards
     /// </summary>
     /// <remarks>
     /// 基线台账里印着全部未解析记号，一旦被当作解析源，编号就会自我认证（首次固化实测踩中：
-    /// 锚点清单恒为空）。哨兵取一条基线指纹——它只可能出现在基线文件里。
+    /// 锚点清单恒为空）。哨兵取基线文件里的专属标记——它只可能出现在基线里，
+    /// 因此台账清空到零条目时本断言依然有效。
     /// </remarks>
-    /// <param name="baseline">已解析的基线。</param>
-    private static void AssertBaselineIsNotPartOfResolutionSource(CommentBaseline baseline)
-    {
-        var sentinel = baseline.Narration.Concat(baseline.Anchors).FirstOrDefault();
-        sentinel.Should().NotBeNull("基线台账必须非空（空台账说明扫描或写入坏了）");
-        GovernedDocs.Value.Should().NotContain(
-            sentinel!,
+    private static void AssertBaselineIsNotPartOfResolutionSource()
+        => GovernedDocs.Value.Should().NotContain(
+            CommentBaselineJson.ResolutionExclusionMarker,
             "解析源必须排除冻结基线自身——否则台账里的记号会让编号自我认证（守卫变假绿）");
-    }
 
     private static CommentBaseline LoadBaseline(CommentConventionAnalysis analysis)
     {

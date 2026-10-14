@@ -206,6 +206,8 @@ public class DomainRegistrarTests
             .AddFeishuChatgroupTools()
             // 专题一 B1 收官：TrustParty 跨组织互通（8 个只读）——同上。
             .AddFeishuTrustPartyTools()
+            // 专题一 B2 补全域：Aily 数据知识（3 个只读）——同上。
+            .AddFeishuAilyTools()
             // ⚠️ mail **不**在本清单里显式调用：它是「读写混合域」，其 Core 只在写链登记
             // （与 CloudDoc 的评论/权限、Contact 的 contactDepartment 同款陷阱）——
             // 本清单已调 AddFeishuWriteTools，再调 AddFeishuMailTools 会双注册 ⇒

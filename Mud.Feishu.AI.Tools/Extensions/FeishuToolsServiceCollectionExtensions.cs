@@ -179,6 +179,25 @@ public static class FeishuToolsServiceCollectionExtensions
             .AddFeishuChatGroupToolsCore();
 
     /// <summary>
+    /// 按域注册【智能伙伴数据知识】工具（B2 补全域，3 个只读：<c>aily.*</c>）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 本域是 Aily 数据知识的<b>配置清单面</b>（有哪些知识库、什么状态、打了哪些标签）；
+    /// 知识库<b>内容</b>的问答/检索走 <c>knowledge.search</c>（同一数据域的 RAG-A 门面）。
+    /// </para>
+    /// <para>
+    /// ⚠️ 与全域入口的同步纪律：本入口与 <c>AddFeishuReadonlyToolCores</c> 的清单必须**同进同出**
+    /// （<c>DomainRegistrarTests</c> 锁等价性）。
+    /// </para>
+    /// </remarks>
+    public static IServiceCollection AddFeishuAilyTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure)
+            .AddFeishuAilyToolsCore();
+
+    /// <summary>
     /// 按域注册【跨组织互通】工具（B1 收官第五域，8 个只读：<c>trustparty.*</c>）。
     /// </summary>
     /// <remarks>
@@ -415,6 +434,11 @@ public static class FeishuToolsServiceCollectionExtensions
 
                     // hire Offer 执行器 HireOfferTools（1 个只读，**PII**：只给状态，结构性不含金额）。
                     .AddFeishuHireOfferToolsCore()
+
+                    // B2 补全域：Aily 数据知识执行器 AilyTools（3 个只读）。
+                    // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方；
+                    // 且必须与 AddFeishuAilyTools 入口同进同出（DomainRegistrarTests 锁等价性）。
+                    .AddFeishuAilyToolsCore()
 
                     // B1 收官域：TrustParty 跨组织互通执行器 TrustPartyTools（首批 8 个只读）。
                     // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方；

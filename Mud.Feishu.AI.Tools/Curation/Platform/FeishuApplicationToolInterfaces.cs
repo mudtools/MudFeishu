@@ -179,3 +179,76 @@ public interface IFeishuTenantApplicationGetAppVersionTool
         [ToolParameter("lang", "返回文案语言（可选，默认 zh_cn）")] string? lang = null,
         CancellationToken cancellationToken = default);
 }
+
+// ─────────────────── 写面（可见性 / 应用管理开关） ───────────────────
+//
+// 与 ChatGroup 写面同款：SDK XML 注释里**没有任何 scope 字面量**（全目录搜 `xxx:yyy:zzz` 零命中，
+// 只有「需要申请『获取用户 user ID』权限」这类自然语言）⇒ 按官方 API 文档取应用管理写权限并标 ⚠️ 待核对。
+//
+// ⚠️ 本轮**刻意不做**的 17 个写方法（理由写进 Guidance，不做静默缺口）：
+//    · update_owner / update_collaborators：改群主/协作者属高危管理动作，但 SDK 注释连自然语言权限都没给；
+//    · update_contacts_range / update_app_info / update_app_version_status / set_app_badge /
+//      apply_scope / update_feedback_status：配置面，价值低于可见性与管理开关；
+//    · v7 的 update_base / update_ability / update_config / submit_publish：`update_config`
+//      **直写加密密钥与回调白名单**（安全面最高危），且请求体 7 个一级对象深嵌套，扁平参数无法表达；
+//    · upload_app_avatar：`[FormContent]` + `[FilePath]` 本地路径，模型侧不可达（同 vc.apply_reserve 纪律）。
+
+/// <summary>
+/// 工具接口：application.update_visibility（映射 <c>IFeishuTenantV6ApplicationAdmin.UpdateApplicationVisibilityAsync</c>）。
+/// </summary>
+/// <remarks>
+/// 四个名单（可见 / 不可见 × 增 / 删）都是**增量**语义：只改传了的那些，
+/// 与 <c>lingo.update_entity</c> 的覆盖式不同——回执里会点明这一点。
+/// </remarks>
+[FeishuTool("application.update_visibility",
+    Description = "更新应用的可见范围（把应用开放/关闭给指定的用户、部门、用户组，或设为全员可见）——四类名单均为**增量**语义，未传的不动。写操作：默认不启用，需宿主授权（IToolExecutionAuthorizer），需 application:application（⚠️ scope 名待控制台核对）。建议先 dry_run 预演。",
+    RequiredScopes = ["application:application"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV6ApplicationAdmin) + "." + nameof(IFeishuTenantV6ApplicationAdmin.UpdateApplicationVisibilityAsync))]
+public interface IFeishuTenantApplicationUpdateVisibilityTool
+{
+    /// <summary>更新应用可见范围。</summary>
+    /// <returns>白名单投影后的 JSON 回执（app_id + updated + 本次改动条数），超长截断并标记 truncated。</returns>
+    Task<string> UpdateVisibilityAsync(
+        [ToolParameter("app_id", "应用 ID（必填，形如 cli_xxx）", Required = true)] string app_id,
+        [ToolParameter("is_visible_to_all", "是否全员可见（可选；true=全员可见 / false=按名单控制）")] bool? is_visible_to_all = null,
+        [ToolParameter("add_visible_user_ids", "加入**可见**名单的用户 ID 列表（可选）")] string[]? add_visible_user_ids = null,
+        [ToolParameter("add_visible_department_ids", "加入**可见**名单的部门 ID 列表（可选）")] string[]? add_visible_department_ids = null,
+        [ToolParameter("add_visible_group_ids", "加入**可见**名单的用户组 ID 列表（可选）")] string[]? add_visible_group_ids = null,
+        [ToolParameter("del_visible_user_ids", "从**可见**名单移除的用户 ID 列表（可选）")] string[]? del_visible_user_ids = null,
+        [ToolParameter("del_visible_department_ids", "从**可见**名单移除的部门 ID 列表（可选）")] string[]? del_visible_department_ids = null,
+        [ToolParameter("del_visible_group_ids", "从**可见**名单移除的用户组 ID 列表（可选）")] string[]? del_visible_group_ids = null,
+        [ToolParameter("add_invisible_user_ids", "加入**不可见**名单的用户 ID 列表（可选）")] string[]? add_invisible_user_ids = null,
+        [ToolParameter("add_invisible_department_ids", "加入**不可见**名单的部门 ID 列表（可选）")] string[]? add_invisible_department_ids = null,
+        [ToolParameter("add_invisible_group_ids", "加入**不可见**名单的用户组 ID 列表（可选）")] string[]? add_invisible_group_ids = null,
+        [ToolParameter("del_invisible_user_ids", "从**不可见**名单移除的用户 ID 列表（可选）")] string[]? del_invisible_user_ids = null,
+        [ToolParameter("del_invisible_department_ids", "从**不可见**名单移除的部门 ID 列表（可选）")] string[]? del_invisible_department_ids = null,
+        [ToolParameter("del_invisible_group_ids", "从**不可见**名单移除的用户组 ID 列表（可选）")] string[]? del_invisible_group_ids = null,
+        [ToolParameter("user_id_type", "用户 ID 类型（可选：open_id / user_id / union_id）")] string? user_id_type = null,
+        [ToolParameter("department_id_type", "部门 ID 类型（可选：open_department_id / department_id）")] string? department_id_type = null,
+        [ToolParameter("dry_run", "仅预演不下发（可选，默认 false）：返回 app_id 与本次改动条数，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：application.update_management（映射 <c>IFeishuTenantV6Application.UpdateApplicationManagementAsync</c>）。
+/// </summary>
+/// <remarks>
+/// <b>停用应用管理面是影响面极大的动作</b>（管理员将无法在后台管理该应用），
+/// 故虽是普通写（方法名不命中危险词），描述里仍自行标注后果。
+/// </remarks>
+[FeishuTool("application.update_management",
+    Description = "启用或停用应用的管理面（⚠️ 停用后管理员将无法在后台管理该应用，影响面极大——务必先 dry_run 预演并确认 app_id 与 enable 取值）。写操作：默认不启用，需宿主授权，需 application:application（⚠️ scope 名待控制台核对）。",
+    RequiredScopes = ["application:application"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV6Application) + "." + nameof(IFeishuTenantV6Application.UpdateApplicationManagementAsync))]
+public interface IFeishuTenantApplicationUpdateManagementTool
+{
+    /// <summary>启用 / 停用应用管理面。</summary>
+    /// <returns>白名单投影后的 JSON 回执（app_id + enable + updated），超长截断并标记 truncated。</returns>
+    Task<string> UpdateManagementAsync(
+        [ToolParameter("app_id", "应用 ID（必填，形如 cli_xxx）", Required = true)] string app_id,
+        [ToolParameter("enable", "是否启用管理面（必填：true=启用 / false=停用）")] bool? enable = null,
+        [ToolParameter("dry_run", "仅预演不下发（可选，默认 false）：返回 app_id 与将要设置的开关值，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}

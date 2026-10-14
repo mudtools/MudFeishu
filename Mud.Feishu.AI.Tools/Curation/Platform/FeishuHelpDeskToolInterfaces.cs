@@ -150,3 +150,116 @@ public interface IFeishuTenantHelpdeskListAgentSkillsTool
     /// <returns>白名单投影后的 JSON 文本（items：skill_id/name/is_default），超长截断并标记 truncated。</returns>
     Task<string> ListAgentSkillsAsync(CancellationToken cancellationToken = default);
 }
+
+// ─────────────────── 写面（工单服务动作，tenant 侧） ───────────────────
+//
+// 三条纪律：
+// ① scope 同样**零字面量**（SDK 注释只给"需要操作者是当前服务台的管理员或所有者"这类自然语言）
+//    ⇒ 按官方 API 文档取服务台权限并标 ⚠️ 待核对；
+// ② **只做 tenant 侧动作**：服务台 30 个写方法里有 26 个在 `IFeishuUserV1HelpDesk*`
+//    （`[Token(UserAccessToken)]` + `ICurrentUserId`），需要用户身份上下文——本轮不纳入（见下）；
+// ③ 工单**正文/客户对话仍不出站**（沿用读面纪律）：`msg_type=post` 的富文本只回执 message_id，
+//    不回原文内容。
+//
+// ⚠️ 本轮**刻意不做**（理由写进 Guidance，不做静默缺口）：
+//    · `update_ticket` / `create_faq` / `update_faq` / `delete_faq` / `create_category` /
+//      `update_category` / `delete_category` / `update_agent_info` / `*_agent_schedule` /
+//      `*_agent_skill` / `*_customized_field` / `*_notification` / `*_event`：全部落在
+//      **User 侧接口**（需 user_access_token + 当前用户身份上下文，且 Notification/Event
+//      还需 `X-Lark-Helpdesk-Authorization` 头）——属"身份上下文"前置，单独一轮做；
+//    · 其中 7 个命中危险词（delete_faq / delete_category / delete_agent_skill /
+//      delete_agent_schedule / delete_customized_field / cancel_notification_send /
+//      cancel_notification_approve），纳入时**必须**各配四节 affordance 资产。
+
+/// <summary>
+/// 工具接口：helpdesk.start_service（映射 <c>IFeishuTenantV1HelpDeskTicket.StartServiceTicketAsync</c>）。
+/// </summary>
+/// <remarks>
+/// 工单转人工的第一跳：机器人答不了时，用它把会话切到人工客服（可指定客服）。
+/// </remarks>
+[FeishuTool("helpdesk.start_service",
+    Description = "把工单转人工服务（可指定客服；返回 chat_id 与 ticket_id）——「机器人答不了，转人工」的第一跳。写操作：默认不启用，需宿主授权（IToolExecutionAuthorizer），需 helpdesk:ticket（⚠️ scope 名待控制台核对）。",
+    RequiredScopes = ["helpdesk:ticket"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1HelpDeskTicket) + "." + nameof(IFeishuTenantV1HelpDeskTicket.StartServiceTicketAsync))]
+public interface IFeishuTenantHelpdeskStartServiceTool
+{
+    /// <summary>转人工服务。</summary>
+    /// <returns>白名单投影后的 JSON 回执（chat_id + ticket_id + started），超长截断并标记 truncated。</returns>
+    Task<string> StartServiceAsync(
+        [ToolParameter("open_id", "发起转人工的用户 open_id（必填）", Required = true)] string open_id,
+        [ToolParameter("human_service", "是否人工服务（可选，默认 true）")] bool? human_service = null,
+        [ToolParameter("appointed_agents", "指定客服的 ID 列表（可选；不传则由服务台按技能组分配）")] string[]? appointed_agents = null,
+        [ToolParameter("customized_info", "附加自定义信息（可选，≤1024 字符）")] string? customized_info = null,
+        [ToolParameter("dry_run", "仅预演不下发（可选，默认 false）：返回 open_id 与指定客服数，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：helpdesk.answer_user_query（映射 <c>AnswerUserQueryTicketAsync</c>）。
+/// </summary>
+/// <remarks>
+/// 语义是"这条用户提问命中了哪些 FAQ"——把命中的 FAQ 回传给服务台，
+/// 让它据此回复用户。<b>它不直接发消息给用户</b>（那是 <c>create_ticket_message</c>）。
+/// </remarks>
+[FeishuTool("helpdesk.answer_user_query",
+    Description = "回传用户提问命中的 FAQ（event_id + 命中的 FAQ 列表）——用于「用户问的问题对应哪个 FAQ」的场景；注意它只回传命中结果，不直接给用户发消息。写操作：默认不启用，需宿主授权，需 helpdesk:ticket（⚠️ scope 名待控制台核对）。",
+    RequiredScopes = ["helpdesk:ticket"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1HelpDeskTicket) + "." + nameof(IFeishuTenantV1HelpDeskTicket.AnswerUserQueryTicketAsync))]
+public interface IFeishuTenantHelpdeskAnswerUserQueryTool
+{
+    /// <summary>回传 FAQ 命中结果。</summary>
+    /// <returns>白名单投影后的 JSON 回执（ticket_id + faq 命中数 + answered），超长截断并标记 truncated。</returns>
+    Task<string> AnswerUserQueryAsync(
+        [ToolParameter("ticket_id", "工单 ID（必填）", Required = true)] string ticket_id,
+        [ToolParameter("event_id", "用户提问事件 ID（必填，来自服务台事件回调）", Required = true)] string event_id,
+        [ToolParameter("faq_ids", "命中的 FAQ ID 列表（可选，来自 helpdesk.search_faqs / helpdesk.list_faqs）")] string[]? faq_ids = null,
+        [ToolParameter("dry_run", "仅预演不下发（可选，默认 false）：返回 ticket_id 与命中 FAQ 数，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：helpdesk.create_ticket_message（映射 <c>CreateTicketMessageAsync</c>）。
+/// </summary>
+/// <remarks>
+/// <b>富文本不出站</b>：<c>msg_type=post</c> 时请求体的 <c>content</c> 是 JSON 字符串，
+/// 回执只给 <c>message_id</c>，不回原文（与读面"工单正文不出站"纪律一致）。
+/// </remarks>
+[FeishuTool("helpdesk.create_ticket_message",
+    Description = "在工单里发一条消息（msg_type=text 纯文本 / post 富文本）——「回复工单」。⚠️ 富文本内容不出站（回执只给 message_id）；客户对话原文仍不走工具面。写操作：默认不启用，需宿主授权，需 helpdesk:ticket（⚠️ scope 名待控制台核对）。",
+    RequiredScopes = ["helpdesk:ticket"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1HelpDeskTicket) + "." + nameof(IFeishuTenantV1HelpDeskTicket.CreateTicketMessageAsync))]
+public interface IFeishuTenantHelpdeskCreateTicketMessageTool
+{
+    /// <summary>在工单里发消息。</summary>
+    /// <returns>白名单投影后的 JSON 回执（ticket_id + message_id + msg_type），超长截断并标记 truncated。</returns>
+    Task<string> CreateTicketMessageAsync(
+        [ToolParameter("ticket_id", "工单 ID（必填）", Required = true)] string ticket_id,
+        [ToolParameter("msg_type", "消息类型（必填：text=纯文本 / post=富文本）", Required = true)] string msg_type,
+        [ToolParameter("content", "消息内容（必填；text 时为纯文本，post 时为 JSON 字符串）", Required = true)] string content,
+        [ToolParameter("dry_run", "仅预演不下发（可选，默认 false）：返回 ticket_id/msg_type 与内容长度，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：helpdesk.create_bot_message（映射 <c>CreateBotMessageAsync</c>）。
+/// </summary>
+[FeishuTool("helpdesk.create_bot_message",
+    Description = "以服务台机器人身份发一条消息给指定会话或用户（msg_type 支持 text/post/image/interactive）——「主动通知用户」。写操作：默认不启用，需宿主授权，需 helpdesk:ticket（⚠️ scope 名待控制台核对）。",
+    RequiredScopes = ["helpdesk:ticket"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1HelpDeskTicket) + "." + nameof(IFeishuTenantV1HelpDeskTicket.CreateBotMessageAsync))]
+public interface IFeishuTenantHelpdeskCreateBotMessageTool
+{
+    /// <summary>以机器人身份发消息。</summary>
+    /// <returns>白名单投影后的 JSON 回执（message_id + msg_type + receive_type），超长截断并标记 truncated。</returns>
+    Task<string> CreateBotMessageAsync(
+        [ToolParameter("msg_type", "消息类型（必填：text / post / image / interactive）", Required = true)] string msg_type,
+        [ToolParameter("content", "消息内容（必填；JSON 字符串）", Required = true)] string content,
+        [ToolParameter("receiver_id", "接收方 ID（必填；类型由 receive_type 指定）", Required = true)] string receiver_id,
+        [ToolParameter("receive_type", "接收方类型（可选：chat=会话 / user=用户；默认 chat）")] string? receive_type = null,
+        [ToolParameter("dry_run", "仅预演不下发（可选，默认 false）：返回 msg_type 与内容长度，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}

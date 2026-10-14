@@ -330,4 +330,179 @@ public class HelpDeskToolsTests
         var text = payload.ToJsonString();
         text.Should().NotContain("author@example.com").And.NotContain("editor@example.com").And.NotContain("ou_author");
     }
+
+    // ───────────────────── 写面（工单服务动作，tenant 侧） ─────────────────────
+
+    private static Mock<Mud.Feishu.IFeishuTenantV1HelpDeskTicket> WriteTicketClient(
+        Action? onStart = null,
+        Action? onAnswer = null,
+        Action? onTicketMessage = null,
+        Action? onBotMessage = null,
+        int nullDataCode = 0)
+    {
+        var client = new Mock<Mud.Feishu.IFeishuTenantV1HelpDeskTicket>();
+        client.Setup(c => c.StartServiceTicketAsync(
+                It.IsAny<StartServiceTicketRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((StartServiceTicketRequest _, CancellationToken __) =>
+            {
+                onStart?.Invoke();
+                return new FeishuApiResult<StartServiceTicketResult>
+                {
+                    Code = 0,
+                    Data = new StartServiceTicketResult { ChatId = "oc_chat", TicketId = "694" },
+                };
+            });
+
+        client.Setup(c => c.AnswerUserQueryTicketAsync(
+                It.IsAny<string>(), It.IsAny<AnswerUserQueryTicketRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string _, AnswerUserQueryTicketRequest __, CancellationToken ___) =>
+            {
+                onAnswer?.Invoke();
+                return new FeishuNullDataApiResult { Code = nullDataCode, Msg = "ok" };
+            });
+
+        client.Setup(c => c.CreateTicketMessageAsync(
+                It.IsAny<string>(), It.IsAny<CreateTicketMessageRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string _, CreateTicketMessageRequest __, CancellationToken ___) =>
+            {
+                onTicketMessage?.Invoke();
+                return new FeishuApiResult<CreateTicketMessageResult> { Code = 0, Data = new CreateTicketMessageResult { MessageId = "om_msg" } };
+            });
+
+        client.Setup(c => c.CreateBotMessageAsync(
+                It.IsAny<CreateBotMessageRequest>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((CreateBotMessageRequest _, string? __, CancellationToken ___) =>
+            {
+                onBotMessage?.Invoke();
+                return new FeishuApiResult<CreateTicketMessageResult> { Code = 0, Data = new CreateTicketMessageResult { MessageId = "om_bot" } };
+            });
+
+        return client;
+    }
+
+    /// <summary>start_service：dry_run 零调用 + 实发回执带 chat_id / ticket_id。</summary>
+    [Fact]
+    public async Task StartService_DryRun_Then_Real_Should_Return_Receipt()
+    {
+        var calls = 0;
+        var client = WriteTicketClient(onStart: () => calls++);
+
+        var preview = await CreateTools(ticket: client).StartServiceAsync(
+            Args(("open_id", "ou_u"), ("appointed_agents", new[] { "ou_agent" }), ("dry_run", true)),
+            CancellationToken.None);
+
+        calls.Should().Be(0);
+        preview.Text.Should().Contain("未调用下游");
+        preview.Text.Should().Contain("POST");
+
+        var payload = Payload(await CreateTools(ticket: client).StartServiceAsync(
+            Args(("open_id", "ou_u")), CancellationToken.None));
+
+        calls.Should().Be(1);
+        payload["chat_id"]!.GetValue<string>().Should().Be("oc_chat");
+        payload["ticket_id"]!.GetValue<string>().Should().Be("694");
+        payload["started"]!.GetValue<bool>().Should().BeTrue();
+    }
+
+    /// <summary>create_ticket_message：msg_type 只支持 text/post（参数校验早于 dry_run）。</summary>
+    [Fact]
+    public async Task CreateTicketMessage_With_Invalid_MsgType_Should_Reject()
+    {
+        var calls = 0;
+        var client = WriteTicketClient(onTicketMessage: () => calls++);
+
+        var result = await CreateTools(ticket: client).CreateTicketMessageAsync(
+            Args(("ticket_id", "694"), ("msg_type", "image"), ("content", "x"), ("dry_run", true)),
+            CancellationToken.None);
+
+        calls.Should().Be(0, "参数非法时连预演都不放行");
+        result.Text.Should().Contain("tool_error");
+        result.Text.Should().Contain("create_bot_message", "错误信息要指路：image/interactive 走机器人消息");
+    }
+
+    /// <summary>create_ticket_message 实发：回执只给 message_id，富文本内容不出站。</summary>
+    [Fact]
+    public async Task CreateTicketMessage_Should_Project_MessageId_Only()
+    {
+        CreateTicketMessageRequest? captured = null;
+        var client = new Mock<Mud.Feishu.IFeishuTenantV1HelpDeskTicket>();
+        client.Setup(c => c.CreateTicketMessageAsync(
+                It.IsAny<string>(), It.IsAny<CreateTicketMessageRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string _, CreateTicketMessageRequest request, CancellationToken __) =>
+            {
+                captured = request;
+                return new FeishuApiResult<CreateTicketMessageResult> { Code = 0, Data = new CreateTicketMessageResult { MessageId = "om_msg" } };
+            });
+
+        var richText = """{"post":{"zh_cn":{"title":"回复","content":[[{"tag":"text","text":"您好"}]]}}}""";
+        var payload = Payload(await CreateTools(ticket: client).CreateTicketMessageAsync(
+            Args(("ticket_id", "694"), ("msg_type", "post"), ("content", richText)),
+            CancellationToken.None));
+
+        captured!.MsgType.Should().Be("post");
+        captured.Content.Should().Be(richText);
+
+        payload["message_id"]!.GetValue<string>().Should().Be("om_msg");
+        payload["msg_type"]!.GetValue<string>().Should().Be("post");
+        payload["sent"]!.GetValue<bool>().Should().BeTrue();
+        payload.ToJsonString().Should().NotContain("您好", "富文本原文不出站（回执只给 message_id）");
+    }
+
+    /// <summary>answer_user_query：dry_run 零调用 + 实发回执点明"不直接发消息"。</summary>
+    [Fact]
+    public async Task AnswerUserQuery_DryRun_Then_Real_Should_Return_Receipt()
+    {
+        var calls = 0;
+        var client = WriteTicketClient(onAnswer: () => calls++);
+
+        var preview = await CreateTools(ticket: client).AnswerUserQueryAsync(
+            Args(("ticket_id", "694"), ("event_id", "ev_1"), ("faq_ids", new[] { "faq_1" }), ("dry_run", true)),
+            CancellationToken.None);
+
+        calls.Should().Be(0);
+        preview.Text.Should().Contain("未调用下游");
+
+        var payload = Payload(await CreateTools(ticket: client).AnswerUserQueryAsync(
+            Args(("ticket_id", "694"), ("event_id", "ev_1"), ("faq_ids", new[] { "faq_1", "faq_2" })),
+            CancellationToken.None));
+
+        calls.Should().Be(1);
+        payload["faq_count"]!.GetValue<int>().Should().Be(2);
+        payload["answered"]!.GetValue<bool>().Should().BeTrue();
+        payload["notice"]!.GetValue<string>().Should().Contain("不直接给用户发消息");
+    }
+
+    /// <summary>create_bot_message 实发：回执给 message_id。</summary>
+    [Fact]
+    public async Task CreateBotMessage_Should_Project_MessageId()
+    {
+        var client = WriteTicketClient();
+
+        var payload = Payload(await CreateTools(ticket: client).CreateBotMessageAsync(
+            Args(("msg_type", "text"), ("content", "您的工单已处理完毕"), ("receiver_id", "ou_u"), ("receive_type", "user")),
+            CancellationToken.None));
+
+        payload["message_id"]!.GetValue<string>().Should().Be("om_bot");
+        payload["receive_type"]!.GetValue<string>().Should().Be("user");
+        payload["sent"]!.GetValue<bool>().Should().BeTrue();
+    }
+
+    /// <summary>写面软缺席：必须给结构化错误，不得抛异常。</summary>
+    [Fact]
+    public async Task Write_Face_Missing_Client_Should_Return_Structured_Error()
+    {
+        var tools = CreateTools();
+
+        foreach (var result in new[]
+        {
+            await tools.StartServiceAsync(Args(("open_id", "ou_u")), CancellationToken.None),
+            await tools.AnswerUserQueryAsync(Args(("ticket_id", "694"), ("event_id", "ev")), CancellationToken.None),
+            await tools.CreateTicketMessageAsync(Args(("ticket_id", "694"), ("msg_type", "text"), ("content", "x")), CancellationToken.None),
+            await tools.CreateBotMessageAsync(Args(("msg_type", "text"), ("content", "x"), ("receiver_id", "ou_u")), CancellationToken.None),
+        })
+        {
+            result.Text.Should().Contain("未注册", "写面软缺席同样要给可执行说明");
+            result.Text.Should().Contain("tool_error");
+        }
+    }
 }

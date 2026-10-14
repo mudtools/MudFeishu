@@ -49,8 +49,10 @@ internal static class CapabilityModuleAliases
             // 其能力（机器翻译等）被策展为 ai.* 工具。
             ["A"] = ["ai"],
 
-            // Aily 的知识问答能力被策展为 knowledge.search（RAG-A 面）。
-            ["Aily"] = ["knowledge"],
+            // 注：曾有的 ["Aily"] = ["knowledge"] 已删除——B2 补全域落地 aily.* 三个只读工具后，
+            // "Aily" 分组经大小写不敏感比对**天然命中** aily 模块（AliasKeys_ShouldNotBeRealToolModules
+            // 会把这种"键本身即模块"的条目点名为冗余）。knowledge.search（RAG-A 面）的模块归属
+            // 来自它自己的工具名，不依赖本条。
 
             // 应用卡片流式消息（AppCardMessageStream）落 im.send_card 的流式通道。
             ["App"] = ["im"],

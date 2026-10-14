@@ -287,6 +287,15 @@
                      "Mud.Feishu.AI.Tools.Catalog.ToolSchemaDialect"
                  ],
     "reasons":  {
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantApplicationUpdateVisibilityTool":  "B1 写面补全：application.update_visibility 的工具契约（写操作；四类名单增量语义；默认不启用，需宿主授权）。消费方：① FeishuToolRegistry 白名单装配；② MCP server tools/list；③ ApplicationToolsTests（dry_run 零调用 + 空更新拦截 + 回执投影）与 DryRunContractGuards。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantApplicationUpdateManagementTool":  "同 IFeishuTenantApplicationUpdateVisibilityTool：application.update_management 的工具契约（enable 必填——bool? 可空标量 + 执行器校验；停用管理面影响面极大，描述已自行标注）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantHelpdeskStartServiceTool":  "B1 写面补全（tenant 侧）：helpdesk.start_service 的工具契约（工单转人工第一跳）。消费方：① FeishuToolRegistry 白名单装配；② MCP server tools/list；③ HelpDeskToolsTests 与 DryRunContractGuards。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantHelpdeskAnswerUserQueryTool":  "同 IFeishuTenantHelpdeskStartServiceTool：helpdesk.answer_user_query 的工具契约（只回传 FAQ 命中结果，不直接发消息）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantHelpdeskCreateTicketMessageTool":  "同 IFeishuTenantHelpdeskStartServiceTool：helpdesk.create_ticket_message 的工具契约（msg_type 只支持 text/post，参数校验已拦；富文本内容不出站）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantHelpdeskCreateBotMessageTool":  "同 IFeishuTenantHelpdeskStartServiceTool：helpdesk.create_bot_message 的工具契约（机器人主动发消息）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantAilyListDataAssetsTool":  "专题一 B2 补全域（Aily）：aily.list_data_assets 的工具契约（数据知识配置清单面第一跳）。消费方：① FeishuToolRegistry 白名单装配；② MCP server tools/list；③ AilyToolsTests 与工具面守卫（golden / 权限对照表 / scope-authority / descriptor 契约）。与既有契约接口同口径。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantAilyGetDataAssetTool":  "同 IFeishuTenantAilyListDataAssetsTool：aily.get_data_asset 的工具契约（单库详情 + 连接状态与失败原因）。消费方同上。",
+                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantAilyListDataAssetTagsTool":  "同 IFeishuTenantAilyListDataAssetsTool：aily.list_data_asset_tags 的工具契约（标签清单，用于按标签筛库）。消费方同上。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantLingoCreateEntityTool":  "专题一 B1 Lingo 写面：lingo.create_entity 的工具契约（写操作；**免审直写**，需宿主授权）。消费方：① FeishuToolRegistry 白名单装配；② MCP server tools/list；③ LingoToolsTests（dry_run 零调用 + 参数校验 + 回执投影）与 DryRunContractGuards。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantLingoUpdateEntityTool":  "同 IFeishuTenantLingoCreateEntityTool：lingo.update_entity 的工具契约（**覆盖式**语义，未传的释义/别名会被清空，描述与回执 notice 双写）。消费方同上。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantLingoDeleteEntityTool":  "同 IFeishuTenantLingoCreateEntityTool：lingo.delete_entity 的工具契约（**high-risk-write**——命中危险词 delete，配 Affordance 四节资产 + 描述含 dry_run 预演指引）。消费方同上。",

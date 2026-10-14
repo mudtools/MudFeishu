@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using System.Globalization;
 using Mud.Feishu.DataModels.Application;
 
 namespace Mud.Feishu.AI.Tools.Internal;
@@ -504,4 +505,174 @@ internal sealed class ApplicationTools(
                 toolName,
                 $"未注册 {ClientName} 客户端——应用管理能力需宿主启用应用管理 API（软缺席，不影响其它域工具）"))
             : null;
+
+    // ─────────────────── 写面：可见性 / 应用管理开关 ───────────────────
+
+    /// <summary>application.update_visibility：更新应用可见范围（增量语义）。</summary>
+    [FeishuToolHandler(typeof(IFeishuTenantApplicationUpdateVisibilityTool))]
+    public Task<FeishuToolResult> UpdateVisibilityAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.ApplicationUpdateVisibility, _maxResultLength);
+        if (Absent(executor.ToolName, _adminClient) is { } unavailable)
+        {
+            return Task.FromResult(unavailable);
+        }
+
+        return executor.RunAsync(async () =>
+        {
+            var args = ApplicationUpdateVisibilityArgs.Unpack(arguments);
+
+            var changed = CountIds(
+                args.AddVisibleUserIds, args.AddVisibleDepartmentIds, args.AddVisibleGroupIds,
+                args.DelVisibleUserIds, args.DelVisibleDepartmentIds, args.DelVisibleGroupIds,
+                args.AddInvisibleUserIds, args.AddInvisibleDepartmentIds, args.AddInvisibleGroupIds,
+                args.DelInvisibleUserIds, args.DelInvisibleDepartmentIds, args.DelInvisibleGroupIds);
+
+            // 参数校验早于 dry_run：四类名单全空且没给 is_visible_to_all ⇒ 空更新。
+            if (changed == 0 && args.IsVisibleToAll is null)
+            {
+                return Invalid(executor.ToolName,
+                    "至少给一个改动项（is_visible_to_all 或任一 *_{user,department,group}_ids 名单）——"
+                    + "全空等于空更新，平台不会改任何东西。");
+            }
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName,
+                    "PATCH",
+                    "/open-apis/application/v6/applications/{app_id}/visibility",
+                    ToolDryRun.IdempotencyNote(null),
+                    ("app_id", args.AppId?.Length ?? 0),
+                    ("changed_ids", changed),
+                    ("is_visible_to_all", args.IsVisibleToAll is null ? 0 : 1)));
+            }
+
+            var result = await _adminClient!
+                .UpdateApplicationVisibilityAsync(
+                    args.AppId,
+                    new UpdateApplicationVisibilityRequest
+                    {
+                        IsVisibleToAll = args.IsVisibleToAll,
+                        AddVisibleList = BuildIdList(args.AddVisibleUserIds, args.AddVisibleDepartmentIds, args.AddVisibleGroupIds),
+                        DelVisibleList = BuildIdList(args.DelVisibleUserIds, args.DelVisibleDepartmentIds, args.DelVisibleGroupIds),
+                        AddInvisibleList = BuildIdList(args.AddInvisibleUserIds, args.AddInvisibleDepartmentIds, args.AddInvisibleGroupIds),
+                        DelInvisibleList = BuildIdList(args.DelInvisibleUserIds, args.DelInvisibleDepartmentIds, args.DelInvisibleGroupIds),
+                    },
+                    department_id_type: args.DepartmentIdType,
+                    user_id_type: args.UserIdType,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            RequireNullDataSuccess(executor.ToolName, result);
+
+            return ToolResultPipeline.OkReceipt(new JsonObject
+            {
+                ["app_id"] = args.AppId,
+                ["is_visible_to_all"] = args.IsVisibleToAll,
+                ["changed_ids"] = changed,
+                ["updated"] = true,
+                ["notice"] = "本次按**增量**语义提交：四类名单只改传入的那些，未传的一律不动"
+                    + "（与 Lingo 更新词条的覆盖式语义不同）。",
+            });
+        });
+    }
+
+    /// <summary>application.update_management：启用 / 停用应用管理面。</summary>
+    [FeishuToolHandler(typeof(IFeishuTenantApplicationUpdateManagementTool))]
+    public Task<FeishuToolResult> UpdateManagementAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.ApplicationUpdateManagement, _maxResultLength);
+        if (Absent(executor.ToolName, _applicationClient) is { } unavailable)
+        {
+            return Task.FromResult(unavailable);
+        }
+
+        return executor.RunAsync(async () =>
+        {
+            var args = ApplicationUpdateManagementArgs.Unpack(arguments);
+
+            // enable 是 bool?（生成器的解包映射表只收可空标量），必填性在这里补——
+            // 参数校验早于 dry_run，避免模型拿着"预演成功"的信心漏掉这个开关。
+            if (args.Enable is null)
+            {
+                return Invalid(executor.ToolName,
+                    "enable 必填（true=启用管理面 / false=停用）——漏掉它时平台会按原值处理，"
+                    + "而「停用」是影响面极大的动作，不能靠默认值。");
+            }
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return FeishuToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName,
+                    "PUT",
+                    "/open-apis/application/v6/applications/{app_id}/management",
+                    ToolDryRun.IdempotencyNote(null),
+                    ("app_id", args.AppId?.Length ?? 0),
+                    ("enable", args.Enable.Value ? 1 : 0)));
+            }
+
+            var result = await _applicationClient!
+                .UpdateApplicationManagementAsync(
+                    args.AppId,
+                    new UpdateApplicationManagementRequest { Enable = args.Enable },
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            RequireNullDataSuccess(executor.ToolName, result);
+
+            return ToolResultPipeline.OkReceipt(new JsonObject
+            {
+                ["app_id"] = args.AppId,
+                ["enable"] = args.Enable,
+                ["updated"] = true,
+                ["notice"] = args.Enable.Value
+                    ? "已启用应用管理面。"
+                    : "已**停用**应用管理面：管理员将无法在后台管理该应用，需要时用 enable=true 恢复。",
+            });
+        });
+    }
+
+    // ─────────────────── 写面内部工具 ───────────────────
+
+    /// <summary>合成 <see cref="AppIdList"/>；三类全空返回 <c>null</c>（不下发空对象）。</summary>
+    private static AppIdList? BuildIdList(string[]? users, string[]? departments, string[]? groups)
+        => users is { Length: > 0 } || departments is { Length: > 0 } || groups is { Length: > 0 }
+            ? new AppIdList
+            {
+                UserIds = users?.ToList(),
+                DepartmentIds = departments?.ToList(),
+                GroupIds = groups?.ToList(),
+            }
+            : null;
+
+    /// <summary>数一下本次实际传了多少个 ID（dry_run 与回执只报条数，不回原文）。</summary>
+    private static int CountIds(params string[]?[] lists)
+        => lists.Sum(static list => list?.Length ?? 0);
+
+    /// <summary>参数非法：结构化错误（不是异常——异常会逃出执行链，模型看不到可执行信息）。</summary>
+    private static FeishuToolResult Invalid(string toolName, string message)
+        => FeishuToolResult.FromError(FeishuToolBinding.StructuredError(toolName, message));
+
+    /// <summary>
+    /// 空数据结果的成功判定（写方法返回 <see cref="FeishuNullDataApiResult"/>，
+    /// 其 Data 天然为 null，不能用 <c>FeishuApiResultReader.Read</c>——那会把"无载荷"误判为失败）。
+    /// </summary>
+    private static void RequireNullDataSuccess(string toolName, FeishuNullDataApiResult? result)
+    {
+        if (result is null)
+        {
+            throw new ArgumentException("飞书接口无响应（result 为空）");
+        }
+
+        if (result.Code != 0)
+        {
+            throw new ArgumentException(
+                FeishuToolBinding.StructuredError(
+                    toolName,
+                    result.Code,
+                    $"飞书接口返回错误 code={result.Code.ToString(CultureInfo.InvariantCulture)}, "
+                    + $"msg={result.Msg ?? "(无错误信息)"}"));
+        }
+    }
 }

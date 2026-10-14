@@ -218,7 +218,7 @@ static Mud.AI.Agent.Guidance.GuidanceResult.operator !=(Mud.AI.Agent.Guidance.Gu
 static Mud.AI.Agent.Guidance.GuidanceResult.operator ==(Mud.AI.Agent.Guidance.GuidanceResult? left, Mud.AI.Agent.Guidance.GuidanceResult? right) -> bool
 static Mud.AI.Agent.Tools.Errors.ToolError.operator !=(Mud.AI.Agent.Tools.Errors.ToolError? left, Mud.AI.Agent.Tools.Errors.ToolError? right) -> bool
 static Mud.AI.Agent.Tools.Errors.ToolError.operator ==(Mud.AI.Agent.Tools.Errors.ToolError? left, Mud.AI.Agent.Tools.Errors.ToolError? right) -> bool
-static Mud.AI.Agent.Tools.Errors.ToolErrorClassifier.Classify(System.Exception! exception) -> (Mud.AI.Agent.Tools.Errors.ToolErrorCategory Category, string! Subtype)
+static Mud.AI.Agent.Tools.Errors.ToolErrorClassifier.Classify(System.Exception! exception, Mud.AI.Abstractions.Tools.Errors.ITransportFault? transportFault = null) -> (Mud.AI.Agent.Tools.Errors.ToolErrorCategory Category, string! Subtype)
 static Mud.AI.Agent.Tools.Errors.ToolErrorClassifier.ClassifyCode(int? code) -> (Mud.AI.Agent.Tools.Errors.ToolErrorCategory Category, string! Subtype)
 static Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.All.get -> System.Collections.Generic.IReadOnlyList<Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.Entry!>!
 static Mud.AI.Agent.Tools.Errors.ToolErrorCodeMeta.BuildSuggestions(int? code) -> System.Collections.Generic.IReadOnlyList<string!>?

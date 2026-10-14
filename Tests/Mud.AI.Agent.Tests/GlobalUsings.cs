@@ -22,6 +22,9 @@ global using Xunit;
 // Mud.AI.Agent 自身命名空间：中性类型经全局 using 保持"简单名即可引用"
 // （与 Mud.Feishu.AI.Tests 对 Mud.Feishu.AI.* 的既有做法同口径）。
 global using Mud.AI.Abstractions.Conversations;
+global using Mud.AI.Abstractions.Tools.Errors;
 global using Mud.AI.Agent.Conversations;
 global using Mud.AI.Agent.Guidance;
 global using Mud.AI.Agent.Sessions;
+global using Mud.AI.Agent.Tools;
+global using Mud.AI.Agent.Tools.Errors;

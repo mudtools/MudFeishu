@@ -6,6 +6,8 @@
 //  任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.AI.Abstractions.Tools.Errors;
+
 namespace Mud.AI.Agent.Tools.Errors;
 
 /// <summary>
@@ -117,7 +119,8 @@ public static class ToolErrorSubtype
 }
 
 /// <summary>
-/// 工具错误分类器（B2 错误契约）：纯函数——从异常类型 / 飞书 API code 段位映射到
+/// 工具错误分类器（B2 错误契约）：纯函数——从异常类型 / 传输故障状态码（中立端口
+/// <see cref="ITransportFault"/>）/ 产品业务 code 段位映射到
 /// <see cref="ToolErrorCategory"/> 与 <see cref="ToolErrorSubtype"/>，无配置。
 /// </summary>
 /// <remarks>
@@ -141,15 +144,36 @@ public static class ToolErrorClassifier
     private static readonly int[] RetryableApiCodes = [99991400];
 
     /// <summary>从异常类型分类（执行链 catch 路径；取消异常由调用方先行放行，不入此分类）。</summary>
-    public static (ToolErrorCategory Category, string Subtype) Classify(Exception exception) => exception switch
+    /// <param name="exception">被分类的异常。</param>
+    /// <param name="transportFault">
+    /// 传输层故障（产品中立端口）：由产品适配层把自身的传输异常适配后传入；
+    /// <see langword="null"/> 表示该异常不携带传输层语义。
+    /// </param>
+    /// <remarks>
+    /// <b>为什么状态码经端口传入、而不是判定异常类型</b>：本类住在产品中立的
+    /// <c>Mud.AI.Agent</c>，独立产品线纪律要求它<b>不得认识任何具体 HTTP 组件的异常类型</b>
+    /// （v2.3 P1-D 曾直接判定 <c>Mud.HttpUtils.ApiException</c>，已按该纪律下线）；
+    /// "状态码"是唯一的跨产品事实，故经 <see cref="ITransportFault"/> 由适配层供给。
+    /// <b>漏接适配的后果</b>：传输异常会落到 <see cref="System.Net.Http.HttpRequestException"/>
+    /// 兜底分支（<c>retryable/transient</c>）——403 会被误判为可重试，故该接线由消费方的
+    /// 端到端用例锁定（不是靠这里的注释）。
+    /// </remarks>
+    public static (ToolErrorCategory Category, string Subtype) Classify(
+        Exception exception, ITransportFault? transportFault = null)
     {
-        // ApiException 派生自 HttpRequestException，必须先于其判定。
-        Mud.HttpUtils.ApiException api => ClassifyHttpStatus((int?)api.StatusCode),
-        ArgumentException => (ToolErrorCategory.Validation, ToolErrorSubtype.InvalidArgs),
-        System.Net.Http.HttpRequestException => (ToolErrorCategory.Retryable, ToolErrorSubtype.Transient),
-        TimeoutException => (ToolErrorCategory.Retryable, ToolErrorSubtype.Timeout),
-        _ => (ToolErrorCategory.Internal, ToolErrorSubtype.Unexpected),
-    };
+        if (transportFault is not null)
+        {
+            return ClassifyHttpStatus(transportFault.StatusCode);
+        }
+
+        return exception switch
+        {
+            ArgumentException => (ToolErrorCategory.Validation, ToolErrorSubtype.InvalidArgs),
+            System.Net.Http.HttpRequestException => (ToolErrorCategory.Retryable, ToolErrorSubtype.Transient),
+            TimeoutException => (ToolErrorCategory.Retryable, ToolErrorSubtype.Timeout),
+            _ => (ToolErrorCategory.Internal, ToolErrorSubtype.Unexpected),
+        };
+    }
 
     /// <summary>
     /// 从飞书 API code 分类（<c>ToolApiOutcome</c> 解包路径）。

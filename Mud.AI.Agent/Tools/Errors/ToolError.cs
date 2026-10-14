@@ -6,6 +6,8 @@
 //  任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.AI.Abstractions.Tools.Errors;
+
 namespace Mud.AI.Agent.Tools.Errors;
 
 /// <summary>
@@ -36,9 +38,10 @@ namespace Mud.AI.Agent.Tools.Errors;
 /// <b>语义澄清（E-5 校准，2026-10-13）</b>：本字段是"建议"，<b>不宣称</b>"服务端指示"。
 /// 两个来源按优先级取用：
 /// <list type="number">
-/// <item><c>Retry-After</c> 响应头（服务端权威值）——⚠️ <b>当前传输层不暴露响应头</b>：
-/// <c>Mud.HttpUtils.ApiException</c> 只携带 <c>StatusCode</c> / <c>Content</c> / <c>RequestUri</c>，
-/// 故该来源在现行依赖下不可达（已登记为开放项，不是遗漏）；</item>
+/// <item><c>Retry-After</c> 响应头（服务端权威值）——⚠️ <b>中立端口刻意只暴露状态码</b>：
+/// <see cref="ITransportFault"/> 仅携带 <c>StatusCode</c>，响应头不在契约面内，
+/// 故该来源在现行契约下不可达（已登记为开放项，不是遗漏；要打开它须先扩端口并论证
+/// "每个产品都提供得起该事实"）；</item>
 /// <item>本地退避策略给出的建议值（<c>ToolRetryPolicy.ComputeDelay</c> 的首次退避）——
 /// 这是<b>唯一</b>现行产出点，只在 <c>Retryable</c> 类错误上产出。</item>
 /// </list>

@@ -16,6 +16,8 @@ Mud.AI.Abstractions.Tools.AgentToolAttribute.RequiredScopes.get -> string![]!
 Mud.AI.Abstractions.Tools.AgentToolAttribute.RequiredScopes.set -> void
 Mud.AI.Abstractions.Tools.AgentToolAttribute.Source.get -> string?
 Mud.AI.Abstractions.Tools.AgentToolAttribute.Source.set -> void
+Mud.AI.Abstractions.Tools.Errors.ITransportFault
+Mud.AI.Abstractions.Tools.Errors.ITransportFault.StatusCode.get -> int?
 Mud.AI.Abstractions.Tools.Handlers.ToolHandlerAttribute
 Mud.AI.Abstractions.Tools.Handlers.ToolHandlerAttribute.ToolHandlerAttribute(System.Type! toolInterface) -> void
 Mud.AI.Abstractions.Tools.Handlers.ToolHandlerAttribute.ToolInterface.get -> System.Type!

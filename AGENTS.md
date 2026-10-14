@@ -105,6 +105,16 @@ hard cut (no `[Obsolete]` forwards, no shims). Four invariants are mechanically 
   impossible. Instead: neutral port `Mud.AI.Abstractions.Conversations.ISessionStore` +
   `Mud.Feishu.AI.Conversations.ConversationStoreSessionAdapter` (internal). The published SDK
   packages (`Mud.Feishu.Abstractions`, `Mud.Feishu.Redis`) are **byte-untouched**.
+  The lock has a **third axis** (2026-10-14): `Mud.AI.*` must not declare Mud **components**
+  either — `AgentContractGuards.MudAiFamily_ShouldNotDeclareMudHttpUtilsComponent` (scope = the exact
+  `Mud.HttpUtils` component id; sub-packages `.Attributes`/`.Abstractions` would need an explicit
+  scope widening + justification). Same "ports, not the obvious shortcut" reasoning:
+  `Mud.AI.Agent.ToolErrorClassifier` used to pattern-match `Mud.HttpUtils.ApiException`, which made
+  P3 upstreaming impossible and chained the neutral package to the component's single-version line.
+  Now: neutral port `Mud.AI.Abstractions.Tools.Errors.ITransportFault` (`int? StatusCode` only) +
+  `Mud.Feishu.AI.AgentTools.FeishuTransportFaultAdapter` (internal), with the wiring locked
+  end-to-end by `ToolErrorContractGuards.TransportForbidden_ShouldBeClassifiedAsAuthorization`
+  (behaviour, not source text — a missing adapter silently degrades 403 to `retryable/transient`).
 - **`FeishuAgent : DelegatingAIAgent`** (MAF-provided). Do not hand-write `IdCore` / the three
   session hooks / `GetService` again — `FeishuAgent_ShouldDelegateIdentityToInnerAgent` and
   `FeishuAgent_GetService_ShouldReturnOuterInstance` lock the semantics (reflection + behaviour,

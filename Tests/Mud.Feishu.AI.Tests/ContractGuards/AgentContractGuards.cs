@@ -119,6 +119,74 @@ public class AgentContractGuards
             "Mud.AI.Abstractions 是编译期契约层（被源生成器与声明契约消费），必须保持零 MAF 依赖");
     }
 
+    // ────────────────────────────────────────────────────────────────────
+    // 守卫 2b：独立产品线纪律——Mud.AI.* 不得声明 Mud.HttpUtils 组件
+    // ────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// <b>独立产品线纪律（2026-10-14）</b>：<c>Mud.AI.*</c> 工程不得声明 <c>Mud.HttpUtils</c> 组件。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么必须机械锁定</b>：这条纪律此前是<b>敞口</b>——既有中立性守卫只断言
+    /// <c>Mud.AI.*</c> ↛ <c>Mud.Feishu*</c>（见
+    /// <c>SingleToolSurfaceEngineContractGuards.MudAiFamily_ShouldNotDependOnFeishuProjects</c>），
+    /// 而 <c>Mud.HttpUtils</c> 作为"全仓单版本 HTTP 组件"被默认当成无害依赖，
+    /// <c>Mud.AI.Agent</c> 遂长期直接判定 <c>Mud.HttpUtils.ApiException</c>。后果有三：
+    /// ① P3 上游化（迁独立 Mud.AI 仓）时该包依赖被一并带走，独立产品线无法独立发布；
+    /// ② 版本被 <c>TokenMultiAppContractGuards</c> 的「同一组件单版本」契约反向牵制；
+    /// ③ 中立层认识了产品的具体实现类型——与 <c>ISessionStore</c> 端口同一条纪律相悖。
+    /// </para>
+    /// <para>
+    /// <b>修法</b>（不是删功能）：把"状态码"这一跨产品事实经中立端口
+    /// <c>Mud.AI.Abstractions.Tools.Errors.ITransportFault</c> 传入，具体异常类型的识别归产品适配层
+    /// （飞书侧 = <c>Mud.Feishu.AI.AgentTools.FeishuTransportFaultAdapter</c>，
+    /// 端到端接线由 <c>ToolErrorContractGuards.TransportForbidden_ShouldBeClassifiedAsAuthorization</c> 锁定）。
+    /// </para>
+    /// <para>
+    /// <b>射程</b>：只禁<b>组件本身</b>（<c>Mud.HttpUtils</c>）。子包（<c>.Attributes</c>/<c>.Abstractions</c>）
+    /// 可能是声明契约面的需要，若要引入须在此处显式扩射程并补论证（判据 <see cref="DeclaresMudHttpUtilsComponent"/>
+    /// 的自证用例已把"子包不算命中"钉死，扩射程必须同时改它）。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void MudAiFamily_ShouldNotDeclareMudHttpUtilsComponent()
+    {
+        var offenders = ProjectFiles()
+            .Where(static path => Path.GetFileName(path).StartsWith("Mud.AI.", StringComparison.Ordinal)
+                && !IsUnderTestsDirectory(path))
+            .Where(path => DeclaresMudHttpUtilsComponent(File.ReadAllText(path)))
+            .Select(Path.GetFileName)
+            .ToArray();
+
+        offenders.Should().BeEmpty(
+            "Mud.AI.* 是可脱离 Mud 组件独立发布的 AI 产品线：不得声明 Mud.HttpUtils 组件"
+            + "（跨产品事实经中立端口传入，适配实现留在产品层）。违规工程：{0}",
+            string.Join(" / ", offenders));
+    }
+
+    /// <summary>判据自证：只命中组件本身；注释掉的引用与子包不得命中（否则守卫会假红/假绿）。</summary>
+    [Theory]
+    [InlineData("<Project><ItemGroup><PackageReference Include=\"Mud.HttpUtils\" Version=\"3.0.6\" /></ItemGroup></Project>", true)]
+    [InlineData("<Project><ItemGroup><!-- <PackageReference Include=\"Mud.HttpUtils\" Version=\"3.0.6\" /> --></ItemGroup></Project>", false)]
+    [InlineData("<Project><ItemGroup><PackageReference Include=\"Mud.HttpUtils.Attributes\" Version=\"3.0.6\" /></ItemGroup></Project>", false)]
+    [InlineData("<Project><ItemGroup><ProjectReference Include=\"..\\Mud.AI.Abstractions\\Mud.AI.Abstractions.csproj\" /></ItemGroup></Project>", false)]
+    public void MudHttpUtilsComponentJudge_ShouldFlagOnlyTheExactComponent(string csprojContent, bool expected)
+        => DeclaresMudHttpUtilsComponent(csprojContent).Should().Be(expected);
+
+    /// <summary>
+    /// 判据：声明了<b>组件本身</b>（<c>Include="Mud.HttpUtils"</c>——模式含闭引号，
+    /// 故 <c>Mud.HttpUtils.Attributes</c> 这类子包不会命中）。先剔除 XML 注释：注释不是声明。
+    /// </summary>
+    private static bool DeclaresMudHttpUtilsComponent(string csprojContent)
+        => Regex.IsMatch(StripXmlComments(csprojContent), @"Include=""Mud\.HttpUtils""");
+
+    /// <summary>测试工程（<c>Tests/</c> 下）不受本纪律约束：它们要驱动组件、且不随产品线发布。</summary>
+    private static bool IsUnderTestsDirectory(string path)
+        => path.Contains(
+            $"{Path.DirectorySeparatorChar}Tests{Path.DirectorySeparatorChar}",
+            StringComparison.OrdinalIgnoreCase);
+
     private static IEnumerable<string> ProjectFiles()
         => Directory.GetFiles(GetSolutionRoot(), "*.csproj", SearchOption.AllDirectories)
             .Where(p => !p.Contains("obj") && !p.Contains("bin"));

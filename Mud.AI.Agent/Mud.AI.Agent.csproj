@@ -12,13 +12,12 @@
 		<ProjectReference Include="..\Mud.AI.Abstractions\Mud.AI.Abstractions.csproj" />
 	</ItemGroup>
 
-	<ItemGroup>
-		<!-- v2.3 P1-D：ToolErrorClassifier 按 ApiException（Mud.HttpUtils 传输层错误）分类——
-		     ApiException 是 Mud.HttpUtils 生成客户端抛出的传输错误类型，错误分类是运行期通用关注点；
-		     Mud.HttpUtils 是全仓单一版本 HTTP 组件（无生成器），与「引擎不得进消费方」纪律无关。
-		     版本与全仓 Mud.HttpUtils* 同一条版本线（守卫 TokenMultiAppContractGuards 锁定）。 -->
-		<PackageReference Include="Mud.HttpUtils" Version="3.0.6" />
-	</ItemGroup>
+	<!-- v2.3 P1-D 曾在此声明 Mud.HttpUtils（ToolErrorClassifier 直接判定 Mud.HttpUtils.ApiException）。
+	     已于 2026-10-14 按「独立产品线不得引入 Mud 组件」纪律下线：状态码是唯一的跨产品事实，
+	     改经中立端口 Mud.AI.Abstractions.Tools.Errors.ITransportFault 传入；具体异常类型的识别与
+	     适配由产品适配层承担（飞书侧 = Mud.Feishu.AI.AgentTools.FeishuTransportFaultAdapter）。
+	     ⚠️ 不得重新引入 —— 门禁：AgentContractGuards.MudAiFamily_ShouldNotDeclareMudHttpUtilsComponent
+	     （Mud.AI.* 全域禁声明 Mud.HttpUtils 组件本身）。 -->
 
 	<ItemGroup>
 		<!-- P1-H3：MAF 运行期（会话管线骨架）。本包是"AI 运行期"层——MAF 是**产品中立**的运行时框架，

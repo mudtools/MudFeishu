@@ -75,4 +75,35 @@ public sealed class FeishuAgentTelemetry : IAgentTelemetry
             activity.SetTag(FeishuAgentDiagnostics.TagSummarizeUnconverged, true);
         }
     }
+
+    /// <inheritdoc />
+    public IDisposable? StartRun(string agentName, bool streaming)
+        => FeishuAgentDiagnostics.StartRunActivity(
+            agentName,
+            streaming ? FeishuAgentDiagnostics.OperationRunStreaming : FeishuAgentDiagnostics.OperationRun);
+
+    /// <inheritdoc />
+    public void RunCompleted(IDisposable? scope, bool failed, long? inputTokens, long? outputTokens, long? totalTokens)
+    {
+        if (scope is not Activity activity)
+        {
+            return;
+        }
+
+        if (failed)
+        {
+            activity.SetStatus(ActivityStatusCode.Error);
+        }
+
+        // 三项全空时跳过，避免无谓分配（标签名与逐项判空口径经既有 RecordUsage 保持一致）。
+        if (inputTokens is not null || outputTokens is not null || totalTokens is not null)
+        {
+            FeishuAgentDiagnostics.RecordUsage(activity, new UsageDetails
+            {
+                InputTokenCount = inputTokens,
+                OutputTokenCount = outputTokens,
+                TotalTokenCount = totalTokens,
+            });
+        }
+    }
 }

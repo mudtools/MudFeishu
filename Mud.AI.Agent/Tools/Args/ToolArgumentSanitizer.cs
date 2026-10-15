@@ -1,40 +1,33 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-namespace Mud.Feishu.AI.Tools.Args;
+using Mud.AI.Agent.Tools.Security;
+
+namespace Mud.AI.Agent.Tools.Args;
 
 /// <summary>
-/// 入站净化阶段（模型 → 工具参数，AT-B19）：拒绝携带控制字符 / 危险 Unicode 的参数值。
+/// 入站净化阶段（模型 → 工具参数）：拒绝携带控制字符 / 危险 Unicode 的参数值。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>为什么是"拒绝"而不是"剥离"</b>（R3 评审 D-6 拍板 ⓐ）：剥离会<b>静默改写用户内容</b>——
-/// 模型发出去的文本与宿主/下游看到的不一致，属语义污染；拒绝让模型立刻知道自己被拒并可自愈
-/// （去掉控制字符后重试）。这与 <see cref="ToolResultSanitizer"/>（出站）的"剥离"取法不同是<b>有意</b>的：
-/// 出站是"下游真实数据 → 模型上下文"，剥离保留信息；入站是"模型意图 → 下游请求"，改写意图不可接受。
+/// <b>拒绝而非剥离</b>：剥离会静默改写用户内容（模型发出去的与下游看到的不一致），拒绝让模型自愈；
+/// 出站（<see cref="ToolResultSanitizer"/>）取剥离是有意相反的合理取法——下游数据 → 模型上下文，去噪即保留信息。
 /// </para>
 /// <para>
-/// <b>与官方 CLI 的偏离（重要）</b>：官方 <c>internal/charcheck/charcheck.go</c> 直接拒绝
-/// <c>U+200D</c>（零宽连接符）。本仓<b>不能照抄</b>——<c>U+200D</c> 是 Emoji ZWJ 序列的<b>合法组成</b>
-/// （如 👨‍👩‍👧 家庭 emoji 由多个码位 + ZWJ 拼接），拒绝它会把正常的 emoji 输入打成错误。
-/// 故本实现只拒绝<b>孤立</b>的零宽字符（其前后都不是 emoji 基码位时），Emoji ZWJ 序列完整放行
-/// （见 <c>ToolArgumentSanitizerTests</c> 的正反用例矩阵）。
+/// <b>与官方 CLI 的偏离（重要）</b>：官方 <c>charcheck.go</c> 无差别拒绝 <c>U+200D</c>，本仓不能照抄——
+/// 它是 Emoji ZWJ 序列的合法组成，本实现只拒绝孤立的零宽字符（Emoji ZWJ 序列完整放行）。
 /// </para>
 /// <para>
-/// <b>保留 <c>\n</c> / <c>\r</c> / <c>\t</c></b>：<c>im.send_message</c> 的正文允许换行，Tab 亦然。
-/// 但<b>独立的 <c>\r</c>（非 <c>\r\n</c>）被拒</b>——它是 HTTP header 注入（CRLF）的经典载体，
-/// 而下游把参数拼进 multipart/header 的路径无法在类型层面排除。
+/// <b>保留 <c>\n</c>/<c>\r</c>/<c>\t</c></b>；但独立的 <c>\r</c>（非 <c>\r\n</c>）被拒——它是 HTTP 头注入
+/// （CRLF）的经典载体，参数被拼进 multipart/header 的路径无法在类型层面排除。
 /// </para>
-/// <para>
-/// <b>与授权器的顺序</b>：本阶段在 <c>FeishuToolBinding</c> 的①（上下文校验）之后、②（授权门禁）
-/// <b>之前</b>执行——授权器可能把参数写入审计，审计必须看到已被净化的形态（不变量 A5）。
-/// </para>
+/// <para><b>与授权链的顺序</b>：在上下文校验之后、授权门禁<b>之前</b>执行——审计可能记录参数，须看到已净化的形态。</para>
 /// </remarks>
-internal static class ToolArgumentSanitizer
+public static class ToolArgumentSanitizer
 {
     /// <summary>
     /// 单个参数值的长度上限（超限拒绝）。默认 20000 字符：远大于任何真实工具入参
@@ -71,7 +64,7 @@ internal static class ToolArgumentSanitizer
     /// <param name="value">参数值。</param>
     /// <returns>违规描述，或 <see langword="null"/>。</returns>
     /// <remarks>
-    /// <b>WP1 修复（S1）</b>：原先只识别 <c>string</c> 与 <c>IEnumerable&lt;string&gt;</c>，
+    /// <b>WP1 修复（S1）</b>：只识别 <c>string</c> 与 <c>IEnumerable&lt;string&gt;</c>，
     /// 不识别运行时真实形态 <c>JsonElement</c>——导致入站净化在主路径从未生效。
     /// 现经 <see cref="ToolArgumentNormalizer.EnumerateTexts"/> 统一遍历，覆盖所有 JSON 形态。
     /// </remarks>
@@ -170,7 +163,7 @@ internal static class ToolArgumentSanitizer
     }
 
     /// <summary>禁止的 C0/C1 控制字符（保留 <c>\n</c> / <c>\r</c> / <c>\t</c>；<c>\r</c> 由调用方单独处理）。</summary>
-    /// <remarks>R3-05：判定表达式单源到 <see cref="SecurityTextPrimitives.IsControl"/>（出站剥离 / 入站拒绝共用同一事实）。</remarks>
+    /// <remarks>判定表达式单源到 <see cref="SecurityTextPrimitives.IsControl"/>（出站剥离 / 入站拒绝共用同一事实）。</remarks>
     private static bool IsForbiddenControl(char ch)
         => SecurityTextPrimitives.IsControl(ch);
 

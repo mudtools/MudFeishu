@@ -19,7 +19,7 @@ namespace Mud.Feishu.AI.Events;
 /// ——「本装配器对本次事件无贡献」，与既有装配器的空片段语义一致（不污染 prompt）。
 /// <para>
 /// <b>预算与截断（硬约束）</b>：单字段值 ≤ <see cref="ContextBudgets.ApprovalFieldPreviewLength"/>、
-/// 整段 ≤ <see cref="ContextBudgets.ApprovalTotalLength"/>、事实条数 ≤ <see cref="ContextBudgets.MaxFactsPerAssembler"/>；
+/// 整段 ≤ <see cref="ContextBudgets.ApprovalTotalLength"/>、事实条数 ≤ <see cref="AssemblerBudgets.MaxFactsPerAssembler"/>；
 /// 超限<b>截断</b>而非整段丢弃（整段丢弃会让"事件触发的提问"彻底失去上下文，比截断更差）。
 /// </para>
 /// <para>

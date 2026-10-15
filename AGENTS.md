@@ -164,6 +164,36 @@ its remaining waves. Decisions recorded here so they are not re-litigated:
   The summarizer golden uses neutral-default instruction/idKeys; the retrieval golden replicates the
   product header/footer literals — keep them byte-identical when touching either side.
 
+## AI neutralization v3 closure (2026-10-15)
+
+The v3 plan (`.docs/AI/MudFeishu-AI-公共功能中立化重构方案-v3.md`) closed stages 0/A/B/C/D.
+Three conclusions are **settled** — do not re-litigate:
+
+- **Gate decision reversed (P4)**: the queue-timeout path was *not* a defect. The v3 rewrite replaced
+  "`CancelAfter` + infer the source from an external-token flag" with an **explicit timeout overload**
+  (`SemaphoreSlim.WaitAsync(timeout, ct)` returning `false` = timed out). `WhenAny`-vs-`Task.Delay`
+  racing is **banned** — the loser wait task still holds a permit nobody claimed (leak surface).
+  Because behavior is unchanged, this is a **modeling** change: **no `CHANGELOG.md`, no golden
+  re-freeze**; equivalence is asserted by the four-path exception-type cases. Sentinel:
+  `Tests/Mud.AI.Agent.Tests/Conversations/ConcurrencyLimiterTimeoutModelContractGuards.cs` (engine
+  source, comments stripped, must contain no `CancelAfter` / self-made `Task.Delay`).
+- **Tool-surface admission threshold** (from stage A-1, 7 types → `Mud.AI.Agent/Tools/{Args,Errors,Results,Security}`):
+  a type may enter the neutral pool **only if all three hold** — (1) its **non-comment** lines carry
+  **zero product vocabulary** (`feishu`/`appKey`; the sole whitelist is `ConversationRequest.AppKey`);
+  (2) it **does not participate in the generator contract** (see next bullet); (3) it depends on **no
+  `Mud.Feishu.*`** type. `NeutralToolSafetyPrimitives_ShouldStayProductFree` + the tool guards'
+  widened scan face lock this.
+- **Generator contract lock**: `Mud.AI.Generator` emits code that references `ToolArgs` by **simple
+  name**, so `ToolArgs` must stay in its owner assembly (`Mud.Feishu.AI.Tools`) — moving it into the
+  neutral family breaks generation. This is exactly what `SingleToolSurfaceEngineContractGuards`
+  guards (host uniqueness / no dual referencing). `FeishuToolProfile.cs`
+  (`Mud.Feishu.AI.Tools/SdkProfile/`) remains the single source of Feishu naming facts.
+
+**Engine / contract / shell three-way split (第七式 · 第八式)** is a decision, not a style choice —
+see `documents/AIAgent/decisions/ADR-0004-engine-shell-separation.md`. Shells delegate (one statement
+per method) and decide exception semantics; neutral engines never throw product business exceptions
+(they return a nullable marker) and let `OperationCanceledException` pass through untouched.
+
 ## Target Frameworks & MSBuild
 
 `netstandard2.0`, `net6.0`, `net8.0` (recommended), `net10.0`; `#if NET7_0_OR_GREATER` for

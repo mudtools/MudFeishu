@@ -27,6 +27,8 @@ global using Mud.AI.Abstractions.Context;
 global using Mud.AI.Abstractions.Conversations;
 global using Mud.AI.Abstractions.Observability;
 global using Mud.AI.Agent.Approvals;
+// A1（v3）：中立装配工厂（内层 ChatClientAgent 三件套装配）。
+global using Mud.AI.Agent.Agents;
 // N2-e：RAG 契约与预算常量（CorpusDocument / RetrievedChunk / IVectorStore / RetrievalBudgets）。
 global using Mud.AI.Abstractions.Knowledge;
 global using Mud.AI.Abstractions.Tools.Errors;
@@ -40,3 +42,7 @@ global using Mud.AI.Agent.Sessions;
 global using Mud.AI.Agent.Context;
 global using Mud.AI.Agent.Tools;
 global using Mud.AI.Agent.Tools.Errors;
+// 阶段 A-1：B 组工具面共享件（入站净化/摘要/出站净化/安全基元）迁入中立包。
+global using Mud.AI.Agent.Tools.Args;
+global using Mud.AI.Agent.Tools.Results;
+global using Mud.AI.Agent.Tools.Security;

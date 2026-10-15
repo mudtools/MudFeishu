@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------
-//  作者:Mud Studio  版权所有 (c) Mud Studio 2026
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
@@ -7,10 +7,10 @@
 
 using System.Collections.Concurrent;
 
-namespace Mud.Feishu.AI.Tests.Conversations;
+namespace Mud.AI.Agent.Tests.Conversations;
 
 /// <summary>
-/// <see cref="KeyedConversationGate"/> 取消竞态压测（R2-10）。
+/// <see cref="KeyedAsyncGate"/> 取消竞态压测。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -22,14 +22,14 @@ namespace Mud.Feishu.AI.Tests.Conversations;
 /// <see cref="SemaphoreFullException"/>。
 /// </para>
 /// <para>
-/// 本用例在<b>每个 TFM</b> 上运行；一旦失败即启用 R2 方案 §0.5.2 备选方案
+/// 本用例在<b>每个 TFM</b> 上运行；一旦失败即启用备选方案
 /// （<c>WaitAsync(CancellationToken.None)</c> + <c>Task.WhenAny</c> 显式所有权），不再争论语义。
 /// </para>
 /// </remarks>
-public class KeyedConversationGateCancellationStressTests
+public class KeyedAsyncGateCancellationStressTests
 {
-    private const string Key = "feishu:app-a:conversation:chat:oc_stress";
-    private const string OtherKey = "feishu:app-a:conversation:chat:oc_other";
+    private const string Key = "agent-a:conversation:chat:oc_stress";
+    private const string OtherKey = "agent-a:conversation:chat:oc_other";
 
     /// <summary>风暴规模（取消 + 释放并发交错，足以撞出竞态但保持用例秒级完成）。</summary>
     private const int StormSize = 200;
@@ -41,7 +41,7 @@ public class KeyedConversationGateCancellationStressTests
     [Fact]
     public async Task CancelStorm_ShouldNotThrowSemaphoreFullException()
     {
-        var gate = new KeyedConversationGate();
+        var gate = new KeyedAsyncGate();
         var unexpected = new ConcurrentQueue<Exception>();
 
         // 持有者循环：反复「取得 → 极短持有 → 释放」，制造「释放与取消撞在一起」的窗口。
@@ -87,7 +87,7 @@ public class KeyedConversationGateCancellationStressTests
     [Fact]
     public async Task CancelStorm_ShouldNotLeakPermit_SameKeyStillAcquirable()
     {
-        var gate = new KeyedConversationGate();
+        var gate = new KeyedAsyncGate();
 
         // 全部取消（无一取得许可）：若实现泄漏许可，此处就会把许可吃光。
         var cancellations = Enumerable.Range(0, StormSize).Select(_ => Task.Run(async () =>
@@ -106,11 +106,11 @@ public class KeyedConversationGateCancellationStressTests
 
         await Task.WhenAll(cancellations);
 
-        // 关键断言：风暴后同键必须仍能取得许可（否则会话永久卡死）。
+        // 关键断言：风暴后同键必须仍能取得许可（否则该键永久卡死）。
         var acquire = gate.AcquireAsync(Key);
         var completed = await Task.WhenAny(acquire, Task.Delay(TimeSpan.FromSeconds(5)));
 
-        completed.Should().BeSameAs(acquire, "取消风暴不得泄漏许可——否则同键后续 Acquire 永久阻塞（会话卡死）");
+        completed.Should().BeSameAs(acquire, "取消风暴不得泄漏许可——否则同键后续 Acquire 永久阻塞");
 
         var handle = await acquire;
         handle.Dispose();
@@ -125,7 +125,7 @@ public class KeyedConversationGateCancellationStressTests
     [Fact]
     public async Task CancelStorm_CrossKey_ShouldNotCrossContaminate()
     {
-        var gate = new KeyedConversationGate();
+        var gate = new KeyedAsyncGate();
 
         var storms = Enumerable.Range(0, 100).Select(_ => Task.Run(async () =>
         {
@@ -145,7 +145,7 @@ public class KeyedConversationGateCancellationStressTests
 
         var other = gate.AcquireAsync(OtherKey);
         (await Task.WhenAny(other, Task.Delay(TimeSpan.FromSeconds(5)))).Should().BeSameAs(other,
-            "同键的取消风暴不得影响其它会话键（键空闲即回收，跨键并行）");
+            "同键的取消风暴不得影响其它键（键空闲即回收，跨键并行）");
         (await other).Dispose();
     }
 
@@ -153,7 +153,7 @@ public class KeyedConversationGateCancellationStressTests
     [Fact]
     public async Task AcquireAsync_ShouldPropagateOperationCanceledException()
     {
-        var gate = new KeyedConversationGate();
+        var gate = new KeyedAsyncGate();
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 

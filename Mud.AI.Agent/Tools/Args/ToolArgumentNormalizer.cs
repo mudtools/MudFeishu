@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -8,16 +8,16 @@
 
 using System.Globalization;
 
-namespace Mud.Feishu.AI.Tools.Args;
+namespace Mud.AI.Agent.Tools.Args;
 
 /// <summary>
-/// 工具参数值的形态归一化中心（AT-B19 / WP1）：
+/// 工具参数值的形态归一化中心（WP1）：
 /// 运行时参数值来自模型 tool_call 的 JSON 反序列化，字符串参数实际形态为 <see cref="System.Text.Json.JsonElement"/>。
 /// 本类型是该事实的**唯一认知入口**——净化、摘要一律经此遍历，禁止各自 switch。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>根因（S1）</b>：<c>ToolArgumentSanitizer.ValidateValue</c> 原先只识别 <c>string</c> 与
+/// <b>根因（S1）</b>：<c>ToolArgumentSanitizer.ValidateValue</c> 只识别 <c>string</c> 与
 /// <c>IEnumerable&lt;string&gt;</c>，不识别 <c>JsonElement</c>（运行时真实形态），导致入站净化
 /// 在真实主路径**从未生效**。本类型把形态遍历变成单一可复用函数，消除"同一事实在三处被分别发现、第三处漏了"的根因。
 /// </para>
@@ -25,14 +25,14 @@ namespace Mud.Feishu.AI.Tools.Args;
 /// <b>路径形如</b>：<c>text</c> / <c>texts[1]</c> / <c>fields.name</c>——错误消息可直接用于模型自查。
 /// </para>
 /// </remarks>
-internal static class ToolArgumentNormalizer
+public static class ToolArgumentNormalizer
 {
     /// <summary>
     /// 形态判定原语（R-2）：值是否为 JSON <b>文本</b>元素，并给出文本。
     /// </summary>
     /// <remarks>
     /// <b>为什么要有这两条原语（R-2 的收敛点）</b>：<c>JsonElement.ValueKind</c> 的形态判定
-    /// 此前散落在 6 处（<c>ToolArgs</c> 取值、<c>ToolPagination.TryReadBool/TryReadInt</c>、
+    /// 散落在 6 处（<c>ToolArgs</c> 取值、<c>ToolPagination.TryReadBool/TryReadInt</c>、
     /// <c>ToolDryRun.IsRequested</c>、<c>ToolArgsDigester.Describe</c>、<c>ToolResultText.ToJsonNode</c>）。
     /// "同一入参在不同工具里被判成不同形态"是 S1 的同类根因，故把判定收进本类型
     /// （唯一认知入口），其余位置只能<b>薄委托</b>——

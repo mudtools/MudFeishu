@@ -1,0 +1,6 @@
+# 行尾口径：.editorconfig 要求 CRLF（[*.{cs,vb}] end_of_line = crlf），而 git 索引按 LF 归一化保存。
+# 缺本文件时，工作树行尾随各机 core.autocrlf 设置漂移——同一份代码在不同机器上
+# 会让 dotnet format 给出不同结论（Demos 曾因此报 234 处 ENDOFLINE），且这类偏差
+# 因归一化而不可提交。本文件只固化 checkout 行尾（工作树恒定 CRLF），不改动任何既有 blob。
+*.cs text eol=crlf
+*.vb text eol=crlf

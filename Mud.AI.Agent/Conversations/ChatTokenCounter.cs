@@ -56,7 +56,7 @@ public static class ChatTokenCounter
         catch (Exception ex)
         {
             // 编码器初始化失败（词表资源缺失等）→ 保留原因回退估算；不让 token 窗口成为启动风险。
-            // 有意不在此处抛/记日志：失败原因写入 InitializationFailure，由宿主构造期读取并告警一次。
+            // 有意不在此处抛/记日志（守卫白名单）：失败原因写入 InitializationFailure，由宿主构造期读取并告警一次。
             InitializationFailure = $"{ex.GetType().Name}: {ex.Message}";
             return null;
         }

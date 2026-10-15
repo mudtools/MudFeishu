@@ -13,11 +13,29 @@ using Mud.Feishu.AI.Conversations;
 namespace Mud.Feishu.AI.Tests.Conversations;
 
 /// <summary>
-/// 进程内会话闸门测试（AI-FD-D12 P2D-1）：同键串行、跨键并行、Dispose 放行、
-/// 空闲回收（信号量不泄漏）、取消传播。
+/// 进程内会话闸门薄壳（P2D-1）：同键串行、跨键并行、Dispose 放行、
+/// 空闲回收（信号量不泄漏）、取消传播、空键拒绝。
 /// </summary>
+/// <remarks>
+/// <b>壳委托</b>：串行机械语义已在中立引擎 <c>Mud.AI.Agent.Conversations.KeyedAsyncGate</c> 内实现并有其自有用例
+/// （<c>Tests/Mud.AI.Agent.Tests/Conversations/</c>）；本组用例断言的是「经会话契约
+/// <c>IConversationGate</c> 观察到的语义与引擎一致」——即壳真的在委托，而不是另写一套。
+/// </remarks>
 public class KeyedConversationGateTests
 {
+    /// <summary>壳必须持有并委托中立引擎（反射锁定：不是产品侧另写一套串行实现）。</summary>
+    [Fact]
+    public void Gate_ShouldDelegateToNeutralEngine()
+    {
+        var engineFields = typeof(KeyedConversationGate)
+            .GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            .Where(f => f.FieldType == typeof(KeyedAsyncGate))
+            .ToArray();
+
+        engineFields.Should().HaveCount(1,
+            "薄壳必须持有中立引擎实例（第七式「三段分离」的壳段）——没有它意味着产品侧又自持一套串行实现");
+    }
+
     [Fact]
     public async Task AcquireAsync_ShouldSerializeSameKey_AndReleaseOnDispose()
     {

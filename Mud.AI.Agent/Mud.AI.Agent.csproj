@@ -6,6 +6,11 @@
 		<Description>Mud.AI 运行期：工具执行骨架区（ToolExecutor / ToolPagination / ToolDryRun / ToolResult / ToolApiOutcome / ToolResultPipeline / ToolErrorFactory / ToolErrorText / ToolErrorClassifier 等，v2.3 自 Mud.Feishu.AI.Tools 执行器层中立化上移——决策⑥「授权执行链尾两段：强类型直连 + 结果裁剪/错误回填」的承载）；会话管线 / 授权执行链骨架实现随 P1-H 移植。net8.0+ 原生 AOT 兼容。</Description>
 		<PackageTags>Mud.AI;Agent;Tools;ToolExecutor;ToolResult;MudFeishu;AOT</PackageTags>
 		<BaseOutputPath>..\bin</BaseOutputPath>
+		<!-- MEAI001：MessageCountingChatReducer 是 MEAI 唯一内置的历史消息计数裁剪器，
+		     是历史裁剪窗上限（AgentAssemblyFactory 的 maxHistoryMessages 形参）的真实消费点；
+		     本抑制随 A1（v3）装配下沉自 Mud.Feishu.AI 一并迁入（原处同款抑制）。
+		     「实验性」诊断按有意采用抑制——替代方案为自研 IChatReducer（接口已稳定）。 -->
+		<NoWarn>$(NoWarn);MEAI001</NoWarn>
 	</PropertyGroup>
 
 	<ItemGroup>

@@ -35,14 +35,30 @@ public class TurnPipelineContractGuards
     [Fact]
     public void TurnPipeline_ShouldNotHardcodeProductPolicy()
     {
-        var pipelineSource = ReadSource(Path.Combine("Mud.AI.Agent", "Events", "ConversationalTurnPipeline.cs"));
+        // A1（v3）：断言面扩为 {ConversationalTurnPipeline, AgentAssemblyFactory}——
+        // 装配工厂与回合管线一样，是"最易被顺手塞产品逻辑"的中立点。
+        // A-4（v3）：再纳入 ObservedDelegatingAgent——运行期编织基类同样只应承载与模型无关的机械语义。
+        var neutralFaces = new[]
+        {
+            Path.Combine("Mud.AI.Agent", "Events", "ConversationalTurnPipeline.cs"),
+            Path.Combine("Mud.AI.Agent", "Agents", "AgentAssemblyFactory.cs"),
+            Path.Combine("Mud.AI.Agent", "Agents", "ObservedDelegatingAgent.cs"),
+        };
 
-        pipelineSource.Should().NotContain("AllowMissingAppKey",
-            "多租户分级（是否允许缺失租户键）是产品政策——管线必须经 ValidateRequestPolicies 委托消费");
-        pipelineSource.Should().NotContain("AllowToolsWithoutAppKey",
-            "工具链 × 租户键组合约束是产品政策——不得内建于中立管线");
-        pipelineSource.Should().NotContain("IsNullOrWhiteSpace(request.AppKey)",
-            "管线不得出现 appKey 判断分支（读取属性构造 TurnScopeContext 允许，政策分支不允许）");
+        foreach (var face in neutralFaces)
+        {
+            var neutralSource = ReadSource(face);
+
+            neutralSource.Should().NotContain("AllowMissingAppKey",
+                $"多租户分级（是否允许缺失租户键）是产品政策——{Path.GetFileName(face)} 必须经 ValidateRequestPolicies 委托消费");
+            neutralSource.Should().NotContain("AllowToolsWithoutAppKey",
+                $"工具链 × 租户键组合约束是产品政策——不得内建于 {Path.GetFileName(face)}");
+            neutralSource.Should().NotContain("IsNullOrWhiteSpace(request.AppKey)",
+                $"{Path.GetFileName(face)} 不得出现 appKey 判断分支（读取属性构造上下文允许，政策分支不允许）");
+        }
+
+        // 反向（状态键字面量归属）由 AgentContractGuards.AgentStateKeys_ShouldBeUniqueAndConsumed 持有
+        // （与 AgentSessionStore 同款的逐文件负向锚）——此处不重复断言，避免同一事实两处口径。
 
         // 正向锚：政策必须仍在产品薄壳（经委托注入管线），而不是「两边都删」。
         var shellSource = ReadSource(Path.Combine("Mud.Feishu.AI", "Events", "ConversationalFeishuEventHandler.cs"));

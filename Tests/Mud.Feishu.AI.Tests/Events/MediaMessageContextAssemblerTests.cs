@@ -205,7 +205,7 @@ public class MediaMessageContextAssemblerTests
 
         // Assert
         result.Should().NotBeNull();
-        result.Should().Contain(ContextBudgets.TruncationMarker, "超 PerItemLength 应截断");
+        result.Should().Contain(AssemblerBudgets.TruncationMarker, "超 PerItemLength 应截断");
     }
 
     [Fact]

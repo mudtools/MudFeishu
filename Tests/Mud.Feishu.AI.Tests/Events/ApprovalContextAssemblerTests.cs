@@ -115,7 +115,7 @@ public class ApprovalContextAssemblerTests
     {
         var assembler = new ApprovalContextAssembler();
         var facts = new List<EventFact>();
-        for (var i = 0; i < ContextBudgets.MaxFactsPerAssembler * 3; i++)
+        for (var i = 0; i < AssemblerBudgets.MaxFactsPerAssembler * 3; i++)
         {
             facts.Add(new EventFact($"field_{i}", new string('y', 120)));
         }
@@ -125,7 +125,7 @@ public class ApprovalContextAssemblerTests
         fragment.Should().NotBeNull();
         fragment!.Length.Should().BeLessThanOrEqualTo(ContextBudgets.ApprovalTotalLength + ContextBudgets.UntrustedHeader.Length + 64,
             "总预算必须被逐行扣减（否则长事件会把 prompt 挤爆）");
-        fragment.Should().Contain(ContextBudgets.TruncationMarker, "触达上限必须显式标记（不静默丢内容）");
+        fragment.Should().Contain(AssemblerBudgets.TruncationMarker, "触达上限必须显式标记（不静默丢内容）");
     }
 
     /// <summary>顺序契约：审批片段排在发送者信息（10）/ 引用（20）/ 知识（100）之后。</summary>

@@ -27,8 +27,7 @@ namespace Mud.Feishu.AI.Knowledge;
 /// <b>显式装配</b>，不默认开启（省 token）。
 /// </para>
 /// <para>
-/// 三级闸取值单一源已在中立侧（<c>RetrievalBudgets</c>，8 / 3000 / 500）；
-/// <see cref="ContextBudgets"/> 的知识三组常量是对它的转发（既有引用面不变）。
+/// 三级闸取值单一源在中立侧（<c>RetrievalBudgets</c>，8 / 3000 / 500），消费方直接引用该源。
 /// </para>
 /// <para>
 /// <see cref="IContextAssembler.Order"/> = 100：默认装配器之后，问题文本先于知识注入。
@@ -39,8 +38,8 @@ public sealed class KnowledgeContextAssembler : RetrievalContextAssembler
     /// <summary>默认装配顺序（默认装配器之后）。</summary>
     public const int DefaultOrder = 100;
 
-    /// <summary>单条切片注入截断长度（唯一来源：<see cref="ContextBudgets"/> → <c>RetrievalBudgets</c>）。</summary>
-    public const int ChunkPreviewLength = ContextBudgets.KnowledgeChunkPreviewLength;
+    /// <summary>单条切片注入截断长度（唯一来源：<c>Mud.AI.Abstractions.Knowledge.RetrievalBudgets.ChunkPreviewLength</c>）。</summary>
+    public const int ChunkPreviewLength = RetrievalBudgets.ChunkPreviewLength;
 
     /// <summary>
     /// 注入块头部：<b>显式 untrusted 标注</b>（产品事实，注入中立基类）。

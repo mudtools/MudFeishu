@@ -6,9 +6,7 @@
 //  任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Mud.Feishu.AI.Agents;
-
-namespace Mud.Feishu.AI.Tools.Tests.Tools.Errors;
+namespace Mud.AI.Agent.Tests.Tools.Errors;
 
 /// <summary>
 /// B3 限流退避测试（方案 §3.B3 测试要求：假时间源，避免墙钟断言）。

@@ -5,9 +5,6 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Mud.AI.Abstractions.Context;
-using Mud.AI.Abstractions.Knowledge;
-
 namespace Mud.Feishu.AI.Events;
 
 /// <summary>
@@ -23,22 +20,12 @@ namespace Mud.Feishu.AI.Events;
 /// 本类是"事件上下文片段"的预算（每轮事件面），两者<b>相加</b>才是单轮的注入上限——修改任一处都必须同批复算另一方。
 /// </para>
 /// <para>
-/// <b>为什么是常量而非配置键</b>：每个公开配置属性都必须有真实消费点与守卫登记，当前没有第二个取值需求；
-/// 超限策略是<b>截断</b>（不是整段丢弃），见各装配器实现。与产品语义无关的组以<b>常量转发</b>指向中立单一源
-/// （<see cref="RetrievalBudgets"/> / <see cref="AssemblerBudgets"/>），避免两份字面量漂移。
+/// <b>为什么是常量而非配置键</b>：每个公开配置属性都必须有真实消费点与守卫登记，当前没有第二个取值需求；超限策略是<b>截断</b>（不是整段丢弃），见各装配器实现。
+/// 本类只放<b>产品语义常量</b>——与产品无关的共性预算（知识检索三级闸 <c>RetrievalBudgets</c>、事实条数与截断标记 <c>AssemblerBudgets</c>）各有中立单一源，消费方直接引用；转发会让同一数字在两处出现，漂移风险大于便利。
 /// </para>
 /// </remarks>
 public static class ContextBudgets
 {
-    /// <summary>知识检索切片：单条预览上限（字符）。</summary>
-    public const int KnowledgeChunkPreviewLength = RetrievalBudgets.ChunkPreviewLength;
-
-    /// <summary>知识检索切片：单轮注入总上限（字符）。</summary>
-    public const int KnowledgeTotalLength = RetrievalBudgets.TotalLength;
-
-    /// <summary>知识检索切片：单轮注入条数上限。</summary>
-    public const int KnowledgeMaxChunks = RetrievalBudgets.MaxChunks;
-
     /// <summary>审批事件：单个字段值预览上限（字符）。</summary>
     public const int ApprovalFieldPreviewLength = 300;
 
@@ -56,11 +43,6 @@ public static class ContextBudgets
 
     /// <summary>日程事件：单轮注入总上限（字符）。</summary>
     public const int CalendarTotalLength = 800;
-
-    /// <summary>
-    /// 单次装配最多注入的事实条数（防止"事件载荷字段爆炸"把预算吃光）。
-    /// </summary>
-    public const int MaxFactsPerAssembler = AssemblerBudgets.MaxFactsPerAssembler;
 
     /// <summary>
     /// 所有装配器共用的 <b>untrusted 标注</b>（硬约束 ②）：来自事件/用户内容的一切片段必须显式声明
@@ -83,7 +65,4 @@ public static class ContextBudgets
     /// 群聊历史装配器：单轮注入总上限（字符）。
     /// </summary>
     public const int GroupHistoryTotalLength = 2000;
-
-    /// <summary>截断标记（超预算时追加，让模型知道还有内容未注入）。</summary>
-    public const string TruncationMarker = AssemblerBudgets.TruncationMarker;
 }

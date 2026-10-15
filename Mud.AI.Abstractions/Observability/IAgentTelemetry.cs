@@ -11,18 +11,9 @@ namespace Mud.AI.Abstractions.Observability;
 /// 中立遥测端口：把「运行管线要埋的事件点」与「具体遥测实现与命名面」解耦。
 /// </summary>
 /// <remarks>
-/// <para>
-/// <b>为什么是端口而不是直接调 <c>ActivitySource</c></b>：中立包不得认识任何产品的遥测命名面（<c>xxx.agent.*</c> 键、
-/// Span 名、Meter 名都是产品资产——改名会让已依赖它的宿主仪表盘失效）。端口只提供<b>调用入口</b>，所有键名/单位/聚合口径由产品侧决定。
-/// </para>
-/// <para>
-/// <b>句柄语义</b>：<see cref="StartTurn"/> 返回的 <see cref="IDisposable"/> 是本轮的遥测作用域（产品侧通常映射为一个 <c>Activity</c>）；
-/// 返回 <see langword="null"/> 表示不采集。作用域必须在本轮结束时 <c>Dispose</c>，且<b>不得</b>承载业务状态——丢失/为 null 时业务行为必须零差异。
-/// </para>
-/// <para>
-/// <b>维度纪律</b>：租户/会话/用户等键<b>只进 Span 属性</b>，绝不进 Metrics tag（高基数维度会让指标后端爆炸）——
-/// 本端口签名即是体现：<c>conversationKey</c>/<c>tenantKey</c> 只出现在 <see cref="StartTurn"/>，而 <see cref="LlmDuration"/> 只有数值与 agent 名。
-/// </para>
+/// <b>为什么是端口而不是直接调 <c>ActivitySource</c></b>：中立包不得认识任何产品的遥测命名面（<c>xxx.agent.*</c> 键、Span 名、Meter 名都是产品资产——改名会让已依赖它的宿主仪表盘失效）；端口只提供<b>调用入口</b>，键名/单位/聚合口径由产品侧决定。
+/// <b>句柄语义</b>：各 <c>Start*</c> 返回的 <see cref="IDisposable"/> 是阶段作用域（产品侧通常映射为一个 <c>Activity</c>），<see langword="null"/> 表示不采集；作用域必须及时 <c>Dispose</c>，且<b>不得</b>承载业务状态——丢失/为 null 时业务行为必须零差异。
+/// <b>维度纪律</b>：租户/会话等键<b>只进 Span 属性</b>，绝不进 Metrics tag（高基数维度会让指标后端爆炸）：<c>conversationKey</c>/<c>tenantKey</c> 只出现在 <see cref="StartTurn"/>，<see cref="LlmDuration"/> 只有数值与 agent 名，<see cref="RunCompleted"/> 只带标量用量。
 /// </remarks>
 public interface IAgentTelemetry
 {
@@ -73,6 +64,20 @@ public interface IAgentTelemetry
     /// <param name="scope"><see cref="StartSummarize"/> 返回的作用域（可空）。</param>
     /// <param name="converged">重建后是否已收敛到 token 预算内（<see langword="false"/> = 「单条消息即超预算」，产品侧应标记出来以区分它与"摘要失效"）。</param>
     void SummarizeCompleted(IDisposable? scope, bool converged);
+
+    /// <summary>开启一次 Agent 运行（模型运行段）的遥测作用域；<paramref name="streaming"/> 供实现选择操作名。</summary>
+    /// <param name="agentName">Agent 展示名。</param>
+    /// <param name="streaming">本轮是否走流式运行。</param>
+    /// <returns>作用域（实现返回 <see langword="null"/> 表示不采集）。</returns>
+    IDisposable? StartRun(string agentName, bool streaming);
+
+    /// <summary>收口一次运行作用域：记录成败与 token 用量（实现侧决定标签名与单位；未上报的项传 <see langword="null"/>，不得填 0）。</summary>
+    /// <param name="scope"><see cref="StartRun"/> 返回的作用域（可空）。</param>
+    /// <param name="failed">本轮是否以异常结束——失败必须在链路里可见。</param>
+    /// <param name="inputTokens">输入 token 数（<see langword="null"/> = 未上报）。</param>
+    /// <param name="outputTokens">输出 token 数（<see langword="null"/> = 未上报）。</param>
+    /// <param name="totalTokens">总 token 数（<see langword="null"/> = 未上报）。</param>
+    void RunCompleted(IDisposable? scope, bool failed, long? inputTokens, long? outputTokens, long? totalTokens);
 }
 
 /// <summary>默认遥测实现：全部为空操作。</summary>
@@ -119,6 +124,14 @@ public sealed class NoopAgentTelemetry : IAgentTelemetry
 
     /// <inheritdoc />
     public void SummarizeCompleted(IDisposable? scope, bool converged)
+    {
+    }
+
+    /// <inheritdoc />
+    public IDisposable? StartRun(string agentName, bool streaming) => null;
+
+    /// <inheritdoc />
+    public void RunCompleted(IDisposable? scope, bool failed, long? inputTokens, long? outputTokens, long? totalTokens)
     {
     }
 }

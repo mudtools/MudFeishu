@@ -55,7 +55,7 @@ public sealed class MediaMessageContextAssembler : MediaContextAssembler
         : base(
             order: DefaultOrder,
             untrustedHeader: ContextBudgets.UntrustedHeader,
-            truncationMarker: ContextBudgets.TruncationMarker,
+            truncationMarker: AssemblerBudgets.TruncationMarker,
             perItemLength: options.PerItemLength,
             logger: logger)
     {
@@ -159,7 +159,7 @@ public sealed class MediaMessageContextAssembler : MediaContextAssembler
         {
             if (JsonNode.Parse(content) is not JsonObject obj)
             {
-                return content.Length > 200 ? content.Substring(0, 200) + ContextBudgets.TruncationMarker : content;
+                return content.Length > 200 ? content.Substring(0, 200) + AssemblerBudgets.TruncationMarker : content;
             }
 
             var sb = new StringBuilder();

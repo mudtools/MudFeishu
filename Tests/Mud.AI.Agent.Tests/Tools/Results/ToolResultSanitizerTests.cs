@@ -5,9 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using System.Text.Json;
-
-namespace Mud.Feishu.AI.Tools.Tests.Tools.Results;
+namespace Mud.AI.Agent.Tests.Tools.Results;
 
 /// <summary>
 /// 出站净化单元测试（方案 §5 AT-B08 / §8.2 R4 的正反两面）。

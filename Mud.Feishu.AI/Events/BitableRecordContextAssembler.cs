@@ -30,8 +30,8 @@ namespace Mud.Feishu.AI.Events;
 /// </para>
 /// <para>
 /// <b>预算与 untrusted</b>：单行 ≤ <see cref="ContextBudgets.BitableRecordFieldPreviewLength"/>、整段 ≤
-/// <see cref="ContextBudgets.BitableRecordTotalLength"/>、行数 ≤ <see cref="ContextBudgets.MaxFactsPerAssembler"/>，
-/// 超限<b>截断</b>并留 <see cref="ContextBudgets.TruncationMarker"/>；字段值是<b>表格内容</b>（他人可写），
+/// <see cref="ContextBudgets.BitableRecordTotalLength"/>、行数 ≤ <see cref="AssemblerBudgets.MaxFactsPerAssembler"/>，
+/// 超限<b>截断</b>并留 <see cref="AssemblerBudgets.TruncationMarker"/>；字段值是<b>表格内容</b>（他人可写），
 /// 整段以 <see cref="ContextBudgets.UntrustedHeader"/> 开头防提示注入。
 /// </para>
 /// </remarks>

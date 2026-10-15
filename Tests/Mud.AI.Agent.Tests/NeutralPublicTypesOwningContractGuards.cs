@@ -84,6 +84,13 @@ public class NeutralPublicTypesOwningContractGuards
         ["ToolResultJsons"] = "ToolResultSanitizerTests",
         ["ToolResultPipeline"] = "ToolResultContentSafetyTests",
         ["ToolResultText"] = "ToolResultSanitizerTests",
+
+        // 阶段 A-1：B 组迁入的 3 个公开类型无同名测试类——形态认知（ToolArgumentNormalizer /
+        // ToolArgsDigester）的行为测试以等价性矩阵承载（该矩阵引用产品 ToolArgs 门面做基准，故留在
+        // 产品测试工程）；安全基元（SecurityTextPrimitives）由出站净化用例承载。
+        ["ToolArgumentNormalizer"] = "ToolArgumentFormEquivalenceTests",
+        ["ToolArgsDigester"] = "ToolArgumentFormEquivalenceTests",
+        ["SecurityTextPrimitives"] = "ToolResultSanitizerTests",
     };
 
     /// <summary>扫描范围：Mud.AI.Agent 的公开类型声明（非接口）。</summary>

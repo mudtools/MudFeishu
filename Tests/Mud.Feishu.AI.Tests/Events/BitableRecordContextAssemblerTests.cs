@@ -148,7 +148,7 @@ public class BitableRecordContextAssemblerTests
     public async Task Assemble_Should_BoundFactCount_AndTotalLength()
     {
         var facts = new List<EventFact>();
-        for (var i = 0; i < ContextBudgets.MaxFactsPerAssembler * 3; i++)
+        for (var i = 0; i < AssemblerBudgets.MaxFactsPerAssembler * 3; i++)
         {
             facts.Add(new EventFact(BitableRecordContextAssembler.DiffPrefix + $"0.{i}", $"fld{i}: 甲 → 乙"));
         }
@@ -159,7 +159,7 @@ public class BitableRecordContextAssemblerTests
         fragment!.Length.Should().BeLessThanOrEqualTo(
             ContextBudgets.BitableRecordTotalLength + ContextBudgets.UntrustedHeader.Length + 64,
             "总预算必须被逐行扣减（否则一次批量导入就能把 prompt 挤爆）");
-        fragment.Should().Contain(ContextBudgets.TruncationMarker, "触达上限必须显式标记（不静默丢内容）");
+        fragment.Should().Contain(AssemblerBudgets.TruncationMarker, "触达上限必须显式标记（不静默丢内容）");
     }
 
     /// <summary>装配顺序：与审批装配器同级（事件事实是本轮问题的背景）。</summary>

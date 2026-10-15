@@ -210,6 +210,12 @@ public class ConversationalTurnPipelineTests
         {
         }
 
+        public IDisposable? StartRun(string agentName, bool streaming) => null;
+
+        public void RunCompleted(IDisposable? scope, bool failed, long? inputTokens, long? outputTokens, long? totalTokens)
+        {
+        }
+
         private sealed class Scope : IDisposable
         {
             public void Dispose()

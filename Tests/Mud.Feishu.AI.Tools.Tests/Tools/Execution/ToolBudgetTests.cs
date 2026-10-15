@@ -23,7 +23,7 @@ public class ToolBudgetTests
     {
         // Arrange：预算 = 1，第一次调用消费后第二次越限
         var inner = new MockAIFunction("test.echo");
-        var budget = new FeishuToolCallBudget(1);
+        var budget = new ToolCallBudget(1);
         using var scope = budget.Begin();
         var decorated = new ToolBudgetAIFunction(inner);
 
@@ -44,43 +44,13 @@ public class ToolBudgetTests
     }
 
     /// <summary>
-    /// 计数原子：并发 TryConsume 不会超过 max。
-    /// </summary>
-    [Fact]
-    public void TryConsume_Concurrent_ShouldNotExceedMax()
-    {
-        const int max = 100;
-        const int threadCount = 10;
-        const int callsPerThread = 20;
-        var budget = new FeishuToolCallBudget(max);
-
-        var allowed = 0;
-        var tasks = Enumerable.Range(0, threadCount)
-            .Select(_ => Task.Run(() =>
-            {
-                var localAllowed = 0;
-                for (var i = 0; i < callsPerThread; i++)
-                {
-                    if (budget.TryConsume())
-                        localAllowed++;
-                }
-
-                Interlocked.Add(ref allowed, localAllowed);
-            }))
-            .ToArray();
-
-        Task.WaitAll(tasks);
-
-        // 原子性：允许数 = max（不超过）
-        allowed.Should().Be(max,
-            "TryConsume 经 Interlocked.Increment 保证原子性——并发调用不允许超过 max");
-        budget.Used.Should().Be(threadCount * callsPerThread,
-            "Used 是实际递增次数（包括越限的递增）");
-    }
-
-    /// <summary>
     /// 预算随 Begin/Dispose 重置：新一轮从 0 开始。
     /// </summary>
+    /// <remarks>
+    /// N2-d：预算类型自身的语义用例（并发原子性 / 0=不限制 / 环境量栈式恢复）已随
+    /// <c>ToolCallBudget</c> 迁入 <c>Tests/Mud.AI.Agent.Tests/Tools/ToolCallBudgetTests</c>；
+    /// 本文件只留<b>装饰器</b>侧用例（越限 → 结构化错误、透传、不可重试）。
+    /// </remarks>
     [Fact]
     public async Task Budget_ShouldReset_PerRun()
     {
@@ -88,7 +58,7 @@ public class ToolBudgetTests
         var decorated = new ToolBudgetAIFunction(inner);
 
         // 第一轮：预算 = 2
-        using (var scope1 = new FeishuToolCallBudget(2).Begin())
+        using (var scope1 = new ToolCallBudget(2).Begin())
         {
             _ = await decorated.InvokeAsync(new AIFunctionArguments());
             _ = await decorated.InvokeAsync(new AIFunctionArguments());
@@ -98,7 +68,7 @@ public class ToolBudgetTests
         }
 
         // 第二轮：新预算 = 2，从 0 开始
-        using (var scope2 = new FeishuToolCallBudget(2).Begin())
+        using (var scope2 = new ToolCallBudget(2).Begin())
         {
             _ = await decorated.InvokeAsync(new AIFunctionArguments());
             _ = await decorated.InvokeAsync(new AIFunctionArguments());
@@ -115,7 +85,7 @@ public class ToolBudgetTests
     public async Task TryConsume_MaxZero_ShouldNotLimit()
     {
         var inner = new MockAIFunction("test.echo");
-        var budget = new FeishuToolCallBudget(0);
+        var budget = new ToolCallBudget(0);
         using var scope = budget.Begin();
         var decorated = new ToolBudgetAIFunction(inner);
 
@@ -137,7 +107,7 @@ public class ToolBudgetTests
         var decorated = new ToolBudgetAIFunction(inner);
 
         // 不 Begin 预算——Current 为 null
-        FeishuToolCallBudget.Current.Should().BeNull();
+        ToolCallBudget.Current.Should().BeNull();
 
         // 任意次数都不拦截
         for (var i = 0; i < 50; i++)
@@ -154,7 +124,7 @@ public class ToolBudgetTests
     public async Task OverBudget_ShouldBeNonRetryable()
     {
         var inner = new MockAIFunction("test.echo");
-        var budget = new FeishuToolCallBudget(1);
+        var budget = new ToolCallBudget(1);
         using var scope = budget.Begin();
         var decorated = new ToolBudgetAIFunction(inner);
 

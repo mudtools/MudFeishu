@@ -60,7 +60,10 @@ public class TokenWindowTests
     {
         var summarizer = new ConversationSummarizer(
             new Mock<IChatClient>().Object,
-            new FeishuAgentOptions { Instructions = "x", SummaryThreshold = 0, MaxHistoryTokens = 10 });
+            new AgentRuntimeOptions { SummaryThreshold = 0, MaxHistoryTokens = 10 },
+            StateKey,
+            summaryInstruction: FeishuSummarizerFacts.SummaryInstruction,
+            idKeys: FeishuSummarizerFacts.IdKeys);
 
         summarizer.ShouldSummarize(historyCount: 2, historyTokens: 100).Should().BeTrue(
             "token 超限触发（先于条数窗口）");
@@ -72,7 +75,10 @@ public class TokenWindowTests
     {
         var summarizer = new ConversationSummarizer(
             new Mock<IChatClient>().Object,
-            new FeishuAgentOptions { Instructions = "x", SummaryThreshold = 4, MaxHistoryTokens = 0 });
+            new AgentRuntimeOptions { SummaryThreshold = 4, MaxHistoryTokens = 0 },
+            StateKey,
+            summaryInstruction: FeishuSummarizerFacts.SummaryInstruction,
+            idKeys: FeishuSummarizerFacts.IdKeys);
 
         summarizer.ShouldSummarize(historyCount: 4, historyTokens: 0).Should().BeTrue("条数阈值先触发者生效");
         summarizer.ShouldSummarize(historyCount: 3, historyTokens: 0).Should().BeFalse();
@@ -90,8 +96,11 @@ public class TokenWindowTests
 
         var summarizer = new ConversationSummarizer(
             client.Object,
-            new FeishuAgentOptions { Instructions = "x", SummaryThreshold = 3, MaxHistoryTokens = 0 },
-            NullLogger.Instance);
+            new AgentRuntimeOptions { SummaryThreshold = 3, MaxHistoryTokens = 0 },
+            StateKey,
+            summaryInstruction: FeishuSummarizerFacts.SummaryInstruction,
+            idKeys: FeishuSummarizerFacts.IdKeys,
+            logger: NullLogger.Instance);
 
         var longText = new string('长', 2000);
         var session = await SessionFactoryAgent.CreateSessionAsync();

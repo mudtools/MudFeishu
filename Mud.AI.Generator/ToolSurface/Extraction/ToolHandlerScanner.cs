@@ -290,14 +290,14 @@ internal static class ToolHandlerScanner
     /// </remarks>
     private static bool CanBeServiceType(ITypeSymbol type)
         => type is INamedTypeSymbol
-           {
-               IsValueType: false,
-               IsUnboundGenericType: false,
-               IsAnonymousType: false,
-               IsTupleType: false,
-               SpecialType: SpecialType.None,
-               TypeKind: TypeKind.Class or TypeKind.Interface,
-           };
+        {
+            IsValueType: false,
+            IsUnboundGenericType: false,
+            IsAnonymousType: false,
+            IsTupleType: false,
+            SpecialType: SpecialType.None,
+            TypeKind: TypeKind.Class or TypeKind.Interface,
+        };
 
     // ────────── 形状校验 ──────────
 

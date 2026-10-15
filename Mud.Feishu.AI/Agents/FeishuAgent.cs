@@ -10,6 +10,8 @@ using Mud.Feishu.AI.Diagnostics;
 
 using Mud.Feishu.Abstractions.Conversations;
 
+using Mud.AI.Agent.Events;
+
 namespace Mud.Feishu.AI.Agents;
 
 /// <summary>
@@ -17,22 +19,17 @@ namespace Mud.Feishu.AI.Agents;
 /// </summary>
 /// <remarks>
 /// <c>ChatClientAgent</c> 负责「模型→生成」，本类负责「会话解析 + 选项装配 + 飞书遥测注入」（组合而非继承，在进入 MAF 前插入飞书特有装配）；
-/// 内部经 <see cref="InMemoryChatHistoryProvider"/> + <see cref="MessageCountingChatReducer"/> 施加
-/// <see cref="FeishuAgentOptions.MaxHistoryMessages"/> 历史裁剪窗。
+/// 内部经 <see cref="InMemoryChatHistoryProvider"/> + <see cref="MessageCountingChatReducer"/> 施加 <see cref="FeishuAgentOptions.MaxHistoryMessages"/> 历史裁剪窗。
 /// <para>
-/// <b>委托语义的归属</b>：内层仍是<b>组合</b>（<c>ChatClientAgent</c> 实例），而 <c>Id</c>/<c>Name</c>/<c>Description</c>/<c>GetService</c>/
-/// 会话三钩子/Run 两钩子由上游 <see cref="DelegatingAIAgent"/> 提供——本类<b>不再手写</b>这些转发成员。前置条件是上游 <c>GetService</c>
-/// 必须「先判自身」：否则 <c>GetService(typeof(AIAgent))</c> 命中内层 <c>ChatClientAgent</c>，宿主经该引用调用将绕过本类注入的飞书遥测与摘要
-/// （由 <c>AgentContractGuards</c> 的行为断言 + <c>FeishuAgentTests</c> 锁定）。
+/// <b>委托语义的归属</b>：<c>Id</c>/<c>Name</c>/<c>Description</c>/<c>GetService</c>/会话三钩子/Run 两钩子由上游 <see cref="DelegatingAIAgent"/> 提供——本类<b>不再手写</b>这些转发成员。
+/// 前置条件是上游 <c>GetService</c> 必须「先判自身」：否则 <c>GetService(typeof(AIAgent))</c> 命中内层 <c>ChatClientAgent</c>，宿主经该引用调用将绕过本类注入的飞书遥测与摘要（由 <c>AgentContractGuards</c> + <c>FeishuAgentTests</c> 锁定）。
 /// </para>
 /// <para>
-/// <b>会话持久化</b>：<see cref="IConversationStore"/> 只存取序列化后的会话 JSON，本类是序列化的唯一归属
-/// （<c>SerializeSessionAsync</c>/<c>DeserializeSessionAsync</c> 经 <see cref="DelegatingAIAgent"/> 委托内层 MAF Agent）；
-/// <see cref="GetOrCreateSessionAsync"/> / <see cref="SaveSessionAsync"/> 为事件入口提供按键存取门面；会话 JSON 损坏时按 miss 处理并重建，
-/// 保证旧格式数据不会让事件循环崩溃。
+/// <b>会话持久化</b>：<see cref="IConversationStore"/> 只存取序列化后的会话 JSON，本类是序列化的唯一归属；
+/// <see cref="GetOrCreateSessionAsync"/> / <see cref="SaveSessionAsync"/> 为事件入口提供按键存取门面；会话 JSON 损坏时按 miss 处理并重建，旧格式数据不会让事件循环崩溃。
 /// </para>
 /// </remarks>
-public sealed class FeishuAgent : DelegatingAIAgent
+public sealed class FeishuAgent : DelegatingAIAgent, IAgentSessionFacade
 {
     /// <summary>ChatHistoryProvider 的状态键（会话历史在 MAF 状态袋内的命名空间）。</summary>
     /// <remarks>
@@ -42,14 +39,10 @@ public sealed class FeishuAgent : DelegatingAIAgent
     /// </remarks>
     internal const string ChatHistoryStateKey = "feishu.agent.history";
 
-    /// <summary>
-    /// P4-4（outbox）：「已生成但未确认送达」的回复文本状态键。
-    /// </summary>
+    /// <summary>「已生成但未确认送达」的回复文本状态键（outbox）。</summary>
     /// <remarks>
-    /// 与 <see cref="PendingReplyTurnStateKey"/> 成对使用：后者记录该文本所属的轮次标识，
-    /// 用于判定重投递事件是否就是同一轮（否则是陈旧条目，应丢弃而非补发）。
-    /// 两个键都只存 <see cref="string"/>——刻意不引入自定义类型，避免 AOT 下为它准备
-    /// <c>JsonTypeInfo</c>（状态袋序列化走 MAF 自带解析器）。
+    /// 与 <see cref="PendingReplyTurnStateKey"/> 成对使用：后者记录该文本所属的轮次标识，用于判定重投递事件是否就是同一轮（否则是陈旧条目，应丢弃而非补发）。
+    /// 两个键都只存 <see cref="string"/>——刻意不引入自定义类型，避免 AOT 下为它准备 <c>JsonTypeInfo</c>（状态袋序列化走 MAF 自带解析器）。
     /// </remarks>
     internal const string PendingReplyStateKey = "feishu.agent.pending_reply";
 
@@ -73,6 +66,15 @@ public sealed class FeishuAgent : DelegatingAIAgent
     private readonly AgentSessionStore _sessionStore;
     private readonly ConversationSummarizer? _summarizer;
     private readonly ILogger? _logger;
+
+    /// <summary>
+    /// N2-f/N5：中立遥测端口（<c>IAgentTelemetry</c>）的飞书实现——无状态，故为共享单例。
+    /// </summary>
+    /// <remarks>
+    /// 命名面（<c>feishu.agent.*</c> Span / 指标）由实现决定，中立机制只经端口埋点（②式）：
+    /// 这使「迁了机制就丢了可观测性」不再可能（摘要器是最先消费它的中立类型）。
+    /// </remarks>
+    internal static readonly FeishuAgentTelemetry AgentTelemetry = new();
 
     /// <summary>
     /// 构造期装配产物（内层 Agent + guidance 装配结果）。
@@ -151,8 +153,17 @@ public sealed class FeishuAgent : DelegatingAIAgent
             _logger);
 
         // R3-13：Summarizer DI 化——接受外部注入的替身实例；未注入时按阈值自动创建（保留既有语义）。
+        // N2-f：摘要机制已中立化（Mud.AI.Agent.Conversations），此处注入四个产品事实——
+        // ① 配置投影（ToRuntimeOptions）；② 历史状态键；③ 飞书提示词；④ 工具轨迹标识键白名单。
         _summarizer = summarizer ?? (options.SummaryThreshold > 0 || options.MaxHistoryTokens > 0
-            ? new ConversationSummarizer(chatClient, options, loggerFactory?.CreateLogger<ConversationSummarizer>())
+            ? new ConversationSummarizer(
+                chatClient,
+                options.ToRuntimeOptions(),
+                ChatHistoryStateKey,
+                telemetry: AgentTelemetry,
+                summaryInstruction: FeishuSummarizerFacts.SummaryInstruction,
+                idKeys: FeishuSummarizerFacts.IdKeys,
+                logger: loggerFactory?.CreateLogger<ConversationSummarizer>())
             : null);
     }
 
@@ -245,10 +256,7 @@ public sealed class FeishuAgent : DelegatingAIAgent
     /// </summary>
     internal AgentRuntimeOptions RuntimeOptions => _runtime;
 
-    /// <summary>
-    /// T4 / D4：单轮工具调用预算上限（源 <see cref="FeishuAgentOptions.MaxToolCallsPerTurn"/>；
-    /// 事件入口读取此值开启工具调用预算作用域）。
-    /// </summary>
+    /// <summary>单轮工具调用预算上限（源 <see cref="FeishuAgentOptions.MaxToolCallsPerTurn"/>；事件入口读取此值开启工具调用预算作用域）。</summary>
     internal int MaxToolCallsPerTurn => _runtime.MaxToolCallsPerTurn;
 
     /// <summary>
@@ -269,11 +277,19 @@ public sealed class FeishuAgent : DelegatingAIAgent
     /// <summary>
     /// 按会话键读取会话；miss（不存在、TTL 过期、载荷损坏）时创建新会话。
     /// </summary>
+    /// <remarks>
+    /// N2-c：本方法与 <see cref="SaveSessionAsync"/> 的签名与中立端口
+    /// <see cref="Mud.AI.Agent.Events.IAgentSessionFacade"/> 逐字一致 ⇒ 本类直接实现该端口
+    /// （零改造），中立管线与审批续跑闭环因此不需引用任何产品类型。
+    /// </remarks>
     /// <param name="conversationKey">由 <see cref="ConversationKeyBuilder"/> 构造的会话键。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>可用会话。</returns>
     public Task<AgentSession> GetOrCreateSessionAsync(string conversationKey, CancellationToken cancellationToken = default)
         => _sessionStore.GetOrCreateAsync(conversationKey, cancellationToken);
+
+    /// <summary>会话历史在框架状态袋内的状态键（产品事实；<see cref="IAgentSessionFacade"/> 的实现）。</summary>
+    public string HistoryStateKey => ChatHistoryStateKey;
 
     /// <summary>
     /// 序列化并保存会话（刷新存储 TTL）。

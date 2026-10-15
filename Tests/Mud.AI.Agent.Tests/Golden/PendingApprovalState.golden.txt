@@ -1,0 +1,13 @@
+hasAny=true
+hasOrphan=true
+hasPending=true
+tryFind.hit=true
+tryFind.tool=bitable.create_record
+tryFind.miss=false
+abandon.removed=1
+abandon.hasPending=false
+abandon.hasAny=false
+abandon.rebuilt.Count=3
+  [0] user | text=创建一条记录 | TextContent
+  [1] assistant | ToolApprovalRequestContent
+  [2] user | text=另一条消息 | TextContent

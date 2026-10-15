@@ -7,13 +7,14 @@
 
 using System.Text.Json;
 using Microsoft.Extensions.AI;
+using Mud.AI.Agent.Tools;
 using Mud.Feishu.AI.AgentTools;
 
 namespace Mud.Feishu.AI.Tools.Execution;
 
 /// <summary>
 /// 工具预算装饰器（T4 / D4）：包装 <see cref="AIFunction"/>，在调用前检查
-/// <see cref="FeishuToolCallBudget"/> 是否越限；越限时短路返回结构化错误
+/// <see cref="ToolCallBudget"/> 是否越限；越限时短路返回结构化错误
 /// （<c>category=Policy, subtype=tool_budget_exceeded</c>），不调下游。
 /// </summary>
 /// <remarks>
@@ -29,8 +30,12 @@ namespace Mud.Feishu.AI.Tools.Execution;
 /// （与 R2-9 空回复守卫同一推理）。
 /// </para>
 /// <para>
-/// <b>预算缺失 = 不限制</b>：当 <see cref="FeishuToolCallBudget.Current"/> 为
+/// <b>预算缺失 = 不限制</b>：当 <see cref="ToolCallBudget.Current"/> 为
 /// <see langword="null"/> 时（如 MCP 路径或未走事件入口的直调），装饰器透传不拦截。
+/// </para>
+/// <para>
+/// <b>N2-d 中立化</b>：预算类型已迁 <c>Mud.AI.Agent.Tools.ToolCallBudget</c>（共享接缝的
+/// 正确归属是中立运行期包）；产品侧只消费，不持有。
 /// </para>
 /// </remarks>
 internal sealed class ToolBudgetAIFunction : AIFunction
@@ -69,7 +74,7 @@ internal sealed class ToolBudgetAIFunction : AIFunction
         AIFunctionArguments arguments,
         CancellationToken cancellationToken = default)
     {
-        var budget = FeishuToolCallBudget.Current;
+        var budget = ToolCallBudget.Current;
         if (budget is null)
         {
             // 预算未设置（MCP 路径或直调）——透传不拦截。

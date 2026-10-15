@@ -249,19 +249,31 @@ public class AgentContractGuards
     }
 
     /// <summary>
-    /// Phase 2 新增配置属性（<c>SummaryThreshold</c>）必须在 Mud.Feishu.AI 源码中有真实消费点
-    /// （R5 规则 2；<c>WriteAllowList</c>/<c>MaxStreamChunkLength</c> 消费点在 FeishuTools 包，
-    /// 由 FeishuToolContractGuards 扫描）。
+    /// Phase 2 新增配置属性（<c>SummaryThreshold</c>）必须有<b>真实端到端</b>消费点（R5 规则 2）。
     /// </summary>
+    /// <remarks>
+    /// N2-f：摘要在机制中立化后消费点跨了两跳——产品配置 <c>FeishuAgentOptions.SummaryThreshold</c>
+    /// → 投影 <c>ToRuntimeOptions()</c> → 中立 <c>AgentRuntimeOptions.SummaryThreshold</c>
+    /// → 中立摘要器。双清单（消费点 + 投影点）必须<b>同批</b>断言，否则「投影漏字段」这类
+    /// 断链会静默生效（配置写了不生效、且不报红）。
+    /// </remarks>
     [Fact]
     public void FeishuAgentOptions_Phase2Properties_ShouldHaveRealConsumptionPoints()
     {
-        var summarizerSource = Path.Combine(GetSolutionRoot(), "Mud.Feishu.AI", "Conversations", "ConversationSummarizer.cs");
+        var summarizerSource = Path.Combine(
+            GetSolutionRoot(), "Mud.AI.Agent", "Conversations", "ConversationSummarizer.cs");
+        var optionsSource = Path.Combine(GetSolutionRoot(), "Mud.Feishu.AI", "Agents", "FeishuAgentOptions.cs");
 
-        File.Exists(summarizerSource).Should().BeTrue();
+        File.Exists(summarizerSource).Should().BeTrue(
+            "摘要器必须存在于中立包（N2-f 已中立化）——路径变了要同批改本守卫，否则它会在旧路径上假绿");
         File.ReadAllText(summarizerSource).Should().Contain(
             "SummaryThreshold",
-            "FeishuAgentOptions.SummaryThreshold 必须在 ConversationSummarizer 中被消费（渐进式摘要阈值，Phase 2 §3.2）");
+            "AgentRuntimeOptions.SummaryThreshold 必须在会话摘要器中被消费（渐进式摘要阈值，Phase 2 §3.2）");
+
+        File.Exists(optionsSource).Should().BeTrue();
+        File.ReadAllText(optionsSource).Should().Contain(
+            "ToRuntimeOptions",
+            "FeishuAgentOptions 必须把摘要阈值投影进中立运行期配置（产品配置 → 中立旋钮的唯一通道）");
     }
 
     /// <summary>
@@ -273,14 +285,16 @@ public class AgentContractGuards
     [Fact]
     public void FeishuAgentOptions_Phase12Properties_ShouldHaveRealConsumptionPoints()
     {
-        var summarizerSource = Path.Combine(GetSolutionRoot(), "Mud.Feishu.AI", "Conversations", "ConversationSummarizer.cs");
+        var summarizerSource = Path.Combine(
+            GetSolutionRoot(), "Mud.AI.Agent", "Conversations", "ConversationSummarizer.cs");
         var imHandlerSource = Path.Combine(
             GetSolutionRoot(), "Mud.Feishu.AI", "Events", "ImMessageConversationalEventHandler.cs");
 
-        File.Exists(summarizerSource).Should().BeTrue();
+        File.Exists(summarizerSource).Should().BeTrue(
+            "摘要器必须存在于中立包（N2-f 已中立化）");
         File.ReadAllText(summarizerSource).Should().Contain(
             "MaxHistoryTokens",
-            "FeishuAgentOptions.MaxHistoryTokens 必须在 ConversationSummarizer 中被消费（token 维度判定，P2D-3a）");
+            "AgentRuntimeOptions.MaxHistoryTokens 必须在会话摘要器中被消费（token 维度判定，P2D-3a）");
 
         File.Exists(imHandlerSource).Should().BeTrue();
         var handlerContent = File.ReadAllText(imHandlerSource);
@@ -507,20 +521,24 @@ public class AgentContractGuards
     /// <remarks>
     /// 顺序类缺陷最易在重构中复活，且症状是「静默零注入 + 仅一条 Warning」——
     /// 断言相对顺序（不是绝对行号），行号漂移不会失效。
+    /// <b>N4 改锚</b>：回合机制已上移中立 <c>ConversationalTurnPipeline</c>——
+    /// 断言锚点随实现迁移（旧锚读产品薄壳会变成"断言在跑但读旧锚"的假绿）。
+    /// 行为锚（替身 ITurnScopeFactory + 替身 IContextAssembler 记录调用序）由
+    /// <c>Tests/Mud.AI.Agent.Tests/Events/ConversationalTurnPipelineTests</c> 承载。
     /// </remarks>
     [Fact]
     public void ToolContext_Begin_ShouldPrecedeContextAssembly()
     {
-        var source = ReadSource(AiProject, "Events", "ConversationalFeishuEventHandler.cs");
+        var source = ReadSource(MudAiAgentProject, "Events", "ConversationalTurnPipeline.cs");
 
-        var beginIndex = source.IndexOf("ToolContextAccessor?.Begin", StringComparison.Ordinal);
+        var beginIndex = source.IndexOf("BeginToolScope(new TurnScopeContext", StringComparison.Ordinal);
         var assembleCallIndex = source.IndexOf(
-            "await AssembleUserMessageAsync(request, cancellationToken)", StringComparison.Ordinal);
+            "AssembleUserMessageDefaultAsync(request", StringComparison.Ordinal);
 
         beginIndex.Should().BeGreaterThan(-1, "必须先建立工具执行上下文");
         assembleCallIndex.Should().BeGreaterThan(-1, "管线必须装配用户消息");
         beginIndex.Should().BeLessThan(assembleCallIndex,
-            "工具上下文必须先于上下文装配生效——否则知识/引用类装配器读不到 appKey，RAG 注入模式永久静默失效");
+            "工具上下文必须先于上下文装配生效——否则知识/引用类装配器读不到租户键，RAG 注入模式永久静默失效");
     }
 
     /// <summary>
@@ -946,7 +964,9 @@ public class AgentContractGuards
     [Fact]
     public void MemoryConversationStore_ShouldSweepExpiredEntries()
     {
-        var source = ReadSource(AiProject, "Conversations", "MemoryConversationStore.cs");
+        // N2-g：清扫机制已中立化（Mud.AI.Agent.Sessions.MemorySessionStore）——守卫锚点必须跟着
+        // 实现走，否则它会在产品壳上对新代码"看不见"而假绿（§6.2 改锚纪律 + Q3 教训）。
+        var source = ReadSource(MudAiAgentProject, "Sessions", "MemorySessionStore.cs");
 
         source.Should().Contain("SweepExpired", "必须有过期回收路径（未读键永不到达读侧软过期）");
 
@@ -955,6 +975,11 @@ public class AgentContractGuards
         var body = source[save..];
         body.Should().Contain("SweepExpired()", "回收必须由写入路径触发（惰性分摊，不引入后台线程/定时器）");
         body.Should().Contain("SweepThreshold", "必须按阈值分摊（均摊 O(1)），不得每次写入都全量扫描");
+
+        // 产品壳只做「冻结契约 → 中立实现 + 产品 TTL」的适配，不得把机制抄回来（两份实现必然漂移）。
+        var shell = ReadSource(AiProject, "Conversations", "MemoryConversationStore.cs");
+        shell.Should().Contain("MemorySessionStore", "产品壳必须桥接到中立实现（机制唯一）");
+        shell.Should().NotContain("SweepExpired", "清扫逻辑不得回流产品壳");
     }
 
     /// <summary>

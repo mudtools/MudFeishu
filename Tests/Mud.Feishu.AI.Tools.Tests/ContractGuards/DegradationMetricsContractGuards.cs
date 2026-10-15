@@ -19,6 +19,13 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// 检查方式：源码文本扫描（非行为断言）——降级路径的位置由语义标注（注释中的 R3-12 标记）锚定，
 /// 守卫断言该位置附近存在 <c>RecordDegraded</c> 调用。这比固定行号更抗漂移。
 /// </para>
+/// <para>
+/// <b>N2-b 中立化改锚</b>：通道更新失败的降级计数从 <c>BufferedMessageChannel</c> 基类
+/// **上移到产品子类**（<c>EditMessageChannel</c> / <c>CardStreamMessageChannel</c> 的
+/// <c>OnUpdateDegraded</c> 覆写）——中立基类经 <c>IAgentTelemetry</c> 端口记 reason，
+/// 产品指标名（<c>DegradedReasons.ChannelUpdateFailed</c>）与 app_key 维度留在产品侧。
+/// 故本守卫对产品子类各断言一次，并对中立基类断言「钩子被调用」。
+/// </para>
 /// </remarks>
 public class DegradationMetricsContractGuards
 {
@@ -35,7 +42,9 @@ public class DegradationMetricsContractGuards
             ("FeishuToolBinding.cs", "审计出口投递失败", "AuditDeliveryFailed"),
             ("FeishuToolBinding.cs", "整形失败回退默认结果", "ResultShapingFailed"),
             ("FeishuToolBinding.cs", "warn 模式只加标注不阻断", "ContentSafetyWarn"),
-            ("BufferedMessageChannel.cs", "通道更新失败补计数", "ChannelUpdateFailed"),
+            // N2-b：通道降级计数在产品子类的 OnUpdateDegraded 覆写里（两通道同构，各断言一次）。
+            ("EditMessageChannel.cs", "通道更新失败补计数（编辑通道）", "ChannelUpdateFailed"),
+            ("CardStreamMessageChannel.cs", "通道更新失败补计数（卡片流通道）", "ChannelUpdateFailed"),
         };
 
         var missing = new List<string>();
@@ -63,6 +72,22 @@ public class DegradationMetricsContractGuards
         missing.Should().BeEmpty(
             "R3-12 要求每条降级路径都产生指标计数（feishu.agent.tool.degraded）。"
             + "以下路径缺少指标调用：" + string.Join(" | ", missing));
+    }
+
+    /// <summary>
+    /// N2-b：中立缓冲基类必须在更新失败路径调用 <c>OnUpdateDegraded</c> 钩子——
+    /// 否则产品子类的覆写永不触发，降级指标静默消失（迁移最典型的"接了线但没通电"）。
+    /// </summary>
+    [Fact]
+    public void NeutralBufferedBase_ShouldInvokeDegradedHook()
+    {
+        var root = FindRepositoryRoot();
+        var filePath = FindSourceFile(root, "BufferedMessageChannel.cs");
+        File.Exists(filePath).Should().BeTrue("BufferedMessageChannel.cs 必须存在（扫描面不得静默为空）");
+
+        var source = File.ReadAllText(filePath);
+        source.Should().Contain("OnUpdateDegraded(",
+            "中立基类必须在异常隔离路径调用 OnUpdateDegraded 钩子（产品子类经它补降级指标）");
     }
 
     private static string FindSourceFile(string root, string fileName)

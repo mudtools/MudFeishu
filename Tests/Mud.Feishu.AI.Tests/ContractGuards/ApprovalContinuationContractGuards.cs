@@ -18,10 +18,16 @@ namespace Mud.Feishu.AI.Tests.ContractGuards;
 /// </remarks>
 public class ApprovalContinuationContractGuards
 {
+    /// <summary>
+    /// 扫描面：产品两工程 <b>+ 中立运行期包</b>（N2-c 起审批态桥与续跑闭环已迁
+    /// <c>Mud.AI.Agent</c>——不扩面则「坏值自愈的过滤面」在该包内再无守卫覆盖，且<b>不报红</b>，
+    /// 与 <c>ChannelStateLifecycleContractGuards</c> 的 Q3 教训同款）。
+    /// </summary>
     private static readonly string[] ScannedProjects =
     [
         "Mud.Feishu.AI",
         "Mud.Feishu.AI.Tools",
+        "Mud.AI.Agent",
     ];
 
     /// <summary>
@@ -104,7 +110,7 @@ public class ApprovalContinuationContractGuards
         field.Should().NotBeNull("框架绑定层的待审批状态键必须存在（R5-11 依赖它读取批准权威记录）");
 
         field!.GetRawConstantValue().Should().Be(
-            FeishuPendingApprovalState.FrameworkStateKey,
+            Mud.AI.Agent.Approvals.PendingApprovalState.FrameworkStateKey,
             "SDK 的待审批状态键字面量必须与 MAF 内部常量逐字符一致——不一致会让 HITL 续跑静默失效");
     }
 

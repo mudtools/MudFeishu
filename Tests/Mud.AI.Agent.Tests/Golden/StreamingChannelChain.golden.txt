@@ -1,0 +1,7 @@
+begin.messageId=om_edit
+== routing-log ==
+begin:edit:ou_1
+write:edit:om_edit:增量一
+write:edit:om_edit:增量二
+flush:edit:om_edit
+unregistered=InvalidOperationException

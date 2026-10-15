@@ -10,26 +10,19 @@ using Mud.Feishu.Abstractions.Metrics;
 namespace Mud.Feishu.AI.AgentTools;
 
 /// <summary>
-/// 工具执行遥测：执行链 Span 与护城河审计属性（Phase 1 §5 硬验收③）。
+/// 工具执行遥测：执行链 Span 与护城河审计属性。
 /// </summary>
 /// <remarks>
 /// <para>
 /// 复用 <see cref="FeishuActivitySource"/>（宿主经 Mud.Feishu.OpenTelemetry 零配置并入既有链路）。
 /// Span 名 <c>feishu.agent.tool</c>；审计属性：<c>feishu.tool_name</c>、<c>feishu.app_key</c>、
 /// <c>feishu.tool.scopes</c>、<c>feishu.tool.decision</c>（allowed/denied）、<c>feishu.tool.write</c>——
-/// scope 与授权判定进结构化审计（对齐官方 lark-cli 的权限自省能力，但为宿主强制门禁，已决策⑥）。
+/// scope 与授权判定进结构化审计（对齐官方 lark-cli 的权限自省能力，但为宿主强制门禁）。
 /// </para>
 /// <para>
-/// 敏感治理：Span 属性只允许结构化标量（工具名/ID/判定结果），工具入参值与结果文本<b>不得</b>入属性
-/// （对齐 D5 日志最小暴露精神）。
-/// </para>
-/// <para>
-/// <b>R-9 / 阶段 5.0（下沉批）</b>：本类型从 <c>Mud.Feishu.AI.Tools</c> 下沉到本程序集
-/// （保持 <c>internal</c> + IVT 回 AI.Tools）。原因：迁移到本程序集的
-/// <c>Channels/</c> 实现（<c>BufferedMessageChannel</c> 的降级计数）依赖它，而本程序集
-/// <b>不得</b>引用 AI.Tools（新增不变量，防环）；其依赖闭包只含
-/// <see cref="Mud.Feishu.Abstractions.Metrics"/> 与本程序集的风险词汇表（<c>FeishuToolRiskNames</c>），
-/// 因此可以整体下沉而无需牵动其它工具面类型。
+/// 敏感治理：Span 属性只允许结构化标量（工具名/ID/判定结果），工具入参值与结果文本<b>不得</b>入属性。
+/// 依赖闭包只含 <see cref="Mud.Feishu.Abstractions.Metrics"/> 与本程序集的风险词汇表（<c>FeishuToolRiskNames</c>）——
+/// 本程序集<b>不得</b>引用 AI.Tools（防环不变量），故本类型保持 <c>internal</c> + IVT 回 AI.Tools 落在本工程。
 /// </para>
 /// </remarks>
 internal static class FeishuToolDiagnostics
@@ -135,12 +128,29 @@ internal static class FeishuToolDiagnostics
     /// <param name="appKey">应用唯一标识。</param>
     /// <param name="reason">降级原因（<see cref="FeishuMetrics.DegradedReasons"/> 受控枚举）。</param>
     public static void RecordDegraded(string appKey, string reason)
+        => RecordDegradedCore(appKey, reason);
+
+    /// <summary>记录一次<b>中立机制</b>发起的降级（来源侧不知道租户，如中立流式通道基类）。</summary>
+    /// <remarks>
+    /// <b>为什么省略 app_key 维度而不是填空串</b>：中立机制（<c>IAgentTelemetry.Degraded</c>）的签名刻意不带租户键；
+    /// 填空串会让宿主按 <c>app_key</c> 过滤的仪表盘多出一条"空租户"伪时间序列，把「未归属」误读成「某租户」。
+    /// 归属信息并非丢失：中立通道基类的降级由<b>产品侧包装类</b>在更外层记租户维度，本方法只承担"降级发生了"这一事实。
+    /// </remarks>
+    /// <param name="reason">降级原因（<see cref="FeishuMetrics.DegradedReasons"/> 受控枚举）。</param>
+    public static void RecordDegraded(string reason)
+        => RecordDegradedCore(null, reason);
+
+    private static void RecordDegradedCore(string? appKey, string reason)
     {
-        var tags = new TagList
+        // 标签顺序与改造前保持一致（app_key 在前）——时间序列维度的顺序不影响语义，
+        // 但保持现状可避免任何按标签序列比对的外部断言意外失配。
+        var tags = new TagList();
+        if (!string.IsNullOrEmpty(appKey))
         {
-            { FeishuMetrics.Tags.AppKey, appKey },
-            { FeishuMetrics.Tags.Reason, reason },
-        };
+            tags.Add(FeishuMetrics.Tags.AppKey, appKey);
+        }
+
+        tags.Add(FeishuMetrics.Tags.Reason, reason);
         FeishuMetrics.ToolDegradedCount.Add(1, tags);
     }
 }

@@ -14,24 +14,19 @@ namespace Mud.AI.Agent.Conversations;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>为什么是 public（H2 中立化决策）</b>：本类型是<b>产品中立</b>的可复用能力
-/// （token 预算判定与任何生态无关），由 <c>Mud.Feishu.AI</c> 的 <c>ConversationSummarizer</c> /
-/// <c>FeishuAgent</c> 消费。用 <c>InternalsVisibleTo</c> 会把产品程序集名焊进包族契约，
-/// 故整类公开并由 <c>PublicAPI.Unshipped.txt</c> 登记。
+/// <b>为什么是 public</b>：本类型是<b>产品中立</b>的可复用能力（token 预算判定与任何生态无关），
+/// 由产品侧的摘要器与 Agent 薄壳消费。用 <c>InternalsVisibleTo</c> 会把产品程序集名焊进包族契约，
+/// 故整类公开（公开面的消费理由由反射式契约守卫保障）。
 /// </para>
 /// <para>
 /// <b>为什么不引入 <c>ILogger</c></b>：本类型是 <c>static</c>，拿不到 logger。初始化失败原因写入
-/// <see cref="InitializationFailure"/>，由持有 logger 的宿主（<c>FeishuAgent</c> 构造期）读取并告警一次——
-/// 可观测性由那条告警 + <see cref="InitializationFailure"/> 断言承载，不是静默丢弃。
+/// <see cref="InitializationFailure"/>，由持有 logger 的宿主构造期读取并告警一次——可观测性由那条告警承载。
 /// </para>
 /// </remarks>
 public static class ChatTokenCounter
 {
     /// <summary>编码器锚定模型（BPE 词表近似通用，仅估算精度差异）。</summary>
     private const string EncoderModel = "gpt-4o";
-
-    /// <summary>估算回退：非 CJK 字符的平均字符/token 比。</summary>
-    private const int CharsPerToken = 4;
 
     /// <summary>
     /// 编码器初始化失败原因（成功为 <see langword="null"/>）。
@@ -119,47 +114,24 @@ public static class ChatTokenCounter
 
     /// <summary>
     /// 估算 token 数（编码器不可用时的回退路径）：CJK 表意文字按 ~1 token/字符，
-    /// 其余字符按 <see cref="CharsPerToken"/> 字符/token。
+    /// 其余字符按 4 字符/token。
     /// </summary>
     /// <param name="text">待估算文本（非空）。</param>
     /// <returns>估算 token 数。</returns>
     /// <remarks>
     /// <para>
-    /// 原实现整体按「4 字符/token」估算，会把中文 token 量低估约 3-4 倍
-    /// （cl100k 词表下常用汉字接近 1 token/字），导致中文会话的 token 维度摘要窗口迟迟不触发。
-    /// 校正方向是「更接近真实 token 量」，故中文长会话的摘要触发会变早——这是正确行为。
+    /// 中文密度校正：整体按「4 字符/token」会把中文 token 量低估约 3-4 倍（cl100k 词表下常用汉字接近
+    /// 1 token/字），导致中文会话的 token 维度摘要窗口迟迟不触发——校正方向是更接近真实 token 量。
     /// </para>
     /// <para>
-    /// <b>为什么公开</b>：net8+ 且编码器可用时 <see cref="Count"/> 恒走精确路径，
-    /// 估算分支在生产路径上不可达——故本方法必须可直接单测（与 <see cref="IsExactCount"/>
-    /// 同属可断言面），否则"中文密度校正"这一修复会失去回归防线。
+    /// <b>估算口径单一源</b>：估算逻辑收敛到中立 <c>Mud.AI.Agent.Knowledge.TokenEstimator</c>（联合字符集）——
+    /// 含中文标点的文本估算值略高于旧口径（标点计 1 token 而非 1/4），属刻意接受的估算差。
+    /// </para>
+    /// <para>
+    /// <b>为什么公开</b>：net8+ 且编码器可用时 <see cref="Count"/> 恒走精确路径，估算分支在生产路径上不可达——
+    /// 故本方法必须可直接单测（与 <see cref="IsExactCount"/> 同属可断言面），否则"中文密度校正"会失去回归防线。
     /// </para>
     /// </remarks>
     public static int Estimate(string text)
-    {
-        var cjk = 0;
-        foreach (var ch in text)
-        {
-            if (IsCjk(ch))
-            {
-                cjk++;
-            }
-        }
-
-        var other = text.Length - cjk;
-        var otherTokens = other / CharsPerToken;
-        if (other % CharsPerToken != 0)
-        {
-            otherTokens++;
-        }
-
-        return cjk + otherTokens;
-    }
-
-    /// <summary>是否 CJK 表意文字/假名/谚文/全角标点（按 ~1 token/字符 估算的字符集）。</summary>
-    private static bool IsCjk(char ch)
-        => (ch >= '\u2E80' && ch <= '\u9FFF')   // CJK 部首扩展 ~ 统一表意文字
-           || (ch >= '\uAC00' && ch <= '\uD7AF') // 谚文音节
-           || (ch >= '\uF900' && ch <= '\uFAFF') // CJK 兼容表意文字
-           || (ch >= '\uFF00' && ch <= '\uFF60'); // 全角形式
+        => Knowledge.TokenEstimator.Estimate(text);
 }

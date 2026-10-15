@@ -7,7 +7,8 @@
 
 using System.Collections.Concurrent;
 using System.Text;
-using Mud.Feishu.AI.Channels;
+using Mud.Feishu.Abstractions.Metrics;
+using Mud.Feishu.AI.AgentTools;
 using Mud.Feishu.AI.Conversations;
 using Mud.Feishu.DataModels.CardMessageStream;
 
@@ -40,7 +41,11 @@ public sealed class CardStreamMessageChannel(
     IFeishuAppContextScopeFactory scopeFactory,
     IOptions<FeishuAgentOptions> options,
     ILogger<CardStreamMessageChannel>? logger = null,
-    TimeSpan? minUpdateInterval = null) : BufferedMessageChannel(options, minUpdateInterval), IChannelTargetResolver
+    TimeSpan? minUpdateInterval = null,
+    IAgentTelemetry? telemetry = null) : BufferedMessageChannel(
+        options?.Value.MaxStreamChunkLength ?? throw new ArgumentNullException(nameof(options)),
+        minUpdateInterval: minUpdateInterval,
+        telemetry: telemetry), IChannelTargetResolver
 {
     /// <summary>占位卡片初始预览文本（可见的「正在输入」占位）。</summary>
     private const string PlaceholderPreview = "…";
@@ -150,6 +155,10 @@ public sealed class CardStreamMessageChannel(
         _logger?.LogWarning(exception, "应用消息卡片流增量更新异常（bizId: {BizId}）——停留上一次成功内容", messageId);
         return Task.CompletedTask;
     }
+
+    /// <summary>降级指标（<c>feishu.agent.tool.degraded</c>，维度 app_key/reason）——产品指标名与 app_key 维度留在产品侧（中立端口只承载 reason 文案）。</summary>
+    protected override void OnUpdateDegraded(string appKey, string messageId, Exception exception)
+        => FeishuToolDiagnostics.RecordDegraded(appKey, FeishuMetrics.DegradedReasons.ChannelUpdateFailed);
 
     /// <inheritdoc />
     /// <remarks>

@@ -5,7 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using System.Text;
+using Mud.AI.Agent.Context;
 
 namespace Mud.Feishu.AI.Events;
 
@@ -32,7 +32,7 @@ namespace Mud.Feishu.AI.Events;
 /// 事件事实是"本轮问题的背景"，问题文本（<c>MentionedText</c>）在装配器之后拼入。
 /// </para>
 /// </remarks>
-public sealed class ApprovalContextAssembler : IContextAssembler
+public sealed class ApprovalContextAssembler : FactListContextAssembler
 {
     /// <summary>审批任务事件键（由审批事件处理器写入 <see cref="ConversationRequest.EventKey"/>；取值单一源）。</summary>
     public const string ApprovalEventKey = FeishuEventKeys.ApprovalTask;
@@ -53,79 +53,16 @@ public sealed class ApprovalContextAssembler : IContextAssembler
         ["form_summary"] = "表单要点",
     };
 
-    /// <inheritdoc />
-    public int Order => DefaultOrder;
-
-    /// <inheritdoc />
-    public Task<string?> AssembleAsync(ConversationRequest request, CancellationToken cancellationToken = default)
+    /// <summary>初始化审批事件装配器（产品事实注入中立机制）。</summary>
+    public ApprovalContextAssembler()
+        : base(
+            eventKey: ApprovalEventKey,
+            order: DefaultOrder,
+            totalLength: ContextBudgets.ApprovalTotalLength,
+            fieldPreviewLength: ContextBudgets.ApprovalFieldPreviewLength,
+            untrustedHeader: ContextBudgets.UntrustedHeader,
+            factLabels: FactLabels,
+            hint: "- 建议: 用 approval.get_instance 取详情，或用 approval.list_pending_tasks 看待办。")
     {
-        if (request is null)
-        {
-            return Task.FromResult<string?>(null);
-        }
-
-        if (!string.Equals(request.EventKey, ApprovalEventKey, StringComparison.Ordinal)
-            || request.EventFacts is null
-            || request.EventFacts.Count == 0)
-        {
-            // 非审批事件 / 无载荷：本装配器无贡献（不得注入"空标题"噪声）。
-            return Task.FromResult<string?>(null);
-        }
-
-        var builder = new StringBuilder();
-        builder.AppendLine(ContextBudgets.UntrustedHeader);
-
-        var budget = ContextBudgets.ApprovalTotalLength;
-        var written = 0;
-
-        // ⚠️ 不用 `foreach (var (k, v) in dict)`：KeyValuePair 的 Deconstruct 扩展在
-        // netstandard2.0 目标上不存在（Release 全 TFM 构建会 CS8129/CS8130）。
-        foreach (var fact in request.EventFacts)
-        {
-            var key = fact.Key;
-            var value = fact.Value;
-
-            if (written == ContextBudgets.MaxFactsPerAssembler || budget <= 0)
-            {
-                builder.AppendLine(ContextBudgets.TruncationMarker);
-                break;
-            }
-
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                // 缺字段降级：跳过空值（而不是输出"审批实例: "这样的半截行）。
-                continue;
-            }
-
-            var label = FactLabels.TryGetValue(key, out var known) ? known : key;
-            var line = $"- {label}: {Truncate(value!, ContextBudgets.ApprovalFieldPreviewLength)}";
-
-            if (line.Length > budget)
-            {
-                line = line.Substring(0, budget) + ContextBudgets.TruncationMarker;
-            }
-
-            builder.AppendLine(line);
-            budget -= line.Length;
-            written++;
-        }
-
-        if (written == 0)
-        {
-            // 全部字段为空 ⇒ 等价于"无载荷"（降级为既有行为，不注入空片段）。
-            return Task.FromResult<string?>(null);
-        }
-
-        // 下一步建议：把"事件已到、该怎么办"写进片段（T3-5 的交付目标）。
-        var hint = "- 建议: 用 approval.get_instance 取详情，或用 approval.list_pending_tasks 看待办。";
-        if (hint.Length <= budget)
-        {
-            builder.AppendLine(hint);
-        }
-
-        return Task.FromResult<string?>(builder.ToString().TrimEnd());
     }
-
-    private static string Truncate(string value, int maxLength)
-        => value.Length <= maxLength ? value : value.Substring(0, maxLength) + "…";
 }

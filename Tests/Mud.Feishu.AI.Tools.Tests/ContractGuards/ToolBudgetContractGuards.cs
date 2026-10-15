@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using System.Reflection;
+using Mud.AI.Agent.Tools;
 using Mud.Feishu.AI.AgentTools;
 
 namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
@@ -73,15 +74,17 @@ public class ToolBudgetContractGuards
     }
 
     /// <summary>
-    /// 守卫 ③：FeishuToolCallBudget 必须在 Mud.Feishu.AI.AgentTools 命名空间
-    /// （与 FeishuToolContext 同位置，AI 运行时 ↔ 工具面共享接缝）。
+    /// 守卫 ③：<c>ToolCallBudget</c> 必须在<b>中立</b> <c>Mud.AI.Agent.Tools</c> 命名空间
+    /// （N2-d 订正：「AI 运行时 ↔ 工具面共享接缝」的正确归属是中立运行期包——
+    /// <c>Mud.Feishu.AI</c> 与 <c>Mud.Feishu.AI.Tools</c> 都引用 <c>Mud.AI.Agent</c>，
+    /// 留在产品侧反而让"共享"变成单向依赖）。
     /// </summary>
     [Fact]
-    public void FeishuToolCallBudget_ShouldBeInAgentToolsNamespace()
+    public void ToolCallBudget_ShouldBeInNeutralRuntimeNamespace()
     {
-        typeof(FeishuToolCallBudget).Namespace
-            .Should().Be("Mud.Feishu.AI.AgentTools",
-                "FeishuToolCallBudget 与 FeishuToolContext 同属 AI 运行时 ↔ 工具面共享接缝");
+        typeof(ToolCallBudget).Namespace
+            .Should().Be("Mud.AI.Agent.Tools",
+                "ToolCallBudget 是 AI 运行时 ↔ 工具面的共享接缝，归属必须是中立运行期包 Mud.AI.Agent");
     }
 
     /// <summary>

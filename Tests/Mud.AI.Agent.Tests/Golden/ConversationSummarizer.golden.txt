@@ -1,0 +1,28 @@
+== case: count-window ==
+triggered=true
+rebuilt.Count=5
+  [0] system | text=[历史要点纪要]
+GOLDEN-SUMMARY | TextContent
+  [1] user | text=消息 6 | TextContent
+  [2] assistant | text=消息 7 | TextContent
+  [3] user | text=消息 8 | TextContent
+  [4] assistant | text=消息 9 | TextContent
+== case: tool-boundary-retreat ==
+triggered=true
+rebuilt.Count=7
+  [0] system | text=[历史要点纪要]
+GOLDEN-SUMMARY | TextContent
+  [1] user | text=消息 4 | TextContent
+  [2] assistant | call(bitable.list_tables)
+  [3] tool | result(call-6)
+  [4] user | text=消息 7 | TextContent
+  [5] assistant | text=消息 8 | TextContent
+  [6] user | text=消息 9 | TextContent
+== case: token-unconverged ==
+triggered=true
+rebuilt.Count=2
+  [0] system | text=[历史要点纪要]
+GOLDEN-SUMMARY | TextContent
+  [1] assistant | text=长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长长5 | TextContent
+== case: all-tool-history ==
+triggered=false

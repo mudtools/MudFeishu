@@ -33,7 +33,11 @@
 	<ItemGroup>
 		<!-- MAF 1.20.0 传递依赖要求 M.E.* ≥ 10.0.11：与 Mud.Feishu.AI 同款 Update 钉版，
 		     避免 NU1603 版本漂移（门禁断言 = 0）。ns2.0/net6.0 亦统一到 10.x
-		     （均提供 ns2.0 资产，根 props 对这两个 TFM 已设 SuppressTfmSupportBuildWarnings）。 -->
+		     （均提供 ns2.0 资产，根 props 对这两个 TFM 已设 SuppressTfmSupportBuildWarnings）。
+		     ⚠️ N2-g 实录：中立 DI 骨架（AgentRuntimeServiceCollectionExtensions）需要
+		     Microsoft.Extensions.DependencyInjection.Abstractions——该包由**根 props 逐 TFM Include**
+		     （全仓单点版本策略），故此处保持 Update 钉版即可；在本 csproj 再 Include 一次会触发
+		     NU1504（重复项）。 -->
 		<PackageReference Update="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
 		<PackageReference Update="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
 		<PackageReference Update="Microsoft.Extensions.Options" Version="10.0.11" />
@@ -63,19 +67,6 @@
 		<!-- net6.0 的箱内 System.Text.Json（6.0）缺 JsonNode.DeepClone；与根 props 对 netstandard2.0 的
 		     钉版同版本线（10.0.9）。net8.0+ 用箱内版本，无需显式引用。 -->
 		<PackageReference Include="System.Text.Json" Version="10.0.9" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<!-- R3-11：公共 API 兼容门禁（AI 族未发布窗口期零成本建基线）。 -->
-		<PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="4.14.0">
-			<PrivateAssets>all</PrivateAssets>
-			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		</PackageReference>
-	</ItemGroup>
-
-	<ItemGroup>
-		<AdditionalFiles Include="PublicAPI.Shipped.txt" />
-		<AdditionalFiles Include="PublicAPI.Unshipped.txt" />
 	</ItemGroup>
 
 </Project>

@@ -11,7 +11,7 @@ namespace Mud.Feishu.DataModels.Hire;
 /// 批量获取面试评价响应体（v2）
 /// </summary>
 [HttpJsonSerializable(SerializerClassName = "Hire")]
-public class GetInterviewRecordListV2Result: ApiPageListResult<InterviewRecordV2>
+public class GetInterviewRecordListV2Result : ApiPageListResult<InterviewRecordV2>
 {
-   
+
 }

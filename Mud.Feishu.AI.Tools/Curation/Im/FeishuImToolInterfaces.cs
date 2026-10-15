@@ -110,7 +110,7 @@ public interface IFeishuTenantImSearchMessagesTool
     Description = "读取某个话题（thread）内的消息——群话题场景下用 thread_id 取代 chat_id 读话题内容。thread_id 可由事件上下文获得。只读，需 im:message:readonly。",
     RequiredScopes = ["im:message:readonly"],
     Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.GetHistoryMessageAsync))]
-    public interface IFeishuTenantImGetThreadMessagesTool
+public interface IFeishuTenantImGetThreadMessagesTool
 {
     /// <summary>读取话题消息（分页，按创建时间倒序）。</summary>
     /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token），超长截断并标记 truncated。</returns>
@@ -127,7 +127,7 @@ public interface IFeishuTenantImSearchMessagesTool
     Description = "撤回一条自己发出的消息（发错内容时纠正）。只能撤回本 Bot 发送的消息；message_id 来自事件上下文或 im.get_history_messages。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。建议先 dry_run 预演确认目标消息。",
     RequiredScopes = ["im:message"],
     Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.RevokeMessageAsync))]
-    public interface IFeishuTenantImRevokeMessageTool
+public interface IFeishuTenantImRevokeMessageTool
 {
     /// <summary>撤回消息。</summary>
     /// <returns>结构化文本（ok=true 表示已受理）。</returns>
@@ -160,7 +160,7 @@ public interface IFeishuTenantImForwardMessageTool
     Description = "把整个话题（thread）转发给用户或群——一次性把讨论上下文带过去。thread_id 来自事件上下文。⚠️ 底层 SDK 方法名为 ReceiveThreadsAsync 但语义是转发话题。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message:send_as_bot。",
     RequiredScopes = ["im:message:send_as_bot"],
     Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.ReceiveThreadsAsync))]
-    public interface IFeishuTenantImForwardThreadTool
+public interface IFeishuTenantImForwardThreadTool
 {
     /// <summary>转发话题。</summary>
     /// <returns>结构化文本（转发结果 thread_id）。</returns>
@@ -178,7 +178,7 @@ public interface IFeishuTenantImForwardMessageTool
     Description = "查询某条消息已被哪些人读到（user_id + 读取时间）。⚠️ 底层 SDK 方法名拼写为 GetMessageReadUsesAsync（Uses 应为 Users），此处按正确语义命名。只读，需 im:message:readonly。",
     RequiredScopes = ["im:message:readonly"],
     Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.GetMessageReadUsesAsync))]
-    public interface IFeishuTenantImGetMessageReadUsersTool
+public interface IFeishuTenantImGetMessageReadUsersTool
 {
     /// <summary>查询已读用户（分页）。</summary>
     /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token）。</returns>
@@ -195,7 +195,7 @@ public interface IFeishuTenantImForwardMessageTool
     Description = "读取群基础信息（群名/描述/成员数/群主）。chat_id 可由事件上下文获得。⚠️ 底层 SDK 方法名拼写为 GetChatGroupInoByIdAsync（Ino 应为 Info），此处按正确语义命名。只读，需 im:chat:readonly。",
     RequiredScopes = ["im:chat:readonly"],
     Source = nameof(IFeishuTenantV1ChatGroup) + "." + nameof(IFeishuTenantV1ChatGroup.GetChatGroupInoByIdAsync))]
-    public interface IFeishuTenantImGetChatTool
+public interface IFeishuTenantImGetChatTool
 {
     /// <summary>读取群信息。</summary>
     /// <returns>白名单投影后的 JSON 文本（chat_id/name/description/user_count/owner_id）。</returns>
@@ -209,7 +209,7 @@ public interface IFeishuTenantImForwardMessageTool
     Description = "按关键词搜索群聊（返回 chat_id/name/描述）——用户只记得群名片段时的入口。只读，需 im:chat:readonly。",
     RequiredScopes = ["im:chat:readonly"],
     Source = nameof(IFeishuTenantV1ChatGroup) + "." + nameof(IFeishuTenantV1ChatGroup.GetChatGroupPageListByKeywordAsync))]
-    public interface IFeishuTenantImSearchChatsTool
+public interface IFeishuTenantImSearchChatsTool
 {
     /// <summary>搜索群（分页）。</summary>
     /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token）。</returns>

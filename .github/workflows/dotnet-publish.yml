@@ -569,7 +569,7 @@ jobs:
         id: login
         with:
           # 你的 NuGet.org 个人资料名（Profile name），不是邮箱、也不是组织名
-          user: ${{ secrets.NUGET_USER }}
+          user: ${{ secrets.NUGET_USER || 'xlq5520' }}
 
       # 发布：将包推送到 NuGet.org（临时 Key 有效期约 1 小时，绑定仓库/工作流）。
       # --skip-duplicate 的语义是「该版本已存在 ⇒ 视作成功」，退出码 0；

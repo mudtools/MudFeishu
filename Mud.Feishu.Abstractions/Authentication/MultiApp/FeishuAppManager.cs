@@ -1026,6 +1026,50 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
 
     /// <inheritdoc />
     /// <remarks>
+    /// <para>
+    /// U-5（上游 3.0.10 Batch 2）：多命中反查的飞书侧重写。基类实现消费的是<b>基类构造注入</b>的
+    /// 外部提供者字段，而飞书构造 ① 不向基类注入提供者（提供者由本类字段
+    /// <see cref="_externalLookupProvider"/> 持有并经 <see cref="TryResolveAppKey"/> 兜底消费）——
+    /// 故必须重写以把本类持有的提供者接入多命中路径。
+    /// </para>
+    /// <para>
+    /// <b>解析顺序（与 <see cref="TryResolveAppKey"/> 同构）</b>：
+    /// 宿主提供者实现 <see cref="IMultiAppLookupProvider"/> 时委托其多命中枚举，结果经
+    /// <see cref="HasApp"/> 过滤（懒加载<b>未实例化</b>条目按「已声明即存在」口径保留，不物化）并去重；
+    /// 仅单结果面时回退 F-4 语义（<see cref="TryResolveAppKey"/> 命中 → 单元素；未命中/歧义 → 空集，
+    /// 内置索引歧义维持 fail-closed）。纯反查边界与 F-4 逐字继承：不物化、不做授权判定、不抛异常。
+    /// </para>
+    /// </remarks>
+    public override IEnumerable<string> TryResolveAllAppKeys(IReadOnlyDictionary<string, string> externalIds)
+    {
+        if (externalIds is null || externalIds.Count == 0)
+            return Array.Empty<string>();
+
+        if (_externalLookupProvider is IMultiAppLookupProvider multiProvider)
+        {
+            var results = new List<string>();
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var appKey in multiProvider.ResolveAllAppKeys(externalIds))
+            {
+                // 与基类同口径：提供者契约约定不返回 null/空白，此处仍过滤（fail-safe）；
+                // 解析结果必须落在已注册应用上（懒加载「已声明即存在」，不触发实例化）。
+                if (string.IsNullOrWhiteSpace(appKey) || !seen.Add(appKey) || !HasApp(appKey))
+                    continue;
+
+                results.Add(appKey);
+            }
+
+            return results;
+        }
+
+        // 单结果面回退：复用 F-4 全量语义（内置索引 → 宿主提供者兜底，fail-closed）。
+        return TryResolveAppKey(externalIds, out var resolved) && !string.IsNullOrEmpty(resolved)
+            ? new[] { resolved! }
+            : (IEnumerable<string>)Array.Empty<string>();
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
     /// M-1 修复补充：基类 <see cref="DefaultAppManager{TAppContext}.TryGetApp"/> 仅查询已实例化的应用字典，
     /// 对已配置但未实例化的应用返回 false。重写后：
     /// <list type="bullet">
@@ -1173,6 +1217,11 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// <param name="context">已实例化的应用上下文</param>
     private void OnAppInstantiated(string appKey, IFeishuAppContext context)
     {
+        // U-8（上游 3.0.10 Batch 2）评估结论：不桥接官方 AppInstantiated 事件面。
+        // 原因：本类已声明同名 public event（FeishuAppInstantiatedEventArgs，既有公共 API），
+        // 同名遮蔽使官方事件面经本类型不可订阅；桥接会形成「双通道双发」（上游明文警告），
+        // 合并事件面需变更公共事件类型——破坏已发布 API，登记为 4.0 大版本择期迁移。
+        // 飞书内部事件语义（首滚恰好一次 + 订阅者异常隔离）与官方事件等价。
         try
         {
             AppInstantiated?.Invoke(this, new FeishuAppInstantiatedEventArgs(appKey, context));

@@ -90,7 +90,7 @@ internal sealed class PurgeGateReadGuard
 /// <remarks>
 /// 装配位置：令牌管理器构造函数内包装 per-app store，使「直接 new 管理器」的路径同样获得门控与容错。
 /// </remarks>
-internal sealed class PurgeGateTokenStoreDecorator : ITokenStore
+internal sealed class PurgeGateTokenStoreDecorator : ITokenStore, ITokenStoreAppPurge
 {
     private readonly ITokenStore _inner;
     private readonly PurgeGateReadGuard _guard;
@@ -177,6 +177,27 @@ internal sealed class PurgeGateTokenStoreDecorator : ITokenStore
     /// <inheritdoc />
     public Task ClearAsync(CancellationToken cancellationToken = default)
         => _inner.ClearAsync(cancellationToken);
+
+    // ---- U-4（上游 3.0.10 Batch 2）：按应用清库能力面透传 —— 官方统一入口
+    //      TokenStorePurgeExtensions.PurgeAppTokensAsync 经能力探测可穿透本装饰器直达内层。 ----
+
+    /// <inheritdoc />
+    public Task<IReadOnlyCollection<string>> EnumerateKeysAsync(string appKey, CancellationToken cancellationToken = default)
+        => EnumerateKeysCoreAsync(appKey, cancellationToken);
+
+    private async Task<IReadOnlyCollection<string>> EnumerateKeysCoreAsync(string appKey, CancellationToken cancellationToken)
+    {
+        if (_inner is ITokenStoreAppPurge purge)
+            return await purge.EnumerateKeysAsync(appKey, cancellationToken).ConfigureAwait(false);
+
+        // 内层未实现能力面：按官方回退口径枚举本实例 tokenType（映射为物理键语义的近似面）。
+        var tokenTypes = await _inner.GetTokenTypesAsync(cancellationToken).ConfigureAwait(false);
+        return tokenTypes.ToList();
+    }
+
+    /// <inheritdoc />
+    public Task<int> PurgeAppAsync(string appKey, CancellationToken cancellationToken = default)
+        => TokenStorePurgeExtensions.PurgeAppTokensAsync(_inner, appKey, cancellationToken);
 }
 
 /// <summary>

@@ -33,6 +33,13 @@
   （`SET NX PX` + Lua compare-and-del，fail-open），键前缀 `{TokenKeyPrefix}:lease` 随环境段隔离；
   `DefaultFeishuTokenManagerFactory` 经 DI 解析注入。未启用 Redis 时行为与单实例逐位一致；
   多实例下未抢到租约的实例限时轮询读穿透（250ms 间隔 / 10s 超时 fail-open 放行本机刷新）。
+- **U-4 按应用清库能力面（上游 3.0.10 Batch 2）**：`Mud.Feishu.Redis.RedisTokenStore` 实现官方
+  `ITokenStoreAppPurge`（`EnumerateKeysAsync` 物理键快照枚举 / `PurgeAppAsync` 返回实际删除数，
+  节点失败直接上抛）；清库门与加密装饰器透传该能力面——宿主可统一走
+  `TokenStorePurgeExtensions.PurgeAppTokensAsync(store, appKey)`（能力探测穿透装饰器栈）。
+- **U-5 多命中外部标识反查（上游 3.0.10 Batch 2）**：`FeishuAppManager.TryResolveAllAppKeys`
+  重写——宿主提供者实现 `IMultiAppLookupProvider` 时返回全部已注册 appKey（过滤未注册/去重、
+  不物化懒加载），仅单结果面时回退 F-4 语义。
 
 ### 变更（Changed）
 

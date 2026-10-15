@@ -19,7 +19,7 @@ namespace Mud.Feishu.Redis.Services;
 /// 实现 Mud.HttpUtils v2.0 的 ITokenStore 接口，将令牌持久化到 Redis。
 /// 适用于多实例分布式部署场景，确保各实例共享令牌状态。
 /// </remarks>
-public class RedisTokenStore : ITokenStore
+public class RedisTokenStore : ITokenStore, ITokenStoreAppPurge
 {
     /// <summary>SCAN 类删除操作的批大小（R2-08）。</summary>
     private const int DeleteBatchSize = 500;
@@ -186,6 +186,13 @@ public class RedisTokenStore : ITokenStore
     /// TMA2-02 / D8：键模式改用 TokenKeyBuilder 统一产出。
     /// </remarks>
     public async Task ClearAsync(CancellationToken cancellationToken = default)
+        => await ClearCoreAsync(cancellationToken).ConfigureAwait(false);
+
+    /// <summary>
+    /// 清库核心（<see cref="ClearAsync"/> 与 <see cref="PurgeAppAsync"/> 共用）：
+    /// Cluster 化 SCAN + 分批删除，返回实际删除键数。
+    /// </summary>
+    private async Task<long> ClearCoreAsync(CancellationToken cancellationToken)
     {
         var pattern = BuildTenantScanPattern();
         var db = GetDatabase();
@@ -217,6 +224,46 @@ public class RedisTokenStore : ITokenStore
 
         // R2-21：删除规模可观测（"清空却删 0 个键"类缺陷一眼可辨）
         RedisMetricsHelper.RecordScan(FeishuMetrics.RedisCommands.TokenClear, deletedCount, deleted: true);
+        return deletedCount;
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// U-4（上游 3.0.10 Batch 2）：<see cref="ITokenStoreAppPurge"/> 实现 ——
+    /// 快照枚举本实例键空间（与 <see cref="ClearAsync"/> 同一 SCAN pattern，物理键含
+    /// access / refresh / user 维度），<see cref="GetTokenTypesAsync"/> 的 tokenType 归一化不适用本契约
+    /// （官方契约约定返回物理键）。跨节点去重防 SCAN 重复面。
+    /// </remarks>
+    public async Task<IReadOnlyCollection<string>> EnumerateKeysAsync(string appKey, CancellationToken cancellationToken = default)
+    {
+        var pattern = BuildTenantScanPattern();
+        var keys = new List<string>();
+
+        foreach (var server in RedisStoreHelper.GetServers(_redis))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            await foreach (var key in server.KeysAsync(pattern: pattern, pageSize: 250, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                keys.Add(key.ToString());
+            }
+        }
+
+        return keys.Distinct(StringComparer.Ordinal).ToList();
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// U-4（上游 3.0.10 Batch 2）：<see cref="ITokenStoreAppPurge"/> 实现 ——
+    /// 本实例命名空间已由 KeyPrefix 绑定单应用（per-app 工厂 <c>PerAppRedisTokenStoreFactory</c>），
+    /// <paramref name="appKey"/> 参数按官方契约「实现方处置」以实例键空间为边界（与
+    /// <see cref="ClearAsync"/> 语义逐位一致），不参与过滤。节点失败直接上抛（契约：不得静默半删）。
+    /// </remarks>
+    public async Task<int> PurgeAppAsync(string appKey, CancellationToken cancellationToken = default)
+    {
+        var deleted = await ClearCoreAsync(cancellationToken).ConfigureAwait(false);
+        return checked((int)deleted);
     }
 
     private IDatabase GetDatabase() => _redis.GetDatabase();

@@ -37,6 +37,17 @@
   factory resolves and injects it via DI. Without Redis the behavior is bit-identical to
   single-instance; multi-instance losers of the lease poll read-through (250ms interval / 10s
   fail-open timeout) instead of re-refreshing.
+- **U-4 per-app token purge capability (upstream 3.0.10 Batch 2)**: `Mud.Feishu.Redis.RedisTokenStore`
+  implements the official `ITokenStoreAppPurge` (`EnumerateKeysAsync` physical-key snapshot /
+  `PurgeAppAsync` returns the actual deleted count; node failures propagate); the purge-gate and
+  encrypted decorators pass the capability through — hosts can uniformly call
+  `TokenStorePurgeExtensions.PurgeAppTokensAsync(store, appKey)` (capability probing crosses the
+  decorator stack).
+- **U-5 multi-hit external-ID reverse lookup (upstream 3.0.10 Batch 2)**:
+  `FeishuAppManager.TryResolveAllAppKeys` — when the host provider implements
+  `IMultiAppLookupProvider`, all registered appKeys are returned (unregistered entries filtered,
+  duplicates removed, lazy contexts never materialized); single-result providers fall back to the
+  F-4 semantics.
 
 ### Changed
 

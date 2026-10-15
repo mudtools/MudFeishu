@@ -110,6 +110,20 @@ by default. Adaptation (plan: `.docs/MudHttpUtils-3.0.0-破坏性变更改造计
   `DefaultFeishuTokenManagerFactory` 经 DI 解析注入三个管理器（Tenant/App/User）。
   未启用 Redis 时 `RefreshLease` 恒 null，单实例行为逐位不变。自建去重器可经
   `ITokenRefreshLease` 薄包装接入，**勿**绕过钩子另起炉灶。租约键 = `{TokenKeyPrefix}:lease:{管理器键含AppKey}:{scopeKey}`（默认 `feishu:lease:...`）。
+- **U-4 已采纳（上游 3.0.10 Batch 2）按应用清库能力面**：`Mud.Feishu.Redis.RedisTokenStore` 实现
+  `ITokenStoreAppPurge`（实例键空间即应用边界，`PurgeAppAsync` 与 `ClearAsync` 共用清库核心）；
+  `PurgeGateTokenStoreDecorator` / `EncryptedTokenStore` 透传该能力面。宿主清库统一走官方入口
+  `TokenStorePurgeExtensions.PurgeAppTokensAsync(store, appKey)`（能力探测穿透装饰器栈）；
+  **勿**在下游新写「SCAN + 键解析 + 删除」的私有清库路径。
+- **U-5 已采纳（上游 3.0.10 Batch 2）多命中外部标识反查**：`FeishuAppManager.TryResolveAllAppKeys`
+  重写——宿主提供者实现 `IMultiAppLookupProvider` 时委托多命中（`HasApp` 过滤 + 去重，不物化懒加载），
+  仅单结果面时回退 F-4 语义。注意：基类多命中实现消费的是**基类构造注入**的提供者字段，而飞书构造 ①
+  不向基类注入（提供者由本类字段持有），**勿**删除本重写、也**勿**把提供者改注到基类构造（会绕过本类兜底链）。
+- **U-6/U-7/U-8 不采纳登记（上游 3.0.10 Batch 2）**：①U-6 分隔符键编码——飞书键布局
+  （env 段 + glob 转义 + `{prefix}:{appKey}:token`）与官方归属键不同构，`TokenKeyBuilder`
+  保留单一来源（C-3 对账口径）；②U-7 原生 CAS——官方契约为租户维度，TMF-05 为用户维度，
+  形态不同构，现状解码明文比较保留；③U-8 官方 AppInstantiated——与既有同名公共事件遮蔽冲突
+  （双通道双发 + 公共 API 破坏），登记 4.0 择期迁移。**勿**在后续任务中「顺手」采纳以上三项。
 - **F-4 已采纳**：`FeishuAppContext.ExternalIds` 暴露 `app_id → appKey` 快照；
   `FeishuAppManager.TryResolveAppKey` = 基类内置索引（实例化后自动登记）+ DI 解析的宿主
   `IAppLookupProvider` 兜底，fail-closed。新增外部标识一律走 `ExternalIds` 快照，勿自建字典缓存。

@@ -2,7 +2,7 @@
 name: feishu-board
 description: 飞书 board 域工具集：6 个工具（只读 2 / 写 4）。要"把推理结果画出来"（架构图 / 流程图 / 时序图 / 思维导图）→ 一律走 `board.render_dsl`：
 version: 1.0.0
-package_version: 3.0.2
+package_version: 3.0.3
 ---
 
 # 画板（board.*）

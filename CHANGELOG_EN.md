@@ -362,20 +362,378 @@ rationale in plan §6.3), scope mapping table, domain guidance assets, IM/mail/m
 
 ---
 
-## [Unreleased] - 2026-10-01
+## [3.0.3] - 2026-10-15
 
-> Themes: **adapting to `Mud.HttpUtils` 3.0.0** (upstream `BC-27`: removal of UseApp / UseDefaultApp / BeginScope(string)) and **event header dual-format (v1.0/v2.0) parsing fixes (R-E1)**.
-> Suggested version: **3.1.0** (minor level; no public API removals — adds `FeishuEventDataParser` / `GetEventRawJson` / `AddFailedEventStore` and more).
+> Theme: **adapting to `Mud.HttpUtils` 3.0.7** (upstream BC-30 deprecation propagation + F-9 meta-package
+> decoupling). No public contract removals; `FeishuAppManager.GetWebApi` / `GetDefaultWebApi` inherit the
+> upstream `[Obsolete]` marking (3.x warning, removal in 4.0) — signatures and behavior unchanged.
 
-### Event dual-format parsing fixes (R-E1)
+### Dependency Upgrade
 
-- **New shared event parser `FeishuEventDataParser`** (Abstractions, single source of truth): v2.0 / official v1.0 shape / `data`-wrapped fallback shape are parsed uniformly; the WebSocket and Webhook channels removed their parallel implementations, and the `EventParserSingleSourceGuards` contract guard prevents regressions.
-- **Fixed (P0)**: the Webhook channel mapped v1.0 event fields incorrectly, so v1.0 events were rejected with 400 by the empty-identifier fail-closed gate (E-P0-1); the WebSocket channel silently dropped entire official v1.0 frames (root-level `uuid`/`token`/`ts`, event fields inside `event`, E-P0-2). Both channels now route v1.0 events normally (the event type is the raw `event.type` value — register handlers by that key).
-- **Fixed (P1)**: the v1.0 root-level `token` is now parsed into a synthetic Header (`Schema == null`; fields from root-level `uuid`/`token`/`ts` and `event.*`, E-P1-1) — detect v1.0 with `Schema == null`, not `Header == null`; token verification and Header-based idempotency work again for v1.0.
-- **Fixed (P1)**: `EventData.Event` is now written uniformly as the raw JSON **string** (the WS channel used to write a `JsonElement`, E-P1-2). The property type stays `object?`; read via the new `GetEventRawJson()` extension — it will converge to `string?` in the next major.
-- **Fixed (P1)**: WebSocket handling failures can now be persisted to `IFailedEventStore` via `AddFailedEventStore<T>()` / `AddFailedEventStore(instance)` (TryAdd semantics, not registered by default, zero behavior change when absent; only the business-failure branch persists — cancellation/interception terminal states do not). Adds `FeishuWebSocketOptions.FailedEventInitialRetryDelaySeconds` (default 10; non-positive falls back to the default).
-- **Behavior change (P2)**: `EventData.CreateTime` semantics corrected from "seconds" to **milliseconds** (aligned with the XML docs, E-P2-2; v1.0 `ts` included in the unified heuristic). Hosts consuming seconds must multiply by 1000 or switch to `DateTimeOffset.FromUnixTimeMilliseconds`.
-- **P2**: the `IgnoreUnknownEventTypes` defaults differ across channels (Webhook=true / WS=false, AD-5 keeps both) — both Options XML docs state the reason, and a one-time startup warning is emitted when WS runs with `false`.
+- `Mud.HttpUtils` / `Mud.HttpUtils.Generator`: `3.0.5` → **`3.0.7`** (must stay on the same version),
+  unified across the 8 `Mud.HttpUtils*` declarations of 6 source projects; README / AGENTS.md dependency
+  tables synced.
+- **New explicit `Mud.HttpUtils.Resilience` 3.0.7 dependency** (F-9): the upstream meta-package no longer
+  carries the resilience package; the `AddFeishuApp` wiring (per-app retry / timeout / circuit breaker)
+  requires it, so it is installed explicitly and flows to consumers (no `PrivateAssets`).
+
+### Added
+
+- **C-2 dual-read token-store codec**: new public `FeishuTokenStoreCodec` (implements the upstream
+  `ITokenStoreCodec`). Writes now use the official relative-seconds `{expiresInSeconds}|{token}` form;
+  reads dual-read legacy absolute-millisecond values (legacy entries converge by natural expiry, no
+  backfill); consumers keep the absolute-ms contract. The Redis refresh-TTL "no TTL info" boundary is
+  corrected (leading value ≤ 0 falls back to 30 days instead of being treated as expired). **Rollback
+  note**: rolling back to ≤ 3.0.2 treats new-format values as expired (tokens re-fetched; Redis
+  refresh keys purged by the old logic → re-authorization) — no corrupted tokens, but the upgrade /
+  rollback is asymmetric.
+  **U-1 retirement (upstream 3.0.10 Batch 1)**: dual-read discrimination has been lifted into the
+  official `MigrationTokenStoreCodec`; `FeishuTokenStoreCodec` is now a thin wrapper over it
+  (explicit Feishu threshold 10^10) and the private dual-read implementation is removed.
+- **F-4 external-ID reverse lookup**: `FeishuAppContext` implements `IAppExternalIds`
+  (`app_id → appKey`); `FeishuAppManager` resolves appKey via the built-in index plus a DI-injected
+  host `IAppLookupProvider` (fail-closed, results must hit registered apps).
+- **U-3 cross-process refresh-dedup lease (upstream 3.0.10 Batch 1)**: all three token managers
+  (Tenant/App/User) now honor the `TokenManagerBase.RefreshLease` hook. `Mud.Feishu.Redis` registers
+  the official `RedisRefreshLease` (`SET NX PX` acquire + Lua compare-and-del release, fail-open)
+  with key prefix `{TokenKeyPrefix}:lease` following the environment segment; the token-manager
+  factory resolves and injects it via DI. Without Redis the behavior is bit-identical to
+  single-instance; multi-instance losers of the lease poll read-through (250ms interval / 10s
+  fail-open timeout) instead of re-refreshing.
+- **U-4 per-app token purge capability (upstream 3.0.10 Batch 2)**: `Mud.Feishu.Redis.RedisTokenStore`
+  implements the official `ITokenStoreAppPurge` (`EnumerateKeysAsync` physical-key snapshot /
+  `PurgeAppAsync` returns the actual deleted count; node failures propagate); the purge-gate and
+  encrypted decorators pass the capability through — hosts can uniformly call
+  `TokenStorePurgeExtensions.PurgeAppTokensAsync(store, appKey)` (capability probing crosses the
+  decorator stack).
+- **U-5 multi-hit external-ID reverse lookup (upstream 3.0.10 Batch 2)**:
+  `FeishuAppManager.TryResolveAllAppKeys` — when the host provider implements
+  `IMultiAppLookupProvider`, all registered appKeys are returned (unregistered entries filtered,
+  duplicates removed, lazy contexts never materialized); single-result providers fall back to the
+  F-4 semantics.
+- **U-7 user-dimension native CAS (upstream 3.0.10 Batch 3)**: `RedisUserTokenStore` implements
+  `IUserTokenStoreCompareExchange` — a single Lua script performs "read stored value → compare
+  plaintext → write/delete", removing the read-compare-delete race window from the TMF-05 purge path;
+  `UserTokenManager` dispatches on the **raw** store's capability (stores without it keep the C-2
+  decoded-plaintext comparison path, semantically unchanged).
+- **U-2 v2 envelope read compatibility (upstream 3.0.10 Batch 3)**: `TokenStoreHelper` now reads the
+  v2 versioned envelope (`v2:{n}|{token}` three-state normalization, `v2:expired|` projected as
+  "no token", Redis TTL derivation included). The write side still emits the v1 relative-seconds form
+  (C-2: the default form must not drift).
+
+### Changed
+
+- **BC-30 propagation**: `FeishuAppManager.GetWebApi` / `GetDefaultWebApi` are marked `[Obsolete]`
+  in lockstep with the upstream base members (also clears CS0672). Migration: resolve
+  `IAppScopeSwitcher` via DI + `UseAppScope` / `UseDefaultAppScope`, or
+  `IAppContextHolder.SwitchToApp(appKey, appManager, sp)` (guarded switch-and-stay, semantically
+  equivalent). Guard-test call sites use precise `#pragma warning disable CS0618`.
+- **Credential-change purge CAS now compares the plaintext token** (a consequence of the relative-seconds
+  storage form): under the relative-seconds form the stored encoded value drifts with wall-clock time, so
+  whole-value re-encoded comparison is guaranteed to miss. Comparing decoded plaintext is time-independent
+  and also removes the old implementation's conservative cost (skipping the purge when the same
+  `refresh_token` carried a different persisted timestamp).
+- **`Mud.Feishu.Redis` now consumes the official `Mud.HttpUtils.Redis` package**: the official store and
+  the Feishu pipeline follow two different `ITokenStore` usage conventions (plaintext in + internal codec
+  vs. writing the encoded value directly), so they are not interchangeable drop-ins;
+  `FeishuTokenStoreCodec` is the interop anchor for official components that must read Feishu-shaped
+  stored data.
+
+### Docs & Tests
+
+- New `.docs/MudFeishu-MudHttpUtils-3.0.7-适配说明.md` (per-item reconciliation with the upstream
+  contract-change chapter and the downstream constraint ledger, non-migration decisions, pre-release
+  checklist). `AGENTS.md` documents the upstream contract-change channel plus BC-30 / F-9 notes.
+- `scripts/verify-build.ps1` step 0 now picks the local component source by "actually contains the
+  declared version package" (fixes the stale-cache check being skipped when `artifacts` and
+  `artifacts-debug` coexist).
+- Verified: full quality gate green (0 build errors, diagnostic whitelist all 0, AotStrictMode net8.0
+  0 violations, unit tests 6298/6348 — skips are missing net6.0 runtimes only); zero new warnings
+  versus the pre-upgrade baseline; 29 new tests (C-2 dual-read matrix, F-4 lookup, Redis TTL behavior).
+
+## [3.0.2] - 2026-10-12
+
+> Theme: **mass event-callback expansion** (business domains 10 → 24, 205 events in total) and **adapting to
+> `Mud.HttpUtils` 3.0.5**. No public contract removals; three behavior fixes (allowed-domain union
+> registration, the token-recovery config hot-reload chain, user-token removal semantics).
+
+### Dependency Upgrade
+
+- `Mud.HttpUtils` / `Mud.HttpUtils.Generator`: `3.0.0` → **`3.0.5`** (must stay on the same version), unified
+  across the 8 `Mud.HttpUtils*` declarations of 6 source projects; `README.md` / `README_EN.md` /
+  `Mud.Feishu/README.md` / `Mud.Feishu.OpenTelemetry/README.md` and `AGENTS.md` dependency tables synced.
+- Demo project `Mud.Feishu.*` package references: `3.0.0` / `3.0.0-rc3` → **`3.0.1`**
+  (`Demos/Directory.Build.props` + 8 demo projects).
+
+### Added
+
+**Event callbacks (`Mud.Feishu.EventCallback`)**
+
+- **Business domains 10 → 24, 205 events in total**: 14 new domains — `Application` (app), `Auth`,
+  `MeetingRoom`, `Moments`, `ELearning`, `SecurityCompliance`, `Compensation`, `Payroll`,
+  `CoreHr` / `CoreHrV2` (core HR v1 / v2), `Hire` (recruitment), `Performance`, `Acs` (smart access
+  control) and `Helpdesk`.
+- **219 new event-model files**, **124 new `FeishuEventTypes` constants**; the 18 `Generated/*JsonContext.g.cs`
+  files incrementally register 443 `[JsonSerializable]` entries (the AOT source-generation pipeline stays in
+  sync, no AOT005 leftovers).
+- Main event families:
+  - **Recruitment**: `hire.application.deleted_v1` / `stage_changed_v1`, `hire.offer.status_changed_v1`,
+    `hire.ehr_import_task.imported_v1` and `.for_internship_offer.imported_v1`, `hire.talent.deleted_v1` /
+    `tag_subscription_v1`, `hire.eco_account.created_v1`, `hire.eco_background_check.created_v1` / `canceled_v1`,
+    `hire.eco_exam.created_v1`, `hire.referral_account.assets_update_v1`.
+  - **Core HR**: `corehr.*` v1 (department / position / employment record / contract / pre-onboarding /
+    transfer / offboarding / permissions) and v2 (location / company / cost center / custom org unit /
+    job family-grade-position / probation / onboarding tasks / offboarding checklist / process nodes and
+    approval CC / signed documents, 40+ events).
+  - **Approval & tasks**: `approval.task.status_changed_v4`, `task.task.comment.updated_v1`, etc.
+  - **Contacts & chat**: `contact.scope.updated_v3`, `im.chat.access_event.bot_p2p_chat_entered_v1`, chat-member
+    changes.
+  - **Meetings & meeting rooms**: `vc.bot.meeting_started_v1`, meeting-room create / update / delete.
+  - **Security compliance**: device registration and device-change events. Also mail, moments (post / comment /
+    emoji reaction), eLearning (course enrollment), compensation & payroll activities, performance
+    (`performance.stage_task.open_result_v2`, `performance.review_data.changed_v2`), access control
+    (`acs.user.updated_v1`, `acs.access_record.created_v1`), and helpdesk (ticket create / update / comment /
+    approval notification).
+  - **Card event callbacks (new `Card` business domain)**: `card.action.trigger` (the user clicked the card's
+    "request callback" interactive component) — request body model `CardActionTriggerResult`
+    (`operator` / `token` / `action` / `host` / `delivery_type` / `context`, covering `value`, `form_value`,
+    `input_value`, `option`, `options`, `timezone`, `name` and other interaction fields), plus response models
+    `CardCallbackResponse` / `CardCallbackToast` (16-language `i18n`) / `CardCallbackCard` (both `raw` and
+    `template` forms) + `CardCallbackTemplateData`; the "respond within 3 seconds, no 3xx redirect" constraint
+    is enforced accordingly.
+
+**Upstream adaptation (`Mud.HttpUtils` 3.0.5)**
+
+- **`FeishuHttpClientFactory` now uses the upstream `EnhancedHttpClientOptions.Clone()`**: the hand-written
+  field-list Clone in this repo is deleted, so new upstream properties (e.g. 3.0.5's `JsonEncoder`) no longer
+  need to be mirrored here — eliminating this class of "new property silently dropped" drift.
+- **`UrlValidator` domain registration is now an incremental union**: changed from the wholesale-replace
+  semantics of `ConfigureAllowedDomains` to per-item `AddAllowedDomain` (the list extracted into
+  `FeishuAllowedDomains`), so host custom domains registered before `AddFeishuApp` are no longer silently
+  discarded.
+
+### Changed
+
+- **User-token removal semantics are now handled by the base class**: with `Mud.HttpUtils` ≥ 3.0.4 the bridge's
+  `RemoveAsync` unconditionally writes through to the persistence layer, so `UserTokenManager` **no longer
+  overrides** `RemoveTokenAsync`; removal / logout now reaches the persistence layer in multi-instance and
+  cold-start scenarios as well (`PurgeGate` semantics unchanged), with cold-start comparison tests and
+  constraint comments added.
+- **`TokenRecoveryOptions` binding switched to the single-level "capture section + bind in place + Apply"
+  scheme**: no longer read indirectly through the `IOptionsMonitor<TDep>` secondary pipeline (which was
+  observed to return stale DTOs after a configuration reload); hot reload now depends on a single
+  `ChangeTokenSource`. The AOT constraint "no `Configure<T>(IConfiguration)` reflection binding" is unchanged.
+- The "default app rejected" message of `FeishuAppManager` is replaced by a registration-list allow-list
+  authorizer (`AppKeyAllowListAuthorizer.FromPredicate` + `IFeishuAppManager.HasApp`); only the message wording
+  and comments changed.
+
+### Fixed
+
+- **8 event models renamed where the file name did not match the primary class name**: `ApprovalResult` →
+  `ApprovalTaskResult`, `DriveFilePermissionMemberAdded` → `DriveFilePermissionMemberAddedResult`,
+  `ChatMemberUserAddedResult` → `ChatMemberUserDeletedResult` / `ChatMemberUserWithdrawnResult`, the misplaced
+  `MeetingMeetingEndedResult` under `Mail` → `MessageReceivedResult`, `DepartmentCreatedEventResult` →
+  `DepartmentCreatedResult`, `DepartmentDeleteResult` → `DepartmentUpdateResult`, `RoomCreatedResult` →
+  `RoomUpdatedResult`. Class-name drift decouples the `[JsonSerializable]` entries in
+  `Generated/*JsonContext.g.cs` from the real classes; a contract guard now blocks this.
+- **Demo `FeishuDriveService` delete file / folder**: `cancellationToken` is now passed explicitly (previously
+  the argument positions were off, so the cancellation token was passed to the wrong parameter).
+- `.gitignore` ignores the `/.scratch` local staging directory.
+
+### Docs & Tests
+
+- `Mud.Feishu.EventCallback/README.md` rebuilt as a full event table (205 events / 24 domains, 54 → 205 rows),
+  aggregated directly from the source `[GenerateEventHandler]` annotations; new events must be added to this
+  table.
+- New contract guard `EventCallbackContractGuards` (5 rules): constants must be wired by
+  `[GenerateEventHandler]` (no dead constants); file names must match the primary class name; every domain must
+  have a `Generated/{Domain}JsonContext.g.cs` already hooked into the resolver chain; every `*Result` must be
+  reflectively resolvable to a generated handler; wired event types must appear in the README event table.
+- New event-payload smoke tests `EventPayloadSmokeTests` + `TestData/EventCallback/event-examples.json`
+  (verbatim replay of the official "event body examples", asserting 1:1 model coverage for every non-empty key
+  — a field-name mismatch fails on the spot).
+- `FeishuHttpClientFactoryTests` / `UserTokenManagerTests` / `FeishuServiceCollectionExtensionsTests` extended
+  alongside the upstream adaptation (field equivalence, config hot-reload semantics and cold-start comparison
+  regressions).
+
+## [3.0.1] - 2026-10-07
+
+> Theme: **adapting to `Mud.HttpUtils` 3.0.0** (upstream removal of `UseApp` / `UseDefaultApp` /
+> `BeginScope(string)`, replaced by scope-based switching) and **event v1.0 / v2.0 dual-format parsing fixes**.
+> This repo has **no public contract removals** (the three legacy members are re-declared by
+> `IFeishuAppContextSwitcher` and marked `[Obsolete]`); a few behavior fixes follow (`EventData.CreateTime` unit,
+> `EventData.Event` write-side type) — read "Changed" and "Migration Notes" before upgrading.
+
+### Dependency Upgrade
+
+- `Mud.HttpUtils` / `Mud.HttpUtils.Generator`: `2.0.9` → **`3.0.0`** (must stay on the same version).
+- From upstream 3.0.0 on, generated classes in non-HttpClient mode **no longer emit**
+  `UseApp(string)` / `UseDefaultApp()` / `BeginScope(string)` by default, and `IAppContextSwitcher` no longer
+  declares them; generated classes **automatically attach** `IAppScopeSwitcher` (`UseAppScope` /
+  `UseDefaultAppScope`).
+
+### Added
+
+- **`IFeishuAppContextSwitcher` now inherits `IAppScopeSwitcher`**: downstream code can program directly against
+  the recommended surface (scope-based switching, context automatically returned on dispose).
+- **`IFeishuAppContextSwitcher` re-declares the three legacy members with `[Obsolete]`**: the public contract is
+  preserved, and 188+ generated implementation classes **keep emitting** those three members with behavior
+  identical to 2.0.9. They will be removed together with upstream in the next major version of this SDK; migrate
+  to `UseAppScope` / `UseDefaultAppScope`.
+- **Shared event parser `FeishuEventDataParser`** (Abstractions, single source of truth): v2.0 / official v1.0
+  shape / `data`-wrapped fallback shape are parsed uniformly; the WebSocket and Webhook channels removed their
+  parallel implementations.
+- **Failed-event persistence**: the WebSocket channel can persist handling failures via `AddFailedEventStore<T>()`
+  / `AddFailedEventStore(instance)` registering `IFailedEventStore` (TryAdd semantics, not registered by
+  default, zero behavior change when absent; only the business-failure branch persists — cancellation /
+  interception terminal states do not). Accompanied by the new
+  `FeishuWebSocketOptions.FailedEventInitialRetryDelaySeconds` (default 10; non-positive falls back to the
+  default).
+- **Read extension `GetEventRawJson()`**: uniformly reads the raw JSON carried by `EventData.Event`.
+
+### Changed
+
+- **`FeishuAppManager.GetWebApi` / `GetDefaultWebApi` internals migrated**: from the generated
+  `UseApp(appKey)` / `UseDefaultApp()` to `IAppContextHolder.SwitchToApp(appKey, this, serviceProvider)` /
+  `SwitchToDefaultApp(this)` (**semantically equivalent**: full guard + immediate switch + no return + context
+  returned). External behavior is unchanged (still returns the DI-resolved service instance whose `Current` is
+  bound to the target app).
+- **`EventData.Event` is now uniformly written as the raw JSON string** (the WebSocket channel used to write a
+  `JsonElement`). The property type stays `object?`; read via the extension `GetEventRawJson()` — it converges
+  to `string?` in the next major.
+- **Behavior change**: `EventData.CreateTime` semantics corrected from "seconds" to **milliseconds** (aligned
+  with the XML docs; the v1.0 `ts` is included in the unified heuristic). Hosts consuming seconds must
+  multiply by 1000 or switch to `DateTimeOffset.FromUnixTimeMilliseconds`.
+- **`IgnoreUnknownEventTypes` defaults intentionally differ across channels** (Webhook=true / WS=false, defaults
+  unchanged): both Options XML docs state the reason, and a one-time alignment warning is emitted at startup
+  when WS runs with `false`.
+
+### Fixed
+
+- **The Webhook channel mapped v1.0 event fields incorrectly**, so v1.0 events were rejected with 400 by the
+  empty-identifier fail-closed gate; **the WebSocket channel silently dropped entire official v1.0 frames**
+  (root-level `uuid`/`token`/`ts`, event fields inside `event`). Both channels now route v1.0 events normally
+  (the event type is the raw `event.type` value — register handlers by that key).
+- **The v1.0 root-level `token` is now parsed into a synthetic Header** (`Schema == null`; fields taken from the
+  root-level `uuid`/`token`/`ts` and `event.*`): detect v1.0 with `Schema == null`, not `Header == null`;
+  signature verification and Header-dependent idempotency logic work again for v1.0.
+
+### Migration Notes
+
+- Calling `UseApp` / `UseDefaultApp` / `BeginScope(string)` through an `IFeishuAppContextSwitcher`-typed
+  reference produces a **`CS0618`** warning (intentional guidance). Hosts with `TreatWarningsAsErrors` should
+  switch to `UseAppScope` / `UseDefaultAppScope` (identical guards, plus automatic context return on dispose),
+  or temporarily set `NoWarn CS0618`.
+- Semantic reminder: `UseAppScope` **switches back automatically** at the end of the `using`; `UseApp` keeps the
+  context until the next switch (long-lived hosts must switch back explicitly).
+
+## [3.0.0] - 2026-09-28
+
+> 3.0 is a comprehensive upgrade focused on **production reliability and performance**: first-class Native AOT
+> support, hardened token & multi-app management, a Webhook security baseline, Redis / WebSocket stability work,
+> and a unified configuration structure. It contains many breaking changes — be sure to read "Upgrade
+> Highlights" before upgrading; per-item details live in the rc2 / rc3 records below.
+
+### 🌟 Core Upgrades
+
+- **Full Native AOT support**: net8.0+ end-to-end source-generated JSON serialization and configuration binding;
+  the AOT strict-mode gate guarantees zero reflection warnings; an end-to-end verification project ships with
+  it (`Demos/Mud.Feishu.AotVerification`). Configuration DTOs no longer use `required` — validation is
+  uniformly carried by `Validate()`.
+- **Token & multi-app management rework**: multi-app config hot reload (`BaseUrl` / `TimeoutSeconds` effective
+  at runtime, incremental application per AppKey), per-app auth clients and endpoint isolation, purge the store
+  immediately on credential change, 401 token recovery actually taking effect (cascading store purge),
+  Memory/Redis token key layout unified (`TokenKeyBuilder` as the single source of truth), retryability
+  classification for OAuth failures, optional token-store encryption.
+- **Webhook security baseline**: distributed dedup mandatory in production, multi-app deployments must declare
+  `ExpectedAppId`, interception semantics and default-handler routing tightened, every recoverable failure
+  answers 503 so Feishu redelivers — eliminating cross-app event bleed and permanent event loss.
+- **WebSocket reliability work**: connection lifetime decoupled from the caller's cancellation token, handling
+  failures ACK `code=500` so the server redelivers, concurrency gate and reconnect circuit breaker, zombie
+  connections eliminated, messages metered uniformly by UTF-8 bytes, backpressure moved forward to the receive
+  path.
+- **Redis hardening**: `rediss://` really enables TLS, four key families uniformly constructed and escaped
+  (`RedisKeyBuilder`), dedup races made atomic in Lua, full Cluster node coverage, classifiable exceptions
+  (`FeishuRedisFailureKind`), SeqID dedup switched to a capacity window, plus a new ops-diagnostics facade and
+  metrics.
+- **Quality gate**: a brand-new `verify-build.ps1` gate (cache self-check, all-TFM build + diagnostic
+  whitelist, AOT strict-mode smoke, TRX test-count assertions), wired into CI.
+
+### ⚠️ Upgrade Highlights (Breaking Changes)
+
+**Configuration structure**
+
+- Configuration is unified into nested groups: `FeishuWebSocketOptions` → `Reconnect.*` / `Certificate.*`;
+  `FeishuAppConfig` / `RedisOptions` → `HttpRetry.*` / `CircuitBreaker.*` / `Connection.*`. Legacy flat JSON keys
+  are still auto-backfilled, but **C# code must move to the nested API**; logging switches are unified to
+  `Logging:LogLevel:*`.
+- `nuget.config` tightened to a package-source lock; the dependency is pinned to `Mud.HttpUtils` 2.0.7.
+
+**Token & multi-app**
+
+- Redis token key layout changed (`feishu:token:*` → `feishu:{appKey}:token*`); old keys are no longer read;
+  `SingletonFeishuTokenStoreFactory` is deprecated — use `IFeishuTokenStoreFactory.Create(appKey)`;
+  `AddFeishuRedisTokenStore` no longer registers `ITokenStore` / `IUserTokenStore` singletons.
+- Token invalidation cascades into the persistence layer; tenant 401 recovery no longer falls back to
+  user-level; `SetDefaultApp` genuinely takes effect at runtime.
+- Old token keys for AppKeys containing special characters (`* ? [ ] : \`) are no longer reachable — affected
+  deployments are advised to rotate the AppSecret after upgrading.
+- The injected `IFeishuAppContext` becomes a stateless forwarding proxy (resolves the current default app on
+  every access); for instance-snapshot semantics set `FeishuAppOptions.ForwardDefaultAppContext=false`.
+- Config hot reload is on by default (`EnableConfigReload=true`); set it explicitly to `false` to keep the old
+  "changes require a restart" semantics.
+- OAuth refresh failures are classified by retryability: `invalid_grant` etc. purge the refresh token and force
+  re-authorization.
+
+**Webhook**
+
+- Production startup fails when no distributed dedup is registered (single-instance deployments can set
+  `FeishuWebhook:AllowInMemoryNonceDedupInProduction=true`); multi-app setups must configure `ExpectedAppId`;
+  `Build()` requires at least one globally registered default handler.
+- `BeforeHandleAsync` returning `false` changes from 500 (retryable) to 200 (consumed); set
+  `InterceptionAckMode=Retryable` for "intercept then redeliver". The interceptor combination defaults to
+  `Merge` (old behavior: `InterceptorFallbackMode=AppOnly`).
+- Decryption timeout changes from 400 to 503 (recoverable failures let Feishu redeliver).
+
+**WebSocket**
+
+- Terminate connections via `DisconnectAsync()` / `DisposeAsync()` (the token passed to `ConnectAsync` only
+  governs connect + authentication); `StartReceivingAsync` is deprecated; `MessageReceived` is now dispatched
+  concurrently (possibly out of order) — use `IMessageHandler` when ordering matters.
+- Synchronous `Dispose()` no longer stops the service; configuration upper bounds are tightened and validated
+  at startup (reconnect budget, timeouts, message size, …); constructor signatures changed (dead parameters such
+  as `seqIdDeduplicator` / `ProcessingTask` removed).
+- Metrics API migration: static writable properties such as `FeishuMetrics.WebSocketConnectionObserver` are
+  removed — use `RegisterWebSocketMetricsSource(...)`.
+- Connections default to the host allowlist `*.feishu.cn;*.larksuite.com`; configure `AllowedHostSuffixes` for
+  self-hosted endpoints.
+
+**DTO renaming (fixes source-generation name collisions SYSLIB1031)**
+
+- `DepartmentsV1.DepartmentLeader` → `DepartmentLeaderV1`, `DepartmentDetail` → `DepartmentDetailV1`,
+  `ApprovalExternal.ApprovalCreateViewers` → `ExternalCreateViewers`, etc. (7 groups; the full list is in
+  3.0.0-rc2).
+
+**Redis dedup**
+
+- SeqID dedup keys gain a scope isolation dimension (default `AppKey|MachineName`); the window changes from TTL
+  to capacity (`FeishuRedis:SeqIdWindowCapacity`, default 100000); `GetCacheCount()` etc. are narrowed to true
+  in-window values.
+- Invalid `RedisOptions` values now fail startup validation; `NonceFailureMode` applies only to Redis
+  connection-class failures.
+
+### 🐛 Key Fixes
+
+- **Permanent event loss**: handling failures always ACKed 200, Nonce infrastructure failures disguised as 403,
+  handler type mismatches silently dropped, decryption timeouts swallowed into 400 — all fixed; recoverable
+  failures uniformly answer 503 so Feishu redelivers.
+- **Token correctness**: 401 recovery reusing the rejected token, tenant retries being injected with a user
+  token, Redis expired tokens getting TTL=0 and never expiring, credential-change purging being ineffective on
+  the in-memory backend.
+- **Stability**: the dedup factory self-resolving into `StackOverflowException`, an empty prefix purging the
+  whole database, WebSocket zombie connections / deadlocks / `ObjectDisposedException` races, the Redis
+  connection string leaking credentials in logs.
+- 200+ secondary fixes and hardenings completed in the same round; details are in the rc2 / rc3 records below.
 
 ## [3.0.0-rc3] - 2026-09-23
 

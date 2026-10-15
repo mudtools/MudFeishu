@@ -53,26 +53,38 @@ public class SessionStoreEncodingTests
     }
 
     /// <summary>
-    /// 格式等价契约守卫（Phase 0 §3.3 评审建议 b）：
-    /// <c>SessionStoreEncoding</c> 与 Abstractions 的 internal <c>TokenStoreHelper</c>
-    /// 必须对同一输入产出逐字节一致的编码——防止两侧格式漂移。
+    /// 格式同族契约守卫（Phase 0 §3.3 评审建议 b；C-2 后判据改为「同族」而非「逐字节相同」）。
+    /// <b>必须保留的差异</b>：令牌侧自 C-2 起写相对秒，会话侧仍写<b>绝对毫秒戳</b>——
+    /// 相对秒在读侧会被逐次「延寿」，直接摧毁 TMA-15 的读侧有效性权威。
+    /// 故本守卫锁的是同一惯例：两侧均为 <c>{数值}|{payload}</c>，且互读得到同一绝对毫秒戳。
     /// </summary>
     [Fact]
-    public void SessionStoreEncoding_ShouldStayByteEquivalent_WithTokenStoreHelperFormat()
+    public void SessionStoreEncoding_ShouldStayCompatible_WithTokenStoreHelperFormat()
     {
         var abstractions = typeof(Mud.Feishu.Abstractions.Observability.FeishuActivitySource).Assembly;
         var helperType = abstractions.GetType("Mud.Feishu.Abstractions.Authentication.TokenStoreHelper");
         helperType.Should().NotBeNull("TokenStoreHelper 是格式惯例的来源，若被重命名/移动请同步本守卫");
 
         var encode = helperType!.GetMethod("EncodeStoredToken", BindingFlags.Public | BindingFlags.Static);
+        var decode = helperType.GetMethod("DecodeStoredToken", BindingFlags.Public | BindingFlags.Static);
         encode.Should().NotBeNull();
+        decode.Should().NotBeNull();
 
         var payload = "token-or-session-payload|with-pipe";
-        var expireMs = 1727136000000L;
+        var expireMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 600_000;
 
-        var tokenEncoded = (string)encode!.Invoke(null, [payload, expireMs])!;
         var sessionEncoded = SessionStoreEncoding.Encode(payload, expireMs);
+        var tokenEncoded = (string)encode!.Invoke(null, [payload, expireMs])!;
 
-        tokenEncoded.Should().Be(sessionEncoded, "{expireTimestampMs}|{payload} 格式必须在令牌与会话两条存储路径间保持逐字节一致");
+        // ① 令牌侧双读必须能读出会话值：形态（时间戳段在前 + '|' 分隔）与单位（绝对毫秒）一致。
+        var (sessionToken, sessionExpireMs) = ((string, long))decode!.Invoke(null, [sessionEncoded])!;
+        sessionToken.Should().Be(payload, "会话存储值必须能被令牌侧解码出原载荷");
+        sessionExpireMs.Should().Be(expireMs, "会话存储值必须能被令牌侧解出同一绝对过期时刻");
+
+        // ② 反向：令牌侧相对秒值解码后必须投影回同一过期时刻（1 秒舍入口径内）。
+        var (tokenToken, tokenExpireMs) = ((string, long))decode!.Invoke(null, [tokenEncoded])!;
+        tokenToken.Should().Be(payload);
+        Math.Abs(tokenExpireMs - expireMs).Should().BeLessThanOrEqualTo(1000,
+            "相对秒经双读投影后必须回到同一绝对过期时刻（±1s 舍入）");
     }
 }

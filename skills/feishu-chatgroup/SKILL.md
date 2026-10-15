@@ -2,7 +2,7 @@
 name: feishu-chatgroup
 description: 飞书 chatgroup 域工具集：16 个工具（只读 4 / 写 12）。「我们有哪些群 / 这个 chat_id 对应哪个群」→ `chatgroup.list_chats`（机器人所在的群）
 version: 1.0.0
-package_version: 3.0.2
+package_version: 3.0.3
 ---
 
 # Chatgroup · 群管理

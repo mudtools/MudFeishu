@@ -18,10 +18,10 @@
 		<ProjectReference Include="..\..\Mud.AI.Abstractions\Mud.AI.Abstractions.csproj" />
 		<!-- v2.3 P1-B：demo 随 ToolSurface 竖井自组件仓迁入飞书仓。
 		     [Get]/[Delete]/[Path] 仍是组件仓 HTTP 契约的编译期事实，故保留组件包引用
-		     （Mud.HttpUtils.Attributes 3.0.6，与全仓同版本）；工具面**引擎**则切到仓内
+		     （Mud.HttpUtils.Attributes 3.0.7，与全仓同版本）；工具面**引擎**则切到仓内
 		     Mud.AI.Generator——这才是「调优期仓内闭环」的意义：改引擎 → 跑本 demo 即得反馈。
 		     ⚠ 禁兼引：不得再引用组件侧 Mud.HttpUtils.Generator（同名 hintName 产物冲突）。 -->
-		<PackageReference Include="Mud.HttpUtils.Attributes" Version="3.0.6" />
+		<PackageReference Include="Mud.HttpUtils.Attributes" Version="3.0.7" />
 		<ProjectReference Include="..\..\Mud.AI.Generator\Mud.AI.Generator.csproj"
 		                  OutputItemType="Analyzer"
 		                  ReferenceOutputAssembly="false" />

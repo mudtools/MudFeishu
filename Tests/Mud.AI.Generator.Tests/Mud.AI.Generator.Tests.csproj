@@ -28,7 +28,7 @@
 		     版本与 Mud.AI.Generator 引用保持一致（4.11.0）——跨版本会令 Driver 无法加载本引擎。 -->
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" />
 		<!-- 编译断言的输入 fixture 需要 HTTP 客户端基座与特性（HttpClientUtils / GetAttribute / PathAttribute）。 -->
-		<PackageReference Include="Mud.HttpUtils" Version="3.0.6" />
+		<PackageReference Include="Mud.HttpUtils" Version="3.0.7" />
 		<!-- TestHelper.BasicReferenceAssemblies 引用 IMemoryCache（组件侧 HTTP 管线的缓存面）。 -->
 		<PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.11" />
 	</ItemGroup>

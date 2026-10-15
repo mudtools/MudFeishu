@@ -83,7 +83,7 @@
 		     IAppContextHolder / IAppAccessAuthorizer / AppKey——"直接使用的 API 必须直接声明"，
 		     避免依赖 Abstractions 的传递引用；版本与全仓**同一条版本线**
 		     （守卫 TokenMultiAppContractGuards.MudHttpUtils_PackageReference_ShouldBeSingleVersion 锁定）。 -->
-		<PackageReference Include="Mud.HttpUtils" Version="3.0.6" />
+		<PackageReference Include="Mud.HttpUtils" Version="3.0.7" />
 	</ItemGroup>
 
 </Project>

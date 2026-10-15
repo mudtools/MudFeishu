@@ -886,6 +886,28 @@ Below are actual screenshots of **FeishuWikiManager** (a Feishu wiki management 
 - [Contributing guide](./CONTRIBUTING.md) — how to contribute to the project
 - [Changelog](./CHANGELOG.md) — version updates and change notes
 
+### Native AOT publishing
+
+Publishing an AOT application:
+
+```bash
+dotnet publish -r win-x64 -c Release /p:PublishAot=true
+```
+
+> ⚠️ **Notes**:
+> - Native AOT is only supported on net8.0+ target frameworks; AOT analyzers are not enabled for netstandard2.0 / net6.0
+> - Register custom `JsonSerializerContext` types via entry points such as `FeishuJsonDefaults.ConfigureUserResolver` to avoid runtime reflection-based serialization
+> - Do not mark extended config DTO properties with `required` (the source-generated binder constructs via `new T()`); perform validation in a `Validate()` method instead
+
+### Core Dependencies
+
+| Package                                       | Version          | Description                                           |
+| --------------------------------------------- | ---------------- | ----------------------------------------------------- |
+| **Mud.HttpUtils**                             | v3.0.7           | HTTP client utilities with source generator (incl. resilience policies) |
+| **Mud.HttpUtils.Generator**                   | v3.0.7           | HTTP client code generator (compile-time)             |
+| **System.Text.Json**                          | v10.0.9          | High-performance JSON serialization (netstandard2.0 target) |
+| **Microsoft.Extensions.***                    | v8.0.2 / v10.0.9 | Dependency injection, logging, configuration binding, options |
+
 ---
 
 ## License

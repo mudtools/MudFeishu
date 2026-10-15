@@ -412,6 +412,14 @@ public class UserTokenManagerTests : TokenManagerTestsBase
     private static string EncodeToken(string token, long expireTimestampMs)
         => TokenStoreHelper.EncodeStoredToken(token, expireTimestampMs);
 
+    /// <summary>
+    /// 构造旧格式（绝对毫秒戳）存储值——用于模拟 3.0.3 之前落库的<b>存量数据</b>（C-2 双读覆盖）。
+    /// 注意：相对秒新格式无法表达「已过期」（剩余秒 &lt;= 0 归一为 0 = 无 TTL 信息），
+    /// 模拟过期态必须使用旧格式字面量。
+    /// </summary>
+    private static string EncodeLegacyToken(string token, long expireTimestampMs)
+        => $"{expireTimestampMs}|{token}";
+
     private static long NowMs => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
     private void SetupStoreTokens(string? encodedAccess, string? encodedRefresh)
@@ -433,9 +441,9 @@ public class UserTokenManagerTests : TokenManagerTestsBase
     [Fact]
     public async Task RefreshUserTokenAsync_ShouldRefreshWithStoredRefreshToken_WhenStoredAccessTokenExpired()
     {
-        // Arrange：store 中 access 已过期，refresh 仍有效
+        // Arrange：store 中 access 已过期（旧格式存量字面量），refresh 仍有效（新格式相对秒）
         SetupStoreTokens(
-            encodedAccess: EncodeToken("expired-access", NowMs - 60_000),
+            encodedAccess: EncodeLegacyToken("expired-access", NowMs - 60_000),
             encodedRefresh: EncodeToken("stored-refresh", NowMs + 30L * 24 * 3600 * 1000));
 
         var refreshedResult = new OAuthCredentialsResult
@@ -503,7 +511,7 @@ public class UserTokenManagerTests : TokenManagerTestsBase
     public async Task CanRefreshTokenAsync_ShouldReturnTrue_WhenStoredAccessExpiredButRefreshValid()
     {
         SetupStoreTokens(
-            encodedAccess: EncodeToken("expired-access", NowMs - 60_000),
+            encodedAccess: EncodeLegacyToken("expired-access", NowMs - 60_000),
             encodedRefresh: EncodeToken("stored-refresh", NowMs + 30L * 24 * 3600 * 1000));
 
         var result = await _userTokenManager.CanRefreshTokenAsync("user1", CancellationToken.None);
@@ -600,7 +608,8 @@ public class UserTokenManagerTests : TokenManagerTestsBase
     public async Task RefreshUserTokenAsync_ShouldKeepNewerStoredToken_WhenStoreValueDiffersFromAttemptedCandidate()
     {
         // Arrange：第 1 次 Get（LoadRefreshCandidateAsync）返回本次尝试的旧令牌；
-        // 第 2 次 Get（CAS 比对）返回并发刷新刚持久化的新令牌（编码值不同）。
+        // 第 2 次 Get（CAS 比对）返回并发刷新刚持久化的新令牌（令牌明文不同——C-2 相对秒格式下
+        // 编码值随时刻漂移，CAS 已改为解码明文比较）。
         var oldEncoded = EncodeToken("old-refresh", NowMs + 30L * 24 * 3600 * 1000);
         var newerEncoded = EncodeToken("newer-refresh", NowMs + 30L * 24 * 3600 * 1000);
         var getRefreshCalls = 0;
@@ -656,9 +665,11 @@ public class UserTokenManagerTests : TokenManagerTestsBase
     [Fact]
     public async Task RefreshUserTokenAsync_ShouldReturnNull_WhenStoredRefreshTokenExpired()
     {
+        // 过期 refresh 无法用相对秒新格式表达（剩余秒 <= 0 归一为无 TTL 信息），
+        // 故以旧格式（绝对毫秒戳）字面量模拟 3.0.3 之前落库的存量过期数据（C-2 双读覆盖）。
         SetupStoreTokens(
-            encodedAccess: EncodeToken("expired-access", NowMs - 60_000),
-            encodedRefresh: EncodeToken("dead-refresh", NowMs - 120_000));
+            encodedAccess: EncodeLegacyToken("expired-access", NowMs - 60_000),
+            encodedRefresh: EncodeLegacyToken("dead-refresh", NowMs - 120_000));
 
         var result = await _userTokenManager.RefreshUserTokenAsync("user1", CancellationToken.None);
 

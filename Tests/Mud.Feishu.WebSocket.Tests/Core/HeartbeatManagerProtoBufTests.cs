@@ -55,10 +55,14 @@ public class HeartbeatManagerProtoBufTests
         var heartbeatTask = manager.StartHeartbeatAsync(cts.Token);
 
         // 等待心跳发送（间隔 5000ms）：用有界条件等待替代固定 Task.Delay(6000)——
-        // 固定延时在 CI 负载下可能早于心跳触发（计时器节拍 + 线程池排队），造成偶发空引用
-        var completed = await Task.WhenAny(pingSent.Task, Task.Delay(TimeSpan.FromSeconds(10)));
+        // 固定延时在 CI 负载下可能早于心跳触发（计时器节拍 + 线程池排队），造成偶发空引用。
+        // 上界取 20s（间隔的 4 倍）：本用例真正要防的是"心跳续体被调度延迟"，
+        // 而 CI runner 在满载时单个计时器续体可能被推迟数秒；通过路径在 Ping 送达时立即返回，
+        // 故预算放大不增加正常耗时。续体"上下文捕获"这一确定性问题由
+        // StartHeartbeatAsync_ShouldNotCaptureCallerSynchronizationContext 守卫。
+        var completed = await Task.WhenAny(pingSent.Task, Task.Delay(TimeSpan.FromSeconds(20)));
         completed.Should().BeSameAs(pingSent.Task,
-            "心跳必须按 HeartbeatIntervalMs 触发（上界 10s > 间隔 5s，容差只用于吸收调度延迟）");
+            "心跳必须按 HeartbeatIntervalMs 触发（上界 20s 仅用于吸收调度延迟，间隔本身是 5s）");
 
         // Act
         sentData = await pingSent.Task;
@@ -71,6 +75,91 @@ public class HeartbeatManagerProtoBufTests
         frame.Service.Should().Be(1001);
         frame.Method.Should().Be(FrameBuilder.MethodControl);
         frame.MessageType.Should().Be(MessageType.Ping);
+    }
+
+    /// <summary>
+    /// CI 事故回归：心跳循环是<b>后台循环</b>，不得把"发 Ping"的续体 Post 回调用方的
+    /// <see cref="SynchronizationContext"/>。
+    /// </summary>
+    /// <remarks>
+    /// 真实故障形态（GitHub Actions windows-latest：net8.0 与 net10.0 两个 TFM 同时失败）：
+    /// xUnit 的最大并发闸门（<c>MaxConcurrencySyncContext</c>）被长阻塞用例占满时，
+    /// <c>await Task.Delay(心跳间隔)</c> 的续体会排队等闸门配额 —— 5 秒间隔在 10 秒预算内
+    /// 仍未送达。同一路径在生产等价于"心跳在调用方的 UI / 请求上下文上发送"。
+    /// <para>
+    /// 本用例把该风险<b>确定性化</b>：用一个"只计数、不执行"的门控上下文替换调用方上下文，
+    /// 只要心跳续体经过 <c>Post</c>，Ping 就永远送不到（与闸门被占满的最坏情形同构），
+    /// 无需依赖 CI 负载碰运气。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task StartHeartbeatAsync_ShouldNotCaptureCallerSynchronizationContext()
+    {
+        // Arrange
+        var pingSent = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var manager = CreateHeartbeatManager(
+            new FeishuWebSocketOptions(),
+            (data, _) => { pingSent.TrySetResult(data); return Task.CompletedTask; });
+        manager.SetServiceId(1001);
+
+        // 本用例不验证间隔值（Options 下界 5000 属 Validate 硬约束，另有专门用例覆盖），
+        // 只验证"续体落在哪个上下文"，故直接注入短间隔以免用例白等 5 秒。
+        SetHeartbeatIntervalMs(manager, 200);
+
+        var gate = new GatedSynchronizationContext();
+        var originalContext = SynchronizationContext.Current;
+        using var cts = new CancellationTokenSource();
+
+        Task heartbeatTask;
+        SynchronizationContext.SetSynchronizationContext(gate);
+        try
+        {
+            // Act：在"调用方上下文已被占满"的上下文内启动心跳循环。
+            // StartHeartbeatAsync 的同步段在此处捕获上下文并注册首个 await（Task.Delay），
+            // 因此随后即可恢复原上下文——被测行为（续体是否 Post 回捕获的上下文）已经定型，
+            // 用例自身的等待不再需要落在门控上（否则失败路径会挂死而不是失败）。
+            heartbeatTask = manager.StartHeartbeatAsync(cts.Token);
+        }
+        finally
+        {
+            SynchronizationContext.SetSynchronizationContext(originalContext);
+        }
+
+        var completed = await Task.WhenAny(pingSent.Task, Task.Delay(TimeSpan.FromSeconds(5)));
+
+        // 收尾（不放行门控）：断言不依赖心跳循环是否已退出
+        cts.Cancel();
+        await Task.WhenAny(heartbeatTask, Task.Delay(TimeSpan.FromSeconds(2)));
+
+        // Assert
+        completed.Should().BeSameAs(pingSent.Task,
+            "后台心跳循环必须与调用方的 SynchronizationContext 解耦：续体一旦 Post 回被占满的上下文，" +
+            "Ping 就会被推迟到远超 HeartbeatIntervalMs（CI 中 5 秒间隔 + 10 秒预算仍未送达即此形态）");
+        gate.PostCount.Should().Be(0, "心跳路径不得向调用方上下文 Post 任何续体");
+    }
+
+    /// <summary>
+    /// 覆盖私有心跳间隔字段（Options 的 setter 会把间隔钳制到 ≥5000ms，构造函数不校验）。
+    /// </summary>
+    private static void SetHeartbeatIntervalMs(HeartbeatManager manager, int intervalMs)
+    {
+        var field = typeof(HeartbeatManager).GetField("_heartbeatIntervalMs", BindingFlags.NonPublic | BindingFlags.Instance);
+        field.Should().NotBeNull();
+        field!.SetValue(manager, intervalMs);
+    }
+
+    /// <summary>
+    /// 门控 <see cref="SynchronizationContext"/>：续体只计数、不执行，用于模拟
+    /// "调用方上下文已被占满、短期内不可能回到该上下文"的最坏情形。
+    /// </summary>
+    private sealed class GatedSynchronizationContext : SynchronizationContext
+    {
+        private int _postCount;
+
+        /// <summary>被吞掉的 <c>Post</c> 次数（&gt;0 即说明有续体依赖调用方上下文）。</summary>
+        public int PostCount => Volatile.Read(ref _postCount);
+
+        public override void Post(SendOrPostCallback d, object? state) => Interlocked.Increment(ref _postCount);
     }
 
     [Fact]

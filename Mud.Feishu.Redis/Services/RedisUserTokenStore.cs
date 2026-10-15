@@ -20,10 +20,43 @@ namespace Mud.Feishu.Redis.Services;
 /// 支持按用户标识隔离令牌数据，适用于多实例分布式部署场景。
 /// ITokenStore 的方法通过 UserTokenStoreBase 基类委托给内部 RedisTokenStore 实现。
 /// </remarks>
-public class RedisUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePurge
+public class RedisUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePurge, IUserTokenStoreCompareExchange
 {
     /// <summary>SCAN 类删除操作的批大小（R2-08）。</summary>
     private const int DeleteBatchSize = 500;
+
+    /// <summary>
+    /// U-7（上游 3.0.10 Batch 3）：用户维度 CAS 的 Lua 原子脚本。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>KEYS[1]</c> = 用户维度键；<c>ARGV[1]</c> = 期望令牌<b>明文</b>；<c>ARGV[2]</c> = 新存储值（空串 = compare-and-delete）；
+    /// <c>ARGV[3]</c> = 新键 TTL（毫秒，&lt;= 0 表示不设 TTL）。
+    /// </para>
+    /// <para>
+    /// <b>明文比较的原子化</b>：飞书管线按桥接器约定<b>直存编码值</b>（<c>{前导}|{明文令牌}</c>，
+    /// v1 相对秒 / 旧绝对毫秒戳 / v2 信封三形态的前导段不同，但<b>首个 <c>|</c> 之后恒为令牌明文</b>），
+    /// 故脚本按首个分隔符切出明文档与 ARGV[1] 整值比较 —— 解码不出 Lua，比较与写入在同一次
+    /// 脚本执行内完成（无「读取 → C# 比较 → 写入」的竞态窗口）。
+    /// </para>
+    /// </remarks>
+    private const string CompareExchangeScript = @"
+local v = redis.call('GET', KEYS[1])
+if not v then return 0 end
+local i = string.find(v, '|', 1, true)
+local plain = i and string.sub(v, i + 1) or ''
+if plain ~= ARGV[1] then return 0 end
+if ARGV[2] == '' then
+  redis.call('DEL', KEYS[1])
+  return 1
+end
+local ttl = tonumber(ARGV[3])
+if ttl and ttl > 0 then
+  redis.call('SET', KEYS[1], ARGV[2], 'PX', ttl)
+else
+  redis.call('SET', KEYS[1], ARGV[2])
+end
+return 1";
 
     private readonly IConnectionMultiplexer _redis;
     private readonly string _keyPrefix;
@@ -83,6 +116,9 @@ public class RedisUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePurg
     /// TMA-22 修复：refresh token 存储 TTL 由硬编码 30 天改为优先使用编码值中的过期时间，
     /// 缺失时才回落 30 天。使 store TTL 与业务过期语义一致。
     /// TMA2-15 / P2-5 修复：过期戳已过时（expireMs &lt;= now）删除条目而非写 TTL=0（Redis TTL=0 等于永不过期）。
+    /// C-2（3.0.3）：过期信息推导经 <see cref="TokenStoreHelper.TryDecodeExpiry"/> 双读——
+    /// 新格式（相对秒）投影为过期时刻后换算 TTL；旧格式（绝对毫秒戳）原样判定（已过期删键行为不变）；
+    /// 「无 TTL 信息」（前导数 &lt;= 0）回落 30 天（不再误判为已过期删键）。
     /// </remarks>
     public override async Task SetRefreshTokenAsync(string userId, string tokenType, string refreshToken, CancellationToken cancellationToken = default)
     {
@@ -115,6 +151,91 @@ public class RedisUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePurg
     {
         cancellationToken.ThrowIfCancellationRequested();
         await _redis.GetDatabase().KeyDeleteAsync(new RedisKey[] { BuildUserAccessTokenKey(userId, tokenType), BuildUserRefreshTokenKey(userId, tokenType) }, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
+    }
+
+    // ──────────────────────────────────────────────
+    //  U-7（上游 3.0.10 Batch 3）：用户维度原生 CAS —— Lua 原子实现
+    // ──────────────────────────────────────────────
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// 新值按 C-2 写侧形态编码（<see cref="FeishuTokenStoreCodec"/> 单写相对秒）；
+    /// <paramref name="expiresInSeconds"/> &gt; 0 时同时设置键 TTL（与 <see cref="SetAccessTokenAsync"/> 同口径），
+    /// ≤ 0 时编码为「无 TTL 信息」（前导 0）且不设键 TTL（契约：宁缺勿滥）。
+    /// </remarks>
+    public Task<bool> CompareExchangeAccessTokenAsync(
+        string userId,
+        string tokenType,
+        string expectedToken,
+        string? newToken,
+        long expiresInSeconds = 0,
+        CancellationToken cancellationToken = default)
+    {
+        var encoded = string.IsNullOrEmpty(newToken)
+            ? null
+            : FeishuTokenStoreCodec.Instance.Encode(newToken, expiresInSeconds > 0 ? expiresInSeconds : 0);
+
+        return CompareExchangeAsync(
+            BuildUserAccessTokenKey(userId, tokenType),
+            expectedToken,
+            encoded,
+            expiresInSeconds > 0 ? expiresInSeconds * 1000L : 0L,
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// 刷新令牌无 TTL 入参：新值编码为「无 TTL 信息」（前导 0）并回落 30 天键 TTL ——
+    /// 与 <see cref="SetRefreshTokenAsync"/> 的「无编码过期戳 ⇒ 回落 30 天」分支同口径。
+    /// </remarks>
+    public Task<bool> CompareExchangeRefreshTokenAsync(
+        string userId,
+        string tokenType,
+        string expectedToken,
+        string? newToken,
+        CancellationToken cancellationToken = default)
+    {
+        var encoded = string.IsNullOrEmpty(newToken)
+            ? null
+            : FeishuTokenStoreCodec.Instance.Encode(newToken, 0);
+
+        return CompareExchangeAsync(
+            BuildUserRefreshTokenKey(userId, tokenType),
+            expectedToken,
+            encoded,
+            encoded is null ? 0L : (long)TimeSpan.FromDays(30).TotalMilliseconds,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// 用户维度 CAS 共享核心：单次 Lua 脚本内完成「取存储值 → 明文比较 → 写入/删除」。
+    /// </summary>
+    /// <param name="key">用户维度键。</param>
+    /// <param name="expectedToken">期望的令牌明文（契约要求非空）。</param>
+    /// <param name="encodedNewValue">新存储值（已编码）；<c>null</c> = compare-and-delete。</param>
+    /// <param name="ttlMs">新值键 TTL（毫秒）；≤ 0 = 不设 TTL。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>匹配且写入/删除成功返回 <c>true</c>；键不存在或不匹配返回 <c>false</c>。</returns>
+    private async Task<bool> CompareExchangeAsync(
+        string key,
+        string expectedToken,
+        string? encodedNewValue,
+        long ttlMs,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        // 契约：expectedToken 不得为空（空期望值无比较意义，且会与"已过期占位"的空明文混淆）。
+        if (string.IsNullOrEmpty(expectedToken))
+            return false;
+
+        var result = await _redis.GetDatabase().ScriptEvaluateAsync(
+            CompareExchangeScript,
+            new RedisKey[] { key },
+            new RedisValue[] { expectedToken, encodedNewValue ?? string.Empty, ttlMs },
+            flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
+
+        return (long)result == 1L;
     }
 
     /// <inheritdoc />

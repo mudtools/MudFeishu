@@ -71,24 +71,30 @@ public class DefaultFeishuTokenManagerFactory : IFeishuTokenManagerFactory
         var options = Options.Create(config);
         var currentUserContext = _serviceProvider.GetService<IFeishuCurrentUserContext>();
 
+        // U-3：跨进程刷新去重租约 —— 由 Mud.Feishu.Redis 注册 RedisRefreshLease；未启用 Redis 时为 null（零行为变化）。
+        var refreshLease = _serviceProvider.GetService<ITokenRefreshLease>();
+
         var tenantTokenManager = new TenantTokenManager(
             authenticationApi,
             options,
             _serviceProvider.GetRequiredService<ILogger<TenantTokenManager>>(),
-            tokenStore);
+            tokenStore,
+            refreshLease);
 
         var appTokenManager = new AppTokenManager(
             authenticationApi,
             options,
             _serviceProvider.GetRequiredService<ILogger<AppTokenManager>>(),
-            tokenStore);
+            tokenStore,
+            refreshLease);
 
         var userTokenManager = new UserTokenManager(
             currentUserContext,
             authenticationApi,
             options,
             _serviceProvider.GetRequiredService<ILogger<UserTokenManager>>(),
-            userTokenStore);
+            userTokenStore,
+            refreshLease);
 
         return (tenantTokenManager, appTokenManager, userTokenManager);
     }

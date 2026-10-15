@@ -576,7 +576,12 @@ public class MultiAppTests
         var appManager = provider.GetRequiredService<IFeishuAppManager>();
         var holder = provider.GetRequiredService<IAppContextHolder>();
 
+        // BC-30（Mud.HttpUtils 3.0.7）：GetWebApi 基成员已弃用，本 SDK 重写同步传播 [Obsolete]。
+        // 本用例的意图正是守护该重写的行为契约（DI 解析 + 受控切换），属废弃 API 的守卫性调用，
+        // 故在此精确豁免（仅本表达式块，不波及测试类其余部分）。
+#pragma warning disable CS0618 // FeishuAppManager.GetWebApi 已随上游 BC-30 弃用：守卫性调用
         var result = appManager.GetWebApi<IFeishuAppContextSwitcher>(AppConfigs.AppKeys.Default);
+#pragma warning restore CS0618
 
         // 1) 原样返回 DI 解析到的服务实例（重写基类实现的核心契约）。
         Assert.Same(switcherMock.Object, result);
@@ -628,7 +633,12 @@ public class MultiAppTests
         var appManager = provider.GetRequiredService<IFeishuAppManager>();
         var holder = provider.GetRequiredService<IAppContextHolder>();
 
+        // BC-30（Mud.HttpUtils 3.0.7）：GetDefaultWebApi 基成员已弃用，本 SDK 重写同步传播 [Obsolete]。
+        // 本用例的意图正是守护该重写的行为契约（DI 解析 + 切换默认应用），属废弃 API 的守卫性调用，
+        // 故在此精确豁免（仅本表达式块，不波及测试类其余部分）。
+#pragma warning disable CS0618 // FeishuAppManager.GetDefaultWebApi 已随上游 BC-30 弃用：守卫性调用
         var result = appManager.GetDefaultWebApi<IFeishuAppContextSwitcher>();
+#pragma warning restore CS0618
 
         Assert.Same(switcherMock.Object, result);
 

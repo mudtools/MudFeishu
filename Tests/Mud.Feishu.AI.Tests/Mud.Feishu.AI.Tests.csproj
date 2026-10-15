@@ -13,8 +13,8 @@
     <ProjectReference Include="..\..\Mud.AI.Generator\Mud.AI.Generator.csproj"
                       OutputItemType="Analyzer"
                       ReferenceOutputAssembly="false" />
-    <PackageReference Include="Mud.HttpUtils.Attributes" Version="3.0.6" />
-    <PackageReference Include="Mud.HttpUtils.Abstractions" Version="3.0.6" />
+    <PackageReference Include="Mud.HttpUtils.Attributes" Version="3.0.7" />
+    <PackageReference Include="Mud.HttpUtils.Abstractions" Version="3.0.7" />
   </ItemGroup>
 
   <ItemGroup>

@@ -425,6 +425,21 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/audit-config-keys.
   「必经」类性质不得用源码扫描验证（改用运行时行为断言）。
 - **Public API 兼容门禁**：`PublicAPI.Shipped.txt` / `PublicAPI.Unshipped.txt` + Microsoft.CodeAnalysis.PublicApiAnalyzers。
 
+### 原生 AOT 注意事项
+
+> ⚠️ **注意事项**：
+> - Native AOT 仅支持 net8.0+ 目标框架；netstandard2.0 / net6.0 目标不启用 AOT 分析
+> - 自定义类型的序列化请通过 `FeishuJsonDefaults.ConfigureUserResolver` 等入口注册自定义 `JsonSerializerContext`，避免运行时反射序列化
+> - 扩展配置 DTO 时不要使用 `required` 修饰（源生成绑定器通过 `new T()` 构造），请在 `Validate()` 方法中完成必填校验
+
+### 核心依赖
+
+| 包                            | 版本             | 说明                                |
+| ----------------------------- | ---------------- | ----------------------------------- |
+| **Mud.HttpUtils**             | v3.0.7  | HTTP 客户端工具类（含源代码生成器） |
+| **Mud.HttpUtils.Generator**   | v3.0.7  | HTTP 客户端代码生成器（编译时）     |
+| **Microsoft.Extensions.Http** | v8.0.1 / v10.0.9 | HTTP 客户端工厂                     |
+
 ---
 
 ## 目录结构

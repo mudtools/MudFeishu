@@ -65,6 +65,32 @@ installed are reported as skipped (this machine only has .NET 8/9/10, so all `ne
 CI runs the same checks: `Restore dependencies` is preceded by `-CacheCheckOnly`, and the `Build` log is
 asserted for the diagnostic whitelist afterwards (`.github/workflows/dotnet-publish.yml`).
 
+## Release and version tags (`v*`)
+
+Releases are tag-driven: **the tag name is the single source of truth for the package version**. The tag form
+is `v<major>.<minor>.<patch>` (e.g. `v3.0.3`).
+
+- `.github/workflows/dotnet-publish.yml` matches `tags: ["v*"]` **only**. A bare `3.0.3` tag (the historical
+  form, used up to `3.0.2`) does not trigger the workflow at all — no build, no publish, no warning.
+- `publish-nuget` resolves the version from the tag (`Resolve package version`) and feeds it to both `build`
+  and `pack` via `-p:Version=`; `Assert package set` then hard-asserts that the produced `.nupkg` set is
+  exactly the 9 source packages (the contract `publish.bat` encodes in its `PROJECTS` list) and that every
+  file carries that version. Keep `IsPackable=false` for everything outside those 9 sources
+  (`Demos/Directory.Build.props`, `Tests/Directory.Build.props`): a packable demo still matches the
+  `Mud.Feishu*` glob of the nuget.org Trusted Publishing policy, so it would be published silently.
+- `Directory.Build.props`'s `<Version>` is **not** the release version; a mismatch with the tag is reported
+  as a `::warning::` only (so "tag = release" stays a one-step operation). `publish.bat` without a version
+  argument still packs whatever `<Version>` currently holds.
+- `workflow_dispatch` with an **empty** `version` input runs semantic-release (`tagFormat` pinned to
+  `v${version}`). Because the pre-`3.0.3` history has no `v*` release tag, that path is guarded: it refuses
+  to run unless the highest existing `v*` tag is >= the version recorded at the top of `CHANGELOG.md`.
+  Prefer the explicit alternatives — pass `version` to `workflow_dispatch`, or push a `v*` tag.
+- Publishing uses NuGet Trusted Publishing (OIDC), not an API key: job `publish-nuget` declares
+  `environment: release` + `permissions: id-token: write`, and must match the nuget.org policy (repository
+  `mudtools/MudFeishu`, workflow `dotnet-publish.yml`, environment `release`, glob `Mud.Feishu*`). The only
+  secret involved is `NUGET_USER` (the NuGet.org profile name) — the `release` environment holds no secrets,
+  so it must be a repository/organization secret.
+
 ## Dependency version policy (Mud.HttpUtils)
 
 This repo consumes `Mud.HttpUtils` **3.0.7** (HttpUtils and Generator **must stay on the same

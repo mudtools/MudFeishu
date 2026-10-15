@@ -2,78 +2,77 @@
 
 ## [3.0.3] - 2026-10-15
 
-> 主题：**适配 `Mud.HttpUtils` 3.0.7**（上游 BC-30 弃用传播 + F-9 元包解耦适配）。
+> 主题：**适配 `Mud.HttpUtils` 3.0.7**（上游弃用标记传播 + 元包解耦适配）。
 > 本版**无对外契约移除**；`FeishuAppManager.GetWebApi` / `GetDefaultWebApi` 随上游标记弃用
 > （3.x 编译告警，4.0 移除），签名与行为不变。
 
 ### 依赖升级
 
 - `Mud.HttpUtils` / `Mud.HttpUtils.Generator`：`3.0.5` → **`3.0.7`**（两者必须同版本）。
-  6 个源工程的 8 处 `Mud.HttpUtils*` 声明统一，`README.md` / `README_EN.md` / `Mud.Feishu/README.md` /
-  `Mud.Feishu.OpenTelemetry/README.md` 与 `AGENTS.md` 依赖表同步。
-- **新增 `Mud.HttpUtils.Resilience` 3.0.7 显式依赖**（F-9）：上游元包不再传递弹性策略包，本仓
+  6 个源工程的 8 处 `Mud.HttpUtils*` 声明统一，各 README 与 `AGENTS.md` 依赖表同步。
+- **新增 `Mud.HttpUtils.Resilience` 3.0.7 显式依赖**：上游元包不再传递弹性策略包，本仓
   `AddFeishuApp` 装配链（per-app 重试 / 超时 / 熔断）依赖之，故显式安装；该依赖随包流传给消费方
   （运行期加载所需），不设 `PrivateAssets`。
 
 ### 新增（Added）
 
-- **C-2 双读令牌存储编解码**：新增公开 `FeishuTokenStoreCodec`（实现上游 `ITokenStoreCodec`）。
+- **双读令牌存储编解码**：新增公开 `FeishuTokenStoreCodec`（实现上游 `ITokenStoreCodec`）。
   写入格式改为官方相对秒 `{expiresInSeconds}|{token}`；读取双读兼容旧「绝对毫秒戳」存量值
   （按条目自然过期收敛，无需回灌）；消费方「绝对毫秒戳」契约不变。同时修正 Redis 侧 refresh
   TTL 的「无 TTL 信息」边界（前导数 ≤ 0 回落 30 天，不再误判为已过期删键）。
   **回滚须知**：回滚 3.0.2 及更早版本时新格式值会被判为过期（重新获取令牌；Redis refresh 键
   被旧逻辑删除 → 用户需重新授权），不产生错误令牌。
-  **U-1 回收（上游 3.0.10 Batch 1）**：双读判别上收官方 `MigrationTokenStoreCodec` 后，
-  `FeishuTokenStoreCodec` 改为其薄包装（显式传飞书阈值 10^10），私有双读实现拆除。
-- **F-4 外部标识反查**：`FeishuAppContext` 实现 `IAppExternalIds`（`app_id → appKey`），
+  双读判别复用官方 `MigrationTokenStoreCodec`（`FeishuTokenStoreCodec` 为其薄包装，显式传飞书阈值
+  10^10），本仓不再维护私有双读实现。
+- **外部标识反查**：`FeishuAppContext` 实现 `IAppExternalIds`（`app_id → appKey`），
   `FeishuAppManager` 支持经内置索引与 DI 注入的宿主 `IAppLookupProvider` 反查 appKey
   （fail-closed，结果必须命中已注册应用）——可把只携带 `app_id` 的事件载荷解析到对应应用。
-- **U-3 跨进程刷新去重租约（上游 3.0.10 Batch 1）**：三个令牌管理器（Tenant/App/User）接入
+- **跨进程刷新去重租约**：三个令牌管理器（Tenant/App/User）接入
   `TokenManagerBase.RefreshLease` 钩子。`Mud.Feishu.Redis` 注册官方 `RedisRefreshLease`
   （`SET NX PX` + Lua compare-and-del，fail-open），键前缀 `{TokenKeyPrefix}:lease` 随环境段隔离；
   `DefaultFeishuTokenManagerFactory` 经 DI 解析注入。未启用 Redis 时行为与单实例逐位一致；
   多实例下未抢到租约的实例限时轮询读穿透（250ms 间隔 / 10s 超时 fail-open 放行本机刷新）。
-- **U-4 按应用清库能力面（上游 3.0.10 Batch 2）**：`Mud.Feishu.Redis.RedisTokenStore` 实现官方
+- **按应用清库能力面**：`Mud.Feishu.Redis.RedisTokenStore` 实现官方
   `ITokenStoreAppPurge`（`EnumerateKeysAsync` 物理键快照枚举 / `PurgeAppAsync` 返回实际删除数，
   节点失败直接上抛）；清库门与加密装饰器透传该能力面——宿主可统一走
   `TokenStorePurgeExtensions.PurgeAppTokensAsync(store, appKey)`（能力探测穿透装饰器栈）。
-- **U-5 多命中外部标识反查（上游 3.0.10 Batch 2）**：`FeishuAppManager.TryResolveAllAppKeys`
+- **多命中外部标识反查**：`FeishuAppManager.TryResolveAllAppKeys`
   重写——宿主提供者实现 `IMultiAppLookupProvider` 时返回全部已注册 appKey（过滤未注册/去重、
-  不物化懒加载），仅单结果面时回退 F-4 语义。
-- **U-7 用户维度原生 CAS（上游 3.0.10 Batch 3）**：`RedisUserTokenStore` 实现
+  不物化懒加载），仅单结果面时回退单命中反查语义。
+- **用户维度原生 CAS**：`RedisUserTokenStore` 实现
   `IUserTokenStoreCompareExchange`——Lua 单脚本内完成「取存储值 → 明文比较 → 写入/删除」，
-  TMF-05 清库不再有「读取 → 比较 → 删除」的竞态窗口；`UserTokenManager` 按原始 store
-  能力分派（无能力 store 保留 C-2 解码明文比较路径，语义与升级前一致）。
-- **U-2 v2 信封读取兼容（上游 3.0.10 Batch 3）**：`TokenStoreHelper` 支持 v2 版本化信封读取
+  凭据变更清库不再有「读取 → 比较 → 删除」的竞态窗口；`UserTokenManager` 按原始 store
+  能力分派（无能力 store 保留解码明文比较路径，语义与升级前一致）。
+- **v2 信封读取兼容**：`TokenStoreHelper` 支持 v2 版本化信封读取
   （`v2:{n}|{token}` 三态归一、`v2:expired|` 投影为无令牌、Redis 侧 TTL 推导同步兼容）。
-  写侧仍单写 v1 相对秒形态（C-2：默认形态不得漂移）。
+  写侧仍单写 v1 相对秒形态（默认存储形态不得漂移）。
 
 ### 变更（Changed）
 
-- **`FeishuAppManager.GetWebApi` / `GetDefaultWebApi` 传播上游 BC-30 弃用标记**：基类成员在
+- **`FeishuAppManager.GetWebApi` / `GetDefaultWebApi` 传播上游弃用标记**：基类成员在
   Mud.HttpUtils 3.0.7 标 `[Obsolete]`（4.0 移除），两个重写同步标记以保持上下游口径一致并消除
   CS0672。迁移路径：DI 解析 `IAppScopeSwitcher` + `UseAppScope` / `UseDefaultAppScope`（自动归还），
   或 `IAppContextHolder.SwitchToApp(appKey, appManager, sp)`（受控切换并保持，语义等价）。
   签名与行为在本大版本内不变；测试中的守卫性调用以 `#pragma warning disable CS0618` 精确豁免。
-- **TMF-05 CAS 改为令牌明文比较**（C-2 连带）：相对秒格式下存储编码值随时刻漂移，整值重编码
-  比较必然失配；改为解码明文比较后时间无关，并消除旧实现「同 refresh_token 不同持久化时间戳
-  误跳过清库」的保守代价。
-- **`Mud.Feishu.Redis` 接入官方 `Mud.HttpUtils.Redis` 包**（C-6 分层共存）：官方 store 与飞书
+- **凭据变更清库 CAS 改为令牌明文比较**（随相对秒存储格式连带）：相对秒格式下存储编码值随时刻
+  漂移，整值重编码比较必然失配；改为解码明文比较后时间无关，并消除旧实现「同 refresh_token
+  不同持久化时间戳误跳过清库」的保守代价。
+- **`Mud.Feishu.Redis` 接入官方 `Mud.HttpUtils.Redis` 包**：官方 store 与飞书
   管线为两种 `ITokenStore` 使用约定（明文入参 + 内部 codec vs 直存编码值），不可互换直插；
   `FeishuTokenStoreCodec` 作为互操作锚点，供官方组件对接飞书形态存量数据。
 
 ### 文档与测试
 
-- 新增 `.docs/MudFeishu-MudHttpUtils-3.0.7-适配说明.md`：上游契约变更逐条对账（B-1/B-2/B-3/F-1/F-2/F-9
-  与 C 系列）、不迁移项决策（令牌键布局 / 自建叠层 / 私有 codec）及理由、发布前检查清单。
+- 新增 `.docs/MudFeishu-MudHttpUtils-3.0.7-适配说明.md`：上游契约变更逐条对账、
+  不迁移项决策（令牌键布局 / 自建叠层 / 私有 codec）及理由、发布前检查清单。
 - `AGENTS.md` 增补上游契约变更传导通道（上游 CHANGELOG「契约变更」专章 + 下游约束对账清单）与
-  BC-30 / F-9 适配注记。
+  本次适配注记。
 - `scripts/verify-build.ps1` 步骤 0 本地源解析改为按「**实际包含 csproj 声明版本包**」判定优先，
   修复 `artifacts`（旧版）与 `artifacts-debug`（联调包）并存时选中前者并跳过缓存哈希校验的问题。
 - 验证：质量门禁全绿（编译 0 错误、CS1750 / NU1603 / HTTPCLIENT / MUD / FORM / AOT 白名单全 0、
   AotStrictMode net8.0 逐源项目 0 违规、单元测试 6298/6348——跳过项均为 net6.0 运行时缺失）；
   升级前后唯一警告集合 diff 为 0（零新增警告）；
-  新增用例：C-2 双读矩阵 14 例、F-4 反查 10 例、Redis refresh TTL 双读行为 5 例。
+  新增用例：双读矩阵 14 例、外部标识反查 10 例、Redis refresh TTL 双读行为 5 例。
 
 ## [3.0.2] - 2026-10-12
 

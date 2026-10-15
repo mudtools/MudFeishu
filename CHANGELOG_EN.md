@@ -14,6 +14,20 @@
   carries the resilience package; the `AddFeishuApp` wiring (per-app retry / timeout / circuit breaker)
   requires it, so it is installed explicitly and flows to consumers (no `PrivateAssets`).
 
+### Added
+
+- **C-2 dual-read token-store codec**: new public `FeishuTokenStoreCodec` (implements the upstream
+  `ITokenStoreCodec`). Writes now use the official relative-seconds `{expiresInSeconds}|{token}` form;
+  reads dual-read legacy absolute-millisecond values (legacy entries converge by natural expiry, no
+  backfill); consumers keep the absolute-ms contract. The Redis refresh-TTL "no TTL info" boundary is
+  corrected (leading value ≤ 0 falls back to 30 days instead of being treated as expired). **Rollback
+  note**: rolling back to ≤ 3.0.2 treats new-format values as expired (tokens re-fetched; Redis
+  refresh keys purged by the old logic → re-authorization) — no corrupted tokens, but the upgrade /
+  rollback is asymmetric.
+- **F-4 external-ID reverse lookup**: `FeishuAppContext` implements `IAppExternalIds`
+  (`app_id → appKey`); `FeishuAppManager` resolves appKey via the built-in index plus a DI-injected
+  host `IAppLookupProvider` (fail-closed, results must hit registered apps).
+
 ### Changed
 
 - **BC-30 propagation**: `FeishuAppManager.GetWebApi` / `GetDefaultWebApi` are marked `[Obsolete]`
@@ -31,8 +45,8 @@
   declared version package" (fixes the stale-cache check being skipped when `artifacts` and
   `artifacts-debug` coexist).
 - Verified: full quality gate green (0 build errors, diagnostic whitelist all 0, AotStrictMode net8.0
-  0 violations, unit tests 6240/6290 — skips are missing net6.0 runtimes only); zero new warnings
-  versus the pre-upgrade baseline.
+  0 violations, unit tests 6298/6348 — skips are missing net6.0 runtimes only); zero new warnings
+  versus the pre-upgrade baseline; 29 new tests (C-2 dual-read matrix, F-4 lookup, Redis TTL behavior).
 
 ## [Unreleased] - 2026-10-01
 

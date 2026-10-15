@@ -275,10 +275,12 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
                         {
                             // TMF-05（CAS）：仅当 store 仍持有本次尝试所用的 refresh token 时才清除，
                             // 防止宿主直调（绕过组件 KeyedLockTable）场景下误删并发刷新刚持久化的新令牌。
-                            // 比较失败时跳过清库——新令牌由持有者管理；已知保守代价：Feishu 复用旧
-                            // refresh_token 且两次持久化时间戳不同时会跳过清库（活性损失，非正确性问题）。
-                            var attempted = TokenStoreHelper.EncodeStoredToken(candidate.RefreshToken!, candidate.RefreshTokenExpireTime);
-                            if (string.Equals(encodedRefreshToken, attempted, StringComparison.Ordinal))
+                            // C-2（3.0.3）：存储值改为相对秒格式后，编码值随时刻漂移——整值重编码比较
+                            // 必然失配（清库永不执行），故改为解码出令牌明文后按明文比较（时间无关）。
+                            // 副作用：旧实现「Feishu 复用旧 refresh_token 且两次持久化时间戳不同时
+                            // 跳过清库」的保守代价随之消除——同一 refresh_token 即命中清库。
+                            var (storedRefreshToken, _) = TokenStoreHelper.DecodeStoredToken(encodedRefreshToken!);
+                            if (string.Equals(storedRefreshToken, candidate.RefreshToken, StringComparison.Ordinal))
                             {
                                 await _userTokenStore.RemoveAsync(userId, _tokenTypeKey, cancellationToken).ConfigureAwait(false);
                             }

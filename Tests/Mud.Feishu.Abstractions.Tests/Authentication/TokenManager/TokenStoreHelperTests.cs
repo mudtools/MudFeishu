@@ -9,21 +9,65 @@ using Mud.Feishu.Abstractions.Authentication;
 
 namespace Mud.Feishu.Abstractions.Tests.Authentication.TokenManager;
 
+/// <summary>
+/// C-2 裁决（Mud.HttpUtils 3.0.7）落地后的存储值编解码口径用例：
+/// 写入单写相对秒（官方 DefaultTokenStoreCodec 形态）；读取双读兼容旧「绝对毫秒戳」存量值。
+/// </summary>
 public class TokenStoreHelperTests
 {
+    /// <summary>旧格式绝对毫秒戳样例（2023-11，量级 ≥ 10^10 阈值）。</summary>
+    private const long LegacyExpireMs = 1700000000000;
+
     [Fact]
-    public void EncodeStoredToken_ShouldCombineTimestampAndToken()
+    public void EncodeStoredToken_ShouldWriteRelativeSecondsFormat()
     {
-        var result = TokenStoreHelper.EncodeStoredToken("abc123", 1700000000000);
-        Assert.Equal("1700000000000|abc123", result);
+        // C-2：Encode 单写相对秒 {expiresInSeconds}|{token}（不再写绝对毫秒戳）。
+        var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var result = TokenStoreHelper.EncodeStoredToken("abc123", nowMs + 3_600_000);
+
+        var separatorIndex = result.IndexOf('|');
+        Assert.True(separatorIndex > 0, $"应含分隔符: {result}");
+        Assert.True(long.TryParse(result.Substring(0, separatorIndex), out var seconds));
+        Assert.InRange(seconds, 3599, 3600);   // 剩余 1 小时（±1 秒舍入噪声）
+        Assert.Equal("abc123", result.Substring(separatorIndex + 1));
+        Assert.True(seconds < FeishuTokenStoreCodec.AbsoluteMsThreshold, "相对秒不得落入绝对毫秒戳量级");
     }
 
     [Fact]
-    public void DecodeStoredToken_ShouldParseValidEncodedValue()
+    public void EncodeStoredToken_ZeroExpire_ShouldWriteNoTtlInfo()
     {
+        // 无过期信息（expireMs <= 0）→ 相对秒 0（官方「无 TTL 信息」语义）。
+        Assert.Equal("0|abc123", TokenStoreHelper.EncodeStoredToken("abc123", 0));
+    }
+
+    [Fact]
+    public void DecodeStoredToken_ShouldParseLegacyAbsoluteMs()
+    {
+        // 旧格式（绝对毫秒戳）原样解析（存量数据兼容，无需回灌）。
         var (token, expireMs) = TokenStoreHelper.DecodeStoredToken("1700000000000|abc123");
         Assert.Equal("abc123", token);
         Assert.Equal(1700000000000, expireMs);
+    }
+
+    [Fact]
+    public void DecodeStoredToken_ShouldProjectRelativeSecondsToExpireMs()
+    {
+        // 新格式（相对秒）→ 投影为 nowMs + seconds * 1000（消费方「绝对毫秒戳」契约不变）。
+        var before = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var (token, expireMs) = TokenStoreHelper.DecodeStoredToken("7200|abc123");
+        var after = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        Assert.Equal("abc123", token);
+        Assert.InRange(expireMs, before + 7_200_000, after + 7_200_000);
+    }
+
+    [Fact]
+    public void DecodeStoredToken_ZeroLeading_ShouldProjectToNoTtlInfo()
+    {
+        // 前导数 0 = 官方「无 TTL 信息」→ 投影为 0（由调用方决定是否刷新）。
+        var (token, expireMs) = TokenStoreHelper.DecodeStoredToken("0|abc123");
+        Assert.Equal("abc123", token);
+        Assert.Equal(0, expireMs);
     }
 
     [Fact]
@@ -61,11 +105,124 @@ public class TokenStoreHelperTests
     [Fact]
     public void EncodeThenDecode_ShouldRoundTrip()
     {
+        // 相对秒格式的往返：解码投影回绝对毫秒戳，允许 ±2 秒舍入/时钟推进噪声。
         const string originalToken = "test_access_token_12345";
-        const long originalExpire = 1700000000000;
+        var originalExpire = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 3_600_000;
+
         var encoded = TokenStoreHelper.EncodeStoredToken(originalToken, originalExpire);
         var (token, expireMs) = TokenStoreHelper.DecodeStoredToken(encoded);
+
         Assert.Equal(originalToken, token);
-        Assert.Equal(originalExpire, expireMs);
+        Assert.InRange(expireMs, originalExpire - 2_000, originalExpire + 2_000);
+    }
+
+    [Fact]
+    public void TryDecodeExpiry_LegacyPastMs_ShouldReturnTrueWithPastValue()
+    {
+        // 旧格式已过期毫秒戳 → true + 原值（Redis 侧据此删键，行为不变）。
+        var ok = TokenStoreHelper.TryDecodeExpiry("1700000000000|abc123", out var expireMs);
+        Assert.True(ok);
+        Assert.Equal(1700000000000, expireMs);
+    }
+
+    [Fact]
+    public void TryDecodeExpiry_RelativeSeconds_ShouldProjectToExpireMs()
+    {
+        var before = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var ok = TokenStoreHelper.TryDecodeExpiry("86400|abc123", out var expireMs);
+        var after = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        Assert.True(ok);
+        Assert.InRange(expireMs, before + 86_400_000, after + 86_400_000);
+    }
+
+    [Fact]
+    public void TryDecodeExpiry_ZeroLeading_ShouldReturnFalse_NoTtlInfo()
+    {
+        // C-2 行为修正：前导数 0 = 「无 TTL 信息」→ false（Redis 侧回落 30 天），
+        // 不再误判为「已过期」（expireMs=0 <= now）删键。
+        var ok = TokenStoreHelper.TryDecodeExpiry("0|abc123", out var expireMs);
+        Assert.False(ok);
+        Assert.Equal(0, expireMs);
+    }
+
+    [Fact]
+    public void TryDecodeExpiry_InvalidFormats_ShouldReturnFalse()
+    {
+        Assert.False(TokenStoreHelper.TryDecodeExpiry("plain_token", out _));
+        Assert.False(TokenStoreHelper.TryDecodeExpiry("|abc123", out _));
+        Assert.False(TokenStoreHelper.TryDecodeExpiry("notanumber|abc123", out _));
+        Assert.False(TokenStoreHelper.TryDecodeExpiry(string.Empty, out _));
+    }
+
+    // ──────────────────────────────────────────────
+    //  FeishuTokenStoreCodec（官方 ITokenStoreCodec 适配 / 互操作锚点）
+    // ──────────────────────────────────────────────
+
+    [Fact]
+    public void Codec_Encode_ShouldMatchOfficialDefaultCodec()
+    {
+        // C-2：Encode 委派官方实现（逐字节一致）。
+        Assert.Equal(
+            DefaultTokenStoreCodec.Instance.Encode("tok", 3600),
+            FeishuTokenStoreCodec.Instance.Encode("tok", 3600));
+        Assert.Null(FeishuTokenStoreCodec.Instance.Encode(null, 3600));      // 墓碑
+        Assert.Null(FeishuTokenStoreCodec.Instance.Encode(string.Empty, 3600));
+    }
+
+    [Fact]
+    public void Codec_Decode_RelativeSeconds_ShouldPassThrough()
+    {
+        var (token, seconds) = FeishuTokenStoreCodec.Instance.Decode("7200|tok")!.Value;
+        Assert.Equal("tok", token);
+        Assert.Equal(7200, seconds);
+    }
+
+    [Fact]
+    public void Codec_Decode_LegacyFutureMs_ShouldConvertToRemainingSeconds()
+    {
+        // 旧格式未过期毫秒戳 → 换算剩余秒（正数）。
+        var futureMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 3_600_000;
+        var (token, seconds) = FeishuTokenStoreCodec.Instance.Decode($"{futureMs}|tok")!.Value;
+        Assert.Equal("tok", token);
+        Assert.InRange(seconds, 3598, 3600);
+    }
+
+    [Fact]
+    public void Codec_Decode_LegacyPastMs_ShouldReturnNonPositiveSeconds()
+    {
+        // 旧格式已过期毫秒戳 → 剩余秒为负（由调用方判过期）。
+        var pastMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - 60_000;
+        var (token, seconds) = FeishuTokenStoreCodec.Instance.Decode($"{pastMs}|tok")!.Value;
+        Assert.Equal("tok", token);
+        Assert.True(seconds < 0);
+    }
+
+    [Fact]
+    public void Codec_Decode_Invalid_ShouldReturnNull()
+    {
+        Assert.Null(FeishuTokenStoreCodec.Instance.Decode(null));
+        Assert.Null(FeishuTokenStoreCodec.Instance.Decode(string.Empty));
+        Assert.Null(FeishuTokenStoreCodec.Instance.Decode("|tok"));
+        Assert.Null(FeishuTokenStoreCodec.Instance.Decode("plain"));
+        Assert.Null(FeishuTokenStoreCodec.Instance.Decode("nan|tok"));
+    }
+
+    [Theory]
+    [InlineData(FeishuTokenStoreCodec.AbsoluteMsThreshold - 1)]    // 阈值之下 → 相对秒
+    [InlineData(FeishuTokenStoreCodec.AbsoluteMsThreshold)]        // 阈值之上 → 绝对毫秒戳
+    public void Codec_Decode_ThresholdBoundary_ShouldSwitchBranches(long leading)
+    {
+        var (token, seconds) = FeishuTokenStoreCodec.Instance.Decode($"{leading}|tok")!.Value;
+        Assert.Equal("tok", token);
+        if (leading >= FeishuTokenStoreCodec.AbsoluteMsThreshold)
+        {
+            // 绝对毫秒戳分支：10^10 ms 早于 1970-04 → 剩余秒为巨大负数。
+            Assert.True(seconds < 0);
+        }
+        else
+        {
+            Assert.Equal(leading, seconds);
+        }
     }
 }

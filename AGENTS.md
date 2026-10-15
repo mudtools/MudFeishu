@@ -94,6 +94,20 @@ by default. Adaptation (plan: `.docs/MudHttpUtils-3.0.0-破坏性变更改造计
   `Mud.Feishu.Abstractions` 的 `AddFeishuApp` 装配链使用弹性策略（per-app 重试/超时/熔断），
   故已**显式安装** `Mud.HttpUtils.Resilience`（版本与全仓 `Mud.HttpUtils*` 单版本守卫一致，
   **不得**设 `PrivateAssets`——`AddFeishuApp` 运行期需要加载该程序集）。
+- **C-2 已采纳（3.0.3 起）**：令牌存储值**写入**为官方相对秒 `{expiresInSeconds}|{token}`
+  （`FeishuTokenStoreCodec : ITokenStoreCodec` 单一来源），**读取**双读兼容旧「绝对毫秒戳」
+  存量值（`TokenStoreHelper` 投影回绝对毫秒戳，消费方契约不变）。**禁止**把存储值格式改回
+  私有形态，也**禁止**在新写入路径直接拼 `{expireTimestampMs}|`——一律经
+  `TokenStoreHelper.EncodeStoredToken / DecodeStoredToken / TryDecodeExpiry`。TMF-05 CAS
+  是**明文比较**（解码后比对），不要再改回编码值整串比较。过期态无法用相对秒新格式表达
+  （剩余秒 ≤ 0 归一为 0 = 无 TTL 信息 → Redis 回落 30 天）；测试模拟过期须用旧格式字面量。
+- **F-4 已采纳**：`FeishuAppContext.ExternalIds` 暴露 `app_id → appKey` 快照；
+  `FeishuAppManager.TryResolveAppKey` = 基类内置索引（实例化后自动登记）+ DI 解析的宿主
+  `IAppLookupProvider` 兜底，fail-closed。新增外部标识一律走 `ExternalIds` 快照，勿自建字典缓存。
+- **C-6 分层共存**：`Mud.Feishu.Redis` 已引用官方 `Mud.HttpUtils.Redis`。官方
+  `RedisTokenStore` 是「明文入参 + store 内部 codec 编解码」约定，飞书管线（桥接器）是
+  「直存编码值」约定——**两者不可互换直插**（混用双重编码）。官方侧对接飞书存量数据的
+  唯一受支持方式：注入 `FeishuTokenStoreCodec.Instance` 作其 codec。
 
 **Upstream contract-change channel（契约变更传导通道）**：上游 `Mud.HttpUtils` 的
 `CHANGELOG.md`「契约变更（Contract Changes）」专章（C-1 ~ C-7）与

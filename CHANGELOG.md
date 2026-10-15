@@ -15,6 +15,18 @@
   `AddFeishuApp` 装配链（per-app 重试 / 超时 / 熔断）依赖之，故显式安装；该依赖随包流传给消费方
   （运行期加载所需），不设 `PrivateAssets`。
 
+### 新增（Added）
+
+- **C-2 双读令牌存储编解码**：新增公开 `FeishuTokenStoreCodec`（实现上游 `ITokenStoreCodec`）。
+  写入格式改为官方相对秒 `{expiresInSeconds}|{token}`；读取双读兼容旧「绝对毫秒戳」存量值
+  （按条目自然过期收敛，无需回灌）；消费方「绝对毫秒戳」契约不变。同时修正 Redis 侧 refresh
+  TTL 的「无 TTL 信息」边界（前导数 ≤ 0 回落 30 天，不再误判为已过期删键）。
+  **回滚须知**：回滚 3.0.2 及更早版本时新格式值会被判为过期（重新获取令牌；Redis refresh 键
+  被旧逻辑删除 → 用户需重新授权），不产生错误令牌。
+- **F-4 外部标识反查**：`FeishuAppContext` 实现 `IAppExternalIds`（`app_id → appKey`），
+  `FeishuAppManager` 支持经内置索引与 DI 注入的宿主 `IAppLookupProvider` 反查 appKey
+  （fail-closed，结果必须命中已注册应用）——可把只携带 `app_id` 的事件载荷解析到对应应用。
+
 ### 变更（Changed）
 
 - **`FeishuAppManager.GetWebApi` / `GetDefaultWebApi` 传播上游 BC-30 弃用标记**：基类成员在
@@ -22,6 +34,12 @@
   CS0672。迁移路径：DI 解析 `IAppScopeSwitcher` + `UseAppScope` / `UseDefaultAppScope`（自动归还），
   或 `IAppContextHolder.SwitchToApp(appKey, appManager, sp)`（受控切换并保持，语义等价）。
   签名与行为在本大版本内不变；测试中的守卫性调用以 `#pragma warning disable CS0618` 精确豁免。
+- **TMF-05 CAS 改为令牌明文比较**（C-2 连带）：相对秒格式下存储编码值随时刻漂移，整值重编码
+  比较必然失配；改为解码明文比较后时间无关，并消除旧实现「同 refresh_token 不同持久化时间戳
+  误跳过清库」的保守代价。
+- **`Mud.Feishu.Redis` 接入官方 `Mud.HttpUtils.Redis` 包**（C-6 分层共存）：官方 store 与飞书
+  管线为两种 `ITokenStore` 使用约定（明文入参 + 内部 codec vs 直存编码值），不可互换直插；
+  `FeishuTokenStoreCodec` 作为互操作锚点，供官方组件对接飞书形态存量数据。
 
 ### 文档与测试
 
@@ -32,8 +50,9 @@
 - `scripts/verify-build.ps1` 步骤 0 本地源解析改为按「**实际包含 csproj 声明版本包**」判定优先，
   修复 `artifacts`（旧版）与 `artifacts-debug`（联调包）并存时选中前者并跳过缓存哈希校验的问题。
 - 验证：质量门禁全绿（编译 0 错误、CS1750 / NU1603 / HTTPCLIENT / MUD / FORM / AOT 白名单全 0、
-  AotStrictMode net8.0 逐源项目 0 违规、单元测试 6240/6290——跳过项均为 net6.0 运行时缺失）；
-  升级前后唯一警告集合 diff 为 0（零新增警告）。
+  AotStrictMode net8.0 逐源项目 0 违规、单元测试 6298/6348——跳过项均为 net6.0 运行时缺失）；
+  升级前后唯一警告集合 diff 为 0（零新增警告）；
+  新增用例：C-2 双读矩阵 14 例、F-4 反查 10 例、Redis refresh TTL 双读行为 5 例。
 
 ## [3.0.2] - 2026-10-12
 

@@ -12,10 +12,12 @@ namespace Mud.Feishu.Abstractions.Authentication;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>兼容锚点（禁止改动）</b>：存储值格式恒为 <c>{expireTimestampMs}|{token}</c>
-/// （<see cref="TokenStoreHelper.EncodeStoredToken"/> / <see cref="TokenStoreHelper.DecodeStoredToken"/>），
-/// 与桥接前的落库值逐字节一致 ⇒ 升级 / 回滚双向数据兼容；
-/// Redis 端 refresh TTL 推导（<see cref="TokenStoreHelper.TryDecodeExpiry"/>）零改动。
+/// <b>存储值格式（C-2 裁决，3.0.3 起）</b>：写入格式为 <c>{expiresInSeconds}|{token}</c>
+/// （相对秒，与官方 <c>DefaultTokenStoreCodec</c> 逐字节一致，见
+/// <see cref="TokenStoreHelper.EncodeStoredToken"/>）；读取经
+/// <see cref="TokenStoreHelper.DecodeStoredToken"/> 双读兼容旧「绝对毫秒戳」存量值
+/// （旧值按条目自然过期收敛，无需回灌）。Redis 端 refresh TTL 推导
+/// （<see cref="TokenStoreHelper.TryDecodeExpiry"/>）同步双读，旧值「已过期删键」行为不变。
 /// </para>
 /// <para>
 /// <b>TTL 口径</b>：<see cref="RemainingSeconds"/> 以「令牌自身过期时刻」为唯一真相
@@ -31,7 +33,7 @@ internal static class FeishuTokenBridgeCodec
     /// </summary>
     /// <param name="token">令牌明文。</param>
     /// <param name="expireTimestampMs">令牌过期时刻（Unix 毫秒）。</param>
-    /// <returns>编码后的存储值；<paramref name="token"/> 为空时为 null。</returns>
+    /// <returns>编码后的存储值（相对秒格式）；<paramref name="token"/> 为空时为 null。</returns>
     internal static string? EncodeToken(string? token, long expireTimestampMs)
         => string.IsNullOrEmpty(token) ? null : TokenStoreHelper.EncodeStoredToken(token!, expireTimestampMs);
 
@@ -40,25 +42,16 @@ internal static class FeishuTokenBridgeCodec
     /// </summary>
     /// <param name="expireTimestampMs">令牌过期时刻（Unix 毫秒）。</param>
     /// <returns>剩余秒数；已过期或无法判定时为 0。</returns>
-    /// <remarks>
-    /// 采用四舍五入（<c>+500</c>）而非截断：适配器侧的入参来源于「刚刚写入内存的过期时刻」，
-    /// 截断会使持久层 TTL 比真实剩余时长系统性少 1 秒。
-    /// </remarks>
+    /// <remarks>舍入口径唯一归口 <see cref="TokenStoreHelper.RemainingSeconds"/>（四舍五入）。</remarks>
     internal static long RemainingSeconds(long expireTimestampMs)
-    {
-        if (expireTimestampMs <= 0)
-            return 0;
-
-        var remainingMs = expireTimestampMs - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        return remainingMs <= 0 ? 0 : (remainingMs + 500) / 1000L;
-    }
+        => TokenStoreHelper.RemainingSeconds(expireTimestampMs);
 
     /// <summary>
-    /// 解码存储值（TMA-15：无 <c>{expireMs}|</c> 前缀的旧格式 / 损坏值按「无过期信息」返回，
+    /// 解码存储值（TMA-15 / C-2 双读：无 <c>{n}|</c> 前缀的旧格式 / 损坏值按「无过期信息」返回，
     /// 由调用方（值工厂）判定为未命中）。
     /// </summary>
-    /// <param name="storedValue">存储值。</param>
-    /// <returns>令牌明文与过期时刻；<paramref name="storedValue"/> 为空时为 <c>(null, 0)</c>。</returns>
+    /// <param name="storedValue">存储值（相对秒新格式 / 绝对毫秒戳旧格式）。</param>
+    /// <returns>令牌明文与过期时刻（毫秒投影）；<paramref name="storedValue"/> 为空时为 <c>(null, 0)</c>。</returns>
     internal static (string? Token, long ExpireTimestampMs) DecodeToken(string? storedValue)
         => string.IsNullOrEmpty(storedValue)
             ? (null, 0L)

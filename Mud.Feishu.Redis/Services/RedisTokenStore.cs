@@ -106,6 +106,9 @@ public class RedisTokenStore : ITokenStore
     /// TMA-22 修复：refresh token 存储 TTL 由硬编码 30 天改为优先使用编码值中的过期时间，
     /// 缺失时才回落 30 天。使 store TTL 与业务过期语义一致。
     /// TMA2-15 / P2-5 修复：过期戳已过时（expireMs &lt;= now）删除条目而非写 TTL=0（Redis TTL=0 等于永不过期）。
+    /// C-2（3.0.3）：过期信息推导经 <see cref="TokenStoreHelper.TryDecodeExpiry"/> 双读——
+    /// 新格式（相对秒）投影为过期时刻后换算 TTL；旧格式（绝对毫秒戳）原样判定（已过期删键行为不变）；
+    /// 「无 TTL 信息」（前导数 &lt;= 0）回落 30 天（不再误判为已过期删键）。
     /// </remarks>
     public async Task SetRefreshTokenAsync(string tokenType, string refreshToken, CancellationToken cancellationToken = default)
     {

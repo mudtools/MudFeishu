@@ -92,6 +92,11 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// </summary>
     internal FeishuAppContextRetirement? Retirement => _retirement;
 
+    // F-4（Mud.HttpUtils 3.0.7）：宿主自实现的外部标识反查提供者（可选，DI 解析）。
+    // 基类构造 ① 不注入外部提供者（②③④ 才注入），故在本类叠加：内置索引（上下文实现
+    // IAppExternalIds 时基类自动登记）未命中后，兜底委托本提供者，语义与基类一致（fail-closed）。
+    private readonly IAppLookupProvider? _externalLookupProvider;
+
     /// <summary>
     /// 初始化飞书应用管理器
     /// </summary>
@@ -107,6 +112,8 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         // TMA-13：从根 SP 获取 IServiceScopeFactory，用于按需创建作用域解析 Scoped 依赖。
         _scopeFactory = serviceProvider.GetService<IServiceScopeFactory>();
+        // F-4：可选解析宿主注册的 IAppLookupProvider（未注册时仅内置索引参与反查）。
+        _externalLookupProvider = serviceProvider.GetService<IAppLookupProvider>();
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _configs = (configs as IList<FeishuAppConfig> ?? configs.ToList()).ToArray();
 
@@ -976,6 +983,45 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
 
         // 已配置但尚未实例化的应用：Lazy 字典已记录
         return _lazyContexts.ContainsKey(appKey);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// <para>
+    /// F-4（Mud.HttpUtils 3.0.7）：外部标识 → appKey 反查。反查顺序：
+    /// ① 基类内置索引（上下文实现 <see cref="IAppExternalIds"/> 时在注册 / 实例化时自动登记，
+    /// <see cref="FeishuAppContext"/> 已声明 <c>app_id → appKey</c> 映射）→
+    /// ② DI 解析的宿主自实现 <see cref="IAppLookupProvider"/>（构造 ① 不注入基类外部提供者，
+    /// 故由本重写叠加兜底，语义与基类 ② 段一致：解析结果必须落在已注册应用上，
+    /// 防止外部不可信输入被误路由）。
+    /// </para>
+    /// <para>
+    /// 未命中 / 输入非法 / 映射歧义一律 fail-closed（返回 false，不猜测）；不做授权判定，
+    /// 解析出的 appKey 供宿主走 <c>UseAppScope</c> / <c>GetApp</c> 的既有路径。
+    /// </para>
+    /// </remarks>
+    public override bool TryResolveAppKey(IReadOnlyDictionary<string, string> externalIds, out string? appKey)
+    {
+        appKey = null;
+
+        if (externalIds is null || externalIds.Count == 0)
+            return false;
+
+        // ① 内置索引（基类：多键互证 + 歧义 fail-closed）。
+        if (base.TryResolveAppKey(externalIds, out appKey))
+            return true;
+
+        // ② 宿主自实现提供者兜底（fail-closed + 必须命中已注册应用）。
+        if (_externalLookupProvider is null
+            || !_externalLookupProvider.TryResolveAppKey(externalIds, out var externalResolved)
+            || string.IsNullOrEmpty(externalResolved)
+            || !HasApp(externalResolved!))
+        {
+            return false;
+        }
+
+        appKey = externalResolved;
+        return true;
     }
 
     /// <inheritdoc />

@@ -94,13 +94,22 @@ by default. Adaptation (plan: `.docs/MudHttpUtils-3.0.0-破坏性变更改造计
   `Mud.Feishu.Abstractions` 的 `AddFeishuApp` 装配链使用弹性策略（per-app 重试/超时/熔断），
   故已**显式安装** `Mud.HttpUtils.Resilience`（版本与全仓 `Mud.HttpUtils*` 单版本守卫一致，
   **不得**设 `PrivateAssets`——`AddFeishuApp` 运行期需要加载该程序集）。
-- **C-2 已采纳（3.0.3 起）**：令牌存储值**写入**为官方相对秒 `{expiresInSeconds}|{token}`
-  （`FeishuTokenStoreCodec : ITokenStoreCodec` 单一来源），**读取**双读兼容旧「绝对毫秒戳」
-  存量值（`TokenStoreHelper` 投影回绝对毫秒戳，消费方契约不变）。**禁止**把存储值格式改回
-  私有形态，也**禁止**在新写入路径直接拼 `{expireTimestampMs}|`——一律经
-  `TokenStoreHelper.EncodeStoredToken / DecodeStoredToken / TryDecodeExpiry`。TMF-05 CAS
-  是**明文比较**（解码后比对），不要再改回编码值整串比较。过期态无法用相对秒新格式表达
-  （剩余秒 ≤ 0 归一为 0 = 无 TTL 信息 → Redis 回落 30 天）；测试模拟过期须用旧格式字面量。
+- **C-2 已采纳（3.0.3 起；U-1 已回收，上游 3.0.10 Batch 1）**：令牌存储值**写入**为官方相对秒
+  `{expiresInSeconds}|{token}`，**读取**双读兼容旧「绝对毫秒戳」存量值（`TokenStoreHelper` 投影回
+  绝对毫秒戳，消费方契约不变）。双读判别已上收官方 `MigrationTokenStoreCodec`——
+  `FeishuTokenStoreCodec` 自 U-1 起为**薄包装**（显式传飞书阈值 `AbsoluteMsThreshold`=10^10；
+  注意上游默认常量实为 10^11，其 XML 注释写「10^10」属上游文档笔误；两阈值在两真实形态下等价），
+  **不得**再在下游恢复私有双读实现。**禁止**把存储值格式改回私有形态，也**禁止**在新写入路径
+  直接拼 `{expireTimestampMs}|`——一律经 `TokenStoreHelper.EncodeStoredToken / DecodeStoredToken /
+  TryDecodeExpiry`。TMF-05 CAS 是**明文比较**（解码后比对），不要再改回编码值整串比较。
+  过期态无法用相对秒新格式表达（剩余秒 ≤ 0 归一为 0 = 无 TTL 信息 → Redis 回落 30 天）；
+  测试模拟过期须用旧格式字面量。
+- **U-3 已采纳（上游 3.0.10 Batch 1）跨进程刷新去重租约**：`TokenManagerBase.RefreshLease` 钩子
+  （默认 null = 零行为变化）。`Mud.Feishu.Redis` 注册官方 `RedisRefreshLease`
+  （`SET NX PX` + Lua compare-and-del，键前缀 `{TokenKeyPrefix}:lease` 随环境段隔离）；
+  `DefaultFeishuTokenManagerFactory` 经 DI 解析注入三个管理器（Tenant/App/User）。
+  未启用 Redis 时 `RefreshLease` 恒 null，单实例行为逐位不变。自建去重器可经
+  `ITokenRefreshLease` 薄包装接入，**勿**绕过钩子另起炉灶。租约键 = `{TokenKeyPrefix}:lease:{管理器键含AppKey}:{scopeKey}`（默认 `feishu:lease:...`）。
 - **F-4 已采纳**：`FeishuAppContext.ExternalIds` 暴露 `app_id → appKey` 快照；
   `FeishuAppManager.TryResolveAppKey` = 基类内置索引（实例化后自动登记）+ DI 解析的宿主
   `IAppLookupProvider` 兜底，fail-closed。新增外部标识一律走 `ExternalIds` 快照，勿自建字典缓存。

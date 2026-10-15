@@ -57,7 +57,8 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         IFeishuAuthentication authenticationApi,
         IOptions<FeishuAppConfig> options,
         ILogger<UserTokenManager> logger,
-        IUserTokenStore? userTokenStore = null)
+        IUserTokenStore? userTokenStore = null,
+        ITokenRefreshLease? refreshLease = null)
         : base(BuildUserTokenCache(userTokenStore, options, logger))
     {
         _currentUserContext = currentUserContext;
@@ -70,7 +71,16 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         _userTokenStore = userTokenStore is null
             ? null
             : new PurgeGateUserTokenStoreDecorator(userTokenStore, _options.AppKey, _logger);
+        _refreshLease = refreshLease;
     }
+
+    private readonly ITokenRefreshLease? _refreshLease;
+
+    /// <summary>
+    /// U-3：跨进程刷新去重租约（与租户/应用管理器同口径，由工厂经 DI 解析注入）；
+    /// 未注册时为 null，行为与不启用租约时逐位一致。
+    /// </summary>
+    protected override ITokenRefreshLease? RefreshLease => _refreshLease;
 
     protected override int UserExpireThresholdSeconds => _options.TokenRefreshThreshold;
 

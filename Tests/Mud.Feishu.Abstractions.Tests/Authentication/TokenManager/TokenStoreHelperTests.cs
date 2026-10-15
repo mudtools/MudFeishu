@@ -225,4 +225,42 @@ public class TokenStoreHelperTests
             Assert.Equal(leading, seconds);
         }
     }
+
+    // ──────────────────────────────────────────────
+    //  U-1 回收守卫（上游 3.0.10 Batch 1）：薄包装必须与官方 MigrationTokenStoreCodec 同源
+    // ──────────────────────────────────────────────
+
+    [Fact]
+    public void Codec_Decode_Should_Use_Feishu_Threshold_Explicitly()
+    {
+        // 薄包装显式传 Feishu 阈值（10^10），不依赖官方默认值。
+        // 注意：官方 MigrationTokenStoreCodec.DefaultLegacyAbsoluteMillisecondsThreshold 实为 10^11
+        // （源码常量 100_000_000_000L，而其 XML 注释写「默认 10^10」——上游文档笔误，已反馈）。
+        // 两阈值在两真实形态下等价（相对秒 < 10^10，毫秒戳 > 10^12，中间空档无真实形态），故只断言行为同源。
+        var officialWithFeishuThreshold = new MigrationTokenStoreCodec(FeishuTokenStoreCodec.AbsoluteMsThreshold);
+        var futureMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 3_600_000;
+
+        var feishu = FeishuTokenStoreCodec.Instance.Decode($"{futureMs}|tok")!.Value;
+        var official = officialWithFeishuThreshold.Decode($"{futureMs}|tok")!.Value;
+
+        Assert.Equal(feishu, official);
+        Assert.NotEqual(MigrationTokenStoreCodec.DefaultLegacyAbsoluteMillisecondsThreshold, FeishuTokenStoreCodec.AbsoluteMsThreshold);
+    }
+
+    [Fact]
+    public void Codec_Decode_Should_Delegate_To_Official_MigrationCodec()
+    {
+        // 双读结果必须与官方迁移 codec 一致（旧格式 floor 投影 / 新格式直读）。
+        var futureMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 3_600_000;
+
+        var feishu = FeishuTokenStoreCodec.Instance.Decode($"{futureMs}|tok")!.Value;
+        var official = MigrationTokenStoreCodec.Instance.Decode($"{futureMs}|tok")!.Value;
+
+        Assert.Equal(feishu.Token, official.Token);
+        Assert.InRange(Math.Abs(feishu.ExpiresInSeconds - official.ExpiresInSeconds), 0, 1);
+
+        var relative = FeishuTokenStoreCodec.Instance.Decode("7200|tok")!.Value;
+        var officialRelative = MigrationTokenStoreCodec.Instance.Decode("7200|tok")!.Value;
+        Assert.Equal(officialRelative, relative);
+    }
 }

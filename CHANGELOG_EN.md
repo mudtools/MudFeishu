@@ -24,9 +24,19 @@
   note**: rolling back to ≤ 3.0.2 treats new-format values as expired (tokens re-fetched; Redis
   refresh keys purged by the old logic → re-authorization) — no corrupted tokens, but the upgrade /
   rollback is asymmetric.
+  **U-1 retirement (upstream 3.0.10 Batch 1)**: dual-read discrimination has been lifted into the
+  official `MigrationTokenStoreCodec`; `FeishuTokenStoreCodec` is now a thin wrapper over it
+  (explicit Feishu threshold 10^10) and the private dual-read implementation is removed.
 - **F-4 external-ID reverse lookup**: `FeishuAppContext` implements `IAppExternalIds`
   (`app_id → appKey`); `FeishuAppManager` resolves appKey via the built-in index plus a DI-injected
   host `IAppLookupProvider` (fail-closed, results must hit registered apps).
+- **U-3 cross-process refresh-dedup lease (upstream 3.0.10 Batch 1)**: all three token managers
+  (Tenant/App/User) now honor the `TokenManagerBase.RefreshLease` hook. `Mud.Feishu.Redis` registers
+  the official `RedisRefreshLease` (`SET NX PX` acquire + Lua compare-and-del release, fail-open)
+  with key prefix `{TokenKeyPrefix}:lease` following the environment segment; the token-manager
+  factory resolves and injects it via DI. Without Redis the behavior is bit-identical to
+  single-instance; multi-instance losers of the lease poll read-through (250ms interval / 10s
+  fail-open timeout) instead of re-refreshing.
 
 ### Changed
 

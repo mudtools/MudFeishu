@@ -39,6 +39,7 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
     private readonly FeishuAppConfig _options;
     private readonly ILogger _logger;
     private readonly string _tokenTypeKey;
+    private readonly ITokenRefreshLease? _refreshLease;
 
     protected IFeishuAuthentication AuthenticationApi => _authenticationApi;
     protected FeishuAppConfig Options => _options;
@@ -48,14 +49,23 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
         IOptions<FeishuAppConfig> options,
         ILogger logger,
         ITokenStore? tokenStore,
-        string tokenTypeKeyPrefix)
+        string tokenTypeKeyPrefix,
+        ITokenRefreshLease? refreshLease = null)
         : base(BuildCache(tokenStore, options, logger, tokenTypeKeyPrefix))
     {
         _authenticationApi = authenticationApi ?? throw new ArgumentNullException(nameof(authenticationApi));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _tokenTypeKey = BuildTokenTypeKey(options, tokenTypeKeyPrefix);
+        _refreshLease = refreshLease;
     }
+
+    /// <summary>
+    /// U-3：跨进程刷新去重租约（多实例部署下同一归属键的并发刷新去重）。
+    /// 由工厂经 DI 解析注入（<c>RedisRefreshLease</c> 等实现随 Mud.Feishu.Redis 注册）；
+    /// 未注册时为 null，行为与不启用租约时逐位一致（上游默认）。
+    /// </summary>
+    protected override ITokenRefreshLease? RefreshLease => _refreshLease;
 
     protected override int ExpireThresholdSeconds => _options.TokenRefreshThreshold;
 

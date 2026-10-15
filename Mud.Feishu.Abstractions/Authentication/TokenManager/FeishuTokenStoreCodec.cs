@@ -5,8 +5,6 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using System.Globalization;
-
 namespace Mud.Feishu.Abstractions.Authentication;
 
 /// <summary>
@@ -14,18 +12,16 @@ namespace Mud.Feishu.Abstractions.Authentication;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>写入格式（C-2 裁决：Encode 单写相对秒）</b>：<c>{expiresInSeconds}|{token}</c>——
-/// 与上游 <see cref="DefaultTokenStoreCodec"/> 逐字节一致（Encode 直接委派官方实现）。
-/// 自 3.0.3 起不再新写旧版「绝对毫秒戳」私有形态；存量旧值经双读兼容，按条目自然过期收敛，无需回灌。
+/// <b>U-1 回收（上游 3.0.10 Batch 1）</b>：双读判别逻辑已上收官方
+/// <see cref="MigrationTokenStoreCodec"/>（阈值默认 10<sup>10</sup>，与两下游实测钉死值一致）。
+/// 本类自该版本起退化为<b>薄包装</b>——保留类型与 <see cref="Instance"/> 供既有消费方
+/// （<see cref="TokenStoreHelper"/>、<see cref="FeishuTokenBridgeCodec"/>、互操作锚点）二进制兼容，
+/// 不再维护私有双读实现；旧值投影语义（floor 取整）以官方实现为准。
 /// </para>
 /// <para>
-/// <b>双读兼容（Decode）</b>：前导数值按量级判别——
-/// <list type="bullet">
-/// <item><c>&gt;= <see cref="AbsoluteMsThreshold"/></c>（10<sup>10</sup>）⇒ 旧格式绝对毫秒戳：
-/// 按 <c>(expireMs − now) / 1000</c> 换算剩余秒（已过期为负，由调用方判定）——
-/// 旧毫秒戳不可能是相对秒（相对秒 10<sup>10</sup> ≈ 317 年），毫秒戳低于阈值则早于 1970-04，量级互斥；</item>
-/// <item><c>&lt; 阈值</c> ⇒ 新格式相对秒：原样返回（<c>&lt;= 0</c> 为官方「无 TTL 信息」语义）。</item>
-/// </list>
+/// <b>写入格式（C-2 裁决：Encode 单写相对秒）</b>：<c>{expiresInSeconds}|{token}</c>——
+/// 与上游 <see cref="DefaultTokenStoreCodec"/> 逐字节一致。自 3.0.3 起不再新写旧版
+/// 「绝对毫秒戳」私有形态；存量旧值经官方双读兼容，按条目自然过期收敛，无需回灌。
 /// </para>
 /// <para>
 /// <b>互操作锚点</b>：宿主将官方组件（如 <c>Mud.HttpUtils.Redis.RedisTokenStore</c>，其
@@ -47,7 +43,13 @@ public sealed class FeishuTokenStoreCodec : ITokenStoreCodec
     /// 绝对毫秒戳与相对秒的量级分界：相对秒达到 10<sup>10</sup>（约 317 年）不可能；
     /// 绝对毫秒戳低于 10<sup>10</sup> 则早于 1970-04，也不可能。两侧量级互斥 ⇒ 判别稳健。
     /// </summary>
+    /// <remarks>
+    /// U-1 回收后仅作官方 <see cref="MigrationTokenStoreCodec"/> 阈值的显式来源与守卫断言锚
+    /// （须恒等于 <see cref="MigrationTokenStoreCodec.DefaultLegacyAbsoluteMillisecondsThreshold"/>）。
+    /// </remarks>
     public const long AbsoluteMsThreshold = 10_000_000_000L;
+
+    private static readonly MigrationTokenStoreCodec Inner = new(AbsoluteMsThreshold);
 
     /// <summary>
     /// 共享实例（无状态、线程安全）。
@@ -55,36 +57,12 @@ public sealed class FeishuTokenStoreCodec : ITokenStoreCodec
     public static FeishuTokenStoreCodec Instance { get; } = new();
 
     /// <inheritdoc />
-    /// <remarks>直接委派 <see cref="DefaultTokenStoreCodec.Instance"/>（C-2：单写官方相对秒格式）。</remarks>
+    /// <remarks>委派官方 <see cref="MigrationTokenStoreCodec"/>（其 Encode 与 <see cref="DefaultTokenStoreCodec"/> 逐字节一致，C-2：单写官方相对秒格式）。</remarks>
     public string? Encode(string? token, long expiresInSeconds)
-        => DefaultTokenStoreCodec.Instance.Encode(token, expiresInSeconds);
+        => Inner.Encode(token, expiresInSeconds);
 
     /// <inheritdoc />
-    /// <remarks>双读兼容：旧「绝对毫秒戳」值换算为剩余秒后返回，新「相对秒」值原样返回。</remarks>
+    /// <remarks>双读兼容由官方 <see cref="MigrationTokenStoreCodec"/> 承担：旧「绝对毫秒戳」值 floor 投影为剩余秒，新「相对秒」值原样返回。</remarks>
     public (string? Token, long ExpiresInSeconds)? Decode(string? encoded)
-    {
-        if (encoded is null || encoded.Length == 0)
-            return null;
-
-        var index = encoded.IndexOf('|');
-        if (index <= 0)
-            return null;   // 无分隔符 / 分隔符在首位 ⇒ 非法格式（与官方 codec 同口径：不抛异常）
-
-        if (!long.TryParse(
-                encoded.Substring(0, index),
-                NumberStyles.Integer,
-                CultureInfo.InvariantCulture,
-                out var leading))
-        {
-            return null;
-        }
-
-        var token = encoded.Substring(index + 1);
-        if (leading < AbsoluteMsThreshold)
-            return (token, leading);   // 新格式：相对秒（<= 0 = 无 TTL 信息）
-
-        // 旧格式：绝对毫秒戳 → 换算剩余秒（截断；已过期为负）。
-        var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        return (token, (leading - nowMs) / 1000L);
-    }
+        => Inner.Decode(encoded);
 }

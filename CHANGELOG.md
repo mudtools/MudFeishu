@@ -23,9 +23,16 @@
   TTL 的「无 TTL 信息」边界（前导数 ≤ 0 回落 30 天，不再误判为已过期删键）。
   **回滚须知**：回滚 3.0.2 及更早版本时新格式值会被判为过期（重新获取令牌；Redis refresh 键
   被旧逻辑删除 → 用户需重新授权），不产生错误令牌。
+  **U-1 回收（上游 3.0.10 Batch 1）**：双读判别上收官方 `MigrationTokenStoreCodec` 后，
+  `FeishuTokenStoreCodec` 改为其薄包装（显式传飞书阈值 10^10），私有双读实现拆除。
 - **F-4 外部标识反查**：`FeishuAppContext` 实现 `IAppExternalIds`（`app_id → appKey`），
   `FeishuAppManager` 支持经内置索引与 DI 注入的宿主 `IAppLookupProvider` 反查 appKey
   （fail-closed，结果必须命中已注册应用）——可把只携带 `app_id` 的事件载荷解析到对应应用。
+- **U-3 跨进程刷新去重租约（上游 3.0.10 Batch 1）**：三个令牌管理器（Tenant/App/User）接入
+  `TokenManagerBase.RefreshLease` 钩子。`Mud.Feishu.Redis` 注册官方 `RedisRefreshLease`
+  （`SET NX PX` + Lua compare-and-del，fail-open），键前缀 `{TokenKeyPrefix}:lease` 随环境段隔离；
+  `DefaultFeishuTokenManagerFactory` 经 DI 解析注入。未启用 Redis 时行为与单实例逐位一致；
+  多实例下未抢到租约的实例限时轮询读穿透（250ms 间隔 / 10s 超时 fail-open 放行本机刷新）。
 
 ### 变更（Changed）
 

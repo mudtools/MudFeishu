@@ -77,10 +77,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- M.E.* 与 Mud.Feishu.AI 同步 Update 到 10.0.11（MAF 1.20.0 传递依赖要求，防 NU1603 版本漂移）。 -->
-		<PackageReference Update="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
-		<PackageReference Update="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
-		<PackageReference Update="Microsoft.Extensions.Options" Version="10.0.11" />
+		<!-- M.E.* 与 Mud.Feishu.AI 同步 Update 到 10.0.12（MAF 1.25.0 传递依赖要求，防 NU1603 版本漂移）。 -->
+		<PackageReference Update="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
+		<PackageReference Update="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
+		<PackageReference Update="Microsoft.Extensions.Options" Version="10.0.12" />
 	</ItemGroup>
 
 	<ItemGroup>

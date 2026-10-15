@@ -60,7 +60,7 @@ public sealed class FeishuAgent : ObservedDelegatingAgent, IAgentSessionFacade
     /// </remarks>
     private readonly AgentRuntimeOptions _runtime;
 
-    private readonly AgentSessionStore _sessionStore;
+    private readonly Mud.AI.Agent.Sessions.AgentSessionStore _sessionStore;
     private readonly ILogger? _logger;
 
     /// <summary>
@@ -146,7 +146,7 @@ public sealed class FeishuAgent : ObservedDelegatingAgent, IAgentSessionFacade
         // ① 存储契约的防腐层（IConversationStore → 中立端口 ISessionStore，公开签名因此零变化）；
         // ② 历史状态键 ChatHistoryStateKey（字面量留在本类，绝不进中立包）。
         // codec 传 this：序列化/反序列化的归属方是本 Agent（经基类委托内层 ChatClientAgent）。
-        _sessionStore = new AgentSessionStore(
+        _sessionStore = new Mud.AI.Agent.Sessions.AgentSessionStore(
             this,
             conversationStore is null ? null : new ConversationStoreSessionAdapter(conversationStore),
             ChatHistoryStateKey,

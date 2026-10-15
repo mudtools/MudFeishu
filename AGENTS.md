@@ -96,7 +96,26 @@ hard cut (no `[Obsolete]` forwards, no shims). Four invariants are mechanically 
   contract layer, consumed by the source generator) and every non-AI `Mud.Feishu*` project still
   must not declare MAF directly. Guarded by
   `AgentContractGuards.AgentsAi_PackageReferences_ShouldBeDeclaredOnlyInAllowListedProjects` +
-  `MudAiAbstractions_ShouldNotDeclareMafPackages`; MAF version stays single-point 1.20.0.
+  `MudAiAbstractions_ShouldNotDeclareMafPackages`; MAF version stays single-point 1.25.0.
+  **MAF 1.25.0 upgrade (2026-10-15)**: the bump needed **no API adaptation** — but MAF 1.25.0 ships its
+  own `Microsoft.Agents.AI.AgentSessionStore`, colliding with the neutral
+  `Mud.AI.Agent.Sessions.AgentSessionStore` (`CS0104` in every file that imports both namespaces).
+  The disambiguation is **not** a rename (the neutral type's self-healing semantics are v3-locked and
+  MAF's type is unrelated): the test project uses a file-level alias
+  (`using AgentSessionStore = Mud.AI.Agent.Sessions.AgentSessionStore;`), and the product file
+  `FeishuAgent.cs` fully qualifies its two use sites — its comment budget is frozen, so the alias
+  comment the repo normally pairs with such a using **may not** be added there.
+  Associated floors rose in the same batch: `Microsoft.Extensions.*` → `10.0.12`,
+  `Microsoft.Extensions.AI.Abstractions` → `10.10.1`, `System.Text.Json` → `10.0.12`.
+  **One behavior delta, not a defect**: MAF 1.25.0 now treats a `null` state-bag value as *absent*
+  (`TryGetInMemoryChatHistory` → `false`) instead of throwing `NullReferenceException`. So a stored
+  `{"stateBag":{<historyKey>:null}}` payload is no longer a "corrupt value" and is **retained**
+  (previously the eager-validation guard caught the NRE and purged it). That removed the payload-side
+  witness for the v3-locked *catch-all* (`when (ex is not OperationCanceledException)`) contract —
+  the lock is now constructed deterministically by a **test-double codec** in
+  `AgentSessionStoreTests.GetOrCreateAsync_ShouldRebuild_WhenNonWhitelistedExceptionThrownInsideTheGuard`
+  (`ThrowingDeserializeCodecAgent`), and the product layer keeps `NullHistoryValue_ShouldStillYieldUsableSession`
+  instead of the old `CorruptStateBag_ShouldDeleteAndRebuild_RegardlessOfExceptionType`.
 - **Bidirectional neutrality lock**: core SDK ↛ `Mud.AI.*` (existing
   `CoreSdkProjects_ShouldNotDependOnMudAiFamily`) **and** `Mud.AI.*` ↛ any `Mud.Feishu*`
   (`MudAiFamily_ShouldNotDependOnFeishuProjects`). The session-storage port exists precisely

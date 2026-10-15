@@ -30,9 +30,9 @@
 
 	<ItemGroup>
 		<!-- M.E.* 与 Mud.Feishu.AI 同步钉版（防 NU1603 版本漂移）。 -->
-		<PackageReference Update="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
-		<PackageReference Update="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
-		<PackageReference Update="Microsoft.Extensions.Options" Version="10.0.11" />
+		<PackageReference Update="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
+		<PackageReference Update="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
+		<PackageReference Update="Microsoft.Extensions.Options" Version="10.0.12" />
 	</ItemGroup>
 
 	<ItemGroup>

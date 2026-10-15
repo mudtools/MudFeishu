@@ -314,17 +314,16 @@ public class FeishuAgentTests
     }
 
     /// <summary>
-    /// R4-7：坏值自愈的 catch 面必须收口为「非 <see cref="OperationCanceledException"/>」——
-    /// <b>白名单之外</b>的异常类型也必须走「删除坏值 + 重建」，否则坏值逃出守护区、会话永久毒化。
+    /// 状态袋内的历史值为 <c>null</c>：MAF 1.25 起按「无历史」处理（不再抛 <see cref="NullReferenceException"/>），
+    /// 故该载荷不再是「损坏值」而是空历史——但会话恢复必须照常成功，产品入口不得因此失败。
     /// </summary>
     /// <remarks>
-    /// 载荷 <c>{"feishu.agent.history":null}</c> 在急切校验中实测抛 <see cref="NullReferenceException"/>
-    /// （MAF 对 null 状态值未做防御）——该类型**不在**原白名单内：
-    /// <c>JsonException/ArgumentException/InvalidOperationException/NotSupportedException</c>。
-    /// 故本用例在旧实现下必然 FAIL（异常逃出），在收口后 PASS——构成 R4-7 的红转绿回归锁。
+    /// 「白名单之外的异常类型同样被收口」这一 R4-7 契约改由 <c>Mud.AI.Agent.Tests</c> 的
+    /// <c>AgentSessionStoreTests.GetOrCreateAsync_ShouldRebuild_WhenNonWhitelistedExceptionThrownInsideTheGuard</c>
+    /// 直接用测试替身构造（MAF 1.25 后载荷侧已无法稳定产出白名单之外的异常类型）。
     /// </remarks>
     [Fact]
-    public async Task CorruptStateBag_ShouldDeleteAndRebuild_RegardlessOfExceptionType()
+    public async Task NullHistoryValue_ShouldStillYieldUsableSession()
     {
         var mock = CreateMockClient("ok");
         var store = new MemoryConversationStore();
@@ -335,9 +334,9 @@ public class FeishuAgentTests
 
         var restored = await agent.GetOrCreateSessionAsync(key);
 
-        restored.Should().NotBeNull("白名单之外的异常类型同样必须按 miss 处理并重建（R4-7 收口）");
-        (await store.GetAsync(key)).Should().BeNull(
-            "坏值必须被删除——否则每次重投递都在同一处（守护区外）再抛，会话在 TTL 内永久毒化");
+        restored.Should().NotBeNull("空历史值等价于「无历史」，不得让会话恢复失败");
+        restored.TryGetInMemoryChatHistory(out _, FeishuAgent.ChatHistoryStateKey, null)
+            .Should().BeFalse("null 状态值不是「损坏」，而是「没有历史」");
     }
 
     [Fact]

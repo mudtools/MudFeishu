@@ -8,10 +8,13 @@
 using System.Runtime.CompilerServices;
 using Mud.AI.Abstractions.Conversations;
 
+// MAF 1.25 起自带 Microsoft.Agents.AI.AgentSessionStore（与本包门面同名）⇒ 显式别名消歧。
+using AgentSessionStore = Mud.AI.Agent.Sessions.AgentSessionStore;
+
 namespace Mud.AI.Agent.Tests.Sessions;
 
 /// <summary>
-/// <see cref="AgentSessionStore"/> 的行为契约：往返 / 坏值自愈（四语义）/ 取消不被吞 / 无存储为空操作。
+/// <see cref="Mud.AI.Agent.Sessions.AgentSessionStore"/> 的行为契约：往返 / 坏值自愈（四语义）/ 取消不被吞 / 无存储为空操作。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -153,22 +156,47 @@ public class AgentSessionStoreTests
     }
 
     /// <summary>
-    /// <b>收口式 catch 的红转绿回归锁（语义 ①）</b>：载荷 <c>{"stateBag":{"test.history":null}}</c>
-    /// 在急切校验中实测抛 <see cref="NullReferenceException"/>（MAF 对 null 状态值未做防御）——
-    /// 该类型<b>不在</b>旧白名单（JsonException / ArgumentException / InvalidOperationException /
-    /// NotSupportedException）内。故本用例在枚举白名单实现下必然 FAIL（异常逃出守护区），
-    /// 在收口实现下 PASS。
+    /// <b>收口式 catch 的红转绿回归锁（语义 ①）</b>：由编解码器在<b>守护区之内</b>抛出白名单之外的
+    /// 异常类型（<see cref="KeyNotFoundException"/>）——枚举白名单实现下该异常逃出守护区（用例 FAIL），
+    /// 收口实现下按 miss 处理并重建（用例 PASS）。
+    /// </summary>
+    /// <remarks>
+    /// 刻意由<b>测试替身</b>而非真实 MAF 载荷指定异常类型：MAF 1.25 起对 null 状态值已按「无历史」处理
+    /// （不再抛 <see cref="NullReferenceException"/>，见 <see cref="CreateCodec"/>），载荷侧已无法稳定产出
+    /// 「白名单之外」的类型；而异常类型的覆盖面正是本契约的要害，故改为版本无关的直接指定。
+    /// </remarks>
+    [Fact]
+    public async Task GetOrCreateAsync_ShouldRebuild_WhenNonWhitelistedExceptionThrownInsideTheGuard()
+    {
+        var fake = new FakeSessionStore();
+        await fake.SaveAsync("k1", "{\"stateBag\":{}}");
+        var store = new AgentSessionStore(
+            new ThrowingDeserializeCodecAgent(new KeyNotFoundException("模拟守护区内的非白名单异常")),
+            fake,
+            HistoryStateKey);
+
+        var session = await store.GetOrCreateAsync("k1");
+
+        session.Should().NotBeNull("白名单之外的异常类型同样必须按 miss 处理并重建（收口式 catch）");
+        fake.Peek("k1").Should().BeNull("坏值必须被删除，否则会话在其 TTL 内永久毒化");
+    }
+
+    /// <summary>
+    /// 空历史值（键在、值为 <c>null</c>）：MAF 1.25 起按「无历史」处理（不再抛异常），
+    /// 故存储值<b>不再是坏值</b>、也无须删除——但会话恢复必须照常成功，不得因此失败。
     /// </summary>
     [Fact]
-    public async Task GetOrCreateAsync_ShouldRebuild_WhenInnerStateIsNull_EvenForNonWhitelistedExceptionType()
+    public async Task GetOrCreateAsync_ShouldStillYieldUsableSession_WhenStoredHistoryValueIsNull()
     {
         var fake = new FakeSessionStore();
         await fake.SaveAsync("k1", "{\"stateBag\":{\"test.history\":null}}");
         var store = new AgentSessionStore(CreateCodec(), fake, HistoryStateKey);
 
-        (await store.GetOrCreateAsync("k1")).Should().NotBeNull(
-            "白名单之外的异常类型同样必须按 miss 处理并重建（收口式 catch）");
-        fake.Peek("k1").Should().BeNull("坏值必须被删除，否则会话在其 TTL 内永久毒化");
+        var session = await store.GetOrCreateAsync("k1");
+
+        session.Should().NotBeNull("空历史值等价于「无历史」，不得让会话恢复失败");
+        session.TryGetInMemoryChatHistory(out _, HistoryStateKey, null)
+            .Should().BeFalse("null 状态值不是「损坏」，而是「没有历史」");
     }
 
     /// <summary>外层合法 + 内层损坏（跨版本残留 / 库中被破坏）：同样必须自愈。</summary>
@@ -198,7 +226,10 @@ public class AgentSessionStoreTests
     {
         var fake = new FakeSessionStore();
         await fake.SaveAsync("k1", "{\"stateBag\":{}}");
-        var store = new AgentSessionStore(new OperationCanceledCodecAgent(), fake, HistoryStateKey);
+        var store = new AgentSessionStore(
+            new ThrowingDeserializeCodecAgent(new OperationCanceledException("模拟守护区内的取消")),
+            fake,
+            HistoryStateKey);
 
         var act = () => store.GetOrCreateAsync("k1");
 
@@ -311,10 +342,10 @@ public class AgentSessionStoreTests
     }
 
     /// <summary>
-    /// 反序列化时抛 <see cref="OperationCanceledException"/> 的编码器：
-    /// 把 OCE 精确地送进<b>守护区之内</b>，用于验证 catch 面的过滤形态。
+    /// 反序列化时抛<b>指定异常</b>的编码器：把该异常精确地送进<b>守护区之内</b>，
+    /// 用于验证 catch 面的过滤形态（区分「取消原样传播」与「其余类型收口」）。
     /// </summary>
-    private sealed class OperationCanceledCodecAgent : AIAgent
+    private sealed class ThrowingDeserializeCodecAgent(Exception exception) : AIAgent
     {
         protected override ValueTask<AgentSession> CreateSessionCoreAsync(CancellationToken cancellationToken = default)
             => new(new TestSession());
@@ -325,7 +356,7 @@ public class AgentSessionStoreTests
 
         protected override ValueTask<AgentSession> DeserializeSessionCoreAsync(
             JsonElement serializedState, JsonSerializerOptions? jsonSerializerOptions = null, CancellationToken cancellationToken = default)
-            => throw new OperationCanceledException("模拟守护区内的取消");
+            => throw exception;
 
         protected override Task<AgentResponse> RunCoreAsync(
             IEnumerable<ChatMessage> messages, AgentSession? session = null, AgentRunOptions? options = null, CancellationToken cancellationToken = default)

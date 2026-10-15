@@ -405,7 +405,7 @@ builder.Services.AddFeishuOpenTelemetry(o => o.OtlpEndpoint = new Uri("http://lo
 | **`Mud.Feishu.AI.Mcp`** | **MCP stdio server**：进程外 Agent 工具面，执行链零旁路，租户边界 = 进程 |
 
 目标框架：`netstandard2.0` / `net6.0` / `net8.0` / `net10.0`，`LangVersion 13.0`。
-AI 底座依赖 `Microsoft.Agents.AI` v1.20.0 + `Microsoft.Agents.AI.OpenAI` v1.20.0（仅 AI 包引用，核心包不依赖）。
+AI 底座依赖 `Microsoft.Agents.AI` v1.25.0 + `Microsoft.Agents.AI.OpenAI` v1.25.0（仅 AI 包引用，核心包不依赖）。
 
 ---
 

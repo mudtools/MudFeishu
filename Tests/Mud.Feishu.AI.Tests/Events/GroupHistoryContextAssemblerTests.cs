@@ -232,7 +232,7 @@ public class GroupHistoryContextAssemblerTests
 
         // Assert
         result.Should().NotBeNull();
-        result.Should().Contain(ContextBudgets.TruncationMarker, "超单条闸应截断并追加标记");
+        result.Should().Contain(AssemblerBudgets.TruncationMarker, "超单条闸应截断并追加标记");
     }
 
     [Fact]
@@ -249,7 +249,7 @@ public class GroupHistoryContextAssemblerTests
 
         // Assert
         result.Should().NotBeNull();
-        result.Should().Contain(ContextBudgets.TruncationMarker, "超总预算闸应截断并追加标记");
+        result.Should().Contain(AssemblerBudgets.TruncationMarker, "超总预算闸应截断并追加标记");
     }
 
     [Fact]

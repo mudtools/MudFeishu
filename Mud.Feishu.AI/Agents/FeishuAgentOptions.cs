@@ -220,7 +220,7 @@ public sealed class FeishuAgentOptions
     public ToolRetryOptions ToolRetry { get; set; } = new();
 
     /// <summary>
-    /// 单轮工具调用预算上限（T4 / D4；消费点：<c>FeishuToolCallBudget</c> + <c>ToolBudgetAIFunction</c>）。
+    /// 单轮工具调用预算上限（消费点：<c>FeishuToolCallBudget</c> + <c>ToolBudgetAIFunction</c>）。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -478,7 +478,7 @@ public sealed class FeishuAgentOptions
                 $"FeishuAgent:{nameof(UserTokenPrecheck)} 取值非法: '{UserTokenPrecheck}'——"
                 + $"合法值为 {UserTokenPrecheckModes.AllowedValuesText}");
 
-        // T4 / D4：单轮工具预算校验（0 = 不限制；>0 时须 ≤ 100 防配置打字吃光预算）。
+        // 单轮工具预算校验（0 = 不限制；>0 时须 ≤ 100 防配置打字吃光预算）。
         if (MaxToolCallsPerTurn is < 0 or > 100)
             throw new InvalidOperationException(
                 $"FeishuAgent:{nameof(MaxToolCallsPerTurn)} 为 0（不限制）或 1..100，实际值: {MaxToolCallsPerTurn.ToString(CultureInfo.InvariantCulture)}"

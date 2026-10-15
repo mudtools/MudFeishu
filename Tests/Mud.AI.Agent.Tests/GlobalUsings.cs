@@ -21,10 +21,28 @@ global using Xunit;
 
 // Mud.AI.Agent 自身命名空间：中性类型经全局 using 保持"简单名即可引用"
 // （与 Mud.Feishu.AI.Tests 对 Mud.Feishu.AI.* 的既有做法同口径）。
+global using Mud.AI.Abstractions.Channels;
+global using Mud.AI.Abstractions.Configuration;
+global using Mud.AI.Abstractions.Context;
 global using Mud.AI.Abstractions.Conversations;
+global using Mud.AI.Abstractions.Observability;
+global using Mud.AI.Agent.Approvals;
+// A1（v3）：中立装配工厂（内层 ChatClientAgent 三件套装配）。
+global using Mud.AI.Agent.Agents;
+// N2-e：RAG 契约与预算常量（CorpusDocument / RetrievedChunk / IVectorStore / RetrievalBudgets）。
+global using Mud.AI.Abstractions.Knowledge;
 global using Mud.AI.Abstractions.Tools.Errors;
+global using Mud.AI.Agent.Channels;
 global using Mud.AI.Agent.Conversations;
+// N2-e：RAG 机制（DocumentChunker / TokenEstimator / VectorRetriever / CorpusIndexer）随类型迁入。
+global using Mud.AI.Agent.Knowledge;
 global using Mud.AI.Agent.Guidance;
 global using Mud.AI.Agent.Sessions;
+// N4：装配器族与 MAF 桥接适配器（Context/）。
+global using Mud.AI.Agent.Context;
 global using Mud.AI.Agent.Tools;
 global using Mud.AI.Agent.Tools.Errors;
+// 阶段 A-1：B 组工具面共享件（入站净化/摘要/出站净化/安全基元）迁入中立包。
+global using Mud.AI.Agent.Tools.Args;
+global using Mud.AI.Agent.Tools.Results;
+global using Mud.AI.Agent.Tools.Security;

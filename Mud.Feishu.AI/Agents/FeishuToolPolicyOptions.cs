@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.AI.Agent.Tools;
+
 namespace Mud.Feishu.AI.Agents;
 
 /// <summary>
@@ -101,7 +103,7 @@ public sealed class FeishuToolPolicyOptions
 
         foreach (var pattern in patterns)
         {
-            if (!AgentTools.ToolNamePattern.IsLegal(pattern))
+            if (!ToolNamePattern.IsLegal(pattern))
             {
                 throw new InvalidOperationException(
                     $"FeishuAgent:{path} 含非法模式 '{pattern}'——合法形态为点分小写段（段内允许 a-z 0-9 _ 与单个 *），"

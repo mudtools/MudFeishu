@@ -10,127 +10,35 @@ using Mud.Feishu.Abstractions.Conversations;
 namespace Mud.Feishu.AI.Conversations;
 
 /// <summary>
-/// 进程内会话闸门（默认实现）：<see cref="ConcurrentDictionary{TKey, TValue}"/> 键控 <see cref="SemaphoreSlim"/>
-/// ——同键串行、跨键并行；键空闲（无活跃持有者）即回收信号量，防 long-tail 会话键泄漏。
+/// 进程内会话闸门（默认实现）：把中立引擎 <see cref="KeyedAsyncGate"/> 的键控串行能力
+/// 暴露为会话契约 <see cref="IConversationGate"/>。
 /// </summary>
 /// <remarks>
+/// <para>
+/// <b>薄壳（第七式「三段分离」的壳段）</b>：本类只有"键的构造/校验归谁"这一产品裁量，
+/// 串行机械语义（同键串行、跨键并行、空闲回收、取消不 Release）全部在中立引擎内实现并有自己的用例。
+/// </para>
+/// <para>
 /// <c>AddFeishuAgent</c> 默认注册本实现，多实例部署经 Redis 闸门（<c>AddFeishuRedisConversationGate</c>）替换；
 /// 键必须由 <see cref="ConversationKeyBuilder"/> 构造（闸门不自行拼接键）。
-/// <para>
-/// <b>回收语义</b>：活跃计数归零即在全局锁内条件移除并 Dispose（比「长期闲置定时回收」更紧）；
-/// <see cref="ConcurrentDictionary{TKey, TValue}"/> 的条件移除（KVP 重载）保证「归零判定 → 移除」原子，
-/// 持有期竞态不会误删活跃闸门。
-/// </para>
-/// <para>
-/// <b>取消语义</b>：等待被取消时只放弃登记、<b>不</b> Release——依赖 <see cref="SemaphoreSlim"/>
-/// 「取消与获取竞态时许可不会丢失」的运行时契约（再 Release 会超出最大计数并抛 <see cref="SemaphoreFullException"/>）。
-/// 该契约不写死为断言，而由 <c>KeyedConversationGateCancellationStressTests</c> 在每个 TFM 上实证守护；
-/// 若其失败 ⇒ 改用「<c>WaitAsync(CancellationToken.None)</c> + <c>Task.WhenAny</c>」的显式所有权方案。
-/// </para>
-/// <para>
-/// <b>不快速失败</b>：本实现等待直至取得许可，等待时长由被守护的工作（一次模型回合）决定，无法给出通用正确的
-/// 超时值；需要「快速失败」的宿主应替换为 Redis 闸门（<c>ConversationBusyException</c> 的分布式租约语义），
-/// 而非给本实现加超时配置。
 /// </para>
 /// </remarks>
 public sealed class KeyedConversationGate : IConversationGate
 {
-    private readonly ConcurrentDictionary<string, GateEntry> _entries = new(StringComparer.Ordinal);
-    private readonly object _collectLock = new();
+    private readonly KeyedAsyncGate _engine = new();
 
     /// <inheritdoc />
-    public async Task<IConversationGateHandle> AcquireAsync(string conversationKey, CancellationToken cancellationToken = default)
+    public async Task<IConversationGateHandle> AcquireAsync(
+        string conversationKey,
+        CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(conversationKey))
-            throw new ArgumentException("会话键不能为空", nameof(conversationKey));
-
-        GateEntry entry;
-        lock (_collectLock)
-        {
-            entry = _entries.GetOrAdd(conversationKey, static _ => new GateEntry());
-            entry.ActiveCount++;
-        }
-
-        try
-        {
-            // 等待在锁外（可能长时间阻塞其他键的登记；WaitAsync 是唯一的开销点）。
-            await entry.Semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            // 取消路径不 Release：依赖 .NET SemaphoreSlim「取消与获取竞态时许可不会丢失」的运行时契约
-            // ——此处再 Release 会超出最大计数（SemaphoreFullException）。仅登记等待放弃。
-            //
-            // R2-10：该契约不写死为"断言"，而由 KeyedConversationGateCancellationStressTests
-            // 在每个 TFM 上实证守护（无 SemaphoreFullException / 无许可泄漏 / 无 ObjectDisposedException）。
-            // 若该用例在任一 TFM 失败 ⇒ 改用「WaitAsync(CancellationToken.None) + Task.WhenAny」的
-            // 显式所有权方案（取消后已取得许可则必须 Release），见 R2 方案 §0.5.2。
-            AbandonWait(conversationKey, entry);
-            throw;
-        }
-        catch
-        {
-            AbandonWait(conversationKey, entry);
-            throw;
-        }
-
-        return new GateHandle(this, conversationKey, entry);
+        var handle = await _engine.AcquireAsync(conversationKey, cancellationToken).ConfigureAwait(false);
+        return new GateHandle(handle);
     }
 
-    private void ReleaseEntry(string conversationKey, GateEntry entry)
+    /// <summary>把中立引擎句柄适配为会话契约句柄（放行语义 = 释放引擎句柄）。</summary>
+    private sealed class GateHandle(IDisposable engineHandle) : IConversationGateHandle
     {
-        // Release 仅在持有成功后调用（计数恒为 1），不会 SemaphoreFullException。
-        entry.Semaphore.Release();
-
-        lock (_collectLock)
-        {
-            entry.ActiveCount--;
-            if (entry.ActiveCount != 0)
-            {
-                return;
-            }
-
-            // 条件移除（同键同条目才移除）+ 释放信号量：新 Acquire 必然拿到新条目，不会撞上已释放信号量。
-            if (((ICollection<KeyValuePair<string, GateEntry>>)_entries).Remove(new(conversationKey, entry)))
-            {
-                entry.Semaphore.Dispose();
-            }
-        }
-    }
-
-    /// <summary>等待未成功（取消/异常）时放弃登记：只减活跃计数、不 Release 信号量。</summary>
-    private void AbandonWait(string conversationKey, GateEntry entry)
-    {
-        lock (_collectLock)
-        {
-            entry.ActiveCount--;
-            if (entry.ActiveCount == 0
-                && ((ICollection<KeyValuePair<string, GateEntry>>)_entries).Remove(new(conversationKey, entry)))
-            {
-                entry.Semaphore.Dispose();
-            }
-        }
-    }
-
-    private sealed class GateEntry
-    {
-        internal SemaphoreSlim Semaphore { get; } = new(1, 1);
-
-        internal int ActiveCount { get; set; }
-    }
-
-    private sealed class GateHandle(KeyedConversationGate owner, string conversationKey, GateEntry entry) : IConversationGateHandle
-    {
-        private int _disposed;
-
-        public void Dispose()
-        {
-            if (Interlocked.Exchange(ref _disposed, 1) != 0)
-            {
-                return; // 幂等：finally + 显式双路径不重复放行。
-            }
-
-            owner.ReleaseEntry(conversationKey, entry);
-        }
+        public void Dispose() => engineHandle.Dispose();
     }
 }

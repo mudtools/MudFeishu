@@ -249,19 +249,31 @@ public class AgentContractGuards
     }
 
     /// <summary>
-    /// Phase 2 新增配置属性（<c>SummaryThreshold</c>）必须在 Mud.Feishu.AI 源码中有真实消费点
-    /// （R5 规则 2；<c>WriteAllowList</c>/<c>MaxStreamChunkLength</c> 消费点在 FeishuTools 包，
-    /// 由 FeishuToolContractGuards 扫描）。
+    /// Phase 2 新增配置属性（<c>SummaryThreshold</c>）必须有<b>真实端到端</b>消费点（R5 规则 2）。
     /// </summary>
+    /// <remarks>
+    /// N2-f：摘要在机制中立化后消费点跨了两跳——产品配置 <c>FeishuAgentOptions.SummaryThreshold</c>
+    /// → 投影 <c>ToRuntimeOptions()</c> → 中立 <c>AgentRuntimeOptions.SummaryThreshold</c>
+    /// → 中立摘要器。双清单（消费点 + 投影点）必须<b>同批</b>断言，否则「投影漏字段」这类
+    /// 断链会静默生效（配置写了不生效、且不报红）。
+    /// </remarks>
     [Fact]
     public void FeishuAgentOptions_Phase2Properties_ShouldHaveRealConsumptionPoints()
     {
-        var summarizerSource = Path.Combine(GetSolutionRoot(), "Mud.Feishu.AI", "Conversations", "ConversationSummarizer.cs");
+        var summarizerSource = Path.Combine(
+            GetSolutionRoot(), "Mud.AI.Agent", "Conversations", "ConversationSummarizer.cs");
+        var optionsSource = Path.Combine(GetSolutionRoot(), "Mud.Feishu.AI", "Agents", "FeishuAgentOptions.cs");
 
-        File.Exists(summarizerSource).Should().BeTrue();
+        File.Exists(summarizerSource).Should().BeTrue(
+            "摘要器必须存在于中立包（N2-f 已中立化）——路径变了要同批改本守卫，否则它会在旧路径上假绿");
         File.ReadAllText(summarizerSource).Should().Contain(
             "SummaryThreshold",
-            "FeishuAgentOptions.SummaryThreshold 必须在 ConversationSummarizer 中被消费（渐进式摘要阈值，Phase 2 §3.2）");
+            "AgentRuntimeOptions.SummaryThreshold 必须在会话摘要器中被消费（渐进式摘要阈值，Phase 2 §3.2）");
+
+        File.Exists(optionsSource).Should().BeTrue();
+        File.ReadAllText(optionsSource).Should().Contain(
+            "ToRuntimeOptions",
+            "FeishuAgentOptions 必须把摘要阈值投影进中立运行期配置（产品配置 → 中立旋钮的唯一通道）");
     }
 
     /// <summary>
@@ -273,14 +285,16 @@ public class AgentContractGuards
     [Fact]
     public void FeishuAgentOptions_Phase12Properties_ShouldHaveRealConsumptionPoints()
     {
-        var summarizerSource = Path.Combine(GetSolutionRoot(), "Mud.Feishu.AI", "Conversations", "ConversationSummarizer.cs");
+        var summarizerSource = Path.Combine(
+            GetSolutionRoot(), "Mud.AI.Agent", "Conversations", "ConversationSummarizer.cs");
         var imHandlerSource = Path.Combine(
             GetSolutionRoot(), "Mud.Feishu.AI", "Events", "ImMessageConversationalEventHandler.cs");
 
-        File.Exists(summarizerSource).Should().BeTrue();
+        File.Exists(summarizerSource).Should().BeTrue(
+            "摘要器必须存在于中立包（N2-f 已中立化）");
         File.ReadAllText(summarizerSource).Should().Contain(
             "MaxHistoryTokens",
-            "FeishuAgentOptions.MaxHistoryTokens 必须在 ConversationSummarizer 中被消费（token 维度判定，P2D-3a）");
+            "AgentRuntimeOptions.MaxHistoryTokens 必须在会话摘要器中被消费（token 维度判定，P2D-3a）");
 
         File.Exists(imHandlerSource).Should().BeTrue();
         var handlerContent = File.ReadAllText(imHandlerSource);
@@ -293,6 +307,57 @@ public class AgentContractGuards
         handlerContent.Should().Contain(
             "BotName",
             "ImConversationOptions.BotName 必须在事件处理器中被消费（群聊「@ 到 Bot 本人」判定，R3-3）");
+    }
+
+    /// <summary>
+    /// <b>v3 §6.2 反向断言</b>：<see cref="AgentRuntimeOptions"/> 的每个中立旋钮都必须有真实消费点。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么必须"反向"</b>：<c>ToRuntimeOptions_ShouldProjectEveryNeutralKnob</c> 只证明
+    /// 「产品 → 中立」赋值齐全；「中立 → 消费者」方向没有机械锁。新增一个中立旋钮却无人读取时，
+    /// 投影断言照样绿——症状是「配置写了不生效」（配置面治理 R5 规则 2 的反向形态）。
+    /// </para>
+    /// <para>
+    /// <b>判据</b>：对 <see cref="AgentRuntimeOptions"/> 的每个 public 属性名，产品 ∪ 中立源码集中
+    /// 必须存在 <c>.<属性名></c> 成员访问；<b>定义处</b>与<b>投影赋值处</b>两文件除外——
+    /// 否则属性名自证即命中，反向断言恒真（假绿）。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void AgentRuntimeOptions_EveryProperty_ShouldHaveRealConsumptionPoint()
+    {
+        var root = GetSolutionRoot();
+        var projects = new[] { MudAiAgentProject, AiProject, "Mud.Feishu.AI.Tools", "Mud.Feishu.AI.Mcp" };
+
+        // 排除「属性名定义处 / 投影赋值处」——两者都会让名字自证即命中，掩盖"没人读"。
+        var excludedFiles = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "AgentRuntimeOptions.cs", // 定义处
+            "FeishuAgentOptions.cs",  // 投影赋值处（ToRuntimeOptions）
+        };
+
+        var sources = projects
+            .SelectMany(p => Directory.EnumerateFiles(Path.Combine(root, p), "*.cs", SearchOption.AllDirectories))
+            .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                        && !p.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                        && !excludedFiles.Contains(Path.GetFileName(p)))
+            .ToList();
+
+        // 反缩水：扫描面与反射面任一为空，本断言都恒真（假绿）。
+        sources.Should().NotBeEmpty("扫描面为空说明目录/路径解析坏了");
+        var propertyNames = typeof(AgentRuntimeOptions).GetProperties().Select(static p => p.Name).ToList();
+        propertyNames.Should().NotBeEmpty("反射面为空说明类型解析坏了");
+
+        var texts = sources.Select(File.ReadAllText).ToList();
+        var missing = propertyNames
+            .Where(name => !texts.Any(text => text.Contains("." + name, StringComparison.Ordinal)))
+            .ToList();
+
+        missing.Should().BeEmpty(
+            "AgentRuntimeOptions 的每个中立旋钮都必须被真实读取（.<属性名> 成员访问）——"
+            + "投影了却无人读 = 配置写了不生效。缺少消费点的属性：{0}",
+            string.Join(", ", missing));
     }
 
     // ────────────────────────────────────────────────────────────────────
@@ -507,20 +572,24 @@ public class AgentContractGuards
     /// <remarks>
     /// 顺序类缺陷最易在重构中复活，且症状是「静默零注入 + 仅一条 Warning」——
     /// 断言相对顺序（不是绝对行号），行号漂移不会失效。
+    /// <b>N4 改锚</b>：回合机制已上移中立 <c>ConversationalTurnPipeline</c>——
+    /// 断言锚点随实现迁移（旧锚读产品薄壳会变成"断言在跑但读旧锚"的假绿）。
+    /// 行为锚（替身 ITurnScopeFactory + 替身 IContextAssembler 记录调用序）由
+    /// <c>Tests/Mud.AI.Agent.Tests/Events/ConversationalTurnPipelineTests</c> 承载。
     /// </remarks>
     [Fact]
     public void ToolContext_Begin_ShouldPrecedeContextAssembly()
     {
-        var source = ReadSource(AiProject, "Events", "ConversationalFeishuEventHandler.cs");
+        var source = ReadSource(MudAiAgentProject, "Events", "ConversationalTurnPipeline.cs");
 
-        var beginIndex = source.IndexOf("ToolContextAccessor?.Begin", StringComparison.Ordinal);
+        var beginIndex = source.IndexOf("BeginToolScope(new TurnScopeContext", StringComparison.Ordinal);
         var assembleCallIndex = source.IndexOf(
-            "await AssembleUserMessageAsync(request, cancellationToken)", StringComparison.Ordinal);
+            "AssembleUserMessageDefaultAsync(request", StringComparison.Ordinal);
 
         beginIndex.Should().BeGreaterThan(-1, "必须先建立工具执行上下文");
         assembleCallIndex.Should().BeGreaterThan(-1, "管线必须装配用户消息");
         beginIndex.Should().BeLessThan(assembleCallIndex,
-            "工具上下文必须先于上下文装配生效——否则知识/引用类装配器读不到 appKey，RAG 注入模式永久静默失效");
+            "工具上下文必须先于上下文装配生效——否则知识/引用类装配器读不到租户键，RAG 注入模式永久静默失效");
     }
 
     /// <summary>
@@ -584,7 +653,30 @@ public class AgentContractGuards
         keys.Should().NotBeEmpty("ChatHistoryProvider 的状态键必须显式命名（默认键名随类型名漂移）");
         keys.Should().OnlyHaveUniqueItems("MAF 要求会话状态键全局唯一（重复即运行期异常）");
         keys.Should().Contain("feishu.agent.history", "历史状态键是会话摘要与历史读写的同源锚点");
-        source.Should().Contain("StateKey = ChatHistoryStateKey", "状态键必须被 ChatClientAgentOptions 真实消费");
+
+        // A1（v3）：消费点从组装语句升级为「两条链各自可查」——中立工厂把键以参数装入 Provider
+        // （不得硬编码字面量），产品侧必须经该工厂装配（否则 Provider 写的状态袋与门面读的不是同一格）。
+        var factorySource = ReadSource(MudAiAgentProject, "Agents", "AgentAssemblyFactory.cs");
+        factorySource.Should().Contain("StateKey = historyStateKey",
+            "历史状态键必须被中立工厂真实装入 ChatHistoryProvider（参数名即产品→中立的注入面）");
+
+        // A-4（v3）：负向断言面扩到整个中立 Agents/ 目录（不再只锚一条文件）——运行期编织基类
+        // ObservedDelegatingAgent 同样是「顺手塞产品状态键」的高危点，单文件锚在它诞生后即失守。
+        var neutralAgentsDir = Path.Combine(GetSolutionRoot(), MudAiAgentProject, "Agents");
+        Directory.Exists(neutralAgentsDir).Should().BeTrue(
+            $"扫描目录必须存在（否则扫描面静默缩水 → 假绿）：{neutralAgentsDir}");
+        var neutralAgentFiles = Directory.EnumerateFiles(neutralAgentsDir, "*.cs", SearchOption.AllDirectories)
+            .Where(p => !p.Contains("obj") && !p.Contains("bin"))
+            .ToList();
+        neutralAgentFiles.Should().NotBeEmpty("扫描面为空是假绿（目录存在但枚举不到源码）");
+        foreach (var neutralAgentFile in neutralAgentFiles)
+        {
+            File.ReadAllText(neutralAgentFile).Should().NotContain("\"feishu.",
+                $"中立 Agents/ 不得硬编码任何产品状态键前缀（{Path.GetFileName(neutralAgentFile)}）——字面量归产品侧所有");
+        }
+
+        source.Should().Contain("AgentAssemblyFactory.Create(",
+            "飞书侧必须经中立装配工厂构造内层 Agent（否则历史状态键的注入面又回到产品侧）");
 
         // P4-4：outbox 状态键必须成对存在且**有真实消费点**——否则键会成为无人读取的僵尸状态，
         // 占会话存储且给后续维护者造成"这里似乎实现了补发"的误判。
@@ -946,7 +1038,9 @@ public class AgentContractGuards
     [Fact]
     public void MemoryConversationStore_ShouldSweepExpiredEntries()
     {
-        var source = ReadSource(AiProject, "Conversations", "MemoryConversationStore.cs");
+        // N2-g：清扫机制已中立化（Mud.AI.Agent.Sessions.MemorySessionStore）——守卫锚点必须跟着
+        // 实现走，否则它会在产品壳上对新代码"看不见"而假绿（§6.2 改锚纪律 + Q3 教训）。
+        var source = ReadSource(MudAiAgentProject, "Sessions", "MemorySessionStore.cs");
 
         source.Should().Contain("SweepExpired", "必须有过期回收路径（未读键永不到达读侧软过期）");
 
@@ -955,6 +1049,11 @@ public class AgentContractGuards
         var body = source[save..];
         body.Should().Contain("SweepExpired()", "回收必须由写入路径触发（惰性分摊，不引入后台线程/定时器）");
         body.Should().Contain("SweepThreshold", "必须按阈值分摊（均摊 O(1)），不得每次写入都全量扫描");
+
+        // 产品壳只做「冻结契约 → 中立实现 + 产品 TTL」的适配，不得把机制抄回来（两份实现必然漂移）。
+        var shell = ReadSource(AiProject, "Conversations", "MemoryConversationStore.cs");
+        shell.Should().Contain("MemorySessionStore", "产品壳必须桥接到中立实现（机制唯一）");
+        shell.Should().NotContain("SweepExpired", "清扫逻辑不得回流产品壳");
     }
 
     /// <summary>
@@ -1008,10 +1107,13 @@ public class AgentContractGuards
         docs.Should().Contain("不可逆", "必须写明裁剪结果写回会话状态（不可逆落库删除），而非「本次请求视图」");
         docs.Should().Contain("FunctionCallContent", "必须写明工具调用消息被永久丢弃");
 
-        // 消费点（此前缺失守卫）。
+        // 消费点（此前缺失守卫；A1（v3）后落点在中立工厂，产品侧只注入该上限）。
+        ReadSource(MudAiAgentProject, "Agents", "AgentAssemblyFactory.cs").Should().Contain(
+            "new MessageCountingChatReducer(maxHistoryMessages)",
+            "MaxHistoryMessages 必须被真实消费（中立工厂把上限装入 MessageCountingChatReducer 裁剪窗）");
         ReadSource(AiProject, "Agents", "FeishuAgent.cs").Should().Contain(
-            "new MessageCountingChatReducer(options.MaxHistoryMessages)",
-            "MaxHistoryMessages 必须在 FeishuAgent 中被真实消费（MessageCountingChatReducer 裁剪窗）");
+            "options.MaxHistoryMessages",
+            "产品侧必须把 MaxHistoryMessages 注入中立装配工厂（否则配置上限成为无人消费的装饰）");
     }
 
     /// <summary>

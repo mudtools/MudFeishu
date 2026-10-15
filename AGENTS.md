@@ -96,7 +96,26 @@ hard cut (no `[Obsolete]` forwards, no shims). Four invariants are mechanically 
   contract layer, consumed by the source generator) and every non-AI `Mud.Feishu*` project still
   must not declare MAF directly. Guarded by
   `AgentContractGuards.AgentsAi_PackageReferences_ShouldBeDeclaredOnlyInAllowListedProjects` +
-  `MudAiAbstractions_ShouldNotDeclareMafPackages`; MAF version stays single-point 1.20.0.
+  `MudAiAbstractions_ShouldNotDeclareMafPackages`; MAF version stays single-point 1.25.0.
+  **MAF 1.25.0 upgrade (2026-10-15)**: the bump needed **no API adaptation** — but MAF 1.25.0 ships its
+  own `Microsoft.Agents.AI.AgentSessionStore`, colliding with the neutral
+  `Mud.AI.Agent.Sessions.AgentSessionStore` (`CS0104` in every file that imports both namespaces).
+  The disambiguation is **not** a rename (the neutral type's self-healing semantics are v3-locked and
+  MAF's type is unrelated): the test project uses a file-level alias
+  (`using AgentSessionStore = Mud.AI.Agent.Sessions.AgentSessionStore;`), and the product file
+  `FeishuAgent.cs` fully qualifies its two use sites — its comment budget is frozen, so the alias
+  comment the repo normally pairs with such a using **may not** be added there.
+  Associated floors rose in the same batch: `Microsoft.Extensions.*` → `10.0.12`,
+  `Microsoft.Extensions.AI.Abstractions` → `10.10.1`, `System.Text.Json` → `10.0.12`.
+  **One behavior delta, not a defect**: MAF 1.25.0 now treats a `null` state-bag value as *absent*
+  (`TryGetInMemoryChatHistory` → `false`) instead of throwing `NullReferenceException`. So a stored
+  `{"stateBag":{<historyKey>:null}}` payload is no longer a "corrupt value" and is **retained**
+  (previously the eager-validation guard caught the NRE and purged it). That removed the payload-side
+  witness for the v3-locked *catch-all* (`when (ex is not OperationCanceledException)`) contract —
+  the lock is now constructed deterministically by a **test-double codec** in
+  `AgentSessionStoreTests.GetOrCreateAsync_ShouldRebuild_WhenNonWhitelistedExceptionThrownInsideTheGuard`
+  (`ThrowingDeserializeCodecAgent`), and the product layer keeps `NullHistoryValue_ShouldStillYieldUsableSession`
+  instead of the old `CorruptStateBag_ShouldDeleteAndRebuild_RegardlessOfExceptionType`.
 - **Bidirectional neutrality lock**: core SDK ↛ `Mud.AI.*` (existing
   `CoreSdkProjects_ShouldNotDependOnMudAiFamily`) **and** `Mud.AI.*` ↛ any `Mud.Feishu*`
   (`MudAiFamily_ShouldNotDependOnFeishuProjects`). The session-storage port exists precisely
@@ -136,6 +155,63 @@ hard cut (no `[Obsolete]` forwards, no shims). Four invariants are mechanically 
 `Tests/Mud.AI.Agent.Tests` is their owning test project (registered in the slnx, auto-discovered by
 `verify-build.ps1` step 4). Guard evidence must live with the implementation — moving code without
 moving its guard anchors is how a guard silently starts asserting something else.
+
+## AI neutralization N4–N6 closure (2026-10-14)
+
+The neutralization plan (`.docs/AI/MudFeishu-AI-公共功能中立化重构方案-v2.md`, status: ✅ complete) finished
+its remaining waves. Decisions recorded here so they are not re-litigated:
+
+- **Turn pipeline is neutral-owned**: `ConversationalTurnPipeline` (`Mud.AI.Agent/Events/`) owns the
+  11-stage turn state machine + the 4 compensation paths (streaming-cancel/exception compensating
+  Flush MUST use `CancellationToken.None`; save-after-stream/replay uses non-cancellable tokens).
+  `ConversationalFeishuEventHandler` is a thin shell (~330 lines) keeping product policy
+  (`AllowMissingAppKey`/`AllowToolsWithoutAppKey`, injected as `ValidateRequestPolicies` delegates —
+  the pipeline must contain zero product policy; guarded by `TurnPipeline_ShouldNotHardcodeProductPolicy`).
+- **Neutral vocabulary guard** (`NeutralVocabularyContractGuards`): `Mud.AI.*` non-comment lines must
+  not contain `feishu`/`appKey` (camelCase). The single whitelist is the `ConversationRequest.AppKey`
+  property name — do not "fix" it.
+- **Owning-tests guard** (`NeutralPublicTypesOwningContractGuards` in Agent.Tests): every public type
+  of `Mud.AI.Agent` needs a `<Type>Tests` class or an `OwningEvidence` entry; the map is self-verifying
+  (pointers to non-existent test classes fail). Adding a neutral public type without an owning test
+  fails the build — that is intended (Q4 anti-drift).
+- **PublicAPI ledger files were deleted repo-wide** (user ruling: "对开发者没屁用"; D5). Do NOT recreate
+  `PublicAPI.Shipped/Unshipped.txt` or re-add `Microsoft.CodeAnalysis.PublicApiAnalyzers`. The
+  consumer-rationale mechanism survives as reflection-based
+  `PublicSurfaceRationaleContractGuards` (baseline 326 = reflection count over the three Feishu
+  assemblies; bump the constant in the same batch as any public-surface change).
+- **Golden snapshots moved to `Tests/Mud.AI.Agent.Tests/Golden`** (D2; 6 snapshots byte-identical).
+  The summarizer golden uses neutral-default instruction/idKeys; the retrieval golden replicates the
+  product header/footer literals — keep them byte-identical when touching either side.
+
+## AI neutralization v3 closure (2026-10-15)
+
+The v3 plan (`.docs/AI/MudFeishu-AI-公共功能中立化重构方案-v3.md`) closed stages 0/A/B/C/D.
+Three conclusions are **settled** — do not re-litigate:
+
+- **Gate decision reversed (P4)**: the queue-timeout path was *not* a defect. The v3 rewrite replaced
+  "`CancelAfter` + infer the source from an external-token flag" with an **explicit timeout overload**
+  (`SemaphoreSlim.WaitAsync(timeout, ct)` returning `false` = timed out). `WhenAny`-vs-`Task.Delay`
+  racing is **banned** — the loser wait task still holds a permit nobody claimed (leak surface).
+  Because behavior is unchanged, this is a **modeling** change: **no `CHANGELOG.md`, no golden
+  re-freeze**; equivalence is asserted by the four-path exception-type cases. Sentinel:
+  `Tests/Mud.AI.Agent.Tests/Conversations/ConcurrencyLimiterTimeoutModelContractGuards.cs` (engine
+  source, comments stripped, must contain no `CancelAfter` / self-made `Task.Delay`).
+- **Tool-surface admission threshold** (from stage A-1, 7 types → `Mud.AI.Agent/Tools/{Args,Errors,Results,Security}`):
+  a type may enter the neutral pool **only if all three hold** — (1) its **non-comment** lines carry
+  **zero product vocabulary** (`feishu`/`appKey`; the sole whitelist is `ConversationRequest.AppKey`);
+  (2) it **does not participate in the generator contract** (see next bullet); (3) it depends on **no
+  `Mud.Feishu.*`** type. `NeutralToolSafetyPrimitives_ShouldStayProductFree` + the tool guards'
+  widened scan face lock this.
+- **Generator contract lock**: `Mud.AI.Generator` emits code that references `ToolArgs` by **simple
+  name**, so `ToolArgs` must stay in its owner assembly (`Mud.Feishu.AI.Tools`) — moving it into the
+  neutral family breaks generation. This is exactly what `SingleToolSurfaceEngineContractGuards`
+  guards (host uniqueness / no dual referencing). `FeishuToolProfile.cs`
+  (`Mud.Feishu.AI.Tools/SdkProfile/`) remains the single source of Feishu naming facts.
+
+**Engine / contract / shell three-way split (第七式 · 第八式)** is a decision, not a style choice —
+see `documents/AIAgent/decisions/ADR-0004-engine-shell-separation.md`. Shells delegate (one statement
+per method) and decide exception semantics; neutral engines never throw product business exceptions
+(they return a nullable marker) and let `OperationCanceledException` pass through untouched.
 
 ## Target Frameworks & MSBuild
 

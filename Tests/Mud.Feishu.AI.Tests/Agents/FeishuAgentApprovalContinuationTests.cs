@@ -221,7 +221,8 @@ public class FeishuAgentApprovalContinuationTests
             "工具执行期间的租户上下文必须由宿主显式重建并指向同一应用（TMA2-20）");
 
         var reloaded = await harness.Agent.GetOrCreateSessionAsync(ConversationKey);
-        FeishuPendingApprovalState.Read(reloaded).Should().BeEmpty(
+        // N2-c：桥已中立化（历史状态键经 IAgentSessionFacade.HistoryStateKey 注入）。
+        new PendingApprovalState(harness.Agent.HistoryStateKey).Read(reloaded).Should().BeEmpty(
             "框架绑定层在续跑成功后消费掉待审批记录——迟到/重复的批准不得再被接受");
         (await harness.Store.GetAsync(ConversationKey)).Should().NotBeNullOrEmpty(
             "续跑轮必须落库（含本次工具执行的历史）");
@@ -371,7 +372,7 @@ public class FeishuAgentApprovalContinuationTests
 
         // 孤儿审批内容必须已从落盘历史中摘除，且框架的待审批记录必须已清空（否则迟到的批准仍会放行）。
         var reloaded = await harness.Agent.GetOrCreateSessionAsync(ConversationKey);
-        FeishuPendingApprovalState.HasPending(reloaded).Should().BeFalse(
+        new PendingApprovalState(harness.Agent.HistoryStateKey).HasPending(reloaded).Should().BeFalse(
             "自愈后：历史中不得残留孤儿审批请求，框架记录也必须清空（迟到批准一律 fail-closed 丢弃）");
 
         var stored = await harness.Store.GetAsync(ConversationKey);

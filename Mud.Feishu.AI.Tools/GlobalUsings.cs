@@ -12,6 +12,11 @@ global using Microsoft.Extensions.Options;
 // 与错误契约词汇经全局 using 保持"简单名即可引用"（与生成产物同口径）。
 global using Mud.AI.Agent.Tools;
 global using Mud.AI.Agent.Tools.Errors;
+// v3 工具面中立化：文本安全基线族（参数形态归一化 / 入站净化 / 审计摘要 / 出站净化 / 内容安全检测 /
+// 脱敏基线）落 Mud.AI.Agent——其子命名空间经全局 using 保持"简单名即可引用"（调用点零改动）。
+global using Mud.AI.Agent.Tools.Args;
+global using Mud.AI.Agent.Tools.Results;
+global using Mud.AI.Agent.Tools.Security;
 // v2.3 P1-E：声明契约（`[AgentTool]` / `[ToolParameter]` / `[ToolHandler]`）中立化上移
 // Mud.AI.Abstractions——策展接口与执行器绑定面经全局 using 直接引用新名（308 + 244 处调用点零改动）。
 global using Mud.AI.Abstractions.Tools;
@@ -56,7 +61,6 @@ global using Mud.Feishu.AI.Tools.Curation;
 global using Mud.Feishu.AI.Tools.Args;
 global using Mud.Feishu.AI.Tools.Catalog;
 global using Mud.Feishu.AI.Tools.Constants;
-global using Mud.Feishu.AI.Tools.Errors;
 global using Mud.Feishu.AI.Tools.Execution;
 global using Mud.Feishu.AI.Tools.Hosting;
 global using Mud.Feishu.AI.Tools.Parsers;

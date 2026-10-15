@@ -16,7 +16,6 @@ global using Mud.Feishu.AI.Mcp;
 global using Mud.Feishu.AI.AgentTools;
 global using Mud.Feishu.AI.Tools;
 global using Mud.Feishu.AI.Tools.Catalog;
-global using Mud.Feishu.AI.Tools.Errors;
 global using Mud.Feishu.AI.Tools.Execution;
 global using Mud.Feishu.AI.Tools.Results;
 global using Mud.Feishu.AI.Tools.Generated;

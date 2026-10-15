@@ -44,14 +44,25 @@ public class ToolArgumentShapeContractGuards
         var projDir = Path.Combine(root, "Mud.Feishu.AI.Tools");
 
         // R5 / F-1：声明面在 Curation/；R-1+2c 后续重组：运行时基础设施按关注面解散为
-        // Args/Results/Errors/Execution/Catalog/Hosting/Security/Parsers/Constants 九目录，
-        // Tools/ 仅余生成器钉死的根命名空间类型（FeishuToolBinding）。本守卫的"认知边界"
-        // 必须覆盖全部源码目录——漏掉任一目录即假绿（该目录新出现的形态认知无人拦截）。
+        // Args/Results/Execution/Catalog/Hosting/Security/Parsers/Constants 八目录
+        // （Errors/ 于阶段 A-1 随 B-5 迁出而消亡），Tools/ 仅余生成器钉死的根命名空间类型
+        // （FeishuToolBinding）。阶段 A-1 另把 B 组形态认知相关类型迁入中立包
+        // Mud.AI.Agent/Tools——认知边界必须同时覆盖产品侧与中立侧：漏掉任一目录即假绿
+        // （该目录新出现的形态认知无人拦截）。
         var scanDirs = new[]
         {
-            "Args", "Results", "Errors", "Execution", "Catalog", "Hosting",
+            "Args", "Results", "Execution", "Catalog", "Hosting",
             "Security", "Parsers", "Constants", "Tools", "Curation",
-        }.Select(d => Path.Combine(projDir, d));
+        }.Select(d => Path.Combine(projDir, d))
+         .Append(Path.Combine(root, "Mud.AI.Agent", "Tools"))
+         .ToArray();
+
+        // 反缩水（§8.2「扫描面悄悄缩水」）：扫描目录必须真实存在——目录被删/改名会让
+        // 上面的枚举静默退化成空集，"无违规"恒真（假绿）。
+        foreach (var dir in scanDirs)
+        {
+            Directory.Exists(dir).Should().BeTrue($"扫描目录必须存在（否则扫描面静态缩水 → 假绿）：{dir}");
+        }
 
         // 白名单（R-2 已收缩为**单文件**）：形态判定原语（IsJsonString/IsJsonArray）住在
         // ToolArgumentNormalizer 内，其余位置（ToolArgs 取值门面、ToolArgsDigester 摘要、
@@ -59,12 +70,24 @@ public class ToolArgumentShapeContractGuards
         // 是 S1 的同类根因，收敛后该形态在源码层不可能再出现第二处。
         var allowedFiles = new HashSet<string>(StringComparer.Ordinal)
         {
-            "ToolArgumentNormalizer.cs", // 唯一形态认知中心（R-2 起，含判定原语）
+            "ToolArgumentNormalizer.cs", // 唯一形态认知中心（R-2 起，含判定原语；A-1 后住 Mud.AI.Agent/Tools/Args）
         };
 
-        var offenders = scanDirs
+        var scannedPaths = scanDirs
             .SelectMany(static dir => Directory.EnumerateFiles(dir, "*.cs", SearchOption.AllDirectories))
             .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .ToList();
+
+        // 反缩水：白名单文件必须实际落在扫描面内——文件名从扫描面消失（迁移出目录）会让
+        // "允许一处"退化为"允许任意处"（白名单恒不命中 ⇒ 假绿）。
+        foreach (var allowed in allowedFiles)
+        {
+            scannedPaths.Should().Contain(
+                p => Path.GetFileName(p) == allowed,
+                $"白名单文件 {allowed} 必须在扫描面内（否则该白名单失效 → 假绿）");
+        }
+
+        var offenders = scannedPaths
             .Where(p => !allowedFiles.Contains(Path.GetFileName(p)))
             .Where(p => File.ReadAllText(p).Contains("JsonValueKind.String", StringComparison.Ordinal))
             .Select(Path.GetFileName)
@@ -126,11 +149,11 @@ public class ToolArgumentShapeContractGuards
             + "人工策展面与框架基础设施的边界失焦：{0}",
             string.Join(" | ", mixedIn));
 
-        // 工具契约声明不得落在任何运行时目录（原守卫只查 Tools/；重组后运行时面扩为九目录，
-        // 不扩展即假绿——契约写进 Args/ 无人拦截）。
+        // 工具契约声明不得落在任何运行时目录（原守卫只查 Tools/；重组后运行时面扩为多个关注面
+        // 目录，不扩展即假绿——契约写进 Args/ 无人拦截）。Errors/ 目录于阶段 A-1 迁出后消亡，故移除。
         var contractFiles = new[]
         {
-            "Args", "Results", "Errors", "Execution", "Catalog", "Hosting",
+            "Args", "Results", "Execution", "Catalog", "Hosting",
             "Security", "Parsers", "Constants", "Tools",
         }
             .Select(d => Path.Combine(projDir, d))
@@ -160,7 +183,7 @@ public class ToolArgumentShapeContractGuards
     }
 
     /// <summary>
-    /// <b>R-1+2c 重组守卫</b>：九 个关注面目录与 <c>Tools/</c>（白名单目录）必须声明与目录
+    /// <b>R-1+2c 重组守卫</b>：各 关注面目录与 <c>Tools/</c>（白名单目录）必须声明与目录
     /// 匹配的命名空间——目录与命名空间不一致会让读者按目录找不到类型（复用 Curation 先例的判据）。
     /// </summary>
     [Fact]
@@ -172,7 +195,6 @@ public class ToolArgumentShapeContractGuards
         {
             ["Args"] = "Mud.Feishu.AI.Tools.Args",
             ["Results"] = "Mud.Feishu.AI.Tools.Results",
-            ["Errors"] = "Mud.Feishu.AI.Tools.Errors",
             ["Execution"] = "Mud.Feishu.AI.Tools.Execution",
             ["Catalog"] = "Mud.Feishu.AI.Tools.Catalog",
             ["Hosting"] = "Mud.Feishu.AI.Tools.Hosting",

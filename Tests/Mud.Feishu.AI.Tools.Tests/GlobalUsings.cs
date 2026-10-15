@@ -14,6 +14,11 @@ global using Moq;
 // ToolErrorCategory / IToolResultShaper …）——测试与被测工程同口径经全局 using 引用。
 global using Mud.AI.Agent.Tools;
 global using Mud.AI.Agent.Tools.Errors;
+// v3 工具面中立化：文本安全基线族（参数形态归一化 / 入站净化 / 审计摘要 / 出站净化 / 内容安全检测 /
+// 脱敏基线）落 Mud.AI.Agent.Tools.{Args,Results,Security}——测试侧同口径经全局 using 引用。
+global using Mud.AI.Agent.Tools.Args;
+global using Mud.AI.Agent.Tools.Results;
+global using Mud.AI.Agent.Tools.Security;
 // v2.3 P1-E：声明契约（[AgentTool] / [ToolParameter] / [ToolHandler]）上移 Mud.AI.Abstractions。
 global using Mud.AI.Abstractions.Tools;
 global using Mud.AI.Abstractions.Tools.Handlers;
@@ -35,7 +40,6 @@ global using Mud.Feishu.AI.Tools.Args;
 global using Mud.Feishu.AI.Tools.Catalog;
 global using Mud.Feishu.Tests.Docs;
 global using Mud.Feishu.AI.Tools.Constants;
-global using Mud.Feishu.AI.Tools.Errors;
 global using Mud.Feishu.AI.Tools.Execution;
 global using Mud.Feishu.AI.Tools.Hosting;
 global using Mud.Feishu.AI.Tools.Parsers;

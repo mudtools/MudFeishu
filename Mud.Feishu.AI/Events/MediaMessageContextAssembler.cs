@@ -1,12 +1,12 @@
 // -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
-//  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE 文件。
-//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！
-//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！
+//  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
 using System.Text.Json.Nodes;
+using Mud.AI.Agent.Context;
 using Mud.Feishu.AI.Conversations;
 
 namespace Mud.Feishu.AI.Events;
@@ -16,31 +16,27 @@ namespace Mud.Feishu.AI.Events;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>设计原则</b>（R7/C3）：转换在装配器内部发生，模型只见到文本结果——
-/// 不把 OCR/STT 变成模型可调工具。
+/// 机制（事实提取 / text 短路 / 截断 / untrusted 头 / 失败隔离跳过）在中立 <see cref="MediaContextAssembler"/>；
+/// 本类只提供<b>产品事实</b>——媒体类型判定（image/audio/file/post…）、键提取、
+/// <see cref="IFeishuMediaTranscriber"/> 适配与各类占位降级文案。
 /// </para>
 /// <para>
-/// <b>Order = 15</b>：SenderInfo=10 → <b>MediaMessage=15</b> → QuoteMessage=20 → GroupHistory=30 → Knowledge=100。
-/// 媒体先于引用（媒体转写是本轮消息自身的属性）。
-/// </para>
-/// <para>
-/// <b>软缺席</b>：<see cref="IFeishuMediaTranscriber"/> 未注册时，装配器降级为占位文本。
-/// </para>
-/// <para>
-/// <b>安全</b>：下载字节数上限 <see cref="MediaInputOptions.MaxBytes"/>；Content-Type 自检；
+/// <b>设计原则</b>：转换在装配器内部发生，模型只见到文本结果——不把 OCR/STT 变成模型可调工具。
+/// <b>软缺席</b>：<see cref="IFeishuMediaTranscriber"/> 未注册时降级为占位文本。
+/// <b>安全</b>：下载字节数上限 <see cref="MediaInputOptions.MaxBytes"/>、Content-Type 自检、
 /// 全部输出走 <see cref="ContextBudgets.UntrustedHeader"/> + 长度闸。
 /// </para>
+/// <para>
+/// <b>Order = 15</b>：SenderInfo=10 → <b>MediaMessage=15</b> → QuoteMessage=20 → GroupHistory=30 → Knowledge=100；媒体先于引用（媒体转写是本轮消息自身的属性）。
+/// </para>
 /// </remarks>
-public sealed class MediaMessageContextAssembler : IContextAssembler
+public sealed class MediaMessageContextAssembler : MediaContextAssembler
 {
     /// <summary>默认装配顺序（发送者信息之后、引用消息之前）。</summary>
     public const int DefaultOrder = 15;
 
-    private readonly Mud.Feishu.IFeishuTenantV1Message _messageClient;
-    private readonly IFeishuAppContextScopeFactory _scopeFactory;
     private readonly IFeishuMediaTranscriber? _transcriber;
     private readonly MediaInputOptions _options;
-    private readonly ILogger? _logger;
 
     /// <summary>
     /// 初始化 <see cref="MediaMessageContextAssembler"/>。
@@ -56,73 +52,24 @@ public sealed class MediaMessageContextAssembler : IContextAssembler
         IFeishuMediaTranscriber? transcriber,
         MediaInputOptions options,
         ILogger<MediaMessageContextAssembler>? logger = null)
+        : base(
+            order: DefaultOrder,
+            untrustedHeader: ContextBudgets.UntrustedHeader,
+            truncationMarker: AssemblerBudgets.TruncationMarker,
+            perItemLength: options.PerItemLength,
+            logger: logger)
     {
-        _messageClient = messageClient ?? throw new ArgumentNullException(nameof(messageClient));
-        _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
+        _ = messageClient ?? throw new ArgumentNullException(nameof(messageClient));
+        _ = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
         _transcriber = transcriber;
         _options = options ?? throw new ArgumentNullException(nameof(options));
-        _logger = logger;
     }
 
     /// <inheritdoc />
-    public int Order => DefaultOrder;
-
-    /// <inheritdoc />
-    public async Task<string?> AssembleAsync(ConversationRequest request, CancellationToken cancellationToken = default)
+    protected override async Task<string?> TranscribeAsync(
+        ConversationRequest request, string messageType, string content, CancellationToken cancellationToken)
     {
-        if (request is null || string.IsNullOrEmpty(request.MessageId))
-        {
-            return null;
-        }
-
-        // 从 EventFacts 中提取 message_type 和 content（由事件处理器写入）。
-        var msgType = GetEventFact(request, "message_type");
-        var content = GetEventFact(request, "content");
-
-        if (string.IsNullOrEmpty(msgType) || string.IsNullOrEmpty(content))
-        {
-            return null;
-        }
-
-        // text 类型不处理（既有 ExtractMentionedText 路径）。
-        if (string.Equals(msgType, "text", StringComparison.Ordinal))
-        {
-            return null;
-        }
-
-        try
-        {
-            using var scope = _scopeFactory.BeginScope(request.AppKey);
-            var text = await TranscribeMediaAsync(request, msgType, content, cancellationToken).ConfigureAwait(false);
-            if (string.IsNullOrWhiteSpace(text))
-            {
-                return null;
-            }
-
-            // 长度截断。
-            if (text.Length > _options.PerItemLength)
-            {
-                text = text.Substring(0, _options.PerItemLength) + ContextBudgets.TruncationMarker;
-            }
-
-            return $"{ContextBudgets.UntrustedHeader}\n[媒体内容] {text}";
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogInformation(ex, "媒体消息装配失败（messageId: {MessageId}, type: {MessageType}）——跳过",
-                request.MessageId, msgType);
-            return null;
-        }
-    }
-
-    private async Task<string?> TranscribeMediaAsync(
-        ConversationRequest request, string msgType, string content, CancellationToken cancellationToken)
-    {
-        return msgType switch
+        return messageType switch
         {
             "image" => await HandleImageAsync(request, content, cancellationToken).ConfigureAwait(false),
             "audio" => await HandleAudioAsync(request, content, cancellationToken).ConfigureAwait(false),
@@ -131,7 +78,7 @@ public sealed class MediaMessageContextAssembler : IContextAssembler
             "sticker" => "[用户发送了一个表情包]",
             "share_chat" => "[用户分享了一个群聊]",
             "share_user" => "[用户分享了一个联系人]",
-            _ => $"[用户发送了一条 {msgType} 类型消息]",
+            _ => $"[用户发送了一条 {messageType} 类型消息]",
         };
     }
 
@@ -212,7 +159,7 @@ public sealed class MediaMessageContextAssembler : IContextAssembler
         {
             if (JsonNode.Parse(content) is not JsonObject obj)
             {
-                return content.Length > 200 ? content.Substring(0, 200) + ContextBudgets.TruncationMarker : content;
+                return content.Length > 200 ? content.Substring(0, 200) + AssemblerBudgets.TruncationMarker : content;
             }
 
             var sb = new StringBuilder();
@@ -242,24 +189,6 @@ public sealed class MediaMessageContextAssembler : IContextAssembler
             // 降级文案确定；记日志只会把"用户发了非 JSON 卡片"变成告警噪声。
             return "[用户发送了一条富文本消息]";
         }
-    }
-
-    private static string? GetEventFact(ConversationRequest request, string key)
-    {
-        if (request.EventFacts is null)
-        {
-            return null;
-        }
-
-        foreach (var fact in request.EventFacts)
-        {
-            if (string.Equals(fact.Key, key, StringComparison.Ordinal))
-            {
-                return fact.Value;
-            }
-        }
-
-        return null;
     }
 
     private static string? ExtractKeyFromContent(string content, string keyName)

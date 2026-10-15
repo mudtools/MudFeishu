@@ -19,6 +19,11 @@ namespace Mud.Feishu.AI.Tools.Args;
 // R-2：ToolArgs 是**取值门面**（模型入参 → 强类型标量），其底层的「JsonElement 形态判定」
 // 一律经 ToolArgumentNormalizer 的判定原语（IsJsonString/IsJsonArray）——本文件不写字面量形态判断，
 // 由 ToolArgumentShapeContractGuards 机械锁定。
+//
+// 为什么本类型**不随 B 组迁入中立包**（B-4 裁决：留）：生成器契约锁定——上游 ToolArgsEmitter
+// 以**简单名** ToolArgs.RequireString / OptionalString / RequireStringArray（见
+// Mud.AI.Generator/ToolSurface/Emit/ToolArgsEmitter.cs）引用本类型，生成的 *Args.g.cs 位于本包命名空间内，
+// 简单名一旦迁往子命名空间即 CS0246。这与 FeishuToolBinding「生成器钉死根命名空间」同款约束。
 
 /// <summary>
 /// 工具入参读取器：模型 tool_call 的参数字典 → 强类型标量（值可能为 JsonElement/字符串/数字）。

@@ -742,7 +742,7 @@ public class AuditLogInterceptor : IFeishuEventInterceptor
 | **`Mud.Feishu.AI.Mcp`** | **MCP stdio server**: out-of-process agent tool surface, zero bypass of the execution chain, tenant boundary = process |
 
 Target frameworks: `netstandard2.0` / `net6.0` / `net8.0` / `net10.0`, `LangVersion 13.0`.
-The AI foundation depends on `Microsoft.Agents.AI` v1.20.0 + `Microsoft.Agents.AI.OpenAI` v1.20.0 (referenced by the AI packages only;
+The AI foundation depends on `Microsoft.Agents.AI` v1.25.0 + `Microsoft.Agents.AI.OpenAI` v1.25.0 (referenced by the AI packages only;
 core packages stay free of them).
 
 ### Core dependencies
@@ -751,10 +751,10 @@ core packages stay free of them).
 | --------------------------------------------- | ---------------- | ----------------------------------------------------- |
 | **Mud.HttpUtils** | v3.0.6 | HTTP client utilities with source generator (incl. resilience policies) |
 | **Mud.HttpUtils.Generator** | v3.0.6 | HTTP client code generator (compile-time) |
-| **System.Text.Json** | v10.0.9 | High-performance JSON serialization (netstandard2.0 target) |
-| **Microsoft.Extensions.\*** | v10.0.11 | Dependency injection, logging, configuration binding, options |
-| **Microsoft.Agents.AI** | v1.20.0 | AI foundation (referenced by Mud.Feishu.AI only; core stays MAF-free) |
-| **Microsoft.Agents.AI.OpenAI** | v1.20.0 | OpenAI-compatible model access (Mud.Feishu.AI only) |
+| **System.Text.Json** | v10.0.12 | High-performance JSON serialization (netstandard2.0 target) |
+| **Microsoft.Extensions.\*** | v10.0.12 | Dependency injection, logging, configuration binding, options |
+| **Microsoft.Agents.AI** | v1.25.0 | AI foundation (referenced by Mud.Feishu.AI only; core stays MAF-free) |
+| **Microsoft.Agents.AI.OpenAI** | v1.25.0 | OpenAI-compatible model access (Mud.Feishu.AI only) |
 
 ### Framework support
 

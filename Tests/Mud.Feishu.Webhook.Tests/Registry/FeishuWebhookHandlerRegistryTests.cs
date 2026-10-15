@@ -209,7 +209,7 @@ public class FeishuWebhookHandlerRegistryTests
     }
 
     [Fact]
-    public void Register_ConcurrentWithFreeze_ShouldNeverHalfWrite()
+    public async Task Register_ConcurrentWithFreeze_ShouldNeverHalfWrite()
     {
         // Arrange - 并发下：要么写入成功，要么抛"已冻结"；且一旦抛过，禁止再写入。
         // 断言方式：每轮结束后冻结位必然为真，且表中内容始终自洽（无重复、无半写入）。
@@ -241,7 +241,7 @@ public class FeishuWebhookHandlerRegistryTests
                 registry.Freeze();
             });
 
-            Task.WaitAll(workers.Append(freezer).ToArray());
+            await Task.WhenAll(workers.Append(freezer));
 
             // Assert：结果自洽——去重后至多 1 条；冻结后不允许再注册
             registry.GetHandlers("app-001").Should().HaveCountLessThanOrEqualTo(1);

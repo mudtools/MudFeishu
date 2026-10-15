@@ -34,6 +34,10 @@ public class NeutralPackageProductFactGuards
     private static readonly string[] KnownProductCodeLiterals =
         ["99991400", "99991672", "99991663", "99991661"];
 
+    /// <summary>产品类型名与协议头（哨兵清单）：中立工具安全基元不得出现。</summary>
+    private static readonly string[] ProductTypeTokens =
+        ["ApiResult", "FeishuApiResultReader", "FeishuToolRisk", "FeishuToolBinding", "x-feishu"];
+
     /// <summary>中立运行期的源码里不得出现任何已知产品业务码（注释行除外——注释是记录，不是声明）。</summary>
     [Fact]
     public void NeutralRuntime_ShouldNotContainProductBusinessCodeLiterals()
@@ -86,6 +90,86 @@ public class NeutralPackageProductFactGuards
         foreach (var literal in KnownProductCodeLiterals)
         {
             if (line.Contains(literal, StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// <b>阶段 A-1 哨兵</b>：迁入中立包的工具安全基元
+    /// （<c>Mud.AI.Agent/Tools/{Args,Results,Security}</c>）不得持有产品<b>类型名</b>与产品<b>头前缀</b>。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>与上一条的分工</b>：上一条管"码字面量"，本条管"产品类型名/协议头"。两者都是<b>哨兵</b>——
+    /// 拦已知的回潮路径（迁文件时把 <c>ApiResult</c> / <c>FeishuToolRisk</c> 一起带过来），
+    /// 不是"任意产品耦合"的判别式（真正的结构保证是"中立侧只吃 <c>IReadOnlyDictionary</c>/<c>string</c>"）。
+    /// </para>
+    /// <para>
+    /// <b>为什么只扫这三个目录</b>：它们是 A-1 的迁移落点；<c>Tools/</c> 其余子目录与 <c>Events/</c> 等
+    /// 由各自守卫覆盖（例如 <c>TurnPipelineContractGuards</c> 管产品政策分支）。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void NeutralToolSafetyPrimitives_ShouldStayProductFree()
+    {
+        var root = FindRepositoryRoot();
+        var scanDirs = new[] { "Args", "Results", "Security" }
+            .Select(dir => Path.Combine(root, "Mud.AI.Agent", "Tools", dir));
+
+        var offenders = new List<string>();
+        var scanned = 0;
+        foreach (var dir in scanDirs)
+        {
+            Directory.Exists(dir).Should().BeTrue($"扫描目录必须存在（否则扫描面静默缩水 → 假绿）：{dir}");
+            foreach (var file in Directory.EnumerateFiles(dir, "*.cs", SearchOption.AllDirectories)
+                         .Where(static path => !IsBuildArtifact(path)))
+            {
+                scanned++;
+                var lineNumber = 0;
+                foreach (var line in File.ReadLines(file))
+                {
+                    lineNumber++;
+                    if (ContainsProductTypeReference(line))
+                    {
+                        offenders.Add($"{Path.GetRelativePath(root, file)}:{lineNumber}");
+                    }
+                }
+            }
+        }
+
+        scanned.Should().BePositive("扫描面为空是假绿（目录存在但枚举不到源码）");
+        offenders.Should().BeEmpty(
+            "中立工具安全基元不得引用产品类型/协议头（ApiResult / FeishuApiResultReader / FeishuToolRisk / "
+            + "FeishuToolBinding / x-feishu）——它们只应处理 IReadOnlyDictionary/string 等中立形态。命中：{0}",
+            string.Join(" | ", offenders));
+    }
+
+    /// <summary>判据自证：注释豁免、中立形态放行、产品类型名与协议头命中。</summary>
+    [Theory]
+    [InlineData("var result = new ApiResult();", true)]
+    [InlineData("FeishuApiResultReader.Read(args);", true)]
+    [InlineData("if (risk == FeishuToolRisk.Write) { }", true)]
+    [InlineData("var header = \"x-feishu-tenant\";", true)]
+    [InlineData("// 由 ApiResult 投影而来（注释是记录）", false)]
+    [InlineData("var text = args[\"text\"]?.ToString();", false)]
+    public void ProductTypeJudge_ShouldIgnoreComments_AndDetectProductCoupling(string line, bool expected)
+        => ContainsProductTypeReference(line).Should().Be(expected);
+
+    /// <summary>判据：行内含任一产品类型名/协议头即命中；整行注释豁免（与同族哨兵同口径）。</summary>
+    private static bool ContainsProductTypeReference(string line)
+    {
+        if (line.TrimStart().StartsWith("//", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        foreach (var token in ProductTypeTokens)
+        {
+            if (line.Contains(token, StringComparison.Ordinal))
             {
                 return true;
             }

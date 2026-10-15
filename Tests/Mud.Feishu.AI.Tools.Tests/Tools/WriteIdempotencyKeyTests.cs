@@ -144,10 +144,10 @@ public class WriteIdempotencyKeyTests
                 Data = new CreateInstancesResult { InstanceCode = "ic_idem_1" },
             });
 
-var tools = new ApprovalWriteTools(_approvalClient.Object, null, null, null, Options.Create(NewOptions()));
-await tools.CreateInstanceAsync(
-Args(("approval_code", "AC-1"), ("form", "[{\"id\":\"w1\",\"type\":\"input\",\"value\":\"内容\"}]"), ("idempotency_key", "7C468A54-8745-2245-9675-08B7C63E7A87")),
-            CancellationToken.None);
+        var tools = new ApprovalWriteTools(_approvalClient.Object, null, null, null, Options.Create(NewOptions()));
+        await tools.CreateInstanceAsync(
+        Args(("approval_code", "AC-1"), ("form", "[{\"id\":\"w1\",\"type\":\"input\",\"value\":\"内容\"}]"), ("idempotency_key", "7C468A54-8745-2245-9675-08B7C63E7A87")),
+                    CancellationToken.None);
 
         captured.Should().NotBeNull();
         captured!.Uuid.Should().Be("7C468A54-8745-2245-9675-08B7C63E7A87",
@@ -167,10 +167,10 @@ Args(("approval_code", "AC-1"), ("form", "[{\"id\":\"w1\",\"type\":\"input\",\"v
                 Data = new CreateInstancesResult { InstanceCode = "ic_idem_2" },
             });
 
-var tools = new ApprovalWriteTools(_approvalClient.Object, null, null, null, Options.Create(NewOptions()));
-await tools.CreateInstanceAsync(
-Args(("approval_code", "AC-1"), ("form", "[{\"id\":\"w1\",\"type\":\"input\",\"value\":\"内容\"}]")),
-            CancellationToken.None);
+        var tools = new ApprovalWriteTools(_approvalClient.Object, null, null, null, Options.Create(NewOptions()));
+        await tools.CreateInstanceAsync(
+        Args(("approval_code", "AC-1"), ("form", "[{\"id\":\"w1\",\"type\":\"input\",\"value\":\"内容\"}]")),
+                    CancellationToken.None);
 
         captured!.Uuid.Should().BeNullOrEmpty("省略幂等键时不得写入空 Uuid");
     }

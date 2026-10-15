@@ -48,13 +48,15 @@ public class ConversationSummarizerToolBoundaryTests
     private static ConversationSummarizer CreateSummarizer(Mock<IChatClient> client, int threshold, int maxHistoryMessages)
         => new(
             client.Object,
-            new FeishuAgentOptions
+            new AgentRuntimeOptions
             {
-                Instructions = "x",
                 SummaryThreshold = threshold,
                 MaxHistoryMessages = maxHistoryMessages,
             },
-            NullLogger.Instance);
+            StateKey,
+            summaryInstruction: FeishuSummarizerFacts.SummaryInstruction,
+            idKeys: FeishuSummarizerFacts.IdKeys,
+            logger: NullLogger.Instance);
 
     [Fact]
     public async Task SummarizeIfNeededAsync_ShouldKeepToolCallGroupIntact()

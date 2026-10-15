@@ -30,9 +30,9 @@
 
 	<ItemGroup>
 		<!-- M.E.* 与 Mud.Feishu.AI 同步钉版（防 NU1603 版本漂移）。 -->
-		<PackageReference Update="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
-		<PackageReference Update="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
-		<PackageReference Update="Microsoft.Extensions.Options" Version="10.0.11" />
+		<PackageReference Update="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
+		<PackageReference Update="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
+		<PackageReference Update="Microsoft.Extensions.Options" Version="10.0.12" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -41,19 +41,6 @@
 
 	<ItemGroup>
 		<InternalsVisibleTo Include="Mud.Feishu.AI.Tools.Tests" />
-	</ItemGroup>
-
-	<!-- 公共 API 兼容门禁（与其余包同款：未发布窗口期零成本建基线）。 -->
-	<ItemGroup>
-		<PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="4.14.0">
-			<PrivateAssets>all</PrivateAssets>
-			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		</PackageReference>
-	</ItemGroup>
-
-	<ItemGroup>
-		<AdditionalFiles Include="PublicAPI.Shipped.txt" />
-		<AdditionalFiles Include="PublicAPI.Unshipped.txt" />
 	</ItemGroup>
 
 </Project>

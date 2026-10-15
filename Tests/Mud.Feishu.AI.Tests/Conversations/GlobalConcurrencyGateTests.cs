@@ -5,6 +5,7 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using Mud.AI.Agent.Conversations;
 using Mud.Feishu.Abstractions.Conversations;
 using Mud.Feishu.AI.Conversations;
 
@@ -13,8 +14,27 @@ namespace Mud.Feishu.AI.Tests.Conversations;
 /// <summary>
 /// T5 / D5 全局在途背压闸门行为用例。
 /// </summary>
+/// <remarks>
+/// <b>壳委托</b>：削峰机械语义在中立引擎 <c>Mud.AI.Agent.Conversations.ConcurrencyLimiter</c> 内并有其自有用例
+/// （<c>Tests/Mud.AI.Agent.Tests/Conversations/</c>）；本组用例断言的是「经会话契约
+/// <c>IConversationGate</c> 观察到的四条路径与引擎一致」——正常获取、队列超时（<c>超时</c> 文案）、
+/// FailFast（<c>FailFast</c> 文案）、外部取消，异常类型分界与重构前逐条相同。
+/// </remarks>
 public class GlobalConcurrencyGateTests
 {
+    /// <summary>壳必须持有并委托中立引擎（反射锁定：不是产品侧另写一套削峰实现）。</summary>
+    [Fact]
+    public void Gate_ShouldDelegateToNeutralEngine()
+    {
+        var engineFields = typeof(GlobalConcurrencyGate)
+            .GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            .Where(f => f.FieldType == typeof(ConcurrencyLimiter))
+            .ToArray();
+
+        engineFields.Should().HaveCount(1,
+            "薄壳必须持有中立引擎实例（第七式「三段分离」的壳段）——没有它意味着产品侧又自持一套削峰实现");
+    }
+
     /// <summary>
     /// 上限生效：超过 maxConcurrentTurns 的请求排队等待。
     /// </summary>

@@ -5,6 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using System.Globalization;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -66,19 +68,37 @@ public class PublicSurfaceRationaleContractGuards
     // 这些类型的新家各自有 PublicAPI 台账（本守卫只数飞书发布面，见 ApiFiles 白名单），
     // 故 −20 是**搬迁的结果**而不是公开面收缩。
     // +1：ConversationScopeMapper（N1 的中立化接缝适配器，理由登记在 reasons 段）。
-    private const int BaselineTypeCount = 335;
+    // N2-b（2026-10-14）：335 → **333**——流式通道机制中立化：分片缓冲基类
+    // BufferedMessageChannel 与降级链 StreamingChannelChain 两个 public 类型迁出
+    // Mud.Feishu.AI 发布面（新家 = Mud.AI.Agent.Channels，由该包自己的 PublicAPI
+    // 台账登记）。产品子类（EditMessageChannel / CardStreamMessageChannel）留飞书发布面。
+    // N2-d（2026-10-14）：333 → **332**——单轮工具预算 FeishuToolCallBudget 一个 public 类型
+    // 迁出飞书发布面（新家 = Mud.AI.Agent.Tools.ToolCallBudget，「AI 运行时 ↔ 工具面共享接缝」
+    // 的正确归属是中立运行期包）。同批迁出的 ToolNamePattern 原是 internal（不计类型级条目），
+    // 中立侧新增的 ToolPolicyMatcher / ToolPolicyRules / ToolPolicyDecision 由 Mud.AI.Agent
+    // 自己的 PublicAPI 台账登记（本守卫只数飞书发布面）。
+    // N2-e（2026-10-14）：332 → **327**——RAG 自建检索机制五个 public 类型迁出飞书发布面
+    // （VectorRetriever / CorpusIndexer / DocumentChunker / ChunkingOptions / TokenEstimator；
+    // 新家 = Mud.AI.Agent.Knowledge，由该包自己的 PublicAPI 台账登记）。
+    // 产品侧只留 DI 装配面 FeishuVectorKnowledgeExtensions（签名随 ChunkingOptions 中立化更新）。
+    // N2-f（2026-10-14）：327 → **326**——渐进式会话摘要器 ConversationSummarizer 一个 public 类型
+    // 迁出飞书发布面（新家 = Mud.AI.Agent.Conversations，由该包自己的 PublicAPI 台账登记；
+    // 产品侧只留产品事实 FeishuSummarizerFacts（internal）。
+    // 326 = 三产品程序集（Mud.Feishu.AI.Tools 269 / Mud.Feishu.AI 50 / Mud.Feishu.AI.Mcp 7）
+    // 反射实测的公开类型总数（= 原 PublicAPI.Unshipped.txt 类型级条目总数）。
+    // 【N6 · D5 裁决落地（2026-10-14）】PublicAPI 台账文件全仓删除（用户裁决："这类文件对开发者
+    // 没屁用"），本守卫的数据源改为**反射实测**——「新增 public 必须说明消费方」机制保留：
+    // 新增公开类型而未在 public-surface-rationale.json 的 reasons 段登记消费方时，本守卫报红。
+    // 增减公开类型时同批更新本常量（总数与实测同锁 = 扫描器读坏时不会"零缺失"假绿）。
+    private const int BaselineTypeCount = 326;
 
-    private static readonly string[] ApiFiles =
+    /// <summary>反射实测的公开面来源程序集（= 原台账覆盖面：三个飞书发布包）。</summary>
+    private static readonly string[] ProductAssemblies =
     [
-        "Mud.Feishu.AI.Tools/PublicAPI.Unshipped.txt",
-        "Mud.Feishu.AI/PublicAPI.Unshipped.txt",
-        "Mud.Feishu.AI.Mcp/PublicAPI.Unshipped.txt",
+        "Mud.Feishu.AI.Tools",
+        "Mud.Feishu.AI",
+        "Mud.Feishu.AI.Mcp",
     ];
-
-    /// <summary>类型级条目：形如 <c>Mud.Feishu.AI.Tools.Catalog.FeishuToolRegistry</c>（无括号、无箭头）。</summary>
-    private static readonly Regex TypeLinePattern = new(
-        @"^Mud\.Feishu\.AI\.[A-Za-z0-9_.+<>,\[\] ]+$",
-        RegexOptions.Compiled);
 
     [Fact]
     public void EveryPublicType_ShouldBeInBaselineOrDeclareItsConsumer()
@@ -143,17 +163,37 @@ public class PublicSurfaceRationaleContractGuards
             .OrderBy(static type => type, StringComparer.Ordinal)
             .ToArray();
 
+    /// <summary>
+    /// 反射实测三产品程序集的公开类型（<see cref="Assembly.GetExportedTypes"/>），
+    /// 泛型类型定义的元数据名（<c>Ns.Name`1</c>）归一化为台账形态（<c>Ns.Name&lt;T&gt;</c>），
+    /// 与 public-surface-rationale.json 的键空间逐字节兼容。
+    /// </summary>
     private static string[] ReadPublicTypes()
     {
-        var root = FindRepositoryRoot();
-        return ApiFiles
-            .SelectMany(file => File.ReadAllLines(Path.Combine(root, file.Replace('/', Path.DirectorySeparatorChar))))
-            .Select(static line => line.Trim())
-            .Where(line => TypeLinePattern.IsMatch(line))
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(static line => line, StringComparer.Ordinal)
-            .ToArray();
+        var publicTypes = new SortedSet<string>(StringComparer.Ordinal);
+        foreach (var assemblyName in ProductAssemblies)
+        {
+            var assembly = Assembly.Load(new AssemblyName(assemblyName));
+            foreach (var type in assembly.GetExportedTypes())
+            {
+                // 导出类型必有全名（无泛型参数实参的类型定义恒可解析）。
+                // 嵌套类型的元数据分隔符 '+' 归一化为基线键空间的 '.'（与原台账形态一致）。
+                publicTypes.Add(NormalizeGenericName(type.FullName!).Replace('+', '.'));
+            }
+        }
+
+        return publicTypes.ToArray();
     }
+
+    /// <summary>把泛型类型定义的元数据名（<c>Ns.Name`N</c>）归一化为 <c>Ns.Name&lt;T&gt;</c> / <c>Ns.Name&lt;T1,...&gt;</c>（与基线键空间一致）。</summary>
+    private static string NormalizeGenericName(string fullName)
+        => GenericArityPattern.Replace(fullName, match =>
+        {
+            var arity = int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
+            return "<" + string.Join(",", Enumerable.Range(1, arity).Select(i => arity == 1 ? "T" : $"T{i}")) + ">";
+        });
+
+    private static readonly Regex GenericArityPattern = new(@"`(\d+)$", RegexOptions.Compiled);
 
     private static HashSet<string> ReadRationaleBaseline()
         => ReadRationaleArray("baseline");

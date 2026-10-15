@@ -19,7 +19,7 @@
     <!-- 控制台工程（Microsoft.NET.Sdk）没有 ASP.NET Core 的框架引用，故 JSON 配置提供程序
          必须显式引用（Web 系 Demo 靠 Microsoft.NET.Sdk.Web 隐式获得）。
          版本与依赖图里既有的 Microsoft.Extensions.Configuration 保持一致，避免 NU1603 版本漂移。 -->
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.12" />
   </ItemGroup>
 
   <ItemGroup>

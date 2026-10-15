@@ -156,6 +156,10 @@ public static class FeishuAgentServiceCollectionExtensions
         // 在单进程部署下开箱可用；多实例部署由宿主替换为分布式实现（键必须含 AppKey 以隔离租户）。
         services.TryAddSingleton<IPendingApprovalStore, InMemoryPendingApprovalStore>();
 
+        // N5 收尾：遥测端口默认接产品实现（② 式收尾）——宿主可替换；替换后回合管线 / 摘要器 /
+        // 通道（含降级链）全部走宿主实现。端口未注册时中立侧落 Noop（零开销）。
+        services.TryAddSingleton<IAgentTelemetry, Mud.Feishu.AI.Diagnostics.FeishuAgentTelemetry>();
+
         services.TryAddSingleton(static sp =>
         {
             var options = sp.GetRequiredService<IOptions<FeishuAgentOptions>>().Value;
@@ -260,14 +264,22 @@ public static class FeishuAgentServiceCollectionExtensions
             throw new ArgumentNullException(nameof(services));
 
         // 卡片流客户端缺席 → 通道缺席（链内仅编辑通道），与写执行器同一软缺席模式。
+        // N5 收尾：两条通道均接遥测端口（产品子类覆写 OnUpdateDegraded 不走基类默认路径，
+        // 接线只为中立机制自身的观测面，行为零漂移）。
         services.TryAddSingleton(static sp => sp.GetService<Mud.Feishu.IFeishuTenantV2AppCardMessageStream>() is { } card
             ? new CardStreamMessageChannel(
                 card,
                 sp.GetRequiredService<IFeishuAppContextScopeFactory>(),
                 sp.GetRequiredService<IOptions<FeishuAgentOptions>>(),
-                sp.GetService<ILogger<CardStreamMessageChannel>>())
+                sp.GetService<ILogger<CardStreamMessageChannel>>(),
+                telemetry: sp.GetService<IAgentTelemetry>())
             : null!);
-        services.TryAddSingleton<EditMessageChannel>();
+        services.TryAddSingleton(static sp => new EditMessageChannel(
+            sp.GetRequiredService<Mud.Feishu.IFeishuTenantV1Message>(),
+            sp.GetRequiredService<IFeishuAppContextScopeFactory>(),
+            sp.GetRequiredService<IOptions<FeishuAgentOptions>>(),
+            sp.GetService<ILogger<EditMessageChannel>>(),
+            telemetry: sp.GetService<IAgentTelemetry>()));
 
         services.TryAddSingleton<IMessageChannel>(static sp =>
         {

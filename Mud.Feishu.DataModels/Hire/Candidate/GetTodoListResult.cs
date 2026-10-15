@@ -11,7 +11,7 @@ namespace Mud.Feishu.DataModels.Hire;
 /// 批量获取待办事项响应体
 /// </summary>
 [HttpJsonSerializable(SerializerClassName = "Hire")]
-public class GetTodoListResult: ApiPageListResult<Todo>
+public class GetTodoListResult : ApiPageListResult<Todo>
 {
-    
+
 }

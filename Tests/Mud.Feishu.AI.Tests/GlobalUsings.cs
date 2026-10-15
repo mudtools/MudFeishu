@@ -52,6 +52,14 @@ global using Mud.AI.Abstractions.Knowledge;
 global using Mud.AI.Abstractions.Media;
 global using Mud.AI.Abstractions.Observability;
 global using Mud.AI.Agent.Approvals;
+// N2-b 中立化：缓冲通道基类与降级链上移 Mud.AI.Agent.Channels——产品子类用例
+// （EditMessageChannelTests / CardStreamMessageChannelTests）与黄金快照经此取用中立类型。
+global using Mud.AI.Agent.Channels;
+// N2-c 中立化：审批态桥 / 框架审批投影上移 Mud.AI.Agent.Approvals（产品侧经此消费）。
+global using Mud.AI.Agent.Approvals;
+// N2-e 中立化：RAG 机制（DocumentChunker 等）上移 Mud.AI.Agent.Knowledge——黄金快照的
+// 分块用例经此取用中立类型（机制自身用例已随类型迁入 Mud.AI.Agent.Tests）。
+global using Mud.AI.Agent.Knowledge;
 // BUG-1：集成面用例消费的接缝类型在 Mud.Feishu.AI.AgentTools；工具契约类型（FeishuToolRegistry 等）
 // 已回迁工具包，其用例随迁至 Mud.Feishu.AI.Tools.Tests。
 global using Mud.Feishu.AI.AgentTools;

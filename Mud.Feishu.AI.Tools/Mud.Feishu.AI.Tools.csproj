@@ -77,10 +77,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- M.E.* 与 Mud.Feishu.AI 同步 Update 到 10.0.11（MAF 1.20.0 传递依赖要求，防 NU1603 版本漂移）。 -->
-		<PackageReference Update="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
-		<PackageReference Update="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
-		<PackageReference Update="Microsoft.Extensions.Options" Version="10.0.11" />
+		<!-- M.E.* 与 Mud.Feishu.AI 同步 Update 到 10.0.12（MAF 1.25.0 传递依赖要求，防 NU1603 版本漂移）。 -->
+		<PackageReference Update="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
+		<PackageReference Update="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
+		<PackageReference Update="Microsoft.Extensions.Options" Version="10.0.12" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -96,19 +96,6 @@
 		     ⚠️ 守卫：SkillsExportContractTests.Package_ShouldShipSkillsTree 断言本行存在且路径以分隔符结尾
 		     （删掉它 ⇒ "只装包的用户拿不到 skills" 这类退化会静默发生）。 -->
 		<None Include="..\skills\**\*" Pack="true" PackagePath="skills\" Visible="false" />
-	</ItemGroup>
-
-	<!-- R3-11：公共 API 兼容门禁（未发布窗口期零成本建立基线）。 -->
-	<ItemGroup>
-		<PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="4.14.0">
-			<PrivateAssets>all</PrivateAssets>
-			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		</PackageReference>
-	</ItemGroup>
-
-	<ItemGroup>
-		<AdditionalFiles Include="PublicAPI.Shipped.txt" />
-		<AdditionalFiles Include="PublicAPI.Unshipped.txt" />
 	</ItemGroup>
 
 	<ItemGroup>

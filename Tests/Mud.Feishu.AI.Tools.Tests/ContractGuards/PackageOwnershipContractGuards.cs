@@ -38,12 +38,15 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// </remarks>
 public class PackageOwnershipContractGuards
 {
-    /// <summary>参与归属判定的产品程序集（测试程序集不参与：它们不发布）。</summary>
+    /// <summary>参与归属判定的可发布程序集（测试程序集不参与：它们不发布）。</summary>
     private static (string Assembly, Assembly Instance)[] ProductAssemblies() =>
     [
         ("Mud.Feishu.AI", typeof(Mud.Feishu.AI.AgentTools.FeishuToolContext).Assembly),
         ("Mud.Feishu.AI.Tools", typeof(FeishuToolBinding).Assembly),
         ("Mud.Feishu.AI.Mcp", typeof(Mud.Feishu.AI.Mcp.FeishuMcpToolServer).Assembly),
+        // 阶段 A-1：B 组 7 个类型的 public 命名空间已从 Mud.Feishu.AI.Tools 迁至中立包，
+        // 纳入跨包重名判定面（否则中立侧类型与产品侧同名命名空间的归属冲突无人拦截）。
+        ("Mud.AI.Agent", typeof(Mud.AI.Agent.Tools.Args.ToolArgumentNormalizer).Assembly),
     ];
 
     [Fact]
@@ -87,6 +90,32 @@ public class PackageOwnershipContractGuards
             "工具契约（注册表/结果/目录/授权/审计/错误/附件暂存）与实现同包");
         toolNamespaces.Should().NotContain("Mud.Feishu.AI.AgentTools",
             "AI 侧接缝不得反向出现在工具包命名空间里（依赖方向：工具包 → AI 单向）");
+    }
+
+    /// <summary>
+    /// <b>阶段 A-1 归属事实</b>：B 组 7 个类型的 public 命名空间已从 <c>Mud.Feishu.AI.Tools</c>
+    /// 迁至中立包 <c>Mud.AI.Agent</c>（<c>Mud.AI.Agent.Tools.Args|Errors|Results|Security</c>）——
+    /// 本事实表据此新增归属行（N1/N2 已示范两次）。
+    /// </summary>
+    [Fact]
+    public void NeutralToolNamespaces_ShouldBeOwnedByNeutralAgentAssembly()
+    {
+        var neutral = typeof(Mud.AI.Agent.Tools.Args.ToolArgumentNormalizer).Assembly;
+        var neutralNamespaces = PackageOwnershipScanner.ExportedNamespaces(neutral);
+
+        neutralNamespaces.Should().Contain(
+            new[]
+            {
+                "Mud.AI.Agent.Tools.Args",
+                "Mud.AI.Agent.Tools.Errors",
+                "Mud.AI.Agent.Tools.Results",
+                "Mud.AI.Agent.Tools.Security",
+            },
+            "B 组 7 个类型的 public 归属已迁入中立包 Mud.AI.Agent（A-1）——缺失即意味着它们仍在产品包里");
+
+        PackageOwnershipScanner.ExportedNamespaces(typeof(FeishuToolBinding).Assembly)
+            .Should().NotContain("Mud.AI.Agent.Tools.Args",
+                "中立命名空间不得因子系出错而出现在产品工具包中（归属事实表：Args|Errors|Results|Security → Mud.AI.Agent）");
     }
 
     [Fact]

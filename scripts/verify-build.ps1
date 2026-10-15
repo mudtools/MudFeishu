@@ -265,14 +265,12 @@ Assert-Zero -Name 'MUD001/002'    -Count ((Select-String -Path $buildLog -Patter
 Assert-Zero -Name 'FORM0xx'       -Count ((Select-String -Path $buildLog -Pattern 'FORM0\d\d' -AllMatches).Count)
 Assert-Zero -Name 'AOT001-007'    -Count ((Select-String -Path $buildLog -Pattern 'AOT00[1-7]' -AllMatches).Count) -Hint 'AOT006 已在 netstandard2.0/net6.0 豁免，net8+ 必须净零'
 
-# 公开 API 面漂移（R5 / S-19）。**必须绝对为 0**，理由不是"洁癖"：
-#   RS0016（已声明但程序集里没有）⇒ 新增公开成员没登记进 PublicAPI.Unshipped.txt；
-#   RS0017（已登记但找不到）            ⇒ 上一轮**改名或回滚**留下的残留。
-# 二者都会让 PublicAPI 文件与真实公开面**双向漂移**；而 sync-publicapi.ps1 早期版本
-# 只补不删、且其正则 `[^']+` 会在描述含单引号时静默失配 —— 于是残留单向累积
-# （实测 11 条陈旧 + 6 条漏补），每次构建刷屏并淹没真实信号。
-Assert-Zero -Name 'RS0016 公开面缺失' -Count ((Select-String -Path $buildLog -Pattern 'RS0016' -AllMatches).Count) -Hint "新增公开成员未登记；先跑 pwsh ./scripts/sync-publicapi.ps1（详见 $buildLog）"
-Assert-Zero -Name 'RS0017 陈旧残留'   -Count ((Select-String -Path $buildLog -Pattern 'RS0017' -AllMatches).Count) -Hint "PublicAPI.Unshipped.txt 有改名/回滚残留；先跑 pwsh ./scripts/sync-publicapi.ps1（详见 $buildLog）"
+# 公开 API 面漂移（R5 / S-19，N6 · D5 已收口）：
+#   PublicAPI 台账文件与分析器已**全仓删除**（用户裁决："对开发者没屁用"）；
+#   「新增 public 必须说明消费方」改由反射实测的 PublicSurfaceRationaleContractGuards 承接
+#   （基线 326 = 三飞书程序集反射计数）。RS0016/RS0017 断言随分析器退役一并移除——
+#   分析器已不在构建里，这两条 Select-String 恒为 0，属死断言。
+#   新增公开类型的登记方式见 Tests/.../PublicSurfaceRationaleContractGuards.cs 头注。
 
 # AI 工具描述符零容忍诊断（R5 / B-11）：**ID 清单与判定口径抽到 scripts/diagnostics-gate.ps1**，
 # 由本地门禁与 CI workflow 共同 dot-source，并由 FeishuToolProfileContractGuards 锁定三方一致

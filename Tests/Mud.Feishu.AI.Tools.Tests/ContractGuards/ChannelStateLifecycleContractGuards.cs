@@ -7,9 +7,9 @@
 
 using System.Collections.Concurrent;
 using System.Reflection;
+using Mud.AI.Agent.Channels;
 using Mud.Feishu.AI.Channels;
 using Mud.Feishu.AI.Conversations;
-using Mud.Feishu.AI.Channels;
 using Mud.Feishu.DataModels.CardMessageStream;
 using Mud.Feishu.DataModels.Messages;
 
@@ -67,11 +67,17 @@ public class ChannelStateLifecycleContractGuards
     [Fact]
     public void EveryMessageChannelImplementation_ShouldBeRegisteredForLifecycleCheck()
     {
-        // 扫描面 = 通道实现所在程序集（实现都在 Mud.Feishu.AI.Tools；接口在 Mud.Feishu.AI）。
+        // 扫描面 = 通道实现所在的**两个**程序集（N2-b 中立化后实现跨包）：
+        // ① Mud.Feishu.AI（产品子类：EditMessageChannel / CardStreamMessageChannel）；
+        // ② Mud.AI.Agent（中立实现：StreamingChannelChain；BufferedMessageChannel 是抽象基类，被 IsAbstract 过滤）。
+        // ⚠️ 只扫产品程序集是假绿：N2-b 前本守卫只扫 Mud.Feishu.AI，StreamingChannelChain 迁出后
+        // 会**静默掉出覆盖集**（元守卫不报红，但中立实现的 per-messageId 状态再无守卫验证）。
         // 刻意不扫测试程序集：本文件里的 LeakingChannel 是"检查器自证"用的合成类型，不该进覆盖集。
-        var implementations = typeof(EditMessageChannel).Assembly
-            .GetTypes()
+        var assemblies = new[] { typeof(EditMessageChannel).Assembly, typeof(BufferedMessageChannel).Assembly };
+        var implementations = assemblies
+            .SelectMany(static a => a.GetTypes())
             .Where(static t => typeof(IMessageChannel).IsAssignableFrom(t) && t is { IsAbstract: false, IsInterface: false })
+            .Distinct()
             .OrderBy(static t => t.Name, StringComparer.Ordinal)
             .ToArray();
 

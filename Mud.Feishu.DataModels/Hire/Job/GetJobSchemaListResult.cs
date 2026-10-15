@@ -11,7 +11,7 @@ namespace Mud.Feishu.DataModels.Hire;
 /// 获取职位模板列表响应体
 /// </summary>
 [HttpJsonSerializable(SerializerClassName = "Hire")]
-public class GetJobSchemaListResult: ApiPageListResult<JobSchema>
+public class GetJobSchemaListResult : ApiPageListResult<JobSchema>
 {
-    
+
 }

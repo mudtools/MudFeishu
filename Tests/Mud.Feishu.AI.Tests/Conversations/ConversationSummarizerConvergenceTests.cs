@@ -64,14 +64,16 @@ public class ConversationSummarizerConvergenceTests
         Mock<IChatClient> client, int maxHistoryTokens, int maxHistoryMessages = 8)
         => new(
             client.Object,
-            new FeishuAgentOptions
+            new AgentRuntimeOptions
             {
-                Instructions = "x",
                 SummaryThreshold = 0,
                 MaxHistoryTokens = maxHistoryTokens,
                 MaxHistoryMessages = maxHistoryMessages,
             },
-            NullLogger.Instance);
+            StateKey,
+            summaryInstruction: FeishuSummarizerFacts.SummaryInstruction,
+            idKeys: FeishuSummarizerFacts.IdKeys,
+            logger: NullLogger.Instance);
 
     [Fact]
     public async Task SummarizeIfNeededAsync_ShouldNotResummarize_WhenRetainedWindowOverTokenBudget()
@@ -194,14 +196,17 @@ public class ConversationSummarizerConvergenceTests
         var logger = new CapturingLogger();
         var summarizer = new ConversationSummarizer(
             CreateSummaryClient().Object,
-            new FeishuAgentOptions
+            new AgentRuntimeOptions
             {
-                Instructions = "x",
                 SummaryThreshold = 0,
                 MaxHistoryTokens = 10,
                 MaxHistoryMessages = 8,
             },
-            logger);
+            StateKey,
+            telemetry: new FeishuAgentTelemetry(),
+            summaryInstruction: FeishuSummarizerFacts.SummaryInstruction,
+            idKeys: FeishuSummarizerFacts.IdKeys,
+            logger: logger);
 
         await summarizer.SummarizeIfNeededAsync(session);
 
@@ -258,14 +263,16 @@ public class ConversationSummarizerConvergenceTests
 
         var summarizer = new ConversationSummarizer(
             CreateSummaryClient().Object,
-            new FeishuAgentOptions
+            new AgentRuntimeOptions
             {
-                Instructions = "x",
                 SummaryThreshold = 2,      // 条数维度触发
                 MaxHistoryTokens = 5,      // token 维度也触发
                 MaxHistoryMessages = 8,
             },
-            NullLogger.Instance);
+            StateKey,
+            summaryInstruction: FeishuSummarizerFacts.SummaryInstruction,
+            idKeys: FeishuSummarizerFacts.IdKeys,
+            logger: NullLogger.Instance);
 
         var summarized = await summarizer.SummarizeIfNeededAsync(session);
 

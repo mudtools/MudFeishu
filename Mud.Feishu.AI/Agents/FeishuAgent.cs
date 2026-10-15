@@ -5,34 +5,28 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using System.Runtime.CompilerServices;
 using Mud.Feishu.AI.Diagnostics;
 
 using Mud.Feishu.Abstractions.Conversations;
 
+using Mud.AI.Agent.Agents;
+using Mud.AI.Agent.Events;
+
 namespace Mud.Feishu.AI.Agents;
 
 /// <summary>
-/// 飞书 Agent 主循环：<c>MAF <see cref="DelegatingAIAgent"/></c> 的产品派生。
+/// 飞书 Agent 主循环：<c>MAF <see cref="DelegatingAIAgent"/></c> 的产品派生，经 <see cref="ObservedDelegatingAgent"/> 取得运行期编织。
 /// </summary>
 /// <remarks>
-/// <c>ChatClientAgent</c> 负责「模型→生成」，本类负责「会话解析 + 选项装配 + 飞书遥测注入」（组合而非继承，在进入 MAF 前插入飞书特有装配）；
-/// 内部经 <see cref="InMemoryChatHistoryProvider"/> + <see cref="MessageCountingChatReducer"/> 施加
-/// <see cref="FeishuAgentOptions.MaxHistoryMessages"/> 历史裁剪窗。
+/// <c>ChatClientAgent</c> 负责「模型→生成」，本类负责「会话解析 + 选项装配」；运行期编织（摘要先于 Run / Span / 耗时 / 用量 / 失败标注）由 <see cref="ObservedDelegatingAgent"/> 固化，本类只喂三个产品事实——Agent 名、飞书遥测实现、飞书摘要器。内部经 <see cref="InMemoryChatHistoryProvider"/> + <see cref="MessageCountingChatReducer"/> 施加 <see cref="FeishuAgentOptions.MaxHistoryMessages"/> 历史裁剪窗。
 /// <para>
-/// <b>委托语义的归属</b>：内层仍是<b>组合</b>（<c>ChatClientAgent</c> 实例），而 <c>Id</c>/<c>Name</c>/<c>Description</c>/<c>GetService</c>/
-/// 会话三钩子/Run 两钩子由上游 <see cref="DelegatingAIAgent"/> 提供——本类<b>不再手写</b>这些转发成员。前置条件是上游 <c>GetService</c>
-/// 必须「先判自身」：否则 <c>GetService(typeof(AIAgent))</c> 命中内层 <c>ChatClientAgent</c>，宿主经该引用调用将绕过本类注入的飞书遥测与摘要
-/// （由 <c>AgentContractGuards</c> 的行为断言 + <c>FeishuAgentTests</c> 锁定）。
+/// <b>委托语义的归属</b>：<c>Id</c>/<c>Name</c>/<c>Description</c>/<c>GetService</c>/会话三钩子由上游 <see cref="DelegatingAIAgent"/> 提供，Run 两钩子由 <see cref="ObservedDelegatingAgent"/> 提供——本类<b>不再手写</b>这些成员。前置条件是上游 <c>GetService</c> 必须「先判自身」：否则 <c>GetService(typeof(AIAgent))</c> 命中内层 <c>ChatClientAgent</c>，宿主经该引用调用将绕过本类注入的飞书遥测与摘要（由 <c>AgentContractGuards</c> + <c>FeishuAgentTests</c> 锁定）。
 /// </para>
 /// <para>
-/// <b>会话持久化</b>：<see cref="IConversationStore"/> 只存取序列化后的会话 JSON，本类是序列化的唯一归属
-/// （<c>SerializeSessionAsync</c>/<c>DeserializeSessionAsync</c> 经 <see cref="DelegatingAIAgent"/> 委托内层 MAF Agent）；
-/// <see cref="GetOrCreateSessionAsync"/> / <see cref="SaveSessionAsync"/> 为事件入口提供按键存取门面；会话 JSON 损坏时按 miss 处理并重建，
-/// 保证旧格式数据不会让事件循环崩溃。
+/// <b>会话持久化</b>：<see cref="IConversationStore"/> 只存取序列化后的会话 JSON，本类是序列化的唯一归属；<see cref="GetOrCreateSessionAsync"/> / <see cref="SaveSessionAsync"/> 为事件入口提供按键存取门面；会话 JSON 损坏时按 miss 处理并重建，旧格式数据不会让事件循环崩溃。
 /// </para>
 /// </remarks>
-public sealed class FeishuAgent : DelegatingAIAgent
+public sealed class FeishuAgent : ObservedDelegatingAgent, IAgentSessionFacade
 {
     /// <summary>ChatHistoryProvider 的状态键（会话历史在 MAF 状态袋内的命名空间）。</summary>
     /// <remarks>
@@ -42,14 +36,10 @@ public sealed class FeishuAgent : DelegatingAIAgent
     /// </remarks>
     internal const string ChatHistoryStateKey = "feishu.agent.history";
 
-    /// <summary>
-    /// P4-4（outbox）：「已生成但未确认送达」的回复文本状态键。
-    /// </summary>
+    /// <summary>「已生成但未确认送达」的回复文本状态键（outbox）。</summary>
     /// <remarks>
-    /// 与 <see cref="PendingReplyTurnStateKey"/> 成对使用：后者记录该文本所属的轮次标识，
-    /// 用于判定重投递事件是否就是同一轮（否则是陈旧条目，应丢弃而非补发）。
-    /// 两个键都只存 <see cref="string"/>——刻意不引入自定义类型，避免 AOT 下为它准备
-    /// <c>JsonTypeInfo</c>（状态袋序列化走 MAF 自带解析器）。
+    /// 与 <see cref="PendingReplyTurnStateKey"/> 成对使用：后者记录该文本所属的轮次标识，用于判定重投递事件是否就是同一轮（否则是陈旧条目，应丢弃而非补发）。
+    /// 两个键都只存 <see cref="string"/>——刻意不引入自定义类型，避免 AOT 下为它准备 <c>JsonTypeInfo</c>（状态袋序列化走 MAF 自带解析器）。
     /// </remarks>
     internal const string PendingReplyStateKey = "feishu.agent.pending_reply";
 
@@ -70,9 +60,17 @@ public sealed class FeishuAgent : DelegatingAIAgent
     /// </remarks>
     private readonly AgentRuntimeOptions _runtime;
 
-    private readonly AgentSessionStore _sessionStore;
-    private readonly ConversationSummarizer? _summarizer;
+    private readonly Mud.AI.Agent.Sessions.AgentSessionStore _sessionStore;
     private readonly ILogger? _logger;
+
+    /// <summary>
+    /// N2-f/N5：中立遥测端口（<c>IAgentTelemetry</c>）的飞书实现——无状态，故为共享单例。
+    /// </summary>
+    /// <remarks>
+    /// 命名面（<c>feishu.agent.*</c> Span / 指标）由实现决定，中立机制只经端口埋点（②式）：
+    /// 这使「迁了机制就丢了可观测性」不再可能（摘要器是最先消费它的中立类型）。
+    /// </remarks>
+    internal static readonly FeishuAgentTelemetry AgentTelemetry = new();
 
     /// <summary>
     /// 构造期装配产物（内层 Agent + guidance 装配结果）。
@@ -132,7 +130,11 @@ public sealed class FeishuAgent : DelegatingAIAgent
         IConversationStore? conversationStore,
         ILoggerFactory? loggerFactory,
         ConversationSummarizer? summarizer)
-        : base(assembly.InnerAgent)
+        : base(
+            assembly.InnerAgent,
+            options.Name,
+            AgentTelemetry,
+            summarizer ?? CreateSummarizer(chatClient, options, loggerFactory))
     {
         _options = options;
         _runtime = options.ToRuntimeOptions();
@@ -144,17 +146,35 @@ public sealed class FeishuAgent : DelegatingAIAgent
         // ① 存储契约的防腐层（IConversationStore → 中立端口 ISessionStore，公开签名因此零变化）；
         // ② 历史状态键 ChatHistoryStateKey（字面量留在本类，绝不进中立包）。
         // codec 传 this：序列化/反序列化的归属方是本 Agent（经基类委托内层 ChatClientAgent）。
-        _sessionStore = new AgentSessionStore(
+        _sessionStore = new Mud.AI.Agent.Sessions.AgentSessionStore(
             this,
             conversationStore is null ? null : new ConversationStoreSessionAdapter(conversationStore),
             ChatHistoryStateKey,
             _logger);
-
-        // R3-13：Summarizer DI 化——接受外部注入的替身实例；未注入时按阈值自动创建（保留既有语义）。
-        _summarizer = summarizer ?? (options.SummaryThreshold > 0 || options.MaxHistoryTokens > 0
-            ? new ConversationSummarizer(chatClient, options, loggerFactory?.CreateLogger<ConversationSummarizer>())
-            : null);
     }
+
+    /// <summary>
+    /// 摘要器工厂（R3-13 DI 化的兜底分支）：未注入替身且阈值为正时，按飞书事实创建一个。
+    /// </summary>
+    /// <remarks>
+    /// 静态而非实例：基类构造初始化器先于本类构造体执行，此处只能求助于静态上下文。
+    /// 注入的四个<b>产品事实</b>是——配置投影（<c>ToRuntimeOptions</c>）、历史状态键、
+    /// 飞书提示词、工具轨迹标识键白名单；机制本身在中立包（<c>Mud.AI.Agent.Conversations</c>）。
+    /// </remarks>
+    private static ConversationSummarizer? CreateSummarizer(
+        IChatClient chatClient,
+        FeishuAgentOptions options,
+        ILoggerFactory? loggerFactory)
+        => options.SummaryThreshold > 0 || options.MaxHistoryTokens > 0
+            ? new ConversationSummarizer(
+                chatClient,
+                options.ToRuntimeOptions(),
+                ChatHistoryStateKey,
+                telemetry: AgentTelemetry,
+                summaryInstruction: FeishuSummarizerFacts.SummaryInstruction,
+                idKeys: FeishuSummarizerFacts.IdKeys,
+                logger: loggerFactory?.CreateLogger<ConversationSummarizer>())
+            : null;
 
     /// <summary>
     /// 构造期一次性装配：fail-fast 校验 → guidance 组装 → 内层 <c>ChatClientAgent</c>。
@@ -215,22 +235,20 @@ public sealed class FeishuAgent : DelegatingAIAgent
                 string.Join(",", guidance.OmittedDomains));
         }
 
-        var agentOptions = new ChatClientAgentOptions
-        {
-            Name = options.Name,
-            ChatOptions = new ChatOptions
-            {
-                Instructions = guidance.Instructions,
-                Tools = tools is { Count: > 0 } ? [.. tools] : null,
-            },
-            ChatHistoryProvider = new InMemoryChatHistoryProvider(new InMemoryChatHistoryProviderOptions
-            {
-                StateKey = ChatHistoryStateKey,
-                ChatReducer = new MessageCountingChatReducer(options.MaxHistoryMessages),
-            }),
-        };
-
-        return new AgentAssembly(new ChatClientAgent(chatClient, agentOptions, loggerFactory, services), guidance);
+        // A1（v3）：装配三件套（Name / ChatOptions{Instructions, Tools} / ChatHistoryProvider）
+        // 的构造交给中立工厂 Mud.AI.Agent.Agents.AgentAssemblyFactory；产品侧只喂产品事实——
+        // 名字、已组装的指令、工具、历史状态键（字面量留在本类）、历史裁剪窗上限。
+        return new AgentAssembly(
+            AgentAssemblyFactory.Create(
+                chatClient,
+                options.Name,
+                guidance.Instructions,
+                tools,
+                ChatHistoryStateKey,
+                options.MaxHistoryMessages,
+                loggerFactory,
+                services),
+            guidance);
     }
 
     /// <summary>域 guidance 装配结果（含 <see cref="GuidanceResult.Truncated"/> 与丢弃清单；构造期一次性求值）。</summary>
@@ -245,10 +263,7 @@ public sealed class FeishuAgent : DelegatingAIAgent
     /// </summary>
     internal AgentRuntimeOptions RuntimeOptions => _runtime;
 
-    /// <summary>
-    /// T4 / D4：单轮工具调用预算上限（源 <see cref="FeishuAgentOptions.MaxToolCallsPerTurn"/>；
-    /// 事件入口读取此值开启工具调用预算作用域）。
-    /// </summary>
+    /// <summary>单轮工具调用预算上限（源 <see cref="FeishuAgentOptions.MaxToolCallsPerTurn"/>；事件入口读取此值开启工具调用预算作用域）。</summary>
     internal int MaxToolCallsPerTurn => _runtime.MaxToolCallsPerTurn;
 
     /// <summary>
@@ -269,11 +284,19 @@ public sealed class FeishuAgent : DelegatingAIAgent
     /// <summary>
     /// 按会话键读取会话；miss（不存在、TTL 过期、载荷损坏）时创建新会话。
     /// </summary>
+    /// <remarks>
+    /// N2-c：本方法与 <see cref="SaveSessionAsync"/> 的签名与中立端口
+    /// <see cref="Mud.AI.Agent.Events.IAgentSessionFacade"/> 逐字一致 ⇒ 本类直接实现该端口
+    /// （零改造），中立管线与审批续跑闭环因此不需引用任何产品类型。
+    /// </remarks>
     /// <param name="conversationKey">由 <see cref="ConversationKeyBuilder"/> 构造的会话键。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>可用会话。</returns>
     public Task<AgentSession> GetOrCreateSessionAsync(string conversationKey, CancellationToken cancellationToken = default)
         => _sessionStore.GetOrCreateAsync(conversationKey, cancellationToken);
+
+    /// <summary>会话历史在框架状态袋内的状态键（产品事实；<see cref="IAgentSessionFacade"/> 的实现）。</summary>
+    public string HistoryStateKey => ChatHistoryStateKey;
 
     /// <summary>
     /// 序列化并保存会话（刷新存储 TTL）。
@@ -283,126 +306,4 @@ public sealed class FeishuAgent : DelegatingAIAgent
     /// <param name="cancellationToken">取消令牌。</param>
     public Task SaveSessionAsync(string conversationKey, AgentSession session, CancellationToken cancellationToken = default)
         => _sessionStore.SaveAsync(conversationKey, session, cancellationToken);
-
-    /// <inheritdoc />
-    protected override async Task<AgentResponse> RunCoreAsync(
-        IEnumerable<ChatMessage> messages,
-        AgentSession? session,
-        AgentRunOptions? options,
-        CancellationToken cancellationToken = default)
-    {
-        using var activity = FeishuAgentDiagnostics.StartRunActivity(
-            _options.Name, FeishuAgentDiagnostics.OperationRun);
-
-        // 历史越限时先做渐进式摘要（Phase 2 §3.2）：失败隔离，绝不影响主对话。
-        if (_summarizer is not null && session is not null)
-        {
-            await _summarizer.SummarizeIfNeededAsync(session, cancellationToken).ConfigureAwait(false);
-        }
-
-        // 模型调用耗时指标（P1D-5：feishu.agent.llm.duration；维度 agent——原则 8 无键维度）。
-        // 耗时记录放 finally（P2-8）：失败样本同样入直方图，否则 P95/P99 只反映成功路径。
-        var llmStopwatch = System.Diagnostics.Stopwatch.StartNew();
-        try
-        {
-            var response = await InnerAgent
-                .RunAsync(messages, session, options, cancellationToken)
-                .ConfigureAwait(false);
-
-            FeishuAgentDiagnostics.RecordUsage(activity, response.Usage);
-            return response;
-        }
-        catch (Exception)
-        {
-            // 失败可见性（P2-8 / B3.3）：Span 标 Error，异常语义原样保留（不包装）。
-            activity?.SetStatus(ActivityStatusCode.Error);
-            throw;
-        }
-        finally
-        {
-            FeishuAgentDiagnostics.RecordLlmDuration(_options.Name, llmStopwatch.ElapsedMilliseconds);
-        }
-    }
-
-    /// <inheritdoc />
-    protected override async IAsyncEnumerable<AgentResponseUpdate> RunCoreStreamingAsync(
-        IEnumerable<ChatMessage> messages,
-        AgentSession? session,
-        AgentRunOptions? options,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        using var activity = FeishuAgentDiagnostics.StartRunActivity(
-            _options.Name, FeishuAgentDiagnostics.OperationRunStreaming);
-
-        if (_summarizer is not null && session is not null)
-        {
-            await _summarizer.SummarizeIfNeededAsync(session, cancellationToken).ConfigureAwait(false);
-        }
-
-        // 失败可见性：迭代器不能在含 catch 的 try 内 yield（CS1626），故把「枚举 + 异常时标记 Span Error」
-        // 下沉到非迭代器包装层；try/finally 在迭代器中合法。
-        // 纪律：本流式路径与 RunCoreAsync 必须同样记录耗时与 token 用量（否则 IM 会话默认路径的
-        // P95/P99 与用量可观测性出现缺口），且时长只进数值直方图（维度 agent）——
-        // 不得新增 appKey/sessionId 等 tag（键只进 Span）。
-        var llmStopwatch = System.Diagnostics.Stopwatch.StartNew();
-        UsageDetails? lastUsage = null;
-        try
-        {
-            await foreach (var update in MarkFailureOnEnumerateAsync(
-                InnerAgent.RunStreamingAsync(messages, session, options, cancellationToken), activity)
-                .ConfigureAwait(false))
-            {
-                // token 用量（与 RunCoreAsync 对齐）：MAF 在流中经 UsageContent 上报，取最后一次
-                // （其 Details 即本轮累计值）；累积逻辑必须放在循环体内——
-                // MarkFailureOnEnumerateAsync 是无状态静态包装，不承载状态。
-                if (update.Contents.OfType<UsageContent>().LastOrDefault() is { } usage)
-                {
-                    lastUsage = usage.Details;
-                }
-
-                yield return update;
-            }
-        }
-        finally
-        {
-            FeishuAgentDiagnostics.RecordLlmDuration(_options.Name, llmStopwatch.ElapsedMilliseconds);
-            // 用量只写 Span 标量属性（原则 8：键只进 Span、不入 Metrics tag）。
-            FeishuAgentDiagnostics.RecordUsage(activity, lastUsage);
-        }
-    }
-
-    /// <summary>
-    /// 枚举包装：底层枚举抛出时把 Span 标为 Error 后**原样抛出**（不改异常类型，幂等回滚语义依赖原类型）。
-    /// </summary>
-    /// <param name="source">被包装的流。</param>
-    /// <param name="activity">当前运行 Span（可空）。</param>
-    /// <param name="cancellationToken">取消令牌。</param>
-    private static async IAsyncEnumerable<AgentResponseUpdate> MarkFailureOnEnumerateAsync(
-        IAsyncEnumerable<AgentResponseUpdate> source,
-        Activity? activity,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        await using var enumerator = source.GetAsyncEnumerator(cancellationToken);
-        while (true)
-        {
-            AgentResponseUpdate current;
-            try
-            {
-                if (!await enumerator.MoveNextAsync().ConfigureAwait(false))
-                {
-                    break;
-                }
-
-                current = enumerator.Current;
-            }
-            catch
-            {
-                activity?.SetStatus(ActivityStatusCode.Error);
-                throw;
-            }
-
-            // yield 位于 catch 之外（CS1626 约束）。
-            yield return current;
-        }
-    }
 }

@@ -284,6 +284,7 @@
                      "Mud.Feishu.AI.Tools.Catalog.ToolSchemaDialect"
                  ],
     "reasons":  {
+                     "Mud.Feishu.AI.Diagnostics.FeishuAgentTelemetry":  "N5 遥测接线（2026-10-14）：中立遥测端口 IAgentTelemetry 的飞书实现（适配 FeishuAgentDiagnostics，Span 命名面逐字节不变，R2-13）。消费方：① AddFeishuAgent DI 默认注册（TryAddSingleton，宿主可替换）；② ConversationalFeishuEventHandler 薄壳把实例注入回合管线；③ 摘要器与两条流式通道经端口消费；④ FeishuAgentTelemetryTests。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantApplicationUpdateVisibilityTool":  "B1 写面补全：application.update_visibility 的工具契约（写操作；四类名单增量语义；默认不启用，需宿主授权）。消费方：① FeishuToolRegistry 白名单装配；② MCP server tools/list；③ ApplicationToolsTests（dry_run 零调用 + 空更新拦截 + 回执投影）与 DryRunContractGuards。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantApplicationUpdateManagementTool":  "同 IFeishuTenantApplicationUpdateVisibilityTool：application.update_management 的工具契约（enable 必填——bool? 可空标量 + 执行器校验；停用管理面影响面极大，描述已自行标注）。消费方同上。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantHelpdeskStartServiceTool":  "B1 写面补全（tenant 侧）：helpdesk.start_service 的工具契约（工单转人工第一跳）。消费方：① FeishuToolRegistry 白名单装配；② MCP server tools/list；③ HelpDeskToolsTests 与 DryRunContractGuards。",
@@ -344,7 +345,6 @@
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantLingoGetEntityTool":  "同 IFeishuTenantLingoListReposTool：lingo.get_entity 的工具契约（单词条完整投影）。消费方同上。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantLingoSearchEntitiesTool":  "同 IFeishuTenantLingoListReposTool：lingo.search_entities 的工具契约（本域主力：关键词 → 词条）。消费方同上。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantLingoMatchEntitiesTool":  "同 IFeishuTenantLingoListReposTool：lingo.match_entities 的工具契约（精确词形匹配，不返回正文）。消费方同上。",
-                     "Mud.Feishu.AI.AgentTools.FeishuToolCallBudget":  "T4 / D4：单轮工具调用预算闸门（AsyncLocal 承载，随事件入口的 using 释放）。消费方：① AI 运行时 ConversationalFeishuEventHandler（每个事件入口 Begin 开启预算）；② 工具面 ToolBudgetAIFunction（每次调用 TryConsume，越限短路返回 tool_budget_exceeded）；③ ToolBudgetContractGuards / ToolBudgetTests。它是 Mud.Feishu.AI ↔ Mud.Feishu.AI.Tools 之间的共享接缝（与 FeishuToolContext 同款归属），跨程序集消费故必须公开。",
                      "Mud.Feishu.AI.AgentTools.UserTokenPrecheckModes":  "T1 / D1：用户令牌前置探测模式的闭集字面量（配置键 FeishuAgent:UserTokenPrecheck）。消费方：① FeishuAgentOptions.UserTokenPrecheck 的默认值与 Validate() 闭集校验（宿主配置面要能引用字面量）；② Mud.Feishu.AI.Tools 的 UserTokenPrecheck 与装配期诊断分支；③ UserToolWiringContractGuards。",
                      "Mud.Feishu.AI.Conversations.BusyModes":  "T5 / D5：全局并发背压的忙时策略闭集（WaitForSlot / FailFast）。消费方：① GlobalConcurrencyGate 的构造参数；② FeishuAgentOptions 的队列策略配置面；③ GlobalConcurrencyGateTests。",
                      "Mud.Feishu.AI.Conversations.GlobalConcurrencyGate":  "T5 / D5：进程级并发闸门（实现 IConversationGate，先取全局信号量再委托内层 KeyedConversationGate）。消费方：FeishuAgentServiceCollectionExtensions.AddFeishuAgent 的装配（装饰顺序见该处注释）+ GlobalConcurrencyGateTests；与同层 KeyedConversationGate 保持同一可见性口径（宿主可替换/包装闸门链）。",

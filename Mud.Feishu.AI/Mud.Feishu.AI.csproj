@@ -42,19 +42,19 @@
 
 	<ItemGroup>
 		<!-- AI 底座（Microsoft Agent Framework）——全仓单一版本，由契约守卫锁定（见 Tests 契约守卫）。 -->
-		<PackageReference Include="Microsoft.Agents.AI" Version="1.20.0" />
-		<PackageReference Include="Microsoft.Agents.AI.OpenAI" Version="1.20.0" />
+		<PackageReference Include="Microsoft.Agents.AI" Version="1.25.0" />
+		<PackageReference Include="Microsoft.Agents.AI.OpenAI" Version="1.25.0" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- MAF 1.20.0 传递依赖要求 M.E.* ≥ 10.0.11：为避免 NU1603 版本漂移，本项目内统一 Update 到该版本
+		<!-- MAF 1.25.0 传递依赖要求 M.E.* ≥ 10.0.12：为避免 NU1603 版本漂移，本项目内统一 Update 到该版本
 		     （含 netstandard2.0/net6.0——M.E.* 10.x 均提供 ns2.0 兼容资产，根 props 对这两个 TFM 已设
 		     SuppressTfmSupportBuildWarnings）。配置绑定走源生成（net8+ 由根 props 启用）。 -->
-		<PackageReference Update="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
-		<PackageReference Update="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
-		<PackageReference Update="Microsoft.Extensions.Options" Version="10.0.11" />
-		<PackageReference Update="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.11" />
-		<PackageReference Update="Microsoft.Extensions.Configuration.Binder" Version="10.0.11" />
+		<PackageReference Update="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
+		<PackageReference Update="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
+		<PackageReference Update="Microsoft.Extensions.Options" Version="10.0.12" />
+		<PackageReference Update="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.12" />
+		<PackageReference Update="Microsoft.Extensions.Configuration.Binder" Version="10.0.12" />
 	</ItemGroup>
 
 	<!-- H2 中立化（P1-H2b）：Microsoft.ML.Tokenizers / .Data.O200kBase 两个包随 ChatTokenCounter
@@ -84,19 +84,6 @@
 		     避免依赖 Abstractions 的传递引用；版本与全仓**同一条版本线**
 		     （守卫 TokenMultiAppContractGuards.MudHttpUtils_PackageReference_ShouldBeSingleVersion 锁定）。 -->
 		<PackageReference Include="Mud.HttpUtils" Version="3.0.6" />
-	</ItemGroup>
-
-	<!-- R3-11：公共 API 兼容门禁（利用"未发布"窗口期零成本建基线）。 -->
-	<ItemGroup>
-		<PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="4.14.0">
-			<PrivateAssets>all</PrivateAssets>
-			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		</PackageReference>
-	</ItemGroup>
-
-	<ItemGroup>
-		<AdditionalFiles Include="PublicAPI.Shipped.txt" />
-		<AdditionalFiles Include="PublicAPI.Unshipped.txt" />
 	</ItemGroup>
 
 </Project>

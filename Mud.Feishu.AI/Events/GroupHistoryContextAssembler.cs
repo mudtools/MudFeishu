@@ -201,7 +201,7 @@ public sealed class GroupHistoryContextAssembler : IContextAssembler
             var text = ExtractTextContent(msg);
             if (text.Length > ContextBudgets.GroupHistoryPerMessageLength)
             {
-                text = text.Substring(0, ContextBudgets.GroupHistoryPerMessageLength) + ContextBudgets.TruncationMarker;
+                text = text.Substring(0, ContextBudgets.GroupHistoryPerMessageLength) + AssemblerBudgets.TruncationMarker;
             }
 
             var senderId = msg.Sender?.Id ?? "unknown";
@@ -211,7 +211,7 @@ public sealed class GroupHistoryContextAssembler : IContextAssembler
 
             if (totalLength + line.Length > ContextBudgets.GroupHistoryTotalLength)
             {
-                _ = sb.AppendLine(ContextBudgets.TruncationMarker);
+                _ = sb.AppendLine(AssemblerBudgets.TruncationMarker);
                 break;
             }
 

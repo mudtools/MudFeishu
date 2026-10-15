@@ -13,25 +13,18 @@ namespace Mud.Feishu.AI.Conversations;
 /// 进程内内存会话存储（测试/单机默认实现）。
 /// </summary>
 /// <remarks>
+/// 基于 <see cref="ConcurrentDictionary{TKey,TValue}"/>，TTL 为<b>软过期</b>：读取时判定 <c>{expireTimestampMs}|{payload}</c> 时间戳，
+/// 过期即删除并视为 miss（对齐 Redis 实现的读侧有效性判定——Redis 另有服务器键过期兜底）。
 /// <para>
-/// 基于 <see cref="ConcurrentDictionary{TKey,TValue}"/>，TTL 为<b>软过期</b>：读取时判定
-/// <c>{expireTimestampMs}|{payload}</c> 时间戳，过期即删除并视为 miss（对齐 Redis 实现的
-/// 读侧有效性判定；Redis 由服务器键过期 + 读侧时间戳双重兜底）。
+/// <b>过期回收</b>：软过期只在<b>读同一键</b>时删除，<b>不再被读取</b>的键（一次性会话、被移出群的用户）永不回收 ⇒
+/// 长跑宿主的内存随会话数单调增长。故在写入路径按阈值 + 节流触发一次<b>惰性分摊清扫</b>：≤ <c>SweepThreshold</c> 条目时 O(1)；
+/// 超过后按 <c>SweepEveryWrites</c> 次写入节流，单次成本上界 <c>SweepMaxRemoval</c>，<b>不引入后台线程/定时器</b>
+/// （保持"纯库、零宿主假设"品格），语义与 Redis 服务端过期一致（读侧软过期兜底不变）。
 /// </para>
 /// <para>
-/// <b>过期回收</b>：软过期只在<b>读同一键</b>时删除，<b>不再被读取</b>的键（一次性会话、
-/// 被移出群的用户）永不回收 ⇒ 长跑宿主的内存随会话数单调增长。故在写入路径按阈值 + 节流触发一次
-/// <b>惰性分摊清扫</b>：≤<c>SweepThreshold</c> 条目时 O(1)；超过后按 <c>SweepEveryWrites</c> 次写入节流，
-/// 单次成本上界 <c>SweepMaxRemoval</c>，<b>不引入后台线程/定时器</b>（保持"纯库、零宿主假设"品格），
-/// 语义与 Redis 服务端过期一致（读侧软过期兜底不变）。
-/// </para>
-/// <para>
-/// <b>能力边界</b>：清扫只回收<b>已过期</b>条目——TTL 窗口内的<b>新鲜</b>条目仍无数量上限
-/// （TTL 缓存的固有语义）。需要按数量/字节上限淘汰的宿主应改用 Redis 后端或自定义实现。
-/// </para>
-/// <para>
-/// 仅适合单实例部署与测试；分布式部署请使用 Mud.Feishu.Redis 的
-/// <c>RedisConversationStore</c>（接口注入替换本实现）。
+/// <b>能力边界</b>：清扫只回收<b>已过期</b>条目——TTL 窗口内的<b>新鲜</b>条目仍无数量上限（TTL 缓存的固有语义）；
+/// 需要按数量/字节上限淘汰的宿主应改用 Redis 后端或自定义实现。本实现仅适合单实例部署与测试，分布式部署请用
+/// <c>Mud.Feishu.Redis</c> 的 <c>RedisConversationStore</c>（接口注入替换本实现）。
 /// </para>
 /// </remarks>
 public sealed class MemoryConversationStore : IConversationStore

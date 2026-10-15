@@ -13,8 +13,8 @@
   ③逐文件注释行数与最长叙述块冻结、只允许下压，新文件硬上限「最长块 ≤ 20 行、≤ 120 注释行」。
 - **违规面清零**（全部为真实清理，不是放宽判据）：首轮冻结的 38 条悬空编号与 30 处未链接过程叙述
   已全部改写为「现在必须怎样」的约束或删除——**台账当前 anchors = 0 / narration = 0**；
-  注释行数 7233 → 7187 → 6837（含两轮样板文件 -137 行），最长块 > 20 的文件 68 → 46
-  （其中 > 24 的 6 个），**最长块 > 30 的文件已清零**，当前最大值 26。
+  注释行数 7233 → 7187 → 6802（含两轮样板文件 -137 行），最长块 > 20 的文件 68 → 41
+  （> 24 的已清零），**最长块 > 30 的文件已清零**，当前最大值 24。
 - **决策外移**：新增 `documents/AIAgent/decisions/`（`ADR-0001`：会话摘要器与 MAF 压缩管线取舍，
   由 `ConversationSummarizer` 的类注释迁出），代码侧只留一行路径引用；错误契约的取舍一律指向
   `documents/AIAgent/工具错误契约.md`（`missing_scope` / `sanitizer_rejected` 的"不得新增"依据）。
@@ -24,7 +24,7 @@
   内容安全模式等模块）与**过程叙事**（30 处「此前/原先/旧实现/已删除…」，改写为「现在必须怎样」
   的约束或删除）。**保留**平台怪癖与次序约束（ns2.0 缺 NotNullWhen 注解、状态袋惰性反序列化、
   锁内登记、catch 面收口、投递次序等）——这些正是「读代码看不出来」的部分。
-- **长块续清理（同轮续批，28 个文件；数值为最长叙述块行数）**：首批 `TaskUpdatedConversationalEventHandler` 43 → 20、
+- **长块续清理（同轮续批，34 个文件；数值为最长叙述块行数）**：首批 `TaskUpdatedConversationalEventHandler` 43 → 20、
   `BitableRecordContextAssembler` 39 → 26、`McpServiceCollectionExtensions` 38 → 19、`FeishuToolPolicyOptions` 37 → 24、
   `AgentToolAttribute` 34 → 22、`AgentSessionStore` 34 → 25、`FeishuToolCallBudget` 32 → 22、
   `ImMessageConversationalEventHandler` 32 → 23、`FeishuAgentApprovalExtensions` 31 → 23、`ApprovalContextAssembler` 30 → 23；
@@ -33,7 +33,9 @@
   第三批 `GuidanceComposer` 28 → 22、`CardStreamMessageChannel` 27 → 17、`ToolParameterAttribute` 27 → 15、
   `FeishuAgent` 26 → 20、`FeishuPendingApprovalState` 26 → 20、`ToolNamePattern` 26 → 20；
   第四批（同为 26 行块）`BufferedMessageChannel` → 20、`ConversationScopeMapper` → 18、`ConversationStoreSessionAdapter` → 17、
-  `BitableRecordChangedConversationalEventHandler` → 19、`IToolApprovalChannel` → 21、`ISessionStore` → 18。
+  `BitableRecordChangedConversationalEventHandler` → 19、`IToolApprovalChannel` → 21、`ISessionStore` → 18；
+  第五批（25–26 行块）`KnowledgeContextAssembler` → 18、`FeishuMcpResourceCatalog` → 20、`MemoryConversationStore` → 18、
+  `ToolErrorHintRenderer` → 20、`BitableRecordContextAssembler` → 22、`AgentSessionStore` → 20。
   手法一致：删批次号回声与可从代码读出的事实，保「读代码看不出来」的约束
   （装配前置契约、stdio 下 stdout 即协议通道、策略空集合语义与 Deny 优先、AsyncLocal per-run 生命周期与
   0 = 不限制、投递目标解析与模型前短路、预算**截断**优先于整段丢弃、untrusted 头、事实键约定、

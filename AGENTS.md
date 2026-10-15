@@ -39,10 +39,35 @@ TFMs resolve via `dotnet msbuild -getProperty:TargetFrameworks` (test projects i
 `Tests/Directory.Build.props`). CI mirrors this: `-CacheCheckOnly` before restore, then the build
 log is asserted against the same whitelist (`.github/workflows/dotnet-publish.yml`).
 
-**Source-project discovery is glob-based, never a hardcoded count** (v2.3): `verify-build.ps1`
-step 3 enumerates root directories matching `Mud.*` (was `Mud.Feishu*`), so the new `Mud.AI.*`
-package family is AOT-smoked automatically. Any "N source projects" count in docs/CI is
-**stale by construction** — do not reintroduce one.
+**Source-project discovery is glob-based, never a hardcoded count**: `verify-build.ps1`
+step 3 enumerates the repo's `Mud.*` source directories at run time. The `Mud.AI.*` family has been
+migrated to its own repository (see "Mud.AI.* family migration" below), so it is AOT-smoked by that
+repo's gate — not here. Any "N source projects" count in docs/CI is **stale by construction** — do
+not reintroduce one.
+
+## Mud.AI.* family migration (cross-repo, 2026-10-15)
+
+The three neutral projects `Mud.AI.Abstractions`, `Mud.AI.Agent`, `Mud.AI.Generator` and their two
+test projects were migrated to their own repository (`D:\Repos\MudAIAgent`; package ids, namespaces
+and assembly names **unchanged**, own `1.0.0` version line). This repo consumes them as **NuGet
+packages** (no `ProjectReference` remains):
+
+- `nuget.config` adds a **local folder source** `mud-ai-local` → `D:\Repos\MudAIAgent\artifacts`
+  (phase 4 publishing is out of scope; the packages are produced there with
+  `dotnet pack Mud.AI.slnx -c Release -o artifacts`).
+- Consuming projects pin the version explicitly (`Version="1.0.0"`, **never floating**):
+  `Mud.Feishu.AI`, `Mud.Feishu.AI.Tools`, `Tests/Mud.Feishu.AI.Tests`, `Demos/ToolSurfaceDemo`.
+  `Mud.AI.Generator` is referenced in **Analyzer** form
+  (`OutputItemType="Analyzer" ReferenceOutputAssembly="false"`).
+- **Cross-repo version contract**: this repo's `Microsoft.Agents.AI` (MAF) version must satisfy the
+  lower bound that the `Mud.AI.Agent` package declares — asserted by
+  `AgentContractGuards.MafVersion_ShouldSatisfyMudAiAgentLowerBound`.
+- Guard coverage that belongs to the implementation moved with it (family-internal package locks,
+  neutral-vocabulary, engine product-freedom, the `Mud.AI.* ↛ Mud.Feishu*` neutrality lock, comment
+  budget, golden snapshots, and the neutral-side halves of the cross-cutting guards) and now lives
+  in the new repo's `Tests/Mud.AI.Agent.Tests`. This repo keeps only the **product-side halves**.
+  Do **not** "restore" a guard here by re-reading `Mud.AI.*` source — that source is no longer in
+  this repo (it would scan an empty set = false green).
 
 ## Dependency version policy (Mud.HttpUtils)
 
@@ -70,18 +95,19 @@ package family is AOT-smoked automatically. Any "N source projects" count in doc
   same version does **not** invalidate downstream caches (symptom: source fixed but build still
   `CS1750`) — **always bump when packing**. Manual refresh = clear global-packages → `dotnet clean`
   (mandatory; stale incremental builds surface as `TypeLoadException`) → rebuild.
-- Tool surface is generated **only** by the in-repo engine `Mud.AI.Generator` (v2.3 P1-E: migrated
-  from the component-side `Mud.HttpUtils.Generator`; tuning window is repo-closed, re-upstreaming
-  is P3). `SingleToolSurfaceEngineContractGuards` locks that: (1) the only source-level
-  `[Generator]` host is `Mud.AI.Generator` and it is registered in `Mud.Feishu.slnx`; (2) no
-  project except that engine **and its test project** references `Microsoft.CodeAnalysis.CSharp`
-  (the test project drives the generator via `CSharpGeneratorDriver` — driving ≠ hosting a second
-  engine); (3) **no project may reference both** the in-repo engine and the component package
-  (same hintName products ⇒ CS8785/CS0101). Each assertion has a `[Theory]` self-test.
+- Tool surface is generated **only** by the `Mud.AI.Generator` package (cross-repo: the engine was
+  moved out of the component `Mud.HttpUtils.Generator` in v2.3 P1-E, then out of this repo into
+  `D:\Repos\MudAIAgent` — consumed here as a **NuGet analyzer package**; see "Mud.AI.* family
+  migration"). `SingleToolSurfaceEngineContractGuards` locks that: (1) **no project in this repo
+  hosts a source-level `[Generator]`** (the engine is not in-repo any more); (2) the engine is
+  consumed in **Analyzer** form at a **pinned** (non-floating) version; (3) **no project may
+  reference both** `Mud.AI.Generator` and the component package `Mud.HttpUtils.Generator` (same
+  hintName products ⇒ CS8785/CS0101); (4) core SDK projects must not depend on `Mud.AI.*` (neither
+  `ProjectReference` nor `PackageReference`). Each assertion has a `[Theory]` self-test.
   `FeishuToolProfile.cs` (`Mud.Feishu.AI.Tools/SdkProfile/`) is the single source of Feishu naming
   facts, linked into `Tests/Mud.Feishu.AI.Tests` (profiles are per-compilation).
-  `[AgentTool]`/`[ToolParameter]`/`[ToolHandler]` live in **`Mud.AI.Abstractions`**
-  (`Mud.AI.Abstractions.Tools[.Handlers]`) — the bottom of the dependency graph, so non-owner
+  `[AgentTool]`/`[ToolParameter]`/`[ToolHandler]` live in the **`Mud.AI.Abstractions`** package
+  (`Mud.AI.Abstractions.Tools[.Handlers]`) — the bottom of the dependency graph; non-owner
   declaring assemblies (e.g. AI.Tests samples) can see them without referencing the owner
   assembly (avoids CS0433 ambiguity).
 
@@ -116,16 +142,18 @@ hard cut (no `[Obsolete]` forwards, no shims). Four invariants are mechanically 
   `AgentSessionStoreTests.GetOrCreateAsync_ShouldRebuild_WhenNonWhitelistedExceptionThrownInsideTheGuard`
   (`ThrowingDeserializeCodecAgent`), and the product layer keeps `NullHistoryValue_ShouldStillYieldUsableSession`
   instead of the old `CorruptStateBag_ShouldDeleteAndRebuild_RegardlessOfExceptionType`.
-- **Bidirectional neutrality lock**: core SDK ↛ `Mud.AI.*` (existing
-  `CoreSdkProjects_ShouldNotDependOnMudAiFamily`) **and** `Mud.AI.*` ↛ any `Mud.Feishu*`
-  (`MudAiFamily_ShouldNotDependOnFeishuProjects`). The session-storage port exists precisely
-  because the "obvious" shortcut (let `Mud.AI.Agent` reference
+- **Bidirectional neutrality lock**: core SDK ↛ `Mud.AI.*`
+  (`CoreSdkProjects_ShouldNotDependOnMudAiFamily`, this repo) **and** `Mud.AI.*` ↛ any `Mud.Feishu*`
+  (carried by the new repo:
+  `AgentPackageContractGuards.MudAiFamily_ShouldNotDependOnFeishuProjects`). The session-storage port
+  exists precisely because the "obvious" shortcut (let `Mud.AI.Agent` reference
   `Mud.Feishu.Abstractions.IConversationStore`) compiles, passes tests, and makes P3 upstreaming
   impossible. Instead: neutral port `Mud.AI.Abstractions.Conversations.ISessionStore` +
   `Mud.Feishu.AI.Conversations.ConversationStoreSessionAdapter` (internal). The published SDK
   packages (`Mud.Feishu.Abstractions`, `Mud.Feishu.Redis`) are **byte-untouched**.
   The lock has a **third axis** (2026-10-14): `Mud.AI.*` must not declare Mud **components**
-  either — `AgentContractGuards.MudAiFamily_ShouldNotDeclareMudHttpUtilsComponent` (scope = the exact
+  either — `AgentPackageContractGuards.MudAiFamily_ShouldNotDeclareMudHttpUtilsComponent` (new repo;
+  scope = the exact
   `Mud.HttpUtils` component id; sub-packages `.Attributes`/`.Abstractions` would need an explicit
   scope widening + justification). Same "ports, not the obvious shortcut" reasoning:
   `Mud.AI.Agent.ToolErrorClassifier` used to pattern-match `Mud.HttpUtils.ApiException`, which made
@@ -140,7 +168,7 @@ hard cut (no `[Obsolete]` forwards, no shims). Four invariants are mechanically 
   *reading* (`ToolApiFailure`, carried by `ToolApiOutcome<T>.Failure` →
   `ToolPagination.PagedFetchResult.Failure` → payload/`suggestions`/hint). Locked by
   `ToolErrorContractGuards.ApiCodeReading_ShouldTravelFromReaderToPayload` (end-to-end: reader → payload)
-  plus the tripwire `NeutralPackageProductFactGuards` (no known product code literals in
+  plus the tripwire `NeutralPackageProductFactGuards` (new repo; no known product code literals in
   `Mud.AI.Agent` source; a sentinel, not a proof).
 - **`FeishuAgent : DelegatingAIAgent`** (MAF-provided). Do not hand-write `IdCore` / the three
   session hooks / `GetService` again — `FeishuAgent_ShouldDelegateIdentityToInnerAgent` and
@@ -151,10 +179,11 @@ hard cut (no `[Obsolete]` forwards, no shims). Four invariants are mechanically 
   `GuidanceComposer.Compose(..., maxGuidanceLength)` and `AgentSessionStore(..., historyStateKey, ...)`
   take them as *parameters*.
 
-`Mud.AI.Agent` now carries `ChatTokenCounter` (public), `GuidanceComposer` and `AgentSessionStore`;
-`Tests/Mud.AI.Agent.Tests` is their owning test project (registered in the slnx, auto-discovered by
-`verify-build.ps1` step 4). Guard evidence must live with the implementation — moving code without
-moving its guard anchors is how a guard silently starts asserting something else.
+`Mud.AI.Agent` carries `ChatTokenCounter` (public), `GuidanceComposer` and `AgentSessionStore`;
+`Tests/Mud.AI.Agent.Tests` is their owning test project. Both have moved to the new repo (see
+"Mud.AI.* family migration"); the principle stands — guard evidence must live with the
+implementation (moving code without moving its guard anchors is how a guard silently starts
+asserting something else).
 
 ## AI neutralization N4–N6 closure (2026-10-14)
 
@@ -202,10 +231,11 @@ Three conclusions are **settled** — do not re-litigate:
   (2) it **does not participate in the generator contract** (see next bullet); (3) it depends on **no
   `Mud.Feishu.*`** type. `NeutralToolSafetyPrimitives_ShouldStayProductFree` + the tool guards'
   widened scan face lock this.
-- **Generator contract lock**: `Mud.AI.Generator` emits code that references `ToolArgs` by **simple
-  name**, so `ToolArgs` must stay in its owner assembly (`Mud.Feishu.AI.Tools`) — moving it into the
-  neutral family breaks generation. This is exactly what `SingleToolSurfaceEngineContractGuards`
-  guards (host uniqueness / no dual referencing). `FeishuToolProfile.cs`
+- **Generator contract lock**: the `Mud.AI.Generator` package (cross-repo) emits code that
+  references `ToolArgs` by **simple name**, so `ToolArgs` must stay in its owner assembly
+  (`Mud.Feishu.AI.Tools`) — moving it into the neutral family breaks generation. This is exactly
+  what `SingleToolSurfaceEngineContractGuards` guards (no in-repo `[Generator]` host / Analyzer-form
+  pinned package / no dual referencing / core SDK ∌ `Mud.AI.*`). `FeishuToolProfile.cs`
   (`Mud.Feishu.AI.Tools/SdkProfile/`) remains the single source of Feishu naming facts.
 
 **Engine / contract / shell three-way split (第七式 · 第八式)** is a decision, not a style choice —
@@ -259,8 +289,9 @@ source-generated `JsonSerializerContext` files are not compiled). `Tests/Directo
 ### Comment discipline — 注释纪律 (`CommentConventionContractGuards`, 2026-10-14 audit)
 
 Comments are code's subordinate and every fact has exactly one home. Three mechanical rules apply
-to the hand-written runtime layers (`Mud.Feishu.AI`, `Mud.AI.Agent`, `Mud.AI.Abstractions`,
-`Mud.Feishu.AI.Mcp`); the ledger is `documents/AIAgent/comment-budget-baseline.json`:
+to the hand-written runtime layers that remain in this repo (`Mud.Feishu.AI`, `Mud.Feishu.AI.Mcp`
+— the `Mud.AI.Agent` / `Mud.AI.Abstractions` layers moved to the new repo and carry their own
+ledger there); the ledger is `documents/AIAgent/comment-budget-baseline.json`:
 
 - **Anchors must resolve**: a review id in a comment (round ids like `R2-01`, `P2D-3b`, `AT-F14`…)
   must be findable in `documents/**` or `CHANGELOG.md` — otherwise state the constraint itself.
@@ -407,7 +438,7 @@ signals. Stress/long-running cases carry
 `[Trait("Category","Stress")]` (excluded from the gate; run manually with `--filter
 "Category=Stress"`); wall-clock assertions carry `[Trait("Category","Timing")]` (`-Full` only).
 
-### Test Suite Governance (2026-10-13; analysis: 《单元测试体系过度测试分析与解决方案》; doc locations: `Tests/Shared/Docs/FeishuDocs.cs`)
+### Test Suite Governance (2026-10-13; analysis: 《单元测试体系过度测试分析与解决方案》 — moved to the `Mud.AI` repo; this repo's doc locations: `Tests/Shared/Docs/FeishuDocs.cs`)
 
 - **Test TFMs are net8.0-only** (`Tests/Directory.Build.props`). No per-project
   `<TargetFrameworks>` overrides; sole exception `Mud.Feishu.Agent.Demo.Tests` (net10.0 demo).

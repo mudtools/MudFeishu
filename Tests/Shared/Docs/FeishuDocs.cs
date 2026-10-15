@@ -50,12 +50,6 @@ internal static class FeishuDocs
     public const string ToolErrorContract = "documents/AIAgent/工具错误契约.md";
 
     /// <summary>
-    /// 《单元测试体系过度测试分析与解决方案》——测试体系治理（TFM 收敛、门禁分档、
-    /// 守卫瘦身判据）的判据来源。
-    /// </summary>
-    public const string TestGovernanceReport = "documents/AIAgent/单元测试体系过度测试分析与解决方案.md";
-
-    /// <summary>
     /// 《工具权限对照表》——工具名 ↔ scope 的对外承诺，
     /// 由 <c>PermissionMappingDocContractGuards</c> 与契约表机械比对。
     /// </summary>
@@ -78,13 +72,6 @@ internal static class FeishuDocs
     /// 由 <c>McpRunbookContractGuards</c> 断言存在与结构。
     /// </summary>
     public const string McpMultiTenantRunbook = "documents/AIAgent/MCP多租户部署Runbook.md";
-
-    /// <summary>
-    /// <c>decisions/ADR-0001</c>——会话摘要器与 MAF 压缩管线的取舍（决策记录的唯一家；
-    /// 代码侧只留一行路径引用）。
-    /// </summary>
-    public const string AdrSummarizerVsMafCompaction =
-        "documents/AIAgent/decisions/ADR-0001-summarizer-vs-maf-compaction.md";
 
     /// <summary>
     /// <c>comment-budget-baseline.json</c>——注释预算冻结基线（手写运行时层的注释行数、最长注释块、

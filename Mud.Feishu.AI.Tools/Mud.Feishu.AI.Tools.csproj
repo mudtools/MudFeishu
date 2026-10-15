@@ -50,24 +50,24 @@
 		<ProjectReference Include="..\Mud.Feishu.AI\Mud.Feishu.AI.csproj" />
 		<ProjectReference Include="..\Mud.Feishu\Mud.Feishu.csproj" />
 		<ProjectReference Include="..\Mud.Feishu.DataModels\Mud.Feishu.DataModels.csproj" />
-		<!-- v2.3 P1-D：执行器骨架（决策⑮）中立化上移 Mud.AI.Agent——工具面经 ProjectReference 消费骨架；
+		<!-- v2.3 P1-D：执行器骨架（决策⑮）中立化上移 Mud.AI.Agent——工具面经 PackageReference
+		     消费骨架（独立仓 NuGet 包，见 AGENTS.md「Mud.AI.* family migration」）；
 		     依赖方向：AI.Tools → Mud.AI.Agent → Mud.AI.Abstractions（单向，无环）。 -->
-		<ProjectReference Include="..\Mud.AI.Agent\Mud.AI.Agent.csproj" />
+		<PackageReference Include="Mud.AI.Agent" Version="1.0.0" />
 		<!-- R-9（阶段 5）：EventCallback 引用已摘除——事件处理器/流式通道/知识 Provider 随集成面并入
 		     Mud.Feishu.AI，故「只接工具面」的宿主不再被动背上事件 DTO 面（880 个源文件的依赖）。
 		     ⚠️ 守卫 AgentContractGuards 断言本集合恰为 {AI, core, DataModels}（+ 生成器分析器），
 		     重新加回 EventCallback 会立刻报红。 -->
-		<!-- [AgentTool] 源生成器（v2.3 P1-E）：ToolSurface 引擎自组件仓 Mud.HttpUtils.Generator
-		     整批迁入仓内 Mud.AI.Generator（调优期仓内闭环；P3 上游化时连同其测试工程一起回迁）。
-		     ⚠ 禁兼引：同一编译单元不得同时挂仓内引擎与组件包（同名 hintName 产物冲突 ⇒
-		     CS8785/CS0101/产物歧义）——由
+		<!-- [AgentTool] 源生成器：ToolSurface 引擎自组件仓 Mud.HttpUtils.Generator 整批迁入
+		     Mud.AI.Generator，随后随 Mud.AI 家族独立化迁至独立仓（D:\Repos\MudAIAgent），
+		     本仓以 NuGet 分析器包消费（Version="1.0.0" + OutputItemType="Analyzer"）。
+		     ⚠ 禁兼引：同一编译单元不得同时挂 Mud.AI.Generator 与组件包 Mud.HttpUtils.Generator
+		     （同名 hintName 产物冲突 ⇒ CS8785/CS0101/产物歧义）——由
 		     SingleToolSurfaceEngineContractGuards.NoProjectShouldReferenceBothToolSurfaceEngines 机械断言。
 		     工具面规模（条目数 / 签名）不在此处写死数字——数字漂移无法被编译器发现，改为唯一真相源：
 		     FeishuToolSchemas.golden.txt 与生成的 FeishuToolContracts（三者一致性由
 		     ToolSurfaceScaleContractGuards 机械断言，见 R2-09/G4）。 -->
-		<ProjectReference Include="..\Mud.AI.Generator\Mud.AI.Generator.csproj"
-		                  OutputItemType="Analyzer"
-		                  ReferenceOutputAssembly="false" />
+		<PackageReference Include="Mud.AI.Generator" Version="1.0.0" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 		<!-- 剖面契约：[SdkToolProfile]（数据载体）+ ISdkToolProfile / SdkTokenKind（标记接口与枚举）
 		     —— v2.3 起随声明契约上移 Mud.AI.Abstractions（经 Mud.AI.Agent 传递引用）；
 		     Mud.HttpUtils.Attributes / .Abstractions 为 HTTP 客户端生成路径所需，保留。

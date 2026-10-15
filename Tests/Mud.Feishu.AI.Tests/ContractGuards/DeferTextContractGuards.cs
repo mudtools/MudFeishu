@@ -60,44 +60,7 @@ public class DeferTextContractGuards
             "透传属性类型必须与 FeishuAgentOptions.DeferTextUntilTurnComplete 一致");
     }
 
-    /// <summary>
-    /// 守卫 ④：中立回合管线源码中必须引用 DeferTextUntilTurnComplete（真实消费点）。
-    /// </summary>
-    /// <remarks>
-    /// <b>N4 改锚</b>：流式文本抑制的消费点随回合机制迁入中立
-    /// <c>ConversationalTurnPipeline</c>（Mud.AI.Agent）——断言锚点随实现迁移。
-    /// </remarks>
-    [Fact]
-    public void ConversationalTurnPipeline_ShouldConsume_DeferTextUntilTurnComplete()
-    {
-        var unbound = typeof(Mud.AI.Agent.Events.ConversationalTurnPipeline);
-        var sourcePath = FindSourceFile(
-            unbound.Assembly.Location,
-            "ConversationalTurnPipeline.cs");
-
-        sourcePath.Should().NotBeNull("必须能定位 ConversationalTurnPipeline.cs 源文件");
-        var source = File.ReadAllText(sourcePath!);
-        source.Should().Contain("DeferTextUntilTurnComplete",
-            "ConversationalTurnPipeline.RunConversationAsync 必须消费 DeferTextUntilTurnComplete 选项");
-        source.Should().Contain("FunctionCallContent",
-            "DeferTextUntilTurnComplete=true 时必须检测 FunctionCallContent 以决定是否丢弃文本");
-    }
-
-    private static string? FindSourceFile(string assemblyPath, string fileName)
-    {
-        // 从程序集位置向上搜索源文件。
-        var dir = new DirectoryInfo(Path.GetDirectoryName(assemblyPath)!);
-        while (dir is not null)
-        {
-            var matches = dir.GetFiles(fileName, SearchOption.AllDirectories);
-            if (matches.Length > 0)
-            {
-                return matches[0].FullName;
-            }
-
-            dir = dir.Parent;
-        }
-
-        return null;
-    }
+    // 守卫 ④（中立回合管线消费 DeferTextUntilTurnComplete）随回合机制迁入 Mud.AI.Agent，由新仓
+    // DeferTextContractGuards.ConversationalTurnPipeline_ShouldConsume_DeferTextUntilTurnComplete 持有；
+    // 本仓只保留面向产品侧 FeishuAgentOptions / FeishuAgent 的三条断言。
 }

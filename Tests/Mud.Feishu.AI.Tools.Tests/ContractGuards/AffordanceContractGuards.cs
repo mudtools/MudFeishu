@@ -46,7 +46,7 @@ public class AffordanceContractGuards
 
     private const int ExpectedTotalAssetCharacters = 9975;
 
-    // B2 瘦身（测试体系治理，见《单元测试体系过度测试分析与解决方案》§三.5）：
+    // B2 瘦身（测试体系治理，见《单元测试体系过度测试分析与解决方案》§三.5；该文档已迁 Mud.AI 仓）：
     // 与上游诊断**同一判定**的仓库侧副本已删除——
     //   · 资产结构（四节固定/空节/未知节）= MUDFT028（Error，构建即断）
     //   · 资产文件名命中契约工具名         = MUDFT029（Error，构建即断）

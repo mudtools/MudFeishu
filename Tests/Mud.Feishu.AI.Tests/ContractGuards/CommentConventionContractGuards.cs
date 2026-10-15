@@ -34,8 +34,6 @@ public class CommentConventionContractGuards
     private static readonly string[] ScopedProjects =
     [
         "Mud.Feishu.AI",
-        "Mud.AI.Agent",
-        "Mud.AI.Abstractions",
         "Mud.Feishu.AI.Mcp",
     ];
 
@@ -49,8 +47,8 @@ public class CommentConventionContractGuards
     public void AnchorReferences_ShouldResolveToGovernedDocuments()
     {
         var analysis = Analysis.Value;
-        analysis.Files.Count.Should().BeGreaterThan(100, "扫描面为空即假绿（工程目录或过滤器坏了）");
-        analysis.CommentLines.Should().BeGreaterThan(5000, "扫描到的注释行数下界（扫描面被截断即假绿）");
+        analysis.Files.Count.Should().BeGreaterThan(40, "扫描面为空即假绿（工程目录或过滤器坏了）");
+        analysis.CommentLines.Should().BeGreaterThan(2000, "扫描到的注释行数下界（扫描面被截断即假绿）");
 
         var baseline = LoadBaseline(analysis);
         AssertBaselineIsNotPartOfResolutionSource();

@@ -62,7 +62,7 @@ public class FeishuToolGoldenTests
     }
 
     // 原 GoldenSnapshot_ShouldCoverEveryContractTool（快照行数 == 注册表条目数）已删除
-    // （测试体系治理 B2，见《单元测试体系过度测试分析与解决方案》§三.4）：
+    // （测试体系治理 B2，见《单元测试体系过度测试分析与解决方案》§三.4；该文档已迁 Mud.AI 仓）：
     // 行数计数被上面的逐字节等式**完全包含**——快照少一行/多一行/格式破坏都会使逐字节比对报红。
 
     /// <summary>构造与生成器完全一致的快照文本（按工具名序数排序，一行一工具）。</summary>

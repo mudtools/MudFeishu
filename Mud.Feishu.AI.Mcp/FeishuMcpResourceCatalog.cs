@@ -13,29 +13,23 @@ using Mud.Feishu.AI.Tools.Generated;
 namespace Mud.Feishu.AI.Mcp;
 
 /// <summary>
-/// <b>M-2：MCP 资源目录</b>——把域 guidance / per-tool affordance / 域 scope / 错误契约
-/// 以 <b>MCP <c>resources</c> 能力</b>暴露，使上下文占用从"全量下发"变为"按需读取"（渐进披露）。
+/// <b>MCP 资源目录</b>：把域 guidance / per-tool affordance / 域 scope / 错误契约以 <b>MCP <c>resources</c> 能力</b>暴露，
+/// 使上下文占用从"全量下发"变为"按需读取"（渐进披露）。
 /// </summary>
 /// <remarks>
+/// <b>数据源全部是编译期常量或装配期事实</b>（与 <c>feishu.capability_lookup</c> 同纪律）：L1 guidance = 生成器发射的
+/// <see cref="FeishuToolGuidance.ByDomain"/>；L2 references = 同上的 <see cref="FeishuToolGuidance.References"/>；
+/// per-tool affordance = 工具桥的<b>模型可见描述</b>（affordance 由执行链在构造期追加，故描述里就是"模型看到的那份"）；
+/// 域 scope 对照 = <see cref="FeishuToolDefinition.RequiredScopes"/>（工具面事实）+ 风险/身份；错误契约 =
+/// <see cref="ErrorContractSummary"/>（编译期常量，由守卫与代码闭集机械对齐）。无网络、无租户依赖 ⇒
+/// <c>resources/read</c> 在任何宿主状态下都不会失败。
 /// <para>
-/// <b>数据源全部是编译期常量或装配期事实</b>（与 <c>feishu.capability_lookup</c> 同纪律）：
-/// <list type="bullet">
-/// <item>L1 guidance：生成器发射的 <see cref="FeishuToolGuidance.ByDomain"/>；</item>
-/// <item>L2 references：同上的 <see cref="FeishuToolGuidance.References"/>；</item>
-/// <item>per-tool affordance：工具桥的<b>模型可见描述</b>（affordance 由执行链在构造期追加，故描述里就是"模型看到的那份"）；</item>
-/// <item>域 scope 对照：<see cref="FeishuToolDefinition.RequiredScopes"/>（工具面事实）+ 风险/身份；</item>
-/// <item>错误契约：<see cref="ErrorContractSummary"/>（编译期常量，由守卫与代码闭集机械对齐）。</item>
-/// </list>
-/// 无网络、无租户依赖——<c>resources/read</c> 因此在任何宿主状态下都不会失败。
+/// <b>可见性纪律与 instructions 同源</b>：只列<b>已启用工具所属域</b>的资源（白名单之外的域在 <c>resources/list</c> 中不可见）
+/// ——资源面不得成为"绕过白名单的枚举通道"。
 /// </para>
 /// <para>
-/// <b>可见性纪律与 instructions 同源</b>：只列<b>已启用工具所属域</b>的资源
-/// （白名单之外的域在 <c>resources/list</c> 中不可见）——资源面不得成为"绕过白名单的枚举通道"。
-/// </para>
-/// <para>
-/// <b>为什么不复用 <c>guidance_read</c> 元工具</b>：那是<b>进程内</b> Agent 的读取通道
-/// （工具调用需要执行链/授权/审计），而 MCP 客户端读资源不需要经过工具执行链——
-/// 两者读取的是<b>同一份常量</b>（<c>FeishuToolGuidance</c>），只是入口形态不同（M-3 的"同源不同形态"）。
+/// <b>为什么不复用 <c>guidance_read</c> 元工具</b>：那是<b>进程内</b> Agent 的读取通道（工具调用需要执行链/授权/审计），
+/// 而 MCP 客户端读资源不经过工具执行链——两者读取<b>同一份常量</b>（<c>FeishuToolGuidance</c>），只是入口形态不同。
 /// </para>
 /// </remarks>
 public sealed class FeishuMcpResourceCatalog

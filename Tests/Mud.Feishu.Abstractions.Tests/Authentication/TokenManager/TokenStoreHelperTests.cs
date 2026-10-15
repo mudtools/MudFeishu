@@ -247,6 +247,74 @@ public class TokenStoreHelperTests
         Assert.NotEqual(MigrationTokenStoreCodec.DefaultLegacyAbsoluteMillisecondsThreshold, FeishuTokenStoreCodec.AbsoluteMsThreshold);
     }
 
+    // ──────────────────────────────────────────────
+    //  U-2 读取侧（上游 3.0.10 Batch 3）：v2 版本化信封兼容
+    // ──────────────────────────────────────────────
+
+    [Fact]
+    public void DecodeStoredToken_ShouldRead_V2Envelope_Active()
+    {
+        var before = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var (token, expireMs) = TokenStoreHelper.DecodeStoredToken("v2:3600|v2-token");
+
+        Assert.Equal("v2-token", token);
+        Assert.InRange(expireMs, before + 3600_000, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 3600_000);
+    }
+
+    [Fact]
+    public void DecodeStoredToken_ShouldProject_V2Expired_AsNoToken()
+    {
+        // v2:expired| ⇒ 无令牌 + 过期时刻 0（与上游 Decode 的 (null, 0) 投影同口径）。
+        var (token, expireMs) = TokenStoreHelper.DecodeStoredToken("v2:expired|whatever");
+
+        Assert.Equal(string.Empty, token);
+        Assert.Equal(0, expireMs);
+    }
+
+    [Fact]
+    public void DecodeStoredToken_ShouldTreat_InvalidV2Structure_AsRawValue()
+    {
+        // 结构非法（前导段非数值也非 expired）⇒ 与「无法解析」同口径：原值返回 + 过期时刻 0。
+        var (token, expireMs) = TokenStoreHelper.DecodeStoredToken("v2:notanumber|tok");
+
+        Assert.Equal("v2:notanumber|tok", token);
+        Assert.Equal(0, expireMs);
+    }
+
+    [Fact]
+    public void TryDecodeExpiry_ShouldRead_V2Envelope_Seconds()
+    {
+        var before = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var ok = TokenStoreHelper.TryDecodeExpiry("v2:7200|v2-token", out var expireMs);
+
+        Assert.True(ok);
+        Assert.InRange(expireMs, before + 7200_000, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 7200_000);
+    }
+
+    [Fact]
+    public void TryDecodeExpiry_ShouldReturnFalse_For_V2Expired()
+    {
+        // 显式已过期不携带可用 TTL 信息 ⇒ false（Redis 侧按既有回落语义处置；
+        // 本仓写侧不产生 expired 标记，该态仅来自「宿主经官方 VersionedTokenStoreCodec 组合写入」）。
+        Assert.False(TokenStoreHelper.TryDecodeExpiry("v2:expired|", out var expireMs));
+        Assert.Equal(0, expireMs);
+    }
+
+    [Fact]
+    public void Codec_ShouldRead_V2Envelope_ViaOfficialDefaultCodec()
+    {
+        // 上游默认 codec 已具备 v2 前缀识别 ⇒ 飞书门面（薄包装）读侧自动兼容。
+        var active = FeishuTokenStoreCodec.Instance.Decode("v2:3600|v2-token");
+        var expired = FeishuTokenStoreCodec.Instance.Decode("v2:expired|");
+
+        Assert.NotNull(active);
+        Assert.Equal("v2-token", active!.Value.Token);
+        Assert.Equal(3600, active.Value.ExpiresInSeconds);
+        Assert.NotNull(expired);
+        Assert.Null(expired!.Value.Token);
+        Assert.Equal(0, expired.Value.ExpiresInSeconds);
+    }
+
     [Fact]
     public void Codec_Decode_Should_Delegate_To_Official_MigrationCodec()
     {

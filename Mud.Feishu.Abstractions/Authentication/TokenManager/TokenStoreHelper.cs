@@ -105,10 +105,35 @@ internal static class TokenStoreHelper
     private readonly record struct ParsedValue(string Token, long LeadingNumber);
 
     /// <summary>
-    /// 共享解析核心：<c>{n}|{token}</c> 形态校验 + 前导数值解析（不判别量级、不换算）。
+    /// 共享解析核心：<c>{n}|{token}</c> 形态校验 + 前导数值解析（不判别量级、不换算）；
+    /// v2 版本化信封（<c>v2:{n}|{token}</c> / <c>v2:expired|</c>）经官方
+    /// <see cref="VersionedTokenStoreCodec.TryDecodeEnvelope"/> 解析后归一到同一结果形态。
     /// </summary>
+    /// <remarks>
+    /// U-2（上游 3.0.10 Batch 3）：读取侧 v2 兼容 —— 上游默认 codec 已具备 v2 前缀识别，
+    /// 本门面（Feishu 消费侧）同步支持，使「宿主经官方 store + <c>VersionedTokenStoreCodec</c> 组合写入 v2」
+    /// 或「官方未来切换写入形态」两种情形下的消费侧（含 Redis 侧 TTL 推导）不丢失过期信息。
+    /// 写侧形态不变（C-2：默认形态不得漂移）——<see cref="EncodeStoredToken"/> 仍单写相对秒 v1 形态。
+    /// <para>
+    /// <c>v2:expired|</c>（显式已过期）投影为「无令牌 + 过期时刻 0」——与上游
+    /// <see cref="ITokenStoreCodec.Decode"/> 的 <c>(null, 0)</c> 投影同口径：
+    /// 调用方按「无令牌」处置（miss）。
+    /// </para>
+    /// </remarks>
     private static ParsedValue? ParseStoredValue(string storedValue)
     {
+        if (VersionedTokenStoreCodec.IsVersionedEnvelope(storedValue))
+        {
+            // v2：结构非法 ⇒ 与「无法解析」同口径（null ⇒ 调用方按无过期信息处理）。
+            if (!VersionedTokenStoreCodec.TryDecodeEnvelope(storedValue, out var state, out var v2Token, out var v2Seconds))
+                return null;
+
+            // 显式已过期 ⇒ 不携带可消费令牌（前导 0 ⇒ 投影 0 = 无 TTL 信息，Redis 侧按既有回落语义处置）。
+            return state == TokenStoreEnvelopeState.Expired
+                ? new ParsedValue(string.Empty, 0)
+                : new ParsedValue(v2Token ?? string.Empty, v2Seconds);
+        }
+
         var separatorIndex = storedValue.IndexOf('|');
         if (separatorIndex <= 0)
             return null;

@@ -40,6 +40,13 @@
 - **U-5 多命中外部标识反查（上游 3.0.10 Batch 2）**：`FeishuAppManager.TryResolveAllAppKeys`
   重写——宿主提供者实现 `IMultiAppLookupProvider` 时返回全部已注册 appKey（过滤未注册/去重、
   不物化懒加载），仅单结果面时回退 F-4 语义。
+- **U-7 用户维度原生 CAS（上游 3.0.10 Batch 3）**：`RedisUserTokenStore` 实现
+  `IUserTokenStoreCompareExchange`——Lua 单脚本内完成「取存储值 → 明文比较 → 写入/删除」，
+  TMF-05 清库不再有「读取 → 比较 → 删除」的竞态窗口；`UserTokenManager` 按原始 store
+  能力分派（无能力 store 保留 C-2 解码明文比较路径，语义与升级前一致）。
+- **U-2 v2 信封读取兼容（上游 3.0.10 Batch 3）**：`TokenStoreHelper` 支持 v2 版本化信封读取
+  （`v2:{n}|{token}` 三态归一、`v2:expired|` 投影为无令牌、Redis 侧 TTL 推导同步兼容）。
+  写侧仍单写 v1 相对秒形态（C-2：默认形态不得漂移）。
 
 ### 变更（Changed）
 

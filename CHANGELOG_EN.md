@@ -48,6 +48,15 @@
   `IMultiAppLookupProvider`, all registered appKeys are returned (unregistered entries filtered,
   duplicates removed, lazy contexts never materialized); single-result providers fall back to the
   F-4 semantics.
+- **U-7 user-dimension native CAS (upstream 3.0.10 Batch 3)**: `RedisUserTokenStore` implements
+  `IUserTokenStoreCompareExchange` — a single Lua script performs "read stored value → compare
+  plaintext → write/delete", removing the read-compare-delete race window from the TMF-05 purge path;
+  `UserTokenManager` dispatches on the **raw** store's capability (stores without it keep the C-2
+  decoded-plaintext comparison path, semantically unchanged).
+- **U-2 v2 envelope read compatibility (upstream 3.0.10 Batch 3)**: `TokenStoreHelper` now reads the
+  v2 versioned envelope (`v2:{n}|{token}` three-state normalization, `v2:expired|` projected as
+  "no token", Redis TTL derivation included). The write side still emits the v1 relative-seconds form
+  (C-2: the default form must not drift).
 
 ### Changed
 

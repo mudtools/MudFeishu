@@ -119,11 +119,26 @@ by default. Adaptation (plan: `.docs/MudHttpUtils-3.0.0-破坏性变更改造计
   重写——宿主提供者实现 `IMultiAppLookupProvider` 时委托多命中（`HasApp` 过滤 + 去重，不物化懒加载），
   仅单结果面时回退 F-4 语义。注意：基类多命中实现消费的是**基类构造注入**的提供者字段，而飞书构造 ①
   不向基类注入（提供者由本类字段持有），**勿**删除本重写、也**勿**把提供者改注到基类构造（会绕过本类兜底链）。
-- **U-6/U-7/U-8 不采纳登记（上游 3.0.10 Batch 2）**：①U-6 分隔符键编码——飞书键布局
-  （env 段 + glob 转义 + `{prefix}:{appKey}:token`）与官方归属键不同构，`TokenKeyBuilder`
-  保留单一来源（C-3 对账口径）；②U-7 原生 CAS——官方契约为租户维度，TMF-05 为用户维度，
-  形态不同构，现状解码明文比较保留；③U-8 官方 AppInstantiated——与既有同名公共事件遮蔽冲突
-  （双通道双发 + 公共 API 破坏），登记 4.0 择期迁移。**勿**在后续任务中「顺手」采纳以上三项。
+- **U-7 已采纳（上游 3.0.10 Batch 3）用户维度原生 CAS**：`RedisUserTokenStore` 实现
+  `IUserTokenStoreCompareExchange`（Lua 单脚本内「取存储值 → 按首个 `|` 切出明文比较 → 写入/删除」，
+  无读取-写入窗口）；`UserTokenManager` 的 TMF-05 清库路径按**原始 store** 能力分派：
+  有原子能力走 CAS，无能力保留 C-2「解码明文比较 + `RemoveAsync`」。
+  **三条约束**（勿破）：①能力探测必须落在**未装饰的原始 store** 上（`_compareExchangeStore`）——
+  门装饰器**刻意不**声明 `IUserTokenStoreCompareExchange`，否则内层未实现时探测「假命中」，
+  官方非原子回退按「存储原值 vs 期望明文」整值比较，对飞书编码值恒失配 ⇒ 清库静默失效；
+  ②**禁止**把无能力 store 的路径改走官方非原子回退（同上恒失配）；③CAS 属写/删族，
+  门只拦读，故直调原始 store 不违 D10 门语义。
+- **U-2 读取侧已兼容 / 写侧不切换（上游 3.0.10 Batch 3）**：上游 v2 版本化信封
+  （`v2:{expiresInSeconds}|{token}` / `v2:expired|`，`VersionedTokenStoreCodec`，默认关闭）——
+  `TokenStoreHelper` 已支持 v2 读取（三态归一 + TTL 推导），宿主经官方 store +
+  `VersionedTokenStoreCodec` 组合写入的 v2 值可被飞书消费侧正确消费。
+  **写侧仍单写 v1 相对秒形态**（C-2：默认形态不得漂移）；切换写侧须走两阶段纪律
+  （先升级全部读取方、再开写入开关），且需同步评估 `RedisUserTokenStore.SetRefreshTokenAsync`
+  的 TTL 推导路径。
+- **U-6/U-8 不采纳登记**：①U-6 分隔符键编码——飞书键布局（env 段 + glob 转义 +
+  `{prefix}:{appKey}:token`）与官方归属键不同构，`TokenKeyBuilder` 保留单一来源（C-3 对账口径）；
+  ②U-8 官方 AppInstantiated——与既有同名公共事件遮蔽冲突（双通道双发 + 公共 API 破坏），
+  登记 4.0 择期迁移。**勿**在后续任务中「顺手」采纳这两项。
 - **F-4 已采纳**：`FeishuAppContext.ExternalIds` 暴露 `app_id → appKey` 快照；
   `FeishuAppManager.TryResolveAppKey` = 基类内置索引（实例化后自动登记）+ DI 解析的宿主
   `IAppLookupProvider` 兜底，fail-closed。新增外部标识一律走 `ExternalIds` 快照，勿自建字典缓存。

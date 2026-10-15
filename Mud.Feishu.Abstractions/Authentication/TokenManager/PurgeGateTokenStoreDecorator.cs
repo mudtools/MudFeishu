@@ -312,4 +312,10 @@ internal sealed class PurgeGateUserTokenStoreDecorator : UserTokenStoreBase, IFe
         => _inner is IFeishuUserTokenStorePurge purgeable
             ? purgeable.ClearAllUsersAsync(cancellationToken)
             : Task.CompletedTask;
+
+    // ---- U-7（上游 3.0.10 Batch 3）：本装饰器<b>刻意不</b>实现 IUserTokenStoreCompareExchange ----
+    //  原因：管理器的 CAS 能力探测必须落在「未装饰的原始 store」上（见 UserTokenManager._compareExchangeStore）。
+    //  若装饰器无条件声明该能力，内层未实现时探测会"假命中"，而官方统一入口的非原子回退按
+    //  「存储原值 vs 期望明文」整值比较——飞书存储值为编码值（<c>{前导}|{明文}</c>），整值比较恒失配，
+    //  会导致「不可重试错误后清库永不执行」的静默回归。故此处不声明能力，由管理器分支处置。
 }

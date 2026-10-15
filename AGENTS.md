@@ -67,8 +67,8 @@ asserted for the diagnostic whitelist afterwards (`.github/workflows/dotnet-publ
 
 ## Dependency version policy (Mud.HttpUtils)
 
-This repo consumes `Mud.HttpUtils` **3.0.5** (HttpUtils and Generator **must stay on the same
-version**; see `.docs/MudFeishu-MudHttpUtils-3.0.5-升级改造方案-v1.md`) — the 3.0.x release line carries
+This repo consumes `Mud.HttpUtils` **3.0.7** (HttpUtils and Generator **must stay on the same
+version**; adaptation notes: `.docs/MudFeishu-MudHttpUtils-3.0.7-适配说明.md`) — the 3.0.x release line carries
 **BC-27**: `IAppContextSwitcher` no longer declares
 `UseApp(string)` / `UseDefaultApp()` / `BeginScope(string)`, and the generator no longer emits them
 by default. Adaptation (plan: `.docs/MudHttpUtils-3.0.0-破坏性变更改造计划.md`, §10):
@@ -85,10 +85,29 @@ by default. Adaptation (plan: `.docs/MudHttpUtils-3.0.0-破坏性变更改造计
   `Demos/` still consume the **published** `Mud.Feishu 3.0.0` package (which depends on
   `Mud.HttpUtils 2.0.8`), so demo `BeginScope("hr-app")` calls are intentionally untouched until the
   rebuilt package ships.
+- **BC-30（3.0.7）弃用传播**：`IAppManager<T>` 的 `GetWebApi` / `GetDefaultWebApi` /
+  `RegisterSwitcherFactory` 已 `[Obsolete]`（3.x 告警，4.0 移除）。`FeishuAppManager` 的两个重写
+  **同步传播 `[Obsolete]`**（消除 CS0672，消费方经 `FeishuAppManager` 调用同样获得迁移指引）；
+  测试中的守卫性调用以 `#pragma warning disable CS0618` 精确豁免。迁移路径：DI 解析
+  `IAppScopeSwitcher` + `UseAppScope` / `UseDefaultAppScope`，或 `SwitchToApp`（受控切换并保持）。
+- **F-9（3.0.7 起）元包解耦**：`Mud.HttpUtils` 元包**不再传递** `Mud.HttpUtils.Resilience`。
+  `Mud.Feishu.Abstractions` 的 `AddFeishuApp` 装配链使用弹性策略（per-app 重试/超时/熔断），
+  故已**显式安装** `Mud.HttpUtils.Resilience`（版本与全仓 `Mud.HttpUtils*` 单版本守卫一致，
+  **不得**设 `PrivateAssets`——`AddFeishuApp` 运行期需要加载该程序集）。
 
-Mud.HttpUtils **3.0.5 is published on nuget.org**; the temporary local source
-(`mudhttputils-local` → `D:/Repos/MudHttpUtils/artifacts`) has been removed from `nuget.config`
-(2026-10-10). To consume a newer component version: bump the
+**Upstream contract-change channel（契约变更传导通道）**：上游 `Mud.HttpUtils` 的
+`CHANGELOG.md`「契约变更（Contract Changes）」专章（C-1 ~ C-7）与
+`.docs/下游约束对账清单.md`（A/B/C 三系列逐条标注本仓 workaround 的已失效/仍有效/待裁决状态）
+是本仓约束的唯一权威来源。涉及令牌存储、键构建、应用管理器继承、Redis 分层的约束调整，
+**必须先查该两份文档再动代码**，防止约束漂移。3.0.7 适配时点对本仓的逐条结论见
+`.docs/MudFeishu-MudHttpUtils-3.0.7-适配说明.md`。
+
+Mud.HttpUtils **3.0.7 is being consumed from the local debug pack**
+(`mudhttputils-local` → `D:/Repos/MudHttpUtils/artifacts-debug`, re-added to `nuget.config`
+2026-10-15 for the pre-release adaptation cycle; the global cache entry for 3.0.7 is SHA256-identical
+to that pack). **Remove the local source from `nuget.config` once 3.0.7 is confirmed on nuget.org**
+and re-run `dotnet restore` so the build consumes the published package. To consume a newer
+component version: bump the
 version in the `PackageReference`s and, optionally, sync `AGENTS.md` / the README dependency tables
 (`README.md` / `README_EN.md` / `Mud.Feishu/README.md`) — the docs are **not** gated (a wrong version
 number there has no runtime impact and must not block an upgrade). The contract guard

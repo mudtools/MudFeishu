@@ -1463,9 +1463,20 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// 但仍建议将 T 注册为 Scoped（通过 <c>AddFeishuApi&lt;T&gt;</c> 或 <c>AddFeishuApp&lt;T&gt;</c>），
     /// 以避免 Singleton 实例长期持有已释放的 <see cref="IFeishuAppContext"/> 引用。
     /// </para>
+    /// <para>
+    /// <b>BC-30（Mud.HttpUtils 3.0.7）</b>：基类 <c>IAppManager&lt;TAppContext&gt;.GetWebApi</c> 已标
+    /// <c>[Obsolete]</c>（3.x 编译告警，4.0 移除）。本重写同步传播弃用标记以保持上下游口径一致，
+    /// 迁移路径：DI 解析 <see cref="IAppScopeSwitcher"/> + <c>UseAppScope(appKey)</c>（自动归还），
+    /// 或 <c>IAppContextHolder.SwitchToApp(appKey, appManager, sp)</c>（受控切换并保持，
+    /// 与本方法语义等价）。签名与行为在本大版本内不变。
+    /// </para>
     /// </remarks>
     // TMA-17 / P2-4 修复：泛型参数名遮蔽 IFeishuAppContext 接口（基类签名决定，无法改名），
     // 异常消息已使用 typeof(T).FullName 确保类型名称正确显示。
+    // BC-30（Mud.HttpUtils 3.0.7）：基类成员已弃用（4.0 移除），本重写同步传播（同时消除 CS0672）。
+    [Obsolete("上游 BC-30：GetWebApi 已在 Mud.HttpUtils 3.0.7 标记弃用（4.0 移除）。" +
+              "请改用 DI 解析 IAppScopeSwitcher.UseAppScope(appKey)（自动归还），" +
+              "或 IAppContextHolder.SwitchToApp(appKey, appManager, sp)（受控切换并保持，语义等价）。")]
     public override IFeishuAppContext GetWebApi<IFeishuAppContext>(string appKey)
     {
         var service = _serviceProvider.GetService<IFeishuAppContext>();
@@ -1504,8 +1515,19 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// 后写入同一 Holder，语义等价。
     /// 默认应用路径<b>不做</b> appKey 格式校验与授权判定（无 appKey 输入），与生成实现一致。
     /// </para>
+    /// <para>
+    /// <b>BC-30（Mud.HttpUtils 3.0.7）</b>：基类 <c>IAppManager&lt;TAppContext&gt;.GetDefaultWebApi</c>
+    /// 已标 <c>[Obsolete]</c>（3.x 编译告警，4.0 移除）。本重写同步传播弃用标记以保持上下游口径一致，
+    /// 迁移路径：DI 解析 <see cref="IAppScopeSwitcher"/> + <c>UseDefaultAppScope()</c>（自动归还），
+    /// 或 <c>IAppContextHolder.SwitchToApp(appKey, appManager, sp)</c>（受控切换并保持）。
+    /// 签名与行为在本大版本内不变。
+    /// </para>
     /// </remarks>
     // TMA-17 / P2-4 修复：与 GetWebApi 同理，泛型参数名由基类决定。
+    // BC-30（Mud.HttpUtils 3.0.7）：基类成员已弃用（4.0 移除），本重写同步传播（同时消除 CS0672）。
+    [Obsolete("上游 BC-30：GetDefaultWebApi 已在 Mud.HttpUtils 3.0.7 标记弃用（4.0 移除）。" +
+              "请改用 DI 解析 IAppScopeSwitcher.UseDefaultAppScope()（自动归还），" +
+              "或 IAppContextHolder.SwitchToApp(appKey, appManager, sp)（受控切换并保持，语义等价）。")]
     public override IFeishuAppContext GetDefaultWebApi<IFeishuAppContext>()
     {
         var service = _serviceProvider.GetService<IFeishuAppContext>();

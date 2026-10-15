@@ -1,5 +1,40 @@
 # Mud.Feishu 更新日志
 
+## [3.0.3] - 2026-10-15
+
+> 主题：**适配 `Mud.HttpUtils` 3.0.7**（上游 BC-30 弃用传播 + F-9 元包解耦适配）。
+> 本版**无对外契约移除**；`FeishuAppManager.GetWebApi` / `GetDefaultWebApi` 随上游标记弃用
+> （3.x 编译告警，4.0 移除），签名与行为不变。
+
+### 依赖升级
+
+- `Mud.HttpUtils` / `Mud.HttpUtils.Generator`：`3.0.5` → **`3.0.7`**（两者必须同版本）。
+  6 个源工程的 8 处 `Mud.HttpUtils*` 声明统一，`README.md` / `README_EN.md` / `Mud.Feishu/README.md` /
+  `Mud.Feishu.OpenTelemetry/README.md` 与 `AGENTS.md` 依赖表同步。
+- **新增 `Mud.HttpUtils.Resilience` 3.0.7 显式依赖**（F-9）：上游元包不再传递弹性策略包，本仓
+  `AddFeishuApp` 装配链（per-app 重试 / 超时 / 熔断）依赖之，故显式安装；该依赖随包流传给消费方
+  （运行期加载所需），不设 `PrivateAssets`。
+
+### 变更（Changed）
+
+- **`FeishuAppManager.GetWebApi` / `GetDefaultWebApi` 传播上游 BC-30 弃用标记**：基类成员在
+  Mud.HttpUtils 3.0.7 标 `[Obsolete]`（4.0 移除），两个重写同步标记以保持上下游口径一致并消除
+  CS0672。迁移路径：DI 解析 `IAppScopeSwitcher` + `UseAppScope` / `UseDefaultAppScope`（自动归还），
+  或 `IAppContextHolder.SwitchToApp(appKey, appManager, sp)`（受控切换并保持，语义等价）。
+  签名与行为在本大版本内不变；测试中的守卫性调用以 `#pragma warning disable CS0618` 精确豁免。
+
+### 文档与测试
+
+- 新增 `.docs/MudFeishu-MudHttpUtils-3.0.7-适配说明.md`：上游契约变更逐条对账（B-1/B-2/B-3/F-1/F-2/F-9
+  与 C 系列）、不迁移项决策（令牌键布局 / 自建叠层 / 私有 codec）及理由、发布前检查清单。
+- `AGENTS.md` 增补上游契约变更传导通道（上游 CHANGELOG「契约变更」专章 + 下游约束对账清单）与
+  BC-30 / F-9 适配注记。
+- `scripts/verify-build.ps1` 步骤 0 本地源解析改为按「**实际包含 csproj 声明版本包**」判定优先，
+  修复 `artifacts`（旧版）与 `artifacts-debug`（联调包）并存时选中前者并跳过缓存哈希校验的问题。
+- 验证：质量门禁全绿（编译 0 错误、CS1750 / NU1603 / HTTPCLIENT / MUD / FORM / AOT 白名单全 0、
+  AotStrictMode net8.0 逐源项目 0 违规、单元测试 6240/6290——跳过项均为 net6.0 运行时缺失）；
+  升级前后唯一警告集合 diff 为 0（零新增警告）。
+
 ## [3.0.2] - 2026-10-12
 
 > 主题：**事件回调大规模补齐**（业务域 10 → 24，事件总数 205）与 **适配 `Mud.HttpUtils` 3.0.5**。

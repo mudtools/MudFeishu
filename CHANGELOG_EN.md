@@ -1,5 +1,39 @@
 # Mud.Feishu Change Log
 
+## [3.0.3] - 2026-10-15
+
+> Theme: **adapting to `Mud.HttpUtils` 3.0.7** (upstream BC-30 deprecation propagation + F-9 meta-package
+> decoupling). No public contract removals; `FeishuAppManager.GetWebApi` / `GetDefaultWebApi` inherit the
+> upstream `[Obsolete]` marking (3.x warning, removal in 4.0) — signatures and behavior unchanged.
+
+### Dependency Upgrade
+
+- `Mud.HttpUtils` / `Mud.HttpUtils.Generator`: `3.0.5` → **`3.0.7`** (must stay on the same version),
+  unified across 6 source projects; README / AGENTS.md dependency tables synced.
+- **New explicit `Mud.HttpUtils.Resilience` 3.0.7 dependency** (F-9): the upstream meta-package no longer
+  carries the resilience package; the `AddFeishuApp` wiring (per-app retry / timeout / circuit breaker)
+  requires it, so it is installed explicitly and flows to consumers (no `PrivateAssets`).
+
+### Changed
+
+- **BC-30 propagation**: `FeishuAppManager.GetWebApi` / `GetDefaultWebApi` are marked `[Obsolete]`
+  in lockstep with the upstream base members (also clears CS0672). Migration: resolve
+  `IAppScopeSwitcher` via DI + `UseAppScope` / `UseDefaultAppScope`, or
+  `IAppContextHolder.SwitchToApp(appKey, appManager, sp)` (guarded switch-and-stay, semantically
+  equivalent). Guard-test call sites use precise `#pragma warning disable CS0618`.
+
+### Docs & Tests
+
+- New `.docs/MudFeishu-MudHttpUtils-3.0.7-适配说明.md` (per-item reconciliation with the upstream
+  contract-change chapter and the downstream constraint ledger, non-migration decisions, pre-release
+  checklist). `AGENTS.md` documents the upstream contract-change channel plus BC-30 / F-9 notes.
+- `scripts/verify-build.ps1` step 0 now picks the local component source by "actually contains the
+  declared version package" (fixes the stale-cache check being skipped when `artifacts` and
+  `artifacts-debug` coexist).
+- Verified: full quality gate green (0 build errors, diagnostic whitelist all 0, AotStrictMode net8.0
+  0 violations, unit tests 6240/6290 — skips are missing net6.0 runtimes only); zero new warnings
+  versus the pre-upgrade baseline.
+
 ## [Unreleased] - 2026-10-01
 
 > Themes: **adapting to `Mud.HttpUtils` 3.0.0** (upstream `BC-27`: removal of UseApp / UseDefaultApp / BeginScope(string)) and **event header dual-format (v1.0/v2.0) parsing fixes (R-E1)**.

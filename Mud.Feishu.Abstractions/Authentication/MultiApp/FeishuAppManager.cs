@@ -92,6 +92,11 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// </summary>
     internal FeishuAppContextRetirement? Retirement => _retirement;
 
+    // F-4（Mud.HttpUtils 3.0.7）：宿主自实现的外部标识反查提供者（可选，DI 解析）。
+    // 基类构造 ① 不注入外部提供者（②③④ 才注入），故在本类叠加：内置索引（上下文实现
+    // IAppExternalIds 时基类自动登记）未命中后，兜底委托本提供者，语义与基类一致（fail-closed）。
+    private readonly IAppLookupProvider? _externalLookupProvider;
+
     /// <summary>
     /// 初始化飞书应用管理器
     /// </summary>
@@ -107,6 +112,8 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         // TMA-13：从根 SP 获取 IServiceScopeFactory，用于按需创建作用域解析 Scoped 依赖。
         _scopeFactory = serviceProvider.GetService<IServiceScopeFactory>();
+        // F-4：可选解析宿主注册的 IAppLookupProvider（未注册时仅内置索引参与反查）。
+        _externalLookupProvider = serviceProvider.GetService<IAppLookupProvider>();
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _configs = (configs as IList<FeishuAppConfig> ?? configs.ToList()).ToArray();
 
@@ -980,6 +987,89 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
 
     /// <inheritdoc />
     /// <remarks>
+    /// <para>
+    /// F-4（Mud.HttpUtils 3.0.7）：外部标识 → appKey 反查。反查顺序：
+    /// ① 基类内置索引（上下文实现 <see cref="IAppExternalIds"/> 时在注册 / 实例化时自动登记，
+    /// <see cref="FeishuAppContext"/> 已声明 <c>app_id → appKey</c> 映射）→
+    /// ② DI 解析的宿主自实现 <see cref="IAppLookupProvider"/>（构造 ① 不注入基类外部提供者，
+    /// 故由本重写叠加兜底，语义与基类 ② 段一致：解析结果必须落在已注册应用上，
+    /// 防止外部不可信输入被误路由）。
+    /// </para>
+    /// <para>
+    /// 未命中 / 输入非法 / 映射歧义一律 fail-closed（返回 false，不猜测）；不做授权判定，
+    /// 解析出的 appKey 供宿主走 <c>UseAppScope</c> / <c>GetApp</c> 的既有路径。
+    /// </para>
+    /// </remarks>
+    public override bool TryResolveAppKey(IReadOnlyDictionary<string, string> externalIds, out string? appKey)
+    {
+        appKey = null;
+
+        if (externalIds is null || externalIds.Count == 0)
+            return false;
+
+        // ① 内置索引（基类：多键互证 + 歧义 fail-closed）。
+        if (base.TryResolveAppKey(externalIds, out appKey))
+            return true;
+
+        // ② 宿主自实现提供者兜底（fail-closed + 必须命中已注册应用）。
+        if (_externalLookupProvider is null
+            || !_externalLookupProvider.TryResolveAppKey(externalIds, out var externalResolved)
+            || string.IsNullOrEmpty(externalResolved)
+            || !HasApp(externalResolved!))
+        {
+            return false;
+        }
+
+        appKey = externalResolved;
+        return true;
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// <para>
+    /// U-5（上游 3.0.10 Batch 2）：多命中反查的飞书侧重写。基类实现消费的是<b>基类构造注入</b>的
+    /// 外部提供者字段，而飞书构造 ① 不向基类注入提供者（提供者由本类字段
+    /// <see cref="_externalLookupProvider"/> 持有并经 <see cref="TryResolveAppKey"/> 兜底消费）——
+    /// 故必须重写以把本类持有的提供者接入多命中路径。
+    /// </para>
+    /// <para>
+    /// <b>解析顺序（与 <see cref="TryResolveAppKey"/> 同构）</b>：
+    /// 宿主提供者实现 <see cref="IMultiAppLookupProvider"/> 时委托其多命中枚举，结果经
+    /// <see cref="HasApp"/> 过滤（懒加载<b>未实例化</b>条目按「已声明即存在」口径保留，不物化）并去重；
+    /// 仅单结果面时回退 F-4 语义（<see cref="TryResolveAppKey"/> 命中 → 单元素；未命中/歧义 → 空集，
+    /// 内置索引歧义维持 fail-closed）。纯反查边界与 F-4 逐字继承：不物化、不做授权判定、不抛异常。
+    /// </para>
+    /// </remarks>
+    public override IEnumerable<string> TryResolveAllAppKeys(IReadOnlyDictionary<string, string> externalIds)
+    {
+        if (externalIds is null || externalIds.Count == 0)
+            return Array.Empty<string>();
+
+        if (_externalLookupProvider is IMultiAppLookupProvider multiProvider)
+        {
+            var results = new List<string>();
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var appKey in multiProvider.ResolveAllAppKeys(externalIds))
+            {
+                // 与基类同口径：提供者契约约定不返回 null/空白，此处仍过滤（fail-safe）；
+                // 解析结果必须落在已注册应用上（懒加载「已声明即存在」，不触发实例化）。
+                if (string.IsNullOrWhiteSpace(appKey) || !seen.Add(appKey) || !HasApp(appKey))
+                    continue;
+
+                results.Add(appKey);
+            }
+
+            return results;
+        }
+
+        // 单结果面回退：复用 F-4 全量语义（内置索引 → 宿主提供者兜底，fail-closed）。
+        return TryResolveAppKey(externalIds, out var resolved) && !string.IsNullOrEmpty(resolved)
+            ? new[] { resolved! }
+            : (IEnumerable<string>)Array.Empty<string>();
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
     /// M-1 修复补充：基类 <see cref="DefaultAppManager{TAppContext}.TryGetApp"/> 仅查询已实例化的应用字典，
     /// 对已配置但未实例化的应用返回 false。重写后：
     /// <list type="bullet">
@@ -1127,6 +1217,11 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// <param name="context">已实例化的应用上下文</param>
     private void OnAppInstantiated(string appKey, IFeishuAppContext context)
     {
+        // U-8（上游 3.0.10 Batch 2）评估结论：不桥接官方 AppInstantiated 事件面。
+        // 原因：本类已声明同名 public event（FeishuAppInstantiatedEventArgs，既有公共 API），
+        // 同名遮蔽使官方事件面经本类型不可订阅；桥接会形成「双通道双发」（上游明文警告），
+        // 合并事件面需变更公共事件类型——破坏已发布 API，登记为 4.0 大版本择期迁移。
+        // 飞书内部事件语义（首滚恰好一次 + 订阅者异常隔离）与官方事件等价。
         try
         {
             AppInstantiated?.Invoke(this, new FeishuAppInstantiatedEventArgs(appKey, context));
@@ -1463,9 +1558,20 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// 但仍建议将 T 注册为 Scoped（通过 <c>AddFeishuApi&lt;T&gt;</c> 或 <c>AddFeishuApp&lt;T&gt;</c>），
     /// 以避免 Singleton 实例长期持有已释放的 <see cref="IFeishuAppContext"/> 引用。
     /// </para>
+    /// <para>
+    /// <b>BC-30（Mud.HttpUtils 3.0.7）</b>：基类 <c>IAppManager&lt;TAppContext&gt;.GetWebApi</c> 已标
+    /// <c>[Obsolete]</c>（3.x 编译告警，4.0 移除）。本重写同步传播弃用标记以保持上下游口径一致，
+    /// 迁移路径：DI 解析 <see cref="IAppScopeSwitcher"/> + <c>UseAppScope(appKey)</c>（自动归还），
+    /// 或 <c>IAppContextHolder.SwitchToApp(appKey, appManager, sp)</c>（受控切换并保持，
+    /// 与本方法语义等价）。签名与行为在本大版本内不变。
+    /// </para>
     /// </remarks>
     // TMA-17 / P2-4 修复：泛型参数名遮蔽 IFeishuAppContext 接口（基类签名决定，无法改名），
     // 异常消息已使用 typeof(T).FullName 确保类型名称正确显示。
+    // BC-30（Mud.HttpUtils 3.0.7）：基类成员已弃用（4.0 移除），本重写同步传播（同时消除 CS0672）。
+    [Obsolete("上游 BC-30：GetWebApi 已在 Mud.HttpUtils 3.0.7 标记弃用（4.0 移除）。" +
+              "请改用 DI 解析 IAppScopeSwitcher.UseAppScope(appKey)（自动归还），" +
+              "或 IAppContextHolder.SwitchToApp(appKey, appManager, sp)（受控切换并保持，语义等价）。")]
     public override IFeishuAppContext GetWebApi<IFeishuAppContext>(string appKey)
     {
         var service = _serviceProvider.GetService<IFeishuAppContext>();
@@ -1477,11 +1583,12 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         // 授权守卫需由调用方显式完成（见 FeishuServiceCollectionExtensions 中「未注册即默认拒绝」的约定）。
         var holder = _serviceProvider.GetRequiredService<IAppContextHolder>();
 
-        // 未注册 IAppAccessAuthorizer 时默认拒绝（本 SDK 默认注册 AllowAllAppAccessAuthorizer）。
+        // 未注册 IAppAccessAuthorizer 时默认拒绝。本 SDK 默认注册「注册表白名单」授权器
+        // （AppKeyAllowListAuthorizer.FromPredicate + IFeishuAppManager.HasApp，见 F-09）。
         var authorizer = _serviceProvider.GetService<IAppAccessAuthorizer>()
             ?? throw new InvalidOperationException(
                 $"未注册 {nameof(IAppAccessAuthorizer)}，无法切换到指定应用上下文（默认拒绝）。" +
-                $"请注册 {nameof(IAppAccessAuthorizer)} 实现（如 AllowAllAppAccessAuthorizer）。");
+                $"请注册 {nameof(IAppAccessAuthorizer)} 实现（默认注册已含 AppKeyAllowListAuthorizer；宿主可替换为绑定租户/用户主体的授权器）。");
 
         if (!authorizer.CanSwitchTo(appKey))
             throw new InvalidOperationException($"当前 {nameof(IAppAccessAuthorizer)} 不允许切换到应用：{appKey}");
@@ -1503,8 +1610,19 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// 后写入同一 Holder，语义等价。
     /// 默认应用路径<b>不做</b> appKey 格式校验与授权判定（无 appKey 输入），与生成实现一致。
     /// </para>
+    /// <para>
+    /// <b>BC-30（Mud.HttpUtils 3.0.7）</b>：基类 <c>IAppManager&lt;TAppContext&gt;.GetDefaultWebApi</c>
+    /// 已标 <c>[Obsolete]</c>（3.x 编译告警，4.0 移除）。本重写同步传播弃用标记以保持上下游口径一致，
+    /// 迁移路径：DI 解析 <see cref="IAppScopeSwitcher"/> + <c>UseDefaultAppScope()</c>（自动归还），
+    /// 或 <c>IAppContextHolder.SwitchToApp(appKey, appManager, sp)</c>（受控切换并保持）。
+    /// 签名与行为在本大版本内不变。
+    /// </para>
     /// </remarks>
     // TMA-17 / P2-4 修复：与 GetWebApi 同理，泛型参数名由基类决定。
+    // BC-30（Mud.HttpUtils 3.0.7）：基类成员已弃用（4.0 移除），本重写同步传播（同时消除 CS0672）。
+    [Obsolete("上游 BC-30：GetDefaultWebApi 已在 Mud.HttpUtils 3.0.7 标记弃用（4.0 移除）。" +
+              "请改用 DI 解析 IAppScopeSwitcher.UseDefaultAppScope()（自动归还），" +
+              "或 IAppContextHolder.SwitchToApp(appKey, appManager, sp)（受控切换并保持，语义等价）。")]
     public override IFeishuAppContext GetDefaultWebApi<IFeishuAppContext>()
     {
         var service = _serviceProvider.GetService<IFeishuAppContext>();

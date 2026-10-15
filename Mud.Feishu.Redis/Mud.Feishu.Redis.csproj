@@ -26,6 +26,14 @@
 
 	<ItemGroup>
         <PackageReference Include="StackExchange.Redis" Version="3.3.0" />
+		<!-- F-3 / C-6（Mud.HttpUtils 3.0.7）：引用官方分布式令牌存储包，作为编解码与
+		     互操作锚点——FeishuTokenStoreCodec（Abstractions，实现官方 ITokenStoreCodec 双读）
+		     可注入官方 RedisTokenStore 的 codec 参数，把官方组件接到飞书形态的存量数据上。
+		     注意两种 ITokenStore 使用约定不可互换直插：官方 store 为「明文入参 + store 内部
+		     codec 编解码」，飞书管线（桥接器）为「直存编码值」——后者继续由本包的
+		     RedisTokenStore / RedisUserTokenStore 承载（对账清单 C-6 分层共存裁决）。
+		     SE.Redis 版本差（官方锚定 2.8.24，本包 3.3.0）跨大版本二进制兼容（B-5/B-8）。 -->
+		<PackageReference Include="Mud.HttpUtils.Redis" Version="3.0.7" />
 	</ItemGroup>		
 	<ItemGroup>
 		<!-- <PackageReference Include="Mud.Feishu.Abstractions" Version="1.1.2" /> -->

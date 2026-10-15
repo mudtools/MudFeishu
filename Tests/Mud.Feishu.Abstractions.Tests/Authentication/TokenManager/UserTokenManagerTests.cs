@@ -6,6 +6,8 @@
 // -----------------------------------------------------------------------
 
 using FluentAssertions;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions.Authentication;
 using Mud.Feishu.DataModels;
 using Mud.Feishu.Exceptions;
@@ -410,6 +412,14 @@ public class UserTokenManagerTests : TokenManagerTestsBase
     private static string EncodeToken(string token, long expireTimestampMs)
         => TokenStoreHelper.EncodeStoredToken(token, expireTimestampMs);
 
+    /// <summary>
+    /// 构造旧格式（绝对毫秒戳）存储值——用于模拟 3.0.3 之前落库的<b>存量数据</b>（C-2 双读覆盖）。
+    /// 注意：相对秒新格式无法表达「已过期」（剩余秒 &lt;= 0 归一为 0 = 无 TTL 信息），
+    /// 模拟过期态必须使用旧格式字面量。
+    /// </summary>
+    private static string EncodeLegacyToken(string token, long expireTimestampMs)
+        => $"{expireTimestampMs}|{token}";
+
     private static long NowMs => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
     private void SetupStoreTokens(string? encodedAccess, string? encodedRefresh)
@@ -431,9 +441,9 @@ public class UserTokenManagerTests : TokenManagerTestsBase
     [Fact]
     public async Task RefreshUserTokenAsync_ShouldRefreshWithStoredRefreshToken_WhenStoredAccessTokenExpired()
     {
-        // Arrange：store 中 access 已过期，refresh 仍有效
+        // Arrange：store 中 access 已过期（旧格式存量字面量），refresh 仍有效（新格式相对秒）
         SetupStoreTokens(
-            encodedAccess: EncodeToken("expired-access", NowMs - 60_000),
+            encodedAccess: EncodeLegacyToken("expired-access", NowMs - 60_000),
             encodedRefresh: EncodeToken("stored-refresh", NowMs + 30L * 24 * 3600 * 1000));
 
         var refreshedResult = new OAuthCredentialsResult
@@ -501,12 +511,64 @@ public class UserTokenManagerTests : TokenManagerTestsBase
     public async Task CanRefreshTokenAsync_ShouldReturnTrue_WhenStoredAccessExpiredButRefreshValid()
     {
         SetupStoreTokens(
-            encodedAccess: EncodeToken("expired-access", NowMs - 60_000),
+            encodedAccess: EncodeLegacyToken("expired-access", NowMs - 60_000),
             encodedRefresh: EncodeToken("stored-refresh", NowMs + 30L * 24 * 3600 * 1000));
 
         var result = await _userTokenManager.CanRefreshTokenAsync("user1", CancellationToken.None);
 
         result.Should().BeTrue();
+    }
+
+    // ============================================================
+    // F-06（Mud.HttpUtils ≥3.0.4，B3）：RemoveTokenAsync 冷启动写穿对照
+    // ============================================================
+
+    /// <summary>
+    /// F-06 防退化守卫：本类已删除 <c>RemoveTokenAsync</c> 覆写，登出完全依赖基类
+    /// <c>UserTokenManagerBase.RemoveTokenAsync</c> 的异步写穿（桥接器 RemoveAsync 无条件透传持久层）。
+    /// 冷启动对照：共享同一真实 <see cref="FeishuUserTokenStore"/>，manager2 本地镜像为空时登出——
+    /// 持久层 access/refresh 槽位必须被删除（无复活）。若恢复覆写、或上游写穿退化为「镜像条目驱动」，
+    /// 本用例失败。
+    /// </summary>
+    [Fact]
+    public async Task RemoveTokenAsync_ShouldPurgePersistentStore_WhenManagerColdStartsWithEmptyMirror()
+    {
+        // Arrange — 两个管理器共享同一真实 FeishuUserTokenStore（同物理键），各自持有独立内存镜像。
+        var cache = new MemoryCache(Options.Create(new MemoryCacheOptions()));
+        var sharedStore = new FeishuUserTokenStore(new FeishuTokenStore(cache), cache, "test");
+        var options = Options.Create(Config);
+        using var manager1 = new UserTokenManager(
+            CurrentUserContextMock.Object, _authenticationApiMock.Object, options,
+            new Mock<ILogger<UserTokenManager>>().Object, sharedStore);
+        using var manager2 = new UserTokenManager(
+            CurrentUserContextMock.Object, _authenticationApiMock.Object, options,
+            new Mock<ILogger<UserTokenManager>>().Object, sharedStore);
+
+        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        await manager1.StoreUserTokenAsync("user1", new UserTokenInfo
+        {
+            UserId = "user1",
+            AccessToken = "cold-start-access",
+            RefreshToken = "cold-start-refresh",
+            AccessTokenExpireTime = now + 3600_000,
+            RefreshTokenExpireTime = now + 30L * 24 * 3600 * 1000,
+            IssuedAt = now,
+        }, CancellationToken.None);
+
+        // 前置：冷启动实例读穿透到持久层（证明共享 store 链路就绪、manager2 镜像确为冷启动）。
+        var loaded = await manager2.GetTokenInfoAsync("user1", CancellationToken.None);
+        loaded.Should().NotBeNull("共享 store 下冷启动实例必须能读穿透持久层");
+        loaded!.AccessToken.Should().Be("cold-start-access");
+
+        // Act — 冷启动实例（本地镜像此前为空，仅读穿透回填）登出。
+        var removed = await manager2.RemoveTokenAsync("user1", CancellationToken.None);
+
+        // Assert — 持久层槽位被删除，无复活。
+        removed.Should().BeTrue();
+        (await sharedStore.GetAccessTokenAsync("user1", "UserAccessToken:test", CancellationToken.None)).Should().BeNull(
+            "基类写穿必须删除持久层 access 槽位（不依赖本地镜像）");
+        (await sharedStore.GetRefreshTokenAsync("user1", "UserAccessToken:test", CancellationToken.None)).Should().BeNull(
+            "基类写穿必须删除持久层 refresh 槽位");
     }
 
     // ============================================================
@@ -546,7 +608,8 @@ public class UserTokenManagerTests : TokenManagerTestsBase
     public async Task RefreshUserTokenAsync_ShouldKeepNewerStoredToken_WhenStoreValueDiffersFromAttemptedCandidate()
     {
         // Arrange：第 1 次 Get（LoadRefreshCandidateAsync）返回本次尝试的旧令牌；
-        // 第 2 次 Get（CAS 比对）返回并发刷新刚持久化的新令牌（编码值不同）。
+        // 第 2 次 Get（CAS 比对）返回并发刷新刚持久化的新令牌（令牌明文不同——C-2 相对秒格式下
+        // 编码值随时刻漂移，CAS 已改为解码明文比较）。
         var oldEncoded = EncodeToken("old-refresh", NowMs + 30L * 24 * 3600 * 1000);
         var newerEncoded = EncodeToken("newer-refresh", NowMs + 30L * 24 * 3600 * 1000);
         var getRefreshCalls = 0;
@@ -602,9 +665,11 @@ public class UserTokenManagerTests : TokenManagerTestsBase
     [Fact]
     public async Task RefreshUserTokenAsync_ShouldReturnNull_WhenStoredRefreshTokenExpired()
     {
+        // 过期 refresh 无法用相对秒新格式表达（剩余秒 <= 0 归一为无 TTL 信息），
+        // 故以旧格式（绝对毫秒戳）字面量模拟 3.0.3 之前落库的存量过期数据（C-2 双读覆盖）。
         SetupStoreTokens(
-            encodedAccess: EncodeToken("expired-access", NowMs - 60_000),
-            encodedRefresh: EncodeToken("dead-refresh", NowMs - 120_000));
+            encodedAccess: EncodeLegacyToken("expired-access", NowMs - 60_000),
+            encodedRefresh: EncodeLegacyToken("dead-refresh", NowMs - 120_000));
 
         var result = await _userTokenManager.RefreshUserTokenAsync("user1", CancellationToken.None);
 

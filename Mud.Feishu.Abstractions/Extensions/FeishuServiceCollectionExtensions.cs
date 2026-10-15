@@ -78,6 +78,19 @@ public static class FeishuServiceCollectionExtensions
 
 
     /// <summary>
+    /// F-07：飞书域名单（增量注入，不覆盖宿主已注册的域名——与上游 <c>UrlValidator.AddAllowedDomain</c>
+    /// 的并集语义一致；此前 <c>ConfigureAllowedDomains</c> 为整体替换语义，会静默丢弃宿主在
+    /// AddFeishuApp 之前注册的自定义域名）。
+    /// </summary>
+    private static readonly string[] FeishuAllowedDomains =
+    [
+        "open.feishu.cn",
+        "open.larksuite.com",
+        "larksuite.com",
+        "feishu.cn",
+    ];
+
+    /// <summary>
     /// 注册多应用所需的基础服务（内部使用）
     /// </summary>
     /// <param name="services">服务集合</param>
@@ -90,16 +103,22 @@ public static class FeishuServiceCollectionExtensions
     /// </remarks>
     internal static IServiceCollection AddFeishuAppBaseServices(this IServiceCollection services, List<FeishuAppConfig> configs, IConfiguration? configuration = null)
     {
-        UrlValidator.ConfigureAllowedDomains(["open.feishu.cn", "open.larksuite.com", "larksuite.com", "feishu.cn"]);
+        foreach (var domain in FeishuAllowedDomains)
+        {
+            UrlValidator.AddAllowedDomain(domain);
+        }
 
         // MUDHTTP-2.0.5 适配（BC-18 / MT-02）：带 appKey 的切换入口由
         // 「未注册 IAppAccessAuthorizer 即静默放行」改为「默认拒绝」（调用时抛 InvalidOperationException）。
         // 涉及两处守卫一致的入口：生成类的 UseAppScope(appKey)，以及本 SDK 内部多应用切换入口
         // （FeishuAppManager.GetWebApi → IAppContextHolder.SwitchToApp(appKey, this, sp)）。
-        // appKey 始终来源于 FeishuAppConfig 注册表（未知 appKey 由 GetApp 校验并抛错），
-        // 因此注册放行型授权器恢复多应用切换能力；宿主可先注册更严格的 IAppAccessAuthorizer
-        // 实现（TryAdd 语义：先注册者胜出）实现租户级授权。
-        services.TryAddSingleton<IAppAccessAuthorizer, AllowAllAppAccessAuthorizer>();
+        // F-09（Mud.HttpUtils 3.0.x）：默认授权器由放行型 AllowAllAppAccessAuthorizer 升级为
+        // 「注册表白名单」语义——谓词经 IFeishuAppManager.HasApp 动态判定，AddApp 运行时新增的
+        // 应用即时获得授权；宿主可先注册更严格的 IAppAccessAuthorizer 实现（TryAdd 语义：
+        // 先注册者胜出）实现租户级授权。注意：该判定是静态的、不感知调用主体——
+        // appKey 来源于外部请求参数时，宿主必须替换为绑定主体的授权器。
+        services.TryAddSingleton<IAppAccessAuthorizer>(sp =>
+            AppKeyAllowListAuthorizer.FromPredicate(appKey => sp.GetRequiredService<IFeishuAppManager>().HasApp(appKey)));
 
         // REG-01 修复：校验重复 AppKey，避免命名 HttpClient 重复注册导致的静默覆盖。
         // FeishuAppManager 构造函数仅发出警告（保持覆盖语义），但 HttpClient 层重复注册会
@@ -207,9 +226,10 @@ public static class FeishuServiceCollectionExtensions
         //
         // ARC-7b：选项工厂改为读取**当前**配置（IOptionsMonitor）而非注册期快照 `configs`，
         // 否则配置热更新后「新增应用」永远拿不到 per-app 弹性策略（只能落到全局回退）。
-        // 残余限制：AppResiliencePolicyResolver 会按 appKey 缓存已解析的策略实例，且清空缓存所需的
-        // InvalidateAll 未暴露在 IAppResiliencePolicyResolver 接口上（仅具体类型可见），
-        // 因此**已解析过**的应用其弹性参数变更仍需重启进程 —— 见组件侧需求 COMP-4。
+        // F-21 复核（Mud.HttpUtils 3.0.4/3.0.5，COMP-4 已解决）：上游 AppResiliencePolicyResolver 自 3.0.4 起
+        // 内置配置变更订阅（策略指纹 diff 失效缓存，无需进程重启），且 per-app 命名客户端不参与
+        // 全局 client 缓存指纹，弹性参数热更新不再被连带失效——FeishuClientEndpointHotReloadTests
+        // 6 用例在 3.0.5 下全绿实证。下方「残余限制」注释仅保留历史溯源价值。
         services.TryAddSingleton<IAppResiliencePolicyResolver>(sp =>
         {
             var logger = sp.GetService<ILogger<AppResiliencePolicyResolver>>();
@@ -269,6 +289,11 @@ public static class FeishuServiceCollectionExtensions
         // 代码生成器 ConstructorGenerator 在 TokenManager 模式下生成必需的 IAppContextHolder 构造函数参数（无默认值），
         // 若未注册此服务，DI 容器解析任何飞书 API 接口时将抛出 InvalidOperationException。
         // AddTokenProvider() 仅注册 ITokenProvider 和 ICurrentUserContext，不包含 IAppContextHolder。
+        // F-08（Mud.HttpUtils 3.0.4+ 语义对齐）：上游本注册点已不存在（DefaultAppContextHolder 被移除，
+        // 改由 DelegatingAppContextHolder 委托式适配器按需包裹已有持有器），本注册保持不变，仍以
+        // AsyncLocalAppContextSwitcher 为默认持有器。上游适配器两条边界（宿主自定义 IAppContextHolder 时适用）：
+        // ① Current 初始为 init 值（不可空），适配器**不支持**对初始持有器做写入适配；
+        // ② 自定义持有器必须为单例，且须在首次访问应用上下文之前完成注册（晚于首次访问则适配器已固化默认实例）。
         services.TryAddSingleton<IAppContextHolder, AsyncLocalAppContextSwitcher>();
 
         // M-9 改进：ITokenStore 注册检测。
@@ -303,26 +328,30 @@ public static class FeishuServiceCollectionExtensions
         // C-1 修复：注册 TokenRecoveryOptions，使 TokenRecoveryExecutor 可经
         // IOptionsMonitor<TokenRecoveryOptions> 获取恢复策略。
         // C-1 补强（配置绑定断层修复）：**仅调用 AddOptions<T>() 并不会绑定任何配置节** ——
-        // "MudHttpTokenRecovery" 节会被静默忽略，TokenRecoveryOptions 永远取默认值
-        // （RecoveryMaxRetries=1 / RefreshTimeoutSeconds=30 / MaxCachedRequestBodyBytes=1MB /
-        // RefreshDedupWindowSeconds=2 / MaxDedupEntries=1024），使这些可调参数无法通过配置下发。
-        // 组件侧等价入口为 AddMudHttpTokenRecoveryFromConfiguration(IConfiguration)（内部即
-        // Configure + GetSection.Bind + 校验器 + 可解析实例）；此处按本仓库既有约定
-        // （services.Configure<T>(o => section.Bind(o))，与 FeishuWebhook/OpenTelemetry/Redis 一致）等价实现，
-        // 并经 ChangeTokenSource 补齐组件入口的热更新语义（见下方注释）。
+        // "MudHttpTokenRecovery" 节会被静默忽略，TokenRecoveryOptions 永远取默认值。
+        // F-04（Mud.HttpUtils 3.0.x，B6）：TokenRecoveryOptions.TokenInvalidationDetector 为接口类型
+        // 扩展点（编程式注入面），直接 Bind<TokenRecoveryOptions> 会在本编译单元产出无法抑制的
+        // SYSLIB1100/SYSLIB1101。改为绑定上游提供的纯 DTO 投影 TokenRecoveryConfiguration
+        // （仅基元/字符串/枚举成员，绑定源生成器可完整支持），再经 Apply 逐字段映射到
+        // TokenRecoveryOptions（不触碰 TokenInvalidationDetector / AdditionalTokenInvalidationDetectors）。
         services.AddOptions<TokenRecoveryOptions>();
         if (configuration != null)
         {
             var tokenRecoverySection = configuration.GetSection(TokenRecoveryOptions.SectionName);
-            // Mud.HttpUtils 2.0.9+：TokenRecoveryOptions.TokenInvalidationDetector（ITokenInvalidationDetector）
-            // 是**代码级扩展点**（宿主以实例注入，语义上不可由配置节构造），配置绑定源生成器对接口类型属性
-            // 无法生成绑定代码而报 SYSLIB1100/SYSLIB1101 —— 该诊断由生成器上报（#pragma 无法抑制），
-            // 已在 Mud.Feishu.Abstractions.csproj 的 NoWarn 中项目级静默并注明原因；
-            // 该属性不经配置绑定，运行期行为不受影响。
-            services.Configure<TokenRecoveryOptions>(options => tokenRecoverySection.Bind(options));
-            // 与组件 AddMudHttpTokenRecoveryFromConfiguration 的热更新语义对齐：注册 ChangeTokenSource，
-            // 配置重载时使 IOptionsMonitor（TokenRecoveryExecutor / FeishuAppManager 经此读取）的共享缓存失效，
-            // 下次解析重新执行上述 Bind 委托，从而读到重载后的值。
+            // 应用链在 Configure 委托内**现场** Bind 纯 DTO 并 Apply（不建立 TokenRecoveryConfiguration
+            // 的第二级 Options 管线）：委托捕获的 section 为活对象，每次 Options 重建都读当前配置值。
+            // 实测记录：若经 IOptionsMonitor<TokenRecoveryConfiguration>（OptionsBuilder.Configure<TDep>）
+            // 间接读取，配置重载后 TDep monitor 会返回陈旧 DTO（Apply 写回旧值）——两段缓存链不可靠，
+            // 故采用「捕获 section + 现场 Bind」的单级方案，热更新只依赖下方单个 ChangeTokenSource。
+            services.AddOptions<TokenRecoveryOptions>().Configure(options =>
+            {
+                var configDto = new TokenRecoveryConfiguration();
+                tokenRecoverySection.Bind(configDto);
+                options.Apply(configDto);
+            });
+            // 热更新语义（与组件 AddMudHttpTokenRecoveryFromConfiguration 对齐）：注册 ChangeTokenSource，
+            // 配置重载时使 IOptionsMonitor（TokenRecoveryExecutor / FeishuAppManager 经此读取）的共享缓存失效——
+            // 下一轮解析重新执行上方委托（现场 Bind + Apply），从而读到重载后的值。
             // 采用「委托式 Bind + 显式 ChangeTokenSource」而非 Configure<T>(IConfiguration) 重载：
             // 后者经 BindConfiguration 的反射绑定调用点无法被配置绑定源生成器拦截（AOT-3，IL2026/IL3050 须保持 0）。
             services.AddSingleton<IOptionsChangeTokenSource<TokenRecoveryOptions>>(

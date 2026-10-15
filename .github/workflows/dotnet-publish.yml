@@ -2,9 +2,12 @@ name: .NET Build, Test and Publish
 
 on:
   push:
+    # 主干为 v3。branches 与 tags 是「任一匹配即触发」的独立过滤条件，
+    # 即打 tag 不受分支过滤影响：在 v3 的提交上打 v3.x.y tag 同样会触发本工作流，
+    # 并由 publish-nuget 推包（无需为 v3 另加 tag/分支规则）。
     branches: ["main", "master", "v3"]
     tags:
-      - "v*" # 当推送版本标签时触发（如 v1.0.0）
+      - "v*" # 当推送版本标签时触发（如 v3.0.3）
   pull_request:
     branches: ["main", "master", "v3"]
   workflow_dispatch:
@@ -287,11 +290,17 @@ jobs:
           npm install -g @semantic-release/exec@6
           npm install -g conventional-changelog-conventionalcommits@7
 
+      # 主干已切换到 v3：semantic-release 只在 "branches" 列出的分支上发布，
+      # 当前分支不在列表内会直接以错误退出（version-and-release 失败 ⇒ new_release 永远拿不到值）。
+      # main/master 保留以兼容旧主干。
+      # tagFormat 显式钉死为 v${version}（与仓库的 v* tag 约定一致）：它虽是 semantic-release 的默认值，
+      # 但默认值会随版本变化，且「空 version 输入」路径下 createTag/push 的产物必须是 v* 形式。
       - name: Create semantic-release config
         run: |
           cat > .releaserc.json << 'EOF'
           {
-            "branches": ["main", "master"],
+            "branches": ["v3", "main", "master"],
+            "tagFormat": "v${version}",
             "plugins": [
               [
                 "conventional-changelog-conventionalcommits",
@@ -366,10 +375,30 @@ jobs:
             git tag -a "v$VERSION" -F RELEASE_NOTES.md
 
             if [ "${{ inputs.dry_run }}" != "true" ]; then
-              git push origin HEAD:master
+              # 版本提交必须推回「发起本次手动运行的分支」，不能硬编码 master：
+              # 主干是 v3 时，硬编码会把发布提交落到 master，v3 上永远看不到版本变更。
+              git push origin "HEAD:$GITHUB_REF_NAME"
               git push origin "v$VERSION"
             fi
           else
+            # v* 约定守卫（TAG-1）：semantic-release 的 tagFormat 是 v${version}，而 v3.0.2 及更早的发布
+            # tag 都没有 v 前缀 ⇒ 它找不到基线，会把本次当成首个版本算出 1.0.0 之类的「倒退版本」，写进
+            # Directory.Build.props 后连同 tag 一起推回仓库，随后被 publish-nuget 当成正式版本推上 nuget.org。
+            # 故在调用 semantic-release 之前做硬校验：已存在的最高 v* 语义化 tag 必须不低于 CHANGELOG.md
+            # 顶部记录的最近发布版本。不满足即失败，且不产生任何副作用（不提交、不打 tag、不推送）。
+            # 处置：①（推荐）显式填写 version 输入；② 先按 v* 约定把最近发布版本补打成 tag 再重跑。
+            CHANGELOG_VERSION=$(grep -m1 -oE '^#+ \[?v?[0-9]+\.[0-9]+\.[0-9]+' CHANGELOG.md | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)
+            LAST_V_TAG=$(git tag --list 'v[0-9]*' --sort=-v:refname | sed -n 's|^v\([0-9][0-9.]*\)$|\1|p' | head -n1 || true)
+            if [ -z "$CHANGELOG_VERSION" ]; then
+              echo "::error::无法从 CHANGELOG.md 顶部解析出最近发布版本，拒绝以未知基线运行 semantic-release。"
+              exit 1
+            fi
+            if [ -z "$LAST_V_TAG" ] || [ "$LAST_V_TAG" != "$(printf '%s\n%s\n' "$LAST_V_TAG" "$CHANGELOG_VERSION" | sort -V | tail -n1)" ]; then
+              echo "::error::v* 基线缺失或倒退：最高 v* tag='${LAST_V_TAG:-<无>}'，CHANGELOG 最近发布='$CHANGELOG_VERSION'。"
+              echo "::error::semantic-release 会把本次算成低于 $CHANGELOG_VERSION 的版本，并写回 Directory.Build.props。"
+              echo "::error::请显式填写 version 输入，或先按 v* 约定补打 v$CHANGELOG_VERSION tag 后再运行。"
+              exit 1
+            fi
             if [ "${{ inputs.dry_run }}" = "true" ]; then
               DRY_RUN=true npx semantic-release --dry-run
               VERSION=$(npx semantic-release --dry-run 2>&1 | grep -oP 'The next release version is \K[0-9.]+')
@@ -401,6 +430,8 @@ jobs:
 
   # 第三个作业：负责打包和发布 NuGet 包
   # - 推送 v* tag 时发布（该 tag 可能是手动打的，也可能是 version-and-release push 的）
+  #   主干是 v3，所以「在 v3 上打 tag」走的就是这条路径，且 tag 名即包版本唯一真源
+  #   （见下方 Resolve package version）。
   # - 或手动 workflow_dispatch 且 version-and-release 判定有新版时发布
   # 用 always() 规避 needs 中被 skip 的 job（version-and-release 仅在 workflow_dispatch 执行）
   publish-nuget:
@@ -428,11 +459,47 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSIONS }}
 
+      # 版本解析（tag 驱动的关键一步）：
+      # 此前包版本只来自 Directory.Build.props 的 Version 节点，于是「打 v3.0.3 tag」实际打包出来的
+      # 是 props 里的旧版本（如 3.0.2）——若该版本已在 nuget.org 上，--skip-duplicate 会静默成功，
+      # 形成「tag 打了、日志全绿、新包没发出去」的假绿。故此处以 tag 名（或 dispatch 输入）为准，
+      # 并用 -p:Version 同时喂给 build 与 pack，使程序集元数据与 nupkg 版本不可能漂移
+      # （与 publish.bat 的说明口径一致：Directory.Build.props 固定 Version 时 --version-suffix 会被忽略）。
+      # props 版本落后只告警不阻断，保证「打 tag 即发布」是一步操作。
+      - name: Resolve package version
+        id: pkgver
+        shell: bash
+        env:
+          DISPATCH_VERSION: ${{ needs.version-and-release.outputs.version }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            SOURCE="tag $GITHUB_REF_NAME"
+          else
+            VERSION="$DISPATCH_VERSION"
+            SOURCE="workflow_dispatch / version-and-release"
+          fi
+          # 只接受 semver（可带 -prerelease）：拦掉 v3、v-next 之类 tag 被当成包版本推上 nuget.org。
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::无法从「$SOURCE」解析出合法 semver 版本（得到 '$VERSION'）。请使用 v3.0.3 形式的 tag 或填写 version 输入。"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Package version : $VERSION  (来源：$SOURCE)"
+
+          # 用 sed 而非 grep -P：-P 依赖 UTF-8 locale，在 locale 非 UTF-8 的环境里会直接报错，
+          # 使 PROPS_VERSION 变空并误报「props 不一致」。
+          PROPS_VERSION=$(sed -n 's|.*<Version>\([^<]*\)</Version>.*|\1|p' Directory.Build.props | head -n1 || true)
+          if [ "$PROPS_VERSION" != "$VERSION" ]; then
+            echo "::warning::Directory.Build.props 的 Version ($PROPS_VERSION) 与本次发布版本 ($VERSION) 不一致；已按 tag 覆盖打包（产物内部一致），建议随后把 props 同步为该版本。"
+          fi
+
       - name: Restore dependencies
         run: dotnet restore ${{ env.SOLUTION_FILE }}
 
       - name: Build
-        run: dotnet build ${{ env.SOLUTION_FILE }} --configuration ${{ env.CONFIGURATION }} --no-restore
+        run: dotnet build ${{ env.SOLUTION_FILE }} --configuration ${{ env.CONFIGURATION }} --no-restore -p:Version=${{ steps.pkgver.outputs.version }}
 
       # 编译验证 Demos 项目
       - name: Build Demos
@@ -443,9 +510,58 @@ jobs:
             dotnet build "$project" --configuration ${{ env.CONFIGURATION }}
           done
 
-      # 打包：生成 .nupkg 文件
+      # 打包：生成 .nupkg 文件。
+      # -p:Version 必须与上一步 Build 完全一致：pack --no-build 只复用 bin 产物、再按属性生成 nuspec，
+      # 两处版本不一致就会出现「包版本与程序集元数据不同」的成品。
       - name: Pack NuGet package
-        run: dotnet pack ${{ env.SOLUTION_FILE }} --configuration ${{ env.CONFIGURATION }} --output ./nupkg --no-build
+        run: dotnet pack ${{ env.SOLUTION_FILE }} --configuration ${{ env.CONFIGURATION }} --output ./nupkg --no-build -p:Version=${{ steps.pkgver.outputs.version }}
+
+      # 打包范围断言（PACK-1）：发布契约是 publish.bat 里列出的 9 个源包（Mud.Feishu.slnx 的 9 个源工程）。
+      # dotnet pack <slnx> 会打包解决方案内所有 IsPackable 的项目，Demos/Tests 一旦有项目漏关闭打包
+      # 就会多出示例/测试包；这些包名同样命中 NuGet 信任策略的 Mud.Feishu* glob，不会被拒绝，
+      # 只会被静默推上 nuget.org（Demos/Mud.Feishu.AotVerification 曾是这种漏网项目）。
+      # 故此处按「ID 白名单 + 版本」硬断言：多包、少包、包版本不是本次发布版本，三者任一都失败。
+      - name: Assert package set
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION='${{ steps.pkgver.outputs.version }}'
+          EXPECTED_IDS="Mud.Feishu Mud.Feishu.Abstractions Mud.Feishu.Authentication Mud.Feishu.DataModels Mud.Feishu.EventCallback Mud.Feishu.OpenTelemetry Mud.Feishu.Redis Mud.Feishu.Webhook Mud.Feishu.WebSocket"
+          shopt -s nullglob
+          files=(./nupkg/*.nupkg)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "::error::./nupkg 下没有任何 nupkg —— 打包步骤未产出制品。"
+            exit 1
+          fi
+          failed=0
+          seen=""
+          for f in "${files[@]}"; do
+            base="${f##*/}"
+            base="${base%.nupkg}"
+            # 包文件名必须精确以本次发布版本结尾（prefix+Version 同时喂给 build/pack，不允许漂移）。
+            if [[ "$base" != *".$VERSION" ]]; then
+              echo "::error::包 $base 的版本不是本次发布版本 $VERSION（Directory.Build.props 漂移，或 build/pack 未统一传 -p:Version）。"
+              failed=1
+              continue
+            fi
+            id="${base%.$VERSION}"
+            case " $EXPECTED_IDS " in
+              *" $id "*) seen="$seen $id" ;;
+              *) echo "::error::出现未预期的包 $id —— 解决方案里有项目未关闭打包（Demos/Tests 必须 IsPackable=false）。" ; failed=1 ;;
+            esac
+          done
+          for id in $EXPECTED_IDS; do
+            case " $seen " in
+              *" $id "*) ;;
+              *) echo "::error::缺少预期包 $id —— 该源工程未被打包。" ; failed=1 ;;
+            esac
+          done
+          if [ "$failed" -ne 0 ]; then
+            echo '实际产出：'
+            for f in "${files[@]}"; do echo "  - ${f##*/}"; done
+            exit 1
+          fi
+          echo "打包范围校验通过：${#files[@]} 个包，全部为预期源包，且版本均为 $VERSION。"
 
       # 关键新增：用 OIDC 换取临时 API Key（NuGet Trusted Publishing）
       - name: NuGet login (OIDC -> temp API key)
@@ -455,10 +571,22 @@ jobs:
           # 你的 NuGet.org 个人资料名（Profile name），不是邮箱、也不是组织名
           user: ${{ secrets.NUGET_USER }}
 
-      # 发布：将包推送到 NuGet.org（临时 Key 有效期约 1 小时，绑定仓库/工作流）
+      # 发布：将包推送到 NuGet.org（临时 Key 有效期约 1 小时，绑定仓库/工作流）。
+      # --skip-duplicate 的语义是「该版本已存在 ⇒ 视作成功」，退出码 0；
+      # 因此把 push 日志落盘并显式提示被跳过的包，避免「什么都没发出去」却显示全绿。
+      # 必须保留 pipefail：否则 tee 的 0 退出码会掩盖 dotnet nuget push 的真实失败。
       - name: Push to NuGet.org
+        shell: bash
         run: |
+          set -o pipefail
+          # 日志写到 RUNNER_TEMP 而不是 ./nupkg：后者正是 push 的 glob 目录，
+          # 把日志落进待推送目录会让「推送范围」取决于文件创建与 glob 展开的时序。
+          LOG="$RUNNER_TEMP/nupkg-push.log"
           dotnet nuget push "./nupkg/*.nupkg" \
-            --api-key ${{ steps.login.outputs.NUGET_API_KEY }} \
+            --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" \
             --source https://api.nuget.org/v3/index.json \
-            --skip-duplicate
+            --skip-duplicate 2>&1 | tee "$LOG"
+          if grep -qiE 'already exists|conflict|skipping' "$LOG"; then
+            echo "::warning::nuget.org 上已存在版本 ${{ steps.pkgver.outputs.version }}：被 --skip-duplicate 跳过的包没有实际推送，请确认是否本就需要重发同版本。"
+            grep -iE 'already exists|conflict|skipping' "$LOG" | sed 's/^/    /' || true
+          fi

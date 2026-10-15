@@ -11,6 +11,7 @@ namespace Mud.Feishu.EventCallback.IM;
     PropertyNamingPolicy = JsonKnownNamingPolicy.SnakeCaseLower,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     WriteIndented = false)]
+[JsonSerializable(typeof(global::Mud.Feishu.EventCallback.IM.ChatBotP2pChatEnteredResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.EventCallback.IM.ChatDisbandedResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.EventCallback.IM.ChatMemberBotAddedResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.EventCallback.IM.ChatMemberBotDeletedResult))]

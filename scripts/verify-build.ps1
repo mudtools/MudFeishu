@@ -73,7 +73,6 @@ Set-Location $repoRoot
 Write-Host "[步骤 0] 依赖缓存新鲜度自检（CACHE-1）" -ForegroundColor Cyan
 # 组件仓库按相同版本号覆盖打包时，NuGet 以 id+version 为缓存键，不会让下游缓存失效，
 # 表现为"源码已修复、构建仍报 CS1750"。此处比对本地源包内 DLL 与全局缓存 DLL 的字节数。
-$localSource = 'D:/Repos/MudHttpUtils/artifacts'
 $globalPackages = ((dotnet nuget locals global-packages --list) -replace 'global-packages:\s*', '').Trim()
 $staleDetected = $false
 
@@ -89,6 +88,23 @@ if ($csprojFiles) {
     if ($declaration) {
         $declaredVersion = $declaration.Matches[0].Groups[1].Value
     }
+}
+
+# 本地源解析：Release 打包产物（artifacts）优先，调试打包（artifacts-debug，pack_debug.ps1 产物，
+# 仅用于新版组件未发布前的本地联调周期）为回退。判定「优先」的不是目录存在性，而是
+# **是否实际包含 csproj 声明的版本包**——否则 artifacts 里只有旧版时会误选它并跳过缓存校验
+# （实测：artifacts 存 3.0.x 旧包、artifacts-debug 存 3.0.7 联调包时，原逻辑选中前者且未做任何比对）。
+# 两个目录都不存在（CI / 发布环境）时保持原行为：输出 [SKIP] 并通过。
+$localSource = ''
+$localSourceCandidates = @('D:/Repos/MudHttpUtils/artifacts', 'D:/Repos/MudHttpUtils/artifacts-debug')
+$existingCandidates = @($localSourceCandidates | Where-Object { Test-Path $_ })
+if ($declaredVersion) {
+    $localSource = $existingCandidates |
+        Where-Object { Test-Path (Join-Path $_ "Mud.HttpUtils.Generator.$declaredVersion.nupkg") } |
+        Select-Object -First 1
+}
+if (-not $localSource -and $existingCandidates.Count -gt 0) {
+    $localSource = $existingCandidates[0]
 }
 
 if (Test-Path $localSource) {

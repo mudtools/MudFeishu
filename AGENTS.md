@@ -65,10 +65,37 @@ installed are reported as skipped (this machine only has .NET 8/9/10, so all `ne
 CI runs the same checks: `Restore dependencies` is preceded by `-CacheCheckOnly`, and the `Build` log is
 asserted for the diagnostic whitelist afterwards (`.github/workflows/dotnet-publish.yml`).
 
+## Release and version tags (`v*`)
+
+Releases are tag-driven: **the tag name is the single source of truth for the package version**. The tag form
+is `v<major>.<minor>.<patch>` (e.g. `v3.0.3`).
+
+- `.github/workflows/dotnet-publish.yml` matches `tags: ["v*"]` **only**. A bare `3.0.3` tag (the historical
+  form, used up to `3.0.2`) does not trigger the workflow at all — no build, no publish, no warning.
+- `publish-nuget` resolves the version from the tag (`Resolve package version`) and feeds it to both `build`
+  and `pack` via `-p:Version=`; `Assert package set` then hard-asserts that the produced `.nupkg` set is
+  exactly the 9 source packages (the contract `publish.bat` encodes in its `PROJECTS` list) and that every
+  file carries that version. Keep `IsPackable=false` for everything outside those 9 sources
+  (`Demos/Directory.Build.props`, `Tests/Directory.Build.props`): a packable demo still matches the
+  `Mud.Feishu*` glob of the nuget.org Trusted Publishing policy, so it would be published silently.
+- `Directory.Build.props`'s `<Version>` is **not** the release version; a mismatch with the tag is reported
+  as a `::warning::` only (so "tag = release" stays a one-step operation). `publish.bat` without a version
+  argument still packs whatever `<Version>` currently holds.
+- `workflow_dispatch` with an **empty** `version` input runs semantic-release (`tagFormat` pinned to
+  `v${version}`). Because the pre-`3.0.3` history has no `v*` release tag, that path is guarded: it refuses
+  to run unless the highest existing `v*` tag is >= the version recorded at the top of `CHANGELOG.md`.
+  Prefer the explicit alternatives — pass `version` to `workflow_dispatch`, or push a `v*` tag.
+- Publishing uses NuGet Trusted Publishing (OIDC), not an API key: job `publish-nuget` declares
+  `environment: release` + `permissions: id-token: write`, and must match the nuget.org policy (repository
+  `mudtools/MudFeishu`, workflow `dotnet-publish.yml`, environment `release`, glob `Mud.Feishu*`). The only
+  secret involved is `NUGET_USER` (the NuGet.org profile name) — the `release` environment holds no secrets,
+  so it must be a repository/organization secret.
+
 ## Dependency version policy (Mud.HttpUtils)
 
-This repo consumes `Mud.HttpUtils` **3.0.0** (HttpUtils and Generator **must stay on the same
-version**) — the release line that carries **BC-27**: `IAppContextSwitcher` no longer declares
+This repo consumes `Mud.HttpUtils` **3.0.7** (HttpUtils and Generator **must stay on the same
+version**; adaptation notes: `.docs/MudFeishu-MudHttpUtils-3.0.7-适配说明.md`) — the 3.0.x release line carries
+**BC-27**: `IAppContextSwitcher` no longer declares
 `UseApp(string)` / `UseDefaultApp()` / `BeginScope(string)`, and the generator no longer emits them
 by default. Adaptation (plan: `.docs/MudHttpUtils-3.0.0-破坏性变更改造计划.md`, §10):
 
@@ -84,10 +111,81 @@ by default. Adaptation (plan: `.docs/MudHttpUtils-3.0.0-破坏性变更改造计
   `Demos/` still consume the **published** `Mud.Feishu 3.0.0` package (which depends on
   `Mud.HttpUtils 2.0.8`), so demo `BeginScope("hr-app")` calls are intentionally untouched until the
   rebuilt package ships.
+- **BC-30（3.0.7）弃用传播**：`IAppManager<T>` 的 `GetWebApi` / `GetDefaultWebApi` /
+  `RegisterSwitcherFactory` 已 `[Obsolete]`（3.x 告警，4.0 移除）。`FeishuAppManager` 的两个重写
+  **同步传播 `[Obsolete]`**（消除 CS0672，消费方经 `FeishuAppManager` 调用同样获得迁移指引）；
+  测试中的守卫性调用以 `#pragma warning disable CS0618` 精确豁免。迁移路径：DI 解析
+  `IAppScopeSwitcher` + `UseAppScope` / `UseDefaultAppScope`，或 `SwitchToApp`（受控切换并保持）。
+- **F-9（3.0.7 起）元包解耦**：`Mud.HttpUtils` 元包**不再传递** `Mud.HttpUtils.Resilience`。
+  `Mud.Feishu.Abstractions` 的 `AddFeishuApp` 装配链使用弹性策略（per-app 重试/超时/熔断），
+  故已**显式安装** `Mud.HttpUtils.Resilience`（版本与全仓 `Mud.HttpUtils*` 单版本守卫一致，
+  **不得**设 `PrivateAssets`——`AddFeishuApp` 运行期需要加载该程序集）。
+- **C-2 已采纳（3.0.3 起；U-1 已回收，上游 3.0.10 Batch 1）**：令牌存储值**写入**为官方相对秒
+  `{expiresInSeconds}|{token}`，**读取**双读兼容旧「绝对毫秒戳」存量值（`TokenStoreHelper` 投影回
+  绝对毫秒戳，消费方契约不变）。双读判别已上收官方 `MigrationTokenStoreCodec`——
+  `FeishuTokenStoreCodec` 自 U-1 起为**薄包装**（显式传飞书阈值 `AbsoluteMsThreshold`=10^10；
+  注意上游默认常量实为 10^11，其 XML 注释写「10^10」属上游文档笔误；两阈值在两真实形态下等价），
+  **不得**再在下游恢复私有双读实现。**禁止**把存储值格式改回私有形态，也**禁止**在新写入路径
+  直接拼 `{expireTimestampMs}|`——一律经 `TokenStoreHelper.EncodeStoredToken / DecodeStoredToken /
+  TryDecodeExpiry`。TMF-05 CAS 是**明文比较**（解码后比对），不要再改回编码值整串比较。
+  过期态无法用相对秒新格式表达（剩余秒 ≤ 0 归一为 0 = 无 TTL 信息 → Redis 回落 30 天）；
+  测试模拟过期须用旧格式字面量。
+- **U-3 已采纳（上游 3.0.10 Batch 1）跨进程刷新去重租约**：`TokenManagerBase.RefreshLease` 钩子
+  （默认 null = 零行为变化）。`Mud.Feishu.Redis` 注册官方 `RedisRefreshLease`
+  （`SET NX PX` + Lua compare-and-del，键前缀 `{TokenKeyPrefix}:lease` 随环境段隔离）；
+  `DefaultFeishuTokenManagerFactory` 经 DI 解析注入三个管理器（Tenant/App/User）。
+  未启用 Redis 时 `RefreshLease` 恒 null，单实例行为逐位不变。自建去重器可经
+  `ITokenRefreshLease` 薄包装接入，**勿**绕过钩子另起炉灶。租约键 = `{TokenKeyPrefix}:lease:{管理器键含AppKey}:{scopeKey}`（默认 `feishu:lease:...`）。
+- **U-4 已采纳（上游 3.0.10 Batch 2）按应用清库能力面**：`Mud.Feishu.Redis.RedisTokenStore` 实现
+  `ITokenStoreAppPurge`（实例键空间即应用边界，`PurgeAppAsync` 与 `ClearAsync` 共用清库核心）；
+  `PurgeGateTokenStoreDecorator` / `EncryptedTokenStore` 透传该能力面。宿主清库统一走官方入口
+  `TokenStorePurgeExtensions.PurgeAppTokensAsync(store, appKey)`（能力探测穿透装饰器栈）；
+  **勿**在下游新写「SCAN + 键解析 + 删除」的私有清库路径。
+- **U-5 已采纳（上游 3.0.10 Batch 2）多命中外部标识反查**：`FeishuAppManager.TryResolveAllAppKeys`
+  重写——宿主提供者实现 `IMultiAppLookupProvider` 时委托多命中（`HasApp` 过滤 + 去重，不物化懒加载），
+  仅单结果面时回退 F-4 语义。注意：基类多命中实现消费的是**基类构造注入**的提供者字段，而飞书构造 ①
+  不向基类注入（提供者由本类字段持有），**勿**删除本重写、也**勿**把提供者改注到基类构造（会绕过本类兜底链）。
+- **U-7 已采纳（上游 3.0.10 Batch 3）用户维度原生 CAS**：`RedisUserTokenStore` 实现
+  `IUserTokenStoreCompareExchange`（Lua 单脚本内「取存储值 → 按首个 `|` 切出明文比较 → 写入/删除」，
+  无读取-写入窗口）；`UserTokenManager` 的 TMF-05 清库路径按**原始 store** 能力分派：
+  有原子能力走 CAS，无能力保留 C-2「解码明文比较 + `RemoveAsync`」。
+  **三条约束**（勿破）：①能力探测必须落在**未装饰的原始 store** 上（`_compareExchangeStore`）——
+  门装饰器**刻意不**声明 `IUserTokenStoreCompareExchange`，否则内层未实现时探测「假命中」，
+  官方非原子回退按「存储原值 vs 期望明文」整值比较，对飞书编码值恒失配 ⇒ 清库静默失效；
+  ②**禁止**把无能力 store 的路径改走官方非原子回退（同上恒失配）；③CAS 属写/删族，
+  门只拦读，故直调原始 store 不违 D10 门语义。
+- **U-2 读取侧已兼容 / 写侧不切换（上游 3.0.10 Batch 3）**：上游 v2 版本化信封
+  （`v2:{expiresInSeconds}|{token}` / `v2:expired|`，`VersionedTokenStoreCodec`，默认关闭）——
+  `TokenStoreHelper` 已支持 v2 读取（三态归一 + TTL 推导），宿主经官方 store +
+  `VersionedTokenStoreCodec` 组合写入的 v2 值可被飞书消费侧正确消费。
+  **写侧仍单写 v1 相对秒形态**（C-2：默认形态不得漂移）；切换写侧须走两阶段纪律
+  （先升级全部读取方、再开写入开关），且需同步评估 `RedisUserTokenStore.SetRefreshTokenAsync`
+  的 TTL 推导路径。
+- **U-6/U-8 不采纳登记**：①U-6 分隔符键编码——飞书键布局（env 段 + glob 转义 +
+  `{prefix}:{appKey}:token`）与官方归属键不同构，`TokenKeyBuilder` 保留单一来源（C-3 对账口径）；
+  ②U-8 官方 AppInstantiated——与既有同名公共事件遮蔽冲突（双通道双发 + 公共 API 破坏），
+  登记 4.0 择期迁移。**勿**在后续任务中「顺手」采纳这两项。
+- **F-4 已采纳**：`FeishuAppContext.ExternalIds` 暴露 `app_id → appKey` 快照；
+  `FeishuAppManager.TryResolveAppKey` = 基类内置索引（实例化后自动登记）+ DI 解析的宿主
+  `IAppLookupProvider` 兜底，fail-closed。新增外部标识一律走 `ExternalIds` 快照，勿自建字典缓存。
+- **C-6 分层共存**：`Mud.Feishu.Redis` 已引用官方 `Mud.HttpUtils.Redis`。官方
+  `RedisTokenStore` 是「明文入参 + store 内部 codec 编解码」约定，飞书管线（桥接器）是
+  「直存编码值」约定——**两者不可互换直插**（混用双重编码）。官方侧对接飞书存量数据的
+  唯一受支持方式：注入 `FeishuTokenStoreCodec.Instance` 作其 codec。
 
-At the time of writing 3.0.0 is **not yet on nuget.org**, so `nuget.config` carries a temporary local
-source (`mudhttputils-local` → `D:/Repos/MudHttpUtils/artifacts`); remove it once the official package
-is published. To consume a newer component version: bump the
+**Upstream contract-change channel（契约变更传导通道）**：上游 `Mud.HttpUtils` 的
+`CHANGELOG.md`「契约变更（Contract Changes）」专章（C-1 ~ C-7）与
+`.docs/下游约束对账清单.md`（A/B/C 三系列逐条标注本仓 workaround 的已失效/仍有效/待裁决状态）
+是本仓约束的唯一权威来源。涉及令牌存储、键构建、应用管理器继承、Redis 分层的约束调整，
+**必须先查该两份文档再动代码**，防止约束漂移。3.0.7 适配时点对本仓的逐条结论见
+`.docs/MudFeishu-MudHttpUtils-3.0.7-适配说明.md`。
+
+Mud.HttpUtils **3.0.7 is being consumed from the local debug pack**
+(`mudhttputils-local` → `D:/Repos/MudHttpUtils/artifacts-debug`, re-added to `nuget.config`
+2026-10-15 for the pre-release adaptation cycle; the global cache entry for 3.0.7 is SHA256-identical
+to that pack). **Remove the local source from `nuget.config` once 3.0.7 is confirmed on nuget.org**
+and re-run `dotnet restore` so the build consumes the published package. To consume a newer
+component version: bump the
 version in the `PackageReference`s and, optionally, sync `AGENTS.md` / the README dependency tables
 (`README.md` / `README_EN.md` / `Mud.Feishu/README.md`) — the docs are **not** gated (a wrong version
 number there has no runtime impact and must not block an upgrade). The contract guard

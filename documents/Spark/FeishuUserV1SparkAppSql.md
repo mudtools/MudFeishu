@@ -3,7 +3,7 @@ title: 飞书妙搭 SQL 接口（用户令牌）| MudFeishu
 description: 该接口用于以用户身份在飞书妙搭应用下执行 SQL 语句。
 ---
 
-# 飞书妙搭 SQL - 用户令牌（FeishuUserV1SparkAppSql）
+# 飞书妙搭 SQL - 用户令牌（IFeishuUserV1SparkAppSql）
 
 ## 接口名称
 

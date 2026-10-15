@@ -1,5 +1,83 @@
 # Mud.Feishu Change Log
 
+## [3.0.3] - 2026-10-15
+
+> Theme: **adapting to `Mud.HttpUtils` 3.0.7** (upstream BC-30 deprecation propagation + F-9 meta-package
+> decoupling). No public contract removals; `FeishuAppManager.GetWebApi` / `GetDefaultWebApi` inherit the
+> upstream `[Obsolete]` marking (3.x warning, removal in 4.0) — signatures and behavior unchanged.
+
+### Dependency Upgrade
+
+- `Mud.HttpUtils` / `Mud.HttpUtils.Generator`: `3.0.5` → **`3.0.7`** (must stay on the same version),
+  unified across 6 source projects; README / AGENTS.md dependency tables synced.
+- **New explicit `Mud.HttpUtils.Resilience` 3.0.7 dependency** (F-9): the upstream meta-package no longer
+  carries the resilience package; the `AddFeishuApp` wiring (per-app retry / timeout / circuit breaker)
+  requires it, so it is installed explicitly and flows to consumers (no `PrivateAssets`).
+
+### Added
+
+- **C-2 dual-read token-store codec**: new public `FeishuTokenStoreCodec` (implements the upstream
+  `ITokenStoreCodec`). Writes now use the official relative-seconds `{expiresInSeconds}|{token}` form;
+  reads dual-read legacy absolute-millisecond values (legacy entries converge by natural expiry, no
+  backfill); consumers keep the absolute-ms contract. The Redis refresh-TTL "no TTL info" boundary is
+  corrected (leading value ≤ 0 falls back to 30 days instead of being treated as expired). **Rollback
+  note**: rolling back to ≤ 3.0.2 treats new-format values as expired (tokens re-fetched; Redis
+  refresh keys purged by the old logic → re-authorization) — no corrupted tokens, but the upgrade /
+  rollback is asymmetric.
+  **U-1 retirement (upstream 3.0.10 Batch 1)**: dual-read discrimination has been lifted into the
+  official `MigrationTokenStoreCodec`; `FeishuTokenStoreCodec` is now a thin wrapper over it
+  (explicit Feishu threshold 10^10) and the private dual-read implementation is removed.
+- **F-4 external-ID reverse lookup**: `FeishuAppContext` implements `IAppExternalIds`
+  (`app_id → appKey`); `FeishuAppManager` resolves appKey via the built-in index plus a DI-injected
+  host `IAppLookupProvider` (fail-closed, results must hit registered apps).
+- **U-3 cross-process refresh-dedup lease (upstream 3.0.10 Batch 1)**: all three token managers
+  (Tenant/App/User) now honor the `TokenManagerBase.RefreshLease` hook. `Mud.Feishu.Redis` registers
+  the official `RedisRefreshLease` (`SET NX PX` acquire + Lua compare-and-del release, fail-open)
+  with key prefix `{TokenKeyPrefix}:lease` following the environment segment; the token-manager
+  factory resolves and injects it via DI. Without Redis the behavior is bit-identical to
+  single-instance; multi-instance losers of the lease poll read-through (250ms interval / 10s
+  fail-open timeout) instead of re-refreshing.
+- **U-4 per-app token purge capability (upstream 3.0.10 Batch 2)**: `Mud.Feishu.Redis.RedisTokenStore`
+  implements the official `ITokenStoreAppPurge` (`EnumerateKeysAsync` physical-key snapshot /
+  `PurgeAppAsync` returns the actual deleted count; node failures propagate); the purge-gate and
+  encrypted decorators pass the capability through — hosts can uniformly call
+  `TokenStorePurgeExtensions.PurgeAppTokensAsync(store, appKey)` (capability probing crosses the
+  decorator stack).
+- **U-5 multi-hit external-ID reverse lookup (upstream 3.0.10 Batch 2)**:
+  `FeishuAppManager.TryResolveAllAppKeys` — when the host provider implements
+  `IMultiAppLookupProvider`, all registered appKeys are returned (unregistered entries filtered,
+  duplicates removed, lazy contexts never materialized); single-result providers fall back to the
+  F-4 semantics.
+- **U-7 user-dimension native CAS (upstream 3.0.10 Batch 3)**: `RedisUserTokenStore` implements
+  `IUserTokenStoreCompareExchange` — a single Lua script performs "read stored value → compare
+  plaintext → write/delete", removing the read-compare-delete race window from the TMF-05 purge path;
+  `UserTokenManager` dispatches on the **raw** store's capability (stores without it keep the C-2
+  decoded-plaintext comparison path, semantically unchanged).
+- **U-2 v2 envelope read compatibility (upstream 3.0.10 Batch 3)**: `TokenStoreHelper` now reads the
+  v2 versioned envelope (`v2:{n}|{token}` three-state normalization, `v2:expired|` projected as
+  "no token", Redis TTL derivation included). The write side still emits the v1 relative-seconds form
+  (C-2: the default form must not drift).
+
+### Changed
+
+- **BC-30 propagation**: `FeishuAppManager.GetWebApi` / `GetDefaultWebApi` are marked `[Obsolete]`
+  in lockstep with the upstream base members (also clears CS0672). Migration: resolve
+  `IAppScopeSwitcher` via DI + `UseAppScope` / `UseDefaultAppScope`, or
+  `IAppContextHolder.SwitchToApp(appKey, appManager, sp)` (guarded switch-and-stay, semantically
+  equivalent). Guard-test call sites use precise `#pragma warning disable CS0618`.
+
+### Docs & Tests
+
+- New `.docs/MudFeishu-MudHttpUtils-3.0.7-适配说明.md` (per-item reconciliation with the upstream
+  contract-change chapter and the downstream constraint ledger, non-migration decisions, pre-release
+  checklist). `AGENTS.md` documents the upstream contract-change channel plus BC-30 / F-9 notes.
+- `scripts/verify-build.ps1` step 0 now picks the local component source by "actually contains the
+  declared version package" (fixes the stale-cache check being skipped when `artifacts` and
+  `artifacts-debug` coexist).
+- Verified: full quality gate green (0 build errors, diagnostic whitelist all 0, AotStrictMode net8.0
+  0 violations, unit tests 6298/6348 — skips are missing net6.0 runtimes only); zero new warnings
+  versus the pre-upgrade baseline; 29 new tests (C-2 dual-read matrix, F-4 lookup, Redis TTL behavior).
+
 ## [Unreleased] - 2026-10-01
 
 > Themes: **adapting to `Mud.HttpUtils` 3.0.0** (upstream `BC-27`: removal of UseApp / UseDefaultApp / BeginScope(string)) and **event header dual-format (v1.0/v2.0) parsing fixes (R-E1)**.

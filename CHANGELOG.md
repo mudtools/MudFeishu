@@ -1,5 +1,166 @@
 # Mud.Feishu 更新日志
 
+## [3.0.3] - 2026-10-15
+
+> 主题：**适配 `Mud.HttpUtils` 3.0.7**（上游 BC-30 弃用传播 + F-9 元包解耦适配）。
+> 本版**无对外契约移除**；`FeishuAppManager.GetWebApi` / `GetDefaultWebApi` 随上游标记弃用
+> （3.x 编译告警，4.0 移除），签名与行为不变。
+
+### 依赖升级
+
+- `Mud.HttpUtils` / `Mud.HttpUtils.Generator`：`3.0.5` → **`3.0.7`**（两者必须同版本）。
+  6 个源工程的 8 处 `Mud.HttpUtils*` 声明统一，`README.md` / `README_EN.md` / `Mud.Feishu/README.md` /
+  `Mud.Feishu.OpenTelemetry/README.md` 与 `AGENTS.md` 依赖表同步。
+- **新增 `Mud.HttpUtils.Resilience` 3.0.7 显式依赖**（F-9）：上游元包不再传递弹性策略包，本仓
+  `AddFeishuApp` 装配链（per-app 重试 / 超时 / 熔断）依赖之，故显式安装；该依赖随包流传给消费方
+  （运行期加载所需），不设 `PrivateAssets`。
+
+### 新增（Added）
+
+- **C-2 双读令牌存储编解码**：新增公开 `FeishuTokenStoreCodec`（实现上游 `ITokenStoreCodec`）。
+  写入格式改为官方相对秒 `{expiresInSeconds}|{token}`；读取双读兼容旧「绝对毫秒戳」存量值
+  （按条目自然过期收敛，无需回灌）；消费方「绝对毫秒戳」契约不变。同时修正 Redis 侧 refresh
+  TTL 的「无 TTL 信息」边界（前导数 ≤ 0 回落 30 天，不再误判为已过期删键）。
+  **回滚须知**：回滚 3.0.2 及更早版本时新格式值会被判为过期（重新获取令牌；Redis refresh 键
+  被旧逻辑删除 → 用户需重新授权），不产生错误令牌。
+  **U-1 回收（上游 3.0.10 Batch 1）**：双读判别上收官方 `MigrationTokenStoreCodec` 后，
+  `FeishuTokenStoreCodec` 改为其薄包装（显式传飞书阈值 10^10），私有双读实现拆除。
+- **F-4 外部标识反查**：`FeishuAppContext` 实现 `IAppExternalIds`（`app_id → appKey`），
+  `FeishuAppManager` 支持经内置索引与 DI 注入的宿主 `IAppLookupProvider` 反查 appKey
+  （fail-closed，结果必须命中已注册应用）——可把只携带 `app_id` 的事件载荷解析到对应应用。
+- **U-3 跨进程刷新去重租约（上游 3.0.10 Batch 1）**：三个令牌管理器（Tenant/App/User）接入
+  `TokenManagerBase.RefreshLease` 钩子。`Mud.Feishu.Redis` 注册官方 `RedisRefreshLease`
+  （`SET NX PX` + Lua compare-and-del，fail-open），键前缀 `{TokenKeyPrefix}:lease` 随环境段隔离；
+  `DefaultFeishuTokenManagerFactory` 经 DI 解析注入。未启用 Redis 时行为与单实例逐位一致；
+  多实例下未抢到租约的实例限时轮询读穿透（250ms 间隔 / 10s 超时 fail-open 放行本机刷新）。
+- **U-4 按应用清库能力面（上游 3.0.10 Batch 2）**：`Mud.Feishu.Redis.RedisTokenStore` 实现官方
+  `ITokenStoreAppPurge`（`EnumerateKeysAsync` 物理键快照枚举 / `PurgeAppAsync` 返回实际删除数，
+  节点失败直接上抛）；清库门与加密装饰器透传该能力面——宿主可统一走
+  `TokenStorePurgeExtensions.PurgeAppTokensAsync(store, appKey)`（能力探测穿透装饰器栈）。
+- **U-5 多命中外部标识反查（上游 3.0.10 Batch 2）**：`FeishuAppManager.TryResolveAllAppKeys`
+  重写——宿主提供者实现 `IMultiAppLookupProvider` 时返回全部已注册 appKey（过滤未注册/去重、
+  不物化懒加载），仅单结果面时回退 F-4 语义。
+- **U-7 用户维度原生 CAS（上游 3.0.10 Batch 3）**：`RedisUserTokenStore` 实现
+  `IUserTokenStoreCompareExchange`——Lua 单脚本内完成「取存储值 → 明文比较 → 写入/删除」，
+  TMF-05 清库不再有「读取 → 比较 → 删除」的竞态窗口；`UserTokenManager` 按原始 store
+  能力分派（无能力 store 保留 C-2 解码明文比较路径，语义与升级前一致）。
+- **U-2 v2 信封读取兼容（上游 3.0.10 Batch 3）**：`TokenStoreHelper` 支持 v2 版本化信封读取
+  （`v2:{n}|{token}` 三态归一、`v2:expired|` 投影为无令牌、Redis 侧 TTL 推导同步兼容）。
+  写侧仍单写 v1 相对秒形态（C-2：默认形态不得漂移）。
+
+### 变更（Changed）
+
+- **`FeishuAppManager.GetWebApi` / `GetDefaultWebApi` 传播上游 BC-30 弃用标记**：基类成员在
+  Mud.HttpUtils 3.0.7 标 `[Obsolete]`（4.0 移除），两个重写同步标记以保持上下游口径一致并消除
+  CS0672。迁移路径：DI 解析 `IAppScopeSwitcher` + `UseAppScope` / `UseDefaultAppScope`（自动归还），
+  或 `IAppContextHolder.SwitchToApp(appKey, appManager, sp)`（受控切换并保持，语义等价）。
+  签名与行为在本大版本内不变；测试中的守卫性调用以 `#pragma warning disable CS0618` 精确豁免。
+- **TMF-05 CAS 改为令牌明文比较**（C-2 连带）：相对秒格式下存储编码值随时刻漂移，整值重编码
+  比较必然失配；改为解码明文比较后时间无关，并消除旧实现「同 refresh_token 不同持久化时间戳
+  误跳过清库」的保守代价。
+- **`Mud.Feishu.Redis` 接入官方 `Mud.HttpUtils.Redis` 包**（C-6 分层共存）：官方 store 与飞书
+  管线为两种 `ITokenStore` 使用约定（明文入参 + 内部 codec vs 直存编码值），不可互换直插；
+  `FeishuTokenStoreCodec` 作为互操作锚点，供官方组件对接飞书形态存量数据。
+
+### 文档与测试
+
+- 新增 `.docs/MudFeishu-MudHttpUtils-3.0.7-适配说明.md`：上游契约变更逐条对账（B-1/B-2/B-3/F-1/F-2/F-9
+  与 C 系列）、不迁移项决策（令牌键布局 / 自建叠层 / 私有 codec）及理由、发布前检查清单。
+- `AGENTS.md` 增补上游契约变更传导通道（上游 CHANGELOG「契约变更」专章 + 下游约束对账清单）与
+  BC-30 / F-9 适配注记。
+- `scripts/verify-build.ps1` 步骤 0 本地源解析改为按「**实际包含 csproj 声明版本包**」判定优先，
+  修复 `artifacts`（旧版）与 `artifacts-debug`（联调包）并存时选中前者并跳过缓存哈希校验的问题。
+- 验证：质量门禁全绿（编译 0 错误、CS1750 / NU1603 / HTTPCLIENT / MUD / FORM / AOT 白名单全 0、
+  AotStrictMode net8.0 逐源项目 0 违规、单元测试 6298/6348——跳过项均为 net6.0 运行时缺失）；
+  升级前后唯一警告集合 diff 为 0（零新增警告）；
+  新增用例：C-2 双读矩阵 14 例、F-4 反查 10 例、Redis refresh TTL 双读行为 5 例。
+
+## [3.0.2] - 2026-10-12
+
+> 主题：**事件回调大规模补齐**（业务域 10 → 24，事件总数 205）与 **适配 `Mud.HttpUtils` 3.0.5**。
+> 本版**无对外契约移除**；含三处行为修正（授权域名并集注册、令牌恢复配置热更新链路、用户令牌移除语义）。
+
+### 依赖升级
+
+- `Mud.HttpUtils` / `Mud.HttpUtils.Generator`：`3.0.0` → **`3.0.5`**（两者必须同版本）。
+  6 个源工程的 8 处 `Mud.HttpUtils*` 声明统一，`README.md` / `README_EN.md` / `Mud.Feishu/README.md` /
+  `Mud.Feishu.OpenTelemetry/README.md` 与 `AGENTS.md` 依赖表同步。
+- 示例项目 `Mud.Feishu.*` 包引用：`3.0.0` / `3.0.0-rc3` → **`3.0.1`**（`Demos/Directory.Build.props` 与 8 个 Demo 工程）。
+
+### 新增（Added）
+
+**事件回调（`Mud.Feishu.EventCallback`）**
+
+- **业务域 10 → 24、事件总数 205 个**：新增 14 个业务域 —— `Application`（应用）、`Auth`、
+  `MeetingRoom`（会议室）、`Moments`（动态）、`ELearning`（学习）、`SecurityCompliance`（安全合规）、
+  `Compensation`（薪酬）、`Payroll`（发薪）、`CoreHr` / `CoreHrV2`（核心人事 v1 / v2）、`Hire`（招聘）、
+  `Performance`（绩效）、`Acs`（智能门禁）、`Helpdesk`（服务台）。
+- 新增 **219 个事件模型文件**、**124 个 `FeishuEventTypes` 常量**，18 个 `Generated/*JsonContext.g.cs`
+  增量注册 443 项 `[JsonSerializable]`（AOT 源生成链路同步，无 AOT005 遗留）。
+- 主要事件族：
+  - **招聘**：`hire.application.deleted_v1` / `stage_changed_v1`、`hire.offer.status_changed_v1`、
+    `hire.ehr_import_task.imported_v1` 与 `.for_internship_offer.imported_v1`、`hire.talent.deleted_v1` /
+    `tag_subscription_v1`、`hire.eco_account.created_v1`、`hire.eco_background_check.created_v1` / `canceled_v1`、
+    `hire.eco_exam.created_v1`、`hire.referral_account.assets_update_v1`。
+  - **核心人事**：`corehr.*` v1（部门 / 职务 / 任职 / 合同 / 预入职 / 调岗 / 离职 / 权限）与 v2
+    （地点 / 公司 / 成本中心 / 自定义组织 / 职族职级职位 / 试用期 / 入职任务 / 离职清单 / 流程节点与审批抄送 /
+    签署文件等 40+ 事件）。
+  - **审批与任务**：`approval.task.status_changed_v4`、`task.task.comment.updated_v1` 等。
+  - **通讯录与群组**：`contact.scope.updated_v3`、`im.chat.access_event.bot_p2p_chat_entered_v1`、群成员变动。
+  - **会议与会议室**：`vc.bot.meeting_started_v1`、会议室创建 / 更新 / 删除。
+  - **安全合规**：设备登记与设备变更事件。另含邮箱、动态（发帖 / 评论 / 表情回复）、学习（课程报名）、
+    薪酬与发薪活动、绩效（`performance.stage_task.open_result_v2`、`performance.review_data.changed_v2`）、
+    门禁（`acs.user.updated_v1`、`acs.access_record.created_v1`）、服务台（工单创建 / 更新 / 留言 / 审批通知）。
+
+  - **卡片事件回调（新增 `Card` 业务域）**：`card.action.trigger`（用户点击卡片「请求回调」交互组件）的
+    请求体模型 `CardActionTriggerResult`（`operator` / `token` / `action` / `host` / `delivery_type` / `context`，
+    覆盖 `value`、`form_value`、`input_value`、`option`、`options`、`timezone`、`name` 等交互字段），
+    以及响应体模型 `CardCallbackResponse` / `CardCallbackToast`（含 16 语言 `i18n`）/ `CardCallbackCard`
+    （`raw` 与 `template` 两种形态）+ `CardCallbackTemplateData`；同步落实「3 秒内响应、禁止 3xx 重定向」约束。
+
+**适配上游（`Mud.HttpUtils` 3.0.5）**
+
+- **`FeishuHttpClientFactory` 改用上游 `EnhancedHttpClientOptions.Clone()`**：删除本仓手写「字段清单式 Clone」，
+  上游新增属性（如 3.0.5 的 `JsonEncoder`）不再需要在此同步补拷贝，消除「新属性被静默丢弃」这一类漂移。
+- **`UrlValidator` 域名注册改增量并集**：由整体替换语义的 `ConfigureAllowedDomains` 改为逐项 `AddAllowedDomain`
+  （清单提取为 `FeishuAllowedDomains`），宿主在 `AddFeishuApp` 之前注册的自定义域名不再被静默丢弃。
+
+### 变更（Changed）
+
+- **用户令牌移除语义改由基类承担**：`Mud.HttpUtils` ≥3.0.4 起桥接器 `RemoveAsync` 无条件写穿持久层，
+  `UserTokenManager` **不再覆写** `RemoveTokenAsync`，移除 / 登出在多实例与冷启动下同样落到持久层
+  （`PurgeGate` 语义不变），并补冷启动对照测试与注释约束。
+- **`TokenRecoveryOptions` 配置绑定改为「捕获 section + 现场 Bind + Apply」单级方案**：不再经
+  `IOptionsMonitor<TDep>` 二级管线间接读取（实测配置重载后该管线会返回陈旧 DTO），热更新只依赖单个
+  `ChangeTokenSource`；「禁止 `Configure<T>(IConfiguration)` 反射绑定」的 AOT 约束不变。
+- `FeishuAppManager` 默认拒绝对应的提示更新为「注册表白名单」授权器
+  （`AppKeyAllowListAuthorizer.FromPredicate` + `IFeishuAppManager.HasApp`），仅错误信息与注释表述变化。
+
+### 修复（Fixed）
+
+- **事件模型「文件名与主类名不一致」8 处重命名**：`ApprovalResult` → `ApprovalTaskResult`、
+  `DriveFilePermissionMemberAdded` → `DriveFilePermissionMemberAddedResult`、
+  `ChatMemberUserAddedResult` → `ChatMemberUserDeletedResult` / `ChatMemberUserWithdrawnResult`、
+  `Mail` 目录下误置的 `MeetingMeetingEndedResult` → `MessageReceivedResult`、
+  `DepartmentCreatedEventResult` → `DepartmentCreatedResult`、`DepartmentDeleteResult` → `DepartmentUpdateResult`、
+  `RoomCreatedResult` → `RoomUpdatedResult`。类名漂移会让 `Generated/*JsonContext.g.cs` 的 `[JsonSerializable]`
+  与实类脱节，现已由契约守卫拦截。
+- **示例工程 `FeishuDriveService` 删除文件 / 文件夹**：显式指定 `cancellationToken` 实参
+  （此前参数位置错位导致取消令牌传递错误）。
+- `.gitignore` 忽略 `/.scratch` 本地暂存目录。
+
+### 文档与测试
+
+- `Mud.Feishu.EventCallback/README.md` 重建为全量事件表（205 事件 / 24 域，54 → 205 行），
+  表格由源码 `[GenerateEventHandler]` 标注直接汇总，新增事件必须同步该表。
+- 新增契约守卫 `EventCallbackContractGuards`（5 条）：常量必须被 `[GenerateEventHandler]` 接线（防止死常量）、
+  文件名必须与主类名一致、每个域必须有 `Generated/{域}JsonContext.g.cs` 且已挂进 resolver 链、
+  每个 `*Result` 必须能反射找到生成的处理器、已接线事件类型必须出现在 README 事件表。
+- 新增事件负载冒烟测试 `EventPayloadSmokeTests` + `TestData/EventCallback/event-examples.json`
+  （官方文档「事件体示例」原文回放，对示例中每个非空键做 1:1 建模覆盖校验，字段名错配当场失败）。
+- `FeishuHttpClientFactoryTests` / `UserTokenManagerTests` / `FeishuServiceCollectionExtensionsTests`
+  随上游适配同步扩充（字段等价性、配置热更新语义与冷启动对照回归）。
+
 ## [3.0.1] - 2026-10-07
 
 > 主题：**适配 `Mud.HttpUtils` 3.0.0**（上游移除 `UseApp` / `UseDefaultApp` / `BeginScope(string)`，改以作用域式切换）与 **事件 v1.0 / v2.0 双格式解析修复**。
@@ -30,7 +191,7 @@
   `UseApp(appKey)` / `UseDefaultApp()` 改为 `IAppContextHolder.SwitchToApp(appKey, this, serviceProvider)` /
   `SwitchToDefaultApp(this)`（**语义等价**：完整守卫 + 立即切换 + 不归还 + 返回上下文）。
   对外行为不变（仍返回 DI 解析到的服务实例，且其 `Current` 已绑定目标应用）。
-- **`EventData.Event` 写侧统一为 JSON 原文**字符串**（原 WebSocket 通道写 `JsonElement`）。
+- **`EventData.Event` 写侧统一为 JSON 原文**字符串\*\*（原 WebSocket 通道写 `JsonElement`）。
   属性类型保持 `object?` 不变；读取请改用扩展 `GetEventRawJson()`，下一 major 收敛为 `string?`。
 - **行为变更**：`EventData.CreateTime` 语义由「秒」修正为**毫秒**（与 XML 注释对齐，v1.0 `ts` 一并纳入统一启发式）。
   按秒消费的宿主请 ×1000 或改用 `DateTimeOffset.FromUnixTimeMilliseconds`。

@@ -1,0 +1,71 @@
+﻿// -----------------------------------------------------------------------
+//  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
+//  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
+//  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
+//  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
+// -----------------------------------------------------------------------
+
+namespace Mud.Feishu.EventCallback.Moments;
+
+/// <summary>
+/// 取消表情互动
+/// <para>公司圈用户取消表情互动时触发此事件。</para>
+/// <para>事件类型:moments.reaction.deleted_v1</para>
+/// <para>使用时请继承：<see cref="MomentsReactionDeletedEventHandler"/></para>
+/// <para>文档地址：https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/moments-v1/reaction/events/deleted</para>
+/// </summary>
+[GenerateEventHandler(EventType = FeishuEventTypes.MomentsReactionDeleted, HandlerNamespace = Consts.HandlerNamespace,
+              InheritedFrom = Consts.InheritedFrom, HeaderType = nameof(FeishuEventHeader))]
+[HttpJsonSerializable(SerializerClassName = "Moments")]
+public class MomentsReactionDeletedResult : IEventResult
+{
+    /// <summary>
+    /// <para>reaction 类型</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
+
+    /// <summary>
+    /// <para>用户 ID（仅实名下有值）</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("user_id")]
+    public UserIdInfo? UserId { get; set; }
+
+    /// <summary>
+    /// <para>reaction 所属实体ID</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("entity_id")]
+    public string? EntityId { get; set; }
+
+    /// <summary>
+    /// <para>Reaction的ID</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
+
+    /// <summary>
+    /// <para>表情回复所属实体类型</para>
+    /// <para>**可选值有**：</para>
+    /// <para>- 1：帖子</para>
+    /// <para>- 2：评论</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("entity_type")]
+    public int? EntityType { get; set; }
+
+    /// <summary>
+    /// <para>表情回复人类型</para>
+    /// <para>**可选值有**：</para>
+    /// <para>- 1：实名</para>
+    /// <para>- 2：花名</para>
+    /// <para>- 3：匿名</para>
+    /// <para>- 4：官方号</para>
+    /// <para>必填：否</para>
+    /// </summary>
+    [JsonPropertyName("user_type")]
+    public int? UserType { get; set; }
+}

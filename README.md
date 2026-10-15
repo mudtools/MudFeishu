@@ -46,7 +46,7 @@ MudFeishu 是一套现代化的企业级 .NET 飞书 API 集成 SDK，提供完�
 | 组件                          | 描述                                                                                             | NuGet                                                                                                                               | 下载                                                                    |
 | ----------------------------- | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
 | **Mud.Feishu.Abstractions**   | 事件订阅抽象层，提供策略模式和工厂模式的事件处理架构，内置 FeishuMetrics 指标收集和事件去重      | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Abstractions.svg)](https://www.nuget.org/packages/Mud.Feishu.Abstractions/)     | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.Abstractions.svg)   |
-| **Mud.Feishu**                | 核心 HTTP API 客户端库，支持组织架构、消息、群聊、云文档、画板、电子表格、多维表格等完整飞书功能 | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.svg)](https://www.nuget.org/packages/Mud.Feishu/)                               | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.svg)                |
+| **Mud.Feishu**                | 核心 HTTP API 客户端库，覆盖 33 个业务域（组织架构、消息、群聊、审批、考勤、云文档、多维表格、日历、视频会议、招聘、核心人事、绩效、OKR 等） | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.svg)](https://www.nuget.org/packages/Mud.Feishu/)                               | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.svg)                |
 | **Mud.Feishu.DataModels**     | 飞书 HTTP API 强类型数据模型库，覆盖全部 API 模块的请求/响应模型                                 | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.DataModels.svg)](https://www.nuget.org/packages/Mud.Feishu.DataModels/)         | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.DataModels.svg)     |
 | **Mud.Feishu.Authentication** | 飞书用户认证中间件，基于 AsyncLocal 实现线程安全的用户上下文管理                                 | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.Authentication.svg)](https://www.nuget.org/packages/Mud.Feishu.Authentication/) | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.Authentication.svg) |
 | **Mud.Feishu.EventCallback**  | 飞书事件回调强类型数据模型，支持源代码生成器自动生成事件处理器                                   | [![Nuget](https://img.shields.io/nuget/v/Mud.Feishu.EventCallback.svg)](https://www.nuget.org/packages/Mud.Feishu.EventCallback/)   | ![Nuget](https://img.shields.io/nuget/dt/Mud.Feishu.EventCallback.svg)  |
@@ -616,6 +616,9 @@ builder.Services.CreateFeishuServicesBuilder()
     .AddAIApi()
     .AddSearchApi()
     .AddHelpDeskApi()
+    // 其余业务域（共 32 个）：AddAuthenticationApi() / AddAilyApi() / AddSparkApi() / AddMinutesApi() /
+    // AddHireApi() / AddTrustPartyApi() / AddAcsApi() / AddLingoApi() / AddPerformanceApi() /
+    // AddSecurityApi() / AddMDMApi() / AddPayrollApi() / AddPersonalSettingsApi() / AddOkrApi()
     .Build();
 
 // 注册 HTTP API 服务（按模块注册）
@@ -631,6 +634,9 @@ builder.Services.AddFeishuServices(
     FeishuModule.AI,
     FeishuModule.Search,
     FeishuModule.HelpDesk
+    // 其余业务域：FeishuModule.Authentication / Aily / Spark / Minutes / Hire / TrustParty /
+    // Acs / Lingo / Performance / Security / MDM / Payroll / PersonalSettings / Okr
+    // 也可直接传 FeishuModule.All，或改用 services.AddFeishuServices(builder => builder.AddAllApis())
 );
 
 // 注册 WebSocket 事件订阅服务
@@ -693,31 +699,52 @@ public class TestController : ControllerBase
 
 ## 🎯 API 模块
 
-Mud.Feishu 提供完整的飞书 HTTP API 覆盖，支持以下模块：
+Mud.Feishu 提供完整的飞书 HTTP API 覆盖：**33 个业务域、400+ 个强类型接口**（含租户 / 用户令牌变体），
+按业务域拆分为独立模块，可在 `AddFeishuServices` 中按需注册（也可 `AddAllApis()` 一次注册全部）。
+
+> - 33 个业务域中，**32 个可在 `FeishuModule` 中独立注册**（见下表「注册方法」列）；
+>   **画板 (Board)** 的接口归属云盘分组，随 `AddDriveApi()` 一并注册。
+> - 除认证授权外，每个业务域同时提供**租户令牌**（`IFeishuTenantV{n}...`）与**用户令牌**（`IFeishuUserV{n}...`）变体，
+>   以各模块接口文档为准。
+> - 批量注册入口：`AddAllApis()`、`AddModules(FeishuModule.Xxx, ...)`、`AddFeishuServices(FeishuModule.All)`。
 
 ### 📋 API 模块总览
 
-| 模块分类        | API 版本 | 主要功能                                             |
-| --------------- | -------- | ---------------------------------------------------- |
-| **🔐 认证授权** | V3       | 应用令牌、租户令牌、用户令牌、OAuth 2.0、多应用管理  |
-| **👥 组织架构** | V1/V3    | 用户、部门、员工、用户组、职级、职务、角色           |
-| **💬 消息服务** | V1       | 文本/图片/卡片消息、批量发送、群聊管理               |
-| **📋 审批流程** | V4       | 审批定义、审批实例、审批任务、审批消息、审批订阅     |
-| **📝 任务管理** | V2       | 任务创建、更新、分组、附件、评论、自定义字段         |
-| **📅 日程会议** | V4       | 日历管理、日程事件、ACL 访问控制                     |
-| **📹 视频会议** | V1       | 会议管理、会议室、配置、导出、会议数据、纪要、录制、报告 |
-| **📄 文档管理** | V1       | 飞书文档、文档块、内容转换                           |
-| **📚 知识库**   | V2       | 知识空间、节点管理、节点复制移动                     |
-| **☁️ 云盘管理** | V1       | 云空间、文件夹、文件上传、版本管理、权限、评论、订阅 |
-| **🎨 画板管理** | V1       | 画板主题、缩略图、节点创建、语法解析                 |
-| **📊 电子表格** | V2/V3    | 电子表格、区域操作、筛选、数据验证、条件格式         |
-| **📋 多维表格** | V1/V2    | 数据表、记录、字段、视图、表单、仪表盘、角色、自动化 |
-| **⏰ 考勤管理** | V1       | 考勤组、打卡记录、班次、请假审批、考勤统计、档案     |
-| **🎴 卡片管理** | V1/V2    | 卡片管理、卡片元素、消息流卡片                       |
-| **🤖 AI 能力**  | V1       | 文档解析、OCR 识别、语音转文字、文本翻译             |
-| **📧 邮箱管理** | V1       | 邮件别名、联系人、草稿、文件夹、邮件组、标签、模板、消息、公共邮箱、规则、会话 |
-| **🔍 搜索**     | V2       | 数据源搜索、文档/知识库搜索、套件搜索               |
-| **🎧 服务台**   | V1       | 客服管理、技能、排班、工单、工单消息                 |
+| 业务域 | API 版本 | 注册方法 | 主要能力 |
+| --- | --- | --- | --- |
+| **🔐 认证授权 (Authentication)** | V3 | `AddAuthenticationApi()` | 应用令牌、租户令牌、用户令牌、OAuth 2.0、多应用管理 |
+| **👥 组织架构 (Organization)** | V1 / V3 | `AddOrganizationApi()` | 用户、部门、员工、用户组、职级、职务、角色、自定义字段 |
+| **💬 消息服务 (Message)** | V1 | `AddMessageApi()` | 文本/图片/卡片消息、批量发送、撤回、已读查询 |
+| **🏢 群聊管理 (ChatGroup)** | V1 | `AddChatGroupApi()` | 群组、群成员、群公告、会话标签、群菜单 |
+| **📋 审批流程 (Approval)** | V1 / V4 | `AddApprovalApi()` | 审批定义、审批实例、审批任务、评论、抄送、订阅、外部审批、地理库、文件、审批消息 |
+| **📝 任务管理 (Task)** | V2 | `AddTaskApi()` | 任务、清单、分组、附件、评论、自定义字段、活动订阅 |
+| **🎴 卡片管理 (Card)** | V1 / V2 | `AddCardApi()` | 卡片、卡片元素、流式消息卡片 |
+| **⏰ 考勤管理 (Attendance)** | V1 | `AddAttendanceApi()` | 考勤组、班次、打卡流水与结果、请假/补卡审批、考勤统计、考勤档案、人脸信息 |
+| **☁️ 云盘管理 (Drive)** | V1 | `AddDriveApi()` | 云空间、文件夹、文件上传下载、版本、素材、权限、评论、订阅、导入导出 |
+| **🎨 画板管理 (Board)** | V1 | 随 `AddDriveApi()` 注册 | 画板主题、缩略图、节点创建、语法解析 |
+| **📄 文档管理 (Docx)** | V1 | `AddDocxApi()` | 文档创建与获取、文档块读写与批量操作、内容转换、文档公告 |
+| **📚 知识库 (Wiki)** | V2 | `AddWikiApi()` | 知识空间、节点管理、节点复制与移动 |
+| **📊 电子表格 (Spreadsheets)** | V2 / V3 | `AddSpreadsheetsApi()` | 工作表、行列、单元格、区域读写、筛选视图、数据验证、条件格式、保护范围、浮动图片 |
+| **📋 多维表格 (Bitable)** | V1 / V2 | `AddBiTableApi()` | 数据表、记录、字段、视图、表单、仪表盘、角色、自动化流程 |
+| **📅 日历日程 (Calendar)** | V4 | `AddCalendarApi()` | 日历、ACL、日程与参与人、忙闲查询、请假日程 |
+| **📹 视频会议 (VideoConferencing)** | V1 | `AddVideoConferencingApi()` | 会议、预约、会议室与层级、会议室配置、导出、录制、纪要、报告、机器人 |
+| **📧 邮箱管理 (Mail)** | V1 | `AddMailApi()` | 邮箱别名、公共邮箱、邮件组、联系人、收信规则、文件夹、标签、会话、模板、用户邮箱邮件 |
+| **🤖 AI 能力 (AI)** | V1 | `AddAIApi()` | 智能文档处理、OCR 识别、语音转文字、文本翻译 |
+| **🔍 搜索 (Search)** | V2 | `AddSearchApi()` | 数据源与 Schema、云文档/知识库搜索、套件搜索 |
+| **🎧 服务台 (HelpDesk)** | V1 | `AddHelpDeskApi()` | 客服与技能、客服排班、工单、工单消息、通知审批 |
+| **🤝 Aily 智能体 (Aily)** | V1 | `AddAilyApi()` | 智能体、会话与消息、数据知识与知识问答、技能 |
+| **🧩 妙搭 (Spark)** | V1 | `AddSparkApi()` | 妙搭应用、数据表/字段/视图、SQL 命令、文件存储、枚举、可用范围、通讯录用户 |
+| **📝 妙记 (Minutes)** | V1 | `AddMinutesApi()` | 妙记信息、音视频与字幕、产物、统计、剪辑、搜索、上传、订阅 |
+| **🎯 招聘 (Hire)** | V1 | `AddHireApi()` | 职位与招聘需求、候选人、面试、Offer、内推账户、招聘附件、生态服务（背调/笔试）、外部投递、招聘官网投递、招聘设置 |
+| **🤝 关联组织 (TrustParty)** | V1 | `AddTrustPartyApi()` | 协作租户、协作规则、共享实体、协作部门与协作成员 |
+| **🚪 智能门禁 (Acs)** | V1 | `AddAcsApi()` | 门禁设备、门禁用户与人脸、访客、通行记录、外部规则 |
+| **📖 词典 (Lingo)** | V1 | `AddLingoApi()` | 词条、草稿、分类、词库、文件上传下载、高亮与实体匹配 |
+| **📈 绩效 (Performance)** | V1 / V2 | `AddPerformanceApi()` | 考核活动与周期、阶段任务、指标库与指标明细、评估数据、补充信息、指标标签 |
+| **🛡️ 安全与合规 (Security)** | V1 / V2 | `AddSecurityApi()` | 审计日志、OpenAPI 调用日志、多地域实体、用户迁移、设备登记与设备申请记录 |
+| **🗂️ 主数据管理 (MDM)** | V1 / V3 | `AddMDMApi()` | 国家/地区主数据、用户授权数据关系绑定与解绑 |
+| **💰 薪酬发放 (Payroll)** | V1 | `AddPayrollApi()` | 发薪活动与明细、成本分摊计划/明细/报表、数据源与记录、发薪组与科目 |
+| **⚙️ 个人设置 (PersonalSettings)** | V1 | `AddPersonalSettingsApi()` | 系统状态创建/更新/删除/列表、批量开启与关闭 |
+| **🎯 OKR** | V1 / V2 | `AddOkrApi()` | OKR 周期、目标与关键结果、对齐、分类、指标、进度记录、复盘与周期规则 |
 
 ### 📄 文档管理 (Docx)
 
@@ -1265,6 +1292,371 @@ public interface IFeishuV1HelpDeskTicket
 - 工单创建、更新和查询
 - 工单消息和自定义字段管理
 
+### 🤝 Aily 智能体 (Aily)
+
+飞书 Aily 智能体 API，覆盖智能体配置、会话、数据知识与技能。
+
+```csharp
+public interface IFeishuV1AilyAgent
+{
+    // 智能体可见性、产物与附件
+}
+
+public interface IFeishuV1AilySessions
+{
+    // 会话与消息
+}
+
+public interface IFeishuV1AilyDataKnowledge
+{
+    // 数据资产、标签与知识问答
+}
+
+public interface IFeishuV1AilySkills
+{
+    // 技能创建与查询
+}
+```
+
+**功能列表**：
+
+- 智能体可见性校验、产物下载与附件上传
+- 会话创建与消息收发
+- 数据资产、数据资产标签与知识问答
+- 技能创建、更新与查询
+
+### 🧩 妙搭 (Spark)
+
+飞书妙搭（低代码应用）API，覆盖应用、数据表、SQL 与文件存储。
+
+```csharp
+public interface IFeishuV1SparkApp
+{
+    // 妙搭应用、数据表、字段、视图、存储
+}
+
+public interface IFeishuV1SparkDirectoryUser
+{
+    // 妙搭通讯录用户与权限
+}
+```
+
+**功能列表**：
+
+- 应用创建、更新、删除与可用范围查询
+- 数据表、字段、视图、枚举管理
+- SQL 命令执行与数据分析概览
+- 文件存储上传（含分片上传）与额度使用
+- 通讯录用户查询与权限校验
+
+### 📝 妙记 (Minutes)
+
+飞书妙记 API，覆盖妙记信息、产物、字幕与统计数据。
+
+```csharp
+public interface IFeishuV1MinutesMinute
+{
+    // 妙记信息、产物、字幕、统计
+}
+```
+
+**功能列表**：
+
+- 妙记信息、音视频与字幕获取
+- 产物下载与参会统计
+- 妙记剪辑、搜索与上传
+- 妙记订阅与取消订阅
+
+### 🎯 招聘 (Hire)
+
+飞书招聘 API，覆盖职位、候选人、面试、Offer 与生态服务。
+
+```csharp
+public interface IFeishuTenantV1HireJob
+{
+    // 职位管理
+}
+
+public interface IFeishuTenantV1HireJobRequirement
+{
+    // 招聘需求
+}
+
+public interface IFeishuTenantV1HireCandidate
+{
+    // 候选人管理
+}
+
+public interface IFeishuTenantV1HireOffer
+{
+    // Offer 管理
+}
+```
+
+**功能列表**：
+
+- 职位、招聘需求与招聘设置
+- 候选人（租户/用户令牌）、面试与 Offer
+- 内推账户与招聘官网投递（`portal_apply_schemas`）
+- 招聘附件与外部投递 / 外部背调 / 外部面试 / 外部 Offer（`HireExternal`）
+- 生态服务：背调与笔试（`HireEco`，含自定义字段、套餐、试卷）与猎头供应商（`HireAgency`）
+
+### 🤝 关联组织 (TrustParty)
+
+飞书关联组织（信任方）API，覆盖协作租户、协作规则与共享实体。
+
+```csharp
+public interface IFeishuV1TrustPartyCollaborationTenant
+{
+    // 协作租户与其可见组织
+}
+
+public interface IFeishuV1DirectoryCollaborationTenant
+{
+    // 目录协作租户
+}
+
+public interface IFeishuV1DirectoryCollaborationRule
+{
+    // 目录协作规则
+}
+
+public interface IFeishuV1DirectoryShareEntity
+{
+    // 共享实体
+}
+```
+
+**功能列表**：
+
+- 协作租户查询与可见组织
+- 协作部门与协作成员管理
+- 目录协作规则配置
+- 共享实体查询
+
+### 🚪 智能门禁 (Acs)
+
+飞书智能门禁 API，覆盖门禁设备、门禁用户、访客与通行记录。
+
+```csharp
+public interface IFeishuTenantV1AcsDevice
+{
+    // 门禁设备管理
+}
+
+public interface IFeishuTenantV1AcsUser
+{
+    // 门禁用户与人脸
+}
+
+public interface IFeishuTenantV1AcsAccessRecord
+{
+    // 通行记录
+}
+```
+
+**功能列表**：
+
+- 门禁设备查询与配置
+- 门禁用户、用户人脸信息管理
+- 访客管理与通行照片下载
+- 通行记录查询
+- 外部规则与设备绑定
+
+### 📖 词典 (Lingo)
+
+飞书词典 API，覆盖词条、草稿、分类与词库。
+
+```csharp
+public interface IFeishuV1LingoEntity
+{
+    // 词条管理、高亮、匹配、搜索
+}
+
+public interface IFeishuV1LingoDraft
+{
+    // 草稿管理
+}
+
+public interface IFeishuV1LingoRepo
+{
+    // 词库管理
+}
+```
+
+**功能列表**：
+
+- 词条创建、更新、删除与搜索
+- 词条高亮与实体匹配
+- 草稿提交与查询
+- 分类与词库管理
+- 词典附件上传与下载
+
+### 📈 绩效 (Performance)
+
+飞书绩效 API，覆盖考核活动、周期、指标与评估数据。
+
+```csharp
+public interface IFeishuTenantV2PerformanceSemesterActivity
+{
+    // 考核活动与周期
+}
+
+public interface IFeishuTenantV2PerformanceMetricDetail
+{
+    // 指标明细、指标库、指标字段与标签
+}
+
+public interface IFeishuTenantV2PerformanceReviewData
+{
+    // 评估数据
+}
+
+public interface IFeishuTenantV1PerformanceStageTask
+{
+    // 阶段任务
+}
+```
+
+**功能列表**：
+
+- 考核活动与周期查询
+- 指标库、指标明细、指标字段与指标标签
+- 评估数据查询与补充信息导入
+- 阶段任务（按页、按用户列表）查询
+
+### 🛡️ 安全与合规 (Security)
+
+飞书安全与合规 API，覆盖审计日志、设备登记与用户迁移。
+
+```csharp
+public interface IFeishuTenantV1SecurityAuditLog
+{
+    // 审计日志
+}
+
+public interface IFeishuTenantV1SecurityOpenApiLog
+{
+    // OpenAPI 调用日志
+}
+
+public interface IFeishuTenantV2SecurityDeviceRecord
+{
+    // 设备登记记录
+}
+
+public interface IFeishuTenantV1SecurityUserMigration
+{
+    // 用户迁移
+}
+```
+
+**功能列表**：
+
+- 审计日志与 OpenAPI 调用日志查询
+- 设备登记记录与设备申请记录
+- 多地域实体（租户）信息
+- 用户迁移创建、查询、搜索与取消
+
+### 🗂️ 主数据管理 (MDM)
+
+飞书主数据管理 API，覆盖国家/地区主数据与用户授权数据关系。
+
+```csharp
+public interface IFeishuTenantV3MDMCountryRegion
+{
+    // 国家/地区主数据
+}
+
+public interface IFeishuTenantV1MDMUserAuthDataRelation
+{
+    // 用户授权数据关系
+}
+```
+
+**功能列表**：
+
+- 国家/地区主数据查询与批量查询
+- 用户授权数据关系绑定与解绑
+
+### 💰 薪酬发放 (Payroll)
+
+飞书薪酬发放 API，覆盖发薪活动、成本分摊与数据源。
+
+```csharp
+public interface IFeishuTenantV1PayrollPayment
+{
+    // 发薪活动与发薪明细
+}
+
+public interface IFeishuTenantV1PayrollCostAllocation
+{
+    // 成本分摊
+}
+
+public interface IFeishuTenantV1PayrollDatasourceRecord
+{
+    // 数据源记录
+}
+```
+
+**功能列表**：
+
+- 发薪活动查询、归档与发薪明细
+- 成本分摊计划、明细与报表
+- 数据源与数据源记录读写
+- 发薪组、科目等发薪配置查询
+
+### ⚙️ 个人设置 (PersonalSettings)
+
+飞书个人设置 API，当前覆盖系统状态管理。
+
+```csharp
+public interface IFeishuTenantV1PersonalSettingsSystemStatus
+{
+    // 系统状态
+}
+```
+
+**功能列表**：
+
+- 系统状态创建、更新、删除与列表查询
+- 系统状态批量开启与关闭
+
+### 🎯 OKR
+
+飞书 OKR API，覆盖周期、目标、关键结果、对齐与进度。
+
+```csharp
+public interface IFeishuV2OkrCycle
+{
+    // 周期与周期内目标
+}
+
+public interface IFeishuV2OkrObjective
+{
+    // 目标
+}
+
+public interface IFeishuV2OkrKeyResult
+{
+    // 关键结果
+}
+
+public interface IFeishuV1Okr
+{
+    // OKR 批量获取与周期规则
+}
+```
+
+**功能列表**：
+
+- OKR 周期、周期规则与周期内目标
+- 目标、关键结果与目标对齐
+- OKR 分类与指标
+- 进度、进度记录与复盘查询
+- OKR 图片上传
+
 ---
 
 ## 🎯 核心功能
@@ -1358,7 +1750,8 @@ public interface IFeishuV1HelpDeskTicket
 
 - ✅ 强类型数据模型（所有事件数据均有完整类型定义和 XML 文档注释）
 - ✅ 源代码生成器（自动生成事件处理器基类）
-- ✅ 完整事件覆盖（组织架构、即时通讯、审批、任务等主要业务场景）
+- ✅ 完整事件覆盖（**25 个业务域、206 个事件**：通讯录、即时通讯、审批、任务、云文档、多维表格、日历、视频会议、会议室、邮箱、招聘、核心人事 v1/v2、绩效、OKR、动态、学习、安全合规、智能门禁、服务台、应用与薪酬等，另含卡片事件回调 `card.action.trigger` 的请求/响应模型）
+- ✅ 契约守卫（常量接线、JsonContext 覆盖、文件名/类名一致、README 同步、官方事件体示例回放）
 
 > 💡 **提示**：[查看完整文档](./Mud.Feishu.EventCallback/README.md)
 
@@ -1601,8 +1994,8 @@ dotnet publish -r win-x64 -c Release /p:PublishAot=true
 
 | 包                            | 版本             | 说明                                |
 | ----------------------------- | ---------------- | ----------------------------------- |
-| **Mud.HttpUtils**             | v3.0.0  | HTTP 客户端工具类（含源代码生成器） |
-| **Mud.HttpUtils.Generator**   | v3.0.0  | HTTP 客户端代码生成器（编译时）     |
+| **Mud.HttpUtils**             | v3.0.7  | HTTP 客户端工具类（含源代码生成器） |
+| **Mud.HttpUtils.Generator**   | v3.0.7  | HTTP 客户端代码生成器（编译时）     |
 | **Microsoft.Extensions.Http** | v8.0.1 / v10.0.9 | HTTP 客户端工厂                     |
 
 ---

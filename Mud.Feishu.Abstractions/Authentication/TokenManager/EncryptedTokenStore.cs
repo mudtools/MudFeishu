@@ -29,7 +29,7 @@ namespace Mud.Feishu.Abstractions.Authentication;
 /// 属预期行为（本项目未发布，无存量数据）。
 /// </para>
 /// </remarks>
-public sealed class EncryptedTokenStore : ITokenStore, IEncryptedTokenStore
+public sealed class EncryptedTokenStore : ITokenStore, IEncryptedTokenStore, ITokenStoreAppPurge
 {
     /// <summary>ENH-2：解密失败日志的节流间隔（首次必记，之后每 N 次记一次，防日志风暴）。</summary>
     internal const int DecryptFailureLogInterval = 100;
@@ -98,6 +98,23 @@ public sealed class EncryptedTokenStore : ITokenStore, IEncryptedTokenStore
     /// </remarks>
     public Task ClearAsync(CancellationToken cancellationToken = default)
         => _inner.ClearAsync(cancellationToken);
+
+    // ---- U-4（上游 3.0.10 Batch 2）：按应用清库能力面透传 —— 加密只作用于值、不改变键布局，
+    //      能力探测可穿透本装饰器（内层未实现时经官方统一入口回退路径承接）。 ----
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyCollection<string>> EnumerateKeysAsync(string appKey, CancellationToken cancellationToken = default)
+    {
+        if (_inner is ITokenStoreAppPurge purge)
+            return await purge.EnumerateKeysAsync(appKey, cancellationToken).ConfigureAwait(false);
+
+        var tokenTypes = await _inner.GetTokenTypesAsync(cancellationToken).ConfigureAwait(false);
+        return tokenTypes.ToList();
+    }
+
+    /// <inheritdoc />
+    public Task<int> PurgeAppAsync(string appKey, CancellationToken cancellationToken = default)
+        => TokenStorePurgeExtensions.PurgeAppTokensAsync(_inner, appKey, cancellationToken);
 
     /// <summary>
     /// 解密失败（如旧明文数据、密钥轮换）时按「未命中」返回 null，

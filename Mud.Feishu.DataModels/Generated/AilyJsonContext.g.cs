@@ -74,8 +74,8 @@ namespace Mud.Feishu.DataModels.Aily;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.SkillOopsResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.SkillPageListResult))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.StartSkillResult))]
-[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.UploadDataAssetFileRequest))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.CreateAgentAttachmentRequest))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.Aily.UploadDataAssetFileRequest))]
 internal partial class AilyJsonContext : JsonSerializerContext
 {
 }

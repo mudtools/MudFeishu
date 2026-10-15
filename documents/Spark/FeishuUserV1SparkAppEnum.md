@@ -3,7 +3,7 @@ title: 飞书妙搭自定义枚举接口（用户令牌）| MudFeishu
 description: 该接口用于以用户身份获取飞书妙搭应用下的自定义枚举列表与详情。
 ---
 
-# 飞书妙搭自定义枚举 - 用户令牌（FeishuUserV1SparkAppEnum）
+# 飞书妙搭自定义枚举 - 用户令牌（IFeishuUserV1SparkAppEnum）
 
 ## 接口名称
 

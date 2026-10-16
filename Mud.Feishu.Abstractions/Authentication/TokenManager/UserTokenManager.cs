@@ -21,17 +21,17 @@ namespace Mud.Feishu.Abstractions.Authentication;
 /// </para>
 /// <para>
 /// <b>持久化接线</b>：注入 <see cref="IUserTokenStore"/> 时，基类缓存改为
-/// <see cref="TokenStoreBackedTokenCache{T}"/>（键映射为裸 userId → 固定 tokenType，物理键与改造前逐字节一致），
+/// <see cref="TokenStoreBackedTokenCache{T}"/>（键映射为裸 userId → 固定 tokenType），
 /// 读走管线 S2 读穿透、写经基类缓存写入自动写穿，因此登录 / 刷新 / 宿主存入流程无需手工落库；
 /// 管理器字段持有的 store 亦经 <see cref="PurgeGateUserTokenStoreDecorator"/> 包装，
-/// 使 refresh 候选读取 / D12 过期清理 / CAS 等直调路径共享清库门与读容错口径。
+/// 使 refresh 候选读取 / 过期清理 / CAS 等直调路径共享清库门与读容错口径。
 /// </para>
 /// <para>
-/// D1 契约例外（TMA-01）：<c>InvalidateUserTokenAsync</c> 不得清除 <c>IUserTokenStore</c> 中的 refresh_token。
+/// 契约例外：<c>InvalidateUserTokenAsync</c> 不得清除 <c>IUserTokenStore</c> 中的 refresh_token。
 /// 理由：用户令牌的唯一续期路径是 <c>RefreshUserTokenAsync</c> → <c>LoadRefreshCandidateAsync</c> →
 /// 从 store 取 refresh_token 做 OAuth 交换；清 store 会使恢复彻底无路（表现为必然 401），
 /// 而用户侧"内存+store 双清"已由 <c>RemoveTokenAsync</c>（显式登出语义）承担。
-/// 实现方式：覆写为 <c>UserTokenManagerBase.InvalidateUserAccessTokenInCache</c>（上游 U-1 入口，
+/// 实现方式：覆写为 <c>UserTokenManagerBase.InvalidateUserAccessTokenInCache</c>（上游入口，
 /// 语义 = 仅置空访问令牌字段 + 保序写回 + 写入代际作废）—— 桥接器写穿时跳过访问令牌、保留 refresh。
 /// </para>
 /// </remarks>
@@ -66,26 +66,26 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _tokenTypeKey = $"UserAccessToken:{_options.AppKey}";
-        // 直调路径（refresh 候选读取 / D12 过期清理 / TMF-05 CAS / 登出删除）与桥接器共享同一 store，
-        // 经装饰器统一获得清库门（D10）与读容错口径 —— 管理器内不再各自判定门、各自 try/catch。
+        // 直调路径（refresh 候选读取 / 过期清理 / CAS / 登出删除）与桥接器共享同一 store，
+        // 经装饰器统一获得清库门与读容错口径 —— 管理器内不再各自判定门、各自 try/catch。
         _userTokenStore = userTokenStore is null
             ? null
             : new PurgeGateUserTokenStoreDecorator(userTokenStore, _options.AppKey, _logger);
-        // U-7（上游 3.0.10 Batch 3）：CAS 能力探测必须落在**未装饰的原始 store** 上——
+        // CAS 能力探测必须落在**未装饰的原始 store** 上——
         // 装饰器刻意不实现 IUserTokenStoreCompareExchange（否则内层未实现时探测"假命中"，
         // 官方非原子回退的「存储原值 vs 期望明文」整值比较对飞书编码值恒失配 ⇒ 清库静默失效）。
-        // CAS 属写/删族（门只拦读），故直调原始 store 不违 D10 门语义。
+        // CAS 属写/删族（门只拦读），故直调原始 store 不违门语义。
         _compareExchangeStore = userTokenStore as IUserTokenStoreCompareExchange;
         _refreshLease = refreshLease;
     }
 
     private readonly ITokenRefreshLease? _refreshLease;
 
-    /// <summary>U-7：原始用户 store 的原子 CAS 能力（未实现时为 null）。</summary>
+    /// <summary>原始用户 store 的原子 CAS 能力（未实现时为 null）。</summary>
     private readonly IUserTokenStoreCompareExchange? _compareExchangeStore;
 
     /// <summary>
-    /// U-3：跨进程刷新去重租约（与租户/应用管理器同口径，由工厂经 DI 解析注入）；
+    /// 跨进程刷新去重租约（与租户/应用管理器同口径，由工厂经 DI 解析注入）；
     /// 未注册时为 null，行为与不启用租约时逐位一致。
     /// </summary>
     protected override ITokenRefreshLease? RefreshLease => _refreshLease;
@@ -93,14 +93,14 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
     protected override int UserExpireThresholdSeconds => _options.TokenRefreshThreshold;
 
     /// <summary>
-    /// TMR-P2-11（F11）：用户标识（OpenId/userId）日志脱敏统一出口。
+    /// 用户标识（OpenId/userId）日志脱敏统一出口。
     /// 与中间件默认脱敏策略一致——用户标识属敏感信息，明文入日志会造成用户画像泄露面。
     /// </summary>
     /// <param name="userId">用户标识（OpenId/userId）</param>
     /// <returns>脱敏后的用户标识</returns>
     private static string Masked(string? userId) => SensitiveDataUtils.MaskSensitiveData(userId);
 
-    // TMA-23 修复：覆写 MetricsKey 使指标维度在多应用下可区分。
+    // 覆写 MetricsKey 使指标维度在多应用下可区分。
     // 返回 {TypeName}:{AppKey}，属性文档明确要求"稳定且不含敏感信息"。
     protected override string MetricsKey => $"UserTokenManager:{_options.AppKey}";
 
@@ -218,14 +218,13 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
     /// 刷新用户令牌
     /// </summary>
     /// <remarks>
-    /// TMA2-01 / D11：refresh token 的可达性独立于 access token。
-    /// 此前 <c>RefreshUserTokenAsync</c> 调用 <c>GetTokenInfoAsync</c>，后者在 access token 过期时返回 <c>null</c>，
-    /// 导致 refresh token 不可达——access 过期后（含进程重启、多实例接管）该用户必然 401 直到重新走 OAuth 授权。
-    /// 现在使用 <c>LoadRefreshCandidateAsync</c> 读取 refresh token，即使 access token 已过期或缺失。
+    /// refresh token 的可达性独立于 access token。
+    /// 本方法经 <c>LoadRefreshCandidateAsync</c> 读取 refresh token，
+    /// access token 过期或缺失时（含进程重启、多实例接管）仍可刷新，用户无需重新走 OAuth 授权。
     /// <para>
-    /// TMF-05：本方法为公共 API，宿主管线外直调<b>不</b>被组件 <c>KeyedLockTable</c> 键控锁
-    /// 串行化（组件仅在 <c>GetOrRefreshTokenCoreAsync</c> 管线内持锁调用刷新，属 TMX-15-4
-    /// 锁非重入不变式的姊妹约束）；不可重试失败清库前经 CAS 比对防御误删并发刷新刚持久化的新令牌。
+    /// 本方法为公共 API，宿主管线外直调<b>不</b>被组件 <c>KeyedLockTable</c> 键控锁
+    /// 串行化（组件仅在 <c>GetOrRefreshTokenCoreAsync</c> 管线内持锁调用刷新）；
+    /// 不可重试失败清库前经 CAS 比对防御误删并发刷新刚持久化的新令牌。
     /// </para>
     /// </remarks>
     /// <param name="userId">用户标识</param>
@@ -238,13 +237,13 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         if (string.IsNullOrEmpty(userId))
             return null;
 
-        // TMA2-01 / D11：使用 LoadRefreshCandidateAsync 而非 GetTokenInfoAsync，
+        // 使用 LoadRefreshCandidateAsync 而非 GetTokenInfoAsync，
         // 允许在 access token 过期或缺失时仍能读取 refresh token。
         var candidate = await LoadRefreshCandidateAsync(userId, cancellationToken).ConfigureAwait(false);
         if (candidate == null || string.IsNullOrEmpty(candidate.RefreshToken))
             return null;
 
-        // TMA2-06 / D12：校验 refresh token 自身的过期时间。
+        // 校验 refresh token 自身的过期时间。
         // 过期 → 删 store 条目、返回 null（进入退避）。
         if (candidate.RefreshTokenExpireTime > 0 && candidate.RefreshTokenExpireTime <= DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
         {
@@ -277,7 +276,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
 
         if (res == null || res.Code != 0)
         {
-            // TMA2-06 / D12：OAuth 失败按错误码分类。
+            // OAuth 失败按错误码分类。
             // 不可重试集合（invalid_grant / refresh token 失效 / scope 不符）→ 清 store refresh token + 返回 null（进退避）。
             if (FeishuOAuthErrorClassifier.IsUnretryable(res?.Code, res?.Msg))
             {
@@ -288,10 +287,10 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
                 {
                     try
                     {
-                        // TMF-05（CAS）：仅当 store 仍持有本次尝试所用的 refresh token 时才清除，
+                        // 仅当 store 仍持有本次尝试所用的 refresh token 时才清除，
                         // 防止宿主直调（绕过组件 KeyedLockTable）场景下误删并发刷新刚持久化的新令牌。
-                        // U-7（上游 3.0.10 Batch 3）：store 提供原子能力时改走官方用户维度 CAS ——
-                        // RedisUserTokenStore 经 Lua 单脚本内「取存储值 → 明文比较 → 删键」，消除旧
+                        // store 提供原子能力时改走官方用户维度 CAS ——
+                        // RedisUserTokenStore 经 Lua 单脚本内「取存储值 → 明文比较 → 删键」，消除
                         // 「读取 → 解码比较 → 删除」两步之间的竞态窗口。
                         if (_compareExchangeStore is not null)
                         {
@@ -305,7 +304,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
                         }
                         else
                         {
-                            // 无原子能力的 store：保留 C-2 明文比较 + 删除。
+                            // 无原子能力的 store：保留明文比较 + 删除。
                             // 不能改走官方非原子回退——回退按「存储原值 vs 期望明文」整值比较，
                             // 而飞书存储值为编码值（<c>{前导}|{明文}</c>），整值比较恒失配 ⇒ 清库永不执行。
                             var encodedRefreshToken = await _userTokenStore
@@ -358,12 +357,12 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
 
     /// <inheritdoc />
     /// <remarks>
-    /// D1 契约例外（TMA-01）：只失效<b>访问令牌字段</b>，保留 store 中的 refresh_token ——
+    /// 契约例外：只失效<b>访问令牌字段</b>，保留 store 中的 refresh_token ——
     /// 401 恢复链路依赖 store 的 refresh 可达（清 store 会使恢复彻底无路，表现为必然 401）。
     /// <para>
     /// 基类实现为「整条移除」（<c>UserTokenManagerBase.InvalidateUserTokenAsync</c>），经桥接器会写穿删除
     /// access+refresh 两个物理键，故<b>不得</b>委派基类实现；改走上游 TR-02 入口
-    /// <c>InvalidateUserAccessTokenInCache</c>（U-1）：字段置空 + 保序写回 + 写入代际作废，
+    /// <c>InvalidateUserAccessTokenInCache</c>：字段置空 + 保序写回 + 写入代际作废，
     /// 桥接器写穿时跳过访问令牌、保留 refresh 槽位；镜像未命中时植入空访问令牌墓碑，
     /// 防止读穿透把持久层中已被拒绝的访问令牌重新带回。
     /// </para>
@@ -389,15 +388,14 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
 
     /// <inheritdoc />
     /// <remarks>
-    /// TMA2-01 / D11：在 access token 过期但 refresh token 有效时返回 true。
-    /// 此前使用 <c>GetTokenInfoAsync</c>，后者在 access 过期时返回 null → <c>CanRefreshTokenAsync</c> 返回 false。
+    /// 在 access token 过期但 refresh token 有效时返回 true（判据只看 refresh 候选，与 access 状态解耦）。
     /// </remarks>
     public override async Task<bool> CanRefreshTokenAsync(string userId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(userId))
             return false;
 
-        // TMA2-01：先检查缓存（可能含未过期的 refresh token）
+        // 先检查缓存（可能含未过期的 refresh token）
         var cachedInfo = GetUserTokenFromCache(userId);
         if (cachedInfo != null && !string.IsNullOrEmpty(cachedInfo.RefreshToken))
         {
@@ -406,7 +404,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
                 return true;
         }
 
-        // TMA2-01：缓存未命中或 refresh 过期时，从 store 加载候选
+        // 缓存未命中或 refresh 过期时，从 store 加载候选
         var candidate = await LoadRefreshCandidateAsync(userId, cancellationToken).ConfigureAwait(false);
         return candidate != null && !string.IsNullOrEmpty(candidate.RefreshToken);
     }
@@ -463,8 +461,8 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
     /// 从持久层恢复用户令牌（镜像未命中路径）。
     /// </summary>
     /// <remarks>
-    /// 清库门（D10）与读故障容错由 <see cref="PurgeGateUserTokenStoreDecorator"/> 在 store 读边界统一承担，
-    /// 本方法不再自行判定门、不再逐点 try/catch（判定与告警口径与改造前逐行等价）。
+    /// 清库门与读故障容错由 <see cref="PurgeGateUserTokenStoreDecorator"/> 在 store 读边界统一承担，
+    /// 本方法不再自行判定门、不再逐点 try/catch。
     /// </remarks>
     private async Task<UserTokenInfo?> TryRestoreFromUserTokenStoreAsync(string userId, CancellationToken cancellationToken)
     {
@@ -492,9 +490,8 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
                 return null;
             }
 
-            // TMR-P2-12（F12）：与租户路径（FeishuAppTokenManagerBase.TryRestoreFromStoreAsync，D9）同源——
             // 临近 TokenRefreshThreshold 的恢复结果直接弃用，避免"恢复命中 → 组件判临近过期 → 立即再刷新"
-            // 的自循环（缓存永不命中的资源放大）。IssuedAt=0 的保守代价（TMF-06 方案 A）维持不变，
+            // 的自循环（缓存永不命中的资源放大）；与租户路径（FeishuAppTokenManagerBase.TryRestoreFromStoreAsync）同源。
             // 本项只对齐恢复弃用阈值，不改存储格式。
             if (accessTokenExpireMs > 0)
             {
@@ -508,12 +505,11 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
 
             var safeExpireSeconds = _options.TokenRefreshThreshold + 60;
 
-            // TMF-06（方案 A）：恢复令牌的 IssuedAt 不可知——{expire}|{token} 存储格式不含签发时间，
-            // UserTokenInfo.IssuedAt 保持 0 → 组件 TTL 感知阈值（min(阈值, ttl/2)）退化为纯配置阈值
-            // （TMX-22 语义）。默认配置（TTL 7200s ≫ 阈值 300s）下判定结果与 TTL 感知完全一致
+            // 恢复令牌的 IssuedAt 不可知——{expire}|{token} 存储格式不含签发时间，
+            // UserTokenInfo.IssuedAt 保持 0 → 组件 TTL 感知阈值（min(阈值, ttl/2)）退化为纯配置阈值。
+            // 默认配置（TTL 7200s ≫ 阈值 300s）下判定结果与 TTL 感知完全一致
             // （恢复令牌必为过去签发，纯阈值判定偏保守但正确）；短 TTL（ttl ≤ TokenRefreshThreshold）
             // 部署不应依赖跨重启的 store 恢复路径（README 部署提示同步声明）。
-            // 格式升级备选（方案 B，短 TTL 场景真实落地时启用）见 .docs/令牌与多应用管理-审查修复与完善方案.md §七。
             return new UserTokenInfo
             {
                 UserId = userId,
@@ -524,7 +520,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
                 RefreshTokenExpireTime = refreshTokenExpireMs
             };
         }
-        // NEW-TM-01 修复：过滤 OperationCanceledException，避免取消操作被误记录为失败
+        // 过滤 OperationCanceledException，避免取消操作被误记录为失败
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogWarning(ex, "Failed to restore user token from IUserTokenStore for userId: {UserId}", Masked(userId));
@@ -533,7 +529,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
     }
 
     /// <summary>
-    /// TMA2-01 / D11：加载 refresh token 候选——独立于 access token 的存在性与有效性。
+    /// 加载 refresh token 候选——独立于 access token 的存在性与有效性。
     /// 仅服务 <see cref="RefreshUserTokenAsync"/> 与 <see cref="CanRefreshTokenAsync"/>，
     /// 允许返回 <c>AccessToken = null</c> 的候选（<c>AccessTokenExpireTime = 0</c>）。
     /// </summary>
@@ -550,13 +546,13 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         if (_userTokenStore == null)
             return null;
 
-        // TMR2-P1-5：凭据变更清库进行中——不得用旧凭据来源的 refresh token 发起 OAuth 交换。
+        // 凭据变更清库进行中——不得用旧凭据来源的 refresh token 发起 OAuth 交换。
         // 门判定（含 fail-open）由 PurgeGateUserTokenStoreDecorator 在 store 读边界承担：
         // Pending ⇒ 读返回 null ⇒ 本方法返回 null ⇒ RefreshUserTokenAsync 返回 null（退避）、
-        // CanRefreshTokenAsync 返回 false（与改造前短路行为等价）。
+        // CanRefreshTokenAsync 返回 false。
         try
         {
-            // 先读 refresh token（D11：refresh 的可达性独立于 access）
+            // 先读 refresh token（refresh 的可达性独立于 access）
             var storedRefreshToken = await _userTokenStore.GetRefreshTokenAsync(userId, _tokenTypeKey, cancellationToken).ConfigureAwait(false);
             if (string.IsNullOrEmpty(storedRefreshToken))
                 return null;
@@ -565,7 +561,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             if (string.IsNullOrEmpty(refreshToken))
                 return null;
 
-            // TMA2-06 / D12：校验 refresh token 自身的过期时间。
+            // 校验 refresh token 自身的过期时间。
             if (refreshTokenExpireMs > 0 && refreshTokenExpireMs <= DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
             {
                 _logger.LogDebug("Refresh token expired for userId: {UserId}, not loading candidate", Masked(userId));
@@ -592,7 +588,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
 
             _logger.LogDebug("Loaded refresh token candidate from IUserTokenStore for userId: {UserId}", Masked(userId));
 
-            // TMA2-16 / P2-6：恢复时回填 OpenId/UnionId
+            // 恢复时回填 OpenId/UnionId
             // store 中不持久化 OpenId/UnionId（编码值仅含 token + 过期戳），
             // 此处以 userId 兑底填充 OpenId，避免后续调用丢失用户标识。
             return new UserTokenInfo
@@ -622,13 +618,13 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
     /// 本方法在基类构造链上执行，<b>不</b>承担参数校验（构造函数体统一负责，保持既有异常类型与参数名）。
     /// </para>
     /// <para>
-    /// <b>键映射（BD-1）</b>：缓存键恒为裸 userId（全仓无 scopes 传入），映射为
+    /// <b>键映射</b>：缓存键恒为裸 userId（全仓无 scopes 传入），映射为
     /// <c>(userId, "UserAccessToken:{AppKey}")</c> ⇒ 物理键
-    /// <c>{KeyPrefix}:user:{userId}:UserAccessToken\:{AppKey}:access</c>，与改造前逐字节一致。
+    /// <c>{KeyPrefix}:user:{userId}:UserAccessToken\:{AppKey}:access</c>。
     /// <b>禁止</b>使用 <c>DefaultUserKeyMapper</c>（裸键会被映射为 <c>(userId, userId)</c>，写出全新键格式）。
     /// </para>
     /// <para>
-    /// F-06（Mud.HttpUtils ≥3.0.4，B3）：用户维度的移除/登出语义完全依赖基类
+    /// 用户维度的移除/登出语义完全依赖基类
     /// <c>UserTokenManagerBase.RemoveTokenAsync</c> 的<b>异步写穿</b>——桥接器
     /// <see cref="TokenStoreBackedTokenCache{UserTokenInfo}"/> 的 <c>RemoveAsync</c> 无条件透传至
     /// <see cref="PurgeGateUserTokenStoreDecorator"/>，不再依赖本地镜像条目（多实例/冷启动一致落库）。
@@ -658,7 +654,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
     /// 写穿方向的值适配：<see cref="UserTokenInfo"/> → 存储三元组。
     /// </summary>
     /// <remarks>
-    /// 与改造前 <c>PersistUserTokenAsync</c> 逐条对齐：访问令牌剩余 ≤ 0 时不写 access（仅写 refresh 槽位）、
+    /// 写穿口径：访问令牌剩余 ≤ 0 时不写 access（仅写 refresh 槽位）、
     /// refresh_token 为空时不写 refresh；两者的过期戳均按 <c>{expireMs}|{token}</c> 编码
     /// （refresh 过期戳供 Redis 端推导 TTL，<see cref="TokenStoreHelper.TryDecodeExpiry"/>）。
     /// </remarks>
@@ -692,7 +688,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
             RefreshToken = refreshToken,
             AccessTokenExpireTime = accessTokenExpireMs,
             RefreshTokenExpireTime = refreshTokenExpireMs,
-            // TMF-06（方案 A）：存储格式不含签发时间，IssuedAt 保持 0
+            // 存储格式不含签发时间，IssuedAt 保持 0
             // ⇒ 管线的 TTL 感知阈值退化为配置阈值（默认配置下判定结果一致）。
             IssuedAt = 0
         };

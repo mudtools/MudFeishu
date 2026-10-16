@@ -5,9 +5,9 @@
 # the entries it fixed, and the gate must pass with an empty file after M4.
 # Regenerate: pwsh ./scripts/audit-comments.ps1 -UpdateBaseline
 # ------------------------------------------------
-# generated  : 2026-10-16 16:09:53
-# entries    : 861
-# hits       : 899
+# generated  : 2026-10-16 16:25:23
+# entries    : 821
+# hits       : 858
 # ------------------------------------------------
 Mud.Feishu.Abstractions/Authentication/IFeishuAuthenticationFactory.cs	E	306a07d95c561d38	1
 Mud.Feishu.Abstractions/Authentication/IFeishuAuthenticationFactory.cs	E	3c3b6d8a6479c64d	1
@@ -243,46 +243,6 @@ Mud.Feishu.Abstractions/Authentication/TokenManager/FeishuUserTokenStore.cs	E	dc
 Mud.Feishu.Abstractions/Authentication/TokenManager/FeishuUserTokenStore.cs	E	e8c6caf933df9fa6	1
 Mud.Feishu.Abstractions/Authentication/TokenManager/FeishuUserTokenStore.cs	E	f18139365c6ee421	1
 Mud.Feishu.Abstractions/Authentication/TokenManager/FeishuUserTokenStore.cs	E	f209a75764802c93	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	01ab6338d47a6e2d	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	0c8a5dc883b6b6a3	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	22a3b6a2e8197fa4	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	25accbf4d09989a6	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	28594c0f5684b20d	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	2a7e3a5dcc380893	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	2b072923f4f8c06d	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	43fc56577bc9aa54	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	441c1435b119d46e	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	4cb47ba78028b2e0	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	550be7ca79182bbe	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	57acbd2de82894ce	2
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	5a35e073ce027b6e	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	5b7cc6ef5f6b0149	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	6731dc07e4305e79	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	68e52928459cada1	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	6ae590597d914302	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	6deea10a318c7eed	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	6f0be2a8329c0758	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	7302b52711e97fb4	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	8093cd8cd7162330	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	866dcaa3895791a5	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	8934f7ebef939776	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	8cc6b9c0be3092a8	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	8d8dacf29e568bf9	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	9370ff72c5d8729b	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	a23b1d8cca04898f	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	ab1e6db50c4e870e	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	b3c1e6498820a008	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	c1175c593f58a53d	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	c270382e3014035d	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	c4f07bdbf2630a67	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	d306337e2738a26c	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	d6c9994ae222e665	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	da85c0db907a804e	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	e8a7fe0cf4b1c1cb	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	ef2632aaccc07e0a	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	efbcd21f32903b69	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	fa34b71bad675352	1
-Mud.Feishu.Abstractions/Authentication/TokenManager/UserTokenManager.cs	E	fd91515c2d0c630c	1
 Mud.Feishu.Abstractions/Configuration/DeduplicationOptions.cs	E	ed5821e0e16d1b5f	1
 Mud.Feishu.Abstractions/Configuration/FeishuAppConfig.cs	E	17ddd59cfda1c6c8	1
 Mud.Feishu.Abstractions/Configuration/FeishuAppConfig.cs	E	c94f9531e10f3b63	1

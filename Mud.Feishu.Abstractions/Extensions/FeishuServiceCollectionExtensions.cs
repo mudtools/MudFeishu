@@ -78,8 +78,8 @@ public static class FeishuServiceCollectionExtensions
 
 
     /// <summary>
-    /// F-07：飞书域名单（增量注入，不覆盖宿主已注册的域名——与上游 <c>UrlValidator.AddAllowedDomain</c>
-    /// 的并集语义一致；此前 <c>ConfigureAllowedDomains</c> 为整体替换语义，会静默丢弃宿主在
+    /// 飞书域名单（增量注入，不覆盖宿主已注册的域名——与上游 <c>UrlValidator.AddAllowedDomain</c>
+    /// 的并集语义一致；整体替换语义会静默丢弃宿主在
     /// AddFeishuApp 之前注册的自定义域名）。
     /// </summary>
     private static readonly string[] FeishuAllowedDomains =
@@ -108,11 +108,11 @@ public static class FeishuServiceCollectionExtensions
             UrlValidator.AddAllowedDomain(domain);
         }
 
-        // MUDHTTP-2.0.5 适配（BC-18 / MT-02）：带 appKey 的切换入口由
+        // 上游 2.0.5 适配：带 appKey 的切换入口由
         // 「未注册 IAppAccessAuthorizer 即静默放行」改为「默认拒绝」（调用时抛 InvalidOperationException）。
         // 涉及两处守卫一致的入口：生成类的 UseAppScope(appKey)，以及本 SDK 内部多应用切换入口
         // （FeishuAppManager.GetWebApi → IAppContextHolder.SwitchToApp(appKey, this, sp)）。
-        // F-09（Mud.HttpUtils 3.0.x）：默认授权器由放行型 AllowAllAppAccessAuthorizer 升级为
+        // 上游 3.0.x 起默认授权器由放行型 AllowAllAppAccessAuthorizer 升级为
         // 「注册表白名单」语义——谓词经 IFeishuAppManager.HasApp 动态判定，AddApp 运行时新增的
         // 应用即时获得授权；宿主可先注册更严格的 IAppAccessAuthorizer 实现（TryAdd 语义：
         // 先注册者胜出）实现租户级授权。注意：该判定是静态的、不感知调用主体——
@@ -120,7 +120,7 @@ public static class FeishuServiceCollectionExtensions
         services.TryAddSingleton<IAppAccessAuthorizer>(sp =>
             AppKeyAllowListAuthorizer.FromPredicate(appKey => sp.GetRequiredService<IFeishuAppManager>().HasApp(appKey)));
 
-        // REG-01 修复：校验重复 AppKey，避免命名 HttpClient 重复注册导致的静默覆盖。
+        // 校验重复 AppKey，避免命名 HttpClient 重复注册导致的静默覆盖。
         // FeishuAppManager 构造函数仅发出警告（保持覆盖语义），但 HttpClient 层重复注册会
         // 导致 EnhancedHttpClientFactoryOptions.ClientFactories 同名键覆盖，行为不可预测。
         // 此处在注册阶段即抛出异常，使配置错误快速失败。
@@ -142,8 +142,8 @@ public static class FeishuServiceCollectionExtensions
             var timeOut = config?.TimeoutSeconds ?? 30;
             // 显式标记默认应用：AddMudHttpClient 内部 setAsDefault=true 时强制覆盖 IEnhancedHttpClient 默认注册，
             // setAsDefault=false 时使用 TryAddTransient（已注册则跳过）。
-            // 此前未传该参数（默认 false），导致默认 IEnhancedHttpClient 隐式绑定到 configs 列表中的第一个 AppKey，
-            // 而非 IsDefault=true 的应用。现在通过显式传入确保默认 HttpClient 与 IsDefault=true 严格对应。
+            // 若不传该参数（默认 false），默认 IEnhancedHttpClient 将隐式绑定到 configs 列表中的第一个 AppKey，
+            // 而非 IsDefault=true 的应用。故显式传入，确保默认 HttpClient 与 IsDefault=true 严格对应。
             bool isDefault = config!.IsDefault;
 
             // 令牌恢复由 FeishuAppManager.CreateAppContext 中创建的 TokenRecoveryEnhancedClient 实现，
@@ -159,13 +159,13 @@ public static class FeishuServiceCollectionExtensions
                     client.Timeout = TimeSpan.FromSeconds(timeOut);
                 },
                 setAsDefault: isDefault);
-            // P1-1 修复说明：TracingDelegatingHandler 已由 AddMudHttpClient 内部通过
+            // TracingDelegatingHandler 已由 AddMudHttpClient 内部通过
             // httpClientBuilder.AddHttpMessageHandler(() => new TracingDelegatingHandler()) 注册，
             // 无需在此重复链式调用。重复注册会导致同一 named client 的 HttpMessageHandlerBuilderActions
             // 包含两个 TracingDelegatingHandler 工厂委托，在批量测试场景下触发
             // "The 'InnerHandler' property must be null" 异常（HttpMessageHandlerBuilder 禁止复用 DelegatingHandler）。
 
-            // ARC-7：BaseUrl / TimeOut 热更新。
+            // BaseUrl / TimeOut 热更新。
             // 上面注册委托捕获的是**注册期**快照，而 IHttpClientFactory 的命名客户端配置委托虽然每次
             // CreateClient 都会执行，却不会重新读取最新配置 —— 因此 IConfiguration 变更后 BaseUrl 仍为旧值
             // （多区域切换 feishu.cn ↔ larksuite.com 只能靠重启）。
@@ -176,13 +176,13 @@ public static class FeishuServiceCollectionExtensions
             // 为什么不用组件 HttpClientFactoryEnhancedClient.WithBaseAddress：
             // TokenRecoveryEnhancedClient（sealed）未重写 WithBaseAddress，基类实现返回的是
             // **普通 HttpClientFactoryEnhancedClient**，既丢失令牌恢复能力又会令 (TokenRecoveryEnhancedClient)
-            // 强制转换抛 InvalidCastException。详见 .docs/MudHttpUtils-2.0.4-Review-Remediation-Plan.md 附录 B-1。
+            // 强制转换抛 InvalidCastException。
             httpClientBuilder.ConfigureHttpClient((sp, client) =>
             {
                 var latest = ResolveLatestAppConfig(sp, appKey);
                 if (latest == null)
                 {
-                    // 可选依赖缺失（如仅注册了 HttpClient 而未接配置管线）时保持注册期快照，行为与修复前一致。
+                    // 可选依赖缺失（如仅注册了 HttpClient 而未接配置管线）时保持注册期快照。
                     return;
                 }
 
@@ -224,12 +224,12 @@ public static class FeishuServiceCollectionExtensions
         // P1-4: 注册 per-app 弹性策略解析器，使不同应用可使用独立的重试/超时/熝断配置。
         // DefaultHttpRequestExecutor 优先使用 per-app 解析器，未命中时回退到全局解析器（defaultConfig 配置）。
         //
-        // ARC-7b：选项工厂改为读取**当前**配置（IOptionsMonitor）而非注册期快照 `configs`，
+        // 选项工厂读取**当前**配置（IOptionsMonitor）而非注册期快照 `configs`，
         // 否则配置热更新后「新增应用」永远拿不到 per-app 弹性策略（只能落到全局回退）。
-        // F-21 复核（Mud.HttpUtils 3.0.4/3.0.5，COMP-4 已解决）：上游 AppResiliencePolicyResolver 自 3.0.4 起
+        // 上游 AppResiliencePolicyResolver 自 3.0.4 起
         // 内置配置变更订阅（策略指纹 diff 失效缓存，无需进程重启），且 per-app 命名客户端不参与
-        // 全局 client 缓存指纹，弹性参数热更新不再被连带失效——FeishuClientEndpointHotReloadTests
-        // 6 用例在 3.0.5 下全绿实证。下方「残余限制」注释仅保留历史溯源价值。
+        // 全局 client 缓存指纹，弹性参数热更新不再被连带失效（FeishuClientEndpointHotReloadTests 实证）。
+        // 下方「残余限制」注释已过时。
         services.TryAddSingleton<IAppResiliencePolicyResolver>(sp =>
         {
             var logger = sp.GetService<ILogger<AppResiliencePolicyResolver>>();
@@ -238,38 +238,38 @@ public static class FeishuServiceCollectionExtensions
                 logger);
         });
 
-        // ARC-6 修复：注册 IFeishuAuthentication 的源生成实现。
-        // FeishuAppManager.CreateAppContext 通过 GetRequiredService<IFeishuAuthentication>() 获取认证 API，
-        // 但此前从未调用生成器产出的注册扩展（HttpClientApiExtensions.AddAuthenticationWebApiHttpClient），
-        // 导致任何触发应用上下文创建的路径都抛 "No service for type 'IFeishuAuthentication' has been registered."
+        // 注册 IFeishuAuthentication 的源生成实现。
+        // FeishuAppManager.CreateAppContext 经 GetRequiredService<IFeishuAuthentication>() 获取认证 API，
+        // 若未调用生成器产出的注册扩展（HttpClientApiExtensions.AddAuthenticationWebApiHttpClient），
+        // 任何触发应用上下文创建的路径都会抛 "No service for type 'IFeishuAuthentication' has been registered."
         // ——「多应用上下文」这条核心链路完全不可达。
         // 必须放在 AddMudHttpClient 循环之后：该扩展内部用 TryAdd 注册 IHttpRequestExecutor / IBaseHttpClient，
         // 先注册者胜出，需保证 AddMudHttpClient 的 DI 装配版本优先。
         services.AddAuthenticationWebApiHttpClient();
 
-        // ARC-2 Step 1：注册统一的飞书 HTTP 客户端工厂，收敛 CreateAppContext 内的散装装配。
+        // 注册统一的飞书 HTTP 客户端工厂，收敛 CreateAppContext 内的散装装配。
         services.TryAddSingleton<IFeishuHttpClientFactory, FeishuHttpClientFactory>();
 
-        // TMA-09 / P1-8 修复（D7 契约）：注册 per-app 认证 API 工厂。
+        // 注册 per-app 认证 API 工厂。
         // 使认证/取令牌请求使用本应用的命名 HttpClient（per-app 端点），而非默认应用端点。
         // 若 AOT 门禁不允许 ActivatorUtilities，设 FeishuAppOptions.EnablePerAppAuthenticationClient=false 降级。
         services.TryAddSingleton<IFeishuAuthenticationFactory, PerAppFeishuAuthenticationFactory>();
 
-        // ARC-1：注册多应用管理器行为选项（EnableConfigReload 默认 true，支持配置节覆盖）。
+        // 注册多应用管理器行为选项（EnableConfigReload 默认 true，支持配置节覆盖）。
         services.AddOptions<FeishuAppOptions>();
 
         services.TryAddSingleton(_ => HttpClientExtensions.GetDefaultJsonSerializerOptions());
-        // NEW-GEN-01 修复：同时注册 IOptions<JsonSerializerOptions>，与生成器构造函数契约对齐
+        // 同时注册 IOptions<JsonSerializerOptions>，与生成器构造函数契约对齐
         services.TryAddSingleton<IOptions<System.Text.Json.JsonSerializerOptions>>(sp => Microsoft.Extensions.Options.Options.Create(sp.GetRequiredService<System.Text.Json.JsonSerializerOptions>()));
 
-        // ARC-3：把 SDK 认证/通用源生成上下文接入组件 IOptions<JsonSerializerOptions> 管道。
+        // 把 SDK 认证/通用源生成上下文接入组件 IOptions<JsonSerializerOptions> 管道。
         // AddMudHttpClientJsonContext 仅在 net8+ 提供（组件 ServiceCollectionExtensions 中位于
         // #if NET8_0_OR_GREATER 块内），低 TFM 必须跳过，否则编译失败。
 #if NET8_0_OR_GREATER
         services.AddMudHttpClientJsonContext(FeishuApiResultJsonContext.Default);
 #endif
 
-        // M-8 修复：使用条件检测避免覆盖用户已配置的 IMemoryCache 选项（如容量限制）。
+        // 使用条件检测避免覆盖用户已配置的 IMemoryCache 选项（如容量限制）。
         // AddMemoryCache() 会无条件注册 IOptions<MemoryCacheOptions> 配置委托，
         // 可能覆盖用户在 ConfigureServices 中通过 AddMemoryCache(options => { ... }) 设置的配置。
         // TryAddMemoryCache() 是 .NET 9+ API，此处使用 Any 检测以兼容 netstandard2.0/net6.0/net8.0。
@@ -285,18 +285,18 @@ public static class FeishuServiceCollectionExtensions
         services.TryAddSingleton<ICurrentUserContext>(sp => sp.GetRequiredService<IFeishuCurrentUserContext>());
         services.AddTokenProvider();
 
-        // C-3 修复：注册 IAppContextHolder，供生成的 TokenManager 模式实现类构造函数注入。
+        // 注册 IAppContextHolder，供生成的 TokenManager 模式实现类构造函数注入。
         // 代码生成器 ConstructorGenerator 在 TokenManager 模式下生成必需的 IAppContextHolder 构造函数参数（无默认值），
         // 若未注册此服务，DI 容器解析任何飞书 API 接口时将抛出 InvalidOperationException。
         // AddTokenProvider() 仅注册 ITokenProvider 和 ICurrentUserContext，不包含 IAppContextHolder。
-        // F-08（Mud.HttpUtils 3.0.4+ 语义对齐）：上游本注册点已不存在（DefaultAppContextHolder 被移除，
+        // 上游 3.0.4+ 语义对齐：上游本注册点已不存在（DefaultAppContextHolder 被移除，
         // 改由 DelegatingAppContextHolder 委托式适配器按需包裹已有持有器），本注册保持不变，仍以
         // AsyncLocalAppContextSwitcher 为默认持有器。上游适配器两条边界（宿主自定义 IAppContextHolder 时适用）：
         // ① Current 初始为 init 值（不可空），适配器**不支持**对初始持有器做写入适配；
         // ② 自定义持有器必须为单例，且须在首次访问应用上下文之前完成注册（晚于首次访问则适配器已固化默认实例）。
         services.TryAddSingleton<IAppContextHolder, AsyncLocalAppContextSwitcher>();
 
-        // M-9 改进：ITokenStore 注册检测。
+        // ITokenStore 注册检测。
         // 此处使用 Any 检测而非 TryAdd 是为了支持 Redis 预注册场景：
         // 用户通过 AddRedisTokenStore() 在 AddFeishuApp 之前注册自定义 ITokenStore，
         // 此处检测到已注册则跳过默认的 FeishuTokenStore。
@@ -315,21 +315,21 @@ public static class FeishuServiceCollectionExtensions
             services.AddSingleton<IUserTokenStore>(sp => sp.GetRequiredService<FeishuUserTokenStore>());
         }
 
-        // S-3 修复：注册 IFeishuTokenStoreFactory，替代 FeishuAppManager 中的 is FeishuTokenStore 类型检查。
+        // 注册 IFeishuTokenStoreFactory，替代 FeishuAppManager 中的 is FeishuTokenStore 类型检查。
         // 默认使用 PerAppFeishuTokenStoreFactory（per-app FeishuTokenStore 实例）；
         // Redis 等自定义存储通过预注册 PerAppRedisTokenStoreFactory 覆盖（TryAdd 语义：已存在则跳过）。
         services.TryAddSingleton<IFeishuTokenStoreFactory, PerAppFeishuTokenStoreFactory>();
 
-        // MA-02 修复：注册 IFeishuTokenManagerFactory，替代 FeishuAppManager 中直接 new TenantTokenManager(...) 的硬编码方式。
-        // 默认使用 DefaultFeishuTokenManagerFactory，行为与原实现完全一致。
+        // 注册 IFeishuTokenManagerFactory，替代 FeishuAppManager 中直接 new TenantTokenManager(...) 的硬编码方式。
+        // 默认使用 DefaultFeishuTokenManagerFactory。
         // 自定义实现可通过预注册覆盖（TryAdd 语义：已存在则跳过）。
         services.TryAddSingleton<IFeishuTokenManagerFactory, DefaultFeishuTokenManagerFactory>();
 
-        // C-1 修复：注册 TokenRecoveryOptions，使 TokenRecoveryExecutor 可经
+        // 注册 TokenRecoveryOptions，使 TokenRecoveryExecutor 可经
         // IOptionsMonitor<TokenRecoveryOptions> 获取恢复策略。
-        // C-1 补强（配置绑定断层修复）：**仅调用 AddOptions<T>() 并不会绑定任何配置节** ——
+        // 注意：**仅调用 AddOptions<T>() 并不会绑定任何配置节** ——
         // "MudHttpTokenRecovery" 节会被静默忽略，TokenRecoveryOptions 永远取默认值。
-        // F-04（Mud.HttpUtils 3.0.x，B6）：TokenRecoveryOptions.TokenInvalidationDetector 为接口类型
+        // 上游 3.0.x 起 TokenRecoveryOptions.TokenInvalidationDetector 为接口类型
         // 扩展点（编程式注入面），直接 Bind<TokenRecoveryOptions> 会在本编译单元产出无法抑制的
         // SYSLIB1100/SYSLIB1101。改为绑定上游提供的纯 DTO 投影 TokenRecoveryConfiguration
         // （仅基元/字符串/枚举成员，绑定源生成器可完整支持），再经 Apply 逐字段映射到
@@ -353,33 +353,33 @@ public static class FeishuServiceCollectionExtensions
             // 配置重载时使 IOptionsMonitor（TokenRecoveryExecutor / FeishuAppManager 经此读取）的共享缓存失效——
             // 下一轮解析重新执行上方委托（现场 Bind + Apply），从而读到重载后的值。
             // 采用「委托式 Bind + 显式 ChangeTokenSource」而非 Configure<T>(IConfiguration) 重载：
-            // 后者经 BindConfiguration 的反射绑定调用点无法被配置绑定源生成器拦截（AOT-3，IL2026/IL3050 须保持 0）。
+            // 后者经 BindConfiguration 的反射绑定调用点无法被配置绑定源生成器拦截（IL2026/IL3050 须保持 0）。
             services.AddSingleton<IOptionsChangeTokenSource<TokenRecoveryOptions>>(
                 new ConfigurationChangeTokenSource<TokenRecoveryOptions>(Options.DefaultName, tokenRecoverySection));
         }
 
         // 与组件 AddMudHttpTokenRecoveryFromConfiguration 对齐：注册校验器（非法取值在选项解析期暴露，
-        // 而非静默生效）与可直接解析的 TokenRecoveryOptions 实例（TMR-07，兼容以 TokenRecoveryOptions
+        // 而非静默生效）与可直接解析的 TokenRecoveryOptions 实例（兼容以 TokenRecoveryOptions
         // 为参数的旧构造函数）。
         services.TryAddSingleton<IValidateOptions<TokenRecoveryOptions>, TokenRecoveryOptionsValidator>();
         services.TryAddSingleton(sp => sp.GetRequiredService<IOptions<TokenRecoveryOptions>>().Value);
 
 #if NET6_0_OR_GREATER
-        // SR-P0-2 修复：FeishuTokenRegistrationService 必须在 TokenRefreshBackgroundService 之前注册为 IHostedService，
+        // FeishuTokenRegistrationService 必须在 TokenRefreshBackgroundService 之前注册为 IHostedService，
         // 确保应用启动时先注册令牌管理器，再启动后台刷新服务。否则后台服务启动时会误报"未注册任何令牌管理器"。
         // IHostedService 的 StartAsync 按注册顺序执行，DI 解析在所有注册完成后才发生，因此此处注册顺序不影响依赖解析。
         services.AddHostedService<FeishuTokenRegistrationService>();
 #endif
 
         // 注册令牌主动刷新后台服务（由 Mud.HttpUtils 提供，按目标框架自动选择实现）。
-        // 此前该服务仅在 Webhook 模块注册，纯 SDK 使用场景下 Token 仅懒加载刷新，
+        // 该服务此前仅在 Webhook 模块注册，纯 SDK 使用场景下 Token 仅懒加载刷新，
         // 首次请求延迟增加且无法享受"过期前主动刷新"预热。
         // 现统一在基础服务中注册，Webhook 模块保留配置覆盖即可。
         services.AddTokenRefreshBackgroundService();
 
         // 启用后台刷新服务（Mud.HttpUtils 默认 Enabled=false，需显式启用）
-        // S-4 修复说明：PostConfigure 在选项首次解析时执行一次，无法感知运行时动态移除应用。
-        // REG-02 修复说明：运行时移除全部应用后后台服务仍会运行（但找不到令牌则空转，无功能副作用）。
+        // PostConfigure 在选项首次解析时执行一次，无法感知运行时动态移除应用。
+        // 运行时移除全部应用后后台服务仍会运行（但找不到令牌则空转，无功能副作用）。
         // 为减少不必要的空转，在 PostConfigure 中通过 IServiceProvider 延迟解析 IFeishuAppManager，
         // 若所有应用已被移除则禁用后台刷新。注意：此检查仅在选项首次解析时生效，
         // 运行时动态移除应用后如需立即停止后台服务，应调用 ITokenRefreshBackgroundService.StopAsync()。
@@ -439,7 +439,7 @@ public static class FeishuServiceCollectionExtensions
             return;
         }
 
-        // TMA-19 / P2-7 修复：加密装饰器幂等守卫。
+        // 加密装饰器幂等守卫。
         // 检测是否已装饰：若实现工厂返回的是 EncryptedFeishuTokenStoreFactory 则跳过。
         // 通过检查 ImplementationFactory 的目标类型（若为已装饰的工厂类型则跳过）。
         if (descriptor.ImplementationType == typeof(EncryptedFeishuTokenStoreFactory))
@@ -455,7 +455,7 @@ public static class FeishuServiceCollectionExtensions
             var options = sp.GetService<IOptions<FeishuAppOptions>>()?.Value;
             if (options == null || !options.EnableTokenEncryption)
             {
-                // TMA-21 / P2-12 修复：非内存存储且未加密时发出告警。
+                // 非内存存储且未加密时发出告警。
                 // 检测是否使用 Redis 等持久化存储（非 PerAppFeishuTokenStoreFactory 即视为持久化）
                 if (inner is not PerAppFeishuTokenStoreFactory)
                 {
@@ -474,7 +474,7 @@ public static class FeishuServiceCollectionExtensions
                 return inner;
             }
 
-            // TMR-P2-8（F8）：EnableTokenEncryption 为启动一次性读取（工厂首次解析时固化），
+            // EnableTokenEncryption 为启动一次性读取（工厂首次解析时固化），
             // 运行期修改配置不会生效——输出一次告警使语义显式（工厂为单例，本告警每进程仅一次）。
             sp.GetService<ILogger<EncryptedFeishuTokenStoreFactory>>()?.LogWarning(
                 "FeishuAppOptions.EnableTokenEncryption = true（启动一次性读取，工厂首次解析时固化）。" +
@@ -512,7 +512,7 @@ public static class FeishuServiceCollectionExtensions
     }
 
     /// <summary>
-    /// ARC-7：从 <see cref="IOptionsMonitor{T}"/> 读取指定应用在**当前时刻**的配置。
+    /// 从 <see cref="IOptionsMonitor{T}"/> 读取指定应用在**当前时刻**的配置。
     /// </summary>
     /// <param name="serviceProvider">服务提供者（来自 <c>ConfigureHttpClient(IServiceProvider, HttpClient)</c>）。</param>
     /// <param name="appKey">应用唯一标识（严格序数比较）。</param>
@@ -549,7 +549,7 @@ public static class FeishuServiceCollectionExtensions
     }
 
     /// <summary>
-    /// ARC-7 / ARC-7b：读取当前生效的应用配置快照；未接入配置管线时返回 <c>null</c>。
+    /// 读取当前生效的应用配置快照；未接入配置管线时返回 <c>null</c>。
     /// </summary>
     /// <param name="serviceProvider">服务提供者。</param>
     /// <returns>当前配置列表；不可用时返回 <c>null</c>（调用方回退到注册期快照）。</returns>
@@ -562,7 +562,7 @@ public static class FeishuServiceCollectionExtensions
 
     private static ResilienceOptions? CreateResilienceOptionsFromConfig(List<FeishuAppConfig> configs, string appKey)
     {
-        // NEW-REG-03 修复：AppKey 应严格大小写敏感，统一使用 StringComparison.Ordinal
+        // AppKey 严格大小写敏感，统一使用 StringComparison.Ordinal
         var config = configs.FirstOrDefault(c =>
             string.Equals(c.AppKey, appKey, StringComparison.Ordinal));
         if (config == null)

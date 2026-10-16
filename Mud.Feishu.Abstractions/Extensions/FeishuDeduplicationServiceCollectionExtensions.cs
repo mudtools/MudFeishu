@@ -186,7 +186,7 @@ internal sealed class FeishuDeduplicationOptionsValidator : IValidateOptions<Fei
             return ValidateOptionsResult.Fail(ex.Message);
         }
 
-        // TMA2-20：Distributed 且配置了前缀时，三前缀不得相同
+        // Distributed 且配置了前缀时，三前缀不得相同
         if (string.Equals(options.Mode, FeishuDeduplicationOptions.ModeDistributed, StringComparison.OrdinalIgnoreCase))
         {
             var prefixes = new[]
@@ -196,8 +196,8 @@ internal sealed class FeishuDeduplicationOptionsValidator : IValidateOptions<Fei
                 options.SeqId?.KeyPrefix
             }.Where(p => !string.IsNullOrEmpty(p)).Select(p => p!).ToList();
 
-            // R5.4/F11：TMA2-20 要求三前缀两两互异；此前仅拦「全部相同」（Count==1），
-            // 「两个相同 + 一个不同」可绕过 → 多租户键空间部分重叠。改为任意两个非空前缀相同即失败。
+            // 三前缀必须两两互异：仅拦「全部相同」时，「两个相同 + 一个不同」可绕过
+            // → 多租户键空间部分重叠。故任意两个非空前缀相同即失败。
             if (prefixes.Distinct(StringComparer.Ordinal).Count() < prefixes.Count)
             {
                 return ValidateOptionsResult.Fail(

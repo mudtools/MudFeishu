@@ -5,9 +5,9 @@
 # the entries it fixed, and the gate must pass with an empty file after M4.
 # Regenerate: pwsh ./scripts/audit-comments.ps1 -UpdateBaseline
 # ------------------------------------------------
-# generated  : 2026-10-16 17:11:51
-# entries    : 605
-# hits       : 632
+# generated  : 2026-10-16 17:33:05
+# entries    : 559
+# hits       : 586
 # ------------------------------------------------
 Mud.Feishu.Abstractions/Authentication/IFeishuAuthenticationFactory.cs	E	306a07d95c561d38	1
 Mud.Feishu.Abstractions/Authentication/IFeishuAuthenticationFactory.cs	E	3c3b6d8a6479c64d	1
@@ -51,52 +51,6 @@ Mud.Feishu.Abstractions/EventHandlers/EventData.cs	E	c9a67d73bdb67b03	1
 Mud.Feishu.Abstractions/EventHandlers/FeishuEventDataParser.cs	E	1562e8c4374df354	1
 Mud.Feishu.Abstractions/EventHandlers/FeishuEventDataParser.cs	E	a57a62c9b60488db	1
 Mud.Feishu.Abstractions/EventHandlers/FeishuEventDataParser.cs	E	b2066b8fd1493238	1
-Mud.Feishu.Abstractions/Extensions/FeishuDeduplicationServiceCollectionExtensions.cs	E	36a73e0adc4846e5	1
-Mud.Feishu.Abstractions/Extensions/FeishuDeduplicationServiceCollectionExtensions.cs	E	ac29e8f77003fb91	1
-Mud.Feishu.Abstractions/Extensions/FeishuMultiAppExtensions.cs	E	0cc54999ab86f775	1
-Mud.Feishu.Abstractions/Extensions/FeishuMultiAppExtensions.cs	E	195b81cfeed7626f	1
-Mud.Feishu.Abstractions/Extensions/FeishuMultiAppExtensions.cs	E	3d217baf0a914880	1
-Mud.Feishu.Abstractions/Extensions/FeishuMultiAppExtensions.cs	E	530c74f30ec57189	1
-Mud.Feishu.Abstractions/Extensions/FeishuMultiAppExtensions.cs	E	74a48d8e1944f7fb	1
-Mud.Feishu.Abstractions/Extensions/FeishuMultiAppExtensions.cs	E	8ddd7e49fb1f5a9e	1
-Mud.Feishu.Abstractions/Extensions/FeishuMultiAppExtensions.cs	E	b25b88e84125a712	1
-Mud.Feishu.Abstractions/Extensions/FeishuMultiAppExtensions.cs	E	c2665b6e258c2125	1
-Mud.Feishu.Abstractions/Extensions/FeishuMultiAppExtensions.cs	E	d5588d3312d16396	1
-Mud.Feishu.Abstractions/Extensions/FeishuMultiAppExtensions.cs	E	d5d6ead7a2080ea8	1
-Mud.Feishu.Abstractions/Extensions/FeishuMultiAppExtensions.cs	E	d7756559bd1b4cf7	1
-Mud.Feishu.Abstractions/Extensions/FeishuMultiAppExtensions.cs	E	ea5703e7b58a213a	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	0100e7bdf1d56afb	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	0f6dd04e4186567e	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	16e8592d866f98a2	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	19b61d40a4d16d8a	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	1c1a2922c01f0639	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	1d52ded8bf1854dd	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	257542cd6e8cc327	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	2617a3f7a944919d	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	31d3ea1bce902d33	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	34fa41e0961a9861	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	3662a1a710d048ca	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	406175ba097cecd7	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	4079732db329ba83	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	53ce9736276dd697	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	56d5b99dbd3649e0	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	6515fab4b1e854a2	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	6bb55397b23b4548	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	7294e689bd684141	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	84da31a8ca512150	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	8526d4bace570c75	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	92b6885537a7a954	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	965443669a116ce8	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	af3158cf82c8d26a	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	c3957dee7a00ea6c	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	c7d38477eb74decc	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	ce8678066da9fb2f	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	d635bf7e18daf5f4	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	d801ae7837cb894d	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	e92cf7f51973fa6a	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	f339997ae83718d0	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	f74868f0bb5132a4	1
-Mud.Feishu.Abstractions/Extensions/FeishuServiceCollectionExtensions.cs	E	f83a47c6c3e9bca8	1
 Mud.Feishu.Abstractions/Metrics/FeishuMetrics.cs	E	de8810ea47c01950	1
 Mud.Feishu.Abstractions/Metrics/FeishuMetrics.cs	E	f823c643418ae208	1
 Mud.Feishu.Abstractions/Metrics/FeishuMetricsHelper.cs	E	abe1c62bef843bb3	1

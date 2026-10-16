@@ -396,6 +396,22 @@ public class DefaultFeishuEventHandler : IFeishuEventHandler
 - 文件下载类接口（返回 `Task<byte[]?>`）必须声明 `<exception cref="ApiException">`，
   并说明「HTTP 200 + JSON 错误体」这一残余风险（参见 `documents/ErrorHandling.md`）
 
+#### 注释纪律（Comment discipline）
+
+源码注释只承载两件事：**对外契约**（消费者需要的 API 语义）与**不可从代码推断的约束**
+（锁序、幂等、顺序依赖、AOT 抑制理由、安全语义）。**决策史一律不进源码**——上游版本适配
+（`BC-27`/`U-7`）、缺陷复盘（"修复前…"/"原实现…"）、任务与阶段编号（`TMF-02`/`Phase-A`）、
+仓库内部文档路径（`.docs/`、`AGENTS.md`）属于过程记录，应落在 `documents/决策档案/`。
+
+判据：删掉这条注释，维护者会不会踩坑？回答"不会"即应删除。同一约束不得在 L1 与 L2 重复表述。
+`/// <remarks>` 会进入 NuGet 包与 IDE 提示，属**对外文档面**。
+
+- **完整规范（判据、R-01~R-12、正反例、必须保留的约束白名单）**：`documents/代码注释规范.md`
+- **门禁**：`pwsh ./scripts/audit-comments.ps1 -Strict`（已接入 `scripts/verify-build.ps1` 与 CI）。
+  存量冻结在 `scripts/comment-baseline.txt`，**只减不增**；新增命中即失败。确属必须保留的约束，
+  在同行或上一行写 `// comment-allow: <原因>`（只允许逐行豁免）。
+- **决策档案**：`documents/决策档案/`（编号全集见其 `编号索引.md`）
+
 ### 接口查询参数规范（API-2）
 
 **仅对新增接口生效，不迁移存量接口**（改造 259 个接口的公共签名收益不成比例）。

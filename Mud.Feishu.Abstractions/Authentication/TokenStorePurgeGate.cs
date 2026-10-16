@@ -10,25 +10,25 @@ using System.Diagnostics;
 namespace Mud.Feishu.Abstractions.Authentication;
 
 /// <summary>
-/// 令牌存储「待清库」门（按 appKey 引用计数租约，TMR2-P1-5）。
+/// 令牌存储「待清库」门（按 appKey 引用计数租约）。
 /// </summary>
 /// <remarks>
 /// <para>
 /// <b>背景</b>：凭据变更（AppId / AppSecret）热更新必须保证「清库 → 重建」时序——
-/// 新上下文不得在清库完成前从 store 恢复出旧凭据来源的令牌（D10）。
-/// 首轮修复（TMR-P1-6 / F6）把清库移出锁并加了 10s 上界，但仍在
-/// <c>IOptionsMonitor.OnChange</c> 的<b>回调线程</b>上 <c>Task.Run(...).Wait(10s)</c>：
+/// 新上下文不得在清库完成前从 store 恢复出旧凭据来源的令牌。
+/// 若把清库放在 <c>IOptionsMonitor.OnChange</c> 的<b>回调线程</b>上同步等待完成
+/// （<c>Task.Run(...).Wait(10s)</c>）：
 /// 回调线程最长阻塞 10s、宿主存在 <c>SynchronizationContext</c> 时有死锁面、
 /// 线程池饥饿时占用双线程。
 /// </para>
 /// <para>
-/// <b>本设计</b>：把 D10 的实质约束（"清库完成前不得恢复旧令牌"）从「阻塞 <c>OnChange</c>」
-/// 下沉到「恢复路径短路」——Phase-P 只<b>打门</b>（同步、微秒级），清库异步执行；
+/// <b>本设计</b>：把实质约束（"清库完成前不得恢复旧令牌"）从「阻塞 <c>OnChange</c>」
+/// 下沉到「恢复路径短路」——预清库阶段只<b>打门</b>（同步、微秒级），清库异步执行；
 /// <c>FeishuAppTokenManagerBase.TryRestoreFromStoreAsync</c> /
 /// <c>UserTokenManager</c> 的恢复路径见到门即跳过 store。
 /// </para>
 /// <para>
-/// <b>计数语义</b>：两段清库（Phase-P 的锁外预清库 + 提交后二次清库）各自
+/// <b>计数语义</b>：两段清库（锁外预清库 + 提交后二次清库）各自
 /// <see cref="Mark"/>/<see cref="Release"/> 一次，叠加期间门持续有效，
 /// 覆盖"提交窗口内旧上下文回写"的残余窗口。计数归零即撤门。
 /// </para>
@@ -43,7 +43,7 @@ namespace Mud.Feishu.Abstractions.Authentication;
 /// </para>
 /// <para>
 /// <b>并发实现</b>：<c>lock</c> + <see cref="Dictionary{TKey,TValue}"/>。
-/// 调用点仅有 ①热更新 Phase-P/提交后打门、②清库收尾撤门、③令牌恢复路径查询——
+/// 调用点仅有 ①热更新预清库/提交后打门、②清库收尾撤门、③令牌恢复路径查询——
 /// 均为低频路径，临界区为字典查找（纳秒级），不构成热路径竞争。
 /// 刻意不使用 <c>ConcurrentDictionary</c> + <c>Interlocked</c>：
 /// "计数归零即移除"与"并发 Mark 增量"之间存在丢标记窗口，锁版本可证正确。
@@ -78,7 +78,7 @@ internal static class TokenStorePurgeGate
         /// <summary>无门（或门已超时失效）：恢复路径可正常读取 store。</summary>
         NotPending = 0,
 
-        /// <summary>清库进行中：恢复路径必须跳过 store（等价于 D10「清库完成前不得恢复旧令牌」）。</summary>
+        /// <summary>清库进行中：恢复路径必须跳过 store（"清库完成前不得恢复旧令牌"）。</summary>
         Pending = 1,
 
         /// <summary>门已超时失效（本次查询已将门摘除）：恢复路径重新启用 store，调用方应记一次 Warning。</summary>

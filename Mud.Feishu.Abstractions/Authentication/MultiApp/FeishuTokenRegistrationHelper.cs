@@ -8,11 +8,11 @@
 namespace Mud.Feishu.Abstractions;
 
 /// <summary>
-/// TMA2-07 / C-5②：令牌注册逻辑抽取为 internal static helper，
+/// 令牌注册逻辑集中为 internal static helper，
 /// 使 net8/10 单测可直接覆盖注册逻辑而无需 HostedService 载体。
 /// </summary>
 /// <remarks>
-/// ns2.0 路径无 HostedService 载体，按 C-5② 决策仅文档声明限制。
+/// ns2.0 路径无 HostedService 载体，该限制仅以文档声明。
 /// 此 helper 在 net6+ 路径被 <c>FeishuTokenRegistrationService</c> 调用，
 /// 也可被测试直接调用。
 /// </remarks>

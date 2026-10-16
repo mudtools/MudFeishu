@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+﻿﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -23,14 +23,13 @@ namespace Mud.Feishu.Abstractions.Authentication;
 /// 承担清库门与读容错），于是：
 /// <list type="bullet">
 /// <item><b>恢复</b>：管线在刷新前经 <c>IAsyncTokenCache&lt;T&gt;.GetAsync</c> 读穿透直达持久层，
-/// 命中即返回（不再进入刷新路径）；存储值缺过期戳或剩余 ≤ <c>TokenRefreshThreshold</c> 一律视为未命中
-/// （D9 / TMA-15）。</item>
+/// 命中即返回（不再进入刷新路径）；存储值缺过期戳或剩余 ≤ <c>TokenRefreshThreshold</c> 一律视为未命中。</item>
 /// <item><b>写穿</b>：刷新成功后基类 <c>UpdateToken</c> 写缓存即自动写穿持久层，
 /// TTL 由值适配器从 <see cref="CredentialToken.Expire"/> 推导（与管线判定同源）。</item>
 /// <item><b>失效</b>：基类 <c>InvalidateTokenAsync</c> 经桥接器写穿删除持久层槽位
-/// （TMA-01 / D1：内存与持久层双清）。</item>
+/// （内存与持久层双清）。</item>
 /// </list>
-/// 不注入 store 时使用与基类无参构造同款的进程内缓存，行为与改造前完全一致。
+/// 不注入 store 时使用与基类无参构造同款的进程内缓存（仅内存、无持久化）。
 /// </para>
 /// </remarks>
 internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
@@ -61,7 +60,7 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
     }
 
     /// <summary>
-    /// U-3：跨进程刷新去重租约（多实例部署下同一归属键的并发刷新去重）。
+    /// 跨进程刷新去重租约（多实例部署下同一归属键的并发刷新去重）。
     /// 由工厂经 DI 解析注入（<c>RedisRefreshLease</c> 等实现随 Mud.Feishu.Redis 注册）；
     /// 未注册时为 null，行为与不启用租约时逐位一致（上游默认）。
     /// </summary>
@@ -121,7 +120,7 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
             new PurgeGateTokenStoreDecorator(tokenStore, appKey, logger),
             valueAdapter: AdaptCredentialToken,
             valueFactory: CreateCredentialToken,
-            // BD-1：键映射为常量 tokenType —— 物理键派生（TokenKeyBuilder）与改造前逐字节一致。
+            // 键映射为常量 tokenType —— 物理键派生（TokenKeyBuilder）保持逐字节一致。
             storeKeyMapper: _ => tokenTypeKey,
             logger: logger);
     }
@@ -151,9 +150,9 @@ internal abstract class FeishuAppTokenManagerBase : TokenManagerBase
     /// 读穿透方向的值工厂：存储三元组 → <see cref="CredentialToken"/>。
     /// </summary>
     /// <remarks>
-    /// 解码失败（TMA-15 旧格式 / 损坏值，无 <c>{expireMs}|</c> 前缀）或令牌为空时返回 null ⇒ 读穿透视为未命中。
-    /// <c>IssuedAt = 0</c> 是存储格式不含签发时间所致的保守代价（TMF-06 方案 A）：
-    /// 管线有效期判定退化为配置阈值 <c>TokenRefreshThreshold</c>，与改造前的恢复阈值（D9）数值与判定完全一致。
+    /// 解码失败（旧格式 / 损坏值，无 <c>{expireMs}|</c> 前缀）或令牌为空时返回 null ⇒ 读穿透视为未命中。
+    /// <c>IssuedAt = 0</c> 是存储格式不含签发时间所致的保守代价：
+    /// 管线有效期判定退化为配置阈值 <c>TokenRefreshThreshold</c>（数值与判定口径均保持一致）。
     /// </remarks>
     private static CredentialToken? CreateCredentialToken(TokenStoreValue value)
     {

@@ -10,11 +10,11 @@ using System.Text.Json;
 namespace Mud.Feishu.Abstractions.EventHandlers;
 
 /// <summary>
-/// <see cref="EventData"/> 事件载荷读取扩展（E-P1-2 双轨收敛）
+/// <see cref="EventData"/> 事件载荷读取扩展
 /// </summary>
 /// <remarks>
-/// R-E1（AD-3）：SDK 生产路径自本版本起将 <see cref="EventData.Event"/> 统一写入
-/// JSON 原文字符串；属性类型保持 <c>object?</c> 仅为源兼容。历史版本 WS 通道写入过
+/// SDK 生产路径将 <see cref="EventData.Event"/> 统一写入
+/// JSON 原文字符串；属性类型保持 <c>object?</c> 仅为源兼容。WS 通道可能写入
 /// <see cref="JsonElement"/>（Clone），宿主若持有旧对象残留或手工构造 EventData，
 /// 本扩展统一两种形态的读取口径，下一 major <c>Event</c> 将收敛为 <c>string?</c>。
 /// </remarks>

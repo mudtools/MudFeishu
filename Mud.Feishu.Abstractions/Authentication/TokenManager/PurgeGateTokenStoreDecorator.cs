@@ -8,25 +8,25 @@
 namespace Mud.Feishu.Abstractions.Authentication;
 
 /// <summary>
-/// 令牌存储读边界守卫：把「待清库门（D10）」与「读故障降级」收敛为持久化 SPI 读族的单一拦截点。
+/// 令牌存储读边界守卫：把「待清库门」与「读故障降级」收敛为持久化 SPI 读族的单一拦截点。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>职责来源（改造前分散在管理器内的两处判定与逐点 try/catch）</b>：
+/// <b>职责（自管理器内两处判定与逐点 try/catch 收口）</b>：
 /// <list type="bullet">
-/// <item>清库门：改造前为 <c>FeishuAppTokenManagerBase.ShouldSkipStoreRestoreForPendingPurge</c> 与
+/// <item>清库门：对应 <c>FeishuAppTokenManagerBase.ShouldSkipStoreRestoreForPendingPurge</c> 与
 /// <c>UserTokenManager.ShouldSkipUserStoreAccessForPendingPurge</c>（两处逐行同构）。判据相同 ——
 /// <see cref="TokenStorePurgeGate.Query(string?)"/> 为 <see cref="TokenStorePurgeGate.PurgeGateState.Pending"/> 时
 /// 短路读取（凭据变更清库完成前不得恢复旧凭据来源的令牌）；<see cref="TokenStorePurgeGate.PurgeGateState.TimedOut"/>
 /// 时 fail-open 放行并记一次 Warning（绝不因门而永久禁用恢复）。</item>
-/// <item>读故障降级：改造前每个直调点各自 <c>catch (ex is not OperationCanceledException)</c> → Warning → 视为未命中。
+/// <item>读故障降级：对应各直调点的 <c>catch (ex is not OperationCanceledException)</c> → Warning → 视为未命中。
 /// 该语义<b>必须</b>在装饰器保留：上游桥接器 <c>TokenStoreBackedTokenCache&lt;T&gt;.GetAsync</c> 不捕获
 /// store 异常，若不在此降级，存储抖动将从「回落 API 刷新」恶化为「把异常抛给业务调用方」。</item>
 /// </list>
 /// </para>
 /// <para>
-/// <b>写族与清库族绝不拦截</b>：残留令牌由「提交后二次清库」覆盖（与改造前的门语义一致）；
-/// 且 <c>ClearAllUsersAsync</c> 若被拦，D10 清库本身将静默失效。
+/// <b>写族与清库族绝不拦截</b>：残留令牌由「提交后二次清库」覆盖；
+/// 且 <c>ClearAllUsersAsync</c> 若被拦，清库本身将静默失效。
 /// </para>
 /// </remarks>
 internal sealed class PurgeGateReadGuard
@@ -73,7 +73,7 @@ internal sealed class PurgeGateReadGuard
     }
 
     /// <summary>
-    /// 读故障降级：记录一次 Warning（与改造前管理器内逐点 catch 的语义与可观测口径一致）。
+    /// 读故障降级：记录一次 Warning（保持管理器内逐点 catch 时的语义与可观测口径）。
     /// </summary>
     /// <param name="ex">异常。</param>
     /// <param name="memberName">读取成员名（仅用于日志定位）。</param>
@@ -158,7 +158,7 @@ internal sealed class PurgeGateTokenStoreDecorator : ITokenStore, ITokenStoreApp
         }
     }
 
-    // ---- 写族：一律透传（清库期间的残留由「提交后二次清库」覆盖，见 BD-4） ----
+    // ---- 写族：一律透传（清库期间的残留由「提交后二次清库」覆盖） ----
 
     /// <inheritdoc />
     public Task SetAccessTokenAsync(string tokenType, string accessToken, long expiresInSeconds, CancellationToken cancellationToken = default)
@@ -178,7 +178,7 @@ internal sealed class PurgeGateTokenStoreDecorator : ITokenStore, ITokenStoreApp
     public Task ClearAsync(CancellationToken cancellationToken = default)
         => _inner.ClearAsync(cancellationToken);
 
-    // ---- U-4（上游 3.0.10 Batch 2）：按应用清库能力面透传 —— 官方统一入口
+    // ---- 按应用清库能力面透传 —— 官方统一入口
     //      TokenStorePurgeExtensions.PurgeAppTokensAsync 经能力探测可穿透本装饰器直达内层。 ----
 
     /// <inheritdoc />
@@ -211,7 +211,7 @@ internal sealed class PurgeGateTokenStoreDecorator : ITokenStore, ITokenStoreApp
 /// 桥接器亦绝不调用）。
 /// </para>
 /// <para>
-/// 消费者除桥接器外还有 <c>UserTokenManager</c> 的直调路径（refresh 候选读取 / D12 过期清理 / CAS），
+/// 消费者除桥接器外还有 <c>UserTokenManager</c> 的直调路径（refresh 候选读取 / 过期清理 / CAS），
 /// 因此装饰器同时挂在管理器字段上，两条路径共享同一门控与容错口径。
 /// </para>
 /// </remarks>
@@ -305,7 +305,7 @@ internal sealed class PurgeGateUserTokenStoreDecorator : UserTokenStoreBase, IFe
         => _inner.ClearUserAsync(userId, cancellationToken);
 
     /// <summary>
-    /// D10 清库本体（跨用户全清）—— 透传，绝不拦截（被拦会使凭据变更清库静默失效）。
+    /// 全量清库本体（跨用户全清）—— 透传，绝不拦截（被拦会使凭据变更清库静默失效）。
     /// </summary>
     /// <param name="cancellationToken">取消令牌。</param>
     public Task ClearAllUsersAsync(CancellationToken cancellationToken = default)
@@ -313,7 +313,7 @@ internal sealed class PurgeGateUserTokenStoreDecorator : UserTokenStoreBase, IFe
             ? purgeable.ClearAllUsersAsync(cancellationToken)
             : Task.CompletedTask;
 
-    // ---- U-7（上游 3.0.10 Batch 3）：本装饰器<b>刻意不</b>实现 IUserTokenStoreCompareExchange ----
+    // ---- 本装饰器<b>刻意不</b>实现 IUserTokenStoreCompareExchange ----
     //  原因：管理器的 CAS 能力探测必须落在「未装饰的原始 store」上（见 UserTokenManager._compareExchangeStore）。
     //  若装饰器无条件声明该能力，内层未实现时探测会"假命中"，而官方统一入口的非原子回退按
     //  「存储原值 vs 期望明文」整值比较——飞书存储值为编码值（<c>{前导}|{明文}</c>），整值比较恒失配，

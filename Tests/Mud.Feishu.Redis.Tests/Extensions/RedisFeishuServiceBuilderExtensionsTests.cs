@@ -5,11 +5,14 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using System.Reflection;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Redis.Configuration;
 using Mud.Feishu.Redis.Extensions;
+using Mud.HttpUtils;
+using Mud.HttpUtils.Redis;
 
 namespace Mud.Feishu.Redis.Tests.Extensions;
 
@@ -107,6 +110,52 @@ public class RedisFeishuServiceBuilderExtensionsTests
 
         act.Should().Throw<ArgumentNullException>()
             .WithParameterName("configureOptions");
+    }
+
+    /// <summary>
+    /// U-3（上游 3.0.10 Batch 1）验证：Redis 装配链必须注册 <see cref="ITokenRefreshLease"/>（工厂注册、单例）。
+    /// 仅断言描述符，不解析实例（解析会触发真实 Redis 连接）。
+    /// </summary>
+    [Fact]
+    public void AddFeishuRedisDeduplicators_ShouldRegister_RefreshLease_AsSingletonFactory()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        // Act
+        services.AddFeishuRedisDeduplicators(_ => { });
+
+        // Assert
+        var descriptor = services.SingleOrDefault(s => s.ServiceType == typeof(ITokenRefreshLease));
+        Assert.NotNull(descriptor);
+        Assert.Equal(ServiceLifetime.Singleton, descriptor!.Lifetime);
+        Assert.NotNull(descriptor.ImplementationFactory);
+    }
+
+    /// <summary>
+    /// U-3 验证：解析出的租约必须是官方 <see cref="RedisRefreshLease"/>，且键前缀跟随
+    /// <c>TokenKeyPrefix</c> 环境段（R2-04，多环境共用 Redis 时租约与令牌键空间同域隔离）。
+    /// </summary>
+    [Fact]
+    public void RefreshLease_Resolve_ShouldBeRedisLease_WithTokenKeyPrefixDerivedPrefix()
+    {
+        // Arrange：预注册 mock 连接，避免解析期真实连接 Redis。
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddFeishuRedisDeduplicators(o => o.TokenKeyPrefix = "feishu-prod");
+        services.AddSingleton(new Mock<IConnectionMultiplexer>().Object);
+        using var provider = services.BuildServiceProvider();
+
+        // Act
+        var lease = provider.GetRequiredService<ITokenRefreshLease>();
+
+        // Assert
+        Assert.IsType<RedisRefreshLease>(lease);
+        var optionsField = typeof(RedisRefreshLease).GetField("_options", BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.NotNull(optionsField);
+        var options = Assert.IsType<RedisRefreshLeaseOptions>(optionsField!.GetValue(lease));
+        Assert.Equal("feishu-prod:lease", options.KeyPrefix);
     }
 }
 

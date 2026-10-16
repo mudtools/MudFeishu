@@ -32,8 +32,9 @@ internal class TenantTokenManager : FeishuAppTokenManagerBase, ITenantTokenManag
         IFeishuAuthentication authenticationApi,
         IOptions<FeishuAppConfig> options,
         ILogger<TenantTokenManager> logger,
-        ITokenStore? tokenStore = null)
-        : base(authenticationApi, options, logger, tokenStore, "TenantAccessToken")
+        ITokenStore? tokenStore = null,
+        ITokenRefreshLease? refreshLease = null)
+        : base(authenticationApi, options, logger, tokenStore, "TenantAccessToken", refreshLease)
     {
     }
 

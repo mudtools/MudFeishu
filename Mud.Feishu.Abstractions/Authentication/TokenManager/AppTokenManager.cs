@@ -32,8 +32,9 @@ internal class AppTokenManager : FeishuAppTokenManagerBase, IAppTokenManager
         IFeishuAuthentication authenticationApi,
         IOptions<FeishuAppConfig> options,
         ILogger<AppTokenManager> logger,
-        ITokenStore? tokenStore = null)
-        : base(authenticationApi, options, logger, tokenStore, "AppAccessToken")
+        ITokenStore? tokenStore = null,
+        ITokenRefreshLease? refreshLease = null)
+        : base(authenticationApi, options, logger, tokenStore, "AppAccessToken", refreshLease)
     {
     }
 

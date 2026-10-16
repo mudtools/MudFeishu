@@ -72,8 +72,8 @@
 		     —— v2.3 起随声明契约上移 Mud.AI.Abstractions（经 Mud.AI.Agent 传递引用）；
 		     Mud.HttpUtils.Attributes / .Abstractions 为 HTTP 客户端生成路径所需，保留。
 		     见 SdkProfile/FeishuToolProfile.cs —— 旧本地引擎的全部飞书硬编码收拢于此。 -->
-		<PackageReference Include="Mud.HttpUtils.Attributes" Version="3.0.6" />
-		<PackageReference Include="Mud.HttpUtils.Abstractions" Version="3.0.6" />
+		<PackageReference Include="Mud.HttpUtils.Attributes" Version="3.0.7" />
+		<PackageReference Include="Mud.HttpUtils.Abstractions" Version="3.0.7" />
 	</ItemGroup>
 
 	<ItemGroup>

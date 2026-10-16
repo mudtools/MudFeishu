@@ -57,7 +57,8 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         IFeishuAuthentication authenticationApi,
         IOptions<FeishuAppConfig> options,
         ILogger<UserTokenManager> logger,
-        IUserTokenStore? userTokenStore = null)
+        IUserTokenStore? userTokenStore = null,
+        ITokenRefreshLease? refreshLease = null)
         : base(BuildUserTokenCache(userTokenStore, options, logger))
     {
         _currentUserContext = currentUserContext;
@@ -70,7 +71,24 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         _userTokenStore = userTokenStore is null
             ? null
             : new PurgeGateUserTokenStoreDecorator(userTokenStore, _options.AppKey, _logger);
+        // U-7（上游 3.0.10 Batch 3）：CAS 能力探测必须落在**未装饰的原始 store** 上——
+        // 装饰器刻意不实现 IUserTokenStoreCompareExchange（否则内层未实现时探测"假命中"，
+        // 官方非原子回退的「存储原值 vs 期望明文」整值比较对飞书编码值恒失配 ⇒ 清库静默失效）。
+        // CAS 属写/删族（门只拦读），故直调原始 store 不违 D10 门语义。
+        _compareExchangeStore = userTokenStore as IUserTokenStoreCompareExchange;
+        _refreshLease = refreshLease;
     }
+
+    private readonly ITokenRefreshLease? _refreshLease;
+
+    /// <summary>U-7：原始用户 store 的原子 CAS 能力（未实现时为 null）。</summary>
+    private readonly IUserTokenStoreCompareExchange? _compareExchangeStore;
+
+    /// <summary>
+    /// U-3：跨进程刷新去重租约（与租户/应用管理器同口径，由工厂经 DI 解析注入）；
+    /// 未注册时为 null，行为与不启用租约时逐位一致。
+    /// </summary>
+    protected override ITokenRefreshLease? RefreshLease => _refreshLease;
 
     protected override int UserExpireThresholdSeconds => _options.TokenRefreshThreshold;
 
@@ -266,21 +284,41 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
                 _logger.LogWarning(
                     "OAuth refresh failed with non-retryable error for userId: {UserId}, code: {Code}, msg: {Msg}. Purging refresh token.",
                     Masked(userId), res?.Code, res?.Msg);
-                if (_userTokenStore != null)
+                if (!string.IsNullOrEmpty(candidate.RefreshToken) && _userTokenStore != null)
                 {
                     try
                     {
-                        var encodedRefreshToken = await _userTokenStore.GetRefreshTokenAsync(userId, _tokenTypeKey, cancellationToken).ConfigureAwait(false);
-                        if (!string.IsNullOrEmpty(encodedRefreshToken))
+                        // TMF-05（CAS）：仅当 store 仍持有本次尝试所用的 refresh token 时才清除，
+                        // 防止宿主直调（绕过组件 KeyedLockTable）场景下误删并发刷新刚持久化的新令牌。
+                        // U-7（上游 3.0.10 Batch 3）：store 提供原子能力时改走官方用户维度 CAS ——
+                        // RedisUserTokenStore 经 Lua 单脚本内「取存储值 → 明文比较 → 删键」，消除旧
+                        // 「读取 → 解码比较 → 删除」两步之间的竞态窗口。
+                        if (_compareExchangeStore is not null)
                         {
-                            // TMF-05（CAS）：仅当 store 仍持有本次尝试所用的 refresh token 时才清除，
-                            // 防止宿主直调（绕过组件 KeyedLockTable）场景下误删并发刷新刚持久化的新令牌。
-                            // 比较失败时跳过清库——新令牌由持有者管理；已知保守代价：Feishu 复用旧
-                            // refresh_token 且两次持久化时间戳不同时会跳过清库（活性损失，非正确性问题）。
-                            var attempted = TokenStoreHelper.EncodeStoredToken(candidate.RefreshToken!, candidate.RefreshTokenExpireTime);
-                            if (string.Equals(encodedRefreshToken, attempted, StringComparison.Ordinal))
+                            await _compareExchangeStore.CompareExchangeRefreshTokenAsync(
+                                    userId,
+                                    _tokenTypeKey,
+                                    candidate.RefreshToken!,
+                                    newToken: null,
+                                    cancellationToken)
+                                .ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            // 无原子能力的 store：保留 C-2 明文比较 + 删除。
+                            // 不能改走官方非原子回退——回退按「存储原值 vs 期望明文」整值比较，
+                            // 而飞书存储值为编码值（<c>{前导}|{明文}</c>），整值比较恒失配 ⇒ 清库永不执行。
+                            var encodedRefreshToken = await _userTokenStore
+                                .GetRefreshTokenAsync(userId, _tokenTypeKey, cancellationToken)
+                                .ConfigureAwait(false);
+
+                            if (!string.IsNullOrEmpty(encodedRefreshToken))
                             {
-                                await _userTokenStore.RemoveAsync(userId, _tokenTypeKey, cancellationToken).ConfigureAwait(false);
+                                var (storedRefreshToken, _) = TokenStoreHelper.DecodeStoredToken(encodedRefreshToken!);
+                                if (string.Equals(storedRefreshToken, candidate.RefreshToken, StringComparison.Ordinal))
+                                {
+                                    await _userTokenStore.RemoveAsync(userId, _tokenTypeKey, cancellationToken).ConfigureAwait(false);
+                                }
                             }
                         }
                     }

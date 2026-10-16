@@ -17,6 +17,9 @@ namespace Mud.Feishu.WebSocket;
 /// <para>2. 连接是否真正断开由 WebSocketConnectionManager 的接收循环异常检测，
 /// 以及 <c>ClientWebSocket.KeepAliveInterval</c> 协议级 Ping/Pong 超时检测。</para>
 /// <para>3. 飞书服务端不一定对每个 Ping 都回复 Pong，不能以"未收到 Pong"判定连接断开。</para>
+/// <para>4. 循环内所有 await 一律 <c>ConfigureAwait(false)</c>：后台循环不得把续体 Post 回
+/// 调用方的 <see cref="SynchronizationContext"/>（UI 线程 / 旧 ASP.NET 请求上下文 /
+/// 测试进程内的 xUnit 并发闸门）。该上下文一旦被占满，心跳会被推迟到远超间隔。</para>
 /// </summary>
 public class HeartbeatManager
 {
@@ -75,14 +78,20 @@ public class HeartbeatManager
             {
                 // 与 Python SDK 一致：先等待间隔，再发送 Ping
                 // WS-07：使用私有字段而非共享 Options 实例
-                await Task.Delay(_heartbeatIntervalMs, cancellationToken);
+                // CI 事故修复：本循环是**后台循环**，必须 ConfigureAwait(false)——
+                // 否则续体会被捕获进调用方的 SynchronizationContext（WPF/旧 ASP.NET 请求上下文；
+                // 测试进程内则是 xUnit 的最大并发闸门）。一旦该上下文被占满，发 Ping 的续体就会
+                // 排队等待配额，心跳被推迟到远超 HeartbeatIntervalMs（实测 5s 间隔在 10s 预算内
+                // 仍未送达）。回归守卫：HeartbeatManagerProtoBufTests.
+                // StartHeartbeatAsync_ShouldNotCaptureCallerSynchronizationContext。
+                await Task.Delay(_heartbeatIntervalMs, cancellationToken).ConfigureAwait(false);
 
                 try
                 {
                     // 构建并发送 ProtoBuf 二进制 Ping 帧
                     var serviceId = _serviceId ?? 0;
                     var pingFrameData = FrameBuilder.BuildPingFrame(serviceId);
-                    await _sendBinaryCallback(pingFrameData, cancellationToken);
+                    await _sendBinaryCallback(pingFrameData, cancellationToken).ConfigureAwait(false);
 
                     _logger.LogDebug("已发送 ProtoBuf 心跳 (ServiceId={ServiceId})", serviceId);
                 }

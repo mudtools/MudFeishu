@@ -7,6 +7,12 @@
 		<CodeAnalysisTreatWarningsAsErrors>false</CodeAnalysisTreatWarningsAsErrors>
 		<GenerateDocumentationFile>false</GenerateDocumentationFile>
 		<NoDefaultExcludes>true</NoDefaultExcludes>
+		<!-- 示例工程一律不可打包：CI 用 `dotnet pack Mud.Feishu.slnx` 打包（解决方案含 Demos），
+		     未关闭打包的示例工程会被打成包并静默推到 nuget.org（包名同样命中信任策略的
+		     Mud.Feishu* glob，不会被拒绝）。Mud.Feishu.AotVerification 就属于这种漏网项目。
+		     Web SDK 项目（Microsoft.NET.Sdk.Web）自带 IsPackable=false，但 Microsoft.NET.Sdk
+		     的控制台/测试类项目默认为 true，故必须在遮蔽根 Directory.Build.props 的本文件里显式关闭。 -->
+		<IsPackable>false</IsPackable>
 		<Copyright>© 2019-2025 Mud Studio Co.,Ltd.</Copyright>
 		<Authors>Mud Studio</Authors>
 		<Company>Mud Studio</Company>

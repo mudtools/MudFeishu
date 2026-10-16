@@ -23,7 +23,7 @@ namespace Mud.Feishu.Abstractions;
 /// 每个应用上下文是完全独立的，不同应用之间的配置、缓存和资源互不干扰。
 /// 令牌缓存由 Mud.HttpUtils v2.0 的 TokenManagerBase 内部管理。
 /// </remarks>
-public class FeishuAppContext : IFeishuAppContext, IDisposable
+public class FeishuAppContext : IFeishuAppContext, IAppExternalIds, IDisposable
 {
     // TMR-P2-13（F13）：退休队列并发 Sweep+Flush 下同一实例可能被并发 Dispose；
     // _disposed 由 bool 收敛为 int + Interlocked.Exchange，保证释放逻辑恰好一次执行
@@ -44,6 +44,34 @@ public class FeishuAppContext : IFeishuAppContext, IDisposable
     /// 用于在多应用场景下区分不同应用（如 per-app 弹性策略解析）。
     /// </remarks>
     public string AppKey => Config.AppKey;
+
+    /// <summary>空外部标识快照（避免每次调用分配）。</summary>
+    private static readonly IReadOnlyDictionary<string, string> EmptyExternalIds =
+        new Dictionary<string, string>(StringComparer.Ordinal);
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// F-4（Mud.HttpUtils 3.0.7）：声明本应用的外部标识，供
+    /// <see cref="DefaultAppManager{TAppContext}"/> 注册 / 实例化时自动建立反查索引。
+    /// <c>app_id</c>（<see cref="FeishuAppConfig.AppId"/>，形如 <c>cli_xxx</c>）是飞书事件 /
+    /// 回调载荷的标准应用标识——宿主可据此把「只携带 app_id 的不可信载荷」反查为 appKey
+    /// （<c>TryResolveAppKey</c>，fail-closed）。每次调用返回独立快照字典（接口契约）；
+    /// <see cref="FeishuAppConfig.AppId"/> 为空时返回空快照（该应用不参与反查）。
+    /// </remarks>
+    public IReadOnlyDictionary<string, string> ExternalIds
+    {
+        get
+        {
+            var appId = Config.AppId;
+            if (string.IsNullOrEmpty(appId))
+                return EmptyExternalIds;
+
+            return new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["app_id"] = appId,
+            };
+        }
+    }
 
     /// <summary>
     /// HTTP客户端

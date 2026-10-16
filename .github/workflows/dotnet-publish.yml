@@ -67,7 +67,7 @@ jobs:
       # 「组件同版本覆盖打包 → 下游缓存陈旧 → CS1750 假性断路」这一类事故。
       - name: Dependency cache freshness self-check (CACHE-1)
         shell: pwsh
-        run: '& ./scripts/verify-build.ps1 -CacheCheckOnly'
+        run: "& ./scripts/verify-build.ps1 -CacheCheckOnly"
 
       # 步骤3：还原依赖包
       - name: Restore dependencies
@@ -162,7 +162,7 @@ jobs:
       # 注意：不要把它并入上面的 -CacheCheckOnly 段，后者只在 Restore 之前跑且在托管 runner 上 [SKIP]。
       - name: Config key audit (strict)
         shell: pwsh
-        run: '& ./scripts/audit-config-keys.ps1 -Strict'
+        run: "& ./scripts/audit-config-keys.ps1 -Strict"
 
       # 步骤4.7：AI 面变更的规则式语义审查（R-3 / F-11）。
       # 现有的 44+ 契约守卫锁的是"状态自洽"；本步骤补的是"**变更集**完整"——
@@ -350,11 +350,17 @@ jobs:
           npm install -g @semantic-release/exec@6
           npm install -g conventional-changelog-conventionalcommits@7
 
+      # 主干已切换到 v3：semantic-release 只在 "branches" 列出的分支上发布，
+      # 当前分支不在列表内会直接以错误退出（version-and-release 失败 ⇒ new_release 永远拿不到值）。
+      # main/master 保留以兼容旧主干。
+      # tagFormat 显式钉死为 v${version}（与仓库的 v* tag 约定一致）：它虽是 semantic-release 的默认值，
+      # 但默认值会随版本变化，且「空 version 输入」路径下 createTag/push 的产物必须是 v* 形式。
       - name: Create semantic-release config
         run: |
           cat > .releaserc.json << 'EOF'
           {
-            "branches": ["main", "master"],
+            "branches": ["v3", "main", "master"],
+            "tagFormat": "v${version}",
             "plugins": [
               [
                 "conventional-changelog-conventionalcommits",
@@ -433,6 +439,24 @@ jobs:
               git push origin "v$VERSION"
             fi
           else
+            # v* 约定守卫（TAG-1）：semantic-release 的 tagFormat 是 v${version}，而 v3.0.2 及更早的发布
+            # tag 都没有 v 前缀 ⇒ 它找不到基线，会把本次当成首个版本算出 1.0.0 之类的「倒退版本」，写进
+            # Directory.Build.props 后连同 tag 一起推回仓库，随后被 publish-nuget 当成正式版本推上 nuget.org。
+            # 故在调用 semantic-release 之前做硬校验：已存在的最高 v* 语义化 tag 必须不低于 CHANGELOG.md
+            # 顶部记录的最近发布版本。不满足即失败，且不产生任何副作用（不提交、不打 tag、不推送）。
+            # 处置：①（推荐）显式填写 version 输入；② 先按 v* 约定把最近发布版本补打成 tag 再重跑。
+            CHANGELOG_VERSION=$(grep -m1 -oE '^#+ \[?v?[0-9]+\.[0-9]+\.[0-9]+' CHANGELOG.md | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)
+            LAST_V_TAG=$(git tag --list 'v[0-9]*' --sort=-v:refname | sed -n 's|^v\([0-9][0-9.]*\)$|\1|p' | head -n1 || true)
+            if [ -z "$CHANGELOG_VERSION" ]; then
+              echo "::error::无法从 CHANGELOG.md 顶部解析出最近发布版本，拒绝以未知基线运行 semantic-release。"
+              exit 1
+            fi
+            if [ -z "$LAST_V_TAG" ] || [ "$LAST_V_TAG" != "$(printf '%s\n%s\n' "$LAST_V_TAG" "$CHANGELOG_VERSION" | sort -V | tail -n1)" ]; then
+              echo "::error::v* 基线缺失或倒退：最高 v* tag='${LAST_V_TAG:-<无>}'，CHANGELOG 最近发布='$CHANGELOG_VERSION'。"
+              echo "::error::semantic-release 会把本次算成低于 $CHANGELOG_VERSION 的版本，并写回 Directory.Build.props。"
+              echo "::error::请显式填写 version 输入，或先按 v* 约定补打 v$CHANGELOG_VERSION tag 后再运行。"
+              exit 1
+            fi
             if [ "${{ inputs.dry_run }}" = "true" ]; then
               DRY_RUN=true npx semantic-release --dry-run
               VERSION=$(npx semantic-release --dry-run 2>&1 | grep -oP 'The next release version is \K[0-9.]+')
@@ -476,7 +500,6 @@ jobs:
       (startsWith(github.ref, 'refs/tags/v') ||
        (github.event_name == 'workflow_dispatch' && needs.version-and-release.outputs.new_release == 'true'))
     environment: release # 需与 NuGet.org Trusted Publishing 策略里填的 Environment 一致
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -510,13 +533,60 @@ jobs:
       - name: Pack NuGet package
         run: dotnet pack ${{ env.SOLUTION_FILE }} --configuration ${{ env.CONFIGURATION }} --output ./nupkg --no-build
 
+      # 打包范围断言（PACK-1）：发布契约是 publish.bat 里列出的 9 个源包（Mud.Feishu.slnx 的 9 个源工程）。
+      # dotnet pack <slnx> 会打包解决方案内所有 IsPackable 的项目，Demos/Tests 一旦有项目漏关闭打包
+      # 就会多出示例/测试包；这些包名同样命中 NuGet 信任策略的 Mud.Feishu* glob，不会被拒绝，
+      # 只会被静默推上 nuget.org（Demos/Mud.Feishu.AotVerification 曾是这种漏网项目）。
+      # 故此处按「ID 白名单 + 版本」硬断言：多包、少包、包版本不是本次发布版本，三者任一都失败。
+      - name: Assert package set
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION='${{ steps.pkgver.outputs.version }}'
+          EXPECTED_IDS="Mud.Feishu Mud.Feishu.Abstractions Mud.Feishu.Authentication Mud.Feishu.DataModels Mud.Feishu.EventCallback Mud.Feishu.OpenTelemetry Mud.Feishu.Redis Mud.Feishu.Webhook Mud.Feishu.WebSocket"
+          shopt -s nullglob
+          files=(./nupkg/*.nupkg)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "::error::./nupkg 下没有任何 nupkg —— 打包步骤未产出制品。"
+            exit 1
+          fi
+          failed=0
+          seen=""
+          for f in "${files[@]}"; do
+            base="${f##*/}"
+            base="${base%.nupkg}"
+            # 包文件名必须精确以本次发布版本结尾（prefix+Version 同时喂给 build/pack，不允许漂移）。
+            if [[ "$base" != *".$VERSION" ]]; then
+              echo "::error::包 $base 的版本不是本次发布版本 $VERSION（Directory.Build.props 漂移，或 build/pack 未统一传 -p:Version）。"
+              failed=1
+              continue
+            fi
+            id="${base%.$VERSION}"
+            case " $EXPECTED_IDS " in
+              *" $id "*) seen="$seen $id" ;;
+              *) echo "::error::出现未预期的包 $id —— 解决方案里有项目未关闭打包（Demos/Tests 必须 IsPackable=false）。" ; failed=1 ;;
+            esac
+          done
+          for id in $EXPECTED_IDS; do
+            case " $seen " in
+              *" $id "*) ;;
+              *) echo "::error::缺少预期包 $id —— 该源工程未被打包。" ; failed=1 ;;
+            esac
+          done
+          if [ "$failed" -ne 0 ]; then
+            echo '实际产出：'
+            for f in "${files[@]}"; do echo "  - ${f##*/}"; done
+            exit 1
+          fi
+          echo "打包范围校验通过：${#files[@]} 个包，全部为预期源包，且版本均为 $VERSION。"
+
       # 关键新增：用 OIDC 换取临时 API Key（NuGet Trusted Publishing）
       - name: NuGet login (OIDC -> temp API key)
         uses: NuGet/login@v1
         id: login
         with:
           # 你的 NuGet.org 个人资料名（Profile name），不是邮箱、也不是组织名
-          user: ${{ secrets.NUGET_USER }}
+          user: ${{ secrets.NUGET_USER || 'xlq5520' }}
 
       # 发布：将包推送到 NuGet.org（临时 Key 有效期约 1 小时，绑定仓库/工作流）
       - name: Push to NuGet.org

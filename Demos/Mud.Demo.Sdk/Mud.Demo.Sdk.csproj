@@ -14,7 +14,7 @@
 		<!-- v2.3 P1-B：随 ToolSurfaceDemo 迁入飞书仓；改为引用**已发布组件包**
 		     Mud.HttpUtils.Attributes 3.0.6（与全仓同版本——守卫
 		     TokenMultiAppContractGuards.MudHttpUtils_PackageReference_ShouldBeSingleVersion）。 -->
-		<PackageReference Include="Mud.HttpUtils.Attributes" Version="3.0.6" />
+		<PackageReference Include="Mud.HttpUtils.Attributes" Version="3.0.7" />
 	</ItemGroup>
 
 </Project>

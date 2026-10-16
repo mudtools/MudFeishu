@@ -102,6 +102,16 @@ public static class RedisFeishuServiceBuilderExtensions
             }
         });
 
+        // U-3：跨进程令牌刷新去重租约 —— TokenManagerBase.RefreshLease 钩子的分布式实现。
+        // 未启用 Redis（未调用本扩展族）时管理器 RefreshLease 恒 null，行为与单实例逐位一致；
+        // 键前缀跟随 TokenKeyPrefix 环境段（R2-04），多环境共用 Redis 时租约与令牌键空间同域隔离。
+        services.TryAddSingleton<ITokenRefreshLease>(sp => new Mud.HttpUtils.Redis.RedisRefreshLease(
+            sp.GetRequiredService<IConnectionMultiplexer>(),
+            new Mud.HttpUtils.Redis.RedisRefreshLeaseOptions
+            {
+                KeyPrefix = $"{sp.GetRequiredService<RedisOptions>().TokenKeyPrefix}:lease"
+            }));
+
         // R2-12：健康检查注册可选——库内无条件 AddHealthChecks() 会向未使用健康检查的宿主
         // 隐式注册整套 HealthCheck 基础设施（HealthCheckService 等）。传 false 时仅注册类型，
         // 由宿主自行 AddCheck<RedisHealthCheck>。

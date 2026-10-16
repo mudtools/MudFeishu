@@ -2,7 +2,7 @@
 name: feishu-ai
 description: 飞书 ai 域工具集：2 个工具（只读 2 / 写 0）。跨语言沟通：把一段文本翻译成另一种语言 → `ai.translate_text`。
 version: 1.0.0
-package_version: 3.0.2
+package_version: 3.0.3
 ---
 
 # AI 文本能力（ai.*）

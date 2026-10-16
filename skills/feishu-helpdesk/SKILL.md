@@ -2,7 +2,7 @@
 name: feishu-helpdesk
 description: 飞书 helpdesk 域工具集：10 个工具（只读 6 / 写 4）。「这个问题有没有现成答复」→ `helpdesk.search_faqs`（服务台 FAQ 是客服口径的知识源）
 version: 1.0.0
-package_version: 3.0.2
+package_version: 3.0.3
 ---
 
 # Helpdesk · 飞书服务台

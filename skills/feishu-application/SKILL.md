@@ -2,7 +2,7 @@
 name: feishu-application
 description: 飞书 application 域工具集：9 个工具（只读 7 / 写 2）。不知道有哪些应用 / 不知道 `app_id` → `application.list_apps`（本域第一跳）
 version: 1.0.0
-package_version: 3.0.2
+package_version: 3.0.3
 ---
 
 # Application · 飞书应用管理

@@ -9,23 +9,39 @@
 
 ---
 
-## 1. 五个运行模式（互不干扰）
+## 1. 六个运行模式（由启动菜单选择）
 
-| 模式 | 开关（配置文件） | 内容 |
-| --- | --- | --- |
-| Phase 0 裸模型 | 默认（不设任何开关，读 `FeishuDemo` 节） | 一问一答，不含任何飞书能力 |
-| Phase 1/2 工具冒烟 | `FeishuToolsDemo:Enabled=true` | 全域只读工具，打印工具名 + 只读问答 |
-| P2D-5a 事件接入 | `FeishuImHandlerDemo:Enabled=true` | 打印 IM 会话处理器的注册面代码文本 |
-| R-13 领域事件 | `FeishuDomainEventsDemo:Enabled=true`（可选 `StreamChatId`） | 三个领域会话处理器（审批 / 多维表格记录变更 / 任务更新）各派发一轮真实事件 + 流式通道降级链走一轮真实流式回复 |
-| **文档业务智能体** | **`FeishuDocAgent:Enabled=true`** | **本文件描述的模式** |
+程序启动后**先打印模式清单，由你选择进入哪个模块**（输入编号或模式标识；回车 = 配置默认项；`q` = 退出）：
 
-五个模式**互斥**，按上表顺序判定，命中即返回。**参数与模式开关全部来自配置文件（`appsettings*.json`），
-环境变量不再参与**。
+| 编号 | 模式 | 模式节（配置文件） | 内容 |
+| --- | --- | --- | --- |
+| 1 | 裸模型 | `FeishuDemo` | 一问一答，不含任何飞书能力 |
+| 2 | 工具冒烟 | `FeishuToolsDemo` | 全域只读工具，打印工具名 + 只读问答 |
+| 3 | 事件接入 | `FeishuImHandlerDemo` | 打印 IM 会话处理器的注册面代码文本 |
+| 4 | 领域事件 | `FeishuDomainEventsDemo`（可选 `StreamChatId`） | 三个领域会话处理器（审批 / 多维表格记录变更 / 任务更新）各派发一轮真实事件 + 流式通道降级链走一轮真实流式回复 |
+| 5 | **文档业务智能体** | **`FeishuDocAgent`** | **本文件描述的模式** |
+| 6 | Skills 产物消费 | `FeishuSkillsDemo` | 读包内 `skills/**` 并注入域 guidance（不连飞书、不需要模型） |
 
-> **R-13 领域事件模式的两节演示**：① 事件载荷由代码构造（`evt-demo-*`）并直接派发——不依赖
-> WebSocket/Webhook 通道与真实平台投递；可投递时回复下发到对应单聊，不可投递（如演示用任务 id
-> 在平台上不存在）时在**调用模型之前**短路。② 流式链（`CardStreamMessageChannel` → `EditMessageChannel`）
-> 走一轮真实流式回复，并对**增量落点次数**做断言：为 0 时抛错（"走了一轮"与"增量没落通道"必须可区分）。
+选择界面（横幅 + 清单 + 提示符）：
+
+```
+════════════════════════════════════════════════════════════
+ Mud.Feishu.Agent.Demo · 选择运行模式
+════════════════════════════════════════════════════════════
+ 配置来源     : appsettings.json + appsettings.local.json
+ 配置默认项   : 文档业务智能体（FeishuDocAgent:Enabled）
+════════════════════════════════════════════════════════════
+请选择运行模式（输入编号或标识；回车 = 配置默认项；q = 退出）
+（清单即上表：编号 1 ~ 6 按同一顺序，另有 配置节 与 说明 两列）
+模式 [1-6]（回车 = doc）›
+```
+
+- **配置文件只提供参数**：模型三项与飞书凭证统一写在 `FeishuDemo` 节，模式专属参数写在自己的模式节；
+  环境变量不参与。
+- 模式节里的 `Enabled` 键**不再决定进入哪个模式**，只决定菜单的**默认项**（回车采用的项）：
+  按 `FeishuToolsDemo` → `FeishuImHandlerDemo` → `FeishuDomainEventsDemo` → `FeishuDocAgent` →
+  `FeishuSkillsDemo` 顺序取第一个 `Enabled=true` 的模式；都不启用时默认项是菜单首项（裸模型）。
+- **非交互输入（stdin 被重定向 / 管道 / CI）跳过菜单**，直接采用配置默认项，不会挂起等待输入。
 
 ---
 
@@ -36,14 +52,15 @@
 ```powershell
 Set-Location Demos/Mud.Feishu.Agent.Demo
 Copy-Item appsettings.json appsettings.local.json    # 模板 → 本地覆盖文件
-# 编辑 appsettings.local.json：填目标模式的 Enabled=true 与模型/飞书凭证
+# 编辑 appsettings.local.json：填模型/飞书凭证（进入哪个模式在启动菜单里选）
 Set-Location <仓库根>
 dotnet run --project Demos/Mud.Feishu.Agent.Demo
 ```
 
 详见 [§3 配置来源](#3-配置来源文件)。
 
-启动后应先看到**能力面横幅**（配置来源 / 工具数 / 身份闭集 / 授权强制 / guidance 装配 / 剧本数），随后进入 `you › ` 提示符：
+启动后先看到**模式选择菜单**（见 §1），输入 `5`（或 `doc`）进入文档业务智能体；直接回车则采用配置默认项。
+进入模式后应先看到**能力面横幅**（配置来源 / 工具数 / 身份闭集 / 授权强制 / guidance 装配 / 剧本数），随后进入 `you › ` 提示符：
 
 ```
 ════════════════════════════════════════════════════════════
@@ -74,41 +91,43 @@ dotnet run --project Demos/Mud.Feishu.Agent.Demo
 
 ### 3.1 优先级（高 → 低）
 
-| # | 来源 | 说明 |
-| --- | --- | --- |
-| ① | `appsettings.local.json` | 本地覆盖（**已被 `.gitignore` 忽略**）——**真实密钥写这里** |
-| ② | `appsettings.json` | 随仓库提交的模板（只留空密钥与默认值） |
-| ③ | 代码默认值 | 见下表"默认"列 |
+| #   | 来源                     | 说明                                                       |
+| --- | ------------------------ | ---------------------------------------------------------- |
+| ①   | `appsettings.local.json` | 本地覆盖（**已被 `.gitignore` 忽略**）——**真实密钥写这里** |
+| ②   | `appsettings.json`       | 随仓库提交的模板（只留空密钥与默认值）                     |
+| ③   | 代码默认值               | 见下表"默认"列                                             |
 
 配置根目录固定为 **程序输出目录**（`AppContext.BaseDirectory`，两个 `appsettings*.json` 由 csproj 随产物复制），
 与当前工作目录无关：`dotnet run`、`dotnet bin/Debug/net10.0/xxx.dll`、任意 cwd 行为一致。
 
-模型与飞书凭证**统一写在 `FeishuDemo` 节**（四个模式共用，只此一处）；各模式节只保留自己的开关与专属参数。
+模型与飞书凭证**统一写在 `FeishuDemo` 节**（六个模式共用，只此一处）；各模式节只保留自己的默认项开关与专属参数。
+
+进入哪个模式由**启动菜单选择**（§1），配置不参与判定。
 
 ### 3.2 配置键对照表
 
-**统一连接配置（节 `FeishuDemo`）**——四个模式共用：
+**统一连接配置（节 `FeishuDemo`）**——六个模式共用：
 
-| 配置文件键（节 `FeishuDemo`） | 必填 | 默认 | 说明 |
-| --- | --- | --- | --- |
-| `ModelId` | ✅ | — | 模型 ID（如 `glm-4-flash`） |
-| `ApiKey` | ✅ | — | 模型 API Key |
-| `Endpoint` | 否 | SDK 默认 | 须 HTTPS 或环回（`localhost` / `127.0.0.1` / `::1`） |
-| `AppId` | 工具冒烟 / 文档智能体 ✅ | — | 飞书 AppId（`cli_`/`app_` 开头且 ≥20 字符） |
-| `AppSecret` | 工具冒烟 / 文档智能体 ✅ | — | 飞书 AppSecret（≥16 字符） |
+| 配置文件键（节 `FeishuDemo`） | 必填                     | 默认     | 说明                                                 |
+| ----------------------------- | ------------------------ | -------- | ---------------------------------------------------- |
+| `ModelId`                     | ✅                       | —        | 模型 ID（如 `glm-4-flash`）                          |
+| `ApiKey`                      | ✅                       | —        | 模型 API Key                                         |
+| `Endpoint`                    | 否                       | SDK 默认 | 须 HTTPS 或环回（`localhost` / `127.0.0.1` / `::1`） |
+| `AppId`                       | 工具冒烟 / 文档智能体 ✅ | —        | 飞书 AppId（`cli_`/`app_` 开头且 ≥20 字符）          |
+| `AppSecret`                   | 工具冒烟 / 文档智能体 ✅ | —        | 飞书 AppSecret（≥16 字符）                           |
 
 **文档智能体专属配置（节 `FeishuDocAgent`）**：
 
-| 配置文件键（节 `FeishuDocAgent`） | 必填 | 默认 | 说明 |
-| --- | --- | --- | --- |
-| `Enabled` | 否 | `false` | 置 `true` 启用本模式 |
-| `AppKey` | 否 | `demo-app` | 应用键（不得含 `:`） |
-| `UserId` | 否 | `ou_console_demo_user` | 会话键 subject 段（**不是**真实 open_id） |
-| `WikiSpaceId` | 否 | — | 剧本 S1 的知识库空间 ID（留空则引导模型自行列空间） |
-| `Policy` | 否 | `strict` | `strict` / `ask` / `readonly` |
-| `SummaryThreshold` | 否 | `30` | 摘要触发条数阈值（调低可加速演示摘要） |
-| `AuditExportPath` | 否 | `%TEMP%/mud-feishu-docagent-audit-{时间戳}.jsonl` | `/export` 默认落盘路径 |
-| `AttachmentMaxMb` | 否 | `25` | `drive.upload_file` 的附件大小上限 |
+| 配置文件键（节 `FeishuDocAgent`） | 必填 | 默认                                              | 说明                                                |
+| --------------------------------- | ---- | ------------------------------------------------- | --------------------------------------------------- |
+| `Enabled`                         | 否   | `false`                                           | 置 `true` 使之成为启动菜单的默认项（进入模式由菜单选择）                                |
+| `AppKey`                          | 否   | `demo-app`                                        | 应用键（不得含 `:`）                                |
+| `UserId`                          | 否   | `ou_console_demo_user`                            | 会话键 subject 段（**不是**真实 open_id）           |
+| `WikiSpaceId`                     | 否   | —                                                 | 剧本 S1 的知识库空间 ID（留空则引导模型自行列空间） |
+| `Policy`                          | 否   | `strict`                                          | `strict` / `ask` / `readonly`                       |
+| `SummaryThreshold`                | 否   | `30`                                              | 摘要触发条数阈值（调低可加速演示摘要）              |
+| `AuditExportPath`                 | 否   | `%TEMP%/mud-feishu-docagent-audit-{时间戳}.jsonl` | `/export` 默认落盘路径                              |
+| `AttachmentMaxMb`                 | 否   | `25`                                              | `drive.upload_file` 的附件大小上限                  |
 
 ### 3.3 配置文件示例
 
@@ -118,10 +137,10 @@ dotnet run --project Demos/Mud.Feishu.Agent.Demo
 {
   "FeishuDemo": {
     "ModelId": "glm-4-flash",
-    "ApiKey": "sk-****",                                   // 真实密钥只写本文件
-    "Endpoint": "https://open.bigmodel.cn/api/paas/v4/",   // 可留空 = SDK 默认端点
+    "ApiKey": "sk-****", // 真实密钥只写本文件
+    "Endpoint": "https://open.bigmodel.cn/api/paas/v4/", // 可留空 = SDK 默认端点
     "AppId": "cli_****",
-    "AppSecret": "****"
+    "AppSecret": "****",
   },
   "FeishuDocAgent": {
     "Enabled": true,
@@ -130,8 +149,8 @@ dotnet run --project Demos/Mud.Feishu.Agent.Demo
     "WikiSpaceId": "wikcn****",
     "Policy": "strict",
     "SummaryThreshold": 30,
-    "AttachmentMaxMb": 25
-  }
+    "AttachmentMaxMb": 25,
+  },
 }
 ```
 
@@ -168,7 +187,7 @@ dotnet run --project Demos/Mud.Feishu.Agent.Demo
 1. `docx.import_markdown` 名字里有「import」，但 `is_write=false`（只做 Markdown→块结构**转换预览**，**不落文档**），
    因此**免审批**。真正的落文档动作必须显式 `docx.create_document` + `docx.append_blocks`（剧本 S3 专门演示）。
 2. 文档业务域**全部是 `tenant` 身份**，故 `AllowedIdentities` 保持默认 `["tenant"]` 即正确。
-   对比 Phase 1/2 工具冒烟（`FeishuToolsDemo`）那个模式必须写 `["tenant","user"]`（那边含 `task.list_my_tasks`）——
+   对比 工具冒烟（`FeishuToolsDemo`）那个模式必须写 `["tenant","user"]`（那边含 `task.list_my_tasks`）——
    **身份闭集应按域事实推导，而不是复制粘贴**。
 
 **已知能力缺口**（已写进指令，避免模型无效尝试）：表格/单元格/引用容器不支持写入；
@@ -204,21 +223,21 @@ tenant 身份无 wiki 关键词搜索（改用 `search.doc_wiki`）；工具结�
 
 ## 6. 六部剧本（`/scenario <名或别名>`）
 
-| 别名 | 名称 | 类型 | 审批次数 | 一句话 |
-| --- | --- | --- | --- | --- |
-| `kb` | `kb-digest` | 只读 | 0 | wiki 解析 → 读正文 → 带来源摘要 |
-| `author` | `doc-authoring` | 写 | 2 | 建文档 → 追加块 → 回读校验 |
-| `md` | `md-import` | 读+写 | 2 | Markdown 转换（免审批，不落文档）→ 落文档 |
-| `sheet` | `sheet-sync` | 读+写 | 1 | 区域读 → 追加行 → 回读尾行 |
-| `del` | `safe-delete` | 写 | 1 | dry_run → 审批 → strict 拦截 → `/policy ask` 放行 |
-| `heal` | `self-heal` | 只读 | 0 | 错误 token → 错误分类 → 自愈 → 记忆 |
+| 别名     | 名称            | 类型  | 审批次数 | 一句话                                            |
+| -------- | --------------- | ----- | -------- | ------------------------------------------------- |
+| `kb`     | `kb-digest`     | 只读  | 0        | wiki 解析 → 读正文 → 带来源摘要                   |
+| `author` | `doc-authoring` | 写    | 2        | 建文档 → 追加块 → 回读校验                        |
+| `md`     | `md-import`     | 读+写 | 2        | Markdown 转换（免审批，不落文档）→ 落文档         |
+| `sheet`  | `sheet-sync`    | 读+写 | 1        | 区域读 → 追加行 → 回读尾行                        |
+| `del`    | `safe-delete`   | 写    | 1        | dry_run → 审批 → strict 拦截 → `/policy ask` 放行 |
+| `heal`   | `self-heal`     | 只读  | 0        | 错误 token → 错误分类 → 自愈 → 记忆               |
 
-* **只读剧本**（`kb` / `heal`）会自动继续第二轮（剧本应答栈），无需人工干预。
-* **写剧本**（`author` / `md` / `sheet` / `del`）**永不自动批准**——出现 🔒 卡片后请手动
+- **只读剧本**（`kb` / `heal`）会自动继续第二轮（剧本应答栈），无需人工干预。
+- **写剧本**（`author` / `md` / `sheet` / `del`）**永不自动批准**——出现 🔒 卡片后请手动
   `/approve demo-approval-00X` 或用 `/deny` 拒绝。
-* `sheet` / `del` 的引导语含 `{sheet_token}` / `{document_id}` 字面占位符（**刻意不新增配置项**）：
+- `sheet` / `del` 的引导语含 `{sheet_token}` / `{document_id}` 字面占位符（**刻意不新增配置项**）：
   引导语要求模型"没拿到就问我"，你把真实 token 贴进会话即可。
-* `/scenario list` 列清单，`/scenario clear` 清空应答栈。
+- `/scenario list` 列清单，`/scenario clear` 清空应答栈。
 
 ---
 
@@ -248,15 +267,15 @@ tenant 身份无 wiki 关键词搜索（改用 `search.doc_wiki`）；工具结�
 
 ## 8. 飞书应用需开通的权限点
 
-| 域 | 只读 | 写 |
-| --- | --- | --- |
-| docx | `docx:document:readonly` | `docx:document` |
-| wiki | `wiki:wiki:readonly` | `wiki:wiki` |
-| drive | `drive:drive:readonly` | `drive:drive` |
-| sheets | `sheets:spreadsheet:readonly` | `sheets:spreadsheet` |
-| bitable | `bitable:app:readonly` | `bitable:app` |
-| search | `search:docs:readonly` | — |
-| 元工具 | `feishu:base`（`feishu.guidance_read`；`feishu.capability_lookup` 无需权限点） | — |
+| 域      | 只读                                                                           | 写                   |
+| ------- | ------------------------------------------------------------------------------ | -------------------- |
+| docx    | `docx:document:readonly`                                                       | `docx:document`      |
+| wiki    | `wiki:wiki:readonly`                                                           | `wiki:wiki`          |
+| drive   | `drive:drive:readonly`                                                         | `drive:drive`        |
+| sheets  | `sheets:spreadsheet:readonly`                                                  | `sheets:spreadsheet` |
+| bitable | `bitable:app:readonly`                                                         | `bitable:app`        |
+| search  | `search:docs:readonly`                                                         | —                    |
+| 元工具  | `feishu:base`（`feishu.guidance_read`；`feishu.capability_lookup` 无需权限点） | —                    |
 
 > 不需要 `im:message`（不做飞书镜像）、不需要 `aily:knowledge:readonly`（不做 Aily 托管知识）。
 > 缺任一权限点时对应工具会在运行期返回 `authorization_denied`（**不是**代码缺陷），错误文案会引导模型把 code 交给用户。
@@ -265,20 +284,20 @@ tenant 身份无 wiki 关键词搜索（改用 `search.doc_wiki`）；工具结�
 
 ## 9. 常见排错
 
-| 现象 | 原因 | 处置 |
-| --- | --- | --- |
-| 启动即报 `请先设置 FeishuDemo:XXX` 或 `FeishuDocAgent:XXX` | 配置文件中缺少该必填项 | 对照 §3.2 补齐 |
-| 改了 `appsettings.local.json` 但不生效 | ① 本 Demo **不监听文件变更**（`reloadOnChange: false`），必须重启；② 文件是新加的、还没被复制到输出目录 → 重新 `dotnet run` / `dotnet build`；③ 键名拼错（对照 §3.2） | 看横幅"配置来源"行确认文件是否被加载；再核对键名 |
-| 配置文件里 `FeishuDocAgent:Enabled=true` 却没进本模式 | 更早优先级的模式开关也被置 `true`（五模式互斥，按 §1 顺序判定：工具冒烟 → IM 事件接入 → 领域事件 → 文档智能体） | 检查并关闭其它模式的 `Enabled`，或只保留目标模式 |
-| 横幅"配置来源"只显示 `（未发现 appsettings*.json）` | 两个 `appsettings*.json` 都不在**输出目录** | 确认 `Demos/Mud.Feishu.Agent.Demo/bin/<配置>/net10.0/` 下有 `appsettings.json`（csproj 的 `None Update + CopyToOutputDirectory` 负责复制） |
-| `AppId 长度无效` / `AppId 格式无效` / `AppSecret 长度必须至少为 16 字符` | SDK 的租户配置校验（在 Demo 的 `Validate()` **之后**） | AppId 须以 `cli_`/`app_` 开头且 ≥20 字符；AppSecret ≥16 字符 |
-| `工具白名单与当前注册的域客户端不匹配：… 未注册工具 'x.y'` | 对应域客户端没注册（域缺席 ⇒ 该域工具不注册） | 检查 `DocAgentDemo` 的 `AddFeishuServices` 是否注册了该域 |
-| 写工具报 `authorization_denied` | ① 未注册授权器（本 Demo 已注册）② `strict` 策略独立拒绝高风险写 | 看卡片上的 `reason`：`strict` 场景用 `/policy ask` 放开 |
-| 模型说「已发起确认，等你批准」 | 框架审批挂起（闸 1 已拦截，工具**未执行**） | `/pending` 查看 → `/approve <关联号>` 放行；或 `/deny`；或 `/abandon` |
-| 输入 `/approve` 后仍失败 | 挂起项超过 10 分钟有效期（框架侧已失配） | `/abandon` 重置会话后重新发起该操作 |
-| 工具结果被截断（`原文 N 字符`） | `MaxToolResultLength = 4000` | 分批读取（按块区间/区域读），或调整该配置 |
-| `guidance` 被丢弃（横幅黄色告警） | 域 guidance 总量超过 8192 字符上限 | 减少同时启用的域（本 Demo 7 域 ≈1845 字符，不会触发） |
-| 启动很慢（一次）| `Microsoft.ML.Tokenizers` 首次初始化 gpt-4o 词表需网络 | 完成后会缓存；离线环境会回退字符估算（仅影响摘要触发精度） |
+| 现象                                                                     | 原因                                                                                                                                                                  | 处置                                                                                                                                       |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| 启动即报 `请先设置 FeishuDemo:XXX` 或 `FeishuDocAgent:XXX`               | 配置文件中缺少该必填项                                                                                                                                                | 对照 §3.2 补齐                                                                                                                             |
+| 改了 `appsettings.local.json` 但不生效                                   | ① 本 Demo **不监听文件变更**（`reloadOnChange: false`），必须重启；② 文件是新加的、还没被复制到输出目录 → 重新 `dotnet run` / `dotnet build`；③ 键名拼错（对照 §3.2） | 看横幅"配置来源"行确认文件是否被加载；再核对键名                                                                                           |
+| 启动后直接回车，进了不是我想的模式                    | 回车采用的是"配置默认项"（按 §1 顺序取第一个 `Enabled=true` 的模式）                                                       | 输入编号或模式标识显式选择（`1`~`6` / `tools` / `doc` …）；想改默认项则只给目标模式留 `Enabled=true`                                                                                           |
+| 横幅"配置来源"只显示 `（未发现 appsettings*.json）`                      | 两个 `appsettings*.json` 都不在**输出目录**                                                                                                                           | 确认 `Demos/Mud.Feishu.Agent.Demo/bin/<配置>/net10.0/` 下有 `appsettings.json`（csproj 的 `None Update + CopyToOutputDirectory` 负责复制） |
+| `AppId 长度无效` / `AppId 格式无效` / `AppSecret 长度必须至少为 16 字符` | SDK 的租户配置校验（在 Demo 的 `Validate()` **之后**）                                                                                                                | AppId 须以 `cli_`/`app_` 开头且 ≥20 字符；AppSecret ≥16 字符                                                                               |
+| `工具白名单与当前注册的域客户端不匹配：… 未注册工具 'x.y'`               | 对应域客户端没注册（域缺席 ⇒ 该域工具不注册）                                                                                                                         | 检查 `DocAgentDemo` 的 `AddFeishuServices` 是否注册了该域                                                                                  |
+| 写工具报 `authorization_denied`                                          | ① 未注册授权器（本 Demo 已注册）② `strict` 策略独立拒绝高风险写                                                                                                       | 看卡片上的 `reason`：`strict` 场景用 `/policy ask` 放开                                                                                    |
+| 模型说「已发起确认，等你批准」                                           | 框架审批挂起（闸 1 已拦截，工具**未执行**）                                                                                                                           | `/pending` 查看 → `/approve <关联号>` 放行；或 `/deny`；或 `/abandon`                                                                      |
+| 输入 `/approve` 后仍失败                                                 | 挂起项超过 10 分钟有效期（框架侧已失配）                                                                                                                              | `/abandon` 重置会话后重新发起该操作                                                                                                        |
+| 工具结果被截断（`原文 N 字符`）                                          | `MaxToolResultLength = 4000`                                                                                                                                          | 分批读取（按块区间/区域读），或调整该配置                                                                                                  |
+| `guidance` 被丢弃（横幅黄色告警）                                        | 域 guidance 总量超过 8192 字符上限                                                                                                                                    | 减少同时启用的域（本 Demo 7 域 ≈1845 字符，不会触发）                                                                                      |
+| 启动很慢（一次）                                                         | `Microsoft.ML.Tokenizers` 首次初始化 gpt-4o 词表需网络                                                                                                                | 完成后会缓存；离线环境会回退字符估算（仅影响摘要触发精度）                                                                                 |
 
 ---
 
@@ -286,23 +305,23 @@ tenant 身份无 wiki 关键词搜索（改用 `search.doc_wiki`）；工具结�
 
 Demo **不接 OTel Exporter**（零额外依赖），采用「控制台 Trace + 本地指标快照」，Trace 内容对齐 SDK 的埋点语义：
 
-| 控制台 Trace | 对应 SDK 埋点 |
-| --- | --- |
-| `· ▶ run_streaming agent=…`（由 `feishu.agent.run_streaming` Span 承载） | `feishu.agent.name` |
-| `· 授权器放行/拒绝 <工具>（policy=…）` | `feishu.tool.decision` + `feishu.tool.risk` |
-| `⚙ <工具>  risk=…  ✓ allowed  412ms`（工具卡片） | Span `feishu.agent.tool` + Histogram `feishu.tool.duration` |
-| `· 审计 #N <工具> → allowed（412ms, write=True）` | Counter `feishu.tool.executions`（维度 tool/app_key/outcome） |
-| `· usage in=1832 out=417` | `feishu.llm.input_tokens/output_tokens` |
+| 控制台 Trace                                                             | 对应 SDK 埋点                                                 |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------- |
+| `· ▶ run_streaming agent=…`（由 `feishu.agent.run_streaming` Span 承载） | `feishu.agent.name`                                           |
+| `· 授权器放行/拒绝 <工具>（policy=…）`                                   | `feishu.tool.decision` + `feishu.tool.risk`                   |
+| `⚙ <工具>  risk=…  ✓ allowed  412ms`（工具卡片）                         | Span `feishu.agent.tool` + Histogram `feishu.tool.duration`   |
+| `· 审计 #N <工具> → allowed（412ms, write=True）`                        | Counter `feishu.tool.executions`（维度 tool/app_key/outcome） |
+| `· usage in=1832 out=417`                                                | `feishu.llm.input_tokens/output_tokens`                       |
 
 **高基数纪律**：`conversation_key` / `chat_id` / `user_id` 只进 Span 属性与审计载荷，**绝不进 Metrics tag**；
 审计表里只显示会话键的**后 12 位**。
 
 ### 10.1 运行时日志（Serilog）
 
-| 通道 | 级别 | 说明 |
-| --- | --- | --- |
-| 控制台 | Warning+ | 不干扰 REPL 交互与模型流式输出 |
-| 文件 | 全量 Information | `logs/agent-demo-.log`（相对**输出目录**），按天滚动 + 10 MB 单文件上限，保留 7 个 |
+| 通道   | 级别             | 说明                                                                               |
+| ------ | ---------------- | ---------------------------------------------------------------------------------- |
+| 控制台 | Warning+         | 不干扰 REPL 交互与模型流式输出                                                     |
+| 文件   | 全量 Information | `logs/agent-demo-.log`（相对**输出目录**），按天滚动 + 10 MB 单文件上限，保留 7 个 |
 
 级别唯一事实源是 `appsettings*.json` 的 `Serilog` 节（R5 治理：不设「日志开关」类属性）；
 删除该节时代码兜底同形态（`Common/DemoLogging.cs`），「删了节也不静默失明」。
@@ -313,22 +332,24 @@ Demo **不接 OTel Exporter**（零额外依赖），采用「控制台 Trace + 
 
 ## 11. 自检点（跑通即符合验收）
 
-| 编号 | 自检 |
-| --- | --- |
-| F1 | `FeishuDocAgent:Enabled=true` 启动后 30 秒内打印能力面横幅（配置来源 / 工具数 / 身份闭集 / 风险上限 / 授权强制 / guidance / 通道） |
-| F2 | 五个模式均按配置节开关与参数运行，**无环境变量参与**（参数、模式开关全部来自 `appsettings*.json`） |
-| F3 | `/scenario kb` 无人工干预跑通，回答含来源标注 |
-| F4 | `/scenario author` 端到端跑通，且出现**恰好 2 次** 🔒 审批 |
-| F5 | `/scenario del`：`dry_run` 零副作用 → 🔒 → `strict` 下授权器独立拒绝 → `/policy ask` 后真删 |
-| F6 | `/approve` 后写操作真实生效，`/audit` 出现 `allowed` 记录 |
-| F7 | `/deny` 后写操作未生效，模型解释拒绝原因 |
-| F8 | 挂起态下输入新问题被阻断并提示三条出口 |
-| F11 | `/tools` 的工具数与横幅一致；`/guidance docx` 能打印域引导 |
-| F12 | `/audit`、`/export` 输出结构完整、参数已脱敏 |
-| F13 | **纯配置文件启动**：只写 `appsettings.local.json`（含 `Enabled=true`）即可进入本模式，横幅"配置来源"列出真实加载的文件 |
-| F14 | **优先级正确**：同一键在 `appsettings.local.json` 与 `appsettings.json` 同时存在时本地覆盖文件生效（横幅可见，如 `Policy`） |
+| 编号 | 自检                                                                                                                               |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| F1   | 菜单选 `5`（或直接回车用配置默认项）进入后 30 秒内打印能力面横幅（配置来源 / 工具数 / 身份闭集 / 风险上限 / 授权强制 / guidance / 通道） |
+| F2   | 六个模式均由**启动菜单选择**进入（编号/标识/回车默认项），参数来自 `appsettings*.json`，**无环境变量参与**                                 |
+| F3   | `/scenario kb` 无人工干预跑通，回答含来源标注                                                                                      |
+| F4   | `/scenario author` 端到端跑通，且出现**恰好 2 次** 🔒 审批                                                                         |
+| F5   | `/scenario del`：`dry_run` 零副作用 → 🔒 → `strict` 下授权器独立拒绝 → `/policy ask` 后真删                                        |
+| F6   | `/approve` 后写操作真实生效，`/audit` 出现 `allowed` 记录                                                                          |
+| F7   | `/deny` 后写操作未生效，模型解释拒绝原因                                                                                           |
+| F8   | 挂起态下输入新问题被阻断并提示三条出口                                                                                             |
+| F11  | `/tools` 的工具数与横幅一致；`/guidance docx` 能打印域引导                                                                         |
+| F12  | `/audit`、`/export` 输出结构完整、参数已脱敏                                                                                       |
+| F13  | **纯配置文件启动**：只写 `appsettings.local.json`（补齐模型/凭证）即可跑通所选模式；菜单横幅"配置来源"列出真实加载的文件             |
+| F14  | **优先级正确**：同一键在 `appsettings.local.json` 与 `appsettings.json` 同时存在时本地覆盖文件生效（横幅可见，如 `Policy`）        |
+| F15  | **非交互不阻塞**：stdin 被重定向 / 管道 / CI 时跳过菜单、采用配置默认项，进程不挂起等待输入                                          |
 
 **自动化验证**：`Tests/Mud.Feishu.Agent.Demo.Tests` 覆盖本 Demo 的可测逻辑（配置来源与优先级、配置 fail-fast、
+**启动模式选择与模式目录契约**（编号/标识/回车默认项/非法输入重问/非交互与 EOF 不挂起）、
 授权器策略、审批通道非阻塞、审计 sink、渲染器 ANSI 过滤、剧本解析）、**随仓库提交的 `appsettings.json`
 模板守卫**（可解析 / 键名不漂移 / 密钥留空 / 默认值自洽），以及 9 条契约守卫（白名单 ⊆ 工具面、写工具审批分类、
 权限面覆盖、tenant 身份、命令集、剧本工具链、依赖面、宿主钩子不得依赖工具注册表）。
@@ -341,40 +362,42 @@ dotnet test Tests/Mud.Feishu.Agent.Demo.Tests
 
 ## 12. 本项目不做什么（已决策）
 
-| 不做 | 理由 |
-| --- | --- |
-| 飞书镜像（同一条回答同时输出到控制台与飞书群） | 会引入 `IMessageChannel` 装饰器与注册顺序坑；`StreamChatId` 配置项、`AddFeishuStreamingChannel()` 全部移除 |
-| OTel Console Exporter | 需额外 `ProjectReference` 与配置，会掩盖主目标；SDK 的 Span/指标仍在发，只是无 Exporter 接收 |
-| Aily 托管知识（`AddFeishuAilyKnowledge` + `knowledge.search`） | 需额外域客户端与配置；白名单不含 `knowledge.search` |
-| 用户身份（`identity=user`）工具 | 文档业务域全部是 `tenant`；用户身份需 OAuth2 换 token |
-| Web 宿主 / DB / Redis | 控制台进程内闭环；`MemoryConversationStore` 足够 |
-| 自动重试（Polly 等） | 与 SDK 口径一致：重试语义由模型按 `ToolErrorKind` 自行决定（剧本 S6 演示自愈） |
+| 不做                                                           | 理由                                                                                                       |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 飞书镜像（同一条回答同时输出到控制台与飞书群）                 | 会引入 `IMessageChannel` 装饰器与注册顺序坑；`StreamChatId` 配置项、`AddFeishuStreamingChannel()` 全部移除 |
+| OTel Console Exporter                                          | 需额外 `ProjectReference` 与配置，会掩盖主目标；SDK 的 Span/指标仍在发，只是无 Exporter 接收               |
+| Aily 托管知识（`AddFeishuAilyKnowledge` + `knowledge.search`） | 需额外域客户端与配置；白名单不含 `knowledge.search`                                                        |
+| 用户身份（`identity=user`）工具                                | 文档业务域全部是 `tenant`；用户身份需 OAuth2 换 token                                                      |
+| Web 宿主 / DB / Redis                                          | 控制台进程内闭环；`MemoryConversationStore` 足够                                                           |
+| 自动重试（Polly 等）                                           | 与 SDK 口径一致：重试语义由模型按 `ToolErrorKind` 自行决定（剧本 S6 演示自愈）                             |
 
 ---
 
 ## 13. 项目结构
 
-按功能归类：`Common/`（跨模式公共层）、`Modes/`（四个轻量模式）、`DocAgent/`（文档业务智能体），
-入口 `Program.cs` 只做模式判定与分发。
+按功能归类：`Common/`（跨模式公共层 + 模式选择）、`Modes/`（五个轻量模式）、`DocAgent/`（文档业务智能体），
+入口 `Program.cs` 只做模式选择与分发。
 
 ```
 Mud.Feishu.Agent.Demo/
-├── Program.cs                    # 入口：四模式互斥判定，命中即返回（纯分发，无业务逻辑）
+├── Program.cs                    # 入口：打印模式菜单 → 用户选择 → 分发（纯分发，无业务逻辑）
 ├── Common/                       # 跨模式公共层
 │   ├── DemoConfiguration.cs      # 配置加载与来源横幅（appsettings.json + local 覆盖）
-│   ├── DemoModeSettings.cs       # 各模式开关/参数绑定 + fail-fast 校验
+│   ├── DemoModeSelector.cs       # 模式目录（菜单/默认项/入口接线）+ 启动菜单读取与选择
+│   ├── DemoModeSettings.cs       # 各模式默认项开关/参数绑定 + fail-fast 校验
 │   ├── DemoAppConfig.cs          # FeishuDemo 节 → 飞书应用配置（EnsureAppSection 合成）
 │   ├── DemoAgentDefaults.cs      # 智能体默认值（截断/记忆/通道/身份闭集）
 │   ├── DemoLogging.cs            # 运行时日志装配（Serilog，见 §10.1）
-│   ├── DemoChatLoop.cs           # 通用对话循环（Phase 0 / 工具冒烟共用）
+│   ├── DemoChatLoop.cs           # 通用对话循环（/ 工具冒烟共用）
 │   ├── ConsoleRenderer.cs        # ANSI 渲染器（横幅/工具卡片/表格/密钥掩码）
 │   ├── DemoAppKeyAccessor.cs     # 演示应用键访问器（R-13：事件处理器的 appKey 事实来源）
 │   └── DemoAttachmentStager.cs   # 附件落盘器（drive.upload_file 的宿主注入件）
-├── Modes/                        # 四个轻量模式入口
-│   ├── BareModelDemo.cs          # Phase 0 裸模型一问一答
-│   ├── ToolsDemo.cs              # Phase 1/2 全域只读工具冒烟
-│   ├── ImConversationDemo.cs     # P2D-5a IM 会话处理器注册面演示
-│   └── DomainEventsDemo.cs       # R-13 领域事件处理器 + 流式通道降级链
+├── Modes/                        # 五个轻量模式入口
+│   ├── BareModelDemo.cs          # 裸模型一问一答
+│   ├── ToolsDemo.cs              # 全域只读工具冒烟
+│   ├── ImConversationDemo.cs     # IM 会话处理器注册面演示
+│   ├── DomainEventsDemo.cs       # 领域事件处理器 + 流式通道降级链
+│   └── SkillsDemo.cs             # Skills 产物消费（不连飞书、不需要模型）
 ├── Events/                       # R-10：NDJSON 事件外桥参考实现（库不再承诺该生态位）
 │   ├── FeishuEventNdjsonBridge.cs # 外桥 + 信封 + 文件路由（约 370 行，零 SDK 依赖）
 │   └── FeishuEventCatalog.cs      # 事件键自省（反射 FeishuEventTypes 常量）

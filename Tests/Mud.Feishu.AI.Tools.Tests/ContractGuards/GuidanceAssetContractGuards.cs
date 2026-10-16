@@ -145,7 +145,7 @@ public class GuidanceAssetContractGuards
 
         var blocks = provider.GetRequiredService<FeishuAgentToolSource>().GetGuidance(provider);
 
-        blocks.Should().BeEmpty("默认不启用任何工具 → 不注入任何域资产（指令装配与 Phase 0 一致）");
+        blocks.Should().BeEmpty("默认不启用任何工具 → 不注入任何域资产（指令装配与 一致）");
     }
 
     /// <summary>启用某域工具 → 恰好得到该域 guidance（域去重、按名排序）。</summary>

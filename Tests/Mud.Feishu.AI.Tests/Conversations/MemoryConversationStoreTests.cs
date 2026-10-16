@@ -8,7 +8,7 @@
 namespace Mud.Feishu.AI.Tests.Conversations;
 
 /// <summary>
-/// <see cref="MemoryConversationStore"/>：存取回灌、TTL 软过期、删除（Phase 0 §5 DoD）。
+/// <see cref="MemoryConversationStore"/>：存取回灌、TTL 软过期、删除（§5 DoD）。
 /// </summary>
 public class MemoryConversationStoreTests
 {

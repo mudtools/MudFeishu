@@ -180,7 +180,7 @@ internal sealed class FeishuToolsToolSource : FeishuAgentToolSource
     /// </para>
     /// <para>
     /// 口径与 <see cref="GetTools"/> 完全一致（<see cref="FeishuToolRegistry.EnabledTools"/>）：
-    /// 未启用任何工具 → 无 guidance → 指令装配与 Phase 0 一致。
+    /// 未启用任何工具 → 无 guidance → 指令装配与 一致。
     /// </para>
     /// <para>
     /// <b>排序＝丢弃优先级（R5 / B-12）</b>：超限时 <see cref="GuidanceComposer.Compose"/>

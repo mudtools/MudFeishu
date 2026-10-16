@@ -8,7 +8,7 @@
 namespace Mud.Feishu.AI.Tests.Conversations;
 
 /// <summary>
-/// <see cref="ConversationKeyBuilder"/> 键治理：等价性、维度隔离、租户前缀、转义与回灌（Phase 0 §7）。
+/// <see cref="ConversationKeyBuilder"/> 键治理：等价性、维度隔离、租户前缀、转义与回灌（§7）。
 /// </summary>
 public class ConversationKeyBuilderTests
 {

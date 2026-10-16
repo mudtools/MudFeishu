@@ -8,7 +8,7 @@
 namespace Mud.Feishu.AI.Tests.Agents;
 
 /// <summary>
-/// <see cref="FeishuAgentOptions"/> 校验边界（Phase 0 §3.2）与配置面约束（R5）。
+/// <see cref="FeishuAgentOptions"/> 校验边界（§3.2）与配置面约束（R5）。
 /// </summary>
 public class FeishuAgentOptionsTests
 {

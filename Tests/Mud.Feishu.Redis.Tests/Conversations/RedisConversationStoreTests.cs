@@ -20,7 +20,7 @@ namespace Mud.Feishu.Redis.Tests.Conversations;
 
 /// <summary>
 /// <see cref="RedisConversationStore"/>：编码格式、TMA-15「无时间戳视为 miss」、
-/// 服务器 TTL 双写、DI 替换语义（Phase 0 §5/§7）。
+/// 服务器 TTL 双写、DI 替换语义（§5/§7）。
 /// </summary>
 public class RedisConversationStoreTests
 {

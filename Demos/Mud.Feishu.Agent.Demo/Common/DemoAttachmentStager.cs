@@ -29,7 +29,7 @@ namespace Mud.Feishu.Agent.Demo;
 /// 加严或替换。本实现不依赖任何外部包（仅用 <see cref="HttpClient"/>）。
 /// </para>
 /// <para>
-/// <b>WP1（R5）</b>：本实现使 <c>im.send_image</c> / <c>im.send_file</c> 两个上传工具
+/// 本实现使 <c>im.send_image</c> / <c>im.send_file</c> 两个上传工具
 /// 在 Demo 中可用（端到端跑通"给机器人一个图片 URL → 群里出现图片"）。
 /// </para>
 /// </remarks>

@@ -12,17 +12,17 @@
 
 `Mud.Feishu.AI.Tools` 项目当前目录组织：
 
-| 目录 | 文件数 | 命名空间 | 性质 |
-|---|---|---|---|
-| `Tools/` | **44 cs** | `Mud.Feishu.AI.Tools`（根，扁平） | **运行时基础设施（本次重组对象）** |
-| `Curation/` | 27 cs | `Mud.Feishu.AI.Tools.Curation` | 人工策展的工具契约声明（`*ToolInterfaces.cs`，162 个契约接口） |
-| `Internal/` | 43 cs | `Mud.Feishu.AI.Tools.Internal` | 分域执行器（BitableTools/DocxTools/…） |
-| `Handlers/` | 1 cs | `Mud.Feishu.AI.Tools.Handlers` | `[FeishuToolHandler]` 特性 |
-| `Registration/` | 1 cs | `Mud.Feishu.AI.Tools.Registration` | 域注册器契约 + 登记助手 |
-| `SdkProfile/` | 1 cs | `Mud.Feishu.AI.Tools.SdkProfile` | 生成剖面（`FeishuToolProfile`） |
-| `Extensions/` | 1 cs | `Mud.Feishu.AI.Tools`（根） | DI 入口 `FeishuToolsServiceCollectionExtensions` |
-| `Guidance/`、`Affordance/` | 39 md / 16 md | — | 生成器 AdditionalFiles 资产（路径即契约，不动） |
-| `Channels/`、`Events/`、`Knowledge/` | 0 | — | 空目录（R-9 后内容已并入 Mud.Feishu.AI） |
+| 目录                                 | 文件数        | 命名空间                           | 性质                                                           |
+| ------------------------------------ | ------------- | ---------------------------------- | -------------------------------------------------------------- |
+| `Tools/`                             | **44 cs**     | `Mud.Feishu.AI.Tools`（根，扁平）  | **运行时基础设施（本次重组对象）**                             |
+| `Curation/`                          | 27 cs         | `Mud.Feishu.AI.Tools.Curation`     | 人工策展的工具契约声明（`*ToolInterfaces.cs`，162 个契约接口） |
+| `Internal/`                          | 43 cs         | `Mud.Feishu.AI.Tools.Internal`     | 分域执行器（BitableTools/DocxTools/…）                         |
+| `Handlers/`                          | 1 cs          | `Mud.Feishu.AI.Tools.Handlers`     | `[FeishuToolHandler]` 特性                                     |
+| `Registration/`                      | 1 cs          | `Mud.Feishu.AI.Tools.Registration` | 域注册器契约 + 登记助手                                        |
+| `SdkProfile/`                        | 1 cs          | `Mud.Feishu.AI.Tools.SdkProfile`   | 生成剖面（`FeishuToolProfile`）                                |
+| `Extensions/`                        | 1 cs          | `Mud.Feishu.AI.Tools`（根）        | DI 入口 `FeishuToolsServiceCollectionExtensions`               |
+| `Guidance/`、`Affordance/`           | 39 md / 16 md | —                                  | 生成器 AdditionalFiles 资产（路径即契约，不动）                |
+| `Channels/`、`Events/`、`Knowledge/` | 0             | —                                  | 空目录（R-9 后内容已并入 Mud.Feishu.AI）                       |
 
 ### 1.2 问题诊断（为什么"凌乱"）
 
@@ -33,50 +33,50 @@
 
 ### 1.3 44 个文件职责分类（重组输入）
 
-| 关注面 | 文件 | 关键类型 | 可见性 |
-|---|---|---|---|
-| 入参面 | `ToolArgs.cs` | 取值门面 | internal |
-| | `ToolArgumentNormalizer.cs` | JsonElement 形态认知**唯一中心**（守卫白名单按文件名锁定） | internal |
-| | `ToolArgumentSanitizer.cs` | 入站净化 | internal |
-| | `ToolArgsDigester.cs` | 审计摘要（敏感键掩码） | internal |
-| | `ToolArgumentException.cs` | 参数异常 | internal |
-| 出站面 | `FeishuToolResult.cs` | 公开结果 DTO | **public** |
-| | `IToolResultShaper.cs` | 宿主整形钩子 | **public** |
-| | `ToolResultPipeline.cs` | 出口编排 + `ToolErrorFactory` | internal |
-| | `ToolResultJson.cs` | 统一序列化器（中文不转义） | internal |
-| | `ToolResultJsons.cs` | 单页信封构造（唯一） | internal |
-| | `ToolResultText.cs` | 截断 | internal |
-| | `ToolResultSanitizer.cs` | 脱敏/控制字符剥离 | internal |
-| | `ToolResultContentSafety.cs` | 注入载荷检测 | internal |
-| | `ToolDryRun.cs` | 写操作预演 | internal |
-| | `ToolPagination.cs` | fetch_all 聚合翻页 | internal |
-| 错误面 | `ToolError.cs` | 公开错误记录 | **public** |
-| | `ToolErrorClassifier.cs` | 8 类闭集 + subtype | internal |
-| | `ToolErrorPayloadSerializer.cs` | ≤512B JSON 首行载荷 | internal |
-| | `IToolErrorTextFormatter.cs` | 接口 + 内置实现同文件 | **public**（接口） |
-| | `ToolRetryPolicy.cs` | 只读重试/写零重试退避 | internal |
-| 执行链 | `FeishuToolBinding.cs` | **护城河执行链**（授权→租户切换→调用→归一） | internal |
-| | `FeishuToolAIFunction.cs` | MEAI `AIFunction` 桥 + `FeishuToolsToolSource` | internal |
-| | `ToolBudgetAIFunction.cs` | 预算装饰器 | internal |
-| | `IFeishuToolFunctionFactory.cs` | 工厂接口 + 实现同文件 | **public**（接口） |
-| | `UserTokenPrecheck.cs` | 用户令牌就绪探测（含 `UserTokenPrecheckModes`） | internal |
-| | `UserTokenPrecheckResult.cs` | 三态结果 | **public** |
-| 目录/导出 | `FeishuToolRegistry.cs` | 注册表 + `FeishuToolDefinition` + `FeishuToolHandler` 委托 | **public** |
-| | `FeishuToolCatalog.cs` | `IToolCatalog` 实现 + Schema 导出器 | internal |
-| | `IToolCatalog.cs` | `ToolCatalogEntry`/`ToolSchemaDialect`/`IToolSchemaExporter`（一文件四类型） | **public** |
-| | `ToolSchemaJson.cs` | 信封→纯参数 Schema 唯一转换点 | internal |
-| | `ToolAffordanceText.cs` | per-tool affordance 渲染 | internal |
-| | `FeishuSkillDocumentBuilder.cs` | Agent Skills 产物构造（纯函数） | internal |
-| | `ISkillDocumentReader.cs` | 接口 + 内置实现同文件 | **public**（接口） |
-| 宿主钩子 | `IToolExecutionAuthorizer.cs` | 授权门禁 + `AuthorizationDecision`/`AuthorizationResult` | **public** |
-| | `IToolExecutionAuditSink.cs` | 审计 sink + `ToolExecutionAuditRecord` | **public** |
-| | `IFeishuAttachmentStager.cs` | 附件落盘 + `AttachmentSource`/`StagedAttachment` | **public** |
-| | `IFeishuUserAuthorizationLinkProvider.cs` | 用户授权链接 | **public** |
-| 安全基元 | `SecurityTextPrimitives.cs` | 敏感键/控制字符/正则超时**单源**（入站+出站共用） | internal |
-| | `DownloadedContentGuard.cs` | "错误体伪装成文件"防线 | internal |
-| 领域解析 | `BitableFilterParser.cs` | filter 文法解析（被 `Internal/BitableTools` 消费） | internal |
-| | `BitableSortParser.cs` | sort 文法解析 | internal |
-| 常量表 | `PageSizes.cs`、`ReceiveIdTypes.cs`、`TranslationLanguages.cs` | 分页上限/receive_id 类型/语言码 | internal |
+| 关注面    | 文件                                                           | 关键类型                                                                     | 可见性             |
+| --------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------------------ |
+| 入参面    | `ToolArgs.cs`                                                  | 取值门面                                                                     | internal           |
+|           | `ToolArgumentNormalizer.cs`                                    | JsonElement 形态认知**唯一中心**（守卫白名单按文件名锁定）                   | internal           |
+|           | `ToolArgumentSanitizer.cs`                                     | 入站净化                                                                     | internal           |
+|           | `ToolArgsDigester.cs`                                          | 审计摘要（敏感键掩码）                                                       | internal           |
+|           | `ToolArgumentException.cs`                                     | 参数异常                                                                     | internal           |
+| 出站面    | `FeishuToolResult.cs`                                          | 公开结果 DTO                                                                 | **public**         |
+|           | `IToolResultShaper.cs`                                         | 宿主整形钩子                                                                 | **public**         |
+|           | `ToolResultPipeline.cs`                                        | 出口编排 + `ToolErrorFactory`                                                | internal           |
+|           | `ToolResultJson.cs`                                            | 统一序列化器（中文不转义）                                                   | internal           |
+|           | `ToolResultJsons.cs`                                           | 单页信封构造（唯一）                                                         | internal           |
+|           | `ToolResultText.cs`                                            | 截断                                                                         | internal           |
+|           | `ToolResultSanitizer.cs`                                       | 脱敏/控制字符剥离                                                            | internal           |
+|           | `ToolResultContentSafety.cs`                                   | 注入载荷检测                                                                 | internal           |
+|           | `ToolDryRun.cs`                                                | 写操作预演                                                                   | internal           |
+|           | `ToolPagination.cs`                                            | fetch_all 聚合翻页                                                           | internal           |
+| 错误面    | `ToolError.cs`                                                 | 公开错误记录                                                                 | **public**         |
+|           | `ToolErrorClassifier.cs`                                       | 8 类闭集 + subtype                                                           | internal           |
+|           | `ToolErrorPayloadSerializer.cs`                                | ≤512B JSON 首行载荷                                                          | internal           |
+|           | `IToolErrorTextFormatter.cs`                                   | 接口 + 内置实现同文件                                                        | **public**（接口） |
+|           | `ToolRetryPolicy.cs`                                           | 只读重试/写零重试退避                                                        | internal           |
+| 执行链    | `FeishuToolBinding.cs`                                         | **护城河执行链**（授权→租户切换→调用→归一）                                  | internal           |
+|           | `FeishuToolAIFunction.cs`                                      | MEAI `AIFunction` 桥 + `FeishuToolsToolSource`                               | internal           |
+|           | `ToolBudgetAIFunction.cs`                                      | 预算装饰器                                                                   | internal           |
+|           | `IFeishuToolFunctionFactory.cs`                                | 工厂接口 + 实现同文件                                                        | **public**（接口） |
+|           | `UserTokenPrecheck.cs`                                         | 用户令牌就绪探测（含 `UserTokenPrecheckModes`）                              | internal           |
+|           | `UserTokenPrecheckResult.cs`                                   | 三态结果                                                                     | **public**         |
+| 目录/导出 | `FeishuToolRegistry.cs`                                        | 注册表 + `FeishuToolDefinition` + `FeishuToolHandler` 委托                   | **public**         |
+|           | `FeishuToolCatalog.cs`                                         | `IToolCatalog` 实现 + Schema 导出器                                          | internal           |
+|           | `IToolCatalog.cs`                                              | `ToolCatalogEntry`/`ToolSchemaDialect`/`IToolSchemaExporter`（一文件四类型） | **public**         |
+|           | `ToolSchemaJson.cs`                                            | 信封→纯参数 Schema 唯一转换点                                                | internal           |
+|           | `ToolAffordanceText.cs`                                        | per-tool affordance 渲染                                                     | internal           |
+|           | `FeishuSkillDocumentBuilder.cs`                                | Agent Skills 产物构造（纯函数）                                              | internal           |
+|           | `ISkillDocumentReader.cs`                                      | 接口 + 内置实现同文件                                                        | **public**（接口） |
+| 宿主钩子  | `IToolExecutionAuthorizer.cs`                                  | 授权门禁 + `AuthorizationDecision`/`AuthorizationResult`                     | **public**         |
+|           | `IToolExecutionAuditSink.cs`                                   | 审计 sink + `ToolExecutionAuditRecord`                                       | **public**         |
+|           | `IFeishuAttachmentStager.cs`                                   | 附件落盘 + `AttachmentSource`/`StagedAttachment`                             | **public**         |
+|           | `IFeishuUserAuthorizationLinkProvider.cs`                      | 用户授权链接                                                                 | **public**         |
+| 安全基元  | `SecurityTextPrimitives.cs`                                    | 敏感键/控制字符/正则超时**单源**（入站+出站共用）                            | internal           |
+|           | `DownloadedContentGuard.cs`                                    | "错误体伪装成文件"防线                                                       | internal           |
+| 领域解析  | `BitableFilterParser.cs`                                       | filter 文法解析（被 `Internal/BitableTools` 消费）                           | internal           |
+|           | `BitableSortParser.cs`                                         | sort 文法解析                                                                | internal           |
+| 常量表    | `PageSizes.cs`、`ReceiveIdTypes.cs`、`TranslationLanguages.cs` | 分页上限/receive_id 类型/语言码                                              | internal           |
 
 ---
 
@@ -110,52 +110,52 @@ Mud.Feishu.AI.Tools/
 
 ### 3.1 完整迁移映射表（44/44）
 
-| # | 文件 | 现命名空间 | 目标目录 | 目标命名空间 |
-|---|---|---|---|---|
-| 1 | `ToolArgs.cs` | 根 | `Args/` | `.Args` |
-| 2 | `ToolArgumentNormalizer.cs` | 根 | `Args/` | `.Args` |
-| 3 | `ToolArgumentSanitizer.cs` | 根 | `Args/` | `.Args` |
-| 4 | `ToolArgsDigester.cs` | 根 | `Args/` | `.Args` |
-| 5 | `ToolArgumentException.cs` | 根 | `Args/` | `.Args` |
-| 6 | `FeishuToolResult.cs` | 根 | `Results/` | `.Results` |
-| 7 | `IToolResultShaper.cs` | 根 | `Results/` | `.Results` |
-| 8 | `ToolResultPipeline.cs` | 根 | `Results/` | `.Results` |
-| 9 | `ToolResultJson.cs` | 根 | `Results/` | `.Results` |
-| 10 | `ToolResultJsons.cs` | 根 | `Results/` | `.Results` |
-| 11 | `ToolResultText.cs` | 根 | `Results/` | `.Results` |
-| 12 | `ToolResultSanitizer.cs` | 根 | `Results/` | `.Results` |
-| 13 | `ToolResultContentSafety.cs` | 根 | `Results/` | `.Results` |
-| 14 | `ToolDryRun.cs` | 根 | `Results/` | `.Results` |
-| 15 | `ToolPagination.cs` | 根 | `Results/` | `.Results` |
-| 16 | `ToolError.cs` | 根 | `Errors/` | `.Errors` |
-| 17 | `ToolErrorClassifier.cs` | 根 | `Errors/` | `.Errors` |
-| 18 | `ToolErrorPayloadSerializer.cs` | 根 | `Errors/` | `.Errors` |
-| 19 | `IToolErrorTextFormatter.cs` | 根 | `Errors/` | `.Errors` |
-| 20 | `ToolRetryPolicy.cs` | 根 | `Errors/` | `.Errors` |
-| 21 | `FeishuToolBinding.cs` | 根 | **`Tools/`（保留）** | **根（不动）** —— 生成器钉死，见 §十 |
-| 22 | `FeishuToolAIFunction.cs` | 根 | `Execution/` | `.Execution` |
-| 23 | `ToolBudgetAIFunction.cs` | 根 | `Execution/` | `.Execution` |
-| 24 | `IFeishuToolFunctionFactory.cs` | 根 | `Execution/` | `.Execution` |
-| 25 | `UserTokenPrecheck.cs` | 根 | `Execution/` | `.Execution` |
-| 26 | `UserTokenPrecheckResult.cs` | 根 | `Execution/` | `.Execution` |
-| 27 | `FeishuToolRegistry.cs` | 根 | `Catalog/` | `.Catalog` |
-| 28 | `FeishuToolCatalog.cs` | 根 | `Catalog/` | `.Catalog` |
-| 29 | `IToolCatalog.cs` | 根 | `Catalog/` | `.Catalog` |
-| 30 | `ToolSchemaJson.cs` | 根 | `Catalog/` | `.Catalog` |
-| 31 | `ToolAffordanceText.cs` | 根 | `Catalog/` | `.Catalog` |
-| 32 | `FeishuSkillDocumentBuilder.cs` | 根 | `Catalog/` | `.Catalog` |
-| 33 | `ISkillDocumentReader.cs` | 根 | `Catalog/` | `.Catalog` |
-| 34 | `IToolExecutionAuthorizer.cs` | 根 | `Hosting/` | `.Hosting` |
-| 35 | `IToolExecutionAuditSink.cs` | 根 | `Hosting/` | `.Hosting` |
-| 36 | `IFeishuAttachmentStager.cs` | 根 | `Hosting/` | `.Hosting` |
-| 37 | `IFeishuUserAuthorizationLinkProvider.cs` | 根 | `Hosting/` | `.Hosting` |
-| 38 | `SecurityTextPrimitives.cs` | 根 | `Security/` | `.Security` |
-| 39 | `DownloadedContentGuard.cs` | 根 | `Security/` | `.Security` |
-| 40 | `BitableFilterParser.cs` | 根 | `Parsers/` | `.Parsers` |
-| 41 | `BitableSortParser.cs` | 根 | `Parsers/` | `.Parsers` |
-| 42 | `PageSizes.cs` | 根 | `Constants/` | `.Constants` |
-| 43 | `ReceiveIdTypes.cs` | 根 | `Constants/` | `.Constants` |
-| 44 | `TranslationLanguages.cs` | 根 | `Constants/` | `.Constants` |
+| #   | 文件                                      | 现命名空间 | 目标目录             | 目标命名空间                         |
+| --- | ----------------------------------------- | ---------- | -------------------- | ------------------------------------ |
+| 1   | `ToolArgs.cs`                             | 根         | `Args/`              | `.Args`                              |
+| 2   | `ToolArgumentNormalizer.cs`               | 根         | `Args/`              | `.Args`                              |
+| 3   | `ToolArgumentSanitizer.cs`                | 根         | `Args/`              | `.Args`                              |
+| 4   | `ToolArgsDigester.cs`                     | 根         | `Args/`              | `.Args`                              |
+| 5   | `ToolArgumentException.cs`                | 根         | `Args/`              | `.Args`                              |
+| 6   | `FeishuToolResult.cs`                     | 根         | `Results/`           | `.Results`                           |
+| 7   | `IToolResultShaper.cs`                    | 根         | `Results/`           | `.Results`                           |
+| 8   | `ToolResultPipeline.cs`                   | 根         | `Results/`           | `.Results`                           |
+| 9   | `ToolResultJson.cs`                       | 根         | `Results/`           | `.Results`                           |
+| 10  | `ToolResultJsons.cs`                      | 根         | `Results/`           | `.Results`                           |
+| 11  | `ToolResultText.cs`                       | 根         | `Results/`           | `.Results`                           |
+| 12  | `ToolResultSanitizer.cs`                  | 根         | `Results/`           | `.Results`                           |
+| 13  | `ToolResultContentSafety.cs`              | 根         | `Results/`           | `.Results`                           |
+| 14  | `ToolDryRun.cs`                           | 根         | `Results/`           | `.Results`                           |
+| 15  | `ToolPagination.cs`                       | 根         | `Results/`           | `.Results`                           |
+| 16  | `ToolError.cs`                            | 根         | `Errors/`            | `.Errors`                            |
+| 17  | `ToolErrorClassifier.cs`                  | 根         | `Errors/`            | `.Errors`                            |
+| 18  | `ToolErrorPayloadSerializer.cs`           | 根         | `Errors/`            | `.Errors`                            |
+| 19  | `IToolErrorTextFormatter.cs`              | 根         | `Errors/`            | `.Errors`                            |
+| 20  | `ToolRetryPolicy.cs`                      | 根         | `Errors/`            | `.Errors`                            |
+| 21  | `FeishuToolBinding.cs`                    | 根         | **`Tools/`（保留）** | **根（不动）** —— 生成器钉死，见 §十 |
+| 22  | `FeishuToolAIFunction.cs`                 | 根         | `Execution/`         | `.Execution`                         |
+| 23  | `ToolBudgetAIFunction.cs`                 | 根         | `Execution/`         | `.Execution`                         |
+| 24  | `IFeishuToolFunctionFactory.cs`           | 根         | `Execution/`         | `.Execution`                         |
+| 25  | `UserTokenPrecheck.cs`                    | 根         | `Execution/`         | `.Execution`                         |
+| 26  | `UserTokenPrecheckResult.cs`              | 根         | `Execution/`         | `.Execution`                         |
+| 27  | `FeishuToolRegistry.cs`                   | 根         | `Catalog/`           | `.Catalog`                           |
+| 28  | `FeishuToolCatalog.cs`                    | 根         | `Catalog/`           | `.Catalog`                           |
+| 29  | `IToolCatalog.cs`                         | 根         | `Catalog/`           | `.Catalog`                           |
+| 30  | `ToolSchemaJson.cs`                       | 根         | `Catalog/`           | `.Catalog`                           |
+| 31  | `ToolAffordanceText.cs`                   | 根         | `Catalog/`           | `.Catalog`                           |
+| 32  | `FeishuSkillDocumentBuilder.cs`           | 根         | `Catalog/`           | `.Catalog`                           |
+| 33  | `ISkillDocumentReader.cs`                 | 根         | `Catalog/`           | `.Catalog`                           |
+| 34  | `IToolExecutionAuthorizer.cs`             | 根         | `Hosting/`           | `.Hosting`                           |
+| 35  | `IToolExecutionAuditSink.cs`              | 根         | `Hosting/`           | `.Hosting`                           |
+| 36  | `IFeishuAttachmentStager.cs`              | 根         | `Hosting/`           | `.Hosting`                           |
+| 37  | `IFeishuUserAuthorizationLinkProvider.cs` | 根         | `Hosting/`           | `.Hosting`                           |
+| 38  | `SecurityTextPrimitives.cs`               | 根         | `Security/`          | `.Security`                          |
+| 39  | `DownloadedContentGuard.cs`               | 根         | `Security/`          | `.Security`                          |
+| 40  | `BitableFilterParser.cs`                  | 根         | `Parsers/`           | `.Parsers`                           |
+| 41  | `BitableSortParser.cs`                    | 根         | `Parsers/`           | `.Parsers`                           |
+| 42  | `PageSizes.cs`                            | 根         | `Constants/`         | `.Constants`                         |
+| 43  | `ReceiveIdTypes.cs`                       | 根         | `Constants/`         | `.Constants`                         |
+| 44  | `TranslationLanguages.cs`                 | 根         | `Constants/`         | `.Constants`                         |
 
 **留在根命名空间的内容**（不动）：`Extensions/FeishuToolsServiceCollectionExtensions.cs`（DI 入口，公开面 `FeishuToolsServiceCollectionExtensions` 是宿主第一触点，刻意留根）+ 生成产物（`FeishuToolNames`/`FeishuToolSchemas`/`FeishuToolContracts`/`FeishuToolGuidance`，由剖面 `GeneratedNamespace`/`ContractNamespace` 决定）。
 
@@ -176,11 +176,11 @@ Hosting ──→ Execution（可选注入：授权器/审计/落盘器/链接�
 
 ### 3.3 备选方案对比（架构决策记录）
 
-| 方案 | 做法 | 优点 | 缺点 | 结论 |
-|---|---|---|---|---|
-| **A. 只挪目录、不改命名空间** | 44 文件移入 9 个子目录，namespace 仍写 `Mud.Feishu.AI.Tools` | `PublicAPI.Unshipped.txt`/`public-surface-rationale.json`/Demo/Mcp 消费方**零改动**；风险最低 | 违反项目"目录=命名空间"约定（`Curation` 有守卫先例），目录导航与命名空间导航二义性长期存在 | 备选（若评估后认为公开面改写风险不可接受） |
-| **B. 目录 + 命名空间同步迁移（推荐）** | 目录即命名空间 | 与全项目约定一致；公有面按目录可定位；为后续拆文件/加守卫打好结构基础 | 需机械改写 `PublicAPI.Unshipped.txt`（1215 行中约 300 行含受影响全名）、`public-surface-rationale.json` 基线/理由键、3 个消费方 using | **推荐**：项目**未发布**（`PublicAPI.Shipped.txt` 仅一行 `#nullable enable`，csproj R3-11 自述"未发布窗口期零成本建立基线"），公共 API 改名空间零兼容负担；且改写全部是机械替换，可脚本化 + 编译器 RS0016 逐条验证 |
-| C. 维持现状 + 加 README 导读 | 不动结构 | 零风险 | 未解决任何问题 | 否决 |
+| 方案                                   | 做法                                                         | 优点                                                                                          | 缺点                                                                                                                                  | 结论                                                                                                                                                                                                               |
+| -------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **A. 只挪目录、不改命名空间**          | 44 文件移入 9 个子目录，namespace 仍写 `Mud.Feishu.AI.Tools` | `PublicAPI.Unshipped.txt`/`public-surface-rationale.json`/Demo/Mcp 消费方**零改动**；风险最低 | 违反项目"目录=命名空间"约定（`Curation` 有守卫先例），目录导航与命名空间导航二义性长期存在                                            | 备选（若评估后认为公开面改写风险不可接受）                                                                                                                                                                         |
+| **B. 目录 + 命名空间同步迁移（推荐）** | 目录即命名空间                                               | 与全项目约定一致；公有面按目录可定位；为后续拆文件/加守卫打好结构基础                         | 需机械改写 `PublicAPI.Unshipped.txt`（1215 行中约 300 行含受影响全名）、`public-surface-rationale.json` 基线/理由键、3 个消费方 using | **推荐**：项目**未发布**（`PublicAPI.Shipped.txt` 仅一行 `#nullable enable`，csproj R3-11 自述"未发布窗口期零成本建立基线"），公共 API 改名空间零兼容负担；且改写全部是机械替换，可脚本化 + 编译器 RS0016 逐条验证 |
+| C. 维持现状 + 加 README 导读           | 不动结构                                                     | 零风险                                                                                        | 未解决任何问题                                                                                                                        | 否决                                                                                                                                                                                                               |
 
 **推荐 B，A 作为风险回退预案**（B 的 P1 完成后若公开面改写出现意外，可只保留目录移动、namespace 回退根——即降级为 A）。
 
@@ -190,35 +190,35 @@ Hosting ──→ Execution（可选注入：授权器/审计/落盘器/链接�
 
 ### 4.1 本项目内
 
-| # | 文件 | 变更 |
-|---|---|---|
-| 1 | `Mud.Feishu.AI.Tools/GlobalUsings.cs` | 增补 9 条 `global using Mud.Feishu.AI.Tools.{Args,Results,Errors,Execution,Catalog,Hosting,Security,Parsers,Constants};`（保留现有根 using 给 `Extensions/` 与生成类型）。**这是生成器简单名解析（`FeishuToolResult`/`FeishuToolBinding`）与全包词汇表不掉线的保证** |
-| 2 | `Mud.Feishu.AI.Tools/PublicAPI.Unshipped.txt` | 22 个 public 类型的类型行与全部成员行全名改写（如 `Mud.Feishu.AI.Tools.ToolError` → `Mud.Feishu.AI.Tools.Errors.ToolError`）；RS0016 清零为验收项 |
-| 3 | `documents/AIAgent/public-surface-rationale.json` | `baseline` 数组与 `reasons` 键的同名改写（`PublicSurfaceRationaleContractGuards.DeclaredReasons_ShouldNotBeStale` 强制） |
+| #   | 文件                                              | 变更                                                                                                                                                                                                                                                                 |
+| --- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `Mud.Feishu.AI.Tools/GlobalUsings.cs`             | 增补 9 条 `global using Mud.Feishu.AI.Tools.{Args,Results,Errors,Execution,Catalog,Hosting,Security,Parsers,Constants};`（保留现有根 using 给 `Extensions/` 与生成类型）。**这是生成器简单名解析（`FeishuToolResult`/`FeishuToolBinding`）与全包词汇表不掉线的保证** |
+| 2   | `Mud.Feishu.AI.Tools/PublicAPI.Unshipped.txt`     | 22 个 public 类型的类型行与全部成员行全名改写（如 `Mud.Feishu.AI.Tools.ToolError` → `Mud.Feishu.AI.Tools.Errors.ToolError`）；RS0016 清零为验收项                                                                                                                    |
+| 3   | `documents/AIAgent/public-surface-rationale.json` | `baseline` 数组与 `reasons` 键的同名改写（`PublicSurfaceRationaleContractGuards.DeclaredReasons_ShouldNotBeStale` 强制）                                                                                                                                             |
 
 ### 4.2 跨项目消费方（均经 global using 收敛，改动极小）
 
-| # | 文件 | 变更 |
-|---|---|---|
-| 4 | `Mud.Feishu.AI.Mcp/GlobalUsings.cs`（L15 现有 `using Mud.Feishu.AI.Tools;`） | 增补 `Catalog`（消费 `FeishuToolRegistry`/`FeishuToolNames`） |
-| 5 | `Demos/Mud.Feishu.Agent.Demo/` 11 个文件（`ToolsDemo/SkillsDemo/ImConversationDemo/DomainEventsDemo/DocAgent*`/`ConsoleToolAuthorizer/InMemoryAuditSink/DemoAttachmentStager/DocAgentSettings/AgentConsoleLoop`） | 增补 `Catalog` + `Hosting` 两条 using（Demo 消费的正是 `FeishuToolRegistry`、`ISkillDocumentReader`、`IToolExecutionAuthorizer`、`IToolExecutionAuditSink`、`IFeishuAttachmentStager` 及其记录类型） |
-| 6 | `Tests/Mud.Feishu.Agent.Demo.Tests/`（`TestDoubles/SkillsDemoTests/ConsoleToolAuthorizerTests/DocAgentDemoContractGuards`） | 同上 |
-| 7 | `Tests/Mud.Feishu.AI.Tools.Tests/GlobalUsings.cs` | 增补对应子命名空间 using（测试用例按名字引用类型，全局 using 后测试代码本身零改） |
-| 8 | `Tests/Mud.Feishu.AI.Tests/GlobalUsings.cs` | 视其用例引用增补（当前仅经 `AgentTools` 接缝，预计零改或 1 条） |
+| #   | 文件                                                                                                                                                                                                              | 变更                                                                                                                                                                                                 |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 4   | `Mud.Feishu.AI.Mcp/GlobalUsings.cs`（L15 现有 `using Mud.Feishu.AI.Tools;`）                                                                                                                                      | 增补 `Catalog`（消费 `FeishuToolRegistry`/`FeishuToolNames`）                                                                                                                                        |
+| 5   | `Demos/Mud.Feishu.Agent.Demo/` 11 个文件（`ToolsDemo/SkillsDemo/ImConversationDemo/DomainEventsDemo/DocAgent*`/`ConsoleToolAuthorizer/InMemoryAuditSink/DemoAttachmentStager/DocAgentSettings/AgentConsoleLoop`） | 增补 `Catalog` + `Hosting` 两条 using（Demo 消费的正是 `FeishuToolRegistry`、`ISkillDocumentReader`、`IToolExecutionAuthorizer`、`IToolExecutionAuditSink`、`IFeishuAttachmentStager` 及其记录类型） |
+| 6   | `Tests/Mud.Feishu.Agent.Demo.Tests/`（`TestDoubles/SkillsDemoTests/ConsoleToolAuthorizerTests/DocAgentDemoContractGuards`）                                                                                       | 同上                                                                                                                                                                                                 |
+| 7   | `Tests/Mud.Feishu.AI.Tools.Tests/GlobalUsings.cs`                                                                                                                                                                 | 增补对应子命名空间 using（测试用例按名字引用类型，全局 using 后测试代码本身零改）                                                                                                                    |
+| 8   | `Tests/Mud.Feishu.AI.Tests/GlobalUsings.cs`                                                                                                                                                                       | 视其用例引用增补（当前仅经 `AgentTools` 接缝，预计零改或 1 条）                                                                                                                                      |
 
 ### 4.3 路径/文件名硬编码的守卫与测试（**必须同批更新，否则 CI 红**）
 
-| # | 文件 | 硬编码 | 更新为 |
-|---|---|---|---|
-| 9 | `Tests/Mud.Feishu.AI.Tools.Tests/ContractGuards/ToolArgumentShapeContractGuards.cs` L44 | 扫描 `Mud.Feishu.AI.Tools/Tools`（JsonValueKind.String 白名单，`SearchOption.AllDirectories`） | 改为新 9 目录集合（或"除 Curation/Internal 外全扫"）；**不扩展即假绿**——`Results/` 里新出现一份形态认知将无人拦截 |
-| 10 | 同上 L100-122 | `Curation/` vs `Tools/` 分离守卫（Tools 内不得有 `*ToolInterfaces.cs`） | `Tools/` 已不存在：`Directory.EnumerateFiles` 会因目录缺失失败 ⇒ 改为对 9 个新目录扫描 + 目录不存在时容错 |
-| 11 | `Tests/Mud.Feishu.AI.Tools.Tests/ContractGuards/ToolBudgetContractGuards.cs` L56-60 | `Tools/FeishuToolAIFunction.cs` | `Execution/FeishuToolAIFunction.cs` |
-| 12 | `Tests/Mud.Feishu.AI.Tools.Tests/ContractGuards/ToolErrorContractGuards.cs` L215 | `Tools/ToolResultPipeline.cs` | `Results/ToolResultPipeline.cs` |
-| 13 | `Tests/Mud.Feishu.AI.Tools.Tests/ContractGuards/ToolEgressPurificationContractGuards.cs` L36 | `Tools/FeishuToolBinding.cs` | `Execution/FeishuToolBinding.cs` |
-| 14 | `Tests/Mud.Feishu.AI.Tools.Tests/ContractGuards/UserTokenPrecheckContractGuards.cs` L71 | `Tools/UserTokenPrecheck.cs` | `Execution/UserTokenPrecheck.cs` |
-| 15 | `Tests/Mud.Feishu.AI.Tools.Tests/Tools/ErrorRecoverabilityTests.cs` L171 | `Tools/ToolResultPipeline.cs` | `Results/ToolResultPipeline.cs` |
-| 16 | `Tests/Mud.Feishu.AI.Tests/ContractGuards/AgentContractGuards.cs` L480/529/609 | `Tools/FeishuToolBinding.cs`（**跨测试项目**引用） | `Execution/FeishuToolBinding.cs` |
-| 17 | `PaginationContractGuards.cs` L165、`BinaryDownloadToolExposureContractTests.cs` L19、`PackageOwnershipContractGuards.cs` L86-87、`MudFeishu-AI-vs-lark-cli-对比分析报告.md` | 文案提及"`ToolResultJsons` 在 `Tools/`"、"`Tools/Feishu*ToolInterfaces.cs`"、"工具契约与实现同包（根 ns）" | 文案订正（防误导后续维护者） |
+| #   | 文件                                                                                                                                                                         | 硬编码                                                                                                     | 更新为                                                                                                            |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| 9   | `Tests/Mud.Feishu.AI.Tools.Tests/ContractGuards/ToolArgumentShapeContractGuards.cs` L44                                                                                      | 扫描 `Mud.Feishu.AI.Tools/Tools`（JsonValueKind.String 白名单，`SearchOption.AllDirectories`）             | 改为新 9 目录集合（或"除 Curation/Internal 外全扫"）；**不扩展即假绿**——`Results/` 里新出现一份形态认知将无人拦截 |
+| 10  | 同上 L100-122                                                                                                                                                                | `Curation/` vs `Tools/` 分离守卫（Tools 内不得有 `*ToolInterfaces.cs`）                                    | `Tools/` 已不存在：`Directory.EnumerateFiles` 会因目录缺失失败 ⇒ 改为对 9 个新目录扫描 + 目录不存在时容错         |
+| 11  | `Tests/Mud.Feishu.AI.Tools.Tests/ContractGuards/ToolBudgetContractGuards.cs` L56-60                                                                                          | `Tools/FeishuToolAIFunction.cs`                                                                            | `Execution/FeishuToolAIFunction.cs`                                                                               |
+| 12  | `Tests/Mud.Feishu.AI.Tools.Tests/ContractGuards/ToolErrorContractGuards.cs` L215                                                                                             | `Tools/ToolResultPipeline.cs`                                                                              | `Results/ToolResultPipeline.cs`                                                                                   |
+| 13  | `Tests/Mud.Feishu.AI.Tools.Tests/ContractGuards/ToolEgressPurificationContractGuards.cs` L36                                                                                 | `Tools/FeishuToolBinding.cs`                                                                               | `Execution/FeishuToolBinding.cs`                                                                                  |
+| 14  | `Tests/Mud.Feishu.AI.Tools.Tests/ContractGuards/UserTokenPrecheckContractGuards.cs` L71                                                                                      | `Tools/UserTokenPrecheck.cs`                                                                               | `Execution/UserTokenPrecheck.cs`                                                                                  |
+| 15  | `Tests/Mud.Feishu.AI.Tools.Tests/Tools/ErrorRecoverabilityTests.cs` L171                                                                                                     | `Tools/ToolResultPipeline.cs`                                                                              | `Results/ToolResultPipeline.cs`                                                                                   |
+| 16  | `Tests/Mud.Feishu.AI.Tests/ContractGuards/AgentContractGuards.cs` L480/529/609                                                                                               | `Tools/FeishuToolBinding.cs`（**跨测试项目**引用）                                                         | `Execution/FeishuToolBinding.cs`                                                                                  |
+| 17  | `PaginationContractGuards.cs` L165、`BinaryDownloadToolExposureContractTests.cs` L19、`PackageOwnershipContractGuards.cs` L86-87、`MudFeishu-AI-vs-lark-cli-对比分析报告.md` | 文案提及"`ToolResultJsons` 在 `Tools/`"、"`Tools/Feishu*ToolInterfaces.cs`"、"工具契约与实现同包（根 ns）" | 文案订正（防误导后续维护者）                                                                                      |
 
 ### 4.4 测试目录镜像
 
@@ -228,12 +228,14 @@ Hosting ──→ Execution（可选注入：授权器/审计/落盘器/链接�
 
 ## 五、实施计划（分阶段，每阶段可独立验证）
 
-### Phase 0 — 基线与工具（0.5h）
+### — 基线与工具（0.5h）
+
 - 记录当前全绿基线：`dotnet build Mud.Feishu.slnx`（4 TFM）+ 全 `dotnet test` + `pwsh ./scripts/verify-build.ps1`。
 - 准备脚本：`git mv` 映射表（§3.1）；namespace 正则替换（`^namespace Mud.Feishu.AI.Tools;` → 目标）；PublicAPI 全名替换表（22 个类型名 → 新全名，含成员行内嵌引用）。
 - 分支：`refactor/ai-tools-tools-regroup`，**单一提交**策略（便于整体 revert）。
 
 ### Phase 1 — 物理搬迁 + 命名空间（主体，0.5d）
+
 1. `git mv` 44 文件 → 9 目录；
 2. 各文件 `namespace` 行改写；
 3. `GlobalUsings.cs` 增补 9 条（§4.1-1）；
@@ -241,18 +243,22 @@ Hosting ──→ Execution（可选注入：授权器/审计/落盘器/链接�
 5. **验证**：`dotnet build` 四 TFM 0 错 0 警（含 net8.0 AOT strict 冒烟：确认生成器简单名解析未断）。
 
 ### Phase 2 — 公开面机械同步（1h）
+
 - `PublicAPI.Unshipped.txt` 全名改写 → 构建至 **RS0016 = 0**（PublicApiAnalyzers 逐条兜底，改写遗漏会直接报红，不会静默）；
 - `public-surface-rationale.json` 的 `baseline`/`reasons` 键同步改写 → `PublicSurfaceRationaleContractGuards` 两条用例转绿。
 
 ### Phase 3 — 守卫与文案更新（2-3h）
+
 - 按 §4.3 逐条更新 7 处硬编码路径 + 2 处扫描面；
 - **新增守卫**（沿用 `CurationFiles_ShouldDeclareTheCurationNamespace` 模式）：9 个新目录的文件必须声明对应子命名空间；`Tools/` 目录不得复活（文件落入即红）——把本次重组固化为不变量；
 - 文案订正（§4.3-17）。
 
 ### Phase 4 — 测试目录镜像（1h）
+
 - 按 §4.4 镜像迁移；`dotnet test Tests/Mud.Feishu.AI.Tools.Tests` 全绿。
 
 ### Phase 5 — 全量验收（1h）
+
 - `dotnet test Mud.Feishu.slnx` 全量（含 `Mud.Feishu.AI.Tests`、`Mud.Feishu.Agent.Demo.Tests`）；
 - `pwsh ./scripts/verify-build.ps1` 全门禁（0 错 / 0 CS1750 / 0 NU1603 / 0 HTTPCLIENT·MUD·FORM·AOT 诊断 / AOT strict net-zero / format）；
 - `FeishuToolGoldenTests`（golden 漂移零变化——重组不动特性与剖面，这是"纯搬迁"的最强证据）；
@@ -273,14 +279,14 @@ Hosting ──→ Execution（可选注入：授权器/审计/落盘器/链接�
 
 ## 七、风险与缓解
 
-| 风险 | 等级 | 缓解 |
-|---|---|---|
-| `PublicAPI.Unshipped.txt` 手工改写遗漏 | 中 | 脚本化替换 + RS0016 编译器兜底（遗漏即红，不会静默）；P2 独立提交便于二分 |
-| 生成器按**全限定名**引用 `FeishuToolResult`/`FeishuToolBinding`（而非简单名） | 低 | P1 构建即暴露；缓解 = global using（§4.1-1）。剖面槽均为简单名（`FeishuToolProfile.cs` L97-98），风险本身很低 |
-| `PackageOwnershipContractGuards` 断言工具包含 `Mud.Feishu.AI.Tools` 命名空间 | 低 | 生成类型（`FeishuToolNames` 等）与 `Extensions/` 仍在根 ns，断言继续成立；注释文案同批订正 |
-| 守卫扫描面未扩展导致"假绿" | 中 | §4.3-9/10 明确列为必改项；新增"目录=命名空间"守卫一并固化。**D-1（2026-10-12）已兑现**：Curation 六组目录改造同批把 3 处 `TopDirectoryOnly` 改 `AllDirectories`，见 §八 修订段 |
-| 大规模 diff 淹没 review | 低 | 单提交 + 纯搬迁声明；`git diff --stat` 应显示 44 renames + 少量内容行 |
-| 回滚 | — | 单提交 `git revert`；无行为变更，回滚无数据/兼容性后果 |
+| 风险                                                                          | 等级 | 缓解                                                                                                                                                                           |
+| ----------------------------------------------------------------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `PublicAPI.Unshipped.txt` 手工改写遗漏                                        | 中   | 脚本化替换 + RS0016 编译器兜底（遗漏即红，不会静默）；P2 独立提交便于二分                                                                                                      |
+| 生成器按**全限定名**引用 `FeishuToolResult`/`FeishuToolBinding`（而非简单名） | 低   | P1 构建即暴露；缓解 = global using（§4.1-1）。剖面槽均为简单名（`FeishuToolProfile.cs` L97-98），风险本身很低                                                                  |
+| `PackageOwnershipContractGuards` 断言工具包含 `Mud.Feishu.AI.Tools` 命名空间  | 低   | 生成类型（`FeishuToolNames` 等）与 `Extensions/` 仍在根 ns，断言继续成立；注释文案同批订正                                                                                     |
+| 守卫扫描面未扩展导致"假绿"                                                    | 中   | §4.3-9/10 明确列为必改项；新增"目录=命名空间"守卫一并固化。**D-1（2026-10-12）已兑现**：Curation 六组目录改造同批把 3 处 `TopDirectoryOnly` 改 `AllDirectories`，见 §八 修订段 |
+| 大规模 diff 淹没 review                                                       | 低   | 单提交 + 纯搬迁声明；`git diff --stat` 应显示 44 renames + 少量内容行                                                                                                          |
+| 回滚                                                                          | —    | 单提交 `git revert`；无行为变更，回滚无数据/兼容性后果                                                                                                                         |
 
 ## 八、明确不做（边界）
 
@@ -377,15 +383,15 @@ Catalog 8 / Hosting 9 / Results 2 / Errors 2 / Execution 2。
 
 ## 十二、落地核验记录（2026-10-12）
 
-| 阶段 | 内容 | 结果 |
-|---|---|---|
-| P0 | 全解决方案构建基线 | 0 错误；真基线（6 个受影响项目 `--no-incremental`）716 条警告 |
-| P1 | 44 文件搬迁（git mv 保留历史）+ 命名空间重写 + 3 个项目 GlobalUsings 增补 + 17 个消费方文件 using 增补 + `FeishuToolBinding` 回驻 Tools/ | 解决方案 0 错误；同口径警告逐类别与基线**完全一致**（CS1573/1574/8604/1570/8602/1587/1591/0105/MUDFT009/1580/9113/8601/8605/0414 全部等计数），**零新增警告** |
-| P2 | `PublicAPI.Unshipped.txt` 23 类型 FQN 机械改写 + `public-surface-rationale.json` baseline/reasons 键同步 | **RS0016 = 0 / RS0017 = 0**（PublicApiAnalyzers 逐条兜底）；`PublicSurfaceRationaleContractGuards` 3/3 绿 |
-| P3 | 守卫更新：JsonValueKind 扫描面扩至 11 目录、契约声明扫描面扩至 10 运行时目录、Tools/ 白名单断言、**新增** `ConcernDirectories_ShouldDeclareMatchingNamespace`、5 处硬编码路径更新、4 处文案订正 | 随 P4 测试全量通过 |
-| P4 | 22 个测试按被测对象镜像入 9 个子目录（+ `GuardProviderFactory` 提取） | 947/947 双 TFM 绿 |
-| P5 | 全解决方案测试 | **9,337 项全部通过，0 失败**（net6.0 按环境惯例跳过：本机无 .NET 6 运行时）；golden 快照零漂移（`FeishuToolGoldenTests` 含在 947 内） |
-| P5 | 门禁复刻（`pwsh` 本机未安装，逐项复刻 `scripts/verify-build.ps1` 断言） | Release 全 TFM `--no-incremental`：0 错误 / 0 CS1750 / 0 NU1603 / 0 HTTPCLIENT·MUD·FORM·AOT 诊断；AotStrictMode 冒烟 12 个源项目 net8.0：0 错误 / 0 IL2026 / 0 IL3050 / 0 AOT00x |
+| 阶段 | 内容                                                                                                                                                                                            | 结果                                                                                                                                                                             |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P0   | 全解决方案构建基线                                                                                                                                                                              | 0 错误；真基线（6 个受影响项目 `--no-incremental`）716 条警告                                                                                                                    |
+| P1   | 44 文件搬迁（git mv 保留历史）+ 命名空间重写 + 3 个项目 GlobalUsings 增补 + 17 个消费方文件 using 增补 + `FeishuToolBinding` 回驻 Tools/                                                        | 解决方案 0 错误；同口径警告逐类别与基线**完全一致**（CS1573/1574/8604/1570/8602/1587/1591/0105/MUDFT009/1580/9113/8601/8605/0414 全部等计数），**零新增警告**                    |
+| P2   | `PublicAPI.Unshipped.txt` 23 类型 FQN 机械改写 + `public-surface-rationale.json` baseline/reasons 键同步                                                                                        | **RS0016 = 0 / RS0017 = 0**（PublicApiAnalyzers 逐条兜底）；`PublicSurfaceRationaleContractGuards` 3/3 绿                                                                        |
+| P3   | 守卫更新：JsonValueKind 扫描面扩至 11 目录、契约声明扫描面扩至 10 运行时目录、Tools/ 白名单断言、**新增** `ConcernDirectories_ShouldDeclareMatchingNamespace`、5 处硬编码路径更新、4 处文案订正 | 随 P4 测试全量通过                                                                                                                                                               |
+| P4   | 22 个测试按被测对象镜像入 9 个子目录（+ `GuardProviderFactory` 提取）                                                                                                                           | 947/947 双 TFM 绿                                                                                                                                                                |
+| P5   | 全解决方案测试                                                                                                                                                                                  | **9,337 项全部通过，0 失败**（net6.0 按环境惯例跳过：本机无 .NET 6 运行时）；golden 快照零漂移（`FeishuToolGoldenTests` 含在 947 内）                                            |
+| P5   | 门禁复刻（`pwsh` 本机未安装，逐项复刻 `scripts/verify-build.ps1` 断言）                                                                                                                         | Release 全 TFM `--no-incremental`：0 错误 / 0 CS1750 / 0 NU1603 / 0 HTTPCLIENT·MUD·FORM·AOT 诊断；AotStrictMode 冒烟 12 个源项目 net8.0：0 错误 / 0 IL2026 / 0 IL3050 / 0 AOT00x |
 
 **已知既有欠账（非本次引入，git 实证未触碰）**：
 `Curation/FeishuToolInterfaces.cs` 与 `Tests/.../WriteIdempotencyKeyTests.cs` 存在 `dotnet format` 空格差异；
@@ -393,4 +399,3 @@ Catalog 8 / Hosting 9 / Results 2 / Errors 2 / Execution 2。
 
 **变更集规模**：66 个 git mv（44 源 + 22 测试，历史保留）+ 23 个修改文件 + 2 个新文件
 （`GuardProviderFactory.cs`、本方案文档）+ 23 类型公开面命名空间迁移。未提交（按仓库纪律待用户审阅后单次提交，便于整体 revert）。
-

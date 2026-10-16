@@ -11,7 +11,7 @@ using Microsoft.Extensions.Options;
 namespace Mud.Feishu.AI.Tests.Extensions;
 
 /// <summary>
-/// 服务注册扩展：AddFeishuAgent 可解析、键控模型客户端工厂校验、配置节绑定（Phase 0 §7）。
+/// 服务注册扩展：AddFeishuAgent 可解析、键控模型客户端工厂校验、配置节绑定（§7）。
 /// </summary>
 public class FeishuAgentServiceCollectionExtensionsTests
 {
@@ -60,7 +60,7 @@ public class FeishuAgentServiceCollectionExtensionsTests
         using var provider = services.BuildServiceProvider();
         var act = () => provider.GetRequiredService<FeishuAgent>();
 
-        act.Should().Throw<InvalidOperationException>("键控 IChatClient 缺失须在工厂解析时失败（Phase 0 §8）");
+        act.Should().Throw<InvalidOperationException>("键控 IChatClient 缺失须在工厂解析时失败（§8）");
     }
 
     [Fact]

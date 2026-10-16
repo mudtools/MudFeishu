@@ -18,7 +18,7 @@ using Mud.Feishu.AI.Tools.Hosting;
 namespace Mud.Feishu.Agent.Demo;
 
 /// <summary>
-/// 文档业务 AI 智能体控制台 Demo 的模式入口（配置 <c>FeishuDocAgent:Enabled=true</c>）。
+/// 文档业务 AI 智能体控制台 Demo 的模式入口（由启动菜单选择进入）。
 /// </summary>
 /// <remarks>
 /// <para>

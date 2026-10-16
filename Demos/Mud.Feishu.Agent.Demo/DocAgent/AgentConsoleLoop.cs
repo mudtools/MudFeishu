@@ -375,7 +375,7 @@ internal sealed class AgentConsoleLoop
             "当前关键配置",
             ["项", "值"],
             [
-                ["模式", DocAgentSettings.ConfigEnabledKey + "=true（文档业务智能体）"],
+                ["模式", "启动菜单选择（当前：文档业务智能体）"],
                 ["应用键", _settings.AppKey],
                 ["模型", $"{_settings.ModelId}{(_settings.Endpoint is null ? "（默认端点）" : " @ " + _settings.Endpoint)}"],
                 ["已启用工具", $"{_registry.EnabledTools.Count} 个（只读 {DocAgentSettings.ReadonlyTools.Length} / 写 {DocAgentSettings.WriteTools.Length}）"],

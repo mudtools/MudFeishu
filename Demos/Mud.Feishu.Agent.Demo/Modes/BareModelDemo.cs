@@ -12,7 +12,7 @@ using Mud.Feishu.AI.Agents;
 namespace Mud.Feishu.Agent.Demo;
 
 /// <summary>
-/// Phase 0 裸模型一问一答（默认模式，无开关）：消息文本 → 模型 → 回答，无工具、无飞书客户端。
+/// 裸模型一问一答（默认模式，无开关）：消息文本 → 模型 → 回答，无工具、无飞书客户端。
 /// </summary>
 /// <remarks>
 /// 模型三参数统一读统一配置节 <c>FeishuDemo</c>（<see cref="FeishuDemoSettings"/>）；

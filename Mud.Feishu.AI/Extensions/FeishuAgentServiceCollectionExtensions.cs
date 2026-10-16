@@ -90,7 +90,7 @@ public static class FeishuAgentServiceCollectionExtensions
     /// 经 <paramref name="configuration"/> 绑定）、<see cref="IValidateOptions{TOptions}"/> 启动期校验
     /// （net6+ ValidateOnStart）、默认 <see cref="MemoryConversationStore"/>（可被 Redis 实现替换）、
     /// <see cref="FeishuAgent"/> 工厂（按 <see cref="FeishuAgentOptions.ModelServiceKey"/> 解析键控
-    /// 模型客户端，解析即校验，不透传 null——Phase 0 §8）。
+    /// 模型客户端，解析即校验，不透传 null——§8）。
     /// </para>
     /// </remarks>
     /// <param name="services">服务集合。</param>
@@ -170,7 +170,7 @@ public static class FeishuAgentServiceCollectionExtensions
                 : sp.GetRequiredKeyedService<IChatClient>(options.ModelServiceKey);
 
             // 工具来源：容器内全部 FeishuAgentToolSource（如 Mud.Feishu.AI.Tools 的白名单桥）。
-            // 未注册工具包时为空集——保持 Phase 0 裸模型行为。
+            // 未注册工具包时为空集——保持 裸模型行为。
             var sources = sp.GetServices<FeishuAgentToolSource>().ToArray();
             var tools = sources
                 .SelectMany(source => source.GetTools(sp))

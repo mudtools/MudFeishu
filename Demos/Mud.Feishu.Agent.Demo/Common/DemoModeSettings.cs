@@ -53,7 +53,7 @@ internal static class DemoConfigGuards
 }
 
 /// <summary>
-/// 模型客户端三参数（裸模型 / IM 事件接入 / 工具冒烟 / 文档智能体四个模式共用的模型配置面）。
+/// 模型客户端三参数（裸模型 / 工具冒烟 / IM 事件接入 / 领域事件 / 文档智能体各模式共用的模型配置面）。
 /// </summary>
 /// <remarks>
 /// 只从配置文件读取；必填项缺失时 fail-fast（消息指明配置键）。
@@ -135,7 +135,7 @@ internal sealed record ChatModelSettings
 /// </remarks>
 internal sealed record FeishuDemoSettings
 {
-    /// <summary>配置节名（四个模式的统一连接配置面）。</summary>
+    /// <summary>配置节名（各模式的统一连接配置面）。</summary>
     public const string SectionName = "FeishuDemo";
 
     /// <summary>模型 ID 键。</summary>
@@ -191,10 +191,10 @@ internal sealed record FeishuDemoSettings
 }
 
 /// <summary>
-/// Phase 1/2 工具冒烟模式的配置（全域只读工具 + 飞书租户身份）。
+/// 工具冒烟模式的配置（全域只读工具 + 飞书租户身份）。
 /// </summary>
 /// <remarks>
-/// 模式开关与 <c>StreamChatId</c> 从配置节 <c>FeishuToolsDemo</c> 读取；
+/// 默认项开关与 <c>StreamChatId</c> 从配置节 <c>FeishuToolsDemo</c> 读取；
 /// 模型三项与飞书凭证从统一节 <c>FeishuDemo</c> 读取（<see cref="FeishuDemoSettings"/>）。
 /// </remarks>
 internal sealed record ToolsDemoSettings
@@ -202,10 +202,10 @@ internal sealed record ToolsDemoSettings
     /// <summary>配置节名。</summary>
     public const string SectionName = "FeishuToolsDemo";
 
-    /// <summary>模式开关键。</summary>
+    /// <summary>默认项开关键。</summary>
     public const string EnabledKey = SectionName + ":Enabled";
 
-    /// <summary>模式开关。</summary>
+    /// <summary>默认项开关（<b>不决定是否进入本模式</b>——进入由启动菜单选择；它只决定菜单的默认项）。</summary>
     public required bool Enabled { get; init; }
 
     /// <summary>模型三参数。</summary>
@@ -265,16 +265,16 @@ internal sealed record ToolsDemoSettings
 /// <summary>
 /// P2D-5a「零自定义接入」IM 会话处理器演示的配置（注册面冒烟，只读模型三项）。
 /// </summary>
-/// <remarks>模式开关从配置节 <c>FeishuImHandlerDemo</c> 读取；模型三项从统一节 <c>FeishuDemo</c> 读取。</remarks>
+/// <remarks>默认项开关从配置节 <c>FeishuImHandlerDemo</c> 读取；模型三项从统一节 <c>FeishuDemo</c> 读取。</remarks>
 internal sealed record ImHandlerDemoSettings
 {
     /// <summary>配置节名。</summary>
     public const string SectionName = "FeishuImHandlerDemo";
 
-    /// <summary>模式开关键。</summary>
+    /// <summary>默认项开关键。</summary>
     public const string EnabledKey = SectionName + ":Enabled";
 
-    /// <summary>模式开关。</summary>
+    /// <summary>默认项开关（<b>不决定是否进入本模式</b>——进入由启动菜单选择；它只决定菜单的默认项）。</summary>
     public required bool Enabled { get; init; }
 
     /// <summary>模型三参数。</summary>
@@ -307,7 +307,7 @@ internal sealed record ImHandlerDemoSettings
 /// </summary>
 /// <remarks>
 /// <para>
-/// 与工具冒烟同构：模式开关与 <c>StreamChatId</c> 来自本节，模型三项与飞书凭证来自统一节
+/// 与工具冒烟同构：默认项开关与 <c>StreamChatId</c> 来自本节，模型三项与飞书凭证来自统一节
 /// <c>FeishuDemo</c>（<see cref="FeishuDemoSettings"/>）。
 /// </para>
 /// <para>
@@ -320,10 +320,10 @@ internal sealed record DomainEventsDemoSettings
     /// <summary>配置节名。</summary>
     public const string SectionName = "FeishuDomainEventsDemo";
 
-    /// <summary>模式开关键。</summary>
+    /// <summary>默认项开关键。</summary>
     public const string EnabledKey = SectionName + ":Enabled";
 
-    /// <summary>模式开关。</summary>
+    /// <summary>默认项开关（<b>不决定是否进入本模式</b>——进入由启动菜单选择；它只决定菜单的默认项）。</summary>
     public bool Enabled { get; init; }
 
     /// <summary>模型三参数。</summary>
@@ -390,7 +390,7 @@ internal sealed record DomainEventsDemoSettings
 /// "包内产物 == 读取内容"从未被任何路径验证过。
 /// </para>
 /// <para>
-/// 因此它只需要一个开关与一个域：<c>FeishuSkillsDemo:Enabled</c> / <c>FeishuSkillsDemo:Domain</c>。
+/// 因此它只需要一个默认项开关与一个域：<c>FeishuSkillsDemo:Enabled</c> / <c>FeishuSkillsDemo:Domain</c>。
 /// </para>
 /// </remarks>
 internal sealed record SkillsDemoSettings
@@ -398,13 +398,13 @@ internal sealed record SkillsDemoSettings
     /// <summary>配置节名。</summary>
     public const string SectionName = "FeishuSkillsDemo";
 
-    /// <summary>模式开关键。</summary>
+    /// <summary>默认项开关键。</summary>
     public const string EnabledKey = SectionName + ":Enabled";
 
     /// <summary>默认演示域（<c>im</c>：工具面最大、guidance 最长，最能暴露预算问题）。</summary>
     public const string DefaultDomain = "im";
 
-    /// <summary>模式开关。</summary>
+    /// <summary>默认项开关（<b>不决定是否进入本模式</b>——进入由启动菜单选择；它只决定菜单的默认项）。</summary>
     public bool Enabled { get; init; }
 
     /// <summary>要展开的演示域（可空 ⇒ <see cref="DefaultDomain"/>）。</summary>

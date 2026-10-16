@@ -17,13 +17,13 @@ using Mud.Feishu.AI.Tools.Hosting;
 namespace Mud.Feishu.Agent.Demo;
 
 /// <summary>
-/// Phase 1/2 工具模式冒烟（端到端工具链——消息文本 → 模型 → 工具 tool_call → 执行链 → 回答；
+/// 工具模式冒烟（端到端工具链——消息文本 → 模型 → 工具 tool_call → 执行链 → 回答；
 /// Phase 2：可选流式回复 + 写工具白名单示例）。
 /// </summary>
 /// <remarks>
 /// <para>
-/// 运行前在统一配置节 <c>FeishuDemo</c>（<c>appsettings.local.json</c>）填写模型与飞书凭证，
-/// 并把 <c>FeishuToolsDemo:Enabled</c> 置为 <c>true</c>（真实密钥只写本地覆盖文件，不落盘提交）：
+/// 运行前在统一配置节 <c>FeishuDemo</c>（<c>appsettings.local.json</c>）填写模型与飞书凭证
+/// （真实密钥只写本地覆盖文件，不落盘提交），随后在**启动菜单**里选择本模式：
 /// <code>
 /// "FeishuDemo": {
 ///   "ModelId": "glm-4-flash",
@@ -33,7 +33,6 @@ namespace Mud.Feishu.Agent.Demo;
 ///   "AppSecret": "dsk_xxx"
 /// },
 /// "FeishuToolsDemo": {
-///   "Enabled": true,
 ///   "StreamChatId": "oc_xxx"
 /// }
 /// </code>
@@ -92,12 +91,12 @@ public static class ToolsDemo
                 // Phase 2 写工具示例（默认空=不启用）：显式键控 + 授权器注册后才真正放行。
                 // options.WriteAllowList = [FeishuToolNames.ImSendMessage];
                 // R4/WP7 上传工具（im.send_image / im.send_file）：Demo 参考落盘器已注册。
-                // WP1（R5）：DemoAttachmentStager 提供域名白名单（HTTPS-only）+ 大小上限（25MB）+ 扩展名校验 + finally 清理。
+                // ：DemoAttachmentStager 提供域名白名单（HTTPS-only）+ 大小上限（25MB）+ 扩展名校验 + finally 清理。
                 // 生产宿主应替换为自身安全域实现。
             })
             .AddFeishuTools();
 
-        // WP1（R5）：注册 Demo 级附件落盘器，使 im.send_image / im.send_file 可用。
+        // ：注册 Demo 级附件落盘器，使 im.send_image / im.send_file 可用。
         services.AddHttpClient<DemoAttachmentStager>();
         services.AddSingleton<IFeishuAttachmentStager>(sp => sp.GetRequiredService<DemoAttachmentStager>());
 

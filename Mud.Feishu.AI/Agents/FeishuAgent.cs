@@ -96,9 +96,9 @@ public sealed class FeishuAgent : ObservedDelegatingAgent, IAgentSessionFacade
     /// <b>不解析 Scoped 服务</b>（本类型是 Singleton，Scoped 依赖会被钉住成为 Captive Dependency）。</param>
     /// <param name="tools">暴露给模型的工具（可空）。来源：容器内全部 <see cref="AIFunction"/>
     /// 注册（如 <c>Mud.Feishu.AI.Tools</c> 经白名单 MapTool 后桥接产出）；
-    /// 为空/空集时保持 Phase 0 裸模型行为。</param>
+    /// 为空/空集时保持 裸模型行为。</param>
     /// <param name="domainGuidance">已启用工具所属域的 guidance 资产（可空）。
-    /// 追加在宿主 <c>Instructions</c> <b>之后</b>（宿主指令优先）；为空/空集时指令与 Phase 0 完全一致。</param>
+    /// 追加在宿主 <c>Instructions</c> <b>之后</b>（宿主指令优先）；为空/空集时指令与 完全一致。</param>
     /// <param name="summarizer">渐进式会话摘要器（可空；R3-13 DI 化——为空时按阈值自动创建，非空时直接使用）。</param>
     /// <exception cref="InvalidOperationException">配置非法（fail-fast）。</exception>
     public FeishuAgent(
@@ -181,7 +181,7 @@ public sealed class FeishuAgent : ObservedDelegatingAgent, IAgentSessionFacade
     /// </summary>
     /// <remarks>
     /// 在公开构造的初始化器里调用 ⇒ 基类构造体执行前即抛 <see cref="InvalidOperationException"/>
-    /// （Phase 0 §8：工厂启动即失败，不透传非法状态）。
+    /// （§8：工厂启动即失败，不透传非法状态）。
     /// </remarks>
     private static AgentAssembly Assemble(
         IChatClient chatClient,
@@ -196,7 +196,7 @@ public sealed class FeishuAgent : ObservedDelegatingAgent, IAgentSessionFacade
         if (options is null)
             throw new ArgumentNullException(nameof(options));
 
-        // 构造即校验（Phase 0 §8：工厂启动即失败，不透传非法状态）。
+        // 构造即校验（§8：工厂启动即失败，不透传非法状态）。
         options.Validate();
 
         var logger = loggerFactory?.CreateLogger<FeishuAgent>();

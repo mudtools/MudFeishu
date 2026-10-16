@@ -14,7 +14,7 @@ namespace Mud.Feishu.Abstractions.Conversations;
 /// </summary>
 /// <remarks>
 /// <para>
-/// 与 <c>TokenStoreHelper</c> 的令牌存储格式约定保持同一惯例（Phase 0 §3.3）：
+/// 与 <c>TokenStoreHelper</c> 的令牌存储格式约定保持同一惯例（§3.3）：
 /// 存储值必须自带过期时间戳，<b>无时间戳视为 miss</b>（TMA-15 治理语义），由调用方重建会话。
 /// 服务器端 TTL 只是清理手段，读取侧的时间戳才是有效性权威（双写兜底：Redis 键过期被
 /// 外部淘汰/提前逐出时，读侧仍能拒绝过期载荷）。

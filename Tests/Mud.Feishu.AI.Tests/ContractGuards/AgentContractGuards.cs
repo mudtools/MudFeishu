@@ -198,7 +198,7 @@ public class AgentContractGuards
         };
 
         act.Should().Throw<InvalidOperationException>(
-            "Agent 构造必须 fail-fast 校验配置（Phase 0 §8）——Validate() 被调用则非法 options 必抛");
+            "Agent 构造必须 fail-fast 校验配置（§8）——Validate() 被调用则非法 options 必抛");
     }
 
     /// <summary>

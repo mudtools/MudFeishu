@@ -14,7 +14,7 @@ using Mud.Feishu.Abstractions.Observability;
 namespace Mud.Feishu.AI.Tests.Agents;
 
 /// <summary>
-/// <see cref="FeishuAgent"/> 单轮闭环（Moq <see cref="IChatClient"/>，不真实调模型——Phase 0 §7）。
+/// <see cref="FeishuAgent"/> 单轮闭环（Moq <see cref="IChatClient"/>，不真实调模型——§7）。
 /// </summary>
 public class FeishuAgentTests
 {
@@ -73,7 +73,7 @@ public class FeishuAgentTests
 
         var act = () => new FeishuAgent(mock.Object, new FeishuAgentOptions { Instructions = "" });
 
-        act.Should().Throw<InvalidOperationException>("Phase 0 §8：工厂启动即校验，不透传非法状态");
+        act.Should().Throw<InvalidOperationException>("§8：工厂启动即校验，不透传非法状态");
     }
 
     [Fact]
@@ -104,7 +104,7 @@ public class FeishuAgentTests
         await store.SaveAsync(key, "{not-valid-json");
 
         var session = await agent.GetOrCreateSessionAsync(key);
-        session.Should().NotBeNull("损坏载荷按 miss 处理并重建会话（Phase 0 §8）");
+        session.Should().NotBeNull("损坏载荷按 miss 处理并重建会话（§8）");
     }
 
     [Fact]

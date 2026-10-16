@@ -41,7 +41,7 @@ public abstract class FeishuAgentToolSource
     /// <remarks>
     /// <para>
     /// 默认返回空集（不注入任何域资产）——未注册工具包、或工具包未提供 guidance 时，
-    /// 指令装配与 Phase 0 完全一致（零行为变化）。
+    /// 指令装配与 完全一致（零行为变化）。
     /// </para>
     /// <para>
     /// 为什么由<b>工具源</b>提供而不是让 AI 底座去查域表：域 guidance 的真相源

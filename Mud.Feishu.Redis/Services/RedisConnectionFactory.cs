@@ -23,7 +23,7 @@ namespace Mud.Feishu.Redis.Services;
 /// <c>ConfigurationOptions.Parse("rediss://host:6380").Ssl == false</c> —— 该 API **不会**因
 /// <c>rediss://</c> scheme 自动启用 TLS。若仅写 <c>config.Ssl = config.Ssl || options.Connection.Ssl</c>，
 /// 则按 README 配置 <c>"ServerAddress": "rediss://…"</c>（且未显式设置 <c>Ssl=true</c>）的宿主
-/// 会以**明文**连接 TLS 端口，表现为"必然连接失败"或以明文传输（R-13 声称的修复并未闭环）。
+/// 会以**明文**连接 TLS 端口，表现为"必然连接失败"或以明文传输（声称的修复并未闭环）。
 /// </para>
 /// </remarks>
 internal static class RedisConnectionFactory

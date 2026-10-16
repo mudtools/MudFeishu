@@ -35,14 +35,14 @@ public enum DeduplicationStatus
 /// <remarks>
 /// <para>
 /// 语义声明（at-least-once）：去重器提供的是<b>尽力幂等</b>而非严格一次性语义。
-/// 「processing 双活窗口」（P2-7）为有意的可用性设计——原处理者超时未 Mark 时，
+/// 「processing 双活窗口」为有意的可用性设计——原处理者超时未 Mark 时，
 /// TimeoutRecoverable 允许重推事件被另一实例重新处理；若原实例随后完成 Mark 失败
-/// （WHF-07：业务已成功，不回滚），该事件可能在 TTL 窗口后被重复消费。
+/// （业务已成功，不回滚），该事件可能在 TTL 窗口后被重复消费。
 /// 消费方处理器必须自身幂等，或以业务侧唯一键兜底。
 /// </para>
 /// <para>
 /// 补偿性操作（<see cref="RollbackProcessingAsync"/> / <see cref="MarkAsCompletedAsync"/>）
-/// 的调用语义见 AGENTS.md 契约 D15（R2-P0-1）：通道层调用点必须使用
+/// 的调用语义：通道层调用点必须使用
 /// <see cref="CancellationToken.None"/>，补偿失败不得替换/吞没原始业务异常——
 /// 键停留 processing 由 ProcessingTimeout/TTL 兜底，属本接口既有的可恢复设计。
 /// <see cref="TryMarkAsProcessingAsync"/>（进入处理态）不受此约束，取消应即时传播。

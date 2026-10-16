@@ -11,7 +11,7 @@ using System.Text.Json.Serialization.Metadata;
 namespace Mud.Feishu.Abstractions.Utilities;
 
 /// <summary>
-/// AOT 安全的 JSON 序列化 / 反序列化入口（AOT-3）。
+/// AOT 安全的 JSON 序列化 / 反序列化入口。
 /// </summary>
 /// <remarks>
 /// <para>

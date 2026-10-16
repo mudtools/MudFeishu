@@ -13,11 +13,11 @@ using Mud.Feishu.Abstractions.Authentication.MultiApp;
 namespace Mud.Feishu.Abstractions;
 
 /// <summary>
-/// TMA-09 / P1-8 修复（D7 契约）：按应用构造认证 API 的工厂接口。
+/// 按应用构造认证 API 的工厂接口。
 /// </summary>
 /// <remarks>
 /// <para>
-/// 认证/取令牌请求此前通过 DI 单例 <c>IFeishuAuthentication</c> 获取，使用默认应用的命名 HttpClient。
+/// 认证/取令牌请求若经 DI 单例 <c>IFeishuAuthentication</c> 获取，只能使用默认应用的命名 HttpClient。
 /// 本工厂使认证链路也能走 per-app 端点，实现传输归属正确收口。
 /// </para>
 /// <para>
@@ -35,7 +35,7 @@ public interface IFeishuAuthenticationFactory
 }
 
 /// <summary>
-/// TMA-09 默认实现：通过 <see cref="IFeishuHttpClientFactory.CreateBasic"/> 创建 per-app 认证客户端。
+/// 默认实现：通过 <see cref="IFeishuHttpClientFactory.CreateBasic"/> 创建 per-app 认证客户端。
 /// </summary>
 internal sealed class PerAppFeishuAuthenticationFactory : IFeishuAuthenticationFactory
 {
@@ -61,8 +61,8 @@ internal sealed class PerAppFeishuAuthenticationFactory : IFeishuAuthenticationF
 
         var client = _httpClientFactory.CreateBasic(appKey);
 
-        // TMR2-P1-1：per-app 客户端必须装配到**真实实现类型**上。
-        // 修复前使用 ActivatorUtilities.CreateInstance<IFeishuAuthentication>(...)——
+        // per-app 客户端必须装配到**真实实现类型**上。
+        // 若用 ActivatorUtilities.CreateInstance<IFeishuAuthentication>(...)——
         // T 为接口时该方法恒抛 InvalidOperationException（无公共构造可选中），
         // 于是每次都走 catch 降级到 GetRequiredService<IFeishuAuthentication>()（默认应用端点），
         // 使 EnablePerAppAuthenticationClient=true（默认）名存实亡：

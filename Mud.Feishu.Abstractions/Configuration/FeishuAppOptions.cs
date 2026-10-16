@@ -11,7 +11,7 @@ namespace Mud.Feishu.Abstractions;
 /// 飞书多应用管理器的行为选项。
 /// </summary>
 /// <remarks>
-/// <b>TMR-P2-8（F8）一次性读取语义清单</b>——本类选项经 <c>IOptions&lt;T&gt;</c> 注入时为
+/// <b>一次性读取语义清单</b>——本类选项经 <c>IOptions&lt;T&gt;</c> 注入时为
 /// <b>启动快照</b>（IOptions 缓存不随 IConfiguration 变更失效），修改配置源后不热更，需重启进程：
 /// <list type="table">
 /// <item><term><see cref="EnableConfigReload"/></term><description>FeishuAppManager 构造函数读取（IOptions）——仅启动时生效。</description></item>
@@ -31,7 +31,7 @@ public class FeishuAppOptions
     public const string SectionName = "FeishuAppOptions";
 
     /// <summary>
-    /// 是否启用应用配置热更新（ARC-1）。
+    /// 是否启用应用配置热更新。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -46,7 +46,7 @@ public class FeishuAppOptions
     /// 且本项目尚无需要保持的存量行为。如需回滚，显式置为 <c>false</c> 即可恢复「配置变更需重启」的旧语义。
     /// </para>
     /// <para>
-    /// <b>ARC-7（已支持 BaseUrl / TimeOut 热更新）</b>：命名客户端的注册委托捕获的是注册期快照，
+    /// <b>BaseUrl / TimeOut 热更新</b>：命名客户端的注册委托捕获的是注册期快照，
     /// 因此 <c>AddFeishuAppBaseServices</c> 额外通过 <c>IHttpClientBuilder.ConfigureHttpClient(IServiceProvider, HttpClient)</c>
     /// 追加了一个 DI 感知的配置动作，在每次 <c>CreateClient</c> 时从
     /// <c>IOptionsMonitor&lt;List&lt;FeishuAppConfig&gt;&gt;</c> 读取<b>当前</b> <c>BaseUrl</c> / <c>TimeOut</c>，
@@ -64,7 +64,7 @@ public class FeishuAppOptions
     public bool EnableConfigReload { get; set; } = true;
 
     /// <summary>
-    /// 是否启用令牌存储加密（ENH-1）。
+    /// 是否启用令牌存储加密。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -90,12 +90,11 @@ public class FeishuAppOptions
     public bool EnableTokenEncryption { get; set; }
 
     /// <summary>
-    /// 应用上下文退休宽限期（秒）（TMA-07 / P1-6 修复，D5 契约）。
+    /// 应用上下文退休宽限期（秒）。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// 当应用配置热更新（<c>ApplyConfigurationChanges</c>，TMF-04：原 <c>RebuildAppContext</c>
-    /// 已并入热更新路径）或 <c>RemoveApp</c> 触发旧上下文退役时，
+    /// 当应用配置热更新（<c>ApplyConfigurationChanges</c>）或 <c>RemoveApp</c> 触发旧上下文退役时，
     /// 旧的 <c>FeishuAppContext</c> 不再被引用，但其内部的 <c>Timer</c>（令牌定时刷新）
     /// 会 root 整个对象图，GC 不会自动回收。旧上下文进入退休队列，
     /// 在此宽限期后显式 <c>Dispose</c>，停止其 Timer 并释放资源。
@@ -111,7 +110,7 @@ public class FeishuAppOptions
     public int ContextRetireDelaySeconds { get; set; } = 300;
 
     /// <summary>
-    /// 是否在启动时预热全部应用（TMA-08 / P1-7 修复，D6 契约）。
+    /// 是否在启动时预热全部应用。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -126,7 +125,7 @@ public class FeishuAppOptions
     public bool WarmUpAllAppsOnStartup { get; set; }
 
     /// <summary>
-    /// 是否启用 per-app 认证客户端（TMA-09 / P1-8 修复，D7 契约）。
+    /// 是否启用 per-app 认证客户端。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -134,7 +133,7 @@ public class FeishuAppOptions
     /// 而非默认应用的端点。多区域/多 BaseUrl 部署必须开启。
     /// </para>
     /// <para>
-    /// TMR2-P1-1 修复后，per-app 装配为<b>生成实现类型的编译期直引</b>，不再经
+    /// per-app 装配为<b>生成实现类型的编译期直引</b>，不再经
     /// <c>ActivatorUtilities</c> 反射构造，因此无 AOT 约束、也不会静默降级到默认应用端点。
     /// </para>
     /// <para>
@@ -147,7 +146,7 @@ public class FeishuAppOptions
     public bool EnablePerAppAuthenticationClient { get; set; } = true;
 
     /// <summary>
-    /// 是否在热更新时移除运行时添加的应用（TMA-11 / P2-6 修复）。
+    /// 是否在热更新时移除运行时添加的应用。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -161,7 +160,7 @@ public class FeishuAppOptions
     public bool RemoveRuntimeAddedAppsOnReload { get; set; }
 
     /// <summary>
-    /// 默认应用上下文（<see cref="IFeishuAppContext"/>）的 DI 桥接是否跟随运行时默认应用切换（TMR2-P0-1）。
+    /// 默认应用上下文（<see cref="IFeishuAppContext"/>）的 DI 桥接是否跟随运行时默认应用切换。
     /// </summary>
     /// <remarks>
     /// <para>

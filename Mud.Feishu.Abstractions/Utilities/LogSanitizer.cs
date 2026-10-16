@@ -10,7 +10,7 @@ using System.Text.RegularExpressions;
 namespace Mud.Feishu.Abstractions.Utilities;
 
 /// <summary>
-/// 日志清洗工具（WHF-06）
+/// 日志清洗工具
 /// 对来自外部的输入（nonce、eventId、IP、请求头等）在写入日志前做统一清洗：
 /// 替换控制符/换行等不安全字符，防止日志注入与日志伪造；超长截断防止日志膨胀。
 /// </summary>
@@ -51,7 +51,7 @@ public static class LogSanitizer
     }
 
     /// <summary>
-    /// 报文日志安全截断：先剥离常见敏感字段值，再截断至 maxLength（P2-4）。
+    /// 报文日志安全截断：先剥离常见敏感字段值，再截断至 maxLength。
     /// </summary>
     /// <param name="message">原始报文（可为 null/空）。</param>
     /// <param name="maxLength">最大保留长度，默认 200。</param>

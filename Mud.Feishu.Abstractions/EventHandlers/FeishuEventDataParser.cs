@@ -29,10 +29,10 @@ public enum FeishuEventDataParseFailure
 /// </summary>
 /// <remarks>
 /// <para>
-/// R-E1（AD-1）：Webhook 与 WebSocket 两通道此前各持 2 份平行解析实现，v1.0 官方格式
-/// （根级 <c>uuid</c>/<c>token</c>/<c>ts</c>、事件类型位于 <c>event.type</c>、app_id/tenant_key 位于
-/// <c>event</c> 内）被错误映射，导致 v1 订阅在 Webhook 被空字段 fail-closed 拒绝（E-P0-1）、
-/// 在 WS 通道整帧丢弃（E-P0-2）。本类型将解析规则收敛为单一真源。
+/// 解析规则必须收敛为单一真源：Webhook 与 WebSocket 两通道若各持平行解析实现，
+/// v1.0 官方格式（根级 <c>uuid</c>/<c>token</c>/<c>ts</c>、事件类型位于 <c>event.type</c>、
+/// app_id/tenant_key 位于 <c>event</c> 内）会被错误映射——v1 订阅在 Webhook 被空字段
+/// fail-closed 拒绝、在 WS 通道整帧丢弃。
 /// </para>
 /// <para>
 /// 稳定契约：
@@ -245,7 +245,7 @@ public static class FeishuEventDataParser
         if (root.TryGetProperty("token", out var tokenElement) && tokenElement.ValueKind == JsonValueKind.String)
             token = tokenElement.GetString();
 
-        // 根级 ts（秒或浮点秒字符串；E-P2-2）；Header.CreateTime 保留原始字符串（对齐 v2 口径）
+        // 根级 ts（秒或浮点秒字符串）；Header.CreateTime 保留原始字符串（对齐 v2 口径）
         string? headerCreateTime = null;
         if (root.TryGetProperty("ts", out var tsElement))
         {
@@ -276,7 +276,7 @@ public static class FeishuEventDataParser
     }
 
     /// <summary>
-    /// 解析时间戳字段为<b>毫秒</b> long（§3.5 启发式，E-P2-2 单一口径）：
+    /// 解析时间戳字段为<b>毫秒</b> long（位数启发式，单一口径）：
     /// 数字/整数按位数判别（≥16 位微秒、13~15 位毫秒、≤12 位秒）；
     /// 字符串浮点按秒解析 ×1000；无法解析返回 0。
     /// </summary>

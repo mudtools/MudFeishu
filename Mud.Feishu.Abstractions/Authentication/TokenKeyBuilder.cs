@@ -8,7 +8,7 @@
 namespace Mud.Feishu.Abstractions.Authentication;
 
 /// <summary>
-/// 令牌键构造的单一真相（D8 契约 / TMA2-02）。
+/// 令牌键构造的单一真相。
 /// <para>
 /// 四类令牌键（租户 access/refresh、用户 access/refresh）由此类统一产出，
 /// Memory 与 Redis 两条后端路径逐字节一致。键段经 <see cref="NormalizeSegment"/> 统一转义，
@@ -17,7 +17,7 @@ namespace Mud.Feishu.Abstractions.Authentication;
 /// <c>RemoveAsync</c>/<c>GetAccessTokenAsync</c>。
 /// </para>
 /// <para>
-/// TMF2-05 / TMR2-P1-2：<see cref="BuildKeyPrefix"/> 是键前缀的唯一出口——
+/// <see cref="BuildKeyPrefix"/> 是键前缀的唯一出口——
 /// Memory（<c>FeishuTokenStore</c> / <c>FeishuUserTokenStore</c>）和 Redis
 /// （<c>PerAppRedisTokenStoreFactory</c>）均委派此方法，消除裸拼接与经
 /// <c>RedisKeyBuilder.Combine</c> 预转义的差异（前缀逐字节一致）。
@@ -25,7 +25,7 @@ namespace Mud.Feishu.Abstractions.Authentication;
 /// 由键构造路径（<c>Combine</c> → <see cref="NormalizePrefix"/>）施加，避免二次转义。
 /// </para>
 /// <para>
-/// TMF2-08：<see cref="NormalizeSegment"/> 转义 glob 元字符（<c>*</c> <c>?</c> <c>[</c> <c>]</c>），
+/// <see cref="NormalizeSegment"/> 转义 glob 元字符（<c>*</c> <c>?</c> <c>[</c> <c>]</c>），
 /// 防止含这些字符的 appKey/userId 在 SCAN 模式中注入通配符。
 /// </para>
 /// </summary>
@@ -51,7 +51,7 @@ internal static class TokenKeyBuilder
     /// </summary>
     private const string EscapedEscapeChar = @"\\";
 
-    // TMF2-08：glob 元字符集——这些字符在 Redis SCAN pattern 中具有通配语义，
+    // glob 元字符集——这些字符在 Redis SCAN pattern 中具有通配语义，
     // 必须在键段转义时一并处理，防止 appKey/userId 含这些字符时模式注入。
     private const char GlobStar = '*';
     private const char GlobQuestion = '?';
@@ -119,13 +119,13 @@ internal static class TokenKeyBuilder
 
     /// <summary>
     /// 构建用于 SCAN 的全用户键模式（通配 userId、tokenType 与 access/refresh）。
-    /// TMF-01：IFeishuUserTokenStorePurge.ClearAllUsersAsync 的键模式单一出口（D8 契约）。
+    /// IFeishuUserTokenStorePurge.ClearAllUsersAsync 的键模式单一出口。
     /// </summary>
     internal static string AllUsersScanPattern(string keyPrefix)
         => $"{AllUsersScanPatternLiteral(keyPrefix)}*";
 
     /// <summary>
-    /// TMR2-P1-2：返回租户 SCAN 模式的<b>字面量前缀</b>（已规范化，<b>不含</b>尾随通配符）。
+    /// 返回租户 SCAN 模式的<b>字面量前缀</b>（已规范化，<b>不含</b>尾随通配符）。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -144,7 +144,7 @@ internal static class TokenKeyBuilder
         => $"{NormalizePrefix(keyPrefix)}{Separator}";
 
     /// <summary>
-    /// TMR2-P1-2：返回指定用户 SCAN 模式的字面量前缀（不含尾随通配符）。
+    /// 返回指定用户 SCAN 模式的字面量前缀（不含尾随通配符）。
     /// </summary>
     /// <param name="keyPrefix">键前缀（含 appKey 维度）。</param>
     /// <param name="userId">用户唯一标识符。</param>
@@ -153,7 +153,7 @@ internal static class TokenKeyBuilder
         => $"{NormalizePrefix(keyPrefix)}{Separator}user{Separator}{NormalizeSegment(userId)}{Separator}";
 
     /// <summary>
-    /// TMR2-P1-2：返回全用户 SCAN 模式的字面量前缀（不含尾随通配符）。
+    /// 返回全用户 SCAN 模式的字面量前缀（不含尾随通配符）。
     /// </summary>
     /// <param name="keyPrefix">键前缀（含 appKey 维度）。</param>
     /// <returns>形如 <c>feishu:{appKey}:token:user:</c> 的规范化字面量前缀。</returns>
@@ -240,7 +240,7 @@ internal static class TokenKeyBuilder
     }
 
     /// <summary>
-    /// TMF2-05 / TMR2-P1-2：键前缀的唯一出口——Memory 与 Redis 两端均委派此方法。
+    /// 键前缀的唯一出口——Memory 与 Redis 两端均委派此方法。
     /// </summary>
     /// <param name="appKey">应用唯一标识（空白视为 <c>default</c>）。</param>
     /// <param name="tokenPrefix">
@@ -251,7 +251,7 @@ internal static class TokenKeyBuilder
     /// <returns><b>未转义</b>的键前缀（如 <c>feishu:cli_a:token</c>）。</returns>
     /// <remarks>
     /// <para>
-    /// TMR2-P1-2：此处<b>不得预转义</b>。转义/规范化唯一归口
+    /// 此处<b>不得预转义</b>。转义/规范化唯一归口
     /// <see cref="NormalizePrefix"/> → <see cref="NormalizeSegment"/>，由键构造路径
     /// （<c>Combine</c>，即 <c>TenantAccessKey</c> / <c>UserAccessKey</c> 等的内部实现）施加。
     /// </para>
@@ -260,13 +260,13 @@ internal static class TokenKeyBuilder
     /// （<c>\</c> → <c>\\</c>）——键与 SCAN pattern 由同一份双重转义前缀产出，而 Redis glob
     /// 把 <c>\\</c> 解释为<b>单个</b>反斜杠，与键中的两个反斜杠不匹配，导致
     /// <c>ClearAsync</c> / <c>GetTokenTypesAsync</c> / <c>ClearAllUsersAsync</c> 永不命中
-    /// （凭据变更清库 D10 静默失效）。
+    /// （凭据变更清库静默失效）。
     /// </para>
     /// <para>
     /// 长度保护不丢失：键构造路径仍经 <see cref="NormalizeSegment"/>，对超过 256 字符的键段
     /// 抛 <see cref="ArgumentException"/>。空前缀护栏由固定段 <c>token</c> 与
     /// <see cref="Mud.Feishu.Abstractions.Consts.DefaultTokenKeyPrefix"/> 承担
-    /// （空 <paramref name="tokenPrefix"/> 回落默认值，永不退化为 <c>*</c>，R-01）；
+    /// （空 <paramref name="tokenPrefix"/> 回落默认值，永不退化为 <c>*</c>）；
     /// R2-04 的环境段同样经该路径转义与长度校验。
     /// </para>
     /// </remarks>
@@ -290,12 +290,11 @@ internal static class TokenKeyBuilder
     /// 规范化键段：转义分隔符与 glob 元字符。
     /// </summary>
     /// <remarks>
-    /// TMR-P2-9（F9）：超长段抛 <see cref="ArgumentException"/> 而非 <see cref="InvalidOperationException"/>——
-    /// 超长段是输入校验失败（外部可控 userId 可触发）而非"对象处于无效状态"，
-    /// 脱离与瞬时白名单（IsTransientInitFailure 白名单含 InvalidOperationException）的语义纠缠，
-    /// 避免被误判为可重试。键布局逐字节不变，D8 契约不受影响。
+    /// 超长段抛 <see cref="ArgumentException"/> 而非 <see cref="InvalidOperationException"/>——
+    /// 超长段是输入校验失败（外部可控 userId 可触发）而非"对象处于无效状态"；
+    /// InvalidOperationException 在瞬时白名单内会被误判为可重试，故排除。键布局逐字节不变。
     /// <para>
-    /// TMF2-08：单遍扫描转义 <c>\</c> <c>:</c> <c>*</c> <c>?</c> <c>[</c> <c>]</c>——
+    /// 单遍扫描转义 <c>\</c> <c>:</c> <c>*</c> <c>?</c> <c>[</c> <c>]</c>——
     /// 分两批（先 \ 再 :/*?[]）会导致中间态不一致（如 appKey="*:"
     /// 先转义 : 得 "*\:"，再转义 * 得 "\*\:"——正确；但反过来先转义 * 得 "\*:"
     /// 再转义 : 得 "\*\:"——也正确。但若先转义 * 得 "\*" 再转义 \ 得 "\\*"——错误）。
@@ -311,7 +310,7 @@ internal static class TokenKeyBuilder
             throw new ArgumentException(
                 $"键段长度 {segment.Length} 超过上限 {MaxSegmentLength}", nameof(segment));
 
-        // TMF2-08：单遍扫描——遇到 \ : * ? [ ] 时在其前插入 \。
+        // 单遍扫描——遇到 \ : * ? [ ] 时在其前插入 \。
         var sb = new System.Text.StringBuilder(segment.Length * 2);
         foreach (var ch in segment)
         {
@@ -351,7 +350,7 @@ internal static class TokenKeyBuilder
     /// 反转义键段（单遍扫描——遇到 \ 时跳过 \ 并输出下一个字符）。
     /// </summary>
     /// <remarks>
-    /// TMF2-08：与 <see cref="NormalizeSegment"/> 对称的单遍扫描——
+    /// 与 <see cref="NormalizeSegment"/> 对称的单遍扫描——
     /// 反转义 <c>\:</c> <c>\\</c> <c>\*</c> <c>\?</c> <c>\[</c> <c>\]</c> 为原始字符。
     /// </remarks>
     private static string UnescapeSegment(string segment)

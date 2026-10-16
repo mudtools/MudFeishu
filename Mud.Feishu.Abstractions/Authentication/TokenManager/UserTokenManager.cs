@@ -361,7 +361,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
     /// 401 恢复链路依赖 store 的 refresh 可达（清 store 会使恢复彻底无路，表现为必然 401）。
     /// <para>
     /// 基类实现为「整条移除」（<c>UserTokenManagerBase.InvalidateUserTokenAsync</c>），经桥接器会写穿删除
-    /// access+refresh 两个物理键，故<b>不得</b>委派基类实现；改走上游 TR-02 入口
+    /// access+refresh 两个物理键，故<b>不得</b>委派基类实现；改走
     /// <c>InvalidateUserAccessTokenInCache</c>：字段置空 + 保序写回 + 写入代际作废，
     /// 桥接器写穿时跳过访问令牌、保留 refresh 槽位；镜像未命中时植入空访问令牌墓碑，
     /// 防止读穿透把持久层中已被拒绝的访问令牌重新带回。

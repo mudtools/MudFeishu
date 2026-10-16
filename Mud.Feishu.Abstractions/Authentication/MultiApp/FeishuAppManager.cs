@@ -1149,8 +1149,8 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     {
         // 不桥接官方 AppInstantiated 事件面。
         // 原因：本类已声明同名 public event（FeishuAppInstantiatedEventArgs，既有公共 API），
-        // 同名遮蔽使官方事件面经本类型不可订阅；桥接会形成「双通道双发」（上游明文警告），
-        // 合并事件面需变更公共事件类型——破坏已发布 API，登记为大版本择期迁移。
+        // 同名遮蔽使官方事件面经本类型不可订阅；桥接会形成「双通道双发」（Mud.HttpUtils 明确警告的场景），
+        // 合并事件面需变更公共事件类型——破坏已发布 API，计划 4.0 迁移。
         // 飞书内部事件语义（首滚恰好一次 + 订阅者异常隔离）与官方事件等价。
         try
         {
@@ -1467,15 +1467,15 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// 统一为 DI 模式可降低理解成本，基类工厂委托路径已标记为 [Obsolete]。
     /// </para>
     /// <para>
-    /// 上游 3.0.0 迁移：生成类的 <c>UseApp(appKey)</c> 已移除，
-    /// 现改为「显式守卫 + <c>IAppContextHolder.SwitchTo(IMudAppContext)</c>」，语义<b>逐字等价</b>：
+    /// 语义为「显式守卫 + <c>IAppContextHolder.SwitchTo(IMudAppContext)</c>」的<b>无作用域</b>切换，
+    /// 守卫口径与生成实现的 <c>UseApp(appKey)</c> <b>逐字等价</b>：
     /// <list type="bullet">
     /// <item><description><b>守卫相同</b>：appKey 格式校验 → 未注册授权器默认拒绝 → 授权判定；
     /// 三条异常消息与生成代码逐字一致（由上游 <c>AppKeyGuardConsistencyTests</c> 跨项目钉死）；</description></item>
     /// <item><description><b>解析器相同</b>：生成类在 TokenManager 模式下的 <c>_tokenManager</c> 即
     /// <see cref="IFeishuAppManager"/>（本类单例），故两者的 <c>GetApp(appKey)</c> 命中同一注册表；</description></item>
-    /// <item><description><b>无作用域语义相同</b>：切换后<b>不归还</b>上下文 —— 返回实例的 <c>Current</c> 即目标应用，
-    /// 与旧 <c>UseApp</c> 行为一致（宿主需自行切回，或改用 <see cref="IAppScopeSwitcher.UseAppScope"/>）。</description></item>
+    /// <item><description><b>无作用域语义</b>：切换后<b>不归还</b>上下文 —— 返回实例的 <c>Current</c> 即目标应用，
+    /// 宿主需自行切回，或改用 <see cref="IAppScopeSwitcher.UseAppScope"/>。</description></item>
     /// </list>
     /// 切换用的 <see cref="IAppContextHolder"/> 即 DI 单例（<c>AsyncLocalAppContextSwitcher</c>），
     /// 与生成类注入的 <c>_appContextHolder</c> 为<b>同一实例</b>，故切换对全部消费者可见。
@@ -1487,11 +1487,10 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// 以避免 Singleton 实例长期持有已释放的 <see cref="IFeishuAppContext"/> 引用。
     /// </para>
     /// <para>
-    /// 上游 3.0.7 起基类 <c>IAppManager&lt;TAppContext&gt;.GetWebApi</c> 已标
-    /// <c>[Obsolete]</c>（3.x 编译告警，4.0 移除）。本重写同步传播弃用标记以保持上下游口径一致，
-    /// 迁移路径：DI 解析 <see cref="IAppScopeSwitcher"/> + <c>UseAppScope(appKey)</c>（自动归还），
+    /// 本成员已弃用（上游 4.0 移除），签名与行为在本大版本内不变。迁移路径：DI 解析
+    /// <see cref="IAppScopeSwitcher"/> + <c>UseAppScope(appKey)</c>（自动归还），
     /// 或 <c>IAppContextHolder.SwitchToApp(appKey, appManager, sp)</c>（受控切换并保持，
-    /// 与本方法语义等价）。签名与行为在本大版本内不变。
+    /// 与本方法语义等价）。
     /// </para>
     /// </remarks>
     // 泛型参数名遮蔽 IFeishuAppContext 接口（基类签名决定，无法改名），
@@ -1506,8 +1505,8 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         if (service == null)
             throw new InvalidOperationException($"未注册飞书API服务: {typeof(IFeishuAppContext).FullName}");
 
-        // 受控的无作用域切换（完整守卫 + 立即切换 + 不归还）—— 等价于上游已移除的生成实现 UseApp(appKey)。
-        // Mud.HttpUtils 3.0.0 的实际入口为 IAppContextHolder.SwitchTo(IMudAppContext)，
+        // 受控的无作用域切换（完整守卫 + 立即切换 + 不归还）。
+        // 底座入口为 IAppContextHolder.SwitchTo(IMudAppContext)，
         // 授权守卫需由调用方显式完成（见 FeishuServiceCollectionExtensions 中「未注册即默认拒绝」的约定）。
         var holder = _serviceProvider.GetRequiredService<IAppContextHolder>();
 
@@ -1533,17 +1532,14 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// <remarks>
     /// 重写基类方法：从 DI 容器获取已注册的服务，并切换到默认应用上下文（同样为<b>无作用域</b>语义）。
     /// <para>
-    /// 上游 3.0.0 迁移：生成类的 <c>UseDefaultApp()</c> 已移除，现改为
-    /// <c>IAppContextHolder.SwitchTo(GetDefaultApp())</c> —— 二者都用「本类单例」解析默认应用
-    /// 后写入同一 Holder，语义等价。
+    /// 语义为 <c>IAppContextHolder.SwitchTo(GetDefaultApp())</c> —— 用「本类单例」解析默认应用
+    /// 后写入同一 Holder，与生成实现的 <c>UseDefaultApp()</c> 等价。
     /// 默认应用路径<b>不做</b> appKey 格式校验与授权判定（无 appKey 输入），与生成实现一致。
     /// </para>
     /// <para>
-    /// 上游 3.0.7 起基类 <c>IAppManager&lt;TAppContext&gt;.GetDefaultWebApi</c>
-    /// 已标 <c>[Obsolete]</c>（3.x 编译告警，4.0 移除）。本重写同步传播弃用标记以保持上下游口径一致，
-    /// 迁移路径：DI 解析 <see cref="IAppScopeSwitcher"/> + <c>UseDefaultAppScope()</c>（自动归还），
+    /// 本成员已弃用（上游 4.0 移除），签名与行为在本大版本内不变。迁移路径：DI 解析
+    /// <see cref="IAppScopeSwitcher"/> + <c>UseDefaultAppScope()</c>（自动归还），
     /// 或 <c>IAppContextHolder.SwitchToApp(appKey, appManager, sp)</c>（受控切换并保持）。
-    /// 签名与行为在本大版本内不变。
     /// </para>
     /// </remarks>
     // 与 GetWebApi 同理，泛型参数名由基类决定。

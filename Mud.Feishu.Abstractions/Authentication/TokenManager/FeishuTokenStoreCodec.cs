@@ -20,8 +20,8 @@ namespace Mud.Feishu.Abstractions.Authentication;
 /// </para>
 /// <para>
 /// <b>写入格式（Encode 单写相对秒）</b>：<c>{expiresInSeconds}|{token}</c>——
-/// 与上游 <see cref="DefaultTokenStoreCodec"/> 逐字节一致。不再新写旧版
-/// 「绝对毫秒戳」私有形态；存量旧值经官方双读兼容，按条目自然过期收敛，无需回灌。
+/// 与上游 <see cref="DefaultTokenStoreCodec"/> 逐字节一致，<b>不得</b>新写「绝对毫秒戳」私有形态；
+/// 存量旧值经官方双读兼容，按条目自然过期收敛，无需回灌。
 /// </para>
 /// <para>
 /// <b>互操作锚点</b>：宿主将官方组件（如 <c>Mud.HttpUtils.Redis.RedisTokenStore</c>，其

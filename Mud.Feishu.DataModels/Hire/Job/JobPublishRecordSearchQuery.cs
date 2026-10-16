@@ -11,7 +11,7 @@ using System.Globalization;
 namespace Mud.Feishu.DataModels.Hire;
 
 /// <summary>
-/// <para>查询职位发布记录参数（查询对象模式，见 AGENTS.md API-2）</para>
+/// <para>查询职位发布记录参数（查询对象模式）</para>
 /// </summary>
 public class JobPublishRecordSearchQuery : IQueryParameter
 {

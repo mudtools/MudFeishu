@@ -11,7 +11,7 @@ using System.Globalization;
 namespace Mud.Feishu.DataModels.TrustParty;
 
 /// <summary>
-/// <para>获取关联组织双方共享成员范围查询参数（查询对象模式，见 AGENTS.md API-2）</para>
+/// <para>获取关联组织双方共享成员范围查询参数（查询对象模式）</para>
 /// </summary>
 public class ShareEntityListQuery : IQueryParameter
 {

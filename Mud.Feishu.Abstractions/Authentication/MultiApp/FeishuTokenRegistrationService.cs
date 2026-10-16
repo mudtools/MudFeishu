@@ -169,7 +169,7 @@ internal sealed class FeishuTokenRegistrationService : IHostedService
         // 增量注册——新增/更新应用时重新注册令牌管理器到后台刷新服务。
         // 同名键覆盖 → 新实例接管；旧实例由退休队列 Dispose 后 ODE 自清。
         // 覆盖语义经组件源码确认（TokenRefreshHelper.TryRegisterTokenManager），
-        // AppInstantiated 双路重复注册幂等，无需去重改造。
+        // AppInstantiated 双路重复注册幂等，无需额外去重。
         try
         {
             if (e.ChangeType == AppConfigurationChangeType.Added ||

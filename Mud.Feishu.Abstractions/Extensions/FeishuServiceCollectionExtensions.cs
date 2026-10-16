@@ -108,13 +108,11 @@ public static class FeishuServiceCollectionExtensions
             UrlValidator.AddAllowedDomain(domain);
         }
 
-        // 上游 2.0.5 适配：带 appKey 的切换入口由
-        // 「未注册 IAppAccessAuthorizer 即静默放行」改为「默认拒绝」（调用时抛 InvalidOperationException）。
+        // 带 appKey 的切换入口在「未注册 IAppAccessAuthorizer」时默认拒绝（调用时抛 InvalidOperationException）。
         // 涉及两处守卫一致的入口：生成类的 UseAppScope(appKey)，以及本 SDK 内部多应用切换入口
         // （FeishuAppManager.GetWebApi → IAppContextHolder.SwitchToApp(appKey, this, sp)）。
-        // 上游 3.0.x 起默认授权器由放行型 AllowAllAppAccessAuthorizer 升级为
-        // 「注册表白名单」语义——谓词经 IFeishuAppManager.HasApp 动态判定，AddApp 运行时新增的
-        // 应用即时获得授权；宿主可先注册更严格的 IAppAccessAuthorizer 实现（TryAdd 语义：
+        // 默认授权器为「注册表白名单」语义——谓词经 IFeishuAppManager.HasApp 动态判定，AddApp 运行时
+        // 新增的应用即时获得授权；宿主可先注册更严格的 IAppAccessAuthorizer 实现（TryAdd 语义：
         // 先注册者胜出）实现租户级授权。注意：该判定是静态的、不感知调用主体——
         // appKey 来源于外部请求参数时，宿主必须替换为绑定主体的授权器。
         services.TryAddSingleton<IAppAccessAuthorizer>(sp =>
@@ -226,10 +224,8 @@ public static class FeishuServiceCollectionExtensions
         //
         // 选项工厂读取**当前**配置（IOptionsMonitor）而非注册期快照 `configs`，
         // 否则配置热更新后「新增应用」永远拿不到 per-app 弹性策略（只能落到全局回退）。
-        // 上游 AppResiliencePolicyResolver 自 3.0.4 起
-        // 内置配置变更订阅（策略指纹 diff 失效缓存，无需进程重启），且 per-app 命名客户端不参与
-        // 全局 client 缓存指纹，弹性参数热更新不再被连带失效（FeishuClientEndpointHotReloadTests 实证）。
-        // 下方「残余限制」注释已过时。
+        // 解析器内置配置变更订阅（策略指纹 diff 失效缓存，无需进程重启），且 per-app 命名客户端
+        // 不参与全局 client 缓存指纹，弹性参数热更新不会被连带失效。
         services.TryAddSingleton<IAppResiliencePolicyResolver>(sp =>
         {
             var logger = sp.GetService<ILogger<AppResiliencePolicyResolver>>();
@@ -289,9 +285,8 @@ public static class FeishuServiceCollectionExtensions
         // 代码生成器 ConstructorGenerator 在 TokenManager 模式下生成必需的 IAppContextHolder 构造函数参数（无默认值），
         // 若未注册此服务，DI 容器解析任何飞书 API 接口时将抛出 InvalidOperationException。
         // AddTokenProvider() 仅注册 ITokenProvider 和 ICurrentUserContext，不包含 IAppContextHolder。
-        // 上游 3.0.4+ 语义对齐：上游本注册点已不存在（DefaultAppContextHolder 被移除，
-        // 改由 DelegatingAppContextHolder 委托式适配器按需包裹已有持有器），本注册保持不变，仍以
-        // AsyncLocalAppContextSwitcher 为默认持有器。上游适配器两条边界（宿主自定义 IAppContextHolder 时适用）：
+        // 默认持有器为 AsyncLocalAppContextSwitcher。宿主自定义 IAppContextHolder 时，
+        // 上游 DelegatingAppContextHolder 适配器有两条边界：
         // ① Current 初始为 init 值（不可空），适配器**不支持**对初始持有器做写入适配；
         // ② 自定义持有器必须为单例，且须在首次访问应用上下文之前完成注册（晚于首次访问则适配器已固化默认实例）。
         services.TryAddSingleton<IAppContextHolder, AsyncLocalAppContextSwitcher>();
@@ -329,11 +324,11 @@ public static class FeishuServiceCollectionExtensions
         // IOptionsMonitor<TokenRecoveryOptions> 获取恢复策略。
         // 注意：**仅调用 AddOptions<T>() 并不会绑定任何配置节** ——
         // "MudHttpTokenRecovery" 节会被静默忽略，TokenRecoveryOptions 永远取默认值。
-        // 上游 3.0.x 起 TokenRecoveryOptions.TokenInvalidationDetector 为接口类型
-        // 扩展点（编程式注入面），直接 Bind<TokenRecoveryOptions> 会在本编译单元产出无法抑制的
-        // SYSLIB1100/SYSLIB1101。改为绑定上游提供的纯 DTO 投影 TokenRecoveryConfiguration
-        // （仅基元/字符串/枚举成员，绑定源生成器可完整支持），再经 Apply 逐字段映射到
-        // TokenRecoveryOptions（不触碰 TokenInvalidationDetector / AdditionalTokenInvalidationDetectors）。
+        // TokenRecoveryOptions.TokenInvalidationDetector 为接口类型扩展点（编程式注入面），
+        // 直接 Bind<TokenRecoveryOptions> 会在本编译单元产出无法抑制的 SYSLIB1100/SYSLIB1101。
+        // 故绑定纯 DTO 投影 TokenRecoveryConfiguration（仅基元/字符串/枚举成员，绑定源生成器可
+        // 完整支持），再经 Apply 逐字段映射到 TokenRecoveryOptions（不触碰
+        // TokenInvalidationDetector / AdditionalTokenInvalidationDetectors）。
         services.AddOptions<TokenRecoveryOptions>();
         if (configuration != null)
         {

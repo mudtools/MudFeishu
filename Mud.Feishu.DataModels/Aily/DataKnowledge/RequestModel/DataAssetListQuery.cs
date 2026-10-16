@@ -11,7 +11,7 @@ using System.Globalization;
 namespace Mud.Feishu.DataModels.Aily;
 
 /// <summary>
-/// <para>获取数据知识列表查询参数（查询对象模式，见 AGENTS.md API-2）</para>
+/// <para>获取数据知识列表查询参数（查询对象模式）</para>
 /// </summary>
 public class DataAssetListQuery : IQueryParameter
 {

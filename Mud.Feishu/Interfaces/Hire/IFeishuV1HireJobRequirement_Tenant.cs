@@ -97,7 +97,7 @@ public interface IFeishuTenantV1HireJobRequirement : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取招聘需求列表
-    /// <para>按职位 ID、创建/更新时间范围等条件分页查询招聘需求列表（查询参数采用查询对象模式 <see cref="JobRequirementListQuery"/>，见 AGENTS.md API-2）。</para>
+    /// <para>按职位 ID、创建/更新时间范围等条件分页查询招聘需求列表（查询参数采用查询对象模式 <see cref="JobRequirementListQuery"/>）。</para>
     /// <para>限频：1000 次/分钟、50 次/秒。所需权限：hire:job_requirement:readonly（获取招聘需求）或 hire:job_requirement（更新招聘需求）。</para>
     /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job_requirement/list-2">接口文档</see></para>
     /// </summary>

@@ -48,7 +48,7 @@ public class FeishuWebhookConcurrencyService : IAsyncDisposable, IHostedService
             _currentMaxConcurrentEvents);
 
         // 监听配置变更，支持热更新
-        // WHF-13：消除 async-void——OnChange 回调必须是同步 void，异步体显式丢弃到线程池并
+        // OnChange 回调必须是同步 void，异步体显式丢弃到线程池并
         // 全覆盖 try/catch（异常只记日志，不上抛线程池导致进程崩溃）；订阅句柄在 DisposeAsync 释放
         _onChangeSubscription = optionsMonitor.OnChange(newOptions =>
         {
@@ -180,14 +180,13 @@ public class FeishuWebhookConcurrencyService : IAsyncDisposable, IHostedService
 
             _logger.LogDebug("获取信号量成功，当前可用: {AvailableSlots}", currentSemaphore.CurrentCount + 1);
 
-            // R3-P2-8：此处**原有一段不可达的补偿 catch**已删除。
-            // 原代码：`catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested
-            //          && !_shutdownCts.IsCancellationRequested)`
+            // 此处**不可达的补偿 catch 已删除**（保留本注释以避免后人误以为"获取-取消"竞态已被补偿）：
+            // 若写作 `catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested
+            //          && !_shutdownCts.IsCancellationRequested)`，
             // 而 WaitAsync 等待的是 `combinedCts.Token = linked(cancellationToken, _shutdownCts.Token)`，
-            // 因此 OCE 的**唯一**来源就是这两个令牌之一被取消 → 过滤条件恒为 false → 补偿永不执行。
+            // 则 OCE 的**唯一**来源就是这两个令牌之一被取消 → 过滤条件恒为 false → 补偿永不执行。
             // 且不能简单地放宽过滤：`SemaphoreSlim.WaitAsync(ct)` 在取消时**不会**占用槽位，
             // 无条件 Release 反而会**超发**槽位（比不补偿更危险）。
-            // 结论：删除死代码并保留本注释，避免后人误以为"获取-取消"竞态已被补偿。
             return new SemaphoreLease(currentSemaphore, _logger);
         }
         finally
@@ -224,7 +223,7 @@ public class FeishuWebhookConcurrencyService : IAsyncDisposable, IHostedService
 
         _disposed = true;
 
-        // WHF-13：释放配置变更订阅，避免热更新回调在销毁过程中再次触发
+        // 释放配置变更订阅，避免热更新回调在销毁过程中再次触发
         _onChangeSubscription?.Dispose();
 
         // 先发出关闭信号再释放：DisposeAsync 可能先于 Host.StopAsync 执行，

@@ -22,7 +22,7 @@ public class FeishuWebhookOptions
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>R5/X4：该开关无运行时效果。</b>路由始终由宿主显式调用
+    /// <b>该开关无运行时效果。</b>路由始终由宿主显式调用
     /// <c>app.UseFeishuWebhook()</c> 注册；设为 <c>false</c> 既不会自动注册、也不会停止接收事件
     /// （历史上同样从未产生过效果，仅被 <c>FeishuMultiAppMiddleware</c> 的配置变更日志引用）。
     /// </para>
@@ -47,13 +47,13 @@ public class FeishuWebhookOptions
     /// <para>
     /// <b>这是"软超时"，不是硬超时</b>：到达该时限时 SDK 只取消
     /// <see cref="CancellationToken"/>，<b>不会</b>强制中断处理器
-    /// （强制中断会制造"状态/去重已释放而任务仍在跑"的双重执行，见方案 D4）。
+    /// （强制中断会制造"状态/去重已释放而任务仍在跑"的双重执行）。
     /// </para>
     /// <para>
     /// 因此：仅当处理器<b>协作式响应</b>取消令牌时，本值才等于实际耗时的上界。
     /// 不响应取消的处理器会把本次请求的实际耗时顶到远超本值，并在此期间持续占用
     /// 并发闸槽位与去重 <c>processing</c> 态。此类情况会以 <c>timeout_overshoot</c>
-    /// 指标与 Warning 日志暴露（R3-P1-3），请据此排查处理器实现。
+    /// 指标与 Warning 日志暴露，请据此排查处理器实现。
     /// </para>
     /// </remarks>
     public int EventHandlingTimeoutMs { get; set; } = 30000;
@@ -64,8 +64,8 @@ public class FeishuWebhookOptions
     /// </summary>
     /// <remarks>
     /// <para>
-    /// 用于 B1 修复升级过渡：修复前应用级超时键可绑定但运行时不生效；修复后开始生效。
-    /// 若生产 appsettings 中已配置了过小的应用级超时且需保持旧全局语义，临时设为 <c>true</c>。
+    /// 升级过渡开关：应用级超时键早期可绑定但运行时不生效，现开始生效。
+    /// 若生产 appsettings 中已配置了过小的应用级超时且需保持全局语义，临时设为 <c>true</c>。
     /// </para>
     /// <para><b>默认 <c>false</c></b>（应用级配置生效）。建议在核对配置后移除本开关。</para>
     /// </remarks>
@@ -77,16 +77,16 @@ public class FeishuWebhookOptions
     /// </summary>
     /// <remarks>
     /// <para>
-    /// R3-P2-4：**重放窗口不变量** <c>NonceTtlSeconds &gt; TimestampToleranceSeconds</c>。
+    /// **重放窗口不变量** <c>NonceTtlSeconds &gt; TimestampToleranceSeconds</c>。
     /// 若 TTL 短于时间戳容差，则"Nonce 已过期、但时间戳仍在容差窗口内"的区间里重放攻击可行。
-    /// 此前该不变量只存在于文档，无代码强制，且文档口径与默认实现（内存 Nonce TTL=300s）不一致。
+    /// 该不变量必须由代码强制，不能只存在于文档（文档口径曾与默认实现的内存 Nonce TTL=300s 不一致）。
     /// </para>
     /// <para>
-    /// 显式配置后由 <see cref="Validate"/> 强制该不变量（启动期失败，见 R3-P0-5）；
+    /// 显式配置后由 <see cref="Validate"/> 强制该不变量（启动期失败）；
     /// 留空时不阻断，仅在启动 Summary 日志中打印实际形态供人工核对。
     /// </para>
     /// <para>
-    /// <b>R5.4/F4</b>：本属性**不控制真实 Nonce TTL**。真实 TTL 来自
+    /// 本属性**不控制真实 Nonce TTL**。真实 TTL 来自
     /// <c>FeishuDeduplication:Nonce:Ttl</c>（统一节），内存路径由 SDK 以同源常量
     /// <c>Consts.DefaultNonceTtlSeconds</c> 构造。本属性仅保留启动期不变量校验能力，
     /// 已标 <c>[Obsolete]</c>，下个 major 删除。
@@ -133,7 +133,7 @@ public class FeishuWebhookOptions
     /// <summary>
     /// 白名单/来源校验的可信代理（CIDR 或精确 IP）。
     /// <para>null = 继承 <see cref="RateLimitOptions.TrustedProxies"/>，避免两处配置漂移。</para>
-    /// <para>配置后，白名单校验将使用与限流一致的 ADR-3 零信任 XFF 解析逻辑还原真实客户端 IP。</para>
+    /// <para>配置后，白名单校验将使用与限流一致的零信任 XFF 解析逻辑还原真实客户端 IP。</para>
     /// </summary>
     public HashSet<string>? SourceIpTrustedProxies { get; set; }
 
@@ -146,7 +146,7 @@ public class FeishuWebhookOptions
     /// 安全警告：
     /// - 生产环境必须设置为 true，否则存在严重的安全漏洞
     /// - 仅在开发/测试环境且明确了解风险时设置为 false
-    /// - 该约束由 FeishuWebhookOptionsValidator 在生产环境强制执行（详见 documents/WebhookHardeningPlan.md ADR-4）
+    /// - 该约束由 FeishuWebhookOptionsValidator 在生产环境强制执行
     /// </remarks>
     public bool EnforceHeaderSignatureValidation { get; set; } = true;
 
@@ -162,7 +162,7 @@ public class FeishuWebhookOptions
     /// <item><description>飞书官方建议的时间戳容错范围为 60 秒以内</description></item>
     /// </list>
     /// <para>
-    /// 重放窗口不变量（WHF-03）：<b>NonceTtl 必须 &gt; 本值</b>——否则在 Nonce 过期后、
+    /// 重放窗口不变量：<b>NonceTtl 必须 &gt; 本值</b>——否则在 Nonce 过期后、
     /// 容差窗口结束前的区间内重放攻击可行。默认组合（NonceTtl=600s / 容差上限=300s）天然满足。
     /// 本值上限 300 秒由 <see cref="Validate"/> 强制；NonceTtl 侧声明见 Redis 工程的
     /// <c>RedisOptions.NonceTtl</c> XML 注释（跨工程 Options 无法在单一库内联断言）。
@@ -171,7 +171,7 @@ public class FeishuWebhookOptions
     public int TimestampToleranceSeconds { get; set; } = 30;
 
     /// <summary>
-    /// 重放窗口上限（秒）：TimestampToleranceSeconds 的最大允许值（WHF-03）。
+    /// 重放窗口上限（秒）：TimestampToleranceSeconds 的最大允许值。
     /// </summary>
     public const int MaxTimestampToleranceSeconds = 300;
 
@@ -194,7 +194,7 @@ public class FeishuWebhookOptions
     /// 内存实现仅对<b>单实例</b>部署有效：多实例 / 负载均衡下各实例的 Nonce 表互不相通，
     /// 攻击者可将捕获的合法请求在时间戳容差窗口内重放给另一个实例并通过校验 → 事件被重复消费
     /// （跨实例重放<b>不可检测</b>）。这是一种<b>静默的安全退化</b>，默认必须由代码阻断而非文档建议
-    /// （与 ADR-4「生产安全默认由代码强制」同口径，见 <c>documents/WebhookHardeningPlan.md</c>）。
+    /// （生产安全默认由代码强制）。
     /// </para>
     /// <para>
     /// 生产环境（<c>IEnvironmentService.IsProduction</c>）且未注册分布式实现时，本值为 <c>false</c>
@@ -215,7 +215,7 @@ public class FeishuWebhookOptions
     /// </summary>
     /// <remarks>
     /// <para>
-    /// WHF/D2：此前拦截一律返回 <c>(false, …)</c>，中间件映射为 HTTP 500 → 飞书重推 → 再次被拦截，
+    /// 拦截一律返回 <c>(false, …)</c> 时，中间件映射为 HTTP 500 → 飞书重推 → 再次被拦截，
     /// 事件永不 ack 且不落任何去重/失败存储记录，形成重推风暴。
     /// </para>
     /// <para>
@@ -229,14 +229,14 @@ public class FeishuWebhookOptions
     /// 应用专属拦截器与全局拦截器的组合策略，默认 <see cref="InterceptorFallbackMode.Merge"/>。
     /// </summary>
     /// <remarks>
-    /// R3-P2-3：旧行为等价于 <see cref="InterceptorFallbackMode.AppOnly"/>——应用一旦注册专属拦截器，
+    /// 早期行为等价于 <see cref="InterceptorFallbackMode.AppOnly"/>——应用一旦注册专属拦截器，
     /// 全局拦截器就被<b>完全丢弃</b>，导致安全/审计横切在多应用下静默失效。
     /// 详见 <see cref="InterceptorFallbackMode"/>。
     /// </remarks>
     public InterceptorFallbackMode InterceptorFallbackMode { get; set; } = InterceptorFallbackMode.Merge;
 
     /// <summary>
-    /// 空 EventId/Nonce 是否拒绝请求（true=fail-closed），默认 <c>true</c>（WHF-05）。
+    /// 空 EventId/Nonce 是否拒绝请求（true=fail-closed），默认 <c>true</c>。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -244,7 +244,7 @@ public class FeishuWebhookOptions
     /// 二者只会出现在畸形或恶意流量中（飞书正常事件必带 event_id 与 nonce），默认拒绝。
     /// </para>
     /// <para>
-    /// 策略落点（评审修订 R-3）：本开关仅在 Webhook 层消费——<c>NonceValidator</c> 的
+    /// 策略落点：本开关仅在 Webhook 层消费——<c>NonceValidator</c> 的
     /// Check/Mark 路径与 <c>FeishuMultiAppMiddleware</c> 的事件数据校验；去重器本身对空键
     /// 「防御性放行」的库级语义不受影响。
     /// </para>
@@ -252,7 +252,7 @@ public class FeishuWebhookOptions
     public bool RejectEmptyIdentifiers { get; set; } = true;
 
     /// <summary>
-    /// 未注册 eventType 的事件是否静默忽略（记 Debug + <c>unhandled</c> 指标），默认 <c>true</c>（WHF-09）。
+    /// 未注册 eventType 的事件是否静默忽略（记 Debug + <c>unhandled</c> 指标），默认 <c>true</c>。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -264,7 +264,7 @@ public class FeishuWebhookOptions
     /// 门控位于 <c>FeishuWebhookService.DispatchEventAsync</c> 的全局工厂路径（应用专属处理器路径不受影响）。
     /// </para>
     /// <para>
-    /// E-P2-1：与 WebSocket 通道默认值不同（<c>FeishuWebSocketOptions.IgnoreUnknownEventTypes</c> 默认 false，
+    /// 与 WebSocket 通道默认值不同（<c>FeishuWebSocketOptions.IgnoreUnknownEventTypes</c> 默认 false，
     /// 回退默认处理器兜底属行为兼容选择）——跨通道部署时建议显式对齐。
     /// </para>
     /// </remarks>
@@ -316,9 +316,9 @@ public class FeishuWebhookOptions
         if (MaxRequestBodySize < 1024)
             throw new InvalidOperationException("MaxRequestBodySize 必须至少为 1024 字节");
 
-        // R3-P2-4：重放窗口不变量——显式配置 Nonce TTL 时强制 TTL > 时间戳容差。
+        // 重放窗口不变量——显式配置 Nonce TTL 时强制 TTL > 时间戳容差。
         // 未配置（null）时不阻断：SDK 无法得知宿主所用去重实现的实际 TTL，仅由启动 Summary 日志提示。
-        // R5.4/F4：NonceTtlSeconds 已 [Obsolete]（不控制真实 TTL），保留校验以维持启动期不变量检查能力。
+        // NonceTtlSeconds 已 [Obsolete]（不控制真实 TTL），保留校验以维持启动期不变量检查能力。
 #pragma warning disable CS0618
         if (NonceTtlSeconds is { } ttl)
         {
@@ -338,7 +338,7 @@ public class FeishuWebhookOptions
         if (TimestampToleranceSeconds < 0)
             throw new InvalidOperationException("TimestampToleranceSeconds 不能为负数");
 
-        // WHF-03：重放窗口上限（详见 TimestampToleranceSeconds XML 注释的不变量说明）
+        // 重放窗口上限（详见 TimestampToleranceSeconds XML 注释的不变量说明）
         if (TimestampToleranceSeconds > MaxTimestampToleranceSeconds)
             throw new InvalidOperationException(
                 $"TimestampToleranceSeconds 不能超过 {MaxTimestampToleranceSeconds} 秒（重放窗口上限，" +
@@ -347,12 +347,11 @@ public class FeishuWebhookOptions
         // 验证重试配置
         Retry.Validate();
 
-        // 验证限流配置（WHF-R2/A2：此前遗漏导致 RateLimitOptions.Validate() 永不执行——
-        // RateLimitOptions 作为嵌套属性消费，未注册为独立 IOptions<RateLimitOptions>，
-        // IValidateOptions<RateLimitOptions> 永远不会被框架调用。此处补线消除死配置。）
+        // 验证限流配置（RateLimitOptions 作为嵌套属性消费，未注册为独立 IOptions<RateLimitOptions>，
+        // IValidateOptions<RateLimitOptions> 不会被框架调用，故必须在此显式调用以消除死配置）
         RateLimit.Validate();
 
-        // 验证解密超时配置（WHF-R2/B6）
+        // 验证解密超时配置
         if (DecryptionTimeoutMs is < 100 or > 60_000)
             throw new InvalidOperationException("DecryptionTimeoutMs 必须在 100~60000 毫秒之间");
 
@@ -367,7 +366,7 @@ public class FeishuWebhookOptions
 
             var config = appConfig.Value;
 
-            // R5.2/X8：AppKey 一律由字典键**强制派生**（此前仅在为空时回填，允许配置值与其分叉，
+            // AppKey 一律由字典键**强制派生**（仅在为空时回填会允许配置值与其分叉，
             // 而路由只认字典键 → 诊断信息与实际路由不一致）。属性对宿主只读（internal set）。
             config.AppKey = appKey;
 
@@ -380,7 +379,7 @@ public class FeishuWebhookOptions
             if (config.EncryptKey.Length != 32)
                 throw new InvalidOperationException($"应用 {appKey} 的 EncryptKey 长度必须为 32 字符");
 
-            // D6/WHF-R2/C7：多应用下 ExpectedAppId 是 EncryptKey 误配的唯一兜底，必须强制。
+            // 多应用下 ExpectedAppId 是 EncryptKey 误配的唯一兜底，必须强制。
             // 缺失时，把 B 应用的 EncryptKey 误填到 A 应用名下，发往 /feishu/appA 的 B 应用密文
             // 会验签+解密全通，并按 A 的处理器与去重键处理 → 跨应用事件串扰且无任何拦截。
             // 单应用部署保持可选（向后兼容）。
@@ -389,10 +388,10 @@ public class FeishuWebhookOptions
                     $"多应用配置（FeishuWebhook:Apps 共 {Apps.Count} 项）下应用 {appKey} 必须配置 ExpectedAppId。" +
                     "否则 EncryptKey 误配（如把 B 应用的密钥填到 A）会导致跨应用事件串扰且无任何拦截。");
 
-            // R5.2/X8：接线应用级校验。
-            // 此前 FeishuAppWebhookOptions.Validate() 在生产代码中**零调用**（仅测试调用），
-            // 于是 WHF-03 声明的「应用级 TimestampToleranceSeconds ≤ 300 秒」与
-            // 「应用级 EventHandlingTimeoutMs ≥ 1000ms」两个约束**从未真正生效**。
+            // 接线应用级校验。
+            // FeishuAppWebhookOptions.Validate() 必须在生产代码中调用（仅测试调用会使
+            // 「应用级 TimestampToleranceSeconds ≤ 300 秒」与
+            // 「应用级 EventHandlingTimeoutMs ≥ 1000ms」两个约束不生效）。
             // 必须放在上面的 EncryptKey 回填/派生之后：Validate 读的是派生后的最终值。
             config.Validate();
         }

@@ -20,12 +20,12 @@ namespace Mud.Feishu.Webhook.Services;
 /// <remarks>
 /// <para>
 /// <b>为什么需要它</b>：<c>FeishuWebhookOptions</c> 经 <c>IOptionsMonitor</c> <b>惰性</b>构建，
-/// 因此 PostConfigure 中的 <c>Validate()</c> 与去重形态检查（R3-P0-1 / R3-P0-4）默认只在
+/// 因此 PostConfigure 中的 <c>Validate()</c> 与去重形态检查默认只在
 /// <b>首个请求</b>时才执行——配置错误表现为"服务已起来并已开始收流量，然后第一个请求 500"，
 /// 比启动失败更糟。
 /// </para>
 /// <para>
-/// 修复前，Options 之所以"恰好"在启动期被构建，只是因为
+/// Options 之所以"恰好"在启动期被构建，只是因为
 /// <see cref="FeishuWebhookConcurrencyService"/> 的构造函数顺手读了一次
 /// <c>CurrentValue</c>——一个无人知晓的隐式副作用。本类型把这件事变成<b>显式机制</b>。
 /// </para>
@@ -35,8 +35,8 @@ namespace Mud.Feishu.Webhook.Services;
 /// 包中，产生 <c>CS0121</c> 二义性错误。托管服务方式在所有 TFM（含 netstandard2.0）上行为一致。
 /// </para>
 /// <para>
-/// <b>R3-FEAT-4</b>：本服务同时承担"启动 Summary 日志"（每进程一次）——打印去重实现形态、
-/// 时间戳容差与重放窗口不变量校验结果，与 R3-P0-1 的启动期阻断、健康检查的数据项
+/// 本服务同时承担"启动 Summary 日志"（每进程一次）——打印去重实现形态、
+/// 时间戳容差与重放窗口不变量校验结果，与启动期阻断、健康检查的数据项
 /// 共同构成"启动可见 + 运行可见 + 指标可见"三层。
 /// </para>
 /// </remarks>

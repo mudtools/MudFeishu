@@ -23,18 +23,18 @@ public class FeishuAppWebhookOptions
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>R5.2/X8：不要再配置这个键，也不要用它做路由。</b>
+    /// <b>不要再配置这个键，也不要用它做路由。</b>
     /// </para>
     /// <para>
-    /// 为什么改为只读：此前该属性仅在为空时回填（<c>if (string.IsNullOrEmpty(config.AppKey))</c>），
-    /// 因此配置值可与字典键**分叉**——而路由只认字典键，分叉会让诊断日志与校验错误消息报出
+    /// 为什么改为只读：该属性若仅在为空时回填（<c>if (string.IsNullOrEmpty(config.AppKey))</c>），
+    /// 配置值就可与字典键**分叉**——而路由只认字典键，分叉会让诊断日志与校验错误消息报出
     /// 与实际路由不一致的应用标识。现在 <see cref="FeishuWebhookOptions.Validate"/> 一律用字典键覆盖它。
     /// </para>
     /// <para>
     /// 为什么用 <c>internal set</c> 而不是 <c>[Obsolete]</c>：<c>[Obsolete]</c> 只产生**警告**，而且对
     /// <c>appsettings.json</c> 中的 <c>Apps:&lt;key&gt;:AppKey</c>（真正的误用入口）完全无效；
     /// <c>internal set</c> 则让宿主程序集在**编译期**就无法赋值，语义也更诚实（派生值 != 可配置项）。
-    /// 与 R5.1 对 <c>FeishuDeduplicationOptions.IsConfiguredFromConfiguration</c> 的处置同构。
+    /// 与 <c>FeishuDeduplicationOptions.IsConfiguredFromConfiguration</c> 的处置同构。
     /// </para>
     /// </remarks>
     public string AppKey { get; internal set; } = string.Empty;
@@ -59,7 +59,7 @@ public class FeishuAppWebhookOptions
     /// 时间戳容差范围（秒），默认 <c>null</c> 表示继承全局配置。
     /// <para>设置为正整数时使用应用级配置；设置为 <c>null</c>、<c>-1</c> 或 <c>0</c> 时继承全局 <c>TimestampToleranceSeconds</c>。</para>
     /// <para>推荐使用 <c>null</c> 表示继承（与其他可空字段一致）；<c>-1</c> 仍向后兼容但已弃用。</para>
-    /// <para>WHF-03：应用级正整数同样受重放窗口上限约束（≤ 300 秒），由 <see cref="Validate"/> 强制。</para>
+    /// <para>应用级正整数同样受重放窗口上限约束（≤ 300 秒），由 <see cref="Validate"/> 强制。</para>
     /// </summary>
     public int? TimestampToleranceSeconds { get; set; }
 
@@ -75,7 +75,7 @@ public class FeishuAppWebhookOptions
     /// 设置为 true 或 false 时使用应用级配置，设置为 null 时继承全局 EnforceHeaderSignatureValidation
     /// </summary>
     /// <remarks>
-    /// 安全约束（WHF-01）：生产环境（<c>IEnvironmentService.IsProduction == true</c>）该字段
+    /// 安全约束：生产环境（<c>IEnvironmentService.IsProduction == true</c>）该字段
     /// 不允许显式设置为 <c>false</c>——由 <see cref="FeishuWebhookOptionsValidator"/> 在启动期强制拒绝，
     /// 与 <see cref="GetEffectiveEnforceHeaderSignatureValidation"/> 的运行时继承解析路径保持一致。
     /// </remarks>
@@ -92,7 +92,7 @@ public class FeishuAppWebhookOptions
     /// <exception cref="InvalidOperationException">配置无效时抛出</exception>
     public void Validate()
     {
-        // R5.2/X8：不再校验 AppKey —— 它是从 Apps 字典键派生的诊断字段（见 AppKey 的 remarks），
+        // 不校验 AppKey —— 它是从 Apps 字典键派生的诊断字段（见 AppKey 的 remarks），
         // 独立构造本对象时为空属正常；字典键的格式由 FeishuWebhookOptions.Validate 单独校验。
 
         if (string.IsNullOrWhiteSpace(VerificationToken))
@@ -106,7 +106,7 @@ public class FeishuAppWebhookOptions
 
         // TimestampToleranceSeconds: null/-1/0 表示继承全局配置，正整数表示应用级配置
         // 不需要验证负数，因为 -1 是合法的向后兼容特殊值
-        // WHF-03：应用级正整数同样受重放窗口上限约束
+        // 应用级正整数同样受重放窗口上限约束
         if (TimestampToleranceSeconds is > FeishuWebhookOptions.MaxTimestampToleranceSeconds)
             throw new InvalidOperationException(
                 $"TimestampToleranceSeconds 不能超过 {FeishuWebhookOptions.MaxTimestampToleranceSeconds} 秒" +

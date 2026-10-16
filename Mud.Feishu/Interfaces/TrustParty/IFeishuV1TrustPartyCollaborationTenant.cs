@@ -51,7 +51,7 @@ public interface IFeishuV1TrustPartyCollaborationTenant : IFeishuAppContextSwitc
 
     /// <summary>
     /// 获取关联组织的成员信息
-    /// <para>分页获取对方关联组织内指定部门或用户组下可见的部门、用户、用户组实体列表（查询参数采用查询对象模式 <see cref="VisibleOrganizationQuery"/>，见 AGENTS.md API-2）。</para>
+    /// <para>分页获取对方关联组织内指定部门或用户组下可见的部门、用户、用户组实体列表（查询参数采用查询对象模式 <see cref="VisibleOrganizationQuery"/>）。</para>
     /// <para>限频：1000 次/分钟、50 次/秒。所需权限：trust_party:collaboration.tenant:readonly（以应用身份读取关联组织）。target_department_id 与 target_group_id 二选一。</para>
     /// <para><see href="https://open.feishu.cn/document/trust_party-v1/-collaboraiton-organization/visible_organization">接口文档</see></para>
     /// </summary>

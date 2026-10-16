@@ -169,7 +169,7 @@ public interface IFeishuTenantV1HireJob : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取职位列表
-    /// <para>按更新时间、招聘负责人、用人经理、部门等条件分页查询职位列表（查询参数采用查询对象模式 <see cref="JobListQuery"/>，见 AGENTS.md API-2）。</para>
+    /// <para>按更新时间、招聘负责人、用人经理、部门等条件分页查询职位列表（查询参数采用查询对象模式 <see cref="JobListQuery"/>）。</para>
     /// <para>限频：50 次/秒。所需权限：hire:job:readonly（获取职位信息）。字段权限：contact:user.employee_id:readonly（返回的用户 ID 字段）。</para>
     /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/list-2">接口文档</see></para>
     /// </summary>
@@ -271,7 +271,7 @@ public interface IFeishuTenantV1HireJob : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 查询职位发布记录
-    /// <para>按招聘渠道分页查询已发布到官网/拉勾等渠道的职位广告记录（查询参数采用查询对象模式 <see cref="JobPublishRecordSearchQuery"/>，见 AGENTS.md API-2）。</para>
+    /// <para>按招聘渠道分页查询已发布到官网/拉勾等渠道的职位广告记录（查询参数采用查询对象模式 <see cref="JobPublishRecordSearchQuery"/>）。</para>
     /// <para>限频：1000 次/分钟、50 次/秒。所需权限：hire:job:readonly（获取职位信息）或 hire:job（更新职位）。</para>
     /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/job/search">接口文档</see></para>
     /// </summary>

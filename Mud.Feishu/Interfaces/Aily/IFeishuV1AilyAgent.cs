@@ -137,7 +137,7 @@ public interface IFeishuV1AilyAgent
     /// 服务端返回非 2xx 状态码时抛出（由 HTTP 执行器统一抛出，异常携带 <c>StatusCode</c> 与响应内容）。
     /// <para>
     /// 注意：飞书部分业务错误以 HTTP 200 + JSON 错误体返回（如错误码 2700001 param is invalid），
-    /// 此时本方法会把响应原样返回，调用方需按 Content-Type 自检，详见 <c>documents/ErrorHandling.md</c>。
+    /// 此时本方法会把响应原样返回，调用方需按 Content-Type 自检。
     /// </para>
     /// </exception>
     [Post("/open-apis/aily/v1/agents/{agent_id}/chats")]

@@ -9,8 +9,8 @@ namespace Mud.Feishu.Redis.Services;
 
 /// <summary>
 /// 统一键构造器——四类 Redis 键（事件/Nonce/SeqID/令牌）的唯一权威构造入口。
-/// <para>解决 R-01/R-20/R-21 的共同根因：键由四处裸字符串拼接，前缀兜底规则三套，
-/// 分隔符 <c>:</c> 未转义导致键碰撞。</para>
+/// <para>键若由多处裸字符串拼接，前缀兜底规则容易各行其是，
+/// 分隔符 <c>:</c> 未转义还会导致跨段键碰撞——本类型是其唯一权威出口。</para>
 /// </summary>
 internal static class RedisKeyBuilder
 {
@@ -20,7 +20,7 @@ internal static class RedisKeyBuilder
     private const string Separator = ":";
 
     /// <summary>
-    /// 转义分隔符——将段内的 <c>:</c> 替换为 <c>\:</c>，杜绝跨段碰撞（R-20）。
+    /// 转义分隔符——将段内的 <c>:</c> 替换为 <c>\:</c>，杜绝跨段碰撞。
     /// <para>例：appKey="a:b"、eventId="c" 与 appKey="a"、eventId="b:c" 产生不同的键。</para>
     /// </summary>
     private const string EscapedSeparator = @"\:";
@@ -60,7 +60,7 @@ internal static class RedisKeyBuilder
 
     /// <summary>
     /// 组合键——强制非空前缀 + 转义各段 + <c>:</c> 分隔。
-    /// <para>空前缀或以 <c>*</c> 开头的前缀抛 <see cref="InvalidOperationException"/>（R-01/R-21 护栏）。</para>
+    /// <para>空前缀或以 <c>*</c> 开头的前缀抛 <see cref="InvalidOperationException"/>（护栏）。</para>
     /// </summary>
     /// <param name="prefix">键前缀（必须非空且不以 <c>*</c> 开头）</param>
     /// <param name="segments">零或多个键段</param>
@@ -85,7 +85,7 @@ internal static class RedisKeyBuilder
 
             if (segment!.Length > MaxSegmentLength)
             {
-                // R2-18：键段超长是**调用方输入非法**（外部可控的 eventId/nonce/userId），
+                // 键段超长是**调用方输入非法**（外部可控的 eventId/nonce/userId），
                 // 归类为 FeishuRedisFailureKind.InvalidArgument，使消费侧可区分
                 // "参数错误不应重试" 与 "服务端/连接故障可降级"。
                 // FeishuRedisException 继承 InvalidOperationException，既有捕获语义不变。
@@ -101,13 +101,13 @@ internal static class RedisKeyBuilder
     }
 
     /// <summary>
-    /// 构造 SCAN 模式：<c>Combine(prefix, segments…) + ":*"</c>（R2-02 单一出口）。
+    /// 构造 SCAN 模式：<c>Combine(prefix, segments…) + ":*"</c>（SCAN 模式的唯一出口）。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>不变量</b>：任何用于 SCAN/Keys 的模式都必须经本方法产出。历史缺陷 R2-02 的根因正是
-    /// SeqID 清理模式用裸字符串拼接 <c>$"{prefix}{scopeKey}*"</c>，而键由 <see cref="Combine"/>
-    /// 构造（段间插入 <c>:</c>）——模式恒不匹配实际键，清理静默变成空操作。
+    /// <b>不变量</b>：任何用于 SCAN/Keys 的模式都必须经本方法产出。若 SeqID 清理模式改用裸字符串
+    /// 拼接 <c>$"{prefix}{scopeKey}*"</c>，而键由 <see cref="Combine"/> 构造（段间插入 <c>:</c>），
+    /// 模式将恒不匹配实际键，清理静默退化为空操作。
     /// </para>
     /// <para>
     /// <b>为什么以 <c>:</c> + <c>*</c> 结尾（而不是直接 <c>*</c>）</b>：分隔符保证**段级精确匹配**。

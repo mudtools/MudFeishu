@@ -61,12 +61,12 @@ public class RedisFeishuNonceDistributedDeduplicator : IFeishuNonceDistributedDe
             return false;
         }
 
-        // R-12：TTL 非正直接抛异常（双保险，Validate 已在启动期拦截）
+        // TTL 非正直接抛异常（双保险，Validate 已在启动期拦截）
         var actualTtl = ttl ?? _defaultNonceTtl;
         if (actualTtl <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(ttl), "Nonce TTL 必须为正值");
 
-        // R2-21：耗时计时（无分配）
+        // 耗时计时（无分配）
         var startTimestamp = RedisMetricsHelper.Begin();
 
         try
@@ -120,11 +120,11 @@ public class RedisFeishuNonceDistributedDeduplicator : IFeishuNonceDistributedDe
         }
     }
 
-    /// <summary>上报一次 Nonce 去重结果（R2-21）。</summary>
+    /// <summary>上报一次 Nonce 去重结果。</summary>
     private static void RecordOutcome(string outcome, long startTimestamp)
         => RedisMetricsHelper.Record(FeishuMetrics.RedisCommands.TryMarkProcessing, FeishuMetrics.DedupTypes.Nonce, outcome, startTimestamp);
 
-    /// <summary>上报一次 Nonce 去重失败（R2-21）。</summary>
+    /// <summary>上报一次 Nonce 去重失败。</summary>
     private static void RecordFailure(FeishuRedisFailureKind kind, long startTimestamp)
         => RedisMetricsHelper.Record(
             FeishuMetrics.RedisCommands.TryMarkProcessing,
@@ -275,10 +275,10 @@ public class RedisFeishuNonceDistributedDeduplicator : IFeishuNonceDistributedDe
         try
         {
             var totalCount = 0;
-            // R2-02：模式统一经 RedisKeyBuilder.Pattern 产出（与键同源）
+            // 模式统一经 RedisKeyBuilder.Pattern 产出（与键同源）
             var pattern = RedisKeyBuilder.Pattern(_keyPrefix);
 
-            // R2-12：端点策略统一为 RedisStoreHelper.GetServers（跳过不可达/副本节点，全不可用时回退首节点）
+            // 端点策略统一为 RedisStoreHelper.GetServers（跳过不可达/副本节点，全不可用时回退首节点）
             foreach (var redisServer in RedisStoreHelper.GetServers(_redis))
             {
                 await foreach (var key in redisServer.KeysAsync(pattern: pattern, pageSize: 1000).ConfigureAwait(false))
@@ -288,7 +288,7 @@ public class RedisFeishuNonceDistributedDeduplicator : IFeishuNonceDistributedDe
             }
 
             _logger?.LogDebug("当前缓存中的 Nonce 数量: {Count}", totalCount);
-            // R2-21：SCAN 计数可观测
+            // SCAN 计数可观测
             RedisMetricsHelper.RecordScan(FeishuMetrics.RedisCommands.GetCachedCount, totalCount, deleted: false);
             return totalCount;
         }
@@ -300,7 +300,7 @@ public class RedisFeishuNonceDistributedDeduplicator : IFeishuNonceDistributedDe
     }
 
     /// <summary>
-    /// 释放资源（R-14：补 IDisposable，同步释放容器不抛 InvalidOperationException）
+    /// 释放资源（同步释放容器不抛 InvalidOperationException）
     /// </summary>
     public void Dispose()
     {

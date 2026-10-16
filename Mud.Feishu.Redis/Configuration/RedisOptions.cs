@@ -12,11 +12,11 @@ using Mud.Feishu.Abstractions.Utilities;
 namespace Mud.Feishu.Redis.Configuration;
 
 /// <summary>
-/// Redis 配置选项（R4：连接见 <see cref="Connection"/> / <see cref="Advanced"/>，去重键见 RedisOptions 顶层与 FeishuDeduplication）。
+/// Redis 配置选项（连接见 <see cref="Connection"/> / <see cref="Advanced"/>，去重键见本类型顶层与 <c>FeishuDeduplication</c>）。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>R5.2/X6/X13 —— 本类型顶层的去重相关字段均为「双读期回落基座」：</b>
+/// <b>本类型顶层的去重相关字段均为「双读期回落基座」：</b>
 /// <see cref="EventKeyPrefix"/>、<see cref="EventCacheExpiration"/>、<see cref="NonceTtl"/>、
 /// <see cref="NonceKeyPrefix"/>、<see cref="SeqIdCacheExpiration"/>、<see cref="SeqIdKeyPrefix"/>、
 /// <see cref="SeqIdScopeKey"/>、<see cref="AppKey"/>。
@@ -24,8 +24,8 @@ namespace Mud.Feishu.Redis.Configuration;
 /// <para>
 /// 统一节 <c>FeishuDeduplication</c> 存在时，其
 /// <c>Event</c>/<c>Nonce</c>/<c>SeqId</c> 字段按「字段级优先」覆盖上述旧键；
-/// <b>同时配置两者时旧键会被静默忽略</b>（R5.2 起改为输出 Warning 指明覆盖关系）。
-/// 新部署请只使用 <c>FeishuDeduplication</c>，见 <c>documents/Configuration/DeduplicationTruthSource.md</c>。
+/// <b>同时配置两者时旧键会被忽略</b>（此时输出 Warning 指明覆盖关系）。
+/// 新部署请只使用 <c>FeishuDeduplication</c>。
 /// </para>
 /// <para>
 /// <b>为什么不给这些属性加 <c>[Obsolete]</c></b>：它们在统一节缺失时是**真正生效**的配置面，
@@ -42,8 +42,8 @@ public class RedisOptions
     public RedisAdvancedOptions Advanced { get; set; } = new();
 
     /// <summary>
-    /// Nonce 有效期，默认 600 秒（WHF-03：建议为 Webhook TimestampToleranceSeconds 的 2 倍且至少严格大于）。
-    /// <para>WHF-R2/A4：默认从 5 分钟调整为 600 秒（2 × 300s 上限容差），旧默认恰好压线。</para>
+    /// Nonce 有效期，默认 600 秒（建议为 Webhook TimestampToleranceSeconds 的 2 倍且至少严格大于）。
+    /// <para>600 秒 = TimestampToleranceSeconds 上限（300 秒）的 2 倍，避免与容差窗口压线。</para>
     /// </summary>
     public TimeSpan NonceTtl { get; set; } = TimeSpan.FromSeconds(600);
 
@@ -65,7 +65,7 @@ public class RedisOptions
 
     /// <summary>
     /// 事件去重缓存过期时间，默认 48 小时。
-    /// <para>双读期回落基座：<c>FeishuDeduplication:Event:Ttl</c> 存在时会被其覆盖（R5.2 起输出 Warning）。</para>
+    /// <para>双读期回落基座：<c>FeishuDeduplication:Event:Ttl</c> 存在时会被其覆盖（此时输出 Warning）。</para>
     /// </summary>
     public TimeSpan EventCacheExpiration
     {
@@ -76,7 +76,7 @@ public class RedisOptions
 
     /// <summary>
     /// 事件去重键前缀。
-    /// <para>双读期回落基座：<c>FeishuDeduplication:Event:KeyPrefix</c> 存在时会被其覆盖（R5.2 起输出 Warning）。</para>
+    /// <para>双读期回落基座：<c>FeishuDeduplication:Event:KeyPrefix</c> 存在时会被其覆盖（此时输出 Warning）。</para>
     /// </summary>
     public string EventKeyPrefix
     {
@@ -98,7 +98,7 @@ public class RedisOptions
 
     /// <summary>
     /// SeqID 去重 Sorted Set 的容量窗口上界（成员数），默认 <see cref="Consts.DefaultSeqIdWindowCapacity"/>。
-    /// <para>R2-01：Sorted Set 的窗口语义为「容量窗口」——每次写入按排名裁剪，仅保留分数最大的
+    /// <para>Sorted Set 的窗口语义为「容量窗口」——每次写入按排名裁剪，仅保留分数最大的
     /// 该数量个成员；<c>GetCacheCount</c> 返回当前成员数（≤ 本值），<c>GetMaxProcessedSeqId</c>
     /// 返回窗口内真实最大值。</para>
     /// </summary>
@@ -110,7 +110,7 @@ public class RedisOptions
     private int _seqIdWindowCapacity = Consts.DefaultSeqIdWindowCapacity;
 
     /// <summary>
-    /// 令牌键前缀的环境段（R2-04），默认 <c>feishu</c>，最终键前缀为
+    /// 令牌键前缀的环境段，默认 <c>feishu</c>，最终键前缀为
     /// <c>{TokenKeyPrefix}:{appKey}:token</c>。
     /// <para>
     /// 事件/Nonce/SeqID 三类键的前缀均可配置（<c>EventKeyPrefix</c> 等）；令牌键此前硬编码 <c>feishu</c>，
@@ -158,14 +158,14 @@ public class RedisOptions
             throw new InvalidOperationException("SeqIdCacheExpiration 必须为正值");
         if (EventCacheExpiration <= TimeSpan.Zero)
             throw new InvalidOperationException("EventCacheExpiration 必须为正值");
-        // R2-01：容量窗口必须为正——非正会让写入时裁剪退化为"每次清空集合"
+        // 容量窗口必须为正——非正会让写入时裁剪退化为"每次清空集合"
         if (SeqIdWindowCapacity <= 0)
             throw new InvalidOperationException("SeqIdWindowCapacity 必须为正值（Sorted Set 容量窗口上界）");
 
         ValidateKeyPrefix(NonceKeyPrefix, nameof(NonceKeyPrefix));
         ValidateKeyPrefix(SeqIdKeyPrefix, nameof(SeqIdKeyPrefix));
         ValidateKeyPrefix(EventKeyPrefix, nameof(EventKeyPrefix));
-        // R2-04：令牌键前缀同样受护栏约束（非空、不以通配符开头）
+        // 令牌键前缀同样受护栏约束（非空、不以通配符开头）
         ValidateKeyPrefix(TokenKeyPrefix, nameof(TokenKeyPrefix));
     }
 
@@ -178,7 +178,7 @@ public class RedisOptions
     }
 
     /// <summary>
-    /// 从配置节回填 R3 前的扁平连接键（仅配置 JSON 兼容；代码 API 使用嵌套属性）。
+    /// 从配置节回填扁平的旧版连接键（仅配置 JSON 兼容；代码 API 使用嵌套属性）。
     /// </summary>
     /// <param name="section">FeishuRedis 配置节</param>
     public void ApplyLegacyFlatConnectionKeys(IConfigurationSection section)

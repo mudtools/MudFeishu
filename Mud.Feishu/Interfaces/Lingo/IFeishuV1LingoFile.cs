@@ -42,7 +42,7 @@ public interface IFeishuV1LingoFile : IFeishuAppContextSwitcher
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns>成功时返回图片二进制内容。</returns>
     /// <exception cref="ApiException">HTTP 200 + JSON 错误体场景（如 99991400 系统繁忙、99991672 无权限等业务错误）仍可能以 200 返回，
-    /// 此时反序列化将失败并抛出 <see cref="ApiException"/>，调用方需针对该残余风险做异常兜底（参见 <c>documents/ErrorHandling.md</c>）。</exception>
+    /// 此时反序列化将失败并抛出 <see cref="ApiException"/>，调用方需针对该残余风险做异常兜底。</exception>
     [Get("/open-apis/lingo/v1/files/{file_token}/download")]
     Task<byte[]?> DownloadFileAsync(
         [Path] string file_token,

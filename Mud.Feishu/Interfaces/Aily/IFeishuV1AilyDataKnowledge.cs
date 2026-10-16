@@ -38,7 +38,7 @@ public interface IFeishuV1AilyDataKnowledge
     /// 服务端返回非 2xx 状态码时抛出（由 HTTP 执行器统一抛出，异常携带 <c>StatusCode</c> 与响应内容）。
     /// <para>
     /// 注意：飞书部分业务错误以 HTTP 200 + JSON 错误体返回（错误码 2700033 执行失败、2700034 问答被禁用、2700035 执行超时），
-    /// 此时本方法会把响应原样返回，调用方需按 Content-Type 自检，详见 <c>documents/ErrorHandling.md</c>。
+    /// 此时本方法会把响应原样返回，调用方需按 Content-Type 自检。
     /// </para>
     /// </exception>
     [Post("/open-apis/aily/v1/apps/{app_id}/knowledges/ask")]
@@ -133,7 +133,7 @@ public interface IFeishuV1AilyDataKnowledge
     /// <summary>
     /// 获取数据知识列表
     /// <para>用于获取某个 Aily 应用的数据知识（Data Asset）列表，支持分页与多条件过滤。</para>
-    /// <para>查询参数采用查询对象模式（<see cref="DataAssetListQuery"/>，见 AGENTS.md API-2）。</para>
+    /// <para>查询参数采用查询对象模式（<see cref="DataAssetListQuery"/>）。</para>
     /// <para><see href="https://open.feishu.cn/document/aily-v1/data-knowledge/data-knowledge-management/list">接口文档</see></para>
     /// </summary>
     /// <param name="app_id">Aily 应用 ID（spring_xxx__c），示例值：spring_5862e4fea8__c</param>

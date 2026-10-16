@@ -37,7 +37,7 @@ public interface IFeishuTenantV1HireCandidate : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取内推官网职位列表
-    /// <para>分页获取内推官网的职位列表（不含自定义数据；含自定义数据的详情请用获取内推官网职位详情接口）（查询参数采用查询对象模式 <see cref="ReferralWebsiteJobPostListQuery"/>，见 AGENTS.md API-2）。</para>
+    /// <para>分页获取内推官网的职位列表（不含自定义数据；含自定义数据的详情请用获取内推官网职位详情接口）（查询参数采用查询对象模式 <see cref="ReferralWebsiteJobPostListQuery"/>）。</para>
     /// <para>限频：1000 次/分钟、50 次/秒。所需权限：hire:referral_website:readonly（获取内推官网信息）。字段权限：contact:user.employee_id:readonly（返回的用户 ID 字段）。</para>
     /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/referral/list">接口文档</see></para>
     /// </summary>
@@ -236,7 +236,7 @@ public interface IFeishuTenantV1HireCandidate : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取官网职位列表
-    /// <para>按官网 ID 分页获取职位列表（暂不支持获取自定义数据，请用详情接口）（查询参数采用查询对象模式 <see cref="WebsiteJobPostListQuery"/>，见 AGENTS.md API-2）。</para>
+    /// <para>按官网 ID 分页获取职位列表（暂不支持获取自定义数据，请用详情接口）（查询参数采用查询对象模式 <see cref="WebsiteJobPostListQuery"/>）。</para>
     /// <para>限频：1000 次/分钟、50 次/秒。所需权限：hire:site_job_post:readonly（获取官网职位信息）。字段权限：contact:user.employee_id:readonly（返回的用户 ID 字段）。</para>
     /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/get-candidates/website/list-2">接口文档</see></para>
     /// </summary>
@@ -676,7 +676,7 @@ public interface IFeishuTenantV1HireCandidate : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取人才列表
-    /// <para>按关键词、更新时间等条件分页获取候选人（人才）全量档案列表（查询参数采用查询对象模式 <see cref="TalentListQuery"/>，见 AGENTS.md API-2）。</para>
+    /// <para>按关键词、更新时间等条件分页获取候选人（人才）全量档案列表（查询参数采用查询对象模式 <see cref="TalentListQuery"/>）。</para>
     /// <para>限频：20 次/秒。所需权限：hire:talent:readonly（获取人才信息）或 hire:talent（更新人才信息）。字段权限：contact:user.employee_id:readonly（user_id_type=user_id 时返回的用户 ID 字段）。</para>
     /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/talent/list">接口文档</see></para>
     /// </summary>
@@ -770,7 +770,7 @@ public interface IFeishuTenantV1HireCandidate : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取背调信息列表
-    /// <para>根据投递 ID 或背调更新时间，分页批量获取背调订单信息（含报告、进度、自定义字段等）（查询参数采用查询对象模式 <see cref="BackgroundCheckOrderListQuery"/>，见 AGENTS.md API-2）。</para>
+    /// <para>根据投递 ID 或背调更新时间，分页批量获取背调订单信息（含报告、进度、自定义字段等）（查询参数采用查询对象模式 <see cref="BackgroundCheckOrderListQuery"/>）。</para>
     /// <para>限频：1000 次/分钟、50 次/秒。所需权限：hire:background_check_order（更新招聘背调信息）或 hire:background_check_order:readonly（获取招聘背调信息）。字段权限：contact:user.employee_id:readonly（user_id_type=user_id 时返回的发起人 ID）。</para>
     /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/delivery-process-management/background_check_order/list">接口文档</see></para>
     /// </summary>
@@ -918,7 +918,7 @@ public interface IFeishuTenantV1HireCandidate : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 通过投递 ID 获取入职信息
-    /// <para>通过投递 ID 查询员工入职信息（查询参数采用查询对象模式 <see cref="GetEmployeeByApplicationQuery"/>，见 AGENTS.md API-2）。</para>
+    /// <para>通过投递 ID 查询员工入职信息（查询参数采用查询对象模式 <see cref="GetEmployeeByApplicationQuery"/>）。</para>
     /// <para>限频：1000 次/分钟、50 次/秒。所需权限：hire:employee（更新招聘员工信息）或 hire:employee:readonly（获取招聘员工信息）。字段权限：contact:user.employee_id:readonly（user_id_type=user_id 时返回的用户 ID 字段）。</para>
     /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/delivery-process-management/onboard/get_by_application">接口文档</see></para>
     /// </summary>
@@ -1161,7 +1161,7 @@ public interface IFeishuTenantV1HireCandidate : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取面试信息
-    /// <para>按投递 ID、面试 ID 或面试开始时间区间筛选，分页获取面试列表；application_id、interview_id、start_time、end_time 不允许同时为空（查询参数采用查询对象模式 <see cref="InterviewListQuery"/>，见 AGENTS.md API-2）。</para>
+    /// <para>按投递 ID、面试 ID 或面试开始时间区间筛选，分页获取面试列表；application_id、interview_id、start_time、end_time 不允许同时为空（查询参数采用查询对象模式 <see cref="InterviewListQuery"/>）。</para>
     /// <para>限频：50 次/秒。所需权限：hire:interview:readonly（获取面试信息）或 hire:interview（更新面试信息）。字段权限：contact:user.employee_id:readonly（user_id_type=user_id 时返回的用户 ID 字段）。</para>
     /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/delivery-process-management/interview/list">接口文档</see></para>
     /// </summary>
@@ -1309,7 +1309,7 @@ public interface IFeishuTenantV1HireCandidate : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取面试满意度问卷列表
-    /// <para>批量获取面试满意度问卷（完成情况、题目及作答内容）；application_id 与 interview_id 不可同时填写（查询参数采用查询对象模式 <see cref="InterviewQuestionnaireListQuery"/>，见 AGENTS.md API-2）。</para>
+    /// <para>批量获取面试满意度问卷（完成情况、题目及作答内容）；application_id 与 interview_id 不可同时填写（查询参数采用查询对象模式 <see cref="InterviewQuestionnaireListQuery"/>）。</para>
     /// <para>限频：1000 次/分钟、50 次/秒。所需权限：hire:questionnaire:readonly（获取面试满意度问卷信息）或 hire:questionnaire（更新面试满意度问卷信息）。</para>
     /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/candidate-management/delivery-process-management/interview/list-2">接口文档</see></para>
     /// </summary>

@@ -69,7 +69,7 @@ public static class FeishuToolsServiceCollectionExtensions
         => AddFeishuToolInfrastructure(services, configure).AddFeishuBitableToolsCore();
 
     /// <summary>
-    /// 按【域组】注册云文档工具（docx + docxDeep + wiki + minutesRead + sheets + drive + driveComment + drivePermission + translation）。
+    /// 按【域组】注册云文档工具（docx + docxDeep + wiki + minutesRead + sheets + drive + driveDownload + driveComment + drivePermission + translation）。
     /// </summary>
     /// <remarks>
     /// F-3 / R1 §15.3：原 9 个细粒度入口合并为本入口——它们在飞书产品面同属"云文档域"，
@@ -86,6 +86,10 @@ public static class FeishuToolsServiceCollectionExtensions
             .AddFeishuMinutesReadToolsCore()
             .AddFeishuSheetsToolsCore()
             .AddFeishuDriveToolsCore()
+
+            // R5 / F-10 + B-2：受控下载出口执行器 DriveDownloadTools（2 个只读）——
+            // 与 AddFeishuReadonlyToolCores 的清单**同进同出**，否则逐域装配的宿主拿不到下载出口。
+            .AddFeishuDriveDownloadToolsCore()
 
             // ⚠️ 不要在此列 AddFeishuDriveCommentToolsCore / AddFeishuDrivePermissionToolsCore：
             // Drive 协作面是「读写混合域」，按既有链拆分其 Core **只在写链**登记（见 AddFeishuWriteToolCores）。
@@ -386,6 +390,12 @@ public static class FeishuToolsServiceCollectionExtensions
             .AddFeishuImToolsCore()
             .AddFeishuSheetsToolsCore()
             .AddFeishuDriveToolsCore()
+
+            // R5 / F-10 + B-2（T-1）：受控下载出口执行器 DriveDownloadTools（2 个只读：
+            // drive.download_file / drive.export_document）。二进制经宿主 stager 落盘、不进工具结果；
+            // 落盘器（IFeishuAttachmentStager）缺席时整域软缺席（与 AttachmentTools 同款语义）。
+            .AddFeishuDriveDownloadToolsCore()
+
             .AddFeishuContactToolsCore()
             .AddFeishuCalendarToolsCore()
             .AddFeishuTaskToolsCore()

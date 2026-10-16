@@ -90,7 +90,11 @@ public class PublicSurfaceRationaleContractGuards
     // 没屁用"），本守卫的数据源改为**反射实测**——「新增 public 必须说明消费方」机制保留：
     // 新增公开类型而未在 public-surface-rationale.json 的 reasons 段登记消费方时，本守卫报红。
     // 增减公开类型时同批更新本常量（总数与实测同锁 = 扫描器读坏时不会"零缺失"假绿）。
-    private const int BaselineTypeCount = 326;
+    // T-1 读取闭环（2026-10-16）：326 → **330**——4 个新工具声明面 public 接口
+    // （IFeishuTenantDriveDownloadFileTool / IFeishuTenantDriveExportDocumentTool /
+    //  IFeishuTenantCalendarAgendaTool / IFeishuTenantCalendarRsvpTool，全部登记在 reasons 段）；
+    // Mud.Feishu.AI.Tools 269 → 273（Mud.Feishu.AI 50 / Mud.Feishu.AI.Mcp 7 不变）。
+    private const int BaselineTypeCount = 330;
 
     /// <summary>反射实测的公开面来源程序集（= 原台账覆盖面：三个飞书发布包）。</summary>
     private static readonly string[] ProductAssemblies =

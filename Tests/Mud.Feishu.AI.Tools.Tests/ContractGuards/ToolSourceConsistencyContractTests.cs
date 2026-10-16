@@ -97,15 +97,16 @@ public class ToolSourceConsistencyContractTests
         // 覆盖数用**精确基线**而非下限：一条"永远为绿"的守卫与没有守卫等价，却会让人以为已守住。
         // 基线取值来自 golden 的权威口径（`source.sdk` 非空者 119 / 125，与声明面 Source 计数一致）。
         executorByInterface.Count.Should().Be(
-            242,
-            "242 个工具必须都能反查到执行器（MUDFT022/023 已在构建期保证一一绑定）；此处骤降说明反查机制失效。"
+            246,
+            "246 个工具必须都能反查到执行器（MUDFT022/023 已在构建期保证一一绑定）；此处骤降说明反查机制失效。"
             + "R-12：原 163 包含 feishu.api_call，该工具已整条删除；F-1：mdm + security + org + contact + hire 共 20 工具（162 → 182）；"
             + "专题一 B1 五域 + B2 补全：lingo 6 只读 + 5 写 + application 7 只读 + 2 写 + helpdesk 6 只读 + 4 写"
-            + " + chatgroup 4 只读 + 12 写 + trustparty 8 只读 + 3 写 + aily 3 只读（182 → 242）");
+            + " + chatgroup 4 只读 + 12 写 + trustparty 8 只读 + 3 写 + aily 3 只读（182 → 242）；"
+            + "T-1 读取闭环：drive.download_file / drive.export_document / calendar.agenda / calendar.rsvp（242 → 246）");
 
         checkedCount.Should().Be(
-            237,
-            "237 个工具声明了 Source（其余 6 个无 Source，由 MUDFT019 口径覆盖）。"
+            241,
+            "241 个工具声明了 Source（其余 5 个无 Source，由 MUDFT019 口径覆盖）。"
             + "新增/删除 Source 时需同步本基线——但不许把它改成'大于某个下限'，那会让覆盖缩水静默通过");
 
         violations.Should().BeEmpty(

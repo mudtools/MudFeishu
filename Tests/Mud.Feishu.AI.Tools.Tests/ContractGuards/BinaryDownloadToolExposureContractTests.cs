@@ -174,8 +174,8 @@ public class BinaryDownloadToolExposureContractTests
         var references = CollectToolSourceReferences().ToArray();
 
         references.Should().HaveCount(
-            237,
-            "237 个工具声明了 Source（另 6 个元工具无 SDK 源）——骤降说明扫描器读不懂现形态（R-1 的 nameof 拼接）");
+            241,
+            "241 个工具声明了 Source（另 5 个元工具无 SDK 源）——骤降说明扫描器读不懂现形态（R-1 的 nameof 拼接）");
 
         references.Should().OnlyContain(
             static reference => reference.Source.Contains('.', StringComparison.Ordinal)
@@ -320,8 +320,14 @@ public class BinaryDownloadToolExposureContractTests
     }
 
     /// <summary>
-    /// 把源码按 <c>[AgentTool(</c> 切块，每块含"特性 + 其后方法签名"，返回（方法名, 块文本）。
+    /// 把源码按 <c>[AgentTool(</c> 切块，每块含"特性 + 其后方法签名"，返回（<b>工具名</b>, 块文本）。
     /// </summary>
+    /// <remarks>
+    /// ⚠️ 工具名必须从<b>开引号后的字面量</b>取（<c>[AgentTool("name"</c>），<b>不得</b>用
+    /// <c>\b(\w+)\s*\(</c> 之类"块内第一个标识符"——块首就是 <c>[AgentTool(</c>，那种写法恒取到
+    /// 字面量 <c>"AgentTool"</c>。这曾让 F-10 挣得豁免机制<b>静默失效</b>：调用方拿 "AgentTool"
+    /// 去 <see cref="CollectBinarySafeTools"/> 的集合里查，永远查不中 ⇒ 豁免声明了也不生效。
+    /// </remarks>
     private static IEnumerable<(string ToolName, string Block)> SplitToolMethodBlocks(string source)
     {
         var starts = Regex.Matches(source, @"\[AgentTool\s*\(");
@@ -331,7 +337,7 @@ public class BinaryDownloadToolExposureContractTests
             var to = i + 1 < starts.Count ? starts[i + 1].Index : source.Length;
             var block = source[from..to];
 
-            var name = Regex.Match(block, @"\b(?<name>\w+)\s*\(");
+            var name = Regex.Match(block, @"\[AgentTool\s*\(\s*""(?<name>[^""]+)""");
             yield return (name.Success ? name.Groups["name"].Value : "?", block);
         }
     }
@@ -582,6 +588,33 @@ public class BinaryDownloadToolExposureContractTests
     }
 
     /// <summary>
+    /// 反向自证：工具名解析必须取 <c>[AgentTool("…")]</c> 引号内的<b>字面量</b>。
+    /// </summary>
+    /// <remarks>
+    /// <b>真实失效记录</b>（F-10 长期回滚的直接根因）：曾按"块内第一个标识符"（<c>\b(\w+)\s*\(</c>）
+    /// 解析 —— 但块首就是 <c>[AgentTool(</c>，故每个工具的名字恒为字面量 <c>"AgentTool"</c>；
+    /// 调用方拿它去 <see cref="CollectBinarySafeTools"/> 的集合里查永远查不中，
+    /// <b>挣得豁免机制静默失效</b>（同一批扫描器上已出现过的第二种形态：扫不到 ≠ 通过）。
+    /// </remarks>
+    [Theory]
+    [InlineData(
+        "[AgentTool(\"drive.download_file\", Description = \"x\")]\npublic interface IFakeTool\n{\n    Task<string> DownloadAsync();\n}",
+        "drive.download_file")]
+    [InlineData(
+        "[AgentTool(\"a.one\", Description = \"x\")]\npublic interface IA\n{\n}\n\n[AgentTool(\"b.two\", Description = \"y\")]\npublic interface IB\n{\n}",
+        "a.one|b.two")]
+    public void SplitToolMethodBlocks_ShouldExtractQuotedToolName(string source, string expectedJoined)
+    {
+        var names = SplitToolMethodBlocks(source)
+            .Select(static entry => entry.ToolName)
+            .ToArray();
+
+        names.Should().Equal(
+            expectedJoined.Split('|'),
+            "工具名必须逐块取自 [AgentTool(\"…\")] 的字面量，而非块内首个标识符");
+    }
+
+    /// <summary>
     /// 反向自证：若把 <c>no-bytes-in-context</c> 换成别的词，核验必须<b>不再触发</b>
     /// （证明判据确实锚在标记上，而不是恒真）。
     /// </summary>
@@ -613,8 +646,10 @@ public class BinaryDownloadToolExposureContractTests
         {
             var text = ReadSourceWithoutComments(file);
 
-            // 以 [AgentTool( 为分隔，逐块判定：块内出现标记才算该工具声明了豁免。
-            var chunks = text.Split("\"[AgentTool(\"", StringSplitOptions.None);
+            // 以 [AgentTool(" 为分隔（工具名紧跟在开引号后），逐块判定：块内出现标记才算该工具声明了豁免。
+            // 分隔符必须含开引号：源码形态是 [AgentTool("name"，若只按 [AgentTool( 切，
+            // 名字解析会撞上方法签名里的括号。
+            var chunks = text.Split("[AgentTool(\"", StringSplitOptions.None);
             for (var i = 1; i < chunks.Length; i++)
             {
                 var chunk = chunks[i];

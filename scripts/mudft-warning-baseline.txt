@@ -45,7 +45,7 @@
 #   Get-MudftOutputSchemaTruncatedToolCount）。
 
 009=8
-009-tools=91
+009-tools=92
 021=0
 031=0
 
@@ -104,4 +104,14 @@
 #      全部 output_schema（golden 快照漂移 + 工具面 token 预算），是独立设计决策，
 #      与"基线随合法规模增长重测"不是一回事。故本轮处置仍为重测 + 登记归因。
 #   ⚠️ 后续每批新增"列表/分页类"工具域后，都要按上面那条命令重测并在此登记（同上一条注意事项）。
+#
+# ── 2026-10-16 第四次重测（审查整改 T-1 读取闭环批：工具面 242 → 246）─────────
+#   009-tools: 91 → **92**（+1，点名归因而非整域计入）：
+#     · 唯一增量 = `calendar.agenda`（新工具，Source = GetInstanceViewCalendarEventAsync，
+#       返回实例视图的嵌套 DTO 超过组件侧深度上限 4；本批诊断样本点名 `calendar.agenda(×6)`）。
+#     · 其余 3 个新工具均**不**触发截断，逐个核过 Source 返回形态：
+#       drive.download_file / drive.export_document（`Task<byte[]?>`，结果面=路径/大小/类型）、
+#       calendar.rsvp（`FeishuNullDataApiResult`，空数据面）——均非深层 DTO。
+#   被测树：T-1 前 HEAD(242 工具)=91（2026-10-14 第三次重测读数）；T-1(246 工具)=92。
+#   协议同前（Release + --no-incremental 全量构建）；8 次编译同值 92，取 Maximum。
 

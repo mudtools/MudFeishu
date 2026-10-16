@@ -1,6 +1,6 @@
 ---
 name: feishu-drive
-description: 飞书 drive 域工具集：15 个工具（只读 3 / 写 12）。文件在哪 / 叫什么 / 多大 / 谁所有 → `drive.*`；取正文 → `docx.*`（文档）或 `sheets.*`（表格）；
+description: 飞书 drive 域工具集：17 个工具（只读 5 / 写 12）。文件在哪 / 叫什么 / 多大 / 谁所有 → `drive.*`；取正文 → `docx.*`（文档）或 `sheets.*`（表格）；
 version: 1.0.0
 package_version: 3.0.3
 ---
@@ -16,9 +16,13 @@ package_version: 3.0.3
 ## 前置链
 `list_folder_files` / `get_file_metas` 只回元数据；写面 `create_folder` / `move_file` / `upload_file`。
 链式路径：先拿 `folder_token` / `file_token`，再动写工具。
+**取内容/产物**：资源文件 → `download_file`；云文档（docx / sheet / bitable）→ `export_document`
+（先创建导出任务再下载，产物约 10 分钟时效，`dry_run=true` 只看预演不占配额）。二者都落**宿主暂存
+目录**，结果只回 `local_path` / `size` / `content_type`——字节不进模型上下文。
 
 ## 避坑
-- **只读工具不下载内容**，取正文请用 docx / sheets。
+- **下载只给路径**：拿到 `local_path` 后由宿主进程打开/转存/处理；不要期待工具返回文件内容，
+  也不要臆造"读取文件内容"的工具。文档正文的结构化读取仍走 docx / sheets。
 - `move_file` 是异步的，立即返回不代表已生效。
 - `upload_file` 只接受 http/https 绝对地址（不接受本地路径），且宿主须实现附件暂存件；
   未实现时该工具**不注册**（软缺席，不是参数错误）。
@@ -36,6 +40,8 @@ package_version: 3.0.3
 ## 命令（工具）清单
 - `drive.add_comment`（写）：向云文档添加一条全文评论（不支持局部评论）。参数为 file_token + file_type + text，请求体由绑定层组装（模型零 JSON 串）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。
 - `drive.create_folder`（写）：在云空间中创建文件夹（返回 folder_token，可用 drive.list_folder_files 验证）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。
+- `drive.download_file`（只读）：把云空间中的资源文件下载到宿主本地暂存目录，结果只含 local_path/size/content_type（no-bytes-in-context：文件字节不进模型上下文，打开/处理请用本地路径）。云文档请改用 drive.export_document。只读，需 drive:drive:readonly。
+- `drive.export_document`（只读）：把云文档导出为文件（docx 文档→docx/pdf；sheet/bitable→xlsx/csv）并下载到宿主本地暂存目录，结果只含 local_path/size/content_type（no-bytes-in-context：文件字节不进模型上下文）。导出产物约 10 分钟内有效，请及时转存。只读，需 drive:export:readonly。
 - `drive.get_file_metas`（只读）：按 token 批量查询文件元信息（类型/标题/链接/所有者，最多 200 个）；支撑后续读文档链（docx.get_raw_content 等）。只读，需 drive:drive:readonly。
 - `drive.get_permission_public`（写）：获取云文档的公开链接权限设置（link_share_entity/external_access 等），用于分享前确认当前文档的可见范围。实际只读（GET），但因权限域风险分级须过授权门禁，建议先 dry_run 预演确认调用面，需 drive:drive:readonly。
 - `drive.grant_permission`（写）：为指定云文档添加单个协作者权限（member_type 为 openid/email/userid/chatid/departmentid）。⚠️ 此操作可扩大数据可达范围，建议先 dry_run 预演确认。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。

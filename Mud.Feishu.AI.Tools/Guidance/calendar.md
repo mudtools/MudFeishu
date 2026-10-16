@@ -6,12 +6,15 @@
 - 「约个会」多数要先 `find_free_slots` 而不是直接 `create_event`。
 
 ## 前置链
-`find_free_slots` 查空闲 → `create_event`；`list_events` / `list_event_attendees` 查；与会者用 `add_event_attendees`。
+`find_free_slots` 查空闲 → `create_event`；查日程用 `list_events`（分页）或 `agenda`（按时间窗一次
+取回全部实例、不分页，重复日程已展开）；与会者用 `list_event_attendees` / `add_event_attendees`；
+回复邀请用 `rsvp`。
 
 ## 避坑
 - **时间用带时区 RFC3339**（如 `2026-10-01T14:00:00+08:00`），不要自然语言或毫秒时间戳。
 - 多人**逐人**调用 `find_free_slots`（接口不接受用户列表），再取交集。
 - `delete_event` 会通知所有与会者，属不可静默的副作用。
+- `rsvp` 只改**当前身份**在该日程上的参与状态（accept / decline / tentative），不是组织者视角的改期或取消。
 - 时区与忙闲语义 → `feishu.guidance_read(calendar, free-busy)`。
 
 ## 安全规则

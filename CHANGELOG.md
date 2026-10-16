@@ -1,5 +1,49 @@
 # Mud.Feishu 更新日志
 
+## [Unreleased] - AI 工具面审查整改 Phase 1 · T-1：读取闭环批次（2026-10-16）
+
+> 方案：`.docs/AI/MudFeishu-AI-审查整改-Bug修复与功能完善方案-2026-10-16.md` §5 批次 T-1。
+> 工具面 242 → **246**（+3 只读 +1 写类）；新增模型可见契约（工具名/描述/scope/来源）全部经
+> golden 双锁与守卫核验；下载出口**复用**既有落盘边界（`IFeishuAttachmentStager` +
+> `DownloadedContentGuard`），不新增第二个出口。
+
+### ➕ 新增工具（4 个 = 3 只读 + 1 写）
+
+- **`drive.download_file`**（只读 · tenant · `drive:drive:readonly`）：受控下载出口——字节经宿主
+  `IFeishuAttachmentStager` 落盘，结果只含 `local_path/size/content_type`（描述携带 `no-bytes-in-context` 标记）；
+  下载前经 `DownloadedContentGuard` 拦截「HTTP 200 + 错误 JSON 伪装成文件」。宿主未配落盘器时整域**软缺席**
+  （与附件上传同款语义：工具不进注册表，而非运行期才失败）。
+- **`drive.export_document`**（只读 · tenant · 新 scope `drive:export:readonly`）：创建导出任务 → 有界轮询
+  （500ms × 60 次，成功标志独立于可空 `file_name`）→ 下载；`docx→docx/pdf`、`sheet/bitable→xlsx/csv`
+  兼容性在下发前拦截；`dry_run` 只预演创建步骤（不创建任务）。
+- **`calendar.agenda`**（只读 · tenant · `calendar:calendar:readonly`）：RFC3339 时间窗 → 实例视图一次取回
+  （重复日程自动展开为实例，不分页）。
+- **`calendar.rsvp`**（写 · tenant · `calendar:calendar`）：回复日程邀请（accept/decline/tentative 闭集校验；
+  默认不启用，启用前须经宿主授权）。
+
+### 🛡️ 守卫修复与加固（T-1 同批）
+
+- **挣得豁免机制修复为真正生效**：`BinaryDownloadToolExposureContractTests` 的工具名解析原按“块内首个
+  标识符”取值——块首即 `[AgentTool(`，故每个工具的名字恒解析为字面量 `"AgentTool"`，豁免声明永远查不中
+  （机制不生效，下载出口豁免长期处于回滚状态）。现改为从 `[AgentTool("…")]` 引号内取字面量，并新增
+  解析器自证用例（`SplitToolMethodBlocks_ShouldExtractQuotedToolName`，含双块场景）。
+- **聚合接线**：`AddFeishuDriveDownloadToolsCore` 加入只读链与 `AddFeishuCloudDocTools` 域组入口
+   （`ToolDomainCoresWiringContractTests` 双向闭合守卫兜底；逐域装配与全域入口同进同出）。
+- **分页信封单源**：`calendar.agenda` 投影改用 `ToolResultJsons.ItemsEnvelope()`（`PaginationContractGuards`）。
+- **dry_run 模板纪律**：`calendar.rsvp` 预演路由改为字面量模板（`{calendar_id}/{event_id}`），不回显标识原文。
+- **MUDFT009 基线重测登记**（同批）：`calendar.agenda`（实例视图嵌套 DTO 超组件侧深度上限 4）使
+  `scripts/mudft-warning-baseline.txt` 的 `009-tools` 91 → **92**——点名归因：其余 3 个新工具
+  （下载/导出为 `Task<byte[]?>`、rsvp 为空数据面）均不触发截断；Release + `--no-incremental` 全量构建
+  8 次编译同值 92（协议与既往三次重测相同，非放宽门禁）。
+
+### 📄 契约资产同批刷新
+
+- golden 重固化 **246** 条；skills 重固化（31 份产物，含 calendar/drive 工具表更新）；权限对照表与
+  `scope-authority.json` 补 `drive:export:readonly`（scope 基线 72 → **73**）；公开面反射基线 326 → **330**
+  （+4 个工具接口，消费方理由已登记 `public-surface-rationale.json`）；guidance `drive.md` / `calendar.md` 补节。
+- 用例：下载链 12（正常 / 错误体拒收 / 宿主拒收 / 空内容 / 轮询超时 / 任务失败 / 干跑 / 契约表参数）
+  + calendar agenda/rsvp 8 + 解析器自证 2。`Mud.Feishu.AI.Tools.Tests` 1093 → **1115 全绿**。
+
 ## [Unreleased] - AI 工具面审查整改 Phase 0：文档漂移修复 + 计数类文档机械防线 + 事件外桥处置决策（2026-10-16）
 
 > 方案：`.docs/AI/MudFeishu-AI-审查整改-Bug修复与功能完善方案-2026-10-16.md` §4（Phase 0 D-1/D-2/D-4）。

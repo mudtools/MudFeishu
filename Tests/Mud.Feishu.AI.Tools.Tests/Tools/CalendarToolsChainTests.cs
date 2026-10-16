@@ -11,8 +11,8 @@ using Mud.Feishu.DataModels.Calendar;
 namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>
-/// WP5（AT-F04 / AT-F05）日历三工具的<b>真实调用链路</b>用例：断言 method/path（经编译期契约）
-/// 与 SDK 实参（路径/查询/请求体），以及参数非法 → 结构化错误负例。
+/// WP5（AT-F04 / AT-F05）+ T-1 补全（<c>agenda</c> / <c>rsvp</c>）的<b>真实调用链路</b>用例：
+/// 断言 method/path（经编译期契约）与 SDK 实参（路径/查询/请求体），以及参数非法 → 结构化错误负例。
 /// </summary>
 /// <remarks>
 /// 验收标准沿用 R3：<b>"工具存在"不算通过</b>——每条工具都必须有抓取实参的链路用例。
@@ -38,6 +38,8 @@ public class CalendarToolsChainTests
     [InlineData("calendar.create_event", "POST", "/open-apis/calendar/v4/calendars/{calendar_id}/events")]
     [InlineData("calendar.find_free_slots", "POST", "/open-apis/calendar/v4/freebusy/list")]
     [InlineData("calendar.list_events", "GET", "/open-apis/calendar/v4/calendars/{calendar_id}/events")]
+    [InlineData("calendar.agenda", "GET", "/open-apis/calendar/v4/calendars/{calendar_id}/events/instance_view")]
+    [InlineData("calendar.rsvp", "POST", "/open-apis/calendar/v4/calendars/{calendar_id}/events/{event_id}/reply")]
     public void Contracts_ShouldCarrySdkMethodAndRoute(string toolName, string httpMethod, string route)
     {
         FeishuToolContracts.ByToolName.Should().ContainKey(toolName);
@@ -330,5 +332,173 @@ public class CalendarToolsChainTests
 
         result.ToString().Should().Contain("[tool_error] calendar.list_events");
         result.ToString().Should().Contain("190002", "失败回填必须带飞书业务 code（错误分类消费）");
+    }
+
+    // ───────────────────── calendar.agenda（T-1） ─────────────────────
+
+    [Fact]
+    public async Task Agenda_ShouldConvertRfc3339ToUnixSeconds_AndProjectInstances()
+    {
+        string? capturedCalendarId = null;
+        string? capturedStart = null;
+        string? capturedEnd = null;
+
+        _eventClient
+            .Setup(c => c.GetInstanceViewCalendarEventAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .Callback((string calendarId, string startTime, string endTime, string? _, CancellationToken __) =>
+            {
+                capturedCalendarId = calendarId;
+                capturedStart = startTime;
+                capturedEnd = endTime;
+            })
+            .ReturnsAsync(new FeishuApiResult<GetInstanceViewCalendarEventResult>
+            {
+                Code = 0,
+                Data = new GetInstanceViewCalendarEventResult
+                {
+                    Items =
+                    [
+                        new CalendarEventInstanceView
+                        {
+                            EventId = "evt_h1",
+                            Summary = "双周会",
+                            StartTime = new CalendarTimeInfo { DateTime = "2026-10-01T10:00:00+08:00" },
+                            EndTime = new CalendarTimeInfo { DateTime = "2026-10-01T11:00:00+08:00" },
+                            Status = "confirmed",
+                        },
+                    ],
+                },
+            });
+
+        var result = await CreateTools().AgendaAsync(
+            Args(
+                ("calendar_id", "cal_1"),
+                ("start", "2026-10-01T00:00:00+08:00"),
+                ("end", "2026-10-02T00:00:00+08:00")),
+            CancellationToken.None);
+
+        capturedCalendarId.Should().Be("cal_1");
+        capturedStart.Should().Be("1790784000", "平台 Query 是 Unix 秒（模型侧 RFC3339 的唯一转换点）");
+        capturedEnd.Should().Be("1790870400");
+
+        using var document = JsonDocument.Parse(result.ToString()!);
+        var item = document.RootElement.GetProperty("items")[0];
+        item.GetProperty("event_id").GetString().Should().Be("evt_h1");
+        item.GetProperty("summary").GetString().Should().Be("双周会");
+        item.GetProperty("start").GetString().Should().Be("2026-10-01T10:00:00+08:00");
+        item.GetProperty("status").GetString().Should().Be("confirmed", "实例视图逐条展开（重复日程已按 instance 拆分）");
+    }
+
+    [Fact]
+    public async Task Agenda_WithEndBeforeStart_ShouldReturnStructuredError_WithoutCallingDownstream()
+    {
+        var result = await CreateTools().AgendaAsync(
+            Args(
+                ("calendar_id", "cal_1"),
+                ("start", "2026-10-02T00:00:00+08:00"),
+                ("end", "2026-10-01T00:00:00+08:00")),
+            CancellationToken.None);
+
+        result.ToString().Should().Contain("[tool_error] calendar.agenda");
+        result.ToString().Should().Contain("end 须晚于 start");
+        _eventClient.Verify(
+            c => c.GetInstanceViewCalendarEventAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string?>(), It.IsAny<CancellationToken>()),
+            Times.Never,
+            "参数校验失败必须在下发前拦截");
+    }
+
+    // ───────────────────── calendar.rsvp（T-1） ─────────────────────
+
+    [Fact]
+    public async Task Rsvp_ShouldPassStatusAndProjectReply()
+    {
+        string? capturedCalendarId = null;
+        string? capturedEventId = null;
+        ReplyCalendarEventRequest? capturedRequest = null;
+
+        _eventClient
+            .Setup(c => c.ReplyCalendarEventAsync(
+                It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<ReplyCalendarEventRequest>(), It.IsAny<CancellationToken>()))
+            .Callback((string calendarId, string eventId, ReplyCalendarEventRequest request, CancellationToken _) =>
+            {
+                capturedCalendarId = calendarId;
+                capturedEventId = eventId;
+                capturedRequest = request;
+            })
+            .ReturnsAsync(new FeishuNullDataApiResult { Code = 0 });
+
+        var result = await CreateTools().RsvpAsync(
+            Args(("calendar_id", "cal_1"), ("event_id", "evt_1"), ("rsvp_status", "accept")),
+            CancellationToken.None);
+
+        capturedCalendarId.Should().Be("cal_1");
+        capturedEventId.Should().Be("evt_1");
+        capturedRequest!.RsvpStatus.Should().Be("accept");
+
+        using var document = JsonDocument.Parse(result.ToString()!);
+        var root = document.RootElement;
+        root.GetProperty("replied").GetBoolean().Should().BeTrue();
+        root.GetProperty("event_id").GetString().Should().Be("evt_1");
+        root.GetProperty("rsvp_status").GetString().Should().Be("accept");
+    }
+
+    [Fact]
+    public async Task Rsvp_WithUnknownStatus_ShouldReturnStructuredError_WithoutCallingDownstream()
+    {
+        var result = await CreateTools().RsvpAsync(
+            Args(("calendar_id", "cal_1"), ("event_id", "evt_1"), ("rsvp_status", "maybe")),
+            CancellationToken.None);
+
+        result.ToString().Should().Contain("[tool_error] calendar.rsvp");
+        result.ToString().Should().Contain("rsvp_status 仅支持 accept/decline/tentative");
+        _eventClient.Verify(
+            c => c.ReplyCalendarEventAsync(
+                It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<ReplyCalendarEventRequest>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Rsvp_DryRun_ShouldNotCallDownstream_AndReturnRoute()
+    {
+        var result = await CreateTools().RsvpAsync(
+            Args(
+                ("calendar_id", "cal_1"),
+                ("event_id", "evt_secret"),
+                ("rsvp_status", "decline"),
+                ("dry_run", true)),
+            CancellationToken.None);
+
+        var text = result.ToString()!;
+        text.Should().StartWith("[dry_run]");
+        text.Should().Contain("POST /open-apis/calendar/v4/calendars/{calendar_id}/events/{event_id}/reply");
+        text.Should().NotContain("evt_secret", "预演摘要不回显标识原文");
+        _eventClient.Verify(
+            c => c.ReplyCalendarEventAsync(
+                It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<ReplyCalendarEventRequest>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Rsvp_WhenPlatformFails_ShouldReturnStructuredError()
+    {
+        _eventClient
+            .Setup(c => c.ReplyCalendarEventAsync(
+                It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<ReplyCalendarEventRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FeishuNullDataApiResult { Code = 190020, Msg = "event not found" });
+
+        var result = await CreateTools().RsvpAsync(
+            Args(("calendar_id", "cal_1"), ("event_id", "evt_1"), ("rsvp_status", "tentative")),
+            CancellationToken.None);
+
+        result.ToString().Should().Contain("[tool_error] calendar.rsvp");
+        result.ToString().Should().Contain("190020", "失败回填必须带飞书业务 code（错误分类消费）");
     }
 }

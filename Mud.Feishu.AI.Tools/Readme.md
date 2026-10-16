@@ -465,7 +465,7 @@ IToolSchemaExporter.Export(ToolSchemaDialect.Skills);
   `<None Include="..\skills\**\*" Pack="true" PackagePath="skills\" />` **打进 NuGet 包** ⇒
   只装包的用户也能拿到技能包（库本身不做文件 IO，这一行是"生态位"落到用户手里的唯一通道）。
   ⚠️ `PackagePath` 末尾的**反斜杠不能省**：省掉（或写成 `skills\%(RecursiveDir)`）会让 NuGet 与递归目录
-  叠加成 `skills/feishu-ai/feishu-ai/SKILL.md`；反过来写成 `skills\%(Filename)%(Extension)` 则会把 25 个域的
+  叠加成 `skills/feishu-ai/feishu-ai/SKILL.md`；反过来写成 `skills\%(Filename)%(Extension)` 则会把 31 个域的
   同名 `SKILL.md` 拍平覆盖。两种坏法都由 `Package_ShouldShipSkillsTree` 守卫挡下。
 
 ### 7.4 事件外桥：NDJSON（R7 / C7 · 生态位）

@@ -92,7 +92,7 @@
 		     「生态位」就只服务「从仓库取源码」的用户，只装 NuGet 包的人拿不到——这是打包路径存在的唯一理由。
 		     ⚠️ PackagePath 末尾的 **反斜杠是必需的**：NuGet 会在"以目录分隔符结尾"的路径后自动追加
 		     %(RecursiveDir)；不写分隔符（或写成 skills）时会与递归目录**叠加**成 skills/feishu-ai/feishu-ai/SKILL.md，
-		     目录层级翻倍。反过来，若写成 skills\%(Filename)%(Extension) 则会把 21 个域的同名 SKILL.md 拍平覆盖。
+		     目录层级翻倍。反过来，若写成 skills\%(Filename)%(Extension) 则会把 31 个域的同名 SKILL.md 拍平覆盖。
 		     ⚠️ 守卫：SkillsExportContractTests.Package_ShouldShipSkillsTree 断言本行存在且路径以分隔符结尾
 		     （删掉它 ⇒ "只装包的用户拿不到 skills" 这类退化会静默发生）。 -->
 		<None Include="..\skills\**\*" Pack="true" PackagePath="skills\" Visible="false" />

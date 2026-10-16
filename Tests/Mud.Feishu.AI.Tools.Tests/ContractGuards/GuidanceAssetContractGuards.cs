@@ -62,7 +62,7 @@ public class GuidanceAssetContractGuards
     public void EveryContractDomain_ShouldHaveAL1GuidanceAsset()
     {
         // 自证（防"过滤器写坏 ⇒ 零缺失假绿"）：域数与工具条目数一起锁基线。
-        // 新增域时必须同批补 Guidance/{domain}.md 并更新这里的 25；工具增减时更新 181。
+        // 新增域时必须同批补 Guidance/{domain}.md 并更新这里的 31；工具增减时更新 242。
         var contractDomains = FeishuToolContracts.AllNames
             .Select(DomainOf)
             .ToHashSet(StringComparer.Ordinal);

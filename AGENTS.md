@@ -45,6 +45,24 @@ migrated to its own repository (see "Mud.AI.* family migration" below), so it is
 repo's gate — not here. Any "N source projects" count in docs/CI is **stale by construction** — do
 not reintroduce one.
 
+## 交付清单（每轮交付，工具面相关改动尤其适用）
+
+Count-bearing docs drift silently because nothing forces the numbers to move together. Treat this
+as a checklist, not advice:
+
+1. **同批刷新「状态基线」**：任何改变工具数 / 域数 / 读写分布 / affordance / 方法目录的改动，
+   必须同批更新 `.docs/AI/状态基线.md`（唯一真相源；`.docs/` 是 gitignored，所以它**没有**构建期
+   拦截，靠这条纪律维持）。刷新命令见该文件头部。
+2. **计数类文档不得手抄**：`README.md` / `README_EN.md` / `Mud.Feishu.AI.Tools/Readme.md` /
+   工具面 csproj 里的「N 个策展工具」「N 域」现在由 `ToolSurfaceScaleContractGuards` 与 golden
+   快照机械比对——改工具面漏改文档即报红（这是 D-2 防线，不是可选检查）。
+3. **golden 双锁**：`[AgentTool]` 声明变更后重固化 `FeishuToolSchemas.golden.txt`（
+   `$env:FeishuToolGoldenUpdate='true'` + `-p:FeishuToolRefreeze=true`），评审 diff，并同批更新
+   `skills/`（`$env:FeishuSkillsUpdate=true`）、`documents/AIAgent/工具权限对照表.md`、
+   `documents/AIAgent/public-surface-rationale.json`、`CHANGELOG.md`。
+4. **不得重建 `PublicAPI*.txt` 台账**（用户裁定已全仓删除）；public 面由反射型守卫
+   `PublicSurfaceRationaleContractGuards` + `public-surface-rationale.json` 锁定。
+
 ## Mud.AI.* family migration (cross-repo, 2026-10-15)
 
 The three neutral projects `Mud.AI.Abstractions`, `Mud.AI.Agent`, `Mud.AI.Generator` and their two

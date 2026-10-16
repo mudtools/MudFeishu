@@ -115,7 +115,7 @@ public class PermissionMappingDocContractGuards
         var examined = 0;
         var violations = new List<string>();
 
-        // 形态 ①：全部 **182 个工具**（108 只读 + 74 写类）
+        // 形态 ①：全部 **242 个工具**（142 只读 + 100 写类）
         // 注：显式写全限定名——本文件同时 using 了 Moq（其 Match 静态类）与正则，裸 `Match` 会 CS0104。
         foreach (System.Text.RegularExpressions.Match match in ProseGrandTotal.Matches(content))
         {

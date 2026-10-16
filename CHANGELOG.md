@@ -1,5 +1,36 @@
 # Mud.Feishu 更新日志
 
+## [Unreleased] - AI 工具面审查整改 Phase 0：文档漂移修复 + 计数类文档机械防线 + 事件外桥处置决策（2026-10-16）
+
+> 方案：`.docs/AI/MudFeishu-AI-审查整改-Bug修复与功能完善方案-2026-10-16.md` §4（Phase 0 D-1/D-2/D-4）。
+> 本轮**不动任何模型可见契约**（工具名/描述/scope/风险/身份/信封均不变），只清零文档一致性问题并加固防线。
+
+### 📝 文档一致性（D-1）
+
+- **工具面规模数字全仓对齐唯一真相源**（`FeishuToolSchemas.golden.txt`：**242** 条 = 142 只读 + 100 写类，
+  **31** 域）：根 `README.md` / `README_EN.md` 不再宣称「213 个策展工具（29 域）」，
+  §③ 域级表格按 golden 逐域重写（补 `aily`，修正 chatgroup/lingo/trustparty/application 等），
+  合计行 139/74/213 → 142/100/242；工具面 `Readme.md`（25 → 31 域）与工具面 csproj 注释（21 → 31 域）同批对齐。
+- **状态基线**（`.docs/AI/状态基线.md`）§一倒排为 242/31 + 逐域分布表，工具方法目录 1228 → 1268；
+  该文件位于 gitignored 目录，无构建期拦截，其头部新增**显式免责与刷新命令**。
+- **PublicAPI 台账描述修正**：`PublicAPI*.txt` 台账已全仓删除，消费方理由改为**反射型**守卫
+  （`PublicSurfaceRationaleContractGuards` + `documents/AIAgent/public-surface-rationale.json`）。
+
+### 🛡️ 计数类文档机械防线（D-2）
+
+- 扩展 `ToolSurfaceScaleContractGuards`：把根 `README.md` / `README_EN.md` 纳入扫描面，
+  新增「域数」类与英文形态（`N curated tools` / `N domains`）判定，并新增
+  `RootReadme_ShouldDeclareBothToolAndDomainCounts`——**摘掉根 README 的计数字段即报红**
+  （防「扫描面形同虚设」的静默假绿）。扫描器与两条自证用例（报红 / 命中断言）同批落地。
+- `AGENTS.md` 新增「交付清单」：任何改变工具数 / 域数的改动必须同批刷新状态基线，
+  且计数类文档由守卫与 golden 机械比对。
+
+### 🧭 决策记录（D-4）
+
+- 新增 `documents/AIAgent/decisions/ADR-0005-event-bridge-disposition.md`：事件外桥处置
+  **默认维持 Demo 参考实现**（DP-1 = (b)），并补齐 `documents/AIAgent/事件外桥迁移指南.md`
+  （复制步骤 + 三种落地路径 + NDJSON 格式 + 互斥闸门 + 消费建议）。库发布面零改动。
+
 ## [Unreleased] - 注释纪律门禁与注释审计落地（2026-10-14）
 
 > 新增契约守卫 `CommentConventionContractGuards`（`Tests/Mud.Feishu.AI.Tests/ContractGuards/`）、

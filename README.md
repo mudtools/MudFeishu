@@ -167,7 +167,7 @@ IToolSchemaExporter.Export(ToolSchemaDialect.Skills);
 // => {"dialect":"skills","files":[{"path":"skills/feishu-im/SKILL.md","content":"…"}, …]}
 ```
 
-29 个域的 `skills/feishu-{domain}/SKILL.md` + `references/{topic}.md`，仓外 Agent（Claude Code / Cursor）
+31 个域的 `skills/feishu-{domain}/SKILL.md` + `references/{topic}.md`，仓外 Agent（Claude Code / Cursor）
 直接加载即获得飞书域知识。数据源全是编译期常量 ⇒ 零反射、零 IO、确定性。
 
 **NDJSON 事件外桥**（Demo 参考实现，R-10 起不在库发布面）：把飞书事件以一行一事件的 NDJSON
@@ -225,7 +225,7 @@ IToolSchemaExporter.Export(ToolSchemaDialect.Skills);
 | 入站净化 | 控制字符 / 危险 Unicode / 独立 CR → 拒绝（`invalid_args`），零调用下游；换行 / Tab / Emoji（含 ZWJ 序列）不误伤 |
 | 出站净化 | ANSI/控制字符剥离 + 凭据与手机号脱敏；**无开关、不可绕过**；在整形钩子之前 |
 | 内容安全 | 4 条注入规则扫描原始结果（`off` / `warn`（默认）/ `block`）；命中标注 `[untrusted_content: 规则]` |
-| 幂等键 | 74 个写工具中 21 个暴露 `idempotency_key`（其中 11 个对应平台侧 `client_token` 去重）；`dry_run=true` 不消耗幂等键 |
+| 幂等键 | 100 个写工具中 21 个暴露 `idempotency_key`（其中 11 个对应平台侧 `client_token` 去重）；`dry_run=true` 不消耗幂等键 |
 | 多租户 | appKey 上下文校验 → 租户切换 `BeginScope(appKey)`；用户上下文仅 `identity=user` 工具写入 AsyncLocal，finally 清理；跨租户召回即数据泄露 |
 | Webhook | 签名 + 时间戳 ±30s + Nonce 三道 fail-closed；生产环境未注册分布式 Nonce 去重 → **启动即失败**（不静默退化） |
 | SSRF | `BaseUrl` 强制 HTTPS + 主机白名单；工具面多模态附件落盘由宿主 `IFeishuAttachmentStager` 实现（域名白名单 / 大小上限 / 扩展名校验全是宿主策略） |
@@ -257,7 +257,7 @@ MudFeishu 是 AI 原生路线的**首个完整落地**。
 | 维度 | 外挂式集成（行业常见做法） | AI 原生（MudFeishu） |
 | --- | --- | --- |
 | AI 定位 | Sample 层补丁：回调处理器里调大模型回复消息，单轮问答 | SDK 第一公民：五层架构（基座 → 执行链 → 工具 → Agent → 生态） |
-| 工具暴露 | 无，或反射扫描全部方法（`Type.GetType` + `method.Invoke`，AOT 不可用 + RCE 风险） | 213 个策展工具，编译期 Schema + 类型化契约，零运行期解析 |
+| 工具暴露 | 无，或反射扫描全部方法（`Type.GetType` + `method.Invoke`，AOT 不可用 + RCE 风险） | 242 个策展工具，编译期 Schema + 类型化契约，零运行期解析 |
 | 权限控制 | 无 | 七步执行链 + 风险分级 + 授权门禁 + HITL 审批管线，fail-closed 默认 |
 | 多租户 | 全局静态容器，进程级单例 | appKey 作用域切换 + 用户上下文 AsyncLocal + 跨租户召回即数据泄露 |
 | 序列化 | `Newtonsoft.Json` 反射（AOT 不可用） | 源生成 `JsonSerializerContext`，AOT strict 净零 |
@@ -280,7 +280,7 @@ dotnet add package Mud.Feishu.Abstractions      # 事件处理抽象层（自动
 
 # AI Agent 全栈
 dotnet add package Mud.Feishu.AI                 # Agent 运行时（会话/流式/知识/HITL）
-dotnet add package Mud.Feishu.AI.Tools           # 213 策展工具 + 执行链 + 编译期 Schema
+dotnet add package Mud.Feishu.AI.Tools           # 242 策展工具 + 执行链 + 编译期 Schema
 dotnet add package Mud.Feishu.AI.Mcp             # MCP stdio server（进程外 Agent）
 
 # 实时事件
@@ -342,7 +342,7 @@ builder.Services.AddFeishuMcpServer(o => o.AppKey = "default");
 await app.Services.RunFeishuMcpStdioAsync();
 ```
 
-Claude Code / Cursor / 自建 harness 经 stdio 连接即可调用 213 个飞书工具，
+Claude Code / Cursor / 自建 harness 经 stdio 连接即可调用 242 个飞书工具，
 授权 / 租户切换 / 净化 / 审计与进程内 Agent **完全一致**。
 
 ### 3. HTTP API 调用
@@ -402,7 +402,7 @@ builder.Services.AddFeishuOpenTelemetry(o => o.OtlpEndpoint = new Uri("http://lo
 | `Mud.Feishu.Redis` | 分布式去重（事件/Nonce/SeqID）+ 降级策略 + 多应用隔离 + 健康检查 |
 | `Mud.Feishu.OpenTelemetry` | 一键开启分布式追踪与指标采集（OTLP gRPC，Jaeger/Tempo/Prometheus） |
 | **`Mud.Feishu.AI`** | **Agent 运行时**：会话管理、流式消息通道、事件驱动对话、知识检索（Aily + RAG）、HITL 审批续跑 |
-| **`Mud.Feishu.AI.Tools`** | **213 策展工具**：编译期 Schema + 类型化契约 + 七步执行链 + affordance 资产 + Skills 导出 |
+| **`Mud.Feishu.AI.Tools`** | **242 策展工具**：编译期 Schema + 类型化契约 + 七步执行链 + affordance 资产 + Skills 导出 |
 | **`Mud.Feishu.AI.Mcp`** | **MCP stdio server**：进程外 Agent 工具面，执行链零旁路，租户边界 = 进程 |
 
 目标框架：`netstandard2.0` / `net6.0` / `net8.0` / `net10.0`，`LangVersion 13.0`。
@@ -417,14 +417,15 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/verify-build.ps1  
 powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/audit-config-keys.ps1 # 配置消费点审计
 ```
 
-- **12 个测试工程**覆盖全部包 + AI 工具面 + Agent Demo。
+- **11 个测试工程**覆盖全部包 + AI 工具面 + Agent Demo。
 - **编译期契约**：`FeishuToolSchemas` / `FeishuToolNames` / `FeishuToolContracts` / `FeishuToolGuidance`
   由源生成器同一 pass 发射，golden 逐字节比对（`MUDFT014` 中断构建）。
 - **不变量守卫**（A1~A10）：Schema ↔ Names ↔ Contracts ↔ Registry ↔ 权限对照表五向一致；
   每个零容忍诊断有上报点且有可触发反例；出站净化在整形钩子之前；入站净化先于授权门禁。
 - **防假绿铁律**：「工具存在」不算通过（必须有断言 method/path/body 的链路用例）；
   「必经」类性质不得用源码扫描验证（改用运行时行为断言）。
-- **Public API 兼容门禁**：`PublicAPI.Shipped.txt` / `PublicAPI.Unshipped.txt` + Microsoft.CodeAnalysis.PublicApiAnalyzers。
+- **消费方门禁**：`PublicSurfaceRationaleContractGuards` 用反射比对三份产品程序集的 public 面，
+  新增 public 类型必须在 `documents/AIAgent/public-surface-rationale.json` 登记消费方理由（无 `PublicAPI.txt` 台账）。
 
 ### 原生 AOT 注意事项
 
@@ -451,7 +452,7 @@ MudFeishu/
 ├── Mud.Feishu.Abstractions/       # 事件处理抽象层
 ├── Mud.Feishu.DataModels/         # 强类型数据模型 + 源生成 JsonContext
 ├── Mud.Feishu.AI/                 # Agent 运行时（会话/流式/知识/HITL）
-├── Mud.Feishu.AI.Tools/           # 213 策展工具 + 执行链 + 编译期 Schema
+├── Mud.Feishu.AI.Tools/           # 242 策展工具 + 执行链 + 编译期 Schema
 ├── Mud.Feishu.AI.Mcp/             # MCP stdio server
 ├── Mud.Feishu.WebSocket/          # 长连接实时订阅
 ├── Mud.Feishu.Webhook/            # HTTP 回调事件处理
@@ -459,8 +460,8 @@ MudFeishu/
 ├── Mud.Feishu.EventCallback/      # 事件回调强类型模型
 ├── Mud.Feishu.Redis/              # 分布式去重
 ├── Mud.Feishu.OpenTelemetry/      # 可观测性
-├── skills/                        # 29 域 Skills 产物（随包分发）
-├── Tests/                         # 12 个测试工程
+├── skills/                        # 31 域 Skills 产物（随包分发）
+├── Tests/                         # 11 个测试工程
 ├── Demos/                         # 示例（含 AI Agent Demo / AOT 验证）
 ├── documents/                     # 官方文档镜像 + 工具权限对照表
 ├── scripts/                       # verify-build / audit-config-keys / GenerateJsonContext / ...

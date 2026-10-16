@@ -297,8 +297,8 @@ public class ToolArgumentShapeContractGuards
     }
 
     /// <summary>
-    /// <b>R5 / F-1</b>：基线 + <b>反向自证</b> —— <c>Curation/</c> 恰有 16 个声明文件、162 个契约接口
-    /// （R7/C3 后 163，R-12 删除 <c>feishu.api_call</c> 后为 162）。
+    /// <b>R5 / F-1</b>：基线 + <b>反向自证</b> —— <c>Curation/</c> 恰有 41 个声明文件、242 个契约接口
+    /// （R7/C3 后 163，R-12 删除 <c>feishu.api_call</c> 后为 162；六组目录切分后各域补域累计至 242）。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -307,7 +307,7 @@ public class ToolArgumentShapeContractGuards
     /// Bitable/Docx/Wiki/Search/IM/Sheets 六域；<c>FeishuWriteToolInterfaces.cs</c> 混了
     /// IM 写与 Approval；<c>FeishuDocxSheetsDriveToolInterfaces.cs</c> 混了 Docx/Sheets/Drive 写；
     /// <c>FeishuMailToolInterfaces.cs</c> 混了 Mail/Contact 部门轴/Approval 实例详情），
-    /// 归位为「组目录 = 关注域、组内一域一文件」：35 文件 / 182 接口。
+    /// 归位为「组目录 = 关注域、组内一域一文件」；补域后现为 41 文件 / 242 接口。
     /// </para>
     /// <para>
     /// <b>身份改用相对路径</b>：文件名相同、组不同的情形（<c>Docs/…</c> vs <c>Collab/…</c>）

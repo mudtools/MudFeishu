@@ -43,15 +43,15 @@ public class MessageSizeLimits
     /// </summary>
     /// <returns>
     /// 配置值大于 0 时返回配置值；否则返回 <c>3 × <see cref="MaxTextMessageSize"/></c>，
-    /// 并以 <see cref="int.MaxValue"/> 为上限饱和（P2-1 修复）。
+    /// 并以 <see cref="int.MaxValue"/> 为上限饱和。
     /// </returns>
     /// <remarks>
-    /// P2-1 修复：此前为 <c>MaxTextMessageSize * 3</c> 的裸 <see cref="int"/> 乘法——当
+    /// 必须用 <see cref="long"/> 中间量 + 饱和到 <see cref="int.MaxValue"/>：裸
+    /// <c>MaxTextMessageSize * 3</c> 的 <see cref="int"/> 乘法在
     /// <see cref="MaxTextMessageSize"/> 超过 <c>int.MaxValue / 3</c>（715,827,882）时溢出为负数，
     /// 使"消息大小校验"变成 <c>buffer.Length &gt; 负数</c> 恒真 ⇒ **文本发送全失败 + 分片文本全丢弃**。
     /// <para>
-    /// 现改为 <see cref="long"/> 中间量 + 饱和到 <see cref="int.MaxValue"/>（返回类型保持 <c>int</c>
-    /// 以免破坏公共签名）。同时 <see cref="FeishuWebSocketOptions.Validate"/> 已补
+    /// 返回类型保持 <c>int</c> 以免破坏公共签名。同时 <see cref="FeishuWebSocketOptions.Validate"/> 已补
     /// <c>MaxTextMessageSize ≤ 10MB</c> 上界 ⇒ 该溢出路径在启动期即被拦截，本方法只作纵深防御。
     /// </para>
     /// </remarks>

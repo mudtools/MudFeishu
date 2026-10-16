@@ -19,8 +19,7 @@ namespace Mud.Feishu.WebSocket.Handlers;
 public class PingPongMessageHandler : JsonMessageHandler
 {
     private readonly Func<string, Task> _sendMessageCallback;
-    // WS2-12：删除死字段 _options（构造期赋值后从未被读取；编译期无警告但属可读性负担）。
-    // 构造签名保持 `FeishuWebSocketOptions options`（源兼容，未发布版本亦不构成破坏性变更）。
+    // 无配置字段：构造签名不接收 FeishuWebSocketOptions——Ping 响应构造与配置无关。
 
     /// <summary>
     /// 接收到 Pong 消息时触发的事件
@@ -33,9 +32,8 @@ public class PingPongMessageHandler : JsonMessageHandler
     /// <param name="logger">日志记录器</param>
     /// <param name="sendMessageCallback">发送消息回调函数</param>
     /// <remarks>
-    /// WS2-12：删除 <c>FeishuWebSocketOptions options</c> 参数——它的唯一去向是一个从不被读取的
-    /// 私有字段，对行为零影响。保留该参数会让调用方误以为 Ping/Pong 处理受配置影响
-    /// （实际 Ping 响应构造与心跳间隔无关）。模块未发布，无源兼容包袱。
+    /// 本处理器不接收 <c>FeishuWebSocketOptions</c> 参数：保留该参数会让调用方误以为
+    /// Ping/Pong 处理受配置影响（实际 Ping 响应构造与心跳间隔无关）。
     /// </remarks>
     public PingPongMessageHandler(
         ILogger<PingPongMessageHandler> logger,

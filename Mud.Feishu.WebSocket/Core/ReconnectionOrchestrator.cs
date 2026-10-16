@@ -22,18 +22,17 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IAsyncDisposa
 
     private readonly SemaphoreSlim _reconnectLock = new(1, 1);
     /// <summary>
-    /// 重连闸门（P0-1 / I11 / I12）：0 = 空闲，1 = 重连中。
+    /// 重连闸门：0 = 空闲，1 = 重连中。
     /// </summary>
     /// <remarks>
     /// 该字段是"是否正在重连"的<b>唯一真源</b>（替代此前的 <c>_isReconnecting</c> 布尔字段），
     /// 同时承担"重复请求快速失败"的职责：<b>不允许</b>先获取 <see cref="_reconnectLock"/> 再判断，
     /// 否则订阅者在事件回调内重入 <see cref="TryReconnectAsync"/> 时会永久挂起（锁不可重入）。
-    /// <para>所有路径（含提前 return、事件回调抛异常）都必须在最外层 finally 复位闸门，见 I11。</para>
+    /// <para>所有路径（含提前 return、事件回调抛异常）都必须在最外层 finally 复位闸门。</para>
     /// </remarks>
     private int _reconnectGate;
 
-    // ────────────────────────────────────────────────────────────────────────
-    // WS2-12：状态字段改为无锁原子访问（Interlocked / Volatile）。
+    // 状态字段使用无锁原子访问（Interlocked / Volatile）。
     //
     // 必要性：这些字段的**写点分布在两处不同同步域**——
     //   ① 重连主循环：持有 _reconnectLock；
@@ -45,7 +44,6 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IAsyncDisposa
     // 说明：64 位值（DateTime/DateTime?）统一以 Ticks（long）存储并用 Interlocked.Read 读取，
     // 避免 32 位平台上的撕裂读；引用类型用 Volatile。读侧允许看到略陈旧的值——
     // GetReconnectState() 是观测接口，不做跨字段一致性保证（跨字段快照需要锁，代价不值）。
-    // ────────────────────────────────────────────────────────────────────────
     private int _currentAttempt;
     private int _totalReconnectCount;
 
@@ -58,10 +56,10 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IAsyncDisposa
     private string? _lastReconnectReason;
     private Exception? _lastError;
 
-    // WS-15 范式统一：_disposed 改为 int + Interlocked.Exchange 实现原子 check-then-set
+    // _disposed 为 int + Interlocked.Exchange 的原子 check-then-set
     private int _disposed = 0;
 
-    // F3 修复：重连熔断标志。达到重连上限后打开，阻止后续健康检查触发无效重连。
+    // 重连熔断标志。达到重连上限后打开，阻止后续健康检查触发无效重连。
     // 仅在连接成功后由 ResetReconnectCounter 清除。
     private volatile bool _circuitOpen;
 
@@ -69,7 +67,7 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IAsyncDisposa
     /// 重连成功事件
     /// </summary>
     /// <remarks>
-    /// P0-1 修复：事件在<b>锁外</b>派发，但在重连闸门持有期内派发。
+    /// 事件在<b>锁外</b>派发，但在重连闸门持有期内派发。
     /// <para>
     /// 订阅者约定：<b>严禁在回调内同步阻塞等待</b>（如需耗时操作请自行 <c>Task.Run</c>，
     /// 或改由 <see cref="ReconnectFailed"/> / <see cref="ReconnectLimitReached"/> 触发异步补偿）。
@@ -142,16 +140,16 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IAsyncDisposa
             return false;
         }
 
-        // P0-1 / I1 / I3 / I11：闸门在锁外，重复请求立即返回，不排队等锁。
-        // 此前用 `await _reconnectLock.WaitAsync()` 后再判断 _isReconnecting，
-        // 导致订阅者在事件回调内重入时永久挂起（SemaphoreSlim 不可重入）且 finally 永不执行。
+        // 闸门判定在锁外，重复请求立即返回，不排队等锁：
+        // 先 `await _reconnectLock.WaitAsync()` 再判断的话，订阅者在事件回调内重入时
+        // 会永久挂起（SemaphoreSlim 不可重入）且 finally 永不执行。
         if (Interlocked.CompareExchange(ref _reconnectGate, 1, 0) != 0)
         {
             _logger.LogDebug("重连已在进行中，跳过重复重连请求");
             return false;
         }
 
-        // P0-1：所有"结果"只写局部变量，事件统一在锁外派发（原 :144/:168/:181 在锁内触发）
+        // 所有"结果"只写局部变量，事件统一在锁外派发（不得在持锁期间触发事件回调）
         var reconnected = false;
         var limitReached = false;
         var attemptCount = 0;
@@ -189,7 +187,7 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IAsyncDisposa
                         _logger.LogError("已达到重连限制 (次数: {Attempt}, 时间: {ElapsedTime})",
                             currentAttempt, elapsedTime);
 
-                        // P2-12 修复：标记已达上限，避免同一轮同时触发
+                        // 标记已达上限：避免同一轮同时触发
                         // ReconnectLimitReached 与 ReconnectFailed，导致上层重复记录失败指标。
                         limitReached = true;
                         limitElapsed = elapsedTime;
@@ -202,7 +200,7 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IAsyncDisposa
 
                     try
                     {
-                        // W4-P2-6：延迟计算与等待一并纳入 try，避免策略实现抛异常时异常穿透整轮重连。
+                        // 延迟计算与等待一并纳入 try，避免策略实现抛异常时异常穿透整轮重连。
                         var delay = _strategy.CalculateDelay(currentAttempt);
                         _logger.LogInformation("等待 {Delay}毫秒后进行第 {Attempt} 次重连尝试",
                             delay.TotalMilliseconds, currentAttempt);
@@ -225,7 +223,7 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IAsyncDisposa
                     }
                     catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                     {
-                        // 外部取消（关停/超时窗口）：保持与改造前一致的语义——向上抛出而不吞掉
+                        // 外部取消（关停/超时窗口）：向上抛出而不吞掉
                         throw;
                     }
                     catch (Exception ex)
@@ -241,7 +239,7 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IAsyncDisposa
                 _reconnectLock.Release();
             }
 
-            // P0-1 / I1：锁外派发事件；闸门仍被持有（保证"任意时刻至多一轮重连在途"，
+            // 锁外派发事件；闸门仍被持有（保证"任意时刻至多一轮重连在途"，
             // 订阅者重入将快速返回 false，而不是开启嵌套重连轮次）。
             if (limitReached)
             {
@@ -260,7 +258,7 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IAsyncDisposa
         }
         finally
         {
-            // I11：任何路径（含提前 return 与事件回调抛异常）都必须复位闸门，防止闸门泄漏后重连被永久拒绝
+            // 任何路径（含提前 return 与事件回调抛异常）都必须复位闸门，防止闸门泄漏后重连被永久拒绝
             Volatile.Write(ref _reconnectGate, 0);
         }
     }
@@ -269,9 +267,9 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IAsyncDisposa
     /// 重置重连计数器（在连接成功建立时调用）
     /// </summary>
     /// <remarks>
-    /// F3 修复：同时清除熔断标志，恢复正常重连能力。
+    /// 同时清除熔断标志，恢复正常重连能力。
     /// <para>
-    /// WS2-12：本方法由 <c>Connected</c> 事件回调触发，且在
+    /// 本方法由 <c>Connected</c> 事件回调触发，且在
     /// <c>ReconnectAsync → StartAsync → ConnectAsync</c> 调用链内——此时外层正持有
     /// <c>_reconnectLock</c>，因此**禁止**改为"取锁后统一更新字段"（必然自死锁）。
     /// 字段更新一律使用 <see cref="Interlocked"/>/<see cref="Volatile"/> 保证单字段原子性。
@@ -298,14 +296,14 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IAsyncDisposa
     /// </summary>
     /// <returns>重连状态信息</returns>
     /// <remarks>
-    /// WS2-12：各字段以原子读取值。本方法为**观测接口**，不保证跨字段一致性快照
+    /// 各字段以原子读取值。本方法为**观测接口**，不保证跨字段一致性快照
     /// （跨字段一致性需要取锁，而写侧存在无法取锁的路径，故该保证不可达）。
     /// </remarks>
     public ReconnectState GetReconnectState()
     {
         return new ReconnectState
         {
-            // I12：单一真源——"是否正在重连"直接由闸门派生（不再维护第二个布尔字段）
+            // 单一真源——"是否正在重连"直接由闸门派生（不再维护第二个布尔字段）
             IsReconnecting = Volatile.Read(ref _reconnectGate) == 1,
             CurrentAttempt = Volatile.Read(ref _currentAttempt),
             TotalReconnectCount = _options.EnableReconnectMetrics ? Volatile.Read(ref _totalReconnectCount) : 0,
@@ -376,7 +374,7 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IAsyncDisposa
     /// </remarks>
     public void Dispose()
     {
-        // WS-15 范式统一：原子 check-then-set
+        // 原子 check-then-set
         if (Interlocked.Exchange(ref _disposed, 1) == 1)
             return;
 
@@ -384,12 +382,12 @@ public class ReconnectionOrchestrator : IReconnectionOrchestrator, IAsyncDisposa
     }
 
     /// <summary>
-    /// WS-29 修复（P2-19）+ P1-5b：异步释放资源，尽力等待在途重连任务退出。
+    /// 异步释放资源，尽力等待在途重连任务退出。
     /// </summary>
     /// <remarks>
-    /// 此前同步 <see cref="Dispose()"/> 直接释放 <c>_reconnectLock</c>，
-    /// 若重连任务正在持锁执行，<c>SemaphoreSlim.Dispose</c> 会抛异常或死锁。
-    /// 现按 I9 不再释放该信号量：等待仅用于让调用方获得"在途重连已收尾"的可观测性。
+    /// 不释放 <c>_reconnectLock</c>：若重连任务正在持锁执行，
+    /// <c>SemaphoreSlim.Dispose</c> 会抛异常或死锁。
+    /// 等待仅用于让调用方获得"在途重连已收尾"的可观测性。
     /// </remarks>
     public async ValueTask DisposeAsync()
     {

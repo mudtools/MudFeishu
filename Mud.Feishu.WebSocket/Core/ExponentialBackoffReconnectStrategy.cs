@@ -18,7 +18,7 @@ public class ExponentialBackoffReconnectStrategy : IReconnectStrategy
     private readonly ILogger<ExponentialBackoffReconnectStrategy>? _logger;
 
     /// <summary>
-    /// 指数上限（P2-6 修复）。
+    /// 指数上限。
     /// </summary>
     /// <remarks>
     /// 2^30 × <see cref="FeishuWebSocketOptions.Reconnect"/>.<see cref="WebSocketReconnectOptions.BaseDelayMs"/>（默认 1000ms）≈ 34 年，
@@ -26,8 +26,8 @@ public class ExponentialBackoffReconnectStrategy : IReconnectStrategy
     /// 钳制后必然被最大延迟截断，故不影响退避语义，只消除 double 溢出。
     /// </remarks>
     private const int MaxExponent = 30;
-    // WS-14 修复（P1-11）：static Random 非线程安全，并发调用会损坏内部状态并持续返回 0。
-    // 照抄 RetryHelper 的条件编译模式：net6+ 使用 Random.Shared，ns2.0 使用 [ThreadStatic]。
+    // static Random 非线程安全，并发调用会损坏内部状态并持续返回 0：
+    // net6+ 使用 Random.Shared，ns2.0 使用 [ThreadStatic]（与 RetryHelper 同一模式）。
 #if NET6_0_OR_GREATER
     private static Random JitterRandom => Random.Shared;
 #else
@@ -55,14 +55,14 @@ public class ExponentialBackoffReconnectStrategy : IReconnectStrategy
     /// <param name="attemptCount">当前尝试次数（从 1 开始）</param>
     /// <returns>延迟时间</returns>
     /// <remarks>
-    /// <b>顺序约束（WS2-04 ④）</b>：必须"**先在 <c>double</c> 域钳制到 <c>MaxDelayMs</c>，再构造 <see cref="TimeSpan"/>**"。
-    /// 此前实现先 <c>TimeSpan.FromMilliseconds(指数放大后的毫秒)</c> 再比较大小——当
+    /// <b>顺序约束</b>：必须"**先在 <c>double</c> 域钳制到 <c>MaxDelayMs</c>，再构造 <see cref="TimeSpan"/>**"。
+    /// 若先 <c>TimeSpan.FromMilliseconds(指数放大后的毫秒)</c> 再比较大小——当
     /// <c>BaseDelayMs × 2^attempt</c> 超过 <see cref="TimeSpan.MaxValue"/> 的毫秒数（约 9.22e14）时，
     /// <see cref="TimeSpan.FromMilliseconds(double)"/> 直接抛 <see cref="OverflowException"/>，
     /// 异常穿透整轮重连（依赖 <c>ReconnectOrchestrator</c> 的 catch 才不至于崩溃）。
-    /// 现在溢出点在钳制之后，数学上不可能到达。
+    /// 溢出点在钳制之后，数学上不可能到达。
     /// <para>
-    /// 另有 P2-6 修复：指数本身也必须钳制——<c>Math.Pow(2, attemptCount - 1)</c> 在
+    /// 指数本身也必须钳制——<c>Math.Pow(2, attemptCount - 1)</c> 在
     /// <c>attemptCount &gt; 1024</c> 时得到 <c>double.PositiveInfinity</c>
     /// （触发条件：<c>MaxAttempts = 0</c> 无限重连 + 长时间断网）。
     /// </para>
@@ -75,11 +75,11 @@ public class ExponentialBackoffReconnectStrategy : IReconnectStrategy
         var baseDelayMs = (double)_options.Reconnect.BaseDelayMs;
         var maxDelayMs = (double)_options.Reconnect.MaxDelayMs;
 
-        // P2-6：指数钳制（避免 double.PositiveInfinity）
+        // 指数钳制（避免 double.PositiveInfinity）
         var clampedExponent = Math.Min(attemptCount - 1, MaxExponent);
         var exponentialDelayMs = baseDelayMs * Math.Pow(2, clampedExponent);
 
-        // WS2-04 ④：在 double 域完成钳制，再构造 TimeSpan —— 消除"溢出先于钳制"的顺序缺陷
+        // 在 double 域完成钳制，再构造 TimeSpan —— 消除"溢出先于钳制"的顺序缺陷
         var clampedDelayMs = exponentialDelayMs < 0 || exponentialDelayMs > maxDelayMs
             ? maxDelayMs
             : exponentialDelayMs;

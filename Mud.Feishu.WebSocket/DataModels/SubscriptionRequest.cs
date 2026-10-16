@@ -11,7 +11,7 @@ using System.Text.Json.Serialization;
 namespace Mud.Feishu.WebSocket.DataModels;
 
 /// <summary>
-/// 事件订阅请求 DTO，用于替代匿名类型序列化（P1-5 修复 / WS-06）。
+/// 事件订阅请求 DTO，用于替代匿名类型序列化。
 /// </summary>
 /// <remarks>
 /// 飞书 WebSocket 协议要求订阅请求格式为：

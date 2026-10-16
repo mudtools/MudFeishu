@@ -35,39 +35,10 @@ public static class FeishuMultiAppExtensions
     /// <exception cref="ArgumentNullException">当参数为null时抛出</exception>
     /// <exception cref="InvalidOperationException">当配置无效时抛出</exception>
     /// <remarks>
-    /// 从配置文件加载飞书应用配置。
-    /// 配置示例：
-    /// <code>
-    /// {
-    ///   "FeishuApps": [
-    ///     {
-    ///       "AppKey": "default",
-    ///       "AppId": "cli_xxx",
-    ///       "AppSecret": "dsk_xxx",
-    ///       "IsDefault": true
-    ///     },
-    ///     {
-    ///       "AppKey": "hr-app",
-    ///       "AppId": "cli_yyy",
-    ///       "AppSecret": "dsk_yyy"
-    ///     }
-    ///   ]
-    /// }
-    /// </code>
-    /// <para>
-    /// <b>热更新说明</b>：此重载使用 <c>IConfiguration</c> 绑定并注册
-    /// <c>IOptionsMonitor&lt;List&lt;FeishuAppConfig&gt;&gt;</c>；<see cref="IFeishuAppManager"/>
-    /// 默认订阅 <c>IOptionsMonitor.OnChange</c>（由 <see cref="FeishuAppOptions.EnableConfigReload"/> 控制，
-    /// 默认 <c>true</c>）。修改 <c>appsettings.json</c> 后，新增应用会被注册、更新应用会重建上下文、
-    /// 删除应用会被移除、默认应用切换会同步。
-    /// </para>
-    /// <para>
-    /// <b>生效边界</b>：<c>AppId</c>/<c>AppSecret</c>/<c>IsDefault</c> 等字段通过重建
-    /// <see cref="IFeishuAppContext"/> 即时生效；但 <c>BaseUrl</c>/<c>TimeOut</c> 由
-    /// <c>AddMudHttpClient</c> 的命名客户端注册固化（组件 <c>IEnhancedHttpClientFactory.Invalidate</c>
-    /// 只清空客户端实例缓存，不改写已注册 <c>HttpClient</c> 配置），需重建命名客户端才能完全生效。
-    /// 置 <c>FeishuAppOptions.EnableConfigReload = false</c> 可回到「配置变更需重启」的旧语义。
-    /// </para>
+    /// 热更新：经 <c>IOptionsMonitor&lt;List&lt;FeishuAppConfig&gt;&gt;</c> 绑定，<see cref="IFeishuAppManager"/> 订阅 <c>OnChange</c>
+    /// （默认开启，由 <see cref="FeishuAppOptions.EnableConfigReload"/> 控制）：新增/更新/删除应用与默认应用切换同步生效。
+    /// <para>生效边界：<c>AppId</c>/<c>AppSecret</c>/<c>IsDefault</c> 重建上下文即生效；<c>BaseUrl</c>/<c>TimeOut</c>
+    /// 固化在命名客户端注册中，需重建客户端才完全生效。</para>
     /// </remarks>
 #if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式配置绑定（ConfigurationBinder.Bind）在裁剪下无法静态分析配置类型成员")]
@@ -97,25 +68,8 @@ public static class FeishuMultiAppExtensions
     /// <exception cref="ArgumentNullException">当参数为null时抛出</exception>
     /// <exception cref="InvalidOperationException">当配置无效时抛出</exception>
     /// <remarks>
-    /// 从配置文件加载飞书应用配置。
-    /// 配置示例：
-    /// <code>
-    /// {
-    ///   "FeishuApps": [
-    ///     {
-    ///       "AppKey": "default",
-    ///       "AppId": "cli_xxx",
-    ///       "AppSecret": "dsk_xxx",
-    ///       "IsDefault": true
-    ///     },
-    ///     {
-    ///       "AppKey": "hr-app",
-    ///       "AppId": "cli_yyy",
-    ///       "AppSecret": "dsk_yyy"
-    ///     }
-    ///   ]
-    /// }
-    /// </code>
+    /// 热更新与生效边界的语义与配置节绑定重载一致；本重载额外接受 <paramref name="validateConfig"/> 委托，
+    /// 在绑定后逐应用校验配置，校验不通过时抛 <see cref="InvalidOperationException"/>。
     /// </remarks>
 #if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式配置绑定（ConfigurationBinder.Bind）在裁剪下无法静态分析配置类型成员")]

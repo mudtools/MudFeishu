@@ -16,29 +16,9 @@ namespace Mud.Feishu.Webhook.Services;
 /// 使用 SHA-256 算法验证请求头签名（X-Lark-Signature）
 /// </summary>
 /// <remarks>
-/// <para>
-/// 飞书 Webhook 签名验证方式：
-/// </para>
-/// <list type="number">
-/// <item>
-/// <term>SHA-256 签名（请求头验证）</term>
-/// <description>
-/// - 签名字符串格式：timestamp + nonce + encryptKey + body
-/// - 算法：SHA-256(signString)
-/// - 用途：验证整个请求的完整性和来源
-/// - 触发条件：EnforceHeaderSignatureValidation = true
-/// - 注意：此方式与飞书官方 SDK（Python/Go）一致，生产环境强烈推荐
-/// </description>
-/// </item>
-/// </list>
-/// <para>
-/// 安全建议：
-/// </para>
-/// <list type="bullet">
-/// <item><description>生产环境必须启用 EnforceHeaderSignatureValidation</description></item>
-/// <item><description>时间戳容错范围建议设置为 30 秒或更短</description></item>
-/// <item><description>使用固定时间比较防止计时攻击</description></item>
-/// </list>
+/// 签名串为 <c>timestamp + nonce + encryptKey + body</c>，算法 <c>SHA-256(signString)</c>，与飞书官方 SDK（Python/Go）
+/// 一致；仅当 <c>EnforceHeaderSignatureValidation</c> 为 <c>true</c> 时校验请求头 <c>X-Lark-Signature</c>。
+/// <para>生产环境必须启用该开关；时间戳容错范围建议 ≤ 30 秒；比较使用固定时间算法以防计时攻击。</para>
 /// </remarks>
 /// <remarks>
 /// 初始化签名验证器

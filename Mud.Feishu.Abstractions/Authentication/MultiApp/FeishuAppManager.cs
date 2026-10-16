@@ -1459,39 +1459,10 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// 根据应用键获取飞书API实例
     /// </summary>
     /// <remarks>
-    /// 重写基类方法：从 DI 容器获取已注册的服务，并以<b>受控的无作用域切换</b>把当前上下文切到目标应用。
-    /// <para>
-    /// 本类使用 DI 解析模式（GetService + 切换上下文），而非基类 <see cref="DefaultAppManager{TAppContext}.RegisterSwitcherFactory"/>
-    /// 的工厂委托模式。两种模式共存但 <see cref="GetWebApi{TContextSwitcher}"/> 仅走 DI 路径，
-    /// 调用 <c>RegisterSwitcherFactory</c> 注册的工厂不会被本方法使用。
-    /// 统一为 DI 模式可降低理解成本，基类工厂委托路径已标记为 [Obsolete]。
-    /// </para>
-    /// <para>
-    /// 语义为「显式守卫 + <c>IAppContextHolder.SwitchTo(IMudAppContext)</c>」的<b>无作用域</b>切换，
-    /// 守卫口径与生成实现的 <c>UseApp(appKey)</c> <b>逐字等价</b>：
-    /// <list type="bullet">
-    /// <item><description><b>守卫相同</b>：appKey 格式校验 → 未注册授权器默认拒绝 → 授权判定；
-    /// 三条异常消息与生成代码逐字一致（由上游 <c>AppKeyGuardConsistencyTests</c> 跨项目钉死）；</description></item>
-    /// <item><description><b>解析器相同</b>：生成类在 TokenManager 模式下的 <c>_tokenManager</c> 即
-    /// <see cref="IFeishuAppManager"/>（本类单例），故两者的 <c>GetApp(appKey)</c> 命中同一注册表；</description></item>
-    /// <item><description><b>无作用域语义</b>：切换后<b>不归还</b>上下文 —— 返回实例的 <c>Current</c> 即目标应用，
-    /// 宿主需自行切回，或改用 <see cref="IAppScopeSwitcher.UseAppScope"/>。</description></item>
-    /// </list>
-    /// 切换用的 <see cref="IAppContextHolder"/> 即 DI 单例（<c>AsyncLocalAppContextSwitcher</c>），
-    /// 与生成类注入的 <c>_appContextHolder</c> 为<b>同一实例</b>，故切换对全部消费者可见。
-    /// </para>
-    /// <para>
-    /// <see cref="IAppContextHolder"/> 基于 <see cref="AsyncLocal{T}"/>，
-    /// 因此即使 T 注册为 Singleton，并发切换也不会互相覆盖（每个异步流持有独立的 Current 值）。
-    /// 但仍建议将 T 注册为 Scoped（通过 <c>AddFeishuApi&lt;T&gt;</c> 或 <c>AddFeishuApp&lt;T&gt;</c>），
-    /// 以避免 Singleton 实例长期持有已释放的 <see cref="IFeishuAppContext"/> 引用。
-    /// </para>
-    /// <para>
-    /// 本成员已弃用（上游 4.0 移除），签名与行为在本大版本内不变。迁移路径：DI 解析
-    /// <see cref="IAppScopeSwitcher"/> + <c>UseAppScope(appKey)</c>（自动归还），
-    /// 或 <c>IAppContextHolder.SwitchToApp(appKey, appManager, sp)</c>（受控切换并保持，
-    /// 与本方法语义等价）。
-    /// </para>
+    /// 以<b>受控的无作用域切换</b>把上下文切到目标应用：切换后<b>不归还</b>，返回实例的 <c>Current</c> 即目标应用
+    /// （宿主需自行切回，或改用 <see cref="IAppScopeSwitcher.UseAppScope"/>）。守卫与生成实现的 <c>UseApp(appKey)</c>
+    /// 逐字等价（格式校验 → 未注册授权器默认拒绝 → 授权判定）；切换写入的 <see cref="IAppContextHolder"/> 即
+    /// DI 单例 <c>AsyncLocalAppContextSwitcher</c>，与生成类注入的实例相同，故切换对全部消费者可见。
     /// </remarks>
     // 泛型参数名遮蔽 IFeishuAppContext 接口（基类签名决定，无法改名），
     // 异常消息已使用 typeof(T).FullName 确保类型名称正确显示。

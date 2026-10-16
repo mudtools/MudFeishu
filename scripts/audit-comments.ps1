@@ -303,9 +303,21 @@ foreach ($file in $files) {
         $isComment = $isDoc -or ($line -match '^\s*//')
 
         # R-03: <remarks> block length (counted on raw lines, comments only).
+        # A block that opens AND closes on the SAME line must not leave $remarksOpen dangling --
+        # otherwise the next block's </remarks> closes it instead, and the whole merged span gets
+        # attributed to the one-line block.  Measured before this guard: a 1-line block at
+        # FeishuWebSocketServiceBuilder.cs:286 was reported as "82 lines" because it swallowed the
+        # real 8-line block 70 lines below; 25 such same-line blocks exist across the 8 projects,
+        # so the raw worklist overstated both the offending line and its length.
+        # A same-line block is exactly 1 line long and therefore can never be overlong.
         if ($isComment) {
             if ($remarksOpen -lt 0 -and $line -match '<remarks') {
-                $remarksOpen = $lineNo
+                if ($line -match '</remarks>') {
+                    $remarksOpen = -1
+                }
+                else {
+                    $remarksOpen = $lineNo
+                }
             }
             elseif ($remarksOpen -ge 0 -and $line -match '</remarks>') {
                 $len = $lineNo - $remarksOpen + 1

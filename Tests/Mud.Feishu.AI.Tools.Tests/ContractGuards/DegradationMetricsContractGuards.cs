@@ -74,21 +74,10 @@ public class DegradationMetricsContractGuards
             + "以下路径缺少指标调用：" + string.Join(" | ", missing));
     }
 
-    /// <summary>
-    /// N2-b：中立缓冲基类必须在更新失败路径调用 <c>OnUpdateDegraded</c> 钩子——
-    /// 否则产品子类的覆写永不触发，降级指标静默消失（迁移最典型的"接了线但没通电"）。
-    /// </summary>
-    [Fact]
-    public void NeutralBufferedBase_ShouldInvokeDegradedHook()
-    {
-        var root = FindRepositoryRoot();
-        var filePath = FindSourceFile(root, "BufferedMessageChannel.cs");
-        File.Exists(filePath).Should().BeTrue("BufferedMessageChannel.cs 必须存在（扫描面不得静默为空）");
-
-        var source = File.ReadAllText(filePath);
-        source.Should().Contain("OnUpdateDegraded(",
-            "中立基类必须在异常隔离路径调用 OnUpdateDegraded 钩子（产品子类经它补降级指标）");
-    }
+    // N2-b 守卫（原 NeutralBufferedBase_ShouldInvokeDegradedHook）已迁出飞书仓（v2.3 迁移）：
+    // 中立缓冲基类 BufferedMessageChannel 随中立化迁入新仓 Mud.AI.Agent/Channels——判据锚点已不在
+    // 本仓，故由新仓 DegradationMetricsContractGuards.NeutralBufferedBase_ShouldInvokeDegradedHook 持有。
+    // 本仓保留产品子类（EditMessageChannel / CardStreamMessageChannel）的降级指标正向锚。
 
     private static string FindSourceFile(string root, string fileName)
         => Directory

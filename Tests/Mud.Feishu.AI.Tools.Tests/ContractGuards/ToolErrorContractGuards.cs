@@ -27,7 +27,7 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 public class ToolErrorContractGuards
 {
     // 守卫 ①（原 ToolErrorCategory_ShouldHaveExactlyEightValues）已删除（测试体系治理 B1，
-    // 见《单元测试体系过度测试分析与解决方案》§三.4）："恰好 8 个值"被两处
+    // 见《单元测试体系过度测试分析与解决方案》§三.4；该文档已迁 Mud.AI 仓）："恰好 8 个值"被两处
     // **等式守卫**完全包含——ToolErrorDocContractGuards.DocumentCategories_ShouldEqual_CodeClosedSet
     // 与 McpResourceContractGuards.ErrorContractSummary_ClosedSets_ShouldMatchCodeClosure
     // 都把 CategoryLiteral 映射结果与 8 字面量闭集逐一比对，多一个/少一个值都报红。
@@ -72,9 +72,10 @@ public class ToolErrorContractGuards
     {
         var root = FindRepositoryRoot();
 
-        // v2.3 P1-D：错误契约族（ToolError / ToolErrorClassifier / ToolErrorText / ToolResultPipeline…）
-        // 中立化上移 Mud.AI.Agent——扫描面必须含新家，否则「产出点随骨架搬迁」会被判成幽灵子类。
-        var sources = new[] { "Mud.Feishu.AI.Tools", "Mud.Feishu.AI", "Mud.AI.Agent" }
+        // v2.3 迁移：错误契约族（ToolError / ToolErrorClassifier / ToolErrorText / ToolResultPipeline…）
+        // 中立化迁出飞书仓（Mud.AI.Agent → 新仓）——本仓扫描面收窄为**产品侧**两工程。
+        // 中立侧产出点由新仓 ToolErrorContractGuards 的同名守卫持有；两面互补，缺一即覆盖不全。
+        var sources = new[] { "Mud.Feishu.AI.Tools", "Mud.Feishu.AI" }
             .Select(relative => Path.Combine(root, relative))
             .Where(Directory.Exists)
             .SelectMany(directory => Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
@@ -89,10 +90,27 @@ public class ToolErrorContractGuards
             .ToArray();
         constantNames.Should().NotBeEmpty("ToolErrorSubtype 必须有常量定义（空集会让本守卫恒绿）");
 
-        var ghosts = FindGhostSubtypes(constantNames, string.Join('\n', sources));
+        var combined = string.Join('\n', sources);
+
+        // 中立独有子类（产品侧按设计无产出点）：其产出点随错误契约族迁出本仓，故从产品面幽灵判据中减去。
+        // 反缩水：每个被减去的名称必须确实在产品面内无引用——若哪天产品侧真的产出了它，
+        // 说明它已不再是「中立独有」，必须从本清单移除（否则产品面的真实幽灵会被这条豁免掩盖）。
+        var neutralOnlySubtypes = new[] { "ShapeMismatch", "Transient", "Timeout", "Unexpected" };
+        foreach (var name in neutralOnlySubtypes)
+        {
+            System.Text.RegularExpressions.Regex.IsMatch(
+                    combined, $@"ToolErrorSubtype\.{System.Text.RegularExpressions.Regex.Escape(name)}\b")
+                .Should().BeFalse(
+                    $"ToolErrorSubtype.{name} 被登记为「中立独有」（产品面无产出点）——"
+                    + "产品侧既然引用了它，请把它从本豁免清单移除，否则产品面的真实幽灵会被掩盖");
+        }
+
+        var candidates = constantNames.Where(
+            name => !neutralOnlySubtypes.Contains(name, StringComparer.Ordinal));
+        var ghosts = FindGhostSubtypes(candidates, combined);
 
         ghosts.Should().BeEmpty(
-            "以下错误子类常量全仓无引用（幽灵子类）——它们对宿主是「承诺了却永远走不到」的分支。"
+            "以下错误子类常量在产品面全无引用（幽灵子类）——它们对宿主是「承诺了却永远走不到」的分支。"
             + "修法：接线到真实产出点，或删除（新增需评审 + 本守卫覆盖）：{0}",
             string.Join(" | ", ghosts));
     }
@@ -183,48 +201,9 @@ public class ToolErrorContractGuards
             $"载荷必须 ≤ {ToolErrorPayloadSerializer.MaxPayloadBytes} 字节（正文截断不得吃掉载荷）");
     }
 
-    /// <summary>
-    /// 守卫 ⑤：ToolExecutor 的错误路径必须经过 FromStructuredError（源码结构断言）。
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// 金丝雀：注掉 <c>FromApiOutcomeError</c> 中的 <c>FromStructuredError</c> 调用即红。
-    /// </para>
-    /// <para>
-    /// <b>R-1 修订</b>：载荷序列化与 <c>FromError</c> 构造<b>已下沉到唯一出口</b>
-    /// （<c>ToolErrorFactory</c> / <c>ToolResultPipeline</c>），故本守卫的判据同步改为
-    /// "执行器骨架<b>委派</b>唯一出口 + 出口自身确实序列化"——原判据盯的是执行器骨架里的实现细节，
-    /// 收口后它会变成"要求重复实现"的反向约束。
-    /// </para>
-    /// </remarks>
-    [Fact]
-    public void ToolExecutor_ErrorPaths_ShouldUseFromStructuredError()
-    {
-        // v2.3 P1-D：执行器骨架与唯一出口随骨架中立化上移 Mud.AI.Agent/Tools。
-        var source = File.ReadAllText(Path.Combine(
-            FindRepositoryRoot(), "Mud.AI.Agent", "Tools", "ToolExecutor.cs"));
-
-        source.Should().Contain("FromStructuredError(",
-            "ToolExecutor 的错误路径必须经过 FromStructuredError（工具名 + 分类文案的唯一入口）");
-        source.Should().Contain("ToolResultPipeline.Error(",
-            "ToolExecutor 必须把载荷构造委派给唯一出口 ToolResultPipeline（R-1 起不再自行拼装）");
-
-        var pipeline = File.ReadAllText(Path.Combine(
-            FindRepositoryRoot(), "Mud.AI.Agent", "Tools", "ToolResultPipeline.cs"));
-
-        // v2.3 P1-D：载荷构造此前就在 ToolResultPipeline 内，中立化上移时拆出了独立工厂
-        // ToolErrorFactory（骨架装配的副产品）。判据随之追到事实：管道委派工厂 + 工厂确实序列化。
-        pipeline.Should().Contain("ToolErrorFactory.Create(",
-            "唯一出口必须把载荷构造委派给唯一工厂 ToolErrorFactory（不得自行 new ToolError）");
-        pipeline.Should().Contain("ToolResult.FromError(",
-            "唯一出口必须通过 ToolResult.FromError(ToolError, ...) 构造带结构化载荷的结果");
-
-        var factory = File.ReadAllText(Path.Combine(
-            FindRepositoryRoot(), "Mud.AI.Agent", "Tools", "ToolErrorFactory.cs"));
-
-        factory.Should().Contain("ToolErrorPayloadSerializer.Serialize(",
-            "唯一工厂必须调用 ToolErrorPayloadSerializer.Serialize 构造首行 JSON");
-    }
+    // 守卫 ⑤（原 ToolExecutor_ErrorPaths_ShouldUseFromStructuredError）已迁出飞书仓
+    // （v2.3 迁移）：执行器骨架与唯一出口随骨架中立化迁入新仓 Mud.AI.Agent/Tools——
+    // 判据锚点全在中立文件，故由新仓 ToolErrorContractGuards.ToolExecutor_ErrorPaths_ShouldUseFromStructuredError 持有。
 
     // 守卫 ⑥（原 CategoryLiteral_ShouldMapAllEnumValues）已删除（同守卫 ①，测试体系治理 B1）：
     // 两处等式守卫把 CategoryLiteral 的输出与字面量闭集逐一比对——空串/错映射/未映射

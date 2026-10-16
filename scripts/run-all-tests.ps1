@@ -1,7 +1,5 @@
 $projects = @(
     'Tests/Mud.Feishu.Abstractions.Tests/Mud.Feishu.Abstractions.Tests.csproj',
-    'Tests/Mud.AI.Generator.Tests/Mud.AI.Generator.Tests.csproj',
-    'Tests/Mud.AI.Agent.Tests/Mud.AI.Agent.Tests.csproj',
     'Tests/Mud.Feishu.AI.Tests/Mud.Feishu.AI.Tests.csproj',
     'Tests/Mud.Feishu.AI.Tools.Tests/Mud.Feishu.AI.Tools.Tests.csproj',
     'Tests/Mud.Feishu.Agent.Demo.Tests/Mud.Feishu.Agent.Demo.Tests.csproj'

@@ -9,8 +9,9 @@
     <Project Path="Demos/Mud.Feishu.Demo/Mud.Feishu.Demo.csproj" />
     <Project Path="Demos/Mud.Feishu.Webhook.Demo/Mud.Feishu.Webhook.Demo.csproj" Id="33cbe001-6cfc-489d-8f5b-12dea3b659ed" />
     <Project Path="Demos/Mud.Feishu.WebSocket.Demo/Mud.Feishu.WebSocket.Demo.csproj" />
-    <!-- v2.3 P1-B：ToolSurface 引擎的调试闭环 demo（自组件仓随竖井迁入）+ 其 SDK 桩工程。
-         改引擎 → 跑本 demo 即得反馈，无需跨仓发版（调优期仓内闭环）。 -->
+    <!-- v2.3 P1-B：ToolSurface 引擎的调试 demo（自组件仓随竖井迁入）+ 其 SDK 桩工程。
+         Mud.AI 家族独立化后，引擎由独立仓的 Mud.AI.Generator 分析器包提供——改引擎需在
+         独立仓重打包并让本仓还原（跨仓，见 AGENTS.md「Mud.AI.* family migration」）。 -->
     <Project Path="Demos/Mud.Demo.Sdk/Mud.Demo.Sdk.csproj" />
     <Project Path="Demos/ToolSurfaceDemo/ToolSurfaceDemo.csproj" />
     <Project Path="Demos/TaskManageDemo/backend/TaskManageDemo.Backend.csproj" />
@@ -23,9 +24,6 @@
   </Folder>
   <Folder Name="/Sources/" />
   <Folder Name="/Sources/AI/">
-    <Project Path="Mud.AI.Abstractions/Mud.AI.Abstractions.csproj" />
-    <Project Path="Mud.AI.Agent/Mud.AI.Agent.csproj" />
-    <Project Path="Mud.AI.Generator/Mud.AI.Generator.csproj" />
     <Project Path="Mud.Feishu.AI.Mcp/Mud.Feishu.AI.Mcp.csproj" />
     <Project Path="Mud.Feishu.AI.Tools/Mud.Feishu.AI.Tools.csproj" />
     <Project Path="Mud.Feishu.AI/Mud.Feishu.AI.csproj" />
@@ -44,10 +42,6 @@
   <Folder Name="/Tests/">
     <File Path="Tests/Directory.Build.props" />
     <Project Path="Tests/Mud.Feishu.Abstractions.Tests/Mud.Feishu.Abstractions.Tests.csproj" />
-    <Project Path="Tests/Mud.AI.Generator.Tests/Mud.AI.Generator.Tests.csproj" />
-    <!-- P1-H2：Mud.AI.Agent（中性运行期）自带用例工程——中性类型不依赖任何飞书工程即可被验证，
-         保证 P3 上游化时覆盖不丢。登记后自动进 verify-build 步骤 4 的 TRX 矩阵（按 Tests/** 发现）。 -->
-    <Project Path="Tests/Mud.AI.Agent.Tests/Mud.AI.Agent.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.Agent.Demo.Tests/Mud.Feishu.Agent.Demo.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.AI.Tools.Tests/Mud.Feishu.AI.Tools.Tests.csproj" />
     <Project Path="Tests/Mud.Feishu.AI.Tests/Mud.Feishu.AI.Tests.csproj" />

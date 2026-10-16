@@ -33,7 +33,7 @@
     （CI runner 为全新环境，本地源通常不存在，此时会输出 [SKIP] 并通过）。
 
 .PARAMETER Fast
-    日常开发快速档（测试体系治理 §三.2，见《单元测试体系过度测试分析与解决方案》；文档位置注册表：Tests/Shared/Docs/FeishuDocs.cs）：
+    日常开发快速档（测试体系治理 §三.2，见《单元测试体系过度测试分析与解决方案》（已迁 Mud.AI 仓）；文档位置注册表：Tests/Shared/Docs/FeishuDocs.cs）：
     增量构建 + 单元测试（排除 Timing/ stress 用例），跳过诊断计数断言（步骤 2）、
     AOT 严格冒烟（步骤 3）、Redis 集成（步骤 5）与格式校验（步骤 6）。
     ⚠️ 诊断断言在增量构建下必然失真：源生成器会被整体跳过 ⇒ 日志里一条 MUDFT 都没有，
@@ -217,6 +217,81 @@ else {
     Write-Host "  [SKIP] 未找到本地源 $localSource（非本地联调环境）" -ForegroundColor DarkGray
 }
 
+# ── 跨仓 Mud.AI.* 本地源 ↔ 全局缓存一致性（迁移 R-2：CACHE-1 同类陷阱） ──
+# Mud.AI 家族独立化后，Mud.AI.Generator / Mud.AI.Agent / Mud.AI.Abstractions 由
+# <Mud.AI 仓>/artifacts 这一本地文件夹源消费。同一版本覆盖打包同样不会让下游缓存失效
+# （NuGet 以 id+version 为键）——与 Mud.HttpUtils.Generator 完全同款。逐个包比对包内
+# DLL 与全局缓存 DLL 的 SHA256（ContentHash；对时间戳/PDB 路径变化不敏感）。
+$mudAiSource = 'D:/Repos/MudAIAgent/artifacts'
+if (Test-Path $mudAiSource) {
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    foreach ($aiId in @('Mud.AI.Generator', 'Mud.AI.Agent', 'Mud.AI.Abstractions')) {
+        $decl = $null
+        if ($csprojFiles) {
+            $d = Select-String -Path $csprojFiles -Pattern ([regex]::Escape($aiId) + '" Version="([^"]+)"') | Select-Object -First 1
+            if ($d) { $decl = $d.Matches[0].Groups[1].Value }
+        }
+        $aiPkg = if ($decl) {
+            Get-ChildItem $mudAiSource -Filter "$aiId.$decl.nupkg" -ErrorAction SilentlyContinue | Select-Object -First 1
+        }
+        else {
+            Get-ChildItem $mudAiSource -Filter "$aiId.*.nupkg" -ErrorAction SilentlyContinue | Select-Object -First 1
+        }
+        if (-not $aiPkg) {
+            if ($decl) {
+                Write-Host "  [WARN] 本地源 $mudAiSource 缺少 csproj 声明的 $aiId $decl（还原会失败或回退）。" -ForegroundColor Yellow
+            }
+            continue
+        }
+
+        $aiVersion = ($aiPkg.Name -replace ([regex]::Escape($aiId) + '\.'), '' -replace '\.nupkg$', '')
+        $idLower = $aiId.ToLowerInvariant()
+        # 包内 DLL 名 == 程序集名：Generator 位于 analyzers/dotnet/cs/，其余位于 lib/<tfm>/。
+        $cachedDll = Get-ChildItem (Join-Path $globalPackages $idLower) -Recurse -File -Filter "$aiId.dll" -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+
+        if (-not $cachedDll) {
+            Write-Host "  [ OK ] 缓存中尚无 $aiId $aiVersion，将由本次还原首次解包（无陈旧风险）" -ForegroundColor Green
+            continue
+        }
+
+        $zip = [System.IO.Compression.ZipFile]::OpenRead($aiPkg.FullName)
+        $entry = $zip.Entries | Where-Object { $_.FullName -like "*/$aiId.dll" } | Select-Object -First 1
+        $aiSourceHash = ''
+        if ($entry) {
+            $stream = $entry.Open()
+            $sha = [System.Security.Cryptography.SHA256]::Create()
+            $aiSourceHash = ([BitConverter]::ToString($sha.ComputeHash($stream)) -replace '-', '')
+            $sha.Dispose()
+            $stream.Dispose()
+        }
+        $zip.Dispose()
+
+        $aiCacheHash = (Get-FileHash -LiteralPath $cachedDll.FullName -Algorithm SHA256).Hash
+        if ($aiSourceHash -and $aiSourceHash -ne $aiCacheHash) {
+            $staleDetected = $true
+            Write-Host "  [WARN] 依赖缓存内容与本地源不一致：$aiId $aiVersion" -ForegroundColor Yellow
+            Write-Host "         本地源 $($aiSourceHash.Substring(0,16))...  缓存 $($aiCacheHash.Substring(0,16))..." -ForegroundColor Yellow
+            if ($ClearStaleCache) {
+                Remove-Item (Join-Path $globalPackages "$idLower\$aiVersion") -Recurse -Force -ErrorAction SilentlyContinue
+                $staleDetected = $false
+                $script:cacheCleared = $true
+                Write-Host "  已清理 $idLower\$aiVersion，将重新从本地源解包。" -ForegroundColor Green
+            }
+            else {
+                Write-Host "  修复：删除 $globalPackages\$idLower\$aiVersion 后重跑，或附加 -ClearStaleCache。" -ForegroundColor Yellow
+                Write-Host "  根治：以版本号递增方式重新打包 Mud.AI.*（同版本覆盖必然复发 CACHE-1）。" -ForegroundColor Yellow
+            }
+        }
+        else {
+            Write-Host "  [ OK ] $aiId $aiVersion 缓存内容与本地源一致" -ForegroundColor Green
+        }
+    }
+}
+else {
+    Write-Host "  [SKIP] 未找到跨仓本地源 $mudAiSource（非本地联调环境）" -ForegroundColor DarkGray
+}
+
 Assert-Zero -Name '依赖缓存陈旧' -Count $(if ($staleDetected) { 1 } else { 0 }) -Hint '见 CACHE-1'
 
 if ($CacheCheckOnly) {
@@ -374,9 +449,11 @@ else {
 #   - Tests 被 Tests/Directory.Build.props 遮蔽，不启用 AOT 分析器；
 #   - Demos 被 Demos/Directory.Build.props 遮蔽，且 Mud.Feishu.AotVerification 有意保留反射调用
 #     以验证「用户自行使用反射 JsonSerializer 仍可工作」，纳入严格模式只会产生与库无关的噪音）。
-# v2.3：glob 由 'Mud.Feishu*' 放宽为 'Mud.*'——Mud.AI.Agent / Mud.AI.Abstractions 等新包族
-#   同样是需要 AOT 严格冒烟的**发布面源项目**；沿用旧 glob 会让它们成为门禁盲区
-#   （新增包族即静默逃过 IL2026/IL3050 断言）。
+# v2.3：glob 由 'Mud.Feishu*' 放宽为 'Mud.*'——新增包族同样是发布面源项目，沿用旧 glob 会让
+#   它们成为门禁盲区（新增包族即静默逃过 IL2026/IL3050 断言）。
+# 2026-10-15 迁移：Mud.AI.Agent / Mud.AI.Abstractions / Mud.AI.Generator 独立化迁出本仓
+#   ⇒ 其 AOT 严格冒烟覆盖**已转移至独立 Mud.AI 仓**（R-6）；本 glob 现匹配 Mud.Feishu* 家族，
+#   保留 'Mud.*' 以便本仓未来新增 Mud.* 源项目自动纳入（不预升口径）。
 $sourceRoots = @(Get-ChildItem -Path $repoRoot -Directory -Filter 'Mud.*' -ErrorAction SilentlyContinue)
 $strictProjects = @($sourceRoots |
     ForEach-Object { Get-ChildItem -Path $_.FullName -Filter '*.csproj' -File -ErrorAction SilentlyContinue } |

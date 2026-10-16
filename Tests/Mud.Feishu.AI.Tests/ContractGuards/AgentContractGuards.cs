@@ -52,25 +52,67 @@ public class AgentContractGuards
     }
 
     // ────────────────────────────────────────────────────────────────────
+    // 守卫 1b：跨仓 MAF 版本契约（本仓 ≥ 新仓 Mud.AI.Agent 的编译基线）
+    // ────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// <b>跨仓 MAF 版本契约</b>（迁移方案 §6：飞书仓新增）：本仓 <c>Mud.Feishu.AI</c> 编译时所依赖的
+    /// <c>Microsoft.Agents.AI</c> 版本，必须 ≥ 独立仓 <c>Mud.AI.Agent</c> 包编译时的版本。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 为什么需要它：<c>Mud.AI.Agent</c> 迁出后，「MAF 单版本」由跨仓两半共同决定——新仓升 MAF 而本仓未跟
+    /// （或反之）都会让两边的<b>编译基线</b>分裂。NuGet 的单版本统一会把较高版本带进运行期，构建仍绿，
+    /// 于是漂移没有编译期或运行期信号。本断言用两边程序集的<b>引用元数据</b>
+    /// （<c>Assembly.GetReferencedAssemblies()</c>）做机械比对——不依赖 nuspec / 全局缓存路径，跨机可行。
+    /// </para>
+    /// <para>判据方向：本仓 ≥ 新仓（放宽方向只朝一边——适配层可先行升 MAF，中立运行期不得落后）。</para>
+    /// </remarks>
+    [Fact]
+    public void MafVersion_ShouldSatisfyMudAiAgentLowerBound()
+    {
+        const string Maf = "Microsoft.Agents.AI";
+
+        var feishuMaf = ReferencedAssemblyVersion("Mud.Feishu.AI", Maf);
+        var neutralMaf = ReferencedAssemblyVersion("Mud.AI.Agent", Maf);
+
+        feishuMaf.Should().NotBeNull("Mud.Feishu.AI 必须编译期引用 Microsoft.Agents.AI（MAF 白名单单点）");
+        neutralMaf.Should().NotBeNull("Mud.AI.Agent 包必须编译期引用 Microsoft.Agents.AI（否则包契约已变）");
+
+        (feishuMaf! >= neutralMaf!).Should().BeTrue(
+            "Mud.Feishu.AI 的 MAF 版本（{0}）必须 ≥ 独立仓 Mud.AI.Agent 的版本（{1}）——跨仓漂移无编译期信号",
+            feishuMaf,
+            neutralMaf);
+    }
+
+    /// <summary>取程序集 <paramref name="assemblyName"/> 编译期对 <paramref name="referencedName"/> 的引用版本。</summary>
+    private static Version? ReferencedAssemblyVersion(string assemblyName, string referencedName)
+        => System.Reflection.Assembly.Load(assemblyName)
+            .GetReferencedAssemblies()
+            .FirstOrDefault(reference => string.Equals(reference.Name, referencedName, StringComparison.OrdinalIgnoreCase))
+            ?.Version;
+
+    // ────────────────────────────────────────────────────────────────────
     // 守卫 2：仅 Mud.Feishu.AI 可直接引用 MAF 包（依赖方向铁律）
     // ────────────────────────────────────────────────────────────────────
 
     /// <summary>
     /// 核心项目（Mud.Feishu 等）不得直接声明 Microsoft.Agents.AI* 引用——
-    /// MAF 只允许进入 <b>白名单</b>{<c>Mud.Feishu.AI</c>（产品适配层）、<c>Mud.AI.Agent</c>（AI 运行期）}
+    /// MAF 只允许进入 <b>白名单</b>{<c>Mud.Feishu.AI</c>（产品适配层）}
     /// （总体设计 §3.1：AI → 核心单向，核心不被 Agent 运行时污染）。
     /// 其他项目经项目引用<b>传递</b>获得（如 Mud.Feishu.Redis），不违反本守卫。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>P1-H3 的收敛式放宽（白名单从 1 → 2）</b>：MAF 是<b>产品中立</b>的运行时框架，
-    /// 而 <c>Mud.AI.Agent</c> 的定位就是"AI 运行期"（会话门面 <c>AgentSessionStore</c> 需要
-    /// <c>AIAgent</c> 做序列化归属方）。不放宽则会话管线无法中立化。
+    /// <b>迁移收窄（Mud.AI 系列包独立化）</b>：<c>Mud.AI.Agent</c> / <c>Mud.AI.Abstractions</c> /
+    /// <c>Mud.AI.Generator</c> 已迁出本仓（独立 <c>Mud.AI</c> 仓）——白名单随之由
+    /// {<c>Mud.Feishu.AI</c>、<c>Mud.AI.Agent</c>} 收窄回本仓内的 <c>Mud.Feishu.AI</c> 单点
+    /// （非放开：Mud.AI.Agent 在本仓已不存在，保留旧成员只会是一条指向空工程的死名单）。
     /// </para>
     /// <para>
-    /// <b>放宽必须配反向断言，否则是净放松</b>（见 <see cref="MudAiAbstractions_ShouldNotDeclareMafPackages"/>
-    /// 与非 AI 的 <c>Mud.Feishu*</c> 工程仍被本条拒绝）：
-    /// ① <c>Mud.AI.Abstractions</c> 是编译期契约层，被源生成器剖面与声明契约消费，必须保持零 MAF；
+    /// <b>迁移前放宽所配的反向断言，其载体随实现转移到新仓</b>：
+    /// ① <c>Mud.AI.Abstractions</c> 保持零 MAF——现由新仓
+    /// <c>AgentPackageContractGuards.MudAiAbstractions_ShouldNotDeclareMafPackages</c> 持有；
     /// ② 全部核心 SDK 工程（含 Mud.Feishu.WebSocket / Webhook / Redis …）仍禁直接声明；
     /// ③ MAF 版本仍由 <see cref="AgentsAi_PackageReferences_ShouldBeSingleVersion"/> 锁单点。
     /// </para>
@@ -78,9 +120,8 @@ public class AgentContractGuards
     [Fact]
     public void AgentsAi_PackageReferences_ShouldBeDeclaredOnlyInAllowListedProjects()
     {
-        // MAF 允许集（收敛式放宽，非放开）：产品适配层 + AI 运行期。新增成员必须同批扩本集合，
-        // 并在 MudAiAbstractions_ShouldNotDeclareMafPackages 处论证"为什么它也需要 MAF"。
-        string[] allowed = ["Mud.Feishu.AI.csproj", "Mud.AI.Agent.csproj"];
+        // MAF 允许集：本仓内仅产品适配层（Mud.AI.Agent 已迁独立仓，其 MAF 单点由新仓持有）。
+        string[] allowed = ["Mud.Feishu.AI.csproj"];
 
         var offenders = new List<string>();
         foreach (var csproj in ProjectFiles())
@@ -98,94 +139,6 @@ public class AgentContractGuards
             "Microsoft.Agents.AI* 的直接 PackageReference 只允许出现在 {0}（其余工程经项目引用传递获得）",
             string.Join(" / ", allowed));
     }
-
-    /// <summary>
-    /// <b>P1-H3 反向断言</b>：<c>Mud.AI.Abstractions</c> 必须保持<b>零 MAF</b>。
-    /// </summary>
-    /// <remarks>
-    /// 该包是最底层的编译期契约层：源生成器按 <c>Mud.AI.*</c> 硬编码命名空间发现剖面、
-    /// 声明契约（<c>[AgentTool]</c>/<c>[ToolParameter]</c>/<c>[ToolHandler]</c>）被 233 个策展接口消费。
-    /// 它一旦引入 MAF，生成器被测工程与全部非 AI 工程都会被拖进 Agent 运行时的版本面——
-    /// 这正是「MAF 单点直引」原铁律要防的事，放宽白名单不应把它一并放开。
-    /// </remarks>
-    [Fact]
-    public void MudAiAbstractions_ShouldNotDeclareMafPackages()
-    {
-        var csproj = Path.Combine(GetSolutionRoot(), "Mud.AI.Abstractions", "Mud.AI.Abstractions.csproj");
-        File.Exists(csproj).Should().BeTrue();
-
-        StripXmlComments(File.ReadAllText(csproj)).Should().NotContain(
-            "Microsoft.Agents.AI",
-            "Mud.AI.Abstractions 是编译期契约层（被源生成器与声明契约消费），必须保持零 MAF 依赖");
-    }
-
-    // ────────────────────────────────────────────────────────────────────
-    // 守卫 2b：独立产品线纪律——Mud.AI.* 不得声明 Mud.HttpUtils 组件
-    // ────────────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// <b>独立产品线纪律（2026-10-14）</b>：<c>Mud.AI.*</c> 工程不得声明 <c>Mud.HttpUtils</c> 组件。
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>为什么必须机械锁定</b>：这条纪律此前是<b>敞口</b>——既有中立性守卫只断言
-    /// <c>Mud.AI.*</c> ↛ <c>Mud.Feishu*</c>（见
-    /// <c>SingleToolSurfaceEngineContractGuards.MudAiFamily_ShouldNotDependOnFeishuProjects</c>），
-    /// 而 <c>Mud.HttpUtils</c> 作为"全仓单版本 HTTP 组件"被默认当成无害依赖，
-    /// <c>Mud.AI.Agent</c> 遂长期直接判定 <c>Mud.HttpUtils.ApiException</c>。后果有三：
-    /// ① P3 上游化（迁独立 Mud.AI 仓）时该包依赖被一并带走，独立产品线无法独立发布；
-    /// ② 版本被 <c>TokenMultiAppContractGuards</c> 的「同一组件单版本」契约反向牵制；
-    /// ③ 中立层认识了产品的具体实现类型——与 <c>ISessionStore</c> 端口同一条纪律相悖。
-    /// </para>
-    /// <para>
-    /// <b>修法</b>（不是删功能）：把"状态码"这一跨产品事实经中立端口
-    /// <c>Mud.AI.Abstractions.Tools.Errors.ITransportFault</c> 传入，具体异常类型的识别归产品适配层
-    /// （飞书侧 = <c>Mud.Feishu.AI.AgentTools.FeishuTransportFaultAdapter</c>，
-    /// 端到端接线由 <c>ToolErrorContractGuards.TransportForbidden_ShouldBeClassifiedAsAuthorization</c> 锁定）。
-    /// </para>
-    /// <para>
-    /// <b>射程</b>：只禁<b>组件本身</b>（<c>Mud.HttpUtils</c>）。子包（<c>.Attributes</c>/<c>.Abstractions</c>）
-    /// 可能是声明契约面的需要，若要引入须在此处显式扩射程并补论证（判据 <see cref="DeclaresMudHttpUtilsComponent"/>
-    /// 的自证用例已把"子包不算命中"钉死，扩射程必须同时改它）。
-    /// </para>
-    /// </remarks>
-    [Fact]
-    public void MudAiFamily_ShouldNotDeclareMudHttpUtilsComponent()
-    {
-        var offenders = ProjectFiles()
-            .Where(static path => Path.GetFileName(path).StartsWith("Mud.AI.", StringComparison.Ordinal)
-                && !IsUnderTestsDirectory(path))
-            .Where(path => DeclaresMudHttpUtilsComponent(File.ReadAllText(path)))
-            .Select(Path.GetFileName)
-            .ToArray();
-
-        offenders.Should().BeEmpty(
-            "Mud.AI.* 是可脱离 Mud 组件独立发布的 AI 产品线：不得声明 Mud.HttpUtils 组件"
-            + "（跨产品事实经中立端口传入，适配实现留在产品层）。违规工程：{0}",
-            string.Join(" / ", offenders));
-    }
-
-    /// <summary>判据自证：只命中组件本身；注释掉的引用与子包不得命中（否则守卫会假红/假绿）。</summary>
-    [Theory]
-    [InlineData("<Project><ItemGroup><PackageReference Include=\"Mud.HttpUtils\" Version=\"3.0.6\" /></ItemGroup></Project>", true)]
-    [InlineData("<Project><ItemGroup><!-- <PackageReference Include=\"Mud.HttpUtils\" Version=\"3.0.6\" /> --></ItemGroup></Project>", false)]
-    [InlineData("<Project><ItemGroup><PackageReference Include=\"Mud.HttpUtils.Attributes\" Version=\"3.0.6\" /></ItemGroup></Project>", false)]
-    [InlineData("<Project><ItemGroup><ProjectReference Include=\"..\\Mud.AI.Abstractions\\Mud.AI.Abstractions.csproj\" /></ItemGroup></Project>", false)]
-    public void MudHttpUtilsComponentJudge_ShouldFlagOnlyTheExactComponent(string csprojContent, bool expected)
-        => DeclaresMudHttpUtilsComponent(csprojContent).Should().Be(expected);
-
-    /// <summary>
-    /// 判据：声明了<b>组件本身</b>（<c>Include="Mud.HttpUtils"</c>——模式含闭引号，
-    /// 故 <c>Mud.HttpUtils.Attributes</c> 这类子包不会命中）。先剔除 XML 注释：注释不是声明。
-    /// </summary>
-    private static bool DeclaresMudHttpUtilsComponent(string csprojContent)
-        => Regex.IsMatch(StripXmlComments(csprojContent), @"Include=""Mud\.HttpUtils""");
-
-    /// <summary>测试工程（<c>Tests/</c> 下）不受本纪律约束：它们要驱动组件、且不随产品线发布。</summary>
-    private static bool IsUnderTestsDirectory(string path)
-        => path.Contains(
-            $"{Path.DirectorySeparatorChar}Tests{Path.DirectorySeparatorChar}",
-            StringComparison.OrdinalIgnoreCase);
 
     private static IEnumerable<string> ProjectFiles()
         => Directory.GetFiles(GetSolutionRoot(), "*.csproj", SearchOption.AllDirectories)
@@ -252,23 +205,23 @@ public class AgentContractGuards
     /// Phase 2 新增配置属性（<c>SummaryThreshold</c>）必须有<b>真实端到端</b>消费点（R5 规则 2）。
     /// </summary>
     /// <remarks>
+    /// <para>
     /// N2-f：摘要在机制中立化后消费点跨了两跳——产品配置 <c>FeishuAgentOptions.SummaryThreshold</c>
     /// → 投影 <c>ToRuntimeOptions()</c> → 中立 <c>AgentRuntimeOptions.SummaryThreshold</c>
     /// → 中立摘要器。双清单（消费点 + 投影点）必须<b>同批</b>断言，否则「投影漏字段」这类
     /// 断链会静默生效（配置写了不生效、且不报红）。
+    /// </para>
+    /// <para>
+    /// <b>迁移拆分</b>：跨仓双清单拆成两半——本仓保留<b>投影点</b>（产品配置 →
+    /// <c>ToRuntimeOptions</c>）正向锚；<b>消费点</b>（中立 <c>ConversationSummarizer</c> 消费
+    /// <c>SummaryThreshold</c>）随实现迁出，由新仓
+    /// <c>NeutralSourceContractGuards.FeishuAgentOptions_Phase2Properties_ShouldHaveRealConsumptionPoints</c> 持有。
+    /// </para>
     /// </remarks>
     [Fact]
     public void FeishuAgentOptions_Phase2Properties_ShouldHaveRealConsumptionPoints()
     {
-        var summarizerSource = Path.Combine(
-            GetSolutionRoot(), "Mud.AI.Agent", "Conversations", "ConversationSummarizer.cs");
         var optionsSource = Path.Combine(GetSolutionRoot(), "Mud.Feishu.AI", "Agents", "FeishuAgentOptions.cs");
-
-        File.Exists(summarizerSource).Should().BeTrue(
-            "摘要器必须存在于中立包（N2-f 已中立化）——路径变了要同批改本守卫，否则它会在旧路径上假绿");
-        File.ReadAllText(summarizerSource).Should().Contain(
-            "SummaryThreshold",
-            "AgentRuntimeOptions.SummaryThreshold 必须在会话摘要器中被消费（渐进式摘要阈值，Phase 2 §3.2）");
 
         File.Exists(optionsSource).Should().BeTrue();
         File.ReadAllText(optionsSource).Should().Contain(
@@ -282,19 +235,17 @@ public class AgentContractGuards
     /// <c>RequireMentionInGroup</c>/<c>AllowP2pConversation</c>/<c>BotName</c>
     /// （ImMessageConversationalEventHandler 过滤）。
     /// </summary>
+    /// <remarks>
+    /// <b>迁移拆分</b>：<c>MaxHistoryTokens</c> 的<b>消费点</b>（中立 <c>ConversationSummarizer</c>）
+    /// 随实现迁出，由新仓
+    /// <c>NeutralSourceContractGuards.FeishuAgentOptions_Phase12Properties_ShouldHaveRealConsumptionPoints</c> 持有；
+    /// 本仓保留产品侧三条 <c>ImConversationOptions</c> 消费点正向锚。
+    /// </remarks>
     [Fact]
     public void FeishuAgentOptions_Phase12Properties_ShouldHaveRealConsumptionPoints()
     {
-        var summarizerSource = Path.Combine(
-            GetSolutionRoot(), "Mud.AI.Agent", "Conversations", "ConversationSummarizer.cs");
         var imHandlerSource = Path.Combine(
             GetSolutionRoot(), "Mud.Feishu.AI", "Events", "ImMessageConversationalEventHandler.cs");
-
-        File.Exists(summarizerSource).Should().BeTrue(
-            "摘要器必须存在于中立包（N2-f 已中立化）");
-        File.ReadAllText(summarizerSource).Should().Contain(
-            "MaxHistoryTokens",
-            "AgentRuntimeOptions.MaxHistoryTokens 必须在会话摘要器中被消费（token 维度判定，P2D-3a）");
 
         File.Exists(imHandlerSource).Should().BeTrue();
         var handlerContent = File.ReadAllText(imHandlerSource);
@@ -307,57 +258,6 @@ public class AgentContractGuards
         handlerContent.Should().Contain(
             "BotName",
             "ImConversationOptions.BotName 必须在事件处理器中被消费（群聊「@ 到 Bot 本人」判定，R3-3）");
-    }
-
-    /// <summary>
-    /// <b>v3 §6.2 反向断言</b>：<see cref="AgentRuntimeOptions"/> 的每个中立旋钮都必须有真实消费点。
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>为什么必须"反向"</b>：<c>ToRuntimeOptions_ShouldProjectEveryNeutralKnob</c> 只证明
-    /// 「产品 → 中立」赋值齐全；「中立 → 消费者」方向没有机械锁。新增一个中立旋钮却无人读取时，
-    /// 投影断言照样绿——症状是「配置写了不生效」（配置面治理 R5 规则 2 的反向形态）。
-    /// </para>
-    /// <para>
-    /// <b>判据</b>：对 <see cref="AgentRuntimeOptions"/> 的每个 public 属性名，产品 ∪ 中立源码集中
-    /// 必须存在 <c>.<属性名></c> 成员访问；<b>定义处</b>与<b>投影赋值处</b>两文件除外——
-    /// 否则属性名自证即命中，反向断言恒真（假绿）。
-    /// </para>
-    /// </remarks>
-    [Fact]
-    public void AgentRuntimeOptions_EveryProperty_ShouldHaveRealConsumptionPoint()
-    {
-        var root = GetSolutionRoot();
-        var projects = new[] { MudAiAgentProject, AiProject, "Mud.Feishu.AI.Tools", "Mud.Feishu.AI.Mcp" };
-
-        // 排除「属性名定义处 / 投影赋值处」——两者都会让名字自证即命中，掩盖"没人读"。
-        var excludedFiles = new HashSet<string>(StringComparer.Ordinal)
-        {
-            "AgentRuntimeOptions.cs", // 定义处
-            "FeishuAgentOptions.cs",  // 投影赋值处（ToRuntimeOptions）
-        };
-
-        var sources = projects
-            .SelectMany(p => Directory.EnumerateFiles(Path.Combine(root, p), "*.cs", SearchOption.AllDirectories))
-            .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-                        && !p.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-                        && !excludedFiles.Contains(Path.GetFileName(p)))
-            .ToList();
-
-        // 反缩水：扫描面与反射面任一为空，本断言都恒真（假绿）。
-        sources.Should().NotBeEmpty("扫描面为空说明目录/路径解析坏了");
-        var propertyNames = typeof(AgentRuntimeOptions).GetProperties().Select(static p => p.Name).ToList();
-        propertyNames.Should().NotBeEmpty("反射面为空说明类型解析坏了");
-
-        var texts = sources.Select(File.ReadAllText).ToList();
-        var missing = propertyNames
-            .Where(name => !texts.Any(text => text.Contains("." + name, StringComparison.Ordinal)))
-            .ToList();
-
-        missing.Should().BeEmpty(
-            "AgentRuntimeOptions 的每个中立旋钮都必须被真实读取（.<属性名> 成员访问）——"
-            + "投影了却无人读 = 配置写了不生效。缺少消费点的属性：{0}",
-            string.Join(", ", missing));
     }
 
     // ────────────────────────────────────────────────────────────────────
@@ -401,11 +301,9 @@ public class AgentContractGuards
                 "Mud.Feishu.csproj",
                 "Mud.Feishu.DataModels.csproj",
                 "Mud.Feishu.EventCallback.csproj",
-                // v2.3 P1-D：Mud.AI.Agent（执行器骨架 + ToolApiOutcome）——AI → Mud.AI.* 单向。
-                "Mud.AI.Agent.csproj",
-                // P1-H3：ConversationStoreSessionAdapter 直接实现中立端口 ISessionStore
-                // （"直接使用的 API 必须直接声明"，P2-5）。方向不变：AI 适配层 → Mud.AI.*（单向）。
-                "Mud.AI.Abstractions.csproj",
+                // 迁移收窄：Mud.AI.Agent / Mud.AI.Abstractions 已迁出本仓，飞书 AI 适配层现以
+                // PackageReference 形态消费其程序集（不再出现在本仓 ProjectReference 白名单内，
+                // 其内部包锁由新仓 AgentPackageContractGuards 持有）。
             ],
             ["Mud.Feishu.Redis.csproj"] = ["Mud.Feishu.Abstractions.csproj"],
         };
@@ -545,9 +443,6 @@ public class AgentContractGuards
     /// <summary>飞书 AI 适配层工程名（产品语义所在）。</summary>
     private const string AiProject = "Mud.Feishu.AI";
 
-    /// <summary>中立 AI 运行期工程名（H2 起承载 token 计数 / guidance 装配 / 会话门面）。</summary>
-    private const string MudAiAgentProject = "Mud.AI.Agent";
-
     /// <summary>
     /// 按<b>工程名 + 相对路径</b>读取生产源码。
     /// </summary>
@@ -564,32 +459,6 @@ public class AgentContractGuards
         parts[1] = projectName;
         relativeParts.CopyTo(parts, 2);
         return File.ReadAllText(Path.Combine(parts));
-    }
-
-    /// <summary>
-    /// 工具执行上下文 <c>Begin</c> 必须前置于上下文装配（P0-1）。
-    /// </summary>
-    /// <remarks>
-    /// 顺序类缺陷最易在重构中复活，且症状是「静默零注入 + 仅一条 Warning」——
-    /// 断言相对顺序（不是绝对行号），行号漂移不会失效。
-    /// <b>N4 改锚</b>：回合机制已上移中立 <c>ConversationalTurnPipeline</c>——
-    /// 断言锚点随实现迁移（旧锚读产品薄壳会变成"断言在跑但读旧锚"的假绿）。
-    /// 行为锚（替身 ITurnScopeFactory + 替身 IContextAssembler 记录调用序）由
-    /// <c>Tests/Mud.AI.Agent.Tests/Events/ConversationalTurnPipelineTests</c> 承载。
-    /// </remarks>
-    [Fact]
-    public void ToolContext_Begin_ShouldPrecedeContextAssembly()
-    {
-        var source = ReadSource(MudAiAgentProject, "Events", "ConversationalTurnPipeline.cs");
-
-        var beginIndex = source.IndexOf("BeginToolScope(new TurnScopeContext", StringComparison.Ordinal);
-        var assembleCallIndex = source.IndexOf(
-            "AssembleUserMessageDefaultAsync(request", StringComparison.Ordinal);
-
-        beginIndex.Should().BeGreaterThan(-1, "必须先建立工具执行上下文");
-        assembleCallIndex.Should().BeGreaterThan(-1, "管线必须装配用户消息");
-        beginIndex.Should().BeLessThan(assembleCallIndex,
-            "工具上下文必须先于上下文装配生效——否则知识/引用类装配器读不到租户键，RAG 注入模式永久静默失效");
     }
 
     /// <summary>
@@ -656,25 +525,8 @@ public class AgentContractGuards
 
         // A1（v3）：消费点从组装语句升级为「两条链各自可查」——中立工厂把键以参数装入 Provider
         // （不得硬编码字面量），产品侧必须经该工厂装配（否则 Provider 写的状态袋与门面读的不是同一格）。
-        var factorySource = ReadSource(MudAiAgentProject, "Agents", "AgentAssemblyFactory.cs");
-        factorySource.Should().Contain("StateKey = historyStateKey",
-            "历史状态键必须被中立工厂真实装入 ChatHistoryProvider（参数名即产品→中立的注入面）");
-
-        // A-4（v3）：负向断言面扩到整个中立 Agents/ 目录（不再只锚一条文件）——运行期编织基类
-        // ObservedDelegatingAgent 同样是「顺手塞产品状态键」的高危点，单文件锚在它诞生后即失守。
-        var neutralAgentsDir = Path.Combine(GetSolutionRoot(), MudAiAgentProject, "Agents");
-        Directory.Exists(neutralAgentsDir).Should().BeTrue(
-            $"扫描目录必须存在（否则扫描面静默缩水 → 假绿）：{neutralAgentsDir}");
-        var neutralAgentFiles = Directory.EnumerateFiles(neutralAgentsDir, "*.cs", SearchOption.AllDirectories)
-            .Where(p => !p.Contains("obj") && !p.Contains("bin"))
-            .ToList();
-        neutralAgentFiles.Should().NotBeEmpty("扫描面为空是假绿（目录存在但枚举不到源码）");
-        foreach (var neutralAgentFile in neutralAgentFiles)
-        {
-            File.ReadAllText(neutralAgentFile).Should().NotContain("\"feishu.",
-                $"中立 Agents/ 不得硬编码任何产品状态键前缀（{Path.GetFileName(neutralAgentFile)}）——字面量归产品侧所有");
-        }
-
+        // 中立半边的断言（StateKey = historyStateKey / 中立 Agents 目录零产品字面量）随实现迁出，
+        // 由新仓 NeutralSourceContractGuards.AgentStateKeys_ShouldBeUniqueAndConsumed 持有。
         source.Should().Contain("AgentAssemblyFactory.Create(",
             "飞书侧必须经中立装配工厂构造内层 Agent（否则历史状态键的注入面又回到产品侧）");
 
@@ -689,13 +541,8 @@ public class AgentContractGuards
         handlerSource.Should().Contain("PendingReplyTurnStateKey");
 
         // P1-H3 / D4：状态键的**字面量**是产品事实（留在上方的 FeishuAgent 常量里），
-        // 机制（读取状态袋）在**中立包**的会话门面里——故中立门面必须以参数接收该键，
-        // 且绝不能出现任何 `feishu.` 前缀（否则等于把产品命名面焊进包族底层，
-        // P3 上游化时它会跟着 Mud.AI.Agent 一起走）。
-        var storeSource = ReadSource(MudAiAgentProject, "Sessions", "AgentSessionStore.cs");
-        storeSource.Should().Contain("_historyStateKey", "中立门面必须以参数接收历史状态键（D4：来源参数化）");
-        storeSource.Should().NotContain("\"feishu.",
-            "中立包不得硬编码任何产品状态键前缀——键的字面量归产品侧所有");
+        // 机制（读取状态袋）在**中立包**的会话门面里——中立门面以参数接收该键、且不得出现
+        // `feishu.` 前缀的断言随实现迁出（见新仓 NeutralSourceContractGuards）。
 
         // 飞书侧必须真的把键**注入**门面（否则参数化只是签名装饰）。
         source.Should().Contain("ChatHistoryStateKey",
@@ -711,49 +558,23 @@ public class AgentContractGuards
     /// <b>绝不</b>出现 confirm_token、令牌明文或自批复指示。
     /// </summary>
     /// <remarks>
+    /// <para>
     /// WP3 删除了自研确认令牌全部过渡层（ToolConfirmationToken / IToolConfirmationTokenSecretProvider）。
     /// HITL 的批准状态所有权归宿主授权器（IToolExecutionAuthorizer），SDK 执行链恒为中性拒绝。
-    /// 本守卫锁住"模型可见文案不含任何凭据类信息"这一不变量，防止令牌机制被重新引入。
-    /// 扫描落在 <c>Mud.Feishu.AI.Tools</c>（执行链唯一实现方）。
+    /// </para>
+    /// <para>
+    /// <b>迁移拆分</b>：判据 ①（模型可见文案的凭据零命中）的锚点原文案已随错误契约族中立化上移
+    /// <c>Mud.AI.Agent/Tools/ToolErrorText.cs</c>，该半边的括号配平切片断言随实现迁出，由新仓
+    /// <c>NeutralSourceContractGuards.ConfirmationToken_ShouldNeverEnterModelVisiblePayload</c> 持有；
+    /// 本仓保留判据 ②——飞书侧绑定（宿主批准通道）契约正向锚。
+    /// </para>
     /// </remarks>
     [Fact]
     public void ConfirmationToken_ShouldNeverEnterModelVisiblePayload()
     {
-        // v2.3 P1-D：待确认**文案**随错误契约族中立化上移 Mud.AI.Agent/Tools/ToolErrorText.cs
-        // （FeishuToolBinding 只保留转发）；判据 ① 的锚点追到实现所在文件，
-        // 判据 ②（宿主批准通道）仍是飞书侧契约，锚点留在 FeishuToolBinding.cs。
-        var source = File.ReadAllText(Path.Combine(
-            GetSolutionRoot(), "Mud.AI.Agent", "Tools", "ToolErrorText.cs"));
-
         var bindingSource = Path.Combine(
             GetSolutionRoot(), "Mud.Feishu.AI.Tools", "Tools", "FeishuToolBinding.cs");
         File.Exists(bindingSource).Should().BeTrue();
-
-        // R3-02：切片方式从"取到行尾"改为"括号配平的方法体切片"——
-        // 被守护文案跨两行（FeishuToolBinding.cs:416-417），单行切片会漏掉续行内容。
-        var needsConfirmationBranch = source.IndexOf(
-            "ToolErrorCategory.Confirmation =>", StringComparison.Ordinal);
-        needsConfirmationBranch.Should().BeGreaterThan(-1);
-
-        // 括号配平切片：从 `=>` 后的 `$"` 开始，配平到语句结束（分号或下一个 case）。
-        var sliceStart = source.IndexOf('"', needsConfirmationBranch);
-        sliceStart.Should().BeGreaterThan(-1, "NeedsConfirmation 分支必须有字符串字面量");
-        var depth = 0;
-        var sliceEnd = sliceStart;
-        for (var i = sliceStart; i < source.Length; i++)
-        {
-            var ch = source[i];
-            if (ch == '(') depth++;
-            else if (ch == ')') { if (depth == 0) break; depth--; }
-            else if (ch == ';' && depth == 0) { sliceEnd = i; break; }
-            sliceEnd = i;
-        }
-        var branch = source[needsConfirmationBranch..(sliceEnd + 1)];
-
-        branch.Should().NotContain("确认令牌", "模型可见文案不得携带/提示确认令牌（R2-1）");
-        branch.Should().NotContain("confirm_token", "不得再指示模型以 confirm_token 重试（那等于把批准要素交给模型）");
-        branch.Should().NotContain("confirmation_token", "不得以任何变体形式回灌令牌提示");
-        branch.Should().Contain("需要用户确认", "待确认语义必须保留（三态文案不得退化）");
 
         // ② 批准状态归宿主授权器，SDK 不签发任何凭据（锚点：飞书侧绑定 —— v2.3 未随骨架上移）。
         var binding = File.ReadAllText(bindingSource);
@@ -762,57 +583,6 @@ public class AgentContractGuards
         binding.Should().NotContain("ToolConfirmationToken", "WP3 已删除自研确认令牌，不得重新引入");
         binding.Should().NotContain("IToolConfirmationTokenSecretProvider", "WP3 已删除令牌密钥提供者契约");
         binding.Should().NotContain("#pragma warning disable CS0618", "WP3 已删除令牌过渡层，不再需要 CS0618 抑制");
-    }
-
-    /// <summary>
-    /// R3-02 行为断言：StructuredError 全部分支的<b>字符串字面量</b>经正则断言零命中凭据类信息。
-    /// 本测试工程未引用 FeishuTools 程序集（无法反射调用 internal 方法），故退化为
-    /// "只扫描字符串字面量、剥离注释"的源码断言——注释中的"确认令牌"（解释为什么删除了令牌提示）
-    /// 不得触发假红。R3-10 纪律：文本断言仅限无法行为化的项，此处属该例外。
-    /// </summary>
-    [Fact]
-    public void StructuredError_NeedsConfirmation_ShouldNotLeakCredentialInBehavior()
-    {
-        // v2.3 P1-D：StructuredError 的实现上移 Mud.AI.Agent/Tools/ToolErrorText.cs（同前一条守卫）。
-        var bindingSource = Path.Combine(
-            GetSolutionRoot(), "Mud.AI.Agent", "Tools", "ToolErrorText.cs");
-        var source = File.ReadAllText(bindingSource);
-
-        // 提取 StructuredError 方法体整体（从方法签名到下一个方法声明）。
-        // v2.3 P1-D：visibility-agnostic——骨架里该方法为 public（FeishuToolBinding 侧为 internal 转发），
-        // 锚点只匹配 `static string StructuredError(…)`，改名/改可见性都不会让守卫假红。
-        var methodStart = source.IndexOf("static string StructuredError(string toolName, ToolErrorCategory category", StringComparison.Ordinal);
-        methodStart.Should().BeGreaterThan(-1, "StructuredError 方法必须存在");
-        var methodEnd = source.IndexOf("\n    static string StructuredError(string toolName, int? apiCode", StringComparison.Ordinal);
-        if (methodEnd < 0)
-        {
-            methodEnd = source.IndexOf("\n    public static string StructuredError(string toolName, int? apiCode", StringComparison.Ordinal);
-        }
-        if (methodEnd < 0)
-        {
-            // fallback: 找下一个方法声明
-            methodEnd = source.IndexOf("\n    /// <summary>", methodStart + 100, StringComparison.Ordinal);
-        }
-        methodEnd.Should().BeGreaterThan(methodStart, "必须能定位到 StructuredError 方法体结束");
-        var methodBody = source[methodStart..methodEnd];
-
-        // 剥离注释行（// 开头的行）——注释中解释"为什么删除了确认令牌"不应触发假红。
-        var lines = methodBody.Split('\n');
-        var codeOnly = string.Join('\n', lines.Where(static l =>
-        {
-            var trimmed = l.AsSpan().TrimStart();
-            return !trimmed.StartsWith("//", StringComparison.Ordinal) && !trimmed.StartsWith("///", StringComparison.Ordinal);
-        }));
-
-        // 行为断言：剥离注释后的代码体（含所有分支文案字面量）经正则零命中凭据类信息。
-        var credentialPattern = new System.Text.RegularExpressions.Regex(
-            @"(confirm_token|confirmation_token|确认令牌|token\s*=)",
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        credentialPattern.IsMatch(codeOnly).Should().BeFalse(
-            "StructuredError 的全部分支文案（字符串字面量）不得出现凭据类信息（已剥离注释）");
-
-        // 待确认语义必须存在于方法体中。
-        codeOnly.Should().Contain("需要用户确认", "待确认语义必须保留");
     }
 
     /// <summary>
@@ -936,48 +706,6 @@ public class AgentContractGuards
     }
 
     /// <summary>
-    /// R2-2 / R4-7：会话恢复必须<b>急切</b>校验历史状态（惰性反序列化纳入守护区），
-    /// 且坏值自愈的 catch 面<b>不得是枚举白名单</b>。
-    /// </summary>
-    /// <remarks>
-    /// R4-7 订正：原判据锁定字面量 <c>catch (Exception ex) when (ex is JsonException</c>——
-    /// 它固化了"枚举白名单"这一缺陷形态（白名单不含 FormatException/KeyNotFoundException/
-    /// IndexOutOfRangeException/NullReferenceException ⇒ 残余异常类型逃出守护区 ⇒ 坏值永不删除）。
-    /// 判据改为「catch 面等价于 <c>when (ex is not OperationCanceledException)</c>」，
-    /// 并<b>显式禁止</b>白名单写法复活；急切读取仍必须落在 catch 面之内。
-    /// </remarks>
-    [Fact]
-    public void SessionRestore_ShouldEagerlyValidateHistoryState()
-    {
-        // P1-H3：实现已搬到中立门面 Mud.AI.Agent/Sessions/AgentSessionStore.cs
-        // （FeishuAgent 的两个公开方法退化为一行转发，source 里已无 try/catch 与急切读取）。
-        // 锚点必须跟着实现走——留在 FeishuAgent.cs 会让断言读到不含这些字面量的文件，
-        // 从"报红"退化为"测了另一件事"。
-        var source = ReadSource(MudAiAgentProject, "Sessions", "AgentSessionStore.cs");
-
-        var restoreMethod = source.IndexOf("GetOrCreateAsync(string key", StringComparison.Ordinal);
-        restoreMethod.Should().BeGreaterThan(-1);
-        var body = source[restoreMethod..];
-
-        var eagerRead = body.IndexOf("TryGetInMemoryChatHistory", StringComparison.Ordinal);
-        var guard = body.IndexOf("catch (Exception ex) when (ex is not OperationCanceledException)", StringComparison.Ordinal);
-
-        body.Should().NotContain("ex is JsonException or ArgumentException",
-            "坏值自愈的 catch 面必须是收口形态（非枚举白名单）——白名单会漏掉残余异常类型，"
-            + "使坏载荷每次重投递都在守护区外再抛（R4-7）");
-
-        eagerRead.Should().BeGreaterThan(-1, "会话恢复必须急切触发一次历史状态读取（惰性解析否则逃逸守护区）");
-        guard.Should().BeGreaterThan(-1,
-            "catch 面必须收口为 `when (ex is not OperationCanceledException)`（R4-7）");
-        eagerRead.Should().BeLessThan(guard,
-            "急切读取必须落在坏值自愈的 catch 面**之内**——否则内层损坏在摘要器/Provider 内抛出，坏值永不删除");
-
-        // 清库必须用 CancellationToken.None（自愈动作不得被调用方取消中断，R4-7 第 2 条语义）。
-        body.Should().Contain("DeleteAsync(key, CancellationToken.None)",
-            "清库不得用调用方 token：调用方一取消就留下坏值，会话在其 TTL 内继续毒化");
-    }
-
-    /// <summary>
     /// R2-3：AppKey 缺失 × 工具链已装配 必须 fail-fast（并保留逃生门）。
     /// </summary>
     [Fact]
@@ -998,58 +726,17 @@ public class AgentContractGuards
     }
 
     /// <summary>
-    /// R2-4 / P1-H2b：<c>ChatTokenCounter</c> 的依赖面必须显式声明在<b>它自己所属的工程</b>里。
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// 缺词表包时 <c>TiktokenTokenizer.CreateForModel</c> 抛异常并被回退路径吞掉 ⇒
-    /// <c>MaxHistoryTokens</c> 维度全部退化为字符估算（仅 <c>InitializationFailure</c> 一处可观测）。
-    /// </para>
-    /// <para>
-    /// <b>H2b 起锚点改到 <c>Mud.AI.Agent.csproj</c></b>：类型搬了，声明也必须跟着搬——
-    /// 否则本断言会继续对着已经不再使用 tokenizer 的 <c>Mud.Feishu.AI.csproj</c> 检查，
-    /// 而真正会出问题的工程反而无人守（"断言在跑但读旧锚"的典型假绿）。
-    /// 同时新增 MEAI 断言：<c>CountMessages(IEnumerable&lt;ChatMessage&gt;)</c> 消费 MEAI 类型，
-    /// 按 P2-5「直接使用的 API 必须直接声明」，缺它会让中性包依赖上游传递解析。
-    /// </para>
-    /// </remarks>
-    [Fact]
-    public void ChatTokenCounter_ShouldDeclareTokenizerDataPackage()
-    {
-        var csproj = Path.Combine(GetSolutionRoot(), MudAiAgentProject, "Mud.AI.Agent.csproj");
-        File.Exists(csproj).Should().BeTrue();
-
-        var content = File.ReadAllText(csproj);
-        content.Should().Contain("Microsoft.ML.Tokenizers\"", "主包必须显式声明（P2-5）");
-        content.Should().Contain("Microsoft.ML.Tokenizers.Data.O200kBase",
-            "gpt-4o 的 o200k_base 词表在独立包中；缺失会让精确计数静默退化为估算（R2-4）");
-        content.Should().Contain("Microsoft.Extensions.AI.Abstractions",
-            "ChatTokenCounter.CountMessages 直接消费 MEAI 的 ChatMessage——"
-            + "直接使用的 API 必须直接声明，否则中性包会依赖 MAF 的传递解析（上游换实现即静默失效）");
-
-        // 可观测面：不再静默吞掉。
-        ReadSource(MudAiAgentProject, "Conversations", "ChatTokenCounter.cs").Should().Contain("InitializationFailure",
-            "编码器初始化失败必须留下可观测原因（由宿主构造期告警 + 用例断言）");
-    }
-
-    /// <summary>
     /// R2-5：<c>MemoryConversationStore</c> 必须清扫不再被读取的过期条目。
     /// </summary>
+    /// <remarks>
+    /// <b>迁移拆分</b>：清扫机制（<c>SweepExpired</c> / <c>SweepThreshold</c>）随实现迁入中立包
+    /// <c>Mud.AI.Agent.Sessions.MemorySessionStore</c>，其回收路径断言由新仓
+    /// <c>NeutralSourceContractGuards.MemorySessionStore_ShouldSweepExpiredEntries</c> 持有；
+    /// 本仓保留产品壳的「桥接而非重抄机制」正/负向锚。
+    /// </remarks>
     [Fact]
     public void MemoryConversationStore_ShouldSweepExpiredEntries()
     {
-        // N2-g：清扫机制已中立化（Mud.AI.Agent.Sessions.MemorySessionStore）——守卫锚点必须跟着
-        // 实现走，否则它会在产品壳上对新代码"看不见"而假绿（§6.2 改锚纪律 + Q3 教训）。
-        var source = ReadSource(MudAiAgentProject, "Sessions", "MemorySessionStore.cs");
-
-        source.Should().Contain("SweepExpired", "必须有过期回收路径（未读键永不到达读侧软过期）");
-
-        var save = source.IndexOf("public Task SaveAsync(", StringComparison.Ordinal);
-        save.Should().BeGreaterThan(-1);
-        var body = source[save..];
-        body.Should().Contain("SweepExpired()", "回收必须由写入路径触发（惰性分摊，不引入后台线程/定时器）");
-        body.Should().Contain("SweepThreshold", "必须按阈值分摊（均摊 O(1)），不得每次写入都全量扫描");
-
         // 产品壳只做「冻结契约 → 中立实现 + 产品 TTL」的适配，不得把机制抄回来（两份实现必然漂移）。
         var shell = ReadSource(AiProject, "Conversations", "MemoryConversationStore.cs");
         shell.Should().Contain("MemorySessionStore", "产品壳必须桥接到中立实现（机制唯一）");
@@ -1090,9 +777,15 @@ public class AgentContractGuards
     /// R2-12：<c>MaxHistoryMessages</c> 的<b>真实语义</b>必须被文档化。
     /// </summary>
     /// <remarks>
+    /// <para>
     /// 旧注释称「超出窗口的旧消息被折叠」，实测为「不可逆落库删除 + 工具消息剔除 + 仅保留首条 system」；
     /// 文档漂移会让宿主误判「模型忘了刚调过的工具」。本守卫防其再次漂移。
-    /// 另补：本属性此前长期<b>没有</b>消费点守卫（既有两条 Phase2/Phase12 守卫均未覆盖）。
+    /// </para>
+    /// <para>
+    /// <b>迁移拆分</b>：中立工厂的消费点（<c>MessageCountingChatReducer</c> 裁剪窗）随实现迁出，
+    /// 由新仓 <c>NeutralSourceContractGuards.HistoryReducerSemantics_ShouldBeDocumented</c> 持有；
+    /// 本仓保留「文档语义 + 产品侧注入」两半正向锚。
+    /// </para>
     /// </remarks>
     [Fact]
     public void HistoryReducerSemantics_ShouldBeDocumented()
@@ -1108,9 +801,6 @@ public class AgentContractGuards
         docs.Should().Contain("FunctionCallContent", "必须写明工具调用消息被永久丢弃");
 
         // 消费点（此前缺失守卫；A1（v3）后落点在中立工厂，产品侧只注入该上限）。
-        ReadSource(MudAiAgentProject, "Agents", "AgentAssemblyFactory.cs").Should().Contain(
-            "new MessageCountingChatReducer(maxHistoryMessages)",
-            "MaxHistoryMessages 必须被真实消费（中立工厂把上限装入 MessageCountingChatReducer 裁剪窗）");
         ReadSource(AiProject, "Agents", "FeishuAgent.cs").Should().Contain(
             "options.MaxHistoryMessages",
             "产品侧必须把 MaxHistoryMessages 注入中立装配工厂（否则配置上限成为无人消费的装饰）");

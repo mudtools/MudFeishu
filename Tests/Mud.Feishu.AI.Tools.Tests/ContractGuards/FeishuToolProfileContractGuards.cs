@@ -39,10 +39,10 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// 锁定 R-1 的交付物形态（<c>Source</c> 声明全部 nameof 化）。
 /// </para>
 /// <para>
-/// <b>v2.3 变更</b>：原 <c>RetiredLocalEngine_ShouldNotReappearAsALocalGenerator</c>（四判据）
-/// 已<b>退役删除</b>——工具面引擎自组件仓迁入飞书仓 <c>Mud.AI.Generator</c>（调优期仓内闭环）后，
-/// 「仓内零生成器」的口径被「仓内恰一个源级生成器宿主」取代，由
-/// <see cref="SingleToolSurfaceEngineContractGuards"/> 接棒（收窄而非放开）。
+/// <b>v2.3 变更 / 独立化后更新</b>：原 <c>RetiredLocalEngine_ShouldNotReappearAsALocalGenerator</c>（四判据）
+/// 已<b>退役删除</b>——工具面引擎自组件仓迁入 <c>Mud.AI.Generator</c>，其后随 <c>Mud.AI</c> 家族独立化
+/// 迁至独立仓（本仓改以 NuGet 分析器包消费）。「仓内零生成器」的口径为「仓内无源级生成器宿主」，
+/// 由 <see cref="SingleToolSurfaceEngineContractGuards"/> 接棒（收窄而非放开）。
 /// </para>
 /// </remarks>
 public class FeishuToolProfileContractGuards
@@ -190,8 +190,9 @@ public class FeishuToolProfileContractGuards
     /// </summary>
     /// <remarks>
     /// <para>
-    /// 来源：<c>Mud.AI.Generator/ToolSurface/ToolSurfaceDiagnostics.cs</c>（v2.3 P1-E 起为仓内引擎；
-    /// 此前镜像自组件侧 <c>Mud.HttpUtils.Generator</c> 3.0.6 的同名文件）。
+    /// 来源：独立仓 <c>Mud.AI</c> 的 <c>Mud.AI.Generator/ToolSurface/ToolSurfaceDiagnostics.cs</c>
+    /// （v2.3 P1-E 起为 <c>Mud.AI.Generator</c> 引擎，独立化后随包跨仓；
+    /// 更早镜像自组件侧 <c>Mud.HttpUtils.Generator</c> 3.0.6 的同名文件）。
     /// 本仓无法符号引用该 internal 表，故镜像冻结于此；<b>引擎升级若改动槽位/级别/零容忍列，
     /// 必须显式评审并同步本表与 <c>scripts/diagnostics-gate.ps1</c></b>。
     /// </para>

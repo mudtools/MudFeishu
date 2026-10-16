@@ -18,8 +18,12 @@ namespace Mud.Feishu.AI.Tests.ContractGuards;
 /// 编译通过、行为看上去也对，机械语义却重新分裂成两份（此后修引擎漏改壳）——而<b>没有任何编译期或运行期信号</b>。
 /// </para>
 /// <para>
-/// <b>判据</b>：对每条「壳 ↔ 引擎」事实，断言（a）壳源码不含引擎词汇且真出现引擎类型名（委托而非重写）；
-/// （b）引擎源码位于指定中立工程目录（否则"引擎"其实还在产品侧）。
+/// <b>判据</b>：断言壳源码不含引擎词汇且真出现引擎类型名（委托而非重写）。
+/// </para>
+/// <para>
+/// <b>迁移拆分</b>：源守卫是跨仓事实（壳 ↔ 引擎配对）。迁移后引擎段（第（b）条判据：引擎必须住在中立
+/// 工程目录、且不含产品词汇）随 <c>Mud.AI.Agent</c> 迁出，由新仓 <c>EngineContractGuards</c> 持有；
+/// 本文件只保留<b>壳侧</b>断言。事实表 <see cref="ShellEngineFacts"/> 仍记录跨仓配对，供壳侧定位引擎类型名。
 /// </para>
 /// </remarks>
 public class EngineShellContractGuards
@@ -60,13 +64,10 @@ public class EngineShellContractGuards
         var offenders = new List<string>();
         var scannedShells = 0;
 
-        foreach (var (shell, engine, engineType) in ShellEngineFacts)
+        foreach (var (shell, _, engineType) in ShellEngineFacts)
         {
             var shellPath = Path.Combine(root, shell);
-            var enginePath = Path.Combine(root, engine);
             File.Exists(shellPath).Should().BeTrue($"壳文件必须存在（否则本守卫退化为空扫描 → 假绿）：{shell}");
-            File.Exists(enginePath).Should().BeTrue(
-                $"引擎必须住在中立工程（三段分离的引擎段）；缺失即意味着引擎仍留在产品侧：{engine}");
 
             scannedShells++;
             var shellSource = File.ReadAllText(shellPath);
@@ -84,37 +85,6 @@ public class EngineShellContractGuards
         scannedShells.Should().BePositive("扫描面为空是假绿（事实表为空 ⇒ 恒真）");
         offenders.Should().BeEmpty(
             "产品薄壳只做契约适配：串行/并发语义必须留在中立引擎内（否则修引擎漏改壳，语义重新分裂）。命中：{0}",
-            string.Join(" | ", offenders));
-    }
-
-    /// <summary>
-    /// 反向：中立引擎不得引用产品契约（第七式另一半）——引擎被拉回产品类型后 P3 上游化即不成立。
-    /// </summary>
-    [Fact]
-    public void Engine_ShouldStayProductFree()
-    {
-        var root = FindRepositoryRoot();
-        var offenders = new List<string>();
-        var scannedEngines = 0;
-
-        foreach (var (shell, engine, _) in ShellEngineFacts)
-        {
-            var enginePath = Path.Combine(root, engine);
-            File.Exists(enginePath).Should().BeTrue(
-                $"引擎必须住在中立工程（三段分离的引擎段）；缺失即意味着引擎仍留在产品侧：{engine}");
-
-            scannedEngines++;
-            var engineSource = File.ReadAllText(enginePath);
-            foreach (var token in FindVocabularyOffenders(engineSource, ProductVocabulary))
-            {
-                offenders.Add($"{engine} 含产品词汇「{token}」（中立引擎被拉回产品契约）");
-            }
-        }
-
-        scannedEngines.Should().BePositive("扫描面为空是假绿（事实表为空 ⇒ 恒真）");
-        offenders.Should().BeEmpty(
-            "中立引擎不得引用 IConversationGate / ConversationBusyException / BusyModes / Mud.Feishu* —— "
-            + "产品异常语义与契约适配归壳段所有（否则引擎与产品线耦合，无法独立发布）。命中：{0}",
             string.Join(" | ", offenders));
     }
 

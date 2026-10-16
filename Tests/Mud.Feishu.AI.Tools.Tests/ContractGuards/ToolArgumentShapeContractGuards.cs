@@ -46,15 +46,15 @@ public class ToolArgumentShapeContractGuards
         // R5 / F-1：声明面在 Curation/；R-1+2c 后续重组：运行时基础设施按关注面解散为
         // Args/Results/Execution/Catalog/Hosting/Security/Parsers/Constants 八目录
         // （Errors/ 于阶段 A-1 随 B-5 迁出而消亡），Tools/ 仅余生成器钉死的根命名空间类型
-        // （FeishuToolBinding）。阶段 A-1 另把 B 组形态认知相关类型迁入中立包
-        // Mud.AI.Agent/Tools——认知边界必须同时覆盖产品侧与中立侧：漏掉任一目录即假绿
-        // （该目录新出现的形态认知无人拦截）。
+        // （FeishuToolBinding）。
+        // v2.3 迁移：B 组形态认知相关类型（含唯一认知中心 ToolArgumentNormalizer）随中立化迁出飞书仓，
+        // 故本仓扫描面收窄为**产品侧**关注面目录——中立侧（Mud.AI.Agent/Tools）的形态认知约束由
+        // 新仓 ToolArgumentShapeContractGuards 的同名守卫持有；两面互补，缺一即覆盖不全。
         var scanDirs = new[]
         {
             "Args", "Results", "Execution", "Catalog", "Hosting",
             "Security", "Parsers", "Constants", "Tools", "Curation",
         }.Select(d => Path.Combine(projDir, d))
-         .Append(Path.Combine(root, "Mud.AI.Agent", "Tools"))
          .ToArray();
 
         // 反缩水（§8.2「扫描面悄悄缩水」）：扫描目录必须真实存在——目录被删/改名会让
@@ -64,38 +64,27 @@ public class ToolArgumentShapeContractGuards
             Directory.Exists(dir).Should().BeTrue($"扫描目录必须存在（否则扫描面静态缩水 → 假绿）：{dir}");
         }
 
-        // 白名单（R-2 已收缩为**单文件**）：形态判定原语（IsJsonString/IsJsonArray）住在
-        // ToolArgumentNormalizer 内，其余位置（ToolArgs 取值门面、ToolArgsDigester 摘要、
-        // ToolPagination/ToolDryRun 取值助手）只能薄委托——"同一入参在不同工具里被判成不同形态"
-        // 是 S1 的同类根因，收敛后该形态在源码层不可能再出现第二处。
-        var allowedFiles = new HashSet<string>(StringComparer.Ordinal)
-        {
-            "ToolArgumentNormalizer.cs", // 唯一形态认知中心（R-2 起，含判定原语；A-1 后住 Mud.AI.Agent/Tools/Args）
-        };
-
+        // 白名单（迁移后为**空**）：形态判定原语（IsJsonString/IsJsonArray）的唯一认知中心
+        // ToolArgumentNormalizer 已迁入中立包 Mud.AI.Agent/Tools/Args——产品侧任何位置都不得再出现
+        // JsonValueKind.String 的形态认知（取值门面 ToolArgs、摘要 ToolArgsDigester、分页/干跑助手
+        // 只能薄委托中立原语）。"同一入参在不同工具里被判成不同形态"是 S1 的同类根因，
+        // 收敛后该形态在产品源码层不可能再出现。
         var scannedPaths = scanDirs
             .SelectMany(static dir => Directory.EnumerateFiles(dir, "*.cs", SearchOption.AllDirectories))
             .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
             .ToList();
 
-        // 反缩水：白名单文件必须实际落在扫描面内——文件名从扫描面消失（迁移出目录）会让
-        // "允许一处"退化为"允许任意处"（白名单恒不命中 ⇒ 假绿）。
-        foreach (var allowed in allowedFiles)
-        {
-            scannedPaths.Should().Contain(
-                p => Path.GetFileName(p) == allowed,
-                $"白名单文件 {allowed} 必须在扫描面内（否则该白名单失效 → 假绿）");
-        }
+        // 反缩水：扫描面不得为空（目录存在但枚举不到源码 = 判据恒真 → 假绿）。
+        scannedPaths.Should().NotBeEmpty("扫描面为空说明路径解析坏了（本守卫会恒绿）");
 
         var offenders = scannedPaths
-            .Where(p => !allowedFiles.Contains(Path.GetFileName(p)))
             .Where(p => File.ReadAllText(p).Contains("JsonValueKind.String", StringComparison.Ordinal))
             .Select(Path.GetFileName)
             .ToList();
 
         offenders.Should().BeEmpty(
-            "JsonValueKind.String 的形态认知只允许出现在 ToolArgumentNormalizer（唯一认知中心）；"
-            + "取值/摘要位置必须薄委托 IsJsonString/IsJsonArray——各自 switch 是 S1 的根因"
+            "JsonValueKind.String 的形态认知只允许出现在中立唯一认知中心 ToolArgumentNormalizer（新仓）；"
+            + "产品侧取值/摘要位置必须薄委托 IsJsonString/IsJsonArray——各自 switch 是 S1 的根因"
             + "（漏一处即静默失效）——违规文件: " + string.Join(", ", offenders));
     }
 

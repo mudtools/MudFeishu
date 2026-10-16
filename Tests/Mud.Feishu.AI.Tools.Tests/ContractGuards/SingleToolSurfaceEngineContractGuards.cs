@@ -7,28 +7,31 @@
 
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using Match = System.Text.RegularExpressions.Match;
 
 namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
-/// <b>唯一源级引擎 + 禁兼引</b>契约守卫（v2.3 接棒已退役的 <c>RetiredLocalEngine_ShouldNotReappearAsALocalGenerator</c>）。
+/// <b>仓内无源级引擎 + 禁兼引</b>契约守卫（v2.3 接棒已退役的 <c>RetiredLocalEngine_ShouldNotReappearAsALocalGenerator</c>）。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>背景</b>：工具面生成引擎（ToolSurface 竖井）自组件仓 <c>Mud.HttpUtils.Generator</c> 整批迁入飞书仓
-/// <c>Mud.AI.Generator</c>（调优期仓内闭环，P3 上游化）。旧守卫的四条判据防的是「仓内零生成器」，
-/// 引擎进仓后该口径必须<b>收窄</b>为「仓内恰一个源级生成器宿主」——收窄而非放开。
+/// <b>背景</b>：工具面生成引擎（ToolSurface 竖井）自组件仓 <c>Mud.HttpUtils.Generator</c> 迁入飞书仓
+/// <c>Mud.AI.Generator</c>，随后随 <c>Mud.AI</c> 家族独立化迁至独立仓（<c>D:\Repos\MudAIAgent</c>）。
+/// 本仓不再持有任何源级生成器宿主，改以 NuGet <b>分析器包</b>形态消费——故旧口径「仓内恰一个源级生成器
+/// 宿主」进一步收窄为「<b>仓内零源级生成器宿主</b>」（收窄而非放开）。
 /// </para>
 /// <para>
 /// <b>为什么禁兼引是机械必需</b>：两套 ToolSurface 引擎进入同一编译单元会产生<b>同名 hintName</b> 产物
 /// （<c>{ProductPrefix}Schemas.g.cs</c> 等全部由剖面槽派生）⇒ CS8785/CS0101/产物歧义。
-/// 包引用形态的分析器不沿 ProjectReference 传递，故「AI 族切仓内引擎 + 同日摘除组件包」才成立。
+/// 分析器形态的引用（包或工程）不沿 ProjectReference 传递，故必须逐工程显式声明。
 /// </para>
 /// <para>
 /// <b>准确语义（不过度承诺）</b>：本仓同时存在两个编译期 Roslyn 引擎在运行——组件包
-/// <c>Mud.HttpUtils.Generator</c>（做 HTTP 客户端生成，SDK 4 工程引用）与仓内 <c>Mud.AI.Generator</c>
-/// （做工具面）。本守卫保证的是「<b>源码级 <c>[Generator]</c> 宿主恰一个</b>」+「同一编译单元禁兼引两个
-/// ToolSurface」，而非「全仓只有一个编译器插件在跑」。
+/// <c>Mud.HttpUtils.Generator</c>（做 HTTP 客户端生成，SDK 工程引用）与 <c>Mud.AI.Generator</c>
+/// <b>分析器包</b>（做工具面，跨仓）。本守卫保证的是「<b>本仓无源码级 <c>[Generator]</c> 宿主</b>」+
+/// 「同一编译单元禁兼引两个 ToolSurface 引擎」+「<c>Mud.AI.*</c> 包引用钉死非浮动」+
+/// 「核心 SDK 不得依赖 <c>Mud.AI.*</c>」，而非「全仓只有一个编译器插件在跑」。
 /// </para>
 /// </remarks>
 public class SingleToolSurfaceEngineContractGuards
@@ -92,37 +95,107 @@ public class SingleToolSurfaceEngineContractGuards
         => Regex.Replace(content, "<!--.*?-->", string.Empty, RegexOptions.Singleline);
 
     // ────────────────────────────────────────────────────────────────────
-    // 断言 ①：源级 [Generator] 宿主恰一个，且为 Mud.AI.Generator（名称 + slnx 双认定）
+    // 断言 ①：本仓无源级 [Generator] 宿主；引擎以 Mud.AI.Generator 分析器包形态消费（跨仓）
     // ────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// 全仓（剔 obj/bin）<c>[Generator]</c> 标注只允许出现在 <see cref="EngineProject"/> 目录内；
-    /// 且该工程必须登记进 <c>Mud.Feishu.slnx</c>（未登记 = 不在构建图内 = 双引擎最隐蔽入口）。
+    /// v2.3 迁移：源级 <c>[Generator]</c> 宿主（ToolSurface 竖井 <c>Mud.AI.Generator</c>）已整批迁出飞书仓
+    /// （迁入新仓 <c>MudAIAgent</c>）；本仓不再持有任何源级生成器宿主，工具面引擎改以 NuGet
+    /// <b>分析器包</b>形态消费（<c>OutputItemType="Analyzer"</c> + <c>ReferenceOutputAssembly="false"</c>）。
     /// </summary>
+    /// <remarks>
+    /// <b>为什么必须机械锁定</b>：分析器包引用一旦被摘除或改写，源生成器不再运行——<b>构建仍全绿</b>
+    /// 但工具面 Schema/注册表/Args 产物整体消失（宿主在运行期才以"工具不见了"暴露）。「仓内至多一个
+    /// 源级引擎宿主」由此处的"全仓无 <c>[Generator]</c> 宿主"承接。
+    /// </remarks>
     [Fact]
-    public void SourceLevelGeneratorHost_ShouldBeExactlyMudAiGenerator()
+    public void SourceLevelGeneratorHost_ShouldBeAbsent_EngineConsumedAsPackage()
     {
         var root = FindRepositoryRoot();
-        var engineDirectory = Path.Combine(root, "Mud.AI.Generator");
 
+        // 迁移后本仓不应再有任何源级 [Generator] 宿主（引擎已迁出并以分析器包形态回归消费）。
         var strayGenerators = SourceFiles(root)
-            .Where(path => !path.StartsWith(engineDirectory, StringComparison.OrdinalIgnoreCase))
             .Where(path => !Path.GetFileName(path).Equals(SelfFileName, StringComparison.OrdinalIgnoreCase))
             .Where(path => HasGeneratorAttribute(File.ReadAllText(path)))
             .Select(path => Path.GetRelativePath(root, path))
             .ToArray();
 
         strayGenerators.Should().BeEmpty(
-            "仓内只允许 Mud.AI.Generator 一个源级 [Generator] 宿主（两套引擎并存会产生同名 hintName 产物冲突）：{0}",
+            "本仓不得再出现源级 [Generator] 宿主（ToolSurface 引擎 Mud.AI.Generator 已迁出飞书仓，"
+            + "以 NuGet 分析器包形态消费；两套引擎并存会产生同名 hintName 产物冲突）：{0}",
             string.Join(" | ", strayGenerators));
 
-        File.Exists(Path.Combine(engineDirectory, EngineProject)).Should().BeTrue(
-            "Mud.AI.Generator 工程必须存在于仓库根目录（ToolSurface 竖井的宿主）");
+        // 引擎以分析器包形态被工具面工程消费——这是"生成器仍在运行"的唯一机械证据。
+        var consumerPath = Path.Combine(root, "Mud.Feishu.AI.Tools", "Mud.Feishu.AI.Tools.csproj");
+        File.Exists(consumerPath).Should().BeTrue(
+            "Mud.Feishu.AI.Tools 工程必须存在（工具面引擎的唯一消费方）");
 
-        var slnx = File.ReadAllText(Path.Combine(root, "Mud.Feishu.slnx"));
-        slnx.Should().Contain($"Mud.AI.Generator/{EngineProject}",
-            "Mud.AI.Generator 必须登记进 Mud.Feishu.slnx（未登记的工程不在构建图内，也无法被 AOT 严格模式枚举）");
+        var consumer = StripComments(File.ReadAllText(consumerPath));
+        consumer.Should().Contain(
+            "Include=\"Mud.AI.Generator\"",
+            "工具面工程必须以 PackageReference 消费 Mud.AI.Generator 分析器包（摘除即 Schema/注册表静默消失）");
+        consumer.Should().Contain(
+            "OutputItemType=\"Analyzer\"",
+            "Mud.AI.Generator 必须以分析器形态引用（OutputItemType=\"Analyzer\"）——否则它会被当运行时程序集");
+        consumer.Should().Contain(
+            "ReferenceOutputAssembly=\"false\"",
+            "分析器包不得作为运行时程序集引用（ReferenceOutputAssembly=\"false\"）");
     }
+
+    // ────────────────────────────────────────────────────────────────────
+    // 断言 ①b：Mud.AI.* 包引用必须是钉死的精确版本（R-5 ③：非浮动）
+    // ────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// R-5 ③：本仓对 <c>Mud.AI.*</c> 的包引用必须<b>钉死精确版本</b>，不得浮动 / 区间 / 空值。
+    /// </summary>
+    /// <remarks>
+    /// <b>为什么必须机械锁定</b>：跨仓消费下浮动版本会在无代码改动时静默改变编译基线——本地 folder
+    /// 源只有一个版本时「看起来正常」，新仓一发新版就被带偏（<c>NU1603</c> 仅在解析版本与声明对不上时
+    /// 才报，浮动引用不报）。精确版本 + 显式升级是唯一可审计的跨仓节奏。
+    /// </remarks>
+    [Fact]
+    public void MudAiPackageReferences_ShouldUsePinnedVersion()
+    {
+        var root = FindRepositoryRoot();
+        var offenders = new List<string>();
+
+        foreach (var path in ProjectFiles(root))
+        {
+            var content = StripComments(File.ReadAllText(path));
+            foreach (Match match in Regex.Matches(
+                         content,
+                         @"PackageReference\s+Include=""(?<pkg>Mud\.AI\.[^""]*)""\s+Version=""(?<ver>[^""]+)"""))
+            {
+                var version = match.Groups["ver"].Value;
+                if (!IsPinnedVersion(version))
+                {
+                    offenders.Add(
+                        $"{Path.GetRelativePath(root, path)}: {match.Groups["pkg"].Value} Version=\"{version}\"");
+                }
+            }
+        }
+
+        offenders.Should().BeEmpty(
+            "对 Mud.AI.* 的包引用必须钉死精确版本（不得使用 * / 区间）——浮动版本会在跨仓发版时静默漂移：{0}",
+            string.Join(" | ", offenders));
+    }
+
+    /// <summary>判据：精确版本 = 数字点分（可带预发布标签），不含 <c>*</c> 与区间记号。</summary>
+    private static bool IsPinnedVersion(string version)
+        => Regex.IsMatch(version, @"^\d+\.\d+\.\d+(?:-[0-9A-Za-z.\-]+)?$");
+
+    /// <summary>判据自证：浮动 / 区间 / 空版本必须被判为「非钉死」。</summary>
+    [Theory]
+    [InlineData("1.0.0", true)]
+    [InlineData("1.0.0-preview.1", true)]
+    [InlineData("10.0.12", true)]
+    [InlineData("1.0.*", false)]
+    [InlineData("[1.0.0,)", false)]
+    [InlineData("1.0.0-*", false)]
+    [InlineData("", false)]
+    public void PinnedVersionPredicate_ShouldRejectFloatingVersions(string version, bool expected)
+        => IsPinnedVersion(version).Should().Be(expected);
 
     /// <summary>检查器自证：合成「仓外第二个 [Generator] 宿主」必须被点名（防过滤器恒空假绿）。</summary>
     [Theory]
@@ -194,14 +267,14 @@ public class SingleToolSurfaceEngineContractGuards
 
         var offenders = ProjectFiles(root)
             .Select(path => (Name: Path.GetFileName(path), Content: StripComments(File.ReadAllText(path))))
-            .Where(project => project.Content.Contains("Mud.AI.Generator.csproj", StringComparison.OrdinalIgnoreCase))
+            .Where(project => ReferencesMudAiEngine(project.Content))
             .Where(project => Regex.IsMatch(project.Content,
                 $@"PackageReference\s+Include=""{Regex.Escape(ComponentEnginePackage)}"""))
             .Select(static project => project.Name)
             .ToArray();
 
         offenders.Should().BeEmpty(
-            "以下工程兼引了两个 ToolSurface 引擎（仓内 Mud.AI.Generator + 组件 Mud.HttpUtils.Generator）——"
+            "以下工程兼引了两个 ToolSurface 引擎（Mud.AI.Generator 分析器包 + 组件 Mud.HttpUtils.Generator）——"
             + "两套引擎向同一编译单元发射同名 hintName 产物（CS8785/CS0101/产物歧义）：{0}",
             string.Join(" | ", offenders));
     }
@@ -211,11 +284,14 @@ public class SingleToolSurfaceEngineContractGuards
     public void DualEngineReferenceChecker_ShouldFlagBothSides()
     {
         const string both = "<Project><ItemGroup><ProjectReference Include=\"..\\Mud.AI.Generator\\Mud.AI.Generator.csproj\" /><PackageReference Include=\"Mud.HttpUtils.Generator\" Version=\"3.0.6\" /></ItemGroup></Project>";
+        const string bothPackages = "<Project><ItemGroup><PackageReference Include=\"Mud.AI.Generator\" Version=\"1.0.0\" OutputItemType=\"Analyzer\" ReferenceOutputAssembly=\"false\" /><PackageReference Include=\"Mud.HttpUtils.Generator\" Version=\"3.0.6\" /></ItemGroup></Project>";
         const string onlyInRepo = "<Project><ItemGroup><ProjectReference Include=\"..\\Mud.AI.Generator\\Mud.AI.Generator.csproj\" /></ItemGroup></Project>";
         const string onlyComponent = "<Project><ItemGroup><PackageReference Include=\"Mud.HttpUtils.Generator\" Version=\"3.0.6\" /></ItemGroup></Project>";
 
         ReferencesBothEngines(both).Should().BeTrue("兼引双方必须被识别");
-        ReferencesBothEngines(onlyInRepo).Should().BeFalse("只引仓内引擎是合法切换态");
+        ReferencesBothEngines(bothPackages).Should().BeTrue(
+            "包形态兼引（迁移后的主形态）也必须被识别——否则禁兼引在包形态下静默失守");
+        ReferencesBothEngines(onlyInRepo).Should().BeFalse("只引 Mud.AI.Generator 分析器包是合法消费态");
         ReferencesBothEngines(onlyComponent).Should().BeFalse("只引组件包是切换前状态（SDK 族 HTTP 生成路径）");
     }
 
@@ -256,6 +332,14 @@ public class SingleToolSurfaceEngineContractGuards
                     offenders.Add($"{project} → {include}");
                 }
             }
+
+            // 迁移后 Mud.AI.* 以 NuGet 包形态消费——核心 SDK 同样不得 PackageReference 它们
+            // （依赖方向铁律：AI 适配层 → Mud.AI.*，反向即倒置）。
+            foreach (System.Text.RegularExpressions.Match match in Regex.Matches(content,
+                @"<PackageReference\s+Include=""(?<pkg>Mud\.AI\.[^""]*)"""))
+            {
+                offenders.Add($"{project} → {match.Groups["pkg"].Value}（包）");
+            }
         }
 
         offenders.Should().BeEmpty(
@@ -268,73 +352,20 @@ public class SingleToolSurfaceEngineContractGuards
     public void CoreSdkDependencyChecker_ShouldFlagMudAiReferences()
     {
         const string offending = "<Project><ItemGroup><ProjectReference Include=\"..\\Mud.AI.Agent\\Mud.AI.Agent.csproj\" /></ItemGroup></Project>";
+        const string offendingPackage = "<Project><ItemGroup><PackageReference Include=\"Mud.AI.Agent\" Version=\"1.0.0\" /></ItemGroup></Project>";
         const string legal = "<Project><ItemGroup><ProjectReference Include=\"..\\Mud.Feishu.Abstractions\\Mud.Feishu.Abstractions.csproj\" /></ItemGroup></Project>";
 
         HasMudAiProjectReference(offending).Should().BeTrue("核心 SDK 引用 Mud.AI.* 必须被识别");
+        HasMudAiProjectReference(offendingPackage).Should().BeTrue(
+            "核心 SDK 以包形态引用 Mud.AI.* 同样必须被识别（迁移后主形态）");
         HasMudAiProjectReference(legal).Should().BeFalse("核心 SDK 的内部纵向引用不得误伤");
     }
 
     // ────────────────────────────────────────────────────────────────────
-    // 断言 ⑤：中立性——Mud.AI.* 反向不得依赖任何飞书工程
+    // 断言 ⑤（中立性——Mud.AI.* 反向不得依赖任何飞书工程）已随实现迁出飞书仓：
+    // 迁移后 Mud.AI.* 的 csproj 只存在于新仓，本仓已无该工程可扫（留在本仓会对着不存在的工程空扫 = 假绿）。
+    // 由新仓 AgentPackageContractGuards.MudAiFamily_ShouldNotDependOnFeishuProjects 持有。
     // ────────────────────────────────────────────────────────────────────
-
-    /// <summary>中立 AI 包族工程（不得引用任何 <c>Mud.Feishu*</c>）。</summary>
-    private static readonly string[] MudAiFamilyProjects =
-    [
-        "Mud.AI.Abstractions.csproj",
-        "Mud.AI.Agent.csproj",
-    ];
-
-    /// <summary>
-    /// <b>P1-H3 反向断言</b>：<c>Mud.AI.Abstractions</c> / <c>Mud.AI.Agent</c> 不得 ProjectReference
-    /// 任何 <c>Mud.Feishu*</c> 工程。
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// 为什么与断言 ④ 配套：H3 把「会话门面」搬进 <c>Mud.AI.Agent</c>，同时把 MAF 白名单从
-    /// 1 个工程放宽到 2 个（<c>Mud.AI.Agent</c> 获得 MAF）。<b>放宽的方向必须只朝一边</b>：
-    /// 飞书 AI 适配层 → <c>Mud.AI.*</c>（合法），<c>Mud.AI.*</c> → 飞书工程（非法）。
-    /// 会话存储端口正是这条纪律的第一个真实考验：需求是"门面要能存取会话"，
-    /// 最省事的写法是让 <c>Mud.AI.Agent</c> 直接引用 <c>Mud.Feishu.Abstractions.IConversationStore</c>——
-    /// 编译通过、测试全绿、P3 上游化当场不可能。本断言把这条捷径机械封死。
-    /// </para>
-    /// <para>
-    /// 与断言 ④ 共同构成<b>双向锁</b>：核心 SDK ↛ Mud.AI.*，Mud.AI.* ↛ 飞书工程。
-    /// </para>
-    /// </remarks>
-    [Fact]
-    public void MudAiFamily_ShouldNotDependOnFeishuProjects()
-    {
-        var root = FindRepositoryRoot();
-        var offenders = new List<string>();
-
-        foreach (var project in MudAiFamilyProjects)
-        {
-            var path = Path.Combine(root, Path.GetFileNameWithoutExtension(project), project);
-            if (!File.Exists(path))
-            {
-                continue;
-            }
-
-            if (ReferencesFeishuProjects(File.ReadAllText(path)))
-            {
-                offenders.Add(project);
-            }
-        }
-
-        offenders.Should().BeEmpty(
-            "Mud.AI.* 是产品中立的运行期 / 契约层，不得反向依赖任何 Mud.Feishu* 工程"
-            + "（H3 的会话存储端口正是为此另立，而不是直接引用 IConversationStore）：{0}",
-            string.Join(" | ", offenders));
-    }
-
-    /// <summary>检查器自证：合成「Mud.AI.* → Mud.Feishu*」必须被点名；纯 Mud.AI 内部引用不得误伤。</summary>
-    [Theory]
-    [InlineData("<Project><ItemGroup><ProjectReference Include=\"..\\Mud.Feishu.Abstractions\\Mud.Feishu.Abstractions.csproj\" /></ItemGroup></Project>", true)]
-    [InlineData("<Project><ItemGroup><ProjectReference Include=\"..\\Mud.AI.Abstractions\\Mud.AI.Abstractions.csproj\" /></ItemGroup></Project>", false)]
-    [InlineData("<Project><!-- <ProjectReference Include=\"..\\Mud.Feishu.AI\\Mud.Feishu.AI.csproj\" /> --></Project>", false)]
-    public void FeishuDependencyChecker_ShouldFlagMudAiToFeishuReferences(string csprojContent, bool expected)
-        => ReferencesFeishuProjects(csprojContent).Should().Be(expected);
 
     // ────────── 判据原语（[Theory] 自证直接驱动，勿内联正则字面量） ──────────
 
@@ -358,14 +389,25 @@ public class SingleToolSurfaceEngineContractGuards
     private static bool ReferencesBothEngines(string csprojContent)
     {
         var content = StripComments(csprojContent);
-        return content.Contains("Mud.AI.Generator.csproj", StringComparison.OrdinalIgnoreCase)
+        return ReferencesMudAiEngine(content)
             && Regex.IsMatch(content, $@"PackageReference\s+Include=""{Regex.Escape(ComponentEnginePackage)}""");
     }
 
-    private static bool HasMudAiProjectReference(string csprojContent)
-        => Regex.IsMatch(StripComments(csprojContent), @"<ProjectReference\s+Include=""[^""]*Mud\.AI\.[^""]*\.csproj""");
+    /// <summary>
+    /// 是否引用了飞书侧 ToolSurface 引擎 <c>Mud.AI.Generator</c>。迁移后该引擎以 <b>NuGet 分析器包</b>形态
+    /// 消费（<c>PackageReference</c>），迁移前为仓内 <c>ProjectReference</c>——两种形态都必须被认作
+    /// 「引用了该引擎」，否则「禁兼引」会在包形态下静默失守（构建仍全绿，同名 hintName 冲突在编译期爆发）。
+    /// </summary>
+    private static bool ReferencesMudAiEngine(string csprojContent)
+        => Regex.IsMatch(
+            StripComments(csprojContent),
+            @"(?:<ProjectReference\s+Include=""[^""]*Mud\.AI\.Generator\.csproj""|<PackageReference\s+Include=""Mud\.AI\.Generator"")",
+            RegexOptions.IgnoreCase);
 
-    /// <summary>检查器原语：csproj 中是否存在指向任何 <c>Mud.Feishu*</c> 工程的运行时 ProjectReference。</summary>
-    private static bool ReferencesFeishuProjects(string csprojContent)
-        => Regex.IsMatch(StripComments(csprojContent), @"<ProjectReference\s+Include=""[^""]*Mud\.Feishu[^""]*\.csproj""");
+    private static bool HasMudAiProjectReference(string csprojContent)
+    {
+        var content = StripComments(csprojContent);
+        return Regex.IsMatch(content, @"<ProjectReference\s+Include=""[^""]*Mud\.AI\.[^""]*\.csproj""")
+            || Regex.IsMatch(content, @"<PackageReference\s+Include=""Mud\.AI\.[^""]*""");
+    }
 }

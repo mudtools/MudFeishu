@@ -178,21 +178,9 @@ public class TruncationVisibilityContractGuards
             .Should().BeTrue("金丝雀：判据或形态变了，④ 会静默失效");
     }
 
-    /// <summary>
-    /// ⑤' <c>ToolExecutor</c> 的预算是<b>委托</b>给唯一出口的，而不是自己再实现一遍。
-    /// </summary>
-    [Fact]
-    public void ToolExecutor_ShouldDelegateBudgetToTheSingleEgress()
-    {
-        // v2.3 P1-D：执行器骨架随中立化上移 Mud.AI.Agent/Tools。
-        var source = File.ReadAllText(Path.Combine(
-            FindRepositoryRoot(), "Mud.AI.Agent", "Tools", "ToolExecutor.cs"));
-
-        source.Should().Contain("ToolResultPipeline.",
-            "FromApi/FromPlainText/FromPagedResult 必须委托唯一出口（R-1）");
-        source.Should().NotContain("ToolResultText.Truncate",
-            "预算实现不得在执行器骨架里再写一份（形态单源）");
-    }
+    // ⑤'（原 ToolExecutor_ShouldDelegateBudgetToTheSingleEgress）已迁出飞书仓（v2.3 迁移）：
+    // 执行器骨架随中立化迁入新仓 Mud.AI.Agent/Tools——判据锚点（ToolExecutor.cs）已不在本仓，
+    // 故由新仓 TruncationVisibilityContractGuards.ToolExecutor_ShouldDelegateBudgetToTheSingleEgress 持有。
 
     // ───────────────────── 错误载荷单一构造点（⑥，B-2 三处归一）─────────────────────
 
@@ -203,38 +191,29 @@ public class TruncationVisibilityContractGuards
     public void ToolError_ShouldBeConstructedOnlyAtTheSingleFactory()
     {
         var withNewToolError = new List<string>();
-        // v2.3 P1-D：错误契约族（含 ToolErrorFactory 所在文件）中立化上移 Mud.AI.Agent——
-        // 扫描面须含新家（唯一合法构造点 = Mud.AI.Agent/Tools/ToolErrorFactory.cs）。
-        foreach (var project in new[] { "Mud.Feishu.AI.Tools", "Mud.AI.Agent" })
+        // v2.3 迁移：唯一合法构造点（ToolErrorFactory）随错误契约族中立化迁出飞书仓——
+        // 本仓扫描面收窄为**产品侧工具包**（产品面不得自持第二份构造点）。
+        // 中立侧的单一构造点由新仓 TruncationVisibilityContractGuards 的同名守卫持有；两面互补。
+        foreach (var file in Directory.GetFiles(
+                     Path.Combine(FindRepositoryRoot(), "Mud.Feishu.AI.Tools"), "*.cs", SearchOption.AllDirectories))
         {
-            foreach (var file in Directory.GetFiles(
-                         Path.Combine(FindRepositoryRoot(), project), "*.cs", SearchOption.AllDirectories))
+            if (file.Contains(@"\obj\", StringComparison.Ordinal)
+                || file.Contains(@"\bin\", StringComparison.Ordinal))
             {
-                if (file.Contains(@"\obj\", StringComparison.Ordinal)
-                    || file.Contains(@"\bin\", StringComparison.Ordinal))
-                {
-                    continue;
-                }
+                continue;
+            }
 
-                // 唯一合法构造点：工厂自身（v2.3 起为独立文件 ToolErrorFactory.cs；
-                // ToolResultPipeline.cs 是搬迁前的历史文件名，保留排除以防回归）。
-                if (string.Equals(Path.GetFileName(file), "ToolErrorFactory.cs", StringComparison.Ordinal)
-                    || string.Equals(Path.GetFileName(file), "ToolResultPipeline.cs", StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                var source = File.ReadAllText(file);
-                source.Should().NotContain("new ToolError(", $"{Path.GetFileName(file)} 必须经 ToolErrorFactory");
-                if (source.Contains("new ToolError(", StringComparison.Ordinal))
-                {
-                    withNewToolError.Add(file);
-                }
+            var source = File.ReadAllText(file);
+            source.Should().NotContain("new ToolError(", $"{Path.GetFileName(file)} 必须经 ToolErrorFactory");
+            if (source.Contains("new ToolError(", StringComparison.Ordinal))
+            {
+                withNewToolError.Add(file);
             }
         }
 
         withNewToolError.Should().BeEmpty(
-            "ToolError 载荷只允许在 ToolErrorFactory 内构造——其他位置的拷贝会在契约演进时静默漂移（B-2）");
+            "ToolError 载荷只允许在唯一工厂（中立 ToolErrorFactory）内构造——"
+            + "产品侧出现第二份构造点会在契约演进时静默漂移（B-2）");
     }
 
     /// <summary>

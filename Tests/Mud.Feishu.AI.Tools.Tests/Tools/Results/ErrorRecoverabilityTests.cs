@@ -26,18 +26,6 @@ namespace Mud.Feishu.AI.Tools.Tests.Tools.Results;
 /// </remarks>
 public class ErrorRecoverabilityTests
 {
-    private static string FindRepositoryRoot()
-    {
-        var directory = AppContext.BaseDirectory;
-        while (!string.IsNullOrEmpty(directory) && !File.Exists(Path.Combine(directory, "Mud.Feishu.slnx")))
-        {
-            directory = Path.GetDirectoryName(directory);
-        }
-
-        directory.Should().NotBeNullOrEmpty("测试必须能定位仓库根目录（以 Mud.Feishu.slnx 为锚）");
-        return directory!;
-    }
-
     /// <summary>
     /// <b>F-8 核心</b>：错误态<b>每一种</b>都必须带下一步（此前 <c>Validation</c> 与
     /// <c>Api</c> 两态没有）。
@@ -160,29 +148,8 @@ public class ErrorRecoverabilityTests
     /// （那会重新引入转义）。
     /// </summary>
     /// <remarks>
-    /// <b>R-1 修订</b>：中心序列化点已从 <c>Internal/ToolExecutor.cs</c> 上移到唯一出口
-    /// <c>Results/ToolResultPipeline.cs</c>（<c>OkJson</c>/<c>OkReceipt</c> 经 <c>ToolResultJson.ToText</c>）。
-    /// 判据随实现上移——否则本守卫会盯一个"已经不再负责序列化"的文件，变成假门禁。
+    /// <b>v2.3 迁移</b>：判据锚点（唯一出口 <c>ToolResultPipeline</c> 与执行器骨架 <c>ToolExecutor</c>）
+    /// 随中立化迁出飞书仓（新仓 <c>Mud.AI.Agent/Tools</c>），故由新仓
+    /// <c>TruncationVisibilityContractGuards.ToolExecutor_ShouldSerializeViaToolResultJson_NotRawToJsonString</c> 持有。
     /// </remarks>
-    [Fact]
-    public void ToolExecutor_ShouldSerializeViaToolResultJson_NotRawToJsonString()
-    {
-        // v2.3 P1-D：唯一出口与执行器骨架随中立化上移 Mud.AI.Agent/Tools。
-        var pipeline = File.ReadAllText(
-            Path.Combine(FindRepositoryRoot(), "Mud.AI.Agent", "Tools", "ToolResultPipeline.cs"));
-
-        pipeline.Should().Contain(
-            "ToolResultJson.ToText",
-            "唯一出口是工具结果的中心序列化点，必须走 ToolResultJson（否则中文被转义，抵消 F-8 收益）");
-
-        pipeline.Should().NotContain(
-            ".ToJsonString()",
-            "唯一出口出现裸 ToJsonString() —— 会绕过保留中文的编码器（S-10 回潮）");
-
-        // 反向自证：执行器骨架不再持有序列化职责（形态单源），故不得出现裸 ToJsonString()。
-        var executor = File.ReadAllText(
-            Path.Combine(FindRepositoryRoot(), "Mud.AI.Agent", "Tools", "ToolExecutor.cs"));
-
-        executor.Should().NotContain(".ToJsonString()", "执行器骨架不得自行序列化（S-10 回潮）");
-    }
 }

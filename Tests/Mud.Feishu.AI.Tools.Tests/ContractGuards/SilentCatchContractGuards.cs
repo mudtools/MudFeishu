@@ -40,10 +40,9 @@ public class SilentCatchContractGuards
         // 吞掉异常会让客户端只看到"连接没响应"，而缺陷在服务端毫无痕迹。
         "Mud.Feishu.AI.Mcp",
 
-        // 阶段 A-1：B 组 7 个类型（含 B-6 ToolResultContentSafety / B-7 ToolResultSanitizer）
-        // 迁入中立包后，其有意静默点必须仍在覆盖内——扫描集不含 Mud.AI.Agent 即静默点掉出覆盖。
-        // （登记：ToolResultContentSafety 无静默 catch 点。）
-        "Mud.AI.Agent",
+        // v2.3 迁移：阶段 A-1 迁入中立包 Mud.AI.Agent 的 B 组 7 个类型（含 B-6 ToolResultContentSafety /
+        // B-7 ToolResultSanitizer）随实现迁出飞书仓——其有意静默点由新仓
+        // SilentCatchContractGuards 的同名守卫持有（扫描面 = 中立包）；两面互补，缺一即覆盖不全。
     ];
 
     /// <summary>生产源码中不得存在"未标注理由的静默 catch"。</summary>

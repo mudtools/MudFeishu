@@ -5,9 +5,9 @@
 # the entries it fixed, and the gate must pass with an empty file after M4.
 # Regenerate: pwsh ./scripts/audit-comments.ps1 -UpdateBaseline
 # ------------------------------------------------
-# generated  : 2026-10-16 17:44:53
-# entries    : 500
-# hits       : 526
+# generated  : 2026-10-16 17:58:12
+# entries    : 454
+# hits       : 471
 # ------------------------------------------------
 Mud.Feishu.Redis/Configuration/RedisOptions.cs	E	1b7455ef21e4ecdb	1
 Mud.Feishu.Redis/Configuration/RedisOptions.cs	E	2b6e90abb58f55bf	1
@@ -302,52 +302,6 @@ Mud.Feishu.WebSocket/Core/RetryHelper.cs	E	7dc91f5b2f4df5c5	1
 Mud.Feishu.WebSocket/Core/RetryHelper.cs	E	be171c0f616427e4	1
 Mud.Feishu.WebSocket/Core/TimeSpanGuards.cs	E	d14fa86340210aca	1
 Mud.Feishu.WebSocket/Core/TimeSpanGuards.cs	E	ff2a9933fbd29ec5	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	05e82785cc661505	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	1622a69255455c76	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	16f11aed26887b71	2
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	22a3413ac605eeb9	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	243f041ef94ee77c	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	2b173266d4783a04	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	2f293f97fb1ee87c	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	309c16eb2de890f5	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	31f28b81c6d18cd4	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	3737e89a9d4fd749	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	3a1bc111883964a1	4
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	3feb54c7889ad5ad	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	49da40fd69803136	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	4b57a8778246a17f	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	4fcb5dfcaf454689	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	5236712c2782cda2	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	52f2af625f4115b2	3
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	58a3a63c8c0bba44	2
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	63215e923f595831	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	6acb0bfc6c07ef7f	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	6dae06b44b2f008c	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	6dca4c4eb5f0bf06	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	6f34c8c7f35456c7	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	74b2895c8e883053	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	7e9910ea840d0a91	2
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	85e03b81da74a98b	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	8875c109dfa8bf89	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	892db2888ea40ff5	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	898a21afb0708094	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	8de7380128e77bc3	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	8ef165e24782bce1	2
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	8fb6fcea3251a4c2	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	a0d75bd0b527add5	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	ab124ec9cc69f41e	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	b24e0184672d53f4	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	b9db8a4113128af6	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	c2f715d6996731d3	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	c7de160057d0c4fd	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	c9954bc1cc8f8b25	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	d848f3d3951164df	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	e5633df74397788e	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	ebaf85f094c49da8	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	f086396375fe4a1b	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	f0a9c4b0264ce3fd	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	fc5ae840df366658	1
-Mud.Feishu.WebSocket/Core/WebSocketConnectionManager.cs	E	fcc1b8ccf2756da0	1
 Mud.Feishu.WebSocket/DataModels/AckResponse.cs	E	6be44a3892eac656	1
 Mud.Feishu.WebSocket/DataModels/EventMessage.cs	E	e36e002261083b64	1
 Mud.Feishu.WebSocket/DataModels/SubscriptionRequest.cs	E	fd544f43c576495a	1

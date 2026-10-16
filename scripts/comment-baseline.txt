@@ -5,9 +5,9 @@
 # the entries it fixed, and the gate must pass with an empty file after M4.
 # Regenerate: pwsh ./scripts/audit-comments.ps1 -UpdateBaseline
 # ------------------------------------------------
-# generated  : 2026-10-16 17:58:12
-# entries    : 454
-# hits       : 471
+# generated  : 2026-10-16 18:21:04
+# entries    : 405
+# hits       : 419
 # ------------------------------------------------
 Mud.Feishu.Redis/Configuration/RedisOptions.cs	E	1b7455ef21e4ecdb	1
 Mud.Feishu.Redis/Configuration/RedisOptions.cs	E	2b6e90abb58f55bf	1
@@ -314,52 +314,6 @@ Mud.Feishu.WebSocket/Extensions/FeishuWebSocketServiceBuilder.cs	E	ba563b96ae03a
 Mud.Feishu.WebSocket/Extensions/FeishuWebSocketServiceBuilder.cs	E	c6bf29a7f1ea19fa	1
 Mud.Feishu.WebSocket/Extensions/FeishuWebSocketServiceBuilder.cs	E	f31b15b99e1f7fc9	1
 Mud.Feishu.WebSocket/Extensions/FeishuWebSocketServiceBuilder.cs	E	fffcff552cb4fd3f	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	04f9e87395dd3409	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	07bdf5f7f451a2fa	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	12d8613b77edd2d7	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	258ac1aa76589472	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	2c6fe9a749e1c70a	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	307f719d5631a843	2
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	3326aacc36ac0016	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	3a1bc111883964a1	2
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	3a66299385f4ff1e	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	3c95afcb28aa95e7	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	4197ca65f8b93e0d	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	4f3f685a436af67c	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	50079236017a668e	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	54fd4e4c3fc53adb	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	573396610583c49e	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	63e7a8ba0b71f1e9	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	66e1380266a162e9	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	677e8973f5fbd1e8	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	6d38a0561ed5fe6b	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	72932c7bcf83a256	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	747ee7640811eb48	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	7aef41b9accd7663	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	8016a985d62d4aaa	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	80597b755bb2b760	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	8d3f6c28d9c14b01	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	8f4f2968cb18da5a	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	9ecd8ec82f6d6dc0	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	a079ed5bc45c0951	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	a1bb76f02b3b93c7	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	a7a6aa71a3b60734	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	aaf94eccfeff56b1	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	b83762fb312d6c30	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	b8b1fd0c8c5610e2	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	ba9d41ecbafdf699	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	dcdb4a53a10170ad	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	e0c503c86421903e	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	e5cb70b711f47891	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	e8c90254ce6a780c	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	efdad40f9b0021e3	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	f31d4997f03e4ead	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	f57f3cb4af53e029	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	f8e06b3fc3531691	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	fcd99c6322a3a79a	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	fe41b0f2113e805d	2
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	fe820191251b37b1	1
-Mud.Feishu.WebSocket/FeishuWebSocketClient.cs	E	ff47d178b71677dc	1
 Mud.Feishu.WebSocket/FeishuWebSocketHostedService.cs	E	03df2ee15ddc8787	1
 Mud.Feishu.WebSocket/FeishuWebSocketHostedService.cs	E	0d92e8dacbb76de6	1
 Mud.Feishu.WebSocket/FeishuWebSocketHostedService.cs	E	0ee3746af1d4c997	1
@@ -419,9 +373,6 @@ Mud.Feishu.WebSocket/Handlers/ScopedFeishuEventHandlerFactory.cs	E	4de9eb2396782
 Mud.Feishu.WebSocket/Handlers/ScopedFeishuEventHandlerFactory.cs	E	51db37c71182af9f	1
 Mud.Feishu.WebSocket/Handlers/ScopedFeishuEventHandlerFactory.cs	E	5b602305507934d3	1
 Mud.Feishu.WebSocket/Handlers/ScopedFeishuEventHandlerFactory.cs	E	fc350116b1e4d02c	1
-Mud.Feishu.WebSocket/Interfaces/IFeishuWebSocketClient.cs	E	57c8482375329aa3	1
-Mud.Feishu.WebSocket/Interfaces/IFeishuWebSocketClient.cs	E	7843d0a6292808dc	1
-Mud.Feishu.WebSocket/Interfaces/IFeishuWebSocketClient.cs	E	9b4ab108e9b3b3ea	1
 Mud.Feishu/Extensions/FeishuServiceBuilder.cs	E	3101f463073dac7c	1
 Mud.Feishu/Extensions/FeishuServiceBuilder.cs	E	3202bd970d76891c	1
 Mud.Feishu/Extensions/FeishuServiceBuilder.cs	E	36328cec89a76596	2

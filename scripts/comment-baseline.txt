@@ -5,9 +5,9 @@
 # the entries it fixed, and the gate must pass with an empty file after M4.
 # Regenerate: pwsh ./scripts/audit-comments.ps1 -UpdateBaseline
 # ------------------------------------------------
-# generated  : 2026-10-16 18:21:04
-# entries    : 405
-# hits       : 419
+# generated  : 2026-10-16 18:27:20
+# entries    : 382
+# hits       : 396
 # ------------------------------------------------
 Mud.Feishu.Redis/Configuration/RedisOptions.cs	E	1b7455ef21e4ecdb	1
 Mud.Feishu.Redis/Configuration/RedisOptions.cs	E	2b6e90abb58f55bf	1
@@ -337,29 +337,6 @@ Mud.Feishu.WebSocket/FeishuWebSocketManager.cs	E	768be9101ca952da	1
 Mud.Feishu.WebSocket/FeishuWebSocketManager.cs	E	85dcea6c15e1908a	1
 Mud.Feishu.WebSocket/FeishuWebSocketManager.cs	E	a8d8e681f3475aa6	1
 Mud.Feishu.WebSocket/FeishuWebSocketManager.cs	E	bc399b79c5af0ec4	1
-Mud.Feishu.WebSocket/Handlers/FeishuEventMessageHandler.cs	E	0898be5ed5c2a15d	1
-Mud.Feishu.WebSocket/Handlers/FeishuEventMessageHandler.cs	E	101f558ee768388d	1
-Mud.Feishu.WebSocket/Handlers/FeishuEventMessageHandler.cs	E	16a08720fb4a0834	1
-Mud.Feishu.WebSocket/Handlers/FeishuEventMessageHandler.cs	E	19b73e1ece987f6f	1
-Mud.Feishu.WebSocket/Handlers/FeishuEventMessageHandler.cs	E	214a68c4c5e48244	1
-Mud.Feishu.WebSocket/Handlers/FeishuEventMessageHandler.cs	E	22c0a02b71a8db0d	1
-Mud.Feishu.WebSocket/Handlers/FeishuEventMessageHandler.cs	E	2932b8268ac65d9f	1
-Mud.Feishu.WebSocket/Handlers/FeishuEventMessageHandler.cs	E	4c8da194322846a5	1
-Mud.Feishu.WebSocket/Handlers/FeishuEventMessageHandler.cs	E	512178d7feae8721	1
-Mud.Feishu.WebSocket/Handlers/FeishuEventMessageHandler.cs	E	579c06b888a0be03	1
-Mud.Feishu.WebSocket/Handlers/FeishuEventMessageHandler.cs	E	5d6e64171281111f	1
-Mud.Feishu.WebSocket/Handlers/FeishuEventMessageHandler.cs	E	5ff587c3bf4de08f	1
-Mud.Feishu.WebSocket/Handlers/FeishuEventMessageHandler.cs	E	609a99051666c576	1
-Mud.Feishu.WebSocket/Handlers/FeishuEventMessageHandler.cs	E	79a58b13d33d3531	1
-Mud.Feishu.WebSocket/Handlers/FeishuEventMessageHandler.cs	E	87f614b6bbbe06fe	1
-Mud.Feishu.WebSocket/Handlers/FeishuEventMessageHandler.cs	E	b697bb4ea912a0ee	1
-Mud.Feishu.WebSocket/Handlers/FeishuEventMessageHandler.cs	E	bfc887fbb5ae1d1e	1
-Mud.Feishu.WebSocket/Handlers/FeishuEventMessageHandler.cs	E	c4116417319b4e21	1
-Mud.Feishu.WebSocket/Handlers/FeishuEventMessageHandler.cs	E	cf605c01d8c8f6bd	1
-Mud.Feishu.WebSocket/Handlers/FeishuEventMessageHandler.cs	E	d2bd8860591d0f7e	1
-Mud.Feishu.WebSocket/Handlers/FeishuEventMessageHandler.cs	E	d52b9c057ae5adc6	1
-Mud.Feishu.WebSocket/Handlers/FeishuEventMessageHandler.cs	E	ecd17de55c75401b	1
-Mud.Feishu.WebSocket/Handlers/FeishuEventMessageHandler.cs	E	f9ea77bb6cad4511	1
 Mud.Feishu.WebSocket/Handlers/HeartbeatMessageHandler.cs	E	9aac00c68ee9d9fd	1
 Mud.Feishu.WebSocket/Handlers/JsonMessageHandler.cs	E	aeeb2f69a351d7b9	1
 Mud.Feishu.WebSocket/Handlers/PingPongMessageHandler.cs	E	599e4bcbac2ee425	1

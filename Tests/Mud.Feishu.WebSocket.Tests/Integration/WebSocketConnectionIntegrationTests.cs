@@ -39,7 +39,12 @@ public class WebSocketConnectionIntegrationTests
             new FeishuWebSocketOptions
             {
                 Certificate = new WebSocketCertificateOptions { AllowInsecureWebSocket = true },
-                ConnectionTimeoutMs = 3000,
+                // CI 事故修复：回环握手预算取生产默认值（10s），不再压到 3s。
+                // 3s 只够"空载回环"：CI runner（4 vCPU）上并发跑多个测试进程时，
+                // 回环服务端 HttpListener 的接受/握手会被调度延迟到 3s 之外，表现为
+                // ConnectAsync 抛 TimeoutException（"连接飞书WebSocket服务超时"）——已实测发生。
+                // 本组用例断言的是连接生命周期契约，不校验握手耗时，放大预算不损失覆盖。
+                ConnectionTimeoutMs = 10000,
                 // P2-15：回环服务端主机需显式列入白名单（同时验证精确主机匹配路径）
                 AllowedHostSuffixes = "127.0.0.1"
             },

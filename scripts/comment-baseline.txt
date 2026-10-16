@@ -5,9 +5,9 @@
 # the entries it fixed, and the gate must pass with an empty file after M4.
 # Regenerate: pwsh ./scripts/audit-comments.ps1 -UpdateBaseline
 # ------------------------------------------------
-# generated  : 2026-10-16 16:37:21
-# entries    : 777
-# hits       : 813
+# generated  : 2026-10-16 16:49:26
+# entries    : 731
+# hits       : 766
 # ------------------------------------------------
 Mud.Feishu.Abstractions/Authentication/IFeishuAuthenticationFactory.cs	E	306a07d95c561d38	1
 Mud.Feishu.Abstractions/Authentication/IFeishuAuthenticationFactory.cs	E	3c3b6d8a6479c64d	1
@@ -15,20 +15,6 @@ Mud.Feishu.Abstractions/Authentication/IFeishuAuthenticationFactory.cs	E	e74df1b
 Mud.Feishu.Abstractions/Authentication/IFeishuTokenStoreFactory.cs	E	854cd558bcf61490	1
 Mud.Feishu.Abstractions/Authentication/IFeishuTokenStoreFactory.cs	E	bc2b67c2bafe472d	1
 Mud.Feishu.Abstractions/Authentication/IFeishuTokenStoreFactory.cs	E	cba4740bd6b9bf3a	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuAppContext.cs	E	1ae9dd5ff1005895	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuAppContext.cs	E	553b8b5c402a7e8a	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuAppContext.cs	E	6f685d911854fdc6	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuAppContext.cs	E	81e7faa70053beb3	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuAppContext.cs	E	a9e3f517738a4733	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuAppContext.cs	E	eec33dee9cd4c7d5	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuAppContextRetirement.cs	E	34860fe794af3f2e	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuAppContextRetirement.cs	E	422bdc533a80e7e8	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuAppContextRetirement.cs	E	46e5fc41abda9481	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuAppContextRetirement.cs	E	7c5946a0eb4b1c8a	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuAppContextRetirement.cs	E	83b222ba993cc5e9	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuAppContextRetirement.cs	E	a63e101d52a23f97	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuAppContextRetirement.cs	E	af99d2e6938dd60b	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuAppContextRetirement.cs	E	cde287e25377e852	1
 Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuAppManager.cs	E	009e9a3baee54fa0	1
 Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuAppManager.cs	E	01e6c054d66c1b11	1
 Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuAppManager.cs	E	034fbdb2ea35ab6a	1
@@ -155,38 +141,6 @@ Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuAppManager.cs	E	fd73a1ea43
 Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuAppManager.cs	E	fd8deff36a80ff2e	1
 Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuAppManager.cs	E	fe7fc7c8b0ce017c	2
 Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuAppManager.cs	E	ffae3577131b147c	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuTokenManagerResolver.cs	E	111bde287153b8c4	2
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuTokenManagerResolver.cs	E	456a9b75bd83fe0a	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuTokenManagerResolver.cs	E	707fccc59c88e555	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuTokenManagerResolver.cs	E	8c3118a8e13a0ef5	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuTokenManagerResolver.cs	E	ba3f741bbd0fc8ac	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuTokenRegistrationService.cs	E	045d0f5af8b8c16c	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuTokenRegistrationService.cs	E	19a60762137649ec	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuTokenRegistrationService.cs	E	2d6fda1cf875f294	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuTokenRegistrationService.cs	E	465a82cb16e65403	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuTokenRegistrationService.cs	E	5683c5aa6aeb698b	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuTokenRegistrationService.cs	E	67bef4d8172f52da	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuTokenRegistrationService.cs	E	878353295318c887	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuTokenRegistrationService.cs	E	bae166e5321cccd4	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuTokenRegistrationService.cs	E	ce920a82da5be52c	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuTokenRegistrationService.cs	E	d1373d4952e32306	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuTokenRegistrationService.cs	E	ee13f02e7754f014	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuTokenRegistrationService.cs	E	f376e130997248c8	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/FeishuTokenRegistrationService.cs	E	f7442afcd7f90993	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/ForwardingFeishuAppContext.cs	E	3dd5bca26fe9d8e1	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/ForwardingFeishuAppContext.cs	E	598b4bb46d87af2e	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/ForwardingFeishuAppContext.cs	E	d0449c7cba7d84f5	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/ForwardingTokenManagerProxies.cs	E	08a786f47baeeba4	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/ForwardingTokenManagerProxies.cs	E	5cd1c3587b281aad	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/ForwardingTokenManagerProxies.cs	E	6465a8ffae4c440d	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/ForwardingTokenManagerProxies.cs	E	68cad580d34722ce	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/ForwardingTokenManagerProxies.cs	E	8fd8d3d27e3a7a36	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/IFeishuHttpClientFactory.cs	E	175db4ce7bb31940	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/IFeishuHttpClientFactory.cs	E	326e5088117437f4	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/IFeishuHttpClientFactory.cs	E	3888fe24730ee18e	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/IFeishuHttpClientFactory.cs	E	6054a147a71aa23a	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/IFeishuHttpClientFactory.cs	E	73078098fe2997d5	1
-Mud.Feishu.Abstractions/Authentication/MultiApp/IFeishuHttpClientFactory.cs	E	b2085befeb9b0bd7	1
 Mud.Feishu.Abstractions/Authentication/TokenKeyBuilder.cs	E	082cfb2808b914a2	1
 Mud.Feishu.Abstractions/Authentication/TokenKeyBuilder.cs	E	0cb278a95050f569	1
 Mud.Feishu.Abstractions/Authentication/TokenKeyBuilder.cs	E	207330e93807942d	1

@@ -10,15 +10,15 @@ using Mud.Feishu.Abstractions.Authentication;
 namespace Mud.Feishu.Abstractions.Authentication.MultiApp;
 
 /// <summary>
-/// TMR-P0-1（F1）：默认应用令牌管理器的转发代理。
+/// 默认应用令牌管理器的转发代理。
 /// </summary>
 /// <remarks>
 /// <para>
 /// DI 桥接注册的是「解析委托」而非「实例」：每次成员调用都现取当前默认应用的管理器，
 /// 使 <c>SetDefaultApp</c> / 配置热更新 / <c>RemoveApp</c> 的变更对已注入消费者立即生效。
-/// 修复前桥接为「实例桥接」（工厂委托仅在首次解析时执行，容器永久缓存该实例）：
+/// 桥接必须是「解析桥接」而非「实例桥接」（工厂委托仅在首次解析时执行、实例会被容器永久缓存）：
 /// 热更新重建默认应用后注入方持已释放管理器（ODE），<c>SetDefaultApp</c> 后注入方继续返回
-/// 旧应用的令牌（跨应用凭据串号）。详见 .docs/令牌与多应用管理-审查修复与完善方案.md §2.1。
+/// 旧应用的令牌（跨应用凭据串号）。
 /// </para>
 /// <para>
 /// 代理本身<b>无状态、不持有令牌、不实现 IDisposable 释放语义</b>（<see cref="IDisposable.Dispose"/> 为显式
@@ -68,7 +68,7 @@ internal sealed class ForwardingTenantTokenManager : ITenantTokenManager
 }
 
 /// <summary>
-/// TMR-P0-1（F1）：默认应用令牌管理器（应用身份）的转发代理，语义同 <see cref="ForwardingTenantTokenManager"/>。
+/// 默认应用令牌管理器（应用身份）的转发代理，语义同 <see cref="ForwardingTenantTokenManager"/>。
 /// </summary>
 internal sealed class ForwardingAppTokenManager : IAppTokenManager
 {
@@ -107,7 +107,7 @@ internal sealed class ForwardingAppTokenManager : IAppTokenManager
 }
 
 /// <summary>
-/// TMR-P0-1（F1）：默认应用用户令牌管理器的转发代理，语义同 <see cref="ForwardingTenantTokenManager"/>。
+/// 默认应用用户令牌管理器的转发代理，语义同 <see cref="ForwardingTenantTokenManager"/>。
 /// 实现 <see cref="IFeishuUserTokenManager"/> 全员（含 <see cref="IUserTokenManager"/> 按用户成员与
 /// <see cref="IFeishuUserTokenManager.StoreUserTokenAsync"/>）逐一现取转发。
 /// </summary>
@@ -118,7 +118,7 @@ internal sealed class ForwardingUserTokenManager : IFeishuUserTokenManager
     public ForwardingUserTokenManager(Func<IFeishuUserTokenManager> resolve)
         => _resolve = resolve ?? throw new ArgumentNullException(nameof(resolve));
 
-    // === ITokenManager 成员（现取转发） ===
+    // ITokenManager 成员（现取转发）
 
     /// <inheritdoc />
     public Task<string> GetTokenAsync(CancellationToken cancellationToken = default)
@@ -148,7 +148,7 @@ internal sealed class ForwardingUserTokenManager : IFeishuUserTokenManager
     {
     }
 
-    // === IUserTokenManager 成员（按 userId，现取转发） ===
+    // IUserTokenManager 成员（按 userId，现取转发）
 
     /// <inheritdoc />
     public Task<string?> GetTokenAsync(string? userId, CancellationToken cancellationToken = default)
@@ -191,7 +191,7 @@ internal sealed class ForwardingUserTokenManager : IFeishuUserTokenManager
     public Task<string?> GetOrRefreshTokenAsync(string? userId, string[]? scopes, CancellationToken cancellationToken = default)
         => _resolve().GetOrRefreshTokenAsync(userId, scopes, cancellationToken);
 
-    // === IFeishuUserTokenManager 成员 ===
+    // IFeishuUserTokenManager 成员
 
     /// <inheritdoc />
     public Task StoreUserTokenAsync(string userId, UserTokenInfo tokenInfo, CancellationToken cancellationToken = default)

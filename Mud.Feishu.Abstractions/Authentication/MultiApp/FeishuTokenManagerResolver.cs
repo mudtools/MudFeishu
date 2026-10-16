@@ -18,7 +18,7 @@ namespace Mud.Feishu.Abstractions;
 internal sealed class FeishuTokenManagerResolver : IFeishuTokenManagerResolver
 {
     private readonly IFeishuAppManager _appManager;
-    // TMR-P2-7（F7）：Try* 空 catch 收窄——"无默认应用 / 初始化失败 / 已退休"三态可区分，
+    // Try* 空 catch 收窄——"无默认应用 / 初始化失败 / 已退休"三态可区分，
     // 吞 ODE 会使退休期故障不可诊断。
     private readonly ILogger? _logger;
 
@@ -60,10 +60,10 @@ internal sealed class FeishuTokenManagerResolver : IFeishuTokenManagerResolver
 
     /// <inheritdoc />
     /// <remarks>
-    /// TMA2-10 / D6 修复：Try* 家族不抛异常。appKey 为空时取 DefaultAppKey，缺失则返回 null。
+    /// Try* 家族不抛异常。appKey 为空时取 DefaultAppKey，缺失则返回 null。
     /// 不使用 DefaultConfig（会抛异常），改为直接读取 DefaultAppKey。
     /// <para>
-    /// TMR-P2-7（F7）：空 catch 收窄——区分"无默认应用"（DefaultAppKey 为空，上方已 return null）
+    /// 空 catch 收窄——区分"无默认应用"（DefaultAppKey 为空，上方已 return null）
     /// 与"默认应用初始化失败/已退休"（带上下文记 Warning）；吞 ODE 会使退休期故障不可诊断。
     /// </para>
     /// </remarks>
@@ -71,7 +71,7 @@ internal sealed class FeishuTokenManagerResolver : IFeishuTokenManagerResolver
     {
         if (string.IsNullOrEmpty(appKey))
         {
-            // TMA2-10：appKey 为空时取默认应用键，不触发懒加载、不抛。
+            // appKey 为空时取默认应用键，不触发懒加载、不抛。
             if (string.IsNullOrEmpty(_appManager.DefaultAppKey))
                 return null;
             try
@@ -90,7 +90,7 @@ internal sealed class FeishuTokenManagerResolver : IFeishuTokenManagerResolver
 
     /// <inheritdoc />
     /// <remarks>
-    /// TMA2-10 / D6 修复：Try* 家族不抛异常。TMR-P2-7（F7）：空 catch 收窄（理由同上）。
+    /// Try* 家族不抛异常。空 catch 收窄（理由同上）。
     /// </remarks>
     public IAppTokenManager? TryGetAppTokenManager(string? appKey = null)
     {
@@ -114,7 +114,7 @@ internal sealed class FeishuTokenManagerResolver : IFeishuTokenManagerResolver
 
     /// <inheritdoc />
     /// <remarks>
-    /// TMA2-10 / D6 修复：Try* 家族不抛异常。TMR-P2-7（F7）：空 catch 收窄（理由同上）。
+    /// Try* 家族不抛异常。空 catch 收窄（理由同上）。
     /// </remarks>
     public IFeishuUserTokenManager? TryGetUserTokenManager(string? appKey = null)
     {

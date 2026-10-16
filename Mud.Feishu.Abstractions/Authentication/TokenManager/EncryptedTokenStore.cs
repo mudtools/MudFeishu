@@ -53,10 +53,10 @@ public sealed class EncryptedTokenStore : ITokenStore, IEncryptedTokenStore, ITo
     }
 
     /// <summary>
-    /// ENH-2：实现组件 marker 契约 <see cref="IEncryptedTokenStore"/>，表明写入前已加密。
+    /// 实现组件 marker 契约 <see cref="IEncryptedTokenStore"/>，表明写入前已加密。
     /// </summary>
     /// <remarks>
-    /// 组件 2.0.4 注释（TMR-12）明确该契约当前<b>不被</b> <c>ITokenManager</c> 管线消费，
+    /// 组件契约注释明确该契约当前<b>不被</b> <c>ITokenManager</c> 管线消费，
     /// 因此实现它不改变任何运行时行为；一旦组件 v2 把该契约接入管线（例如用于启动期校验或
     /// 存储能力探测），本类型无需再发版即可被正确识别。
     /// </remarks>
@@ -92,14 +92,14 @@ public sealed class EncryptedTokenStore : ITokenStore, IEncryptedTokenStore, ITo
 
     /// <inheritdoc />
     /// <remarks>
-    /// TMF-01：透传内层存储——加密只作用于值、不改变键布局，键删除天然透明。
-    /// 统一语义（TMF-08）：清空该 appKey 全部租户持久化令牌（用户令牌经
+    /// 透传内层存储——加密只作用于值、不改变键布局，键删除天然透明。
+    /// 统一语义：清空该 appKey 全部租户持久化令牌（用户令牌经
     /// <see cref="EncryptedUserTokenStore.ClearAllUsersAsync"/> 同步清除）。
     /// </remarks>
     public Task ClearAsync(CancellationToken cancellationToken = default)
         => _inner.ClearAsync(cancellationToken);
 
-    // ---- U-4（上游 3.0.10 Batch 2）：按应用清库能力面透传 —— 加密只作用于值、不改变键布局，
+    // ---- 按应用清库能力面透传 —— 加密只作用于值、不改变键布局，
     //      能力探测可穿透本装饰器（内层未实现时经官方统一入口回退路径承接）。 ----
 
     /// <inheritdoc />
@@ -121,11 +121,11 @@ public sealed class EncryptedTokenStore : ITokenStore, IEncryptedTokenStore, ITo
     /// 使上层回退到重新获取令牌，而不是因异常导致整个请求链路失败。
     /// </summary>
     /// <remarks>
-    /// ENH-2：失败不再静默 —— 记录**节流**告警（首次与每 <see cref="DecryptFailureLogInterval"/> 次一次）。
-    /// 修复前密钥轮换故障完全不可观测，运维只能看到令牌命中率下降而无法定位根因。
+    /// 失败不再静默 —— 记录**节流**告警（首次与每 <see cref="DecryptFailureLogInterval"/> 次一次）：
+    /// 密钥轮换故障必须可观测，否则运维只能看到令牌命中率下降而无法定位根因。
     /// 日志只包含异常类型/消息与密文长度，不落明文密钥或密文内容。
     /// <para>
-    /// TMR-P3-16c：解密失败后**尽力删除脏键**（<c>RemoveAsync</c> 幂等，删除失败不影响
+    /// 解密失败后**尽力删除脏键**（<c>RemoveAsync</c> 幂等，删除失败不影响
     /// 「按未命中」语义）——终止密钥轮换后的持续无效刷新循环（脏键不删则每次读取都解密失败，
     /// 令牌持续走重新获取路径直至 TTL 到期）。
     /// </para>
@@ -153,7 +153,7 @@ public sealed class EncryptedTokenStore : ITokenStore, IEncryptedTokenStore, ITo
                     failures, DecryptFailureLogInterval, cipherText.Length);
             }
 
-            // TMR-P3-16c：尽力删除脏键（幂等）。并发重取写回的是新密钥加密的密文，下次解密成功，无竞态危害。
+            // 尽力删除脏键（幂等）。并发重取写回的是新密钥加密的密文，下次解密成功，无竞态危害。
             try
             {
                 await _inner.RemoveAsync(tokenType, cancellationToken).ConfigureAwait(false);
@@ -248,7 +248,7 @@ public sealed class EncryptedUserTokenStore : IUserTokenStore, IEncryptedTokenSt
 
     /// <inheritdoc />
     /// <remarks>
-    /// TMF-01（D10）：透传内层存储的全用户清库能力。加密只作用于值、不改变键布局，
+    /// 透传内层存储的全用户清库能力。加密只作用于值、不改变键布局，
     /// 键删除天然透明；不透传会导致「加密开启时用户令牌清库静默失效」
     /// （与凭据变更清库 no-op 问题同构的装饰层陷阱）。
     /// 内层未实现 <see cref="IFeishuUserTokenStorePurge"/>（如宿主自定义存储）时按
@@ -294,7 +294,7 @@ public sealed class EncryptedUserTokenStore : IUserTokenStore, IEncryptedTokenSt
     #endregion
 
     /// <summary>
-    /// TMR-P3-16c：用户维度解密——失败时节流告警并尽力删除脏键（与
+    /// 用户维度解密——失败时节流告警并尽力删除脏键（与
     /// <see cref="EncryptedTokenStore.DecryptAsync"/> 同口径，删除走用户维度
     /// RemoveAsync 重载）。
     /// </summary>
@@ -311,7 +311,7 @@ public sealed class EncryptedUserTokenStore : IUserTokenStore, IEncryptedTokenSt
         }
         catch (Exception ex)
         {
-            // ENH-2：与 EncryptedTokenStore 同口径的节流告警（首次 + 每 N 次）。
+            // 与 EncryptedTokenStore 同口径的节流告警（首次 + 每 N 次）。
             var failures = Interlocked.Increment(ref _decryptFailureCount);
             if (_logger != null && (failures == 1 || failures % EncryptedTokenStore.DecryptFailureLogInterval == 0))
             {
@@ -322,7 +322,7 @@ public sealed class EncryptedUserTokenStore : IUserTokenStore, IEncryptedTokenSt
                     failures, EncryptedTokenStore.DecryptFailureLogInterval, cipherText.Length);
             }
 
-            // TMR-P3-16c：尽力删除脏键（幂等；并发重取写回新密文后解密成功，无竞态危害）。
+            // 尽力删除脏键（幂等；并发重取写回新密文后解密成功，无竞态危害）。
             try
             {
                 await _inner.RemoveAsync(userId, tokenType, cancellationToken).ConfigureAwait(false);

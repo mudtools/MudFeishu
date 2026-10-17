@@ -51,7 +51,7 @@ public static class FeishuMetrics
         description: "飞书事件处理耗时分布");
 
     /// <summary>
-    /// Agent 工具执行总次数（维度：tool, app_key, outcome）——工具成功率 KPI 数据源（AI-FD-D12 P1D-5）。
+    /// Agent 工具执行总次数（维度：tool, app_key, outcome）——工具成功率 KPI 数据源。
     /// </summary>
     /// <remarks>高基数纪律（原则 8）：禁止把 conversation_key/chat_id/user_id 加入 tags。</remarks>
     public static readonly Counter<long> ToolExecutions = Instance.CreateCounter<long>(
@@ -60,7 +60,7 @@ public static class FeishuMetrics
         description: "飞书 Agent 工具执行总次数");
 
     /// <summary>
-    /// Agent 工具执行耗时直方图（毫秒，维度：tool, app_key）——工具延迟 P95（AI-FD-D12 P1D-5）。
+    /// Agent 工具执行耗时直方图（毫秒，维度：tool, app_key）——工具延迟 P95。
     /// </summary>
     /// <remarks>高基数纪律（原则 8）：禁止把 conversation_key/chat_id/user_id 加入 tags。</remarks>
     public static readonly Histogram<double> ToolDuration = Instance.CreateHistogram<double>(
@@ -69,7 +69,7 @@ public static class FeishuMetrics
         description: "飞书 Agent 工具执行耗时分布");
 
     /// <summary>
-    /// Agent 模型调用耗时直方图（毫秒，维度：agent）——模型延迟 P95（AI-FD-D12 P1D-5）。
+    /// Agent 模型调用耗时直方图（毫秒，维度：agent）——模型延迟 P95。
     /// </summary>
     /// <remarks>token 用量以 Span 属性 <c>feishu.llm.*</c> 聚合为主，不加高基数指标。</remarks>
     public static readonly Histogram<double> AgentLlmDuration = Instance.CreateHistogram<double>(

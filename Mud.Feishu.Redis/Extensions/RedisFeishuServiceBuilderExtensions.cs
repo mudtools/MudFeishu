@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026   
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -508,7 +508,7 @@ public static class RedisFeishuServiceBuilderExtensions
     }
 
     /// <summary>
-    /// 注册 Redis 分布式会话闸门（AI-FD-D12 P2D-1 多实例部署）：
+    /// 注册 Redis 分布式会话闸门（多实例部署）：
     /// <see cref="RedisConversationGate"/> 替换 <c>AddFeishuAgent</c> 默认注册的进程内
     /// <c>KeyedConversationGate</c>——同一会话键跨实例互斥（SET NX 租约），忙时快速失败
     /// （<see cref="ConversationBusyException"/>），由事件层幂等回滚 + 重投递承接。

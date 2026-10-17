@@ -39,7 +39,7 @@ internal static class FeishuOpenTelemetryOptionsMapper
             EnableAspNetCoreInstrumentation = options.EnableAspNetCoreInstrumentation,
             OtlpEndpoint = options.OtlpEndpoint,
             // 两个枚举取值一一对应（Grpc = 0 / HttpProtobuf = 1），转型安全；
-            // 两侧均为「本仓/上游自定义枚举」而非 OTel SDK 枚举（后者的 Grpc 成员已过时）。
+            // 两侧均为自定义枚举而非 OTel SDK 枚举（后者的 Grpc 成员已过时）。
             OtlpExportProtocol = (MudOtlpExportProtocol)options.OtlpExportProtocol,
             OtlpHeaders = options.OtlpHeaders,
             UseShortExporterTimeout = options.UseShortExporterTimeout,

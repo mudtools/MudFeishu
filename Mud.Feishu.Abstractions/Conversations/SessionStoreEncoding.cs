@@ -15,7 +15,7 @@ namespace Mud.Feishu.Abstractions.Conversations;
 /// <remarks>
 /// <para>
 /// 与 <c>TokenStoreHelper</c> 的令牌存储格式约定保持同一惯例（§3.3）：
-/// 存储值必须自带过期时间戳，<b>无时间戳视为 miss</b>（TMA-15 治理语义），由调用方重建会话。
+/// 存储值必须自带过期时间戳，<b>无时间戳视为 miss</b>（治理语义），由调用方重建会话。
 /// 服务器端 TTL 只是清理手段，读取侧的时间戳才是有效性权威（双写兜底：Redis 键过期被
 /// 外部淘汰/提前逐出时，读侧仍能拒绝过期载荷）。
 /// </para>
@@ -52,7 +52,7 @@ public static class SessionStoreEncoding
     /// <param name="expireTimestampMs">解码出的过期时间戳（Unix 毫秒）。</param>
     /// <returns>
     /// 成功解码返回 <see langword="true"/>；无有效过期时间戳（旧格式/损坏数据/空值）返回
-    /// <see langword="false"/>——按 TMA-15 语义视为 miss，调用方必须丢弃并重建会话。
+    /// <see langword="false"/>——按治理语义视为 miss，调用方必须丢弃并重建会话。
     /// </returns>
     public static bool TryDecode(string? storedValue, out string? payload, out long expireTimestampMs)
     {

@@ -17,7 +17,7 @@ using StackExchange.Redis;
 namespace Mud.Feishu.Redis.Services;
 
 /// <summary>
-/// Redis 分布式会话闸门（AI-FD-D12 P2D-1 多实例实现）：<c>SET key token NX PX ttl</c> 租约——
+/// Redis 分布式会话闸门（多实例实现）：<c>SET key token NX PX ttl</c> 租约——
 /// 同键跨实例互斥；获取失败经有限次退避重试后<b>快速失败</b>（抛
 /// <see cref="ConversationBusyException"/>），把节奏还给事件层幂等回滚 + 重投递，不静默排队。
 /// </summary>

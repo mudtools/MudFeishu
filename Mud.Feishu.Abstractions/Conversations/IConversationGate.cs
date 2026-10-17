@@ -8,7 +8,7 @@
 namespace Mud.Feishu.Abstractions.Conversations;
 
 /// <summary>
-/// 会话闸门（AI-FD-D12 P2D-1）：同一会话键串行、跨键并行，
+/// 会话闸门：同一会话键串行、跨键并行，
 /// 落实总体设计 §4 不变式「同一 conversation_id 的 RunAsync 串行」——防并发 Run 共享同一
 /// 会话导致的 last-writer-wins 历史丢失。
 /// </summary>
@@ -40,7 +40,7 @@ public interface IConversationGateHandle : IDisposable
 }
 
 /// <summary>
-/// 会话闸门忙异常（AI-FD-D12 P2D-1）：同键正被其他实例处理且有限次重试耗尽时抛出——
+/// 会话闸门忙异常：同键正被其他实例处理且有限次重试耗尽时抛出——
 /// 调用方（事件层）经既有幂等回滚 + 事件重投递机制承接，不静默排队。
 /// </summary>
 public sealed class ConversationBusyException : InvalidOperationException

@@ -241,8 +241,8 @@ public interface IFeishuTenantV1Message : IFeishuV1Message
     /// </summary>
     /// <remarks>
     /// 路由为 <c>GET /open-apis/im/v1/messages/{message_id}</c>（官方「获取指定消息内容」接口，
-    /// 响应 data.items 含单条消息）。历史上曾误写为列表路由 <c>/open-apis/im/v1/messages</c>，
-    /// 导致 <c>[Path]</c> 参数无法展开、调用必然命中错误端点（AI-FD-D12 P1D-1a 缺陷修复）。
+    /// 响应 data.items 含单条消息）。列表路由 <c>/open-apis/im/v1/messages</c> 会使
+    /// <c>[Path]</c> 参数无法展开、调用必然命中错误端点——不得混用两种路由形态。
     /// </remarks>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <param name="message_id">待查询的消息 ID。</param>

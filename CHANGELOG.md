@@ -328,6 +328,15 @@
 - **截断判据修正**：`ToolExecutor.FromApi/FromPlainText` 原用「截断后长度 < 原文长度」判定，
   而两个截断器都会**附加**标记文本（101 字符截到 100 再附约 80 字符提示 ⇒ 判据为假）——
   新出口改用「是否超预算」判定（`maxLength > 0 && text.Length > maxLength`）。
+- **CI 修复：移除指向已删脚本的 stale 步骤**：`dotnet-publish.yml` 步骤 4.7 调用
+  `scripts/review-ai-changes.ps1`，而该脚本已随 PublicAPI 台账的全仓删除（`b0b47b5d`，用户裁定
+  不重建 `PublicAPI*.txt`，public 面改由 `PublicSurfaceRationaleContractGuards` +
+  `documents/AIAgent/public-surface-rationale.json` 锁定）一并被删，工作流引用漏网，
+  导致每次 CI 运行在该步直接崩（"term './scripts/review-ai-changes.ps1' is not recognized"，
+  与 `-BaseRef` 传值无关——文件不存在，参数绑定前即失败）。脚本规则 A/B 的伴生检查
+  （golden / skills / 权限对照表）本就由构建诊断（`MUDFT014` Error 级）与契约守卫
+  （`SkillsExportContractTests` / `ToolSurfaceScaleContractGuards`）在既有步骤覆盖，
+  故删除该步骤而非接回脚本；原地留注释登记原因，防止再接回。
 
 ### ♻️ 重构
 

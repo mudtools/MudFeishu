@@ -60,7 +60,7 @@ public class FeishuWebhookServiceBuilder
     /// 单独提为常量是为了让本文件对已删除键名只保留**一处**字面量，便于配置审计脚本以单行
     /// <c>audit-allow</c> 标记精确放行，而不是整文件豁免。
     /// </remarks>
-    private const string RemovedRequestLoggingKey = "EnableRequestLogging";
+    private const string RemovedRequestLoggingKey = "EnableRequestLogging"; // audit-allow: removed key literal used only for the one-time migration warning
 
     /// <summary>
     /// 已失效的端点注册开关「每进程一次」告警标记。
@@ -587,7 +587,7 @@ public class FeishuWebhookServiceBuilder
             // 否则尊重 appsettings.json 中的配置
 #pragma warning disable CS0618 // 该开关无运行时效果，仅为源码级兼容而保留
             if (_autoRegisterEndpointExplicitlySet)
-                options.AutoRegisterEndpoint = _autoRegisterEndpoint;
+                options.AutoRegisterEndpoint = _autoRegisterEndpoint; // audit-allow: [Obsolete] switch kept for source-level compat, no runtime effect
 #pragma warning restore CS0618
 
             // 如果用户没有配置，使用默认配置

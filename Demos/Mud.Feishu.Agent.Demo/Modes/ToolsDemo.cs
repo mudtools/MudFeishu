@@ -40,7 +40,8 @@ namespace Mud.Feishu.Agent.Demo;
 /// </para>
 /// <para>
 /// 工具执行链租户上下文固定为 <c>demo-app</c>（即下方注册的飞书应用 AppKey）；
-/// 全部只读工具经只读白名单启用（<c>FeishuToolNames.ReadonlyAll</c>，生产由宿主按需裁剪，Phase 1 §3.3.4）。
+/// 全部只读工具经全域只读白名单启用（<c>DemoAgentDefaults.ReadonlyToolWhitelist</c> =
+/// <c>ReadonlyAll</c> 剔除 <c>knowledge.search</c>；生产由宿主按需裁剪，Phase 1 §3.3.4）。
 /// 写工具默认不启用——示例展示 <c>WriteAllowList</c> 键控位（注释态），启用须同时注册
 /// <c>IToolExecutionAuthorizer</c>（Phase 2 §3.3 安全默认）。
 /// </para>
@@ -71,20 +72,14 @@ public static class ToolsDemo
         var services = new ServiceCollection()
             .AddDemoLogging(configuration)
             .AddFeishuApp(feishuConfig, "FeishuApps")
-            .AddFeishuServices(builder => builder
-                .AddMessageApi()
-                .AddBiTableApi()
-                .AddDocxApi()
-                .AddWikiApi()
-                .AddSearchApi()
-                .AddSpreadsheetsApi()
-                // R4/WP5 新域：日历（AT-F04）与任务（AT-F17）——域客户端缺席时对应工具不进注册表。
-                .AddCalendarApi()
-                .AddTaskApi())
+            // 全域域客户端：白名单用的是 ReadonlyAll（**全部域**的只读工具），域客户端缺席时对应工具
+            // 不注册、MapWhitelist 在装配期即 fail-fast（"白名单包含未注册工具"）——故注册面必须与
+            // 白名单同宽，否则本模式启动即崩（曾只注册 8 个域，新增域的只读工具一进白名单就报错）。
+            .AddFeishuServices(builder => builder.AddAllApis())
             .AddDemoAgent(model, "FeishuAgentToolsDemo", InstructionsText, options =>
             {
-                // Demo 启用全部只读工具（ReadonlyAll，由生成器从 [AgentTool] 派生）；生产由宿主按需裁剪白名单。
-                options.Tools = [.. FeishuToolNames.ReadonlyAll];
+                // Demo 启用全部只读工具（由生成器从 [AgentTool] 派生）；生产由宿主按需裁剪白名单。
+                options.Tools = [.. DemoAgentDefaults.ReadonlyToolWhitelist];
                 // 身份闭集（R4 WP2 / T2-4 决策 D-1 ⓑ）：只读面含 task.list_my_tasks（identity=user），
                 // 必须在 AllowedIdentities 内显式放行，否则装配期 fail-fast（而不是运行期静默 policy_denied）。
                 options.AllowedIdentities = ["tenant", "user"];

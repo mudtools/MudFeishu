@@ -14,6 +14,14 @@
   `q` 取消、非法输入重问、非交互与 EOF 回落、模式目录 ↔ 设置记录的节名与开关键机械对齐、
   随仓库模板的默认项 = 文档业务智能体）；Demo README 与 `appsettings.json` 模板注释、排错表、自检点
   （新增 F15）同批更新。
+- **修复「工具冒烟 / 领域事件」启动即崩（白名单与域注册面不等宽）**：两个模式的白名单是全域只读
+  （`FeishuToolNames.ReadonlyAll`），域客户端却只注册了少数几个域 ⇒ 装配期抛
+  `FeishuAgent:Tools 白名单包含未注册工具 'approval.get_instance'`（工具面随域扩张后，生成的白名单与
+  手写的注册清单必然漂移，且**编译期无信号**）。修法：域客户端改用 `AddAllApis()`（全域注册），白名单
+  收敛为共用常量 `DemoAgentDefaults.ReadonlyToolWhitelist` = `ReadonlyAll` 剔除 `knowledge.search`
+  （该工具绑定宿主 RAG 门面 `IRetriever`／`AddFeishuAilyKnowledge`，本 Demo 明确不接 Aily 托管知识）。
+  新增守卫 `ToolsDemoWiringContractGuards`（容器层断言白名单 ⊆ 已注册工具、注册面与白名单等宽、
+  剔除项恰好只有 `knowledge.search`），把"启动即崩"提前到测试期（2 条用例，离线可跑）。
 
 ## [Unreleased] - AI 工具面审查整改 Phase 0：文档漂移修复 + 计数类文档机械防线 + 事件外桥处置决策（2026-10-16）
 

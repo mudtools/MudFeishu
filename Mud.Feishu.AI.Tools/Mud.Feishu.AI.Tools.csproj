@@ -53,7 +53,7 @@
 		<!-- v2.3 P1-D：执行器骨架（决策⑮）中立化上移 Mud.AI.Agent——工具面经 PackageReference
 		     消费骨架（独立仓 NuGet 包，见 AGENTS.md「Mud.AI.* family migration」）；
 		     依赖方向：AI.Tools → Mud.AI.Agent → Mud.AI.Abstractions（单向，无环）。 -->
-		<PackageReference Include="Mud.AI.Agent" Version="1.0.0" />
+		<PackageReference Include="Mud.AI.Agent" Version="1.0.1" />
 		<!-- R-9（阶段 5）：EventCallback 引用已摘除——事件处理器/流式通道/知识 Provider 随集成面并入
 		     Mud.Feishu.AI，故「只接工具面」的宿主不再被动背上事件 DTO 面（880 个源文件的依赖）。
 		     ⚠️ 守卫 AgentContractGuards 断言本集合恰为 {AI, core, DataModels}（+ 生成器分析器），
@@ -67,7 +67,7 @@
 		     工具面规模（条目数 / 签名）不在此处写死数字——数字漂移无法被编译器发现，改为唯一真相源：
 		     FeishuToolSchemas.golden.txt 与生成的 FeishuToolContracts（三者一致性由
 		     ToolSurfaceScaleContractGuards 机械断言，见 R2-09/G4）。 -->
-		<PackageReference Include="Mud.AI.Generator" Version="1.0.0" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+		<PackageReference Include="Mud.AI.Generator" Version="1.0.1" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 		<!-- 剖面契约：[SdkToolProfile]（数据载体）+ ISdkToolProfile / SdkTokenKind（标记接口与枚举）
 		     —— v2.3 起随声明契约上移 Mud.AI.Abstractions（经 Mud.AI.Agent 传递引用）；
 		     Mud.HttpUtils.Attributes / .Abstractions 为 HTTP 客户端生成路径所需，保留。

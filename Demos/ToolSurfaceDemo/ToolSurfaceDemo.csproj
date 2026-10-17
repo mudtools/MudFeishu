@@ -15,14 +15,14 @@
 		<!-- 引导契约（ISdkToolProfile / [SdkToolProfile] / SdkTokenKind / TokenKindDerivationStrategy）
 		     所在包——Mud.AI.Abstractions（独立仓 NuGet 包；引擎按 `Mud.AI.ISdkToolProfile`
 		     + `Mud.AI.Attributes.SdkToolProfileAttribute` 发现剖面，指向组件包会零产出）。 -->
-		<PackageReference Include="Mud.AI.Abstractions" Version="1.0.0" />
+		<PackageReference Include="Mud.AI.Abstractions" Version="1.0.1" />
 		<!-- v2.3 P1-B：demo 随 ToolSurface 竖井自组件仓迁入飞书仓；Mud.AI 家族独立化后，
 		     [Get]/[Delete]/[Path] 仍是组件仓 HTTP 契约的编译期事实，故保留组件包引用
 		     （Mud.HttpUtils.Attributes 3.0.7，与全仓同版本）；工具面**引擎**则消费独立仓的
 		     Mud.AI.Generator NuGet 分析器包（跨仓）。
 		     ⚠ 禁兼引：不得再引用组件侧 Mud.HttpUtils.Generator（同名 hintName 产物冲突）。 -->
 		<PackageReference Include="Mud.HttpUtils.Attributes" Version="3.0.7" />
-		<PackageReference Include="Mud.AI.Generator" Version="1.0.0" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+		<PackageReference Include="Mud.AI.Generator" Version="1.0.1" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -77,16 +77,14 @@ public static class DomainEventsDemo
         var services = new ServiceCollection()
             .AddDemoLogging(configuration)
             .AddFeishuApp(feishuConfig, "FeishuApps")
-            .AddFeishuServices(builder => builder
-                .AddMessageApi()
-                // AddCardApi 注册 Cards 模块（含卡片流客户端 IFeishuTenantV2AppCardMessageStream）；
-                // 未启用时降级链内只剩编辑通道（注册期软缺席，不是错误）。
-                .AddCardApi()
-                // 任务模块：任务事件处理器据它解析负责人（投递目标）。
-                .AddTaskApi())
+            // 全域域客户端：白名单是全域只读（见 DemoAgentDefaults.ReadonlyToolWhitelist），域客户端
+            // 缺席时对应工具不注册、装配期即 fail-fast。本模式的**业务**依赖仍是消息（事件回复）、
+            // 卡片（卡片流客户端 IFeishuTenantV2AppCardMessageStream，缺席时降级为编辑通道）与任务
+            // （任务事件处理器据它解析负责人）；其余域只为让全域只读白名单成立而注册。
+            .AddFeishuServices(builder => builder.AddAllApis())
             .AddDemoAgent(settings.Model, "FeishuDomainEventsDemo", InstructionsText, options =>
             {
-                options.Tools = [.. FeishuToolNames.ReadonlyAll];
+                options.Tools = [.. DemoAgentDefaults.ReadonlyToolWhitelist];
                 options.AllowedIdentities = ["tenant", "user"];
             })
             .AddFeishuTools()

@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Mud.Feishu.AI.Agents;
 using Mud.Feishu.AI.Extensions;
 using Mud.Feishu.AI.Tools;
+using Mud.Feishu.AI.Tools.Hosting;
 
 namespace Mud.Feishu.Agent.Demo.Tests;
 
@@ -63,7 +64,8 @@ public class ToolsDemoWiringContractGuards
     /// </summary>
     /// <returns>服务容器。</returns>
     private static ServiceProvider BuildProvider()
-        => new ServiceCollection()
+    {
+        var services = new ServiceCollection()
             .AddFeishuApp(
                 DemoAppConfig.CreateSingleApp(
                     DemoAgentDefaults.DefaultAppKey,
@@ -85,6 +87,13 @@ public class ToolsDemoWiringContractGuards
                     // 只读面含 task.list_my_tasks（identity=user），必须显式放行 user。
                     options.AllowedIdentities = ["tenant", "user"];
                 })
-            .AddFeishuTools()
-            .BuildServiceProvider();
+            .AddFeishuTools();
+
+        // 与 ToolsDemo.RunAsync 同形：只读白名单含 drive.download_file / drive.export_document，
+        // 其执行器注入非可空 IFeishuAttachmentStager——缺席时整域软缺席，白名单装配期即 fail-fast。
+        services.AddHttpClient<DemoAttachmentStager>();
+        services.AddSingleton<IFeishuAttachmentStager>(static sp => sp.GetRequiredService<DemoAttachmentStager>());
+
+        return services.BuildServiceProvider();
+    }
 }

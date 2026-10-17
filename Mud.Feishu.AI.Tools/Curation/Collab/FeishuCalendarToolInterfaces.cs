@@ -87,6 +87,33 @@ public interface IFeishuTenantCalendarListEventsTool
         CancellationToken cancellationToken = default);
 }
 
+/// <summary>工具接口：calendar.agenda（映射 <c>IFeishuTenantV4CalendarEvent.GetInstanceViewCalendarEventAsync</c>）。</summary>
+/// <remarks>
+/// <para>
+/// <b>与 list_events 的分工</b>：list_events 按创建序翻页列举原始日程；本工具按<b>时间窗聚合</b>——
+/// 重复日程在窗口内的每个实例都会展开（instance 视图），适合"这周有哪些会"类查询。
+/// </para>
+/// <para>
+/// <b>平台形态</b>：Query 为 Unix 秒字符串（模型侧仍是 RFC3339，转换在绑定层——时间语义铁律）；
+/// 时间窗上限 2 年。
+/// </para>
+/// </remarks>
+[AgentTool("calendar.agenda",
+    Description = "按时间窗查看指定日历的日程视图（start/end 为 RFC3339，含时区；重复日程会自动展开为实例）。与 calendar.list_events 的区别：本工具按时间窗一次取回全部实例（不分页）。只读，需 calendar:calendar:readonly。",
+    RequiredScopes = ["calendar:calendar:readonly"],
+    IsWrite = false,
+    Source = nameof(IFeishuTenantV4CalendarEvent) + "." + nameof(IFeishuTenantV4CalendarEvent.GetInstanceViewCalendarEventAsync))]
+public interface IFeishuTenantCalendarAgendaTool
+{
+    /// <summary>时间窗内的日程实例视图。</summary>
+    /// <returns>白名单投影后的 JSON 文本（items：event_id/summary/start/end/status）。</returns>
+    Task<string> GetInstanceViewCalendarEventAsync(
+        [ToolParameter("calendar_id", "日历 ID（形如 feishu.cn_xxx@group.calendar.feishu.cn）", Required = true)] string calendar_id,
+        [ToolParameter("start", "窗口起点（RFC3339，含时区，如 2026-10-01T00:00:00+08:00）", Required = true)] string start,
+        [ToolParameter("end", "窗口终点（RFC3339，须晚于 start；窗口上限 2 年）", Required = true)] string end,
+        CancellationToken cancellationToken = default);
+}
+
 // ─────────────────────────── Calendar 写面成环（R7/WP4，4 个） ───────────────────────────
 
 /// <summary>工具接口：calendar.update_event（映射 <c>IFeishuTenantV4CalendarEvent.UpdateCalendarEventAsync</c>）。</summary>
@@ -161,5 +188,29 @@ public interface IFeishuTenantCalendarListEventAttendeesTool
         [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
         [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
         [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
+        CancellationToken cancellationToken = default);
+}
+
+// ─────────────────────────── T-1：邀请回复（读闭环，1 个） ───────────────────────────
+
+/// <summary>工具接口：calendar.rsvp（映射 <c>IFeishuTenantV4CalendarEvent.ReplyCalendarEventAsync</c>）。</summary>
+/// <remarks>
+/// RSVP 是<b>写状态</b>（更新当前身份在该日程上的参与状态），故声明写面并过授权门禁——
+/// 尽管平台方法为 POST、引擎风险分级为 <c>write</c>（非 high-risk）。
+/// </remarks>
+[AgentTool("calendar.rsvp",
+    Description = "回复日程邀请（rsvp_status：accept=接受 / decline=拒绝 / tentative=暂定），更新当前身份在该日程上的参与状态。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 calendar:calendar。",
+    RequiredScopes = ["calendar:calendar"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV4CalendarEvent) + "." + nameof(IFeishuTenantV4CalendarEvent.ReplyCalendarEventAsync))]
+public interface IFeishuTenantCalendarRsvpTool
+{
+    /// <summary>回复日程邀请。</summary>
+    /// <returns>操作结果 JSON 文本（replied/event_id/rsvp_status）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> ReplyCalendarEventAsync(
+        [ToolParameter("calendar_id", "日历 ID（形如 feishu.cn_xxx@group.calendar.feishu.cn）", Required = true)] string calendar_id,
+        [ToolParameter("event_id", "日程 ID（来自 calendar.create_event 或 calendar.list_events）", Required = true)] string event_id,
+        [ToolParameter("rsvp_status", "回复状态（accept=接受 / decline=拒绝 / tentative=暂定）", Required = true)] string rsvp_status,
+        [ToolParameter("dry_run", "仅预演不回复（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }

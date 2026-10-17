@@ -10,9 +10,13 @@
 ## 前置链
 `list_folder_files` / `get_file_metas` 只回元数据；写面 `create_folder` / `move_file` / `upload_file`。
 链式路径：先拿 `folder_token` / `file_token`，再动写工具。
+**取内容/产物**：资源文件 → `download_file`；云文档（docx / sheet / bitable）→ `export_document`
+（先创建导出任务再下载，产物约 10 分钟时效，`dry_run=true` 只看预演不占配额）。二者都落**宿主暂存
+目录**，结果只回 `local_path` / `size` / `content_type`——字节不进模型上下文。
 
 ## 避坑
-- **只读工具不下载内容**，取正文请用 docx / sheets。
+- **下载只给路径**：拿到 `local_path` 后由宿主进程打开/转存/处理；不要期待工具返回文件内容，
+  也不要臆造"读取文件内容"的工具。文档正文的结构化读取仍走 docx / sheets。
 - `move_file` 是异步的，立即返回不代表已生效。
 - `upload_file` 只接受 http/https 绝对地址（不接受本地路径），且宿主须实现附件暂存件；
   未实现时该工具**不注册**（软缺席，不是参数错误）。

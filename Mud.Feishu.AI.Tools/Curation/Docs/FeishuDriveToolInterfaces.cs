@@ -246,3 +246,57 @@ public interface IFeishuTenantDriveTransferOwnerTool
         [ToolParameter("dry_run", "仅预演不转移（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }
+
+// ─────────────────────────── 受控下载出口（T-1：读取闭环，2 个） ───────────────────────────
+
+/// <summary>工具接口：drive.download_file（映射 <c>IFeishuTenantV1DriveFiles.DownloadFileAsync</c> + 宿主 stager 落盘）。</summary>
+/// <remarks>
+/// <para>
+/// <b>受控出向（DP-R7-2 / B-2）</b>：字节经 <c>DownloadedContentGuard</c> 拦截平台错误体后交
+/// <see cref="IFeishuAttachmentStager"/> 落盘，工具结果只回路径/大小/类型——`no-bytes-in-context`
+/// 豁免须由执行器注入非可空 stager 并调用错误体防线<b>挣得</b>（<c>BinaryDownloadToolExposureContractTests</c> 核验）。
+/// </para>
+/// <para>
+/// 仅支持云空间资源文件；云文档（docx/sheet/bitable）导出请用 <c>drive.export_document</c>
+/// （平台不支持用本接口下载云文档）。
+/// </para>
+/// </remarks>
+[AgentTool("drive.download_file",
+    Description = "把云空间中的资源文件下载到宿主本地暂存目录，结果只含 local_path/size/content_type（no-bytes-in-context：文件字节不进模型上下文，打开/处理请用本地路径）。云文档请改用 drive.export_document。只读，需 drive:drive:readonly。",
+    RequiredScopes = ["drive:drive:readonly"],
+    IsWrite = false,
+    Source = nameof(IFeishuTenantV1DriveFiles) + "." + nameof(IFeishuTenantV1DriveFiles.DownloadFileAsync))]
+public interface IFeishuTenantDriveDownloadFileTool
+{
+    /// <summary>下载资源文件到宿主落盘边界。</summary>
+    /// <returns>JSON 文本（local_path/size/content_type）——字节不进模型上下文。</returns>
+    Task<string> DownloadFileAsync(
+        [ToolParameter("file_token", "文件 token（形如 boxcnXxx；来自 drive.list_folder_files / drive.get_file_metas）", Required = true)] string file_token,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：drive.export_document（映射 <c>IFeishuTenantV1DriveFiles.DownloadExportFileAsync</c>，含创建任务 + 轮询链）。</summary>
+/// <remarks>
+/// <para>
+/// <b>三步链路</b>：创建导出任务（<c>CreateExportTaskAsync</c>）→ 有界轮询任务状态
+/// （<c>GetExportTaskAsync</c>）→ 下载导出产物（Source 所指方法）。字节处置同 <c>drive.download_file</c>：
+/// 走唯一受控出口（错误体防线 + 宿主 stager），结果只回路径/大小/类型。
+/// </para>
+/// <para>导出产物在任务完成后约 10 分钟内有效（平台会清理），执行器在任务完成后立即下载。</para>
+/// </remarks>
+[AgentTool("drive.export_document",
+    Description = "把云文档导出为文件（docx 文档→docx/pdf；sheet/bitable→xlsx/csv）并下载到宿主本地暂存目录，结果只含 local_path/size/content_type（no-bytes-in-context：文件字节不进模型上下文）。导出产物约 10 分钟内有效，请及时转存。只读，需 drive:export:readonly。",
+    RequiredScopes = ["drive:export:readonly"],
+    IsWrite = false,
+    Source = nameof(IFeishuTenantV1DriveFiles) + "." + nameof(IFeishuTenantV1DriveFiles.DownloadExportFileAsync))]
+public interface IFeishuTenantDriveExportDocumentTool
+{
+    /// <summary>导出云文档并下载到宿主落盘边界（创建任务 → 有界轮询 → 下载）。</summary>
+    /// <returns>JSON 文本（local_path/size/content_type）——字节不进模型上下文。</returns>
+    Task<string> ExportDocumentAsync(
+        [ToolParameter("file_token", "云文档 token（docx/sheet/bitable 等；来自 drive.list_folder_files / drive.get_file_metas）", Required = true)] string file_token,
+        [ToolParameter("file_extension", "导出文件扩展名（docx/pdf/xlsx/csv；须与 type 兼容：docx 文档→docx/pdf，sheet/bitable→xlsx/csv）", Required = true)] string file_extension,
+        [ToolParameter("type", "云文档类型（doc/sheet/bitable/docx）", Required = true)] string type,
+        [ToolParameter("dry_run", "仅预演不导出（可选，默认 false）：返回将要下发的 method/path，不创建导出任务")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}

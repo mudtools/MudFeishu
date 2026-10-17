@@ -111,6 +111,14 @@
 > （对模型是假事实）。同批裁定的 DP-R7-2 已删除 R7 新增的两个二进制宿主契约
 > （`IFeishuBinaryArtifactSink` / `IFeishuBinaryArtifactSource`：零消费方 + 与 `IFeishuAttachmentStager` 重叠）。
 > 详见 R7 方案 **§8.5**。
+>
+> **状态更新（2026-10-16，审查整改 Phase 1 · T-1）**：`drive.download_file` / `drive.export_document`
+> 已落地为**受控下载出口**（字节经 `DownloadedContentGuard` 错误体防线后交宿主 `IFeishuAttachmentStager`
+> 落盘，工具结果只回路径/大小/类型，`no-bytes-in-context` 豁免经 `BinaryDownloadToolExposureContractTests`
+> 机械核验"已挣得"；同批修复该守卫的工具名解析缺陷）。这与上方 DP-R7-1 **不矛盾**：DP-R7-1 否决的是
+> "让生成器推导 `format: binary` 的 output_schema"这一路径；本批按"结果面是文本占位（路径/大小/类型）"的形态
+> 绕过该表达能力缺口，`board.download_image` 本身仍**维持不策展**。方案：
+> `.docs/AI/MudFeishu-AI-审查整改-Bug修复与功能完善方案-2026-10-16.md` §5 批次 T-1。
 
 1. ~~**T3-5/T3-6 业务事件 + 多模态**~~ → **已完成**：`ApprovalContextAssembler` + `BitableRecordContextAssembler`（含生产者
    `BitableRecordChangedConversationalEventHandler`）；多模态按 PM 裁决（DP-C3-1）**缩为 2 条纯文本工具**

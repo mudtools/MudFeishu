@@ -22,7 +22,7 @@
 
 ---
 
-## 1. 工具面现状（242 个：142 只读 + 100 写类）
+## 1. 工具面现状（246 个：145 只读 + 101 写类）
 
 > **本表为域级汇总，权威计数以 `FeishuToolNames.All` 为准**（由契约守卫 `ToolCountDocContractGuards` 机械锁定——本表数字必须等于编译期产物 `FeishuToolNames.All.Count`）。
 
@@ -33,12 +33,12 @@
 | Wiki | 2 | 3 | 5 |
 | 搜索 Search | 1 | — | 1 |
 | IM | 8 | 8 | 16 |
-| 云空间 Drive | 3 | 12 | 15 |
+| 云空间 Drive | 5 | 12 | 17 |
 | 电子表格 Sheets | 2 | 2 | 4 |
 | 通讯录 Contact | 4 | — | 4 |
 | 通讯录部门 ContactDept | 2 | 2 | 4 |
 | 审批 Approval | 2 | 4 | 6 |
-| 日历 Calendar | 3 | 4 | 7 |
+| 日历 Calendar | 4 | 5 | 9 |
 | 任务 Task | 1 | 7 | 8 |
 | 邮件 Mail | 5 | 2 | 7 |
 | 妙记 Minutes | 5 | — | 5 |
@@ -61,7 +61,7 @@
 | **跨组织互通 TrustParty**（B1） | 11 | 3 | 14 |
 | **智能伙伴数据知识 Aily**（B2） | 3 | — | 3 |
 | 元工具 | 4 | — | 4 |
-| **合计** | **142** | **100** | **242** |
+| **合计** | **145** | **101** | **246** |
 
 > **R-12（2026-10-10）**：万能兜底通道 `feishu.api_call` 已**整条删除**（双轨调用路径 + 全工具面风险最高的面
 > + 零外部消费）。未策展能力的正确处置是「先用 `feishu.capability_lookup` 判断是不存在还是未策展，
@@ -233,13 +233,13 @@ var response = await agent.RunApprovalContinuationAsync(
 
 ## 4. 模型看不到的能力，出路在哪
 
-本包刻意**不**做"每个 SDK 方法一个工具"（1268 无差别暴露），而是按高频工作流**策展**为 242 个工具。
+本包刻意**不**做"每个 SDK 方法一个工具"（1268 无差别暴露），而是按高频工作流**策展**为 246 个工具。
 对于未策展的方法，提供两层兜底（而非变相暴露全部 1268 方法）：
 
 | 层 | 内容 | 模型可见？ |
 | --- | --- | --- |
 | L1 能力目录 | 编译期聚合事实（SDK 方法总数 / 分组分布 / 策展计数），`build_property.FeishuToolCatalog=true` 时产出 | ❌（`internal`） |
-| L2 暴露策展 | 标注了 `[FeishuTool]` 的 242 个工具 | ✅（白名单启用后） |
+| L2 暴露策展 | 标注了 `[FeishuTool]` 的 246 个工具 | ✅（白名单启用后） |
 | **L3 能力出路** | **`feishu.capability_lookup`**：按关键字回答"这个能力在 SDK 里有几个分组 / 是否已策展成工具" | ✅（默认不启用） |
 | **L3.1 方法签名** | **`feishu.schema_read`**：查任意 SDK 方法的签名事实（HTTP/路由/参数/令牌/风险/是否已策展） | ✅（只读，`feishu:base` scope） |
 | **L3.2 guidance** | **`feishu.guidance_read`**：按需读取 L2 references（`{域}/{主题}`），键不存在时列出全部候选 | ✅（只读） |
@@ -409,11 +409,15 @@ services.AddSingleton<IFeishuAttachmentStager>(sp => sp.GetRequiredService<DemoA
 > 且所有字节型工具还卡在下面这个**更根本**的前置上。因此**发布前删除两者**，设计与依据留存于
 > §3.B6 的撤销记录 —— 避免发布面出现"不可能被调用"的公开接口，也避免宿主面对三条路的选择困难。
 
-- **出向工具尚未落地的真实阻塞点（DP-R7-1）**：`output_schema` 由 **Source 方法的返回类型**推导，
-  而字节型方法的返回类型是 `Task<byte[]?>` ⇒ 生成的 Schema 会告诉模型"本工具返回二进制"，
-  与该工具实际返回的"路径/大小/类型"**互相矛盾（假事实）**；`[FeishuTool]` 目前没有 output_schema
-  覆盖能力。该能力（`OutputSchema` 覆盖，或对二进制 Source 跳过推导）落在**组件仓
-  `Mud.HttpUtils.Generator`**，是本仓 `drive.download_file` / `board.download_image` 等出向工具的**共同前置**。
+- **出向工具前置（DP-R7-1）已闭合（2026-10-16，T-1）**：R7 时登记的阻塞是"`output_schema` 由 Source
+  方法的返回类型推导，字节型方法的 Schema 会告诉模型'本工具返回二进制'（假事实）"。**代码级复核推翻了该前提**：
+  两条模型桥（`FeishuToolAIFunction` / `FeishuMcpToolServer`）都只从信封常量中提取 `parameters` 作
+  参数 Schema（`JsonSchema`），`name`/`description` 另行承载——**`output_schema` 从不进入模型上下文**；
+  且当前引擎对 `Task<byte[]?>` 源推导出的是"空属性对象数组"（`{"type":"array","items":{"type":"object","properties":{}}}`），
+  不含"binary"字样。故受控下载出口按本节的"豁免必须挣得"机制落地（`drive.download_file` /
+  `drive.export_document`），`board.download_image` 维持不策展（无策展需求）。对二进制 Source
+  跳过 `output_schema` 推导的引擎改进（信封面更干净）登记为 mudai 引擎（`Mud.AI.Generator`）上游待办，
+  不构成本仓阻塞。
 - **SDK 不提供落盘实现**：域名白名单（防 SSRF）、大小上限、扩展名/MIME 校验、落盘目录**全是宿主策略**。
 - **生命周期显式**：`StagedAttachment.Cleanup` 由调用方/执行链在 `finally` 中释放（成功与失败路径都清理）。
 

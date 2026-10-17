@@ -10,8 +10,9 @@ using Mud.Feishu.DataModels.Calendar;
 namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
-/// Calendar 三工具执行器（<c>calendar.create_event</c> / <c>calendar.find_free_slots</c> /
-/// <c>calendar.list_events</c>，WP5 / AT-F04）。
+/// Calendar 工具执行器（读面 <c>calendar.create_event</c> / <c>calendar.find_free_slots</c> /
+/// <c>calendar.list_events</c>，WP5 / AT-F04；写面成环 4 个；T-1 补全 <c>calendar.agenda</c> /
+/// <c>calendar.rsvp</c>）。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -29,6 +30,9 @@ internal sealed class CalendarTools(
 {
     /// <summary>timezone 缺省值（与 R4 §5.2 设计一致；可被模型显式覆盖）。</summary>
     private const string DefaultTimezone = "Asia/Shanghai";
+
+    /// <summary>rsvp_status 闭集（平台取值）。</summary>
+    private static readonly string[] RsvpStatuses = ["accept", "decline", "tentative"];
 
     private readonly Mud.Feishu.IFeishuTenantV4CalendarEvent _calendarEventClient = calendarEventClient
         ?? throw new ArgumentNullException(nameof(calendarEventClient));
@@ -148,6 +152,34 @@ internal sealed class CalendarTools(
         });
     }
 
+    /// <summary>calendar.agenda：时间窗内的日程实例视图（重复日程展开；平台 Query 为 Unix 秒）。</summary>
+    [ToolHandler(typeof(IFeishuTenantCalendarAgendaTool))]
+    public Task<ToolResult> AgendaAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.CalendarAgenda, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var args = CalendarAgendaArgs.Unpack(arguments);
+
+            var startUtc = ParseRfc3339(args.Start, "start");
+            var endUtc = ParseRfc3339(args.End, "end");
+            if (endUtc <= startUtc)
+            {
+                throw new ArgumentException("end 须晚于 start");
+            }
+
+            // 时间语义铁律：模型侧 RFC3339 → 平台 Query 的 Unix 秒字符串（唯一转换点）。
+            var outcome = FeishuApiResultReader.Read(await _calendarEventClient
+                .GetInstanceViewCalendarEventAsync(
+                    args.CalendarId,
+                    startUtc.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture),
+                    endUtc.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture),
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApi(outcome, ProjectAgenda);
+        });
+    }
+
     /// <summary>find_free_slots 投影：busy 段列表（start/end）+ time_min/time_max 回显。</summary>
     private static JsonObject ProjectFreebusy(GetFreebusyCalendarResult data)
     {
@@ -178,6 +210,27 @@ internal sealed class CalendarTools(
                 ["summary"] = item.Summary,
                 ["start"] = item.StartTime.DateTime ?? item.StartTime.Date ?? item.StartTime.Timestamp,
                 ["end"] = item.EndTime.DateTime ?? item.EndTime.Date ?? item.EndTime.Timestamp,
+            });
+        }
+
+        return envelope;
+    }
+
+    /// <summary>agenda 投影：items（event_id/summary/start/end/status）——重复日程的实例逐条展开。</summary>
+    private static JsonObject ProjectAgenda(GetInstanceViewCalendarEventResult data)
+    {
+        // R-3：信封形态单源（ToolResultJsons.ItemsEnvelope，该接口无翻页契约）。
+        var envelope = ToolResultJsons.ItemsEnvelope();
+
+        foreach (var item in data.Items ?? [])
+        {
+            envelope["items"]!.AsArray().AddNode(new JsonObject
+            {
+                ["event_id"] = item.EventId,
+                ["summary"] = item.Summary,
+                ["start"] = item.StartTime?.DateTime ?? item.StartTime?.Date ?? item.StartTime?.Timestamp,
+                ["end"] = item.EndTime?.DateTime ?? item.EndTime?.Date ?? item.EndTime?.Timestamp,
+                ["status"] = item.Status,
             });
         }
 
@@ -341,6 +394,66 @@ internal sealed class CalendarTools(
         }
 
         return envelope;
+    }
+
+    // ────────── T-1：邀请回复 ──────────
+
+    /// <summary>calendar.rsvp：回复日程邀请（accept/decline/tentative，<c>dry_run=true</c> 时只预演）。</summary>
+    [ToolHandler(typeof(IFeishuTenantCalendarRsvpTool))]
+    public Task<ToolResult> RsvpAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.CalendarRsvp);
+        return executor.RunAsync(async () =>
+        {
+            var args = CalendarRsvpArgs.Unpack(arguments);
+
+            var rsvpStatus = args.RsvpStatus.Trim();
+            if (!RsvpStatuses.Contains(rsvpStatus, StringComparer.Ordinal))
+            {
+                throw new ArgumentException(
+                    $"rsvp_status 仅支持 {string.Join("/", RsvpStatuses)}，实际: {args.RsvpStatus}");
+            }
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return ToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "POST", "/open-apis/calendar/v4/calendars/{calendar_id}/events/{event_id}/reply",
+                    null,
+                    ("calendar_id", args.CalendarId.Length), ("event_id", args.EventId.Length), ("rsvp_status", rsvpStatus.Length)));
+            }
+
+            var failure = RequireNullDataSuccess(executor.ToolName, await _calendarEventClient
+                .ReplyCalendarEventAsync(
+                    args.CalendarId,
+                    args.EventId,
+                    new ReplyCalendarEventRequest { RsvpStatus = rsvpStatus },
+                    cancellationToken)
+                .ConfigureAwait(false));
+            return failure ?? ToolResult.FromText(new JsonObject
+            {
+                ["replied"] = true,
+                ["event_id"] = args.EventId,
+                ["rsvp_status"] = rsvpStatus,
+            }.ToJsonString());
+        });
+    }
+
+    /// <summary>
+    /// 解包 <see cref="FeishuNullDataApiResult"/>（不走 <c>FeishuApiResultReader.Read&lt;T&gt;</c>，T 不可推断）。
+    /// </summary>
+    /// <returns>成功返回 <see langword="null"/>；失败返回结构化错误结果（由调用方直接作为工具结果返回）。</returns>
+    private static ToolResult? RequireNullDataSuccess(string toolName, FeishuNullDataApiResult? result)
+    {
+        if (result is null)
+        {
+            throw new ArgumentException("飞书接口无响应（result 为空）");
+        }
+
+        return result.Code == 0
+            ? null
+            : ToolResult.FromError(FeishuToolBinding.StructuredError(
+                toolName, result.Code,
+                $"飞书接口返回错误 code={result.Code.ToString(CultureInfo.InvariantCulture)}, msg={result.Msg ?? "(无错误信息)"}"));
     }
 
     /// <summary>

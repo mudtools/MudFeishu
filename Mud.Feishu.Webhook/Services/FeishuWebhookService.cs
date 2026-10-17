@@ -81,7 +81,7 @@ public class FeishuWebhookService : IFeishuWebhookService
         _appKeyAccessor = appKeyAccessor ?? throw new ArgumentNullException(nameof(appKeyAccessor));
         _failedEventStore = failedEventStore;
 
-        // WHF-13：本服务为 Scoped（每个 Webhook 请求创建一个实例），构造函数内的 OnChange 订阅
+        // 本服务为 Scoped（每个 Webhook 请求创建一个实例），构造函数内的 OnChange 订阅
         // 会随请求数线性泄漏（订阅挂在 Singleton IOptionsMonitor 上，且每次配置变更会对所有
         // 历史 scope 重放回调）。变更日志由 FeishuMultiAppMiddleware 与 FeishuWebhookConcurrencyService
         // 两个 Singleton 持有者承接，此处不再订阅。
@@ -149,11 +149,10 @@ public class FeishuWebhookService : IFeishuWebhookService
     {
         Exception? processingException = null;
 
-        // R5.2/X10：已删除的性能监控开关（迁移说明必须引用其键名）。
-        // audit-allow: X10 - migration note must name the removed config key
-        // 耗时改为**无条件**采集、并以 Debug 级别输出：
+        // 性能监控开关已删除（迁移说明必须引用其键名）。
+        // 耗时无条件采集、并以 Debug 级别输出：
         // ① 保留可诊断性——需要时把 `Logging:LogLevel:Mud.Feishu.Webhook` 调到 `Debug` 即可拿到耗时；
-        // ② 与 R4 起「日志级别只由 Logging:LogLevel 控制，不设模块私有开关」的口径一致（AGENTS.md 配置面治理）。
+        // ② 与「日志级别只由 Logging:LogLevel 控制，不设模块私有开关」的口径一致。
         var appConfig = !string.IsNullOrEmpty(appKey) ? Options.GetAppConfig(appKey!) : null;
 
         var performanceStopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -206,7 +205,7 @@ public class FeishuWebhookService : IFeishuWebhookService
                         }
                         catch (Exception markEx)
                         {
-                            // 与 WHF-07 同口径：标记失败不影响“已消费”结论（此处尚未执行业务），仅告警供对账。
+                            // 与标记失败处理同口径：标记失败不影响“已消费”结论（此处尚未执行业务），仅告警供对账。
                             _logger.LogWarning(markEx, "拦截事件 {EventId} 的去重标记写入失败，AppKey: {AppKey}", eventData.EventId, appKey ?? "null");
                         }
                     }
@@ -250,7 +249,7 @@ public class FeishuWebhookService : IFeishuWebhookService
                 }
                 catch (Exception markEx)
                 {
-                    // WHF-07：业务分发已成功——Mark 失败禁止回滚（回滚将导致飞书重推后重复消费）。
+                    // 业务分发已成功——Mark 失败禁止回滚（回滚将导致飞书重推后重复消费）。
                     // 保留 processing 态，由 ProcessingTimeout/TTL 兜底；记录 Warning 供对账。
                     // 本分支捕获 Exception（含 Server 类 FeishuRedisException——内层 catch 先于外层
                     // 过滤器命中）：任何 Mark 失败的语义都相同（业务已成功），按成功口径返回，
@@ -278,14 +277,14 @@ public class FeishuWebhookService : IFeishuWebhookService
             }
             catch (OperationCanceledException oce) when (!cancellationToken.IsCancellationRequested)
             {
-                // WHF-08：超时路径就地收尾，不再 rethrow——消除外层 OCE catch 的二次回滚/metrics；
+                // 超时路径就地收尾，不再 rethrow——消除外层 OCE catch 的二次回滚/metrics；
                 // processingException 赋值保证 AfterHandleAsync 收到非空异常
                 await RollbackDeduplicationAsync(eventData.EventId, appKey);
 
-                // R3-P1-3：EventHandlingTimeoutMs 是"软超时"——await Task.WhenAll 已确保处理器收尾
-                // （满足 D4：不制造孤儿任务），但不响应 CancellationToken 的处理器会把实际耗时
+                // EventHandlingTimeoutMs 是"软超时"——await Task.WhenAll 已确保处理器收尾
+                // （不制造孤儿任务），但不响应 CancellationToken 的处理器会把实际耗时
                 // 顶到远超 timeoutMs。此处只做可观测（指标 + Warning），**不**引入硬超时：
-                // 硬超时会制造 D4 明令禁止的"状态已释放而任务仍在跑"。
+                // 硬超时会制造"状态已释放而任务仍在跑"的孤儿任务。
                 performanceStopwatch.Stop();
                 var elapsedMs = performanceStopwatch.ElapsedMilliseconds;
                 if (elapsedMs > timeoutMs * 1.5)
@@ -310,7 +309,7 @@ public class FeishuWebhookService : IFeishuWebhookService
             await RollbackDeduplicationAsync(eventData.EventId, appKey);
             _logger.LogWarning("事件处理被取消，EventId: {EventId}, AppKey: {AppKey}", eventData.EventId, appKey ?? "null");
             FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: false, "canceled");
-            // P1-7/P2-1：AfterHandleAsync 需要可判别的终态（接口契约 null=成功，原始 OCE 无法表达"取消"这一类别）；
+            // AfterHandleAsync 需要可判别的终态（接口契约 null=成功，原始 OCE 无法表达"取消"这一类别）；
             // 但对外仍按 OCE 传播——取消语义不得被替换为普通异常。
             processingException = new Mud.Feishu.Abstractions.EventHandlers.EventHandlingOutcomeException(
                 "canceled", "事件处理被外部取消");
@@ -318,15 +317,15 @@ public class FeishuWebhookService : IFeishuWebhookService
         }
         catch (FeishuDeduplicationFatalException ex)
         {
-            // WHF-02：语义不变——去重体系致命故障不是业务失败：不回滚、不写失败存储、上抛转 503
+            // 去重体系致命故障不是业务失败：不回滚、不写失败存储、上抛转 503
             _logger.LogError(ex, "去重服务致命故障，EventId: {EventId}, AppKey: {AppKey}", eventData.EventId, appKey ?? "null");
             processingException = new Mud.Feishu.Abstractions.EventHandlers.EventHandlingOutcomeException("dedup_fatal", ex.Message);
             throw;
         }
         // 注意：此处<b>不得</b>再放一个 catch (FeishuRedisException when Server) 的"兼容"分支。
-        // 该分支会把业务处理器内部因自用 Redis 而抛出的 Server 类异常也判为 WHF-02
-        // （不回滚、不写失败存储、上抛 503）——正是决策 C 要消除的过宽过滤。
-        // WHF-02 的对外 503 转换仍成立：FeishuDeduplicationFatalException 继承 FeishuRedisException，
+        // 该分支会把业务处理器内部因自用 Redis 而抛出的 Server 类异常也判为去重致命故障
+        // （不回滚、不写失败存储、上抛 503）——属过宽过滤。
+        // 对外 503 转换仍成立：FeishuDeduplicationFatalException 继承 FeishuRedisException，
         // FeishuMultiAppMiddleware 的 catch (FeishuRedisException { FailureKind: Server }) 继续命中。
         catch (Exception ex)
         {
@@ -337,7 +336,7 @@ public class FeishuWebhookService : IFeishuWebhookService
             // 记录事件处理失败
             FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventData.EventType, success: false, ex.GetType().Name);
 
-            // ADR-2: 失败路径在去重回滚之后写入失败事件存储（仅当启用重试时）
+            // 失败路径在去重回滚之后写入失败事件存储（仅当启用重试时）
             if (Options.Retry.EnableRetry && _failedEventStore != null)
             {
                 try
@@ -402,7 +401,7 @@ public class FeishuWebhookService : IFeishuWebhookService
         }
         catch (OperationCanceledException)
         {
-            // R3-P1-6/WHF-16：客户端断开 / 宿主关停——交由中间件的 OCE 分支处理，
+            // 客户端断开 / 宿主关停——交由中间件的 OCE 分支处理，
             // 禁止伪装成“验签失败 403”写向已中止连接。
             throw;
         }
@@ -411,7 +410,7 @@ public class FeishuWebhookService : IFeishuWebhookService
             _logger.LogError(ex, "验证请求签名时发生错误, AppKey: {AppKey}", _appKeyAccessor.CurrentAppKey ?? "null");
             return false;
         }
-        // WHF-02：Server 类 FeishuRedisException 直接上抛（T-M2-10 契约），
+        // Server 类 FeishuRedisException 直接上抛，
         // 由中间件转为 503，不得在此层伪装成“验签失败”返回 false（→ 403）
     }
 
@@ -453,10 +452,10 @@ public class FeishuWebhookService : IFeishuWebhookService
         }
         catch (OperationCanceledException)
         {
-            // R3-P2-2：解密超时（中间件 DecryptionTimeoutMs）此前被下方 catch(Exception) 吞成
-            // null → 中间件映射 400（终态，飞书不重推）。解密超时是**可恢复**的服务端问题，
+            // 解密超时（中间件 DecryptionTimeoutMs）不得被下方 catch(Exception) 吞成
+            // null——那会让中间件映射 400（终态，飞书不重推）。解密超时是**可恢复**的服务端问题，
             // 语义应为 503 让飞书重投，而非"请求体非法 400"。
-            // 同时：客户端断开的 OCE 也在此重抛——禁止写向已中止连接（WHF-16）。
+            // 同时：客户端断开的 OCE 也在此重抛——禁止写向已中止连接。
             _logger.LogWarning("解密事件数据超时/被取消, AppKey: {AppKey}", _appKeyAccessor.CurrentAppKey ?? "null");
             FeishuMetricsHelper.RecordEventOutcome(_appKeyAccessor.CurrentAppKey ?? "unknown", "event_decryption", success: false, "decryption_timeout");
             throw;
@@ -478,7 +477,7 @@ public class FeishuWebhookService : IFeishuWebhookService
         }
         catch (FeishuRedisException ex) when (ex.FailureKind == FeishuRedisFailureKind.Server)
         {
-            // P1-3/WHF-02：仅去重调用点包装为标记异常，业务侧 Redis 故障不被误吞
+            // 仅去重调用点包装为标记异常，业务侧 Redis 故障不被误吞
             throw new FeishuDeduplicationFatalException("事件去重检查遭遇 Redis 服务端致命故障", ex);
         }
     }
@@ -518,9 +517,8 @@ public class FeishuWebhookService : IFeishuWebhookService
                 }
                 catch
                 {
-                    // R3-P2-9：await Task.WhenAll 只重抛**首个**异常，故 `ex is AggregateException`
-                    // 恒为 false（await 解包成首个 inner）→ 原"补记全部 InnerExceptions"分支永不命中，
-                    // 注释与行为自相矛盾。改为从 `all.Exception` 取完整聚合。
+                    // await Task.WhenAll 只重抛**首个**异常，故 `ex is AggregateException`
+                    // 恒为 false（await 解包成首个 inner）——从 `all.Exception` 取完整聚合。
                     // 仅在**多个**处理器同时失败时补记——单处理器失败已由 ProcessAppHandlerSafelyAsync
                     // 逐条记录，避免重复日志。
                     var inners = all.Exception?.InnerExceptions;
@@ -553,10 +551,10 @@ public class FeishuWebhookService : IFeishuWebhookService
         }
         else
         {
-            // WHF-09：未注册 eventType 门控——静默忽略（unhandled），不回退默认处理器兜底
+            // 未注册 eventType 门控——静默忽略（unhandled），不回退默认处理器兜底
             if (Options.IgnoreUnknownEventTypes && !_handlerFactory.IsHandlerRegistered(eventType))
             {
-                // R3-P1-1：由 Debug 提升为 Warning——生产默认 Information 级看不到 Debug，
+                // 由 Debug 提升为 Warning——生产默认 Information 级看不到 Debug，
                 // 未注册/拼错的事件类型会静默消失（全局分支此前连指标都无，只有日志）。
                 _logger.LogWarning("事件类型 {EventType} 未注册处理器，已忽略（IgnoreUnknownEventTypes=true），请核对 SupportedEventType 拼写, AppKey: {AppKey}",
                     eventType, appKey ?? "null");
@@ -577,16 +575,16 @@ public class FeishuWebhookService : IFeishuWebhookService
     /// <returns>
     /// 是否**实际处理**了该事件：<c>true</c> = 已调用 <c>HandleAsync</c>；
     /// <c>false</c> = 因 <see cref="IFeishuEventHandler.SupportedEventType"/> 不匹配而跳过。
-    /// 调用方据此判定“全部处理器均跳过”（R3-P1-1：此时记 Warning + <c>unhandled</c> 指标）。
+    /// 调用方据此判定“全部处理器均跳过”（此时记 Warning + <c>unhandled</c> 指标）。
     /// </returns>
     /// <remarks>
-    /// P1-2（R2）：按 <see cref="IFeishuEventHandler.SupportedEventType"/> 过滤——非空声明与当前
+    /// 按 <see cref="IFeishuEventHandler.SupportedEventType"/> 过滤——非空声明与当前
     /// 事件类型不符的处理器跳过（与全局工厂按 SupportedEventType 路由的语义对齐）；
     /// 显式声明空串表示处理该应用全部事件（与
     /// <see cref="Mud.Feishu.Abstractions.EventHandlers.DefaultFeishuEventHandler{T}"/>
     /// 默认约定一致）。拦截器分支不做该过滤（横切组件，与 WS 通道一致）。
     /// <para>
-    /// R3-P1-3：处理器应**协作式响应** <paramref name="ct"/>。<c>EventHandlingTimeoutMs</c> 是
+    /// 处理器应**协作式响应** <paramref name="ct"/>。<c>EventHandlingTimeoutMs</c> 是
     /// **软超时**——只取消令牌，不中断处理器；不响应取消的处理器会持续占用本次请求的
     /// 并发闸槽位与去重 <c>processing</c> 态（等效于把该事件静默限流一段时间）。
     /// </para>
@@ -603,7 +601,7 @@ public class FeishuWebhookService : IFeishuWebhookService
                 _logger.LogDebug(
                     "应用 {AppKey} 处理器 {HandlerType} 声明处理 {Supported}，跳过事件 {EventType}",
                     appKey, handlerType.Name, supported, eventType);
-                return false;   // R3-P1-1：未匹配——调用方据此判定“全部跳过”
+                return false;   // 未匹配——调用方据此判定“全部跳过”
             }
 
             await handler.HandleAsync(eventData, ct);
@@ -621,9 +619,9 @@ public class FeishuWebhookService : IFeishuWebhookService
     /// 获取拦截器列表（支持按 AppKey 隔离）
     /// </summary>
     /// <remarks>
-    /// R3-P2-3：组合策略由 <see cref="FeishuWebhookOptions.InterceptorFallbackMode"/> 决定
+    /// 组合策略由 <see cref="FeishuWebhookOptions.InterceptorFallbackMode"/> 决定
     /// （默认 <see cref="InterceptorFallbackMode.Merge"/>：全局先行，再应用专属）。
-    /// 旧行为等价于 <see cref="InterceptorFallbackMode.AppOnly"/>——全局拦截器被完全丢弃。
+    /// 早期行为等价于 <see cref="InterceptorFallbackMode.AppOnly"/>——全局拦截器被完全丢弃。
     /// </remarks>
     private IEnumerable<IFeishuEventInterceptor> GetInterceptors(string? appKey)
     {

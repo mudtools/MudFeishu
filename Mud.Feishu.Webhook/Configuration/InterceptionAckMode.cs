@@ -12,25 +12,10 @@ namespace Mud.Feishu.Webhook.Configuration;
 /// 对飞书平台表达的确认语义。
 /// </summary>
 /// <remarks>
-/// <para>
-/// 设计口径与 <see cref="NonceFailureMode"/> 同形：这是「安全 / 可用二选一」的宿主级策略，
-/// 属于<b>配置</b>而非类型——因此不通过新增拦截器接口（如 <c>IFeishuEventInterceptorV2</c>）来表达，
-/// 避免双接口分派与既有实现的破坏性变更。<c>IFeishuEventInterceptor</c> 的
-/// <c>BeforeHandleAsync</c> 仍返回 <see cref="bool"/>，其 <c>false</c> 的最终语义由本枚举决定。
-/// </para>
-/// <para>
-/// 语义对照（详见方案 §4.2 的 ACK/HTTP 决策表）：
-/// <list type="bullet">
-/// <item><description><see cref="Ack"/>（默认）：拦截 = 有意消费 → HTTP 200，事件落去重标记，
-/// 飞书<b>不再</b>重推。适用于黑名单、内部限流、重复投递过滤等「已决定不处理」的场景。</description></item>
-/// <item><description><see cref="Retryable"/>：拦截 = 暂时无法处理 → HTTP 503，<b>不</b>落去重标记，
-/// 由飞书按重推策略稍后重投。适用于「依赖的下游暂不可用，稍后再试」的场景。</description></item>
-/// </list>
-/// </para>
-/// <para>
-/// 两种终态都会写入指标（<c>intercepted</c> / <c>intercepted_retryable</c>），并可由
-/// <c>AfterHandleAsync</c> 通过 <c>EventHandlingOutcomeException.OutcomeKind</c> 判别。
-/// </para>
+/// 宿主级「安全 / 可用」取舍，用<b>配置</b>表达而不新增拦截器接口；<c>BeforeHandleAsync</c> 仍返回 <see cref="bool"/>，
+/// 其 <c>false</c> 的最终语义由本枚举决定。
+/// <para><see cref="Ack"/>（默认）：HTTP 200 并落去重标记，飞书不再重推；<see cref="Retryable"/>：HTTP 503 且不落标记，
+/// 由飞书稍后重投。两种终态均写指标，可在 <c>AfterHandleAsync</c> 经 <c>EventHandlingOutcomeException.OutcomeKind</c> 判别。</para>
 /// </remarks>
 public enum InterceptionAckMode
 {

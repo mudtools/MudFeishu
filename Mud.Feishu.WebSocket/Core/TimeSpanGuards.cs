@@ -8,7 +8,7 @@
 namespace Mud.Feishu.WebSocket;
 
 /// <summary>
-/// 时间跨度钳制工具（架构不变量 I16 的载体）。
+/// 时间跨度钳制工具。
 /// </summary>
 /// <remarks>
 /// <b>为什么需要</b>：<see cref="CancellationTokenSource"/> 的延时构造函数会把 <see cref="TimeSpan"/>
@@ -28,7 +28,7 @@ namespace Mud.Feishu.WebSocket;
 /// 而该区间内的配置值本身就是运维错误（配置面另有 7 天上界的 fail-fast）。
 /// </para>
 /// <para>
-/// <b>不变量 I16</b>：全模块任何 <c>new CancellationTokenSource(&lt;TimeSpan&gt;)</c> / <c>Task.Delay(&lt;TimeSpan&gt;)</c>
+/// <b>不变量</b>：全模块任何 <c>new CancellationTokenSource(&lt;TimeSpan&gt;)</c> / <c>Task.Delay(&lt;TimeSpan&gt;)</c>
 /// 的调用点都必须先经过本类钳制；配置面同时必须做**双向**（下界 + 上界）校验。
 /// </para>
 /// <para>

@@ -8,7 +8,7 @@
 namespace Mud.Feishu.Abstractions;
 
 /// <summary>
-/// TMA2-07 / P1-4：应用实例化事件参数。
+/// 应用实例化事件参数。
 /// </summary>
 /// <remarks>
 /// 当应用上下文首次实例化并注册到基类字典时触发。

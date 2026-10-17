@@ -16,29 +16,9 @@ namespace Mud.Feishu.Webhook.Services;
 /// 使用 SHA-256 算法验证请求头签名（X-Lark-Signature）
 /// </summary>
 /// <remarks>
-/// <para>
-/// 飞书 Webhook 签名验证方式：
-/// </para>
-/// <list type="number">
-/// <item>
-/// <term>SHA-256 签名（请求头验证）</term>
-/// <description>
-/// - 签名字符串格式：timestamp + nonce + encryptKey + body
-/// - 算法：SHA-256(signString)
-/// - 用途：验证整个请求的完整性和来源
-/// - 触发条件：EnforceHeaderSignatureValidation = true
-/// - 注意：此方式与飞书官方 SDK（Python/Go）一致，生产环境强烈推荐
-/// </description>
-/// </item>
-/// </list>
-/// <para>
-/// 安全建议：
-/// </para>
-/// <list type="bullet">
-/// <item><description>生产环境必须启用 EnforceHeaderSignatureValidation</description></item>
-/// <item><description>时间戳容错范围建议设置为 30 秒或更短</description></item>
-/// <item><description>使用固定时间比较防止计时攻击</description></item>
-/// </list>
+/// 签名串为 <c>timestamp + nonce + encryptKey + body</c>，算法 <c>SHA-256(signString)</c>，与飞书官方 SDK（Python/Go）
+/// 一致；仅当 <c>EnforceHeaderSignatureValidation</c> 为 <c>true</c> 时校验请求头 <c>X-Lark-Signature</c>。
+/// <para>生产环境必须启用该开关；时间戳容错范围建议 ≤ 30 秒；比较使用固定时间算法以防计时攻击。</para>
 /// </remarks>
 /// <remarks>
 /// 初始化签名验证器
@@ -68,7 +48,7 @@ public class SignatureValidator(
     private string CurrentClientIp => _httpContextAccessor?.HttpContext?.Connection?.RemoteIpAddress?.ToString() ?? "unknown";
 
     /// <summary>
-    /// 记录安全审计失败日志（WHF-19：异常可观察——审计实现故障记入日志，不再静默丢失）
+    /// 记录安全审计失败日志（异常可观察——审计实现故障记入日志，不再静默丢失）
     /// </summary>
     private void LogSecurityFailure(string message)
     {
@@ -83,7 +63,7 @@ public class SignatureValidator(
     }
 
     /// <summary>
-    /// 记录安全审计成功日志（WHF-19：异常可观察——审计实现故障记入日志，不再静默丢失）
+    /// 记录安全审计成功日志（异常可观察——审计实现故障记入日志，不再静默丢失）
     /// </summary>
     private void LogSecuritySuccess(string message)
     {
@@ -98,7 +78,7 @@ public class SignatureValidator(
     }
 
     /// <summary>
-    /// WHF-19：fire-and-forget 审计调用的异常防护——未观察的 Task 异常会被静默丢弃，
+    /// fire-and-forget 审计调用的异常防护——未观察的 Task 异常会被静默丢弃，
     /// 此处显式捕获并经构造注入的 Logger 记录，保证自定义审计实现的故障可诊断
     /// </summary>
     private async Task SafeAuditAsync(Func<Task> audit)
@@ -166,7 +146,7 @@ public class SignatureValidator(
             // 检查必要参数
             if (timestamp == 0 || string.IsNullOrEmpty(nonce))
             {
-                // NEW-SEC-01 修复：统一使用 enforceValidation 配置控制，而非环境判断
+                // 统一使用 enforceValidation 配置控制，而非环境判断
                 if (enforceValidation)
                 {
                     Logger.LogError(
@@ -199,7 +179,7 @@ public class SignatureValidator(
             // 使用 SHA-256 计算签名（不是 HMAC-SHA256！）
             var computedSignature = ComputeSha256Signature(signString);
 
-            // WHF-04：仅对请求头侧做规范化（trim + 小写化），修复「大写 hex / 尾随空白」造成的误拒；
+            // 仅对请求头侧做规范化（trim + 小写化），修复「大写 hex / 尾随空白」造成的误拒；
             // computedSignature 恒为小写 hex 无需处理。规范化不影响计时安全——比较仍走 FixedTimeEquals，
             // 且 ToLowerInvariant 的耗时与签名内容无关（单遍长度驱动的映射）。
             var normalizedHeader = headerSignature.Trim().ToLowerInvariant();
@@ -213,7 +193,7 @@ public class SignatureValidator(
             if (!isValid)
             {
                 var computedPrefix = computedSignature.Length > 8 ? computedSignature.Substring(0, 8) : computedSignature;
-                // WHF-06：headerSignature 来自外部请求头，日志前缀同样走清洗（控制符/换行防注入）
+                // headerSignature 来自外部请求头，日志前缀同样走清洗（控制符/换行防注入）
                 var headerPrefix = string.IsNullOrEmpty(normalizedHeader) ? "(empty)" :
                     (normalizedHeader.Length > 8 ? normalizedHeader.Substring(0, 8) : normalizedHeader);
                 Logger.LogDebug("请求头签名验证失败: 计算 {ComputedSignaturePrefix}..., 期望 {ExpectedSignaturePrefix}..., AppKey: {AppKey}",

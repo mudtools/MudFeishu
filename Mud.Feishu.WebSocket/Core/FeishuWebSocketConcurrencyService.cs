@@ -15,7 +15,7 @@ namespace Mud.Feishu.WebSocket;
 /// 飞书 WebSocket 并发控制服务（背压闸门）。
 /// </summary>
 /// <remarks>
-/// WS-03 修复引入：为 WebSocket 事件分发提供并发上界，与 Webhook 的
+/// 为 WebSocket 事件分发提供并发上界，与 Webhook 的
 /// <c>FeishuWebhookConcurrencyService</c> 语义一致。
 /// <para>
 /// 使用 <see cref="SemaphoreSlim"/> 控制并发处理数；支持 <c>IOptionsMonitor</c> 热更新，
@@ -36,7 +36,7 @@ public class FeishuWebSocketConcurrencyService : IAsyncDisposable, IHostedServic
     private readonly IOptionsMonitor<FeishuWebSocketOptions> _optionsMonitor;
     private readonly ILogger<FeishuWebSocketConcurrencyService> _logger;
     private readonly SemaphoreSlim _semaphoreLock = new(1, 1);
-    // WS-03：本字段仅经 Interlocked.Exchange（原子替换）与 Volatile.Read（快照读）访问，自带完整栅栏语义，
+    // 本字段仅经 Interlocked.Exchange（原子替换）与 Volatile.Read（快照读）访问，自带完整栅栏语义，
     // 等效 volatile 的发布/获取保证；volatile 与 Interlocked/Volatile API 混用会产生 CS0420，故不标记 volatile。
     // 所有裸读一律通过 Volatile.Read 获取快照，不得直接读取本字段。
     private SemaphoreSlim _semaphore;
@@ -45,7 +45,7 @@ public class FeishuWebSocketConcurrencyService : IAsyncDisposable, IHostedServic
     private volatile int _currentMaxConcurrentHandlers;
     private readonly CancellationTokenSource _shutdownCts = new();
     /// <summary>
-    /// 配置变更订阅句柄（P2-5 修复：此前未保存，Dispose 后回调仍会进入）。
+    /// 配置变更订阅句柄（必须保存：不保存则 Dispose 后回调仍会进入）。
     /// </summary>
     private readonly IDisposable? _optionsChangeSubscription;
 
@@ -71,17 +71,17 @@ public class FeishuWebSocketConcurrencyService : IAsyncDisposable, IHostedServic
         _logger.LogInformation("飞书 WebSocket 并发控制服务初始化完成，最大并发数: {MaxConcurrentHandlers} (实际: {ActualMaxConcurrent})",
             _currentMaxConcurrentHandlers, actualMaxConcurrent);
 
-        // 监听配置变更，支持热更新（P2-5：保存句柄以便 Dispose 时注销）
+        // 监听配置变更，支持热更新（保存句柄以便 Dispose 时注销）
         _optionsChangeSubscription = _optionsMonitor.OnChange(OnOptionsChanged);
     }
 
     /// <summary>
-    /// 配置变更回调（P2-5 修复：由 <c>async void</c> 改为"返回 Task 的显式 fire-and-forget"）。
+    /// 配置变更回调（同步入口 + 独立异步方法，不用 <c>async void</c>）。
     /// </summary>
     /// <param name="newOptions">新的配置快照</param>
     /// <remarks>
     /// <c>async void</c> 无法被观察、无法被等待，异常虽被内部 catch 兜住但语义上不属于回调契约；
-    /// 现改为同步入口 + 独立异步方法，异常处理与生命周期显式化。
+    /// 故采用同步入口 + 独立异步方法，异常处理与生命周期显式化。
     /// </remarks>
     private void OnOptionsChanged(FeishuWebSocketOptions newOptions)
     {
@@ -169,11 +169,10 @@ public class FeishuWebSocketConcurrencyService : IAsyncDisposable, IHostedServic
                 new SemaphoreSlim(actualMaxConcurrent, actualMaxConcurrent));
 
             // 延迟释放旧信号量，等待可能正在使用的请求完成。
-            // WS2-06 ②（I9 例外登记）：阈值改为**动态**公式，照抄 Webhook 侧
-            // FeishuWebhookConcurrencyService 的 max(60s, 2 × 单条消息处理超时)。
-            // 改造前是硬编码 60s：当 MessageHandlerTimeoutMs > 30s 时，"租约最长合法持有时间"
-            // 会超过 60s，慢处理器在新旧信号量切换后归还租约时会命中已释放的信号量并抛
-            // ObjectDisposedException（配置越合理越容易触发，属反直觉的行为）。
+            // 阈值必须为**动态**公式（与 Webhook 侧 FeishuWebhookConcurrencyService 一致）：
+            // max(60s, 2 × 单条消息处理超时)。硬编码 60s 时，当 MessageHandlerTimeoutMs > 30s，
+            // "租约最长合法持有时间"会超过 60s，慢处理器在新旧信号量切换后归还租约时会命中
+            // 已释放的信号量并抛 ObjectDisposedException（配置越合理越容易触发，属反直觉的行为）。
             var retention = ResolveLegacySemaphoreRetention(_optionsMonitor.CurrentValue.MessageHandlerTimeoutMs);
             _ = Task.Run(async () =>
             {
@@ -188,7 +187,7 @@ public class FeishuWebSocketConcurrencyService : IAsyncDisposable, IHostedServic
     }
 
     /// <summary>
-    /// 计算"旧信号量延迟释放"的保留时长（I9 登记的唯一例外）。
+    /// 计算"旧信号量延迟释放"的保留时长。
     /// </summary>
     /// <param name="messageHandlerTimeoutMs">单条消息处理超时（<see cref="FeishuWebSocketOptions.MessageHandlerTimeoutMs"/>）</param>
     /// <returns>保留时长：<c>max(60 秒, 2 × messageHandlerTimeoutMs)</c>。</returns>
@@ -197,9 +196,9 @@ public class FeishuWebSocketConcurrencyService : IAsyncDisposable, IHostedServic
     /// <b>旧</b>信号量的引用，归还时调用其 <c>Release()</c>。若保留时长小于"租约最长合法持有时间"
     /// （即 <c>MessageHandlerTimeoutMs</c>），慢处理器归还租约时会命中已释放的信号量并抛
     /// <see cref="ObjectDisposedException"/>。取 2 倍是留出超时判定与归还之间的调度余量，
-    /// 并以 60 秒作为下限保证短超时配置下的行为与改造前一致。
+    /// 并以 60 秒作为下限保证短超时配置下的行为保持一致。
     /// <para>
-    /// 公式与 Webhook 侧 <c>FeishuWebhookConcurrencyService</c> 完全相同（跨模块行为对齐，C5）。
+    /// 公式与 Webhook 侧 <c>FeishuWebhookConcurrencyService</c> 完全相同（跨模块行为对齐）。
     /// 抽成 <c>static</c> 纯函数是为了让公式本身可被单元测试覆盖——运行期无法在测试中触发
     /// <c>IOptionsMonitor.OnChange</c>。
     /// </para>
@@ -285,7 +284,7 @@ public class FeishuWebSocketConcurrencyService : IAsyncDisposable, IHostedServic
         if (Interlocked.Exchange(ref _disposed, 1) == 1)
             return default;
 
-        // P2-5 修复：注销配置变更订阅，避免 Dispose 之后回调仍进入
+        // 注销配置变更订阅，避免 Dispose 之后回调仍进入
         _optionsChangeSubscription?.Dispose();
         _shutdownCts.Dispose();
         GC.SuppressFinalize(this);

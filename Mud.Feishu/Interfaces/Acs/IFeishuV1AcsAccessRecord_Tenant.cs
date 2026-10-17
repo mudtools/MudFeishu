@@ -20,7 +20,7 @@ public interface IFeishuTenantV1AcsAccessRecord : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 获取门禁记录列表
-    /// <para>用户在门禁考勤机上成功开门或打卡后，智能门禁应用都会生成一条门禁记录；该接口返回满足查询参数的识别记录，时间跨度不能超过 30 天（查询参数采用查询对象模式 <see cref="AccessRecordListQuery"/>，见 AGENTS.md API-2）。</para>
+    /// <para>用户在门禁考勤机上成功开门或打卡后，智能门禁应用都会生成一条门禁记录；该接口返回满足查询参数的识别记录，时间跨度不能超过 30 天（查询参数采用查询对象模式 <see cref="AccessRecordListQuery"/>）。</para>
     /// <para>所需权限：acs:access_record:readonly（查看智能门禁记录）；user_id_type 取 user_id 时需字段权限 contact:user.employee_id:readonly。</para>
     /// <para><see href="https://open.feishu.cn/document/server-docs/acs-v1/access_record/list">接口文档</see></para>
     /// </summary>
@@ -52,7 +52,7 @@ public interface IFeishuTenantV1AcsAccessRecord : IFeishuAppContextSwitcher
     /// 服务端返回非 2xx 状态码时抛出（由 HTTP 执行器统一抛出，异常携带 <c>StatusCode</c> 与响应内容）。
     /// <para>
     /// 注意：飞书部分业务错误以 HTTP 200 + JSON 错误体（<c>{"code":...,"msg":...}</c>）返回，
-    /// 此时本方法会把错误 JSON 当作文件内容返回。落盘前应按 <c>Content-Type</c> 自检，详见 <c>documents/ErrorHandling.md</c>。
+    /// 此时本方法会把错误 JSON 当作文件内容返回。落盘前应按 <c>Content-Type</c> 自检。
     /// </para>
     /// </exception>
     [Get("/open-apis/acs/v1/access_records/{access_record_id}/access_photo")]

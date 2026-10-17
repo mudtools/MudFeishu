@@ -11,7 +11,7 @@ using StackExchange.Redis;
 namespace Mud.Feishu.Redis.Services;
 
 /// <summary>
-/// Redis 连接选项装配的单一出口（R2-26）。
+/// Redis 连接选项装配的单一出口。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -23,7 +23,7 @@ namespace Mud.Feishu.Redis.Services;
 /// <c>ConfigurationOptions.Parse("rediss://host:6380").Ssl == false</c> —— 该 API **不会**因
 /// <c>rediss://</c> scheme 自动启用 TLS。若仅写 <c>config.Ssl = config.Ssl || options.Connection.Ssl</c>，
 /// 则按 README 配置 <c>"ServerAddress": "rediss://…"</c>（且未显式设置 <c>Ssl=true</c>）的宿主
-/// 会以**明文**连接 TLS 端口，表现为"必然连接失败"或以明文传输（声称的修复并未闭环）。
+/// 会以**明文**连接 TLS 端口，表现为"必然连接失败"或以明文传输。
 /// </para>
 /// </remarks>
 internal static class RedisConnectionFactory
@@ -38,7 +38,7 @@ internal static class RedisConnectionFactory
     /// <returns>可直接用于 <c>ConnectionMultiplexer.Connect</c> 的配置</returns>
     /// <exception cref="ArgumentNullException"><paramref name="options"/> 为 null</exception>
     /// <remarks>
-    /// 语义与 R1 ADR-7 §1 一致，仅补 TLS scheme 推导：
+    /// 语义与连接串映射约定一致，并补 TLS scheme 推导：
     /// <list type="bullet">
     /// <item>连接串形态（<c>host:port</c> / <c>redis://</c> / <c>rediss://</c> / 内联 <c>password=</c>）由
     /// <see cref="ConfigurationOptions.Parse(string)"/> 原生处理；</item>
@@ -57,7 +57,7 @@ internal static class RedisConnectionFactory
         var config = ConfigurationOptions.Parse(connection.ServerAddress);
         config.ConnectTimeout = connection.ConnectTimeout;
         config.SyncTimeout = connection.SyncTimeout;
-        // R2-26：scheme 推导必须显式（Parse 不会因 rediss:// 自动置 Ssl）
+        // scheme 推导必须显式（Parse 不会因 rediss:// 自动置 Ssl）
         config.Ssl = config.Ssl || connection.Ssl || RequiresSsl(connection.ServerAddress);
         config.Password = string.IsNullOrEmpty(connection.Password) ? config.Password : connection.Password;
         config.AllowAdmin = advanced.AllowAdmin;

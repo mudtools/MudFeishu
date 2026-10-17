@@ -19,7 +19,7 @@ public interface IFeishuV1DirectoryShareEntity : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 获取关联组织双方共享成员范围
-    /// <para>分页查询与对方关联组织之间共享的部门、用户组与成员列表（查询参数采用查询对象模式 <see cref="ShareEntityListQuery"/>，见 AGENTS.md API-2）。仅支持自建应用。</para>
+    /// <para>分页查询与对方关联组织之间共享的部门、用户组与成员列表（查询参数采用查询对象模式 <see cref="ShareEntityListQuery"/>）。仅支持自建应用。</para>
     /// <para>限频：100 次/分钟。所需权限：trust_party:collaboration_rule:read（读取关联组织协作规则）；同时需要关联组织管理员权限。</para>
     /// <para><see href="https://open.feishu.cn/document/trust_party-v1/-collaboraiton-organization/list-3">接口文档</see></para>
     /// </summary>

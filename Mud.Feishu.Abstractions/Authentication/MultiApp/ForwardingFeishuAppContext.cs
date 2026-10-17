@@ -8,7 +8,7 @@
 namespace Mud.Feishu.Abstractions.Authentication.MultiApp;
 
 /// <summary>
-/// TMR2-P0-1：默认应用上下文（<see cref="IFeishuAppContext"/>）的转发代理。
+/// 默认应用上下文（<see cref="IFeishuAppContext"/>）的转发代理。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -16,7 +16,7 @@ namespace Mud.Feishu.Abstractions.Authentication.MultiApp;
 /// 使 <c>SetDefaultApp</c> / 配置热更新 / <c>RemoveApp</c> 的变更对已注入消费者<b>立即生效</b>。
 /// </para>
 /// <para>
-/// 修复前为「实例桥接」——DI 工厂委托返回 <c>GetDefaultApp()</c> 的<b>实例快照</b>，容器永久缓存：
+/// 桥接必须是「解析桥接」而非「实例桥接」：DI 工厂委托若返回 <c>GetDefaultApp()</c> 的<b>实例快照</b>，容器会永久缓存——
 /// 默认应用切换后注入方继续使用旧应用的 <c>Config</c>/令牌/认证客户端（跨应用凭据误用），
 /// 热更新重建默认应用后注入方持有已进入退休队列、宽限期后被 Dispose 的上下文（ODE）。
 /// </para>
@@ -46,7 +46,7 @@ internal sealed class ForwardingFeishuAppContext : IFeishuAppContext
     public ForwardingFeishuAppContext(Func<IFeishuAppContext> resolve)
         => _resolve = resolve ?? throw new ArgumentNullException(nameof(resolve));
 
-    // === IMudAppContext 成员（现取转发） ===
+    // IMudAppContext 成员（现取转发）
 
     /// <inheritdoc />
     public string AppKey => _resolve().AppKey;
@@ -63,7 +63,7 @@ internal sealed class ForwardingFeishuAppContext : IFeishuAppContext
     /// <inheritdoc />
     public T? GetService<T>() where T : class => _resolve().GetService<T>();
 
-    // === IFeishuAppContext 成员（现取转发） ===
+    // IFeishuAppContext 成员（现取转发）
 
     /// <inheritdoc />
     public FeishuAppConfig Config => _resolve().Config;
@@ -82,7 +82,7 @@ internal sealed class ForwardingFeishuAppContext : IFeishuAppContext
 
     /// <summary>
     /// 显式 no-op：代理不持有任何资源，真实释放归退休队列生命周期。
-    /// R1-1 风险：宿主若把注入的 <see cref="IFeishuAppContext"/> 强转为具体
+    /// 宿主若把注入的 <see cref="IFeishuAppContext"/> 强转为具体
     /// <see cref="FeishuAppContext"/> 将抛 <see cref="InvalidCastException"/>；
     /// 置 <c>FeishuAppOptions.ForwardDefaultAppContext = false</c> 可回退实例快照语义。
     /// </summary>

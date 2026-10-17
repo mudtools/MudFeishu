@@ -20,7 +20,7 @@ public interface IFeishuTenantV2PerformanceSemesterActivity : IFeishuAppContextS
 {
     /// <summary>
     /// 获取周期列表
-    /// <para>批量获取周期的基本信息（名称、类型、时间范围等），支持按时间段、周期年份、周期类型筛选；各查询参数之间为「与」关系，全部不传时返回所有周期。查询参数采用查询对象模式 <see cref="GetSemesterListQuery"/>，见 AGENTS.md API-2。</para>
+    /// <para>批量获取周期的基本信息（名称、类型、时间范围等），支持按时间段、周期年份、周期类型筛选；各查询参数之间为「与」关系，全部不传时返回所有周期。查询参数采用查询对象模式 <see cref="GetSemesterListQuery"/>。</para>
     /// <para>限频：10 次/分钟。所需权限（开启任一即可）：performance:performance（管理绩效数据）、performance:performance:readonly（查看绩效数据）、performance:semester:read（查看周期数据）；字段权限：contact:user.employee_id:readonly（user_id_type 取 user_id 时的返回字段）。</para>
     /// <para><see href="https://open.feishu.cn/document/performance-v1/review_config/semester_activity/semester/list">接口文档</see></para>
     /// </summary>

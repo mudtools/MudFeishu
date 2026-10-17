@@ -29,14 +29,14 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
     private MemoryStream? _binaryDataStream;
     private readonly object _binaryDataStreamLock = new object();
     private DateTime _binaryDataReceiveStartTime = DateTime.MinValue;
-    // WS-15 修复（P1-12）：_disposed 改为 int + Interlocked.Exchange 实现原子 check-then-set。
-    // 此前 bool check-then-set 非原子，并发调用 Dispose/DisposeAsync 可能双进入释放逻辑。
+    // _disposed 为 int + Interlocked.Exchange 的原子 check-then-set：
+    // bool check-then-set 非原子，并发调用 Dispose/DisposeAsync 可能双进入释放逻辑。
     private int _disposed = 0;
     private readonly MessageRouter? _messageRouter;
     private readonly WebSocketConnectionManager? _connectionManager;
 
     /// <summary>
-    /// 在途处理任务数的硬上界，防止突发帧暴增导致 OOM（WS-03 修复）。
+    /// 在途处理任务数的硬上界，防止突发帧暴增导致 OOM。
     /// </summary>
     private const int MaxActiveProcessingTasks = 1024;
 
@@ -249,7 +249,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                     var actualLength = (int)_binaryDataStream.Length;
                     var receiveDuration = DateTime.UtcNow - _binaryDataReceiveStartTime;
 
-                    // P2-7 修复：每条消息一条 Information 属高频日志，降级为 Debug
+                    // 每条消息一条日志属高频输出，使用 Debug 级别
                     _logger.LogDebug("二进制消息接收完成，大小: {Size} 字节，耗时: {Duration}ms",
                                                 actualLength, receiveDuration.TotalMilliseconds);
 
@@ -326,8 +326,8 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
             var eventArgs = new WebSocketBinaryMessageEventArgs
             {
                 Data = completeData ?? Array.Empty<byte>(),
-                // P2-4 修复：此前 ReceiveStartTime 从不赋值，ReceiveDurationMs 恒为 ~6.39e14ms。
-                // 首帧到达时的时间戳已由 _binaryDataReceiveStartTime 记录，这里显式透传。
+                // ReceiveStartTime 必须显式透传：首帧到达时的时间戳已由
+                // _binaryDataReceiveStartTime 记录（不赋值会使 ReceiveDurationMs 恒为 ~6.39e14ms）。
                 ReceiveStartTime = receiveStartTime,
                 ReceiveEndTime = DateTime.UtcNow
             };
@@ -342,7 +342,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
 
             // 尝试解析为 Frame 对象
             ulong? markedSeqId = null; // 跟踪已标记的 SeqID，用于失败时回滚
-            // P2-14 修复：frame 声明上提到 try 之外，使异常路径也能拿到已解析的帧并回 ACK(500)。
+            // frame 声明上提到 try 之外，使异常路径也能拿到已解析的帧并回 ACK(500)。
             EventProtoData? frame = null;
             // P0-1：extractedEventId 同步上提，供失败收尾回滚统一中间件路径使用
             string? extractedEventId = null;
@@ -394,7 +394,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                     }
                 }
 
-                // P2-10a：payload 只 GetString 一次，后续路由/事件提取复用同一字符串
+                // payload 只 GetString 一次，后续路由/事件提取复用同一字符串
                 string? jsonPayload = null;
                 if (frame.Payload != null) // frame 已在上方 ?? throw 处收敛为非空；用 ?. 会在条件为假的路径上把状态重新降级为可空
                 {
@@ -462,15 +462,14 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                         if (!routed)
                         {
                             eventArgs.ProcessingSuccess = false;
-                            // P0-1：业务失败 → 传输层状态统一回滚（原先此分支不做任何回滚，
+                            // 业务失败 → 传输层状态统一回滚（此分支不回滚的话，
                             // 同 SeqID 重发会被序列验证器 Duplicate 或 SeqID 去重吞掉 → ACK 200 → 事件丢失）
                             await RollbackTransportStateAsync(frame, markedSeqId, extractedEventId, cancellationToken);
                         }
                     }
 
-                    // WS-25 修复（P2-12）：删除恒为 null 的 ProcessingTask 分支。
-                    // 该属性从未被赋值，此分支从不执行，属于纯死代码。
-                    // 路由结果已由上方 RouteBinaryMessageWithResultAsync 返回值处理。
+                    // 恒为 null 的 ProcessingTask 分支已删除：该属性从未被赋值，分支从不执行。
+                    // 路由结果由上方 RouteBinaryMessageWithResultAsync 返回值处理。
 
                     if (eventArgs.ProcessingSuccess && _unifiedDeduplicationMiddleware != null &&
                         (!string.IsNullOrEmpty(extractedEventId) || frame.SeqID > 0))
@@ -485,7 +484,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                 {
                     _logger.LogWarning("Frame 解析成功但 Payload 为空");
                     eventArgs.ParseError = "Frame 解析成功但 Payload 为空";
-                    // P2-14 补充：与错误通知路径同理——此处订阅者异常不得阻断后续去重回滚与 ACK(false)。
+                    // 与错误通知路径同理——此处订阅者异常不得阻断后续去重回滚与 ACK(false)。
                     SafeInvokeBinaryMessageReceived(eventArgs, "Payload 为空通知路径");
 
                     // P0-1：空 Payload 同样须回滚传输层占用的幂等状态
@@ -500,7 +499,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
 
                 eventArgs.ParseError = $"ProtoBuf 反序列化失败: {ex.Message}";
 
-                // P2-3 修复：回退路径此前缺少大小校验，超限负载会直接进入 JSON 解析与路由
+                // 回退路径必须先做大小校验：缺少校验时超限负载会直接进入 JSON 解析与路由
                 if (completeData.Length > _options.MessageSizeLimits.MaxBinaryMessageSize)
                 {
                     _logger.LogError("二进制消息大小 {Size} 超过最大限制 {MaxSize}，放弃 JSON 回退解析",
@@ -531,15 +530,15 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
             {
                 _logger.LogError(ex, "处理完整二进制消息时发生错误");
                 eventArgs.ParseError = $"处理完整二进制消息时发生错误: {ex.Message}";
-                // P2-14 补充：错误通知必须隔离订阅者异常——首次抛出导致进入本 catch 的订阅者
+                // 错误通知必须隔离订阅者异常——首次抛出导致进入本 catch 的订阅者
                 // 在此必然再次抛出，若不隔离会穿透到外层 catch，导致下方 SeqID 回滚与 ACK(500)
-                // 永远执行不到（恰是 P2-14 要修复的"失败不回 ACK"的另一形态）。
+                // 永远执行不到（"失败不回 ACK"的另一形态）。
                 SafeInvokeBinaryMessageReceived(eventArgs, "错误通知路径");
 
                 // P0-1：传输层失败收尾——回滚验证器窗口 + SeqID 去重（及宿主注入时的统一中间件）
                 await RollbackTransportStateAsync(frame, markedSeqId, extractedEventId, cancellationToken);
 
-                // P2-14 修复：此前异常路径不回 ACK，服务端只能等超时后重投。
+                // 异常路径必须回 ACK：不回 ACK 时服务端只能等超时后重投。
                 // 帧已解析成功时补 ACK(500)：与成功路径同一语义（200=成功、500=失败触发服务端重投），
                 // 让重投即时发生而不是等超时。ProtoBuf 解析失败路径（catch(ProtoException)）无可用帧，维持不回。
                 if (frame != null)
@@ -573,9 +572,9 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
         string? extractedEventId,
         CancellationToken cancellationToken)
     {
-        _ = cancellationToken; // D15：本方法全部子操作均为补偿/终态，不消费调用方令牌
+        _ = cancellationToken; // 本方法全部子操作均为补偿/终态，不消费调用方令牌
 
-        // ① 序列验证器窗口记录（P0-1：业务失败原先完全不可达任何回滚）
+        // ① 序列验证器窗口记录
         if (frame != null)
         {
             try
@@ -607,7 +606,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
             try
             {
                 var seqIdForRollback = frame?.SeqID;
-                // D15/P0-1：补偿操作不消费调用方令牌——接收管道取消（连接断开）后令牌已取消，
+                // 补偿操作不消费调用方令牌——接收管道取消（连接断开）后令牌已取消，
                 // Redis 后端回滚入口会直接 OCE，使该帧占用的幂等状态停留至超时
                 await _unifiedDeduplicationMiddleware.RollbackAsync(
                     extractedEventId,
@@ -686,7 +685,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
         // 同时在 Frame headers 中添加 biz_rt（业务处理耗时）
         var stopwatch = Stopwatch.StartNew();
 
-        // P1-5 修复（WS-06）：使用具名 DTO 替代匿名类型，避免 AOT 反射依赖。
+        // 使用具名 DTO 替代匿名类型，避免 AOT 反射依赖。
         // Headers 使用空字典而非 null，保证序列化后始终包含 "headers": {} 字段，
         // 与飞书协议 {"code":..,"headers":{},"data":".."} 一致。
         var responseData = System.Array.Empty<byte>();
@@ -758,7 +757,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
     /// <param name="eventArgs">二进制消息事件参数</param>
     /// <param name="context">触发上下文（用于日志定位）</param>
     /// <remarks>
-    /// P2-14 补充：失败路径上事件触发之后还必须执行去重回滚与 ACK(500)——订阅者抛出的异常
+    /// 失败路径上事件触发之后还必须执行去重回滚与 ACK(500)——订阅者抛出的异常
     /// 若在此向上穿透，回滚与 ACK 将永远执行不到。对齐 WebSocketConnectionManager.SafeInvokeDisconnected
     /// 的隔离模式：记录异常，不向上传播。
     /// </remarks>
@@ -815,7 +814,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
     /// <inheritdoc/>
     public void Dispose()
     {
-        // WS-15：原子 check-then-set，确保并发调用安全
+        // 原子 check-then-set，确保并发调用安全
         if (Interlocked.Exchange(ref _disposed, 1) == 1)
             return;
 
@@ -853,7 +852,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
     /// <returns>表示异步释放操作的任务</returns>
     public async ValueTask DisposeAsync()
     {
-        // WS-15：原子 check-then-set，确保并发调用安全
+        // 原子 check-then-set，确保并发调用安全
         if (Interlocked.Exchange(ref _disposed, 1) == 1)
             return;
 

@@ -24,7 +24,7 @@ public class FeishuAppConfig
     /// <summary>
     /// 应用唯一标识（用于在代码中引用此应用）
     /// </summary>
-    // AOT-3：配置 DTO 不使用 required（ConfigurationBinder 以 new T() 构造）。
+    // 配置 DTO 不使用 required（ConfigurationBinder 以 new T() 构造）。
     public string AppKey { get; set; } = string.Empty;
 
     /// <summary>应用ID（cli_ / app_ 前缀）</summary>
@@ -46,9 +46,9 @@ public class FeishuAppConfig
 
     /// <summary>HTTP 请求超时（秒）。默认 30，范围 1-300。</summary>
     /// <remarks>
-    /// R5.3/X12 命名对齐：本属性为<b>秒</b>，而 <c>RedisOptions.Connection.ConnectTimeout/SyncTimeout</c>
-    /// 为<b>毫秒</b>——单位混用是有意保留（不做 <c>TimeoutMs</c> 别名，避免同一配置树内秒/毫秒语义并存，
-    /// 见方案 §2.11/RK15）；单位变更须作为独立 major 的破坏性迁移立项。
+    /// 本属性为<b>秒</b>，而 <c>RedisOptions.Connection.ConnectTimeout/SyncTimeout</c>
+    /// 为<b>毫秒</b>——单位混用是有意保留（不做 <c>TimeoutMs</c> 别名，避免同一配置树内秒/毫秒语义并存）；
+    /// 单位变更须作为独立 major 的破坏性迁移立项。
     /// </remarks>
     public int TimeoutSeconds { get; set; } = 30;
 

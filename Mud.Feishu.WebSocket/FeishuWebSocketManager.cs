@@ -27,22 +27,22 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable,
     private readonly IOptionsMonitor<FeishuWebSocketOptions> _webSocketOptionsMonitor;
     private readonly IFeishuWebSocketClient _webSocketClient;
     private readonly SemaphoreSlim _startStopLock = new(1, 1);
-    // WS-23 修复（P2-13）：_isRunning 改为 volatile bool，确保跨线程可见性
+    // _isRunning 为 volatile bool，确保跨线程可见性
     private volatile bool _isRunning = false;
     private volatile bool _isReconnecting = false;
-    // WS-15 修复（P1-12）：_disposed 改为 int + Interlocked.Exchange 实现原子 check-then-set
+    // _disposed 为 int + Interlocked.Exchange 的原子 check-then-set
     private int _disposed = 0;
-    // TMR-P0-2（F2）：回退告警只发一次，避免每次连接重复刷日志
+    // 回退告警只发一次，避免每次连接重复刷日志
     private int _fallbackWarned = 0;
 
     /// <summary>
     /// 构造函数（推荐，DI 最长构造优先选择）。
     /// </summary>
     /// <remarks>
-    /// TMR-P0-2（F2）：经 <see cref="IFeishuAppManager"/> 在每次启动/重连时现取当前默认应用上下文，
-    /// 使配置热更新与 <c>SetDefaultApp</c> 对 WebSocket 长连接立即生效。
-    /// 修复前经构造期捕获的 <c>IFeishuAppContext</c> Singleton 取令牌与凭据，
-    /// 热更新后指向已退休上下文（ODE / 旧凭据）。
+    /// 经 <see cref="IFeishuAppManager"/> 在每次启动/重连时现取当前默认应用上下文，
+    /// 使配置热更新与 <c>SetDefaultApp</c> 对 WebSocket 长连接立即生效——
+    /// 构造期捕获 <c>IFeishuAppContext</c> Singleton 的话，热更新后会指向已退休上下文
+    /// （ODE / 旧凭据）。
     /// 注意：与 4 参旧构造保持<b>不同元数</b>——避免同元数重载导致宿主传 <c>null</c> 字面量时
     /// 编译二义，以及 MS.DI 多构造选择歧义。
     /// </remarks>
@@ -233,7 +233,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable,
             // 获取应用访问令牌，使用配置的超时时间
             int timeoutSeconds = context.Config.TimeoutSeconds;
 
-            // WS2-04 / I16（评审新增点）：TimeoutSeconds 来自 AppConfig，属**配置派生值**。
+            // TimeoutSeconds 来自 AppConfig，属**配置派生值**。
             // TimeSpan.FromSeconds(int) 本身不溢出，但 CancellationTokenSource(TimeSpan) 会校验上界
             // 并在超长时抛 ArgumentOutOfRangeException（.NET Core ≈ 49.7 天 / .NET Framework ≈ 24.8 天）；
             // 异常会以晦涩的启动失败形式暴露，在生产上极难定位。此处统一走钳制。
@@ -512,9 +512,9 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable,
     /// <param name="sender">事件发送者</param>
     /// <param name="e">事件参数</param>
     /// <remarks>
-    /// WS2-05 修复（D5 / P1-4）：此前 <c>{Message}</c> 直传 <c>e.Message</c> —— 入站报文**全文**（未脱敏、
-    /// 未截断）写入 Debug 日志。飞书事件报文内含 <c>header.token</c>、<c>event.*</c> 业务载荷与用户 PII，
-    /// 全文入日志即长期留存于集中式日志系统。
+    /// 不得把 <c>e.Message</c> 直传 <c>{Message}</c>：入站报文**全文**（未脱敏、未截断）写入日志时，
+    /// 飞书事件报文内的 <c>header.token</c>、<c>event.*</c> 业务载荷与用户 PII
+    /// 会长期留存于集中式日志系统。
     /// <para>
     /// 现与模块内既有正确范式对齐（<c>MessageRouter</c> / <c>FeishuEventMessageHandler</c> 均走
     /// <c>LogSanitizer.CleanMessage</c>）：只输出**结构化字段 + 脱敏截断预览**。
@@ -558,7 +558,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable,
     /// </summary>
     /// <returns>表示异步释放操作的任务</returns>
     /// <remarks>
-    /// WS2-06 修复（I9）：<b>不释放</b> <c>_startStopLock</c>。本类型从不访问
+    /// <b>不释放</b> <c>_startStopLock</c>。本类型从不访问
     /// <see cref="SemaphoreSlim.AvailableWaitHandle"/>，不释放不产生任何 OS 句柄泄漏；
     /// 而释放会与在途 <c>StartAsync</c>/<c>StopAsync</c>/<c>ReconnectAsync</c> 的
     /// <c>WaitAsync</c>/<c>Release</c> 构成 <see cref="ObjectDisposedException"/> 竞态。
@@ -602,7 +602,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable,
                 _webSocketClient?.Dispose();
             }
 
-            // WS2-06（I9）：不释放 _startStopLock（见 DisposeAsync 的 remarks）
+            // 不释放 _startStopLock（见 DisposeAsync 的 remarks）
         }
         catch (Exception ex)
         {
@@ -616,9 +616,9 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable,
     /// 同步释放资源（尽力释放语义）
     /// </summary>
     /// <remarks>
-    /// P0-2 修复（WS-02）：此前同步 <see cref="Dispose()"/> 会获取 <c>_startStopLock</c> 后调用
-    /// <see cref="StopAsync"/>，而后者同样需要该锁 → 自死锁（约 3~5 秒超时后服务仍未停止）。
-    /// <b>同步路径不再尝试停止服务</b>，仅做尽力释放：取消订阅事件 + Dispose 客户端 + 释放锁。
+    /// <b>同步路径不尝试停止服务</b>（获取 <c>_startStopLock</c> 后调用 <see cref="StopAsync"/>
+    /// 会因后者同样需要该锁而自死锁，约 3~5 秒超时后服务仍未停止），
+    /// 仅做尽力释放：取消订阅事件 + Dispose 客户端。
     /// 需确定性停止请调用 <see cref="StopAsync"/> 或 <see cref="DisposeAsync"/>。
     /// </remarks>
     public void Dispose()
@@ -628,7 +628,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable,
 
         try
         {
-            // P0-2 修复：同步路径不再获取 _startStopLock，不调用 StopAsync。
+            // 同步路径不获取 _startStopLock，不调用 StopAsync。
             // StopAsync 内部需要获取同一把锁，构成不可重入的自死锁。
             // 异步路径 DisposeAsync 是唯一保证完成关闭握手与等待后台任务的路径。
             if (_isRunning)
@@ -639,7 +639,7 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable,
             UnsubscribeClientEvents();
 
             _webSocketClient?.Dispose();
-            // WS2-06（I9）：同 DisposeAsync，不释放 _startStopLock
+            // 同 DisposeAsync，不释放 _startStopLock
         }
         catch (Exception ex)
         {

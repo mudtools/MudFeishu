@@ -21,7 +21,7 @@ public interface IFeishuV1SparkApp : IFeishuAppContextSwitcher
     /// <summary>
     /// 批量获取妙搭应用
     /// <para>查询当前令牌有权限查看的妙搭应用列表，支持按类型、关键词、归属范围筛选与分页。</para>
-    /// <para>查询参数采用查询对象模式（<see cref="GetAppListQuery"/>，见 AGENTS.md API-2）。</para>
+    /// <para>查询参数采用查询对象模式（<see cref="GetAppListQuery"/>）。</para>
     /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app/list">接口文档</see></para>
     /// </summary>
     /// <param name="query">分页、应用类型、关键词与归属范围查询参数</param>

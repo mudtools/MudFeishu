@@ -25,14 +25,14 @@ namespace Mud.Feishu.Abstractions;
 /// </remarks>
 public class FeishuAppContext : IFeishuAppContext, IAppExternalIds, IDisposable
 {
-    // TMR-P2-13（F13）：退休队列并发 Sweep+Flush 下同一实例可能被并发 Dispose；
+    // 退休队列并发 Sweep+Flush 下同一实例可能被并发 Dispose；
     // _disposed 由 bool 收敛为 int + Interlocked.Exchange，保证释放逻辑恰好一次执行
     // （组件 TokenManagerBase.Dispose 虽已声明幂等，但上下文还持有 Authentication/scope 等
     // 自有资源，在本地收敛为恰好一次属防御性硬化）。
     private int _disposed;
     private readonly IServiceProvider? _serviceProvider;
 
-    // TMA-13 / P2-10 修复：作用域随上下文 Dispose 释放，确保 Scoped 依赖（如 IFeishuCurrentUserContext）
+    // 作用域随上下文 Dispose 释放，确保 Scoped 依赖（如 IFeishuCurrentUserContext）
     // 的生命周期与 FeishuAppContext 对齐，避免 Captive Dependency。
     private readonly IServiceScope? _scope;
 
@@ -51,7 +51,7 @@ public class FeishuAppContext : IFeishuAppContext, IAppExternalIds, IDisposable
 
     /// <inheritdoc />
     /// <remarks>
-    /// F-4（Mud.HttpUtils 3.0.7）：声明本应用的外部标识，供
+    /// 声明本应用的外部标识，供
     /// <see cref="DefaultAppManager{TAppContext}"/> 注册 / 实例化时自动建立反查索引。
     /// <c>app_id</c>（<see cref="FeishuAppConfig.AppId"/>，形如 <c>cli_xxx</c>）是飞书事件 /
     /// 回调载荷的标准应用标识——宿主可据此把「只携带 app_id 的不可信载荷」反查为 appKey
@@ -201,7 +201,7 @@ public class FeishuAppContext : IFeishuAppContext, IAppExternalIds, IDisposable
     /// <param name="authenticationApi">认证API客户端</param>
     /// <param name="httpClient">HTTP客户端</param>
     /// <param name="serviceProvider">服务提供者（可选），用于 <see cref="GetService{T}"/> 回退到 DI 容器解析</param>
-    /// <param name="scope">DI 作用域（可选），随上下文 Dispose 释放。TMA-13 修复。</param>
+    /// <param name="scope">DI 作用域（可选），随上下文 Dispose 释放。</param>
     /// <exception cref="ArgumentNullException">当任何必需参数为null时抛出</exception>
     public FeishuAppContext(
         FeishuAppConfig config,
@@ -231,7 +231,7 @@ public class FeishuAppContext : IFeishuAppContext, IAppExternalIds, IDisposable
     /// </remarks>
     public void Dispose()
     {
-        // TMR-P2-13（F13）：原子 check-then-set——并发 Sweep+Flush 下同一实例的 Dispose 收敛为恰好一次。
+        // 原子 check-then-set——并发 Sweep+Flush 下同一实例的 Dispose 收敛为恰好一次。
         if (Interlocked.Exchange(ref _disposed, 1) != 0)
             return;
 
@@ -245,7 +245,7 @@ public class FeishuAppContext : IFeishuAppContext, IAppExternalIds, IDisposable
                 disposableUser.Dispose();
             if (Authentication is IDisposable disposableAuth)
                 disposableAuth.Dispose();
-            // TMA-13：释放作用域，使 Scoped 依赖随上下文释放。
+            // 释放作用域，使 Scoped 依赖随上下文释放。
             _scope?.Dispose();
         }
         finally

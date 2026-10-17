@@ -40,7 +40,7 @@ public class RedisTokenStore : ITokenStore, ITokenStoreAppPurge
         string keyPrefix = "feishu:token")
     {
         _redis = redis ?? throw new ArgumentNullException(nameof(redis));
-        // R-25：logger 兜底 NullLogger，防止无日志宿主时抛 ArgumentNullException
+        // logger 兜底 NullLogger，防止无日志宿主时抛 ArgumentNullException
         _logger = logger ?? NullLogger<RedisTokenStore>.Instance;
         _keyPrefix = keyPrefix ?? "feishu:token";
     }
@@ -49,7 +49,7 @@ public class RedisTokenStore : ITokenStore, ITokenStoreAppPurge
     public async Task<string?> GetAccessTokenAsync(string tokenType, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        // R2-21：令牌读写同样上报指标（本类型不包装异常，失败按原始异常分类）
+        // 令牌读写同样上报指标（本类型不包装异常，失败按原始异常分类）
         var startTimestamp = RedisMetricsHelper.Begin();
         try
         {
@@ -68,7 +68,7 @@ public class RedisTokenStore : ITokenStore, ITokenStoreAppPurge
     /// <inheritdoc />
     public async Task SetAccessTokenAsync(string tokenType, string accessToken, long expiresInSeconds, CancellationToken cancellationToken = default)
     {
-        // T-M2-11 / R-23：非法过期时间显式抛异常，而非静默不落库或被服务端拒绝
+        // 非法过期时间显式抛异常，而非静默不落库或被服务端拒绝
         if (expiresInSeconds <= 0)
             throw new ArgumentOutOfRangeException(nameof(expiresInSeconds),
                 "令牌过期时间必须为正数（秒），实际值: " + expiresInSeconds);
@@ -88,7 +88,7 @@ public class RedisTokenStore : ITokenStore, ITokenStoreAppPurge
         }
     }
 
-    /// <summary>上报一次令牌存储操作（R2-21）。</summary>
+    /// <summary>上报一次令牌存储操作。</summary>
     private static void Record(string command, string outcome, long startTimestamp)
         => RedisMetricsHelper.Record(command, FeishuMetrics.DedupTypes.Token, outcome, startTimestamp);
 
@@ -103,12 +103,12 @@ public class RedisTokenStore : ITokenStore, ITokenStoreAppPurge
 
     /// <inheritdoc />
     /// <remarks>
-    /// TMA-22 修复：refresh token 存储 TTL 由硬编码 30 天改为优先使用编码值中的过期时间，
-    /// 缺失时才回落 30 天。使 store TTL 与业务过期语义一致。
-    /// TMA2-15 / P2-5 修复：过期戳已过时（expireMs &lt;= now）删除条目而非写 TTL=0（Redis TTL=0 等于永不过期）。
-    /// C-2（3.0.3）：过期信息推导经 <see cref="TokenStoreHelper.TryDecodeExpiry"/> 双读——
+    /// refresh token 存储 TTL 优先取编码值中的过期时间，缺失时才回落 30 天，
+    /// 使 store TTL 与业务过期语义一致。
+    /// 过期戳已过时（expireMs &lt;= now）删除条目，而非写 TTL=0（Redis TTL=0 等于永不过期）。
+    /// 过期信息推导经 <see cref="TokenStoreHelper.TryDecodeExpiry"/> 双读：
     /// 新格式（相对秒）投影为过期时刻后换算 TTL；旧格式（绝对毫秒戳）原样判定（已过期删键行为不变）；
-    /// 「无 TTL 信息」（前导数 &lt;= 0）回落 30 天（不再误判为已过期删键）。
+    /// 「无 TTL 信息」（前导数 &lt;= 0）回落 30 天，不得误判为已过期删键。
     /// </remarks>
     public async Task SetRefreshTokenAsync(string tokenType, string refreshToken, CancellationToken cancellationToken = default)
     {
@@ -116,10 +116,10 @@ public class RedisTokenStore : ITokenStore, ITokenStoreAppPurge
         var key = BuildRefreshTokenKey(tokenType);
         var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-        // TMA-22：尝试从编码值中解码过期时间戳。
+        // 尝试从编码值中解码过期时间戳。
         if (TokenStoreHelper.TryDecodeExpiry(refreshToken, out var expireMs))
         {
-            // TMA2-15：过期戳已过时 → 删除条目，不写入（Redis TTL=0 会造成永不过期）。
+            // 过期戳已过时 → 删除条目，不写入（Redis TTL=0 会造成永不过期）。
             if (expireMs <= nowMs)
             {
                 await GetDatabase().KeyDeleteAsync(key, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
@@ -146,15 +146,15 @@ public class RedisTokenStore : ITokenStore, ITokenStoreAppPurge
 
     /// <inheritdoc />
     /// <remarks>
-    /// T-M2-6（R-10）：Cluster 化扫描——遍历全部主节点聚合 SCAN，避免 Cluster 下漏列。
-    /// TMA2-02 / D8：键模式改用 TokenKeyBuilder 统一产出。
+    /// Cluster 化扫描——遍历全部主节点聚合 SCAN，避免 Cluster 下漏列。
+    /// 键模式统一经 TokenKeyBuilder 产出。
     /// </remarks>
     public async Task<IEnumerable<string>> GetTokenTypesAsync(CancellationToken cancellationToken = default)
     {
         var pattern = BuildTenantScanPattern();
         var tokenTypes = new List<string>();
 
-        // T-M2-6 / R2-08：遍历全部主节点，改用异步 SCAN 枚举（不再同步阻塞一页 5s）
+        // 遍历全部主节点，改用异步 SCAN 枚举（避免同步阻塞一页 5s）
         foreach (var server in RedisStoreHelper.GetServers(_redis))
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -169,21 +169,18 @@ public class RedisTokenStore : ITokenStore, ITokenStoreAppPurge
             }
         }
 
-        // R2-21：SCAN 规模可观测
+        // SCAN 规模可观测
         RedisMetricsHelper.RecordScan(FeishuMetrics.RedisCommands.TokenGetTypes, tokenTypes.Count, deleted: false);
         return tokenTypes.Distinct();
     }
 
     /// <inheritdoc />
     /// <remarks>
-    /// T-M2-6（R-10）：Cluster 化扫描——遍历全部主节点聚合 SCAN，避免 Cluster 下漏列。
-    /// 此方法会删除该前缀下全部令牌键（含 <c>{prefix}:*:access</c>、<c>{prefix}:*:refresh</c>、
-    /// <c>{prefix}:user:*:*</c>），即租户令牌与用户令牌一并清除。
-    /// TMF-01：与 Memory 后端（<c>FeishuTokenStore.ClearAsync</c> + 用户侧
-    /// <c>IFeishuUserTokenStorePurge.ClearAllUsersAsync</c>）语义统一为
-    /// 「清空该 appKey 全部租户 + 用户持久化令牌」。
+    /// Cluster 化扫描——遍历全部主节点聚合 SCAN，避免 Cluster 下漏列。
+    /// 会删除该前缀下全部令牌键（<c>{prefix}:*:access</c>、<c>{prefix}:*:refresh</c>、
+    /// <c>{prefix}:user:*:*</c>），即租户与用户持久化令牌一并清除，语义与 Memory 后端
+    /// （<c>FeishuTokenStore.ClearAsync</c> + <c>IFeishuUserTokenStorePurge.ClearAllUsersAsync</c>）一致。
     /// 部分节点失败时已删除的键不可回滚（声明"部分失败"语义）。
-    /// TMA2-02 / D8：键模式改用 TokenKeyBuilder 统一产出。
     /// </remarks>
     public async Task ClearAsync(CancellationToken cancellationToken = default)
         => await ClearCoreAsync(cancellationToken).ConfigureAwait(false);
@@ -198,7 +195,7 @@ public class RedisTokenStore : ITokenStore, ITokenStoreAppPurge
         var db = GetDatabase();
         var deletedCount = 0L;
 
-        // T-M2-6 / R2-08：遍历全部主节点，异步 SCAN + 分批删除（500/批，减少 RTT 与"已删一半后异常"的窗口）
+        // 遍历全部主节点，异步 SCAN + 分批删除（500/批，减少 RTT 与"已删一半后异常"的窗口）
         foreach (var server in RedisStoreHelper.GetServers(_redis))
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -222,14 +219,14 @@ public class RedisTokenStore : ITokenStore, ITokenStoreAppPurge
             }
         }
 
-        // R2-21：删除规模可观测（"清空却删 0 个键"类缺陷一眼可辨）
+        // 删除规模可观测（"清空却删 0 个键"类缺陷一眼可辨）
         RedisMetricsHelper.RecordScan(FeishuMetrics.RedisCommands.TokenClear, deletedCount, deleted: true);
         return deletedCount;
     }
 
     /// <inheritdoc />
     /// <remarks>
-    /// U-4（上游 3.0.10 Batch 2）：<see cref="ITokenStoreAppPurge"/> 实现 ——
+    /// <see cref="ITokenStoreAppPurge"/> 实现 ——
     /// 快照枚举本实例键空间（与 <see cref="ClearAsync"/> 同一 SCAN pattern，物理键含
     /// access / refresh / user 维度），<see cref="GetTokenTypesAsync"/> 的 tokenType 归一化不适用本契约
     /// （官方契约约定返回物理键）。跨节点去重防 SCAN 重复面。
@@ -255,7 +252,7 @@ public class RedisTokenStore : ITokenStore, ITokenStoreAppPurge
 
     /// <inheritdoc />
     /// <remarks>
-    /// U-4（上游 3.0.10 Batch 2）：<see cref="ITokenStoreAppPurge"/> 实现 ——
+    /// <see cref="ITokenStoreAppPurge"/> 实现 ——
     /// 本实例命名空间已由 KeyPrefix 绑定单应用（per-app 工厂 <c>PerAppRedisTokenStoreFactory</c>），
     /// <paramref name="appKey"/> 参数按官方契约「实现方处置」以实例键空间为边界（与
     /// <see cref="ClearAsync"/> 语义逐位一致），不参与过滤。节点失败直接上抛（契约：不得静默半删）。
@@ -268,12 +265,12 @@ public class RedisTokenStore : ITokenStore, ITokenStoreAppPurge
 
     private IDatabase GetDatabase() => _redis.GetDatabase();
 
-    // TMA2-02 / D8：令牌键改用 TokenKeyBuilder 统一产出，与 Memory 路径逐字节一致。
+    // 令牌键改用 TokenKeyBuilder 统一产出，与 Memory 路径逐字节一致。
     private string BuildAccessTokenKey(string tokenType) => TokenKeyBuilder.TenantAccessKey(_keyPrefix, tokenType);
     private string BuildRefreshTokenKey(string tokenType) => TokenKeyBuilder.TenantRefreshKey(_keyPrefix, tokenType);
 
     /// <summary>
-    /// TMR2-P1-2：租户 SCAN pattern —— 由 <c>TokenKeyBuilder</c> 产出字面量前缀后，
+    /// 租户 SCAN pattern —— 由 <c>TokenKeyBuilder</c> 产出字面量前缀后，
     /// 再经 Redis glob 字面量转义（<c>\</c> 与 <c>*?[]</c>），否则含转义符/通配符的 appKey 下永不命中。
     /// </summary>
     private string BuildTenantScanPattern()

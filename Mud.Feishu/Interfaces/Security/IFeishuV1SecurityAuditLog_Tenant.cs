@@ -20,7 +20,7 @@ public interface IFeishuTenantV1SecurityAuditLog : IFeishuAppContextSwitcher
 {
     /// <summary>
     /// 获取行为审计日志数据
-    /// <para>查询成员的操作行为日志，支持按事件名称、事件模块、操作者、操作对象、用户类型、时间范围（起止相差不超过 30 天）等筛选；查询参数采用查询对象模式 <see cref="GetAuditLogDataQuery"/>，见 AGENTS.md API-2。</para>
+    /// <para>查询成员的操作行为日志，支持按事件名称、事件模块、操作者、操作对象、用户类型、时间范围（起止相差不超过 30 天）等筛选；查询参数采用查询对象模式 <see cref="GetAuditLogDataQuery"/>。</para>
     /// <para>限频：100 次/分钟。所需权限：admin:audit_info:readonly（获取行为审计日志）；字段权限：contact:user.employee_id:readonly（user_id_type 取 user_id 时的返回字段）。</para>
     /// <para><see href="https://open.feishu.cn/document/server-docs/security_and_compliance-v1/audit_log/audit_data_get">接口文档</see></para>
     /// </summary>

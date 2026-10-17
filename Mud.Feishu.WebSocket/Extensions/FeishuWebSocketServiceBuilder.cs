@@ -24,7 +24,7 @@ namespace Microsoft.Extensions.DependencyInjection;
 /// 飞书WebSocket服务建造者，用于简化服务注册配置
 /// </summary>
 /// <remarks>
-/// <b>调用约定（WS2-09 / P2-5）</b>：必须调用 <see cref="Build"/> 才会注册<b>核心服务</b>
+/// <b>调用约定</b>：必须调用 <see cref="Build"/> 才会注册<b>核心服务</b>
 /// （<c>IFeishuWebSocketClient</c> / <c>IFeishuWebSocketManager</c> / 后台服务 / 健康检查 / 并发闸门）。
 /// <para>
 /// <b>半装配风险</b>：<see cref="ConfigureFrom"/> / <see cref="ConfigureOptions"/> /
@@ -43,9 +43,9 @@ public class FeishuWebSocketServiceBuilder
     private readonly IServiceCollection _services;
     private readonly List<Type> _handlerTypes = new();
     private readonly List<Type> _interceptorTypes = new();
-    // WS-04 修复：区分「类型注册」与「实例注册」两个集合。
+    // 区分「类型注册」与「实例注册」两个集合。
     // 实例注册的处理器由 ScopedFeishuEventHandlerFactory 直接复用，不经过 DI 作用域解析，
-    // 避免用户提供的实例被 DI 容器 Dispose（P1-6）。
+    // 避免用户提供的实例被 DI 容器 Dispose。
     private readonly List<IFeishuEventHandler> _handlerInstances = new();
     private bool _configured = false;
 
@@ -146,10 +146,10 @@ public class FeishuWebSocketServiceBuilder
     /// <param name="handlerInstance">处理器实例</param>
     /// <returns>建造者实例，支持链式调用</returns>
     /// <remarks>
-    /// WS-04 修复（P1-6）：用户提供的处理器实例不经过 DI 容器解析，
-    /// 由 <see cref="ScopedFeishuEventHandlerFactory"/> 直接复用。
-    /// 这避免了将实例注册为 Scoped 后，首个事件处理完成时 IServiceScope.Dispose
-    /// 会连带释放用户实例的问题（Captive Dependency 的反面：实例被容器意外回收）。
+    /// 用户提供的处理器实例不经过 DI 容器解析，
+    /// 由 <see cref="ScopedFeishuEventHandlerFactory"/> 直接复用：
+    /// 将实例注册为 Scoped 后，首个事件处理完成时 IServiceScope.Dispose
+    /// 会连带释放用户实例（Captive Dependency 的反面：实例被容器意外回收）。
     /// </remarks>
     public FeishuWebSocketServiceBuilder AddHandler<THandler>(THandler handlerInstance)
         where THandler : class, IFeishuEventHandler
@@ -257,14 +257,14 @@ public class FeishuWebSocketServiceBuilder
     }
 
     /// <summary>
-    /// 注册失败事件存储（R-E1/E-P1-3）：WS 事件处理业务失败时落盘（可审计、可对账）。
+    /// 注册失败事件存储：WS 事件处理业务失败时落盘（可审计、可对账）。
     /// </summary>
     /// <typeparam name="TStore">存储实现类型</typeparam>
     /// <returns>建造者实例，支持链式调用</returns>
     /// <remarks>
     /// TryAdd 语义：宿主已自行注册 <see cref="IFailedEventStore"/> 时，本方法不覆盖。
-    /// <b>未注册时行为与未引入前完全一致</b>（零破坏）——与 Webhook 不同，WS 不会默认注册
-    /// 内存实现（阶段一落盘纯增益，默认开启会静默改变行为）；
+    /// <b>未注册时为 no-op</b>（零破坏）——与 Webhook 不同，WS 不会默认注册
+    /// 内存实现（落盘纯增益，默认开启会静默改变行为）；
     /// 重试主路径仍是服务端重发（ACK 500），宿主可自行消费 <see cref="IFailedEventStore"/> 实现重放。
     /// </remarks>
     public FeishuWebSocketServiceBuilder AddFailedEventStore<
@@ -279,7 +279,7 @@ public class FeishuWebSocketServiceBuilder
     }
 
     /// <summary>
-    /// 注册失败事件存储实例（R-E1/E-P1-3）。
+    /// 注册失败事件存储实例。
     /// </summary>
     /// <param name="store">存储实例</param>
     /// <returns>建造者实例，支持链式调用</returns>
@@ -387,14 +387,13 @@ public class FeishuWebSocketServiceBuilder
         // 说明：拦截器是横切关注点组件（日志、指标、审计），按约定无请求级状态，
         // 因此注册为 Singleton；若注册为 Scoped 会与 Singleton 消费者构成 Captive Dependency。
         //
-        // WS2-09 修复（P2-5）：此前实现是
-        //     .Where(i => _interceptorTypes.Contains(i.GetType()))   ← 过滤
-        //     .OrderBy(i => _interceptorTypes.IndexOf(i.GetType()))
-        // 即**只保留**经 AddInterceptor<T>() 显式登记的类型。宿主若直接用
+        // 拦截器排序"只用于排序，不做过滤"：
+        // 若实现为 .Where(Contains).OrderBy(IndexOf)，即**只保留**经 AddInterceptor<T>()
+        // 显式登记的类型。宿主若直接用
         // `services.AddSingleton<IFeishuEventInterceptor, MyInterceptor>()` 注册（完全合法的 DI 用法，
         // 文档也常这么示例），其拦截器会被**静默丢弃**——不报错、不告警，只是审计/日志拦截器不生效。
         //
-        // 现改为"**只用于排序，不做过滤**"：未登记的类型排在已登记类型之后（保持已登记类型的相对顺序稳定），
+        // 未登记的类型排在已登记类型之后（保持已登记类型的相对顺序稳定），
         // 所有容器内可见的 IFeishuEventInterceptor 都会被装配。
         _services.AddSingleton<IFeishuEventInterceptor[]>(serviceProvider =>
         {
@@ -531,14 +530,14 @@ public class FeishuWebSocketServiceBuilder
             });
         }
 
-        // WS-03 修复：注册并发控制服务（背压闸门），与 Webhook 模块对齐
+        // 注册并发控制服务（背压闸门），与 Webhook 模块对齐
         _services.AddSingleton<FeishuWebSocketConcurrencyService>();
         _services.AddHostedService<FeishuWebSocketConcurrencyService>(
             serviceProvider => serviceProvider.GetRequiredService<FeishuWebSocketConcurrencyService>());
 
         // 注册WebSocket客户端
-        // F4 修复：改为注入 IOptionsMonitor<FeishuWebSocketOptions>，保证配置热更新一致性。
-        // 此前一次性捕获 CurrentValue，FeishuWebSocketManager 每次读取 → 两者行为不一致。
+        // 注入 IOptionsMonitor<FeishuWebSocketOptions>，保证配置热更新一致性：
+        // 一次性捕获 CurrentValue 会使 FeishuWebSocketManager 每次读取到陈旧值。
         // 说明：该 AddSingleton 工厂 lambda 无法直接添加 Requires 标注，此处用 pragma 屏蔽
         // FeishuWebSocketClient 构造函数（带标注）反射式序列化的 IL 警告。
 #pragma warning disable IL2026, IL3050
@@ -548,19 +547,19 @@ public class FeishuWebSocketServiceBuilder
             var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
             var eventHandlerFactory = serviceProvider.GetRequiredService<IFeishuEventHandlerFactory>();
             var interceptors = serviceProvider.GetRequiredService<IFeishuEventInterceptor[]>();
-            // F4：传入 IOptionsMonitor 而非 CurrentValue 快照
+            // 传入 IOptionsMonitor 而非 CurrentValue 快照
             var optionsMonitor = serviceProvider.GetRequiredService<IOptionsMonitor<FeishuWebSocketOptions>>();
             var seqIdDeduplicator = serviceProvider.GetService<IFeishuSeqIDDeduplicator>();
             var sessionManager = serviceProvider.GetService<SessionManager>();
             var sequenceValidator = serviceProvider.GetService<MessageSequenceValidator>();
-            // P1-5 修复：注入事件级去重器。此前 FeishuWebSocketClient 不接受该依赖，
-            // 导致 EventDeduplication 配置（默认 InMemory）在 WebSocket 路径上完全失效。
+            // 注入事件级去重器：FeishuWebSocketClient 不接受该依赖时，
+            // EventDeduplication 配置（默认 InMemory）在 WebSocket 路径上完全失效。
             var eventDeduplicator = serviceProvider.GetService<IFeishuEventDeduplicator>();
-            // WS-03：注入并发控制服务
+            // 注入并发控制服务
             var concurrencyService = serviceProvider.GetRequiredService<FeishuWebSocketConcurrencyService>();
-            // F7 修复：注入统一去重中间件（可选）
+            // 注入统一去重中间件（可选）
             var unifiedDedupMiddleware = serviceProvider.GetService<IUnifiedDeduplicationMiddleware>();
-            // R-E1（E-P1-3）：失败事件存储（可选；未注册时 GetService 返回 null，行为与未引入前一致）
+            // 失败事件存储（可选；未注册时 GetService 返回 null，为 no-op）
             var failedEventStore = serviceProvider.GetService<IFailedEventStore>();
             return new FeishuWebSocketClient(
                 logger, eventHandlerFactory, loggerFactory,

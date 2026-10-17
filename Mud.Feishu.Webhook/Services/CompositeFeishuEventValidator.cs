@@ -119,9 +119,9 @@ public class CompositeFeishuEventValidator : WebhookValidatorBase, IFeishuEventV
         }
         catch (OperationCanceledException)
         {
-            // R3-P1-6/WHF-16：客户端断开 / 宿主关停——交由中间件的 OCE 分支处理，
-            // 禁止伪装成“验签失败 403”写向已中止连接（此前该 OCE 被下方 catch 吞成 false，
-            // 使中间件 :261 的 WHF-16 分支在验签链路上永不可达）。
+            // 客户端断开 / 宿主关停——交由中间件的 OCE 分支处理，
+            // 禁止伪装成“验签失败 403”写向已中止连接（该 OCE 若被下方 catch 吞成 false，
+            // 中间件的客户端断开分支在验签链路上永不可达）。
             throw;
         }
         catch (Exception ex) when (ex is not FeishuRedisException { FailureKind: FeishuRedisFailureKind.Server })
@@ -129,8 +129,8 @@ public class CompositeFeishuEventValidator : WebhookValidatorBase, IFeishuEventV
             Logger.LogError(ex, "验证请求头签名时发生错误");
             return false;
         }
-        // WHF-02：Server 类 FeishuRedisException 直接上抛，由中间件转为 503——
-        // T-M2-10 契约：去重体系致命故障不得伪装成“验签失败 403”
+        // Server 类 FeishuRedisException 直接上抛，由中间件转为 503——
+        // 去重体系致命故障不得伪装成“验签失败 403”
     }
 
     /// <inheritdoc />

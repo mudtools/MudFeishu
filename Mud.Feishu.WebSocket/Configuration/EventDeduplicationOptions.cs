@@ -12,7 +12,7 @@ namespace Mud.Feishu.WebSocket;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>R5.2/X6</b>：本类型已标 <c>[Obsolete]</c>。作为「双读期回落基座」**保留不删除**——
+/// 本类型已标 <c>[Obsolete]</c>。作为「双读期回落基座」**保留不删除**——
 /// SDK 在未检测到 <c>FeishuDeduplication</c> 统一节时仍回退到本类型。
 /// 外部代码请改用 <c>FeishuDeduplication</c> 统一节。
 /// </para>

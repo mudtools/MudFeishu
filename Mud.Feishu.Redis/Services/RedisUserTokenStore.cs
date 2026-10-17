@@ -22,11 +22,11 @@ namespace Mud.Feishu.Redis.Services;
 /// </remarks>
 public class RedisUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePurge, IUserTokenStoreCompareExchange
 {
-    /// <summary>SCAN 类删除操作的批大小（R2-08）。</summary>
+    /// <summary>SCAN 类删除操作的批大小。</summary>
     private const int DeleteBatchSize = 500;
 
     /// <summary>
-    /// U-7（上游 3.0.10 Batch 3）：用户维度 CAS 的 Lua 原子脚本。
+    /// 用户维度 CAS 的 Lua 原子脚本。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -92,7 +92,7 @@ return 1";
     /// <inheritdoc />
     public override async Task SetAccessTokenAsync(string userId, string tokenType, string accessToken, long expiresInSeconds, CancellationToken cancellationToken = default)
     {
-        // T-M2-11 / R-23：非法过期时间显式抛异常
+        // 非法过期时间显式抛异常
         if (expiresInSeconds <= 0)
             throw new ArgumentOutOfRangeException(nameof(expiresInSeconds),
                 "令牌过期时间必须为正数（秒），实际值: " + expiresInSeconds);
@@ -113,12 +113,12 @@ return 1";
 
     /// <inheritdoc />
     /// <remarks>
-    /// TMA-22 修复：refresh token 存储 TTL 由硬编码 30 天改为优先使用编码值中的过期时间，
-    /// 缺失时才回落 30 天。使 store TTL 与业务过期语义一致。
-    /// TMA2-15 / P2-5 修复：过期戳已过时（expireMs &lt;= now）删除条目而非写 TTL=0（Redis TTL=0 等于永不过期）。
-    /// C-2（3.0.3）：过期信息推导经 <see cref="TokenStoreHelper.TryDecodeExpiry"/> 双读——
+    /// refresh token 存储 TTL 优先取编码值中的过期时间，缺失时才回落 30 天，
+    /// 使 store TTL 与业务过期语义一致。
+    /// 过期戳已过时（expireMs &lt;= now）删除条目，而非写 TTL=0（Redis TTL=0 等于永不过期）。
+    /// 过期信息推导经 <see cref="TokenStoreHelper.TryDecodeExpiry"/> 双读：
     /// 新格式（相对秒）投影为过期时刻后换算 TTL；旧格式（绝对毫秒戳）原样判定（已过期删键行为不变）；
-    /// 「无 TTL 信息」（前导数 &lt;= 0）回落 30 天（不再误判为已过期删键）。
+    /// 「无 TTL 信息」（前导数 &lt;= 0）回落 30 天，不得误判为已过期删键。
     /// </remarks>
     public override async Task SetRefreshTokenAsync(string userId, string tokenType, string refreshToken, CancellationToken cancellationToken = default)
     {
@@ -126,10 +126,10 @@ return 1";
         var key = BuildUserRefreshTokenKey(userId, tokenType);
         var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-        // TMA-22：尝试从编码值中解码过期时间戳。
+        // 尝试从编码值中解码过期时间戳。
         if (TokenStoreHelper.TryDecodeExpiry(refreshToken, out var expireMs))
         {
-            // TMA2-15：过期戳已过时 → 删除条目，不写入（Redis TTL=0 会造成永不过期）。
+            // 过期戳已过时 → 删除条目，不写入（Redis TTL=0 会造成永不过期）。
             if (expireMs <= nowMs)
             {
                 await _redis.GetDatabase().KeyDeleteAsync(key, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
@@ -153,13 +153,11 @@ return 1";
         await _redis.GetDatabase().KeyDeleteAsync(new RedisKey[] { BuildUserAccessTokenKey(userId, tokenType), BuildUserRefreshTokenKey(userId, tokenType) }, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
     }
 
-    // ──────────────────────────────────────────────
-    //  U-7（上游 3.0.10 Batch 3）：用户维度原生 CAS —— Lua 原子实现
-    // ──────────────────────────────────────────────
+    // 用户维度原生 CAS —— Lua 原子实现
 
     /// <inheritdoc />
     /// <remarks>
-    /// 新值按 C-2 写侧形态编码（<see cref="FeishuTokenStoreCodec"/> 单写相对秒）；
+    /// 新值按相对秒形态编码（<see cref="FeishuTokenStoreCodec"/> 单写相对秒）；
     /// <paramref name="expiresInSeconds"/> &gt; 0 时同时设置键 TTL（与 <see cref="SetAccessTokenAsync"/> 同口径），
     /// ≤ 0 时编码为「无 TTL 信息」（前导 0）且不设键 TTL（契约：宁缺勿滥）。
     /// </remarks>
@@ -240,20 +238,20 @@ return 1";
 
     /// <inheritdoc />
     /// <remarks>
-    /// TMA2-02 / D8：键改用 TokenKeyBuilder 统一产出。
+    /// 键改用 TokenKeyBuilder 统一产出。
     /// </remarks>
     protected override string BuildUserAccessTokenKey(string userId, string tokenType)
         => TokenKeyBuilder.UserAccessKey(_keyPrefix, userId, tokenType);
 
     /// <inheritdoc />
     /// <remarks>
-    /// TMA2-02 / D8：键改用 TokenKeyBuilder 统一产出。
+    /// 键改用 TokenKeyBuilder 统一产出。
     /// </remarks>
     protected override string BuildUserRefreshTokenKey(string userId, string tokenType)
         => TokenKeyBuilder.UserRefreshKey(_keyPrefix, userId, tokenType);
 
     /// <summary>
-    /// TMR2-P1-2：指定用户的 SCAN pattern —— <c>TokenKeyBuilder</c> 字面量前缀 +
+    /// 指定用户的 SCAN pattern —— <c>TokenKeyBuilder</c> 字面量前缀 +
     /// Redis glob 字面量转义。
     /// </summary>
     /// <param name="userId">用户唯一标识符。</param>
@@ -263,15 +261,15 @@ return 1";
 
     /// <inheritdoc />
     /// <remarks>
-    /// T-M2-6（R-10）：Cluster 化扫描——遍历全部主节点聚合 SCAN。
-    /// TMA2-02 / D8：键模式与反向解析改用 TokenKeyBuilder 统一产出。
+    /// Cluster 化扫描——遍历全部主节点聚合 SCAN。
+    /// 键模式与反向解析统一经 TokenKeyBuilder 产出。
     /// </remarks>
     public override async Task<IEnumerable<string>> GetTokenTypesAsync(string userId, CancellationToken cancellationToken = default)
     {
         var pattern = BuildUserScanPattern(userId);
         var tokenTypes = new List<string>();
 
-        // R2-08：异步 SCAN 枚举（不再同步阻塞）
+        // 异步 SCAN 枚举（避免同步阻塞）
         foreach (var server in RedisStoreHelper.GetServers(_redis))
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -291,16 +289,16 @@ return 1";
 
     /// <inheritdoc />
     /// <remarks>
-    /// T-M2-6（R-10）：Cluster 化扫描——遍历全部主节点聚合 SCAN + 删除。
+    /// Cluster 化扫描——遍历全部主节点聚合 SCAN + 删除。
     /// 部分节点失败时已删除的键不可回滚（声明"部分失败"语义）。
-    /// TMA2-02 / D8：键模式改用 TokenKeyBuilder 统一产出。
+    /// 键模式统一经 TokenKeyBuilder 产出。
     /// </remarks>
     public override async Task ClearUserAsync(string userId, CancellationToken cancellationToken = default)
     {
         var pattern = BuildUserScanPattern(userId);
         var db = _redis.GetDatabase();
 
-        // R2-08：异步 SCAN + 分批删除（500/批）
+        // 异步 SCAN + 分批删除（500/批）
         foreach (var server in RedisStoreHelper.GetServers(_redis))
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -327,18 +325,18 @@ return 1";
 
     /// <inheritdoc />
     /// <remarks>
-    /// TMF-01（D10）：凭据变更清库的全用户删除能力——SCAN 全用户键模式
+    /// 凭据变更清库的全用户删除能力——SCAN 全用户键模式
     /// （<see cref="TokenKeyBuilder.AllUsersScanPatternLiteral"/>，通配 userId/tokenType/access|refresh）
     /// 逐键删除，Cluster 化遍历模式与 <see cref="ClearUserAsync"/> 一致。
     /// 与并发写入之间存在固有残余窗口（SCAN 语义）。
-    /// TMR2-P1-2：pattern 经 <see cref="RedisGlobPattern"/> 字面量转义（否则含 <c>:</c>/<c>\</c> 的 appKey 永不命中）。
+    /// pattern 经 <see cref="RedisGlobPattern"/> 字面量转义（否则含 <c>:</c>/<c>\</c> 的 appKey 永不命中）。
     /// </remarks>
     public async Task ClearAllUsersAsync(CancellationToken cancellationToken = default)
     {
         var pattern = RedisGlobPattern.FromLiteralPrefix(TokenKeyBuilder.AllUsersScanPatternLiteral(_keyPrefix));
         var db = _redis.GetDatabase();
 
-        // R2-08：异步 SCAN + 分批删除（500/批）
+        // 异步 SCAN + 分批删除（500/批）
         foreach (var server in RedisStoreHelper.GetServers(_redis))
         {
             cancellationToken.ThrowIfCancellationRequested();

@@ -23,7 +23,7 @@ public class FeishuTokenStore : ITokenStore
     private readonly IMemoryCache _cache;
     private readonly string _appKey;
 
-    // TMF-01：跨实例共享记账（D10）。静态注册表按 KeyPrefix 隔离：
+    // 跨实例共享记账（凭据变更清库需要）。静态注册表按 KeyPrefix 隔离：
     // 任意实例 SetAccessTokenAsync 均注册到共享表，ClearAsync 由此可删除
     // 「任意实例曾写入」的全部键——工厂每次 Create 新实例不再导致清库 no-op。
     // 原子性由 GetOrAdd/TryAdd 保证（注册永不丢失）；重复/过期注册只导致对
@@ -34,11 +34,11 @@ public class FeishuTokenStore : ITokenStore
         => SharedTenantTypes.GetOrAdd(KeyPrefix, _ => new ConcurrentDictionary<string, byte>());
 
     /// <summary>
-    /// TMA-10 / P2-1 修复：缓存 TTL 改为全量 expiresInSeconds（不再提前 10% 过期）。
-    /// 原 EarlyRefreshRatio=0.9 导致缓存失效点 = Expire - 10% = Expire - 720s（飞书 token 7200s），
-    /// 而恢复弃用阈值 = TokenRefreshThreshold（默认 300s），
-    /// 此刻 store 中令牌剩余 约 720s > 300s 但缓存已失效，导致稳态 store 恢复永不命中。
-    /// 改为全量后，缓存失效点 = Expire，此刻 store 中令牌剩余 约 0 &lt; restoreThreshold，正确弃用。
+    /// 缓存 TTL 取全量 expiresInSeconds（不得提前过期）。
+    /// 若按比例提前失效（如 Expire - 10% = Expire - 720s，飞书 token 7200s），
+    /// 缓存失效点早于恢复弃用阈值 TokenRefreshThreshold（默认 300s）——
+    /// store 中令牌剩余仍大于阈值时缓存已失效，导致稳态 store 恢复永不命中。
+    /// 全量 TTL 下缓存失效点 = Expire，此刻剩余约 0 &lt; 阈值，恢复被正确弃用。
     /// </summary>
     private const double CacheTtlRatio = 1.0;
 
@@ -62,7 +62,7 @@ public class FeishuTokenStore : ITokenStore
     /// <param name="appKey">应用唯一标识，用于构建隔离的缓存键</param>
     /// <exception cref="ArgumentNullException">当 cache 为 null 或 appKey 为空时抛出</exception>
     /// <remarks>
-    /// C-2 修复：多应用场景下，不同应用共享同一个 IMemoryCache（Singleton），
+    /// 多应用场景下，不同应用共享同一个 IMemoryCache（Singleton），
     /// 若缓存键不包含 AppKey 维度，后注册应用的令牌会覆盖先注册应用的令牌，导致鉴权失败或越权访问。
     /// </remarks>
     public FeishuTokenStore(IMemoryCache cache, string appKey)
@@ -85,14 +85,14 @@ public class FeishuTokenStore : ITokenStore
     public Task SetAccessTokenAsync(string tokenType, string accessToken, long expiresInSeconds, CancellationToken cancellationToken = default)
     {
         // 输入验证：保留原始 API 契约，对非法 expiry 值（0 或负数）抛出 ArgumentOutOfRangeException。
-        // 注意：M-3 修复引入的 Math.Max(1, ...) 仅用于处理"小正数经 EarlyRefreshRatio 计算后向下取整为 0"的边界场景，
+        // 注意：Math.Max(1, ...) 仅用于处理"小正数经比例计算后向下取整为 0"的边界场景，
         // 不应吞掉对非法输入的校验。
         if (expiresInSeconds <= 0)
             throw new ArgumentOutOfRangeException(nameof(expiresInSeconds), expiresInSeconds, "过期时间必须为正数（秒）");
 
         SharedTypes.TryAdd(tokenType, 0);
         var key = BuildAccessTokenKey(tokenType);
-        // TMA-10：缓存 TTL 使用全量 expiresInSeconds（不再提前 10% 过期）。
+        // 缓存 TTL 使用全量 expiresInSeconds（不提前过期）。
         var bufferedExpiry = TimeSpan.FromSeconds(Math.Max(1, (long)(expiresInSeconds * CacheTtlRatio)));
         _cache.Set(key, accessToken, bufferedExpiry);
         return Task.CompletedTask;
@@ -108,20 +108,18 @@ public class FeishuTokenStore : ITokenStore
 
     /// <inheritdoc />
     /// <remarks>
-    /// TMA-22 修复：refresh token 存储 TTL 由硬编码 30 天改为优先使用编码值中的过期时间，
-    /// 缺失时才回落 30 天。但 IMemoryCache 场景下此方法不接收过期信息，保持 30 天默认。
-    /// Redis 路径在 RedisTokenStore 中处理。
-    /// TMA2-15 / P2-5：Memory 路径保留 30 天默认。仅本进程；过期语义由消费侧校验
-    /// （TMA2-06 的 RefreshTokenExpireTime 校验）。
+    /// refresh token 存储 TTL 优先使用编码值中的过期时间，缺失时回落 30 天。
+    /// IMemoryCache 场景下本方法不接收过期信息，保持 30 天默认（Redis 路径在 RedisTokenStore 中处理）。
+    /// Memory 路径仅覆盖本进程；过期语义由消费侧校验（RefreshTokenExpireTime）。
     /// </remarks>
     public Task SetRefreshTokenAsync(string tokenType, string refreshToken, CancellationToken cancellationToken = default)
     {
-        // TMF-01（验收修复）：refresh 写入同样必须记账。若仅写 refresh 而从未写 access
+        // refresh 写入同样必须记账。若仅写 refresh 而从未写 access
         // （如 PersistUserTokenAsync 在 access 剩余秒数 ≤ 0 时只持久化 refresh），
         // 该 tokenType 不在共享记账中 → ClearAsync 无法删除其 refresh 键（清库盲区）。
         SharedTypes.TryAdd(tokenType, 0);
         var key = BuildRefreshTokenKey(tokenType);
-        // TMA-22: 保持 30 天默认（IMemoryCache 路径无过期信息可用）。
+        // 保持 30 天默认（IMemoryCache 路径无过期信息可用）。
         _cache.Set(key, refreshToken, TimeSpan.FromDays(30));
         return Task.CompletedTask;
     }
@@ -137,10 +135,9 @@ public class FeishuTokenStore : ITokenStore
 
     /// <inheritdoc />
     /// <remarks>
-    /// TMA-16 / P2-3 修复：仅返回本进程已知类型。
-    /// TMF-01：记账改为按 KeyPrefix 的跨实例共享表，语义从「本实例已知」放宽为
-    /// 「本进程本前缀已知」——实例被重建（如配置热更新）后，旧实例写入的 tokenType
-    /// 记账仍然可见，从而保证凭据变更清库（D10）的完整性。
+    /// 返回本进程本 KeyPrefix 下已记账的 tokenType。
+    /// 记账为跨实例共享表：实例被重建（如配置热更新）后，旧实例写入的 tokenType
+    /// 记账仍然可见，从而保证凭据变更清库的完整性。
     /// </remarks>
     public Task<IEnumerable<string>> GetTokenTypesAsync(CancellationToken cancellationToken = default)
     {
@@ -149,7 +146,7 @@ public class FeishuTokenStore : ITokenStore
 
     /// <inheritdoc />
     /// <remarks>
-    /// TMF-01（D10）：清除「任意实例曾写入本 KeyPrefix」的全部租户令牌键。
+    /// 清除「任意实例曾写入本 KeyPrefix」的全部租户令牌键。
     /// 先对共享记账做键快照再逐键删除，最后仅清空表内容（保留外层条目，
     /// 避免并发实例持有的孤儿字典）。与并发写入之间存在固有 TOCTOU 残余窗口
     /// （清库后写入的新令牌不受本次清库影响），与 Redis SCAN 语义一致。
@@ -166,9 +163,8 @@ public class FeishuTokenStore : ITokenStore
         return Task.CompletedTask;
     }
 
-    // TMA2-02 / D8：令牌键构造收敛到 TokenKeyBuilder 统一产出。
+    // 令牌键构造收敛到 TokenKeyBuilder 统一产出，与 Redis 路径一致。
     // 键前缀含 AppKey 维度，确保多应用场景下令牌互不覆盖。
-    // TMF2-05：前缀构造委派 TokenKeyBuilder.BuildKeyPrefix，与 Redis 端逐字节一致。
     private string KeyPrefix => TokenKeyBuilder.BuildKeyPrefix(_appKey);
     private string BuildAccessTokenKey(string tokenType) => TokenKeyBuilder.TenantAccessKey(KeyPrefix, tokenType);
     private string BuildRefreshTokenKey(string tokenType) => TokenKeyBuilder.TenantRefreshKey(KeyPrefix, tokenType);

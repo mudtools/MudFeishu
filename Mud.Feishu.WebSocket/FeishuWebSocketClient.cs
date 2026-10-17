@@ -29,7 +29,7 @@ namespace Mud.Feishu.WebSocket;
 public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDisposable, IDisposable
 {
     private readonly ILogger<FeishuWebSocketClient> _logger;
-    // F4 修复：持有 IOptionsMonitor 而非一次性快照；P2-2 修复后通过 Options 属性真正参与运行期读取。
+    // 持有 IOptionsMonitor 而非一次性快照，经 Options 属性参与运行期读取。
     private readonly IOptionsMonitor<FeishuWebSocketOptions>? _optionsMonitor;
     private readonly FeishuWebSocketOptions _options;
     private readonly IFeishuEventHandlerFactory _eventHandlerFactory;
@@ -41,27 +41,26 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     private readonly EventSubscriptionManager _subscriptionManager;
     private readonly HeartbeatManager _heartbeatManager;
     private readonly ILoggerFactory _loggerFactory;
-    // WS-15 修复（P1-12）：_disposed 改为 int + Interlocked.Exchange 实现原子 check-then-set
+    // _disposed 为 int + Interlocked.Exchange 的原子 check-then-set：
+    // volatile bool 的 check-then-set 非原子，并发调用 Dispose/DisposeAsync 可能双进入释放逻辑。
     private int _disposed = 0;
     private CancellationTokenSource? _cancellationTokenSource;
     private Task? _receiveTask;
     private Task? _heartbeatTask;
     private readonly SemaphoreSlim _connectLock = new(1, 1);
 
-    // ────────────────────────────────────────────────────────────────────────
-    // FU-3（R2 遗留项）：连接生命周期事件的"出锁缓冲"。
+    // 连接生命周期事件的"出锁缓冲"。
     //
     // 问题：ConnectAsync/DisconnectAsync 在持有 _connectLock 期间调用连接管理器，
     // 而连接管理器会在**这两个调用内部**抛出 Connected/Disconnected
     // （CM.ConnectAsync 末尾 SafeInvokeConnected、CM.DisconnectAsync 末尾 SafeInvokeDisconnected）
     // ⇒ 用户回调实际上是在客户端 _connectLock 持有期内被调用的。
-    // 这与《架构与并发模型》§7 的不变量"所有用户事件均在锁外触发"（CM 层 P0-5 已修）矛盾：
+    // 这与"所有用户事件均在锁外触发"的不变量（CM 层 P0-5 已修）矛盾：
     // 回调内同步调用 DisconnectAsync/ConnectAsync（它们都要抢同一把不可重入信号量）会**自锁死锁**。
     //
     // 方案：与 CM 的 pendingClose 同构——在持锁区内只把事件**入队**，出锁后再按原顺序派发。
     // 用有序列表而非两个标志位：必须保留 CM 的"先派发旧连接断开，再派发新连接建立"语义
     // （CM.ConnectAsync 在异常路径上先 SafeInvokeDisconnected 再抛，成功路径上先 Disconnected 再 Connected）。
-    // ────────────────────────────────────────────────────────────────────────
     private readonly object _deferredConnectionEventLock = new();
     private List<(bool IsConnected, WebSocketCloseEventArgs? Args)>? _deferredConnectionEvents;
     private bool _deferringConnectionEvents;
@@ -73,7 +72,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     // F7 修复：统一去重中间件（可选），提供 EventId + SeqID 双重去重。
     private readonly IUnifiedDeduplicationMiddleware? _unifiedDedupMiddleware;
 
-    // R-E1（E-P1-3）：失败事件落盘（可选），透传至 FeishuEventMessageHandler
+    // 失败事件落盘（可选），透传至 FeishuEventMessageHandler
     private readonly IFailedEventStore? _failedEventStore;
 
     // 保存事件处理器委托引用，用于正确的取消订阅，避免内存泄漏
@@ -87,16 +86,15 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     private readonly EventHandler<ClientConfigInfo?> _onPongReceivedBinary;
     private readonly EventHandler _onPongReceivedText;
 
-    // P2-2 修复（WS2-07）：删除 _connectionState 双真源字段（原 0=未连接/1=已连接/2=连接中）。
-    // 该字段只在 ConnectAsync/DisconnectAsync 两处被写、且从不感知"接收循环已退出"，
-    // 因此在"接收循环静默终止但 socket 仍 Open"的僵尸态下恒为 1 ⇒ IsConnected 恒为 true。
-    // 现在"是否处于连接中"由 _connectionManager.State（Connecting/Open/...）唯一表达（I12），
-    // "是否可用"由 连接状态 ∧ 接收循环存活 派生。
+    // "是否处于连接中"由 _connectionManager.State（Connecting/Open/...）唯一表达，
+    // 不使用独立的 _connectionState 字段：该字段只在 ConnectAsync/DisconnectAsync 两处被写、
+    // 且从不感知"接收循环已退出"，在"接收循环静默终止但 socket 仍 Open"的僵尸态下恒为 1
+    // ⇒ IsConnected 恒为 true。"是否可用"由 连接状态 ∧ 接收循环存活 派生。
     //
-    // WS2-02 / I14：接收循环的**原子占位**。0=无在途循环，1=已有循环。
-    // 此前公开 StartReceivingAsync 的幂等守卫读取的是 _receiveTask——而该字段只会被 ConnectAsync
-    // 赋值，启动方自身从不登记，因此守卫在"循环已结束但 socket 仍 Open"与"DisconnectAsync 正把
-    // _receiveTask 置 null"两类窄窗口下失效。现在由本字段承担唯一的"是否已有循环"判定。
+    // 接收循环的**原子占位**。0=无在途循环，1=已有循环。
+    // 公开 StartReceivingAsync 的幂等守卫判定依据必须是本字段而非 _receiveTask——
+    // 后者只会被 ConnectAsync 赋值，启动方自身从不登记，在"循环已结束但 socket 仍 Open"与
+    // "DisconnectAsync 正把 _receiveTask 置 null"两类窄窗口下守卫会失效。
     private int _receiveLoopActive = 0;
 
     /// <summary>
@@ -112,11 +110,10 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     private PingPongMessageHandler? _pingPongHandler;
 
     /// <summary>
-    /// 运行期配置视图（P2-2 修复）。
+    /// 运行期配置视图。
     /// </summary>
     /// <remarks>
-    /// 此前 <c>_optionsMonitor</c> 赋值后从不读取，F4 声称的"热更新"并未落地（属注释与实现不一致）。
-    /// 本属性让<b>确实支持热更新</b>的字段（<see cref="FeishuWebSocketOptions.AppKey"/> 指标维度、
+    /// 让<b>确实支持热更新</b>的字段（<see cref="FeishuWebSocketOptions.AppKey"/> 指标维度、
     /// <see cref="FeishuWebSocketOptions.AuthGateTimeoutMs"/> 认证闸门）在每次读取时取最新值。
     /// <para>
     /// <b>口径说明</b>：其余配置项（心跳间隔、连接超时、消息大小限制、并发上界、去重配置等）已在构造期
@@ -131,9 +128,8 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
 
     /// <inheritdoc/>
     /// <remarks>
-    /// P2-2 修复（WS2-07 / I12）：原实现为 <c>_connectionState == 1 &amp;&amp; _connectionManager.IsConnected</c>，
-    /// 其中 <c>_connectionState</c> 从不感知"接收循环已退出"，在僵尸态下恒为 1。
-    /// 现在收紧为"**连接仍为 Open 且接收循环仍在运行**"——即"连接可被用来收事件"。
+    /// IsConnected 判定为"**连接仍为 Open 且接收循环仍在运行**"——即"连接可被用来收事件"，
+    /// 不依赖独立的连接状态字段（该字段不感知"接收循环已退出"，僵尸态下恒为已连接）。
     /// <para>
     /// 副作用（属语义修正）：<see cref="ConnectAsync(WsEndpointResult, CancellationToken)"/> 在握手完成、
     /// 接收循环启动之前的极短窗口内 <see cref="IsConnected"/> 为 <c>false</c>；
@@ -279,12 +275,12 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// <param name="seqIdDeduplicator">SeqID去重服务（可选）</param>
     /// <param name="sessionManager">会话管理器（可选）</param>
     /// <param name="sequenceValidator">消息序号验证器（可选）</param>
-    /// <param name="concurrencyService">并发控制服务（可选，WS-03 修复引入）</param>
-    /// <param name="optionsMonitor">WebSocket 配置选项监控器（可选，F4 修复引入，支持热更新）</param>
-    /// <param name="unifiedDedupMiddleware">统一去重中间件（可选，F7 修复引入）</param>
-    /// <param name="hostEnvironment">宿主环境（可选，R5.2.7/X5 生产加固引入）。由 DI 自动解析；用于在生产环境把证书安全旁路告警升级为 LogError</param>
+    /// <param name="concurrencyService">并发控制服务（可选）</param>
+    /// <param name="optionsMonitor">WebSocket 配置选项监控器（可选，支持热更新）</param>
+    /// <param name="unifiedDedupMiddleware">统一去重中间件（可选）</param>
+    /// <param name="hostEnvironment">宿主环境（可选）。由 DI 自动解析；用于在生产环境把证书安全旁路告警升级为 LogError</param>
     /// <remarks>
-    /// F4 修复：优先使用 <paramref name="optionsMonitor"/>；为兼容存量调用方，
+    /// 优先使用 <paramref name="optionsMonitor"/>；为兼容存量调用方，
     /// 当其为 null 时回退到 <paramref name="options"/> 快照。
     /// </remarks>
 #if NET6_0_OR_GREATER
@@ -324,9 +320,9 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         _failedEventStore = failedEventStore;
 
         // 初始化事件处理器委托，保存引用以便正确取消订阅
-        // WS-10 修复（P1-7/P1-2）：此前 _onConnected 使用 Task.Run fire-and-forget
-        // 调用 ResetStateOnReconnectAsync，与首帧处理存在竞态（重置可能晚于首条消息处理）。
-        // 现在改为纯事件转发，状态重置移到 ConnectAsync 中在启动 _receiveTask 之前 await。
+        // _onConnected 为纯事件转发（不得使用 Task.Run fire-and-forget 调用
+        // ResetStateOnReconnectAsync——那会与首帧处理存在竞态，重置可能晚于首条消息处理）；
+        // 状态重置在 ConnectAsync 中于启动 _receiveTask 之前 await。
         _onConnected = (s, e) => DispatchConnectionEvent(isConnected: true, args: null);
         _onDisconnected = (s, e) => DispatchConnectionEvent(isConnected: false, args: e);
         _onAuthenticated = (s, e) =>
@@ -434,14 +430,12 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
             },
             _options.AppKey);
 
-        // WS2-12：options 参数已删除（原参数只赋值给一个从不读取的私有字段）
+        // options 参数已删除（原参数只赋值给一个从不读取的私有字段）
         var heartbeatHandler = new HeartbeatMessageHandler(_loggerFactory.CreateLogger<HeartbeatMessageHandler>());
 
-        // P1-5 修复：此前第三个参数（事件级去重器）恒为 null，
-        // 导致 EventDeduplication 配置（默认 InMemory）在 WebSocket 路径上完全失效，
-        // 服务端重发事件必然重复消费。
-        // WS-21 修复（P2-10）：删除未使用的 seqIdDeduplicator 参数。
-        // F7 修复：传入统一去重中间件，由 FeishuEventMessageHandler 优先使用双重去重路径。
+        // 事件级去重器必须实际传入（恒为 null 会使 EventDeduplication 配置
+        // 在 WebSocket 路径上完全失效，服务端重发事件必然重复消费）；
+        // 同时传入统一去重中间件，由 FeishuEventMessageHandler 优先使用双重去重路径。
         var eventHandler = new FeishuEventMessageHandler(
             _loggerFactory.CreateLogger<FeishuEventMessageHandler>(),
             _eventHandlerFactory,
@@ -492,14 +486,14 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// <param name="cancellationToken">
     /// <b>仅约束建连阶段</b>（TCP/WS 握手 + 后续认证）。该令牌<b>不构成连接生命周期</b>——
     /// 连接建立后再取消它不会中断接收循环或心跳；终止连接请调用
-    /// <see cref="DisconnectAsync"/> / <see cref="DisposeAsync"/>（架构不变量 I15）。
+    /// <see cref="DisconnectAsync"/> / <see cref="DisposeAsync"/>（架构不变量）。
     /// </param>
     /// <returns>连接任务</returns>
     /// <remarks>
-    /// <b>令牌契约（D2 / I15，行为变更）</b>：接收循环与心跳使用客户端<b>自持</b>的
-    /// <see cref="CancellationTokenSource"/>，不再与 <paramref name="cancellationToken"/> 链接。
-    /// 此前把两者链接导致"调用方的短命令牌取消 → socket 仍为 Open 但不再读帧、无任何断线通知、
-    /// 健康检查仍报 Healthy"的僵尸连接（P0-1 的触发路径之一）。
+    /// <b>令牌契约（行为变更）</b>：接收循环与心跳使用客户端<b>自持</b>的
+    /// <see cref="CancellationTokenSource"/>，不再与 <paramref name="cancellationToken"/> 链接——
+    /// 链接会导致"调用方的短命令牌取消 → socket 仍为 Open 但不再读帧、无任何断线通知、
+    /// 健康检查仍报 Healthy"的僵尸连接。
     /// </remarks>
 #if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
@@ -527,8 +521,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
             // 取消并释放旧的 CTS，等待旧的后台任务退出
             await StopBackgroundTasksAsync();
 
-            // P2-2（WS2-07）：不再写 _connectionState="连接中"。
-            // "连接中"由 _connectionManager.State（WebSocketState.Connecting）唯一表达。
+            // 不另写"连接中"状态——"连接中"由 _connectionManager.State（WebSocketState.Connecting）唯一表达。
 
             await _connectionManager.ConnectAsync(endpoint.Url, cancellationToken);
 
@@ -543,17 +536,17 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                 _logger.LogWarning("无法从 WebSocket URL 提取 service_id，心跳将使用默认值 0");
             }
 
-            // WS-10 修复（P1-2）：在启动 _receiveTask 之前 await ResetStateOnReconnectAsync，
+            // 在启动 _receiveTask 之前 await ResetStateOnReconnectAsync，
             // 确保重连后的首条消息不会被旧连接的残留状态污染。
             // 首次连接时 ResetStateOnReconnectAsync 是幂等的（各组件初始状态即清零）。
             await ResetStateOnReconnectAsync();
 
-            // I15（D2）行为变更：连接生命周期使用客户端**自持**的 CTS，不再链接调用方令牌。
+            // 连接生命周期使用客户端**自持**的 CTS，不链接调用方令牌；
             // 调用方令牌只在此前的握手/（上层）认证阶段生效。
             _cancellationTokenSource = new CancellationTokenSource();
             var token = _cancellationTokenSource.Token;
 
-            // I14：循环任务由启动方登记（含原子占位）
+            // 循环任务由启动方登记（含原子占位）
             StartReceiveLoop(token);
 
             // 启动心跳
@@ -564,8 +557,8 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         catch (Exception ex)
         {
             connectActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-            // P2-2：握手失败时无状态需要复位——_connectionManager.State 自身反映
-            // None/Closed/Aborted，"连接中"语义不再由客户端另行维护（原实现会让状态永久停在"连接中"）。
+            // 握手失败时无状态需要复位——_connectionManager.State 自身反映
+            // None/Closed/Aborted（客户端若另行维护"连接中"，失败后会永久停在"连接中"）。
             throw;
         }
         finally
@@ -578,7 +571,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     }
 
     /// <summary>
-    /// 启动接收循环并登记到 <c>_receiveTask</c>（I14）。
+    /// 启动接收循环并登记到 <c>_receiveTask</c>。
     /// </summary>
     /// <param name="token">连接生命周期令牌（客户端自持）</param>
     /// <remarks>
@@ -603,8 +596,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// </summary>
     private async Task StopBackgroundTasksAsync()
     {
-        // ────────────────────────────────────────────────────────────────────
-        // I13 顺序约束：**先结束连接（占位 + 关闭握手），再取消后台任务**。
+        // 顺序约束：**先结束连接（占位 + 关闭握手），再取消后台任务**。
         //
         // 若颠倒（先取消接收循环令牌）会出现两类问题：
         //  ① 归属错误：接收循环因取消退出时 socket 仍为 Open，会按"接收循环被取消"补发
@@ -616,7 +608,6 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         // 由 CM 完成"占位 + 关闭"还带来一个确定性收益：事件归属与描述固定为
         // "客户端主动断开连接 / IsServerInitiated=false / NormalClosure"。
         // 连接不存在或已关闭时 CM.DisconnectAsync 直接返回（幂等，无事件）。
-        // ────────────────────────────────────────────────────────────────────
         try
         {
             await _connectionManager.DisconnectAsync(CancellationToken.None).ConfigureAwait(false);
@@ -677,7 +668,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
             _heartbeatTask = null;
         }
 
-        // I14 兜底：接收循环的 finally 会自行复位占位，但 `Task.Run(delegate, token)` 在
+        // 兜底：接收循环的 finally 会自行复位占位，但 `Task.Run(delegate, token)` 在
         // 令牌**已取消**时可能根本不执行委托（任务直接进入 Canceled），此时占位将永久停留在 1
         // ⇒ 后续所有"启动接收循环"的入口都会被幂等守卫拒绝（服务永久不再收帧）。
         // 本方法是唯一的收尾点（ConnectAsync / DisconnectAsync / Dispose 都经过它），在此无条件复位。
@@ -726,7 +717,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         {
             await StopBackgroundTasksAsync();
             await _connectionManager.DisconnectAsync(cancellationToken);
-            // P2-2（WS2-07）：不再维护 _connectionState —— IsConnected 由
+            // 不另维护连接状态字段 —— IsConnected 由
             // "连接仍为 Open ∧ 接收循环存活" 派生，StopBackgroundTasksAsync 已使后者为假。
         }
         finally
@@ -750,9 +741,9 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// </summary>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>表示异步接收操作的任务</returns>
-    /// <remarks>P2-8 修复：补齐默认参数，与 <see cref="IFeishuWebSocketClient"/> 契约保持一致。</remarks>
+    /// <remarks>默认参数与 <see cref="IFeishuWebSocketClient"/> 契约保持一致。</remarks>
     /// <remarks>
-    /// <b>WS2-02 收口（P1-1 / R1 WS-16 未闭环 + I14）</b>：接收循环由
+    /// <b>接收循环收口</b>：接收循环由
     /// <see cref="ConnectAsync(WsEndpointResult, CancellationToken)"/> 统一管理，本方法仅作兼容保留。
     /// <list type="bullet">
     /// <item>未连接时抛 <see cref="InvalidOperationException"/>（对齐
@@ -772,7 +763,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     [Obsolete("接收循环由 ConnectAsync 统一管理，无需显式调用。若需重连请调用 IFeishuWebSocketManager.ReconnectAsync。")]
     public async Task StartReceivingAsync(CancellationToken cancellationToken = default)
     {
-        // I14：原子占位 —— 抢占失败即表示已有循环在途，直接返回（不再读取 _receiveTask）
+        // 原子占位 —— 抢占失败即表示已有循环在途，直接返回（不读取 _receiveTask）
         if (Interlocked.CompareExchange(ref _receiveLoopActive, 1, 0) != 0)
         {
             _logger.LogWarning("StartReceivingAsync 已被调用且接收循环仍在运行，跳过重复调用（接收循环由 ConnectAsync 统一管理）");
@@ -787,7 +778,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                     "WebSocket 未连接，无法启动接收循环。接收循环由 ConnectAsync 统一管理，无需显式调用。");
             }
 
-            // I14 的另一半：本路径同样必须把循环任务登记到 _receiveTask（停机等待与 IsConnected 依赖它）。
+            // 本路径同样必须把循环任务登记到 _receiveTask（停机等待与 IsConnected 依赖它）。
             var loopTask = StartReceivingAsyncInternal(cancellationToken);
             _receiveTask = loopTask;
             await loopTask;
@@ -945,7 +936,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         }
         finally
         {
-            // I14：任何退出路径（含正常取消、异常、socket 关闭）都必须释放原子占位，
+            // 任何退出路径（含正常取消、异常、socket 关闭）都必须释放原子占位，
             // 否则 IsConnected 会把它当作"循环仍在运行"，后续启动入口也会被幂等守卫永久拒绝。
             Volatile.Write(ref _receiveLoopActive, 0);
         }
@@ -1000,12 +991,12 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                     {
                         try
                         {
-                            // WS2-08（P1-6）修复：MessageReceived 改为在"取得并发租约之后、任务体内"派发。
-                            // 此前在接收循环线程上同步调用订阅者：慢订阅者会**直接阻塞整条接收管道**
-                            // （不读帧、不回 ACK、不推进心跳），与《架构与并发模型》§6"接收路径承担背压"
-                            // 的语义相矛盾——背压应向**上游 TCP** 施加，而不是被下游回调反噬。
+                            // MessageReceived 在"取得并发租约之后、任务体内"派发：
+                            // 在接收循环线程上同步调用订阅者会让慢订阅者**直接阻塞整条接收管道**
+                            // （不读帧、不回 ACK、不推进心跳），与"接收路径承担背压"的语义相矛盾——
+                            // 背压应向**上游 TCP** 施加，而不是被下游回调反噬。
                             //
-                            // 行为变更（已登记 CHANGELOG/Readme）：该事件由"接收线程串行、与帧序一致"
+                            // 行为变更：该事件由"接收线程串行、与帧序一致"
                             // 变为"可能并发、可能乱序"，定位为**观测钩子**（Logging/Metrics）。
                             // 有顺序或阻塞需求的订阅者应改用 IMessageHandler（经 MessageRouter，
                             // 受 MessageHandlerTimeoutMs 保护）。
@@ -1072,7 +1063,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                     return;
                 }
 
-                // P2-12：池化副本的"所有权跟踪"变量（须声明在 try 之外，finally 才能兜底归还）
+                // 池化副本的"所有权跟踪"变量（须声明在 try 之外，finally 才能兜底归还）
                 byte[]? pooledBuffer = null;
                 try
                 {
@@ -1080,7 +1071,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                     // 直接把 buffer.Array 传出去会让处理线程与下一次 ReceiveAsync 形成数据竞争，
                     // 造成 protobuf 帧内容被覆写（表现为随机解析失败、SeqID 错乱、字段张冠李戴）。
                     // 必须在返回前持有本次消息的私有副本。
-                    // P2-12 修复：副本改由 ArrayPool 提供，避免"每帧一次"的 Gen0/LOH 分配
+                    // 副本由 ArrayPool 提供，避免"每帧一次"的 Gen0/LOH 分配
                     // （大帧上限 10MB，高频投递下会显著放大分配压力）。
                     // 注意：Rent 返回的数组长度可能大于请求数量（池按 2 的幂分桶），
                     // 因此必须以 (buffer, 0, count) 三元组传递，绝不能使用 buffer.Length。
@@ -1101,9 +1092,9 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                     {
                         try
                         {
-                            // P2-10 修复：认证闸门判断移入任务体。此前在接收循环上轮询等待（最长 AuthGateTimeoutMs）
+                            // 认证闸门判断在任务体内执行：在接收循环上轮询等待（最长 AuthGateTimeoutMs）
                             // 会造成队头阻塞——后续帧（含 Pong 控制帧与认证响应）全部被推迟。
-                            // 默认 AuthGateTimeoutMs=0 时该分支不执行（保持历史行为）。
+                            // 默认 AuthGateTimeoutMs=0 时该分支不执行。
                             var authGateTimeoutMs = Options.AuthGateTimeoutMs;
                             if (authGateTimeoutMs > 0 && !_authManager.IsAuthenticated)
                             {
@@ -1149,7 +1140,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                         {
                             ownedBinaryLease?.Dispose();
 
-                            // P2-12：副本所有权随任务结束归还池（空帧不归还）
+                            // 副本所有权随任务结束归还池（空帧不归还）
                             if (frameBuffer.Length > 0)
                             {
                                 ArrayPool<byte>.Shared.Return(frameBuffer);
@@ -1164,7 +1155,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                 {
                     binaryLease?.Dispose();   // 派发失败兜底
 
-                    // P2-12：派发失败（未移交所有权）时归还池化副本，避免池泄漏
+                    // 派发失败（未移交所有权）时归还池化副本，避免池泄漏
                     if (pooledBuffer != null && pooledBuffer.Length > 0)
                     {
                         ArrayPool<byte>.Shared.Return(pooledBuffer);
@@ -1228,8 +1219,8 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// <remarks>
     /// 该方法是"背压闸门"：等待期间接收循环处于挂起状态，从而把反压传递到 TCP 层，使"已排队任务/已排队缓冲"
     /// 同样受 <see cref="FeishuWebSocketOptions.MaxConcurrentHandlers"/> 约束。
-    /// 未注入 <see cref="FeishuWebSocketConcurrencyService"/> 时直接返回 <c>(true, null)</c>，行为与改造前一致。
-    /// <para>I10：正因为接收循环会在背压时暂停，消息处理器<b>不得</b>反向依赖接收循环的推进
+    /// 未注入 <see cref="FeishuWebSocketConcurrencyService"/> 时直接返回 <c>(true, null)</c>（不做并发记账）。
+    /// <para>正因为接收循环会在背压时暂停，消息处理器<b>不得</b>反向依赖接收循环的推进
     /// （例如在同一 socket 上做请求-响应式等待），否则构成循环等待。</para>
     /// </remarks>
     private async Task<(bool CanProcess, IDisposable? Lease)> AcquireConcurrencyLeaseAsync(CancellationToken cancellationToken)
@@ -1264,9 +1255,8 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// </remarks>
     private async Task<bool> WaitForAuthenticationAsync(int timeoutMs, CancellationToken cancellationToken)
     {
-        // WS-27 修复（P2-18）：Environment.TickCount 是 int，运行 ~24.8 天后溢出变负数，
-        // 导致 deadline 计算错误。net6+ 使用 Environment.TickCount64（long），
-        // ns2.0 退化为 Stopwatch（兼容性最佳）。
+        // 不得使用 Environment.TickCount（int，运行 ~24.8 天后溢出变负数，导致 deadline 计算错误）：
+        // net6+ 使用 Environment.TickCount64（long），ns2.0 退化为 Stopwatch（兼容性最佳）。
 #if NET6_0_OR_GREATER
         var deadline = Environment.TickCount64 + timeoutMs;
         while (!_authManager.IsAuthenticated)
@@ -1359,8 +1349,8 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// <inheritdoc/>
     /// </summary>
     /// <remarks>
-    /// WS-08 修复（P1-3）：同步释放路径补齐对在途后台任务的尽力等待（2s 超时）
-    /// 和链接 CTS 的释放。需确定性停止请调用 <see cref="DisposeAsync"/>。
+    /// 同步释放路径对在途后台任务做尽力等待（2s 超时）并释放 CTS。
+    /// 需确定性停止请调用 <see cref="DisposeAsync"/>。
     /// </remarks>
     public void Dispose()
     {
@@ -1371,7 +1361,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         {
             _cancellationTokenSource?.Cancel();
 
-            // WS-08：同步路径尽力等待在途后台任务退出（2s 超时）
+            // 同步路径尽力等待在途后台任务退出（2s 超时）
             var tasks = new List<Task>();
             if (_receiveTask != null) tasks.Add(_receiveTask);
             if (_heartbeatTask != null) tasks.Add(_heartbeatTask);
@@ -1387,12 +1377,12 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                 }
             }
 
-            // WS-08：释放链接 CTS 并置 null
+            // 释放 CTS 并置 null
             _cancellationTokenSource?.Dispose();
             _cancellationTokenSource = null;
             _receiveTask = null;
             _heartbeatTask = null;
-            // I14：同步释放路径不经 StopBackgroundTasksAsync，占位需显式复位
+            // 同步释放路径不经 StopBackgroundTasksAsync，占位需显式复位
             Volatile.Write(ref _receiveLoopActive, 0);
 
             UnsubscribeFromComponentEvents();

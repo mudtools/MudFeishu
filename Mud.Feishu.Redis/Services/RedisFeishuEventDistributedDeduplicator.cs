@@ -9,10 +9,10 @@ using Mud.Feishu.Abstractions.Configuration;
 using StackExchange.Redis;
 using System.Threading;
 
-// ADR-2/ADR-6 修复标记：状态机 v2 三脚本化 + 服务端时钟 + FeishuRedisException
+// 状态机 v2：三脚本化 + 服务端时钟 + FeishuRedisException
 
 
-#pragma warning disable CS0618 // R5/X6: Obsolete dual-read fallback base — intentionally references DeduplicationOptions/EventDeduplicationOptions
+#pragma warning disable CS0618 // Obsolete dual-read fallback base — intentionally references DeduplicationOptions/EventDeduplicationOptions
 namespace Mud.Feishu.Redis.Services;
 
 /// <summary>
@@ -26,10 +26,9 @@ namespace Mud.Feishu.Redis.Services;
 /// 2. 处理中超时恢复
 /// 3. 异常后回滚
 /// </remarks>
-// R2-27：声明 IDisposable（类内已有 Dispose() 方法，但此前**未在基列表声明接口**——
-// MS.DI 按**实现类型**判断可释放性，缺少 IDisposable 会让 `ServiceProvider.Dispose()`（同步）
-// 抛「type only implements IAsyncDisposable. Use DisposeAsync to dispose the container.」，
-// 即 R-14 声称的修复在 DI 路径上并未生效。
+// 必须显式声明 IDisposable：MS.DI 按**实现类型**判断可释放性，仅实现 IAsyncDisposable 时
+// `ServiceProvider.Dispose()`（同步）会抛
+// 「type only implements IAsyncDisposable. Use DisposeAsync to dispose the container.」。
 public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator, IAsyncDisposable, IDisposable
 {
     private readonly ILogger<RedisFeishuEventDistributedDeduplicator>? _logger;
@@ -46,17 +45,17 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
     private const string ProcessingStatus = "processing";
     private const string CompletedStatus = "completed";
 
-    // ADR-2：状态机 v2 — 三个独立 Lua 脚本，统一使用服务端 redis.call('TIME') 消除时钟漂移（R-15）
+    // 状态机 v2 — 三个独立 Lua 脚本，统一使用服务端 redis.call('TIME') 消除时钟漂移
     // 返回值：0=Success, 1=Duplicate(Completed), 2=Duplicate(Processing), 3=TimeoutRecoverable
     private const string TryMarkAsProcessingLuaScript = @"
         local key = KEYS[1]
         local processingTimeoutSeconds = ARGV[1]
         local ttlSeconds = ARGV[2]
 
-        -- R-15：使用服务端时钟，消除实例间时钟漂移
+        -- 使用服务端时钟，消除实例间时钟漂移
         local now = tonumber(redis.call('TIME')[1])
 
-        -- R-04：TTL 非正 → 显式失败而非静默删键
+        -- TTL 非正 → 显式失败而非静默删键
         if tonumber(ttlSeconds) <= 0 then
             return redis.error_reply('ttl must be positive')
         end
@@ -80,13 +79,13 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
             if status == 'processing' then
                 local ts = tonumber(timestamp)
                 if ts == nil then
-                    -- R2-13：timestamp 缺失或非数字（历史 ISO 存量键 / 外部误写）→ 视为「仍在处理中」，
-                    -- 不抢占、不重复（fail-safe）。此前 now - nil 会抛 Lua 运行时错误，
+                    -- timestamp 缺失或非数字（历史 ISO 存量键 / 外部误写）→ 视为「仍在处理中」，
+                    -- 不抢占、不重复（fail-safe）。否则 now - nil 会抛 Lua 运行时错误，
                     -- 被包装为 Server 类不可降级异常，使该 eventId 的请求恒失败。
                     return 2
                 end
                 if now - ts > tonumber(processingTimeoutSeconds) then
-                    -- 超时可恢复：重新标记为 processing（T-M2-2：刷新 timeout 字段）
+                    -- 超时可恢复：重新标记为 processing（刷新 timeout 字段）
                     redis.call('HSET', key, 'status', 'processing', 'timestamp', now, 'timeout', processingTimeoutSeconds)
                     redis.call('EXPIRE', key, tonumber(ttlSeconds))
                     return 3
@@ -95,14 +94,14 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
             end
         end
 
-        -- 新标记为 processing（ADR-2/T-M2-2：同时写入 timeout 字段，供 GetStatusAsync 判定）
+        -- 新标记为 processing（同时写入 timeout 字段，供 GetStatusAsync 判定）
         redis.call('HSET', key, 'status', 'processing', 'timestamp', now, 'timeout', processingTimeoutSeconds)
         redis.call('EXPIRE', key, tonumber(ttlSeconds))
         return 0
         ";
 
-    // ADR-2 / R-05：MarkAsCompleted — 键不存在则不创建，返回 0 由 C# 端记 Warning
-    // WHF-11（R-15 完全兑现）：时间戳改用脚本内 redis.call('TIME')（与 TryMark 脚本一致），
+    // MarkAsCompleted — 键不存在则不创建，返回 0 由 C# 端记 Warning
+    // 时间戳取自脚本内 redis.call('TIME')（与 TryMark 脚本一致），
     // 消除 C# 端 DateTimeOffset.UtcNow 与 Redis 服务端时钟漂移
     private const string MarkAsCompletedLuaScript = @"
         local key = KEYS[1]
@@ -118,7 +117,7 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
         return 1
         ";
 
-    // ADR-2 / R-06：RollbackProcessing — 读-改-删原子化，竞态下不会误删 completed
+    // RollbackProcessing — 读-改-删原子化，竞态下不会误删 completed
     private const string RollbackProcessingLuaScript = @"
         local key = KEYS[1]
 
@@ -190,12 +189,12 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
             return DeduplicationResult.Success(eventId);
         }
 
-        // R-04：TTL 非正直接抛异常，不走 Lua（双保险）
+        // TTL 非正直接抛异常，不走 Lua（双保险）
         var actualTtl = ttl ?? _defaultCacheExpiration;
         if (actualTtl <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(ttl), "TTL 必须为正值");
 
-        // R2-21：耗时计时（无分配），成功/失败两条路径共用同一时间戳
+        // 耗时计时（无分配），成功/失败两条路径共用同一时间戳
         var startTimestamp = RedisMetricsHelper.Begin();
 
         try
@@ -212,7 +211,7 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
                 new RedisValue[] { processingTimeoutSeconds, ttlSeconds }
             );
 
-            // R2-21：去重决策可观测（成功/重复/超时可恢复）
+            // 去重决策可观测（成功/重复/超时可恢复）
             RedisMetricsHelper.Record(
                 FeishuMetrics.RedisCommands.TryMarkProcessing,
                 FeishuMetrics.DedupTypes.Event,
@@ -224,7 +223,7 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
                 },
                 startTimestamp);
 
-            // R-17：未知返回值 fail-closed
+            // 未知返回值 fail-closed
             return result switch
             {
                 0 => LogAndReturnSuccess(eventId, appKey, actualTtl),
@@ -261,7 +260,7 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
     }
 
     /// <summary>
-    /// 上报一次事件去重失败（R2-21）。
+    /// 上报一次事件去重失败。
     /// </summary>
     private static void RecordFailure(string command, FeishuRedisFailureKind kind, long startTimestamp)
         => RedisMetricsHelper.Record(command, FeishuMetrics.DedupTypes.Event, RedisMetricsHelper.FromFailureKind(kind), startTimestamp);
@@ -301,7 +300,7 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
             var redisKey = GetRedisKey(eventId, appKey);
             var ttlSeconds = Math.Max(1, (long)_defaultCacheExpiration.TotalSeconds);
 
-            // ADR-2 / R-05 / WHF-11：使用 Lua 脚本（键不存在则不创建），时间戳由服务端时钟写入
+            // 使用 Lua 脚本（键不存在则不创建），时间戳由服务端时钟写入
             var result = (long)await _database.ScriptEvaluateAsync(
                 MarkAsCompletedLuaScript,
                 new RedisKey[] { redisKey },
@@ -310,7 +309,7 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
 
             if (result == 0)
             {
-                _logger?.LogWarning("事件 {EventId} 的去重键不存在，MarkAsCompleted 未创建新键（R-05 修复行为）(AppKey: {AppKey})",
+                _logger?.LogWarning("事件 {EventId} 的去重键不存在，MarkAsCompleted 未创建新键 (AppKey: {AppKey})",
                     eventId, appKey ?? "default");
             }
             else
@@ -318,7 +317,7 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
                 _logger?.LogDebug("事件 {EventId} 标记为已完成 (AppKey: {AppKey})", eventId, appKey ?? "default");
             }
 
-            // R2-21：key_missing 与 success 分列——可量化 R-05 行为（对缺失键不再创建永久记录）
+            // key_missing 与 success 分列——可量化「缺失键不创建永久记录」的行为
             RecordFailureOutcome(
                 FeishuMetrics.RedisCommands.MarkCompleted,
                 result == 0 ? FeishuMetrics.RedisOutcomes.KeyMissing : FeishuMetrics.RedisOutcomes.Success,
@@ -351,7 +350,7 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
     }
 
     /// <summary>
-    /// 上报一次非失败结果（success / duplicate / key_missing 等）（R2-21）。
+    /// 上报一次非失败结果（success / duplicate / key_missing 等）。
     /// </summary>
     private static void RecordFailureOutcome(string command, string outcome, long startTimestamp)
         => RedisMetricsHelper.Record(command, FeishuMetrics.DedupTypes.Event, outcome, startTimestamp);
@@ -370,7 +369,7 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
             cancellationToken.ThrowIfCancellationRequested();
             var redisKey = GetRedisKey(eventId, appKey);
 
-            // ADR-2 / R-06：使用 Lua 脚本原子化，竞态下不会误删 completed
+            // 使用 Lua 脚本原子化，竞态下不会误删 completed
             var result = (long)await _database.ScriptEvaluateAsync(
                 RollbackProcessingLuaScript,
                 new RedisKey[] { redisKey },
@@ -386,7 +385,7 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
                 _logger?.LogDebug("事件 {EventId} 状态非 processing，未回滚 (AppKey: {AppKey})", eventId, appKey ?? "default");
             }
 
-            // R2-21：回滚效果可观测（rolled_back=1 / not_processing=0）
+            // 回滚效果可观测（rolled_back=1 / not_processing=0）
             RecordFailureOutcome(
                 FeishuMetrics.RedisCommands.RollbackProcessing,
                 result == 1 ? FeishuMetrics.RedisOutcomes.Success : FeishuMetrics.RedisOutcomes.KeyMissing,
@@ -465,11 +464,11 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
             if (status == ProcessingStatus)
             {
                 var timestampStr = timestampEntry.Value.ToString();
-                // R-15：时间戳由 Lua 脚本写入服务端 Unix 秒，此处读取也用服务端对齐的 UTC
+                // 时间戳由 Lua 脚本写入服务端 Unix 秒，此处读取也用服务端对齐的 UTC
                 var timestamp = TryParseTimestamp(timestampStr);
                 if (timestamp.HasValue)
                 {
-                    // T-M2-2：优先读取 Hash 中的 timeout 字段（per-call），缺省回落默认值
+                    // 优先读取 Hash 中的 timeout 字段（per-call），缺省回落默认值
                     var effectiveTimeout = _defaultProcessingTimeout;
                     if (timeoutEntry.Value.HasValue)
                     {
@@ -644,10 +643,10 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
         try
         {
             var totalCount = 0L;
-            // R-01 护栏：空前缀在此抛出；R2-02：模式统一经 RedisKeyBuilder.Pattern 产出（与键同源）
+            // 护栏：空前缀在此抛出；模式统一经 RedisKeyBuilder.Pattern 产出（与键同源）
             var pattern = RedisKeyBuilder.Pattern(_keyPrefix);
 
-            // R2-12：端点策略统一为 RedisStoreHelper.GetServers（跳过不可达/副本节点，全不可用时回退首节点），
+            // 端点策略统一为 RedisStoreHelper.GetServers（跳过不可达/副本节点，全不可用时回退首节点），
             // 避免"某端点异常 → 外层 catch 吞掉 → 计数整体归 0"的失真。
             foreach (var redisServer in RedisStoreHelper.GetServers(_redis))
             {
@@ -658,7 +657,7 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
             }
 
             _logger?.LogDebug("当前缓存中的事件数量: {Count}", totalCount);
-            // R2-21：SCAN 计数可观测（键空间有界性验证）
+            // SCAN 计数可观测（键空间有界性验证）
             RedisMetricsHelper.RecordScan(FeishuMetrics.RedisCommands.GetCachedCount, totalCount, deleted: false);
             return totalCount;
         }
@@ -670,7 +669,7 @@ public class RedisFeishuEventDistributedDeduplicator : IFeishuEventDeduplicator,
     }
 
     /// <summary>
-    /// 释放资源（R-14：补 IDisposable，同步释放容器不抛 InvalidOperationException）
+    /// 释放资源（同步释放容器不抛 InvalidOperationException）
     /// </summary>
     public void Dispose()
     {

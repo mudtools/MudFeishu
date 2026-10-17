@@ -18,8 +18,8 @@ namespace Mud.Feishu.Abstractions.Configuration;
 /// 旧键（RedisOptions.Event*/WebSocket:EventDeduplication 等）→ Consts 默认。
 /// </para>
 /// <para>
-/// 多租户必须为 Event/Nonce/SeqId 配置互异的 KeyPrefix（TMA2-20）。本类型不构造
-/// Redis 键或令牌键，键布局仍由 Redis 包 <c>RedisKeyBuilder</c> 与 D8
+/// 多租户必须为 Event/Nonce/SeqId 配置互异的 KeyPrefix。本类型不构造
+/// Redis 键或令牌键，键布局仍由 Redis 包 <c>RedisKeyBuilder</c> 与
 /// <c>TokenKeyBuilder</c> 负责。
 /// </para>
 /// <para>
@@ -77,11 +77,12 @@ public class FeishuDeduplicationOptions
     /// </summary>
     /// <remarks>
     /// <para>
-    /// R5/X11：此前是 <c>public set</c>。用户在代码里手写 <c>IsConfiguredFromConfiguration = true</c>
-    /// 会让 SDK 在**没有任何新节字段**的情况下断定统一节有效，从而绕过「新节不存在 → 回退旧键」的双读逻辑。
+    /// 本属性为 <c>internal set</c>：若为 <c>public set</c>，用户在代码里手写
+    /// <c>IsConfiguredFromConfiguration = true</c> 会让 SDK 在**没有任何新节字段**的情况下
+    /// 断定统一节有效，从而绕过「新节不存在 → 回退旧键」的双读逻辑。
     /// </para>
     /// <para>
-    /// 改为 <c>internal set</c> 后：① 外部只读，写入点仅存在于同程序集的绑定器
+    /// <c>internal set</c> 语义：① 外部只读，写入点仅存在于同程序集的绑定器
     /// （<c>FeishuDeduplicationServiceCollectionExtensions</c>）；
     /// ② 反射式/源生成式 ConfigurationBinder 只写**公开** setter，因此配置 JSON 里的
     /// <c>FeishuDeduplication:IsConfiguredFromConfiguration=true</c> 也无法再伪造节存在性。

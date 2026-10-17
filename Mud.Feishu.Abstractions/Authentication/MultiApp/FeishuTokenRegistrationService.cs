@@ -17,7 +17,7 @@ namespace Mud.Feishu.Abstractions;
 /// </summary>
 /// <remarks>
 /// <para>
-/// TMA-08 / P1-7 修复（D6 契约）：
+/// 启动期行为：
 /// <list type="bullet">
 /// <item>启动期默认不实例化全部应用；仅注册默认应用的令牌管理器到后台刷新服务。</item>
 /// <item>全量预热改为显式选项 <c>FeishuAppOptions.WarmUpAllAppsOnStartup</c>（默认 false）。</item>
@@ -26,15 +26,15 @@ namespace Mud.Feishu.Abstractions;
 /// </list>
 /// </para>
 /// <para>
-/// TMA2-07 / P1-4 修复：
+/// 增量注册：
 /// <list type="bullet">
 /// <item>落地显式 <c>AppInstantiated</c> 事件，在应用首次实例化后触发增量注册。</item>
 /// <item>注册逻辑抽取为 <see cref="FeishuTokenRegistrationHelper.RegisterAppTokenManagers"/>，使 net8/10 可直接单测。</item>
-/// <item>ns2.0 路径无 HostedService 载体，按 C-5② 决策仅文档声明限制。</item>
+/// <item>ns2.0 路径无 HostedService 载体，该限制仅以文档声明。</item>
 /// </list>
 /// </para>
 /// <para>
-/// TMA-24 修复注释：后台服务只管理 Timer 与刷新周期，不管理令牌管理器生命周期。
+/// 后台服务只管理 Timer 与刷新周期，不管理令牌管理器生命周期。
 /// 令牌管理器的生命周期由 FeishuAppManager 管理（含退休队列）。
 /// </para>
 /// </remarks>
@@ -60,7 +60,7 @@ internal sealed class FeishuTokenRegistrationService : IHostedService
     /// <inheritdoc />
     public Task StartAsync(CancellationToken cancellationToken = default)
     {
-        // TMA-08：默认仅注册默认应用（触发懒加载），其余应用在首次访问时增量注册。
+        // 默认仅注册默认应用（触发懒加载），其余应用在首次访问时增量注册。
         var registered = 0;
 
         // 始终注册默认应用
@@ -78,9 +78,9 @@ internal sealed class FeishuTokenRegistrationService : IHostedService
         // WarmUpAllAppsOnStartup=true 时逐应用预热，单应用失败不阻断
         if (_appOptions.WarmUpAllAppsOnStartup)
         {
-            // TMR-P1-4（F4）：DefaultConfig → GetDefaultApp() 可能抛异常（默认应用初始化失败）。
-            // 原实现位于逐应用 try 之外，异常会传播出 StartAsync 阻断宿主启动，
-            // 违背本类声明的"单应用失败不阻断宿主启动"。改为独立 try 隔离：
+            // DefaultConfig → GetDefaultApp() 可能抛异常（默认应用初始化失败）。
+            // 解析必须位于独立 try 内：异常若传播出 StartAsync 会阻断宿主启动，
+            // 违背本类声明的"单应用失败不阻断宿主启动"。
             // 解析失败时 defaultAppKey 保持 null → 退化为全量预热（默认应用不再跳过）。
             string? defaultAppKey = null;
             try
@@ -122,7 +122,7 @@ internal sealed class FeishuTokenRegistrationService : IHostedService
         if (_appManager is FeishuAppManager feishuAppManager)
         {
             feishuAppManager.ConfigurationChanged += OnConfigurationChanged;
-            // TMA2-07：订阅 AppInstantiated 事件，非默认应用首次访问后增量注册。
+            // 订阅 AppInstantiated 事件，非默认应用首次访问后增量注册。
             feishuAppManager.AppInstantiated += OnAppInstantiated;
         }
 
@@ -132,12 +132,12 @@ internal sealed class FeishuTokenRegistrationService : IHostedService
     /// <inheritdoc />
     public Task StopAsync(CancellationToken cancellationToken = default)
     {
-        // TMA-24 修复注释：后台服务不管理令牌管理器生命周期，只管理 Timer。
+        // 后台服务不管理令牌管理器生命周期，只管理 Timer。
         // 令牌管理器的清理由 FeishuAppManager.Dispose → 退休队列 → ODE 自清完成。
         if (_appManager is FeishuAppManager feishuAppManager)
         {
             feishuAppManager.ConfigurationChanged -= OnConfigurationChanged;
-            // TMA2-07：退订 AppInstantiated 事件。
+            // 退订 AppInstantiated 事件。
             feishuAppManager.AppInstantiated -= OnAppInstantiated;
         }
 
@@ -146,10 +146,10 @@ internal sealed class FeishuTokenRegistrationService : IHostedService
 
     private void OnAppInstantiated(object? sender, FeishuAppInstantiatedEventArgs e)
     {
-        // TMA2-07：非默认应用首次访问后增量注册到后台刷新服务（同名键覆盖）。
-        // TMR-P2-15（F15）：与 OnConfigurationChanged 的双路重复注册已确认无害——
-        // 组件 TokenRefreshHelper.TryRegisterTokenManager 对同名键为「覆盖」语义
-        // （tokenManagers[key] = tokenManager，TMX-15-3），不会产生双 Timer，无需去重。
+        // 非默认应用首次访问后增量注册到后台刷新服务（同名键覆盖）。
+        // 与 OnConfigurationChanged 的双路重复注册无害——
+        // 组件 TokenRefreshHelper.TryRegisterTokenManager 对同名键为「覆盖」语义，
+        // 不会产生双 Timer，无需去重。
         try
         {
             var count = FeishuTokenRegistrationHelper.RegisterAppTokenManagers(e.Context, _refreshService);
@@ -166,10 +166,10 @@ internal sealed class FeishuTokenRegistrationService : IHostedService
 
     private void OnConfigurationChanged(object? sender, AppConfigurationChangedEventArgs e)
     {
-        // TMA-08：增量注册——新增/更新应用时重新注册令牌管理器到后台刷新服务。
+        // 增量注册——新增/更新应用时重新注册令牌管理器到后台刷新服务。
         // 同名键覆盖 → 新实例接管；旧实例由退休队列 Dispose 后 ODE 自清。
-        // TMR-P2-15（F15）：覆盖语义已对照组件源码确认（TokenRefreshHelper.TryRegisterTokenManager），
-        // AppInstantiated 双路重复注册幂等，无需去重改造。
+        // 覆盖语义经组件源码确认（TokenRefreshHelper.TryRegisterTokenManager），
+        // AppInstantiated 双路重复注册幂等，无需额外去重。
         try
         {
             if (e.ChangeType == AppConfigurationChangeType.Added ||

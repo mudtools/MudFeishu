@@ -30,9 +30,7 @@ namespace Mud.Feishu.WebSocket;
 /// </remarks>
 public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
 {
-    // WS-17 修复（P1-13）：将 _connectionCount 从 static 改为实例字段。
-    // 此前所有 manager 实例共享一个静态计数器，多应用场景下各实例的连接数互相干扰。
-    // 现在每个 manager 实例独立维护自己的连接计数。
+    // _connectionCount 为实例字段：静态计数器会使多应用场景下各 manager 实例的连接数互相干扰。
     private int _connectionCount = 0;
     private readonly ILogger<WebSocketConnectionManager> _logger;
     private readonly FeishuWebSocketOptions _options;
@@ -40,14 +38,14 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     // 类型为抽象基类 WebSocket（而非 ClientWebSocket）：后者在 .NET Core 3.0+ 是 **sealed**，
     // 无法派生出脚本化替身——依赖抽象基类正是 TD-1 的本意（传输实现可替换）。
     private readonly Func<System.Net.WebSockets.WebSocket>? _socketFactory;
-    // R5.2.7/X5：生产环境判定 — 用于把证书安全旁路（Mode=Dev / ValidateServerCertificate=false）的告警升级为 LogError
+    // 生产环境判定 — 用于把证书安全旁路（Mode=Dev / ValidateServerCertificate=false）的告警升级为 LogError
     private readonly bool _isProduction;
     private readonly SemaphoreSlim _connectionLock = new(1, 1);
     private readonly SemaphoreSlim _sendLock = new(1, 1);
     private System.Net.WebSockets.WebSocket? _webSocket;
     private CancellationTokenSource? _cancellationTokenSource;
-    // WS-15 修复（P1-12）：_disposed 改为 int + Interlocked.Exchange 实现原子 check-then-set。
-    // 此前 volatile bool 的 check-then-set 非原子，并发调用 Dispose/DisposeAsync 可能双进入释放逻辑。
+    // _disposed 为 int + Interlocked.Exchange 的原子 check-then-set：
+    // volatile bool 的 check-then-set 非原子，并发调用 Dispose/DisposeAsync 可能双进入释放逻辑。
     private int _disposed = 0;
     private byte[]? _receiveBuffer;
     private readonly ErrorRecoveryStrategy _errorRecoveryStrategy;
@@ -65,7 +63,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     private static readonly TimeSpan CloseHandshakeTimeout = TimeSpan.FromSeconds(5);
 
     /// <summary>
-    /// 排空超限消息时的帧数上界（WS2-03）。
+    /// 排空超限消息时的帧数上界。
     /// </summary>
     /// <remarks>
     /// 排空本身必须有界：恶意/异常对端可以持续投递超限分片让排空永不结束。
@@ -82,8 +80,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// 获取当前WebSocket连接数（实例级别）
     /// </summary>
     /// <remarks>
-    /// WS-17 修复（P1-13）：从 static 改为实例属性，每个 manager 独立计数，
-    /// 避免多应用场景下各实例连接数互相干扰。
+    /// 实例属性，每个 manager 独立计数，避免多应用场景下各实例连接数互相干扰。
     /// </remarks>
     public int ConnectionCount => Volatile.Read(ref _connectionCount);
 
@@ -137,7 +134,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     }
 
     /// <summary>
-    /// 初始化WebSocket连接管理器实例（R5.2.7/X5：支持注入宿主环境用于生产加固判定）
+    /// 初始化WebSocket连接管理器实例（支持注入宿主环境用于生产加固判定）
     /// </summary>
     /// <param name="logger">日志记录器实例</param>
     /// <param name="options">WebSocket配置选项，如果为null则使用默认配置</param>
@@ -154,7 +151,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     }
 
     /// <summary>
-    /// 初始化WebSocket连接管理器实例（FU-4 / R1 TD-1：可注入 socket 工厂）。
+    /// 初始化WebSocket连接管理器实例（可注入 socket 工厂）。
     /// </summary>
     /// <param name="logger">日志记录器实例</param>
     /// <param name="options">WebSocket配置选项</param>
@@ -199,10 +196,10 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     }
 
     /// <summary>
-    /// R5.2.7/X5：解析「是否生产环境」。
+    /// 解析「是否生产环境」。
     /// 优先使用宿主注入的 <see cref="Microsoft.Extensions.Hosting.IHostEnvironment"/>；
     /// 否则回退环境变量（DOTNET_ENVIRONMENT > ASPNETCORE_ENVIRONMENT > Production），
-    /// 与 Webhook 侧 ADR-4 的 <c>EnvironmentService</c> 保持「缺省即 Production」的安全默认。
+    /// 与 Webhook 侧 <c>EnvironmentService</c> 保持「缺省即 Production」的安全默认。
     /// </summary>
     private static bool ResolveIsProduction(Microsoft.Extensions.Hosting.IHostEnvironment? hostEnvironment)
     {
@@ -243,28 +240,28 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
         if (uri.Scheme == "ws" && !_options.Certificate.AllowInsecureWebSocket)
             throw new ArgumentException("WebSocket URL使用不安全的ws://协议。如需在开发/测试环境使用，请设置 AllowInsecureWebSocket = true", nameof(url));
 
-        // P2-15 修复：主机白名单校验。此前仅校验 scheme——端点 URL 由服务端 API 下发，
-        // 一旦被篡改（DNS 劫持 / API 响应被篡改 / 配置错误），客户端会向任意主机发起连接（SSRF 面）。
+        // 主机白名单校验：端点 URL 由服务端 API 下发，一旦被篡改
+        // （DNS 劫持 / API 响应被篡改 / 配置错误），客户端会向任意主机发起连接（SSRF 面）。
         ValidateWebSocketHost(uri);
 
-        // P1-5 修复：Dispose 之后确定性拒绝（此前为"随机 ObjectDisposedException / 偶发成功"）
+        // Dispose 之后确定性拒绝（不得表现为"随机 ObjectDisposedException / 偶发成功"）
         ThrowIfDisposed();
 
         await _connectionLock.WaitAsync(cancellationToken);
         WebSocketCloseEventArgs? pendingClose = null;
-        // P1-3 修复：连接失败时也必须把"旧连接已断开"告知订阅者，否则事件驱动恢复退化为
+        // 连接失败时也必须把"旧连接已断开"告知订阅者，否则事件驱动恢复退化为
         // 最长 HealthCheckIntervalMs 的轮询。此处捕获异常，待事件派发后再原样抛出。
         Exception? connectError = null;
         try
         {
-            // P0-2 修复：此处已持有 _connectionLock，SemaphoreSlim 不可重入，
+            // 此处已持有 _connectionLock，SemaphoreSlim 不可重入，
             // 必须调用无锁版本 DisconnectCoreAsync，否则将永久挂起。
             if (_webSocket != null && _webSocket.State == WebSocketState.Open)
             {
                 pendingClose = await DisconnectCoreAsync(cancellationToken);
             }
 
-            // P1-2 修复：创建连接前彻底释放上一次连接的 socket 与 CTS
+            // 创建连接前彻底释放上一次连接的 socket 与 CTS
             DisposeCurrentSocket();
 
             // 创建新的WebSocket连接（FU-4：可经内部 seam 注入脚本化传输替身，生产路径为 null）
@@ -279,8 +276,8 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             // 服务端回复 Pong (opcode 0xA)，保持中间网络设备（NAT/负载均衡器）的连接表项不超时。
             // 注意：该值与 FeishuWebSocketOptions.HeartbeatIntervalMs（应用层 ProtoBuf Ping）职责不同：
             // 前者用于链路存活检测，后者用于维持飞书应用层会话，二者不应互相替代。
-            // F5 修复：从 FeishuWebSocketOptions.ProtocolKeepAliveInterval 读取配置（默认 20s），
-            // 替代硬编码值。设为 Zero 时禁用协议级保活。
+            // 从 FeishuWebSocketOptions.ProtocolKeepAliveInterval 读取配置（默认 20s），
+            // 不硬编码。设为 Zero 时禁用协议级保活。
             //
             // FU-4：KeepAliveInterval 与证书回调都定义在 ClientWebSocket.Options 上
             // （抽象基类 WebSocket 没有 Options），故必须显式收敛到真实实现类型。
@@ -311,7 +308,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                     await clientWebSocket.ConnectAsync(uri, combinedCts.Token);
                 }
 
-                // WS2-05 / F4（D5）：只记录 scheme://host/path，**整体剥离 query**。
+                // 只记录 scheme://host/path，**整体剥离 query**。
                 // 端点 URL 由服务端 API 下发，query 中可能携带一次性凭据类参数（ticket/code/nonce 等）；
                 // 这类参数一旦入日志即长期留存于集中式日志系统。用"整体剥离"而非"按键名白名单脱敏"，
                 // 是为了避免白名单漏键构成新的泄露面（零白名单 = 零漏键）。
@@ -320,7 +317,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                     uri.GetLeftPart(UriPartial.Path));
 
 
-                // P0-4 修复：只有连接真正成功后才配平计数并允许触发断线事件。
+                // 只有连接真正成功后才配平计数并允许触发断线事件。
                 // 顺序必须为 Increment → 清除断线标志，避免连接失败后 Decrement 未配平导致计数为负。
                 Interlocked.Increment(ref _connectionCount);
                 Interlocked.Exchange(ref _disconnectedFired, 0);
@@ -399,7 +396,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     }
 
     /// <summary>
-    /// 校验 WebSocket 主机是否在 <see cref="FeishuWebSocketOptions.AllowedHostSuffixes"/> 白名单内（P2-15）。
+    /// 校验 WebSocket 主机是否在 <see cref="FeishuWebSocketOptions.AllowedHostSuffixes"/> 白名单内。
     /// </summary>
     /// <param name="uri">待校验的连接地址</param>
     /// <exception cref="ArgumentException">当主机不在白名单内时抛出</exception>
@@ -475,20 +472,17 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
         }
         catch (ObjectDisposedException) { }
 
-        // ────────────────────────────────────────────────────────────────────
-        // WS2-01 ①（I13 顺序约束）：占位必须**先于**关闭握手。
-        //
-        // 改造前顺序是「Cancel → CloseAsync → 占位」：关闭握手会把 socket 推到
+        // 占位必须**先于**关闭握手（顺序约束）。
+        // 若顺序为「Cancel → CloseAsync → 占位」：关闭握手会把 socket 推到
         // CloseSent/Aborted，正在阻塞于 ReceiveAsync 的接收循环随即以
         // OperationCanceledException / WebSocketException 退出，并在**占位之前**抢先调用
         // NotifyDisconnected 完成占位 ⇒ 主动断开路径的占位失败、返回 null、不再派发事件。
         // 结果取决于竞态：要么事件由接收循环派发（描述为"接收错误导致连接断开"，
         // 与本端主动断开的事实不符），要么两侧都判定"对方已占位"而**谁都不派发**。
         //
-        // 前移后语义确定：本端主动断开的占位优先，接收循环仅在"非本端主动断开"时补发通知。
-        // ────────────────────────────────────────────────────────────────────
+        // 本顺序下语义确定：本端主动断开的占位优先，接收循环仅在"非本端主动断开"时补发通知。
 
-        // P1-2 修复（I2）：只接受"当前 socket"的断线声明；旧连接的迟到声明一律丢弃（不递减计数、不触发事件）
+        // 只接受"当前 socket"的断线声明；旧连接的迟到声明一律丢弃（不递减计数、不触发事件）
         if (!ReferenceEquals(Volatile.Read(ref _webSocket), webSocket))
         {
             _logger.LogDebug("忽略过期连接（非当前 socket）的断线声明");
@@ -734,7 +728,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// 此前每轮重新读取 <c>_webSocket</c> 字段，重连后旧循环会与新循环同时读取同一新 socket，造成"双接收循环"。
     /// </para>
     /// <para>
-    /// <b>缓冲区生命周期契约（P2-7 / I4）</b>：传入 <paramref name="messageHandler"/> 的
+    /// <b>缓冲区生命周期契约</b>：传入 <paramref name="messageHandler"/> 的
     /// <see cref="ArraySegment{T}"/> 指向本实例<b>复用的接收缓冲区</b>（<c>_receiveBuffer</c>）。
     /// 处理器<b>必须在返回前</b>完成读取或拷贝；下一次 <c>ReceiveAsync</c> 会立即覆写该缓冲区，
     /// 因此<b>不允许跨 <c>await</c> 持有</b>，也不允许在 <c>Task.Run</c> 等异步路径中延迟访问。
@@ -746,12 +740,11 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
 
         _receiveBuffer ??= new byte[_options.InitialReceiveBufferSize];
 
-        // WS-13 修复（P1-10）：将 _receiveBuffer 固化为局部变量，避免 Dispose/DisposeAsync
-        // 将 _receiveBuffer 置为 null 后，接收循环或分片重组仍尝试访问该字段导致 NullReferenceException。
-        // 局部引用在循环期间不会被外部置 null 操作影响。
+        // 将 _receiveBuffer 固化为局部变量：Dispose/DisposeAsync 会将该字段置为 null，
+        // 若循环内直接访问字段会 NullReferenceException。局部引用不受外部置 null 影响。
         var buffer = _receiveBuffer;
 
-        // I13 穷尽性辅助标记：区分"已由其它路径完成断线声明"与"循环静默退出"
+        // 穷尽性辅助标记：区分"已由其它路径完成断线声明"与"循环静默退出"
         var disconnectDeclared = false;
 
         try
@@ -782,9 +775,8 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             // 正常的取消操作（如断开连接或重连时取消接收循环），不应触发错误事件
             _logger.LogInformation("消息接收循环已取消（正常关闭或重连）");
 
-            // P0-1 修复（I13）：取消退出**同样是一条终止路径**，必须参与原子占位。
-            //
-            // 改造前此处只记日志 ⇒ 模块没有任何断线信号（无读循环、无事件、无 Disconnected），
+            // 取消退出**同样是一条终止路径**，必须参与原子占位：
+            // 只记日志会使模块没有任何断线信号（无读循环、无事件、无 Disconnected），
             // 上层只能等 HealthCheckIntervalMs（默认 60 秒）的轮询兜底。
             //
             // 注意这里的**两种取消形态**（实现与用例都必须区分，否则会得出错误的结论）：
@@ -815,7 +807,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             // 远程方未完成关闭握手就断开连接时，WebSocket 状态为 Aborted 而非 Closed，
             // 不会走 HandleCloseMessageAsync 路径，因此需要在此处主动触发 Disconnected 事件，
             // 否则重连只能等待心跳管理器检测到连接断开后才触发（延迟可达数十秒）。
-            // P1-1 修复：不再硬编码 NormalClosure，按异常类型映射真实关闭状态码。
+            // 不硬编码 NormalClosure，按异常类型映射真实关闭状态码。
             NotifyDisconnected(new WebSocketCloseEventArgs
             {
                 CloseStatus = MapExceptionToCloseStatus(ex),
@@ -839,16 +831,14 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             disconnectDeclared = true;
         }
 
-        // ────────────────────────────────────────────────────────────────────
-        // I13 兜底（R2/WS2-03 实施中发现）：循环还可能**因 socket 状态变化而自然退出**——
+        // 兜底：循环还可能**因 socket 状态变化而自然退出**——
         // 既没有读到关闭帧（不走 HandleCloseMessageAsync），也没有抛异常（不进任何 catch）。
-        // 典型触发：排空超限消息时达到上界主动 Abort（D3 方案 B）、外部调用 Abort/Dispose socket。
+        // 典型触发：排空超限消息时达到上界主动 Abort（协议层异常路径）、外部调用 Abort/Dispose socket。
         // 若不在此补发声明，就会出现"循环已退出（不再读任何帧）但没有任何断线信号"的静默状态——
-        // 与 P0-1 属同一类缺口（唯一存活检测通道失效且不被覆盖）。
+        // 与取消退出属同一类缺口（唯一存活检测通道失效且不被覆盖）。
         //
         // NotifyDisconnected 自身是幂等的（owner 身份校验 + 原子占位），
         // 因此对"已由其它路径声明过"的情况调用它是安全且无副作用的。
-        // ────────────────────────────────────────────────────────────────────
         if (!disconnectDeclared)
         {
             // 用令牌判定"退出是否由取消引起"（而不是靠某个 catch 分支是否执行）：
@@ -907,7 +897,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// <param name="firstResult">第一帧的接收结果</param>
     /// <param name="messageHandler">消息处理器回调</param>
     /// <param name="webSocket">接收所使用的WebSocket实例</param>
-    /// <param name="buffer">接收缓冲区（WS-13 修复：由调用方传入局部引用，避免 Dispose 竞态置 null）</param>
+    /// <param name="buffer">接收缓冲区（由调用方传入局部引用，避免 Dispose 竞态置 null）</param>
     /// <param name="cancellationToken">取消令牌</param>
     private async Task HandleFragmentedMessageAsync(
         WebSocketReceiveResult firstResult,
@@ -917,13 +907,12 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
         CancellationToken cancellationToken)
     {
         using var messageStream = new MemoryStream();
-        // P1-4 修复：文本分片按"UTF-8 字节"计量（与此前按字符误算的同一配置项语义对齐），
-        // 二进制分片沿用字节上限。
+        // 文本分片按"UTF-8 字节"计量，二进制分片沿用字节上限。
         var maxMessageSize = firstResult.MessageType == WebSocketMessageType.Binary
             ? _options.MessageSizeLimits.MaxBinaryMessageSize
             : _options.MessageSizeLimits.ResolveMaxTextMessageBytes();
 
-        // P2-1 修复：首帧同样先校验后写入
+        // 首帧同样先校验后写入
         if (firstResult.Count > maxMessageSize)
         {
             _logger.LogError("分片消息首帧大小 {Size} 已超过最大限制 {MaxSize}，将排空至消息边界后丢弃",
@@ -935,15 +924,15 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             FeishuMetricsHelper.RecordWebSocketFramesDiscarded(
                 _options.AppKey, FeishuMetrics.DiscardReasons.FragmentSizeExceeded);
 
-            // WS2-03（D3 方案 A）：丢弃必须"丢干净"——排空至 EndOfMessage 后再返回。
-            // 此前直接 return 会留下半个消息：相邻消息的字节被重新组帧，
+            // 丢弃必须"丢干净"——排空至 EndOfMessage 后再返回：
+            // 直接 return 会留下半个消息，相邻消息的字节被重新组帧，
             // 并被当作独立消息送入 protobuf 解析与序号链路（SequenceGapThreshold 默认 0 = 无跳跃上界）。
             await DrainUntilEndOfMessageAsync(webSocket, buffer, cancellationToken).ConfigureAwait(false);
 
             return;
         }
 
-        // WS-13 修复：使用调用方传入的局部 buffer 引用，而非 _receiveBuffer 字段
+        // 使用调用方传入的局部 buffer 引用，而非 _receiveBuffer 字段
         messageStream.Write(buffer, 0, firstResult.Count);
 
         while (webSocket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
@@ -958,7 +947,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                 return;
             }
 
-            // P2-1 修复：写入前拦截，避免超限数据先进入内存
+            // 写入前拦截，避免超限数据先进入内存
             if (messageStream.Length + result.Count > maxMessageSize)
             {
                 _logger.LogError("分片消息大小将超过最大限制 {MaxSize}（当前 {Size}，本帧 {FrameSize}），将排空至消息边界后丢弃",
@@ -969,13 +958,13 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                 FeishuMetricsHelper.RecordWebSocketFramesDiscarded(
                     _options.AppKey, FeishuMetrics.DiscardReasons.FragmentSizeExceeded);
 
-                // WS2-03（D3 方案 A）：同上，先把本条消息的剩余分片读空再返回。
+                // 同上，先把本条消息的剩余分片读空再返回。
                 await DrainUntilEndOfMessageAsync(webSocket, buffer, cancellationToken).ConfigureAwait(false);
 
                 return;
             }
 
-            // WS-13 修复：使用局部 buffer 引用
+            // 使用局部 buffer 引用
             messageStream.Write(buffer, 0, result.Count);
 
             if (result.EndOfMessage)
@@ -1003,7 +992,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     private const string FragmentSizeExceededErrorType = "FragmentSizeExceeded";
 
     /// <summary>
-    /// 排空剩余分片直到当前 WS 消息的 <c>EndOfMessage</c>（WS2-03 / D3 方案 A）。
+    /// 排空剩余分片直到当前 WS 消息的 <c>EndOfMessage</c>。
     /// </summary>
     /// <param name="webSocket">接收所使用的 WebSocket 实例</param>
     /// <param name="buffer">接收缓冲区</param>
@@ -1102,9 +1091,9 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
         {
             try
             {
-                // P1-4 修复：关闭握手限时，避免服务端不应答时接收循环永久阻塞
+                // 关闭握手限时，避免服务端不应答时接收循环永久阻塞
                 using var closeCts = new CancellationTokenSource(CloseHandshakeTimeout);
-                // P2-8 修复：回显服务端下发的关闭码与描述，而非固定 NormalClosure（RFC 6455 §5.5.1）
+                // 回显服务端下发的关闭码与描述，而非固定 NormalClosure（RFC 6455 §5.5.1）
                 await webSocket.CloseAsync(
                     result.CloseStatus ?? WebSocketCloseStatus.NormalClosure,
                     result.CloseStatusDescription ?? "客户端确认关闭连接",
@@ -1177,20 +1166,18 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
         {
             var cert = _options.Certificate;
 
-            // ────────────────────────────────────────────────────────────────
-            // R5/X5：Certificate.Mode 驱动运行时（改造前 Mode 只被 Validate/ToString 读取，
-            // 而 Validate 的报错文案却引导用户「请改 Mode=Dev」——用户改完仍被拒绝，陷入无效循环）。
+            // Certificate.Mode 驱动运行时。若 Mode 只被 Validate/ToString 读取，
+            // 而 Validate 的报错文案却引导用户「请改 Mode=Dev」，用户改完仍被拒绝，会陷入无效循环。
             //
             // 优先级链（唯一权威表述，勿在别处另立一套）：
             //   CustomCallback（Mode=Custom，或 Mode≠Custom 但回调非 null 的兼容分支）
             //     > ValidateServerCertificate=false（完全关闭校验）
             //     > Mode=Dev（仍校验，仅放宽「自签名根」与「名称不匹配」）
             //     > Mode=Strict（默认：拒绝自签名 / 名称不匹配 / 其他链错误）
-            // ────────────────────────────────────────────────────────────────
 
-            // 兼容分支（G-05）：Mode 未显式设为 Custom 却提供了回调 —— 回调**最高优先级**，立即安装并返回。
-            // 改造前 CustomCallback 的优先级最高且**完全不看 Mode**，若改为「只在 Mode=Custom 时使用，
-            // 会让「只配回调、不配 Mode」的存量部署静默改用严格回调 —— 属安全面行为突变，必须显式告警而非静默。
+            // 兼容分支：Mode 未显式设为 Custom 却提供了回调 —— 回调**最高优先级**，立即安装并返回。
+            // 该兼容语义必须保留：若改为「只在 Mode=Custom 时使用回调」，
+            // 「只配回调、不配 Mode」的存量部署会静默改用严格回调 —— 属安全面行为突变，必须显式告警而非静默。
             // 注意：此分支必须在此处 return —— 若仅告警后继续下落，Mode=Dev 会安装 Dev 回调把用户回调
             // 覆盖掉（警告与行为互相矛盾，且违反上方优先级链）。
             if (cert.CustomCallback is not null && cert.Mode != CertificateValidationMode.Custom)
@@ -1219,9 +1206,9 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             {
                 if (!cert.ValidateServerCertificate)
                 {
-                    // 完全关闭校验的能力优先于 Mode=Dev（保持与改造前一致的安全能力可见性）
+                    // 完全关闭校验的能力优先于 Mode=Dev（能力优先级与安全可见性保持一致）
                     webSocket.Options.RemoteCertificateValidationCallback = (_, _, _, _) => true;
-                    // R5.2.7/X5 生产加固：生产环境将安全旁路升级为 LogError（不阻断启动；major 再评估是否 Validate 失败）
+                    // 生产加固：生产环境将安全旁路升级为 LogError（不阻断启动；major 再评估是否 Validate 失败）
                     _logger.Log(
                         _isProduction ? LogLevel.Error : LogLevel.Warning,
                         "已禁用 SSL 证书验证（ValidateServerCertificate=false 优先于 Mode=Dev），此配置仅应在开发/测试环境使用{ProductionSuffix}",
@@ -1249,12 +1236,12 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                         return true;
                     }
 
-                    // 过期/已撤销等其他链错误一律拒绝——即使处于 Dev 模式也不放宽（沿用 WS-12 的收紧语义）
+                    // 过期/已撤销等其他链错误一律拒绝——即使处于 Dev 模式也不放宽
                     _logger.LogError("SSL证书验证失败（Dev 模式：链错误非自签名根或含其他错误）: {Errors}", sslPolicyErrors);
                     return false;
                 };
 
-                // R5.2.7/X5 生产加固：生产环境将安全旁路升级为 LogError（不阻断启动；major 再评估是否 Validate 失败）
+                // 生产加固：生产环境将安全旁路升级为 LogError（不阻断启动；major 再评估是否 Validate 失败）
                 _logger.Log(
                     _isProduction ? LogLevel.Error : LogLevel.Warning,
                     "WebSocket 证书校验处于 Dev 模式（允许自签名/名称不匹配），仅应用于开发与测试环境{ProductionSuffix}",
@@ -1262,7 +1249,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                 return;
             }
 
-            // ↓↓↓ 以下为 Mode=Strict 与「Mode=Custom 且回调存在」的既有逻辑，保持改造前行为不变 ↓↓↓
+            // 以下为 Mode=Strict 与「Mode=Custom 且回调存在」的主路径。
             // （Mode≠Custom 的回调已由上方兼容分支接管并提前返回；此处 CustomCallback 分支
             //   实际只会服务 Mode=Custom 且回调非 null 的组合。）
             // 使用自定义证书验证回调（Mode=Custom 的主路径）
@@ -1279,7 +1266,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             {
                 // 禁用证书验证（仅用于开发/测试环境）
                 webSocket.Options.RemoteCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) => true;
-                // R5.2.7/X5 生产加固：生产环境将安全旁路升级为 LogError（不阻断启动；major 再评估是否 Validate 失败）
+                // 生产加固：生产环境将安全旁路升级为 LogError（不阻断启动；major 再评估是否 Validate 失败）
                 _logger.Log(
                     _isProduction ? LogLevel.Error : LogLevel.Warning,
                     "已禁用SSL证书验证，此配置仅应在开发/测试环境使用{ProductionSuffix}",
@@ -1288,19 +1275,17 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                 return;
             }
 
-            // 配置标准证书验证，支持自签名证书选项
-            // WS-12 修复（P1-8）：收紧自签名判定逻辑。
-            // 此前放行所有 RemoteCertificateChainErrors，含过期/已撤销证书。
-            // 现在仅在「链中仅 1 个元素且 ChainStatus 仅 UntrustedRoot」时才放行，
-            // 显式拒绝 NotTimeValid/Revoked 等链错误。
-            // RemoteCertificateNameMismatch 改为由独立的 AllowCertificateNameMismatch 选项控制。
+            // 配置标准证书验证，支持自签名证书选项。
+            // 自签名判定收紧：仅在「链中仅 1 个元素且 ChainStatus 仅 UntrustedRoot」时才放行，
+            // 显式拒绝 NotTimeValid/Revoked 等链错误（不得放行所有 RemoteCertificateChainErrors）。
+            // RemoteCertificateNameMismatch 由独立的 AllowCertificateNameMismatch 选项控制。
             webSocket.Options.RemoteCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) =>
             {
                 // 如果没有错误，直接通过
                 if (sslPolicyErrors == SslPolicyErrors.None)
                     return true;
 
-                // WS-12 修复：处理名称不匹配 — 仅在显式允许时放行
+                // 处理名称不匹配 — 仅在显式允许时放行
                 if ((sslPolicyErrors & SslPolicyErrors.RemoteCertificateNameMismatch) != 0)
                 {
                     // R5.4/F3a：AllowCertificateNameMismatch 已 [Obsolete]（有效组合下不可达：Dev 不读、Strict 拒绝）。
@@ -1326,7 +1311,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                 if (sslPolicyErrors == SslPolicyErrors.None)
                     return true;
 
-                // WS-12 修复：处理链错误 — 仅在「自签名根证书」场景放行
+                // 处理链错误 — 仅在「自签名根证书」场景放行
                 if ((sslPolicyErrors & SslPolicyErrors.RemoteCertificateChainErrors) != 0)
                 {
                     // R5.4/F3a：AllowSelfSignedCertificates 已 [Obsolete]，同上防御性读取。
@@ -1359,9 +1344,9 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
         }
 #else
         // .NET Standard 2.0 不支持 ClientWebSocketOptions.RemoteCertificateValidationCallback，
-        // 因此下列 **5 项** 配置在本目标框架上被**静默忽略**（WS2-11 补全）。
-        // 改造前只告警其中 2 项：Mode=Dev / Mode=Custom / AllowCertificateNameMismatch 三项无任何提示，
-        // 运维按 Readme 配好证书旁路却发现仍被严格校验证书时，日志里找不到任何线索。
+        // 因此下列 **5 项** 配置在本目标框架上被**静默忽略**。
+        // 告警必须覆盖全部配置项（Mode=Dev / Mode=Custom / AllowCertificateNameMismatch 等）：
+        // 遗漏任何一项，运维配好证书旁路却发现仍被严格校验证书时，日志里找不到任何线索。
         // 本清单必须与上方 #if 分支实际读取的配置一一对应（含"回调被忽略"的 Custom 组合）。
         if (!_options.Certificate.ValidateServerCertificate)
         {
@@ -1396,9 +1381,8 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// 显式拒绝 <c>NotTimeValid</c>（过期）、<c>Revoked</c>（已撤销）等链状态。
     /// </returns>
     /// <remarks>
-    /// WS-12 修复（P1-8）：此前放行所有 <c>RemoteCertificateChainErrors</c>，
-    /// 含过期/已撤销证书。现在收紧为仅接受「自签名根」——即链中仅有 1 个证书，
-    /// 且唯一错误是「不受信任的根」（自签名证书的典型特征）。
+    /// 仅接受「自签名根」——链中仅有 1 个证书且唯一错误是「不受信任的根」
+    /// （自签名证书的典型特征）；不放行过期/已撤销证书。
     /// </remarks>
     private static bool IsSelfSignedRoot(System.Security.Cryptography.X509Certificates.X509Chain? chain)
     {
@@ -1560,7 +1544,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// </remarks>
     public async ValueTask DisposeAsync()
     {
-        // WS-15：原子 check-then-set，确保并发调用安全
+        // 原子 check-then-set，确保并发调用安全
         if (Interlocked.Exchange(ref _disposed, 1) == 1)
             return;
 
@@ -1572,10 +1556,10 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             try { cts?.Cancel(); }
             catch (ObjectDisposedException) { }
 
-            // WS2-01 ③（I13）：释放同样是"使 socket 不再被读取"的终止路径，必须参与原子占位。
-            // 此前 Dispose 只关 socket、不占位：若释放时连接仍为 Open（例如宿主直接释放一个
-            // "接收循环已死但 socket 还 Open"的僵尸态客户端），_disconnectedFired 永远停在 0、
-            // _connectionCount 永远不归零，且任何后续触发的重连/健康检查看到的状态都是矛盾的。
+            // 释放同样是"使 socket 不再被读取"的终止路径，必须参与原子占位。
+            // 若只关 socket、不占位：释放时连接仍为 Open（例如宿主直接释放一个
+            // "接收循环已死但 socket 还 Open"的僵尸态客户端）时，_disconnectedFired 永远停在 0、
+            // _connectionCount 永远不归零，后续重连/健康检查看到的状态都是矛盾的。
             // 这里只做**占位**、不派发事件（Dispose 语义下用户已明确要求终止，无需再通知；
             // 也避免在释放路径上执行用户回调带来新的异常面）。
             if (webSocket != null && TryClaimDisconnected())
@@ -1643,7 +1627,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
     /// </remarks>
     public void Dispose()
     {
-        // WS-15：原子 check-then-set，确保并发调用安全
+        // 原子 check-then-set，确保并发调用安全
         if (Interlocked.Exchange(ref _disposed, 1) == 1)
             return;
 
@@ -1655,7 +1639,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             try { cts?.Cancel(); }
             catch (ObjectDisposedException) { }
 
-            // WS2-01 ③（I13）：同 DisposeAsync — 释放路径必须占位（只占位、不派发事件）
+            // 同 DisposeAsync — 释放路径必须占位（只占位、不派发事件）
             if (webSocket != null && TryClaimDisconnected())
             {
                 _logger.LogDebug("同步释放连接管理器时已占位断线声明（连接计数已归零）");
@@ -1665,14 +1649,13 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
             {
                 try
                 {
-                    // WS-09 修复（P1-4）：同步路径下使用独立 closeCts（5s）而非 CancellationToken.None，
+                    // 同步路径下使用独立 closeCts（5s）而非 CancellationToken.None，
                     // 确保服务端不应答时 CloseAsync 能被取消而非悬挂。
-                    // 通过 Task.Run 脱离调用方同步上下文，降低死锁风险（P1-3）。
-                    // P2-11 修复：
-                    //  ① 超时后强制 Abort，使在途 CloseAsync 立即以异常结束（此前会留下"游离任务"）；
-                    //  ② 无条件观察一次该任务的异常，避免 UnobservedTaskException；
-                    //  ③ closeCts 的释放延后到任务真正结束之后（此前 using 作用域先于任务结束即释放，
-                    //     在途 CloseAsync 会拿到"已释放令牌"而抛出与关闭无关的异常）。
+                    // 通过 Task.Run 脱离调用方同步上下文，降低死锁风险。
+                    // ① 超时后强制 Abort，使在途 CloseAsync 立即以异常结束（不得留下"游离任务"）；
+                    // ② 无条件观察一次该任务的异常，避免 UnobservedTaskException；
+                    // ③ closeCts 的释放延后到任务真正结束之后（若 using 作用域先于任务结束即释放，
+                    //    在途 CloseAsync 会拿到"已释放令牌"而抛出与关闭无关的异常）。
                     var closeCts = new CancellationTokenSource(CloseHandshakeTimeout);
                     var closeTask = Task.Run(() => webSocket.CloseAsync(
                         WebSocketCloseStatus.NormalClosure,

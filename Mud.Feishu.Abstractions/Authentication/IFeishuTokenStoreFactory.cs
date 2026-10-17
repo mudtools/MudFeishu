@@ -14,7 +14,7 @@ namespace Mud.Feishu.Abstractions.Authentication;
 /// 飞书令牌存储工厂接口，负责为每个应用创建独立的 <see cref="ITokenStore"/> 实例。
 /// </summary>
 /// <remarks>
-/// S-3 修复：替代 <c>FeishuAppManager.CreateAppContext</c> 中 <c>is FeishuTokenStore</c> 类型检查的脆弱设计。
+/// 替代 <c>FeishuAppManager.CreateAppContext</c> 中 <c>is FeishuTokenStore</c> 类型检查的脆弱设计。
 /// 通过显式工厂接口由 DI 注册决定 per-app vs singleton 策略，遵循"显式依赖优于类型嗅探"原则。
 /// </remarks>
 public interface IFeishuTokenStoreFactory
@@ -57,7 +57,7 @@ public class PerAppFeishuTokenStoreFactory : IFeishuTokenStoreFactory
 /// 单例令牌存储工厂，返回 DI 容器中已注册的 <see cref="ITokenStore"/> 单例实例。
 /// </summary>
 /// <remarks>
-/// <b>TMA-20 / P2-8 修复：已标记 [Obsolete]。</b>
+/// <b>已标记 [Obsolete]。</b>
 /// 该工厂忽略 <c>appKey</c>，所有应用共享同一 <c>ITokenStore</c> 实例，
 /// 会重现多应用令牌互相覆盖（TOK-1）。请使用 <c>PerAppRedisTokenStoreFactory</c> 或自定义 per-app 工厂。
 /// </remarks>
@@ -83,7 +83,7 @@ public class SingletonFeishuTokenStoreFactory : IFeishuTokenStoreFactory
 }
 
 /// <summary>
-/// D10（TMF-01）：按 appKey 全量清除用户令牌的内部能力契约。
+/// 按 appKey 全量清除用户令牌的内部能力契约（凭据变更清库需要）。
 /// </summary>
 /// <remarks>
 /// 组件接口 <c>IUserTokenStore</c> 只有按 <c>(userId, tokenType)</c> 粒度的

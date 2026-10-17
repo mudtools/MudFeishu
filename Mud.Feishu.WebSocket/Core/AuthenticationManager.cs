@@ -24,11 +24,11 @@ public class AuthenticationManager
     private readonly Func<string, Task> _sendMessageCallback;
     private readonly SessionManager? _sessionManager;
     private readonly Random _random = new();
-    // P2-6 修复：该字段由接收线程写、由业务线程读，必须保证可见性
+    // 该字段由接收线程写、由业务线程读，必须保证可见性
     private volatile bool _isAuthenticated = false;
     private readonly FeishuWebSocketOptions _options;
     private readonly SemaphoreSlim _authLock = new(1, 1);
-    // WS-19 修复（P2-1）：_authRetryCount / _totalAuthFailures 改为 volatile，
+    // _authRetryCount / _totalAuthFailures 为 volatile，
     // 确保跨线程可见性（重连线程写、监控线程读）。
     private volatile int _authRetryCount = 0;
     private volatile int _totalAuthFailures = 0;
@@ -116,13 +116,12 @@ public class AuthenticationManager
             }
 
             // 使用指数退避策略重试认证
-            // P2-14 修复：认证重试次数使用独立的 MaxAuthRetryAttempts，
-            // 不再复用 MaxReconnectAttempts（该配置语义为"重连次数"，复用会导致
+            // 认证重试次数使用独立的 MaxAuthRetryAttempts，
+            // 不复用 MaxReconnectAttempts（该配置语义为"重连次数"，复用会导致
             // "无限重连"配置连带把认证也变成无限重试）。
-            // WS-19 修复（P2-1）：改 for 循环为 while(true) + 显式退出。
-            // 此前 for (attempt <= maxRetries) 当 maxRetries = int.MaxValue 时
-            // 循环可达 2^31 次，且 attempt 递增到 int.MaxValue 后溢出变负数，
-            // 循环条件恒为 true，无法退出。
+            // 循环用 while(true) + 显式退出：for (attempt <= maxRetries) 在
+            // maxRetries = int.MaxValue 时循环可达 2^31 次，且 attempt 递增到
+            // int.MaxValue 后溢出变负数，循环条件恒为 true，无法退出。
             var maxRetries = _options.Reconnect.MaxAuthRetryAttempts;
             if (maxRetries == 0)
             {
@@ -280,7 +279,7 @@ public class AuthenticationManager
 
             AuthenticationFailed?.Invoke(this, errorArgs);
 
-            // P2-14 修复：使用独立的 MaxAuthRetryAttempts 判定
+            // 使用独立的 MaxAuthRetryAttempts 判定
             var maxAuthRetries = _options.Reconnect.MaxAuthRetryAttempts;
             if (_authRetryCount >= maxAuthRetries && maxAuthRetries > 0)
             {
@@ -365,9 +364,9 @@ public class AuthenticationManager
         catch (JsonException ex)
         {
             _isAuthenticated = false;
-            // WS2-05 修复（D5 / P1-4）：此前直传 responseMessage 全文。认证响应报文含
+            // 不得直传 responseMessage 全文：认证响应报文含
             // AppAccessToken / session 相关的敏感字段，全文入日志即长期留存于集中式日志系统。
-            // 现与模块内既有正确范式（MessageRouter / FeishuEventMessageHandler）对齐：
+            // 与模块内既有正确范式（MessageRouter / FeishuEventMessageHandler）对齐：
             // 只输出长度 + 脱敏截断预览。
             _logger.LogError(ex, "解析认证响应失败 (长度: {Length}, 前200字符: {Preview})",
                 responseMessage?.Length ?? 0,
@@ -573,7 +572,7 @@ public class AuthenticationManager
 
         switch (errorCode.Value)
         {
-            // ===== 认证相关错误码 =====
+            // 认证相关错误码
             case 10009: // Token 过期
                 _logger.LogWarning("应用访问令牌已过期，请更新令牌");
                 break;
@@ -596,7 +595,7 @@ public class AuthenticationManager
                 _logger.LogWarning("Session ID 无效，将重新建立会话");
                 break;
 
-            // ===== 飞书常见业务错误码 =====
+            // 飞书常见业务错误码
             case 99991663: // 机器人被禁用
                 _logger.LogError("机器人已被禁用，请检查飞书应用状态");
                 break;
@@ -607,7 +606,7 @@ public class AuthenticationManager
                 _logger.LogWarning("机器人已被移出群聊");
                 break;
 
-            // ===== 服务端错误码 =====
+            // 服务端错误码
             case 12340001: // 请求参数错误
                 _logger.LogError("请求参数错误: {Message}", errorMessage);
                 break;
@@ -618,7 +617,7 @@ public class AuthenticationManager
                 _logger.LogError("文件上传失败: {Message}", errorMessage);
                 break;
 
-            // ===== 服务端内部错误 =====
+            // 服务端内部错误
             case 12350001: // 服务端内部错误
                 _logger.LogError("飞书服务端内部错误，建议稍后重试");
                 break;
@@ -629,7 +628,7 @@ public class AuthenticationManager
                 _logger.LogWarning("触发飞书服务端限流，建议降低请求频率");
                 break;
 
-            // ===== 网络相关错误码 =====
+            // 网络相关错误码
             case 12360001: // 网络连接失败
                 _logger.LogError("网络连接失败，请检查网络");
                 break;

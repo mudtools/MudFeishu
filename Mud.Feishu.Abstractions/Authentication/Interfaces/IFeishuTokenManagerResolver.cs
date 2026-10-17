@@ -11,35 +11,10 @@ namespace Mud.Feishu.Abstractions;
 /// 飞书令牌管理器解析器接口
 /// </summary>
 /// <remarks>
-/// 提供在多应用模式下按应用键解析令牌管理器的统一入口。
-/// 这是多应用模式下获取令牌管理器的推荐方式，替代直接通过 DI 注入
-/// <see cref="ITenantTokenManager"/> / <see cref="IAppTokenManager"/> / <see cref="IUserTokenManager"/>
-/// （后者仅暴露默认应用的令牌管理器，无法切换到非默认应用）。
-///
-/// 使用示例：
-/// <code>
-/// public class MyService
-/// {
-///     private readonly IFeishuTokenManagerResolver _resolver;
-///
-///     public MyService(IFeishuTokenManagerResolver resolver)
-///     {
-///         _resolver = resolver;
-///     }
-///
-///     // 使用默认应用的租户令牌
-///     public async Task DoWithDefaultAppAsync()
-///     {
-///         var token = await _resolver.GetTenantTokenManager().GetTokenAsync();
-///     }
-///
-///     // 使用指定应用的租户令牌
-///     public async Task DoWithHrAppAsync()
-///     {
-///         var token = await _resolver.GetTenantTokenManager("hr-app").GetTokenAsync();
-///     }
-/// }
-/// </code>
+/// 多应用模式下按应用键解析令牌管理器的推荐入口，替代直接注入 <see cref="ITenantTokenManager"/> /
+/// <see cref="IAppTokenManager"/> / <see cref="IUserTokenManager"/>——后者只暴露默认应用的实例，
+/// 无法切换到非默认应用。所有 <c>Get*</c> 成员在指定应用不存在时抛 <see cref="InvalidOperationException"/>，
+/// <c>TryGet*</c> 成员返回 <c>null</c>；各成员的 <c>appKey</c> 为 <c>null</c> 时取默认应用。
 /// </remarks>
 public interface IFeishuTokenManagerResolver
 {

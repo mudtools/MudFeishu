@@ -28,30 +28,10 @@ public enum FeishuEventDataParseFailure
 /// 飞书事件数据共享解析器（v1.0 / v2.0 / data 包裹兼容形态的<b>单一真源</b>）
 /// </summary>
 /// <remarks>
-/// <para>
-/// R-E1（AD-1）：Webhook 与 WebSocket 两通道此前各持 2 份平行解析实现，v1.0 官方格式
-/// （根级 <c>uuid</c>/<c>token</c>/<c>ts</c>、事件类型位于 <c>event.type</c>、app_id/tenant_key 位于
-/// <c>event</c> 内）被错误映射，导致 v1 订阅在 Webhook 被空字段 fail-closed 拒绝（E-P0-1）、
-/// 在 WS 通道整帧丢弃（E-P0-2）。本类型将解析规则收敛为单一真源。
-/// </para>
-/// <para>
-/// 稳定契约：
-/// ① v2.0（含 <c>schema</c> 键）→ 完整 <see cref="FeishuEventHeader"/>，字段逐项透传；
-/// ② v1.0 官方形态 → 构造<b>合成 Header</b>（<see cref="FeishuEventHeader.Schema"/> 恒为 null，
-/// 字段取自根级 uuid/token/ts 与 event.*，AD-2），根级平铺属性照旧填充；
-/// ③ 网关包裹形态（根级含 <c>data</c> 对象）→ 以 data 子树为有效根重走 ①②（AD-4）；
-/// ④ <see cref="EventData.Event"/> 恒为 JSON 原文字符串（<see cref="JsonElement.GetRawText"/>），
-/// 消费方请使用 <see cref="FeishuEventDataExtensions.GetEventRawJson"/> 读取（AD-3）；
-/// ⑤ <see cref="EventData.CreateTime"/> 恒为<b>毫秒</b> long（AD-3/§3.5 启发式）。
-/// </para>
-/// <para>
-/// url_verification 帧不在本解析器处理：Webhook 在 Decryptor 分流（challenge 提取）；
-/// WS 走 <see cref="FeishuEventDataParseFailure.NoEventType"/> 丢弃路径。
-/// </para>
-/// <para>
-/// AOT：纯 <see cref="JsonDocument"/>/TryGetProperty 手工解析，无反射序列化，无
-/// [RequiresUnreferencedCode]。失败原因枚举为受控维度，可直接入指标标签。
-/// </para>
+/// 解析规则以本类型为单一真源（Webhook 与 WebSocket 共用）。契约：① 含 <c>schema</c> 的 v2.0 → 完整 <see cref="FeishuEventHeader"/> 透传；
+/// ② v1.0 官方形态 → 合成 Header（<see cref="FeishuEventHeader.Schema"/> 恒 <c>null</c>，字段取根级 <c>uuid</c>/<c>token</c>/<c>ts</c> 与 <c>event.*</c>）；
+/// ③ 根级含 <c>data</c> 对象 → 以 data 子树为有效根重走 ①②；④ <see cref="EventData.Event"/> 恒为 JSON 原文（用
+/// <see cref="FeishuEventDataExtensions.GetEventRawJson"/> 读取）；⑤ <see cref="EventData.CreateTime"/> 恒为毫秒 <c>long</c>。
 /// </remarks>
 public static class FeishuEventDataParser
 {
@@ -245,7 +225,7 @@ public static class FeishuEventDataParser
         if (root.TryGetProperty("token", out var tokenElement) && tokenElement.ValueKind == JsonValueKind.String)
             token = tokenElement.GetString();
 
-        // 根级 ts（秒或浮点秒字符串；E-P2-2）；Header.CreateTime 保留原始字符串（对齐 v2 口径）
+        // 根级 ts（秒或浮点秒字符串）；Header.CreateTime 保留原始字符串（对齐 v2 口径）
         string? headerCreateTime = null;
         if (root.TryGetProperty("ts", out var tsElement))
         {
@@ -276,7 +256,7 @@ public static class FeishuEventDataParser
     }
 
     /// <summary>
-    /// 解析时间戳字段为<b>毫秒</b> long（§3.5 启发式，E-P2-2 单一口径）：
+    /// 解析时间戳字段为<b>毫秒</b> long（位数启发式，单一口径）：
     /// 数字/整数按位数判别（≥16 位微秒、13~15 位毫秒、≤12 位秒）；
     /// 字符串浮点按秒解析 ×1000；无法解析返回 0。
     /// </summary>

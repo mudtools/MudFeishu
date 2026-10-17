@@ -10,7 +10,7 @@ using System.Text;
 namespace Mud.Feishu.Redis.Services;
 
 /// <summary>
-/// Redis glob pattern 的字面量转义（TMR2-P1-2）。
+/// Redis glob pattern 的字面量转义。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -24,10 +24,10 @@ namespace Mud.Feishu.Redis.Services;
 /// 键上只有<b>一个</b>反斜杠，永不命中。
 /// </para>
 /// <para>
-/// 修复前的双重缺陷：<c>PerAppRedisTokenStoreFactory.BuildKeyPrefix</c> 预转义一次（<c>:</c> → <c>\:</c>），
-/// <c>TokenKeyBuilder</c> 又转义一次（<c>\</c> → <c>\\</c>），而 SCAN pattern 与键由<b>同一份</b>
-/// 双重转义前缀产出，因此 pattern 与键互不匹配 —— 含 <c>:</c>/<c>\</c> 的 appKey 下
-/// <c>ClearAsync</c> / <c>GetTokenTypesAsync</c> / <c>ClearAllUsersAsync</c> 全部零命中（D10 静默失效）。
+/// <b>不得重复转义</b>：<c>TokenKeyBuilder</c> 已把 <c>:</c> 转义为 <c>\:</c>，若调用方
+/// （如 <c>PerAppRedisTokenStoreFactory.BuildKeyPrefix</c>）再转义一次（<c>\</c> → <c>\\</c>），
+/// 则 SCAN pattern 与键将由<b>不同</b>份前缀产出而互不匹配 —— 含 <c>:</c>/<c>\</c> 的 appKey 下
+/// <c>ClearAsync</c> / <c>GetTokenTypesAsync</c> / <c>ClearAllUsersAsync</c> 会全部零命中。
 /// </para>
 /// </remarks>
 internal static class RedisGlobPattern

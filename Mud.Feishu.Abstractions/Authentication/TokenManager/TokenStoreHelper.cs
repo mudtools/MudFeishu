@@ -8,20 +8,20 @@
 namespace Mud.Feishu.Abstractions.Authentication;
 
 /// <summary>
-/// 令牌存储编解码工具类（C-2 裁决落地：<see cref="FeishuTokenStoreCodec"/> 的消费侧门面）。
+/// 令牌存储编解码工具类（<see cref="FeishuTokenStoreCodec"/> 的消费侧门面）。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>写入格式（3.0.3 起）</b>：<c>{expiresInSeconds}|{token}</c>（相对秒，官方
+/// <b>写入格式</b>：<c>{expiresInSeconds}|{token}</c>（相对秒，官方
 /// <c>DefaultTokenStoreCodec</c> 形态）——由 <see cref="EncodeStoredToken"/> 以
 /// 「令牌自身过期时刻」推导剩余秒后写入。不再新写旧版「绝对毫秒戳」私有形态。
 /// </para>
 /// <para>
-/// <b>读取口径（双读，C-2）</b>：<see cref="DecodeStoredToken"/> / <see cref="TryDecodeExpiry"/>
+/// <b>读取口径（双读）</b>：<see cref="DecodeStoredToken"/> / <see cref="TryDecodeExpiry"/>
 /// 对存量旧值（绝对毫秒戳）与新值（相对秒）均兼容：
 /// 旧值原样给出毫秒戳；新值投影为 <c>nowMs + seconds × 1000</c>（消费方「绝对毫秒戳」契约不变）；
 /// <c>seconds &lt;= 0</c>（官方「无 TTL 信息」）与无法解析的值投影为 0 / false——
-/// Redis 侧 refresh TTL 由此回落 30 天（TMA-22 语义），旧值中「已过期毫秒戳删键」行为保持不变。
+/// Redis 侧 refresh TTL 由此回落 30 天，旧值中「已过期毫秒戳删键」行为保持不变。
 /// 旧数据无需回灌，按条目自然过期收敛；读写分离保证迁移期不混写同一键（全部写入方为本格式）。
 /// </para>
 /// </remarks>
@@ -29,7 +29,7 @@ internal static class TokenStoreHelper
 {
     /// <summary>
     /// 编码存储值：把过期时刻（Unix 毫秒）换算为剩余秒后按官方相对秒格式编码
-    /// （C-2 裁决：Encode 单写 <c>{expiresInSeconds}|{token}</c>）。
+    /// （Encode 单写 <c>{expiresInSeconds}|{token}</c>）。
     /// </summary>
     /// <param name="token">令牌明文（不得为空；空令牌由调用方——桥接器——跳过写穿）。</param>
     /// <param name="expireTimestampMs">令牌过期时刻（Unix 毫秒）；<c>&lt;= 0</c> 写为 0（无 TTL 信息）。</param>
@@ -56,7 +56,7 @@ internal static class TokenStoreHelper
     }
 
     /// <summary>
-    /// 解码存储值（TMA-15 / C-2 双读：无 <c>{n}|</c> 前缀的旧格式 / 损坏值按「无过期信息」返回，
+    /// 解码存储值（双读：无 <c>{n}|</c> 前缀的旧格式 / 损坏值按「无过期信息」返回，
     /// 由调用方（值工厂）判定为未命中）。
     /// </summary>
     /// <param name="storedValue">存储值（相对秒新格式 / 绝对毫秒戳旧格式）。</param>
@@ -85,7 +85,7 @@ internal static class TokenStoreHelper
     /// <param name="expireTimestampMs">解码出的过期时刻（毫秒投影，见类型级 remarks）；解码失败时为 0。</param>
     /// <returns>
     /// 存在有效过期信息返回 true；「无 TTL 信息」（前导数 &lt;= 0）或无法解析返回 false
-    /// （Redis 侧由此回落 30 天，TMA-22）。
+    /// （Redis 侧由此回落 30 天）。
     /// </returns>
     public static bool TryDecodeExpiry(string storedValue, out long expireTimestampMs)
     {
@@ -110,10 +110,10 @@ internal static class TokenStoreHelper
     /// <see cref="VersionedTokenStoreCodec.TryDecodeEnvelope"/> 解析后归一到同一结果形态。
     /// </summary>
     /// <remarks>
-    /// U-2（上游 3.0.10 Batch 3）：读取侧 v2 兼容 —— 上游默认 codec 已具备 v2 前缀识别，
+    /// 读取侧 v2 兼容 —— 上游默认 codec 已具备 v2 前缀识别，
     /// 本门面（Feishu 消费侧）同步支持，使「宿主经官方 store + <c>VersionedTokenStoreCodec</c> 组合写入 v2」
     /// 或「官方未来切换写入形态」两种情形下的消费侧（含 Redis 侧 TTL 推导）不丢失过期信息。
-    /// 写侧形态不变（C-2：默认形态不得漂移）——<see cref="EncodeStoredToken"/> 仍单写相对秒 v1 形态。
+    /// 写侧形态不变（默认形态不得漂移）——<see cref="EncodeStoredToken"/> 仍单写相对秒 v1 形态。
     /// <para>
     /// <c>v2:expired|</c>（显式已过期）投影为「无令牌 + 过期时刻 0」——与上游
     /// <see cref="ITokenStoreCodec.Decode"/> 的 <c>(null, 0)</c> 投影同口径：
@@ -145,7 +145,7 @@ internal static class TokenStoreHelper
     }
 
     /// <summary>
-    /// C-2 双读投影：前导数 <c>&gt;= <see cref="FeishuTokenStoreCodec.AbsoluteMsThreshold"/></c>
+    /// 双读投影：前导数 <c>&gt;= <see cref="FeishuTokenStoreCodec.AbsoluteMsThreshold"/></c>
     /// ⇒ 旧格式绝对毫秒戳（原样）；<c>&gt; 0 且 &lt; 阈值</c> ⇒ 新格式相对秒（投影
     /// <c>nowMs + s × 1000</c>）；<c>&lt;= 0</c> ⇒ 无 TTL 信息（投影 0）。
     /// </summary>

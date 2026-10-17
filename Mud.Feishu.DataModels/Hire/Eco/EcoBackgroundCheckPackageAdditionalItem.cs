@@ -24,6 +24,7 @@ public class EcoBackgroundCheckPackageAdditionalItem
     /// <summary>
     /// <para>附加调查项名称</para>
     /// <para>必填：是</para>
+    // comment-allow: 示例值为飞书官方文档原文，「X2」属样例取值本身，非本仓内部编号
     /// <para>示例值：工作履历信息验证X2</para>
     /// </summary>
     [JsonPropertyName("name")]

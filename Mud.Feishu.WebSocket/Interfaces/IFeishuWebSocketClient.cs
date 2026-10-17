@@ -46,7 +46,7 @@ public interface IFeishuWebSocketClient : IAsyncDisposable, IDisposable
     /// 接收到消息事件（**观测钩子**，非处理入口）
     /// </summary>
     /// <remarks>
-    /// <b>线程契约（WS2-08 行为变更，请勿沿用旧假设）</b>：
+    /// <b>线程契约（请勿沿用旧假设）</b>：
     /// <list type="bullet">
     /// <item>本事件<b>不在接收循环线程上派发</b>，而是在取得并发租约后的处理任务体内派发；</item>
     /// <item>因此<b>可能并发执行</b>（受 <see cref="FeishuWebSocketOptions.MaxConcurrentHandlers"/> 约束），
@@ -82,7 +82,7 @@ public interface IFeishuWebSocketClient : IAsyncDisposable, IDisposable
     /// </summary>
     /// <param name="endpoint">WebSocket端点信息</param>
     /// <param name="cancellationToken">
-    /// <b>仅约束建连阶段</b>（握手 + 认证），<b>不构成连接生命周期</b>（架构不变量 I15）：
+    /// <b>仅约束建连阶段</b>（握手 + 认证），<b>不构成连接生命周期</b>（架构不变量）：
     /// 连接成功后再取消该令牌不会中断接收循环或心跳。终止连接请调用
     /// <see cref="DisconnectAsync"/> 或 <c>DisposeAsync</c>。
     /// </param>
@@ -131,7 +131,8 @@ public interface IFeishuWebSocketClient : IAsyncDisposable, IDisposable
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>接收任务</returns>
     /// <remarks>
-    /// WS2-02 收口：未连接时抛 <see cref="InvalidOperationException"/>；已有接收循环在运行时为
+    /// 接收循环已收口至 <see cref="ConnectAsync(WsEndpointResult, CancellationToken)"/>：未连接时抛
+    /// <see cref="InvalidOperationException"/>；已有接收循环在运行时为
     /// 幂等 no-op 并记录告警。需要立即恢复接收循环请调用
     /// <c>IFeishuWebSocketManager.ReconnectAsync</c>。
     /// </remarks>

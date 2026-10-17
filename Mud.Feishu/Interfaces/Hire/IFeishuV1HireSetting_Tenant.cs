@@ -75,7 +75,7 @@ public interface IFeishuTenantV1HireSetting : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取人才标签列表
-    /// <para>按关键词、ID 列表、标签类型与是否包含停用等条件分页查询人才标签，按创建时间倒序排列（查询参数采用查询对象模式 <see cref="TalentTagListQuery"/>，见 AGENTS.md API-2）。</para>
+    /// <para>按关键词、ID 列表、标签类型与是否包含停用等条件分页查询人才标签，按创建时间倒序排列（查询参数采用查询对象模式 <see cref="TalentTagListQuery"/>）。</para>
     /// <para>限频：20 次/秒。所需权限：hire:talent_tag（更新人才标签）或 hire:talent_tag:readonly（获取人才标签）。</para>
     /// <para><see href="https://open.feishu.cn/document/hire-v1/recruitment-related-configuration/application/list-2">接口文档</see></para>
     /// </summary>
@@ -160,7 +160,7 @@ public interface IFeishuTenantV1HireSetting : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取用户角色列表
-    /// <para>按用户、角色或更新时间分页查询用户角色分配关系，返回角色名称与业务管理范围（查询参数采用查询对象模式 <see cref="UserRoleListQuery"/>，见 AGENTS.md API-2）。</para>
+    /// <para>按用户、角色或更新时间分页查询用户角色分配关系，返回角色名称与业务管理范围（查询参数采用查询对象模式 <see cref="UserRoleListQuery"/>）。</para>
     /// <para>限频：1000 次/分钟、50 次/秒。所需权限：hire:auth:readonly（获取权限信息）或 hire:auth（更新权限信息）。字段权限：contact:user.employee_id:readonly（返回的用户 ID 字段）。</para>
     /// <para><see href="https://open.feishu.cn/document/server-docs/hire-v1/recruitment-related-configuration/auth/list-2">接口文档</see></para>
     /// </summary>

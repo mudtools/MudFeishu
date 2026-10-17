@@ -40,7 +40,7 @@ public interface IFeishuTokenManagerFactory
 /// 默认的飞书令牌管理器工厂，直接创建 <see cref="TenantTokenManager"/> / <see cref="AppTokenManager"/> / <see cref="UserTokenManager"/> 实例。
 /// </summary>
 /// <remarks>
-/// 行为与 MA-02 修复前的 <see cref="FeishuAppManager.CreateAppContext"/> 完全一致，仅将创建逻辑提取到独立工厂。
+/// 创建行为与 <see cref="FeishuAppManager.CreateAppContext"/> 一致，仅将创建逻辑提取到独立工厂。
 /// 自定义实现可替换此工厂以注入自定义 TokenManager 类型。
 /// </remarks>
 public class DefaultFeishuTokenManagerFactory : IFeishuTokenManagerFactory
@@ -71,7 +71,7 @@ public class DefaultFeishuTokenManagerFactory : IFeishuTokenManagerFactory
         var options = Options.Create(config);
         var currentUserContext = _serviceProvider.GetService<IFeishuCurrentUserContext>();
 
-        // U-3：跨进程刷新去重租约 —— 由 Mud.Feishu.Redis 注册 RedisRefreshLease；未启用 Redis 时为 null（零行为变化）。
+        // 跨进程刷新去重租约 —— 由 Mud.Feishu.Redis 注册 RedisRefreshLease；未启用 Redis 时为 null（零行为变化）。
         var refreshLease = _serviceProvider.GetService<ITokenRefreshLease>();
 
         var tenantTokenManager = new TenantTokenManager(

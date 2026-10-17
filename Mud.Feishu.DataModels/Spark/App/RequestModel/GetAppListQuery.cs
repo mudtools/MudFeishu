@@ -11,7 +11,7 @@ using System.Globalization;
 namespace Mud.Feishu.DataModels.Spark;
 
 /// <summary>
-/// <para>批量获取妙搭应用查询参数（查询对象模式，见 AGENTS.md API-2）</para>
+/// <para>批量获取妙搭应用查询参数（查询对象模式）</para>
 /// </summary>
 public class GetAppListQuery : IQueryParameter
 {

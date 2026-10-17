@@ -28,7 +28,7 @@ public class FeishuEventMessageHandler : JsonMessageHandler
     private readonly FeishuWebSocketOptions _options;
     // F7 修复：统一去重中间件（可选），优先于分离的 _deduplicator 使用，提供 EventId + SeqID 双重去重。
     private readonly IUnifiedDeduplicationMiddleware? _unifiedDedupMiddleware;
-    // R-E1（E-P1-3）：失败事件落盘（可选）。未注册时行为与未引入前完全一致（零破坏）。
+    // 失败事件落盘（可选）。未注册时为 no-op（零破坏）。
     private readonly IFailedEventStore? _failedEventStore;
 
     /// <summary>
@@ -40,7 +40,7 @@ public class FeishuEventMessageHandler : JsonMessageHandler
     /// <param name="interceptors">事件拦截器集合</param>
     /// <param name="options">WebSocket 配置选项</param>
     /// <param name="unifiedDedupMiddleware">统一去重中间件（可选，F7 修复引入）</param>
-    /// <param name="failedEventStore">失败事件存储（可选，R-E1 引入；经 FeishuWebSocketServiceBuilder.AddFailedEventStore 注册）</param>
+    /// <param name="failedEventStore">失败事件存储（可选；经 FeishuWebSocketServiceBuilder.AddFailedEventStore 注册）</param>
     public FeishuEventMessageHandler(
         ILogger<FeishuEventMessageHandler> logger,
         IFeishuEventHandlerFactory eventHandlerFactory,
@@ -68,7 +68,7 @@ public class FeishuEventMessageHandler : JsonMessageHandler
     }
 
     /// <inheritdoc/>
-    // R-E1：本 override 已不再使用反射序列化（解析走共享 FeishuEventDataParser），
+    // 本 override 不使用反射序列化（解析走共享 FeishuEventDataParser），
     // 但基类 JsonMessageHandler.HandleAsync 声明了 Requires* 标注，override 必须逐字匹配（IL2046）。
 #if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式System.Text.Json序列化在裁剪下无法静态分析目标类型成员")]
@@ -78,8 +78,8 @@ public class FeishuEventMessageHandler : JsonMessageHandler
 #endif
     public override async Task HandleAsync(string message, CancellationToken cancellationToken = default)
     {
-        // P2-1：取消终态的一次性口径标记。内层 try 若已按 canceled 记账，外层 catch 不得再记一次
-        //（此前同一取消会产生两条指标：一条带真实 eventType、一条 eventType="unknown"，且后者污染维度基数）。
+        // 取消终态的一次性口径标记。内层 try 若已按 canceled 记账，外层 catch 不得再记一次
+        //（否则同一取消会产生两条指标：一条带真实 eventType、一条 eventType="unknown"，后者污染维度基数）。
         var cancelOutcomeRecorded = false;
         try
         {
@@ -108,14 +108,14 @@ public class FeishuEventMessageHandler : JsonMessageHandler
             {
                 var root = jsonDoc.RootElement;
 
-                // R-E1（AD-1）：v2.0 / v1.0 / data 包裹形态统一由共享解析器解析（单一真源）。
-                // 此前 v2 走本地 ParseV2Event、v1 走 SafeDeserialize<EventMessage>（要求 data 包裹），
-                // 真实 v1.0 官方帧（根级 uuid/token/ts、事件字段在 event 内）被整帧丢弃（E-P0-2）。
-                // 信任模型（P2-4）：v1 帧级凭据同样进入 eventData.Header.Token（合成 Header，Schema=null），
+                // v2.0 / v1.0 / data 包裹形态统一由共享解析器解析（单一真源）：
+                // 若 v2 走本地 ParseV2Event、v1 走 SafeDeserialize<EventMessage>（要求 data 包裹），
+                // 真实 v1.0 官方帧（根级 uuid/token/ts、事件字段在 event 内）会被整帧丢弃。
+                // 信任模型：v1 帧级凭据同样进入 eventData.Header.Token（合成 Header，Schema=null），
                 // 拦截器校验口径与 v2 一致。
                 if (!FeishuEventDataParser.TryParse(root, out var eventData, out var parseFailure))
                 {
-                    // P2-4：截断改走 LogSanitizer.CleanMessage（先剥离 token/encrypt 等敏感字段值再截断）。
+                    // 截断走 LogSanitizer.CleanMessage（先剥离 token/encrypt 等敏感字段值再截断）。
                     var truncatedMsg = Mud.Feishu.Abstractions.Utilities.LogSanitizer.CleanMessage(message, 200);
                     _logger.LogWarning("无法解析事件消息 (原因: {Failure}, 长度: {Length}): {Message}",
                         parseFailure, message.Length, truncatedMsg);
@@ -131,7 +131,7 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                 _logger.LogDebug("收到飞书事件: {EventType}, EventId: {EventId}",
                     eventData.EventType, eventData.EventId);
 
-                // P1-2：空 EventId 无法有效去重（null 跳过 / 空串同键碰撞）——fail-closed，与 Webhook WHF-05 对齐。
+                // 空 EventId 无法有效去重（null 跳过 / 空串同键碰撞）——fail-closed，与 Webhook 通道对齐。
                 // 丢弃而非 ACK 500：空 ID 属确定性畸形，重发不能自愈。
                 if (string.IsNullOrEmpty(eventData.EventId))
                 {
@@ -164,7 +164,7 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                 }
                 else if (_deduplicator != null)
                 {
-                    // P2-12：WS 去重键带 AppKey，与 MemoryDeduplicator.GetCacheKey 多应用隔离口径一致
+                    // WS 去重键带 AppKey，与 MemoryDeduplicator.GetCacheKey 多应用隔离口径一致
                     var dedupResult = await _deduplicator.TryMarkAsProcessingAsync(eventData.EventId, _options.AppKey, cancellationToken: cancellationToken);
                     if (dedupResult.IsDuplicate)
                     {
@@ -210,9 +210,9 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                                 // 使用事件处理器工厂并行处理事件
                                 await _eventHandlerFactory.HandleEventParallelAsync(eventData.EventType, eventData, cancellationToken);
 
-                                // WHF-07（WS 对齐）：业务分发已成功——Mark 失败禁止回滚
+                                // 业务分发已成功——Mark 失败禁止回滚
                                 //（回滚将导致服务端重发后重复消费）。保留 processing 态，由 ProcessingTimeout/TTL 兜底。
-                                // D15/P0-1：Mark 属补偿/终态操作，不消费调用方令牌——外部取消/路由超时路径上
+                                // Mark 属补偿/终态操作，不消费调用方令牌——外部取消/路由超时路径上
                                 // 令牌已取消，Redis 后端入口会直接 OCE，Mark 应真实尝试完成而非被取消窗口击穿。
                                 var markCompleted = true;
                                 try
@@ -231,7 +231,7 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                                     FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: true, "mark_completed_failed");
                                 }
 
-                                // 记录事件处理成功（P2-1：mark 失败分支已带 "mark_completed_failed" 标签，成功口径只记一次）
+                                // 记录事件处理成功（mark 失败分支已带 "mark_completed_failed" 标签，成功口径只记一次）
                                 if (markCompleted)
                                     FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: true);
                             }
@@ -245,7 +245,7 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                         }
                         catch (OperationCanceledException)
                         {
-                            // P2-1：外部取消必须在内层收口——若不在此之前拦截，OCE 会先被下方通用 catch 记为
+                            // 外部取消必须在内层收口——若不在此之前拦截，OCE 会先被下方通用 catch 记为
                             // "OperationCanceledException" 失败，再由外层 OCE catch 记为 "canceled"（双计数）。
                             // 此处：回滚去重 + 按 canceled 记一次 + 以终态标记异常交给后置拦截器；
                             // 异常仍按 OCE 原样传播，保持取消语义（MessageRouter 转为路由失败 → ACK 500）。
@@ -265,9 +265,9 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                             // 记录事件处理失败
                             FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: false, ex.GetType().Name);
 
-                            // R-E1（E-P1-3）：业务失败落盘（可选容灾）。仅覆盖通用业务失败分支——
+                            // 业务失败落盘（可选容灾）。仅覆盖通用业务失败分支——
                             // OCE（取消后服务端必然重发）与 EventHandlingOutcomeException（拦截/取消终态，
-                            // 重发后拦截器重新决策）不落盘。写入失败仅 Warning，不影响 ACK 语义（WHF-07 口径）。
+                            // 重发后拦截器重新决策）不落盘。写入失败仅 Warning，不影响 ACK 语义。
                             await StoreFailedEventAsync(eventData, ex, cancellationToken);
 
                             throw;
@@ -286,7 +286,7 @@ public class FeishuEventMessageHandler : JsonMessageHandler
         }
         catch (OperationCanceledException)
         {
-            // P2-1：取消必须传播以触发 ACK 500 / 停机语义
+            // 取消必须传播以触发 ACK 500 / 停机语义
             //（MessageRouter 的 RouteMessageInternalWithResultAsync 将异常转为路由失败 → 不 ACK 200）。
             // 仅当取消发生在内层 try 之外（JSON 解析 / 去重检查等前置阶段）时才在此记账，
             // 内层已按真实 eventType 记账的取消不重复计数。
@@ -302,11 +302,11 @@ public class FeishuEventMessageHandler : JsonMessageHandler
         }
         catch (Exception ex)
         {
-            // P0-1 修复（WS-01）：此前外层 catch 吞掉异常后正常返回，
-            // 导致 MessageRouter.RouteBinaryMessageWithResultAsync 恒返回 true、
+            // 外层 catch 必须重抛异常：吞掉异常后正常返回会使
+            // MessageRouter.RouteBinaryMessageWithResultAsync 恒返回 true、
             // BinaryMessageProcessor 回 ACK code=200，飞书服务端不再重发，事件永久丢失。
-            // 现重抛异常，让 MessageRouter 感知失败并回 ACK code=500，服务端将重发。
-            // 同时解决 P2-11：日志仅记录结构化字段 + 消息前 200 字符，避免全文入日志。
+            // 重抛让 MessageRouter 感知失败并回 ACK code=500，服务端将重发。
+            // 日志仅记录结构化字段 + 消息前 200 字符，避免全文入日志。
             var truncatedMsg = Mud.Feishu.Abstractions.Utilities.LogSanitizer.CleanMessage(message, 200);
             _logger.LogError(ex, "处理飞书事件消息时发生错误 (消息长度: {Length}, 消息前200字符: {Message})",
                 message.Length, truncatedMsg);
@@ -320,19 +320,19 @@ public class FeishuEventMessageHandler : JsonMessageHandler
     /// <param name="eventId">事件 ID</param>
     /// <param name="cancellationToken">调用方取消令牌（仅签名兼容；补偿操作不消费，见 remarks）</param>
     /// <remarks>
-    /// P1-7/P2-1：拦截、业务失败、外部取消三条路径的回滚必须走同一出口，
+    /// 拦截、业务失败、外部取消三条路径的回滚必须走同一出口，
     /// 避免"某条新增失败路径漏回滚"导致事件停在 processing 态。
     /// <para>
-    /// D15/P0-1：回滚属补偿终态，必须完成。调用方令牌在外部取消/路由超时路径上<b>已被取消</b>，
+    /// 回滚属补偿终态，必须完成。调用方令牌在外部取消/路由超时路径上<b>已被取消</b>，
     /// Redis 后端入口 <c>ThrowIfCancellationRequested</c> 会使回滚失效（键停留 processing →
     /// 服务端重发被判重跳过并 ACK 200 → 事件丢失）。补偿调用一律使用 <see cref="CancellationToken.None"/>，
-    /// 与 Webhook 通道「去重标记路径使用 CancellationToken.None」（WHF-16）对齐。
+    /// 与 Webhook 通道「去重标记路径使用 CancellationToken.None」对齐。
     /// 回滚失败不得替换/吞没原始业务异常：仅记录，键停留 processing 由超时恢复兜底。
     /// </para>
     /// </remarks>
     private async Task RollbackDeduplicationAsync(string eventId, CancellationToken cancellationToken)
     {
-        _ = cancellationToken; // D15：显式标注补偿操作不消费调用方令牌
+        _ = cancellationToken; // 显式标注补偿操作不消费调用方令牌
 
         try
         {
@@ -353,11 +353,11 @@ public class FeishuEventMessageHandler : JsonMessageHandler
     }
 
     /// <summary>
-    /// 将业务失败事件写入失败事件存储（R-E1/E-P1-3 阶段一：仅落盘 + 指标，重试以服务端重发为主路径）。
+    /// 将业务失败事件写入失败事件存储（仅落盘 + 指标，重试以服务端重发为主路径）。
     /// </summary>
     /// <remarks>
     /// 与 Webhook 通道 <c>FeishuWebhookService</c> 同构：<c>NextRetryAt = now + 初始延迟</c>（指数退避在重试侧，
-    /// 阶段一无重试消费者）。写入失败仅记录 Warning，不得改变 ACK/消费结论（对齐 WHF-07「标记失败不改变
+    /// 当前无重试消费者）。写入失败仅记录 Warning，不得改变 ACK/消费结论（对齐「标记失败不改变
     /// 消费结论」口径）。未注册 <see cref="IFailedEventStore"/> 时为 no-op。
     /// </remarks>
     private async Task StoreFailedEventAsync(EventData eventData, Exception exception, CancellationToken cancellationToken)

@@ -29,13 +29,11 @@ public class FeishuWebSocketOptions
     /// <summary>认证响应超时默认值（毫秒）：30 秒</summary>
     public const int DefaultAuthTimeoutMs = 30000;
 
-    // ────────────────────────────────────────────────────────────────────────
-    // I16（配置面双向约束）：以下三个常量是配置上界的**单一真源**。
+    // 以下三个常量是配置上界的**单一真源**。
     // 上界不是"越严越好"，而是取"远超运维合理值、同时远离实现层表示域边界"的位置：
     //   · TotalBudget 上限 7 天 —— 远低于 CancellationTokenSource(TimeSpan) 的 24.8 天上限，
     //     因此永远不需要依赖 TimeSpanGuards 的钳制来"兜底"；
     //   · 退避/连接/认证超时上限 1 小时 / 5 分钟 —— 超过即属配置错误（长时断连不可能靠更长的单次等待解决）。
-    // ────────────────────────────────────────────────────────────────────────
 
     /// <summary>重连总时间预算上限：7 天</summary>
     public static readonly TimeSpan MaxReconnectTotalBudget = TimeSpan.FromDays(7);
@@ -112,7 +110,7 @@ public class FeishuWebSocketOptions
     public ulong SequenceGapThreshold { get; set; }
 
     /// <summary>
-    /// WebSocket 主机白名单（P2-15 修复引入：防御服务端下发端点被篡改导致的 SSRF）。
+    /// WebSocket 主机白名单（防御服务端下发端点被篡改导致的 SSRF）。
     /// <para>分号分隔；支持 <c>*.feishu.cn</c> 通配后缀（匹配任意层级子域）与精确主机名；大小写不敏感。</para>
     /// <para>
     /// 默认 <c>*.feishu.cn;*.larksuite.com</c>（飞书/飞书海外域名，端点由服务端 API 下发）。
@@ -137,7 +135,7 @@ public class FeishuWebSocketOptions
     /// 空 EventId 无法有效去重：内存后端对 null 跳过去重、对空字符串作为同键碰撞
     /// （首条标记后后续空 ID 事件被静默跳过），服务端重发将失去幂等保护。
     /// 飞书正常事件必带 event_id，空值只出现在畸形或恶意流量中。
-    /// 对齐 Webhook 通道 <c>FeishuWebhookOptions.RejectEmptyIdentifiers</c>（WHF-05）。
+    /// 对齐 Webhook 通道 <c>FeishuWebhookOptions.RejectEmptyIdentifiers</c>。
     /// </remarks>
     public bool RejectEmptyEventIds { get; set; } = true;
 
@@ -145,10 +143,10 @@ public class FeishuWebSocketOptions
     /// 未注册 eventType 的事件是否静默忽略（记 Debug + unhandled 指标），默认 <c>false</c>（保守，保持 WS 现状回退默认处理器）。
     /// </summary>
     /// <remarks>
-    /// 对齐 Webhook 通道 <c>FeishuWebhookOptions.IgnoreUnknownEventTypes</c>（WHF-09，默认 true）。
+    /// 对齐 Webhook 通道 <c>FeishuWebhookOptions.IgnoreUnknownEventTypes</c>（默认 true）。
     /// WS 默认 false 是行为兼容选择；推荐新宿主设为 true 以与 Webhook 一致。
-    /// E-P2-1：两通道默认值不同——Webhook 默认 true（未注册事件静默忽略），WS 默认 false（默认处理器兜底），
-    /// 语义不一致属已知差异（AD-5：不改默认值，避免行为收紧），宿主可显式对齐。
+    /// 两通道默认值不同——Webhook 默认 true（未注册事件静默忽略），WS 默认 false（默认处理器兜底），
+    /// 语义不一致属已知差异（不改默认值，避免行为收紧），宿主可显式对齐。
     /// </remarks>
     public bool IgnoreUnknownEventTypes { get; set; }
 
@@ -159,9 +157,9 @@ public class FeishuWebSocketOptions
     /// 失败事件落盘的初始重试延迟（秒），默认 10；非正数回退默认值。
     /// </summary>
     /// <remarks>
-    /// R-E1/E-P1-3 阶段一：WS 处理失败时（若已注册 <c>IFailedEventStore</c>）以该延迟写入
+    /// 阶段一：WS 处理失败时（若已注册 <c>IFailedEventStore</c>）以该延迟写入
     /// <c>NextRetryAt</c>；重试主路径仍是服务端重发（ACK 500），本字段仅为落盘记录提供对账口径。
-    /// 完整重试配置（倍数/上限/轮询）随 R-next 重试循环泛化时引入。
+    /// 完整重试配置（倍数/上限/轮询）随重试循环泛化时引入。
     /// </remarks>
     public int FailedEventInitialRetryDelaySeconds
     {
@@ -239,7 +237,7 @@ public class FeishuWebSocketOptions
         if (Reconnect.BaseDelayMs < 1000)
             throw new InvalidOperationException("Reconnect.BaseDelayMs (原 ReconnectDelayMs) 必须至少为1000毫秒");
 
-        // I16 上界（WS2-04）：此前 BaseDelayMs 无上界，配合 CalculateDelay 的指数放大后会
+        // 配置上界约束：BaseDelayMs 无上界时，配合 CalculateDelay 的指数放大后会
         // 在 TimeSpan.FromMilliseconds(double) 处溢出（TimeSpan 上限约 9.22e14 毫秒），
         // 使整轮重连在策略层异常中止。
         if (Reconnect.BaseDelayMs > MaxReconnectDelayMs)
@@ -262,7 +260,7 @@ public class FeishuWebSocketOptions
         if (Reconnect.TotalBudget <= TimeSpan.Zero)
             throw new InvalidOperationException("Reconnect.TotalBudget必须大于0");
 
-        // I16 上界（WS2-04）：FeishuWebSocketHostedService.TryTriggerReconnect 会以
+        // 配置上界约束：FeishuWebSocketHostedService.TryTriggerReconnect 会以
         // `TotalBudget + 1 分钟` 构造 CancellationTokenSource(TimeSpan)。
         // 该构造函数对超长时长抛 ArgumentOutOfRangeException（.NET Core 上界 uint.MaxValue-1 ≈ 49.7 天；
         // .NET Framework / netstandard2.0 上界 int.MaxValue-1 ≈ 24.8 天）——异常发生在 fire-and-forget
@@ -287,7 +285,7 @@ public class FeishuWebSocketOptions
         if (ConnectionTimeoutMs < 1000)
             throw new InvalidOperationException("ConnectionTimeoutMs必须至少为1000毫秒");
 
-        // I16 上界（WS2-04）
+        // 配置上界约束
         if (ConnectionTimeoutMs > MaxTimeoutMs)
             throw new InvalidOperationException(
                 $"ConnectionTimeoutMs 不应超过 {MaxTimeoutMs} 毫秒（5 分钟），过长会让不可达端点的启动阻塞过久");
@@ -311,7 +309,7 @@ public class FeishuWebSocketOptions
         if (MessageSizeLimits.MaxTextMessageSize < 1024)
             throw new InvalidOperationException("MessageSizeLimits.MaxTextMessageSize必须至少为1024字符");
 
-        // I16 上界（WS2-04 / P2-1）：无上界时 ResolveMaxTextMessageBytes 的
+        // 配置上界约束：无上界时 ResolveMaxTextMessageBytes 的
         // `MaxTextMessageSize * 3` 会在 > 715,827,882 时整型溢出为负值，
         // 导致"消息大小校验"恒真（文本发送全失败 + 分片文本全丢弃）。
         if (MessageSizeLimits.MaxTextMessageSize > MaxTextMessageSizeUpperBound)

@@ -58,7 +58,7 @@ public class FeishuMultiAppMiddleware : IDisposable
         _options = options;
         _handlerRegistry = handlerRegistry;
 
-        // 监听配置变更（WHF-13：持有订阅句柄，宿主关停时释放，防止句柄泄漏）
+        // 监听配置变更（持有订阅句柄，宿主关停时释放，防止句柄泄漏）
         _onChangeSubscription = _options.OnChange((newOptions, name) =>
         {
             var oldOptions = Options;
@@ -70,7 +70,7 @@ public class FeishuMultiAppMiddleware : IDisposable
                 changes.Add($"GlobalRoutePrefix: {oldOptions.GlobalRoutePrefix} → {newOptions.GlobalRoutePrefix}");
             }
 
-#pragma warning disable CS0618 // R5/X4：该开关无运行时效果；此处仅保留配置变更可观测性
+#pragma warning disable CS0618 // 该开关无运行时效果；此处仅保留配置变更可观测性
             if (oldOptions.AutoRegisterEndpoint != newOptions.AutoRegisterEndpoint)
             {
                 changes.Add($"AutoRegisterEndpoint: {oldOptions.AutoRegisterEndpoint} → {newOptions.AutoRegisterEndpoint}（注意：该开关无运行时效果，路由由 app.UseFeishuWebhook() 决定）");
@@ -122,7 +122,7 @@ public class FeishuMultiAppMiddleware : IDisposable
     }
 
     /// <summary>
-    /// 释放资源（WHF-13：释放 IOptionsMonitor.OnChange 订阅，宿主关停时由 WebHost 调用）
+    /// 释放资源（释放 IOptionsMonitor.OnChange 订阅，宿主关停时由 WebHost 调用）
     /// </summary>
     public void Dispose()
     {
@@ -165,7 +165,7 @@ public class FeishuMultiAppMiddleware : IDisposable
 
         // 获取应用配置
         var requestId = RequestIdHelper.GetOrGenerateRequestId(context);
-        // WHF-R2/A3：白名单 IP 认定统一使用 ClientIpResolver（ADR-3 零信任 XFF），
+        // 白名单 IP 认定统一使用 ClientIpResolver（零信任 XFF），
         // 与 FeishuRateLimitMiddleware 共享同一解析逻辑，消除反代部署下白名单全误拒。
         var clientIp = ClientIpResolver.GetClientIp(
             context,
@@ -230,7 +230,7 @@ public class FeishuMultiAppMiddleware : IDisposable
             var requestBody = await ReadRequestBodyAsync(context.Request);
             if (string.IsNullOrEmpty(requestBody))
             {
-                // WHF-17：错误文案收敛（阶段差异仅记录在日志）
+                // 错误文案收敛（阶段差异仅记录在日志）
                 _logger.LogWarning("请求体为空, AppKey: {AppKey}", appKey ?? "unknown");
                 await WriteErrorResponse(context, 400, "Bad Request", requestId);
                 return;
@@ -253,7 +253,7 @@ public class FeishuMultiAppMiddleware : IDisposable
         }
         catch (FeishuRedisException ex) when (ex.FailureKind == FeishuRedisFailureKind.Server)
         {
-            // WHF-02：去重服务致命故障（Server）——返回 503 让飞书按重推策略稍后重试，
+            // 去重服务致命故障（Server）——返回 503 让飞书按重推策略稍后重试，
             // 而非伪装成 403（攻击面）或 500（会被误认为业务失败）
             activity?.SetStatus(ActivityStatusCode.Error, "Deduplication server failure");
             _logger.LogError(ex, "去重服务致命故障（Server），返回 503 以便飞书重推, AppKey: {AppKey}", appKey ?? "unknown");
@@ -261,14 +261,14 @@ public class FeishuMultiAppMiddleware : IDisposable
         }
         catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
         {
-            // WHF-16：客户端已断开——记日志后直接返回，禁止再向已中止连接写响应
+            // 客户端已断开——记日志后直接返回，禁止再向已中止连接写响应
             activity?.SetStatus(ActivityStatusCode.Error, "Request aborted");
             _logger.LogWarning("Webhook 请求处理期间客户端断开连接, AppKey: {AppKey}", appKey ?? "unknown");
         }
         catch (OperationCanceledException)
         {
-            // R3-P2-2：非客户端断开的取消（解密/验签/分发超时）→ 503 让飞书重推。
-            // 此前该分支不存在，超时 OCE 落到通用 catch → 500（写失败存储）或被吞成 400。
+            // 非客户端断开的取消（解密/验签/分发超时）→ 503 让飞书重推：
+            // 缺少该分支时，超时 OCE 会落到通用 catch → 500（写失败存储）或被吞成 400。
             activity?.SetStatus(ActivityStatusCode.Error, "Request timeout");
             _logger.LogWarning("Webhook 请求处理超时，返回 503 以便飞书重推, AppKey: {AppKey}", appKey ?? "unknown");
             await WriteErrorResponse(context, 503, "Service Unavailable", requestId);
@@ -305,7 +305,7 @@ public class FeishuMultiAppMiddleware : IDisposable
         using var scope = _scopeFactory.CreateScope();
         var webhookService = scope.ServiceProvider.GetRequiredService<IFeishuWebhookService>();
 
-        // R3-P2-14：取 AppKey 访问器以便在 finally 中显式 Clear（单例服务，从 scope 解析即可）
+        // 取 AppKey 访问器以便在 finally 中显式 Clear（单例服务，从 scope 解析即可）
         var appKeyAccessor = scope.ServiceProvider.GetService<IWebhookAppKeyAccessor>();
 
         // 设置当前应用键以支持多应用场景
@@ -313,8 +313,8 @@ public class FeishuMultiAppMiddleware : IDisposable
 
         try
         {
-            // WHF-17：单次 JsonDocument 解析——明文验证探测与 encrypt 提取一次完成
-            // （原实现每个请求完整反序列化两次：EventVerificationRequest + FeishuWebhookRequest）
+            // 单次 JsonDocument 解析——明文验证探测与 encrypt 提取一次完成
+            // （若每个请求完整反序列化两次：EventVerificationRequest + FeishuWebhookRequest，会产生双倍解析开销）
             FeishuWebhookRequest eventRequest;
             using (var doc = JsonDocument.Parse(requestBody))
             {
@@ -367,7 +367,7 @@ public class FeishuMultiAppMiddleware : IDisposable
             }
 
             // 先验证请求签名，再解密（安全原则：先验签后解密）
-            // WHF-16：透传 RequestAborted，客户端断开时尽早取消验签链路
+            // 透传 RequestAborted，客户端断开时尽早取消验签链路
             if (!await webhookService.HandleEventAsync(eventRequest, requestBody, context.RequestAborted))
             {
                 _logger.LogWarning("签名验证失败 - Timestamp: {Timestamp}, Nonce: {Nonce}, SignaturePrefix: {SignaturePrefix}, AppKey: {AppKey}",
@@ -380,16 +380,16 @@ public class FeishuMultiAppMiddleware : IDisposable
             }
 
             // 签名验证通过后再解密（验证请求使用配置的超时，确保飞书要求）
-            // WHF-R2/B6：超时从硬编码 1s 改为可配置
-            // R3-P2-2：链接 context.RequestAborted——此前解密链路不受客户端断开影响，
-            // WHF-16（"客户端断开即中止"）在解密阶段完全不生效。
+            // 超时可配置（见 Options.DecryptionTimeoutMs）
+            // 链接 context.RequestAborted——解密链路必须受客户端断开影响，
+            // 否则"客户端断开即中止"在解密阶段完全不生效。
             using var decryptionCts = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted);
             decryptionCts.CancelAfter(Options.DecryptionTimeoutMs);
             var decryptedData = await webhookService.DecryptEventAsync(eventRequest.Encrypt!, decryptionCts.Token);
 
             if (decryptedData == null)
             {
-                // WHF-17：错误文案收敛（解密失败细节仅在服务端日志）
+                // 错误文案收敛（解密失败细节仅在服务端日志）
                 _logger.LogError("解密失败, AppKey: {AppKey}", appKey);
                 await WriteErrorResponse(context, 400, "Bad Request", requestId);
                 return;
@@ -407,7 +407,7 @@ public class FeishuMultiAppMiddleware : IDisposable
                 return;
             }
 
-            // WHF-R2/C7：AppId 交叉校验——防御 EncryptKey 复用误配置导致的跨应用事件串扰
+            // AppId 交叉校验——防御 EncryptKey 复用误配置导致的跨应用事件串扰
             if (!string.IsNullOrEmpty(appConfig.ExpectedAppId)
                 && !string.Equals(decryptedData.AppId, appConfig.ExpectedAppId, StringComparison.Ordinal))
             {
@@ -425,7 +425,7 @@ public class FeishuMultiAppMiddleware : IDisposable
                 return;
             }
 
-            // WHF-05：空 EventId 无法去重（每次都会按新事件处理，幂等性失效）——fail-closed
+            // 空 EventId 无法去重（每次都会按新事件处理，幂等性失效）——fail-closed
             if (Options.RejectEmptyIdentifiers && string.IsNullOrEmpty(decryptedData.EventId))
             {
                 _logger.LogWarning("事件 EventId 为空，RejectEmptyIdentifiers=true 拒绝处理, EventType: {EventType}, AppKey: {AppKey}",
@@ -435,15 +435,15 @@ public class FeishuMultiAppMiddleware : IDisposable
             }
 
             // 使用已解密的数据直接处理事件
-            // WHF-16：分发路径透传 RequestAborted（客户端断开即取消）；
+            // 分发路径透传 RequestAborted（客户端断开即取消）；
             // 去重标记路径使用 CancellationToken.None（标记必须完成），由 HandleEventWithInterceptorsAsync 内部保证
             var result = await webhookService.HandleEventAsync(decryptedData, context.RequestAborted);
 
             // 检查事件处理结果
             if (!result.Success)
             {
-                // R3-FEAT-2/D2：拦截 + InterceptionAckMode=Retryable → 显式 503（要求飞书重推）。
-                // 不复用 500 语义：500 会连带写入失败事件存储（ADR-2），而“拦截”不是业务失败。
+                // 拦截 + InterceptionAckMode=Retryable → 显式 503（要求飞书重推）。
+                // 不复用 500 语义：500 会连带写入失败事件存储，而"拦截"不是业务失败。
                 if (string.Equals(result.ErrorReason, FeishuWebhookService.InterceptedRetryableReason, StringComparison.Ordinal))
                 {
                     _logger.LogWarning("事件被拦截器中断并要求重推: {Reason}", result.ErrorReason);
@@ -465,14 +465,14 @@ public class FeishuMultiAppMiddleware : IDisposable
         }
         catch (JsonException ex)
         {
-            // WHF-17：错误文案收敛——阶段差异仅写入服务端日志，响应统一为 "Bad Request"
+            // 错误文案收敛——阶段差异仅写入服务端日志，响应统一为 "Bad Request"
             _logger.LogError(ex, "解析请求体失败（非法 JSON）, RequestId: {RequestId}", requestId);
             await WriteErrorResponse(context, 400, "Bad Request", requestId);
             return;
         }
         finally
         {
-            // R3-P2-14：显式清除 AsyncLocal 中的 AppKey（纵深防御）。
+            // 显式清除 AsyncLocal 中的 AppKey（纵深防御）。
             // HTTP 请求间本已由 ExecutionContext 隔离（跨请求不可达），但
             // FailedEventRetryService 等长生命周期 ExecutionContext 会保留最后一批事件的 AppKey，
             // 且 IAppKeyAccessor 与业务去重键/应用上下文共用同一实例——显式 Clear 成本近零。
@@ -485,7 +485,7 @@ public class FeishuMultiAppMiddleware : IDisposable
     /// 验证解密后数据中的 token 字段，确保请求来源合法
     /// </summary>
     /// <param name="appKey">
-    /// 路由得到的应用键（R5.2/X8：日志统一使用路由键，不再读 <c>appConfig.AppKey</c> 这一派生诊断字段——
+    /// 路由得到的应用键（日志统一使用路由键，不读 <c>appConfig.AppKey</c> 这一派生诊断字段——
     /// 路由只认字典键，直接用它可避免两者分叉时的误导性日志）。
     /// </param>
     private async Task HandleEncryptedVerificationAsync(
@@ -498,7 +498,7 @@ public class FeishuMultiAppMiddleware : IDisposable
         string? challenge = null;
         string? token = null;
 
-        // R-E1（E-P1-2）：双分支（string / JsonElement）收敛为 GetEventRawJson 单出口——
+        // 双分支（string / JsonElement）收敛为 GetEventRawJson 单出口——
         // SDK 写侧已统一为 JSON 字符串，扩展仅兜底宿主手工构造的历史 JsonElement 残留。
         var eventJson = decryptedData.GetEventRawJson();
         if (!string.IsNullOrEmpty(eventJson))

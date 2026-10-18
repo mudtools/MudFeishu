@@ -707,11 +707,21 @@ builder.Services.AddFeishuApp(configure =>
 public class MultiAppService
 {
     private readonly IFeishuAppManager _appManager;
+    private readonly IServiceProvider _serviceProvider;
+
+    public MultiAppService(IFeishuAppManager appManager, IServiceProvider serviceProvider)
+    {
+        _appManager = appManager;
+        _serviceProvider = serviceProvider;
+    }
 
     public async Task UseSpecificAppAsync()
     {
-        // 获取指定应用的 API，并切换到该应用上下文
-        var userApi = _appManager.GetWebApi<IFeishuTenantV3User>("hr-app");
+        // 先经 IAppContextHolder.SwitchToApp 切换到目标应用上下文（受控切换，不自动归还），
+        // 再从 DI 解析 API 客户端
+        var holder = _serviceProvider.GetRequiredService<IAppContextHolder>();
+        holder.SwitchToApp("hr-app", _appManager, _serviceProvider);
+        var userApi = _serviceProvider.GetRequiredService<IFeishuTenantV3User>();
         var result = await userApi.GetUserInfoByIdAsync("user_123");
     }
 
@@ -793,8 +803,8 @@ SDK 内置了智能的令牌管理机制：
 
 | 包                           | 版本     | 说明                 |
 | --------------------------- | ------ | ------------------ |
-| **Mud.HttpUtils**           | v3.0.7 | HTTP 客户端工具类（含源代码生成器） |
-| **Mud.HttpUtils.Generator** | v3.0.7 | HTTP 客户端代码生成器（编译时） |
+| **Mud.HttpUtils**           | v3.0.8 | HTTP 客户端工具类（含源代码生成器） |
+| **Mud.HttpUtils.Generator** | v3.0.8 | HTTP 客户端代码生成器（编译时） |
 | **Mud.Feishu.Abstractions** | \*     | 飞书 SDK 抽象层（同版本依赖）  |
 | **Mud.Feishu.DataModels**   | \*     | 飞书 API 强类型数据模型（同版本依赖） |
 

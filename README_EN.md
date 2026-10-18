@@ -550,12 +550,16 @@ public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request
 // Constructor injection of IFeishuAppManager interface
 private readonly IFeishuAppManager _feishuAppManager;
 
-// Use IFeishuAppManager to get API interface objects and flexibly switch between Feishu apps
-var tenantJobTitleApi = _feishuAppManager.GetWebApi<IFeishuTenantV3JobTitle>("hr-app");
+// Switch to a specific app, then resolve the API client from DI.
+// IAppContextHolder.SwitchToApp runs the full guard and switches the current
+// execution flow's context (switch-and-stay, no automatic restore).
+var holder = _serviceProvider.GetRequiredService<IAppContextHolder>();
+holder.SwitchToApp("hr-app", _feishuAppManager, _serviceProvider);
+var tenantJobTitleApi = _serviceProvider.GetRequiredService<IFeishuTenantV3JobTitle>();
 var result = await tenantJobTitleApi.GetJobTitlesListAsync(10, null);
 
 // Scope-based app switching with automatic context restoration (UseAppScope)
-var userApi = _feishuAppManager.GetDefaultWebApi<IFeishuTenantV3User>();
+var userApi = _serviceProvider.GetRequiredService<IFeishuTenantV3User>();
 using (userApi.UseAppScope("hr-app"))
 {
     // All API calls within this scope use hr-app
@@ -729,20 +733,19 @@ builder.Services.CreateFeishuServicesBuilder()
 // 3. Switch the app context per tenant in a request
 public class TenantController : ControllerBase
 {
-    private readonly IFeishuAppManager _appManager;
+    private readonly IFeishuTenantV3User _userApi;
 
-    public TenantController(IFeishuAppManager appManager)
+    public TenantController(IFeishuTenantV3User userApi)
     {
-        _appManager = appManager;
+        _userApi = userApi;
     }
 
     [HttpGet("tenant/{tenantKey}/users/{userId}")]
     public async Task<IActionResult> GetUser(string tenantKey, string userId)
     {
-        var userApi = _appManager.GetDefaultWebApi<IFeishuTenantV3User>();
-        // using ensures the default app is restored when the scope ends
-        using var scope = userApi.UseAppScope(tenantKey);
-        var result = await userApi.GetUserInfoByIdAsync(userId);
+        // Scope-based switch to the tenant app; using restores the default app when the scope ends
+        using var scope = _userApi.UseAppScope(tenantKey);
+        var result = await _userApi.GetUserInfoByIdAsync(userId);
         return Ok(result);
     }
 }
@@ -830,8 +833,8 @@ dotnet publish -r win-x64 -c Release /p:PublishAot=true
 
 | Package                                       | Version          | Description                                           |
 | --------------------------------------------- | ---------------- | ----------------------------------------------------- |
-| **Mud.HttpUtils**                             | v3.0.7           | HTTP client utilities with source generator (incl. resilience policies) |
-| **Mud.HttpUtils.Generator**                   | v3.0.7           | HTTP client code generator (compile-time)             |
+| **Mud.HttpUtils**                             | v3.0.8           | HTTP client utilities with source generator (incl. resilience policies) |
+| **Mud.HttpUtils.Generator**                   | v3.0.8           | HTTP client code generator (compile-time)             |
 | **System.Text.Json**                          | v10.0.9          | High-performance JSON serialization (netstandard2.0 target) |
 | **Microsoft.Extensions.***                    | v8.0.2 / v10.0.9 | Dependency injection, logging, configuration binding, options |
 

@@ -1807,12 +1807,15 @@ public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request
     }
 }
 
-// 多应用场景下使用 IFeishuAppManager
-var tenantJobTitleApi = _feishuAppManager.GetWebApi<IFeishuTenantV3JobTitle>("hr-app");
+// 多应用场景下切换到指定应用：先经 IAppContextHolder 切换上下文（受控切换，不自动归还），
+// 再从 DI 解析 API 客户端
+var holder = _serviceProvider.GetRequiredService<IAppContextHolder>();
+holder.SwitchToApp("hr-app", _feishuAppManager, _serviceProvider);
+var tenantJobTitleApi = _serviceProvider.GetRequiredService<IFeishuTenantV3JobTitle>();
 var result = await tenantJobTitleApi.GetJobTitlesListAsync(10, null);
 
 // 使用作用域切换应用上下文，using 结束后自动恢复
-var userApi = _feishuAppManager.GetDefaultWebApi<IFeishuTenantV3User>();
+var userApi = _serviceProvider.GetRequiredService<IFeishuTenantV3User>();
 using (userApi.UseAppScope("hr-app"))
 {
     var userResult = await userApi.GetUserInfoByIdAsync("user_123");
@@ -1857,7 +1860,7 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 
 ### 多租户部署指引
 
-> **多租户 = 多应用**。每个租户对应一个 `FeishuAppConfig`（独立 AppId/AppSecret），通过 `UseAppScope`（或 `IFeishuAppManager.GetWebApi`）切换应用上下文。
+> **多租户 = 多应用**。每个租户对应一个 `FeishuAppConfig`（独立 AppId/AppSecret），通过 `UseAppScope`（作用域式，结束自动恢复）或 `IAppContextHolder.SwitchToApp`（切换并保持）切换应用上下文。
 
 **最小装配片段**：
 
@@ -1877,20 +1880,19 @@ builder.Services.CreateFeishuServicesBuilder()
 // 3. 在请求中按租户切换应用上下文
 public class TenantController : ControllerBase
 {
-    private readonly IFeishuAppManager _appManager;
+    private readonly IFeishuTenantV3User _userApi;
 
-    public TenantController(IFeishuAppManager appManager)
+    public TenantController(IFeishuTenantV3User userApi)
     {
-        _appManager = appManager;
+        _userApi = userApi;
     }
 
     [HttpGet("tenant/{tenantKey}/users/{userId}")]
     public async Task<IActionResult> GetUser(string tenantKey, string userId)
     {
-        // 使用 using 确保作用域结束后自动恢复默认应用
-        var userApi = _appManager.GetDefaultWebApi<IFeishuTenantV3User>();
-        using var scope = userApi.UseAppScope(tenantKey);
-        var result = await userApi.GetUserInfoByIdAsync(userId);
+        // 以作用域方式切换到租户应用上下文，using 结束后自动恢复默认应用
+        using var scope = _userApi.UseAppScope(tenantKey);
+        var result = await _userApi.GetUserInfoByIdAsync(userId);
         return Ok(result);
     }
 }
@@ -1994,8 +1996,8 @@ dotnet publish -r win-x64 -c Release /p:PublishAot=true
 
 | 包                            | 版本             | 说明                                |
 | ----------------------------- | ---------------- | ----------------------------------- |
-| **Mud.HttpUtils**             | v3.0.7  | HTTP 客户端工具类（含源代码生成器） |
-| **Mud.HttpUtils.Generator**   | v3.0.7  | HTTP 客户端代码生成器（编译时）     |
+| **Mud.HttpUtils**             | v3.0.8  | HTTP 客户端工具类（含源代码生成器） |
+| **Mud.HttpUtils.Generator**   | v3.0.8  | HTTP 客户端代码生成器（编译时）     |
 | **Microsoft.Extensions.Http** | v8.0.1 / v10.0.9 | HTTP 客户端工厂                     |
 
 ---

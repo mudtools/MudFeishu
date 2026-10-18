@@ -110,7 +110,7 @@ public static class FeishuServiceCollectionExtensions
 
         // 带 appKey 的切换入口在「未注册 IAppAccessAuthorizer」时默认拒绝（调用时抛 InvalidOperationException）。
         // 涉及两处守卫一致的入口：生成类的 UseAppScope(appKey)，以及本 SDK 内部多应用切换入口
-        // （FeishuAppManager.GetWebApi → IAppContextHolder.SwitchToApp(appKey, this, sp)）。
+        // （IAppContextHolder.SwitchToApp(appKey, appManager, sp)）。
         // 默认授权器为「注册表白名单」语义——谓词经 IFeishuAppManager.HasApp 动态判定，AddApp 运行时
         // 新增的应用即时获得授权；宿主可先注册更严格的 IAppAccessAuthorizer 实现（TryAdd 语义：
         // 先注册者胜出）实现租户级授权。注意：该判定是静态的、不感知调用主体——

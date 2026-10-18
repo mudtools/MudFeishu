@@ -33,7 +33,7 @@
 		     codec 编解码」，飞书管线（桥接器）为「直存编码值」——后者继续由本包的
 		     RedisTokenStore / RedisUserTokenStore 承载（对账清单 C-6 分层共存裁决）。
 		     SE.Redis 版本差（官方锚定 2.8.24，本包 3.3.0）跨大版本二进制兼容（B-5/B-8）。 -->
-		<PackageReference Include="Mud.HttpUtils.Redis" Version="3.0.7" />
+		<PackageReference Include="Mud.HttpUtils.Redis" Version="3.0.8" />
 	</ItemGroup>		
 	<ItemGroup>
 		<!-- <PackageReference Include="Mud.Feishu.Abstractions" Version="1.1.2" /> -->

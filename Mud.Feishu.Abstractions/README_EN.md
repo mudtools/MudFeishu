@@ -415,35 +415,46 @@ builder.Services.AddFeishuApp(builder =>
 
 ### Using Multiple Applications
 
-#### 1. Get API for Specific Application
+#### 1. Switch the Application Context, Then Get the API
 
 ```csharp
 public class MultiAppService
 {
     private readonly IFeishuAppManager _appManager;
+    private readonly IServiceProvider _serviceProvider;
 
-    public MultiAppService(IFeishuAppManager appManager)
+    public MultiAppService(IFeishuAppManager appManager, IServiceProvider serviceProvider)
     {
         _appManager = appManager;
-    }
-
-    public async Task UseDefaultAppAsync()
-    {
-        // Get the generated Feishu API client for the default application.
-        // T must implement IFeishuAppContextSwitcher (satisfied by the
-        // source-generated [HttpClientApi] interfaces).
-        var api = _appManager.GetDefaultWebApi<IMyApi>();
-        await api.DoSomethingAsync();
+        _serviceProvider = serviceProvider;
     }
 
     public async Task UseSpecificAppAsync(string appKey)
     {
-        // Get the API client for a specific application
-        var api = _appManager.GetWebApi<IMyApi>(appKey);
+        // Switch-and-stay: IAppContextHolder.SwitchToApp runs the full guard
+        // (format check + authorization + default-deny) and immediately switches the
+        // current execution flow's context (no automatic restore). The API client
+        // resolved from DI afterwards uses the target application's credentials.
+        var holder = _serviceProvider.GetRequiredService<IAppContextHolder>();
+        holder.SwitchToApp(appKey, _appManager, _serviceProvider);
+        var api = _serviceProvider.GetRequiredService<IMyApi>();
+        await api.DoSomethingAsync();
+    }
+
+    public async Task UseDefaultAppAsync()
+    {
+        // Switch back to the default application
+        var holder = _serviceProvider.GetRequiredService<IAppContextHolder>();
+        holder.SwitchToDefaultApp(_appManager);
+        var api = _serviceProvider.GetRequiredService<IMyApi>();
         await api.DoSomethingAsync();
     }
 }
 ```
+
+> `IAppContextHolder` and its `SwitchToApp` / `SwitchToDefaultApp` extension methods live in the
+> `Mud.HttpUtils` namespace. Both share the same `AsyncLocal`-based context holder and switch the
+> **current execution flow's** context — there is no "independent instance" semantics.
 
 #### 2. Application Context Switching
 

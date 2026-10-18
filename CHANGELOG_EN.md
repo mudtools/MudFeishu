@@ -1,5 +1,52 @@
 # Mud.Feishu Change Log
 
+## [Unreleased]
+
+> Theme: **adapting to `Mud.HttpUtils` 3.0.8** (upstream physically removes the three `BC-30` members;
+> the downstream adaptation lands in the same batch).
+> This is a **breaking dependency change**: `Mud.HttpUtils` / `Mud.HttpUtils.Generator` move from
+> `3.0.7` to `3.0.8`, and the downstream overrides / shadowing of the three members are **deleted in
+> the same batch**.
+> **Release prerequisite**: upstream `3.0.8` **has been published to nuget.org**; the local debug
+> source has been removed from `nuget.config`, so the reference is restored from the public feed.
+
+### Dependency Upgrade
+
+- `Mud.HttpUtils` / `Mud.HttpUtils.Generator`: `3.0.7` → **`3.0.8`** (must stay on the same version),
+  unified across the 10 `Mud.HttpUtils*` declarations of 7 source projects; the README dependency
+  tables and `AGENTS.md` are synced. During validation the packages were restored from the local debug
+  channel (`mudhttputils-local` → `D:/Repos/MudHttpUtils/artifacts-debug`; that Debug pack is
+  **never published**); after 3.0.8 shipped on nuget.org the local source was **removed**.
+
+### Changed
+
+- **Physically removed the three `BC-30` member implementations from `FeishuAppManager`**: the two
+  `GetWebApi` / `GetDefaultWebApi` overrides, plus the `new` shadowing and explicit implementation of
+  `RegisterSwitcherFactory`. Upstream 3.0.8 physically deletes the base members, so the downstream
+  overrides are deleted in the same batch.
+  **Migration path**: resolve `IAppScopeSwitcher` from DI and call `UseAppScope(appKey)` /
+  `UseDefaultAppScope()` (context returned automatically), or use
+  `IAppContextHolder.SwitchToApp(appKey, appManager, sp)` (guarded switch-and-stay, semantically
+  equivalent to the removed methods).
+  **Removal discipline**: "bump the reference to `3.0.8`" and "delete the downstream overrides"
+  **must land in the same batch** — deleting the overrides while references still point at `3.0.7`
+  makes calls **silently fall back** to the base implementation **without the authorization guard**
+  (the `IAppAccessAuthorizer` check chain inside the downstream override is lost). That is a
+  **security incident, not a compile error**.
+
+### Docs
+
+- All call sites and examples were rewritten to "switch the context first, then resolve the API client
+  from DI": the `Mud.Feishu.Abstractions` README (zh / en), the root README (zh / en), the
+  `Mud.Feishu` README, and the `Mud.Feishu.Demo` multi-app controller; guarded calls in tests now go
+  through `IAppContextHolder.SwitchToApp` / `SwitchToDefaultApp`.
+- **Corrected a wrong statement in the old docs**: `GetWebApi<T>(appKey)` used to be described as
+  returning an "independent instance". It actually shares a single `AsyncLocal`-backed
+  `IAppContextHolder` with `UseAppScope` / the legacy `UseApp()` — there is **no "independent
+  instance" semantics**; the correct pattern is to switch first and then resolve from DI.
+- Decision archive updated with the execution status: `弃用成员移除方案.md` (§2 gate A, §5 risk 7
+  resolved), `迁移与弃用史.md`, `编号索引.md`, `上游契约适配史.md`, `注释精简归档.md`.
+
 ## [3.0.3] - 2026-10-15
 
 > Theme: **adapting to `Mud.HttpUtils` 3.0.7** (upstream BC-30 deprecation propagation + F-9 meta-package

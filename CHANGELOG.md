@@ -1,5 +1,44 @@
 # Mud.Feishu 更新日志
 
+## [Unreleased]
+
+> 主题：**适配 `Mud.HttpUtils` 3.0.8**（上游物理移除 `BC-30` 三成员，下游同批适配）。
+> 本版为**破坏性依赖变更**：`Mud.HttpUtils` / `Mud.HttpUtils.Generator` 由 `3.0.7` 升至 `3.0.8`，
+> 三个成员的本仓重写 / 遮蔽**同批删除**。
+> **上线前提**：上游 `3.0.8` **已发布至 nuget.org**；`nuget.config` 中的本地调试源已移除，
+> 引用改由公共源还原。
+
+### 依赖升级
+
+- `Mud.HttpUtils` / `Mud.HttpUtils.Generator`：`3.0.7` → **`3.0.8`**（两者必须同版本）。
+  7 个源工程的 10 处 `Mud.HttpUtils*` 声明统一，各 README 依赖表与 `AGENTS.md` 同步。
+  验证期经本地调试包渠道还原（`mudhttputils-local` → `D:/Repos/MudHttpUtils/artifacts-debug`，
+  该 Debug 包**不发布**）；上游 3.0.8 发布后本地源**已移除**，改从 nuget.org 还原。
+
+### 变更（Changed）
+
+- **物理移除 `FeishuAppManager` 的三个 `BC-30` 成员实现**：`GetWebApi` / `GetDefaultWebApi` 的两个
+  `override`，以及 `RegisterSwitcherFactory` 的 `new` 遮蔽与显式实现。上游 3.0.8 已物理删除基类
+  成员，本仓重写随之同批删除。
+  **迁移路径**：DI 解析 `IAppScopeSwitcher` + `UseAppScope(appKey)` / `UseDefaultAppScope()`
+  （自动归还上下文），或 `IAppContextHolder.SwitchToApp(appKey, appManager, sp)`
+  （受控切换并保持，与原方法语义等价）。
+  **移除纪律**：「引用升至 `3.0.8`」与「删除本仓重写」**必须同批落地**——若引用仍停在 `3.0.7`
+  而先删重写，调用会**静默回落**到基类**无授权守卫**实现（本仓重写内的 `IAppAccessAuthorizer`
+  判定链丢失），属**安全事故而非编译错误**。
+
+### 文档（Docs）
+
+- 调用点与示例统一改写为「先切换上下文、再从 DI 解析 API 客户端」形态：
+  `Mud.Feishu.Abstractions` README（中 / 英）、根 README（中 / 英）、`Mud.Feishu` README、
+  `Mud.Feishu.Demo` 多应用控制器；测试中的守卫性调用改经
+  `IAppContextHolder.SwitchToApp` / `SwitchToDefaultApp`。
+- **更正旧文档的一处错误描述**：`GetWebApi<T>(appKey)` 曾被称为「返回独立实例」，实际与
+  `UseAppScope` / 旧的 `UseApp()` 共用同一个基于 `AsyncLocal` 的 `IAppContextHolder`，
+  **不存在「独立实例」语义**；正确做法是先切换、再从 DI 解析。
+- 决策档案登记执行状态：`弃用成员移除方案.md`（§2 档 A 门禁、§5 风险 7 已消解）、
+  `迁移与弃用史.md`、`编号索引.md`、`上游契约适配史.md`、`注释精简归档.md`。
+
 ## [3.0.4] - 2026-10-18
 
 > 主题：**源码注释治理落地**（注释纪律规范 + `audit-comments` 审计脚本 + L3 决策档案）与

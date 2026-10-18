@@ -243,7 +243,12 @@ public class TokenStoreHelperTests
         var feishu = FeishuTokenStoreCodec.Instance.Decode($"{futureMs}|tok")!.Value;
         var official = officialWithFeishuThreshold.Decode($"{futureMs}|tok")!.Value;
 
-        Assert.Equal(feishu, official);
+        // 两实现同源（薄包装委派官方）；解码内部各自读取真实时钟，两次调用之间的毫秒间隔
+        // 会使「绝对毫秒戳 → 剩余秒」的 floor 投影产生 ±1 秒噪声（同 Codec_Decode_LegacyFutureMs 约定）。
+        Assert.Equal("tok", feishu.Token);
+        Assert.Equal("tok", official.Token);
+        Assert.InRange(feishu.ExpiresInSeconds, 3598, 3600);
+        Assert.InRange(official.ExpiresInSeconds, 3598, 3600);
         Assert.NotEqual(MigrationTokenStoreCodec.DefaultLegacyAbsoluteMillisecondsThreshold, FeishuTokenStoreCodec.AbsoluteMsThreshold);
     }
 

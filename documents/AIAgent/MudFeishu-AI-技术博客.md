@@ -1,4 +1,4 @@
-# 给大模型一双操作飞书的手：[Mud.Feishu.AI](http://Mud.Feishu.AI) 的设计取舍
+# MAF + 飞书：让大模型干活，但别让它乱干
 
 ![Mud.Feishu.AI](images/01-cover.png)
 

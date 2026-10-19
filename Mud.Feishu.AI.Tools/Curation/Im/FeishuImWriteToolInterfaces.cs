@@ -164,3 +164,49 @@ public interface IFeishuTenantImUrgentSmsTool
         [ToolParameter("dry_run", "仅预演不加急（可选，默认 false）：返回将要下发的 method/path 与字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }
+
+// ─────────────────────────── 表情回复写面（2 个） ───────────────────────────
+
+/// <summary>工具接口：im.add_reaction（映射 <c>IFeishuTenantV1Message.AddMessageReactionsAsync</c>）。</summary>
+/// <remarks>
+/// <b>平台不去重</b>：表情回复没有幂等语义——同一 emoji_type 调用两次就是两条回复（界面上计数 +2），
+/// 故<b>不提供</b> <c>idempotency_key</c>（提供了也是假的），改为在描述里写明"同一条消息同一表情只调用一次"。
+/// 撤回错发的表情用 <c>im.delete_reaction</c>（需 reaction_id，即本工具的回执）。
+/// </remarks>
+[AgentTool("im.add_reaction",
+    Description = "给一条消息加一个表情回复（比发一条'收到👌'消息更轻的确认方式）。emoji_type 是表情名（如 SMILE / THUMBSUP / OK / HEART / DONE，完整清单见飞书「表情文案说明」）。⚠️ 平台**不去重**：同一表情调用两次会叠成两条——一次只调一次，撤回用 im.delete_reaction。reaction_id 在本工具回执里。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。",
+    RequiredScopes = ["im:message"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.AddMessageReactionsAsync))]
+public interface IFeishuTenantImAddReactionTool
+{
+    /// <summary>添加表情回复。</summary>
+    /// <returns>白名单投影后的 JSON 文本（reaction_id/emoji_type）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> AddReactionAsync(
+        [ToolParameter("message_id", "目标消息 ID（om_ 开头）", Required = true)] string message_id,
+        [ToolParameter("emoji_type", "表情类型名（如 SMILE / THUMBSUP / OK / HEART / DONE）", Required = true)] string emoji_type,
+        [ToolParameter("dry_run", "仅预演不加表情（可选，默认 false）：返回将要下发的 method/path 与字段摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：im.delete_reaction（映射 <c>IFeishuTenantV1Message.DeleteMessageReactionsAsync</c>）。</summary>
+/// <remarks>
+/// 删除的是**单条回复实例**（一个 reaction_id = 一个人的一次表情），不影响同一表情上的其他人。
+/// reaction_id 来自 <c>im.add_reaction</c> 的回执或 <c>im.list_reactions</c> / <c>im.batch_query_reactions</c> 的明细。
+/// 动词命中 profile 危险词表 ⇒ 风险级别 high-risk-write（须配 affordance 资产）。
+/// </remarks>
+[AgentTool("im.delete_reaction",
+    Description = "撤回**一个**表情回复实例（按 reaction_id 精确删除，只影响这一次回复，不影响同一表情上其他人的回复）。reaction_id 来自 im.add_reaction 的回执，或 im.list_reactions / im.batch_query_reactions（with_details=true）的明细。⚠️ 撤回后无法恢复，只能重新 im.add_reaction。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。建议先 dry_run 预演确认。",
+    RequiredScopes = ["im:message"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.DeleteMessageReactionsAsync))]
+public interface IFeishuTenantImDeleteReactionTool
+{
+    /// <summary>删除表情回复。</summary>
+    /// <returns>结构化文本（deleted=true + message_id/reaction_id）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> DeleteReactionAsync(
+        [ToolParameter("message_id", "表情回复所在的消息 ID（om_ 开头）", Required = true)] string message_id,
+        [ToolParameter("reaction_id", "要删除的表情回复 ID（单次回复的实例 ID，不是表情名）", Required = true)] string reaction_id,
+        [ToolParameter("dry_run", "仅预演不删除（可选，默认 false）：返回将要下发的 method/path 与字段摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}

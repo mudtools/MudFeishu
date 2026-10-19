@@ -1,6 +1,6 @@
 ---
 name: feishu-okr
-description: 飞书 okr 域工具集：15 个工具（只读 9 / 写 6）。目标 / 关键结果 / 进展 → `okr.*`；任务待办 → `task.*`；审批待办 → `approval.*`。
+description: 飞书 okr 域工具集：18 个工具（只读 11 / 写 7）。目标 / 关键结果 / 进展 → `okr.*`；任务待办 → `task.*`；审批待办 → `approval.*`。
 version: 1.0.0
 package_version: 3.0.3
 ---
@@ -16,6 +16,7 @@ package_version: 3.0.3
 `list_cycles` → `list_objectives`（按 cycle_id）→ `list_key_results`（按 objective_id）→
 `list_objective_progresses` / `list_key_result_progresses`。
 写：`create_objective` / `update_objective` / `create_key_result` / `update_key_result`（删除类为 high-risk）。
+指标：`get_objective_indicator` / `get_key_result_indicator` 取 `indicator_id` → `update_indicator`（平台没有按 id 反查的接口）。
 
 ## 避坑
 - **层级顺序不能跳**：`list_objectives` 需要 cycle_id，`list_key_results` 需要 objective_id。
@@ -26,6 +27,8 @@ package_version: 3.0.3
 - `list_periods` 是**周期模板**（租户级），与 `list_cycles` 的**用户周期**不是一回事：
   创建 Objective 需要的是 cycle_id。
 - `delete_objective` 会**连带删除**其下关键结果，不可恢复。
+- **指标与进展是两套面**：`update_indicator` 只动指标（值 / 计算方式 / 单位），文字进展走进展面；
+  哪些字段改得动取决于实体类型（Objective 不改起始值、目标值与单位），故必须先读指标再写。
 - 周期 / 目标 / 关键结果语义与计分口径 → `feishu.guidance_read(okr, model-and-scoring)`。
 
 ## 安全规则
@@ -42,7 +45,9 @@ package_version: 3.0.3
 - `okr.delete_key_result`（写）：删除指定关键结果（Key Result）——不可恢复。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 okr:okr.content:writeonly。建议先 dry_run 预演确认。
 - `okr.delete_objective`（写）：删除指定目标（Objective），并连带删除其下的关键结果——不可恢复。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 okr:okr.content:writeonly。建议先 dry_run 预演确认。
 - `okr.get_key_result`（只读）：获取单个关键结果（Key Result）的详情（内容、归属者、序号、得分、权重、截止时间）。只读，需 okr:okr.content:readonly。
+- `okr.get_key_result_indicator`（只读）：获取某个关键结果（Key Result）的指标信息（indicator_id、状态与状态计算方式、起始值/目标值/当前值及其计算方式、单位）。只读，需 okr:okr.content:readonly。返回的 indicator_id 是 okr.update_indicator 的唯一入口。
 - `okr.get_objective`（只读）：获取单个目标（Objective）的详情（富文本内容、备注、归属者、得分、权重、截止时间、分类）。只读，需 okr:okr.content:readonly。
+- `okr.get_objective_indicator`（只读）：获取某个目标（Objective）的指标信息（indicator_id、状态与状态计算方式、起始值/目标值/当前值及其计算方式、单位）。只读，需 okr:okr.content:readonly。返回的 indicator_id 是 okr.update_indicator 的唯一入口（平台没有『按 id 反查指标』的接口，改之前必须先在这里定位）。
 - `okr.list_categories`（只读）：列出系统中的全部 OKR 分类（id、多语言名称、颜色、类型、启用状态），可翻页。只读，需 okr:okr.setting:read。category_id 是 okr.create_objective / okr.update_objective 的可选输入。
 - `okr.list_cycles`（只读）：列出指定用户的 OKR 周期（Cycle）列表（含 id、周期状态、起止时间、得分），可翻页。只读，需 okr:okr.period:readonly。返回的 cycle_id 是 okr.list_objectives 的前置输入。
 - `okr.list_key_result_progresses`（只读）：列出某个关键结果（Key Result）下的进展记录列表（含进展内容、完成度、归属者、创建/更新时间），可翻页。只读，需 okr:okr.progress:readonly。
@@ -50,6 +55,7 @@ package_version: 3.0.3
 - `okr.list_objective_progresses`（只读）：列出某个目标（Objective）下的进展记录列表（含进展内容、完成度、归属者、创建/更新时间），可翻页。只读，需 okr:okr.progress:readonly。
 - `okr.list_objectives`（只读）：列出某个 OKR 周期（Cycle）下的目标（Objective）列表（含 id、富文本内容、归属者、序号、得分、权重、截止时间），可翻页。只读，需 okr:okr.content:readonly。cycle_id 来自 okr.list_cycles。
 - `okr.list_periods`（只读）：列出当前租户下的 OKR 周期（Period）定义（id、中英文名称、启用状态、起止时间），可翻页。只读，需 okr:okr:readonly。period 是周期模板元数据，与用户 Cycle 不同（create 时需要的是 cycle_id）。
+- `okr.update_indicator`（写）：更新一个 OKR 指标（Indicator）的取值与计算方式（至少传一个要更新的字段）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 okr:okr.content:writeonly。⚠️ 先用 okr.get_objective_indicator / okr.get_key_result_indicator 取 indicator_id 并读当前配置：Objective 不支持改起始值、目标值与单位；处于自动计算方…
 - `okr.update_key_result`（写）：修改指定关键结果（Key Result）的内容、得分或截止时间（至少传一个要更新的字段）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 okr:okr.content:writeonly。
 - `okr.update_objective`（写）：修改指定目标（Objective）的字段（content/notes/deadline/score/category_id，至少传一个要更新的字段）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 okr:okr.content:writeonly。
 

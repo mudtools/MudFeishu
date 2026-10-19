@@ -43,7 +43,6 @@ public class NonCuratedToolRegistryContractGuards
         ("ExecuteSqlAsync", "spark：任意 SQL 执行 = 越权通道，无法机械校验表归属"),
         ("BatchUpdateTableRecordsAsync", "spark：约束反直觉（不同行字段须一致）且与 spark.update_table_records 重叠"),
         ("DownloadWhiteboardImageAsync", "board：画板缩略图（返回 byte[]）→ A10 二进制防线"),
-        ("GetMinuteTranscriptAsync", "minutes：逐字稿原文（长文本 + 附件通道）——结论/待办已由 minutes.get_artifacts 覆盖"),
 
         // F-1 首个补域（MDM）：只策展只读的国家/地区批量查询，其余方法显式登记为"有意不策展"。
         ("BindUserAuthDataRelationAsync", "mdm：写类（用户数据维度绑定，涉及用户 ID）——**产品裁定不策展**：HR/组织主数据写入属管理后台职责（AI 走「提议 → 人工执行」）"),

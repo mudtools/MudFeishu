@@ -45,6 +45,9 @@ internal sealed class ImTools(
     /// <summary>允许的 <c>receive_id_type</c> 白名单（非法值提前拒绝，便于模型自我纠正）。</summary>
     private static readonly string[] AllowedReceiveIdTypes = ["open_id", "user_id", "union_id"];
 
+    /// <summary>im.batch_query_reactions 单次消息数上限（平台 queries 数组上限）。</summary>
+    private const int MaxBatchQueryMessageIds = 50;
+
     private readonly IFeishuTenantV1Message _messageClient = messageClient
         ?? throw new ArgumentNullException(nameof(messageClient));
     private readonly IFeishuTenantV1ChatGroup? _chatGroupClient = chatGroupClient;
@@ -620,6 +623,78 @@ internal sealed class ImTools(
         });
     }
 
+    /// <summary>im.list_reactions：查询某条消息上**指定表情**的回复明细（单页）。</summary>
+    [ToolHandler(typeof(IFeishuTenantImListReactionsTool))]
+    public Task<ToolResult> ListReactionsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.ImListReactions, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var args = ImListReactionsArgs.Unpack(arguments);
+
+            // 平台该端点的 reaction_type 是必填非可空参数（SDK 侧空/空白直接拒绝下发），
+            // 故在入口本地拒绝空白值并给出可读文案，而不是让模型收到平台的生硬错误。
+            var reactionType = args.ReactionType.Trim();
+            if (reactionType.Length == 0)
+            {
+                throw new ArgumentException("reaction_type 不能为空——本端点一次只查一种表情；要全部表情请用 im.batch_query_reactions");
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _messageClient
+                .GetMessageReactionsPageListAsync(
+                    args.MessageId,
+                    reactionType,
+                    page_size: PageSizes.ImReactions,
+                    page_token: null,
+                    user_id_type: ResolveReactionUserIdType(args.UserIdType),
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApi(outcome, ProjectReactions);
+        });
+    }
+
+    /// <summary>im.batch_query_reactions：一次查多条消息的表情（默认只给计数，with_details 才给明细）。</summary>
+    [ToolHandler(typeof(IFeishuTenantImBatchQueryReactionsTool))]
+    public Task<ToolResult> BatchQueryReactionsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.ImBatchQueryReactions, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var args = ImBatchQueryReactionsArgs.Unpack(arguments);
+
+            // 去空白 + 去重：平台按 queries 逐条返回，重复的 message_id 只会让同一份明细出现两次（白烧上下文）。
+            var messageIds = (args.MessageIds ?? [])
+                .Where(static id => !string.IsNullOrWhiteSpace(id))
+                .Select(static id => id.Trim())
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+
+            if (messageIds.Length == 0)
+            {
+                throw new ArgumentException("message_ids 不能为空（且不得全为空白项）");
+            }
+
+            if (messageIds.Length > MaxBatchQueryMessageIds)
+            {
+                throw new ArgumentException(
+                    $"message_ids 一次最多 {MaxBatchQueryMessageIds} 条，实际: {messageIds.Length}");
+            }
+
+            var request = new BatchQueryMessageReactionsRequest
+            {
+                Queries = [.. messageIds.Select(static id => new MessageReactionQuery { MessageId = id })],
+                PageSizePerMessage = PageSizes.ImReactionsPerMessage,
+                ReactionType = string.IsNullOrWhiteSpace(args.ReactionType) ? null : args.ReactionType.Trim(),
+            };
+
+            var withDetails = args.WithDetails == true;
+            var outcome = FeishuApiResultReader.Read(await _messageClient
+                .BatchQueryMessageReactionsAsync(request, cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApi(outcome, data => ProjectBatchReactions(data, withDetails));
+        });
+    }
+
     /// <summary>list_chat_members 投影：items（member_id/name/tenant_key）+ 翻页契约。</summary>
     private static JsonObject ProjectChatMembers(GetMemberPageListResult data)
     {
@@ -666,6 +741,102 @@ internal sealed class ImTools(
         }
 
         return envelope;
+    }
+
+    /// <summary>
+    /// list_reactions 投影：items（reaction_id/emoji_type/operator/action_time）+ <c>returned_count</c>。
+    /// </summary>
+    /// <remarks>
+    /// <c>returned_count</c> 是本域唯一的"可能还有更多"信号：<c>ApiListResult&lt;T&gt;</c> 不透出
+    /// <c>has_more</c>/<c>page_token</c>，模型只能靠"返回条数 == 页大小"判断需要换表情类型再查。
+    /// </remarks>
+    private static JsonObject ProjectReactions(ApiListResult<EmojiReactionResult> data)
+    {
+        var envelope = ToolResultJsons.ItemsEnvelope();
+        foreach (var reaction in data.Items)
+        {
+            envelope["items"]!.AsArray().AddNode(new JsonObject
+            {
+                ["reaction_id"] = reaction.ReactionId,
+                ["emoji_type"] = reaction.ReactionType?.EmojiType,
+                ["operator_id"] = reaction.Operator?.OperatorId,
+                ["operator_type"] = reaction.Operator?.OperatorType,
+                ["action_time"] = reaction.ActionTime,
+            });
+        }
+
+        envelope["returned_count"] = data.Items.Count;
+        return envelope;
+    }
+
+    /// <summary>
+    /// batch_query_reactions 投影：一条消息一个 items 元素（计数默认给、明细按 <c>with_details</c> 追加）+ failed。
+    /// </summary>
+    /// <remarks>
+    /// 平台把「计数」与「明细」分成两个数组返回，这里按 message_id <b>合并成一条</b>——
+    /// 模型不必自己 join 两个数组（join 错了会把 A 消息的明细算到 B 头上）。
+    /// </remarks>
+    private static JsonObject ProjectBatchReactions(BatchQueryMessageReactionsResult data, bool withDetails)
+    {
+        var envelope = ToolResultJsons.ItemsEnvelope();
+        var detailsByMessage = (data.SuccessMsgReactionDetails ?? [])
+            .Where(static detail => !string.IsNullOrEmpty(detail.MessageId))
+            .ToLookup(static detail => detail.MessageId!, StringComparer.Ordinal);
+
+        foreach (var count in data.SuccessMsgReactionCounts ?? [])
+        {
+            var message = new JsonObject
+            {
+                ["message_id"] = count.MessageId,
+                ["reactions"] = new JsonArray([.. (count.ReactionCount ?? [])
+                    .Select(static item => (JsonNode?)new JsonObject
+                    {
+                        ["emoji_type"] = item.ReactionType,
+                        ["count"] = item.Count,
+                    })]),
+            };
+
+            if (withDetails)
+            {
+                message["reaction_details"] = new JsonArray([.. detailsByMessage[count.MessageId ?? string.Empty]
+                    .SelectMany(static detail => detail.MessageReactionItems ?? [])
+                    .Select(static item => (JsonNode?)new JsonObject
+                    {
+                        ["reaction_id"] = item.ReactionId,
+                        ["emoji_type"] = item.ReactionType,
+                        ["operator_id"] = item.OperatorId,
+                        ["action_time"] = item.ActionTime,
+                    })]);
+            }
+
+            envelope["items"]!.AsArray().AddNode(message);
+        }
+
+        envelope["failed"] = new JsonArray([.. (data.FailMsgReactionDetails ?? [])
+            .Select(static item => (JsonNode?)new JsonObject
+            {
+                ["message_id"] = item.MessageId,
+                ["reason"] = item.FailReason,
+            })]);
+        return envelope;
+    }
+
+    /// <summary>解析 <c>user_id_type</c>（表情回复类工具）：空 ⇒ <c>open_id</c>；非空但不在白名单 ⇒ 抛错。</summary>
+    private static string ResolveReactionUserIdType(string? modelSupplied)
+    {
+        if (string.IsNullOrWhiteSpace(modelSupplied))
+        {
+            return DefaultReceiveIdType;
+        }
+
+        var value = modelSupplied.Trim();
+        if (Array.IndexOf(AllowedReceiveIdTypes, value) < 0)
+        {
+            throw new ArgumentException(
+                $"user_id_type 只能是 {string.Join(" / ", AllowedReceiveIdTypes)}，收到 '{value}'");
+        }
+
+        return value;
     }
 
     /// <summary>从工具参数构造搜索过滤器（绑定层组装，模型只见标量/标量数组）。</summary>

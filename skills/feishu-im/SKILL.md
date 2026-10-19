@@ -1,6 +1,6 @@
 ---
 name: feishu-im
-description: 飞书 im 域工具集：20 个工具（只读 8 / 写 12）。给人发消息 / 读聊天记录 → `im.*`；给人发邮件 → `mail.*`；给人建待办 → `task.*`。
+description: 飞书 im 域工具集：24 个工具（只读 10 / 写 14）。给人发消息 / 读聊天记录 → `im.*`；给人发邮件 → `mail.*`；给人建待办 → `task.*`。
 version: 1.0.0
 package_version: 3.0.3
 ---
@@ -17,6 +17,7 @@ package_version: 3.0.3
 ## 前置链
 读 `get_history_messages` / `get_message_content` / `search_messages`；写 `send_message` / `send_card` / `reply_message`；
 改 `edit_message` / `patch_card_message`（`message_id` 来自发送结果或 `get_history_messages`）；催办 `urgent_app` / `urgent_sms`；
+表情 `list_reactions` / `batch_query_reactions` 读明细 → `add_reaction` / `delete_reaction` 写；
 话题 `get_thread_messages` / `forward_thread`；群 → `get_chat` / `search_chats` / `list_chat_members`。
 
 ## 避坑
@@ -25,6 +26,7 @@ package_version: 3.0.3
 - `revoke_message` 只能撤自己的。
 - `edit_message` / `patch_card_message` 改的是**已发出的那条**，需要原 `message_id`；卡片补丁只认卡片消息。
 - 催办只在发送之后才有意义（`urgent_*` 的目标必须是已发出的消息）；`urgent_sms` 触达手机，打扰度最高，非必要不用。
+- **表情回复不去重**：同一表情调两次会叠成两条；`delete_reaction` 删的是单条实例，`reaction_id` 只能从 `add_reaction` 回执或 `list_reactions` / `batch_query_reactions`（`with_details=true`）取。
 - 话题/回复 vs 消息的判别 → `feishu.guidance_read(im, topics-and-replies)`。
 - 交互式卡片（`send_card` 的结构化语法）→ `feishu.guidance_read(im, cards)`。
 
@@ -37,6 +39,9 @@ package_version: 3.0.3
 把整个话题转发给张三 → `search_user` → `forward_thread`。
 
 ## 命令（工具）清单
+- `im.add_reaction`（写）：给一条消息加一个表情回复（比发一条'收到👌'消息更轻的确认方式）。emoji_type 是表情名（如 SMILE / THUMBSUP / OK / HEART / DONE，完整清单见飞书「表情文案说明」）。⚠️ 平台**不去重**：同一表情调用两次会叠成两条——一次只调一次，撤回用 im.delete_reaction。reaction_id 在本工具回执里。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:me…
+- `im.batch_query_reactions`（只读）：一次查询多条消息的表情回复（每条消息的表情种类与数量；可选带上逐条明细=谁回的哪个表情）。message_ids 为 om_ 开头的消息 ID 数组。reaction_type 省略时查全部表情。不可见的消息会单独列在 failed 里并给出平台原因。只读，需 im:message。
+- `im.delete_reaction`（写）：撤回**一个**表情回复实例（按 reaction_id 精确删除，只影响这一次回复，不影响同一表情上其他人的回复）。reaction_id 来自 im.add_reaction 的回执，或 im.list_reactions / im.batch_query_reactions（with_details=true）的明细。⚠️ 撤回后无法恢复，只能重新 im.add_reaction。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecu…
 - `im.edit_message`（写）：编辑本 Bot 已发送的文本消息内容（发错字时纠正，对方看到的消息被更新）。message_id 来自 im.send_message 的返回。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。
 - `im.forward_message`（写）：把一条消息转发给用户或群。receive_id 来自 im.search_user / 事件上下文。⚠️ 底层 SDK 方法名为 ReceiveMessageAsync 但语义是转发（POST /messages/{id}/forward），不是接收消息。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message:send_as_bot。
 - `im.forward_thread`（写）：把整个话题（thread）转发给用户或群——一次性把讨论上下文带过去。thread_id 来自事件上下文。⚠️ 底层 SDK 方法名为 ReceiveThreadsAsync 但语义是转发话题。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message:send_as_bot。
@@ -46,6 +51,7 @@ package_version: 3.0.3
 - `im.get_message_read_users`（只读）：查询某条消息已被哪些人读到（user_id + 读取时间）。⚠️ 底层 SDK 方法名拼写为 GetMessageReadUsesAsync（Uses 应为 Users），此处按正确语义命名。只读，需 im:message:readonly。
 - `im.get_thread_messages`（只读）：读取某个话题（thread）内的消息——群话题场景下用 thread_id 取代 chat_id 读话题内容。thread_id 可由事件上下文获得。只读，需 im:message:readonly。
 - `im.list_chat_members`（只读）：分页列出群聊成员（member_id/name/tenant_key）——'这个群里有哪些人'的多步流程地基。chat_id 可由事件上下文获得。只读，需 im:chat:readonly。
+- `im.list_reactions`（只读）：查询某条消息上**指定表情**的回复明细（谁在什么时候回了这个表情）。⚠️ reaction_type 必填且一次只查一种表情（平台该端点要求指定表情类型）——要看一条消息上**所有**表情的种类与数量用 im.batch_query_reactions。单页返回、不翻页。只读，需 im:message。
 - `im.patch_card_message`（写）：更新本 Bot 已发送的卡片消息内容（整卡覆盖）。⚠️ 用结构化语法描述内容，**不要写 JSON**：body 每行一个元素（text:内容 / quote:内容 / code:内容 / divider），buttons 每行一个按钮（按钮文本|url|链接 或 按钮文本|value|回调值）。message_id 来自 im.send_card 的返回。写操作：默认空名单不启用，需 im:message。
 - `im.reply_message`（写）：回复指定消息，形成话题串避免刷屏。message_id 来自 im.get_history_messages 或事件上下文；content 为 JSON 字符串（msg_type=text 时如 {"text":"回复内容"}）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。
 - `im.revoke_message`（写）：撤回一条自己发出的消息（发错内容时纠正）。只能撤回本 Bot 发送的消息；message_id 来自事件上下文或 im.get_history_messages。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。建议先 dry_run 预演确认目标消息。

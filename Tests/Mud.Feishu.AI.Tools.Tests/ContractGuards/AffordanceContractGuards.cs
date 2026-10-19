@@ -47,9 +47,10 @@ public class AffordanceContractGuards
     // T-4：wiki.member_remove + approval.cancel_instance（36 → 38；15061 → 16006 字符）。
     // 增量为 2 而非 4：风险等级由 FeishuToolProfile.WriteVerbKeywords 派生，本轮 12 枚新工具里
     // 只有 remove / cancel 两个动词落进高危词表。
-    private const int ExpectedAssetCount = 38;
+    // S-6 首刀：im.delete_reaction（38 → 39；16006 → 16603 字符）——同理由，本轮 13 枚里只有 delete 命中高危词表。
+    private const int ExpectedAssetCount = 39;
 
-    private const int ExpectedTotalAssetCharacters = 16006;
+    private const int ExpectedTotalAssetCharacters = 16603;
 
     // B2 瘦身（测试体系治理，见《单元测试体系过度测试分析与解决方案》§三.5；该文档已迁 Mud.AI 仓）：
     // 与上游诊断**同一判定**的仓库侧副本已删除——

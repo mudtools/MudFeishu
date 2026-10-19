@@ -19,11 +19,15 @@ namespace Mud.Feishu.AI.Tools.Internal;
 internal sealed class WikiTools(
     Mud.Feishu.IFeishuTenantV2WikiNodes wikiNodesClient,
     Mud.Feishu.IFeishuTenantV2Wiki? wikiSpaceClient,
-    IOptions<FeishuAgentOptions> options)
+    IOptions<FeishuAgentOptions> options,
+
+    // 空间创建在平台只有 user_access_token 形态；同样**软依赖 + 末尾带默认值**，缺席时不影响其余 wiki 工具。
+    Mud.Feishu.IFeishuUserV2Wiki? wikiUserSpaceClient = null)
 {
     private readonly Mud.Feishu.IFeishuTenantV2WikiNodes _wikiNodesClient = wikiNodesClient
         ?? throw new ArgumentNullException(nameof(wikiNodesClient));
     private readonly Mud.Feishu.IFeishuTenantV2Wiki? _wikiSpaceClient = wikiSpaceClient;
+    private readonly Mud.Feishu.IFeishuUserV2Wiki? _wikiUserSpaceClient = wikiUserSpaceClient;
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
     private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
     private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
@@ -448,6 +452,50 @@ internal sealed class WikiTools(
         });
     }
 
+    /// <summary>wiki.space_create：创建知识空间（用户身份，返回 space_id）。</summary>
+    [ToolHandler(typeof(IFeishuUserWikiCreateSpaceTool))]
+    public Task<ToolResult> CreateSpaceAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.WikiSpaceCreate, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var args = WikiSpaceCreateArgs.Unpack(arguments);
+
+            if (!string.IsNullOrWhiteSpace(args.OpenSharing)
+                && !string.Equals(args.OpenSharing, "open", StringComparison.Ordinal)
+                && !string.Equals(args.OpenSharing, "closed", StringComparison.Ordinal))
+            {
+                throw new ArgumentException($"open_sharing 仅支持 open/closed，实际: {args.OpenSharing}");
+            }
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return ToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "POST", "/open-apis/wiki/v2/spaces",
+                    "⚠️ 空间创建不支持幂等键——重复调用会创建多个同名空间",
+                    ("name", args.Name.Length), ("description", args.Description?.Length ?? 0)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await RequireUserSpace(executor.ToolName)
+                .CreateSpaceAsync(
+                    new CreateSpaceRequest
+                    {
+                        Name = args.Name,
+                        Description = args.Description,
+                        OpenSharing = string.IsNullOrWhiteSpace(args.OpenSharing) ? null : args.OpenSharing,
+                    },
+                    cancellationToken)
+                .ConfigureAwait(false));
+
+            return executor.FromApi(outcome, data => new JsonObject
+            {
+                ["space"] = ProjectSpace(data.Space),
+                ["note"] = "创建者自动成为该空间管理员；空间此刻还没有节点，"
+                    + "用返回的 space_id 作为 wiki.create_node 的 space_id 继续建内容",
+            });
+        });
+    }
+
     /// <summary>space_list 投影：items（空间白名单）+ 翻页契约 + 空结果释义。</summary>
     private static JsonObject ProjectSpaces(ApiPageListResult<SpaceInfo> data)
     {
@@ -537,6 +585,12 @@ internal sealed class WikiTools(
         => _wikiSpaceClient ?? throw new ArgumentException(
             $"{toolName} 需要 IFeishuTenantV2Wiki——宿主须启用 AddWikiApi 的空间侧客户端；"
             + "未启用时本工具不在工具列表中（软缺席，不影响 wiki 其它工具）");
+
+    /// <summary>取空间创建侧的用户身份客户端；缺席口径与 <see cref="RequireSpace"/> 一致。</summary>
+    private Mud.Feishu.IFeishuUserV2Wiki RequireUserSpace(string toolName)
+        => _wikiUserSpaceClient ?? throw new ArgumentException(
+            $"{toolName} 需要 IFeishuUserV2Wiki——平台的空间创建只有用户身份形态；"
+            + "宿主须启用 AddWikiApi 的用户侧客户端并在 FeishuAgent:AllowedIdentities 放行 user");
 
     /// <summary>投影 <c>SpaceNodeInfo</c>（写面复用同一白名单，避免两套字段口径）。</summary>
     private static JsonObject ProjectNode(SpaceNodeInfo? node, bool created)

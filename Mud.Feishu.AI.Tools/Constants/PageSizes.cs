@@ -112,6 +112,12 @@ internal static class PageSizes
     /// <summary>spark.query_table_records（官方默认 10、上限 500，此处取 100 控量）。</summary>
     public const int SparkRecords = 100;
 
+    /// <summary>im.list_reactions（官方上限 100；该端点不透游标，取上限即"单页尽量多"）。</summary>
+    public const int ImReactions = 100;
+
+    /// <summary>im.batch_query_reactions 的单条消息明细上限（官方默认 10）。</summary>
+    public const int ImReactionsPerMessage = 10;
+
     /// <summary>单条消息 content 预览截断长度。</summary>
     public const int MessagePreviewLength = 200;
 }

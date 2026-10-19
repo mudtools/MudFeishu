@@ -14,7 +14,8 @@ namespace Mud.Feishu.AI.Tools.Internal;
 /// OKR 只读工具执行器（R6 / S2）：<c>okr.list_cycles</c> / <c>okr.list_objectives</c> /
 /// <c>okr.get_objective</c> / <c>okr.list_key_results</c> / <c>okr.get_key_result</c> /
 /// <c>okr.list_objective_progresses</c> / <c>okr.list_key_result_progresses</c> /
-/// <c>okr.list_periods</c> / <c>okr.list_categories</c>。
+/// <c>okr.list_periods</c> / <c>okr.list_categories</c> /
+/// <c>okr.get_objective_indicator</c> / <c>okr.get_key_result_indicator</c>。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -26,7 +27,7 @@ namespace Mud.Feishu.AI.Tools.Internal;
 /// 而不是"这句话的第 3 个 run 用了什么字号"。
 /// </para>
 /// <para>
-/// <b>软缺席（执行链护栏）</b>：六个客户端全部<b>可空</b>，缺席时对应工具返回结构化错误而非
+/// <b>软缺席（执行链护栏）</b>：七个客户端全部<b>可空</b>，缺席时对应工具返回结构化错误而非
 /// 让整个域从注册表消失（对齐 <c>MailTools</c> 的软依赖纪律）。
 /// </para>
 /// </remarks>
@@ -37,7 +38,8 @@ internal sealed class OkrTools(
     IFeishuTenantV2OkrProgress? okrProgressClient,
     IFeishuTenantV1OkrPeriod? okrPeriodClient,
     IFeishuTenantV2OkrCategory? okrCategoryClient,
-    IOptions<FeishuAgentOptions> options)
+    IOptions<FeishuAgentOptions> options,
+    IFeishuTenantV2OkrIndicator? okrIndicatorClient = null)
 {
     /// <summary>默认每页条数（官方上限 100；取 20 控量，模型可用 page_token 翻页）。</summary>
     private const int DefaultPageSize = 20;
@@ -48,6 +50,7 @@ internal sealed class OkrTools(
     private readonly IFeishuTenantV2OkrProgress? _okrProgressClient = okrProgressClient;
     private readonly IFeishuTenantV1OkrPeriod? _okrPeriodClient = okrPeriodClient;
     private readonly IFeishuTenantV2OkrCategory? _okrCategoryClient = okrCategoryClient;
+    private readonly IFeishuTenantV2OkrIndicator? _okrIndicatorClient = okrIndicatorClient;
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>P-3/P-4 (unified pagination): fetch_all item/page budgets come from host options.</summary>
@@ -159,6 +162,40 @@ internal sealed class OkrTools(
                 .GetKeyResultAsync(args.KeyResultId, cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApi(outcome, data => ProjectKeyResult(data.KeyResult));
+        });
+    }
+
+    /// <summary>okr.get_objective_indicator：获取目标的指标（indicator_id 的唯一来源）。</summary>
+    [ToolHandler(typeof(IFeishuTenantOkrGetObjectivesIndicatorTool))]
+    public Task<ToolResult> GetObjectiveIndicatorAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.OkrGetObjectiveIndicator, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var client = RequireIndicator(executor.ToolName);
+            var args = OkrGetObjectiveIndicatorArgs.Unpack(arguments);
+
+            var outcome = FeishuApiResultReader.Read(await client
+                .GetObjectiveIndicatorAsync(args.ObjectiveId, cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApi(outcome, data => ProjectIndicator(data.Indicator));
+        });
+    }
+
+    /// <summary>okr.get_key_result_indicator：获取关键结果的指标。</summary>
+    [ToolHandler(typeof(IFeishuTenantOkrGetKeyResultIndicatorTool))]
+    public Task<ToolResult> GetKeyResultIndicatorAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.OkrGetKeyResultIndicator, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var client = RequireIndicator(executor.ToolName);
+            var args = OkrGetKeyResultIndicatorArgs.Unpack(arguments);
+
+            var outcome = FeishuApiResultReader.Read(await client
+                .GetKeyResultIndicatorAsync(args.KeyResultId, cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApi(outcome, data => ProjectIndicator(data.Indicator));
         });
     }
 
@@ -409,6 +446,40 @@ internal sealed class OkrTools(
 
         return envelope;
     }
+
+    /// <summary>指标投影：id（写面唯一入口）+ 两套计算方式 + 三个数值 + 单位 + 归属实体。</summary>
+    internal static JsonObject ProjectIndicator(Indicator? indicator)
+    {
+        if (indicator is null)
+        {
+            return new JsonObject
+            {
+                ["note"] = "平台未返回指标——该目标/关键结果可能没有启用指标面（与「进展记录」是两套面）",
+            };
+        }
+
+        return new JsonObject
+        {
+            ["indicator_id"] = indicator.Id,
+            ["entity_type"] = indicator.EntityType,
+            ["entity_id"] = indicator.EntityId,
+            ["owner_id"] = indicator.Owner?.UserId,
+            ["indicator_status"] = indicator.IndicatorStatus,
+            ["status_calculate_type"] = indicator.StatusCalculateType,
+            ["current_value_calculate_type"] = indicator.CurrentValueCalculateType,
+            ["start_value"] = indicator.StartValue,
+            ["target_value"] = indicator.TargetValue,
+            ["current_value"] = indicator.CurrentValue,
+            ["unit_type"] = indicator.Unit?.UnitType,
+            ["unit_value"] = indicator.Unit?.UnitValue,
+            ["update_time"] = indicator.UpdateTime,
+        };
+    }
+
+    /// <summary>取指标侧软依赖客户端；缺席时给可执行提示，不牵连其余 OKR 工具。</summary>
+    private IFeishuTenantV2OkrIndicator RequireIndicator(string toolName)
+        => _okrIndicatorClient ?? throw new ArgumentException(
+            $"{toolName} 需要 IFeishuTenantV2OkrIndicator——宿主须启用 AddOkrApi 的指标侧客户端");
 
     /// <summary>翻页信封（items + has_more + 可选 page_token）。</summary>
     private static JsonObject PageHeader<T>(ApiPageListResult<T> data)

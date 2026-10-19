@@ -89,6 +89,9 @@ public static class FeishuToolsServiceCollectionExtensions
             .AddFeishuDocxDeepToolsCore()
             .AddFeishuWikiToolsCore()
             .AddFeishuMinutesReadToolsCore()
+
+            // S-6：逐字稿导出出口（与只读链同进同出，见 AddFeishuReadonlyToolCores 的登记）。
+            .AddFeishuMinutesTranscriptToolsCore()
             .AddFeishuSheetsToolsCore()
 
             // T-2：SheetsDeepTools 是「单执行器混合域」（6 只读 + 15 写），Core 只在只读链与
@@ -430,6 +433,11 @@ public static class FeishuToolsServiceCollectionExtensions
                     // ToolDomainCores_ShouldAllBeWiredIntoTheAggregator 锁死"生成的 Core 必须被聚合"。
                     .AddFeishuMinutesReadToolsCore()
 
+                    // S-6：妙记逐字稿导出执行器 MinutesTranscriptTools（minutes.get_transcript）。
+                    // 与 DriveDownloadTools 同款受控下载出口（字节落宿主盘、不进上下文）；
+                    // 本行必须与 AddFeishuCloudDocTools 的清单**同进同出**（DomainRegistrarTests 锁等价性）。
+                    .AddFeishuMinutesTranscriptToolsCore()
+
                     // F-1 首个补域：MDM 国家/地区执行器 CountryRegionTools（1 个只读）。
                     // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，
                     // 漏加即「工具静默不入注册表」（ToolDomainCoresWiringContractTests 会报红）。
@@ -585,6 +593,10 @@ public static class FeishuToolsServiceCollectionExtensions
 
             // R6 / S3：VideoConferencing 写入执行器 VcWriteTools（4 个工具，其中含 2 个 user 身份工具）。
             .AddFeishuVcWriteToolsCore()
+
+            // S-6：妙记生产面执行器 MinutesUserWriteTools（4 个工具，全部 user 身份写）。
+            // 只在写链登记——漏加即「工具静默不入注册表」（ToolDomainCoresWiringContractTests 会报红）。
+            .AddFeishuMinutesUserWriteToolsCore()
 
             // R-12（2026-10-10 评审决策）：万能兜底调用执行器 GenericApiTools（feishu.api_call）
             // 已**整条删除**。删除理由：① 与策展工具构成双轨调用路径（同一能力两条路径，

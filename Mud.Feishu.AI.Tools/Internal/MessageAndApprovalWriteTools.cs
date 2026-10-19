@@ -264,6 +264,80 @@ internal sealed class MessageWriteTools(Mud.Feishu.IFeishuTenantV1Message messag
         });
     }
 
+    // ────────── S-6 表情回复写面（加 / 删） ──────────
+
+    /// <summary>im.add_reaction：给消息加表情（<c>dry_run=true</c> 时只预演）。</summary>
+    /// <remarks>
+    /// 平台该端点<b>不去重</b>（无 <c>uuid</c> 类参数），所以本工具刻意不暴露 <c>idempotency_key</c>——
+    /// 给了就是假幂等。重复调用会在同一条消息上产生两条相同表情回复。
+    /// </remarks>
+    [ToolHandler(typeof(IFeishuTenantImAddReactionTool))]
+    public Task<ToolResult> AddReactionAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.ImAddReaction);
+        return executor.RunAsync(async () =>
+        {
+            var args = ImAddReactionArgs.Unpack(arguments);
+            var emojiType = args.EmojiType.Trim();
+            if (emojiType.Length == 0)
+            {
+                throw new ArgumentException("emoji_type 不能为空（须为飞书「表情文案说明」中的 emoji_type 值，如 THUMBSUP）");
+            }
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return ToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "POST", $"/open-apis/im/v1/messages/{args.MessageId}/reactions",
+                    null,
+                    ("message_id", args.MessageId.Length), ("emoji_type", emojiType.Length)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _messageClient
+                .AddMessageReactionsAsync(
+                    args.MessageId,
+                    new EmojiReactionRequest { ReactionType = new ReactionType { EmojiType = emojiType } },
+                    cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApiUntruncated(outcome, ProjectReaction);
+        });
+    }
+
+    /// <summary>im.delete_reaction：删除消息上的一条表情回复（high-risk-write；<c>dry_run=true</c> 时只预演）。</summary>
+    [ToolHandler(typeof(IFeishuTenantImDeleteReactionTool))]
+    public Task<ToolResult> DeleteReactionAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.ImDeleteReaction);
+        return executor.RunAsync(async () =>
+        {
+            var args = ImDeleteReactionArgs.Unpack(arguments);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return ToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "DELETE",
+                    $"/open-apis/im/v1/messages/{args.MessageId}/reactions/{args.ReactionId}",
+                    null,
+                    ("message_id", args.MessageId.Length), ("reaction_id", args.ReactionId.Length)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _messageClient
+                .DeleteMessageReactionsAsync(args.MessageId, args.ReactionId, cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApiUntruncated(outcome, ProjectReaction);
+        });
+    }
+
+    /// <summary>表情回复结果投影（加/删两端返回同一 <c>EmojiReactionResult</c>，共用一份白名单）。</summary>
+    private static JsonObject ProjectReaction(EmojiReactionResult? data)
+        => new()
+        {
+            ["reaction_id"] = data?.ReactionId,
+            ["emoji_type"] = data?.ReactionType?.EmojiType,
+            ["operator_id"] = data?.Operator?.OperatorId,
+            ["operator_type"] = data?.Operator?.OperatorType,
+            ["action_time"] = data?.ActionTime,
+        };
+
     /// <summary>加急结果投影：显式给出"谁没收到"（invalid_user_id_list）——加急的目的就是送达，空数组也是有效信息。</summary>
     private static JsonObject ProjectUrgent(string messageId, MessageUrgentResult data)
     {

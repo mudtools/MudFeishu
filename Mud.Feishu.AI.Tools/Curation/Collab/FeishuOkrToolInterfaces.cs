@@ -37,7 +37,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // </para>
 // </remarks>
 
-// ─────────────────────────── 只读（9 个） ───────────────────────────
+// ─────────────────────────── 只读（11 个） ───────────────────────────
 
 /// <summary>工具接口：okr.list_cycles（映射 <c>IFeishuTenantV2OkrCycle.ListCyclesAsync</c>）。</summary>
 [AgentTool("okr.list_cycles",
@@ -194,7 +194,41 @@ public interface IFeishuTenantOkrListCategoriesTool
         CancellationToken cancellationToken = default);
 }
 
-// ─────────────────────────── 写入（6 个） ───────────────────────────
+/// <summary>工具接口：okr.get_objective_indicator（映射 <c>IFeishuTenantV2OkrIndicator.GetObjectiveIndicatorAsync</c>）。</summary>
+/// <remarks>
+/// 指标（Indicator）是目标下与「进展记录」并列的<b>另一套量化面</b>：它有 id、单位与三种计算方式，
+/// 且 <c>indicator_id</c> 只能从本工具取得——把它写成「okr.update_indicator 的前置」比写成「读数」更有用。
+/// </remarks>
+[AgentTool("okr.get_objective_indicator",
+    Description = "获取某个目标（Objective）的指标信息（indicator_id、状态与状态计算方式、起始值/目标值/当前值及其计算方式、单位）。只读，需 okr:okr.content:readonly。返回的 indicator_id 是 okr.update_indicator 的唯一入口（平台没有『按 id 反查指标』的接口，改之前必须先在这里定位）。",
+    RequiredScopes = ["okr:okr.content:readonly"],
+    IsWrite = false,
+    Source = nameof(IFeishuTenantV2OkrIndicator) + "." + nameof(IFeishuTenantV2OkrIndicator.GetObjectiveIndicatorAsync))]
+public interface IFeishuTenantOkrGetObjectivesIndicatorTool
+{
+    /// <summary>获取目标指标。</summary>
+    /// <returns>白名单投影后的 JSON 文本（indicator 对象）。</returns>
+    Task<string> GetObjectiveIndicatorAsync(
+        [ToolParameter("objective_id", "目标 ID（来自 okr.list_objectives）", Required = true)] string objective_id,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：okr.get_key_result_indicator（映射 <c>IFeishuTenantV2OkrIndicator.GetKeyResultIndicatorAsync</c>）。</summary>
+[AgentTool("okr.get_key_result_indicator",
+    Description = "获取某个关键结果（Key Result）的指标信息（indicator_id、状态与状态计算方式、起始值/目标值/当前值及其计算方式、单位）。只读，需 okr:okr.content:readonly。返回的 indicator_id 是 okr.update_indicator 的唯一入口。",
+    RequiredScopes = ["okr:okr.content:readonly"],
+    IsWrite = false,
+    Source = nameof(IFeishuTenantV2OkrIndicator) + "." + nameof(IFeishuTenantV2OkrIndicator.GetKeyResultIndicatorAsync))]
+public interface IFeishuTenantOkrGetKeyResultIndicatorTool
+{
+    /// <summary>获取关键结果指标。</summary>
+    /// <returns>白名单投影后的 JSON 文本（indicator 对象）。</returns>
+    Task<string> GetKeyResultIndicatorAsync(
+        [ToolParameter("key_result_id", "关键结果 ID（来自 okr.list_key_results）", Required = true)] string key_result_id,
+        CancellationToken cancellationToken = default);
+}
+
+// ─────────────────────────── 写入（7 个） ───────────────────────────
 
 /// <summary>工具接口：okr.create_objective（映射 <c>IFeishuTenantV2OkrCycle.CreateCycleObjectiveAsync</c>）。</summary>
 [AgentTool("okr.create_objective",
@@ -306,5 +340,43 @@ public interface IFeishuTenantOkrDeleteKeyResultTool
     Task<string> DeleteKeyResultAsync(
         [ToolParameter("key_result_id", "关键结果 ID（来自 okr.list_key_results）", Required = true)] string key_result_id,
         [ToolParameter("dry_run", "仅预演不删除（可选，默认 false）：返回将要下发的 method/path，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：okr.update_indicator（映射 <c>IFeishuTenantV2OkrIndicator.UpdateIndicatorAsync</c>）。
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>平台按 indicator_id 定位，请求体不带实体类型</b>——「Objective 不能改起始值/目标值/单位」
+/// 这类约束只有在读过指标之后才知道实体归属，而工具层无法本地判定（PATCH 端点无实体信息），
+/// 因此把判据写进描述、由模型先读后写；本地只校验<b>无需读即可判定</b>的冲突
+/// （同时给出 indicator_status 与「非手动」的状态计算方式）。
+/// </para>
+/// <para>
+/// <b>数值以 string 入参</b>：起始/目标/当前值在 DTO 里是 <c>double?</c>，而解包映射表不覆盖
+/// <c>double</c>（MUDFT020），故按本域 score/weight 的既有口径以字符串接收并在执行器内解析 + 钳制范围。
+/// </para>
+/// </remarks>
+[AgentTool("okr.update_indicator",
+    Description = "更新一个 OKR 指标（Indicator）的取值与计算方式（至少传一个要更新的字段）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 okr:okr.content:writeonly。⚠️ 先用 okr.get_objective_indicator / okr.get_key_result_indicator 取 indicator_id 并读当前配置：Objective 不支持改起始值、目标值与单位；处于自动计算方式的当前值改不动；indicator_status 仅在状态计算方式为「手动更新」时可改。数值取值范围 -99999999999 ~ 99999999999。",
+    RequiredScopes = ["okr:okr.content:writeonly"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV2OkrIndicator) + "." + nameof(IFeishuTenantV2OkrIndicator.UpdateIndicatorAsync))]
+public interface IFeishuTenantOkrUpdateIndicatorTool
+{
+    /// <summary>更新指标。</summary>
+    /// <returns>白名单投影后的 JSON 文本（更新后的 indicator）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> UpdateIndicatorAsync(
+        [ToolParameter("indicator_id", "指标 ID（来自 okr.get_objective_indicator / okr.get_key_result_indicator）", Required = true)] string indicator_id,
+        [ToolParameter("current_value", "指标当前值（可选更新，字符串数值）")] string? current_value = null,
+        [ToolParameter("start_value", "指标起始值（可选更新，字符串数值；Objective 指标不支持）")] string? start_value = null,
+        [ToolParameter("target_value", "指标目标值（可选更新，字符串数值；Objective 指标不支持）")] string? target_value = null,
+        [ToolParameter("current_value_calculate_type", "当前值计算方式（可选更新闭集：0=手动 / 1=按 Key Result 进度自动（仅 Objective）/ 2=按拆解记录自动（仅 Key Result））")] int? current_value_calculate_type = null,
+        [ToolParameter("status_calculate_type", "状态计算方式（可选更新闭集：0=手动 / 1=按进度与当前时间 / 2=按风险最高的 Key Result（仅 Objective））")] int? status_calculate_type = null,
+        [ToolParameter("indicator_status", "指标状态（可选更新闭集：-1=未定义 / 0=正常 / 1=有风险 / 2=已延期；仅状态计算方式为手动时可改）")] int? indicator_status = null,
+        [ToolParameter("unit_type", "单位类型（与 unit_value 成对提供：0=公共单位 / 1=自定义单位；Objective 指标不支持）")] int? unit_type = null,
+        [ToolParameter("unit_value", "单位值（与 unit_type 成对提供：公共单位取 PERCENT/NONE/YUAN/DOLLAR，自定义单位不超过 5 个字符）")] string? unit_value = null,
+        [ToolParameter("dry_run", "仅预演不更新（可选，默认 false）：返回将要下发的 method/path 与字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }

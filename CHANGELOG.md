@@ -16,9 +16,9 @@
 
 - **飞书智能体运行时**：飞书消息 / 事件 → 会话 → 模型 → 回复，一行装配即可上线；Bot 自激过滤、
   群聊 @ 过滤等安全语义内建，回复支持消息卡片流式输出。
-- **331 个策展工具（31 个业务域）**：即时消息、邮件、任务、多维表格、电子表格、云文档、知识库、
+- **344 个策展工具（31 个业务域）**：即时消息、邮件、任务、多维表格、电子表格、云文档、知识库、
   日历、审批、通讯录、妙记等飞书高频操作以编译期 Schema 暴露给模型；只读与写类分离，
-  38 个高危写工具默认关闭、启用前须经宿主授权。
+  39 个高危写工具默认关闭、启用前须经宿主授权。
 - **人工确认（HITL）**：写操作可停在「等待确认」，经宿主审批通道放行后续跑；未确认绝不自动执行。
 - **MCP 服务器**（可选包）：stdio 接入 Claude Code / Cursor / 自建 harness，工具白名单与进程内 Agent 同源。
 - **会话记忆与知识检索**：条数 + token 双窗口记忆、超窗摘要压缩；内置知识接入与自建向量检索（RAG）
@@ -33,12 +33,19 @@
   - 流式回复通道：消息卡片流（创建 → 更新 → 终态），失败自动降级为消息编辑通道；
   - 事件上下文装配：审批、多维表格记录变更等事件进入对话上下文（`ConversationRequest` 新增事件事实）；
   - 交付可靠性：重投递命中「已生成但未确认送达」的回复时直接补发，不重跑模型。
-- **`Mud.Feishu.AI.Tools` —— 工具面（331 个策展工具 / 31 域，171 只读 + 160 写类）**
+- **`Mud.Feishu.AI.Tools` —— 工具面（344 个策展工具 / 31 域，176 只读 + 168 写类）**
   - 收尾补齐（会议 / 知识库 / 审批）：会议机器人 `vc.user_active_meeting` / `join_meeting` /
     `leave_meeting` / `send_meeting_message`（9 位会议号入会、19 位会议 ID 离会与会中消息，双 ID
     不可互换）；知识库空间与成员 `wiki.space_list` / `space_get` / `member_list` / `member_add` /
     `member_remove`（高危写，默认关闭）/ `node_copy`；审批 `approval.cancel_instance`（提交人撤销）与
     `cc_instance`（抄送，**user 身份**）。
+  - 表情回复、妙记与 OKR 指标补齐：即时消息表情 `im.list_reactions` / `batch_query_reactions` /
+    `add_reaction` / `delete_reaction`（后者为高危写，默认关闭）；妙记逐字稿 `minutes.get_transcript`
+    （受控落盘，结果不含字节）与 **user 身份** `minutes.clip` / `upload` / `subscribe` / `unsubscribe`
+    （剪辑走「起始|结束」文本式时间区间，强制带时区、不做本地时区静默偏移，且校验先于 `dry_run`）；
+    OKR 指标 `okr.get_objective_indicator` / `get_key_result_indicator` / `update_indicator`
+    （写回执与读侧共用同一投影口径，改完即可原样读回）；知识库 `wiki.space_create`
+    （**user 身份**——平台的空间创建只有用户身份形态，且不支持幂等键，重复调用即创建多个同名空间）。
   - 强类型参数 Schema、统一分页信封与错误码；写操作支持 `dry_run` 预演；文件下载受控落盘，
     结果不含字节（不污染上下文）；工具结果被截断时如实向模型标记；
   - 权限模型：逐工具声明调用身份（tenant / user）与 OAuth scope，权限对照表随包分发；

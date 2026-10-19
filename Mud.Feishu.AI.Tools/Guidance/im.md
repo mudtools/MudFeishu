@@ -11,6 +11,7 @@
 ## 前置链
 读 `get_history_messages` / `get_message_content` / `search_messages`；写 `send_message` / `send_card` / `reply_message`；
 改 `edit_message` / `patch_card_message`（`message_id` 来自发送结果或 `get_history_messages`）；催办 `urgent_app` / `urgent_sms`；
+表情 `list_reactions` / `batch_query_reactions` 读明细 → `add_reaction` / `delete_reaction` 写；
 话题 `get_thread_messages` / `forward_thread`；群 → `get_chat` / `search_chats` / `list_chat_members`。
 
 ## 避坑
@@ -19,6 +20,7 @@
 - `revoke_message` 只能撤自己的。
 - `edit_message` / `patch_card_message` 改的是**已发出的那条**，需要原 `message_id`；卡片补丁只认卡片消息。
 - 催办只在发送之后才有意义（`urgent_*` 的目标必须是已发出的消息）；`urgent_sms` 触达手机，打扰度最高，非必要不用。
+- **表情回复不去重**：同一表情调两次会叠成两条；`delete_reaction` 删的是单条实例，`reaction_id` 只能从 `add_reaction` 回执或 `list_reactions` / `batch_query_reactions`（`with_details=true`）取。
 - 话题/回复 vs 消息的判别 → `feishu.guidance_read(im, topics-and-replies)`。
 - 交互式卡片（`send_card` 的结构化语法）→ `feishu.guidance_read(im, cards)`。
 

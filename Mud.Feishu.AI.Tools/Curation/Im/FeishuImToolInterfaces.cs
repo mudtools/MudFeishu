@@ -220,3 +220,56 @@ public interface IFeishuTenantImSearchChatsTool
         [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }
+
+// ─────────────────────────── 表情回复读取（2 个） ───────────────────────────
+
+/// <summary>工具接口：im.list_reactions（映射 <c>IFeishuTenantV1Message.GetMessageReactionsPageListAsync</c>）。</summary>
+/// <remarks>
+/// <para>
+/// <b>为什么 <c>reaction_type</c> 必填</b>：平台的"消息表情列表"端点把该查询参数声明为必填
+/// （SDK 侧为非可空 <c>string</c>，空值在执行器入口即本地拒绝），故本工具<b>一次只查一种表情</b>。
+/// "一条消息上都有哪些表情、各多少个"请用 <c>im.batch_query_reactions</c>（该端点的同名参数是真可选）。
+/// </para>
+/// <para>
+/// <b>单页语义（不是偷懒）</b>：SDK 的列表信封 <c>ApiListResult&lt;T&gt;</c> 只透出 <c>items</c>，
+/// <b>不</b>透出 <c>has_more</c>/<c>page_token</c>——即使平台返回了游标，绑定层也拿不到。
+/// 因此本工具不做 <c>page_token</c>/<c>fetch_all</c>，并把页大小钳到平台上限，
+/// 同时在结果里回 <c>returned_count</c> 供模型判断"可能还有更多"。
+/// </para>
+/// </remarks>
+[AgentTool("im.list_reactions",
+    Description = "查询某条消息上**指定表情**的回复明细（谁在什么时候回了这个表情）。⚠️ reaction_type 必填且一次只查一种表情（平台该端点要求指定表情类型）——要看一条消息上**所有**表情的种类与数量用 im.batch_query_reactions。单页返回、不翻页。只读，需 im:message。",
+    RequiredScopes = ["im:message"],
+    Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.GetMessageReactionsPageListAsync))]
+public interface IFeishuTenantImListReactionsTool
+{
+    /// <summary>查询消息的指定表情回复。</summary>
+    /// <returns>白名单投影后的 JSON 文本（items[reaction_id/emoji_type/operator_id/operator_type/action_time] + returned_count）。</returns>
+    Task<string> ListReactionsAsync(
+        [ToolParameter("message_id", "消息 ID（om_ 开头；来自 im.send_message 或事件上下文）", Required = true)] string message_id,
+        [ToolParameter("reaction_type", "要查询的表情类型（emoji_type 值，如 SMILE / THUMBSUP / OK / HEART / DONE；完整清单见飞书「表情文案说明」）", Required = true)] string reaction_type,
+        [ToolParameter("user_id_type", "回复者 ID 类型（可选：open_id / user_id / union_id，默认 open_id）")] string? user_id_type = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：im.batch_query_reactions（映射 <c>IFeishuTenantV1Message.BatchQueryMessageReactionsAsync</c>）。</summary>
+/// <remarks>
+/// <b>投影口径</b>：平台一次返回「明细」与「计数」两套数据。明细按表情逐条列出回复人，
+/// 计数只给「表情 → 人数」——后者是"这条消息收到多少个 👍"的直接答案，也是默认投影；
+/// 需要"谁点的"才把 <c>with_details</c> 置真（体积成倍增长，故不默认给）。
+/// 失败消息（无权限 / 消息已撤回）单独回 <c>failed</c> 并附平台原因，不与成功项混排。
+/// </remarks>
+[AgentTool("im.batch_query_reactions",
+    Description = "一次查询多条消息的表情回复（每条消息的表情种类与数量；可选带上逐条明细=谁回的哪个表情）。message_ids 为 om_ 开头的消息 ID 数组。reaction_type 省略时查全部表情。不可见的消息会单独列在 failed 里并给出平台原因。只读，需 im:message。",
+    RequiredScopes = ["im:message"],
+    Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.BatchQueryMessageReactionsAsync))]
+public interface IFeishuTenantImBatchQueryReactionsTool
+{
+    /// <summary>批量查询消息表情回复。</summary>
+    /// <returns>白名单投影后的 JSON 文本（items[message_id/reactions] + failed[message_id/reason]）。</returns>
+    Task<string> BatchQueryReactionsAsync(
+        [ToolParameter("message_ids", "消息 ID 数组（om_ 开头；1~50 条）", Required = true)] string[] message_ids,
+        [ToolParameter("reaction_type", "只查这一种表情（可选，emoji_type 值；省略=返回该消息上的全部表情）")] string? reaction_type = null,
+        [ToolParameter("with_details", "是否返回逐条明细（谁回的哪个表情，默认 false 只给表情计数）")] bool? with_details = null,
+        CancellationToken cancellationToken = default);
+}

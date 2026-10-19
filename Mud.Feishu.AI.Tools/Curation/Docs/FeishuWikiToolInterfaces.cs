@@ -254,3 +254,31 @@ public interface IFeishuTenantWikiCopyNodeTool
         [ToolParameter("dry_run", "仅预演不写入（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }
+
+// ─────────────────────────── 空间创建（用户身份） ───────────────────────────
+
+/// <summary>
+/// 工具接口：wiki.space_create（映射 <c>IFeishuUserV2Wiki.CreateSpaceAsync</c>）。
+/// </summary>
+/// <remarks>
+/// 创建知识空间在平台上<b>只有 user_access_token 形态</b>（租户态 <c>IFeishuTenantV2Wiki</c> 无此方法），
+/// 故接口名必须以 <c>IFeishuUser</c> 开头——身份轴由接口名前缀派生，写错前缀会让工具被当成
+/// 租户身份而在必将失败的调用上反复重试。空间创建者即空间管理员，后续
+/// <c>wiki.member_add</c> 才有权限可依据。
+/// </remarks>
+[AgentTool("wiki.space_create",
+    Description = "创建一个新的知识空间（返回 space_id，可直接作为 wiki.create_node / wiki.member_add 的上游输入）。⚠️ 仅支持用户身份调用：宿主须在 FeishuAgent:AllowedIdentities 放行 user，否则会因身份被拒而失败。创建者自动成为该空间的管理员。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），建议先 dry_run 预演确认，需 wiki:wiki。",
+    RequiredScopes = ["wiki:wiki"],
+    IsWrite = true,
+    Source = nameof(IFeishuUserV2Wiki) + "." + nameof(IFeishuUserV2Wiki.CreateSpaceAsync))]
+public interface IFeishuUserWikiCreateSpaceTool
+{
+    /// <summary>创建知识空间。</summary>
+    /// <returns>白名单投影后的 JSON 文本（space_id/name/description/space_type/visibility/open_sharing）。</returns>
+    Task<string> CreateSpaceAsync(
+        [ToolParameter("name", "知识空间名称", Required = true)] string name,
+        [ToolParameter("description", "知识空间描述（可选）")] string? description = null,
+        [ToolParameter("open_sharing", "分享状态（可选闭集：open=允许分享 / closed=不允许分享）")] string? open_sharing = null,
+        [ToolParameter("dry_run", "仅预演不创建（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}

@@ -215,7 +215,7 @@ public class DomainMappingTests
                 },
             });
 
-        var tools = new WikiTools(client.Object, Options.Create(NewOptions()));
+        var tools = new WikiTools(client.Object, null, Options.Create(NewOptions()));
         var result = await tools.GetNodeAsync(Args(("token", "wikcnNode")), CancellationToken.None);
 
         capturedObjType.Should().Be("wiki", "obj_type 默认 wiki（§3.3.2）");
@@ -244,7 +244,7 @@ public class DomainMappingTests
                 },
             });
 
-        var tools = new WikiTools(client.Object, Options.Create(NewOptions()));
+        var tools = new WikiTools(client.Object, null, Options.Create(NewOptions()));
         var result = await tools.ListNodesAsync(
             Args(("space_id", "sp1"), ("parent_node_token", "wikcnParent"), ("page_token", "tok1")),
             CancellationToken.None);

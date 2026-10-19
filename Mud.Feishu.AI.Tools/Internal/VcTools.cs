@@ -11,7 +11,8 @@ namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
 /// VideoConferencing 只读工具执行器（R6 / S3）：<c>vc.list_meetings</c> / <c>vc.get_meeting</c> /
-/// <c>vc.list_participants</c> / <c>vc.get_recording</c> / <c>vc.list_reserves</c> / <c>vc.list_rooms</c>。
+/// <c>vc.list_participants</c> / <c>vc.get_recording</c> / <c>vc.list_reserves</c> / <c>vc.list_rooms</c>
+/// / <c>vc.user_active_meeting</c>。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -22,7 +23,7 @@ namespace Mud.Feishu.AI.Tools.Internal;
 /// 不需要手机号与内网 IP —— 故投影<b>显式丢弃</b>这些字段（白名单的取舍点，而非遗漏）。
 /// </para>
 /// <para>
-/// <b>软缺席</b>：五个客户端全部可空；缺席时对应工具返回结构化错误，
+/// <b>软缺席</b>：六个客户端全部可空；缺席时对应工具返回结构化错误，
 /// 而不是让整个 <c>vc.*</c> 域从注册表消失（对齐 <c>MinutesTools</c>/<c>OkrTools</c> 的纪律）。
 /// </para>
 /// </remarks>
@@ -32,6 +33,7 @@ internal sealed class VcTools(
     Mud.Feishu.IFeishuTenantV1VideoConferencingRecording? vcRecordingClient,
     Mud.Feishu.IFeishuTenantV1VideoConferencingReserves? vcReservesClient,
     Mud.Feishu.IFeishuTenantV1VideoConferencingRoom? vcRoomClient,
+    Mud.Feishu.IFeishuTenantV1VideoConferencingBot? vcBotClient,
     IOptions<FeishuAgentOptions> options)
 {
     /// <summary>默认每页条数（官方上限 100；取 20 控量）。</summary>
@@ -42,6 +44,7 @@ internal sealed class VcTools(
     private readonly Mud.Feishu.IFeishuTenantV1VideoConferencingRecording? _recordingClient = vcRecordingClient;
     private readonly Mud.Feishu.IFeishuTenantV1VideoConferencingReserves? _reservesClient = vcReservesClient;
     private readonly Mud.Feishu.IFeishuTenantV1VideoConferencingRoom? _roomClient = vcRoomClient;
+    private readonly Mud.Feishu.IFeishuTenantV1VideoConferencingBot? _botClient = vcBotClient;
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>P-2（统一分页语义）：<c>fetch_all</c> 的条目/页数预算（来自宿主配置）。</summary>
@@ -229,7 +232,48 @@ internal sealed class VcTools(
         });
     }
 
+    /// <summary>vc.user_active_meeting：查询用户当前正在参加的会议（本域唯一的「双 ID」出口）。</summary>
+    [ToolHandler(typeof(IFeishuTenantVcUserActiveMeetingTool))]
+    public Task<ToolResult> UserActiveMeetingAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.VcUserActiveMeeting, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var client = _botClient
+                ?? throw new ArgumentException(
+                    "vc.user_active_meeting 需要 IFeishuTenantV1VideoConferencingBot——宿主须启用 AddVideoConferencingApi 的会议机器人客户端");
+            var args = VcUserActiveMeetingArgs.Unpack(arguments);
+
+            var outcome = FeishuApiResultReader.Read(await client
+                .GetUserActiveMeetingAsync(args.UserId, args.UserIdType ?? "open_id", cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApi(outcome, ProjectActiveMeetings);
+        });
+    }
+
     // ────────── 投影（白名单 + 最小披露 + 翻页契约） ──────────
+
+    /// <summary>user_active_meeting 投影：两种 ID 并列（会议号 ≠ 长数字会议 ID，取舍点写在 note 里）。</summary>
+    private static JsonObject ProjectActiveMeetings(UserActiveMeetingResult data)
+    {
+        var meetings = data.Meetings ?? [];
+        var root = new JsonObject { ["meetings"] = new JsonArray() };
+        foreach (var meeting in meetings)
+        {
+            root["meetings"]!.AsArray().AddNode(new JsonObject
+            {
+                ["meeting_no"] = meeting.MeetingNo,
+                ["meeting_id"] = meeting.MeetingId,
+                ["meeting_title"] = meeting.MeetingTitle,
+            });
+        }
+
+        root["note"] = meetings.Length == 0
+            ? "该用户当前不在任何会议中"
+            : "入会（vc.join_meeting）用 meeting_no；离会与会中消息（vc.leave_meeting / vc.send_meeting_message）用 meeting_id（长数字）";
+
+        return root;
+    }
 
     private static JsonObject ProjectMeetings(GetMeetingListResult data)
     {

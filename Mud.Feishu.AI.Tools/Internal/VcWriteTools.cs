@@ -11,11 +11,14 @@ namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
 /// VideoConferencing 写入工具执行器（R6 / S3）：<c>vc.set_host</c> / <c>vc.invite_participants</c> /
-/// <c>vc.end_meeting</c> / <c>vc.delete_reserve</c>。
+/// <c>vc.end_meeting</c> / <c>vc.delete_reserve</c> + 会议机器人三枚
+/// （<c>vc.join_meeting</c> / <c>vc.leave_meeting</c> / <c>vc.send_meeting_message</c>）。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>四个写工具都是"会中/会前管理动作"</b>：改主持人、邀人、结束会议、删预约。
+/// <b>前四个写工具都是"会中/会前管理动作"</b>：改主持人、邀人、结束会议、删预约。
+/// 机器人类三枚则是<b>机器人自身的动作</b>（入会/离会/会中发言），走同一个
+/// <c>IFeishuTenantV1VideoConferencingBot</c> 客户端（租户身份，无新增身份轴要求）。
 /// 它们与"创建会议"不同——后者（<c>vc.apply_reserve</c>）需要 10+ 嵌套字段
 /// （时区/循环/会议室分配/会前设置），**有意不策展**（部分策展会产出语义错误的预约，
 /// 比没有该工具更糟），理由记录在 <c>FeishuVcToolInterfaces.cs</c> 的域头注释与 R6 主文档 §12.6。
@@ -33,6 +36,7 @@ internal sealed class VcWriteTools(
     Mud.Feishu.IFeishuTenantV1VideoConferencingMeeting? vcMeetingClient,
     Mud.Feishu.IFeishuUserV1VideoConferencingMeeting? vcUserMeetingClient,
     Mud.Feishu.IFeishuTenantV1VideoConferencingReserves? vcReservesClient,
+    Mud.Feishu.IFeishuTenantV1VideoConferencingBot? vcBotClient,
     IOptions<FeishuAgentOptions> options)
 {
     /// <summary>一次性邀请人数上限（平台硬约束：最多 10 人）。</summary>
@@ -41,9 +45,13 @@ internal sealed class VcWriteTools(
     /// <summary>默认用户类型（1 = 飞书用户）。</summary>
     private const int DefaultUserType = 1;
 
+    /// <summary>机器人入会方式（平台当前仅支持 1 = 会议号入会）。</summary>
+    private const int JoinTypeByMeetingNo = 1;
+
     private readonly Mud.Feishu.IFeishuTenantV1VideoConferencingMeeting? _meetingClient = vcMeetingClient;
     private readonly Mud.Feishu.IFeishuUserV1VideoConferencingMeeting? _userMeetingClient = vcUserMeetingClient;
     private readonly Mud.Feishu.IFeishuTenantV1VideoConferencingReserves? _reservesClient = vcReservesClient;
+    private readonly Mud.Feishu.IFeishuTenantV1VideoConferencingBot? _botClient = vcBotClient;
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>vc.set_host：改设进行中会议的主持人（<c>dry_run=true</c> 时只预演）。</summary>
@@ -206,5 +214,160 @@ internal sealed class VcWriteTools(
                 ["reserve_id"] = args.ReserveId,
             });
         });
+    }
+
+    // ────────── 会议机器人（入会 / 离会 / 会中消息） ──────────
+
+    /// <summary>vc.join_meeting：机器人以会议号入会（<c>dry_run=true</c> 时只预演）。</summary>
+    [ToolHandler(typeof(IFeishuTenantVcJoinMeetingTool))]
+    public Task<ToolResult> JoinMeetingAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.VcJoinMeeting, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var client = RequireBotClient(executor.ToolName);
+            var args = VcJoinMeetingArgs.Unpack(arguments);
+
+            if (args.Action is not (null or 1 or 2))
+            {
+                throw new ArgumentException($"action '{args.Action}': 入会动作只支持 1（仅加入已存在的会议）/ 2（发起并加入日程会议）");
+            }
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return ToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "POST", "/open-apis/vc/v1/bots/join",
+                    "入会成功后请保存返回的长数字 meeting.id——离会与会中消息只用它。" + ToolDryRun.IdempotencyNote(null),
+                    ("meeting_no", args.MeetingNo.Length),
+                    ("password", args.Password?.Length ?? 0)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await client
+                .JoinBotAsync(
+                    new JoinBotRequest
+                    {
+                        JoinType = JoinTypeByMeetingNo,
+                        JoinIdentify = new JoinIdentify { MeetingNo = args.MeetingNo },
+                        Password = args.Password,
+                        Action = args.Action,
+                    },
+                    cancellationToken)
+                .ConfigureAwait(false));
+
+            return executor.FromApiUntruncated(outcome, data => new JsonObject
+            {
+                ["meeting_id"] = data.Meeting?.Id,
+                ["meeting_no"] = data.Meeting?.MeetingNo,
+                ["topic"] = data.Meeting?.Topic,
+                ["start_time"] = data.Meeting?.StartTime,
+                ["bot_user_id"] = data.JoinUser?.Id,
+                ["note"] = data.Meeting?.Id is null
+                    ? "机器人已入会，但平台未返回长数字 meeting_id——离会前请用 vc.user_active_meeting 取回"
+                    : "离会（vc.leave_meeting）与会中消息（vc.send_meeting_message）请用上面的 meeting_id（长数字），不要用它反推会议号",
+            });
+        });
+    }
+
+    /// <summary>vc.leave_meeting：机器人离会（只影响机器人自身，不结束会议）。</summary>
+    [ToolHandler(typeof(IFeishuTenantVcLeaveMeetingTool))]
+    public Task<ToolResult> LeaveMeetingAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.VcLeaveMeeting, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var client = RequireBotClient(executor.ToolName);
+            var args = VcLeaveMeetingArgs.Unpack(arguments);
+
+            RequireLongMeetingId(executor.ToolName, args.MeetingId);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return ToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "POST", "/open-apis/vc/v1/bots/leave",
+                    null,
+                    ("meeting_id", args.MeetingId.Length)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await client
+                .LeaveBotAsync(new LeaveBotRequest { MeetingId = args.MeetingId }, cancellationToken)
+                .ConfigureAwait(false));
+
+            return executor.FromApiUntruncated(outcome, data => new JsonObject
+            {
+                ["left"] = true,
+                ["bot_user_id"] = data.LeaveUser?.Id,
+                ["note"] = "机器人已离会，**会议本身仍在进行**；要结束会议用 vc.end_meeting",
+            });
+        });
+    }
+
+    /// <summary>vc.send_meeting_message：会中发送文本消息或反馈表情（<c>dry_run=true</c> 时只预演）。</summary>
+    [ToolHandler(typeof(IFeishuTenantVcSendMeetingMessageTool))]
+    public Task<ToolResult> SendMeetingMessageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.VcSendMeetingMessage, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var client = RequireBotClient(executor.ToolName);
+            var args = VcSendMeetingMessageArgs.Unpack(arguments);
+
+            if (args.MsgType is not ("text" or "reaction"))
+            {
+                throw new ArgumentException($"msg_type '{args.MsgType}' 不合法。可用值：text（会中文本消息） / reaction（会中反馈表情，content 传表情 key）");
+            }
+
+            RequireLongMeetingId(executor.ToolName, args.MeetingId);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return ToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "POST", "/open-apis/vc/v1/bots/message",
+                    ToolDryRun.IdempotencyNote(args.IdempotencyKey),
+                    ("meeting_id", args.MeetingId.Length),
+                    ("msg_type", args.MsgType.Length),
+                    ("content", args.Content.Length)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await client
+                .SendBotMessageAsync(
+                    new MessageBotRequest
+                    {
+                        MeetingId = args.MeetingId,
+                        MsgType = args.MsgType,
+                        Content = args.Content,
+                        Uuid = args.IdempotencyKey,
+                    },
+                    cancellationToken)
+                .ConfigureAwait(false));
+
+            return executor.FromApiUntruncated(outcome, data => new JsonObject
+            {
+                ["sent"] = true,
+                ["uuid"] = data.Uuid,
+                ["note"] = data.Uuid is null
+                    ? "平台未回传幂等 ID；如需重发请用相同 idempotency_key 复核"
+                    : "已投递到会中消息面板（仅当时在会的成员可见）",
+            });
+        });
+    }
+
+    /// <summary>取会议机器人客户端；缺席时给出<b>可执行</b>提示（宿主该启用什么）。</summary>
+    private IFeishuTenantV1VideoConferencingBot RequireBotClient(string toolName)
+        => _botClient
+            ?? throw new ArgumentException(
+                $"{toolName} 需要 IFeishuTenantV1VideoConferencingBot——宿主须启用 AddVideoConferencingApi 的会议机器人客户端");
+
+    /// <summary>
+    /// 拦截"把 9 位会议号当长数字 meeting_id 用"：离会与发消息的 meeting_id 是机器人入会后平台给出的
+    /// 长数字 ID，平台对会议号只会返回一个语焉不详的参数错误。
+    /// </summary>
+    private static void RequireLongMeetingId(string toolName, string meetingId)
+    {
+        if (meetingId.Length == 9 && meetingId.All(static c => c is >= '0' and <= '9'))
+        {
+            throw new ArgumentException(
+                $"{toolName} 的 meeting_id 需要**长数字会议 ID**，收到的是 9 位会议号——"
+                + "请用 vc.join_meeting 返回的 meeting_id，或先用 vc.user_active_meeting 按参会人取回");
+        }
     }
 }

@@ -1,6 +1,6 @@
 ---
 name: feishu-vc
-description: 飞书 vc 域工具集：10 个工具（只读 6 / 写 4）。会议本身（谁参加了、开了多久、有没有录制、会议室）→ `vc.*`；会议纪要内容 → `minutes.*`；
+description: 飞书 vc 域工具集：14 个工具（只读 7 / 写 7）。会议本身（谁参加了、开了多久、有没有录制、会议室）→ `vc.*`；会议纪要内容 → `minutes.*`；
 version: 1.0.0
 package_version: 3.0.3
 ---
@@ -18,6 +18,8 @@ package_version: 3.0.3
 `vc.list_meetings`（拿会议号/时段）→ `vc.get_meeting`（详情）/ `vc.list_participants`（明细）/
 `vc.get_recording`（录制）；会议室 `vc.list_rooms`；预约 `vc.list_reserves` → `vc.delete_reserve`。
 写面：`vc.set_host` / `vc.invite_participants` / `vc.end_meeting`（均作用于**进行中的会议**）。
+机器人会中动作：`vc.user_active_meeting`（按人取两种 ID）或 `vc.join_meeting`（9 位会议号入会，返回长数字 ID）
+→ `vc.send_meeting_message` / `vc.leave_meeting`。
 
 ## 避坑
 - **会议号 ≠ meeting_id**：`vc.get_meeting` / `vc.get_recording` 收的是 9 位会议号；
@@ -47,8 +49,12 @@ package_version: 3.0.3
 - `vc.get_meeting`（只读）：按会议 ID（9 位会议号）获取单个会议的当前详情：主题、会议号、入会链接、密码、主持人、参会人数、累计参会人数、会议状态、关联会议产物。要历史列表用 vc.list_meetings；要参会人明细用 vc.list_participants。只读，需 vc:meeting:readonly。
 - `vc.get_recording`（只读）：获取指定会议的录制文件信息（下载地址 url 与时长 duration）。会议未录制或录制仍在处理中时返回空记录——此时如实告知用户『该会议没有可用录制』，不要臆造链接。只读，需 vc:recording:readonly。
 - `vc.invite_participants`（写）：邀请用户加入进行中的会议（一次性最多 10 人，返回每人邀请是否成功）。invitee_ids 为 open_id 列表（先用 contact 解析）。**用户身份工具**：宿主须在 FeishuAgent:AllowedIdentities 放行 user，否则启动即报错。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 vc:meeting。建议先 dry_run 预演确认会议与人员。
+- `vc.join_meeting`（写）：让会议机器人以 9 位会议号加入进行中的会议（会中可见机器人成员）。⚠️ 返回的 meeting.id 是<b>长数字</b>会议 ID——后续 vc.leave_meeting / vc.send_meeting_message 必须用它，不要复用这里的 meeting_no。会议设了密码时须传 password。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 vc:meeting。
+- `vc.leave_meeting`（写）：让会议机器人离开会议（只影响机器人自己，**不会结束会议**；要让所有人退出用 vc.end_meeting）。meeting_id 必须是 vc.join_meeting 返回的<b>长数字</b>会议 ID 或 vc.user_active_meeting 的 meeting_id，传 9 位会议号会失败。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 vc:meeting。
 - `vc.list_meetings`（只读）：按时间范围查询会议列表（历史/统计视角）：会议号、主题、起止时间、时长、参会人数、是否录制、是否外部会议。start_time/end_time 为必填的 ISO8601 带时区时间（如 2026-10-01T00:00:00+08:00），单次范围建议不超过 30 天。只读，需 vc:meeting:readonly。
 - `vc.list_participants`（只读）：按『会议号 + 会议时段』查询参会人明细列表：姓名、部门、用户 ID、入会/离会时间、在会时长、设备/IP/网络、音频视频共享状态、是否外部参会人。注意：本接口用 meeting_no(9 位会议号) + meeting_start_time/meeting_end_time 定位（不是 meeting_id），三者均必填。只读，需 vc:meeting:readonly。
 - `vc.list_reserves`（只读）：按预约 ID 获取预约（Reserve）详情：预约 ID、9 位会议号、入会链接、app_link、直播链接、密码、预约人、结束时间、失效状态、会议设置（主题/自动录制等）。只读，需 vc:reserve:readonly。
 - `vc.list_rooms`（只读）：分页列出会议室：room_id、展示 ID（display_id）、名称、容纳人数、层级路径与所属层级 ID。找空档前先用它确认会议室范围（会议室忙闲请用 calendar.find_free_slots 传 room_id）。只读，需 vc:room:readonly。
+- `vc.send_meeting_message`（写）：会议机器人在**会中**发送文本消息或反馈表情（msg_type：text=会中文本 / reaction=表情 key）。⚠️ 只投递给当前会议内成员，不是聊天消息——要发群聊/单聊用 im.send_message。meeting_id 必须是长数字会议 ID（见 vc.join_meeting / vc.user_active_meeting）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 vc:meeting。
 - `vc.set_host`（写）：把进行中会议的主持人改设为指定用户（会中管理动作，立即生效）。host_user_id 为该用户的 open_id（先用 contact.resolve_user / contact.search_user 解析）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 vc:meeting。建议先 dry_run 预演确认目标会议与用户。
+- `vc.user_active_meeting`（只读）：查询指定用户当前正在参加的会议，返回 meeting_no（9 位会议号）与 meeting_id（长数字）两种 ID 及会议标题。⚠️ 本工具的用途是**解析 ID**：vc.join_meeting 用 meeting_no，而 vc.leave_meeting / vc.send_meeting_message 必须用长数字 meeting_id（或 vc.join_meeting 返回的 meeting.id）。以应用身份调用时 user_id 必填。只读，需 vc:…

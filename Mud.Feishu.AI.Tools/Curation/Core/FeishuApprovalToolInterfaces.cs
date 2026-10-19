@@ -124,6 +124,61 @@ public interface IFeishuTenantApprovalApproveTaskTool
         CancellationToken cancellationToken = default);
 }
 
+// ─────────────────────────── Approval 实例闭环（撤回 + 抄送） ───────────────────────────
+//
+// 策展口径：本域此前有「发起 + 待办 + 同意/拒绝/转交 + 实例详情」，缺**实例级的两个收尾动作**：
+// 撤回（提交人反悔）与抄送（让相关人可见）。
+// - `approval.cancel_instance` 走 **Tenant** 接口（`IFeishuV4Approval.CancelInstanceAsync`）：
+//   平台要求同时给 approval_code + instance_code + 提交人 user_id，且审批定义须勾选
+//   「允许撤销审批中的申请 / 允许撤销 x 天内通过的审批」，否则返回业务错误——这是配置前提，
+//   不是本工具的缺陷，故写进描述而不是吞掉。
+// - `approval.cc_instance` 走 **User** 接口（`IFeishuV4ApprovalInstance.AddCcInstanceAsync`，
+//   path 为 instances/add_cc）：参数面只有 instance_code + cc_user_ids，比 Tenant 侧的
+//   instances/cc（还要 approval_code + 操作人 user_id）收敛，且语义正是"我以我的身份抄送给谁"。
+//   身份轴真实存在：宿主须在 `FeishuAgent:AllowedIdentities` 放行 user，否则装配期 fail-fast。
+
+/// <summary>工具接口：approval.cancel_instance（映射 <c>IFeishuTenantV4Approval.CancelInstanceAsync</c>）。</summary>
+[AgentTool("approval.cancel_instance",
+    Description = "撤回一个审批实例（撤销后实例不再是'审批中/已通过'的正常状态）。需要 approval_code + instance_code + **审批提交人** user_id（三者缺一平台即拒绝；ID 类型与 user_id_type 一致）。⚠️ 前提是该审批定义在后台勾选了「允许撤销审批中的申请」或「允许撤销 x 天内通过的审批」，否则返回业务错误——这属于审批配置限制，不要重试。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 approval:approval。建议先 dry_run 预演确认。",
+    RequiredScopes = ["approval:approval"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV4Approval) + "." + nameof(IFeishuTenantV4Approval.CancelInstanceAsync))]
+public interface IFeishuTenantApprovalCancelInstanceTool
+{
+    /// <summary>撤回审批实例。</summary>
+    /// <returns>结构化文本（cancelled=true）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> CancelInstanceAsync(
+        [ToolParameter("approval_code", "审批定义 Code", Required = true)] string approval_code,
+        [ToolParameter("instance_code", "审批实例 Code（来自 approval.create_instance 或 approval.list_pending_tasks）", Required = true)] string instance_code,
+        [ToolParameter("user_id", "审批提交人的用户 ID（不是操作人；类型与 user_id_type 一致）", Required = true)] string user_id,
+        [ToolParameter("user_id_type", "用户 ID 类型（可选：open_id / union_id / user_id，默认 open_id）")] string? user_id_type = null,
+        [ToolParameter("dry_run", "仅预演不撤回（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：approval.cc_instance（映射 <c>IFeishuUserV4ApprovalInstance.AddCcInstanceAsync</c>）。</summary>
+/// <remarks>
+/// 抄送只放开**查看权限**（被抄送人在「抄送我」列表可见），不改变流程与审批人——
+/// 与 <c>approval.transfer_task</c>（改审批人）是两件不同的事，描述里对照写明以免混用。
+/// </remarks>
+[AgentTool("approval.cc_instance",
+    Description = "把当前审批实例抄送给若干用户（被抄送人可在审批中心「抄送我」里查看详情）。只放开可见性，**不改变流程、不更换审批人**——要让别人来批用 approval.transfer_task。instance_code 来自 approval.list_pending_tasks / approval.get_instance；cc_user_ids 的类型须与 user_id_type 一致。用户身份工具——宿主须在 AllowedIdentities 放行 user。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 approval:approval。",
+    RequiredScopes = ["approval:approval"],
+    IsWrite = true,
+    Source = nameof(IFeishuUserV4ApprovalInstance) + "." + nameof(IFeishuUserV4ApprovalInstance.AddCcInstanceAsync))]
+public interface IFeishuUserApprovalCcInstanceTool
+{
+    /// <summary>抄送审批实例。</summary>
+    /// <returns>结构化文本（cc_sent=true + 抄送人数）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> CcInstanceAsync(
+        [ToolParameter("instance_code", "审批实例 Code", Required = true)] string instance_code,
+        [ToolParameter("cc_user_ids", "被抄送人的用户 ID 列表（非空；类型与 user_id_type 一致）", Required = true)] string[] cc_user_ids,
+        [ToolParameter("comment", "抄送留言（可选，不超过 500 字）")] string? comment = null,
+        [ToolParameter("user_id_type", "用户 ID 类型（可选：open_id / union_id / user_id，默认 open_id）")] string? user_id_type = null,
+        [ToolParameter("dry_run", "仅预演不抄送（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
 // ─────────────────────────── Approval 实例详情（1 个只读，user-only） ───────────────────────────
 
 /// <summary>工具接口：approval.get_instance（映射 <c>IFeishuUserV4ApprovalInstance.GetInstanceDetailAsync</c>）。</summary>

@@ -396,8 +396,8 @@
     border:1px solid var(--line);background:var(--surface-2);
   }
   .split-bar span{display:block;height:100%;}
-  .split-bar .sb-read{flex:142;background:linear-gradient(90deg,var(--accent-400),var(--accent-300));}
-  .split-bar .sb-write{flex:100;background:linear-gradient(90deg,var(--guard-400),var(--guard-200));}
+  .split-bar .sb-read{flex:171;background:linear-gradient(90deg,var(--accent-400),var(--accent-300));}
+  .split-bar .sb-write{flex:160;background:linear-gradient(90deg,var(--guard-400),var(--guard-200));}
   .split-legend{
     display:flex;flex-wrap:wrap;gap:18px;margin-top:12px;
     font-size:13.5px;color:var(--fg-dim);
@@ -736,7 +736,7 @@
         <span class="brand-text">MUD<i> · </i>FEISHU</span>
         <span class="brand-chip">AI 模块</span>
       </div>
-      <div class="head-meta">.NET 8 / 9 / 10 · AOT · Microsoft.Agents.AI v1.25.0</div>
+      <div class="head-meta">.NET 6 / 8 / 10 · AOT · Microsoft.Agents.AI v1.25.0</div>
     </header>
 
     <!-- hero -->
@@ -748,7 +748,7 @@
       </h1>
       <p class="subtitle">编译期契约 &nbsp;·&nbsp; 七步安全执行链 &nbsp;·&nbsp; 人工确认管线</p>
       <p class="deck">
-        把 Mud.Feishu 的 <b>1268</b> 个强类型 SDK 方法，策展为 <b>242</b> 个模型可调用的 Function Call ——
+        把 Mud.Feishu 的 <b>1268</b> 个强类型 SDK 方法，策展为 <b>331</b> 个模型可调用的 Function Call ——
         每个工具都带风险等级、权限范围与幂等语义；写操作先经人工确认，安全默认不可协商。
       </p>
     </section>
@@ -756,12 +756,12 @@
     <!-- stats -->
     <section class="stats">
       <div class="stat">
-        <div class="stat-num">242</div>
-        <div class="stat-label">策展工具<span>142 只读 · 100 写类</span></div>
+        <div class="stat-num">331</div>
+        <div class="stat-label">策展工具<span>171 只读 · 160 写类</span></div>
       </div>
       <div class="stat">
-        <div class="stat-num">30</div>
-        <div class="stat-label">业务域<span>覆盖飞书全模块 · 另有 4 元工具</span></div>
+        <div class="stat-num">31</div>
+        <div class="stat-label">工具域<span>30 业务域 + 元工具域</span></div>
       </div>
       <div class="stat">
         <div class="stat-num">7</div>
@@ -799,7 +799,7 @@
             <span class="fn-line"></span>
           </div>
           <div class="fn-side is-dst">
-            <div class="fn-num">242</div>
+            <div class="fn-num">331</div>
             <div class="fn-cap">编译期工具</div>
             <div class="fn-sub">强类型 Schema</div>
           </div>
@@ -811,14 +811,14 @@
             <span class="sb-write"></span>
           </div>
           <div class="split-legend">
-            <span class="lg"><i class="dot read"></i>只读 <b>142</b></span>
-            <span class="lg"><i class="dot write"></i>写类 <b>100</b></span>
-            <span class="lg"><i class="dot risk"></i>高危写 <b class="risk">23</b> · 需宿主授权</span>
+            <span class="lg"><i class="dot read"></i>只读 <b>171</b></span>
+            <span class="lg"><i class="dot write"></i>写类 <b>160</b></span>
+            <span class="lg"><i class="dot risk"></i>高危写 <b class="risk">38</b> · 需宿主授权</span>
           </div>
         </div>
 
         <div class="card-body" style="margin-bottom:14px;">
-          不是把 <b>1268</b> 个裸方法无差别丢给模型 —— 而是按高频工作流策展为 <b>242</b> 个工具，
+          不是把 <b>1268</b> 个裸方法无差别丢给模型 —— 而是按高频工作流策展为 <b>331</b> 个工具，
           每个都有强类型 Schema、风险分级、<b>idempotency_key</b> 与 per-tool affordance 决策指导。
         </div>
 
@@ -836,7 +836,7 @@
         </div>
 
         <div class="domain-note">
-          30 业务域 &nbsp;+&nbsp; 4 个元工具 &nbsp;·&nbsp; tool_search / schema_read / capability_lookup / guidance_read
+          31 个工具域 &nbsp;·&nbsp; 30 业务域 + 1 个元工具域（tool_search / schema_read / capability_lookup / guidance_read）
         </div>
       </article>
 
@@ -920,7 +920,7 @@
         <div class="mini-list">
           <div class="mini">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-            <span><b>Skills 导出</b>：30 业务域 <b>skills/feishu-{domain}/SKILL.md</b> 随 NuGet 包分发，仓外 Agent 直接加载飞书域知识。</span>
+            <span><b>Skills 导出</b>：31 个工具域 <b>skills/feishu-{domain}/SKILL.md</b> 随 NuGet 包分发，仓外 Agent 直接加载飞书域知识。</span>
           </div>
           <div class="mini">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
@@ -1066,9 +1066,9 @@
             <span class="tm-pkg">Mud.Feishu.AI.Tools · 编译期生成</span>
           </div>
           <div class="tm-nodes">
-            <div class="tm-node em"><b>242 策展工具</b><i>强类型 Schema · 零反射</i></div>
-            <div class="tm-node"><b>142 只读</b><i>读类 Function Call</i></div>
-            <div class="tm-node gu"><b>100 写类</b><i>含 23 高危 · 需宿主授权</i></div>
+            <div class="tm-node em"><b>331 策展工具</b><i>强类型 Schema · 零反射</i></div>
+            <div class="tm-node"><b>171 只读</b><i>读类 Function Call</i></div>
+            <div class="tm-node gu"><b>160 写类</b><i>含 38 高危 · 需宿主授权</i></div>
           </div>
         </div>
 
@@ -1139,7 +1139,7 @@
         <div class="vs-row">
           <span class="vs-k">能力面</span>
           <span class="vs-a">可直发任意开放平台端点</span>
-          <span class="vs-b">242 个编译期策展工具，<b>无通用裸 api</b></span>
+          <span class="vs-b">331 个编译期策展工具，<b>无通用裸 api</b></span>
         </div>
         <div class="vs-row">
           <span class="vs-k">凭证 · 租户</span>
@@ -1154,7 +1154,7 @@
         <div class="vs-row">
           <span class="vs-k">契约约束</span>
           <span class="vs-a">运行时解释，无编译期契约</span>
-          <span class="vs-b">源挂钩交叉校验 <b>MUDFT0xx</b> · 禁与 SDK 脱钩</span>
+          <span class="vs-b">源挂钩交叉校验 <b>MUDFT019</b> · 禁与 SDK 脱钩</span>
         </div>
         <div class="vs-row">
           <span class="vs-k">部署形态</span>

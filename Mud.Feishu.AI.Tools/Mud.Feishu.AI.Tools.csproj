@@ -10,7 +10,7 @@
 		<RepositoryUrl>https://github.com/mudtools/MudFeishu</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<PackageIcon>Icon.png</PackageIcon>
-		<Description>Mud.Feishu AI 飞书工具包：把 Bitable/Docx/Wiki/Search/IM/Sheets/Approval 接口经 [FeishuTool] 源生成 Schema 暴露为模型 FunctionCall（含写类工具），内置多租户授权执行链（BeginScope + 授权门禁 + 结果裁剪）与分页/截断/净化出口；流式消息通道、会话事件处理器与 Aily 托管知识问答（RAG-A），net8.0+ 原生 AOT 兼容。</Description>
+		<Description>Mud.Feishu AI 飞书工具面：把 Mud.Feishu 的强类型接口经 [AgentTool] 源生成 JSON Schema 暴露为模型可调用的 FunctionCall（只读与写类工具，默认全部不启用、按注册表白名单启用），内置授权门禁、风险与身份策略、租户上下文切换、入站拒绝与强制出站脱敏净化、全路径审计，以及分页/截断/结果整形与写工具 dry_run、幂等键；域 guidance 与 per-tool affordance 文档随包导出，供模型与宿主按需取用。Agent 运行时（会话、流式消息通道、知识检索）见 Mud.Feishu.AI。net8.0+ 原生 AOT 兼容。</Description>
 		<PackageTags>Feishu;Lark;飞书;Agent;AI;FunctionCall;Tool;AOT;NativeAOT;MudFeishu</PackageTags>
 		<BaseOutputPath>..\bin</BaseOutputPath>
 		<FeishuToolCatalog>true</FeishuToolCatalog>

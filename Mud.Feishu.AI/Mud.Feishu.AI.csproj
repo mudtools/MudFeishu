@@ -10,7 +10,7 @@
 		<RepositoryUrl>https://github.com/mudtools/MudFeishu</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<PackageIcon>Icon.png</PackageIcon>
-		<Description>Mud.Feishu AI-Native Agent 运行时：基于 Microsoft Agent Framework 的会话管理、模型接入与飞书工具执行链底座；自 R-9 起同时承载飞书 Agent 集成面（流式消息通道、会话事件处理器、Aily 托管知识问答 RAG-A），并因此需要 Mud.Feishu 客户端与 Mud.Feishu.DataModels 程序集。net8.0+ 原生 AOT 兼容。</Description>
+		<Description>Mud.Feishu AI Agent 运行时：基于 Microsoft Agent Framework 为飞书落地会话式 Agent，经 AddFeishuAgent 一行接入 DI，提供会话记忆与孤儿审批历史自愈、卡片流式消息通道、飞书 IM 事件到会话的处理器、写类工具的 HITL 人工确认审批管线（宿主授权器为批准状态唯一所有者，租户上下文缺失即 fail-closed）、Aily 托管知识问答（RAG-A）与调用链追踪；策展工具面由 Mud.Feishu.AI.Tools 提供，net8.0+ 原生 AOT 兼容。</Description>
 		<PackageTags>Feishu;Lark;飞书;Agent;AI;AIAgent;LLM;ChatClient;AOT;NativeAOT;MudFeishu</PackageTags>
 		<BaseOutputPath>..\bin</BaseOutputPath>
 		<!-- MEAI001：MessageCountingChatReducer 是 MEAI 唯一内置的历史消息计数裁剪器，

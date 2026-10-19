@@ -13,65 +13,23 @@
 		<Description>Mud.Feishu AI 飞书工具包：把 Bitable/Docx/Wiki/Search/IM/Sheets/Approval 接口经 [FeishuTool] 源生成 Schema 暴露为模型 FunctionCall（含写类工具），内置多租户授权执行链（BeginScope + 授权门禁 + 结果裁剪）与分页/截断/净化出口；流式消息通道、会话事件处理器与 Aily 托管知识问答（RAG-A）自 R-9 起随集成面并入 Mud.Feishu.AI，net8.0+ 原生 AOT 兼容。</Description>
 		<PackageTags>Feishu;Lark;飞书;Agent;AI;FunctionCall;Tool;AOT;NativeAOT;MudFeishu</PackageTags>
 		<BaseOutputPath>..\bin</BaseOutputPath>
-		<!-- Tier R 能力目录（聚合覆盖报告）：只有本包开启——其余引用生成器的工程（AI 底座、测试）
-		     跳过全程序集扫描，避免拖累日常编辑的增量构建。 -->
 		<FeishuToolCatalog>true</FeishuToolCatalog>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<!-- 工具描述符 golden 快照（门禁）：源生成器逐字节比对，漂移即 MUDFT014 构建失败。
-		     重新固化：以 FeishuToolGoldenUpdate=true 运行 Mud.Feishu.AI.Tools.Tests 的
-		     FeishuToolGoldenTests（见该测试类注释）。 -->
-		<!-- TEMP-REFREEZE（R-1+2c 重新固化窗口，随后恢复）：构建期 golden 门禁会把「重新固化」本身挡在编译之前
-		     （MUDFT014 是 Error 级），故重固化期间临时摘除该 AdditionalFile，改用 FeishuToolGoldenTests
-		     的 FeishuToolGoldenUpdate=true 通道写出快照，再恢复本行。 -->
 		<AdditionalFiles Include="FeishuToolSchemas.golden.txt" Condition="Exists('FeishuToolSchemas.golden.txt') and '$(FeishuToolRefreeze)' != 'true'" />
-		<!-- 域级 guidance 资产（WP6 / AT-F09）：生成器编译期固化为 FeishuToolGuidance.g.cs，
-		     装配期只注入「已启用工具所属域」的资产（Mud.Feishu.AI 的 GuidanceComposer）。
-		     素材与该域工具同 repo 同 pass，故不存在"md 与工具面漂移"的面。 -->
-		<!-- R5 / F-9：改递归，否则 Guidance/{domain}/{topic}.md（L2 资产）不会进生成器 -->
-    <AdditionalFiles Include="Guidance\**\*.md" />
-		<!-- R-3 / F-7（上游 3.0.6）：per-tool affordance 资产。文件名 = 契约工具名（含点号），
-		     由剖面槽 AffordanceDirectory="/Affordance/" 认领（引擎按路径片段匹配，故目录片段
-		     必须与槽值逐字符一致）。四节结构非法 / 文件名不命中工具名 / 反引号引用了不存在的
-		     工具名 ⇒ MUDFT028/029/030（Error，零容忍）；超字符预算 ⇒ MUDFT031（Warning，走基线）。
-		     ⚠️ 少了本行 ⇒ 引擎收不到任何资产 ⇒ `x-feishu.affordance` 整键消失而**构建全绿**
-		     （守卫 AffordanceContractGuards 会报红，这是它存在的第一理由）。 -->
+		<AdditionalFiles Include="Guidance\**\*.md" />
 		<AdditionalFiles Include="Affordance\**\*.md" />
-		<!-- 让源生成器经 AnalyzerConfigOptions 读到 FeishuToolCatalog —— MSBuild 属性默认对分析器
-		     不可见，缺此声明时生成器读到的是"未设置"，Tier R 能力目录会静默不产出
-		     （症状：构建通过但没有 FeishuToolCapabilityCatalog 类型）。 -->
 		<CompilerVisibleProperty Include="FeishuToolCatalog" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- 上层包（DAG 合法层级）：AI（Agent 运行时）+ core（强类型接口载体）+ DataModels（工具出/入 DTO）。
-		     实现包（AI/Redis）仅纵向引用 Abstractions；本包为 Phase 1 规划的「工具执行链承载层」，引用 AI + core。 -->
 		<ProjectReference Include="..\Mud.Feishu.AI\Mud.Feishu.AI.csproj" />
 		<ProjectReference Include="..\Mud.Feishu\Mud.Feishu.csproj" />
 		<ProjectReference Include="..\Mud.Feishu.DataModels\Mud.Feishu.DataModels.csproj" />
-		<!-- v2.3 P1-D：执行器骨架（决策⑮）中立化上移 Mud.AI.Agent——工具面经 PackageReference
-		     消费骨架（独立仓 NuGet 包，见 AGENTS.md「Mud.AI.* family migration」）；
-		     依赖方向：AI.Tools → Mud.AI.Agent → Mud.AI.Abstractions（单向，无环）。 -->
+
 		<PackageReference Include="Mud.AI.Agent" Version="1.0.1" />
-		<!-- R-9（阶段 5）：EventCallback 引用已摘除——事件处理器/流式通道/知识 Provider 随集成面并入
-		     Mud.Feishu.AI，故「只接工具面」的宿主不再被动背上事件 DTO 面（880 个源文件的依赖）。
-		     ⚠️ 守卫 AgentContractGuards 断言本集合恰为 {AI, core, DataModels}（+ 生成器分析器），
-		     重新加回 EventCallback 会立刻报红。 -->
-		<!-- [AgentTool] 源生成器：ToolSurface 引擎自组件仓 Mud.HttpUtils.Generator 整批迁入
-		     Mud.AI.Generator，随后随 Mud.AI 家族独立化迁至独立仓（D:\Repos\MudAIAgent），
-		     本仓以 NuGet 分析器包消费（Version="1.0.0" + OutputItemType="Analyzer"）。
-		     ⚠ 禁兼引：同一编译单元不得同时挂 Mud.AI.Generator 与组件包 Mud.HttpUtils.Generator
-		     （同名 hintName 产物冲突 ⇒ CS8785/CS0101/产物歧义）——由
-		     SingleToolSurfaceEngineContractGuards.NoProjectShouldReferenceBothToolSurfaceEngines 机械断言。
-		     工具面规模（条目数 / 签名）不在此处写死数字——数字漂移无法被编译器发现，改为唯一真相源：
-		     FeishuToolSchemas.golden.txt 与生成的 FeishuToolContracts（三者一致性由
-		     ToolSurfaceScaleContractGuards 机械断言，见 R2-09/G4）。 -->
 		<PackageReference Include="Mud.AI.Generator" Version="1.0.1" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-		<!-- 剖面契约：[SdkToolProfile]（数据载体）+ ISdkToolProfile / SdkTokenKind（标记接口与枚举）
-		     —— v2.3 起随声明契约上移 Mud.AI.Abstractions（经 Mud.AI.Agent 传递引用）；
-		     Mud.HttpUtils.Attributes / .Abstractions 为 HTTP 客户端生成路径所需，保留。
-		     见 SdkProfile/FeishuToolProfile.cs —— 旧本地引擎的全部飞书硬编码收拢于此。 -->
 		<PackageReference Include="Mud.HttpUtils.Attributes" Version="3.0.7" />
 		<PackageReference Include="Mud.HttpUtils.Abstractions" Version="3.0.7" />
 	</ItemGroup>
@@ -85,16 +43,6 @@
 
 	<ItemGroup>
 		<None Include="..\Icon.png" Pack="true" PackagePath="\" />
-		<!-- R7 / C6a（§7.3）：Agent Skills 产物随包分发。
-		     产物树在**仓库根** skills/（对标官方布局：外部 Agent 按工作区根扫描 skills/{name}/SKILL.md），
-		     由 SkillsExportContractTests 守卫其与导出器输出逐字节一致。
-		     为什么必须打包：库本身不做文件 IO（Export 返回清单 JSON），若不随包分发，
-		     「生态位」就只服务「从仓库取源码」的用户，只装 NuGet 包的人拿不到——这是打包路径存在的唯一理由。
-		     ⚠️ PackagePath 末尾的 **反斜杠是必需的**：NuGet 会在"以目录分隔符结尾"的路径后自动追加
-		     %(RecursiveDir)；不写分隔符（或写成 skills）时会与递归目录**叠加**成 skills/feishu-ai/feishu-ai/SKILL.md，
-		     目录层级翻倍。反过来，若写成 skills\%(Filename)%(Extension) 则会把 31 个域的同名 SKILL.md 拍平覆盖。
-		     ⚠️ 守卫：SkillsExportContractTests.Package_ShouldShipSkillsTree 断言本行存在且路径以分隔符结尾
-		     （删掉它 ⇒ "只装包的用户拿不到 skills" 这类退化会静默发生）。 -->
 		<None Include="..\skills\**\*" Pack="true" PackagePath="skills\" Visible="false" />
 	</ItemGroup>
 

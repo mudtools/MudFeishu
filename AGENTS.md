@@ -96,10 +96,13 @@ is `v<major>.<minor>.<patch>` (e.g. `v3.0.3`).
 
 - `.github/workflows/dotnet-publish.yml` matches `tags: ["v*"]` **only**. A bare `3.0.3` tag (the historical
   form, used up to `3.0.2`) does not trigger the workflow at all — no build, no publish, no warning.
-- `publish-nuget` resolves the version from the tag (`Resolve package version`) and feeds it to both `build`
-  and `pack` via `-p:Version=`; `Assert package set` then hard-asserts that the produced `.nupkg` set is
-  exactly the 9 source packages (the contract `publish.bat` encodes in its `PROJECTS` list) and that every
-  file carries that version. Keep `IsPackable=false` for everything outside those 9 sources
+- `publish-nuget` resolves the version from the tag (`Resolve package version`, `id: pkgver`) and feeds it
+  to both `build` and `pack` via `-p:Version=`; `Assert package set` then hard-asserts that the produced
+  `.nupkg` set is exactly the source packages (the list `publish.bat` encodes in its `PROJECTS` list —
+  12 since 3.1.0, the three `Mud.Feishu.AI*` packages included) and that every file carries that version.
+  Do not rename/remove the `pkgver` step: the assert reads `steps.pkgver.outputs.version`, and a missing id
+  silently yields an empty version that misjudges **every** package as "wrong version". Keep
+  `IsPackable=false` for everything outside those source projects
   (`Demos/Directory.Build.props`, `Tests/Directory.Build.props`): a packable demo still matches the
   `Mud.Feishu*` glob of the nuget.org Trusted Publishing policy, so it would be published silently.
 - `Directory.Build.props`'s `<Version>` is **not** the release version; a mismatch with the tag is reported

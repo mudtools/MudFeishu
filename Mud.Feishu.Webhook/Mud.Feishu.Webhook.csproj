@@ -30,7 +30,6 @@
 		<PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="8.0.1" />
 	</ItemGroup>
 
-	<!-- P2 4.2.1：netstandard2.0 保留旧包；net6.0+ 使用 FrameworkReference（与 Authentication 项目对齐） -->
 	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
 		<PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.9" />
 		<PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.9" />

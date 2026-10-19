@@ -26,9 +26,9 @@
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
 		<PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="8.0.1" />
 	</ItemGroup>
-    <ItemGroup>
-    		<PackageReference Include="protobuf-net" Version="3.4.30" />
-    </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="protobuf-net" Version="3.4.30" />
+	</ItemGroup>
 
 	<ItemGroup>
 		<!-- <PackageReference Include="Mud.Feishu" Version="1.1.2" />
@@ -37,23 +37,14 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- WS2-22：Mud.HttpUtils.MessageSanitizer 此前仅经 Mud.Feishu.Abstractions 传递可用。
-		     传递依赖在依赖链变动（上游改成 PrivateAssets / 换实现包）时会静默断裂，
-		     而本模块的**出站**日志脱敏是安全相关能力（D5），因此声明直接引用以消除脆弱面。
-		     版本须与全仓库保持一致——由 TokenMultiAppContractGuards 的单版本守卫强制。 -->
 		<PackageReference Include="Mud.HttpUtils" Version="3.0.7" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- 测试工程需要断言 internal 语义（TimeSpanGuards 钳制边界、并发服务旧信号量保留阈值公式、
-		     存活性探针），与 Mud.Feishu.Abstractions/AssemblyInfo.cs 的既有做法一致 -->
 		<InternalsVisibleTo Include="Mud.Feishu.WebSocket.Tests" />
 	</ItemGroup>
 	<ItemGroup>
 		<None Include=".\README.md" Pack="true" PackagePath="\" />
 		<None Include="..\Icon.png" Pack="true" PackagePath="\" />
 	</ItemGroup>
-
-	<!-- protobuf-net AOT：模型声明位于 EventProtoData.cs 的 FeishuWebSocketProtoModel（[ProtoModel] + [ProtoSerializable]），
-	     序列化调用统一走 FeishuWebSocketProtoModel.Instance，禁止 ProtoBuf.Serializer 静态门面（反射路径，AOT 不可用） -->
 </Project>

@@ -9,8 +9,8 @@
 
 **重大功能版本 —— 新增 AI 能力。** `Mud.Feishu.AI`（Agent 运行时）、`Mud.Feishu.AI.Tools`（工具面）与
 `Mud.Feishu.AI.Mcp`（MCP 服务器）三个新包随本版首次发布：在 .NET 服务里嵌入飞书智能体、让模型安全地
-调用飞书 API，或把飞书工具经 MCP 接给任意 Agent 框架。核心 SDK 包（`Mud.Feishu`、`Mud.Feishu.Abstractions`、
-`Mud.Feishu.Redis` 等）无 API 破坏性变更，可直接升级。
+调用飞书 API，或把飞书工具经 MCP 接给任意 Agent 框架。本次发布**无破坏性变更**：AI 系列包为首次发包、
+无历史兼容负担；核心 SDK 包（`Mud.Feishu`、`Mud.Feishu.Abstractions`、`Mud.Feishu.Redis` 等）可直接升级。
 
 ### 亮点
 
@@ -35,7 +35,7 @@
   - 交付可靠性：重投递命中「已生成但未确认送达」的回复时直接补发，不重跑模型。
 - **`Mud.Feishu.AI.Tools` —— 工具面（319 个策展工具 / 31 域，167 只读 + 152 写类）**
   - 强类型参数 Schema、统一分页信封与错误码；写操作支持 `dry_run` 预演；文件下载受控落盘，
-    结果不含字节（不污染上下文）；
+    结果不含字节（不污染上下文）；工具结果被截断时如实向模型标记；
   - 权限模型：逐工具声明调用身份（tenant / user）与 OAuth scope，权限对照表随包分发；
   - 逐工具 affordance 决策指导（何时用 / 何时别用 / 前置条件 / 技巧），模型可见；
   - 结构化审计出口（`IToolExecutionAuditSink`）与 OpenTelemetry 指标（工具执行、耗时、模型调用耗时）；
@@ -53,25 +53,6 @@
 
 - **OpenTelemetry 装配内核统一**：非法配置由静默忽略改为注册期即抛 `OptionsValidationException`；
   请择一注册 OpenTelemetry 装配（与 `AddMudHttpOpenTelemetry` 并用会重复导出）。
-- **AI 工具面公开面收敛**：工具执行件内化，改走工厂与格式化器接口（`IFeishuToolFunctionFactory` 等）。
-- 工具结果被截断时如实向模型标记（此前恒报「未截断」）。
-
-### 破坏性变更（Breaking Changes，仅影响 AI 工具面预览期接入方）
-
-核心 SDK 包不受影响。若此前以预览方式接入过 AI 工具面，需按下列调整：
-
-- **包更名**：`Mud.Feishu.AI.FeishuTools` → **`Mud.Feishu.AI.Tools`**（`FeishuToolHandlerAttribute`
-  迁至 `Mud.Feishu.AI.Tools.Handlers`）。
-- **万能工具 `feishu.api_call` 已删除**：出站调用收敛为策展工具单一出口；`feishu.schema_read` 语义收窄。
-- **装配入口收敛为 12 个逐域入口**：`AddFeishuReadonlyTools` 等移除，改用 `AddFeishuTools` +
-  `FeishuAgent:WriteAllowList` 组合；部分域入口并入 `AddFeishuPeopleTools` / `AddFeishuMeetingTools`。
-- **人工确认管线换代**：自研确认令牌退场（`IToolConfirmationTokenSecretProvider` 标记弃用），
-  改走 `IFeishuToolApprovalChannel`（新增 `RequestFrameworkApprovalAsync`）；写工具 fail-closed，
-  授权器只输出 Allowed / Denied。
-- **集成面并入 `Mud.Feishu.AI`**：通道 / 事件 / 知识相关命名空间与扩展入口随之迁移（换 using 即可）。
-- `FeishuAgent.Id` 改为委托内层 Agent：此前持久化的会话 Id 需重建映射。
-- `FeishuToolDefinition` 增加必填的风险与身份声明；工具接口命名统一为
-  `IFeishuTenant<Domain><Verb>Tool` 形态。
 
 ### 修复（Fixed）
 

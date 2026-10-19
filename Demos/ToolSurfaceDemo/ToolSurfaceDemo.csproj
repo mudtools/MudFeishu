@@ -5,8 +5,6 @@
 		<TargetFramework>net10.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
-		<!-- 程序集名必须等于剖面 OwnerAssembly 槽：
-		     Names/Contracts/Args/Registrars/Guidance 只发射进 owner 程序集（§5.2-2 owner 门槛）。 -->
 	</PropertyGroup>
 
 	<ItemGroup>

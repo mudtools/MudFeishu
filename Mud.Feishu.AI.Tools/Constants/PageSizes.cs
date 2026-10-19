@@ -28,6 +28,12 @@ internal static class PageSizes
     /// <summary>wiki.list_nodes（上限 50）。</summary>
     public const int WikiNodes = 50;
 
+    /// <summary>wiki.space_list（官方默认 10；此处取 50 以减少追问轮次）。</summary>
+    public const int WikiSpaces = 50;
+
+    /// <summary>wiki.member_list（官方默认 10；此处取 50 以减少追问轮次）。</summary>
+    public const int WikiMembers = 50;
+
     /// <summary>search.doc_wiki（上限 20）。</summary>
     public const int Search = 20;
 

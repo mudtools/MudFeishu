@@ -73,6 +73,7 @@ public class WikiWriteToolsTests
     private static WikiTools CreateTools(Mock<IFeishuTenantV2WikiNodes> client)
         => new(
             client.Object,
+            null,
             Microsoft.Extensions.Options.Options.Create(
                 new FeishuAgentOptions { Instructions = "test", MaxToolResultLength = 8000 }));
 

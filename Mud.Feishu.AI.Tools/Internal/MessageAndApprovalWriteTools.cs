@@ -672,6 +672,127 @@ internal sealed class ApprovalWriteTools(
         });
     }
 
+    /// <summary>approval.cancel_instance：撤回审批实例（high-risk-write，<c>dry_run=true</c> 时只预演）。</summary>
+    /// <remarks>
+    /// <b>user_id 是提交人而不是操作人</b>：平台按「提交人 + 定义 + 实例」三元组定位可撤销实例，
+    /// 传错人只会得到业务错误，故参数名沿用 <c>user_id</c> 但在描述里点死语义。
+    /// </remarks>
+    [ToolHandler(typeof(IFeishuTenantApprovalCancelInstanceTool))]
+    public Task<ToolResult> CancelInstanceAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.ApprovalCancelInstance);
+        return executor.RunAsync(async () =>
+        {
+            var args = ApprovalCancelInstanceArgs.Unpack(arguments);
+            var userIdType = ResolveApprovalUserIdType(args.UserIdType);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return ToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "POST", "/open-apis/approval/v4/instances/cancel",
+                    "撤回受审批定义配置限制（须勾选「允许撤销…」）；被拒绝时属配置问题，重试无意义。"
+                    + ToolDryRun.IdempotencyNote(null),
+                    ("approval_code", args.ApprovalCode.Length),
+                    ("instance_code", args.InstanceCode.Length),
+                    ("user_id", args.UserId.Length)));
+            }
+
+            var nullDataResult = await _approvalClient
+                .CancelInstanceAsync(
+                    new CancelInstancesRequest
+                    {
+                        ApprovalCode = args.ApprovalCode,
+                        InstanceCode = args.InstanceCode,
+                        UserId = args.UserId,
+                    },
+                    userIdType,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            RequireNullDataSuccess(executor.ToolName, nullDataResult);
+
+            return ToolResultPipeline.OkReceipt(new JsonObject
+            {
+                ["cancelled"] = true,
+                ["instance_code"] = args.InstanceCode,
+            });
+        });
+    }
+
+    /// <summary>approval.cc_instance：抄送审批实例给用户身份（<c>dry_run=true</c> 时只预演）。</summary>
+    [ToolHandler(typeof(IFeishuUserApprovalCcInstanceTool))]
+    public Task<ToolResult> CcInstanceAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.ApprovalCcInstance);
+        return executor.RunAsync(async () =>
+        {
+            if (_approvalInstanceUserClient is null)
+            {
+                throw new ArgumentException(
+                    "approval.cc_instance 需要 IFeishuUserV4ApprovalInstance（用户令牌）——宿主须启用 AddApprovalApi 的实例侧客户端并在 AllowedIdentities 放行 user");
+            }
+
+            var args = ApprovalCcInstanceArgs.Unpack(arguments);
+
+            if (args.CcUserIds.Length == 0)
+            {
+                throw new ArgumentException("cc_user_ids 不能是空数组——抄送必须指定至少一位接收人");
+            }
+
+            var userIdType = ResolveApprovalUserIdType(args.UserIdType);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return ToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "POST", "/open-apis/approval/v4/instances/add_cc",
+                    ToolDryRun.IdempotencyNote(null),
+                    ("instance_code", args.InstanceCode.Length),
+                    ("cc_user_ids", args.CcUserIds.Length),
+                    ("comment", args.Comment?.Length ?? 0)));
+            }
+
+            var nullDataResult = await _approvalInstanceUserClient
+                .AddCcInstanceAsync(
+                    new AddCcInstanceRequest
+                    {
+                        InstanceCode = args.InstanceCode,
+                        CcUserIds = args.CcUserIds,
+                        Comment = args.Comment,
+                    },
+                    userIdType,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            RequireNullDataSuccess(executor.ToolName, nullDataResult);
+
+            return ToolResultPipeline.OkReceipt(new JsonObject
+            {
+                ["cc_sent"] = true,
+                ["instance_code"] = args.InstanceCode,
+                ["cc_user_count"] = args.CcUserIds.Length,
+            });
+        });
+    }
+
+    /// <summary>审批类工具的 user_id_type 闭集（平台取值：open_id / union_id / user_id；缺省 open_id）。</summary>
+    private static string ResolveApprovalUserIdType(string? userIdTypeRaw)
+    {
+        const string defaultUserIdType = "open_id";
+        if (string.IsNullOrEmpty(userIdTypeRaw))
+        {
+            return defaultUserIdType;
+        }
+
+        var userIdType = userIdTypeRaw!;
+        if (userIdType is not ("open_id" or "union_id" or "user_id"))
+        {
+            throw new ArgumentException(
+                $"user_id_type 仅支持 open_id/union_id/user_id，实际: {userIdType}");
+        }
+
+        return userIdType;
+    }
+
     /// <summary>list_pending_tasks 投影：items（task_id/instance_code/approval_name/title/status）+ 翻页契约。</summary>
     private static JsonObject ProjectPendingTasks(ApprovalInstancesTaskQueryResult data)
     {

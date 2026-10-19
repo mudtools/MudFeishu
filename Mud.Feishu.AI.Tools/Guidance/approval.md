@@ -8,10 +8,15 @@
 
 ## 前置链
 `approval.list_pending_tasks` 取 task_id → `approve_task` / `reject_task` / `transfer_task`。
+「我发起的想收回来」→ `get_instance` 取 approval_code 与提交人 → `cancel_instance`；
+只是想让某人看到进展 → `cc_instance`。
 
 ## 避坑
 - **审批是双向的**：应拒就 reject，不要为推进而同意。
 - `transfer_task` 不能转给自己（空操作）。
+- **撤回只对「审批中」的实例有效**，且该审批定义须勾选过允许撤销——恒失败时先查这一项，不是参数写错。
+- **`cc_instance` 只放开可见性**：被抄送人不会因此变成审批人。
+- **`approval.cc_instance` 是用户身份工具**：宿主须在 `FeishuAgent:AllowedIdentities` 放行 `user`，否则启动即报错。
 - 深层避坑 → `feishu.guidance_read(approval, decisions)`。
 
 ## 安全规则

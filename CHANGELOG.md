@@ -1,11 +1,74 @@
 # Mud.Feishu 更新日志
 
-## [Unreleased] - AI 工具面审查整改 Phase 0 + Phase 1（T-1 / T-2 / T-3）：文档漂移修复与三域成环（2026-10-16）
+## [Unreleased] - AI 工具面审查整改 Phase 0 + Phase 1（T-1 / T-2 / T-3 / T-4）：文档漂移修复与全域收尾（2026-10-19）
 
 > 方案：`.docs/AI/MudFeishu-AI-审查整改-Bug修复与功能完善方案-2026-10-16.md`。
-> 本条目覆盖 Phase 0（文档真相源与计数防线）与 Phase 1 三个批次的**合并交付**：
-> T-1 读取闭环 +4、T-2 表格加深 +40、T-3 消息/邮件/任务成环 +33 ⇒ 工具面 **319 个**（31 域）。
-> 逐批明细见下方三条既有条目与其后的 T-3 段；三者共享同一份 golden / 计数基线，故合并为一次提交。
+> 本条目覆盖 Phase 0（文档真相源与计数防线）与 Phase 1 四个批次的**合并交付**：
+> T-1 读取闭环 +4、T-2 表格加深 +40、T-3 消息/邮件/任务成环 +33、T-4 会议/知识库/审批收尾 +12
+> ⇒ 工具面 **331 个**（31 域）。
+> 逐批明细见下方各批次条目；四者共享同一份 golden / 计数基线，故合并为一次提交。
+
+## [Unreleased] - AI 工具面审查整改 Phase 1 · T-4：会议、知识库、审批收尾批次 + 全域漏项终查（2026-10-19）
+
+> 工具面 319 → **331**（+4 只读 +8 写类，其中 2 个 high-risk-write）；
+> wiki 5 → **11**、approval 6 → **8**、vc 10 → **14**。user 身份 21 → **22**；scope 无新增（仍 73）。
+> 本批是 Phase 1 的**收官批**：批次第 5 项「全域漏项终查」把剩余漏项**逐条登记**进状态基线 §七，
+> 而不是留在口头——「SDK 就绪未策展」与「平台无接口」是两种完全不同的处置。
+
+### ➕ 新增工具（12 个 = 4 只读 + 8 写类）
+
+- **wiki 空间与成员（6）**：`space_list` / `space_get`（只投影 `space_id`/`name`/`visibility`/
+  `open_sharing`/`space_type`，`is_trash` 一律丢弃）、`member_list` / `member_add` / `member_remove`
+  （成员只出 `member_type`/`member_id`/`member_role` 三元组）、`node_copy`。
+  **空空间列表必须释义**：平台按可见性过滤，空列表只说明"当前身份没被加入任何知识空间"，
+  不得让模型读成"企业没有知识库"——回执直接指向 `wiki.member_add`。
+- **审批实例收尾（2）**：`cancel_instance`（提交人撤销，`user_id_type` 闭集 open_id / union_id /
+  user_id，非法值本地拒绝并点名闭集）、`cc_instance`（**user 身份**，收件人为空即拒绝）。
+- **会议机器人（4）**：`user_active_meeting` / `join_meeting` / `leave_meeting` / `send_meeting_message`。
+  **双 ID 不可互换**是本域最易混的一对标识：9 位会议号用于入会（`join_type=1` + `meeting_no`），
+  19 位长数字会议 ID 用于离会与会中消息——传错方向就地拒绝并说明该用哪个，不做"两个都试一次"。
+  `leave_meeting` 的回执必须说清"机器人离会 ≠ 结束会议"（真要结束用 `vc.end_meeting`）。
+
+### 🏗️ 接线：软缺席的粒度（本批不改装配面）
+
+- `WikiTools` 新增第二构造参数 `IFeishuTenantV2Wiki?`——**可空的 SDK 客户端 = 工具级软缺席**：
+  客户端缺席时空间/成员四条工具仍在注册表里，执行期 `RequireSpace` 抛可执行提示（点名接口名与
+  `AddWikiApi`），节点复制不受影响。只有**第一个非 Options 构造参数**可空才是域级软缺席，
+  故 `GuardProviderFactory` 与 `DomainRegistrarTests` 本批无需改动。
+- `VcWriteTools` / `MessageAndApprovalWriteTools` 各新增一个客户端依赖（会议机器人、审批任务侧），
+  同样走软缺席；`cc_instance` 是 user 身份 ⇒ 启用方需放行 `AllowedIdentities`。
+
+### 🛡️ 分级与资产（不手抄数字）
+
+- 高危增量只有 **+2**（`wiki.member_remove` / `approval.cancel_instance`）：风险等级由
+  `FeishuToolProfile.WriteVerbKeywords` **单源派生**，本批 12 枚里只有 `remove` / `cancel` 命中动词表
+  ⇒ affordance 36 → **38**（15061 → 16006 字符）而不是"+12 写类配 12 份资产"。
+- `wiki.member_*` **不入 PII 集合**（仍 16 条）：投影只出身份三元组，标识符不等于个人属性——
+  判据写进状态基线，避免后续按"含 open_id 就算 PII"误扩。
+
+### 🔍 全域漏项终查（本批第 5 项，产出对账差异表）
+
+- 判据三条（各批「✅ SDK 就绪」清单是否逐条落地 / 已策展能力族内是否留闭环断点 / SDK 整模块无策展域），
+  **明确不要求** SDK 方法 1:1 覆盖。逐域判定与新登记漏项全集见 `.docs/AI/状态基线.md` §七。
+- 实测出的**闭环断点**（写后读不回、能建不能删）：drive（无 `delete_file` / `copy_file` /
+  `create_shortcut`，权限族无成员回读）、calendar（只策展日程，日历本本体四条全缺）、
+  approval（`cc_instance` 无"抄送我的"回读、加签/催办/退回未入面）、task（无 `get_task` /
+  `list_subtasks`，`create_subtask` 写后不可精确读回）、minutes（`get_transcript` 与 user 侧四方法）、
+  wiki（空间设置 / 节点重命名 / 空间搜索）。均为 SDK 就绪项 ⇒ 转 Phase 2 策展候选，逐条带就绪度实测。
+- **方案文档两处标注纠错**：`vc.join_meeting` 等的 SDK 归属实为 `IFeishuV1VideoConferencingBot`
+  （原写 `Meeting/Notes`）；`vc.meeting_screenshot` 的「✅ SDK 就绪」是**误标**——全仓 Interfaces
+  检索 `Screenshot` 零命中，已补入「需补 SDK」清单第 10 行。
+
+### 🧪 用例与同批基线
+
+- 链路用例 **+49**（`WikiSpaceAndMemberToolsTests` 19 / `ApprovalCancelAndCcToolsTests` 12 /
+  `VcToolsTests` 18），三类合计执行 60 例全绿。每类都含三档：正常路径、**fail-closed**
+  （客户端缺席点名接口与装配入口）、负例（闭集越界、空操作数、长短 ID 误用、业务码不外泄）。
+- **拦截点在解包期的那一条**：必填数组参数传 `[]` 会在参数解包期就判 `缺少必填参数 cc_user_ids`
+  （`invalid_args`），先于处理器自身的长度检查——用例按实测文案断言，处理器内那道判断是第二道闸。
+- 同批刷新：golden 319 → **331**、公开面反射基线 403 → **415**（`Mud.Feishu.AI.Tools` 358）、
+  Source 声明 314 → **326**、affordance 强制集合 36 → **38**、skills 重固化、
+  权限对照表 **+12 行**（编号 246–257）、README×2 / 工具面 Readme / csproj 计数同步。
 
 ## [Unreleased] - AI 工具面审查整改 Phase 1 · T-3：消息、邮件、任务三域成环批次（2026-10-16）
 

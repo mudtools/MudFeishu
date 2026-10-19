@@ -238,3 +238,100 @@ public interface IFeishuTenantVcDeleteReserveTool
         [ToolParameter("dry_run", "仅预演不删除（可选，默认 false）")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }
+
+// ─────────────────────────── 会议机器人（会中动作面） ───────────────────────────
+//
+// 策展口径：对标官方 cli 的 bot 能力——机器人**入会 / 离会 / 会中发消息**三个动作，
+// 加一个 `vc.user_active_meeting` 作为 ID 解析入口。
+// - **两种 ID 不可混用**（本组最大的坑）：入会用 9 位 <c>meeting_no</c>，
+//   离会 / 会中消息必须用 JoinBot 返回的<b>长数字 meeting_id</b>。故 user_active_meeting
+//   同时投影两种 ID，并在描述里写清配对关系，否则模型会拿会议号去离会。
+// - **不策展 `vc.countdown_bot`**（会中倒计时）：参数面是 <c>action</c> 字符串 + 秒数字符串
+//   （"30" / "600"）的组合，语义随 action 变化，需要单独设计；且倒计时属会中干扰动作。
+// - **不策展 `vc.get_bot_events`**：会中事件流已由 WebSocket 事件面覆盖，跨域去重。
+// - <c>vc.meeting_screenshot</c>（会议截图）**SDK 无对应接口**（VideoConferencing 模块
+//   实测无 screenshot 族），已登记进「需补 SDK」清单，不入工具面。
+// - 四个工具均走 **Tenant** 接口（<c>IFeishuTenantV1VideoConferencingBot</c>）：机器人以应用身份入会，
+//   不涉及身份轴新增要求。
+
+/// <summary>工具接口：vc.user_active_meeting（映射 <c>IFeishuTenantV1VideoConferencingBot.GetUserActiveMeetingAsync</c>）。</summary>
+/// <remarks>
+/// <b>本域唯一的「双 ID 出口」</b>：返回体同时给出 9 位会议号与长数字会议 ID，
+/// 是 join（要会议号）与 leave/send_message（要长数字 ID）之间的翻译层。
+/// </remarks>
+[AgentTool("vc.user_active_meeting",
+    Description = "查询指定用户当前正在参加的会议，返回 meeting_no（9 位会议号）与 meeting_id（长数字）两种 ID 及会议标题。⚠️ 本工具的用途是**解析 ID**：vc.join_meeting 用 meeting_no，而 vc.leave_meeting / vc.send_meeting_message 必须用长数字 meeting_id（或 vc.join_meeting 返回的 meeting.id）。以应用身份调用时 user_id 必填。只读，需 vc:meeting:readonly。",
+    RequiredScopes = ["vc:meeting:readonly"],
+    IsWrite = false,
+    Source = nameof(IFeishuTenantV1VideoConferencingBot) + "." + nameof(IFeishuTenantV1VideoConferencingBot.GetUserActiveMeetingAsync))]
+public interface IFeishuTenantVcUserActiveMeetingTool
+{
+    /// <summary>查询用户当前活跃会议。</summary>
+    Task<string> GetUserActiveMeetingAsync(
+        [ToolParameter("user_id", "目标用户 ID（应用身份调用时必填）", Required = true)] string user_id,
+        [ToolParameter("user_id_type", "用户 ID 类型（可选：open_id / union_id / user_id，默认 open_id）")] string? user_id_type = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：vc.join_meeting（映射 <c>IFeishuTenantV1VideoConferencingBot.JoinBotAsync</c>）。</summary>
+/// <remarks>
+/// 返回体的 <c>meeting.id</c> 是后续 leave / 发消息的<b>唯一可用 ID</b>，投影时必须保留并显式提示；
+/// 机器人入会本身对参会人可见（会中会出现机器人成员），故属写动作。
+/// </remarks>
+[AgentTool("vc.join_meeting",
+    Description = "让会议机器人以 9 位会议号加入进行中的会议（会中可见机器人成员）。⚠️ 返回的 meeting.id 是<b>长数字</b>会议 ID——后续 vc.leave_meeting / vc.send_meeting_message 必须用它，不要复用这里的 meeting_no。会议设了密码时须传 password。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 vc:meeting。",
+    RequiredScopes = ["vc:meeting"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1VideoConferencingBot) + "." + nameof(IFeishuTenantV1VideoConferencingBot.JoinBotAsync))]
+public interface IFeishuTenantVcJoinMeetingTool
+{
+    /// <summary>机器人入会。</summary>
+    Task<string> JoinMeetingAsync(
+        [ToolParameter("meeting_no", "9 位会议号（来自 vc.list_meetings / vc.get_meeting / vc.user_active_meeting）", Required = true)] string meeting_no,
+        [ToolParameter("password", "会议密码（可选；会议开启密码入会时必填）")] string? password = null,
+        [ToolParameter("action", "入会动作（可选）：1=仅加入已存在的会议（默认） / 2=发起并加入日程会议")] int? action = null,
+        [ToolParameter("dry_run", "仅预演不入会（可选，默认 false）")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：vc.leave_meeting（映射 <c>IFeishuTenantV1VideoConferencingBot.LeaveBotAsync</c>）。</summary>
+/// <remarks>
+/// 离会只影响机器人自身，<b>不会</b>结束会议（结束会议是 <c>vc.end_meeting</c>）——
+/// 二者常模型混用，描述里对照写明。
+/// </remarks>
+[AgentTool("vc.leave_meeting",
+    Description = "让会议机器人离开会议（只影响机器人自己，**不会结束会议**；要让所有人退出用 vc.end_meeting）。meeting_id 必须是 vc.join_meeting 返回的<b>长数字</b>会议 ID 或 vc.user_active_meeting 的 meeting_id，传 9 位会议号会失败。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 vc:meeting。",
+    RequiredScopes = ["vc:meeting"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1VideoConferencingBot) + "." + nameof(IFeishuTenantV1VideoConferencingBot.LeaveBotAsync))]
+public interface IFeishuTenantVcLeaveMeetingTool
+{
+    /// <summary>机器人离会。</summary>
+    Task<string> LeaveMeetingAsync(
+        [ToolParameter("meeting_id", "长数字会议 ID（来自 vc.join_meeting 的 meeting.id 或 vc.user_active_meeting）", Required = true)] string meeting_id,
+        [ToolParameter("dry_run", "仅预演不离会（可选，默认 false）")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：vc.send_meeting_message（映射 <c>IFeishuTenantV1VideoConferencingBot.SendBotMessageAsync</c>）。</summary>
+/// <remarks>
+/// 与 <c>im.send_message</c> 的分工是本域易错点：本工具发到<b>会议内的会中消息面板</b>，
+/// 只有当时在会的人看得见；发到群聊/单聊要用 <c>im.send_message</c>。
+/// 平台自带幂等 ID（uuid），故 <c>idempotency_key</c> 有真实落点。
+/// </remarks>
+[AgentTool("vc.send_meeting_message",
+    Description = "会议机器人在**会中**发送文本消息或反馈表情（msg_type：text=会中文本 / reaction=表情 key）。⚠️ 只投递给当前会议内成员，不是聊天消息——要发群聊/单聊用 im.send_message。meeting_id 必须是长数字会议 ID（见 vc.join_meeting / vc.user_active_meeting）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 vc:meeting。",
+    RequiredScopes = ["vc:meeting"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1VideoConferencingBot) + "." + nameof(IFeishuTenantV1VideoConferencingBot.SendBotMessageAsync))]
+public interface IFeishuTenantVcSendMeetingMessageTool
+{
+    /// <summary>会中发送消息。</summary>
+    Task<string> SendMeetingMessageAsync(
+        [ToolParameter("meeting_id", "长数字会议 ID（来自 vc.join_meeting 的 meeting.id 或 vc.user_active_meeting）", Required = true)] string meeting_id,
+        [ToolParameter("msg_type", "消息类型（必填闭集：text=会中文本消息 / reaction=会中反馈表情）", Required = true)] string msg_type,
+        [ToolParameter("content", "消息内容：msg_type=text 时传文本；reaction 时传表情 key", Required = true)] string content,
+        [ToolParameter("idempotency_key", "幂等去重 ID（可选，形如 UUID）：平台按该键去重，省略时由服务端自动生成。幂等键不跨工具共享。")] string? idempotency_key = null,
+        [ToolParameter("dry_run", "仅预演不发送（可选，默认 false）")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}

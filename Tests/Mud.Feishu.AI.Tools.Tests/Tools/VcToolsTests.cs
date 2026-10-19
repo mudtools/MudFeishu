@@ -36,16 +36,18 @@ public class VcToolsTests
         Mock<Mud.Feishu.IFeishuTenantV1VideoConferencingMeeting>? meeting = null,
         Mock<Mud.Feishu.IFeishuTenantV1VideoConferencingRecording>? recording = null,
         Mock<Mud.Feishu.IFeishuTenantV1VideoConferencingReserves>? reserves = null,
-        Mock<Mud.Feishu.IFeishuTenantV1VideoConferencingRoom>? room = null)
+        Mock<Mud.Feishu.IFeishuTenantV1VideoConferencingRoom>? room = null,
+        Mock<Mud.Feishu.IFeishuTenantV1VideoConferencingBot>? bot = null)
         => new(
-            meetinData?.Object, meeting?.Object, recording?.Object, reserves?.Object, room?.Object,
+            meetinData?.Object, meeting?.Object, recording?.Object, reserves?.Object, room?.Object, bot?.Object,
             Options.Create(AgentOptions()));
 
     private static VcWriteTools CreateWriteTools(
         Mock<Mud.Feishu.IFeishuTenantV1VideoConferencingMeeting>? meeting = null,
         Mock<Mud.Feishu.IFeishuUserV1VideoConferencingMeeting>? userMeeting = null,
-        Mock<Mud.Feishu.IFeishuTenantV1VideoConferencingReserves>? reserves = null)
-        => new(meeting?.Object, userMeeting?.Object, reserves?.Object, Options.Create(AgentOptions()));
+        Mock<Mud.Feishu.IFeishuTenantV1VideoConferencingReserves>? reserves = null,
+        Mock<Mud.Feishu.IFeishuTenantV1VideoConferencingBot>? bot = null)
+        => new(meeting?.Object, userMeeting?.Object, reserves?.Object, bot?.Object, Options.Create(AgentOptions()));
 
     // ───────────────────── 只读：调用形状与最小披露 ─────────────────────
 
@@ -333,5 +335,298 @@ public class VcToolsTests
         text.Should().Contain("[tool_error] vc.end_meeting");
         text.Should().Contain("IFeishuUserV1VideoConferencingMeeting",
             "user 身份工具的缺席提示要指明是哪个（用户身份）接口");
+    }
+
+    // ───────────────────── 会议机器人：入会 / 离会 / 会中消息 / 活跃会议 ─────────────────────
+
+    /// <summary>长数字会议 ID（19 位）——与 9 位会议号是本域最容易混用的一对标识。</summary>
+    private const string LongMeetingId = "7056051963429888001";
+
+    private const string MeetingNo = "123456789";
+
+    private static Mock<Mud.Feishu.IFeishuTenantV1VideoConferencingBot> CreateBotClient(
+        bool emptyActiveMeetings = false)
+    {
+        var client = new Mock<Mud.Feishu.IFeishuTenantV1VideoConferencingBot>();
+
+        var activeMeetings = new List<UserActiveMeetingInfo>();
+        if (!emptyActiveMeetings)
+        {
+            activeMeetings.Add(new UserActiveMeetingInfo
+            {
+                MeetingNo = MeetingNo,
+                MeetingId = LongMeetingId,
+                MeetingTitle = "周会",
+            });
+        }
+
+        client.Setup(c => c.GetUserActiveMeetingAsync(
+                It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FeishuApiResult<UserActiveMeetingResult>
+            {
+                Code = 0,
+                Data = new UserActiveMeetingResult { Meetings = activeMeetings.ToArray() },
+            });
+
+        client.Setup(c => c.JoinBotAsync(
+                It.IsAny<JoinBotRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FeishuApiResult<JoinBotResult>
+            {
+                Code = 0,
+                Data = new JoinBotResult
+                {
+                    Meeting = new BotMeetingInfo { Id = LongMeetingId, MeetingNo = MeetingNo, Topic = "周会", StartTime = "1760000000" },
+                    JoinUser = new MeetingUser { Id = "ou_bot" },
+                },
+            });
+
+        client.Setup(c => c.LeaveBotAsync(
+                It.IsAny<LeaveBotRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FeishuApiResult<LeaveBotResult>
+            {
+                Code = 0,
+                Data = new LeaveBotResult { LeaveUser = new MeetingUser { Id = "ou_bot" } },
+            });
+
+        client.Setup(c => c.SendBotMessageAsync(
+                It.IsAny<MessageBotRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FeishuApiResult<MessageBotResult>
+            {
+                Code = 0,
+                Data = new MessageBotResult { Uuid = "uuid-1" },
+            });
+
+        return client;
+    }
+
+    /// <summary>活跃会议必须两种 ID 并列投出，并说清各自用途——只投一种就会诱导模型拿错标识。</summary>
+    [Fact]
+    public async Task UserActiveMeeting_ShouldProjectBothIds_AndSayWhichIsForWhat()
+    {
+        var client = CreateBotClient();
+
+        using var document = JsonDocument.Parse((await CreateReadTools(bot: client)
+            .UserActiveMeetingAsync(Args(("user_id", "ou_alice")), CancellationToken.None)).ToString()!);
+
+        var meeting = document.RootElement.GetProperty("meetings")[0];
+        meeting.GetProperty("meeting_no").GetString().Should().Be(MeetingNo);
+        meeting.GetProperty("meeting_id").GetString().Should().Be(LongMeetingId);
+        meeting.GetProperty("meeting_title").GetString().Should().Be("周会");
+        document.RootElement.GetProperty("note").GetString()
+            .Should().Contain("vc.join_meeting").And.Contain("meeting_id（长数字）");
+    }
+
+    [Fact]
+    public async Task UserActiveMeeting_Empty_ShouldNotFallBackToGenericSuccess()
+    {
+        var client = CreateBotClient(emptyActiveMeetings: true);
+
+        using var document = JsonDocument.Parse((await CreateReadTools(bot: client)
+            .UserActiveMeetingAsync(Args(("user_id", "ou_alice"), ("user_id_type", "union_id")), CancellationToken.None)).ToString()!);
+
+        document.RootElement.GetProperty("meetings").GetArrayLength().Should().Be(0);
+        document.RootElement.GetProperty("note").GetString().Should().Contain("不在任何会议中");
+        client.Verify(c => c.GetUserActiveMeetingAsync("ou_alice", "union_id", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task JoinMeeting_ShouldJoinByMeetingNo_AndHandBackLongMeetingId()
+    {
+        JoinBotRequest? captured = null;
+        var client = CreateBotClient();
+        client.Setup(c => c.JoinBotAsync(It.IsAny<JoinBotRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<JoinBotRequest, CancellationToken>((r, _) => captured = r)
+            .ReturnsAsync(new FeishuApiResult<JoinBotResult>
+            {
+                Code = 0,
+                Data = new JoinBotResult
+                {
+                    Meeting = new BotMeetingInfo { Id = LongMeetingId, MeetingNo = MeetingNo },
+                    JoinUser = new MeetingUser { Id = "ou_bot" },
+                },
+            });
+
+        using var document = JsonDocument.Parse((await CreateWriteTools(bot: client)
+            .JoinMeetingAsync(Args(("meeting_no", MeetingNo), ("password", "8899")), CancellationToken.None)).ToString()!);
+
+        captured!.JoinType.Should().Be(1, "平台当前只支持会议号入会");
+        captured.JoinIdentify!.MeetingNo.Should().Be(MeetingNo);
+        captured.Password.Should().Be("8899");
+        document.RootElement.GetProperty("meeting_id").GetString().Should().Be(LongMeetingId);
+        document.RootElement.GetProperty("bot_user_id").GetString().Should().Be("ou_bot");
+        document.RootElement.GetProperty("note").GetString().Should().Contain("长数字");
+    }
+
+    /// <summary>平台未回长数字 ID 时不得让模型以为"拿到就行"——要指向取回路径。</summary>
+    [Fact]
+    public async Task JoinMeeting_ShouldWarn_WhenPlatformOmitsLongMeetingId()
+    {
+        var client = CreateBotClient();
+        client.Setup(c => c.JoinBotAsync(It.IsAny<JoinBotRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FeishuApiResult<JoinBotResult>
+            {
+                Code = 0,
+                Data = new JoinBotResult { Meeting = new BotMeetingInfo { MeetingNo = MeetingNo } },
+            });
+
+        using var document = JsonDocument.Parse((await CreateWriteTools(bot: client)
+            .JoinMeetingAsync(Args(("meeting_no", MeetingNo)), CancellationToken.None)).ToString()!);
+
+        document.RootElement.GetProperty("note").GetString()
+            .Should().Contain("vc.user_active_meeting", "没有长数字 ID 时必须给出替代取回路径");
+    }
+
+    [Fact]
+    public async Task JoinMeeting_DryRun_ShouldNotCallDownstream()
+    {
+        var client = CreateBotClient();
+
+        var text = (await CreateWriteTools(bot: client)
+            .JoinMeetingAsync(Args(("meeting_no", MeetingNo), ("dry_run", true)), CancellationToken.None)).ToString()!;
+
+        text.Should().StartWith("[dry_run]");
+        text.Should().Contain("POST /open-apis/vc/v1/bots/join");
+        client.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(3)]
+    public async Task JoinMeeting_ShouldReject_WhenActionOutsideClosedSet(int action)
+    {
+        var client = CreateBotClient();
+
+        var text = (await CreateWriteTools(bot: client)
+            .JoinMeetingAsync(Args(("meeting_no", MeetingNo), ("action", action)), CancellationToken.None)).ToString()!;
+
+        text.Should().Contain("action");
+        client.VerifyNoOtherCalls();
+    }
+
+    /// <summary>
+    /// <b>9 位会议号当长数字 meeting_id 用必须本地拦下</b>：平台对这种误用只回一个语焉不详的参数错误。
+    /// </summary>
+    [Fact]
+    public async Task LeaveMeeting_ShouldReject_WhenGivenNineDigitMeetingNo()
+    {
+        var client = CreateBotClient();
+
+        var text = (await CreateWriteTools(bot: client)
+            .LeaveMeetingAsync(Args(("meeting_id", MeetingNo)), CancellationToken.None)).ToString()!;
+
+        text.Should().Contain("长数字会议 ID");
+        text.Should().Contain("vc.user_active_meeting");
+        client.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task LeaveMeeting_ShouldSayMeetingContinues()
+    {
+        var client = CreateBotClient();
+
+        using var document = JsonDocument.Parse((await CreateWriteTools(bot: client)
+            .LeaveMeetingAsync(Args(("meeting_id", LongMeetingId)), CancellationToken.None)).ToString()!);
+
+        document.RootElement.GetProperty("left").GetBoolean().Should().BeTrue();
+        document.RootElement.GetProperty("note").GetString()
+            .Should().Contain("会议本身仍在进行").And.Contain("vc.end_meeting",
+                "离会 ≠ 结束会议，不点破模型会向用户汇报'会议已结束'");
+    }
+
+    [Fact]
+    public async Task SendMeetingMessage_ShouldPassIdempotencyKeyAsUuid()
+    {
+        MessageBotRequest? captured = null;
+        var client = CreateBotClient();
+        client.Setup(c => c.SendBotMessageAsync(It.IsAny<MessageBotRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<MessageBotRequest, CancellationToken>((r, _) => captured = r)
+            .ReturnsAsync(new FeishuApiResult<MessageBotResult> { Code = 0, Data = new MessageBotResult { Uuid = "given-uuid" } });
+
+        using var document = JsonDocument.Parse((await CreateWriteTools(bot: client).SendMeetingMessageAsync(
+            Args(("meeting_id", LongMeetingId), ("msg_type", "text"), ("content", "还有 5 分钟"), ("idempotency_key", "given-uuid")),
+            CancellationToken.None)).ToString()!);
+
+        captured!.Uuid.Should().Be("given-uuid", "idempotency_key 必须落到 MessageBotRequest.Uuid");
+        captured.MsgType.Should().Be("text");
+        document.RootElement.GetProperty("sent").GetBoolean().Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("markdown")]
+    [InlineData("image")]
+    public async Task SendMeetingMessage_ShouldReject_WhenMsgTypeOutsideClosedSet(string msgType)
+    {
+        var client = CreateBotClient();
+
+        var text = (await CreateWriteTools(bot: client).SendMeetingMessageAsync(
+            Args(("meeting_id", LongMeetingId), ("msg_type", msgType), ("content", "x")),
+            CancellationToken.None)).ToString()!;
+
+        text.Should().Contain("msg_type");
+        text.Should().Contain("reaction");
+        client.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task SendMeetingMessage_ShouldReject_WhenGivenNineDigitMeetingNo()
+    {
+        var client = CreateBotClient();
+
+        var text = (await CreateWriteTools(bot: client).SendMeetingMessageAsync(
+            Args(("meeting_id", MeetingNo), ("msg_type", "reaction"), ("content", "approve")),
+            CancellationToken.None)).ToString()!;
+
+        text.Should().Contain("长数字会议 ID");
+        client.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task SendMeetingMessage_DryRun_ShouldNotEchoContent()
+    {
+        var client = CreateBotClient();
+
+        var text = (await CreateWriteTools(bot: client).SendMeetingMessageAsync(
+            Args(("meeting_id", LongMeetingId), ("msg_type", "text"), ("content", "不该被回显的会中内容"), ("dry_run", true)),
+            CancellationToken.None)).ToString()!;
+
+        text.Should().Contain("POST /open-apis/vc/v1/bots/message");
+        text.Should().NotContain("不该被回显的会中内容", "dry-run 不得成为绕过出站净化的回显通道");
+        client.VerifyNoOtherCalls();
+    }
+
+    /// <summary>机器人客户端缺席：四枚工具都要点名缺的是哪个客户端。</summary>
+    [Theory]
+    [InlineData("join")]
+    [InlineData("leave")]
+    [InlineData("send")]
+    [InlineData("active")]
+    public async Task BotTools_ShouldFailClosed_WhenBotClientAbsent(string which)
+    {
+        var writeTools = CreateWriteTools();
+        var readTools = CreateReadTools();
+        var args = which switch
+        {
+            "join" => Args(("meeting_no", MeetingNo)),
+            "leave" => Args(("meeting_id", LongMeetingId)),
+            "send" => Args(("meeting_id", LongMeetingId), ("msg_type", "text"), ("content", "hi")),
+            _ => Args(("user_id", "ou_alice")),
+        };
+
+        var text = which switch
+        {
+            "join" => (await writeTools.JoinMeetingAsync(args, CancellationToken.None)).ToString()!,
+            "leave" => (await writeTools.LeaveMeetingAsync(args, CancellationToken.None)).ToString()!,
+            "send" => (await writeTools.SendMeetingMessageAsync(args, CancellationToken.None)).ToString()!,
+            _ => (await readTools.UserActiveMeetingAsync(args, CancellationToken.None)).ToString()!,
+        };
+
+        text.Should().Contain(which switch
+        {
+            "join" => "vc.join_meeting",
+            "leave" => "vc.leave_meeting",
+            "send" => "vc.send_meeting_message",
+            _ => "vc.user_active_meeting",
+        });
+        text.Should().Contain("IFeishuTenantV1VideoConferencingBot");
     }
 }

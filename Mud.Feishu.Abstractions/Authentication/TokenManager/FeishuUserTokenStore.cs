@@ -23,7 +23,7 @@ public class FeishuUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePur
     private readonly IMemoryCache _cache;
     private readonly string _appKey;
 
-    // TMF-01：跨实例共享记账（D10）。静态注册表按 KeyPrefix → userId → tokenType 隔离：
+    // 跨实例共享记账（凭据变更清库需要）。静态注册表按 KeyPrefix → userId → tokenType 隔离：
     // 任意实例写入均注册到共享表，ClearAllUsersAsync/ClearUserAsync 由此可删除
     // 「任意实例曾写入」的全部用户令牌键——工厂每次 Create 新实例不再导致清库 no-op。
     // 重复/过期注册只导致对不存在键的无害 no-op Remove。
@@ -61,9 +61,9 @@ public class FeishuUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePur
     }
 
     /// <summary>
-    /// TMA2-02 / D8：键前缀含 AppKey 维度，确保多应用场景下用户令牌互不覆盖。
+    /// 键前缀含 AppKey 维度，确保多应用场景下用户令牌互不覆盖。
     /// </summary>
-    // TMF2-05：前缀构造委派 TokenKeyBuilder.BuildKeyPrefix，与 Redis 端逐字节一致。
+    // 前缀构造委派 TokenKeyBuilder.BuildKeyPrefix，与 Redis 路径一致。
     protected override string KeyPrefix => TokenKeyBuilder.BuildKeyPrefix(_appKey);
 
     /// <inheritdoc />
@@ -93,21 +93,19 @@ public class FeishuUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePur
 
     /// <inheritdoc />
     /// <remarks>
-    /// TMA-22 修复：refresh token 存储 TTL 由硬编码 30 天改为优先使用编码值中的过期时间，
-    /// 缺失时才回落 30 天。但 IMemoryCache 场景下此方法不接收过期信息，保持 30 天默认。
-    /// Redis 路径在 RedisUserTokenStore 中处理。
-    /// TMA2-15 / P2-5：Memory 路径保留 30 天默认。仅本进程；过期语义由消费侧校验
-    /// （TMA2-06 的 RefreshTokenExpireTime 校验）。
+    /// refresh token 存储 TTL 优先使用编码值中的过期时间，缺失时回落 30 天。
+    /// IMemoryCache 场景下本方法不接收过期信息，保持 30 天默认（Redis 路径在 RedisUserTokenStore 中处理）。
+    /// Memory 路径仅覆盖本进程；过期语义由消费侧校验（RefreshTokenExpireTime）。
     /// </remarks>
     public override Task SetRefreshTokenAsync(string userId, string tokenType, string refreshToken, CancellationToken cancellationToken = default)
     {
-        // TMF-01（验收修复）：refresh 写入同样必须记账。若仅写 refresh 而从未写 access
+        // refresh 写入同样必须记账。若仅写 refresh 而从未写 access
         // （如 PersistUserTokenAsync 在 access 剩余秒数 ≤ 0 时只持久化 refresh，
         // 或宿主经 StoreUserTokenAsync 传入已过期的 access），该 (userId, tokenType)
         // 不在共享记账中 → ClearAllUsersAsync 无法删除其 refresh 键（清库盲区）。
         TrackUserTokenType(userId, tokenType);
         var key = BuildUserRefreshTokenKey(userId, tokenType);
-        // TMA-22: 保持 30 天默认（IMemoryCache 路径无过期信息可用）。
+        // 保持 30 天默认（IMemoryCache 路径无过期信息可用）。
         _cache.Set(key, refreshToken, TimeSpan.FromDays(30));
         return Task.CompletedTask;
     }
@@ -123,9 +121,8 @@ public class FeishuUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePur
 
     /// <inheritdoc />
     /// <remarks>
-    /// TMA-16 / P2-3 修复：仅返回本进程已知类型。
-    /// TMF-01：记账改为按 KeyPrefix 的跨实例共享表，语义从「本实例已知」放宽为
-    /// 「本进程本前缀已知」，保证凭据变更清库（D10）的完整性。
+    /// 返回本用户已记账的 tokenType（跨实例共享记账）。
+    /// 实例重建后旧实例写入的记账仍然可见，保证凭据变更清库的完整性。
     /// </remarks>
     public override Task<IEnumerable<string>> GetTokenTypesAsync(string userId, CancellationToken cancellationToken = default)
     {
@@ -139,11 +136,10 @@ public class FeishuUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePur
     /// <remarks>
     /// 删除该用户全部已记账令牌键，并修剪外层 (KeyPrefix → userId) 条目。
     /// <para>
-    /// TMR-P3-16a：原实现刻意保留空条目（防孤儿字典），代价是每历史用户 ~64B 空字典
-    /// 长期驻留。现改为修剪——与 <see cref="TrackUserTokenType"/> 的 GetOrAdd 并发交错的
-    /// 残余窗口被容忍：Track 侧 GetOrAdd 重建出的孤儿注册最坏导致一次对不存在键的
-    /// 无害 no-op Remove，且 Memory 后端键自带 TTL（access 按 expire、refresh ≤30d），
-    /// 与既有 TMF-01 残余窗口同级，不产生无界泄漏。
+    /// 外层条目在内层为空时修剪：保留空条目会使每历史用户 ~64B 空字典长期驻留。
+    /// 修剪与 <see cref="TrackUserTokenType"/> 的 GetOrAdd 并发交错的残余窗口被容忍：
+    /// Track 侧重建出的孤儿注册最坏导致一次对不存在键的无害 no-op Remove，
+    /// 且 Memory 后端键自带 TTL（access 按 expire、refresh ≤30d），不产生无界泄漏。
     /// </para>
     /// </remarks>
     public override Task ClearUserAsync(string userId, CancellationToken cancellationToken = default)
@@ -156,7 +152,7 @@ public class FeishuUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePur
                 _cache.Remove(BuildUserRefreshTokenKey(userId, tokenType));
             }
 
-            // TMR-P3-16a：修剪空外层条目（先清键再修剪，修剪与 Track 重建的竞态按上述容忍）。
+            // 修剪空外层条目（先清键再修剪，修剪与 Track 重建的竞态按上述容忍）。
             SharedUsers.TryRemove(userId, out _);
         }
 
@@ -165,7 +161,7 @@ public class FeishuUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePur
 
     /// <inheritdoc />
     /// <remarks>
-    /// TMF-01（D10）：清除「任意实例曾写入本 KeyPrefix」的全部用户令牌键。
+    /// 清除「任意实例曾写入本 KeyPrefix」的全部用户令牌键。
     /// 枚举共享记账（快照语义：枚举期间新写入的 (userId, tokenType) 由残余窗口覆盖，
     /// 与 Redis SCAN 语义一致），逐键删除后仅清空表内容。
     /// </remarks>
@@ -187,9 +183,9 @@ public class FeishuUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePur
         return Task.CompletedTask;
     }
 
-    // TMA2-02 / D8：用户令牌键由 TokenKeyBuilder 统一产出，与 Redis 路径逐字节一致。
+    // 用户令牌键由 TokenKeyBuilder 统一产出，与 Redis 路径一致。
     /// <summary>
-    /// 构建用户访问令牌在存储中的键（D8 契约：统一由 TokenKeyBuilder 产出）。
+    /// 构建用户访问令牌在存储中的键（统一由 TokenKeyBuilder 产出）。
     /// </summary>
     /// <param name="userId">用户标识</param>
     /// <param name="tokenType">令牌类型</param>
@@ -198,7 +194,7 @@ public class FeishuUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePur
         => TokenKeyBuilder.UserAccessKey(KeyPrefix, userId, tokenType);
 
     /// <summary>
-    /// 构建用户刷新令牌在存储中的键（D8 契约：统一由 TokenKeyBuilder 产出）。
+    /// 构建用户刷新令牌在存储中的键（统一由 TokenKeyBuilder 产出）。
     /// </summary>
     /// <param name="userId">用户标识</param>
     /// <param name="tokenType">令牌类型</param>
@@ -219,9 +215,9 @@ public class FeishuUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePur
 
         userTokens.TryRemove(tokenType, out _);
 
-        // TMR-P3-16a：内层为空时修剪外层条目（每历史用户 ~64B 空字典驻留 → 0）。
+        // 内层为空时修剪外层条目（每历史用户 ~64B 空字典驻留 → 0）。
         // 与 TrackUserTokenType 的 GetOrAdd 并发交错被容忍：Track 侧重建出的孤儿注册
-        // 最坏导致一次对不存在键的无害 no-op Remove（TMF-01 残余窗口同级）。
+        // 最坏导致一次对不存在键的无害 no-op Remove。
         if (userTokens.IsEmpty)
             SharedUsers.TryRemove(userId, out _);
     }

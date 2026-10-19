@@ -79,7 +79,7 @@ public class RedisKeyLayoutContractGuards
     }
 
     /// <summary>
-    /// 令牌键前缀：默认形态与 Memory 路径逐字节一致（ADR-13 的 TMF2-05 契约）。
+    /// 令牌键前缀：默认形态与 Memory 路径逐字节一致（AD的 TMF2-05 契约）。
     /// </summary>
     [Fact]
     public async Task TokenKeyPrefix_Should_Be_ByteIdentical_Between_Memory_And_Redis()

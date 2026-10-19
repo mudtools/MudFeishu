@@ -21,7 +21,7 @@ public interface IFeishuUserV1SparkAppView : IFeishuAppContextSwitcher, ICurrent
     /// <summary>
     /// 查询视图数据记录
     /// <para>查询应用下的视图数据记录，包括指定列、字段值及分页信息，适用于需要获取应用下某视图数据的记录、展示等场景。</para>
-    /// <para>查询参数采用查询对象模式（<see cref="GetViewRecordListQuery"/>，见 AGENTS.md API-2）。</para>
+    /// <para>查询参数采用查询对象模式（<see cref="GetViewRecordListQuery"/>）。</para>
     /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app-view/get_view_record_list">接口文档</see></para>
     /// </summary>
     /// <param name="app_id">妙搭应用 id，可从妙搭应用 URL 中获取，如 https://miaoda.feishu.cn/app/app_4jcn5n11bpf5v 中的 app_4jcn5n11bpf5v 即为 app_id</param>

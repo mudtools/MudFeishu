@@ -42,7 +42,7 @@ public static class FeishuConfigurationConsistency
     public const int DefaultNonceTtlSeconds = 600;
 
     /// <summary>
-    /// 校验 NonceTtl ≥ TimestampToleranceSeconds（WHF-03）。
+    /// 校验 NonceTtl ≥ TimestampToleranceSeconds。
     /// </summary>
     public static ValidateOptionsResult ValidateNonceTtlAgainstTolerance(
         TimeSpan nonceTtl,

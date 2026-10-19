@@ -1,0 +1,6 @@
+2026-10-16 11:16:23.467 +08:00 [INF] 飞书应用管理器初始化完成，共配置 1 个应用，默认应用: demo-app
+2026-10-16 11:16:23.488 +08:00 [WRN] 未注册 IEncryptionProvider。若使用 [Body(EnableEncrypt=true)] 标记的 API，首次请求将抛出 InvalidOperationException。请通过 AddMudHttpClient 配置 AesEncryptionOptions 或注册自定义 IEncryptionProvider。
+2026-10-16 11:16:23.544 +08:00 [WRN] 装配期告警：已启用 1 个高危写工具（high-risk-write，不可撤销）：docx.delete_blocks。它们默认全部关闭，仅因出现在 FeishuAgent:WriteAllowList 而启用——请确认：① 已注册 IToolExecutionAuthorizer 且对这些工具返回 Allowed（未注册时写工具默认拒绝）；② 如需一键收回，把 FeishuAgent:MaxToolRisk 设为 'write'（或更低），全部高危写工具会被 risk_exceeded 拒绝。
+2026-10-16 11:18:27.487 +08:00 [INF] 飞书应用管理器初始化完成，共配置 1 个应用，默认应用: demo-app
+2026-10-16 11:18:27.518 +08:00 [WRN] 未注册 IEncryptionProvider。若使用 [Body(EnableEncrypt=true)] 标记的 API，首次请求将抛出 InvalidOperationException。请通过 AddMudHttpClient 配置 AesEncryptionOptions 或注册自定义 IEncryptionProvider。
+2026-10-16 11:18:27.633 +08:00 [WRN] 装配期告警：已启用 1 个高危写工具（high-risk-write，不可撤销）：docx.delete_blocks。它们默认全部关闭，仅因出现在 FeishuAgent:WriteAllowList 而启用——请确认：① 已注册 IToolExecutionAuthorizer 且对这些工具返回 Allowed（未注册时写工具默认拒绝）；② 如需一键收回，把 FeishuAgent:MaxToolRisk 设为 'write'（或更低），全部高危写工具会被 risk_exceeded 拒绝。

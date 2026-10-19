@@ -10,12 +10,11 @@ using System.Collections.Concurrent;
 namespace Mud.Feishu.Abstractions;
 
 /// <summary>
-/// 应用上下文退休队列（TMA-07 / P1-6 修复，D5 契约）。
+/// 应用上下文退休队列。
 /// </summary>
 /// <remarks>
 /// <para>
-/// 当 <see cref="FeishuAppManager"/> 执行配置热更新（<c>ApplyConfigurationChanges</c>，
-/// TMF-04：原 <c>RebuildAppContext</c> 已并入热更新路径）或 <c>RemoveApp</c> 时，
+/// 当 <see cref="FeishuAppManager"/> 执行配置热更新（<c>ApplyConfigurationChanges</c>）或 <c>RemoveApp</c> 时，
 /// 旧的 <see cref="FeishuAppContext"/> 不再被引用，但其内部的 <c>Timer</c>（令牌定时刷新）
 /// 会 root 整个对象图，GC 不会自动回收。此队列在宽限期后显式 <c>Dispose</c> 旧上下文，
 /// 停止其 Timer，释放资源。
@@ -34,7 +33,7 @@ namespace Mud.Feishu.Abstractions;
 /// 兼容全部目标框架（netstandard2.0 / net6.0 / net8.0 / net10.0）。
 /// </para>
 /// <para>
-/// <b>维护约束（TMA-24）</b>：若 <see cref="FeishuAppContext"/>（或其持有的任何成员）
+/// <b>维护约束</b>：若 <see cref="FeishuAppContext"/>（或其持有的任何成员）
 /// 新增了实现 <see cref="IDisposable"/> 的资源（如 <c>Timer</c>、<c>HttpClient</c> 等），
 /// 必须确保该资源在 <see cref="FeishuAppContext.Dispose"/> 中被释放，
 /// 否则退休队列的 <c>Dispose</c> 调用无法停止该资源，会导致泄漏。
@@ -67,7 +66,7 @@ internal sealed class FeishuAppContextRetirement : IDisposable
     /// 释放标记。
     /// </summary>
     /// <remarks>
-    /// TMR-P2-13（F13）：由 volatile bool 收敛为 int + <see cref="Interlocked"/> 原子 check-then-set——
+    /// 由 volatile bool 收敛为 int + <see cref="Interlocked"/> 原子 check-then-set——
     /// 并发 Dispose（容器关闭 Flush 与 Sweep Timer 重叠）下保证释放序列恰好执行一次。
     /// </remarks>
     private int _disposed;
@@ -104,16 +103,15 @@ internal sealed class FeishuAppContextRetirement : IDisposable
     /// <param name="appKey">应用键（用于日志）。</param>
     /// <param name="context">待退休的应用上下文。</param>
     /// <remarks>
-    /// TMF2-06：Dispose 后的 Enqueue 直接 Dispose 上下文而非入队——
-    /// 修复前 Enqueue 不检查 _disposed，导致容器关闭后的入队条目静默泄漏
-    /// （队列已释放、Timer 已停，条目永不被扫描）。
+    /// Dispose 后的 Enqueue 直接 Dispose 上下文而非入队——
+    /// 否则容器关闭后的入队条目静默泄漏（队列已释放、Timer 已停，条目永不被扫描）。
     /// </remarks>
     public void Enqueue(string appKey, FeishuAppContext context)
     {
         if (context == null)
             return;
 
-        // TMF2-06：Dispose 后直接 Dispose 上下文，避免静默泄漏。
+        // Dispose 后直接 Dispose 上下文，避免静默泄漏。
         if (Interlocked.CompareExchange(ref _disposed, 0, 0) != 0)
         {
             try { context.Dispose(); }
@@ -205,7 +203,7 @@ internal sealed class FeishuAppContextRetirement : IDisposable
     /// </summary>
     public void Dispose()
     {
-        // TMR-P2-13（F13）：原子 check-then-set 收敛。
+        // 原子 check-then-set 收敛。
         if (Interlocked.Exchange(ref _disposed, 1) != 0)
             return;
 

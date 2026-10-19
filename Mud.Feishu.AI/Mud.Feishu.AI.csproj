@@ -26,11 +26,11 @@
 		     由 AgentContractGuards 的两条负向断言机械锁定。
 		     v2.3 P1-D：Mud.AI.Agent（执行器骨架 + 引导/声明契约的运行时侧）——集成面（FeishuApiResultReader）
 		     与骨架共用 ToolApiOutcome<T> 解包产物，依赖方向 AI → Mud.AI.Agent → Mud.AI.Abstractions（单向）。 -->
-		<PackageReference Include="Mud.AI.Agent" Version="1.0.0" />
+		<PackageReference Include="Mud.AI.Agent" Version="1.0.1" />
 		<!-- P1-H3：ConversationStoreSessionAdapter 直接实现中立端口 ISessionStore
 		     ——"直接使用的 API 必须直接声明"（P2-5），故显式引用而不依赖 Mud.AI.Agent 的传递引用。
 		     方向不变：AI 适配层 → Mud.AI.*（单向）。 -->
-		<PackageReference Include="Mud.AI.Abstractions" Version="1.0.0" />
+		<PackageReference Include="Mud.AI.Abstractions" Version="1.0.1" />
 		<ProjectReference Include="..\Mud.Feishu\Mud.Feishu.csproj" />
 		<ProjectReference Include="..\Mud.Feishu.DataModels\Mud.Feishu.DataModels.csproj" />
 		<ProjectReference Include="..\Mud.Feishu.EventCallback\Mud.Feishu.EventCallback.csproj" />

@@ -16,11 +16,11 @@ namespace Mud.Feishu.Abstractions.Authentication.MultiApp;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>ARC-2 Step 1</b>：此前 <c>FeishuAppManager.CreateAppContext</c> 在内部散装手工装配
-/// （8 处 <c>GetService</c> + 2 处 <c>new</c>），与 <c>AddMudHttpClient</c> 的注册路径形成配置双源。
+/// <c>FeishuAppManager.CreateAppContext</c> 若在内部散装手工装配
+/// （8 处 <c>GetService</c> + 2 处 <c>new</c>），会与 <c>AddMudHttpClient</c> 的注册路径形成配置双源。
 /// 本接口把装配收敛到唯一实现 <see cref="FeishuHttpClientFactory"/>，
 /// 使「注册路径」与「创建路径」共享同一份 <see cref="EnhancedHttpClientOptions"/> 基线，
-/// 同时为多应用配置热更新（ARC-1）提供可替换的客户端创建入口。
+/// 并为多应用配置热更新提供可替换的客户端创建入口。
 /// </para>
 /// <para>
 /// <b>为什么不能完全改用组件 <c>IEnhancedHttpClientFactory.CreateClient</c></b>：
@@ -46,7 +46,7 @@ public interface IFeishuHttpClientFactory
     /// <remarks>
     /// 适用于「不得递归触发令牌请求」的场景（例如使用方自行调用认证接口获取令牌）。
     /// <para>
-    /// <b>注意</b>：<c>IFeishuAuthentication</c> 的注册路径（ARC-6）已改为从 DI 解析源生成的实现，
+    /// <b>注意</b>：<c>IFeishuAuthentication</c> 的注册路径已改为从 DI 解析源生成的实现，
     /// 其 HttpClient 由 <c>AddMudHttpClient</c> 提供，<b>不再经由本方法</b>；
     /// 本方法的生产调用方为 <see cref="PerAppFeishuAuthenticationFactory"/>（per-app 认证客户端装配）。
     /// </para>
@@ -103,11 +103,11 @@ public class FeishuHttpClientFactory : IFeishuHttpClientFactory
     {
         var clientName = BuildClientName(appKey);
 
-        // ARC-2：以 DI 中注册的 EnhancedHttpClientOptions 编程式配置为基线（与 AddMudHttpClient 路径同源），
-        // 避免此前"手工 new EnhancedHttpClientOptions"导致 10 个字段静默取默认值的问题。
-        // F-05（Mud.HttpUtils 3.0.5+）：EnhancedHttpClientOptions 提供公开的全字段浅拷贝 Clone()
-        // （含 5 个 DI 解析面属性 + JsonEncoder 等），取代本仓库手写字段清单式 Clone——
-        // 上游新增属性（如 3.0.5 的 JsonEncoder）不再需要在 MudFeishu 侧同步补拷贝。
+        // 以 DI 中注册的 EnhancedHttpClientOptions 编程式配置为基线（与 AddMudHttpClient 路径同源），
+        // 避免逐字段手工拷贝导致新增字段静默取默认值。
+        // EnhancedHttpClientOptions 提供公开的全字段浅拷贝 Clone()
+        // （含 5 个 DI 解析面属性 + JsonEncoder 等），替代逐字段手写 Clone——
+        // 上游新增属性时无需在飞书侧同步补拷贝。
         var baseline = _serviceProvider.GetService<IOptions<EnhancedHttpClientOptions>>()?.Value;
         var options = baseline?.Clone() ?? new EnhancedHttpClientOptions();
 

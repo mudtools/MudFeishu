@@ -71,7 +71,7 @@ public interface IFeishuTenantV1HireInterview : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 获取面试官信息列表
-    /// <para>分页查询面试官认证信息；仅返回已通过「更新面试官信息」接口写入的数据，未写入的用户默认不返回（查询参数采用查询对象模式 <see cref="InterviewerListQuery"/>，见 AGENTS.md API-2）。默认按更新时间、user_id 排序。</para>
+    /// <para>分页查询面试官认证信息；仅返回已通过「更新面试官信息」接口写入的数据，未写入的用户默认不返回（查询参数采用查询对象模式 <see cref="InterviewerListQuery"/>）。默认按更新时间、user_id 排序。</para>
     /// <para>限频：20 次/秒。所需权限：hire:interviewer（管理面试官信息）或 hire:interviewer:readonly（获取面试官信息）。字段权限：contact:user.employee_id:readonly（返回的用户 ID 字段）。</para>
     /// <para><see href="https://open.feishu.cn/document/hire-v1/recruitment-related-configuration/interview-settings/interviewer/list">接口文档</see></para>
     /// </summary>

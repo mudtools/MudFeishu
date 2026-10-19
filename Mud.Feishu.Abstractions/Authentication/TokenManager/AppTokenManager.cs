@@ -38,7 +38,7 @@ internal class AppTokenManager : FeishuAppTokenManagerBase, IAppTokenManager
     {
     }
 
-    // TMA-23 修复：覆写 MetricsKey 使指标维度在多应用下可区分。
+    // 覆写 MetricsKey 使指标维度在多应用下可区分。
     protected override string MetricsKey => $"AppTokenManager:{Options.AppKey}";
 
     protected override async Task<(string? AccessToken, int ExpireSeconds)> RefreshTokenFromApiAsync(CancellationToken cancellationToken)

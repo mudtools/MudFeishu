@@ -53,7 +53,7 @@ internal sealed record DocAgentSettings
     /// <summary>SDK 的飞书多应用节名（<c>AddFeishuApp</c> 读它；本 Demo 也支持由配置文件提供）。</summary>
     public const string AppSectionName = "FeishuApps";
 
-    /// <summary>模式开关键（<c>FeishuDocAgent:Enabled</c>）。</summary>
+    /// <summary>默认项开关键（<c>FeishuDocAgent:Enabled</c>）。</summary>
     public const string ConfigEnabledKey = SectionName + ":Enabled";
 
     /// <summary>模型 ID（必填）。</summary>
@@ -258,7 +258,7 @@ internal sealed record DocAgentSettings
     /// <exception cref="ArgumentNullException"><paramref name="configuration"/> 为 <see langword="null"/>。</exception>
     /// <exception cref="InvalidOperationException">缺少必填配置项，或整数项非法。</exception>
     /// <remarks>
-    /// 模型三项与 <c>AppId/AppSecret</c> 的唯一来源是 <c>FeishuDemo</c> 节（四个模式共用，只此一处）；
+    /// 模型三项与 <c>AppId/AppSecret</c> 的唯一来源是 <c>FeishuDemo</c> 节（各模式共用，只此一处）；
     /// <c>AppKey/UserId/WikiSpaceId/Policy</c> 等模式专属键取自 <c>FeishuDocAgent</c> 节。
     /// </remarks>
     public static DocAgentSettings FromConfiguration(IConfiguration configuration)
@@ -288,10 +288,11 @@ internal sealed record DocAgentSettings
     }
 
     /// <summary>
-    /// 判断配置是否显式启用了本模式（<c>FeishuDocAgent:Enabled=true</c>）。
+    /// 判断配置是否把本模式标为启动菜单的**默认项**（<c>FeishuDocAgent:Enabled=true</c>）。
     /// </summary>
+    /// <remarks>进入哪个模式由用户在启动菜单选择（<c>DemoModeSelector</c>）；本键只决定回车采用的默认项。</remarks>
     /// <param name="configuration">配置文件来源。</param>
-    /// <returns>是否启用。</returns>
+    /// <returns>是否为配置默认项。</returns>
     public static bool IsEnabledByConfiguration(IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);

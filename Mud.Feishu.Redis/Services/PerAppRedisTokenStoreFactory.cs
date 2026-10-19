@@ -16,18 +16,10 @@ namespace Mud.Feishu.Redis.Services;
 /// 按应用隔离的 Redis 令牌存储工厂。
 /// </summary>
 /// <remarks>
-/// <para>
-/// <b>TOK-1 修复</b>：原 <c>SingletonFeishuTokenStoreFactory</c> 直接忽略 <c>appKey</c>，
-/// 返回共享的 <see cref="RedisTokenStore"/> 单例；而该单例的键布局为
-/// <c>feishu:token:{tokenType}:access</c>、用户令牌为 <c>feishu:token:user:{userId}:{tokenType}:access</c>，
-/// <b>均不含 appKey 维度</b>。多应用场景下不同应用会写入同一键空间，导致令牌互相覆盖
-/// （表现为随机 401 / 令牌串号）。
-/// </para>
-/// <para>
-/// 本工厂为每个 appKey 构造独立键前缀 <c>feishu:{appKey}:token</c> 的存储实例，
-/// 与 Memory 路径（<c>FeishuTokenStore</c> / <c>FeishuUserTokenStore</c>）的键布局保持一致。
-/// 所有实例共享同一个 <see cref="IConnectionMultiplexer"/>，因此不会造成连接池膨胀。
-/// </para>
+/// 每个 appKey 对应独立键前缀 <c>feishu:{appKey}:token</c> 的存储实例，与 Memory 路径
+/// （<c>FeishuTokenStore</c> / <c>FeishuUserTokenStore</c>）的键布局逐字节一致——键含 appKey 维度，
+/// 避免多应用写入同一键空间导致令牌互相覆盖（表现为随机 401 / 令牌串号）。
+/// 所有实例共享同一个 <see cref="IConnectionMultiplexer"/>，不会造成连接池膨胀。
 /// </remarks>
 public class PerAppRedisTokenStoreFactory : IFeishuTokenStoreFactory
 {
@@ -43,7 +35,7 @@ public class PerAppRedisTokenStoreFactory : IFeishuTokenStoreFactory
     /// <param name="redis">Redis 连接复用器（Singleton，由全部 per-app 存储共享）。</param>
     /// <param name="loggerFactory">日志工厂，可为 null（降级为不记日志）。</param>
     /// <param name="tokenKeyPrefix">
-    /// 令牌键前缀的环境段（R2-04），来自 <c>RedisOptions.TokenKeyPrefix</c>；
+    /// 令牌键前缀的环境段，来自 <c>RedisOptions.TokenKeyPrefix</c>；
     /// <c>null</c>/空白时使用 <see cref="Mud.Feishu.Abstractions.Consts.DefaultTokenKeyPrefix"/>。
     /// </param>
     public PerAppRedisTokenStoreFactory(
@@ -57,39 +49,24 @@ public class PerAppRedisTokenStoreFactory : IFeishuTokenStoreFactory
     }
 
     /// <summary>
-    /// 构建指定应用的 Redis 键前缀，与 Memory 路径 <c>feishu:{appKey}:token</c> <b>逐字节一致</b>（D8）。
-    /// TMF2-05 / TMR2-P1-2：委派 <c>TokenKeyBuilder.BuildKeyPrefix</c>（键前缀的唯一出口）——
+    /// 构建指定应用的 Redis 键前缀，与 Memory 路径 <c>feishu:{appKey}:token</c> <b>逐字节一致</b>。
+    /// 委派 <c>TokenKeyBuilder.BuildKeyPrefix</c>（键前缀的唯一出口）——
     /// 消除经 <c>RedisKeyBuilder.Combine</c> 预转义与 Memory 裸拼接的差异（前缀逐字节一致）；
-    /// R2-04：环境段由 <c>RedisOptions.TokenKeyPrefix</c> 注入（默认 <c>feishu</c>），空值回落默认值。
+    /// 环境段由 <c>RedisOptions.TokenKeyPrefix</c> 注入（默认 <c>feishu</c>），空值回落默认值。
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// TMR2-P1-2：<b>此处不得预转义</b>——转义/规范化唯一归口
-    /// <c>Mud.Feishu.Abstractions.Authentication.TokenKeyBuilder</c>（由 <see cref="RedisTokenStore"/> /
-    /// <see cref="RedisUserTokenStore"/> 在键构造时调用）。
-    /// </para>
-    /// <para>
-    /// 修复前经 <c>RedisKeyBuilder.Combine</c>（<c>:</c> → <c>\:</c>）产出<b>已转义</b>前缀，
-    /// 再被 <c>TokenKeyBuilder.NormalizePrefix</c> 二次转义（<c>\</c> → <c>\\</c>），导致：
-    /// ① Memory 与 Redis 键布局不再逐字节一致（D8 失真，后端迁移令牌全部不可见）；
-    /// ② SCAN pattern 由同一份双重转义前缀产出，而 Redis glob 把 <c>\\</c> 解释为<b>单个</b>反斜杠，
-    /// 与键中的两个反斜杠不匹配 ⇒ <c>ClearAsync</c> / <c>GetTokenTypesAsync</c> /
-    /// <c>ClearAllUsersAsync</c> 永不命中（凭据变更清库 D10 静默失效）。
-    /// </para>
-    /// <para>
-    /// 长度保护不丢失：<c>TokenKeyBuilder.NormalizePrefix</c> → <c>NormalizeSegment</c> 仍对
-    /// 超过 256 字符的键段抛 <see cref="ArgumentException"/>（原 <c>RedisKeyBuilder.Combine</c> 抛
-    /// <see cref="InvalidOperationException"/>；语义等价，异常类型见 TMR-P2-9 的收敛约定）。
-    /// 空前缀护栏由本方法的 <c>feishu:</c> 固定前缀承担（永不退化为 <c>*</c>，R-01）。
-    /// </para>
+    /// <b>此处不得预转义</b>：转义与规范化唯一归口 <c>TokenKeyBuilder</c>（由本方法委派调用）。若先用 <c>RedisKeyBuilder.Combine</c>
+    /// 产出已转义前缀、再被 <c>NormalizePrefix</c> 二次转义，Memory 与 Redis 键布局将不再逐字节一致，且 SCAN pattern 与键中的双反斜杠不匹配
+    /// ⇒ <c>ClearAsync</c> / <c>GetTokenTypesAsync</c> / <c>ClearAllUsersAsync</c> 永不命中（清库静默失效）。
+    /// 键段超过 256 字符抛 <see cref="ArgumentException"/>，空前缀由固定 <c>feishu:</c> 前缀兜底。
     /// </remarks>
     public static string BuildKeyPrefix(string appKey) =>
-        // TMR2-P1-2：委派唯一出口；TokenKeyBuilder.BuildKeyPrefix 返回**未转义**前缀
+        // 委派唯一出口；TokenKeyBuilder.BuildKeyPrefix 返回**未转义**前缀
         // （转义单点归口 TokenKeyBuilder.NormalizeSegment，由键构造路径 Combine 施加）。
         TokenKeyBuilder.BuildKeyPrefix(appKey);
 
     /// <summary>
-    /// 构建指定应用在指定环境段下的 Redis 键前缀（R2-04）。
+    /// 构建指定应用在指定环境段下的 Redis 键前缀。
     /// </summary>
     /// <param name="appKey">应用唯一标识</param>
     /// <param name="tokenKeyPrefix">环境段（如 <c>dev</c>/<c>prod</c>）；<c>null</c> 时取默认 <c>feishu</c></param>
@@ -100,7 +77,7 @@ public class PerAppRedisTokenStoreFactory : IFeishuTokenStoreFactory
     /// <inheritdoc />
     public (ITokenStore TokenStore, IUserTokenStore? UserTokenStore) Create(string appKey)
     {
-        // T-M2-11：appKey 为空抛明确异常（替代 ConcurrentDictionary 的 ArgumentNullException）
+        // appKey 为空抛明确异常（替代 ConcurrentDictionary 的 ArgumentNullException）
         if (string.IsNullOrWhiteSpace(appKey))
             throw new ArgumentException("appKey 不能为空——空 appKey 会导致令牌键空间退化为 feishu:default:token", nameof(appKey));
 

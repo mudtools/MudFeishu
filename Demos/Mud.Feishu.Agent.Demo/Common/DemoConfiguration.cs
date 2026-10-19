@@ -17,11 +17,12 @@ namespace Mud.Feishu.Agent.Demo;
 public sealed record DemoConfigurationSources(IConfigurationRoot Configuration, IReadOnlyList<string> Files);
 
 /// <summary>
-/// 运行模式的公共配置装配（原 <c>DocAgentDemo.BuildConfiguration</c>，提升为四个模式共用）：
+/// 运行模式的公共配置装配（原 <c>DocAgentDemo.BuildConfiguration</c>，提升为各模式共用）：
 /// <c>appsettings.json</c> → <c>appsettings.local.json</c>（后者覆盖前者）。
 /// </summary>
 /// <remarks>
-/// 环境变量不参与参数解析（R4 配置面约定：参数与模式开关全部来自配置文件）。
+/// 环境变量不参与参数解析（R4 配置面约定：参数与模式默认项全部来自配置文件；
+/// 进入哪个模式由启动菜单选择，见 <c>DemoModeSelector</c>）。
 /// 仅两层文件：<c>appsettings.json</c>（随仓库提交的模板，必填）＋
 /// <c>appsettings.local.json</c>（本地覆盖，已被 <c>.gitignore</c> 忽略，可选）。
 /// </remarks>

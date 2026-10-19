@@ -237,17 +237,17 @@ public class MessageRouter
         try
         {
             var handlerTask = handler.HandleAsync(message, linkedCts.Token);
-            // P1-1 修复（WS-05）：此前 Task.Delay 使用外部 cancellationToken 而非 linkedCts.Token，
-            // 处理器完成后 Delay 不会被取消，每条消息泄漏一个定时器直到超时。
-            // 现使用 linkedCts.Token：处理器正常完成时通过 finally 取消 timeoutCts，
+            // Task.Delay 必须使用 linkedCts.Token 而非外部 cancellationToken：
+            // 用外部令牌时处理器完成后 Delay 不会被取消，每条消息泄漏一个定时器直到超时。
+            // 用 linkedCts.Token 时处理器正常完成会通过 finally 取消 timeoutCts，
             // Delay 提前结束，定时器即时回收。
             var delayTask = Task.Delay(timeoutMs, linkedCts.Token);
             var completed = await Task.WhenAny(handlerTask, delayTask);
 
             if (completed != handlerTask)
             {
-                // P2-10 修复：外部取消时 Task.Delay 会提前结束，此前沿用同一分支
-                // 会误报"消息处理器超时"。这里区分两种情形。
+                // 外部取消时 Task.Delay 会提前结束，与超时完成走同一分支，
+                // 沿用同一分支会误报"消息处理器超时"。这里区分两种情形。
                 if (cancellationToken.IsCancellationRequested)
                 {
                     _logger.LogDebug("消息处理被外部取消: {HandlerType}", handler.GetType().Name);
@@ -274,7 +274,7 @@ public class MessageRouter
                     // 处理器未响应取消，忽略
                 }
 
-                // P2-9 修复：超时分支此前不观察 handlerTask。处理器若在超时之后才抛出，
+                // 超时分支必须观察 handlerTask：处理器若在超时之后才抛出，
                 // 该异常无人观察（UnobservedTaskException：表现为进程退出期噪声日志且难以定位）。
                 // 这里只对"故障"挂一个观察型续延，不改变返回值语义。
                 _ = handlerTask.ContinueWith(
@@ -299,7 +299,7 @@ public class MessageRouter
         }
         finally
         {
-            // P1-1 修复：显式取消 timeoutCts，确保 Task.Delay 提前结束，定时器即时回收。
+            // 显式取消 timeoutCts，确保 Task.Delay 提前结束，定时器即时回收。
             // linkedCts 的 Dispose 会传播取消，但显式 Cancel 更确定。
             timeoutCts.Cancel();
         }
@@ -343,7 +343,7 @@ public class MessageRouter
         catch (System.Text.Json.JsonException ex)
         {
             // 记录更详细的JSON解析错误信息，便于排查问题
-            // P2-4：截断改走 LogSanitizer.CleanMessage（先剥离 token/encrypt 等敏感字段值再截断）
+            // 截断走 LogSanitizer.CleanMessage（先剥离 token/encrypt 等敏感字段值再截断）
             var truncatedMessage = LogSanitizer.CleanMessage(message, 500);
             _logger.LogError(ex, "解析消息JSON失败，消息长度: {Length}, 消息前500字符: {Message}, 错误位置: {ErrorPosition}",
                 message.Length, truncatedMessage, ex.BytePositionInLine);

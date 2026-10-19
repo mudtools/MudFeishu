@@ -33,7 +33,7 @@ public class RateLimitOptions
     public bool EnableIpRateLimit { get; set; } = true;
 
     /// <summary>
-    /// 超出限制时的响应状态码（R5.2/X15：**保留可配置**，见 remarks）。
+    /// 超出限制时的响应状态码（**保留可配置**，见 remarks）。
     /// </summary>
     /// <remarks>
     /// 该字段在 <c>FeishuRateLimitMiddleware</c> 中真实生效（写入响应状态码）。
@@ -43,7 +43,7 @@ public class RateLimitOptions
     public int TooManyRequestsStatusCode { get; set; } = 429;
 
     /// <summary>
-    /// 超出限制时的响应消息（R5.2/X15：**保留可配置**，理由同 <see cref="TooManyRequestsStatusCode"/>）。
+    /// 超出限制时的响应消息（**保留可配置**，理由同 <see cref="TooManyRequestsStatusCode"/>）。
     /// </summary>
     public string TooManyRequestsMessage { get; set; } = "请求过于频繁，请稍后再试";
 

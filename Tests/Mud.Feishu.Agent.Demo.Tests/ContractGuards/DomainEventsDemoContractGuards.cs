@@ -17,7 +17,7 @@ using Mud.Feishu.AI.Tools;
 namespace Mud.Feishu.Agent.Demo.Tests.ContractGuards;
 
 /// <summary>
-/// <b>R-13 守卫</b>：Demo 必须<b>真的注册并调用</b>三个领域会话处理器、两个领域上下文装配器
+/// <b>守卫</b>：Demo 必须<b>真的注册并调用</b>三个领域会话处理器、两个领域上下文装配器
 /// 与流式通道降级链——"类存在"不算通过。
 /// </summary>
 /// <remarks>
@@ -44,7 +44,7 @@ namespace Mud.Feishu.Agent.Demo.Tests.ContractGuards;
 /// </para>
 /// <para>
 /// <b>与 <see cref="DocAgentDemoContractGuards.DemoProject_ShouldKeepTheExistingProjectReferenceSet"/> 的关系</b>：
-/// 那条守卫断言 Demo 只有 3 条 <c>ProjectReference</c>（R-13 明确要求保持）。本模式用到的
+/// 那条守卫断言 Demo 只有 3 条 <c>ProjectReference</c>（明确要求保持）。本模式用到的
 /// 事件 DTO（<c>Mud.Feishu.EventCallback</c>）与 <c>IFeishu*</c> 客户端类型<b>经传递引用获得</b>，
 /// 故两条守卫同批成立；若本模式新增引用，那条守卫会先红。
 /// </para>
@@ -133,7 +133,7 @@ public class DomainEventsDemoContractGuards
 
     /// <summary>④ 事件注入形态：事件载荷由 Demo 构造（不依赖外部平台通道）。</summary>
     /// <remarks>
-    /// 与 R-13 的建议一致：直接构造事件载荷 + 调用 handler ⇒ 演示可离线复现，
+    /// 与 的建议一致：直接构造事件载荷 + 调用 handler ⇒ 演示可离线复现，
     /// 不把"演示能不能跑"绑在 WebSocket/Webhook 通道与真实平台投递上。
     /// </remarks>
     [Fact]

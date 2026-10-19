@@ -8,7 +8,7 @@
 namespace Mud.Feishu.Abstractions.Authentication;
 
 /// <summary>
-/// OAuth 刷新失败的可重试/不可重试分类器（D12 契约 / TMA2-06）。
+/// OAuth 刷新失败的可重试/不可重试分类器。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -30,11 +30,10 @@ namespace Mud.Feishu.Abstractions.Authentication;
 /// </list>
 /// </para>
 /// <para>
-/// TMR2-P1-4 修复：原实现先判错误码、再<b>无条件</b>用关键字兜底，且关键字含
-/// <c>"refresh token"</c> / <c>"scope"</c> 这类在任何刷新相关消息中都可能出现的<b>过宽</b>词
-/// （例如瞬时故障的"failed to refresh token, please retry later"）——
-/// 会把可重试的瞬时故障误判为不可重试，进而清空用户的 refresh token。
-/// 现移除这两个歧义词、加入显式可重试码优先级，并保留未知码的关键字兜底（避免漏判不可重试）。
+/// 关键字兜底不得含 <c>"refresh token"</c> / <c>"scope"</c> 这类在任何刷新相关消息中都
+/// 可能出现的<b>过宽</b>词（例如瞬时故障的"failed to refresh token, please retry later"）——
+/// 否则会把可重试的瞬时故障误判为不可重试，进而清空用户的 refresh token。
+/// 判定顺序约束：显式可重试码优先 + 仅未知码走关键字兜底（避免漏判不可重试）。
 /// </para>
 /// <para>
 /// 不可重试的错误码与关键字基于飞书 OAuth v2 规范与实际返回值。若飞书 API 新增错误码，

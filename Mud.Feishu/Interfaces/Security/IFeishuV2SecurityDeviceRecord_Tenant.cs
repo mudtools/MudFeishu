@@ -35,7 +35,7 @@ public interface IFeishuTenantV2SecurityDeviceRecord : IFeishuAppContextSwitcher
 
     /// <summary>
     /// 查询设备信息
-    /// <para>分页查询设备列表信息，支持按设备认证编码、设备名称、各类设备特征、归属、可信状态、MDM 信息等筛选；查询参数采用查询对象模式 <see cref="ListDeviceRecordsQuery"/>，见 AGENTS.md API-2。</para>
+    /// <para>分页查询设备列表信息，支持按设备认证编码、设备名称、各类设备特征、归属、可信状态、MDM 信息等筛选；查询参数采用查询对象模式 <see cref="ListDeviceRecordsQuery"/>。</para>
     /// <para>限频：10 次/秒。所需权限：security_and_compliance:device_record:read（获取设备信息）；字段权限：contact:user.employee_id:readonly（user_id_type 取 user_id 时的返回字段）。</para>
     /// <para><see href="https://open.feishu.cn/document/security_and_compliance-v1/security_and_compliance-v2/device_record/list">接口文档</see></para>
     /// </summary>

@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 namespace Mud.Feishu.Abstractions;
 
 /// <summary>
-/// <see cref="FeishuAppOptions"/> 的启动期校验器（R5/X1）。
+/// <see cref="FeishuAppOptions"/> 的启动期校验器。
 /// </summary>
 /// <remarks>
 /// <para>

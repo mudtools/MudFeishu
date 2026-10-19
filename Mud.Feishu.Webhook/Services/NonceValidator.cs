@@ -37,7 +37,7 @@ public class NonceValidator(
     private NonceFailureMode FailureMode => _optionsMonitor.CurrentValue.NonceValidationFailureMode;
 
     /// <summary>
-    /// 空标识符是否拒绝（WHF-05，fail-closed 默认）
+    /// 空标识符是否拒绝（fail-closed 默认）
     /// </summary>
     private bool RejectEmptyIdentifiers => _optionsMonitor.CurrentValue.RejectEmptyIdentifiers;
 
@@ -63,7 +63,7 @@ public class NonceValidator(
     /// <inheritdoc />
     public async Task<bool> CheckNonceAsync(string nonce, CancellationToken cancellationToken)
     {
-        // WHF-05：空 Nonce 无法防重放——fail-closed
+        // 空 Nonce 无法防重放——fail-closed
         if (string.IsNullOrEmpty(nonce))
         {
             if (RejectEmptyIdentifiers)
@@ -106,7 +106,7 @@ public class NonceValidator(
     /// <inheritdoc />
     public async Task<bool> TryMarkNonceAsUsedAsync(string nonce, CancellationToken cancellationToken)
     {
-        // WHF-05：空 Nonce 无法标记去重——fail-closed（返回 true=已使用，上层判定拒绝）
+        // 空 Nonce 无法标记去重——fail-closed（返回 true=已使用，上层判定拒绝）
         if (string.IsNullOrEmpty(nonce))
         {
             if (RejectEmptyIdentifiers)

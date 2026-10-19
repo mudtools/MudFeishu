@@ -30,18 +30,19 @@ public class FailedEventRetryService : BackgroundService
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>R5/X3 修复</b>：此前本服务注入 <c>IOptions&lt;FailedEventRetryOptions&gt;</c>，而
-    /// <c>FeishuWebhookServiceBuilder</c> **从未** <c>Configure/AddOptions&lt;FailedEventRetryOptions&gt;</c>
-    /// —— <c>IOptions&lt;T&gt;</c> 的开放泛型注册使其解析为一个全默认实例而不报错。结果是
+    /// 本服务必须直接读 <see cref="FeishuWebhookOptions.Retry"/>：若改为注入
+    /// <c>IOptions&lt;FailedEventRetryOptions&gt;</c>，而 <c>FeishuWebhookServiceBuilder</c>
+    /// 未 <c>Configure/AddOptions&lt;FailedEventRetryOptions&gt;</c> 时，
+    /// <c>IOptions&lt;T&gt;</c> 的开放泛型注册会使其解析为一个全默认实例而不报错——结果是
     /// <c>FeishuWebhook:Retry</c> 整节（经 Builder 绑定到 <see cref="FeishuWebhookOptions.Retry"/>）
     /// 的 6 个字段（<c>MaxRetryCount</c> / <c>InitialRetryDelaySeconds</c> / <c>RetryDelayMultiplier</c> /
     /// <c>MaxRetryDelaySeconds</c> / <c>RetryPollIntervalSeconds</c> / <c>MaxRetryPerPoll</c>）
-    /// <b>恒为默认</b>，只有 <c>EnableRetry</c> 因旧代码的兜底分支偶然生效。
+    /// <b>恒为默认</b>，只有 <c>EnableRetry</c> 因兜底分支偶然生效。
     /// </para>
     /// <para>
-    /// 改为直接读 <see cref="FeishuWebhookOptions.Retry"/> 后，写入侧
+    /// 直接读 <see cref="FeishuWebhookOptions.Retry"/> 后，写入侧
     /// （<c>FeishuWebhookService.HandleEventAsync</c> 写 <c>NextRetryAt</c>）与轮询侧**同源**，
-    /// 且保留 <c>IOptionsMonitor</c> 的热更语义（WHF-14）。
+    /// 且保留 <c>IOptionsMonitor</c> 的热更语义。
     /// </para>
     /// </remarks>
     private FailedEventRetryOptions Retry => _webhookOptions.CurrentValue.Retry ?? new FailedEventRetryOptions();
@@ -99,8 +100,8 @@ public class FailedEventRetryService : BackgroundService
 
         _logger.LogInformation("失败事件重试服务已启动，轮询间隔: {Interval} 秒", Retry.RetryPollIntervalSeconds);
 
-        // WHF-14：每轮循环重新读取 EnableRetry（支持配置热更新——禁用态进入轻量轮询，启用即恢复工作），
-        // 不再在启动期一次性判定后永久退出
+        // 每轮循环重新读取 EnableRetry（支持配置热更新——禁用态进入轻量轮询，启用即恢复工作），
+        // 不在启动期一次性判定后永久退出
         while (!stoppingToken.IsCancellationRequested)
         {
             try
@@ -112,7 +113,7 @@ public class FailedEventRetryService : BackgroundService
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
-                // WHF-14：RetryFailedEventsAsync 内部转发外部 token 时，关停引发的 OCE 不应视为处理失败
+                // RetryFailedEventsAsync 内部转发外部 token 时，关停引发的 OCE 不应视为处理失败
                 break;
             }
             catch (Exception ex)
@@ -120,7 +121,7 @@ public class FailedEventRetryService : BackgroundService
                 _logger.LogError(ex, "重试失败事件时发生错误");
             }
 
-            // WHF-14：Task.Delay 在已取消 token 上会以 Canceled 态完成；await 会在调度时机抛 OCE。
+            // Task.Delay 在已取消 token 上会以 Canceled 态完成；await 会在调度时机抛 OCE。
             // 直接 await 在 net8.0 的 BackgroundService 调度下存在 OCE 经 Status 而非 catch 路径逃逸的窗口
             // （net10 的 StartAsync 改为 Task.Run，行为不同）。改为：
             // ① 若 token 已取消，不进入 Delay，直接退出循环；
@@ -148,7 +149,7 @@ public class FailedEventRetryService : BackgroundService
     /// <returns>退避延迟</returns>
     internal TimeSpan CalculateBackoff(int retryCount)
     {
-        // R5/X3：先取快照再计算，避免同一次计算中途发生配置热更导致三项参数来自不同版本。
+        // 先取快照再计算，避免同一次计算中途发生配置热更导致三项参数来自不同版本。
         var retry = Retry;
         var raw = retry.InitialRetryDelaySeconds * Math.Pow(retry.RetryDelayMultiplier, retryCount);
         var capped = Math.Min(raw, retry.MaxRetryDelaySeconds);
@@ -202,7 +203,7 @@ public class FailedEventRetryService : BackgroundService
                     continue;
                 }
 
-                // P2-8：补回失败时序列化的 Header（v2.0 schema/app_id 等），反序列化失败仅告警不阻断
+                // 补回失败时序列化的 Header（v2.0 schema/app_id 等），反序列化失败仅告警不阻断
                 if (!string.IsNullOrEmpty(failedEvent.SerializedHeader) && eventData.Header == null)
                 {
                     try
@@ -253,8 +254,8 @@ public class FailedEventRetryService : BackgroundService
             }
         }
 
-        // R3-P2-14：本轮结束后清除 AppKey 上下文（纵深防御）。
-        // 迭代内已通过 SetCurrentAppKey(AppKey ?? "") 无条件覆盖（WHF-R2/B5），跨迭代不会串味；
+        // 本轮结束后清除 AppKey 上下文（纵深防御）。
+        // 迭代内已通过 SetCurrentAppKey(AppKey ?? "") 无条件覆盖，跨迭代不会串味；
         // 但本服务运行在**长生命周期 ExecutionContext** 中，若不清除，最后一批重试事件的 AppKey
         // 会在进程余下时间残留在 AsyncLocal 里，而 IAppKeyAccessor 与业务去重键、应用上下文
         // 共用同一实例——显式 Clear 成本近零，可消除该残留面。

@@ -436,6 +436,13 @@ ledger there); the ledger is `documents/AIAgent/comment-budget-baseline.json`:
   `pwsh ./scripts/comment-audit.ps1 -UpdateBaseline`; it **refuses to freeze while any violation
   stands** (re-freezing must never launder a regression) and its diff is reviewed like a golden.
   The script's report is the phased-cleanup ledger (`-Project` / `-LongBlocks` to slice it).
+- **内容判据（面向过程/决策叙事）**：源码注释只承载**对外契约**与**不可从代码推断的约束**
+  （锁序、幂等、顺序依赖、AOT 抑制理由、安全语义）；上游版本适配、缺陷复盘、任务与阶段编号、
+  仓库内部文档路径属过程记录，落 `documents/决策档案/`（编号全集见其 `编号索引.md`）。
+  判据：删掉这条注释，维护者会不会踩坑？回答"不会"即应删除。
+- **完整规范**（判据、R-01~R-12、正反例、必须保留的约束白名单）：`documents/代码注释规范.md`；
+  内容级门禁 `pwsh ./scripts/audit-comments.ps1 -Strict`（存量冻结于 `scripts/comment-baseline.txt`，
+  **只减不增**；确属必须保留的约束写行内 `// comment-allow: <原因>`，仅允许逐行豁免）。
 
 ### SDK interface conventions (`Mud.Feishu/Interfaces/{Module}/`)
 

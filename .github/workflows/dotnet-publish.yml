@@ -164,14 +164,14 @@ jobs:
         shell: pwsh
         run: "& ./scripts/audit-config-keys.ps1 -Strict"
 
-      # 步骤4.7：AI 面变更的规则式语义审查（R-3 / F-11）。
-      # 现有的 44+ 契约守卫锁的是"状态自洽"；本步骤补的是"**变更集**完整"——
-      # 新增 [FeishuTool] / 改 guidance / 改 Curation 时，golden、skills、权限对照表、
-      # PublicAPI、状态基线、引导资产必须同批更新。没有可用 LLM 接入，故按方案 F-11
-      # 落成规则式替代（判据见脚本头部）；取不到 base diff 时脚本自行跳过。
-      - name: AI change review (rule-based, F-11)
-        shell: pwsh
-        run: '& ./scripts/review-ai-changes.ps1 -BaseRef "${{ github.event.pull_request.base.sha }}"'
+      # 步骤4.7（AI 面变更的规则式语义审查，R-3 / F-11）已移除——勿在本 workflow 再接回
+      # scripts/review-ai-changes.ps1：该脚本随 PublicAPI 台账的全仓删除（b0b47b5d，用户裁定
+      # 不重建 PublicAPI*.txt，public 面改由 PublicSurfaceRationaleContractGuards +
+      # documents/AIAgent/public-surface-rationale.json 锁定）一并被删，而本步骤引用漏网，
+      # 曾导致每次 CI 运行在该步直接崩（"term './scripts/review-ai-changes.ps1' is not recognized"）。
+      # 规则 A/B 的伴生检查仍由本 workflow 既有步骤覆盖：golden 快照（MUDFT014 Error 级，
+      # 步骤 2–3 诊断门禁）、skills 产物与权限对照表（SkillsExportContractTests /
+      # ToolSurfaceScaleContractGuards，步骤 5 测试）。
 
       # P3-1：AOT 发布验证（仅 Linux，net8.0）
       - name: AOT Publish Verification

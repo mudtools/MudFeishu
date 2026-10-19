@@ -17,13 +17,13 @@ using Mud.Feishu.AI.Tools.Hosting;
 namespace Mud.Feishu.Agent.Demo;
 
 /// <summary>
-/// Phase 1/2 工具模式冒烟（端到端工具链——消息文本 → 模型 → 工具 tool_call → 执行链 → 回答；
+/// 工具模式冒烟（端到端工具链——消息文本 → 模型 → 工具 tool_call → 执行链 → 回答；
 /// Phase 2：可选流式回复 + 写工具白名单示例）。
 /// </summary>
 /// <remarks>
 /// <para>
-/// 运行前在统一配置节 <c>FeishuDemo</c>（<c>appsettings.local.json</c>）填写模型与飞书凭证，
-/// 并把 <c>FeishuToolsDemo:Enabled</c> 置为 <c>true</c>（真实密钥只写本地覆盖文件，不落盘提交）：
+/// 运行前在统一配置节 <c>FeishuDemo</c>（<c>appsettings.local.json</c>）填写模型与飞书凭证
+/// （真实密钥只写本地覆盖文件，不落盘提交），随后在**启动菜单**里选择本模式：
 /// <code>
 /// "FeishuDemo": {
 ///   "ModelId": "glm-4-flash",
@@ -33,7 +33,6 @@ namespace Mud.Feishu.Agent.Demo;
 ///   "AppSecret": "dsk_xxx"
 /// },
 /// "FeishuToolsDemo": {
-///   "Enabled": true,
 ///   "StreamChatId": "oc_xxx"
 /// }
 /// </code>
@@ -41,7 +40,8 @@ namespace Mud.Feishu.Agent.Demo;
 /// </para>
 /// <para>
 /// 工具执行链租户上下文固定为 <c>demo-app</c>（即下方注册的飞书应用 AppKey）；
-/// 全部只读工具经只读白名单启用（<c>FeishuToolNames.ReadonlyAll</c>，生产由宿主按需裁剪，Phase 1 §3.3.4）。
+/// 全部只读工具经全域只读白名单启用（<c>DemoAgentDefaults.ReadonlyToolWhitelist</c> =
+/// <c>ReadonlyAll</c> 剔除 <c>knowledge.search</c>；生产由宿主按需裁剪，Phase 1 §3.3.4）。
 /// 写工具默认不启用——示例展示 <c>WriteAllowList</c> 键控位（注释态），启用须同时注册
 /// <c>IToolExecutionAuthorizer</c>（Phase 2 §3.3 安全默认）。
 /// </para>
@@ -72,32 +72,26 @@ public static class ToolsDemo
         var services = new ServiceCollection()
             .AddDemoLogging(configuration)
             .AddFeishuApp(feishuConfig, "FeishuApps")
-            .AddFeishuServices(builder => builder
-                .AddMessageApi()
-                .AddBiTableApi()
-                .AddDocxApi()
-                .AddWikiApi()
-                .AddSearchApi()
-                .AddSpreadsheetsApi()
-                // R4/WP5 新域：日历（AT-F04）与任务（AT-F17）——域客户端缺席时对应工具不进注册表。
-                .AddCalendarApi()
-                .AddTaskApi())
+            // 全域域客户端：白名单用的是 ReadonlyAll（**全部域**的只读工具），域客户端缺席时对应工具
+            // 不注册、MapWhitelist 在装配期即 fail-fast（"白名单包含未注册工具"）——故注册面必须与
+            // 白名单同宽，否则本模式启动即崩（曾只注册 8 个域，新增域的只读工具一进白名单就报错）。
+            .AddFeishuServices(builder => builder.AddAllApis())
             .AddDemoAgent(model, "FeishuAgentToolsDemo", InstructionsText, options =>
             {
-                // Demo 启用全部只读工具（ReadonlyAll，由生成器从 [AgentTool] 派生）；生产由宿主按需裁剪白名单。
-                options.Tools = [.. FeishuToolNames.ReadonlyAll];
+                // Demo 启用全部只读工具（由生成器从 [AgentTool] 派生）；生产由宿主按需裁剪白名单。
+                options.Tools = [.. DemoAgentDefaults.ReadonlyToolWhitelist];
                 // 身份闭集（R4 WP2 / T2-4 决策 D-1 ⓑ）：只读面含 task.list_my_tasks（identity=user），
                 // 必须在 AllowedIdentities 内显式放行，否则装配期 fail-fast（而不是运行期静默 policy_denied）。
                 options.AllowedIdentities = ["tenant", "user"];
                 // Phase 2 写工具示例（默认空=不启用）：显式键控 + 授权器注册后才真正放行。
                 // options.WriteAllowList = [FeishuToolNames.ImSendMessage];
                 // R4/WP7 上传工具（im.send_image / im.send_file）：Demo 参考落盘器已注册。
-                // WP1（R5）：DemoAttachmentStager 提供域名白名单（HTTPS-only）+ 大小上限（25MB）+ 扩展名校验 + finally 清理。
+                // ：DemoAttachmentStager 提供域名白名单（HTTPS-only）+ 大小上限（25MB）+ 扩展名校验 + finally 清理。
                 // 生产宿主应替换为自身安全域实现。
             })
             .AddFeishuTools();
 
-        // WP1（R5）：注册 Demo 级附件落盘器，使 im.send_image / im.send_file 可用。
+        // ：注册 Demo 级附件落盘器，使 im.send_image / im.send_file 可用。
         services.AddHttpClient<DemoAttachmentStager>();
         services.AddSingleton<IFeishuAttachmentStager>(sp => sp.GetRequiredService<DemoAttachmentStager>());
 

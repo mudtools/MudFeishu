@@ -146,7 +146,9 @@ if (-not $localSource -and $existingCandidates.Count -gt 0) {
     $localSource = $existingCandidates[0]
 }
 
-if (Test-Path $localSource) {
+# 先判空再 Test-Path：无本地源时 $localSource 为 ''，Test-Path '' 会抛出
+# "提供的 Path 参数为 null 或为空集合"（非终止错误，CI 与已移除本地源的开发机都会命中）。
+if ($localSource -and (Test-Path $localSource)) {
     $pkg = if ($declaredVersion) {
         Get-ChildItem $localSource -Filter "Mud.HttpUtils.Generator.$declaredVersion.nupkg" | Select-Object -First 1
     }

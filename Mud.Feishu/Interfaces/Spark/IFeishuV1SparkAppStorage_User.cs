@@ -54,7 +54,7 @@ public interface IFeishuUserV1SparkAppStorage : IFeishuAppContextSwitcher, ICurr
     /// 服务端返回非 2xx 状态码时抛出（由 HTTP 执行器统一抛出，异常携带 <c>StatusCode</c> 与响应内容）。
     /// <para>
     /// 注意：飞书部分业务错误以 HTTP 200 + JSON 错误体（<c>{"code":...,"msg":...}</c>）返回，
-    /// 此时本方法会把错误 JSON 当作文件内容返回。落盘前应按 <c>Content-Type</c> 自检，详见 <c>documents/ErrorHandling.md</c>。
+    /// 此时本方法会把错误 JSON 当作文件内容返回。落盘前应按 <c>Content-Type</c> 自检。
     /// </para>
     /// </exception>
     [Get("/open-apis/spark/v1/apps/{app_id}/storage")]

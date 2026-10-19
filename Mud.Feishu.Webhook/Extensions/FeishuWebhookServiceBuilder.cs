@@ -35,7 +35,7 @@ public class FeishuWebhookServiceBuilder
     private readonly List<Type> _globalHandlerTypes = new();
     private readonly List<Type> _interceptorTypes = new();
     /// <summary>
-    /// 仅“全局注册”（<c>AddInterceptor&lt;T&gt;()</c> 无 appKey 重载）的拦截器类型（R3-P2-3）。
+    /// 仅“全局注册”（<c>AddInterceptor&lt;T&gt;()</c> 无 appKey 重载）的拦截器类型。
     /// 与 <see cref="_interceptorTypes"/> 的区别：后者混装全局与应用专属。
     /// 用于 <see cref="InterceptorFallbackMode.AppOnly"/> 下列出被屏蔽的全局拦截器。
     /// </summary>
@@ -49,27 +49,26 @@ public class FeishuWebhookServiceBuilder
     private Action<FeishuWebhookOptions>? _configureOptions;
 
     /// <summary>
-    /// R5.0.1（X2）：已删除的请求日志开关的迁移提示「每进程一次」标记。
+    /// 已删除的请求日志开关的迁移提示「每进程一次」标记。
     /// </summary>
     private static int _removedRequestLoggingSwitchWarned;
 
     /// <summary>
-    /// R5.0.1（X2）：已删除的配置键名，仅用于一次性迁移提示。
+    /// 已删除的配置键名，仅用于一次性迁移提示。
     /// </summary>
     /// <remarks>
     /// 单独提为常量是为了让本文件对已删除键名只保留**一处**字面量，便于配置审计脚本以单行
     /// <c>audit-allow</c> 标记精确放行，而不是整文件豁免。
     /// </remarks>
-    // audit-allow: X2 migration probe must reference the removed key name exactly once
-    private const string RemovedRequestLoggingKey = "EnableRequestLogging";
+    private const string RemovedRequestLoggingKey = "EnableRequestLogging"; // audit-allow: removed key literal used only for the one-time migration warning
 
     /// <summary>
-    /// R5/X4：已失效的端点注册开关「每进程一次」告警标记。
+    /// 已失效的端点注册开关「每进程一次」告警标记。
     /// </summary>
     private static int _removedAutoEndpointSwitchWarned;
 
     /// <summary>
-    /// P1-1（R2）：应用处理器/拦截器注册与注册表冻结的一次性执行标记。
+    /// 应用处理器/拦截器注册与注册表冻结的一次性执行标记。
     /// </summary>
     /// <remarks>
     /// PostConfigure 随 <c>IOptionsMonitor</c> 的<b>每次</b> Options 缓存重建重放（任何配置热更都会触发）；
@@ -108,15 +107,15 @@ public class FeishuWebhookServiceBuilder
         var section = sectionName ?? DefaultConfigurationSection;
         var optionsSection = configuration.GetSection(section);
         _services.Configure<FeishuWebhookOptions>(options => optionsSection.Bind(options));
-        // R5.4/F5：显式注册变更令牌，使 IOptionsMonitor.OnChange 订阅者
-        // （FeishuMultiAppMiddleware / FeishuWebhookConcurrencyService）真正生效。
-        // 此前用 Configure<T>(Action) 手工 Bind，不会注册 IConfigurationChangeTokenSource，
-        // 导致限流窗口/并发数/白名单「改了不生效」。
-        // 不得改用 Configure<T>(IConfiguration) 重载（反射绑定调用点无法被配置绑定源生成器拦截，见 AOT-3）。
+        // 显式注册变更令牌，使 IOptionsMonitor.OnChange 订阅者
+        // （FeishuMultiAppMiddleware / FeishuWebhookConcurrencyService）真正生效：
+        // 用 Configure<T>(Action) 手工 Bind 不会注册 IConfigurationChangeTokenSource，
+        // 会导致限流窗口/并发数/白名单「改了不生效」。
+        // 不得改用 Configure<T>(IConfiguration) 重载（反射绑定调用点无法被配置绑定源生成器拦截）。
         _services.AddSingleton<IOptionsChangeTokenSource<FeishuWebhookOptions>>(
             new ConfigurationChangeTokenSource<FeishuWebhookOptions>(Microsoft.Extensions.Options.Options.DefaultName, optionsSection));
 
-        // R5.0.1（X2）：已删除的请求日志开关（该开关从未被运行时读取）。
+        // 已删除的请求日志开关（该开关从未被运行时读取）。
         // 此处做一次性兼容探测：用户若仍配置该键，给出明确迁移指引，避免「配了但无声无息」。
         // 不能在 ConfigureFrom 就地 LogWarning——本方法在服务注册期执行，此时没有 ILogger；
         // 故委托给 PostConfigure<IServiceProvider>（与下方 RegisterOptions 的既有模式同形）。
@@ -586,10 +585,9 @@ public class FeishuWebhookServiceBuilder
         {
             // 仅在用户显式调用 EnableAutoEndpoint()/DisableAutoEndpoint() 时覆盖配置值
             // 否则尊重 appsettings.json 中的配置
-#pragma warning disable CS0618 // R5/X4：该开关无运行时效果，仅为源码级兼容而保留
+#pragma warning disable CS0618 // 该开关无运行时效果，仅为源码级兼容而保留
             if (_autoRegisterEndpointExplicitlySet)
-                // audit-allow: X4 - the Obsolete switch must still be assigned so appsettings/Builder 兼容不失效
-                options.AutoRegisterEndpoint = _autoRegisterEndpoint;
+                options.AutoRegisterEndpoint = _autoRegisterEndpoint; // audit-allow: [Obsolete] switch kept for source-level compat, no runtime effect
 #pragma warning restore CS0618
 
             // 如果用户没有配置，使用默认配置
@@ -604,7 +602,7 @@ public class FeishuWebhookServiceBuilder
         _services.AddOptions<FeishuWebhookOptions>()
             .PostConfigure<IServiceProvider>((options, serviceProvider) =>
             {
-                // R5/X4：AutoRegisterEndpoint 无运行时效果——对配置了 false 的部署给出显式告警，
+                // AutoRegisterEndpoint 无运行时效果——对配置了 false 的部署给出显式告警，
                 // 避免长期误解为「已关闭端点、不再收事件」。每进程仅告警一次。
 #pragma warning disable CS0618 // 该开关无运行时效果，此处仅做迁移提示
                 if (!options.AutoRegisterEndpoint
@@ -640,7 +638,7 @@ public class FeishuWebhookServiceBuilder
                     handlerRegistry.Freeze();
                     interceptorRegistry.Freeze();
 
-                    // R3-P2-3：InterceptorFallbackMode=AppOnly 时，凡注册了专属拦截器的应用都会
+                    // InterceptorFallbackMode=AppOnly 时，凡注册了专属拦截器的应用都会
                     // **静默丢弃全局拦截器**（安全/审计横切失效）。启动期一次性列出被屏蔽的类型。
                     if (options.InterceptorFallbackMode == InterceptorFallbackMode.AppOnly
                         && _globalInterceptorTypes.Count > 0
@@ -664,7 +662,7 @@ public class FeishuWebhookServiceBuilder
         // 单实例服务（包含 IHostedService）
         _services.AddSingleton<FeishuWebhookConcurrencyService>();
         _services.AddHostedService(sp => sp.GetRequiredService<FeishuWebhookConcurrencyService>());
-        // B2/R1.2 + C1：内存去重工厂——统一节优先，其次 DeduplicationOptions，否则 Consts
+        // 内存去重工厂——统一节优先，其次 DeduplicationOptions，否则 Consts
         // Redis 分布式实现若已先注册则 TryAdd 不会覆盖。
         _services.AddFeishuDeduplicationOptions();
         _services.TryAddSingleton<IFeishuEventDeduplicator>(sp =>
@@ -678,13 +676,13 @@ public class FeishuWebhookServiceBuilder
                 if (string.Equals(mode, FeishuDeduplicationOptions.ModeNone, StringComparison.OrdinalIgnoreCase))
                     return new NoopFeishuEventDeduplicator(logger as ILogger<NoopFeishuEventDeduplicator>);
 
-                // R3-P0-4：此处**不得**解析 IFeishuEventDeduplicator——本工厂正在构造该服务，
+                // 此处**不得**解析 IFeishuEventDeduplicator——本工厂正在构造该服务，
                 // 自解析会无限递归并导致 StackOverflowException（不可捕获，进程终止）。
-                // 原实现写作 `sp.GetService<IFeishuEventDeduplicator>() is null`：`is null` 判据
+                // 若写作 `sp.GetService<IFeishuEventDeduplicator>() is null`：`is null` 判据
                 // 强制先求值 GetService，而 TryAddSingleton 仅在本服务无其它注册时才注册本工厂，
                 // 于是「走到该分支」的前提（未注册 Redis）正是使其解析回本工厂的充分条件 → 递归。
-                // “Mode=Distributed 但实现仍为内存”的检测已下沉到 RegisterCoreServices 的
-                // PostConfigure<IServiceProvider>（与 R3-P0-1 的 Nonce 形态检查同处一个委托）。
+                // “Mode=Distributed 但实现仍为内存”的检测下沉到 RegisterCoreServices 的
+                // PostConfigure<IServiceProvider>（与 Nonce 形态检查同处一个委托）。
 
                 var ttl = unified.ResolveEventTtl();
                 if (ttl <= TimeSpan.Zero)
@@ -713,8 +711,8 @@ public class FeishuWebhookServiceBuilder
                 processingTimeout: TimeSpan.FromMilliseconds(Consts.DefaultProcessingTimeoutMs),
                 maxCacheSize: Consts.DefaultMaxCacheSize);
         });
-        // R5.4/F4：Nonce TTL 单一来源化。此前无参构造硬编码 300s，与 Redis 默认 600s 不同源。
-        // 现从统一节 Nonce.Ttl 解析；未激活时回退同源常量 Consts.DefaultNonceTtlSeconds（600s）。
+        // Nonce TTL 单一来源化：无参构造硬编码值会与 Redis 默认值不同源。
+        // 从统一节 Nonce.Ttl 解析；未激活时回退同源常量 Consts.DefaultNonceTtlSeconds（600s）。
         _services.TryAddSingleton<IFeishuNonceDistributedDeduplicator>(sp =>
         {
             var logger = sp.GetService<ILogger<FeishuNonceDistributedDeduplicator>>();
@@ -727,7 +725,7 @@ public class FeishuWebhookServiceBuilder
         });
 
         // 令牌自动刷新后台服务已在 AddFeishuAppBaseServices 中注册（由 Mud.HttpUtils 提供）。
-        // R4：仅 EnableTokenBackgroundRefresh 控制 TokenRefreshBackgroundOptions.Enabled。
+        // 仅 EnableTokenBackgroundRefresh 控制 TokenRefreshBackgroundOptions.Enabled。
         // null = 沿用宿主既有默认（不覆盖）；true/false = 显式覆盖。
         _services.AddOptions<TokenRefreshBackgroundOptions>()
             .PostConfigure<IOptions<FeishuWebhookOptions>>((tokenOptions, webhookOptions) =>
@@ -770,7 +768,7 @@ public class FeishuWebhookServiceBuilder
         _services.TryAddScoped<IFeishuWebhookService, FeishuWebhookService>();
         _services.TryAddScoped<ISecurityAuditService, SecurityAuditService>();
 
-        // WHF-R2/C3：中间件注册为 Singleton 使 IHost 关停时 Dispose 可达。
+        // 中间件注册为 Singleton 使 IHost 关停时 Dispose 可达。
         // UseMiddleware<T> 检测到 DI 注册后从容器解析实例，随容器 Dispose 释放
         // _onChangeSubscription（MultiAppMiddleware）和 _cleanupTimer（RateLimitMiddleware）。
         // 注意：不能用无工厂的 AddSingleton<T>()——Development 宿主默认 ValidateOnBuild=true，
@@ -785,25 +783,25 @@ public class FeishuWebhookServiceBuilder
             ActivatorUtilities.CreateInstance<FeishuRateLimitMiddleware>(
                 sp, (RequestDelegate)(_ => Task.CompletedTask)));
 
-        // R3-P0-1 + R3-P0-4：去重「实现形态」与「部署形态」绑定检查（**单一** PostConfigure）。
+        // 去重「实现形态」与「部署形态」绑定检查（**单一** PostConfigure）。
         //
-        // R3-P0-1（D1）：安全能力必须与部署形态显式绑定。原守卫只在「显式配置了
-        // FeishuDeduplication:Mode=Distributed 且该节来自配置」时才触发，而默认路径
+        // 安全能力必须与部署形态显式绑定：守卫若只在「显式配置了
+        // FeishuDeduplication:Mode=Distributed 且该节来自配置」时才触发，默认路径
         // （不写该节 → IsConfiguredFromConfiguration=false，Mode 默认 InMemory）既无阻断也无告警，
-        // 生产多实例下跨实例重放不可检测却完全静默。现改为按「实现形态」三态处理。
+        // 生产多实例下跨实例重放不可检测却完全静默。故按「实现形态」三态处理。
         //
-        // R3-P0-4：同时承载事件去重的「Mode=Distributed 但实现仍为内存」告警——
-        // 该检测原先位于 IFeishuEventDeduplicator 工厂内部并自解析该服务（递归 → StackOverflow），
-        // 现下沉至此。两个检测合并为一个委托，避免 Options 每次重建跑两遍、告警次序不确定。
+        // 同时承载事件去重的「Mode=Distributed 但实现仍为内存」告警——
+        // 该检测若位于 IFeishuEventDeduplicator 工厂内部并自解析该服务会递归 → StackOverflow，
+        // 故下沉至此。两个检测合并为一个委托，避免 Options 每次重建跑两遍、告警次序不确定。
         //
-        // 启动期保证：本 PostConfigure 在 Options 构建时执行；由 R3-P0-5 的 ValidateOnStart()
+        // 启动期保证：本 PostConfigure 在 Options 构建时执行；由 ValidateOnStart()
         // 保证其发生在宿主启动期，而非首个请求。
         _services.AddOptions<FeishuWebhookOptions>()
             .PostConfigure<IServiceProvider>((options, sp) =>
             {
-                // R5.4/F4：跨包 Nonce TTL 一致性校验（V5 修正：Webhook 不可引用 RedisOptions）。
+                // 跨包 Nonce TTL 一致性校验（Webhook 不可引用 RedisOptions）。
                 // Redis 包在 AddFeishuRedisDeduplicators 注册期把实际 Nonce TTL 写入 FeishuNonceTtlFact。
-                // 此处读取并强制严格 > TimestampToleranceSeconds（WHF-03）。
+                // 此处读取并强制严格 > TimestampToleranceSeconds。
                 // 纯 Webhook 宿主（未引用 Redis 包）→ fact 为 null → 跳过。
                 var nonceTtlFact = sp.GetService<FeishuNonceTtlFact>();
                 if (nonceTtlFact?.NonceTtl is { } redisNonceTtl
@@ -839,7 +837,7 @@ public class FeishuWebhookServiceBuilder
 
                 var logger = sp.GetService<ILogger<FeishuWebhookOptions>>();
 
-                // R3-P2-5 守卫：IEnvironmentService 是 D1（生产内存 Nonce 阻断）的**唯一判据来源**。
+                // IEnvironmentService 是生产内存 Nonce 阻断的**唯一判据来源**。
                 // 它是可选依赖（?.IsProduction），一旦未被注册（或被宿主覆盖为恒 false 的实现），
                 // 生产锁会**静默失效**而不报错——这正是本条要防的失败模式。
                 // 故此处要求其必然可解析：缺失即启动失败，把"静默失去生产锁"变成显式错误。
@@ -850,7 +848,7 @@ public class FeishuWebhookServiceBuilder
                         "请勿移除 FeishuWebhookServiceBuilder 注册的 IEnvironmentService，或自行注册一个实现。");
                 var isProduction = environment.IsProduction;
 
-                // ── 事件去重形态告警（原位于工厂内，R3-P0-4 下沉至此）──
+                // 事件去重形态告警（自工厂内下沉至此）
                 if (isDistributedIntent && sp.GetService<IFeishuEventDeduplicator>() is FeishuEventDeduplicator)
                 {
                     logger?.LogWarning(
@@ -951,8 +949,8 @@ public class FeishuWebhookServiceBuilder
     private void RegisterRetryServices()
     {
         _services.TryAddSingleton<IFailedEventStore, InMemoryFailedEventStore>();
-        // NEW-REG-01 修复：无条件注册 HostedService，由其内部读取 IOptionsMonitor 决定是否启动
-        // 不能在 PostConfigure 回调中注册，因为 ServiceProvider 构建后 IServiceCollection 修改无效
+        // 无条件注册 HostedService，由其内部读取 IOptionsMonitor 决定是否启动：
+        // PostConfigure 回调中注册无效——ServiceProvider 构建后 IServiceCollection 修改不生效
         _services.AddHostedService<FailedEventRetryService>();
     }
 }

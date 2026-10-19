@@ -78,9 +78,9 @@ internal static class RedisStoreHelper
     /// 获取可用的 Redis 服务器节点（单节点，优选主节点）。
     /// </summary>
     /// <remarks>
-    /// S-2 修复：原实现固定取 <c>endpoints[0]</c>，集群/主从场景下该节点不可用时无故障转移。
-    /// 改为遍历所有 endpoints，选择首个 <c>IsConnected &amp;&amp; !IsReplica</c> 的主节点；
-    /// 若全部不可用或全为副本，回退到首个节点（保持原行为，由调用方处理异常）。
+    /// 遍历所有 endpoints，选择首个 <c>IsConnected &amp;&amp; !IsReplica</c> 的主节点，
+    /// 避免固定取 <c>endpoints[0]</c> 在集群/主从场景下该节点不可用时无故障转移；
+    /// 若全部不可用或全为副本，回退到首个节点（由调用方处理异常）。
     /// </remarks>
     /// <param name="redis">Redis 连接复用器</param>
     /// <returns>可用的 Redis 服务器实例</returns>
@@ -88,7 +88,7 @@ internal static class RedisStoreHelper
     public static IServer GetServer(IConnectionMultiplexer redis)
     {
         var endpoints = redis.GetEndPoints();
-        // TM-01 修复：防御 endpoints 为空集合（极端故障场景），避免 IndexOutOfRangeException。
+        // 防御 endpoints 为空集合（极端故障场景），避免 IndexOutOfRangeException。
         if (endpoints.Length == 0)
             throw new InvalidOperationException("Redis 连接多路复器未配置任何端点，无法获取服务器实例。");
 
@@ -111,7 +111,7 @@ internal static class RedisStoreHelper
     }
 
     /// <summary>
-    /// 获取全部已连接且非副本的 Redis 服务器节点（T-M2-6 / R-10）。
+    /// 获取全部已连接且非副本的 Redis 服务器节点。
     /// </summary>
     /// <remarks>
     /// Cluster 化扫描：遍历所有 endpoints，返回全部 <c>IsConnected &amp;&amp; !IsReplica</c> 的主节点。

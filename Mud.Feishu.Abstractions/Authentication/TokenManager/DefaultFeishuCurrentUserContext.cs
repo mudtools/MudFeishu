@@ -24,7 +24,7 @@ internal sealed class DefaultFeishuCurrentUserContext : IFeishuCurrentUserContex
 {
     private static readonly AsyncLocal<UserInfo?> _currentUser = new();
 
-    // TMR-P2-10（F10）：SetUser 覆盖告警的日志通道（对齐 Mud.Feishu.Authentication CurrentUserContext 的既有行为）。
+    // SetUser 覆盖告警的日志通道（对齐 Mud.Feishu.Authentication CurrentUserContext 的既有行为）。
     // 可选注入：DI 提供；手工 new（无 logger）时为 null 不告警，行为不变。
     private readonly ILogger<DefaultFeishuCurrentUserContext>? _logger;
 
@@ -43,7 +43,7 @@ internal sealed class DefaultFeishuCurrentUserContext : IFeishuCurrentUserContex
 
     /// <inheritdoc />
     /// <remarks>
-    /// TMR-P2-10（F10）：同异步流内覆盖写入非同 OpenId 时告警——这是"默认实现下用户串号"
+    /// 同异步流内覆盖写入非同 OpenId 时告警——这是"默认实现下用户串号"
     /// 的唯一可观测手段（宿主未调用 AddFeishuUserContext() 时本类为默认注册实现）。
     /// OpenId 经 <see cref="SensitiveDataUtils.MaskSensitiveData"/> 脱敏后入日志。
     /// </remarks>

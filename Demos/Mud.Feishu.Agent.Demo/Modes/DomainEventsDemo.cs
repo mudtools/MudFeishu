@@ -46,7 +46,7 @@ namespace Mud.Feishu.Agent.Demo;
 /// </para>
 /// <para>
 /// <b>事件注入方式（不依赖外部平台通道）</b>：事件载荷由本模式<b>直接构造</b>并调用
-/// <c>HandleAsync</c>——这正是 R-13 建议的 harness 形态（避免依赖 WebSocket/Webhook 通道与真实平台投递）。
+/// <c>HandleAsync</c>——这正是 建议的 harness 形态（避免依赖 WebSocket/Webhook 通道与真实平台投递）。
 /// 生产形态是"通道派发 + 应用键访问器提供键"，本模式用 <see cref="DemoAppKeyAccessor"/> 提供等价事实。
 /// </para>
 /// <para>
@@ -60,7 +60,7 @@ namespace Mud.Feishu.Agent.Demo;
 public static class DomainEventsDemo
 {
     /// <summary>
-    /// 运行领域事件演示（模式开关：<c>FeishuDomainEventsDemo:Enabled</c>；凭证读统一节 <c>FeishuDemo</c>）。
+    /// 运行领域事件演示（由启动菜单选择进入；凭证读统一节 <c>FeishuDemo</c>）。
     /// </summary>
     /// <param name="configuration">配置来源。</param>
     /// <exception cref="ArgumentNullException"><paramref name="configuration"/> 为 <see langword="null"/>。</exception>
@@ -77,16 +77,14 @@ public static class DomainEventsDemo
         var services = new ServiceCollection()
             .AddDemoLogging(configuration)
             .AddFeishuApp(feishuConfig, "FeishuApps")
-            .AddFeishuServices(builder => builder
-                .AddMessageApi()
-                // AddCardApi 注册 Cards 模块（含卡片流客户端 IFeishuTenantV2AppCardMessageStream）；
-                // 未启用时降级链内只剩编辑通道（注册期软缺席，不是错误）。
-                .AddCardApi()
-                // 任务模块：任务事件处理器据它解析负责人（投递目标）。
-                .AddTaskApi())
+            // 全域域客户端：白名单是全域只读（见 DemoAgentDefaults.ReadonlyToolWhitelist），域客户端
+            // 缺席时对应工具不注册、装配期即 fail-fast。本模式的**业务**依赖仍是消息（事件回复）、
+            // 卡片（卡片流客户端 IFeishuTenantV2AppCardMessageStream，缺席时降级为编辑通道）与任务
+            // （任务事件处理器据它解析负责人）；其余域只为让全域只读白名单成立而注册。
+            .AddFeishuServices(builder => builder.AddAllApis())
             .AddDemoAgent(settings.Model, "FeishuDomainEventsDemo", InstructionsText, options =>
             {
-                options.Tools = [.. FeishuToolNames.ReadonlyAll];
+                options.Tools = [.. DemoAgentDefaults.ReadonlyToolWhitelist];
                 options.AllowedIdentities = ["tenant", "user"];
             })
             .AddFeishuTools()

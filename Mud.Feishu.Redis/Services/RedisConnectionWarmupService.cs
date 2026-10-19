@@ -11,7 +11,7 @@ using StackExchange.Redis;
 namespace Mud.Feishu.Redis.Services;
 
 /// <summary>
-/// Redis 连接启动期预热服务（WHF-10）
+/// Redis 连接启动期预热服务
 /// 在宿主启动阶段解析 <see cref="IConnectionMultiplexer"/>（触发连接建立）并对默认数据库执行 PING，
 /// 把首个 Webhook 请求承担的连接建立延迟移到启动期。
 /// </summary>

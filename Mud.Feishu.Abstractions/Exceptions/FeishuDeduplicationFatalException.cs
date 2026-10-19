@@ -8,9 +8,9 @@
 namespace Mud.Feishu.Abstractions.Services;
 
 /// <summary>
-/// 去重体系致命故障标记（WHF-02）：由事件服务的<b>去重调用点</b>包装抛出，
+/// 去重体系致命故障标记：由事件服务的<b>去重调用点</b>包装抛出，
 /// 用于与业务处理器内部使用 Redis 抛出的 <see cref="FeishuRedisException"/> 区分——
-/// 前者不回滚、不写失败存储、上抛转 503；后者按业务失败处理（回滚 + ADR-2 + 500）。
+/// 前者不回滚、不写失败存储、上抛转 503；后者按业务失败处理（回滚 + 写失败存储 + 500）。
 /// </summary>
 public class FeishuDeduplicationFatalException : FeishuRedisException
 {

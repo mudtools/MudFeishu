@@ -14,7 +14,7 @@ namespace Mud.Feishu.Abstractions.Conversations;
 /// <para>
 /// 存储载荷是 <b>MAF <c>AIAgent.SerializeSessionAsync</c> 产出的会话 JSON 字符串</b>——
 /// 序列化/反序列化由持有 AgentSession 的 Agent 实现（Mud.Feishu.AI 的 FeishuAgent）负责，
-/// Store 只做「原始字符串 + TTL」存取（Phase 0 §3.3），从而 Memory/Redis 两端行为逐字节一致。
+/// Store 只做「原始字符串 + TTL」存取（§3.3），从而 Memory/Redis 两端行为逐字节一致。
 /// </para>
 /// <para>
 /// 键必须由 <see cref="ConversationKeyBuilder"/> 构造，禁止调用点内联拼接；

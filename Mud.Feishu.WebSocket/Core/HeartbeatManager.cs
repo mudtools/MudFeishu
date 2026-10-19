@@ -27,7 +27,7 @@ public class HeartbeatManager
     private readonly FeishuWebSocketOptions _options;
     private readonly Func<byte[], CancellationToken, Task> _sendBinaryCallback;
     private int? _serviceId;
-    // WS-07 修复（P1-9）：心跳间隔使用私有字段，不再回写共享 Options 实例。
+    // 心跳间隔使用私有字段，不回写共享 Options 实例。
     // 服务端下发的 ClientConfig 仅允许影响心跳间隔，且必须钳制到 5–30 秒区间。
     // ReconnectDelayMs / MaxReconnectAttempts 属于本地运维策略，禁止被运行时改写。
     private int _heartbeatIntervalMs;
@@ -46,7 +46,7 @@ public class HeartbeatManager
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _sendBinaryCallback = sendBinaryCallback ?? throw new ArgumentNullException(nameof(sendBinaryCallback));
-        // WS-07：从 Options 初始化心跳间隔到私有字段，后续热更新仅影响此字段
+        // 从 Options 初始化心跳间隔到私有字段，后续热更新仅影响此字段
         _heartbeatIntervalMs = _options.HeartbeatIntervalMs;
     }
 
@@ -77,7 +77,7 @@ public class HeartbeatManager
             while (!cancellationToken.IsCancellationRequested)
             {
                 // 与 Python SDK 一致：先等待间隔，再发送 Ping
-                // WS-07：使用私有字段而非共享 Options 实例
+                // 使用私有字段而非共享 Options 实例
                 // CI 事故修复：本循环是**后台循环**，必须 ConfigureAwait(false)——
                 // 否则续体会被捕获进调用方的 SynchronizationContext（WPF/旧 ASP.NET 请求上下文；
                 // 测试进程内则是 xUnit 的最大并发闸门）。一旦该上下文被占满，发 Ping 的续体就会
@@ -132,7 +132,7 @@ public class HeartbeatManager
     /// 应用服务端下发的 ClientConfig，仅动态更新心跳间隔。
     /// </summary>
     /// <remarks>
-    /// WS-07 修复（P1-9/D4）：服务端下发的 ClientConfig 仅允许影响心跳间隔，
+    /// 服务端下发的 ClientConfig 仅允许影响心跳间隔，
     /// 且必须钳制到 5–30 秒区间。<see cref="WebSocketReconnectOptions.BaseDelayMs"/>
     /// 与 <see cref="WebSocketReconnectOptions.MaxAttempts"/> 属于本地运维策略，
     /// 禁止被运行时改写。心跳间隔写入私有字段 <see cref="_heartbeatIntervalMs"/>，
@@ -160,7 +160,7 @@ public class HeartbeatManager
             }
         }
 
-        // WS-07：ReconnectDelayMs / MaxReconnectAttempts 不再被服务端改写。
+        // ReconnectDelayMs / MaxReconnectAttempts 不被服务端改写。
         // 这些参数属于本地运维策略，仅可通过配置文件或 IOptionsMonitor 热更新修改。
         // 若服务端下发了 ReconnectInterval / ReconnectCount，仅记录为提示信息。
         if (config.ReconnectInterval > 0)

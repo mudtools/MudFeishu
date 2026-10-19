@@ -20,7 +20,7 @@ namespace Mud.Feishu.Redis.Services;
 /// （<see cref="IConversationStore"/> 等）位于 Abstractions，包间不允许横向引用。
 /// 载荷为 MAF <c>SerializeSessionAsync</c> 产出的会话 JSON，经
 /// <see cref="SessionStoreEncoding"/> 编码为 <c>{expireTimestampMs}|{payload}</c>——
-/// 与令牌存储（<c>TokenStoreHelper</c>）同一惯例；<b>无有效过期时间戳视为 miss</b>（TMA-15），
+/// 与令牌存储（<c>TokenStoreHelper</c>）同一惯例；<b>无有效过期时间戳视为 miss</b>，
 /// 读取侧时间戳为有效性权威，服务器键 TTL 仅作清理兜底（双写防提前逐出）。
 /// </para>
 /// <para>
@@ -40,7 +40,7 @@ public sealed class RedisConversationStore : IConversationStore
     /// </summary>
     /// <param name="redis">Redis 连接复用器。</param>
     /// <param name="ttl">会话 TTL（须为正；与 <c>FeishuAgentOptions.SessionTtl</c> 同源单一阈值）。</param>
-    /// <param name="logger">日志记录器（可空，兜底 NullLogger，R-25）。</param>
+    /// <param name="logger">日志记录器（可空，兜底 NullLogger）。</param>
     /// <param name="keyPrefix">Redis 命名空间前缀（多环境共用 Redis 时隔离键空间）。</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="ttl"/> 非正。</exception>
     public RedisConversationStore(
@@ -73,7 +73,7 @@ public sealed class RedisConversationStore : IConversationStore
         var value = stored.ToString();
         if (!SessionStoreEncoding.TryDecode(value, out var payload, out var expireAtMs))
         {
-            // 旧格式/损坏数据：按 miss 丢弃（TMA-15），交由服务器 TTL 自然清理。
+            // 旧格式/损坏数据：按 miss 丢弃，交由服务器 TTL 自然清理。
             _logger.LogDebug("会话存储值无有效过期时间戳，视为 miss：{KeyPrefix}:{Key}", _keyPrefix, key);
             return null;
         }

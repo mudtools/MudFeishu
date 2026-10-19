@@ -59,7 +59,7 @@ public interface IFeishuUserV1SparkAppTable : IFeishuAppContextSwitcher, ICurren
     /// <summary>
     /// 查询数据表数据记录
     /// <para>查询应用下的数据表数据记录，包括指定列、字段值及分页信息，适用于需要获取应用下某数据表数据的记录、展示等场景。</para>
-    /// <para>查询参数采用查询对象模式（<see cref="GetTableRecordListQuery"/>，见 AGENTS.md API-2）。</para>
+    /// <para>查询参数采用查询对象模式（<see cref="GetTableRecordListQuery"/>）。</para>
     /// <para><see href="https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/spark-v1/app-table/get_table_record_list">接口文档</see></para>
     /// </summary>
     /// <param name="app_id">妙搭应用 id，可从妙搭应用 URL 中获取</param>

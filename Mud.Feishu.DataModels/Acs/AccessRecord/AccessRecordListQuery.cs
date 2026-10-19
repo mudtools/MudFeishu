@@ -11,7 +11,7 @@ using System.Globalization;
 namespace Mud.Feishu.DataModels.Acs;
 
 /// <summary>
-/// <para>获取门禁记录列表查询参数（查询对象模式，见 AGENTS.md API-2）</para>
+/// <para>获取门禁记录列表查询参数（查询对象模式）</para>
 /// </summary>
 public class AccessRecordListQuery : IQueryParameter
 {

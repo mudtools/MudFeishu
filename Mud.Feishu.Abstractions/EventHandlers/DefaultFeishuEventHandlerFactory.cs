@@ -57,7 +57,7 @@ public class DefaultFeishuEventHandlerFactory : IFeishuEventHandlerFactory
                     handlersList = [];
                     _handlers[handler.SupportedEventType] = handlersList;
                 }
-                // P2-13：构造期重复实例去重
+                // 构造期重复实例去重
                 if (!handlersList.Contains(handler))
                     handlersList.Add(handler);
 
@@ -139,15 +139,15 @@ public class DefaultFeishuEventHandlerFactory : IFeishuEventHandlerFactory
                 _handlers[handler.SupportedEventType] = handlersList;
             }
 
-            // P2-13：构造期/注册期重复实例去重，避免双重执行
+            // 构造期/注册期重复实例去重，避免双重执行
             if (!handlersList.Contains(handler))
                 handlersList.Add(handler);
 
             countAfterRegister = handlersList.Count;
         }
 
-        // 修复：原实现在 {Count} 占位符上误传 handler.GetType().Name（日志文本与实际数量不符），
-        // 且用 IsEnabled(Debug) 门控 Information 级日志——级别判据与日志级别不一致。
+        // 日志约束：{Count} 占位符必须传注册后的真实数量（不得传 handler 类型名）；
+        // Information 级日志不得用 IsEnabled(Debug) 门控（级别判据须与日志级别一致）。
         if (_logger.IsEnabled(LogLevel.Information))
             _logger.LogInformation("已注册事件处理器: {EventType}，该类型现在有 {Count} 个处理器",
                 handler.SupportedEventType, countAfterRegister);
@@ -263,7 +263,7 @@ public class DefaultFeishuEventHandlerFactory : IFeishuEventHandlerFactory
             return;
         }
 
-        // P2-10d：单处理器直通——跳过 WhenAll 包装（异常语义一致：直接冒泡）
+        // 单处理器直通——跳过 WhenAll 包装（异常语义一致：直接冒泡）
         if (handlers.Count == 1)
         {
             await handlers[0].HandleAsync(eventData, cancellationToken);

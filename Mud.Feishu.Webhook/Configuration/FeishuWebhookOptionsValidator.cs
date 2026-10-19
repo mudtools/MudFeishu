@@ -62,10 +62,10 @@ public class FeishuWebhookOptionsValidator : IValidateOptions<FeishuWebhookOptio
                     "攻击者可伪造事件）。如确需在非生产环境关闭，请设置 ASPNETCORE_ENVIRONMENT=Development。");
             }
 
-            // WHF-01：应用级覆盖同样受生产锁定约束，与 SignatureValidator 的
+            // 应用级覆盖同样受生产锁定约束，与 SignatureValidator 的
             // GetEffectiveEnforceHeaderSignatureValidation 解析路径对齐，
             // 防止应用级显式 false 绕过全局锁定（校验面与运行时面视野一致）
-            // 用 KeyValuePair 而非 Values：应用标识就是字典键（R5.2/X8 起 AppKey 由键派生），
+            // 用 KeyValuePair 而非 Values：应用标识就是字典键（AppKey 由键派生），
             // 直接取 Key 可避免读取已 Obsolete 的派生字段。
             var violatedApp = options.Apps
                 .FirstOrDefault(a => a.Value.EnforceHeaderSignatureValidation == false);

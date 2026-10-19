@@ -21,7 +21,7 @@ public static class JsonOptions
     public static JsonSerializerOptions Default => FeishuJsonDefaults.SerializerOptions;
 
     /// <summary>
-    /// 反序列化专用选项（R-06 修正：包含 PropertyNameCaseInsensitive=true，语义准确）。
+    /// 反序列化专用选项（包含 PropertyNameCaseInsensitive=true）。
     /// 使用 getter 实时读取，确保 ConfigureUserResolver 后 TypeInfoResolver 变更能传播。
     /// </summary>
     public static JsonSerializerOptions Deserializer => FeishuJsonDefaults.DeserializerOptions;

@@ -17,27 +17,10 @@ namespace Mud.Feishu.WebSocket.Handlers;
 /// 作用域感知的飞书事件处理器工厂。
 /// </summary>
 /// <remarks>
-/// <para>
-/// P0-7 修复：此前 <c>IFeishuEventHandlerFactory</c> 注册为 Singleton，并在工厂委托中
-/// 直接从<b>根容器</b>解析注册为 <c>Scoped</c> 的 <c>IEnumerable&lt;IFeishuEventHandler&gt;</c>。
-/// 这构成典型的 Captive Dependency：
-/// <list type="bullet">
-/// <item>在 <c>EnvironmentName=Development</c>（默认开启 <c>ValidateScopes</c>）下会抛
-/// <c>InvalidOperationException: Cannot resolve scoped service ... from root provider</c>，应用启动失败；</item>
-/// <item>在非 Development 下不报错，但处理器实例被单例永久持有；若处理器依赖
-/// <c>DbContext</c> 等 Scoped 服务，会出现跨事件共享实例、连接泄漏与并发访问异常。</item>
-/// </list>
-/// </para>
-/// <para>
-/// 本实现：<b>事件分发路径</b>为每一次 <see cref="HandleEventParallelAsync"/> 调用创建一个
-/// <see cref="IServiceScope"/>，在作用域内解析处理器，调用结束后释放作用域，
-/// 从而保证 Scoped 依赖（DbContext 等）的生命周期与单个事件对齐。
-/// </para>
-/// <para>
-/// 查询类 API（<see cref="GetHandler"/> / <see cref="GetHandlers"/> 等）用于读取
-/// <see cref="IFeishuEventHandler.SupportedEventType"/> 等元数据，不涉及事件处理，
-/// 复用一个惰性创建的长期作用域实例，避免每次查询都创建/释放作用域。
-/// </para>
+/// <b>事件分发路径</b>：每次 <see cref="HandleEventParallelAsync"/> 调用创建一个新的 <see cref="IServiceScope"/>，
+/// 在作用域内解析处理器、调用结束后释放，使 Scoped 依赖（<c>DbContext</c> 等）的生命周期与单个事件对齐
+/// ——不得在根容器解析处理器，否则构成 Captive Dependency（<c>ValidateScopes</c> 下启动即失败）。
+/// <b>查询类 API</b>（<see cref="GetHandler"/> / <see cref="GetHandlers"/> 等）只读取 <see cref="IFeishuEventHandler.SupportedEventType"/> 等元数据，复用惰性长期作用域。
 /// </remarks>
 public class ScopedFeishuEventHandlerFactory : IFeishuEventHandlerFactory, IDisposable
 {
@@ -45,7 +28,7 @@ public class ScopedFeishuEventHandlerFactory : IFeishuEventHandlerFactory, IDisp
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IReadOnlyList<Type> _handlerTypes;
     private readonly Type? _defaultHandlerType;
-    // WS-04 修复（P1-6）：用户通过 AddHandler(instance) 注册的处理器实例。
+    // 用户通过 AddHandler(instance) 注册的处理器实例。
     // 这些实例不经过 DI 作用域解析，由工厂直接复用，避免被 IServiceScope.Dispose 回收。
     private readonly IReadOnlyList<IFeishuEventHandler> _handlerInstances;
     private readonly bool _ignoreUnknownEventTypes;
@@ -66,7 +49,7 @@ public class ScopedFeishuEventHandlerFactory : IFeishuEventHandlerFactory, IDisp
     /// <param name="handlerTypes">通过建造者注册的事件处理器类型集合</param>
     /// <param name="defaultHandlerType">默认事件处理器类型（可选）</param>
     /// <param name="handlerInstances">用户通过 AddHandler(instance) 注册的处理器实例集合（可选）</param>
-    /// <param name="ignoreUnknownEventTypes">未注册事件类型是否静默忽略（WHF-09 对齐，默认 false 保现状）</param>
+    /// <param name="ignoreUnknownEventTypes">未注册事件类型是否静默忽略（与 Webhook 通道对齐，默认 false 保现状）</param>
     /// <param name="optionsMonitor">WebSocket 配置 Monitor（可选；P1-3：注入时门控实时读取以支持热更）</param>
     /// <exception cref="ArgumentNullException">当 logger 或 scopeFactory 为 null 时抛出</exception>
     public ScopedFeishuEventHandlerFactory(
@@ -102,7 +85,7 @@ public class ScopedFeishuEventHandlerFactory : IFeishuEventHandlerFactory, IDisp
 
     /// <inheritdoc/>
     /// <remarks>
-    /// P2-2：运行期注册<b>仅作用于元数据查询作用域</b>（GetHandler/GetHandlers/GetRegisteredEventTypes），
+    /// 运行期注册<b>仅作用于元数据查询作用域</b>（GetHandler/GetHandlers/GetRegisteredEventTypes），
     /// <b>不参与</b> <see cref="HandleEventParallelAsync"/> 事件分发；分发处理器集合由 Builder 注册期决定。
     /// </remarks>
     public void RegisterHandler(IFeishuEventHandler handler) => GetInspectionFactory().RegisterHandler(handler);
@@ -123,9 +106,9 @@ public class ScopedFeishuEventHandlerFactory : IFeishuEventHandlerFactory, IDisp
     /// 并行处理事件：为本次调用创建独立作用域，在作用域内解析处理器并分发。
     /// </summary>
     /// <remarks>
-    /// P2-2：运行期 <see cref="RegisterHandler"/> 仅作用于元数据查询作用域，不参与本分发路径；
+    /// 运行期 <see cref="RegisterHandler"/> 仅作用于元数据查询作用域，不参与本分发路径；
     /// 分发处理器集合由 Builder 注册期决定。
-    /// P2-7：多处理器扇出为 at-least-once——任一处理器失败将整体回滚去重并依赖服务端重发，
+    /// 多处理器扇出为 at-least-once——任一处理器失败将整体回滚去重并依赖服务端重发，
     /// 已成功的处理器会被重复执行；处理器必须幂等或以业务唯一键兜底。
     /// </remarks>
     /// <param name="eventType">事件类型</param>
@@ -139,7 +122,7 @@ public class ScopedFeishuEventHandlerFactory : IFeishuEventHandlerFactory, IDisp
         {
             var factory = CreateFactory(scope.ServiceProvider);
 
-            // M3-2/P2-3：WHF-09 对齐——在工厂分发前按"本作用域实际解析到的注册"门控。
+            // 与 Webhook 通道对齐——在工厂分发前按"本作用域实际解析到的注册"门控。
             // P1-3（R2）：门控实时读取，与 Webhook 通道（每请求 CurrentValue）热更语义对齐；
             // Monitor 不可用时回退构造期快照（直接构造/测试场景）。
             var currentOptions = _optionsMonitor?.CurrentValue;
@@ -147,9 +130,9 @@ public class ScopedFeishuEventHandlerFactory : IFeishuEventHandlerFactory, IDisp
             if (ignoreUnknown && !string.IsNullOrEmpty(eventType) && !factory.IsHandlerRegistered(eventType))
             {
                 _logger.LogDebug("事件类型 {EventType} 未注册处理器，已忽略（IgnoreUnknownEventTypes=true）", eventType);
-                // P2-3（R2）：指标维度统一为通道 AppKey（与 FeishuEventMessageHandler 各
-                // RecordEventOutcome 口径一致），不再使用 eventData.AppId——事件的 app_id ≠
-                // 路由 AppKey，且原 `?? "default"` 在 AppId 非空约定下是死代码。
+                // 指标维度统一为通道 AppKey（与 FeishuEventMessageHandler 各
+                // RecordEventOutcome 口径一致），不使用 eventData.AppId——事件的 app_id ≠
+                // 路由 AppKey。
                 Mud.Feishu.Abstractions.Metrics.FeishuMetricsHelper.RecordEventOutcome(
                     currentOptions?.AppKey ?? "unknown", eventType, success: true, "unhandled");
                 return;
@@ -176,7 +159,7 @@ public class ScopedFeishuEventHandlerFactory : IFeishuEventHandlerFactory, IDisp
 
         var handlers = new List<IFeishuEventHandler>();
 
-        // WS-04 修复（P1-6）：优先添加用户通过 AddHandler(instance) 注册的处理器实例。
+        // 优先添加用户通过 AddHandler(instance) 注册的处理器实例。
         // 这些实例不经过 DI 作用域解析，不会被 IServiceScope.Dispose 回收。
         if (_handlerInstances.Count > 0)
         {
@@ -240,7 +223,7 @@ public class ScopedFeishuEventHandlerFactory : IFeishuEventHandlerFactory, IDisp
     }
 
     /// <summary>
-    /// WS-11 修复（P1-7）：释放元数据查询作用域，避免作用域泄漏。
+    /// 释放元数据查询作用域，避免作用域泄漏。
     /// </summary>
     public void Dispose()
     {

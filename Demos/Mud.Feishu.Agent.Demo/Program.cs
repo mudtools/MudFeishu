@@ -5,27 +5,28 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using Microsoft.Extensions.Configuration;
 using Serilog;
 
 namespace Mud.Feishu.Agent.Demo;
 
 /// <summary>
-/// 运行模式的入口分发（参数与模式开关**全部来自配置文件**，环境变量不再参与）；
-/// 具体实现按功能归档：<c>Modes/</c>（工具冒烟、IM 接入、领域事件、裸模型）与 <c>DocAgent/</c>（文档业务智能体）。
+/// 运行模式的入口：<b>进入哪个演示模块由用户在启动菜单里选择决定</b>
+/// （模式目录见 <see cref="DemoModeCatalog"/>，菜单与读取见 <see cref="DemoModeSelector"/>）。
 /// </summary>
 /// <remarks>
-/// 模式判定顺序（见 <c>appsettings.json</c> 头注释）：
-/// <list type="number">
-///   <item><description><c>FeishuToolsDemo:Enabled</c> → 工具冒烟（全域只读工具 + 飞书客户端）；</description></item>
-///   <item><description><c>FeishuImHandlerDemo:Enabled</c> → IM 会话处理器接入演示；</description></item>
-///   <item><description><c>FeishuDomainEventsDemo:Enabled</c> → 领域事件处理器 + 流式通道降级链（R-13）；</description></item>
-///   <item><description><c>FeishuDocAgent:Enabled</c> → 文档业务智能体控制台；</description></item>
-///   <item><description><c>FeishuSkillsDemo:Enabled</c> → Skills 产物消费演示（不连飞书，R-3 / F-8）；</description></item>
-///   <item><description>均未启用 → Phase 0 裸模型一问一答（读 <c>FeishuDemo</c> 节）。</description></item>
-/// </list>
+/// <para>
+/// 配置文件仍然只负责**参数**（模型三项与飞书凭证在统一节 <c>FeishuDemo</c>，模式专属参数在各自的模式节）；
+/// 模式节里的 <c>Enabled</c> 键保留一个作用：决定菜单的默认项（回车采用的项，见 <see cref="DemoModeCatalog.Default"/>）。
+/// </para>
+/// <para>
+/// 具体实现按功能归档：<c>Modes/</c>（裸模型、工具冒烟、IM 接入、领域事件、Skills 产物）与
+/// <c>DocAgent/</c>（文档业务智能体）。
+/// </para>
+/// <para>
+/// 非交互输入（stdin 被重定向 / 管道 / CI）跳过菜单、直接采用配置默认项，避免进程挂起。
 /// 运行时日志由 <see cref="DemoLogging"/> 提供（Serilog：控制台 Warning / 文件全量 Information），
 /// 进程退出前统一 <see cref="Log.CloseAndFlush"/>。
+/// </para>
 /// </remarks>
 public static class Program
 {
@@ -33,52 +34,21 @@ public static class Program
     {
         // 配置根取输出目录（AppContext.BaseDirectory），appsettings.json → appsettings.local.json。
         var sources = DemoConfiguration.Build(AppContext.BaseDirectory);
-        var configuration = sources.Configuration;
 
         // 运行时日志先行：模式分发前的 fail-fast 错误也能落日志。
-        DemoLogging.ConfigureRootLogger(configuration);
+        DemoLogging.ConfigureRootLogger(sources.Configuration);
 
         try
         {
-            // 工具模式：全域只读工具 + 飞书客户端。
-            if (configuration.GetValue<bool?>(ToolsDemoSettings.EnabledKey) is true)
+            // 用户选择模式（非交互输入时按配置默认项）；q 取消则直接退出。
+            var mode = DemoModeSelector.Select(sources, new ConsoleRenderer());
+            if (mode is null)
             {
-                await ToolsDemo.RunAsync(configuration);
                 return;
             }
 
-            // 零自定义接入演示（内置 IM 会话事件处理器一行接入）。
-            if (configuration.GetValue<bool?>(ImHandlerDemoSettings.EnabledKey) is true)
-            {
-                await ImConversationDemo.RunAsync(configuration);
-                return;
-            }
-
-            // R-13 领域事件演示：三个领域处理器 + 上下文装配器 + 流式通道降级链的真实调用点。
-            if (configuration.GetValue<bool?>(DomainEventsDemoSettings.EnabledKey) is true)
-            {
-                await DomainEventsDemo.RunAsync(configuration);
-                return;
-            }
-
-            // 文档业务智能体（写闭环 + 三道安全闸 + 剧本驱动），放置位置刻意在
-            // 「事件模式之后、裸模型之前」，保持「能力由弱到强」的阅读顺序。
-            if (DocAgentSettings.IsEnabledByConfiguration(configuration))
-            {
-                await DocAgentDemo.RunAsync(sources);
-                return;
-            }
-
-            // R-3 / F-8：Skills 产物消费演示（不连飞书、不需要模型）——放在凭证型模式之后、
-            // 裸模型之前：它的目的是"验证随包分发的产物可被消费"，不与任何凭证型模式争优先级。
-            if (configuration.GetValue<bool?>(SkillsDemoSettings.EnabledKey) is true)
-            {
-                await SkillsDemo.RunAsync(configuration);
-                return;
-            }
-
-            // Phase 0 裸模型（默认模式，无开关）。
-            await BareModelDemo.RunAsync(configuration);
+            // 分发到模式入口：新增模式只改 DemoModeCatalog，本方法不需要改动。
+            await mode.Run(sources);
         }
         finally
         {

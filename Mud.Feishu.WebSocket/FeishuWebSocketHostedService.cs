@@ -25,9 +25,9 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     private readonly IReconnectionOrchestrator _reconnectionOrchestrator;
     private readonly IOptionsMonitor<FeishuWebSocketOptions> _optionsMonitor;
     private readonly FeishuWebSocketConcurrencyService? _concurrencyService;
-    // NEW-WS-01 修复：保存 host stoppingToken 用于链接重连任务的取消令牌，支持优雅关闭
+    // 保存 host stoppingToken 用于链接重连任务的取消令牌，支持优雅关闭
     private CancellationToken _stoppingToken;
-    // WS2-12：_disposed 改为 int + Interlocked.Exchange 原子 check-then-set，
+    // _disposed 为 int + Interlocked.Exchange 原子 check-then-set，
     // 与模块内既有范式（FeishuWebSocketClient/WebSocketConnectionManager/ConcurrencyService/Orchestrator）统一。
     // Dispose 可能被 DI 容器的关停与宿主显式调用并发触发，非原子 check-then-set 会让退订逻辑执行两次
     // （事件 -= 幂等，但"日志噪音 + 与 _metricsRegistration 置 null 的竞态"是真实的）。
@@ -36,7 +36,7 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     private readonly object _reconnectDebounceLock = new();
     private static readonly TimeSpan ReconnectDebounceInterval = TimeSpan.FromSeconds(3);
     /// <summary>
-    /// WebSocket 指标源注销令牌（P2-3 修复）。
+    /// WebSocket 指标源注销令牌。
     /// </summary>
     private IDisposable? _metricsRegistration;
 
@@ -76,18 +76,19 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     }
 
     /// <summary>
-    /// 注册 WebSocket 指标源（P2-3 修复：按注册实例登记，多应用互不覆盖，Dispose 时注销）。
+    /// 注册 WebSocket 指标源（按注册实例登记，多应用互不覆盖，Dispose 时注销）。
     /// </summary>
     /// <remarks>
-    /// 此前直接给 <c>FeishuMetrics.WebSocketConnectionObserver</c> / <c>WebSocketBacklogObserver</c>
-    /// 这两个<b>静态可写属性</b>赋值：同进程多应用互相覆盖，且静态属性长期持有服务实例（不可回收）。
+    /// 直接给 <c>FeishuMetrics.WebSocketConnectionObserver</c> / <c>WebSocketBacklogObserver</c>
+    /// 这两个<b>静态可写属性</b>赋值会有两个缺陷：同进程多应用互相覆盖，
+    /// 且静态属性长期持有服务实例（不可回收）。
     /// <para>
-    /// WS-17（P1-13）：连接数取本实例的 <c>IsConnected</c>（1 或 0）；
-    /// F1：积压数取并发闸门的在途处理数。
+    /// 连接数取本实例的 <c>IsConnected</c>（1 或 0）；
+    /// 积压数取并发闸门的在途处理数。
     /// AppKey 由提供器在<b>每次采集时</b>读取，支持配置热更新。
     /// </para>
     /// <para>
-    /// <b>F2（R2/WS2-05 补完）</b>：存活维度（静默毫秒数 / 接收循环存活 / 僵尸态）同样以提供器上报，
+    /// <b>存活维度</b>（静默毫秒数 / 接收循环存活 / 僵尸态）同样以提供器上报，
     /// 使"僵尸连接"既能被健康检查判 <c>Unhealthy</c>（瞬时快照），也能被指标规则按**趋势**告警
     /// （<c>feishu.websocket.zombie</c> 持续为 1、<c>receive.idle_ms</c> 持续增长）。
     /// </para>
@@ -121,13 +122,13 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
 #endif
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // NEW-WS-01 修复：保存 stoppingToken 供 TryTriggerReconnect 中的 fire-and-forget 重连任务使用
+        // 保存 stoppingToken 供 TryTriggerReconnect 中的 fire-and-forget 重连任务使用
         _stoppingToken = stoppingToken;
         _logger.LogInformation("飞书WebSocket后台服务正在启动...");
 
-        // R-E1（E-P2-1）：双通道 IgnoreUnknownEventTypes 默认值不同（WS=false 回退默认处理器兜底，
-        // Webhook=true 静默忽略）。不改默认值（AD-5），仅做一次性启动告警提示显式对齐，
-        // 模式对齐既有 WarnIfDeduplicationKeysAreIneffective 单出口告警。
+        // 双通道 IgnoreUnknownEventTypes 默认值不同（WS=false 回退默认处理器兜底，
+        // Webhook=true 静默忽略）。不改默认值，仅做一次性启动告警提示显式对齐，
+        // 模式对齐既有单出口告警。
         if (!_optionsMonitor.CurrentValue.IgnoreUnknownEventTypes)
         {
             _logger.LogWarning(
@@ -177,10 +178,10 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
                 {
                     await Task.Delay(TimeSpan.FromMilliseconds(_optionsMonitor.CurrentValue.HealthCheckIntervalMs), stoppingToken);
 
-                    // F1/F2（P0-1 兜底）：除"连接状态非 Open"外，还必须识别**僵尸态**——
+                    // 除"连接状态非 Open"外，还必须识别**僵尸态**——
                     // "socket 仍 Open 但接收循环已结束"。该状态下 IsConnected 为 true、
                     // 健康检查（仅看状态时）判 Healthy，周期性重连也就永远不会被触发，
-                    // 表现为"连接看起来正常却永远收不到事件"。I13 只能覆盖 SDK 自身观察到的终止路径，
+                    // 表现为"连接看起来正常却永远收不到事件"。连接终止只能覆盖 SDK 自身观察到的路径，
                     // 内核 socket 假死 / 对端半开这类外部静默失败必须由此兜底。
                     var liveness = GetConnectionLiveness();
                     if (!_webSocketManager.IsConnected)
@@ -240,7 +241,7 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     {
         _logger.LogInformation("正在停止飞书WebSocket后台服务...");
 
-        // P2-16 修复：基类停止流程沿用调用方令牌（用于取消 ExecuteAsync 的等待），
+        // 基类停止流程沿用调用方令牌（用于取消 ExecuteAsync 的等待），
         // 但底层连接的关闭必须使用<b>独立宽限令牌</b>——宿主常以"已取消的令牌"调用本方法，
         // 直接透传会让 FeishuWebSocketManager.StopAsync 内的信号量等待立即抛 OperationCanceledException，
         // 连接无法完成关闭握手（与服务端记录为异常断线）。
@@ -322,17 +323,16 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
         {
             try
             {
-                // NEW-WS-01 修复：链接 host stoppingToken，支持优雅关闭
-                // P1-12 修复：重连窗口此前被硬编码为 5 分钟，会让
-                // FeishuWebSocketOptions.Reconnect.TotalBudget（默认 30 分钟）永远无法生效。
-                // 现在以配置值为准（+1 分钟余量用于收尾）。
+                // 链接 host stoppingToken，支持优雅关闭。
+                // 重连窗口以 FeishuWebSocketOptions.Reconnect.TotalBudget（默认 30 分钟）为准
+                //（+1 分钟余量用于收尾）：硬编码短窗口会让该配置永远无法生效。
                 var window = _optionsMonitor.CurrentValue.Reconnect.TotalBudget;
                 if (window <= TimeSpan.Zero)
                 {
                     window = TimeSpan.FromMinutes(30);
                 }
 
-                // WS2-04 / I16 修复：必须钳制后再交给 CancellationTokenSource。
+                // 必须先钳制再交给 CancellationTokenSource：
                 // CancellationTokenSource(TimeSpan) 对超长时长抛 ArgumentOutOfRangeException
                 // （.NET Core 上界 uint.MaxValue-1 ≈ 49.7 天；.NET Framework/netstandard2.0 上界
                 // int.MaxValue-1 ≈ 24.8 天）；异常发生在本 fire-and-forget 任务体内，
@@ -454,7 +454,7 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     /// <param name="disposing">是否正在释放托管资源</param>
     private void Dispose(bool disposing)
     {
-        // WS2-12：原子 check-then-set（此前 volatile bool 的 check-then-set 非原子，可双进入）
+        // 原子 check-then-set（volatile bool 的 check-then-set 非原子，可双进入）
         if (Interlocked.Exchange(ref _disposed, 1) == 1)
             return;
 
@@ -470,7 +470,7 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
                 _reconnectionOrchestrator.ReconnectFailed -= OnReconnectFailed;
                 _reconnectionOrchestrator.ReconnectLimitReached -= OnReconnectLimitReached;
 
-                // P2-3 修复：注销指标源，避免观测结果残留已释放的实例（此前静态属性无法回收服务实例）
+                // 注销指标源，避免观测结果残留已释放的实例（静态属性无法回收服务实例）
                 _metricsRegistration?.Dispose();
                 _metricsRegistration = null;
 

@@ -51,7 +51,7 @@ public static class FeishuMetrics
         description: "飞书事件处理耗时分布");
 
     /// <summary>
-    /// Agent 工具执行总次数（维度：tool, app_key, outcome）——工具成功率 KPI 数据源（AI-FD-D12 P1D-5）。
+    /// Agent 工具执行总次数（维度：tool, app_key, outcome）——工具成功率 KPI 数据源。
     /// </summary>
     /// <remarks>高基数纪律（原则 8）：禁止把 conversation_key/chat_id/user_id 加入 tags。</remarks>
     public static readonly Counter<long> ToolExecutions = Instance.CreateCounter<long>(
@@ -60,7 +60,7 @@ public static class FeishuMetrics
         description: "飞书 Agent 工具执行总次数");
 
     /// <summary>
-    /// Agent 工具执行耗时直方图（毫秒，维度：tool, app_key）——工具延迟 P95（AI-FD-D12 P1D-5）。
+    /// Agent 工具执行耗时直方图（毫秒，维度：tool, app_key）——工具延迟 P95。
     /// </summary>
     /// <remarks>高基数纪律（原则 8）：禁止把 conversation_key/chat_id/user_id 加入 tags。</remarks>
     public static readonly Histogram<double> ToolDuration = Instance.CreateHistogram<double>(
@@ -69,7 +69,7 @@ public static class FeishuMetrics
         description: "飞书 Agent 工具执行耗时分布");
 
     /// <summary>
-    /// Agent 模型调用耗时直方图（毫秒，维度：agent）——模型延迟 P95（AI-FD-D12 P1D-5）。
+    /// Agent 模型调用耗时直方图（毫秒，维度：agent）——模型延迟 P95。
     /// </summary>
     /// <remarks>token 用量以 Span 属性 <c>feishu.llm.*</c> 聚合为主，不加高基数指标。</remarks>
     public static readonly Histogram<double> AgentLlmDuration = Instance.CreateHistogram<double>(
@@ -131,10 +131,10 @@ public static class FeishuMetrics
     public static readonly ObservableGauge<int> WebSocketConnectionGauge;
 
     /// <summary>
-    /// WebSocket 连接数指标源注册表（P2-3 修复）。
+    /// WebSocket 连接数指标源注册表。
     /// </summary>
     /// <remarks>
-    /// 此前为<b>单个静态可写属性</b>（<c>WebSocketConnectionObserver</c>），存在两个缺陷：
+    /// 若为<b>单个静态可写属性</b>（<c>WebSocketConnectionObserver</c>），存在两个缺陷：
     /// ① 同一进程内注册多个应用（多个 ServiceProvider / 多个 HostedService）时互相覆盖，只保留最后一个；
     /// ② 静态属性长期持有服务实例，HostedService 释放后仍无法回收。
     /// <para>现在改为"按注册实例独立登记 + 观测时聚合"，并用 <see cref="IDisposable"/> 令牌在释放时移除。</para>
@@ -262,7 +262,7 @@ public static class FeishuMetrics
         description: "WebSocket 帧/消息受控丢弃计数");
 
     /// <summary>
-    /// 注册一个 WebSocket 指标源（P2-3 修复；替代原 <c>WebSocketConnectionObserver</c> / <c>WebSocketBacklogObserver</c> 静态属性）。
+    /// 注册一个 WebSocket 指标源（替代 <c>WebSocketConnectionObserver</c> / <c>WebSocketBacklogObserver</c> 静态属性方案）。
     /// </summary>
     /// <param name="appKeyProvider">
     /// AppKey 提供器。<b>每次采集时调用</b>，因此支持配置热更新（AppKey 变更无需重新注册）。

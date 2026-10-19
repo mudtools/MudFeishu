@@ -9,7 +9,7 @@ namespace Mud.Feishu.Abstractions;
 
 /// <summary>
 /// 飞书事件 Header 数据（v2.0 版本事件的 header 部分）
-/// <para>v1.0 事件无独立 header，SDK 会构造<b>合成 Header</b>：字段取自根级 uuid/token/ts 与 event.*，<see cref="Schema"/> 恒为 null（R-E1/AD-2）</para>
+/// <para>v1.0 事件无独立 header，SDK 会构造<b>合成 Header</b>：字段取自根级 uuid/token/ts 与 event.*，<see cref="Schema"/> 恒为 null</para>
 /// </summary>
 public class FeishuEventHeader : IEventHeader
 {
@@ -24,7 +24,7 @@ public class FeishuEventHeader : IEventHeader
 
     /// <summary>
     /// 事件 Token（用于验证事件来源）
-    /// <para>v2.0 事件取自 header.token；v1.0 事件由 SDK 从根级 token 解析（R-E1/E-P1-1）</para>
+    /// <para>v2.0 事件取自 header.token；v1.0 事件由 SDK 从根级 token 解析</para>
     /// </summary>
     [JsonPropertyName("token")]
     public string? Token { get; set; }
@@ -78,7 +78,7 @@ public class EventData
     public string TenantKey { get; set; } = string.Empty;
 
     /// <summary>
-    /// 事件创建时间（毫秒时间戳；R-E1/E-P2-2 统一口径，跨格式跨通道可比）
+    /// 事件创建时间（毫秒时间戳；跨格式跨通道统一口径可比）
     /// </summary>
     [JsonPropertyName("create_time")]
     public long CreateTime { get; set; }
@@ -94,7 +94,7 @@ public class EventData
     /// <summary>
     /// 事件 Header 数据
     /// <para>v2.0 事件为完整 header；v1.0 事件为 SDK 构造的合成 Header（字段取自根级 uuid/token/ts 与 event.*，
-    /// <see cref="FeishuEventHeader.Schema"/> 恒为 null，R-E1/AD-2）。判定 v1.0 请用 <c>Schema == null</c>，
+    /// <see cref="FeishuEventHeader.Schema"/> 恒为 null）。判定 v1.0 请用 <c>Schema == null</c>，
     /// 不要用 <c>Header == null</c>（自本版本起 v1.0 的 Header 不再为 null）</para>
     /// </summary>
     [JsonIgnore]

@@ -11,17 +11,10 @@ namespace Mud.Feishu.Abstractions;
 /// 飞书多应用管理器的行为选项。
 /// </summary>
 /// <remarks>
-/// <b>TMR-P2-8（F8）一次性读取语义清单</b>——本类选项经 <c>IOptions&lt;T&gt;</c> 注入时为
-/// <b>启动快照</b>（IOptions 缓存不随 IConfiguration 变更失效），修改配置源后不热更，需重启进程：
-/// <list type="table">
-/// <item><term><see cref="EnableConfigReload"/></term><description>FeishuAppManager 构造函数读取（IOptions）——仅启动时生效。</description></item>
-/// <item><term><see cref="ContextRetireDelaySeconds"/></term><description>FeishuAppManager 构造函数读取——仅启动时生效。</description></item>
-/// <item><term><see cref="WarmUpAllAppsOnStartup"/></term><description>FeishuTokenRegistrationService 构造函数读取（IOptions 注入）——仅启动时生效。</description></item>
-/// <item><term><see cref="RemoveRuntimeAddedAppsOnReload"/></term><description>热更新时读 <c>IOptions&lt;&gt;.Value</c>——值仍是启动快照；改此项需重启。</description></item>
-/// <item><term><see cref="EnablePerAppAuthenticationClient"/></term><description>CreateAppContext 每次创建上下文时求值，但值本身不热更（启动快照）。</description></item>
-/// <item><term><see cref="EnableTokenEncryption"/></term><description>存储工厂首次解析时读取（一次性）；中途开启 → 旧明文解密失败 → 按未命中重新获取 → 重写密文（自愈），建议重启后开启。</description></item>
-/// <item><term><see cref="ForwardDefaultAppContext"/></term><description>IFeishuAppContext 桥接工厂首次解析时读取（一次性）——仅启动时生效。</description></item>
-/// </list>
+/// 本类选项经 <c>IOptions&lt;T&gt;</c> 注入时为<b>启动快照</b>（IOptions 缓存不随 <c>IConfiguration</c> 变更失效），
+/// 修改配置源后不热更，需重启进程。<see cref="EnableConfigReload"/> 仅控制「是否订阅配置变更通知」，
+/// 开关本身同样只读一次；<see cref="EnablePerAppAuthenticationClient"/> 在每次创建应用上下文时求值，
+/// 其余属性在构造函数或首次解析时读取一次。各属性的具体读取时机见其自身 <c>remarks</c>。
 /// </remarks>
 public class FeishuAppOptions
 {
@@ -31,152 +24,74 @@ public class FeishuAppOptions
     public const string SectionName = "FeishuAppOptions";
 
     /// <summary>
-    /// 是否启用应用配置热更新（ARC-1）。
+    /// 是否启用应用配置热更新。
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// 启用后 <c>FeishuAppManager</c> 订阅 <c>IOptionsMonitor&lt;List&lt;FeishuAppConfig&gt;&gt;.OnChange</c>，
-    /// 在 <c>appsettings.json</c> 变更时按 AppKey 计算差异并增量应用：
-    /// 新增应用注册、更新应用重建上下文、删除应用移除、默认应用切换同步。
-    /// 变更的应用会丢弃旧 <c>FeishuAppContext</c> 与其客户端实例（旧上下文延迟回收，
-    /// 避免在途请求抛 <c>ObjectDisposedException</c>），令牌经由含 appKey 维度的存储键天然热迁移。
-    /// </para>
-    /// <para>
-    /// <b>默认 <c>true</c></b>：热更新是正确性收益（避免误以为改了配置却仍走旧配置），
-    /// 且本项目尚无需要保持的存量行为。如需回滚，显式置为 <c>false</c> 即可恢复「配置变更需重启」的旧语义。
-    /// </para>
-    /// <para>
-    /// <b>ARC-7（已支持 BaseUrl / TimeOut 热更新）</b>：命名客户端的注册委托捕获的是注册期快照，
-    /// 因此 <c>AddFeishuAppBaseServices</c> 额外通过 <c>IHttpClientBuilder.ConfigureHttpClient(IServiceProvider, HttpClient)</c>
-    /// 追加了一个 DI 感知的配置动作，在每次 <c>CreateClient</c> 时从
-    /// <c>IOptionsMonitor&lt;List&lt;FeishuAppConfig&gt;&gt;</c> 读取<b>当前</b> <c>BaseUrl</c> / <c>TimeOut</c>，
-    /// 检测到差异时覆盖新客户端的 <c>BaseAddress</c> / <c>Timeout</c>。
-    /// 配合本开关触发的「应用上下文重建 → 新建 <c>TokenRecoveryEnhancedClient</c> → 重新 <c>CreateClient</c>」链路，
-    /// 多区域切换（feishu.cn ↔ larksuite.com）与超时调整无需重启进程。
-    /// 在途请求仍持有旧客户端实例（其 <c>HttpClient</c> 已固化旧基地址），自然完成收敛。
-    /// </para>
-    /// <para>
-    /// <b>生效范围</b>：仅当应用使用 <see cref="FeishuAppOptions.EnableConfigReload"/> 且配置经
-    /// <c>IConfiguration</c> 绑定（<c>AddFeishuApp(configuration, sectionName)</c>）时才会有变更通知；
-    /// 纯代码配置（<c>AddFeishuApp(List&lt;FeishuAppConfig&gt;)</c>）没有变更源，配置只在启动期生效。
-    /// </para>
+    /// 启用后 <c>FeishuAppManager</c> 订阅 <c>IOptionsMonitor&lt;List&lt;FeishuAppConfig&gt;&gt;.OnChange</c>，按 AppKey 计算差异并增量应用
+    /// （新增注册 / 更新重建上下文 / 删除移除 / 默认应用切换同步），旧上下文延迟回收以免在途请求抛 <c>ObjectDisposedException</c>。
+    /// <para><b>生效范围</b>：仅当配置经 <c>IConfiguration</c> 绑定（<c>AddFeishuApp(configuration, sectionName)</c>）时才有变更
+    /// 通知；纯代码配置（<c>AddFeishuApp(List&lt;FeishuAppConfig&gt;)</c>）无变更源，只在启动期生效。默认 <c>true</c>。</para>
     /// </remarks>
     public bool EnableConfigReload { get; set; } = true;
 
     /// <summary>
-    /// 是否启用令牌存储加密（ENH-1）。
+    /// 是否启用令牌存储加密。
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// 启用后 <c>IFeishuTokenStoreFactory</c> 产出的租户/用户令牌存储会被
-    /// <c>EncryptedTokenStore</c> / <c>EncryptedUserTokenStore</c> 装饰，写入前加密、读取后解密，
-    /// 令牌不再以明文落在存储后端。加密能力依赖已注册的 <c>IEncryptionProvider</c>
-    /// （通过 <c>AddMudHttpAesEncryption()</c> 或自定义实现注册）；未注册时降级为明文并记录警告。
-    /// </para>
-    /// <para>
-    /// <b>默认 <c>false</c></b>：加密属于存储策略选择，应由使用方显式决策。
-    /// </para>
-    /// <para>
-    /// <b>启用后的注意点</b>：
-    /// <list type="bullet">
-    /// <item>键布局不变，不影响多应用隔离语义；</item>
-    /// <item>已存在的明文令牌无法自动迁移——解密失败会按「缓存未命中」处理、尽力删除脏键并重新获取令牌（预期自愈行为）；</item>
-    /// <item>加密密钥丢失会使全部已存令牌不可恢复，需要重新获取；</item>
-    /// <item>进程内 MemoryCache 场景下 refresh token 本就随进程重启丢失，加密收益主要体现在
-    /// Redis 等持久化、跨进程共享的后端上。</item>
-    /// </list>
-    /// </para>
+    /// 启用后 <c>IFeishuTokenStoreFactory</c> 产出的租户/用户令牌存储被 <c>EncryptedTokenStore</c> /
+    /// <c>EncryptedUserTokenStore</c> 装饰（写前加密、读后解密），依赖已注册的 <c>IEncryptionProvider</c>，未注册时降级明文并告警。
+    /// <para>默认 <c>false</c>。启用后：键布局不变；存量明文无法自动迁移（解密失败按未命中处理并尽力删脏键，属预期自愈）；
+    /// 密钥丢失将使全部已存令牌不可恢复；收益主要体现在 Redis 等持久化、跨进程共享的后端。</para>
     /// </remarks>
     public bool EnableTokenEncryption { get; set; }
 
     /// <summary>
-    /// 应用上下文退休宽限期（秒）（TMA-07 / P1-6 修复，D5 契约）。
+    /// 应用上下文退休宽限期（秒）。
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// 当应用配置热更新（<c>ApplyConfigurationChanges</c>，TMF-04：原 <c>RebuildAppContext</c>
-    /// 已并入热更新路径）或 <c>RemoveApp</c> 触发旧上下文退役时，
-    /// 旧的 <c>FeishuAppContext</c> 不再被引用，但其内部的 <c>Timer</c>（令牌定时刷新）
-    /// 会 root 整个对象图，GC 不会自动回收。旧上下文进入退休队列，
-    /// 在此宽限期后显式 <c>Dispose</c>，停止其 Timer 并释放资源。
-    /// </para>
-    /// <para>
-    /// 宽限期的目的是允许在途请求安全完成。在途请求持有旧上下文的 <c>HttpClient</c> 引用，
-    /// 立即 <c>Dispose</c> 会导致在途请求抛 <c>ObjectDisposedException</c>。
-    /// </para>
-    /// <para>
+    /// 旧上下文退役后进入退休队列，在此宽限期后显式 <c>Dispose</c>（停止其令牌刷新 <c>Timer</c> 并释放资源）——
+    /// 该 <c>Timer</c> 会 root 整个对象图，GC 不会自动回收。宽限期用于让持有旧上下文的在途请求安全完成，
+    /// 立即 <c>Dispose</c> 会使其抛 <c>ObjectDisposedException</c>。
     /// <b>默认 300 秒</b>（5 分钟），有效范围 1–3600 秒。
-    /// </para>
     /// </remarks>
     public int ContextRetireDelaySeconds { get; set; } = 300;
 
     /// <summary>
-    /// 是否在启动时预热全部应用（TMA-08 / P1-7 修复，D6 契约）。
+    /// 是否在启动时预热全部应用。
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// 启用后 <c>FeishuTokenRegistrationService</c> 会在启动时逐应用预热并注册到后台刷新服务，
-    /// 单应用失败不阻断宿主启动（仅 <c>LogError</c>）。
+    /// 启用后 <c>FeishuTokenRegistrationService</c> 在启动时逐应用预热并注册到后台刷新服务，单应用失败不阻断宿主启动（仅 <c>LogError</c>）；
     /// 禁用时仅注册默认应用，其余应用在首次访问时增量注册。
-    /// </para>
-    /// <para>
     /// <b>默认 <c>false</c></b>：与懒加载策略一致。
-    /// </para>
     /// </remarks>
     public bool WarmUpAllAppsOnStartup { get; set; }
 
     /// <summary>
-    /// 是否启用 per-app 认证客户端（TMA-09 / P1-8 修复，D7 契约）。
+    /// 是否启用 per-app 认证客户端。
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// 启用后认证/取令牌请求会使用本应用的命名 HttpClient（per-app 端点），
-    /// 而非默认应用的端点。多区域/多 BaseUrl 部署必须开启。
-    /// </para>
-    /// <para>
-    /// TMR2-P1-1 修复后，per-app 装配为<b>生成实现类型的编译期直引</b>，不再经
-    /// <c>ActivatorUtilities</c> 反射构造，因此无 AOT 约束、也不会静默降级到默认应用端点。
-    /// </para>
-    /// <para>
-    /// 置为 <c>false</c> 仍可用于显式选择「认证请求走默认应用端点」的旧行为（会 <c>LogWarning</c>）。
-    /// </para>
-    /// <para>
-    /// <b>默认 <c>true</c></b>。
-    /// </para>
+    /// 启用后认证/取令牌请求使用本应用的命名 HttpClient（per-app 端点）而非默认应用端点，多区域/多 BaseUrl 部署必须开启。
+    /// per-app 装配为<b>生成实现类型的编译期直引</b>，不经 <c>ActivatorUtilities</c> 反射构造，因此无 AOT 约束、也不会静默降级到默认应用端点。
+    /// 置为 <c>false</c> 时认证请求走默认应用端点（会 <c>LogWarning</c>）。<b>默认 <c>true</c></b>。
     /// </remarks>
     public bool EnablePerAppAuthenticationClient { get; set; } = true;
 
     /// <summary>
-    /// 是否在热更新时移除运行时添加的应用（TMA-11 / P2-6 修复）。
+    /// 是否在热更新时移除运行时添加的应用。
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// 启用后，通过 <c>AddApp</c> 运行时添加的应用若不在配置文件中，会被热更新移除。
-    /// 禁用时保持旧行为：运行时应用不被热更新删除。
-    /// </para>
-    /// <para>
+    /// 启用后，经 <c>AddApp</c> 运行时添加且不在配置文件中的应用会被热更新移除；禁用时运行时应用不被热更新删除。
     /// <b>默认 <c>false</c></b>：运行时应用由调用方管理生命周期，热更新不应越权删除。
-    /// </para>
     /// </remarks>
     public bool RemoveRuntimeAddedAppsOnReload { get; set; }
 
     /// <summary>
-    /// 默认应用上下文（<see cref="IFeishuAppContext"/>）的 DI 桥接是否跟随运行时默认应用切换（TMR2-P0-1）。
+    /// 默认应用上下文（<see cref="IFeishuAppContext"/>）的 DI 桥接是否跟随运行时默认应用切换。
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// <c>true</c>（默认）：桥接为<b>转发代理</b>——注入方在 <c>SetDefaultApp</c> / 配置热更新后
-    /// 立即使用新默认应用的 <c>Config</c>、令牌管理器与认证客户端；代理本身无状态、无资源。
-    /// </para>
-    /// <para>
-    /// <c>false</c>：恢复首轮前的「实例快照」语义——工厂委托返回 <c>GetDefaultApp()</c> 的实例，
-    /// 容器永久缓存该实例。仅当宿主显式依赖把注入的 <see cref="IFeishuAppContext"/> 强转为具体
-    /// <see cref="FeishuAppContext"/> 时才需要（此时开启代理会抛 <c>InvalidCastException</c>）。
-    /// </para>
-    /// <para>
-    /// 本开关经 <c>IOptions&lt;FeishuAppOptions&gt;</c> 在桥接工厂首次解析时读取，属<b>启动快照</b>
-    /// （运行期修改不生效，需重启进程）。
-    /// </para>
+    /// <c>true</c>（默认）：桥接为<b>转发代理</b>——注入方在 <c>SetDefaultApp</c> / 配置热更新后立即使用新默认应用的 <c>Config</c>、令牌管理器与认证客户端。
+    /// <c>false</c>：桥接委托返回并缓存 <c>GetDefaultApp()</c> 实例（「实例快照」语义）；仅当宿主把注入的 <see cref="IFeishuAppContext"/> 强转为具体 <see cref="FeishuAppContext"/> 时才需要——此时开启代理会抛 <c>InvalidCastException</c>。
+    /// 本开关在桥接工厂首次解析时读取，属<b>启动快照</b>（运行期修改不生效，需重启进程）。
     /// </remarks>
     public bool ForwardDefaultAppContext { get; set; } = true;
 }

@@ -1,0 +1,11 @@
+# scripts/comment-baseline.txt -- frozen legacy E-level comment hits (T-M0-1)
+# Format: <repo-relative path><TAB><level><TAB><content hash><TAB><count>
+# Keyed by content hash, not line number, so re-indentation and line moves do not
+# invalidate the baseline. This file must only ever SHRINK: every milestone deletes
+# the entries it fixed, and the gate must pass with an empty file after M4.
+# Regenerate: pwsh ./scripts/audit-comments.ps1 -UpdateBaseline
+# ------------------------------------------------
+# generated  : 2026-10-16 20:47:38
+# entries    : 0
+# hits       : 0
+# ------------------------------------------------

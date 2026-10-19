@@ -59,10 +59,10 @@ public class FeishuEventDecryptor(ILogger<FeishuEventDecryptor> logger) : IFeish
                 }
                 else
                 {
-                    // R-E1（AD-1）：v2.0 / v1.0 / data 包裹形态统一由共享解析器解析（单一真源）。
-                    // 此前本地 ParseV1Event 按根级 event_id/event_type/tenant_key/app_id 读取，
+                    // v2.0 / v1.0 / data 包裹形态统一由共享解析器解析（单一真源）。
+                    // 本地按根级 event_id/event_type/tenant_key/app_id 读取的解析
                     // 与官方 v1.0 格式（根级 uuid/token/ts、事件字段在 event 内）不符，
-                    // 导致 v1 事件五个关键字段全空、被 fail-closed 400 拒绝（E-P0-1）。
+                    // 会导致 v1 事件五个关键字段全空、被 fail-closed 400 拒绝。
                     if (!FeishuEventDataParser.TryParse(root, out eventData, out _))
                     {
                         _logger.LogWarning("事件数据解析失败：无法确定事件类型（可能是畸形或非事件报文）");

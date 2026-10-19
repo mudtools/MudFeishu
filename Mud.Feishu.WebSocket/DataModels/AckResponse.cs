@@ -11,7 +11,7 @@ using System.Text.Json.Serialization;
 namespace Mud.Feishu.WebSocket.DataModels;
 
 /// <summary>
-/// ACK 响应 DTO，用于替代匿名类型序列化（P1-5 修复 / WS-06）。
+/// ACK 响应 DTO，用于替代匿名类型序列化。
 /// </summary>
 /// <remarks>
 /// 飞书 WebSocket 协议要求 ACK 格式为：{"code": 200/500, "headers": {}, "data": "base64-encoded"}。

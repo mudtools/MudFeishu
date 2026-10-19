@@ -12,7 +12,7 @@ namespace Mud.Feishu.Abstractions.Authentication;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>存储值格式（C-2 裁决，3.0.3 起）</b>：写入格式为 <c>{expiresInSeconds}|{token}</c>
+/// <b>存储值格式</b>：写入格式为 <c>{expiresInSeconds}|{token}</c>
 /// （相对秒，与官方 <c>DefaultTokenStoreCodec</c> 逐字节一致，见
 /// <see cref="TokenStoreHelper.EncodeStoredToken"/>）；读取经
 /// <see cref="TokenStoreHelper.DecodeStoredToken"/> 双读兼容旧「绝对毫秒戳」存量值
@@ -22,8 +22,8 @@ namespace Mud.Feishu.Abstractions.Authentication;
 /// <para>
 /// <b>TTL 口径</b>：<see cref="RemainingSeconds"/> 以「令牌自身过期时刻」为唯一真相
 /// （与管线判定同源），<c>&lt;= 0</c> 时返回 0 —— 桥接器据此<b>跳过</b>访问令牌写穿
-/// （宁缺勿滥，防止持久层以无界 TTL 滞留已过期令牌），与改造前
-/// <c>UserTokenManager.PersistUserTokenAsync</c> 在剩余 ≤ 0 时只写 refresh 的行为一致。
+/// （宁缺勿滥，防止持久层以无界 TTL 滞留已过期令牌），
+/// 与 <c>UserTokenManager.PersistUserTokenAsync</c> 在剩余 ≤ 0 时只写 refresh 的行为一致。
 /// </para>
 /// </remarks>
 internal static class FeishuTokenBridgeCodec
@@ -47,7 +47,7 @@ internal static class FeishuTokenBridgeCodec
         => TokenStoreHelper.RemainingSeconds(expireTimestampMs);
 
     /// <summary>
-    /// 解码存储值（TMA-15 / C-2 双读：无 <c>{n}|</c> 前缀的旧格式 / 损坏值按「无过期信息」返回，
+    /// 解码存储值（双读：无 <c>{n}|</c> 前缀的旧格式 / 损坏值按「无过期信息」返回，
     /// 由调用方（值工厂）判定为未命中）。
     /// </summary>
     /// <param name="storedValue">存储值（相对秒新格式 / 绝对毫秒戳旧格式）。</param>

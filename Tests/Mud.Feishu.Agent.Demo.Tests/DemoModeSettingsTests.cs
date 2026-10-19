@@ -13,7 +13,8 @@ namespace Mud.Feishu.Agent.Demo.Tests;
 /// 三个新模式（裸模型 / 工具冒烟 / IM 事件接入）的配置解析与 fail-fast 校验。
 /// </summary>
 /// <remarks>
-/// 参数只从配置文件读取（R4 配置面约定）；每个模式有独立配置节与独立 <c>Enabled</c> 开关。
+/// 参数只从配置文件读取（R4 配置面约定）；每个模式有独立配置节与独立 <c>Enabled</c> 键
+/// （该键只决定启动菜单的默认项，进入哪个模式由 <c>DemoModeSelector</c> 的用户选择决定）。
 /// </remarks>
 public class DemoModeSettingsTests
 {
@@ -166,7 +167,7 @@ public class DemoModeSettingsTests
         settings.Model.ApiKey.Should().Be("sk-test");
     }
 
-    /// <summary>演示：R-13 领域事件模式的开关 + 模型三项（凭证从 <c>FeishuDemo</c> 统一节读取）。</summary>
+    /// <summary>演示：领域事件模式的开关 + 模型三项（凭证从 <c>FeishuDemo</c> 统一节读取）。</summary>
     [Fact]
     public void DomainEventsDemoSettings_FromConfiguration_ShouldReadEveryKey()
     {

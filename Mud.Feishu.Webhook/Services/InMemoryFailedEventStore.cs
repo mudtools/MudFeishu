@@ -67,7 +67,7 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
     /// <inheritdoc />
     public Task StoreFailedEventAsync(EventData eventData, Exception exception, string? appKey, DateTimeOffset nextRetryAt, CancellationToken cancellationToken = default)
     {
-        // P2-9：空 EventId 用生成键兜底，避免多条空 ID 事件相互覆盖
+        // 空 EventId 用生成键兜底，避免多条空 ID 事件相互覆盖
         var storeKey = string.IsNullOrEmpty(eventData.EventId)
             ? $"no-event-id:{Guid.NewGuid():N}"
             : eventData.EventId;
@@ -137,7 +137,7 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
 
     /// <inheritdoc />
     /// <remarks>
-    /// WHF-15：返回 <see cref="FailedEventInfo"/> 的<b>深拷贝快照</b>——调用方对返回对象的修改
+    /// 返回 <see cref="FailedEventInfo"/> 的<b>深拷贝快照</b>——调用方对返回对象的修改
     /// 不会影响存储内的条目（须通过 <see cref="UpdateFailedEventAsync"/> 按 EventId 写回）；
     /// 多次 Get 之间互不可见。
     /// </remarks>
@@ -153,7 +153,7 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
     }
 
     /// <inheritdoc />
-    /// <remarks>WHF-15：返回深拷贝快照，语义见 <see cref="GetFailedEventsForRetryAsync"/>。</remarks>
+    /// <remarks>返回深拷贝快照，语义见 <see cref="GetFailedEventsForRetryAsync"/>。</remarks>
     public Task<List<FailedEventInfo>> GetPendingRetryEventsAsync(DateTimeOffset beforeTime, int maxCount, CancellationToken cancellationToken = default)
     {
         var now = DateTimeOffset.UtcNow;
@@ -195,7 +195,7 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
         }
         else
         {
-            // WHF-R2/B4：条目已被淘汰（容量上限清理或过期清理），重试状态更新丢失
+            // 条目已被淘汰（容量上限清理或过期清理），重试状态更新丢失
             _logger.LogWarning("失败事件 {EventId} 已被淘汰，重试状态更新丢失", eventInfo.EventId);
         }
 
@@ -237,7 +237,7 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
     }
 
     /// <summary>
-    /// WHF-15：构造 <see cref="FailedEventInfo"/> 深拷贝快照（消除共享可变引用）
+    /// 构造 <see cref="FailedEventInfo"/> 深拷贝快照（消除共享可变引用）
     /// </summary>
     private static FailedEventInfo CloneSnapshot(FailedEventInfo source) => new()
     {

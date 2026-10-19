@@ -35,39 +35,10 @@ public static class FeishuMultiAppExtensions
     /// <exception cref="ArgumentNullException">当参数为null时抛出</exception>
     /// <exception cref="InvalidOperationException">当配置无效时抛出</exception>
     /// <remarks>
-    /// 从配置文件加载飞书应用配置。
-    /// 配置示例：
-    /// <code>
-    /// {
-    ///   "FeishuApps": [
-    ///     {
-    ///       "AppKey": "default",
-    ///       "AppId": "cli_xxx",
-    ///       "AppSecret": "dsk_xxx",
-    ///       "IsDefault": true
-    ///     },
-    ///     {
-    ///       "AppKey": "hr-app",
-    ///       "AppId": "cli_yyy",
-    ///       "AppSecret": "dsk_yyy"
-    ///     }
-    ///   ]
-    /// }
-    /// </code>
-    /// <para>
-    /// <b>热更新说明（ARC-1）</b>：此重载使用 <c>IConfiguration</c> 绑定并注册
-    /// <c>IOptionsMonitor&lt;List&lt;FeishuAppConfig&gt;&gt;</c>；<see cref="IFeishuAppManager"/>
-    /// 默认订阅 <c>IOptionsMonitor.OnChange</c>（由 <see cref="FeishuAppOptions.EnableConfigReload"/> 控制，
-    /// 默认 <c>true</c>）。修改 <c>appsettings.json</c> 后，新增应用会被注册、更新应用会重建上下文、
-    /// 删除应用会被移除、默认应用切换会同步。
-    /// </para>
-    /// <para>
-    /// <b>生效边界</b>：<c>AppId</c>/<c>AppSecret</c>/<c>IsDefault</c> 等字段通过重建
-    /// <see cref="IFeishuAppContext"/> 即时生效；但 <c>BaseUrl</c>/<c>TimeOut</c> 由
-    /// <c>AddMudHttpClient</c> 的命名客户端注册固化（组件 <c>IEnhancedHttpClientFactory.Invalidate</c>
-    /// 只清空客户端实例缓存，不改写已注册 <c>HttpClient</c> 配置），需重建命名客户端才能完全生效。
-    /// 置 <c>FeishuAppOptions.EnableConfigReload = false</c> 可回到「配置变更需重启」的旧语义。
-    /// </para>
+    /// 热更新：经 <c>IOptionsMonitor&lt;List&lt;FeishuAppConfig&gt;&gt;</c> 绑定，<see cref="IFeishuAppManager"/> 订阅 <c>OnChange</c>
+    /// （默认开启，由 <see cref="FeishuAppOptions.EnableConfigReload"/> 控制）：新增/更新/删除应用与默认应用切换同步生效。
+    /// <para>生效边界：<c>AppId</c>/<c>AppSecret</c>/<c>IsDefault</c> 重建上下文即生效；<c>BaseUrl</c>/<c>TimeOut</c>
+    /// 固化在命名客户端注册中，需重建客户端才完全生效。</para>
     /// </remarks>
 #if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式配置绑定（ConfigurationBinder.Bind）在裁剪下无法静态分析配置类型成员")]
@@ -97,25 +68,8 @@ public static class FeishuMultiAppExtensions
     /// <exception cref="ArgumentNullException">当参数为null时抛出</exception>
     /// <exception cref="InvalidOperationException">当配置无效时抛出</exception>
     /// <remarks>
-    /// 从配置文件加载飞书应用配置。
-    /// 配置示例：
-    /// <code>
-    /// {
-    ///   "FeishuApps": [
-    ///     {
-    ///       "AppKey": "default",
-    ///       "AppId": "cli_xxx",
-    ///       "AppSecret": "dsk_xxx",
-    ///       "IsDefault": true
-    ///     },
-    ///     {
-    ///       "AppKey": "hr-app",
-    ///       "AppId": "cli_yyy",
-    ///       "AppSecret": "dsk_yyy"
-    ///     }
-    ///   ]
-    /// }
-    /// </code>
+    /// 热更新与生效边界的语义与配置节绑定重载一致；本重载额外接受 <paramref name="validateConfig"/> 委托，
+    /// 在绑定后逐应用校验配置，校验不通过时抛 <see cref="InvalidOperationException"/>。
     /// </remarks>
 #if NET6_0_OR_GREATER
     [RequiresUnreferencedCode("反射式配置绑定（ConfigurationBinder.Bind）在裁剪下无法静态分析配置类型成员")]
@@ -155,9 +109,9 @@ public static class FeishuMultiAppExtensions
         // 注册基础服务（HttpClient工厂）
         services.AddFeishuAppBaseServices(configs, configuration);
 
-        // R5/X1：FeishuAppOptions 配置节绑定。
-        // 此前 AddFeishuAppBaseServices 只调用 AddOptions<FeishuAppOptions>()——「仅注册 Options」
-        // **不会绑定任何配置节**，FeishuAppOptions.SectionName 因此是死常量，6 个行为开关无法经
+        // FeishuAppOptions 配置节绑定。
+        // 仅调用 AddOptions<FeishuAppOptions>() **不会绑定任何配置节**，
+        // FeishuAppOptions.SectionName 会是死常量，6 个行为开关无法经
         // appsettings 下发（README 的「读取点」表会让读者误以为可配）。
         RegisterFeishuAppOptionsBinding(services, configuration);
 
@@ -167,7 +121,7 @@ public static class FeishuMultiAppExtensions
     }
 
     /// <summary>
-    /// R5/X1：把 <c>FeishuAppOptions</c> 绑定到 <c>FeishuAppOptions</c> 配置节，并注册启动期校验器。
+    /// 把 <c>FeishuAppOptions</c> 绑定到 <c>FeishuAppOptions</c> 配置节，并注册启动期校验器。
     /// </summary>
     /// <param name="services">服务集合。</param>
     /// <param name="configuration">宿主配置。</param>
@@ -176,7 +130,7 @@ public static class FeishuMultiAppExtensions
     /// <b>为什么用委托式 <c>Configure</c> 而不是 <c>Configure&lt;T&gt;(IConfiguration)</c> 重载</b>：
     /// 后者的反射绑定调用点无法被配置绑定源生成器拦截，会让严格 AOT 冒烟出现
     /// <c>IL2026</c>/<c>IL3050</c>（该结论已记录在
-    /// <c>FeishuServiceCollectionExtensions</c> 中 <c>TokenRecoveryOptions</c> 的 AOT-3 注释里）。
+    /// <c>FeishuServiceCollectionExtensions</c> 中 <c>TokenRecoveryOptions</c> 的同名注释里）。
     /// 因此本方法必须带 <c>RequiresUnreferencedCode</c> / <c>RequiresDynamicCode</c> 标注，
     /// 并由同样带标注的 <c>AddFeishuApp</c> 重载调用——**不得**下沉到未标注的
     /// internal <c>AddFeishuAppBaseServices</c>。
@@ -341,7 +295,7 @@ public static class FeishuMultiAppExtensions
     /// <returns>服务集合实例，支持链式调用。</returns>
     /// <exception cref="ArgumentNullException">当参数为 null 时抛出。</exception>
     /// <remarks>
-    /// M-2 修复：允许用户继承 <see cref="FeishuAppManager"/> 并覆盖 <c>CreateAppContext</c> 方法，
+    /// 允许用户继承 <see cref="FeishuAppManager"/> 并覆盖 <c>CreateAppContext</c> 方法，
     /// 以支持自定义 <see cref="IFeishuAppContext"/> 实现（如添加审计日志、动态配置热更新等）。
     /// <code>
     /// services.AddFeishuApp&lt;CustomFeishuAppManager&gt;(configs);
@@ -413,8 +367,8 @@ public static class FeishuMultiAppExtensions
             sp.GetRequiredService<ILogger<FeishuAppManager>>()));
 #else
         // netstandard2.0：没有 IHostedService 生命周期，在 FeishuAppManager 工厂中注册令牌。
-        // REG-03 修复：原实现调用 GetAllApps() 强制创建所有应用，与 NET6+ 的懒加载策略不一致。
-        // 改为仅在首次访问默认应用时注册其令牌管理器（通过 GetDefaultApp 触发懒加载），
+        // 仅在首次访问默认应用时注册其令牌管理器（通过 GetDefaultApp 触发懒加载）——
+        // 调用 GetAllApps() 强制创建所有应用与懒加载策略不一致。
         // 其余应用的令牌管理器在运行时按需注册（调用方通过 GetApp 触发懒加载后再注册到刷新服务）。
         services.AddSingleton<FeishuAppManager>(sp =>
         {
@@ -441,7 +395,7 @@ public static class FeishuMultiAppExtensions
             }
             else
             {
-                // M-7 修复：netstandard2.0 路径下 ITokenRefreshBackgroundService 未注册时发出警告。
+                // netstandard2.0 路径下 ITokenRefreshBackgroundService 未注册时发出警告。
                 Console.Error.WriteLine(
                     "[MudFeishu] 警告：ITokenRefreshBackgroundService 未注册，令牌将不会进行后台主动刷新。" +
                     "请在 AddFeishuApp 之前调用 AddTokenRefreshBackgroundService() 注册后台刷新服务，" +
@@ -471,10 +425,10 @@ public static class FeishuMultiAppExtensions
 #endif
     private static void RegisterCoreServicesWithoutAppManager(IServiceCollection services, List<FeishuAppConfig> configs, IConfiguration? configuration = null, string? sectionName = null)
     {
-        // TMR2-P0-1（同 F1 根因，首轮漏改）：默认应用上下文桥接从「实例桥接」改为「解析桥接」（转发代理）。
+        // 默认应用上下文桥接为「解析桥接」（转发代理），
         // 与下方三种令牌管理器桥接（ITenantTokenManager / IAppTokenManager / IFeishuUserTokenManager）
         // 保持同一语义：每次成员访问现取当前默认应用。
-        // 修复前工厂委托返回 GetDefaultApp() 的实例快照并被容器永久缓存——
+        // 实例桥接下工厂委托返回 GetDefaultApp() 的实例快照并被容器永久缓存——
         // SetDefaultApp 后注入方继续使用旧应用的 Config/令牌/认证客户端（跨应用凭据误用），
         // 热更新重建默认应用后注入方持有已入退休队列、宽限期后被 Dispose 的上下文（ODE）。
         // ForwardDefaultAppContext=false 可回退实例快照语义（仅当宿主把注入的 IFeishuAppContext
@@ -511,7 +465,7 @@ public static class FeishuMultiAppExtensions
         // 此逻辑对 IConfiguration 绑定路径是必需的（该路径不调用 ValidateAndSetDefaultApp）。
         // 对直接传入 List<FeishuAppConfig> 的路径，ValidateAndSetDefaultApp 已执行相同推断，此处为幂等操作（无害重复）。
         //
-        // ARC-1 修复说明（热更新语义）：
+        // 热更新语义：
         // PostConfigure 保证 IOptions<IList<FeishuAppConfig>> 消费方（含 FeishuAppManager 的
         // OnChange 回调）看到的配置已完成默认应用推断。
         // FeishuAppManager 现已在构造时订阅 IOptionsMonitor<List<FeishuAppConfig>>.OnChange
@@ -524,7 +478,7 @@ public static class FeishuMultiAppExtensions
         // 若需回到「配置变更需重启」的旧语义，设置 FeishuAppOptions.EnableConfigReload = false。
         services.PostConfigure<List<FeishuAppConfig>>(options =>
         {
-            // R5/X7：热更链补齐旧扁平键回填，使启动链（AddFeishuApp 中的 section.Bind + 回填）
+            // 热更链补齐旧扁平键回填，使启动链（AddFeishuApp 中的 section.Bind + 回填）
             // 与热更链（IOptionsMonitor<List<FeishuAppConfig>> 重建）行为一致。
             //
             // 背景：启动链在 AddFeishuApp 里显式调用 configs[i].ApplyLegacyFlatKeys(children[i])，
@@ -567,18 +521,17 @@ public static class FeishuMultiAppExtensions
         // 注册令牌管理器解析器（多应用模式下获取令牌管理器的推荐方式）
         services.TryAddSingleton<IFeishuTokenManagerResolver, FeishuTokenManagerResolver>();
 
-        // SR-P0-2 修复：FeishuTokenRegistrationService 已移至 AddFeishuAppBaseServices 中注册，
+        // FeishuTokenRegistrationService 在 AddFeishuAppBaseServices 中注册，
         // 确保在 TokenRefreshBackgroundService 之前启动，避免误报"未注册任何令牌管理器"警告。
 
         // 桥接注册（向后兼容）：将默认应用的令牌管理器暴露到 DI 容器。
         // 注意：仅暴露默认应用的令牌管理器，非默认应用请使用 IFeishuTokenManagerResolver。
         // 使用 TryAddSingleton 确保不覆盖应用层的自定义注册。
         //
-        // TMR-P0-1（F1）：桥接从「实例桥接」改为「解析桥接」（转发代理）。
-        // 原实现工厂委托仅在首次解析时执行，容器永久缓存该实例——热更新重建默认应用后
-        // 注入方持已释放管理器（ODE），SetDefaultApp 后注入方继续返回旧应用令牌（凭据串号）。
+        // 桥接为「解析桥接」（转发代理）：工厂委托仅在首次解析时执行、实例会被容器永久缓存——
+        // 热更新重建默认应用后注入方持已释放管理器（ODE），SetDefaultApp 后注入方继续返回旧应用令牌（凭据串号）。
         // 代理每次成员调用现取当前默认应用的管理器，代理本身无状态、无资源、Dispose 为 no-op。
-        // 详见 MultiApp/ForwardingTokenManagerProxies.cs。
+        // 实现见 MultiApp/ForwardingTokenManagerProxies.cs。
         services.TryAddSingleton<ITenantTokenManager>(sp =>
             new ForwardingTenantTokenManager(
                 () => sp.GetRequiredService<IFeishuTokenManagerResolver>().GetTenantTokenManager()));

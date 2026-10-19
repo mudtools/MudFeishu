@@ -20,27 +20,10 @@ namespace Mud.Feishu.Authentication;
 /// 飞书用户认证中间件
 /// </summary>
 /// <remarks>
-/// <para>功能说明：</para>
-/// <list type="bullet">
-///   <item><description>从已认证的 ClaimsPrincipal 中提取飞书用户信息</description></item>
-///   <item><description>设置 IFeishuCurrentUserContext 供后续请求处理使用</description></item>
-///   <item><description>设置 IAppContextHolder 默认应用上下文作用域，确保 TokenManager 模式的 API 调用无需显式 BeginScope</description></item>
-///   <item><description>请求结束后自动清理用户上下文和应用上下文作用域</description></item>
-/// </list>
-/// <para>中间件位置：</para>
-/// 应放在 AuthenticationMiddleware 之后、AuthorizationMiddleware 之前：
-/// <code>
-/// app.UseAuthentication();
-/// app.UseFeishuUserAuthentication();  // 此飞书用户认证中间件
-/// app.UseAuthorization();
-/// </code>
-/// <para>默认 Claims 类型（可通过 FeishuUserAuthenticationOptions 自定义）：</para>
-/// <list type="bullet">
-///   <item><description>open_id - 飞书用户 OpenId（备选：ClaimTypes.NameIdentifier）</description></item>
-///   <item><description>union_id - 飞书用户 UnionId</description></item>
-///   <item><description>user_id - 业务系统用户ID</description></item>
-///   <item><description>ClaimTypes.Name - 用户名称</description></item>
-/// </list>
+/// 从已认证的 <c>ClaimsPrincipal</c> 提取飞书用户信息，设置 <see cref="IFeishuCurrentUserContext"/> 与默认应用上下文作用域
+/// （TokenManager 模式的 API 调用无需显式 <c>BeginScope</c>），请求结束后自动清理两者。
+/// <para>必须注册在 <c>UseAuthentication()</c> 之后、<c>UseAuthorization()</c> 之前，否则用户上下文不可用。</para>
+/// <para>默认 Claims 映射 <c>open_id</c>/<c>union_id</c>/<c>user_id</c>/<c>ClaimTypes.Name</c>，经 <c>FeishuUserAuthenticationOptions</c> 可自定义。</para>
 /// </remarks>
 /// <remarks>
 /// 初始化中间件

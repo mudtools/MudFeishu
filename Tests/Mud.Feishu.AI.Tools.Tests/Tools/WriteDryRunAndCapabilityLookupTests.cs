@@ -163,6 +163,52 @@ public class WriteDryRunAndCapabilityLookupTests
             .Should().Contain("bitable.list_tables", "已策展模块必须回填真实工具名（模型据此判断‘有没有 / 是否已启用’）");
     }
 
+    /// <summary>
+    /// 申请闭环：分组级必须带出策展缺口（curated / uncurated 计数）与候选策展名，
+    /// 并给出与 schema_read 同源的申请通道。
+    /// </summary>
+    [Fact]
+    public async Task CapabilityLookup_ShouldExposeCurationGapAndApplyChannel()
+    {
+        var tools = new CapabilityLookupTools(Options.Create(AgentOptions()));
+
+        var result = await tools.LookupAsync(Args(("keyword", "Bitable")), CancellationToken.None);
+
+        using var document = JsonDocument.Parse(result.ToString()!);
+        var root = document.RootElement;
+
+        root.GetProperty("apply_channel").GetString().Should().Be(CapabilityApplyLoop.ApplyChannel);
+
+        var uncuratedTotal = 0;
+        foreach (var group in root.GetProperty("matched_groups").EnumerateArray())
+        {
+            var curated = group.GetProperty("curated_methods").GetInt32();
+            var uncurated = group.GetProperty("uncurated_methods").GetInt32();
+            uncuratedTotal += uncurated;
+
+            // 缺口口径与能力目录同源：分组方法数 = 已策展 + 未策展（两目录共用同一分组轴）
+            (curated + uncurated).Should().Be(group.GetProperty("methods").GetInt32(),
+                $"{group.GetProperty("group").GetString()} 的策展缺口计数必须与 MethodsByDomain 同源");
+
+            if (!group.TryGetProperty("suggest_tools", out var suggests))
+            {
+                continue;
+            }
+
+            suggests.GetArrayLength().Should().BeGreaterThan(0).And.BeLessThanOrEqualTo(CapabilityApplyLoop.MaxSuggestionsPerGroup);
+            var names = suggests.EnumerateArray().Select(static s => s.GetString()).ToArray();
+            names.Should().OnlyHaveUniqueItems("同组候选名必须去重——重名会挤占单组限流额度");
+            foreach (var suggestion in names)
+            {
+                FeishuToolSchemas.SchemaByToolName.Should().NotContainKey(suggestion!,
+                    "候选策展名不得命中既有工具名（模型会把「建议」读成「已有可用工具」）");
+            }
+        }
+
+        uncuratedTotal.Should().BePositive("bitable 域存在未策展方法（历史、分享链接族），必须给出可申请面");
+        root.GetProperty("suggest_group_count").GetInt32().Should().BePositive();
+    }
+
     [Fact]
     public async Task CapabilityLookup_ShouldRequireKeyword()
     {

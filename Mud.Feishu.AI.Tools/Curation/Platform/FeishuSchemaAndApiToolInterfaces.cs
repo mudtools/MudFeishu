@@ -35,12 +35,12 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// 数据源是编译期 <c>FeishuToolMethodCatalog</c>，无下游调用。
 /// </remarks>
 [AgentTool("feishu.schema_read",
-    Description = "查询任意飞书 SDK 方法的签名事实（HTTP 方法 / 路由 / 参数 / 令牌 / 风险 / 是否已策展为工具）。当需要调用一个当前工具集未覆盖的 API 时，先用本工具查它的方法签名。本工具只读编译期目录、不调用下游，也不提供任何调用通道——查到的未策展方法无法调用，请如实告知用户。",
+    Description = "查询任意飞书 SDK 方法的签名事实（HTTP 方法 / 路由 / 参数 / 令牌 / 风险 / 是否已策展为工具，未策展的另给候选策展名）。当需要调用一个当前工具集未覆盖的 API 时，先用本工具查它的方法签名。本工具只读编译期目录、不调用下游，也不提供任何调用通道——查到的未策展方法无法调用，请如实告知用户并按建议名申请宿主策展。",
     RequiredScopes = ["feishu:base"])]
 public interface IFeishuTenantSchemaReadTool
 {
     /// <summary>按方法名或关键字查询 SDK 方法签名。</summary>
-    /// <returns>JSON 文本：方法条目数组（每条含 interface/method/http/route/token_kind/module/path_params/query_params/body_type/risk/curated/curated_tool），超长截断。</returns>
+    /// <returns>JSON 文本：方法条目数组（每条含 interface/method/http/route/token_kind/module/path_params/query_params/body_type/risk/curated/curated_tool，未策展时含 suggested_tool），超长截断。</returns>
     Task<string> SchemaReadAsync(
         [ToolParameter("method", "方法限定名（如 IFeishuTenantV1OkrPeriod.ListPeriodsAsync）；提供时精确匹配单个方法", Required = false)] string? method,
         [ToolParameter("keyword", "关键字（如 Okr / Calendar / attendance）；按方法名/接口名/模块大小写不敏感搜索", Required = false)] string? keyword,

@@ -63,6 +63,12 @@
 
 ### 变更（Changed）
 
+- **长尾能力从「不可达」改为「可申请」**：`feishu.capability_lookup` 现按分组回策展缺口
+  （`curated_methods` / `uncurated_methods`）与候选策展名 `suggest_tools`，`feishu.schema_read` 对
+  未策展方法回 `suggested_tool`，两者共用同一条申请通道文案（`apply_channel`）。候选名是宿主策展的
+  **候选**，不构成调用通道——实测对既有策展面模块前缀一致率 95.6%、全名一致率 23.1%，故命名最终以
+  策展人为准（决策与口径：`documents/AIAgent/decisions/ADR-0006-capability-apply-loop.md`）。
+  工具面**仍不提供**任意方法兜底调用；未策展期间的正确处置是如实告知用户。
 - **OpenTelemetry 装配内核统一**：非法配置由静默忽略改为注册期即抛 `OptionsValidationException`；
   请择一注册 OpenTelemetry 装配（与 `AddMudHttpOpenTelemetry` 并用会重复导出）。
 

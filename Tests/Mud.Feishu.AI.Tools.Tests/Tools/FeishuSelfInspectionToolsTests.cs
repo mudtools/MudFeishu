@@ -103,4 +103,59 @@ public class FeishuSelfInspectionToolsTests
         result.ToString().Should().NotContain("api_call",
             "R-12：万能兜底通道已删除，模型可见文案不得再引用它（否则模型会持续臆造调用）");
     }
+
+    /// <summary>
+    /// 申请闭环：未策展方法给出候选策展名 + 申请通道（把"不可达"转成"可申请"）。
+    /// </summary>
+    [Fact]
+    public async Task SchemaRead_UncuratedMethod_ShouldCarrySuggestedToolAndApplyChannel()
+    {
+        var result = await CreateSchemaReadTools().SchemaReadAsync(
+            Args(("method", "IFeishuTenantV1PayrollConfig.ListPaygroupsAsync")), CancellationToken.None);
+
+        using var document = JsonDocument.Parse(result.ToString()!);
+        var root = document.RootElement;
+
+        root.GetProperty("matched_count").GetInt32().Should().Be(1);
+        var method = root.GetProperty("methods")[0];
+        method.GetProperty("curated").GetBoolean().Should().BeFalse();
+        method.GetProperty("suggested_tool").GetString().Should().Be("payroll.list_paygroups",
+            "未策展方法必须给出候选策展名，宿主据此申请（payroll 域零策展 ⇒ 建议名不得命中既有工具）");
+        root.GetProperty("apply_channel").GetString().Should().Be(CapabilityApplyLoop.ApplyChannel,
+            "申请通道文案必须来自共享常量（与 capability_lookup 同源，避免两处表述漂移）");
+    }
+
+    /// <summary>已策展方法<b>不得</b>带候选名：两条名字并列会让模型分不清该调用哪个。</summary>
+    [Fact]
+    public async Task SchemaRead_CuratedMethod_ShouldNotCarrySuggestedTool()
+    {
+        var result = await CreateSchemaReadTools().SchemaReadAsync(
+            Args(("method", "IFeishuTenantV1OkrPeriod.ListPeriodsAsync")), CancellationToken.None);
+
+        using var document = JsonDocument.Parse(result.ToString()!);
+        document.RootElement.GetProperty("methods")[0]
+            .GetProperty("suggested_tool").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    /// <summary>候选名不得命中既有工具名（命中即"建议"被读成"已有可用工具"）。</summary>
+    [Fact]
+    public async Task SchemaRead_Suggestions_ShouldNeverNameExistingTools()
+    {
+        var result = await CreateSchemaReadTools().SchemaReadAsync(
+            Args(("module", "MailGroup"), ("limit", 100)), CancellationToken.None);
+
+        using var document = JsonDocument.Parse(result.ToString()!);
+        var methods = document.RootElement.GetProperty("methods");
+
+        methods.GetArrayLength().Should().BeGreaterThan(0, "MailGroup 模块必须有方法（否则本用例恒绿）");
+        foreach (var method in methods.EnumerateArray())
+        {
+            var suggested = method.GetProperty("suggested_tool");
+            if (suggested.ValueKind == JsonValueKind.String && suggested.GetString() is { } name)
+            {
+                FeishuToolSchemas.SchemaByToolName.Should().NotContainKey(name,
+                    "候选策展名不得与既有工具同名");
+            }
+        }
+    }
 }

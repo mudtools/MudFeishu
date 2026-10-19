@@ -327,8 +327,9 @@ var response = await agent.RunApprovalContinuationAsync(
 > ```
 >
 > `-p:FeishuToolRefreeze=true` 让构建期 `AdditionalFiles` 暂时不引入快照（从而不比对），测试则用运行时
-> 真实 Schema 重写快照。固化后**必须**：评审 diff（媒体可见面变更）→ 运行
-> `pwsh ./scripts/sync-publicapi.ps1`（同步 `PublicAPI.Unshipped.txt` 里的 Schema 常量载荷）→ 记录 CHANGELOG。
+> 真实 Schema 重写快照。固化后**必须**：评审 diff（媒体可见面变更）→ 描述/参数有变时同批重固化
+> skills（`$env:FeishuSkillsUpdate='true'` + 跑 `SkillsExportContractTests`）→ 更新
+> `documents/AIAgent/工具权限对照表.md` 与 `public-surface-rationale.json`（新增公开类型时）→ 记录 CHANGELOG。
 
 ---
 

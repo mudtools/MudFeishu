@@ -5,6 +5,9 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+// 工作流接口落在 Mud.Feishu.Interfaces（其余 Bitable Tenant 接口在 Mud.Feishu，见 GlobalUsings）。
+using Mud.Feishu.Interfaces;
+
 namespace Mud.Feishu.AI.Tools.Curation;
 
 // <summary>
@@ -15,13 +18,12 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // 只声明模型可见 Schema（工具名/描述/扁平参数）；强类型接口调用、参数映射、
 // <c>FeishuApiResult</c> 解包与结果白名单投影由执行链（<c>FeishuToolBinding</c> + 分域执行器）承担。
 // 复杂请求体（<c>QueryRecordsRequest</c>/<c>SearchDocWikiRequest</c>）一律由绑定层构造，
-// 模型只见标量/标量数组（§3.3.1 原则 2）。
+// 模型只见标量/标量数组。
 // </para>
 // <para>
 // <c>page_size</c>/<c>sort_type</c>/<c>container_id_type</c>/<c>user_id_type</c> 等运维性参数
 // 不进 Schema（绑定层补齐/钳制）。<b>page_token 保留在 Schema</b>：它是多页追问的唯一手段，
-// 且注入「自动翻页」会让单次工具调用把 N 页结果塞进上下文，与 <c>MaxToolResultLength</c> 截断策略冲突
-// （见方案 §6 AT-B09 的处置修订）。
+// 且注入「自动翻页」会让单次工具调用把 N 页结果塞进上下文，与 <c>MaxToolResultLength</c> 截断策略冲突。
 // </para>
 // <para>
 // <b>Source 挂钩</b>：源生成器据此在编译期交叉校验并派生 HTTP 路由、风险分级与返回形状；
@@ -30,7 +32,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // </para>
 // </remarks>
 
-// ─────────────────────────── Bitable（4 个） ───────────────────────────
+// ─────────────────────────── Bitable（13 个） ───────────────────────────
 
 /// <summary>工具接口：bitable.list_tables（映射 <c>IFeishuTenantV1BitableAppTable.GetAppTablePageListAsync</c>）。</summary>
 [AgentTool("bitable.list_tables",
@@ -110,8 +112,8 @@ public interface IFeishuTenantBitableRecordsByIdsTool
 /// 工具接口：bitable.list_views（映射 <c>IFeishuTenantV1BitableView.GetViewsPageListAsync</c>）。
 /// </summary>
 /// <remarks>
-/// R5 / F-11：补齐"**先看视图、再取记录**"的链路首环。此前模型的唯一路径是
-/// <c>bitable.query_records</c>（面向整表），无法按视图（筛选/分组后的视角）取数。
+/// <b>先看视图、再取记录</b>的链路首环：<c>bitable.query_records</c> 面向整表，
+/// 按视图（筛选/分组后的视角）取数必须先经本工具拿到 view_id 再传给它。
 /// </remarks>
 [AgentTool("bitable.list_views",
     Description = "列出数据表下的全部视图（名称/类型/可见范围）。取记录前先用它确定 view_id，再传给 bitable.query_records 按视图取数。只读，需 bitable:app:readonly。",
@@ -142,5 +144,120 @@ public interface IFeishuTenantBitableGetViewTool
         [ToolParameter("app_token", "多维表格 AppToken（形如 bascnXxx）", Required = true)] string app_token,
         [ToolParameter("table_id", "数据表 ID（形如 tblXxx）", Required = true)] string table_id,
         [ToolParameter("view_id", "视图 ID（形如 veiwXxx，可由 bitable.list_views 获得）", Required = true)] string view_id,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：bitable.form_get（映射 <c>IFeishuTenantV1BitableForm.GetFormAsync</c>）。</summary>
+[AgentTool("bitable.form_get",
+    Description = "获取多维表格表单的元数据（名称/描述/是否共享/分享范围/填写次数限制/分享链接）。修改表单前先用本工具确认现状。只读，需 bitable:app:readonly。",
+    RequiredScopes = ["bitable:app:readonly"],
+    Source = nameof(IFeishuTenantV1BitableForm) + "." + nameof(IFeishuTenantV1BitableForm.GetFormAsync))]
+public interface IFeishuTenantBitableFormGetTool
+{
+    /// <summary>获取表单元数据。</summary>
+    /// <returns>白名单投影后的 JSON 文本（form：名称/描述/共享/分享范围/仅可填写一次/分享链接）。</returns>
+    Task<string> GetFormAsync(
+        [ToolParameter("app_token", "多维表格 AppToken（形如 bascnXxx）", Required = true)] string app_token,
+        [ToolParameter("table_id", "数据表 ID（形如 tblXxx，来自 bitable.list_tables）", Required = true)] string table_id,
+        [ToolParameter("form_id", "表单 ID（形如 vewXxx）", Required = true)] string form_id,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：bitable.form_question_list（映射 <c>IFeishuTenantV1BitableForm.GetFormFieldsPageListAsync</c>）。</summary>
+[AgentTool("bitable.form_question_list",
+    Description = "分页列出表单的题目列表（field_id/title/description/required/visible）；field_id 供 bitable.form_question_update 使用。只读，需 bitable:app:readonly。",
+    RequiredScopes = ["bitable:app:readonly"],
+    Source = nameof(IFeishuTenantV1BitableForm) + "." + nameof(IFeishuTenantV1BitableForm.GetFormFieldsPageListAsync))]
+public interface IFeishuTenantBitableFormQuestionListTool
+{
+    /// <summary>列出表单题目（分页）。</summary>
+    /// <returns>白名单投影后的 JSON 文本（items: field_id/title/description/required/visible + 翻页契约）。</returns>
+    Task<string> GetFormFieldsPageListAsync(
+        [ToolParameter("app_token", "多维表格 AppToken（形如 bascnXxx）", Required = true)] string app_token,
+        [ToolParameter("table_id", "数据表 ID（形如 tblXxx，来自 bitable.list_tables）", Required = true)] string table_id,
+        [ToolParameter("form_id", "表单 ID（形如 vewXxx）", Required = true)] string form_id,
+        [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：bitable.dashboard_list（映射 <c>IFeishuTenantV1BitableDashboard.GetDashboardPageListAsync</c>）。</summary>
+[AgentTool("bitable.dashboard_list",
+    Description = "分页列出多维表格中的全部仪表盘（block_id/name）；block_id 供 bitable.dashboard_copy 使用。只读，需 bitable:app:readonly。",
+    RequiredScopes = ["bitable:app:readonly"],
+    Source = nameof(IFeishuTenantV1BitableDashboard) + "." + nameof(IFeishuTenantV1BitableDashboard.GetDashboardPageListAsync))]
+public interface IFeishuTenantBitableDashboardListTool
+{
+    /// <summary>列出仪表盘（分页）。</summary>
+    /// <returns>白名单投影后的 JSON 文本（items: block_id/name + 翻页契约）。</returns>
+    Task<string> GetDashboardPageListAsync(
+        [ToolParameter("app_token", "多维表格 AppToken（形如 bascnXxx）", Required = true)] string app_token,
+        [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：bitable.workflow_list（映射 <c>IFeishuTenantV1BitableWorkflow.GetAppWorkflowListAsync</c>）。</summary>
+[AgentTool("bitable.workflow_list",
+    Description = "列出多维表格中的全部工作流（workflow_id/status/title）；workflow_id 供 bitable.workflow_update 使用。只读，需 bitable:app:readonly。",
+    RequiredScopes = ["bitable:app:readonly"],
+    Source = nameof(IFeishuTenantV1BitableWorkflow) + "." + nameof(IFeishuTenantV1BitableWorkflow.GetAppWorkflowListAsync))]
+public interface IFeishuTenantBitableWorkflowListTool
+{
+    /// <summary>列出工作流。</summary>
+    /// <returns>白名单投影后的 JSON 文本（items: workflow_id/status/title）。</returns>
+    Task<string> GetAppWorkflowListAsync(
+        [ToolParameter("app_token", "多维表格 AppToken（形如 bascnXxx）", Required = true)] string app_token,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：bitable.workflow_block_list（映射 <c>IFeishuTenantV1BitableWorkflow.GetAppBlockWorkflowListAsync</c>）。</summary>
+[AgentTool("bitable.workflow_block_list",
+    Description = "列出多维表格中与数据表相关的工作流（workflow_id/status/title）。与 bitable.workflow_list 的区别：本接口只返回与数据表（block）相关的工作流。只读，需 bitable:app:readonly。",
+    RequiredScopes = ["bitable:app:readonly"],
+    Source = nameof(IFeishuTenantV1BitableWorkflow) + "." + nameof(IFeishuTenantV1BitableWorkflow.GetAppBlockWorkflowListAsync))]
+public interface IFeishuTenantBitableWorkflowBlockListTool
+{
+    /// <summary>列出与数据表相关的工作流。</summary>
+    /// <returns>白名单投影后的 JSON 文本（items: workflow_id/status/title）。</returns>
+    Task<string> GetAppBlockWorkflowListAsync(
+        [ToolParameter("app_token", "多维表格 AppToken（形如 bascnXxx）", Required = true)] string app_token,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：bitable.role_list（映射 <c>IFeishuTenantV2BitableRole.GetRolesPageListAsync</c>）。</summary>
+[AgentTool("bitable.role_list",
+    Description = "分页列出多维表格高级权限的自定义角色（role_id/role_name）；role_id 供 bitable.role_update / role_delete / role_member_* 使用。只读，需 bitable:app:readonly。",
+    RequiredScopes = ["bitable:app:readonly"],
+    Source = nameof(IFeishuTenantV2BitableRole) + "." + nameof(IFeishuTenantV2BitableRole.GetRolesPageListAsync))]
+public interface IFeishuTenantBitableRoleListTool
+{
+    /// <summary>列出自定义角色（分页）。</summary>
+    /// <returns>白名单投影后的 JSON 文本（items: role_id/role_name + 翻页契约）。</returns>
+    Task<string> GetRolesPageListAsync(
+        [ToolParameter("app_token", "多维表格 AppToken（形如 bascnXxx）", Required = true)] string app_token,
+        [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：bitable.role_member_list（映射 <c>IFeishuTenantV2BitableRole.GetRoleMembersPageListAsync</c>）。</summary>
+[AgentTool("bitable.role_member_list",
+    Description = "分页列出某个自定义角色下的成员（member_type/member_id/member_name）；member_id 供 bitable.role_member_remove 使用。只读，需 bitable:app:readonly。",
+    RequiredScopes = ["bitable:app:readonly"],
+    Source = nameof(IFeishuTenantV2BitableRole) + "." + nameof(IFeishuTenantV2BitableRole.GetRoleMembersPageListAsync))]
+public interface IFeishuTenantBitableRoleMemberListTool
+{
+    /// <summary>列出角色成员（分页）。</summary>
+    /// <returns>白名单投影后的 JSON 文本（items: member_type/member_id/member_name + 翻页契约）。</returns>
+    Task<string> GetRoleMembersPageListAsync(
+        [ToolParameter("app_token", "多维表格 AppToken（形如 bascnXxx）", Required = true)] string app_token,
+        [ToolParameter("role_id", "自定义角色 ID（形如 rolXxx，来自 bitable.role_list）", Required = true)] string role_id,
+        [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
         CancellationToken cancellationToken = default);
 }

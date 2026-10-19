@@ -21,8 +21,8 @@ namespace Mud.Feishu.AI.Conversations;
 /// <see cref="FeishuConversationOptions.DefaultSessionTtl"/>（中立默认 TTL 与本产品默认值必须只有一处来源）。
 /// </para>
 /// <para>
-/// <b>过期回收</b>：软过期只在<b>读同一键</b>时删除，<b>不再被读取</b>的键永不回收 ⇒ 长跑宿主的内存随会话数单调增长。
-/// 故在写入路径按阈值 + 节流触发一次<b>惰性分摊清扫</b>：≤<c>SweepThreshold</c> 条目时 O(1)；超过后按 <c>SweepEveryWrites</c>
+/// <b>过期回收</b>：软过期只在<b>读同一键</b>时删除，<b>不再被读取</b>的键永不回收 ⇒ 长跑宿主内存随会话数单调增长。
+/// 故写入路径按阈值 + 节流触发<b>惰性分摊清扫</b>：≤<c>SweepThreshold</c> 条目时 O(1)；超过后按 <c>SweepEveryWrites</c>
 /// 次写入节流，单次成本上界 <c>SweepMaxRemoval</c>，<b>不引入后台线程/定时器</b>，语义与 Redis 服务端过期一致。
 /// </para>
 /// <para>
@@ -32,7 +32,7 @@ namespace Mud.Feishu.AI.Conversations;
 /// </remarks>
 public sealed class MemoryConversationStore : IConversationStore
 {
-    /// <summary>清扫触发阈值（条目数；转发中立实现的常量，保持测试与守卫的既有锚点可用）。</summary>
+    /// <summary>清扫触发阈值（条目数；转发中立实现的常量，保持既有测试锚点可用）。</summary>
     internal const int SweepThreshold = MemorySessionStore.SweepThreshold;
 
     /// <summary>两次清扫之间的最少写入次数（节流）。</summary>

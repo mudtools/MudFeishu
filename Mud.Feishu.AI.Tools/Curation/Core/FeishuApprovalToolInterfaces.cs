@@ -11,10 +11,9 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// 工具接口：approval.reject_task（映射 <c>IFeishuTenantV4ApprovalTask.RejectApprovalAsync</c>）。
 /// </summary>
 /// <remarks>
-/// <b>R5 / F-11：补齐真实硬缺陷。</b> 此前审批动作面只有 <c>approval.approve_task</c>
-/// （内部只调 <c>AgreeApprovalAsync</c>），模型<b>无法拒绝审批</b> —— 审批是双向决策，
-/// 只有"同意"会让 Agent 在应拒场景下强行通过。SDK 的 <c>RejectApprovalAsync</c> 已存在，
-/// 故本项<b>零 SDK 改动</b>。
+/// <b>审批是双向决策</b>：只有"同意"（<c>approval.approve_task</c> 内部只调
+/// <c>AgreeApprovalAsync</c>）会让 Agent 在应拒场景下强行通过，故动作面必须同时提供"拒绝"。
+/// SDK 的 <c>RejectApprovalAsync</c> 已存在，零 SDK 改动。
 /// </remarks>
 [AgentTool("approval.reject_task",
     Description = "拒绝一个审批任务（拒绝后审批流程结束）。与 approval.approve_task 构成完整的双向决策面；task_id 来自 approval.list_pending_tasks。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 approval:approval。",
@@ -39,7 +38,7 @@ public interface IFeishuTenantApprovalRejectTaskTool
 /// 工具接口：approval.transfer_task（映射 <c>IFeishuTenantV4ApprovalTask.TransferApprovalAsync</c>）。
 /// </summary>
 /// <remarks>
-/// 与 reject 同批补齐：<b>转交</b>是审批场景的另一个高频动作（"这条我不该批，转给张三"），
+/// <b>转交</b>是审批场景的另一个高频动作（"这条我不该批，转给张三"），
 /// SDK 的 <c>TransferApprovalAsync</c> 已存在，零 SDK 改动。
 /// </remarks>
 [AgentTool("approval.transfer_task",
@@ -125,7 +124,7 @@ public interface IFeishuTenantApprovalApproveTaskTool
         CancellationToken cancellationToken = default);
 }
 
-// ─────────────────────────── Approval 实例详情（1 个只读，user-only，从 WP4 移入） ───────────────────────────
+// ─────────────────────────── Approval 实例详情（1 个只读，user-only） ───────────────────────────
 
 /// <summary>工具接口：approval.get_instance（映射 <c>IFeishuUserV4ApprovalInstance.GetInstanceDetailAsync</c>）。</summary>
 [AgentTool("approval.get_instance",

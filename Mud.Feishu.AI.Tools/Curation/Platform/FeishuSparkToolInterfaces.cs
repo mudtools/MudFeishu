@@ -7,22 +7,22 @@
 
 namespace Mud.Feishu.AI.Tools.Curation;
 
-// ─────────────────────────── Spark 妙搭（R7 / A6 新域，10 个工具） ───────────────────────────
+// ─────────────────────────── Spark 妙搭（10 个工具） ───────────────────────────
 //
 // 链路设计（"建应用 → 配可见范围 → 写数据表"的产出闭环）：
 //   list_apps → create_app → patch_app → get_app_visibility → update_app_visibility
 //     → list_tables → query_table_records → add_table_records / update_table_records
 //
-// ⚠️ 不策展项（R7 DP-A6-2，A10 二进制/本地文件防线）：
+// ⚠️ 不策展项（二进制/本地文件防线）：
 //   · upload_html_release / upload_app_icon —— 入参为 [FormContent] 本地文件路径，模型无文件系统；
 //   · upload_storage / download_storage —— 含 byte[]；
-//   · execute_sql —— 任意 SQL 执行是越权通道（无法机械校验表归属），且工具面不提供任何通用调用通道（R-12）；
+//   · execute_sql —— 任意 SQL 执行是越权通道（无法机械校验表归属），且工具面不提供任何通用调用通道；
 //   · batch_update_table_records —— 约束反直觉且与 update_table_records 重叠。
 
 /// <summary>
 /// 工具接口：spark.list_apps（映射 <c>IFeishuTenantV1SparkApp.GetAppListAsync</c>）。
 /// </summary>
-/// <remarks>R7 / A6：应用清单入口（tenant 身份）。</remarks>
+/// <remarks>应用清单入口（tenant 身份）。</remarks>
 [AgentTool("spark.list_apps",
     Description = "获取妙搭应用列表（tenant 身份）。分页工具：可选 fetch_all=true 在预算内自动翻页取完全部应用。需 spark:app:readonly 权限。",
     RequiredScopes = ["spark:app:readonly"],
@@ -60,7 +60,7 @@ public interface IFeishuTenantSparkGetAppAnalyticsTool
 /// 工具接口：spark.create_app（映射 <c>IFeishuUserV1SparkApp.CreateAppAsync</c>）。
 /// </summary>
 /// <remarks>
-/// R7 / A6：<b>闭环首步</b>——创建妙搭应用（user 身份，纯 JSON 请求体）。
+/// <b>闭环首步</b>——创建妙搭应用（user 身份，纯 JSON 请求体）。
 /// </remarks>
 [AgentTool("spark.create_app",
     Description = "创建妙搭应用（user 身份，闭环首步）。返回新应用的 app_id，后续用 spark.patch_app / spark.list_tables 继续。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 spark:app 权限。",
@@ -162,7 +162,7 @@ public interface IFeishuUserSparkListTablesTool
 /// <summary>
 /// 工具接口：spark.query_table_records（映射 <c>IFeishuUserV1SparkAppTable.GetTableRecordListAsync</c>）。
 /// </summary>
-/// <remarks>R7 / A6：分页（进自动翻页范围）；filter/order 为 PostgREST 语法。</remarks>
+/// <remarks>分页（进自动翻页范围）；filter/order 为 PostgREST 语法。</remarks>
 [AgentTool("spark.query_table_records",
     Description = "查询妙搭数据表记录（user 身份）。filter/order 为 PostgREST 语法（filter 如 age=gt.10；order 如 created_at.desc）。分页工具：可选 fetch_all=true 自动翻页。需 spark:table 权限。",
     RequiredScopes = ["spark:table"],
@@ -187,7 +187,7 @@ public interface IFeishuUserSparkQueryTableRecordsTool
 /// 工具接口：spark.add_table_records（映射 <c>IFeishuUserV1SparkAppTable.PostTableRecordsAsync</c>）。
 /// </summary>
 /// <remarks>
-/// R7 / A6：插入/可选合并（<c>upsert=true</c> → 绑定层映射请求头 <c>Prefer: resolution=merge-duplicates</c>）。
+/// 插入/可选合并（<c>upsert=true</c> → 绑定层映射请求头 <c>Prefer: resolution=merge-duplicates</c>）。
 /// </remarks>
 [AgentTool("spark.add_table_records",
     Description = "向妙搭数据表添加记录（user 身份）。records_json 为记录数组 JSON，单次上限 500 条。upsert=true 时按主键合并（映射请求头 Prefer: resolution=merge-duplicates），缺省为纯插入。⚠️ 非幂等：不带 upsert 时重复调用会产生重复记录。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 spark:table 权限。",
@@ -210,7 +210,7 @@ public interface IFeishuUserSparkAddTableRecordsTool
 /// <summary>
 /// 工具接口：spark.update_table_records（映射 <c>IFeishuUserV1SparkAppTable.PatchTableRecordsAsync</c>）。
 /// </summary>
-/// <remarks>R7 / A6：按 filter 条件更新（PostgREST 语法，如 age=gt.10）。filter 必填。</remarks>
+/// <remarks>按 filter 条件更新（PostgREST 语法，如 age=gt.10）。filter 必填。</remarks>
 [AgentTool("spark.update_table_records",
     Description = "按条件更新妙搭数据表记录（user 身份）。filter 必填（PostgREST 语法，如 age=gt.10），会更新**所有命中记录**；record_json 为要修改的字段对象。批量/条件更新天然幂等（同 filter 重放结果一致）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 spark:table 权限。",
     RequiredScopes = ["spark:table"],

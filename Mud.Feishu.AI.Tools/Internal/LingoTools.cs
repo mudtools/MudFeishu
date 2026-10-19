@@ -10,7 +10,7 @@ using Mud.Feishu.DataModels.Lingo;
 namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
-/// Lingo「企业词典」只读工具执行器（B1 首个补域切片：6 个只读工具）。
+/// Lingo「企业词典」只读工具执行器（6 个只读工具）。
 /// </summary>
 /// <remarks>
 /// <para>

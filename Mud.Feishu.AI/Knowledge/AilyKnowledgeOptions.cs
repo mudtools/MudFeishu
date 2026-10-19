@@ -8,14 +8,13 @@
 namespace Mud.Feishu.AI.Knowledge;
 
 /// <summary>
-/// Aily 托管知识问答（RAG-A）配置项（配置节 <see cref="SectionName"/>，Phase 2 §3.4）。
+/// Aily 托管知识问答（RAG）配置项（配置节 <see cref="SectionName"/>）。
 /// </summary>
 /// <remarks>
 /// <para>
-/// 配置面治理（R4/R5）：每个属性都有真实消费点（<c>AilyKnowledgeProvider</c>）；
+/// 每个属性都有真实消费点（<c>AilyKnowledgeProvider</c>）；
 /// 配置 DTO 不使用 <c>required</c>（源生成配置绑定器限制），合法性在 <see cref="Validate"/> 校验；
-/// Aily 应用 ID 是 Aily 平台资源标识而非飞书应用凭据，故落独立配置节而非 <c>FeishuAppConfig</c>
-/// （租户维度的知识库范围治理归 Phase 4 多租户 AI 治理线）。
+/// Aily 应用 ID 是 Aily 平台资源标识而非飞书应用凭据，故落独立配置节而非 <c>FeishuAppConfig</c>。
 /// </para>
 /// </remarks>
 public sealed class AilyKnowledgeOptions

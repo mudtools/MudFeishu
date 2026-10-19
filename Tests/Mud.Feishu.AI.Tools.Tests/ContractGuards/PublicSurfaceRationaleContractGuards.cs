@@ -94,7 +94,13 @@ public class PublicSurfaceRationaleContractGuards
     // （IFeishuTenantDriveDownloadFileTool / IFeishuTenantDriveExportDocumentTool /
     //  IFeishuTenantCalendarAgendaTool / IFeishuTenantCalendarRsvpTool，全部登记在 reasons 段）；
     // Mud.Feishu.AI.Tools 269 → 273（Mud.Feishu.AI 50 / Mud.Feishu.AI.Mcp 7 不变）。
-    private const int BaselineTypeCount = 330;
+    // T-2 表格加深（2026-10-16）：330 → **370**——40 个新工具声明面 public 接口
+    // （bitable 19：读 7 + 写 12；sheets 21：读 6 + 写 15，全部登记在 reasons 段）；
+    // Mud.Feishu.AI.Tools 273 → 313（Mud.Feishu.AI 50 / Mud.Feishu.AI.Mcp 7 不变）。
+    // T-3 三域成环（2026-10-16）：370 → **403**——33 个新工具声明面 public 接口
+    // （im 4 + mail 17 + task 12，全部登记在 reasons 段）；
+    // Mud.Feishu.AI.Tools 313 → 346（Mud.Feishu.AI 50 / Mud.Feishu.AI.Mcp 7 不变）。
+    private const int BaselineTypeCount = 403;
 
     /// <summary>反射实测的公开面来源程序集（= 原台账覆盖面：三个飞书发布包）。</summary>
     private static readonly string[] ProductAssemblies =

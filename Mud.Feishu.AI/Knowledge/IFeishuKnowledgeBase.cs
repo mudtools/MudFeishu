@@ -8,13 +8,13 @@
 namespace Mud.Feishu.AI.Knowledge;
 
 /// <summary>
-/// 飞书侧知识库数据面门面的<b>派生命名契约</b>（N1 中立化后的 ④ 式保留）。
+/// 飞书侧知识库数据面门面的<b>派生命名契约</b>。
 /// </summary>
 /// <remarks>
 /// <para>
 /// 数据面（<c>AskAsync</c>）、检索面（<c>IRetriever</c>）与值类型
-/// （<c>RetrievedChunk</c>/<c>KnowledgeAnswer</c>）已中立化上移
-/// <see cref="Mud.AI.Abstractions.Knowledge.IKnowledgeBase"/>；本接口保留产品命名，
+/// （<c>RetrievedChunk</c>/<c>KnowledgeAnswer</c>）由 <see cref="Mud.AI.Abstractions.Knowledge.IKnowledgeBase"/>
+/// 承载；本接口保留产品命名，
 /// 使「飞书托管知识（Aily）」的宿主装配点与既有消费方零改动。
 /// </para>
 /// <para>

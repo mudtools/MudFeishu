@@ -10,8 +10,7 @@ using Mud.AI.Agent.Events;
 namespace Mud.Feishu.AI.Agents;
 
 /// <summary>
-/// 工具人工确认（HITL）的<b>批准回灌续跑</b>入口（R5-11；N2-c 改为产品侧薄转发，④式）。
-/// </summary>
+/// 工具人工确认（HITL）的<b>批准回灌续跑</b>入口（产品侧薄转发）。</summary>
 /// <remarks>
 /// <para>
 /// <b>要解决的问题</b>：写工具经 MEAI <c>ApprovalRequiredAIFunction</c> 包装后由框架
@@ -22,10 +21,10 @@ namespace Mud.Feishu.AI.Agents;
 /// <see cref="Mud.Feishu.AI.Events.ConversationalFeishuEventHandler{T}"/> 向用户承诺的「确认后会自动继续」不可达。
 /// </para>
 /// <para>
-/// <b>宿主调用点零改</b>：方法签名（含全部可选参数与顺序）与中立化前逐字一致。
+/// <b>宿主调用点零改</b>：方法签名含全部可选参数与顺序。
 /// </para>
 /// <para>
-/// <b>fail-closed 边界</b>与改造前一致（见中立实现的 remarks）：缺租户上下文/缺关键要素/
+/// <b>fail-closed 边界</b>（见中立实现的 remarks）：缺租户上下文/缺关键要素/
 /// 框架记录已失效一律显式抛错，绝不静默降级或凭空放行。
 /// </para>
 /// </remarks>
@@ -87,14 +86,14 @@ public static class FeishuAgentApprovalExtensions
     {
         if (toolContextAccessor is null)
         {
-            // 装配缺陷显式抛错（改造前语义逐字保留）：静默跳过上下文会让续跑轮的写工具 fail-closed 拒绝，
+            // 装配缺陷显式抛错：静默跳过上下文会让续跑轮的写工具 fail-closed 拒绝，
             // 表现为「批准了却不生效」且仅日志可见——宁可调用点直接失败。
             throw new InvalidOperationException(
                 $"续跑人工确认需要 {nameof(IFeishuToolContextAccessor)} 以重建租户执行上下文（批准 ≠ 放行，TMA2-20）——"
                     + "请从容器解析（FeishuTools 的 AddFeishuTools* 已 Singleton 注册）后传入");
         }
 
-        // ③ 式委托：中立侧不命名产品闸门类型；闸门缺席即不串行化（与事件层 ConversationGate is null 同口径）。
+        // 中立侧不命名产品闸门类型；闸门缺席即不串行化（与事件层 ConversationGate is null 同口径）。
         Func<string, CancellationToken, Task<IDisposable?>>? acquireGate = conversationGate is null
             ? null
             : async (key, ct) => (IDisposable?)await conversationGate

@@ -11,18 +11,14 @@ using Mud.Feishu.DataModels;
 
 namespace Mud.Feishu.AI.AgentTools;
 
-// R-9 / 阶段 5.0（下沉批）：本类型从 `Mud.Feishu.AI.Tools` 下沉到本程序集（保持 internal + IVT 回 AI.Tools）。
+// 本解包器与 `Channels/` / `Events/` 的强类型解包调用方同在本程序集（internal + IVT 回
+// `Mud.Feishu.AI.Tools`）：若放在 `Mud.Feishu.AI.Tools`，本程序集须引用它，与
+// 「AI 不得引用 AI.Tools（防环，保持"工具面依赖集成面"单向）」的依赖方向矛盾。
+// 保持 internal 而非 public：归属归位不扩大任何一边的公开承诺。
 //
-// 为什么必须下沉（R1.3 评审发现的**阻塞项**）：`Channels/` 与 `Events/` 的实现（4 + 8 个文件）都要解包
-// 强类型接口返回，而它们是 R-9 要迁到**本程序集**的。若不先下沉，迁移后本程序集需要引用 `Mud.Feishu.AI.Tools`
-// ——与新增不变量「AI 不得引用 AI.Tools（防环，保持"工具面依赖集成面"单向）」直接矛盾，编译必挂。
-//
-// 为什么用 internal + IVT 而不是 public：公开化会反向抵消 R-7 的公开面收敛目标
-// （下沉是"归属归位"，不该顺带扩大任何一边的公开承诺）。
-//
-// v2.3 P1-D：`ToolApiOutcome<T>`（原 `FeishuApiOutcome<T>`）已中立化上移 `Mud.AI.Agent.Tools`
-// （骨架 `ToolExecutor` 与集成面共用同一解包产物形状，public）；
-// 本文件只保留**读产品信封**的读取器——信封形态（`FeishuApiResult<T>`）产品间差异大，留适配层（YAGNI）。
+// `ToolApiOutcome<T>` 位于中立包 `Mud.AI.Agent.Tools`（骨架 `ToolExecutor` 与集成面共用同一
+// 解包产物形状，public）；本文件只保留**读产品信封**的读取器——信封形态（`FeishuApiResult<T>`）
+// 产品间差异大，留适配层（YAGNI）。
 
 /// <summary>
 /// <see cref="FeishuApiResult{T}"/> 统一解包器（分域执行器与集成面共用；<c>code != 0</c> → 可读错误文本，

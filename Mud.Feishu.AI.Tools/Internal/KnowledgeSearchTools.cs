@@ -11,15 +11,15 @@ using Mud.Feishu.AI.Knowledge;
 namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
-/// Knowledge 单工具执行器（<c>knowledge.search</c>，AI-FD-D12 P2D-4b）：绑定
+/// Knowledge 单工具执行器（<c>knowledge.search</c>）：绑定
 /// <see cref="IRetriever"/> 检索门面（Aily 数据知识），回填 = 编号切片列表（每条截断，超限截断标记）。
 /// </summary>
 /// <remarks>
 /// <para>
-/// appKey 异步流缺失时由 <c>AilyKnowledgeProvider</c> 抛结构化失败（多租户隔离禁止默认应用兜底，
-/// TMA2-20），经执行链异常归一为 <c>[tool_error]</c> 回填——与只读门禁语义一致。
+/// appKey 异步流缺失时由 <c>AilyKnowledgeProvider</c> 抛结构化失败（多租户隔离禁止默认应用兜底），
+/// 经执行链异常归一为 <c>[tool_error]</c> 回填——与只读门禁语义一致。
 /// </para>
-/// <para>执行骨架（catch/回填）由 <see cref="ToolExecutor"/> 承担（WP3）；本类只保留参数校验与投影语义。</para>
+/// <para>执行骨架（catch/回填）由 <see cref="ToolExecutor"/> 本类只保留参数校验与投影语义。</para>
 /// </remarks>
 internal sealed class KnowledgeSearchTools(IRetriever retriever, IOptions<FeishuAgentOptions> options)
 {

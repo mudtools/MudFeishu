@@ -13,7 +13,7 @@ using Mud.Feishu.DataModels.Minutes;
 namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
-/// Minutes 只读工具执行器（R5 / F-11：<c>minutes.get</c> / <c>minutes.get_artifacts</c>）。
+/// Minutes 只读工具执行器（<c>minutes.get</c> / <c>minutes.get_artifacts</c>）。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -23,7 +23,7 @@ namespace Mud.Feishu.AI.Tools.Internal;
 /// 软缺席（执行期给可执行错误），已启用时正常在位。
 /// </para>
 /// <para>
-/// <b>S-13 教训</b>：首版实现用的是硬依赖，结果目录里<b>静默少了这两个工具</b>，
+/// <b>教训</b>：首版实现用的是硬依赖，结果目录里<b>静默少了这两个工具</b>，
 /// 而 MUDFT022/025 均为 Error 且构建干净 —— 说明"绑定生成"与"注册器装配"是两段，
 /// 后者失败会被<b>软缺席机制静默吞掉</b>。改软依赖后问题消失。
 /// </para>

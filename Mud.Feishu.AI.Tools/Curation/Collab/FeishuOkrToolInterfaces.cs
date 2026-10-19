@@ -8,18 +8,18 @@
 namespace Mud.Feishu.AI.Tools.Curation;
 
 // <summary>
-// OKR 域工具接口集（R6 / S2）：okr/*。
+// OKR 域工具接口集：okr/*。
 // </summary>
 // <remarks>
 // <para>
 // <b>为什么首批选 OKR</b>：SDK 已有 <c>Mud.Feishu/Interfaces/Okr/</c> 29 个接口文件（v1 + v2 两代），
-// 但 AI 工具面此前 0 策展——「有没有能力」与「模型能不能用」之间的缺口对模型完全不可见。
+// 而 AI 工具面若无策展，「有没有能力」与「模型能不能用」之间的缺口对模型完全不可见。
 // </para>
 // <para>
-// <b>v1 / v2 的分工（有意只策展 v2 主干）</b>：v2 是 <c>cycle → objective → key_result</c> 的
+// <b>v1 / v2 的分工（只策展 v2 主干）</b>：v2 是 <c>cycle → objective → key_result</c> 的
 // 可写主干（含富文本 content），v1 的 <c>users/{user_id}/okrs</c>、<c>okrs/batch_get</c> 与
 // <c>progress_records</c> 走的是<b>另一套富文本契约</b>（<c>ContentBlock</c> 而非 <c>ContentBlockV2</c>），
-// 混入同一批会让模型在两套块模型间误用 ⇒ 本批只取 v2 主干 + v1 的<b>只读元数据</b>
+// 混入会让模型在两套块模型间误用 ⇒ 只取 v2 主干 + v1 的<b>只读元数据</b>
 // （<c>list_periods</c>，周期是 v2 cycle 的上游元数据）。
 // </para>
 // <para>

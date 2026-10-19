@@ -60,16 +60,21 @@ public static class FeishuToolsServiceCollectionExtensions
     // "写工具是否可用"由 `FeishuAgent:WriteAllowList` 白名单表达（安全默认不变）。
 
     /// <summary>
-    /// 按域注册 Bitable 工具（P1D-1c）：4 个只读工具执行器 + 写执行器缺席。
+    /// 按域注册 Bitable 工具（P1D-1c）：6 个只读工具 + 17 个深化工具（T-2：表单/仪表盘/工作流/角色）；写执行器缺席。
     /// </summary>
-    /// <remarks>要求宿主已注册 Bitable 三客户端；注册表单例只按首次注册生效（组合多域时回调只在首域传入）。</remarks>
+    /// <remarks>要求宿主已注册 Bitable 客户端；注册表单例只按首次注册生效（组合多域时回调只在首域传入）。</remarks>
     public static IServiceCollection AddFeishuBitableTools(
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuBitableToolsCore();
+        => AddFeishuToolInfrastructure(services, configure)
+            .AddFeishuBitableToolsCore()
+
+            // T-2：BitableDeepTools 是「单执行器混合域」（7 只读 + 10 写），Core 只在只读链与
+            // 本入口各登记一次；两条装配路径都要拿到同一份工具集（DomainRegistrarTests 锁等价性）。
+            .AddFeishuBitableDeepToolsCore();
 
     /// <summary>
-    /// 按【域组】注册云文档工具（docx + docxDeep + wiki + minutesRead + sheets + drive + driveDownload + driveComment + drivePermission + translation）。
+    /// 按【域组】注册云文档工具（docx + docxDeep + wiki + minutesRead + sheets + sheetsDeep + drive + driveDownload + driveComment + drivePermission + translation）。
     /// </summary>
     /// <remarks>
     /// F-3 / R1 §15.3：原 9 个细粒度入口合并为本入口——它们在飞书产品面同属"云文档域"，
@@ -85,6 +90,11 @@ public static class FeishuToolsServiceCollectionExtensions
             .AddFeishuWikiToolsCore()
             .AddFeishuMinutesReadToolsCore()
             .AddFeishuSheetsToolsCore()
+
+            // T-2：SheetsDeepTools 是「单执行器混合域」（6 只读 + 15 写），Core 只在只读链与
+            // 本入口各登记一次；两条装配路径都要拿到同一份工具集（DomainRegistrarTests 锁等价性）。
+            .AddFeishuSheetsDeepToolsCore()
+
             .AddFeishuDriveToolsCore()
 
             // R5 / F-10 + B-2：受控下载出口执行器 DriveDownloadTools（2 个只读）——
@@ -98,7 +108,7 @@ public static class FeishuToolsServiceCollectionExtensions
             .AddFeishuTranslationToolsCore();
 
     /// <summary>
-    /// 按【域组】注册"目标与任务"工具（task + okr）。
+    /// 按【域组】注册"目标与任务"工具（task + taskDeep + okr）。
     /// </summary>
     /// <remarks>F-3 / R1 §15.3：任务与 OKR 在飞书产品面同属"目标与任务"，合并为一个公开入口。</remarks>
     public static IServiceCollection AddFeishuTaskOkrTools(
@@ -106,6 +116,12 @@ public static class FeishuToolsServiceCollectionExtensions
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure)
             .AddFeishuTaskToolsCore()
+
+            // T-3 成环批次：TaskDeepTools 是「单执行器混合域」（12 个工具：4 只读 + 8 写），
+            // Core 只在只读链与本入口各登记一次；两条装配路径都要拿到同一份工具集
+            // （DomainRegistrarTests 锁等价性）。
+            .AddFeishuTaskDeepToolsCore()
+
             .AddFeishuOkrToolsCore();
 
     /// <summary>
@@ -345,7 +361,12 @@ public static class FeishuToolsServiceCollectionExtensions
     public static IServiceCollection AddFeishuMailTools(
         this IServiceCollection services,
         Action<FeishuToolRegistry>? configure = null)
-        => AddFeishuToolInfrastructure(services, configure).AddFeishuMailToolsCore();
+        => AddFeishuToolInfrastructure(services, configure)
+            .AddFeishuMailToolsCore()
+
+            // T-3 成环批次：MailDeepTools（17 个工具：5 只读 + 12 写）与 MailTools 同属
+            // 「读写混合域」——Core 只在写链与本入口各登记一次（见上方 ⚠️ 不可叠加说明）。
+            .AddFeishuMailDeepToolsCore();
 
 
     /// <summary>
@@ -507,7 +528,21 @@ public static class FeishuToolsServiceCollectionExtensions
                     .AddFeishuSchemaReadToolsCore()
                     .AddFeishuCapabilityLookupToolsCore()
                     // B5：已策展工具检索执行器 ToolSearchTools（feishu.tool_search，只读注册表/契约表）。
-                    .AddFeishuToolSearchToolsCore();
+                    .AddFeishuToolSearchToolsCore()
+
+                    // T-2 加深批次：Bitable 深化执行器 BitableDeepTools（17 个工具：7 只读 + 10 写）
+                    // 与 Sheets 深化执行器 SheetsDeepTools（21 个工具：6 只读 + 15 写）。
+                    // 两者均为「单执行器混合域」，按链拆分取舍同 Board/Attendance：Core 整体注册于只读链
+                    // （写工具默认不启用，经 FeishuAgent:WriteAllowList 单键控）；
+                    // 且必须与 AddFeishuBitableTools / AddFeishuCloudDocTools 的清单**同进同出**
+                    // （DomainRegistrarTests 锁等价性）。
+                    .AddFeishuBitableDeepToolsCore()
+                    .AddFeishuSheetsDeepToolsCore()
+
+                    // T-3 成环批次：Task 深化执行器 TaskDeepTools（12 个工具：4 只读 + 8 写）。
+                    // 同属「单执行器混合域」（取舍同上）；必须与 AddFeishuTaskOkrTools 的清单
+                    // **同进同出**（DomainRegistrarTests 锁等价性）。
+                    .AddFeishuTaskDeepToolsCore();
 
     /// <summary>
     /// 写域工具核心批量注册（W4 抽取：消除 AddFeishuTools 与 AddFeishuWriteTools 的重复链）。
@@ -536,6 +571,12 @@ public static class FeishuToolsServiceCollectionExtensions
             .AddFeishuDriveWriteToolsCore()
             // WP5/R5 域扩容：邮件工具 + 通讯录部门轴工具
             .AddFeishuMailToolsCore()
+
+            // T-3 成环批次：Mail 深化执行器 MailDeepTools（17 个工具：5 只读 + 12 写），
+            // 与 MailTools 同属「读写混合域」——只在写链登记（与 AddFeishuMailTools 的清单
+            // **同进同出**，DomainRegistrarTests 锁等价性）。
+            .AddFeishuMailDeepToolsCore()
+
             .AddFeishuContactDepartmentToolsCore()
 
             // R6 / S2：OKR 域写入执行器 OkrWriteTools（6 个工具）。

@@ -7,7 +7,7 @@
 
 namespace Mud.Feishu.AI.Tools.Curation;
 
-// ─────────────────────────── org · 组织元数据（F-1 第三个补域） ───────────────────────────
+// ─────────────────────────── org · 组织元数据 ───────────────────────────
 
 /// <summary>
 /// 工具接口：org.list_job_titles（映射 <c>IFeishuTenantV3JobTitle.GetJobTitlesListAsync</c>）。
@@ -27,7 +27,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// <c>contact:user.base:readonly</c>，与 <c>contact.*</c> 五个只读工具同口径（同一授权面，宿主一次授权即可用齐）。
 /// </para>
 /// <para>
-/// <b>DP-B1-0「页不进、预算进」</b>：只暴露 <c>page_token</c>，页大小固定走 SDK 默认（10），
+/// <b>「页不进、预算进」</b>：只暴露 <c>page_token</c>，页大小固定走 SDK 默认（10），
 /// 不由模型控制——否则模型会把 page_size 调到上限以"少翻几页"，反而更早触发结果截断。
 /// </para>
 /// </remarks>
@@ -74,7 +74,7 @@ public interface IFeishuTenantOrgGetJobTitleTool
 /// 工具接口：org.list_job_levels（映射 <c>IFeishuTenantV3JobLevel.GetJobLevelListAsync</c>）。
 /// </summary>
 /// <remarks>
-/// 支持 SDK 原生的 <c>name</c> **模糊过滤**（业务参数，可下发）；<c>page_size</c> 仍不下发（DP-B1-0）。
+/// 支持 SDK 原生的 <c>name</c> **模糊过滤**（业务参数，可下发）；<c>page_size</c> 仍不下发。
 /// </remarks>
 [AgentTool("org.list_job_levels",
     Description = "分页列出/按名称模糊匹配【职级】目录（职级 ID、名称、说明、排序序号 order、启用状态）——用于把通讯录返回的 job_level_id 换成可读名称，或确认组织职级序列。name 为可选模糊过滤；page_token 续页（页大小由宿主固定）。只读，需 contact:user.base:readonly。",

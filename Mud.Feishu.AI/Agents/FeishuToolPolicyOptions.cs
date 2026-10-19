@@ -10,7 +10,7 @@ using Mud.AI.Agent.Tools;
 namespace Mud.Feishu.AI.Agents;
 
 /// <summary>
-/// <b>S-1：工具策略（glob / 域级）</b>——配置节 <c>FeishuAgent:ToolPolicy</c>。
+/// <b>工具策略（glob / 域级）</b>——配置节 <c>FeishuAgent:ToolPolicy</c>。
 /// </summary>
 /// <remarks>
 /// <para>

@@ -20,7 +20,7 @@ namespace Mud.Feishu.AI.Agents;
 /// <remarks>
 /// <c>ChatClientAgent</c> 负责「模型→生成」，本类负责「会话解析 + 选项装配」；运行期编织（摘要先于 Run / Span / 耗时 / 用量 / 失败标注）由 <see cref="ObservedDelegatingAgent"/> 固化，本类只喂三个产品事实——Agent 名、飞书遥测实现、飞书摘要器。内部经 <see cref="InMemoryChatHistoryProvider"/> + <see cref="MessageCountingChatReducer"/> 施加 <see cref="FeishuAgentOptions.MaxHistoryMessages"/> 历史裁剪窗。
 /// <para>
-/// <b>委托语义的归属</b>：<c>Id</c>/<c>Name</c>/<c>Description</c>/<c>GetService</c>/会话三钩子由上游 <see cref="DelegatingAIAgent"/> 提供，Run 两钩子由 <see cref="ObservedDelegatingAgent"/> 提供——本类<b>不再手写</b>这些成员。前置条件是上游 <c>GetService</c> 必须「先判自身」：否则 <c>GetService(typeof(AIAgent))</c> 命中内层 <c>ChatClientAgent</c>，宿主经该引用调用将绕过本类注入的飞书遥测与摘要（由 <c>AgentContractGuards</c> + <c>FeishuAgentTests</c> 锁定）。
+/// <b>委托语义的归属</b>：<c>Id</c>/<c>Name</c>/<c>Description</c>/<c>GetService</c>/会话三钩子由上游 <see cref="DelegatingAIAgent"/> 提供，Run 两钩子由 <see cref="ObservedDelegatingAgent"/> 提供——本类<b>不再手写</b>这些成员。前置条件是上游 <c>GetService</c> 必须「先判自身」：否则 <c>GetService(typeof(AIAgent))</c> 命中内层 <c>ChatClientAgent</c>，宿主经该引用调用将绕过本类注入的飞书遥测与摘要。
 /// </para>
 /// <para>
 /// <b>会话持久化</b>：<see cref="IConversationStore"/> 只存取序列化后的会话 JSON，本类是序列化的唯一归属；<see cref="GetOrCreateSessionAsync"/> / <see cref="SaveSessionAsync"/> 为事件入口提供按键存取门面；会话 JSON 损坏时按 miss 处理并重建，旧格式数据不会让事件循环崩溃。
@@ -31,7 +31,7 @@ public sealed class FeishuAgent : ObservedDelegatingAgent, IAgentSessionFacade
     /// <summary>ChatHistoryProvider 的状态键（会话历史在 MAF 状态袋内的命名空间）。</summary>
     /// <remarks>
     /// 会话摘要器（<c>ConversationSummarizer</c>）经 MAF 扩展按同一键读写历史，键须同源。
-    /// D4：字面量是**产品事实**，故常量声明留在飞书侧；中性门面（<c>AgentSessionStore</c>）
+    /// 字面量是**产品事实**，故常量声明留在飞书侧；中性门面（<c>AgentSessionStore</c>）
     /// 只以参数接收，绝不硬编码本前缀。
     /// </remarks>
     internal const string ChatHistoryStateKey = "feishu.agent.history";
@@ -44,19 +44,18 @@ public sealed class FeishuAgent : ObservedDelegatingAgent, IAgentSessionFacade
     internal const string PendingReplyStateKey = "feishu.agent.pending_reply";
 
     /// <summary>
-    /// P4-4（outbox）：<see cref="PendingReplyStateKey"/> 所属轮次的标识。
+    /// outbox 回复（<see cref="PendingReplyStateKey"/>）所属轮次的标识。
     /// </summary>
     internal const string PendingReplyTurnStateKey = "feishu.agent.pending_reply_turn";
 
     private readonly FeishuAgentOptions _options;
 
     /// <summary>
-    /// N3：中立运行期配置（由 <see cref="FeishuAgentOptions.ToRuntimeOptions"/> 投影）。
+    /// 中立运行期配置（由 <see cref="FeishuAgentOptions.ToRuntimeOptions"/> 投影）。
     /// </summary>
     /// <remarks>
-    /// 事件入口与中立机制读这个，而不是直接读产品 Options——这样「产品事实 →
-    /// 中立值类型」只有<b>一处</b>翻译点（本属性），后续把机制搬进 <c>Mud.AI.Agent</c>
-    /// 时不需要再回来改编排层。
+    /// 事件入口与中立机制读这个，而不是直接读产品 Options——「产品事实 →
+    /// 中立值类型」只有<b>一处</b>翻译点（本属性）。
     /// </remarks>
     private readonly AgentRuntimeOptions _runtime;
 
@@ -64,11 +63,11 @@ public sealed class FeishuAgent : ObservedDelegatingAgent, IAgentSessionFacade
     private readonly ILogger? _logger;
 
     /// <summary>
-    /// N2-f/N5：中立遥测端口（<c>IAgentTelemetry</c>）的飞书实现——无状态，故为共享单例。
+    /// 中立遥测端口（<c>IAgentTelemetry</c>）的飞书实现——无状态，故为共享单例。
     /// </summary>
     /// <remarks>
-    /// 命名面（<c>feishu.agent.*</c> Span / 指标）由实现决定，中立机制只经端口埋点（②式）：
-    /// 这使「迁了机制就丢了可观测性」不再可能（摘要器是最先消费它的中立类型）。
+    /// 命名面（<c>feishu.agent.*</c> Span / 指标）由实现决定，中立机制只经端口埋点——
+    /// 机制迁移不会丢失可观测性（摘要器是最先消费它的中立类型）。
     /// </remarks>
     internal static readonly FeishuAgentTelemetry AgentTelemetry = new();
 
@@ -96,10 +95,10 @@ public sealed class FeishuAgent : ObservedDelegatingAgent, IAgentSessionFacade
     /// <b>不解析 Scoped 服务</b>（本类型是 Singleton，Scoped 依赖会被钉住成为 Captive Dependency）。</param>
     /// <param name="tools">暴露给模型的工具（可空）。来源：容器内全部 <see cref="AIFunction"/>
     /// 注册（如 <c>Mud.Feishu.AI.Tools</c> 经白名单 MapTool 后桥接产出）；
-    /// 为空/空集时保持 Phase 0 裸模型行为。</param>
+    /// 为空/空集时保持裸模型行为。</param>
     /// <param name="domainGuidance">已启用工具所属域的 guidance 资产（可空）。
-    /// 追加在宿主 <c>Instructions</c> <b>之后</b>（宿主指令优先）；为空/空集时指令与 Phase 0 完全一致。</param>
-    /// <param name="summarizer">渐进式会话摘要器（可空；R3-13 DI 化——为空时按阈值自动创建，非空时直接使用）。</param>
+    /// 追加在宿主 <c>Instructions</c> <b>之后</b>（宿主指令优先）；为空/空集时指令不含任何域 guidance。</param>
+    /// <param name="summarizer">渐进式会话摘要器（可空；为空时按阈值自动创建，非空时直接使用）。</param>
     /// <exception cref="InvalidOperationException">配置非法（fail-fast）。</exception>
     public FeishuAgent(
         IChatClient chatClient,
@@ -121,7 +120,7 @@ public sealed class FeishuAgent : ObservedDelegatingAgent, IAgentSessionFacade
     }
 
     /// <summary>
-    /// 装配构造（H1）：接收集中式装配产物并把内层 Agent 交给基类。
+    /// 装配构造：接收集中式装配产物并把内层 Agent 交给基类。
     /// </summary>
     private FeishuAgent(
         AgentAssembly assembly,
@@ -141,10 +140,10 @@ public sealed class FeishuAgent : ObservedDelegatingAgent, IAgentSessionFacade
         _logger = loggerFactory?.CreateLogger<FeishuAgent>();
         Guidance = assembly.Guidance;
 
-        // P1-H3：会话门面中性化——「按键存取 + 坏值自愈 + 序列化往返」的机制搬进
+        // 会话门面中性化——「按键存取 + 坏值自愈 + 序列化往返」的机制在
         // Mud.AI.Agent.Sessions.AgentSessionStore；飞书侧只提供两个产品事实：
-        // ① 存储契约的防腐层（IConversationStore → 中立端口 ISessionStore，公开签名因此零变化）；
-        // ② 历史状态键 ChatHistoryStateKey（字面量留在本类，绝不进中立包）。
+        // 其一，存储契约的防腐层（IConversationStore → 中立端口 ISessionStore，公开签名因此零变化）；
+        // 其二，历史状态键 ChatHistoryStateKey（字面量留在本类，绝不进中立包）。
         // codec 传 this：序列化/反序列化的归属方是本 Agent（经基类委托内层 ChatClientAgent）。
         _sessionStore = new Mud.AI.Agent.Sessions.AgentSessionStore(
             this,
@@ -154,7 +153,7 @@ public sealed class FeishuAgent : ObservedDelegatingAgent, IAgentSessionFacade
     }
 
     /// <summary>
-    /// 摘要器工厂（R3-13 DI 化的兜底分支）：未注入替身且阈值为正时，按飞书事实创建一个。
+    /// 摘要器工厂（未注入替身时的兜底分支）：未注入替身且阈值为正时，按飞书事实创建一个。
     /// </summary>
     /// <remarks>
     /// 静态而非实例：基类构造初始化器先于本类构造体执行，此处只能求助于静态上下文。
@@ -181,7 +180,7 @@ public sealed class FeishuAgent : ObservedDelegatingAgent, IAgentSessionFacade
     /// </summary>
     /// <remarks>
     /// 在公开构造的初始化器里调用 ⇒ 基类构造体执行前即抛 <see cref="InvalidOperationException"/>
-    /// （Phase 0 §8：工厂启动即失败，不透传非法状态）。
+    /// （工厂启动即失败，不透传非法状态）。
     /// </remarks>
     private static AgentAssembly Assemble(
         IChatClient chatClient,
@@ -196,7 +195,7 @@ public sealed class FeishuAgent : ObservedDelegatingAgent, IAgentSessionFacade
         if (options is null)
             throw new ArgumentNullException(nameof(options));
 
-        // 构造即校验（Phase 0 §8：工厂启动即失败，不透传非法状态）。
+        // 构造即校验（工厂启动即失败，不透传非法状态）。
         options.Validate();
 
         var logger = loggerFactory?.CreateLogger<FeishuAgent>();
@@ -216,10 +215,10 @@ public sealed class FeishuAgent : ObservedDelegatingAgent, IAgentSessionFacade
                 options.MaxHistoryTokens, reason);
         }
 
-        // 指令装配的唯一消费点（WP6）：宿主指令 + 已启用域的 guidance。
+        // 指令装配的唯一消费点：宿主指令 + 已启用域的 guidance。
         // 截断信号落在返回值上（GuidanceResult.Truncated），此处只把"丢了哪些域"写进日志——
         // 断言口在 Guidance 属性与 Compose 的返回值上（用例不依赖日志基建）。
-        // 预算由飞书侧显式注入（H2 中立化：中性装配器不持有产品预算）。
+        // 预算由飞书侧显式注入（中性装配器不持有产品预算）。
         var guidance = GuidanceComposer.Compose(
             options.Instructions, domainGuidance, FeishuGuidanceBudget.MaxGuidanceLength);
         if (guidance.Truncated)
@@ -235,8 +234,8 @@ public sealed class FeishuAgent : ObservedDelegatingAgent, IAgentSessionFacade
                 string.Join(",", guidance.OmittedDomains));
         }
 
-        // A1（v3）：装配三件套（Name / ChatOptions{Instructions, Tools} / ChatHistoryProvider）
-        // 的构造交给中立工厂 Mud.AI.Agent.Agents.AgentAssemblyFactory；产品侧只喂产品事实——
+        // 装配三件套（Name / ChatOptions{Instructions, Tools} / ChatHistoryProvider）
+        // 的构造在中立工厂 Mud.AI.Agent.Agents.AgentAssemblyFactory；产品侧只喂产品事实——
         // 名字、已组装的指令、工具、历史状态键（字面量留在本类）、历史裁剪窗上限。
         return new AgentAssembly(
             AgentAssemblyFactory.Create(
@@ -253,13 +252,13 @@ public sealed class FeishuAgent : ObservedDelegatingAgent, IAgentSessionFacade
 
     /// <summary>域 guidance 装配结果（含 <see cref="GuidanceResult.Truncated"/> 与丢弃清单；构造期一次性求值）。</summary>
     /// <remarks>
-    /// R5 消费点：宿主启动冒烟/健康检查与 <c>GuidanceComposerTests</c> 的可断言面——
+    /// 宿主启动冒烟/健康检查与 <c>GuidanceComposerTests</c> 的可断言面——
     /// 超限丢弃不再只以日志形式存在。
     /// </remarks>
     public GuidanceResult Guidance { get; }
 
     /// <summary>
-    /// N3：中立运行期配置（投影产物）——事件入口 / 中立机制的唯一配置读取面。
+    /// 中立运行期配置（投影产物）——事件入口 / 中立机制的唯一配置读取面。
     /// </summary>
     internal AgentRuntimeOptions RuntimeOptions => _runtime;
 
@@ -276,8 +275,7 @@ public sealed class FeishuAgent : ObservedDelegatingAgent, IAgentSessionFacade
     /// <remarks>
     /// 取值与上游 <see cref="DelegatingAIAgent.Name"/>（<c>InnerAgent.Name</c>）一致（内层
     /// <c>ChatClientAgentOptions.Name</c> 即 <see cref="FeishuAgentOptions.Name"/>）；
-    /// 保留显式覆写是为了让「本类是名字的所有者」这一事实在源码上可见，并由
-    /// <c>FeishuAgent_Name_ShouldBeOverrideNotHide</c> 锁定。
+    /// 保留显式覆写是为了让「本类是名字的所有者」这一事实在源码上可见。
     /// </remarks>
     public override string? Name => _options.Name;
 
@@ -285,7 +283,7 @@ public sealed class FeishuAgent : ObservedDelegatingAgent, IAgentSessionFacade
     /// 按会话键读取会话；miss（不存在、TTL 过期、载荷损坏）时创建新会话。
     /// </summary>
     /// <remarks>
-    /// N2-c：本方法与 <see cref="SaveSessionAsync"/> 的签名与中立端口
+    /// 本方法与 <see cref="SaveSessionAsync"/> 的签名与中立端口
     /// <see cref="Mud.AI.Agent.Events.IAgentSessionFacade"/> 逐字一致 ⇒ 本类直接实现该端口
     /// （零改造），中立管线与审批续跑闭环因此不需引用任何产品类型。
     /// </remarks>

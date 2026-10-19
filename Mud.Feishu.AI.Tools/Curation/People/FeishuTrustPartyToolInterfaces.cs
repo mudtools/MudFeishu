@@ -7,7 +7,7 @@
 
 namespace Mud.Feishu.AI.Tools.Curation;
 
-// ─────────────────────────── TrustParty · 信任方 / 跨组织互通（B1 第五域，收官） ───────────────────────────
+// ─────────────────────────── TrustParty · 信任方 / 跨组织互通 ───────────────────────────
 
 // 命名口径：工具名前缀 trustparty 在生成器里规范化为 **Trustparty**（常量 / 参数类 / 注册器），
 // 执行器类名 TrustPartyTools ⇒ DI 入口 AddFeishuTrustPartyToolsCore()，SDK 接口名仍是

@@ -121,6 +121,200 @@ internal sealed class MessageWriteTools(Mud.Feishu.IFeishuTenantV1Message messag
             });
         });
     }
+
+    // ────────── T-3 写面成环：编辑 / 卡片更新 / 加急（app / sms） ──────────
+
+    /// <summary>加急目标用户 ID 类型闭集（与 <c>ImTools.AllowedReceiveIdTypes</c> 同源词汇）。</summary>
+    private static readonly string[] AllowedUrgentUserIdTypes = ["open_id", "user_id", "union_id"];
+
+    /// <summary>im.edit_message：编辑本 Bot 已发送的文本消息（PUT 整段覆盖，天然幂等；<c>dry_run=true</c> 时只预演）。</summary>
+    [ToolHandler(typeof(IFeishuTenantImEditMessageTool))]
+    public Task<ToolResult> EditMessageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.ImEditMessage);
+        return executor.RunAsync(async () =>
+        {
+            var args = ImEditMessageArgs.Unpack(arguments);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return ToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "PUT", $"/open-apis/im/v1/messages/{args.MessageId}",
+                    ToolDryRun.IdempotencyNote("PUT 整段覆盖天然幂等——重复提交相同内容结果一致"),
+                    ("message_id", args.MessageId.Length), ("text", args.Text.Length)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _messageClient
+                .EditMessageAsync(
+                    args.MessageId,
+                    new EditMessageRequest
+                    {
+                        MsgType = "text",
+                        Content = new JsonObject { ["text"] = args.Text }.ToJsonString(),
+                    },
+                    cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApiUntruncated(outcome, static data => new JsonObject
+            {
+                ["message_id"] = data.MessageId,
+            });
+        });
+    }
+
+    /// <summary>im.patch_card_message：整卡覆盖更新（模型描述结构化语法 → <c>CardDsl</c> 编译；<c>dry_run=true</c> 时只预演）。</summary>
+    /// <remarks>与 <c>im.send_card</c> 同一套 DSL 与同一条"编译期报错"路径（F-6：模型全程零 JSON）。</remarks>
+    [ToolHandler(typeof(IFeishuTenantImPatchCardMessageTool))]
+    public Task<ToolResult> PatchCardMessageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.ImPatchCardMessage);
+        return executor.RunAsync(async () =>
+        {
+            var args = ImPatchCardMessageArgs.Unpack(arguments);
+
+            // 编译期：DSL 非法组合在此报错并附合法组合（与 im.send_card 同款）；不进入下游。
+            var card = CardDsl.Compile(args.Title, args.Body, args.Buttons);
+            var content = card.ToJsonString();
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return ToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "PATCH", $"/open-apis/im/v1/messages/{args.MessageId}",
+                    "卡片结构（由 body/buttons 编译，非模型手写）：" + content
+                    + ToolDryRun.IdempotencyNote("整卡覆盖天然幂等——重复提交相同卡片结果一致"),
+                    ("message_id", args.MessageId.Length),
+                    ("content", content.Length)));
+            }
+
+            // PatchMessageAsync 返回 FeishuNullDataApiResult?（无 Data 载荷）。
+            var result = await _messageClient
+                .PatchMessageAsync(
+                    args.MessageId,
+                    new PatchMessageRequest { Content = content },
+                    cancellationToken)
+                .ConfigureAwait(false);
+            RequireNullDataSuccess(executor.ToolName, result);
+
+            return ToolResultPipeline.OkReceipt(new JsonObject
+            {
+                ["message_id"] = args.MessageId,
+                ["updated"] = true,
+            });
+        });
+    }
+
+    /// <summary>im.urgent_app：把消息加急给指定用户（应用内强提醒；<c>dry_run=true</c> 时只预演）。</summary>
+    [ToolHandler(typeof(IFeishuTenantImUrgentAppTool))]
+    public Task<ToolResult> UrgentAppAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.ImUrgentApp);
+        return executor.RunAsync(async () =>
+        {
+            var args = ImUrgentAppArgs.Unpack(arguments);
+            var userIdType = ResolveUrgentUserIdType(args.UserIdType);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return ToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "PATCH", $"/open-apis/im/v1/messages/{args.MessageId}/urgent_app",
+                    ToolDryRun.IdempotencyNote(null),
+                    ("message_id", args.MessageId.Length),
+                    ("user_ids", args.UserIds.Length),
+                    ("user_id_type", userIdType.Length)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _messageClient
+                .MessageUrgentAppAsync(
+                    args.MessageId,
+                    new MessageUrgentRequest { UserIdList = [.. args.UserIds] },
+                    userIdType,
+                    cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApiUntruncated(outcome, data => ProjectUrgent(args.MessageId, data));
+        });
+    }
+
+    /// <summary>im.urgent_sms：把消息以短信加急给指定用户（客户端＋短信双通道；<c>dry_run=true</c> 时只预演）。</summary>
+    [ToolHandler(typeof(IFeishuTenantImUrgentSmsTool))]
+    public Task<ToolResult> UrgentSmsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.ImUrgentSms);
+        return executor.RunAsync(async () =>
+        {
+            var args = ImUrgentSmsArgs.Unpack(arguments);
+            var userIdType = ResolveUrgentUserIdType(args.UserIdType);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return ToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "PATCH", $"/open-apis/im/v1/messages/{args.MessageId}/urgent_sms",
+                    ToolDryRun.IdempotencyNote(null),
+                    ("message_id", args.MessageId.Length),
+                    ("user_ids", args.UserIds.Length),
+                    ("user_id_type", userIdType.Length)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _messageClient
+                .MessageUrgentSMSAsync(
+                    args.MessageId,
+                    new MessageUrgentRequest { UserIdList = [.. args.UserIds] },
+                    userIdType,
+                    cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApiUntruncated(outcome, data => ProjectUrgent(args.MessageId, data));
+        });
+    }
+
+    /// <summary>加急结果投影：显式给出"谁没收到"（invalid_user_id_list）——加急的目的就是送达，空数组也是有效信息。</summary>
+    private static JsonObject ProjectUrgent(string messageId, MessageUrgentResult data)
+    {
+        var invalid = new JsonArray();
+        foreach (var id in data.InvalidUserIdList ?? [])
+        {
+            invalid.AddNode(id);
+        }
+
+        return new JsonObject
+        {
+            ["message_id"] = messageId,
+            ["urgent"] = true,
+            ["invalid_user_id_list"] = invalid,
+        };
+    }
+
+    /// <summary>加急目标用户 ID 类型（缺省 <c>open_id</c>；闭集校验）。</summary>
+    private static string ResolveUrgentUserIdType(string? userIdTypeRaw)
+    {
+        var userIdType = userIdTypeRaw ?? "open_id";
+        if (Array.IndexOf(AllowedUrgentUserIdTypes, userIdType) < 0)
+        {
+            throw new ArgumentException(
+                $"user_id_type 仅支持 {string.Join("/", AllowedUrgentUserIdTypes)}，实际: {userIdType}");
+        }
+
+        return userIdType;
+    }
+
+    /// <summary>
+    /// 解包 <c>FeishuNullDataApiResult</c>（不走 <c>FeishuApiResultReader.Read&lt;T&gt;</c>，
+    /// T 不可推断且 Data 天然为 null）。
+    /// </summary>
+    private static void RequireNullDataSuccess(string toolName, FeishuNullDataApiResult? result)
+    {
+        if (result is null)
+        {
+            throw new ArgumentException("飞书接口无响应（result 为空）");
+        }
+
+        if (result.Code != 0)
+        {
+            throw new ArgumentException(
+                FeishuToolBinding.StructuredError(
+                    toolName,
+                    result.Code,
+                    $"飞书接口返回错误 code={result.Code.ToString(CultureInfo.InvariantCulture)}, "
+                    + $"msg={result.Msg ?? "(无错误信息)"}"));
+        }
+    }
 }
 
 /// <summary>

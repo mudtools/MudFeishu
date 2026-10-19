@@ -8,7 +8,7 @@
 namespace Mud.Feishu.AI.Mcp;
 
 /// <summary>
-/// MCP 资源条目（<c>resources/list</c> 的内容来源，方案 M-2）。
+/// MCP 资源条目（<c>resources/list</c> 的内容来源）。
 /// </summary>
 /// <param name="Uri">资源 URI（形如 <c>feishu-guidance://im</c>）。</param>
 /// <param name="Name">人读名称（客户端 UI 展示）。</param>
@@ -19,7 +19,7 @@ namespace Mud.Feishu.AI.Mcp;
 /// </param>
 /// <remarks>
 /// <para>
-/// <b>为什么带 <c>SizeBytes</c></b>（方案 §10 风险登记"客户端盲目全读"的对策）：MCP 客户端常常
+/// <b>为什么带 <c>SizeBytes</c></b>（防"客户端盲目全读"）：MCP 客户端常常
 /// 把 <c>resources/list</c> 的结果一次性灌进上下文；给出体积估算后，客户端（或用户）可以据此
 /// 决定"按需读哪几个"，而不是"全部读"。这是本服务对渐进披露的最后一环补充：
 /// <b>instructions 给路由摘要 → resources/list 给清单与体积 → resources/read 才取正文</b>。
@@ -27,7 +27,7 @@ namespace Mud.Feishu.AI.Mcp;
 /// <para>
 /// <b>为什么不做分页</b>：资源清单规模 = 启用域 × 2 + high-risk 工具数 + 2，量级为几十~百余条，
 /// 远未到需要 cursor 的程度；协议上 <c>resources/list</c> 的分页是可选项
-/// （<c>nextCursor</c> 缺失即表示已列完），故首版刻意不做（方案 M-4）。
+/// （<c>nextCursor</c> 缺失即表示已列完），故刻意不做分页。
 /// </para>
 /// </remarks>
 public sealed record McpResourceInfo(

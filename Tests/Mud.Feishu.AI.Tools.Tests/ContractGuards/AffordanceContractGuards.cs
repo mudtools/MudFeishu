@@ -42,9 +42,11 @@ public class AffordanceContractGuards
 
     // ── 规模冻结（R-3/F-7 接入批实测；增减资产必须同批改这里的数字并说明理由）──
     // 字符总数按 LF 归一化口径测量（ReadAssets 统一 \r\n → \n），Windows(CRLF) 与 CI(LF) 同值。
-    private const int ExpectedAssetCount = 23;
+    // T-2：bitable 深化 3 个 + sheets 深化 4 个高危写工具资产（23 → 30；9975 → 12551 字符）。
+    // T-3：mail 草稿/规则/模板删除 3 个 + task 提醒移除/清单删除/清单撤成员 3 个（30 → 36）。
+    private const int ExpectedAssetCount = 36;
 
-    private const int ExpectedTotalAssetCharacters = 9975;
+    private const int ExpectedTotalAssetCharacters = 15061;
 
     // B2 瘦身（测试体系治理，见《单元测试体系过度测试分析与解决方案》§三.5；该文档已迁 Mud.AI 仓）：
     // 与上游诊断**同一判定**的仓库侧副本已删除——

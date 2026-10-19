@@ -18,7 +18,7 @@ namespace Mud.Feishu.AI.Mcp;
 /// <remarks>
 /// <b>执行链复用（铁律）</b>：<c>tools/call</c> 只解析出 <see cref="Microsoft.Extensions.AI.AIFunction"/> 并调用它——授权门禁、租户上下文切换、
 /// 出站净化、内容安全、审计、流式/截断口径<b>全部沿用既有执行链</b>；本包只依赖两条窄接缝（<see cref="IFeishuToolFunctionFactory"/> 构桥 +
-/// <see cref="IToolErrorTextFormatter"/> 渲染错误文本），不 <c>new</c> 实现类型、不引用 SDK 强类型客户端（守卫断言本目录不出现 <c>IFeishu*</c> 调用）。
+/// <see cref="IToolErrorTextFormatter"/> 渲染错误文本），不 <c>new</c> 实现类型、不引用 SDK 强类型客户端（本目录不出现 <c>IFeishu*</c> 调用）。
 /// <para>
 /// <b>工具集真相源 = 注册表白名单</b>（<c>FeishuToolRegistry.EnabledTools</c>）：未启用的工具在 <c>tools/list</c> 不可见、调用只回"不存在或未启用"，
 /// MCP <b>不提供第二条启用通道</b>。<b>不得</b>改用 <c>FeishuAgentToolSource.GetTools</c>——那条路径把写工具包进 MEAI 的
@@ -67,11 +67,11 @@ public sealed class FeishuMcpToolServer
     private readonly Dictionary<string, McpToolInfo> _byMcpName = new(StringComparer.Ordinal);
 
     /// <summary>
-    /// M-2：资源目录（<c>IncludeResources=false</c> 或工具面缺席时为 <see langword="null"/>）。
+    /// 资源目录（<c>IncludeResources=false</c> 或工具面缺席时为 <see langword="null"/>）。
     /// </summary>
     /// <remarks>
     /// 与工具面<b>同一次装配</b>构建（域集合来自同一份白名单），故"资源可见性 == 工具可见性"
-    /// 是结构事实而不是纪律（守卫 <c>McpResourceContractGuards</c> 另做机械断言）。
+    /// 是结构事实而不是纪律。
     /// </remarks>
     private readonly FeishuMcpResourceCatalog? _resources;
 
@@ -101,7 +101,7 @@ public sealed class FeishuMcpToolServer
 
         _logger = logger;
 
-        // R-7：两条窄接缝从容器解析（与注册表同源，均由 AddFeishuToolInfrastructure 装配）。
+        // 两条窄接缝从容器解析（与注册表同源，均由 AddFeishuToolInfrastructure 装配）。
         // 缺席（= 宿主没装配工具面）不抛：tools/list 返回空列表是合法状态，
         // 真正的装配错误（白名单含未注册工具等）已在注册表构建期 fail-fast。
         _functionFactory = _services.GetService<IFeishuToolFunctionFactory>();
@@ -122,7 +122,7 @@ public sealed class FeishuMcpToolServer
     public IReadOnlyList<McpResourceInfo> Resources => _resources?.Resources ?? [];
 
     /// <summary>
-    /// 合法资源 URI 形态清单（未知 URI 错误文案与守卫用）。
+    /// 合法资源 URI 形态清单（未知 URI 错误文案用）。
     /// </summary>
     /// <remarks>未启用 <c>resources</c> 时仍返回模板（错误文案一致性）；它只是"URI 长什么样"的说明。</remarks>
     public IReadOnlyList<string> ResourcesUriPrefixes
@@ -259,7 +259,7 @@ public sealed class FeishuMcpToolServer
 
         if (!string.IsNullOrWhiteSpace(Instructions))
         {
-            // R7/A4~A6 的域资产（路由优先级 / 避坑 / 示例）与 Agent 内部注入的是同一份常量，
+            // 域资产（路由优先级 / 避坑 / 示例）与 Agent 内部注入的是同一份常量，
             // 故外部 Agent 的工具选择质量与进程内一致（而不是只拿到 163 条描述）。
             result["instructions"] = Instructions;
         }
@@ -268,7 +268,7 @@ public sealed class FeishuMcpToolServer
     }
 
     /// <summary>
-    /// 能力声明（M-1）：<c>tools</c> 恒在；<c>resources</c> 在启用且有可读资源时声明。
+    /// 能力声明：<c>tools</c> 恒在；<c>resources</c> 在启用且有可读资源时声明。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -311,7 +311,7 @@ public sealed class FeishuMcpToolServer
                 ["description"] = resource.Description,
                 ["mimeType"] = resource.MimeType,
 
-                // 体积估算（方案 §10：防"客户端盲目全读"）——非协议标准字段，
+                // 体积估算（防"客户端盲目全读"）——非协议标准字段，
                 // 客户端可忽略；给得出来比"读之前不知道多大"更有用。
                 ["sizeBytes"] = resource.SizeBytes,
             });
@@ -454,7 +454,7 @@ public sealed class FeishuMcpToolServer
         Dictionary<string, object?> arguments,
         CancellationToken cancellationToken)
     {
-        // 显式重建租户上下文（与 R5-2 续跑同构的教训）：MCP 调用不在事件流内，
+        // 显式重建租户上下文：MCP 调用不在事件流内，
         // 上下文不流动就会落到"缺 appKey ⇒ 工具桥结构化拒绝"上；作用域必须在 finally 释放，
         // 否则同进程的后续调用会带着前一个租户的 appKey（AsyncLocal 泄漏 = 跨租户串号）。
         using var scope = _contextAccessor.Begin(new FeishuToolContext(
@@ -485,7 +485,7 @@ public sealed class FeishuMcpToolServer
             // 协议层抛出等于把整个 MCP 会话打断，客户端只看到连接断开，缺陷被降级为"网络问题"。
             _logger?.LogError(ex, "MCP 工具调用抛异常：tool={Tool}", contractName);
             return (
-                // R-7：经窄接缝渲染（与执行链同一份错误契约）；接缝缺席时退回纯文本原因
+                // 经窄接缝渲染（与执行链同一份错误契约）；接缝缺席时退回纯文本原因
                 // ——协议层不允许因为"少注册了一个服务"而把异常抛回宿主循环（那会中断会话）。
                 _errorFormatter?.Format(contractName, "工具执行抛异常（详见宿主日志）")
                     ?? $"工具执行抛异常（详见宿主日志）：{contractName}",
@@ -514,25 +514,24 @@ public sealed class FeishuMcpToolServer
             return;
         }
 
-        // 先整体校验命名可映射性（冲突/超长都是一次性结构事实），再逐个构建——
-        // 校验是纯函数（McpToolNames.EnsureMappable），因此"冲突会 fail-fast"这句话有可自证的证据。
+        // 先整体校验命名可映射性（冲突/超长都是一次性结构事实），再逐个构建。
         McpToolNames.EnsureMappable(registry.EnabledTools.Select(static d => d.Name));
 
         foreach (var definition in registry.EnabledTools)
         {
             if (!FeishuToolSchemas.SchemaByToolName.TryGetValue(definition.Name, out var schemaJson))
             {
-                // 契约守卫保证「注册名 ⊆ Schema 常量表」；此处兜底跳过而不是让服务起不来。
+                // 「注册名 ⊆ Schema 常量表」由装配期保证；此处兜底跳过而不是让服务起不来。
                 continue;
             }
 
             var mcpName = McpToolNames.ToMcpName(definition.Name);
 
-            // R-7：经窄接缝构桥（不再 new 实现类型；接缝内部复用 DI 的上下文访问器单例，
+            // 经窄接缝构桥（不 new 实现类型；接缝内部复用 DI 的上下文访问器单例，
             // 与 InvokeAsync 里 Begin 的访问器是同一实例——这是"上下文可见"的前提）。
             var function = _functionFactory.Create(definition, schemaJson);
 
-            // R-3 / F-7：描述**取自同一个 AIFunction 实例**（而非 definition.Description）。
+            // 描述**取自同一个 AIFunction 实例**（而非 definition.Description）。
             // 差别只在配了 per-tool affordance 的工具上：affordance 由 FeishuToolAIFunction 在构造期
             // 追加到 Description（`x-feishu` 刻意不进参数 Schema，故必须走描述），两链共用同一类型
             // ⇒ 进程内与 MCP 的工具描述逐字节一致，外部 Agent 也拿得到同一份决策指导。
@@ -611,7 +610,7 @@ public sealed class FeishuMcpToolServer
     }
 
     /// <summary>
-    /// 构建资源目录（M-2）：域集合与工具面同源（同一份白名单的注册表条目）。
+    /// 构建资源目录：域集合与工具面同源（同一份白名单的注册表条目）。
     /// </summary>
     private FeishuMcpResourceCatalog BuildResources(IServiceProvider services)
     {
@@ -638,7 +637,7 @@ public sealed class FeishuMcpToolServer
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>M-3（instructions 瘦身）</b>：域集合与优先级顺序取自工具源（<see cref="FeishuAgentToolSource.GetGuidance"/>，
+    /// <b>instructions 瘦身</b>：域集合与优先级顺序取自工具源（<see cref="FeishuAgentToolSource.GetGuidance"/>，
     /// 与进程内 Agent 完全一致的"工具数降序 + 域名序"），但<b>内容形态</b>由
     /// <see cref="FeishuMcpServerOptions.InstructionsMode"/> 决定——
     /// <c>routing</c>（默认）用与进程内同一个 <see cref="GuidanceRoutingSummary"/> 产出的一行摘要；
@@ -676,7 +675,7 @@ public sealed class FeishuMcpToolServer
         {
             if (!FeishuToolGuidance.ByDomain.TryGetValue(block.Domain, out var full))
             {
-                // 无 L1 资产的域（不应发生：装配守卫断言"有工具必有资产"）——保持源内容，不丢域。
+                // 无 L1 资产的域（不应发生：装配契约要求"有工具必有资产"）——保持源内容，不丢域。
                 blocks.Add(block);
                 continue;
             }

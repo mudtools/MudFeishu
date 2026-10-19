@@ -7,18 +7,18 @@
 
 namespace Mud.Feishu.AI.Tools.Curation;
 
-// ─────────────────────────── Security · 行为审计日志（F-1 P0 批首个域） ───────────────────────────
+// ─────────────────────────── Security · 行为审计日志 ───────────────────────────
 
 /// <summary>
 /// 工具接口：security.query_audit_logs（映射 <c>IFeishuTenantV1SecurityAuditLog.GetAuditLogDataAsync</c>）。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>F-1 P0 批（Security · 合规敏感）</b>：把"谁在什么时候动了哪份文档 / 权限 / 应用"变成可查事实——
-/// 合规排查、离职审计、异常操作复盘都用它。此前该域零覆盖，模型只能靠用户口述。
+/// <b>Security · 合规敏感</b>：把"谁在什么时候动了哪份文档 / 权限 / 应用"变成可查事实——
+/// 合规排查、离职审计、异常操作复盘都用它。
 /// </para>
 /// <para>
-/// <b>PII 纪律（DP-A5-1 档位 ①）</b>：结果含<b>他人</b>的成员 ID、IP、地理位置与设备信息 ⇒
+/// <b>PII 纪律</b>：结果含<b>他人</b>的成员 ID、IP、地理位置与设备信息 ⇒
 /// 属 PII 出口：<b>默认不启用</b>（需宿主显式加入 <c>FeishuAgent:Tools</c>），且描述中必须声明
 /// "结果进第三方模型上下文"的后果（由 <c>PiiToolDisciplineContractGuards</c> 机械锁定）。
 /// </para>
@@ -28,8 +28,8 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// 后者对本类排查无增量信息，回填只扩大泄露面。
 /// </para>
 /// <para>
-/// <b>有意不策展</b>：同域的 OpenAPI 审计日志（<c>ListOpenApiLogDataAsync</c>）留待下一片；
-/// 设备管理（device_record / device_apply_record）与用户数据迁移（user_migration）均为<b>写类</b>，另立批次。
+/// <b>有意不策展</b>：设备管理（device_record / device_apply_record）与用户数据迁移（user_migration）
+/// 均为<b>写类</b>，不属本只读审计面。
 /// </para>
 /// </remarks>
 [AgentTool("security.query_audit_logs",

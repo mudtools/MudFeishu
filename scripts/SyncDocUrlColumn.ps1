@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     为 documents 下的接口文档补充「接口文档」列。
 

@@ -45,6 +45,12 @@ internal static class GuardProviderFactory
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableAppTable>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableField>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableRecord>().Object)
+            // T-2：Bitable 深化执行器 4 个客户端（必选依赖，缺席 ⇒ form/dashboard/workflow/role
+            // 共 17 个深化工具静默缺席，全量契约断言随之落空）。
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableForm>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableDashboard>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.Interfaces.IFeishuTenantV1BitableWorkflow>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV2BitableRole>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1Docx>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DocxBlocks>().Object)
             // R7/A2：Docx 深化执行器（DocxDeepTools）的群公告客户端——**必选依赖**，
@@ -69,6 +75,13 @@ internal static class GuardProviderFactory
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1ChatGroupMember>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3Spreadsheets>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3SpreadsheetData>().Object)
+            // T-2：Sheets 深化执行器 5 个客户端（必选依赖，缺席 ⇒ cond_format/data_validation/
+            // protected/filter/float_image 共 21 个深化工具静默缺席，全量契约断言随之落空）。
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV2SpreadsheetConditionFormat>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV2SpreadsheetDataValidation>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV2SpreadsheetProtected>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3SpreadsheetFilter>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3SpreadsheetFloatImage>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4Approval>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4ApprovalQuery>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4ApprovalTask>().Object)
@@ -90,6 +103,16 @@ internal static class GuardProviderFactory
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4CalendarEvent>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4Calendar>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV2Task>().Object)
+            // T-3：Task 深化执行器（TaskDeepTools）的清单侧客户端——**必选依赖**，
+            // 缺席时该执行器整体解析失败 ⇒ tasklist/搜索/提醒/重开共 12 个深化工具静默缺席，
+            // 「注册表 ≡ 契约表」的全量断言随之落空。
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV2TaskList>().Object)
+            // T-3：Mail 深化执行器（MailDeepTools）的草稿/规则/模板客户端（全部可空依赖——
+            // 此处注册以覆盖「客户端齐备」路径，让 17 个深化工具走真实分支而非执行期结构化错误）。
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuUserV1MailDraft>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1MailRule>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1MailTemplate>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuUserV1MailTemplate>().Object)
             .AddSingleton(new Mock<Mud.AI.Abstractions.Knowledge.IRetriever>().Object);
 
         if (withUserTaskClient)

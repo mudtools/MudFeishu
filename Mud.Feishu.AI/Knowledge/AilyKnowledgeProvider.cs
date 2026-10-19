@@ -14,22 +14,19 @@ using Mud.Feishu.DataModels.Aily;
 namespace Mud.Feishu.AI.Knowledge;
 
 /// <summary>
-/// Aily 托管知识问答提供器（RAG-A 默认路径，Phase 2 §3.4）：包装
-/// <c>IFeishuTenantV1AilyDataKnowledge.AskDataKnowledgeAsync</c>（SSE），产出
-/// 答案 + 召回切片（<see cref="KnowledgeAnswer.Chunks"/>，供带引用的回答与 sources 回传）。
+/// Aily 托管知识问答提供器（RAG 默认路径）：包装 <c>IFeishuTenantV1AilyDataKnowledge.AskDataKnowledgeAsync</c>（SSE），
+/// 产出答案 + 召回切片（<see cref="KnowledgeAnswer.Chunks"/>，供带引用的回答与 sources 回传）。
 /// </summary>
 /// <remarks>
 /// <para>
 /// <b>租户上下文</b>：与工具执行链同一事实来源——经 <see cref="IFeishuToolContextAccessor"/>
-/// 异步流读取当前 <see cref="FeishuToolContext.AppKey"/>（事件入口注入），缺失即失败
-/// （多租户隔离禁止默认应用兜底，TMA2-20）；每次调用经
-/// <see cref="IFeishuAppContextScopeFactory.BeginScope"/> 切换，finally 释放。
+/// 异步流读取当前 <see cref="FeishuToolContext.AppKey"/>（事件入口注入），缺失即失败（多租户隔离禁止默认应用兜底）；
+/// 每次调用经 <see cref="IFeishuAppContextScopeFactory.BeginScope"/> 切换，finally 释放。
 /// </para>
 /// <para>
-/// <b>AOT 约束</b>：SSE 事件投影走 <see cref="JsonDocument"/> 手工白名单（DataModels 的
-/// <c>AilyJsonContext</c> 为 internal 且仅 net8+ 编译，跨包不可用——对齐 Phase 1 投影偏差决策），
-/// 全程无反射序列化。SSE 载荷（问答事件）一次性读入内存按行解析——体量小，且规避
-/// netstandard2.0 缺失 <c>ReadAsStreamAsync(ct)</c>/<c>ReadLineAsync(ct)</c> 重载的 TFM 分叉。
+/// <b>AOT 约束</b>：SSE 事件投影走 <see cref="JsonDocument"/> 手工白名单（DataModels 的 <c>AilyJsonContext</c>
+/// 为 internal 且仅 net8+ 编译，跨包不可用），全程无反射序列化。SSE 载荷（问答事件）一次性读入内存按行解析
+/// ——体量小，且规避 netstandard2.0 缺失 <c>ReadAsStreamAsync(ct)</c>/<c>ReadLineAsync(ct)</c> 重载的 TFM 分叉。
 /// </para>
 /// <para>
 /// <b>错误语义</b>：非 2xx 由 HTTP 执行器抛 <c>ApiException</c>；飞书残余风险「HTTP 200 +
@@ -41,7 +38,7 @@ public sealed class AilyKnowledgeProvider : IFeishuKnowledgeBase, IRetriever
 {
     private const string StatusFinished = "finished";
 
-    /// <summary>未限定数据资产范围时的默认来源标注（P2D-4c 弱引用）。</summary>
+    /// <summary>未限定数据资产范围时的默认来源标注（弱引用）。</summary>
     private const string DefaultChunkSource = "aily:data-knowledge";
 
     private readonly Mud.Feishu.IFeishuTenantV1AilyDataKnowledge _knowledgeClient;
@@ -55,7 +52,7 @@ public sealed class AilyKnowledgeProvider : IFeishuKnowledgeBase, IRetriever
     /// </summary>
     /// <param name="knowledgeClient">Aily 数据知识客户端（Tenant 身份）。</param>
     /// <param name="scopeFactory">租户上下文作用域工厂。</param>
-    /// <param name="options">RAG-A 配置（<see cref="AilyKnowledgeOptions"/>）。</param>
+    /// <param name="options">RAG 配置（<see cref="AilyKnowledgeOptions"/>）。</param>
     /// <param name="contextAccessor">工具执行上下文访问器（appKey 事实来源；可空=执行期结构化失败）。</param>
     /// <param name="logger">日志（可空）。</param>
     public AilyKnowledgeProvider(
@@ -94,7 +91,7 @@ public sealed class AilyKnowledgeProvider : IFeishuKnowledgeBase, IRetriever
             return [new RetrievedChunk(outcome.AnswerText ?? string.Empty, Source: "aily:faq")];
         }
 
-        // 引用回链（P2D-4c）：Aily ask SSE 的 chunks 为纯文本（不携带来源元数据）——
+        // 引用回链：Aily ask SSE 的 chunks 为纯文本（不携带来源元数据）——
         // 配置了 DataAssetIds 限定范围时标注对应数据资产（弱引用），否则标注 aily:data-knowledge。
         var assetIds = _options.DataAssetIds;
         if (assetIds is { Length: > 0 })
@@ -120,7 +117,7 @@ public sealed class AilyKnowledgeProvider : IFeishuKnowledgeBase, IRetriever
                 "Aily 知识问答缺少 appKey 执行上下文——请经 ConversationalFeishuEventHandler 或 IFeishuToolContextAccessor.Begin 注入（多租户隔离禁止默认应用兜底，TMA2-20）");
         }
 
-        // netstandard2.0 的 BCL 不带 IsNullOrWhiteSpace 的 NotNullWhen 注解，需显式断言（对齐既有风格）。
+        // netstandard2.0 的 BCL 不带 IsNullOrWhiteSpace 的 NotNullWhen 注解，需显式断言。
         using var scope = _scopeFactory.BeginScope(appKey!);
         using var response = await _knowledgeClient
             .AskDataKnowledgeAsync(_options.AppId, BuildRequest(query), cancellationToken)
@@ -180,7 +177,7 @@ public sealed class AilyKnowledgeProvider : IFeishuKnowledgeBase, IRetriever
 
             var status = root.TryGetProperty("status", out var statusElement) ? statusElement.GetString() : null;
 
-            // R4-3：单调累积（OR-累积），不得覆盖。SSE 中间事件（processing 等）常省略 has_answer，
+            // 单调累积（OR-累积），不得覆盖。SSE 中间事件（processing 等）常省略 has_answer，
             // 覆盖式赋值会被最后一次「无该字段」的事件重置为 false ⇒ 有答案被误判为无答案（静默召回丢失）。
             if (root.TryGetProperty("has_answer", out var hasAnswerElement)
                 && hasAnswerElement.ValueKind == JsonValueKind.True)
@@ -208,7 +205,7 @@ public sealed class AilyKnowledgeProvider : IFeishuKnowledgeBase, IRetriever
             {
                 foreach (var chunk in chunksElement.EnumerateArray())
                 {
-                    // R3-6：非字符串 chunk（数字/布尔/对象/数组）降级为文本而非抛异常——
+                    // 非字符串 chunk（数字/布尔/对象/数组）降级为文本而非抛异常——
                     // JsonElement.GetString() 对非 String 会抛 InvalidOperationException，
                     // 一条脏数据会让**整次召回**（chunks + answer）失败。
                     var text = chunk.ValueKind switch

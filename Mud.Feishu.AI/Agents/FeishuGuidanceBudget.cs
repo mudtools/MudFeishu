@@ -22,7 +22,7 @@ namespace Mud.Feishu.AI.Agents;
 /// <item>恒定流程：<b>内容加长 → 先复算总量 → 再抬常量</b>。由守卫
 /// <c>GuidanceAssetContractGuards</c> 的「全域拼装零丢弃」用例锁死。</item>
 /// </list>
-/// 当前取值与历次复算依据（2048 → 8192 → 16384 → 24576 → 32768；本次对 23 域 ≈25,209 字符留 ≈30% 余量）：
+/// 当前取值与依据（对 23 域 ≈25,209 字符留 ≈30% 余量）：
 /// documents/AIAgent/decisions/ADR-0002-guidance-budget.md
 /// </remarks>
 public static class FeishuGuidanceBudget

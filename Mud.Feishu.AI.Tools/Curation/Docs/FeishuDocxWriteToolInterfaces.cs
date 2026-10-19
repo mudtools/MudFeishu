@@ -8,7 +8,7 @@
 namespace Mud.Feishu.AI.Tools.Curation;
 
 // <summary>
-// R5/WP2 写类工具接口集（文档/表格/多维表格/云空间写面成环）。
+// 写类工具接口集（文档/表格/多维表格/云空间写面成环）。
 // </summary>
 // <remarks>
 // <para>
@@ -16,9 +16,6 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // 执行链（FeishuToolBinding）对写工具强制授权门禁——
 // EnforceToolAuthorization=true 且未注册 IToolExecutionAuthorizer 即拒绝（安全默认），
 // 白名单单独键控（FeishuAgent:WriteAllowList，默认空=不启用任何写工具）。
-// </para>
-// <para>
-// SDK 落点已在 T0-5 逐方法核实（见 R5 文档）。
 // </para>
 // </remarks>
 
@@ -65,11 +62,11 @@ public interface IFeishuTenantDocxAppendBlocksTool
 
 /// <summary>工具接口：docx.update_blocks（映射 <c>IFeishuTenantV1DocxBlocks.BatchUpdateBlocksAsync</c>）。</summary>
 /// <remarks>
-/// <b>暴露范围（刻意收窄）</b>：只暴露 SDK <c>UpdateBlockRequest</c> 的 <c>update_text_elements</c> 面
+/// <b>暴露范围</b>：只暴露 SDK <c>UpdateBlockRequest</c> 的 <c>update_text_elements</c> 面
 /// （替换块的文本元素）。其余 11 个面（<c>update_text_style</c> / <c>update_table_property</c> /
 /// <c>insert_table_row</c> / <c>merge_table_cells</c> …）属表格结构与富样式编辑，
 /// 每个都需要独立的参数面；塞进同一个工具会让模型面对 12 个互斥可选参数而难以正确选择。
-/// <b>这是有意的范围决策，不是遗漏</b>（登记于 §13.12）。
+/// 故本工具不提供那些面（需改表格结构/富样式时另立工具）。
 /// </remarks>
 [AgentTool("docx.update_blocks",
     Description = "更新文档中已有块的文本内容（改写段落/标题的文字）。block_id 来自 docx.append_blocks 或 docx.get_raw_content 的返回。⚠️ 只支持改文本，不支持改表格结构与富样式（见工具说明）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。",
@@ -137,16 +134,15 @@ public interface IFeishuTenantDocxImportMarkdownTool
 /// <c>CreateBlockAsync</c> → <c>BatchDeleteBlocksAsync</c> 组合而成。
 /// </para>
 /// <para>
-/// <b>⚠️ 与原文方案的关键差异（安全性设计）</b>：原文要求"先删后建 + 补偿路径"。
-/// 本实现改为 <b>先建后删</b>，从而<b>从根本上消除"已删未建"的破坏窗口</b>：
+/// <b>⚠️ 安全性设计：执行顺序是<b>先建后删</b></b>（先追加新块、再删除旧块），从而消除"已删未建"的破坏窗口：
 /// <list type="number">
 /// <item>转换失败 ⇒ 文档未被触碰；</item>
 /// <item>追加失败 ⇒ 旧内容完整，新内容未入库（<b>无损失</b>）；</item>
 /// <item>删除失败 ⇒ 新旧内容并存——这是<b>可见且可恢复</b>的状态，工具会如实上报
 /// 精确的待删区间与新建块 ID，并明确告知"内容未丢失"。</item>
 /// </list>
-/// 对比"先删后建"：删除成功而创建失败会留下<b>被清空的文档</b>，且补偿（重放旧块）
-/// 需要先完整快照旧文档——在 SDK 无事务的前提下，那才是真正的不可靠路径。
+/// 不要改成"先删后建"：删除成功而创建失败会留下<b>被清空的文档</b>，且补偿（重放旧块）
+/// 需要先完整快照旧文档——在 SDK 无事务的前提下，那是真正的不可靠路径。
 /// </para>
 /// <para>
 /// <b>为什么 <c>idempotency_key</c> 是必填</b>：写操作在"已追加未删除"处中断后重试，

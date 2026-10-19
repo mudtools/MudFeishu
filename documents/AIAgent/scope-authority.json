@@ -9,6 +9,7 @@
   "_R5T0_2": "R5 WP0-T0-2 核对结果：aily:knowledge:readonly 与 im:resource 两项 ⚠️ 维持——无法在无控制台权限时定论；下次宿主接入时由控制台二次确认后回写。",
   "_R7_A5A6": "R7 A5/A6 新增：attendance:* / spark:* / board:* 共 8 个 scope——按官方 API 文档取值与核对，控制台开通前请在「权限管理」页按名称搜索确认（本批标 ⚠️ 待核对）。",
   "_T1_READ_FACES": "T-1 读取闭环（2026-10-16）新增：drive:export:readonly（drive.export_document 使用；官方《导出云文档》权限，覆盖创建/查询/下载导出任务三类接口，标 ✅ 已核对）；同时把 drive.download_file 记入既有 drive:drive:readonly、calendar.agenda 记入 calendar:calendar:readonly、calendar.rsvp 记入 calendar:calendar——四项均按官方 API 文档「权限要求」栏取值。",
+  "_T2_TABLE_DEEP": "T-2 表格加深（2026-10-16）：40 个新工具（bitable 深化 19 + sheets 深化 21）全部复用既有 scope，未引入新权限点——读侧为 bitable:app:readonly / sheets:spreadsheet:readonly，写侧为 bitable:app / sheets:spreadsheet（与两域既有行同源核对，✅ 维持）。",
   "scopes": {
     "aily:knowledge:readonly": "⚠️ 待核对：Aily 知识库 · 只读（knowledge.search 使用；scope 名称待核对：控制台二次确认，存疑但暂时保留）",
     "approval:approval": "审批 · 读写（approval.create_instance / approve_task 使用）",

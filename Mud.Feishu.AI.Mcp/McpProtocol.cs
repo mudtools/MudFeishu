@@ -52,12 +52,12 @@ internal static class McpProtocol
     public const string MethodToolsCall = "tools/call";
 
     /// <summary>
-    /// <c>resources/list</c>：列出可读资源（M-2；资源清单为装配期常量，故无分页）。
+    /// <c>resources/list</c>：列出可读资源（资源清单为装配期常量，故无分页）。
     /// </summary>
     public const string MethodResourcesList = "resources/list";
 
     /// <summary>
-    /// <c>resources/read</c>：读取资源正文（M-2；未知 URI 回 <c>-32602</c> + 合法前缀清单）。
+    /// <c>resources/read</c>：读取资源正文（未知 URI 回 <c>-32602</c> + 合法前缀清单）。
     /// </summary>
     public const string MethodResourcesRead = "resources/read";
 
@@ -131,11 +131,8 @@ internal static class McpToolNames
     /// 校验一批契约名"映射后可直接下发给严格客户端"：无冲突、长度合规。
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// 抽成<b>纯函数</b>而不是写在服务端构造函数里：这样它既能被真实工具面驱动
-    /// （守卫跑 <c>FeishuToolNames.All</c>），也能被合成输入自证（<c>a.b_c</c> vs <c>a_b.c</c> 必须报红）——
-    /// 否则"冲突检测"只是一段没有证据的防御代码。
-    /// </para>
+    /// 构造期一次性校验：冲突与超长都在工具面下发<b>之前</b>暴露，
+    /// 不留到运行期才被严格客户端拒绝（那会表现为整个工具列表收不到）。
     /// </remarks>
     /// <param name="contractNames">契约工具名集合。</param>
     /// <exception cref="InvalidOperationException">存在映射冲突，或映射后名字超出客户端上限。</exception>

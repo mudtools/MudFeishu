@@ -45,7 +45,7 @@
 #   Get-MudftOutputSchemaTruncatedToolCount）。
 
 009=8
-009-tools=92
+009-tools=99
 021=0
 031=0
 
@@ -114,4 +114,22 @@
 #       calendar.rsvp（`FeishuNullDataApiResult`，空数据面）——均非深层 DTO。
 #   被测树：T-1 前 HEAD(242 工具)=91（2026-10-14 第三次重测读数）；T-1(246 工具)=92。
 #   协议同前（Release + --no-incremental 全量构建）；8 次编译同值 92，取 Maximum。
+#
+# ── 2026-10-16 第五次重测（审查整改 T-2 表格加深批：工具面 246 → 286）──────────
+#   009-tools: 92 → **99**（+7，点名归因而非整域计入）：
+#     · 增量 7 个全部为新工具，逐个点名（可复算）：
+#       bitable.role_create / bitable.role_update / bitable.role_list（角色权限树 BaseRule/TableRole
+#       的嵌套超深）、sheets.cond_format_get（Style.Font/BackColor 嵌套）、sheets.filter_get
+#       （FilterInfos[].Conditions[] 两级集合）、sheets.protected_get / sheets.protected_update
+#       （Editors/Users[] 嵌套）。
+#     · 归因方法（生成器源码已随 Mud.AI.* 迁出本仓，样本诊断只列前 5 项，故改用可复算对账）：
+#       ① golden 输出 Schema 的截断标记（裸 `:{}` 空 schema 节点）逐条扫描：新增 9 个命中；
+#       ② 排除 2 个非截断命中——bitable.record_batch_create / record_batch_update 的 `"fields":{}`
+#          来自 AppTableRecordInfo.Fields 的 `object` 声明（合法空 schema，非深度截断）；
+#       ③ 三方对账闭合：能力目录 OutputSchemaCoveredToolCount 147 + 诊断 99 = 246（有非空
+#          output_schema 的工具数，golden 实测），与 +7 增量互证。
+#     · 其余 33 个新工具（含全部表单/仪表盘/工作流/记录/浮动图片面）逐个核过返回 DTO，
+#       未触发截断。被测树：T-2 前 HEAD(246 工具)=92（T-1 第四次重测读数）；T-2(286 工具)=99。
+#   协议同前（Release + --no-incremental 全量构建）；8 次编译同值 99，取 Maximum；构建 0 错误。
+#   处置同前：基线随合法规模增长重测 + 登记归因，**不抬** MaxOutputDepth（那是独立设计决策）。
 

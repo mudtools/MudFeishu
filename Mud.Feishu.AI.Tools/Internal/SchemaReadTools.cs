@@ -11,7 +11,7 @@ using Mud.Feishu.AI.Tools.Generated;
 namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
-/// 运行时 schema 自省执行器（<c>feishu.schema_read</c>，R6 / S3）。
+/// 运行时 schema 自省执行器（<c>feishu.schema_read</c>）。
 /// </summary>
 /// <remarks>
 /// <para>

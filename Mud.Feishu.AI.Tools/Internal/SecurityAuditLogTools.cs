@@ -10,7 +10,7 @@ using Mud.Feishu.DataModels.Security;
 namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
-/// Security「行为审计日志」只读工具执行器（F-1 P0 批：<c>security.query_audit_logs</c>）。
+/// Security「行为审计日志」只读工具执行器（<c>security.query_audit_logs</c>）。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -18,7 +18,7 @@ namespace Mud.Feishu.AI.Tools.Internal;
 /// （工具不入注册表；即使被白名单点名也返回"能力不可用"的可执行错误，而不是抛异常逃出执行链）。
 /// </para>
 /// <para>
-/// <b>参数前置校验（F-8）</b>：平台对审计查询有两条硬约束——起止相差 ≤ 30 天、page_size ∈ [1,200]，
+/// <b>参数前置校验</b>：平台对审计查询有两条硬约束——起止相差 ≤ 30 天、page_size ∈ [1,200]，
 /// 另有"operator_value 必须与 operator_type 成对"的隐式要求。三条都在<b>本地</b>拒绝并给出可自我纠正的
 /// 错误（<c>invalid_args</c>），既不消耗下游调用，也不让模型等一个必然失败的请求。
 /// </para>
@@ -38,7 +38,7 @@ internal sealed class SecurityAuditLogTools(
 
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
-    /// <summary>P-0 补齐（统一分页语义）：<c>fetch_all</c> 的条目/页数预算（来自宿主配置）。</summary>
+    /// <summary><c>fetch_all</c> 的条目/页数预算（来自宿主配置）。</summary>
     private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
     private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
@@ -61,7 +61,7 @@ internal sealed class SecurityAuditLogTools(
             var args = SecurityQueryAuditLogsArgs.Unpack(arguments);
             var query = BuildQuery(args);
 
-            // P-0 补齐：统一分页出口——聚合路径与单页路径共用同一次调用定义与同一份投影。
+            // 统一分页出口——聚合路径与单页路径共用同一次调用定义与同一份投影。
             // token 每页覆写（query 复用：BuildQuery 的参数校验只做一次，翻页时不再重复抛错路径）。
             async Task<ToolApiOutcome<GetAuditLogDataResult>> FetchPageAsync(string? token, CancellationToken ct)
             {

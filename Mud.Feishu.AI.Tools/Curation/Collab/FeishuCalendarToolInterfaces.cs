@@ -8,17 +8,17 @@
 namespace Mud.Feishu.AI.Tools.Curation;
 
 // <summary>
-// WP5 日历工具接口集（AT-F04 / F-05）：<c>calendar.create_event</c> / <c>calendar.find_free_slots</c> /
+// 日历工具接口集：<c>calendar.create_event</c> / <c>calendar.find_free_slots</c> /
 // <c>calendar.list_events</c>。
 // </summary>
 // <remarks>
 // <para>
-// <b>时间语义铁律（R4 §5.2）</b>：模型侧一律 RFC3339（如 <c>2026-10-01T14:00:00+08:00</c>）；
+// <b>时间语义铁律</b>：模型侧一律 RFC3339（如 <c>2026-10-01T14:00:00+08:00</c>）；
 // 平台侧形态由工具层转换——日历 v4 的 <c>date_time</c> 字段本身接受 RFC3339，任务 v2 的
 // <c>timestamp</c> 是毫秒字符串（模型不感知）。混暴露两种格式会让模型把毫秒当秒产生静默错误。
 // </para>
 // <para>
-// <b>find_free_slots 参数设计（R4.1 评审 R-1）</b>：<c>freebusy/list</c> 的 body 是
+// <b>find_free_slots 参数设计</b>：<c>freebusy/list</c> 的 body 是
 // 单 <c>user_id</c>/<c>room_id</c> 形态，不接受用户列表——多人场景由模型逐人调用。
 // </para>
 // </remarks>
@@ -46,14 +46,14 @@ public interface IFeishuTenantCalendarCreateEventTool
 }
 
 /// <summary>工具接口：calendar.find_free_slots（映射 <c>IFeishuTenantV4Calendar.GetFreebusyCalendarAsync</c>）。</summary>
-/// <remarks>R-1：body 为单 user_id/room_id 形态，不接受用户列表；多人场景由模型逐人调用。</remarks>
+/// <remarks>body 为单 user_id/room_id 形态，不接受用户列表；多人场景由模型逐人调用。</remarks>
 [AgentTool("calendar.find_free_slots",
     Description = "查询一个用户主日历或一间会议室在指定时间窗内的忙闲（time_min/time_max 为 RFC3339；user_id 与 room_id 二选一）。多人场景请逐人调用。只读，需 calendar:calendar:readonly。",
     RequiredScopes = ["calendar:calendar:readonly"],
     IsWrite = false,
     Source = nameof(IFeishuTenantV4Calendar) + "." + nameof(IFeishuTenantV4Calendar.GetFreebusyCalendarAsync),
 
-    // R5 / B-6：user_id 与 room_id 二选一是跨参数约束，required 表达不了（会让两者都必填）。
+    // user_id 与 room_id 二选一是跨参数约束，required 表达不了（会让两者都必填）。
     // 渲染为 "anyOf":[{"required":["user_id"]},{"required":["room_id"]}]，让约束结构化进入模型可见契约。
     AnyOf = ["user_id|room_id"])]
 public interface IFeishuTenantCalendarFindFreeSlotsTool
@@ -114,7 +114,7 @@ public interface IFeishuTenantCalendarAgendaTool
         CancellationToken cancellationToken = default);
 }
 
-// ─────────────────────────── Calendar 写面成环（R7/WP4，4 个） ───────────────────────────
+// ─────────────────────────── Calendar 写面成环（4 个） ───────────────────────────
 
 /// <summary>工具接口：calendar.update_event（映射 <c>IFeishuTenantV4CalendarEvent.UpdateCalendarEventAsync</c>）。</summary>
 [AgentTool("calendar.update_event",
@@ -191,7 +191,7 @@ public interface IFeishuTenantCalendarListEventAttendeesTool
         CancellationToken cancellationToken = default);
 }
 
-// ─────────────────────────── T-1：邀请回复（读闭环，1 个） ───────────────────────────
+// ─────────────────────────── 邀请回复（读闭环，1 个） ───────────────────────────
 
 /// <summary>工具接口：calendar.rsvp（映射 <c>IFeishuTenantV4CalendarEvent.ReplyCalendarEventAsync</c>）。</summary>
 /// <remarks>

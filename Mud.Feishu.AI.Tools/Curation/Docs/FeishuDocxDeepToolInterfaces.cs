@@ -9,7 +9,7 @@ using Mud.Feishu.DataModels.Docx;
 
 namespace Mud.Feishu.AI.Tools.Curation;
 
-// ─────────────────────────── Docx 深化（A2，+9 工具） ───────────────────────────
+// ─────────────────────────── Docx 深化（+9 工具） ───────────────────────────
 //
 // 链路设计（"先读后改"闭环）：
 //   get_document_info → list_block_children / get_block → create_block / update_block / create_descendant_blocks
@@ -176,8 +176,7 @@ public interface IFeishuTenantDocxGetChatAnnouncementTool
 
 /// <summary>工具接口：docx.set_chat_announcement（映射 <c>IFeishuTenantV1DocxAnnouncement.BatchUpdateChatAnnouncementBlocksAsync</c>）。</summary>
 /// <remarks>
-/// ⚠️ 公告是<b>全员可见</b>的广播面 → 走"敏感工具纪律"第 1/4 条：
-/// ① 描述中声明后果（结果全员可见）；④ 默认空名单不启用。
+/// ⚠️ 公告是<b>全员可见</b>的广播面 → 走"敏感工具纪律"：描述中声明后果（结果全员可见），且默认空名单不启用。
 /// </remarks>
 [AgentTool("docx.set_chat_announcement",
     Description = "批量更新群公告中块的文本内容。⚠️ 群公告是全员可见的广播面，更新后所有群成员将看到新内容。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。",

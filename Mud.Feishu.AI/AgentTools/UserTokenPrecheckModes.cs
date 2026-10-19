@@ -9,14 +9,14 @@
 namespace Mud.Feishu.AI.AgentTools;
 
 /// <summary>
-/// 用户令牌就绪探测模式（T1 / D1）。
+/// 用户令牌就绪探测模式。
 /// </summary>
 /// <remarks>
 /// <para>
 /// 配置键 <c>FeishuAgent:UserTokenPrecheck</c>；消费点 <c>UserTokenPrecheck</c>（AI.Tools）。
 /// </para>
 /// <para>
-/// <b>设计约束（A15 零差异）</b>：默认 <see cref="CacheOnly"/>——只调
+/// <b>设计约束（零差异）</b>：默认 <see cref="CacheOnly"/>——只调
 /// <c>HasValidTokenAsync</c>（内存镜像命中即零 IO），不产生网络往返。
 /// </para>
 /// <para>
@@ -26,7 +26,7 @@ namespace Mud.Feishu.AI.AgentTools;
 /// </remarks>
 public static class UserTokenPrecheckModes
 {
-    /// <summary>关闭探测：user 身份工具直接下发，由下游 401 + TokenRecoveryExecutor 兜底（改造前行为）。</summary>
+    /// <summary>关闭探测：user 身份工具直接下发，由下游 401 + TokenRecoveryExecutor 兜底。</summary>
     public const string Off = "off";
 
     /// <summary><b>默认</b>：只调 <c>HasValidTokenAsync</c>（内存镜像命中即零 IO）；不调 <c>CanRefreshTokenAsync</c>。</summary>

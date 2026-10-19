@@ -8,7 +8,7 @@
 namespace Mud.Feishu.AI.Tools.Curation;
 
 // <summary>
-// 能力出处元工具（AT-F12 / R3 D1 的第三层「能力出路」）。
+// 能力出处元工具（「能力出路」）。
 // </summary>
 // <remarks>
 // <para>
@@ -17,10 +17,10 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // 既不知道"没有"，也不知道"该放弃"，于是产生幻觉调用。本工具是唯一系统性的对冲。
 // </para>
 // <para>
-// <b>边界（R3 D4，评审 C-3 收窄）</b>：只回答<b>能力分组级</b>的元数据（分组名 / 方法数 /
+// <b>边界</b>：只回答<b>能力分组级</b>的元数据（分组名 / 方法数 /
 // 该分组所属模块是否已有策展工具），<b>不</b>返回方法名（生成器产物中本就没有方法名，
 // 见 <c>CapabilityCatalogEmitter</c>）、<b>不</b>返回请求构造信息、<b>不</b>接受任意路径。
-// 它不是"第 1156 个业务工具"，也不是通用裸 <c>api</c> 工具（决策①/⑤）。
+// 它不是"第 1156 个业务工具"，也不是通用裸 <c>api</c> 工具。
 // </para>
 // </remarks>
 
@@ -43,18 +43,18 @@ public interface IFeishuTenantCapabilityLookupTool
 }
 
 /// <summary>
-/// 工具接口：feishu.guidance_read（读取 L2 references 资产；R5 / F-9）。
+/// 工具接口：feishu.guidance_read（读取 L2 references 资产）。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>为什么归入既有 <c>feishu</c> 域而非新开 <c>guidance</c> 域</b>（评审点④）：
+/// <b>为什么归入既有 <c>feishu</c> 域而非新开 <c>guidance</c> 域</b>：
 /// 新开域需同步 <c>GuidanceComposer</c> 优先级表、<c>GuidanceAssetContractGuards</c>
 /// 域清单与 golden 三处，且它本身不属于任何业务域——与 <c>feishu.capability_lookup</c>
 /// 同属"元工具"，放在同一域语义一致。
 /// </para>
 /// <para>
 /// <b>为什么需要 L2（按需读取）</b>：L1 是常驻 guidance，受
-/// <c>GuidanceComposer</c> 预算（B-12 → R6/S1 已升到 16384）硬约束；16 个域的避坑文本全量预拼
+/// <c>GuidanceComposer</c> 预算（16384）硬约束；16 个域的避坑文本全量预拼
 /// 仍会逼近上限。L2 把深层文本（命令级避坑、完整示例）挪到按需读取，<b>由模型在调用失败后主动拉取</b>——
 /// 这也是官方 <c>lark-cli skills read</c> 的等价物。
 /// </para>
@@ -75,7 +75,7 @@ public interface IFeishuTenantGuidanceReadTool
 }
 
 /// <summary>
-/// 工具接口：feishu.tool_search（B5：已策展工具检索；无 SDK 源，只读注册表/契约表）。
+/// 工具接口：feishu.tool_search（已策展工具检索；无 SDK 源，只读注册表/契约表）。
 /// </summary>
 /// <remarks>
 /// <para>

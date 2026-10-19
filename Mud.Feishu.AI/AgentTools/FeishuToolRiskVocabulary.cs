@@ -8,7 +8,7 @@
 namespace Mud.Feishu.AI.AgentTools;
 
 /// <summary>
-/// 工具风险词汇表（AT-B13 / R3 决策 D2）：配置键 <c>FeishuAgent:MaxToolRisk</c> 与 Schema 的
+/// 工具风险词汇表：配置键 <c>FeishuAgent:MaxToolRisk</c> 与 Schema 的
 /// <c>x-feishu.risk</c> <b>共用同一套字面量</b>，杜绝"两套词汇"导致的静默失效。
 /// </summary>
 /// <remarks>
@@ -68,7 +68,7 @@ public static class FeishuToolRiskNames
     };
 
     /// <summary>
-    /// 把<b>整型</b>风险值转回 Schema 词汇（R-5 单源）。
+    /// 把<b>整型</b>风险值转回 Schema 词汇（与枚举重载同一单源）。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -94,11 +94,11 @@ public static class FeishuToolRiskNames
 }
 
 /// <summary>
-/// 工具身份词汇表（AT-B13 Identity 轴）：配置键 <c>FeishuAgent:AllowedIdentities</c> 与 Schema 的
+/// 工具身份词汇表：配置键 <c>FeishuAgent:AllowedIdentities</c> 与 Schema 的
 /// <c>x-feishu.identity</c> <b>共用同一套字面量</b>（同 <see cref="FeishuToolRiskNames"/> 的治理口径）。
 /// </summary>
 /// <remarks>
-/// 闭集校验（P2-9）把「拼写错误静默拒绝全部工具身份」变成装配期可读错误：
+/// 闭集校验把「拼写错误静默拒绝全部工具身份」变成装配期可读错误：
 /// <see cref="Agents.FeishuAgentOptions.AllowedIdentities"/> 与工具定义 / 策略轴
 /// （<c>FeishuToolBinding</c> 的 <c>identity_mismatch</c> 判定）必须共用本词汇表。
 /// </remarks>
@@ -145,13 +145,13 @@ public static class ContentSafetyModes
 }
 
 /// <summary>
-/// 域 guidance 的<b>下发形态</b>闭集（BUG-4 / 方案 §7.4；配置键 <c>FeishuAgent:GuidanceMode</c>）。
+/// 域 guidance 的<b>下发形态</b>闭集（配置键 <c>FeishuAgent:GuidanceMode</c>）。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>要解决的问题（BUG-4）</b>：L1 域资产在 instructions 里<b>全文拼接</b>，总量随域数线性增长——
-/// 实测 23 域 ≈25,209 字符 / 预算 32,768，专题一新增 5~7 域后<b>必然触顶</b>；
-/// 而超限策略是<b>整域丢弃</b>（尾部域静默失去引导，R5/B-12 已修过的失败形态会复现）。
+/// <b>要解决的问题</b>：L1 域资产在 instructions 里<b>全文拼接</b>，总量随域数线性增长——
+/// 实测 23 域 ≈25,209 字符 / 预算 32,768，域数继续增加后<b>必然触顶</b>；
+/// 而超限策略是<b>整域丢弃</b>（尾部域静默失去引导）。
 /// </para>
 /// <para>
 /// <b>routing（默认）</b>：每域只下发<b>一行路由摘要</b>（域职责 + 全文获取指引，≤256 字符/域），
@@ -160,7 +160,7 @@ public static class ContentSafetyModes
 /// 这正是官方 lark-cli"渐进披露"的本地等价物，且<b>不随域数线性增长</b>。
 /// </para>
 /// <para>
-/// <b>full</b>：保持改造前的全文拼接形态（宿主可回退；域数多时会触发整域丢弃，
+/// <b>full</b>：全文拼接形态（宿主可回退；域数多时会触发整域丢弃，
 /// 故 <c>Truncated</c>/<c>OmittedDomains</c> 信号必须被宿主消费）。
 /// </para>
 /// <para>

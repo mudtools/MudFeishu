@@ -7,7 +7,7 @@
 
 namespace Mud.Feishu.AI.Tools.Curation;
 
-// ─────────────────────────── Attendance 考勤（R7 / A5 新域，8 个工具） ───────────────────────────
+// ─────────────────────────── Attendance 考勤（8 个工具） ───────────────────────────
 //
 // 链路设计（"打卡 → 排班 → 统计 → 补卡"）：
 //   query_my_flow / query_user_flow / get_flow（打卡流水）
@@ -22,7 +22,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// 工具接口：attendance.query_my_flow（映射 <c>IFeishuUserV1AttendanceUserTask.QueryUserTaskAsync</c>）。
 /// </summary>
 /// <remarks>
-/// R7 / A5："我的打卡结果"——user 身份。宿主须在 <c>AllowedIdentities</c> 放行 <c>user</c>，否则装配期 fail-fast。
+/// "我的打卡结果"——user 身份。宿主须在 <c>AllowedIdentities</c> 放行 <c>user</c>，否则装配期 fail-fast。
 /// </remarks>
 [AgentTool("attendance.query_my_flow",
     Description = "查询指定用户的考勤打卡结果（每日一条汇总，含上下班打卡时间与结果）。user 身份，仅能查当前登录用户自身数据。check_date_from/check_date_to 为 yyyyMMdd 整数日期（如 20240101）。需 attendance:task 权限；宿主须在 AllowedIdentities 放行 user。",
@@ -45,7 +45,7 @@ public interface IFeishuUserAttendanceQueryMyFlowTool
 /// 工具接口：attendance.query_user_flow（映射 <c>IFeishuTenantV1AttendanceUserFlows.QueryUserFlowAsync</c>）。
 /// </summary>
 /// <remarks>
-/// R7 / A5（DP-A5-1 档位 ①）：⚠️ <b>PII 敏感</b>——按 user_id + 时间窗查<b>他人</b>打卡流水。
+/// ⚠️ <b>PII 敏感</b>——按 user_id + 时间窗查<b>他人</b>打卡流水。
 /// 默认不在任何白名单，需宿主显式加白名单；工具描述含后果句（结果将进入第三方模型上下文）。
 /// </remarks>
 [AgentTool("attendance.query_user_flow",
@@ -68,7 +68,7 @@ public interface IFeishuTenantAttendanceQueryUserFlowTool
 /// <summary>
 /// 工具接口：attendance.get_flow（映射 <c>IFeishuTenantV1AttendanceUserFlows.GetUserFlowAsync</c>）。
 /// </summary>
-/// <remarks>R7 / A5（DP-A5-1 档位 ①）：⚠️ PII 敏感（单条打卡详情）。默认不启用，需宿主显式加白名单。</remarks>
+/// <remarks>⚠️ PII 敏感（单条打卡详情）。默认不启用，需宿主显式加白名单。</remarks>
 [AgentTool("attendance.get_flow",
     Description = "获取单条考勤打卡流水详情（tenant 身份）。⚠️ PII 敏感：打卡时间/地点属员工隐私数据，结果将进入第三方模型上下文。默认不启用，需宿主显式加白名单。需 attendance:task 权限。",
     RequiredScopes = ["attendance:task"],
@@ -148,7 +148,7 @@ public interface IFeishuTenantAttendanceQueryMyRemedysTool
 /// 工具接口：attendance.submit_remedy（映射 <c>IFeishuTenantV1AttendanceRemedys.CreateUserTaskRemedyAsync</c>）。
 /// </summary>
 /// <remarks>
-/// R7 / A5：补卡申请（写入考勤系统，状态为审批中）。<b>非幂等</b>——描述中声明"重复提交会造成重复申请"。
+/// 补卡申请（写入考勤系统，状态为审批中）。<b>非幂等</b>——描述中声明"重复提交会造成重复申请"。
 /// </remarks>
 [AgentTool("attendance.submit_remedy",
     Description = "提交补卡申请（写入飞书考勤系统，状态为审批中；走补卡审批流）。remedy_date 为 yyyyMMdd 整数日期，remedy_time 为 HH:mm 字符串。⚠️ 非幂等：重复提交会造成重复申请（无幂等键可用）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 attendance:task 权限。",

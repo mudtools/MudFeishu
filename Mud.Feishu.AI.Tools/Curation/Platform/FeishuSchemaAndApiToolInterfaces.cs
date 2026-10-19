@@ -8,7 +8,7 @@
 namespace Mud.Feishu.AI.Tools.Curation;
 
 // <summary>
-// 运行时 schema 自省（R6 / S3：补齐官方 CLI 的 schema read 能力）。
+// 运行时 schema 自省（补齐官方 CLI 的 schema read 能力）。
 // </summary>
 // <remarks>
 // <para>
@@ -17,12 +17,10 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // 关键字查询任意 SDK 方法的 HTTP/路由/参数/令牌/风险事实（数据源是编译期 <c>FeishuToolMethodCatalog</c>）。
 // </para>
 // <para>
-// <b>安全边界（R-12 删除决策）</b>：本域曾同时提供万能兜底通道 <c>feishu.api_call</c>（方法名 + 参数字典
-// → HTTP 动态调度），它已<b>整条删除</b>，理由有三：
-// ① 与策展工具构成<b>双轨调用路径</b>（同一能力两条路径，投影/幂等/风险语义不同，长期是维护负担）；
-// ② 它是整个工具面<b>风险最高的面</b>（任意已登记方法的 HTTP 调度）；
-// ③ <b>零外部消费</b>（Demo 未启用，仅测试覆盖）。
-// 删除后未策展能力的正确处置是<b>如实告知用户</b>（先用 <c>feishu.capability_lookup</c> 判断"是不存在
+// <b>安全边界</b>：工具面<b>不提供</b>万能兜底通道 <c>feishu.api_call</c>（方法名 + 参数字典
+// → HTTP 动态调度）——它与策展工具构成<b>双轨调用路径</b>（同一能力两条路径，投影/幂等/风险语义不同），
+// 且是整个工具面<b>风险最高的面</b>（任意已登记方法的 HTTP 调度）。未策展能力的正确处置是
+// <b>如实告知用户</b>（先用 <c>feishu.capability_lookup</c> 判断"是不存在
 // 还是未策展"），而不是提供一条绕过策展审查的通道。`Guidance/feishu.md` 的
 // 「## 安全规则」小节与 `Guidance_ToolReferences_ShouldExistInContract` 守卫共同锁定这一点。
 // </para>

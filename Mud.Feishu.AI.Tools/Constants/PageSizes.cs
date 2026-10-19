@@ -49,6 +49,18 @@ internal static class PageSizes
     /// <summary>bitable.get_records_by_ids（官方单请求上限 100）。</summary>
     public const int BitableRecordsByIds = 100;
 
+    /// <summary>bitable.form_question_list（官方默认 100/页）。</summary>
+    public const int BitableFormQuestions = 100;
+
+    /// <summary>bitable.dashboard_list（官方默认 20，上限 50）。</summary>
+    public const int BitableDashboards = 50;
+
+    /// <summary>bitable.role_list（官方默认 20，上限 50）。</summary>
+    public const int BitableRoles = 50;
+
+    /// <summary>bitable.role_member_list（官方默认 20，上限 100）。</summary>
+    public const int BitableRoleMembers = 100;
+
     /// <summary>通讯录按手机号/邮箱批量查 ID（官方单请求上限 50）。</summary>
     public const int ContactResolve = 50;
 
@@ -63,6 +75,15 @@ internal static class PageSizes
 
     /// <summary>task.list_my_tasks（官方默认 10；此处取 50 以减少追问轮次）。</summary>
     public const int TaskList = 50;
+
+    /// <summary>task.tasklist_page_list（官方默认 10；此处取 50 以减少追问轮次）。</summary>
+    public const int TaskLists = 50;
+
+    /// <summary>task.tasklist_tasks（官方默认 10；此处取 50 以减少追问轮次）。</summary>
+    public const int TaskListTasks = 50;
+
+    /// <summary>task.search_tasks（官方默认 15、最大值 30）。</summary>
+    public const int TaskSearch = 30;
 
     /// <summary>approval.list_pending_tasks（官方默认 10；此处取 50 以减少追问轮次）。</summary>
     public const int ApprovalTasks = 50;

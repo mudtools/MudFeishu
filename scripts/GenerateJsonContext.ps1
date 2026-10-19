@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Runs Mud.HttpUtils.JsonContextScaffolder to generate JsonSerializerContext source files
     for the Mud.Feishu.DataModels and Mud.Feishu.EventCallback projects.

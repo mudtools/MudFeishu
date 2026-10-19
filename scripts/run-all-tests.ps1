@@ -1,4 +1,4 @@
-$projects = @(
+﻿$projects = @(
     'Tests/Mud.Feishu.Abstractions.Tests/Mud.Feishu.Abstractions.Tests.csproj',
     'Tests/Mud.Feishu.AI.Tests/Mud.Feishu.AI.Tests.csproj',
     'Tests/Mud.Feishu.AI.Tools.Tests/Mud.Feishu.AI.Tools.Tests.csproj',

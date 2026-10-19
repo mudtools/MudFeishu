@@ -47,7 +47,7 @@ public class WriteDryRunAndCapabilityLookupTests
     public async Task BitableAddRecord_DryRun_ShouldValidateFields_First()
     {
         var client = new Mock<Mud.Feishu.IFeishuTenantV1BitableRecord>();
-        var tools = new BitableWriteTools(client.Object);
+        var tools = new BitableWriteTools(client.Object, Options.Create(AgentOptions()));
 
         // 非法 fields 在预演阶段也必须被拒——预演的价值就是"能提前发现的问题都提前发现"。
         var bad = await tools.AddRecordAsync(

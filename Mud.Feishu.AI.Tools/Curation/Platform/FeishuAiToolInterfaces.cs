@@ -7,14 +7,14 @@
 
 namespace Mud.Feishu.AI.Tools.Curation;
 
-// ─────────────────────────── AI 多模态 · 文本面（R7 / C3） ───────────────────────────
+// ─────────────────────────── AI 多模态 · 文本面 ───────────────────────────
 
 /// <summary>
 /// 工具接口：ai.translate_text（映射 <c>IFeishuTenantV1AITranslation.TranslateTextAsync</c>）。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>R7 / C3（DP-C3-1）</b>：多模态能力里<b>唯一</b>能进工具面的形态是"纯文本入参"。
+/// <b>能力边界</b>：多模态能力里<b>唯一</b>能进工具面的形态是"纯文本入参"。
 /// OCR（base64 图片）/ 文档识别（<c>[FormContent]</c> 本地文件）/ STT（base64 音频）三者
 /// 的入参在进程内库中无法由模型表达（模型没有文件系统、也不该把 MB 级 base64 塞进参数），
 /// 故<b>不策展</b>，改由宿主侧承担（宿主自行调用 SDK 的 OCR/文档识别/STT 方法，再把文本结果交给模型；
@@ -48,7 +48,7 @@ public interface IFeishuTenantAiTranslateTextTool
 /// 工具接口：ai.detect_language（映射 <c>IFeishuTenantV1AITranslation.DetectTextAsync</c>）。
 /// </summary>
 /// <remarks>
-/// R7 / C3：返回 ISO 639-1 语言代码，并映射为可读语言名（模型友好）——
+/// 返回 ISO 639-1 语言代码，并映射为可读语言名（模型友好）——
 /// "这段内容是什么语言"是多语言工作流（翻译、检索、审阅）的分支首环。
 /// 平台文档未声明 <c>text</c> 的字符上限，故本地只拦"空文本"（不臆造上限）。
 /// </remarks>

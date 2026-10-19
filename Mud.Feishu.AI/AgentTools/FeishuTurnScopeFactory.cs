@@ -15,7 +15,7 @@ namespace Mud.Feishu.AI.AgentTools;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>为什么这层必须存在</b>：中立管线/续跑闭环只能经端口进出产品上下文（③ 式 / ② 式组合），
+/// <b>唯一适配点</b>：中立管线/续跑闭环只能经端口进出产品上下文，
 /// 而飞书侧的唯一建立点就是 <see cref="IFeishuToolContextAccessor.Begin"/>——
 /// 本类是该事实的<b>唯一</b>适配点，任何新增入口都不该再写一遍映射。
 /// </para>

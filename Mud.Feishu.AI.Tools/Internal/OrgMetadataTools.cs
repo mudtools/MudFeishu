@@ -13,7 +13,7 @@ using Mud.Feishu.DataModels.WorkCites;
 namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
-/// org「组织元数据」只读工具执行器（F-1 第三切片：职务 / 职级 / 职务族 / 工作城市共 8 个工具）。
+/// org「组织元数据」只读工具执行器（职务 / 职级 / 职务族 / 工作城市共 8 个工具）。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -49,7 +49,7 @@ internal sealed class OrgMetadataTools(
 
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
-    /// <summary>P-0 补齐（统一分页语义）：<c>fetch_all</c> 的条目/页数预算（来自宿主配置）。</summary>
+    /// <summary><c>fetch_all</c> 的条目/页数预算（来自宿主配置）。</summary>
     private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
     private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
@@ -70,7 +70,7 @@ internal sealed class OrgMetadataTools(
             var args = OrgListJobTitlesArgs.Unpack(arguments);
 
             // page_size 刻意不下发（保持 SDK 默认）——运维参数不进模型可见面（DP-B1-0）。
-            // P-0 补齐：统一分页出口——聚合路径与单页路径共用同一次调用定义与同一份投影。
+            // 统一分页出口——聚合路径与单页路径共用同一次调用定义与同一份投影。
             async Task<ToolApiOutcome<ApiPageListResult<JobTitle>>> FetchPageAsync(string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _jobTitleClient!
                     .GetJobTitlesListAsync(page_token: token, cancellationToken: ct)

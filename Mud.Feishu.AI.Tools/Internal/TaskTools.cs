@@ -12,7 +12,6 @@ namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
 /// Task 工具执行器（<c>task.create_task</c>（tenant）/ <c>task.list_my_tasks</c>（<b>user 身份</b>），
-/// WP5 / AT-F17 + R7/WP5 写面成环）。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -75,7 +74,7 @@ internal sealed class TaskTools(
             if (args.AssigneeIds is { Length: > 0 })
             {
                 request.Members = args.AssigneeIds
-                    .Select(static id => new TaskMemberInfo { Id = id, Type = "open_id", Role = "assignee" })
+                    .Select(static id => new TaskMemberInfo { Id = id, Type = "user", Role = "assignee" })
                     .ToArray();
             }
 
@@ -415,7 +414,7 @@ internal sealed class TaskTools(
             var request = new AddMembersRequest
             {
                 Members = args.MemberIds
-                    .Select(id => new TaskMemberInfo { Id = id, Type = "open_id", Role = role })
+                    .Select(id => new TaskMemberInfo { Id = id, Type = "user", Role = role })
                     .ToArray(),
                 ClientToken = args.IdempotencyKey,
             };

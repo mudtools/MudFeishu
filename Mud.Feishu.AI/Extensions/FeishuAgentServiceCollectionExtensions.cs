@@ -24,7 +24,7 @@ namespace Mud.Feishu.AI.Extensions;
 
 /// <summary>
 /// <see cref="FeishuAgent"/> 服务注册扩展（一行启动：<c>AddFeishuOpenAIChatClient</c> + <c>AddFeishuAgent</c>），
-/// 以及 R-9 起并入本工程的**飞书集成面**装配入口（流式通道 / IM 会话处理器 / Aily 知识问答）。
+/// 以及**飞书集成面**装配入口（流式通道 / IM 会话处理器 / Aily 知识问答）。
 /// </summary>
 public static class FeishuAgentServiceCollectionExtensions
 {
@@ -33,8 +33,8 @@ public static class FeishuAgentServiceCollectionExtensions
     /// </summary>
     /// <remarks>
     /// <para>
-    /// 首个落地模型走 OpenAI-compatible 协议（路线图已决策①）；私有化/第三方端点经
-    /// <paramref name="endpoint"/> 指定。API Key 绝不落日志（安全红线 §7.2）。
+    /// 首个落地模型走 OpenAI-compatible 协议；私有化/第三方端点经
+    /// <paramref name="endpoint"/> 指定。API Key 绝不落日志。
     /// </para>
     /// <para>
     /// 端点白名单：仅接受 HTTPS（环回地址例外），对齐「BaseUrl 白名单」安全默认。
@@ -90,7 +90,7 @@ public static class FeishuAgentServiceCollectionExtensions
     /// 经 <paramref name="configuration"/> 绑定）、<see cref="IValidateOptions{TOptions}"/> 启动期校验
     /// （net6+ ValidateOnStart）、默认 <see cref="MemoryConversationStore"/>（可被 Redis 实现替换）、
     /// <see cref="FeishuAgent"/> 工厂（按 <see cref="FeishuAgentOptions.ModelServiceKey"/> 解析键控
-    /// 模型客户端，解析即校验，不透传 null——Phase 0 §8）。
+    /// 模型客户端，解析即校验，不透传 null）。
     /// </para>
     /// </remarks>
     /// <param name="services">服务集合。</param>
@@ -108,7 +108,7 @@ public static class FeishuAgentServiceCollectionExtensions
         var builder = services.AddOptions<FeishuAgentOptions>();
         if (configuration is not null)
         {
-            // 源生成绑定（AOT-3）：Bind 调用点可被配置绑定源生成器拦截（net8+ 由根 props 启用）。
+            // 源生成绑定：Bind 调用点可被配置绑定源生成器拦截（net8+ 由根 props 启用）。
             var section = configuration.GetSection(FeishuAgentOptions.SectionName);
             builder.Configure(options => section.Bind(options));
 
@@ -136,11 +136,10 @@ public static class FeishuAgentServiceCollectionExtensions
         services.TryAddSingleton<IConversationStore>(static sp => new MemoryConversationStore(
             sp.GetRequiredService<IOptions<FeishuConversationOptions>>().Value.SessionTtl));
 
-        // 默认进程内会话闸门（P2D-1：同键串行，防并发 Run 丢历史）；
+        // 默认进程内会话闸门（同键串行，防并发 Run 丢历史）；
         // 多实例部署经 Mud.Feishu.Redis 的 AddFeishuRedisConversationGate 替换本注册。
-        // T5 / D5：注册顺序 = KeyedConversationGate（内层）→ GlobalConcurrencyGate（外层装饰器）。
-        // GlobalConcurrencyGate 实现 IConversationGate 接口，先获取全局信号量再委托内层闸门，
-        // 事件入口代码零改动（仍注入 IConversationGate）。
+        // 注册顺序 = KeyedConversationGate（内层）→ GlobalConcurrencyGate（外层装饰器，
+        // 先取全局信号量再委托内层），事件入口代码零改动（仍注入 IConversationGate）。
         services.TryAddSingleton<KeyedConversationGate>();
         services.TryAddSingleton<IConversationGate>(sp =>
         {
@@ -152,11 +151,11 @@ public static class FeishuAgentServiceCollectionExtensions
                 options.TurnQueueTimeoutSeconds);
         });
 
-        // R7 / C4a：待确认快照的进程内实现（软缺席契约的默认实现）——让「宿主重进进程后仍能列出待办」
-        // 在单进程部署下开箱可用；多实例部署由宿主替换为分布式实现（键必须含 AppKey 以隔离租户）。
+        // 待确认快照的进程内实现（软缺席契约的默认实现）——单进程部署下宿主重进进程仍能列出待办；
+        // 多实例部署由宿主替换为分布式实现（键必须含 AppKey 以隔离租户）。
         services.TryAddSingleton<IPendingApprovalStore, InMemoryPendingApprovalStore>();
 
-        // N5 收尾：遥测端口默认接产品实现（② 式收尾）——宿主可替换；替换后回合管线 / 摘要器 /
+        // 遥测端口默认接产品实现——宿主可替换；替换后回合管线 / 摘要器 /
         // 通道（含降级链）全部走宿主实现。端口未注册时中立侧落 Noop（零开销）。
         services.TryAddSingleton<IAgentTelemetry, Mud.Feishu.AI.Diagnostics.FeishuAgentTelemetry>();
 
@@ -170,22 +169,22 @@ public static class FeishuAgentServiceCollectionExtensions
                 : sp.GetRequiredKeyedService<IChatClient>(options.ModelServiceKey);
 
             // 工具来源：容器内全部 FeishuAgentToolSource（如 Mud.Feishu.AI.Tools 的白名单桥）。
-            // 未注册工具包时为空集——保持 Phase 0 裸模型行为。
+            // 未注册工具包时为空集——保持裸模型行为。
             var sources = sp.GetServices<FeishuAgentToolSource>().ToArray();
             var tools = sources
                 .SelectMany(source => source.GetTools(sp))
                 .ToArray();
 
-            // 域 guidance（WP6）：与工具同一来源、同一"已启用"口径——只注入已启用工具所属域的资产。
+            // 域 guidance：与工具同一来源、同一"已启用"口径——只注入已启用工具所属域的资产。
             var guidance = sources
                 .SelectMany(source => source.GetGuidance(sp))
                 .ToArray();
 
-            // R4-6：不把根 IServiceProvider 钉进单例（Captive Dependency 面 / TMA-13）。
-            // 工具与 guidance 已在上面**立即**解析为实例（source.GetTools(sp) / GetGuidance(sp)），
-            // 会话历史由构造期显式装配的 InMemoryChatHistoryProvider 提供——MAF 侧无需再经容器解析任何
-            // 依赖，故 services 传 null。宿主确需注入容器（如注册 ChatHistoryProviderFactory）时，
-            // 可自行 new FeishuAgent(..., services: <scope factory 派生>) 装配，并遵守
+            // 不把根 IServiceProvider 钉进单例（Captive Dependency 面）。
+            // 工具与 guidance 已在上面**立即**解析为实例，会话历史由构造期显式装配的
+            // InMemoryChatHistoryProvider 提供——MAF 侧无需再经容器解析任何依赖，故 services 传 null。
+            // 宿主确需注入容器（如注册 ChatHistoryProviderFactory）时，可自行
+            // new FeishuAgent(..., services: <scope factory 派生>) 装配，并遵守
             // "依赖必须 Singleton/Transient"约束（见 Mud.Feishu.AI/Readme.md）。
             return new FeishuAgent(
                 chatClient,
@@ -222,17 +221,15 @@ public static class FeishuAgentServiceCollectionExtensions
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
-    // R-9（阶段 5）：以下 5 个入口原在 Mud.Feishu.AI.Tools 的 FeishuToolsServiceCollectionExtensions，
-    // 随集成面（Channels / Events / Knowledge）一并并入本工程。
-    //
-    // 为什么必须迁：这些入口注册的是**集成面实现**（流式通道实现、会话事件处理器、知识 Provider）——
-    // 若留在工具包，"只想接 IM 会话处理器 / 知识问答、不接工具面"的宿主会被迫引用工具包，
-    // 而工具包又会把它拉回事件 DTO + 工具面依赖，等于白拆。
+    // 以下 5 个入口原在 Mud.Feishu.AI.Tools 的 FeishuToolsServiceCollectionExtensions，
+    // 随集成面（Channels / Events / Knowledge）一并并入本工程：它们注册的是集成面实现
+    // （流式通道、会话事件处理器、知识 Provider），留在工具包会迫使只想接集成面的宿主
+    // 引用工具包（连带事件 DTO + 工具面依赖）。
     // ─────────────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// 注册分片编辑流式通道（Phase 2 T2-1 兼容入口，保持不变）：
-    /// 仅注册 <see cref="EditMessageChannel"/> 单通道（不走卡片流降级链）。
+    /// 注册分片编辑流式通道（兼容入口）：仅注册 <see cref="EditMessageChannel"/> 单通道
+    /// （不走卡片流降级链）。
     /// </summary>
     /// <param name="services">服务集合。</param>
     /// <returns>服务集合。</returns>
@@ -247,7 +244,7 @@ public static class FeishuAgentServiceCollectionExtensions
     }
 
     /// <summary>
-    /// 注册流式通道降级链（AI-FD-D12 P2D-2a）：首选应用消息卡片流通道
+    /// 注册流式通道降级链：首选应用消息卡片流通道
     /// （<see cref="CardStreamMessageChannel"/>，单聊按用户投放），Begin 失败自动降级
     /// <see cref="EditMessageChannel"/>（分片编辑）——事件处理器零感知。
     /// </summary>
@@ -264,7 +261,7 @@ public static class FeishuAgentServiceCollectionExtensions
             throw new ArgumentNullException(nameof(services));
 
         // 卡片流客户端缺席 → 通道缺席（链内仅编辑通道），与写执行器同一软缺席模式。
-        // N5 收尾：两条通道均接遥测端口（产品子类覆写 OnUpdateDegraded 不走基类默认路径，
+        // 两条通道均接遥测端口（产品子类覆写 OnUpdateDegraded 不走基类默认路径，
         // 接线只为中立机制自身的观测面，行为零漂移）。
         services.TryAddSingleton(static sp => sp.GetService<Mud.Feishu.IFeishuTenantV2AppCardMessageStream>() is { } card
             ? new CardStreamMessageChannel(
@@ -294,7 +291,7 @@ public static class FeishuAgentServiceCollectionExtensions
     }
 
     /// <summary>
-    /// 注册知识检索上下文装配器（AI-FD-D12 P2D-4a 注入模式）：每轮把 <see cref="IRetriever"/>
+    /// 注册知识检索上下文装配器（注入模式）：每轮把 <see cref="IRetriever"/>
     /// 召回切片注入 Prompt。宿主<b>显式装配</b>（不默认开启，省 token）——工具模式见
     /// <c>AddFeishuKnowledgeTools</c>；并用合法（注入给背景、工具给深挖）。
     /// </summary>
@@ -314,7 +311,7 @@ public static class FeishuAgentServiceCollectionExtensions
     }
 
     /// <summary>
-    /// 一行接入内置 IM 会话事件处理器（AI-FD-D12 P2D-5a）：消息 → 会话 → 模型 → 回复/流式。
+    /// 一行接入内置 IM 会话事件处理器：消息 → 会话 → 模型 → 回复/流式。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -343,7 +340,7 @@ public static class FeishuAgentServiceCollectionExtensions
         var builder = services.AddOptions<ImConversationOptions>();
         if (configuration is not null)
         {
-            // 源生成绑定（AOT-3）：Bind 调用点可被配置绑定源生成器拦截（net8+ 由根 props 启用）。
+            // 源生成绑定：Bind 调用点可被配置绑定源生成器拦截（net8+ 由根 props 启用）。
             var section = configuration.GetSection(ImConversationOptions.SectionName);
             builder.Configure(options => section.Bind(options));
         }
@@ -377,7 +374,7 @@ public static class FeishuAgentServiceCollectionExtensions
 
         if (assemblers.HasFlag(ImConversationAssemblers.Knowledge))
         {
-            // 注入模式（P2D-4a）：要求宿主已注册 IRetriever（如 AddFeishuAilyKnowledge）。
+            // 注入模式：要求宿主已注册 IRetriever（如 AddFeishuAilyKnowledge）。
             services.AddFeishuKnowledgeContext();
         }
 
@@ -403,7 +400,7 @@ public static class FeishuAgentServiceCollectionExtensions
                     sp.GetService<ILogger<MediaMessageContextAssembler>>())));
         }
 
-        // R3-1：回复前切租户依赖作用域工厂——本入口是 IM 会话处理器的「一行接入」装配点，
+        // 回复前切租户依赖作用域工厂——本入口是 IM 会话处理器的「一行接入」装配点，
         // 若此处不注册，多应用宿主会在回复时 fail-closed 抛错（有 appKey 无工厂）。
         services.TryAddSingleton<IFeishuAppContextScopeFactory, FeishuAppContextScopeFactory>();
 
@@ -414,7 +411,7 @@ public static class FeishuAgentServiceCollectionExtensions
     }
 
     /// <summary>
-    /// 注册 Aily 托管知识问答（RAG-A 默认路径，Phase 2 T2-6）：
+    /// 注册 Aily 托管知识问答（RAG 默认路径）：
     /// <see cref="IFeishuKnowledgeBase"/> + <see cref="IRetriever"/> 单实现双接口。
     /// </summary>
     /// <param name="services">服务集合。</param>
@@ -432,7 +429,7 @@ public static class FeishuAgentServiceCollectionExtensions
         var builder = services.AddOptions<AilyKnowledgeOptions>();
         if (configuration is not null)
         {
-            // 源生成绑定（AOT-3）：Bind 调用点可被配置绑定源生成器拦截（net8+ 由根 props 启用）。
+            // 源生成绑定：Bind 调用点可被配置绑定源生成器拦截（net8+ 由根 props 启用）。
             var section = configuration.GetSection(AilyKnowledgeOptions.SectionName);
             builder.Configure(options => section.Bind(options));
         }
@@ -449,7 +446,7 @@ public static class FeishuAgentServiceCollectionExtensions
         services.AddOptions<AilyKnowledgeOptions>().ValidateOnStart();
 #endif
 
-        // 注册幂等（TryAddSingleton，与前后行一致）：避免重复调用产生多条描述符。
+        // 注册幂等：避免重复调用产生多条描述符。
         services.TryAddSingleton<AilyKnowledgeProvider>(static sp =>
         {
             var options = sp.GetRequiredService<IOptions<AilyKnowledgeOptions>>().Value;

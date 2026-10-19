@@ -87,7 +87,7 @@ public class TaskToolsChainTests
 
         captured.Members.Should().HaveCount(2);
         captured.Members![0].Id.Should().Be("ou_1");
-        captured.Members[0].Type.Should().Be("open_id");
+        captured.Members[0].Type.Should().Be("user");
         captured.Members[0].Role.Should().Be("assignee");
 
         result.ToString().Should().Contain("task_guid_1");

@@ -10,7 +10,7 @@ using Mud.Feishu.Interfaces;
 namespace Mud.Feishu.AI.Tools.Curation;
 
 // <summary>
-// Drive 域只读工具接口（AI-FD-D12 P1D-1b 批次 A：云空间导航入口，与 search.doc_wiki 互补——浏览 vs 搜索）。
+// Drive 域只读工具接口（云空间导航入口，与 search.doc_wiki 互补——浏览 vs 搜索）。
 // </summary>
 
 /// <summary>工具接口：drive.list_folder_files（映射 <c>IFeishuTenantV1DriveFolder.GetFilesPageListAsync</c>）。</summary>
@@ -127,7 +127,7 @@ public interface IFeishuTenantDriveResolveCommentTool
 /// <summary>工具接口：drive.get_permission_public（映射 <c>IFeishuV1DrivePermissions.GetPermissionPublicAsync</c>）。</summary>
 /// <remarks>
 /// <para>
-/// <b>为什么 IsWrite = true（MUDFT017 修复记录）</b>：底层 SDK 是 GET 只读调用，但引擎风险分级
+/// <b>为什么 IsWrite = true</b>：底层 SDK 是 GET 只读调用，但引擎风险分级
 /// 按方法名危险词推导——权限域方法一律 <c>high-risk-write</c>（权限触点可扩大数据可达范围，
 /// 属敏感面），与「只读」声明矛盾即构建失败。引擎无风险覆盖槽位（单一真相源 = 派生结果），
 /// 故跟随引擎契约声明写面：调用须过 <c>IToolExecutionAuthorizer</c> 门禁。
@@ -247,14 +247,14 @@ public interface IFeishuTenantDriveTransferOwnerTool
         CancellationToken cancellationToken = default);
 }
 
-// ─────────────────────────── 受控下载出口（T-1：读取闭环，2 个） ───────────────────────────
+// ─────────────────────────── 受控下载出口（读取闭环，2 个） ───────────────────────────
 
 /// <summary>工具接口：drive.download_file（映射 <c>IFeishuTenantV1DriveFiles.DownloadFileAsync</c> + 宿主 stager 落盘）。</summary>
 /// <remarks>
 /// <para>
-/// <b>受控出向（DP-R7-2 / B-2）</b>：字节经 <c>DownloadedContentGuard</c> 拦截平台错误体后交
+/// <b>受控出向</b>：字节经 <c>DownloadedContentGuard</c> 拦截平台错误体后交
 /// <see cref="IFeishuAttachmentStager"/> 落盘，工具结果只回路径/大小/类型——`no-bytes-in-context`
-/// 豁免须由执行器注入非可空 stager 并调用错误体防线<b>挣得</b>（<c>BinaryDownloadToolExposureContractTests</c> 核验）。
+/// 豁免的前提是执行器注入非可空 stager 并调用错误体防线。
 /// </para>
 /// <para>
 /// 仅支持云空间资源文件；云文档（docx/sheet/bitable）导出请用 <c>drive.export_document</c>

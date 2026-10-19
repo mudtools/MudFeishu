@@ -99,8 +99,8 @@ public interface IFeishuTenantImSearchMessagesTool
         CancellationToken cancellationToken = default);
 }
 
-// ────────── R5 / F-3：IM 域补齐（thread / 群管理 / 撤回转发 / 已读） ──────────
-// ⚠️ SDK 方法名缺陷说明（U-19：本轮不改 SDK，只在工具名与注释中用正确语义）：
+// ────────── IM 域补齐（thread / 群管理 / 撤回转发 / 已读） ──────────
+// ⚠️ SDK 方法名缺陷（不改 SDK，只在工具名与注释中用正确语义）：
 //   · forward_message 落到 SDK 的 ReceiveMessageAsync（实为 POST /messages/{id}/forward，不是"接收消息"）
 //   · 已读用户落到 GetMessageReadUsesAsync（"Uses" 应为 "Users"）
 //   · 群信息落到 GetChatGroupInoByIdAsync（"Ino" 应为 "Info"）

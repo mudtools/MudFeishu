@@ -321,10 +321,15 @@ var response = await agent.RunApprovalContinuationAsync(
 > 程序集跑测试——为解开这个自锁，csproj 提供了显式重固化窗口：
 >
 > ```powershell
+> dotnet build Mud.Feishu.AI.Tools/Mud.Feishu.AI.Tools.csproj -c Debug --no-incremental -p:FeishuToolRefreeze=true
 > $env:FeishuToolGoldenUpdate='true'
 > dotnet test Tests/Mud.Feishu.AI.Tools.Tests -p:FeishuToolRefreeze=true `
 >   --filter "FullyQualifiedName~FeishuToolGoldenTests"
 > ```
+>
+> ⚠️ **第一步不能省**：快照内容由测试从**已编译的程序集**读取，而 `dotnet test` 只在引用项目被判为过期时才
+> 重建它——新增 `Affordance/*.md` 常常不触发重建，于是生成器看不到新资产，固化**静默写成原样**（全绿、
+> 覆盖率却没涨）。`--no-incremental` 先强制重跑生成器，再让测试落盘。
 >
 > `-p:FeishuToolRefreeze=true` 让构建期 `AdditionalFiles` 暂时不引入快照（从而不比对），测试则用运行时
 > 真实 Schema 重写快照。固化后**必须**：评审 diff（媒体可见面变更）→ 描述/参数有变时同批重固化
@@ -610,8 +615,10 @@ Mud.Feishu.AI.Tools/Affordance/{契约工具名}.md      # 如 out: Affordance/v
 - **接线三件套**：剖面槽 `AffordanceDirectory` ↔ csproj 的 `<AdditionalFiles Include="Affordance\**\*.md" />`
   ↔ 磁盘目录名。任一不一致 ⇒ 引擎收不到资产 ⇒ 整键消失**而构建全绿**（`MUDFT014` 会因 golden 漂移报错，
   `AffordanceContractGuards` 也会报红——这两道门是刻意的冗余）；
-- **强制集合**：`high-risk-write` 工具（16 个）**必须**有资产——`AffordanceContractGuards` 机械断言，
-  新增高危工具时不同批补资产即报红；
+- **覆盖率阈值**：`AffordanceCoverageContractGuards` 按风险分级设最低覆盖率——`high-risk-write` 与
+  `write` 两级 100%（39 + 129 = 168 份资产，写面满覆盖），`read` 级**暂不设阈值**（接入高频 `list` / `get`
+  时按实测起步，不设阈值比设一个恒绿的阈值诚实）——分母取自契约集合，新增写类工具时不同批补资产即报红；
+  写作规范与禁止项见 `documents/AIAgent/affordance-写作规范.md`；
 - **模型可见面**：`FeishuToolAIFunction.Description` 尾部追加（进程内 Agent 与 MCP 链共用同一实例
   ⇒ 逐字节一致），另经 `McpEnvelope` 方言结构化透传（`affordance` 字段）。
   之所以走描述：`x-feishu` 刻意**不进**参数 Schema 关键字空间（MEAI 的 `JsonSchema` 契约要求纯参数 Schema）。

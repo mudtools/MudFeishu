@@ -137,14 +137,14 @@ public interface IFeishuTenantChatgroupGetMenuTool
 /// 应走独立工具而不是混在建群参数里。
 /// </remarks>
 [AgentTool("chatgroup.create_chat",
-    Description = "创建一个群（返回 chat_id 与无效成员 ID 列表）——「拉个群沟通」的第一落点。写操作：默认不启用，需宿主授权（IToolExecutionAuthorizer），需 im:chat（⚠️ scope 名待控制台核对）。",
+    Description = "创建一个群（返回 chat_id；群主默认为当前应用身份）——「拉个群沟通」的第一落点。写操作：默认不启用，需宿主授权（IToolExecutionAuthorizer），需 im:chat（⚠️ scope 名待控制台核对）。",
     RequiredScopes = ["im:chat"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1ChatGroup) + "." + nameof(IFeishuTenantV1ChatGroup.CreateChatGroupAsync))]
 public interface IFeishuTenantChatgroupCreateChatTool
 {
     /// <summary>创建群。</summary>
-    /// <returns>白名单投影后的 JSON 回执（chat_id + invalid_user_id_list），超长截断并标记 truncated。</returns>
+    /// <returns>白名单投影后的 JSON 回执（chat_id + owner_id_type + created；无效成员 ID 不列明细），超长截断并标记 truncated。</returns>
     Task<string> CreateChatAsync(
         [ToolParameter("name", "群名称（必填）", Required = true)] string name,
         [ToolParameter("description", "群描述（可选）")] string? description = null,
@@ -250,7 +250,7 @@ public interface IFeishuTenantChatgroupUpdateModerationTool
 public interface IFeishuTenantChatgroupAddMemberTool
 {
     /// <summary>拉成员入群。</summary>
-    /// <returns>白名单投影后的 JSON 回执（chat_id + invalid_id_list），超长截断并标记 truncated。</returns>
+    /// <returns>白名单投影后的 JSON 回执（chat_id + invalid / not_existed / pending_approval 三份 id_list），超长截断并标记 truncated。</returns>
     Task<string> AddMemberAsync(
         [ToolParameter("chat_id", "群 ID（必填，形如 oc_xxx）", Required = true)] string chat_id,
         [ToolParameter("id_list", "要拉入群的成员 ID 列表（必填；类型由 member_id_type 指定）", Required = true)] string[] id_list,
@@ -306,14 +306,14 @@ public interface IFeishuTenantChatgroupMeJoinChatTool
 /// 工具接口：chatgroup.add_manager（映射 <c>AddManagersAsync</c>）。
 /// </summary>
 [AgentTool("chatgroup.add_manager",
-    Description = "把成员设为群管理员（可多人；返回无效 ID 列表）——「给群加管理员」。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。",
+    Description = "把成员设为群管理员（可多人；回执给设置后的管理员全量名单）——「给群加管理员」。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。",
     RequiredScopes = ["im:chat"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1ChatGroupMember) + "." + nameof(IFeishuTenantV1ChatGroupMember.AddManagersAsync))]
 public interface IFeishuTenantChatgroupAddManagerTool
 {
     /// <summary>设置群管理员。</summary>
-    /// <returns>白名单投影后的 JSON 回执（chat_id + invalid_manager_id_list），超长截断并标记 truncated。</returns>
+    /// <returns>白名单投影后的 JSON 回执（chat_id + chat_managers / chat_bot_managers 全量名单），超长截断并标记 truncated。</returns>
     Task<string> AddManagerAsync(
         [ToolParameter("chat_id", "群 ID（必填，形如 oc_xxx）", Required = true)] string chat_id,
         [ToolParameter("manager_ids", "要设为管理员的成员 ID 列表（必填；类型由 member_id_type 指定）", Required = true)] string[] manager_ids,
@@ -337,7 +337,7 @@ public interface IFeishuTenantChatgroupAddManagerTool
 public interface IFeishuTenantChatgroupDeleteManagerTool
 {
     /// <summary>撤销群管理员。</summary>
-    /// <returns>白名单投影后的 JSON 回执（chat_id + invalid_manager_id_list），超长截断并标记 truncated。</returns>
+    /// <returns>白名单投影后的 JSON 回执（chat_id + chat_managers / chat_bot_managers 全量名单），超长截断并标记 truncated。</returns>
     Task<string> DeleteManagerAsync(
         [ToolParameter("chat_id", "群 ID（必填，形如 oc_xxx）", Required = true)] string chat_id,
         [ToolParameter("manager_ids", "要撤销管理员身份的成员 ID 列表（必填；类型由 member_id_type 指定）", Required = true)] string[] manager_ids,

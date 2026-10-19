@@ -9,7 +9,7 @@
 
 ## Prerequisites
 
-- 先用 `okr.list_objectives` 确认目标，再用 `okr.list_key_results` 取目标 `kr_id`。
+- 先用 `okr.list_objectives` 确认目标，再用 `okr.list_key_results` 取 `key_result_id`。
 - 需 OKR 内容写权限。
 
 ## Tips

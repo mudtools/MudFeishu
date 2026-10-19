@@ -34,8 +34,8 @@ package_version: 3.0.3
 ## 写面
 - 12 个写工具，覆盖群设置 / 成员 / 管理员 / 置顶 / 菜单删除五类操作。
 - **scope 全部待核对**：SDK 注释无字面量，按官方文档取 `im:chat`（⚠️ 控制台开通前按名称搜索确认）。
-- 5 个高危写（`delete_chat` / `delete_top_notice` / `delete_manager` / `remove_member` / `delete_menu`）各有 affordance 资产，执行前必须先读。
-- `add_member` / `remove_member` / `add_manager` 的回执带**无效 ID 清单**：非空说明有成员没进/没出群。
+- 12 个写工具各有 affordance 资产（执行前先读），其中 5 个高危：`delete_chat` / `delete_top_notice` / `delete_manager` / `remove_member` / `delete_menu`。
+- `add_member` / `remove_member` 回执带**无效 ID 清单**：非空即有人没进/没出群（`add_manager` 给管理员全量名单）。
 - `me_join_chat` 加的是**当前应用/机器人身份**，不是某个用户。
 - **新增/修改群菜单暂未纳入**：请求体是嵌套树，扁平参数无法表达。
 
@@ -51,9 +51,9 @@ package_version: 3.0.3
 - 「拉个群沟通」→ `chatgroup.create_chat(name="…", user_id_list=[…], dry_run=true)` → 确认后 `dry_run=false`
 
 ## 命令（工具）清单
-- `chatgroup.add_manager`（写）：把成员设为群管理员（可多人；返回无效 ID 列表）——「给群加管理员」。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。
+- `chatgroup.add_manager`（写）：把成员设为群管理员（可多人；回执给设置后的管理员全量名单）——「给群加管理员」。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。
 - `chatgroup.add_member`（写）：把成员拉进群（返回无效成员 ID 列表）——「把人加进群沟通」。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。
-- `chatgroup.create_chat`（写）：创建一个群（返回 chat_id 与无效成员 ID 列表）——「拉个群沟通」的第一落点。写操作：默认不启用，需宿主授权（IToolExecutionAuthorizer），需 im:chat（⚠️ scope 名待控制台核对）。
+- `chatgroup.create_chat`（写）：创建一个群（返回 chat_id；群主默认为当前应用身份）——「拉个群沟通」的第一落点。写操作：默认不启用，需宿主授权（IToolExecutionAuthorizer），需 im:chat（⚠️ scope 名待控制台核对）。
 - `chatgroup.delete_chat`（写）：解散一个群（⚠️ 不可逆：群内历史消息随群一起消失，且只能重建、会拿到新 chat_id——务必先 dry_run 预演并确认 chat_id 无误）。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。
 - `chatgroup.delete_manager`（写）：撤销成员的群管理员身份（⚠️ 对方立即失去群管理能力且不会收到通知——务必先 dry_run 预演并确认 manager_ids 无误）。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。
 - `chatgroup.delete_menu`（写）：删除群的快捷菜单一级入口（⚠️ 二级菜单会随父级一起消失——务必先 dry_run 预演并确认 chat_menu_top_level_ids 无误）。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。

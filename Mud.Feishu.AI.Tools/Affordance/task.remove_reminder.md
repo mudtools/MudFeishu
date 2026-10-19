@@ -10,7 +10,7 @@
 ## Prerequisites
 
 - 提醒基于截止时间计算：任务必须先有 due（创建或 `task.update_task` 设置），否则没有提醒可移除。
-- `reminder_ids` 取自 `task.set_reminder` 返回的 reminders[].reminder_id；本工具面没有读取任务详情的入口。
+- `reminder_ids` 取自 `task.set_reminder` 返回的 reminders[].reminder_id；`task.tasklist_tasks` 只给任务摘要，不含提醒 ID。
 
 ## Tips
 

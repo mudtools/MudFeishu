@@ -50,6 +50,8 @@
     结果不含字节（不污染上下文）；工具结果被截断时如实向模型标记；
   - 权限模型：逐工具声明调用身份（tenant / user）与 OAuth scope，权限对照表随包分发；
   - 逐工具 affordance 决策指导（何时用 / 何时别用 / 前置条件 / 技巧），模型可见；
+    写类工具面已**满覆盖**（39 个高危写 + 129 个普通写 = 168 份资产），覆盖率由
+    `AffordanceCoverageContractGuards` 按风险分级锁定，新增写类工具不同批补资产即构建报红；
   - 结构化审计出口（`IToolExecutionAuditSink`）与 OpenTelemetry 指标（工具执行、耗时、模型调用耗时）；
   - 自建知识检索（分块 / 索引 / 向量检索）与文本工具（`ai.translate_text`、`ai.detect_language`）；
   - Skills 产物导出（`skills/feishu-*`），可直接分发给 Agent harness。
@@ -79,6 +81,9 @@
 - 多应用宿主下回复不再以默认应用身份误发到其他租户。
 - `minutes.get_artifacts` 逐字稿分窗口参数此前被丢弃（恒返回预览），现真实生效。
 - 知识召回的 `has_answer` 不再被中间事件重置导致答案被丢弃。
+- `chatgroup.create_chat` / `chatgroup.add_manager` 的工具描述与执行器回执不一致（描述承诺
+  「返回无效 ID 列表」，实际一个不投影、一个返回管理员全量名单）——模型据此会向用户误报拉人失败明细，
+  现已按实现改写；同批校正 `Guidance/chatgroup.md` 的回执口径。
 - Token 计数精确化（此前词表缺失恒走字符估算）。
 - 安全：邮件头 CR/LF 注入被拒；IPv6 回环地址白名单校验生效；AOT 严格模式下消除全部
   `IL2026` / `IL3050` 裁剪告警。

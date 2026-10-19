@@ -897,4 +897,40 @@ public class FeishuServiceCollectionExtensionsTests
         authorizer.CanSwitchTo("host-managed").Should().BeTrue("宿主授权器名单内放行");
         authorizer.CanSwitchTo("default").Should().BeFalse("宿主授权器必须胜出：默认应用虽已注册，但不在宿主名单内");
     }
+
+    // ============================================================
+    // SSRF 严格模式 + 空白名单的启动期提示（EventId 198）
+    // ============================================================
+
+    /// <summary>
+    /// 注册链路必须先把飞书域名登记进 SSRF 白名单，使严格模式客户端在首个客户端创建时
+    /// 不触发「全局域名白名单为空」的启动期 Warning。
+    /// </summary>
+    /// <remarks>
+    /// 该 Warning 只在「存在严格模式客户端 + 白名单为空」时出现，属 fail-closed 默认值的
+    /// 可观测性兜底：一旦触发说明宿主登记的端点会全部被连接期校验拦下。飞书侧域名集合是
+    /// 固定的（feishu.cn / larksuite.com 两个区域），故在注册入口统一登记，宿主再按自身需要追加。
+    /// </remarks>
+    [Fact]
+    public void AddFeishuApp_ShouldRegisterFeishuDomains_SoNoBlankAllowlistWarning()
+    {
+        // Arrange
+        var logProvider = new Mud.Feishu.Abstractions.Tests.Authentication.TestLoggerProvider();
+        var services = new ServiceCollection();
+        services.AddLogging(builder => builder.AddProvider(logProvider));
+        services.AddFeishuApp(CreateDefaultConfigs());
+
+        using var provider = services.BuildServiceProvider();
+
+        // Act — 创建增强客户端会驱动「严格模式 + 空白名单」组合检测。
+        var client = provider.GetRequiredService<IEnhancedHttpClient>();
+
+        // Assert
+        client.Should().NotBeNull();
+        UrlValidator.GetAllowedDomains().Should().Contain("open.feishu.cn",
+            "注册入口必须先登记飞书域名白名单，否则严格模式客户端无法建连");
+        logProvider.LogEntries.Should().NotContain(
+            e => e.Message.Contains("全局域名白名单为空"),
+            "白名单已登记时不得出现空白名单启动期提示");
+    }
 }

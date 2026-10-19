@@ -2,21 +2,27 @@
 
 ## [Unreleased]
 
-> Theme: **adapting to `Mud.HttpUtils` 3.0.8** (upstream physically removes the three `BC-30` members;
-> the downstream adaptation lands in the same batch).
+> Theme: **adapting to `Mud.HttpUtils` 3.0.9** (on top of the 3.0.8 `BC-30` member removal: migrate the
+> token-recovery registration to the official entry point and correct stale statements).
 > This is a **breaking dependency change**: `Mud.HttpUtils` / `Mud.HttpUtils.Generator` move from
-> `3.0.7` to `3.0.8`, and the downstream overrides / shadowing of the three members are **deleted in
-> the same batch**.
-> **Release prerequisite**: upstream `3.0.8` **has been published to nuget.org**; the local debug
-> source has been removed from `nuget.config`, so the reference is restored from the public feed.
+> `3.0.7` to `3.0.9`, and the downstream overrides / shadowing of the three members are **deleted in
+> the same batch** (3.0.8 batch); the 3.0.9 batch is mainly "code that can now be deleted" plus
+> corrected statements — no new breaking change.
+> **Release prerequisite (satisfied)**: upstream `3.0.9` is **published to nuget.org**; the local source
+> in `nuget.config` (pointing at the Release artifacts) has been **removed**, the packages are restored
+> from the public feed, and the full quality gate was re-run.
 
 ### Dependency Upgrade
 
-- `Mud.HttpUtils` / `Mud.HttpUtils.Generator`: `3.0.7` → **`3.0.8`** (must stay on the same version),
-  unified across the 10 `Mud.HttpUtils*` declarations of 7 source projects; the README dependency
-  tables and `AGENTS.md` are synced. During validation the packages were restored from the local debug
-  channel (`mudhttputils-local` → `D:/Repos/MudHttpUtils/artifacts-debug`; that Debug pack is
-  **never published**); after 3.0.8 shipped on nuget.org the local source was **removed**.
+- `Mud.HttpUtils` / `Mud.HttpUtils.Generator`: `3.0.7` → **`3.0.9`** (must stay on the same version;
+  `3.0.8` was an intermediate batch on the same day), unified across the 10 `Mud.HttpUtils*`
+  declarations of 7 source projects; the README dependency tables and `AGENTS.md` are synced.
+- During validation the packages are restored from the local **Release** channel
+  (`mudhttputils-local` → `D:/Repos/MudHttpUtils/artifacts`, produced by `pack.ps1 Release` with
+  byte-for-byte DLL verification); the `artifacts-debug` Debug pack **must not** be consumed. After
+  3.0.9 shipped on nuget.org the local source was **removed** and the packages were re-restored from
+  the public feed following the "clear cache → `restore --no-cache` → `clean` → `build`" discipline
+  (0 errors, 190 warnings identical code-by-code to the pre-upgrade baseline), and the full gate passed again.
 
 ### Changed
 
@@ -33,9 +39,37 @@
   makes calls **silently fall back** to the base implementation **without the authorization guard**
   (the `IAppAccessAuthorizer` check chain inside the downstream override is lost). That is a
   **security incident, not a compile error**.
+- **Token-recovery configuration now uses the component's official entry point**: the 38-line
+  downstream block (DTO projection + `Apply` + hand-rolled `ConfigurationChangeTokenSource` + validator
+  + resolvable instance) is replaced by `AddMudHttpTokenRecoveryFromConfiguration(configuration)`.
+  Binding semantics (DTO projection, defaults preserved when the section is absent, invalid values
+  rejected at option resolution) and hot-reload semantics are equivalent and covered by the existing
+  equivalence / hot-reload tests. The code-only registration path without `IConfiguration` keeps the
+  options pipeline, validator and resolvable instance (without section binding).
+- **JSON contexts are merged instead of registered one by one**:
+  `AddMudHttpClientJsonContext(FeishuApiResultJsonContext.Default)` became
+  `AddMudHttpClientJsonContexts(FeishuJsonContext.Default, FeishuApiResultJsonContext.Default)`
+  (net8+), so the DI resolver chain covers event/webhook types as well as response wrappers and auth
+  DTOs. The static `FeishuJsonDefaults` merge chain used by non-DI call sites is **unchanged**.
+- **Comments and tests corrected**: the stale claim that `TokenRecoveryEnhancedClient` does not override
+  `WithBaseAddress` (and that a cast throws `InvalidCastException`) is gone — since 3.0.9 the method
+  returns the same type. The hot-reload comment now states that the configuration delegate is re-run on
+  every `CreateClient` rather than cloning an instance. The `PurgeGateTokenStoreDecorator` read-failure
+  note now says the component degrades reads as well and the decorator keeps its own degradation as
+  defense in depth (behavior unchanged).
+- **New regression tests**: `TokenRecoveryClientCapabilityTests` (`WithBaseAddress` keeps the type and
+  applies the new base address) and `AddFeishuApp_ShouldRegisterFeishuDomains_SoNoBlankAllowlistWarning`
+  (the registration entry point registers the Feishu domains, so strict-mode clients never emit the
+  blank-allowlist startup warning).
 
 ### Docs
 
+- `scripts/verify-build.ps1` step 0 (CACHE-1) now compares against a local component source **only when
+  `nuget.config` explicitly declares a `MudHttpUtils-local` source**, and prints `[SKIP]` otherwise:
+  once the component ships on nuget.org the local source is gone and the cache comes from the public
+  feed, so comparing against the machine's pack folder would report "public package differs from a local
+  same-version repack" as a stale downstream cache. The comparison semantics for local development
+  cycles (source declared) are unchanged.
 - All call sites and examples were rewritten to "switch the context first, then resolve the API client
   from DI": the `Mud.Feishu.Abstractions` README (zh / en), the root README (zh / en), the
   `Mud.Feishu` README, and the `Mud.Feishu.Demo` multi-app controller; guarded calls in tests now go

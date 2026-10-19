@@ -2,18 +2,21 @@
 
 ## [Unreleased]
 
-> 主题：**适配 `Mud.HttpUtils` 3.0.8**（上游物理移除 `BC-30` 三成员，下游同批适配）。
-> 本版为**破坏性依赖变更**：`Mud.HttpUtils` / `Mud.HttpUtils.Generator` 由 `3.0.7` 升至 `3.0.8`，
-> 三个成员的本仓重写 / 遮蔽**同批删除**。
-> **上线前提**：上游 `3.0.8` **已发布至 nuget.org**；`nuget.config` 中的本地调试源已移除，
-> 引用改由公共源还原。
+> 主题：**适配 `Mud.HttpUtils` 3.0.9**（在 3.0.8 的 `BC-30` 三成员移除基础上，回迁官方令牌恢复入口并更正过时论断）。
+> 本版为**破坏性依赖变更**：`Mud.HttpUtils` / `Mud.HttpUtils.Generator` 由 `3.0.7` 升至 `3.0.9`，
+> 三个成员的本仓重写 / 遮蔽**同批删除**（3.0.8 批次）；3.0.9 批次以「删自建件 + 更正论断」为主，
+> 无新增破坏性变更。
+> **上线前提（已满足）**：上游 `3.0.9` **已发布至 nuget.org**；`nuget.config` 中的本地源（指向
+> Release 产物 `artifacts`）**已移除**，引用改由公共源还原并复跑全门禁。
 
 ### 依赖升级
 
-- `Mud.HttpUtils` / `Mud.HttpUtils.Generator`：`3.0.7` → **`3.0.8`**（两者必须同版本）。
+- `Mud.HttpUtils` / `Mud.HttpUtils.Generator`：`3.0.7` → **`3.0.9`**（两者必须同版本；3.0.8 为同日的中间批次）。
   7 个源工程的 10 处 `Mud.HttpUtils*` 声明统一，各 README 依赖表与 `AGENTS.md` 同步。
-  验证期经本地调试包渠道还原（`mudhttputils-local` → `D:/Repos/MudHttpUtils/artifacts-debug`，
-  该 Debug 包**不发布**）；上游 3.0.8 发布后本地源**已移除**，改从 nuget.org 还原。
+- 验证期经本地 Release 包渠道还原（`mudhttputils-local` → `D:/Repos/MudHttpUtils/artifacts`，
+  由 `pack.ps1 Release` 产出并逐字节校验）；**禁止**使用 `artifacts-debug` 的 Debug 包。
+  上游 3.0.9 发布至 nuget.org 后本地源**已移除**，并按「清缓存 → `restore --no-cache` → `clean`
+  → `build`」纪律重新还原自公共源（0 错误、190 warning 与升级前基线逐码一致），全门禁复跑通过。
 
 ### 变更（Changed）
 
@@ -26,9 +29,30 @@
   **移除纪律**：「引用升至 `3.0.8`」与「删除本仓重写」**必须同批落地**——若引用仍停在 `3.0.7`
   而先删重写，调用会**静默回落**到基类**无授权守卫**实现（本仓重写内的 `IAppAccessAuthorizer`
   判定链丢失），属**安全事故而非编译错误**。
+- **令牌恢复配置改走组件官方入口**：注册链中的「DTO 投影 + `Apply` + 手工
+  `ConfigurationChangeTokenSource` + 校验器 + 可解析实例」共 38 行自建块，整块替换为
+  `AddMudHttpTokenRecoveryFromConfiguration(configuration)`。绑定语义（DTO 投影、节缺失保留默认值、
+  非法值在选项解析期抛错）与热更新语义（配置重载 ⇒ `IOptionsMonitor` 缓存失效）逐项等价，
+  已由既有等价性 / 热更新用例覆盖；无 `IConfiguration` 的代码式注册路径保留选项管线、
+  校验器与可解析实例（不含节绑定）。
+- **JSON 上下文接入改为合并入口**：`AddMudHttpClientJsonContext(FeishuApiResultJsonContext.Default)`
+  改为 `AddMudHttpClientJsonContexts(FeishuJsonContext.Default, FeishuApiResultJsonContext.Default)`
+  （net8+）。DI 管道的解析器链同时覆盖事件/Webhook 类型与响应包装/认证 DTO；非 DI 路径依赖的
+  `FeishuJsonDefaults` 静态合并链**保持不变**。
+- **注释与用例更正**：删除「`TokenRecoveryEnhancedClient` 未重写 `WithBaseAddress`、强转抛
+  `InvalidCastException`」的过时论断（组件 3.0.9 起该方法返回同类型实例），热更新注释改为
+  明确「每 `CreateClient` 重跑配置委托」而非「克隆实例」；`PurgeGateTokenStoreDecorator` 的读降级
+  论断改为「组件已降级，装饰器位于 store 层仍保留降级作为纵深防御」（行为不变）。
+- **新增回归用例**：`TokenRecoveryClientCapabilityTests`（`WithBaseAddress` 返回同类型 + 基地址生效）、
+  `AddFeishuApp_ShouldRegisterFeishuDomains_SoNoBlankAllowlistWarning`（注册入口已登记飞书域名，
+  严格模式客户端不产生「空白名单」启动期提示）。
 
 ### 文档（Docs）
 
+- `scripts/verify-build.ps1` 步骤 0（CACHE-1）的本地源比对改为「**仅当 `nuget.config` 显式声明
+  `MudHttpUtils-local` 源时**执行」，未声明时输出 `[SKIP]`：组件发布到公共源后本地源已移除，
+  此时缓存来自公共源，继续比对本机打包目录会把「公共源包与本地同版本重打包不一致」误报为下游缓存陈旧。
+  本地联调周期（声明了该源）的比对语义不变。
 - 调用点与示例统一改写为「先切换上下文、再从 DI 解析 API 客户端」形态：
   `Mud.Feishu.Abstractions` README（中 / 英）、根 README（中 / 英）、`Mud.Feishu` README、
   `Mud.Feishu.Demo` 多应用控制器；测试中的守卫性调用改经

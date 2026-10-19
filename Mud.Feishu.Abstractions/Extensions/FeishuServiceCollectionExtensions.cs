@@ -171,10 +171,12 @@ public static class FeishuServiceCollectionExtensions
             // 在每次 CreateClient 时从 IOptionsMonitor<List<FeishuAppConfig>> 读取**当前**配置，
             // 仅在发生实际变化时覆盖 BaseAddress / Timeout，从而让热更新链路真正贯通到命名客户端。
             //
-            // 为什么不用组件 HttpClientFactoryEnhancedClient.WithBaseAddress：
-            // TokenRecoveryEnhancedClient（sealed）未重写 WithBaseAddress，基类实现返回的是
-            // **普通 HttpClientFactoryEnhancedClient**，既丢失令牌恢复能力又会令 (TokenRecoveryEnhancedClient)
-            // 强制转换抛 InvalidCastException。
+            // 热更新语义为「每次 CreateClient 重跑本配置委托」，而非「克隆客户端实例」：
+            // 本委托每次调用都重新读取 IOptionsMonitor 的当前配置，从而把 BaseUrl / TimeOut 变更
+            // 传导到后续新建的客户端；命名客户端的 handler 管道仍由注册期配置决定。
+            // 组件 3.0.9 起 TokenRecoveryEnhancedClient 已重写内部 CreateWithBaseAddress，
+            // WithBaseAddress(...) 返回同类型实例（令牌恢复能力不再丢失），需要「克隆并换基地址」
+            // 的语义时可用该入口；但它同样不会重读配置，故不能替代下方每请求热更新路径。
             httpClientBuilder.ConfigureHttpClient((sp, client) =>
             {
                 var latest = ResolveLatestAppConfig(sp, appKey);
@@ -258,11 +260,16 @@ public static class FeishuServiceCollectionExtensions
         // 同时注册 IOptions<JsonSerializerOptions>，与生成器构造函数契约对齐
         services.TryAddSingleton<IOptions<System.Text.Json.JsonSerializerOptions>>(sp => Microsoft.Extensions.Options.Options.Create(sp.GetRequiredService<System.Text.Json.JsonSerializerOptions>()));
 
-        // 把 SDK 认证/通用源生成上下文接入组件 IOptions<JsonSerializerOptions> 管道。
-        // AddMudHttpClientJsonContext 仅在 net8+ 提供（组件 ServiceCollectionExtensions 中位于
-        // #if NET8_0_OR_GREATER 块内），低 TFM 必须跳过，否则编译失败。
+        // 把 SDK 的两个源生成上下文接入组件 IOptions<JsonSerializerOptions> 管道：
+        // FeishuApiResultJsonContext（响应包装 + 认证 DTO）与 FeishuJsonContext（事件/Webhook 类型）。
+        // AddMudHttpClientJsonContexts 仅在 net8+ 提供（组件侧位于 #if NET8_0_OR_GREATER 块内），
+        // 低 TFM 必须跳过，否则编译失败。
+        // 顺序语义：该入口按传入顺序前置到解析器链首，**后传入者优先**；两上下文覆盖的类型
+        // 互不重叠（事件类型 vs 响应包装/DTO），故先基础事件类型、后结果包装类型。
 #if NET8_0_OR_GREATER
-        services.AddMudHttpClientJsonContext(FeishuApiResultJsonContext.Default);
+        services.AddMudHttpClientJsonContexts(
+            FeishuJsonContext.Default,
+            FeishuApiResultJsonContext.Default);
 #endif
 
         // 使用条件检测避免覆盖用户已配置的 IMemoryCache 选项（如容量限制）。
@@ -320,44 +327,28 @@ public static class FeishuServiceCollectionExtensions
         // 自定义实现可通过预注册覆盖（TryAdd 语义：已存在则跳过）。
         services.TryAddSingleton<IFeishuTokenManagerFactory, DefaultFeishuTokenManagerFactory>();
 
-        // 注册 TokenRecoveryOptions，使 TokenRecoveryExecutor 可经
-        // IOptionsMonitor<TokenRecoveryOptions> 获取恢复策略。
-        // 注意：**仅调用 AddOptions<T>() 并不会绑定任何配置节** ——
-        // "MudHttpTokenRecovery" 节会被静默忽略，TokenRecoveryOptions 永远取默认值。
-        // TokenRecoveryOptions.TokenInvalidationDetector 为接口类型扩展点（编程式注入面），
-        // 直接 Bind<TokenRecoveryOptions> 会在本编译单元产出无法抑制的 SYSLIB1100/SYSLIB1101。
-        // 故绑定纯 DTO 投影 TokenRecoveryConfiguration（仅基元/字符串/枚举成员，绑定源生成器可
-        // 完整支持），再经 Apply 逐字段映射到 TokenRecoveryOptions（不触碰
-        // TokenInvalidationDetector / AdditionalTokenInvalidationDetectors）。
-        services.AddOptions<TokenRecoveryOptions>();
+        // 令牌恢复策略（MudHttpTokenRecovery 节）绑定。
+        // 仅调用 AddOptions<T>() 不会绑定任何配置节（该节会被静默忽略、选项恒取默认值），
+        // 故走组件官方入口 AddMudHttpTokenRecoveryFromConfiguration：
+        // ① 绑定面为纯 DTO 投影 TokenRecoveryConfiguration → Apply 逐字段映射（不触碰
+        //    TokenInvalidationDetector 等编程式注入面），反射绑定收敛在组件内，本编译单元
+        //    不再产出 SYSLIB1100/SYSLIB1101；
+        // ② 显式挂接配置变更令牌源 ⇒ 配置重载时 IOptionsMonitor<TokenRecoveryOptions>
+        //    （TokenRecoveryExecutor / FeishuAppManager 经此读取）缓存失效并重跑委托；
+        // ③ 同一入口注册 TokenRecoveryOptionsValidator（非法取值在选项解析期暴露）与可直接
+        //    解析的 TokenRecoveryOptions 实例（兼容以选项为参数的构造函数）。
         if (configuration != null)
         {
-            var tokenRecoverySection = configuration.GetSection(TokenRecoveryOptions.SectionName);
-            // 应用链在 Configure 委托内**现场** Bind 纯 DTO 并 Apply（不建立 TokenRecoveryConfiguration
-            // 的第二级 Options 管线）：委托捕获的 section 为活对象，每次 Options 重建都读当前配置值。
-            // 实测记录：若经 IOptionsMonitor<TokenRecoveryConfiguration>（OptionsBuilder.Configure<TDep>）
-            // 间接读取，配置重载后 TDep monitor 会返回陈旧 DTO（Apply 写回旧值）——两段缓存链不可靠，
-            // 故采用「捕获 section + 现场 Bind」的单级方案，热更新只依赖下方单个 ChangeTokenSource。
-            services.AddOptions<TokenRecoveryOptions>().Configure(options =>
-            {
-                var configDto = new TokenRecoveryConfiguration();
-                tokenRecoverySection.Bind(configDto);
-                options.Apply(configDto);
-            });
-            // 热更新语义（与组件 AddMudHttpTokenRecoveryFromConfiguration 对齐）：注册 ChangeTokenSource，
-            // 配置重载时使 IOptionsMonitor（TokenRecoveryExecutor / FeishuAppManager 经此读取）的共享缓存失效——
-            // 下一轮解析重新执行上方委托（现场 Bind + Apply），从而读到重载后的值。
-            // 采用「委托式 Bind + 显式 ChangeTokenSource」而非 Configure<T>(IConfiguration) 重载：
-            // 后者经 BindConfiguration 的反射绑定调用点无法被配置绑定源生成器拦截（IL2026/IL3050 须保持 0）。
-            services.AddSingleton<IOptionsChangeTokenSource<TokenRecoveryOptions>>(
-                new ConfigurationChangeTokenSource<TokenRecoveryOptions>(Options.DefaultName, tokenRecoverySection));
+            services.AddMudHttpTokenRecoveryFromConfiguration(configuration);
         }
-
-        // 与组件 AddMudHttpTokenRecoveryFromConfiguration 对齐：注册校验器（非法取值在选项解析期暴露，
-        // 而非静默生效）与可直接解析的 TokenRecoveryOptions 实例（兼容以 TokenRecoveryOptions
-        // 为参数的旧构造函数）。
-        services.TryAddSingleton<IValidateOptions<TokenRecoveryOptions>, TokenRecoveryOptionsValidator>();
-        services.TryAddSingleton(sp => sp.GetRequiredService<IOptions<TokenRecoveryOptions>>().Value);
+        else
+        {
+            // 无 IConfiguration 的代码式注册路径：保留选项管线与可解析实例，恢复策略取默认值，
+            // 宿主可经 Configure<TokenRecoveryOptions> 编程式覆盖。
+            services.AddOptions<TokenRecoveryOptions>();
+            services.TryAddSingleton<IValidateOptions<TokenRecoveryOptions>, TokenRecoveryOptionsValidator>();
+            services.TryAddSingleton(sp => sp.GetRequiredService<IOptions<TokenRecoveryOptions>>().Value);
+        }
 
 #if NET6_0_OR_GREATER
         // FeishuTokenRegistrationService 必须在 TokenRefreshBackgroundService 之前注册为 IHostedService，

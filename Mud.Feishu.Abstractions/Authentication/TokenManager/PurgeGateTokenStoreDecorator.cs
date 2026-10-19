@@ -20,8 +20,9 @@ namespace Mud.Feishu.Abstractions.Authentication;
 /// 短路读取（凭据变更清库完成前不得恢复旧凭据来源的令牌）；<see cref="TokenStorePurgeGate.PurgeGateState.TimedOut"/>
 /// 时 fail-open 放行并记一次 Warning（绝不因门而永久禁用恢复）。</item>
 /// <item>读故障降级：对应各直调点的 <c>catch (ex is not OperationCanceledException)</c> → Warning → 视为未命中。
-/// 该语义<b>必须</b>在装饰器保留：上游桥接器 <c>TokenStoreBackedTokenCache&lt;T&gt;.GetAsync</c> 不捕获
-/// store 异常，若不在此降级，存储抖动将从「回落 API 刷新」恶化为「把异常抛给业务调用方」。</item>
+/// 组件 3.0.9 起桥接器 <c>TokenStoreBackedTokenCache&lt;T&gt;.GetAsync</c> 已按「未命中」降级并记 Warning，
+/// 但本装饰器位于 store 层：除桥接器读穿透外还可能被直调路径使用，故保留同一降级作为纵深防御——
+/// 存储抖动不得从「回落 API 刷新」恶化为「把异常抛给业务调用方」（取消异常仍原样传播）。</item>
 /// </list>
 /// </para>
 /// <para>

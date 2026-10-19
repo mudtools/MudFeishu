@@ -90,14 +90,31 @@ if ($csprojFiles) {
     }
 }
 
-# 本地源解析：Release 打包产物（artifacts）优先，调试打包（artifacts-debug，pack_debug.ps1 产物，
-# 仅用于新版组件未发布前的本地联调周期）为回退。判定「优先」的不是目录存在性，而是
+# 本地源解析：仅当 nuget.config 中**显式声明了 MudHttpUtils-local 源**时才做比对。
+# 该源只在「组件新版尚未发布、经本地打包目录联调」的周期存在；组件发布到公共源后本地源被移除，
+# 全局缓存即来自公共源，此时若仍拿本机打包目录比对，会把「公共源包与本地同版本重打包不一致」
+# 报成缓存陈旧（假红）——而这类差异应由上游以版本号递增解决，不是下游缓存问题。
+# 声明存在时：Release 产物（artifacts）优先，调试产物（artifacts-debug，pack_debug.ps1 输出，
+# 仅用于未发布前的联调）回退。判定「优先」的不是目录存在性，而是
 # **是否实际包含 csproj 声明的版本包**——否则 artifacts 里只有旧版时会误选它并跳过缓存校验
 # （实测：artifacts 存 3.0.x 旧包、artifacts-debug 存 3.0.7 联调包时，原逻辑选中前者且未做任何比对）。
-# 两个目录都不存在（CI / 发布环境）时保持原行为：输出 [SKIP] 并通过。
+# 未声明该源（CI / 已发布后的开发机）时输出 [SKIP] 并通过。
 $localSource = ''
-$localSourceCandidates = @('D:/Repos/MudHttpUtils/artifacts', 'D:/Repos/MudHttpUtils/artifacts-debug')
-$existingCandidates = @($localSourceCandidates | Where-Object { Test-Path $_ })
+$declaredLocalSource = ''
+$nugetConfigPath = Join-Path $repoRoot 'nuget.config'
+if (Test-Path $nugetConfigPath) {
+    $localSourceEntry = Select-String -Path $nugetConfigPath -Pattern '<add\s+key="MudHttpUtils-local"\s+value="([^"]+)"' |
+        Select-Object -First 1
+    if ($localSourceEntry) {
+        $declaredLocalSource = $localSourceEntry.Matches[0].Groups[1].Value
+    }
+}
+$localSourceCandidates = @()
+if ($declaredLocalSource) {
+    $localSourceCandidates = @($declaredLocalSource) +
+        @('D:/Repos/MudHttpUtils/artifacts', 'D:/Repos/MudHttpUtils/artifacts-debug')
+}
+$existingCandidates = @($localSourceCandidates | Select-Object -Unique | Where-Object { Test-Path $_ })
 if ($declaredVersion) {
     $localSource = $existingCandidates |
         Where-Object { Test-Path (Join-Path $_ "Mud.HttpUtils.Generator.$declaredVersion.nupkg") } |
@@ -177,7 +194,13 @@ if ($localSource -and (Test-Path $localSource)) {
     }
 }
 else {
-    Write-Host "  [SKIP] 未找到本地源 $localSource（非本地联调环境）" -ForegroundColor DarkGray
+    $skipReason = if (-not $declaredLocalSource) {
+        'nuget.config 未声明 MudHttpUtils-local 源（依赖自公共源还原，无须比对本地打包目录）'
+    }
+    else {
+        "未找到本地源 $declaredLocalSource（非本地联调环境）"
+    }
+    Write-Host "  [SKIP] $skipReason" -ForegroundColor DarkGray
 }
 
 Assert-Zero -Name '依赖缓存陈旧' -Count $(if ($staleDetected) { 1 } else { 0 }) -Hint '见 CACHE-1'

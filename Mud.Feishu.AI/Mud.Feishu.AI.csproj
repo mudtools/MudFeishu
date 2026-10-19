@@ -20,36 +20,19 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\Mud.Feishu.Abstractions\Mud.Feishu.Abstractions.csproj" />
-		<!-- R-9（阶段 5）：飞书 Agent **集成面**（Channels / Events / Knowledge）并入本工程，因此新增三条纵向引用。
-		     无环（已核实）：core → {Abstractions, DataModels}，不引用本工程；EventCallback → Abstractions。
-		     ⚠️ 本工程**不得**引用 Mud.Feishu.AI.Tools / Mud.Feishu.AI.Mcp（防环；保持"工具面依赖集成面"单向），
-		     由 AgentContractGuards 的两条负向断言机械锁定。
-		     v2.3 P1-D：Mud.AI.Agent（执行器骨架 + 引导/声明契约的运行时侧）——集成面（FeishuApiResultReader）
-		     与骨架共用 ToolApiOutcome<T> 解包产物，依赖方向 AI → Mud.AI.Agent → Mud.AI.Abstractions（单向）。 -->
 		<PackageReference Include="Mud.AI.Agent" Version="1.0.1" />
-		<!-- P1-H3：ConversationStoreSessionAdapter 直接实现中立端口 ISessionStore
-		     ——"直接使用的 API 必须直接声明"（P2-5），故显式引用而不依赖 Mud.AI.Agent 的传递引用。
-		     方向不变：AI 适配层 → Mud.AI.*（单向）。 -->
 		<PackageReference Include="Mud.AI.Abstractions" Version="1.0.1" />
 		<ProjectReference Include="..\Mud.Feishu\Mud.Feishu.csproj" />
 		<ProjectReference Include="..\Mud.Feishu.DataModels\Mud.Feishu.DataModels.csproj" />
 		<ProjectReference Include="..\Mud.Feishu.EventCallback\Mud.Feishu.EventCallback.csproj" />
-		<!-- R-1+2c：本工程不含任何 [FeishuTool] 接口，也不消费工具面产物（仅 XML 注释提及
-		     Mud.Feishu.AI.Tools.Generated）⇒ 迁移到上游引擎后**不再需要**挂分析器引用。
-		     工具面生成的剖面（FeishuToolProfile）只属于声明了 [FeishuTool] 的程序集
-		     （Mud.Feishu.AI.Tools 与样例测试工程），见该文件注释。 -->
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- AI 底座（Microsoft Agent Framework）——全仓单一版本，由契约守卫锁定（见 Tests 契约守卫）。 -->
 		<PackageReference Include="Microsoft.Agents.AI" Version="1.25.0" />
 		<PackageReference Include="Microsoft.Agents.AI.OpenAI" Version="1.25.0" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- MAF 1.25.0 传递依赖要求 M.E.* ≥ 10.0.12：为避免 NU1603 版本漂移，本项目内统一 Update 到该版本
-		     （含 netstandard2.0/net6.0——M.E.* 10.x 均提供 ns2.0 兼容资产，根 props 对这两个 TFM 已设
-		     SuppressTfmSupportBuildWarnings）。配置绑定走源生成（net8+ 由根 props 启用）。 -->
 		<PackageReference Update="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
 		<PackageReference Update="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
 		<PackageReference Update="Microsoft.Extensions.Options" Version="10.0.12" />
@@ -57,32 +40,17 @@
 		<PackageReference Update="Microsoft.Extensions.Configuration.Binder" Version="10.0.12" />
 	</ItemGroup>
 
-	<!-- H2 中立化（P1-H2b）：Microsoft.ML.Tokenizers / .Data.O200kBase 两个包随 ChatTokenCounter
-	     一并迁往 Mud.AI.Agent（本工程不再直接调用 TiktokenTokenizer）——"直接使用的 API 必须直接声明"
-	     反向成立：不再直接使用即不再直接声明（否则本工程会凭白背上词表数据包的依赖面）。
-	     消费者经 Mud.AI.Agent 的 PackageReference 传递获得。 -->
-
 	<ItemGroup>
 		<None Include="..\Icon.png" Pack="true" PackagePath="\" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<InternalsVisibleTo Include="Mud.Feishu.AI.Tests" />
-		<!-- R-9 / 阶段 5.0（下沉批）：FeishuApiOutcome<T> + FeishuApiResultReader + FeishuToolDiagnostics
-		     + FeishuAppContextScopeFactory 从工具面下沉到本工程（保持 internal）。
-		     工具面（执行器、FeishuToolBinding、AddFeishuToolInfrastructure）与 Channels/ 实现仍要消费它们
-		     ⇒ 用 IVT 而非 public，避免反向扩大公开面。 -->
 		<InternalsVisibleTo Include="Mud.Feishu.AI.Tools" />
-		<!-- 工具面测试工程：其用例直接断言下沉类型的内部行为（如 FeishuAppContextScopeFactoryTests 的
-		     四步门禁），故与 AI.Tests 同等授予。 -->
 		<InternalsVisibleTo Include="Mud.Feishu.AI.Tools.Tests" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- R-9 下沉批：FeishuAppContextScopeFactory 直接使用 Mud.HttpUtils 的
-		     IAppContextHolder / IAppAccessAuthorizer / AppKey——"直接使用的 API 必须直接声明"，
-		     避免依赖 Abstractions 的传递引用；版本与全仓**同一条版本线**
-		     （守卫 TokenMultiAppContractGuards.MudHttpUtils_PackageReference_ShouldBeSingleVersion 锁定）。 -->
 		<PackageReference Include="Mud.HttpUtils" Version="3.0.7" />
 	</ItemGroup>
 

@@ -31,23 +31,23 @@ namespace Mud.Feishu.AI.Tools.Internal;
 /// </para>
 /// </remarks>
 internal sealed class OkrTools(
-    Mud.Feishu.IFeishuTenantV2OkrCycle? okrCycleClient,
-    Mud.Feishu.IFeishuTenantV2OkrObjective? okrObjectiveClient,
-    Mud.Feishu.IFeishuTenantV2OkrKeyResult? okrKeyResultClient,
-    Mud.Feishu.IFeishuTenantV2OkrProgress? okrProgressClient,
-    Mud.Feishu.IFeishuTenantV1OkrPeriod? okrPeriodClient,
-    Mud.Feishu.IFeishuTenantV2OkrCategory? okrCategoryClient,
+    IFeishuTenantV2OkrCycle? okrCycleClient,
+    IFeishuTenantV2OkrObjective? okrObjectiveClient,
+    IFeishuTenantV2OkrKeyResult? okrKeyResultClient,
+    IFeishuTenantV2OkrProgress? okrProgressClient,
+    IFeishuTenantV1OkrPeriod? okrPeriodClient,
+    IFeishuTenantV2OkrCategory? okrCategoryClient,
     IOptions<FeishuAgentOptions> options)
 {
     /// <summary>默认每页条数（官方上限 100；取 20 控量，模型可用 page_token 翻页）。</summary>
     private const int DefaultPageSize = 20;
 
-    private readonly Mud.Feishu.IFeishuTenantV2OkrCycle? _okrCycleClient = okrCycleClient;
-    private readonly Mud.Feishu.IFeishuTenantV2OkrObjective? _okrObjectiveClient = okrObjectiveClient;
-    private readonly Mud.Feishu.IFeishuTenantV2OkrKeyResult? _okrKeyResultClient = okrKeyResultClient;
-    private readonly Mud.Feishu.IFeishuTenantV2OkrProgress? _okrProgressClient = okrProgressClient;
-    private readonly Mud.Feishu.IFeishuTenantV1OkrPeriod? _okrPeriodClient = okrPeriodClient;
-    private readonly Mud.Feishu.IFeishuTenantV2OkrCategory? _okrCategoryClient = okrCategoryClient;
+    private readonly IFeishuTenantV2OkrCycle? _okrCycleClient = okrCycleClient;
+    private readonly IFeishuTenantV2OkrObjective? _okrObjectiveClient = okrObjectiveClient;
+    private readonly IFeishuTenantV2OkrKeyResult? _okrKeyResultClient = okrKeyResultClient;
+    private readonly IFeishuTenantV2OkrProgress? _okrProgressClient = okrProgressClient;
+    private readonly IFeishuTenantV1OkrPeriod? _okrPeriodClient = okrPeriodClient;
+    private readonly IFeishuTenantV2OkrCategory? _okrCategoryClient = okrCategoryClient;
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>P-3/P-4 (unified pagination): fetch_all item/page budgets come from host options.</summary>

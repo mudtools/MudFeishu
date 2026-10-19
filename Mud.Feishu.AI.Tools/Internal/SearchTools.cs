@@ -15,9 +15,9 @@ namespace Mud.Feishu.AI.Tools.Internal;
 /// 扁平化构造（满足官方「两 filter 至少一个」约束）。
 /// </summary>
 /// <remarks>执行骨架（catch/回填/截断）由 <see cref="ToolExecutor"/> 承担（WP3）；本类只保留参数校验与投影语义。</remarks>
-internal sealed class SearchTools(Mud.Feishu.IFeishuTenantV2SearchDocWiki searchClient, IOptions<FeishuAgentOptions> options)
+internal sealed class SearchTools(IFeishuTenantV2SearchDocWiki searchClient, IOptions<FeishuAgentOptions> options)
 {
-    private readonly Mud.Feishu.IFeishuTenantV2SearchDocWiki _searchClient = searchClient
+    private readonly IFeishuTenantV2SearchDocWiki _searchClient = searchClient
         ?? throw new ArgumentNullException(nameof(searchClient));
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 

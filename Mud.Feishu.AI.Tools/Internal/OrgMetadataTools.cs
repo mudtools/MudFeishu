@@ -37,15 +37,15 @@ namespace Mud.Feishu.AI.Tools.Internal;
 /// </remarks>
 internal sealed class OrgMetadataTools(
     IOptions<FeishuAgentOptions> options,
-    Mud.Feishu.IFeishuTenantV3JobTitle? jobTitleClient = null,
-    Mud.Feishu.IFeishuTenantV3JobLevel? jobLevelClient = null,
-    Mud.Feishu.IFeishuTenantV3JobFamilies? jobFamiliesClient = null,
-    Mud.Feishu.IFeishuTenantV3WorkCity? workCityClient = null)
+    IFeishuTenantV3JobTitle? jobTitleClient = null,
+    IFeishuTenantV3JobLevel? jobLevelClient = null,
+    IFeishuTenantV3JobFamilies? jobFamiliesClient = null,
+    IFeishuTenantV3WorkCity? workCityClient = null)
 {
-    private readonly Mud.Feishu.IFeishuTenantV3JobTitle? _jobTitleClient = jobTitleClient;
-    private readonly Mud.Feishu.IFeishuTenantV3JobLevel? _jobLevelClient = jobLevelClient;
-    private readonly Mud.Feishu.IFeishuTenantV3JobFamilies? _jobFamiliesClient = jobFamiliesClient;
-    private readonly Mud.Feishu.IFeishuTenantV3WorkCity? _workCityClient = workCityClient;
+    private readonly IFeishuTenantV3JobTitle? _jobTitleClient = jobTitleClient;
+    private readonly IFeishuTenantV3JobLevel? _jobLevelClient = jobLevelClient;
+    private readonly IFeishuTenantV3JobFamilies? _jobFamiliesClient = jobFamiliesClient;
+    private readonly IFeishuTenantV3WorkCity? _workCityClient = workCityClient;
 
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 

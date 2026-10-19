@@ -29,12 +29,12 @@ namespace Mud.Feishu.AI.Tools.Internal;
 /// </remarks>
 internal sealed class SecurityAuditLogTools(
     IOptions<FeishuAgentOptions> options,
-    Mud.Feishu.IFeishuTenantV1SecurityAuditLog? auditLogClient = null)
+    IFeishuTenantV1SecurityAuditLog? auditLogClient = null)
 {
     /// <summary>平台约束：查询时间起止相差不得超过 30 天（秒）。</summary>
     private const int MaxRangeSeconds = 30 * 24 * 60 * 60;
 
-    private readonly Mud.Feishu.IFeishuTenantV1SecurityAuditLog? _auditLogClient = auditLogClient;
+    private readonly IFeishuTenantV1SecurityAuditLog? _auditLogClient = auditLogClient;
 
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 

@@ -31,14 +31,14 @@ namespace Mud.Feishu.AI.Tools.Internal;
 /// </para>
 /// </remarks>
 internal sealed class OkrWriteTools(
-    Mud.Feishu.IFeishuTenantV2OkrCycle? okrCycleClient,
-    Mud.Feishu.IFeishuTenantV2OkrObjective? okrObjectiveClient,
-    Mud.Feishu.IFeishuTenantV2OkrKeyResult? okrKeyResultClient,
+    IFeishuTenantV2OkrCycle? okrCycleClient,
+    IFeishuTenantV2OkrObjective? okrObjectiveClient,
+    IFeishuTenantV2OkrKeyResult? okrKeyResultClient,
     IOptions<FeishuAgentOptions> options)
 {
-    private readonly Mud.Feishu.IFeishuTenantV2OkrCycle? _okrCycleClient = okrCycleClient;
-    private readonly Mud.Feishu.IFeishuTenantV2OkrObjective? _okrObjectiveClient = okrObjectiveClient;
-    private readonly Mud.Feishu.IFeishuTenantV2OkrKeyResult? _okrKeyResultClient = okrKeyResultClient;
+    private readonly IFeishuTenantV2OkrCycle? _okrCycleClient = okrCycleClient;
+    private readonly IFeishuTenantV2OkrObjective? _okrObjectiveClient = okrObjectiveClient;
+    private readonly IFeishuTenantV2OkrKeyResult? _okrKeyResultClient = okrKeyResultClient;
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>okr.create_objective：在周期下创建目标（<c>dry_run=true</c> 时只预演）。</summary>

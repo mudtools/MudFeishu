@@ -421,8 +421,9 @@ internal sealed class ImTools(
 
     private static JsonObject ProjectReadUsers(ApiPageListResult<ReadMessageUser> data)
     {
-        // R-3：信封形态单源（无翻页契约的列表信封）。
-        var envelope = ToolResultJsons.ItemsEnvelope();
+        // R-3：信封形态单源（ToolResultJsons.PageEnvelope）。
+        // 该接口是分页的，用 ItemsEnvelope 会让模型看得到 page_token 入参却拿不到续翻游标。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
         foreach (var user in data.Items ?? [])
         {
             envelope["items"]!.AsArray().AddNode(new JsonObject

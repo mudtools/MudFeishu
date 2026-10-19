@@ -17,4 +17,4 @@
 
 - 每条只给 `user_id` / `user_id_type` / `read_time`，没有姓名，要人名得再查通讯录。
 - 读取时间投影为 `read_time`，不是接口里那个时间戳字段的原名。
-- 默认单页，`fetch_all` 才聚合；`max_items` 仅在 `fetch_all` 为真时生效。
+- 默认单页，`has_more` 为真时用 `page_token` 续翻，或 `fetch_all` 自动翻完。

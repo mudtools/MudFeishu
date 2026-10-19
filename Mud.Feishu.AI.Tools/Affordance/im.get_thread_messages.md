@@ -16,5 +16,5 @@
 ## Tips
 
 - 投影与群历史是同一套键：`message_id` / `create_time` / `sender_id` / `message_type` 加截断预览。
-- 本工具没有时间区间参数，话题内取全量靠自动翻页。
+- 本工具没有时间区间参数，话题内取全量靠 `fetch_all` 聚合。
 - `has_more` 为真时用回执的 `page_token` 续页；每页条数由绑定层固定。

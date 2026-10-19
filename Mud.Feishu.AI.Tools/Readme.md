@@ -616,8 +616,9 @@ Mud.Feishu.AI.Tools/Affordance/{契约工具名}.md      # 如 out: Affordance/v
   ↔ 磁盘目录名。任一不一致 ⇒ 引擎收不到资产 ⇒ 整键消失**而构建全绿**（`MUDFT014` 会因 golden 漂移报错，
   `AffordanceContractGuards` 也会报红——这两道门是刻意的冗余）；
 - **覆盖率阈值**：`AffordanceCoverageContractGuards` 按风险分级设最低覆盖率——`high-risk-write` 与
-  `write` 两级 100%（39 + 129 = 168 份资产，写面满覆盖），`read` 级**暂不设阈值**（接入高频 `list` / `get`
-  时按实测起步，不设阈值比设一个恒绿的阈值诚实）——分母取自契约集合，新增写类工具时不同批补资产即报红；
+  `write` 两级 100%（39 + 129 = 168 份，写面满覆盖），`read` 级 18% 起步（im / bitable / docx / drive /
+  mail 的高频 `list` / `get` 共 33 份，合计 201 份）——分母取自契约集合，新增写类工具时不同批补资产即报红；
+  只读面**不做满覆盖承诺**：低频单点读取的决策路径由域 guidance 承担，全量补资产只会挤占描述预算；
   写作规范与禁止项见 `documents/AIAgent/affordance-写作规范.md`；
 - **模型可见面**：`FeishuToolAIFunction.Description` 尾部追加（进程内 Agent 与 MCP 链共用同一实例
   ⇒ 逐字节一致），另经 `McpEnvelope` 方言结构化透传（`affordance` 字段）。

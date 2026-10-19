@@ -50,8 +50,10 @@
     结果不含字节（不污染上下文）；工具结果被截断时如实向模型标记；
   - 权限模型：逐工具声明调用身份（tenant / user）与 OAuth scope，权限对照表随包分发；
   - 逐工具 affordance 决策指导（何时用 / 何时别用 / 前置条件 / 技巧），模型可见；
-    写类工具面已**满覆盖**（39 个高危写 + 129 个普通写 = 168 份资产），覆盖率由
-    `AffordanceCoverageContractGuards` 按风险分级锁定，新增写类工具不同批补资产即构建报红；
+    写类工具面已**满覆盖**（39 个高危写 + 129 个普通写），只读面按高频读取路径补齐
+    （im / bitable / docx / drive / mail 的 `list` / `get` 共 33 份，合计 **201 份资产**），
+    覆盖率由 `AffordanceCoverageContractGuards` 按风险分级锁定（写类两级 100%、只读级 18% 起步），
+    新增写类工具不同批补资产即构建报红；
   - 结构化审计出口（`IToolExecutionAuditSink`）与 OpenTelemetry 指标（工具执行、耗时、模型调用耗时）；
   - 自建知识检索（分块 / 索引 / 向量检索）与文本工具（`ai.translate_text`、`ai.detect_language`）；
   - Skills 产物导出（`skills/feishu-*`），可直接分发给 Agent harness。
@@ -84,6 +86,9 @@
 - `chatgroup.create_chat` / `chatgroup.add_manager` 的工具描述与执行器回执不一致（描述承诺
   「返回无效 ID 列表」，实际一个不投影、一个返回管理员全量名单）——模型据此会向用户误报拉人失败明细，
   现已按实现改写；同批校正 `Guidance/chatgroup.md` 的回执口径。
+- `im.get_message_read_users` 声明了 `page_token` / `fetch_all` 入参，单页结果却用无翻页契约的信封
+  投影——模型既看不到 `has_more` 也拿不到续翻游标，等于「能传游标却翻不了页」；现改走统一分页信封，
+  与输出 Schema 声明一致。
 - Token 计数精确化（此前词表缺失恒走字符估算）。
 - 安全：邮件头 CR/LF 注入被拒；IPv6 回环地址白名单校验生效；AOT 严格模式下消除全部
   `IL2026` / `IL3050` 裁剪告警。

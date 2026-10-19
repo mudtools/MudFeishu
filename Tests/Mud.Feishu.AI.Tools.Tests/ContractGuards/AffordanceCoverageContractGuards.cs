@@ -30,7 +30,7 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// <list type="table">
 /// <item><description>high-risk-write：100%（S-5 之前由强制集合保证，本批改写成比例）</description></item>
 /// <item><description>write：100%（S-5 二波补齐后由 ≥80% 抬到满覆盖）</description></item>
-/// <item><description>read：暂不入表（176 个只读工具按 S-5 计划只做高频 list/get，接入时按实测起步）</description></item>
+/// <item><description>read：18%（S-5 三波接入 im/bitable/docx/drive/mail 的高频 list/get 后按实测起步）</description></item>
 /// </list>
 /// </para>
 /// <para>
@@ -45,12 +45,14 @@ public class AffordanceCoverageContractGuards
     private const double HighRiskWriteFloor = 1.00;
     private const double WriteFloor = 1.00;
 
-    // 只读级（176 个工具）**暂不设阈值**：S-5 只承诺 high-risk-write 与 write 两级满覆盖。
-    // 三波若接入高频 list/get，按实测覆盖率起步再逐步抬升——不设阈值比设一个恒绿的阈值诚实。
+    // 只读级起步阈值：S-5 三波接入 5 个高频域的 list/get（33/176 = 18.75%），取 18% 起步。
+    // 只读面不做满覆盖承诺——低频单点读取的决策路径由域 guidance 承担，资产只会挤占描述预算。
+    private const double ReadFloor = 0.18;
 
     [Theory]
     [InlineData(FeishuToolRisk.HighRiskWrite, HighRiskWriteFloor)]
     [InlineData(FeishuToolRisk.Write, WriteFloor)]
+    [InlineData(FeishuToolRisk.Read, ReadFloor)]
     public void TierCoverage_ShouldMeetTheFloor(FeishuToolRisk risk, double floor)
     {
         var assets = ReadAssetToolNames();

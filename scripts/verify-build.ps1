@@ -129,13 +129,37 @@ if ($csprojFiles) {
     }
 }
 
-# 本地源解析：Release 打包产物（artifacts）优先，调试打包（artifacts-debug，pack_debug.ps1 产物，
+# 本地源解析：**以 nuget.config 声明的本地文件夹源为准**，兄弟仓目录"存在与否"只作二次确认。
+# 组件发布到 nuget.org 后 nuget.config 会摘掉本地源，此时全局缓存里的内容就是官方包，
+# 再拿已退役的本地联调包做哈希比对必然失配——那是假红，而且照提示清缓存也治不好
+# （重新解包仍来自 nuget.org，下一轮照样失配）。实测形态：本机保留 D:/Repos/MudHttpUtils
+# 但 nuget.config 只剩 nuget.org ⇒ 步骤 0 恒 FAIL、其余六步全绿。
+function Normalize-SourcePath([string]$p) {
+    if (-not $p) { return '' }
+    return (($p -replace '\\', '/') -replace '/$', '').ToLowerInvariant()
+}
+
+$declaredLocalSources = @()
+$nugetConfigPath = Join-Path $repoRoot 'nuget.config'
+if (Test-Path $nugetConfigPath) {
+    [xml]$nugetConfigText = Get-Content -Raw -Encoding UTF8 $nugetConfigPath
+    $declaredLocalSources = @(
+        foreach ($add in @($nugetConfigText.configuration.packageSources.add)) {
+            $v = [string]$add.value
+            if ($v -match '^file:///') { $v = $v -replace '^file:///', '/' }   # file:/// 也指本地文件夹
+            if ($v -and $v -notmatch '^(https?|ftp)://') { Normalize-SourcePath $v }
+        }
+    )
+}
+
+# Release 打包产物（artifacts）优先，调试打包（artifacts-debug，pack_debug.ps1 产物，
 # 仅用于新版组件未发布前的本地联调周期）为回退。判定「优先」的不是目录存在性，而是
 # **是否实际包含 csproj 声明的版本包**——否则 artifacts 里只有旧版时会误选它并跳过缓存校验
 # （实测：artifacts 存 3.0.x 旧包、artifacts-debug 存 3.0.7 联调包时，原逻辑选中前者且未做任何比对）。
-# 两个目录都不存在（CI / 发布环境）时保持原行为：输出 [SKIP] 并通过。
+# 两个目录都不存在（CI / 发布环境）或未在 nuget.config 声明时保持原行为：输出 [SKIP] 并通过。
 $localSource = ''
-$localSourceCandidates = @('D:/Repos/MudHttpUtils/artifacts', 'D:/Repos/MudHttpUtils/artifacts-debug')
+$localSourceCandidates = @('D:/Repos/MudHttpUtils/artifacts', 'D:/Repos/MudHttpUtils/artifacts-debug') |
+    Where-Object { (Normalize-SourcePath $_) -in $declaredLocalSources }
 $existingCandidates = @($localSourceCandidates | Where-Object { Test-Path $_ })
 if ($declaredVersion) {
     $localSource = $existingCandidates |
@@ -216,7 +240,12 @@ if ($localSource -and (Test-Path $localSource)) {
     }
 }
 else {
-    Write-Host "  [SKIP] 未找到本地源 $localSource（非本地联调环境）" -ForegroundColor DarkGray
+    if ($declaredLocalSources.Count -eq 0) {
+        Write-Host "  [SKIP] nuget.config 未声明任何本地文件夹源 ⇒ 依赖取自 nuget.org，缓存新鲜度比对不适用" -ForegroundColor DarkGray
+    }
+    else {
+        Write-Host "  [SKIP] 已声明本地源但 Mud.HttpUtils 联调目录不在场（非本地联调环境）" -ForegroundColor DarkGray
+    }
 }
 
 # ── 跨仓 Mud.AI.* 本地源 ↔ 全局缓存一致性（迁移 R-2：CACHE-1 同类陷阱） ──
@@ -225,7 +254,11 @@ else {
 # （NuGet 以 id+version 为键）——与 Mud.HttpUtils.Generator 完全同款。逐个包比对包内
 # DLL 与全局缓存 DLL 的 SHA256（ContentHash；对时间戳/PDB 路径变化不敏感）。
 $mudAiSource = 'D:/Repos/MudAIAgent/artifacts'
-if (Test-Path $mudAiSource) {
+if ((Normalize-SourcePath $mudAiSource) -notin $declaredLocalSources) {
+    Write-Host "  [SKIP] nuget.config 未声明 Mud.AI 跨仓本地源 ⇒ 家族包取自已发布版本，比对不适用" -ForegroundColor DarkGray
+    $mudAiSource = ''
+}
+if ($mudAiSource -and (Test-Path $mudAiSource)) {
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     foreach ($aiId in @('Mud.AI.Generator', 'Mud.AI.Agent', 'Mud.AI.Abstractions')) {
         $decl = $null
@@ -291,7 +324,10 @@ if (Test-Path $mudAiSource) {
     }
 }
 else {
-    Write-Host "  [SKIP] 未找到跨仓本地源 $mudAiSource（非本地联调环境）" -ForegroundColor DarkGray
+    # $mudAiSource 为空 = 上一分支已输出「未声明本地源」的 SKIP，不再重复报「目录不在场」（空路径误导）。
+    if ($mudAiSource) {
+        Write-Host "  [SKIP] 已声明跨仓本地源但目录不在场：$mudAiSource" -ForegroundColor DarkGray
+    }
 }
 
 Assert-Zero -Name '依赖缓存陈旧' -Count $(if ($staleDetected) { 1 } else { 0 }) -Hint '见 CACHE-1'

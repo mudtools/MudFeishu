@@ -8,13 +8,13 @@
 namespace Mud.Feishu.AI.Tools.Curation;
 
 // <summary>
-// 通讯录域工具接口（P0：解决"模型无法把姓名/邮箱/手机号变成 ID"的必然失败场景）。
+// 通讯录域工具接口（解决"模型无法把姓名/邮箱/手机号变成 ID"的必然失败场景）。
 // </summary>
 // <remarks>
 // <para>
-// <b>为什么这是 P0</b>：飞书全部 API 用 <c>open_id</c>/<c>user_id</c> 指代人，
-// 而用户对模型说的是"发给张三"。在此之前没有任何工具能把"张三"变成 ID，
-// 于是 <c>im.send_message</c> 这类写工具的入参根本凑不出来——不是能力缺失，是<b>链路缺首环</b>。
+// <b>为什么它是写链路的前置</b>：飞书全部 API 用 <c>open_id</c>/<c>user_id</c> 指代人，
+// 而用户对模型说的是"发给张三"。没有工具能把"张三"变成 ID 时，
+// <c>im.send_message</c> 这类写工具的入参根本凑不出来——不是能力缺失，是<b>链路缺首环</b>。
 // </para>
 // <para>
 // 三步链（对齐官方 CLI 的 <c>lark-contact</c> 语义）：
@@ -22,7 +22,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // 再 <c>contact.batch_get</c> 批量取详情；单点详情用 <c>contact.get_user</c>。
 // </para>
 // <para>
-// <b>AT-F11 / R3 评审 C-7 的链路闭环</b>：<c>contact.search_user</c> 的返回值<b>必须</b>含 <c>open_id</c>，
+// <b>链路闭环</b>：<c>contact.search_user</c> 的返回值<b>必须</b>含 <c>open_id</c>，
 // 因为"发给张三"的下一跳是 <c>im.send_message(receive_id_type="open_id", receive_id=&lt;open_id&gt;)</c>。
 // 该两跳链路由 <c>DomainMappingTests.SearchUserThenSendMessage_*</c> 端到端锁定。
 // </para>
@@ -34,7 +34,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
     RequiredScopes = ["contact:user.base:readonly"],
     Source = nameof(IFeishuTenantV3User) + "." + nameof(IFeishuTenantV3User.GetBatchUsersAsync),
 
-    // R5 / B-6：emails 与 mobiles 至少提供一个——跨参数约束，required 表达不了。
+    // emails 与 mobiles 至少提供一个——跨参数约束，required 表达不了。
     AnyOf = ["emails|mobiles"])]
 public interface IFeishuTenantContactResolveUserTool
 {
@@ -51,9 +51,8 @@ public interface IFeishuTenantContactResolveUserTool
 /// 工具接口：contact.search_user（映射 <c>IFeishuTenantV3User.GetUsersByKeywordAsync</c>）。
 /// </summary>
 /// <remarks>
-/// <b>AT-F11（P0，R3 新增）</b>：这是"发给张三"整条写链路的<b>首环</b>——用户口述的是姓名，
-/// 而飞书全部写接口要的是 ID。SDK 方法早已存在（<c>GET /open-apis/search/v1/user</c>），
-/// 此前只是没有把它接成工具，故本项成本极低而收益直接落在写链路上。
+/// 这是"发给张三"整条写链路的<b>首环</b>——用户口述的是姓名，而飞书全部写接口要的是 ID
+/// （SDK 方法 <c>GET /open-apis/search/v1/user</c> 早已存在，接成工具即支撑该链路）。
 /// </remarks>
 [AgentTool("contact.search_user",
     Description = "按姓名/关键字搜索用户，返回 open_id/user_id/姓名/所属部门——用户说\"发给张三\"时的第一步（拿到 open_id 后交给 im.send_message，receive_id_type 传 open_id）。只读，需 contact:user.base:readonly。",

@@ -42,13 +42,13 @@ public interface IFeishuTenantWikiListNodesTool
         CancellationToken cancellationToken = default);
 }
 
-// ─────────────────────────── Wiki 写（R5 / F-11） ───────────────────────────
+// ─────────────────────────── Wiki 写 ───────────────────────────
 
 /// <summary>
 /// 工具接口：wiki.create_node（映射 <c>IFeishuTenantV2WikiNodes.CreateSpaceNodeAsync</c>）。
 /// </summary>
 /// <remarks>
-/// R5 / F-11：此前 wiki 域<b>只有读面</b>（get_node / list_nodes），模型能看知识库但不能改。
+/// wiki 域<b>必须有写面</b>（get_node / list_nodes 只读，否则模型能看知识库但不能改）。
 /// </remarks>
 [AgentTool("wiki.create_node",
     Description = "在知识空间下创建节点（新建一篇 wiki 文档/普通页面）。space_id 可由 wiki.list_nodes 的结果推断。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 wiki:wiki。",

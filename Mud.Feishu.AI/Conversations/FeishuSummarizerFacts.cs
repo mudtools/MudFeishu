@@ -8,11 +8,11 @@
 namespace Mud.Feishu.AI.Conversations;
 
 /// <summary>
-/// 会话摘要器的<b>飞书侧产品事实</b>（N2-f：摘要机制中立化后，提示词与工具轨迹标识键留在此处）。
+/// 会话摘要器的<b>飞书侧产品事实</b>（提示词与工具轨迹标识键留在此处，中立侧不携带）。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>为什么提示词是产品事实</b>：原提示词写「涉及的<b>飞书</b>资源（表格/文档 ID 等）」——
+/// <b>为什么提示词是产品事实</b>：提示词写「涉及的<b>飞书</b>资源（表格/文档 ID 等）」——
 /// 这是飞书生态的词汇（其他生态没有「多维表格/云文档」）。中立侧只给中性默认值，
 /// 产品侧注入自己的表述，宿主观测到的摘要行为因此<b>逐字节不变</b>（黄金快照是验收条件）。
 /// </para>
@@ -24,13 +24,13 @@ namespace Mud.Feishu.AI.Conversations;
 /// </remarks>
 internal static class FeishuSummarizerFacts
 {
-    /// <summary>摘要提示词（与中立化前逐字一致——宿主可见的摘要产物因此零变化）。</summary>
+    /// <summary>摘要提示词（与产品事实锁一致——宿主可见的摘要产物零变化）。</summary>
     internal const string SummaryInstruction =
         "你是会话纪要助手。把下面的对话历史压缩成一份简洁的中文要点纪要：保留用户的目标、已确认的事实、"
         + "涉及的飞书资源（表格/文档 ID 等）与未完成的待办；不要评论、不要回答问题，只输出纪要正文。";
 
     /// <summary>
-    /// 工具轨迹中保留值的标识类参数键（飞书对象标识词汇；其余键名保留、值省略——A17）。
+    /// 工具轨迹中保留值的标识类参数键（飞书对象标识词汇；其余键名保留、值省略）。
     /// </summary>
     internal static readonly string[] IdKeys =
     [

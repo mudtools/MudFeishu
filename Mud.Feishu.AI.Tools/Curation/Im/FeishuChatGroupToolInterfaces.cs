@@ -7,14 +7,14 @@
 
 namespace Mud.Feishu.AI.Tools.Curation;
 
-// ─────────────────────────── ChatGroup · 群管理（B1 第四个补域） ───────────────────────────
+// ─────────────────────────── ChatGroup · 群管理 ───────────────────────────
 
 // ⚠️ 命名口径（与 HelpDesk 同款的坑）：工具名前缀 chatgroup 在生成器里被规范化为
 //    **Chatgroup**（只首字母大写）——生成的常量是 FeishuToolNames.Chatgroup*、
 //    参数类是 Chatgroup*Args、DI 入口是 AddFeishuChatgroupToolsCore；
 //    而 SDK 接口名仍是 IFeishuTenantV1ChatGroup*（SDK 侧按专有名词大写）。
 //
-// ⚠️ 域边界（方案 §2.4 要求的「能力去重评审」结论，证据见 §B.7）：
+// ⚠️ 域边界（能力去重结论）：
 //    ① 既有 im 域已有 im.get_chat / im.search_chats / im.list_chat_members，
 //       它们分别映射 ChatGroup 家族的同名读方法 ⇒ **本域不重复策展**；
 //    ② 群公告：ChatGroup 家族（IFeishuV1ChatGroupAnnouncement）与 Docx 家族
@@ -116,24 +116,24 @@ public interface IFeishuTenantChatgroupGetMenuTool
 
 // ─────────────────────────── 写面（群设置 / 成员 / 管理员 / 置顶 / 菜单删除） ───────────────────────────
 //
-// 三条纪律（沿用 TrustParty 写面已沉淀的结论）：
+// 三条纪律（与 TrustParty 写面同源）：
 // ① **scope 全部标 ⚠️ 待核对**：本域 SDK XML 注释里**没有任何 scope 字面量**
 //    （与 TrustParty 形成决定性对比），故按官方 API 文档取群管理写权限 im:chat 并标注待核对；
 // ② **写工具默认不启用**：授权门禁（IToolExecutionAuthorizer）与 MaxToolRisk 在执行链，
 //    执行器只负责「参数校验早于 dry_run」+ dry_run 短路 + 白名单回执；
-// ③ **本域不碰群公告**（归 docx 域，见上方域边界②）——建群/改群工具也不要写公告块。
+// ③ **本域不碰群公告**（归 docx 域，见上方域边界）——建群/改群工具也不要写公告块。
 //
-// ⚠️ 本轮**刻意不做**的三个写能力（理由写进 Guidance，不做静默缺口）：
+// **不做的三个写能力**（理由写进 Guidance，不做静默缺口）：
 //    · add_menu / update_menu：请求体是**嵌套树**（menu_tree → top_levels → children），
 //      扁平参数无法表达，需先引入 JSON 参数形态并配套 dry_run 形状校验；
 //    · get_chat_group_share_link_by_id：POST 但语义是**只读**（取群分享链接），
-//      混进写面会让「POST ⇒ 写」的推断失效，单独评审后再定。
+//      混进写面会让「POST ⇒ 写」的推断失效，故不混入。
 
 /// <summary>
 /// 工具接口：chatgroup.create_chat（映射 <c>IFeishuTenantV1ChatGroup.CreateChatGroupAsync</c>）。
 /// </summary>
 /// <remarks>
-/// 群主默认是**当前应用/机器人身份**。群主转让（<c>owner_id</c>）刻意不暴露——那是高危语义，
+/// 群主默认是**当前应用/机器人身份**。群主转让（<c>owner_id</c>）不暴露——那是高危语义，
 /// 应走独立工具而不是混在建群参数里。
 /// </remarks>
 [AgentTool("chatgroup.create_chat",
@@ -398,7 +398,7 @@ public interface IFeishuTenantChatgroupDeleteTopNoticeTool
 /// <remarks>
 /// 只删**一级菜单**（传 <c>chat_menu_top_level_ids</c>），其下二级菜单随父级一起消失。
 /// 新增/修改菜单（<c>add_menu</c> / <c>update_menu</c>）的请求体是**嵌套树结构**，
-/// 扁平参数无法表达，故本轮不策展（见 Guidance）。
+/// 扁平参数无法表达，故不策展（见 Guidance）。
 /// </remarks>
 [AgentTool("chatgroup.delete_menu",
     Description = "删除群的快捷菜单一级入口（⚠️ 二级菜单会随父级一起消失——务必先 dry_run 预演并确认 chat_menu_top_level_ids 无误）。写操作：默认不启用，需宿主授权，需 im:chat（⚠️ scope 名待控制台核对）。",

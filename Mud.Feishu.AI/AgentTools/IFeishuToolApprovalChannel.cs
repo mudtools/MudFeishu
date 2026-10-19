@@ -8,13 +8,13 @@
 namespace Mud.Feishu.AI.AgentTools;
 
 /// <summary>
-/// 飞书侧工具人工确认（HITL）宿主批准通道的<b>派生命名契约</b>（N1 中立化后的门面）。
+/// 飞书侧工具人工确认（HITL）宿主批准通道的<b>派生命名契约</b>。
 /// </summary>
 /// <remarks>
 /// <para>
-/// 契约本体（方法、语义、fail-closed 纪律、宿主续跑义务）已中立化上移
+/// 契约本体（方法、语义、fail-closed 纪律、宿主续跑义务）位于中立接口
 /// <see cref="Mud.AI.Abstractions.Approvals.IToolApprovalChannel"/>——本接口是
-/// 「<b>共享结构、不共享语义</b>」定式里的<b>④ 门面保留</b>手段：
+/// 「<b>共享结构、不共享语义</b>」定式里的<b>门面保留</b>手段：
 /// 飞书侧的诊断、工具面（<c>Mud.Feishu.AI.AgentTools</c> 消费方）、Demo 与测试仍按
 /// <c>IFeishuToolApprovalChannel</c> 这一产品命名解析，避免为了改一个 using 而改动
 /// 下游 ~10 处调用点与 61 个工具面守卫文件。

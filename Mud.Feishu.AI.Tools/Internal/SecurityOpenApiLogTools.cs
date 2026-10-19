@@ -10,7 +10,7 @@ using Mud.Feishu.DataModels.Security;
 namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
-/// security「应用 API 调用日志」只读工具执行器（F-1 收官切片：<c>security.list_openapi_logs</c>）。
+/// security「应用 API 调用日志」只读工具执行器（<c>security.list_openapi_logs</c>）。
 /// </summary>
 /// <remarks>
 /// <para>

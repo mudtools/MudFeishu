@@ -124,7 +124,7 @@ public class WriteToolsTests
                 Data = new RecordOpsResult { Record = new AppTableRecordInfo { RecordId = "rec_new_1" } },
             });
 
-        var tools = new BitableWriteTools(_recordClient.Object);
+        var tools = new BitableWriteTools(_recordClient.Object, Options.Create(NewOptions()));
         var result = await tools.AddRecordAsync(
             Args(("app_token", "bascnXxx"), ("table_id", "tbl001"), ("fields", """{"任务名称":"写周报","优先级":3}""")),
             CancellationToken.None);
@@ -141,7 +141,7 @@ public class WriteToolsTests
     [Fact]
     public async Task AddRecord_ShouldRejectNonObjectFields_WithStructuredError()
     {
-        var tools = new BitableWriteTools(_recordClient.Object);
+        var tools = new BitableWriteTools(_recordClient.Object, Options.Create(NewOptions()));
 
         var notJson = await tools.AddRecordAsync(
             Args(("app_token", "b"), ("table_id", "t"), ("fields", "not-json{")), CancellationToken.None);

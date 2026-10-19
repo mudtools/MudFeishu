@@ -7,7 +7,7 @@
 
 namespace Mud.Feishu.AI.Tools.Curation;
 
-// ─────────────────────────── Lingo · 企业词典（B1 首个补域） ───────────────────────────
+// ─────────────────────────── Lingo · 企业词典 ───────────────────────────
 
 /// <summary>
 /// 工具接口：lingo.list_repos（映射 <c>IFeishuTenantV1LingoRepo.GetRepoListAsync</c>）。
@@ -166,7 +166,7 @@ public interface IFeishuTenantLingoMatchEntitiesTool
 //   · baike:entity（或 exempt_review，任一即可）—— 草稿创建 / 更新
 // 故权限对照表本域区段**不标 ⚠️**（TrustParty 同款口径）。
 //
-// ⚠️ 本轮**刻意不做**的两处（理由写进 Guidance，不做静默缺口）：
+// ⚠️ **刻意不做**的两处（理由写进 Guidance，不做静默缺口）：
 //    · lingo.upload_file：入参是**本地绝对文件路径**（[FilePath]），模型侧无法可靠构造
 //      （与 vc 域"有意不策展 apply_reserve"同款纪律）；
 //    · 请求体的嵌套字段 related_meta（分类/图片/关联）/ outer_info（外部系统关联）/

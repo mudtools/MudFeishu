@@ -25,8 +25,7 @@ namespace Mud.Feishu.AI.Mcp;
 /// </para>
 /// <para>
 /// <b>不释放宿主 writer</b>：<c>Console.Out</c> 由进程持有，包装它的 <see cref="TextWriter"/>
-/// 若被本类释放会连带影响调用方后续输出（既有 <c>FeishuEventNdjsonBridge</c> 同款纪律——该类型已随
-/// R-10 迁为 Demo 参考实现，库不再承诺事件外桥生态位，故此处只作文本引用不做 cref）。
+/// 若被本类释放会连带影响调用方后续输出——故本类对 writer 只写不关。
 /// </para>
 /// </remarks>
 public sealed class FeishuMcpStdioHost

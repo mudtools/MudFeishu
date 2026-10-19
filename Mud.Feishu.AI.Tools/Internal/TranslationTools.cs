@@ -10,7 +10,7 @@ using Mud.Feishu.DataModels.AI;
 namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
-/// AI 文本面工具执行器（R7 / C3：<c>ai.translate_text</c> / <c>ai.detect_language</c>）。
+/// AI 文本面工具执行器（<c>ai.translate_text</c> / <c>ai.detect_language</c>）。
 /// </summary>
 /// <remarks>
 /// <para>

@@ -1,4 +1,4 @@
-# R4/R5 config-key audit (ASCII-only to avoid PS encoding issues)
+﻿# R4/R5 config-key audit (ASCII-only to avoid PS encoding issues)
 #
 # Purpose: stop a *removed* config API / config key from silently reappearing in source.
 #

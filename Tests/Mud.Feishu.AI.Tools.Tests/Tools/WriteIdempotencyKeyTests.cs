@@ -96,7 +96,7 @@ public class WriteIdempotencyKeyTests
                 Data = new RecordOpsResult { Record = new AppTableRecordInfo { RecordId = "rec_idem_1" } },
             });
 
-        var tools = new BitableWriteTools(_recordClient.Object);
+        var tools = new BitableWriteTools(_recordClient.Object, Options.Create(NewOptions()));
         await tools.AddRecordAsync(
             Args(("app_token", "bascnX"), ("table_id", "tblY"), ("fields", "{\"任务\":\"写周报\"}"), ("idempotency_key", "bill-42-add")),
             CancellationToken.None);
@@ -121,7 +121,7 @@ public class WriteIdempotencyKeyTests
                 Data = new RecordOpsResult { Record = new AppTableRecordInfo { RecordId = "rec_idem_2" } },
             });
 
-        var tools = new BitableWriteTools(_recordClient.Object);
+        var tools = new BitableWriteTools(_recordClient.Object, Options.Create(NewOptions()));
         await tools.AddRecordAsync(
             Args(("app_token", "bascnX"), ("table_id", "tblY"), ("fields", "{\"任务\":\"写周报\"}")),
             CancellationToken.None);
@@ -181,7 +181,7 @@ public class WriteIdempotencyKeyTests
     public async Task DryRun_ShouldEchoIdempotencyKeyState_ForAllThreeWriteTools()
     {
         var messageTools = new MessageWriteTools(_messageClient.Object);
-        var bitableTools = new BitableWriteTools(_recordClient.Object);
+        var bitableTools = new BitableWriteTools(_recordClient.Object, Options.Create(NewOptions()));
         var approvalTools = new ApprovalWriteTools(_approvalClient.Object, null, null, null, Options.Create(NewOptions()));
 
         var provided = (await messageTools.SendMessageAsync(

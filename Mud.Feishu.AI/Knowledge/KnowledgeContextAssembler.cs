@@ -27,9 +27,6 @@ namespace Mud.Feishu.AI.Knowledge;
 /// <b>显式装配</b>，不默认开启（省 token）。
 /// </para>
 /// <para>
-/// 三级闸取值单一源在中立侧（<c>RetrievalBudgets</c>，8 / 3000 / 500），消费方直接引用该源。
-/// </para>
-/// <para>
 /// <see cref="IContextAssembler.Order"/> = 100：默认装配器之后，问题文本先于知识注入。
 /// </para>
 /// </remarks>
@@ -55,7 +52,7 @@ public sealed class KnowledgeContextAssembler : RetrievalContextAssembler
     /// <summary>
     /// 初始化 <see cref="KnowledgeContextAssembler"/>。
     /// </summary>
-    /// <param name="retriever">知识检索门面（Aily 托管/RAG-B 自建均可）。</param>
+    /// <param name="retriever">知识检索门面（Aily 托管 / 自建均可）。</param>
     /// <param name="order">装配顺序（缺省 <see cref="DefaultOrder"/>）。</param>
     /// <param name="minScore">
     /// 相关性门槛——<see cref="RetrievedChunk.Score"/> 低于此值的切片被过滤。

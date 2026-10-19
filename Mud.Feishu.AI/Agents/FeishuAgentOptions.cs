@@ -12,7 +12,7 @@ namespace Mud.Feishu.AI.Agents;
 /// </summary>
 /// <remarks>
 /// <para>
-/// 配置面治理（R4/R5）：每个属性必须有真实消费点（读取处见各属性 XML 注释）；
+/// 配置面治理：每个属性必须有真实消费点（读取处见各属性 XML 注释）；
 /// 配置 DTO 不得使用 <c>required</c>（源生成配置绑定器经 <c>new T()</c> 构造会报 CS9035），
 /// 合法性统一在 <see cref="Validate"/> 校验；模型 API Key / AppSecret 走
 /// <c>FeishuAppConfig</c> 既有安全面，<b>不得</b>在本类复制任何 Key 字段。
@@ -35,7 +35,7 @@ public sealed class FeishuAgentOptions
     /// <summary>
     /// 系统指令（system prompt；消费点：装配进 <c>ChatClientAgentOptions.ChatOptions.Instructions</c>）。
     /// </summary>
-    /// <remarks>非空校验见 <see cref="Validate"/>；内容仅由开发者控制（提示注入防线，§7.2）。</remarks>
+    /// <remarks>非空校验见 <see cref="Validate"/>；内容仅由开发者控制（提示注入防线）。</remarks>
     public string Instructions { get; set; } = string.Empty;
 
     /// <summary>
@@ -52,7 +52,7 @@ public sealed class FeishuAgentOptions
     /// （<c>FeishuAgent</c> 构造期装配）。
     /// </para>
     /// <para>
-    /// <b>实测语义（MEAI 10.9.0，R2 探针；与旧注释「超出窗口的旧消息被折叠」不符，R2-12 校准）</b>：
+    /// <b>实测语义（MEAI 10.9.0；与直觉中的「超出窗口的旧消息被折叠」不符）</b>：
     /// <list type="bullet">
     /// <item>每次取历史时执行，并把裁剪结果<b>写回会话状态（不可逆落库删除）</b>，不是「本次请求视图」；</item>
     /// <item><b>只统计非 system 消息</b>，且<b>只保留第一条 system 消息</b>；</item>
@@ -75,7 +75,7 @@ public sealed class FeishuAgentOptions
     /// </summary>
     /// <remarks>
     /// <para>
-    /// 值域 = 已注册工具名（Phase 1 为 §3.3.2 的 10 个只读工具名）；工具默认
+    /// 值域 = 已注册工具名（默认 10 个只读工具名）；工具默认
     /// 「收进注册表不启用」，仅本名单中的名字被 <c>MapTool</c> 启用后才会暴露给模型。
     /// 白名单中出现未注册的名字在工具注册期即失败（fail-fast，防配置漂移）。
     /// </para>
@@ -84,7 +84,7 @@ public sealed class FeishuAgentOptions
 
     /// <summary>
     /// 工具结果回填文本的最大长度（消费点：<c>FeishuToolBinding</c> 对下游结果做
-    /// 白名单投影后按此上限截断并标记 <c>truncated</c>——防大结果撑爆模型上下文，Phase 1 §3.3.1）。
+    /// 白名单投影后按此上限截断并标记 <c>truncated</c>——防大结果撑爆模型上下文）。
     /// </summary>
     public int MaxToolResultLength { get; set; } = 4000;
 
@@ -93,12 +93,12 @@ public sealed class FeishuAgentOptions
     /// 写类（<c>IsWrite</c>）工具未注册授权器即拒绝、未过授权即不调下游接口；只读工具钩子预留）。
     /// </summary>
     /// <remarks>
-    /// 安全默认：与宿主强制门禁语义一致（总体设计 §7.2；与官方 CLI 的自愿 dry-run 相区分，已决策⑥）。
+    /// 安全默认：与宿主强制门禁语义一致（与官方 CLI 的自愿 dry-run 相区分）。
     /// </remarks>
     public bool EnforceToolAuthorization { get; set; } = true;
 
     /// <summary>
-    /// 写类工具白名单（Phase 2 §4：写工具白名单单独键控，默认空=不启用任何写工具；
+    /// 写类工具白名单（写工具白名单单独键控，默认空=不启用任何写工具；
     /// 消费点：<c>Mud.Feishu.AI.Tools</c> 注册扩展——仅写类（<c>IsWrite</c>）工具可经本名单
     /// <c>MapTool</c> 启用，且必须先过 <c>IToolExecutionAuthorizer</c> 强制门禁）。
     /// </summary>
@@ -112,7 +112,7 @@ public sealed class FeishuAgentOptions
 
     /// <summary>
     /// 流式回复的分片编辑阈值（字符数；消费点：<c>EditMessageChannel</c>——增量缓冲达到该长度
-    /// 才执行一次消息编辑，避免逐 token 编辑触发飞书频率限制，Phase 2 §3.1）。
+    /// 才执行一次消息编辑，避免逐 token 编辑触发飞书频率限制）。
     /// </summary>
     public int MaxStreamChunkLength { get; set; } = 200;
 
@@ -120,7 +120,7 @@ public sealed class FeishuAgentOptions
     /// 触发会话历史摘要压缩的历史 token 上限（消费点：<see cref="Conversations.ConversationSummarizer"/>
     /// token 维度判定——超限时摘要先于条数窗口触发；0 = 不启用，仅按条数阈值判定）。
     /// </summary>
-    /// <remarks>默认 8000；长消息场景条数窗口失控（50 条 ≠ 50 token 级别）的对策（P2D-3a）。</remarks>
+    /// <remarks>默认 8000；长消息场景条数窗口失控（50 条 ≠ 50 token 级别）的对策。</remarks>
     public int MaxHistoryTokens { get; set; } = 8000;
 
     /// <summary>
@@ -134,7 +134,7 @@ public sealed class FeishuAgentOptions
     public int SummaryThreshold { get; set; } = 30;
 
     /// <summary>
-    /// 工具风险上限（AT-B13 策略轴；消费点：<c>FeishuToolBinding</c> 在授权门禁<b>之前</b>按此判定）。
+    /// 工具风险上限（策略轴；消费点：<c>FeishuToolBinding</c> 在授权门禁<b>之前</b>按此判定）。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -145,13 +145,13 @@ public sealed class FeishuAgentOptions
     /// </para>
     /// <para>
     /// <b>默认 <c>high-risk-write</c>（不额外收紧）</b>：现行为 = 写工具需显式 <c>WriteAllowList</c>
-    /// 且过授权门禁（已足够严），本键是宿主的<b>显式收敛工具</b>而非新增默认限制（方案 §10.2 R-1）。
+    /// 且过授权门禁（已足够严），本键是宿主的<b>显式收敛工具</b>而非新增默认限制。
     /// </para>
     /// </remarks>
     public string MaxToolRisk { get; set; } = "high-risk-write";
 
     /// <summary>
-    /// 允许执行的工具身份闭集（AT-B13 Identity 轴；消费点：<c>FeishuToolBinding</c> 策略判定）。
+    /// 允许执行的工具身份闭集（Identity 策略轴；消费点：<c>FeishuToolBinding</c> 策略判定）。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -159,7 +159,7 @@ public sealed class FeishuAgentOptions
     /// （默认最小权限，不匹配返回 <c>identity_mismatch</c>）。
     /// </para>
     /// <para>
-    /// <b>引入首个 user 身份工具（<c>task.list_my_tasks</c>）后的语义（R4 WP2 / T2-4，决策 D-1 ⓑ）</b>：
+    /// <b>引入首个 user 身份工具（<c>task.list_my_tasks</c>）后的语义</b>：
     /// 默认值保留 <c>["tenant"]</c>，但 <c>AddFeishuTools</c> 在<b>白名单映射完成后</b>做集中校验——
     /// 凡已启用工具的 <c>Identity</c> 不在本闭集内即抛可读异常（列出工具名与身份）。
     /// 这把"默认值误伤 user 工具"从<b>运行期静默拒绝</b>（宿主会误判为权限问题）
@@ -185,7 +185,7 @@ public sealed class FeishuAgentOptions
     public string ContentSafetyMode { get; set; } = ContentSafetyModes.Warn;
 
     /// <summary>
-    /// 自动分页：单次 <c>fetch_all</c> 的条目预算上限（B1；消费点：<c>ToolPagination.ResolveMaxItems</c>）。
+    /// 自动分页：单次 <c>fetch_all</c> 的条目预算上限（消费点：<c>ToolPagination.ResolveMaxItems</c>）。
     /// </summary>
     /// <remarks>
     /// 默认 200，硬上限 1000（<c>ToolPagination.HardMaxItems</c>）。模型可用 <c>max_items</c> 参数覆盖（不超过硬上限）。
@@ -193,7 +193,7 @@ public sealed class FeishuAgentOptions
     public int MaxAutoFetchItems { get; set; } = 200;
 
     /// <summary>
-    /// 自动分页：单次 <c>fetch_all</c> 的页数上限（B1；消费点：<c>ToolPagination.ResolveMaxPages</c>）。
+    /// 自动分页：单次 <c>fetch_all</c> 的页数上限（消费点：<c>ToolPagination.ResolveMaxPages</c>）。
     /// </summary>
     /// <remarks>
     /// 默认 10，硬上限 50（<c>ToolPagination.HardMaxPages</c>）。防失控翻页（如循环 token 场景）。
@@ -201,14 +201,14 @@ public sealed class FeishuAgentOptions
     public int MaxAutoFetchPages { get; set; } = 10;
 
     /// <summary>
-    /// 工具重试策略（B3；消费点：<c>ToolRetryPolicy</c>）。
+    /// 工具重试策略（消费点：<c>ToolRetryPolicy</c>）。
     /// </summary>
     /// <remarks>
     /// <para>
     /// 只读工具遇到 <c>retryable</c> 错误（429/5xx/超时）时自动重试；写工具默认零重试。
     /// </para>
     /// <para>
-    /// 配置面治理（R5）：每个属性必须有真实消费点——<see cref="ToolRetryOptions.Enabled"/>/
+    /// 配置面治理：每个属性必须有真实消费点——<see cref="ToolRetryOptions.Enabled"/>/
     /// <see cref="ToolRetryOptions.MaxAttempts"/>/
     /// <see cref="ToolRetryOptions.BaseDelayMilliseconds"/>/
     /// <see cref="ToolRetryOptions.MaxDelayMilliseconds"/>/
@@ -235,7 +235,7 @@ public sealed class FeishuAgentOptions
     public int MaxToolCallsPerTurn { get; set; } = 10;
 
     /// <summary>
-    /// 全局最大并发轮数（T5 / D5；消费点：<c>GlobalConcurrencyGate</c>）。
+    /// 全局最大并发轮数（消费点：<c>GlobalConcurrencyGate</c>）。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -249,7 +249,7 @@ public sealed class FeishuAgentOptions
     public int MaxConcurrentTurns { get; set; } = 32;
 
     /// <summary>
-    /// 全局闸门队列等待超时（秒；T5 / D5；消费点：<c>GlobalConcurrencyGate</c>）。
+    /// 全局闸门队列等待超时（秒；消费点：<c>GlobalConcurrencyGate</c>）。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -271,14 +271,14 @@ public sealed class FeishuAgentOptions
     /// 出现工具调用则该轮文本并入终态（工具结果后的最终文本才是用户可见答案）。
     /// </para>
     /// <para>
-    /// <b>默认 <c>false</c></b>（A15 零差异）：既有流式行为逐字节推送。
+    /// <b>默认 <c>false</c></b>（与既有流式行为逐字节一致）：既有流式行为逐字节推送。
     /// 权衡：首字延迟 ↑ / 观感一致性 ↑。
     /// </para>
     /// </remarks>
     public bool DeferTextUntilTurnComplete { get; set; } = false;
 
     /// <summary>
-    /// 工具策略（S-1：glob / 域级；消费点：<c>FeishuToolBinding</c> 策略轴，早于授权门禁）。
+    /// 工具策略（glob / 域级；消费点：<c>FeishuToolBinding</c> 策略轴，早于授权门禁）。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -286,13 +286,13 @@ public sealed class FeishuAgentOptions
     /// 白名单决定"哪些工具被启用"（装配期），本策略决定"已启用的工具里哪些允许执行"（运行期）。
     /// </para>
     /// <para>
-    /// <b>默认（四集合全空）不生效</b>——逐字节等价改造前行为；详见 <see cref="FeishuToolPolicyOptions"/>。
+    /// <b>默认（四集合全空）不生效</b>——逐字节等价既有行为；详见 <see cref="FeishuToolPolicyOptions"/>。
     /// </para>
     /// </remarks>
     public FeishuToolPolicyOptions ToolPolicy { get; set; } = new();
 
     /// <summary>
-    /// 域 guidance 下发形态（BUG-4 / 方案 §7.4；消费点：
+    /// 域 guidance 下发形态（消费点：
     /// <c>FeishuToolAIFunction.GetGuidance</c>——进程内 Agent 与 MCP <c>initialize.instructions</c> 共用同一份）。
     /// </summary>
     /// <remarks>
@@ -308,35 +308,34 @@ public sealed class FeishuAgentOptions
     public string GuidanceMode { get; set; } = GuidanceModes.Routing;
 
     /// <summary>
-    /// 用户令牌就绪探测模式（T1 / D1；消费点：<c>UserTokenPrecheck.ProbeAsync</c>）。
-    /// </summary>
+    /// 用户令牌就绪探测模式（消费点：<c>UserTokenPrecheck.ProbeAsync</c>）。</summary>
     /// <remarks>
     /// <para>
-    /// 取值：<c>off</c>（跳过探测，改造前行为）/ <c>cache_only</c>（<b>默认</b>：只调
+    /// 取值：<c>off</c>（跳过探测）/ <c>cache_only</c>（<b>默认</b>：只调
     /// <c>HasValidTokenAsync</c>，内存镜像命中即零 IO）/ <c>full</c>（先 HasValid 再 CanRefresh）。
     /// </para>
     /// <para>
     /// <b>默认 <c>cache_only</c></b>：在零 IO 与前置诊断之间取平衡——内存镜像未命中时放行，
-    /// 由下游 401 + <c>TokenRecoveryExecutor</c> 兜底（A15 零差异）。
+    /// 由下游 401 + <c>TokenRecoveryExecutor</c> 兜底。
     /// </para>
     /// </remarks>
     public string UserTokenPrecheck { get; set; } = UserTokenPrecheckModes.CacheOnly;
 
     /// <summary>
-    /// 投影出<b>中立运行期配置</b>（N3）：把「与产品语义无关的运行时旋钮」交给中立机制消费。
+    /// 投影出<b>中立运行期配置</b>：把「与产品语义无关的运行时旋钮」交给中立机制消费。
     /// </summary>
     /// <remarks>
     /// <para>
     /// <b>为什么是投影而不是"让中立实现直接读本类"</b>：中立实现（会话摘要器 / 流式通道 /
     /// 回合管线）若读产品配置类，就形成 <c>Mud.AI.*</c> → 产品配置的隐式依赖——编译期不报错，
-    /// P3 上游化（迁独立 Mud.AI 仓）时才爆炸。本方法把产品事实<b>在边界上</b>翻译成中立值类型。
+    /// 拆分到独立 Mud.AI 仓库时才会爆发。本方法把产品事实<b>在边界上</b>翻译成中立值类型。
     /// </para>
     /// <para>
     /// <b>本类的公开面一个字节都不变</b>：配置节名、属性名、异常文案全是宿主可见面；
     /// 宿主<b>不</b>直接配置 <see cref="AgentRuntimeOptions"/>，它只由本投影产生。
     /// </para>
     /// <para>
-    /// <b>为什么不再单独写一个 <c>AgentRuntimeOptionsValidator</c></b>（对方案 §4.1 A3 的评审订正）：
+    /// <b>为什么不再单独写一个 <c>AgentRuntimeOptionsValidator</c></b>：
     /// 投影的<b>来源</b>已在校验之后（<see cref="Validate"/> + 注册期
     /// <see cref="IValidateOptions{T}"/> 双触发），再写第二份校验必然与第一份漂移，
     /// 而漂移无法被编译器发现（两份规则同时"看起来对"）。中立侧只保留
@@ -354,7 +353,7 @@ public sealed class FeishuAgentOptions
         MaxConcurrentTurns = MaxConcurrentTurns,
         TurnQueueTimeoutSeconds = TurnQueueTimeoutSeconds,
         DeferTextUntilTurnComplete = DeferTextUntilTurnComplete,
-        // 重试策略本身已是中立值类型（N1 随契约下沉），直接传递引用——刻意不复制，
+        // 重试策略本身已是中立值类型，直接传递引用——刻意不复制，
         // 否则宿主对 ToolRetry 的后续改动会被投影快照切断（"配置改了但不生效"）。
         ToolRetry = ToolRetry,
     };
@@ -372,7 +371,7 @@ public sealed class FeishuAgentOptions
         if (string.IsNullOrWhiteSpace(Name))
             throw new InvalidOperationException($"FeishuAgent:{nameof(Name)} 不能为空");
 
-        // R3-9：数值项必须**同时**有下界与上界——只有下界时，把 1 写成 100000000 是合法配置，
+        // 数值项必须**同时**有下界与上界——只有下界时，把 1 写成 100000000 是合法配置，
         // 表现为「内存/上下文预算被静默吃光」，而 fail-fast 是配置面治理的基本盘（AGENTS.md WebSocket I16 同款纪律）。
         // 上界取值见各条异常文案（按项目未发布的现状直接收紧，不做兼容过渡）。
         if (MaxHistoryMessages is < 1 or > 10_000)
@@ -410,7 +409,7 @@ public sealed class FeishuAgentOptions
                 $"FeishuAgent:{nameof(MaxHistoryTokens)} 为 0（不启用）或 1..1000000，实际值: {MaxHistoryTokens.ToString(CultureInfo.InvariantCulture)}"
                 + "（上界约束 token 维度摘要触发点）");
 
-        // AT-B13 策略轴（取值必须与 Schema 的 x-feishu.risk 词汇一致，否则静默失效）。
+        // 策略轴词汇校验（取值必须与 Schema 的 x-feishu.risk 词汇一致，否则静默失效）。
         if (!FeishuToolRiskNames.TryParse(MaxToolRisk, out _))
             throw new InvalidOperationException(
                 $"FeishuAgent:{nameof(MaxToolRisk)} 取值非法: '{MaxToolRisk}'——合法值为 {FeishuToolRiskNames.AllowedValuesText}（与 Schema 的 x-feishu.risk 词汇一致）");
@@ -419,7 +418,7 @@ public sealed class FeishuAgentOptions
             throw new InvalidOperationException(
                 $"FeishuAgent:{nameof(AllowedIdentities)} 不能为空且不能含空项——空集将拒绝全部工具身份（与 Schema 的 x-feishu.identity 词汇一致：tenant / user）");
 
-        // 身份闭集校验（P2-9）：与 MaxToolRisk / ContentSafetyMode 同款治理——
+        // 身份闭集校验：与 MaxToolRisk / ContentSafetyMode 同款治理——
         // 拼错的字面量不会命中任何工具身份，表现为「所有工具被静默拒绝」，必须在装配期拦截。
         if (AllowedIdentities.Any(identity => !FeishuToolIdentityNames.IsValid(identity)))
             throw new InvalidOperationException(
@@ -431,7 +430,7 @@ public sealed class FeishuAgentOptions
             throw new InvalidOperationException(
                 $"FeishuAgent:{nameof(ContentSafetyMode)} 取值非法: '{ContentSafetyMode}'——合法值为 {ContentSafetyModes.AllowedValuesText}");
 
-        // B1 自动分页预算校验（R3-9：数值项须同时有下界与上界）。
+        // 自动分页预算校验（数值项须同时有下界与上界）。
         if (MaxAutoFetchItems is < 1 or > 1_000)
             throw new InvalidOperationException(
                 $"FeishuAgent:{nameof(MaxAutoFetchItems)} 须在 1..1000 之间，实际值: {MaxAutoFetchItems.ToString(CultureInfo.InvariantCulture)}"
@@ -442,7 +441,7 @@ public sealed class FeishuAgentOptions
                 $"FeishuAgent:{nameof(MaxAutoFetchPages)} 须在 1..50 之间，实际值: {MaxAutoFetchPages.ToString(CultureInfo.InvariantCulture)}"
                 + "（硬上限 50，防循环 token 失控）");
 
-        // B3 重试策略校验
+        // 重试策略校验
         if (ToolRetry.MaxAttempts is < 0 or > 10)
             throw new InvalidOperationException(
                 $"FeishuAgent:{nameof(ToolRetry)}.{nameof(ToolRetry.MaxAttempts)} 须在 0..10 之间，实际值: {ToolRetry.MaxAttempts.ToString(CultureInfo.InvariantCulture)}"
@@ -461,12 +460,12 @@ public sealed class FeishuAgentOptions
                 $"FeishuAgent:{nameof(ToolRetry)}.{nameof(ToolRetry.MaxDelayMilliseconds)} ({ToolRetry.MaxDelayMilliseconds.ToString(CultureInfo.InvariantCulture)}) "
                 + $"不得小于 {nameof(ToolRetry.BaseDelayMilliseconds)} ({ToolRetry.BaseDelayMilliseconds.ToString(CultureInfo.InvariantCulture)})");
 
-        // S-1：工具策略合法性（glob 语法非法即拒——"拼错一个字符 ⇒ 策略静默不生效"是策略面
+        // 工具策略合法性（glob 语法非法即拒——"拼错一个字符 ⇒ 策略静默不生效"是策略面
         // 最危险的失败形态：宿主以为已收敛，实际零约束）。
         (ToolPolicy ?? throw new InvalidOperationException(
             $"FeishuAgent:{nameof(ToolPolicy)} 不得为 null（省略该节即「未配置」，无需显式置 null）")).Validate();
 
-        // T1 / D1：用户令牌探测模式闭集校验（防拼写错误静默降级为 off 语义）。
+        // guidance 模式闭集校验（防拼写错误静默退回全文拼接语义）。
         if (!GuidanceModes.IsValid(GuidanceMode))
             throw new InvalidOperationException(
                 $"FeishuAgent:{nameof(GuidanceMode)} 取值非法: '{GuidanceMode}'——"
@@ -484,7 +483,7 @@ public sealed class FeishuAgentOptions
                 $"FeishuAgent:{nameof(MaxToolCallsPerTurn)} 为 0（不限制）或 1..100，实际值: {MaxToolCallsPerTurn.ToString(CultureInfo.InvariantCulture)}"
                 + "（上界防配置打字把 10 写成 1000 造成成本爆炸；MAF 内建上限约 40 是最终兜底）");
 
-        // T5 / D5：全局并发背压闸门校验（R3-9：数值项须同时有下界与上界）。
+        // 全局并发背压闸门校验（数值项须同时有下界与上界）。
         if (MaxConcurrentTurns is < 1 or > 1024)
             throw new InvalidOperationException(
                 $"FeishuAgent:{nameof(MaxConcurrentTurns)} 须在 1..1024 之间，实际值: {MaxConcurrentTurns.ToString(CultureInfo.InvariantCulture)}"

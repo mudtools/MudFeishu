@@ -8,7 +8,7 @@
 namespace Mud.Feishu.AI.Tools.Curation;
 
 // <summary>
-// Knowledge 域只读工具接口（AI-FD-D12 P2D-4b：RAG-A 工具化——模型按需检索，省 token、可控）。
+// Knowledge 域只读工具接口（RAG-A 工具化——模型按需检索，省 token、可控）。
 // </summary>
 
 /// <summary>工具接口：knowledge.search（绑定 <c>IRetriever</c> 门面，Aily 数据知识问答）。</summary>

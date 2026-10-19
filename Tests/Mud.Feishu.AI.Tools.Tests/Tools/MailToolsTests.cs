@@ -21,36 +21,23 @@ namespace Mud.Feishu.AI.Tools.Tests.Tools;
 /// </remarks>
 public class MailToolsTests
 {
-    private static MailSendMessageArgs Unpack(params (string Key, object? Value)[] items)
-        => MailSendMessageArgs.Unpack(items.ToDictionary(p => p.Key, p => p.Value));
-
-    private static MailSendMessageArgs ValidArgs(
-        string subject = "会议纪要",
-        string body = "第一行\n第二行",
-        object[]? to = null)
-        => Unpack(
-            ("user_mailbox_id", "mb_1"),
-            ("to", to ?? ["alice@example.com"]),
-            ("subject", subject),
-            ("body", body));
-
     [Fact]
     public void BuildEml_ShouldRejectCrlf_InHeaderFields()
     {
-        var subjectInjection = ValidArgs(subject: "会议纪要\r\nBcc: attacker@evil.com");
-        var subjectAct = () => MailTools.BuildEml(subjectInjection);
+        var subjectAct = () => MailTools.BuildEml(
+            ["alice@example.com"], null, null, "会议纪要\r\nBcc: attacker@evil.com", "正文");
         subjectAct.Should().Throw<ArgumentException>(
             "Subject 中的 CRLF 可凭空插入 Bcc 头（SMTP 头注入）").WithMessage("*换行*");
 
-        var toInjection = ValidArgs(to: ["alice@example.com\r\nBcc: attacker@evil.com"]);
-        var toAct = () => MailTools.BuildEml(toInjection);
+        var toAct = () => MailTools.BuildEml(
+            ["alice@example.com\r\nBcc: attacker@evil.com"], null, null, "会议纪要", "正文");
         toAct.Should().Throw<ArgumentException>("To 中的 CRLF 同样可注入头字段").WithMessage("*换行*");
     }
 
     [Fact]
     public void BuildEml_ShouldAllowMultilineBody_WhenHeadersAreClean()
     {
-        var eml = MailTools.BuildEml(ValidArgs());
+        var eml = MailTools.BuildEml(["alice@example.com"], null, null, "会议纪要", "第一行\n第二行");
 
         eml.Should().StartWith("Content-Type: text/plain; charset=\"utf-8\"\r\n");
         eml.Should().Contain("To: <alice@example.com>\r\n");

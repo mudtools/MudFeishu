@@ -7,13 +7,13 @@
 
 namespace Mud.Feishu.AI.Tools.Curation;
 
-// ─────────────────────────── Minutes（R5 / F-11） ───────────────────────────
+// ─────────────────────────── Minutes ───────────────────────────
 
 /// <summary>
 /// 工具接口：minutes.get（映射 <c>IFeishuTenantV1MinutesMinute.GetMinuteAsync</c>）。
 /// </summary>
 /// <remarks>
-/// R5 / F-11：取出妙记的<b>元信息</b>（标题/时长/链接/创建时间）——模型拿到
+/// 取出妙记的<b>元信息</b>（标题/时长/链接/创建时间）——模型拿到
 /// <c>minute_token</c> 后先确认"是不是这场会议"，再决定是否取内容。
 /// </remarks>
 [AgentTool("minutes.get",
@@ -34,11 +34,11 @@ public interface IFeishuTenantMinutesGetTool
 /// </summary>
 /// <remarks>
 /// <para>
-/// R5 / F-11 —— <b>直接命中"总结这周会议"这一高频场景</b>：一次调用即拿到
+/// <b>直接命中"总结这周会议"这一高频场景</b>：一次调用即拿到
 /// 总结 / 章节 / 待办 / 关键词，模型无需再自行归纳全文。
 /// </para>
 /// <para>
-/// <b>逐字稿为什么是"分窗口"而不是"截断"</b>（R7 / A3）：<c>Transcript</c> 是完整逐字稿，
+/// <b>逐字稿为什么是"分窗口"而不是"截断"</b>：<c>Transcript</c> 是完整逐字稿，
 /// 长度可达数万字，原样回填会挤爆上下文；但"截断 + 布尔标记"的口径有个死结——
 /// 模型<b>永远拿不到</b>后半段（没有任何参数能把它取回来）。故改为窗口化：
 /// <c>transcript_offset</c> + <c>transcript_limit</c> 分段读，并回填
@@ -61,13 +61,13 @@ public interface IFeishuTenantMinutesGetArtifactsTool
         CancellationToken cancellationToken = default);
 }
 
-// ─────────────────────────── Minutes 深化（R7 / A3） ───────────────────────────
+// ─────────────────────────── Minutes 深化 ───────────────────────────
 
 /// <summary>
 /// 工具接口：minutes.search（映射 <c>IFeishuTenantV1MinutesMinute.SearchMinutesAsync</c>）。
 /// </summary>
 /// <remarks>
-/// R7 / A3：<b>"找会议"入口</b>——当前模型只能靠 minute_token 逐个查，无从搜索。
+/// <b>"找会议"入口</b>——没有本工具时模型只能靠 minute_token 逐个查，无从搜索。
 /// 本工具按关键词 + 时间窗检索妙记列表，是"总结这周会议"链路的首环。
 /// </remarks>
 [AgentTool("minutes.search",
@@ -94,7 +94,7 @@ public interface IFeishuTenantMinutesSearchTool
 /// 工具接口：minutes.get_statistics（映射 <c>IFeishuTenantV1MinutesMinute.GetMinuteStatisticsAsync</c>）。
 /// </summary>
 /// <remarks>
-/// R7 / A3：与会人/发言时长等统计，用于"谁说了什么"类问题。
+/// 与会人/发言时长等统计，用于"谁说了什么"类问题。
 /// </remarks>
 [AgentTool("minutes.get_statistics",
     Description = "按 minute_token 获取妙记的访问统计数据（PV、UV、访问用户列表与访问时间）。用于了解妙记的访问情况。只读，需 minutes:minutes:readonly。",
@@ -113,7 +113,7 @@ public interface IFeishuTenantMinutesGetStatisticsTool
 /// 工具接口：minutes.get_media（映射 <c>IFeishuTenantV1MinutesMinute.GetMinuteMediaAsync</c>）。
 /// </summary>
 /// <remarks>
-/// R7 / A3：<b>只返回媒体下载 URL（文本），绝不返回字节</b>（A10 二进制防线）。
+/// <b>只返回媒体下载 URL（文本），绝不返回字节</b>（二进制防线）。
 /// 工具描述限定"返回的是需宿主落盘的临时链接"。
 /// </remarks>
 [AgentTool("minutes.get_media",

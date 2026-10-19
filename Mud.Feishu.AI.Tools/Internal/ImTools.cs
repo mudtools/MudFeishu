@@ -14,7 +14,7 @@ namespace Mud.Feishu.AI.Tools.Internal;
 /// <summary>
 /// IM 工具执行器（<c>im.get_history_messages</c> / <c>im.get_message_content</c>）：
 /// RFC3339 → 秒级时间戳转换、<c>container_id_type=chat</c> 与 <c>sort_type=ByCreateTimeDesc</c>
-/// 绑定层注入（§3.3.3）；消息内容回查依赖 P1D-1a 路由修复（AI-FD-D12）。
+/// 绑定层注入；消息内容回查依赖 P1D-1a 路由修复（AI-FD-D12）。
 /// </summary>
 /// <remarks>执行骨架（catch/回填/截断）由 <see cref="ToolExecutor"/> 承担（WP3）；本类只保留参数校验与投影语义。</remarks>
 internal sealed class ImTools(

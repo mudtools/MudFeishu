@@ -12,13 +12,13 @@ using Mud.Feishu.Abstractions.Conversations;
 namespace Mud.Feishu.AI.Conversations;
 
 /// <summary>
-/// 全局在途背压闸门（T5 / D5）：实现 <see cref="IConversationGate"/> 接口作为装饰器，
+/// 全局在途背压闸门：实现 <see cref="IConversationGate"/> 接口作为装饰器，
 /// 在内层 <see cref="KeyedConversationGate"/> 之前先取得全局在途许可——
 /// 先削峰（全局上限）、再排队（同键串行），事件入口代码零改动。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>三段分离（第七式 / 第八式）</b>：削峰机械语义在中立引擎
+/// <b>壳/引擎分离</b>：削峰机械语义在中立引擎
 /// <see cref="ConcurrencyLimiter"/> 内（满额/超时以 <see langword="null"/> 表达）；
 /// 本壳只做两件事——契约适配（<see cref="IConversationGateHandle"/>）与<b>异常语义</b>
 /// （把 <see langword="null"/> 翻译成 <see cref="ConversationBusyException"/>，文案由产品决定）。
@@ -28,7 +28,7 @@ namespace Mud.Feishu.AI.Conversations;
 /// （先释放会话闸、再归还全局许可）。
 /// </para>
 /// <para>
-/// <b>分布式部署</b>：本闸门是<b>进程内</b>兜底；多实例总量限制仍需 Redis 闸门（文档化组合矩阵）。
+/// <b>分布式部署</b>：本闸门是<b>进程内</b>兜底；多实例总量限制仍需 Redis 闸门。
 /// </para>
 /// </remarks>
 public sealed class GlobalConcurrencyGate : IConversationGate
@@ -90,7 +90,7 @@ public sealed class GlobalConcurrencyGate : IConversationGate
     }
 
     /// <summary>
-    /// 满额文案：<c>FailFast</c> 为拒绝，其余为队列超时（两种文案与在途计数口径保持既有约定）。
+    /// 满额文案：<c>FailFast</c> 为拒绝，其余为队列超时（文案与在途计数口径一致）。
     /// </summary>
     /// <remarks>
     /// 不限等待（<c>turnQueueTimeoutSeconds = 0</c> ⇒ 引擎超时为 <see langword="null"/>）时引擎<b>永不</b>
@@ -120,7 +120,7 @@ public sealed class GlobalConcurrencyGate : IConversationGate
 }
 
 /// <summary>
-/// 全局闸门满额语义（T5 / D5）。
+/// 全局闸门满额语义。
 /// </summary>
 public enum BusyModes
 {

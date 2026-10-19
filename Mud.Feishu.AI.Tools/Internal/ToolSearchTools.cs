@@ -13,7 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
-/// feishu.tool_search 元工具执行器（B5：已策展工具检索）。
+/// feishu.tool_search 元工具执行器（已策展工具检索）。
 /// </summary>
 /// <remarks>
 /// <para>

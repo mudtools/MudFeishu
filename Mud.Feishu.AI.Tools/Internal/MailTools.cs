@@ -204,7 +204,7 @@ internal sealed class MailTools(
             }
 
             // 构造 RFC 5822 EML 邮件
-            var eml = BuildEml(args);
+            var eml = BuildEml(args.To, args.Cc, args.Bcc, args.Subject, args.Body);
             var rawBase64 = Base64UrlEncode(eml);
 
             // 步骤 1：创建草稿
@@ -271,27 +271,27 @@ internal sealed class MailTools(
     /// R3-12：头字段（To/Cc/Bcc/Subject）逐个拒绝任何 <c>CR</c>/<c>LF</c>。全局入站净化
     /// （<see cref="ToolArgumentSanitizer.ValidateText"/>）<b>必须</b>放行换行（正文/文档/消息都靠换行表达结构），
     /// 故头注入面只能在此收口——否则 <c>Subject: "x\r\nBcc: attacker@evil"</c> 会凭空插入收件人。
-    /// 正文（<paramref name="args"/>.Body）仍允许 LF。
+    /// 正文（<paramref name="body"/>）仍允许 LF。
     /// </remarks>
     /// <exception cref="ArgumentException">头字段含 CR/LF（执行链转结构化错误回填模型，不落到下游）。</exception>
-    internal static string BuildEml(MailSendMessageArgs args)
+    internal static string BuildEml(string[] to, string[]? cc, string[]? bcc, string subject, string body)
     {
         var sb = new StringBuilder();
         sb.Append("Content-Type: text/plain; charset=\"utf-8\"").Append("\r\n");
         sb.Append("Content-Transfer-Encoding: 8bit").Append("\r\n");
         sb.Append("MIME-Version: 1.0").Append("\r\n");
-        sb.Append("To: ").Append(string.Join(", ", args.To.Select(a => $"<{RequireHeaderField("to", a)}>"))).Append("\r\n");
-        if (args.Cc is { Length: > 0 })
+        sb.Append("To: ").Append(string.Join(", ", to.Select(a => $"<{RequireHeaderField("to", a)}>"))).Append("\r\n");
+        if (cc is { Length: > 0 })
         {
-            sb.Append("Cc: ").Append(string.Join(", ", args.Cc.Select(a => $"<{RequireHeaderField("cc", a)}>"))).Append("\r\n");
+            sb.Append("Cc: ").Append(string.Join(", ", cc.Select(a => $"<{RequireHeaderField("cc", a)}>"))).Append("\r\n");
         }
-        if (args.Bcc is { Length: > 0 })
+        if (bcc is { Length: > 0 })
         {
-            sb.Append("Bcc: ").Append(string.Join(", ", args.Bcc.Select(a => $"<{RequireHeaderField("bcc", a)}>"))).Append("\r\n");
+            sb.Append("Bcc: ").Append(string.Join(", ", bcc.Select(a => $"<{RequireHeaderField("bcc", a)}>"))).Append("\r\n");
         }
-        sb.Append("Subject: ").Append(RequireHeaderField("subject", args.Subject)).Append("\r\n");
+        sb.Append("Subject: ").Append(RequireHeaderField("subject", subject)).Append("\r\n");
         sb.Append("\r\n");
-        sb.Append(args.Body);
+        sb.Append(body);
         return sb.ToString();
     }
 
@@ -302,7 +302,7 @@ internal sealed class MailTools(
             : value;
 
     /// <summary>Base64Url 编码（飞书邮件 API 要求 base64url 编码的 EML 内容）。</summary>
-    private static string Base64UrlEncode(string input)
+    internal static string Base64UrlEncode(string input)
     {
         var bytes = System.Text.Encoding.UTF8.GetBytes(input);
         return Convert.ToBase64String(bytes)

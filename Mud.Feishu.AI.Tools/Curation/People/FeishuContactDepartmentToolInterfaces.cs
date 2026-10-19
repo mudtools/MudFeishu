@@ -7,7 +7,7 @@
 
 namespace Mud.Feishu.AI.Tools.Curation;
 
-// ─────────────── contact · 部门面补齐（F-1 P0：Organization 部门面） ───────────────
+// ─────────────── contact · 部门面补齐（Organization 部门面） ───────────────
 //
 // 既有 contact.* 只能"自上而下"遍历（list_departments 取子部门）+ 取成员。
 // 缺的是两条最常被问到、却无从下手的方向：

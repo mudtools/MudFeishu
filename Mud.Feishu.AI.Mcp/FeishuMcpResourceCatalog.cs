@@ -21,7 +21,7 @@ namespace Mud.Feishu.AI.Mcp;
 /// <see cref="FeishuToolGuidance.ByDomain"/>；L2 references = 同上的 <see cref="FeishuToolGuidance.References"/>；
 /// per-tool affordance = 工具桥的<b>模型可见描述</b>（affordance 由执行链在构造期追加，故描述里就是"模型看到的那份"）；
 /// 域 scope 对照 = <see cref="FeishuToolDefinition.RequiredScopes"/>（工具面事实）+ 风险/身份；错误契约 =
-/// <see cref="ErrorContractSummary"/>（编译期常量，由守卫与代码闭集机械对齐）。无网络、无租户依赖 ⇒
+/// <see cref="ErrorContractSummary"/>（编译期常量，与代码闭集逐字对齐）。无网络、无租户依赖 ⇒
 /// <c>resources/read</c> 在任何宿主状态下都不会失败。
 /// <para>
 /// <b>可见性纪律与 instructions 同源</b>：只列<b>已启用工具所属域</b>的资源（白名单之外的域在 <c>resources/list</c> 中不可见）
@@ -63,9 +63,8 @@ public sealed class FeishuMcpResourceCatalog
     /// 故这里放"消费侧最小集"（闭集 + 决策树），完整契约仍以仓库文档为准。
     /// </para>
     /// <para>
-    /// <b>防漂移</b>：<c>McpResourceContractGuards</c> 解析本常量里的
-    /// <c>## category 闭集</c> / <c>## subtype 闭集</c> 两节，与代码闭集（<c>ToolErrorCategory</c> /
-    /// <c>ToolErrorSubtype</c>）机械比对——少写/多写一个字面量即红。
+    /// <b>防漂移</b>：本常量里的 <c>## category 闭集</c> / <c>## subtype 闭集</c> 两节必须与代码闭集
+    /// （<c>ToolErrorCategory</c> / <c>ToolErrorSubtype</c>）逐字一致——少写/多写一个字面量即契约漂移。
     /// </para>
     /// </remarks>
     public const string ErrorContractSummary =
@@ -244,7 +243,7 @@ public sealed class FeishuMcpResourceCatalog
     /// <param name="uri">资源 URI。</param>
     public bool Contains(string? uri) => uri is not null && _byUri.ContainsKey(uri);
 
-    /// <summary>合法 URI 形态模板（本服务提供的<b>全部</b>资源形态；M-5 守卫据此校验清单不越界）。</summary>
+    /// <summary>合法 URI 形态模板（本服务提供的<b>全部</b>资源形态；清单不得超出该闭集）。</summary>
     public static IReadOnlyList<string> UriTemplates { get; } =
     [
         GuidanceScheme + "://{domain}",

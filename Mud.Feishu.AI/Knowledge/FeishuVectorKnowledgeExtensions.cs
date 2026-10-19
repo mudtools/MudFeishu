@@ -12,19 +12,19 @@ using Mud.AI.Agent.Knowledge;
 namespace Mud.Feishu.AI.Knowledge;
 
 /// <summary>
-/// RAG 自建检索面的 DI 入口（产品侧装配面；机制实现已中立化——N2-e）。
+/// RAG 自建检索面的 DI 入口（产品侧装配面）。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>中立化说明</b>：<c>VectorRetriever</c> / <c>CorpusIndexer</c> / <c>ChunkingOptions</c> /
-/// <c>TokenEstimator</c> 已迁 <c>Mud.AI.Agent.Knowledge</c>；本类只保留产品 DI 面
+/// <c>VectorRetriever</c> / <c>CorpusIndexer</c> / <c>ChunkingOptions</c> /
+/// <c>TokenEstimator</c> 属 <c>Mud.AI.Agent.Knowledge</c>；本类只保留产品 DI 面
 /// （<c>AddFeishuVectorKnowledge</c> / <c>AddFeishuCorpusIndexing</c> 是宿主可见的装配入口），
-/// 内部改注册中立类型。
+/// 内部注册中立类型。
 /// </para>
 /// <para>
 /// <b>与托管问答（Aily）的互斥口径</b>：两者都用 <c>TryAddSingleton&lt;IRetriever&gt;</c> ⇒
 /// <b>先注册者生效</b>。要换检索面就<b>先</b>注册新的一个（不必卸载 Aily）；
-/// 同时注册两者不会报错，但只有先到的那个被解析到——这是刻意选择：让"换检索面"不需要卸载既有包。
+/// 同时注册两者不会报错，但只有先到的那个被解析到——让"换检索面"不需要卸载既有包。
 /// </para>
 /// </remarks>
 public static class FeishuVectorKnowledgeExtensions
@@ -33,11 +33,6 @@ public static class FeishuVectorKnowledgeExtensions
     /// 注册向量检索面：<see cref="IVectorStore"/>（宿主实现）+ <see cref="IRetriever"/>
     /// （<see cref="VectorRetriever"/>）。
     /// </summary>
-    /// <remarks>
-    /// <b>与 Aily 的互斥口径</b>：两者都用 <c>TryAddSingleton&lt;IRetriever&gt;</c> ⇒
-    /// <b>先注册者生效</b>。要换检索面就<b>先</b>注册新的一个（不必卸载 Aily）；
-    /// 同时注册两者不会报错，但只有先到的那个被解析到——这是刻意选择：让"换检索面"不需要卸载既有包。
-    /// </remarks>
     /// <param name="services">服务集合。</param>
     /// <param name="store">宿主实现的向量存储。</param>
     /// <param name="configure">切片/检索参数覆盖（可空）。</param>

@@ -8,7 +8,7 @@
 namespace Mud.Feishu.AI.AgentTools;
 
 /// <summary>
-/// 租户上下文作用域工厂：切换 <c>appKey</c> 的唯一入口（TMA2-20：租户 = 应用上下文）。
+/// 租户上下文作用域工厂：切换 <c>appKey</c> 的唯一入口（租户 = 应用上下文）。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -17,10 +17,10 @@ namespace Mud.Feishu.AI.AgentTools;
 /// 「切到目标 appKey」这一个动作，不需要知道调用方接下来用哪个业务域客户端。
 /// </para>
 /// <para>
-/// <b>接口归属（R3-1 步骤 0）</b>：本抽象只依赖 <see cref="IDisposable"/>，与任何飞书业务域无关，
+/// <b>接口归属</b>：本抽象只依赖 <see cref="IDisposable"/>，与任何飞书业务域无关，
 /// 因此归 AI 底座包（<c>Mud.Feishu.AI</c>）；具体实现（依赖 <c>IAppContextHolder</c> /
 /// <c>IFeishuAppManager</c>）留在工具包 <c>Mud.Feishu.AI.Tools</c>——
-/// 依赖方向保持 FeishuTools → AI <b>单向</b>，基类因此得以在回复前主动切租户（R3-1/2）。
+/// 依赖方向保持 FeishuTools → AI <b>单向</b>，基类因此得以在回复前主动切租户。
 /// </para>
 /// <para>
 /// <b>fail-closed</b>：作用域无法建立时不得回退默认应用（多租户隔离禁止默认应用兜底）。

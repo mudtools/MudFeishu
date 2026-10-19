@@ -14,7 +14,7 @@ namespace Mud.Feishu.AI.Mcp;
 /// <para>
 /// <b>为什么 appKey 只从配置来、不从协议参数来</b>：一旦允许每次 <c>tools/call</c> 携带 appKey，
 /// 就等于把"切换租户"的能力交给了 MCP 客户端（以及能影响客户端的模型/提示注入）——
-/// 这与"多租户隔离禁止默认应用兜底"（TMA2-20）同一根线，只是换了个入口。
+/// 这与"多租户隔离禁止默认应用兜底"同一根线，只是换了个入口。
 /// 跨租户宿主的正确形态是<b>每个租户一个 stdio 进程</b>（进程即租户边界），
 /// 而不是在协议层传租户标识。
 /// </para>
@@ -73,7 +73,7 @@ public sealed class FeishuMcpServerOptions
     public bool IncludeGuidance { get; set; } = true;
 
     /// <summary>
-    /// 是否暴露 <c>resources</c> 能力（M-1；默认 <c>true</c>）。
+    /// 是否暴露 <c>resources</c> 能力（默认 <c>true</c>）。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -83,20 +83,20 @@ public sealed class FeishuMcpServerOptions
     /// </para>
     /// <para>
     /// <b>为什么可关</b>：老客户端（或不理解 <c>resources</c> 的客户端）在能力声明里看到它
-    /// 不会有副作用，但宿主可能希望"能力面严格等于改造前"（逐字节回归）——故留显式开关。
+    /// 不会有副作用，但宿主可能希望关闭该能力面（逐字节回归）——故留显式开关。
     /// 资源自身的数据源与 instructions <b>同源</b>（编译期常量），关闭只是"少一个入口"。
     /// </para>
     /// </remarks>
     public bool IncludeResources { get; set; } = true;
 
     /// <summary>
-    /// <c>initialize.instructions</c> 的形态（M-3；取值与 <see cref="GuidanceModes"/> 一致，默认 <c>routing</c>）。
+    /// <c>initialize.instructions</c> 的形态（取值与 <see cref="GuidanceModes"/> 一致，默认 <c>routing</c>）。
     /// </summary>
     /// <remarks>
     /// <para>
     /// <c>routing</c>（默认）：每域<b>一行路由摘要</b>（≤256 字符/域），全文经
     /// <c>resources/read feishu-guidance://{domain}</c> 按需读取——总量恒定、不随域数增长。
-    /// <c>full</c>：每域 L1 全文拼接（改造前行为；域多时会按预算整域丢弃）。
+    /// <c>full</c>：每域 L1 全文拼接（域多时会按预算整域丢弃）。
     /// </para>
     /// <para>
     /// <b>与 <see cref="FeishuAgentOptions.GuidanceMode"/> 的关系</b>：两者取值闭集相同、语义相同，
@@ -127,7 +127,7 @@ public sealed class FeishuMcpServerOptions
                 $"{SectionName}:{nameof(ServerName)} 不能为空（它是 initialize.serverInfo.name，客户端据此标识本服务）");
         }
 
-        // M-3：形态闭集校验（拼写错误会静默退回全文拼接——域数增长后表现为整域丢弃）。
+        // 形态闭集校验（拼写错误会静默退回全文拼接——域数增长后表现为整域丢弃）。
         if (!GuidanceModes.IsValid(InstructionsMode))
         {
             throw new InvalidOperationException(

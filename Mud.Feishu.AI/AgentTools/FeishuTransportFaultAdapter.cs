@@ -15,10 +15,10 @@ namespace Mud.Feishu.AI.AgentTools;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>为什么由本层承担（而不是让中立层判定类型）</b>：错误分类器住在产品中立的
-/// <c>Mud.AI.Agent</c>，独立产品线纪律要求它<b>不得认识任何具体 HTTP 组件的异常类型</b>
-/// （v2.3 P1-D 曾直接判定 <c>ApiException</c>，已下线）。"哪个异常携带状态码"是产品事实，
-/// 归属产品层；中立层只接收中立事实（<see cref="ITransportFault.StatusCode"/>）。
+/// <b>必须由本层承担（而不是让中立层判定类型）</b>：错误分类器住在产品中立的
+/// <c>Mud.AI.Agent</c>，中立层<b>不得认识任何具体 HTTP 组件的异常类型</b>——
+/// "哪个异常携带状态码"是产品事实，归属产品层；中立层只接收中立事实
+/// （<see cref="ITransportFault.StatusCode"/>）。
 /// </para>
 /// <para>
 /// 本类型是 <c>internal</c>：它是实现细节，宿主看不到；执行链

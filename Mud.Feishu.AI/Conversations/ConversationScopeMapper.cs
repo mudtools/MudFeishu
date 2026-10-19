@@ -14,10 +14,10 @@ namespace Mud.Feishu.AI.Conversations;
 /// 会话维度范围的<b>接缝适配器</b>：中立副本 ↔ 已发布 SDK 的冻结契约。
 /// </summary>
 /// <remarks>
-/// <b>为什么需要这个 3 行映射</b>：会话请求（<see cref="ConversationRequest"/>）已中立化，其 <see cref="ConversationRequest.Scope"/>
+/// <b>为什么需要这个映射</b>：会话请求（<see cref="ConversationRequest"/>）的 <see cref="ConversationRequest.Scope"/>
 /// 是中立的 <see cref="ConversationScope"/>；而飞书侧会话键构造器（<c>Mud.Feishu.Abstractions.Conversations.ConversationKeyBuilder</c>）
-/// 是<b>已发布 SDK</b> 的冻结契约，只接受它自己的 <see cref="FeishuScope"/>。两者不可能合并（已发布 SDK 不得引用 <c>Mud.AI.*</c>；
-/// <c>Mud.AI.*</c> 不得引用 <c>Mud.Feishu*</c>）⇒ 两个世界之间必须有一处显式转换。
+/// 是<b>已发布 SDK</b> 的冻结契约，只接受它自己的 <see cref="FeishuScope"/>。两侧依赖方向互斥
+/// （已发布 SDK 不得引用 <c>Mud.AI.*</c>；<c>Mud.AI.*</c> 不得引用 <c>Mud.Feishu*</c>）⇒ 两个世界之间必须有一处显式转换。
 /// <para>
 /// <b>⚠️ 本文件是唯一允许同时引用两个 <c>ConversationScope</c> 的地方</b>：它用文件级别名 <c>FeishuScope</c> 消歧；其它文件请勿模仿——
 /// 需要飞书侧冻结契约时应当反思"这个类型是不是本来就该留在产品侧"。
@@ -46,8 +46,8 @@ public static class ConversationScopeMapper
     /// 用<b>中立会话维度</b>构造飞书会话键（接缝的唯一"出口"）。
     /// </summary>
     /// <remarks>
-    /// 抽成一个方法而不是让每个调用点各写一次 <see cref="ToFeishuScope"/>：会话键的构造点有 5+
-    /// 处（事件处理器 / 续跑闭环 / 诊断 / 用例），漏包一个就会退化成"键的维度段静默错误"
+    /// 抽成一个方法而不是让每个调用点各写一次 <see cref="ToFeishuScope"/>：会话键的构造点有多处
+    /// （事件处理器 / 续跑闭环 / 诊断 / 用例），漏包一个就会退化成"键的维度段静默错误"
     /// ——群聊被当成单聊写进 `user:` 段，表现为会话历史串号且**编译期完全无声**。
     /// </remarks>
     /// <param name="appKey">租户/应用标识（空白视为 default）。</param>

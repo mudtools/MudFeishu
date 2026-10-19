@@ -7,26 +7,26 @@
 
 namespace Mud.Feishu.AI.Tools.Curation;
 
-// ─────────────────────────── VideoConferencing（R6 / S3） ───────────────────────────
+// ─────────────────────────── VideoConferencing ───────────────────────────
 //
-// 本域是 R6 方案 S3 的落地面：官方 cli 的 lark-meeting / lark-vc skill 对标。
+// 本域对标官方 cli 的 lark-meeting / lark-vc skill。
 // 策展口径（与 Okr 同款纪律，见 FeishuOkrToolInterfaces 的 remarks）：
 //
 // 1) **只策展"能形成完整链路"的工具**：查询（会议列表 / 详情 / 参会人 / 录制 / 预约 / 会议室）
 //    + 四个高频且**参数面收敛**的写动作（设主持人 / 邀人 / 结束会议 / 删除预约）。
-// 2) **有意不策展**（每个都有具体理由，不是遗漏）：
+// 2) **不策展的接口**（每个都有具体理由）：
 //    - `vc.apply_reserve` / `vc.update_reserve`：`ApplyReserveRequest` 含 10+ 嵌套字段
 //      （跨时区 time_range、循环预约、会议室自动分配、会前设置…）。**部分策展会产出语义错误的预约**
-//      （比"没有这个工具"更糟），需要专门设计一轮；见 R6 主文档 §12.6。
+//      （比"没有这个工具"更糟），需要单独设计参数面。
 //    - `vc.kickout_member`：强管理动作（把参会人踢出会议），与"设主持人/结束会议"不同，
 //      它没有可回滚的二次确认面（会议已在进行中），留给宿主按需自行策展。
 //    - `vc.start_recording` / `vc.stop_recording`：录制启停涉及合规（《个人信息保护法》下的
 //      告知义务），不应由模型在无人干预下触发。
 //    - `vc.subscribe_meeting_event` / `unsubscribe`：是事件订阅的管理面，不是业务动作。
-//    - `vc.get_note`：会议妙记已被 `minutes.get` 覆盖，**跨域去重**（R6 §12.3 第 3 条）。
+//    - `vc.get_note`：会议妙记已被 `minutes.get` 覆盖，**跨域去重**。
 // 3) **身份轴真实存在**：`invite` / `end` 在 SDK 里是 **User** 接口
-//    （`IFeishuUserV1VideoConferencingMeeting`）——这是 R6 初稿的 10 处事实错误之一。
-//    宿主启用它们时必须在 `FeishuAgent:AllowedIdentities` 放行 `user`，否则**装配期 fail-fast**。
+//    （`IFeishuUserV1VideoConferencingMeeting`）；宿主启用它们时必须在
+//    `FeishuAgent:AllowedIdentities` 放行 `user`，否则**装配期 fail-fast**。
 //    `set_host` / `delete_reserve` 等走 Tenant 接口（默认身份闭集内即可）。
 
 /// <summary>工具接口：vc.list_meetings（映射 <c>IFeishuTenantV1VideoConferencingMeetinData.GetMeetingPageListAsync</c>）。</summary>

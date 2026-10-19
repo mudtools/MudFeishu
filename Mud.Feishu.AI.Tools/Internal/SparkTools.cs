@@ -12,14 +12,14 @@ using Mud.Feishu.DataModels.Spark;
 namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
-/// Spark 妙搭应用面执行器（R7 / A6：6 个工具，只读 2 + 写 4）。
+/// Spark 妙搭应用面执行器（6 个工具，只读 2 + 写 4）。
 /// </summary>
 /// <remarks>
 /// <para>
 /// <b>软依赖</b>：客户端可空注入——宿主未启用妙搭 API 时给出"须启用"的可执行结构化错误。
 /// </para>
 /// <para>
-/// <b>二进制/本地文件防线（A10 + DP-A6-2）</b>：<c>upload_html_release</c>（<c>[FormContent]</c> 本地 tar）、
+/// <b>二进制/本地文件防线</b>：<c>upload_html_release</c>（<c>[FormContent]</c> 本地 tar）、
 /// <c>upload_app_icon</c>（本地文件）、<c>upload_storage</c>/<c>download_storage</c>（<c>byte[]</c>）、
 /// <c>execute_sql</c>（任意 SQL）<b>均不策展</b>——模型无文件系统，且 SQL 是越权通道
 /// （工具面亦不提供任何通用调用通道，见 R-12 删除 <c>feishu.api_call</c>）。

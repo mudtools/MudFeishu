@@ -14,7 +14,7 @@ namespace Mud.Feishu.AI.AgentTools;
 /// <para>
 /// <b>为什么不经业务域客户端</b>：生成的 HTTP 客户端注册为<b>瞬时</b>（<c>AddTransient</c>），而本工厂
 /// 以单例注册——本工厂<b>不得</b>直接持有 <c>IFeishuTenantV1Message</c>：那既构成 Captive Dependency
-/// （TMA-13），又强制宿主注册 IM 域客户端，使「按域装配」（如只调 <c>AddFeishuBitableTools()</c>）
+/// （单例捕获瞬时依赖），又强制宿主注册 IM 域客户端，使「按域装配」（如只调 <c>AddFeishuBitableTools()</c>）
 /// 在解析 <c>FeishuToolBinding</c> 时失败。
 /// </para>
 /// <para>
@@ -23,7 +23,7 @@ namespace Mud.Feishu.AI.AgentTools;
 /// 二者与业务域无关，故任何按域装配组合都能解析。
 /// </para>
 /// <para>
-/// <b>授权门禁同源（已知取舍，登记于 R3-5）</b>：<c>Mud.HttpUtils</c> 未提供
+/// <b>授权门禁同源（已知取舍）</b>：<c>Mud.HttpUtils</c> 未提供
 /// 「<c>string appKey</c> → 带门禁作用域」的公共辅助类型，故这里的四步门禁是生成器所发
 /// <c>XxxClient.BeginScope(string appKey)</c> 的<b>同构复制</b>：
 /// 格式校验 → 授权器非空 → <c>CanSwitchTo</c> → <c>BeginScope(context)</c>。

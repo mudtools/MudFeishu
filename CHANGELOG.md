@@ -1,5 +1,134 @@
 # Mud.Feishu 更新日志
 
+## [Unreleased] - AI 工具面审查整改 Phase 0 + Phase 1（T-1 / T-2 / T-3）：文档漂移修复与三域成环（2026-10-16）
+
+> 方案：`.docs/AI/MudFeishu-AI-审查整改-Bug修复与功能完善方案-2026-10-16.md`。
+> 本条目覆盖 Phase 0（文档真相源与计数防线）与 Phase 1 三个批次的**合并交付**：
+> T-1 读取闭环 +4、T-2 表格加深 +40、T-3 消息/邮件/任务成环 +33 ⇒ 工具面 **319 个**（31 域）。
+> 逐批明细见下方三条既有条目与其后的 T-3 段；三者共享同一份 golden / 计数基线，故合并为一次提交。
+
+## [Unreleased] - AI 工具面审查整改 Phase 1 · T-3：消息、邮件、任务三域成环批次（2026-10-16）
+
+> 工具面 286 → **319**（+9 只读 +24 写类，其中 6 个 high-risk-write）；
+> im 16 → **20**、mail 7 → **24**、task 8 → **20**。身份分布首次跨过 20 条 user：tenant 298 / user 21。
+> 验收沿用 R3 先例：「工具存在」不算通过——33 条工具**逐条**有抓取实参的链路用例。
+
+### ➕ 新增工具（33 个 = 9 只读 + 24 写类）
+
+- **im 写面成环（4 个全写）**：`edit_message`（PUT 整段覆盖，天然幂等）/ `patch_card_message`
+  （与 `im.send_card` 同一套 `CardDsl`，模型全程零 JSON）/ `urgent_app` / `urgent_sms`
+  （加急 `user_id_type` 闭集 open_id / user_id / union_id，非法值本地拒绝且点名闭集）。
+- **mail 加深（17 = 5 读 + 12 写）**：草稿四件套 `create_draft` / `update_draft` / `send_draft` /
+  `delete_draft`（**user 身份**，EML 组装 + base64url 在工具层，模型不感知）、处置 2
+  （`trash_message` 批量 / `get_attachment_url`）、收件规则 5（`rule_create` / `rule_update` /
+  `rule_list` / `rule_reorder` / `rule_delete`，条件与动作走 `MailRuleDsl` 管道分隔简化式）、
+  模板 4（`template_list` / `template_get` / `template_create` / `template_update` / `template_delete`）、
+  签名 1（`signature_list`，**user 身份**，正文只回填截断预览）。
+- **task 加深（12 = 4 读 + 8 写）**：清单 8（`tasklist_create` / `tasklist_get` / `tasklist_update` /
+  `tasklist_delete` / `tasklist_member_add` / `tasklist_member_remove` / `tasklist_page_list` /
+  `tasklist_tasks`）、提醒 2（`set_reminder` / `remove_reminder`）、状态 2（`reopen`、`search_tasks`
+  **user 身份**）。
+
+### ✂️ 三项不入策展面（登记理由，防后续「顺手补回」）
+
+- **`mail.mark_unread`**：平台无独立端点——`mail.mark_read` 传 `read=false` 即恢复未读，
+  guidance 与 skills 已就地写明「别再找独立工具」，另立工具只会制造第二个真相源。
+- **`task.add_followers`**：同理，`task.add_members` 传 `role=follower` 覆盖；关注人与负责人共用
+  同一条 members 通道。
+- **`task.upload_attachment`**：SDK 的 `UploadAttachmentAsync` 在 `[FormContent]` 请求体之外还带
+  `[Query] user_id_type`，工具面上传校验（生成器槽位 **MUDFT008**：上传方法的非二进制参数必须自身
+  是表单体）判其不可映射为 `format:binary`——**需补底座**（转 Phase 2 的 SDK 底座补齐批），
+  对齐 Drive 上传形态后方可入策展。
+
+### 🐛 存量缺陷修复（task 成员类型词汇表）
+
+- `task.create_task` / `task.add_members` 下发的 `TaskMemberInfo.Type` 由 `"open_id"` 改为 `"user"`：
+  平台侧 `type` 的合法值是 user / chat / app，`open_id` 属于 `id` 字段而非 `type`——旧值会让成员
+  分配在平台侧静默失效（任务建好了但没有负责人）。由 `TaskToolsChainTests` 与
+  `TaskDeepToolsChainTests` 双侧实参断言锁定。
+- `task.set_reminder` 回执补 `reminder_id`：平台每任务最多 1 个提醒，`remove_reminder` 需要该 ID
+  才能形成「设—撤」闭环（此前撤提醒只能靠 `rule_list` 式回查）。
+
+### 🛡️ 守卫与接线同批（T-3）
+
+- **聚合接线**：`AddFeishuImTools` / `AddFeishuTaskOkrTools` / `AddFeishuWriteTools` 三链登记
+  `MessageWriteTools` 的 4 个新 handler 与 `TaskDeepTools` / `MailDeepTools` 两个执行器；
+  `TaskDeepTools` 的清单客户端为**必选**依赖（缺席即整批静默不注册），mail 深化的 5 个客户端全为
+  软依赖（缺席只在执行期给可读原因）。
+- **守卫基线同批**：Source 声明 281 → **314**；工具计数 286 → **319**
+  （`GuidanceAssetContractGuards` / `ToolArgumentShapeContractGuards` /
+  `ToolSourceConsistencyContractTests` / `BinaryDownloadToolExposureContractTests`）；
+  scope 基线仍 **73**（三域全部复用既有权限点，零新增）。
+- **测试基建**：`GuardProviderFactory` 补 mail/task 清单侧客户端 mock；`DomainRegistrarTests`
+  白名单加 9 个新只读工具并首次放行 `AllowedIdentities=[tenant,user]`（清单含 user 身份工具时，
+  装配期身份闭集校验会 fail-fast——这条路径此前无覆盖）。
+
+### 📄 契约资产同批刷新
+
+- golden 重固化 **319** 条；skills 重固化 3 份（`feishu-im` / `feishu-mail` / `feishu-task`）；
+  权限对照表 +33 行（数据行 319 == `FeishuToolNames.All`）。
+- guidance `im.md` / `mail.md` / `task.md` 补节；公开面反射基线 370 → **403**
+  （`Mud.Feishu.AI.Tools` 313 → 346；33 条消费方理由登记 `public-surface-rationale.json`）；
+  Affordance 30 → **36** 份资产（与 high-risk-write 36 条 1:1）。
+- 用例：`TaskDeepToolsChainTests` **39** + `MailDeepToolsChainTests` **51** +
+  `ImGovernanceToolsChainTests` **17**（33 条契约 InlineData 行 + 链路/负例/预演/失败码用例，
+  每条工具抓取实参断言）。`Mud.Feishu.AI.Tools.Tests` 1228 → **1335 全绿**。
+
+### 🔧 门禁脚本编码修复（同批）
+
+- `scripts/*.ps1`（11 个含非 ASCII 字面量的脚本）补 **UTF-8 BOM**：Windows PowerShell 5.1 在无 BOM 时
+  按本地 ANSI 代码页解析，中文字面量里的全角括号会吞掉字符串终止符 ⇒ 门禁在本机根本无法启动
+  （`ParserError`，不是断言失败）。BOM 对 PowerShell 7 与 CI 的 ubuntu _runner 无影响，
+  `File.ReadAllText` 读取侧自动剥离，读脚本内容的守卫不受扰动。
+
+## [Unreleased] - AI 工具面审查整改 Phase 1 · T-2：多维表格与电子表格加深批次（2026-10-16）
+
+> 方案：`.docs/AI/MudFeishu-AI-审查整改-Bug修复与功能完善方案-2026-10-16.md` §5 批次 T-2。
+> 工具面 246 → **286**（+13 只读 +27 写类，其中 7 个 high-risk-write）；bitable 9 → **28**、sheets 4 → **25**。
+> 验收沿用 R3 先例：「工具存在」不算通过——40 条工具**逐条**有抓取实参的链路用例。
+
+### ➕ 新增工具（40 个 = 13 只读 + 27 写类）
+
+- **bitable 加深（19 = 7 读 + 12 写）**：仪表盘 2（`dashboard_list` / `dashboard_copy`）、表单 5
+  （`form_get` / `form_update` / `form_upgrade` / `form_question_list` / `form_question_update`）、
+  批量记录 2（`record_batch_create` / `record_batch_update`）、角色权限 7（`role_create` / `role_update` /
+  `role_delete` / `role_list` / `role_member_add` / `role_member_remove` / `role_member_list`）、
+  工作流 3（`workflow_list` / `workflow_block_list` / `workflow_update`）。
+- **sheets 加深（21 = 6 读 + 15 写）**：条件格式 4 / 数据校验 4 / 筛选 4 / 浮动图片 5（多一个 query）/
+  保护范围 4，除浮动图片外每族均为 create / get / update / delete 四操作。
+- **删除类 7 个全部 high-risk-write**（`bitable.role_delete` / `bitable.role_member_remove` /
+  `sheets.cond_format_delete` / `sheets.data_validation_delete` / `sheets.filter_delete` /
+  `sheets.float_image_delete` / `sheets.protected_delete`）：默认不启用，装配期 `ILogger` 告警（F-13 机制），
+  affordance 资产逐条 1:1。
+
+### 🛡️ 守卫与接线同批（T-2）
+
+- **聚合接线**：`AddFeishuBitableTools` / `AddFeishuCloudDocTools` / `AddFeishuTools` 只读链新增
+  `AddFeishuBitableDeepToolsCore` + `AddFeishuSheetsDeepToolsCore`（`ToolDomainCoresWiringContractTests` 双向闭合兜底）。
+- **守卫基线同批**：Source 声明 241 → 281（`BinaryDownloadToolExposureContractTests` / `FeishuToolProfileContractGuards`）；
+  工具计数 246 → 286（`GuidanceAssetContractGuards` / `ToolArgumentShapeContractGuards` / `ToolSourceConsistencyContractTests`）。
+- **测试基建**：`GuardProviderFactory` +9 个新客户端 mock；`DomainRegistrarTests` 白名单与客户端齐备路径加强；
+  `BitableWriteTools` 构造器新增 `IOptions<FeishuAgentOptions>`（3 处测试适配）；`PageSizes.cs` +4 常量
+  （`BitableFormQuestions=100` / `BitableDashboards=50` / `BitableRoles=50` / `BitableRoleMembers=100`）。
+
+### 📄 契约资产同批刷新
+
+- golden 重固化 **286** 条；skills 重固化 2 份（`feishu-bitable` / `feishu-sheets`）；权限对照表 +40 行；
+  `scope-authority.json` 无新权限点（复用既有 scope，仅登记注释）——scope 基线仍为 73。
+- guidance `bitable.md` / `sheets.md` 补节；公开面反射基线 330 → **370**（`Mud.Feishu.AI.Tools` 273 → 313；
+  40 条消费方理由已登记 `public-surface-rationale.json`）；Affordance 23 → **30** 份资产（9975 → 12551 字符）。
+- 用例：`TableDeepToolsChainTests` **113**（40 条契约 InlineData 行 + 73 条链路/负例/预演/失败码用例，
+  每条工具抓取实参断言）。`Mud.Feishu.AI.Tools.Tests` 1115 → **1228 全绿**。
+
+### 📊 MUDFT009 基线重测登记（同批）
+
+- `009-tools` 92 → **99**（+7，点名归因而非整域计入）：`bitable.role_create` / `role_update` / `role_list`
+  （角色权限树嵌套超深）、`sheets.cond_format_get`（Style 嵌套）、`sheets.filter_get`（两级集合）、
+  `sheets.protected_get` / `protected_update`（Editors/Users 嵌套）触发截断；其余 33 个新工具逐个核过未触发。
+  归因方法 = golden 截断标记（裸 `:{}`）全量扫描 9 命中 − 2 个合法空 schema（`record_batch_*` 的 `object`
+  声明字段）+ 三方对账 `OutputSchemaCoveredToolCount 147 + 诊断 99 = 246`（= 有非空 output_schema 的工具数）。
+  Release + `--no-incremental` 全量构建 8 次编译同值 99（协议与既往四次重测相同，非放宽门禁）。
+
 ## [Unreleased] - Demo 运行模式改为启动菜单选择（2026-10-16）
 
 - **`Demos/Mud.Feishu.Agent.Demo` 的进入方式由"配置文件的 Enabled 开关"改为"启动菜单的用户选择"**：

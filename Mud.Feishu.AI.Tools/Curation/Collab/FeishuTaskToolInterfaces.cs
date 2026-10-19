@@ -8,8 +8,8 @@
 namespace Mud.Feishu.AI.Tools.Curation;
 
 // <summary>
-// WP5 任务工具接口集（AT-F17）：<c>task.create_task</c>（tenant）与 <c>task.list_my_tasks</c>
-// （<b>user 身份</b>——工具面首个非 tenant 工具，R4 §5.3）。
+// 任务工具接口集：<c>task.create_task</c>（tenant）与 <c>task.list_my_tasks</c>
+// （<b>user 身份</b>——工具面首个非 tenant 工具）。
 // </summary>
 // <remarks>
 // <para>
@@ -62,7 +62,7 @@ public interface IFeishuUserTaskListMyTasksTool
         CancellationToken cancellationToken = default);
 }
 
-// ─────────────────────────── Task 写（2 个，WP4 动作面） ───────────────────────────
+// ─────────────────────────── Task 写（2 个，动作面） ───────────────────────────
 
 /// <summary>工具接口：task.update_task（映射 <c>IFeishuTenantV2Task.UpdateTaskAsync</c>）。</summary>
 [AgentTool("task.update_task",
@@ -71,7 +71,7 @@ public interface IFeishuUserTaskListMyTasksTool
     IsWrite = true,
     Source = nameof(IFeishuTenantV2Task) + "." + nameof(IFeishuTenantV2Task.UpdateTaskAsync),
 
-    // R5 / B-6：至少要更新一个字段——跨参数约束，required 表达不了（会让三者都必填）。
+    // 至少要更新一个字段——跨参数约束，required 表达不了（会让三者都必填）。
     // 成员集与执行器的运行时校验（TaskTools.UpdateTaskAsync）严格一致，不多不少。
     // 注意：task.complete_task 共用同一 SDK 方法但**不加** AnyOf——它只传 completed_at，
     // 语义是"固定字段写入"，不是"开放字段任选其一"。
@@ -105,7 +105,7 @@ public interface IFeishuTenantTaskCompleteTaskTool
         CancellationToken cancellationToken = default);
 }
 
-// ─────────────────────────── Task 写面成环（R7/WP5，4 个） ───────────────────────────
+// ─────────────────────────── Task 写面成环（4 个） ───────────────────────────
 
 /// <summary>工具接口：task.delete_task（映射 <c>IFeishuTenantV2Task.DeleteTaskByIdAsync</c>）。</summary>
 [AgentTool("task.delete_task",
@@ -177,5 +177,217 @@ public interface IFeishuTenantTaskAddMembersTool
         [ToolParameter("role", "成员角色：assignee（负责人，默认）或 follower（关注人）")] string? role = null,
         [ToolParameter("idempotency_key", "幂等键（可选）：平台原生幂等——相同键至多添加一次；省略时不保证幂等。幂等键不跨工具共享。")] string? idempotency_key = null,
         [ToolParameter("dry_run", "仅预演不添加（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+// ─────────────────────────── Task 成环（12 个） ───────────────────────────
+//
+// task.upload_attachment 不在策展面：SDK 的 UploadAttachmentAsync 在 [FormContent] 请求体之外还带
+// [Query] user_id_type，工具面上传校验（生成器槽位 008：上传方法的非二进制参数必须自身是表单体）
+// 判其不可映射为 format:binary；待对齐 Drive 上传形态后方可入策展。
+
+/// <summary>工具接口：task.tasklist_create（映射 <c>IFeishuTenantV2TaskList.CreateTaskListAsync</c>）。</summary>
+[AgentTool("task.tasklist_create",
+    Description = "创建一个任务清单（清单用于组织同一项目的多个任务）。member_ids 为协作成员 open_id 列表（可选）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
+    RequiredScopes = ["task:task"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV2TaskList) + "." + nameof(IFeishuTenantV2TaskList.CreateTaskListAsync))]
+public interface IFeishuTenantTaskTasklistCreateTool
+{
+    /// <summary>创建清单。</summary>
+    /// <returns>白名单投影后的 JSON 文本（tasklist_guid/name/url）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> CreateTasklistAsync(
+        [ToolParameter("name", "清单名称（最多 100 个字符）", Required = true)] string name,
+        [ToolParameter("member_ids", "协作成员 open_id 数组（可选；如 [\"ou_xxx\"]）")] string[]? member_ids = null,
+        [ToolParameter("dry_run", "仅预演不创建（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：task.tasklist_get（映射 <c>IFeishuTenantV2TaskList.GetTaskListByIdAsync</c>）。</summary>
+[AgentTool("task.tasklist_get",
+    Description = "获取清单详情（清单名/所有者/成员）。tasklist_guid 来自 task.tasklist_page_list 或 task.tasklist_create。只读，需 task:task:readonly。",
+    RequiredScopes = ["task:task:readonly"],
+    Source = nameof(IFeishuTenantV2TaskList) + "." + nameof(IFeishuTenantV2TaskList.GetTaskListByIdAsync))]
+public interface IFeishuTenantTaskTasklistGetTool
+{
+    /// <summary>获取清单详情。</summary>
+    /// <returns>白名单投影后的 JSON 文本（tasklist_guid/name/owner_id/member_ids/url）。</returns>
+    Task<string> GetTasklistAsync(
+        [ToolParameter("tasklist_guid", "任务清单全局唯一 GUID（来自 task.tasklist_page_list）", Required = true)] string tasklist_guid,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：task.tasklist_update（映射 <c>IFeishuTenantV2TaskList.UpdateTaskListByIdAsync</c>）。</summary>
+/// <remarks>仅支持改名——平台换所有人（update_fields=["owner"]）的线上形态需要 <c>tasklist.owner</c> 字段，当前 SDK DTO（TaskListData）未暴露该字段。</remarks>
+[AgentTool("task.tasklist_update",
+    Description = "重命名一个任务清单。tasklist_guid 来自 task.tasklist_page_list。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
+    RequiredScopes = ["task:task"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV2TaskList) + "." + nameof(IFeishuTenantV2TaskList.UpdateTaskListByIdAsync))]
+public interface IFeishuTenantTaskTasklistUpdateTool
+{
+    /// <summary>重命名清单。</summary>
+    /// <returns>白名单投影后的 JSON 文本（tasklist_guid/updated=true）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> UpdateTasklistAsync(
+        [ToolParameter("tasklist_guid", "任务清单全局唯一 GUID（来自 task.tasklist_page_list）", Required = true)] string tasklist_guid,
+        [ToolParameter("name", "清单新名称（最多 100 个字符）", Required = true)] string name,
+        [ToolParameter("dry_run", "仅预演不修改（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：task.tasklist_delete（映射 <c>IFeishuTenantV2TaskList.DeleteTaskListByIdAsync</c>）。</summary>
+[AgentTool("task.tasklist_delete",
+    Description = "删除指定清单（删除后清单不可恢复，清单内的任务本身不受影响）。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。建议先 dry_run 预演确认。tasklist_guid 来自 task.tasklist_page_list。",
+    RequiredScopes = ["task:task"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV2TaskList) + "." + nameof(IFeishuTenantV2TaskList.DeleteTaskListByIdAsync))]
+public interface IFeishuTenantTaskTasklistDeleteTool
+{
+    /// <summary>删除清单。</summary>
+    /// <returns>白名单投影后的 JSON 文本（deleted=true/tasklist_guid）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> DeleteTasklistAsync(
+        [ToolParameter("tasklist_guid", "任务清单全局唯一 GUID（来自 task.tasklist_page_list）", Required = true)] string tasklist_guid,
+        [ToolParameter("dry_run", "仅预演不删除（可选，默认 false）：返回将要下发的 method/path，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：task.tasklist_member_add（映射 <c>IFeishuTenantV2TaskList.AddTaskListMemberByIdAsync</c>）。</summary>
+[AgentTool("task.tasklist_member_add",
+    Description = "向清单添加协作成员（member_ids 为 open_id 数组）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
+    RequiredScopes = ["task:task"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV2TaskList) + "." + nameof(IFeishuTenantV2TaskList.AddTaskListMemberByIdAsync))]
+public interface IFeishuTenantTaskTasklistMemberAddTool
+{
+    /// <summary>添加清单成员。</summary>
+    /// <returns>白名单投影后的 JSON 文本（added_count/tasklist_guid）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> AddTasklistMemberAsync(
+        [ToolParameter("tasklist_guid", "任务清单全局唯一 GUID（来自 task.tasklist_page_list）", Required = true)] string tasklist_guid,
+        [ToolParameter("member_ids", "成员 open_id 数组（如 [\"ou_xxx\"]）", Required = true)] string[] member_ids,
+        [ToolParameter("dry_run", "仅预演不添加（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：task.tasklist_member_remove（映射 <c>IFeishuTenantV2TaskList.RemoveTaskListMemberByIdAsync</c>）。</summary>
+[AgentTool("task.tasklist_member_remove",
+    Description = "从清单移除协作成员（member_ids 为 open_id 数组；移除不存在的成员平台直接返回成功）。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。建议先 dry_run 预演确认。",
+    RequiredScopes = ["task:task"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV2TaskList) + "." + nameof(IFeishuTenantV2TaskList.RemoveTaskListMemberByIdAsync))]
+public interface IFeishuTenantTaskTasklistMemberRemoveTool
+{
+    /// <summary>移除清单成员。</summary>
+    /// <returns>白名单投影后的 JSON 文本（removed_count/tasklist_guid）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> RemoveTasklistMemberAsync(
+        [ToolParameter("tasklist_guid", "任务清单全局唯一 GUID（来自 task.tasklist_page_list）", Required = true)] string tasklist_guid,
+        [ToolParameter("member_ids", "要移除的成员 open_id 数组（如 [\"ou_xxx\"]）", Required = true)] string[] member_ids,
+        [ToolParameter("dry_run", "仅预演不移除（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：task.tasklist_page_list（映射 <c>IFeishuTenantV2TaskList.GetTaskListsPageListAsync</c>）。</summary>
+[AgentTool("task.tasklist_page_list",
+    Description = "列出调用身份可读取的全部任务清单（返回清单摘要，可翻页）。只读，需 task:task:readonly。",
+    RequiredScopes = ["task:task:readonly"],
+    Source = nameof(IFeishuTenantV2TaskList) + "." + nameof(IFeishuTenantV2TaskList.GetTaskListsPageListAsync))]
+public interface IFeishuTenantTaskTasklistPageListTool
+{
+    /// <summary>列出清单。</summary>
+    /// <returns>白名单投影后的 JSON 文本（items + 翻页契约）。</returns>
+    Task<string> GetTasklistPageListAsync(
+        [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：task.tasklist_tasks（映射 <c>IFeishuTenantV2TaskList.GetTaskListPageListByIdAsync</c>）。</summary>
+[AgentTool("task.tasklist_tasks",
+    Description = "分页列出指定清单内的任务（返回任务摘要；可按完成状态过滤，可翻页）。tasklist_guid 来自 task.tasklist_page_list。只读，需 task:task:readonly。",
+    RequiredScopes = ["task:task:readonly"],
+    Source = nameof(IFeishuTenantV2TaskList) + "." + nameof(IFeishuTenantV2TaskList.GetTaskListPageListByIdAsync))]
+public interface IFeishuTenantTaskTasklistTasksTool
+{
+    /// <summary>列出清单内的任务。</summary>
+    /// <returns>白名单投影后的 JSON 文本（items + 翻页契约）。</returns>
+    Task<string> GetTasklistTasksAsync(
+        [ToolParameter("tasklist_guid", "任务清单全局唯一 GUID（来自 task.tasklist_page_list）", Required = true)] string tasklist_guid,
+        [ToolParameter("completed", "完成状态过滤（可选：true=只返回已完成 / false=只返回未完成；不填不过滤）")] bool? completed = null,
+        [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：task.search_tasks（映射 <c>IFeishuUserV2Task.SearchTasksAsync</c>，user 身份）。</summary>
+[AgentTool("task.search_tasks",
+    Description = "基于关键词与过滤条件搜索当前用户可见的任务（如'找关于合同的未完成任务'）。要求宿主已提供当前用户身份与该用户的用户令牌。只读，需 task:task:readonly。",
+    RequiredScopes = ["task:task:readonly"],
+    Source = nameof(IFeishuUserV2Task) + "." + nameof(IFeishuUserV2Task.SearchTasksAsync))]
+public interface IFeishuUserTaskSearchTasksTool
+{
+    /// <summary>搜索任务。</summary>
+    /// <returns>白名单投影后的 JSON 文本（items + total + 翻页契约）。</returns>
+    Task<string> SearchTasksAsync(
+        [ToolParameter("query", "搜索关键字（可选，长度 0~50 字符；与过滤条件可组合）")] string? query = null,
+        [ToolParameter("assignee_ids", "按负责人 open_id 过滤（可选，数组）")] string[]? assignee_ids = null,
+        [ToolParameter("creator_ids", "按创建人 open_id 过滤（可选，数组）")] string[]? creator_ids = null,
+        [ToolParameter("follower_ids", "按关注人 open_id 过滤（可选，数组）")] string[]? follower_ids = null,
+        [ToolParameter("is_completed", "按完成状态过滤（可选：true=已完成 / false=未完成；不填不过滤）")] bool? is_completed = null,
+        [ToolParameter("due_from", "按截止时间起始过滤（RFC3339，如 2026-10-01T00:00:00+08:00；可选）")] string? due_from = null,
+        [ToolParameter("due_to", "按截止时间截止过滤（RFC3339；可选）")] string? due_to = null,
+        [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：task.set_reminder（映射 <c>IFeishuTenantV2Task.AddTaskReminderByIdAsync</c>）。</summary>
+[AgentTool("task.set_reminder",
+    Description = "为任务添加提醒（提醒时刻 = 截止时间 - relative_fire_minute 分钟；任务必须已有截止时间；每个任务最多 1 个提醒）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
+    RequiredScopes = ["task:task"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV2Task) + "." + nameof(IFeishuTenantV2Task.AddTaskReminderByIdAsync))]
+public interface IFeishuTenantTaskSetReminderTool
+{
+    /// <summary>添加任务提醒。</summary>
+    /// <returns>白名单投影后的 JSON 文本（task_guid/reminder_added + reminders[]：reminder_id/relative_fire_minute）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> SetReminderAsync(
+        [ToolParameter("task_guid", "任务全局唯一 ID（来自 task.create_task 或 task.list_my_tasks）", Required = true)] string task_guid,
+        [ToolParameter("relative_fire_minute", "相对截止时间的提前分钟数（如 30=截止前 30 分钟提醒）", Required = true)] int relative_fire_minute,
+        [ToolParameter("dry_run", "仅预演不添加（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：task.remove_reminder（映射 <c>IFeishuTenantV2Task.RemoveTaskReminderByIdAsync</c>）。</summary>
+[AgentTool("task.remove_reminder",
+    Description = "移除任务的提醒（reminder_ids 来自任务详情；移除不存在的提醒平台直接返回成功）。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。建议先 dry_run 预演确认。",
+    RequiredScopes = ["task:task"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV2Task) + "." + nameof(IFeishuTenantV2Task.RemoveTaskReminderByIdAsync))]
+public interface IFeishuTenantTaskRemoveReminderTool
+{
+    /// <summary>移除任务提醒。</summary>
+    /// <returns>白名单投影后的 JSON 文本（task_guid/removed_count）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> RemoveReminderAsync(
+        [ToolParameter("task_guid", "任务全局唯一 ID（来自 task.create_task 或 task.list_my_tasks）", Required = true)] string task_guid,
+        [ToolParameter("reminder_ids", "要移除的提醒 ID 数组（如 [\"10\"]，取自 task.set_reminder 返回的 reminders[].reminder_id）", Required = true)] string[] reminder_ids,
+        [ToolParameter("dry_run", "仅预演不移除（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>工具接口：task.reopen（映射 <c>IFeishuTenantV2Task.UpdateTaskAsync</c>，update_fields=["completed_at"]）。</summary>
+[AgentTool("task.reopen",
+    Description = "将已完成的任务重新打开（清除完成时间，与 task.complete_task 互为逆操作）。task_guid 来自 task.create_task 或 task.list_my_tasks。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
+    RequiredScopes = ["task:task"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV2Task) + "." + nameof(IFeishuTenantV2Task.UpdateTaskAsync))]
+public interface IFeishuTenantTaskReopenTool
+{
+    /// <summary>重新打开任务。</summary>
+    /// <returns>白名单投影后的 JSON 文本（task_guid/completed=false）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> ReopenTaskAsync(
+        [ToolParameter("task_guid", "任务全局唯一 ID（来自 task.create_task 或 task.list_my_tasks）", Required = true)] string task_guid,
+        [ToolParameter("dry_run", "仅预演不修改（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }

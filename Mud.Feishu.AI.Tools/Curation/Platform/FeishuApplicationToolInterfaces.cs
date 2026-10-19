@@ -7,7 +7,7 @@
 
 namespace Mud.Feishu.AI.Tools.Curation;
 
-// ─────────────────────────── Application · 飞书应用管理（B1 第二个补域） ───────────────────────────
+// ─────────────────────────── Application · 飞书应用管理 ───────────────────────────
 
 /// <summary>
 /// 工具接口：application.list_apps（映射 <c>IFeishuTenantV6ApplicationAdmin.GetApplicationsPageListAsync</c>）。
@@ -185,7 +185,7 @@ public interface IFeishuTenantApplicationGetAppVersionTool
 // 与 ChatGroup 写面同款：SDK XML 注释里**没有任何 scope 字面量**（全目录搜 `xxx:yyy:zzz` 零命中，
 // 只有「需要申请『获取用户 user ID』权限」这类自然语言）⇒ 按官方 API 文档取应用管理写权限并标 ⚠️ 待核对。
 //
-// ⚠️ 本轮**刻意不做**的 17 个写方法（理由写进 Guidance，不做静默缺口）：
+// ⚠️ **刻意不做**的 17 个写方法（理由写进 Guidance，不做静默缺口）：
 //    · update_owner / update_collaborators：改群主/协作者属高危管理动作，但 SDK 注释连自然语言权限都没给；
 //    · update_contacts_range / update_app_info / update_app_version_status / set_app_badge /
 //      apply_scope / update_feedback_status：配置面，价值低于可见性与管理开关；

@@ -15,11 +15,9 @@ namespace Mud.Feishu.AI.AgentTools;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>为什么码表在飞书侧（独立产品线纪律，2026-10-14）</b>：中立的 <c>Mud.AI.Agent</c> 不得持有
-/// 任何产品码语义——否则 P3 上游化（迁独立 Mud.AI 仓与包）时码表会被一并带走，且只能由
-/// "知道全部产品"的中立包维护。码表经 <see cref="ToolApiFailure"/> 随解包结果传给中立层，
-/// 中立层只消费已分类的读数（v2.3 P1-D 的 <c>ForbiddenApiCodes</c>/<c>RetryableApiCodes</c>/
-/// <c>ToolErrorCodeMeta</c> 三处即此表的旧家）。
+/// <b>码表必须在飞书侧（产品线归属）</b>：中立的 <c>Mud.AI.Agent</c> 不得持有任何产品码语义——
+/// 产品码表只能由"知道全部产品"的产品侧维护，中立层不得携带产品事实（否则中立包无法独立上游化）。
+/// 码表经 <see cref="ToolApiFailure"/> 随解包结果传给中立层，中立层只消费已分类的读数。
 /// </para>
 /// <para>
 /// <b>收录纪律（比官方更严）</b>：<b>只收本仓有实证的码</b>——即能在仓库内找到
@@ -40,7 +38,7 @@ internal static class FeishuApiErrorVocabulary
     private static readonly int[] ForbiddenApiCodes = [99991663, 99991661];
 
     /// <summary>
-    /// 飞书<b>可重试</b>业务码（E-2 扩展）：<c>99991400</c> = 平台系统繁忙（限流/过载）。
+    /// 飞书<b>可重试</b>业务码：<c>99991400</c> = 平台系统繁忙（限流/过载）。
     /// </summary>
     /// <remarks>
     /// <b>证据</b>：<c>documents/ApiDocs</c> 的接口文档明确写"…（如 <b>99991400 系统繁忙</b>、
@@ -59,17 +57,15 @@ internal static class FeishuApiErrorVocabulary
     /// <b>证据出处（每条都必须能追溯到仓库内的书面依据）</b>：
     /// <list type="bullet">
     /// <item><c>99991400</c>（系统繁忙）——<c>documents/ApiDocs</c> 的 Lingo 文件下载接口文档：
-    /// "HTTP 200 + JSON 错误体场景（如 <b>99991400 系统繁忙</b>、99991672 无权限等业务错误）"；
-    /// 且 R7 方案文档以它作为 <c>rate_limited</c> 载荷示例。</item>
+    /// "HTTP 200 + JSON 错误体场景（如 <b>99991400 系统繁忙</b>、99991672 无权限等业务错误）"。</item>
     /// <item><c>99991672</c>（无权限）——同上文档句："…<b>99991672 无权限</b>等业务错误"。</item>
     /// <item><c>99991663</c> / <c>99991661</c>（权限类）——见上方 <c>ForbiddenApiCodes</c> 的既有实证。</item>
     /// </list>
     /// </para>
     /// <para>
     /// <b>为什么不按域铺码</b>：本仓<b>没有任何</b>域专属码样本（全仓检索仅命中上述 4 个码）。
-    /// 凭域铺码会产出"猜测性码表"——正是风险登记里"codemeta 码表猜测性错误 → 误导模型"的那一条。
-    /// 故按<b>实际拿到样本</b>的粒度收录，并在《工具错误契约》文档中登记"域专属码表待样本"
-    /// 这一开放项（<c>ToolErrorContractGuards</c> 断言"条目必须有证据来源"）。
+    /// 凭域铺码会产出"猜测性码表"，把模型引向错误处置。故按<b>实际拿到样本</b>的粒度收录，
+    /// 并在《工具错误契约》文档中登记"域专属码表待样本"这一开放项——码表条目必须有证据来源。
     /// </para>
     /// </remarks>
     private static readonly Entry[] Entries =

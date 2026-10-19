@@ -45,10 +45,10 @@ internal static class FeishuToolDiagnostics
     /// <summary>Span 属性：结果是否被截断。</summary>
     public const string TagTruncated = "feishu.tool.truncated";
 
-    /// <summary>Span 属性：风险分级（AT-B13；取自 Schema 的 <c>x-feishu.risk</c>）。</summary>
+    /// <summary>Span 属性：风险分级（取自 Schema 的 <c>x-feishu.risk</c>）。</summary>
     public const string TagRisk = "feishu.tool.risk";
 
-    /// <summary>Span 属性：本条调用的实际尝试次数（B3 限流退避；1 = 未发生重试）。</summary>
+    /// <summary>Span 属性：本条调用的实际尝试次数（1 = 未发生重试）。</summary>
     public const string TagAttempts = "feishu.tool.attempts";
 
     /// <summary>判定值：放行。</summary>
@@ -64,7 +64,7 @@ internal static class FeishuToolDiagnostics
     /// <param name="appKey">应用唯一标识。</param>
     /// <param name="requiredScopes">所需权限点（审计消费）。</param>
     /// <param name="isWrite">是否写操作。</param>
-    /// <param name="risk">风险分级（AT-B13；传 <see langword="null"/> 时不写该属性）。</param>
+    /// <param name="risk">风险分级（传 <see langword="null"/> 时不写该属性）。</param>
     /// <returns>Activity（可能为 null）。</returns>
     public static Activity? StartToolActivity(
         string toolName,
@@ -88,8 +88,8 @@ internal static class FeishuToolDiagnostics
     }
 
     /// <summary>
-    /// P1D-5：记录一次工具执行计数（<c>feishu.tool.executions</c>；维度 tool/app_key/outcome——
-    /// 高基数纪律（原则 8）：conversation_key/chat_id/user_id 不入 tags）。
+    /// 记录一次工具执行计数（<c>feishu.tool.executions</c>；维度 tool/app_key/outcome——
+    /// 高基数纪律：conversation_key/chat_id/user_id 不入 tags）。
     /// </summary>
     /// <param name="toolName">工具名。</param>
     /// <param name="appKey">应用唯一标识。</param>
@@ -106,7 +106,7 @@ internal static class FeishuToolDiagnostics
     }
 
     /// <summary>
-    /// P1D-5：记录一次工具执行耗时（<c>feishu.tool.duration</c> 毫秒直方图；维度 tool/app_key）。
+    /// 记录一次工具执行耗时（<c>feishu.tool.duration</c> 毫秒直方图；维度 tool/app_key）。
     /// </summary>
     /// <param name="toolName">工具名。</param>
     /// <param name="appKey">应用唯一标识。</param>
@@ -122,8 +122,8 @@ internal static class FeishuToolDiagnostics
     }
 
     /// <summary>
-    /// R3-12：记录一次降级路径计数（<c>feishu.agent.tool.degraded</c>；维度 app_key/reason——
-    /// 高基数纪律（原则 8）：维度不得含键/用户标识。reason 取值见 <see cref="FeishuMetrics.DegradedReasons"/>。
+    /// 记录一次降级路径计数（<c>feishu.agent.tool.degraded</c>；维度 app_key/reason——
+    /// 高基数纪律：维度不得含键/用户标识。reason 取值见 <see cref="FeishuMetrics.DegradedReasons"/>。
     /// </summary>
     /// <param name="appKey">应用唯一标识。</param>
     /// <param name="reason">降级原因（<see cref="FeishuMetrics.DegradedReasons"/> 受控枚举）。</param>
@@ -142,8 +142,8 @@ internal static class FeishuToolDiagnostics
 
     private static void RecordDegradedCore(string? appKey, string reason)
     {
-        // 标签顺序与改造前保持一致（app_key 在前）——时间序列维度的顺序不影响语义，
-        // 但保持现状可避免任何按标签序列比对的外部断言意外失配。
+        // 标签顺序固定为 app_key 在前——时间序列维度的顺序不影响语义，
+        // 但保持该顺序可避免任何按标签序列比对的外部断言意外失配。
         var tags = new TagList();
         if (!string.IsNullOrEmpty(appKey))
         {

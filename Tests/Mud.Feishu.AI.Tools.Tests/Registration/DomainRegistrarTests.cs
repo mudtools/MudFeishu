@@ -29,7 +29,13 @@ public class DomainRegistrarTests
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1Message>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableAppTable>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableField>().Object)
-            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableRecord>().Object);
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableRecord>().Object)
+            // T-2 表格加深：BitableDeepTools（17 个工具：7 只读 + 10 写）的 4 个必选客户端——
+            // 在场才会注册；缺席时深化工具静默不注册（与视图侧"软依赖"不同，这里要覆盖"齐备"路径）。
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableForm>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableDashboard>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.Interfaces.IFeishuTenantV1BitableWorkflow>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV2BitableRole>().Object);
     }
 
     [Fact]
@@ -46,8 +52,20 @@ public class DomainRegistrarTests
 
              // R5 / F-11：视图侧是**软依赖**（可空），故视图客户端缺席时这两个工具
              // 仍会注册在案（软缺席 = 执行期报错，而非"工具不存在"）。
-             FeishuToolNames.BitableListViews, FeishuToolNames.BitableGetView],
-            "单域注册：其余域工具不进注册表（域客户端缺席 → 注册器缺席）");
+             FeishuToolNames.BitableListViews, FeishuToolNames.BitableGetView,
+
+             // T-2 表格加深：BitableDeepTools 全域 17 个（7 只读 + 10 写）——该 Core 只读链与按域
+             // 入口都登记，客户端齐备时必须全量在案（缺席任一只会整批静默消失，那是假绿）。
+             FeishuToolNames.BitableFormGet, FeishuToolNames.BitableFormQuestionList,
+             FeishuToolNames.BitableDashboardList, FeishuToolNames.BitableWorkflowList,
+             FeishuToolNames.BitableWorkflowBlockList, FeishuToolNames.BitableRoleList,
+             FeishuToolNames.BitableRoleMemberList,
+             FeishuToolNames.BitableFormUpdate, FeishuToolNames.BitableFormUpgrade,
+             FeishuToolNames.BitableFormQuestionUpdate, FeishuToolNames.BitableDashboardCopy,
+             FeishuToolNames.BitableWorkflowUpdate, FeishuToolNames.BitableRoleCreate,
+             FeishuToolNames.BitableRoleUpdate, FeishuToolNames.BitableRoleDelete,
+             FeishuToolNames.BitableRoleMemberAdd, FeishuToolNames.BitableRoleMemberRemove],
+            "单域注册：其余域工具不进注册表（域客户端缺席 → 注册器缺席）；记录批处理等写链工具也不在此入口");
         registry.EnabledTools.Should().BeEmpty();
     }
 
@@ -81,6 +99,18 @@ public class DomainRegistrarTests
             FeishuToolNames.DriveListFolderFiles, FeishuToolNames.DriveGetFileMetas,
             FeishuToolNames.KnowledgeSearch,
             FeishuToolNames.SheetsListSheets, FeishuToolNames.SheetsGetRangeValues,
+
+            // T-2 表格加深：Bitable 深化 7 个只读工具（BitableDeepTools 的只读面）——纳入等价性
+            // 对比，避免"新工具未被覆盖"的假绿（10 个写面属白名单门控，本用例只覆盖注册面只读样例）。
+            FeishuToolNames.BitableFormGet, FeishuToolNames.BitableFormQuestionList,
+            FeishuToolNames.BitableDashboardList, FeishuToolNames.BitableWorkflowList,
+            FeishuToolNames.BitableWorkflowBlockList, FeishuToolNames.BitableRoleList,
+            FeishuToolNames.BitableRoleMemberList,
+
+            // T-2 表格加深：Sheets 深化 6 个只读工具（SheetsDeepTools 的只读面）——同上。
+            FeishuToolNames.SheetsCondFormatGet, FeishuToolNames.SheetsDataValidationGet,
+            FeishuToolNames.SheetsProtectedGet, FeishuToolNames.SheetsFilterGet,
+            FeishuToolNames.SheetsFloatImageGet, FeishuToolNames.SheetsFloatImageQuery,
 
             // R7 / C3：AI 文本面两个工具（独立只读域）——纳入等价性对比，避免"新域未被覆盖"的假绿。
             FeishuToolNames.AiTranslateText, FeishuToolNames.AiDetectLanguage,
@@ -117,6 +147,14 @@ public class DomainRegistrarTests
 
             // hire Offer 列表（**PII**，默认不启用；只给状态不给条件）。
             FeishuToolNames.HireListOffers,
+
+            // T-3 三域成环：task 清单/搜索 4 个只读 + mail 规则/模板/签名/附件 5 个只读——
+            // 纳入等价性对比，避免"新工具未被覆盖"的假绿（写面 24 个属白名单门控，不在本样例清单）。
+            FeishuToolNames.TaskTasklistGet, FeishuToolNames.TaskTasklistPageList,
+            FeishuToolNames.TaskTasklistTasks, FeishuToolNames.TaskSearchTasks,
+            FeishuToolNames.MailRuleList, FeishuToolNames.MailTemplateList,
+            FeishuToolNames.MailTemplateGet, FeishuToolNames.MailSignatureList,
+            FeishuToolNames.MailGetAttachmentUrl,
         };
 
         var mockClients = new Action<IServiceCollection>(services =>
@@ -128,6 +166,12 @@ public class DomainRegistrarTests
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableAppTable>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableField>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableRecord>().Object);
+            // T-2 表格加深：BitableDeepTools 4 个必选客户端——白名单里已列 7 个只读深化工具，
+            // 客户端缺席会在白名单映射期 fail-fast（"未注册工具"），故必须在场。
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableForm>().Object);
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1BitableDashboard>().Object);
+            services.AddSingleton(new Mock<Mud.Feishu.Interfaces.IFeishuTenantV1BitableWorkflow>().Object);
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV2BitableRole>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1Docx>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DocxBlocks>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV2WikiNodes>().Object);
@@ -136,6 +180,12 @@ public class DomainRegistrarTests
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1ChatGroupMember>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3Spreadsheets>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3SpreadsheetData>().Object);
+            // T-2 表格加深：SheetsDeepTools 5 个必选客户端——同上（白名单里已列 6 个只读深化工具）。
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV2SpreadsheetConditionFormat>().Object);
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV2SpreadsheetDataValidation>().Object);
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV2SpreadsheetProtected>().Object);
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3SpreadsheetFilter>().Object);
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3SpreadsheetFloatImage>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DriveFolder>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DriveFiles>().Object);
             services.AddSingleton(new Mock<Mud.AI.Abstractions.Knowledge.IRetriever>().Object);
@@ -144,6 +194,14 @@ public class DomainRegistrarTests
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4ApprovalTask>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV2Task>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuUserV2Task>().Object);
+            // T-3 三域成环：TaskDeepTools 的清单客户端是**必选**依赖（缺席则整批 tasklist 工具静默不注册，
+            // 白名单里的 task.tasklist_* 会在映射期 fail-fast）；mail 深化的 5 个客户端全为软依赖，不在场也注册。
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV2TaskList>().Object);
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuUserV1MailDraft>().Object);
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1MailMessage>().Object);
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1MailRule>().Object);
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1MailTemplate>().Object);
+            services.AddSingleton(new Mock<Mud.Feishu.IFeishuUserV1MailTemplate>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4CalendarEvent>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV4Calendar>().Object);
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV3User>().Object);
@@ -166,14 +224,23 @@ public class DomainRegistrarTests
             services.AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1HireJobRequirement>().Object);
         });
 
+        // T-3 起本清单含 identity=user 的工具（task.search_tasks / mail.signature_list）：
+        // 身份闭集默认只放 tenant，装配期会 fail-fast——两个提供者共用同一份 options，避免配置漂移。
+        var sharedOptions = Options.Create(new FeishuAgentOptions
+        {
+            Instructions = "test",
+            Tools = allDomainOptions,
+            AllowedIdentities = ["tenant", "user"],
+        });
+
         using var singleEntryProvider = new ServiceCollection()
-            .AddSingleton(Options.Create(new FeishuAgentOptions { Instructions = "test", Tools = allDomainOptions }))
+            .AddSingleton(sharedOptions)
             .Apply(mockClients)
             .AddFeishuTools()
             .BuildServiceProvider();
 
         using var perDomainProvider = new ServiceCollection()
-            .AddSingleton(Options.Create(new FeishuAgentOptions { Instructions = "test", Tools = allDomainOptions }))
+            .AddSingleton(sharedOptions)
             .Apply(mockClients)
             // ── 公开入口清单（16 个：逐域 12 + 全域 2 + 元工具 2）──
             // "全域 = 逐域联合"的等价性要求**每个公开入口都被显式调一次**；

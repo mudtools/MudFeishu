@@ -67,13 +67,15 @@ as a checklist, not advice:
 
 The three neutral projects `Mud.AI.Abstractions`, `Mud.AI.Agent`, `Mud.AI.Generator` and their two
 test projects were migrated to their own repository (`D:\Repos\MudAIAgent`; package ids, namespaces
-and assembly names **unchanged**, own `1.0.0` version line). This repo consumes them as **NuGet
+and assembly names **unchanged**, own `1.0.x` version line). This repo consumes them as **NuGet
 packages** (no `ProjectReference` remains):
 
-- `nuget.config` adds a **local folder source** `mud-ai-local` → `D:\Repos\MudAIAgent\artifacts`
-  (phase 4 publishing is out of scope; the packages are produced there with
-  `dotnet pack Mud.AI.slnx -c Release -o artifacts`).
-- Consuming projects pin the version explicitly (`Version="1.0.0"`, **never floating**):
+- Consumed from **nuget.org** — the temporary `mud-ai-local` folder source has been removed from
+  `nuget.config` now that `1.0.x` is published. The sibling repo still packs with
+  `dotnet pack Mud.AI.slnx -c Release -o artifacts`, and a local round-trip can re-declare that
+  folder source in `nuget.config`; nothing in the build reads `D:\Repos\*` unless `nuget.config`
+  declares it.
+- Consuming projects pin the version explicitly (`Version="1.0.1"`, **never floating**):
   `Mud.Feishu.AI`, `Mud.Feishu.AI.Tools`, `Tests/Mud.Feishu.AI.Tests`, `Demos/ToolSurfaceDemo`.
   `Mud.AI.Generator` is referenced in **Analyzer** form
   (`OutputItemType="Analyzer" ReferenceOutputAssembly="false"`).
@@ -202,12 +204,13 @@ by default. Adaptation (plan: `.docs/MudHttpUtils-3.0.0-破坏性变更改造计
 **必须先查该两份文档再动代码**，防止约束漂移。3.0.7 适配时点对本仓的逐条结论见
 `.docs/MudFeishu-MudHttpUtils-3.0.7-适配说明.md`。
 
-Mud.HttpUtils **3.0.7 is being consumed from the local debug pack**
-(`mudhttputils-local` → `D:/Repos/MudHttpUtils/artifacts-debug`, re-added to `nuget.config`
-2026-10-15 for the pre-release adaptation cycle; the global cache entry for 3.0.7 is SHA256-identical
-to that pack). **Remove the local source from `nuget.config` once 3.0.7 is confirmed on nuget.org**
-and re-run `dotnet restore` so the build consumes the published package. To consume a newer
-component version: bump the
+Mud.HttpUtils **3.0.7 is consumed from nuget.org** — the `mudhttputils-local` folder source
+(`D:/Repos/MudHttpUtils/artifacts-debug`, used for the 2026-10-15 pre-release adaptation cycle) has been
+removed from `nuget.config`. `verify-build.ps1` step 0 (CACHE-1) compares a local pack against the
+global package cache **only for folder sources that `nuget.config` declares**, and prints `[SKIP]` for a
+nuget.org-only configuration — a stale sibling `D:/Repos/*` directory must never be able to fail the
+gate (the comparison target no longer exists, so clearing the cache cannot fix it = false red). To
+consume a newer component version: bump the
 version in the `PackageReference`s and, optionally, sync `AGENTS.md` / the README dependency tables
 (`README.md` / `README_EN.md` / `Mud.Feishu/README.md`) — the docs are **not** gated (a wrong version
 number there has no runtime impact and must not block an upgrade). The contract guard

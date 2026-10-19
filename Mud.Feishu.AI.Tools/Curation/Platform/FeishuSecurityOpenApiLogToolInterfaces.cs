@@ -7,7 +7,7 @@
 
 namespace Mud.Feishu.AI.Tools.Curation;
 
-// ─────────────── security · 应用 API 调用日志（F-1 收官切片） ───────────────
+// ─────────────── security · 应用 API 调用日志 ───────────────
 
 /// <summary>
 /// 工具接口：security.list_openapi_logs（映射 <c>IFeishuTenantV1SecurityOpenApiLog.ListOpenApiLogDataAsync</c>）。
@@ -19,7 +19,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// 缺它时模型只能让用户"去看日志"，拿不到证据。
 /// </para>
 /// <para>
-/// <b>PII 纪律（DP-A5-1 档位 ①）</b>：结果含调用方 IP，且日志详情里的 <c>payload</c> / <c>response</c> /
+/// <b>PII 纪律</b>：结果含调用方 IP，且日志详情里的 <c>payload</c> / <c>response</c> /
 /// <c>query_param</c> 可能携带业务数据（甚至个人信息）⇒ 属 PII 出口：<b>默认不启用</b>（需宿主显式加入
 /// <c>FeishuAgent:Tools</c>），描述必须声明"结果进第三方模型上下文"（由 <c>PiiToolDisciplineContractGuards</c> 机械锁定），
 /// 并在 <c>scope-authority.json</c> 的 <c>piiTools</c> 登记。
@@ -30,7 +30,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// 需要完整载荷时应走宿主的日志系统，而不是让模型上下文承载原始请求体。
 /// </para>
 /// <para>
-/// <b>DP-B1-0 页不进</b>：只暴露 <c>page_token</c>，页大小固定走 SDK 默认（10）。
+/// <b>页大小不进参数面</b>：只暴露 <c>page_token</c>，页大小固定走 SDK 默认（10）。
 /// </para>
 /// </remarks>
 [AgentTool("security.list_openapi_logs",

@@ -7,14 +7,14 @@
 
 namespace Mud.Feishu.AI.Tools.Curation;
 
-// ─────────────────────────── MDM · 国家/地区（F-1 首个补域） ───────────────────────────
+// ─────────────────────────── MDM · 国家/地区 ───────────────────────────
 
 /// <summary>
 /// 工具接口：mdm.get_countries（映射 <c>IFeishuTenantV3MDMCountryRegion.GetBatchCountryRegionAsync</c>）。
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>F-1 补域首个切片</b>：MDM（主数据）此前零覆盖。本域先只策展<b>只读</b>的"国家/地区主数据"查询——
+/// <b>MDM 域首个切片</b>：本域只策展<b>只读</b>的"国家/地区主数据"查询——
 /// 它是飞书内的权威地区口径（行政编码 + 多语言名称 + ISO 代码 + 大洲），
 /// 用于把 <c>MDCT</c> 编码或地区口径换成可读名称（多语言回复、地区归类、时区/区号辅助判断）。
 /// </para>
@@ -24,8 +24,8 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// </para>
 /// <para>
 /// <b>有意不策展</b>：同域的 <c>IFeishuTenantV1MDMUserAuthDataRelation</c>（用户数据维度绑定/解绑）
-/// 是<b>写类</b>且涉及用户 ID，按"写面需宿主显式授权 + 默认不启用"的纪律另立批次；
-/// <c>ListCountryRegionsAsync</c>（带 filter 表达式体的分页查询）留待下一片（先验证本切片流水线）。
+/// 是<b>写类</b>且涉及用户 ID，按"写面需宿主显式授权 + 默认不启用"的纪律不属本只读面；
+/// <c>ListCountryRegionsAsync</c>（带 filter 表达式体的分页查询）亦不在本切片范围。
 /// </para>
 /// </remarks>
 [AgentTool("mdm.get_countries",

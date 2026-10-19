@@ -7,7 +7,7 @@
 
 namespace Mud.Feishu.AI.Tools.Curation;
 
-// ─────────────────────────── Aily · 智能伙伴数据知识（B2 补全域） ───────────────────────────
+// ─────────────────────────── Aily · 智能伙伴数据知识 ───────────────────────────
 
 // 命名口径：工具名前缀 aily ⇒ 常量 FeishuToolNames.Aily*、参数类 Aily*Args、
 // DI 入口 AddFeishuAilyToolsCore（执行器类 AilyTools）；SDK 接口名
@@ -20,11 +20,11 @@ namespace Mud.Feishu.AI.Tools.Curation;
 //   ③ 「这个词是什么意思」走 lingo.*（人工维护的企业词典术语）；
 //   ④ 「文档在哪、知识空间结构」走 wiki.* 与 search.doc_wiki。
 //
-// ⚠️ 本轮**刻意不做**（理由写进 Guidance，不做静默缺口）：
+// ⚠️ **刻意不做**（理由写进 Guidance，不做静默缺口）：
 //    · ask_data_knowledge：返回 HttpResponseMessage SSE 流，模型侧无法消费裸流；
 //    · upload_data_asset_file / create_agent_attachment：`[FormContent]` + `[FilePath]` 本地路径，模型侧不可达；
 //    · create/delete_data_asset、agent/session/skill 三族的会话与技能写面：属"对话编排"面，
-//      价值低于数据知识清单，且 delete_data_asset 命中危险词需 affordance——单独一轮做。
+//      价值低于数据知识清单，且 delete_data_asset 命中危险词需 affordance——不在本面策展。
 
 /// <summary>
 /// 工具接口：aily.list_data_assets（映射 <c>IFeishuTenantV1AilyDataKnowledge.GetDataAssetPageListAsync</c>）。

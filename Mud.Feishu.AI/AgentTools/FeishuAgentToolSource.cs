@@ -17,7 +17,7 @@ namespace Mud.Feishu.AI.AgentTools;
 /// <c>ChatOptions.Tools</c>。未注册任何工具源时保持裸模型行为。
 /// </para>
 /// <para>
-/// <b>容器作用域契约（P2-10）</b>：两个方法收到的 <c>serviceProvider</c> 是
+/// <b>容器作用域契约</b>：两个方法收到的 <c>serviceProvider</c> 是
 /// <b>根容器</b>——<c>FeishuAgent</c> 自身是 Singleton，聚合在首次解析时一次完成。
 /// 实现<b>只能解析 Singleton</b> 协作件（当前执行链协作件均为 Singleton，
 /// 见 <c>FeishuToolsServiceCollectionExtensions</c>）；解析 Scoped 服务在启用
@@ -41,7 +41,7 @@ public abstract class FeishuAgentToolSource
     /// <remarks>
     /// <para>
     /// 默认返回空集（不注入任何域资产）——未注册工具包、或工具包未提供 guidance 时，
-    /// 指令装配与 完全一致（零行为变化）。
+    /// 指令装配与未提供 guidance 的默认行为完全一致（零行为变化）。
     /// </para>
     /// <para>
     /// 为什么由<b>工具源</b>提供而不是让 AI 底座去查域表：域 guidance 的真相源

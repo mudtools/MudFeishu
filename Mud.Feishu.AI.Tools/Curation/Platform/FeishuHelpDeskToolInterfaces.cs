@@ -7,7 +7,7 @@
 
 namespace Mud.Feishu.AI.Tools.Curation;
 
-// ─────────────────────────── Helpdesk · 飞书服务台（B1 第三个补域） ───────────────────────────
+// ─────────────────────────── Helpdesk · 飞书服务台 ───────────────────────────
 
 /// <summary>
 /// 工具接口：helpdesk.search_faqs（映射 <c>IFeishuTenantV1HelpDeskFaq.SearchFaqAsync</c>）。
@@ -116,7 +116,7 @@ public interface IFeishuTenantHelpdeskListCategoriesTool
 /// <para>
 /// <b>有意不返回</b>：备注正文（<c>comments.content</c>）、工单消息对话、
 /// 客户自定义字段值、以及客户 / 客服的<b>邮箱 · 部门 · 城市 · 国家</b>。
-/// 这些属于"工单内容与客户画像"，按仓库的 PII 纪律另立批次评审后交付
+/// 这些属于"工单内容与客户画像"，属敏感面，不在本工具返回（PII 纪律约束）
 /// （半开比不开更危险：模型会以为"这就是全部工单信息"）。
 /// </para>
 /// </remarks>
@@ -157,16 +157,16 @@ public interface IFeishuTenantHelpdeskListAgentSkillsTool
 // ① scope 同样**零字面量**（SDK 注释只给"需要操作者是当前服务台的管理员或所有者"这类自然语言）
 //    ⇒ 按官方 API 文档取服务台权限并标 ⚠️ 待核对；
 // ② **只做 tenant 侧动作**：服务台 30 个写方法里有 26 个在 `IFeishuUserV1HelpDesk*`
-//    （`[Token(UserAccessToken)]` + `ICurrentUserId`），需要用户身份上下文——本轮不纳入（见下）；
+//    （`[Token(UserAccessToken)]` + `ICurrentUserId`），需要用户身份上下文——本面不纳入（见下）；
 // ③ 工单**正文/客户对话仍不出站**（沿用读面纪律）：`msg_type=post` 的富文本只回执 message_id，
 //    不回原文内容。
 //
-// ⚠️ 本轮**刻意不做**（理由写进 Guidance，不做静默缺口）：
+// ⚠️ **刻意不做**（理由写进 Guidance，不做静默缺口）：
 //    · `update_ticket` / `create_faq` / `update_faq` / `delete_faq` / `create_category` /
 //      `update_category` / `delete_category` / `update_agent_info` / `*_agent_schedule` /
 //      `*_agent_skill` / `*_customized_field` / `*_notification` / `*_event`：全部落在
 //      **User 侧接口**（需 user_access_token + 当前用户身份上下文，且 Notification/Event
-//      还需 `X-Lark-Helpdesk-Authorization` 头）——属"身份上下文"前置，单独一轮做；
+//      还需 `X-Lark-Helpdesk-Authorization` 头）——属"身份上下文"前置，不在本面策展；
 //    · 其中 7 个命中危险词（delete_faq / delete_category / delete_agent_skill /
 //      delete_agent_schedule / delete_customized_field / cancel_notification_send /
 //      cancel_notification_approve），纳入时**必须**各配四节 affordance 资产。

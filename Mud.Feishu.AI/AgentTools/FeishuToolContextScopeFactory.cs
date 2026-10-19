@@ -16,9 +16,9 @@ namespace Mud.Feishu.AI.AgentTools;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>N4 管线中立化的接缝适配器</b>：事件薄壳把「工具执行上下文的建立」交由管线经
+/// <b>接缝适配器</b>：事件薄壳把「工具执行上下文的建立」交由管线经
 /// <see cref="ITurnScopeFactory"/> 端口回调；本适配器是唯一的飞书投影点——
-/// 中立管线不命名任何产品类型，产品侧 <c>AsyncLocal</c> 语义原样保留（R3-10 所有权校验在内）。
+/// 中立管线不命名任何产品类型，产品侧 <c>AsyncLocal</c> 语义原样保留（含所有权校验）。
 /// </para>
 /// <para>
 /// <b>internal</b>：仅被本工程的会话事件薄壳装配（宿主经构造参数 <c>toolContextAccessor</c>

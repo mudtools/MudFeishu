@@ -7,13 +7,13 @@
 
 namespace Mud.Feishu.AI.Tools.Curation;
 
-// ─────────────── hire · 招聘（F-1 P0 首批切片：职位/岗位，只读） ───────────────
+// ─────────────── hire · 招聘（首批切片：职位/岗位，只读） ───────────────
 //
 // Hire 是 SDK 里最大的域（165 个方法）。首批只策展**职位（job）**这一层，理由：
 //   • 职位/岗位是**组织对外信息**，不含候选人个人信息 ⇒ 非 PII，可以放心进入模型上下文；
-//   • 候选人（candidate）/ 投递 / Offer / 面试 涉及大量个人信息，属下一批的 PII 纪律范围，
+//   • 候选人（candidate）/ 投递 / Offer / 面试 涉及大量个人信息，属 PII 纪律范围，
 //     一次性铺开会同时引入 100+ 方法与一整套 PII 出口，违反"每片可验证"的切片原则。
-// 故本批 2 个工具 + 后续批次按"先组织、后个人"推进。
+// 故按"先组织、后个人"推进——本层（职位）即 2 个工具，PII 层随后逐片策展。
 
 /// <summary>
 /// 工具接口：hire.list_jobs（映射 <c>IFeishuTenantV1HireJob.GetJobListAsync</c>）。
@@ -76,7 +76,7 @@ public interface IFeishuTenantHireGetJobTool
 /// （目的：定位与概览需求）。裁剪后本工具不进 PII 登记。
 /// </para>
 /// <para>
-/// <b>DP-B1-0</b>：只暴露 <c>page_token</c>（+ 业务过滤 <c>job_id</c>），页大小走 SDK 默认。
+/// <b>页大小不进参数面</b>：只暴露 <c>page_token</c>（+ 业务过滤 <c>job_id</c>），页大小走 SDK 默认。
 /// </para>
 /// </remarks>
 [AgentTool("hire.list_job_requirements",
@@ -109,9 +109,9 @@ public interface IFeishuTenantHireListJobRequirementsTool
 /// <b>PII 且"只给状态不给条件"</b>：某人是否拿到 Offer 属个人信息 ⇒ <b>默认不启用</b>（piiTools 登记）。
 /// 好消息是本接口返回的 <see cref="OfferListInfo"/> <b>结构上就不含薪资与 Offer 条件</b>
 /// （薪资在 <c>ApplicationOfferSalaryPlan</c>，只在 Offer 详情结构里）——故本工具天然落在
-/// 纪律 26/28 的"最小充分集"上：只回状态相关字段，不做任何金额投影。
+/// 纪律的"最小充分集"上：只回状态相关字段，不做任何金额投影。
 /// </para>
-/// <para><b>DP-B1-0</b>：只暴露 <c>page_token</c>（页大小走 SDK 默认）。</para>
+/// <para><b>页大小不进参数面</b>：只暴露 <c>page_token</c>（页大小走 SDK 默认）。</para>
 /// </remarks>
 [AgentTool("hire.list_offers",
     Description = "按人才 ID 查询其【Offer 列表】（Offer ID、投递 ID、岗位 ID/名称、Offer 状态、Offer 类型、创建时间）。offer_status 含义：2=审批中 / 3=审批已撤回 / 4=审批通过 / 5=审批不通过 / 6=已发送 / 7=被接受 / 8=被拒绝 / 9=已失效 / 10=已创建。⚠️ 该工具属 PII：某人是否获得 Offer 属个人信息，会进入【第三方模型上下文】；【默认不启用】，需宿主显式加入白名单并确认合规口径；**Offer 薪资与条件一律不返回**（本接口亦不含）。只读，需 hire:offer:readonly。",
@@ -140,15 +140,15 @@ public interface IFeishuTenantHireListOffersTool
 /// 缺它时模型只能拿职位/候选人硬凑，答不出**安排**。
 /// </para>
 /// <para>
-/// <b>PII（DP-A5-1 档位 ①）</b>：面试安排本身即"某人正在应聘某职位"的事实 ⇒ <b>默认不启用</b>，
+/// <b>PII 纪律</b>：面试安排本身即"某人正在应聘某职位"的事实 ⇒ <b>默认不启用</b>，
 /// 需宿主显式加白名单；描述必须声明后果。
 /// </para>
 /// <para>
-/// <b>投影纪律（纪律 26"目的判据"）</b>：只保留**安排三要素**——时间（起止）、轮次（<c>round</c> +
+/// <b>投影纪律（"目的判据"）</b>：只保留**安排三要素**——时间（起止）、轮次（<c>round</c> +
 /// <c>round_type</c>）、阶段（<c>stage</c>）；<b>面试记录 / 评价正文 / 备注 / 联系人手机 / 面试官 /
 /// 会议室与地址一律不返回</b>：评价是对人的主观判断，地址与联系人手机与"知不知道面试安排"无关。
 /// </para>
-/// <para><b>DP-B1-0</b>：只暴露 <c>page_token</c>；<c>application_id</c> / 时间窗是业务过滤，可下发。</para>
+/// <para><b>页大小不进参数面</b>：只暴露 <c>page_token</c>；<c>application_id</c> / 时间窗是业务过滤，可下发。</para>
 /// </remarks>
 [AgentTool("hire.list_interviews",
     Description = "分页查询【面试安排】（面试 ID、投递 ID、轮次 round 与 round_type 名称、阶段 stage、开始/结束时间（毫秒时间戳）、安排状态）——用于回答「今天/本周有哪些面试」「某投递面到哪一轮」。可用 application_id 只查某投递，用 start_time/end_time（毫秒时间戳字符串）限定时间窗。⚠️ 该工具属 PII：面试安排即「某人正在应聘」的事实，会进入【第三方模型上下文】；【默认不启用】，需宿主显式加入白名单并确认合规口径；面试评价/记录/备注/联系人手机/面试官/会议室一律不返回。只读，需 hire:interview:readonly。",
@@ -168,10 +168,10 @@ public interface IFeishuTenantHireListInterviewsTool
         CancellationToken cancellationToken = default);
 }
 
-// ─────────────── hire · 候选人（talent）：PII 首批切片 ───────────────
+// ─────────────── hire · 候选人（talent）：PII 面 ───────────────
 //
 // 与"职位"不同，候选人**是个人信息**：姓名、手机、邮箱、学历、工作经历、身份证号……
-// 故本批按 DP-A5-1 档位 ① 落地（三处登记缺一不可，由 PiiToolDisciplineContractGuards 机械锁定）：
+// 故按 PII 纪律落地（三处登记缺一不可，由 PiiToolDisciplineContractGuards 机械锁定）：
 //   ① 默认不启用——piiTools 登记（scope-authority.json），需宿主显式加入 FeishuAgent:Tools；
 //   ② 描述必须声明"结果进第三方模型上下文"的后果；
 //   ③ 投影**白名单化**——身份证号 / 性别 / 年龄 / 国籍 / 籍贯 / 学历 / 工作经历 / 作品 / 获奖 / 附件

@@ -18,7 +18,7 @@ namespace Mud.Feishu.AI.AgentTools;
 /// 使"风险单调可比较"——配置键 <c>FeishuAgent:MaxToolRisk</c> 的判定依赖该序关系。
 /// </para>
 /// <para>
-/// <b>归属（BUG-1 / 方案 C）</b>：本枚举与 <see cref="FeishuToolRiskNames"/> /
+/// <b>归属</b>：本枚举与 <see cref="FeishuToolRiskNames"/> /
 /// <see cref="FeishuToolIdentityNames"/> / <see cref="ContentSafetyModes"/> 同属"策略词汇"，
 /// 由 AI 侧（<c>FeishuAgentOptions.Validate</c>、<c>FeishuToolDiagnostics</c>、执行链策略轴）消费，
 /// 故落在 <c>Mud.Feishu.AI.AgentTools</c>；工具面（<c>FeishuToolDefinition.Risk</c>）与 MCP

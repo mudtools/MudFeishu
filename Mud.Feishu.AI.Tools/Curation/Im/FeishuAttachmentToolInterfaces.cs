@@ -8,7 +8,7 @@
 namespace Mud.Feishu.AI.Tools.Curation;
 
 // <summary>
-// WP7 上传类工具接口集（AT-F07 的上传部分 / AT-F08）：im.send_image / im.send_file。
+// 上传类工具接口集：im.send_image / im.send_file。
 // </summary>
 // <remarks>
 // <para>
@@ -18,7 +18,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // </para>
 // <para>
 // <b>落盘由宿主负责</b>：URL → 本地文件的下载/落盘/校验经
-// <c>IFeishuAttachmentStager</c>（宿主实现，见 WP7 的 U-5 取舍）；宿主未注册时本组工具
+// <c>IFeishuAttachmentStager</c>（宿主实现）；宿主未注册时本组工具
 // <b>不注册</b>（软缺席）。
 // </para>
 // </remarks>

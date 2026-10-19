@@ -12,16 +12,8 @@
 	<ItemGroup>
 		<!-- SDK 程序集：Tier R 能力目录按程序集名 == SdkNamespaceRoot 定位它 -->
 		<ProjectReference Include="..\Mud.Demo.Sdk\Mud.Demo.Sdk.csproj" />
-		<!-- 引导契约（ISdkToolProfile / [SdkToolProfile] / SdkTokenKind / TokenKindDerivationStrategy）
-		     所在包——Mud.AI.Abstractions（独立仓 NuGet 包；引擎按 `Mud.AI.ISdkToolProfile`
-		     + `Mud.AI.Attributes.SdkToolProfileAttribute` 发现剖面，指向组件包会零产出）。 -->
 		<PackageReference Include="Mud.AI.Abstractions" Version="1.0.1" />
-		<!-- v2.3 P1-B：demo 随 ToolSurface 竖井自组件仓迁入飞书仓；Mud.AI 家族独立化后，
-		     [Get]/[Delete]/[Path] 仍是组件仓 HTTP 契约的编译期事实，故保留组件包引用
-		     （Mud.HttpUtils.Attributes 3.0.7，与全仓同版本）；工具面**引擎**则消费独立仓的
-		     Mud.AI.Generator NuGet 分析器包（跨仓）。
-		     ⚠ 禁兼引：不得再引用组件侧 Mud.HttpUtils.Generator（同名 hintName 产物冲突）。 -->
-		<PackageReference Include="Mud.HttpUtils.Attributes" Version="3.0.7" />
+		<PackageReference Include="Mud.HttpUtils.Attributes" Version="3.0.8" />
 		<PackageReference Include="Mud.AI.Generator" Version="1.0.1" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 	</ItemGroup>
 
@@ -36,9 +28,6 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<!-- Tier R 能力目录开关（剖面 CapabilityCatalogPropertyName 槽）：
-		     §5.3 v2.1 消费方注册义务——组件侧不预注册消费方属性，须由消费方自行
-		     CompilerVisibleProperty 注册（属性值定义见上方 PropertyGroup）。 -->
 		<CompilerVisibleProperty Include="DemoToolCatalog" />
 	</ItemGroup>
 

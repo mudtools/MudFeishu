@@ -140,7 +140,7 @@ internal sealed class ConsoleRenderer
     /// 打印输入提示符（不换行；由 REPL 在 <see cref="Console.ReadLine"/> 之前调用）。
     /// </summary>
     /// <param name="label">提示符文本。</param>
-    public void InputPrompt(string label = "you › ")
+    public void InputPrompt(string label = "you > ")
     {
         lock (_sync)
         {
@@ -154,7 +154,7 @@ internal sealed class ConsoleRenderer
     public void UserEcho(string text)
     {
         // 用户输入可能被粘贴进含控制码的内容（从文档复制的文本），同样过滤。
-        WriteLine($"you › {StripAnsi(text)}", ConsoleColor.Cyan);
+        WriteLine($"you > {StripAnsi(text)}", ConsoleColor.Cyan);
     }
 
     /// <summary>打印回答起始标记。</summary>

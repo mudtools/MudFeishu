@@ -36,6 +36,10 @@ internal static class McpProtocol
     /// <summary>默认（也是声明支持的最高）协议版本。</summary>
     public const string DefaultVersion = Version20250618;
 
+    /// <summary>新修订差异评估流程（"加版决策"唯一入口）。</summary>
+
+    public const string VersionForwardCompatNote = "见 XML 文档：新修订差异评估清单（加版决策唯一入口）";
+
     /// <summary><c>initialize</c>：会话握手（客户端第一条请求）。</summary>
     public const string MethodInitialize = "initialize";
 
@@ -60,6 +64,10 @@ internal static class McpProtocol
     /// <c>resources/read</c>：读取资源正文（未知 URI 回 <c>-32602</c> + 合法前缀清单）。
     /// </summary>
     public const string MethodResourcesRead = "resources/read";
+
+    /// <summary><c>notifications/cancelled</c>：客户端取消请求。</summary>
+    /// <remarks>stdio 下不处理（顺序模型下读循环阻塞在处理内）；HTTP 下经请求中止天然获得。</remarks>
+    public const string MethodNotificationsCancelled = "notifications/cancelled";
 
     /// <summary>JSON-RPC 2.0：请求体不是合法 JSON。</summary>
     public const int ErrorParseError = -32700;

@@ -5,35 +5,42 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
+using System.Text;
+using System.Text.Encodings.Web;
+
 namespace Mud.Feishu.AI.Mcp;
 
 /// <summary>
-/// stdio 传输的 MCP 宿主循环：<b>一行一条 JSON-RPC 消息</b>（MCP stdio 的线格式），
-/// 读 → 处理 → 写响应 → flush。
+/// stdio 传输的 MCP 宿主循环：<b>一行一条 JSON-RPC 消息</b>，读 → 处理 → 写响应 → flush。
 /// </summary>
 /// <remarks>
-/// <para>
-/// <b>为什么逐行顺序处理（不做并发）</b>：MCP stdio 的响应靠 <c>id</c> 关联，理论上可乱序；
-/// 但工具执行会切换租户上下文（<c>AsyncLocal</c> + <c>BeginScope</c>），并发处理会让
-/// "同一进程内的不同调用"共享同一份租户状态，一旦有实现缺陷就变成跨租户串号。
-/// 顺序处理把该风险从"依赖实现正确"降为"结构上不存在"；代价是吞吐，而 MCP 的调用形态
-/// （Agent 逐个工具调用）对吞吐不敏感。
-/// </para>
-/// <para>
-/// <b>EOF 即正常退出</b>：客户端关闭 stdin（<c>ReadLineAsync</c> 返回 <see langword="null"/>）时，
-/// 宿主循环以返回已处理条数的方式结束——这是 MCP stdio 的标准终止方式，不是错误。
-/// </para>
-/// <para>
-/// <b>不释放宿主 writer</b>：<c>Console.Out</c> 由进程持有，包装它的 <see cref="TextWriter"/>
-/// 若被本类释放会连带影响调用方后续输出——故本类对 writer 只写不关。
-/// </para>
+/// <para><b>逐行顺序处理（不做并发）</b>：工具执行会切换租户上下文（<c>AsyncLocal</c>），
+/// 并发处理会让不同调用共享租户状态——顺序处理把跨租户串号风险从"依赖实现正确"降为"结构上不存在"。</para>
+/// <para><b>有界读</b>：超过 <see cref="FeishuMcpServerOptions.MaxRequestBytes"/> 的行不累积
+/// （继续读到行尾保持边界同步），回 <c>-32600</c> 并继续。取消经断开 stdin 表达（stdio 下 <c>notifications/cancelled</c> 不适用）。</para>
 /// </remarks>
 public sealed class FeishuMcpStdioHost
 {
+    /// <summary>单条请求的默认字符上限（与配置默认值一致；未注入 options 时使用）。</summary>
+    private const int DefaultMaxRequestChars = 1_048_576;
+
+    /// <summary>线协议序列化选项：保留中文原文（与 <c>FeishuMcpToolServer</c> 的 WireOptions 同纪律）。</summary>
+    private static readonly JsonSerializerOptions WireOptions = new()
+    {
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        WriteIndented = false,
+    };
+
     private readonly FeishuMcpToolServer _server;
     private readonly TextReader _input;
     private readonly TextWriter _output;
     private readonly ILogger? _logger;
+    private readonly int _maxRequestChars;
+
+    /// <summary>流读取缓冲（跨行复用：一次 ReadAsync 可能带回多行）。</summary>
+    private readonly char[] _readBuffer = new char[512];
+    private int _readBufferCount;
+    private int _readBufferOffset;
 
     /// <summary>
     /// 初始化 <see cref="FeishuMcpStdioHost"/>。
@@ -42,16 +49,23 @@ public sealed class FeishuMcpStdioHost
     /// <param name="input">输入（通常 <c>Console.In</c>）。</param>
     /// <param name="output">输出（通常 <c>Console.Out</c>）。</param>
     /// <param name="logger">日志（可空）。</param>
+    /// <param name="options">MCP 配置（可空；仅用于读取单条请求的字符上限，缺省时用内置默认值）。</param>
     public FeishuMcpStdioHost(
         FeishuMcpToolServer server,
         TextReader input,
         TextWriter output,
-        ILogger<FeishuMcpStdioHost>? logger = null)
+        ILogger<FeishuMcpStdioHost>? logger = null,
+        IOptions<FeishuMcpServerOptions>? options = null)
     {
         _server = server ?? throw new ArgumentNullException(nameof(server));
         _input = input ?? throw new ArgumentNullException(nameof(input));
         _output = output ?? throw new ArgumentNullException(nameof(output));
         _logger = logger;
+
+        // 上限语义 = 字符数（每个 char 2 字节，内存上界约 2×配置值）；
+        // 纯 ASCII 请求下字符数 == 字节数，含中文时按字符计更保守（字符数 ≤ 字节数）。
+        var configured = options?.Value?.MaxRequestBytes ?? 0;
+        _maxRequestChars = configured > 0 ? configured : DefaultMaxRequestChars;
     }
 
     /// <summary>
@@ -65,11 +79,22 @@ public sealed class FeishuMcpStdioHost
 
         while (!cancellationToken.IsCancellationRequested)
         {
-            var line = await _input.ReadLineAsync().ConfigureAwait(false);
+            var (line, overflow) = await ReadBoundedLineAsync().ConfigureAwait(false);
+
             if (line is null)
             {
                 // EOF：客户端关闭了 stdin（MCP stdio 的标准终止方式）。
                 break;
+            }
+
+            if (overflow)
+            {
+                // 超限：回 -32600 并继续；不记完整内容（超长行可能是攻击载荷），只记上限。
+                _logger?.LogWarning("MCP stdio 请求超过 {Max} 字符上限，已拒绝该行", _maxRequestChars);
+                await _output.WriteLineAsync(BuildOversizedEnvelope()).ConfigureAwait(false);
+                await _output.FlushAsync().ConfigureAwait(false);
+                handled++;
+                continue;
             }
 
             if (string.IsNullOrWhiteSpace(line))
@@ -92,5 +117,69 @@ public sealed class FeishuMcpStdioHost
 
         _logger?.LogInformation("MCP stdio 会话结束：已处理 {Count} 条请求", handled);
         return handled;
+    }
+
+    /// <summary>有界读一行：最多累积 <see cref="_maxRequestChars"/> 个字符；超限仍读到行尾以保持边界同步。</summary>
+    /// <returns><c>Line</c> 为行文本（EOF 且无内容时为 <see langword="null"/>）；<c>Overflow</c> 为是否超限。</returns>
+    private async Task<(string? Line, bool Overflow)> ReadBoundedLineAsync()
+    {
+        var builder = new StringBuilder();
+        var overflow = false;
+        var sawAny = false;
+
+        while (true)
+        {
+            if (_readBufferOffset >= _readBufferCount)
+            {
+                // 缓冲耗尽：从流再读一块（可能带回多行，未消费部分留在缓冲里供下次使用）。
+                _readBufferCount = await _input.ReadAsync(_readBuffer, 0, _readBuffer.Length).ConfigureAwait(false);
+                _readBufferOffset = 0;
+
+                if (_readBufferCount == 0)
+                {
+                    // EOF：有内容则是"无换行结尾的最后一行"，否则返回 null 表示输入结束。
+                    return sawAny ? (builder.ToString(), overflow) : (null, false);
+                }
+            }
+
+            var ch = _readBuffer[_readBufferOffset++];
+            sawAny = true;
+
+            if (ch == '\n')
+            {
+                return (builder.ToString(), overflow);
+            }
+
+            if (ch == '\r')
+            {
+                // 兼容 CRLF：\r 不入行内容（与 ReadLine 一致）。
+                continue;
+            }
+
+            if (builder.Length >= _maxRequestChars)
+            {
+                overflow = true;
+                continue; // 丢弃超限后的字符，但继续读到行尾（保持行边界同步）。
+            }
+
+            builder.Append(ch);
+        }
+    }
+
+    /// <summary>构造"请求过大"的 JSON-RPC 错误响应（<c>-32600</c>；无 <c>id</c>，因行内容已被丢弃）。</summary>
+    private string BuildOversizedEnvelope()
+    {
+        // AOT 安全：JsonNode 有自定义 converter，不触发反射序列化。
+        var message = "请求超过 " + _maxRequestChars.ToString(CultureInfo.InvariantCulture) + " 字符上限，已拒绝";
+        return new JsonObject
+        {
+            ["jsonrpc"] = "2.0",
+            ["id"] = null,
+            ["error"] = new JsonObject
+            {
+                ["code"] = -32600,
+                ["message"] = message,
+            },
+        }.ToJsonString(WireOptions);
     }
 }

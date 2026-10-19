@@ -58,7 +58,8 @@ public static class McpServiceCollectionExtensions
             sp.GetRequiredService<FeishuMcpToolServer>(),
             Console.In,
             Console.Out,
-            sp.GetService<ILogger<FeishuMcpStdioHost>>()));
+            sp.GetService<ILogger<FeishuMcpStdioHost>>(),
+            sp.GetService<IOptions<FeishuMcpServerOptions>>()));
 
         return services;
     }
@@ -87,8 +88,43 @@ public static class McpServiceCollectionExtensions
             server,
             input ?? Console.In,
             output ?? Console.Out,
-            services.GetService<ILogger<FeishuMcpStdioHost>>());
+            services.GetService<ILogger<FeishuMcpStdioHost>>(),
+            services.GetService<IOptions<FeishuMcpServerOptions>>());
 
+        return host.RunAsync(cancellationToken);
+    }
+
+    /// <summary>注册 MCP HTTP 传输宿主（R-7/A）；须先调用 <see cref="AddFeishuMcpServer"/>。</summary>
+
+    public static IServiceCollection AddFeishuMcpHttpHost(this IServiceCollection services)
+    {
+        if (services is null)
+            throw new ArgumentNullException(nameof(services));
+
+        if (!services.Any(descriptor => descriptor.ServiceType == typeof(FeishuMcpToolServer)))
+        {
+            throw new InvalidOperationException(
+                "请先调用 AddFeishuMcpServer()——HTTP 宿主依赖其注册的协议层服务端（FeishuMcpToolServer）");
+        }
+
+        services.TryAddSingleton(sp => new FeishuMcpHttpHost(
+            sp.GetRequiredService<FeishuMcpToolServer>(),
+            sp.GetRequiredService<IOptions<FeishuMcpServerOptions>>(),
+            sp.GetService<ILogger<FeishuMcpHttpHost>>()));
+
+        return services;
+    }
+
+    /// <summary>解析并运行 MCP HTTP 宿主到取消。</summary>
+
+    public static Task RunFeishuMcpHttpAsync(
+        this IServiceProvider services,
+        CancellationToken cancellationToken = default)
+    {
+        if (services is null)
+            throw new ArgumentNullException(nameof(services));
+
+        var host = services.GetRequiredService<FeishuMcpHttpHost>();
         return host.RunAsync(cancellationToken);
     }
 }

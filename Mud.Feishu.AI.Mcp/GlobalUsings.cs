@@ -9,7 +9,6 @@ global using Microsoft.Extensions.AI;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Logging;
 global using Microsoft.Extensions.Options;
-// 域 guidance 装配机制位于 Mud.AI.Agent.Guidance。
 global using Mud.AI.Agent.Guidance;
 global using Mud.Feishu.AI.Agents;
 global using Mud.Feishu.AI.Mcp;

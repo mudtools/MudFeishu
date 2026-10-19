@@ -103,7 +103,10 @@ public class PublicSurfaceRationaleContractGuards
     // T-4 三域补齐（2026-10-19）：403 → **415**——12 个新工具声明面 public 接口
     // （wiki 6 + approval 2 + vc 4，全部登记在 reasons 段）；
     // Mud.Feishu.AI.Tools 346 → 358（Mud.Feishu.AI 50 / Mud.Feishu.AI.Mcp 7 不变）。
-    private const int BaselineTypeCount = 415;
+    // R-7 MCP 功能完善（2026-10-19）：415 → **416**——新增 HTTP 传输宿主
+    // FeishuMcpHttpHost（public；登记在 public-surface-rationale.json 的 reasons 段）；
+    // Mud.Feishu.AI.Mcp 7 → 8（Mud.Feishu.AI.Tools 358 / Mud.Feishu.AI 50 不变）。
+    private const int BaselineTypeCount = 416;
 
     /// <summary>反射实测的公开面来源程序集（= 原台账覆盖面：三个飞书发布包）。</summary>
     private static readonly string[] ProductAssemblies =

@@ -284,6 +284,7 @@
                      "Mud.Feishu.AI.Tools.Catalog.ToolSchemaDialect"
                  ],
     "reasons":  {
+                     "Mud.Feishu.AI.Mcp.FeishuMcpHttpHost":  "R-7 MCP 功能完善（2026-10-19）：HTTP 传输宿主（Streamable HTTP 可用子集：POST 单请求-响应）——把进程外 Agent 从“同机 stdio 进程”扩展到“远程 / 容器化”。消费方：① AddFeishuMcpHttpHost + RunFeishuMcpHttpAsync 装配入口；② McpTransportParityContractGuards（stdio/HTTP 工具面逐字节一致）与 McpHttpConcurrencyContractGuards；③ 宿主把 MCP 端点挂到自己的反向代理 / HTTP 管道（认证与 TLS 由宿主承担）。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantBitableFormGetTool":  "T-2 表格加深（2026-10-16）：bitable.form_get 的工具契约（表单读取——只读表单元数据，不触发任何写）。消费方：① 生成器声明面（编译期契约/注册器聚合）；② FeishuToolRegistry 白名单装配与 MCP server tools/list；③ DomainRegistrarTests 与 ToolSourceConsistency 守卫、权限对照表守卫。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantBitableFormQuestionListTool":  "T-2 表格加深（2026-10-16）：bitable.form_question_list 的工具契约（表单项列表——含分页游标，只读）。消费方：① 生成器声明面（编译期契约/注册器聚合）；② FeishuToolRegistry 白名单装配与 MCP server tools/list；③ DomainRegistrarTests 与 ToolSourceConsistency 守卫、权限对照表守卫。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantBitableDashboardListTool":  "T-2 表格加深（2026-10-16）：bitable.dashboard_list 的工具契约（仪表盘列表——只读）。消费方：① 生成器声明面（编译期契约/注册器聚合）；② FeishuToolRegistry 白名单装配与 MCP server tools/list；③ DomainRegistrarTests 与 ToolSourceConsistency 守卫、权限对照表守卫。",
@@ -407,7 +408,8 @@
                      "Mud.Feishu.AI.Agents.FeishuToolPolicyDomainOptions":  "S-1：工具策略的域级子节（FeishuAgent:ToolPolicy:Domains）。消费方同 FeishuToolPolicyOptions（域轴先于工具名轴求值，拒绝原因更精确）。",
                      "Mud.Feishu.AI.Tools.Catalog.GuidanceRoutingSummary":  "BUG-4 / §7.4：L1 guidance → 一行路由摘要的推导函数。消费方：① 进程内 FeishuToolAIFunction.GetGuidance（GuidanceMode=routing 时）；② MCP 协议层 FeishuMcpToolServer.BuildInstructions（InstructionsMode=routing 时）。两条链位于不同程序集却必须共用同一实现——各自实现会产生同一份资产的两种摘要（第二真相源），故公开。",
                      "Mud.Feishu.AI.Mcp.FeishuMcpResourceCatalog":  "M-2：MCP resources 能力（域 guidance / per-tool affordance / 域 scope 对照 / 错误契约）。消费方：① FeishuMcpToolServer（resources/list 与 resources/read 的实现来源）；② 宿主自建 MCP 前端（可复用同一目录，避免重写 URI 模板与可见性规则）；③ McpResourceContractGuards。",
-                     "Mud.Feishu.AI.Mcp.McpResourceInfo":  "M-2：resources/list 的条目模型（uri / name / description / mimeType / sizeBytes）。消费方：① FeishuMcpResourceCatalog.Resources；② 宿主的 MCP 客户端 UI（按 sizeBytes 决定「按需读哪几个」——方案 §10 的「客户端盲目全读」对策）；③ McpResourceContractGuards。",
+                     "Mud.Feishu.AI.Mcp.McpResourceInfo":  "M-2：resources/list 的条目模型（uri / name / description / mimeType / sizeBytes）。消费方：① FeishuMcpResourceCatalog.Resources；② 宿主的 MCP 客户端 UI（按 sizeBytes 决定「按需读哪几个」——方案 §10 的「客户端盲目全读」对策）；③ McpResourceContractGuards。"
+,
                 "Mud.Feishu.AI.Tools.Curation.IFeishuTenantImEditMessageTool":  "T-3 三域成环（2026-10-16）：im.edit_message 的工具契约（改已发消息正文（原地编辑，不撤回））。消费方：① 生成器声明面（编译期契约/注册器聚合）；② FeishuToolRegistry 白名单装配与 MCP server tools/list；③ DomainRegistrarTests 与 ToolSourceConsistency 守卫、权限对照表守卫。",
                 "Mud.Feishu.AI.Tools.Curation.IFeishuTenantImPatchCardMessageTool":  "T-3 三域成环（2026-10-16）：im.patch_card_message 的工具契约（更新已发送卡片的内容）。消费方：① 生成器声明面（编译期契约/注册器聚合）；② FeishuToolRegistry 白名单装配与 MCP server tools/list；③ DomainRegistrarTests 与 ToolSourceConsistency 守卫、权限对照表守卫。",
                 "Mud.Feishu.AI.Tools.Curation.IFeishuTenantImUrgentAppTool":  "T-3 三域成环（2026-10-16）：im.urgent_app 的工具契约（应用内加急（打扰强度低的一档））。消费方：① 生成器声明面（编译期契约/注册器聚合）；② FeishuToolRegistry 白名单装配与 MCP server tools/list；③ DomainRegistrarTests 与 ToolSourceConsistency 守卫、权限对照表守卫。",

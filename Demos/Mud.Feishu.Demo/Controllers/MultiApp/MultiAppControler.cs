@@ -7,6 +7,7 @@
 
 using Microsoft.AspNetCore.Mvc;
 using Mud.Feishu.Abstractions;
+using Mud.HttpUtils;
 
 namespace Mud.Feishu.Demo.Controllers.MultiApp;
 
@@ -15,10 +16,12 @@ namespace Mud.Feishu.Demo.Controllers.MultiApp;
 public class MultiAppControler : ControllerBase
 {
     private readonly IFeishuAppManager _feishuAppManager;
+    private readonly IServiceProvider _serviceProvider;
 
-    public MultiAppControler(IFeishuAppManager feishuAppManager)
+    public MultiAppControler(IFeishuAppManager feishuAppManager, IServiceProvider serviceProvider)
     {
         _feishuAppManager = feishuAppManager;
+        _serviceProvider = serviceProvider;
     }
 
     /// <summary>
@@ -32,7 +35,11 @@ public class MultiAppControler : ControllerBase
     {
         try
         {
-            var tenantJobTitleApi = _feishuAppManager.GetWebApi<IFeishuTenantV3JobTitle>("hr-app");
+            // 上游 3.0.8 移除 IAppManager.GetWebApi 后改用「切换并保持」替代路径：
+            // SwitchToApp 执行完整守卫并切换上下文，随后从 DI 解析目标应用的 API 客户端。
+            var holder = _serviceProvider.GetRequiredService<IAppContextHolder>();
+            holder.SwitchToApp("hr-app", _feishuAppManager, _serviceProvider);
+            var tenantJobTitleApi = _serviceProvider.GetRequiredService<IFeishuTenantV3JobTitle>();
             var result = await tenantJobTitleApi.GetJobTitlesListAsync(10, null);
             if (result == null)
             {

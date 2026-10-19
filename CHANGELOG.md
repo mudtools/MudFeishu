@@ -9,8 +9,9 @@
 
 **重大功能版本 —— 新增 AI 能力。** `Mud.Feishu.AI`（Agent 运行时）、`Mud.Feishu.AI.Tools`（工具面）与
 `Mud.Feishu.AI.Mcp`（MCP 服务器）三个新包随本版首次发布：在 .NET 服务里嵌入飞书智能体、让模型安全地
-调用飞书 API，或把飞书工具经 MCP 接给任意 Agent 框架。本次发布**无破坏性变更**：AI 系列包为首次发包、
-无历史兼容负担；核心 SDK 包（`Mud.Feishu`、`Mud.Feishu.Abstractions`、`Mud.Feishu.Redis` 等）可直接升级。
+调用飞书 API，或把飞书工具经 MCP 接给任意 Agent 框架。AI 系列包为首次发包、**无破坏性变更**；
+核心 SDK 包（`Mud.Feishu`、`Mud.Feishu.Abstractions`、`Mud.Feishu.Redis` 等）可直接升级，唯一迁移点是
+随 `Mud.HttpUtils` 3.0.8 移除的三个上下文切换成员（见「变更」）。
 
 ### 亮点
 
@@ -53,6 +54,12 @@
 
 - **OpenTelemetry 装配内核统一**：非法配置由静默忽略改为注册期即抛 `OptionsValidationException`；
   请择一注册 OpenTelemetry 装配（与 `AddMudHttpOpenTelemetry` 并用会重复导出）。
+- **上下文切换成员随 `Mud.HttpUtils` 3.0.8 移除**：`FeishuAppManager` 的 `GetWebApi` / `GetDefaultWebApi` /
+  `RegisterSwitcherFactory` 已删除（上游 3.0.8 物理移除基类成员，本仓重写同批删除）。
+  迁移路径：DI 解析 `IAppScopeSwitcher` + `UseAppScope(appKey)` / `UseDefaultAppScope()`（自动归还上下文），
+  或 `IAppContextHolder.SwitchToApp(appKey, appManager, sp)`（受控切换并保持）。
+- **文档与示例改写**：调用点统一为「先切换上下文、再从 DI 解析 API 客户端」形态（README 中 / 英、
+  `Mud.Feishu` README、多应用示例控制器）。
 
 ### 修复（Fixed）
 
@@ -70,9 +77,69 @@
 - 新增 `Microsoft.Agents.AI` **1.25.0**（Agent 运行时底座），配套升级 `Microsoft.Extensions.*`
   **10.0.12**、`Microsoft.Extensions.AI.Abstractions` **10.10.1**、`System.Text.Json` **10.0.12**。
 - 新增 `Microsoft.ML.Tokenizers.Data.O200kBase`：精确 token 计数词表。
-- `Mud.HttpUtils*` 保持全仓单一版本 **3.0.7**（含 `Mud.HttpUtils.Resilience` 弹性策略，随包传递）。
+- `Mud.HttpUtils*` 全仓单一版本升级 **3.0.7** → **3.0.8**（`Mud.HttpUtils` 与 `Mud.HttpUtils.Generator`
+  必须同版本；含 `Mud.HttpUtils.Resilience` 弹性策略，随包传递）。
 
----
+## [3.0.4] - 2026-10-18
+
+> 主题：**源码注释治理落地**（注释纪律规范 + `audit-comments` 审计脚本 + L3 决策档案）与
+> **WebSocket 心跳/观测修正**。
+> 本版**无对外契约变更**：公开 API 签名、运行时行为与包依赖版本均不变；改动集中在注释面、
+> 内部文档与示例工程依赖对齐。
+
+### 新增（Added）
+
+**注释纪律（Comment discipline）**
+
+- 新增规范性文档 `documents/代码注释规范.md`：注释三条判据、L0~L4 分层模型、R-01~R-12 硬性规则、
+  `[Obsolete]` 消息模板、术语表、逐行豁免机制，以及「必须保留的约束」白名单（附录 A）与
+  规则 → 脚本模式映射（附录 B）。
+- 新增审计脚本 `scripts/audit-comments.ps1`（报告 / `-Strict` 门禁 / `-ListAll` 三种运行模式），
+  接入点写定为 `scripts/verify-build.ps1` 步骤 1.5 与 CI 流水线。
+- 新增存量基线 `scripts/comment-baseline.txt`：命中按**内容哈希**冻结（重排版与行号漂移不使基线失效），
+  **只减不增**（`-UpdateBaseline` 在基线变大时以 exit 2 拒绝）。本次治理后基线已**清零**
+  （初始 980 条 / 1020 命中 → **0 条 / 0 命中**）。
+- 新增逐行豁免标记 `// comment-allow: <原因>`（原因必填，禁止整文件豁免）。
+- 新增 **L3 决策档案** `documents/决策档案/`：`README.md`（落点约定）、`编号索引.md`（内部编号反查表）、
+  `上游契约适配史.md`、`迁移与弃用史.md`、`注释精简归档.md`——版本适配史、缺陷复盘与验收记录
+  统一迁出源码注释。
+- `AGENTS.md` 增补「注释纪律（Comment discipline）」章节（判据、门禁接入、决策档案落点）。
+
+### 变更（Changed）
+
+- **全仓手写源码注释收敛为「契约 + 约束」**：覆盖 8 个交付项目 **172 个源文件**
+  （删除 2037 行、净减 482 行）。移出内容：内部分支/任务编号（`BC-*`、`U-*`、`C-*`、`F-*`、
+  `TMA*`、`TMF*`、`TMR*`、`WHF-*`、`WS-*`、`P0-/P1-/P2-*` 等）、
+  「修复前 / 改造前 / 原实现」式缺陷复盘、`documents/…` 与 `.docs/…` 内部文档路径、
+  `// ─────` 式装饰分节线；保留不可从代码推断的约束（锁序、原子性、幂等、顺序依赖、
+  AOT 抑制理由、安全语义）。
+  涉及 `Mud.Feishu.Abstractions`（多应用管理、令牌存储与编解码、服务注册、事件解析、指标）、
+  `Mud.Feishu.Redis`、`Mud.Feishu.Webhook`、`Mud.Feishu.WebSocket`、`Mud.Feishu.Authentication`、
+  `Mud.Feishu.DataModels`（查询 DTO）与 `Mud.Feishu/Interfaces/**`（接口契约注释）。
+  令牌存储相关约束（存储形态只经 `TokenStoreHelper` 编解码、CAS 能力面探测必须落在未装饰的原始 store）
+  措辞压缩但语义本体保留。
+- **注释审计脚本修正**：`<remarks>` 的**开闭同行**单行块不再遗留 `$remarksOpen` 悬挂状态——
+  此前会把其下方 8 行块并入统计并误报为「82 行」长度（同类单行块 25 处，影响命中行号与长度）。
+- **`scripts/verify-build.ps1` 本地源判空修正**：无本地源时改为「先判空再 `Test-Path`」，
+  消除 `Test-Path ''` 抛出的「Path 参数为 null 或为空集合」（CI 与已移除本地源的开发机均会命中）。
+
+### 修复（Fixed）
+
+- **心跳循环捕获调用方 `SynchronizationContext` 导致 Ping 被推迟**（`HeartbeatManager`）：
+  循环内 `await` 一律改为 `ConfigureAwait(false)`——后台循环的续体不得 Post 回调用方上下文
+  （UI 线程 / 旧 ASP.NET 请求上下文 / 测试进程内 xUnit 并发闸门），该上下文被占满时发 Ping 的续体
+  会排队等待配额（实测 5s 间隔在 10s 预算内仍未送达）。新增回归守卫
+  `HeartbeatManagerProtoBufTests.StartHeartbeatAsync_ShouldNotCaptureCallerSynchronizationContext`，
+  并放宽 WebSocket 集成测试握手预算。
+- **删除恒为 `null` 的 `ProcessingTask` 分支**（`BinaryMessageProcessor`）：该属性从未赋值、
+  分支从不执行，属纯死代码；二进制路由结果由 `RouteBinaryMessageWithResultAsync` 的返回值处理。
+
+### 构建（Build）
+
+- 示例工程 `Mud.Feishu.*` 包引用对齐：`FeishuFileServer` / `FeishuOAuthDemo` / `FeishuWikiManager` /
+  `TaskManageDemo` → **3.0.3**；`Mud.Feishu.Webhook.Demo` → **3.0.1**。
+- `FeishuWebhookServiceBuilder` 为「已删除配置键名」与过渡期 `[Obsolete]` 开关补 `audit-allow` 逐行标记，
+  使 `audit-config-keys.ps1` 可精确放行而无需整文件豁免。
 
 ## [3.0.3] - 2026-10-15
 

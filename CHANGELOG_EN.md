@@ -1,366 +1,187 @@
 # Mud.Feishu Change Log
 
-## [Unreleased] - Curation declaration surface grouped into six concern directories (D-1, 2026-10-12)
+All notable changes to Mud.Feishu are documented in this file. The format follows [Keep a Changelog],
+and versioning follows [Semantic Versioning].
 
-> Plan and guard rework: `documents/AIAgent/MudFeishu-AI-Tools-Tools目录重组方案.md` §八 (D-1 revision).
-> **Structure only**: public type/member names, the tool-name set, every Schema and the golden
-> snapshot are unchanged (`PublicAPI.Unshipped.txt` and `FeishuToolSchemas.golden.txt` diff = 0;
-> `MUDFT014` not raised).
+[Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
+[Semantic Versioning]: https://semver.org/
 
-### ♻️ Structural changes
+## [3.1.0] - 2026-10-19
 
-- **27 flat `Curation/Feishu*ToolInterfaces.cs` files → six concern directories**: `Im/` (IM + mail),
-  `Docs/` (docx / sheets / wiki / drive / bitable), `Collab/` (calendar / board / minutes / vc /
-  task / okr), `People/` (contact / hire / org / attendance / mdm), `Platform/` (ai / capability /
-  schema / security / spark / knowledge), `Core/` (cross-domain: search / approval). One file per
-  domain is kept inside each group; the namespace stays **flat**
-  (`Mud.Feishu.AI.Tools.Curation`) ⇒ no FQN changes, `PublicAPI` needs no rewrite.
-- **4 cross-domain mixed files split by domain** (27 → 35 files; 182 interfaces and 182 tool names
-  unchanged): `FeishuToolInterfaces.cs` (six domains in one file) →
-  `Docs/Feishu{Bitable,Docx,Sheets}Read*` + `Docs/FeishuWikiToolInterfaces.cs` +
-  `Im/FeishuImToolInterfaces.cs` + `Core/FeishuSearchToolInterfaces.cs`; `FeishuWriteToolInterfaces.cs`
-  → `Im/FeishuImWriteToolInterfaces.cs` + `Core/FeishuApprovalToolInterfaces.cs`;
-  `FeishuDocxSheetsDriveToolInterfaces.cs` → `Docs/Feishu{Docx,Sheets,Drive}WriteToolInterfaces.cs`;
-  `FeishuMailToolInterfaces.cs`'s Contact-department and Approval-instance tools moved to
-  `People/FeishuContactDepartmentToolInterfaces.cs` and `Core/FeishuApprovalToolInterfaces.cs`.
-- Pre-namespace `using` directives (e.g. `using Mud.Feishu.Interfaces;`) are carried over to every
-  target file.
+**Major feature release — AI capabilities.** Three new packages ship for the first time with this
+version: `Mud.Feishu.AI` (agent runtime), `Mud.Feishu.AI.Tools` (tool surface) and `Mud.Feishu.AI.Mcp`
+(MCP server) — embed a Feishu agent in your .NET service, let the model call Feishu APIs safely, or
+expose Feishu tools over MCP to any agent framework. The AI packages are first releases with **no
+breaking changes**; the core SDK packages (`Mud.Feishu`, `Mud.Feishu.Abstractions`, `Mud.Feishu.Redis`,
+etc.) can be upgraded directly — the only migration point is the three context-switching members
+removed with `Mud.HttpUtils` 3.0.8 (see "Changed").
 
-### 🧪 Tests and gates
+### Highlights
 
-- **3 `SearchOption.TopDirectoryOnly` → `AllDirectories`** (`ToolArgumentShapeContractGuards` ×2,
-  `ToolScopeDeclarationContractTests`, `ExecutorDomainPurityContractTests`): with group directories
-  the top level holds 0 `.cs` files, so the old enumeration let "contract-only", "namespace match"
-  and "baseline file/interface counts" invariants **pass vacuously (`0 == 0`)**.
-- Baseline identity now uses **relative paths** (`Curation/<Group>/<File>.cs`) plus a new
-  "exactly one group level + group whitelist" assertion; new
-  `CurationFiles_ShouldKeepEachInterfaceWithItsAttribute` (per-file `[FeishuTool]` count must equal
-  `public interface` count — a mis-sliced split leaves an interface without its attribute, and the
-  generator then silently emits one tool fewer while the build stays green; this was hit during the
-  first split attempt).
-- **Verification**: solution builds with `0` errors; `Mud.Feishu.AI.Tools.Tests` 948 × 2 TFMs and
-  `Mud.Feishu.AI.Tests` 469 × 2 TFMs green; all 182 interface segments byte-identical
-  (XML doc + `[FeishuTool]` attribute + signature + body) and the non-boilerplate line multiset of
-  the directory is hash-identical before and after.
+- **Feishu agent runtime**: Feishu messages / events → conversation → model → reply, ready to go with
+  a single line of assembly; safety semantics such as bot self-trigger filtering and group
+  @-mention filtering are built in; replies support streaming via message cards.
+- **319 curated tools (31 business domains)**: high-frequency Feishu operations — IM, mail, tasks,
+  Bitable, Sheets, Docs, Wiki, Calendar, Approval, Contacts, Minutes and more — exposed to the model
+  with compile-time schemas; reads and writes separated, 36 high-risk write tools disabled by default
+  and require host authorization before enabling.
+- **Human-in-the-loop (HITL)**: write operations can pause in "awaiting confirmation" and continue
+  after being released through the host approval channel; nothing runs automatically without
+  confirmation.
+- **MCP server** (optional package): stdio integration with Claude Code / Cursor / custom harnesses;
+  the tool allow-list is shared with the in-process agent.
+- **Conversation memory and knowledge retrieval**: count + token dual-window memory with over-window
+  summarization; built-in knowledge ingestion and self-hosted vector retrieval (RAG), with cited
+  results.
 
-## [Unreleased] - `Mud.Feishu.AI.FeishuTools` renamed to `Mud.Feishu.AI.Tools` (2026-10-08)
+### Added
 
-### ⚠️ Breaking changes
+- **`Mud.Feishu.AI` — agent runtime**
+  - `FeishuAgent` (built on `Microsoft.Agents.AI`): conversation management, model invocation, tool
+    loop, streaming output;
+  - `AddFeishuImConversationHandler` wires up the built-in IM conversation handler in one line
+    (group @-mention and direct messages both configurable);
+  - conversation serialization gate: the same conversation queues while different conversations run
+    in parallel; in-process and Redis implementations;
+  - streaming reply channels: message-card stream (create → update → final), with automatic fallback
+    to message editing on failure;
+  - event context assembly: approvals, Bitable record changes and other events enter the conversation
+    context (`ConversationRequest` gains event facts);
+  - delivery reliability: redelivery of replies that were "generated but not confirmed delivered"
+    re-sends the existing reply instead of re-running the model.
+- **`Mud.Feishu.AI.Tools` — tool surface (319 curated tools / 31 domains; 167 read-only + 152 write)**
+  - strongly-typed parameter schemas, unified pagination envelope and error codes; writes support
+    `dry_run` preview; file downloads land under controlled paths and the result carries no bytes
+    (keeping the context clean); truncated tool results are flagged to the model honestly;
+  - permission model: per-tool declared calling identity (tenant / user) and OAuth scopes, with the
+    permission matrix shipped alongside the package;
+  - per-tool affordance guidance (when to use / when not to / prerequisites / tips), visible to the
+    model;
+  - structured audit sink (`IToolExecutionAuditSink`) and OpenTelemetry metrics (tool execution,
+    latency, model-call duration);
+  - self-hosted knowledge retrieval (chunking / indexing / vector search) and text tools
+    (`ai.translate_text`, `ai.detect_language`);
+  - Skills artifacts (`skills/feishu-*`) ready to distribute to agent harnesses.
+- **`Mud.Feishu.AI.Mcp` — MCP server (optional package)**
+  - stdio JSON-RPC exposes allow-listed Feishu tools and resources to out-of-process agents; it shares
+    the same tool definitions and execution pipeline as the in-process agent, with writes still going
+    through human approval.
+- **Human-in-the-loop (HITL) pipeline**: host approval channel (`IFeishuToolApprovalChannel`),
+  persisted pending-approval snapshots (`IFeishuPendingApprovalStore`), idempotent resumption after
+  approval; without an approval channel registered, write tools stop at "awaiting confirmation".
+- **Demo app**: `Demos/Mud.Feishu.Agent.Demo` picks a run mode from a startup menu (raw model / IM
+  conversation / document agent / tool smoke / domain events, etc.), defaulting to the configured
+  mode in non-interactive environments.
 
-- **【Project / assembly / namespace rename】** `Mud.Feishu.AI.FeishuTools` → **`Mud.Feishu.AI.Tools`**
-  (test project: `Tests/Mud.Feishu.AI.Tools.Tests`). Directory, `.csproj`, `AssemblyName`, NuGet
-  package id, namespaces (root plus every sub-namespace: `Tools` / `Internal` / `Events` /
-  `Curation` / `Channels` / `Registration` / `SdkProfile` / `Knowledge`), `InternalsVisibleTo`,
-  profile slots (`OwnerAssembly` / `ContractNamespace` / `RegistrationNamespace`) and
-  `PublicAPI.Unshipped.txt` were renamed in lockstep. The AI module is unreleased, so there is no
-  compatibility burden.
+### Changed
 
-- **【Handler attribute moved to its own sub-namespace】** `FeishuToolHandlerAttribute` moved from
-  the root namespace to **`Mud.Feishu.AI.Tools.Handlers`**. After the rename the root namespace of
-  this project collides with `Mud.Feishu.AI.Tools` in `Mud.Feishu.AI`, which is where
-  `[FeishuTool]` lives. Merging them would collapse the profile's `ToolAttributeNamespace` and
-  `ToolHandlerAttributeNamespace` slots into the same value, leaving the engine unable to address
-  the tool-declaration surface and the executor-binding surface separately. With the split, all
-  31 tool bindings resolve (no MUDFT022/023/024/025).
+- **Unified OpenTelemetry composition kernel**: invalid configuration now throws
+  `OptionsValidationException` at registration instead of being silently ignored; register exactly one
+  OpenTelemetry composition (combining it with `AddMudHttpOpenTelemetry` duplicates exports).
+- **Context-switching members removed with `Mud.HttpUtils` 3.0.8**: `FeishuAppManager.GetWebApi`,
+  `GetDefaultWebApi` and `RegisterSwitcherFactory` are gone (upstream 3.0.8 physically removed the
+  base members; the downstream implementations are deleted in the same batch).
+  **Migration**: resolve `IAppScopeSwitcher` from DI and call `UseAppScope(appKey)` /
+  `UseDefaultAppScope()` (context returned automatically), or use
+  `IAppContextHolder.SwitchToApp(appKey, appManager, sp)` (guarded switch-and-stay).
+- **Docs and samples rewritten**: call sites uniformly use "switch the context first, then resolve the
+  API client from DI" (README zh / en, `Mud.Feishu` README, multi-app demo controller).
 
-- **【Retirement guard judgement rewritten】** The "retired local generator must not come back"
-  guard used to key on the **project name** (directories `Mud.Feishu.AI.Tools` /
-  `Tests/Mud.Feishu.AI.Tools.Tests` absent; no such string in `slnx` / csproj), which this rename
-  would have turned permanently red. It now keys on **capability**, decoupled from naming:
-  ① no `[Generator]`-annotated incremental generator anywhere; ② no legacy engine type names;
-  ③ the `ProjectReference` graph is closed (every target registered in `slnx`); ④ no project
-  references `Microsoft.CodeAnalysis.CSharp` (no Roslyn component host).
-  Check ① of `scripts/verify-pack.ps1` now mirrors ④.
+### Fixed
 
-> **Naming collision note**: the local generator engine deleted during R-1+2c was **itself named
-> `Mud.Feishu.AI.Tools`** (see the Unreleased entry below). This rename reuses that name for the
-> tool-surface project, so every `Mud.Feishu.AI.Tools` in the historical entries below refers to
-> the **deleted generator engine**, not to the current project.
+- Unanswered human approvals no longer block subsequent conversations (self-healing); the streaming
+  fallback path no longer drops pending approvals.
+- Failed-delivery redelivery now re-sends the existing reply instead of re-running the model and
+  double-billing; empty replies are no longer sent.
+- In multi-app hosts, replies are no longer mis-sent to other tenants under the default app identity.
+- `minutes.get_artifacts` transcript windowing parameters were ignored (always returned a preview) —
+  now honored.
+- Knowledge recall answers are no longer dropped because `has_answer` was reset by intermediate events.
+- Token counting is now precise (previously the missing vocabulary always fell back to character
+  estimation).
+- Security: CR/LF injection in mail headers is rejected; the IPv6 loopback allow-list check is
+  enforced; all `IL2026` / `IL3050` trimming warnings are eliminated in AOT strict mode.
 
-## [Unreleased] - AI tool-surface engine upstreamed + symbolised `Source` (R-1+2c, 2026-10-08)
+### Dependencies
 
-> Plan, four-perspective review (product / architecture / senior dev / QA), landing log and migration
-> ledger: `.docs/AI/AI-SDK耦合解耦与工具上游化-Bug修复与功能完善方案.md` (§六 / §七).
-> **The AI module is unreleased — this round is a one-shot breaking refactor with no compatibility
-> burden.**
+- New: `Microsoft.Agents.AI` **1.25.0** (agent runtime foundation), with `Microsoft.Extensions.*`
+  **10.0.12**, `Microsoft.Extensions.AI.Abstractions` **10.10.1**, `System.Text.Json` **10.0.12**.
+- New: `Microsoft.ML.Tokenizers.Data.O200kBase` for precise token counting.
+- `Mud.HttpUtils*` unified version bumped **3.0.7** → **3.0.8** (`Mud.HttpUtils` and
+  `Mud.HttpUtils.Generator` must stay on the same version; includes the `Mud.HttpUtils.Resilience`
+  policy package, passed through to consumers).
 
-### ⚠️ Breaking changes
+## [3.0.4] - 2026-10-18
 
-- **Tool-surface generation engine moved to the component package.** The local generator project
-  `Mud.Feishu.AI.Tools` and `Tests/Mud.Feishu.AI.Tools.Tests` were deleted; tool schemas are now
-  produced by the generic `ToolSurface` engine in `Mud.HttpUtils.Generator` 3.0.3, driven by a
-  **profile** (`SdkProfile/FeishuToolProfile.cs`, implementing `ISdkToolProfile` and annotated with
-  `[SdkToolProfile]`). New dependencies: `Mud.HttpUtils.Generator` (analyzer) / `Attributes` /
-  `Abstractions` 3.0.3. Two engines must never coexist (duplicate hint-name collisions); enforced by
-  `FeishuToolProfileContractGuards`.
-- **Curation naming tightened.** 83 tenant-token tool interfaces were renamed from
-  `IFeishu<Domain><Verb>Tool` to **`IFeishuTenant<Domain><Verb>Tool`** (symmetric with the existing
-  `IFeishuUser*Tool`): slot 016 compares the tool identity against the token type derived from the
-  carrier interface name, so a missing marker fails the build with `MUDFT016` (Error).
-- **Capability-catalog artifact renamed** from `FeishuCapabilityCatalog` to
-  **`FeishuToolCapabilityCatalog`** (engine derives it as `{ProductPrefix}CapabilityCatalog`).
-- **One tool's output contract converged (intentional):** `im.get_message_content` no longer exposes
-  the `FeishuApiListResult` envelope (`data.items` → `items`), matching the envelope-stripping rule of
-  the PageList family. The other **86/87** tool schemas are byte-for-byte unchanged.
+> Theme: **source-comment governance** (comment discipline spec + `audit-comments` audit script +
+> L3 decision archive) and **WebSocket heartbeat / observability fixes**.
+> This release has **no external contract changes**: public API signatures, runtime behavior and
+> package dependency versions are unchanged; changes concentrate on the comment surface, internal
+> docs and demo project dependency alignment.
 
-### 🔧 Changes
+### Added
 
-- **Symbolised `Source` (R-1):** all 84 `[FeishuTool(Source = …)]` declarations moved from string
-  literals to `nameof(Interface) + "." + nameof(Interface.Method)` constant concatenation — the
-  compile-time value is byte-for-byte identical, and SDK renames now flow through IDE rename
-  refactoring instead of manual magic-string hunts.
-- **Diagnostic gate extended** with the `SDKT001/SDKT002` zero-tolerance set (profile ↔ attribute
-  pairing, missing required slots), asserted from both `verify-build.ps1` and CI — `SDKT002` makes the
-  engine silently emit **no** tool surface, the most hidden failure channel of all.
-- **One-command golden re-freeze:** `dotnet test … -p:FeishuToolRefreeze=true` (with
-  `FeishuToolGoldenUpdate=true`) escapes the "gate is itself a build error" deadlock.
-- **Test guards re-anchored:** new `FeishuToolProfileContractGuards` (31 frozen profile slots +
-  upstream 24-slot mirror ↔ gate sets ↔ CI + migration ledger + `Source` shape);
-  `GeneratorDiagnosticsContractGuards` re-anchored to the gate chain; `GeneratorProductGateCoverageTests`
-  re-anchored to profile-derived outlet templates + artifact existence;
-  `BinaryDownloadToolExposureContractTests` now reads the `nameof` form with a dual-form self-check.
+**Comment discipline**
 
-### 🐛 Fixes (pre-existing gate failures, cleared in this round)
+- New normative document `documents/代码注释规范.md`: three comment criteria, the L0–L4 layering
+  model, hard rules R-01–R-12, `[Obsolete]` message templates, glossary, per-line exemption
+  mechanism, the "constraints that must be kept" allow-list (Appendix A) and the rule → script
+  pattern mapping (Appendix B).
+- New audit script `scripts/audit-comments.ps1` (report / `-Strict` gate / `-ListAll` modes), wired
+  into `scripts/verify-build.ps1` step 1.5 and the CI pipeline.
+- New stock baseline `scripts/comment-baseline.txt`: hits frozen by **content hash** (reformatting
+  and line drift do not invalidate the baseline), **shrink-only** (`-UpdateBaseline` exits 2 when the
+  baseline grows). After this round the baseline is **zeroed** (initial 980 entries / 1020 hits →
+  **0 entries / 0 hits**).
+- New per-line exemption marker `// comment-allow: <reason>` (reason required; whole-file exemption
+  forbidden).
+- New **L3 decision archive** `documents/决策档案/`: `README.md` (placement conventions),
+  `编号索引.md` (internal id lookup), `上游契约适配史.md`, `迁移与弃用史.md`, `注释精简归档.md` —
+  version adaptation history, defect reviews and acceptance records all moved out of source comments.
+- `AGENTS.md` gains a "Comment discipline" section (criteria, gate wiring, decision archive
+  placement).
 
-- **AOT strict-mode failures ×20** (10×`IL2026` + 10×`IL3050`): five
-  `JsonArray.Add(new JsonObject{…})` sites in `Internal/{BitableTools,MailTools,MinutesReadTools}.cs`
-  were bound to the generic `Add<T>(T)` carrying `RequiresUnreferencedCode`/`RequiresDynamicCode`
-  (non-`JsonNode` `T` goes through reflective `JsonValue.Create`) → switched to the repo's **existing**
-  AOT-safe extension `ToolResultText.AddNode` (explicit `IList<JsonNode?>` implementation).
-  **Root cause fixed, no suppressions added.**
-  ⇒ `verify-build.ps1` is green on all seven steps (0 build errors, `AotStrictMode`
-  `AOT00x`/`IL2026`/`IL3050` all 0, 9468 tests passed / 0 failed).
-- **Demo compile errors ×4** (`Demos/FeishuFileServer`, third-argument mismatch of
-  `DeleteFileByFileTokenAsync`): fixed by the parallel commit with the **named argument**
-  `cancellationToken:` (keeping the synchronous-delete semantics) — see the "Demo build fix" section
-  below; its code shape was adopted in this merge and complements the AOT fix above.
+### Changed
 
-## [Unreleased] - Demo build fix (2026-10-08)
+- **Repository-wide hand-written comments converged to "contract + constraint"**: 8 shipped projects,
+  **172 source files** (2037 lines deleted, net −482). Moved out: internal branch/task ids (`BC-*`,
+  `U-*`, `C-*`, `F-*`, `TMA*`, `TMF*`, `TMR*`, `WHF-*`, `WS-*`, `P0-/P1-/P2-*`, etc.),
+  "before the fix / old implementation" defect retrospectives, `documents/…` and `.docs/…` internal
+  doc paths, decorative `// ─────` section rules; constraints not derivable from code (lock order,
+  atomicity, idempotency, ordering dependencies, AOT suppression rationale, security semantics) are
+  kept. Covers `Mud.Feishu.Abstractions` (multi-app management, token storage & codec, service
+  registration, event parsing, metrics), `Mud.Feishu.Redis`, `Mud.Feishu.Webhook`,
+  `Mud.Feishu.WebSocket`, `Mud.Feishu.Authentication`, `Mud.Feishu.DataModels` (query DTOs) and
+  `Mud.Feishu/Interfaces/**` (interface contract comments). Token-storage constraints (stored form
+  only encoded/decoded via `TokenStoreHelper`; CAS capability probing must target the undecorated
+  raw store) are reworded but semantically intact.
+- **Comment audit script fix**: single-line `<remarks>` blocks that open and close on the same line no
+  longer leave `$remarksOpen` dangling — previously the 8-line block below got merged into the run and
+  misreported as "82 lines" long (25 such blocks; affected hit line numbers and lengths).
+- **`scripts/verify-build.ps1` empty-local-source fix**: with no local source present it now checks
+  emptiness before `Test-Path`, eliminating the "Path parameter is null or empty collection" throw
+  (hit by CI and by dev machines with the local source removed).
 
-> A **pre-existing** defect unrelated to the OpenTelemetry migration; the full-solution Release build is
-> back to 0 errors.
+### Fixed
 
-- **`Demos/FeishuFileServer/backend/Services/Feishu/FeishuDriveService.cs`**: `DeleteFileAsync` /
-  `DeleteFolderAsync` passed `cancellationToken` as the third positional argument of
-  `IFeishuV1DriveFiles.DeleteFileByFileTokenAsync`, but since 2026-10-01 that parameter is the optional
-  `[Query("async")] bool? async = null` ⇒ `CS1503` (`CancellationToken` cannot convert to `bool?`), leaving
-  the solution with a permanent 2-error build.
-  Fixed by using the named argument `cancellationToken: cancellationToken` (omitting `async`, which keeps the
-  synchronous-delete semantics identical to before).
+- **Heartbeat loop captured the caller's `SynchronizationContext`, delaying Pings** (`HeartbeatManager`):
+  every `await` in the loop now uses `ConfigureAwait(false)` — background loop continuations must not
+  post back to the caller's context (UI thread / legacy ASP.NET request context / in-process xUnit
+  concurrency gates); when that context is saturated, the Ping continuation queues for a slot (observed:
+  a 5s interval still not delivered within a 10s budget). Adds the regression guard
+  `HeartbeatManagerProtoBufTests.StartHeartbeatAsync_ShouldNotCaptureCallerSynchronizationContext`
+  and relaxes the WebSocket integration handshake budget.
+- **Removed the always-`null` `ProcessingTask` branch** (`BinaryMessageProcessor`): the property was
+  never assigned and the branch never executed — pure dead code; binary routing results are handled
+  via the return value of `RouteBinaryMessageWithResultAsync`.
 
-## [Unreleased] - OpenTelemetry shared composition kernel migration (2026-10-08)
+### Build
 
-> Plan: `.docs/MudFeishu-OpenTelemetry-SharedKernel-Migration-Plan-3.1.0.md`
-> (upstream kernel contract: `D:/Repos/MudHttpUtils/.docs/OpenTelemetry共享装配内核抽取方案_3.1.0.md`).
-> **Prerequisite**: `Mud.HttpUtils 3.0.3` (which ships the new `Mud.HttpUtils.OpenTelemetry` shared kernel)
-> is available upstream; this repository upgrades every `Mud.HttpUtils*` declaration to that same version.
-
-### ⚠️ Behaviour changes (host-visible)
-
-- **Invalid configuration now fails at startup instead of silently passing.** `AddFeishuOpenTelemetry`
-  explicitly runs `FeishuOpenTelemetryOptions.Validate` during registration and throws
-  `OptionsValidationException` on failure. The `IValidateOptions<FeishuOpenTelemetryOptions>` registered in DI
-  was never invoked (the extension registers a pre-built instance through `OptionsWrapper` as `IOptions<>`,
-  bypassing the .NET options validation pipeline), so blank `ServiceName`/`ServiceVersion`/
-  `DeploymentEnvironment` and a relative `OtlpEndpoint` used to take effect silently. `SamplingRatio` out of
-  range still throws `ArgumentOutOfRangeException` with `paramName = "SamplingRatio"`.
-- **ASP.NET Core instrumentation is no longer registered for `netstandard2.0` consumers.** That guard moved
-  into the shared kernel (`#if NETSTANDARD2_0` forces `EnableAspNetCoreInstrumentation = false`), making the
-  `netstandard2.0` asset consistent with the other target frameworks.
-- **Source/Meter registration is de-duplicated** inside the kernel, preventing duplicate `AddSource`/`AddMeter`
-  registrations from collecting the same Activity/Metric twice.
-- **Single-entry rule (fail-fast).** A host must not call both `AddFeishuOpenTelemetry` and
-  `AddMudHttpOpenTelemetry`: both are whole-pipeline bootstrap entry points, and stacking them overwrites the
-  Resource `service.name` and reports every span twice. The kernel now rejects a second, different product
-  (`InvalidOperationException`) and short-circuits repeated calls for the same product. Feishu-only hosts only
-  need this method; Mud.HttpUtils sources/metrics are covered by `IncludeMudHttpUtils` (default `true`).
-
-### ✨ Added
-
-- **OTLP export surface (5 options)**: `OtlpExportProtocol` (`Grpc` / `HttpProtobuf`), `OtlpHeaders`
-  (e.g. `Authorization` for managed collectors), `UseShortExporterTimeout` (5s), `ExportBatchSize` and
-  `ExportIntervalMilliseconds` (mapped to `BatchExportProcessorOptions<Activity>`, applied only when `>0`;
-  negative values throw `OptionsValidationException` at startup).
-- **`FeishuOpenTelemetryOptionsMapper`** (internal): explicit property-by-property mapping into the upstream
-  kernel options (explicit mapping over options inheritance avoids the unverified inheritance behaviour of the
-  configuration binding source generator).
-
-### ♻️ Refactoring
-
-- **`FeishuOpenTelemetryExtensions` reduced to a thin shell.** All composition (AddOpenTelemetry / Resource /
-  Sampler / sources and meters / instrumentation switches / OTLP exporter / batch export / ns2.0 fallback /
-  duplicate-entry guard) is delegated to the upstream shared kernel; this package keeps only
-  "registration-time validation + product contribution + option mapping". Both public overloads keep their
-  signatures, defaults, `sectionPath` default, exception semantics and DI surface unchanged.
-- **Narrower dependency surface**: the direct `Mud.HttpUtils` reference became
-  `Mud.HttpUtils.OpenTelemetry 3.0.3`.
-- Every `Mud.HttpUtils*` declaration (3 × `Mud.HttpUtils`, 3 × `Mud.HttpUtils.Generator`) moved from `3.0.0`
-  to `3.0.3` (locked to a single version by
-  `TokenMultiAppContractGuards.MudHttpUtils_PackageReference_ShouldBeSingleVersion`).
-
-### 🧪 Tests
-
-- New `FeishuOpenTelemetrySharedKernelTests` (11 cases): contribution contract (single `Mud.Feishu` root +
-  **exact Meter** rather than a wildcard + `IncludeMudHttpUtils` → `IncludeMudHttpSources` mirror), mapper
-  completeness, registration-time validation, **single-entry enforcement**, idempotency, and preserved DI
-  surface.
-- The 35 existing `Mud.Feishu.OpenTelemetry.Tests` cases (net8.0 + net10.0) pass **unmodified** as the
-  behaviour-equivalence evidence for this migration.
-
----
-
-## [Unreleased] - Mud.Feishu.AI review remediation R4 (2026-10-01)
-
-> Plan and two-perspective verification (senior engineer / system architect):
-> `.docs/AI/Mud.Feishu.AI-审查缺陷修复与能力完善方案-R4.md` (§0.6 review corrections, §0.7 landing log,
-> §4 batches B0/B1/B2, §5.3 red→green log). Covers 1 P0 (R4-1), 5 P1 and 8 P2 items; R4-14 and
-> dimension B (capability gaps) stay on the original phase plan and are **not** part of this round.
-> **The AI module is unreleased — this round is a one-shot refactor with no compatibility burden.**
-
-### ⚠️ Behaviour changes (host-visible)
-
-- **[P0 / R4-1] Write tools are now fail-closed under HITL (no more silent pass-through)**: the
-  `NeedsUserConfirmation && tool.IsWrite → Pass()` special case in `AuthorizeGateAsync` is deleted. Its only
-  premise ("MAF will not call this method when unapproved") had **no runtime enforcement** —
-  `ApprovalRequiredAIFunction` is a MEAI **marker type** and interception happens only inside
-  `FunctionInvokingChatClient`; a host calling `InvokeAsync` directly (or mixing both call styles in one
-  process) had write tools **silently executed**. New semantics: **the authorizer is the single owner of the
-  approval state** (the SDK still issues and validates no credential — WP3 unchanged); read and write tools
-  both go through `ResolveNeedsConfirmationAsync` and are **never** allowed through, so a host approval must
-  return `Allowed` under the same key. **Migration**: hosts that relied on "MAF approval = execute" must update
-  `IToolExecutionAuthorizer` state in their approval callback; without an approval channel this degrades to a
-  plain prompt (the model receives no credential). **Source breaking (module unreleased).**
-- **[R4-6] The singleton `FeishuAgent` no longer receives the root `IServiceProvider`**: `ChatClientAgent`'s
-  `services` is now `null` (it used to be the root container, handed over inside a **singleton factory**).
-  A singleton holding the root container pins Scoped dependencies into de-facto singletons
-  (captive dependency, same class as TMA-13). Hosts needing Scoped services should construct
-  `new FeishuAgent(..., services: <derived from a scope>)` themselves.
-- **[R4-13] Structured errors carry a machine-readable `code`**: `[tool_error] <tool> (kind) code=<code>: <reason>`
-  — `ToolErrorClassifier` already computed the code but it was dropped from the text, leaving the model with a
-  Chinese suffix only. **No empty slot is emitted when there is no code** (HTTP 5xx/429 have no business code).
-  The human-readable shape is unchanged (pure append). Deliberately **not** added: `retryable` / `reason_code`
-  (already conveyed by the kind label and the reason text — would be redundant).
-
-### 🐞 Fixed
-
-- **R4-3**: Aily knowledge recall `has_answer` changed from **overwrite** to **monotonic accumulation**. SSE
-  processing events and even the terminal event routinely **omit** `has_answer`, so an overwrite reset a
-  previous `true` to `false` ⇒ an answered query was reported as unanswered and the consumer **silently
-  dropped the whole recall** (no exception, no log).
-- **R4-7**: The session-corruption self-heal catch was narrowed from an **enumerated whitelist** to
-  `when (ex is not OperationCanceledException)`. The whitelist contradicted its own comment ("covers all
-  exception types") and missed `FormatException`/`KeyNotFoundException` thrown inside MAF dictionary/format
-  conversion — leftover types poisoned the session.
-- **R4-8**: Token usage is now recorded on the streaming Agent path (accumulated inside the **iterator loop**,
-  `RecordUsage` after the loop); previously only the non-streaming path was instrumented, leaving streaming
-  calls invisible to telemetry.
-- **R4-9**: `FeishuToolCapabilityCatalog`'s opt-in wording realigned with the hard dependency — the artifact is
-  **required** for `Mud.Feishu.AI.FeishuTools` (`CapabilityLookupTools` references it unconditionally; setting
-  it to `false` is a `CS0103`). `build_property.FeishuToolCatalog` is an incremental switch only for **other
-  projects** referencing the generator.
-- **R4-10**: `AddSource` uniqueness guard hardened. `RegistrarTypeName`, the Core method name and the hintName
-  are all derived from the executor **simple name** and emitted into the **same** namespace ⇒ executors with
-  the same name in different namespaces produced duplicate types (`CS0101`) and duplicate methods (`CS0111`),
-  or made `AddSource` throw and get swallowed by `Guard<T>` into `MUDFT026` (the **symptom** of an internal
-  generator exception). Fix: append a namespace-segment disambiguation suffix **only** to colliding executors
-  (non-colliding names are byte-identical, so hand-written `AddFeishu{X}Core` call sites are unaffected), and
-  fix the type references inside the method body too (otherwise `CS0246`).
-- **R4-11**: Write-tool file consolidation (**pure move + rename, no method body touched**) — new
-  `Internal/BitableWriteTools.cs` and `Tools/FeishuBitableWriteToolInterfaces.cs` host the bitable write
-  domain; `WriteTools.cs` → `MessageAndApprovalWriteTools.cs`, `WriteTools2.cs` →
-  `DocxSheetsDriveWriteTools.cs`, `FeishuWriteToolInterfaces2.cs` →
-  `FeishuDocxSheetsDriveToolInterfaces.cs`. No `*2.cs` remains in the repo.
-- **R4-12**: The "comment says Warning / code logs Information" contradiction on `Pass()` disappeared together
-  with that branch (deleted by R4-1).
-
-### 🧪 Tests & guards
-
-- **New diagnostic `MUDFT027` (Error, zero tolerance)**: tool names that are literally different but normalise
-  to the same identifier (e.g. `fake.a_b` and `fake.a.b` both → `FakeAB`) produce duplicate artifact constants
-  (`CS0101`) or duplicate hintNames (→ `MUDFT026`). **Not** reusing `MUDFT003`, which means "literally duplicate
-  tool name" — a different root cause. Registered in four places in the same batch: `Diagnostics.ZeroToleranceIds`
-  → `AnalyzerReleases.Unshipped.md` → `scripts/verify-build.ps1` (zero-tolerance regex) →
-  `GeneratorNegativeCaseTests` (triggerable negative case).
-- **Guards inverted/rewritten** (changing the source without changing the guard = red gate):
-  `WriteTool_NeedsUserConfirmation_ShouldBeBypassed_AtAuthorizeGate` **inverted** to `..._ShouldBeDenied_...`;
-  `SessionRestore_ShouldEagerlyValidateHistoryState` now asserts "catch surface is not an enumerated whitelist";
-  the old pass-through case in `FeishuToolBindingTests` split into `..._ShouldDeny_WhenAuthorizerNotApproved` +
-  `..._ShouldPass_WhenAuthorizerApproved` (the latter locks "no dead end after host approval").
-- Landing rule: **extend an existing test class whenever possible instead of adding a new one** (2 new classes
-  instead of the 8 originally planned), avoiding duplicated fixture setup.
-- Measured (net8.0, `--filter "Category!=Stress"`): `Mud.Feishu.AI.Tests` **264/264**,
-  `Mud.Feishu.AI.FeishuTools.Tests` **372/372**, `Mud.Feishu.AI.Tools.Tests` **32/32**.
-- **Red→green archived**: R4-3 temporarily restored the overwrite form → `HasAnswer` was `False` (red), green
-  after restoring accumulation; R4-1/R4-7 guard inversion/rewrite were **run red before the source change**;
-  R4-2 measured **all green** (disproving "incremental staleness", so the `CompilationProvider` approach was
-  not adopted and the case became a regression lock). Per-item log in plan §5.3.
-- `FeishuToolSchemas.golden.txt` **zero drift** (R4-11 is pure move; the generator sorts by `ToolName` ordinal).
-
-### 📄 Documentation
-
-- **R4-4**: the tool package `Readme.md` HITL section rewritten (it still described "issuing an HMAC token /
-  `confirm_token` / `[Obsolete]`", the opposite of the source after token removal), and the base
-  `Mud.Feishu.AI/Readme.md` corrected in the same batch (it stated `NeedsUserConfirmation && IsWrite → Pass()`
-  "**must be kept**", which directly contradicts R4-1). New guard `Readmes_ShouldNotDescribeConfirmToken`
-  scans **both** Readmes.
-- **R4-5**: the tool package `Readme.md` idempotency table row for `docx.create_document` corrected to
-  "**neither the platform endpoint nor the SDK supports** `client_token`" (the underlying
-  `CreateDocumentRequest` has no such field; the previous "supported at the base layer ✅" was wrong).
-
-## [Unreleased] - AI tool surface R3 (3rd code review round vs. the official CLI, 2026-09-28)
-
-> Four-perspective review (PM / architect / senior engineer / QA) and per-task verification:
-> `.docs/MudFeishu-AI-Tooling-vs-LarkCli-Review-Remediation-Plan-R3.md` (§0.3 review, §13 verification).
-
-### ⚠️ Behaviour changes (model-visible / host-visible)
-
-- **Inbound argument sanitisation (no switch)**: values containing C0/C1 control characters, dangerous
-  invisible Unicode (zero-width / bidi / BOM / U+2028-2029) or a **lone CR** are now **rejected**
-  (`(invalid_args)`, zero downstream calls) instead of being sent silently. `\n`, `\r\n` and Tab still pass;
-  the `U+200D` inside Emoji ZWJ sequences is **not** rejected (the official CLI's blanket rejection cannot be copied).
-- **Denial reasons are now classified**: `authorization_denied:` (give up / switch to a read-only plan),
-  `policy_denied: {reason_code}` (host policy), and a dedicated `(needs_confirmation)` semantics for HITL
-  (previously folded into `forbidden`/`invalid_args`, which pushed the model into the wrong self-repair).
-- **New policy axes (defaults do not tighten anything)**: `FeishuAgent:MaxToolRisk` (default `high-risk-write`)
-  and `FeishuAgent:AllowedIdentities` (default `["tenant"]`), evaluated **before** the authorizer gate —
-  denials make zero downstream calls and do not switch tenant context.
-- **Built-in outbound content safety**: 4 injection rules scanned per line, `FeishuAgent:ContentSafetyMode`
-  = `off|warn|block`, **default `warn`** (annotates with `[untrusted_content: rule]`, does not block).
-- **Source breaking**: `FeishuToolDefinition` gained required `Risk`/`Identity` members whose values may only
-  come from the compile-time schema (`x-feishu.risk` / `x-feishu.identity`).
-
-### 🌟 Added
-
-- **`contact.search_user`** (tool surface 22 → 24): name/keyword → `open_id`, closing the first hop of the
-  "send something to Zhang San" write chain; a two-hop end-to-end test locks
-  `search_user` → `im.send_message(receive_id_type=open_id)`.
-- **`feishu.capability_lookup`**: a read-only metadata tool (disabled by default) that answers
-  "does the SDK have this capability / is it already curated / which tools expose it" — the systematic
-  countermeasure against hallucinated calls. Group-level metadata only; no method names, no request shapes.
-- **`dry_run` for every write tool** (default `false`): returns method/path plus body field **lengths**
-  (never the values, which would turn a rehearsal into an echo channel), without calling downstream.
-- **New diagnostics wired**: `MUDFT005`/`MUDFT006`, plus `MUDFT009` reported as a **single aggregated** warning
-  (currently 7 tools — all previously silent); four "zombie" diagnostics referencing non-existent mechanisms
-  (`MUDFT007/011/012/013`) deleted.
-
-### 🐞 Fixed
-
-- **`MUDFT015` was a fake gate**: `required` and `properties` were derived from the *same* `entry.Parameters`,
-  so the condition was always false. Now two independent sources are compared (intent model vs. rendered
-  artifact text), which also detects **duplicate JSON keys after parameter-name normalisation**.
-- **Subset `GetHashCode`** in 4 generator types (collections and long strings were skipped entirely).
-- **Fake-green capability counters**: `BeGreaterThan(200)`/`BeGreaterThan(100)` replaced by exact values
-  (`1169 / 182 / 24`).
-- Documentation/comment drift: tool counts (16/19/22 → **24**), the permission table missing the contact tools,
-  the misleading `Extractors` "SDK interfaces auto-derive tools" claim, dangling `PageSizes` constants.
-
-### ⏭️ Deliberately not delivered
-
-Tool-level idempotency keys (blocked by decision ⑤ — the Feishu `client_token` parameter requires changing the
-SDK interface signature), calendar/task/docx-write tools (SDK signatures and DTOs unverified; deferred with the
-rationale in plan §6.3), scope mapping table, domain guidance assets, IM/mail/multimodal/long-tail domains.
-
----
+- Demo project `Mud.Feishu.*` package references aligned: `FeishuFileServer` / `FeishuOAuthDemo` /
+  `FeishuWikiManager` / `TaskManageDemo` → **3.0.3**; `Mud.Feishu.Webhook.Demo` → **3.0.1**.
+- `FeishuWebhookServiceBuilder` gains per-line `audit-allow` markers for removed config keys and
+  transitional `[Obsolete]` switches, so `audit-config-keys.ps1` can exempt them precisely without a
+  whole-file exemption.
 
 ## [3.0.3] - 2026-10-15
 

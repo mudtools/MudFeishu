@@ -54,11 +54,10 @@ public class MultiAppTests
         // 测试基础设施必须注册工厂，否则任何触发 Lazy 创建的测试都会抛 InvalidOperationException。
         services.TryAddSingleton<IFeishuTokenManagerFactory, DefaultFeishuTokenManagerFactory>();
 
-        // Mud.HttpUtils 3.0.0 迁移（BC-27 + SW-15）回归：FeishuAppManager.GetWebApi/GetDefaultWebApi
-        // 现经由 IAppContextHolder.SwitchToApp/SwitchToDefaultApp 完成切换（完整守卫 + 立即切换 + 不归还），
-        // 而不再调用生成类的 UseApp/UseDefaultApp。故测试基础设施需按生产接线
-        // （AddFeishuAppBaseServices）注册 Holder 与授权器，否则切换路径会「默认拒绝」。
-        // 与 IMemoryCache / 令牌工厂同理：属测试基础设施补全，不改变测试契约。
+        // 多应用切换回归：应用的「受控切换」由 IAppContextHolder.SwitchToApp/SwitchToDefaultApp
+        // 完成（完整守卫 + 立即切换 + 不归还），而不再调用生成类的 UseApp/UseDefaultApp。
+        // 故测试基础设施需按生产接线（AddFeishuAppBaseServices）注册 Holder 与授权器，
+        // 否则切换路径会「默认拒绝」。与 IMemoryCache / 令牌工厂同理：属测试基础设施补全，不改变测试契约。
         services.TryAddSingleton<IAppContextHolder, AsyncLocalAppContextSwitcher>();
         services.TryAddSingleton<IAppAccessAuthorizer, AllowAllAppAccessAuthorizer>();
 
@@ -576,15 +575,12 @@ public class MultiAppTests
         var appManager = provider.GetRequiredService<IFeishuAppManager>();
         var holder = provider.GetRequiredService<IAppContextHolder>();
 
-        // BC-30（Mud.HttpUtils 3.0.7）：GetWebApi 基成员已弃用，本 SDK 重写同步传播 [Obsolete]。
-        // 本用例的意图正是守护该重写的行为契约（DI 解析 + 受控切换），属废弃 API 的守卫性调用，
-        // 故在此精确豁免（仅本表达式块，不波及测试类其余部分）。
-#pragma warning disable CS0618 // FeishuAppManager.GetWebApi 已随上游 BC-30 弃用：守卫性调用
-        var result = appManager.GetWebApi<IFeishuAppContextSwitcher>(AppConfigs.AppKeys.Default);
-#pragma warning restore CS0618
+        // BC-30（上游 3.0.8 移除 GetWebApi）：改以替代路径 IAppContextHolder.SwitchToApp 守护同一
+        // 「受控切换」契约（完整守卫 + 立即切换 + 不归还）。
+        var result = holder.SwitchToApp(AppConfigs.AppKeys.Default, appManager, provider);
 
-        // 1) 原样返回 DI 解析到的服务实例（重写基类实现的核心契约）。
-        Assert.Same(switcherMock.Object, result);
+        // 1) 替代路径返回切换后的目标应用上下文实例。
+        Assert.Same(appManager.GetApp(AppConfigs.AppKeys.Default), result);
 
         // 2) Mud.HttpUtils 3.0.0 迁移（BC-27 + SW-15）后的实现契约：切换由
         //    IAppContextHolder.SwitchToApp 完成（完整守卫 + 立即切换 + 不归还），
@@ -633,14 +629,11 @@ public class MultiAppTests
         var appManager = provider.GetRequiredService<IFeishuAppManager>();
         var holder = provider.GetRequiredService<IAppContextHolder>();
 
-        // BC-30（Mud.HttpUtils 3.0.7）：GetDefaultWebApi 基成员已弃用，本 SDK 重写同步传播 [Obsolete]。
-        // 本用例的意图正是守护该重写的行为契约（DI 解析 + 切换默认应用），属废弃 API 的守卫性调用，
-        // 故在此精确豁免（仅本表达式块，不波及测试类其余部分）。
-#pragma warning disable CS0618 // FeishuAppManager.GetDefaultWebApi 已随上游 BC-30 弃用：守卫性调用
-        var result = appManager.GetDefaultWebApi<IFeishuAppContextSwitcher>();
-#pragma warning restore CS0618
+        // BC-30（上游 3.0.8 移除 GetDefaultWebApi）：改以替代路径 IAppContextHolder.SwitchToDefaultApp
+        // 守护同一「受控切换」契约。
+        var result = holder.SwitchToDefaultApp(appManager);
 
-        Assert.Same(switcherMock.Object, result);
+        Assert.Same(appManager.GetDefaultApp(), result);
 
         // 默认应用路径不做 appKey 校验与授权判定（无 appKey 输入），与生成实现 UseDefaultApp 一致。
         var expected = appManager.GetDefaultApp();

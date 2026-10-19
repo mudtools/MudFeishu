@@ -372,34 +372,44 @@ builder.Services.AddFeishuApp(builder =>
 
 ### 使用多应用
 
-#### 1. 获取指定应用的 API
+#### 1. 切换应用上下文并获取指定应用的 API
 
 ```csharp
 public class MultiAppService
 {
     private readonly IFeishuAppManager _appManager;
+    private readonly IServiceProvider _serviceProvider;
 
-    public MultiAppService(IFeishuAppManager appManager)
+    public MultiAppService(IFeishuAppManager appManager, IServiceProvider serviceProvider)
     {
         _appManager = appManager;
-    }
-
-    public async Task UseDefaultAppAsync()
-    {
-        // 获取默认应用的 API（T 为源生成器生成的 API 客户端接口，需实现 IAppContextSwitcher）
-        var api = _appManager.GetDefaultWebApi<IMyApi>();
-        await api.DoSomethingAsync();
+        _serviceProvider = serviceProvider;
     }
 
     public async Task UseSpecificAppAsync(string appKey)
     {
-        // 获取指定应用的 API（内部经 IAppContextHolder.SwitchToApp(appKey, ...) 切换上下文：
-        // 完整守卫 + 立即切换 + 不自动归还）
-        var api = _appManager.GetWebApi<IMyApi>(appKey);
+        // 切换并保持：IAppContextHolder.SwitchToApp 执行完整守卫（格式校验 + 授权判定 + 默认拒绝）
+        // 后立即切换当前执行流的上下文（不自动归还），
+        // 随后从 DI 解析的 API 客户端实例即使用目标应用凭证。
+        var holder = _serviceProvider.GetRequiredService<IAppContextHolder>();
+        holder.SwitchToApp(appKey, _appManager, _serviceProvider);
+        var api = _serviceProvider.GetRequiredService<IMyApi>();
+        await api.DoSomethingAsync();
+    }
+
+    public async Task UseDefaultAppAsync()
+    {
+        // 切回默认应用
+        var holder = _serviceProvider.GetRequiredService<IAppContextHolder>();
+        holder.SwitchToDefaultApp(_appManager);
+        var api = _serviceProvider.GetRequiredService<IMyApi>();
         await api.DoSomethingAsync();
     }
 }
 ```
+
+> `IAppContextHolder` 及其 `SwitchToApp` / `SwitchToDefaultApp` 扩展方法位于 `Mud.HttpUtils` 命名空间。
+> 二者共用同一个基于 `AsyncLocal` 的上下文持有者，切换的是**当前执行流**的上下文（不存在「独立实例」语义）。
 
 #### 2. 应用上下文切换
 
@@ -484,18 +494,21 @@ public class MessageService
     /// ✅ 正确做法 - 显式切换应用上下文
     /// </summary>
     /// <remarks>
-    /// 使用 IFeishuAppManager 获取指定应用的 API，确保使用正确的应用凭证。
+    /// 先经 IAppContextHolder.SwitchToApp 切换上下文（完整守卫 + 立即切换），
+    /// 再从 DI 解析 API 客户端，确保使用正确的应用凭证。
     /// </remarks>
     public async Task SendMessageAsync_Correct(string message)
     {
         var appManager = _serviceProvider.GetRequiredService<IFeishuAppManager>();
 
-        // 方法1: 直接使用 IFeishuAppManager 获取指定应用的 API（推荐）
-        var approvalUserApi = appManager.GetWebApi<IFeishuTenantV3User>("approval-app");
+        // 切换并保持：SwitchToApp 执行完整守卫（格式校验 + 授权判定 + 默认拒绝）后立即切换，
+        // 不自动归还；随后解析的 API 客户端即使用目标应用凭证。
+        var holder = _serviceProvider.GetRequiredService<IAppContextHolder>();
+        holder.SwitchToApp("approval-app", appManager, _serviceProvider);
+        var approvalUserApi = _serviceProvider.GetRequiredService<IFeishuTenantV3User>();
 
-        // 方法2: 使用 UseAppScope 作用域切换（有线程安全问题，须以 using 包络）
-        // var userApi = _serviceProvider.GetRequiredService<IFeishuTenantV3User>();
-        // using (userApi.UseAppScope("approval-app")) { ... }
+        // 或用作用域切换（作用域结束自动恢复上下文）：
+        // using (approvalUserApi.UseAppScope("approval-app")) { ... }
 
         await approvalUserApi.SendMessageAsync(message);
     }
@@ -504,9 +517,9 @@ public class MessageService
 
 **重要提示**：
 
-- ⚠️ **线程安全警告**：直接使用 `UseApp()` / `UseAppScope()` 方法会改变当前执行流的上下文状态，在多线程环境下可能导致应用上下文混乱。**推荐使用 `IFeishuAppManager.GetWebApi<T>(appKey)` 方法获取独立的服务实例。**
+- ⚠️ **线程安全警告**：`SwitchToApp` / `UseAppScope`（以及旧的 `UseApp()`）都会改变**当前执行流**的上下文状态（基于 `AsyncLocal`），它们共用同一个 `IAppContextHolder`，并不存在「返回独立实例」的捷径。多线程场景下每个执行流各自持有自己的上下文；`UseAppScope` 以 `using` 包络可保证作用域结束自动归还。
 
-- ✅ **推荐做法**：始终通过 `IFeishuAppManager` 获取指定应用的 API 实例，这样可以确保每次都使用正确的应用凭证，并避免线程安全问题。
+- ✅ **推荐做法**：先显式切换应用上下文（`SwitchToApp` 或 `UseAppScope`），再从 DI 解析 API 客户端，确保每次都使用正确的应用凭证。
 
 - 📝 **后台任务**：在后台任务中，必须明确指定应用，不能依赖默认应用，否则可能导致应用上下文错误。
 

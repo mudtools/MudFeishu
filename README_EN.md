@@ -88,7 +88,7 @@ declarative interfaces plus source-generated implementations. Agents never call 
 ② Policy axis              — MaxToolRisk / AllowedIdentities → reject (policy_denied: reason_code)
 ③ Authorization gate       — IToolExecutionAuthorizer → reject (authorization_denied)
                             NeedsUserConfirmation → notify host approval channel, neutral rejection (no credentials at all)
-④ Tenant context switch    — BeginScope(appKey)
+④ Tenant context switch    — UseAppScope(appKey)
 ④' User context            — identity=user tools only: write into AsyncLocal, cleared in finally
 ⑤ Content safety           — 4 injection rules scan the raw result (off | warn | block)
 ⑥ Outbound sanitization (mandatory)
@@ -241,7 +241,7 @@ code is reused with zero differences.
 | Outbound sanitization | Strip ANSI/control chars + redact credentials and phone numbers; **no switch, not bypassable**; runs before the shaping hook |
 | Content safety | 4 injection rules scan the raw result (`off` / `warn` (default) / `block`); a hit is tagged `[untrusted_content: rule]` |
 | Idempotency keys | 21 of the 100 write tools expose `idempotency_key` (11 of them map onto the platform-side `client_token` dedup); `dry_run=true` does not consume an idempotency key |
-| Multi-tenancy | appKey context validation → tenant switch `BeginScope(appKey)`; the user context is written into AsyncLocal by `identity=user` tools only and cleared in `finally`; a cross-tenant recall is a data leak |
+| Multi-tenancy | appKey context validation → tenant switch `UseAppScope(appKey)`; the user context is written into AsyncLocal by `identity=user` tools only and cleared in `finally`; a cross-tenant recall is a data leak |
 | Webhook | Signature + timestamp ±30s + nonce: three fail-closed gates; in production, no distributed nonce dedup registered ⇒ **fails at startup** (no silent degradation) |
 | SSRF | `BaseUrl` enforces HTTPS + host allow-list; persisting multimodal attachments for tool calls is the host's `IFeishuAttachmentStager` responsibility (domain allow-list / size cap / extension validation are all host policy) |
 | No credential leakage | `AppSecret` / tokens never enter audit payloads; the pending-confirmation snapshot contains no credentials (asserted reflectively by use cases) |
@@ -563,20 +563,19 @@ builder.Services.CreateFeishuServicesBuilder()
 // 3. Switch the app context per tenant in a request
 public class TenantController : ControllerBase
 {
-    private readonly IFeishuAppManager _appManager;
+    private readonly IFeishuTenantV3User _userApi;
 
-    public TenantController(IFeishuAppManager appManager)
+    public TenantController(IFeishuTenantV3User userApi)
     {
-        _appManager = appManager;
+        _userApi = userApi;
     }
 
     [HttpGet("tenant/{tenantKey}/users/{userId}")]
     public async Task<IActionResult> GetUser(string tenantKey, string userId)
     {
-        var userApi = _appManager.GetDefaultWebApi<IFeishuTenantV3User>();
-        // using ensures the default app is restored when the scope ends
-        using var scope = userApi.UseAppScope(tenantKey);
-        var result = await userApi.GetUserInfoByIdAsync(userId);
+        // Scope-based switch to the tenant app; using restores the default app when the scope ends
+        using var scope = _userApi.UseAppScope(tenantKey);
+        var result = await _userApi.GetUserInfoByIdAsync(userId);
         return Ok(result);
     }
 }
@@ -597,17 +596,16 @@ public class TenantController : ControllerBase
 ### Multi-app switching with `IFeishuAppManager`
 
 ```csharp
-// Resolve an API interface for a specific app and switch between Feishu apps flexibly
-var tenantJobTitleApi = _feishuAppManager.GetWebApi<IFeishuTenantV3JobTitle>("hr-app");
-var result = await tenantJobTitleApi.GetJobTitlesListAsync(10, null);
-
-// Scope-based app switching with automatic context restoration (UseAppScope)
-var userApi = _feishuAppManager.GetDefaultWebApi<IFeishuTenantV3User>();
+// Switch the app context first, then call the API — the context is restored when the scope ends
 using (userApi.UseAppScope("hr-app"))
 {
     // All API calls within this scope use hr-app
     var userResult = await userApi.GetUserInfoByIdAsync("user_123");
 }
+
+// Switch-and-stay (context kept until switched again) via the app-manager holder
+IAppContextHolder.SwitchToApp("hr-app", appManager, serviceProvider);
+var jobTitleResult = await jobTitleApi.GetJobTitlesListAsync(10, null);
 
 // Send a message in single-app mode — no app switching needed
 var textContent = new MessageTextContent { Text = "Hello World!" };
@@ -905,8 +903,8 @@ dotnet publish -r win-x64 -c Release /p:PublishAot=true
 
 | Package                                       | Version          | Description                                           |
 | --------------------------------------------- | ---------------- | ----------------------------------------------------- |
-| **Mud.HttpUtils**                             | v3.0.7           | HTTP client utilities with source generator (incl. resilience policies) |
-| **Mud.HttpUtils.Generator**                   | v3.0.7           | HTTP client code generator (compile-time)             |
+| **Mud.HttpUtils**                             | v3.0.8           | HTTP client utilities with source generator (incl. resilience policies) |
+| **Mud.HttpUtils.Generator**                   | v3.0.8           | HTTP client code generator (compile-time)             |
 | **System.Text.Json**                          | v10.0.9          | High-performance JSON serialization (netstandard2.0 target) |
 | **Microsoft.Extensions.***                    | v8.0.2 / v10.0.9 | Dependency injection, logging, configuration binding, options |
 

@@ -79,7 +79,7 @@ AI 能力不是 Sample 层的补丁，是 SDK 的**第一公民**。
 ② 策略轴           —— MaxToolRisk / AllowedIdentities → 拒绝（policy_denied: reason_code）
 ③ 授权门禁         —— IToolExecutionAuthorizer → 拒绝（authorization_denied）
                      NeedsUserConfirmation → 通知宿主批准通道，中性拒绝（不含任何凭据）
-④ 租户上下文切换    —— BeginScope(appKey)
+④ 租户上下文切换    —— UseAppScope(appKey)
 ④' 用户上下文       —— 仅 identity=user 工具：写入 AsyncLocal，finally 清理
 ⑤ 内容安全         —— 4 条注入规则扫描原始结果（off | warn | block）
 ⑥ 出站净化（强制）  —— ANSI/控制字符剥离 + 凭据与手机号脱敏；无开关、不可绕过
@@ -226,7 +226,7 @@ IToolSchemaExporter.Export(ToolSchemaDialect.Skills);
 | 出站净化 | ANSI/控制字符剥离 + 凭据与手机号脱敏；**无开关、不可绕过**；在整形钩子之前 |
 | 内容安全 | 4 条注入规则扫描原始结果（`off` / `warn`（默认）/ `block`）；命中标注 `[untrusted_content: 规则]` |
 | 幂等键 | 100 个写工具中 21 个暴露 `idempotency_key`（其中 11 个对应平台侧 `client_token` 去重）；`dry_run=true` 不消耗幂等键 |
-| 多租户 | appKey 上下文校验 → 租户切换 `BeginScope(appKey)`；用户上下文仅 `identity=user` 工具写入 AsyncLocal，finally 清理；跨租户召回即数据泄露 |
+| 多租户 | appKey 上下文校验 → 租户切换 `UseAppScope(appKey)`；用户上下文仅 `identity=user` 工具写入 AsyncLocal，finally 清理；跨租户召回即数据泄露 |
 | Webhook | 签名 + 时间戳 ±30s + Nonce 三道 fail-closed；生产环境未注册分布式 Nonce 去重 → **启动即失败**（不静默退化） |
 | SSRF | `BaseUrl` 强制 HTTPS + 主机白名单；工具面多模态附件落盘由宿主 `IFeishuAttachmentStager` 实现（域名白名单 / 大小上限 / 扩展名校验全是宿主策略） |
 | 凭据不外泄 | `AppSecret` / 令牌不进审计载荷；待确认快照不含任何凭据（由用例反射断言） |
@@ -356,7 +356,8 @@ app.MapGet("/users/{userId}",
     (IFeishuTenantV3User userApi, string userId, CancellationToken ct) =>
         userApi.GetUserInfoByIdAsync(userId, ct));
 
-// 多应用作用域切换
+// 多应用作用域切换：using 结束后自动恢复默认应用
+var userApi = _serviceProvider.GetRequiredService<IFeishuTenantV3User>();
 using (userApi.UseAppScope("hr-app"))
 {
     return await userApi.GetUserInfoByIdAsync(userId, ct);
@@ -384,6 +385,46 @@ builder.Services.CreateFeishuWebSocketServiceBuilder(builder.Configuration, "def
 
 ```csharp
 builder.Services.AddFeishuOpenTelemetry(o => o.OtlpEndpoint = new Uri("http://localhost:4317"));
+```
+
+### 7. 多租户部署指引
+
+> **多租户 = 多应用**。每个租户对应一个 `FeishuAppConfig`（独立 AppId/AppSecret），通过 `UseAppScope`（作用域式，结束自动恢复）或 `IAppContextHolder.SwitchToApp`（切换并保持）切换应用上下文。
+
+**最小装配片段**：
+
+```csharp
+// 1. 为每个租户注册应用配置
+builder.Services.AddFeishuApp(configure =>
+{
+    configure.AddDefaultApp("tenant-a", "cli_aaa", "dsk_aaa");
+    configure.AddApp("tenant-b", "cli_bbb", "dsk_bbb");
+});
+
+// 2. 注册 HTTP API 服务
+builder.Services.CreateFeishuServicesBuilder()
+    .AddAllApis()
+    .Build();
+
+// 3. 在请求中按租户切换应用上下文
+public class TenantController : ControllerBase
+{
+    private readonly IFeishuTenantV3User _userApi;
+
+    public TenantController(IFeishuTenantV3User userApi)
+    {
+        _userApi = userApi;
+    }
+
+    [HttpGet("tenant/{tenantKey}/users/{userId}")]
+    public async Task<IActionResult> GetUser(string tenantKey, string userId)
+    {
+        // 以作用域方式切换到租户应用上下文，using 结束后自动恢复默认应用
+        using var scope = _userApi.UseAppScope(tenantKey);
+        var result = await _userApi.GetUserInfoByIdAsync(userId);
+        return Ok(result);
+    }
+}
 ```
 
 ---
@@ -438,8 +479,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/audit-config-keys.
 
 | 包                            | 版本             | 说明                                |
 | ----------------------------- | ---------------- | ----------------------------------- |
-| **Mud.HttpUtils**             | v3.0.7  | HTTP 客户端工具类（含源代码生成器） |
-| **Mud.HttpUtils.Generator**   | v3.0.7  | HTTP 客户端代码生成器（编译时）     |
+| **Mud.HttpUtils**             | v3.0.8  | HTTP 客户端工具类（含源代码生成器） |
+| **Mud.HttpUtils.Generator**   | v3.0.8  | HTTP 客户端代码生成器（编译时）     |
 | **Microsoft.Extensions.Http** | v8.0.1 / v10.0.9 | HTTP 客户端工厂                     |
 
 ---

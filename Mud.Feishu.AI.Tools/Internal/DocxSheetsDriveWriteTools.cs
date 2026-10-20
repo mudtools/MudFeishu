@@ -311,12 +311,6 @@ internal sealed class DocxWriteTools(
     /// <summary>单次批量更新的块数上限（平台约束）。</summary>
     private const int MaxUpdatesPerRequest = 200;
 
-    /// <summary>读取子块列表的单页条数（平台上限 500）。</summary>
-    private const int ChildrenPageSize = 500;
-
-    /// <summary>统计子块数时的翻页上限（防异常循环；500×20 = 1 万块）。</summary>
-    private const int MaxChildrenPages = 20;
-
     /// <summary>im/docx 的根块 ID 约定：文档根块的 block_id == document_id。</summary>
     private static string ResolveParentBlockId(string? modelSupplied, string documentId)
         => string.IsNullOrWhiteSpace(modelSupplied) ? documentId : modelSupplied!;
@@ -458,93 +452,16 @@ internal sealed class DocxWriteTools(
                     ("document_id", args.DocumentId.Length), ("markdown", args.Markdown!.Length)));
             }
 
-            // ① 转换（只读；失败 ⇒ 文档完全未被触碰）。
-            var convertOutcome = FeishuApiResultReader.Read(await _blocksClient
-                .ContentConvertAsync(
-                    new ConvertContentRequest { ContentType = "markdown", Content = args.Markdown! },
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
-
-            if (!convertOutcome.Ok || convertOutcome.Data is null)
-            {
-                // 显式回报"文档未被修改"：模型据此可安全重试，不必担心留下半成品。
-                return Untouched(executor.ToolName, "Markdown 转换", convertOutcome.ErrorText);
-            }
-
-            var newBlocks = convertOutcome.Data.Blocks ?? [];
-            if (newBlocks.Length == 0)
-            {
-                // 拒绝执行：若放行，下一步会删光旧内容却无新内容可写。
-                throw new ArgumentException(
-                    "markdown 未产生任何块，已拒绝执行替换（否则会清空文档而无新内容）。请检查输入是否为有效 Markdown。");
-            }
-
-            // ② 读取现有子块数（旧内容区间上界）。
-            var countOutcome = await CountChildrenAsync(args.DocumentId, parentBlockId, cancellationToken).ConfigureAwait(false);
-            if (!countOutcome.Ok)
-            {
-                return Untouched(executor.ToolName, "读取现有子块", countOutcome.ErrorText);
-            }
-
-            var oldCount = countOutcome.Count;
-
-            // ③ 先追加新块（失败 ⇒ 旧内容完整，无损失 —— 这是本实现相对"先删后建"的核心优势）。
-            var appendOutcome = FeishuApiResultReader.Read(await _blocksClient
-                .CreateBlockAsync(
-                    args.DocumentId,
-                    parentBlockId,
-                    new CreateBlockRequest { Childrens = newBlocks },
-                    client_token: args.IdempotencyKey,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
-
-            if (!appendOutcome.Ok || appendOutcome.Data is null)
-            {
-                return Untouched(executor.ToolName, "追加新块", appendOutcome.ErrorText);
-            }
-
-            var newBlockIds = new JsonArray(
-                [.. (appendOutcome.Data.Childrens ?? []).Select(static child => (JsonNode?)child?.BlockId)]);
-
-            var envelope = new JsonObject
-            {
-                ["appended"] = newBlocks.Length,
-                ["new_block_ids"] = newBlockIds,
-            };
-
-            // 空文档没有"旧块"可删，跳过删除（ValidateRange 也拒绝 end == start）。
-            if (oldCount == 0)
-            {
-                envelope["deleted"] = 0;
-                envelope["note"] = "原文档无子块，仅追加";
-                return FromEnvelope(envelope);
-            }
-
-            // ④ 再删除旧块 [0, oldCount)。失败时新旧并存 —— 如实上报，不做二次破坏性操作。
-            // 删除失败**不抛异常**：要把"内容未丢失 + 精确修复指引"作为**正常结果**回给模型，
-            // 让它能自主完成收尾；抛异常会丢掉已成功追加的块信息。
-            var deleteOutcome = FeishuApiResultReader.Read(await _blocksClient
-                .BatchDeleteBlocksAsync(
-                    args.DocumentId,
-                    parentBlockId,
-                    new BatchDeleteBlocksRequest { StartIndex = 0, EndIndex = oldCount },
-                    client_token: args.IdempotencyKey,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
-
-            if (!deleteOutcome.Ok)
-            {
-                // ⚠️ 部分失败必须**如实上报**（不得静默）：内容未丢失，但文档现为新旧并存。
-                envelope["deleted"] = 0;
-                envelope["partial_failure"] = true;
-                envelope["message"] =
-                    $"新内容已写入（{newBlocks.Length} 块），但旧内容删除失败：{deleteOutcome.ErrorText}。"
-                    + "文档现为**新旧内容并存**，内容未丢失。修复：调用 docx.delete_blocks，"
-                    + $"document_id={args.DocumentId}，start_index=0，end_index={oldCount}（建议先 dry_run 确认区间）。";
-                return FromEnvelope(envelope);
-            }
-
-            envelope["deleted"] = oldCount;
+            // 三步语义（转换 → 先追加 → 后删除旧块）由 DocxMarkdownRewrite 单点实现：
+            // docx.replace_document 与 markdown.patch / markdown.overwrite 必须共享同一锁序。
+            var envelope = await DocxMarkdownRewrite.ReplaceAsync(
+                _blocksClient,
+                args.DocumentId,
+                parentBlockId,
+                args.Markdown!,
+                args.IdempotencyKey,
+                executor.ToolName,
+                cancellationToken).ConfigureAwait(false);
             return FromEnvelope(envelope);
         });
     }
@@ -559,72 +476,6 @@ internal sealed class DocxWriteTools(
     /// </remarks>
     private ToolResult FromEnvelope(JsonObject envelope)
         => ToolResultPipeline.OkJson(envelope, _maxResultLength);
-
-    /// <summary>
-    /// 统计某父块下的子块总数（翻页累加）。
-    /// </summary>
-    /// <remarks>
-    /// 平台单页上限 500，超长文档必须翻页，否则删除区间会短于实际旧内容 ⇒ 只删掉一部分、
-    /// 留下"半旧半新"。翻页上限设 20 页（1 万块）以防异常循环。
-    /// </remarks>
-    private async Task<(bool Ok, int Count, string? ErrorText)> CountChildrenAsync(
-        string documentId,
-        string parentBlockId,
-        CancellationToken cancellationToken)
-    {
-        var total = 0;
-        string? pageToken = null;
-
-        for (var page = 0; page < MaxChildrenPages; page++)
-        {
-            var outcome = FeishuApiResultReader.Read(await _blocksClient
-                .GetChildrenBlocksPageListAsync(
-                    documentId,
-                    parentBlockId,
-                    page_size: ChildrenPageSize,
-                    page_token: pageToken,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
-
-            if (!outcome.Ok || outcome.Data is null)
-            {
-                // 返回元组而非 ToolApiOutcome<int>：后者约束 T : class，int 不满足。
-                return (false, 0, outcome.ErrorText ?? "读取子块列表返回空数据");
-            }
-
-            total += outcome.Data.Items?.Count ?? 0;
-
-            if (!outcome.Data.HasMore || string.IsNullOrEmpty(outcome.Data.PageToken))
-            {
-                return (true, total, null);
-            }
-
-            pageToken = outcome.Data.PageToken;
-        }
-
-        throw new InvalidOperationException(
-            $"文档子块超过 {MaxChildrenPages * ChildrenPageSize} 块，超出本工具安全范围；"
-            + "请改用 docx.delete_blocks 分段处理，避免对超大文档执行整体替换");
-    }
-
-    /// <summary>
-    /// 构造"文档未被修改"的中断结果。
-    /// </summary>
-    /// <remarks>
-    /// <b>为什么必须显式说明"未被修改"</b>：模型在收到失败后要决定是否重试。
-    /// 若它不知道文档原封未动，可能转而执行更激进的补救动作（如手动删除旧块），
-    /// 反而制造出真正的破损状态。<b>把"可安全重试"作为结果的一部分</b>，
-    /// 是让失败可恢复的最低成本手段。
-    /// </remarks>
-    private static ToolResult Untouched(string toolName, string step, string? errorText)
-        => ToolResultPipeline.OkReceipt(new JsonObject
-        {
-            ["partial_failure"] = true,
-            ["step"] = step,
-            ["tool"] = toolName,
-            ["message"] =
-                $"{step}失败：{errorText}。文档**未被修改**（旧内容完整、新内容未写入），可安全重试。",
-        });
 
     /// <summary>校验删除区间；返回待删条数。<b>非法区间必须提前拒绝</b>（否则平台会按意外区间删除）。</summary>
     private static int ValidateRange(int startIndex, int endIndex)
@@ -1028,11 +879,9 @@ internal sealed class DriveWriteTools(
         });
     }
 
-    /// <summary>
-    /// R5 / F-10 <b>本轮未落地</b>：B-2 的零容忍守卫规定 Source 不得指向返回二进制的 SDK 方法，
-    /// 而受控下载出口必须调用 DownloadFileAsync（返回二进制数组）。
-    /// stager 已作为软依赖挂在本类上，无需扩展契约 —— 缺的只是与 B-2 和解的表达方式。
-    /// 详见 Curation/Docs/FeishuDriveWriteToolInterfaces.cs 末尾的回滚说明与三条候选出路
-    /// （D-1 拆分后，原 FeishuDocxSheetsDriveToolInterfaces.cs 的尾部说明随 Drive 写面归位）。
-    /// </summary>
+    // R5 / F-10 本轮未落地：B-2 的零容忍守卫规定 Source 不得指向返回二进制的 SDK 方法，
+    // 而受控下载出口必须调用 DownloadFileAsync（返回二进制数组）。
+    // stager 已作为软依赖挂在本类上，无需扩展契约 —— 缺的只是与 B-2 和解的表达方式。
+    // 详见 Curation/Docs/FeishuDriveWriteToolInterfaces.cs 末尾的回滚说明与三条候选出路
+    // （D-1 拆分后，原 FeishuDocxSheetsDriveToolInterfaces.cs 的尾部说明随 Drive 写面归位）。
 }

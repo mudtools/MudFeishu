@@ -104,6 +104,11 @@ public static class FeishuToolsServiceCollectionExtensions
             // 与 AddFeishuReadonlyToolCores 的清单**同进同出**，否则逐域装配的宿主拿不到下载出口。
             .AddFeishuDriveDownloadToolsCore()
 
+            // Markdown 生命周期执行器 MarkdownTools（5 个工具：2 只读 + 3 写）。
+            // 单执行器混合域（写工具默认不启用，经 FeishuAgent:WriteAllowList 单键控）；
+            // 与 AddFeishuReadonlyToolCores 的清单**同进同出**（DomainRegistrarTests 锁等价性）。
+            .AddFeishuMarkdownToolsCore()
+
             // ⚠️ 不要在此列 AddFeishuDriveCommentToolsCore / AddFeishuDrivePermissionToolsCore：
             // Drive 协作面是「读写混合域」，按既有链拆分其 Core **只在写链**登记（见 AddFeishuWriteToolCores）。
             // 两链同时登记 ⇒ 域注册器被装配两次 ⇒ FeishuToolRegistry 抛"工具已注册"（客户端缺席时不可见，
@@ -563,7 +568,13 @@ public static class FeishuToolsServiceCollectionExtensions
                     // 漏加即「工具静默不入注册表」（ToolDomainCoresWiringContractTests 会报红）；
                     // 且必须与 AddFeishuCloudDocTools 的清单**同进同出**（DomainRegistrarTests 锁等价性）。
                     .AddFeishuSlidesReadToolsCore()
-                    .AddFeishuSlidesImageToolsCore();
+                    .AddFeishuSlidesImageToolsCore()
+
+                    // Markdown 生命周期执行器 MarkdownTools（5 个工具：2 只读 + 3 写）。
+                    // 单执行器混合域（取舍同 Board/Attendance）：Core 整体注册于只读链，
+                    // 写工具默认不启用；必须与 AddFeishuCloudDocTools 的清单**同进同出**
+                    // （DomainRegistrarTests 锁等价性）。
+                    .AddFeishuMarkdownToolsCore();
 
     /// <summary>
     /// 写域工具核心批量注册（W4 抽取：消除 AddFeishuTools 与 AddFeishuWriteTools 的重复链）。

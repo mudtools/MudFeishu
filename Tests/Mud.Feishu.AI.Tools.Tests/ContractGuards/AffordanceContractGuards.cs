@@ -55,9 +55,11 @@ public class AffordanceContractGuards
     //           只读覆盖率自此入表（阈值见 AffordanceCoverageContractGuards.ReadFloor；168 → 201；→ 94853 字符）。
     // S-1：slides 整域 12 份（只读 7 + 写入 5，其中 delete_slide 落高危词表），
     //      新域首个批次即读写全覆盖，不留只读缺口（201 → 213；→ 99865 字符）。
-    private const int ExpectedAssetCount = 213;
+    // S-2：markdown 生命周期 5 份（只读 2 + 写入 3，均为 write 风险级），
+    //      新域同样读写全覆盖（213 → 218；→ 102605 字符）。
+    private const int ExpectedAssetCount = 218;
 
-    private const int ExpectedTotalAssetCharacters = 99865;
+    private const int ExpectedTotalAssetCharacters = 102605;
 
     // B2 瘦身（测试体系治理，见《单元测试体系过度测试分析与解决方案》§三.5；该文档已迁 Mud.AI 仓）：
     // 与上游诊断**同一判定**的仓库侧副本已删除——

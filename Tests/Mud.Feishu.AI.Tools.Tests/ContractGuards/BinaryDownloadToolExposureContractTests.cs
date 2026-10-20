@@ -174,8 +174,8 @@ public class BinaryDownloadToolExposureContractTests
         var references = CollectToolSourceReferences().ToArray();
 
         references.Should().HaveCount(
-            351,
-            "351 个工具声明了 Source（另 5 个元工具无 SDK 源）——骤降说明扫描器读不懂现形态（R-1 的 nameof 拼接）");
+            356,
+            "356 个工具声明了 Source（另 5 个元工具无 SDK 源）——骤降说明扫描器读不懂现形态（R-1 的 nameof 拼接）");
 
         references.Should().OnlyContain(
             static reference => reference.Source.Contains('.', StringComparison.Ordinal)

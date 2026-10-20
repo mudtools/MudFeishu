@@ -62,14 +62,14 @@ public class GuidanceAssetContractGuards
     public void EveryContractDomain_ShouldHaveAL1GuidanceAsset()
     {
         // 自证（防"过滤器写坏 ⇒ 零缺失假绿"）：域数与工具条目数一起锁基线。
-        // 新增域时必须同批补 Guidance/{domain}.md 并更新这里的 32；工具增减时更新 356。
+        // 新增域时必须同批补 Guidance/{domain}.md 并更新这里的 33；工具增减时更新 361。
         var contractDomains = FeishuToolContracts.AllNames
             .Select(DomainOf)
             .ToHashSet(StringComparer.Ordinal);
         contractDomains.Should().HaveCount(
-            32, "工具面当前 32 个域（含元工具域 feishu）——新增域须同批补 L1 资产并更新本基线");
+            33, "工具面当前 33 个域（含元工具域 feishu）——新增域须同批补 L1 资产并更新本基线");
         FeishuToolContracts.AllNames.Should().HaveCount(
-            356, "工具条目基线（与 FeishuToolSchemas.golden.txt 同源）");
+            361, "工具条目基线（与 FeishuToolSchemas.golden.txt 同源）");
 
         var missing = FindDomainsWithoutGuidance(FeishuToolContracts.AllNames, FeishuToolGuidance.ByDomain);
 

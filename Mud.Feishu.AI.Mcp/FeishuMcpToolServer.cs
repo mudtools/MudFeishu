@@ -6,7 +6,6 @@
 // -----------------------------------------------------------------------
 
 using System.Reflection;
-using System.Text.Encodings.Web;
 using Mud.AI.Agent.Tools;
 using Mud.AI.Agent.Tools.Errors;
 
@@ -27,25 +26,17 @@ namespace Mud.Feishu.AI.Mcp;
 /// </para>
 /// <para>
 /// <b>租户上下文与资源能力</b>：每次调用前经 <see cref="IFeishuToolContextAccessor.Begin"/> 显式重建（MCP 调用不在事件流内，与续跑同构），
-/// 作用域在 <c>finally</c> 释放，缺 appKey 构造期即抛（禁止默认应用兜底）；资源目录（<see cref="FeishuMcpResourceCatalog"/>）与工具面同一次装配、
+/// 作用域在 <c>finally</c> 释放；身份取「会话绑定（HTTP）」或「进程配置（stdio）」，两者都没有默认应用兜底。资源目录（<see cref="FeishuMcpResourceCatalog"/>）与工具面同一次装配、
 /// 同一份白名单，内容全为编译期常量 ⇒ <c>resources/read</c> 无 IO、无租户依赖，instructions 只下发一行摘要。
 /// </para>
 /// <para>
-/// <b>线程模型</b>：单连接顺序处理（<see cref="FeishuMcpStdioHost"/> 逐行 await），<c>_initialized</c> 标记无需加锁；宿主并发投递时须自行串行化。
+/// <b>线程模型</b>：stdio 单连接顺序处理（<see cref="FeishuMcpStdioHost"/> 逐行 await），进程态 <c>_initialized</c> 因此无需加锁；HTTP 侧的握手态与租户绑定挂在 <see cref="FeishuMcpSession"/> 上，并发请求按会话隔离。
 /// </para>
 /// </remarks>
 public sealed class FeishuMcpToolServer
 {
-    /// <summary>线协议序列化选项：保留中文原文（与工具结果同一纪律，见 <c>ToolResultJson</c> 的注释）。</summary>
-    /// <remarks>
-    /// <c>JsonNode.ToJsonString()</c> 默认走 <c>JavaScriptEncoder.Default</c>，会把中文转义成
-    /// <c>\uXXXX</c>——对模型/客户端而言既是 token 膨胀（约 6 倍）也是可读性灾难。
-    /// </remarks>
-    private static readonly JsonSerializerOptions WireOptions = new()
-    {
-        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-        WriteIndented = false,
-    };
+    /// <summary>线协议序列化选项：与 HTTP 传输同一实例（<see cref="McpWireJson.Options"/>）。</summary>
+    private static readonly JsonSerializerOptions WireOptions = McpWireJson.Options;
 
     private readonly IServiceProvider _services;
     private readonly FeishuMcpServerOptions _options;
@@ -144,6 +135,10 @@ public sealed class FeishuMcpToolServer
     /// <returns>响应 JSON；输入是<b>通知</b>（无 <c>id</c>）或空行时返回 <see langword="null"/>（不产生响应）。</returns>
     /// <remarks>本方法<b>不抛异常</b>（除取消外）：所有失败都归一为 JSON-RPC 错误对象，客户端不会收到"连接被打破"。</remarks>
     public async Task<string?> HandleMessageAsync(string? json, CancellationToken cancellationToken = default)
+        => await HandleMessageAsync(json, null, cancellationToken).ConfigureAwait(false);
+
+    /// <summary>处理一条 JSON-RPC 消息；<paramref name="session"/> 非空时，握手标记与租户绑定都取自该会话（HTTP 形态）。</summary>
+    internal async Task<string?> HandleMessageAsync(string? json, FeishuMcpSession? session, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(json))
         {
@@ -170,7 +165,7 @@ public sealed class FeishuMcpToolServer
 
         var id = request["id"];
         var isNotification = id is null;
-        var method = request["method"]?.GetValue<string>();
+        var method = request.ReadOptionalString("method");
         if (string.IsNullOrWhiteSpace(method))
         {
             return isNotification
@@ -182,7 +177,7 @@ public sealed class FeishuMcpToolServer
 
         // 初始化前只接受 initialize / ping（协议要求：其余**请求**回错误，而不是"看起来能用"）。
         // 通知不在此拦截：notifications/initialized 正是握手完成的信号，它本身必须能到达下面的分支。
-        if (!_initialized
+        if (!IsReady(session)
             && !isNotification
             && !string.Equals(method, McpProtocol.MethodInitialize, StringComparison.Ordinal)
             && !string.Equals(method, McpProtocol.MethodPing, StringComparison.Ordinal))
@@ -195,11 +190,11 @@ public sealed class FeishuMcpToolServer
             switch (method)
             {
                 case McpProtocol.MethodInitialize:
-                    _initialized = true;
+                    MarkReady(session);
                     return isNotification ? null : ResultEnvelope(id, BuildInitializeResult(parameters));
 
                 case McpProtocol.MethodInitialized:
-                    _initialized = true;
+                    MarkReady(session);
                     return null;
 
                 case McpProtocol.MethodPing:
@@ -209,7 +204,7 @@ public sealed class FeishuMcpToolServer
                     return isNotification ? null : ResultEnvelope(id, BuildToolsListResult());
 
                 case McpProtocol.MethodToolsCall:
-                    return isNotification ? null : await CallToolAsync(id!, parameters, cancellationToken).ConfigureAwait(false);
+                    return isNotification ? null : await CallToolAsync(id!, parameters, session, cancellationToken).ConfigureAwait(false);
 
                 case McpProtocol.MethodResourcesList:
                     return isNotification ? null : ResultEnvelope(id, BuildResourcesListResult());
@@ -241,6 +236,21 @@ public sealed class FeishuMcpToolServer
     }
 
     // ─────────────────────────── 协议载荷构造 ───────────────────────────
+
+    /// <summary>握手是否完成：stdio 挂进程，HTTP 挂会话（各会话独立握手）。</summary>
+    private bool IsReady(FeishuMcpSession? session) => session?.IsInitialized ?? _initialized;
+
+    private void MarkReady(FeishuMcpSession? session)
+    {
+        if (session is null)
+        {
+            _initialized = true;
+        }
+        else
+        {
+            session.MarkInitialized();
+        }
+    }
 
     private JsonObject BuildInitializeResult(JsonObject? parameters)
     {
@@ -429,7 +439,7 @@ public sealed class FeishuMcpToolServer
         return new JsonObject { ["tools"] = tools };
     }
 
-    private async Task<string> CallToolAsync(JsonNode id, JsonObject? parameters, CancellationToken cancellationToken)
+    private async Task<string> CallToolAsync(JsonNode id, JsonObject? parameters, FeishuMcpSession? session, CancellationToken cancellationToken)
     {
         var requestedName = parameters?["name"]?.GetValue<string>();
         if (string.IsNullOrWhiteSpace(requestedName))
@@ -458,7 +468,7 @@ public sealed class FeishuMcpToolServer
         }
 
         var arguments = ToArguments(argumentsNode as JsonObject);
-        var (text, isError) = await InvokeAsync(function!, info!.ContractName, arguments, cancellationToken)
+        var (text, isError) = await InvokeAsync(function!, info!.ContractName, arguments, session, cancellationToken)
             .ConfigureAwait(false);
 
         var content = new JsonArray();
@@ -481,22 +491,25 @@ public sealed class FeishuMcpToolServer
     /// <param name="function">工具桥（<c>FeishuToolAIFunction</c>）。</param>
     /// <param name="contractName">契约工具名（错误文案与审计对齐用）。</param>
     /// <param name="arguments">已归一化的入参。注意：<see cref="Microsoft.Extensions.AI.AIFunctionArguments"/> 会在此处被再次包装。</param>
+    /// <param name="session">HTTP 会话（stdio 为 <see langword="null"/>，身份回落进程级配置）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>结果文本 + 是否错误。</returns>
     private async Task<(string Text, bool IsError)> InvokeAsync(
         AIFunction function,
         string contractName,
         Dictionary<string, object?> arguments,
+        FeishuMcpSession? session,
         CancellationToken cancellationToken)
     {
         // 显式重建租户上下文：MCP 调用不在事件流内，
         // 上下文不流动就会落到"缺 appKey ⇒ 工具桥结构化拒绝"上；作用域必须在 finally 释放，
         // 否则同进程的后续调用会带着前一个租户的 appKey（AsyncLocal 泄漏 = 跨租户串号）。
+        // HTTP 形态下身份取会话（每条会话绑一次），stdio 取配置——两条通道都没有默认应用兜底。
         using var scope = _contextAccessor.Begin(new FeishuToolContext(
-            _options.AppKey,
+            session?.AppKey ?? _options.AppKey,
             _options.ConversationKey,
             _options.ChatId,
-            _options.UserId,
+            session?.UserId ?? _options.UserId,
             _options.ThreadId));
 
         try

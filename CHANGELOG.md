@@ -20,7 +20,8 @@
   日历、审批、通讯录、妙记、幻灯片等飞书高频操作以编译期 Schema 暴露给模型；只读与写类分离，
   40 个高危写工具默认关闭、启用前须经宿主授权。
 - **人工确认（HITL）**：写操作可停在「等待确认」，经宿主审批通道放行后续跑；未确认绝不自动执行。
-- **MCP 服务器**（可选包）：stdio 接入 Claude Code / Cursor / 自建 harness，工具白名单与进程内 Agent 同源。
+- **MCP 服务器**（可选包）：stdio 或 Streamable HTTP 接入 Claude Code / Cursor / 自建 harness，
+  工具白名单与进程内 Agent 同源。
 - **会话记忆与知识检索**：条数 + token 双窗口记忆、超窗摘要压缩；内置知识接入与自建向量检索（RAG）
   两种形态，检索结果回链引用。
 
@@ -92,8 +93,8 @@
   - 自建知识检索（分块 / 索引 / 向量检索）与文本工具（`ai.translate_text`、`ai.detect_language`）；
   - Skills 产物导出（`skills/feishu-*`），可直接分发给 Agent harness。
 - **`Mud.Feishu.AI.Mcp` —— MCP 服务器（可选包）**
-  - stdio JSON-RPC 把白名单飞书工具与资源暴露给进程外 Agent；与进程内 Agent 共用同一工具定义与
-    执行链，写工具同样走人工确认。
+  - stdio 与 Streamable HTTP 两种传输把白名单飞书工具与资源暴露给进程外 Agent；与进程内 Agent 共用同一
+    工具定义与执行链，写工具同样走人工确认。HTTP 形态的租户身份只取自宿主认证层，逐请求 fail-closed。
 - **人工确认（HITL）管线**：`IFeishuToolApprovalChannel` 宿主审批通道、待确认快照持久化
   （`IFeishuPendingApprovalStore`）、批准后续跑幂等；未注册审批通道时写工具停在「等待确认」。
 - **示例程序**：`Demos/Mud.Feishu.Agent.Demo` 以启动菜单选择运行模式（裸模型 / IM 会话 /
@@ -117,6 +118,25 @@
   `tools` / `domains` / `readOnlyTools` / `writeTools` / `resources` / `protocolVersions`，
   全部由**实际服务中的工具面**（受同一白名单约束）与协议版本闭集推导——外部 Agent 因此在第一次握手后
   就知道「这个 server 到底给了我多大一面」，而不必靠 `tools/list` 回读后再自行分类。
+- **MCP Streamable HTTP 传输（`Mud.Feishu.AI.Mcp`）**：在 stdio 之外提供第二条传输。宿主把自己的 HTTP 端点
+  （`POST` / `DELETE`）映射到 `FeishuMcpHttpHandler`，请求与响应是框架无关快照（`McpHttpRequest` /
+  `McpHttpResponse`），本包**不引入任何 Web 框架依赖**（最小 API / MVC / FastEndpoints / 云函数皆可适配）。
+  **执行链零变化**：工具面、白名单、授权、出站净化与审计仍在协议层之下，传输层新增的判据全部是**拒绝**形态
+  （不合格请求宁可 4xx，也不会被交给执行链）。
+  - **租户身份的唯一来源是宿主认证层**：`AppKey` / `UserId` 只能由认证层写入请求快照，绝不从 URL、请求体或
+    自定义头推导；会话在 `initialize` 时绑定租户与协商后的协议版本，后续请求给出不同身份即 403——
+    **会话标识不是切换租户的凭据**。一个进程服务多租户需显式声明 `FeishuMcp:Http:TenantBoundPerRequest=true`
+    （默认关闭，此时 HTTP 与 stdio 同为单租户形态）。
+  - **会话目录在进程内**：`MaxSessions`（默认 64，超限 503）与 `SessionIdleTimeoutSeconds`（默认 900，
+    惰性回收、不起后台线程）；`DELETE` 终止会话回 204，未知或已回收的会话标识回 404（客户端重新握手）。
+    多实例部署需会话粘滞，或把上限理解为**单实例**上限。
+  - **跨源防护 fail-closed**：`AllowedOrigins` 为空时**拒绝一切带 `Origin` 的请求**（`Origin` 只由浏览器发出，
+    服务端 Agent 与 CLI 不发，故默认形态对它们零影响）；拒绝文案不回显来源值。`AllowedAppKeys` 是认证之后的
+    第二道名单，不是身份来源。
+  - **明确取舍（不是未完成）**：只做 JSON 响应，不做 `text/event-stream`（`GET` 一律 405）、不支持批量请求
+    （400）、通知回 202 无正文；请求体上限归宿主的 Web 层。决策与理由见
+    `documents/AIAgent/decisions/ADR-0008-mcp-http-transport.md`，部署与排障对照表见
+    `documents/AIAgent/MCP多租户部署Runbook.md` §2。
 - **`Demos/Mud.Feishu.Agent.Demo` 新增 `doctor` 模式**：零模型、零网络打印上述诊断报告。凭证留空即以
   **占位凭证**把容器装配成完整形态（占位凭证永不被使用，该模式不触网），从而能读出真实装配结论而不是一堆
   「未配置」噪音。
@@ -145,6 +165,10 @@
 - `im.get_message_read_users` 声明了 `page_token` / `fetch_all` 入参，单页结果却用无翻页契约的信封
   投影——模型既看不到 `has_more` 也拿不到续翻游标，等于「能传游标却翻不了页」；现改走统一分页信封，
   与输出 Schema 声明一致。
+- MCP 协议层读取 `method` 字段用了 `GetValue<string>()`，且该调用落在 try/catch 之外：客户端把 `method`
+  写成非字符串（数字 / 对象）时，stdio 链抛出 `InvalidCastException` 而不是回 `-32600`，一条畸形请求就能
+  打断整条会话。现统一经 `McpJson.ReadOptionalString`（字段缺席与非字符串同判为「没有方法」），HTTP 形态
+  同样回 200 + 协议错误信封。
 - Token 计数精确化（此前词表缺失恒走字符估算）。
 - 安全：邮件头 CR/LF 注入被拒；IPv6 回环地址白名单校验生效；AOT 严格模式下消除全部
   `IL2026` / `IL3050` 裁剪告警。

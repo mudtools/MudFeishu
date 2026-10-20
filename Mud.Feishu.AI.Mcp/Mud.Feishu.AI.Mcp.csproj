@@ -11,7 +11,7 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageIcon>Icon.png</PackageIcon>
 		<BaseOutputPath>..\bin</BaseOutputPath>
-		<Description>Mud.Feishu AI MCP server（可选包）：把已策展的飞书工具面（FeishuAgent:Tools / WriteAllowList 白名单）经 stdio JSON-RPC 2.0 暴露给进程外 Agent；每个 tool call 仍走既有工具执行链（授权门禁 / 租户切换 / 出站净化 / 审计），租户上下文缺失即 fail-closed，net8.0+ 原生 AOT 兼容。</Description>
+		<Description>Mud.Feishu AI MCP server（可选包）：把已策展的飞书工具面（FeishuAgent:Tools / WriteAllowList 白名单）经 stdio JSON-RPC 2.0 或 Streamable HTTP 暴露给进程外 Agent；两种传输共用同一工具面与执行链（授权门禁 / 租户切换 / 出站净化 / 审计），HTTP 形态的租户身份只取自宿主认证层、逐请求 fail-closed，net8.0+ 原生 AOT 兼容。</Description>
 		<PackageTags>Feishu;Lark;飞书;MCP;ModelContextProtocol;Agent;AI;Tool;AOT;NativeAOT;MudFeishu</PackageTags>
 	</PropertyGroup>
 

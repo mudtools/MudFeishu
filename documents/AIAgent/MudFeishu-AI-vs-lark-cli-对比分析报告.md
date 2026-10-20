@@ -56,11 +56,11 @@
 
 | 项 | MudFeishu.AI.Mcp | lark-cli |
 |---|---|---|
-| MCP Server | ✅ **自研** stdio JSON-RPC Server（`initialize`/`ping`/`tools/list`/`tools/call`） | ❌ 不运行 MCP 服务端 |
+| MCP Server | ✅ **自研** JSON-RPC 2.0 Server（stdio 与 Streamable HTTP 两种传输；`initialize`/`ping`/`tools/list`/`tools/call`） | ❌ 不运行 MCP 服务端 |
 | MCP Client | ❌ 无 | ❌ 无（但**解析** MCP 网关错误响应） |
 | MCP 风格 tool schema | ✅ `tools/list` 的 `inputSchema` 取自编译期 `AIFunction.JsonSchema` | ✅ `schema` 命令输出 **MCP 风格 envelope**（`name/description/inputSchema/outputSchema/_meta`） |
 | 协议版本 | 闭集协商（2024-11-05 / 2025-03-26 / 2025-06-18） | envelope_version "1.0" |
-| 传输 | 仅 stdio（刻意不做 SSE/HTTP，防 AsyncLocal 租户串号） | N/A（不充当服务端） |
+| 传输 | stdio **与** Streamable HTTP（E-3 补齐 HTTP；租户身份只取自宿主认证层，逐请求 fail-closed）；仍刻意不做 SSE 与批量 | N/A（不充当服务端） |
 | 生态定位 | 自立一个 MCP Server 供进程外 Agent 接入 | **被嵌入**：作为 MCP 生态中"可被 Agent 调用的能力层"，通过 skills + schema + 结构化契约供 Agent 使用 |
 
 **解读**：MudFeishu 选择了"自己做 MCP Server"（进程内执行链复用，租户边界=进程），lark-cli 选择了"不做 Server，但产出 MCP 风格 schema 供任意 Agent 自建工具表"。两种路线各有道理：MudFeishu 的 Server 复用同一执行链（授权/租户/净化/审计零旁路），lark-cli 的方式更轻、更易被任意 Agent 集成。
@@ -140,7 +140,7 @@
 3. **错误契约不够"AI 原生"**：无 wire-stable 的 Category/Subtype 分类法，无 `missing_scopes`/`retryable`/`hint` 系统化字段，AI 消费错误时缺少结构化恢复信号。
 4. **无 affordance 层**：缺少 per-command 的 WHEN/Avoid/Prerequisites 决策指导注入机制，AI 选工具主要靠 guidance + 元工具，不如 lark-cli 的 affordance 精细。
 5. **无 sidecar 凭据隔离**：沙箱/CI 环境下凭据必须进进程，不如 lark-cli 的 HMAC sidecar 安全。
-6. **MCP 仅 stdio**：刻意不做 SSE/HTTP（防租户串号），但限制了接入方式灵活性。
+6. ~~**MCP 仅 stdio**：刻意不做 SSE/HTTP（防租户串号），但限制了接入方式灵活性。~~ **已消解（E-3，2026-10-20）**：补了 Streamable HTTP 传输，租户身份改由宿主认证层逐请求给出（跨租户形态需显式声明 `FeishuMcp:Http:TenantBoundPerRequest`）；SSE 与批量仍是**显式取舍**而非缺口，理由见 `decisions/ADR-0008-mcp-http-transport.md`。
 7. **结构性张力**（架构报告自认 3 处）：命名空间跨程序集、`[FeishuTool]` 生命周期断链、执行链定义↔处理器循环依赖。
 8. **无 LLM 审查 CI / 无 plugin e2e**：工程治理少了两个 lark-cli 有的自动化维度。
 

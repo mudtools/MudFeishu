@@ -533,7 +533,7 @@ await bridge.WriteAsync(new FeishuEventEnvelope(
 
 ### 7.6 进程外 Agent：MCP server（R7 / C6b · 可选包）
 
-工具面除了进程内模型，还可经 **MCP（stdio JSON-RPC 2.0）**交给进程外 Agent，
+工具面除了进程内模型，还可经 **MCP（stdio JSON-RPC 2.0 或 Streamable HTTP）**交给进程外 Agent，
 实现在**独立可选包** `Mud.Feishu.AI.Mcp`（不引用 SDK 强类型客户端、不被任何核心包引用）：
 
 ```csharp
@@ -542,18 +542,44 @@ builder.Services.AddFeishuMcpServer(o => o.AppKey = "cli_xxx");  // 进程级租
 await app.Services.RunFeishuMcpStdioAsync();             // 阻塞到客户端关闭 stdin
 ```
 
+HTTP 形态由**宿主自己映射端点**（本包不引入任何 Web 框架依赖，请求/响应是框架无关快照）：
+
+```csharp
+// 一个已认证的端点处理器：AppKey/UserId 只能来自认证层，其余字段逐条取自 HTTP 上下文
+var response = await handler.HandleAsync(new McpHttpRequest("POST")
+{
+    AppKey = authenticatedAppKey,
+    UserId = authenticatedUserId,          // user 身份工具必需，同样只由认证层提供
+    SessionId = sessionId,                 // initialize 之后由响应头 Mcp-Session-Id 下发
+    ContentType = contentType,
+    Accept = accept,
+    Origin = origin,                       // 浏览器客户端才有
+    Body = jsonRpcBody,
+}, ct);
+// 把 response.StatusCode / ContentType / Body / Headers 逐字段写回真实 HTTP 响应
+```
+
 - **白名单同源**：MCP 暴露的工具 == `FeishuAgent:Tools` + `WriteAllowList`，**不新增开关**；
 - **执行链零旁路**：每个 tool call 走同一个 `FeishuToolBinding`（授权 / 租户切换 / 净化 / 审计不变）；
-- **租户边界 = 进程**：appKey 只来自配置（协议层传 appKey 等于把切租户交给客户端），
+- **租户边界 = 进程**（stdio）：appKey 只来自配置（协议层传 appKey 等于把切租户交给客户端），
   跨租户宿主请**每租户一个 stdio 进程**；缺 appKey 启动期即抛（fail-closed）；
+- **租户边界 = 认证层**（HTTP）：`McpHttpRequest.AppKey` 只由宿主认证层填写，本包**绝不**从 URL、请求体或
+  任意自定义头推导租户；会话一经 `initialize` 绑定租户，后续请求给出不同身份即 403 —— **会话标识不是切租户的凭据**。
+  因此一个 HTTP 进程可服务多租户，逐请求 fail-closed（`FeishuMcp:Http:TenantBoundPerRequest` 是唯一的显式豁免声明，默认关）；
+- **HTTP 传输判据全部是拒绝形态**：`Origin` 白名单为空 ⇒ 拒绝一切带 `Origin` 的请求（DNS 重绑定防线，对非浏览器客户端零影响）；
+  `Content-Type` 非 JSON ⇒ 415、`Accept` 不接受 JSON ⇒ 406、`GET` ⇒ 405（**不做 SSE**）、批量 ⇒ 400、通知 ⇒ 202；
+  JSON-RPC 层错误仍是 200 + `error` 信封，两种错误形态**刻意分开**；
+- **会话目录在进程内**：`MaxSessions`（超限 503）+ 空闲惰性回收（不起后台线程）；多实例部署要么做会话粘滞，
+  要么把 `MaxSessions` 理解为**单实例**上限；
 - **写工具 HITL**：授权器返回"需人工确认" ⇒ `isError` + `needs_user_confirmation` + **零调用下游**
   （MCP 不走 MAF 审批管线，故不依赖 `ApprovalRequiredAIFunction` 这个**仅标记**的类型）；
 - **名字映射**：契约名 `.` → `_`（严格客户端只接受 `[a-zA-Z0-9_-]{1,64}`），契约名经 `title` 透出；
 - **stdio 注意事项**：stdout 是协议通道，日志必须写 stderr/文件。
 
-> **依赖选型**：本包 MCP 协议层为**自研**（不引官方 `ModelContextProtocol` SDK），仅覆盖
-> `tools` 能力 + stdio。裁决依据、**已证伪的常见理由**（TFM 兼容性 / AOT / 预览版三条均不成立）
-> 与**翻转触发条件**（HTTP-SSE / 多能力 / 客户端侧 / 新修订差异化语义）如上。
+> **依赖选型**：本包 MCP 协议层为**自研**（不引官方 `ModelContextProtocol` SDK），覆盖
+> `tools` 能力 + stdio 与 Streamable HTTP 两种传输。E-3 落地 HTTP 后，原「HTTP 传输缺席」这条翻转触发条件已**消除**
+> （其余触发条件——多能力 / 客户端侧 / 新修订差异化语义——不变）。裁决依据、**已证伪的常见理由**
+> （TFM 兼容性 / AOT / 预览版三条均不成立）如上。
 
 ### 7.7 凭据隔离：**这是宿主的职责**（R-3 / F-10 登记）
 

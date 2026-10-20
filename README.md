@@ -37,8 +37,8 @@ MudFeishu 填的就是这个空白——不是「又一个能调接口的 SDK」
   内容安全 → 出站净化，**fail-closed 默认**，写工具未经授权一律拒绝。
 - **人工确认管线**让高风险操作（发消息、创建审批、删除记录）先经宿主批准再执行，批准状态单一所有权，
   模型无法自批复。
-- **MCP 服务器**把同一套工具面经 stdio JSON-RPC 暴露给进程外 Agent（Claude Code / Cursor / 自建 harness），
-  执行链零旁路。
+- **MCP 服务器**把同一套工具面经 stdio JSON-RPC 或 Streamable HTTP 暴露给进程外 Agent
+  （Claude Code / Cursor / 自建 harness），执行链零旁路；HTTP 形态的租户身份只取自宿主认证层。
 - **Skills 产物**随 NuGet 包分发，仓外 Agent 直接 `npx skills add` 即可获得飞书域知识。
 
 AI 能力不是 Sample 层的补丁，是 SDK 的**第一公民**。
@@ -49,7 +49,7 @@ AI 能力不是 Sample 层的补丁，是 SDK 的**第一公民**。
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  ⑤ 生态位    MCP Server (stdio)  ·  Skills 导出  ·  NDJSON  │
+│  ⑤ 生态位  MCP Server stdio/HTTP  ·  Skills 导出  ·  NDJSON │
 ├─────────────────────────────────────────────────────────────┤
 │  ④ Agent     会话管理  ·  流式消息通道  ·  事件驱动对话     │
 │              知识检索 (Aily + RAG)  ·  HITL 审批续跑        │
@@ -158,8 +158,10 @@ await app.Services.RunFeishuMcpStdioAsync();   // 阻塞到客户端关闭 stdin
 
 - 白名单同源（MCP 暴露的工具 == `FeishuAgent:Tools` + `WriteAllowList`，不新增开关）
 - 执行链零旁路（每个 tool call 走同一个 `FeishuToolBinding`）
-- 租户边界 = 进程（appKey 只来自配置，协议层传 appKey 等于把切租户交给客户端）
-- 协议层自研（不引官方 `ModelContextProtocol` SDK，仅覆盖 `tools` 能力 + stdio）
+- 租户边界 = 进程（stdio：appKey 只来自配置，协议层传 appKey 等于把切租户交给客户端）
+- 租户边界 = 认证层（Streamable HTTP：一进程可服务多租户，`McpHttpRequest.AppKey` 只能由宿主认证层填写，
+  会话绑定租户后给出不同身份即 403）
+- 协议层自研（不引官方 `ModelContextProtocol` SDK，覆盖 `tools` 能力 + stdio 与 Streamable HTTP）
 
 **Skills 产物**（随 NuGet 包分发）：
 
@@ -262,7 +264,7 @@ MudFeishu 是 AI 原生路线的**首个完整落地**。
 | 权限控制 | 无 | 七步执行链 + 风险分级 + 授权门禁 + HITL 审批管线，fail-closed 默认 |
 | 多租户 | 全局静态容器，进程级单例 | appKey 作用域切换 + 用户上下文 AsyncLocal + 跨租户召回即数据泄露 |
 | 序列化 | `Newtonsoft.Json` 反射（AOT 不可用） | 源生成 `JsonSerializerContext`，AOT strict 净零 |
-| MCP 工具 | 无，或反射调用器 | 自研协议层 stdio server，执行链零旁路，租户边界 = 进程 |
+| MCP 工具 | 无，或反射调用器 | 自研协议层 stdio / Streamable HTTP server，执行链零旁路，租户身份 fail-closed |
 | 生态对接 | 无 | Skills 产物随包分发（Claude Code / Cursor 直接加载）+ NDJSON 事件外桥（Demo 参考实现） |
 | 知识检索 | 无 | Aily 托管 + 自建 RAG（结构优先切片 + 向量检索），并存不冲突 |
 | 流式回复 | 无 | EditMessageChannel / CardStreamMessageChannel / StreamingChannelChain |
@@ -282,7 +284,7 @@ dotnet add package Mud.Feishu.Abstractions      # 事件处理抽象层（自动
 # AI Agent 全栈
 dotnet add package Mud.Feishu.AI                 # Agent 运行时（会话/流式/知识/HITL）
 dotnet add package Mud.Feishu.AI.Tools           # 365 策展工具 + 执行链 + 编译期 Schema
-dotnet add package Mud.Feishu.AI.Mcp             # MCP stdio server（进程外 Agent）
+dotnet add package Mud.Feishu.AI.Mcp             # MCP server（进程外 Agent，stdio + HTTP）
 
 # 实时事件
 dotnet add package Mud.Feishu.WebSocket          # 长连接实时订阅
@@ -404,7 +406,7 @@ builder.Services.AddFeishuOpenTelemetry(o => o.OtlpEndpoint = new Uri("http://lo
 | `Mud.Feishu.OpenTelemetry` | 一键开启分布式追踪与指标采集（OTLP gRPC，Jaeger/Tempo/Prometheus） |
 | **`Mud.Feishu.AI`** | **Agent 运行时**：会话管理、流式消息通道、事件驱动对话、知识检索（Aily + RAG）、HITL 审批续跑 |
 | **`Mud.Feishu.AI.Tools`** | **365 策展工具**：编译期 Schema + 类型化契约 + 七步执行链 + affordance 资产 + Skills 导出 |
-| **`Mud.Feishu.AI.Mcp`** | **MCP stdio server**：进程外 Agent 工具面，执行链零旁路，租户边界 = 进程 |
+| **`Mud.Feishu.AI.Mcp`** | **MCP server**（stdio 与 Streamable HTTP 两种传输）：进程外 Agent 工具面，执行链零旁路，租户身份 fail-closed |
 
 目标框架：`netstandard2.0` / `net6.0` / `net8.0` / `net10.0`，`LangVersion 13.0`。
 AI 底座依赖 `Microsoft.Agents.AI` v1.25.0 + `Microsoft.Agents.AI.OpenAI` v1.25.0（仅 AI 包引用，核心包不依赖）。
@@ -454,7 +456,7 @@ MudFeishu/
 ├── Mud.Feishu.DataModels/         # 强类型数据模型 + 源生成 JsonContext
 ├── Mud.Feishu.AI/                 # Agent 运行时（会话/流式/知识/HITL）
 ├── Mud.Feishu.AI.Tools/           # 365 策展工具 + 执行链 + 编译期 Schema
-├── Mud.Feishu.AI.Mcp/             # MCP stdio server
+├── Mud.Feishu.AI.Mcp/             # MCP server（stdio + Streamable HTTP）
 ├── Mud.Feishu.WebSocket/          # 长连接实时订阅
 ├── Mud.Feishu.Webhook/            # HTTP 回调事件处理
 ├── Mud.Feishu.Authentication/     # 用户认证中间件

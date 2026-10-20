@@ -12,11 +12,11 @@ namespace Mud.Feishu.AI.Mcp;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>为什么 appKey 只从配置来、不从协议参数来</b>：一旦允许每次 <c>tools/call</c> 携带 appKey，
-/// 就等于把"切换租户"的能力交给了 MCP 客户端（以及能影响客户端的模型/提示注入）——
-/// 这与"多租户隔离禁止默认应用兜底"同一根线，只是换了个入口。
-/// 跨租户宿主的正确形态是<b>每个租户一个 stdio 进程</b>（进程即租户边界），
-/// 而不是在协议层传租户标识。
+/// <b>appKey 不从协议参数来</b>：一旦允许每次 <c>tools/call</c> 携带 appKey，就把"切换租户"的能力
+/// 交给了 MCP 客户端（以及能影响客户端的模型/提示注入）——与"禁止默认应用兜底"同一根线。
+/// 跨租户宿主的两条正确形态：<b>每租户一个 stdio 进程</b>（进程即租户边界），或 HTTP 传输由
+/// <b>宿主认证层</b>逐请求给出身份（<see cref="FeishuMcpHttpOptions.TenantBoundPerRequest"/>）；
+/// 两者都不给「客户端自报租户」留入口。
 /// </para>
 /// <para>
 /// <b>为什么工具白名单不在这里</b>：暴露哪些工具的唯一真相源是
@@ -34,9 +34,7 @@ public sealed class FeishuMcpServerOptions
     /// <summary>配置节名（<c>FeishuMcp</c>）。</summary>
     public const string SectionName = "FeishuMcp";
 
-    /// <summary>
-    /// 工具执行上下文的应用标识（<b>必填</b>；多租户隔离的事实来源）。
-    /// </summary>
+    /// <summary>工具执行上下文的应用标识（<b>必填</b>；多租户隔离的事实来源。HTTP 的逐请求绑租户是唯一豁免口，见 <see cref="Http"/>）。</summary>
     /// <remarks>缺失即 fail-closed：进程启动期抛可读异常，而不是运行期用"默认应用"兜底。</remarks>
     public string AppKey { get; set; } = string.Empty;
 
@@ -108,17 +106,21 @@ public sealed class FeishuMcpServerOptions
     /// </remarks>
     public string InstructionsMode { get; set; } = GuidanceModes.Routing;
 
+    /// <summary>Streamable HTTP 传输配置（<c>FeishuMcp:Http</c> 节；判据与理由见 <see cref="FeishuMcpHttpOptions"/>）。</summary>
+    public FeishuMcpHttpOptions Http { get; set; } = new();
+
     /// <summary>
     /// 校验配置；非法即抛（装配期/启动期 fail-fast，不留到运行期）。
     /// </summary>
-    /// <exception cref="InvalidOperationException">缺少 appKey，或服务端标识非法。</exception>
+    /// <exception cref="InvalidOperationException">缺少 appKey，或服务端标识、HTTP 节非法。</exception>
     public void Validate()
     {
-        if (string.IsNullOrWhiteSpace(AppKey))
+        if (string.IsNullOrWhiteSpace(AppKey) && !Http.TenantBoundPerRequest)
         {
             throw new InvalidOperationException(
                 $"{SectionName}:{nameof(AppKey)} 必填——MCP 调用不在事件流内，租户上下文必须由宿主显式提供；"
-                + "多租户隔离禁止默认应用兜底（跨租户宿主请为每个租户起一个 stdio 进程）");
+                + "多租户隔离禁止默认应用兜底（跨租户宿主请为每个租户起一个 stdio 进程，"
+                + $"或经 HTTP 走 {SectionName}:{nameof(Http)}.{nameof(Http.TenantBoundPerRequest)}=true）");
         }
 
         if (string.IsNullOrWhiteSpace(ServerName))
@@ -134,5 +136,7 @@ public sealed class FeishuMcpServerOptions
                 $"{SectionName}:{nameof(InstructionsMode)} 取值非法: '{InstructionsMode}'——"
                 + $"合法值为 {GuidanceModes.AllowedValuesText}（与 FeishuAgent:{nameof(FeishuAgentOptions.GuidanceMode)} 同闭集）");
         }
+
+        Http.Validate();
     }
 }

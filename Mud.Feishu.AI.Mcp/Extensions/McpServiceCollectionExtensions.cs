@@ -14,8 +14,7 @@ namespace Mud.Feishu.AI.Mcp;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>前置</b>：宿主已装配工具面（<c>AddFeishuTools</c> 或逐域入口）与 <c>FeishuAgentOptions</c>（<c>AddFeishuAgent</c>）；
-/// 本入口<b>不</b>替你装配工具面，否则会隐式拉全量域，与"宿主显式装配"的既有契约冲突。
+/// <b>前置</b>：宿主已装配工具面（<c>AddFeishuTools</c>）与 <c>FeishuAgentOptions</c>；本入口<b>不</b>替你装配工具面（否则会隐式拉全量域，与"宿主显式装配"的契约冲突）。
 /// </para>
 /// <para>
 /// <b>白名单同源</b>：暴露给 MCP 客户端的工具集 = <c>FeishuAgent:Tools</c> + <c>FeishuAgent:WriteAllowList</c>
@@ -25,13 +24,14 @@ namespace Mud.Feishu.AI.Mcp;
 /// <code>
 /// builder.Services.AddFeishuMcpServer(o =&gt; o.AppKey = "cli_xxx");   // 先 AddFeishuAgent + AddFeishuTools
 /// await builder.Build().RunFeishuMcpStdioAsync();                    // 阻塞直到客户端关闭 stdin
+/// // HTTP 形态：宿主把端点映射到 FeishuMcpHttpHandler，并在认证层里填好 McpHttpRequest.AppKey
 /// </code>
 /// 租户与用户身份（<c>AppKey</c> 必填、<c>UserId</c> 语义）见 <see cref="FeishuMcpServerOptions"/>。
 /// </remarks>
 public static class McpServiceCollectionExtensions
 {
     /// <summary>
-    /// 注册 MCP server（协议层 + stdio 宿主）。
+    /// 注册 MCP server（协议层 + stdio 宿主 + Streamable HTTP 适配器）。
     /// </summary>
     /// <param name="services">服务集合。</param>
     /// <param name="configure">配置回调（可空；也可由宿主的配置系统绑定 <c>FeishuMcp</c> 节）。</param>
@@ -59,6 +59,10 @@ public static class McpServiceCollectionExtensions
             Console.In,
             Console.Out,
             sp.GetService<ILogger<FeishuMcpStdioHost>>()));
+        services.TryAddSingleton(sp => new FeishuMcpHttpHandler(
+            sp.GetRequiredService<FeishuMcpToolServer>(),
+            sp.GetRequiredService<IOptions<FeishuMcpServerOptions>>(),
+            sp.GetService<ILogger<FeishuMcpHttpHandler>>()));
 
         return services;
     }

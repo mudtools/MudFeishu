@@ -42,7 +42,7 @@ AI agent era on .NET**:
 - A **human-confirmation pipeline** makes high-risk operations (send message, create approval, delete record) wait for host approval
   before executing. Approval state has a single owner, so the model can never self-approve.
 - An **MCP server** exposes the very same tool surface to out-of-process agents (Claude Code / Cursor / your own harness) over
-  stdio JSON-RPC, with zero bypass of the execution chain.
+  stdio JSON-RPC or Streamable HTTP, with zero bypass of the execution chain.
 - **Skills artifacts** ship inside the NuGet packages, so out-of-repo agents can run `npx skills add` and instantly obtain Feishu domain knowledge.
 
 AI capability is not a patch on the sample layer — it is a **first-class citizen** of the SDK.
@@ -53,7 +53,7 @@ AI capability is not a patch on the sample layer — it is a **first-class citiz
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  ⑤ Ecosystem  MCP Server (stdio)  ·  Skills export          │
+│  ⑤ Ecosystem  MCP Server stdio/HTTP  ·  Skills export       │
 ├─────────────────────────────────────────────────────────────┤
 │  ④ Agent     Session management  ·  Streaming channel       │
 │              Event-driven conversation                      │
@@ -171,8 +171,10 @@ await app.Services.RunFeishuMcpStdioAsync();   // blocks until the client closes
 
 - The allow-list has a single source of truth (tools exposed over MCP == `FeishuAgent:Tools` + `WriteAllowList`, no new switches)
 - Zero bypass of the execution chain (every tool call goes through the same `FeishuToolBinding`)
-- Tenant boundary = process (appKey comes only from configuration; accepting appKey over the protocol would hand tenant switching to the client)
-- The protocol layer is self-implemented (no dependency on the official `ModelContextProtocol` SDK, covering only the `tools` capability + stdio)
+- Tenant boundary = process (stdio: appKey comes only from configuration; accepting appKey over the protocol would hand tenant switching to the client)
+- Tenant boundary = the host authentication layer (Streamable HTTP: one process can serve many tenants, `McpHttpRequest.AppKey`
+  may only be filled by that layer, and a session bound to one tenant is rejected with 403 when another identity is presented)
+- The protocol layer is self-implemented (no dependency on the official `ModelContextProtocol` SDK, covering the `tools` capability over stdio and Streamable HTTP)
 
 **Skills artifacts** (shipped inside the NuGet packages):
 
@@ -279,7 +281,7 @@ systematic implementation yet, and MudFeishu is the **first complete realization
 | Permission control | None | Seven-step execution chain + risk tiers + authorization gate + HITL approval pipeline, fail-closed by default |
 | Multi-tenancy | Global static container, process-level singleton | appKey scope switching + AsyncLocal user context + cross-tenant recall is a data leak |
 | Serialization | `Newtonsoft.Json` reflection (unusable under AOT) | Source-generated `JsonSerializerContext`, AOT strict net-zero |
-| MCP tooling | None, or a reflection-based invoker | Self-implemented protocol-layer stdio server, zero bypass of the execution chain, tenant boundary = process |
+| MCP tooling | None, or a reflection-based invoker | Self-implemented protocol-layer stdio / Streamable HTTP server, zero bypass of the execution chain, fail-closed tenant identity |
 | Ecosystem integration | None | Skills artifacts shipped with the package (Claude Code / Cursor load them directly) + NDJSON event bridge (Demo reference implementation) |
 | Knowledge retrieval | None | Aily hosted + self-hosted RAG (structure-first chunking + vector retrieval), coexisting without conflict |
 | Streaming replies | None | EditMessageChannel / CardStreamMessageChannel / StreamingChannelChain |
@@ -299,7 +301,7 @@ dotnet add package Mud.Feishu.Abstractions      # event handling abstractions (p
 # AI agent full stack
 dotnet add package Mud.Feishu.AI                 # Agent runtime (sessions / streaming / knowledge / HITL)
 dotnet add package Mud.Feishu.AI.Tools           # 365 curated tools + execution chain + compile-time schema
-dotnet add package Mud.Feishu.AI.Mcp             # MCP stdio server (out-of-process agents)
+dotnet add package Mud.Feishu.AI.Mcp             # MCP server (out-of-process agents, stdio + HTTP)
 
 # Real-time events
 dotnet add package Mud.Feishu.WebSocket          # long-connection real-time subscription
@@ -741,7 +743,7 @@ public class AuditLogInterceptor : IFeishuEventInterceptor
 | `Mud.Feishu.OpenTelemetry` | One-click distributed tracing and metrics collection (OTLP gRPC, Jaeger/Tempo/Prometheus) |
 | **`Mud.Feishu.AI`** | **Agent runtime**: session management, streaming message channels, event-driven conversation, knowledge retrieval (Aily + RAG), HITL approval continuation |
 | **`Mud.Feishu.AI.Tools`** | **365 curated tools**: compile-time schema + typed contracts + seven-step execution chain + affordance assets + Skills export |
-| **`Mud.Feishu.AI.Mcp`** | **MCP stdio server**: out-of-process agent tool surface, zero bypass of the execution chain, tenant boundary = process |
+| **`Mud.Feishu.AI.Mcp`** | **MCP server** (stdio and Streamable HTTP): out-of-process agent tool surface, zero bypass of the execution chain, fail-closed tenant identity |
 
 Target frameworks: `netstandard2.0` / `net6.0` / `net8.0` / `net10.0`, `LangVersion 13.0`.
 The AI foundation depends on `Microsoft.Agents.AI` v1.25.0 + `Microsoft.Agents.AI.OpenAI` v1.25.0 (referenced by the AI packages only;
@@ -796,7 +798,7 @@ MudFeishu/
 ├── Mud.Feishu.DataModels/         # Strongly-typed models + source-generated JsonContext
 ├── Mud.Feishu.AI/                 # Agent runtime (sessions / streaming / knowledge / HITL)
 ├── Mud.Feishu.AI.Tools/           # 365 curated tools + execution chain + compile-time schema
-├── Mud.Feishu.AI.Mcp/             # MCP stdio server
+├── Mud.Feishu.AI.Mcp/             # MCP server (stdio + Streamable HTTP)
 ├── Mud.Feishu.WebSocket/          # Long-connection real-time subscription
 ├── Mud.Feishu.Webhook/            # HTTP callback event handling
 ├── Mud.Feishu.Authentication/     # User authentication middleware
@@ -867,7 +869,7 @@ Below are actual screenshots of **FeishuWikiManager** (a Feishu wiki management 
 - [Mud.Feishu](https://www.nuget.org/packages/Mud.Feishu/) — core HTTP API client
 - [Mud.Feishu.AI](https://www.nuget.org/packages/Mud.Feishu.AI/) — Agent runtime
 - [Mud.Feishu.AI.Tools](https://www.nuget.org/packages/Mud.Feishu.AI.Tools/) — 365 curated tools + execution chain
-- [Mud.Feishu.AI.Mcp](https://www.nuget.org/packages/Mud.Feishu.AI.Mcp/) — MCP stdio server
+- [Mud.Feishu.AI.Mcp](https://www.nuget.org/packages/Mud.Feishu.AI.Mcp/) — MCP server (stdio + Streamable HTTP)
 - [Mud.Feishu.Abstractions](https://www.nuget.org/packages/Mud.Feishu.Abstractions/) — event processing abstraction layer
 - [Mud.Feishu.WebSocket](https://www.nuget.org/packages/Mud.Feishu.WebSocket/) — WebSocket real-time event subscription
 - [Mud.Feishu.Webhook](https://www.nuget.org/packages/Mud.Feishu.Webhook/) — Webhook HTTP callback event processing

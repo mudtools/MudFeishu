@@ -122,7 +122,11 @@ public class PublicSurfaceRationaleContractGuards
     // IFeishuDiagnosticsProbe + 报告值类型 FeishuDiagnosticsReport / Finding / Fact +
     // 严重度常量面 FeishuDiagnosticsSeverities（全部登记在 reasons 段）；
     // 探针实现 FeishuDiagnosticsProbe 与域装配助手 DomainGuidanceBlocks 均为 internal（不计条目）。
-    private const int BaselineTypeCount = 454;
+    // E-3 MCP HTTP 传输（2026-10-20）：454 → **458**——Streamable HTTP 适配层的 4 个公开类型
+    // FeishuMcpHttpHandler / FeishuMcpHttpOptions / McpHttpRequest / McpHttpResponse
+    // （全部登记在 reasons 段）；Mud.Feishu.AI.Mcp 7 → 11
+    // （会话与目录 FeishuMcpSession / FeishuMcpSessionDirectory / McpHttpHeaders / McpWireJson 均为 internal）。
+    private const int BaselineTypeCount = 458;
 
     /// <summary>反射实测的公开面来源程序集（= 原台账覆盖面：三个飞书发布包）。</summary>
     private static readonly string[] ProductAssemblies =

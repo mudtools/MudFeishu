@@ -21,4 +21,12 @@ internal static class McpJson
     /// <param name="node">要追加的节点（可为 null）。</param>
     public static void AddNode(this JsonArray array, JsonNode? node)
         => ((IList<JsonNode?>)array).Add(node);
+
+    public static string? ReadOptionalString(this JsonNode? node, string name)
+        => node is JsonObject obj
+            && obj.TryGetPropertyValue(name, out var value)
+            && value is JsonValue jsonValue
+            && jsonValue.TryGetValue<string>(out var text)
+                ? text
+                : null;
 }

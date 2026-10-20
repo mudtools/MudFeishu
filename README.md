@@ -4,8 +4,8 @@
 
 ![MudFeishu Logo](icon.png)
 
-飞书生态的 **AI 原生** .NET SDK —— 344 个策展工具 + Agent 运行时 + MCP 服务器 + 人工确认管线，
-让 AI Agent 经自然语言直接操作飞书组织、文档、审批、日历、任务、多维表格等 31 个业务域。
+飞书生态的 **AI 原生** .NET SDK —— 356 个策展工具 + Agent 运行时 + MCP 服务器 + 人工确认管线，
+让 AI Agent 经自然语言直接操作飞书组织、文档、审批、日历、任务、多维表格、幻灯片等 32 个业务域。
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Mud.Feishu](https://img.shields.io/nuget/v/Mud.Feishu?label=Mud.Feishu "Mud.Feishu")](https://www.nuget.org/packages/Mud.Feishu/)
@@ -31,8 +31,8 @@
 
 MudFeishu 填的就是这个空白——不是「又一个能调接口的 SDK」，而是 **.NET 上第一个为 AI Agent 时代设计的飞书底座**：
 
-- **344 个策展工具**把飞书 API 编译期暴露为模型可调用的 Function Call，每个工具都有强类型 Schema、
-  风险等级、权限范围、幂等语义——不是把 1268 个 SDK 方法无差别扔给模型。
+- **356 个策展工具**把飞书 API 编译期暴露为模型可调用的 Function Call，每个工具都有强类型 Schema、
+  风险等级、权限范围、幂等语义——不是把 1279 个 SDK 方法无差别扔给模型。
 - **七步执行链**在每次工具调用时依次过：上下文校验 → 入站净化 → 策略轴 → 授权门禁 → 租户切换 →
   内容安全 → 出站净化，**fail-closed 默认**，写工具未经授权一律拒绝。
 - **人工确认管线**让高风险操作（发消息、创建审批、删除记录）先经宿主批准再执行，批准状态单一所有权，
@@ -54,22 +54,22 @@ AI 能力不是 Sample 层的补丁，是 SDK 的**第一公民**。
 │  ④ Agent     会话管理  ·  流式消息通道  ·  事件驱动对话     │
 │              知识检索 (Aily + RAG)  ·  HITL 审批续跑        │
 ├─────────────────────────────────────────────────────────────┤
-│  ③ 工具面    344 策展工具 (31 域)  ·  编译期 Schema         │
+│  ③ 工具面    356 策展工具 (32 域)  ·  编译期 Schema         │
 │              风险分级  ·  幂等键  ·  affordance 资产         │
 ├─────────────────────────────────────────────────────────────┤
 │  ② 执行链    入站净化 → 策略轴 → 授权 → 租户切换            │
 │              → 内容安全 → 出站净化 → 审计                   │
 ├─────────────────────────────────────────────────────────────┤
-│  ① SDK 基座  1268 强类型接口  ·  源生成 JSON  ·  AOT 净零   │
+│  ① SDK 基座  1279 强类型接口  ·  源生成 JSON  ·  AOT 净零   │
 │              多应用作用域  ·  令牌全生命周期托管            │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### ① SDK 基座：1268 个强类型接口，Agent 看不到，工具面看得到
+### ① SDK 基座：1279 个强类型接口，Agent 看不到，工具面看得到
 
 飞书全部 20+ API 模块（组织架构、消息、群聊、审批、任务、日历、视频会议、文档、知识库、云盘、
 画板、电子表格、多维表格、考勤、卡片、AI 能力、邮箱、搜索、服务台、OKR、妙记、妙搭……）
-均为声明式接口 + 源生成实现类。Agent 不直接调这些接口——**工具面从中策展 344 个高频操作**暴露给模型。
+均为声明式接口 + 源生成实现类。Agent 不直接调这些接口——**工具面从中策展 356 个高频操作**暴露给模型。
 
 ### ② 执行链：七步不可变，fail-closed 默认
 
@@ -89,7 +89,7 @@ AI 能力不是 Sample 层的补丁，是 SDK 的**第一公民**。
 **关键安全属性**：入站是「拒绝」而非「剥离」（剥离会静默改写用户内容）；出站净化无开关不可绕过；
 授权器未返回 `Allowed` 的待确认调用**读、写工具同路径**走挂起解析；`dry_run=true` 的写工具不消耗幂等键。
 
-### ③ 工具面：344 个策展工具，不是 1268 个裸方法
+### ③ 工具面：356 个策展工具，不是 1279 个裸方法
 
 | 域 | 只读 | 写类 | 小计 | | 域 | 只读 | 写类 | 小计 |
 | --- | ---: | ---: | ---: | --- | --- | ---: | ---: | ---: |
@@ -108,15 +108,15 @@ AI 能力不是 Sample 层的补丁，是 SDK 的**第一公民**。
 | 元工具 | 4 | — | 4 | | 应用信息 | 7 | 2 | 9 |
 | 群聊管理 | 4 | 12 | 16 | | 服务台 | 6 | 4 | 10 |
 | 飞书词典 | 6 | 5 | 11 | | 关联组织 | 8 | 3 | 11 |
-| Aily 数据知识 | 3 | — | 3 | | | | | |
-| **合计** | **176** | **168** | **344** | | | | | |
+| Aily 数据知识 | 3 | — | 3 | | 幻灯片 | 7 | 5 | 12 |
+| **合计** | **183** | **173** | **356** | | | | | |
 
-**策展而非全暴露**：把 1268 个 SDK 方法无差别暴露给模型 = 模型上下文爆炸 + 无法做权限分级。
-MudFeishu 按高频工作流策展为 344 个工具，每个工具都有：
+**策展而非全暴露**：把 1279 个 SDK 方法无差别暴露给模型 = 模型上下文爆炸 + 无法做权限分级。
+MudFeishu 按高频工作流策展为 356 个工具，每个工具都有：
 - **编译期 Schema**（`FeishuToolSchemas`）：参数、风险等级、权限范围、是否写操作、SDK 源锚点
 - **类型化契约**（`FeishuToolContracts`）：零运行期解析，注册器直接构造定义
 - **per-tool affordance**（`x-feishu.affordance`）：何时用 / 何时别用 / 前置条件 / 踩坑提示
-- **域 guidance**（31 个域 + 子主题 references）：宿主指令之后追加，2 KB 预算截断
+- **域 guidance**（32 个域 + 子主题 references）：宿主指令之后追加，2 KB 预算截断
 
 模型遇到未策展的能力时，正确动作是问 `feishu.capability_lookup`（判断不存在 vs 未策展），
 再**如实告知用户**——而不是臆造一次调用。**不存在万能兜底通道**（已整条删除，双轨调用路径风险最高）。
@@ -167,7 +167,7 @@ IToolSchemaExporter.Export(ToolSchemaDialect.Skills);
 // => {"dialect":"skills","files":[{"path":"skills/feishu-im/SKILL.md","content":"…"}, …]}
 ```
 
-31 个域的 `skills/feishu-{domain}/SKILL.md` + `references/{topic}.md`，仓外 Agent（Claude Code / Cursor）
+32 个域的 `skills/feishu-{domain}/SKILL.md` + `references/{topic}.md`，仓外 Agent（Claude Code / Cursor）
 直接加载即获得飞书域知识。数据源全是编译期常量 ⇒ 零反射、零 IO、确定性。
 
 **NDJSON 事件外桥**（Demo 参考实现，R-10 起不在库发布面）：把飞书事件以一行一事件的 NDJSON
@@ -257,7 +257,7 @@ MudFeishu 是 AI 原生路线的**首个完整落地**。
 | 维度 | 外挂式集成（行业常见做法） | AI 原生（MudFeishu） |
 | --- | --- | --- |
 | AI 定位 | Sample 层补丁：回调处理器里调大模型回复消息，单轮问答 | SDK 第一公民：五层架构（基座 → 执行链 → 工具 → Agent → 生态） |
-| 工具暴露 | 无，或反射扫描全部方法（`Type.GetType` + `method.Invoke`，AOT 不可用 + RCE 风险） | 344 个策展工具，编译期 Schema + 类型化契约，零运行期解析 |
+| 工具暴露 | 无，或反射扫描全部方法（`Type.GetType` + `method.Invoke`，AOT 不可用 + RCE 风险） | 356 个策展工具，编译期 Schema + 类型化契约，零运行期解析 |
 | 权限控制 | 无 | 七步执行链 + 风险分级 + 授权门禁 + HITL 审批管线，fail-closed 默认 |
 | 多租户 | 全局静态容器，进程级单例 | appKey 作用域切换 + 用户上下文 AsyncLocal + 跨租户召回即数据泄露 |
 | 序列化 | `Newtonsoft.Json` 反射（AOT 不可用） | 源生成 `JsonSerializerContext`，AOT strict 净零 |
@@ -280,7 +280,7 @@ dotnet add package Mud.Feishu.Abstractions      # 事件处理抽象层（自动
 
 # AI Agent 全栈
 dotnet add package Mud.Feishu.AI                 # Agent 运行时（会话/流式/知识/HITL）
-dotnet add package Mud.Feishu.AI.Tools           # 344 策展工具 + 执行链 + 编译期 Schema
+dotnet add package Mud.Feishu.AI.Tools           # 356 策展工具 + 执行链 + 编译期 Schema
 dotnet add package Mud.Feishu.AI.Mcp             # MCP stdio server（进程外 Agent）
 
 # 实时事件
@@ -342,7 +342,7 @@ builder.Services.AddFeishuMcpServer(o => o.AppKey = "default");
 await app.Services.RunFeishuMcpStdioAsync();
 ```
 
-Claude Code / Cursor / 自建 harness 经 stdio 连接即可调用 344 个飞书工具，
+Claude Code / Cursor / 自建 harness 经 stdio 连接即可调用 356 个飞书工具，
 授权 / 租户切换 / 净化 / 审计与进程内 Agent **完全一致**。
 
 ### 3. HTTP API 调用
@@ -402,7 +402,7 @@ builder.Services.AddFeishuOpenTelemetry(o => o.OtlpEndpoint = new Uri("http://lo
 | `Mud.Feishu.Redis` | 分布式去重（事件/Nonce/SeqID）+ 降级策略 + 多应用隔离 + 健康检查 |
 | `Mud.Feishu.OpenTelemetry` | 一键开启分布式追踪与指标采集（OTLP gRPC，Jaeger/Tempo/Prometheus） |
 | **`Mud.Feishu.AI`** | **Agent 运行时**：会话管理、流式消息通道、事件驱动对话、知识检索（Aily + RAG）、HITL 审批续跑 |
-| **`Mud.Feishu.AI.Tools`** | **344 策展工具**：编译期 Schema + 类型化契约 + 七步执行链 + affordance 资产 + Skills 导出 |
+| **`Mud.Feishu.AI.Tools`** | **356 策展工具**：编译期 Schema + 类型化契约 + 七步执行链 + affordance 资产 + Skills 导出 |
 | **`Mud.Feishu.AI.Mcp`** | **MCP stdio server**：进程外 Agent 工具面，执行链零旁路，租户边界 = 进程 |
 
 目标框架：`netstandard2.0` / `net6.0` / `net8.0` / `net10.0`，`LangVersion 13.0`。
@@ -452,7 +452,7 @@ MudFeishu/
 ├── Mud.Feishu.Abstractions/       # 事件处理抽象层
 ├── Mud.Feishu.DataModels/         # 强类型数据模型 + 源生成 JsonContext
 ├── Mud.Feishu.AI/                 # Agent 运行时（会话/流式/知识/HITL）
-├── Mud.Feishu.AI.Tools/           # 344 策展工具 + 执行链 + 编译期 Schema
+├── Mud.Feishu.AI.Tools/           # 356 策展工具 + 执行链 + 编译期 Schema
 ├── Mud.Feishu.AI.Mcp/             # MCP stdio server
 ├── Mud.Feishu.WebSocket/          # 长连接实时订阅
 ├── Mud.Feishu.Webhook/            # HTTP 回调事件处理
@@ -460,7 +460,7 @@ MudFeishu/
 ├── Mud.Feishu.EventCallback/      # 事件回调强类型模型
 ├── Mud.Feishu.Redis/              # 分布式去重
 ├── Mud.Feishu.OpenTelemetry/      # 可观测性
-├── skills/                        # 31 域 Skills 产物（随包分发）
+├── skills/                        # 32 域 Skills 产物（随包分发）
 ├── Tests/                         # 11 个测试工程
 ├── Demos/                         # 示例（含 AI Agent Demo / AOT 验证）
 ├── documents/                     # 官方文档镜像 + 工具权限对照表

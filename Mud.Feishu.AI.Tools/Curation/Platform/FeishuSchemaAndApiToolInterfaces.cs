@@ -12,7 +12,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // </summary>
 // <remarks>
 // <para>
-// <b>为什么需要它</b>：SDK 有 1268 个方法，AI 工具面只策展了其中一部分（只读 + 写）。未策展的方法对
+// <b>为什么需要它</b>：SDK 有 1279 个方法，AI 工具面只策展了其中一部分（只读 + 写）。未策展的方法对
 // 模型完全不可见——模型既不知道方法签名，也没有调用途径。<c>feishu.schema_read</c> 让模型按方法名或
 // 关键字查询任意 SDK 方法的 HTTP/路由/参数/令牌/风险事实（数据源是编译期 <c>FeishuToolMethodCatalog</c>）。
 // </para>

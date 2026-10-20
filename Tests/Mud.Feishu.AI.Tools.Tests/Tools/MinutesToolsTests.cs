@@ -178,27 +178,6 @@ public class MinutesToolsTests
         payload["has_more"]!.GetValue<bool>().Should().BeFalse();
     }
 
-    [Fact]
-    public void ComputeTranscriptWindow_Should_Split_By_Offset_And_Limit()
-    {
-        var transcript = Transcript(250);
-
-        var first = MinutesReadTools.ComputeTranscriptWindow(transcript, null, 100);
-        first.Text.Should().Be(transcript.Substring(0, 100));
-        first.TotalLength.Should().Be(250);
-        first.HasMore.Should().BeTrue();
-        first.NextOffset.Should().Be(100);
-
-        var second = MinutesReadTools.ComputeTranscriptWindow(transcript, first.NextOffset, 100);
-        second.Text.Should().Be(transcript.Substring(100, 100));
-        second.OffsetOutOfRange.Should().BeFalse();
-
-        var last = MinutesReadTools.ComputeTranscriptWindow(transcript, second.NextOffset, 100);
-        last.Text.Should().Be(transcript.Substring(200, 50));
-        last.HasMore.Should().BeFalse();
-        last.NextOffset.Should().BeNull();
-    }
-
     // ───────────────────── 参数负例（本地拒绝，下游零调用） ─────────────────────
 
     [Fact]

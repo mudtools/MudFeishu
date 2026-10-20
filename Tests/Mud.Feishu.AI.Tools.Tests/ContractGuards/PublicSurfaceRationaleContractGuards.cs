@@ -106,7 +106,10 @@ public class PublicSurfaceRationaleContractGuards
     // S-6 首刀（2026-10-19）：415 → **428**——13 个新工具声明面 public 接口
     // （im 表情 4 + minutes 5 + okr 指标 3 + wiki.space_create，全部登记在 reasons 段）；
     // Mud.Feishu.AI.Tools 358 → 371（Mud.Feishu.AI 50 / Mud.Feishu.AI.Mcp 7 不变）。
-    private const int BaselineTypeCount = 428;
+    // S-1 幻灯片域（2026-10-20）：428 → **440**——12 个新工具声明面 public 接口
+    // （slides 只读 7 + 写 5，全部登记在 reasons 段）；
+    // Mud.Feishu.AI.Tools 371 → 383（Mud.Feishu.AI 50 / Mud.Feishu.AI.Mcp 7 不变）。
+    private const int BaselineTypeCount = 440;
 
     /// <summary>反射实测的公开面来源程序集（= 原台账覆盖面：三个飞书发布包）。</summary>
     private static readonly string[] ProductAssemblies =

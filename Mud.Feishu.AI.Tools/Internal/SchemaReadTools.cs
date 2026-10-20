@@ -15,7 +15,7 @@ namespace Mud.Feishu.AI.Tools.Internal;
 /// </summary>
 /// <remarks>
 /// <para>
-/// 数据源是编译期 <see cref="FeishuToolMethodCatalog"/>（1268 个 SDK 方法的结构化事实），
+/// 数据源是编译期 <see cref="FeishuToolMethodCatalog"/>（1279 个 SDK 方法的结构化事实），
 /// 无下游调用、无网络、无租户依赖。支持三种查询模式：
 /// <list type="bullet">
 /// <item>精确匹配：给定方法限定名（如 <c>IFeishuTenantV1OkrPeriod.ListPeriodsAsync</c>），返回单条目；</item>

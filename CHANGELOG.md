@@ -16,9 +16,9 @@
 
 - **飞书智能体运行时**：飞书消息 / 事件 → 会话 → 模型 → 回复，一行装配即可上线；Bot 自激过滤、
   群聊 @ 过滤等安全语义内建，回复支持消息卡片流式输出。
-- **344 个策展工具（31 个业务域）**：即时消息、邮件、任务、多维表格、电子表格、云文档、知识库、
-  日历、审批、通讯录、妙记等飞书高频操作以编译期 Schema 暴露给模型；只读与写类分离，
-  39 个高危写工具默认关闭、启用前须经宿主授权。
+- **356 个策展工具（32 个业务域）**：即时消息、邮件、任务、多维表格、电子表格、云文档、知识库、
+  日历、审批、通讯录、妙记、幻灯片等飞书高频操作以编译期 Schema 暴露给模型；只读与写类分离，
+  40 个高危写工具默认关闭、启用前须经宿主授权。
 - **人工确认（HITL）**：写操作可停在「等待确认」，经宿主审批通道放行后续跑；未确认绝不自动执行。
 - **MCP 服务器**（可选包）：stdio 接入 Claude Code / Cursor / 自建 harness，工具白名单与进程内 Agent 同源。
 - **会话记忆与知识检索**：条数 + token 双窗口记忆、超窗摘要压缩；内置知识接入与自建向量检索（RAG）
@@ -33,7 +33,15 @@
   - 流式回复通道：消息卡片流（创建 → 更新 → 终态），失败自动降级为消息编辑通道；
   - 事件上下文装配：审批、多维表格记录变更等事件进入对话上下文（`ConversationRequest` 新增事件事实）；
   - 交付可靠性：重投递命中「已生成但未确认送达」的回复时直接补发，不重跑模型。
-- **`Mud.Feishu.AI.Tools` —— 工具面（344 个策展工具 / 31 域，176 只读 + 168 写类）**
+- **`Mud.Feishu.AI.Tools` —— 工具面（356 个策展工具 / 32 域，183 只读 + 173 写类）**
+  - 幻灯片（`slides` 新域，12 枚）：XML 演示文稿的读、建、改、删与回滚——`slides.get_presentation` /
+    `slides.list_slides` / `slides.get_slide` 读取 XML 正文（按 `content_offset` / `content_limit`
+    窗口化，默认 25000 字符，回填编辑的原文**不截断**）；`slides.create_presentation` /
+    `slides.add_slide` / `slides.replace_slide` 建稿与改写；`slides.delete_slide`（高危写，默认关闭）；
+    `slides.list_histories` 列历史版本、`slides.revert_history` 提交异步回滚并由
+    `slides.get_revert_status` 轮询确认（「提交成功」不等于「已回滚完成」）；
+    `slides.list_slide_images` / `slides.render_slide_image` 渲染页面图片（base64 解码后经宿主
+    暂存落盘，结果不含字节）。写类五枚均支持 `dry_run` 预演、校验先于下发。
   - 收尾补齐（会议 / 知识库 / 审批）：会议机器人 `vc.user_active_meeting` / `join_meeting` /
     `leave_meeting` / `send_meeting_message`（9 位会议号入会、19 位会议 ID 离会与会中消息，双 ID
     不可互换）；知识库空间与成员 `wiki.space_list` / `space_get` / `member_list` / `member_add` /
@@ -50,8 +58,8 @@
     结果不含字节（不污染上下文）；工具结果被截断时如实向模型标记；
   - 权限模型：逐工具声明调用身份（tenant / user）与 OAuth scope，权限对照表随包分发；
   - 逐工具 affordance 决策指导（何时用 / 何时别用 / 前置条件 / 技巧），模型可见；
-    写类工具面已**满覆盖**（39 个高危写 + 129 个普通写），只读面按高频读取路径补齐
-    （im / bitable / docx / drive / mail 的 `list` / `get` 共 33 份，合计 **201 份资产**），
+    写类工具面已**满覆盖**（40 个高危写 + 133 个普通写），只读面按高频读取路径补齐
+    （im / bitable / docx / drive / mail 的 `list` / `get` 共 33 份 + slides 整域 7 份，合计 **213 份资产**），
     覆盖率由 `AffordanceCoverageContractGuards` 按风险分级锁定（写类两级 100%、只读级 18% 起步），
     新增写类工具不同批补资产即构建报红；
   - 结构化审计出口（`IToolExecutionAuditSink`）与 OpenTelemetry 指标（工具执行、耗时、模型调用耗时）；

@@ -36,17 +36,6 @@ internal sealed class MinutesReadTools(
     // 生产路径由生成器注入非空实例，故 Require 的前置断言仍然成立。
     IOptions<FeishuAgentOptions> options = null!)
 {
-    /// <summary>逐字稿窗口的默认长度（字符）。</summary>
-    /// <remarks>
-    /// R7/A3：逐字稿可达数万字，<b>一次性返回</b>会挤爆上下文。默认窗口 1 万字符，
-    /// 模型据 <c>has_more</c>/<c>next_offset</c> 自行续读（取代原先"截断 + 布尔标记"的口径——
-    /// 那个口径下模型<b>永远拿不到</b>后半段）。
-    /// </remarks>
-    private const int DefaultTranscriptWindow = 10000;
-
-    /// <summary>逐字稿窗口的硬上限：再大就失去"分窗口"的意义（一次灌爆上下文）。</summary>
-    private const int MaxTranscriptWindow = 50000;
-
     private readonly Mud.Feishu.IFeishuTenantV1MinutesMinute? _minutesClient = minutesClient;
 
     /// <summary>P-4（统一分页语义）：<c>fetch_all</c> 的条目/页数预算（来自宿主配置）。</summary>
@@ -103,7 +92,7 @@ internal sealed class MinutesReadTools(
 
             // 参数校验前置（F-8 纪律）：窗口参数越界在**本地**拒绝，
             // 不消耗一次下游调用、也不让模型等着看飞书的错误码。
-            ValidateTranscriptWindow(args.TranscriptOffset, args.TranscriptLimit);
+            ToolContentWindow.Validate(args.TranscriptOffset, args.TranscriptLimit, "transcript_offset", "transcript_limit");
 
             var outcome = FeishuApiResultReader.Read(await Require(executor.ToolName)
                 .GetMinuteArtifactsAsync(args.MinuteToken, cancellationToken)
@@ -137,7 +126,8 @@ internal sealed class MinutesReadTools(
 
                 // 逐字稿按窗口返回（R7/A3 改造）：模型用 transcript_offset/transcript_limit 分段读全量，
                 // 而不是拿到"截断标记 + 永远读不到的后半段"。
-                var window = ComputeTranscriptWindow(data.Transcript, args.TranscriptOffset, args.TranscriptLimit);
+                var window = ToolContentWindow.Compute(
+                    data.Transcript, args.TranscriptOffset, args.TranscriptLimit, "transcript_offset", "transcript_limit");
 
                 return new JsonObject
                 {
@@ -162,61 +152,6 @@ internal sealed class MinutesReadTools(
                 };
             });
         });
-    }
-
-    /// <summary>
-    /// 校验逐字稿窗口参数（<b>下游调用之前</b>执行：非法参数不消耗限频配额）。
-    /// </summary>
-    /// <param name="offset">起始偏移（可选，默认 0；负数拒绝）。</param>
-    /// <param name="limit">窗口长度（可选，默认 <see cref="DefaultTranscriptWindow"/>；超出 1~<see cref="MaxTranscriptWindow"/> 拒绝）。</param>
-    /// <exception cref="ArgumentException">参数越界（执行器骨架转为 <c>validation/invalid_args</c> 结构化错误）。</exception>
-    internal static void ValidateTranscriptWindow(int? offset, int? limit)
-    {
-        if ((offset ?? 0) < 0)
-        {
-            throw new ArgumentException("参数 transcript_offset 不能为负数（它表示从第几个字符开始读）");
-        }
-
-        var windowLength = limit ?? DefaultTranscriptWindow;
-        if (windowLength < 1 || windowLength > MaxTranscriptWindow)
-        {
-            throw new ArgumentException(
-                $"参数 transcript_limit 必须在 1~{MaxTranscriptWindow.ToString(CultureInfo.InvariantCulture)} 之间，"
-                + $"实际 {windowLength.ToString(CultureInfo.InvariantCulture)}");
-        }
-    }
-
-    /// <summary>
-    /// 计算逐字稿窗口（<b>纯函数</b>，便于独立单测；无 IO、无反射、AOT 友好）。
-    /// </summary>
-    /// <param name="transcript">完整逐字稿（可为 null ⇒ 视为空）。</param>
-    /// <param name="offset">起始偏移（可选，默认 0；负数拒绝）。</param>
-    /// <param name="limit">窗口长度（可选，默认 <see cref="DefaultTranscriptWindow"/>；超出 1~<see cref="MaxTranscriptWindow"/> 拒绝）。</param>
-    /// <exception cref="ArgumentException">参数越界（执行器骨架会转为 <c>validation/invalid_args</c> 结构化错误）。</exception>
-    internal static TranscriptWindow ComputeTranscriptWindow(string? transcript, int? offset, int? limit)
-    {
-        ValidateTranscriptWindow(offset, limit);
-
-        var text = transcript ?? string.Empty;
-        var start = offset ?? 0;
-        var windowLength = limit ?? DefaultTranscriptWindow;
-
-        var total = text.Length;
-
-        // 偏移超过总长 ⇒ 空窗口（不抛错：模型可能按上一轮的 next_offset 恰好读到末尾）。
-        var effectiveStart = start < total ? start : total;
-        var length = Math.Min(windowLength, total - effectiveStart);
-        var slice = length > 0 ? text.Substring(effectiveStart, length) : string.Empty;
-        var hasMore = effectiveStart + length < total;
-
-        return new TranscriptWindow(
-            Text: slice,
-            TotalLength: total,
-            Offset: effectiveStart,
-            Limit: windowLength,
-            HasMore: hasMore,
-            NextOffset: hasMore ? effectiveStart + length : null,
-            OffsetOutOfRange: start > total);
     }
 
     /// <summary>取客户端；缺席时给出<b>可执行</b>提示（宿主该启用什么），而不是空引用。</summary>
@@ -405,20 +340,3 @@ internal sealed class MinutesReadTools(
         });
     }
 }
-
-/// <summary>逐字稿窗口切片结果（<see cref="MinutesReadTools.ComputeTranscriptWindow"/> 的产物）。</summary>
-/// <param name="Text">窗口内的逐字稿文本。</param>
-/// <param name="TotalLength">逐字稿总长度（模型据此判断"还剩多少"）。</param>
-/// <param name="Offset">实际生效的起始偏移（超过总长时收敛为总长）。</param>
-/// <param name="Limit">实际生效的窗口长度。</param>
-/// <param name="HasMore">是否还有后续内容（<c>next_offset</c> 非空当且仅当它为 true）。</param>
-/// <param name="NextOffset">续读游标；无后续时为 null。</param>
-/// <param name="OffsetOutOfRange">调用方传入的 offset 是否超过逐字稿总长（如实回填，避免"空串"被误读为"没有逐字稿"）。</param>
-internal readonly record struct TranscriptWindow(
-    string Text,
-    int TotalLength,
-    int Offset,
-    int Limit,
-    bool HasMore,
-    int? NextOffset,
-    bool OffsetOutOfRange);

@@ -11,6 +11,7 @@
   "_T1_READ_FACES": "T-1 读取闭环（2026-10-16）新增：drive:export:readonly（drive.export_document 使用；官方《导出云文档》权限，覆盖创建/查询/下载导出任务三类接口，标 ✅ 已核对）；同时把 drive.download_file 记入既有 drive:drive:readonly、calendar.agenda 记入 calendar:calendar:readonly、calendar.rsvp 记入 calendar:calendar——四项均按官方 API 文档「权限要求」栏取值。",
   "_T2_TABLE_DEEP": "T-2 表格加深（2026-10-16）：40 个新工具（bitable 深化 19 + sheets 深化 21）全部复用既有 scope，未引入新权限点——读侧为 bitable:app:readonly / sheets:spreadsheet:readonly，写侧为 bitable:app / sheets:spreadsheet（与两域既有行同源核对，✅ 维持）。",
   "_S6_MINUTES_FACES": "S-6 首刀（2026-10-19）新增 4 个 scope，全部在 minutes 域且**scope 名取自 SDK 接口注释原文**（✅ 已核对）：minutes:minutes.transcript:export（get_transcript 导出逐字稿）、minutes:minutes.clip:write（clip 剪辑）、minutes:minutes.upload:write（upload 导入生成）、minutes:minutes.basic:read（subscribe / unsubscribe 的事件订阅面）。其余 9 枚新工具复用既有 scope：im:message（表情读写 4 枚）、wiki:wiki（space_create）、okr:okr.content:readonly（两枚指标读）、okr:okr.content:writeonly（update_indicator）。get_transcript 的字节经宿主落盘、不进模型上下文，与 drive.download_file 同口径 ⇒ **不**新增 PII 登记；本批新增 1 个 high-risk-write（im.delete_reaction）的 Affordance 四节资产。",
+  "_S1_SLIDES_FACES": "S-1（2026-10-20）新增 5 个 scope，全部在 slides 域，**scope 名取自 SDK 接口注释原文**（✅ 已核对）：slides:presentation:read（五个只读工具）、slides:presentation:screenshot（两个页图工具）、slides:presentation:create（create_presentation）、slides:presentation:update + slides:presentation:write_only（四个写工具按平台口径成对声明）。页图接口返回 base64，工具侧在**写出上下文之前**解码并经宿主 IFeishuAttachmentStager 落盘 ⇒ 与 drive.download_file 同口径，**不**新增 PII 登记；本批新增 1 个 high-risk-write（slides.delete_slide）的四节 Affordance 资产。",
   "scopes": {
     "aily:knowledge:readonly": "⚠️ 待核对：Aily 知识库 · 只读（knowledge.search 使用；scope 名称待核对：控制台二次确认，存疑但暂时保留）",
     "approval:approval": "审批 · 读写（approval.create_instance / approve_task 使用）",
@@ -88,7 +89,12 @@
     "hire:talent:readonly": "招聘 · 人才（候选人）只读（新增：hire.list_talents / hire.get_talent 使用；**PII 出口**，默认不启用——SDK 接口文档「所需权限」栏明确列出 hire:talent:readonly）",
     "hire:job_requirement:readonly": "招聘 · 招聘需求只读（新增：hire.list_job_requirements 使用；裁剪掉负责人/创建人/薪资后为**非 PII**——SDK 接口文档「所需权限」栏列出 hire:job_requirement:readonly）",
     "hire:interview:readonly": "招聘 · 面试只读（新增：hire.list_interviews 使用；**PII 出口**、默认不启用——SDK 接口文档「所需权限」栏明确列出 hire:interview:readonly）",
-    "hire:offer:readonly": "招聘 · Offer 只读（新增：hire.list_offers 使用；**PII 出口**、默认不启用；接口返回结构**不含薪资条件**——SDK 接口文档「所需权限」栏明确列出 hire:offer:readonly）"
+    "hire:offer:readonly": "招聘 · Offer 只读（新增：hire.list_offers 使用；**PII 出口**、默认不启用；接口返回结构**不含薪资条件**——SDK 接口文档「所需权限」栏明确列出 hire:offer:readonly）",
+    "slides:presentation:read": "幻灯片 · 只读（S-1 新增：slides.get_presentation / list_slides / get_slide / list_histories / get_revert_status 使用）",
+    "slides:presentation:screenshot": "幻灯片 · 页图与截图（S-1 新增：slides.list_slide_images / render_slide_image 使用；返回页图字节，经宿主落盘、不进模型上下文）",
+    "slides:presentation:create": "幻灯片 · 创建（S-1 新增：slides.create_presentation 使用）",
+    "slides:presentation:update": "幻灯片 · 更新（S-1 新增：slides.add_slide / replace_slide / delete_slide / revert_history 使用）",
+    "slides:presentation:write_only": "幻灯片 · 写入（S-1 新增：与 create/update 成对声明，平台口径为「读/写 + write_only」双 scope）"
   },
   "piiTools": [
     {

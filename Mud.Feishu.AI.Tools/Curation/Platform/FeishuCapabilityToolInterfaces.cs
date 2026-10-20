@@ -87,7 +87,7 @@ public interface IFeishuTenantGuidanceReadTool
 /// <list type="table">
 /// <item><term><c>feishu.capability_lookup</c></term><description>回答"SDK 里有没有这个能力（几个分组）"——编译期能力目录（L1）</description></item>
 /// <item><term><c>feishu.tool_search</c>（本工具）</term><description>回答"已策展的工具里哪个能干这事，启用了吗"——注册表/契约表（L2/L3）</description></item>
-/// <item><term><c>feishu.schema_read</c></term><description>回答"某个 SDK 方法怎么调（HTTP/参数）"——编译期方法目录（1268 方法）</description></item>
+/// <item><term><c>feishu.schema_read</c></term><description>回答"某个 SDK 方法怎么调（HTTP/参数）"——编译期方法目录（1279 方法）</description></item>
 /// </list>
 /// </para>
 /// <para>

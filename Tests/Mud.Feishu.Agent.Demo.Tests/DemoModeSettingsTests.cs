@@ -330,6 +330,7 @@ public class DemoModeSettingsTests
             DomainEventsDemoSettings.SectionName,
             SkillsDemoSettings.SectionName,
             WorkflowDemoSettings.SectionName,
+            DoctorDemoSettings.SectionName,
         ];
 
         sections.Should().OnlyHaveUniqueItems();
@@ -342,6 +343,7 @@ public class DemoModeSettingsTests
             DomainEventsDemoSettings.EnabledKey,
             SkillsDemoSettings.EnabledKey,
             WorkflowDemoSettings.EnabledKey,
+            DoctorDemoSettings.EnabledKey,
         ];
 
         enabledKeys.Should().OnlyHaveUniqueItems();

@@ -184,7 +184,8 @@ public class DemoModeCatalogTests
             DomainEventsDemoSettings.SectionName,
             DocAgentSettings.SectionName,
             SkillsDemoSettings.SectionName,
-            WorkflowDemoSettings.SectionName);
+            WorkflowDemoSettings.SectionName,
+            DoctorDemoSettings.SectionName);
 
         DemoModeCatalog.All.Select(static mode => mode.Id).Should().OnlyHaveUniqueItems();
         DemoModeCatalog.All.Should().OnlyContain(static mode => mode.Run != null, "每个菜单项都必须接到真实入口");
@@ -200,6 +201,7 @@ public class DemoModeCatalogTests
         DemoModeCatalog.All.Single(static mode => mode.Id == "doc").EnabledKey.Should().Be(DocAgentSettings.ConfigEnabledKey);
         DemoModeCatalog.All.Single(static mode => mode.Id == "skills").EnabledKey.Should().Be(SkillsDemoSettings.EnabledKey);
         DemoModeCatalog.All.Single(static mode => mode.Id == "workflow").EnabledKey.Should().Be(WorkflowDemoSettings.EnabledKey);
+        DemoModeCatalog.All.Single(static mode => mode.Id == "doctor").EnabledKey.Should().Be(DoctorDemoSettings.EnabledKey);
         DemoModeCatalog.All.Single(static mode => mode.Id == "bare").EnabledKey.Should().BeNull("裸模型无开关");
 
         DemoModeCatalog.All.Select(static mode => mode.EnabledKey ?? "(none)").Should().OnlyHaveUniqueItems(

@@ -281,6 +281,12 @@ public sealed class FeishuMcpToolServer
     /// <b>两个能力都是 <c>listChanged=false</c></b>：白名单与资产在装配期固定
     /// （进程生命周期内不变），无需通知客户端刷新——这也让"不发通知"成为契约而不是遗漏。
     /// </para>
+    /// <para>
+    /// <b><c>_meta</c> 自描述</b>：客户端在握手阶段就能读到"这个服务到底暴露了什么规模的面"
+    /// （工具数 / 域数 / 读写分布 / 资源数 / 支持的协议修订），不必先 <c>tools/list</c> 再自行统计。
+    /// 数字取<b>本服务真实下发面</b>（<c>_tools</c>，即白名单已启用集），不取编译期策展总量——
+    /// 探测结果必须与客户端随后能调到的东西一致，否则自描述就成了第二个真相源。
+    /// </para>
     /// </remarks>
     private JsonObject BuildCapabilities()
     {
@@ -294,7 +300,36 @@ public sealed class FeishuMcpToolServer
             capabilities["resources"] = new JsonObject { ["listChanged"] = false };
         }
 
+        var protocolVersions = new JsonArray();
+        foreach (var version in McpProtocol.SupportedVersions)
+        {
+            protocolVersions.AddNode(JsonValue.Create(version));
+        }
+
+        capabilities["_meta"] = new JsonObject
+        {
+            ["tools"] = _tools.Count,
+            ["domains"] = EnabledDomainCount(),
+            ["readOnlyTools"] = _tools.Count(static t => !t.IsWrite),
+            ["writeTools"] = _tools.Count(static t => t.IsWrite),
+            ["resources"] = Resources.Count,
+            ["protocolVersions"] = protocolVersions,
+        };
+
         return capabilities;
+    }
+
+    /// <summary>已下发工具所属域数（域 = 契约名首个 <c>.</c> 之前的部分，与进程内侧同一口径）。</summary>
+    private int EnabledDomainCount()
+    {
+        var domains = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var tool in _tools)
+        {
+            var index = tool.ContractName.IndexOf(".", StringComparison.Ordinal);
+            domains.Add(index > 0 ? tool.ContractName.Substring(0, index) : tool.ContractName);
+        }
+
+        return domains.Count;
     }
 
     /// <summary><c>resources/list</c> 结果（资源清单；不提供分页——清单规模远小于需要的阈值）。</summary>

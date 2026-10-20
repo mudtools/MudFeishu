@@ -546,3 +546,73 @@ internal sealed record WorkflowDemoSettings
         => value ?? throw new InvalidOperationException(
             $"请先设置 {FeishuDemoSettings.SectionName}:{key}");
 }
+
+/// <summary>
+/// 装配自检模式（doctor）的配置——<b>不需要模型</b>，凭证可选。
+/// </summary>
+/// <remarks>
+/// <para>
+/// 凭证缺席时本模式仍然跑完，只是容器里没有应用管理器与域客户端，自检结论随之反映该形态
+/// （这正是自检面要回答的问题：「当前装配缺什么」）。
+/// </para>
+/// <para>
+/// <b>只配一半凭证必须 fail-fast</b>：单键缺失会被静默当成零凭证形态，用户以为补了凭证就看到了
+/// 完整接线自检，实际报告仍缺 <c>host.IFeishuAppManager</c> 一族读数——诊断面给出误导结论比不给结论更坏。
+/// </para>
+/// </remarks>
+internal sealed record DoctorDemoSettings
+{
+    /// <summary>配置节名。</summary>
+    public const string SectionName = "FeishuDoctorDemo";
+
+    /// <summary>默认项开关键。</summary>
+    public const string EnabledKey = SectionName + ":Enabled";
+
+    /// <summary>默认项开关（<b>不决定是否进入本模式</b>——进入由启动菜单选择；它只决定菜单的默认项）。</summary>
+    public bool Enabled { get; init; }
+
+    /// <summary>飞书应用 AppId（可选；与 <see cref="AppSecret"/> 成对，齐备才装配应用面）。</summary>
+    public string? AppId { get; init; }
+
+    /// <summary>飞书应用 AppSecret（可选；只从本地覆盖文件读，不落盘、不入日志）。</summary>
+    public string? AppSecret { get; init; }
+
+    /// <summary>凭证是否齐备（决定自检容器是否装配应用管理器与全域域客户端）。</summary>
+    public bool HasCredentials
+        => !string.IsNullOrWhiteSpace(AppId) && !string.IsNullOrWhiteSpace(AppSecret);
+
+    /// <summary>从配置文件读取自检模式配置（凭证取统一节 <c>FeishuDemo</c>，可缺）。</summary>
+    /// <param name="configuration">配置来源。</param>
+    /// <exception cref="ArgumentNullException"><paramref name="configuration"/> 为 <see langword="null"/>。</exception>
+    public static DoctorDemoSettings FromConfiguration(IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        return new DoctorDemoSettings
+        {
+            Enabled = configuration.GetValue<bool?>(EnabledKey) is true,
+            AppId = DemoConfigGuards.NullIfBlank(
+                configuration[$"{FeishuDemoSettings.SectionName}:{FeishuDemoSettings.KeyAppId}"]),
+            AppSecret = DemoConfigGuards.NullIfBlank(
+                configuration[$"{FeishuDemoSettings.SectionName}:{FeishuDemoSettings.KeyAppSecret}"]),
+        };
+    }
+
+    /// <summary>校验配置合法（fail-fast：凭证半配置）。</summary>
+    /// <exception cref="InvalidOperationException">只配了 AppId 或只配了 AppSecret。</exception>
+    public void Validate()
+    {
+        if (string.IsNullOrWhiteSpace(AppId) == string.IsNullOrWhiteSpace(AppSecret))
+        {
+            return;
+        }
+
+        var missing = string.IsNullOrWhiteSpace(AppId)
+            ? FeishuDemoSettings.KeyAppId
+            : FeishuDemoSettings.KeyAppSecret;
+
+        throw new InvalidOperationException(
+            $"{FeishuDemoSettings.SectionName}:{FeishuDemoSettings.KeyAppId} 与 {FeishuDemoSettings.KeyAppSecret} "
+            + $"须成对配置（或都留空）——当前缺 {missing}，半配置会被当作零凭证形态自检，报告结论失真");
+    }
+}

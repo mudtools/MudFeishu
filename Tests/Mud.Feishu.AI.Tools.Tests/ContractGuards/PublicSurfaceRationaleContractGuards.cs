@@ -118,7 +118,11 @@ public class PublicSurfaceRationaleContractGuards
     // S-6 余项（2026-10-20）：447 → **449**——2 个新工具声明面 public 接口
     // （docx.history_list + docx.media_insert，全部登记在 reasons 段）；
     // Mud.Feishu.AI.Tools 390 → 392（Mud.Feishu.AI 50 / Mud.Feishu.AI.Mcp 7 不变）。
-    private const int BaselineTypeCount = 449;
+    // E-2 医生自检面（2026-10-20）：449 → **454**——GAP-11 支柱① 的宿主诊断契约公开面
+    // IFeishuDiagnosticsProbe + 报告值类型 FeishuDiagnosticsReport / Finding / Fact +
+    // 严重度常量面 FeishuDiagnosticsSeverities（全部登记在 reasons 段）；
+    // 探针实现 FeishuDiagnosticsProbe 与域装配助手 DomainGuidanceBlocks 均为 internal（不计条目）。
+    private const int BaselineTypeCount = 454;
 
     /// <summary>反射实测的公开面来源程序集（= 原台账覆盖面：三个飞书发布包）。</summary>
     private static readonly string[] ProductAssemblies =

@@ -7,6 +7,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
+using Mud.AI.Agent.Conversations;
 using Mud.AI.Agent.Tools;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.Metrics;
@@ -305,7 +306,14 @@ internal sealed class FeishuToolBinding
                 cancellationToken).ConfigureAwait(false);
 
             // ⑦ 结果整形钩子（P1D-2a）：净化/投影/截断之后、回填之前；失败回退默认（异常隔离）。
-            return await ShapeWithIsolationAsync(tool.Name, result, cancellationToken).ConfigureAwait(false);
+            var shaped = await ShapeWithIsolationAsync(tool.Name, result, cancellationToken).ConfigureAwait(false);
+
+            // ⑧ 成本核算出口：按工具记「模型真正读到的量」。必须取整形之后的文本——
+            // 净化/投影/截断都会改变长度，取整形之前的读数会把成本归因到模型从未收到的字符上。
+            FeishuToolDiagnostics.RecordResultTokens(
+                tool.Name, context.AppKey, ChatTokenCounter.Count(shaped.ToString()));
+
+            return shaped;
         }
         catch (OperationCanceledException)
         {

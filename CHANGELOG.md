@@ -98,6 +98,28 @@
   （`IFeishuPendingApprovalStore`）、批准后续跑幂等；未注册审批通道时写工具停在「等待确认」。
 - **示例程序**：`Demos/Mud.Feishu.Agent.Demo` 以启动菜单选择运行模式（裸模型 / IM 会话 /
   文档智能体 / 工具冒烟 / 领域事件等），非交互环境下自动采用配置默认项。
+- **装配自检面（`Mud.Feishu.AI.Tools`）**：`IFeishuDiagnosticsProbe` 把「启动后第一次调用才暴露的装配
+  缺陷」变成一次可调用、可读、可断言的报告——`Probe()` 回 `FeishuDiagnosticsReport`（结论
+  `FeishuDiagnosticsFinding`（严重度 info / warning / error + 稳定机读码 + 处置建议）与事实读数
+  `FeishuDiagnosticsFact`），`ToText()` 排序全确定，可作发布前冒烟与健康检查的断言面。覆盖配置有效性、
+  注册表装配、契约↔注册对账、风险词表、写工具缺授权器、HITL 通道缺席、审计出口缺席、内容安全开关、
+  user 身份接线与令牌管理器可达性、应用配置、guidance 预算余量等。
+  **零副作用契约**：同步、不发起任何网络调用、不刷新令牌、不实例化应用（令牌维度只报「管理器可达性」，
+  不报「有效期」——读有效期会让一条诊断命令变成一次真实调用）；自检自身出错时降级为 `probe_fault`
+  结论而非抛出。由 `AddFeishuTools()` 注册为单例，宿主按需解析。
+- **成本核算出口（`Mud.Feishu.Abstractions` 指标面）**：新增 `feishu.agent.llm.tokens`（Counter，
+  维度只有 `direction` = input / output / total）与 `feishu.tool.result.tokens`（Histogram，
+  维度 `tool` + `app_key`，读数为** shaping 后**回填模型的文本 token 数）。前者与既有的 Span 用量属性
+  **相互独立**：没有 Activity 监听器时宿主仍拿到成本读数；供应商未回传 usage、零值与负值一律不计数
+  （宁缺不造）。高基数纪律不变：`conversation_key` / `chat_id` / `user_id` 只进 Span 属性，绝不进指标 tag。
+  两项指标仍是零依赖的 `Meter` 发射，SDK 不接 Exporter。
+- **MCP 运行时自描述**：`initialize` 响应的 `capabilities._meta` 新增装配读数
+  `tools` / `domains` / `readOnlyTools` / `writeTools` / `resources` / `protocolVersions`，
+  全部由**实际服务中的工具面**（受同一白名单约束）与协议版本闭集推导——外部 Agent 因此在第一次握手后
+  就知道「这个 server 到底给了我多大一面」，而不必靠 `tools/list` 回读后再自行分类。
+- **`Demos/Mud.Feishu.Agent.Demo` 新增 `doctor` 模式**：零模型、零网络打印上述诊断报告。凭证留空即以
+  **占位凭证**把容器装配成完整形态（占位凭证永不被使用，该模式不触网），从而能读出真实装配结论而不是一堆
+  「未配置」噪音。
 
 ### 变更（Changed）
 
@@ -147,6 +169,15 @@
   **未分类的第二错误出口**（回执文本以 `[tool_error]` 开头而错误分类字段为空），机器可分辨性待收口。
 - 验证：标准档门禁全绿（**5,496 通过 + 25 门控跳过**；`Mud.Feishu.AI.Tools.Tests` 1638 通过，净增 26 条
   全部来自评测），golden **逐字节零漂移**（未新增工具、未改任何声明 ⇒ 无需重固化，skills 与权限对照表零差异）。
+- **装配自检与成本出口的配套用例**：`FeishuDiagnosticsProbeTests`（探针逐码触发条件、严重度分档、
+  重复调用逐字节相同、`probe_fault` 不抛出）、`DoctorDemoTests`（占位凭证容器的装配读数与报告渲染）、
+  `FeishuAgentTelemetryTests` 增 5 条（2 条：token 计数三方向、无 Activity 时仍计数；3 行理论：缺项/零/负值不计数）、
+  `FeishuToolResultTokensTests`（读数为 shaping 后文本、shaper 改写的内容才是被计数的那一份、拒绝路径不计数）、
+  `FeishuMcpToolServerTests` 增 3 条（`_meta` 自描述与**实际服务对象**同源、资源读数随开关变化）。
+  发布的工具面**零变化**（365 枚 / 34 域 / affordance 221 份全部不变，未新增工具、未改任何 `[AgentTool]`
+  声明 ⇒ golden 无需重固化），公开面 449→**454**（自检契约的 5 个 public 类型，消费方理由同批登记）。
+- 验证：标准档门禁全绿（**5,539 通过 + 25 门控跳过 = 5,564 总计**；净增 43 条全部来自本批：
+  `Mud.Feishu.AI.Tools.Tests` 1638→1665、`Mud.Feishu.AI.Tests` 448→453、`Mud.Feishu.Agent.Demo.Tests` 165→176）。
 
 ### 依赖（Dependencies）
 

@@ -71,11 +71,50 @@ public static class FeishuMetrics
     /// <summary>
     /// Agent 模型调用耗时直方图（毫秒，维度：agent）——模型延迟 P95。
     /// </summary>
-    /// <remarks>token 用量以 Span 属性 <c>feishu.llm.*</c> 聚合为主，不加高基数指标。</remarks>
+    /// <remarks>
+    /// token 用量有<b>两条出口</b>：每轮的明细进 Span 属性 <c>feishu.llm.*</c>（宿主按 trace 聚合，
+    /// 可下钻到会话/租户），总量与方向分布进 <see cref="AgentLlmTokens"/>（跨进程可加总，无高基数维度）。
+    /// </remarks>
     public static readonly Histogram<double> AgentLlmDuration = Instance.CreateHistogram<double>(
         "feishu.agent.llm.duration",
         unit: "ms",
         description: "飞书 Agent 模型调用耗时分布");
+
+    /// <summary>
+    /// Agent 模型 token 用量计数（维度：<see cref="Tags.Direction"/>），即<b>成本核算出口</b>。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 高基数纪律（原则 8）：不带 agent / app_key / conversation 维度。按会话与租户的用量聚合走
+    /// Span 属性（每轮一条、可下钻），指标只负责「总量 + 方向分布」这一可告警口径——
+    /// 把 agent/app_key 塞进 tag 会让序列数随配置应用数线性增长。
+    /// </para>
+    /// <para>
+    /// <b>缺项不计数</b>：模型未回传 usage 时（三项全空）不上报，绝不用估算值伪造成本读数。
+    /// </para>
+    /// </remarks>
+    public static readonly Counter<long> AgentLlmTokens = Instance.CreateCounter<long>(
+        "feishu.agent.llm.tokens",
+        unit: "{token}",
+        description: "飞书 Agent 模型 token 用量（按输入/输出/总量方向）");
+
+    /// <summary>
+    /// 工具结果回填文本的 token 分布（维度：tool, app_key）——把上下文成本归因到具体工具。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 口径与 <c>ChatTokenCounter</c> 一致（精确编码器可用时为 token，否则为字符估算），
+    /// 且只统计<b>允许回填</b>的结果文本（净化与截断之后）——那才是模型真正读到的量。
+    /// </para>
+    /// <para>
+    /// <b>不做「每工具消耗了多少模型 token」的归因</b>：工具结果与历史、指令一起进入同一请求，
+    /// 供应商只回传请求级 usage，任何 per-tool 模型 token 数字都只能是拆分猜测。
+    /// </para>
+    /// </remarks>
+    public static readonly Histogram<double> ToolResultTokens = Instance.CreateHistogram<double>(
+        "feishu.tool.result.tokens",
+        unit: "{token}",
+        description: "飞书 Agent 工具结果回填文本的 token 分布");
 
     /// <summary>
     /// 事件去重命中计数（维度：app_key, dedup_type, outcome）。
@@ -605,6 +644,28 @@ public static class FeishuMetrics
 
         /// <summary>Redis 命令/操作名（用于 <see cref="RedisOperationCount"/> 的维度拆分）</summary>
         public const string RedisCommand = "feishu.redis.command";
+
+        /// <summary>token 用量方向（用于 <see cref="AgentLlmTokens"/> 的维度拆分；取值见 <see cref="TokenDirections"/>）</summary>
+        public const string Direction = "direction";
+    }
+
+    /// <summary>
+    /// <see cref="AgentLlmTokens"/> 的方向取值（受控枚举，与供应商 usage 的三项一一对应）。
+    /// </summary>
+    /// <remarks>
+    /// 三项<b>各自独立累加</b>，故 <c>total</c> 序列不等于 <c>input + output</c> 序列之和
+    /// （供应商未回传 total 时该方向零计数）——按方向读数做成本估算时只取一组，不要相加。
+    /// </remarks>
+    public static class TokenDirections
+    {
+        /// <summary>输入 token。</summary>
+        public const string Input = "input";
+
+        /// <summary>输出 token。</summary>
+        public const string Output = "output";
+
+        /// <summary>总 token（供应商回传的合计值）。</summary>
+        public const string Total = "total";
     }
 
     /// <summary>

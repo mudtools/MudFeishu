@@ -218,8 +218,93 @@ public class FeishuMcpToolServerTests
         response["result"]!["serverInfo"]!["name"]!.GetValue<string>().Should().Be("mud-feishu");
     }
 
+    // ─────────────── E-2 运行时自描述（capabilities._meta，GAP-11 支柱③） ───────────────
+
+    private static async Task<JsonObject> MetaAsync(FeishuMcpToolServer server)
+        => (await InitializeAsync(server))["result"]!["capabilities"]!["_meta"]!.AsObject();
+
+    /// <summary>
+    /// 握手段即读得到规模面（工具数 / 域数 / 读写分布 / 资源数 / 协议修订闭集）——
+    /// 客户端不必先 <c>tools/list</c> 再自行统计。
+    /// </summary>
+    [Fact]
+    public async Task Initialize_ShouldSelfDescribeSurface_InCapabilitiesMeta()
+    {
+        using var provider = BuildProvider(
+            agent: o => o.Tools = [SchemaReadTool],
+            mcp: McpConfigure());
+        var server = provider.GetRequiredService<FeishuMcpToolServer>();
+
+        var meta = await MetaAsync(server);
+
+        meta["tools"]!.GetValue<int>().Should().Be(1);
+        meta["domains"]!.GetValue<int>().Should().Be(1, "域 = 契约名首段（feishu.schema_read → feishu）");
+        meta["readOnlyTools"]!.GetValue<int>().Should().Be(1);
+        meta["writeTools"]!.GetValue<int>().Should().Be(0);
+        meta["resources"]!.GetValue<int>().Should().Be(server.Resources.Count);
+        meta["protocolVersions"]!.AsArray().Select(static v => v!.GetValue<string>()).Should()
+            .Equal(McpProtocol.SupportedVersions);
+    }
+
+    /// <summary>
+    /// 自描述读数必须等于客户端随后真能拿到的那份面（取本服务下发集，不取编译期策展总量——
+    /// 否则 <c>_meta</c> 就成了第二个真相源）。
+    /// </summary>
+    [Fact]
+    public async Task Initialize_MetaCountsShouldMatchTheServedToolSurface()
+    {
+        var messageClient = new Mock<Mud.Feishu.IFeishuTenantV1Message>();
+        using var provider = BuildProvider(
+            agent: o =>
+            {
+                o.Tools = [SchemaReadTool];
+                o.WriteAllowList = [SendMessageTool];
+            },
+            mcp: McpConfigure(includeGuidance: false),
+            messageClient: messageClient);
+        var server = provider.GetRequiredService<FeishuMcpToolServer>();
+
+        var meta = await MetaAsync(server);
+
+        var expectedDomains = server.Tools
+            .Select(static t => t.ContractName.Contains('.', StringComparison.Ordinal)
+                ? t.ContractName.Substring(0, t.ContractName.IndexOf('.', StringComparison.Ordinal))
+                : t.ContractName)
+            .Distinct(StringComparer.Ordinal)
+            .Count();
+
+        server.Tools.Should().HaveCount(2, "一读一写两枚工具都在下发面内");
+        meta["tools"]!.GetValue<int>().Should().Be(server.Tools.Count);
+        meta["domains"]!.GetValue<int>().Should().Be(expectedDomains);
+        meta["readOnlyTools"]!.GetValue<int>().Should().Be(
+            server.Tools.Count(static t => !t.IsWrite), "读写分布按本服务真实下发工具计");
+        meta["writeTools"]!.GetValue<int>().Should().Be(server.Tools.Count(static t => t.IsWrite));
+    }
+
+    /// <summary>资源关闸时自描述同步归零（读数跟随能力面，不是常量）。</summary>
+    [Fact]
+    public async Task Initialize_MetaResourceCountShouldFollowIncludeResources()
+    {
+        using var provider = BuildProvider(
+            agent: o => o.Tools = [SchemaReadTool],
+            mcp: options =>
+            {
+                McpConfigure(includeGuidance: false)(options);
+                options.IncludeResources = false;
+            });
+        var server = provider.GetRequiredService<FeishuMcpToolServer>();
+
+        var response = await InitializeAsync(server);
+
+        server.Resources.Should().BeEmpty("IncludeResources=false 时资源面整体关闭");
+        response["result"]!["capabilities"]!.AsObject().Select(static kv => kv.Key).Should().NotContain("resources");
+        response["result"]!["capabilities"]!["_meta"]!["resources"]!.GetValue<int>().Should().Be(0);
+    }
+
+
     [Fact]
     public async Task Initialize_ShouldFallBack_ForUnsupportedProtocolVersion()
+
     {
         using var provider = BuildProvider(mcp: McpConfigure(includeGuidance: false));
         var server = provider.GetRequiredService<FeishuMcpToolServer>();

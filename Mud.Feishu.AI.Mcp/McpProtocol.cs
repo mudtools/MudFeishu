@@ -79,13 +79,15 @@ internal static class McpProtocol
     /// <summary>MCP 自定义：会话尚未初始化（未 `initialize` 就发请求）。</summary>
     public const int ErrorServerNotInitialized = -32002;
 
+    /// <summary>支持的协议修订闭集（时序升序）。<see cref="IsSupported"/> 与 <c>initialize</c> 的能力自描述共用
+    /// 本清单——两处各写一份字面量必然漂移，漂移表现为「客户端探测到不支持的版本」。</summary>
+    public static IReadOnlyList<string> SupportedVersions { get; } = [Version20241105, Version20250326, Version20250618];
+
     /// <summary>客户端请求的协议版本是否在支持闭集内。</summary>
     /// <param name="requested">客户端在 <c>initialize.params.protocolVersion</c> 中给出的版本（可空）。</param>
     /// <returns>是否支持。</returns>
     public static bool IsSupported(string? requested)
-        => string.Equals(requested, Version20241105, StringComparison.Ordinal)
-           || string.Equals(requested, Version20250326, StringComparison.Ordinal)
-           || string.Equals(requested, Version20250618, StringComparison.Ordinal);
+        => requested is not null && SupportedVersions.Contains(requested, StringComparer.Ordinal);
 
     /// <summary>协商结果：支持则回显请求版本，否则回落到 <see cref="DefaultVersion"/>。</summary>
     /// <param name="requested">客户端请求版本（可空）。</param>

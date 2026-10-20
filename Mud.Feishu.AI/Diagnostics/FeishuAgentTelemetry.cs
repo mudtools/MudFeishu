@@ -85,25 +85,32 @@ public sealed class FeishuAgentTelemetry : IAgentTelemetry
     /// <inheritdoc />
     public void RunCompleted(IDisposable? scope, bool failed, long? inputTokens, long? outputTokens, long? totalTokens)
     {
-        if (scope is not Activity activity)
-        {
-            return;
-        }
+        var hasUsage = inputTokens is not null || outputTokens is not null || totalTokens is not null;
 
-        if (failed)
+        if (scope is Activity activity)
         {
-            activity.SetStatus(ActivityStatusCode.Error);
-        }
-
-        // 三项全空时跳过，避免无谓分配（标签名与逐项判空口径经既有 RecordUsage 保持一致）。
-        if (inputTokens is not null || outputTokens is not null || totalTokens is not null)
-        {
-            FeishuAgentDiagnostics.RecordUsage(activity, new UsageDetails
+            if (failed)
             {
-                InputTokenCount = inputTokens,
-                OutputTokenCount = outputTokens,
-                TotalTokenCount = totalTokens,
-            });
+                activity.SetStatus(ActivityStatusCode.Error);
+            }
+
+            // 三项全空时跳过，避免无谓分配（标签名与逐项判空口径经既有 RecordUsage 保持一致）。
+            if (hasUsage)
+            {
+                FeishuAgentDiagnostics.RecordUsage(activity, new UsageDetails
+                {
+                    InputTokenCount = inputTokens,
+                    OutputTokenCount = outputTokens,
+                    TotalTokenCount = totalTokens,
+                });
+            }
+        }
+
+        // 成本计数挂在指标出口上，不挂在 Activity 上：无监听器时宿主仍要能算账
+        // （本类的「零成本」承诺只适用于 Span 侧，指标侧的判空成本本就是一次整数比较）。
+        if (hasUsage)
+        {
+            FeishuAgentDiagnostics.RecordTokenUsage(inputTokens, outputTokens, totalTokens);
         }
     }
 }

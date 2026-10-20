@@ -6,6 +6,8 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Abstractions.Conversations;
+// 指标类在本文件既有代码里以全限定名出现（不改写既有行），新代码用别名保持可读长度。
+using FeishuMetrics = Mud.Feishu.Abstractions.Metrics.FeishuMetrics;
 
 namespace Mud.Feishu.AI.Diagnostics;
 
@@ -169,5 +171,22 @@ internal static class FeishuAgentDiagnostics
             activity.SetTag(TagOutputTokens, output);
         if (usage.TotalTokenCount is { } total)
             activity.SetTag(TagTotalTokens, total);
+    }
+
+    /// <summary>记录模型 token 用量计数（<c>feishu.agent.llm.tokens</c>，维度仅 direction）——与 <see cref="RecordUsage"/>
+    /// 的 Span 出口相互独立：无 Activity 监听器时宿主仍拿到成本读数；缺项/零/负值不计数（宁缺不造）。</summary>
+    public static void RecordTokenUsage(long? inputTokens, long? outputTokens, long? totalTokens)
+    {
+        AddTokenCount(FeishuMetrics.TokenDirections.Input, inputTokens);
+        AddTokenCount(FeishuMetrics.TokenDirections.Output, outputTokens);
+        AddTokenCount(FeishuMetrics.TokenDirections.Total, totalTokens);
+    }
+
+    private static void AddTokenCount(string direction, long? tokens)
+    {
+        if (tokens is long value && value > 0)
+        {
+            FeishuMetrics.AgentLlmTokens.Add(value, new TagList { { FeishuMetrics.Tags.Direction, direction } });
+        }
     }
 }

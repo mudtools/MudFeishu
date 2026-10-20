@@ -699,6 +699,11 @@ public static class FeishuToolsServiceCollectionExtensions
         services.TryAddSingleton<IFeishuToolFunctionFactory, FeishuToolFunctionFactory>();
         services.TryAddSingleton<IToolErrorTextFormatter, ToolErrorTextFormatter>();
 
+        // GAP-11 装配自检面：把「启动后第一次调用才暴露的装配缺陷」变成一次可读、可断言的报告。
+        // ⚠️ 必须是**工厂注册**：实现经 IServiceProvider 逐项探测可选协作件（缺席即少一条结论，
+        //    绝不能变成构造期抛异常——诊断面自身不可诊断是最坏的形态）。
+        services.TryAddSingleton<IFeishuDiagnosticsProbe>(static sp => new FeishuDiagnosticsProbe(sp));
+
         // T1 / D1：用户令牌就绪探测器（internal sealed，按需注入 FeishuToolBinding 构造函数）。
         // IFeishuTokenManagerResolver 可空——未注册时探测降级为 fail-open 放行（由装配诊断 Warning 提示）。
         // ⚠️ 必须是**工厂注册**：MS DI 不把可空引用注解当作"可缺席"，只有工厂（或带默认值的构造参数）

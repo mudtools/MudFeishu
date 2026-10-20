@@ -578,6 +578,27 @@ await app.Services.RunFeishuMcpStdioAsync();             // 阻塞到客户端�
 - **本项不产生 SDK 变更**（登记性质）：若将来产品判定需要 SDK 侧统一形态，应走独立议题
   （需回答"多一层接口换来的是哪条具体的失败模式消失"），而不是在本包内加一个"凭据开关"。
 
+### 7.8 装配自检：把「第一次调用才暴露的装配缺陷」提前到一条命令（E-2 / GAP-11）
+
+`AddFeishuTools()` 注册 `IFeishuDiagnosticsProbe`（单例），宿主在启动末尾、发布流水线或健康检查里解析一次即可：
+
+```csharp
+var report = provider.GetRequiredService<IFeishuDiagnosticsProbe>().Probe();
+Console.WriteLine(report.ToText());          // 确定性排序：结论按（严重度, 码），读数按名
+if (report.HasErrors) { /* 拒绝上线 */ }
+```
+
+- **看什么**：`FeishuDiagnosticsFinding`（`severity` ∈ `info`/`warning`/`error` + 稳定机读 `code` + 含处置建议的
+  正文）与 `FeishuDiagnosticsFact`（`tools.enabled` / `tools.contract_surface` / `policy.*` / `host.*` /
+  `guidance.headroom_percent` 等读数）。**按码分支，不要按正文文案分支**——正文可改，码是契约。
+  `error` 的判据是「按当前配置运行期**必然**失败或**必然**静默丢弃」，不是「可能」。
+- **零副作用契约**：同步、不发起任何网络调用、不刷新令牌、不实例化应用。令牌轴只报**管理器可达性**，
+  不报有效期——读有效期需要触达存储并可能触发一次刷新，那会把一条诊断命令变成一次真实调用。
+- **不抛**：自检自身出错时回 `probe_fault` 结论，报告其余部分仍然有效。
+- **可当断言面**：同一装配两次调用逐字节相同，故冒烟用例可直接比对 `ToText()`。
+- 参考消费方：`Demos/Mud.Feishu.Agent.Demo` 的 `doctor` 模式（**零网络**；凭证留空即以占位凭证把容器
+  装配成完整形态，否则报告只剩一片「未配置」噪音）。
+
 ---
 
 ## 8. 编译期契约出口与域 guidance（R4/WP2/WP6）

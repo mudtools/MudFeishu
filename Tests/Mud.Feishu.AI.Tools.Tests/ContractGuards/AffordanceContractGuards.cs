@@ -58,9 +58,10 @@ public class AffordanceContractGuards
     // S-2：markdown 生命周期 5 份（只读 2 + 写入 3，均为 write 风险级），
     //      新域同样读写全覆盖（213 → 218；→ 102605 字符）。
     // S-4：workflow 两个只读编排工具各 1 份（218 → 220；→ 103662 字符）。
-    private const int ExpectedAssetCount = 220;
+    // S-6 余项：docx.media_insert（write 级满覆盖要求）（220 → 221；→ 104370 字符）。
+    private const int ExpectedAssetCount = 221;
 
-    private const int ExpectedTotalAssetCharacters = 103662;
+    private const int ExpectedTotalAssetCharacters = 104370;
 
     // B2 瘦身（测试体系治理，见《单元测试体系过度测试分析与解决方案》§三.5；该文档已迁 Mud.AI 仓）：
     // 与上游诊断**同一判定**的仓库侧副本已删除——

@@ -297,10 +297,10 @@ public class ToolArgumentShapeContractGuards
     }
 
     /// <summary>
-    /// <b>R5 / F-1</b>：基线 + <b>反向自证</b> —— <c>Curation/</c> 恰有 44 个声明文件、363 个契约接口
+    /// <b>R5 / F-1</b>：基线 + <b>反向自证</b> —— <c>Curation/</c> 恰有 44 个声明文件、365 个契约接口
     /// （R7/C3 后 163，R-12 删除 <c>feishu.api_call</c> 后为 162；六组目录切分后各域补域累计至 242，
     /// T-1 读取闭环补 4 个至 246；此后按工具条目口径逐批改锚，S-1 幻灯片域整域 12 枚至 356，
-    /// S-2 Markdown 生命周期 5 枚至 361，S-4 复合工作流 2 枚至 363）。
+    /// S-2 Markdown 生命周期 5 枚至 361，S-4 复合工作流 2 枚至 363，S-6 余项 2 枚至 365）。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -372,7 +372,7 @@ public class ToolArgumentShapeContractGuards
             .ToArray();
 
         interfaces.Should().HaveCount(
-            363,
+            365,
             "Curation/ 的工具契约接口数从 162 变为 {0}——新增/删除工具属有意的契约变更，请同步更新本基线"
             + "（若同时看到『文件数没变而接口数变了』，说明有文件被塞进了非契约内容）",
             interfaces.Length);

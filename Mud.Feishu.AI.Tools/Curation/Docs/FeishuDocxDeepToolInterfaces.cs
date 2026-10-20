@@ -84,6 +84,30 @@ public interface IFeishuTenantDocxListBlockChildrenTool
         CancellationToken cancellationToken = default);
 }
 
+/// <summary>工具接口：docx.history_list（跨域 Source：Drive 文件版本接口，scope 归 drive:drive:readonly）。</summary>
+/// <remarks>
+/// ⚠️ <b>跨域 Source</b>：SDK 的 Docx 模块<b>没有</b>版本历史接口（已核实 <c>Interfaces/Docx/**</c> 零命中），
+/// 平台把文档版本归在 Drive 的 <c>/open-apis/drive/v1/files/{file_token}/versions</c> 下——
+/// 新版文档（docx）与电子表格（sheet）共用同一端点，由 <c>obj_type</c> 区分。
+/// 工具名保持 <c>docx.*</c>（语义面向云文档历史），<c>obj_type=sheet</c> 时也可查电子表格版本。
+/// </remarks>
+[AgentTool("docx.history_list",
+    Description = "列出一个云文档（docx）或电子表格（sheet）的历史版本（版本标识/标题/创建者/创建时间/状态），可翻页。docx 含修改历史时可用它定位旧版本。跨域使用 Drive 接口，需 drive:drive:readonly。",
+    RequiredScopes = ["drive:drive:readonly"],
+    Source = nameof(IFeishuTenantV1DriveFilesVersions) + "." + nameof(IFeishuTenantV1DriveFilesVersions.GetFileVersionPageListByFileTokenAsync))]
+public interface IFeishuTenantDocxHistoryListTool
+{
+    /// <summary>列出文档历史版本（分页）。</summary>
+    /// <returns>白名单投影后的 JSON 文本（items：version/name/creator_id/create_time/status + 翻页契约）。</returns>
+    Task<string> GetFileVersionPageListByFileTokenAsync(
+        [ToolParameter("document_id", "文档或电子表格的 token（形如 doxcnXxx）", Required = true)] string document_id,
+        [ToolParameter("obj_type", "源文档类型（docx=新版文档 / sheet=电子表格；可选，默认 docx）")] string? obj_type = null,
+        [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
+        CancellationToken cancellationToken = default);
+}
+
 /// <summary>工具接口：docx.create_block（映射 <c>IFeishuTenantV1DocxBlocks.CreateBlockAsync</c>）。</summary>
 /// <remarks>
 /// 与 <c>docx.append_blocks</c> 的区别：<c>append_blocks</c> 是在文档根块下追加（<c>parent_block_id</c> 缺省=文档根）；

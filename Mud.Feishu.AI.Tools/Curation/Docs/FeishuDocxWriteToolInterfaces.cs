@@ -166,3 +166,49 @@ public interface IFeishuTenantDocxReplaceDocumentTool
         [ToolParameter("dry_run", "仅预演不执行（可选，默认 false）：返回将要下发的步骤与 method/path，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// 工具接口：docx.media_insert（<b>组合工具</b>：Drive 媒体上传 → Docx 图片块创建）。
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>为什么是组合</b>：图片要出现在文档里，平台要求先把二进制上传到「云文档素材」拿
+/// <c>file_token</c>（<c>/drive/v1/medias/upload_all</c>，<c>parent_type=docx_image</c>），
+/// 再以该 token 创建 <c>image</c> 块——两步分属 Drive 与 Docx 两个 SDK 模块，Docx 无单步插入接口。
+/// </para>
+/// <para>
+/// <b>输入形态与落盘</b>：只接受 http/https 绝对地址；由宿主的
+/// <see cref="IFeishuAttachmentStager"/> 落盘后交 SDK 的 <c>[FilePath]</c> 参数消费
+/// （域名白名单/大小上限/MIME 校验由宿主实现，工具层不假装能做安全域）。
+/// 临时文件在 <c>finally</c> 中清理。
+/// </para>
+/// <para>
+/// <b>⚠️ 部分失败语义</b>：两步之间没有事务——媒体上传成功而块创建失败时，会留下一枚
+/// <b>未被引用的素材</b>（不显示在文档里，但计入云文档素材配额）。工具会如实上报
+/// <c>partial_failure=true</c> 与 <c>image_token</c>，重试会再次上传（素材不具幂等键）；
+/// 块创建本身可用 <c>idempotency_key</c> 去重。
+/// </para>
+/// </remarks>
+[AgentTool("docx.media_insert",
+    Description = "把图片从 URL 上传到云文档素材并插入为文档中的图片块（两步：Drive 媒体上传 → Docx 图片块）。仅接受 http/https 绝对地址；宿主须注册 IFeishuAttachmentStager 与 Drive API。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document 与 drive:drive。",
+    RequiredScopes = ["docx:document", "drive:drive"],
+    IsWrite = true,
+    Source = nameof(IFeishuTenantV1DocxBlocks) + "." + nameof(IFeishuTenantV1DocxBlocks.CreateBlockAsync))]
+public interface IFeishuTenantDocxMediaInsertTool
+{
+    /// <summary>上传图片并插入图片块。</summary>
+    /// <returns>白名单投影后的 JSON 文本（block_id / image_token）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> MediaInsertAsync(
+        [ToolParameter("document_id", "文档 ID（形如 doxcnXxx）", Required = true)] string document_id,
+        [ToolParameter("image_url", "图片地址（http/https 绝对地址；经宿主落盘器校验域名/大小/MIME）", Required = true)] string image_url,
+        [ToolParameter("file_name", "素材文件名（可选；缺省从 URL 路径推导，无路径时用 image.png）")] string? file_name = null,
+        [ToolParameter("parent_block_id", "父块 ID（可选，默认文档根块 document_id）")] string? parent_block_id = null,
+        [ToolParameter("width", "图片显示宽度（像素，可选；平台按比例约束）")] int? width = null,
+        [ToolParameter("height", "图片显示高度（像素，可选；平台按比例约束）")] int? height = null,
+        [ToolParameter("align", "对齐方式（可选：left / center / right，默认 center）")] string? align = null,
+        [ToolParameter("caption", "图片描述（可选，显示在图片下方）")] string? caption = null,
+        [ToolParameter("index", "插入到父块下的位置（可选，默认追加到末尾）")] int? index = null,
+        [ToolParameter("idempotency_key", "幂等键（可选）：仅作用于图片块创建（client_token，24 小时内至多成功一次）；媒体上传本身不支持幂等。")] string? idempotency_key = null,
+        [ToolParameter("dry_run", "仅预演不执行（可选，默认 false）：返回将要下发的 steps 与 method/path，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}

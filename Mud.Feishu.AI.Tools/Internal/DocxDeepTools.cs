@@ -9,13 +9,15 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Mud.Feishu.DataModels.Docx;
+// System.Diagnostics.FileVersionInfo 与本域同名（global using System.Diagnostics）。
+using FileVersionInfo = Mud.Feishu.DataModels.Drive.FileVersions.FileVersionInfo;
 
 namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
-/// Docx 深化工具执行器（A2 批次，+9 工具）：
-/// <c>docx.get_document_info</c>/<c>docx.get_markdown_content</c>/<c>docx.get_block</c>/<c>docx.list_block_children</c> +
-/// <c>docx.create_block</c>/<c>docx.create_descendant_blocks</c>/<c>docx.update_block</c> +
+/// Docx 深化工具执行器（A2 批次 + S-6 历史版本，共 10 个）：
+/// <c>docx.get_document_info</c>/<c>docx.get_markdown_content</c>/<c>docx.get_block</c>/<c>docx.list_block_children</c>/
+/// <c>docx.history_list</c> + <c>docx.create_block</c>/<c>docx.create_descendant_blocks</c>/<c>docx.update_block</c> +
 /// <c>docx.get_chat_announcement</c>/<c>docx.set_chat_announcement</c>。
 /// </summary>
 /// <remarks>
@@ -27,6 +29,7 @@ internal sealed class DocxDeepTools(
     Mud.Feishu.IFeishuTenantV1DocxBlocks blocksClient,
     Mud.Feishu.IFeishuTenantV1DocxAnnouncement announcementClient,
     Mud.Feishu.IFeishuTenantV1DriveFiles driveFilesClient,
+    Mud.Feishu.IFeishuTenantV1DriveFilesVersions versionsClient,
     IOptions<FeishuAgentOptions> options)
 {
     private readonly Mud.Feishu.IFeishuTenantV1Docx _docxClient = docxClient
@@ -37,6 +40,8 @@ internal sealed class DocxDeepTools(
         ?? throw new ArgumentNullException(nameof(announcementClient));
     private readonly Mud.Feishu.IFeishuTenantV1DriveFiles _driveFilesClient = driveFilesClient
         ?? throw new ArgumentNullException(nameof(driveFilesClient));
+    private readonly Mud.Feishu.IFeishuTenantV1DriveFilesVersions _versionsClient = versionsClient
+        ?? throw new ArgumentNullException(nameof(versionsClient));
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
     private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
     private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
@@ -141,6 +146,37 @@ internal sealed class DocxDeepTools(
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApi(outcome, ProjectBlockList);
+        });
+    }
+
+    /// <summary>docx.history_list：列出文档/电子表格的历史版本（平台端点归 Drive，分页）。</summary>
+    [ToolHandler(typeof(IFeishuTenantDocxHistoryListTool))]
+    public Task<ToolResult> ListHistoryAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.DocxHistoryList, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var args = DocxHistoryListArgs.Unpack(arguments);
+            var objType = (args.ObjType ?? "docx").Trim().ToLowerInvariant();
+            if (objType is not ("docx" or "sheet"))
+            {
+                throw new ArgumentException($"obj_type 仅支持 docx / sheet，实际: {args.ObjType}");
+            }
+
+            // P-0 补齐：统一分页出口——聚合路径与单页路径共用同一次调用定义与同一份投影。
+            async Task<ToolApiOutcome<ApiPageListResult<FileVersionInfo>>> FetchPageAsync(string? token, CancellationToken ct)
+                => FeishuApiResultReader.Read(await _versionsClient
+                    .GetFileVersionPageListByFileTokenAsync(
+                        args.DocumentId,
+                        obj_type: objType,
+                        page_size: PageSizes.FileVersions,
+                        page_token: token,
+                        cancellationToken: ct)
+                    .ConfigureAwait(false));
+
+            return await executor.FromPagedApiAsync(
+                FetchPageAsync, ProjectHistory, args.FetchAll, args.MaxItems, args.PageToken,
+                _maxAutoFetchItems, _maxAutoFetchPages, cancellationToken).ConfigureAwait(false);
         });
     }
 
@@ -378,6 +414,29 @@ internal sealed class DocxDeepTools(
         foreach (var block in data.Items ?? [])
         {
             envelope["items"]!.AsArray().AddNode(ProjectBlock(block));
+        }
+
+        return envelope;
+    }
+
+    /// <summary>history_list 投影：items（version/name/creator_id/create_time/update_time/status）+ 翻页契约。</summary>
+    private static JsonObject ProjectHistory(ApiPageListResult<FileVersionInfo> data)
+    {
+        // R-3：信封形态单源（ToolResultJsons.PageEnvelope）。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
+
+        foreach (var item in data.Items ?? [])
+        {
+            envelope["items"]!.AsArray().AddNode(new JsonObject
+            {
+                ["version"] = item.VersionSuffix,
+                ["name"] = item.Name,
+                ["obj_type"] = item.ObjType,
+                ["creator_id"] = item.CreatorId,
+                ["create_time"] = item.CreateTime,
+                ["update_time"] = item.UpdateTime,
+                ["status"] = item.Status,
+            });
         }
 
         return envelope;

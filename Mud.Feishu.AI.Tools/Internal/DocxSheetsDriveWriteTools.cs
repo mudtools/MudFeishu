@@ -12,6 +12,7 @@ using Mud.Feishu.DataModels.Docx;
 using Mud.Feishu.DataModels.Drive;
 using Mud.Feishu.DataModels.Drive.Files;
 using Mud.Feishu.DataModels.Drive.Folder;
+using Mud.Feishu.DataModels.Drive.Media;
 using Mud.Feishu.DataModels.Spreadsheets;
 
 namespace Mud.Feishu.AI.Tools.Internal;
@@ -19,17 +20,26 @@ namespace Mud.Feishu.AI.Tools.Internal;
 // ─────────────────────────── Docx 写执行器 ───────────────────────────
 
 /// <summary>
-/// Docx 写工具执行器（<c>docx.create_document</c> / <c>docx.append_blocks</c>，WP2/R5）。
+/// Docx 写工具执行器（<c>docx.create_document</c> / <c>docx.append_blocks</c>，WP2/R5；
+/// S-6 补 <c>docx.media_insert</c>）。
 /// </summary>
 internal sealed class DocxWriteTools(
     Mud.Feishu.IFeishuTenantV1Docx docxClient,
     Mud.Feishu.IFeishuTenantV1DocxBlocks blocksClient,
-    IOptions<FeishuAgentOptions> options)
+    IOptions<FeishuAgentOptions> options,
+    Mud.Feishu.IFeishuTenantV1DriveMedia? mediaClient = null,
+    IFeishuAttachmentStager? stager = null,
+    ILogger<DocxWriteTools>? logger = null)
 {
     private readonly Mud.Feishu.IFeishuTenantV1Docx _docxClient = docxClient
         ?? throw new ArgumentNullException(nameof(docxClient));
     private readonly Mud.Feishu.IFeishuTenantV1DocxBlocks _blocksClient = blocksClient
         ?? throw new ArgumentNullException(nameof(blocksClient));
+    private readonly Mud.Feishu.IFeishuTenantV1DriveMedia? _mediaClient = mediaClient;
+    private readonly IFeishuAttachmentStager? _stager = stager;
+
+    /// <summary>日志（可空；临时素材落盘清理失败必须留痕——磁盘残留是用户数据驻留面）。</summary>
+    private readonly ILogger? _logger = logger;
 
     /// <summary>
     /// 结果截断预算（与读侧执行器同源）。
@@ -465,6 +475,192 @@ internal sealed class DocxWriteTools(
             return FromEnvelope(envelope);
         });
     }
+
+    /// <summary>docx.media_insert：URL 图片 → 云文档素材 → 图片块（两步组合，<c>dry_run=true</c> 时只预演）。</summary>
+    /// <remarks>
+    /// 媒体上传不支持幂等键；块创建透传 <c>client_token</c>。块创建失败时素材已上传——
+    /// 必须回 <c>partial_failure=true</c> 与 <c>image_token</c>，否则模型会把"未显示"误判为"未上传"。
+    /// </remarks>
+    [ToolHandler(typeof(IFeishuTenantDocxMediaInsertTool))]
+    public Task<ToolResult> MediaInsertAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.DocxMediaInsert, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var args = DocxMediaInsertArgs.Unpack(arguments);
+            var imageUrl = AttachmentTools.RequireHttpUrl(args.ImageUrl, "image_url");
+            var parentBlockId = ResolveParentBlockId(args.ParentBlockId, args.DocumentId);
+            var align = ResolveImageAlign(args.Align);
+            var fileName = ResolveImageFileName(args.FileName, imageUrl);
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return ToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "POST",
+                    "/open-apis/drive/v1/medias/upload_all → /open-apis/docx/v1/documents/{document_id}/blocks/{block_id}/children",
+                    "步骤：① 上传图片素材（parent_type=docx_image）② 以 file_token 创建 image 块。" + ToolDryRun.IdempotencyNote(args.IdempotencyKey),
+                    ("document_id", args.DocumentId.Length), ("parent_block_id", parentBlockId.Length),
+                    ("image_url", imageUrl.Length), ("file_name", fileName.Length), ("align", align)));
+            }
+
+            if (_stager is null)
+            {
+                return ToolResult.FromError(FeishuToolBinding.StructuredError(executor.ToolName, "宿主未注册 IFeishuAttachmentStager，docx.media_insert 不可用"));
+            }
+
+            if (_mediaClient is null)
+            {
+                return ToolResult.FromError(FeishuToolBinding.StructuredError(executor.ToolName, "宿主未注册 Drive 媒体客户端（AddDriveApi），docx.media_insert 不可用"));
+            }
+
+            var staged = await _stager.StageAsync(
+                new AttachmentSource(Url: imageUrl, Content: null, FileName: fileName), cancellationToken).ConfigureAwait(false);
+            if (staged is null)
+            {
+                return ToolResult.FromError(FeishuToolBinding.StructuredError(executor.ToolName, "来源不被宿主允许（安全域拒绝）"));
+            }
+
+            var stagedValue = staged.Value;
+            try
+            {
+                var upload = FeishuApiResultReader.Read(await _mediaClient
+                    .UploadAllMediaAsync(
+                        new MediasUploadAllRequest
+                        {
+                            FileName = fileName,
+                            ParentType = "docx_image",
+                            ParentNode = args.DocumentId,
+                            Size = (int)stagedValue.Size,
+                            FilePath = stagedValue.LocalPath,
+                        },
+                        cancellationToken)
+                    .ConfigureAwait(false));
+                if (executor.FailIfError(upload) is { } uploadFailure)
+                {
+                    return uploadFailure;
+                }
+
+                var imageToken = upload.Data?.FileToken;
+                if (string.IsNullOrEmpty(imageToken))
+                {
+                    throw new ArgumentException("素材上传成功但平台未返回 file_token——无法创建图片块");
+                }
+
+                var request = new CreateBlockRequest
+                {
+                    Childrens =
+                    [
+                        new Block
+                        {
+                            BlockType = BlockTypes.Image,
+                            Image = new BlockImage
+                            {
+                                Token = imageToken,
+                                Width = args.Width,
+                                Height = args.Height,
+                                Align = align,
+                                Caption = string.IsNullOrWhiteSpace(args.Caption)
+                                    ? null
+                                    : new BlockImageCaption { Content = args.Caption },
+                            },
+                        },
+                    ],
+                };
+                if (args.Index is not null)
+                {
+                    request.Index = args.Index.Value;
+                }
+
+                var outcome = FeishuApiResultReader.Read(await _blocksClient
+                    .CreateBlockAsync(
+                        args.DocumentId,
+                        parentBlockId,
+                        request,
+                        client_token: args.IdempotencyKey,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false));
+                if (executor.FailIfError(outcome) is { } blockFailure)
+                {
+                    return FromEnvelope(new JsonObject
+                    {
+                        ["partial_failure"] = true,
+                        ["image_token"] = imageToken,
+                        ["message"] = "图片已上传到云文档素材，但图片块创建失败："
+                            + (outcome.ErrorText ?? blockFailure.Text)
+                            + "。素材未显示在文档中；重试会再次上传（媒体上传不支持幂等），如不再重试可在文档中手动插入该素材。",
+                    });
+                }
+
+                return executor.FromApi(outcome, data => new JsonObject
+                {
+                    ["block_ids"] = new JsonArray(
+                        [.. (data.Childrens ?? []).Select(static child => (JsonNode?)child?.BlockId)]),
+                    ["image_token"] = imageToken,
+                });
+            }
+            finally
+            {
+                try
+                {
+                    await stagedValue.Cleanup().ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    // 清理失败不覆盖业务结果，但必须留痕：临时素材是含用户数据的驻留面。
+                    _logger?.LogWarning(ex, "临时附件清理失败，文件可能残留（path: {Path}）", stagedValue.LocalPath);
+                }
+            }
+        });
+    }
+
+    /// <summary>图片对齐方式（平台闭集 1/2/3；模型侧用 left/center/right）。</summary>
+    private static int ResolveImageAlign(string? raw)
+    {
+        var align = (raw ?? "center").Trim().ToLowerInvariant();
+        return align switch
+        {
+            "left" => 1,
+            "center" => 2,
+            "right" => 3,
+            _ => throw new ArgumentException($"align 仅支持 left / center / right，实际: {raw}"),
+        };
+    }
+
+    /// <summary>素材文件名：显式给出时受平台上限约束，缺省从 URL 路径推导。</summary>
+    private static string ResolveImageFileName(string? modelSupplied, string imageUrl)
+    {
+        if (!string.IsNullOrWhiteSpace(modelSupplied))
+        {
+            var supplied = modelSupplied.Trim();
+            if (supplied.Length > MaxImageFileNameLength)
+            {
+                throw new ArgumentException(
+                    $"file_name 长度 {supplied.Length} 超过平台上限 {MaxImageFileNameLength}——请改用更短的素材名");
+            }
+
+            return supplied;
+        }
+
+        var name = Uri.TryCreate(imageUrl, UriKind.Absolute, out var uri)
+            ? Path.GetFileName(Uri.UnescapeDataString(uri.AbsolutePath))
+            : string.Empty;
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return "image.png";
+        }
+
+        if (name.Length <= MaxImageFileNameLength)
+        {
+            return name;
+        }
+
+        var extension = Path.GetExtension(name);
+        return name.Substring(0, MaxImageFileNameLength - extension.Length) + extension;
+    }
+
+    /// <summary>素材文件名上限（平台约束）。</summary>
+    private const int MaxImageFileNameLength = 250;
 
     /// <summary>
     /// 按预算截断后返回手工信封（<c>replace_document</c> 的 3 条返回路径都走它）。

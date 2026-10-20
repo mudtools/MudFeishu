@@ -1,6 +1,6 @@
 ---
 name: feishu-docx
-description: 飞书 docx 域工具集：17 个工具（只读 8 / 写 9）。新版文档正文（块结构） → `docx.*`；电子表格 → `sheets.*`；知识库节点定位 → `wiki.*`；
+description: 飞书 docx 域工具集：19 个工具（只读 9 / 写 10）。新版文档正文（块结构） → `docx.*`；电子表格 → `sheets.*`；知识库节点定位 → `wiki.*`；
 version: 1.0.0
 package_version: 3.0.3
 ---
@@ -42,8 +42,10 @@ package_version: 3.0.3
 - `docx.get_document_info`（只读）：获取文档基本信息（标题/版本号/文档 ID）。改文档前先确认目标的链路首环。只读，需 docx:document:readonly。
 - `docx.get_markdown_content`（只读）：读取飞书文档的 Markdown 正文（仅支持新版文档 docx）。跨域使用 Drive 接口获取内容，需 drive:drive:readonly。返回的 Markdown 可用于编辑后通过 docx.replace_document 写回。
 - `docx.get_raw_content`（只读）：读取飞书文档的纯文本正文；document_id 可来自 wiki.get_node 的 obj_token 或 search.doc_wiki 结果的 token。只读，需 docx:document:readonly。
+- `docx.history_list`（只读）：列出一个云文档（docx）或电子表格（sheet）的历史版本（版本标识/标题/创建者/创建时间/状态），可翻页。docx 含修改历史时可用它定位旧版本。跨域使用 Drive 接口，需 drive:drive:readonly。
 - `docx.import_markdown`（只读）：把 Markdown 内容转换成文档块结构（不写入文档）——用于先预览转换结果，再用 docx.append_blocks 写入。支持文本、一到九级标题、有序/无序列表、代码块、引用、待办、图片、表格。只读转换，需 docx:document。
 - `docx.list_block_children`（只读）：列出指定块的所有子块（分页）。block_id 缺省为文档根块（等同列出文档顶层块）。用于定位要修改的块。只读，需 docx:document:readonly。
+- `docx.media_insert`（写）：把图片从 URL 上传到云文档素材并插入为文档中的图片块（两步：Drive 媒体上传 → Docx 图片块）。仅接受 http/https 绝对地址；宿主须注册 IFeishuAttachmentStager 与 Drive API。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document 与 drive:drive。
 - `docx.replace_document`（写）：用 Markdown 内容整体替换文档正文（保留为新内容的旧块会被删除）。适用于'把这篇文章重建一遍'。执行顺序为先追加新块、再删除旧块，因此中途失败不会导致内容丢失。⚠️ 必须提供 idempotency_key（重试语义）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。
 - `docx.set_chat_announcement`（写）：批量更新群公告中块的文本内容。⚠️ 群公告是全员可见的广播面，更新后所有群成员将看到新内容。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。
 - `docx.update_block`（写）：更新文档中单个块的文本内容（PATCH 语义天然幂等）。仅支持文本块，不支持表格结构。改少量块用本工具，整篇重写用 docx.replace_document。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。

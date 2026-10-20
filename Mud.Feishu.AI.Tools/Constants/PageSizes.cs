@@ -118,6 +118,9 @@ internal static class PageSizes
     /// <summary>im.batch_query_reactions 的单条消息明细上限（官方默认 10）。</summary>
     public const int ImReactionsPerMessage = 10;
 
+    /// <summary>docx.history_list（官方默认 10/页；未声明最大值，按默认值请求）。</summary>
+    public const int FileVersions = 10;
+
     /// <summary>单条消息 content 预览截断长度。</summary>
     public const int MessagePreviewLength = 200;
 }

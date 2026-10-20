@@ -60,43 +60,90 @@ public class ToolExecutorSkeletonGuards
     }
 
     /// <summary>同一工具名在单个执行器方法内最多出现 1 次（其余经 executor.ToolName）。</summary>
+    /// <remarks>
+    /// 只统计<b>执行器方法体内</b>的引用：文件级静态事实（如工作流步骤定义里的依赖工具名）
+    /// 不属于任何执行器方法，计入会让「每方法一次绑定」的判据失真。解析器自证见
+    /// <see cref="CountToolNameReferences_ShouldOnlyCountInsideExecutorMethods"/>。
+    /// </remarks>
     [Fact]
     public void ToolName_ShouldAppearAtMostOncePerExecutorMethod()
     {
         var violations = new List<string>();
         foreach (var (fileName, source) in ExecutorSources())
         {
-            var currentMethod = string.Empty;
-            var count = 0;
-            foreach (var line in File.ReadLines(fileName))
+            foreach (var (method, count) in CountToolNameReferences(source))
             {
-                var methodMatch = Regex.Match(line, @"public\s+(?:async\s+)?Task<ToolResult>\s+(\w+)");
-                if (methodMatch.Success)
+                if (count > 1)
                 {
-                    if (count > 1)
-                    {
-                        violations.Add($"{Path.GetFileName(fileName)}::{currentMethod}（{count} 处）");
-                    }
-
-                    currentMethod = methodMatch.Groups[1].Value;
-                    count = 0;
+                    violations.Add($"{Path.GetFileName(fileName)}::{method}（{count} 处）");
                 }
-
-                if (line.Contains("FeishuToolNames.", StringComparison.Ordinal))
-                {
-                    count++;
-                }
-            }
-
-            if (count > 1)
-            {
-                violations.Add($"{Path.GetFileName(fileName)}::{currentMethod}（{count} 处）");
             }
         }
 
         violations.Should().BeEmpty(
             "以下执行器方法内 FeishuToolNames.X 出现超过 1 次——工具名应经 new ToolExecutor(FeishuToolNames.X, …) 绑定一次，体内用 executor.ToolName（防漂移面）：{0}",
             string.Join(", ", violations));
+    }
+
+    /// <summary>解析器自证：文件级引用不计入，方法体内的第二处引用必须报出。</summary>
+    [Theory]
+    [InlineData(
+        "file-level",
+        "private static readonly string A = FeishuToolNames.One;\n"
+        + "private static readonly string B = FeishuToolNames.Two;\n"
+        + "public Task<ToolResult> RunAsync()\n"
+        + "{\n"
+        + "    var executor = new ToolExecutor(FeishuToolNames.Run, 1);\n"
+        + "}",
+        "RunAsync",
+        1)]
+    [InlineData(
+        "in-method",
+        "public Task<ToolResult> RunAsync()\n"
+        + "{\n"
+        + "    _ = FeishuToolNames.One;\n"
+        + "    _ = FeishuToolNames.Two;\n"
+        + "}",
+        "RunAsync",
+        2)]
+    public void CountToolNameReferences_ShouldOnlyCountInsideExecutorMethods(
+        string scenario, string source, string expectedMethod, int expectedCount)
+    {
+        var counts = CountToolNameReferences(source).ToArray();
+
+        counts.Should().ContainSingle("场景 {0} 只有一个执行器方法", scenario);
+        counts[0].Method.Should().Be(expectedMethod);
+        counts[0].Count.Should().Be(expectedCount, "场景 {0} 的引用计数", scenario);
+    }
+
+    private static IEnumerable<(string Method, int Count)> CountToolNameReferences(string source)
+    {
+        var method = string.Empty;
+        var count = 0;
+        foreach (var line in source.Split('\n'))
+        {
+            var methodMatch = Regex.Match(line, @"public\s+(?:async\s+)?Task<ToolResult>\s+(\w+)");
+            if (methodMatch.Success)
+            {
+                if (method.Length > 0)
+                {
+                    yield return (method, count);
+                }
+
+                method = methodMatch.Groups[1].Value;
+                count = 0;
+            }
+
+            if (method.Length > 0 && line.Contains("FeishuToolNames.", StringComparison.Ordinal))
+            {
+                count++;
+            }
+        }
+
+        if (method.Length > 0)
+        {
+            yield return (method, count);
+        }
     }
 
     /// <summary>

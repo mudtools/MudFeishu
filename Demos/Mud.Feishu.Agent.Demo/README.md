@@ -9,7 +9,7 @@
 
 ---
 
-## 1. 六个运行模式（由启动菜单选择）
+## 1. 七个运行模式（由启动菜单选择）
 
 程序启动后**先打印模式清单，由你选择进入哪个模块**（输入编号或模式标识；回车 = 配置默认项；`q` = 退出）：
 
@@ -21,6 +21,7 @@
 | 4 | 领域事件 | `FeishuDomainEventsDemo`（可选 `StreamChatId`） | 三个领域会话处理器（审批 / 多维表格记录变更 / 任务更新）各派发一轮真实事件 + 流式通道降级链走一轮真实流式回复 |
 | 5 | **文档业务智能体** | **`FeishuDocAgent`** | **本文件描述的模式** |
 | 6 | Skills 产物消费 | `FeishuSkillsDemo` | 读包内 `skills/**` 并注入域 guidance（不连飞书、不需要模型） |
+| 7 | 复合工作流 | `FeishuWorkflowDemo`（可选 `CalendarId` / `UserId`） | 确定性执行 `workflow.meeting_summary` / `workflow.standup_report`（先 dry_run 预演再真实执行；不调模型，站会日报另需两项配置） |
 
 选择界面（横幅 + 清单 + 提示符）：
 
@@ -32,15 +33,15 @@
  配置默认项   : 文档业务智能体（FeishuDocAgent:Enabled）
 ════════════════════════════════════════════════════════════
 请选择运行模式（输入编号或标识；回车 = 配置默认项；q = 退出）
-（清单即上表：编号 1 ~ 6 按同一顺序，另有 配置节 与 说明 两列）
-模式 [1-6]（回车 = doc）›
+（清单即上表：编号 1 ~ 7 按同一顺序，另有 配置节 与 说明 两列）
+模式 [1-7]（回车 = doc）›
 ```
 
 - **配置文件只提供参数**：模型三项与飞书凭证统一写在 `FeishuDemo` 节，模式专属参数写在自己的模式节；
   环境变量不参与。
 - 模式节里的 `Enabled` 键**不再决定进入哪个模式**，只决定菜单的**默认项**（回车采用的项）：
   按 `FeishuToolsDemo` → `FeishuImHandlerDemo` → `FeishuDomainEventsDemo` → `FeishuDocAgent` →
-  `FeishuSkillsDemo` 顺序取第一个 `Enabled=true` 的模式；都不启用时默认项是菜单首项（裸模型）。
+  `FeishuSkillsDemo` → `FeishuWorkflowDemo` 顺序取第一个 `Enabled=true` 的模式；都不启用时默认项是菜单首项（裸模型）。
 - **非交互输入（stdin 被重定向 / 管道 / CI）跳过菜单**，直接采用配置默认项，不会挂起等待输入。
 
 ---
@@ -100,13 +101,14 @@ dotnet run --project Demos/Mud.Feishu.Agent.Demo
 配置根目录固定为 **程序输出目录**（`AppContext.BaseDirectory`，两个 `appsettings*.json` 由 csproj 随产物复制），
 与当前工作目录无关：`dotnet run`、`dotnet bin/Debug/net10.0/xxx.dll`、任意 cwd 行为一致。
 
-模型与飞书凭证**统一写在 `FeishuDemo` 节**（六个模式共用，只此一处）；各模式节只保留自己的默认项开关与专属参数。
+模型与飞书凭证**统一写在 `FeishuDemo` 节**（七个模式共用，只此一处）；各模式节只保留自己的默认项开关与专属参数。
+复合工作流模式是**确定性工具链**，只读 `FeishuDemo` 的 `AppId`/`AppSecret`，不读模型三项。
 
 进入哪个模式由**启动菜单选择**（§1），配置不参与判定。
 
 ### 3.2 配置键对照表
 
-**统一连接配置（节 `FeishuDemo`）**——六个模式共用：
+**统一连接配置（节 `FeishuDemo`）**——七个模式共用：
 
 | 配置文件键（节 `FeishuDemo`） | 必填                     | 默认     | 说明                                                 |
 | ----------------------------- | ------------------------ | -------- | ---------------------------------------------------- |
@@ -128,6 +130,17 @@ dotnet run --project Demos/Mud.Feishu.Agent.Demo
 | `SummaryThreshold`                | 否   | `30`                                              | 摘要触发条数阈值（调低可加速演示摘要）              |
 | `AuditExportPath`                 | 否   | `%TEMP%/mud-feishu-docagent-audit-{时间戳}.jsonl` | `/export` 默认落盘路径                              |
 | `AttachmentMaxMb`                 | 否   | `25`                                              | `drive.upload_file` 的附件大小上限                  |
+
+**复合工作流专属配置（节 `FeishuWorkflowDemo`）**——只读凭证、不读模型三项：
+
+| 配置文件键（节 `FeishuWorkflowDemo`） | 必填 | 默认 | 说明 |
+| --- | --- | --- | --- |
+| `Enabled` | 否 | `false` | 置 `true` 使之成为启动菜单的默认项（进入模式由菜单选择） |
+| `MeetingQuery` | 否 | `产品评审会纪要汇总整理` | 会议纪要检索关键词（`minutes.search` 限 10~50 字符，启动即校验） |
+| `MeetingStart` / `MeetingEnd` | 否 | — | 检索时间窗，须**成对**配置（或都留空采用平台默认） |
+| `CalendarId` | 否 | — | 站会日报的日历 ID；与 `UserId` 同时具备才执行真实站会日报，否则只跑 dry_run 并打印跳过提示 |
+| `UserId` | 否 | — | 站会日报的 `task.list_my_tasks` 身份（**真实 open_id**，且宿主侧须存有该用户令牌） |
+| `IncludeCompletedTasks` | 否 | `false` | 站会日报是否包含已完成任务 |
 
 ### 3.3 配置文件示例
 
@@ -288,7 +301,7 @@ tenant 身份无 wiki 关键词搜索（改用 `search.doc_wiki`）；工具结�
 | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | 启动即报 `请先设置 FeishuDemo:XXX` 或 `FeishuDocAgent:XXX`               | 配置文件中缺少该必填项                                                                                                                                                | 对照 §3.2 补齐                                                                                                                             |
 | 改了 `appsettings.local.json` 但不生效                                   | ① 本 Demo **不监听文件变更**（`reloadOnChange: false`），必须重启；② 文件是新加的、还没被复制到输出目录 → 重新 `dotnet run` / `dotnet build`；③ 键名拼错（对照 §3.2） | 看横幅"配置来源"行确认文件是否被加载；再核对键名                                                                                           |
-| 启动后直接回车，进了不是我想的模式                    | 回车采用的是"配置默认项"（按 §1 顺序取第一个 `Enabled=true` 的模式）                                                       | 输入编号或模式标识显式选择（`1`~`6` / `tools` / `doc` …）；想改默认项则只给目标模式留 `Enabled=true`                                                                                           |
+| 启动后直接回车，进了不是我想的模式                    | 回车采用的是"配置默认项"（按 §1 顺序取第一个 `Enabled=true` 的模式）                                                       | 输入编号或模式标识显式选择（`1`~`7` / `tools` / `doc` …）；想改默认项则只给目标模式留 `Enabled=true`                                                                                           |
 | 横幅"配置来源"只显示 `（未发现 appsettings*.json）`                      | 两个 `appsettings*.json` 都不在**输出目录**                                                                                                                           | 确认 `Demos/Mud.Feishu.Agent.Demo/bin/<配置>/net10.0/` 下有 `appsettings.json`（csproj 的 `None Update + CopyToOutputDirectory` 负责复制） |
 | `AppId 长度无效` / `AppId 格式无效` / `AppSecret 长度必须至少为 16 字符` | SDK 的租户配置校验（在 Demo 的 `Validate()` **之后**）                                                                                                                | AppId 须以 `cli_`/`app_` 开头且 ≥20 字符；AppSecret ≥16 字符                                                                               |
 | `工具白名单与当前注册的域客户端不匹配：… 未注册工具 'x.y'`               | 对应域客户端没注册（域缺席 ⇒ 该域工具不注册）                                                                                                                         | 检查 `DocAgentDemo` 的 `AddFeishuServices` 是否注册了该域                                                                                  |
@@ -335,7 +348,7 @@ Demo **不接 OTel Exporter**（零额外依赖），采用「控制台 Trace + 
 | 编号 | 自检                                                                                                                               |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | F1   | 菜单选 `5`（或直接回车用配置默认项）进入后 30 秒内打印能力面横幅（配置来源 / 工具数 / 身份闭集 / 风险上限 / 授权强制 / guidance / 通道） |
-| F2   | 六个模式均由**启动菜单选择**进入（编号/标识/回车默认项），参数来自 `appsettings*.json`，**无环境变量参与**                                 |
+| F2   | 七个模式均由**启动菜单选择**进入（编号/标识/回车默认项），参数来自 `appsettings*.json`，**无环境变量参与**                                 |
 | F3   | `/scenario kb` 无人工干预跑通，回答含来源标注                                                                                      |
 | F4   | `/scenario author` 端到端跑通，且出现**恰好 2 次** 🔒 审批                                                                         |
 | F5   | `/scenario del`：`dry_run` 零副作用 → 🔒 → `strict` 下授权器独立拒绝 → `/policy ask` 后真删                                        |
@@ -375,7 +388,7 @@ dotnet test Tests/Mud.Feishu.Agent.Demo.Tests
 
 ## 13. 项目结构
 
-按功能归类：`Common/`（跨模式公共层 + 模式选择）、`Modes/`（五个轻量模式）、`DocAgent/`（文档业务智能体），
+按功能归类：`Common/`（跨模式公共层 + 模式选择）、`Modes/`（六个轻量模式）、`DocAgent/`（文档业务智能体），
 入口 `Program.cs` 只做模式选择与分发。
 
 ```
@@ -392,12 +405,13 @@ Mud.Feishu.Agent.Demo/
 │   ├── ConsoleRenderer.cs        # ANSI 渲染器（横幅/工具卡片/表格/密钥掩码）
 │   ├── DemoAppKeyAccessor.cs     # 演示应用键访问器（R-13：事件处理器的 appKey 事实来源）
 │   └── DemoAttachmentStager.cs   # 附件落盘器（drive.upload_file 的宿主注入件）
-├── Modes/                        # 五个轻量模式入口
+├── Modes/                        # 六个轻量模式入口
 │   ├── BareModelDemo.cs          # 裸模型一问一答
 │   ├── ToolsDemo.cs              # 全域只读工具冒烟
 │   ├── ImConversationDemo.cs     # IM 会话处理器注册面演示
 │   ├── DomainEventsDemo.cs       # 领域事件处理器 + 流式通道降级链
-│   └── SkillsDemo.cs             # Skills 产物消费（不连飞书、不需要模型）
+│   ├── SkillsDemo.cs             # Skills 产物消费（不连飞书、不需要模型）
+│   └── WorkflowDemo.cs           # 复合工作流（确定性工具链，dry_run 预演 + 真实执行）
 ├── Events/                       # R-10：NDJSON 事件外桥参考实现（库不再承诺该生态位）
 │   ├── FeishuEventNdjsonBridge.cs # 外桥 + 信封 + 文件路由（约 370 行，零 SDK 依赖）
 │   └── FeishuEventCatalog.cs      # 事件键自省（反射 FeishuEventTypes 常量）

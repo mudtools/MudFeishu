@@ -44,7 +44,7 @@ internal sealed record DemoModeOption(
 /// </summary>
 /// <remarks>
 /// 顺序即菜单顺序，保持「能力由弱到强」的阅读顺序：裸模型 → 工具冒烟 → IM 接入 → 领域事件 →
-/// 文档业务智能体 → Skills 产物消费。每项的节名/开关键必须与对应设置记录的常量一致
+/// 文档业务智能体 → Skills 产物消费 → 复合工作流。每项的节名/开关键必须与对应设置记录的常量一致
 /// （<c>DemoModeSelectorTests</c> 机械比对，防「加了菜单项但没接到真实设置」）。
 /// </remarks>
 internal static class DemoModeCatalog
@@ -99,6 +99,14 @@ internal static class DemoModeCatalog
             SkillsDemoSettings.SectionName,
             SkillsDemoSettings.EnabledKey,
             sources => SkillsDemo.RunAsync(sources.Configuration)),
+
+        new(
+            "workflow",
+            "复合工作流",
+            "确定性执行 workflow.meeting_summary / workflow.standup_report（需凭证、不调模型；站会日报另需 CalendarId/UserId）",
+            WorkflowDemoSettings.SectionName,
+            WorkflowDemoSettings.EnabledKey,
+            sources => WorkflowDemo.RunAsync(sources.Configuration)),
     ];
 
     /// <summary>

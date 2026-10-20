@@ -112,7 +112,10 @@ public class PublicSurfaceRationaleContractGuards
     // S-2 Markdown 生命周期（2026-10-20）：440 → **445**——5 个新工具声明面 public 接口
     // （markdown 只读 2 + 写 3，全部登记在 reasons 段）；
     // Mud.Feishu.AI.Tools 383 → 388（Mud.Feishu.AI 50 / Mud.Feishu.AI.Mcp 7 不变）。
-    private const int BaselineTypeCount = 445;
+    // S-4 复合工作流（2026-10-20）：445 → **447**——2 个新工具声明面 public 接口
+    // （workflow 只读 2，全部登记在 reasons 段）；
+    // Mud.Feishu.AI.Tools 388 → 390（Mud.Feishu.AI 50 / Mud.Feishu.AI.Mcp 7 不变）。
+    private const int BaselineTypeCount = 447;
 
     /// <summary>反射实测的公开面来源程序集（= 原台账覆盖面：三个飞书发布包）。</summary>
     private static readonly string[] ProductAssemblies =

@@ -33,14 +33,19 @@ internal static class DemoAgentDefaults
 
     /// <summary>
     /// 「全域只读」白名单（工具冒烟 / 领域事件两个模式共用）：<c>ReadonlyAll</c> 剔除
-    /// <c>knowledge.search</c>。
+    /// <c>knowledge.search</c> 与 <c>workflow.meeting_summary</c>。
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>为什么必须剔除这一枚</b>：它不绑定任何飞书域客户端，而是绑定宿主 <b>RAG 门面</b>
+    /// <b>为什么剔除 <c>knowledge.search</c></b>：它不绑定任何飞书域客户端，而是绑定宿主 <b>RAG 门面</b>
     /// （<c>IRetriever</c>，由 <c>AddFeishuAilyKnowledge</c> 注册，且要求 <c>FeishuAilyKnowledge:AppId</c>）。
     /// 本 Demo 明确不做 Aily 托管知识（README §12），故它在本 Demo 永远不注册；
     /// 若不剔除，装配期即 fail-fast（"<c>FeishuAgent:Tools</c> 白名单包含未注册工具 'knowledge.search'"）。
+    /// </para>
+    /// <para>
+    /// <b>为什么剔除 <c>workflow.meeting_summary</c></b>：PII 登记为 <c>defaultDisabled</c>
+    /// （报告含他人发言与待办）——共享白名单不是它的显式启用点；只有明确演示该工作流的
+    /// <see cref="WorkflowDemo"/> 才在自己的白名单里显式加入。
     /// </para>
     /// <para>
     /// <b>白名单与域注册面必须同宽</b>：白名单用全域只读，域客户端就必须全注册
@@ -49,7 +54,8 @@ internal static class DemoAgentDefaults
     /// </remarks>
     public static string[] ReadonlyToolWhitelist { get; } =
         [.. FeishuToolNames.ReadonlyAll.Where(
-            static name => !string.Equals(name, FeishuToolNames.KnowledgeSearch, StringComparison.Ordinal))];
+            static name => !string.Equals(name, FeishuToolNames.KnowledgeSearch, StringComparison.Ordinal)
+                && !string.Equals(name, FeishuToolNames.WorkflowMeetingSummary, StringComparison.Ordinal))];
 
     /// <summary>
     /// 一步注册「模型客户端 + Agent 基础选项」：服务键 / Agent 名 / 指令按默认口径装配，

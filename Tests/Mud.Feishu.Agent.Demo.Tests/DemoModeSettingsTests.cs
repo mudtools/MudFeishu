@@ -224,6 +224,97 @@ public class DemoModeSettingsTests
             .WithMessage($"*{SkillsDemoSettings.SectionName}:Domain*");
     }
 
+    // ──────────────────────────── WorkflowDemoSettings（S-4）────────────────────────────
+
+    /// <summary>复合工作流演示：只读凭证与工作流参数，不读模型三项（缺 ModelId/ApiKey 也能解析）。</summary>
+    [Fact]
+    public void WorkflowDemoSettings_ShouldReadWorkflowKeys_WithoutModel()
+    {
+        var config = Config(
+            ("FeishuDemo:AppId", "cli_test"),
+            ("FeishuDemo:AppSecret", "secret-test"),
+            (WorkflowDemoSettings.EnabledKey, "true"),
+            ($"{WorkflowDemoSettings.SectionName}:MeetingQuery", "季度规划评审会议纪要"),
+            ($"{WorkflowDemoSettings.SectionName}:MeetingStart", "2026-10-01T00:00:00+08:00"),
+            ($"{WorkflowDemoSettings.SectionName}:MeetingEnd", "2026-10-20T00:00:00+08:00"),
+            ($"{WorkflowDemoSettings.SectionName}:CalendarId", "feishu.cn_demo@group.calendar.feishu.cn"),
+            ($"{WorkflowDemoSettings.SectionName}:UserId", "ou_demo_user"),
+            ($"{WorkflowDemoSettings.SectionName}:IncludeCompletedTasks", "true"));
+
+        var settings = WorkflowDemoSettings.FromConfiguration(config);
+
+        settings.Enabled.Should().BeTrue();
+        settings.AppId.Should().Be("cli_test");
+        settings.AppSecret.Should().Be("secret-test");
+        settings.MeetingQuery.Should().Be("季度规划评审会议纪要");
+        settings.MeetingStart.Should().Be("2026-10-01T00:00:00+08:00");
+        settings.MeetingEnd.Should().Be("2026-10-20T00:00:00+08:00");
+        settings.CalendarId.Should().Be("feishu.cn_demo@group.calendar.feishu.cn");
+        settings.UserId.Should().Be("ou_demo_user");
+        settings.IncludeCompletedTasks.Should().BeTrue();
+    }
+
+    /// <summary>缺省搜索词必须满足 minutes.search 的 10~50 字符平台约束（照抄模板即可跑）。</summary>
+    [Fact]
+    public void WorkflowDemoSettings_ShouldUseDefaultMeetingQuery_WhenBlank()
+    {
+        var settings = WorkflowDemoSettings.FromConfiguration(Config(
+            ("FeishuDemo:AppId", "cli_test"),
+            ("FeishuDemo:AppSecret", "secret-test"),
+            ($"{WorkflowDemoSettings.SectionName}:MeetingQuery", " ")));
+
+        settings.MeetingQuery.Should().Be(WorkflowDemoSettings.DefaultMeetingQuery);
+        settings.MeetingQuery.Trim().Length.Should().BeInRange(10, 50);
+    }
+
+    /// <summary>凭证从共享节读取；缺失时 fail-fast 且消息指向 <c>FeishuDemo</c> 节。</summary>
+    [Theory]
+    [InlineData("AppId")]
+    [InlineData("AppSecret")]
+    public void WorkflowDemoSettings_ShouldFailFast_WhenMissingCredentials(string missing)
+    {
+        var config = Config(
+            ("FeishuDemo:AppId", "cli_test"),
+            ("FeishuDemo:AppSecret", "secret-test"));
+
+        var pruned = config.AsEnumerable()
+            .Where(kv => !kv.Key.EndsWith($":{missing}", StringComparison.Ordinal))
+            .ToDictionary(static kv => kv.Key, static kv => kv.Value, StringComparer.Ordinal);
+
+        var act = () => WorkflowDemoSettings.FromConfiguration(
+            new ConfigurationBuilder().AddInMemoryCollection(pruned).Build());
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage($"*{FeishuDemoSettings.SectionName}:{missing}*");
+    }
+
+    /// <summary>非法搜索词长度与不成对的时间窗必须在装配前 fail-fast（不要把配置错误拖到执行期）。</summary>
+    [Fact]
+    public void WorkflowDemoSettings_ShouldFailFast_WhenQueryOrWindowInvalid()
+    {
+        var badQuery = new WorkflowDemoSettings
+        {
+            AppId = "cli_test",
+            AppSecret = "secret-test",
+            MeetingQuery = "太短",
+        };
+
+        var queryAct = () => badQuery.Validate();
+        queryAct.Should().Throw<InvalidOperationException>()
+            .WithMessage($"*{WorkflowDemoSettings.SectionName}:MeetingQuery*");
+
+        var unpairedWindow = new WorkflowDemoSettings
+        {
+            AppId = "cli_test",
+            AppSecret = "secret-test",
+            MeetingStart = "2026-10-01T00:00:00+08:00",
+        };
+
+        var windowAct = () => unpairedWindow.Validate();
+        windowAct.Should().Throw<InvalidOperationException>()
+            .WithMessage($"*{WorkflowDemoSettings.SectionName}:MeetingStart*");
+    }
+
     // ──────────────────────────── 节名契约 ────────────────────────────
 
     /// <summary>各模式的配置节/开关键必须互异（模式分派按节名判定，撞名会静默串线）。</summary>
@@ -238,6 +329,7 @@ public class DemoModeSettingsTests
             ImHandlerDemoSettings.SectionName,
             DomainEventsDemoSettings.SectionName,
             SkillsDemoSettings.SectionName,
+            WorkflowDemoSettings.SectionName,
         ];
 
         sections.Should().OnlyHaveUniqueItems();
@@ -249,6 +341,7 @@ public class DemoModeSettingsTests
             ImHandlerDemoSettings.EnabledKey,
             DomainEventsDemoSettings.EnabledKey,
             SkillsDemoSettings.EnabledKey,
+            WorkflowDemoSettings.EnabledKey,
         ];
 
         enabledKeys.Should().OnlyHaveUniqueItems();

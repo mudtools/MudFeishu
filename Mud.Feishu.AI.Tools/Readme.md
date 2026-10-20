@@ -22,7 +22,7 @@
 
 ---
 
-## 1. 工具面现状（361 个：185 只读 + 176 写类）
+## 1. 工具面现状（363 个：187 只读 + 176 写类）
 
 > **本表为域级汇总，权威计数以 `FeishuToolNames.All` 为准**（由契约守卫 `ToolCountDocContractGuards` 机械锁定——本表数字必须等于编译期产物 `FeishuToolNames.All.Count`）。
 
@@ -62,8 +62,9 @@
 | **智能伙伴数据知识 Aily**（B2） | 3 | — | 3 |
 | **幻灯片 Slides**（S-1） | 7 | 5 | 12 |
 | **Markdown**（S-2） | 2 | 3 | 5 |
+| **复合工作流 Workflow**（S-4） | 2 | — | 2 |
 | 元工具 | 4 | — | 4 |
-| **合计** | **185** | **176** | **361** |
+| **合计** | **187** | **176** | **363** |
 
 > **R-12（2026-10-10）**：万能兜底通道 `feishu.api_call` 已**整条删除**（双轨调用路径 + 全工具面风险最高的面
 > + 零外部消费）。未策展能力的正确处置是「先用 `feishu.capability_lookup` 判断是不存在还是未策展，
@@ -235,13 +236,13 @@ var response = await agent.RunApprovalContinuationAsync(
 
 ## 4. 模型看不到的能力，出路在哪
 
-本包刻意**不**做"每个 SDK 方法一个工具"（1279 无差别暴露），而是按高频工作流**策展**为 361 个工具。
+本包刻意**不**做"每个 SDK 方法一个工具"（1279 无差别暴露），而是按高频工作流**策展**为 363 个工具。
 对于未策展的方法，提供两层兜底（而非变相暴露全部 1279 方法）：
 
 | 层 | 内容 | 模型可见？ |
 | --- | --- | --- |
 | L1 能力目录 | 编译期聚合事实（SDK 方法总数 / 分组分布 / 策展计数），`build_property.FeishuToolCatalog=true` 时产出 | ❌（`internal`） |
-| L2 暴露策展 | 标注了 `[FeishuTool]` 的 361 个工具 | ✅（白名单启用后） |
+| L2 暴露策展 | 标注了 `[FeishuTool]` 的 363 个工具 | ✅（白名单启用后） |
 | **L3 能力出路** | **`feishu.capability_lookup`**：按关键字回答"这个能力在 SDK 里有几个分组 / 是否已策展成工具" | ✅（默认不启用） |
 | **L3.1 方法签名** | **`feishu.schema_read`**：查任意 SDK 方法的签名事实（HTTP/路由/参数/令牌/风险/是否已策展） | ✅（只读，`feishu:base` scope） |
 | **L3.2 guidance** | **`feishu.guidance_read`**：按需读取 L2 references（`{域}/{主题}`），键不存在时列出全部候选 | ✅（只读） |
@@ -477,7 +478,7 @@ IToolSchemaExporter.Export(ToolSchemaDialect.Skills);
   `<None Include="..\skills\**\*" Pack="true" PackagePath="skills\" />` **打进 NuGet 包** ⇒
   只装包的用户也能拿到技能包（库本身不做文件 IO，这一行是"生态位"落到用户手里的唯一通道）。
   ⚠️ `PackagePath` 末尾的**反斜杠不能省**：省掉（或写成 `skills\%(RecursiveDir)`）会让 NuGet 与递归目录
-  叠加成 `skills/feishu-ai/feishu-ai/SKILL.md`；反过来写成 `skills\%(Filename)%(Extension)` 则会把 33 个域的
+  叠加成 `skills/feishu-ai/feishu-ai/SKILL.md`；反过来写成 `skills\%(Filename)%(Extension)` 则会把 34 个域的
   同名 `SKILL.md` 拍平覆盖。两种坏法都由 `Package_ShouldShipSkillsTree` 守卫挡下。
 
 ### 7.4 事件外桥：NDJSON（R7 / C7 · 生态位）

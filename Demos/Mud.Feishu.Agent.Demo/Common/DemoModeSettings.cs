@@ -434,3 +434,115 @@ internal sealed record SkillsDemoSettings
         }
     }
 }
+
+/// <summary>
+/// S-4：复合工作流演示的配置（<b>不调用模型</b>——直接经注册表驱动两个 <c>workflow.*</c> 工具）。
+/// </summary>
+/// <remarks>
+/// <para>
+/// 凭证复用统一节 <c>FeishuDemo</c> 的 <c>AppId</c> / <c>AppSecret</c>；本模式刻意<b>不读模型三项</b>：
+/// 工作流是确定性工具链，不需要模型决策，因此模型凭据缺失时本模式仍可运行。
+/// </para>
+/// <para>
+/// <c>CalendarId</c> / <c>UserId</c> 可选：两者齐备时才真跑 <c>workflow.standup_report</c>
+/// （第二步 <c>task.list_my_tasks</c> 是 user 身份，还要求宿主侧已有该用户的用户令牌）；
+/// 否则只输出可执行的跳过提示，并保留 dry_run 步骤计划。
+/// </para>
+/// </remarks>
+internal sealed record WorkflowDemoSettings
+{
+    /// <summary>配置节名。</summary>
+    public const string SectionName = "FeishuWorkflowDemo";
+
+    /// <summary>默认项开关键。</summary>
+    public const string EnabledKey = SectionName + ":Enabled";
+
+    /// <summary>默认会议搜索词（11 字符，满足 <c>minutes.search</c> 的 10~50 字符平台约束）。</summary>
+    public const string DefaultMeetingQuery = "产品评审会纪要汇总整理";
+
+    /// <summary>默认项开关（<b>不决定是否进入本模式</b>——进入由启动菜单选择；它只决定菜单的默认项）。</summary>
+    public bool Enabled { get; init; }
+
+    /// <summary>飞书应用 AppId。</summary>
+    public required string AppId { get; init; }
+
+    /// <summary>飞书应用 AppSecret。</summary>
+    public required string AppSecret { get; init; }
+
+    /// <summary>会议纪要搜索词（可空 ⇒ <see cref="DefaultMeetingQuery"/>）。</summary>
+    public string MeetingQuery { get; init; } = DefaultMeetingQuery;
+
+    /// <summary>妙记创建时间窗起点（可选，RFC3339；与 <see cref="MeetingEnd"/> 成对）。</summary>
+    public string? MeetingStart { get; init; }
+
+    /// <summary>妙记创建时间窗终点（可选，RFC3339；与 <see cref="MeetingStart"/> 成对）。</summary>
+    public string? MeetingEnd { get; init; }
+
+    /// <summary>站会日报读取的日历 ID（可选；与 <see cref="UserId"/> 齐备才真跑）。</summary>
+    public string? CalendarId { get; init; }
+
+    /// <summary>站会日报的当前用户 open_id（可选；任务读取需要用户身份与用户令牌）。</summary>
+    public string? UserId { get; init; }
+
+    /// <summary>站会日报是否包含已完成任务。</summary>
+    public bool IncludeCompletedTasks { get; init; }
+
+    /// <summary>从配置文件读取复合工作流演示配置。</summary>
+    /// <param name="configuration">配置来源。</param>
+    /// <exception cref="ArgumentNullException"><paramref name="configuration"/> 为 <see langword="null"/>。</exception>
+    /// <exception cref="InvalidOperationException">缺少必填配置项。</exception>
+    public static WorkflowDemoSettings FromConfiguration(IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        return new WorkflowDemoSettings
+        {
+            Enabled = configuration.GetValue<bool?>(EnabledKey) is true,
+            AppId = Require(DemoConfigGuards.NullIfBlank(
+                configuration[$"{FeishuDemoSettings.SectionName}:{FeishuDemoSettings.KeyAppId}"]),
+                FeishuDemoSettings.KeyAppId),
+            AppSecret = Require(DemoConfigGuards.NullIfBlank(
+                configuration[$"{FeishuDemoSettings.SectionName}:{FeishuDemoSettings.KeyAppSecret}"]),
+                FeishuDemoSettings.KeyAppSecret),
+            MeetingQuery = DemoConfigGuards.NullIfBlank(configuration[$"{SectionName}:MeetingQuery"])
+                ?? DefaultMeetingQuery,
+            MeetingStart = DemoConfigGuards.NullIfBlank(configuration[$"{SectionName}:MeetingStart"]),
+            MeetingEnd = DemoConfigGuards.NullIfBlank(configuration[$"{SectionName}:MeetingEnd"]),
+            CalendarId = DemoConfigGuards.NullIfBlank(configuration[$"{SectionName}:CalendarId"]),
+            UserId = DemoConfigGuards.NullIfBlank(configuration[$"{SectionName}:UserId"]),
+            IncludeCompletedTasks = configuration.GetValue<bool?>($"{SectionName}:IncludeCompletedTasks") is true,
+        };
+    }
+
+    /// <summary>校验配置合法（fail-fast）。</summary>
+    /// <exception cref="InvalidOperationException">存在非法取值。</exception>
+    public void Validate()
+    {
+        if (string.IsNullOrWhiteSpace(AppId))
+        {
+            throw new InvalidOperationException($"请先设置 {FeishuDemoSettings.SectionName}:{FeishuDemoSettings.KeyAppId}");
+        }
+
+        if (string.IsNullOrWhiteSpace(AppSecret))
+        {
+            throw new InvalidOperationException($"请先设置 {FeishuDemoSettings.SectionName}:{FeishuDemoSettings.KeyAppSecret}");
+        }
+
+        var queryLength = MeetingQuery.Trim().Length;
+        if (queryLength is < 10 or > 50)
+        {
+            throw new InvalidOperationException(
+                $"{SectionName}:MeetingQuery 长度须在 10~50 字符之间（minutes.search 平台约束），实际 {queryLength} 字符");
+        }
+
+        if (string.IsNullOrWhiteSpace(MeetingStart) != string.IsNullOrWhiteSpace(MeetingEnd))
+        {
+            throw new InvalidOperationException(
+                $"{SectionName}:MeetingStart 与 {SectionName}:MeetingEnd 须成对配置（或都留空）");
+        }
+    }
+
+    private static string Require(string? value, string key)
+        => value ?? throw new InvalidOperationException(
+            $"请先设置 {FeishuDemoSettings.SectionName}:{key}");
+}

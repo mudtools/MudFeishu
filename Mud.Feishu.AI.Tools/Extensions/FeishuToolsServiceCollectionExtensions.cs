@@ -393,6 +393,28 @@ public static class FeishuToolsServiceCollectionExtensions
         => AddFeishuToolInfrastructure(services, configure).AddFeishuCalendarToolsCore();
 
 
+    /// <summary>
+    /// 按域注册复合工作流工具（S-4，2 个只读：<c>workflow.meeting_summary</c> / <c>workflow.standup_report</c>）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 工作流本身不直接映射 SDK 方法，而是按步骤调用<b>已注册</b>的 <c>minutes.*</c> / <c>calendar.*</c> /
+    /// <c>task.*</c> 工具（每步都经 <c>FeishuToolBinding</c> 执行链，授权/审计/脱敏零绕过）。
+    /// 因此依赖工具必须在 <c>FeishuAgent:Tools</c> 中同时启用，否则执行期返回可操作的
+    /// <c>policy/tool_not_allowed</c> 错误；<c>dry_run</c> 不检查依赖，可用于预演步骤。
+    /// </para>
+    /// <para>
+    /// ⚠️ 与全域入口的同步纪律：本入口与 <c>AddFeishuReadonlyToolCores</c> 的清单必须**同进同出**
+    /// （<c>DomainRegistrarTests</c> 锁等价性）。
+    /// </para>
+    /// </remarks>
+    public static IServiceCollection AddFeishuWorkflowTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure)
+            .AddFeishuWorkflowToolsCore();
+
+
 
     /// <summary>
     /// 注册写域工具（Phase 2：<c>im.send_message</c>/<c>bitable.add_record</c>/<c>approval.create_instance</c> +
@@ -574,7 +596,12 @@ public static class FeishuToolsServiceCollectionExtensions
                     // 单执行器混合域（取舍同 Board/Attendance）：Core 整体注册于只读链，
                     // 写工具默认不启用；必须与 AddFeishuCloudDocTools 的清单**同进同出**
                     // （DomainRegistrarTests 锁等价性）。
-                    .AddFeishuMarkdownToolsCore();
+                    .AddFeishuMarkdownToolsCore()
+
+                    // S-4：复合工作流执行器 WorkflowTools（2 个只读：workflow.meeting_summary /
+                    // workflow.standup_report）。编排既有 minutes/calendar/task 工具，不直接映射 SDK 方法；
+                    // 必须与 AddFeishuWorkflowTools 的清单**同进同出**（DomainRegistrarTests 锁等价性）。
+                    .AddFeishuWorkflowToolsCore();
 
     /// <summary>
     /// 写域工具核心批量注册（W4 抽取：消除 AddFeishuTools 与 AddFeishuWriteTools 的重复链）。

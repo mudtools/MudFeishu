@@ -16,7 +16,7 @@
 
 - **飞书智能体运行时**：飞书消息 / 事件 → 会话 → 模型 → 回复，一行装配即可上线；Bot 自激过滤、
   群聊 @ 过滤等安全语义内建，回复支持消息卡片流式输出。
-- **361 个策展工具（33 个业务域）**：即时消息、邮件、任务、多维表格、电子表格、云文档、知识库、
+- **363 个策展工具（34 个业务域）**：即时消息、邮件、任务、多维表格、电子表格、云文档、知识库、
   日历、审批、通讯录、妙记、幻灯片等飞书高频操作以编译期 Schema 暴露给模型；只读与写类分离，
   40 个高危写工具默认关闭、启用前须经宿主授权。
 - **人工确认（HITL）**：写操作可停在「等待确认」，经宿主审批通道放行后续跑；未确认绝不自动执行。
@@ -33,7 +33,7 @@
   - 流式回复通道：消息卡片流（创建 → 更新 → 终态），失败自动降级为消息编辑通道；
   - 事件上下文装配：审批、多维表格记录变更等事件进入对话上下文（`ConversationRequest` 新增事件事实）；
   - 交付可靠性：重投递命中「已生成但未确认送达」的回复时直接补发，不重跑模型。
-- **`Mud.Feishu.AI.Tools` —— 工具面（361 个策展工具 / 33 域，185 只读 + 176 写类）**
+- **`Mud.Feishu.AI.Tools` —— 工具面（363 个策展工具 / 34 域，187 只读 + 176 写类）**
   - 幻灯片（`slides` 新域，12 枚）：XML 演示文稿的读、建、改、删与回滚——`slides.get_presentation` /
     `slides.list_slides` / `slides.get_slide` 读取 XML 正文（按 `content_offset` / `content_limit`
     窗口化，默认 25000 字符，回填编辑的原文**不截断**）；`slides.create_presentation` /
@@ -48,6 +48,17 @@
     替换，0 处不写、多处直接拒绝）、`markdown.overwrite`（整篇正文重建，先建后删故删除失败时新旧并存）
     与 `markdown.diff`（只读比对，输出行级 unified diff）。三个写工具均支持 `dry_run` 且默认不启用；
     `markdown.create` 的 `file_extension` 必须与上传后缀一致，否则平台拒绝导入。
+  - 复合工作流（`workflow` 新域，2 枚只读）：`workflow.meeting_summary` 一键汇总一段时间内的会议
+    纪要（`minutes.search` → `minutes.get_artifacts`，按场次裁剪摘要/章节/待办），
+    `workflow.standup_report` 生成站会日报（`calendar.agenda` → `task.list_my_tasks`）。编排定义是
+    编译期常量，每步仍走完整授权 / 审计 / 脱敏链路（回执 `steps[]` 带逐步骤 `audit_id`）；
+    依赖工具未启用时返回可执行的 `tool_not_allowed`，`dry_run=true` 只回步骤计划不发起嵌套调用，
+    长链路可携带 `resume_token` 断点续跑（Base64 内联状态，服务端无会话）。两者刻意**不含任何写入
+    步骤**（只读设计，见 `documents/AIAgent/decisions/ADR-0007-workflow-layer.md`）；
+    `workflow.meeting_summary` 含他人发言与待办，**默认不启用**。
+    `Mud.Feishu.Agent.Demo` 新增「复合工作流」模式（第 7 项）：先对两个工作流各做一次 `dry_run` 预演，
+    再真实执行会议纪要汇总；站会日报在配置 `CalendarId` / `UserId` 时真实执行，否则打印跳过提示。
+    该模式不调用模型，共享只读白名单同步剔除 PII 工具（仅在该模式自己的白名单里显式启用）。
   - 收尾补齐（会议 / 知识库 / 审批）：会议机器人 `vc.user_active_meeting` / `join_meeting` /
     `leave_meeting` / `send_meeting_message`（9 位会议号入会、19 位会议 ID 离会与会中消息，双 ID
     不可互换）；知识库空间与成员 `wiki.space_list` / `space_get` / `member_list` / `member_add` /
@@ -65,8 +76,8 @@
   - 权限模型：逐工具声明调用身份（tenant / user）与 OAuth scope，权限对照表随包分发；
   - 逐工具 affordance 决策指导（何时用 / 何时别用 / 前置条件 / 技巧），模型可见；
     写类工具面已**满覆盖**（40 个高危写 + 136 个普通写），只读面按高频读取路径补齐
-    （im / bitable / docx / drive / mail 的 `list` / `get` 共 33 份 + slides 整域 7 份 + markdown 5 份，
-    合计 **218 份资产**），
+    （im / bitable / docx / drive / mail 的 `list` / `get` 共 33 份 + slides 整域 7 份 + markdown 5 份 +
+    workflow 2 份，合计 **220 份资产**），
     覆盖率由 `AffordanceCoverageContractGuards` 按风险分级锁定（写类两级 100%、只读级 18% 起步），
     新增写类工具不同批补资产即构建报红；
   - 结构化审计出口（`IToolExecutionAuditSink`）与 OpenTelemetry 指标（工具执行、耗时、模型调用耗时）；

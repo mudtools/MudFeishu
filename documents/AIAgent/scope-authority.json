@@ -193,6 +193,12 @@
       "category": "候选人联系方式与在职字段（姓名/手机/邮箱/工作年限）",
       "defaultDisabled": true,
       "note": "DP-A5-1 档位 ①：「联系候选人」这一正当用途所需的最小集；身份证号 / 性别 / 年龄 / 国籍 / 籍贯 / 学历 / 工作经历 / 作品 / 获奖 / 简历附件 / 自定义字段一律不返回（与本工具目的无关却显著放大泄露面）"
+    },
+    {
+      "tool": "workflow.meeting_summary",
+      "category": "会议纪要汇总（参会人发言摘要 / 待办 / 关键词）",
+      "defaultDisabled": true,
+      "note": "DP-A5-1 档位 ①：工作流编排 minutes.search + minutes.get_artifacts，报告含他人发言与待办（与 minutes.get_artifacts 同源 PII）；默认不在任何白名单，需宿主显式启用并确认合规口径。投影按场次裁剪摘要/章节/待办长度"
     }
   ]
 }

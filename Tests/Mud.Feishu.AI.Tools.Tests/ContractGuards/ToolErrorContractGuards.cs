@@ -95,7 +95,8 @@ public class ToolErrorContractGuards
         // 中立独有子类（产品侧按设计无产出点）：其产出点随错误契约族迁出本仓，故从产品面幽灵判据中减去。
         // 反缩水：每个被减去的名称必须确实在产品面内无引用——若哪天产品侧真的产出了它，
         // 说明它已不再是「中立独有」，必须从本清单移除（否则产品面的真实幽灵会被这条豁免掩盖）。
-        var neutralOnlySubtypes = new[] { "ShapeMismatch", "Transient", "Timeout", "Unexpected" };
+        // `Unexpected` 已按本规则移出：复合工作流的装配期错误（依赖工具未注册 / 上下文缺失）产品侧真实产出。
+        var neutralOnlySubtypes = new[] { "ShapeMismatch", "Transient", "Timeout" };
         foreach (var name in neutralOnlySubtypes)
         {
             System.Text.RegularExpressions.Regex.IsMatch(

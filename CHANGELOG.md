@@ -5,6 +5,31 @@
 [Keep a Changelog]: https://keepachangelog.com/zh-CN/1.1.0/
 [语义化版本]: https://semver.org/lang/zh-CN/
 
+## [未发布] - 2026-10-20
+
+### 新增（Added）
+
+- **Mud.Feishu.AI.Tools —— 复合工作流（S-4，2 个只读工具，工具面 331 → 333 / 32 域）**
+  - `workflow.meeting_summary`（`minutes.get` → `minutes.get_statistics`（可关）→ `minutes.get_artifacts`）
+    与 `workflow.standup_report`（`calendar.agenda` → `task.list_my_tasks`）：把"取哪几段、怎么拼"固化在
+    代码里，模型只给起点参数；返回步骤轨迹（每步工具/状态/耗时/错误）+ 聚合报告。
+  - **失败即停 + 断点续跑**：中途失败返回失败结果与 `resume_from`（步骤号），以 `start_at` 重调即从
+    失败步续跑，已成功的前序步骤标 `skipped` 不重复取数；`dry_run=true` 只列执行计划不取数。
+  - **白名单不得旁路**：步骤工具经注册表解析且必须落在启用集内，未启用即在该步失败（不静默跳过）。
+  - 只读链优先：首批两条链全只读；写工作流需"半途失败补偿"语义（平台无事务/补偿原语），登记为后续项。
+  - 新公开入口 AddFeishuWorkflowTools()（与全域入口 AddFeishuReadonlyToolCores 同进同出）。
+  - 同批：Guidance/workflow.md（L1）、skills/feishu-workflow 产物、权限对照表 +2 行（v1.15）、
+    golden 重固化 2 行、FeishuWorkflowRunnerTests（6 例：顺序/失败续跑/跳过/预演/白名单边界/定义契约）。
+
+### 变更（Changed）
+
+- **工具面规模数字校正**：README.md / README_EN.md / Mud.Feishu.AI.Tools/Readme.md /
+  .docs/AI/状态基线.md 中漂移的 "344 工具 / 176 只读 / 31 域" 等数字按真相源
+  FeishuToolSchemas.golden.txt 校正为 **333 工具（173 只读 + 122 写类 + 38 高危）/ 32 域**。
+- **依赖升级**：Mud.AI.Abstractions / Mud.AI.Agent / Mud.AI.Generator 由 1.0.1 升至 **1.0.2**
+  （中立工具遥测端口 IAgentToolTelemetry、AmbientScope<T> 运行期装配扩展、TurnScopeContext.Facts、
+  DelegatingToolFunction 工具函数装饰基座、会话存储门面与回退错误截断修复）。1.0.2 已由上游发布至
+  nuget.org，联调用的本地 folder 源 `mudai-local` 已从 `nuget.config` 删除（还原后重新 restore 验证通过）。
 ## [3.1.0] - 2026-10-19
 
 **重大功能版本 —— 新增 AI 能力。** `Mud.Feishu.AI`（Agent 运行时）、`Mud.Feishu.AI.Tools`（工具面）与

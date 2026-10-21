@@ -28,8 +28,8 @@
 		<ProjectReference Include="..\Mud.Feishu\Mud.Feishu.csproj" />
 		<ProjectReference Include="..\Mud.Feishu.DataModels\Mud.Feishu.DataModels.csproj" />
 
-		<PackageReference Include="Mud.AI.Agent" Version="1.0.1" />
-		<PackageReference Include="Mud.AI.Generator" Version="1.0.1" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+		<PackageReference Include="Mud.AI.Agent" Version="1.0.2" />
+		<PackageReference Include="Mud.AI.Generator" Version="1.0.2" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 		<PackageReference Include="Mud.HttpUtils.Attributes" Version="3.0.8" />
 		<PackageReference Include="Mud.HttpUtils.Abstractions" Version="3.0.8" />
 	</ItemGroup>

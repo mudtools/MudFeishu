@@ -30,7 +30,7 @@ namespace Mud.Feishu.AI.Diagnostics;
 /// 各标记方法以 <c>as Activity</c> 判空后直接返回（不产生任何字符串拼接）。
 /// </para>
 /// </remarks>
-public sealed class FeishuAgentTelemetry : IAgentTelemetry
+public sealed partial class FeishuAgentTelemetry : IAgentTelemetry
 {
     /// <inheritdoc />
     public IDisposable? StartTurn(string conversationKey, string? tenantKey)
@@ -85,6 +85,8 @@ public sealed class FeishuAgentTelemetry : IAgentTelemetry
     /// <inheritdoc />
     public void RunCompleted(IDisposable? scope, bool failed, long? inputTokens, long? outputTokens, long? totalTokens)
     {
+        RecordUsageMeter(inputTokens, outputTokens);
+
         if (scope is not Activity activity)
         {
             return;
@@ -106,4 +108,5 @@ public sealed class FeishuAgentTelemetry : IAgentTelemetry
             });
         }
     }
+
 }

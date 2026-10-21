@@ -275,6 +275,8 @@ public class DomainRegistrarTests
             .AddFeishuTrustPartyTools()
             // 专题一 B2 补全域：Aily 数据知识（3 个只读）——同上。
             .AddFeishuAilyTools()
+            // S-4：复合工作流（2 个只读，编排面而非新能力面）——同上，必须同进同出。
+            .AddFeishuWorkflowTools()
             // ⚠️ mail **不**在本清单里显式调用：它是「读写混合域」，其 Core 只在写链登记
             // （与 CloudDoc 的评论/权限、Contact 的 contactDepartment 同款陷阱）——
             // 本清单已调 AddFeishuWriteTools，再调 AddFeishuMailTools 会双注册 ⇒

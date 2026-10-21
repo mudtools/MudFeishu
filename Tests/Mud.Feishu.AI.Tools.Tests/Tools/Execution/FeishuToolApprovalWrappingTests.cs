@@ -34,7 +34,7 @@ public class FeishuToolApprovalWrappingTests
 
     /// <summary>剥掉最内层的预算装饰器（T4 / D4：它位于审批标记之内、工具桥之外）。</summary>
     private static AIFunction UnwrapBudget(AIFunction function)
-        => function is ToolBudgetAIFunction budget ? budget.Inner : function;
+        => function is ToolBudgetAIFunction budget ? budget.Wrapped : function;
 
     private static FeishuToolDefinition Definition(string name, bool isWrite) => new(
         Name: name,

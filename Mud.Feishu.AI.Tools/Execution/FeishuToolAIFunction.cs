@@ -81,9 +81,14 @@ internal sealed class FeishuToolAIFunction : AIFunction
         var context = _contextAccessor?.Current;
         if (context is null)
         {
-            return ToolResult.FromError(FeishuToolBinding.StructuredError(
+            // 结构化错误出口：该路径在 FeishuToolBinding 之外（上下文缺失连执行链都进不去），
+            // 故不能依赖执行链出口的错误载荷归一——这里直接产出带载荷的失败结果。
+            return ToolResult.FromUnclassifiedError(
+                FeishuToolBinding.StructuredError(
+                    _definition.Name,
+                    "工具执行上下文缺失（未设置 appKey）——请经 ConversationalFeishuEventHandler 或 IFeishuToolContextAccessor.Begin 注入"),
                 _definition.Name,
-                "工具执行上下文缺失（未设置 appKey）——请经 ConversationalFeishuEventHandler 或 IFeishuToolContextAccessor.Begin 注入"));
+                maxLength: 0);
         }
 
         // AIFunctionArguments 实现为 IReadOnlyDictionary<string, object?>（可空性注解仅编译期）。

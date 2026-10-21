@@ -34,6 +34,9 @@ global using Mud.AI.Abstractions.Media;
 // H2 中立化：域 guidance 装配机制上移 Mud.AI.Agent.Guidance（FeishuGuidanceBlock/Result/Composer
 // 随之硬改名 GuidanceBlock/GuidanceResult/GuidanceComposer）；飞书侧只保留预算常量。
 global using Mud.AI.Agent.Guidance;
+// E-2：中立工具遥测端口（IAgentToolTelemetry）——执行链在出口埋点，产品实现见
+// Mud.Feishu.AI 的 FeishuAgentTelemetry（工具面分片）。
+global using Mud.AI.Abstractions.Observability;
 global using Mud.Feishu.Abstractions.Observability;
 global using Mud.Feishu.AI.Agents;
 // BUG-1 / 方案 C：AI 包侧"共享接缝"命名空间（FeishuToolContext / IFeishuToolContextAccessor /

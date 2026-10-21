@@ -77,6 +77,66 @@ public static class FeishuMetrics
         unit: "ms",
         description: "飞书 Agent 模型调用耗时分布");
 
+    // ── 中立工具遥测端口口径（IAgentToolTelemetry；E-2） ──
+    //
+    // 与上方 feishu.tool.executions / feishu.tool.duration 的分工：那两条是**产品执行链口径**
+    // （带 app_key，由 FeishuToolBinding 记账）；本组是**中立端口口径**（端口签名不带租户键，
+    // 故无 app_key 维度）。两者指标名不同 ⇒ 同一调用分别记一次，不会在同一时间序列上重复计数。
+
+    /// <summary>
+    /// 中立端口工具调用计数（维度：tool, write, outcome, truncated）。
+    /// </summary>
+    /// <remarks>
+    /// outcome 取 <see cref="ToolOutcomes"/> 家族的字面量或其扩展（<c>ok</c> / 失败分类字面量）；
+    /// 高基数纪律（原则 8）：端口不携带租户/会话键，故本指标不含 app_key 维度。
+    /// </remarks>
+    public static readonly Counter<long> AgentToolInvoked = Instance.CreateCounter<long>(
+        "feishu.agent.tool.invoked",
+        unit: "{invocation}",
+        description: "中立遥测端口上报的工具调用次数");
+
+    /// <summary>中立端口工具调用耗时直方图（毫秒，维度：tool, write）。</summary>
+    public static readonly Histogram<double> AgentToolInvokedDuration = Instance.CreateHistogram<double>(
+        "feishu.agent.tool.invoked.duration",
+        unit: "ms",
+        description: "中立遥测端口上报的工具调用耗时分布");
+
+    /// <summary>中立端口工具重试计数（维度：tool, attempt）。</summary>
+    public static readonly Counter<long> AgentToolRetried = Instance.CreateCounter<long>(
+        "feishu.agent.tool.retried",
+        unit: "{retry}",
+        description: "中立遥测端口上报的工具重试次数");
+
+    /// <summary>中立端口 RAG 检索召回条数（无维度；数值 = 注入的 chunk 数）。</summary>
+    public static readonly Counter<long> AgentRetrievalChunks = Instance.CreateCounter<long>(
+        "feishu.agent.rag.chunks",
+        unit: "{chunk}",
+        description: "中立遥测端口上报的 RAG 召回注入条数");
+
+    /// <summary>中立端口 RAG 注入字符数直方图（无维度）。</summary>
+    public static readonly Histogram<double> AgentRetrievalInjectedChars = Instance.CreateHistogram<double>(
+        "feishu.agent.rag.injected_chars",
+        unit: "{char}",
+        description: "中立遥测端口上报的 RAG 注入字符数分布");
+
+    /// <summary>中立端口人工审批请求计数（维度：tool）。</summary>
+    public static readonly Counter<long> AgentApprovalRequested = Instance.CreateCounter<long>(
+        "feishu.agent.approval.requested",
+        unit: "{request}",
+        description: "中立遥测端口上报的人工审批请求次数");
+
+    /// <summary>中立端口人工审批解决计数（维度：tool, outcome = approved / denied）。</summary>
+    public static readonly Counter<long> AgentApprovalResolved = Instance.CreateCounter<long>(
+        "feishu.agent.approval.resolved",
+        unit: "{resolution}",
+        description: "中立遥测端口上报的人工审批解决次数");
+
+    /// <summary>中立端口人工审批等待时长直方图（毫秒，维度：tool）。</summary>
+    public static readonly Histogram<double> AgentApprovalWait = Instance.CreateHistogram<double>(
+        "feishu.agent.approval.wait",
+        unit: "ms",
+        description: "中立遥测端口上报的人工审批等待时长分布");
+
     /// <summary>
     /// 事件去重命中计数（维度：app_key, dedup_type, outcome）。
     /// </summary>
@@ -579,6 +639,15 @@ public static class FeishuMetrics
         /// <summary>工具名（<see cref="ToolExecutions"/> / <see cref="ToolDuration"/> 维度）</summary>
         public const string Tool = "tool";
 
+        /// <summary>是否写工具（<see cref="AgentToolInvoked"/> 的读写拆分维度）</summary>
+        public const string IsWrite = "write";
+
+        /// <summary>结果是否被截断（<see cref="AgentToolInvoked"/> 的截断率维度）</summary>
+        public const string Truncated = "truncated";
+
+        /// <summary>第几次重试（1 起；<see cref="AgentToolRetried"/> 维度）</summary>
+        public const string Attempt = "attempt";
+
         /// <summary>Agent 展示名（<see cref="AgentLlmDuration"/> 维度）</summary>
         public const string Agent = "agent";
 
@@ -708,6 +777,9 @@ public static class FeishuMetrics
 
         /// <summary>执行异常（异常归一路径）。</summary>
         public const string Error = "error";
+
+        /// <summary>调用成功（中立遥测端口口径：无失败分类载荷）。</summary>
+        public const string Ok = "ok";
     }
 
     public static class DedupTypes
@@ -770,5 +842,11 @@ public static class FeishuMetrics
 
         /// <summary>幂等消费成功（审批后续轮完成）。</summary>
         public const string Consumed = "consumed";
+
+        /// <summary>人工已批准（<see cref="AgentApprovalResolved"/> 的 outcome 取值；写操作放行）。</summary>
+        public const string Approved = "approved";
+
+        /// <summary>人工已拒绝（<see cref="AgentApprovalResolved"/> 的 outcome 取值；拒绝结果回填模型）。</summary>
+        public const string Denied = "denied";
     }
 }

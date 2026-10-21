@@ -106,7 +106,12 @@ public class PublicSurfaceRationaleContractGuards
     // R-7 MCP 功能完善（2026-10-19）：415 → **416**——新增 HTTP 传输宿主
     // FeishuMcpHttpHost（public；登记在 public-surface-rationale.json 的 reasons 段）；
     // Mud.Feishu.AI.Mcp 7 → 8（Mud.Feishu.AI.Tools 358 / Mud.Feishu.AI 50 不变）。
-    private const int BaselineTypeCount = 416;
+    // E-2 可观测与运维面（2026-10-20）：416 → **427**——成本核算出口 5（IFeishuUsageMeter /
+    // InMemoryFeishuUsageMeter / FeishuUsageSlice / FeishuToolUsageSlice / FeishuUsageSnapshot）
+    // + 审计桥 1（FeishuUsageAuditSink）+ 自检面 5（IFeishuDiagnosticsProbe / FeishuDiagnosticsProbe /
+    // FeishuDiagnosticsReport / FeishuDiagnosticsCheck / FeishuDiagnosticsStatus），全部登记在 reasons 段；
+    // Mud.Feishu.AI 50 → 55、Mud.Feishu.AI.Tools 358 → 364（Mud.Feishu.AI.Mcp 8 不变）。
+    private const int BaselineTypeCount = 429;
 
     /// <summary>反射实测的公开面来源程序集（= 原台账覆盖面：三个飞书发布包）。</summary>
     private static readonly string[] ProductAssemblies =

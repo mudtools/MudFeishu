@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+using Mud.AI.Abstractions.Observability;
 using Mud.Feishu.AI.Agents;
 using Mud.Feishu.AI.Channels;
 using Mud.Feishu.AI.Conversations;
@@ -157,7 +158,12 @@ public static class FeishuAgentServiceCollectionExtensions
 
         // 遥测端口默认接产品实现——宿主可替换；替换后回合管线 / 摘要器 /
         // 通道（含降级链）全部走宿主实现。端口未注册时中立侧落 Noop（零开销）。
-        services.TryAddSingleton<IAgentTelemetry, Mud.Feishu.AI.Diagnostics.FeishuAgentTelemetry>();
+        // 工具面端口（IAgentToolTelemetry）与主端口**同一实例**：接口拆分是能力面，不是第二个实现。
+        services.TryAddSingleton<Mud.Feishu.AI.Diagnostics.FeishuAgentTelemetry>();
+        services.TryAddSingleton<IAgentTelemetry>(static sp =>
+            sp.GetRequiredService<Mud.Feishu.AI.Diagnostics.FeishuAgentTelemetry>());
+        services.TryAddSingleton<IAgentToolTelemetry>(static sp =>
+            sp.GetRequiredService<Mud.Feishu.AI.Diagnostics.FeishuAgentTelemetry>());
 
         services.TryAddSingleton(static sp =>
         {

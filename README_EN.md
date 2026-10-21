@@ -4,8 +4,8 @@
 
 ![MudFeishu Logo](icon.png)
 
-The **AI-native** .NET SDK for the Feishu ecosystem — 331 curated tools + an Agent runtime + an MCP server + a human-approval pipeline,
-letting AI agents drive Feishu org, docs, approvals, calendar, tasks, Bitable and 31 business domains in total through natural language.
+The **AI-native** .NET SDK for the Feishu ecosystem — 333 curated tools + an Agent runtime + an MCP server + a human-approval pipeline,
+letting AI agents drive Feishu org, docs, approvals, calendar, tasks, Bitable and 32 business domains in total through natural language.
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Mud.Feishu](https://img.shields.io/nuget/v/Mud.Feishu?label=Mud.Feishu "Mud.Feishu")](https://www.nuget.org/packages/Mud.Feishu/)
@@ -14,7 +14,7 @@ letting AI agents drive Feishu org, docs, approvals, calendar, tasks, Bitable an
 [![Mud.Feishu.WebSocket](https://img.shields.io/nuget/v/Mud.Feishu.WebSocket?label=Mud.Feishu.WebSocket "Mud.Feishu.WebSocket")](https://www.nuget.org/packages/Mud.Feishu.WebSocket/)
 [![Mud.Feishu.Webhook](https://img.shields.io/nuget/v/Mud.Feishu.Webhook?label=Mud.Feishu.Webhook "Mud.Feishu.Webhook")](https://www.nuget.org/packages/Mud.Feishu.Webhook/)
 
-[Why](#why-we-built-this) • [Architecture](#the-ai-foundation-five-layer-architecture) • [Tool Surface](#-tool-surface-331-curated-tools-not-1268-bare-methods) • [End-to-End Example](#end-to-end-example-read-bitable-write-back-a-record-via-human-confirmation) • [Quick Start](#quick-start) • [CLI Comparison](#how-this-compares-to-the-official-feishu-cli) • [Docs](#documentation)
+[Why](#why-we-built-this) • [Architecture](#the-ai-foundation-five-layer-architecture) • [Tool Surface](#-tool-surface-333-curated-tools-not-1268-bare-methods) • [End-to-End Example](#end-to-end-example-read-bitable-write-back-a-record-via-human-confirmation) • [Quick Start](#quick-start) • [CLI Comparison](#how-this-compares-to-the-official-feishu-cli) • [Docs](#documentation)
 
 </div>
 
@@ -35,7 +35,7 @@ does not connect:
 MudFeishu fills exactly that blank — not "yet another SDK that can call endpoints", but **the first Feishu foundation designed for the
 AI agent era on .NET**:
 
-- **331 curated tools** expose the Feishu API to models as Function Calls at compile time. Every tool carries a strongly-typed schema,
+- **333 curated tools** expose the Feishu API to models as Function Calls at compile time. Every tool carries a strongly-typed schema,
   a risk level, a permission scope and idempotency semantics — this is not dumping 1268 SDK methods onto the model indiscriminately.
 - A **seven-step execution chain** runs on every tool call: context validation → inbound sanitization → policy axis → authorization gate →
   tenant switch → content safety → outbound sanitization, **fail-closed by default**: an unauthorized write tool is always rejected.
@@ -59,7 +59,7 @@ AI capability is not a patch on the sample layer — it is a **first-class citiz
 │              Event-driven conversation                      │
 │              Knowledge retrieval (Aily + RAG)  ·  HITL      │
 ├─────────────────────────────────────────────────────────────┤
-│  ③ Tooling   331 curated tools (31 domains)                 │
+│  ③ Tooling   333 curated tools (32 domains)                 │
 │              Compile-time schema  ·  Risk tiers             │
 │              Idempotency keys  ·  affordance assets         │
 ├─────────────────────────────────────────────────────────────┤
@@ -80,7 +80,7 @@ AI capability is not a patch on the sample layer — it is a **first-class citiz
 All 33 Feishu API modules (org structure, messaging, group chat, approvals, tasks, calendar, video conferencing, docs, wiki, drive,
 whiteboard, spreadsheets, Bitable, attendance, cards, AI capabilities, mail, search, help desk, OKR, Minutes, Miaoda, …) are
 declarative interfaces plus source-generated implementations. Agents never call these interfaces directly — **the tool surface curates
-331 high-frequency operations out of them** and exposes those to the model.
+333 high-frequency operations out of them** and exposes those to the model.
 
 ### ② Execution chain: seven immutable steps, fail-closed by default
 
@@ -102,7 +102,7 @@ declarative interfaces plus source-generated implementations. Agents never call 
 sanitization has no switch and cannot be bypassed; a pending-confirmation call whose authorizer did not return `Allowed` is
 suspended and resolved through **the same path for read and write tools**; `dry_run=true` on a write tool does not consume an idempotency key.
 
-### ③ Tool surface: 331 curated tools, not 1268 bare methods
+### ③ Tool surface: 333 curated tools, not 1268 bare methods
 
 | Domain | Read | Write | Total | | Domain | Read | Write | Total |
 | --- | ---: | ---: | ---: | --- | --- | ---: | ---: | ---: |
@@ -122,10 +122,10 @@ suspended and resolved through **the same path for read and write tools**; `dry_
 | Chat group | 4 | 12 | 16 | | Help desk | 6 | 4 | 10 |
 | Lingo | 6 | 5 | 11 | | Trust party | 8 | 3 | 11 |
 | Aily data knowledge | 3 | — | 3 | | | | | |
-| **Total** | **171** | **160** | **331** | | | | | |
+| **Total** | **173** | **160** | **333** | | | | | |
 
 **Curated, not fully exposed**: dumping 1268 SDK methods onto the model indiscriminately means context explosion plus impossible
-permission tiering. MudFeishu curates 331 tools around high-frequency workflows, and every tool carries six things:
+permission tiering. MudFeishu curates 333 tools around high-frequency workflows, and every tool carries six things:
 
 - **Compile-time schema** (`FeishuToolSchemas`): parameters, required flags, enums — the model fills against it, and a misspelled
   field is rejected locally
@@ -139,7 +139,7 @@ permission tiering. MudFeishu curates 331 tools around high-frequency workflows,
   to the process. You can't expect the model to follow a doc link for this; it has to enter the context alongside the tool
 
 Alongside those come the **typed contracts** (`FeishuToolContracts`, zero runtime parsing — the registry constructs the definitions
-directly) and the **domain guidance** (31 domains plus sub-topic references): appended after host instructions, truncated at a 2 KB budget.
+directly) and the **domain guidance** (32 domains plus sub-topic references): appended after host instructions, truncated at a 2 KB budget.
 
 **Curation granularity, by example**: the Bitable domain ended up with 28 entries — record query / get-by-id / create / update / delete /
 batch create-update, then the metadata of tables, fields and views, plus forms, dashboards, role permissions and automation flows; exactly
@@ -208,7 +208,7 @@ IToolSchemaExporter.Export(ToolSchemaDialect.Skills);
 // => {"dialect":"skills","files":[{"path":"skills/feishu-im/SKILL.md","content":"…"}, …]}
 ```
 
-`skills/feishu-{domain}/SKILL.md` plus `references/{topic}.md` for all 31 domains, loadable directly by out-of-repo agents
+`skills/feishu-{domain}/SKILL.md` plus `references/{topic}.md` for all 32 domains, loadable directly by out-of-repo agents
 (Claude Code / Cursor) to obtain Feishu domain knowledge. Every data source is a compile-time constant ⇒ zero reflection, zero IO, deterministic.
 
 **NDJSON event bridge** (a Demo reference implementation; not part of the shipped API since R-10): `FeishuEventNdjsonBridge`
@@ -316,7 +316,7 @@ systematic implementation yet, and MudFeishu is the **first complete realization
 | Dimension | Bolt-on integration (the common industry approach) | AI-native (MudFeishu) |
 | --- | --- | --- |
 | AI positioning | A sample-layer patch: call a large model inside a callback handler to reply with a message, single-turn Q&A | A first-class citizen of the SDK: five-layer architecture (base → execution chain → tools → Agent → ecosystem) |
-| Tool exposure | None, or reflection over all methods (`Type.GetType` + `method.Invoke`: unusable under AOT + RCE risk) | 331 curated tools, compile-time schema + typed contracts, zero runtime parsing |
+| Tool exposure | None, or reflection over all methods (`Type.GetType` + `method.Invoke`: unusable under AOT + RCE risk) | 333 curated tools, compile-time schema + typed contracts, zero runtime parsing |
 | Permission control | None | Seven-step execution chain + risk tiers + authorization gate + HITL approval pipeline, fail-closed by default |
 | Multi-tenancy | Global static container, process-level singleton | appKey scope switching + AsyncLocal user context + cross-tenant recall is a data leak |
 | Serialization | `Newtonsoft.Json` reflection (unusable under AOT) | Source-generated `JsonSerializerContext`, AOT strict net-zero |
@@ -345,7 +345,7 @@ depth-first, and has **no generic bare `api` tool**.
 |  | Official Feishu CLI | MudFeishu |
 | --- | --- | --- |
 | Who it serves | Humans · ops scripts | Large models · agent main loops |
-| Capability surface | Can hit any Open Platform endpoint directly | 331 compile-time curated tools, **no generic bare `api`** |
+| Capability surface | Can hit any Open Platform endpoint directly | 333 compile-time curated tools, **no generic bare `api`** |
 | Credentials · tenants | Local credentials · manual ops | In-process multi-tenant isolation · full token lifecycle management |
 | Confirming writes | Executing the command is the confirmation | HITL approval binding · execution chain fail-closed |
 | Contract constraints | Interpreted at runtime, no compile-time contract | `source` cross-check (`MUDFT019`) · forbidden to decouple from the SDK |
@@ -365,7 +365,7 @@ The former wants a CLI, the latter wants this. Using both is not a conflict — 
   (`UseAppScope` only switches context; it does not enforce tenant isolation).
 - **Skills artifacts still have few out-of-repo consumers today.** In-repo there is a Demo that consumes them for real (reads them out and
   injects domain guidance); we only promise "domain knowledge exported in a standard shape", not ecosystem maturity.
-- **Tool counts always defer to `FeishuToolSchemas.golden.txt`** (currently 331: 171 read-only + 160 write-class). It is a generated
+- **Tool counts always defer to `FeishuToolSchemas.golden.txt`** (currently 333: 173 read-only + 160 write-class). It is a generated
   artifact — don't hand-edit it; when documentation numbers disagree, it wins, and the counts are compared mechanically by
   `ToolSurfaceScaleContractGuards`.
 - **It does not solve "whether the model is reliable"**. However tidy the tool surface and however strict the execution chain, they only keep
@@ -382,7 +382,7 @@ dotnet add package Mud.Feishu.Abstractions      # event handling abstractions (p
 
 # AI agent full stack
 dotnet add package Mud.Feishu.AI                 # Agent runtime (sessions / streaming / knowledge / HITL)
-dotnet add package Mud.Feishu.AI.Tools           # 331 curated tools + execution chain + compile-time schema
+dotnet add package Mud.Feishu.AI.Tools           # 333 curated tools + execution chain + compile-time schema
 dotnet add package Mud.Feishu.AI.Mcp             # MCP stdio server (out-of-process agents)
 
 # Real-time events
@@ -449,7 +449,7 @@ builder.Services.AddFeishuMcpServer(o => o.AppKey = "default");
 await app.Services.RunFeishuMcpStdioAsync();
 ```
 
-Claude Code / Cursor / your own harness connects over stdio and can call all 331 Feishu tools, with authorization / tenant switching /
+Claude Code / Cursor / your own harness connects over stdio and can call all 333 Feishu tools, with authorization / tenant switching /
 sanitization / auditing **exactly identical** to the in-process agent.
 
 ### 3. HTTP API Calls
@@ -1040,7 +1040,7 @@ public class AuditLogInterceptor : IFeishuEventInterceptor
 | `Mud.Feishu.Redis` | Distributed dedup (events/nonce/SeqID) + degradation policy + multi-app isolation + health checks |
 | `Mud.Feishu.OpenTelemetry` | One-click distributed tracing and metrics collection (OTLP gRPC, Jaeger/Tempo/Prometheus) |
 | **`Mud.Feishu.AI`** | **Agent runtime**: session management, streaming message channels, event-driven conversation, knowledge retrieval (Aily + RAG), HITL approval continuation |
-| **`Mud.Feishu.AI.Tools`** | **331 curated tools**: compile-time schema + typed contracts + seven-step execution chain + affordance assets + Skills export |
+| **`Mud.Feishu.AI.Tools`** | **333 curated tools**: compile-time schema + typed contracts + seven-step execution chain + affordance assets + Skills export |
 | **`Mud.Feishu.AI.Mcp`** | **MCP stdio server**: out-of-process agent tool surface, zero bypass of the execution chain, tenant boundary = process |
 
 Target frameworks: `netstandard2.0` / `net6.0` / `net8.0` / `net10.0`, `LangVersion 13.0`.
@@ -1102,7 +1102,7 @@ MudFeishu/
 ├── Mud.Feishu.Abstractions/       # Event handling abstraction layer
 ├── Mud.Feishu.DataModels/         # Strongly-typed models + source-generated JsonContext
 ├── Mud.Feishu.AI/                 # Agent runtime (sessions / streaming / knowledge / HITL)
-├── Mud.Feishu.AI.Tools/           # 331 curated tools + execution chain + compile-time schema
+├── Mud.Feishu.AI.Tools/           # 333 curated tools + execution chain + compile-time schema
 ├── Mud.Feishu.AI.Mcp/             # MCP stdio server
 ├── Mud.Feishu.WebSocket/          # Long-connection real-time subscription
 ├── Mud.Feishu.Webhook/            # HTTP callback event handling
@@ -1110,7 +1110,7 @@ MudFeishu/
 ├── Mud.Feishu.EventCallback/      # Strongly-typed event callback models
 ├── Mud.Feishu.Redis/              # Distributed dedup
 ├── Mud.Feishu.OpenTelemetry/      # Observability
-├── skills/                        # Skills artifacts for 31 domains (shipped with the packages)
+├── skills/                        # Skills artifacts for 32 domains (shipped with the packages)
 ├── Tests/                         # 11 test projects
 ├── Demos/                         # Samples (incl. AI Agent demo / AOT verification)
 ├── documents/                     # Official documentation mirror + tool permission cross-reference
@@ -1177,7 +1177,7 @@ Below are actual screenshots of **FeishuWikiManager** (a Feishu wiki management 
 
 - [Mud.Feishu](https://www.nuget.org/packages/Mud.Feishu/) — core HTTP API client
 - [Mud.Feishu.AI](https://www.nuget.org/packages/Mud.Feishu.AI/) — Agent runtime
-- [Mud.Feishu.AI.Tools](https://www.nuget.org/packages/Mud.Feishu.AI.Tools/) — 331 curated tools + execution chain
+- [Mud.Feishu.AI.Tools](https://www.nuget.org/packages/Mud.Feishu.AI.Tools/) — 333 curated tools + execution chain
 - [Mud.Feishu.AI.Mcp](https://www.nuget.org/packages/Mud.Feishu.AI.Mcp/) — MCP stdio server
 - [Mud.Feishu.Abstractions](https://www.nuget.org/packages/Mud.Feishu.Abstractions/) — event processing abstraction layer
 - [Mud.Feishu.DataModels](https://www.nuget.org/packages/Mud.Feishu.DataModels/) — strongly-typed HTTP API data models

@@ -10,9 +10,9 @@
 	<ItemGroup>
 		<!-- SDK 程序集：Tier R 能力目录按程序集名 == SdkNamespaceRoot 定位它 -->
 		<ProjectReference Include="..\Mud.Demo.Sdk\Mud.Demo.Sdk.csproj" />
-		<PackageReference Include="Mud.AI.Abstractions" Version="1.0.1" />
+		<PackageReference Include="Mud.AI.Abstractions" Version="1.0.2" />
 		<PackageReference Include="Mud.HttpUtils.Attributes" Version="3.0.8" />
-		<PackageReference Include="Mud.AI.Generator" Version="1.0.1" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+		<PackageReference Include="Mud.AI.Generator" Version="1.0.2" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 	</ItemGroup>
 
 	<ItemGroup>

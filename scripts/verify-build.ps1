@@ -253,10 +253,20 @@ else {
 # <Mud.AI 仓>/artifacts 这一本地文件夹源消费。同一版本覆盖打包同样不会让下游缓存失效
 # （NuGet 以 id+version 为键）——与 Mud.HttpUtils.Generator 完全同款。逐个包比对包内
 # DLL 与全局缓存 DLL 的 SHA256（ContentHash；对时间戳/PDB 路径变化不敏感）。
-$mudAiSource = 'D:/Repos/MudAIAgent/artifacts'
-if ((Normalize-SourcePath $mudAiSource) -notin $declaredLocalSources) {
+# 候选路径按「上游仓常见位置」列出：`D:/Repos/mudai` 是当前独立仓，`D:/Repos/MudAIAgent` 是迁移文档记载的旧目录。
+# 判定依据仍是 **nuget.config 是否声明了该路径**（未声明 ⇒ 该候选直接不参与，输出 SKIP）。
+$mudAiSource = ''
+$mudAiSourceCandidates = @('D:/Repos/mudai/artifacts', 'D:/Repos/MudAIAgent/artifacts') |
+    Where-Object { (Normalize-SourcePath $_) -in $declaredLocalSources }
+if ($mudAiSourceCandidates.Count -eq 0) {
     Write-Host "  [SKIP] nuget.config 未声明 Mud.AI 跨仓本地源 ⇒ 家族包取自已发布版本，比对不适用" -ForegroundColor DarkGray
-    $mudAiSource = ''
+}
+else {
+    $mudAiSource = @($mudAiSourceCandidates | Where-Object { Test-Path $_ }) | Select-Object -First 1
+    if (-not $mudAiSource) {
+        Write-Host "  [SKIP] 已声明跨仓本地源但目录不在场：$($mudAiSourceCandidates -join ', ')" -ForegroundColor DarkGray
+        $mudAiSource = ''
+    }
 }
 if ($mudAiSource -and (Test-Path $mudAiSource)) {
     Add-Type -AssemblyName System.IO.Compression.FileSystem

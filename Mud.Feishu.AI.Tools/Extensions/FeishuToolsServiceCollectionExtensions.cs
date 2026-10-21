@@ -10,8 +10,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.AI.Channels;
+using Mud.Feishu.AI.Diagnostics;
 using Mud.Feishu.AI.Events;
 using Mud.Feishu.AI.Knowledge;
+using Mud.Feishu.AI.Tools.Diagnostics;
 using Mud.Feishu.AI.Tools.Registration;
 
 namespace Mud.Feishu.AI.Tools;
@@ -197,6 +199,29 @@ public static class FeishuToolsServiceCollectionExtensions
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure)
             .AddFeishuChatGroupToolsCore();
+
+    /// <summary>
+    /// 按域注册【复合工作流】工具（S-4，2 个只读：<c>workflow.*</c>）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 工作流是<b>编排面</b>而不是新能力面：每一步都是既有域的受控工具调用（授权门 / 令牌预检 /
+    /// 净化 / 审计 / 重试 / 预算逐环生效），白名单未放行的步骤会让整链在该步失败——不旁路宿主策略。
+    /// 首批两条链<b>全只读</b>（妙记速览 / 站会报告）；写工作流需补偿语义设计，登记为后续项。
+    /// </para>
+    /// <para>
+    /// ⚠️ 与全域入口的同步纪律：本入口与 <c>AddFeishuReadonlyToolCores</c> 的清单必须**同进同出**
+    /// （<c>DomainRegistrarTests</c> 锁等价性）。
+    /// </para>
+    /// </remarks>
+    /// <param name="services">服务集合。</param>
+    /// <param name="configure">注册表配置回调（组合多域时只在首域传入）。</param>
+    /// <returns>服务集合。</returns>
+    public static IServiceCollection AddFeishuWorkflowTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure)
+            .AddFeishuWorkflowToolsCore();
 
     /// <summary>
     /// 按域注册【智能伙伴数据知识】工具（B2 补全域，3 个只读：<c>aily.*</c>）。
@@ -530,6 +555,11 @@ public static class FeishuToolsServiceCollectionExtensions
                     // B5：已策展工具检索执行器 ToolSearchTools（feishu.tool_search，只读注册表/契约表）。
                     .AddFeishuToolSearchToolsCore()
 
+                    // R8 / S-4：复合工作流执行器 WorkflowTools（2 个只读工作流：妙记速览 / 站会报告）。
+                    // 本行是**唯一**会调用生成 Core 的地方，漏加即「工具静默不入注册表」
+                    // （ToolDomainCoresWiringContractTests 会报红）。
+                    .AddFeishuWorkflowToolsCore()
+
                     // T-2 加深批次：Bitable 深化执行器 BitableDeepTools（17 个工具：7 只读 + 10 写）
                     // 与 Sheets 深化执行器 SheetsDeepTools（21 个工具：6 只读 + 15 写）。
                     // 两者均为「单执行器混合域」，按链拆分取舍同 Board/Attendance：Core 整体注册于只读链
@@ -642,6 +672,13 @@ public static class FeishuToolsServiceCollectionExtensions
             sp.GetService<IFeishuTokenManagerResolver>(),
             sp.GetRequiredService<IOptions<FeishuAgentOptions>>(),
             sp.GetService<ILogger<UserTokenPrecheck>>()));
+
+        // E-2 成本核算出口：进程内聚合（宿主可替换为持久化实现）。默认注册是因为
+        // 「用量归因」属于运维基线能力，而聚合本身无 IO、无外部依赖（关掉它没有收益）。
+        services.TryAddSingleton<IFeishuUsageMeter, InMemoryFeishuUsageMeter>();
+
+        // E-2 自检面：诊断 API 依赖注册表 + 配置，故与工具面基础设施同装配（Demo --doctor 的消费点）。
+        services.TryAddSingleton<IFeishuDiagnosticsProbe, FeishuDiagnosticsProbe>();
 
         return services;
     }

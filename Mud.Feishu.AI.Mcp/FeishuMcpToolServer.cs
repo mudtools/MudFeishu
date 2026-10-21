@@ -319,6 +319,11 @@ public sealed class FeishuMcpToolServer
         var capabilities = new JsonObject
         {
             ["tools"] = new JsonObject { ["listChanged"] = false },
+
+            // E-2 运行时自描述：客户端在握手期就能拿到「这个服务有多大、协议口径是哪版、工具是否只读聚合」，
+            // 不必先 tools/list 再数一遍（探测/巡检脚本与 UI 均受益）。
+            // 放在 experimental 而非 tools 内：后者是协议规定形态，加私有键会被严格客户端判为非法规格。
+            ["experimental"] = BuildExperimentalCapabilities(),
         };
 
         if (_resources is { Resources.Count: > 0 } && clientSupportsResources)
@@ -327,6 +332,36 @@ public sealed class FeishuMcpToolServer
         }
 
         return capabilities;
+    }
+
+    /// <summary>非标准扩展面（<c>capabilities.experimental.feishu</c>）：规模与口径自描述。</summary>
+    /// <remarks>
+    /// <b>键的稳定性</b>：这些键是宿主探测脚本的输入契约，改名属于破坏性变更（守卫锁定键集合）；
+    /// 取值一律来自本次装配产物或常量（工具数=实际暴露数，域数=工具名首段的去重数），不做估算。
+    /// </remarks>
+    /// <returns>扩展能力节点。</returns>
+    private JsonObject BuildExperimentalCapabilities()
+    {
+        var domains = _tools
+            .Select(static t => t.ContractName)
+            .Where(static n => n.IndexOf('.') > 0)
+            .Select(static n => n.Substring(0, n.IndexOf('.')))
+            .Distinct(StringComparer.Ordinal)
+            .Count();
+
+        return new JsonObject
+        {
+            ["feishu"] = new JsonObject
+            {
+                ["protocolRevision"] = McpProtocol.DefaultVersion,
+                ["toolCount"] = _tools.Count,
+                ["domainCount"] = domains,
+                ["writeToolCount"] = _tools.Count(static t => t.IsWrite),
+                ["highRiskWriteToolCount"] = _tools.Count(static t => t.Risk == FeishuToolRisk.HighRiskWrite),
+                ["resourceCount"] = Resources.Count,
+                ["guidanceIncluded"] = !string.IsNullOrEmpty(Instructions),
+            },
+        };
     }
 
     /// <summary><c>resources/list</c> 结果（资源清单；不提供分页——清单规模远小于需要的阈值）。</summary>

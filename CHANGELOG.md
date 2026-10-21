@@ -91,7 +91,9 @@
     新增写类工具不同批补资产即构建报红；
   - 结构化审计出口（`IToolExecutionAuditSink`）与 OpenTelemetry 指标（工具执行、耗时、模型调用耗时）；
   - 自建知识检索（分块 / 索引 / 向量检索）与文本工具（`ai.translate_text`、`ai.detect_language`）；
-  - Skills 产物导出（`skills/feishu-*`），可直接分发给 Agent harness。
+  - Skills 产物导出（`skills/feishu-*`），可直接分发给 Agent harness；另含单入口路由
+    `skills/feishu-suite/SKILL.md`（34 行域条目 + 规模数字，行体与 MCP 域路由摘要共用同一次推导，
+    不复述任何域内安全规则）。
 - **`Mud.Feishu.AI.Mcp` —— MCP 服务器（可选包）**
   - stdio 与 Streamable HTTP 两种传输把白名单飞书工具与资源暴露给进程外 Agent；与进程内 Agent 共用同一
     工具定义与执行链，写工具同样走人工确认。HTTP 形态的租户身份只取自宿主认证层，逐请求 fail-closed。
@@ -154,6 +156,15 @@
 
 ### 修复（Fixed）
 
+- **Skills 产物的两处「只有真实外部 Agent 才会暴露」的缺陷**（由一次真实 harness 加载实证抓到，
+  发布的工具面零变化、golden 逐字节零漂移）：
+  - 命令清单行的 240 字符**按字符硬切**会把权限串与身份要求切成半截（实测 27 行受影响，
+    含 `im:message:send_as_bot` 整段丢失、`minutes.upload` 的 user 身份被切）。现改为
+    **按标点边界截断 + 行尾补契约尾注**（`〔user 身份；需 minutes:minutes.upload:write〕`），尾注取自
+    Schema 的 `x-feishu` 元数据而非散文（散文会漏），且只要发生截断就回填**全量**契约；短描述逐字节不变。
+  - 正文里的 `feishu.guidance_read(域, 主题)` 细则指针是**进程内工具**形态，只拿到 `skills/` 文件的
+    Agent 无法执行（实测 14 个域包 14 条全部落空）。导出层不改写正文（避免第二份真相源），改为在每个
+    有细则的包末尾追加一条**解码规则**——指针的「域, 主题」即本包 `references/主题.md`。
 - 未应答的人工确认不再阻塞后续会话（自动愈合）；流式回退路径不再丢失待确认审批。
 - 下发失败的重投递改为补发既有回复，不再重跑模型重复计费；空回复不再下发。
 - 多应用宿主下回复不再以默认应用身份误发到其他租户。
@@ -202,6 +213,18 @@
   声明 ⇒ golden 无需重固化），公开面 449→**454**（自检契约的 5 个 public 类型，消费方理由同批登记）。
 - 验证：标准档门禁全绿（**5,539 通过 + 25 门控跳过 = 5,564 总计**；净增 43 条全部来自本批：
   `Mud.Feishu.AI.Tools.Tests` 1638→1665、`Mud.Feishu.AI.Tests` 448→453、`Mud.Feishu.Agent.Demo.Tests` 165→176）。
+- **Skills 产物的真实消费实证与配套守卫**（`documents/AIAgent/Skills外部消费实证报告.md`）：把一个装了产物副本的
+  外部 Agent harness 当真实消费者跑了一遍——三层渐进披露（发现列表只带 `description`、正文按需注入、
+  `references/*.md` 再读一次）实测可用，非标准 frontmatter 键 `package_version` 被接受。产物 34→**35** 个
+  `SKILL.md`（新增单入口路由）、51→**52** 个 md；清单行 365 条 ≡ golden、超预算 0 条。守卫 **+8**：域路由表
+  逐行重算并与工具集合双向闭合、每条清单行的权限与身份判据可达性、截断策略自证（含「短描述逐字节不变」与「无契约可回填时不挂空壳尾注」两极）、
+  细则指针必须能落到 `references/` 文件（`scanned > 0` 防假绿）。**诚实边界**：只覆盖 1 个 harness，
+  Claude Code / Cursor 未做真机记录；顺带核实并登记 6 枚工具的**描述散文与 Schema 元数据不符**
+  （4 枚漏写 `required_scopes`、2 枚 user 身份未在散文声明）——属策展层内容缺陷，根治要改 `[AgentTool]`
+  描述并触发 golden 重固化，不在本版范围。
+- 验证：标准档门禁全绿（**5,603 通过 + 25 门控跳过 = 5,628 总计**；净增 8 条全部来自上条，
+  `Mud.Feishu.AI.Tools.Tests` 1721→1729，其余 10 个程序集逐项不变），golden **逐字节零漂移**
+  （未新增工具、未改任何 `[AgentTool]` 声明），公开面仍 458。
 
 ### 依赖（Dependencies）
 

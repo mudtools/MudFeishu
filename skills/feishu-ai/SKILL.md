@@ -35,4 +35,4 @@ package_version: 3.0.3
 
 ## 命令（工具）清单
 - `ai.detect_language`（只读）：识别一段文本的语种（飞书机器翻译语种识别），返回 ISO 639-1 语言代码与可读语言名（如 en / 英语）。用于在翻译、检索、审阅前先确定内容语言。只读，需 translation:text。
-- `ai.translate_text`（只读）：把文本翻译成目标语言（飞书机器翻译）。text 上限 1000 字符（超限本地拒绝，不会下发）；source_language / target_language 用语言代码（zh / zh-Hant / en / ja / ru / de / fr / it / pl / th / hi / id / es / pt / ko / vi，大小写不敏感），不确定源语言时先用 ai.detect_language 识别。可选 glossary 传本次生效的术语表（JSON 数组…
+- `ai.translate_text`（只读）：把文本翻译成目标语言（飞书机器翻译）。text 上限 1000 字符（超限本地拒绝，不会下发）；source_language / target_language 用语言代码（zh / zh-Hant / en / ja / ru / de / fr / it / pl / th / hi / id / es / pt / ko / vi，大小写不敏感），不确定源语言时先用 ai.detect_language 识别。可选… 〔需 translation:text〕

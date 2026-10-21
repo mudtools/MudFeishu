@@ -60,3 +60,4 @@ package_version: 3.0.3
 
 ## 参考文档（细则）
 - `references/filter-sort-syntax.md`：`bitable/filter-sort-syntax`
+- 正文里形如 `feishu.guidance_read(bitable, 主题)` 的指针，在文件形态下读本包的 `references/主题.md`（本包细则就是那份资产，无需进程内工具）

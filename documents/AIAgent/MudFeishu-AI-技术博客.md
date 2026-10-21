@@ -137,7 +137,16 @@ MAF 的做法是把「批准响应」和「原始审批请求」做绑定校验�
 
 **MCP 服务器**做在 `Mud.Feishu.AI.Mcp` 里，是独立可选包，走 stdio 或 Streamable HTTP 上的 JSON-RPC 2.0。这解决的是「Agent 不在我的进程里」的情况——比如你在用 Claude Code、Cursor，或者自己写了个 harness，它想调飞书。挂上这个 server，白名单同源，执行链一步不少、零旁路。`initialize` 时还能把已启用域的 guidance（路由、避坑、示例）作为 instructions 下发，让外部 Agent 先有个域认知。
 
-**Skills 产物**是另一个方向。构建时会导出 `skills/feishu-{domain}/SKILL.md`，29 个域各一份，随 NuGet 包一起分发。仓外的 Agent 想了解「飞书审批这块能干什么」，读这份 [SKILL.md](http://SKILL.md) 就行，不用去啃 SDK 源码。仓库里已经有 Demo 把它当作真实消费方（读出来注入域 guidance）；仓库外目前还没有真实使用者，这个我们得实话实说。
+**Skills 产物**是另一个方向。构建时会导出 `skills/feishu-{domain}/SKILL.md`，34 个域各一份，再加一份
+`skills/feishu-suite/SKILL.md` 单入口路由（域路由表由域资产推导，不复制任何域内规则），随 NuGet 包一起分发。
+仓外的 Agent 想了解「飞书审批这块能干什么」，读这份 [SKILL.md](http://SKILL.md) 就行，不用去啃 SDK 源码。
+仓库里已经有 Demo 把它当作真实消费方（读出来注入域 guidance）；仓库外这次真跑了一次——把一个装了产物副本的
+Agent harness 当外部消费者，三层渐进披露（发现列表只带 description、正文按需注入、`references/*.md` 再读一次）
+实测可用，同时抓到两个只有真机才会暴露的缺陷：**240 字符硬截断把权限串切成半截**，以及正文里的
+`feishu.guidance_read(域, 主题)` 指针对一个只读文件的 Agent 来说是死链。两处都在导出层修好了
+（边界截断 + 契约尾注 `〔user 身份；需 …〕`，以及给每条指针补一句文件形态的解码规则）。
+只有一个 harness、且没覆盖 Claude Code / Cursor，这个边界我们同样实话实说，逐条记录在
+`documents/AIAgent/Skills外部消费实证报告.md`。
 
 ## 门禁比功能多：那些防「假绿」的守卫
 

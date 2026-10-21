@@ -41,7 +41,9 @@ internal sealed record SkillDocument(string Path, string Content);
 /// </para>
 /// <para>
 /// <b>不重复 guidance 的职责</b>：SKILL.md 正文<b>原样嵌入</b> L1 资产（不做改写/摘要）——
-/// guidance 是唯一真相源，导出层再"加工"一次就变成第二份真相源。
+/// guidance 是唯一真相源，导出层再"加工"一次就变成第二份真相源。同理，聚合入口
+/// <c>skills/feishu-suite/SKILL.md</c> 只承载<b>由域资产推导</b>的路由表与规模数字，
+/// 不复述任何域内安全规则。
 /// </para>
 /// </remarks>
 internal static class FeishuSkillDocumentBuilder
@@ -83,6 +85,16 @@ internal static class FeishuSkillDocumentBuilder
     /// <summary>工具描述在命令清单里的最大长度（超长截断——SKILL.md 要能被人快速扫读）。</summary>
     internal const int DescriptionMaxLength = 240;
 
+    /// <summary>聚合入口目录名（不是 guidance 域，故不参与 <see cref="FeishuToolGuidance.ByDomain"/> 遍历）。</summary>
+    internal const string SuiteDirectory = "feishu-suite";
+
+    /// <summary>默认身份（租户级）——尾注只标"非默认"的身份要求。</summary>
+    private const string TenantIdentity = "tenant";
+
+    /// <summary>截断优先落点（句读 / 分句 / 空白 / 闭合括号——绝不切进标识符或权限串中间）。</summary>
+    private static readonly char[] TruncationBoundaries =
+        ['。', '！', '？', '；', '，', '、', ' ', ')', '）', '」', '』'];
+
     /// <summary>
     /// 构建全部 Skills 文件（按路径 Ordinal 排序）。
     /// </summary>
@@ -90,6 +102,9 @@ internal static class FeishuSkillDocumentBuilder
     {
         var documents = new List<SkillDocument>();
         var writeTools = new HashSet<string>(FeishuToolNames.WriteAll, StringComparer.Ordinal);
+        var domainRows = new List<string>();
+        var toolTotal = 0;
+        var writeTotal = 0;
 
         foreach (var domain in FeishuToolGuidance.ByDomain.Keys.OrderBy(static k => k, StringComparer.Ordinal))
         {
@@ -102,6 +117,10 @@ internal static class FeishuSkillDocumentBuilder
                 $"{RootDirectory}/feishu-{domain}/{SkillFileName}",
                 BuildSkillMarkdown(domain, tools, writeTools)));
 
+            domainRows.Add(BuildSuiteRow(domain, tools, writeTools));
+            toolTotal += tools.Length;
+            writeTotal += tools.Count(writeTools.Contains);
+
             foreach (var referenceKey in FeishuToolGuidance.References.Keys
                          .Where(key => key.StartsWith(domain + "/", StringComparison.Ordinal))
                          .OrderBy(static k => k, StringComparer.Ordinal))
@@ -112,6 +131,10 @@ internal static class FeishuSkillDocumentBuilder
                     FeishuToolGuidance.References[referenceKey].Replace("\r\n", "\n")));
             }
         }
+
+        documents.Add(new SkillDocument(
+            $"{RootDirectory}/{SuiteDirectory}/{SkillFileName}",
+            BuildSuiteMarkdown(domainRows, toolTotal, writeTotal)));
 
         return documents;
     }
@@ -199,12 +222,76 @@ internal static class FeishuSkillDocumentBuilder
                     .Append($"`{domain}/{topic}`")
                     .Append('\n');
             }
+
+            // 真实 harness 消费记录发现的死链：L1 正文用 `feishu.guidance_read(域, 主题)` 指向细则，
+            // 而只读文件的 Agent 没有这个进程内工具。导出层不改写正文（改了就是第二份真相源），
+            // 在此给出**解码规则**——指针的「域, 主题」与本包 references 文件名一一对应。
+            builder.Append("- 正文里形如 `feishu.guidance_read(").Append(domain).Append(", 主题)` 的指针，")
+                .Append("在文件形态下读本包的 `").Append(ReferencesDirectory).Append("/主题.md`")
+                .Append("（本包细则就是那份资产，无需进程内工具）").Append('\n');
         }
 
         return builder.ToString();
     }
 
-    /// <summary>工具 Schema 里的描述（折叠换行 + 截断；解析失败即省略描述，不抛——纯函数无 IO 无日志）。</summary>
+    /// <summary>聚合入口的一行：技能包名 + 该包规模 + 域路由首条（与指令面摘要共用同一次推导）。</summary>
+    private static string BuildSuiteRow(
+        string domain,
+        IReadOnlyList<string> tools,
+        ISet<string> writeTools)
+    {
+        var readonlyCount = tools.Count(name => !writeTools.Contains(name));
+        return $"- `feishu-{domain}`（{tools.Count} 工具：只读 {readonlyCount} / 写 {tools.Count - readonlyCount}）："
+            + GuidanceRoutingSummary.RouteBody(
+                domain,
+                FeishuToolGuidance.ByDomain[domain].Replace("\r\n", "\n"));
+    }
+
+    /// <summary>
+    /// 聚合入口正文：<b>只有</b>三层渐进披露的读法与域路由表——安全规则与前置链留在域包内
+    /// （在此复述即第二份真相源）。规模数字由 <see cref="Build"/> 逐域累加得到，不是手抄。
+    /// </summary>
+    private static string BuildSuiteMarkdown(IReadOnlyList<string> domainRows, int toolTotal, int writeTotal)
+    {
+        var builder = new StringBuilder();
+        builder.Append("---").Append('\n');
+        builder.Append("name: ").Append(SuiteDirectory).Append('\n');
+        builder.Append("description: ")
+            .Append(
+                $"飞书工具面单入口路由：{domainRows.Count} 个域技能包、{toolTotal} 个工具"
+                + $"（只读 {toolTotal - writeTotal} / 写 {writeTotal}）。先按域路由表选定技能包，再进包读工具清单与前置链。")
+            .Append('\n');
+        builder.Append("version: ").Append(SkillVersion).Append('\n');
+        builder.Append("package_version: ").Append(PackageVersion).Append('\n');
+        builder.Append("---").Append('\n');
+        builder.Append('\n');
+
+        builder.Append("# 飞书工具面 · 单入口路由").Append('\n');
+        builder.Append('\n');
+        builder.Append("## 读法（三层渐进披露）").Append('\n');
+        builder.Append("1. 在本文件的域路由表里按**对象与动作**选定一个域。").Append('\n');
+        builder.Append("2. 加载该域技能包：路由优先级、前置链、避坑、安全规则与逐工具清单都在包内。").Append('\n');
+        builder.Append("3. 只有需要结构化语法（卡片 DSL、筛选排序、话题与回复判别等）时再读包内 `references/*.md`。").Append('\n');
+        builder.Append('\n');
+        builder.Append($"## 域路由表（{domainRows.Count} 个域）").Append('\n');
+        foreach (var row in domainRows)
+        {
+            builder.Append(row).Append('\n');
+        }
+
+        builder.Append('\n');
+        builder.Append("## 尾注约定").Append('\n');
+        builder.Append("- 域包清单里被截断的长描述会在行尾补 `〔…〕` 尾注，回填该工具的权限串与非默认身份要求。").Append('\n');
+        builder.Append("- 域包正文里的 `feishu.guidance_read(域, 主题)` 指针，在文件形态下就是那个包的 `")
+            .Append(ReferencesDirectory).Append("/主题.md`。").Append('\n');
+        builder.Append("- 写工具默认不启用，须经宿主授权（`IToolExecutionAuthorizer`）；判据与预演方式在各域包的安全规则小节给出。").Append('\n');
+
+        return builder.ToString();
+    }
+
+    /// <summary>
+    /// 工具 Schema 里的描述（折叠换行 + 边界截断 + 契约尾注回填；解析失败即省略描述，不抛——纯函数无 IO 无日志）。
+    /// </summary>
     private static string ToolDescription(string toolName)
     {
         if (!FeishuToolSchemas.SchemaByToolName.TryGetValue(toolName, out var schemaJson))
@@ -213,9 +300,15 @@ internal static class FeishuSkillDocumentBuilder
         }
 
         string? description;
+        IReadOnlyList<string> requiredScopes;
+        string identity;
         try
         {
-            description = JsonNode.Parse(schemaJson)?["description"]?.GetValue<string>();
+            var root = JsonNode.Parse(schemaJson) as JsonObject;
+            var meta = root?[ToolAffordanceText.ExtensionKey] as JsonObject;
+            description = ReadString(root, "description");
+            requiredScopes = ReadStringArray(meta, "required_scopes");
+            identity = ReadString(meta, "identity") ?? string.Empty;
         }
         catch (JsonException)
         {
@@ -230,10 +323,109 @@ internal static class FeishuSkillDocumentBuilder
             return string.Empty;
         }
 
-        var flattened = Flatten(description);
-        return flattened.Length <= DescriptionMaxLength
-            ? flattened
-            : flattened.Substring(0, DescriptionMaxLength) + "…";
+        return ClampDescription(Flatten(description), requiredScopes, identity);
+    }
+
+    /// <summary>
+    /// 超长描述的截断形态：<b>句读边界断开 + 契约信息（权限串 / 非默认身份）以行尾尾注回填</b>。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 权限串与身份要求固定在描述**末尾**（策展约定），所以硬切上界正好把它们吞掉：仓外 Agent
+    /// 拿到的是"看着完整、其实缺授权判据"的一行——比缺整行更糟。尾注由 Schema 的
+    /// <c>x-feishu</c> 元数据构造（同一份契约的投影，不是第二份真相源），且总长仍 ≤
+    /// <see cref="DescriptionMaxLength"/>。
+    /// </para>
+    /// <para>
+    /// 尾注一律给出<b>全量</b>契约（身份 + 权限），不判"头里还剩哪些"：头的预算本身要因尾注而再收缩，
+    /// 按收缩前的头来决定补什么会补漏（实测 <c>minutes.upload</c> 正是这样把 user 身份漏掉的）。
+    /// </para>
+    /// </remarks>
+    internal static string ClampDescription(
+        string flattened,
+        IReadOnlyList<string> requiredScopes,
+        string identity)
+    {
+        if (flattened.Length <= DescriptionMaxLength)
+        {
+            return flattened;
+        }
+
+        var note = BuildContractNote(requiredScopes, NonTenantIdentity(identity));
+        if (note.Length == 0)
+        {
+            return TruncateAtBoundary(flattened, DescriptionMaxLength);
+        }
+
+        return TruncateAtBoundary(flattened, Math.Max(1, DescriptionMaxLength - note.Length - 1)) + " " + note;
+    }
+
+    /// <summary>非默认身份才进尾注（tenant 是所有工具的缺省，写出来只是噪声）。</summary>
+    private static string NonTenantIdentity(string identity)
+        => identity.Length > 0 && !TenantIdentity.Equals(identity, StringComparison.Ordinal) ? identity : string.Empty;
+
+    private static string BuildContractNote(IReadOnlyList<string> scopes, string identity)
+    {
+        var parts = new List<string>();
+        if (identity.Length > 0)
+        {
+            parts.Add(identity + " 身份");
+        }
+
+        if (scopes.Count > 0)
+        {
+            parts.Add("需 " + string.Join(" 与 ", scopes));
+        }
+
+        // 无契约可回填时必须返回**空串**——返回空壳 `〔〕` 会让 ClampDescription 的
+        // "无尾注即纯边界截断"分支永不可达（截断行尾挂一对空括号，是噪声不是判据）。
+        return parts.Count == 0
+            ? string.Empty
+            : "〔" + string.Join("；", parts) + "〕";
+    }
+
+    /// <summary>按句读/空白边界截断（切在边界符之前 ⇒ 不产生半个标识符或半个权限串）。</summary>
+    private static string TruncateAtBoundary(string text, int maxLength)
+    {
+        var width = Math.Min(maxLength, text.Length);
+        var cut = -1;
+        foreach (var boundary in TruncationBoundaries)
+        {
+            // ⚠️ LastIndexOf(char, startIndex, count) 的 count 是"从 startIndex 往前数几个字符"，
+            // 不是窗口长度——写成 (boundary, 0, width) 会直接 ArgumentOutOfRangeException。
+            var index = text.LastIndexOf(boundary, width - 1, width);
+            if (index > cut)
+            {
+                cut = index;
+            }
+        }
+
+        return cut > width / 2
+            ? text.Substring(0, cut) + "…"
+            : text.Substring(0, Math.Max(0, width - 1)) + "…";
+    }
+
+    /// <summary>取字符串字段（形态不符即视作缺失，不抛——与「常量损坏归构建期门禁」一致）。</summary>
+    private static string? ReadString(JsonObject? owner, string key)
+        => owner?[key] is JsonValue value && value.TryGetValue(out string? text) ? text : null;
+
+    private static IReadOnlyList<string> ReadStringArray(JsonObject? owner, string key)
+    {
+        if (owner?[key] is not JsonArray array)
+        {
+            return Array.Empty<string>();
+        }
+
+        var values = new List<string>(array.Count);
+        foreach (var item in array)
+        {
+            if (item is JsonValue value && value.TryGetValue(out string? text) && text!.Length > 0)
+            {
+                values.Add(text);
+            }
+        }
+
+        return values;
     }
 
     private static string FirstSentence(string guidance)

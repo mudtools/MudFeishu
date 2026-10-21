@@ -7,6 +7,7 @@
 | 分析方法 | 四路并行代码探索（Mud 侧三项目架构 + lark-cli skills/affordance/extension 体系 + lark-cli 命令/协议/事件/sidecar + lark-cli 设计理念文档） |
 | 结论一句话 | 两者**生态位互补而非竞品**：lark-cli 是"AI 操作飞书的手"（工具层，进程外，广度优先）；MudFeishu.AI 是"飞书原生的 AI Agent 大脑+手"（运行时层，进程内，深度优先）。 |
 | 关联文档 | `documents/AIAgent/lark-cli-同场景对比备忘.md`（2026-09-27 早期备忘，本报告是其展开） |
+| 后续更新（2026-10-21） | 本报告的「Skills 外部消费者」「suite 聚合路由」两条差距**已闭环**：`skills/feishu-suite/SKILL.md` 已交付（34 域条目，由域资产推导），并有一次真实外部 Agent 加载实证（单 harness，抓到并修好导出器两处缺陷）——逐条记录见 `documents/AIAgent/Skills外部消费实证报告.md`。文中其余 2026-10-10 时点的数字（如「21 个域产物」）**保持原样，属当时快照**。 |
 
 ---
 
@@ -215,10 +216,10 @@
 | 差距项 | 当前状态 | lark-cli 状态 | 影响程度 |
 |---|---|---|---|
 | **API 全覆盖逃生舱** | ❌ 已删 `feishu.api_call` | ✅ `api` 覆盖 2500+ | 高（长尾 API 不可达） |
-| **Skills 外部消费者** | ❌ 无外部消费 | ✅ `npx skills add` 主流工具兼容 | 高（生态位未闭环） |
+| **Skills 外部消费者** | ⚠️ **2026-10-21 已有一次真实消费实证**（单 harness：三层渐进披露 + frontmatter 兼容性可路由，抓到两处导出器缺陷并已修，见 `Skills外部消费实证报告.md`）；Claude Code / Cursor 仍未覆盖 | ✅ `npx skills add` 主流工具兼容 | 中（格式有效性已证，覆盖面仍是单点） |
 | **affordance 决策层** | ❌ 无独立层 | ✅ 8 域 markdown 注入 help/schema | 中高（选工具准确率） |
 | **错误 wire-stable 分类** | ❌ 无系统化分类 | ✅ 9 Category + Subtype + 恢复字段 | 中高（AI 错误恢复） |
-| **suite 聚合路由** | ❌ 无 | ✅ `lark-suite` 单入口路由 | 中（skill 发现成本） |
+| **suite 聚合路由** | ✅ **已交付**（2026-10-21）：`skills/feishu-suite/SKILL.md` 单入口路由，34 行域条目 + 规模数字，行体与 MCP 域路由摘要共用同一次推导、不复述域内安全规则 | ✅ `lark-suite` 单入口路由 | 已闭环（自定义 skill 框架仍无对应物） |
 | **自定义 skill 框架** | ❌ 无 | ✅ `lark-skill-maker` | 中（宿主扩展性） |
 | **sidecar 凭据隔离** | ❌ 无 | ✅ HMAC sidecar + 多租户 | 中（CI/沙箱安全） |
 | **LLM 语义审查 CI** | ❌ 无 | ✅ ARK PR 审查 | 低（工程自动化） |
@@ -235,7 +236,7 @@
 
 2. **补 P0 三项**（错误契约 AI 原生化 / affordance 层 / 覆盖面逃生舱评估）是性价比最高的改进，直接提升 AI 调用成功率与覆盖面。
 
-3. **Skills 闭环**：21 个域产物已投入但无消费者，是当前最大的"悬空资产"，应优先推动一个外部消费者落地验证。
+3. **Skills 闭环**：21 个域产物已投入但无消费者，是当前最大的"悬空资产"，应优先推动一个外部消费者落地验证。**已于 2026-10-21 推动一个真实 harness 落地**（三层披露可用 + 两处导出器缺陷修复 + suite 单入口路由）；剩余边界是 harness 只有 1 个，以及 lark-cli 那套 `skills list/read` 命令面与自定义 skill 框架仍无对应物。
 
 4. **保持护城河**：进程内闭环 / 编译期契约 / 五步执行链 / 策展哲学 是 lark-cli 架构上无法复制的优势，改进时不应为追广度而削弱这些深度特性。
 

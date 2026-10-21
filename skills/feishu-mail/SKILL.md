@@ -46,7 +46,7 @@ package_version: 3.0.3
 - `mail.list_labels`（只读）：列出邮箱的邮件标签（label）——用于查清可用的 label_id，再传给 mail.list_messages 做标签过滤。只读，需 mail:mailbox:readonly。
 - `mail.list_messages`（只读）：列出用户邮箱中的邮件（返回 message_id 列表，可传给 mail.get_message 获取详情）。user_mailbox_id 为用户邮箱地址。只读，需 mail:mailbox:readonly。
 - `mail.mark_read`（写）：把邮件标记为已读（或未读）——Agent 读完邮件后应回写，避免用户邮箱堆积未读。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 mail:mailbox。
-- `mail.rule_create`（写）：创建一条收件规则（自动分拣邮件）。⚠️ 条件与动作用管道分隔的简化式，**不要写 JSON**：condition 形如 'field|operator|value'（field：sender/recipient/cc/recipient_or_cc/subject/body/attachment_name/attachment_type/any_address/has_attachment/is_external/is_spam/not_spam/all；operator：…
+- `mail.rule_create`（写）：创建一条收件规则（自动分拣邮件）。⚠️ 条件与动作用管道分隔的简化式，**不要写 JSON**：condition 形如 'field|operator|value'（field：sender/recipient/cc/recipient_or_cc/subject/body/attachment_name/attachment_type/any_address/has_attachment/is_external/is_spam/not_… 〔需 mail:mailbox〕
 - `mail.rule_delete`（写）：删除一条收件规则。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 mail:mailbox。建议先用 mail.rule_list 确认对象并 dry_run 预演。rule_id 来自 mail.rule_list。
 - `mail.rule_list`（只读）：列出邮箱的收件规则（含规则 id、名称、启用状态与条件/动作的简化式描述）——用于查清 rule_id 再执行 rule_update/rule_delete/rule_reorder。只读，需 mail:mailbox:readonly。
 - `mail.rule_reorder`（写）：调整收件规则的匹配顺序（规则自上而下匹配，**顺序即优先级**；须给出全量规则 id 序列，按目标优先级排列）。rule_ids 来自 mail.rule_list。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 mail:mailbox。
@@ -65,3 +65,4 @@ package_version: 3.0.3
 
 ## 参考文档（细则）
 - `references/reply-forward.md`：`mail/reply-forward`
+- 正文里形如 `feishu.guidance_read(mail, 主题)` 的指针，在文件形态下读本包的 `references/主题.md`（本包细则就是那份资产，无需进程内工具）

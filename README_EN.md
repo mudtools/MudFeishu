@@ -183,8 +183,11 @@ IToolSchemaExporter.Export(ToolSchemaDialect.Skills);
 // => {"dialect":"skills","files":[{"path":"skills/feishu-im/SKILL.md","content":"…"}, …]}
 ```
 
-`skills/feishu-{domain}/SKILL.md` plus `references/{topic}.md` for all 34 domains, loadable directly by out-of-repo agents
-(Claude Code / Cursor) to obtain Feishu domain knowledge. Every data source is a compile-time constant ⇒ zero reflection, zero IO, deterministic.
+`skills/feishu-{domain}/SKILL.md` plus `references/{topic}.md` for all 34 domains, with `skills/feishu-suite/SKILL.md` as
+the single-entry router (34 domain rows + scale numbers, every row derived from the domain artifacts). Loadable directly
+by out-of-repo agents (Claude Code / Cursor) to obtain Feishu domain knowledge. Every data source is a compile-time
+constant ⇒ zero reflection, zero IO, deterministic. The real-harness consumption record lives in
+`documents/AIAgent/Skills外部消费实证报告.md`.
 
 **NDJSON event bridge** (a Demo reference implementation; not part of the shipped API since R-10): `FeishuEventNdjsonBridge`
 hands Feishu events to any out-of-repo process as one-event-per-line NDJSON, with `payload` embedded verbatim

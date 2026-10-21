@@ -46,10 +46,11 @@ package_version: 3.0.3
 - `wiki.member_remove`（写）：移除知识空间的成员或管理员。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 wiki:wiki。建议先 dry_run 预演确认。平台按 member_id + member_type + member_role 三元组定位，角色填错会删不到人——先用 wiki.member_list 核对三项再动手。
 - `wiki.move_docs_to_space`（写）：把已有云文档（docx/sheet/bitable 等）迁移进知识空间，成为 wiki 节点——'把这份文档挪进知识库'的首选入口。⚠️ 平台以异步任务执行，返回 task_id。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 wiki:wiki。
 - `wiki.move_node`（写）：移动知识空间节点（改父节点或换空间）——用于知识库整理、归档。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 wiki:wiki。
-- `wiki.node_copy`（写）：复制知识空间节点副本到指定位置（原节点保留，产出新的 node_token）——'把这个页面复制一份到另一个空间/目录'用本工具；要改位置且保留 token 用 wiki.move_node。target_space_id 与 target_parent_token **至少提供一个**（两者都不传平台会拒绝，不会复制在当前空间顶层）；副本的底层文档也会被一并复制（obj_token 与原来不同）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAu…
+- `wiki.node_copy`（写）：复制知识空间节点副本到指定位置（原节点保留，产出新的 node_token）——'把这个页面复制一份到另一个空间/目录'用本工具；要改位置且保留 token 用 wiki.move_node。target_space_id 与 target_parent_token **至少提供一个**（两者都不传平台会拒绝，不会复制在当前空间顶层）；副本的底层文档也会被一并复制（obj_token 与原来不同）。写操作：默认空名单不启用… 〔需 wiki:wiki〕
 - `wiki.space_create`（写）：创建一个新的知识空间（返回 space_id，可直接作为 wiki.create_node / wiki.member_add 的上游输入）。⚠️ 仅支持用户身份调用：宿主须在 FeishuAgent:AllowedIdentities 放行 user，否则会因身份被拒而失败。创建者自动成为该空间的管理员。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），建议先 dry_run 预演确认，需 wiki:wiki。
 - `wiki.space_get`（只读）：按 space_id 获取单个知识空间信息（name/description/space_type/visibility/open_sharing）。查'这个知识库对谁开放、是什么类型'用它；visibility=public 表示租户内全员可见，个人空间（space_type=person）不支持添加其他管理员。只读，需 wiki:wiki:readonly。
 - `wiki.space_list`（只读）：列出当前调用身份有权限访问的知识空间（space_id/name/space_type/visibility），space_id 可喂 wiki.list_nodes / wiki.member_list。⚠️ 结果按可见性过滤：返回空列表表示『该身份没有被加入任何空间』，不代表企业里没有知识库。只读，需 wiki:wiki:readonly。
 
 ## 参考文档（细则）
 - `references/space-node-tree.md`：`wiki/space-node-tree`
+- 正文里形如 `feishu.guidance_read(wiki, 主题)` 的指针，在文件形态下读本包的 `references/主题.md`（本包细则就是那份资产，无需进程内工具）

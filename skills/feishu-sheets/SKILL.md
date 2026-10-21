@@ -31,7 +31,7 @@ B2:D10 是什么数 → `list_sheets` → `get_range_values`。
 
 ## 命令（工具）清单
 - `sheets.append_rows`（写）：向电子表格追加行数据（在指定区域末尾追加，不清空既有行）。spreadsheet_token 来自 sheets.list_sheets。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 sheets:spreadsheet。
-- `sheets.cond_format_create`（写）：为工作表批量创建条件格式规则（按内容/数值自动着色）。一条规则形如 {"sheet_id":"ShtXxx","condition_format":{"ranges":["ShtXxx!A1:B2"],"rule_type":"containsText","attrs":[{"operator":"contains","text":"完成"}],"style":{"back_color":"#FDE2E2"}}}；rule_type 可选 containsText / cel…
+- `sheets.cond_format_create`（写）：为工作表批量创建条件格式规则（按内容/数值自动着色）。一条规则形如 {"sheet_id":"ShtXxx","condition_format":{"ranges":["ShtXxx!A1:B2"],"rule_type":"containsText","attrs":[{"operator":"contains","text":"完成"}],"style":{"back_color":"#FDE2E2"}}}… 〔需 sheets:spreadsheet〕
 - `sheets.cond_format_delete`（写）：批量删除工作表的条件格式规则（不可恢复！请谨慎使用，建议先 dry_run 预演确认）；每项形如 {"sheet_id":"ShtXxx","cf_id":"..."}，cf_id 来自 sheets.cond_format_get。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 sheets:spreadsheet。
 - `sheets.cond_format_get`（只读）：查询电子表格指定工作表的条件格式规则（cf_id/生效范围/规则类型）。cf_id 供 sheets.cond_format_update / sheets.cond_format_delete 使用。只读，需 sheets:spreadsheet:readonly。
 - `sheets.cond_format_update`（写）：批量更新（覆盖）工作站的条件格式规则；每项 condition_format 必须携带 cf_id（来自 sheets.cond_format_get），更新按 cf_id 全量覆盖该规则。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 sheets:spreadsheet。
@@ -58,3 +58,4 @@ B2:D10 是什么数 → `list_sheets` → `get_range_values`。
 
 ## 参考文档（细则）
 - `references/range-and-values.md`：`sheets/range-and-values`
+- 正文里形如 `feishu.guidance_read(sheets, 主题)` 的指针，在文件形态下读本包的 `references/主题.md`（本包细则就是那份资产，无需进程内工具）

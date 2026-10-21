@@ -444,6 +444,13 @@ IToolSchemaExporter.Export(ToolSchemaDialect.Skills);
   `skills/feishu-{domain}/SKILL.md`（frontmatter `name/description/version/package_version` + **L1 guidance 原样嵌入** +
   命令清单〔工具名 + 只读/写 + Schema 描述〕+ references 索引）与
   `skills/feishu-{domain}/references/{topic}.md`（**L2 资产逐字落地**）。
+  另有 **`skills/feishu-suite/SKILL.md`**（单入口路由）：34 行域条目 + 规模数字，行体与 MCP 路由摘要**共用同一次推导**
+  （`GuidanceRoutingSummary.RouteBody`），不复述任何域内安全规则。
+  > 命令清单行超过 240 字符时**按标点边界截断**，并在行尾补一份从 `x-feishu` 元数据推导的契约尾注
+  > `〔user 身份；需 im:message:send_as_bot〕`——截断不得吞掉权限与身份判据（真实 harness 消费记录抓到的缺陷，
+  > 由 `ToolDescription_ShouldNotLosePermissionOrIdentityJudgement` 与 `ClampDescription_*` 锁定）。
+  > 有细则的域包末尾另给一条**解码规则**：正文里的 `feishu.guidance_read(域, 主题)` 是进程内工具形态，
+  > 文件形态下读本包 `references/主题.md`（导出层不改写正文，避免第二份真相源）。
   > `version` 是**产物形态**版本（结构变了才动）；`package_version` 是**包**版本（随 `<Version>` 走）。
   > 二者分开的原因：宿主拿到的是目录树、看不到包元数据，没有 `package_version` 就无法判断
   > "手上这份 `SKILL.md` 是否与当前包配套"。该字段由 `SkillsVersionConsistencyContractGuards` 锁定

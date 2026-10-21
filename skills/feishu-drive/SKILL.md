@@ -59,3 +59,4 @@ package_version: 3.0.3
 ## 参考文档（细则）
 - `references/permission-model.md`：`drive/permission-model`
 - `references/upload-and-import.md`：`drive/upload-and-import`
+- 正文里形如 `feishu.guidance_read(drive, 主题)` 的指针，在文件形态下读本包的 `references/主题.md`（本包细则就是那份资产，无需进程内工具）

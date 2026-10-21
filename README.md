@@ -39,7 +39,8 @@ MudFeishu 填的就是这个空白——不是「又一个能调接口的 SDK」
   模型无法自批复。
 - **MCP 服务器**把同一套工具面经 stdio JSON-RPC 或 Streamable HTTP 暴露给进程外 Agent
   （Claude Code / Cursor / 自建 harness），执行链零旁路；HTTP 形态的租户身份只取自宿主认证层。
-- **Skills 产物**随 NuGet 包分发，仓外 Agent 直接 `npx skills add` 即可获得飞书域知识。
+- **Skills 产物**随 NuGet 包分发，仓外 Agent 直接 `npx skills add` 即可获得飞书域知识；
+  `skills/feishu-suite/SKILL.md` 是单入口路由（先选域、再加载那一个域包）。
 
 AI 能力不是 Sample 层的补丁，是 SDK 的**第一公民**。
 
@@ -170,8 +171,9 @@ IToolSchemaExporter.Export(ToolSchemaDialect.Skills);
 // => {"dialect":"skills","files":[{"path":"skills/feishu-im/SKILL.md","content":"…"}, …]}
 ```
 
-34 个域的 `skills/feishu-{domain}/SKILL.md` + `references/{topic}.md`，仓外 Agent（Claude Code / Cursor）
-直接加载即获得飞书域知识。数据源全是编译期常量 ⇒ 零反射、零 IO、确定性。
+34 个域的 `skills/feishu-{domain}/SKILL.md` + `references/{topic}.md`，外加 `skills/feishu-suite/SKILL.md`
+单入口路由（34 域条目 + 规模数字，全部由域资产推导）。仓外 Agent 直接加载即获得飞书域知识。
+数据源全是编译期常量 ⇒ 零反射、零 IO、确定性。消费实证见 `documents/AIAgent/Skills外部消费实证报告.md`。
 
 **NDJSON 事件外桥**（Demo 参考实现，R-10 起不在库发布面）：把飞书事件以一行一事件的 NDJSON
 交给仓外任意进程，`payload` 原样嵌入（不再序列化），避免字段丢失与 AOT 反射破口。

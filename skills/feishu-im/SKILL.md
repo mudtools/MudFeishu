@@ -39,9 +39,9 @@ package_version: 3.0.3
 把整个话题转发给张三 → `search_user` → `forward_thread`。
 
 ## 命令（工具）清单
-- `im.add_reaction`（写）：给一条消息加一个表情回复（比发一条'收到👌'消息更轻的确认方式）。emoji_type 是表情名（如 SMILE / THUMBSUP / OK / HEART / DONE，完整清单见飞书「表情文案说明」）。⚠️ 平台**不去重**：同一表情调用两次会叠成两条——一次只调一次，撤回用 im.delete_reaction。reaction_id 在本工具回执里。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:me…
+- `im.add_reaction`（写）：给一条消息加一个表情回复（比发一条'收到👌'消息更轻的确认方式）。emoji_type 是表情名（如 SMILE / THUMBSUP / OK / HEART / DONE，完整清单见飞书「表情文案说明」）。⚠️ 平台**不去重**：同一表情调用两次会叠成两条——一次只调一次，撤回用 im.delete_reaction。reaction_id 在本工具回执里。写操作：默认空名单不启用… 〔需 im:message〕
 - `im.batch_query_reactions`（只读）：一次查询多条消息的表情回复（每条消息的表情种类与数量；可选带上逐条明细=谁回的哪个表情）。message_ids 为 om_ 开头的消息 ID 数组。reaction_type 省略时查全部表情。不可见的消息会单独列在 failed 里并给出平台原因。只读，需 im:message。
-- `im.delete_reaction`（写）：撤回**一个**表情回复实例（按 reaction_id 精确删除，只影响这一次回复，不影响同一表情上其他人的回复）。reaction_id 来自 im.add_reaction 的回执，或 im.list_reactions / im.batch_query_reactions（with_details=true）的明细。⚠️ 撤回后无法恢复，只能重新 im.add_reaction。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecu…
+- `im.delete_reaction`（写）：撤回**一个**表情回复实例（按 reaction_id 精确删除，只影响这一次回复，不影响同一表情上其他人的回复）。reaction_id 来自 im.add_reaction 的回执，或 im.list_reactions / im.batch_query_reactions（with_details=true）的明细。⚠️ 撤回后无法恢复，只能重新 im.add_reaction。high-risk-write：默认空名单不启用… 〔需 im:message〕
 - `im.edit_message`（写）：编辑本 Bot 已发送的文本消息内容（发错字时纠正，对方看到的消息被更新）。message_id 来自 im.send_message 的返回。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。
 - `im.forward_message`（写）：把一条消息转发给用户或群。receive_id 来自 im.search_user / 事件上下文。⚠️ 底层 SDK 方法名为 ReceiveMessageAsync 但语义是转发（POST /messages/{id}/forward），不是接收消息。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message:send_as_bot。
 - `im.forward_thread`（写）：把整个话题（thread）转发给用户或群——一次性把讨论上下文带过去。thread_id 来自事件上下文。⚠️ 底层 SDK 方法名为 ReceiveThreadsAsync 但语义是转发话题。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message:send_as_bot。
@@ -57,7 +57,7 @@ package_version: 3.0.3
 - `im.revoke_message`（写）：撤回一条自己发出的消息（发错内容时纠正）。只能撤回本 Bot 发送的消息；message_id 来自事件上下文或 im.get_history_messages。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。建议先 dry_run 预演确认目标消息。
 - `im.search_chats`（只读）：按关键词搜索群聊（返回 chat_id/name/描述）——用户只记得群名片段时的入口。只读，需 im:chat:readonly。
 - `im.search_messages`（只读）：按关键词搜索可见会话中的消息——支持按会话/发送者/时间过滤。返回消息 ID 与命中片段预览，可用 im.get_message_content 回查完整内容。只读，需 im:message:readonly。
-- `im.send_card`（写）：发送一张交互式卡片（标题＋正文＋按钮），用于让对方一眼看到要点并能直接点按钮——比纯文本更适合通知、待办、审批提醒。⚠️ 用结构化语法描述内容，**不要写 JSON**：body 每行一个元素（text:内容 / quote:内容 / code:内容 / divider），buttons 每行一个按钮（按钮文本|url|链接 或 按钮文本|value|回调值）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:mess…
+- `im.send_card`（写）：发送一张交互式卡片（标题＋正文＋按钮），用于让对方一眼看到要点并能直接点按钮——比纯文本更适合通知、待办、审批提醒。⚠️ 用结构化语法描述内容，**不要写 JSON**：body 每行一个元素（text:内容 / quote:内容 / code:内容 / divider），buttons 每行一个按钮（按钮文本|url|链接 或 按钮文本|value|回调值）。写操作：默认空名单不启用… 〔需 im:message:send_as_bot〕
 - `im.send_file`（写）：把一个网络文件作为消息发送到指定会话（file_url 为 http/https 绝对地址，由宿主负责下载落盘）。file_name 必须带扩展名。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:resource 与 im:message:send_as_bot。
 - `im.send_image`（写）：把一张网络图片作为消息发送到指定会话（image_url 为 http/https 绝对地址，由宿主负责下载落盘）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:resource 与 im:message:send_as_bot。
 - `im.send_message`（写）：发送文本消息到指定群聊或用户。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。首次面向陌生接收者时建议先以 dry_run=true 预演。
@@ -67,3 +67,4 @@ package_version: 3.0.3
 ## 参考文档（细则）
 - `references/cards.md`：`im/cards`
 - `references/topics-and-replies.md`：`im/topics-and-replies`
+- 正文里形如 `feishu.guidance_read(im, 主题)` 的指针，在文件形态下读本包的 `references/主题.md`（本包细则就是那份资产，无需进程内工具）

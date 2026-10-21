@@ -35,4 +35,4 @@ package_version: 3.0.3
 
 ## 命令（工具）清单
 - `workflow.meeting_summary`（只读）：一键汇总一段时间内的会议纪要：按关键词与时间窗搜索妙记，再逐个提取 AI 摘要、章节、待办与关键词，合成结构化 Markdown 报告。报告含参会人发言与待办（PII），结果会进入第三方模型上下文：默认不启用，需宿主显式启用并确认合规口径。支持 dry_run 预演与 resume_token 断点续跑。只读，需 minutes:minutes:readonly。
-- `workflow.standup_report`（只读）：一键生成站会日报：读取指定日历时间窗内的日程，再以当前用户身份列出「我负责的」任务，汇总为 Markdown 日报。依赖 calendar.agenda 与 task.list_my_tasks 同时启用，且宿主须提供当前用户 open_id（FeishuToolContext.UserId）并在 AllowedIdentities 放行 user。支持 dry_run 预演与 resume_token 断点续跑。只读，需 calendar:calendar:readonly…
+- `workflow.standup_report`（只读）：一键生成站会日报：读取指定日历时间窗内的日程，再以当前用户身份列出「我负责的」任务，汇总为 Markdown 日报。依赖 calendar.agenda 与 task.list_my_tasks 同时启用，且宿主须提供当前用户 open_id（FeishuToolContext.UserId）并在 AllowedIdentities 放行 user。支持 dry_run… 〔需 calendar:calendar:readonly 与 task:task:readonly〕

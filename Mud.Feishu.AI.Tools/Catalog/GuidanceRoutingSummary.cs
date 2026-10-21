@@ -68,24 +68,32 @@ public static class GuidanceRoutingSummary
     /// <returns>一行摘要（非空；≤ <see cref="MaxSummaryLength"/> 字符）。</returns>
     public static string Create(string domain, string fullContent)
     {
-        var title = ExtractTitle(domain, fullContent);
-        var route = ExtractFirstRouteItem(fullContent);
-
-        var body = route.Length > 0
-            ? title + "｜" + route
-            : title;
-
-        if (body.Length > MaxBodyLength)
-        {
-            body = TruncateAtSentenceBoundary(body, MaxBodyLength);
-        }
-
-        var summary = $"【{domain}】{body} → {RetrievalHint(domain)}";
+        var summary = $"【{domain}】{RouteBody(domain, fullContent)} → {RetrievalHint(domain)}";
 
         // 双保险：即使标题异常长，也必须落在硬预算内（守卫断言 ≤ MaxSummaryLength）。
         return summary.Length <= MaxSummaryLength
             ? summary
             : TruncateAtSentenceBoundary(summary, MaxSummaryLength);
+    }
+
+    /// <summary>
+    /// 摘要正文（<c>标题｜路由首条</c>，落在 <see cref="MaxBodyLength"/> 内）——不含 <c>【域】</c> 前缀与检索后缀。
+    /// </summary>
+    /// <remarks>
+    /// 与 <see cref="Create"/> 共用同一次推导：<c>skills/feishu-suite/SKILL.md</c> 的域路由表按行取用本值，
+    /// 否则"指令面摘要"与"文件面摘要"会变成两份推导（同一份 L1 资产两种形态必然漂移）。
+    /// </remarks>
+    /// <param name="domain">域名。</param>
+    /// <param name="fullContent">该域 L1 全文。</param>
+    internal static string RouteBody(string domain, string fullContent)
+    {
+        var title = ExtractTitle(domain, fullContent);
+        var route = ExtractFirstRouteItem(fullContent);
+        var body = route.Length > 0 ? title + "｜" + route : title;
+
+        return body.Length > MaxBodyLength
+            ? TruncateAtSentenceBoundary(body, MaxBodyLength)
+            : body;
     }
 
     /// <summary>取 H1 标题（<c># 消息（im.*）</c> → <c>消息（im.*）</c>）；缺失时回落域名（绝不产空串）。</summary>

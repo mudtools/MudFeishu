@@ -96,10 +96,13 @@ is `v<major>.<minor>.<patch>` (e.g. `v3.0.3`).
 
 - `.github/workflows/dotnet-publish.yml` matches `tags: ["v*"]` **only**. A bare `3.0.3` tag (the historical
   form, used up to `3.0.2`) does not trigger the workflow at all — no build, no publish, no warning.
-- `publish-nuget` resolves the version from the tag (`Resolve package version`) and feeds it to both `build`
-  and `pack` via `-p:Version=`; `Assert package set` then hard-asserts that the produced `.nupkg` set is
-  exactly the 9 source packages (the contract `publish.bat` encodes in its `PROJECTS` list) and that every
-  file carries that version. Keep `IsPackable=false` for everything outside those 9 sources
+- `publish-nuget` resolves the version from the tag (`Resolve package version`, `id: pkgver`) and feeds it
+  to both `build` and `pack` via `-p:Version=`; `Assert package set` then hard-asserts that the produced
+  `.nupkg` set is exactly the source packages (the list `publish.bat` encodes in its `PROJECTS` list —
+  12 since 3.1.0, the three `Mud.Feishu.AI*` packages included) and that every file carries that version.
+  Do not rename/remove the `pkgver` step: the assert reads `steps.pkgver.outputs.version`, and a missing id
+  silently yields an empty version that misjudges **every** package as "wrong version". Keep
+  `IsPackable=false` for everything outside those source projects
   (`Demos/Directory.Build.props`, `Tests/Directory.Build.props`): a packable demo still matches the
   `Mud.Feishu*` glob of the nuget.org Trusted Publishing policy, so it would be published silently.
 - `Directory.Build.props`'s `<Version>` is **not** the release version; a mismatch with the tag is reported
@@ -117,7 +120,7 @@ is `v<major>.<minor>.<patch>` (e.g. `v3.0.3`).
 
 ## Dependency version policy (Mud.HttpUtils)
 
-This repo consumes `Mud.HttpUtils` **3.0.7** (HttpUtils and Generator **must stay on the same
+This repo consumes `Mud.HttpUtils` **3.0.8** (HttpUtils and Generator **must stay on the same
 version**; adaptation notes: `.docs/MudFeishu-MudHttpUtils-3.0.7-适配说明.md`) — the 3.0.x release line carries
 **BC-27**: `IAppContextSwitcher` no longer declares
 `UseApp(string)` / `UseDefaultApp()` / `BeginScope(string)`, and the generator no longer emits them
@@ -131,15 +134,15 @@ by default. Adaptation (plan: `.docs/MudHttpUtils-3.0.0-破坏性变更改造计
   asserts the five switch members reflectively on all generated classes.
 - New code must use `IAppScopeSwitcher.UseAppScope` / `UseDefaultAppScope`; for the
   "guarded + switch-and-stay" semantics use `IAppContextHolder.SwitchToApp(appKey, appManager, sp)`
-  (upstream `SW-15`) — as done in `FeishuAppManager.GetWebApi`/`GetDefaultWebApi`.
+  (upstream `SW-15`).
   `Demos/` still consume the **published** `Mud.Feishu 3.0.0` package (which depends on
   `Mud.HttpUtils 2.0.8`), so demo `BeginScope("hr-app")` calls are intentionally untouched until the
   rebuilt package ships.
-- **BC-30（3.0.7）弃用传播**：`IAppManager<T>` 的 `GetWebApi` / `GetDefaultWebApi` /
-  `RegisterSwitcherFactory` 已 `[Obsolete]`（3.x 告警，4.0 移除）。`FeishuAppManager` 的两个重写
-  **同步传播 `[Obsolete]`**（消除 CS0672，消费方经 `FeishuAppManager` 调用同样获得迁移指引）；
-  测试中的守卫性调用以 `#pragma warning disable CS0618` 精确豁免。迁移路径：DI 解析
-  `IAppScopeSwitcher` + `UseAppScope` / `UseDefaultAppScope`，或 `SwitchToApp`（受控切换并保持）。
+- **BC-30 已完成（上游 3.0.8 移除；下游同批适配）**：`IAppManager<T>` 的 `GetWebApi` / `GetDefaultWebApi` / `RegisterSwitcherFactory` 三成员已从上游 **物理移除**；`FeishuAppManager` 中
+  对应的两个重写、`new` 遮蔽与显式实现**已同批删除**。**必须**保持「引用升级 3.0.8 与三成员删除
+  同批落地」——若引用未指向 3.0.8 而先删重写，基类实现会**静默回退到无守卫路径**（非编译错误，
+  属安全回退）。迁移路径：DI 解析 `IAppScopeSwitcher` + `UseAppScope` / `UseDefaultAppScope`
+  （自动归还），或 `IAppContextHolder.SwitchToApp(appKey, appManager, sp)`（受控切换并保持）。
 - **F-9（3.0.7 起）元包解耦**：`Mud.HttpUtils` 元包**不再传递** `Mud.HttpUtils.Resilience`。
   `Mud.Feishu.Abstractions` 的 `AddFeishuApp` 装配链使用弹性策略（per-app 重试/超时/熔断），
   故已**显式安装** `Mud.HttpUtils.Resilience`（版本与全仓 `Mud.HttpUtils*` 单版本守卫一致，
@@ -204,13 +207,13 @@ by default. Adaptation (plan: `.docs/MudHttpUtils-3.0.0-破坏性变更改造计
 **必须先查该两份文档再动代码**，防止约束漂移。3.0.7 适配时点对本仓的逐条结论见
 `.docs/MudFeishu-MudHttpUtils-3.0.7-适配说明.md`。
 
-Mud.HttpUtils **3.0.7 is consumed from nuget.org** — the `mudhttputils-local` folder source
-(`D:/Repos/MudHttpUtils/artifacts-debug`, used for the 2026-10-15 pre-release adaptation cycle) has been
-removed from `nuget.config`. `verify-build.ps1` step 0 (CACHE-1) compares a local pack against the
-global package cache **only for folder sources that `nuget.config` declares**, and prints `[SKIP]` for a
-nuget.org-only configuration — a stale sibling `D:/Repos/*` directory must never be able to fail the
-gate (the comparison target no longer exists, so clearing the cache cannot fix it = false red). To
-consume a newer component version: bump the
+Mud.HttpUtils **3.0.8 is consumed from nuget.org** — the `mudhttputils-local` folder source
+(`D:/Repos/MudHttpUtils/artifacts-debug`, used for the 2026-10-18 pre-release adaptation cycle) has been
+removed from `nuget.config`, and `dotnet restore` resolves the published package. `verify-build.ps1`
+step 0 (CACHE-1) compares a local pack against the global package cache **only for folder sources that
+`nuget.config` declares**, and prints `[SKIP]` for a nuget.org-only configuration — a stale sibling
+`D:/Repos/*` directory must never be able to fail the gate (the comparison target no longer exists, so
+clearing the cache cannot fix it = false red). To consume a newer component version: bump the
 version in the `PackageReference`s and, optionally, sync `AGENTS.md` / the README dependency tables
 (`README.md` / `README_EN.md` / `Mud.Feishu/README.md`) — the docs are **not** gated (a wrong version
 number there has no runtime impact and must not block an upgrade). The contract guard

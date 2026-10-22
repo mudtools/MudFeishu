@@ -10,9 +10,9 @@
          注意：分析器形态的引用（包或工程）**不会**经 ProjectReference 传递到下游，故此处必须显式声明。
          ⚠ 禁兼引：不得同时引用组件侧 Mud.HttpUtils.Generator（同名 hintName 产物冲突）——
          由 SingleToolSurfaceEngineContractGuards 断言。 -->
-    <PackageReference Include="Mud.AI.Generator" Version="1.0.1" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-    <PackageReference Include="Mud.HttpUtils.Attributes" Version="3.0.7" />
-    <PackageReference Include="Mud.HttpUtils.Abstractions" Version="3.0.7" />
+    <PackageReference Include="Mud.AI.Generator" Version="1.0.2" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <PackageReference Include="Mud.HttpUtils.Attributes" Version="3.0.8" />
+    <PackageReference Include="Mud.HttpUtils.Abstractions" Version="3.0.8" />
   </ItemGroup>
 
   <ItemGroup>

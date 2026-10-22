@@ -24,8 +24,8 @@
         <InternalsVisibleTo Include="Mud.Feishu.OpenTelemetry.Tests" />
     </ItemGroup>
 
-    <ItemGroup>       
-        <PackageReference Include="Mud.HttpUtils.OpenTelemetry" Version="3.0.7" />
+    <ItemGroup>
+        <PackageReference Include="Mud.HttpUtils.OpenTelemetry" Version="3.0.8" />
         <PackageReference Include="OpenTelemetry" Version="1.16.0" />
         <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.16.0" />
         <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.16.0" />

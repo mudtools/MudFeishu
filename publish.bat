@@ -12,8 +12,9 @@ REM               Requires the NUGET_API_KEY environment variable.
 REM   /nopause    Do not pause at the end (for scripting / CI).
 REM
 REM Notes:
-REM   * All 9 packages are packed into .\artifacts (Mud.Feishu.DataModels
-REM     and Mud.Feishu.OpenTelemetry are required dependencies of Mud.Feishu).
+REM   * All 12 packages are packed into .\artifacts (Mud.Feishu.DataModels
+REM     and Mud.Feishu.OpenTelemetry are required dependencies of Mud.Feishu;
+REM     Mud.Feishu.AI / .AI.Tools / .AI.Mcp ship since 3.1.0).
 REM   * Version is passed as -p:Version=... so assembly and package
 REM     versions cannot drift apart (Directory.Build.props pins <Version>,
 REM     which makes --version-suffix silently ignored).
@@ -24,7 +25,7 @@ setlocal EnableExtensions EnableDelayedExpansion
 cd /d "%~dp0"
 
 set "OUTPUT_DIR=artifacts"
-set "PROJECTS=Mud.Feishu.Abstractions Mud.Feishu.DataModels Mud.Feishu.EventCallback Mud.Feishu.OpenTelemetry Mud.Feishu.Redis Mud.Feishu.Webhook Mud.Feishu.WebSocket Mud.Feishu.Authentication Mud.Feishu"
+set "PROJECTS=Mud.Feishu.Abstractions Mud.Feishu.DataModels Mud.Feishu.EventCallback Mud.Feishu.OpenTelemetry Mud.Feishu.Redis Mud.Feishu.Webhook Mud.Feishu.WebSocket Mud.Feishu.Authentication Mud.Feishu Mud.Feishu.AI Mud.Feishu.AI.Tools Mud.Feishu.AI.Mcp"
 set "VERSION="
 set "PREVIEW=0"
 set "SKIP_CHECK=0"
@@ -102,7 +103,7 @@ if "%SKIP_CHECK%"=="1" (
 )
 
 REM ------------------------------------------------------------- pack
-echo Packing packages ^(9 expected^) ...
+echo Packing packages ^(12 expected^) ...
 if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"
 del /q "%OUTPUT_DIR%\*%VERSION%.nupkg" 2>nul
 set "FAILED="

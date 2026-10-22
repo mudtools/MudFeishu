@@ -58,7 +58,8 @@ public static class McpServiceCollectionExtensions
             sp.GetRequiredService<FeishuMcpToolServer>(),
             Console.In,
             Console.Out,
-            sp.GetService<ILogger<FeishuMcpStdioHost>>()));
+            sp.GetService<ILogger<FeishuMcpStdioHost>>(),
+            sp.GetService<IOptions<FeishuMcpServerOptions>>()));
         services.TryAddSingleton(sp => new FeishuMcpHttpHandler(
             sp.GetRequiredService<FeishuMcpToolServer>(),
             sp.GetRequiredService<IOptions<FeishuMcpServerOptions>>(),
@@ -91,7 +92,8 @@ public static class McpServiceCollectionExtensions
             server,
             input ?? Console.In,
             output ?? Console.Out,
-            services.GetService<ILogger<FeishuMcpStdioHost>>());
+            services.GetService<ILogger<FeishuMcpStdioHost>>(),
+            services.GetService<IOptions<FeishuMcpServerOptions>>());
 
         return host.RunAsync(cancellationToken);
     }

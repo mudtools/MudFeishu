@@ -1,4 +1,4 @@
-{
+﻿{
     "source":  "F-2 收官（机械化评审规则）：新增 public 类型必须登记\"消费方\"——本文件是\"冻结基线 + 增量理由\"两段式。baseline 为 2026-10-11 实测快照；之后新增的 public 类型必须出现在 reasons 里（键=类型全名，值=消费方说明），否则 PublicSurfaceRationaleContractGuards 报红。",
     "baselineGeneratedAt":  "2026-10-11",
     "baseline":  [
@@ -35,6 +35,11 @@
                      "Mud.Feishu.AI.Conversations.ConversationSummarizer",
                      "Mud.Feishu.AI.Conversations.KeyedConversationGate",
                      "Mud.Feishu.AI.Conversations.MemoryConversationStore",
+                    "Mud.Feishu.AI.Diagnostics.FeishuToolUsageSlice",
+                    "Mud.Feishu.AI.Diagnostics.FeishuUsageSlice",
+                    "Mud.Feishu.AI.Diagnostics.FeishuUsageSnapshot",
+                    "Mud.Feishu.AI.Diagnostics.IFeishuUsageMeter",
+                    "Mud.Feishu.AI.Diagnostics.InMemoryFeishuUsageMeter",
                      "Mud.Feishu.AI.Events.ApprovalContextAssembler",
                      "Mud.Feishu.AI.Events.ApprovalTaskConversationalEventHandler",
                      "Mud.Feishu.AI.Events.BitableRecordChangedConversationalEventHandler",
@@ -282,8 +287,6 @@
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantBitableWorkflowBlockListTool":  "T-2 表格加深（2026-10-16）：bitable.workflow_block_list 的工具契约（流程节点列表——只读）。消费方：① 生成器声明面（编译期契约/注册器聚合）；② FeishuToolRegistry 白名单装配与 MCP server tools/list；③ DomainRegistrarTests 与 ToolSourceConsistency 守卫、权限对照表守卫。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantBitableRoleListTool":  "T-2 表格加深（2026-10-16）：bitable.role_list 的工具契约（高级权限角色列表——只读）。消费方：① 生成器声明面（编译期契约/注册器聚合）；② FeishuToolRegistry 白名单装配与 MCP server tools/list；③ DomainRegistrarTests 与 ToolSourceConsistency 守卫、权限对照表守卫。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantBitableRoleMemberListTool":  "T-2 表格加深（2026-10-16）：bitable.role_member_list 的工具契约（角色成员列表——只读）。消费方：① 生成器声明面（编译期契约/注册器聚合）；② FeishuToolRegistry 白名单装配与 MCP server tools/list；③ DomainRegistrarTests 与 ToolSourceConsistency 守卫、权限对照表守卫。",
-                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantBitableRecordBatchCreateTool":  "T-2 表格加深（2026-10-16）：bitable.record_batch_create 的工具契约（批量建记录——单次上限由工具层校验，避免超限整批失败）。消费方：① 生成器声明面（编译期契约/注册器聚合）；② FeishuToolRegistry 白名单装配与 MCP server tools/list；③ DomainRegistrarTests 与 ToolSourceConsistency 守卫、权限对照表守卫。",
-                     "Mud.Feishu.AI.Tools.Curation.IFeishuTenantBitableRecordBatchUpdateTool":  "T-2 表格加深（2026-10-16）：bitable.record_batch_update 的工具契约（批量改记录——单次上限由工具层校验）。消费方：① 生成器声明面（编译期契约/注册器聚合）；② FeishuToolRegistry 白名单装配与 MCP server tools/list；③ DomainRegistrarTests 与 ToolSourceConsistency 守卫、权限对照表守卫。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantBitableFormUpdateTool":  "T-2 表格加深（2026-10-16）：bitable.form_update 的工具契约（表单配置更新——写操作）。消费方：① 生成器声明面（编译期契约/注册器聚合）；② FeishuToolRegistry 白名单装配与 MCP server tools/list；③ DomainRegistrarTests 与 ToolSourceConsistency 守卫、权限对照表守卫。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantBitableFormUpgradeTool":  "T-2 表格加深（2026-10-16）：bitable.form_upgrade 的工具契约（表单升级——写操作，影响表单结构与已有数据映射）。消费方：① 生成器声明面（编译期契约/注册器聚合）；② FeishuToolRegistry 白名单装配与 MCP server tools/list；③ DomainRegistrarTests 与 ToolSourceConsistency 守卫、权限对照表守卫。",
                      "Mud.Feishu.AI.Tools.Curation.IFeishuTenantBitableFormQuestionUpdateTool":  "T-2 表格加深（2026-10-16）：bitable.form_question_update 的工具契约（表单项更新——写操作）。消费方：① 生成器声明面（编译期契约/注册器聚合）；② FeishuToolRegistry 白名单装配与 MCP server tools/list；③ DomainRegistrarTests 与 ToolSourceConsistency 守卫、权限对照表守卫。",
@@ -475,7 +478,6 @@
                 "Mud.Feishu.AI.Tools.Curation.IFeishuTenantMarkdownCreateTool":  "S-2 Markdown 生命周期（2026-10-20）：markdown.create 的工具契约（Markdown 上传为 .md → 导入任务转 docx → 有界轮询 → 成功终态后清理源文件（写，drive:drive））。消费方：① 生成器声明面（编译期契约/注册器聚合）；② FeishuToolRegistry 白名单装配与 MCP server tools/list；③ DomainRegistrarTests 与 ToolSourceConsistency 守卫、权限对照表守卫。",
                 "Mud.Feishu.AI.Tools.Curation.IFeishuTenantMarkdownFetchTool":  "S-2 Markdown 生命周期（2026-10-20）：markdown.fetch 的工具契约（读 docx 正文 Markdown 并按 offset/limit 分窗；.md 资源文件走受控下载通道（只读））。消费方：① 生成器声明面（编译期契约/注册器聚合）；② FeishuToolRegistry 白名单装配与 MCP server tools/list；③ DomainRegistrarTests 与 ToolSourceConsistency 守卫、权限对照表守卫。",
                 "Mud.Feishu.AI.Tools.Curation.IFeishuTenantMarkdownPatchTool":  "S-2 Markdown 生命周期（2026-10-20）：markdown.patch 的工具契约（读正文 → 唯一精确匹配替换 → 经 docx 块先追加后删除重建（写，idempotency_key 必填））。消费方：① 生成器声明面（编译期契约/注册器聚合）；② FeishuToolRegistry 白名单装配与 MCP server tools/list；③ DomainRegistrarTests 与 ToolSourceConsistency 守卫、权限对照表守卫。",
-                "Mud.Feishu.AI.Tools.Curation.IFeishuTenantDocxReplaceDocumentTool":  "整篇正文重建的唯一入口（2026-10-22，吸收 markdown.overwrite）：按 Markdown 先追加新块再删除旧块（写，idempotency_key 可选但重试须复用）。消费方：① 生成器声明面（编译期契约/注册器聚合）；② FeishuToolRegistry 白名单装配与 MCP server tools/list；③ DomainRegistrarTests 与 ToolSourceConsistency 守卫、权限对照表守卫。",
                 "Mud.Feishu.AI.Tools.Curation.IFeishuTenantMarkdownDiffTool":  "S-2 Markdown 生命周期（2026-10-20）：markdown.diff 的工具契约（只读比对两侧正文，回传统一 diff 与全量增删行数，差异文本按预算按行截断（只读））。消费方：① 生成器声明面（编译期契约/注册器聚合）；② FeishuToolRegistry 白名单装配与 MCP server tools/list；③ DomainRegistrarTests 与 ToolSourceConsistency 守卫、权限对照表守卫。",
                 "Mud.Feishu.AI.Tools.Curation.IFeishuTenantWorkflowMeetingSummaryTool":  "S-4 复合工作流（2026-10-20）：workflow.meeting_summary 的工具契约（声明式步骤链 minutes.search → minutes.get_artifacts，每步均经执行链，支持 dry_run 预演与 resume_token 续跑；只读，报告含发言/待办故属 PII、默认不启用）。消费方：① 生成器声明面（编译期契约/注册器聚合）；② FeishuToolRegistry 白名单装配与 MCP server tools/list；③ DomainRegistrarTests 与 ToolSourceConsistency 守卫、权限对照表守卫。",
                 "Mud.Feishu.AI.Tools.Curation.IFeishuTenantWorkflowStandupReportTool":  "S-4 复合工作流（2026-10-20）：workflow.standup_report 的工具契约（声明式步骤链 calendar.agenda → task.list_my_tasks，每步均经执行链，支持 dry_run 预演与 resume_token 续跑；只读）。消费方：① 生成器声明面（编译期契约/注册器聚合）；② FeishuToolRegistry 白名单装配与 MCP server tools/list；③ DomainRegistrarTests 与 ToolSourceConsistency 守卫、权限对照表守卫。",

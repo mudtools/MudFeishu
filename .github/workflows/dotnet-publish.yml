@@ -514,11 +514,50 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSIONS }}
 
+      # 版本解析（tag 驱动的关键一步）：
+      # 包版本只来自 Directory.Build.props 的 Version 节点时，「打 v3.0.3 tag」实际打包出来的
+      # 是 props 里的旧版本——若该版本已在 nuget.org 上，--skip-duplicate 会静默成功，
+      # 形成「tag 打了、日志全绿、新包没发出去」的假绿。故此处以 tag 名（或 dispatch 输入）为准，
+      # 并用 -p:Version 同时喂给 build 与 pack，使程序集元数据与 nupkg 版本不可能漂移
+      # （与 publish.bat 的说明口径一致：Directory.Build.props 固定 Version 时 --version-suffix 会被忽略）。
+      # props 版本落后只告警不阻断，保证「打 tag 即发布」是一步操作。
+      # 本步骤同时是 Assert package set 的版本来源（steps.pkgver.outputs.version）：
+      # id 被改名/删除会让该断言拿到空字符串并把**所有**包误判为「版本不是本次发布版本」。
+      - name: Resolve package version
+        id: pkgver
+        shell: bash
+        env:
+          DISPATCH_VERSION: ${{ needs.version-and-release.outputs.version }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            SOURCE="tag $GITHUB_REF_NAME"
+          else
+            VERSION="$DISPATCH_VERSION"
+            SOURCE="workflow_dispatch / version-and-release"
+          fi
+          # 只接受 semver（可带 -prerelease）：拦掉 v3、v-next 之类 tag 被当成包版本推上 nuget.org，
+          # 同时保证 VERSION 不可能为空（空值会让打包范围断言把所有包误判为版本不符）。
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::无法从「$SOURCE」解析出合法 semver 版本（得到 '$VERSION'）。请使用 v3.0.3 形式的 tag 或填写 version 输入。"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Package version : $VERSION  (来源：$SOURCE)"
+
+          # 用 sed 而非 grep -P：-P 依赖 UTF-8 locale，在 locale 非 UTF-8 的环境里会直接报错，
+          # 使 PROPS_VERSION 变空并误报「props 不一致」。
+          PROPS_VERSION=$(sed -n 's|.*<Version>\([^<]*\)</Version>.*|\1|p' Directory.Build.props | head -n1 || true)
+          if [ "$PROPS_VERSION" != "$VERSION" ]; then
+            echo "::warning::Directory.Build.props 的 Version ($PROPS_VERSION) 与本次发布版本 ($VERSION) 不一致；已按 tag 覆盖打包（产物内部一致），建议随后把 props 同步为该版本。"
+          fi
+
       - name: Restore dependencies
         run: dotnet restore ${{ env.SOLUTION_FILE }}
 
       - name: Build
-        run: dotnet build ${{ env.SOLUTION_FILE }} --configuration ${{ env.CONFIGURATION }} --no-restore
+        run: dotnet build ${{ env.SOLUTION_FILE }} --configuration ${{ env.CONFIGURATION }} --no-restore -p:Version=${{ steps.pkgver.outputs.version }}
 
       # 编译验证 Demos 项目
       - name: Build Demos
@@ -529,11 +568,13 @@ jobs:
             dotnet build "$project" --configuration ${{ env.CONFIGURATION }}
           done
 
-      # 打包：生成 .nupkg 文件
+      # 打包：生成 .nupkg 文件。
+      # -p:Version 必须与上一步 Build 完全一致：pack --no-build 只复用 bin 产物、再按属性生成 nuspec，
+      # 两处版本不一致就会出现「包版本与程序集元数据不同」的成品。
       - name: Pack NuGet package
-        run: dotnet pack ${{ env.SOLUTION_FILE }} --configuration ${{ env.CONFIGURATION }} --output ./nupkg --no-build
+        run: dotnet pack ${{ env.SOLUTION_FILE }} --configuration ${{ env.CONFIGURATION }} --output ./nupkg --no-build -p:Version=${{ steps.pkgver.outputs.version }}
 
-      # 打包范围断言（PACK-1）：发布契约是 publish.bat 里列出的 9 个源包（Mud.Feishu.slnx 的 9 个源工程）。
+      # 打包范围断言（PACK-1）：发布契约是 publish.bat 里列出的 12 个源包（Mud.Feishu.slnx 的 12 个源工程）。
       # dotnet pack <slnx> 会打包解决方案内所有 IsPackable 的项目，Demos/Tests 一旦有项目漏关闭打包
       # 就会多出示例/测试包；这些包名同样命中 NuGet 信任策略的 Mud.Feishu* glob，不会被拒绝，
       # 只会被静默推上 nuget.org（Demos/Mud.Feishu.AotVerification 曾是这种漏网项目）。
@@ -543,7 +584,7 @@ jobs:
         run: |
           set -euo pipefail
           VERSION='${{ steps.pkgver.outputs.version }}'
-          EXPECTED_IDS="Mud.Feishu Mud.Feishu.Abstractions Mud.Feishu.Authentication Mud.Feishu.DataModels Mud.Feishu.EventCallback Mud.Feishu.OpenTelemetry Mud.Feishu.Redis Mud.Feishu.Webhook Mud.Feishu.WebSocket"
+          EXPECTED_IDS="Mud.Feishu Mud.Feishu.Abstractions Mud.Feishu.Authentication Mud.Feishu.DataModels Mud.Feishu.EventCallback Mud.Feishu.OpenTelemetry Mud.Feishu.Redis Mud.Feishu.Webhook Mud.Feishu.WebSocket Mud.Feishu.AI Mud.Feishu.AI.Tools Mud.Feishu.AI.Mcp"
           shopt -s nullglob
           files=(./nupkg/*.nupkg)
           if [ "${#files[@]}" -eq 0 ]; then
@@ -588,10 +629,22 @@ jobs:
           # 你的 NuGet.org 个人资料名（Profile name），不是邮箱、也不是组织名
           user: ${{ secrets.NUGET_USER || 'xlq5520' }}
 
-      # 发布：将包推送到 NuGet.org（临时 Key 有效期约 1 小时，绑定仓库/工作流）
+      # 发布：将包推送到 NuGet.org（临时 Key 有效期约 1 小时，绑定仓库/工作流）。
+      # --skip-duplicate 的语义是「该版本已存在 ⇒ 视作成功」，退出码 0；
+      # 因此把 push 日志落盘并显式提示被跳过的包，避免「什么都没发出去」却显示全绿。
+      # 必须保留 pipefail：否则 tee 的 0 退出码会掩盖 dotnet nuget push 的真实失败。
       - name: Push to NuGet.org
+        shell: bash
         run: |
+          set -o pipefail
+          # 日志写到 RUNNER_TEMP 而不是 ./nupkg：后者正是 push 的 glob 目录，
+          # 把日志落进待推送目录会让「推送范围」取决于文件创建与 glob 展开的时序。
+          LOG="$RUNNER_TEMP/nupkg-push.log"
           dotnet nuget push "./nupkg/*.nupkg" \
-            --api-key ${{ steps.login.outputs.NUGET_API_KEY }} \
+            --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" \
             --source https://api.nuget.org/v3/index.json \
-            --skip-duplicate
+            --skip-duplicate 2>&1 | tee "$LOG"
+          if grep -qiE 'already exists|conflict|skipping' "$LOG"; then
+            echo "::warning::nuget.org 上已存在版本 ${{ steps.pkgver.outputs.version }}：被 --skip-duplicate 跳过的包没有实际推送，请确认是否本就需要重发同版本。"
+            grep -iE 'already exists|conflict|skipping' "$LOG" | sed 's/^/    /' || true
+          fi

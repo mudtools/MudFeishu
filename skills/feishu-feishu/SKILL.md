@@ -37,7 +37,7 @@ package_version: 3.0.3
 ## 安全规则
 - 元工具全部**只读**（`feishu:base` scope），不发起任何飞书业务请求，也不产生侧效应。
 - **禁止把「SDK 里有」当成「现在能用」向用户承诺**：两者之间隔着「是否策展为工具」与「是否在白名单里」。
-- 需要写类动作时，必须走对应的**策展工具**（如 `im.send_message` / `bitable.add_record`）：
+- 需要写类动作时，必须走对应的**策展工具**（如 `im.send_message` / `bitable.record_batch_create`）：
   它们经 `FeishuAgent:WriteAllowList` 键控 + 授权门禁，并支持 `dry_run` 预演。
 - 不得用「先查签名、再手工拼 HTTP 请求」之类的方式绕开策展边界——模型没有直连网络的能力，
   这类指令只会浪费一轮对话。

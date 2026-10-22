@@ -1,6 +1,6 @@
 ---
 name: feishu-im
-description: 飞书 im 域工具集：24 个工具（只读 10 / 写 14）。给人发消息 / 读聊天记录 → `im.*`；给人发邮件 → `mail.*`；给人建待办 → `task.*`。
+description: 飞书 im 域工具集：23 个工具（只读 9 / 写 14）。给人发消息 / 读聊天记录 → `im.*`；给人发邮件 → `mail.*`；给人建待办 → `task.*`。
 version: 1.0.0
 package_version: 3.0.3
 ---
@@ -46,10 +46,9 @@ package_version: 3.0.3
 - `im.forward_message`（写）：把一条消息转发给用户或群。receive_id 来自 im.search_user / 事件上下文。⚠️ 底层 SDK 方法名为 ReceiveMessageAsync 但语义是转发（POST /messages/{id}/forward），不是接收消息。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message:send_as_bot。
 - `im.forward_thread`（写）：把整个话题（thread）转发给用户或群——一次性把讨论上下文带过去。thread_id 来自事件上下文。⚠️ 底层 SDK 方法名为 ReceiveThreadsAsync 但语义是转发话题。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message:send_as_bot。
 - `im.get_chat`（只读）：读取群基础信息（群名/描述/成员数/群主）。chat_id 可由事件上下文获得。⚠️ 底层 SDK 方法名拼写为 GetChatGroupInoByIdAsync（Ino 应为 Info），此处按正确语义命名。只读，需 im:chat:readonly。
-- `im.get_history_messages`（只读）：读取群聊的历史消息（chat_id 可由事件上下文获得），按创建时间倒序返回最近消息预览。只读，需 im:message:readonly。
+- `im.get_history_messages`（只读）：读取会话历史消息，按创建时间倒序返回最近消息预览。container_type=chat 读群聊/单聊（container_id 为 chat_id，默认）；container_type=thread 读话题（container_id 为 thread_id，形如 omt_xxx）。只读，需 im:message:readonly。
 - `im.get_message_content`（只读）：按 message_id 回查单条消息的完整内容——与 im.get_history_messages 组成两步链（历史消息列表 → 指定消息内容）。只读，需 im:message:readonly。
 - `im.get_message_read_users`（只读）：查询某条消息已被哪些人读到（user_id + 读取时间）。⚠️ 底层 SDK 方法名拼写为 GetMessageReadUsesAsync（Uses 应为 Users），此处按正确语义命名。只读，需 im:message:readonly。
-- `im.get_thread_messages`（只读）：读取某个话题（thread）内的消息——群话题场景下用 thread_id 取代 chat_id 读话题内容。thread_id 可由事件上下文获得。只读，需 im:message:readonly。
 - `im.list_chat_members`（只读）：分页列出群聊成员（member_id/name/tenant_key）——'这个群里有哪些人'的多步流程地基。chat_id 可由事件上下文获得。只读，需 im:chat:readonly。
 - `im.list_reactions`（只读）：查询某条消息上**指定表情**的回复明细（谁在什么时候回了这个表情）。⚠️ reaction_type 必填且一次只查一种表情（平台该端点要求指定表情类型）——要看一条消息上**所有**表情的种类与数量用 im.batch_query_reactions。单页返回、不翻页。只读，需 im:message。
 - `im.patch_card_message`（写）：更新本 Bot 已发送的卡片消息内容（整卡覆盖）。⚠️ 用结构化语法描述内容，**不要写 JSON**：body 每行一个元素（text:内容 / quote:内容 / code:内容 / divider），buttons 每行一个按钮（按钮文本|url|链接 或 按钮文本|value|回调值）。message_id 来自 im.send_card 的返回。写操作：默认空名单不启用，需 im:message。

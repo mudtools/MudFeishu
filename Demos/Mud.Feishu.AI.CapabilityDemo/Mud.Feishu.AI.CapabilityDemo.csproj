@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- net8.0：已发布的 3.1.0 包只有 net8.0 资产内部程序集版本自洽（net10.0 资产仍是 3.0.3.0，
+         Mud.Feishu.AI.Mcp 3.1.0.0 引用 Mud.Feishu.AI 3.1.0.0 → 运行期 FileNotFoundException）。 -->
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>Mud.Feishu.AI.CapabilityDemo</AssemblyName>
+    <RootNamespace>Mud.Feishu.AI.CapabilityDemo</RootNamespace>
+  </PropertyGroup>
+
+  <!-- 三个 AI 包 + SDK 主包（版本与其它 Demo 同批钉死，禁止浮动）。 -->
+  <ItemGroup>
+    <PackageReference Include="Mud.Feishu" Version="3.1.0" />
+    <PackageReference Include="Mud.Feishu.AI" Version="3.1.0" />
+    <PackageReference Include="Mud.Feishu.AI.Tools" Version="3.1.0" />
+    <PackageReference Include="Mud.Feishu.AI.Mcp" Version="3.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="appsettings.local.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

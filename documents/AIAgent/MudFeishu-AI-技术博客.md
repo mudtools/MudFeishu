@@ -1,4 +1,4 @@
-# 给大模型一双操作飞书的手：[Mud.Feishu.AI](http://Mud.Feishu.AI) 的设计取舍
+﻿# MAF + 飞书：让大模型干活，但别让它乱干
 
 ![Mud.Feishu.AI](images/01-cover.png)
 
@@ -18,21 +18,21 @@ MudFeishu 本来是个挺规矩的 .NET 飞书 SDK。一千两百多个强类型
 
 「`Mud.Feishu.AI`」严格说是三个包：
 
--   **`Mud.Feishu.AI`**——运行时本体。`FeishuAgent`、装配扩展、会话存储、知识检索、流式通道都在这里。它同时还是「共享接缝」的归属地：`[FeishuTool]` / `[ToolParameter]` 特性、`IFeishuToolContextAccessor`、`IFeishuToolApprovalChannel` 这些放在 `Mud.Feishu.AI.AgentTools` 命名空间下。之所以不塞进 Tools 包，是因为测试项目也要用 `[FeishuTool]`，但它不该去引 `Mud.Feishu.AI.Tools`——一引，它自己生成的工具 Schema 就和基座撞名了。
--   **`Mud.Feishu.AI.Tools`**——工具面。242 个 `[FeishuTool]` 声明按域放在 `Curation/`，配套的 `[FeishuToolHandler]` 独占 `Handlers/` 命名空间。两者刻意不同名，是为了让生成引擎能分别寻址「声明面」和「执行面」。
+-   **`Mud.Feishu.AI`**——运行时本体。`FeishuAgent`、装配扩展、会话存储、知识检索、流式通道都在这里。它同时还是产品侧「共享接缝」的归属地，`IFeishuToolContextAccessor`、`IFeishuToolApprovalChannel`、风险与内容安全词汇这些都放在 `Mud.Feishu.AI.AgentTools` 命名空间下。声明工具用的 `[AgentTool]` / `[ToolParameter]` 则往下沉到了中立的 `Mud.AI.Abstractions` 包——它躺在依赖图最底层，任何程序集都能看见，所以不想引 `Mud.Feishu.AI.Tools` 的测试项目也能自己声明工具，又不会跟基座生成的 Schema 撞名。
+-   **`Mud.Feishu.AI.Tools`**——工具面。331 个 `[AgentTool]` 声明按域收在 `Curation/`，配套的 `[ToolHandler]` 执行器独占 `Internal/` 命名空间。两者刻意不同名（`[AgentTool]` 对 `[ToolHandler]`），是为了让生成引擎能分别寻址「声明面」和「执行面」。
 -   **`Mud.Feishu.AI.Mcp`**——进程外的 MCP 服务器，可选，不装也不影响前两个。
 
 依赖是单向的：`Mcp → Tools → AI`。这是有意为之——想让工具面单独演进时，不必牵动运行时。
 
 ![关键指标](images/02-stats.png)
 
-## 242 不是「少暴露」，是「重新编排」
+## 331 不是「少暴露」，是「重新编排」
 
-先看几个数：**242** 个工具，其中 **142** 只读、**100** 写；写里面又分普通写 **77** 个、高风险写 **23** 个；按身份分，**227** 个走租户令牌、**15** 个走用户令牌；覆盖 **30** 个业务域 + 4 个元工具。
+先看几个数：**331** 个工具，其中 **171** 只读、**160** 写；写里面又分普通写 **122** 个、高风险写 **38** 个；按身份分，**309** 个走租户令牌、**22** 个走用户令牌；覆盖 **31** 个工具域——30 个是业务域，剩下那个 `feishu` 域里只放着 4 个元工具（它们不发任何飞书请求）。
 
-这 242 是怎么来的？不是按 OpenAPI 资源「一资源一工具」切出来的——飞书开放平台光端点就有两千多个，这么切模型根本记不住。我们是**按高频工作流策展**的。
+这 331 是怎么来的？不是按 OpenAPI 资源「一资源一工具」切出来的——飞书开放平台光端点就有两千多个，这么切模型根本记不住。我们是**按高频工作流策展**的。
 
-举个具体例子。多维表格相关的接口有几十个，但模型真正要干的活其实就那几件：读记录、查字段、写记录、批量写入。那就给这几个；至于「查某个视图的筛选条件详情」这种接口，收起来。招聘模块更明显，OpenAPI 层面能拆出二十来个资源，我们最后收到按功能子域组织的几个工具就够用了。
+举个具体例子。多维表格最终落了 **28** 个工具：记录的查 / 按 ID 取 / 增 / 改 / 删 / 批量增改，再到表、字段、视图的元信息，外加表单、仪表盘、角色权限、自动化流程——凑起来正好够模型「把一张多维表格当业务库使」的完整来回。但它背后的 SDK 接口远不止这个数，重复的、只在后台配置里才用得上的、模型这辈子碰不到的，都收起来了。招聘模块更明显，OpenAPI 层面能拆出二十来个资源，我们最后收到按功能子域组织的 7 个工具就够了。
 
 每个工具身上挂的东西挺多的：
 
@@ -58,11 +58,11 @@ MudFeishu 本来是个挺规矩的 .NET 飞书 SDK。一千两百多个强类型
 装上去之后，整条调用栈自上而下叠成六层：
 
 1.  **宿主（Host）**——`AddFeishuOpenAIChatClient` 注册一个键控的模型客户端，`AddFeishuAgent` 一行把单例 `AIAgent` 注册进 DI；`FeishuWebSocket` / `FeishuWebhook` 是事件入口。
-2.  **Agent 应用层（`Mud.Feishu.AI`，产品侧）**——`FeishuAgent` 继承产品化的 `ObservedDelegatingAgent`（MAF `DelegatingAIAgent` 的派生），内层组合 `ChatClientAgent` 负责「模型→生成」；本层负责会话解析、选项装配与飞书侧遥测注入，`FeishuAgentOptions` 启动期 `ValidateOnStart`，`IConversationGate` 保证同键串行。
+2.  **Agent 应用层（`Mud.Feishu.AI`，产品侧）**——`FeishuAgent` 继承中立层的 `ObservedDelegatingAgent`（MAF `DelegatingAIAgent` 的派生，把运行期编织固化下来），内层组合 `ChatClientAgent` 负责「模型→生成」；本层负责会话解析、选项装配与飞书侧遥测注入，`FeishuAgentOptions` 启动期 `ValidateOnStart`，`IConversationGate` 保证同键串行。
 3.  **编排管线（`Microsoft.Agents.AI` + MEAI）**——MEAI 的 `FunctionInvokingChatClient` 负责自动 Function Call，并用调用预算把它框住（默认单轮最多 10 次工具调用）；MAF 的 `ApprovalResponseBindingChatClient` 把「写操作的人工确认」和原始请求配对，这是 HITL 能成立的关键，后面单独讲。最底下经 `IChatClient`（`AsIChatClient()`）对接任意 OpenAI-compatible 端点，换个 `modelId` 和端点即可。
-4.  **工具面（`Mud.Feishu.AI.Tools`，编译期生成）**——242 个策展工具，每个都带强类型 Schema，全程零反射。
-5.  **中立运行时（`Mud.AI.Agent` + `Mud.AI.Abstractions`，中立侧）**——11 阶段的回合状态机 `ConversationalTurnPipeline`、会话自愈存储 `AgentSessionStore`、token 计量与域 `GuidanceComposer`。这一层刻意不含任何飞书字面量，只经端口与产品侧协作。
-6.  **核心 SDK 底座（`Mud.Feishu` + `Mud.HttpUtils`）**——242 个工具最终落到 `Mud.Feishu` 的 1268 个强类型方法上，HTTP 传输走 `Mud.HttpUtils`。
+4.  **工具面（`Mud.Feishu.AI.Tools`，编译期生成）**——331 个策展工具，每个都带强类型 Schema，全程零反射。
+5.  **中立运行时（`Mud.AI.Agent` + `Mud.AI.Abstractions`，中立侧）**——11 阶段的回合状态机 `ConversationalTurnPipeline`、会话自愈存储 `AgentSessionStore`、token 计量与域 `GuidanceComposer`。这一层刻意不含任何飞书字面量，只经端口与产品侧协作；它本身也是独立成包、独立发版的，跟飞书这套的版本线各走各的。
+6.  **核心 SDK 底座（`Mud.Feishu` + `Mud.HttpUtils`）**——331 个工具最终落到 `Mud.Feishu` 的 1268 个强类型方法上，HTTP 传输走 `Mud.HttpUtils`。
 
 ![技术架构](images/05-arch.png)
 
@@ -177,7 +177,7 @@ Agent harness 当外部消费者，三层渐进披露（发现列表只带 descr
 |  | 飞书官方 CLI | [Mud.Feishu.AI](http://Mud.Feishu.AI) |
 | --- | --- | --- |
 | 交互对象 | 人 · 运维脚本 | 大模型 · Agent 主循环 |
-| 能力面 | 可直发任意开放平台端点 | 242 个编译期策展工具，**无通用裸 api** |
+| 能力面 | 可直发任意开放平台端点 | 331 个编译期策展工具，**无通用裸 api** |
 | 凭证 · 租户 | 本地凭证 · 人工运维 | 多租户进程内隔离 · 令牌全生命周期托管 |
 | 写操作确认 | 人工执行即视为确认 | HITL 审批绑定 · 执行链 fail-closed |
 | 契约约束 | 运行时解释，无编译期契约 | `source` 交叉校验（MUDFT019）· 禁与 SDK 脱钩 |
@@ -205,7 +205,7 @@ dotnet add package Mud.Feishu.AI.Mcp   # 需要给进程外 Agent 用时再加
 
 前面讲的都是设计，这节把一条真实链路从头走到尾：把多维表格里状态为「待办」的记录捞出来，处理完再改回「已完成」。挑这个场景，是因为它一个来回就把「读」「写」「人工确认」三件事都串上了。
 
-先把这 9 个多维表格工具的位置摆清楚：`list_tables`、`list_fields`、`list_views`、`get_view`、`query_records`、`get_records_by_ids` 只读；`add_record`、`update_record` 是普通写；`delete_record` 归 high-risk-write。
+多维表格域一共 28 个工具，这条链路只会用到其中的 9 个——先把这 9 个的位置摆清楚：`list_tables`、`list_fields`、`list_views`、`get_view`、`query_records`、`get_records_by_ids` 只读；`add_record`、`update_record` 是普通写；`delete_record` 归 high-risk-write。
 
 **第一步，把写工具点名启用。** 写工具默认关着，要用 `update_record`，得在装配时列名：
 
@@ -287,7 +287,7 @@ await agent.RunApprovalContinuationAsync(
 -   **`idempotency_key`**：写操作都带。同一个键重复提交只落一次、返回同一条记录。给个稳定值（比如「单据号+动作」），别用随机数——批准重试、网络重发全靠它兜底。
 -   **`dry_run`**：开上它，工具只回「将要下发的 `PUT /…/records/{record_id}` 和请求体字段摘要」，不真调下游。拿不准时先预演，比改完再回滚便宜。
 
-把这条链拉直了看，每一步都有它的用处：`WriteAllowList` 让删记录从源头不可能；「先 `query_records` 拿 `record_id` 再写」是 affordance 里写死的顺序；审批绑定让「同意」没法被模型自己伪造；`idempotency_key` 兜住重试。读是查出来的，写是点过头的，每一格也都留了痕——这就是 242 个工具在真实业务里跑起来的样子。
+把这条链拉直了看，每一步都有它的用处：`WriteAllowList` 让删记录从源头不可能；「先 `query_records` 拿 `record_id` 再写」是 affordance 里写死的顺序；审批绑定让「同意」没法被模型自己伪造；`idempotency_key` 兜住重试。读是查出来的，写是点过头的，每一格也都留了痕——这就是 331 个工具在真实业务里跑起来的样子。
 
 ## 我们没做的事
 
@@ -296,7 +296,7 @@ await agent.RunApprovalContinuationAsync(
 -   **没有通用裸 `api` 工具**。如上所说，是故意的。想要「什么都能调」的灵活性，这个包不提供。
 -   **写工具默认关着，授权要宿主自己实现**。`IToolExecutionAuthorizer` 只给了契约，SDK 不带现成的审批 UI、也不带租户级鉴权实现。这些是宿主业务的事。
 -   **Skills 产物还没有仓外使用者**。目前只是把域知识导出成标准形态，方便外部 Agent 接。
--   **工具数一律以 `FeishuToolSchemas.golden.txt` 为准**。它是生成产物，别手改；文档里的数字对不上时也以它为准（当前 242：142 读 + 100 写）。这篇文里的数字都按 golden 文件校准过。
+-   **工具数一律以 `FeishuToolSchemas.golden.txt` 为准**。它是生成产物，别手改；文档里的数字对不上时也以它为准（当前 331：171 只读 + 160 写类）。这篇文里的数字都按 golden 文件校准过。
 -   **它不解决「模型靠不靠谱」**。工具面再整齐、执行链再严，也只是把「模型出错时的损失」控制在一个可接受范围里。它管的是安全边界，不是模型质量。
 
 ## 结语

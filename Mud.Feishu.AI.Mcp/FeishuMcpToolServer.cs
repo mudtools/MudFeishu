@@ -201,7 +201,9 @@ public sealed class FeishuMcpToolServer
                     return isNotification ? null : ResultEnvelope(id, new JsonObject());
 
                 case McpProtocol.MethodToolsList:
-                    return isNotification ? null : ResultEnvelope(id, BuildToolsListResult());
+                    return isNotification
+                        ? null
+                        : ResultEnvelope(id, BuildToolsListResult(parameters?["cursor"]?.GetValue<string>()));
 
                 case McpProtocol.MethodToolsCall:
                     return isNotification ? null : await CallToolAsync(id!, parameters, session, cancellationToken).ConfigureAwait(false);
@@ -255,11 +257,32 @@ public sealed class FeishuMcpToolServer
     private JsonObject BuildInitializeResult(JsonObject? parameters)
     {
         var requested = parameters?["protocolVersion"]?.GetValue<string>();
+
+
+        var clientInfo = parameters?["clientInfo"] as JsonObject;
+        var clientName = clientInfo?["name"]?.GetValue<string>();
+        var clientVersion = clientInfo?["version"]?.GetValue<string>();
+
+
+        var clientCapabilities = parameters?["capabilities"] as JsonObject;
+        var clientSupportsResources = clientCapabilities is null
+            || clientCapabilities["resources"] is JsonObject;
+
+        if (!string.IsNullOrWhiteSpace(clientName))
+        {
+            _logger?.LogInformation(
+                "MCP 客户端握手：name={Name} version={Version} protocol={Protocol} clientSupportsResources={Resources}",
+                clientName,
+                clientVersion,
+                McpProtocol.Negotiate(requested),
+                clientSupportsResources);
+        }
+
         var result = new JsonObject
         {
             // 版本协商：闭集内回显，闭集外回落本服务默认版本（见 McpProtocol 的注释）。
             ["protocolVersion"] = McpProtocol.Negotiate(requested),
-            ["capabilities"] = BuildCapabilities(),
+            ["capabilities"] = BuildCapabilities(clientSupportsResources),
             ["serverInfo"] = new JsonObject
             {
                 ["name"] = _options.ServerName,
@@ -298,14 +321,17 @@ public sealed class FeishuMcpToolServer
     /// 探测结果必须与客户端随后能调到的东西一致，否则自描述就成了第二个真相源。
     /// </para>
     /// </remarks>
-    private JsonObject BuildCapabilities()
+    /// <param name="clientSupportsResources">
+    /// 客户端是否声明了 <c>resources</c> 能力（R-7/E 自适应：客户端不支持时不声明，避免其 UI 出现永远为空的资源面板）。
+    /// </param>
+    private JsonObject BuildCapabilities(bool clientSupportsResources)
     {
         var capabilities = new JsonObject
         {
             ["tools"] = new JsonObject { ["listChanged"] = false },
         };
 
-        if (_resources is { Resources.Count: > 0 })
+        if (_resources is { Resources.Count: > 0 } && clientSupportsResources)
         {
             capabilities["resources"] = new JsonObject { ["listChanged"] = false };
         }
@@ -413,11 +439,18 @@ public sealed class FeishuMcpToolServer
         return ResultEnvelope(id, new JsonObject { ["contents"] = contents });
     }
 
-    private JsonObject BuildToolsListResult()
+    /// <summary><c>tools/list</c> 结果（可选分页；默认关闭时全量返回）。</summary>
+    /// <param name="cursor">上页返回的 <c>nextCursor</c>（空 = 首页）。</param>
+    private JsonObject BuildToolsListResult(string? cursor)
     {
+        var start = ResolveToolsCursor(cursor);
+        var pageSize = _options.EnableToolsPagination ? Math.Max(1, _options.ToolsPageSize) : _tools.Count;
+        var end = Math.Min(start + pageSize, _tools.Count);
+
         var tools = new JsonArray();
-        foreach (var info in _tools)
+        for (var index = start; index < end; index++)
         {
+            var info = _tools[index];
             tools.AddNode(new JsonObject
             {
                 ["name"] = info.Name,
@@ -436,7 +469,28 @@ public sealed class FeishuMcpToolServer
             });
         }
 
-        return new JsonObject { ["tools"] = tools };
+        var result = new JsonObject { ["tools"] = tools };
+
+        // nextCursor 缺席即"已列完"（协议约定）；仅在还有下一页时给出。
+        if (end < _tools.Count)
+        {
+            result["nextCursor"] = end.ToString(CultureInfo.InvariantCulture);
+        }
+
+        return result;
+    }
+
+    /// <summary>解析游标为起始索引（非法游标回落首页，让客户端自愈）。</summary>
+    private int ResolveToolsCursor(string? cursor)
+    {
+        if (!_options.EnableToolsPagination || string.IsNullOrEmpty(cursor))
+        {
+            return 0;
+        }
+
+        return int.TryParse(cursor, NumberStyles.Integer, CultureInfo.InvariantCulture, out var index) && index > 0
+            ? Math.Min(index, _tools.Count)
+            : 0;
     }
 
     private async Task<string> CallToolAsync(JsonNode id, JsonObject? parameters, FeishuMcpSession? session, CancellationToken cancellationToken)

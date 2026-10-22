@@ -10,6 +10,7 @@ using System.Globalization;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
+using Mud.AI.Agent.Approvals;
 using Mud.Feishu.AI.Agents;
 using Mud.Feishu.AI.Channels;
 using Mud.Feishu.AI.AgentTools;
@@ -98,6 +99,7 @@ internal sealed class AgentConsoleLoop
     private readonly InMemoryAuditSink _auditSink;
     private readonly FeishuToolRegistry _registry;
     private readonly ScenarioBook _scenarioBook;
+    private readonly PendingApprovalState _pendingApprovalState;
     private readonly ILogger? _logger;
 
     private readonly string _conversationKey;
@@ -148,6 +150,7 @@ internal sealed class AgentConsoleLoop
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _agent = agent ?? throw new ArgumentNullException(nameof(agent));
+        _pendingApprovalState = new PendingApprovalState(_agent.HistoryStateKey);
         _toolContextAccessor = toolContextAccessor ?? throw new ArgumentNullException(nameof(toolContextAccessor));
         _conversationGate = conversationGate ?? throw new ArgumentNullException(nameof(conversationGate));
         _conversationStore = conversationStore ?? throw new ArgumentNullException(nameof(conversationStore));
@@ -799,6 +802,17 @@ internal sealed class AgentConsoleLoop
         {
             var session = await _agent.GetOrCreateSessionAsync(_conversationKey, cancellationToken).ConfigureAwait(false);
 
+            // R5-12 自愈：流式路径不经事件层，历史中残留的孤儿审批请求会让 MEAI 配对校验直接抛错。
+            // RunTurnAsync 仅在 _approvalState 为空时可达（挂起态被主循环守卫阻断），
+            // 故历史中的孤儿必然是通道未通知的（前序轮次遗留）——摘除安全，模型会按需重新发起。
+            var stripped = _pendingApprovalState.Abandon(session);
+            if (stripped > 0)
+            {
+                _renderer.Notice(
+                    NoticeLevel.Warn,
+                    $"已摘除 {stripped} 个残留的未应答审批请求（会话自愈）——请重新发起写操作。");
+            }
+
             // 工具执行上下文沿异步流注入（多租户隔离的事实来源）；审批续跑轮由 SDK 另行重建。
             using var toolScope = _toolContextAccessor.Begin(new FeishuToolContext(
                 _settings.AppKey,
@@ -825,6 +839,10 @@ internal sealed class AgentConsoleLoop
                     outputTokens = details.OutputTokenCount ?? outputTokens;
                 }
             }
+
+            // R5-12 收口：流式路径不经事件层，Demo 自行把框架产出的审批请求投影给宿主通道
+            // （等价于 ConversationalTurnPipeline 的 NotifyAsync 调用点）。
+            await NotifyPendingApprovalsAsync(session, cancellationToken).ConfigureAwait(false);
 
             await _agent.SaveSessionAsync(_conversationKey, session, cancellationToken).ConfigureAwait(false);
             succeeded = true;
@@ -865,6 +883,29 @@ internal sealed class AgentConsoleLoop
         _renderer.Trace(
             $"usage in={inputTokens} out={outputTokens}，本轮 {stopwatch.ElapsedMilliseconds}ms，"
             + $"pending={_approvalState.Count}，ok={succeeded}");
+    }
+
+    /// <summary>
+    /// 把本轮模型产出的审批请求投影给宿主批准通道（R5-12 收口：流式路径不经事件层）。
+    /// </summary>
+    private async Task NotifyPendingApprovalsAsync(AgentSession session, CancellationToken cancellationToken)
+    {
+        if (!session.TryGetInMemoryChatHistory(out var history, _agent.HistoryStateKey, null)
+            || history is null)
+        {
+            return;
+        }
+
+        var pending = ApprovalRequestProjector.FromMessages(
+            history, _settings.AppKey, _conversationKey, LocalChatId, _settings.UserId);
+
+        if (pending.Count == 0)
+        {
+            return;
+        }
+
+        await ApprovalRequestProjector.NotifyAsync(
+            _approvalChannel, store: null, _logger, pending, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>把一次非流式响应按流式通道渲染（审批续跑轮走此路径）。</summary>

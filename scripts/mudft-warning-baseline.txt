@@ -45,7 +45,7 @@
 #   Get-MudftOutputSchemaTruncatedToolCount）。
 
 009=8
-009-tools=99
+009-tools=108
 021=0
 031=0
 
@@ -132,4 +132,25 @@
 #       未触发截断。被测树：T-2 前 HEAD(246 工具)=92（T-1 第四次重测读数）；T-2(286 工具)=99。
 #   协议同前（Release + --no-incremental 全量构建）；8 次编译同值 99，取 Maximum；构建 0 错误。
 #   处置同前：基线随合法规模增长重测 + 登记归因，**不抬** MaxOutputDepth（那是独立设计决策）。
+#
+# ── 2026-10-19 第六次重测（T-2 批登记遗漏补账 + 会议/审批/知识库批零增量）────────
+#   009-tools: 99 → **108**（+9）。这 +9 不是新批次增长，而是**第五次登记的遗漏补账**：
+#     · 对账（golden 截断标记逐条扫描，可复算）：4d78115c(246 工具/标记 103) →
+#       c70175f4(319/121) 新增标记命中 **18** 个；第五次只入账 7 个（另排除 2 个
+#       非截断命中：bitable.record_batch_create / record_batch_update 的 fields:{}，
+#       与第五次②一致）——遗漏的 9 个点名如下（标记均在 output_schema 区，已逐个核对）：
+#       mail.create_draft / mail.update_draft / mail.rule_create / mail.rule_list /
+#       task.remove_reminder / task.reopen / task.set_reminder / task.tasklist_page_list /
+#       task.tasklist_tasks（邮件草稿/规则与任务提醒/清单的返回 DTO 嵌套超深）。
+#     · 遗漏成因（第五次自述与其提交树的实测不符）：其登记文本的规模数「工具面 246 → 286」
+#       与 c70175f4 提交树的 golden 实测（246 → **319**）不一致，读数 99 应取自批内
+#       286 工具的中间态；「其余 33 个新工具逐个核过未触发截断」的结论对上述 9 个不成立。
+#       与 41 → 68、68 → 81 两次同源：存量漂移补登记，不是放宽门禁。
+#     · a695f8d4 批（319 → 331：会议机器人/审批收尾/知识库空间成员 12 个新工具）**零增量**：
+#       截断标记集合 c70175f4 → HEAD 无变化（12 个新工具返回 DTO 均在深度上限内，
+#       approval.cancel_instance / approval.cc_instance 无 output_schema）。
+#     · 三方对账闭合：92（T-1）+ 7（第五次）+ 9（本次补账）= **108** = 实测。
+#   实测（协议同前）：dotnet build Mud.Feishu.AI.Tools/Mud.Feishu.AI.Tools.csproj
+#   -c Release --no-incremental，4 个 TFM 同值 108；CI（ubuntu 全量构建）同读数 108。
+#   处置同前：补登记 + 重测基线，**不抬** MaxOutputDepth。
 

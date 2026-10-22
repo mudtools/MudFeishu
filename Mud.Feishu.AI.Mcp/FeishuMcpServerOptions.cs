@@ -109,6 +109,15 @@ public sealed class FeishuMcpServerOptions
     /// <summary>Streamable HTTP 传输配置（<c>FeishuMcp:Http</c> 节；判据与理由见 <see cref="FeishuMcpHttpOptions"/>）。</summary>
     public FeishuMcpHttpOptions Http { get; set; } = new();
 
+    /// <summary>是否启用 <c>tools/list</c> 分页（默认 false——不传 cursor 的客户端静默少工具比报错更危险）。</summary>
+    public bool EnableToolsPagination { get; set; }
+
+    /// <summary>分页每页工具数（默认 50；仅 <see cref="EnableToolsPagination"/> 为 true 时生效）。</summary>
+    public int ToolsPageSize { get; set; } = 50;
+
+    /// <summary>单条请求的最大字节数（默认 1 MiB）；超限回 <c>-32600</c> 并继续（不断连）。</summary>
+    public int MaxRequestBytes { get; set; } = 1_048_576;
+
     /// <summary>
     /// 校验配置；非法即抛（装配期/启动期 fail-fast，不留到运行期）。
     /// </summary>
@@ -138,5 +147,18 @@ public sealed class FeishuMcpServerOptions
         }
 
         Http.Validate();
+
+        if (ToolsPageSize < 1)
+        {
+            throw new InvalidOperationException(
+                $"{SectionName}:{nameof(ToolsPageSize)} 必须 >= 1（当前 {ToolsPageSize}）");
+        }
+
+        if (MaxRequestBytes < 1024)
+        {
+            throw new InvalidOperationException(
+                $"{SectionName}:{nameof(MaxRequestBytes)} 至少 1024 字节（当前 {MaxRequestBytes}）");
+        }
+
     }
 }

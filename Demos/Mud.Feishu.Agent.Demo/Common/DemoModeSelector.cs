@@ -5,8 +5,8 @@
 //  不得利用本项目从事危害国家安全、扰乱社会秩序、侵犯他人合法权益等法律法规禁止的活动！任何基于本项目开发而产生的一切法律纠纷和责任，我们不承担任何责任！
 // -----------------------------------------------------------------------
 
-using System.Globalization;
 using Microsoft.Extensions.Configuration;
+using System.Globalization;
 
 namespace Mud.Feishu.Agent.Demo;
 
@@ -202,7 +202,7 @@ internal static class DemoModeSelector
         var read = readLine ?? Console.ReadLine;
         while (true)
         {
-            renderer.InputPrompt($"模式 [1-{options.Count}]（回车 = {fallback.Id}）› ");
+            renderer.InputPrompt($"模式 [1-{options.Count}]（回车 = {fallback.Id}）> ");
             var input = read();
 
             // EOF（管道输入耗尽 / 终端被关闭）：与"非交互"同处置，不挂起等待。

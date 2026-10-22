@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -59,9 +59,10 @@ public class AffordanceContractGuards
     //      新域同样读写全覆盖（213 → 218；→ 102605 字符）。
     // S-4：workflow 两个只读编排工具各 1 份（218 → 220；→ 103662 字符）。
     // S-6 余项：docx.media_insert（write 级满覆盖要求）（220 → 221；→ 104370 字符）。
-    private const int ExpectedAssetCount = 221;
+    // T-4 工具面收敛：合并掉的 8 份资产改由 4 份合并资产覆盖（221 → 207；→ 100204 字符）。
+    private const int ExpectedAssetCount = 207;
 
-    private const int ExpectedTotalAssetCharacters = 104370;
+    private const int ExpectedTotalAssetCharacters = 100204;
 
     // B2 瘦身（测试体系治理，见《单元测试体系过度测试分析与解决方案》§三.5；该文档已迁 Mud.AI 仓）：
     // 与上游诊断**同一判定**的仓库侧副本已删除——

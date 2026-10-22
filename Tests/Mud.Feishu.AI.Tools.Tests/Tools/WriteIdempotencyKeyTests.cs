@@ -190,8 +190,8 @@ public class WriteIdempotencyKeyTests
         provided.Should().Contain("幂等键：provided", "预演必须显式回显幂等键状态（T4-1：预演不占坑）");
         provided.Should().NotContain("k1", "摘要不得回显幂等键原文（与 text/fields/form 同一不回原文纪律）");
 
-        var omitted = (await bitableTools.AddRecordAsync(
-            Args(("app_token", "bascnX"), ("table_id", "tblY"), ("fields", "{\"任务\":\"写周报\"}"), ("dry_run", true)),
+        var omitted = (await bitableTools.AddRecordsAsync(
+            Args(("app_token", "bascnX"), ("table_id", "tblY"), ("records", "[{\"fields\":{\"任务\":\"写周报\"}}]"), ("dry_run", true)),
             CancellationToken.None)).ToString()!;
         omitted.Should().Contain("幂等键：omitted", "省略幂等键时预演必须显式说明「不保证幂等」");
 

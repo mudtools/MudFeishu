@@ -49,7 +49,6 @@ public class DocxHistoryAndMediaToolsChainTests
             _docxClient.Object,
             _blocksClient.Object,
             new Mock<Mud.Feishu.IFeishuTenantV1DocxAnnouncement>().Object,
-            new Mock<Mud.Feishu.IFeishuTenantV1DriveFiles>().Object,
             _versionsClient.Object,
             Options.Create(AgentOptions()));
 

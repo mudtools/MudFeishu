@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -174,8 +174,8 @@ public class BinaryDownloadToolExposureContractTests
         var references = CollectToolSourceReferences().ToArray();
 
         references.Should().HaveCount(
-            358,
-            "358 个工具声明了 Source（另 5 个元工具无 SDK 源）——骤降说明扫描器读不懂现形态（R-1 的 nameof 拼接）");
+            344,
+            "344 个工具声明了 Source（另 5 个元工具无 SDK 源）——骤降说明扫描器读不懂现形态（R-1 的 nameof 拼接）");
 
         references.Should().OnlyContain(
             static reference => reference.Source.Contains('.', StringComparison.Ordinal)

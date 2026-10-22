@@ -177,7 +177,7 @@ public interface IFeishuTenantMinutesGetTranscriptTool
 /// 并在本地校验（段数、区间长度下限、RFC3339 带时区）后再下发。
 /// </remarks>
 [AgentTool("minutes.clip",
-    Description = "从已完成的妙记按时间段切出一段新妙记，返回新妙记链接。time_ranges 每行一段、格式「起始|结束」的 ISO 8601 带时区时间（如 2026-03-21T16:15:30+08:00|2026-03-21T16:25:00+08:00），1~50 段、每段须大于 1000 毫秒，重叠或相邻区间平台自动合并。⚠️ 异步生成：调用成功只表示已提交，转写与音视频在后台产出。用户身份工具：宿主须在 FeishuAgent:AllowedIdentities 放行 user。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 minutes:minutes.clip:write。",
+    Description = "从已完成的妙记按时间段切出一段新妙记，返回新妙记链接。time_ranges 每行一段、格式「起始|结束」的 ISO 8601 带时区时间（如 2026-03-21T16:15:30+08:00|2026-03-21T16:25:00+08:00），1~50 段、每段须大于 1000 毫秒，重叠或相邻区间平台自动合并。⚠️ 异步生成：调用成功只表示已提交，转写与音视频在后台产出。用户身份工具：宿主须在 FeishuAgent:AllowedIdentities 放行 user。写操作：需 minutes:minutes.clip:write。",
     RequiredScopes = ["minutes:minutes.clip:write"],
     IsWrite = true,
     Source = nameof(IFeishuUserV1MinutesMinute) + "." + nameof(IFeishuUserV1MinutesMinute.ClipMinuteAsync))]
@@ -201,7 +201,7 @@ public interface IFeishuUserMinutesClipTool
 /// 的同一纪律：模型手里只有 token/路径，二进制由宿主侧通道进入云盘）。
 /// </remarks>
 [AgentTool("minutes.upload",
-    Description = "把云盘上的音视频文件导入生成妙记，返回新妙记链接。file_token 是云盘文件 token（需当前用户对该文件有下载权限）。支持音频 wav/mp3/m4a/aac/ogg/wma/amr、视频 avi/wmv/mov/mp4/m4v/mpeg/ogg/flv；时长 ≤6 小时、文件 ≤6GB。本工具只接受 file_token，不搬运字节。用户身份工具：宿主须在 FeishuAgent:AllowedIdentities 放行 user。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 minutes:minutes.upload:write。",
+    Description = "把云盘上的音视频文件导入生成妙记，返回新妙记链接。file_token 是云盘文件 token（需当前用户对该文件有下载权限）。支持音频 wav/mp3/m4a/aac/ogg/wma/amr、视频 avi/wmv/mov/mp4/m4v/mpeg/ogg/flv；时长 ≤6 小时、文件 ≤6GB。本工具只接受 file_token，不搬运字节。用户身份工具：宿主须在 FeishuAgent:AllowedIdentities 放行 user。写操作：需 minutes:minutes.upload:write。",
     RequiredScopes = ["minutes:minutes.upload:write"],
     IsWrite = true,
     Source = nameof(IFeishuUserV1MinutesMinute) + "." + nameof(IFeishuUserV1MinutesMinute.UploadMinuteAsync))]
@@ -224,7 +224,7 @@ public interface IFeishuUserMinutesUploadTool
 /// 平台侧的订阅集合是幂等的（重复订阅不产生第二条订阅关系）。
 /// </remarks>
 [AgentTool("minutes.subscribe",
-    Description = "订阅妙记变更事件（当前 event_type 闭集只有 minutes.minute.generated_v1 = 妙记生成事件），订阅后该用户新产生的妙记会以事件回调推给应用。用户身份工具：宿主须在 FeishuAgent:AllowedIdentities 放行 user，且事件通道已接入（WebSocket/Webhook）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 minutes:minutes.basic:read。",
+    Description = "订阅妙记变更事件（当前 event_type 闭集只有 minutes.minute.generated_v1 = 妙记生成事件），订阅后该用户新产生的妙记会以事件回调推给应用。用户身份工具：宿主须在 FeishuAgent:AllowedIdentities 放行 user，且事件通道已接入（WebSocket/Webhook）。写操作：需 minutes:minutes.basic:read。",
     RequiredScopes = ["minutes:minutes.basic:read"],
     IsWrite = true,
     Source = nameof(IFeishuUserV1MinutesMinute) + "." + nameof(IFeishuUserV1MinutesMinute.SubscribeMinuteAsync))]
@@ -245,7 +245,7 @@ public interface IFeishuUserMinutesSubscribeTool
 /// 与 subscribe 成对出现是"写面成环"纪律：只给订阅不给退订，用户无法收回事件授权。
 /// </remarks>
 [AgentTool("minutes.unsubscribe",
-    Description = "取消订阅妙记变更事件（与 minutes.subscribe 成对；取消后该用户的妙记生成事件不再推给应用）。用户身份工具：宿主须在 FeishuAgent:AllowedIdentities 放行 user。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 minutes:minutes.basic:read。",
+    Description = "取消订阅妙记变更事件（与 minutes.subscribe 成对；取消后该用户的妙记生成事件不再推给应用）。用户身份工具：宿主须在 FeishuAgent:AllowedIdentities 放行 user。写操作：需 minutes:minutes.basic:read。",
     RequiredScopes = ["minutes:minutes.basic:read"],
     IsWrite = true,
     Source = nameof(IFeishuUserV1MinutesMinute) + "." + nameof(IFeishuUserV1MinutesMinute.UnsubscribeMinuteAsync))]

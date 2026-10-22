@@ -9,7 +9,7 @@ using Mud.Feishu.AI.CapabilityDemo.Host;
 
 namespace Mud.Feishu.AI.CapabilityDemo.SelfCheck;
 
-/// <summary>组 4：工具面（三源一致、bitable 28、风险/idempotency 事实）。</summary>
+/// <summary>组 4：工具面（三源一致、bitable 25、风险/idempotency 事实）。</summary>
 internal static class ToolSurfaceChecks
 {
     public static IEnumerable<CheckResult> Run()
@@ -50,8 +50,8 @@ internal static class ToolSurfaceChecks
 
         var bitable = entries.Where(static e => e.Name.StartsWith("bitable.", StringComparison.Ordinal)).ToArray();
         yield return new CheckResult(
-            group, "bitable 28 枚", bitable.Length == 28,
-            "28", bitable.Length.ToString(CultureInfo.InvariantCulture));
+            group, "bitable 25 枚", bitable.Length == 25,
+            "25", bitable.Length.ToString(CultureInfo.InvariantCulture));
 
         var delete = catalog.Find("bitable.delete_record");
         yield return new CheckResult(
@@ -60,9 +60,9 @@ internal static class ToolSurfaceChecks
             FeishuToolRiskNames.HighRiskWrite,
             delete is null ? "（未注册）" : FeishuToolRiskNames.ToLiteral(delete.Risk));
 
-        var add = catalog.Find("bitable.add_record");
+        var add = catalog.Find("bitable.record_batch_create");
         yield return new CheckResult(
-            group, "add_record 有 idempotency_key",
+            group, "record_batch_create 有 idempotency_key",
             add is not null && HasParameter(add, "idempotency_key"));
 
         yield return new CheckResult(

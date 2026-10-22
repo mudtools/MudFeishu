@@ -27,7 +27,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 
 /// <summary>工具接口：im.send_message（映射 <c>IFeishuTenantV1Message.SendMessageAsync</c>）。</summary>
 [AgentTool("im.send_message",
-    Description = "发送文本消息到指定群聊或用户。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。首次面向陌生接收者时建议先以 dry_run=true 预演。",
+    Description = "发送文本消息到指定群聊或用户。写操作：需 im:message。首次面向陌生接收者时建议先以 dry_run=true 预演。",
     RequiredScopes = ["im:message:send_as_bot"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.SendMessageAsync))]
@@ -65,7 +65,7 @@ public interface IFeishuTenantImSendMessageTool
 /// </para>
 /// </remarks>
 [AgentTool("im.send_card",
-    Description = "发送一张交互式卡片（标题＋正文＋按钮），用于让对方一眼看到要点并能直接点按钮——比纯文本更适合通知、待办、审批提醒。⚠️ 用结构化语法描述内容，**不要写 JSON**：body 每行一个元素（text:内容 / quote:内容 / code:内容 / divider），buttons 每行一个按钮（按钮文本|url|链接 或 按钮文本|value|回调值）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。",
+    Description = "发送一张交互式卡片（标题＋正文＋按钮），用于让对方一眼看到要点并能直接点按钮——比纯文本更适合通知、待办、审批提醒。⚠️ 用结构化语法描述内容，**不要写 JSON**：body 每行一个元素（text:内容 / quote:内容 / code:内容 / divider），buttons 每行一个按钮（按钮文本|url|链接 或 按钮文本|value|回调值）。写操作：需 im:message。",
     RequiredScopes = ["im:message:send_as_bot"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.SendMessageAsync))]
@@ -89,7 +89,7 @@ public interface IFeishuTenantImSendCardTool
 /// <summary>工具接口：im.edit_message（映射 <c>IFeishuTenantV1Message.EditMessageAsync</c>）。</summary>
 /// <remarks>只能编辑本 Bot 发送的文本消息（平台限制）；PUT 整段覆盖天然幂等——重复提交相同内容结果一致。</remarks>
 [AgentTool("im.edit_message",
-    Description = "编辑本 Bot 已发送的文本消息内容（发错字时纠正，对方看到的消息被更新）。message_id 来自 im.send_message 的返回。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。",
+    Description = "编辑本 Bot 已发送的文本消息内容（发错字时纠正，对方看到的消息被更新）。message_id 来自 im.send_message 的返回。写操作：需 im:message。",
     RequiredScopes = ["im:message"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.EditMessageAsync))]
@@ -110,7 +110,7 @@ public interface IFeishuTenantImEditMessageTool
 /// 整卡覆盖语义（每次提交完整新卡片，不做局部 patch）。
 /// </remarks>
 [AgentTool("im.patch_card_message",
-    Description = "更新本 Bot 已发送的卡片消息内容（整卡覆盖）。⚠️ 用结构化语法描述内容，**不要写 JSON**：body 每行一个元素（text:内容 / quote:内容 / code:内容 / divider），buttons 每行一个按钮（按钮文本|url|链接 或 按钮文本|value|回调值）。message_id 来自 im.send_card 的返回。写操作：默认空名单不启用，需 im:message。",
+    Description = "更新本 Bot 已发送的卡片消息内容（整卡覆盖）。⚠️ 用结构化语法描述内容，**不要写 JSON**：body 每行一个元素（text:内容 / quote:内容 / code:内容 / divider），buttons 每行一个按钮（按钮文本|url|链接 或 按钮文本|value|回调值）。message_id 来自 im.send_card 的返回。写操作：需 im:message。",
     RequiredScopes = ["im:message"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.PatchMessageAsync))]
@@ -130,7 +130,7 @@ public interface IFeishuTenantImPatchCardMessageTool
 /// <summary>工具接口：im.urgent_app（映射 <c>IFeishuTenantV1Message.MessageUrgentAppAsync</c>）。</summary>
 /// <remarks>加急是<b>高打扰</b>动作（对方客户端强提醒）——描述中保留"确有需要时才用"的使用纪律；工具名不含 profile 危险词，故风险级别为普通写（非 high-risk-write）。</remarks>
 [AgentTool("im.urgent_app",
-    Description = "把一条已发送消息加急给指定用户（飞书客户端来弹窗强提醒）——适用于对方可能漏看的紧急场景。⚠️ 会打扰对方，仅在确有需要时使用。message_id 来自 im.send_message；user_ids 为对方 open_id 数组。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。",
+    Description = "把一条已发送消息加急给指定用户（飞书客户端来弹窗强提醒）——适用于对方可能漏看的紧急场景。⚠️ 会打扰对方，仅在确有需要时使用。message_id 来自 im.send_message；user_ids 为对方 open_id 数组。写操作：需 im:message。",
     RequiredScopes = ["im:message"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.MessageUrgentAppAsync))]
@@ -149,7 +149,7 @@ public interface IFeishuTenantImUrgentAppTool
 /// <summary>工具接口：im.urgent_sms（映射 <c>IFeishuTenantV1Message.MessageUrgentSMSAsync</c>）。</summary>
 /// <remarks>短信加急 = 飞书客户端通知 + 手机短信双通道，打扰强度高于 im.urgent_app。</remarks>
 [AgentTool("im.urgent_sms",
-    Description = "把一条已发送消息以短信加急给指定用户（飞书客户端通知＋手机短信双通道）——比 im.urgent_app 打扰更强，仅在对方可能长时间离线的紧急场景使用。message_id 来自 im.send_message；user_ids 为对方 open_id 数组。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。",
+    Description = "把一条已发送消息以短信加急给指定用户（飞书客户端通知＋手机短信双通道）——比 im.urgent_app 打扰更强，仅在对方可能长时间离线的紧急场景使用。message_id 来自 im.send_message；user_ids 为对方 open_id 数组。写操作：需 im:message。",
     RequiredScopes = ["im:message"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.MessageUrgentSMSAsync))]
@@ -174,7 +174,7 @@ public interface IFeishuTenantImUrgentSmsTool
 /// 撤回错发的表情用 <c>im.delete_reaction</c>（需 reaction_id，即本工具的回执）。
 /// </remarks>
 [AgentTool("im.add_reaction",
-    Description = "给一条消息加一个表情回复（比发一条'收到👌'消息更轻的确认方式）。emoji_type 是表情名（如 SMILE / THUMBSUP / OK / HEART / DONE，完整清单见飞书「表情文案说明」）。⚠️ 平台**不去重**：同一表情调用两次会叠成两条——一次只调一次，撤回用 im.delete_reaction。reaction_id 在本工具回执里。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。",
+    Description = "给一条消息加一个表情回复（比发一条'收到👌'消息更轻的确认方式）。emoji_type 是表情名（如 SMILE / THUMBSUP / OK / HEART / DONE，完整清单见飞书「表情文案说明」）。⚠️ 平台**不去重**：同一表情调用两次会叠成两条——一次只调一次，撤回用 im.delete_reaction。reaction_id 在本工具回执里。写操作：需 im:message。",
     RequiredScopes = ["im:message"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.AddMessageReactionsAsync))]
@@ -196,7 +196,7 @@ public interface IFeishuTenantImAddReactionTool
 /// 动词命中 profile 危险词表 ⇒ 风险级别 high-risk-write（须配 affordance 资产）。
 /// </remarks>
 [AgentTool("im.delete_reaction",
-    Description = "撤回**一个**表情回复实例（按 reaction_id 精确删除，只影响这一次回复，不影响同一表情上其他人的回复）。reaction_id 来自 im.add_reaction 的回执，或 im.list_reactions / im.batch_query_reactions（with_details=true）的明细。⚠️ 撤回后无法恢复，只能重新 im.add_reaction。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。建议先 dry_run 预演确认。",
+    Description = "撤回**一个**表情回复实例（按 reaction_id 精确删除，只影响这一次回复，不影响同一表情上其他人的回复）。reaction_id 来自 im.add_reaction 的回执，或 im.list_reactions / im.batch_query_reactions（with_details=true）的明细。⚠️ 撤回后无法恢复，只能重新 im.add_reaction。高危写（high-risk-write）：需 im:message。建议先 dry_run 预演确认。",
     RequiredScopes = ["im:message"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.DeleteMessageReactionsAsync))]

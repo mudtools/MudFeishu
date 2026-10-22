@@ -98,7 +98,7 @@ public class ToolSourceConsistencyContractTests
         // 基线取值来自 golden 的权威口径（`source.sdk` 非空者 119 / 125，与声明面 Source 计数一致）。
         executorByInterface.Count.Should().Be(
             351,
-            "363 个工具必须都能反查到执行器（MUDFT022/023 已在构建期保证一一绑定）；此处骤降说明反查机制失效。"
+            "351 个工具必须都能反查到执行器（MUDFT022/023 已在构建期保证一一绑定）；此处骤降说明反查机制失效。"
             + "R-12：原 163 包含 feishu.api_call，该工具已整条删除；F-1：mdm + security + org + contact + hire 共 20 工具（162 → 182）；"
             + "专题一 B1 五域 + B2 补全：lingo 6 只读 + 5 写 + application 7 只读 + 2 写 + helpdesk 6 只读 + 4 写"
             + " + chatgroup 4 只读 + 12 写 + trustparty 8 只读 + 3 写 + aily 3 只读（182 → 242）；"

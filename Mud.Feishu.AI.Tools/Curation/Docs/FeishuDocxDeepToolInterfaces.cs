@@ -50,7 +50,7 @@ public interface IFeishuTenantDocxGetBlockTool
 
 /// <summary>工具接口：docx.list_block_children（映射 <c>IFeishuTenantV1DocxBlocks.GetChildrenBlocksPageListAsync</c>）。</summary>
 [AgentTool("docx.list_block_children",
-    Description = "列出指定块的所有子块（分页）。block_id 缺省为文档根块（等同列出文档顶层块）。用于定位要修改的块。只读，需 docx:document:readonly。",
+    Description = "列出指定块的所有子块（分页）。block_id 缺省为文档根块（等同列出文档顶层块）。粒度=一层直接子块：要单块详情用 docx.get_block，要全篇扁平块用 docx.get_document_blocks。用于定位要修改的块。只读，需 docx:document:readonly。",
     RequiredScopes = ["docx:document:readonly"],
     Source = nameof(IFeishuTenantV1DocxBlocks) + "." + nameof(IFeishuTenantV1DocxBlocks.GetChildrenBlocksPageListAsync))]
 public interface IFeishuTenantDocxListBlockChildrenTool
@@ -95,7 +95,7 @@ public interface IFeishuTenantDocxHistoryListTool
 /// 用于创建<b>结构化子树</b>（块树 + 索引）。深层 JSON 结构由绑定层校验 <c>children_id</c> 引用完整性，非法引用 → <c>invalid_args</c>。
 /// </remarks>
 [AgentTool("docx.create_descendant_blocks",
-    Description = "在指定块下创建结构化子树（带父子关系的多层块）。descendants 为块数组（JSON），children_id 指定顶层子块顺序。⚠️ children_id 中的临时 ID 必须在 descendants 中有对应块，否则返回 invalid_args。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。",
+    Description = "在指定块下创建结构化子树（带父子关系的多层块）。descendants 为块数组（JSON），children_id 指定顶层子块顺序。⚠️ children_id 中的临时 ID 必须在 descendants 中有对应块，否则返回 invalid_args。写操作：需 docx:document。",
     RequiredScopes = ["docx:document"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1DocxBlocks) + "." + nameof(IFeishuTenantV1DocxBlocks.CreateDescendantBlockAsync))]
@@ -136,7 +136,7 @@ public interface IFeishuTenantDocxGetChatAnnouncementTool
 /// ⚠️ 公告是<b>全员可见</b>的广播面 → 走"敏感工具纪律"：描述中声明后果（结果全员可见），且默认空名单不启用。
 /// </remarks>
 [AgentTool("docx.set_chat_announcement",
-    Description = "批量更新群公告中块的文本内容。⚠️ 群公告是全员可见的广播面，更新后所有群成员将看到新内容。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。",
+    Description = "批量更新群公告中块的文本内容。⚠️ 群公告是全员可见的广播面，更新后所有群成员将看到新内容。写操作：需 docx:document。",
     RequiredScopes = ["docx:document"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1DocxAnnouncement) + "." + nameof(IFeishuTenantV1DocxAnnouncement.BatchUpdateChatAnnouncementBlocksAsync))]

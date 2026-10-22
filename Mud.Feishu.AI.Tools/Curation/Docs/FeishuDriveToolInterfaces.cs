@@ -68,7 +68,7 @@ public interface IFeishuTenantDriveListCommentsTool
 
 /// <summary>工具接口：drive.add_comment（映射 <c>IFeishuV1DriveComments.CreateFileCommentAsync</c>）。</summary>
 [AgentTool("drive.add_comment",
-    Description = "向云文档添加一条全文评论（不支持局部评论）。参数为 file_token + file_type + text，请求体由绑定层组装（模型零 JSON 串）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
+    Description = "向云文档添加一条全文评论（不支持局部评论）。参数为 file_token + file_type + text，请求体由绑定层组装（模型零 JSON 串）。写操作：需 drive:drive。",
     RequiredScopes = ["drive:drive"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1DriveComments) + "." + nameof(IFeishuV1DriveComments.CreateFileCommentAsync))]
@@ -86,7 +86,7 @@ public interface IFeishuTenantDriveAddCommentTool
 
 /// <summary>工具接口：drive.reply_comment（映射 <c>IFeishuV1DriveComments.CreateFileCommentReplyAsync</c>）。</summary>
 [AgentTool("drive.reply_comment",
-    Description = "回复指定评论（需 comment_id + text）。空文本会在下发前被拒绝。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
+    Description = "回复指定评论（需 comment_id + text）。空文本会在下发前被拒绝。写操作：需 drive:drive。",
     RequiredScopes = ["drive:drive"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1DriveComments) + "." + nameof(IFeishuV1DriveComments.CreateFileCommentReplyAsync))]
@@ -105,7 +105,7 @@ public interface IFeishuTenantDriveReplyCommentTool
 
 /// <summary>工具接口：drive.resolve_comment（映射 <c>IFeishuV1DriveComments.PatchFileCommentAsync</c>）。</summary>
 [AgentTool("drive.resolve_comment",
-    Description = "解决或恢复评论（is_solved 三态），不是删除——天然幂等。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
+    Description = "解决或恢复评论（is_solved 三态），不是删除——天然幂等。写操作：需 drive:drive。",
     RequiredScopes = ["drive:drive"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1DriveComments) + "." + nameof(IFeishuV1DriveComments.PatchFileCommentAsync))]
@@ -151,7 +151,7 @@ public interface IFeishuTenantDriveGetPermissionPublicTool
 
 /// <summary>工具接口：drive.update_permission_public（映射 <c>IFeishuV1DrivePermissions.UpdatePermissionPublicAsync</c>）。</summary>
 [AgentTool("drive.update_permission_public",
-    Description = "更新云文档的公开链接权限设置。⚠️ 此操作可能使文档对组织外可见——请先 drive.get_permission_public 确认当前设置，并优先使用 dry_run 预演。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
+    Description = "更新云文档的公开链接权限设置。⚠️ 此操作可能使文档对组织外可见——请先 drive.get_permission_public 确认当前设置，并优先使用 dry_run 预演。写操作：需 drive:drive。",
     RequiredScopes = ["drive:drive"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1DrivePermissions) + "." + nameof(IFeishuV1DrivePermissions.UpdatePermissionPublicAsync))]
@@ -177,7 +177,7 @@ public interface IFeishuTenantDriveUpdatePermissionPublicTool
 /// 模型不需要先判断"该人是否已有权限"，也不需要记住两张工具名。
 /// </remarks>
 [AgentTool("drive.set_permission",
-    Description = "设置某个协作者对云文档的权限档位（view/edit/full_access）——对方尚无权限则新增，已有则改为新档位，模型无需先查。member_type 取 email/openid/openchat/opendepartmentid/userid/unionid/groupid。⚠️ 此操作可扩大数据可达范围，建议先 dry_run 预演确认。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
+    Description = "设置某个协作者对云文档的权限档位（view/edit/full_access）——对方尚无权限则新增，已有则改为新档位，模型无需先查。member_type 取 email/openid/openchat/opendepartmentid/userid/unionid/groupid。⚠️ 此操作可扩大数据可达范围，建议先 dry_run 预演确认。写操作：需 drive:drive。",
     RequiredScopes = ["drive:drive"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1DrivePermissions) + "." + nameof(IFeishuV1DrivePermissions.CreatePermissionMemberAsync))]
@@ -197,7 +197,7 @@ public interface IFeishuTenantDriveSetPermissionTool
 
 /// <summary>工具接口：drive.remove_permission（映射 <c>IFeishuV1DrivePermissions.DeletePermissionMemberAsync</c>）。</summary>
 [AgentTool("drive.remove_permission",
-    Description = "删除指定协作者的权限（删除天然幂等）。建议先 dry_run 预演确认。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
+    Description = "删除指定协作者的权限（删除天然幂等）。建议先 dry_run 预演确认。写操作：需 drive:drive。",
     RequiredScopes = ["drive:drive"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1DrivePermissions) + "." + nameof(IFeishuV1DrivePermissions.DeletePermissionMemberAsync))]
@@ -215,7 +215,7 @@ public interface IFeishuTenantDriveRemovePermissionTool
 
 /// <summary>工具接口：drive.transfer_owner（映射 <c>IFeishuV1DrivePermissions.TransferOwnerPermissionMemberAsync</c>）。</summary>
 [AgentTool("drive.transfer_owner",
-    Description = "转移云文档所有者（不可逆！转移后原所有者降为编辑者）。必须过授权器。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。建议先 dry_run 预演确认。",
+    Description = "转移云文档所有者（不可逆！转移后原所有者降为编辑者）。必须过授权器。写操作：需 drive:drive。建议先 dry_run 预演确认。",
     RequiredScopes = ["drive:drive"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1DrivePermissions) + "." + nameof(IFeishuV1DrivePermissions.TransferOwnerPermissionMemberAsync))]

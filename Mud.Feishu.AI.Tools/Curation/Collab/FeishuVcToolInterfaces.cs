@@ -165,7 +165,7 @@ public interface IFeishuTenantVcListRoomsTool
 
 /// <summary>工具接口：vc.set_host（映射 <c>IFeishuTenantV1VideoConferencingMeeting.SetHostMeetingAsync</c>）。</summary>
 [AgentTool("vc.set_host",
-    Description = "把进行中会议的主持人改设为指定用户（会中管理动作，立即生效）。host_user_id 为该用户的 open_id（先用 contact.resolve_user / contact.search_user 解析）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 vc:meeting。建议先 dry_run 预演确认目标会议与用户。",
+    Description = "把进行中会议的主持人改设为指定用户（会中管理动作，立即生效）。host_user_id 为该用户的 open_id（先用 contact.resolve_user / contact.search_user 解析）。写操作：需 vc:meeting。建议先 dry_run 预演确认目标会议与用户。",
     RequiredScopes = ["vc:meeting"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1VideoConferencingMeeting) + "." + nameof(IFeishuTenantV1VideoConferencingMeeting.SetHostMeetingAsync))]
@@ -186,7 +186,7 @@ public interface IFeishuTenantVcSetHostTool
 /// 宿主须在 `FeishuAgent:AllowedIdentities` 放行 `user`，否则装配期 fail-fast。
 /// </remarks>
 [AgentTool("vc.invite_participants",
-    Description = "邀请用户加入进行中的会议（一次性最多 10 人，返回每人邀请是否成功）。invitee_ids 为 open_id 列表（先用 contact 解析）。**用户身份工具**：宿主须在 FeishuAgent:AllowedIdentities 放行 user，否则启动即报错。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 vc:meeting。建议先 dry_run 预演确认会议与人员。",
+    Description = "邀请用户加入进行中的会议（一次性最多 10 人，返回每人邀请是否成功）。invitee_ids 为 open_id 列表（先用 contact 解析）。**用户身份工具**：宿主须在 FeishuAgent:AllowedIdentities 放行 user，否则启动即报错。写操作：需 vc:meeting。建议先 dry_run 预演确认会议与人员。",
     RequiredScopes = ["vc:meeting"],
     IsWrite = true,
     Source = nameof(IFeishuUserV1VideoConferencingMeeting) + "." + nameof(IFeishuUserV1VideoConferencingMeeting.InviteMeetingAsync))]
@@ -209,7 +209,7 @@ public interface IFeishuUserVcInviteParticipantsTool
 /// 安全闸由 L1 guidance 的"写工具一律先预演"承担（`vc.md`）。
 /// </remarks>
 [AgentTool("vc.end_meeting",
-    Description = "结束一个进行中的会议（对所有参会人立即生效，不可逆——你会把所有人移出会议）。**用户身份工具**：宿主须在 FeishuAgent:AllowedIdentities 放行 user。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 vc:meeting。**务必先 dry_run=true 预演并与用户确认会议号**。",
+    Description = "结束一个进行中的会议（对所有参会人立即生效，不可逆——你会把所有人移出会议）。**用户身份工具**：宿主须在 FeishuAgent:AllowedIdentities 放行 user。写操作：需 vc:meeting。**务必先 dry_run=true 预演并与用户确认会议号**。",
     RequiredScopes = ["vc:meeting"],
     IsWrite = true,
     Source = nameof(IFeishuUserV1VideoConferencingMeeting) + "." + nameof(IFeishuUserV1VideoConferencingMeeting.EndMeetingAsync))]
@@ -227,7 +227,7 @@ public interface IFeishuUserVcEndMeetingTool
 /// <c>high-risk-write</c> 由 profile 的危险词（<c>delete</c>）在编译期判定，非人工标注。
 /// </remarks>
 [AgentTool("vc.delete_reserve",
-    Description = "删除一个预约（Reserve）——预约对应的会议号随即失效且不可恢复。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 vc:reserve。**务必先 dry_run=true 预演（用 vc.get_reserve 确认对象）**。",
+    Description = "删除一个预约（Reserve）——预约对应的会议号随即失效且不可恢复。高危写（high-risk-write）：需 vc:reserve。**务必先 dry_run=true 预演（用 vc.get_reserve 确认对象）**。",
     RequiredScopes = ["vc:reserve"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1VideoConferencingReserves) + "." + nameof(IFeishuTenantV1VideoConferencingReserves.DeleteReserveAsync))]
@@ -280,7 +280,7 @@ public interface IFeishuTenantVcUserActiveMeetingTool
 /// 机器人入会本身对参会人可见（会中会出现机器人成员），故属写动作。
 /// </remarks>
 [AgentTool("vc.join_meeting",
-    Description = "让会议机器人以 9 位会议号加入进行中的会议（会中可见机器人成员）。⚠️ 返回的 meeting.id 是<b>长数字</b>会议 ID——后续 vc.leave_meeting / vc.send_meeting_message 必须用它，不要复用这里的 meeting_no。会议设了密码时须传 password。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 vc:meeting。",
+    Description = "让会议机器人以 9 位会议号加入进行中的会议（会中可见机器人成员）。⚠️ 返回的 meeting.id 是<b>长数字</b>会议 ID——后续 vc.leave_meeting / vc.send_meeting_message 必须用它，不要复用这里的 meeting_no。会议设了密码时须传 password。写操作：需 vc:meeting。",
     RequiredScopes = ["vc:meeting"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1VideoConferencingBot) + "." + nameof(IFeishuTenantV1VideoConferencingBot.JoinBotAsync))]
@@ -301,7 +301,7 @@ public interface IFeishuTenantVcJoinMeetingTool
 /// 二者常模型混用，描述里对照写明。
 /// </remarks>
 [AgentTool("vc.leave_meeting",
-    Description = "让会议机器人离开会议（只影响机器人自己，**不会结束会议**；要让所有人退出用 vc.end_meeting）。meeting_id 必须是 vc.join_meeting 返回的<b>长数字</b>会议 ID 或 vc.user_active_meeting 的 meeting_id，传 9 位会议号会失败。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 vc:meeting。",
+    Description = "让会议机器人离开会议（只影响机器人自己，**不会结束会议**；要让所有人退出用 vc.end_meeting）。meeting_id 必须是 vc.join_meeting 返回的<b>长数字</b>会议 ID 或 vc.user_active_meeting 的 meeting_id，传 9 位会议号会失败。写操作：需 vc:meeting。",
     RequiredScopes = ["vc:meeting"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1VideoConferencingBot) + "." + nameof(IFeishuTenantV1VideoConferencingBot.LeaveBotAsync))]
@@ -321,7 +321,7 @@ public interface IFeishuTenantVcLeaveMeetingTool
 /// 平台自带幂等 ID（uuid），故 <c>idempotency_key</c> 有真实落点。
 /// </remarks>
 [AgentTool("vc.send_meeting_message",
-    Description = "会议机器人在**会中**发送文本消息或反馈表情（msg_type：text=会中文本 / reaction=表情 key）。⚠️ 只投递给当前会议内成员，不是聊天消息——要发群聊/单聊用 im.send_message。meeting_id 必须是长数字会议 ID（见 vc.join_meeting / vc.user_active_meeting）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 vc:meeting。",
+    Description = "会议机器人在**会中**发送文本消息或反馈表情（msg_type：text=会中文本 / reaction=表情 key）。⚠️ 只投递给当前会议内成员，不是聊天消息——要发群聊/单聊用 im.send_message。meeting_id 必须是长数字会议 ID（见 vc.join_meeting / vc.user_active_meeting）。写操作：需 vc:meeting。",
     RequiredScopes = ["vc:meeting"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1VideoConferencingBot) + "." + nameof(IFeishuTenantV1VideoConferencingBot.SendBotMessageAsync))]

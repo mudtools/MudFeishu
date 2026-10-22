@@ -151,7 +151,7 @@ public interface IFeishuTenantAttendanceQueryMyRemedysTool
 /// 补卡申请（写入考勤系统，状态为审批中）。<b>非幂等</b>——描述中声明"重复提交会造成重复申请"。
 /// </remarks>
 [AgentTool("attendance.submit_remedy",
-    Description = "提交补卡申请（写入飞书考勤系统，状态为审批中；走补卡审批流）。remedy_date 为 yyyyMMdd 整数日期，remedy_time 为 HH:mm 字符串。⚠️ 非幂等：重复提交会造成重复申请（无幂等键可用）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 attendance:task 权限。",
+    Description = "提交补卡申请（写入飞书考勤系统，状态为审批中；走补卡审批流）。remedy_date 为 yyyyMMdd 整数日期，remedy_time 为 HH:mm 字符串。⚠️ 非幂等：重复提交会造成重复申请（无幂等键可用）。写操作：可用 dry_run=true 预演；需 attendance:task 权限。",
     RequiredScopes = ["attendance:task"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1AttendanceRemedys) + "." + nameof(IFeishuTenantV1AttendanceRemedys.CreateUserTaskRemedyAsync))]

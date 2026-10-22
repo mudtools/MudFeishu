@@ -13,7 +13,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// <summary>工具接口：bitable.record_batch_create（映射 <c>IFeishuTenantV1BitableRecord.AddRecordsAsync</c>）。</summary>
 /// <remarks>单条与批量是同一入口：<c>records</c> 长度 1 即新增单条（单条不再单独成工具，避免"选哪个"的决策点）。</remarks>
 [AgentTool("bitable.record_batch_create",
-    Description = "新增多维表格记录（单次最多 1000 条；只新增一条也走这里，传长度 1 的数组）。records 为 JSON 数组字符串，每项形如 {\"fields\":{\"字段名\":\"值\"}}；字段名先经 bitable.list_fields 确认（拼错会在下发前被拒绝）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 bitable:app。",
+    Description = "新增多维表格记录（单次最多 1000 条；只新增一条也走这里，传长度 1 的数组）。records 为 JSON 数组字符串，每项形如 {\"fields\":{\"字段名\":\"值\"}}；字段名先经 bitable.list_fields 确认（拼错会在下发前被拒绝）。写操作：需 bitable:app。",
     RequiredScopes = ["bitable:app"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1BitableRecord) + "." + nameof(IFeishuTenantV1BitableRecord.AddRecordsAsync))]
@@ -33,7 +33,7 @@ public interface IFeishuTenantBitableRecordBatchCreateTool
 /// <summary>工具接口：bitable.record_batch_update（映射 <c>IFeishuTenantV1BitableRecord.UpdateRecordsAsync</c>）。</summary>
 /// <remarks>单条与批量是同一入口：<c>records</c> 长度 1 即更新单条。</remarks>
 [AgentTool("bitable.record_batch_update",
-    Description = "更新多维表格记录（单次最多 1000 条；只更新一条也走这里，传长度 1 的数组）。records 为 JSON 数组字符串，每项形如 {\"record_id\":\"recXxx\",\"fields\":{\"字段名\":\"新值\"}}。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 bitable:app。",
+    Description = "更新多维表格记录（单次最多 1000 条；只更新一条也走这里，传长度 1 的数组）。records 为 JSON 数组字符串，每项形如 {\"record_id\":\"recXxx\",\"fields\":{\"字段名\":\"新值\"}}。写操作：需 bitable:app。",
     RequiredScopes = ["bitable:app"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1BitableRecord) + "." + nameof(IFeishuTenantV1BitableRecord.UpdateRecordsAsync))]
@@ -51,7 +51,7 @@ public interface IFeishuTenantBitableRecordBatchUpdateTool
 
 /// <summary>工具接口：bitable.delete_record（映射 <c>IFeishuTenantV1BitableRecord.DeleteRecordAsync</c>）。</summary>
 [AgentTool("bitable.delete_record",
-    Description = "删除多维表格中的指定记录（不可恢复！请谨慎使用，建议先 dry_run 预演确认）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 bitable:app。",
+    Description = "删除多维表格中的指定记录（不可恢复！请谨慎使用，建议先 dry_run 预演确认）。写操作：需 bitable:app。",
     RequiredScopes = ["bitable:app"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1BitableRecord) + "." + nameof(IFeishuTenantV1BitableRecord.DeleteRecordAsync))]
@@ -69,7 +69,7 @@ public interface IFeishuTenantBitableDeleteRecordTool
 
 /// <summary>工具接口：bitable.form_update（映射 <c>IFeishuTenantV1BitableForm.UpdateFormAsync</c>）。</summary>
 [AgentTool("bitable.form_update",
-    Description = "更新多维表格表单的元数据（名称/描述/是否共享/分享范围/仅可填写一次）；未提供的字段保持不变，但至少提供一个。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 bitable:app。",
+    Description = "更新多维表格表单的元数据（名称/描述/是否共享/分享范围/仅可填写一次）；未提供的字段保持不变，但至少提供一个。写操作：需 bitable:app。",
     RequiredScopes = ["bitable:app"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1BitableForm) + "." + nameof(IFeishuTenantV1BitableForm.UpdateFormAsync))]
@@ -92,7 +92,7 @@ public interface IFeishuTenantBitableFormUpdateTool
 
 /// <summary>工具接口：bitable.form_upgrade（映射 <c>IFeishuTenantV1BitableForm.UpgradeFormAsync</c>）。</summary>
 [AgentTool("bitable.form_upgrade",
-    Description = "把旧版表单升级为「新版表单」并指定布局（traditional 传统布局 / one_question_per_page 一页一题布局）；升级后表单形态会改变、不可撤销，请先 dry_run 预演确认。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 bitable:app。",
+    Description = "把旧版表单升级为「新版表单」并指定布局（traditional 传统布局 / one_question_per_page 一页一题布局）；升级后表单形态会改变、不可撤销，请先 dry_run 预演确认。写操作：需 bitable:app。",
     RequiredScopes = ["bitable:app"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1BitableForm) + "." + nameof(IFeishuTenantV1BitableForm.UpgradeFormAsync))]
@@ -112,7 +112,7 @@ public interface IFeishuTenantBitableFormUpgradeTool
 
 /// <summary>工具接口：bitable.form_question_update（映射 <c>IFeishuTenantV1BitableForm.UpdateFormFieldAsync</c>）。</summary>
 [AgentTool("bitable.form_question_update",
-    Description = "更新表单中某道题目（字段）的展示属性（标题/描述/是否必填/是否可见/前序题目位置）；未提供的字段保持不变，但至少提供一个。field_id 来自 bitable.form_question_list。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 bitable:app。",
+    Description = "更新表单中某道题目（字段）的展示属性（标题/描述/是否必填/是否可见/前序题目位置）；未提供的字段保持不变，但至少提供一个。field_id 来自 bitable.form_question_list。写操作：需 bitable:app。",
     RequiredScopes = ["bitable:app"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1BitableForm) + "." + nameof(IFeishuTenantV1BitableForm.UpdateFormFieldAsync))]
@@ -136,7 +136,7 @@ public interface IFeishuTenantBitableFormQuestionUpdateTool
 
 /// <summary>工具接口：bitable.dashboard_copy（映射 <c>IFeishuTenantV1BitableDashboard.CopyDashboardAsync</c>）。</summary>
 [AgentTool("bitable.dashboard_copy",
-    Description = "复制多维表格仪表盘（生成一份命名副本）。block_id 来自 bitable.dashboard_list。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 bitable:app。",
+    Description = "复制多维表格仪表盘（生成一份命名副本）。block_id 来自 bitable.dashboard_list。写操作：需 bitable:app。",
     RequiredScopes = ["bitable:app"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1BitableDashboard) + "." + nameof(IFeishuTenantV1BitableDashboard.CopyDashboardAsync))]
@@ -154,7 +154,7 @@ public interface IFeishuTenantBitableDashboardCopyTool
 
 /// <summary>工具接口：bitable.workflow_update（映射 <c>IFeishuTenantV1BitableWorkflow.UpdateAppWorkflowAsync</c>）。</summary>
 [AgentTool("bitable.workflow_update",
-    Description = "启用 / 停用多维表格工作流（status：Enable 启用 / Disable 停用）。workflow_id 来自 bitable.workflow_list。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 bitable:app。",
+    Description = "启用 / 停用多维表格工作流（status：Enable 启用 / Disable 停用）。workflow_id 来自 bitable.workflow_list。写操作：需 bitable:app。",
     RequiredScopes = ["bitable:app"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1BitableWorkflow) + "." + nameof(IFeishuTenantV1BitableWorkflow.UpdateAppWorkflowAsync))]
@@ -172,7 +172,7 @@ public interface IFeishuTenantBitableWorkflowUpdateTool
 
 /// <summary>工具接口：bitable.role_create（映射 <c>IFeishuTenantV2BitableRole.CreateRoleAsync</c>）。</summary>
 [AgentTool("bitable.role_create",
-    Description = "创建多维表格高级权限的自定义角色（role_name 必填；table_roles / block_roles 为 JSON 数组字符串，省略时按官方默认权限创建）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 bitable:app。",
+    Description = "创建多维表格高级权限的自定义角色（role_name 必填；table_roles / block_roles 为 JSON 数组字符串，省略时按官方默认权限创建）。写操作：需 bitable:app。",
     RequiredScopes = ["bitable:app"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2BitableRole) + "." + nameof(IFeishuTenantV2BitableRole.CreateRoleAsync))]
@@ -191,7 +191,7 @@ public interface IFeishuTenantBitableRoleCreateTool
 
 /// <summary>工具接口：bitable.role_update（映射 <c>IFeishuTenantV2BitableRole.UpdateRoleAsync</c>）。</summary>
 [AgentTool("bitable.role_update",
-    Description = "更新多维表格高级权限的自定义角色（role_name 必填：官方接口要求即便不改名也需回传现有名称；table_roles / block_roles 可选，未提供时保持现状）。role_id 与现有名称可先用 bitable.role_list 取回。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 bitable:app。",
+    Description = "更新多维表格高级权限的自定义角色（role_name 必填：官方接口要求即便不改名也需回传现有名称；table_roles / block_roles 可选，未提供时保持现状）。role_id 与现有名称可先用 bitable.role_list 取回。写操作：需 bitable:app。",
     RequiredScopes = ["bitable:app"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2BitableRole) + "." + nameof(IFeishuTenantV2BitableRole.UpdateRoleAsync))]
@@ -211,7 +211,7 @@ public interface IFeishuTenantBitableRoleUpdateTool
 
 /// <summary>工具接口：bitable.role_delete（映射 <c>IFeishuTenantV2BitableRole.DeleteRoleAsync</c>）。</summary>
 [AgentTool("bitable.role_delete",
-    Description = "删除多维表格高级权限的自定义角色（不可恢复！请谨慎使用，建议先 dry_run 预演确认）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 bitable:app。",
+    Description = "删除多维表格高级权限的自定义角色（不可恢复！请谨慎使用，建议先 dry_run 预演确认）。写操作：需 bitable:app。",
     RequiredScopes = ["bitable:app"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2BitableRole) + "." + nameof(IFeishuTenantV2BitableRole.DeleteRoleAsync))]
@@ -228,7 +228,7 @@ public interface IFeishuTenantBitableRoleDeleteTool
 
 /// <summary>工具接口：bitable.role_member_add（映射 <c>IFeishuTenantV2BitableRole.AddRoleMemberAsync</c>）。</summary>
 [AgentTool("bitable.role_member_add",
-    Description = "把成员（用户 / 群 / 部门，由 member_id_type 指定 ID 类型）加入多维表格自定义角色；加入后该成员按角色权限访问多维表格。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 bitable:app。",
+    Description = "把成员（用户 / 群 / 部门，由 member_id_type 指定 ID 类型）加入多维表格自定义角色；加入后该成员按角色权限访问多维表格。写操作：需 bitable:app。",
     RequiredScopes = ["bitable:app"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2BitableRole) + "." + nameof(IFeishuTenantV2BitableRole.AddRoleMemberAsync))]
@@ -247,7 +247,7 @@ public interface IFeishuTenantBitableRoleMemberAddTool
 
 /// <summary>工具接口：bitable.role_member_remove（映射 <c>IFeishuTenantV2BitableRole.DeleteRoleMemberAsync</c>）。</summary>
 [AgentTool("bitable.role_member_remove",
-    Description = "把成员从多维表格自定义角色中移除（仅收回该角色的高级权限，不影响成员本身；移除后成员将立即失去该角色的可见范围，建议先 dry_run 预演确认）；member_id 类型由 member_id_type 指定，默认 open_id。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 bitable:app。",
+    Description = "把成员从多维表格自定义角色中移除（仅收回该角色的高级权限，不影响成员本身；移除后成员将立即失去该角色的可见范围，建议先 dry_run 预演确认）；member_id 类型由 member_id_type 指定，默认 open_id。写操作：需 bitable:app。",
     RequiredScopes = ["bitable:app"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2BitableRole) + "." + nameof(IFeishuTenantV2BitableRole.DeleteRoleMemberAsync))]

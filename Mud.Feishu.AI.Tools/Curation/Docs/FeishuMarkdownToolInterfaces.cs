@@ -28,7 +28,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// </para>
 /// </remarks>
 [AgentTool("markdown.create",
-    Description = "把 Markdown 内容创建为飞书在线文档（异步导入为 docx），返回 document_token/url。导入任务终态后自动清理源 .md 临时文件。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
+    Description = "把 Markdown 内容创建为飞书在线文档（异步导入为 docx），返回 document_token/url。导入任务终态后自动清理源 .md 临时文件。写操作：需 drive:drive。",
     RequiredScopes = ["drive:drive"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1DriveFiles) + "." + nameof(IFeishuTenantV1DriveFiles.CreateImportTaskAsync))]
@@ -77,7 +77,7 @@ public interface IFeishuTenantMarkdownFetchTool
 /// </para>
 /// </remarks>
 [AgentTool("markdown.patch",
-    Description = "按精确文本替换文档正文的一段（find 必须唯一命中；多处命中须显式 replace_all=true）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document + drive:drive:readonly。",
+    Description = "按精确文本替换文档正文的一段（find 必须唯一命中；多处命中须显式 replace_all=true）。写操作：需 docx:document + drive:drive:readonly。",
     RequiredScopes = ["docx:document", "drive:drive:readonly"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1DocxBlocks) + "." + nameof(IFeishuTenantV1DocxBlocks.CreateBlockAsync))]

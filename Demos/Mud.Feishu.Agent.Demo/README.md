@@ -207,7 +207,7 @@ dotnet run --project Demos/Mud.Feishu.Agent.Demo
 
 **写类（13）**：`docx.create_document`、`docx.append_blocks`、`docx.update_blocks`、`docx.delete_blocks`、
 `docx.replace_document`、`wiki.create_node`、`wiki.move_node`、`drive.create_folder`、`drive.move_file`、
-`drive.upload_file`、`sheets.update_range`、`sheets.append_rows`、`bitable.add_record`
+`drive.upload_file`、`sheets.update_range`、`sheets.append_rows`、`bitable.record_batch_create`
 
 **两个容易误解的点**：
 

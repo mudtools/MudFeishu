@@ -178,7 +178,7 @@ public interface IFeishuTenantHelpdeskListAgentSkillsTool
 /// 工单转人工的第一跳：机器人答不了时，用它把会话切到人工客服（可指定客服）。
 /// </remarks>
 [AgentTool("helpdesk.start_service",
-    Description = "把工单转人工服务（可指定客服；返回 chat_id 与 ticket_id）——「机器人答不了，转人工」的第一跳。写操作：默认不启用，需宿主授权（IToolExecutionAuthorizer），需 helpdesk:ticket（⚠️ scope 名待控制台核对）。",
+    Description = "把工单转人工服务（可指定客服；返回 chat_id 与 ticket_id）——「机器人答不了，转人工」的第一跳。写操作：需 helpdesk:ticket（⚠️ scope 名待控制台核对）。",
     RequiredScopes = ["helpdesk:ticket"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1HelpDeskTicket) + "." + nameof(IFeishuTenantV1HelpDeskTicket.StartServiceTicketAsync))]
@@ -203,7 +203,7 @@ public interface IFeishuTenantHelpdeskStartServiceTool
 /// 让它据此回复用户。<b>它不直接发消息给用户</b>（那是 <c>create_ticket_message</c>）。
 /// </remarks>
 [AgentTool("helpdesk.answer_user_query",
-    Description = "回传用户提问命中的 FAQ（event_id + 命中的 FAQ 列表）——用于「用户问的问题对应哪个 FAQ」的场景；注意它只回传命中结果，不直接给用户发消息。写操作：默认不启用，需宿主授权，需 helpdesk:ticket（⚠️ scope 名待控制台核对）。",
+    Description = "回传用户提问命中的 FAQ（event_id + 命中的 FAQ 列表）——用于「用户问的问题对应哪个 FAQ」的场景；注意它只回传命中结果，不直接给用户发消息。写操作：需 helpdesk:ticket（⚠️ scope 名待控制台核对）。",
     RequiredScopes = ["helpdesk:ticket"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1HelpDeskTicket) + "." + nameof(IFeishuTenantV1HelpDeskTicket.AnswerUserQueryTicketAsync))]
@@ -227,7 +227,7 @@ public interface IFeishuTenantHelpdeskAnswerUserQueryTool
 /// 回执只给 <c>message_id</c>，不回原文（与读面"工单正文不出站"纪律一致）。
 /// </remarks>
 [AgentTool("helpdesk.create_ticket_message",
-    Description = "在工单里发一条消息（msg_type=text 纯文本 / post 富文本）——「回复工单」。⚠️ 富文本内容不出站（回执只给 message_id）；客户对话原文仍不走工具面。写操作：默认不启用，需宿主授权，需 helpdesk:ticket（⚠️ scope 名待控制台核对）。",
+    Description = "在工单里发一条消息（msg_type=text 纯文本 / post 富文本）——「回复工单」。⚠️ 富文本内容不出站（回执只给 message_id）；客户对话原文仍不走工具面。写操作：需 helpdesk:ticket（⚠️ scope 名待控制台核对）。",
     RequiredScopes = ["helpdesk:ticket"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1HelpDeskTicket) + "." + nameof(IFeishuTenantV1HelpDeskTicket.CreateTicketMessageAsync))]
@@ -247,7 +247,7 @@ public interface IFeishuTenantHelpdeskCreateTicketMessageTool
 /// 工具接口：helpdesk.create_bot_message（映射 <c>CreateBotMessageAsync</c>）。
 /// </summary>
 [AgentTool("helpdesk.create_bot_message",
-    Description = "以服务台机器人身份发一条消息给指定会话或用户（msg_type 支持 text/post/image/interactive）——「主动通知用户」。写操作：默认不启用，需宿主授权，需 helpdesk:ticket（⚠️ scope 名待控制台核对）。",
+    Description = "以服务台机器人身份发一条消息给指定会话或用户（msg_type 支持 text/post/image/interactive）——「主动通知用户」。写操作：需 helpdesk:ticket（⚠️ scope 名待控制台核对）。",
     RequiredScopes = ["helpdesk:ticket"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1HelpDeskTicket) + "." + nameof(IFeishuTenantV1HelpDeskTicket.CreateBotMessageAsync))]

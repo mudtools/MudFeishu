@@ -180,7 +180,7 @@ public interface IFeishuTenantLingoMatchEntitiesTool
 /// SDK 注释原文"调用时应当慎重操作"。若希望走审核流程，请用 <c>lingo.create_draft</c>。
 /// </remarks>
 [AgentTool("lingo.create_entity",
-    Description = "创建词典词条（⚠️ 免审直写：不经过词典管理员审核，直接写入词库——要审核流程请改用 lingo.create_draft）。写操作：默认不启用，需宿主授权（IToolExecutionAuthorizer），需 baike:entity:exempt_review。建议先 dry_run 预演。",
+    Description = "创建词典词条（⚠️ 免审直写：不经过词典管理员审核，直接写入词库——要审核流程请改用 lingo.create_draft）。写操作：需 baike:entity:exempt_review。建议先 dry_run 预演。",
     RequiredScopes = ["baike:entity:exempt_review"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1LingoEntity) + "." + nameof(IFeishuTenantV1LingoEntity.CreateEntityAsync))]
@@ -210,7 +210,7 @@ public interface IFeishuTenantLingoCreateEntityTool
 /// 也要把原词条名一起带上：先 <c>lingo.get_entity</c> 读出原值、合并后再整份提交。
 /// </remarks>
 [AgentTool("lingo.update_entity",
-    Description = "更新词典词条（⚠️ 免审直写，且为**覆盖式**：未传的释义/别名会被清空——只改一项请先 lingo.get_entity 读出原值再整份提交；main_key 必填，与平台口径一致）。写操作：默认不启用，需宿主授权，需 baike:entity:exempt_review。建议先 dry_run 预演。",
+    Description = "更新词典词条（⚠️ 免审直写，且为**覆盖式**：未传的释义/别名会被清空——只改一项请先 lingo.get_entity 读出原值再整份提交；main_key 必填，与平台口径一致）。写操作：需 baike:entity:exempt_review。建议先 dry_run 预演。",
     RequiredScopes = ["baike:entity:exempt_review"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1LingoEntity) + "." + nameof(IFeishuTenantV1LingoEntity.UpdateEntityAsync))]
@@ -239,7 +239,7 @@ public interface IFeishuTenantLingoUpdateEntityTool
 /// 外部系统里引用该 <c>entity_id</c> 的地方会全部失效，且平台不提供"恢复已删词条"入口。
 /// </remarks>
 [AgentTool("lingo.delete_entity",
-    Description = "删除词典词条（⚠️ 不可逆：词条直接从词库移除，引用该 entity_id 的外部系统会全部失效——务必先 dry_run 预演并确认 entity_id 无误）。写操作：默认不启用，需宿主授权，需 baike:entity:exempt_delete。",
+    Description = "删除词典词条（⚠️ 不可逆：词条直接从词库移除，引用该 entity_id 的外部系统会全部失效——务必先 dry_run 预演并确认 entity_id 无误）。写操作：需 baike:entity:exempt_delete。",
     RequiredScopes = ["baike:entity:exempt_delete"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1LingoEntity) + "." + nameof(IFeishuTenantV1LingoEntity.DeleteEntityAsync))]
@@ -261,7 +261,7 @@ public interface IFeishuTenantLingoDeleteEntityTool
 /// 这是"没有免审权限"或"改动需要留痕"时的正确路径。
 /// </remarks>
 [AgentTool("lingo.create_draft",
-    Description = "发起创建词条的**草稿申请**（需经词典管理员审核通过后才写入词库）——没有免审权限或需要留痕时的正确路径。写操作：默认不启用，需宿主授权，需 baike:entity 或 baike:entity:exempt_review（任一即可）。",
+    Description = "发起创建词条的**草稿申请**（需经词典管理员审核通过后才写入词库）——没有免审权限或需要留痕时的正确路径。写操作：需 baike:entity 或 baike:entity:exempt_review（任一即可）。",
     RequiredScopes = ["baike:entity", "baike:entity:exempt_review"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1LingoDraft) + "." + nameof(IFeishuTenantV1LingoDraft.CreateDraftAsync))]
@@ -290,7 +290,7 @@ public interface IFeishuTenantLingoCreateDraftTool
 /// 且 <c>main_key</c> 必填（平台请求体口径）。
 /// </remarks>
 [AgentTool("lingo.update_draft",
-    Description = "更新词条草稿（⚠️ 已审批的草稿无法编辑；且为覆盖式提交，未传的释义/别名会被清空；main_key 必填）。写操作：默认不启用，需宿主授权，需 baike:entity 或 baike:entity:exempt_review（任一即可）。",
+    Description = "更新词条草稿（⚠️ 已审批的草稿无法编辑；且为覆盖式提交，未传的释义/别名会被清空；main_key 必填）。写操作：需 baike:entity 或 baike:entity:exempt_review（任一即可）。",
     RequiredScopes = ["baike:entity", "baike:entity:exempt_review"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1LingoDraft) + "." + nameof(IFeishuTenantV1LingoDraft.UpdateDraftAsync))]

@@ -43,16 +43,16 @@ package_version: 3.0.3
 → `spark.add_table_records` 写入记录。
 
 ## 命令（工具）清单
-- `spark.add_table_records`（写）：向妙搭数据表添加记录（user 身份）。records_json 为记录数组 JSON，单次上限 500 条。upsert=true 时按主键合并（映射请求头 Prefer: resolution=merge-duplicates），缺省为纯插入。⚠️ 非幂等：不带 upsert 时重复调用会产生重复记录。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 spark:table 权限。
-- `spark.create_app`（写）：创建妙搭应用（user 身份，闭环首步）。返回新应用的 app_id，后续用 spark.patch_app / spark.list_tables 继续。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 spark:app 权限。
+- `spark.add_table_records`（写）：向妙搭数据表添加记录（user 身份）。records_json 为记录数组 JSON，单次上限 500 条。upsert=true 时按主键合并（映射请求头 Prefer: resolution=merge-duplicates），缺省为纯插入。⚠️ 非幂等：不带 upsert 时重复调用会产生重复记录。写操作：可用 dry_run=true 预演；需 spark:table 权限。
+- `spark.create_app`（写）：创建妙搭应用（user 身份，闭环首步）。返回新应用的 app_id，后续用 spark.patch_app / spark.list_tables 继续。写操作：可用 dry_run=true 预演；需 spark:app 权限。
 - `spark.get_app_analytics`（只读）：获取妙搭应用运营数据总览（活跃用户/新增用户/页面浏览，tenant 身份）。start_time/end_time 为秒级 Unix 时间戳字符串（如 "1705312800"），须 end_time >= start_time。需 spark:app:readonly 权限。
 - `spark.get_app_visibility`（只读）：获取妙搭应用的可用范围配置（scope/users/departments/chats，user 身份）。修改前先用本工具确认当前范围。需 spark:app:readonly 权限。
 - `spark.list_apps`（只读）：获取妙搭应用列表（tenant 身份）。分页工具：可选 fetch_all=true 在预算内自动翻页取完全部应用。需 spark:app:readonly 权限。
 - `spark.list_tables`（只读）：获取妙搭应用的数据表列表（含字段定义，user 身份）。分页工具：可选 fetch_all=true 自动翻页。拿到表名后再用 spark.query_table_records 取记录。需 spark:table 权限。
-- `spark.patch_app`（写）：修改妙搭应用元信息（名称/描述/图标，user 身份；PATCH 语义天然幂等）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 spark:app 权限。
+- `spark.patch_app`（写）：修改妙搭应用元信息（名称/描述/图标，user 身份；PATCH 语义天然幂等）。写操作：可用 dry_run=true 预演；需 spark:app 权限。
 - `spark.query_table_records`（只读）：查询妙搭数据表记录（user 身份）。filter/order 为 PostgREST 语法（filter 如 age=gt.10；order 如 created_at.desc）。分页工具：可选 fetch_all=true 自动翻页。需 spark:table 权限。
-- `spark.update_app_visibility`（写）：修改妙搭应用的可用范围（user 身份）。⚠️ 此操作会扩大应用可达范围（scope=Public 即对全员/外部可见），敏感操作，建议先 spark.get_app_visibility 确认当前范围并用 dry_run=true 预演。scope 取值：Public（公开）/ Tenant（本租户）/ Range（指定范围，须配 users/departments/chats）。写操作：默认空名单不启用… 〔user 身份；需 spark:app〕
-- `spark.update_table_records`（写）：按条件更新妙搭数据表记录（user 身份）。filter 必填（PostgREST 语法，如 age=gt.10），会更新**所有命中记录**；record_json 为要修改的字段对象。批量/条件更新天然幂等（同 filter 重放结果一致）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 spark:table 权限。
+- `spark.update_app_visibility`（写）：修改妙搭应用的可用范围（user 身份）。⚠️ 此操作会扩大应用可达范围（scope=Public 即对全员/外部可见），敏感操作，建议先 spark.get_app_visibility 确认当前范围并用 dry_run=true 预演。scope 取值：Public（公开）/ Tenant（本租户）/ Range（指定范围，须配 users/departments/chats）。写操作：需 spark:app 权限。
+- `spark.update_table_records`（写）：按条件更新妙搭数据表记录（user 身份）。filter 必填（PostgREST 语法，如 age=gt.10），会更新**所有命中记录**；record_json 为要修改的字段对象。批量/条件更新天然幂等（同 filter 重放结果一致）。写操作：可用 dry_run=true 预演；需 spark:table 权限。
 
 ## 参考文档（细则）
 - `references/publish.md`：`spark/publish`

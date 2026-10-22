@@ -162,7 +162,7 @@ public interface IFeishuTenantSlidesRenderSlideImageTool
 /// 故本工具不接受 title 参数（避免「传了 title 但没进稿」的静默丢内容）。
 /// </remarks>
 [AgentTool("slides.create_presentation",
-    Description = "以整份 SML 2.0 XML 新建一个演示文稿，返回新文稿 token、链接、版本号与页面 ID 列表。content 是 <presentation xmlns=\"http://www.larkoffice.com/sml/2.0\" width=\"960\" height=\"540\">…</presentation> 整份文档；平台不单独收标题，标题须写进首页 XML。返回的 issues 是 XML 语法告警（已建成但内容有偏差，须如实转达）。⚠️ 配图需先经云盘素材上传取得 file_token 再写进 <img src>，本工具不搬运字节。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 slides:presentation:create 与 slides:presentation:write_only。",
+    Description = "以整份 SML 2.0 XML 新建一个演示文稿，返回新文稿 token、链接、版本号与页面 ID 列表。content 是 <presentation xmlns=\"http://www.larkoffice.com/sml/2.0\" width=\"960\" height=\"540\">…</presentation> 整份文档；平台不单独收标题，标题须写进首页 XML。返回的 issues 是 XML 语法告警（已建成但内容有偏差，须如实转达）。⚠️ 配图需先经云盘素材上传取得 file_token 再写进 <img src>，本工具不搬运字节。写操作：可用 dry_run=true 预演；需 slides:presentation:create 与 slides:presentation:write_only。",
     RequiredScopes = ["slides:presentation:create", "slides:presentation:write_only"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1SlidesPresentation) + "." + nameof(IFeishuTenantV1SlidesPresentation.CreateXmlPresentationAsync))]
@@ -178,7 +178,7 @@ public interface IFeishuTenantSlidesCreatePresentationTool
 
 /// <summary>工具接口：slides.add_slide（映射 <c>IFeishuTenantV1SlidesSlide.CreateSlideAsync</c>）。</summary>
 [AgentTool("slides.add_slide",
-    Description = "在已有演示文稿中插入一页 SML XML，返回新页 slide_id 与版本号。默认追加到末尾；before_slide_id 指定插到某一页之前（留空=末尾，⚠️ 传空字符串会被判为「未知页面」而不是「末尾」）。同内容多页请逐页调用，本工具不接页面数组。返回的 issues 是 XML 语法告警，须如实转达。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 slides:presentation:update 与 slides:presentation:write_only。",
+    Description = "在已有演示文稿中插入一页 SML XML，返回新页 slide_id 与版本号。默认追加到末尾；before_slide_id 指定插到某一页之前（留空=末尾，⚠️ 传空字符串会被判为「未知页面」而不是「末尾」）。同内容多页请逐页调用，本工具不接页面数组。返回的 issues 是 XML 语法告警，须如实转达。写操作：可用 dry_run=true 预演；需 slides:presentation:update 与 slides:presentation:write_only。",
     RequiredScopes = ["slides:presentation:update", "slides:presentation:write_only"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1SlidesSlide) + "." + nameof(IFeishuTenantV1SlidesSlide.CreateSlideAsync))]
@@ -206,7 +206,7 @@ public interface IFeishuTenantSlidesAddSlideTool
 /// 拆成两枚工具只会让两侧口径漂移，也逼模型先判断"我该调哪一枚"。
 /// </remarks>
 [AgentTool("slides.replace_slide",
-    Description = "替换演示文稿页面的内容（parts 为 JSON 数组字符串，1~200 项，每项 action 取 block_replace 或 block_insert）。整页重建：block_replace + block_id 填页面 ID 本身、replacement 给整份 <slide> XML（⚠️ 新 XML 里没写的内容会从页面上消失）。元素级局部改：block_id 填页内 3 位 short element ID（须先用 slides.get_slide 读到，remove_attr_id=true 的 XML 没有 id 就无法替换），形如 {\"action\":\"block_replace\",\"block_id\":\"bab\",\"replacement\":\"<shape …>…</shape>\"}；插入用 {\"action\":\"block_insert\",\"insertion\":\"<shape …/>\",\"insert_before_block_id\":\"baa\"}，insert_before_block_id 留省=追加到末尾。失败回 failed_part_index 与 failed_reason，须如实转达。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 slides:presentation:update 与 slides:presentation:write_only。",
+    Description = "替换演示文稿页面的内容（parts 为 JSON 数组字符串，1~200 项，每项 action 取 block_replace 或 block_insert）。整页重建：block_replace + block_id 填页面 ID 本身、replacement 给整份 <slide> XML（⚠️ 新 XML 里没写的内容会从页面上消失）。元素级局部改：block_id 填页内 3 位 short element ID（须先用 slides.get_slide 读到，remove_attr_id=true 的 XML 没有 id 就无法替换），形如 {\"action\":\"block_replace\",\"block_id\":\"bab\",\"replacement\":\"<shape …>…</shape>\"}；插入用 {\"action\":\"block_insert\",\"insertion\":\"<shape …/>\",\"insert_before_block_id\":\"baa\"}，insert_before_block_id 留省=追加到末尾。失败回 failed_part_index 与 failed_reason，须如实转达。写操作：可用 dry_run=true 预演；需 slides:presentation:update 与 slides:presentation:write_only。",
     RequiredScopes = ["slides:presentation:update", "slides:presentation:write_only"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1SlidesSlide) + "." + nameof(IFeishuTenantV1SlidesSlide.ReplaceSlideAsync))]
@@ -233,7 +233,7 @@ public interface IFeishuTenantSlidesReplaceSlideTool
 /// 确认目标页，不得凭页码直接删。
 /// </remarks>
 [AgentTool("slides.delete_slide",
-    Description = "删除演示文稿中的指定页面（⚠️ 不可恢复：平台不提供恢复被删页面的接口，误删只能靠 slides.revert_history 回到历史版本）。slide_id 必填且必须来自 slides.list_slides 的实际结果，不要凭页码猜测。写操作（高危）：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 slides:presentation:update 与 slides:presentation:write_only。",
+    Description = "删除演示文稿中的指定页面（⚠️ 不可恢复：平台不提供恢复被删页面的接口，误删只能靠 slides.revert_history 回到历史版本）。slide_id 必填且必须来自 slides.list_slides 的实际结果，不要凭页码猜测。写操作（高危）：可用 dry_run=true 预演；需 slides:presentation:update 与 slides:presentation:write_only。",
     RequiredScopes = ["slides:presentation:update", "slides:presentation:write_only"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1SlidesSlide) + "." + nameof(IFeishuTenantV1SlidesSlide.DeleteSlideAsync))]
@@ -257,7 +257,7 @@ public interface IFeishuTenantSlidesDeleteSlideTool
 /// 异步任务且<b>整副回滚</b>（会把用户后续编辑一起抹掉），故必须配 slides.get_revert_status 读结果。
 /// </remarks>
 [AgentTool("slides.revert_history",
-    Description = "把整副演示文稿回滚到指定历史版本（⚠️ 异步任务 + 整副覆盖：回滚点之后的所有编辑都会消失，包括其他人刚改的内容）。history_version_id 必须来自 slides.list_histories（正整数字符串，不是 revision_id）。调用成功只代表任务已提交，须用 slides.get_revert_status 按 poll_after_ms 轮询确认。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 slides:presentation:update 与 slides:presentation:write_only。",
+    Description = "把整副演示文稿回滚到指定历史版本（⚠️ 异步任务 + 整副覆盖：回滚点之后的所有编辑都会消失，包括其他人刚改的内容）。history_version_id 必须来自 slides.list_histories（正整数字符串，不是 revision_id）。调用成功只代表任务已提交，须用 slides.get_revert_status 按 poll_after_ms 轮询确认。写操作：可用 dry_run=true 预演；需 slides:presentation:update 与 slides:presentation:write_only。",
     RequiredScopes = ["slides:presentation:update", "slides:presentation:write_only"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1SlidesHistory) + "." + nameof(IFeishuTenantV1SlidesHistory.RevertPresentationHistoryAsync))]

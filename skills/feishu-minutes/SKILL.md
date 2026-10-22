@@ -51,6 +51,6 @@ package_version: 3.0.3
 - `minutes.get_statistics`（只读）：按 minute_token 获取妙记的访问统计数据（PV、UV、访问用户列表与访问时间）。用于了解妙记的访问情况。只读，需 minutes:minutes:readonly。
 - `minutes.get_transcript`（只读）：按 minute_token 导出妙记的完整逐字稿文件（txt/srt）并交宿主落盘，结果只回 local_path/size/content_type——字节不进上下文（no-bytes-in-context）。要『会议讲了什么』先用 minutes.get_artifacts（AI 总结/章节/待办，直接进上下文）；只有需要逐字原文或按时间戳定位原话才用本工具。只读，需 minutes:minutes.transcript:export。
 - `minutes.search`（只读）：按关键词、所有者、参与者与创建时间搜索妙记列表（分页）。query 关键词 10~50 字符；至少提供一个过滤条件。搜索时间范围最大 1 个月。只读，需 minutes:minutes:readonly。
-- `minutes.subscribe`（写）：订阅妙记变更事件（当前 event_type 闭集只有 minutes.minute.generated_v1 = 妙记生成事件），订阅后该用户新产生的妙记会以事件回调推给应用。用户身份工具：宿主须在 FeishuAgent:AllowedIdentities 放行 user，且事件通道已接入（WebSocket/Webhook）。写操作：默认空名单不启用… 〔user 身份；需 minutes:minutes.basic:read〕
-- `minutes.unsubscribe`（写）：取消订阅妙记变更事件（与 minutes.subscribe 成对；取消后该用户的妙记生成事件不再推给应用）。用户身份工具：宿主须在 FeishuAgent:AllowedIdentities 放行 user。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 minutes:minutes.basic:read。
+- `minutes.subscribe`（写）：订阅妙记变更事件（当前 event_type 闭集只有 minutes.minute.generated_v1 = 妙记生成事件），订阅后该用户新产生的妙记会以事件回调推给应用。用户身份工具：宿主须在 FeishuAgent:AllowedIdentities 放行 user，且事件通道已接入（WebSocket/Webhook）。写操作：需 minutes:minutes.basic:read。
+- `minutes.unsubscribe`（写）：取消订阅妙记变更事件（与 minutes.subscribe 成对；取消后该用户的妙记生成事件不再推给应用）。用户身份工具：宿主须在 FeishuAgent:AllowedIdentities 放行 user。写操作：需 minutes:minutes.basic:read。
 - `minutes.upload`（写）：把云盘上的音视频文件导入生成妙记，返回新妙记链接。file_token 是云盘文件 token（需当前用户对该文件有下载权限）。支持音频 wav/mp3/m4a/aac/ogg/wma/amr、视频 avi/wmv/mov/mp4/m4v/mpeg/ogg/flv；时长 ≤6 小时、文件 ≤6GB。本工具只接受 file_token，不搬运字节。用户身份工具：宿主须在… 〔user 身份；需 minutes:minutes.upload:write〕

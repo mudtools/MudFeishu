@@ -11,7 +11,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 
 /// <summary>工具接口：sheets.update_range（映射 <c>IFeishuTenantV3SpreadsheetData.RangeWriteDataAsync</c>）。</summary>
 [AgentTool("sheets.update_range",
-    Description = "向电子表格指定区域写入数据（覆盖写，天然幂等——同一区域重复写入结果一致）。spreadsheet_token 来自 sheets.list_sheets；range 形如 ShtXxx!A1:B2。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 sheets:spreadsheet。",
+    Description = "向电子表格指定区域写入数据（覆盖写，天然幂等——同一区域重复写入结果一致）。spreadsheet_token 来自 sheets.list_sheets；range 形如 ShtXxx!A1:B2。写操作：需 sheets:spreadsheet。",
     RequiredScopes = ["sheets:spreadsheet"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV3SpreadsheetData) + "." + nameof(IFeishuTenantV3SpreadsheetData.RangeWriteDataAsync))]
@@ -29,7 +29,7 @@ public interface IFeishuTenantSheetsUpdateRangeTool
 
 /// <summary>工具接口：sheets.append_rows（映射 <c>IFeishuTenantV3SpreadsheetData.AppendDataAsync</c>）。</summary>
 [AgentTool("sheets.append_rows",
-    Description = "向电子表格追加行数据（在指定区域末尾追加，不清空既有行）。spreadsheet_token 来自 sheets.list_sheets。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 sheets:spreadsheet。",
+    Description = "向电子表格追加行数据（在指定区域末尾追加，不清空既有行）。spreadsheet_token 来自 sheets.list_sheets。写操作：需 sheets:spreadsheet。",
     RequiredScopes = ["sheets:spreadsheet"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV3SpreadsheetData) + "." + nameof(IFeishuTenantV3SpreadsheetData.AppendDataAsync))]
@@ -47,7 +47,7 @@ public interface IFeishuTenantSheetsAppendRowsTool
 
 /// <summary>工具接口：sheets.cond_format_create（映射 <c>IFeishuTenantV2SpreadsheetConditionFormat.CreateConditionFormatsAsync</c>）。</summary>
 [AgentTool("sheets.cond_format_create",
-    Description = "为工作表批量创建条件格式规则（按内容/数值自动着色）。一条规则形如 {\"sheet_id\":\"ShtXxx\",\"condition_format\":{\"ranges\":[\"ShtXxx!A1:B2\"],\"rule_type\":\"containsText\",\"attrs\":[{\"operator\":\"contains\",\"text\":\"完成\"}],\"style\":{\"back_color\":\"#FDE2E2\"}}}；rule_type 可选 containsText / cellIs / timePeriod / duplicateValues / uniqueValues 等。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 sheets:spreadsheet。",
+    Description = "为工作表批量创建条件格式规则（按内容/数值自动着色）。一条规则形如 {\"sheet_id\":\"ShtXxx\",\"condition_format\":{\"ranges\":[\"ShtXxx!A1:B2\"],\"rule_type\":\"containsText\",\"attrs\":[{\"operator\":\"contains\",\"text\":\"完成\"}],\"style\":{\"back_color\":\"#FDE2E2\"}}}；rule_type 可选 containsText / cellIs / timePeriod / duplicateValues / uniqueValues 等。写操作：需 sheets:spreadsheet。",
     RequiredScopes = ["sheets:spreadsheet"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2SpreadsheetConditionFormat) + "." + nameof(IFeishuTenantV2SpreadsheetConditionFormat.CreateConditionFormatsAsync))]
@@ -64,7 +64,7 @@ public interface IFeishuTenantSheetsCondFormatCreateTool
 
 /// <summary>工具接口：sheets.cond_format_update（映射 <c>IFeishuTenantV2SpreadsheetConditionFormat.UpdateConditionFormatsAsync</c>）。</summary>
 [AgentTool("sheets.cond_format_update",
-    Description = "批量更新（覆盖）工作站的条件格式规则；每项 condition_format 必须携带 cf_id（来自 sheets.cond_format_get），更新按 cf_id 全量覆盖该规则。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 sheets:spreadsheet。",
+    Description = "批量更新（覆盖）工作站的条件格式规则；每项 condition_format 必须携带 cf_id（来自 sheets.cond_format_get），更新按 cf_id 全量覆盖该规则。写操作：需 sheets:spreadsheet。",
     RequiredScopes = ["sheets:spreadsheet"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2SpreadsheetConditionFormat) + "." + nameof(IFeishuTenantV2SpreadsheetConditionFormat.UpdateConditionFormatsAsync))]
@@ -81,7 +81,7 @@ public interface IFeishuTenantSheetsCondFormatUpdateTool
 
 /// <summary>工具接口：sheets.cond_format_delete（映射 <c>IFeishuTenantV2SpreadsheetConditionFormat.DeleteConditionFormatsAsync</c>）。</summary>
 [AgentTool("sheets.cond_format_delete",
-    Description = "批量删除工作表的条件格式规则（不可恢复！请谨慎使用，建议先 dry_run 预演确认）；每项形如 {\"sheet_id\":\"ShtXxx\",\"cf_id\":\"...\"}，cf_id 来自 sheets.cond_format_get。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 sheets:spreadsheet。",
+    Description = "批量删除工作表的条件格式规则（不可恢复！请谨慎使用，建议先 dry_run 预演确认）；每项形如 {\"sheet_id\":\"ShtXxx\",\"cf_id\":\"...\"}，cf_id 来自 sheets.cond_format_get。写操作：需 sheets:spreadsheet。",
     RequiredScopes = ["sheets:spreadsheet"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2SpreadsheetConditionFormat) + "." + nameof(IFeishuTenantV2SpreadsheetConditionFormat.DeleteConditionFormatsAsync))]
@@ -98,7 +98,7 @@ public interface IFeishuTenantSheetsCondFormatDeleteTool
 
 /// <summary>工具接口：sheets.data_validation_create（映射 <c>IFeishuTenantV2SpreadsheetDataValidation.CreateDataValidationAsync</c>）。</summary>
 [AgentTool("sheets.data_validation_create",
-    Description = "为单元格区域创建「数据校验」（如下拉列表）。range 形如 ShtXxx!A1:B100；condition_values 为下拉选项值列表。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 sheets:spreadsheet。",
+    Description = "为单元格区域创建「数据校验」（如下拉列表）。range 形如 ShtXxx!A1:B100；condition_values 为下拉选项值列表。写操作：需 sheets:spreadsheet。",
     RequiredScopes = ["sheets:spreadsheet"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2SpreadsheetDataValidation) + "." + nameof(IFeishuTenantV2SpreadsheetDataValidation.CreateDataValidationAsync))]
@@ -119,7 +119,7 @@ public interface IFeishuTenantSheetsDataValidationCreateTool
 
 /// <summary>工具接口：sheets.data_validation_update（映射 <c>IFeishuTenantV2SpreadsheetDataValidation.UpdateDataValidationAsync</c>）。</summary>
 [AgentTool("sheets.data_validation_update",
-    Description = "更新（覆盖）指定工作表的数据校验规则——按 ranges 指定新的生效区域与选项值。sheet_id 来自 sheets.list_sheets。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 sheets:spreadsheet。",
+    Description = "更新（覆盖）指定工作表的数据校验规则——按 ranges 指定新的生效区域与选项值。sheet_id 来自 sheets.list_sheets。写操作：需 sheets:spreadsheet。",
     RequiredScopes = ["sheets:spreadsheet"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2SpreadsheetDataValidation) + "." + nameof(IFeishuTenantV2SpreadsheetDataValidation.UpdateDataValidationAsync))]
@@ -141,7 +141,7 @@ public interface IFeishuTenantSheetsDataValidationUpdateTool
 
 /// <summary>工具接口：sheets.data_validation_delete（映射 <c>IFeishuTenantV2SpreadsheetDataValidation.DeleteDataValidationAsync</c>）。</summary>
 [AgentTool("sheets.data_validation_delete",
-    Description = "删除单元格区域上的数据校验规则（不可恢复！请谨慎使用，建议先 dry_run 预演确认）。ranges 形如 [\"ShtXxx!A1:B100\"]。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 sheets:spreadsheet。",
+    Description = "删除单元格区域上的数据校验规则（不可恢复！请谨慎使用，建议先 dry_run 预演确认）。ranges 形如 [\"ShtXxx!A1:B100\"]。写操作：需 sheets:spreadsheet。",
     RequiredScopes = ["sheets:spreadsheet"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2SpreadsheetDataValidation) + "." + nameof(IFeishuTenantV2SpreadsheetDataValidation.DeleteDataValidationAsync))]
@@ -158,7 +158,7 @@ public interface IFeishuTenantSheetsDataValidationDeleteTool
 
 /// <summary>工具接口：sheets.protected_create（映射 <c>IFeishuTenantV2SpreadsheetProtected.CreateProtectedAsync</c>）。</summary>
 [AgentTool("sheets.protected_create",
-    Description = "为工作表/行列区间创建保护范围（锁定后仅可编辑成员可改）；major_dimension：ROWS 按行区间 / COLUMNS 按列区间（区间下标从 0 开始、半开区间）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 sheets:spreadsheet。",
+    Description = "为工作表/行列区间创建保护范围（锁定后仅可编辑成员可改）；major_dimension：ROWS 按行区间 / COLUMNS 按列区间（区间下标从 0 开始、半开区间）。写操作：需 sheets:spreadsheet。",
     RequiredScopes = ["sheets:spreadsheet"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2SpreadsheetProtected) + "." + nameof(IFeishuTenantV2SpreadsheetProtected.CreateProtectedAsync))]
@@ -181,7 +181,7 @@ public interface IFeishuTenantSheetsProtectedCreateTool
 
 /// <summary>工具接口：sheets.protected_update（映射 <c>IFeishuTenantV2SpreadsheetProtected.UpdateProtectedAsync</c>）。</summary>
 [AgentTool("sheets.protected_update",
-    Description = "更新保护范围的可编辑成员（新增/移除）或锁定信息；protect_id 来自 sheets.protected_get（或 protected_create 的结果）。add_editors / remove_editors 为成员 ID 列表（类型由 editor_member_type 指定）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 sheets:spreadsheet。",
+    Description = "更新保护范围的可编辑成员（新增/移除）或锁定信息；protect_id 来自 sheets.protected_get（或 protected_create 的结果）。add_editors / remove_editors 为成员 ID 列表（类型由 editor_member_type 指定）。写操作：需 sheets:spreadsheet。",
     RequiredScopes = ["sheets:spreadsheet"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2SpreadsheetProtected) + "." + nameof(IFeishuTenantV2SpreadsheetProtected.UpdateProtectedAsync))]
@@ -202,7 +202,7 @@ public interface IFeishuTenantSheetsProtectedUpdateTool
 
 /// <summary>工具接口：sheets.protected_delete（映射 <c>IFeishuTenantV2SpreadsheetProtected.DeleteProtectedAsync</c>）。</summary>
 [AgentTool("sheets.protected_delete",
-    Description = "删除保护范围（保护撤销后该区域恢复全员可编辑；不可恢复！建议先 dry_run 预演确认）。protect_ids 为逗号分隔的保护范围 ID 列表。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 sheets:spreadsheet。",
+    Description = "删除保护范围（保护撤销后该区域恢复全员可编辑；不可恢复！建议先 dry_run 预演确认）。protect_ids 为逗号分隔的保护范围 ID 列表。写操作：需 sheets:spreadsheet。",
     RequiredScopes = ["sheets:spreadsheet"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2SpreadsheetProtected) + "." + nameof(IFeishuTenantV2SpreadsheetProtected.DeleteProtectedAsync))]
@@ -219,7 +219,7 @@ public interface IFeishuTenantSheetsProtectedDeleteTool
 
 /// <summary>工具接口：sheets.filter_create（映射 <c>IFeishuTenantV3SpreadsheetFilter.CreateFilterAsync</c>）。</summary>
 [AgentTool("sheets.filter_create",
-    Description = "为工作表创建筛选器（按列筛选并隐藏不匹配行；每个工作表仅一个筛选器）。filter_type 可选 multiValue 多值 / number 数字 / text 文本 / color 颜色；compare_type 如 less/equals/contains；expected 为筛选值列表。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 sheets:spreadsheet。",
+    Description = "为工作表创建筛选器（按列筛选并隐藏不匹配行；每个工作表仅一个筛选器）。filter_type 可选 multiValue 多值 / number 数字 / text 文本 / color 颜色；compare_type 如 less/equals/contains；expected 为筛选值列表。写操作：需 sheets:spreadsheet。",
     RequiredScopes = ["sheets:spreadsheet"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV3SpreadsheetFilter) + "." + nameof(IFeishuTenantV3SpreadsheetFilter.CreateFilterAsync))]
@@ -241,7 +241,7 @@ public interface IFeishuTenantSheetsFilterCreateTool
 
 /// <summary>工具接口：sheets.filter_update（映射 <c>IFeishuTenantV3SpreadsheetFilter.UpdateFilterAsync</c>）。</summary>
 [AgentTool("sheets.filter_update",
-    Description = "更新（覆盖）工作表筛选器的某列筛选条件。filter_type 传 clear 可清除该列筛选。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 sheets:spreadsheet。",
+    Description = "更新（覆盖）工作表筛选器的某列筛选条件。filter_type 传 clear 可清除该列筛选。写操作：需 sheets:spreadsheet。",
     RequiredScopes = ["sheets:spreadsheet"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV3SpreadsheetFilter) + "." + nameof(IFeishuTenantV3SpreadsheetFilter.UpdateFilterAsync))]
@@ -262,7 +262,7 @@ public interface IFeishuTenantSheetsFilterUpdateTool
 
 /// <summary>工具接口：sheets.filter_delete（映射 <c>IFeishuTenantV3SpreadsheetFilter.DeleteFilterAsync</c>）。</summary>
 [AgentTool("sheets.filter_delete",
-    Description = "删除工作表的筛选器（删除后被隐藏的行会恢复显示，筛选条件不可恢复！建议先 dry_run 预演确认）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 sheets:spreadsheet。",
+    Description = "删除工作表的筛选器（删除后被隐藏的行会恢复显示，筛选条件不可恢复！建议先 dry_run 预演确认）。写操作：需 sheets:spreadsheet。",
     RequiredScopes = ["sheets:spreadsheet"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV3SpreadsheetFilter) + "." + nameof(IFeishuTenantV3SpreadsheetFilter.DeleteFilterAsync))]
@@ -279,7 +279,7 @@ public interface IFeishuTenantSheetsFilterDeleteTool
 
 /// <summary>工具接口：sheets.float_image_create（映射 <c>IFeishuTenantV3SpreadsheetFloatImage.CreateFloatImageAsync</c>）。</summary>
 [AgentTool("sheets.float_image_create",
-    Description = "在工作表中创建浮动图片（图片素材的 token 经 drive.upload_file 上传后获得；range 指定锚定区域）。width/height/offset_x/offset_y 为像素数值字符串。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 sheets:spreadsheet。",
+    Description = "在工作表中创建浮动图片（图片素材的 token 经 drive.upload_file 上传后获得；range 指定锚定区域）。width/height/offset_x/offset_y 为像素数值字符串。写操作：需 sheets:spreadsheet。",
     RequiredScopes = ["sheets:spreadsheet"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV3SpreadsheetFloatImage) + "." + nameof(IFeishuTenantV3SpreadsheetFloatImage.CreateFloatImageAsync))]
@@ -303,7 +303,7 @@ public interface IFeishuTenantSheetsFloatImageCreateTool
 
 /// <summary>工具接口：sheets.float_image_update（映射 <c>IFeishuTenantV3SpreadsheetFloatImage.UpdateFloatImageAsync</c>）。</summary>
 [AgentTool("sheets.float_image_update",
-    Description = "更新工作表中的浮动图片（覆盖范围/尺寸/偏移）；未提供的字段保持不变，但至少提供一个。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 sheets:spreadsheet。",
+    Description = "更新工作表中的浮动图片（覆盖范围/尺寸/偏移）；未提供的字段保持不变，但至少提供一个。写操作：需 sheets:spreadsheet。",
     RequiredScopes = ["sheets:spreadsheet"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV3SpreadsheetFloatImage) + "." + nameof(IFeishuTenantV3SpreadsheetFloatImage.UpdateFloatImageAsync))]
@@ -326,7 +326,7 @@ public interface IFeishuTenantSheetsFloatImageUpdateTool
 
 /// <summary>工具接口：sheets.float_image_delete（映射 <c>IFeishuTenantV3SpreadsheetFloatImage.DeleteFloatImageAsync</c>）。</summary>
 [AgentTool("sheets.float_image_delete",
-    Description = "删除工作表中的浮动图片（不可恢复！请谨慎使用，建议先 dry_run 预演确认）。float_image_id 来自 sheets.float_image_query。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 sheets:spreadsheet。",
+    Description = "删除工作表中的浮动图片（不可恢复！请谨慎使用，建议先 dry_run 预演确认）。float_image_id 来自 sheets.float_image_query。写操作：需 sheets:spreadsheet。",
     RequiredScopes = ["sheets:spreadsheet"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV3SpreadsheetFloatImage) + "." + nameof(IFeishuTenantV3SpreadsheetFloatImage.DeleteFloatImageAsync))]

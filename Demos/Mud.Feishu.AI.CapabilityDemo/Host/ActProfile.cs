@@ -64,7 +64,7 @@ internal static class ActProfiles
             目标多维表格：app_token={settings.BitTableAppToken}，table_id={settings.BitTableTableId}。
             用户的写操作会先停在人工审批；你无法自批，也不要假装已执行。
             """,
-        ReadTools: ToolSets.BitableRead6,
+        ReadTools: ToolSets.BitableRead5,
         WriteTools: ToolSets.WritesForA5(includeDelete),
         ConfigureClients: static b => b.AddBiTableApi());
 

@@ -126,6 +126,9 @@ public class PublicSurfaceRationaleContractGuards
     // FeishuMcpHttpHandler / FeishuMcpHttpOptions / McpHttpRequest / McpHttpResponse
     // （全部登记在 reasons 段）；Mud.Feishu.AI.Mcp 7 → 11
     // （会话与目录 FeishuMcpSession / FeishuMcpSessionDirectory / McpHttpHeaders / McpWireJson 均为 internal）。
+    // T-4 工具面重复度收口 + v3.1 合并（2026-10-22）：458 → **449**——14 枚工具合并使声明接口
+    // 397 → 383；中立用量计量 5 类（IFeishuUsageMeter / InMemoryFeishuUsageMeter / FeishuUsageSnapshot /
+    // FeishuUsageSlice / FeishuToolUsageSlice）入 Mud.Feishu.AI：50 → 55；Mud.Feishu.AI.Mcp 11 不变。
     private const int BaselineTypeCount = 449;
 
     /// <summary>反射实测的公开面来源程序集（= 原台账覆盖面：三个飞书发布包）。</summary>

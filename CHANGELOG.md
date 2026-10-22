@@ -5,7 +5,7 @@
 [Keep a Changelog]: https://keepachangelog.com/zh-CN/1.1.0/
 [语义化版本]: https://semver.org/lang/zh-CN/
 
-## [未发布] - 2026-10-20
+## [未发布] - 2026-10-22
 
 ### 新增（Added）
 
@@ -23,9 +23,19 @@
 
 ### 变更（Changed）
 
+- **Mud.Feishu.AI.Tools —— 工具面重复度收口（365 → 351 个工具 / 34 域）**：合并 14 枚能力重叠的工具——
+  `mail.send_message` + `mail.send_draft` → `mail.send`；`mail.rule_create` + `mail.rule_update` → `mail.rule_save`；
+  `mail.template_create` + `mail.template_update` → `mail.template_save`；`drive.grant_permission` +
+  `drive.update_permission_member` → `drive.set_permission`；`bitable.add_record` 并入
+  `bitable.record_batch_create`（入参 `fields` → `records`）；`bitable.get_records_by_ids` 并入
+  `bitable.query_records`（`record_ids` 按 ID 精取）；另有 `vc.list_reserves` → `vc.get_reserve`。
+  读写分布 185 只读 / 166 写类（其中高危 39），公开面 458 → 449，affordance 221 → 207 份（100204 字符），
+  Source 声明 358 → 344。描述面同批做兄弟对首句互指（bitable 工作流、docx 三粒度读、contact 解析↔详情、
+  board 读↔建、application 可见范围读↔写）与 174 处写类权限模板句去重（授权约束由执行器强制，
+  不依赖模型读描述；描述总量 54,891 → 47,495 字符）；golden 重固化、skills 重导出、权限对照表 v1.19（351 行）。
 - **工具面规模数字校正**：README.md / README_EN.md / Mud.Feishu.AI.Tools/Readme.md /
   .docs/AI/状态基线.md 中漂移的 "344 工具 / 176 只读 / 31 域" 等数字按真相源
-  FeishuToolSchemas.golden.txt 校正为 **333 工具（173 只读 + 122 写类 + 38 高危）/ 32 域**。
+  FeishuToolSchemas.golden.txt 校正为 **351 工具（185 只读 + 166 写类 + 39 高危）/ 34 域**。
 - **依赖升级**：Mud.AI.Abstractions / Mud.AI.Agent / Mud.AI.Generator 由 1.0.1 升至 **1.0.2**
   （中立工具遥测端口 IAgentToolTelemetry、AmbientScope<T> 运行期装配扩展、TurnScopeContext.Facts、
   DelegatingToolFunction 工具函数装饰基座、会话存储门面与回退错误截断修复）。1.0.2 已由上游发布至

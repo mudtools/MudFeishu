@@ -66,7 +66,7 @@ public interface IFeishuTenantImListChatMembersTool
 
 /// <summary>工具接口：im.reply_message（映射 <c>IFeishuTenantV1Message.ReplyMessageAsync</c>）。</summary>
 [AgentTool("im.reply_message",
-    Description = "回复指定消息，形成话题串避免刷屏。message_id 来自 im.get_history_messages 或事件上下文；content 为 JSON 字符串（msg_type=text 时如 {\"text\":\"回复内容\"}）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。",
+    Description = "回复指定消息，形成话题串避免刷屏。message_id 来自 im.get_history_messages 或事件上下文；content 为 JSON 字符串（msg_type=text 时如 {\"text\":\"回复内容\"}）。写操作：需 im:message。",
     RequiredScopes = ["im:message"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.ReplyMessageAsync))]
@@ -112,7 +112,7 @@ public interface IFeishuTenantImSearchMessagesTool
 
 /// <summary>im.revoke_message：撤回自己发出的消息。</summary>
 [AgentTool("im.revoke_message", IsWrite = true,
-    Description = "撤回一条自己发出的消息（发错内容时纠正）。只能撤回本 Bot 发送的消息；message_id 来自事件上下文或 im.get_history_messages。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message。建议先 dry_run 预演确认目标消息。",
+    Description = "撤回一条自己发出的消息（发错内容时纠正）。只能撤回本 Bot 发送的消息；message_id 来自事件上下文或 im.get_history_messages。高危写（high-risk-write）：需 im:message。建议先 dry_run 预演确认目标消息。",
     RequiredScopes = ["im:message"],
     Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.RevokeMessageAsync))]
 public interface IFeishuTenantImRevokeMessageTool
@@ -127,7 +127,7 @@ public interface IFeishuTenantImRevokeMessageTool
 
 /// <summary>im.forward_message：转发单条消息到指定会话。</summary>
 [AgentTool("im.forward_message", IsWrite = true,
-    Description = "把一条消息转发给用户或群。receive_id 来自 im.search_user / 事件上下文。⚠️ 底层 SDK 方法名为 ReceiveMessageAsync 但语义是转发（POST /messages/{id}/forward），不是接收消息。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message:send_as_bot。",
+    Description = "把一条消息转发给用户或群。receive_id 来自 im.search_user / 事件上下文。⚠️ 底层 SDK 方法名为 ReceiveMessageAsync 但语义是转发（POST /messages/{id}/forward），不是接收消息。写操作：需 im:message:send_as_bot。",
     RequiredScopes = ["im:message:send_as_bot"],
     Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.ReceiveMessageAsync))]
 public interface IFeishuTenantImForwardMessageTool
@@ -145,7 +145,7 @@ public interface IFeishuTenantImForwardMessageTool
 
 /// <summary>im.forward_thread：转发整个话题。</summary>
 [AgentTool("im.forward_thread", IsWrite = true,
-    Description = "把整个话题（thread）转发给用户或群——一次性把讨论上下文带过去。thread_id 来自事件上下文。⚠️ 底层 SDK 方法名为 ReceiveThreadsAsync 但语义是转发话题。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:message:send_as_bot。",
+    Description = "把整个话题（thread）转发给用户或群——一次性把讨论上下文带过去。thread_id 来自事件上下文。⚠️ 底层 SDK 方法名为 ReceiveThreadsAsync 但语义是转发话题。写操作：需 im:message:send_as_bot。",
     RequiredScopes = ["im:message:send_as_bot"],
     Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.ReceiveThreadsAsync))]
 public interface IFeishuTenantImForwardThreadTool

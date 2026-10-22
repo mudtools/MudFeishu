@@ -55,7 +55,7 @@ internal static class A5HitlAct
             ["应用"] = $"{settings.AppKey}（AppId {DemoSettings.Mask(settings.AppId)}）",
             ["模型"] = settings.Endpoint is null ? settings.ModelId : $"{settings.ModelId} @ {settings.Endpoint}",
             ["目标表"] = $"{settings.BitTableAppToken} / {settings.BitTableTableId}",
-            ["只读面"] = $"{ToolSets.BitableRead6.Length} 枚",
+            ["只读面"] = $"{ToolSets.BitableRead5.Length} 枚",
             ["写面"] = string.Join("、", profile.WriteTools),
             ["能力边界"] = includeDelete
                 ? "已显式启用 bitable.delete_record（strict 下授权器仍会独立拒绝）"

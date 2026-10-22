@@ -16,7 +16,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// SDK 的 <c>RejectApprovalAsync</c> 已存在，零 SDK 改动。
 /// </remarks>
 [AgentTool("approval.reject_task",
-    Description = "拒绝一个审批任务（拒绝后审批流程结束）。与 approval.approve_task 构成完整的双向决策面；task_id 来自 approval.list_pending_tasks。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 approval:approval。",
+    Description = "拒绝一个审批任务（拒绝后审批流程结束）。与 approval.approve_task 构成完整的双向决策面；task_id 来自 approval.list_pending_tasks。写操作：需 approval:approval。",
     RequiredScopes = ["approval:approval"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV4ApprovalTask) + "." + nameof(IFeishuTenantV4ApprovalTask.RejectApprovalAsync))]
@@ -42,7 +42,7 @@ public interface IFeishuTenantApprovalRejectTaskTool
 /// SDK 的 <c>TransferApprovalAsync</c> 已存在，零 SDK 改动。
 /// </remarks>
 [AgentTool("approval.transfer_task",
-    Description = "把一个审批任务转交给他人（转交后流程流转给被转交人）。适用于'这条不该我批/我无法判断'的场景。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 approval:approval。建议先 dry_run 预演确认转交对象。",
+    Description = "把一个审批任务转交给他人（转交后流程流转给被转交人）。适用于'这条不该我批/我无法判断'的场景。高危写（high-risk-write）：需 approval:approval。建议先 dry_run 预演确认转交对象。",
     RequiredScopes = ["approval:approval"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV4ApprovalTask) + "." + nameof(IFeishuTenantV4ApprovalTask.TransferApprovalAsync))]
@@ -65,7 +65,7 @@ public interface IFeishuTenantApprovalTransferTaskTool
 
 /// <summary>工具接口：approval.create_instance（映射 <c>IFeishuTenantV4Approval.CreateInstanceAsync</c>）。</summary>
 [AgentTool("approval.create_instance",
-    Description = "按审批定义 Code 发起一个审批实例，form 为审批表单 Value（JSON 数组字符串，按定义的表单控件结构填写；非 JSON 数组会在下发前被拒绝）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 approval:approval。",
+    Description = "按审批定义 Code 发起一个审批实例，form 为审批表单 Value（JSON 数组字符串，按定义的表单控件结构填写；非 JSON 数组会在下发前被拒绝）。写操作：需 approval:approval。",
     RequiredScopes = ["approval:approval"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV4Approval) + "." + nameof(IFeishuTenantV4Approval.CreateInstanceAsync))]
@@ -106,7 +106,7 @@ public interface IFeishuTenantApprovalListPendingTasksTool
 
 /// <summary>工具接口：approval.approve_task（映射 <c>IFeishuTenantV4ApprovalTask.AgreeApprovalAsync</c>）。</summary>
 [AgentTool("approval.approve_task",
-    Description = "同意指定审批任务（需 approval_code/instance_code/task_id/user_id 四要素，task_id/instance_code 来自 approval.list_pending_tasks）。同意后审批流程流转到下一个审批人。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 approval:approval。",
+    Description = "同意指定审批任务（需 approval_code/instance_code/task_id/user_id 四要素，task_id/instance_code 来自 approval.list_pending_tasks）。同意后审批流程流转到下一个审批人。写操作：需 approval:approval。",
     RequiredScopes = ["approval:approval"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV4ApprovalTask) + "." + nameof(IFeishuTenantV4ApprovalTask.AgreeApprovalAsync))]
@@ -139,7 +139,7 @@ public interface IFeishuTenantApprovalApproveTaskTool
 
 /// <summary>工具接口：approval.cancel_instance（映射 <c>IFeishuTenantV4Approval.CancelInstanceAsync</c>）。</summary>
 [AgentTool("approval.cancel_instance",
-    Description = "撤回一个审批实例（撤销后实例不再是'审批中/已通过'的正常状态）。需要 approval_code + instance_code + **审批提交人** user_id（三者缺一平台即拒绝；ID 类型与 user_id_type 一致）。⚠️ 前提是该审批定义在后台勾选了「允许撤销审批中的申请」或「允许撤销 x 天内通过的审批」，否则返回业务错误——这属于审批配置限制，不要重试。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 approval:approval。建议先 dry_run 预演确认。",
+    Description = "撤回一个审批实例（撤销后实例不再是'审批中/已通过'的正常状态）。需要 approval_code + instance_code + **审批提交人** user_id（三者缺一平台即拒绝；ID 类型与 user_id_type 一致）。⚠️ 前提是该审批定义在后台勾选了「允许撤销审批中的申请」或「允许撤销 x 天内通过的审批」，否则返回业务错误——这属于审批配置限制，不要重试。高危写（high-risk-write）：需 approval:approval。建议先 dry_run 预演确认。",
     RequiredScopes = ["approval:approval"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV4Approval) + "." + nameof(IFeishuTenantV4Approval.CancelInstanceAsync))]
@@ -162,7 +162,7 @@ public interface IFeishuTenantApprovalCancelInstanceTool
 /// 与 <c>approval.transfer_task</c>（改审批人）是两件不同的事，描述里对照写明以免混用。
 /// </remarks>
 [AgentTool("approval.cc_instance",
-    Description = "把当前审批实例抄送给若干用户（被抄送人可在审批中心「抄送我」里查看详情）。只放开可见性，**不改变流程、不更换审批人**——要让别人来批用 approval.transfer_task。instance_code 来自 approval.list_pending_tasks / approval.get_instance；cc_user_ids 的类型须与 user_id_type 一致。用户身份工具——宿主须在 AllowedIdentities 放行 user。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 approval:approval。",
+    Description = "把当前审批实例抄送给若干用户（被抄送人可在审批中心「抄送我」里查看详情）。只放开可见性，**不改变流程、不更换审批人**——要让别人来批用 approval.transfer_task。instance_code 来自 approval.list_pending_tasks / approval.get_instance；cc_user_ids 的类型须与 user_id_type 一致。用户身份工具——宿主须在 AllowedIdentities 放行 user。写操作：需 approval:approval。",
     RequiredScopes = ["approval:approval"],
     IsWrite = true,
     Source = nameof(IFeishuUserV4ApprovalInstance) + "." + nameof(IFeishuUserV4ApprovalInstance.AddCcInstanceAsync))]

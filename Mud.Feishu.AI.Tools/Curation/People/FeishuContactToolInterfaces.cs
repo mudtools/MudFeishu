@@ -30,7 +30,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 
 /// <summary>工具接口：contact.resolve_user（映射 <c>IFeishuTenantV3User.GetBatchUsersAsync</c>）。</summary>
 [AgentTool("contact.resolve_user",
-    Description = "把邮箱或手机号批量换成用户 ID（open_id/user_id/union_id）——发送消息、加群、指派任务前的第一步。emails 与 mobiles 至少填一个，合计不超过 50 项。已知姓名/昵称而非邮箱手机号时请改用 contact.search_user。只读，需 contact:user.base:readonly。",
+    Description = "把邮箱或手机号批量换成用户 ID（open_id/user_id/union_id）——发送消息、加群、指派任务前的第一步。emails 与 mobiles 至少填一个，合计不超过 50 项。已知姓名/昵称而非邮箱手机号时请改用 contact.search_user；拿到 ID 后取单个详情用 contact.get_user。只读，需 contact:user.base:readonly。",
     RequiredScopes = ["contact:user.base:readonly"],
     Source = nameof(IFeishuTenantV3User) + "." + nameof(IFeishuTenantV3User.GetBatchUsersAsync),
 
@@ -72,7 +72,7 @@ public interface IFeishuTenantContactSearchUserTool
 
 /// <summary>工具接口：contact.get_user（映射 <c>IFeishuTenantV3User.GetUserInfoByIdAsync</c>）。</summary>
 [AgentTool("contact.get_user",
-    Description = "按 user_id 或 open_id 读取单个用户的通讯录详情（姓名/邮箱/手机号/部门/上级/状态）。只读，需 contact:user.base:readonly。",
+    Description = "按 user_id 或 open_id 读取单个用户的通讯录详情（姓名/邮箱/手机号/部门/上级/状态）。已有其中一种 ID 时用它；只有邮箱/手机号需先换 ID 用 contact.resolve_user。只读，需 contact:user.base:readonly。",
     RequiredScopes = ["contact:user.base:readonly"],
     Source = nameof(IFeishuTenantV3User) + "." + nameof(IFeishuTenantV3User.GetUserInfoByIdAsync))]
 public interface IFeishuTenantContactGetUserTool

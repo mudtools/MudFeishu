@@ -688,7 +688,7 @@ Mud.Feishu.AI.Tools/Affordance/{契约工具名}.md      # 如 out: Affordance/v
 | `im.reply_message`             | ✅                     | ✅                      | 平台侧 1 小时去重                                                                                                           |
 | `im.send_image`                | ❌                     | —                       | 三步链路，幂等由落盘器保证                                                                                                  |
 | `im.send_file`                 | ❌                     | —                       | 同上                                                                                                                        |
-| `bitable.add_record`           | ✅                     | ✅                      | 相同键返回同一条记录                                                                                                        |
+| `bitable.record_batch_create`  | ✅                     | ✅                      | 相同键返回同一条记录                                                                                                        |
 | `bitable.update_record`        | ✅                     | ✅                      | 相同键不产生副作用                                                                                                          |
 | `bitable.delete_record`        | ❌                     | —                       | 删除天然幂等                                                                                                                |
 | `approval.create_instance`     | ✅                     | ✅                      | 相同键返回错误码 60012                                                                                                      |

@@ -32,15 +32,15 @@ package_version: 3.0.3
 找三人共同空档 → 逐人 `find_free_slots` → 取交集 → `create_event`。
 
 ## 命令（工具）清单
-- `calendar.add_event_attendees`（写）：向指定日程添加与会者（attendee_ids 为 open_id 数组，每位参会人会收到日程邀请）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 calendar:calendar。
+- `calendar.add_event_attendees`（写）：向指定日程添加与会者（attendee_ids 为 open_id 数组，每位参会人会收到日程邀请）。写操作：需 calendar:calendar。
 - `calendar.agenda`（只读）：按时间窗查看指定日历的日程视图（start/end 为 RFC3339，含时区；重复日程会自动展开为实例）。与 calendar.list_events 的区别：本工具按时间窗一次取回全部实例（不分页）。只读，需 calendar:calendar:readonly。
-- `calendar.create_event`（写）：在指定日历上创建一个日程（start/end 为 RFC3339 时间，如 2026-10-01T14:00:00+08:00）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 calendar:calendar。
-- `calendar.delete_event`（写）：取消（删除）指定日程——取消日程会通知所有与会者。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 calendar:calendar。建议先 dry_run 预演确认。
+- `calendar.create_event`（写）：在指定日历上创建一个日程（start/end 为 RFC3339 时间，如 2026-10-01T14:00:00+08:00）。写操作：需 calendar:calendar。
+- `calendar.delete_event`（写）：取消（删除）指定日程——取消日程会通知所有与会者。高危写（high-risk-write）：需 calendar:calendar。建议先 dry_run 预演确认。
 - `calendar.find_free_slots`（只读）：查询一个用户主日历或一间会议室在指定时间窗内的忙闲（time_min/time_max 为 RFC3339；user_id 与 room_id 二选一）。多人场景请逐人调用。只读，需 calendar:calendar:readonly。
 - `calendar.list_event_attendees`（只读）：分页列出指定日程的与会者（attendee_id/name/type/is_optional），可翻页。只读，需 calendar:calendar:readonly。
 - `calendar.list_events`（只读）：列出指定日历上的日程（按开始时间返回，含 summary/start/end/event_id），可翻页。只读，需 calendar:calendar:readonly。
-- `calendar.rsvp`（写）：回复日程邀请（rsvp_status：accept=接受 / decline=拒绝 / tentative=暂定），更新当前身份在该日程上的参与状态。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 calendar:calendar。
-- `calendar.update_event`（写）：更新指定日程的信息（summary/description/start/end 等字段，至少传一个要更新的字段）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 calendar:calendar。start/end 为 RFC3339 时间。
+- `calendar.rsvp`（写）：回复日程邀请（rsvp_status：accept=接受 / decline=拒绝 / tentative=暂定），更新当前身份在该日程上的参与状态。写操作：需 calendar:calendar。
+- `calendar.update_event`（写）：更新指定日程的信息（summary/description/start/end 等字段，至少传一个要更新的字段）。写操作：需 calendar:calendar。start/end 为 RFC3339 时间。
 
 ## 参考文档（细则）
 - `references/free-busy.md`：`calendar/free-busy`

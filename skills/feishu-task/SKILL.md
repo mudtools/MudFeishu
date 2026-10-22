@@ -38,24 +38,24 @@ package_version: 3.0.3
 明天给张三建写周报任务 → `search_user` → `create_task`。
 
 ## 命令（工具）清单
-- `task.add_comment`（写）：为指定任务添加评论（content 必填，最长 3000 个 utf8 字符）。可通过 reply_to_comment_id 回复已有评论。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。
-- `task.add_members`（写）：向指定任务添加成员（负责人或关注人，member_ids 为 open_id 数组，role 指定角色 assignee 或 follower）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。
-- `task.complete_task`（写）：将任务标记为已完成（通过 update_task 设置 completed_at 字段）。task_guid 来自 task.create_task 或 task.list_my_tasks。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。
-- `task.create_task`（写）：创建一条任务（summary 必填；due 为 RFC3339 时间由工具层转换为毫秒时间戳；assignee_ids 为被指派人 open_id 列表）。传 parent_task_guid 则创建该任务的子任务（同一入口，字段面一致）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。
-- `task.delete_task`（写）：删除指定任务（删除后任务无法再被获取到）。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。建议先 dry_run 预演确认。task_guid 来自 task.create_task 或 task.list_my_tasks。
+- `task.add_comment`（写）：为指定任务添加评论（content 必填，最长 3000 个 utf8 字符）。可通过 reply_to_comment_id 回复已有评论。写操作：需 task:task。
+- `task.add_members`（写）：向指定任务添加成员（负责人或关注人，member_ids 为 open_id 数组，role 指定角色 assignee 或 follower）。写操作：需 task:task。
+- `task.complete_task`（写）：将任务标记为已完成（通过 update_task 设置 completed_at 字段）。task_guid 来自 task.create_task 或 task.list_my_tasks。写操作：需 task:task。
+- `task.create_task`（写）：创建一条任务（summary 必填；due 为 RFC3339 时间由工具层转换为毫秒时间戳；assignee_ids 为被指派人 open_id 列表）。传 parent_task_guid 则创建该任务的子任务（同一入口，字段面一致）。写操作：需 task:task。
+- `task.delete_task`（写）：删除指定任务（删除后任务无法再被获取到）。高危写（high-risk-write）：需 task:task。建议先 dry_run 预演确认。task_guid 来自 task.create_task 或 task.list_my_tasks。
 - `task.list_my_tasks`（只读）：以用户令牌身份读取「我负责的」任务列表（按用户在任务界面的自定义排序返回；可翻页）。要求宿主已提供当前用户身份与该用户的用户令牌。只读，需 task:task:readonly。
-- `task.remove_reminder`（写）：移除任务的提醒（reminder_ids 来自任务详情；移除不存在的提醒平台直接返回成功）。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。建议先 dry_run 预演确认。
+- `task.remove_reminder`（写）：移除任务的提醒（reminder_ids 来自任务详情；移除不存在的提醒平台直接返回成功）。高危写（high-risk-write）：需 task:task。建议先 dry_run 预演确认。
 - `task.search_tasks`（只读）：基于关键词与过滤条件搜索当前用户可见的任务（如'找关于合同的未完成任务'）。要求宿主已提供当前用户身份与该用户的用户令牌。只读，需 task:task:readonly。
-- `task.set_reminder`（写）：为任务添加提醒（提醒时刻 = 截止时间 - relative_fire_minute 分钟；任务必须已有截止时间；每个任务最多 1 个提醒）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。
-- `task.tasklist_create`（写）：创建一个任务清单（清单用于组织同一项目的多个任务）。member_ids 为协作成员 open_id 列表（可选）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。
-- `task.tasklist_delete`（写）：删除指定清单（删除后清单不可恢复，清单内的任务本身不受影响）。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。建议先 dry_run 预演确认。tasklist_guid 来自 task.tasklist_page_list。
+- `task.set_reminder`（写）：为任务添加提醒（提醒时刻 = 截止时间 - relative_fire_minute 分钟；任务必须已有截止时间；每个任务最多 1 个提醒）。写操作：需 task:task。
+- `task.tasklist_create`（写）：创建一个任务清单（清单用于组织同一项目的多个任务）。member_ids 为协作成员 open_id 列表（可选）。写操作：需 task:task。
+- `task.tasklist_delete`（写）：删除指定清单（删除后清单不可恢复，清单内的任务本身不受影响）。高危写（high-risk-write）：需 task:task。建议先 dry_run 预演确认。tasklist_guid 来自 task.tasklist_page_list。
 - `task.tasklist_get`（只读）：获取清单详情（清单名/所有者/成员）。tasklist_guid 来自 task.tasklist_page_list 或 task.tasklist_create。只读，需 task:task:readonly。
-- `task.tasklist_member_add`（写）：向清单添加协作成员（member_ids 为 open_id 数组）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。
-- `task.tasklist_member_remove`（写）：从清单移除协作成员（member_ids 为 open_id 数组；移除不存在的成员平台直接返回成功）。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。建议先 dry_run 预演确认。
+- `task.tasklist_member_add`（写）：向清单添加协作成员（member_ids 为 open_id 数组）。写操作：需 task:task。
+- `task.tasklist_member_remove`（写）：从清单移除协作成员（member_ids 为 open_id 数组；移除不存在的成员平台直接返回成功）。高危写（high-risk-write）：需 task:task。建议先 dry_run 预演确认。
 - `task.tasklist_page_list`（只读）：列出调用身份可读取的全部任务清单（返回清单摘要，可翻页）。只读，需 task:task:readonly。
 - `task.tasklist_tasks`（只读）：分页列出指定清单内的任务（返回任务摘要；可按完成状态过滤，可翻页）。tasklist_guid 来自 task.tasklist_page_list。只读，需 task:task:readonly。
-- `task.tasklist_update`（写）：重命名一个任务清单。tasklist_guid 来自 task.tasklist_page_list。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。
-- `task.update_task`（写）：更新任务信息（summary/description/due/completed，至少传一个要更新的字段）。completed=true 标记完成、false 重新打开（与 task.complete_task 同一路径的简写入口）。task_guid 来自 task.create_task 或 task.list_my_tasks。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。
+- `task.tasklist_update`（写）：重命名一个任务清单。tasklist_guid 来自 task.tasklist_page_list。写操作：需 task:task。
+- `task.update_task`（写）：更新任务信息（summary/description/due/completed，至少传一个要更新的字段）。completed=true 标记完成、false 重新打开（与 task.complete_task 同一路径的简写入口）。task_guid 来自 task.create_task 或 task.list_my_tasks。写操作：需 task:task。
 
 ## 参考文档（细则）
 - `references/creation-checklist.md`：`task/creation-checklist`

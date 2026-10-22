@@ -35,9 +35,9 @@ package_version: 3.0.3
 - 「只要前三页的截图」→ `slides.list_slide_images`（page_start=1、page_end=3）。
 
 ## 命令（工具）清单
-- `slides.add_slide`（写）：在已有演示文稿中插入一页 SML XML，返回新页 slide_id 与版本号。默认追加到末尾；before_slide_id 指定插到某一页之前（留空=末尾，⚠️ 传空字符串会被判为「未知页面」而不是「末尾」）。同内容多页请逐页调用，本工具不接页面数组。返回的 issues 是 XML 语法告警，须如实转达。写操作：默认空名单不启用… 〔需 slides:presentation:update 与 slides:presentation:write_only〕
+- `slides.add_slide`（写）：在已有演示文稿中插入一页 SML XML，返回新页 slide_id 与版本号。默认追加到末尾；before_slide_id 指定插到某一页之前（留空=末尾，⚠️ 传空字符串会被判为「未知页面」而不是「末尾」）。同内容多页请逐页调用，本工具不接页面数组。返回的 issues 是 XML 语法告警，须如实转达。写操作：可用 dry_run=true… 〔需 slides:presentation:update 与 slides:presentation:write_only〕
 - `slides.create_presentation`（写）：以整份 SML 2.0 XML 新建一个演示文稿，返回新文稿 token、链接、版本号与页面 ID 列表。content 是 <presentation xmlns="http://www.larkoffice.com/sml/2.0" width="960" height="540">…</presentation> 整份文档；平台不单独收标题… 〔需 slides:presentation:create 与 slides:presentation:write_only〕
-- `slides.delete_slide`（写）：删除演示文稿中的指定页面（⚠️ 不可恢复：平台不提供恢复被删页面的接口，误删只能靠 slides.revert_history 回到历史版本）。slide_id 必填且必须来自 slides.list_slides 的实际结果，不要凭页码猜测。写操作（高危）：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer）… 〔需 slides:presentation:update 与 slides:presentation:write_only〕
+- `slides.delete_slide`（写）：删除演示文稿中的指定页面（⚠️ 不可恢复：平台不提供恢复被删页面的接口，误删只能靠 slides.revert_history 回到历史版本）。slide_id 必填且必须来自 slides.list_slides 的实际结果，不要凭页码猜测。写操作（高危）：可用 dry_run=true 预演；需 slides:presentation:update 与 slides:presentation:write_only。
 - `slides.get_presentation`（只读）：按 xml_presentation_id 获取 XML 演示文稿的整份 SML 2.0 内容（分窗口返回：content_offset/content_limit，默认 1 万字符，回填 content_total_length 与 has_more/next_offset 可续读）。revision_id=-1 表示最新版；remove_attr_id=true 会剥掉 XML 的 id 属性（只适合阅读… 〔需 slides:presentation:read〕
 - `slides.get_revert_status`（只读）：查询历史版本回滚任务的执行状态（status：done/partial_failed/running/failed，失败时给出 failed_block_tokens）。slides.revert_history 是异步任务，必须用它确认结果；按返回的 poll_after_ms 间隔轮询，不要连续空轮。只读，需 slides:presentation:read。
 - `slides.get_slide`（只读）：获取演示文稿中某一页的 SML 2.0 XML（改这一页前先读它）。slide_id 与 slide_number 二选一必填（slide_number 从 1 起，page 1 = 第一页）；两者同传或都不传都会在本地被拒绝，不消耗下游。单页 XML 通常几 KB，直接进上下文；整副文稿请用 slides.get_presentation。只读，需 slides:presentation:read。

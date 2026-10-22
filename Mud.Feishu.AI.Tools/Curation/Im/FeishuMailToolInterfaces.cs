@@ -65,7 +65,7 @@ public interface IFeishuTenantMailGetMessageTool
 /// 二者互斥——既给草稿 ID 又给正文时，"最终发出的是哪份内容"不可判定。
 /// </remarks>
 [AgentTool("mail.send",
-    Description = "以用户身份发送邮件。两种用法：① 传 draft_id 发送一封已存草稿（可定时：send_time 为 RFC3339，须至少晚于当前时间 5 分钟）；② 不传 draft_id 则现写现发（to/subject/body 必填，内部先建草稿再发送，模型无需感知中间态）。两种用法不要混用：有 draft_id 时不再接受 to/subject/body/cc/bcc。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 mail:mailbox。用户身份工具——宿主须在 AllowedIdentities 放行 user。",
+    Description = "以用户身份发送邮件。两种用法：① 传 draft_id 发送一封已存草稿（可定时：send_time 为 RFC3339，须至少晚于当前时间 5 分钟）；② 不传 draft_id 则现写现发（to/subject/body 必填，内部先建草稿再发送，模型无需感知中间态）。两种用法不要混用：有 draft_id 时不再接受 to/subject/body/cc/bcc。写操作：需 mail:mailbox。用户身份工具——宿主须在 AllowedIdentities 放行 user。",
     RequiredScopes = ["mail:mailbox"],
     IsWrite = true,
     Source = nameof(IFeishuUserV1MailDraft) + "." + nameof(IFeishuUserV1MailDraft.SendUserMailboxDraftAsync),
@@ -148,7 +148,7 @@ public interface IFeishuTenantMailGetThreadTool
 /// 与人工处理结果不一致（Agent 读过的邮件在用户眼里仍是未读）。
 /// </remarks>
 [AgentTool("mail.mark_read",
-    Description = "把邮件标记为已读（或未读）——Agent 读完邮件后应回写，避免用户邮箱堆积未读。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 mail:mailbox。",
+    Description = "把邮件标记为已读（或未读）——Agent 读完邮件后应回写，避免用户邮箱堆积未读。写操作：需 mail:mailbox。",
     RequiredScopes = ["mail:mailbox"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1MailMessage) + "." + nameof(IFeishuTenantV1MailMessage.ModifyUserMailboxMessageAsync))]
@@ -171,7 +171,7 @@ public interface IFeishuTenantMailMarkReadTool
 /// <summary>工具接口：mail.create_draft（映射 <c>IFeishuUserV1MailDraft.CreateUserMailboxDraftAsync</c>）。</summary>
 /// <remarks>正文经工具层组装为 RFC 5822 EML 并 base64url 编码（与 mail.send 同源），模型不感知。</remarks>
 [AgentTool("mail.create_draft",
-    Description = "在用户邮箱中创建一封草稿（不发送，可先检查再经 mail.send 传 draft_id 发出）。to/cc/bcc 为邮箱地址数组，subject 为主题，body 为纯文本正文。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 mail:mailbox。用户身份工具——宿主须在 AllowedIdentities 放行 user。",
+    Description = "在用户邮箱中创建一封草稿（不发送，可先检查再经 mail.send 传 draft_id 发出）。to/cc/bcc 为邮箱地址数组，subject 为主题，body 为纯文本正文。写操作：需 mail:mailbox。用户身份工具——宿主须在 AllowedIdentities 放行 user。",
     RequiredScopes = ["mail:mailbox"],
     IsWrite = true,
     Source = nameof(IFeishuUserV1MailDraft) + "." + nameof(IFeishuUserV1MailDraft.CreateUserMailboxDraftAsync))]
@@ -193,7 +193,7 @@ public interface IFeishuUserMailCreateDraftTool
 /// <summary>工具接口：mail.update_draft（映射 <c>IFeishuUserV1MailDraft.UpdateUserMailboxDraftAsync</c>）。</summary>
 /// <remarks>整段替换语义（平台原文："将整体替换草稿原有内容"）——必须给出完整字段集，PUT 天然幂等。</remarks>
 [AgentTool("mail.update_draft",
-    Description = "更新一封已有草稿的内容（**整段替换**：直接给全 to/subject/body 等完整内容，平台会用新内容整体替换旧事实）。draft_id 来自 mail.create_draft 或邮件列表。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 mail:mailbox。用户身份工具——宿主须在 AllowedIdentities 放行 user。",
+    Description = "更新一封已有草稿的内容（**整段替换**：直接给全 to/subject/body 等完整内容，平台会用新内容整体替换旧事实）。draft_id 来自 mail.create_draft 或邮件列表。写操作：需 mail:mailbox。用户身份工具——宿主须在 AllowedIdentities 放行 user。",
     RequiredScopes = ["mail:mailbox"],
     IsWrite = true,
     Source = nameof(IFeishuUserV1MailDraft) + "." + nameof(IFeishuUserV1MailDraft.UpdateUserMailboxDraftAsync))]
@@ -215,7 +215,7 @@ public interface IFeishuUserMailUpdateDraftTool
 
 /// <summary>工具接口：mail.delete_draft（映射 <c>IFeishuUserV1MailDraft.DeleteUserMailboxDraftAsync</c>）。</summary>
 [AgentTool("mail.delete_draft",
-    Description = "删除一封草稿。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 mail:mailbox。建议先 dry_run 预演确认。draft_id 来自 mail.create_draft 或邮件列表。用户身份工具——宿主须在 AllowedIdentities 放行 user。",
+    Description = "删除一封草稿。高危写（high-risk-write）：需 mail:mailbox。建议先 dry_run 预演确认。draft_id 来自 mail.create_draft 或邮件列表。用户身份工具——宿主须在 AllowedIdentities 放行 user。",
     RequiredScopes = ["mail:mailbox"],
     IsWrite = true,
     Source = nameof(IFeishuUserV1MailDraft) + "." + nameof(IFeishuUserV1MailDraft.DeleteUserMailboxDraftAsync))]
@@ -234,7 +234,7 @@ public interface IFeishuUserMailDeleteDraftTool
 
 /// <summary>工具接口：mail.trash_message（映射 <c>IFeishuTenantV1MailMessage.BatchTrashUserMailboxMessageAsync</c>）。</summary>
 [AgentTool("mail.trash_message",
-    Description = "批量把邮件移到已删除文件夹（**回收站语义，可在邮箱里找回**，不是永久删除）。message_ids 来自 mail.list_messages。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 mail:mailbox。",
+    Description = "批量把邮件移到已删除文件夹（**回收站语义，可在邮箱里找回**，不是永久删除）。message_ids 来自 mail.list_messages。写操作：需 mail:mailbox。",
     RequiredScopes = ["mail:mailbox"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1MailMessage) + "." + nameof(IFeishuTenantV1MailMessage.BatchTrashUserMailboxMessageAsync))]
@@ -293,7 +293,7 @@ public interface IFeishuTenantMailRuleListTool
 /// 更新路径下省略的可选字段将按默认值参与覆盖。
 /// </remarks>
 [AgentTool("mail.rule_save",
-    Description = "新建或整条替换一条收件规则（自动分拣邮件）。不传 rule_id 即新建；传 rule_id 即整条替换该规则（建议先用 mail.rule_list 回填原内容）。⚠️ 条件与动作用管道分隔的简化式，**不要写 JSON**：condition 形如 'field|operator|value'（field：sender/recipient/cc/recipient_or_cc/subject/body/attachment_name/attachment_type/any_address/has_attachment/is_external/is_spam/not_spam/all；operator：contains/not_contains/starts_with/ends_with/is/is_not/contains_me/empty；旗标型 field 可省略 operator 与 value，如 has_attachment）；action 形如 'action'（archive/delete/mark_read/to_spam/not_spam/add_flag/no_notify）或 'move_to_folder|文件夹ID'。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 mail:mailbox。",
+    Description = "新建或整条替换一条收件规则（自动分拣邮件）。不传 rule_id 即新建；传 rule_id 即整条替换该规则（建议先用 mail.rule_list 回填原内容）。⚠️ 条件与动作用管道分隔的简化式，**不要写 JSON**：condition 形如 'field|operator|value'（field：sender/recipient/cc/recipient_or_cc/subject/body/attachment_name/attachment_type/any_address/has_attachment/is_external/is_spam/not_spam/all；operator：contains/not_contains/starts_with/ends_with/is/is_not/contains_me/empty；旗标型 field 可省略 operator 与 value，如 has_attachment）；action 形如 'action'（archive/delete/mark_read/to_spam/not_spam/add_flag/no_notify）或 'move_to_folder|文件夹ID'。写操作：需 mail:mailbox。",
     RequiredScopes = ["mail:mailbox"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1MailRule) + "." + nameof(IFeishuTenantV1MailRule.CreateUserMailboxRuleAsync))]
@@ -316,7 +316,7 @@ public interface IFeishuTenantMailRuleSaveTool
 
 /// <summary>工具接口：mail.rule_delete（映射 <c>IFeishuTenantV1MailRule.DeleteUserMailboxRuleAsync</c>）。</summary>
 [AgentTool("mail.rule_delete",
-    Description = "删除一条收件规则。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 mail:mailbox。建议先用 mail.rule_list 确认对象并 dry_run 预演。rule_id 来自 mail.rule_list。",
+    Description = "删除一条收件规则。高危写（high-risk-write）：需 mail:mailbox。建议先用 mail.rule_list 确认对象并 dry_run 预演。rule_id 来自 mail.rule_list。",
     RequiredScopes = ["mail:mailbox"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1MailRule) + "." + nameof(IFeishuTenantV1MailRule.DeleteUserMailboxRuleAsync))]
@@ -334,7 +334,7 @@ public interface IFeishuTenantMailRuleDeleteTool
 /// <summary>工具接口：mail.rule_reorder（映射 <c>IFeishuTenantV1MailRule.ReorderUserMailboxRuleAsync</c>）。</summary>
 /// <remarks>规则按列表顺序自上而下匹配——顺序即优先级；本工具整表重排（给全量规则 id 序列）。</remarks>
 [AgentTool("mail.rule_reorder",
-    Description = "调整收件规则的匹配顺序（规则自上而下匹配，**顺序即优先级**；须给出全量规则 id 序列，按目标优先级排列）。rule_ids 来自 mail.rule_list。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 mail:mailbox。",
+    Description = "调整收件规则的匹配顺序（规则自上而下匹配，**顺序即优先级**；须给出全量规则 id 序列，按目标优先级排列）。rule_ids 来自 mail.rule_list。写操作：需 mail:mailbox。",
     RequiredScopes = ["mail:mailbox"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1MailRule) + "." + nameof(IFeishuTenantV1MailRule.ReorderUserMailboxRuleAsync))]
@@ -386,7 +386,7 @@ public interface IFeishuTenantMailTemplateGetTool
 /// 更新路径下省略的可选字段会以默认值/空参与整体覆盖，故建议先 template_get 回填再改。
 /// </remarks>
 [AgentTool("mail.template_save",
-    Description = "新建或整段替换一份可复用的个人邮件模板。不传 template_id 即新建；传 template_id 即整段替换该模板（建议先用 mail.template_get 回填原内容，再改需要变的字段）。template_content 为模板正文（可含 HTML）；tos/ccs/bccs 为默认收件地址数组。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 mail:mailbox。",
+    Description = "新建或整段替换一份可复用的个人邮件模板。不传 template_id 即新建；传 template_id 即整段替换该模板（建议先用 mail.template_get 回填原内容，再改需要变的字段）。template_content 为模板正文（可含 HTML）；tos/ccs/bccs 为默认收件地址数组。写操作：需 mail:mailbox。",
     RequiredScopes = ["mail:mailbox"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1MailTemplate) + "." + nameof(IFeishuTenantV1MailTemplate.CreateMailTemplateAsync))]
@@ -410,7 +410,7 @@ public interface IFeishuTenantMailTemplateSaveTool
 
 /// <summary>工具接口：mail.template_delete（映射 <c>IFeishuTenantV1MailTemplate.DeleteMailTemplateAsync</c>）。</summary>
 [AgentTool("mail.template_delete",
-    Description = "删除一份邮件模板（**删除后不可恢复**，模板将不再出现在列表中）。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 mail:mailbox。建议先用 mail.template_list 确认对象并 dry_run 预演。",
+    Description = "删除一份邮件模板（**删除后不可恢复**，模板将不再出现在列表中）。高危写（high-risk-write）：需 mail:mailbox。建议先用 mail.template_list 确认对象并 dry_run 预演。",
     RequiredScopes = ["mail:mailbox"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1MailTemplate) + "." + nameof(IFeishuTenantV1MailTemplate.DeleteMailTemplateAsync))]

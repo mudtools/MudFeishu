@@ -30,7 +30,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// 传入时走 <c>POST /tasks/{guid}/subtasks</c>（字段面完全一致）。
 /// </remarks>
 [AgentTool("task.create_task",
-    Description = "创建一条任务（summary 必填；due 为 RFC3339 时间由工具层转换为毫秒时间戳；assignee_ids 为被指派人 open_id 列表）。传 parent_task_guid 则创建该任务的子任务（同一入口，字段面一致）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
+    Description = "创建一条任务（summary 必填；due 为 RFC3339 时间由工具层转换为毫秒时间戳；assignee_ids 为被指派人 open_id 列表）。传 parent_task_guid 则创建该任务的子任务（同一入口，字段面一致）。写操作：需 task:task。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2Task) + "." + nameof(IFeishuTenantV2Task.CreateTaskAsync))]
@@ -71,7 +71,7 @@ public interface IFeishuUserTaskListMyTasksTool
 
 /// <summary>工具接口：task.update_task（映射 <c>IFeishuTenantV2Task.UpdateTaskAsync</c>）。</summary>
 [AgentTool("task.update_task",
-    Description = "更新任务信息（summary/description/due/completed，至少传一个要更新的字段）。completed=true 标记完成、false 重新打开（与 task.complete_task 同一路径的简写入口）。task_guid 来自 task.create_task 或 task.list_my_tasks。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
+    Description = "更新任务信息（summary/description/due/completed，至少传一个要更新的字段）。completed=true 标记完成、false 重新打开（与 task.complete_task 同一路径的简写入口）。task_guid 来自 task.create_task 或 task.list_my_tasks。写操作：需 task:task。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2Task) + "." + nameof(IFeishuTenantV2Task.UpdateTaskAsync),
@@ -97,7 +97,7 @@ public interface IFeishuTenantTaskUpdateTaskTool
 
 /// <summary>工具接口：task.complete_task（映射 <c>IFeishuTenantV2Task.UpdateTaskAsync</c>，update_fields=["completed_at"]）。</summary>
 [AgentTool("task.complete_task",
-    Description = "将任务标记为已完成（通过 update_task 设置 completed_at 字段）。task_guid 来自 task.create_task 或 task.list_my_tasks。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
+    Description = "将任务标记为已完成（通过 update_task 设置 completed_at 字段）。task_guid 来自 task.create_task 或 task.list_my_tasks。写操作：需 task:task。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2Task) + "." + nameof(IFeishuTenantV2Task.UpdateTaskAsync))]
@@ -115,7 +115,7 @@ public interface IFeishuTenantTaskCompleteTaskTool
 
 /// <summary>工具接口：task.delete_task（映射 <c>IFeishuTenantV2Task.DeleteTaskByIdAsync</c>）。</summary>
 [AgentTool("task.delete_task",
-    Description = "删除指定任务（删除后任务无法再被获取到）。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。建议先 dry_run 预演确认。task_guid 来自 task.create_task 或 task.list_my_tasks。",
+    Description = "删除指定任务（删除后任务无法再被获取到）。高危写（high-risk-write）：需 task:task。建议先 dry_run 预演确认。task_guid 来自 task.create_task 或 task.list_my_tasks。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2Task) + "." + nameof(IFeishuTenantV2Task.DeleteTaskByIdAsync))]
@@ -131,7 +131,7 @@ public interface IFeishuTenantTaskDeleteTaskTool
 
 /// <summary>工具接口：task.add_comment（映射 <c>IFeishuTenantV2TaskComments.CreateCommentAsync</c>）。</summary>
 [AgentTool("task.add_comment",
-    Description = "为指定任务添加评论（content 必填，最长 3000 个 utf8 字符）。可通过 reply_to_comment_id 回复已有评论。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
+    Description = "为指定任务添加评论（content 必填，最长 3000 个 utf8 字符）。可通过 reply_to_comment_id 回复已有评论。写操作：需 task:task。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2TaskComments) + "." + nameof(IFeishuTenantV2TaskComments.CreateCommentAsync))]
@@ -149,7 +149,7 @@ public interface IFeishuTenantTaskAddCommentTool
 
 /// <summary>工具接口：task.add_members（映射 <c>IFeishuTenantV2Task.AddMembersByIdAsync</c>）。</summary>
 [AgentTool("task.add_members",
-    Description = "向指定任务添加成员（负责人或关注人，member_ids 为 open_id 数组，role 指定角色 assignee 或 follower）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
+    Description = "向指定任务添加成员（负责人或关注人，member_ids 为 open_id 数组，role 指定角色 assignee 或 follower）。写操作：需 task:task。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2Task) + "." + nameof(IFeishuTenantV2Task.AddMembersByIdAsync))]
@@ -174,7 +174,7 @@ public interface IFeishuTenantTaskAddMembersTool
 
 /// <summary>工具接口：task.tasklist_create（映射 <c>IFeishuTenantV2TaskList.CreateTaskListAsync</c>）。</summary>
 [AgentTool("task.tasklist_create",
-    Description = "创建一个任务清单（清单用于组织同一项目的多个任务）。member_ids 为协作成员 open_id 列表（可选）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
+    Description = "创建一个任务清单（清单用于组织同一项目的多个任务）。member_ids 为协作成员 open_id 列表（可选）。写操作：需 task:task。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2TaskList) + "." + nameof(IFeishuTenantV2TaskList.CreateTaskListAsync))]
@@ -206,7 +206,7 @@ public interface IFeishuTenantTaskTasklistGetTool
 /// <summary>工具接口：task.tasklist_update（映射 <c>IFeishuTenantV2TaskList.UpdateTaskListByIdAsync</c>）。</summary>
 /// <remarks>仅支持改名——平台换所有人（update_fields=["owner"]）的线上形态需要 <c>tasklist.owner</c> 字段，当前 SDK DTO（TaskListData）未暴露该字段。</remarks>
 [AgentTool("task.tasklist_update",
-    Description = "重命名一个任务清单。tasklist_guid 来自 task.tasklist_page_list。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
+    Description = "重命名一个任务清单。tasklist_guid 来自 task.tasklist_page_list。写操作：需 task:task。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2TaskList) + "." + nameof(IFeishuTenantV2TaskList.UpdateTaskListByIdAsync))]
@@ -223,7 +223,7 @@ public interface IFeishuTenantTaskTasklistUpdateTool
 
 /// <summary>工具接口：task.tasklist_delete（映射 <c>IFeishuTenantV2TaskList.DeleteTaskListByIdAsync</c>）。</summary>
 [AgentTool("task.tasklist_delete",
-    Description = "删除指定清单（删除后清单不可恢复，清单内的任务本身不受影响）。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。建议先 dry_run 预演确认。tasklist_guid 来自 task.tasklist_page_list。",
+    Description = "删除指定清单（删除后清单不可恢复，清单内的任务本身不受影响）。高危写（high-risk-write）：需 task:task。建议先 dry_run 预演确认。tasklist_guid 来自 task.tasklist_page_list。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2TaskList) + "." + nameof(IFeishuTenantV2TaskList.DeleteTaskListByIdAsync))]
@@ -239,7 +239,7 @@ public interface IFeishuTenantTaskTasklistDeleteTool
 
 /// <summary>工具接口：task.tasklist_member_add（映射 <c>IFeishuTenantV2TaskList.AddTaskListMemberByIdAsync</c>）。</summary>
 [AgentTool("task.tasklist_member_add",
-    Description = "向清单添加协作成员（member_ids 为 open_id 数组）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
+    Description = "向清单添加协作成员（member_ids 为 open_id 数组）。写操作：需 task:task。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2TaskList) + "." + nameof(IFeishuTenantV2TaskList.AddTaskListMemberByIdAsync))]
@@ -256,7 +256,7 @@ public interface IFeishuTenantTaskTasklistMemberAddTool
 
 /// <summary>工具接口：task.tasklist_member_remove（映射 <c>IFeishuTenantV2TaskList.RemoveTaskListMemberByIdAsync</c>）。</summary>
 [AgentTool("task.tasklist_member_remove",
-    Description = "从清单移除协作成员（member_ids 为 open_id 数组；移除不存在的成员平台直接返回成功）。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。建议先 dry_run 预演确认。",
+    Description = "从清单移除协作成员（member_ids 为 open_id 数组；移除不存在的成员平台直接返回成功）。高危写（high-risk-write）：需 task:task。建议先 dry_run 预演确认。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2TaskList) + "." + nameof(IFeishuTenantV2TaskList.RemoveTaskListMemberByIdAsync))]
@@ -330,7 +330,7 @@ public interface IFeishuUserTaskSearchTasksTool
 
 /// <summary>工具接口：task.set_reminder（映射 <c>IFeishuTenantV2Task.AddTaskReminderByIdAsync</c>）。</summary>
 [AgentTool("task.set_reminder",
-    Description = "为任务添加提醒（提醒时刻 = 截止时间 - relative_fire_minute 分钟；任务必须已有截止时间；每个任务最多 1 个提醒）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
+    Description = "为任务添加提醒（提醒时刻 = 截止时间 - relative_fire_minute 分钟；任务必须已有截止时间；每个任务最多 1 个提醒）。写操作：需 task:task。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2Task) + "." + nameof(IFeishuTenantV2Task.AddTaskReminderByIdAsync))]
@@ -347,7 +347,7 @@ public interface IFeishuTenantTaskSetReminderTool
 
 /// <summary>工具接口：task.remove_reminder（映射 <c>IFeishuTenantV2Task.RemoveTaskReminderByIdAsync</c>）。</summary>
 [AgentTool("task.remove_reminder",
-    Description = "移除任务的提醒（reminder_ids 来自任务详情；移除不存在的提醒平台直接返回成功）。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。建议先 dry_run 预演确认。",
+    Description = "移除任务的提醒（reminder_ids 来自任务详情；移除不存在的提醒平台直接返回成功）。高危写（high-risk-write）：需 task:task。建议先 dry_run 预演确认。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2Task) + "." + nameof(IFeishuTenantV2Task.RemoveTaskReminderByIdAsync))]

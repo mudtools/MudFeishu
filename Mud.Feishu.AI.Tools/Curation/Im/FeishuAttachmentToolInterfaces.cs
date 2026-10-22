@@ -25,7 +25,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 
 /// <summary>工具接口：im.send_image（上传图片并发送：<c>POST /open-apis/im/v1/images</c> → <c>POST /open-apis/im/v1/messages</c>）。</summary>
 [AgentTool("im.send_image",
-    Description = "把一张网络图片作为消息发送到指定会话（image_url 为 http/https 绝对地址，由宿主负责下载落盘）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:resource 与 im:message:send_as_bot。",
+    Description = "把一张网络图片作为消息发送到指定会话（image_url 为 http/https 绝对地址，由宿主负责下载落盘）。写操作：需 im:resource 与 im:message:send_as_bot。",
     RequiredScopes = ["im:resource", "im:message:send_as_bot"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.SendMessageAsync))]
@@ -44,7 +44,7 @@ public interface IFeishuTenantImSendImageTool
 
 /// <summary>工具接口：im.send_file（上传文件并发送：<c>POST /open-apis/im/v1/files</c> → <c>POST /open-apis/im/v1/messages</c>）。</summary>
 [AgentTool("im.send_file",
-    Description = "把一个网络文件作为消息发送到指定会话（file_url 为 http/https 绝对地址，由宿主负责下载落盘）。file_name 必须带扩展名。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 im:resource 与 im:message:send_as_bot。",
+    Description = "把一个网络文件作为消息发送到指定会话（file_url 为 http/https 绝对地址，由宿主负责下载落盘）。file_name 必须带扩展名。写操作：需 im:resource 与 im:message:send_as_bot。",
     RequiredScopes = ["im:resource", "im:message:send_as_bot"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.SendMessageAsync))]

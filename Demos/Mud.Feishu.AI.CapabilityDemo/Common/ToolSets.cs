@@ -28,19 +28,18 @@ internal static class ToolSets
     /// <summary>A1：最小只读面（列表 + 查询）。</summary>
     public static readonly string[] A1Read = ["bitable.list_tables", "bitable.query_records"];
 
-    /// <summary>A5：多维表格读链 6 枚（博客"完整跑一遍"里的读面）。</summary>
-    public static readonly string[] BitableRead6 =
+    /// <summary>A5：多维表格读链 5 枚（博客"完整跑一遍"里的读面）。</summary>
+    public static readonly string[] BitableRead5 =
     [
         "bitable.list_tables",
         "bitable.list_fields",
         "bitable.list_views",
         "bitable.get_view",
         "bitable.query_records",
-        "bitable.get_records_by_ids",
     ];
 
     /// <summary>A5：写面 2 枚（刻意不含 <see cref="BitableDelete"/>）。</summary>
-    public static readonly string[] BitableWrite2 = ["bitable.add_record", "bitable.update_record"];
+    public static readonly string[] BitableWrite2 = ["bitable.record_batch_create", "bitable.update_record"];
 
     /// <summary>高危写：只有显式 <c>--include-delete</c> 才进入白名单。</summary>
     public const string BitableDelete = "bitable.delete_record";

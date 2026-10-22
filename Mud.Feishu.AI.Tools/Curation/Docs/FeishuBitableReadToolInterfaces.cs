@@ -194,7 +194,7 @@ public interface IFeishuTenantBitableDashboardListTool
 
 /// <summary>工具接口：bitable.workflow_list（映射 <c>IFeishuTenantV1BitableWorkflow.GetAppWorkflowListAsync</c>）。</summary>
 [AgentTool("bitable.workflow_list",
-    Description = "列出多维表格中的全部工作流（workflow_id/status/title）；workflow_id 供 bitable.workflow_update 使用。只读，需 bitable:app:readonly。",
+    Description = "列出多维表格中的全部工作流（workflow_id/status/title），不区分是否挂在数据表上；只看与数据表相关的工作流用 bitable.workflow_block_list。workflow_id 供 bitable.workflow_update 使用。只读，需 bitable:app:readonly。",
     RequiredScopes = ["bitable:app:readonly"],
     Source = nameof(IFeishuTenantV1BitableWorkflow) + "." + nameof(IFeishuTenantV1BitableWorkflow.GetAppWorkflowListAsync))]
 public interface IFeishuTenantBitableWorkflowListTool

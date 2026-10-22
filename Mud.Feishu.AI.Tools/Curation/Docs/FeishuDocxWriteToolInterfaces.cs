@@ -23,7 +23,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 
 /// <summary>工具接口：docx.create_document（映射 <c>IFeishuTenantV1Docx.CreateDocumentAsync</c>）。</summary>
 [AgentTool("docx.create_document",
-    Description = "在云空间中创建一个飞书文档（返回 document_id，可用 docx.get_raw_content 读回）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。",
+    Description = "在云空间中创建一个飞书文档（返回 document_id，可用 docx.get_raw_content 读回）。写操作：需 docx:document。",
     RequiredScopes = ["docx:document"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1Docx) + "." + nameof(IFeishuTenantV1Docx.CreateDocumentAsync))]
@@ -40,7 +40,7 @@ public interface IFeishuTenantDocxCreateDocumentTool
 
 /// <summary>工具接口：docx.append_blocks（映射 <c>IFeishuTenantV1DocxBlocks.CreateBlockAsync</c>）。</summary>
 [AgentTool("docx.append_blocks",
-    Description = "在文档根块下创建子块（向文档追加内容，如段落、标题等）。document_id 可由 docx.create_document 创建后获得或来自已有文档。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。",
+    Description = "在文档根块下创建子块（向文档追加内容，如段落、标题等）。document_id 可由 docx.create_document 创建后获得或来自已有文档。写操作：需 docx:document。",
     RequiredScopes = ["docx:document"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1DocxBlocks) + "." + nameof(IFeishuTenantV1DocxBlocks.CreateBlockAsync))]
@@ -69,7 +69,7 @@ public interface IFeishuTenantDocxAppendBlocksTool
 /// 故本工具不提供那些面（需改表格结构/富样式时另立工具）。
 /// </remarks>
 [AgentTool("docx.update_blocks",
-    Description = "更新文档中已有块的文本内容（改写段落/标题的文字）。block_id 来自 docx.append_blocks 或 docx.get_raw_content 的返回。⚠️ 只支持改文本，不支持改表格结构与富样式（见工具说明）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。",
+    Description = "更新文档中已有块的文本内容（改写段落/标题的文字）。block_id 来自 docx.append_blocks 或 docx.get_raw_content 的返回。⚠️ 只支持改文本，不支持改表格结构与富样式（见工具说明）。写操作：需 docx:document。",
     RequiredScopes = ["docx:document"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1DocxBlocks) + "." + nameof(IFeishuTenantV1DocxBlocks.BatchUpdateBlocksAsync))]
@@ -87,7 +87,7 @@ public interface IFeishuTenantDocxUpdateBlocksTool
 
 /// <summary>工具接口：docx.delete_blocks（映射 <c>IFeishuTenantV1DocxBlocks.BatchDeleteBlocksAsync</c>）。</summary>
 [AgentTool("docx.delete_blocks",
-    Description = "删除某个父块下指定索引区间的子块（如删掉文档里过时的一批段落）。索引是父块下的子块序号（从 0 开始），可由 docx.get_raw_content 或 docx.append_blocks 的返回推算。⚠️ 删除不可撤销——务必先用 dry_run 确认区间。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。",
+    Description = "删除某个父块下指定索引区间的子块（如删掉文档里过时的一批段落）。索引是父块下的子块序号（从 0 开始），可由 docx.get_raw_content 或 docx.append_blocks 的返回推算。⚠️ 删除不可撤销——务必先用 dry_run 确认区间。写操作：需 docx:document。",
     RequiredScopes = ["docx:document"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1DocxBlocks) + "." + nameof(IFeishuTenantV1DocxBlocks.BatchDeleteBlocksAsync))]
@@ -150,7 +150,7 @@ public interface IFeishuTenantDocxImportMarkdownTool
 /// </para>
 /// </remarks>
 [AgentTool("docx.replace_document",
-    Description = "用 Markdown 内容整体替换文档正文（保留为新内容的旧块会被删除）。适用于'把这篇文章重建一遍'。执行顺序为先追加新块、再删除旧块，因此中途失败不会导致内容丢失。⚠️ 必须提供 idempotency_key（重试语义）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。",
+    Description = "用 Markdown 内容整体替换文档正文（保留为新内容的旧块会被删除）。适用于'把这篇文章重建一遍'。执行顺序为先追加新块、再删除旧块，因此中途失败不会导致内容丢失。⚠️ 必须提供 idempotency_key（重试语义）。写操作：需 docx:document。",
     RequiredScopes = ["docx:document"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1DocxBlocks) + "." + nameof(IFeishuTenantV1DocxBlocks.CreateBlockAsync))]
@@ -190,7 +190,7 @@ public interface IFeishuTenantDocxReplaceDocumentTool
 /// </para>
 /// </remarks>
 [AgentTool("docx.media_insert",
-    Description = "把图片从 URL 上传到云文档素材并插入为文档中的图片块（两步：Drive 媒体上传 → Docx 图片块）。仅接受 http/https 绝对地址；宿主须注册 IFeishuAttachmentStager 与 Drive API。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document 与 drive:drive。",
+    Description = "把图片从 URL 上传到云文档素材并插入为文档中的图片块（两步：Drive 媒体上传 → Docx 图片块）。仅接受 http/https 绝对地址；宿主须注册 IFeishuAttachmentStager 与 Drive API。写操作：需 docx:document 与 drive:drive。",
     RequiredScopes = ["docx:document", "drive:drive"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1DocxBlocks) + "." + nameof(IFeishuTenantV1DocxBlocks.CreateBlockAsync))]

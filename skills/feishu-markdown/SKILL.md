@@ -36,7 +36,7 @@ package_version: 3.0.3
 - 「对照草稿看看远端改了什么」→ `markdown.diff`（right_text=草稿）。
 
 ## 命令（工具）清单
-- `markdown.create`（写）：把 Markdown 内容创建为飞书在线文档（异步导入为 docx），返回 document_token/url。导入任务终态后自动清理源 .md 临时文件。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。
+- `markdown.create`（写）：把 Markdown 内容创建为飞书在线文档（异步导入为 docx），返回 document_token/url。导入任务终态后自动清理源 .md 临时文件。写操作：需 drive:drive。
 - `markdown.diff`（只读）：比较两份 Markdown 的行级差异（左侧 token；右侧二选一：token 或直接文本），返回 unified diff 与增删行数。用于写入前预审、或核对远端是否被别人改过。只读，需 drive:drive:readonly。
 - `markdown.fetch`（只读）：读取 Markdown 正文（token_type=docx 读新版文档正文；token_type=file 读云空间 .md 资源文件）。按 offset/limit 分窗口返回，has_more=true 时用 next_offset 续读。只读，需 drive:drive:readonly。
-- `markdown.patch`（写）：按精确文本替换文档正文的一段（find 必须唯一命中；多处命中须显式 replace_all=true）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document + drive:drive:readonly。
+- `markdown.patch`（写）：按精确文本替换文档正文的一段（find 必须唯一命中；多处命中须显式 replace_all=true）。写操作：需 docx:document + drive:drive:readonly。

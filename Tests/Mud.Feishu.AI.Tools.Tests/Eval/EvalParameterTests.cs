@@ -12,7 +12,7 @@ namespace Mud.Feishu.AI.Tools.Tests.Eval;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>为什么分两层</b>：365 枚工具里只有 2 枚在 Schema 上声明了 <c>enum</c>，其余取值闭集
+/// <b>为什么分两层</b>：351 枚工具里只有 2 枚在 Schema 上声明了 <c>enum</c>，其余取值闭集
 /// （receive_id_type、member_type、member_role）、JSON 字符串形态（sheets 的 values、bitable 的
 /// records/fields）与简化文法（bitable 的 filter）全部由 handler 判定。只测 Schema 面会漏掉
 /// 「名字写对、值写错」这一整类真实失败；只测 handler 面则无法区分「参数结构错」与「下游失败」。

@@ -232,7 +232,7 @@ public interface IFeishuTenantOkrGetKeyResultIndicatorTool
 
 /// <summary>工具接口：okr.create_objective（映射 <c>IFeishuTenantV2OkrCycle.CreateCycleObjectiveAsync</c>）。</summary>
 [AgentTool("okr.create_objective",
-    Description = "在指定 OKR 周期（Cycle）下创建一个目标（Objective）（content 为纯文本，工具层负责包装为飞书富文本块）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 okr:okr.content:writeonly。",
+    Description = "在指定 OKR 周期（Cycle）下创建一个目标（Objective）（content 为纯文本，工具层负责包装为飞书富文本块）。写操作：需 okr:okr.content:writeonly。",
     RequiredScopes = ["okr:okr.content:writeonly"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2OkrCycle) + "." + nameof(IFeishuTenantV2OkrCycle.CreateCycleObjectiveAsync))]
@@ -254,7 +254,7 @@ public interface IFeishuTenantOkrCreateObjectiveTool
 
 /// <summary>工具接口：okr.update_objective（映射 <c>IFeishuTenantV2OkrObjective.UpdateObjectiveAsync</c>）。</summary>
 [AgentTool("okr.update_objective",
-    Description = "修改指定目标（Objective）的字段（content/notes/deadline/score/category_id，至少传一个要更新的字段）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 okr:okr.content:writeonly。",
+    Description = "修改指定目标（Objective）的字段（content/notes/deadline/score/category_id，至少传一个要更新的字段）。写操作：需 okr:okr.content:writeonly。",
     RequiredScopes = ["okr:okr.content:writeonly"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2OkrObjective) + "." + nameof(IFeishuTenantV2OkrObjective.UpdateObjectiveAsync))]
@@ -275,7 +275,7 @@ public interface IFeishuTenantOkrUpdateObjectiveTool
 
 /// <summary>工具接口：okr.delete_objective（映射 <c>IFeishuTenantV2OkrObjective.DeleteObjectiveAsync</c>）。</summary>
 [AgentTool("okr.delete_objective",
-    Description = "删除指定目标（Objective），并连带删除其下的关键结果——不可恢复。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 okr:okr.content:writeonly。建议先 dry_run 预演确认。",
+    Description = "删除指定目标（Objective），并连带删除其下的关键结果——不可恢复。高危写（high-risk-write）：需 okr:okr.content:writeonly。建议先 dry_run 预演确认。",
     RequiredScopes = ["okr:okr.content:writeonly"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2OkrObjective) + "." + nameof(IFeishuTenantV2OkrObjective.DeleteObjectiveAsync))]
@@ -291,7 +291,7 @@ public interface IFeishuTenantOkrDeleteObjectiveTool
 
 /// <summary>工具接口：okr.create_key_result（映射 <c>IFeishuTenantV2OkrKeyResult.CreateObjectiveKeyResultAsync</c>）。</summary>
 [AgentTool("okr.create_key_result",
-    Description = "在指定目标（Objective）下创建一个关键结果（Key Result）（content 为纯文本，工具层负责包装为飞书富文本块）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 okr:okr.content:writeonly。",
+    Description = "在指定目标（Objective）下创建一个关键结果（Key Result）（content 为纯文本，工具层负责包装为飞书富文本块）。写操作：需 okr:okr.content:writeonly。",
     RequiredScopes = ["okr:okr.content:writeonly"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2OkrKeyResult) + "." + nameof(IFeishuTenantV2OkrKeyResult.CreateObjectiveKeyResultAsync))]
@@ -310,7 +310,7 @@ public interface IFeishuTenantOkrCreateKeyResultTool
 
 /// <summary>工具接口：okr.update_key_result（映射 <c>IFeishuTenantV2OkrKeyResult.UpdateKeyResultAsync</c>）。</summary>
 [AgentTool("okr.update_key_result",
-    Description = "修改指定关键结果（Key Result）的内容、得分或截止时间（至少传一个要更新的字段）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 okr:okr.content:writeonly。",
+    Description = "修改指定关键结果（Key Result）的内容、得分或截止时间（至少传一个要更新的字段）。写操作：需 okr:okr.content:writeonly。",
     RequiredScopes = ["okr:okr.content:writeonly"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2OkrKeyResult) + "." + nameof(IFeishuTenantV2OkrKeyResult.UpdateKeyResultAsync))]
@@ -329,7 +329,7 @@ public interface IFeishuTenantOkrUpdateKeyResultTool
 
 /// <summary>工具接口：okr.delete_key_result（映射 <c>IFeishuTenantV2OkrKeyResult.DeleteKeyResultAsync</c>）。</summary>
 [AgentTool("okr.delete_key_result",
-    Description = "删除指定关键结果（Key Result）——不可恢复。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 okr:okr.content:writeonly。建议先 dry_run 预演确认。",
+    Description = "删除指定关键结果（Key Result）——不可恢复。高危写（high-risk-write）：需 okr:okr.content:writeonly。建议先 dry_run 预演确认。",
     RequiredScopes = ["okr:okr.content:writeonly"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2OkrKeyResult) + "." + nameof(IFeishuTenantV2OkrKeyResult.DeleteKeyResultAsync))]
@@ -359,7 +359,7 @@ public interface IFeishuTenantOkrDeleteKeyResultTool
 /// </para>
 /// </remarks>
 [AgentTool("okr.update_indicator",
-    Description = "更新一个 OKR 指标（Indicator）的取值与计算方式（至少传一个要更新的字段）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 okr:okr.content:writeonly。⚠️ 先用 okr.get_objective_indicator / okr.get_key_result_indicator 取 indicator_id 并读当前配置：Objective 不支持改起始值、目标值与单位；处于自动计算方式的当前值改不动；indicator_status 仅在状态计算方式为「手动更新」时可改。数值取值范围 -99999999999 ~ 99999999999。",
+    Description = "更新一个 OKR 指标（Indicator）的取值与计算方式（至少传一个要更新的字段）。写操作：需 okr:okr.content:writeonly。⚠️ 先用 okr.get_objective_indicator / okr.get_key_result_indicator 取 indicator_id 并读当前配置：Objective 不支持改起始值、目标值与单位；处于自动计算方式的当前值改不动；indicator_status 仅在状态计算方式为「手动更新」时可改。数值取值范围 -99999999999 ~ 99999999999。",
     RequiredScopes = ["okr:okr.content:writeonly"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2OkrIndicator) + "." + nameof(IFeishuTenantV2OkrIndicator.UpdateIndicatorAsync))]

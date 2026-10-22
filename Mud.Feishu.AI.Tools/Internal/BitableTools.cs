@@ -92,7 +92,10 @@ internal sealed class BitableTools(
         });
     }
 
-    /// <summary>bitable.query_records：查询记录（filter/sort 简化文法 → 官方过滤/排序结构）。</summary>
+    /// <summary>
+    /// bitable.query_records：查询记录。默认按条件检索（filter/sort 简化文法 → 官方过滤/排序结构）；
+    /// 传 <c>record_ids</c> 时改走按 ID 精取（不同端点）。
+    /// </summary>
     [ToolHandler(typeof(IFeishuTenantBitableQueryRecordsTool))]
     public Task<ToolResult> QueryRecordsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
@@ -100,6 +103,12 @@ internal sealed class BitableTools(
         return executor.RunAsync(async () =>
         {
             var args = BitableQueryRecordsArgs.Unpack(arguments);
+
+            if (args.RecordIds is { Length: > 0 })
+            {
+                RejectConditionArgsWithRecordIds(executor.ToolName, args);
+                return await QueryRecordsByIdsAsync(executor, args, cancellationToken).ConfigureAwait(false);
+            }
 
             // filter 简化文法（§3.3.3）：解析失败回填「filter 语法不支持」结构化错误。
             if (!BitableFilterParser.TryParse(args.Filter, out var parsedFilter, out var filterError))
@@ -144,26 +153,52 @@ internal sealed class BitableTools(
         });
     }
 
-    /// <summary>bitable.get_records_by_ids：按 ID 批量取记录（官方上限 100 条/请求；白名单 record_id/fields）。</summary>
-    [ToolHandler(typeof(IFeishuTenantBitableRecordsByIdsTool))]
-    public Task<ToolResult> GetRecordsByIdsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    /// <summary>
+    /// <c>record_ids</c> 与条件检索参数互斥：两者的结果集来源不同（ID 集合 vs 筛选条件），
+    /// 同时给出时无法判定"少返回的那条是被过滤掉了还是不存在"。
+    /// </summary>
+    /// <exception cref="ArgumentException">同时给出 <c>record_ids</c> 与任一条件检索参数。</exception>
+    private static void RejectConditionArgsWithRecordIds(string toolName, BitableQueryRecordsArgs args)
     {
-        var executor = new ToolExecutor(FeishuToolNames.BitableGetRecordsByIds, _maxResultLength);
-        return executor.RunAsync(async () =>
+        var conflicts = new List<string>(5);
+        if (!string.IsNullOrWhiteSpace(args.Filter))
         {
-            var args = BitableGetRecordsByIdsArgs.Unpack(arguments);
+            conflicts.Add("filter");
+        }
+        if (!string.IsNullOrWhiteSpace(args.ViewId))
+        {
+            conflicts.Add("view_id");
+        }
+        if (args.Sort is { Length: > 0 })
+        {
+            conflicts.Add("sort");
+        }
+        if (args.PageToken is not null || args.FetchAll == true || args.MaxItems is not null)
+        {
+            conflicts.Add("page_token/fetch_all/max_items");
+        }
 
-            if (args.RecordIds.Length > PageSizes.BitableRecordsByIds)
-            {
-                throw new ArgumentException(
-                    $"record_ids 最多 {PageSizes.BitableRecordsByIds.ToString(CultureInfo.InvariantCulture)} 条，实际 {args.RecordIds.Length.ToString(CultureInfo.InvariantCulture)} 条");
-            }
+        if (conflicts.Count > 0)
+        {
+            throw new ArgumentException(
+                $"{toolName} 的 record_ids 与 {string.Join("、", conflicts)} 互斥：按 ID 精取不分页、不筛选，去掉其一后重试");
+        }
+    }
 
-            var outcome = FeishuApiResultReader.Read(await _recordClient
-                .GetRecordsAsync(args.AppToken, args.TableId, new GetRecordsRequest { RecordIds = args.RecordIds }, cancellationToken)
-                .ConfigureAwait(false));
-            return executor.FromApi(outcome, ProjectRecordsByIds);
-        });
+    /// <summary>按 ID 精取（<c>POST /records/batch_get</c>，≤100 条）：items + absent_record_ids。</summary>
+    private async Task<ToolResult> QueryRecordsByIdsAsync(
+        ToolExecutor executor, BitableQueryRecordsArgs args, CancellationToken cancellationToken)
+    {
+        if (args.RecordIds!.Length > PageSizes.BitableRecordsByIds)
+        {
+            throw new ArgumentException(
+                $"record_ids 最多 {PageSizes.BitableRecordsByIds.ToString(CultureInfo.InvariantCulture)} 条，实际 {args.RecordIds.Length.ToString(CultureInfo.InvariantCulture)} 条");
+        }
+
+        var outcome = FeishuApiResultReader.Read(await _recordClient
+            .GetRecordsAsync(args.AppToken, args.TableId, new GetRecordsRequest { RecordIds = args.RecordIds }, cancellationToken)
+            .ConfigureAwait(false));
+        return executor.FromApi(outcome, data => ProjectRecordsByIds(data, args.FieldNames));
     }
 
     /// <summary>list_tables 投影：items（table_id/name/revision）+ 翻页契约。</summary>
@@ -239,8 +274,8 @@ internal sealed class BitableTools(
         return envelope;
     }
 
-    /// <summary>get_records_by_ids 投影：items（record_id/fields）+ absent_record_ids。</summary>
-    private static JsonObject ProjectRecordsByIds(GetRecordsResult data)
+    /// <summary>按 ID 精取的投影：items（record_id/fields，field_names 过滤）+ absent_record_ids。</summary>
+    private static JsonObject ProjectRecordsByIds(GetRecordsResult data, string[]? fieldNames)
     {
         // R-3：信封形态单源（无翻页契约的列表信封）。
         var envelope = ToolResultJsons.ItemsEnvelope();
@@ -249,6 +284,12 @@ internal sealed class BitableTools(
             var fields = new JsonObject();
             foreach (var pair in record.Fields ?? new Dictionary<string, object?>())
             {
+                if (fieldNames is { Length: > 0 }
+                    && !fieldNames.Contains(pair.Key, StringComparer.Ordinal))
+                {
+                    continue;
+                }
+
                 fields[pair.Key] = ToolResultText.ToJsonNode(pair.Value);
             }
 

@@ -234,8 +234,7 @@ internal sealed class DriveCommentTools(
 
 /// <summary>
 /// Drive 协作面权限工具执行器（<c>drive.get_permission_public</c> / <c>drive.update_permission_public</c> /
-/// <c>drive.grant_permission</c> / <c>drive.update_permission_member</c> / <c>drive.remove_permission</c> /
-/// <c>drive.transfer_owner</c>）。
+/// <c>drive.set_permission</c> / <c>drive.remove_permission</c> / <c>drive.transfer_owner</c>）。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -320,71 +319,74 @@ internal sealed class DrivePermissionTools(
         });
     }
 
-    /// <summary>drive.grant_permission：添加协作者权限（<c>dry_run=true</c> 时只预演）。</summary>
-    [ToolHandler(typeof(IFeishuTenantDriveGrantPermissionTool))]
-    public Task<ToolResult> GrantPermissionAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    /// <summary>drive.set_permission：设置协作者权限（已有则改档位，未有则新增；<c>dry_run=true</c> 时只预演）。</summary>
+    /// <remarks>
+    /// upsert 判定靠一次成员列表读取：读取失败即短路返回该错误（不在"成员是否存在未知"时贸然新增，
+    /// 否则可能撞上平台"已是协作者"而给出误导性失败）。
+    /// </remarks>
+    [ToolHandler(typeof(IFeishuTenantDriveSetPermissionTool))]
+    public Task<ToolResult> SetPermissionAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
-        var executor = new ToolExecutor(FeishuToolNames.DriveGrantPermission, _maxResultLength);
+        var executor = new ToolExecutor(FeishuToolNames.DriveSetPermission, _maxResultLength);
         return executor.RunAsync(async () =>
         {
-            var args = DriveGrantPermissionArgs.Unpack(arguments);
+            var args = DriveSetPermissionArgs.Unpack(arguments);
 
             ValidateMemberType(args.MemberType);
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
                 return ToolResult.FromText(ToolDryRun.Describe(
-                    executor.ToolName, "POST", "/open-apis/drive/v1/permissions/{token}/members",
-                    ToolDryRun.IdempotencyNote(null),
+                    executor.ToolName, "POST/PATCH", "/open-apis/drive/v1/permissions/{token}/members[/{member_id}]",
+                    "upsert：协作者已在权限列表中则改档位（PUT），否则新增（POST）"
+                    + ToolDryRun.IdempotencyNote("目标档位相同即幂等——重复提交结果一致"),
                     ("type", args.Type.Length),
                     ("member_type", args.MemberType.Length),
                     ("member_id", args.MemberId.Length),
                     ("perm", args.Perm.Length)));
             }
 
-            var outcome = FeishuApiResultReader.Read(await _permissionsClient
-                .CreatePermissionMemberAsync(
-                    args.Token,
-                    args.Type,
-                    new CreatePermissionMemberRequest
-                    {
-                        MemberType = args.MemberType,
-                        MemberId = args.MemberId,
-                        Perm = args.Perm,
-                    },
-                    cancellationToken: cancellationToken)
+            var lookup = FeishuApiResultReader.Read(await _permissionsClient
+                .GetPermissionMemberAsync(args.Token, args.Type, cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
-            return executor.FromApi(outcome, ProjectPermissionMember);
-        });
-    }
-
-    /// <summary>drive.update_permission_member：更新协作者权限档位（<c>dry_run=true</c> 时只预演）。</summary>
-    [ToolHandler(typeof(IFeishuTenantDriveUpdatePermissionMemberTool))]
-    public Task<ToolResult> UpdatePermissionMemberAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
-    {
-        var executor = new ToolExecutor(FeishuToolNames.DriveUpdatePermissionMember, _maxResultLength);
-        return executor.RunAsync(async () =>
-        {
-            var args = DriveUpdatePermissionMemberArgs.Unpack(arguments);
-
-            if (ToolDryRun.IsRequested(args.DryRun))
+            if (executor.FailIfError(lookup) is { } lookupFailure)
             {
-                return ToolResult.FromText(ToolDryRun.Describe(
-                    executor.ToolName, "PATCH", "/open-apis/drive/v1/permissions/{token}/members/{member_id}",
-                    ToolDryRun.IdempotencyNote(null),
-                    ("type", args.Type.Length),
-                    ("perm", args.Perm.Length)));
+                return lookupFailure;
             }
 
-            var outcome = FeishuApiResultReader.Read(await _permissionsClient
-                .UpdatePermissionMemberAsync(
-                    args.Token,
-                    args.MemberId,
-                    args.Type,
-                    new UpdatePermissionMemberRequest { Perm = args.Perm },
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
-            return executor.FromApi(outcome, ProjectPermissionMember);
+            var exists = lookup.Data!.Items?.Any(item =>
+                string.Equals(item.MemberId, args.MemberId, StringComparison.Ordinal)
+                && string.Equals(item.MemberType, args.MemberType, StringComparison.OrdinalIgnoreCase)) == true;
+
+            var outcome = exists
+                ? FeishuApiResultReader.Read(await _permissionsClient
+                    .UpdatePermissionMemberAsync(
+                        args.Token,
+                        args.MemberId,
+                        args.Type,
+                        new UpdatePermissionMemberRequest { Perm = args.Perm },
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false))
+                : FeishuApiResultReader.Read(await _permissionsClient
+                    .CreatePermissionMemberAsync(
+                        args.Token,
+                        args.Type,
+                        new CreatePermissionMemberRequest
+                        {
+                            MemberType = args.MemberType,
+                            MemberId = args.MemberId,
+                            Perm = args.Perm,
+                        },
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false));
+
+            var action = exists ? "updated" : "created";
+            return executor.FromApi(outcome, data =>
+            {
+                var projected = ProjectPermissionMember(data);
+                projected["action"] = action;
+                return projected;
+            });
         });
     }
 

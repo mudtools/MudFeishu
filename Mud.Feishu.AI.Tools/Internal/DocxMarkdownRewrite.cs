@@ -19,8 +19,8 @@ namespace Mud.Feishu.AI.Tools.Internal;
 /// 转换失败文档未动；追加失败旧内容完整；删除失败则新旧并存（可见、可恢复）。
 /// </para>
 /// <para>
-/// <b>为什么抽成共享实现</b>：<c>docx.replace_document</c> 与 <c>markdown.patch</c>/
-/// <c>markdown.overwrite</c> 是同一套三步语义。复制一份会让"先建后删"的锁序在两条路径上漂移，
+/// <b>为什么抽成共享实现</b>：<c>docx.replace_document</c> 与 <c>markdown.patch</c>
+/// 是同一套三步语义。复制一份会让"先建后删"的锁序在两条路径上漂移，
 /// 而这类漂移只会在真实故障时才暴露。
 /// </para>
 /// </remarks>

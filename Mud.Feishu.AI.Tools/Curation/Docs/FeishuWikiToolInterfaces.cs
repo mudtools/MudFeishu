@@ -184,7 +184,7 @@ public interface IFeishuTenantWikiListMembersTool
 /// 工具接口：wiki.member_add（映射 <c>IFeishuTenantV2Wiki.CreateSpaceMemberAsync</c>）。
 /// </summary>
 /// <remarks>
-/// 与 <c>drive.grant_permission</c> 同类：<b>授权动作会扩大数据可达范围</b>，一次调用即让某人看到
+/// 与 <c>drive.set_permission</c> 同类：<b>授权动作会扩大数据可达范围</b>，一次调用即让某人看到
 /// 整个空间。成员增删的 ID 类型闭集只在描述里给全，模型才不至于把 open_id 当 user_id 传。
 /// </remarks>
 [AgentTool("wiki.member_add",

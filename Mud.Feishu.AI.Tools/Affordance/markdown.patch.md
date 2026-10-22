@@ -5,7 +5,7 @@
 
 ## Avoid when
 
-- 要整体重写——用 `markdown.overwrite`，它不依赖原文匹配。
+- 要整体重写——用 `docx.replace_document`，它不依赖原文匹配。
 - 原文可能多处出现而你只想改一处——先扩大上下文让 `find` 唯一，别用 `replace_all` 赌。
 - 替换跨块或涉及表格/代码块结构——改用 `docx.*` 块级工具。
 

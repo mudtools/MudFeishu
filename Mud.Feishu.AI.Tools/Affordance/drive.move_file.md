@@ -5,7 +5,7 @@
 ## Avoid when
 
 - 要新增内容——挪动不产生新文件，用 `drive.upload_file` 或 `drive.create_folder`。
-- 想「挪过去顺便调权限」——本工具只挪位置；扩大或收窄可见范围走 `drive.grant_permission`、`drive.update_permission_public` 这条独立通道。
+- 想「挪过去顺便调权限」——本工具只挪位置；扩大或收窄可见范围走 `drive.set_permission`、`drive.update_permission_public` 这条独立通道。
 
 ## Prerequisites
 

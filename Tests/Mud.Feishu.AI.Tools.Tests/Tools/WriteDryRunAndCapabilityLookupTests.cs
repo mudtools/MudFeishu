@@ -44,25 +44,26 @@ public class WriteDryRunAndCapabilityLookupTests
     }
 
     [Fact]
-    public async Task BitableAddRecord_DryRun_ShouldValidateFields_First()
+    public async Task BitableRecordBatchCreate_DryRun_ShouldValidateRecords_First()
     {
         var client = new Mock<Mud.Feishu.IFeishuTenantV1BitableRecord>();
         var tools = new BitableWriteTools(client.Object, Options.Create(AgentOptions()));
 
-        // 非法 fields 在预演阶段也必须被拒——预演的价值就是"能提前发现的问题都提前发现"。
-        var bad = await tools.AddRecordAsync(
-            Args(("app_token", "bascnX"), ("table_id", "tblX"), ("fields", "[1,2,3]"), ("dry_run", true)),
+        // 非法 records 在预演阶段也必须被拒——预演的价值就是"能提前发现的问题都提前发现"。
+        var bad = await tools.AddRecordsAsync(
+            Args(("app_token", "bascnX"), ("table_id", "tblX"), ("records", "[1,2,3]"), ("dry_run", true)),
             CancellationToken.None);
 
-        bad.ToString().Should().Contain("fields 须为 JSON 对象");
+        bad.ToString().Should().Contain("records 不是合法 JSON");
         client.VerifyNoOtherCalls();
 
-        var ok = await tools.AddRecordAsync(
-            Args(("app_token", "bascnX"), ("table_id", "tblX"), ("fields", "{\"任务名称\":\"写周报\"}"), ("dry_run", true)),
+        var ok = await tools.AddRecordsAsync(
+            Args(("app_token", "bascnX"), ("table_id", "tblX"),
+                 ("records", """[{"fields":{"任务名称":"写周报"}}]"""), ("dry_run", true)),
             CancellationToken.None);
 
         ok.ToString().Should().StartWith("[dry_run]");
-        ok.ToString().Should().Contain("POST /open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/records");
+        ok.ToString().Should().Contain("POST /open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/records/batch_create");
         ok.ToString().Should().NotContain("写周报");
         client.VerifyNoOtherCalls();
     }

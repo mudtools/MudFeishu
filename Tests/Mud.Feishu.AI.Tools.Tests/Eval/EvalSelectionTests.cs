@@ -130,7 +130,7 @@ public class EvalSelectionTests
     }
 
     [Theory]
-    [InlineData("在多维表格里新增一行记录", "bitable.add_record")]
+    [InlineData("在多维表格里新增一行记录", "bitable.record_batch_create")]
     [InlineData("把云空间这个文件下载到本地", "drive.download_file")]
     [InlineData("把刚发出去的那条消息撤回", "im.revoke_message")]
     [InlineData("我有哪些邮件签名", "mail.signature_list")]

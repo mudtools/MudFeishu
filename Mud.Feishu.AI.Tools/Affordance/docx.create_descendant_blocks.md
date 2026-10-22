@@ -5,9 +5,9 @@
 
 ## Avoid when
 
-- 只插一个块——用 `docx.create_block`，不必搭临时 ID 体系。
+- 只插一个块——用 `docx.append_blocks`（`parent_block_id` + `block_type`/`text` 单块简写），不必搭临时 ID 体系。
 - 往文档尾部平铺追加——用 `docx.append_blocks`。
-- 只改文案不动结构——用 `docx.update_block` / `docx.update_blocks`。
+- 只改文案不动结构——用 `docx.update_blocks`。
 
 ## Prerequisites
 

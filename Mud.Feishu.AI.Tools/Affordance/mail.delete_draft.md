@@ -5,7 +5,7 @@
 ## Avoid when
 
 - 只是想改内容或补附件——用 `mail.update_draft`，删了就得重头再写。
-- 打算发出去——用 `mail.send_draft`，发送不等于删除。
+- 打算发出去——用 `mail.send`，发送不等于删除。
 - 还想留一份做参照——删除后草稿不可恢复。
 
 ## Prerequisites

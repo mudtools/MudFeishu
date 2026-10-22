@@ -32,7 +32,7 @@ namespace Mud.Feishu.AI.Tests.Agents;
 /// </remarks>
 public class FeishuAgentApprovalContinuationTests
 {
-    private const string WriteTool = "bitable.add_record";
+    private const string WriteTool = "bitable.record_batch_create";
 
     private sealed class DemoEvent : IEventResult
     {

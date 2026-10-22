@@ -4,7 +4,8 @@
 
 ## Avoid when
 
-- 要塞进某个块**底下**——层级插入用 `docx.create_block` 或 `docx.create_descendant_blocks`。
+- 要塞进某个块**底下**——`parent_block_id` 填该块 ID；结构化子树（多层级、带编号/嵌套）用 `docx.create_descendant_blocks`。
+- 要改已有块的文案——用 `docx.update_blocks`，不是追加。
 - 整篇换成新稿——用 `docx.replace_document`，别追加完再手删旧块。
 - 只想先看 Markdown 会落成哪些块——用 `docx.import_markdown`（它不写入）。
 

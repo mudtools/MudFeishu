@@ -106,7 +106,7 @@ public class ToolErrorClassifierTests
     public void StructuredError_ShouldDistinguishAuthorization_FromValidation()
     {
         var forbidden = FeishuToolBinding.StructuredError(
-            "bitable.add_record", ToolErrorCategory.Authorization, "授权被拒绝");
+            "bitable.record_batch_create", ToolErrorCategory.Authorization, "授权被拒绝");
         var invalidArgs = FeishuToolBinding.StructuredError(
             "bitable.query_records", ToolErrorCategory.Validation, "filter 语法不支持");
         var retryable = FeishuToolBinding.StructuredError(
@@ -118,7 +118,7 @@ public class ToolErrorClassifierTests
         retryable.Should().Contain("(retryable)", "可重试错误——模型可稍后重试同一调用");
         apiError.Should().NotContain("(", "api_error 维持既有行为（无分类前缀）");
 
-        forbidden.Should().Contain("[tool_error] bitable.add_record");
+        forbidden.Should().Contain("[tool_error] bitable.record_batch_create");
         invalidArgs.Should().Contain("[tool_error] bitable.query_records");
     }
 

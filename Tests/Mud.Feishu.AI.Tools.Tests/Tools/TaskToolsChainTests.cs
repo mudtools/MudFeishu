@@ -138,6 +138,79 @@ public class TaskToolsChainTests
         result.ToString().Should().Contain("summary");
     }
 
+    [Fact]
+    public async Task CreateTask_WithParentTaskGuid_ShouldDispatchToSubtaskEndpoint()
+    {
+        CreateSubTaskRequest? captured = null;
+        _taskClient
+            .Setup(c => c.CreateSubTaskAsync(
+                It.IsAny<string>(), It.IsAny<CreateSubTaskRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback((string _, CreateSubTaskRequest request, string __, CancellationToken ___) => captured = request)
+            .ReturnsAsync(new FeishuApiResult<CreateSubTaskResult>
+            {
+                Code = 0,
+                Data = new CreateSubTaskResult { Subtask = new SubTaskInfo { Guid = "sub_guid_1" } },
+            });
+
+        var result = await CreateTools().CreateTaskAsync(
+            Args(("summary", "拆分步骤"), ("parent_task_guid", "g-parent"), ("assignee_ids", new[] { "ou_1" })),
+            CancellationToken.None);
+
+        captured.Should().NotBeNull();
+        captured!.Summary.Should().Be("拆分步骤");
+        captured.Members.Should().HaveCount(1, "子任务与任务字段面一致，assignee_ids 同样生效");
+        result.ToString().Should().Contain("sub_guid_1");
+        _taskClient.Verify(
+            c => c.CreateTaskAsync(It.IsAny<CreateTaskRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never,
+            "传入 parent_task_guid 即子任务，必须走子任务端点（POST /tasks/{guid}/subtasks）");
+    }
+
+    // ───────────────────── task.update_task（completed 布尔化） ─────────────────────
+
+    [Fact]
+    public async Task UpdateTask_WithCompletedTrue_ShouldWriteCurrentTimestamp()
+    {
+        UpdateTaskRequest? captured = null;
+        _taskClient
+            .Setup(c => c.UpdateTaskAsync(
+                It.IsAny<string>(), It.IsAny<UpdateTaskRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback((string _, UpdateTaskRequest request, string __, CancellationToken ___) => captured = request)
+            .ReturnsAsync(new FeishuApiResult<TaskOperationResult>
+            {
+                Code = 0,
+                Data = new TaskOperationResult { Task = new TaskInfo { Guid = "g1" } },
+            });
+
+        var before = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        await CreateTools().UpdateTaskAsync(Args(("task_guid", "g1"), ("completed", true)), CancellationToken.None);
+        var after = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        captured!.UpdateFields.Should().Equal("completed_at");
+        var written = long.Parse(captured.Task!.CompletedAt!, CultureInfo.InvariantCulture);
+        written.Should().BeInRange(before, after, "completed=true 由工具层注入当前毫秒时间戳（模型不感知时间戳语义）");
+    }
+
+    [Fact]
+    public async Task UpdateTask_WithCompletedFalse_ShouldWriteZero_AsReopen()
+    {
+        UpdateTaskRequest? captured = null;
+        _taskClient
+            .Setup(c => c.UpdateTaskAsync(
+                It.IsAny<string>(), It.IsAny<UpdateTaskRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback((string _, UpdateTaskRequest request, string __, CancellationToken ___) => captured = request)
+            .ReturnsAsync(new FeishuApiResult<TaskOperationResult>
+            {
+                Code = 0,
+                Data = new TaskOperationResult { Task = new TaskInfo { Guid = "g1" } },
+            });
+
+        await CreateTools().UpdateTaskAsync(Args(("task_guid", "g1"), ("completed", false)), CancellationToken.None);
+
+        captured!.UpdateFields.Should().Equal("completed_at");
+        captured.Task!.CompletedAt.Should().Be("0", "completed_at=0 即未完成——与 task.complete_task 写时间戳互为逆操作");
+    }
+
     // ───────────────────── task.list_my_tasks（user 身份） ─────────────────────
 
     [Fact]

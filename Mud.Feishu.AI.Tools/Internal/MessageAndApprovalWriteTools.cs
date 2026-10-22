@@ -937,7 +937,7 @@ internal sealed class ApprovalWriteTools(
     }
 
     /// <summary>form 参数 → JSON 数组校验（非数组/非法 JSON 转结构化错误，附修复指引）。</summary>
-    /// <remarks>与 <see cref="BitableWriteTools.ParseFieldsObject"/> 同一体例：裸 JSON 参数不得静默下发（校验逻辑，非骨架）。</remarks>
+    /// <remarks>裸 JSON 参数不得静默下发（校验逻辑，非骨架）。</remarks>
     private static void ValidateFormArray(string formJson)
     {
         JsonNode? node;

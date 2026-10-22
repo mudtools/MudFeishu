@@ -5,9 +5,10 @@
 
 ## Avoid when
 
-- 只有一块——用 `docx.update_block`。
+- 只有一块——`blocks` 给 1 个元素即可，同一入口。
 - 按位置清掉一段——那是 `docx.delete_blocks` 的索引区间语义；本工具按块 ID 定位，与顺序无关。
 - 整篇换稿——用 `docx.replace_document`。
+- 要在块底下加内容——用 `docx.append_blocks`；改文本不改变结构。
 
 ## Prerequisites
 

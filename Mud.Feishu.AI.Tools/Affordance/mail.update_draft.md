@@ -4,7 +4,7 @@
 
 ## Avoid when
 
-- 只是想把它发出去——用 `mail.send_draft`，发送之后再改不了这封。
+- 只是想把它发出去——用 `mail.send`，发送之后再改不了这封。
 - 这封不要了——用 `mail.delete_draft`，别用空内容覆盖。
 - 还没有草稿——先 `mail.create_draft`，本工具不新建。
 

@@ -4,8 +4,8 @@
 
 ## Avoid when
 
-- 只是内容过时——用 `mail.template_update` 整体覆盖，保留 template_id。
-- 想换一份措辞但不想丢掉原件——删除后不可恢复，只能重新 `mail.template_create`。
+- 只是内容过时——用 `mail.template_save` 整体覆盖，保留 template_id。
+- 想换一份措辞但不想丢掉原件——删除后不可恢复，只能重新 `mail.template_save`。
 
 ## Prerequisites
 

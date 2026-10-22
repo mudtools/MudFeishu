@@ -17,7 +17,7 @@ namespace Mud.Feishu.AI.Tools.Internal;
 /// <para>
 /// 代码表单一来源：<c>Mud.Feishu.DataModels.Mail</c> 下 <c>RuleConditionItem</c> / <c>RuleActionItem</c>
 /// 的 XML 注释（平台定义）。本类是这批表的唯一编译/渲染入口：
-/// <c>mail.rule_create/rule_update</c> 编译入参，<c>mail.rule_list</c> 反渲染出参。
+/// <c>mail.rule_save/rule_update</c> 编译入参，<c>mail.rule_list</c> 反渲染出参。
 /// </para>
 /// <para>
 /// 反向渲染保留未知代码（<c>unknown_field_{code}</c> 等）：平台未来新增代码经 rule_list

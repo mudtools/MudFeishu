@@ -15,10 +15,9 @@ using FileVersionInfo = Mud.Feishu.DataModels.Drive.FileVersions.FileVersionInfo
 namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
-/// Docx 深化工具执行器（A2 批次 + S-6 历史版本，共 10 个）：
-/// <c>docx.get_document_info</c>/<c>docx.get_markdown_content</c>/<c>docx.get_block</c>/<c>docx.list_block_children</c>/
-/// <c>docx.history_list</c> + <c>docx.create_block</c>/<c>docx.create_descendant_blocks</c>/<c>docx.update_block</c> +
-/// <c>docx.get_chat_announcement</c>/<c>docx.set_chat_announcement</c>。
+/// Docx 深化工具执行器（6 个）：
+/// <c>docx.get_document_info</c>/<c>docx.get_block</c>/<c>docx.list_block_children</c>/<c>docx.history_list</c> +
+/// <c>docx.create_descendant_blocks</c> + <c>docx.get_chat_announcement</c>/<c>docx.set_chat_announcement</c>。
 /// </summary>
 /// <remarks>
 /// 执行骨架（catch/回填/截断）由 <see cref="ToolExecutor"/> 承担；本类只保留参数校验与投影语义。
@@ -28,7 +27,6 @@ internal sealed class DocxDeepTools(
     Mud.Feishu.IFeishuTenantV1Docx docxClient,
     Mud.Feishu.IFeishuTenantV1DocxBlocks blocksClient,
     Mud.Feishu.IFeishuTenantV1DocxAnnouncement announcementClient,
-    Mud.Feishu.IFeishuTenantV1DriveFiles driveFilesClient,
     Mud.Feishu.IFeishuTenantV1DriveFilesVersions versionsClient,
     IOptions<FeishuAgentOptions> options)
 {
@@ -38,8 +36,6 @@ internal sealed class DocxDeepTools(
         ?? throw new ArgumentNullException(nameof(blocksClient));
     private readonly Mud.Feishu.IFeishuTenantV1DocxAnnouncement _announcementClient = announcementClient
         ?? throw new ArgumentNullException(nameof(announcementClient));
-    private readonly Mud.Feishu.IFeishuTenantV1DriveFiles _driveFilesClient = driveFilesClient
-        ?? throw new ArgumentNullException(nameof(driveFilesClient));
     private readonly Mud.Feishu.IFeishuTenantV1DriveFilesVersions _versionsClient = versionsClient
         ?? throw new ArgumentNullException(nameof(versionsClient));
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
@@ -66,27 +62,6 @@ internal sealed class DocxDeepTools(
                 ["revision_id"] = data.Document?.RevisionId,
                 ["title"] = data.Document?.Title,
             });
-        });
-    }
-
-    /// <summary>docx.get_markdown_content：跨域使用 Drive 接口获取 Markdown 正文。</summary>
-    [ToolHandler(typeof(IFeishuTenantDocxGetMarkdownContentTool))]
-    public Task<ToolResult> GetMarkdownContentAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
-    {
-        var executor = new ToolExecutor(FeishuToolNames.DocxGetMarkdownContent, _maxResultLength);
-        return executor.RunAsync(async () =>
-        {
-            var args = DocxGetMarkdownContentArgs.Unpack(arguments);
-
-            var outcome = FeishuApiResultReader.Read(await _driveFilesClient
-                .GetFileContentByFileTokenAsync(
-                    args.DocumentId,
-                    doc_type: "docx",
-                    content_type: "markdown",
-                    lang: args.Lang ?? "zh",
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
-            return executor.FromPlainText(outcome, static data => data.Content);
         });
     }
 
@@ -180,50 +155,7 @@ internal sealed class DocxDeepTools(
         });
     }
 
-    // ─────────────────────────── 写面（3 个） ───────────────────────────
-
-    /// <summary>docx.create_block：在指定父块下创建单个子块。</summary>
-    [ToolHandler(typeof(IFeishuTenantDocxCreateBlockTool))]
-    public Task<ToolResult> CreateBlockAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
-    {
-        var executor = new ToolExecutor(FeishuToolNames.DocxCreateBlock, _maxResultLength);
-        return executor.RunAsync(async () =>
-        {
-            var args = DocxCreateBlockArgs.Unpack(arguments);
-
-            if (ToolDryRun.IsRequested(args.DryRun))
-            {
-                return ToolResult.FromText(ToolDryRun.Describe(
-                    executor.ToolName, "POST",
-                    $"/open-apis/docx/v1/documents/{args.DocumentId}/blocks/{args.BlockId}/children",
-                    ToolDryRun.IdempotencyNote(args.IdempotencyKey),
-                    ("document_id", args.DocumentId.Length), ("block_id", args.BlockId.Length),
-                    ("block_type", BlockTypes.GetName(args.BlockType).Length), ("text", args.Text?.Length ?? 0)));
-            }
-
-            // 构造单块（复用 DocxWriteTools 的块构造逻辑：按 block_type 名称匹配）
-            var block = BuildBlockByName(BlockTypes.GetName(args.BlockType), args.Text);
-            var request = new CreateBlockRequest { Childrens = [block] };
-            if (args.Index is not null)
-            {
-                request.Index = args.Index;
-            }
-
-            var outcome = FeishuApiResultReader.Read(await _blocksClient
-                .CreateBlockAsync(
-                    args.DocumentId,
-                    args.BlockId,
-                    request,
-                    client_token: args.IdempotencyKey,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
-            return executor.FromApi(outcome, data => new JsonObject
-            {
-                ["block_ids"] = new JsonArray(
-                    [.. (data.Childrens ?? []).Select(static child => (JsonNode?)child?.BlockId)]),
-            });
-        });
-    }
+    // ─────────────────────────── 写面（2 个） ───────────────────────────
 
     /// <summary>docx.create_descendant_blocks：创建结构化子树。</summary>
     [ToolHandler(typeof(IFeishuTenantDocxCreateDescendantBlocksTool))]
@@ -278,55 +210,6 @@ internal sealed class DocxDeepTools(
                         ["temporary_block_id"] = r.TemporaryBlockId,
                         ["block_id"] = r.BlockId,
                     })]),
-            });
-        });
-    }
-
-    /// <summary>docx.update_block：更新单个块的文本内容。</summary>
-    [ToolHandler(typeof(IFeishuTenantDocxUpdateBlockTool))]
-    public Task<ToolResult> UpdateBlockAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
-    {
-        var executor = new ToolExecutor(FeishuToolNames.DocxUpdateBlock, _maxResultLength);
-        return executor.RunAsync(async () =>
-        {
-            var args = DocxUpdateBlockArgs.Unpack(arguments);
-
-            if (ToolDryRun.IsRequested(args.DryRun))
-            {
-                return ToolResult.FromText(ToolDryRun.Describe(
-                    executor.ToolName, "PATCH",
-                    $"/open-apis/docx/v1/documents/{args.DocumentId}/blocks/{args.BlockId}",
-                    ToolDryRun.IdempotencyNote(args.IdempotencyKey),
-                    ("document_id", args.DocumentId.Length), ("block_id", args.BlockId.Length),
-                    ("text", args.Text.Length)));
-            }
-
-            var request = new UpdateBlockRequest
-            {
-                UpdateTextElements = new UpdateTextElementsRequest
-                {
-                    Elements =
-                    [
-                        new TextElement
-                        {
-                            TextRun = new TextElementTextRun { Content = args.Text },
-                        },
-                    ],
-                },
-            };
-
-            var outcome = FeishuApiResultReader.Read(await _blocksClient
-                .UpdateBlockAsync(
-                    args.DocumentId,
-                    args.BlockId,
-                    request,
-                    client_token: args.IdempotencyKey,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
-            return executor.FromApi(outcome, data => new JsonObject
-            {
-                ["block_id"] = data.Block?.BlockId,
-                ["document_revision_id"] = data.DocumentRevisionId,
             });
         });
     }

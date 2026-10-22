@@ -1,13 +1,13 @@
 ## WHEN
 
 - 邮件要先留一份可复查的成品，或分几次补齐内容，暂不发出。
-- 创建成功后拿到的 draft_id 交给 `mail.update_draft` 或 `mail.send_draft` 接力。
+- 创建成功后拿到的 draft_id 交给 `mail.update_draft` 或 `mail.send` 接力。
 
 ## Avoid when
 
-- 内容已确认、发完就走——用 `mail.send_message`，不必自己管中间态。
+- 内容已确认、发完就走——用 `mail.send`，不必自己管中间态。
 - 已有草稿要改——用 `mail.update_draft`，别建第二份近似草稿。
-- 想把这段话说以后反复用——用 `mail.template_create`，草稿不会被复用。
+- 想把这段话说以后反复用——用 `mail.template_save`，草稿不会被复用。
 
 ## Prerequisites
 

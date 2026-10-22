@@ -7,7 +7,7 @@
 
 - 想让邮件从视野里消失——用 `mail.trash_message`，标已读不改变它的位置。
 - 想清掉一份草稿——用 `mail.delete_draft`，草稿不在这工具的对象范围内。
-- 想让以后的来信自动已读——用 `mail.rule_create` 的 mark_read 动作，本工具只管点名的这封。
+- 想让以后的来信自动已读——用 `mail.rule_save` 的 mark_read 动作，本工具只管点名的这封。
 
 ## Prerequisites
 

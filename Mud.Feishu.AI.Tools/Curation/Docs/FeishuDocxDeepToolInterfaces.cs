@@ -9,13 +9,15 @@ using Mud.Feishu.DataModels.Docx;
 
 namespace Mud.Feishu.AI.Tools.Curation;
 
-// ─────────────────────────── Docx 深化（+9 工具） ───────────────────────────
+// ─────────────────────────── Docx 深化（6 个工具） ───────────────────────────
 //
 // 链路设计（"先读后改"闭环）：
-//   get_document_info → list_block_children / get_block → create_block / update_block / create_descendant_blocks
+//   get_document_info → list_block_children / get_block → docx.update_blocks / docx.append_blocks / create_descendant_blocks
 //
-// 跨域 Source：docx.get_markdown_content 使用 Drive 接口（IFeishuTenantV1DriveFiles.GetFileContentByFileTokenAsync），
-// scope 归 drive:drive:readonly；工具名保持 docx.*（语义面向云文档正文）。
+// 块级读写按粒度分工（三读两写，互不合并）：
+//   ::get_block（单块） / ::get_document_blocks（全篇扁平） / ::list_block_children（单层子块）
+//   写入统一走 docx.append_blocks（单块用 block_type+text 简写）与 docx.update_blocks（单块即 1 元素数组）。
+// 正文 Markdown 读取统一走 markdown.fetch（token_type=docx），本域不再单独提供。
 
 /// <summary>工具接口：docx.get_document_info（映射 <c>IFeishuTenantV1Docx.GetDocumentInfoAsync</c>）。</summary>
 [AgentTool("docx.get_document_info",
@@ -31,29 +33,9 @@ public interface IFeishuTenantDocxGetDocumentInfoTool
         CancellationToken cancellationToken = default);
 }
 
-/// <summary>工具接口：docx.get_markdown_content（跨域 Source：Drive 接口，scope 归 drive:drive:readonly）。</summary>
-/// <remarks>
-/// ⚠️ <b>跨域 Source</b>：使用 <c>IFeishuTenantV1DriveFiles.GetFileContentByFileTokenAsync</c>（Drive 接口），
-/// 传入 <c>content_type=markdown</c> 获取新版文档的 Markdown 正文。工具名保持 <c>docx.*</c>（语义面向云文档正文）。
-/// 仅支持新版文档（docx）；旧版文档（doc）不支持。
-/// </remarks>
-[AgentTool("docx.get_markdown_content",
-    Description = "读取飞书文档的 Markdown 正文（仅支持新版文档 docx）。跨域使用 Drive 接口获取内容，需 drive:drive:readonly。返回的 Markdown 可用于编辑后通过 docx.replace_document 写回。",
-    RequiredScopes = ["drive:drive:readonly"],
-    Source = nameof(IFeishuTenantV1DriveFiles) + "." + nameof(IFeishuTenantV1DriveFiles.GetFileContentByFileTokenAsync))]
-public interface IFeishuTenantDocxGetMarkdownContentTool
-{
-    /// <summary>读取文档 Markdown 正文。</summary>
-    /// <returns>Markdown 纯文本，超长截断并标记 truncated。</returns>
-    Task<string> GetMarkdownContentAsync(
-        [ToolParameter("document_id", "文档 ID（形如 doxcnXxx；仅支持新版文档）", Required = true)] string document_id,
-        [ToolParameter("lang", "返回语言（可选，默认 zh）")] string? lang = null,
-        CancellationToken cancellationToken = default);
-}
-
 /// <summary>工具接口：docx.get_block（映射 <c>IFeishuTenantV1DocxBlocks.GetBlockInfoAsync</c>）。</summary>
 [AgentTool("docx.get_block",
-    Description = "获取文档中指定块的详情（块类型/文本/子块结构）。用于精确定位块后再编辑。只读，需 docx:document:readonly。",
+    Description = "获取文档中单个块的详情（块类型/文本/子块结构）。粒度=单块：要一次取全篇扁平块用 docx.get_document_blocks，只取某一父块的直接子块用 docx.list_block_children。只读，需 docx:document:readonly。",
     RequiredScopes = ["docx:document:readonly"],
     Source = nameof(IFeishuTenantV1DocxBlocks) + "." + nameof(IFeishuTenantV1DocxBlocks.GetBlockInfoAsync))]
 public interface IFeishuTenantDocxGetBlockTool
@@ -108,31 +90,6 @@ public interface IFeishuTenantDocxHistoryListTool
         CancellationToken cancellationToken = default);
 }
 
-/// <summary>工具接口：docx.create_block（映射 <c>IFeishuTenantV1DocxBlocks.CreateBlockAsync</c>）。</summary>
-/// <remarks>
-/// 与 <c>docx.append_blocks</c> 的区别：<c>append_blocks</c> 是在文档根块下追加（<c>parent_block_id</c> 缺省=文档根）；
-/// <c>create_block</c> 要求显式指定 <c>block_id</c>（父块），面向"在某个块下插入单个子块"的精确场景。
-/// </remarks>
-[AgentTool("docx.create_block",
-    Description = "在指定父块下创建单个子块（精确块级编辑）。与 docx.append_blocks 的区别：本工具要求显式指定父块 ID，面向'在某个块下插入单个子块'。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。",
-    RequiredScopes = ["docx:document"],
-    IsWrite = true,
-    Source = nameof(IFeishuTenantV1DocxBlocks) + "." + nameof(IFeishuTenantV1DocxBlocks.CreateBlockAsync))]
-public interface IFeishuTenantDocxCreateBlockTool
-{
-    /// <summary>创建单个子块。</summary>
-    /// <returns>白名单投影后的 JSON 文本（block_id）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
-    Task<string> CreateBlockAsync(
-        [ToolParameter("document_id", "文档 ID（形如 doxcnXxx）", Required = true)] string document_id,
-        [ToolParameter("block_id", "父块 ID（在其下创建子块）", Required = true)] string block_id,
-        [ToolParameter("block_type", "块类型（text/heading1~9/bullet/ordered/code/quote/todo/divider）", Required = true, EnumType = typeof(global::Mud.Feishu.DataModels.Docx.BlockTypes))] string block_type,
-        [ToolParameter("text", "块文本内容（divider 忽略）")] string? text = null,
-        [ToolParameter("index", "插入位置（可选，默认追加到末尾）")] int? index = null,
-        [ToolParameter("idempotency_key", "幂等键（可选）：相同 client_token 在 24 小时内至多成功创建一次")] string? idempotency_key = null,
-        [ToolParameter("dry_run", "仅预演不创建（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
-        CancellationToken cancellationToken = default);
-}
-
 /// <summary>工具接口：docx.create_descendant_blocks（映射 <c>IFeishuTenantV1DocxBlocks.CreateDescendantBlockAsync</c>）。</summary>
 /// <remarks>
 /// 用于创建<b>结构化子树</b>（块树 + 索引）。深层 JSON 结构由绑定层校验 <c>children_id</c> 引用完整性，非法引用 → <c>invalid_args</c>。
@@ -154,30 +111,6 @@ public interface IFeishuTenantDocxCreateDescendantBlocksTool
         [ToolParameter("index", "插入位置（可选，默认追加到末尾）")] int? index = null,
         [ToolParameter("idempotency_key", "幂等键（可选）：相同 client_token 在 24 小时内至多成功创建一次")] string? idempotency_key = null,
         [ToolParameter("dry_run", "仅预演不创建（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
-        CancellationToken cancellationToken = default);
-}
-
-/// <summary>工具接口：docx.update_block（映射 <c>IFeishuTenantV1DocxBlocks.UpdateBlockAsync</c>）。</summary>
-/// <remarks>
-/// PATCH 语义天然幂等。仅支持文本块（<c>update_text_elements</c> 面），不支持表格结构。
-/// 与 <c>docx.update_blocks</c>（批量）的区别：本工具改<b>单个块</b>，面向精确块级编辑。
-/// 与 <c>docx.replace_document</c> 的边界：改少量块用 update_block，整篇重写用 replace_document。
-/// </remarks>
-[AgentTool("docx.update_block",
-    Description = "更新文档中单个块的文本内容（PATCH 语义天然幂等）。仅支持文本块，不支持表格结构。改少量块用本工具，整篇重写用 docx.replace_document。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。",
-    RequiredScopes = ["docx:document"],
-    IsWrite = true,
-    Source = nameof(IFeishuTenantV1DocxBlocks) + "." + nameof(IFeishuTenantV1DocxBlocks.UpdateBlockAsync))]
-public interface IFeishuTenantDocxUpdateBlockTool
-{
-    /// <summary>更新单个块的文本。</summary>
-    /// <returns>白名单投影后的 JSON 文本（block_id）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
-    Task<string> UpdateBlockAsync(
-        [ToolParameter("document_id", "文档 ID（形如 doxcnXxx）", Required = true)] string document_id,
-        [ToolParameter("block_id", "要更新的块 ID", Required = true)] string block_id,
-        [ToolParameter("text", "新的文本内容（将替换块的文本元素）", Required = true)] string text,
-        [ToolParameter("idempotency_key", "幂等键（可选）：相同 client_token 在 24 小时内至多成功一次")] string? idempotency_key = null,
-        [ToolParameter("dry_run", "仅预演不更新（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }
 

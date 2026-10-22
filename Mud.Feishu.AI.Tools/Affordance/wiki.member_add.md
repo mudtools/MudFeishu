@@ -5,7 +5,7 @@
 
 ## Avoid when
 
-- 只是给某一篇文档授权——那是 `drive.grant_permission`，不必开整库权限。
+- 只是给某一篇文档授权——那是 `drive.set_permission`，不必开整库权限。
 - 收回权限——用 `wiki.member_remove`。
 - 先看现有成员与角色——用 `wiki.member_list`。
 

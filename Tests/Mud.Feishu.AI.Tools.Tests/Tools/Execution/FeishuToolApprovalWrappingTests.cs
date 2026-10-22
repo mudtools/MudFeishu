@@ -30,7 +30,7 @@ namespace Mud.Feishu.AI.Tools.Tests.Tools.Execution;
 public class FeishuToolApprovalWrappingTests
 {
     private const string ReadTool = "bitable.query_records";
-    private const string WriteTool = "bitable.add_record";
+    private const string WriteTool = "bitable.record_batch_create";
 
     /// <summary>剥掉最内层的预算装饰器（T4 / D4：它位于审批标记之内、工具桥之外）。</summary>
     private static AIFunction UnwrapBudget(AIFunction function)

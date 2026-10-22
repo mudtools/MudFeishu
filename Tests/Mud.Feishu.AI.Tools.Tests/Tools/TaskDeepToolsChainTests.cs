@@ -55,7 +55,6 @@ public class TaskDeepToolsChainTests
     [InlineData("task.search_tasks", "POST", "/open-apis/task/v2/tasks/search", "user")]
     [InlineData("task.set_reminder", "POST", "/open-apis/task/v2/tasks/{task_guid}/add_reminders", "tenant")]
     [InlineData("task.remove_reminder", "POST", "/open-apis/task/v2/tasks/{task_guid}/remove_reminders", "tenant")]
-    [InlineData("task.reopen", "PATCH", "/open-apis/task/v2/tasks/{task_guid}", "tenant")]
     public void Contracts_ShouldCarrySdkMethodRouteAndIdentity(string toolName, string httpMethod, string route, string identity)
     {
         FeishuToolContracts.ByToolName.Should().ContainKey(toolName);
@@ -578,38 +577,5 @@ public class TaskDeepToolsChainTests
             c => c.AddTaskReminderByIdAsync(
                 It.IsAny<string>(), It.IsAny<AddTaskReminderRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never);
-    }
-
-    // ───────────────────── task.reopen ─────────────────────
-
-    [Fact]
-    public async Task Reopen_ShouldWriteCompletedAtZero_WithCompletedAtUpdateField()
-    {
-        UpdateTaskRequest? captured = null;
-        _taskClient
-            .Setup(c => c.UpdateTaskAsync(
-                It.IsAny<string>(), It.IsAny<UpdateTaskRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .Callback((string _, UpdateTaskRequest request, string __, CancellationToken ___) => captured = request)
-            .ReturnsAsync(new FeishuApiResult<TaskOperationResult>
-            {
-                Code = 0,
-                Data = new TaskOperationResult { Task = new TaskInfo { Guid = "g1" } },
-            });
-
-        var result = await CreateTools().ReopenTaskAsync(Args(("task_guid", "g1")), CancellationToken.None);
-
-        captured!.Task!.CompletedAt.Should().Be("0", "completed_at=0 即未完成——与 complete_task 写时间戳互为逆操作");
-        captured.UpdateFields.Should().Equal("completed_at");
-        result.ToString().Should().Contain("completed", "写操作回执（completed=false）");
-    }
-
-    [Fact]
-    public async Task Reopen_WithoutTenantTaskClient_ShouldReturnStructuredError()
-    {
-        var result = await CreateTools(withTaskClient: false).ReopenTaskAsync(
-            Args(("task_guid", "g1")), CancellationToken.None);
-
-        result.ToString().Should().Contain("[tool_error] task.reopen");
-        result.ToString().Should().Contain("IFeishuTenantV2Task");
     }
 }

@@ -6,7 +6,7 @@
 
 - 任务当初就不该存在——那是 `task.delete_task`；完成保留记录，删除不可恢复。
 - 只想改标题或截止时间——那是 `task.update_task`。
-- 做完又要重做——那是 `task.reopen`，两者互为逆操作。
+- 做完又要重做——用 `task.update_task` 传 `completed=false`，两者互为逆操作。
 
 ## Prerequisites
 

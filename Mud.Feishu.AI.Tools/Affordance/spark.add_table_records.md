@@ -7,7 +7,7 @@
 
 - 记录已存在、要按条件改内容——用 `spark.update_table_records`。
 - 只是想确认表里现在有什么——用 `spark.query_table_records`，别用写入试探。
-- 多维表格（bitable）的记录不在本域——用 `bitable.add_record` 一族。
+- 多维表格（bitable）的记录不在本域——用 `bitable.record_batch_create`。
 
 ## Prerequisites
 

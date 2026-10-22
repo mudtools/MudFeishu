@@ -14,8 +14,7 @@ using Mud.Feishu.DataModels.Drive.Folder;
 namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
-/// Markdown 生命周期执行器（<c>markdown.create</c> / <c>fetch</c> / <c>patch</c> /
-/// <c>overwrite</c> / <c>diff</c>）。
+/// Markdown 生命周期执行器（<c>markdown.create</c> / <c>fetch</c> / <c>patch</c> / <c>diff</c>）。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -330,45 +329,6 @@ internal sealed class MarkdownTools(
             envelope["replacements"] = replacements;
             envelope["before_length"] = before!.Length;
             envelope["after_length"] = after.Length;
-            return FromEnvelope(envelope);
-        });
-    }
-
-    /// <summary>markdown.overwrite：用 Markdown 整体重建正文（与 docx.replace_document 同语义）。</summary>
-    [ToolHandler(typeof(IFeishuTenantMarkdownOverwriteTool))]
-    public Task<ToolResult> OverwriteAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
-    {
-        var executor = new ToolExecutor(FeishuToolNames.MarkdownOverwrite, _maxResultLength);
-        return executor.RunAsync(async () =>
-        {
-            var args = MarkdownOverwriteArgs.Unpack(arguments);
-
-            if (string.IsNullOrWhiteSpace(args.Markdown))
-            {
-                throw new ArgumentException("markdown 不能为空");
-            }
-
-            RequireIdempotencyKey(executor.ToolName, args.IdempotencyKey);
-
-            if (ToolDryRun.IsRequested(args.DryRun))
-            {
-                return ToolResult.FromText(ToolDryRun.Describe(
-                    executor.ToolName, "POST+DELETE",
-                    $"/open-apis/docx/v1/documents/{args.DocumentToken}/blocks/convert → children → batch_delete",
-                    "步骤：① 转换 Markdown ② 追加新块 ③ 删除旧块 [0, 原块数)。原块数在**执行时**读取。"
-                    + ToolDryRun.IdempotencyNote(args.IdempotencyKey),
-                    ("document_token", args.DocumentToken.Length), ("markdown", args.Markdown.Length)));
-            }
-
-            var blocksClient = Require(executor.ToolName, _blocksClient, "IFeishuTenantV1DocxBlocks", "宿主须启用文档（Docx）API");
-            var envelope = await DocxMarkdownRewrite.ReplaceAsync(
-                blocksClient,
-                args.DocumentToken,
-                args.DocumentToken,
-                args.Markdown,
-                args.IdempotencyKey!,
-                executor.ToolName,
-                cancellationToken).ConfigureAwait(false);
             return FromEnvelope(envelope);
         });
     }

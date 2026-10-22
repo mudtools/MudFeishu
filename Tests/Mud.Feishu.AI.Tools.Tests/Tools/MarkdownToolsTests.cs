@@ -122,7 +122,6 @@ public class MarkdownToolsTests
     [InlineData("markdown.create", "write", "POST", "/open-apis/drive/v1/import_tasks")]
     [InlineData("markdown.fetch", "read", "GET", "/open-apis/docs/v1/content")]
     [InlineData("markdown.patch", "write", "POST", "/open-apis/docx/v1/documents/{document_id}/blocks/{block_id}/children")]
-    [InlineData("markdown.overwrite", "write", "POST", "/open-apis/docx/v1/documents/{document_id}/blocks/{block_id}/children")]
     [InlineData("markdown.diff", "read", "GET", "/open-apis/docs/v1/content")]
     public void Contracts_ShouldCarrySdkRouteRiskAndWriteFlag(string toolName, string risk, string httpMethod, string route)
     {
@@ -516,54 +515,6 @@ public class MarkdownToolsTests
         payload["partial_failure"]!.GetValue<bool>().Should().BeTrue();
         payload["deleted"]!.GetValue<int>().Should().Be(0);
         payload["message"]!.GetValue<string>().Should().Contain("docx.delete_blocks", "必须给出精确修复指引");
-    }
-
-    // ───────────────────── markdown.overwrite ─────────────────────
-
-    [Fact]
-    public async Task Overwrite_ShouldRebuildWholeDocument()
-    {
-        SetupRewrite(2, "new1", "new2");
-
-        var result = await CreateTools().OverwriteAsync(
-            Args(("document_token", "doxcn1"), ("markdown", "# new"), ("idempotency_key", "op-2")),
-            CancellationToken.None);
-
-        var payload = Payload(result);
-        payload["appended"]!.GetValue<int>().Should().Be(2);
-        payload["deleted"]!.GetValue<int>().Should().Be(2);
-        payload["new_block_ids"]!.AsArray().Count.Should().Be(2);
-    }
-
-    [Fact]
-    public async Task Overwrite_WithoutBlocksClient_ShouldReturnActionableError()
-    {
-        var tools = new MarkdownTools(
-            filesClient: _filesClient.Object,
-            blocksClient: null,
-            folderClient: _folderClient.Object,
-            stager: _stager,
-            options: Options.Create(new FeishuAgentOptions { MaxToolResultLength = 20000 }));
-
-        var result = await tools.OverwriteAsync(
-            Args(("document_token", "doxcn1"), ("markdown", "# new"), ("idempotency_key", "op-2")),
-            CancellationToken.None);
-
-        result.ToString().Should().Contain("IFeishuTenantV1DocxBlocks");
-        _blocksClient.VerifyNoOtherCalls();
-        _filesClient.VerifyNoOtherCalls();
-    }
-
-    [Fact]
-    public async Task Overwrite_DryRun_ShouldNotTouchDownstream()
-    {
-        var result = await CreateTools().OverwriteAsync(
-            Args(("document_token", "doxcn1"), ("markdown", "# new"), ("idempotency_key", "op-2"), ("dry_run", true)),
-            CancellationToken.None);
-
-        result.ToString().Should().StartWith("[dry_run]");
-        _blocksClient.VerifyNoOtherCalls();
-        _filesClient.VerifyNoOtherCalls();
     }
 
     // ───────────────────── markdown.diff ─────────────────────

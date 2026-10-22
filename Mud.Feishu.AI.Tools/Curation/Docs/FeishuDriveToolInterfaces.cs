@@ -122,7 +122,7 @@ public interface IFeishuTenantDriveResolveCommentTool
         CancellationToken cancellationToken = default);
 }
 
-// ─────────────────────────── Drive 协作面：权限（6 个） ───────────────────────────
+// ─────────────────────────── Drive 协作面：权限（5 个） ───────────────────────────
 
 /// <summary>工具接口：drive.get_permission_public（映射 <c>IFeishuV1DrivePermissions.GetPermissionPublicAsync</c>）。</summary>
 /// <remarks>
@@ -171,42 +171,27 @@ public interface IFeishuTenantDriveUpdatePermissionPublicTool
         CancellationToken cancellationToken = default);
 }
 
-/// <summary>工具接口：drive.grant_permission（映射 <c>IFeishuV1DrivePermissions.CreatePermissionMemberAsync</c>）。</summary>
-[AgentTool("drive.grant_permission",
-    Description = "为指定云文档添加单个协作者权限（member_type 为 openid/email/userid/chatid/departmentid）。⚠️ 此操作可扩大数据可达范围，建议先 dry_run 预演确认。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
+/// <summary>工具接口：drive.set_permission（映射 <c>IFeishuV1DrivePermissions.CreatePermissionMemberAsync</c> / <c>UpdatePermissionMemberAsync</c>）。</summary>
+/// <remarks>
+/// upsert 语义：工具层先查协作者是否已在权限列表——在则改档位（PUT），不在则新增（POST）。
+/// 模型不需要先判断"该人是否已有权限"，也不需要记住两张工具名。
+/// </remarks>
+[AgentTool("drive.set_permission",
+    Description = "设置某个协作者对云文档的权限档位（view/edit/full_access）——对方尚无权限则新增，已有则改为新档位，模型无需先查。member_type 取 email/openid/openchat/opendepartmentid/userid/unionid/groupid。⚠️ 此操作可扩大数据可达范围，建议先 dry_run 预演确认。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
     RequiredScopes = ["drive:drive"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1DrivePermissions) + "." + nameof(IFeishuV1DrivePermissions.CreatePermissionMemberAsync))]
-public interface IFeishuTenantDriveGrantPermissionTool
+public interface IFeishuTenantDriveSetPermissionTool
 {
-    /// <summary>添加协作者权限。</summary>
-    /// <returns>操作结果 JSON 文本（member_id/perm）。</returns>
-    Task<string> CreatePermissionMemberAsync(
+    /// <summary>设置协作者权限（新增或改档位）。</summary>
+    /// <returns>操作结果 JSON 文本（member_id/perm/action：created 或 updated）。</returns>
+    Task<string> SetPermissionAsync(
         [ToolParameter("token", "云文档 token", Required = true)] string token,
         [ToolParameter("type", "云文档类型（doc/docx/sheet/file/wiki/bitable/folder/mindnote/slides）", Required = true)] string type,
-        [ToolParameter("member_type", "协作者类型（openid/email/userid/chatid/departmentid）", Required = true)] string member_type,
-        [ToolParameter("member_id", "协作者 ID", Required = true)] string member_id,
+        [ToolParameter("member_type", "协作者类型（email/openid/openchat/opendepartmentid/userid/unionid/groupid）", Required = true)] string member_type,
+        [ToolParameter("member_id", "协作者 ID（类型须与 member_type 对应）", Required = true)] string member_id,
         [ToolParameter("perm", "权限档位（view/edit/full_access）", Required = true)] string perm,
         [ToolParameter("dry_run", "仅预演不授权（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
-        CancellationToken cancellationToken = default);
-}
-
-/// <summary>工具接口：drive.update_permission_member（映射 <c>IFeishuV1DrivePermissions.UpdatePermissionMemberAsync</c>）。</summary>
-[AgentTool("drive.update_permission_member",
-    Description = "更新指定协作者的权限档位（view/edit/full_access），幂等操作。建议先 dry_run 预演确认。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。",
-    RequiredScopes = ["drive:drive"],
-    IsWrite = true,
-    Source = nameof(IFeishuTenantV1DrivePermissions) + "." + nameof(IFeishuV1DrivePermissions.UpdatePermissionMemberAsync))]
-public interface IFeishuTenantDriveUpdatePermissionMemberTool
-{
-    /// <summary>更新协作者权限。</summary>
-    /// <returns>操作结果 JSON 文本。</returns>
-    Task<string> UpdatePermissionMemberAsync(
-        [ToolParameter("token", "云文档 token", Required = true)] string token,
-        [ToolParameter("type", "云文档类型（doc/docx/sheet/file/wiki/bitable/folder/mindnote/slides）", Required = true)] string type,
-        [ToolParameter("member_id", "协作者 ID", Required = true)] string member_id,
-        [ToolParameter("perm", "新权限档位（view/edit/full_access）", Required = true)] string perm,
-        [ToolParameter("dry_run", "仅预演不更新（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }
 

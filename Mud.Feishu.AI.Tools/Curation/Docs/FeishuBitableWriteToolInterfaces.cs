@@ -10,41 +10,41 @@ using Mud.Feishu.Interfaces;
 
 namespace Mud.Feishu.AI.Tools.Curation;
 
-/// <summary>工具接口：bitable.add_record（映射 <c>IFeishuTenantV1BitableRecord.AddRecordAsync</c>）。</summary>
-[AgentTool("bitable.add_record",
-    Description = "向多维表格数据表新增一条记录，fields 为「字段名 → 值」JSON 对象（字段名先经 bitable.list_fields 确认；字段名拼错会在下发前被拒绝）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 bitable:app。",
+/// <summary>工具接口：bitable.record_batch_create（映射 <c>IFeishuTenantV1BitableRecord.AddRecordsAsync</c>）。</summary>
+/// <remarks>单条与批量是同一入口：<c>records</c> 长度 1 即新增单条（单条不再单独成工具，避免"选哪个"的决策点）。</remarks>
+[AgentTool("bitable.record_batch_create",
+    Description = "新增多维表格记录（单次最多 1000 条；只新增一条也走这里，传长度 1 的数组）。records 为 JSON 数组字符串，每项形如 {\"fields\":{\"字段名\":\"值\"}}；字段名先经 bitable.list_fields 确认（拼错会在下发前被拒绝）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 bitable:app。",
     RequiredScopes = ["bitable:app"],
     IsWrite = true,
-    Source = nameof(IFeishuTenantV1BitableRecord) + "." + nameof(IFeishuTenantV1BitableRecord.AddRecordAsync))]
-public interface IFeishuTenantBitableAddRecordTool
+    Source = nameof(IFeishuTenantV1BitableRecord) + "." + nameof(IFeishuTenantV1BitableRecord.AddRecordsAsync))]
+public interface IFeishuTenantBitableRecordBatchCreateTool
 {
-    /// <summary>新增记录。</summary>
-    /// <returns>白名单投影后的 JSON 文本（record_id）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
-    Task<string> AddRecordAsync(
+    /// <summary>新增记录（1~1000 条）。</summary>
+    /// <returns>白名单投影后的 JSON 文本（record_ids/count，顺序与入参一致）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> AddRecordsAsync(
         [ToolParameter("app_token", "多维表格 AppToken（形如 bascnXxx）", Required = true)] string app_token,
         [ToolParameter("table_id", "数据表 ID（形如 tblXxx，来自 bitable.list_tables）", Required = true)] string table_id,
-        [ToolParameter("fields", "记录字段 JSON 对象字符串，须是 JSON 对象（非数组/标量），如 {\"任务名称\":\"写周报\",\"状态\":\"待办\"}", Required = true)] string fields,
-        [ToolParameter("idempotency_key", "幂等键（可选）：相同键的重复请求返回同一条记录（不会重复创建）；省略时不保证幂等。建议由调用方给出稳定值（如「单据号+动作」），不要用随机数。幂等键不跨工具共享（不同工具的同名键互不影响）。")] string? idempotency_key = null,
+        [ToolParameter("records", "新增记录数组 JSON 字符串，每项形如 {\"fields\":{\"任务名称\":\"写周报\",\"状态\":\"待办\"}}，1~1000 条", Required = true)] string records,
+        [ToolParameter("idempotency_key", "幂等键（可选）：相同键的重复请求不会重复创建；省略时不保证幂等。建议由调用方给出稳定值（如「批次号+动作」），不要用随机数。幂等键不跨工具共享（不同工具的同名键互不影响）。")] string? idempotency_key = null,
         [ToolParameter("dry_run", "仅预演不写入（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }
 
-/// <summary>工具接口：bitable.update_record（映射 <c>IFeishuTenantV1BitableRecord.UpdateRecordAsync</c>）。</summary>
-[AgentTool("bitable.update_record",
-    Description = "更新多维表格中的指定记录（按 record_id 更新 fields）。fields 为「字段名 → 值」JSON 对象字符串。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 bitable:app。",
+/// <summary>工具接口：bitable.record_batch_update（映射 <c>IFeishuTenantV1BitableRecord.UpdateRecordsAsync</c>）。</summary>
+/// <remarks>单条与批量是同一入口：<c>records</c> 长度 1 即更新单条。</remarks>
+[AgentTool("bitable.record_batch_update",
+    Description = "更新多维表格记录（单次最多 1000 条；只更新一条也走这里，传长度 1 的数组）。records 为 JSON 数组字符串，每项形如 {\"record_id\":\"recXxx\",\"fields\":{\"字段名\":\"新值\"}}。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 bitable:app。",
     RequiredScopes = ["bitable:app"],
     IsWrite = true,
-    Source = nameof(IFeishuTenantV1BitableRecord) + "." + nameof(IFeishuTenantV1BitableRecord.UpdateRecordAsync))]
-public interface IFeishuTenantBitableUpdateRecordTool
+    Source = nameof(IFeishuTenantV1BitableRecord) + "." + nameof(IFeishuTenantV1BitableRecord.UpdateRecordsAsync))]
+public interface IFeishuTenantBitableRecordBatchUpdateTool
 {
-    /// <summary>更新记录。</summary>
-    /// <returns>白名单投影后的 JSON 文本（record_id）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
-    Task<string> UpdateRecordAsync(
+    /// <summary>批量更新记录（1~1000 条）。</summary>
+    /// <returns>白名单投影后的 JSON 文本（record_ids/count）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    Task<string> UpdateRecordsAsync(
         [ToolParameter("app_token", "多维表格 AppToken（形如 bascnXxx）", Required = true)] string app_token,
-        [ToolParameter("table_id", "数据表 ID（形如 tblXxx）", Required = true)] string table_id,
-        [ToolParameter("record_id", "记录 ID（形如 recXxx，来自 bitable.query_records）", Required = true)] string record_id,
-        [ToolParameter("fields", "更新字段 JSON 对象字符串，如 {\"状态\":\"已完成\"}", Required = true)] string fields,
-        [ToolParameter("idempotency_key", "幂等键（可选）：相同 client_token 重复请求不会产生副作用。")] string? idempotency_key = null,
+        [ToolParameter("table_id", "数据表 ID（形如 tblXxx，来自 bitable.list_tables）", Required = true)] string table_id,
+        [ToolParameter("records", "更新记录数组 JSON 字符串，每项形如 {\"record_id\":\"recXxx\",\"fields\":{\"状态\":\"已完成\"}}，1~1000 条", Required = true)] string records,
         [ToolParameter("dry_run", "仅预演不更新（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }
@@ -64,43 +64,6 @@ public interface IFeishuTenantBitableDeleteRecordTool
         [ToolParameter("table_id", "数据表 ID（形如 tblXxx）", Required = true)] string table_id,
         [ToolParameter("record_id", "要删除的记录 ID（形如 recXxx）", Required = true)] string record_id,
         [ToolParameter("dry_run", "仅预演不删除（可选，默认 false）：返回将要下发的 method/path，不调用下游")] bool? dry_run = null,
-        CancellationToken cancellationToken = default);
-}
-
-/// <summary>工具接口：bitable.record_batch_create（映射 <c>IFeishuTenantV1BitableRecord.AddRecordsAsync</c>）。</summary>
-[AgentTool("bitable.record_batch_create",
-    Description = "批量新增多维表格记录（单次最多 1000 条）。records 为 JSON 数组字符串，每项形如 {\"fields\":{\"字段名\":\"值\"}}；字段名先经 bitable.list_fields 确认。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 bitable:app。",
-    RequiredScopes = ["bitable:app"],
-    IsWrite = true,
-    Source = nameof(IFeishuTenantV1BitableRecord) + "." + nameof(IFeishuTenantV1BitableRecord.AddRecordsAsync))]
-public interface IFeishuTenantBitableRecordBatchCreateTool
-{
-    /// <summary>批量新增记录。</summary>
-    /// <returns>白名单投影后的 JSON 文本（record_ids/count）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
-    Task<string> AddRecordsAsync(
-        [ToolParameter("app_token", "多维表格 AppToken（形如 bascnXxx）", Required = true)] string app_token,
-        [ToolParameter("table_id", "数据表 ID（形如 tblXxx，来自 bitable.list_tables）", Required = true)] string table_id,
-        [ToolParameter("records", "新增记录数组 JSON 字符串，每项形如 {\"fields\":{\"任务名称\":\"写周报\",\"状态\":\"待办\"}}，最多 1000 条", Required = true)] string records,
-        [ToolParameter("idempotency_key", "幂等键（可选）：相同键的重复请求不会重复创建；省略时不保证幂等。建议由调用方给出稳定值（如「批次号+动作」），不要用随机数。幂等键不跨工具共享（不同工具的同名键互不影响）。")] string? idempotency_key = null,
-        [ToolParameter("dry_run", "仅预演不写入（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
-        CancellationToken cancellationToken = default);
-}
-
-/// <summary>工具接口：bitable.record_batch_update（映射 <c>IFeishuTenantV1BitableRecord.UpdateRecordsAsync</c>）。</summary>
-[AgentTool("bitable.record_batch_update",
-    Description = "批量更新多维表格记录（单次最多 1000 条）。records 为 JSON 数组字符串，每项形如 {\"record_id\":\"recXxx\",\"fields\":{\"字段名\":\"新值\"}}。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 bitable:app。",
-    RequiredScopes = ["bitable:app"],
-    IsWrite = true,
-    Source = nameof(IFeishuTenantV1BitableRecord) + "." + nameof(IFeishuTenantV1BitableRecord.UpdateRecordsAsync))]
-public interface IFeishuTenantBitableRecordBatchUpdateTool
-{
-    /// <summary>批量更新记录。</summary>
-    /// <returns>白名单投影后的 JSON 文本（record_ids/count）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
-    Task<string> UpdateRecordsAsync(
-        [ToolParameter("app_token", "多维表格 AppToken（形如 bascnXxx）", Required = true)] string app_token,
-        [ToolParameter("table_id", "数据表 ID（形如 tblXxx，来自 bitable.list_tables）", Required = true)] string table_id,
-        [ToolParameter("records", "更新记录数组 JSON 字符串，每项形如 {\"record_id\":\"recXxx\",\"fields\":{\"状态\":\"已完成\"}}，最多 1000 条", Required = true)] string records,
-        [ToolParameter("dry_run", "仅预演不更新（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }
 

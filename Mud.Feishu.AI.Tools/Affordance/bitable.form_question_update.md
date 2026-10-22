@@ -6,7 +6,7 @@
 
 - 改表单整体的名称、描述或共享设置——用 `bitable.form_update`，那是表单级不是题目级。
 - 不知道 field_id、要看题目全列表——用 `bitable.form_question_list`。
-- 改这条题目背后的记录数据——用 `bitable.update_record`，本工具只动题目的展示属性。
+- 改这条题目背后的记录数据——用 `bitable.record_batch_update`，本工具只动题目的展示属性。
 
 ## Prerequisites
 

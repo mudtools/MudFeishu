@@ -4,9 +4,9 @@
 
 ## Avoid when
 
-- 条件或动作要变——用 `mail.rule_update`，它不动次序。
+- 条件或动作要变——用 `mail.rule_save`，它不动次序。
 - 有一条不该再判——用 `mail.rule_delete`，删掉后剩余规则自动前移，不必重排。
-- 要让刚建的那条抢在前面——先 `mail.rule_create` 再本工具，`rule_ids` 不能引入新规则。
+- 要让刚建的那条抢在前面——先 `mail.rule_save` 再本工具，`rule_ids` 不能引入新规则。
 
 ## Prerequisites
 

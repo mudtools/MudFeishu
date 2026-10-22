@@ -359,7 +359,7 @@ public static class FeishuToolsServiceCollectionExtensions
 
 
     /// <summary>
-    /// 按域注册邮件工具（WP5：<c>mail.list_messages</c>/<c>mail.get_message</c> 只读 + <c>mail.send_message</c> 写）。
+    /// 按域注册邮件工具（WP5：<c>mail.list_messages</c>/<c>mail.get_message</c> 只读 + <c>mail.send</c> 写）。
     /// </summary>
     /// <remarks>
     /// 读侧（list/get）需 <c>IFeishuTenantV1MailMessage</c>（租户令牌），发信需 <c>IFeishuUserV1MailDraft</c>（用户令牌）——
@@ -378,7 +378,7 @@ public static class FeishuToolsServiceCollectionExtensions
         => AddFeishuToolInfrastructure(services, configure)
             .AddFeishuMailToolsCore()
 
-            // T-3 成环批次：MailDeepTools（17 个工具：5 只读 + 12 写）与 MailTools 同属
+            // T-3 成环批次：MailDeepTools（15 个工具：5 只读 + 10 写）与 MailTools 同属
             // 「读写混合域」——Core 只在写链与本入口各登记一次（见上方 ⚠️ 不可叠加说明）。
             .AddFeishuMailDeepToolsCore();
 
@@ -417,7 +417,7 @@ public static class FeishuToolsServiceCollectionExtensions
 
 
     /// <summary>
-    /// 注册写域工具（Phase 2：<c>im.send_message</c>/<c>bitable.add_record</c>/<c>approval.create_instance</c> +
+    /// 注册写域工具（Phase 2：<c>im.send_message</c>/<c>bitable.record_batch_create</c>/<c>approval.create_instance</c> +
     /// 授权链复用）；对应域客户端缺席时对应写工具不进注册表，白名单期 fail-fast。
     /// </summary>
     public static IServiceCollection AddFeishuWriteTools(
@@ -631,7 +631,7 @@ public static class FeishuToolsServiceCollectionExtensions
             // WP5/R5 域扩容：邮件工具 + 通讯录部门轴工具
             .AddFeishuMailToolsCore()
 
-            // T-3 成环批次：Mail 深化执行器 MailDeepTools（17 个工具：5 只读 + 12 写），
+            // T-3 成环批次：Mail 深化执行器 MailDeepTools（15 个工具：5 只读 + 10 写），
             // 与 MailTools 同属「读写混合域」——只在写链登记（与 AddFeishuMailTools 的清单
             // **同进同出**，DomainRegistrarTests 锁等价性）。
             .AddFeishuMailDeepToolsCore()

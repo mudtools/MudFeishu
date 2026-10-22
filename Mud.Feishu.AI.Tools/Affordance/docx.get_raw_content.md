@@ -5,7 +5,7 @@
 ## Avoid when
 
 - 要块 ID 定位编辑点——用 `docx.get_document_blocks`，本工具的回执没有 ID。
-- 要可往返编辑的 Markdown——用 `docx.get_markdown_content`。
+- 要可往返编辑的 Markdown——用 `markdown.fetch`（`token_type=docx`）。
 - 只要标题和版本——`docx.get_document_info` 更省。
 
 ## Prerequisites

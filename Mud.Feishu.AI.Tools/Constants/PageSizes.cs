@@ -52,7 +52,7 @@ internal static class PageSizes
     /// <summary>drive.list_comments（官方默认 100，此处取 50 控量）。</summary>
     public const int DriveComments = 50;
 
-    /// <summary>bitable.get_records_by_ids（官方单请求上限 100）。</summary>
+    /// <summary>bitable.query_records 的 record_ids 模式（官方单请求上限 100）。</summary>
     public const int BitableRecordsByIds = 100;
 
     /// <summary>bitable.form_question_list（官方默认 100/页）。</summary>

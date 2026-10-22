@@ -10,8 +10,12 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // ─────────────────────────── IM（5 个：2 只读 + 1 只读会话治理 + 1 写会话治理 + 1 只读搜索） ───────────────────────────
 
 /// <summary>工具接口：im.get_history_messages（映射 <c>IFeishuTenantV1Message.GetHistoryMessageAsync</c>）。</summary>
+/// <remarks>
+/// 群聊与话题是两个容器形态而非两个能力：同一 SDK 方法以 <c>container_id_type</c> 区分，
+/// 故合并为单一入口（<c>container_type</c> 缺省 = chat）。
+/// </remarks>
 [AgentTool("im.get_history_messages",
-    Description = "读取群聊的历史消息（chat_id 可由事件上下文获得），按创建时间倒序返回最近消息预览。只读，需 im:message:readonly。",
+    Description = "读取会话历史消息，按创建时间倒序返回最近消息预览。container_type=chat 读群聊/单聊（container_id 为 chat_id，默认）；container_type=thread 读话题（container_id 为 thread_id，形如 omt_xxx）。只读，需 im:message:readonly。",
     RequiredScopes = ["im:message:readonly"],
     Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.GetHistoryMessageAsync))]
 public interface IFeishuTenantImHistoryTool
@@ -19,9 +23,10 @@ public interface IFeishuTenantImHistoryTool
     /// <summary>读取历史消息（分页，按创建时间倒序）。</summary>
     /// <returns>白名单投影后的 JSON 文本（message_id/create_time/sender_id/message_type/content 预览），超长截断并标记 truncated。</returns>
     Task<string> GetHistoryMessageAsync(
-        [ToolParameter("chat_id", "群聊 ID（形如 ocXxx）", Required = true)] string chat_id,
-        [ToolParameter("start_time", "起始时间（可选，RFC3339，如 2026-09-27T00:00:00+08:00）")] string? start_time = null,
-        [ToolParameter("end_time", "结束时间（可选，RFC3339）")] string? end_time = null,
+        [ToolParameter("container_id", "容器 ID：container_type=chat 时为群聊 ID（ocXxx）；=thread 时为话题 ID（omt_xxx）", Required = true)] string container_id,
+        [ToolParameter("container_type", "容器类型（可选，默认 chat）：chat=群聊/单聊 / thread=话题")] string? container_type = null,
+        [ToolParameter("start_time", "起始时间（可选，RFC3339，如 2026-09-27T00:00:00+08:00）；话题容器下不生效")] string? start_time = null,
+        [ToolParameter("end_time", "结束时间（可选，RFC3339）；话题容器下不生效")] string? end_time = null,
         [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
         [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
         [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
@@ -104,23 +109,6 @@ public interface IFeishuTenantImSearchMessagesTool
 //   · forward_message 落到 SDK 的 ReceiveMessageAsync（实为 POST /messages/{id}/forward，不是"接收消息"）
 //   · 已读用户落到 GetMessageReadUsesAsync（"Uses" 应为 "Users"）
 //   · 群信息落到 GetChatGroupInoByIdAsync（"Ino" 应为 "Info"）
-
-/// <summary>im.get_thread_messages：读取话题（thread）内的消息。</summary>
-[AgentTool("im.get_thread_messages",
-    Description = "读取某个话题（thread）内的消息——群话题场景下用 thread_id 取代 chat_id 读话题内容。thread_id 可由事件上下文获得。只读，需 im:message:readonly。",
-    RequiredScopes = ["im:message:readonly"],
-    Source = nameof(IFeishuTenantV1Message) + "." + nameof(IFeishuTenantV1Message.GetHistoryMessageAsync))]
-public interface IFeishuTenantImGetThreadMessagesTool
-{
-    /// <summary>读取话题消息（分页，按创建时间倒序）。</summary>
-    /// <returns>白名单投影后的 JSON 文本（items/has_more/page_token），超长截断并标记 truncated。</returns>
-    Task<string> GetThreadMessagesAsync(
-        [ToolParameter("thread_id", "话题 ID（形如 omt_xxx，来自事件上下文或 im.reply_message 返回）", Required = true)] string thread_id,
-        [ToolParameter("page_token", "分页游标（可选）")] string? page_token = null,
-        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
-        [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
-        CancellationToken cancellationToken = default);
-}
 
 /// <summary>im.revoke_message：撤回自己发出的消息。</summary>
 [AgentTool("im.revoke_message", IsWrite = true,

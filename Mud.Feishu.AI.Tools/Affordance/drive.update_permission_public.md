@@ -4,7 +4,7 @@
 
 ## Avoid when
 
-- 只需给指定的人或群开权限——用 `drive.grant_permission`，比放开外链可控得多。
+- 只需给指定的人或群开权限——用 `drive.set_permission`，比放开外链可控得多。
 - 只是要看当前设置——用 `drive.get_permission_public`。
 
 ## Prerequisites

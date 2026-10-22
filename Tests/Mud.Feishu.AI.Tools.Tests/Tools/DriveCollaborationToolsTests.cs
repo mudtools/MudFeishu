@@ -53,8 +53,7 @@ public class DriveCollaborationToolsTests
         {
             FeishuToolNames.DriveGetPermissionPublic,
             FeishuToolNames.DriveUpdatePermissionPublic,
-            FeishuToolNames.DriveGrantPermission,
-            FeishuToolNames.DriveUpdatePermissionMember,
+            FeishuToolNames.DriveSetPermission,
             FeishuToolNames.DriveRemovePermission,
             FeishuToolNames.DriveTransferOwner,
         };
@@ -79,7 +78,7 @@ public class DriveCollaborationToolsTests
             .Should().Contain("组织外", "公开链接权限可能把文档暴露到组织外——描述必须写明后果");
         FeishuToolContracts.ByToolName[FeishuToolNames.DriveTransferOwner].Description
             .Should().Contain("不可逆", "转移所有者不可撤销，描述必须写明后果");
-        FeishuToolContracts.ByToolName[FeishuToolNames.DriveGrantPermission].Description
+        FeishuToolContracts.ByToolName[FeishuToolNames.DriveSetPermission].Description
             .Should().Contain("扩大数据可达范围");
     }
 
@@ -262,11 +261,11 @@ public class DriveCollaborationToolsTests
     // ───────────────────── 权限面 ─────────────────────
 
     [Fact]
-    public async Task GrantPermission_Should_Reject_Illegal_MemberType_With_AllowedValues()
+    public async Task SetPermission_Should_Reject_Illegal_MemberType_With_AllowedValues()
     {
         var client = new Mock<Mud.Feishu.IFeishuTenantV1DrivePermissions>();
 
-        var result = await CreatePermissionTools(client).GrantPermissionAsync(
+        var result = await CreatePermissionTools(client).SetPermissionAsync(
             Args(
                 ("token", "doxcn1"),
                 ("type", "docx"),
@@ -278,6 +277,103 @@ public class DriveCollaborationToolsTests
         var text = result.ToString();
         text.Should().Contain("member_type").And.Contain("openid").And.Contain("email");
         client.Invocations.Should().BeEmpty("非法枚举值必须本地拒绝（附合法值清单），不落到下游");
+    }
+
+    [Fact]
+    public async Task SetPermission_Should_AddMember_When_NotYetCollaborator()
+    {
+        var client = new Mock<Mud.Feishu.IFeishuTenantV1DrivePermissions>();
+        client.Setup(c => c.GetPermissionMemberAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FeishuApiResult<GetPermissionMemberResult>
+            {
+                Code = 0,
+                Data = new GetPermissionMemberResult
+                {
+                    Items = [new PermissionMemberDetail { MemberId = "ou_other", MemberType = "openid", Perm = "view" }],
+                },
+            });
+        CreatePermissionMemberRequest? created = null;
+        client.Setup(c => c.CreatePermissionMemberAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CreatePermissionMemberRequest>(),
+                It.IsAny<bool?>(), It.IsAny<CancellationToken>()))
+            .Callback((string _, string __, CreatePermissionMemberRequest request, bool? ___, CancellationToken ____) =>
+                created = request)
+            .ReturnsAsync(new FeishuApiResult<PermissionMemberOopsResult>
+            {
+                Code = 0,
+                Data = new PermissionMemberOopsResult
+                {
+                    Member = new PermissionMemberDetail { MemberId = "ou_1", MemberType = "openid", Perm = "edit" },
+                },
+            });
+
+        var result = await CreatePermissionTools(client).SetPermissionAsync(
+            Args(
+                ("token", "doxcn1"),
+                ("type", "docx"),
+                ("member_type", "openid"),
+                ("member_id", "ou_1"),
+                ("perm", "edit")),
+            CancellationToken.None);
+
+        created!.MemberId.Should().Be("ou_1");
+        created.Perm.Should().Be("edit");
+        Payload(result)["action"]!.GetValue<string>().Should().Be("created",
+            "不在协作者列表 ⇒ 走新增；action 让模型知道实际走了哪条路径");
+        client.Verify(
+            c => c.UpdatePermissionMemberAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<UpdatePermissionMemberRequest>(), It.IsAny<bool?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task SetPermission_Should_UpdateMember_When_AlreadyCollaborator()
+    {
+        var client = new Mock<Mud.Feishu.IFeishuTenantV1DrivePermissions>();
+        client.Setup(c => c.GetPermissionMemberAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FeishuApiResult<GetPermissionMemberResult>
+            {
+                Code = 0,
+                Data = new GetPermissionMemberResult
+                {
+                    Items = [new PermissionMemberDetail { MemberId = "ou_1", MemberType = "openid", Perm = "view" }],
+                },
+            });
+        UpdatePermissionMemberRequest? updated = null;
+        client.Setup(c => c.UpdatePermissionMemberAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<UpdatePermissionMemberRequest>(), It.IsAny<bool?>(), It.IsAny<CancellationToken>()))
+            .Callback((string _, string __, string ___, UpdatePermissionMemberRequest request,
+                bool? ____, CancellationToken _____) => updated = request)
+            .ReturnsAsync(new FeishuApiResult<PermissionMemberOopsResult>
+            {
+                Code = 0,
+                Data = new PermissionMemberOopsResult
+                {
+                    Member = new PermissionMemberDetail { MemberId = "ou_1", MemberType = "openid", Perm = "full_access" },
+                },
+            });
+
+        var result = await CreatePermissionTools(client).SetPermissionAsync(
+            Args(
+                ("token", "doxcn1"),
+                ("type", "docx"),
+                ("member_type", "openid"),
+                ("member_id", "ou_1"),
+                ("perm", "full_access")),
+            CancellationToken.None);
+
+        updated!.Perm.Should().Be("full_access");
+        Payload(result)["action"]!.GetValue<string>().Should().Be("updated");
+        client.Verify(
+            c => c.CreatePermissionMemberAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CreatePermissionMemberRequest>(),
+                It.IsAny<bool?>(), It.IsAny<CancellationToken>()),
+            Times.Never,
+            "已是协作者时再走新增会被平台拒绝——upsert 判定必须生效");
     }
 
     [Fact]

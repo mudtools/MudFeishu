@@ -12,7 +12,7 @@
 ## Prerequisites
 
 - `user_mailbox_id` 与 `thread_id`（形如 txxx）都必填。
-- 线程 ID 在只读面上没有出口，通常来自写侧回执（`mail.send_message`、`mail.send_draft`）或宿主上下文。
+- 线程 ID 在只读面上没有出口，通常来自写侧回执（`mail.send`、`mail.send`）或宿主上下文。
 - 需 mail:mailbox:readonly，以应用（tenant）身份调用。
 
 ## Tips

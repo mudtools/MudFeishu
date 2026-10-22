@@ -13,6 +13,8 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // 覆盖只能删旧建新（token 变化，所有引用一起失效）。故「可直接改写的 Markdown 载体」落成
 // 新版文档（docx）：写入走 md→块转换，读取走 docs/v1/content 的 markdown 出口。
 // 云空间里现成的 .md 资源文件仍可读（drive.download_file 的文本形态），但只读。
+//
+// 正文读取的唯一入口是 markdown.fetch（token_type=docx 读新版文档）；整篇重建走 docx.replace_document。
 
 /// <summary>工具接口：markdown.create（组合：上传 .md → 创建导入任务 → 有界轮询）。</summary>
 /// <remarks>
@@ -48,7 +50,7 @@ public interface IFeishuTenantMarkdownCreateTool
 /// <c>next_offset</c>，模型可自行续读全量；「截断 + 标记」会让后半段永远不可达。
 /// </remarks>
 [AgentTool("markdown.fetch",
-    Description = "读取 Markdown 正文（token_type=docx 读新版文档；token_type=file 读云空间 .md 资源文件）。按 offset/limit 分窗口返回，has_more=true 时用 next_offset 续读。只读，需 drive:drive:readonly。",
+    Description = "读取 Markdown 正文（token_type=docx 读新版文档正文；token_type=file 读云空间 .md 资源文件）。按 offset/limit 分窗口返回，has_more=true 时用 next_offset 续读。只读，需 drive:drive:readonly。",
     RequiredScopes = ["drive:drive:readonly"],
     Source = nameof(IFeishuTenantV1DriveFiles) + "." + nameof(IFeishuTenantV1DriveFiles.GetFileContentByFileTokenAsync))]
 public interface IFeishuTenantMarkdownFetchTool
@@ -90,27 +92,6 @@ public interface IFeishuTenantMarkdownPatchTool
         [ToolParameter("replace_all", "替换全部命中（可选，默认 false）；命中多处时不设此项会被拒绝")] bool? replace_all = null,
         [ToolParameter("idempotency_key", "幂等键（必填）：相同 client_token 在 24 小时内至多成功一次，防止重试重复插入。请用稳定值")] string? idempotency_key = null,
         [ToolParameter("dry_run", "仅预演不写入（可选，默认 false）：返回命中数与长度变化，不调用下游写接口")] bool? dry_run = null,
-        CancellationToken cancellationToken = default);
-}
-
-/// <summary>工具接口：markdown.overwrite（用 Markdown 整体重建正文；组合 Source = Docx 块接口）。</summary>
-/// <remarks>
-/// 执行顺序为「先追加新块、再删除旧块」：中途失败不会导致内容丢失（详见 <c>docx.replace_document</c>）。
-/// </remarks>
-[AgentTool("markdown.overwrite",
-    Description = "用一段 Markdown 整体重建文档正文（先追加新块再删旧块，中途失败不丢内容）。与 docx.replace_document 同语义，但面向 markdown 生命周期。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 docx:document。",
-    RequiredScopes = ["docx:document"],
-    IsWrite = true,
-    Source = nameof(IFeishuTenantV1DocxBlocks) + "." + nameof(IFeishuTenantV1DocxBlocks.CreateBlockAsync))]
-public interface IFeishuTenantMarkdownOverwriteTool
-{
-    /// <summary>整体重建文档正文。</summary>
-    /// <returns>结构化 JSON（appended/new_block_ids/deleted；删除失败时 partial_failure=true 与修复指引）。</returns>
-    Task<string> OverwriteAsync(
-        [ToolParameter("document_token", "新版文档 token（形如 doxcnXxx）", Required = true)] string document_token,
-        [ToolParameter("markdown", "新的正文内容（Markdown 格式，非空）", Required = true)] string markdown,
-        [ToolParameter("idempotency_key", "幂等键（必填）：相同 client_token 在 24 小时内至多成功一次，防止重试重复插入。请用稳定值")] string? idempotency_key = null,
-        [ToolParameter("dry_run", "仅预演不执行（可选，默认 false）：返回将要下发的步骤与 method/path，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }
 

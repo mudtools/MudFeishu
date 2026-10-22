@@ -98,8 +98,8 @@ public class PaginationContractGuards
     /// <remarks>
     /// <para>
     /// <b>为什么用"声明了 page_token"作判据</b>：这是<b>工具自己</b>声明"我是分页列表"的事实
-    /// （比按工具名前缀猜 <c>list_/query_/search_</c> 精确：<c>vc.list_reserves</c> 名字像列表、
-    /// 实际按 ID 取详情；<c>attendance.query_*</c> 名字像列表、接口根本不分页）。
+    /// （比按工具名前缀猜 <c>list_/query_/search_</c> 精确：<c>attendance.query_*</c> 名字像列表、
+    /// 接口根本不分页）。
     /// 判据 = "契约说了要翻页，就必须提供自动翻页的能力"。
     /// </para>
     /// <para>

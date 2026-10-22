@@ -38,8 +38,12 @@ internal sealed class TaskTools(
     private readonly int _maxAutoFetchItems = ToolExecutor.Require(options).MaxAutoFetchItems;
     private readonly int _maxAutoFetchPages = ToolExecutor.Require(options).MaxAutoFetchPages;
 
-    /// <summary>task.create_task：创建任务（<c>dry_run=true</c> 时只预演）。</summary>
-    /// <remarks>幂等键（T4-1 同款）：<c>idempotency_key</c> → <c>CreateTaskRequest.ClientToken</c>（平台原生幂等）。</remarks>
+    /// <summary>task.create_task：创建任务或子任务（<c>dry_run=true</c> 时只预演）。</summary>
+    /// <remarks>
+    /// 子任务与任务字段面一致，仅挂载路径不同：<c>parent_task_guid</c> 缺省走
+    /// <c>POST /tasks</c>，传入时走 <c>POST /tasks/{guid}/subtasks</c>。
+    /// 幂等键：<c>idempotency_key</c> → <c>ClientToken</c>（平台原生幂等）。
+    /// </remarks>
     [ToolHandler(typeof(IFeishuTenantTaskCreateTaskTool))]
     public Task<ToolResult> CreateTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
@@ -49,15 +53,49 @@ internal sealed class TaskTools(
             var args = TaskCreateTaskArgs.Unpack(arguments);
 
             var dueMs = args.Due is null ? null : ToUnixMilliseconds(args.Due);
+            var isSubtask = !string.IsNullOrWhiteSpace(args.ParentTaskGuid);
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
                 return ToolResult.FromText(ToolDryRun.Describe(
-                    executor.ToolName, "POST", "/open-apis/task/v2/tasks",
+                    executor.ToolName, "POST",
+                    isSubtask
+                        ? $"/open-apis/task/v2/tasks/{args.ParentTaskGuid}/subtasks"
+                        : "/open-apis/task/v2/tasks",
                     ToolDryRun.IdempotencyNote(args.IdempotencyKey),
                     ("summary", args.Summary.Length),
                     ("due", args.Due?.Length ?? 0),
                     ("assignee_ids", args.AssigneeIds?.Length ?? 0)));
+            }
+
+            var members = args.AssigneeIds is { Length: > 0 }
+                ? args.AssigneeIds
+                    .Select(static id => new TaskMemberInfo { Id = id, Type = "user", Role = "assignee" })
+                    .ToArray()
+                : null;
+
+            if (isSubtask)
+            {
+                var subRequest = new CreateSubTaskRequest
+                {
+                    Summary = args.Summary,
+                    Description = args.Description,
+                    ClientToken = args.IdempotencyKey,
+                    Members = members,
+                };
+                if (dueMs is not null)
+                {
+                    subRequest.Due = new TaskTime { Timestamp = dueMs };
+                }
+
+                var subOutcome = FeishuApiResultReader.Read(await _taskClient
+                    .CreateSubTaskAsync(args.ParentTaskGuid!, subRequest, cancellationToken: cancellationToken)
+                    .ConfigureAwait(false));
+                return executor.FromApiUntruncated(subOutcome, data => new JsonObject
+                {
+                    ["subtask_guid"] = data.Subtask?.Guid,
+                    ["parent_task_guid"] = args.ParentTaskGuid,
+                });
             }
 
             var request = new CreateTaskRequest
@@ -65,17 +103,11 @@ internal sealed class TaskTools(
                 Summary = args.Summary,
                 Description = args.Description,
                 ClientToken = args.IdempotencyKey,
+                Members = members,
             };
             if (dueMs is not null)
             {
                 request.Due = new TaskTime { Timestamp = dueMs };
-            }
-
-            if (args.AssigneeIds is { Length: > 0 })
-            {
-                request.Members = args.AssigneeIds
-                    .Select(static id => new TaskMemberInfo { Id = id, Type = "user", Role = "assignee" })
-                    .ToArray();
             }
 
             var outcome = FeishuApiResultReader.Read(await _taskClient
@@ -135,7 +167,11 @@ internal sealed class TaskTools(
         });
     }
 
-    /// <summary>task.update_task：更新任务信息（summary/description/due，至少传一个；<c>dry_run=true</c> 时只预演）。</summary>
+    /// <summary>task.update_task：更新任务信息（summary/description/due/completed，至少传一个；<c>dry_run=true</c> 时只预演）。</summary>
+    /// <remarks>
+    /// <c>completed</c> 是 <c>completed_at</c> 的布尔化入口：true 写入当前毫秒时间戳、
+    /// false 写入 <c>"0"</c>（清空完成时间 = 重新打开）——模型不感知时间戳语义。
+    /// </remarks>
     [ToolHandler(typeof(IFeishuTenantTaskUpdateTaskTool))]
     public Task<ToolResult> UpdateTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
@@ -145,7 +181,7 @@ internal sealed class TaskTools(
             var args = TaskUpdateTaskArgs.Unpack(arguments);
 
             // 构造 update_fields：只包含实际传入的字段
-            var updateFields = new List<string>(3);
+            var updateFields = new List<string>(4);
             var taskData = new UpdateTaskData();
 
             if (args.Summary is { Length: > 0 } summary)
@@ -163,10 +199,17 @@ internal sealed class TaskTools(
                 updateFields.Add("due");
                 taskData.Due = new TaskTime { Timestamp = ToUnixMilliseconds(due) };
             }
+            if (args.Completed is { } completed)
+            {
+                updateFields.Add("completed_at");
+                taskData.CompletedAt = completed
+                    ? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture)
+                    : "0";
+            }
 
             if (updateFields.Count == 0)
             {
-                throw new ArgumentException("task.update_task 至少需提供一个要更新的字段（summary/description/due）");
+                throw new ArgumentException("task.update_task 至少需提供一个要更新的字段（summary/description/due/completed）");
             }
 
             if (ToolDryRun.IsRequested(args.DryRun))
@@ -301,48 +344,6 @@ internal sealed class TaskTools(
             {
                 ["deleted"] = true,
                 ["task_guid"] = args.TaskGuid,
-            });
-        });
-    }
-
-    /// <summary>task.create_subtask：创建子任务（<c>dry_run=true</c> 时只预演）。</summary>
-    /// <remarks>幂等键：<c>idempotency_key</c> → <c>CreateSubTaskRequest.ClientToken</c>（平台原生幂等）。</remarks>
-    [ToolHandler(typeof(IFeishuTenantTaskCreateSubtaskTool))]
-    public Task<ToolResult> CreateSubtaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
-    {
-        var executor = new ToolExecutor(FeishuToolNames.TaskCreateSubtask, _maxResultLength);
-        return executor.RunAsync(async () =>
-        {
-            var args = TaskCreateSubtaskArgs.Unpack(arguments);
-
-            var dueMs = args.Due is null ? null : ToUnixMilliseconds(args.Due);
-
-            if (ToolDryRun.IsRequested(args.DryRun))
-            {
-                return ToolResult.FromText(ToolDryRun.Describe(
-                    executor.ToolName, "POST", $"/open-apis/task/v2/tasks/{args.TaskGuid}/subtasks",
-                    ToolDryRun.IdempotencyNote(args.IdempotencyKey),
-                    ("summary", args.Summary.Length),
-                    ("due", args.Due?.Length ?? 0)));
-            }
-
-            var request = new CreateSubTaskRequest
-            {
-                Summary = args.Summary,
-                Description = args.Description,
-                ClientToken = args.IdempotencyKey,
-            };
-            if (dueMs is not null)
-            {
-                request.Due = new TaskTime { Timestamp = dueMs };
-            }
-
-            var outcome = FeishuApiResultReader.Read(await _taskClient
-                .CreateSubTaskAsync(args.TaskGuid, request, cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
-            return executor.FromApiUntruncated(outcome, data => new JsonObject
-            {
-                ["subtask_guid"] = data.Subtask?.Guid,
             });
         });
     }

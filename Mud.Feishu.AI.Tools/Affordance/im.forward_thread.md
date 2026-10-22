@@ -5,7 +5,7 @@
 ## Avoid when
 
 - 目标只是话题中的某一条消息——那是 `im.forward_message`，别拿单条转发凑。
-- 要读话题内容而非移交——那是 `im.get_thread_messages`。
+- 要读话题内容而非移交——用 `im.get_history_messages` 传 `container_type=thread`。
 - 要在话题里继续发言——那是 `im.reply_message`；转发建的是副本。
 
 ## Prerequisites

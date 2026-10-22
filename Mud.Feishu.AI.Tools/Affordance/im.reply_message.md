@@ -6,7 +6,7 @@
 
 - 没有特定指向的消息——那是 `im.send_message`。
 - 只是把现成消息递给别人——那是 `im.forward_message`，回复会产生新内容。
-- 事后要回看整串讨论——那是 `im.get_thread_messages`。
+- 事后要回看整串讨论——用 `im.get_history_messages` 传 `container_type=thread`。
 
 ## Prerequisites
 

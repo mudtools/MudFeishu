@@ -48,7 +48,7 @@ SDK 方法目录 1268 个方法 / 1266 个唯一限定名（2 处同接口同名
 15 条不一致全部是同一类语义事实：**能力写在 A 域接口上，工具落在资源的归属域**。例如
 `Role.CreateRoleAsync → bitable.role_create`、`WorkCity.GetWorkCityByIdAsync → org.get_work_city`、
 `AttendanceUserSettings.DownloadFileAsync → drive.download_file`、
-`DriveFiles.GetFileContentByFileTokenAsync → docx.get_markdown_content`、
+`DriveFiles.GetFileContentByFileTokenAsync → markdown.fetch`、
 `ChatGroupMember.GetMemberPageListByIdAsync → im.list_chat_members`。别名表按**分组首段**工作，
 把这些补进别名会把整组（含真正属于原域的方法）一起改道，因此**接受 <100% 并锁下限**，
 而不是为了凑数放宽比对轴。

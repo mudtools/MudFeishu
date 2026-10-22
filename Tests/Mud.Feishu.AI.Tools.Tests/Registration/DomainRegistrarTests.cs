@@ -48,7 +48,7 @@ public class DomainRegistrarTests
         var registry = provider.GetRequiredService<FeishuToolRegistry>();
         registry.AllTools.Select(t => t.Name).Should().BeEquivalentTo(
             [FeishuToolNames.BitableListTables, FeishuToolNames.BitableListFields,
-             FeishuToolNames.BitableQueryRecords, FeishuToolNames.BitableGetRecordsByIds,
+             FeishuToolNames.BitableQueryRecords,
 
              // R5 / F-11：视图侧是**软依赖**（可空），故视图客户端缺席时这两个工具
              // 仍会注册在案（软缺席 = 执行期报错，而非"工具不存在"）。
@@ -91,7 +91,7 @@ public class DomainRegistrarTests
         var allDomainOptions = new[]
         {
             FeishuToolNames.BitableListTables, FeishuToolNames.BitableListFields,
-            FeishuToolNames.BitableQueryRecords, FeishuToolNames.BitableGetRecordsByIds,
+            FeishuToolNames.BitableQueryRecords,
             FeishuToolNames.DocxGetRawContent, FeishuToolNames.DocxGetDocumentBlocks,
             FeishuToolNames.WikiGetNode, FeishuToolNames.WikiListNodes,
             FeishuToolNames.SearchDocWiki,

@@ -6,7 +6,7 @@
 
 - 想改的只是读没读——用 `mail.mark_read`，本工具会把邮件挪位置。
 - 想删掉草稿——用 `mail.delete_draft`，草稿与已收邮件的终态不同。
-- 想让"以后这类邮件"自动进删除——用 `mail.rule_create` 的 delete 动作，本工具只处理点名的 ID。
+- 想让"以后这类邮件"自动进删除——用 `mail.rule_save` 的 delete 动作，本工具只处理点名的 ID。
 
 ## Prerequisites
 

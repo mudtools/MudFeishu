@@ -413,44 +413,6 @@ internal sealed class TaskDeepTools(
         });
     }
 
-    /// <summary>task.reopen：把已完成的任务重新打开（与 <c>task.complete_task</c> 互为逆操作；<c>dry_run=true</c> 时只预演）。</summary>
-    [ToolHandler(typeof(IFeishuTenantTaskReopenTool))]
-    public Task<ToolResult> ReopenTaskAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
-    {
-        var executor = new ToolExecutor(FeishuToolNames.TaskReopen);
-        return executor.RunAsync(async () =>
-        {
-            var client = Require(_taskClient, executor.ToolName, "IFeishuTenantV2Task", "AddTaskApi 的任务客户端");
-            var args = TaskReopenArgs.Unpack(arguments);
-
-            if (ToolDryRun.IsRequested(args.DryRun))
-            {
-                return ToolResult.FromText(ToolDryRun.Describe(
-                    executor.ToolName, "PATCH", $"/open-apis/task/v2/tasks/{args.TaskGuid}",
-                    ToolDryRun.IdempotencyNote("幂等——对已打开的任务重复调用不产生副作用"),
-                    ("task_guid", args.TaskGuid.Length),
-                    ("update_fields", "completed_at".Length)));
-            }
-
-            // completed_at=0 即"未完成"（平台契约：为 0 表示未完成），与 complete_task 写时间戳互为逆操作。
-            var outcome = FeishuApiResultReader.Read(await client
-                .UpdateTaskAsync(
-                    args.TaskGuid,
-                    new UpdateTaskRequest
-                    {
-                        Task = new UpdateTaskData { CompletedAt = "0" },
-                        UpdateFields = ["completed_at"],
-                    },
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
-            return executor.FromApiUntruncated(outcome, _ => new JsonObject
-            {
-                ["task_guid"] = args.TaskGuid,
-                ["completed"] = false,
-            });
-        });
-    }
-
     // ────────── 私有辅助 ──────────
 
     /// <summary>取软依赖客户端；缺席时给出<b>可执行</b>提示（宿主该启用什么），而不是空引用。</summary>

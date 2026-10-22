@@ -1,11 +1,11 @@
 ## WHEN
 
 - 用户要「在飞书里新建一篇文档」，且内容你已按 Markdown 组织好（纪要、方案、周报）。
-- 需要一份后续还能被 `markdown.patch` / `markdown.overwrite` 改写的在线文档载体。
+- 需要一份后续还能被 `markdown.patch` / `docx.replace_document` 改写的在线文档载体。
 
 ## Avoid when
 
-- 只是往已有文档追加或替换正文——用 `markdown.patch` 或 `markdown.overwrite`，本工具会新建一份。
+- 只是往已有文档追加或替换正文——用 `markdown.patch` 或 `docx.replace_document`，本工具会新建一份。
 - 内容 UTF-8 后超过 20 MB——平台导入任务不接，先拆分。
 - 要的是云空间里的 `.md` 资源文件——本工具产物是 docx。
 

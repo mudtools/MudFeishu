@@ -4,7 +4,7 @@
 
 ## Avoid when
 
-- 只是要降级（编辑 → 只读）——用 `drive.update_permission_member`，保留协作者、只改档位副作用更小。
+- 只是要降级（编辑 → 只读）——用 `drive.set_permission`，保留协作者、只改档位副作用更小。
 - 要换文档归属——用 `drive.transfer_owner`（那是转移而不是收回）。
 
 ## Prerequisites

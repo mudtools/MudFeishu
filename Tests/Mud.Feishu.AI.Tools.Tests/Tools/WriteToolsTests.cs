@@ -106,50 +106,48 @@ public class WriteToolsTests
             .And.Contain("无发送权限", "code != 0 转可读文本回填模型（总体设计 §4 不变式）");
     }
 
-    // ───────────────────── bitable.add_record ─────────────────────
+    // ───────────────────── bitable.record_batch_create ─────────────────────
 
     [Fact]
-    public async Task AddRecord_ShouldParseFieldsJsonIntoRequest()
+    public async Task RecordBatchCreate_WithSingleElementArray_ShouldCreateOneRecord()
     {
-        RecordOpsRequest? captured = null;
+        AddRecordsRequest? captured = null;
         _recordClient
-            .Setup(c => c.AddRecordAsync(
-                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<RecordOpsRequest>(),
+            .Setup(c => c.AddRecordsAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<AddRecordsRequest>(),
                 It.IsAny<string?>(), It.IsAny<bool?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .Callback((string _, string __, RecordOpsRequest request, string? ___, bool? ____, string _____, CancellationToken ______)
+            .Callback((string _, string __, AddRecordsRequest request, string? ___, bool? ____, string _____, CancellationToken ______)
                 => captured = request)
-            .ReturnsAsync(new FeishuApiResult<RecordOpsResult>
+            .ReturnsAsync(new FeishuApiResult<RecordsOpsResult>
             {
                 Code = 0,
-                Data = new RecordOpsResult { Record = new AppTableRecordInfo { RecordId = "rec_new_1" } },
+                Data = new RecordsOpsResult { Records = [new AppTableRecordInfo { RecordId = "rec_new_1" }] },
             });
 
         var tools = new BitableWriteTools(_recordClient.Object, Options.Create(NewOptions()));
-        var result = await tools.AddRecordAsync(
-            Args(("app_token", "bascnXxx"), ("table_id", "tbl001"), ("fields", """{"任务名称":"写周报","优先级":3}""")),
+        var result = await tools.AddRecordsAsync(
+            Args(("app_token", "bascnXxx"), ("table_id", "tbl001"),
+                 ("records", """[{"fields":{"任务名称":"写周报","优先级":3}}]""")),
             CancellationToken.None);
 
         using var document = JsonDocument.Parse(result.ToString()!);
-        document.RootElement.GetProperty("record_id").GetString().Should().Be("rec_new_1");
+        document.RootElement.GetProperty("record_ids")[0].GetString().Should().Be("rec_new_1");
         captured.Should().NotBeNull();
-        var fields = captured!.Fields.Should().BeOfType<JsonElement>().Subject;
-        fields.ValueKind.Should().Be(JsonValueKind.Object, "Fields 以 JsonElement 承载（STJ 内建转换器可源生成序列化，无反射）");
-        fields.GetProperty("任务名称").GetString().Should().Be("写周报");
-        fields.GetProperty("优先级").GetInt32().Should().Be(3);
+        captured!.Records.Should().HaveCount(1, "长度 1 的数组即单条新增——单条不再单独成工具");
     }
 
     [Fact]
-    public async Task AddRecord_ShouldRejectNonObjectFields_WithStructuredError()
+    public async Task RecordBatchCreate_ShouldRejectNonArrayRecords_WithStructuredError()
     {
         var tools = new BitableWriteTools(_recordClient.Object, Options.Create(NewOptions()));
 
-        var notJson = await tools.AddRecordAsync(
-            Args(("app_token", "b"), ("table_id", "t"), ("fields", "not-json{")), CancellationToken.None);
-        notJson.ToString().Should().Contain("[tool_error] bitable.add_record").And.Contain("fields");
+        var notJson = await tools.AddRecordsAsync(
+            Args(("app_token", "b"), ("table_id", "t"), ("records", "not-json{")), CancellationToken.None);
+        notJson.ToString().Should().Contain("[tool_error] bitable.record_batch_create").And.Contain("records");
 
-        var notObject = await tools.AddRecordAsync(
-            Args(("app_token", "b"), ("table_id", "t"), ("fields", "[1,2]")), CancellationToken.None);
-        notObject.ToString().Should().Contain("[tool_error] bitable.add_record").And.Contain("JSON 对象");
+        var notArray = await tools.AddRecordsAsync(
+            Args(("app_token", "b"), ("table_id", "t"), ("records", """{"fields":{}}""")), CancellationToken.None);
+        notArray.ToString().Should().Contain("[tool_error] bitable.record_batch_create");
     }
 
     // ───────────────────── approval.create_instance ─────────────────────

@@ -379,7 +379,7 @@ public class GuidanceAssetContractGuards
 
     /// <summary>
     /// 启用全部工具：读写分列（写类工具必须经 <c>WriteAllowList</c> 单独键控）+ 放行 <c>user</c> 身份
-    /// （<c>approval.get_instance</c>/<c>task.list_my_tasks</c>/<c>mail.send_message</c> 是 user 身份工具，
+    /// （<c>approval.get_instance</c>/<c>task.list_my_tasks</c>/<c>mail.send</c> 是 user 身份工具，
     /// 不加入 <c>AllowedIdentities</c> 会在<b>装配期</b> fail-fast）。
     /// </summary>
     private static void EnableAllTools(FeishuAgentOptions options)
@@ -432,7 +432,7 @@ public class GuidanceAssetContractGuards
     [Fact]
     public void Scanner_ShouldFlagNonExistentToolReference_WhenGuidanceMentionsRemovedTool()
     {
-        var validNames = new HashSet<string>(["bitable.list_tables", "bitable.add_record"], StringComparer.Ordinal);
+        var validNames = new HashSet<string>(["bitable.list_tables", "bitable.record_batch_create"], StringComparer.Ordinal);
         var referenced = GuidanceReferenceScanner.FindToolReferences("写入走 bitable.ghost_tool（已删除）");
 
         var ghosts = referenced.Where(n => !validNames.Contains(n)).ToArray();

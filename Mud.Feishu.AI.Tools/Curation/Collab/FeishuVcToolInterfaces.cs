@@ -122,20 +122,21 @@ public interface IFeishuTenantVcGetRecordingTool
         CancellationToken cancellationToken = default);
 }
 
-/// <summary>工具接口：vc.list_reserves（映射 <c>IFeishuTenantV1VideoConferencingReserves.GetReserveAsync</c>）。</summary>
+/// <summary>工具接口：vc.get_reserve（映射 <c>IFeishuTenantV1VideoConferencingReserves.GetReserveAsync</c>）。</summary>
 /// <remarks>
 /// 预约（Reserve）= 通过 API 预创建的会议，其 id 即会议号锚点。
 /// 返回包含入会链接、密码、预约人、会议设置。删除预约用 <c>vc.delete_reserve</c>。
+/// 单对象取数，不是列表；会议列表形态请走 <c>calendar</c> 日程查询。
 /// </remarks>
-[AgentTool("vc.list_reserves",
-    Description = "按预约 ID 获取预约（Reserve）详情：预约 ID、9 位会议号、入会链接、app_link、直播链接、密码、预约人、结束时间、失效状态、会议设置（主题/自动录制等）。只读，需 vc:reserve:readonly。",
+[AgentTool("vc.get_reserve",
+    Description = "按预约 ID 获取单个预约（Reserve）详情：预约 ID、9 位会议号、入会链接、app_link、直播链接、密码、预约人、结束时间、失效状态、会议设置（主题/自动录制等）。只读，需 vc:reserve:readonly。",
     RequiredScopes = ["vc:reserve:readonly"],
     IsWrite = false,
     Source = nameof(IFeishuTenantV1VideoConferencingReserves) + "." + nameof(IFeishuTenantV1VideoConferencingReserves.GetReserveAsync))]
-public interface IFeishuTenantVcListReservesTool
+public interface IFeishuTenantVcGetReserveTool
 {
     /// <summary>获取预约详情。</summary>
-    Task<string> ListReservesAsync(
+    Task<string> GetReserveAsync(
         [ToolParameter("reserve_id", "预约 ID", Required = true)] string reserve_id,
         CancellationToken cancellationToken = default);
 }
@@ -226,7 +227,7 @@ public interface IFeishuUserVcEndMeetingTool
 /// <c>high-risk-write</c> 由 profile 的危险词（<c>delete</c>）在编译期判定，非人工标注。
 /// </remarks>
 [AgentTool("vc.delete_reserve",
-    Description = "删除一个预约（Reserve）——预约对应的会议号随即失效且不可恢复。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 vc:reserve。**务必先 dry_run=true 预演（用 vc.list_reserves 确认对象）**。",
+    Description = "删除一个预约（Reserve）——预约对应的会议号随即失效且不可恢复。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 vc:reserve。**务必先 dry_run=true 预演（用 vc.get_reserve 确认对象）**。",
     RequiredScopes = ["vc:reserve"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1VideoConferencingReserves) + "." + nameof(IFeishuTenantV1VideoConferencingReserves.DeleteReserveAsync))]
@@ -234,7 +235,7 @@ public interface IFeishuTenantVcDeleteReserveTool
 {
     /// <summary>删除预约。</summary>
     Task<string> DeleteReserveAsync(
-        [ToolParameter("reserve_id", "预约 ID（先用 vc.list_reserves 确认）", Required = true)] string reserve_id,
+        [ToolParameter("reserve_id", "预约 ID（先用 vc.get_reserve 确认）", Required = true)] string reserve_id,
         [ToolParameter("dry_run", "仅预演不删除（可选，默认 false）")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }

@@ -4,7 +4,7 @@
 
 ## Avoid when
 
-- 要正文内容——用 `docx.get_raw_content` 或 `docx.get_markdown_content`。
+- 要正文内容——用 `docx.get_raw_content`（纯文本）或 `markdown.fetch`（Markdown）。
 - 要块结构或块 ID——用 `docx.get_document_blocks`，本工具不含块信息。
 
 ## Prerequisites

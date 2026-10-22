@@ -711,6 +711,6 @@ Mud.Feishu.AI.Tools/Affordance/{契约工具名}.md      # 如 out: Affordance/v
 | `task.create_subtask`          | ✅                     | ✅                      | 平台原生幂等                                                                                                                |
 | `task.add_comment`             | ❌                     | —                       | 非幂等                                                                                                                      |
 | `task.add_members`             | ✅                     | ✅                      | 平台原生幂等                                                                                                                |
-| `mail.send_message`            | ❌                     | —                       | 两步合一，非幂等                                                                                                            |
+| `mail.send`            | ❌                     | —                       | 两步合一，非幂等                                                                                                            |
 
 **汇总**：28 个写工具中，10 个暴露 `idempotency_key`，18 个不暴露（其中 8 个天然幂等，10 个非幂等）。

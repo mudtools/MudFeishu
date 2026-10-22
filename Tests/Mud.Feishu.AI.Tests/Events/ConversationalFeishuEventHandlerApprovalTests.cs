@@ -87,7 +87,7 @@ public class ConversationalFeishuEventHandlerApprovalTests
     }
 
     /// <summary>模拟「写工具被拦下来」的首轮回应：内容里直接给出框架审批请求。</summary>
-    private static Mock<IChatClient> CreateApprovalClient(string toolName = "bitable.add_record")
+    private static Mock<IChatClient> CreateApprovalClient(string toolName = "bitable.record_batch_create")
     {
         var call = new FunctionCallContent(
             "call-1", toolName, new Dictionary<string, object?> { ["table_id"] = "tbl_x" });
@@ -118,7 +118,7 @@ public class ConversationalFeishuEventHandlerApprovalTests
         await handler.HandleAsync(DemoEventData("evt-approval-1"), default);
 
         channel.Requests.Should().ContainSingle("待确认项必须提交宿主批准通道——这是批准的唯一入口");
-        channel.Requests[0].ToolName.Should().Be("bitable.add_record");
+        channel.Requests[0].ToolName.Should().Be("bitable.record_batch_create");
         channel.Requests[0].RequestId.Should().Be("ficc_call-1",
             "RequestId 必须原样携带：回灌响应时要靠它把批准绑定到框架请求");
         channel.Requests[0].TenantKey.Should().Be("app-a");

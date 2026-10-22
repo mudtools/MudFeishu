@@ -3,7 +3,7 @@
 ## 两条独立通道
 1. **公开链接分享**：`drive.get_permission_public`（读） / `drive.update_permission_public`（写）
    ——决定"任何拿到链接的人"能看到什么（link_share_entity / external_access）。
-2. **成员授权**：`drive.grant_permission`（加协作者） / `drive.update_permission_member`（改档位）
+2. **成员授权**：`drive.set_permission`（加协作者） / `drive.set_permission`（改档位）
    / `drive.remove_permission`（移除）——按 openid / email / userid / chatid / departmentid 点名。
 
 ## 前置链
@@ -20,5 +20,5 @@
 - 以上写操作默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer）。
 
 ## 示例
-- 「让李四能编辑」→ 先拿到李四的 open_id → `drive.grant_permission`（perm=edit）。
+- 「让李四能编辑」→ 先拿到李四的 open_id → `drive.set_permission`（perm=edit）。
 - 「改成任何人可读」→ `drive.get_permission_public` → `dry_run` 预演 → `update_permission_public`。

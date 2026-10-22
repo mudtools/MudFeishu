@@ -11,7 +11,7 @@ namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
 /// VideoConferencing 只读工具执行器（R6 / S3）：<c>vc.list_meetings</c> / <c>vc.get_meeting</c> /
-/// <c>vc.list_participants</c> / <c>vc.get_recording</c> / <c>vc.list_reserves</c> / <c>vc.list_rooms</c>
+/// <c>vc.list_participants</c> / <c>vc.get_recording</c> / <c>vc.get_reserve</c> / <c>vc.list_rooms</c>
 /// / <c>vc.user_active_meeting</c>。
 /// </summary>
 /// <remarks>
@@ -174,16 +174,16 @@ internal sealed class VcTools(
         });
     }
 
-    /// <summary>vc.list_reserves：获取预约详情。</summary>
-    [ToolHandler(typeof(IFeishuTenantVcListReservesTool))]
-    public Task<ToolResult> ListReservesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    /// <summary>vc.get_reserve：获取预约详情。</summary>
+    [ToolHandler(typeof(IFeishuTenantVcGetReserveTool))]
+    public Task<ToolResult> GetReserveAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
-        var executor = new ToolExecutor(FeishuToolNames.VcListReserves, _maxResultLength);
+        var executor = new ToolExecutor(FeishuToolNames.VcGetReserve, _maxResultLength);
         return executor.RunAsync(async () =>
         {
             var client = _reservesClient
-                ?? throw new ArgumentException("vc.list_reserves 需要 IFeishuTenantV1VideoConferencingReserves——宿主须启用 VC 域客户端");
-            var args = VcListReservesArgs.Unpack(arguments);
+                ?? throw new ArgumentException("vc.get_reserve 需要 IFeishuTenantV1VideoConferencingReserves——宿主须启用 VC 域客户端");
+            var args = VcGetReserveArgs.Unpack(arguments);
 
             var outcome = FeishuApiResultReader.Read(await client
                 .GetReserveAsync(args.ReserveId, cancellationToken: cancellationToken)

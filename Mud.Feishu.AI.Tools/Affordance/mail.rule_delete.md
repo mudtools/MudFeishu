@@ -4,9 +4,9 @@
 
 ## Avoid when
 
-- 只想让它暂时不生效——本接口没有停用开关，删了无法复原，只能重新 `mail.rule_create`。
+- 只想让它暂时不生效——本接口没有停用开关，删了无法复原，只能重新 `mail.rule_save`。
 - 想调的是执行次序——用 `mail.rule_reorder`，不要删了重建（重建会掉回队尾）。
-- 想改条件或动作——用 `mail.rule_update` 整体覆盖。
+- 想改条件或动作——用 `mail.rule_save` 整体覆盖。
 
 ## Prerequisites
 

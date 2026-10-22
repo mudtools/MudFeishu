@@ -24,21 +24,26 @@ namespace Mud.Feishu.AI.Tools.Curation;
 // </para>
 // </remarks>
 
-/// <summary>工具接口：task.create_task（映射 <c>IFeishuTenantV2Task.CreateTaskAsync</c>）。</summary>
+/// <summary>工具接口：task.create_task（映射 <c>IFeishuTenantV2Task.CreateTaskAsync</c> / <c>CreateSubTaskAsync</c>）。</summary>
+/// <remarks>
+/// 子任务 = 带父任务锚点的任务：<c>parent_task_guid</c> 缺省走 <c>POST /tasks</c>，
+/// 传入时走 <c>POST /tasks/{guid}/subtasks</c>（字段面完全一致）。
+/// </remarks>
 [AgentTool("task.create_task",
-    Description = "创建一条任务（summary 必填；due 为 RFC3339 时间由工具层转换为毫秒时间戳；assignee_ids 为被指派人 open_id 列表）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
+    Description = "创建一条任务（summary 必填；due 为 RFC3339 时间由工具层转换为毫秒时间戳；assignee_ids 为被指派人 open_id 列表）。传 parent_task_guid 则创建该任务的子任务（同一入口，字段面一致）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2Task) + "." + nameof(IFeishuTenantV2Task.CreateTaskAsync))]
 public interface IFeishuTenantTaskCreateTaskTool
 {
-    /// <summary>创建任务。</summary>
-    /// <returns>白名单投影后的 JSON 文本（task guid）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
+    /// <summary>创建任务（或子任务）。</summary>
+    /// <returns>白名单投影后的 JSON 文本（task_guid；子任务为 subtask_guid）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
     Task<string> CreateTaskAsync(
         [ToolParameter("summary", "任务标题", Required = true)] string summary,
         [ToolParameter("description", "任务描述（可选）")] string? description = null,
         [ToolParameter("due", "截止时间（RFC3339，如 2026-10-01T18:00:00+08:00；可选）")] string? due = null,
         [ToolParameter("assignee_ids", "被指派人 open_id 数组（可选；如 [\"ou_xxx\"]）")] string[]? assignee_ids = null,
+        [ToolParameter("parent_task_guid", "父任务 GUID（可选）：传入即创建该任务的子任务")] string? parent_task_guid = null,
         [ToolParameter("idempotency_key", "幂等键（可选）：平台原生幂等——相同键至多创建一次任务；省略时不保证幂等。建议由调用方给出稳定值，不要用随机数。幂等键不跨工具共享。")] string? idempotency_key = null,
         [ToolParameter("dry_run", "仅预演不创建（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
@@ -66,16 +71,16 @@ public interface IFeishuUserTaskListMyTasksTool
 
 /// <summary>工具接口：task.update_task（映射 <c>IFeishuTenantV2Task.UpdateTaskAsync</c>）。</summary>
 [AgentTool("task.update_task",
-    Description = "更新任务信息（summary/description/due 等字段，至少传一个要更新的字段）。task_guid 来自 task.create_task 或 task.list_my_tasks。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
+    Description = "更新任务信息（summary/description/due/completed，至少传一个要更新的字段）。completed=true 标记完成、false 重新打开（与 task.complete_task 同一路径的简写入口）。task_guid 来自 task.create_task 或 task.list_my_tasks。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
     RequiredScopes = ["task:task"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2Task) + "." + nameof(IFeishuTenantV2Task.UpdateTaskAsync),
 
-    // 至少要更新一个字段——跨参数约束，required 表达不了（会让三者都必填）。
+    // 至少要更新一个字段——跨参数约束，required 表达不了（会让成员全部必填）。
     // 成员集与执行器的运行时校验（TaskTools.UpdateTaskAsync）严格一致，不多不少。
     // 注意：task.complete_task 共用同一 SDK 方法但**不加** AnyOf——它只传 completed_at，
     // 语义是"固定字段写入"，不是"开放字段任选其一"。
-    AnyOf = ["summary|description|due"])]
+    AnyOf = ["summary|description|due|completed"])]
 public interface IFeishuTenantTaskUpdateTaskTool
 {
     /// <summary>更新任务。</summary>
@@ -85,6 +90,7 @@ public interface IFeishuTenantTaskUpdateTaskTool
         [ToolParameter("summary", "任务标题（可选更新；如更新不可为空）")] string? summary = null,
         [ToolParameter("description", "任务描述（可选更新）")] string? description = null,
         [ToolParameter("due", "截止时间（RFC3339，如 2026-10-01T18:00:00+08:00；可选更新）")] string? due = null,
+        [ToolParameter("completed", "完成状态（可选）：true=标记完成；false=重新打开（清除完成时间）")] bool? completed = null,
         [ToolParameter("dry_run", "仅预演不更新（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }
@@ -120,26 +126,6 @@ public interface IFeishuTenantTaskDeleteTaskTool
     Task<string> DeleteTaskAsync(
         [ToolParameter("task_guid", "任务全局唯一 ID（来自 task.create_task 或 task.list_my_tasks）", Required = true)] string task_guid,
         [ToolParameter("dry_run", "仅预演不删除（可选，默认 false）：返回将要下发的 method/path，不调用下游")] bool? dry_run = null,
-        CancellationToken cancellationToken = default);
-}
-
-/// <summary>工具接口：task.create_subtask（映射 <c>IFeishuTenantV2Task.CreateSubTaskAsync</c>）。</summary>
-[AgentTool("task.create_subtask",
-    Description = "为指定父任务创建子任务（summary 必填；接口功能除了额外需要父任务 GUID 外，和创建任务完全一致）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
-    RequiredScopes = ["task:task"],
-    IsWrite = true,
-    Source = nameof(IFeishuTenantV2Task) + "." + nameof(IFeishuTenantV2Task.CreateSubTaskAsync))]
-public interface IFeishuTenantTaskCreateSubtaskTool
-{
-    /// <summary>创建子任务。</summary>
-    /// <returns>白名单投影后的 JSON 文本（subtask_guid）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
-    Task<string> CreateSubtaskAsync(
-        [ToolParameter("task_guid", "父任务全局唯一 ID（来自 task.create_task 或 task.list_my_tasks）", Required = true)] string task_guid,
-        [ToolParameter("summary", "子任务标题", Required = true)] string summary,
-        [ToolParameter("description", "子任务描述（可选）")] string? description = null,
-        [ToolParameter("due", "截止时间（RFC3339，如 2026-10-01T18:00:00+08:00；可选）")] string? due = null,
-        [ToolParameter("idempotency_key", "幂等键（可选）：平台原生幂等——相同键至多创建一次子任务；省略时不保证幂等。建议由调用方给出稳定值，不要用随机数。幂等键不跨工具共享。")] string? idempotency_key = null,
-        [ToolParameter("dry_run", "仅预演不创建（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -373,21 +359,5 @@ public interface IFeishuTenantTaskRemoveReminderTool
         [ToolParameter("task_guid", "任务全局唯一 ID（来自 task.create_task 或 task.list_my_tasks）", Required = true)] string task_guid,
         [ToolParameter("reminder_ids", "要移除的提醒 ID 数组（如 [\"10\"]，取自 task.set_reminder 返回的 reminders[].reminder_id）", Required = true)] string[] reminder_ids,
         [ToolParameter("dry_run", "仅预演不移除（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
-        CancellationToken cancellationToken = default);
-}
-
-/// <summary>工具接口：task.reopen（映射 <c>IFeishuTenantV2Task.UpdateTaskAsync</c>，update_fields=["completed_at"]）。</summary>
-[AgentTool("task.reopen",
-    Description = "将已完成的任务重新打开（清除完成时间，与 task.complete_task 互为逆操作）。task_guid 来自 task.create_task 或 task.list_my_tasks。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 task:task。",
-    RequiredScopes = ["task:task"],
-    IsWrite = true,
-    Source = nameof(IFeishuTenantV2Task) + "." + nameof(IFeishuTenantV2Task.UpdateTaskAsync))]
-public interface IFeishuTenantTaskReopenTool
-{
-    /// <summary>重新打开任务。</summary>
-    /// <returns>白名单投影后的 JSON 文本（task_guid/completed=false）；<c>dry_run=true</c> 时返回请求摘要且不调用下游。</returns>
-    Task<string> ReopenTaskAsync(
-        [ToolParameter("task_guid", "任务全局唯一 ID（来自 task.create_task 或 task.list_my_tasks）", Required = true)] string task_guid,
-        [ToolParameter("dry_run", "仅预演不修改（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }

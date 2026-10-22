@@ -75,7 +75,7 @@ public sealed class BitableRecordContextAssembler : FactListContextAssembler
             fieldPreviewLength: ContextBudgets.BitableRecordFieldPreviewLength,
             untrustedHeader: ContextBudgets.UntrustedHeader,
             factLabels: FactLabels,
-            hint: "- 建议: 用 bitable.get_records_by_ids 取变更记录详情，或用 bitable.query_records 在该表内检索。")
+            hint: "- 建议: 用 bitable.query_records 传 record_ids 取变更记录详情，或在该表内按条件检索。")
     {
     }
 

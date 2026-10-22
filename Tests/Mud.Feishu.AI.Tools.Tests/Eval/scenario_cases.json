@@ -53,7 +53,7 @@
       "steps": [
         { "tool": "docx.create_document", "args": { "title": "季度复盘", "dry_run": true }, "expect": "plan" },
         { "tool": "docx.append_blocks", "args": { "document_id": "doxcn1", "block_type": "Text", "text": "结论", "dry_run": true }, "expect": "plan" },
-        { "tool": "markdown.overwrite", "args": { "document_token": "dcn1", "markdown": "# 季度复盘", "idempotency_key": "eval-doc-1", "dry_run": true }, "expect": "plan" }
+        { "tool": "docx.replace_document", "args": { "document_id": "dcn1", "markdown": "# 季度复盘", "idempotency_key": "eval-doc-1", "dry_run": true }, "expect": "plan" }
       ]
     },
     {
@@ -62,7 +62,7 @@
       "steps": [
         { "tool": "im.send_message", "args": {}, "expect": "validation" },
         { "tool": "sheets.update_range", "args": { "spreadsheet_token": "shtcn1", "range": "Sheet1!A1:B2", "values": "not json", "dry_run": true }, "expect": "validation" },
-        { "tool": "drive.grant_permission", "args": { "token": "doxcn1", "type": "docx", "member_type": "user", "member_id": "ou_1", "perm": "view", "dry_run": true }, "expect": "validation" },
+        { "tool": "drive.set_permission", "args": { "token": "doxcn1", "type": "docx", "member_type": "user", "member_id": "ou_1", "perm": "view", "dry_run": true }, "expect": "validation" },
         { "tool": "markdown.patch", "args": { "document_token": "dcn1", "find": "旧值", "replace_with": "新值", "dry_run": true }, "expect": "validation" }
       ]
     },
@@ -88,7 +88,7 @@
       "steps": [
         { "tool": "slides.create_presentation", "args": { "content": "<presentation/>", "dry_run": true }, "expect": "plan" },
         { "tool": "slides.add_slide", "args": { "xml_presentation_id": "pres1", "content": "<slide/>", "dry_run": true }, "expect": "plan|validation" },
-        { "tool": "drive.grant_permission", "args": { "token": "doxcn1", "type": "docx", "member_type": "openid", "member_id": "ou_1", "perm": "view", "dry_run": true }, "expect": "plan" }
+        { "tool": "drive.set_permission", "args": { "token": "doxcn1", "type": "docx", "member_type": "openid", "member_id": "ou_1", "perm": "view", "dry_run": true }, "expect": "plan" }
       ]
     }
   ]

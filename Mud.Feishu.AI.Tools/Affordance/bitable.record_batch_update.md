@@ -1,11 +1,12 @@
 ## WHEN
 
 - 多条已存在的记录要做同一批修改（批量翻状态、统一更正字段）。
+- 只改一条也用本工具：`records` 里放 1 项 {"record_id":...,"fields":{...}} 即可。
 
 ## Avoid when
 
-- 只改一条——用 `bitable.update_record`，单条链路更短。
-- 这些记录还不存在、应新建——用 `bitable.record_batch_create`，本工具不会创建。
+- 这些记录还不存在（要新建）——用 `bitable.record_batch_create`，本工具不会创建。
+- 这一行要整体作废（删除）——用 `bitable.delete_record`，改字段不会让它消失。
 - 超过 1000 条——超上限会在本地校验即被拒绝，必须分批。
 
 ## Prerequisites

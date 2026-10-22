@@ -9,10 +9,10 @@
 
 ## Prerequisites
 
-- 先用 `vc.list_reserves` 拿到目标 `reserve_id`。
+- 先用 `vc.get_reserve` 拿到目标 `reserve_id`。
 - 需预约写权限。
 
 ## Tips
 
 - 预约对应的会议号**随即失效且不可恢复**，已分享会议号的参会者会受影响。
-- **务必先 `dry_run=true` 预演**，并用 `vc.list_reserves` 复核对象后再真正删除。
+- **务必先 `dry_run=true` 预演**，并用 `vc.get_reserve` 复核对象后再真正删除。

@@ -44,7 +44,7 @@ package_version: 3.0.3
 - `drive.export_document`（只读）：把云文档导出为文件（docx 文档→docx/pdf；sheet/bitable→xlsx/csv）并下载到宿主本地暂存目录，结果只含 local_path/size/content_type（no-bytes-in-context：文件字节不进模型上下文）。导出产物约 10 分钟内有效，请及时转存。只读，需 drive:export:readonly。
 - `drive.get_file_metas`（只读）：按 token 批量查询文件元信息（类型/标题/链接/所有者，最多 200 个）；支撑后续读文档链（docx.get_raw_content 等）。只读，需 drive:drive:readonly。
 - `drive.get_permission_public`（写）：获取云文档的公开链接权限设置（link_share_entity/external_access 等），用于分享前确认当前文档的可见范围。实际只读（GET），但因权限域风险分级须过授权门禁，建议先 dry_run 预演确认调用面，需 drive:drive:readonly。
-- `drive.grant_permission`（写）：为指定云文档添加单个协作者权限（member_type 为 openid/email/userid/chatid/departmentid）。⚠️ 此操作可扩大数据可达范围，建议先 dry_run 预演确认。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。
+- `drive.set_permission`（写）：为指定云文档添加单个协作者权限（member_type 为 openid/email/userid/chatid/departmentid）。⚠️ 此操作可扩大数据可达范围，建议先 dry_run 预演确认。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。
 - `drive.list_comments`（只读）：列出云文档的所有评论（comment_id/user_id/is_solved/reply_count/created_at）。先获取评论列表，再用 drive.reply_comment 或 drive.resolve_comment 操作。只读，需 drive:drive:readonly。
 - `drive.list_folder_files`（只读）：列出云空间文件夹内的文件与子文件夹（token/name/type/url）；folder_token 缺省列根目录。与 search.doc_wiki 互补（浏览 vs 搜索）。只读，需 drive:drive:readonly。
 - `drive.move_file`（写）：将文件或文件夹移动到指定文件夹下（返回异步任务 ID——移动操作为异步执行，需后续轮询确认完成）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。
@@ -52,7 +52,7 @@ package_version: 3.0.3
 - `drive.reply_comment`（写）：回复指定评论（需 comment_id + text）。空文本会在下发前被拒绝。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。
 - `drive.resolve_comment`（写）：解决或恢复评论（is_solved 三态），不是删除——天然幂等。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。
 - `drive.transfer_owner`（写）：转移云文档所有者（不可逆！转移后原所有者降为编辑者）。必须过授权器。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。建议先 dry_run 预演确认。
-- `drive.update_permission_member`（写）：更新指定协作者的权限档位（view/edit/full_access），幂等操作。建议先 dry_run 预演确认。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。
+- `drive.set_permission`（写）：更新指定协作者的权限档位（view/edit/full_access），幂等操作。建议先 dry_run 预演确认。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。
 - `drive.update_permission_public`（写）：更新云文档的公开链接权限设置。⚠️ 此操作可能使文档对组织外可见——请先 drive.get_permission_public 确认当前设置，并优先使用 dry_run 预演。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。
 - `drive.upload_file`（写）：将网络文件上传到云空间（file_url 为 http/https 绝对地址，由宿主负责下载落盘——与 im.send_image 同机制）。返回 file_token。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 drive:drive。
 

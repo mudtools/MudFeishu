@@ -4,7 +4,7 @@
 
 ## Avoid when
 
-- 只是想改文案——用 `docx.update_block` / `docx.update_blocks`。
+- 只是想改文案——用 `docx.update_blocks`。
 - 想用一份新内容换掉整篇——用 `docx.replace_document`，一次调用语义更清晰。
 
 ## Prerequisites

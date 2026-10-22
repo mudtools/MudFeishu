@@ -70,41 +70,34 @@ public interface IFeishuTenantBitableListFieldsTool
         CancellationToken cancellationToken = default);
 }
 
-/// <summary>工具接口：bitable.query_records（映射 <c>IFeishuTenantV1BitableRecord.QueryRecordsPageListAsync</c>）。</summary>
+/// <summary>工具接口：bitable.query_records（映射 <c>IFeishuTenantV1BitableRecord.QueryRecordsPageListAsync</c> / <c>GetRecordsAsync</c>）。</summary>
+/// <remarks>
+/// 两种取数入口合一：默认按条件检索（<c>POST /records/search</c>，可翻页）；
+/// 传 <c>record_ids</c> 时按 ID 精取（<c>POST /records/batch_get</c>，单次 ≤100 条、不翻页）。
+/// 二者互斥——同时给出会让"结果集由谁决定"变得不可判定。
+/// </remarks>
 [AgentTool("bitable.query_records",
-    Description = "按条件查询多维表格记录（先经 bitable.list_tables 获取 table_id，经 bitable.list_fields 了解字段）；filter 为简化筛选式，如 status = \"done\" and owner contains 张三。只读，需 bitable:app:readonly。",
+    Description = "查询多维表格记录。两种用法：① 按条件检索（默认，先经 bitable.list_tables 取 table_id、bitable.list_fields 了解字段；filter 为简化筛选式，如 status = \"done\" and owner contains 张三，可翻页）；② 传 record_ids 按 ID 精取（最多 100 条，不可与 filter/view_id/sort 同用，不翻页）。只读，需 bitable:app:readonly。",
     RequiredScopes = ["bitable:app:readonly"],
     Source = nameof(IFeishuTenantV1BitableRecord) + "." + nameof(IFeishuTenantV1BitableRecord.QueryRecordsPageListAsync))]
 public interface IFeishuTenantBitableQueryRecordsTool
 {
-    /// <summary>查询记录（分页；filter 简化文法由绑定层解析为官方过滤结构）。</summary>
-    /// <returns>白名单投影后的 JSON 文本（record_id/fields），超长截断并标记 truncated。</returns>
+    /// <summary>查询记录（条件检索分页；或按 ID 批量精取）。</summary>
+    /// <returns>
+    /// 条件检索：白名单投影后的 JSON 文本（record_id/fields + total + 翻页契约），超长截断并标记 truncated；
+    /// 按 ID 精取：items（record_id/fields）+ absent_record_ids（不存在的 ID），无翻页字段。
+    /// </returns>
     Task<string> QueryRecordsPageListAsync(
         [ToolParameter("app_token", "多维表格 AppToken（形如 bascnXxx）", Required = true)] string app_token,
         [ToolParameter("table_id", "数据表 ID（形如 tblXxx）", Required = true)] string table_id,
-        [ToolParameter("view_id", "视图 ID（可选）")] string? view_id = null,
-        [ToolParameter("field_names", "只返回这些字段（可选，字符串数组；缺省返回全部字段）")] string[]? field_names = null,
-        [ToolParameter("filter", "简化筛选式（可选）：字段 = 值 或 字段 contains 值，and 连接，最多 5 个子句，如：status = \"done\" and owner contains 张三")] string? filter = null,
-        [ToolParameter("sort", "排序子句（可选，字符串数组，最多 3 个）：形如 字段:asc 或 字段:desc，如 [\"status:desc\", \"name:asc\"]")] string[]? sort = null,
-        [ToolParameter("page_token", "分页游标（可选，来自上一次结果的 page_token）")] string? page_token = null,
-        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
+        [ToolParameter("record_ids", "按 ID 精取的记录 ID 数组（可选，最多 100 条）；给出时忽略 filter/view_id/sort，且不翻页")] string[]? record_ids = null,
+        [ToolParameter("view_id", "视图 ID（可选；仅条件检索）")] string? view_id = null,
+        [ToolParameter("field_names", "只返回这些字段（可选，字符串数组；缺省返回全部字段，两种用法都生效）")] string[]? field_names = null,
+        [ToolParameter("filter", "简化筛选式（可选，仅条件检索）：字段 = 值 或 字段 contains 值，and 连接，最多 5 个子句，如：status = \"done\" and owner contains 张三")] string? filter = null,
+        [ToolParameter("sort", "排序子句（可选，仅条件检索，字符串数组，最多 3 个）：形如 字段:asc 或 字段:desc，如 [\"status:desc\", \"name:asc\"]")] string[]? sort = null,
+        [ToolParameter("page_token", "分页游标（可选，仅条件检索，来自上一次结果的 page_token）")] string? page_token = null,
+        [ToolParameter("fetch_all", "自动翻页取完全部结果（可选，默认 false，仅条件检索）；启用后在预算内循环翻页，触达上限时返回 truncated=true + next_page_token")] bool? fetch_all = null,
         [ToolParameter("max_items", "结果预算上限（可选，默认 200，硬上限 1000）；仅在 fetch_all=true 时生效")] int? max_items = null,
-        CancellationToken cancellationToken = default);
-}
-
-/// <summary>工具接口：bitable.get_records_by_ids（映射 <c>IFeishuTenantV1BitableRecord.GetRecordsAsync</c>）。</summary>
-[AgentTool("bitable.get_records_by_ids",
-    Description = "按 record_id 批量获取多维表格记录（最多 100 条）——bitable.query_records 翻页后的精取链。只读，需 bitable:app:readonly。",
-    RequiredScopes = ["bitable:app:readonly"],
-    Source = nameof(IFeishuTenantV1BitableRecord) + "." + nameof(IFeishuTenantV1BitableRecord.GetRecordsAsync))]
-public interface IFeishuTenantBitableRecordsByIdsTool
-{
-    /// <summary>按 ID 批量取记录。</summary>
-    /// <returns>白名单投影后的 JSON 文本（record_id/fields/absent_record_ids），超长截断并标记 truncated。</returns>
-    Task<string> GetRecordsAsync(
-        [ToolParameter("app_token", "多维表格 AppToken（形如 bascnXxx）", Required = true)] string app_token,
-        [ToolParameter("table_id", "数据表 ID（形如 tblXxx）", Required = true)] string table_id,
-        [ToolParameter("record_ids", "记录 ID 数组（形如 recXxx，最多 100 条）", Required = true)] string[] record_ids,
         CancellationToken cancellationToken = default);
 }
 

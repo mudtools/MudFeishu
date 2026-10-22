@@ -34,7 +34,6 @@ internal sealed class ImTools(
 {
     private const string ContainerIdTypeChat = "chat";
 
-    /// <summary>R5 / F-3：话题容器类型（<c>im.get_thread_messages</c> 用它取代 chat）。</summary>
     private const string ContainerIdTypeThread = "thread";
 
     private const string SortTypeByCreateTimeDesc = "ByCreateTimeDesc";
@@ -99,6 +98,13 @@ internal sealed class ImTools(
         {
             var args = ImGetHistoryMessagesArgs.Unpack(arguments);
 
+            var containerType = ResolveContainerType(executor.ToolName, args.ContainerType);
+            if (containerType == ContainerIdTypeThread
+                && (args.StartTime is not null || args.EndTime is not null))
+            {
+                throw new ArgumentException("话题容器（container_type=thread）不支持 start_time / end_time 过滤");
+            }
+
             var startTime = ToUnixSeconds(args.StartTime, "start_time");
             var endTime = ToUnixSeconds(args.EndTime, "end_time");
 
@@ -108,8 +114,8 @@ internal sealed class ImTools(
                 string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _messageClient
                     .GetHistoryMessageAsync(
-                        ContainerIdTypeChat,
-                        args.ChatId,
+                        containerType,
+                        args.ContainerId,
                         startTime,
                         endTime,
                         SortTypeByCreateTimeDesc,
@@ -149,50 +155,6 @@ internal sealed class ImTools(
                 .GetContentListByMessageIdAsync(args.MessageId, cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApi(outcome, ProjectContent);
-        });
-    }
-
-    /// <summary>get_history_messages 投影：items（含 content 预览截断）+ 翻页契约。</summary>
-    // ────────── R5 / F-3：IM 域补齐（thread / 撤回 / 转发 / 已读 / 群管理） ──────────
-
-    /// <summary>im.get_thread_messages：读取话题内消息（container_id_type 固定 thread）。</summary>
-    [ToolHandler(typeof(IFeishuTenantImGetThreadMessagesTool))]
-    public Task<ToolResult> GetThreadMessagesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
-    {
-        var executor = new ToolExecutor(FeishuToolNames.ImGetThreadMessages, _maxResultLength);
-        return executor.RunAsync(async () =>
-        {
-            var args = ImGetThreadMessagesArgs.Unpack(arguments);
-
-            async Task<ToolApiOutcome<ApiPageListResult<HistoryMessageData>>> FetchPageAsync(
-                string? token, CancellationToken ct)
-                => FeishuApiResultReader.Read(await _messageClient
-                    .GetHistoryMessageAsync(
-                        ContainerIdTypeThread,
-                        args.ThreadId,
-                        start_time: null,
-                        end_time: null,
-                        sort_type: SortTypeByCreateTimeDesc,
-                        page_size: PageSizes.History,
-                        page_token: token,
-                        cancellationToken: ct)
-                    .ConfigureAwait(false));
-
-            if (args.FetchAll == true)
-            {
-                var maxItems = ToolPagination.ResolveMaxItems(args.MaxItems, _maxAutoFetchItems);
-                var aggregated = await ToolPagination.AggregateOutcomesAsync(
-                    FetchPageAsync,
-                    page => (page.HasMore, page.PageToken),
-                    page => ProjectHistory(page)["items"]!.AsArray(),
-                    maxItems,
-                    ToolPagination.ResolveMaxPages(_maxAutoFetchPages),
-                    cancellationToken).ConfigureAwait(false);
-                return executor.FromPagedResult(aggregated, maxItems);
-            }
-
-            var outcome = await FetchPageAsync(args.PageToken, cancellationToken).ConfigureAwait(false);
-            return executor.FromApi(outcome, ProjectHistory);
         });
     }
 
@@ -869,6 +831,27 @@ internal sealed class ImTools(
         "yyyy-MM-dd'T'HH:mm:ss.ffK",
         "yyyy-MM-dd'T'HH:mm:ss.fffK",
     ];
+
+    /// <summary>
+    /// 归一 <c>container_type</c>：缺省视为群聊；未知名直接拒绝
+    /// （静默回退到 chat 会让"读话题"错读成"读群聊"，是语义级错答）。
+    /// </summary>
+    private static string ResolveContainerType(string toolName, string? containerType)
+    {
+        if (string.IsNullOrWhiteSpace(containerType))
+        {
+            return ContainerIdTypeChat;
+        }
+
+        var normalized = containerType!.Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            ContainerIdTypeChat => ContainerIdTypeChat,
+            ContainerIdTypeThread => ContainerIdTypeThread,
+            _ => throw new ArgumentException(
+                $"{toolName} 的 container_type 仅支持 chat / thread，实际: {containerType}"),
+        };
+    }
 
     private static string? ToUnixSeconds(string? rfc3339, string parameterName)
     {

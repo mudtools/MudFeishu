@@ -71,7 +71,7 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
 
         // P1-5/P1-6 修复：在此处初始化 WebSocket 指标观察器，使用实际 AppKey 而非硬编码 "websocket"。
         // 此时 DI 容器已就绪，可从 IOptionsMonitor 解析当前 FeishuWebSocketOptions.AppKey。
-        // 观察器在每次指标采集时动态读取 _optionsMonitor.CurrentValue.AppKey，支持配置热更新。
+        // 观察器在每次指标采集时动态读取 _optionsMonitor.CurrentValue.ResolvedAppKey，支持配置热更新。
         InitializeMetricsObservers();
     }
 
@@ -95,10 +95,10 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
     /// </remarks>
     private void InitializeMetricsObservers()
     {
-        var appKey = _optionsMonitor.CurrentValue.AppKey;
+        var appKey = _optionsMonitor.CurrentValue.ResolvedAppKey;
 
         _metricsRegistration = FeishuMetrics.RegisterWebSocketMetricsSource(
-            appKeyProvider: () => _optionsMonitor.CurrentValue.AppKey,
+            appKeyProvider: () => _optionsMonitor.CurrentValue.ResolvedAppKey,
             activeConnectionsProvider: () => _webSocketManager.IsConnected ? 1 : 0,
             pendingMessagesProvider: () => _concurrencyService?.PendingCount ?? 0,
             idleMsProvider: () => GetConnectionLiveness().IdleMs,
@@ -378,7 +378,7 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
             e.AttemptCount, e.TotalReconnectCount);
 
         // P1-5 修复：记录 WebSocket 重连成功指标
-        FeishuMetricsHelper.RecordWebSocketReconnect(_optionsMonitor.CurrentValue.AppKey, success: true);
+        FeishuMetricsHelper.RecordWebSocketReconnect(_optionsMonitor.CurrentValue.ResolvedAppKey, success: true);
     }
 
     /// <summary>
@@ -389,7 +389,7 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
         _logger.LogError(e.Error, "重连失败 (尝试次数: {Attempt})", e.AttemptCount);
 
         // P1-5 修复：记录 WebSocket 重连失败指标
-        FeishuMetricsHelper.RecordWebSocketReconnect(_optionsMonitor.CurrentValue.AppKey, success: false);
+        FeishuMetricsHelper.RecordWebSocketReconnect(_optionsMonitor.CurrentValue.ResolvedAppKey, success: false);
     }
 
     /// <summary>
@@ -401,7 +401,7 @@ public sealed class FeishuWebSocketHostedService : BackgroundService, IDisposabl
             e.TotalAttempts, e.TotalElapsedTime);
 
         // P1-5 修复：达到重连上限视为最终失败，记录重连失败指标
-        FeishuMetricsHelper.RecordWebSocketReconnect(_optionsMonitor.CurrentValue.AppKey, success: false);
+        FeishuMetricsHelper.RecordWebSocketReconnect(_optionsMonitor.CurrentValue.ResolvedAppKey, success: false);
     }
 
     /// <summary>

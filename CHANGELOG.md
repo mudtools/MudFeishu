@@ -40,6 +40,55 @@
   （中立工具遥测端口 IAgentToolTelemetry、AmbientScope<T> 运行期装配扩展、TurnScopeContext.Facts、
   DelegatingToolFunction 工具函数装饰基座、会话存储门面与回退错误截断修复）。1.0.2 已由上游发布至
   nuget.org，联调用的本地 folder 源 `mudai-local` 已从 `nuget.config` 删除（还原后重新 restore 验证通过）。
+
+### 修复（Fixed）
+
+多应用管理与事件分发审查后的整批修复。除「连接级应用绑定」在**多应用装配**下属行为变更（未显式配置
+`FeishuWebSocket:AppKey` 将启动失败）外，其余各条对单应用部署语义不变。
+
+- **WebSocket —— 连接级应用绑定**：`FeishuWebSocketOptions.AppKey` 由「仅指标维度」升级为**连接绑定键**。
+  单应用装配留空即自动解析为该应用的键；多应用装配必须显式配置，未配置或配置了未注册的键在启动期
+  `InvalidOperationException` 失败——此前多应用部署下连接静默绑定默认应用，事件以错误身份收发。
+  绑定键在客户端构造期解析一次（`FeishuWebSocketClient` / `FeishuWebSocketManager` 各自缓存），
+  并贯穿指标、去重、失败事件落盘；配置热更新不会把已绑定连接切回默认应用（换绑需重启或重建客户端）。
+- **WebSocket —— 统一去重中间件的应用维度贯通**：新增 `IAppScopedUnifiedDeduplicationMiddleware`
+  （`UnifiedDeduplicationMiddleware` 实现），把 `appKey` 透传到事件去重器；旧接口方法等价于
+  `appKey = null`，二进制兼容。此前 WebSocket 事件经统一中间件去重时丢失应用维度，多应用部署下相同
+  EventId 会跨应用互相判重。`FeishuEventMessageHandler` 的检查 / 完成 / 回滚三处调用同批改为传实际应用键。
+- **Webhook —— 专属处理器与全局处理器的分发策略**：新增 `FeishuWebhook:HandlerDispatchMode`
+  （`AppScopedOnly` 默认 / `MergeWithGlobal`）。默认语义与此前一致（有专属处理器即不再走全局），
+  `MergeWithGlobal` 让全局处理器同时参与；未注册专属处理器时始终回退全局。合并模式下一个事件已被
+  专属处理器处理时，全局未注册不再记 `unhandled`。分发逻辑拆为专属 / 全局两条路径，原「专属处理器
+  全部不匹配事件类型」的 Warning 与 unhandled 指标保留；非法枚举值在 `Validate()` 拒绝。
+- **Webhook / WebSocket —— 后置拦截器韧性**：`AfterHandleAsync` 改为逐条 try/catch 并统一传
+  `CancellationToken.None`。此前单个后置拦截器抛异常会跳过其余拦截器，并把成功的业务处理改判为失败
+  （Webhook 侧还会顶替原始处理异常）；外部取消时传入的已取消令牌会让收尾逻辑被立即短路。
+  拦截器失败现在只记 Error 日志（拦截器类型 / 事件类型 / EventId），不影响原始处理结果。
+- **多应用管理 —— `RemoveApp` 生命周期收口**：注册表摘除、配置快照同步、墓碑写入、世代递增与
+  清库门打门在 `_registryLock` 内原子完成，清库在锁外异步执行并在 `finally` 撤销租约。三处修复：
+  ①**墓碑**——显式移除的键不再被「先于移除开始、晚于移除提交」的热更新静默复活（配置源不再声明该键
+  或显式 `AddApp` 才撤销）；②**ABA**——移除后立即重新添加时，迟到的清库以世代校验跳过，不会删除新
+  上下文刚写入的令牌；③**快照同步**——此前 `RemoveApp` 不同步配置快照，后续热更新会把已移除应用误判
+  为仍在线。默认应用提升的结果因此确定：按剔除后快照顺序，兜底 AppKey 序数排序。
+- **多应用管理 —— 热更新逐应用失败隔离**：新增 / 移除 / 更新三个提交阶段各自隔离异常，单个应用失败
+  不再中断其余应用的变更。提交顺序修正为「`RegisterApp` 成功后再退休旧上下文」——此前先入退休队列后
+  注册，注册失败会让旧上下文在宽限期后被 Dispose 却仍被注册表引用。更新失败的键回滚其 `Lazy` 引用交换；
+  失败的新增键不入配置快照（否则下次热更新会误判「未变更」而永不重试），失败的移除键保留原快照条目。
+  预清库计划随之收敛为只含 `WriteBackRiskKeys`（fire-and-forget 下「预清库超时」分支不可达）。
+- **多应用管理 —— 构造期 / 热更新 / `AddApp` 三入口校验统一**：重复 `AppKey`、空 `AppKey`、多个
+  `IsDefault = true` 一律硬失败。此前重复键只告警并让后注册者静默覆盖，多个默认应用让默认身份随注册
+  顺序漂移、热更新反复切换。
+- **用户令牌 —— 访问令牌失效写穿持久化**：新增公开能力接口 `IUserTokenStoreAccessTokenInvalidation`
+  （只删 access、保留 refresh），`FeishuUserTokenStore` / `RedisUserTokenStore` 实现，
+  `EncryptedUserTokenStore` 条件透传（内层无能力时 no-op，不降级为 `RemoveAsync`——那会连 refresh
+  一起删掉）。`UserTokenManager.InvalidateUserTokenAsync` 在清本地镜像后写穿存储，失败只记 Warning
+  不抛出（失效仍为尽力而为）；能力探测落在**未装饰的原始 store** 上，门装饰器刻意不声明该能力以避免
+  假命中。此前失效只清本地缓存，多实例部署与冷启动会从 store 恢复出本应失效的 access token。
+- **临界区自检与作用域说明**：配置热更新的 `_lazyRebuildLock` 提交段加 50ms 持有时间 Debug 自检
+  （提示锁内混入了 IO 或重计算）；`TokenStorePurgeGate` 补「只拦读、写/删直达、进程内生效」的作用域
+  说明；`TokenKeyBuilder` 注明键中明文 userId 的取舍。新增 ADR-0009（用户标识与存储键隐私）、
+  ADR-0010（热更新锁序与临界区预算）、ADR-0011（清库门作用域）。
+
 ## [3.1.0] - 2026-10-19
 
 **重大功能版本 —— 新增 AI 能力。** `Mud.Feishu.AI`（Agent 运行时）、`Mud.Feishu.AI.Tools`（工具面）与

@@ -12,6 +12,7 @@ using Mud.Feishu.Abstractions.Authentication;
 using Mud.Feishu.Abstractions.Authentication.MultiApp;
 using Mud.Feishu.Abstractions.Internal;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Text.Json;
 
 namespace Mud.Feishu.Abstractions;
@@ -44,11 +45,23 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     private FeishuAppContextRetirement? _retirement;
     // 运行时经 AddApp 添加的应用键集合，热更新时据此决定是否保留。
     private readonly HashSet<string> _runtimeAddedAppKeys = new(StringComparer.Ordinal);
-    // 保护 AddApp 的"检查 → 创建 → 注册 → 写快照"原子操作。
+    // 显式移除墓碑：RemoveApp 后的键不得被「先于移除开始、晚于移除提交」的热更新静默复活。
+    // 清除口：配置源不再声明该键，或显式 AddApp。均受 _registryLock 保护。
+    private readonly HashSet<string> _removedAppKeys = new(StringComparer.Ordinal);
+    // 应用世代：每次成功添加/移除递增。移除路径的异步清库据此识别 ABA——
+    // 应用已被重新添加时，迟到的清库不得删除新上下文刚写入的令牌。受 _registryLock 保护。
+    private readonly Dictionary<string, long> _appGenerations = new(StringComparer.Ordinal);
+    // 保护注册表变更的原子操作：AddApp「检查 → 创建 → 注册 → 写快照」、
+    // RemoveApp「摘除 → 墓碑 → 世代 → 写快照」、热更新的墓碑对账。
     private readonly object _registryLock = new();
 
     // 锁序约束：_configApplyLock → _lazyRebuildLock / _registryLock / _defaultAppLock，禁止反向获取。
+    // 临界区预算：锁内只允许内存引用交换 / 字典读写，禁止 IO、事件派发与同步等待；
+    // _lazyRebuildLock 的单次持有超过 LockHoldWarningThresholdMs 时记 Debug 自检告警。
     private readonly object _configApplyLock = new();
+
+    /// <summary>临界区持有时间自检阈值（毫秒）：超过即提示锁内混入了 IO 或重计算。</summary>
+    private const int LockHoldWarningThresholdMs = 50;
 
     /// <summary>凭据变更清库失败的结构化事件 ID（供告警系统按 EventId 过滤接入）。</summary>
     internal static readonly EventId PurgeTokenStoreFailureEvent = new(5601, "PurgeTokenStoreFailed");
@@ -89,17 +102,32 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         if (_configs.Length == 0)
             throw new InvalidOperationException("未配置任何飞书应用");
 
+        // 三入口校验统一（构造期 / 热更新 / AddApp）：重复 AppKey 会让后注册者静默覆盖先注册者，
+        // 多个 IsDefault 会让默认应用随注册顺序漂移、并让后续热更新反复切换。两者均在构造期硬失败。
+        if (_configs.Any(c => c == null || string.IsNullOrWhiteSpace(c.AppKey)))
+            throw new ArgumentException("应用配置列表中不能包含 null 或 AppKey 为空的项。", nameof(configs));
+
+        var duplicateKeys = _configs
+            .GroupBy(c => c.AppKey, StringComparer.Ordinal)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
+        if (duplicateKeys.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"应用配置中存在重复的 AppKey：{string.Join(", ", duplicateKeys)}。每个应用必须使用唯一的 AppKey。");
+        }
+
+        var defaultConfigs = _configs.Where(c => c.IsDefault).ToList();
+        if (defaultConfigs.Count > 1)
+        {
+            throw new InvalidOperationException(
+                $"应用配置中存在 {defaultConfigs.Count} 个 IsDefault = true 的应用（{string.Join(", ", defaultConfigs.Select(c => c.AppKey))}），只允许一个默认应用。");
+        }
+
         // 预注册全部应用的 Lazy 上下文，但不立即创建。
-        // 重复 AppKey 只告警不抛异常（后注册覆盖先注册），避免静默覆盖使配置错误难以排查。
-        var seenAppKeys = new HashSet<string>(StringComparer.Ordinal);
         foreach (var config in _configs)
         {
-            if (!seenAppKeys.Add(config.AppKey))
-            {
-                _logger.LogWarning(
-                    "检测到重复的 AppKey '{AppKey}'，后注册的配置将覆盖先注册的配置。请检查应用配置以避免意外行为。",
-                    config.AppKey);
-            }
             var capturedConfig = config;
             _lazyContexts[config.AppKey] = new Lazy<FeishuAppContext>(
                 () => CreateAppContext(capturedConfig),
@@ -109,7 +137,7 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         // 必须存在 IsDefault=true 的应用（契约：MultiApp_NoDefaultApp_ShouldThrowOnRegistration）。
         // 此处不预创建默认应用：避免构造阶段强制要求全部 DI 依赖（如 IMemoryCache）就绪，
         // 默认应用在首次访问 GetDefaultApp() / Default*TokenManager 时按需创建。
-        var defaultConfig = _configs.FirstOrDefault(c => c.IsDefault);
+        var defaultConfig = defaultConfigs.FirstOrDefault();
         if (defaultConfig == null)
             throw new InvalidOperationException("未配置默认应用，请在至少一个 FeishuAppConfig 上设置 IsDefault = true。");
 
@@ -229,15 +257,15 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             // 被配置源「正式接管」（本轮 incoming 中声明）的 AppKey 必须撤销运行时标记：
             // 标记语义是「运行时添加且未被配置源声明」，属配置源属性——否则「AddApp → 配置声明 → 配置删除」
             // 序列下，该应用在 RemoveRuntimeAddedAppsOnReload=false（默认）时被静默永久保留。
+            // 墓碑反向对账：配置源已不再声明的墓碑视为正式下线，撤销墓碑，使后续重新声明可再次注册。
             // 位置必须在节流判定之前：若放到提交后，一旦本轮 incoming 与快照逐字段一致（节流直接 return），
             // 撤销将永不发生（契约：RuntimeAddedApp_ShouldBeRemovedByConfig_...）。与后续预构造是否失败无关。
-            // 锁内与 AddApp 的 _runtimeAddedAppKeys 写入互斥（锁序不变：_configApplyLock → _registryLock）。
+            // 锁内与 AddApp / RemoveApp 的集合写入互斥（锁序不变：_configApplyLock → _registryLock）。
+            var incomingKeySet = new HashSet<string>(incoming.Select(c => c.AppKey), StringComparer.Ordinal);
             lock (_registryLock)
             {
-                foreach (var config in incoming)
-                {
-                    _runtimeAddedAppKeys.Remove(config.AppKey);
-                }
+                _runtimeAddedAppKeys.RemoveWhere(incomingKeySet.Contains);
+                _removedAppKeys.RemoveWhere(k => !incomingKeySet.Contains(k));
             }
 
             // 节流：与当前快照完全一致（无新增/删除/更新）时不做任何重建。
@@ -260,8 +288,10 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         }
         catch (Exception ex)
         {
+            // 提交阶段的单应用失败已在 ApplyConfigurationChanges 内逐应用隔离并记账（新增/移除/更新），
+            // 能到达此处的是提交前的意外异常——此时注册表与快照均未被触碰。
             _logger.LogError(ex,
-                "飞书应用配置热更新失败，已保持原配置继续运行。请检查新的应用配置是否合法（AppKey/AppId/AppSecret 校验）。");
+                "飞书应用配置热更新中断，注册表与配置快照保持原状。请检查新的应用配置是否合法（AppKey/AppId/AppSecret 校验）。");
         }
     }
 
@@ -269,12 +299,13 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// <param name="incoming">新配置列表</param>
     /// <param name="purgePlan">
     /// 锁外预清库阶段检出的凭据变更清库计划，供提交后对"已提交更新键"发起二次清库。
-    /// 正常路径下只清除 WriteBackRiskKeys（存在回写风险的键），避免删除新凭据刚写入的令牌；超时路径下对全部 ToPurge 收尾清库。
+    /// 只清除 WriteBackRiskKeys（存在回写风险的键），避免删除新凭据刚写入的令牌。
     /// </param>
     private void ApplyConfigurationChanges(List<FeishuAppConfig> incoming, CredentialPurgePlan purgePlan)
     {
+        var previousSnapshot = Volatile.Read(ref _configs);
         var incomingKeys = new HashSet<string>(incoming.Select(c => c.AppKey), StringComparer.Ordinal);
-        var currentKeys = Volatile.Read(ref _configs).Select(c => c.AppKey).ToList();
+        var currentKeys = previousSnapshot.Select(c => c.AppKey).ToList();
 
         // 是否移除运行时添加的应用（默认 false = 保留）。
         var appOptions = _serviceProvider.GetService<IOptions<FeishuAppOptions>>()?.Value;
@@ -333,26 +364,50 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         }
 
         // 短临界区提交：逐应用在 _lazyRebuildLock 内仅做引用交换，锁外 RegisterApp + 退休。
+        // 逐应用隔离：单个应用提交失败时回滚其引用交换，不得阻断其余应用（也不得提前退休旧上下文）。
         foreach (var (appKey, context, config, oldContext) in builtContexts)
         {
-            // B-1（锁内）：仅做引用交换。未实例化的应用（context == null）重建为 Lazy 闭包，不预构造。
+            Lazy<FeishuAppContext>? previousLazy;
+            var lazyLockStartedAt = Stopwatch.GetTimestamp();
             lock (_lazyRebuildLock)
             {
+                _lazyContexts.TryGetValue(appKey, out previousLazy);
+
+                // B-1（锁内）：仅做引用交换。未实例化的应用（context == null）重建为 Lazy 闭包，不预构造。
                 _lazyContexts[appKey] = context != null
                     ? new Lazy<FeishuAppContext>(() => context, LazyThreadSafetyMode.ExecutionAndPublication)
                     : new Lazy<FeishuAppContext>(() => CreateAppContext(config), LazyThreadSafetyMode.ExecutionAndPublication);
             }
+            WarnIfLockHeldTooLong(nameof(_lazyRebuildLock), appKey, lazyLockStartedAt);
 
-            // B-2（锁外）：RegisterApp + 退休旧上下文。
+            // B-2（锁外）：RegisterApp 成功后旧上下文才入退休队列。
+            // 顺序不可颠倒：若先退休旧上下文而注册失败，旧上下文会被宽限期后 Dispose 却仍被注册表引用。
             // 未实例化的应用既无 context 也无 oldContext，故不注册、不退休。
             if (context != null)
             {
+                try
+                {
+                    RegisterApp(appKey, context, config.IsDefault);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    lock (_lazyRebuildLock)
+                    {
+                        if (previousLazy != null)
+                            _lazyContexts[appKey] = previousLazy;
+                    }
+
+                    _retirement?.Enqueue(appKey, context);
+                    _logger.LogError(ex,
+                        "配置热更新：应用 {AppKey} 提交失败，该应用保持原上下文（其余应用变更照常生效）。",
+                        appKey);
+                    continue;
+                }
+
                 if (oldContext != null)
                 {
                     _retirement?.Enqueue(appKey, oldContext);
                 }
-
-                RegisterApp(appKey, context, config.IsDefault);
             }
 
             if (config.IsDefault)
@@ -366,7 +421,10 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
             _logger.LogInformation("配置热更新：已重建应用 {AppKey}", appKey);
         }
 
-        // 1) 删除已下线应用
+        var failedAdds = new HashSet<string>(StringComparer.Ordinal);
+        var failedRemovals = new HashSet<string>(StringComparer.Ordinal);
+
+        // 1) 删除已下线应用（配置源驱动：不设墓碑，因为配置源本身已不再声明该键）。
         foreach (var removedKey in currentKeys.Where(k => !incomingKeys.Contains(k)).ToList())
         {
             // 运行时添加的应用默认不被热更新移除（RemoveRuntimeAddedAppsOnReload=false）。
@@ -378,40 +436,82 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
                 continue;
             }
 
-            if (RemoveApp(removedKey))
+            try
             {
-                _runtimeAddedAppKeys.Remove(removedKey);
-                _logger.LogInformation("配置热更新：已移除应用 {AppKey}", removedKey);
+                if (RemoveAppCore(removedKey, tombstone: false))
+                {
+                    _logger.LogInformation("配置热更新：已移除应用 {AppKey}", removedKey);
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                failedRemovals.Add(removedKey);
+                _logger.LogError(ex,
+                    "配置热更新：移除应用 {AppKey} 失败，该应用保持运行并保留在配置快照中。",
+                    removedKey);
             }
         }
 
-        // 2) 新增应用（不在注册表中的）
+        // 2) 新增应用（不在注册表中的）。墓碑键不复活；单个失败不影响其余变更。
         foreach (var config in incoming)
         {
-            if (!builtContexts.Any(b => b.appKey == config.AppKey) && !HasApp(config.AppKey))
+            if (builtContexts.Any(b => b.appKey == config.AppKey) || HasApp(config.AppKey))
+                continue;
+
+            if (IsTombstoned(config.AppKey))
+            {
+                _logger.LogInformation(
+                    "配置热更新：应用 {AppKey} 已被显式移除（墓碑），本次不重新注册。如确需恢复，请调用 AddApp 或先从配置源删除该键。",
+                    config.AppKey);
+                continue;
+            }
+
+            try
             {
                 AddApp(config);
                 _logger.LogInformation("配置热更新：已新增应用 {AppKey}", config.AppKey);
             }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                failedAdds.Add(config.AppKey);
+                _logger.LogError(ex,
+                    "配置热更新：新增应用 {AppKey} 失败，本次跳过该应用（其余变更照常提交）。",
+                    config.AppKey);
+            }
         }
 
-        // 3) 同步配置快照：原子交换不可变数组，并纳入 _registryLock 与 AddApp 的快照读改写互斥。
+        // 3) 同步配置快照：原子交换不可变数组，并纳入 _registryLock 与 AddApp / RemoveApp 的快照读改写互斥。
+        // 失败的新增键不得入快照（否则下次热更新会误判为"已声明且未变更"而永不重试）；
+        // 失败的移除键必须保留原条目（应用仍在注册表，快照丢失会让后续热更新误判其已下线）。
         lock (_registryLock)
         {
-            Volatile.Write(ref _configs, incoming.ToArray());
+            var nextSnapshot = incoming
+                .Where(c => !failedAdds.Contains(c.AppKey) && !_removedAppKeys.Contains(c.AppKey))
+                .ToList();
+
+            foreach (var retainedKey in failedRemovals)
+            {
+                if (nextSnapshot.Any(c => string.Equals(c.AppKey, retainedKey, StringComparison.Ordinal)))
+                    continue;
+
+                var previous = previousSnapshot.FirstOrDefault(c =>
+                    string.Equals(c.AppKey, retainedKey, StringComparison.Ordinal));
+                if (previous != null)
+                    nextSnapshot.Add(previous);
+            }
+
+            Volatile.Write(ref _configs, nextSnapshot.ToArray());
         }
 
         // 4) 提交后二次清库（闭环）：窗口期（锁外清库完成 → 本应用提交 → 旧上下文入退休队列）内，
         // 旧上下文的后台刷新 Timer / 在途 GetOrRefreshTokenAsync 仍可能用旧凭据调 API 并把令牌写回 store，
         // 使新上下文恢复出"旧凭据来源"的令牌后必然 401。故对「凭据变更键 ∩ 本轮实际提交的键」二次清库——
         // 此时旧上下文已停止接管新请求，回写源已被切断。
-        // 正常路径只覆盖 WriteBackRiskKeys（避免删除新凭据刚写入的令牌），超时路径覆盖全部 ToPurge。
+        // 只覆盖 WriteBackRiskKeys（存在活动旧上下文的键），避免删除新凭据刚写入的令牌。
         // 与并发写入之间存在 store SCAN 的固有残余窗口（与 Redis 语义一致）。
         // AddApp 新增键与被移除键无需二次清库（前者无旧凭据；后者旧上下文已入退休队列且键有 TTL）。
         // PurgeTokenStoreAsync 内部吞掉全部异常（含 OCE），故 fire-and-forget 安全。
-        var postCommitPurgeKeys = (purgePlan.PhasePCompleted
-                ? purgePlan.WriteBackRiskKeys     // 常规：只补"可能回写"的键
-                : purgePlan.ToPurge)             // 预清库超时未完成：全部键收尾
+        var postCommitPurgeKeys = purgePlan.WriteBackRiskKeys
             .Where(k => builtContexts.Any(b => string.Equals(b.appKey, k, StringComparison.Ordinal)))
             .Distinct(StringComparer.Ordinal)
             .ToList();
@@ -512,10 +612,7 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
 
         if (toPurge.Count == 0)
         {
-            return new CredentialPurgePlan(
-                ToPurge: toPurge,
-                WriteBackRiskKeys: writeBackRiskKeys,
-                PhasePCompleted: true);
+            return new CredentialPurgePlan(WriteBackRiskKeys: writeBackRiskKeys);
         }
 
         _logger.LogInformation(
@@ -550,13 +647,10 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
 
         // 预清库同步段（打门 + 派发异步清库）恒立即完成——回调线程不阻塞，
         // 「清库完成 → 重建」的时序由 TokenStorePurgeGate 的恢复路径短路承担。
-        // 因此 PhasePCompleted 恒为 true：提交后二次清库保持窄范围
-        // （WriteBackRiskKeys——只有存在活动旧上下文的键才有回写风险），
-        // 避免删除新凭据刚写入的令牌；超时路径的「全部 ToPurge」分支不再可达。
+        // 因此提交后二次清库只覆盖 WriteBackRiskKeys（只有存在活动旧上下文的键才有回写风险），
+        // 避免删除新凭据刚写入的令牌。
         return new CredentialPurgePlan(
-            ToPurge: toPurge,
-            WriteBackRiskKeys: writeBackRiskKeys,
-            PhasePCompleted: true);
+            WriteBackRiskKeys: writeBackRiskKeys);
     }
 
     /// <summary>
@@ -592,6 +686,24 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// 临界区持有时间自检：超过 <see cref="LockHoldWarningThresholdMs"/> 时记 Debug，
+    /// 提示锁内混入了 IO / 重计算（锁序与临界区预算见 documents/决策档案/ADR-0010）。
+    /// </summary>
+    /// <param name="lockName">锁名（仅用于日志定位）。</param>
+    /// <param name="appKey">应用唯一标识（仅用于日志定位）。</param>
+    /// <param name="startedTimestamp">进入锁时采集的 <see cref="Stopwatch.GetTimestamp"/>。</param>
+    private void WarnIfLockHeldTooLong(string lockName, string appKey, long startedTimestamp)
+    {
+        var elapsedMs = (Stopwatch.GetTimestamp() - startedTimestamp) * 1000 / Stopwatch.Frequency;
+        if (elapsedMs > LockHoldWarningThresholdMs)
+        {
+            _logger.LogDebug(
+                "配置热更新临界区 {LockName} 持有 {ElapsedMs}ms（阈值 {ThresholdMs}ms），锁内只应做引用交换。AppKey: {AppKey}",
+                lockName, elapsedMs, LockHoldWarningThresholdMs, appKey);
+        }
     }
 
     /// <summary>
@@ -1202,18 +1314,68 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
     /// 由于采用懒加载，应用可能仅存在于 <c>_lazyContexts</c> 而尚未注册到基类 <c>_apps</c> 字典。
     /// 此时 <see cref="DefaultAppManager{TAppContext}.RemoveApp"/> 会返回 false，与"应用已知即应可移除"的语义不符。
     /// 重写后：只要应用在任一字典中存在，即返回 true；并清理两个字典中的记录。
+    /// <para>
+    /// 注册表摘除、配置快照同步、墓碑与世代递增在 <c>_registryLock</c> 内原子完成；
+    /// 清库在锁外异步执行，且以世代校验拒绝「移除后已被重新添加」的迟到清库（ABA）。
+    /// </para>
     /// </remarks>
-    public override bool RemoveApp(string appKey)
-    {
-        // 在移除前获取旧上下文引用以入退休队列。
-        var oldContext = ResolveExistingContext(appKey);
+    public override bool RemoveApp(string appKey) => RemoveAppCore(appKey, tombstone: true);
 
-        var wasInLazy = _lazyContexts.TryRemove(appKey, out _);
-        var wasInBase = base.RemoveApp(appKey);
+    /// <summary>移除应用（显式移除与配置驱动下线共用）。</summary>
+    /// <param name="appKey">应用唯一标识。</param>
+    /// <param name="tombstone">
+    /// true = 显式移除：写入墓碑，阻止「先于移除开始、晚于移除提交」的热更新把应用静默复活；
+    /// false = 配置驱动下线：配置源已不再声明该键，无需墓碑（并撤销遗留墓碑）。
+    /// </param>
+    /// <returns>应用在任一注册表中存在并被移除时返回 true。</returns>
+    private bool RemoveAppCore(string appKey, bool tombstone)
+    {
+        if (string.IsNullOrWhiteSpace(appKey))
+            return false;
+
+        FeishuAppContext? oldContext;
+        bool removed;
+        long removedGeneration;
+
+        lock (_registryLock)
+        {
+            // 在移除前获取旧上下文引用以入退休队列（已实例化才会返回非 null，不触发懒加载）。
+            oldContext = ResolveExistingContext(appKey);
+
+            var wasInBase = base.RemoveApp(appKey);
+            var wasInLazy = _lazyContexts.TryRemove(appKey, out _);
+            removed = wasInLazy || wasInBase;
+
+            if (!removed)
+                return false;
+
+            // 运行时标记随应用生命周期终结；墓碑由移除来源决定。
+            _runtimeAddedAppKeys.Remove(appKey);
+            if (tombstone)
+                _removedAppKeys.Add(appKey);
+            else
+                _removedAppKeys.Remove(appKey);
+
+            removedGeneration = BumpGenerationLocked(appKey);
+
+            // 快照同步：让后续热更新的差异比对与凭据比对感知该应用已下线。
+            // 同步发生在 _registryLock 内，与 AddApp 的"读快照 → 追加 → 写回"互斥。
+            var currentSnapshot = Volatile.Read(ref _configs);
+            if (currentSnapshot.Any(c => string.Equals(c.AppKey, appKey, StringComparison.Ordinal)))
+            {
+                Volatile.Write(ref _configs, currentSnapshot
+                    .Where(c => !string.Equals(c.AppKey, appKey, StringComparison.Ordinal))
+                    .ToArray());
+            }
+
+            // 打门必须与注册表变更同锁：此后重新添加的应用在恢复令牌时必然看到门，
+            // 不会在清库完成前恢复出旧凭据来源的令牌。
+            TokenStorePurgeGate.Mark(appKey);
+        }
 
         // 移除默认应用后的提升必须确定性：
-        // 按 _configs 快照顺序 → 兜底按 AppKey 序数排序（Ordinal），并 LogWarning 声明提升结果。
-        if ((wasInLazy || wasInBase) && _defaultAppKey == appKey)
+        // 按 _configs 快照顺序（已剔除被移除键）→ 兜底按 AppKey 序数排序（Ordinal），并 LogWarning 声明提升结果。
+        if (_defaultAppKey == appKey)
         {
             lock (_defaultAppLock)
             {
@@ -1221,13 +1383,12 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
                 {
                     _defaultAppKey = null;
 
-                    // 按配置快照顺序取第一个剩余应用
                     var snapshot = Volatile.Read(ref _configs);
                     string? promotedKey = null;
 
                     foreach (var cfg in snapshot)
                     {
-                        if (cfg.AppKey != appKey && HasApp(cfg.AppKey))
+                        if (HasApp(cfg.AppKey))
                         {
                             promotedKey = cfg.AppKey;
                             break;
@@ -1238,7 +1399,6 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
                     if (promotedKey == null)
                     {
                         promotedKey = _lazyContexts.Keys
-                            .Where(k => k != appKey)
                             .OrderBy(k => k, StringComparer.Ordinal)
                             .FirstOrDefault();
                     }
@@ -1247,7 +1407,6 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
                     if (promotedKey == null)
                     {
                         var baseFirst = base.GetAllApps()
-                            .Where(a => a.Config.AppKey != appKey)
                             .OrderBy(a => a.Config.AppKey, StringComparer.Ordinal)
                             .FirstOrDefault();
                         promotedKey = baseFirst?.Config.AppKey;
@@ -1265,7 +1424,7 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         }
 
         // 旧上下文进入退休队列，宽限期后 Dispose（停止其 Timer）。
-        if (oldContext != null && (wasInLazy || wasInBase))
+        if (oldContext != null)
         {
             _retirement?.Enqueue(appKey, oldContext);
         }
@@ -1273,15 +1432,57 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
         // 应用下线后提前回收其持久化令牌（fire-and-forget）。
         // 现状 TTL（refresh ≤30d）已保证有界，此处收益为提前回收存储空间与
         // 避免残留键被误诊断；PurgeTokenStoreAsync 内部吞掉全部异常（含 OCE），安全。
-        if (wasInLazy || wasInBase)
+        // 世代校验：移除后立即重新添加时，迟到的清库不得删除新上下文刚写入的令牌。
+        _ = Task.Run(async () =>
         {
-            _ = Task.Run(async () =>
+            try
             {
-                await PurgeTokenStoreAsync(appKey).ConfigureAwait(false);
-            });
-        }
+                if (!IsRemovalPurgeStillValid(appKey, removedGeneration))
+                {
+                    _logger.LogDebug(
+                        "跳过应用 {AppKey} 的移除清库：应用已被重新添加（世代 {Generation} 已失效）。",
+                        appKey, removedGeneration);
+                    return;
+                }
 
-        return wasInLazy || wasInBase;
+                await PurgeTokenStoreAsync(appKey).ConfigureAwait(false);
+            }
+            finally
+            {
+                TokenStorePurgeGate.Release(appKey);
+            }
+        });
+
+        return true;
+    }
+
+    /// <summary>应用是否处于「显式移除」墓碑状态（阻止配置热更新静默复活）。</summary>
+    private bool IsTombstoned(string appKey)
+    {
+        lock (_registryLock)
+        {
+            return _removedAppKeys.Contains(appKey);
+        }
+    }
+
+    /// <summary>递增应用世代（调用方必须持有 <c>_registryLock</c>）。</summary>
+    private long BumpGenerationLocked(string appKey)
+    {
+        var next = (_appGenerations.TryGetValue(appKey, out var current) ? current : 0) + 1;
+        _appGenerations[appKey] = next;
+        return next;
+    }
+
+    /// <summary>
+    /// 移除清库是否仍然有效：世代未变且应用未被重新注册（ABA 防护）。
+    /// </summary>
+    private bool IsRemovalPurgeStillValid(string appKey, long expectedGeneration)
+    {
+        lock (_registryLock)
+        {
+            var current = _appGenerations.TryGetValue(appKey, out var value) ? value : 0;
+            return current == expectedGeneration && !HasApp(appKey);
+        }
     }
 
     /// <inheritdoc />
@@ -1405,6 +1606,10 @@ public class FeishuAppManager : DefaultAppManager<IFeishuAppContext>, IFeishuApp
 
                 // 标记为运行时添加，热更新时据此决定是否保留。
                 _runtimeAddedAppKeys.Add(config.AppKey);
+
+                // 显式添加优先于墓碑（运维重新纳入）；世代递增使移除路径的迟到清库失效（ABA）。
+                _removedAppKeys.Remove(config.AppKey);
+                BumpGenerationLocked(config.AppKey);
 
                 // 写入 _configs 快照（原子交换不可变数组），
                 // 使热更新差异比对能感知运行时新增应用。
@@ -1661,19 +1866,9 @@ internal sealed class FeishuAppRemovedException : InvalidOperationException
 /// 凭据变更清库计划。
 /// </summary>
 /// <remarks>
-/// <para>
-/// <see cref="ToPurge"/> 是所有凭据已变更的应用键集（含未实例化应用）。
-/// </para>
-/// <para>
-/// <see cref="WriteBackRiskKeys"/> 是 ToPurge 中「有活动旧上下文」的子集——
+/// <see cref="WriteBackRiskKeys"/> 是「凭据已变更且有活动旧上下文」的键集——
 /// 只有这些键在退休宽限期内可能以旧凭据回写 store，提交后二次清库只对这些键做。
-/// </para>
-/// <para>
-/// <see cref="PhasePCompleted"/> 指示预清库是否在 10s 上界内完成。
-/// 未完成时，提交后二次清库覆盖全部 ToPurge（而非仅 WriteBackRiskKeys），维持「新上下文不得恢复旧凭据令牌」的语义闭环。
-/// </para>
+/// 预清库本身为 fire-and-forget，其完成时序由 <see cref="TokenStorePurgeGate"/> 的恢复路径短路承担。
 /// </remarks>
 internal sealed record CredentialPurgePlan(
-    IReadOnlyList<string> ToPurge,
-    IReadOnlyList<string> WriteBackRiskKeys,
-    bool PhasePCompleted);
+    IReadOnlyList<string> WriteBackRiskKeys);

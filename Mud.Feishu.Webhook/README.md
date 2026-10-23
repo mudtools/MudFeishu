@@ -449,6 +449,7 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | `AllowInMemoryNonceDedupInProduction` | bool           | false    | 生产环境是否允许使用进程内内存 Nonce 去重（见下方「部署形态约束」） |
 | `InterceptionAckMode`              | InterceptionAckMode | Ack    | 拦截器中断事件时对飞书表达的确认语义（见「拦截器中断语义」） |
 | `InterceptorFallbackMode`          | InterceptorFallbackMode | Merge | 应用专属拦截器与全局拦截器的组合策略（见「拦截器执行顺序」） |
+| `HandlerDispatchMode`              | HandlerDispatchMode | AppScopedOnly | 应用专属处理器与全局处理器的分发策略（见「处理器分发策略」） |
 | `NonceTtlSeconds`                  | int?               | null    | Nonce 有效期（秒）；显式配置时强制 **严格大于** `TimestampToleranceSeconds` |
 
 > **重放窗口不变量**：`NonceTtl`（Redis 工程 `RedisOptions`）必须 ≥ `TimestampToleranceSeconds`，
@@ -1594,6 +1595,19 @@ app.Run();
 ```
 
 > 💡 **说明**：通过 `AddHandler<T>(appKey)` 和 `AddInterceptor<T>(appKey)` 注册的处理器和拦截器仅对指定应用生效，不会注册到全局集合，避免跨应用泄漏。
+
+### 处理器分发策略
+
+应用键注册了专属处理器后，全局处理器是否参与该应用的事件由 `FeishuWebhook:HandlerDispatchMode` 决定：
+
+| 值                              | 行为                                                       |
+| ------------------------------- | ---------------------------------------------------------- |
+| `AppScopedOnly`（**默认**）     | 只分发应用专属处理器（既有行为）；全局处理器不参与          |
+| `MergeWithGlobal`               | 应用专属处理器与全局处理器**同时**收到事件                  |
+
+无专属处理器时始终回退全局处理器，本选项不改变该行为。合并模式下同一事件会被两类处理器各处理一次，
+处理器需自行保证幂等；专属处理器全部因 `SupportedEventType` 不匹配而跳过时，合并模式会把事件交给全局处理器，
+不会误记 `unhandled` 指标。
 
 ### 路由映射
 

@@ -30,3 +30,6 @@
 - `迁移与弃用史.md` —— 弃用成员的完整迁移史
 - `弃用成员移除方案.md` —— 三个核心项目 `[Obsolete]` 成员的分阶段移除动作与共释锚点
 - `注释精简归档.md` —— R-03 注释压缩时剥离的论证
+- `ADR-0009-user-id-storage-key-privacy.md` —— 用户标识在持久化令牌键中的明文取舍
+- `ADR-0010-hot-reload-lock-order.md` —— 热更新锁序与临界区预算
+- `ADR-0011-purge-gate-scope.md` —— 令牌清库门的作用域与失效语义

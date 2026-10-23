@@ -437,6 +437,101 @@ public class FeishuWebhookServiceTests
         handlerMock.Verify(x => x.HandleAsync(eventData, It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    // 默认 AppScopedOnly 下，应用专属处理器存在时全局工厂不得参与（保持既有行为）
+    [Fact]
+    public async Task HandleEventAsync_WithAppSpecificHandler_AndDefaultDispatchMode_ShouldNotInvokeGlobalFactory()
+    {
+        var appKey = "app-001";
+        var eventData = new EventData { EventId = "w3_app_only", EventType = "test.event" };
+
+        var handlerRegistry = new FeishuWebhookHandlerRegistry();
+        handlerRegistry.Register(appKey, typeof(TestAppHandler));
+
+        var handlerMock = new Mock<IFeishuEventHandler>();
+        handlerMock
+            .Setup(x => x.HandleAsync(eventData, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _serviceProviderMock
+            .Setup(x => x.GetService(typeof(TestAppHandler)))
+            .Returns(handlerMock.Object);
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsProcessingAsync(eventData.EventId, appKey, null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DeduplicationResult { IsDuplicate = false, WasProcessing = false });
+
+        var service = new FeishuWebhookService(
+            _optionsMonitorMock.Object,
+            _validatorMock.Object,
+            _decryptorMock.Object,
+            _handlerFactoryMock.Object,
+            _loggerMock.Object,
+            Array.Empty<IFeishuEventInterceptor>(),
+            _concurrencyService,
+            _deduplicatorMock.Object,
+            _encryptKeyProviderMock.Object,
+            handlerRegistry,
+            new FeishuWebhookInterceptorRegistry(),
+            _serviceProviderMock.Object,
+            _appKeyAccessorMock.Object);
+
+        service.SetCurrentAppKey(appKey);
+        var result = await service.HandleEventAsync(eventData);
+
+        Assert.True(result.Success);
+        handlerMock.Verify(x => x.HandleAsync(eventData, It.IsAny<CancellationToken>()), Times.Once);
+        _handlerFactoryMock.Verify(
+            x => x.HandleEventParallelAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    // MergeWithGlobal 下，专属处理器与全局处理器都必须收到事件
+    [Fact]
+    public async Task HandleEventAsync_WithMergeWithGlobal_ShouldInvokeBothScopedAndGlobalHandlers()
+    {
+        var appKey = "app-001";
+        var eventData = new EventData { EventId = "w3_merge", EventType = "test.event" };
+        _options.HandlerDispatchMode = HandlerDispatchMode.MergeWithGlobal;
+
+        var handlerRegistry = new FeishuWebhookHandlerRegistry();
+        handlerRegistry.Register(appKey, typeof(TestAppHandler));
+
+        var handlerMock = new Mock<IFeishuEventHandler>();
+        handlerMock
+            .Setup(x => x.HandleAsync(eventData, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _serviceProviderMock
+            .Setup(x => x.GetService(typeof(TestAppHandler)))
+            .Returns(handlerMock.Object);
+        _deduplicatorMock
+            .Setup(x => x.TryMarkAsProcessingAsync(eventData.EventId, appKey, null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DeduplicationResult { IsDuplicate = false, WasProcessing = false });
+
+        var service = new FeishuWebhookService(
+            _optionsMonitorMock.Object,
+            _validatorMock.Object,
+            _decryptorMock.Object,
+            _handlerFactoryMock.Object,
+            _loggerMock.Object,
+            Array.Empty<IFeishuEventInterceptor>(),
+            _concurrencyService,
+            _deduplicatorMock.Object,
+            _encryptKeyProviderMock.Object,
+            handlerRegistry,
+            new FeishuWebhookInterceptorRegistry(),
+            _serviceProviderMock.Object,
+            _appKeyAccessorMock.Object);
+
+        service.SetCurrentAppKey(appKey);
+        var result = await service.HandleEventAsync(eventData);
+
+        Assert.True(result.Success);
+        handlerMock.Verify(x => x.HandleAsync(eventData, It.IsAny<CancellationToken>()), Times.Once);
+        _handlerFactoryMock.Verify(
+            x => x.HandleEventParallelAsync(eventData.EventType, eventData, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
     // P1-2（R2）：应用专属处理器必须按 SupportedEventType 过滤（空声明 = 处理全部）
     [Fact]
     public async Task HandleEventAsync_WithAppSpecificHandlersOfDifferentTypes_ShouldDispatchOnlyMatchingHandler()

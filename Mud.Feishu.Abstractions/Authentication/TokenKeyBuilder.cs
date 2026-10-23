@@ -28,6 +28,11 @@ namespace Mud.Feishu.Abstractions.Authentication;
 /// <see cref="NormalizeSegment"/> 转义 glob 元字符（<c>*</c> <c>?</c> <c>[</c> <c>]</c>），
 /// 防止含这些字符的 appKey/userId 在 SCAN 模式中注入通配符。
 /// </para>
+/// <para>
+/// 用户键段含<b>明文 userId</b>（OpenId）是既定取舍：键布局是运行期契约，
+/// 哈希化需键版本化 + 双读迁移；风险控制点在存储侧（ACL / 静态加密）与日志脱敏。
+/// 详见 documents/决策档案/ADR-0009。
+/// </para>
 /// </summary>
 internal static class TokenKeyBuilder
 {

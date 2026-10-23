@@ -34,6 +34,8 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable,
     private int _disposed = 0;
     // 回退告警只发一次，避免每次连接重复刷日志
     private int _fallbackWarned = 0;
+    // 连接级应用绑定键：首次解析后缓存，配置重载不得把连接切回默认应用。
+    private volatile string? _boundAppKey;
 
     /// <summary>
     /// 构造函数（推荐，DI 最长构造优先选择）。
@@ -106,19 +108,44 @@ public class FeishuWebSocketManager : IFeishuWebSocketManager, IAsyncDisposable,
     }
 
     /// <summary>
-    /// TMR-P0-2（F2）：现取当前默认应用上下文。
+    /// TMR-P0-2（F2）：现取当前连接绑定的应用上下文。
     /// </summary>
     /// <remarks>
     /// 默认应用身份运行时可变（热更新 / <c>SetDefaultApp</c> / <c>RemoveApp</c> 提升），
     /// 构造期捕获的 <c>IFeishuAppContext</c> Singleton 在热更新后指向已退休上下文。
     /// 调用方须在同一次启动/重连内对返回值保持单引用，保证令牌与凭据（AppId/AppSecret）
     /// 取自同一上下文——混用新旧上下文会导致凭据错配。
+    /// <para>
+    /// <b>应用绑定</b>：<c>FeishuWebSocketOptions.AppKey</c> 是连接级绑定键（与指标维度同源）。
+    /// 首次解析后缓存，配置热更新（新实例可能不含该键）不会把连接静默切回默认应用；
+    /// 运行期变更绑定键需重启或重建客户端。
+    /// </para>
     /// </remarks>
     private IFeishuAppContext ResolveCurrentContext()
     {
         if (_appManager != null)
         {
-            return _appManager.GetDefaultApp();
+            if (_boundAppKey == null)
+            {
+                var configured = _webSocketOptionsMonitor.CurrentValue.AppKey;
+                if (!string.IsNullOrWhiteSpace(configured))
+                {
+                    _boundAppKey = configured;
+                }
+                else if (_appManager.ConfiguredAppKeys.Count > 1)
+                {
+                    throw new InvalidOperationException(
+                        "多应用模式下必须显式配置 FeishuWebSocket:AppKey（一条 WebSocket 连接只能绑定一个应用）。");
+                }
+                else
+                {
+                    _boundAppKey = _appManager.DefaultAppKey ?? _appManager.ConfiguredAppKeys.FirstOrDefault();
+                }
+            }
+
+            return string.IsNullOrWhiteSpace(_boundAppKey)
+                ? _appManager.GetDefaultApp()
+                : _appManager.GetApp(_boundAppKey!);
         }
 
         if (Interlocked.Exchange(ref _fallbackWarned, 1) == 0)

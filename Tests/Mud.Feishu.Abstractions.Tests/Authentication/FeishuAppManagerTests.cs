@@ -198,11 +198,10 @@ public class FeishuAppManagerTests
     // ============================================================
     // MA-05 / REG-01：检测重复 AppKey 时快速失败
     // ============================================================
-    // 设计权衡：MA-05 原设计为"警告 + 后注册覆盖先注册"，但 REG-01 修复指出
-    // HttpClient 命名注册的 ClientFactories 同名键覆盖行为不可预测，
-    // 因此在 AddFeishuAppBaseServices 阶段即抛异常实现快速失败，避免运行时不可预测行为。
-    // FeishuAppManager 构造函数中的 MA-05 警告逻辑作为防御性兜底保留，
-    // 用于绕过 AddFeishuApp 直接构造 FeishuAppManager 的场景。
+    // REG-01：HttpClient 命名注册的 ClientFactories 同名键覆盖行为不可预测，
+    // 因此在 AddFeishuAppBaseServices 阶段即抛异常实现快速失败。
+    // FeishuAppManager 构造函数同样硬失败（不再"警告 + 后注册覆盖"），
+    // 覆盖绕过 AddFeishuApp 直接构造管理器的场景；多 IsDefault 同样构造期拒绝。
 
     [Fact]
     public void AddFeishuApp_WhenDuplicateAppKeyExists_ShouldThrowInvalidOperationException()
@@ -599,6 +598,39 @@ public class FeishuAppManagerTests
         // 但 Flush 不抛异常即证明全部释放成功。
         // 验证 Dispose 后 provider 仍可正常释放
         provider.Dispose();
+    }
+
+    /// <summary>
+    /// 应用下线后必须提前回收其持久化令牌（清库在注册表锁外异步执行）。
+    /// </summary>
+    [Fact]
+    public async Task RemoveApp_ShouldPurgeStoredTokens_ForRemovedApp()
+    {
+        // Arrange
+        var services = CreateServiceCollectionWithTokenStoreFactory(out var tokenStoreMock, out _);
+
+        var purgeInvocations = 0;
+        tokenStoreMock
+            .Setup(x => x.ClearAsync(It.IsAny<CancellationToken>()))
+            .Callback(() => Interlocked.Increment(ref purgeInvocations))
+            .Returns(Task.CompletedTask);
+
+        services.AddFeishuApp(new List<FeishuAppConfig> { CreateDefaultConfig() });
+        using var provider = services.BuildServiceProvider();
+        var appManager = provider.GetRequiredService<FeishuAppManager>();
+
+        // Act
+        appManager.RemoveApp(AppConfigs.AppKeys.Default).Should().BeTrue();
+
+        // 有界等待（500 × 20ms = 10s）：清库为 fire-and-forget，断言前必须等其落到 spy 存储上。
+        for (var i = 0; i < 500 && Volatile.Read(ref purgeInvocations) == 0; i++)
+        {
+            await Task.Delay(20);
+        }
+
+        // Assert
+        tokenStoreMock.Verify(x => x.ClearAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce,
+            "应用下线后必须提前回收其持久化令牌");
     }
 
     // ============================================================

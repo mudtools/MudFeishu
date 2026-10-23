@@ -6,6 +6,89 @@ and versioning follows [Semantic Versioning].
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/
 
+## [Unreleased] - 2026-10-22
+
+### Fixed
+
+Batch-wide fix after the multi-app management and event dispatching review. Except for
+**connection-level app binding** (a behavior change for multi-app deployments: a missing
+`FeishuWebSocket:AppKey` now fails startup) every item leaves single-app semantics unchanged.
+
+- **WebSocket — connection-level app binding**: `FeishuWebSocketOptions.AppKey` is promoted from an
+  "metrics dimension" to the connection's **app binding key**. Single-app deployments may leave it
+  empty (resolved to that app automatically); multi-app deployments must set it explicitly —
+  missing or unregistered keys fail startup with `InvalidOperationException`. Previously a
+  multi-app deployment silently bound the connection to the default app, so events were sent and
+  received under the wrong identity. The binding is resolved once at client construction
+  (`FeishuWebSocketClient` / `FeishuWebSocketManager`) and drives metrics, deduplication and the
+  failed-event store; configuration reload never rebinds a live connection (rebind = restart or
+  rebuild the client).
+- **WebSocket — app dimension through the unified deduplication middleware**: new
+  `IAppScopedUnifiedDeduplicationMiddleware` (implemented by `UnifiedDeduplicationMiddleware`)
+  forwards `appKey` to the event deduplicator; the legacy interface methods are equivalent to
+  `appKey = null`, so the change is binary compatible. Previously WebSocket events lost the app
+  dimension when deduplicated through the middleware, so identical EventIds leaked across apps in
+  multi-app deployments. The check / complete / rollback call sites in `FeishuEventMessageHandler`
+  now pass the resolved app key.
+- **Webhook — dispatch policy between app-scoped and global handlers**: new
+  `FeishuWebhook:HandlerDispatchMode` (`AppScopedOnly` default / `MergeWithGlobal`). The default
+  keeps the previous semantics (app-scoped handlers suppress the global ones); `MergeWithGlobal`
+  lets global handlers run as well. When no app-scoped handler is registered the global factory is
+  always used. In merge mode an event already handled by an app-scoped handler is no longer
+  reported as `unhandled`. Dispatch is split into app-scoped / global paths; the existing warning
+  and metric for "all app-scoped handlers skipped the event type" are preserved, and invalid enum
+  values are rejected in `Validate()`.
+- **Webhook / WebSocket — post-interceptor resilience**: `AfterHandleAsync` now runs per
+  interceptor inside try/catch and always receives `CancellationToken.None`. Previously one failing
+  post-interceptor skipped the remaining ones and turned a successful business result into a
+  failure (on the webhook side it also replaced the original processing exception); on external
+  cancellation the cancelled caller token made the cleanup logic short-circuit immediately.
+  Interceptor failures now only log an error (interceptor type / event type / EventId) and do not
+  affect the original processing outcome.
+- **Multi-app — `RemoveApp` lifecycle closure**: registry removal, configuration snapshot sync,
+  tombstoning, generation increment and purge-gate marking now happen atomically under
+  `_registryLock`; the purge runs asynchronously outside the lock and releases the lease in
+  `finally`. Three fixes: ① **tombstone** — an explicitly removed key can no longer be silently
+  resurrected by a hot reload that started before the removal and commits after it (cleared only
+  when the configuration source stops declaring the key or `AddApp` is called); ② **ABA** — if the
+  app is re-added right after removal, the late purge is skipped by generation check and cannot
+  delete tokens the new context just wrote; ③ **snapshot sync** — `RemoveApp` previously left the
+  configuration snapshot untouched, so later hot reloads treated the removed app as still online.
+  Default-app promotion is therefore deterministic: removed-key-free snapshot order, then ordinal
+  AppKey ordering.
+- **Multi-app — per-app failure isolation in hot reload**: the add / remove / update commit
+  phases each isolate exceptions, so one failing app no longer aborts the remaining changes. The
+  commit order is corrected to "register first, retire the old context after `RegisterApp`
+  succeeds" — previously the old context went into the retirement queue before registration, so a
+  failed registration left it to be disposed after the grace period while still referenced by the
+  registry. A failed update rolls back its `Lazy` reference swap; a failed add is excluded from the
+  configuration snapshot (otherwise the next reload sees "unchanged" and never retries), and a
+  failed removal keeps its snapshot entry. The credential purge plan is now reduced to
+  `WriteBackRiskKeys` (the "pre-purge timed out" branch is unreachable for a fire-and-forget
+  purge).
+- **Multi-app — unified validation across construction / hot reload / `AddApp`**: duplicate
+  `AppKey`, empty `AppKey` and multiple `IsDefault = true` entries now fail hard. Previously a
+  duplicate key only logged a warning and let the later registration silently overwrite the
+  earlier one, and multiple defaults made the default identity drift with registration order and
+  flip on every reload.
+- **User tokens — persisted access-token invalidation**: new public capability interface
+  `IUserTokenStoreAccessTokenInvalidation` (deletes the access token only, keeps the refresh
+  token), implemented by `FeishuUserTokenStore` / `RedisUserTokenStore` and conditionally
+  forwarded by `EncryptedUserTokenStore` (no-op when the inner store lacks the capability; it must
+  **not** fall back to `RemoveAsync`, which would delete the refresh token too).
+  `UserTokenManager.InvalidateUserTokenAsync` now writes through to the store after clearing the
+  local mirror, and logs a warning instead of throwing on failure (invalidation stays
+  best-effort). The capability probe uses the **raw undecorated store**; purge-gate decorators
+  deliberately do not declare it so a probe cannot false-hit. Previously invalidation only cleared
+  the local cache, so multi-instance deployments and cold starts restored an access token that
+  should have been invalidated.
+- **Critical-section self-check and scope documentation**: the `_lazyRebuildLock` commit section of
+  the hot reload now emits a Debug self-check when held longer than 50 ms (hinting at IO or heavy
+  computation inside the lock); `TokenStorePurgeGate` documents its scope (read paths only; writes,
+  deletes and purges pass through; process-local); `TokenKeyBuilder` documents the plaintext-userId
+  trade-off. New ADRs: ADR-0009 (user identity and storage-key privacy), ADR-0010 (hot-reload lock
+  order and critical-section budget), ADR-0011 (purge-gate scope).
+
 ## [3.1.0] - 2026-10-19
 
 **Major feature release — AI capabilities.** Three new packages ship for the first time with this

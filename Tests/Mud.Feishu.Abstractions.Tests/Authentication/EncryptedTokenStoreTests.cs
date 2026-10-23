@@ -129,6 +129,45 @@ public class EncryptedTokenStoreTests
             "加密装饰器必须透传 IFeishuUserTokenStorePurge.ClearAllUsersAsync 到内层存储");
     }
 
+    /// <summary>
+    /// 内层支持「仅失效访问令牌」时必须原样透传（键删除对加密透明）。
+    /// </summary>
+    [Fact]
+    public async Task EncryptedUserTokenStore_ShouldForwardAccessTokenInvalidation_ToInnerStore()
+    {
+        var inner = new InMemoryUserTokenStore();
+        var store = new EncryptedUserTokenStore(
+            inner,
+            new EncryptedTokenStore(new InMemoryTokenStore(), new TestEncryptionProvider()),
+            new TestEncryptionProvider());
+
+        await store.InvalidateAccessTokenAsync("u1", "t1");
+
+        inner.InvalidateAccessTokenCallCount.Should().Be(1,
+            "加密装饰器必须透传 IUserTokenStoreAccessTokenInvalidation.InvalidateAccessTokenAsync 到内层存储");
+    }
+
+    /// <summary>
+    /// 内层未实现该能力时按 optional-capability 语义跳过 ——
+    /// 不得回落 <c>RemoveAsync</c>（它会连带删除 refresh_token，切断续期路径）。
+    /// </summary>
+    [Fact]
+    public async Task EncryptedUserTokenStore_ShouldNoOpAccessTokenInvalidation_WhenInnerLacksCapability()
+    {
+        var inner = new Mock<IUserTokenStore>();
+        var store = new EncryptedUserTokenStore(
+            inner.Object,
+            new EncryptedTokenStore(new InMemoryTokenStore(), new TestEncryptionProvider()),
+            new TestEncryptionProvider());
+
+        await store.InvalidateAccessTokenAsync("u1", "t1");
+
+        inner.Verify(
+            s => s.RemoveAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never,
+            "无能力时不得回落到双键删除（会连带删除 refresh_token）");
+    }
+
     [Fact]
     public async Task Decrypt_ShouldLogThrottledWarning_WhenDecryptionKeepsFailing()
     {
@@ -454,12 +493,15 @@ public class EncryptedTokenStoreTests
         }
     }
 
-    private sealed class InMemoryUserTokenStore : IUserTokenStore, IFeishuUserTokenStorePurge
+    private sealed class InMemoryUserTokenStore : IUserTokenStore, IFeishuUserTokenStorePurge, IUserTokenStoreAccessTokenInvalidation
     {
         private readonly Dictionary<(string UserId, string TokenType), string> _access = new();
 
         /// <summary>IFeishuUserTokenStorePurge.ClearAllUsersAsync 的调用计数（透传断言用）。</summary>
         public int ClearAllUsersCallCount { get; private set; }
+
+        /// <summary>IUserTokenStoreAccessTokenInvalidation.InvalidateAccessTokenAsync 的调用计数（透传断言用）。</summary>
+        public int InvalidateAccessTokenCallCount { get; private set; }
 
         public string? RawAccessToken(string userId, string tokenType)
             => _access.TryGetValue((userId, tokenType), out var v) ? v : null;
@@ -481,6 +523,13 @@ public class EncryptedTokenStoreTests
 
         public Task RemoveAsync(string userId, string tokenType, CancellationToken cancellationToken = default)
         {
+            _access.Remove((userId, tokenType));
+            return Task.CompletedTask;
+        }
+
+        public Task InvalidateAccessTokenAsync(string userId, string tokenType, CancellationToken cancellationToken = default)
+        {
+            InvalidateAccessTokenCallCount++;
             _access.Remove((userId, tokenType));
             return Task.CompletedTask;
         }

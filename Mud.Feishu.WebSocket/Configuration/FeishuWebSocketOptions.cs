@@ -56,8 +56,22 @@ public class FeishuWebSocketOptions
         set => _authTimeoutMs = value <= 0 ? DefaultAuthTimeoutMs : value;
     }
 
-    /// <summary>飞书应用 AppKey，用于指标维度区分</summary>
-    public string AppKey { get; set; } = "default";
+    /// <summary>
+    /// 飞书应用 AppKey：既是指标维度，也是 WebSocket 连接的<b>应用绑定键</b>。
+    /// </summary>
+    /// <remarks>
+    /// 单应用模式下留空即可，组合期会自动解析为默认应用键；多应用模式下<b>必须显式配置</b>，
+    /// 否则启动期抛 <see cref="InvalidOperationException"/>——一条 WebSocket 连接只能绑定一个应用。
+    /// 该值为连接级身份，运行期变更需重启或重建客户端才会生效。
+    /// </remarks>
+    public string? AppKey { get; set; }
+
+    /// <summary>
+    /// 已解析的应用键：未显式配置时回退 <c>default</c>。
+    /// 仅用于指标/去重维度等必须非空的场景；应用绑定判定仍以 <see cref="AppKey"/> 是否为空为准。
+    /// </summary>
+    internal string ResolvedAppKey =>
+        string.IsNullOrWhiteSpace(AppKey) ? "default" : AppKey!;
 
     /// <summary>重连嵌套配置</summary>
     public WebSocketReconnectOptions Reconnect { get; set; } = new();

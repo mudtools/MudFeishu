@@ -311,7 +311,7 @@ public class AuthenticationManager
                 _isAuthenticated = true;
                 _logger.LogInformation("WebSocket认证成功: {Message}", authResponse.Message);
 
-                FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, "auth", success: true);
+                FeishuMetricsHelper.RecordEventOutcome(_options.ResolvedAppKey, "auth", success: true);
 
                 if (authResponse.SessionId is { Length: > 0 } sessionId && _sessionManager != null)
                 {
@@ -334,7 +334,7 @@ public class AuthenticationManager
                 _authFailureCountedByResponse = true;
 
                 var errorType = authResponse?.Code.ToString() ?? "unknown";
-                FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, "auth", success: false, errorType);
+                FeishuMetricsHelper.RecordEventOutcome(_options.ResolvedAppKey, "auth", success: false, errorType);
 
                 _logger.LogError("WebSocket认证失败: {Code} - {Message}, 总失败次数: {TotalFailures}",
                     authResponse?.Code, authResponse?.Message, _totalAuthFailures);
@@ -372,7 +372,7 @@ public class AuthenticationManager
                 responseMessage?.Length ?? 0,
                 LogSanitizer.CleanMessage(responseMessage, 200));
 
-            FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, "auth", success: false, "json_parse_error");
+            FeishuMetricsHelper.RecordEventOutcome(_options.ResolvedAppKey, "auth", success: false, "json_parse_error");
 
             lock (_authCompletionLock)
             {
@@ -394,7 +394,7 @@ public class AuthenticationManager
             _isAuthenticated = false;
             _logger.LogError(ex, "处理认证响应时发生错误");
 
-            FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, "auth", success: false, "unknown_error");
+            FeishuMetricsHelper.RecordEventOutcome(_options.ResolvedAppKey, "auth", success: false, "unknown_error");
 
             lock (_authCompletionLock)
             {

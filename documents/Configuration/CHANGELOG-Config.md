@@ -5,6 +5,32 @@ description: 该文档记录 MudFeishu 配置面的变更日志，涵盖事件�
 
 # 配置面变更日志（CHANGELOG-Config）
 
+## 2026-10（多应用装配与分发策略）
+
+### `FeishuWebSocket:AppKey` 由「指标维度」升级为「连接级应用绑定键」
+
+| 变更 | 类型 | 说明 |
+| ---- | ---- | ---- |
+| `FeishuWebSocketOptions.AppKey` 语义扩展 | **行为变更（多应用装配）** | 此前该值仅作指标维度、默认 `"default"`，连接始终绑定默认应用；现在它是 WebSocket 连接的**应用绑定键**。单应用装配留空即可（组合期解析为该应用）；多应用装配**必须显式配置**，否则装配期抛 `InvalidOperationException`（fail-fast），配置了未注册的键同样失败 |
+| 绑定键在客户端构造期固定 | 行为约束 | 运行期配置重载**不会**改写已绑定的应用（仅 `AuthGateTimeoutMs` 仍支持热更新）；换绑需重建客户端或重启进程 |
+| 未配置时的指标/去重维度 | 行为修正 | 由固定的 `"default"` 改为解析后的实际应用键，避免多应用部署下维度错位 |
+
+**迁移指引**：单应用部署无需任何操作。多应用部署（`FeishuApps` 配置了多个应用）必须显式设置
+`FeishuWebSocket:AppKey` 为要订阅事件的应用键；未设置时升级后启动即失败，
+错误信息会指明「多应用模式下必须显式配置 FeishuWebSocket:AppKey」。
+一条 WebSocket 连接只能绑定一个应用——需要订阅多个应用的事件时，应为每个应用部署独立的连接实例。
+
+### 新增 `FeishuWebhook:HandlerDispatchMode`
+
+| 变更 | 类型 | 说明 |
+| ---- | ---- | ---- |
+| 新增 `FeishuWebhookOptions.HandlerDispatchMode`（`AppScopedOnly` / `MergeWithGlobal`，默认 `AppScopedOnly`） | 新增能力 | 应用键注册了专属处理器后，默认仍只分发专属处理器（既有行为）；设为 `MergeWithGlobal` 时专属与全局处理器同时收到事件。无专属处理器时始终回退全局处理器 |
+| 启动期取值校验 | 行为约束 | 非法枚举值在宿主启动时抛 `InvalidOperationException`（此前无此键） |
+
+**迁移指引**：默认值保持既有行为，升级零破坏。多应用部署中若存在"全局安全/审计处理器需要覆盖所有应用"的诉求，
+设置 `FeishuWebhook:HandlerDispatchMode=MergeWithGlobal`；合并模式下同一事件会被两类处理器各处理一次，
+处理器必须幂等。
+
 ## 2026-10（MCP 功能完善 R-7）
 
 > 方案：`.docs/AI/Mud.Feishu.AI-MCP功能完善方案-R7.md`

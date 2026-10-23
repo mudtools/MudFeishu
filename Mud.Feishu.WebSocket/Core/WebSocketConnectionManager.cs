@@ -922,7 +922,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
 
             // F5：受控丢弃可计数（消息数 +1）
             FeishuMetricsHelper.RecordWebSocketFramesDiscarded(
-                _options.AppKey, FeishuMetrics.DiscardReasons.FragmentSizeExceeded);
+                _options.ResolvedAppKey, FeishuMetrics.DiscardReasons.FragmentSizeExceeded);
 
             // 丢弃必须"丢干净"——排空至 EndOfMessage 后再返回：
             // 直接 return 会留下半个消息，相邻消息的字节被重新组帧，
@@ -956,7 +956,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
                     "分片消息大小超限", errorTypeOverride: FragmentSizeExceededErrorType);
 
                 FeishuMetricsHelper.RecordWebSocketFramesDiscarded(
-                    _options.AppKey, FeishuMetrics.DiscardReasons.FragmentSizeExceeded);
+                    _options.ResolvedAppKey, FeishuMetrics.DiscardReasons.FragmentSizeExceeded);
 
                 // 同上，先把本条消息的剩余分片读空再返回。
                 await DrainUntilEndOfMessageAsync(webSocket, buffer, cancellationToken).ConfigureAwait(false);
@@ -1061,7 +1061,7 @@ public class WebSocketConnectionManager : IAsyncDisposable, IDisposable
 
                 // F5：排空上界触发的丢弃与"单条消息超限"是两个不同量级的事件，单独计数
                 FeishuMetricsHelper.RecordWebSocketFramesDiscarded(
-                    _options.AppKey, FeishuMetrics.DiscardReasons.DrainBoundExceeded, drainedFrames);
+                    _options.ResolvedAppKey, FeishuMetrics.DiscardReasons.DrainBoundExceeded, drainedFrames);
 
                 TryAbort(webSocket);
                 return;

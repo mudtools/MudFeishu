@@ -363,10 +363,21 @@ public class FeishuWebhookService : IFeishuWebhookService
         }
         finally
         {
-            // 后置拦截器（无论成功或失败都执行）
+            // 后置拦截器（无论成功或失败都执行）。
+            // 补偿/收尾语义不消费调用方令牌：外部取消时令牌已取消，用它调用收尾拦截器会被立即短路。
+            // 逐条隔离异常——任一拦截器失败不得跳过其余拦截器，也不得掩盖原始处理异常。
             foreach (var interceptor in interceptors)
             {
-                await interceptor.AfterHandleAsync(eventData.EventType, eventData, processingException, cancellationToken);
+                try
+                {
+                    await interceptor.AfterHandleAsync(eventData.EventType, eventData, processingException, CancellationToken.None);
+                }
+                catch (Exception afterEx)
+                {
+                    _logger.LogError(afterEx,
+                        "后置拦截器 {InterceptorType} 处理事件失败: {EventType}, EventId: {EventId}",
+                        interceptor.GetType().Name, eventData.EventType, eventData.EventId);
+                }
             }
 
             performanceStopwatch.Stop();
@@ -494,79 +505,115 @@ public class FeishuWebhookService : IFeishuWebhookService
 
     /// <summary>
     /// 分发事件到处理器（支持按 AppKey 隔离）
-    /// 优先使用应用专属处理器，无专属处理器时回退到全局工厂
+    /// 无专属处理器时回退全局工厂；有专属处理器时按 <see cref="FeishuWebhookOptions.HandlerDispatchMode"/> 决定是否合并全局。
     /// </summary>
     private async Task DispatchEventAsync(string eventType, EventData eventData, string? appKey, CancellationToken cancellationToken)
     {
-        // 如果有应用专属处理器，优先使用
-        if (!string.IsNullOrEmpty(appKey) && _handlerRegistry.HasHandlers(appKey!))
+        var hasScopedHandlers = !string.IsNullOrEmpty(appKey) && _handlerRegistry.HasHandlers(appKey!);
+        if (!hasScopedHandlers)
         {
-            var handlerTypes = _handlerRegistry.GetHandlers(appKey!);
-            _logger.LogDebug("使用应用 {AppKey} 的专属处理器（{Count} 个）分发事件: {EventType}",
-                appKey, handlerTypes.Count, eventType);
+            await DispatchToGlobalAsync(eventType, eventData, appKey, suppressUnhandled: false, cancellationToken);
+            return;
+        }
 
-            var tasks = handlerTypes
-                .Select(t => ProcessAppHandlerSafelyAsync(t, eventData, appKey!, eventType, cancellationToken))
-                .ToList();
-            try
-            {
-                var all = Task.WhenAll(tasks);
-                try
-                {
-                    await all;
-                }
-                catch
-                {
-                    // await Task.WhenAll 只重抛**首个**异常，故 `ex is AggregateException`
-                    // 恒为 false（await 解包成首个 inner）——从 `all.Exception` 取完整聚合。
-                    // 仅在**多个**处理器同时失败时补记——单处理器失败已由 ProcessAppHandlerSafelyAsync
-                    // 逐条记录，避免重复日志。
-                    var inners = all.Exception?.InnerExceptions;
-                    if (inners is { Count: > 1 })
-                    {
-                        foreach (var inner in inners)
-                            _logger.LogError(inner, "应用 {AppKey} 专属处理器分发事件 {EventType} 失败（聚合明细）", appKey, eventType);
-                    }
-                    throw;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "应用 {AppKey} 专属处理器分发事件 {EventType} 失败", appKey, eventType);
-                throw;
-            }
+        var scopedHandled = await DispatchToAppHandlersAsync(eventType, eventData, appKey!, cancellationToken);
 
+        if (Options.HandlerDispatchMode == HandlerDispatchMode.MergeWithGlobal)
+        {
+            // 合并模式：专属处理器已处理时，全局未注册该 eventType 不算"未处理"，不记 unhandled。
+            await DispatchToGlobalAsync(eventType, eventData, appKey, suppressUnhandled: scopedHandled, cancellationToken);
+            return;
+        }
+
+        if (!scopedHandled)
+        {
             // R3-P1-1：全部处理器都因 SupportedEventType 不匹配而跳过 → 事件被静默丢弃。
             // 此前该路径只有 LogDebug（生产 Information 级不可见），用户把 SupportedEventType 拼错时
             // 事件消失且无任何告警与指标。此处补 Warning + unhandled 指标，与全局分支口径一致
             // （unhandled 表示“未处理”，不是失败，故 success:true）。
-            if (tasks.Count > 0 && tasks.All(t => !t.Result))
-            {
-                _logger.LogWarning(
-                    "应用 {AppKey} 的 {Count} 个专属处理器均不匹配事件类型 {EventType}，事件已被忽略" +
-                    "（请核对各处理器的 SupportedEventType 拼写；声明为空串表示处理该应用全部事件）",
-                    appKey, handlerTypes.Count, eventType);
-                FeishuMetricsHelper.RecordEventOutcome(appKey!, eventType, success: true, "unhandled");
-            }
+            _logger.LogWarning(
+                "应用 {AppKey} 的专属处理器均不匹配事件类型 {EventType}，事件已被忽略" +
+                "（请核对各处理器的 SupportedEventType 拼写；声明为空串表示处理该应用全部事件）",
+                appKey, eventType);
+            FeishuMetricsHelper.RecordEventOutcome(appKey!, eventType, success: true, "unhandled");
         }
-        else
-        {
-            // 未注册 eventType 门控——静默忽略（unhandled），不回退默认处理器兜底
-            if (Options.IgnoreUnknownEventTypes && !_handlerFactory.IsHandlerRegistered(eventType))
-            {
-                // 由 Debug 提升为 Warning——生产默认 Information 级看不到 Debug，
-                // 未注册/拼错的事件类型会静默消失（全局分支此前连指标都无，只有日志）。
-                _logger.LogWarning("事件类型 {EventType} 未注册处理器，已忽略（IgnoreUnknownEventTypes=true），请核对 SupportedEventType 拼写, AppKey: {AppKey}",
-                    eventType, appKey ?? "null");
-                FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventType, success: true, "unhandled");
-                return;
-            }
+    }
 
-            // 回退到全局处理器工厂
-            _logger.LogDebug("使用全局处理器工厂分发事件: {EventType}, AppKey: {AppKey}",
-                eventType, appKey ?? "null");
-            await _handlerFactory.HandleEventParallelAsync(eventType, eventData, cancellationToken);
+    /// <summary>
+    /// 仅分发应用专属处理器。
+    /// </summary>
+    /// <returns>是否至少有一个处理器实际处理了该事件（false = 全部因 SupportedEventType 跳过）。</returns>
+    private async Task<bool> DispatchToAppHandlersAsync(string eventType, EventData eventData, string appKey, CancellationToken cancellationToken)
+    {
+        var handlerTypes = _handlerRegistry.GetHandlers(appKey);
+        _logger.LogDebug("使用应用 {AppKey} 的专属处理器（{Count} 个）分发事件: {EventType}",
+            appKey, handlerTypes.Count, eventType);
+
+        var tasks = handlerTypes
+            .Select(t => ProcessAppHandlerSafelyAsync(t, eventData, appKey, eventType, cancellationToken))
+            .ToList();
+        try
+        {
+            var all = Task.WhenAll(tasks);
+            try
+            {
+                await all;
+            }
+            catch
+            {
+                // await Task.WhenAll 只重抛**首个**异常，故 `ex is AggregateException`
+                // 恒为 false（await 解包成首个 inner）——从 `all.Exception` 取完整聚合。
+                // 仅在**多个**处理器同时失败时补记——单处理器失败已由 ProcessAppHandlerSafelyAsync
+                // 逐条记录，避免重复日志。
+                var inners = all.Exception?.InnerExceptions;
+                if (inners is { Count: > 1 })
+                {
+                    foreach (var inner in inners)
+                        _logger.LogError(inner, "应用 {AppKey} 专属处理器分发事件 {EventType} 失败（聚合明细）", appKey, eventType);
+                }
+                throw;
+            }
         }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "应用 {AppKey} 专属处理器分发事件 {EventType} 失败", appKey, eventType);
+            throw;
+        }
+
+        return tasks.Any(t => t.Result);
+    }
+
+    /// <summary>
+    /// 分发到全局处理器工厂（未注册事件类型按 <see cref="FeishuWebhookOptions.IgnoreUnknownEventTypes"/> 门控）。
+    /// </summary>
+    /// <param name="suppressUnhandled">
+    /// 为 true 时表示事件已由专属处理器处理——全局未注册不再记 Warning/unhandled（避免"实际已处理"被记成未处理）。
+    /// </param>
+    private async Task DispatchToGlobalAsync(
+        string eventType,
+        EventData eventData,
+        string? appKey,
+        bool suppressUnhandled,
+        CancellationToken cancellationToken)
+    {
+        // 未注册 eventType 门控——静默忽略（unhandled），不回退默认处理器兜底
+        if (Options.IgnoreUnknownEventTypes && !_handlerFactory.IsHandlerRegistered(eventType))
+        {
+            if (suppressUnhandled)
+                return;
+
+            // 由 Debug 提升为 Warning——生产默认 Information 级看不到 Debug，
+            // 未注册/拼错的事件类型会静默消失（全局分支此前连指标都无，只有日志）。
+            _logger.LogWarning("事件类型 {EventType} 未注册处理器，已忽略（IgnoreUnknownEventTypes=true），请核对 SupportedEventType 拼写, AppKey: {AppKey}",
+                eventType, appKey ?? "null");
+            FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", eventType, success: true, "unhandled");
+            return;
+        }
+
+        // 回退到全局处理器工厂
+        _logger.LogDebug("使用全局处理器工厂分发事件: {EventType}, AppKey: {AppKey}",
+            eventType, appKey ?? "null");
+        await _handlerFactory.HandleEventParallelAsync(eventType, eventData, cancellationToken);
     }
 
     /// <summary>

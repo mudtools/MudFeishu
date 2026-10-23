@@ -236,6 +236,21 @@ public class FeishuWebhookOptions
     public InterceptorFallbackMode InterceptorFallbackMode { get; set; } = InterceptorFallbackMode.Merge;
 
     /// <summary>
+    /// 应用专属处理器与全局处理器的分发策略，默认 <see cref="Configuration.HandlerDispatchMode.AppScopedOnly"/>。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 应用键已注册专属处理器时：<see cref="Configuration.HandlerDispatchMode.AppScopedOnly"/> 只分发专属处理器；
+    /// <see cref="Configuration.HandlerDispatchMode.MergeWithGlobal"/> 让全局处理器同时参与。
+    /// </para>
+    /// <para>
+    /// 未注册专属处理器时始终回退全局处理器，本选项不改变该行为。
+    /// 合并模式下处理器需自行保证幂等——同一事件会被两类处理器各处理一次。
+    /// </para>
+    /// </remarks>
+    public HandlerDispatchMode HandlerDispatchMode { get; set; } = HandlerDispatchMode.AppScopedOnly;
+
+    /// <summary>
     /// 空 EventId/Nonce 是否拒绝请求（true=fail-closed），默认 <c>true</c>。
     /// </summary>
     /// <remarks>
@@ -354,6 +369,10 @@ public class FeishuWebhookOptions
         // 验证解密超时配置
         if (DecryptionTimeoutMs is < 100 or > 60_000)
             throw new InvalidOperationException("DecryptionTimeoutMs 必须在 100~60000 毫秒之间");
+
+        if (HandlerDispatchMode is not (HandlerDispatchMode.AppScopedOnly or HandlerDispatchMode.MergeWithGlobal))
+            throw new InvalidOperationException(
+                $"HandlerDispatchMode 取值无效（{(int)HandlerDispatchMode}），允许值：AppScopedOnly(0) / MergeWithGlobal(1)");
 
         // 验证多应用配置
         foreach (var appConfig in Apps)

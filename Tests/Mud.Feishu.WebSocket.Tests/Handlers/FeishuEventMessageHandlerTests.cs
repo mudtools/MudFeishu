@@ -847,4 +847,98 @@ public class FeishuEventMessageHandlerTests
         listener.Start();
         return (records, listener);
     }
+
+    // ===== 后置拦截器韧性 =====
+
+    [Fact]
+    public async Task HandleAsync_WhenAfterInterceptorThrows_ShouldStillInvokeRemainingInterceptors()
+    {
+        _handlerFactoryMock
+            .Setup(f => f.HandleEventParallelAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var failing = new Mock<IFeishuEventInterceptor>();
+        failing
+            .Setup(i => i.BeforeHandleAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        failing
+            .Setup(i => i.AfterHandleAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<Exception?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("after interceptor failed"));
+
+        var remaining = new Mock<IFeishuEventInterceptor>();
+        remaining
+            .Setup(i => i.BeforeHandleAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        CancellationToken observedToken = default;
+        remaining
+            .Setup(i => i.AfterHandleAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<Exception?>(), It.IsAny<CancellationToken>()))
+            .Callback<string, EventData, Exception?, CancellationToken>((_, _, _, ct) => observedToken = ct)
+            .Returns(Task.CompletedTask);
+
+        var dedupMock = new Mock<Mud.Feishu.Abstractions.Services.IFeishuEventDeduplicator>();
+        dedupMock
+            .Setup(d => d.TryMarkAsProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Mud.Feishu.Abstractions.Services.DeduplicationResult.Success("ws"));
+        dedupMock
+            .Setup(d => d.MarkAsCompletedAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var handler = new FeishuEventMessageHandler(
+            _loggerMock.Object,
+            _handlerFactoryMock.Object,
+            dedupMock.Object,
+            [failing.Object, remaining.Object],
+            _options,
+            null);
+
+        var message = "{\"schema\":\"2.0\",\"header\":{\"event_id\":\"evt_after_fail\",\"event_type\":\"drive.file.edit_v1\",\"tenant_key\":\"tk\",\"app_id\":\"app\"},\"event\":{}}";
+
+        await handler.HandleAsync(message);
+
+        remaining.Verify(
+            i => i.AfterHandleAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<Exception?>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+        observedToken.Should().Be(CancellationToken.None,
+            "收尾拦截器不得消费调用方令牌（取消后仍须真实执行）");
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenAfterInterceptorThrows_ShouldNotMaskOriginalBusinessException()
+    {
+        _handlerFactoryMock
+            .Setup(f => f.HandleEventParallelAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("business failure"));
+
+        var failing = new Mock<IFeishuEventInterceptor>();
+        failing
+            .Setup(i => i.BeforeHandleAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        failing
+            .Setup(i => i.AfterHandleAsync(It.IsAny<string>(), It.IsAny<EventData>(), It.IsAny<Exception?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("after interceptor failed"));
+
+        var dedupMock = new Mock<Mud.Feishu.Abstractions.Services.IFeishuEventDeduplicator>();
+        dedupMock
+            .Setup(d => d.TryMarkAsProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Mud.Feishu.Abstractions.Services.DeduplicationResult.Success("ws"));
+        dedupMock
+            .Setup(d => d.RollbackProcessingAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var handler = new FeishuEventMessageHandler(
+            _loggerMock.Object,
+            _handlerFactoryMock.Object,
+            dedupMock.Object,
+            [failing.Object],
+            _options,
+            null);
+
+        var message = "{\"schema\":\"2.0\",\"header\":{\"event_id\":\"evt_after_fail_biz\",\"event_type\":\"drive.file.edit_v1\",\"tenant_key\":\"tk\",\"app_id\":\"app\"},\"event\":{}}";
+
+        var act = () => handler.HandleAsync(message);
+
+        var exception = await act.Should().ThrowAsync<InvalidOperationException>();
+        exception.Which.Message.Should().Be("business failure",
+            "后置拦截器异常不得掩盖原始业务异常（否则 ACK/重试语义被改写）");
+    }
 }

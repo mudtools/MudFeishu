@@ -109,4 +109,37 @@ public class FeishuUserTokenStoreTests
         cache.Get<string>(TokenKeyBuilder.UserAccessKey($"feishu:{appKey}:token", "u1", "t1"))
             .Should().BeNull("修剪重建后 ClearUserAsync 仍应删除已记账的键");
     }
+
+    [Fact]
+    public async Task InvalidateAccessToken_ShouldRemoveAccessKeyOnly_AndKeepRefreshAndTracking()
+    {
+        // Arrange
+        const string appKey = "invalidate-access-only";
+        var (store, cache) = CreateStore(appKey);
+        var keyPrefix = $"feishu:{appKey}:token";
+
+        await store.SetAccessTokenAsync("u1", "t1", "access-1", 3600);
+        await store.SetRefreshTokenAsync("u1", "t1", "refresh-1");
+
+        // Act
+        await store.InvalidateAccessTokenAsync("u1", "t1");
+
+        // Assert：访问令牌键被删除；refresh 键与记账保留（refresh 是唯一续期凭据）。
+        cache.Get<string>(TokenKeyBuilder.UserAccessKey(keyPrefix, "u1", "t1"))
+            .Should().BeNull("仅失效访问令牌");
+        cache.Get<string>(TokenKeyBuilder.UserRefreshKey(keyPrefix, "u1", "t1"))
+            .Should().Be("refresh-1", "refresh_token 不得被连带删除");
+        GetSharedUsers(appKey).ContainsKey("u1").Should().BeTrue("refresh 仍存活，记账不得修剪");
+        (await store.GetTokenTypesAsync("u1")).Should().Contain("t1");
+    }
+
+    [Fact]
+    public async Task InvalidateAccessToken_ShouldBeNoOp_WhenKeyMissing()
+    {
+        var (store, _) = CreateStore("invalidate-missing");
+
+        var act = () => store.InvalidateAccessTokenAsync("u-missing", "t1");
+
+        await act.Should().NotThrowAsync("键不存在时按幂等 no-op 处理");
+    }
 }

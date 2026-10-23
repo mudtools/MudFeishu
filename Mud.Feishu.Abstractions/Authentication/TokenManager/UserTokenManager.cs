@@ -33,6 +33,8 @@ namespace Mud.Feishu.Abstractions.Authentication;
 /// 而用户侧"内存+store 双清"已由 <c>RemoveTokenAsync</c>（显式登出语义）承担。
 /// 实现方式：覆写为 <c>UserTokenManagerBase.InvalidateUserAccessTokenInCache</c>（上游入口，
 /// 语义 = 仅置空访问令牌字段 + 保序写回 + 写入代际作废）—— 桥接器写穿时跳过访问令牌、保留 refresh。
+/// 内存墓碑只覆盖本实例，故当原始 store 实现 <see cref="IUserTokenStoreAccessTokenInvalidation"/> 时
+/// 同批删除持久层访问令牌键（refresh 键保留），使多实例 / 冷启动不复活被拒绝的令牌。
 /// </para>
 /// </remarks>
 internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
@@ -76,6 +78,9 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
         // 官方非原子回退的「存储原值 vs 期望明文」整值比较对飞书编码值恒失配 ⇒ 清库静默失效）。
         // CAS 属写/删族（门只拦读），故直调原始 store 不违门语义。
         _compareExchangeStore = userTokenStore as IUserTokenStoreCompareExchange;
+        // 仅失效访问令牌同为**原始 store** 上的可选能力（装饰器不声明，理由同上）；
+        // 属删族（门只拦读），直调原始 store 不违门语义。
+        _accessTokenInvalidationStore = userTokenStore as IUserTokenStoreAccessTokenInvalidation;
         _refreshLease = refreshLease;
     }
 
@@ -83,6 +88,9 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
 
     /// <summary>原始用户 store 的原子 CAS 能力（未实现时为 null）。</summary>
     private readonly IUserTokenStoreCompareExchange? _compareExchangeStore;
+
+    /// <summary>原始用户 store 的「仅失效访问令牌」能力（未实现时为 null）。</summary>
+    private readonly IUserTokenStoreAccessTokenInvalidation? _accessTokenInvalidationStore;
 
     /// <summary>
     /// 跨进程刷新去重租约（与租户/应用管理器同口径，由工厂经 DI 解析注入）；
@@ -357,7 +365,7 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
 
     /// <inheritdoc />
     /// <remarks>
-    /// 契约例外：只失效<b>访问令牌字段</b>，保留 store 中的 refresh_token ——
+    /// 契约例外：只失效<b>访问令牌</b>，保留 store 中的 refresh_token ——
     /// 401 恢复链路依赖 store 的 refresh 可达（清 store 会使恢复彻底无路，表现为必然 401）。
     /// <para>
     /// 基类实现为「整条移除」（<c>UserTokenManagerBase.InvalidateUserTokenAsync</c>），经桥接器会写穿删除
@@ -366,14 +374,33 @@ internal class UserTokenManager : UserTokenManagerBase, IFeishuUserTokenManager
     /// 桥接器写穿时跳过访问令牌、保留 refresh 槽位；镜像未命中时植入空访问令牌墓碑，
     /// 防止读穿透把持久层中已被拒绝的访问令牌重新带回。
     /// </para>
+    /// <para>
+    /// 内存墓碑只对<b>本实例</b>生效，故原始 store 支持
+    /// <see cref="IUserTokenStoreAccessTokenInvalidation"/> 时同批删除持久层访问令牌键，
+    /// 使多实例 / 冷启动不再复活被拒绝的令牌（refresh 保留，续期路径不受影响）。
+    /// 持久层删除失败按 Warning 降级，不改变本方法的非抛出契约。
+    /// </para>
     /// </remarks>
-    public override Task InvalidateUserTokenAsync(string userId, CancellationToken cancellationToken = default)
+    public override async Task InvalidateUserTokenAsync(string userId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(userId))
-            return Task.CompletedTask;
+            return;
 
         InvalidateUserAccessTokenInCache(userId);
-        return Task.CompletedTask;
+
+        if (_accessTokenInvalidationStore is null)
+            return;
+
+        try
+        {
+            await _accessTokenInvalidationStore
+                .InvalidateAccessTokenAsync(userId, _tokenTypeKey, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Failed to invalidate persisted user access token for userId: {UserId}", Masked(userId));
+        }
     }
 
     /// <inheritdoc />

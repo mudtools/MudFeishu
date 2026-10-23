@@ -20,8 +20,12 @@ namespace Mud.Feishu.Abstractions.Services;
 /// 1. 首先检查 SeqID（如果提供）
 /// 2. 然后检查 EventId（如果提供）
 /// 3. 任一标识符触发去重则跳过处理
+/// <para>
+/// 同时实现 <see cref="IAppScopedUnifiedDeduplicationMiddleware"/>：EventId 路径会把 <c>appKey</c>
+/// 透传给事件去重器，保证多应用隔离；旧接口方法等价于 <c>appKey = null</c>。
+/// </para>
 /// </remarks>
-public class UnifiedDeduplicationMiddleware : IUnifiedDeduplicationMiddleware, IAsyncDisposable
+public class UnifiedDeduplicationMiddleware : IUnifiedDeduplicationMiddleware, IAppScopedUnifiedDeduplicationMiddleware, IAsyncDisposable
 {
     private readonly IFeishuEventDeduplicator? _eventDeduplicator;
     private readonly IFeishuSeqIDDeduplicator? _seqIdDeduplicator;
@@ -52,9 +56,13 @@ public class UnifiedDeduplicationMiddleware : IUnifiedDeduplicationMiddleware, I
     }
 
     /// <inheritdoc />
-    public async Task<UnifiedDeduplicationResult> CheckAsync(string? eventId, ulong? seqId, CancellationToken cancellationToken = default)
+    public Task<UnifiedDeduplicationResult> CheckAsync(string? eventId, ulong? seqId, CancellationToken cancellationToken = default)
+        => CheckAsync(eventId, seqId, appKey: null, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<UnifiedDeduplicationResult> CheckAsync(string? eventId, ulong? seqId, string? appKey, CancellationToken cancellationToken = default)
     {
-        _logger?.LogDebug("执行统一去重检查: EventId={EventId}, SeqId={SeqId}", eventId, seqId);
+        _logger?.LogDebug("执行统一去重检查: EventId={EventId}, SeqId={SeqId}, AppKey={AppKey}", eventId, seqId, appKey);
 
 
         if (seqId.HasValue && _seqIdDeduplicator != null)
@@ -69,7 +77,7 @@ public class UnifiedDeduplicationMiddleware : IUnifiedDeduplicationMiddleware, I
 
         if (!string.IsNullOrEmpty(eventId) && _eventDeduplicator != null)
         {
-            var eventResult = await _eventDeduplicator.TryMarkAsProcessingAsync(eventId!, cancellationToken: cancellationToken);
+            var eventResult = await _eventDeduplicator.TryMarkAsProcessingAsync(eventId!, appKey, cancellationToken: cancellationToken);
             if (eventResult.IsDuplicate)
             {
                 _logger?.LogDebug("EventId {EventId} 已在处理中或已处理，跳过 (WasProcessing: {WasProcessing}, Status: {Status})",
@@ -87,11 +95,15 @@ public class UnifiedDeduplicationMiddleware : IUnifiedDeduplicationMiddleware, I
     }
 
     /// <inheritdoc />
-    public async Task MarkCompletedAsync(string? eventId, ulong? seqId, CancellationToken cancellationToken = default)
+    public Task MarkCompletedAsync(string? eventId, ulong? seqId, CancellationToken cancellationToken = default)
+        => MarkCompletedAsync(eventId, seqId, appKey: null, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task MarkCompletedAsync(string? eventId, ulong? seqId, string? appKey, CancellationToken cancellationToken = default)
     {
         if (!string.IsNullOrEmpty(eventId) && _eventDeduplicator != null)
         {
-            await _eventDeduplicator.MarkAsCompletedAsync(eventId!, cancellationToken: cancellationToken);
+            await _eventDeduplicator.MarkAsCompletedAsync(eventId!, appKey, cancellationToken: cancellationToken);
             _logger?.LogDebug("EventId {EventId} 标记为已完成", eventId);
         }
 
@@ -101,11 +113,15 @@ public class UnifiedDeduplicationMiddleware : IUnifiedDeduplicationMiddleware, I
     }
 
     /// <inheritdoc />
-    public async Task RollbackAsync(string? eventId, ulong? seqId, CancellationToken cancellationToken = default)
+    public Task RollbackAsync(string? eventId, ulong? seqId, CancellationToken cancellationToken = default)
+        => RollbackAsync(eventId, seqId, appKey: null, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task RollbackAsync(string? eventId, ulong? seqId, string? appKey, CancellationToken cancellationToken = default)
     {
         if (!string.IsNullOrEmpty(eventId) && _eventDeduplicator != null)
         {
-            await _eventDeduplicator.RollbackProcessingAsync(eventId!, cancellationToken: cancellationToken);
+            await _eventDeduplicator.RollbackProcessingAsync(eventId!, appKey, cancellationToken: cancellationToken);
             _logger?.LogDebug("EventId {EventId} 处理状态已回滚", eventId);
         }
 

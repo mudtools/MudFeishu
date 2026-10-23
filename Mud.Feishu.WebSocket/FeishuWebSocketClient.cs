@@ -32,6 +32,8 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     // 持有 IOptionsMonitor 而非一次性快照，经 Options 属性参与运行期读取。
     private readonly IOptionsMonitor<FeishuWebSocketOptions>? _optionsMonitor;
     private readonly FeishuWebSocketOptions _options;
+    // 连接级应用绑定键：构造期解析一次，运行期配置重载不得改写（换绑需重建客户端）。
+    private readonly string _resolvedAppKey;
     private readonly IFeishuEventHandlerFactory _eventHandlerFactory;
     private readonly IFeishuEventInterceptor[] _interceptors;
     private readonly WebSocketConnectionManager _connectionManager;
@@ -113,8 +115,11 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// 运行期配置视图。
     /// </summary>
     /// <remarks>
-    /// 让<b>确实支持热更新</b>的字段（<see cref="FeishuWebSocketOptions.AppKey"/> 指标维度、
-    /// <see cref="FeishuWebSocketOptions.AuthGateTimeoutMs"/> 认证闸门）在每次读取时取最新值。
+    /// 让<b>确实支持热更新</b>的字段（<c>AuthGateTimeoutMs</c> 认证闸门）在每次读取时取最新值。
+    /// <para>
+    /// <b>AppKey 不在此列</b>：它是连接绑定键，构造期解析一次后由 <see cref="ResolveAppKey"/> 固定返回，
+    /// 配置重载不会把已绑定的连接切回默认应用（换绑需重启或重建客户端）。
+    /// </para>
     /// <para>
     /// <b>口径说明</b>：其余配置项（心跳间隔、连接超时、消息大小限制、并发上界、去重配置等）已在构造期
     /// 固化到各子组件（<c>MessageRouter</c>/<c>BinaryMessageProcessor</c>/<c>AuthenticationManager</c>/
@@ -122,6 +127,11 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
     /// </para>
     /// </remarks>
     private FeishuWebSocketOptions Options => _optionsMonitor?.CurrentValue ?? _options;
+
+    /// <summary>
+    /// 连接级应用绑定键（构造期固定；用于指标维度与去重键，不随配置重载漂移）。
+    /// </summary>
+    private string ResolveAppKey() => _resolvedAppKey;
 
     /// <inheritdoc/>
     public WebSocketState State => _connectionManager.State;
@@ -310,6 +320,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         _interceptors = interceptors ?? Array.Empty<IFeishuEventInterceptor>();
         _optionsMonitor = optionsMonitor;
         _options = optionsMonitor?.CurrentValue ?? options ?? new FeishuWebSocketOptions();
+        _resolvedAppKey = string.IsNullOrWhiteSpace(_options.AppKey) ? "default" : _options.AppKey!;
         _loggerFactory = loggerFactory;
         _seqIdDeduplicator = seqIdDeduplicator;
         _sessionManager = sessionManager;
@@ -428,7 +439,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                     _authManager.HandleAuthResponse("{\"code\":-1,\"msg\":\"Authentication failed\"}");
                 }
             },
-            _options.AppKey);
+            ResolveAppKey());
 
         // options 参数已删除（原参数只赋值给一个从不读取的私有字段）
         var heartbeatHandler = new HeartbeatMessageHandler(_loggerFactory.CreateLogger<HeartbeatMessageHandler>());
@@ -510,7 +521,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
         using var connectActivity = FeishuActivitySource.Instance.StartActivity(
             FeishuActivitySource.ActivityNameWebSocketConnect,
             ActivityKind.Client);
-        connectActivity?.SetTag(FeishuActivitySource.Tags.AppKey, Options.AppKey);
+        connectActivity?.SetTag(FeishuActivitySource.Tags.AppKey, ResolveAppKey());
 
         await _connectLock.WaitAsync(cancellationToken);
 
@@ -975,7 +986,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                     _logger.LogDebug("文本消息已丢弃：并发租约获取失败（连接关闭或并发服务已释放）");
                     // F5：受控丢弃必须可计数（此前只写日志，丢弃量不可观测、无法告警）
                     FeishuMetricsHelper.RecordWebSocketFramesDiscarded(
-                        Options.AppKey, FeishuMetrics.DiscardReasons.ConcurrencyRejected);
+                        ResolveAppKey(), FeishuMetrics.DiscardReasons.ConcurrencyRejected);
                     return;
                 }
 
@@ -1013,11 +1024,11 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                             using var wsActivity = FeishuActivitySource.Instance.StartActivity(
                                 FeishuActivitySource.ActivityNameWebSocketMessage,
                                 ActivityKind.Internal);
-                            wsActivity?.SetTag(FeishuActivitySource.Tags.AppKey, Options.AppKey);
+                            wsActivity?.SetTag(FeishuActivitySource.Tags.AppKey, ResolveAppKey());
                             wsActivity?.SetTag(FeishuActivitySource.Tags.MessageType, "text");
 
-                            using (FeishuMetricsHelper.RecordEventHandling(Options.AppKey, "websocket_message", "text"))
-                            using (FeishuMetricsHelper.RecordWebSocketMessageProcessing(Options.AppKey, "text"))
+                            using (FeishuMetricsHelper.RecordEventHandling(ResolveAppKey(), "websocket_message", "text"))
+                            using (FeishuMetricsHelper.RecordWebSocketMessageProcessing(ResolveAppKey(), "text"))
                             {
                                 await _messageRouter.RouteMessageAsync(frameMessage, cancellationToken);
                             }
@@ -1059,7 +1070,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                 {
                     _logger.LogDebug("二进制消息已丢弃：并发租约获取失败（连接关闭或并发服务已释放）");
                     FeishuMetricsHelper.RecordWebSocketFramesDiscarded(
-                        Options.AppKey, FeishuMetrics.DiscardReasons.ConcurrencyRejected);
+                        ResolveAppKey(), FeishuMetrics.DiscardReasons.ConcurrencyRejected);
                     return;
                 }
 
@@ -1104,7 +1115,7 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                                         authGateTimeoutMs);
                                     // F5：闸门丢弃单独计数——与"分片超限丢弃"的处置方式完全不同
                                     FeishuMetricsHelper.RecordWebSocketFramesDiscarded(
-                                        Options.AppKey, FeishuMetrics.DiscardReasons.AuthGateTimeout);
+                                        ResolveAppKey(), FeishuMetrics.DiscardReasons.AuthGateTimeout);
                                     return;
                                 }
                             }
@@ -1113,11 +1124,11 @@ public sealed class FeishuWebSocketClient : IFeishuWebSocketClient, IAsyncDispos
                             using var wsActivity = FeishuActivitySource.Instance.StartActivity(
                                 FeishuActivitySource.ActivityNameWebSocketMessage,
                                 ActivityKind.Internal);
-                            wsActivity?.SetTag(FeishuActivitySource.Tags.AppKey, Options.AppKey);
+                            wsActivity?.SetTag(FeishuActivitySource.Tags.AppKey, ResolveAppKey());
                             wsActivity?.SetTag(FeishuActivitySource.Tags.MessageType, "binary");
 
-                            using (FeishuMetricsHelper.RecordEventHandling(Options.AppKey, "websocket_message", "binary"))
-                            using (FeishuMetricsHelper.RecordWebSocketMessageProcessing(Options.AppKey, "binary"))
+                            using (FeishuMetricsHelper.RecordEventHandling(ResolveAppKey(), "websocket_message", "binary"))
+                            using (FeishuMetricsHelper.RecordWebSocketMessageProcessing(ResolveAppKey(), "binary"))
                             {
                                 await _binaryProcessor.ProcessBinaryDataAsync(frameBuffer, 0, result.Count, result.EndOfMessage, cancellationToken);
                             }

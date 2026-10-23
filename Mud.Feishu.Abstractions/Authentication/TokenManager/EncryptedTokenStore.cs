@@ -179,7 +179,7 @@ public sealed class EncryptedTokenStore : ITokenStore, IEncryptedTokenStore, ITo
 /// 避免同一存储出现「一处加密、一处明文」的不一致。
 /// </para>
 /// </remarks>
-public sealed class EncryptedUserTokenStore : IUserTokenStore, IEncryptedTokenStore, IFeishuUserTokenStorePurge
+public sealed class EncryptedUserTokenStore : IUserTokenStore, IEncryptedTokenStore, IFeishuUserTokenStorePurge, IUserTokenStoreAccessTokenInvalidation
 {
     private readonly IUserTokenStore _inner;
     private readonly EncryptedTokenStore _encryptedTenantStore;
@@ -257,6 +257,19 @@ public sealed class EncryptedUserTokenStore : IUserTokenStore, IEncryptedTokenSt
     public Task ClearAllUsersAsync(CancellationToken cancellationToken = default)
         => _inner is IFeishuUserTokenStorePurge purgeable
             ? purgeable.ClearAllUsersAsync(cancellationToken)
+            : Task.CompletedTask;
+
+    /// <summary>
+    /// 客户端侧访问令牌失效：加密只作用于值、不改变键布局，故按键删除对加密透明。
+    /// 内层未实现 <see cref="IUserTokenStoreAccessTokenInvalidation"/>（如宿主自定义存储）时
+    /// 按 optional-capability 语义跳过——不得回落 <c>RemoveAsync</c>，那会连带删除 refresh_token。
+    /// </summary>
+    /// <param name="userId">用户标识。</param>
+    /// <param name="tokenType">令牌类型。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    public Task InvalidateAccessTokenAsync(string userId, string tokenType, CancellationToken cancellationToken = default)
+        => _inner is IUserTokenStoreAccessTokenInvalidation invalidatable
+            ? invalidatable.InvalidateAccessTokenAsync(userId, tokenType, cancellationToken)
             : Task.CompletedTask;
 
     #endregion

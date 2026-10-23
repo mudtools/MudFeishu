@@ -104,6 +104,19 @@ public sealed class FeishuMcpToolServer
         _resources = _options.IncludeResources && _tools.Count > 0
             ? BuildResources(_services)
             : null;
+
+        // 装配读数落一条 Information：宿主在日志里就能看到"这个 MCP 端点暴露了多大一面"，
+        // 不必先连一个客户端握手（与 initialize.capabilities._meta 同源同口径）。
+        if (_tools.Count > 0)
+        {
+            _logger?.LogInformation(
+                "MCP 工具面就绪：tools={Tools} domains={Domains} readOnly={ReadOnly} write={Write} resources={Resources}",
+                _tools.Count,
+                EnabledDomainCount(),
+                _tools.Count(static t => !t.IsWrite),
+                _tools.Count(static t => t.IsWrite),
+                Resources.Count);
+        }
     }
 
     /// <summary>暴露给客户端的工具（<c>tools/list</c> 的内容来源）。</summary>
@@ -613,6 +626,7 @@ public sealed class FeishuMcpToolServer
         // 构桥接缝缺席 = 同一装配缺陷的另一面，一并按"无工具"处理而不是抛。
         if (registry is null || _functionFactory is null)
         {
+            WarnEmptySurface(registry is null ? "registry_absent" : "factory_absent");
             return;
         }
 
@@ -652,6 +666,40 @@ public sealed class FeishuMcpToolServer
             // 入参 Schema 从 AIFunction 取（与 Agent 侧同一份编译期常量，经 ToolSchemaJson 提取为纯参数 Schema）。
             _inputSchemas[mcpName] = JsonNode.Parse(function.JsonSchema.GetRawText()) ?? new JsonObject();
         }
+
+        if (_tools.Count == 0)
+        {
+            WarnEmptySurface("whitelist_empty");
+        }
+    }
+
+    /// <summary>空工具面告警（构造期一次）：三种成因各给一条可修指引，都指向同一个归属方。</summary>
+    /// <remarks>
+    /// 空集是合法状态（白名单与进程内 Agent 同源），但"忘配白名单"与"刻意空配"同形——
+    /// 不告警就让排障从"看日志"退化为"读装配代码"。
+    /// </remarks>
+    private void WarnEmptySurface(string reason)
+    {
+        if (string.Equals(reason, "registry_absent", StringComparison.Ordinal))
+        {
+            _logger?.LogWarning(
+                "MCP 工具面为空（registry_absent）：宿主未注册 FeishuToolRegistry（缺 AddFeishuTools）——tools/list 将恒返回空");
+            return;
+        }
+
+        if (string.Equals(reason, "factory_absent", StringComparison.Ordinal))
+        {
+            _logger?.LogWarning(
+                "MCP 工具面为空（factory_absent）：IFeishuToolFunctionFactory 未注册（缺 AddFeishuTools）——tools/list 将恒返回空");
+            return;
+        }
+
+        _logger?.LogWarning(
+            "MCP 工具面为空（whitelist_empty）：{Section}:{Tools} 与 {WriteAllowList} 均为空——MCP 不暴露任何工具"
+            + "（白名单与进程内 Agent 同源，本包不提供第二条启用通道）",
+            FeishuAgentOptions.SectionName,
+            nameof(FeishuAgentOptions.Tools),
+            nameof(FeishuAgentOptions.WriteAllowList));
     }
 
     /// <summary>

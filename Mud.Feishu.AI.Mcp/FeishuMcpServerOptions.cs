@@ -64,7 +64,8 @@ public sealed class FeishuMcpServerOptions
     /// 是否把"已启用域的 guidance（路由/避坑/示例）"作为 <c>initialize.instructions</c> 下发。
     /// </summary>
     /// <remarks>
-    /// 默认 <c>true</c>：外部 Agent 拿到的工具面有 160+ 个工具，缺了域路由资产就靠猜
+    /// 默认 <c>true</c>：外部 Agent 拿到的是全量策展工具面（域数与工具数以 <c>tools/list</c>
+    /// 实测为准——注释不写死规模数字，防止它与真相源漂移），缺了域路由资产就靠猜
     /// （这与 Agent 内部把 guidance 注入系统提示是同一份资产、同一份预算常量）。
     /// 关闭后只下发工具清单——留出"宿主自己写指令"的余地。
     /// </remarks>

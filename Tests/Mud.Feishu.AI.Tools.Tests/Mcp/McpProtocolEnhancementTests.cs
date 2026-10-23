@@ -208,6 +208,28 @@ public class McpProtocolEnhancementTests
         tools.Should().HaveCount(MetaTools.Length, "工具面只由白名单决定，与客户端能力无关（同源铁律）");
     }
 
+    // ─────────────────────────── 协议版本协商 ───────────────────────────
+
+    /// <summary>支持闭集里的每个修订都必须被原样回显（加版时漏登记协商路径即红）。</summary>
+    [Theory]
+    [MemberData(nameof(SupportedVersions))]
+    public async Task Negotiate_ShouldEchoEverySupportedVersion(string version)
+    {
+        using var provider = BuildProvider(agent: o => o.Tools = MetaTools, mcp: McpConfigure());
+        var server = provider.GetRequiredService<FeishuMcpToolServer>();
+
+        var response = await server.HandleMessageAsync(
+            "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\""
+            + version + "\"}}");
+
+        response.Should().NotBeNull();
+        JsonNode.Parse(response!)!["result"]!["protocolVersion"]!.GetValue<string>().Should().Be(version);
+    }
+
+    /// <summary>版本闭集（协商用例的数据源，取协议层同一实例，不另抄一份字面量）。</summary>
+    public static IEnumerable<object[]> SupportedVersions
+        => McpProtocol.SupportedVersions.Select(static version => new object[] { version });
+
     // ─────────────────────────── stdio 有界读 ───────────────────────────
 
     [Fact]
@@ -232,6 +254,8 @@ public class McpProtocolEnhancementTests
         lines.Should().HaveCount(3, "两条 ping 各回一条 + 超长行回一条错误");
         lines[1].Should().Contain("-32600", "超长行必须被拒（而不是读进内存或静默丢弃）");
         lines[1].Should().Contain("字符上限");
+        lines[1].Should().NotContain(
+            "\\u", "线协议保留中文原文（编码器与协议层同一实例）——转义会让每个中文字符膨胀约 6 倍 token");
         handled.Should().Be(3);
     }
 

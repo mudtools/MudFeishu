@@ -6,7 +6,6 @@
 // -----------------------------------------------------------------------
 
 using System.Text;
-using System.Text.Encodings.Web;
 
 namespace Mud.Feishu.AI.Mcp;
 
@@ -23,13 +22,6 @@ public sealed class FeishuMcpStdioHost
 {
     /// <summary>单条请求的默认字符上限（与配置默认值一致；未注入 options 时使用）。</summary>
     private const int DefaultMaxRequestChars = 1_048_576;
-
-    /// <summary>线协议序列化选项：保留中文原文（与 <c>FeishuMcpToolServer</c> 的 WireOptions 同纪律）。</summary>
-    private static readonly JsonSerializerOptions WireOptions = new()
-    {
-        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-        WriteIndented = false,
-    };
 
     private readonly FeishuMcpToolServer _server;
     private readonly TextReader _input;
@@ -169,7 +161,8 @@ public sealed class FeishuMcpStdioHost
     /// <summary>构造"请求过大"的 JSON-RPC 错误响应（<c>-32600</c>；无 <c>id</c>，因行内容已被丢弃）。</summary>
     private string BuildOversizedEnvelope()
     {
-        // AOT 安全：JsonNode 有自定义 converter，不触发反射序列化。
+        // AOT 安全：JsonNode 有自定义 converter，不触发反射序列化；
+        // 序列化选项取 McpWireJson 单一实例（stdio 与 HTTP 共用同一份编码器）。
         var message = "请求超过 " + _maxRequestChars.ToString(CultureInfo.InvariantCulture) + " 字符上限，已拒绝";
         return new JsonObject
         {
@@ -180,6 +173,6 @@ public sealed class FeishuMcpStdioHost
                 ["code"] = -32600,
                 ["message"] = message,
             },
-        }.ToJsonString(WireOptions);
+        }.ToWire();
     }
 }

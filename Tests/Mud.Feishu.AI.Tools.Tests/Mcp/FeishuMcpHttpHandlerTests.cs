@@ -423,6 +423,22 @@ public class FeishuMcpHttpHandlerTests
             .StatusCode.Should().Be(406);
     }
 
+    /// <summary>
+    /// 只声明 <c>text/event-stream</c> 的客户端必须得到 406：本实现不产出 SSE，
+    /// 放行它会返回一个客户端明确拒绝过的媒体类型（"看起来成功"的往返比明确拒绝更难排障）。
+    /// </summary>
+    [Fact]
+    public async Task Post_ShouldReject406_WhenAcceptIsEventStreamOnly()
+    {
+        using var provider = BuildProvider(mcp: o => o.AppKey = TenantA);
+        var handler = BuildHandler(provider);
+
+        var response = await handler.HandleAsync(Post(InitializeBody(), accept: "text/event-stream"));
+
+        response.StatusCode.Should().Be(406);
+        Reason(response).Should().Contain("application/json", "拒绝文案必须指出可修的 Accept 形态");
+    }
+
     [Theory]
     [InlineData("application/json")]
     [InlineData("application/json, text/event-stream")]
@@ -511,6 +527,28 @@ public class FeishuMcpHttpHandlerTests
         response.StatusCode.Should().Be(202, "通知没有响应体：回一条 200 空信封等于伪造一次往返");
         response.Body.Should().BeNull();
         response.ContentType.Should().BeNull();
+    }
+
+    /// <summary>
+    /// 以通知形态到达的 <c>initialize</c>：202 无正文，但会话标识必须随响应头下发——
+    /// 否则客户端拿不到续约凭据，握手"成功"却不可用（下一条请求只能撞 400）。
+    /// </summary>
+    [Fact]
+    public async Task Initialize_AsNotification_ShouldReturn202WithSessionId()
+    {
+        using var provider = BuildProvider(mcp: o => o.AppKey = TenantA);
+        var handler = BuildHandler(provider);
+
+        var response = await handler.HandleAsync(Post(
+            """{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2025-06-18"}}"""));
+
+        response.StatusCode.Should().Be(202, "通知没有响应体：不得以 200 + 空信封伪造一次往返");
+        response.Body.Should().BeNull();
+        response.Headers.Should().ContainKey(McpHttpHeaders.SessionId, "会话标识是握手唯一的凭据载体");
+
+        var sessionId = response.Headers[McpHttpHeaders.SessionId];
+        (await handler.HandleAsync(Post(ToolsListBody, sessionId: sessionId)))
+            .StatusCode.Should().Be(200, "下发的会话标识必须真的可用");
     }
 
     [Fact]

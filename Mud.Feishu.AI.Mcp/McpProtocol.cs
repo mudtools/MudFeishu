@@ -14,9 +14,10 @@ namespace Mud.Feishu.AI.Mcp;
 /// <para>
 /// <b>为什么把版本协商做成"闭集常量"而不是回显客户端值</b>：回显会让"服务端实际支持的语法"
 /// 与"声明的版本"脱钩——客户端按新版本发来的新参数我们会当未知字段静默忽略，失败方式不可观测。
-/// 本服务只用到 <c>tools</c> 能力（且 <c>listChanged=false</c>），三个已发布修订的
-/// <c>initialize</c>/<c>tools/list</c>/<c>tools/call</c> 形态一致，故显式声明支持的闭集，
-/// 客户端请求了闭集外的版本时返回<b>本服务支持的默认版本</b>（协议规定由客户端决定是否继续）。
+/// 本服务只用到 <c>tools</c> 能力（且 <c>listChanged=false</c>），在册修订的 <c>initialize</c> /
+/// <c>tools/list</c> / <c>tools/call</c> / <c>resources/*</c> 形态一致，故显式声明支持的闭集；
+/// <b>加版的唯一判据是这四项形态无变化</b>（任一项变化须先补适配再谈加版，否则"声明的版本"与
+/// "实际语法"脱钩、失败不可观测）；客户端请求了闭集外的版本时返回本服务默认版本（由客户端决定是否继续）。
 /// </para>
 /// <para>
 /// 本类型是 <b>internal</b>：协议常量不是宿主契约（宿主只需配置 <see cref="FeishuMcpServerOptions"/>）。

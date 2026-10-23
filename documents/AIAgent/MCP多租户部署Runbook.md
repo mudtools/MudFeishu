@@ -1,4 +1,4 @@
-﻿# MCP 多租户部署 Runbook
+# MCP 多租户部署 Runbook
 
 > 本文档适用于 `Mud.Feishu.AI.Mcp` 包的运维与部署。
 
@@ -124,7 +124,7 @@ app.MapPost("/mcp", async (HttpContext ctx, FeishuMcpHttpHandler handler, Cancel
 | `401` | 认证层没给出 appKey（空白） | 检查端点是否映射在认证之后；**不要**改为从 URL 或正文读租户 |
 | `403` | 身份不在 `AllowedAppKeys`；或 `TenantBoundPerRequest=false` 而身份 ≠ 配置的 `AppKey`；或会话已绑定别的租户；或带 `Origin` 而白名单为空 | 逐条对照 §2.2 的四个键；`Origin` 拒绝的文案**不回显来源值**（避免把请求内容反射进响应） |
 | `405` | `GET`（**本实现不做 SSE**） | 响应带 `Allow: POST, DELETE`；客户端坚持 `GET` / `text/event-stream` 说明它按旧 SSE 传输配置 |
-| `406` | `Accept` 不接受 `application/json` | 修正客户端 Accept；`*/*` 与 `text/event-stream` 均放行（后者只是不做服务端推送） |
+| `406` | `Accept` 不接受 `application/json` | 修正客户端 Accept；`*/*` 放行，**只声明 `text/event-stream` 一律 406**（本实现不做 SSE，返回 JSON 会违反客户端声明） |
 | `415` | `Content-Type` 不是 `application/json` | 常见于表单提交或漏设头 |
 | `400` | 正文为空 / 非 JSON / 非对象 / 批量请求 / 缺会话标识 / `MCP-Protocol-Version` 头与协商结果不一致 | 批量请求（JSON 数组）**明确不支持**，请逐条发送 |
 | `404` | `Mcp-Session-Id` 未知或已被回收 | 客户端重新 `initialize` |
@@ -182,6 +182,17 @@ app.MapPost("/mcp", async (HttpContext ctx, FeishuMcpHttpHandler handler, Cancel
 2. 确认无 `Console.WriteLine` 残留（MCP Server 包中全局搜索）；
 3. 用 `2>err.log` 分离 stderr 验证 stdout 纯净。
 
+**正确形态**（宿主侧配置；本包不配置任何日志 provider）：
+
+```csharp
+// net8+：控制台 provider 的全部级别导向 stderr
+builder.Logging.AddConsole(o => o.LogToStandardErrorThreshold = LogLevel.Trace);
+```
+
+更低 TFM 或使用第三方 provider 时，改用文件日志 / Serilog 等**不写 stdout** 的出口
+（参照 `Demos/Mud.Feishu.AI.CapabilityDemo/Mcp/McpStdioRunner.cs`：MCP 形态以文件日志运行）。
+判据不变：**丢弃 stderr 后，stdio 会话期间 stdout 必须只有 JSON-RPC 行**。
+
 ### 4.2 Flush / 缓冲
 
 **症状**：MCP 客户端收不到响应（超时）。
@@ -205,11 +216,27 @@ app.MapPost("/mcp", async (HttpContext ctx, FeishuMcpHttpHandler handler, Cancel
 
 ## 5. Demo 模式
 
-`Demos/Mud.Feishu.Agent.Demo` 支持 `FEISHU_DEMO_MCP=1` 模式：
+参照实现在 `Demos/Mud.Feishu.AI.CapabilityDemo`，两种形态：
 
 ```bash
-# 在同一进程内起 stdio MCP Server + 打印 tools/list 摘要
-FEISHU_DEMO_MCP=1 dotnet run --project Demos/Mud.Feishu.Agent.Demo
+# ① stdio 运行（可直接挂到 MCP 客户端；日志走文件，stdout 只有 JSON-RPC 行）
+dotnet run --project Demos/Mud.Feishu.AI.CapabilityDemo -- --act mcp
+
+# ② 脚本化客户端全链路自检（零网络、零真实客户端：握手 → tools/list → resources 读取）
+dotnet run --project Demos/Mud.Feishu.AI.CapabilityDemo -- --verify
 ```
 
-此模式用于验证 MCP Server 的工具暴露面与配置面可用性，不连接真实 MCP 客户端。
+- ① 的承载类是 `Mcp/McpStdioRunner.cs`（`AddFeishuMcpServer` + `RunFeishuMcpStdioAsync`，以 `consoleAllowed: false` 运行）；
+- ② 的 MCP 部分在 `SelfCheck/McpProtocolChecks.cs`，用字符串读写器驱动完整会话，用于验证工具暴露面与配置面可用性。
+
+**装配自检**：工具面为空时本包在构造期输出一条 `MCP 工具面为空（<成因>）` 告警并点名
+`FeishuAgent:Tools` / `WriteAllowList`（成因：`registry_absent` / `factory_absent` / `whitelist_empty`）；
+非空时输出一条 `MCP 工具面就绪：tools=… domains=…` 读数。排障先看这两行。
+
+## 6. `tools/call` 结果形态与进度通道（决策索引）
+
+- **只回 text content，不产出 `structuredContent` / `outputSchema`**：执行链结果是"错误契约 JSON 行 +
+  `[next]` 行 + 正文"的文本协议，且经 JSON 感知截断（截断后非合法 JSON），发出结构化内容会误导客户端。
+- **不实现 `notifications/progress`**：需把进度管道穿透工具执行链（跨中立包），当前工具结果有界、HTTP 中断已覆盖取消。
+
+两项均为明确决策而非未完成，理由与边界见 `documents/AIAgent/decisions/ADR-0012-mcp-output-and-progress-scope.md`。

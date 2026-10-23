@@ -190,7 +190,11 @@ public sealed class FeishuMcpHttpHandler
         }
 
         var body = await _server.HandleMessageAsync(request.Body, session, cancellationToken).ConfigureAwait(false);
-        return WithSession(McpHttpResponse.Json(body ?? "{}"), session.Id);
+
+        // 通知（无 id）不回响应体 ⇒ 202；会话标识仍须随响应头下发，否则客户端拿不到续约凭据。
+        return body is null
+            ? WithSession(McpHttpResponse.Accepted(), session.Id)
+            : WithSession(McpHttpResponse.Json(body), session.Id);
     }
 
     private async Task<McpHttpResponse> RelayAsync(McpHttpRequest request, string? method, CancellationToken cancellationToken)
@@ -329,11 +333,11 @@ public sealed class FeishuMcpHttpHandler
         => contentType is not null
             && contentType.StartsWith("application/json", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>Accept 判据：只认 <c>application/json</c> 或通配——本实现不产出 SSE。</summary>
     private static bool AcceptsJson(string? accept)
         => string.IsNullOrWhiteSpace(accept)
-            || ContainsText(accept, "application/json")
-            || ContainsText(accept, "text/event-stream")
-            || ContainsText(accept, "*/*");
+        || ContainsText(accept, "application/json")
+        || ContainsText(accept, "*/*");
 
     private static bool ContainsText(string? value, string needle)
         => value?.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0;

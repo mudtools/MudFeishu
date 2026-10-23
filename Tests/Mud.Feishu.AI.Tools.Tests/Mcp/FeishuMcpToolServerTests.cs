@@ -7,7 +7,10 @@
 
 using System.Text.Json.Nodes;
 
+using Microsoft.Extensions.Logging;
+
 using Mud.Feishu.AI.Mcp;
+using Mud.Feishu.AI.Tools.Tests.Tools;
 using Mud.Feishu.DataModels.Messages;
 
 namespace Mud.Feishu.AI.Tools.Tests.Mcp;
@@ -40,7 +43,9 @@ public class FeishuMcpToolServerTests
         Action<FeishuMcpServerOptions>? mcp = null,
         Mock<IToolExecutionAuthorizer>? authorizer = null,
         IToolExecutionAuditSink? auditSink = null,
-        Mock<Mud.Feishu.IFeishuTenantV1Message>? messageClient = null)
+        Mock<Mud.Feishu.IFeishuTenantV1Message>? messageClient = null,
+        ILogger<FeishuMcpToolServer>? logger = null,
+        bool includeTools = true)
     {
         var agentOptions = new FeishuAgentOptions { Instructions = "test" };
         agent?.Invoke(agentOptions);
@@ -68,7 +73,16 @@ public class FeishuMcpToolServerTests
             services.AddSingleton(auditSink);
         }
 
-        services.AddFeishuTools();
+        if (logger is not null)
+        {
+            services.AddSingleton(logger);
+        }
+
+        if (includeTools)
+        {
+            services.AddFeishuTools();
+        }
+
         services.AddFeishuMcpServer(mcp);
         return services.BuildServiceProvider();
     }
@@ -194,6 +208,75 @@ public class FeishuMcpToolServerTests
 
         server.Tools.Should().BeEmpty(
             "默认配置（Tools/WriteAllowList 皆空）下没有任何工具被启用——MCP 不得自行放宽");
+    }
+
+    // ─────────────────────────── 装配诊断（空工具面必须留痕） ───────────────────────────
+
+    /// <summary>
+    /// 注册表缺席（宿主没调 <c>AddFeishuTools</c>）必须告警且点名成因：空工具面是合法状态，
+    /// 但"忘装配"与"刻意空配"同形——没有这条日志，排障只能去读装配代码。
+    /// </summary>
+    [Fact]
+    public void BuildSurface_ShouldWarnOnce_WhenRegistryAbsent()
+    {
+        var logger = new RecordingLogger<FeishuMcpToolServer>();
+        using var provider = BuildProvider(mcp: McpConfigure(), logger: logger, includeTools: false);
+
+        provider.GetRequiredService<FeishuMcpToolServer>().Tools.Should().BeEmpty();
+
+        logger.Warnings.Should().ContainSingle(w => w.Contains("registry_absent"), "空面只告警一次（每请求告警等于日志放大器）");
+        logger.Warnings.Should().Contain(w => w.Contains("AddFeishuTools"), "告警必须给出可修指引");
+    }
+
+    /// <summary>注册表在、构桥接缝缺：同一装配缺陷的另一面，必须独立可辨。</summary>
+    [Fact]
+    public void BuildSurface_ShouldWarnOnce_WhenFunctionFactoryAbsent()
+    {
+        var logger = new RecordingLogger<FeishuMcpToolServer>();
+
+        var services = new ServiceCollection()
+            .AddSingleton(Options.Create(new FeishuAgentOptions { Instructions = "test" }))
+            .AddSingleton(new FeishuToolRegistry())
+            .AddSingleton<ILogger<FeishuMcpToolServer>>(logger);
+        services.AddFeishuMcpServer(McpConfigure());
+        using var provider = services.BuildServiceProvider();
+
+        provider.GetRequiredService<FeishuMcpToolServer>().Tools.Should().BeEmpty();
+        logger.Warnings.Should().ContainSingle(w => w.Contains("factory_absent"));
+    }
+
+    /// <summary>白名单为空（最常见的宿主误配）：告警必须点名配置节，而不是让人猜。</summary>
+    [Fact]
+    public void BuildSurface_ShouldWarn_WhenWhitelistEmpty()
+    {
+        var logger = new RecordingLogger<FeishuMcpToolServer>();
+        using var provider = BuildProvider(mcp: McpConfigure(), logger: logger);
+
+        provider.GetRequiredService<FeishuMcpToolServer>().Tools.Should().BeEmpty();
+
+        logger.Warnings.Should().ContainSingle(w => w.Contains("whitelist_empty"));
+        logger.Warnings.Should().Contain(w => w.Contains("FeishuAgent:Tools"), "告警须点名宿主该改哪个配置节");
+    }
+
+    /// <summary>
+    /// 非空工具面：一条就绪读数（与 <c>initialize._meta</c> 同口径）+ 零告警
+    /// ——后者是反噪音自证，否则真告警会被"每次都报"淹没。
+    /// </summary>
+    [Fact]
+    public void BuildSurface_ShouldLogReadyReadout_WhenToolsEnabled()
+    {
+        var logger = new RecordingLogger<FeishuMcpToolServer>();
+        using var provider = BuildProvider(
+            agent: o => o.Tools = [SchemaReadTool],
+            mcp: McpConfigure(),
+            logger: logger);
+
+        provider.GetRequiredService<FeishuMcpToolServer>().Tools.Should().HaveCount(1);
+
+        logger.Entries.Should().Contain(
+            e => e.Level == LogLevel.Information && e.Message.Contains("tools=1"),
+            "就绪读数让运维不必连客户端即可看到面规模");
+        logger.Warnings.Should().BeEmpty("非空工具面不得告警");
     }
 
     // ─────────────────────────── 会话握手与生命周期 ───────────────────────────

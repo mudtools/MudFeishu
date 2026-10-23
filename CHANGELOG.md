@@ -9,7 +9,7 @@
 
 ### 新增（Added）
 
-- **Mud.Feishu.AI.Tools —— 复合工作流（S-4，2 个只读工具，工具面 331 → 333 / 32 域）**
+- **Mud.Feishu.AI.Tools —— 复合工作流（S-4，+2 个只读工具；域数不变）**
   - `workflow.meeting_summary`（`minutes.get` → `minutes.get_statistics`（可关）→ `minutes.get_artifacts`）
     与 `workflow.standup_report`（`calendar.agenda` → `task.list_my_tasks`）：把"取哪几段、怎么拼"固化在
     代码里，模型只给起点参数；返回步骤轨迹（每步工具/状态/耗时/错误）+ 聚合报告。
@@ -40,6 +40,19 @@
   （中立工具遥测端口 IAgentToolTelemetry、AmbientScope<T> 运行期装配扩展、TurnScopeContext.Facts、
   DelegatingToolFunction 工具函数装饰基座、会话存储门面与回退错误截断修复）。1.0.2 已由上游发布至
   nuget.org，联调用的本地 folder 源 `mudai-local` 已从 `nuget.config` 删除（还原后重新 restore 验证通过）。
+- **`Mud.Feishu.AI.Mcp` —— 装配诊断**：空工具面在**构造期告警一次**并点名成因
+  （`registry_absent` / `factory_absent` / `whitelist_empty`）与可修配置节；非空时输出一条
+  `MCP 工具面就绪：tools=… domains=… readOnly=… write=… resources=…` 读数（与
+  `initialize.capabilities._meta` 同口径）。**行为契约不变**：`tools/list` 返回空仍是合法状态，
+  本包不新增第二条启用通道。
+- **`Mud.Feishu.AI.Mcp` —— 版本闭集补"加版唯一判据"**：新修订进入 `SupportedVersions` 的唯一条件是
+  `initialize` / `tools/list` / `tools/call` / `resources/*` 四项形态无变化（任一项变化须先补适配，
+  否则"声明的版本"与"实际语法"脱钩、失败不可观测）。`tools/call` 结果形态与进度通道的边界
+  （不产出 `structuredContent`、不实现 `notifications/progress`）登记为
+  `documents/AIAgent/decisions/ADR-0012-mcp-output-and-progress-scope.md`。
+- **`Mud.Feishu.AI.Mcp` —— 注释去规模数字**：`FeishuMcpServerOptions` 注释不再写死工具数
+  （规模以 `tools/list` 实测为准）；Runbook §4.1/§5 补 stdio 日志通道的正确形态与现行 Demo 入口，
+  §6 增结果形态决策索引。
 
 ### 修复（Fixed）
 
@@ -88,6 +101,13 @@
   （提示锁内混入了 IO 或重计算）；`TokenStorePurgeGate` 补「只拦读、写/删直达、进程内生效」的作用域
   说明；`TokenKeyBuilder` 注明键中明文 userId 的取舍。新增 ADR-0009（用户标识与存储键隐私）、
   ADR-0010（热更新锁序与临界区预算）、ADR-0011（清库门作用域）。
+- **`Mud.Feishu.AI.Mcp` —— HTTP 传输两处语义对齐**：
+  - `Accept` 只声明 `text/event-stream` 的请求回 **406**（此前放行后返回 `application/json`，
+    等于返回一个客户端明确拒绝过的媒体类型）；规范围 MCP 客户端同时携带两者，**不受影响**。
+  - 以**通知形态**到达的 `initialize` 回 **202 空正文**（此前回 `200 {}`——既非合法 JSON-RPC
+    响应也无信息量的信封），会话标识仍随 `MCP-Session-Id` 头下发（否则客户端拿不到续约凭据）。
+- **`Mud.Feishu.AI.Mcp` —— 线协议序列化配置单一化**：stdio 宿主不再私配一份编码器实例，与协议层 /
+  HTTP 传输共用同一份（两处各配一份必然漂移：同一个中文字符串在 stdio 里是原文、在 HTTP 里是 `\uXXXX`）。
 
 ## [3.1.0] - 2026-10-19
 

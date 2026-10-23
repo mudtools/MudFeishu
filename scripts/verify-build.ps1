@@ -563,6 +563,12 @@ $testLog = Join-Path $env:TEMP "mudfeishu-verify-test-$([guid]::NewGuid().ToStri
 # 同时设置中文 locale（兼容旧日志解析）和 TRX logger（locale 无关）
 $env:DOTNET_CLI_UI_LANGUAGE = 'zh-CN'
 
+# testhost 与 vstest.console 的握手超时（秒，VSTest 默认 90）：与 CI 的 env 保持同一口径
+# （.github/workflows/dotnet-publish.yml 的 VSTEST_CONNECTION_TIMEOUT）。冷启动 / 杀软扫描
+# 的机器上，宿主可能 90s 内完不成握手而被判"运行中止"，落一个 total=0 的 TRX —— 症状极易
+# 被误读成"用例失败"。本机串行执行几乎不会命中，但口径必须一致，避免"本地绿、CI 红"。
+$env:VSTEST_CONNECTION_TIMEOUT = '300'
+
 # GATE-4 修复（2026-09-17）：改为**逐测试工程 + 逐 TFM** 运行。此前单条 `dotnet test $solution`
 # 把结果目录当作 LogFileName 传入，VSTest 实际只落盘最后一次运行的 TRX（实测 7 个工程 × 2 个
 # TFM 共 14 次运行仅得 1 个），造成两个假绿：

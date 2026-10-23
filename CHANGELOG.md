@@ -43,6 +43,16 @@
 
 ### 修复（Fixed）
 
+- **CI 测试阶段「testhost 握手超时 90s ⇒ 3 个工程整段中止」的假红根治**（2026-10-23 windows-latest）：
+  单条 `dotnet test <slnx>` 让 MSBuild 按 4 核同时起 4 个测试宿主，首批 4 个里 3 个
+  （Abstractions / AI / AI.Tools）在 90s 内未完成与 `vstest.console` 的握手，各落一个
+  `total=0` 的 TRX 后 `Test Run Aborted`（同一批次其余 8 个工程全绿，含后续波次的 4 个并发
+  net8.0 宿主 ⇒ 冷启动预算问题，非用例失败）；VSTestTask 返回 false 却不记 MSBuild 错误
+  （MSB4181），最终只表现为「Build FAILED / 0 个错误」。修复：`Run tests` 改为**逐工程串行**
+  执行（与 `scripts/verify-build.ps1` 步骤 4 的 GATE-4 同口径），每个工程独占结果目录与 TRX
+  （不再靠 `[1]/[2]` 后缀猜工程名）；对 `total=0`（宿主启动/握手失败指纹）**单工程自动重试一次**，
+  重试仍为空则点名该工程失败，不再以整体退出码一句带过；`VSTEST_CONNECTION_TIMEOUT` 提到 300s
+  （workflow `env` 与本地门禁同值）。
 - **`Mud.Feishu.AI.Mcp` —— HTTP 传输两处语义对齐**：
   - `Accept` 只声明 `text/event-stream` 的请求回 **406**（此前放行后返回 `application/json`，
     等于返回一个客户端明确拒绝过的媒体类型）；规范围 MCP 客户端同时携带两者，**不受影响**。

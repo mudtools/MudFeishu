@@ -11,7 +11,7 @@ namespace Mud.Feishu.DataModels.ApprovalComments;
 /// 分页获取评论响应体
 /// </summary>
 [HttpJsonSerializable(SerializerClassName = "Approval")]
-public class CommentsPageListResult : ApiPageListResult
+public class CommentsPageListResult
 {
     /// <summary>
     /// <para>评论数据列表</para>

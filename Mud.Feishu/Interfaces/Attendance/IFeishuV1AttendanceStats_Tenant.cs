@@ -40,11 +40,13 @@ public interface IFeishuTenantV1AttendanceStats : IFeishuAppContextSwitcher
     /// <para><see href="https://open.feishu.cn/document/server-docs/attendance-v1/user_stats_data/query-2">接口文档</see></para>
     /// </summary>
     /// <param name="queryStatsFieldsRequest">查询统计表头请求体</param>
+    /// <param name="employee_type">请求体中的 user_id 和响应体中的 user_id 的员工ID类型。</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/>取消操作令牌对象。</param>
     /// <returns></returns>
     [Post("/open-apis/attendance/v1/user_stats_fields/query")]
     Task<FeishuApiResult<QueryStatsFieldsResult>?> QueryUserStatsFieldAsync(
        [Body] QueryStatsFieldsRequest queryStatsFieldsRequest,
+       [Query("employee_type")] string employee_type = Consts.User_Id_Type,
        CancellationToken cancellationToken = default);
 
     /// <summary>

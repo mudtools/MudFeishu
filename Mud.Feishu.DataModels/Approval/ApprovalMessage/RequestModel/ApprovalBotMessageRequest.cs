@@ -80,6 +80,18 @@ public class ApprovalBotMessageRequest
     public string? Note { get; set; }
 
     /// <summary>
+    /// 发送人的 user_id，用于发送 IM 卡片。
+    /// </summary>
+    [JsonPropertyName("sender_user_id")]
+    public string? SenderUserId { get; set; }
+
+    /// <summary>
+    /// 转发留言，用于发送 IM 卡片时附带一条留言。
+    /// </summary>
+    [JsonPropertyName("text")]
+    public string? Text { get; set; }
+
+    /// <summary>
     /// 操作区，最多可设置 2 个操作按钮。
     /// </summary>
     [JsonPropertyName("actions")]

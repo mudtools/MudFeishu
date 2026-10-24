@@ -51,7 +51,7 @@ public class AddSignTaskRequest
     /// <para>示例值：1</para>
     /// </summary>
     [JsonPropertyName("add_sign_type")]
-    public int? AddSignType { get; set; }
+    public int AddSignType { get; set; }
 
     /// <summary>
     /// <para>审批方式。仅在前/后加签时填写，可选值：1：或签；2：会签。</para>

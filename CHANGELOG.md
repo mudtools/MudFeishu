@@ -118,6 +118,16 @@
   （不再靠 `[1]/[2]` 后缀猜工程名）；对 `total=0`（宿主启动/握手失败指纹）**单工程自动重试一次**，
   重试仍为空则点名该工程失败，不再以整体退出码一句带过；`VSTEST_CONNECTION_TIMEOUT` 提到 300s
   （workflow `env` 与本地门禁同值）。
+- **审批 / 考勤接口与官方文档逐字段对齐**（核对 `Interfaces/Approval`、`Interfaces/Attendance` 全部接口）：
+  - 审批：`ApprovalBotMessageRequest` 补 `sender_user_id` / `text`；`ApprovalBotMessageUpdateRequest.I18nResources`
+    改为非空数组；`AddSignTaskRequest.AddSignType` 与 `RollbackTaskRequest.NodeIds` 按文档改为必填；
+    审批文件上传的 multipart 字段名由 `file` 纠正为 `content`（服务端按该字段名取文件）。
+  - 考勤：考勤组 `free_punch_cfg` 补 `free_clock_setting`（`clock_mode` / `clock_internal_hhmm`）；
+    `user_stats_fields/query` 补必填查询参数 `employee_type`；归档规则列表返回改为单层
+    `FeishuApiResult<ApiPageListResult<ArchiveReportMeta>>`——此前多包一层信封，`data.items` 无法反序列化。
+  - 清理文档未声明的成员：`CommentsPageListResult` 不再继承分页基类（响应只有 `comments`）；
+    `AttendanceGroupsInfo` 删除仅请求侧存在的 `effect_now`；审批文件接口文件按命名规范由
+    `IFeishuV4ApprovalFile_Tenant.cs` 更正为 `IFeishuV2ApprovalFile_Tenant.cs`（接口名与文档同步）。
 
 ## [3.1.0] - 2026-10-19
 

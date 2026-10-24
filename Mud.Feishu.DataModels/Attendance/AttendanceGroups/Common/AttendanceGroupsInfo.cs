@@ -400,14 +400,6 @@ public class AttendanceGroupsInfo
     public bool? WorkDayNoPunchAsLack { get; set; }
 
     /// <summary>
-    /// <para>是否立即生效，默认 false</para>
-    /// <para>必填：否</para>
-    /// <para>示例值：true</para>
-    /// </summary>
-    [JsonPropertyName("effect_now")]
-    public bool? EffectNow { get; set; }
-
-    /// <summary>
     /// <para>补卡周期类型</para>
     /// <para>必填：否</para>
     /// <para>示例值：0</para>

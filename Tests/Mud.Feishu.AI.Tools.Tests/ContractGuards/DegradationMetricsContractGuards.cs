@@ -44,7 +44,7 @@ public class DegradationMetricsContractGuards
             ("FeishuToolBinding.cs", "warn 模式只加标注不阻断", "ContentSafetyWarn"),
             // N2-b：通道降级计数在产品子类的 OnUpdateDegraded 覆写里（两通道同构，各断言一次）。
             ("EditMessageChannel.cs", "通道更新失败补计数（编辑通道）", "ChannelUpdateFailed"),
-            ("CardStreamMessageChannel.cs", "通道更新失败补计数（卡片流通道）", "ChannelUpdateFailed"),
+            ("CardKitStreamMessageChannel.cs", "通道更新失败补计数（CardKit 流式通道）", "ChannelUpdateFailed"),
         };
 
         var missing = new List<string>();

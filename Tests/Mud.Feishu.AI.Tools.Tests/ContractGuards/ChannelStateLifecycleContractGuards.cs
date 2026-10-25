@@ -10,7 +10,8 @@ using System.Reflection;
 using Mud.AI.Agent.Channels;
 using Mud.Feishu.AI.Channels;
 using Mud.Feishu.AI.Conversations;
-using Mud.Feishu.DataModels.CardMessageStream;
+using Mud.Feishu.DataModels.CardElements;
+using Mud.Feishu.DataModels.Cards;
 using Mud.Feishu.DataModels.Messages;
 
 namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
@@ -51,8 +52,10 @@ public class ChannelStateLifecycleContractGuards
             Options.Create(new FeishuAgentOptions()),
             minUpdateInterval: TimeSpan.Zero),
 
-        [typeof(CardStreamMessageChannel)] = () => new CardStreamMessageChannel(
+        [typeof(CardKitStreamMessageChannel)] = () => new CardKitStreamMessageChannel(
             BeginSucceedingCardClient(),
+            BeginSucceedingCardElementsClient(),
+            BeginSucceedingMessageClient(),
             Mock.Of<IFeishuAppContextScopeFactory>(),
             Options.Create(new FeishuAgentOptions()),
             minUpdateInterval: TimeSpan.Zero),
@@ -121,22 +124,24 @@ public class ChannelStateLifecycleContractGuards
             .FindResidualState(typeof(LeakingChannel), new LeakingChannel())
             .Should().NotBeEmpty("合成泄漏通道是缺陷原始形态——检查器对它必须报红，否则本守卫是假绿");
 
-    /// <summary>行为用例（R2-02）：卡片流通道 Flush 后 <c>_bizIdToTarget</c> 归零。</summary>
+    /// <summary>行为用例（R2-02 / F-14）：CardKit 通道 Flush 后 per-cardId sequence 归零。</summary>
     [Fact]
-    public async Task CardStreamMessageChannel_ShouldClearBizIdTarget_AfterFlush()
+    public async Task CardKitStreamMessageChannel_ShouldClearSequences_AfterFlush()
     {
-        var channel = new CardStreamMessageChannel(
+        var channel = new CardKitStreamMessageChannel(
             BeginSucceedingCardClient(),
+            BeginSucceedingCardElementsClient(),
+            BeginSucceedingMessageClient(),
             Mock.Of<IFeishuAppContextScopeFactory>(),
             Options.Create(new FeishuAgentOptions()),
             minUpdateInterval: TimeSpan.Zero);
 
-        var bizId = await channel.BeginAsync("app-a", "ou_1");
-        await channel.WriteStreamAsync("app-a", "ou_1", bizId, new string('x', 500));
-        await channel.FlushAsync("app-a", "ou_1", bizId);
+        var cardId = await channel.BeginAsync("app-a", "oc_1");
+        await channel.WriteStreamAsync("app-a", "oc_1", cardId, new string('x', 500));
+        await channel.FlushAsync("app-a", "oc_1", cardId);
 
         ReadDictionaryCounts(channel).Should().AllSatisfy(
-            pair => pair.Value.Should().Be(0, $"{pair.Key} 在 Flush 之后必须归零（R2-02）"));
+            pair => pair.Value.Should().Be(0, $"{pair.Key} 在 Flush 之后必须归零（R2-02 / F-14）"));
     }
 
     /// <summary>行为用例（R2-02）：降级链 Flush 后 <c>_messageOwners</c> 归零。</summary>
@@ -191,18 +196,28 @@ public class ChannelStateLifecycleContractGuards
         return client.Object;
     }
 
-    /// <summary>只让卡片流 <c>Begin</c> 成功的客户端替身（同上）。</summary>
-    private static Mud.Feishu.IFeishuTenantV2AppCardMessageStream BeginSucceedingCardClient()
+    /// <summary>只让卡片实体 <c>Begin</c> 成功的客户端替身（同上；F-14 CardKit 通道）。</summary>
+    private static Mud.Feishu.IFeishuTenantV1Card BeginSucceedingCardClient()
     {
-        var client = new Mock<Mud.Feishu.IFeishuTenantV2AppCardMessageStream>();
+        var client = new Mock<Mud.Feishu.IFeishuTenantV1Card>();
         client
-            .Setup(c => c.CreateCardMessageStreamAsync(
-                It.IsAny<CreateAppCardMessageStreamRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new FeishuApiResult<CreateAppCardMessageStreamResult>
+            .Setup(c => c.CreateCardAsync(It.IsAny<CreateCardRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FeishuApiResult<CreateCardResult>
             {
                 Code = 0,
-                Data = new CreateAppCardMessageStreamResult { BizId = "biz_1" },
+                Data = new CreateCardResult { CardId = "card_1" },
             });
+        return client.Object;
+    }
+
+    /// <summary>只让流式文本更新成功的元素客户端替身（F-14 CardKit 通道）。</summary>
+    private static Mud.Feishu.IFeishuTenantV1CardElements BeginSucceedingCardElementsClient()
+    {
+        var client = new Mock<Mud.Feishu.IFeishuTenantV1CardElements>();
+        client
+            .Setup(c => c.StreamUpdateCardTextByIdAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<StreamUpdateTextRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FeishuNullDataApiResult { Code = 0 });
         return client.Object;
     }
 

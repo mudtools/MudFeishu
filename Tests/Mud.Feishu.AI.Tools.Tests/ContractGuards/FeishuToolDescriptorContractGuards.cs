@@ -18,11 +18,15 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// <list type="bullet">
 /// <item>每个描述符的 Output 非空（或显式豁免）。</item>
 /// <item>FeishuToolSchemas.SchemaByToolName 的键集与描述符表键集一致。</item>
-/// <item>risk == high-risk-write 时 input schema 含 confirm。</item>
 /// <item>每个工具的 name 与 FeishuToolNames 契约名一致。</item>
 /// <item>每个工具的 description 非空。</item>
 /// <item>每个工具的 parameters 含 type=object 且 properties 非空。</item>
 /// </list>
+/// <para>
+/// R-8 / BUG-10：原备注曾声明「risk == high-risk-write 时 input schema 含 confirm」但从未实现——
+/// 该机制已由 MAF 审批门（ApplyApprovalGate → ApprovalRequiredAIFunction）+ 执行链 fail-closed（R4-1）
+/// 取代，方案文档已加订正注；此处不再保留 confirm 字样的守卫声明，防止误导后续维护者。
+/// </para>
 /// </remarks>
 public class FeishuToolDescriptorContractGuards
 {

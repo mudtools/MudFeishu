@@ -55,8 +55,8 @@ public interface IFeishuTenantImSendMessageTool
 /// </para>
 /// <para>
 /// <b>发送路径（不造第三套）</b>：复用 <c>im.send_message</c> 的
-/// <c>SendMessageAsync</c> 单条发送路径。流式卡片通道 <c>CardStreamMessageChannel</c>
-/// 用于"边生成边刷新"的流式更新（占位卡 + sequence 递增），与本工具的"发送一张静态卡片"
+/// <c>SendMessageAsync</c> 单条发送路径。流式卡片通道 <c>CardKitStreamMessageChannel</c>
+/// 用于"边生成边刷新"的流式更新（卡片实体 + sequence 递增），与本工具的"发送一张静态卡片"
 /// 是<b>不同场景</b>，故不复用。
 /// </para>
 /// <para>

@@ -119,11 +119,13 @@ public abstract class ConversationalFeishuEventHandler<T> : IdempotentFeishuEven
         // 委托返回 null = 不串行化，与既有语义逐字节一致）；产品事实（outbox 状态键字面量）与
         // 产品策略（多租户分级 / 投递判定 / 目标解析 / 装配 / 审批文案）以委托形态注入，
         // 方法组绑定到虚方法 ⇒ 派生类覆写自动生效。
+        // BUG-9：业务事件（EventKey 非空）的会话键带事件命名空间前缀，与聊天会话隔离——
+        // 同一用户的聊天历史与事件会话互不可见，双向防上下文污染。
         _pipeline = new ConversationalTurnPipeline(
             agent,
             agent.RuntimeOptions,
             agent,
-            keyBuilder: request => ConversationScopeMapper.BuildKey(request.AppKey, request.Scope, request.SubjectId),
+            keyBuilder: BuildConversationKey,
             telemetry: FeishuAgent.AgentTelemetry,
             logger,
             contextAssemblers,
@@ -264,6 +266,24 @@ public abstract class ConversationalFeishuEventHandler<T> : IdempotentFeishuEven
     /// </para>
     /// </remarks>
     protected virtual bool AllowToolsWithoutAppKey => false;
+
+    /// <summary>
+    /// 会话键构造（BUG-9：业务事件与聊天会话隔离）：<see cref="ConversationRequest.EventKey"/> 非空时
+    /// 键前缀注入事件命名空间，聊天请求（EventKey 为空）保持默认前缀不变。
+    /// </summary>
+    /// <remarks>
+    /// 业务事件（审批任务 / 表格记录变更）以操作人维度建会话，与同一用户的聊天会话同键 ⇒ 双向上下文污染
+    /// （聊天历史影响事件总结、事件摘要混入聊天回复）。隔离只落在键前缀段（<c>event-{EventKey}</c>），
+    /// 不新增键位——<see cref="ConversationKeyBuilder"/> 的五段结构与回灌解析（TryParse）逐字节兼容。
+    /// </remarks>
+    /// <param name="request">已规范化的会话请求。</param>
+    /// <returns>规范化后的会话键。</returns>
+    internal static string BuildConversationKey(ConversationRequest request)
+        => ConversationScopeMapper.BuildKey(
+            request.AppKey,
+            request.Scope,
+            request.SubjectId,
+            keyPrefix: string.IsNullOrEmpty(request.EventKey) ? null : "event-" + request.EventKey);
 
     /// <summary>
     /// 覆写业务去重键：自带命名空间（<c>feishu.agent.conversation:{EventId}</c>），禁止裸 EventId。

@@ -71,7 +71,7 @@ public class PublicSurfaceRationaleContractGuards
     // N2-b（2026-10-14）：335 → **333**——流式通道机制中立化：分片缓冲基类
     // BufferedMessageChannel 与降级链 StreamingChannelChain 两个 public 类型迁出
     // Mud.Feishu.AI 发布面（新家 = Mud.AI.Agent.Channels，由该包自己的 PublicAPI
-    // 台账登记）。产品子类（EditMessageChannel / CardStreamMessageChannel）留飞书发布面。
+    // 台账登记）。产品子类（EditMessageChannel / CardKitStreamMessageChannel）留飞书发布面。
     // N2-d（2026-10-14）：333 → **332**——单轮工具预算 FeishuToolCallBudget 一个 public 类型
     // 迁出飞书发布面（新家 = Mud.AI.Agent.Tools.ToolCallBudget，「AI 运行时 ↔ 工具面共享接缝」
     // 的正确归属是中立运行期包）。同批迁出的 ToolNamePattern 原是 internal（不计类型级条目），

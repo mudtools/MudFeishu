@@ -109,6 +109,21 @@ internal sealed class WebhookOptionsStartupValidator : IHostedService
             invariantOk ? "满足" : "**不满足**",
             options.Apps.Count);
 
+        // F-1：把"我到底按什么参数在跑"变成启动日志里看得见的事实（单一出口，不另发告警）。
+        // 这三项此前只能靠读代码/翻 appsettings 得知，其中"限流未启用""请求体上限被调过"
+        // 恰恰是最容易在故障复盘时才发现配错了的两项。
+        _logger?.LogInformation(
+            "飞书 Webhook 生效参数 | 请求体上限: {MaxBody} 字节{MaxBodyHint} | 解密超时: {DecryptionTimeoutMs}ms | " +
+            "限流: {RateLimit}{RateLimitDetail}",
+            options.MaxRequestBodySize,
+            options.MaxRequestBodySize == 1024 * 1024 ? "（默认 1MB）" : "（已覆盖默认值）",
+            options.DecryptionTimeoutMs,
+            options.RateLimit.EnableRateLimit ? "已启用" : "未启用（公网入口仅剩并发闸与请求体预算两层保护）",
+            options.RateLimit.EnableRateLimit
+                ? $"（窗口 {options.RateLimit.WindowSizeSeconds}s / 上限 {options.RateLimit.MaxRequestsPerWindow} 次" +
+                  (options.RateLimit.EnableIpRateLimit ? "，按 (AppKey, IP)）" : "，按 AppKey）")
+                : "");
+
         if (!invariantOk)
         {
             _logger?.LogWarning(

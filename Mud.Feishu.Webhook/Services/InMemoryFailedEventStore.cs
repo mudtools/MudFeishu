@@ -153,18 +153,48 @@ public class InMemoryFailedEventStore : IFailedEventStore, IDisposable
     }
 
     /// <inheritdoc />
-    /// <remarks>返回深拷贝快照，语义见 <see cref="GetFailedEventsForRetryAsync"/>。</remarks>
+    /// <remarks>
+    /// <para>返回深拷贝快照，语义见 <see cref="GetFailedEventsForRetryAsync"/>。</para>
+    /// <para>
+    /// W-11：以 <paramref name="beforeTime"/> 作为"退避是否到期"的判定基准（此前忽略该入参、
+    /// 恒用当前时刻——契约与实现不一致，只是因为唯一调用方恰好传 <c>UtcNow</c> 才没有表现差异）。
+    /// </para>
+    /// <para>内存实现无 I/O，<paramref name="cancellationToken"/> 不被观测（契约允许）。</para>
+    /// </remarks>
     public Task<List<FailedEventInfo>> GetPendingRetryEventsAsync(DateTimeOffset beforeTime, int maxCount, CancellationToken cancellationToken = default)
     {
-        var now = DateTimeOffset.UtcNow;
         var failedEvents = _failedEvents.Values
-            .Where(e => e.NextRetryAt <= now)   // 仅取退避到期的
+            .Where(e => e.NextRetryAt <= beforeTime)   // 仅取退避到期的
             .OrderBy(e => e.NextRetryAt)
-            .Take(maxCount)                     // maxCount 语义 = 本次最多取几条
+            .Take(maxCount)                            // maxCount 语义 = 本次最多取几条
             .Select(CloneSnapshot)
             .ToList();
 
         return Task.FromResult(failedEvents);
+    }
+
+    /// <summary>
+    /// 获取最旧一条"待重试"事件的年龄（用于健康检查发现"积压条数正常但最旧事件卡死"）。
+    /// </summary>
+    /// <returns>最旧失败事件的 <c>FailedAt</c> 距今时长；无记录时为 <see cref="TimeSpan.Zero"/>。</returns>
+    /// <remarks>
+    /// 取 <c>FailedAt</c>（首次失败时刻）而非 <c>NextRetryAt</c>：退避会不断推后后者，
+    /// 用它永远看不出"这条事件已经卡了很久"。
+    /// </remarks>
+    public TimeSpan GetOldestPendingAge()
+    {
+        var oldest = DateTimeOffset.MaxValue;
+        foreach (var entry in _failedEvents.Values)
+        {
+            if (entry.FailedAt < oldest)
+                oldest = entry.FailedAt;
+        }
+
+        if (oldest == DateTimeOffset.MaxValue)
+            return TimeSpan.Zero;
+
+        var age = DateTimeOffset.UtcNow - oldest;
+        return age > TimeSpan.Zero ? age : TimeSpan.Zero;
     }
 
     /// <inheritdoc />

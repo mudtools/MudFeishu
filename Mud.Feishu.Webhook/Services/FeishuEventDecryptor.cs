@@ -13,10 +13,25 @@ namespace Mud.Feishu.Webhook;
 /// <summary>
 /// 飞书事件解密服务实现
 /// </summary>
+/// <remarks>
+/// <b>F-5 热路径</b>：AES-256-CBC 解密与 SHA-256 派生均为微秒级，因此
+/// ① 不再用 <c>Task.Run</c> 切换到线程池（切换开销大于计算本身，且会让
+/// <c>DecryptionTimeoutMs</c> 的取消语义依赖调度时机）；② 派生密钥按 EncryptKey 缓存
+/// （基数 = 应用数，密钥轮转只会新增条目）。
+/// </remarks>
 public class FeishuEventDecryptor(ILogger<FeishuEventDecryptor> logger) : IFeishuEventDecryptor
 {
     private readonly ILogger<FeishuEventDecryptor> _logger = logger;
     private const int BlockSize = 16;
+
+    /// <summary>
+    /// 派生密钥缓存：EncryptKey → SHA-256(UTF8(EncryptKey)) 的 32 字节。
+    /// </summary>
+    /// <remarks>
+    /// 无容量上限是**有意为之**：键空间是"宿主配置的应用数"（通常 1~10），
+    /// 不是请求数；加上限/清空只会在密钥轮转时制造无谓的抖动。
+    /// </remarks>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte[]> KeyCache = new(StringComparer.Ordinal);
 
     /// <inheritdoc />
     public async Task<EventData?> DecryptAsync(string encryptedData, string encryptKey, CancellationToken cancellationToken = default)
@@ -119,55 +134,75 @@ public class FeishuEventDecryptor(ILogger<FeishuEventDecryptor> logger) : IFeish
     /// <param name="encryptKey">加密密钥</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>解密后的字符串</returns>
-    private async Task<string?> DecryptAes256CbcAsync(byte[] encryptedBytes, string encryptKey, CancellationToken cancellationToken = default)
+    /// <remarks>
+    /// 同步计算（F-5）：AES 解密 + SHA-256 派生合计微秒级，<c>Task.Run</c> 的线程切换
+    /// 反而更贵，并会让取消在所有 TFM 上依赖线程池调度时机。取消检查保留在入口，
+    /// 语义仍由中间的 <c>DecryptionTimeoutMs</c> → <c>OperationCanceledException</c> → 503 承担。
+    /// </remarks>
+    private Task<string?> DecryptAes256CbcAsync(byte[] encryptedBytes, string encryptKey, CancellationToken cancellationToken = default)
     {
-        // 使用 Task.Run 将 CPU 密集型操作放到线程池执行，避免阻塞请求线程
-        return await Task.Run(() =>
+        cancellationToken.ThrowIfCancellationRequested();
+
+        try
         {
-            try
+            if (_logger.IsEnabled(LogLevel.Debug))
+                _logger.LogDebug("开始解密，密钥长度: {KeyLength}, 加密数据长度: {DataLength}", encryptKey.Length, encryptedBytes.Length);
+
+            if (encryptedBytes.Length <= BlockSize)
             {
-                // 检查取消令牌
-                cancellationToken.ThrowIfCancellationRequested();
-
-                if (_logger.IsEnabled(LogLevel.Debug))
-                    _logger.LogDebug("开始解密，密钥长度: {KeyLength}, 加密数据长度: {DataLength}", encryptKey.Length, encryptedBytes.Length);
-
-                using var aes = Aes.Create();
-                aes.Mode = CipherMode.CBC;
-                aes.Padding = PaddingMode.PKCS7;
-                // 飞书的 EncryptKey 直接使用 UTF-8 编码后进行 SHA-256 哈希得到 32 字节密钥
-                byte[] keyBytes;
-                using (var sha256 = SHA256.Create())
-                {
-                    keyBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(encryptKey));
-                }
-                aes.Key = keyBytes;
-                aes.IV = encryptedBytes.Take(BlockSize).ToArray();
-
-                using var transform = aes.CreateDecryptor();
-                var result = transform.TransformFinalBlock(encryptedBytes, BlockSize, encryptedBytes.Length - BlockSize);
-
-                // 再次检查取消令牌
-                cancellationToken.ThrowIfCancellationRequested();
-                if (result == null)
-                {
-                    _logger.LogError("解密失败，结果为空");
-                    return null;
-                }
-                if (_logger.IsEnabled(LogLevel.Debug))
-                    _logger.LogDebug("解密成功，结果长度: {ResultLength}", result?.Length ?? 0);
-                return Encoding.UTF8.GetString(result!);
+                // 短密文：连 IV 都不完整，直接判失败（返回 null → 中间件 400），不抛加密库异常
+                _logger.LogError("密文长度 {Length} 不足以容纳 IV 与数据块", encryptedBytes.Length);
+                return Task.FromResult<string?>(null);
             }
-            catch (OperationCanceledException)
-            {
-                _logger.LogWarning("AES 解密操作被取消");
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "AES 解密时发生错误");
-                return null;
-            }
-        }, cancellationToken);
+
+            using var aes = Aes.Create();
+            aes.Mode = CipherMode.CBC;
+            aes.Padding = PaddingMode.PKCS7;
+            aes.Key = GetOrCreateDerivedKey(encryptKey);
+            var iv = new byte[BlockSize];
+            Buffer.BlockCopy(encryptedBytes, 0, iv, 0, BlockSize);
+            aes.IV = iv;
+
+            using var transform = aes.CreateDecryptor();
+            var result = transform.TransformFinalBlock(encryptedBytes, BlockSize, encryptedBytes.Length - BlockSize);
+
+            cancellationToken.ThrowIfCancellationRequested();
+            if (_logger.IsEnabled(LogLevel.Debug))
+                _logger.LogDebug("解密成功，结果长度: {ResultLength}", result.Length);
+            return Task.FromResult<string?>(Encoding.UTF8.GetString(result));
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("AES 解密操作被取消");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "AES 解密时发生错误");
+            return Task.FromResult<string?>(null);
+        }
+    }
+
+    /// <summary>
+    /// 取得（并缓存）由 EncryptKey 派生的 32 字节 AES 密钥。
+    /// </summary>
+    /// <param name="encryptKey">飞书 EncryptKey（32 字符）</param>
+    /// <returns>SHA-256(UTF8(EncryptKey))</returns>
+    private static byte[] GetOrCreateDerivedKey(string encryptKey)
+    {
+        if (KeyCache.TryGetValue(encryptKey, out var cached))
+            return cached;
+
+#if NET6_0_OR_GREATER
+        var keyBytes = SHA256.HashData(Encoding.UTF8.GetBytes(encryptKey));
+#else
+        byte[] keyBytes;
+        using (var sha256 = SHA256.Create())
+        {
+            keyBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(encryptKey));
+        }
+#endif
+        // GetOrAdd：并发下以首个写入为准（内容相同，无差异）
+        return KeyCache.GetOrAdd(encryptKey, keyBytes);
     }
 }

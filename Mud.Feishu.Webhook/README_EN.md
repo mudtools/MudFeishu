@@ -106,7 +106,7 @@ app.Run();
     "EventHandlingTimeoutMs": 30000,
     "MaxConcurrentEvents": 10,
     "AllowedHttpMethods": ["POST"],
-    "MaxRequestBodySize": 10485760,
+    "MaxRequestBodySize": 1048576,
     "AllowedSourceIPs": [],
     "EnforceHeaderSignatureValidation": true,
     "TimestampToleranceSeconds": 30,
@@ -410,7 +410,7 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | ---------------------------------- | ----------------- | -------- | ------------------------------------------------------------------ |
 | `AllowedSourceIPs`                 | HashSet\<string\> | []       | Allowed source IP addresses (IP validation enabled when non-empty) |
 | `AllowedHttpMethods`               | HashSet\<string\> | ["POST"] | Allowed HTTP methods                                               |
-| `MaxRequestBodySize`               | long              | 10MB     | Max request body size                                              |
+| `MaxRequestBodySize`               | long              | **1MB**  | Max request body size (per-request cost cap for unauthenticated traffic; min 1024 bytes, no upper bound) |
 | `EnforceHeaderSignatureValidation` | bool              | true     | Whether to enforce header signature validation                     |
 | `TimestampToleranceSeconds`        | int               | 30       | Timestamp validation tolerance (seconds)                           |
 | `NonceValidationFailureMode`       | NonceFailureMode  | Reject  | Nonce dedup service unavailable fallback (Reject=security-first, Allow=availability-first) |

@@ -15,7 +15,7 @@ namespace Mud.Feishu.Webhook.Tests.Middleware;
 /// <summary>
 /// FeishuRateLimitMiddleware 单元测试
 /// </summary>
-public class FeishuRateLimitMiddlewareTests : IDisposable
+public class FeishuRateLimitMiddlewareTests
 {
     private readonly Mock<RequestDelegate> _nextMock;
     private readonly Mock<ILogger<FeishuRateLimitMiddleware>> _loggerMock;
@@ -41,6 +41,33 @@ public class FeishuRateLimitMiddlewareTests : IDisposable
             }
         };
         _optionsMonitorMock.Setup(x => x.CurrentValue).Returns(_options);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ShouldMatchSamePath_WhenPrefixConfiguredWithSlashes()
+    {
+        // Arrange - W-04：前缀写成 "/feishu"（或 "feishu/"）时，限流必须和 Webhook 中间件
+        // 用同一个归一化实现判定路径，否则会出现"限流没生效/误限流"的双标准。
+        _options.GlobalRoutePrefix = "/feishu/";
+        var middleware = CreateMiddleware();
+        var context = CreateHttpContext("/feishu/app1", "10.0.0.1");
+
+        // Act
+        await middleware.InvokeAsync(context);
+
+        // Assert - 计入限流（未超限即放行）
+        _nextMock.Verify(x => x(context), Times.Once);
+
+        // 第二次解析同一路径必须命中同一个键（计数累计），超限后拒绝
+        for (var i = 0; i < 10; i++)
+        {
+            await middleware.InvokeAsync(CreateHttpContext("/feishu/app1", "10.0.0.1"));
+        }
+
+        var overflow = CreateHttpContext("/feishu/app1", "10.0.0.1");
+        await middleware.InvokeAsync(overflow);
+
+        overflow.Response.StatusCode.Should().Be(429, "同一 (AppKey, IP) 在窗口内超过 10 次必须被限流");
     }
 
     [Fact]
@@ -223,14 +250,34 @@ public class FeishuRateLimitMiddlewareTests : IDisposable
     }
 
     [Fact]
-    public void Dispose_ShouldCleanupTimer()
+    public async Task InvokeAsync_ShouldSweepExpiredWindows_WhenSweepIntervalElapsed()
     {
-        // Arrange
-        _middleware = CreateMiddleware();
+        // Arrange - W-02：原 Timer 定时清理已改为请求路径上的机会式清扫。
+        // 通过反射塞入一条"早已过期"的窗口记录，并把节流时间戳回拨到窗口之前。
+        var middleware = CreateMiddleware();
 
-        // Act & Assert - 不应抛出异常
-        var action = () => _middleware.Dispose();
-        action.Should().NotThrow();
+        var dictField = typeof(FeishuRateLimitMiddleware).GetField("_requestCounts",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        Assert.NotNull(dictField);
+        var dict = (System.Collections.IDictionary)dictField!.GetValue(middleware)!;
+
+        var counterType = dict.GetType().GetGenericArguments()[1];
+        var staleCounter = Activator.CreateInstance(counterType, DateTime.UtcNow.AddHours(-1));
+        Assert.NotNull(staleCounter);
+        dict.Add(("app1", "10.9.9.9"), staleCounter);
+
+        // 把"上次清扫时间"回拨，使本次请求必定触发清扫
+        var sweepField = typeof(FeishuRateLimitMiddleware).GetField("_lastSweepTicks",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        Assert.NotNull(sweepField);
+        sweepField!.SetValue(middleware, DateTime.UtcNow.AddHours(-1).Ticks);
+
+        // Act
+        await middleware.InvokeAsync(CreateHttpContext("/feishu/app1", "10.0.0.2"));
+
+        // Assert
+        dict.Contains(("app1", "10.9.9.9")).Should().BeFalse("过期窗口必须在机会式清扫中被移除");
+        _nextMock.Verify(x => x(It.IsAny<HttpContext>()), Times.Once, "清扫不得影响请求放行");
     }
 
     private FeishuRateLimitMiddleware CreateMiddleware()
@@ -295,8 +342,6 @@ public class FeishuRateLimitMiddlewareTests : IDisposable
         return context;
     }
 
-    public void Dispose()
-    {
-        _middleware?.Dispose();
-    }
+    // W-02/F-3：中间件已无 IDisposable 资源（定时器改为请求路径上的机会式清扫），
+    // 故测试类不再需要释放中间件。
 }

@@ -8,6 +8,7 @@
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.Webhook.Configuration;
+using Mud.Feishu.Webhook.Exceptions;
 using Mud.Feishu.Webhook.Models;
 using Mud.Feishu.Webhook.Utils;
 
@@ -124,10 +125,18 @@ public class CompositeFeishuEventValidator : WebhookValidatorBase, IFeishuEventV
             // 中间件的客户端断开分支在验签链路上永不可达）。
             throw;
         }
+        catch (FeishuWebhookUnavailableException)
+        {
+            // 叶子（SignatureValidator / TimestampValidator）已判定为“不可用”：原样透传，
+            // 禁止二次包裹（否则 InnerException 链会随调用层次增长，日志难以归因）。
+            throw;
+        }
         catch (Exception ex) when (ex is not FeishuRedisException { FailureKind: FeishuRedisFailureKind.Server })
         {
-            Logger.LogError(ex, "验证请求头签名时发生错误");
-            return false;
+            // W-01：判定过程异常 ≠ 判定结果为否。返回 false 会被中间件映射 403（终态），
+            // 使基础设施抖动变成事件永久丢失；此处改为抛“不可用”，由中间件映射 503 触发重推。
+            Logger.LogError(ex, "验证请求头签名时发生错误（判定能力故障，非签名不匹配）");
+            throw new FeishuWebhookUnavailableException("验签链路内部故障，无法完成验签判定", ex);
         }
         // Server 类 FeishuRedisException 直接上抛，由中间件转为 503——
         // 去重体系致命故障不得伪装成“验签失败 403”

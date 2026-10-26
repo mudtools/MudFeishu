@@ -206,6 +206,32 @@ public class FeishuWebhookServiceTests
     }
 
     [Fact]
+    public async Task DecryptEventAsync_ShouldPassCallerToken_ToKeyProvider()
+    {
+        // Arrange - W-12：解密路径取密钥此前未透传 CT，导致 DecryptionTimeoutMs 的
+        // CancelAfter 无法中断一次挂起的 KeyVault 调用（超时保护在最需要的场景失效）。
+        var encryptKey = "0123456789abcdef0123456789abcdef";
+        CancellationToken observed = default;
+
+        _options.Apps["test-app"] = new FeishuAppWebhookOptions { EncryptKey = encryptKey };
+        _encryptKeyProviderMock
+            .Setup(x => x.GetEncryptKeyAsync("test-app", It.IsAny<CancellationToken>()))
+            .Callback<string, CancellationToken>((_, ct) => observed = ct)
+            .ReturnsAsync(encryptKey);
+
+        var service = CreateService();
+        service.SetCurrentAppKey("test-app");
+
+        using var cts = new CancellationTokenSource();
+
+        // Act
+        await service.DecryptEventAsync("cipher", cts.Token);
+
+        // Assert
+        observed.Should().Be(cts.Token, "调用方令牌必须贯穿到密钥获取");
+    }
+
+    [Fact]
     public async Task DecryptEventAsync_WithValidData_ShouldReturnEventData()
     {
         // Arrange

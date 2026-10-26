@@ -36,7 +36,21 @@ internal sealed class RateLimitCounter
 /// <summary>
 /// 飞书 Webhook 请求频率限制中间件
 /// </summary>
-public class FeishuRateLimitMiddleware : IDisposable
+/// <remarks>
+/// <para>
+/// <b>实例生命周期</b>：由 <c>UseMiddleware</c> 经 <c>ActivatorUtilities</c> 创建，与 DI 容器无关，
+/// 因此<b>不得</b>在容器中注册本类型（会多出一个常驻实例与孤儿定时器）。
+/// </para>
+/// <para>
+/// <b>为什么没有定时器</b>（W-02/F-3）：此前用 <c>System.Threading.Timer</c> 每分钟清理过期窗口，
+/// 而定时器回调抛出的异常会落到线程池并<b>终止进程</b>（回调内还要读
+/// <c>IOptionsMonitor.CurrentValue</c>，热更成非法配置时必抛）。现改为
+/// <b>请求路径上的机会式清扫</b>：每 <c>WindowSizeSeconds</c> 最多清扫一次（<c>Interlocked</c> 节流）。
+/// 好处有三：① 无定时器 ⇒ 无回调异常面、无 <c>IDisposable</c>、无孤儿资源；
+/// ② 清扫频率自适应窗口配置（热更即生效）；③ 无请求时集合本来就不会增长（上限由 <c>MaxIpEntries</c> 准入兜底）。
+/// </para>
+/// </remarks>
+public class FeishuRateLimitMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly IOptionsMonitor<FeishuWebhookOptions> _optionsMonitor;
@@ -46,8 +60,10 @@ public class FeishuRateLimitMiddleware : IDisposable
 
     private const int MaxIpEntries = 100000;
 
-    // 定时清理的 Timer
-    private readonly Timer _cleanupTimer;
+    /// <summary>
+    /// 上次清扫时间（UTC Tick，<see cref="Interlocked"/> 节流；热更重放安全）。
+    /// </summary>
+    private long _lastSweepTicks;
 
     /// <summary>
     /// 获取当前配置选项（支持热更新）
@@ -57,6 +73,9 @@ public class FeishuRateLimitMiddleware : IDisposable
     /// <summary>
     /// 构造函数
     /// </summary>
+    /// <param name="next">管道中的下一个中间件</param>
+    /// <param name="optionsMonitor">Webhook 配置监视器（支持热更新）</param>
+    /// <param name="logger">日志</param>
     public FeishuRateLimitMiddleware(
         RequestDelegate next,
         IOptionsMonitor<FeishuWebhookOptions> optionsMonitor,
@@ -66,14 +85,7 @@ public class FeishuRateLimitMiddleware : IDisposable
         _optionsMonitor = optionsMonitor ?? throw new ArgumentNullException(nameof(optionsMonitor));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-        // 初始化定时清理任务，每分钟清理一次过期记录
-        _cleanupTimer = new Timer(
-            CleanupExpiredWindows,
-            null,
-            TimeSpan.FromMinutes(1),
-            TimeSpan.FromMinutes(1));
-
-        _logger.LogInformation("飞书 Webhook 限流中间件已启动，定时清理间隔: 1分钟");
+        _lastSweepTicks = DateTime.UtcNow.Ticks;
     }
 
     /// <summary>
@@ -91,15 +103,17 @@ public class FeishuRateLimitMiddleware : IDisposable
             return;
         }
 
-        // 检查是否为 Webhook 请求（使用动态前缀，与 MultiAppMiddleware 保持一致）
-        if (!context.Request.Path.StartsWithSegments($"/{options.GlobalRoutePrefix}", StringComparison.OrdinalIgnoreCase))
+        // 提取应用键——同时也是"是否本模块路径"的判定（与 FeishuMultiAppMiddleware 共用
+        // WebhookPathHelper 单一实现；W-04 起 GlobalRoutePrefix 已在 PostConfigure 归一化，
+        // 不再需要在此各自拼接 "/{prefix}"，消除两套拼接逻辑的漂移）
+        var appKey = ExtractAppKeyFromPath(context.Request.Path.Value ?? string.Empty, options.GlobalRoutePrefix);
+
+        // 非本模块路径（含 AppKey 段非法/缺失）：直接放行，交由路由 404
+        if (appKey is null)
         {
             await _next(context);
             return;
         }
-
-        // 提取应用键（使用动态前缀）
-        var appKey = ExtractAppKeyFromPath(context.Request.Path.Value ?? string.Empty, options.GlobalRoutePrefix);
 
         // 获取客户端 IP
         var clientIp = GetClientIp(context);
@@ -120,11 +134,14 @@ public class FeishuRateLimitMiddleware : IDisposable
 
         var now = DateTime.UtcNow;
 
+        // 机会式清扫（替代原 Timer）：每窗口最多一次，热更窗口大小后自动生效
+        TrySweepExpiredWindows(now, rateLimitOptions);
+
         // 根据 EnableIpRateLimit 配置决定是否基于 IP 限流
         // clientIp 已在上方 IsNullOrEmpty 守卫中确保非空，此处 ! 消除元组与字典键 (string, string) 的可空性差异。
         var rateLimitKey = rateLimitOptions.EnableIpRateLimit
-            ? (appKey ?? "global", clientIp!)
-            : (appKey ?? "global", "global");
+            ? (appKey, clientIp!)
+            : (appKey, "global");
 
         // 满员时仅拒绝「导致新键插入」的请求——已跟踪键（正常客户端）不受
         // 攻击者用伪造 IP 撑满字典的影响，仍可正常计数与限流。
@@ -152,7 +169,7 @@ public class FeishuRateLimitMiddleware : IDisposable
         if (currentCount > rateLimitOptions.MaxRequestsPerWindow)
         {
             _logger.LogWarning("客户端 IP {ClientIP}（应用: {AppKey}）请求频率超出限制：{Count}/{MaxRequests} 在 {WindowSize}秒内",
-                clientIp, appKey ?? "global", currentCount, rateLimitOptions.MaxRequestsPerWindow, rateLimitOptions.WindowSizeSeconds);
+                clientIp, appKey, currentCount, rateLimitOptions.MaxRequestsPerWindow, rateLimitOptions.WindowSizeSeconds);
 
             // WHF-R2/C2：Retry-After 返回窗口剩余秒数（RFC 9110 语义）
             await WriteTooManyRequestsResponse(context,
@@ -180,12 +197,32 @@ public class FeishuRateLimitMiddleware : IDisposable
     private static string? ExtractAppKeyFromPath(string path, string globalRoutePrefix) => WebhookPathHelper.ExtractAppKeyFromPath(path, globalRoutePrefix);
 
     /// <summary>
-    /// 清理过期的窗口记录（由定时器调用）
+    /// 机会式清理过期窗口：每 <see cref="RateLimitOptions.WindowSizeSeconds"/> 最多执行一次。
     /// </summary>
-    private void CleanupExpiredWindows(object? state)
+    /// <remarks>
+    /// 用 <see cref="Interlocked.CompareExchange(ref long, long, long)"/> 做无锁节流——并发请求
+    /// 同时进入时只有一个执行清扫，其余直接返回。节流窗口取配置值 ⇒ 配置热更即生效。
+    /// </remarks>
+    private void TrySweepExpiredWindows(DateTime now, RateLimitOptions rateLimitOptions)
     {
-        var rateLimitOptions = Options.RateLimit;
-        var now = DateTime.UtcNow;
+        var intervalTicks = TimeSpan.FromSeconds(Math.Max(1, rateLimitOptions.WindowSizeSeconds)).Ticks;
+        var last = Interlocked.Read(ref _lastSweepTicks);
+
+        if (now.Ticks - last < intervalTicks)
+            return;
+
+        // 抢到节流权的那个调用者执行清扫；抢不到说明别人刚清过
+        if (Interlocked.CompareExchange(ref _lastSweepTicks, now.Ticks, last) != last)
+            return;
+
+        CleanupExpiredWindows(now, rateLimitOptions);
+    }
+
+    /// <summary>
+    /// 清理过期的窗口记录
+    /// </summary>
+    private void CleanupExpiredWindows(DateTime now, RateLimitOptions rateLimitOptions)
+    {
         var expiredKeys = _requestCounts
             .Where(kvp => (now - kvp.Value.WindowStart).TotalSeconds > rateLimitOptions.WindowSizeSeconds * 2)
             .Select(kvp => kvp.Key)
@@ -250,13 +287,5 @@ public class FeishuRateLimitMiddleware : IDisposable
         };
 
         await context.Response.WriteAsync(FeishuJsonAot.Serialize(errorResponse, FeishuJsonOptions.Serialize));
-    }
-
-    /// <summary>
-    /// 释放资源
-    /// </summary>
-    public void Dispose()
-    {
-        _cleanupTimer?.Dispose();
     }
 }

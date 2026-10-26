@@ -5,7 +5,58 @@
 [Keep a Changelog]: https://keepachangelog.com/zh-CN/1.1.0/
 [语义化版本]: https://semver.org/lang/zh-CN/
 
-## [未发布] - 2026-10-22
+## [未发布]
+
+### 修复（Fixed）— Mud.Feishu.Webhook
+
+- **验签"无法判定"不再伪装成"验签失败"（P0）**：`IEncryptKeyProvider` 故障（KeyVault 抖动返回空）、验签链内部异常、
+  热更后配置构建失败，现在抛出 `FeishuWebhookUnavailableException` 并映射 **HTTP 503 + `Retry-After`**
+  （请飞书重推）。此前这些情况返回 `false` → 403 终态，事件永久丢失且不入失败存储。
+  - 语义契约：`HandleEventAsync(request, body)` 的 `false` **仅**表示"签名已被判定为无效"。
+  - 新增 `FeishuWebhookUnavailableException`；中间件 4 处 503 写点收敛为 `WriteServiceUnavailable`（统一带 `Retry-After`）。
+- **配置热更不再可能导致进程终止**：所有 `IOptionsMonitor.OnChange` 回调统一经
+  `SafeOptionsChangeExtensions.OnChangeSafe` 注册（回调异常只记日志、绝不上抛到配置重载线程），
+  且回调内不再读取 `CurrentValue`（改为与构造期播种的快照比较）。
+  限流中间件的 `System.Threading.Timer` 被删除，窗口清理改为请求路径上的机会式清扫
+  （无定时器 ⇒ 无回调异常面、无 `IDisposable`、无孤儿资源）。
+- **请求体读取预算化**：移除 `EnableBuffering()`（不再对 >30KB 报文落临时文件），改为 64KB 块读取 + 按
+  `ContentLength` 预分配 + 贯穿 `RequestAborted`，并去掉一次全量复制。
+  **`MaxRequestBodySize` 默认值由 10MB 调整为 1MB**（超限 413；确有超大卡片事件请显式调大）。
+- **`UseFeishuWebhook()` 在 `Apps` 为空时启动失败**：此前表现为"启动成功、端点静默 404、飞书持续重推"。
+  错误消息给出两条修复路径；仅使用 `IFeishuWebhookService` 手动驱动事件的宿主不受影响（不挂中间件即可）。
+- **`GlobalRoutePrefix` 归一化**：`"/feishu"`、`"feishu/"`、`" /feishu/ "` 等写法不再导致端点静默失效
+  （归一化在 `PostConfigure` 完成，所有消费方读到生效值）。
+- **实例化处理器/拦截器改为单例注册**：`AddHandler(instance)` / `AddInterceptor(instance)` 此前以 Scoped 注册
+  共享实例，DI 会在**首个请求 scope 结束时释放**它；现改为 Singleton（容器关停时释放），
+  XML 明确"实例必须线程安全；需按请求隔离状态请用 `AddHandler<T>()`"。
+- **删除中间件的容器注册**：`UseMiddleware` 恒自建管道实例，容器注册会产生第二个"幻影实例"
+  （重复的配置变更订阅 + 孤儿定时器）。
+- **解密阶段取密钥贯穿 `CancellationToken`**：此前 `DecryptEventAsync` 未透传 CT，
+  导致 `DecryptionTimeoutMs` 无法中断一次挂起的密钥获取调用。
+- **`InMemoryFailedEventStore.GetPendingRetryEventsAsync` 尊重 `beforeTime` 入参**（此前恒用当前时刻）。
+
+### 变更（Changed）— Mud.Feishu.Webhook
+
+- 解密热路径：去掉 `Task.Run`（AES 为微秒级，切换开销大于计算），派生密钥按 `EncryptKey` 缓存。
+- `SecurityAuditService` 的成功审计日志由 `Information` 降为 `Debug`（失败仍为 `Warning`）；
+  中间件的"收到请求/请求处理完成"降为 `Debug`，成功事件日志由 4 条降为 2 条。
+- 启动自检日志（`WebhookOptionsStartupValidator`）增补生效参数：`MaxRequestBodySize`、`DecryptionTimeoutMs`、
+  限流的启用状态与窗口/上限。
+
+### 移除（Removed）— Mud.Feishu.Webhook
+
+- 删除 4 个**无运行时抛出点**的公共异常类型（假公共面）：`FeishuWebhookDecryptionException`、
+  `FeishuWebhookProcessingException`、`FeishuWebhookSecurityException`、`FeishuWebhookSerializationException`。
+  保留 `FeishuWebhookException`（基类）、`FeishuWebhookValidationException`（413）、
+  `FeishuWebhookUnavailableException`（503）——每个类型都有真实抛出点与明确状态码映射。
+
+### 文档（Docs）
+
+- `documents/ErrorHandling.md` 新增「Webhook ACK 决策表」（与 `WebhookAckSemanticsContractGuards` 同源）
+  与「Webhook 部署前置条件」（跨实例需 Redis 去重、内存失败队列重启即丢、明文事件一律拒绝、
+  Nonce 消费顺序、请求体上限、路由前缀写法）。
+- `Mud.Feishu.Webhook/README.md` / `README_EN.md`：修正 `MaxRequestBodySize` 默认值，补充
+  `GlobalRoutePrefix` 写法、限流与重试的语义说明。
 
 ### 新增（Added）
 

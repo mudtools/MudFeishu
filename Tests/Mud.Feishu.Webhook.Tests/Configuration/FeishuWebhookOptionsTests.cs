@@ -31,6 +31,26 @@ public class FeishuWebhookOptionsTests
     }
 
     [Fact]
+    public void MaxRequestBodySize_Default_ShouldBe1Mb()
+    {
+        // W-03：验签前必须读完 body，故该值是"未认证请求的单次代价上限"。
+        // 飞书事件典型 <10KB、极大 <200KB，1MB 有 ~5 倍余量且把放大面压到原 1/10。
+        var options = new FeishuWebhookOptions();
+
+        Assert.Equal(1024 * 1024, options.MaxRequestBodySize);
+    }
+
+    [Fact]
+    public void DecryptionTimeoutMs_Default_ShouldStay1000()
+    {
+        // W-10 裁定：解密为微秒级，1s 是抗线程池饥饿的兜底；提高到 5s 只拉长尾延迟、
+        // 不解决"nonce 在解密前消费"的语义（该语义已文档化）。默认值不得随手漂移。
+        var options = new FeishuWebhookOptions();
+
+        Assert.Equal(1000, options.DecryptionTimeoutMs);
+    }
+
+    [Fact]
     public void Validate_MultiAppWithoutExpectedAppId_ShouldThrow()
     {
         // Arrange - R3-P1-2/D6：多应用下 ExpectedAppId 是 EncryptKey 误配的唯一兜底（全仓曾零覆盖）

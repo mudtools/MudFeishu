@@ -119,9 +119,20 @@ public class FeishuWebhookOptions
     public HashSet<string> AllowedHttpMethods { get; set; } = ["POST"];
 
     /// <summary>
-    /// 最大请求体大小（字节）
+    /// 最大请求体大小（字节），默认 1MB。
     /// </summary>
-    public long MaxRequestBodySize { get; set; } = 10 * 1024 * 1024; // 10MB
+    /// <remarks>
+    /// <para>
+    /// <b>为什么是 1MB</b>：验签必须覆盖完整报文，因此这是"未认证请求的单次代价上限"。
+    /// 飞书事件报文典型 &lt;10KB、极大（超大富文本卡片）&lt;200KB，1MB 留有 ~5 倍余量，
+    /// 同时把"验签前读体"的放大面压到原来的 1/10。
+    /// </para>
+    /// <para>
+    /// 确有超大事件的宿主可显式调大（下限 1024 字节由 <see cref="Validate"/> 强制，不设上限）。
+    /// 超限请求返回 413，响应文案固定为 <c>Request Entity Too Large</c>（不包含上限数值）。
+    /// </para>
+    /// </remarks>
+    public long MaxRequestBodySize { get; set; } = 1024 * 1024; // 1MB
 
     /// <summary>
     /// 允许的源 IP 地址列表（白名单）
@@ -307,8 +318,16 @@ public class FeishuWebhookOptions
     public FailedEventRetryOptions Retry { get; set; } = new();
 
     /// <summary>
-    /// 解密阶段超时（毫秒），默认 1000。AES 毫秒级完成，此值为抗线程池饥饿的兜底（WHF-R2/B6）。
+    /// 解密阶段超时（毫秒），默认 1000。AES 为微秒级，此值只是抗线程池饥饿的兜底（WHF-R2/B6）。
     /// </summary>
+    /// <remarks>
+    /// <b>已知语义窗口（W-10）</b>：请求头 Nonce 在<b>验签通过后、解密之前</b>即被标记为已使用
+    /// （<c>CompositeFeishuEventValidator</c> → <c>NonceValidator.TryMarkNonceAsUsedAsync</c>）。
+    /// 这是防重放的正确姿态（标记必须早于任何昂贵/可失败处理，否则并发重放会在标记前全部通过），
+    /// 代价是：若解密超时返回 503、而对端重推时<b>复用同一 Nonce</b>，重推会被判为重放（403）。
+    /// 本模块的内部重试通道（<see cref="FeishuWebhookOptions.Retry"/> → <c>FailedEventRetryService</c>）
+    /// 不经 Nonce 校验，因此"解密超时"的恢复路径是内部重试而非外部重推。
+    /// </remarks>
     public int DecryptionTimeoutMs { get; set; } = 1000;
 
     /// <summary>

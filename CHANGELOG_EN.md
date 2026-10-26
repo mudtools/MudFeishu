@@ -6,6 +6,56 @@ and versioning follows [Semantic Versioning].
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Semantic Versioning]: https://semver.org/
 
+## [Unreleased]
+
+### Fixed — Mud.Feishu.Webhook
+
+- **"Signature validation unavailable" is no longer reported as "signature mismatch" (P0)**: an `IEncryptKeyProvider`
+  failure (e.g. KeyVault returning empty), an internal validator exception, or a post-hot-reload options build failure
+  now throws `FeishuWebhookUnavailableException` and maps to **HTTP 503 + `Retry-After`** so Feishu retries.
+  Previously these returned `false` → 403 (terminal), losing the event permanently with no failed-event record.
+  - `HandleEventAsync(request, body)` returning `false` now means **only** "the signature was judged invalid".
+  - All four 503 write sites collapse into `WriteServiceUnavailable` (always emits `Retry-After`).
+- **Hot-reload callbacks can no longer terminate the process**: every `IOptionsMonitor.OnChange` callback goes through
+  `SafeOptionsChangeExtensions.OnChangeSafe` (exceptions are logged, never propagated to the reload thread) and no
+  callback reads `CurrentValue` any more (it diffs against a snapshot seeded in the constructor). The rate-limit
+  middleware's `System.Threading.Timer` is gone — window cleanup is now an opportunistic sweep on the request path.
+- **Request-body budget**: `EnableBuffering()` removed (no more temp-file spill for bodies >30KB), 64KB chunked reads
+  with `ContentLength` pre-allocation and `RequestAborted` propagation, and one less full copy.
+  **`MaxRequestBodySize` default 10MB → 1MB** (413 beyond it; configure explicitly for oversized card payloads).
+- **`UseFeishuWebhook()` fails fast when `Apps` is empty** (previously: starts fine, endpoints silently 404, Feishu keeps
+  retrying). Hosts that only drive `IFeishuWebhookService` manually are unaffected (they do not mount the middleware).
+- **`GlobalRoutePrefix` normalization**: `"/feishu"`, `"feishu/"`, `" /feishu/ "` no longer break routing
+  (normalized once in `PostConfigure`, so every consumer sees the effective value).
+- **Instance registrations are singletons**: `AddHandler(instance)` / `AddInterceptor(instance)` used to register the
+  shared instance as Scoped, so DI disposed it at the end of the **first request**; now Singleton (disposed with the
+  container). XML documents the thread-safety requirement and points to `AddHandler<T>()` for per-request state.
+- **Removed the middleware's container registrations** (`UseMiddleware` always builds its own pipeline instance, so the
+  registration produced a phantom instance with a duplicate change subscription).
+- **`DecryptEventAsync` now forwards the `CancellationToken`** to the key provider (previously `DecryptionTimeoutMs`
+  could not interrupt a hanging key lookup).
+- **`InMemoryFailedEventStore.GetPendingRetryEventsAsync` honours `beforeTime`**.
+
+### Changed — Mud.Feishu.Webhook
+
+- Decryption hot path: dropped `Task.Run` (AES is micro-second range) and cached the derived key per `EncryptKey`.
+- Successful security-audit logging downgraded to `Debug` (failures stay `Warning`); middleware request/response logs
+  downgraded to `Debug`, cutting successful-event logging from 4 lines to 2.
+- Startup self-check log now prints effective `MaxRequestBodySize`, `DecryptionTimeoutMs` and rate-limit settings.
+
+### Removed — Mud.Feishu.Webhook
+
+- Four public exception types with **no runtime throw site** (misleading public surface):
+  `FeishuWebhookDecryptionException`, `FeishuWebhookProcessingException`, `FeishuWebhookSecurityException`,
+  `FeishuWebhookSerializationException`. Kept: `FeishuWebhookException` (base),
+  `FeishuWebhookValidationException` (413), `FeishuWebhookUnavailableException` (503).
+
+### Docs
+
+- `documents/ErrorHandling.md`: added the Webhook ACK decision table (same source as
+  `WebhookAckSemanticsContractGuards`) and the deployment preconditions (Redis dedup for multi-instance, in-memory
+  failed-event loss on restart, plaintext events rejected, nonce consumption order, body size cap, prefix format).
+
 ## [Unreleased] - 2026-10-22
 
 ### Fixed

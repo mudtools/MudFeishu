@@ -116,6 +116,11 @@ public class FeishuWebhookHealthCheck : IHealthCheck
             var backlog = memStore.GetFailedEventCount();
             data["failed_event_backlog"] = backlog;
 
+            // F-2：最旧待重试事件年龄——补齐"积压条数正常但最旧事件卡死"的盲区
+            // （条数少、但每条都重试失败并不断推后 NextRetryAt 时，积压指标完全看不出来）。
+            var oldestAge = memStore.GetOldestPendingAge();
+            data["oldest_pending_retry_age_seconds"] = Math.Round(oldestAge.TotalSeconds, 1);
+
             var degradedThreshold = 100;
             var unhealthyThreshold = 500;
 
@@ -123,6 +128,16 @@ public class FeishuWebhookHealthCheck : IHealthCheck
             {
                 return Task.FromResult(HealthCheckResult.Unhealthy(
                     $"失败事件积压 {backlog} 超过硬阈值 {unhealthyThreshold}",
+                    null,
+                    data));
+            }
+
+            // 最旧事件超过 5 分钟仍未消费 → 退避链或重试服务已失效（比条数更早的告警信号）
+            if (oldestAge > TimeSpan.FromMinutes(5))
+            {
+                return Task.FromResult(HealthCheckResult.Degraded(
+                    $"最旧待重试事件已积压 {oldestAge.TotalMinutes:F1} 分钟（阈值 5 分钟），" +
+                    "请检查 FailedEventRetryService 是否运行、处理器是否持续失败",
                     null,
                     data));
             }

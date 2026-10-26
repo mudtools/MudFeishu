@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using Mud.Feishu.Webhook.Configuration;
+using Mud.Feishu.Webhook.Exceptions;
 using Mud.Feishu.Webhook.Services;
 using Mud.Feishu.Webhook.Utils;
 using Xunit;
@@ -389,18 +390,20 @@ public class SignatureValidatorTests
     #region 异常处理测试
 
     [Fact]
-    public async Task ValidateHeaderSignatureAsync_WithException_ShouldReturnFalse()
+    public async Task ValidateHeaderSignatureAsync_WithException_ShouldThrowUnavailable()
     {
-        // Arrange - 让 options 抛出异常
+        // Arrange - 让 options 抛出异常（热更成非法配置后的真实路径）
         _optionsMock.Setup(x => x.CurrentValue).Throws(new InvalidOperationException("Config error"));
         var validator = CreateValidator();
 
         // Act
-        var result = await validator.ValidateHeaderSignatureAsync(
+        var act = () => validator.ValidateHeaderSignatureAsync(
             1234567890, "nonce", "body", "signature", "key");
 
-        // Assert
-        result.Should().BeFalse("异常情况应返回 false（安全失败）");
+        // Assert - W-01：旧断言 `false`（"安全失败"）正是 P0 的锁：
+        // false 会被中间件映射 403（终态）⇒ 飞书不再重推 ⇒ 事件永久丢失。
+        await act.Should().ThrowAsync<FeishuWebhookUnavailableException>(
+            "验签无法判定时不得伪装成签名不匹配，必须抛可重试异常");
     }
 
     [Fact]

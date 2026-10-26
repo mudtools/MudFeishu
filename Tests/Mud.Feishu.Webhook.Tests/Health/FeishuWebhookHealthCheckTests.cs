@@ -67,6 +67,29 @@ public class FeishuWebhookHealthCheckTests
     }
 
     [Fact]
+    public async Task CheckHealthAsync_ShouldReportOldestPendingRetryAge()
+    {
+        // F-2：积压条数正常但最旧事件卡死时，条数指标完全看不出来；
+        // 用 FailedAt 年龄补这一维。
+        var concurrencyService = CreateConcurrencyService(10);
+        var store = new InMemoryFailedEventStore(Mock.Of<ILogger<InMemoryFailedEventStore>>());
+        await store.StoreFailedEventAsync(
+            new EventData { EventId = "evt-age", EventType = "test.event" }, new Exception("boom"));
+
+        var healthCheck = new FeishuWebhookHealthCheck(
+            _optionsMock.Object,
+            concurrencyService,
+            store);
+
+        // Act
+        var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
+
+        // Assert
+        result.Data.Should().ContainKey("oldest_pending_retry_age_seconds");
+        ((double)result.Data["oldest_pending_retry_age_seconds"]).Should().BeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
     public async Task CheckHealthAsync_WithDifferentConcurrencySettings_ShouldReturnCorrectData()
     {
         // Arrange

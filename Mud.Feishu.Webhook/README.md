@@ -127,7 +127,7 @@ app.Run();
     "EventHandlingTimeoutMs": 30000,
     "MaxConcurrentEvents": 10,
     "AllowedHttpMethods": ["POST"],
-    "MaxRequestBodySize": 10485760,
+    "MaxRequestBodySize": 1048576,
     "AllowedSourceIPs": [],
     "EnforceHeaderSignatureValidation": true,
     "TimestampToleranceSeconds": 30,
@@ -166,6 +166,18 @@ app.Run();
   }
 }
 ```
+
+> **关键配置说明（易错项）**
+>
+> - `GlobalRoutePrefix`：只写路径名（如 `feishu`）。写成 `"/feishu"` / `"feishu/"` 会被自动归一化，
+>   不会再导致端点静默 404；但**保持不带斜杠**是最清晰的写法。
+> - `MaxRequestBodySize`：默认 **1MB**。验签必须覆盖完整报文，因此这是"未认证请求的单次代价上限"。
+>   飞书事件典型 <10KB、极大 <200KB；确有超大卡片事件时再显式调大（超限返回 413）。
+> - `RateLimit.EnableRateLimit`：默认 **false**（公网入口建议显式开启）。启用后按 `(AppKey, IP)` 固定窗口限流，
+>   超限返回 429 并带 `Retry-After`。启动自检日志会打印其生效值。
+> - `Retry.EnableRetry`：业务失败落盘重试的开关。**内部重试不经 Nonce 校验**，是解密超时等 5xx 的恢复路径。
+> - `Apps` 为空时 `app.UseFeishuWebhook()` 会在**启动期**抛异常（`AddFeishuWebhook` 只是注册服务，
+>   挂中间件才表达"我要收事件"）。
 
 ## 🏗️ 服务注册方式
 
@@ -440,7 +452,7 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | ---------------------------------- | ----------------- | -------- | ---------------------------------------------- |
 | `AllowedSourceIPs`                 | HashSet\<string\> | []       | 允许的源 IP 地址列表（非空时自动启用 IP 验证，支持 CIDR 与 IPv4-mapped IPv6） |
 | `AllowedHttpMethods`               | HashSet\<string\> | ["POST"] | 允许的 HTTP 方法                               |
-| `MaxRequestBodySize`               | long              | 10MB     | 最大请求体大小                                 |
+| `MaxRequestBodySize`               | long              | **1MB**  | 最大请求体大小（未认证请求的单次代价上限；下限 1024 字节，无上限） |
 | `EnforceHeaderSignatureValidation` | bool              | true     | 是否强制验证请求头签名（生产环境禁止关闭，含应用级覆盖） |
 | `TimestampToleranceSeconds`        | int               | 30       | 时间戳验证容错范围（秒），上限 300 秒（重放窗口上限） |
 | `NonceValidationFailureMode`       | NonceFailureMode  | Reject  | Nonce 去重服务不可用时的降级策略（Reject=安全优先拒绝，Allow=可用性优先放行） |

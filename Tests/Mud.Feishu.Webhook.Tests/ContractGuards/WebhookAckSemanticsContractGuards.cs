@@ -14,6 +14,7 @@ using Microsoft.Extensions.Options;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.Webhook.Configuration;
+using Mud.Feishu.Webhook.Exceptions;
 using Mud.Feishu.Webhook.Models;
 using Mud.Feishu.Webhook.Services;
 
@@ -42,7 +43,6 @@ public class WebhookAckSemanticsContractGuards
     private readonly Mock<IServiceScopeFactory> _scopeFactoryMock = new();
     private readonly Mock<IServiceScope> _scopeMock = new();
     private readonly Mock<IFeishuWebhookService> _webhookServiceMock = new();
-    private readonly FeishuWebhookHandlerRegistry _handlerRegistry = new();
     private readonly FeishuWebhookOptions _options;
 
     public WebhookAckSemanticsContractGuards()
@@ -90,8 +90,7 @@ public class WebhookAckSemanticsContractGuards
             _nextMock.Object,
             _scopeFactoryMock.Object,
             _middlewareLoggerMock.Object,
-            optionsMonitorMock.Object,
-            _handlerRegistry);
+            optionsMonitorMock.Object);
     }
 
     private static HttpContext CreateHttpContext()
@@ -128,6 +127,7 @@ public class WebhookAckSemanticsContractGuards
             { "BusinessFailure", 500 },    // 业务异常：写失败存储 + 重投
             { "NonceInfraFailure", 503 },  // R3-P0-3：不得伪装成 403
             { "DecryptionTimeout", 503 },  // R3-P2-2：解密超时 = 可恢复，不得是 400
+            { "SignatureUnavailable", 503 }, // W-01：验签"无法判定" = 可恢复，绝不得是 403（事件永久丢失）
         };
     }
 
@@ -185,6 +185,14 @@ public class WebhookAckSemanticsContractGuards
                     .ThrowsAsync(new OperationCanceledException("解密超时"));
                 break;
 
+            case "SignatureUnavailable":
+                // W-01：密钥服务/验签链内部故障 → 服务抛 FeishuWebhookUnavailableException。
+                // 修复前：这条路径返回 false（"验签失败"）→ 403 终态 ⇒ 飞书不再重推、事件永久丢失。
+                _webhookServiceMock
+                    .Setup(x => x.HandleEventAsync(It.IsAny<FeishuWebhookRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                    .ThrowsAsync(new FeishuWebhookUnavailableException("密钥服务不可用"));
+                break;
+
             default:
                 throw new ArgumentOutOfRangeException(nameof(scenario), scenario, "未定义的决策表场景");
         }
@@ -198,6 +206,13 @@ public class WebhookAckSemanticsContractGuards
         // Assert
         context.Response.StatusCode.Should().Be(expectedStatus,
             $"决策表场景「{scenario}」的 ACK 语义被改变——这会直接导致事件丢失或重推风暴");
+
+        if (expectedStatus == 503)
+        {
+            // W-13：503 必须自带 Retry-After（"请稍后重推"要给出可执行的时间指引，RFC 9110）
+            context.Response.Headers["Retry-After"].ToString()
+                .Should().NotBeNullOrEmpty($"503 场景「{scenario}」必须带 Retry-After");
+        }
     }
 
     [Fact]
@@ -222,9 +237,9 @@ public class WebhookAckSemanticsContractGuards
     [Fact]
     public async Task InfrastructureFailure_ShouldNeverMapTo403()
     {
-        // Arrange - R3-P0-3：403 是终态（飞书不重推、不写失败存储）→ 事件永久丢失，
-        // 且日志会误报"检测到重放攻击"污染安全审计。
-        var scenarios = new (string Name, Exception Ex)[]
+        // Arrange - R3-P0-3 / W-01：403 是终态（飞书不重推、不写失败存储）→ 事件永久丢失。
+        // 本用例把"基础设施故障"的全部已知形态（去重链、验签链）钉在 503 上。
+        var afterValidation = new (string Name, Exception Ex)[]
         {
             ("Nonce 去重 Connection 故障",
                 new FeishuDeduplicationFatalException("nonce down",
@@ -237,7 +252,7 @@ public class WebhookAckSemanticsContractGuards
                     new FeishuRedisException(FeishuRedisFailureKind.Server, "server"))),
         };
 
-        foreach (var (name, ex) in scenarios)
+        foreach (var (name, ex) in afterValidation)
         {
             _webhookServiceMock
                 .Setup(x => x.HandleEventAsync(It.IsAny<EventData>(), It.IsAny<CancellationToken>()))
@@ -253,6 +268,61 @@ public class WebhookAckSemanticsContractGuards
             context.Response.StatusCode.Should().NotBe(403, $"{name} 不得映射为 403（终态 → 事件永久丢失）");
             context.Response.StatusCode.Should().Be(503, $"{name} 应映射为 503（可恢复 → 飞书重推）");
         }
+
+        // W-01：验签阶段的"无法判定"同样不得 403——此前它以返回值 false 伪装成"签名不匹配"。
+        var beforeValidation = new (string Name, Exception Ex)[]
+        {
+            ("密钥不可用（KeyVault 返回 null）",
+                new FeishuWebhookUnavailableException("无法获取应用 app1 的加密密钥，无法完成验签判定")),
+            ("验签链内部异常（包装）",
+                new FeishuWebhookUnavailableException("验签链路内部故障", new InvalidOperationException("boom"))),
+        };
+
+        foreach (var (name, ex) in beforeValidation)
+        {
+            _webhookServiceMock
+                .Setup(x => x.HandleEventAsync(It.IsAny<FeishuWebhookRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(ex);
+
+            var middleware = CreateMiddleware();
+            var context = CreateHttpContext();
+
+            // Act
+            await middleware.InvokeAsync(context);
+
+            // Assert
+            context.Response.StatusCode.Should().NotBe(403, $"{name} 不得映射为 403");
+            context.Response.StatusCode.Should().Be(503, $"{name} 应映射为 503（可恢复 → 飞书重推）");
+            context.Response.Headers["Retry-After"].ToString().Should().NotBeNullOrEmpty(
+                $"{name} 的 503 必须带 Retry-After（W-13）");
+        }
+    }
+
+    [Fact]
+    public async Task SignatureUnavailable_ShouldNotWriteFailedEventStore()
+    {
+        // Arrange - W-01：503 发生在"事件尚未被消费"之前，写失败存储会制造第二个重试来源
+        // （Feishu 重推 + FailedEventRetryService 重投），且失败存储里的事件没有可信的 EventData。
+        var store = new Mock<IFailedEventStore>();
+        var service = CreateRealService(store.Object);
+
+        service.EncryptKeyProvider
+            .Setup(x => x.GetEncryptKeyAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string?)null);
+
+        service.Service.SetCurrentAppKey("app1");
+
+        // Act
+        var act = () => service.Service.HandleEventAsync(
+            new FeishuWebhookRequest { Timestamp = 1, Nonce = "n", Signature = "s", Encrypt = "e" }, "body");
+
+        // Assert
+        await act.Should().ThrowAsync<FeishuWebhookUnavailableException>(
+            "取不到密钥属「无法判定」，必须抛可重试异常而不是返回 false（→403 终态）");
+        store.Verify(
+            x => x.StoreFailedEventAsync(It.IsAny<EventData>(), It.IsAny<Exception>(), It.IsAny<string?>(),
+                It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()),
+            Times.Never, "验签阶段不可用时事件尚未被消费，不得写失败存储");
     }
 
     [Fact]
@@ -336,18 +406,21 @@ public class WebhookAckSemanticsContractGuards
             FeishuWebhookService service,
             IFeishuEventValidator validator,
             Mock<IFeishuEventDecryptor> decryptor,
-            Mock<IFeishuEventHandlerFactory> handlerFactory)
+            Mock<IFeishuEventHandlerFactory> handlerFactory,
+            Mock<IEncryptKeyProvider> encryptKeyProvider)
         {
             Service = service;
             Validator = validator;
             Decryptor = decryptor;
             HandlerFactory = handlerFactory;
+            EncryptKeyProvider = encryptKeyProvider;
         }
 
         public FeishuWebhookService Service { get; }
         public IFeishuEventValidator Validator { get; }
         public Mock<IFeishuEventDecryptor> Decryptor { get; }
         public Mock<IFeishuEventHandlerFactory> HandlerFactory { get; }
+        public Mock<IEncryptKeyProvider> EncryptKeyProvider { get; }
     }
 
     private RealServiceHarness CreateRealService(IFailedEventStore store)
@@ -420,6 +493,7 @@ public class WebhookAckSemanticsContractGuards
             service,
             validatorMock.Object,
             decryptorMock,
-            handlerFactoryMock);
+            handlerFactoryMock,
+            encryptKeyProviderMock);
     }
 }

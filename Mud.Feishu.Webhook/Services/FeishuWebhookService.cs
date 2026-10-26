@@ -9,6 +9,7 @@ using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.Metrics;
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.Webhook.Configuration;
+using Mud.Feishu.Webhook.Exceptions;
 using Mud.Feishu.Webhook.Models;
 
 namespace Mud.Feishu.Webhook;
@@ -304,7 +305,7 @@ public class FeishuWebhookService : IFeishuWebhookService
                 return (false, "Event handling timeout");
             }
         }
-        catch (OperationCanceledException oce)
+        catch (OperationCanceledException)
         {
             await RollbackDeduplicationAsync(eventData.EventId, appKey);
             _logger.LogWarning("事件处理被取消，EventId: {EventId}, AppKey: {AppKey}", eventData.EventId, appKey ?? "null");
@@ -388,6 +389,12 @@ public class FeishuWebhookService : IFeishuWebhookService
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// <b>返回值语义（W-01 起）</b>：<c>false</c> <b>仅</b>表示"签名已被判定为无效"（终态，中间件映射 403）。
+    /// "无法完成判定"（密钥不可用、验签链路内部故障、配置构建失败）一律抛
+    /// <see cref="FeishuWebhookUnavailableException"/>，由中间件映射 503 + <c>Retry-After</c>，
+    /// 使飞书重推而不是永久丢弃事件。
+    /// </remarks>
     public async Task<bool> HandleEventAsync(FeishuWebhookRequest request, string body, CancellationToken cancellationToken = default)
     {
         try
@@ -396,8 +403,11 @@ public class FeishuWebhookService : IFeishuWebhookService
             var encryptKey = await _encryptKeyProvider.GetEncryptKeyAsync(_appKeyAccessor.CurrentAppKey ?? string.Empty, cancellationToken);
             if (string.IsNullOrEmpty(encryptKey))
             {
-                _logger.LogError("无法获取加密密钥, AppKey: {AppKey}", _appKeyAccessor.CurrentAppKey ?? "null");
-                return false;
+                // "取不到密钥" ≠ "签名不匹配"：前者无法判定，必须可重试（503），
+                // 否则 403 终态会让飞书停止重推 → 事件永久丢失（WEBHOOK-01）。
+                _logger.LogError("无法获取加密密钥，无法完成验签判定, AppKey: {AppKey}", _appKeyAccessor.CurrentAppKey ?? "null");
+                throw new FeishuWebhookUnavailableException(
+                    $"无法获取应用 {_appKeyAccessor.CurrentAppKey ?? "(null)"} 的加密密钥，无法完成验签判定");
             }
 
             // 委托给验证器进行签名验证，消除内联重复代码
@@ -416,10 +426,16 @@ public class FeishuWebhookService : IFeishuWebhookService
             // 禁止伪装成“验签失败 403”写向已中止连接。
             throw;
         }
+        catch (FeishuWebhookUnavailableException)
+        {
+            // 叶子已判定为"不可用"：原样透传，禁止二次包裹（保留原始堆栈与 message）。
+            throw;
+        }
         catch (Exception ex) when (ex is not FeishuRedisException { FailureKind: FeishuRedisFailureKind.Server })
         {
-            _logger.LogError(ex, "验证请求签名时发生错误, AppKey: {AppKey}", _appKeyAccessor.CurrentAppKey ?? "null");
-            return false;
+            // 判定过程异常 ≠ 判定结果为否：包装为"不可用"上抛，由中间件映射 503。
+            _logger.LogError(ex, "验证请求签名时发生错误（判定能力故障，非签名不匹配）, AppKey: {AppKey}", _appKeyAccessor.CurrentAppKey ?? "null");
+            throw new FeishuWebhookUnavailableException("验签链路内部故障，无法完成验签判定", ex);
         }
         // Server 类 FeishuRedisException 直接上抛，
         // 由中间件转为 503，不得在此层伪装成“验签失败”返回 false（→ 403）
@@ -436,10 +452,13 @@ public class FeishuWebhookService : IFeishuWebhookService
         try
         {
             // 使用密钥提供程序获取加密密钥
+            // W-12：必须贯穿 CancellationToken——否则中间件 DecryptionTimeoutMs 的
+            // CancelAfter 无法中断一次挂起的密钥获取（KeyVault/远端配置中心），
+            // 超时保护恰好在最需要的场景失效。
             string? encryptKey = null;
             if (!string.IsNullOrEmpty(_appKeyAccessor.CurrentAppKey))
             {
-                encryptKey = await _encryptKeyProvider.GetEncryptKeyAsync(_appKeyAccessor.CurrentAppKey!);
+                encryptKey = await _encryptKeyProvider.GetEncryptKeyAsync(_appKeyAccessor.CurrentAppKey!, cancellationToken);
             }
 
             if (string.IsNullOrEmpty(encryptKey))
@@ -586,9 +605,13 @@ public class FeishuWebhookService : IFeishuWebhookService
     /// <summary>
     /// 分发到全局处理器工厂（未注册事件类型按 <see cref="FeishuWebhookOptions.IgnoreUnknownEventTypes"/> 门控）。
     /// </summary>
+    /// <param name="eventType">事件类型（用于处理器注册表查找与日志）</param>
+    /// <param name="eventData">事件数据</param>
+    /// <param name="appKey">当前应用键（日志维度）</param>
     /// <param name="suppressUnhandled">
     /// 为 true 时表示事件已由专属处理器处理——全局未注册不再记 Warning/unhandled（避免"实际已处理"被记成未处理）。
     /// </param>
+    /// <param name="cancellationToken">分发与处理器的取消令牌</param>
     private async Task DispatchToGlobalAsync(
         string eventType,
         EventData eventData,

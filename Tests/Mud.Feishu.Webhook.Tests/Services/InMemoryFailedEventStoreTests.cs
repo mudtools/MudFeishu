@@ -107,6 +107,41 @@ public class InMemoryFailedEventStoreTests
     }
 
     [Fact]
+    public async Task GetPendingRetryEvents_ShouldUseBeforeTime_AsCutoff()
+    {
+        // Arrange - W-11：实现此前忽略 beforeTime、恒用 DateTimeOffset.UtcNow（契约与实现不一致，
+        // 只因唯一调用方恰好传 UtcNow 才没有表现差异）。传入更早的时间点必须筛掉所有未到期事件。
+        var eventData = CreateEventData("event-before-time", 0);
+        await _store.StoreFailedEventAsync(eventData, new Exception("Error"));
+
+        // Act
+        var tooEarly = await _store.GetPendingRetryEventsAsync(DateTimeOffset.UtcNow.AddMinutes(-1), 10);
+        var later = await _store.GetPendingRetryEventsAsync(DateTimeOffset.UtcNow.AddHours(1), 10);
+
+        // Assert
+        tooEarly.Should().BeEmpty("beforeTime 早于 NextRetryAt 时不得返回该事件");
+        later.Should().HaveCount(1, "beforeTime 晚于 NextRetryAt 时必须返回该事件");
+    }
+
+    [Fact]
+    public async Task GetOldestPendingAge_ShouldBeZero_WhenStoreEmpty()
+    {
+        _store.GetOldestPendingAge().Should().Be(TimeSpan.Zero);
+    }
+
+    [Fact]
+    public async Task GetOldestPendingAge_ShouldReflectFailedAt_NotNextRetryAt()
+    {
+        // F-2：用 FailedAt（首次失败时刻）而非 NextRetryAt（会随退避不断推后），
+        // 否则"最旧事件卡死"永远看不出来。
+        await _store.StoreFailedEventAsync(CreateEventData("event-age", 0), new Exception("Error"));
+
+        var age = _store.GetOldestPendingAge();
+
+        age.Should().BeGreaterThan(TimeSpan.Zero).And.BeLessThan(TimeSpan.FromMinutes(1));
+    }
+
+    [Fact]
     public async Task UpdateRetryCountAsync_WithExistingEvent_ShouldUpdateCount()
     {
         // Arrange

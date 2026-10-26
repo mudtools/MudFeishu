@@ -40,8 +40,8 @@ namespace Mud.Feishu.Agent.Demo;
 /// <item><see cref="TaskUpdatedConversationalEventHandler"/>（任务更新）；</item>
 /// <item><see cref="ApprovalContextAssembler"/> / <see cref="BitableRecordContextAssembler"/>
 /// （事件事实 → 结构化 prompt 片段，此前无消费者）；</item>
-/// <item><see cref="CardStreamMessageChannel"/> + <see cref="StreamingChannelChain"/>
-/// （卡片流 → 分片编辑的降级链，此前连 Demo 都没走）。</item>
+/// <item><see cref="CardKitStreamMessageChannel"/> + <see cref="StreamingChannelChain"/>
+/// （会话内流式卡片 → 分片编辑的降级链，此前连 Demo 都没走）。</item>
 /// </list>
 /// </para>
 /// <para>
@@ -89,7 +89,7 @@ public static class DomainEventsDemo
             })
             .AddFeishuTools()
 
-            // ② 流式通道降级链：首选卡片流（CardStreamMessageChannel），Begin 失败自动降级分片编辑。
+            // ② 流式通道降级链：首选会话内流式卡片（CardKitStreamMessageChannel），Begin 失败自动降级分片编辑。
             .AddFeishuStreamingChannel();
 
         // 事件处理器的应用键事实（缺它时基类会因"有工具链 + 无 appKey"fail-closed 抛错）。

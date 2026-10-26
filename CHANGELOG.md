@@ -9,6 +9,21 @@
 
 ### 新增（Added）
 
+- **`Mud.Feishu.AI` —— 会话内流式回复（CardKit 卡片实体 + 会话气泡）**：
+  `CardKitStreamMessageChannel` 成为 `AddFeishuStreamingChannel()` 装配的降级链首选
+  （CardKit → `EditMessageChannel`）。协议三步「建实体（`streaming_mode`）→ 投气泡 → 推全量文本」，
+  平台边界与失败语义见 `documents/AIAgent/decisions/ADR-0013-cardkit-streaming-boundaries.md`。
+  - **目标语义由通道自解释**（实现 `IChannelTargetResolver`）：会话事件取 `ChatId`（`receive_id_type=chat_id`）；
+    业务事件（审批 / 表格记录变更，单聊）取操作人 `open_id`（`receive_id_type=open_id`）——
+    **p2p 事件因此重新具备流式能力**，且不新增任何平台 API 调用与权限点。
+  - 终态失败**可观测**：`Error` 日志 + 降级原因 `channel_terminal_failed`（与「单次增量失败」
+    `channel_update_failed` 分级）；投放失败产生的残留卡片实体单独计数 `channel_begin_orphaned`。
+  - 同文去重（终态文本与上次成功推送相同时不再多打一次 PUT）与终态后迟到写入丢弃（不重放、不重建状态）。
+- **`Mud.Feishu.AI` —— 会话键政策外移**：新增 internal `ConversationKeyPolicy` 作为「会话键怎么拼」的单一真相
+  （业务事件注入 `event-{EventKey}` 前缀段，聊天会话沿用默认前缀；五段键位与 `TryParse` 回灌不变）。
+- **Gate 补强**：`CardKitRouteContractGuards` 反射锁定 cardkit 建实体 / 流式更新两条路由模板，
+  防止「AI 通道打错端点」再次只能在线上被发现。
+
 - **Mud.Feishu.AI.Tools —— 复合工作流（S-4，+2 个只读工具；域数不变）**
   - `workflow.meeting_summary`（`minutes.get` → `minutes.get_statistics`（可关）→ `minutes.get_artifacts`）
     与 `workflow.standup_report`（`calendar.agenda` → `task.list_my_tasks`）：把"取哪几段、怎么拼"固化在
@@ -23,6 +38,11 @@
 
 ### 变更（Changed）
 
+- **`Mud.Feishu.AI` —— 业务事件会话键带事件命名空间（一次性，不迁移历史）**：业务事件
+  （审批任务 / 表格记录变更 / 任务更新）的会话键前缀段为 `event-{EventKey}`，与同一用户的聊天会话
+  彻底隔离（防双向上下文污染）。键位仍是五段、`TryParse` 回灌不变。**本库尚未发布，故不提供迁移**：
+  升级到含本变更的版本后，业务事件会话从空历史开始（聊天会话不受影响）。`object_key`
+  （`instance_code` / `file_token+table_id`）**不进键位**，只经 `EventFacts` 注入 prompt。
 - **Mud.Feishu.AI.Tools —— 工具面重复度收口（365 → 351 个工具 / 34 域）**：合并 14 枚能力重叠的工具——
   `mail.send_message` + `mail.send_draft` → `mail.send`；`mail.rule_create` + `mail.rule_update` → `mail.rule_save`；
   `mail.template_create` + `mail.template_update` → `mail.template_save`；`drive.grant_permission` +
@@ -55,6 +75,18 @@
   §6 增结果形态决策索引。
 
 ### 修复（Fixed）
+
+- **`Mud.Feishu.AI` 门禁恢复（P0）**：`Tests/Mud.Feishu.AI.Tests` 曾因泛型基类上的静态成员被无实参调用
+  而 6 × `CS0305` 编译失败——该工程的全部守卫（Golden / 审批 / 摘要 / 注释预算 / 诊断契约）本轮**一条都没执行**。
+  会话键构造上移为 `ConversationKeyPolicy` 后恢复编译，并同批修掉被遮蔽的三条红：
+  `PublicSurfaceRationale`（新通道未登记消费方）、`CommentConvention`（台账 `vanished`/`unfrozen` 双向脱节 +
+  新文件 26 行注释块越 20 行硬上限）、以及两条**用例自身的断言错误**
+  （`Sequence_ShouldRestartPerCard` 用两次 `Setup` 覆盖同一桩、`Channel_ShouldSwitchTenantScope` 把
+  「Begin 一个作用域覆盖建实体+投放」误算成两次）。
+- **通道测试成功桩恒走失败分支**：流式更新的桩只写 `Code = 0`、`Data` 为空，而解包器把空 `Data` 判为失败——
+  「成功路径」从未被覆盖。桩改为带 `Data`，并补「成功无 Warning」的正向断言。
+- **注释预算台账与注释体**：CardKit 通道的长注释块（平台边界五条）外移 ADR-0013，源码只留摘要，
+  台账同批重固化（新增通道与 `ConversationKeyPolicy`、删除已下线通道条目）。
 
 多应用管理与事件分发审查后的整批修复。除「连接级应用绑定」在**多应用装配**下属行为变更（未显式配置
 `FeishuWebSocket:AppKey` 将启动失败）外，其余各条对单应用部署语义不变。

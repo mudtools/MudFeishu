@@ -133,7 +133,7 @@ builder.Services.AddFeishuAgent(builder.Configuration) // Agent 运行时
     .AddFeishuImConversationHandler();                // IM 事件 → 对话
 ```
 
-- **流式消息通道**：`EditMessageChannel`（流式编辑已发消息）、`CardStreamMessageChannel`（卡片流）、
+- **流式消息通道**：`EditMessageChannel`（流式编辑已发消息）、`CardKitStreamMessageChannel`（会话内流式卡片）、
   `StreamingChannelChain`（链式组合）——让 Agent 的流式回复直接呈现为飞书消息的实时更新。
 - **事件驱动对话**：`ConversationalFeishuEventHandler` 把飞书事件（IM 收消息 / 审批任务 / 任务变更 /
   多维表格记录变更）变成模型可处理的上下文 + 回复，事件载荷经 `IContextAssembler` 装配为结构化片段
@@ -269,7 +269,7 @@ MudFeishu 是 AI 原生路线的**首个完整落地**。
 | MCP 工具 | 无，或反射调用器 | 自研协议层 stdio / Streamable HTTP server，执行链零旁路，租户身份 fail-closed |
 | 生态对接 | 无 | Skills 产物随包分发（Claude Code / Cursor 直接加载）+ NDJSON 事件外桥（Demo 参考实现） |
 | 知识检索 | 无 | Aily 托管 + 自建 RAG（结构优先切片 + 向量检索），并存不冲突 |
-| 流式回复 | 无 | EditMessageChannel / CardStreamMessageChannel / StreamingChannelChain |
+| 流式回复 | 无 | EditMessageChannel / CardKitStreamMessageChannel / StreamingChannelChain |
 | 事件驱动 | 回调处理器单轮回复 | 事件 → 上下文装配 → Agent 对话 → 工具调用 → 流式回复 |
 | 契约校验 | 运行期发现路由 / 字段漂移 | 编译期 golden 门禁 + Public API 分析器 + 契约守卫 |
 | 目标框架 | `net462` + `netstandard2.0` + `LangVersion 10` | `netstandard2.0` / `net6.0` / `net8.0` / `net10.0` + `LangVersion 13` |

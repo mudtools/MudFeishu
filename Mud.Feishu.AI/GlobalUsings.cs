@@ -27,7 +27,6 @@ global using Mud.AI.Agent.Sessions;
 global using Mud.AI.Agent.Approvals;
 global using Mud.AI.Agent.Channels;
 global using Mud.AI.Agent.Context;
-global using Mud.AI.Agent.Approvals;
 global using Mud.Feishu.AI.Agents;
 global using Mud.Feishu.Abstractions.Observability;
 global using Mud.Feishu.Abstractions;

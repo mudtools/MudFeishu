@@ -6,10 +6,8 @@
 // -----------------------------------------------------------------------
 
 using System.Collections.Concurrent;
-using System.Text.Json.Nodes;
 using Mud.Feishu.Abstractions.Metrics;
 using Mud.Feishu.AI.AgentTools;
-using Mud.Feishu.AI.Conversations;
 using Mud.Feishu.DataModels.Cards;
 using Mud.Feishu.DataModels.CardElements;
 using Mud.Feishu.DataModels.Messages;
@@ -17,30 +15,15 @@ using Mud.Feishu.DataModels.Messages;
 namespace Mud.Feishu.AI.Channels;
 
 /// <summary>
-/// CardKit 会话内流式通道：创建卡片实体（streaming_mode）→ 以会话气泡发出（群聊/单聊通用）
-/// → 增量 <c>StreamUpdateCardTextByIdAsync</c> 打字机更新 → 终态落地完整文本。
+/// CardKit 会话内流式通道：建卡片实体（<c>streaming_mode</c>）→ 以会话气泡投放 →
+/// 增量推全量文本（打字机）→ 终态落地完整文本。
 /// </summary>
 /// <remarks>
-/// <b>目标语义</b>：流式目标 = 会话 chatId（本通道不实现 <see cref="IChannelTargetResolver"/>——
-/// 管线默认解析即 chatId，群聊不再降级编辑通道；被 <see cref="StreamingChannelChain"/> 排列在编辑通道之前，
-/// Begin 失败仍自动降级）。
-/// <para>
-/// <b>协议三步</b>（官方 cardkit 流式）：① <c>POST /cardkit/v1/cards</c> 建实体（卡片 JSON 2.0，
-/// <c>streaming_mode=true</c>，markdown 元素承载正文）；② <c>im/v1/messages</c> 发
-/// <c>{"type":"card","data":{"card_id":…}}</c>（卡片实体只能发送一次、发送方须为创建方）；
-/// ③ <c>PUT /cardkit/v1/cards/{card_id}/elements/{element_id}/content</c> 推<b>全量文本</b>（平台自算增量，
-/// 打字机渲染）。<c>sequence</c> 每卡片严格递增（<see cref="NextSequence"/>，飞书 300317 拒绝回退/重复号）。
-/// </para>
-/// <para>
-/// <b>失败语义</b>（与 <see cref="EditMessageChannel"/> 同一接口契约）：<see cref="BeginAsync"/> 失败向上抛
-/// （降级链回退编辑通道，模型尚未调用）；单次增量更新失败只记日志（不中断模型流）；终态落地失败由
-/// 基类 Flush 语义可感知。每次下游调用前经 <see cref="IFeishuAppContextScopeFactory.BeginScope"/> 切租户，finally 释放。
-/// </para>
-/// <para>
-/// <b>平台边界</b>（登记，不防御）：卡片实体 30KB 上限——超长终态文本会在 Flush 落地时报错上抛（显式暴露
-/// 而非静默截断）；流式模式在最后一次更新 10 分钟后自动关闭（不主动关闭：官方建议手动关，但终态钩子
-/// 无取消令牌，fire-and-forget 反模式换不来等价收益）；卡片实体 14 天有效（会话流式回复生命周期远短于此）。
-/// </para>
+/// <b>目标语义</b>：本通道实现 <see cref="IChannelTargetResolver"/>——会话事件取
+/// <see cref="ConversationRequest.ChatId"/>；业务事件（审批 / 表格变更）无 <c>ChatId</c> 时取操作人
+/// <c>open_id</c>（单聊气泡），故 p2p 事件同样具备流式能力。协议三步、平台边界（30KB / 10 分钟 /
+/// 14 天 / 一次性发送 / sequence 语义）与失败语义见
+/// <c>documents/AIAgent/decisions/ADR-0013-cardkit-streaming-boundaries.md</c>。
 /// </remarks>
 /// <param name="cardClient">卡片实体客户端（Tenant 身份）。</param>
 /// <param name="elementsClient">卡片元素客户端（流式文本更新）。</param>
@@ -61,7 +44,7 @@ public sealed class CardKitStreamMessageChannel(
     IAgentTelemetry? telemetry = null) : BufferedMessageChannel(
         options?.Value.MaxStreamChunkLength ?? throw new ArgumentNullException(nameof(options)),
         minUpdateInterval: minUpdateInterval,
-        telemetry: telemetry)
+        telemetry: telemetry), IChannelTargetResolver
 {
     /// <summary>流式正文承载元素的 element_id（卡片内自定义，1–20 字符）。</summary>
     internal const string StreamElementId = "stream_md";
@@ -69,14 +52,46 @@ public sealed class CardKitStreamMessageChannel(
     /// <summary>占位初始文本（可见的「正在输入」占位；空 content 会被飞书拒绝）。</summary>
     private const string PlaceholderText = "…";
 
+    /// <summary>单聊气泡投放的接收方类型（业务事件无 chatId 时按操作人 open_id 投放）。</summary>
+    private const string ReceiveIdTypeOpenId = "open_id";
+
+    /// <summary>会话气泡投放的接收方类型（默认语义）。</summary>
+    private const string ReceiveIdTypeChatId = "chat_id";
+
     private readonly Mud.Feishu.IFeishuTenantV1Card _cardClient = cardClient ?? throw new ArgumentNullException(nameof(cardClient));
     private readonly Mud.Feishu.IFeishuTenantV1CardElements _elementsClient = elementsClient ?? throw new ArgumentNullException(nameof(elementsClient));
     private readonly Mud.Feishu.IFeishuTenantV1Message _messageClient = messageClient ?? throw new ArgumentNullException(nameof(messageClient));
     private readonly IFeishuAppContextScopeFactory _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
     private readonly ILogger? _logger = logger;
 
-    /// <summary>per-cardId sequence 计数（飞书要求同卡片操作序号严格递增；终态后移除防泄漏）。</summary>
-    private readonly ConcurrentDictionary<string, long> _sequences = new(StringComparer.Ordinal);
+    /// <summary>per-cardId 流式状态（sequence / 同文去重 / 终态结果；终态后整体移除防泄漏）。</summary>
+    private readonly ConcurrentDictionary<string, CardStreamState> _streams = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// 流式目标解析：会话 <c>ChatId</c> 优先；单聊回退操作人 <c>open_id</c>（气泡进人而非进群）；
+    /// 群聊无 <c>ChatId</c> 或操作人不是 open_id 形态时返回 <see langword="null"/>（本通道不适用）。
+    /// </summary>
+    /// <remarks>
+    /// <b>只接受 open_id 形态</b>（<c>ou_</c> 前缀）而非任意 SenderId：<c>user_id</c> 形态无法以
+    /// <c>receive_id_type=open_id</c> 投放，猜错会白建一张卡片实体（孤儿）。判定失败即不流式，
+    /// 回退非流式回复——不引入平台 API 调用（本方法是同步契约）。
+    /// </remarks>
+    /// <param name="request">已规范化的会话请求。</param>
+    /// <returns>流式目标；本通道不适用时为 <see langword="null"/>。</returns>
+    public string? ResolveStreamTarget(ConversationRequest request)
+    {
+        if (request is null)
+        {
+            return null;
+        }
+
+        if (!string.IsNullOrEmpty(request.ChatId))
+        {
+            return request.ChatId;
+        }
+
+        return !request.Scope.IsGroup && IsOpenId(request.SenderId) ? request.SenderId : null;
+    }
 
     /// <inheritdoc />
     public override async Task<string> BeginAsync(string appKey, string chatId, CancellationToken cancellationToken = default)
@@ -84,7 +99,7 @@ public sealed class CardKitStreamMessageChannel(
         if (string.IsNullOrWhiteSpace(appKey))
             throw new ArgumentException("appKey 不能为空", nameof(appKey));
         if (string.IsNullOrWhiteSpace(chatId))
-            throw new ArgumentException("chatId 不能为空（CardKit 流式以会话气泡投放，群聊/单聊通用）", nameof(chatId));
+            throw new ArgumentException("流式目标不能为空（会话 chatId 或单聊操作人 open_id）", nameof(chatId));
 
         using var scope = _scopeFactory.BeginScope(appKey);
         var create = FeishuApiResultReader.Read(await _cardClient
@@ -94,34 +109,55 @@ public sealed class CardKitStreamMessageChannel(
         {
             // Begin 失败向上抛：降级链尝试下一通道 / 事件处理器回退非流式（模型尚未调用，零重复成本）。
             throw new InvalidOperationException(
-                $"CardKit 流式卡片实体创建失败（chatId: {chatId}）: {create.ErrorText ?? "返回空 card_id"}");
+                $"CardKit 流式卡片实体创建失败（target: {chatId}）: {create.ErrorText ?? "返回空 card_id"}");
         }
 
         var cardId = create.Data.CardId!;
         var send = FeishuApiResultReader.Read(await _messageClient
-            .SendMessageAsync(BuildCardMessageRequest(chatId, cardId), "chat_id", cancellationToken)
+            .SendMessageAsync(BuildCardMessageRequest(chatId, cardId), ReceiveIdTypeFor(chatId), cancellationToken)
             .ConfigureAwait(false));
         if (!send.Ok)
         {
+            // 实体已建、气泡未出 ⇒ 平台侧留下一张无主卡片（无删除接口，14 天自然过期）。
+            // 这是唯一会产生平台残留资源的失败路径，必须可观测（R3-12 降级族）。
+            FeishuToolDiagnostics.RecordDegraded(appKey, FeishuMetrics.DegradedReasons.ChannelBeginOrphaned);
             throw new InvalidOperationException(
-                $"CardKit 流式卡片气泡投放失败（chatId: {chatId}, cardId: {cardId}）: {send.ErrorText ?? "发送失败"}");
+                $"CardKit 流式卡片气泡投放失败（target: {chatId}, cardId: {cardId}）: {send.ErrorText ?? "发送失败"}");
         }
 
-        _sequences[cardId] = 0;
+        _streams[cardId] = new CardStreamState(appKey);
         return cardId;
     }
 
     /// <inheritdoc />
     protected override async Task UpdateCoreAsync(string appKey, string chatId, string messageId, string fullText, CancellationToken cancellationToken)
     {
+        // 终态之后（或非经 Begin 的外部直调）不重放写入：既不重置 sequence（平台会以 300317 拒绝回退号），
+        // 也不让字典键重新生长。
+        if (!_streams.TryGetValue(messageId, out var state))
+        {
+            _logger?.LogWarning(
+                "CardKit 流式写入缺少会话状态（cardId: {CardId}）——非经 BeginAsync 的写入或终态后的迟到写入，已跳过",
+                messageId);
+            return;
+        }
+
+        if (state.IsSameAsLastPushed(fullText))
+        {
+            return;
+        }
+
         using var scope = _scopeFactory.BeginScope(appKey);
         var outcome = FeishuApiResultReader.Read(await _elementsClient
             .StreamUpdateCardTextByIdAsync(
                 messageId,
                 StreamElementId,
-                new StreamUpdateTextRequest { Content = fullText, Sequence = (int)NextSequence(messageId) },
+                new StreamUpdateTextRequest { Content = fullText, Sequence = state.NextSequence() },
                 cancellationToken)
             .ConfigureAwait(false));
+
+        state.Record(outcome.Ok, outcome.ErrorText, fullText);
+
         if (!outcome.Ok)
         {
             _logger?.LogWarning(
@@ -132,6 +168,11 @@ public sealed class CardKitStreamMessageChannel(
     /// <inheritdoc />
     protected override Task OnUpdateFailedAsync(string messageId, Exception exception)
     {
+        if (_streams.TryGetValue(messageId, out var state))
+        {
+            state.Record(ok: false, exception.Message, text: null);
+        }
+
         _logger?.LogWarning(exception, "CardKit 流式文本更新异常（cardId: {CardId}）——停留上一次成功内容", messageId);
         return Task.CompletedTask;
     }
@@ -140,12 +181,39 @@ public sealed class CardKitStreamMessageChannel(
     protected override void OnUpdateDegraded(string appKey, string messageId, Exception exception)
         => FeishuToolDiagnostics.RecordDegraded(appKey, FeishuMetrics.DegradedReasons.ChannelUpdateFailed);
 
-    /// <inheritdoc />
-    /// <remarks>终结态后必须移除 per-cardId sequence 登记：键随流式回复单调新增（卡片实体 ID 永不重复），漏移除即让单例字典随回复次数线性增长。</remarks>
-    protected override void OnFlushed(string messageId) => _sequences.TryRemove(messageId, out _);
+    /// <summary>
+    /// 终态钩子：基类在终态落地<b>之后</b>无条件调用（含异常与取消路径），此处承担两件事——
+    /// ① 终态未落地时留下 Error + 指标（<b>可观测</b>：基类 <c>FlushAsync</c> 为 sealed，产品侧无法抛出/回滚）；
+    /// ② 移除 per-cardId 状态（通道为 Singleton，键单调新增即泄漏）。
+    /// </summary>
+    /// <param name="messageId">占位消息 ID（本通道即 cardId）。</param>
+    protected override void OnFlushed(string messageId)
+    {
+        if (_streams.TryRemove(messageId, out var state) && !state.LastOk)
+        {
+            _logger?.LogError(
+                "CardKit 流式终态未落地（cardId: {CardId}，appKey: {AppKey}）: {Error}——用户看到的是半截内容",
+                messageId, state.AppKey, state.LastError);
+            FeishuToolDiagnostics.RecordDegraded(state.AppKey, FeishuMetrics.DegradedReasons.ChannelTerminalFailed);
+        }
+    }
 
-    /// <summary>取下一次 sequence（同卡片严格递增；AddOrUpdate 对同 key 原子，并发调用各自拿到唯一递增值）。</summary>
-    private long NextSequence(string cardId) => _sequences.AddOrUpdate(cardId, 1L, static (_, current) => current + 1);
+    /// <summary>投放接收方类型：目标即会话 <c>ChatId</c> ⇒ <c>chat_id</c>；否则为单聊操作人 <c>open_id</c>。</summary>
+    /// <remarks>
+    /// 判据取自中立环境量 <see cref="StreamingRequestContext.Current"/>（管线在进入通道前建立），
+    /// 不做 ID 前缀猜测；环境量缺失（外部直调通道）时沿用 <c>chat_id</c> 默认语义。
+    /// </remarks>
+    private static string ReceiveIdTypeFor(string target)
+    {
+        var request = StreamingRequestContext.Current;
+        return request is not null && !string.Equals(request.ChatId, target, StringComparison.Ordinal)
+            ? ReceiveIdTypeOpenId
+            : ReceiveIdTypeChatId;
+    }
+
+    /// <summary>是否为 open_id 形态（<c>ou_</c> 前缀；只有该形态能以 <c>receive_id_type=open_id</c> 投放）。</summary>
+    private static bool IsOpenId(string? id)
+        => !string.IsNullOrEmpty(id) && id!.StartsWith("ou_", StringComparison.Ordinal);
 
     /// <summary>构造流式卡片 JSON 2.0（不带 header：30KB 卡片预算全部留给模型正文；streaming_mode 为流式更新前置）。</summary>
     private static string BuildCardJson()
@@ -176,4 +244,52 @@ public sealed class CardKitStreamMessageChannel(
                 ["data"] = new JsonObject { ["card_id"] = cardId },
             }.ToJsonString(),
         };
+
+    /// <summary>
+    /// 单张卡片的流式状态（<see cref="ConcurrentDictionary{TKey,TValue}"/> 值为它，终态整体移除）。
+    /// </summary>
+    /// <remarks>
+    /// <b>并发契约</b>：同一 <c>messageId</c> 的写入与收尾由调用方<b>顺序 await</b>
+    /// （<see cref="IMessageChannel"/> 明文契约），故实例内字段是单写者语义，无需加锁；
+    /// 不同卡片之间互不相干。
+    /// </remarks>
+    private sealed class CardStreamState(string appKey)
+    {
+        private string? _lastPushedText;
+        private int _sequence;
+
+        /// <summary>租户键（<see cref="OnFlushed"/> 拿不到 appKey，故随状态一起留存）。</summary>
+        public string AppKey { get; } = appKey;
+
+        /// <summary>最后一次下游调用的结果（初值 true：尚未发生失败）。</summary>
+        public bool LastOk { get; private set; } = true;
+
+        /// <summary>最后一次失败的原文（成功时为 <see langword="null"/>）。</summary>
+        public string? LastError { get; private set; }
+
+        /// <summary>与最后一次<b>成功</b>推送的全文相同（同文去重：省掉一次必然等价的 PUT）。</summary>
+        /// <param name="fullText">待推送全文。</param>
+        /// <returns>相同则 <see langword="true"/>。</returns>
+        public bool IsSameAsLastPushed(string fullText)
+            => _lastPushedText is not null && string.Equals(_lastPushedText, fullText, StringComparison.Ordinal);
+
+        /// <summary>取下一次 sequence（同卡片严格递增，飞书 300317 拒绝回退/重复号）。</summary>
+        /// <returns>sequence。</returns>
+        public int NextSequence() => ++_sequence;
+
+        /// <summary>记录一次下游结果。</summary>
+        /// <param name="ok">是否成功。</param>
+        /// <param name="error">失败原文。</param>
+        /// <param name="text">本次成功落地的全文（失败传 <see langword="null"/>，保留上一条成功内容）。</param>
+        public void Record(bool ok, string? error, string? text)
+        {
+            LastOk = ok;
+            LastError = ok ? null : error;
+
+            if (ok)
+            {
+                _lastPushedText = text;
+            }
+        }
+    }
 }

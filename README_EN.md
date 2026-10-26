@@ -145,8 +145,8 @@ builder.Services.AddFeishuAgent(builder.Configuration) // Agent runtime
     .AddFeishuImConversationHandler();                // IM events → conversation
 ```
 
-- **Streaming message channels**: `EditMessageChannel` (streams by editing an already-sent message), `CardStreamMessageChannel`
-  (card stream), `StreamingChannelChain` (chain them together) — an agent's streamed reply becomes a live-updating Feishu message.
+- **Streaming message channels**: `EditMessageChannel` (streams by editing an already-sent message), `CardKitStreamMessageChannel`
+  (in-conversation streaming card), `StreamingChannelChain` (chain them together) — an agent's streamed reply becomes a live-updating Feishu message.
 - **Event-driven conversation**: `ConversationalFeishuEventHandler` turns Feishu events (IM message received / approval task /
   task change / Bitable record change) into model-processable context plus a reply. Event payloads are assembled by
   `IContextAssembler` into structured fragments (with untrusted markers, over-budget truncation, missing-field degradation).
@@ -287,7 +287,7 @@ systematic implementation yet, and MudFeishu is the **first complete realization
 | MCP tooling | None, or a reflection-based invoker | Self-implemented protocol-layer stdio / Streamable HTTP server, zero bypass of the execution chain, fail-closed tenant identity |
 | Ecosystem integration | None | Skills artifacts shipped with the package (Claude Code / Cursor load them directly) + NDJSON event bridge (Demo reference implementation) |
 | Knowledge retrieval | None | Aily hosted + self-hosted RAG (structure-first chunking + vector retrieval), coexisting without conflict |
-| Streaming replies | None | EditMessageChannel / CardStreamMessageChannel / StreamingChannelChain |
+| Streaming replies | None | EditMessageChannel / CardKitStreamMessageChannel / StreamingChannelChain |
 | Event-driven | Callback handler with a single-turn reply | Event → context assembly → Agent conversation → tool call → streamed reply |
 | Contract validation | Runtime discovery of routes / field drift | Compile-time golden gate + Public API analyzers + contract guards |
 | Target frameworks | `net462` + `netstandard2.0` + `LangVersion 10` | `netstandard2.0` / `net6.0` / `net8.0` / `net10.0` + `LangVersion 13` |

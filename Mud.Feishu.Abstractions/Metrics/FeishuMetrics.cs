@@ -645,6 +645,18 @@ public static class FeishuMetrics
         /// <summary>通道单次更新失败（子类钩子记录，不中断模型流）。</summary>
         public const string ChannelUpdateFailed = "channel_update_failed";
 
+        /// <summary>
+        /// 通道<b>终态</b>未落地（占位消息停留在半截内容）。与 <see cref="ChannelUpdateFailed"/> 分开：
+        /// 后者是「中途少一次增量」（用户最终仍看到完整回答），前者是「用户永远看不到完整回答」。
+        /// </summary>
+        public const string ChannelTerminalFailed = "channel_terminal_failed";
+
+        /// <summary>
+        /// 通道占位资源已创建但投放失败（平台侧残留实体）。卡片实体无删除接口，只能等自然过期，
+        /// 故单独计数以便与「什么都没创建」的失败区分。
+        /// </summary>
+        public const string ChannelBeginOrphaned = "channel_begin_orphaned";
+
         /// <summary>用户令牌探测异常（T1/D1：fail-open 放行，由下游 401 兜底）。</summary>
         public const string UserTokenPrecheckError = "user_token_precheck_error";
 

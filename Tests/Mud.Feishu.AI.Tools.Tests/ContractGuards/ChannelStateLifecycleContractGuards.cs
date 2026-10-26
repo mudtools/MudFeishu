@@ -71,7 +71,7 @@ public class ChannelStateLifecycleContractGuards
     public void EveryMessageChannelImplementation_ShouldBeRegisteredForLifecycleCheck()
     {
         // 扫描面 = 通道实现所在的**两个**程序集（N2-b 中立化后实现跨包）：
-        // ① Mud.Feishu.AI（产品子类：EditMessageChannel / CardStreamMessageChannel）；
+        // ① Mud.Feishu.AI（产品子类：EditMessageChannel / CardKitStreamMessageChannel）；
         // ② Mud.AI.Agent（中立实现：StreamingChannelChain；BufferedMessageChannel 是抽象基类，被 IsAbstract 过滤）。
         // ⚠️ 只扫产品程序集是假绿：N2-b 前本守卫只扫 Mud.Feishu.AI，StreamingChannelChain 迁出后
         // 会**静默掉出覆盖集**（元守卫不报红，但中立实现的 per-messageId 状态再无守卫验证）。

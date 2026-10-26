@@ -21,10 +21,15 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// </para>
 /// <para>
 /// <b>N2-b 中立化改锚</b>：通道更新失败的降级计数从 <c>BufferedMessageChannel</c> 基类
-/// **上移到产品子类**（<c>EditMessageChannel</c> / <c>CardStreamMessageChannel</c> 的
+/// **上移到产品子类**（<c>EditMessageChannel</c> / <c>CardKitStreamMessageChannel</c> 的
 /// <c>OnUpdateDegraded</c> 覆写）——中立基类经 <c>IAgentTelemetry</c> 端口记 reason，
 /// 产品指标名（<c>DegradedReasons.ChannelUpdateFailed</c>）与 app_key 维度留在产品侧。
 /// 故本守卫对产品子类各断言一次，并对中立基类断言「钩子被调用」。
+/// <para>
+/// 卡片通道另有两条<b>与「单次更新失败」不同级</b>的路径必须各占一个原因，否则看板无法区分
+/// 「少一次增量（用户仍看到完整回答）」与「用户永远看不到完整回答 / 平台残留了一张卡片实体」：
+/// 终态未落地（<c>ChannelTerminalFailed</c>）与投放失败致孤儿实体（<c>ChannelBeginOrphaned</c>）。
+/// </para>
 /// </para>
 /// </remarks>
 public class DegradationMetricsContractGuards
@@ -45,6 +50,8 @@ public class DegradationMetricsContractGuards
             // N2-b：通道降级计数在产品子类的 OnUpdateDegraded 覆写里（两通道同构，各断言一次）。
             ("EditMessageChannel.cs", "通道更新失败补计数（编辑通道）", "ChannelUpdateFailed"),
             ("CardKitStreamMessageChannel.cs", "通道更新失败补计数（CardKit 流式通道）", "ChannelUpdateFailed"),
+            ("CardKitStreamMessageChannel.cs", "终态未落地补计数（可观测边界）", "ChannelTerminalFailed"),
+            ("CardKitStreamMessageChannel.cs", "投放失败致孤儿实体补计数", "ChannelBeginOrphaned"),
         };
 
         var missing = new List<string>();

@@ -11,7 +11,7 @@
 >
 > | 内容 | 现落点（命名空间 / 入口） |
 > | --- | --- |
-> | 流式消息通道（`EditMessageChannel` / `CardStreamMessageChannel` / `StreamingChannelChain`） | `Mud.Feishu.AI.Channels`（`Mud.Feishu.AI` 程序集） |
+> | 流式消息通道（`EditMessageChannel` / `CardKitStreamMessageChannel` / `StreamingChannelChain`） | `Mud.Feishu.AI.Channels`（`Mud.Feishu.AI` 程序集） |
 > | 会话事件处理器与装配器（`ImMessage…` / `ApprovalTask…` / `TaskUpdated…` / `BitableRecordChanged…` / `SenderInfo…` / `QuoteMessage…`） | `Mud.Feishu.AI.Events` |
 > | 事件外桥与事件目录（`FeishuEventNdjsonBridge` / `FeishuEventCatalog` / `FeishuEventEnvelope`） | **已移出本库**：R-10 起作为 Demo 参考实现（`Demos/Mud.Feishu.Agent.Demo/Events/`），库不再承诺该生态位 |
 > | Aily 托管知识问答（`AilyKnowledgeProvider`） | `Mud.Feishu.AI.Knowledge` |

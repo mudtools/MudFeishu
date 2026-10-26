@@ -25,7 +25,6 @@
                      "Mud.Feishu.AI.AgentTools.ToolApprovalRequest",
                      "Mud.Feishu.AI.AgentTools.ToolParameterAttribute",
                      "Mud.Feishu.AI.Channels.BufferedMessageChannel",
-                     "Mud.Feishu.AI.Channels.CardStreamMessageChannel",
                      "Mud.Feishu.AI.Channels.EditMessageChannel",
                      "Mud.Feishu.AI.Channels.IMessageChannel",
                      "Mud.Feishu.AI.Channels.IMessageChannelTargetResolver",
@@ -487,6 +486,7 @@
                 "Mud.Feishu.AI.Tools.Hosting.FeishuDiagnosticsFinding":  "E-2 装配自检面（GAP-11 支柱①，2026-10-20）：一条诊断结论（严重度 + 稳定机读码 + 含处置建议的正文）。正文可改、码不可改——消费方按码分支。消费方：① FeishuDiagnosticsReport.Findings；② DoctorDemo 的结论分节（按严重度着色）；③ FeishuDiagnosticsProbeTests 逐码断言触发条件与严重度分档。",
                 "Mud.Feishu.AI.Tools.Hosting.FeishuDiagnosticsReport":  "E-2 装配自检面（GAP-11 支柱①，2026-10-20）：一次自检的结构化结果（结论 + 读数 + HasErrors/FindingCount + ToText 确定性文本）。ToText 排序全确定（结论按严重度秩再按码，读数按名），故可作冒烟与差异比对的断言面。消费方：① IFeishuDiagnosticsProbe.Probe 返回类型；② DoctorDemo.BuildReport 纯函数；③ 宿主健康检查/发布前冒烟脚本；④ FeishuDiagnosticsProbeTests 的字节级重复调用等值断言。",
                 "Mud.Feishu.AI.Tools.Hosting.FeishuDiagnosticsSeverities":  "E-2 装配自检面（GAP-11 支柱①，2026-10-20）：结论严重度闭集（info/warning/error，语义为「按当前配置运行期必然失败或必然静默丢弃」才判 error）。公开常量而非枚举：Finding.Severity 是字符串载荷，需要与配置面词汇同风格。消费方：① FeishuDiagnosticsFinding.Severity 的取值域与 FeishuDiagnosticsReport.HasErrors 判定；② DoctorDemo 的分档着色；③ FeishuDiagnosticsProbeTests 的严重度断言。",
-                "Mud.Feishu.AI.Tools.Hosting.IFeishuDiagnosticsProbe":  "E-2 装配自检面（GAP-11 支柱①，2026-10-20）：把「启动后第一次调用才暴露的装配缺陷」变成一次可调用、可读、可断言的报告；零副作用契约（同步、零网络、零令牌刷新、零应用实例化）。实现 FeishuDiagnosticsProbe 为 internal，由 AddFeishuTools 注册为本接口的单例。消费方：① 宿主 DI 解析（发布前冒烟、健康检查、CI 装配门禁）；② DoctorDemo 模式；③ FeishuDiagnosticsProbeTests 与 DoctorDemoTests。"
+                "Mud.Feishu.AI.Tools.Hosting.IFeishuDiagnosticsProbe":  "E-2 装配自检面（GAP-11 支柱①，2026-10-20）：把「启动后第一次调用才暴露的装配缺陷」变成一次可调用、可读、可断言的报告；零副作用契约（同步、零网络、零令牌刷新、零应用实例化）。实现 FeishuDiagnosticsProbe 为 internal，由 AddFeishuTools 注册为本接口的单例。消费方：① 宿主 DI 解析（发布前冒烟、健康检查、CI 装配门禁）；② DoctorDemo 模式；③ FeishuDiagnosticsProbeTests 与 DoctorDemoTests。",
+                "Mud.Feishu.AI.Channels.CardKitStreamMessageChannel":  "F-14 流式通道收敛（2026-10-26）：会话内流式回复的默认通道（AddFeishuStreamingChannel 装配的降级链首选 CardKit → EditMessageChannel）。宿主经 IMessageChannel 消费、零感知协议细节：按目标（会话 chatId / 单聊操作人 open_id）建卡片实体并投放气泡，增量推全量文本。目标语义由本类型实现 IChannelTargetResolver 自解释；平台边界与失败语义见 documents/AIAgent/decisions/ADR-0013-cardkit-streaming-boundaries.md。消费方：① FeishuAgentServiceCollectionExtensions.AddFeishuStreamingChannel；② Demos/Mud.Feishu.Agent.Demo 的 DomainEventsDemo（真实调用点）；③ CardKitStreamMessageChannelTests / ChannelStateLifecycleContractGuards / DegradationMetricsContractGuards。"
                 }
 }

@@ -25,7 +25,7 @@ namespace Mud.Feishu.Agent.Demo.Tests.ContractGuards;
 /// <b>为什么要这条守卫（缺陷背景）</b>：<c>ApprovalTaskConversationalEventHandler</c> /
 /// <c>BitableRecordChangedConversationalEventHandler</c> / <c>TaskUpdatedConversationalEventHandler</c>
 /// 与 <c>ApprovalContextAssembler</c> / <c>BitableRecordContextAssembler</c>、以及
-/// <c>CardStreamMessageChannel</c> + <c>StreamingChannelChain</c>，此前<b>只有各自单测消费</b>——
+/// <c>CardKitStreamMessageChannel</c> + <c>StreamingChannelChain</c>，此前<b>只有各自单测消费</b>——
 /// 发布面承诺了"宿主注册即生效"，却没有一个真实调用点。允许这种状态的实际后果是：
 /// 装配契约（构造参数、DI 依赖、与装配器的事实键约定）只在测试里成立，真实宿主照文档接线可能不工作。
 /// </para>

@@ -35,6 +35,21 @@ and versioning follows [Semantic Versioning].
 - **`DecryptEventAsync` now forwards the `CancellationToken`** to the key provider (previously `DecryptionTimeoutMs`
   could not interrupt a hanging key lookup).
 - **`InMemoryFailedEventStore.GetPendingRetryEventsAsync` honours `beforeTime`**.
+- **Request-body pre-allocation is now capped, removing memory amplification and integer overflow**: it used to cast
+  the declared `ContentLength` straight to `int` (`MaxRequestBodySize` is a `long` with no upper bound) — a >2GB
+  declaration overflowed to a negative length (500) and an unauthenticated request could force an immediate
+  equal-sized allocation. The effective budget is now capped at `min(MaxRequestBodySize, int.MaxValue)` (the result
+  is a `string`, whose length is `int`-bounded) and the capacity is `min(declared, effective budget, 1MB)`; growth
+  beyond that is on demand and the byte budget is still enforced per chunk.
+- **Retries no longer refresh `FailedAt`**: each retry attempt used to overwrite it with "now", which made
+  `InMemoryFailedEventStore.GetOldestPendingAge()` (feeding the `oldest_pending_retry_age_seconds` health dimension,
+  `Degraded` above 5 minutes) blind to a handler that keeps failing. `FailedAt` now keeps the **first** failure time;
+  backoff progress lives only in `NextRetryAt`. ⚠️ Operator-visible: a persistently failing event now really does turn
+  the health check `Degraded`.
+- **Health-check severity no longer inverted**: "utilization ≥80% → `Degraded`" used to be evaluated before
+  "failed-event backlog ≥500 → `Unhealthy`", so a genuinely `Unhealthy` state was reported as the milder `Degraded`.
+  Severity is now decided strictly as **`Unhealthy` > `Degraded`** (slots exhausted → backlog hard threshold →
+  utilization → oldest pending age → backlog soft threshold), and every data item is always populated.
 
 ### Changed — Mud.Feishu.Webhook
 
@@ -55,6 +70,8 @@ and versioning follows [Semantic Versioning].
 - `documents/ErrorHandling.md`: added the Webhook ACK decision table (same source as
   `WebhookAckSemanticsContractGuards`) and the deployment preconditions (Redis dedup for multi-instance, in-memory
   failed-event loss on restart, plaintext events rejected, nonce consumption order, body size cap, prefix format).
+- `documents/index.md`: added a "Webhook troubleshooting" section — 503 means the key service is unavailable (**not** a
+  signature mismatch), plus 403 / 404 / 413 triage.
 
 ## [Unreleased] - 2026-10-22
 

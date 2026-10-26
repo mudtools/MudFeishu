@@ -90,6 +90,71 @@ public class FeishuWebhookHealthCheckTests
     }
 
     [Fact]
+    public async Task CheckHealthAsync_ShouldBeDegraded_WhenOldestRetryAgeExceeds5Min()
+    {
+        // F-2 的**行为侧**锁定：条数少（1 条）但最旧一条已卡 10 分钟时，必须判 Degraded。
+        // 这一维独立于 backlog 阈值——正是"积压条数正常但事件卡死"的盲区。
+        var concurrencyService = CreateConcurrencyService(10);
+        var store = new InMemoryFailedEventStore(Mock.Of<ILogger<InMemoryFailedEventStore>>());
+        await store.StoreFailedEventAsync(
+            new EventData { EventId = "evt-stuck", EventType = "test.event" }, new Exception("boom"));
+
+        // StoreFailedEventAsync 恒写当前时刻，故经公开的更新面把首次失败时刻回填为 10 分钟前
+        await store.UpdateFailedEventAsync(new FailedEventInfo
+        {
+            EventId = "evt-stuck",
+            StoreKey = "evt-stuck",
+            FailedAt = DateTime.UtcNow.AddMinutes(-10)
+        });
+
+        var healthCheck = new FeishuWebhookHealthCheck(
+            _optionsMock.Object,
+            concurrencyService,
+            store);
+
+        // Act
+        var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
+
+        // Assert
+        result.Status.Should().Be(HealthStatus.Degraded,
+            "最旧待重试事件超过 5 分钟未消化 = 退避链/重试服务已失效，必须先于积压条数被看见");
+        result.Description.Should().Contain("最旧待重试事件");
+        ((double)result.Data["oldest_pending_retry_age_seconds"]).Should().BeGreaterThan(300);
+    }
+
+    [Fact]
+    public async Task CheckHealthAsync_ShouldPreferUnhealthyOverDegraded_WhenBacklogExceedsHardThreshold()
+    {
+        // 严重度不得被降级：并发利用率高（Degraded 判据）与积压超硬阈值（Unhealthy 判据）
+        // 同时成立时，结果必须是 Unhealthy。
+        var concurrencyService = CreateConcurrencyService(10);
+        for (var i = 0; i < 9; i++)
+        {
+            await concurrencyService.AcquireAsync(CancellationToken.None);
+        }
+
+        var store = new InMemoryFailedEventStore(Mock.Of<ILogger<InMemoryFailedEventStore>>());
+        for (var i = 0; i < 500; i++)
+        {
+            await store.StoreFailedEventAsync(
+                new EventData { EventId = $"evt-{i}", EventType = "test.event" }, new Exception("boom"));
+        }
+
+        var healthCheck = new FeishuWebhookHealthCheck(
+            _optionsMock.Object,
+            concurrencyService,
+            store);
+
+        // Act
+        var result = await healthCheck.CheckHealthAsync(new HealthCheckContext());
+
+        // Assert
+        result.Status.Should().Be(HealthStatus.Unhealthy,
+            "Unhealthy 必须优先于 Degraded——否则「利用率高 + 积压爆表」会被报告成较轻的状态");
+        result.Description.Should().Contain("硬阈值");
+    }
+
+    [Fact]
     public async Task CheckHealthAsync_WithDifferentConcurrencySettings_ShouldReturnCorrectData()
     {
         // Arrange

@@ -34,6 +34,19 @@
 - **解密阶段取密钥贯穿 `CancellationToken`**：此前 `DecryptEventAsync` 未透传 CT，
   导致 `DecryptionTimeoutMs` 无法中断一次挂起的密钥获取调用。
 - **`InMemoryFailedEventStore.GetPendingRetryEventsAsync` 尊重 `beforeTime` 入参**（此前恒用当前时刻）。
+- **请求体预分配封顶，消除超大 `Content-Length` 的内存放大与整数溢出**：此前按声明的
+  `Content-Length` 直接 `(int)` 预分配（`MaxRequestBodySize` 为 `long` 且无上限）——
+  >2GB 声明会让 `(int)` 溢出为负并触发 500，且未认证请求只需写一个大 `Content-Length`
+  即可让服务端立即分配同等内存。现生效预算封顶 `min(MaxRequestBodySize, int.MaxValue)`
+  （产物是 `string`，长度受 `int` 约束），预分配容量 = `min(声明长度, 生效预算, 1MB)`，
+  超出部分由 `MemoryStream` 按需增长，字节预算仍逐块校验。
+- **失败事件重试不再刷新 `FailedAt`**：此前每轮重试都把它改成当前时刻，使
+  `InMemoryFailedEventStore.GetOldestPendingAge()`（→ 健康检查 `oldest_pending_retry_age_seconds`，
+  >5 分钟判 `Degraded`）对"处理器持续失败"恒定看不出问题。现 `FailedAt` 保留**首次失败时刻**，
+  退避进度仅由 `NextRetryAt` 表达。⚠️ 运维可见变化：长期失败的事件现在会真的让健康检查转为 `Degraded`。
+- **健康检查严重度不再倒挂**：此前"并发利用率 ≥80% → `Degraded`"排在"失败事件积压 ≥500 → `Unhealthy`"之前，
+  "利用率高 + 积压爆表"会被报成较轻的 `Degraded`。现统一按 **`Unhealthy` > `Degraded`** 判定
+  （槽位耗尽 → 积压硬阈值 → 利用率 → 最旧待重试年龄 → 积压软阈值），所有数据项始终完整回写。
 
 ### 变更（Changed）— Mud.Feishu.Webhook
 
@@ -57,6 +70,8 @@
   Nonce 消费顺序、请求体上限、路由前缀写法）。
 - `Mud.Feishu.Webhook/README.md` / `README_EN.md`：修正 `MaxRequestBodySize` 默认值，补充
   `GlobalRoutePrefix` 写法、限流与重试的语义说明。
+- `documents/index.md` 新增「Webhook 排障速查」：503 = 密钥服务不可用（**不是**签名不匹配）、
+  403 / 404 / 413 的判定与处置。
 
 ### 新增（Added）
 

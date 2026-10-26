@@ -39,7 +39,7 @@ internal sealed class RateLimitCounter
 /// <remarks>
 /// <para>
 /// <b>实例生命周期</b>：由 <c>UseMiddleware</c> 经 <c>ActivatorUtilities</c> 创建，与 DI 容器无关，
-/// 因此<b>不得</b>在容器中注册本类型（会多出一个常驻实例与孤儿定时器）。
+/// 因此<b>不得</b>在容器中注册本类型（会多出一个持有独立计数表的常驻实例）。
 /// </para>
 /// <para>
 /// <b>为什么没有定时器</b>（W-02/F-3）：此前用 <c>System.Threading.Timer</c> 每分钟清理过期窗口，

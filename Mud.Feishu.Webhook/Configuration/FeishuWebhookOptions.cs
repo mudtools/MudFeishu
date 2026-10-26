@@ -128,7 +128,9 @@ public class FeishuWebhookOptions
     /// 同时把"验签前读体"的放大面压到原来的 1/10。
     /// </para>
     /// <para>
-    /// 确有超大事件的宿主可显式调大（下限 1024 字节由 <see cref="Validate"/> 强制，不设上限）。
+    /// 确有超大事件的宿主可显式调大（下限 1024 字节由 <see cref="Validate"/> 强制）。
+    /// 不设业务上限，但**读取侧有结构性上限 <see cref="int.MaxValue"/>**：请求体整包读入内存并
+    /// 转成 <c>string</c>（长度受 <c>int</c> 约束），配置更大的值按 <c>int.MaxValue</c> 生效。
     /// 超限请求返回 413，响应文案固定为 <c>Request Entity Too Large</c>（不包含上限数值）。
     /// </para>
     /// </remarks>

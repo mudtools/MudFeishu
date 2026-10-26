@@ -31,8 +31,11 @@ namespace Mud.Feishu.Webhook;
 /// <para>
 /// <b>实例生命周期</b>：本类型由 <c>UseMiddleware</c> 经 <c>ActivatorUtilities</c> 创建，
 /// 与 DI 容器**无关**——因此<b>不得</b>在容器中注册本类型（那会创建第二个实例，
-/// 造成重复的配置变更订阅与孤儿定时器；详见 <c>FeishuWebhookServiceBuilder</c> 的删除说明）。
-/// 管道实例的 <see cref="IDisposable.Dispose"/> 由宿主在管道释放时调用。
+/// 造成重复的配置变更订阅；详见 <c>FeishuWebhookServiceBuilder</c> 的删除说明）。
+/// <c>UseMiddleware</c> 不跟踪管道实例的释放，因此本类的 <see cref="IDisposable.Dispose"/>
+/// 属<b>尽力而为</b>：仅当宿主显式释放该实例时才执行（通常等于进程结束）。
+/// 订阅本身悬挂在单例 <c>IOptionsMonitor</c> 上、随进程终止一并消失，不构成运行期泄漏；
+/// 不要依赖 <c>Dispose</c> 承担任何正确性职责。
 /// </para>
 /// <para>
 /// <b>热更纪律</b>：配置变更回调一律经 <see cref="SafeOptionsChangeExtensions.OnChangeSafe"/>
@@ -613,7 +616,10 @@ public class FeishuMultiAppMiddleware : IDisposable
     /// </remarks>
     private async Task<string> ReadRequestBodyAsync(HttpRequest request)
     {
-        var maxSize = Options.MaxRequestBodySize;
+        // 结构性上限：本方法的产物是 string（长度受 int 约束），且整包读进内存后再做一次
+        // UTF-8 解码 ⇒ 生效预算不得超过 int.MaxValue。宿主把 MaxRequestBodySize 配得更大时，
+        // 按 int.MaxValue 生效（而不是让 (int)ms.Length 溢出成负数后 500）。
+        var maxSize = Math.Min(Options.MaxRequestBodySize, int.MaxValue);
 
         // ① Content-Length 预检（快速拒绝，避免读一个注定超限的流）
         if (request.ContentLength is { } declared && declared > maxSize)
@@ -622,8 +628,18 @@ public class FeishuMultiAppMiddleware : IDisposable
                 $"请求体大小 {declared} 超过限制 {maxSize} 字节");
         }
 
-        // ② 按声明长度预分配（省去 MemoryStream 的 2× 扩容拷贝）；上限由外层校验保证 ≤ maxSize
-        var capacity = request.ContentLength is { } c && c > 0 ? (int)c : 4096;
+        // ② 按声明长度预分配（省去 MemoryStream 的 2× 扩容拷贝），但**必须封顶**：
+        //    a. `MaxRequestBodySize` 是 long 且无上限，直接 (int)ContentLength 在 >2GB 时溢出为负数
+        //       → MemoryStream 构造抛 ArgumentOutOfRangeException ⇒ 500（不可重试、飞书不重推）；
+        //    b. "声明即分配"本身是内存放大面：未认证请求只要写一个巨大的 Content-Length 就能
+        //       让服务端立刻分配同等内存，而预算（maxSize）本该是**逐块**校验才生效。
+        //    故预分配容量 = min(声明长度, maxSize, 1MB)，超出部分由 MemoryStream 按需增长。
+        const long MaxPreallocationBytes = 1024 * 1024;
+        var declaredLength = request.ContentLength ?? 0;
+        var capacity = (int)Math.Max(0, Math.Min(declaredLength, Math.Min(maxSize, MaxPreallocationBytes)));
+        if (capacity == 0)
+            capacity = 4096;
+
         var chunk = new byte[64 * 1024];
         using var ms = new MemoryStream(capacity);
         long totalBytes = 0;

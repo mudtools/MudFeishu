@@ -291,6 +291,83 @@ public class FeishuWebhookServiceTests
     }
 
     [Fact]
+    public async Task HandleEventAsync_ShouldThrowUnavailable_WhenEncryptKeyMissing()
+    {
+        // W-01：取不到密钥 = "无法判定"，必须抛可重试异常（→503）。
+        // 若回到 `return false`（→403 终态），飞书不再重推且本模块不写失败存储 ⇒ 事件永久丢失。
+        var request = new FeishuWebhookRequest { Timestamp = 1, Nonce = "n", Signature = "s", Encrypt = "e" };
+
+        _encryptKeyProviderMock
+            .Setup(x => x.GetEncryptKeyAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string?)null);
+
+        var service = CreateService();
+        service.SetCurrentAppKey("test-app");
+
+        // Act
+        var act = () => service.HandleEventAsync(request, "body");
+
+        // Assert
+        await act.Should().ThrowAsync<Mud.Feishu.Webhook.Exceptions.FeishuWebhookUnavailableException>();
+        _validatorMock.Verify(
+            x => x.ValidateHeaderSignatureAsync(
+                It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never,
+            "拿不到密钥时无从验签，不得继续调用验签器");
+    }
+
+    [Fact]
+    public async Task HandleEventAsync_ShouldThrowUnavailable_WhenKeyProviderThrows()
+    {
+        // 自定义 IEncryptKeyProvider（KeyVault/Vault）抖动抛异常同样属"判定能力故障"
+        var request = new FeishuWebhookRequest { Timestamp = 1, Nonce = "n", Signature = "s", Encrypt = "e" };
+        var cause = new InvalidOperationException("KeyVault 超时");
+
+        _encryptKeyProviderMock
+            .Setup(x => x.GetEncryptKeyAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(cause);
+
+        var service = CreateService();
+        service.SetCurrentAppKey("test-app");
+
+        // Act
+        var act = () => service.HandleEventAsync(request, "body");
+
+        // Assert
+        (await act.Should().ThrowAsync<Mud.Feishu.Webhook.Exceptions.FeishuWebhookUnavailableException>(
+                "判定过程异常 ≠ 判定结果为否（403 终态会丢弃事件）"))
+            .Which.InnerException.Should().BeSameAs(cause, "归因必须保留原始异常");
+    }
+
+    [Fact]
+    public async Task HandleEventAsync_ShouldNotDoubleWrap_WhenValidatorAlreadyThrowsUnavailable()
+    {
+        // 叶子（SignatureValidator / CompositeValidator）已包装过的不可用异常必须原样透传：
+        // 二次包裹会让 InnerException 链随调用层次增长，日志难以归因。
+        var request = new FeishuWebhookRequest { Timestamp = 1, Nonce = "n", Signature = "s", Encrypt = "e" };
+        var leaf = new Mud.Feishu.Webhook.Exceptions.FeishuWebhookUnavailableException("验签链内部故障（配置构建失败）");
+
+        // 密钥必须可取到，才能走到验签器（否则先抛"密钥不可用"）
+        const string encryptKey = "0123456789abcdef0123456789abcdef";
+        _options.Apps["test-app"] = new FeishuAppWebhookOptions { EncryptKey = encryptKey };
+
+        _validatorMock
+            .Setup(x => x.ValidateHeaderSignatureAsync(
+                It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(leaf);
+
+        var service = CreateService();
+        service.SetCurrentAppKey("test-app");
+
+        var act = () => service.HandleEventAsync(request, "body");
+
+        (await act.Should().ThrowAsync<Mud.Feishu.Webhook.Exceptions.FeishuWebhookUnavailableException>())
+            .Which.Should().BeSameAs(leaf, "禁止双重包裹（叶子 wrap、外层放行）");
+    }
+
+    [Fact]
     public async Task HandleEventAsync_WithFeishuWebhookRequest_ShouldValidateSignatureSuccessfully()
     {
         // Arrange

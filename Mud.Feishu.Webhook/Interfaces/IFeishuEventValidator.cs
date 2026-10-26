@@ -37,7 +37,14 @@ public interface IFeishuEventValidator
     /// <param name="body">请求体内容</param>
     /// <param name="headerSignature">请求头中的签名</param>
     /// <param name="encryptKey">加密密钥（Encrypt Key）</param>
-    /// <returns>是否验证通过</returns>
+    /// <returns>
+    /// <c>true</c> = 验证通过；<c>false</c> = <b>已判定为无效</b>（终态，调用方应回 4xx 且不再要求重试）。
+    /// </returns>
+    /// <exception cref="Mud.Feishu.Webhook.Exceptions.FeishuWebhookUnavailableException">
+    /// <b>无法完成判定</b>（配置构建失败、去重体系不可用、实现内部故障）。语义 = 本请求未被消费，
+    /// 调用方应回 503 + <c>Retry-After</c> 以便对端重推，<b>不得</b>压缩成 <c>false</c>（那会被映射为 403 终态）。
+    /// </exception>
+    /// <exception cref="System.OperationCanceledException">调用方取消（不得写响应到已中止的连接）。</exception>
     Task<bool> ValidateHeaderSignatureAsync(long timestamp, string nonce, string body, string? headerSignature, string encryptKey);
 
     /// <summary>
@@ -49,7 +56,14 @@ public interface IFeishuEventValidator
     /// <param name="headerSignature">请求头中的签名</param>
     /// <param name="encryptKey">加密密钥（Encrypt Key）</param>
     /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>是否验证通过</returns>
+    /// <returns>
+    /// <c>true</c> = 验证通过；<c>false</c> = <b>已判定为无效</b>（终态，调用方应回 4xx 且不再要求重试）。
+    /// </returns>
+    /// <exception cref="Mud.Feishu.Webhook.Exceptions.FeishuWebhookUnavailableException">
+    /// <b>无法完成判定</b>（配置构建失败、去重体系不可用、实现内部故障）。语义 = 本请求未被消费，
+    /// 调用方应回 503 + <c>Retry-After</c> 以便对端重推，<b>不得</b>压缩成 <c>false</c>（那会被映射为 403 终态）。
+    /// </exception>
+    /// <exception cref="System.OperationCanceledException">调用方取消（不得写响应到已中止的连接）。</exception>
     Task<bool> ValidateHeaderSignatureAsync(long timestamp, string nonce, string body, string? headerSignature, string encryptKey, CancellationToken cancellationToken);
 
     /// <summary>

@@ -452,7 +452,7 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | ---------------------------------- | ----------------- | -------- | ---------------------------------------------- |
 | `AllowedSourceIPs`                 | HashSet\<string\> | []       | 允许的源 IP 地址列表（非空时自动启用 IP 验证，支持 CIDR 与 IPv4-mapped IPv6） |
 | `AllowedHttpMethods`               | HashSet\<string\> | ["POST"] | 允许的 HTTP 方法                               |
-| `MaxRequestBodySize`               | long              | **1MB**  | 最大请求体大小（未认证请求的单次代价上限；下限 1024 字节，无上限） |
+| `MaxRequestBodySize`               | long              | **1MB**  | 最大请求体大小（未认证请求的单次代价上限；下限 1024 字节，读取侧另受 `int.MaxValue` 结构性上限约束） |
 | `EnforceHeaderSignatureValidation` | bool              | true     | 是否强制验证请求头签名（生产环境禁止关闭，含应用级覆盖） |
 | `TimestampToleranceSeconds`        | int               | 30       | 时间戳验证容错范围（秒），上限 300 秒（重放窗口上限） |
 | `NonceValidationFailureMode`       | NonceFailureMode  | Reject  | Nonce 去重服务不可用时的降级策略（Reject=安全优先拒绝，Allow=可用性优先放行） |
@@ -1097,12 +1097,19 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 
 ### 健康检查
 
-健康检查除并发槽位与失败事件积压外，还暴露**重放防护形态**：
+健康检查除并发槽位与失败事件积压外，还暴露**重放防护形态**与**积压年龄**：
 
 | 数据项 | 取值 | 说明 |
 | ------ | ---- | ---- |
 | `nonceDedup` | `InMemory` / `Distributed` | Nonce 去重的实现形态 |
 | `timestamp_tolerance_seconds` | 数值 | 当前时间戳容差 |
+| `failed_event_backlog` | 数值 | 待重试失败事件条数（≥100 `Degraded`，≥500 `Unhealthy`） |
+| `oldest_pending_retry_age_seconds` | 数值 | 最旧一条待重试事件的年龄（按**首次失败时刻**计，>300s `Degraded`） |
+
+> 判定严格按 **`Unhealthy` > `Degraded`** 的严重度顺序进行，且上表数据项**始终**完整回写
+> （不会因为提前命中某个判定分支而缺失）。`oldest_pending_retry_age_seconds` 覆盖
+> "积压条数少但事件卡死"这一盲区：条数正常而最旧事件超过 5 分钟仍未消化时，说明
+> `FailedEventRetryService` 未在运行或处理器持续失败。
 
 > 生产环境（`ASPNETCORE_ENVIRONMENT=Production`）使用**内存** Nonce 去重时，健康状态判定为
 > **`Degraded`**（多实例下跨实例重放不可检测）。这与启动期阻断、启动 Summary 日志共同构成

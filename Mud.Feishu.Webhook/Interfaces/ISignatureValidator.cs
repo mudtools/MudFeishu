@@ -27,11 +27,18 @@ public interface ISignatureValidator
     /// <param name="body">请求体内容</param>
     /// <param name="headerSignature">请求头 X-Lark-Signature 中的签名</param>
     /// <param name="encryptKey">加密密钥</param>
-    /// <returns>如果签名验证通过返回 true，否则返回 false</returns>
+    /// <returns>
+    /// 签名验证通过返回 true；<b>已判定签名无效</b>返回 false（终态，调用方应回 4xx）。
+    /// </returns>
     /// <remarks>
     /// 签名计算方式：SHA-256(timestamp + nonce + encryptKey + body)
     /// 如果 headerSignature 为空且配置允许，可能跳过验证
     /// </remarks>
+    /// <exception cref="Mud.Feishu.Webhook.Exceptions.FeishuWebhookUnavailableException">
+    /// <b>无法完成判定</b>（配置构建失败、算法/实现内部异常）。语义 = 本请求未被消费，
+    /// 调用方应回 503 + <c>Retry-After</c>；<b>不得</b>压缩成 <c>false</c>（那会被映射为 403 终态）。
+    /// </exception>
+    /// <exception cref="System.OperationCanceledException">调用方取消。</exception>
     Task<bool> ValidateHeaderSignatureAsync(long timestamp, string nonce, string body, string? headerSignature, string encryptKey);
 
     /// <summary>
@@ -43,6 +50,13 @@ public interface ISignatureValidator
     /// <param name="headerSignature">请求头 X-Lark-Signature 中的签名</param>
     /// <param name="encryptKey">加密密钥</param>
     /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>如果签名验证通过返回 true，否则返回 false</returns>
+    /// <returns>
+    /// 签名验证通过返回 true；<b>已判定签名无效</b>返回 false（终态，调用方应回 4xx）。
+    /// </returns>
+    /// <exception cref="Mud.Feishu.Webhook.Exceptions.FeishuWebhookUnavailableException">
+    /// <b>无法完成判定</b>（配置构建失败、算法/实现内部异常）。语义 = 本请求未被消费，
+    /// 调用方应回 503 + <c>Retry-After</c>；<b>不得</b>压缩成 <c>false</c>（那会被映射为 403 终态）。
+    /// </exception>
+    /// <exception cref="System.OperationCanceledException">调用方取消。</exception>
     Task<bool> ValidateHeaderSignatureAsync(long timestamp, string nonce, string body, string? headerSignature, string encryptKey, CancellationToken cancellationToken);
 }

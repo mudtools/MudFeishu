@@ -32,8 +32,12 @@
 | 业务事件（审批 / 表格记录变更，p2p） | 操作人 `open_id` | `open_id` |
 | 群聊业务事件（无 `ChatId`） | 不适用（返回 `null`，走非流式） | — |
 
-判定依据是中立环境量 `StreamingRequestContext.Current`（管线进入通道前建立），**不做 ID 前缀猜测**：
-目标是 `ChatId` 则 `chat_id`，否则为单聊操作人 `open_id`。环境量缺失（外部直调通道）时沿用 `chat_id`。
+判定依据是**目标 ID 形态**：`receive_id` 与 `receive_id_type` 一一对应（`oc_` = 会话、`ou_` = 用户），
+故 `IsOpenId(target)` 即 `open_id`，其余（含外部直调通道）沿用 `chat_id`。该判据与
+`ResolveStreamTarget` 的唯一准入形态（`ou_`）**同源**，不引入第二套规则。
+
+**为什么不读 `StreamingRequestContext.Current.ChatId` 来判定**：那会把「投放类型」耦合到「管线是否原样保留
+请求里的 `ChatId`」——跨包隐式假设，无法在本仓断言，上游改动即静默错投。形态判定的唯一依赖是平台 ID 约定。
 
 `ResolveStreamTarget` 是**同步**契约，通道内不可能 `await` 平台 API 反查 chat_id；
 「业务事件要不要流式」因此只能由事件载荷已带的信息决定，而不是再发一次查询。

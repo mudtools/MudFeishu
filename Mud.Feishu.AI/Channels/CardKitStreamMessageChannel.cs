@@ -55,6 +55,9 @@ public sealed class CardKitStreamMessageChannel(
     /// <summary>单聊气泡投放的接收方类型（业务事件无 chatId 时按操作人 open_id 投放）。</summary>
     private const string ReceiveIdTypeOpenId = "open_id";
 
+    /// <summary>open_id 形态前缀（<c>ou_</c>；单聊操作人与「本通道不适用」的判据同源）。</summary>
+    internal const string OpenIdPrefix = "ou_";
+
     /// <summary>会话气泡投放的接收方类型（默认语义）。</summary>
     private const string ReceiveIdTypeChatId = "chat_id";
 
@@ -198,22 +201,18 @@ public sealed class CardKitStreamMessageChannel(
         }
     }
 
-    /// <summary>投放接收方类型：目标即会话 <c>ChatId</c> ⇒ <c>chat_id</c>；否则为单聊操作人 <c>open_id</c>。</summary>
+    /// <summary>投放接收方类型：目标为 open_id 形态 ⇒ <c>open_id</c>；否则 <c>chat_id</c>。</summary>
     /// <remarks>
-    /// 判据取自中立环境量 <see cref="StreamingRequestContext.Current"/>（管线在进入通道前建立），
-    /// 不做 ID 前缀猜测；环境量缺失（外部直调通道）时沿用 <c>chat_id</c> 默认语义。
+    /// <b>与 <see cref="ResolveStreamTarget"/> 的准入形态同源</b>：本通道只把 <c>ou_</c> 形态的目标当作单聊操作人，
+    /// 而 <c>receive_id</c> 形态与类型一一对应（<c>oc_</c> = 会话、<c>ou_</c> = 用户），故分类无歧义、
+    /// 也不依赖管线是否保留环境量里的 <c>ChatId</c>（少一处跨包隐式耦合）。
     /// </remarks>
     private static string ReceiveIdTypeFor(string target)
-    {
-        var request = StreamingRequestContext.Current;
-        return request is not null && !string.Equals(request.ChatId, target, StringComparison.Ordinal)
-            ? ReceiveIdTypeOpenId
-            : ReceiveIdTypeChatId;
-    }
+        => IsOpenId(target) ? ReceiveIdTypeOpenId : ReceiveIdTypeChatId;
 
     /// <summary>是否为 open_id 形态（<c>ou_</c> 前缀；只有该形态能以 <c>receive_id_type=open_id</c> 投放）。</summary>
     private static bool IsOpenId(string? id)
-        => !string.IsNullOrEmpty(id) && id!.StartsWith("ou_", StringComparison.Ordinal);
+        => !string.IsNullOrEmpty(id) && id!.StartsWith(OpenIdPrefix, StringComparison.Ordinal);
 
     /// <summary>构造流式卡片 JSON 2.0（不带 header：30KB 卡片预算全部留给模型正文；streaming_mode 为流式更新前置）。</summary>
     private static string BuildCardJson()

@@ -165,8 +165,9 @@ public class CardKitStreamMessageChannelTests
     /// 业务事件（审批 / 表格变更）的单聊流式：目标 = 操作人 open_id，投放用 <c>receive_id_type=open_id</c>。
     /// </summary>
     /// <remarks>
-    /// 接收方类型取自中立环境量（<c>StreamingRequestContext</c>）而不是 ID 前缀猜测——
-    /// 环境量缺失时才是 <c>chat_id</c> 默认语义（见上一个用例）。
+    /// 接收方类型由<b>目标 ID 形态</b>判定（<c>ou_</c> ⇒ open_id，其余 ⇒ chat_id），与
+    /// <c>ResolveStreamTarget</c> 的准入形态同源；故不依赖管线是否保留环境量里的 <c>ChatId</c>
+    /// （跨包隐式耦合是这版最容易被改坏的地方，见上一个用例的 <c>chat_id</c> 分支）。
     /// </remarks>
     [Fact]
     public async Task Begin_ShouldDeliverToOpenId_WhenStreamTargetIsP2pOperator()
@@ -195,10 +196,7 @@ public class CardKitStreamMessageChannelTests
         var channel = CreateChannel();
         channel.ResolveStreamTarget(request).Should().Be("ou_operator", "单聊业务事件的目标是操作人 open_id");
 
-        using (StreamingRequestContext.Begin(request))
-        {
-            await channel.BeginAsync(AppKey, "ou_operator");
-        }
+        await channel.BeginAsync(AppKey, "ou_operator");
 
         capturedReceiveId.Should().Be("ou_operator");
         capturedReceiveIdType.Should().Be("open_id", "单聊气泡按 open_id 投放（会话 chat_id 不存在）");

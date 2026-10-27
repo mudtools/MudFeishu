@@ -2,7 +2,7 @@
 name: feishu-trustparty
 description: 飞书 trustparty 域工具集：11 个工具（只读 8 / 写 3）。「和哪些组织互通」→ `trustparty.list_collaboration_tenants`（互通面）
 version: 1.0.0
-package_version: 3.0.3
+package_version: 3.1.1
 ---
 
 # Trustparty · 跨组织互通

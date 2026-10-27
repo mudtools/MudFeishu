@@ -2,7 +2,7 @@
 name: feishu-slides
 description: 飞书 slides 域工具集：12 个工具（只读 7 / 写 5）。XML 演示文稿（链接含 `/slides/`）→ `slides.*`；普通文档正文属 docx 域，云盘文件本体属 drive 域。
 version: 1.0.0
-package_version: 3.0.3
+package_version: 3.1.1
 ---
 
 # 幻灯片（slides.*）

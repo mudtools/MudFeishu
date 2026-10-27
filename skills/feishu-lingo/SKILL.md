@@ -2,7 +2,7 @@
 name: feishu-lingo
 description: 飞书 lingo 域工具集：11 个工具（只读 6 / 写 5）。不知道租户有哪些词库 → `lingo.list_repos`（本域第一跳，`repo_id` 来源）
 version: 1.0.0
-package_version: 3.0.3
+package_version: 3.1.1
 ---
 
 # Lingo · 企业词典

@@ -2,7 +2,7 @@
 name: feishu-okr
 description: 飞书 okr 域工具集：18 个工具（只读 11 / 写 7）。目标 / 关键结果 / 进展 → `okr.*`；任务待办 → `task.*`；审批待办 → `approval.*`。
 version: 1.0.0
-package_version: 3.0.3
+package_version: 3.1.1
 ---
 
 # OKR（okr.*）

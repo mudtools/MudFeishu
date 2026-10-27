@@ -2,7 +2,7 @@
 name: feishu-im
 description: 飞书 im 域工具集：23 个工具（只读 9 / 写 14）。给人发消息 / 读聊天记录 → `im.*`；给人发邮件 → `mail.*`；给人建待办 → `task.*`。
 version: 1.0.0
-package_version: 3.0.3
+package_version: 3.1.1
 ---
 
 # 消息（im.*）

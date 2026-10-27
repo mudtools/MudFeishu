@@ -2,7 +2,7 @@
 name: feishu-drive
 description: 飞书 drive 域工具集：16 个工具（只读 5 / 写 11）。文件在哪 / 叫什么 / 多大 / 谁所有 → `drive.*`；取正文 → `docx.*`（文档）或 `sheets.*`（表格）；
 version: 1.0.0
-package_version: 3.0.3
+package_version: 3.1.1
 ---
 
 # 云空间（drive.*）

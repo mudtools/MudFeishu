@@ -2,7 +2,7 @@
 name: feishu-aily
 description: 飞书 aily 域工具集：3 个工具（只读 3 / 写 0）。「这个应用接了哪些知识库」→ `aily.list_data_assets`（本域第一跳，`data_asset_id` 从这来）
 version: 1.0.0
-package_version: 3.0.3
+package_version: 3.1.1
 ---
 
 # Aily · 智能伙伴数据知识

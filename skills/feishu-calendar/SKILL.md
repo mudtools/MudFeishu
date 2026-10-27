@@ -2,7 +2,7 @@
 name: feishu-calendar
 description: 飞书 calendar 域工具集：9 个工具（只读 4 / 写 5）。日程 / 会议室忙闲 → `calendar.*`；任务截止时间 → `task.*`。日程是他人可见的邀请，任务是我的待办。
 version: 1.0.0
-package_version: 3.0.3
+package_version: 3.1.1
 ---
 
 # 日历（calendar.*）

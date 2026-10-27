@@ -2,7 +2,7 @@
 name: feishu-hire
 description: 飞书 hire 域工具集：7 个工具（只读 7 / 写 0）。职位（对外岗位）→ `hire.list_jobs`、`hire.get_job`（非 PII）。
 version: 1.0.0
-package_version: 3.0.3
+package_version: 3.1.1
 ---
 
 # 招聘（hire.*：职位 / 需求 / 候选人 / 面试 / Offer）

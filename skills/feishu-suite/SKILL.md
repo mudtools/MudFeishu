@@ -2,7 +2,7 @@
 name: feishu-suite
 description: 飞书工具面单入口路由：34 个域技能包、351 个工具（只读 185 / 写 166）。先按域路由表选定技能包，再进包读工具清单与前置链。
 version: 1.0.0
-package_version: 3.0.3
+package_version: 3.1.1
 ---
 
 # 飞书工具面 · 单入口路由

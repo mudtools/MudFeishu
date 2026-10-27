@@ -2,7 +2,7 @@
 name: feishu-minutes
 description: 飞书 minutes 域工具集：10 个工具（只读 6 / 写 4）。会议纪要 / 妙记内容 → `minutes.*`；会议本身（参会人、录制、预约、会议室）属会议域，
 version: 1.0.0
-package_version: 3.0.3
+package_version: 3.1.1
 ---
 
 # 妙记（minutes.*）

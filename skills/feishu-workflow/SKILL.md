@@ -2,7 +2,7 @@
 name: feishu-workflow
 description: 飞书 workflow 域工具集：2 个工具（只读 2 / 写 0）。要做「多源汇总成一份报告」→ `workflow.*`；单次查询/写入直接用对应域工具。
 version: 1.0.0
-package_version: 3.0.3
+package_version: 3.1.1
 ---
 
 # 复合工作流（workflow.*）

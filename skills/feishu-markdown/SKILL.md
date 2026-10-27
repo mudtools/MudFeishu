@@ -2,7 +2,7 @@
 name: feishu-markdown
 description: 飞书 markdown 域工具集：4 个工具（只读 2 / 写 2）。新建一份在线文档 → `markdown.create`（产物是 docx，可继续被本域改写）。
 version: 1.0.0
-package_version: 3.0.3
+package_version: 3.1.1
 ---
 
 # Markdown 生命周期（markdown.*）

@@ -157,10 +157,10 @@ public class DomainMappingTests
 
         var tools = new ImTools(client.Object, new Mock<Mud.Feishu.IFeishuTenantV1ChatGroupMember>().Object, Options.Create(NewOptions()));
         var result = await tools.GetHistoryAsync(
-            Args(("chat_id", "oc001"), ("start_time", "2026-09-27T00:00:00+08:00"), ("end_time", "2026-09-27T12:00:00Z")),
+            Args(("container_id", "oc001"), ("start_time", "2026-09-27T00:00:00+08:00"), ("end_time", "2026-09-27T12:00:00Z")),
             CancellationToken.None);
 
-        capturedContainerType.Should().Be("chat", "container_id_type 固定 chat（绑定层注入，隐藏）");
+        capturedContainerType.Should().Be("chat", "container_type 缺省 chat（群聊/单聊）");
         capturedSortType.Should().Be("ByCreateTimeDesc", "取最近消息（绑定层注入，隐藏）");
         capturedPageSize.Should().Be(PageSizes.History);
         capturedStart.Should().Be("1790438400", "RFC3339 → 秒级时间戳（§3.3.3）");
@@ -181,11 +181,39 @@ public class DomainMappingTests
         var tools = new ImTools(client.Object, new Mock<Mud.Feishu.IFeishuTenantV1ChatGroupMember>().Object, Options.Create(NewOptions()));
 
         var result = await tools.GetHistoryAsync(
-            Args(("chat_id", "oc001"), ("start_time", "2026/09/27 00:00")),
+            Args(("container_id", "oc001"), ("start_time", "2026/09/27 00:00")),
             CancellationToken.None);
 
         result.ToString().Should().Contain("[tool_error] im.get_history_messages").And.Contain("RFC3339");
         client.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task ImHistory_ThreadContainer_ShouldPassThreadAndRejectTimeRange()
+    {
+        string? capturedContainerType = null;
+        var client = new Mock<Mud.Feishu.IFeishuTenantV1Message>();
+        client
+            .Setup(c => c.GetHistoryMessageAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                It.IsAny<string?>(), It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .Callback((string type, string _, string? __, string? ___, string? ____, int _____, string? ______, CancellationToken _______) => capturedContainerType = type)
+            .ReturnsAsync(new FeishuApiPageListResult<HistoryMessageData>
+            {
+                Code = 0,
+                Data = new ApiPageListResult<HistoryMessageData>(),
+            });
+
+        var tools = new ImTools(client.Object, new Mock<Mud.Feishu.IFeishuTenantV1ChatGroupMember>().Object, Options.Create(NewOptions()));
+
+        await tools.GetHistoryAsync(
+            Args(("container_id", "omt_001"), ("container_type", "thread")), CancellationToken.None);
+        capturedContainerType.Should().Be("thread", "话题与群聊共用同一 SDK 方法，仅容器类型不同");
+
+        var rejected = await tools.GetHistoryAsync(
+            Args(("container_id", "omt_001"), ("container_type", "thread"), ("start_time", "2026-09-27T00:00:00+08:00")),
+            CancellationToken.None);
+        rejected.ToString().Should().Contain("[tool_error] im.get_history_messages").And.Contain("不支持");
     }
 
     // ───────────────────── wiki.* ─────────────────────

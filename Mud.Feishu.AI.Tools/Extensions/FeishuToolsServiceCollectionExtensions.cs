@@ -10,8 +10,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.AI.Channels;
+using Mud.Feishu.AI.Diagnostics;
 using Mud.Feishu.AI.Events;
 using Mud.Feishu.AI.Knowledge;
+using Mud.Feishu.AI.Tools.Hosting;
 using Mud.Feishu.AI.Tools.Registration;
 
 namespace Mud.Feishu.AI.Tools;
@@ -74,7 +76,7 @@ public static class FeishuToolsServiceCollectionExtensions
             .AddFeishuBitableDeepToolsCore();
 
     /// <summary>
-    /// 按【域组】注册云文档工具（docx + docxDeep + wiki + minutesRead + sheets + sheetsDeep + drive + driveDownload + driveComment + drivePermission + translation）。
+    /// 按【域组】注册云文档工具（docx + docxDeep + wiki + minutesRead + sheets + sheetsDeep + drive + driveDownload + driveComment + drivePermission + slides + translation）。
     /// </summary>
     /// <remarks>
     /// F-3 / R1 §15.3：原 9 个细粒度入口合并为本入口——它们在飞书产品面同属"云文档域"，
@@ -89,6 +91,9 @@ public static class FeishuToolsServiceCollectionExtensions
             .AddFeishuDocxDeepToolsCore()
             .AddFeishuWikiToolsCore()
             .AddFeishuMinutesReadToolsCore()
+
+            // S-6：逐字稿导出出口（与只读链同进同出，见 AddFeishuReadonlyToolCores 的登记）。
+            .AddFeishuMinutesTranscriptToolsCore()
             .AddFeishuSheetsToolsCore()
 
             // T-2：SheetsDeepTools 是「单执行器混合域」（6 只读 + 15 写），Core 只在只读链与
@@ -101,10 +106,21 @@ public static class FeishuToolsServiceCollectionExtensions
             // 与 AddFeishuReadonlyToolCores 的清单**同进同出**，否则逐域装配的宿主拿不到下载出口。
             .AddFeishuDriveDownloadToolsCore()
 
+            // Markdown 生命周期执行器 MarkdownTools（5 个工具：2 只读 + 3 写）。
+            // 单执行器混合域（写工具默认不启用，经 FeishuAgent:WriteAllowList 单键控）；
+            // 与 AddFeishuReadonlyToolCores 的清单**同进同出**（DomainRegistrarTests 锁等价性）。
+            .AddFeishuMarkdownToolsCore()
+
             // ⚠️ 不要在此列 AddFeishuDriveCommentToolsCore / AddFeishuDrivePermissionToolsCore：
             // Drive 协作面是「读写混合域」，按既有链拆分其 Core **只在写链**登记（见 AddFeishuWriteToolCores）。
             // 两链同时登记 ⇒ 域注册器被装配两次 ⇒ FeishuToolRegistry 抛"工具已注册"（客户端缺席时不可见，
             // 宿主补齐客户端才整域炸掉——与 DocxDeep 同款陷阱）。
+
+            // S-1：Slides 只读 + 截图出口（与 AddFeishuReadonlyToolCores 的清单**同进同出**）。
+            // ⚠️ 不得在此列 AddFeishuSlidesWriteToolsCore（写链专属，双注册即抛"工具已注册"）。
+            .AddFeishuSlidesReadToolsCore()
+            .AddFeishuSlidesImageToolsCore()
+
             .AddFeishuTranslationToolsCore();
 
     /// <summary>
@@ -197,6 +213,29 @@ public static class FeishuToolsServiceCollectionExtensions
         Action<FeishuToolRegistry>? configure = null)
         => AddFeishuToolInfrastructure(services, configure)
             .AddFeishuChatGroupToolsCore();
+
+    /// <summary>
+    /// 按域注册【复合工作流】工具（S-4，2 个只读：<c>workflow.*</c>）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 工作流是<b>编排面</b>而不是新能力面：每一步都是既有域的受控工具调用（授权门 / 令牌预检 /
+    /// 净化 / 审计 / 重试 / 预算逐环生效），白名单未放行的步骤会让整链在该步失败——不旁路宿主策略。
+    /// 首批两条链<b>全只读</b>（妙记速览 / 站会报告）；写工作流需补偿语义设计，登记为后续项。
+    /// </para>
+    /// <para>
+    /// ⚠️ 与全域入口的同步纪律：本入口与 <c>AddFeishuReadonlyToolCores</c> 的清单必须**同进同出**
+    /// （<c>DomainRegistrarTests</c> 锁等价性）。
+    /// </para>
+    /// </remarks>
+    /// <param name="services">服务集合。</param>
+    /// <param name="configure">注册表配置回调（组合多域时只在首域传入）。</param>
+    /// <returns>服务集合。</returns>
+    public static IServiceCollection AddFeishuWorkflowTools(
+        this IServiceCollection services,
+        Action<FeishuToolRegistry>? configure = null)
+        => AddFeishuToolInfrastructure(services, configure)
+            .AddFeishuWorkflowToolsCore();
 
     /// <summary>
     /// 按域注册【智能伙伴数据知识】工具（B2 补全域，3 个只读：<c>aily.*</c>）。
@@ -345,7 +384,7 @@ public static class FeishuToolsServiceCollectionExtensions
 
 
     /// <summary>
-    /// 按域注册邮件工具（WP5：<c>mail.list_messages</c>/<c>mail.get_message</c> 只读 + <c>mail.send_message</c> 写）。
+    /// 按域注册邮件工具（WP5：<c>mail.list_messages</c>/<c>mail.get_message</c> 只读 + <c>mail.send</c> 写）。
     /// </summary>
     /// <remarks>
     /// 读侧（list/get）需 <c>IFeishuTenantV1MailMessage</c>（租户令牌），发信需 <c>IFeishuUserV1MailDraft</c>（用户令牌）——
@@ -364,7 +403,7 @@ public static class FeishuToolsServiceCollectionExtensions
         => AddFeishuToolInfrastructure(services, configure)
             .AddFeishuMailToolsCore()
 
-            // T-3 成环批次：MailDeepTools（17 个工具：5 只读 + 12 写）与 MailTools 同属
+            // T-3 成环批次：MailDeepTools（15 个工具：5 只读 + 10 写）与 MailTools 同属
             // 「读写混合域」——Core 只在写链与本入口各登记一次（见上方 ⚠️ 不可叠加说明）。
             .AddFeishuMailDeepToolsCore();
 
@@ -379,9 +418,8 @@ public static class FeishuToolsServiceCollectionExtensions
         => AddFeishuToolInfrastructure(services, configure).AddFeishuCalendarToolsCore();
 
 
-
     /// <summary>
-    /// 注册写域工具（Phase 2：<c>im.send_message</c>/<c>bitable.add_record</c>/<c>approval.create_instance</c> +
+    /// 注册写域工具（Phase 2：<c>im.send_message</c>/<c>bitable.record_batch_create</c>/<c>approval.create_instance</c> +
     /// 授权链复用）；对应域客户端缺席时对应写工具不进注册表，白名单期 fail-fast。
     /// </summary>
     public static IServiceCollection AddFeishuWriteTools(
@@ -429,6 +467,11 @@ public static class FeishuToolsServiceCollectionExtensions
                     // 但只有本清单会调用它。这张表是**人工维护**的，故已加守卫
                     // ToolDomainCores_ShouldAllBeWiredIntoTheAggregator 锁死"生成的 Core 必须被聚合"。
                     .AddFeishuMinutesReadToolsCore()
+
+                    // S-6：妙记逐字稿导出执行器 MinutesTranscriptTools（minutes.get_transcript）。
+                    // 与 DriveDownloadTools 同款受控下载出口（字节落宿主盘、不进上下文）；
+                    // 本行必须与 AddFeishuCloudDocTools 的清单**同进同出**（DomainRegistrarTests 锁等价性）。
+                    .AddFeishuMinutesTranscriptToolsCore()
 
                     // F-1 首个补域：MDM 国家/地区执行器 CountryRegionTools（1 个只读）。
                     // 同 minutes 的教训——本行是**唯一**会调用生成 Core 的地方，
@@ -530,6 +573,11 @@ public static class FeishuToolsServiceCollectionExtensions
                     // B5：已策展工具检索执行器 ToolSearchTools（feishu.tool_search，只读注册表/契约表）。
                     .AddFeishuToolSearchToolsCore()
 
+                    // R8 / S-4：复合工作流执行器 WorkflowTools（2 个只读工作流：妙记速览 / 站会报告）。
+                    // 本行是**唯一**会调用生成 Core 的地方，漏加即「工具静默不入注册表」
+                    // （ToolDomainCoresWiringContractTests 会报红）。
+                    .AddFeishuWorkflowToolsCore()
+
                     // T-2 加深批次：Bitable 深化执行器 BitableDeepTools（17 个工具：7 只读 + 10 写）
                     // 与 Sheets 深化执行器 SheetsDeepTools（21 个工具：6 只读 + 15 写）。
                     // 两者均为「单执行器混合域」，按链拆分取舍同 Board/Attendance：Core 整体注册于只读链
@@ -542,7 +590,20 @@ public static class FeishuToolsServiceCollectionExtensions
                     // T-3 成环批次：Task 深化执行器 TaskDeepTools（12 个工具：4 只读 + 8 写）。
                     // 同属「单执行器混合域」（取舍同上）；必须与 AddFeishuTaskOkrTools 的清单
                     // **同进同出**（DomainRegistrarTests 锁等价性）。
-                    .AddFeishuTaskDeepToolsCore();
+                    .AddFeishuTaskDeepToolsCore()
+
+                    // S-1：Slides 只读执行器 SlidesReadTools（5 个）+ 截图出口 SlidesImageTools（2 个）。
+                    // 同 minutes 的教训——本行是**唯一**会调用这两个生成 Core 的地方，
+                    // 漏加即「工具静默不入注册表」（ToolDomainCoresWiringContractTests 会报红）；
+                    // 且必须与 AddFeishuCloudDocTools 的清单**同进同出**（DomainRegistrarTests 锁等价性）。
+                    .AddFeishuSlidesReadToolsCore()
+                    .AddFeishuSlidesImageToolsCore()
+
+                    // Markdown 生命周期执行器 MarkdownTools（5 个工具：2 只读 + 3 写）。
+                    // 单执行器混合域（取舍同 Board/Attendance）：Core 整体注册于只读链，
+                    // 写工具默认不启用；必须与 AddFeishuCloudDocTools 的清单**同进同出**
+                    // （DomainRegistrarTests 锁等价性）。
+                    .AddFeishuMarkdownToolsCore();
 
     /// <summary>
     /// 写域工具核心批量注册（W4 抽取：消除 AddFeishuTools 与 AddFeishuWriteTools 的重复链）。
@@ -572,7 +633,7 @@ public static class FeishuToolsServiceCollectionExtensions
             // WP5/R5 域扩容：邮件工具 + 通讯录部门轴工具
             .AddFeishuMailToolsCore()
 
-            // T-3 成环批次：Mail 深化执行器 MailDeepTools（17 个工具：5 只读 + 12 写），
+            // T-3 成环批次：Mail 深化执行器 MailDeepTools（15 个工具：5 只读 + 10 写），
             // 与 MailTools 同属「读写混合域」——只在写链登记（与 AddFeishuMailTools 的清单
             // **同进同出**，DomainRegistrarTests 锁等价性）。
             .AddFeishuMailDeepToolsCore()
@@ -586,6 +647,10 @@ public static class FeishuToolsServiceCollectionExtensions
             // R6 / S3：VideoConferencing 写入执行器 VcWriteTools（4 个工具，其中含 2 个 user 身份工具）。
             .AddFeishuVcWriteToolsCore()
 
+            // S-6：妙记生产面执行器 MinutesUserWriteTools（4 个工具，全部 user 身份写）。
+            // 只在写链登记——漏加即「工具静默不入注册表」（ToolDomainCoresWiringContractTests 会报红）。
+            .AddFeishuMinutesUserWriteToolsCore()
+
             // R-12（2026-10-10 评审决策）：万能兜底调用执行器 GenericApiTools（feishu.api_call）
             // 已**整条删除**。删除理由：① 与策展工具构成双轨调用路径（同一能力两条路径，
             // 投影/幂等/风险语义不同）；② 它是整个工具面风险最高的面（任意已登记方法的 HTTP 调度）；
@@ -598,7 +663,11 @@ public static class FeishuToolsServiceCollectionExtensions
             // 按链拆分的取舍见本方法 remarks。⚠️ 本行是**唯一**会调用这两个生成 Core 的地方，
             // 漏加即「工具静默不入注册表」（ToolDomainCoresWiringContractTests 会报红）。
             .AddFeishuDriveCommentToolsCore()
-            .AddFeishuDrivePermissionToolsCore();
+            .AddFeishuDrivePermissionToolsCore()
+
+            // S-1：Slides 写入执行器 SlidesWriteTools（5 个工具，含 1 个高危写 delete_slide）。
+            // 只在写链登记——漏加即「工具静默不入注册表」（ToolDomainCoresWiringContractTests 会报红）。
+            .AddFeishuSlidesWriteToolsCore();
 
     /// <summary>执行链协作件 + 注册表 + 工具源桥（幂等；各域扩展共同前置）。</summary>
     private static IServiceCollection AddFeishuToolInfrastructure(
@@ -632,6 +701,11 @@ public static class FeishuToolsServiceCollectionExtensions
         services.TryAddSingleton<IFeishuToolFunctionFactory, FeishuToolFunctionFactory>();
         services.TryAddSingleton<IToolErrorTextFormatter, ToolErrorTextFormatter>();
 
+        // GAP-11 装配自检面：把「启动后第一次调用才暴露的装配缺陷」变成一次可读、可断言的报告。
+        // ⚠️ 必须是**工厂注册**：实现经 IServiceProvider 逐项探测可选协作件（缺席即少一条结论，
+        //    绝不能变成构造期抛异常——诊断面自身不可诊断是最坏的形态）。
+        services.TryAddSingleton<IFeishuDiagnosticsProbe>(static sp => new FeishuDiagnosticsProbe(sp));
+
         // T1 / D1：用户令牌就绪探测器（internal sealed，按需注入 FeishuToolBinding 构造函数）。
         // IFeishuTokenManagerResolver 可空——未注册时探测降级为 fail-open 放行（由装配诊断 Warning 提示）。
         // ⚠️ 必须是**工厂注册**：MS DI 不把可空引用注解当作"可缺席"，只有工厂（或带默认值的构造参数）
@@ -642,6 +716,13 @@ public static class FeishuToolsServiceCollectionExtensions
             sp.GetService<IFeishuTokenManagerResolver>(),
             sp.GetRequiredService<IOptions<FeishuAgentOptions>>(),
             sp.GetService<ILogger<UserTokenPrecheck>>()));
+
+        // E-2 成本核算出口：进程内聚合（宿主可替换为持久化实现）。默认注册是因为
+        // 「用量归因」属于运维基线能力，而聚合本身无 IO、无外部依赖（关掉它没有收益）。
+        services.TryAddSingleton<IFeishuUsageMeter, InMemoryFeishuUsageMeter>();
+
+        // E-2 自检面：诊断 API 依赖注册表 + 配置，故与工具面基础设施同装配（Demo --doctor 的消费点）。
+        services.TryAddSingleton<IFeishuDiagnosticsProbe>(static sp => new FeishuDiagnosticsProbe(sp));
 
         return services;
     }
@@ -677,7 +758,7 @@ public static class FeishuToolsServiceCollectionExtensions
     /// <remarks>
     /// <para>
     /// 与 <see cref="AddFeishuCapabilityTools"/> 同属"元工具显式入口"：数据源是编译期方法目录
-    /// （<c>FeishuToolMethodCatalog</c>，1268 个方法的结构化事实），<b>不依赖任何飞书客户端</b>，
+    /// （<c>FeishuToolMethodCatalog</c>，1279 个方法的结构化事实），<b>不依赖任何飞书客户端</b>，
     /// 也不随域缺席而软缺席。全域入口 <see cref="AddFeishuTools"/> 已包含它。
     /// </para>
     /// <para>

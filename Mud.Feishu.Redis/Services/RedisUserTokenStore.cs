@@ -20,7 +20,7 @@ namespace Mud.Feishu.Redis.Services;
 /// 支持按用户标识隔离令牌数据，适用于多实例分布式部署场景。
 /// ITokenStore 的方法通过 UserTokenStoreBase 基类委托给内部 RedisTokenStore 实现。
 /// </remarks>
-public class RedisUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePurge, IUserTokenStoreCompareExchange
+public class RedisUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePurge, IUserTokenStoreCompareExchange, IUserTokenStoreAccessTokenInvalidation
 {
     /// <summary>SCAN 类删除操作的批大小。</summary>
     private const int DeleteBatchSize = 500;
@@ -151,6 +151,18 @@ return 1";
     {
         cancellationToken.ThrowIfCancellationRequested();
         await _redis.GetDatabase().KeyDeleteAsync(new RedisKey[] { BuildUserAccessTokenKey(userId, tokenType), BuildUserRefreshTokenKey(userId, tokenType) }, flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 仅删除访问令牌键，保留 refresh 键（refresh 仍是唯一的续期凭据）。
+    /// </summary>
+    /// <param name="userId">用户标识。</param>
+    /// <param name="tokenType">令牌类型。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    public async Task InvalidateAccessTokenAsync(string userId, string tokenType, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        await _redis.GetDatabase().KeyDeleteAsync(BuildUserAccessTokenKey(userId, tokenType), flags: RedisStoreHelper.ToCommandFlags(cancellationToken)).ConfigureAwait(false);
     }
 
     // 用户维度原生 CAS —— Lua 原子实现

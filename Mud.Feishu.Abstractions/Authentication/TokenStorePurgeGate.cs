@@ -33,6 +33,12 @@ namespace Mud.Feishu.Abstractions.Authentication;
 /// 覆盖"提交窗口内旧上下文回写"的残余窗口。计数归零即撤门。
 /// </para>
 /// <para>
+/// <b>作用域</b>：门只拦截<b>恢复读路径</b>（租户 / 应用 / 用户的 store 读族）。
+/// 写族、单条删除与清库族一律透传——拦截写会使残留令牌无法覆盖，拦截清库会使清库本身静默失效；
+/// 清库期间的新写入由「提交后二次清库」收尾。
+/// 门是<b>进程内</b>对象，不跨实例传播（见下条多实例语义）。
+/// </para>
+/// <para>
 /// <b>安全性（fail-open）</b>：门带 <see cref="SafetyTimeoutSeconds"/> 上界——
 /// 清库异常/挂死时门自动失效并上报一次 <see cref="PurgeGateState.TimedOut"/>，
 /// 恢复路径重新启用，绝不因门而永久禁用 store 恢复。

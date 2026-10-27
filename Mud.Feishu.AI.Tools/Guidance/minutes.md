@@ -23,10 +23,14 @@
   `has_more=false` 即读完。优先用总结 / 章节 / 待办回答，逐字稿只在用户明确要原话时读。
 - **媒体只是链接**：`minutes.get_media` 返回的是有效期 1 天的下载 URL（文本），不含音视频内容本身；
   需要文件时把链接交给用户或宿主落盘。
+- **要逐字原文或时间轴才导出**：`minutes.get_transcript`（txt/srt，落盘回 `local_path`）；「讲了什么」仍走 `get_artifacts`。
+- **剪辑是异步生成**：`minutes.clip` 调用成功只表示已提交，转写与音视频在后台产出，回执给的是新妙记链接。
 - token 不存在时工具返回明确的「未找到」，据此如实告知用户，不要换着 token 反复试。
 
 ## 安全规则
-- 本域全为只读工具（无写操作、无 `dry_run` 语义）；调用仍受 scope 审计约束（需 `minutes:minutes:readonly`）。
+- 读面全为只读；**写面 4 枚**（`clip` / `upload` / `subscribe` / `unsubscribe`）都是**用户身份**工具——
+  宿主须在 `FeishuAgent:AllowedIdentities` 放行 user，否则会因身份被拒；首次调用一律 `dry_run=true` 预演。
+- `get_transcript` 是**导出文件**出口：逐字稿字节落宿主盘，结果只回 `local_path`（no-bytes-in-context）。
 - 只使用本域真实工具名，不臆造不存在的工具或 API。
 
 ## 示例

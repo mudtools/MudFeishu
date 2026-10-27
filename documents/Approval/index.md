@@ -119,7 +119,7 @@ public class ApprovalController : ControllerBase
 ### 其他功能
 
 - [审批 Bot 消息接口](./FeishuV1ApprovalMessage_Tenant.md) — 通过审批 Bot 推送消息给用户或更新审批 Bot 消息
-- [审批文件管理接口](./FeishuV4ApprovalFile_Tenant.md) — 上传审批表单控件内的文件（图片、附件等）
+- [审批文件管理接口](./FeishuV2ApprovalFile_Tenant.md) — 上传审批表单控件内的文件（图片、附件等）
 
 ## 命名空间与版本信息
 

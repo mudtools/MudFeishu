@@ -27,15 +27,40 @@ namespace Mud.Feishu.Webhook;
 /// <summary>
 /// 飞书多应用 Webhook 中间件
 /// </summary>
+/// <remarks>
+/// <para>
+/// <b>实例生命周期</b>：本类型由 <c>UseMiddleware</c> 经 <c>ActivatorUtilities</c> 创建，
+/// 与 DI 容器**无关**——因此<b>不得</b>在容器中注册本类型（那会创建第二个实例，
+/// 造成重复的配置变更订阅；详见 <c>FeishuWebhookServiceBuilder</c> 的删除说明）。
+/// <c>UseMiddleware</c> 不跟踪管道实例的释放，因此本类的 <see cref="IDisposable.Dispose"/>
+/// 属<b>尽力而为</b>：仅当宿主显式释放该实例时才执行（通常等于进程结束）。
+/// 订阅本身悬挂在单例 <c>IOptionsMonitor</c> 上、随进程终止一并消失，不构成运行期泄漏；
+/// 不要依赖 <c>Dispose</c> 承担任何正确性职责。
+/// </para>
+/// <para>
+/// <b>热更纪律</b>：配置变更回调一律经 <see cref="SafeOptionsChangeExtensions.OnChangeSafe"/>
+/// 注册，且回调体内<b>禁止</b>读 <see cref="Options"/>（<c>CurrentValue</c>）——
+/// 那正是"新配置非法时必抛"的路径，异常会终止进程。
+/// </para>
+/// </remarks>
 public class FeishuMultiAppMiddleware : IDisposable
 {
     private readonly RequestDelegate _next;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<FeishuMultiAppMiddleware> _logger;
     private readonly IOptionsMonitor<FeishuWebhookOptions> _options;
-    private readonly FeishuWebhookHandlerRegistry _handlerRegistry;
     private readonly IDisposable? _onChangeSubscription;
     private bool _disposed;
+
+    /// <summary>
+    /// 上一次已生效的配置快照（仅供配置变更回调做差异化日志，<see cref="Interlocked"/> 原子换入）。
+    /// </summary>
+    /// <remarks>
+    /// 存在的唯一理由是让回调**不必**读 <c>CurrentValue</c>：回调参数只给新值，
+    /// 而"变更前值"只能来自快照。构造期用 <c>CurrentValue</c> 播种，避免首个回调
+    /// 退化为"打印全量值"的特例。
+    /// </remarks>
+    private FeishuWebhookOptions? _lastKnownOptions;
 
     /// <summary>
     /// 获取当前配置选项（支持热更新）
@@ -45,24 +70,36 @@ public class FeishuMultiAppMiddleware : IDisposable
     /// <summary>
     /// 构造函数
     /// </summary>
+    /// <param name="next">管道中的下一个中间件</param>
+    /// <param name="scopeFactory">作用域工厂（每个请求创建一个 scope 以解析 Scoped 服务）</param>
+    /// <param name="logger">日志</param>
+    /// <param name="options">Webhook 配置监视器（支持热更新）</param>
     public FeishuMultiAppMiddleware(
         RequestDelegate next,
         IServiceScopeFactory scopeFactory,
         ILogger<FeishuMultiAppMiddleware> logger,
-        IOptionsMonitor<FeishuWebhookOptions> options,
-        FeishuWebhookHandlerRegistry handlerRegistry)
+        IOptionsMonitor<FeishuWebhookOptions> options)
     {
         _next = next;
         _scopeFactory = scopeFactory;
         _logger = logger;
         _options = options;
-        _handlerRegistry = handlerRegistry;
+
+        // 构造期播种快照：这里读 CurrentValue 是安全的（不是热更回调线程），
+        // 且本工程启动期已由 WebhookOptionsStartupValidator 强制构建一次 Options。
+        _lastKnownOptions = options.CurrentValue;
 
         // 监听配置变更（持有订阅句柄，宿主关停时释放，防止句柄泄漏）
-        _onChangeSubscription = _options.OnChange((newOptions, name) =>
+        _onChangeSubscription = _options.OnChangeSafe(_logger, (newOptions, name) =>
         {
-            var oldOptions = Options;
+            var oldOptions = Interlocked.Exchange(ref _lastKnownOptions, newOptions);
             var changes = new List<string>();
+
+            if (oldOptions is null)
+            {
+                _logger.LogInformation("Webhook 配置已更新（来源: {ChangeSource}）：此前无生效快照，本次为新配置基线", name);
+                return;
+            }
 
             // 检测关键配置项的变更
             if (oldOptions.GlobalRoutePrefix != newOptions.GlobalRoutePrefix)
@@ -236,7 +273,7 @@ public class FeishuMultiAppMiddleware : IDisposable
                 return;
             }
 
-            _logger.LogInformation("收到应用的 Webhook 请求");
+            _logger.LogDebug("收到应用的 Webhook 请求");
 
             // 处理请求
             await ProcessWebhookRequestAsync(
@@ -251,13 +288,23 @@ public class FeishuMultiAppMiddleware : IDisposable
             _logger.LogWarning("请求体验证失败: {Message}, AppKey: {AppKey}", ex.Message, appKey ?? "unknown");
             await WriteErrorResponse(context, 413, "Request Entity Too Large", requestId);
         }
+        catch (FeishuWebhookUnavailableException ex)
+        {
+            // W-01：验签链路"无法完成判定"（密钥不可用 / 内部故障 / 配置构建失败）。
+            // 必须 503：403 是终态，飞书不再重推且本模块不写失败存储 ⇒ 事件永久丢失。
+            // 本分支不写失败存储、不回滚去重——此刻事件尚未被消费，重推必须能重新进入。
+            activity?.SetStatus(ActivityStatusCode.Error, "Signature validation unavailable");
+            FeishuMetricsHelper.RecordEventOutcome(appKey ?? "unknown", "signature", success: false, "signature_unavailable");
+            _logger.LogError(ex, "验签不可用（密钥服务或内部故障），返回 503 以便飞书重推, AppKey: {AppKey}", appKey ?? "unknown");
+            await WriteServiceUnavailable(context, requestId);
+        }
         catch (FeishuRedisException ex) when (ex.FailureKind == FeishuRedisFailureKind.Server)
         {
             // 去重服务致命故障（Server）——返回 503 让飞书按重推策略稍后重试，
             // 而非伪装成 403（攻击面）或 500（会被误认为业务失败）
             activity?.SetStatus(ActivityStatusCode.Error, "Deduplication server failure");
             _logger.LogError(ex, "去重服务致命故障（Server），返回 503 以便飞书重推, AppKey: {AppKey}", appKey ?? "unknown");
-            await WriteErrorResponse(context, 503, "Service Unavailable", requestId);
+            await WriteServiceUnavailable(context, requestId);
         }
         catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
         {
@@ -271,7 +318,7 @@ public class FeishuMultiAppMiddleware : IDisposable
             // 缺少该分支时，超时 OCE 会落到通用 catch → 500（写失败存储）或被吞成 400。
             activity?.SetStatus(ActivityStatusCode.Error, "Request timeout");
             _logger.LogWarning("Webhook 请求处理超时，返回 503 以便飞书重推, AppKey: {AppKey}", appKey ?? "unknown");
-            await WriteErrorResponse(context, 503, "Service Unavailable", requestId);
+            await WriteServiceUnavailable(context, requestId);
         }
         catch (Exception ex)
         {
@@ -283,7 +330,7 @@ public class FeishuMultiAppMiddleware : IDisposable
         {
             stopwatch.Stop();
             activity?.SetTag("request.duration_ms", stopwatch.ElapsedMilliseconds);
-            _logger.LogInformation("请求处理完成, 耗时: {DurationMs}ms, AppKey: {AppKey}", stopwatch.ElapsedMilliseconds, appKey ?? "unknown");
+            _logger.LogDebug("请求处理完成, 耗时: {DurationMs}ms, AppKey: {AppKey}", stopwatch.ElapsedMilliseconds, appKey ?? "unknown");
         }
     }
 
@@ -357,14 +404,10 @@ public class FeishuMultiAppMiddleware : IDisposable
             eventRequest.Nonce = context.Request.Headers["X-Lark-Request-Nonce"].FirstOrDefault() ?? string.Empty;
             eventRequest.Timestamp = long.TryParse(context.Request.Headers["X-Lark-Request-Timestamp"].FirstOrDefault(), out var ts) ? ts : 0;
 
-            // 获取应用配置的加密密钥
-            var appConfig = Options.GetAppConfig(appKey);
-            if (appConfig == null)
-            {
-                _logger.LogError("未找到应用配置, AppKey: {AppKey}", appKey);
-                await WriteErrorResponse(context, 500, "Internal Server Error", requestId);
-                return;
-            }
+            // 获取应用配置（存在性已由 InvokeAsync 的 Apps.ContainsKey 守门；
+            // W-14：此前的 `appConfig == null → 500` 分支永不可达，且二次读 Options
+            // 会与入口检查之间产生一个热更窗口的不一致，故直接断言非空）。
+            var appConfig = Options.GetAppConfig(appKey)!;
 
             // 先验证请求签名，再解密（安全原则：先验签后解密）
             // 透传 RequestAborted，客户端断开时尽早取消验签链路
@@ -447,7 +490,7 @@ public class FeishuMultiAppMiddleware : IDisposable
                 if (string.Equals(result.ErrorReason, FeishuWebhookService.InterceptedRetryableReason, StringComparison.Ordinal))
                 {
                     _logger.LogWarning("事件被拦截器中断并要求重推: {Reason}", result.ErrorReason);
-                    await WriteErrorResponse(context, 503, "Service Unavailable", requestId);
+                    await WriteServiceUnavailable(context, requestId);
                     return;
                 }
 
@@ -484,10 +527,14 @@ public class FeishuMultiAppMiddleware : IDisposable
     /// 处理加密的 URL 验证请求
     /// 验证解密后数据中的 token 字段，确保请求来源合法
     /// </summary>
+    /// <param name="context">当前 HTTP 上下文</param>
+    /// <param name="decryptedData">已解密的事件数据（含 challenge / token 的原始 JSON）</param>
+    /// <param name="appConfig">当前应用配置（提供 VerificationToken）</param>
     /// <param name="appKey">
     /// 路由得到的应用键（日志统一使用路由键，不读 <c>appConfig.AppKey</c> 这一派生诊断字段——
     /// 路由只认字典键，直接用它可避免两者分叉时的误导性日志）。
     /// </param>
+    /// <param name="requestId">请求标识（回写响应头与错误体）</param>
     private async Task HandleEncryptedVerificationAsync(
         HttpContext context,
         EventData decryptedData,
@@ -505,7 +552,8 @@ public class FeishuMultiAppMiddleware : IDisposable
         {
             try
             {
-                using var jsonDoc = JsonDocument.Parse(eventJson);
+                // netstandard2.0 的 string.IsNullOrEmpty 不带 [NotNullWhen] 注解，故显式 !（上方已守卫）
+                using var jsonDoc = JsonDocument.Parse(eventJson!);
                 var root = jsonDoc.RootElement;
                 if (root.TryGetProperty("challenge", out var challengeElement))
                 {
@@ -551,29 +599,53 @@ public class FeishuMultiAppMiddleware : IDisposable
     }
 
     /// <summary>
-    /// 读取请求体（带字节大小限制检查）
+    /// 读取请求体（带字节大小预算）
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>W-03 为什么不再 <c>EnableBuffering()</c></b>：该方法对 &gt;30KB 的请求体改用
+    /// <c>FileBufferingReadStream</c> 落临时文件，而本模块下游只消费字符串
+    /// （<see cref="IFeishuWebhookService.DecryptEventAsync"/> 收 <c>string</c>），
+    /// 从不回卷复用 ⇒ 落盘是纯粹的磁盘 I/O 攻击面（未认证请求即可触发）。
+    /// </para>
+    /// <para>
+    /// 预算三件套：① <c>ContentLength</c> 快速拒绝；② 64KB 块逐块累计，<b>按字节</b>（非字符）
+    /// 判定上限，chunked（无 <c>ContentLength</c>）同样受控；③ 读取贯穿
+    /// <c>RequestAborted</c>，慢速攻击在客户端断开时立即停止。
+    /// </para>
+    /// </remarks>
     private async Task<string> ReadRequestBodyAsync(HttpRequest request)
     {
-        var maxSize = Options.MaxRequestBodySize;
+        // 结构性上限：本方法的产物是 string（长度受 int 约束），且整包读进内存后再做一次
+        // UTF-8 解码 ⇒ 生效预算不得超过 int.MaxValue。宿主把 MaxRequestBodySize 配得更大时，
+        // 按 int.MaxValue 生效（而不是让 (int)ms.Length 溢出成负数后 500）。
+        var maxSize = Math.Min(Options.MaxRequestBodySize, int.MaxValue);
 
-        // 检查 Content-Length 头（快速拒绝）
-        if (request.ContentLength.HasValue && request.ContentLength.Value > maxSize)
+        // ① Content-Length 预检（快速拒绝，避免读一个注定超限的流）
+        if (request.ContentLength is { } declared && declared > maxSize)
         {
             throw new FeishuWebhookValidationException(
-                $"请求体大小 {request.ContentLength.Value} 超过限制 {maxSize} 字节");
+                $"请求体大小 {declared} 超过限制 {maxSize} 字节");
         }
 
-        request.EnableBuffering();
-        request.Body.Position = 0;
+        // ② 按声明长度预分配（省去 MemoryStream 的 2× 扩容拷贝），但**必须封顶**：
+        //    a. `MaxRequestBodySize` 是 long 且无上限，直接 (int)ContentLength 在 >2GB 时溢出为负数
+        //       → MemoryStream 构造抛 ArgumentOutOfRangeException ⇒ 500（不可重试、飞书不重推）；
+        //    b. "声明即分配"本身是内存放大面：未认证请求只要写一个巨大的 Content-Length 就能
+        //       让服务端立刻分配同等内存，而预算（maxSize）本该是**逐块**校验才生效。
+        //    故预分配容量 = min(声明长度, maxSize, 1MB)，超出部分由 MemoryStream 按需增长。
+        const long MaxPreallocationBytes = 1024 * 1024;
+        var declaredLength = request.ContentLength ?? 0;
+        var capacity = (int)Math.Max(0, Math.Min(declaredLength, Math.Min(maxSize, MaxPreallocationBytes)));
+        if (capacity == 0)
+            capacity = 4096;
 
-        // 逐块读取，按字节计数（T2-4: 修复按字符数计量导致多字节内容可超限约3倍的问题）
-        var buffer = new byte[4096];
-        using var ms = new MemoryStream();
+        var chunk = new byte[64 * 1024];
+        using var ms = new MemoryStream(capacity);
         long totalBytes = 0;
         int read;
 
-        while ((read = await request.Body.ReadAsync(buffer, 0, buffer.Length)) > 0)
+        while ((read = await request.Body.ReadAsync(chunk, 0, chunk.Length, request.HttpContext.RequestAborted)) > 0)
         {
             totalBytes += read;
             if (totalBytes > maxSize)
@@ -581,10 +653,11 @@ public class FeishuMultiAppMiddleware : IDisposable
                 throw new FeishuWebhookValidationException(
                     $"请求体大小超过限制 {maxSize} 字节");
             }
-            ms.Write(buffer, 0, read);
+            ms.Write(chunk, 0, read);
         }
 
-        return Encoding.UTF8.GetString(ms.ToArray());
+        // ③ 直接读内部缓冲区，省一次 ToArray() 全量拷贝（ms 由本方法创建 ⇒ GetBuffer 合法）
+        return Encoding.UTF8.GetString(ms.GetBuffer(), 0, (int)ms.Length);
     }
 
     /// <summary>
@@ -624,5 +697,24 @@ public class FeishuMultiAppMiddleware : IDisposable
 
         var json = FeishuJsonAot.Serialize(errorResponse, FeishuJsonOptions.Serialize);
         await context.Response.WriteAsync(json);
+    }
+
+    /// <summary>
+    /// 写入 503（可重试）响应——<b>本模块唯一的 503 出口</b>。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// W-13：503 语义 = "本请求未被消费，请稍后重推"。四处调用点（去重致命故障 / 解密与验签超时 /
+    /// 拦截要求重推 / 验签不可用）共用本出口，避免状态码文案与 <c>Retry-After</c> 各自漂移。
+    /// </para>
+    /// <para>
+    /// <c>Retry-After: 1</c> 是给对端的**可执行**指令（RFC 9110，秒）：此前 503 只说"不可用"，
+    /// 对端只能按自身策略退避；限流路径（429）早已带该头，此处对齐。
+    /// </para>
+    /// </remarks>
+    private Task WriteServiceUnavailable(HttpContext context, string? requestId = null)
+    {
+        context.Response.Headers["Retry-After"] = "1";
+        return WriteErrorResponse(context, 503, "Service Unavailable", requestId);
     }
 }

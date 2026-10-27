@@ -5,6 +5,51 @@ description: 该文档记录 MudFeishu 配置面的变更日志，涵盖事件�
 
 # 配置面变更日志（CHANGELOG-Config）
 
+## 2026-10（多应用装配与分发策略）
+
+### `FeishuWebSocket:AppKey` 由「指标维度」升级为「连接级应用绑定键」
+
+| 变更 | 类型 | 说明 |
+| ---- | ---- | ---- |
+| `FeishuWebSocketOptions.AppKey` 语义扩展 | **行为变更（多应用装配）** | 此前该值仅作指标维度、默认 `"default"`，连接始终绑定默认应用；现在它是 WebSocket 连接的**应用绑定键**。单应用装配留空即可（组合期解析为该应用）；多应用装配**必须显式配置**，否则装配期抛 `InvalidOperationException`（fail-fast），配置了未注册的键同样失败 |
+| 绑定键在客户端构造期固定 | 行为约束 | 运行期配置重载**不会**改写已绑定的应用（仅 `AuthGateTimeoutMs` 仍支持热更新）；换绑需重建客户端或重启进程 |
+| 未配置时的指标/去重维度 | 行为修正 | 由固定的 `"default"` 改为解析后的实际应用键，避免多应用部署下维度错位 |
+
+**迁移指引**：单应用部署无需任何操作。多应用部署（`FeishuApps` 配置了多个应用）必须显式设置
+`FeishuWebSocket:AppKey` 为要订阅事件的应用键；未设置时升级后启动即失败，
+错误信息会指明「多应用模式下必须显式配置 FeishuWebSocket:AppKey」。
+一条 WebSocket 连接只能绑定一个应用——需要订阅多个应用的事件时，应为每个应用部署独立的连接实例。
+
+### 新增 `FeishuWebhook:HandlerDispatchMode`
+
+| 变更 | 类型 | 说明 |
+| ---- | ---- | ---- |
+| 新增 `FeishuWebhookOptions.HandlerDispatchMode`（`AppScopedOnly` / `MergeWithGlobal`，默认 `AppScopedOnly`） | 新增能力 | 应用键注册了专属处理器后，默认仍只分发专属处理器（既有行为）；设为 `MergeWithGlobal` 时专属与全局处理器同时收到事件。无专属处理器时始终回退全局处理器 |
+| 启动期取值校验 | 行为约束 | 非法枚举值在宿主启动时抛 `InvalidOperationException`（此前无此键） |
+
+**迁移指引**：默认值保持既有行为，升级零破坏。多应用部署中若存在"全局安全/审计处理器需要覆盖所有应用"的诉求，
+设置 `FeishuWebhook:HandlerDispatchMode=MergeWithGlobal`；合并模式下同一事件会被两类处理器各处理一次，
+处理器必须幂等。
+
+## 2026-10（MCP 功能完善 R-7）
+
+> 方案：`.docs/AI/Mud.Feishu.AI-MCP功能完善方案-R7.md`
+
+### R7 — `FeishuMcp` 新增五个配置键（含一个行为开关）
+
+| 变更 | 类型 | 说明 |
+| ---- | ---- | ---- |
+| 新增 `FeishuMcpServerOptions.EnableToolsPagination`（`bool`，默认 `false`） | 新增能力 | 是否启用 `tools/list` 分页。**默认关闭** ⇒ 升级零行为变化；开启后客户端须支持 `nextCursor` 才能取到全部工具 |
+| 新增 `FeishuMcpServerOptions.ToolsPageSize`（`int`，默认 `50`，须 ≥ 1） | 新增能力 | 分页每页工具数（仅分页开启时生效） |
+| 新增 `FeishuMcpServerOptions.MaxRequestBytes`（`int`，默认 `1048576`，须 ≥ 1024） | 安全加固 | 单条请求上限（stdio 读行 / HTTP 请求体）；超限即拒（stdio `-32600` / HTTP `413`），防超长载荷内存膨胀 |
+| 新增 `FeishuMcpServerOptions.HttpPrefix`（默认 `http://127.0.0.1:0/`） | 新增能力（HTTP 传输） | HTTP 宿主监听前缀；默认仅回环地址、端口由系统分配 |
+| 新增 `FeishuMcpServerOptions.HttpPath`（默认 `/mcp`，须以 `/` 开头） | 新增能力（HTTP 传输） | HTTP 宿主路径 |
+
+**迁移指引**：全部为**新增键且默认值保持既有行为**，升级零破坏。启用 HTTP 传输时用
+`AddFeishuMcpHttpHost()` + `RunFeishuMcpHttpAsync()`；**认证 / TLS / 网络边界是宿主职责**
+（本服务默认仅绑定回环地址，不内置认证，对外暴露须由反向代理或宿主管道承担）。
+启用 `tools/list` 分页前须确认客户端支持 `nextCursor`（不支持分页的客户端开启后只会看到首页）。
+
 ## 2026-09（AI 审查缺陷修复 R3）
 
 > 方案：`.docs/AI/Mud.Feishu.AI-审查缺陷修复与能力完善方案-R3.md`

@@ -14,6 +14,8 @@ and versioning follows [Semantic Versioning].
 > This is a **breaking dependency change**: `Mud.HttpUtils` / `Mud.HttpUtils.Generator` move from
 > `3.0.8` to `3.0.9` (the 3.0.9 batch is mainly "code that can now be deleted" plus corrected
 > statements — no new breaking change).
+> The v3.1-line batches are merged in as well: Webhook semantics fixes, the multi-app management
+> hardening batch, and `Mud.AI.*` 1.0.2 (see the sections below).
 > **Release prerequisite (satisfied)**: upstream `3.0.9` is **published to nuget.org**; the local source
 > in `nuget.config` (pointing at the Release artifacts) has been **removed**, the packages are restored
 > from the public feed, and the full quality gate was re-run.
@@ -30,6 +32,11 @@ and versioning follows [Semantic Versioning].
   3.0.9 shipped on nuget.org the local source was **removed** and the packages were re-restored from
   the public feed following the "clear cache → `restore --no-cache` → `clean` → `build`" discipline
   (0 errors, 190 warnings identical code-by-code to the pre-upgrade baseline), and the full gate passed again.
+- `Mud.AI.Abstractions` / `Mud.AI.Agent` / `Mud.AI.Generator`: 1.0.1 → **1.0.2** (neutral tool telemetry
+  port `IAgentToolTelemetry`, `AmbientScope<T>` runtime assembly extensions, `TurnScopeContext.Facts`,
+  the `DelegatingToolFunction` decorator base, session-store facade and fallback error-truncation fixes).
+  1.0.2 is published on nuget.org; the local `mudai-local` folder source used for joint debugging was
+  removed from `nuget.config` (restore re-verified afterwards).
 
 ### Changed
 
@@ -70,6 +77,152 @@ and versioning follows [Semantic Versioning].
   instance" semantics**; the correct pattern is to switch first and then resolve from DI.
 - Decision archive updated with the execution status: `弃用成员移除方案.md` (§2 gate A, §5 risk 7
   resolved), `迁移与弃用史.md`, `编号索引.md`, `上游契约适配史.md`, `注释精简归档.md`.
+
+### Fixed — Mud.Feishu.Webhook
+
+- **"Signature validation unavailable" is no longer reported as "signature mismatch" (P0)**: an `IEncryptKeyProvider`
+  failure (e.g. KeyVault returning empty), an internal validator exception, or a post-hot-reload options build failure
+  now throws `FeishuWebhookUnavailableException` and maps to **HTTP 503 + `Retry-After`** so Feishu retries.
+  Previously these returned `false` → 403 (terminal), losing the event permanently with no failed-event record.
+  - `HandleEventAsync(request, body)` returning `false` now means **only** "the signature was judged invalid".
+  - All four 503 write sites collapse into `WriteServiceUnavailable` (always emits `Retry-After`).
+- **Hot-reload callbacks can no longer terminate the process**: every `IOptionsMonitor.OnChange` callback goes through
+  `SafeOptionsChangeExtensions.OnChangeSafe` (exceptions are logged, never propagated to the reload thread) and no
+  callback reads `CurrentValue` any more (it diffs against a snapshot seeded in the constructor). The rate-limit
+  middleware's `System.Threading.Timer` is gone — window cleanup is now an opportunistic sweep on the request path.
+- **Request-body budget**: `EnableBuffering()` removed (no more temp-file spill for bodies >30KB), 64KB chunked reads
+  with `ContentLength` pre-allocation and `RequestAborted` propagation, and one less full copy.
+  **`MaxRequestBodySize` default 10MB → 1MB** (413 beyond it; configure explicitly for oversized card payloads).
+- **`UseFeishuWebhook()` fails fast when `Apps` is empty** (previously: starts fine, endpoints silently 404, Feishu keeps
+  retrying). Hosts that only drive `IFeishuWebhookService` manually are unaffected (they do not mount the middleware).
+- **`GlobalRoutePrefix` normalization**: `"/feishu"`, `"feishu/"`, `" /feishu/ "` no longer break routing
+  (normalized once in `PostConfigure`, so every consumer sees the effective value).
+- **Instance registrations are singletons**: `AddHandler(instance)` / `AddInterceptor(instance)` used to register the
+  shared instance as Scoped, so DI disposed it at the end of the **first request**; now Singleton (disposed with the
+  container). XML documents the thread-safety requirement and points to `AddHandler<T>()` for per-request state.
+- **Removed the middleware's container registrations** (`UseMiddleware` always builds its own pipeline instance, so the
+  registration produced a phantom instance with a duplicate change subscription).
+- **`DecryptEventAsync` now forwards the `CancellationToken`** to the key provider (previously `DecryptionTimeoutMs`
+  could not interrupt a hanging key lookup).
+- **`InMemoryFailedEventStore.GetPendingRetryEventsAsync` honours `beforeTime`**.
+- **Request-body pre-allocation is now capped, removing memory amplification and integer overflow**: it used to cast
+  the declared `ContentLength` straight to `int` (`MaxRequestBodySize` is a `long` with no upper bound) — a >2GB
+  declaration overflowed to a negative length (500) and an unauthenticated request could force an immediate
+  equal-sized allocation. The effective budget is now capped at `min(MaxRequestBodySize, int.MaxValue)` (the result
+  is a `string`, whose length is `int`-bounded) and the capacity is `min(declared, effective budget, 1MB)`; growth
+  beyond that is on demand and the byte budget is still enforced per chunk.
+- **Retries no longer refresh `FailedAt`**: each retry attempt used to overwrite it with "now", which made
+  `InMemoryFailedEventStore.GetOldestPendingAge()` (feeding the `oldest_pending_retry_age_seconds` health dimension,
+  `Degraded` above 5 minutes) blind to a handler that keeps failing. `FailedAt` now keeps the **first** failure time;
+  backoff progress lives only in `NextRetryAt`. ⚠️ Operator-visible: a persistently failing event now really does turn
+  the health check `Degraded`.
+- **Health-check severity no longer inverted**: "utilization ≥80% → `Degraded`" used to be evaluated before
+  "failed-event backlog ≥500 → `Unhealthy`", so a genuinely `Unhealthy` state was reported as the milder `Degraded`.
+  Severity is now decided strictly as **`Unhealthy` > `Degraded`** (slots exhausted → backlog hard threshold →
+  utilization → oldest pending age → backlog soft threshold), and every data item is always populated.
+
+### Changed — Mud.Feishu.Webhook
+
+- Decryption hot path: dropped `Task.Run` (AES is micro-second range) and cached the derived key per `EncryptKey`.
+- Successful security-audit logging downgraded to `Debug` (failures stay `Warning`); middleware request/response logs
+  downgraded to `Debug`, cutting successful-event logging from 4 lines to 2.
+- Startup self-check log now prints effective `MaxRequestBodySize`, `DecryptionTimeoutMs` and rate-limit settings.
+
+### Removed — Mud.Feishu.Webhook
+
+- Four public exception types with **no runtime throw site** (misleading public surface):
+  `FeishuWebhookDecryptionException`, `FeishuWebhookProcessingException`, `FeishuWebhookSecurityException`,
+  `FeishuWebhookSerializationException`. Kept: `FeishuWebhookException` (base),
+  `FeishuWebhookValidationException` (413), `FeishuWebhookUnavailableException` (503).
+
+### Docs
+
+- `documents/ErrorHandling.md`: added the Webhook ACK decision table (same source as
+  `WebhookAckSemanticsContractGuards`) and the deployment preconditions (Redis dedup for multi-instance, in-memory
+  failed-event loss on restart, plaintext events rejected, nonce consumption order, body size cap, prefix format).
+- `documents/index.md`: added a "Webhook troubleshooting" section — 503 means the key service is unavailable (**not** a
+  signature mismatch), plus 403 / 404 / 413 triage.
+
+### Fixed — multi-app management and event dispatching
+
+Batch-wide fix after the multi-app management and event dispatching review. Except for
+**connection-level app binding** (a behavior change for multi-app deployments: a missing
+`FeishuWebSocket:AppKey` now fails startup) every item leaves single-app semantics unchanged.
+
+- **WebSocket — connection-level app binding**: `FeishuWebSocketOptions.AppKey` is promoted from an
+  "metrics dimension" to the connection's **app binding key**. Single-app deployments may leave it
+  empty (resolved to that app automatically); multi-app deployments must set it explicitly —
+  missing or unregistered keys fail startup with `InvalidOperationException`. Previously a
+  multi-app deployment silently bound the connection to the default app, so events were sent and
+  received under the wrong identity. The binding is resolved once at client construction
+  (`FeishuWebSocketClient` / `FeishuWebSocketManager`) and drives metrics, deduplication and the
+  failed-event store; configuration reload never rebinds a live connection (rebind = restart or
+  rebuild the client).
+- **WebSocket — app dimension through the unified deduplication middleware**: new
+  `IAppScopedUnifiedDeduplicationMiddleware` (implemented by `UnifiedDeduplicationMiddleware`)
+  forwards `appKey` to the event deduplicator; the legacy interface methods are equivalent to
+  `appKey = null`, so the change is binary compatible. Previously WebSocket events lost the app
+  dimension when deduplicated through the middleware, so identical EventIds leaked across apps in
+  multi-app deployments. The check / complete / rollback call sites in `FeishuEventMessageHandler`
+  now pass the resolved app key.
+- **Webhook — dispatch policy between app-scoped and global handlers**: new
+  `FeishuWebhook:HandlerDispatchMode` (`AppScopedOnly` default / `MergeWithGlobal`). The default
+  keeps the previous semantics (app-scoped handlers suppress the global ones); `MergeWithGlobal`
+  lets global handlers run as well. When no app-scoped handler is registered the global factory is
+  always used. In merge mode an event already handled by an app-scoped handler is no longer
+  reported as `unhandled`. Dispatch is split into app-scoped / global paths; the existing warning
+  and metric for "all app-scoped handlers skipped the event type" are preserved, and invalid enum
+  values are rejected in `Validate()`.
+- **Webhook / WebSocket — post-interceptor resilience**: `AfterHandleAsync` now runs per
+  interceptor inside try/catch and always receives `CancellationToken.None`. Previously one failing
+  post-interceptor skipped the remaining ones and turned a successful business result into a
+  failure (on the webhook side it also replaced the original processing exception); on external
+  cancellation the cancelled caller token made the cleanup logic short-circuit immediately.
+  Interceptor failures now only log an error (interceptor type / event type / EventId) and do not
+  affect the original processing outcome.
+- **Multi-app — `RemoveApp` lifecycle closure**: registry removal, configuration snapshot sync,
+  tombstoning, generation increment and purge-gate marking now happen atomically under
+  `_registryLock`; the purge runs asynchronously outside the lock and releases the lease in
+  `finally`. Three fixes: ① **tombstone** — an explicitly removed key can no longer be silently
+  resurrected by a hot reload that started before the removal and commits after it (cleared only
+  when the configuration source stops declaring the key or `AddApp` is called); ② **ABA** — if the
+  app is re-added right after removal, the late purge is skipped by generation check and cannot
+  delete tokens the new context just wrote; ③ **snapshot sync** — `RemoveApp` previously left the
+  configuration snapshot untouched, so later hot reloads treated the removed app as still online.
+  Default-app promotion is therefore deterministic: removed-key-free snapshot order, then ordinal
+  AppKey ordering.
+- **Multi-app — per-app failure isolation in hot reload**: the add / remove / update commit
+  phases each isolate exceptions, so one failing app no longer aborts the remaining changes. The
+  commit order is corrected to "register first, retire the old context after `RegisterApp`
+  succeeds" — previously the old context went into the retirement queue before registration, so a
+  failed registration left it to be disposed after the grace period while still referenced by the
+  registry. A failed update rolls back its `Lazy` reference swap; a failed add is excluded from the
+  configuration snapshot (otherwise the next reload sees "unchanged" and never retries), and a
+  failed removal keeps its snapshot entry. The credential purge plan is now reduced to
+  `WriteBackRiskKeys` (the "pre-purge timed out" branch is unreachable for a fire-and-forget
+  purge).
+- **Multi-app — unified validation across construction / hot reload / `AddApp`**: duplicate
+  `AppKey`, empty `AppKey` and multiple `IsDefault = true` entries now fail hard. Previously a
+  duplicate key only logged a warning and let the later registration silently overwrite the
+  earlier one, and multiple defaults made the default identity drift with registration order and
+  flip on every reload.
+- **User tokens — persisted access-token invalidation**: new public capability interface
+  `IUserTokenStoreAccessTokenInvalidation` (deletes the access token only, keeps the refresh
+  token), implemented by `FeishuUserTokenStore` / `RedisUserTokenStore` and conditionally
+  forwarded by `EncryptedUserTokenStore` (no-op when the inner store lacks the capability; it must
+  **not** fall back to `RemoveAsync`, which would delete the refresh token too).
+  `UserTokenManager.InvalidateUserTokenAsync` now writes through to the store after clearing the
+  local mirror, and logs a warning instead of throwing on failure (invalidation stays
+  best-effort). The capability probe uses the **raw undecorated store**; purge-gate decorators
+  deliberately do not declare it so a probe cannot false-hit. Previously invalidation only cleared
+  the local cache, so multi-instance deployments and cold starts restored an access token that
+  should have been invalidated.
+- **Critical-section self-check and scope documentation**: the `_lazyRebuildLock` commit section of
+  the hot reload now emits a Debug self-check when held longer than 50 ms (hinting at IO or heavy
+  computation inside the lock); `TokenStorePurgeGate` documents its scope (read paths only; writes,
+  deletes and purges pass through; process-local); `TokenKeyBuilder` documents the plaintext-userId
+  trade-off. New ADRs: ADR-0009 (user identity and storage-key privacy), ADR-0010 (hot-reload lock
+  order and critical-section budget), ADR-0011 (purge-gate scope).
 
 ## [3.1.0] - 2026-10-19
 

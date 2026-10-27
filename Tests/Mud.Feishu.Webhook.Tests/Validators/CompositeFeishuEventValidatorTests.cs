@@ -11,6 +11,7 @@ using Microsoft.Extensions.Options;
 using Moq;
 using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.Webhook.Configuration;
+using Mud.Feishu.Webhook.Exceptions;
 using Mud.Feishu.Webhook.Models;
 using Mud.Feishu.Webhook.Services;
 using Mud.Feishu.Webhook.Utils;
@@ -284,17 +285,18 @@ public class CompositeFeishuEventValidatorTests
     #region 异常处理测试
 
     [Fact]
-    public async Task ValidateHeaderSignatureAsync_WhenExceptionThrown_ShouldReturnFalse()
+    public async Task ValidateHeaderSignatureAsync_WhenExceptionThrown_ShouldThrowUnavailable()
     {
         // Arrange
         _timestampValidatorMock.Setup(x => x.ValidateTimestamp(It.IsAny<long>(), null))
             .Throws(new InvalidOperationException("Test exception"));
 
         // Act
-        var result = await _sut.ValidateHeaderSignatureAsync(0, "nonce", "body", "sig", "key");
+        var act = () => _sut.ValidateHeaderSignatureAsync(0, "nonce", "body", "sig", "key");
 
-        // Assert
-        result.Should().BeFalse("异常情况应安全失败");
+        // Assert - W-01：返回 false 会被映射 403（终态）⇒ 事件永久丢失；
+        // 内部异常必须表达为"无法判定"（503 可重试）。
+        await act.Should().ThrowAsync<FeishuWebhookUnavailableException>();
     }
 
     [Fact]
@@ -339,10 +341,12 @@ public class CompositeFeishuEventValidatorTests
     }
 
     [Fact]
-    public async Task ValidateHeaderSignatureAsync_ShouldReturnFalse_WhenConnectionExceptionSwallowed()
+    public async Task ValidateHeaderSignatureAsync_ShouldThrowUnavailable_WhenConnectionExceptionEscapes()
     {
-        // Arrange - T-M2-10 回归：Connection 类异常在组合验证器层维持 fail-closed（返回 false）
-        // WHF-R2/B2: CheckNonceAsync 预检已移除，Connection 异常路径从 TryMarkNonceAsUsedAsync 触发
+        // Arrange - T-M2-10 / W-01：Connection 类异常的**降级决策属于 NonceValidator**
+        // （NonceValidationFailureMode=Allow 放行 / Reject 抛 FeishuDeduplicationFatalException）。
+        // 若它作为普通异常逃到组合层，说明"无法判定重放状态" —— 此时返回 false 会被映射 403（终态），
+        // 事件永久丢失；正确出口是"不可用"（503 可重试）。
         _timestampValidatorMock.Setup(x => x.ValidateTimestamp(It.IsAny<long>(), null)).Returns(true);
         _signatureValidatorMock.Setup(x => x.ValidateHeaderSignatureAsync(
             It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -351,11 +355,12 @@ public class CompositeFeishuEventValidatorTests
             .ThrowsAsync(new FeishuRedisException(FeishuRedisFailureKind.Connection, "Redis 连接失败"));
 
         // Act
-        var result = await _sut.ValidateHeaderSignatureAsync(
+        var act = () => _sut.ValidateHeaderSignatureAsync(
             DateTimeOffset.UtcNow.ToUnixTimeSeconds(), "nonce", "body", "sig", "key");
 
         // Assert
-        result.Should().BeFalse("Connection 类异常由 NonceValidator 降级策略决定，组合层维持 fail-closed");
+        await act.Should().ThrowAsync<FeishuWebhookUnavailableException>(
+            "组合层的兜底语义是「无法判定 ⇒ 503」，而不是「判定失败 ⇒ 403」");
     }
 
     #endregion

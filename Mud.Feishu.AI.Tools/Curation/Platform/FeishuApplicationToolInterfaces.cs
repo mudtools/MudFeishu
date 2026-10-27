@@ -80,7 +80,7 @@ public interface IFeishuTenantApplicationGetAppTool
 /// 名字与联系方式由通讯录域按各自的 PII 口径解析。
 /// </remarks>
 [AgentTool("application.get_app_visibility",
-    Description = "查询应用可用范围（是否全员可见 + 可见/不可见的部门、用户组、用户列表）。回答「这个应用谁能看到」用它；成员过多时按 has_more_users/user_page_token 继续取用户列表。只读，需 application:application:readonly。",
+    Description = "查询应用可用范围（是否全员可见 + 可见/不可见的部门、用户组、用户列表）。回答「这个应用谁能看到」用它；成员过多时按 has_more_users/user_page_token 继续取用户列表；要改这份范围用 application.update_visibility。只读，需 application:application:readonly。",
     RequiredScopes = ["application:application:readonly"],
     Source = nameof(IFeishuTenantV6ApplicationAdmin) + "." + nameof(IFeishuTenantV6ApplicationAdmin.GetAppVisibilityAsync))]
 public interface IFeishuTenantApplicationGetAppVisibilityTool
@@ -201,7 +201,7 @@ public interface IFeishuTenantApplicationGetAppVersionTool
 /// 与 <c>lingo.update_entity</c> 的覆盖式不同——回执里会点明这一点。
 /// </remarks>
 [AgentTool("application.update_visibility",
-    Description = "更新应用的可见范围（把应用开放/关闭给指定的用户、部门、用户组，或设为全员可见）——四类名单均为**增量**语义，未传的不动。写操作：默认不启用，需宿主授权（IToolExecutionAuthorizer），需 application:application（⚠️ scope 名待控制台核对）。建议先 dry_run 预演。",
+    Description = "更新应用的可见范围（把应用开放/关闭给指定的用户、部门、用户组，或设为全员可见）——四类名单均为**增量**语义，未传的不动；改动前先用 application.get_app_visibility 读现状。写操作：需 application:application（⚠️ scope 名待控制台核对）。建议先 dry_run 预演。",
     RequiredScopes = ["application:application"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV6ApplicationAdmin) + "." + nameof(IFeishuTenantV6ApplicationAdmin.UpdateApplicationVisibilityAsync))]
@@ -238,7 +238,7 @@ public interface IFeishuTenantApplicationUpdateVisibilityTool
 /// 故虽是普通写（方法名不命中危险词），描述里仍自行标注后果。
 /// </remarks>
 [AgentTool("application.update_management",
-    Description = "启用或停用应用的管理面（⚠️ 停用后管理员将无法在后台管理该应用，影响面极大——务必先 dry_run 预演并确认 app_id 与 enable 取值）。写操作：默认不启用，需宿主授权，需 application:application（⚠️ scope 名待控制台核对）。",
+    Description = "启用或停用应用的管理面（⚠️ 停用后管理员将无法在后台管理该应用，影响面极大——务必先 dry_run 预演并确认 app_id 与 enable 取值）。写操作：需 application:application（⚠️ scope 名待控制台核对）。",
     RequiredScopes = ["application:application"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV6Application) + "." + nameof(IFeishuTenantV6Application.UpdateApplicationManagementAsync))]

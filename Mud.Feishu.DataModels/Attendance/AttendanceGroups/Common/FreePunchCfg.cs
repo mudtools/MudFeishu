@@ -60,4 +60,10 @@ public class AttendanceGroupFreePunchCfg
     /// </summary>
     [JsonPropertyName("work_hours")]
     public int? WorkHours { get; set; }
+
+    /// <summary>
+    /// <para>自由班制的打卡配置</para>
+    /// </summary>
+    [JsonPropertyName("free_clock_setting")]
+    public AttendanceGroupFreeClockSetting? FreeClockSetting { get; set; }
 }

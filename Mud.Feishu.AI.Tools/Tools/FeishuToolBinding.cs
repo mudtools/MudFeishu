@@ -7,6 +7,7 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
+using Mud.AI.Agent.Conversations;
 using Mud.AI.Agent.Tools;
 using Mud.Feishu.Abstractions;
 using Mud.Feishu.Abstractions.Metrics;
@@ -70,6 +71,9 @@ internal sealed class FeishuToolBinding
     private readonly ILogger? _logger;
     private readonly Func<DateTimeOffset> _utcClock;
 
+    /// <summary>中立工具遥测端口（可空；软缺席时零埋点）。</summary>
+    private readonly IAgentToolTelemetry? _toolTelemetry;
+
     /// <summary>身份闭集（构造期物化为 HashSet，热路径 O(1) 查找——A1）。</summary>
     private readonly HashSet<string> _allowedIdentities;
 
@@ -100,6 +104,12 @@ internal sealed class FeishuToolBinding
     /// <param name="authLinkProvider">T1 / D1 授权链接提供者（可空；软缺席）。</param>
     /// <param name="logger">日志（可空）。</param>
     /// <param name="utcClock">UTC 时钟（可空；确认有效期计算用，测试注入固定时钟——R-5）。</param>
+    /// <param name="toolTelemetry">
+    /// 中立工具遥测端口（可空；软缺席——未注册时零埋点零异常）。宿主注册
+    /// <see cref="FeishuAgentTelemetry"/>（同时实现 <see cref="IAgentTelemetry"/> 与
+    /// <see cref="IAgentToolTelemetry"/>）后，工具调用/重试经中立端口上报，
+    /// 产品自有口径（<c>feishu.tool.executions</c> 带 app_key）不受影响。
+    /// </param>
     public FeishuToolBinding(
         IFeishuAppContextScopeFactory scopeFactory,
         IOptions<FeishuAgentOptions> options,
@@ -111,7 +121,8 @@ internal sealed class FeishuToolBinding
         UserTokenPrecheck? userTokenPrecheck = null,
         IFeishuUserAuthorizationLinkProvider? authLinkProvider = null,
         ILogger<FeishuToolBinding>? logger = null,
-        Func<DateTimeOffset>? utcClock = null)
+        Func<DateTimeOffset>? utcClock = null,
+        IAgentToolTelemetry? toolTelemetry = null)
     {
         _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
         _options = (options ?? throw new ArgumentNullException(nameof(options))).Value;
@@ -126,6 +137,7 @@ internal sealed class FeishuToolBinding
         _utcClock = utcClock ?? (() => DateTimeOffset.UtcNow);
         _allowedIdentities = new HashSet<string>(_options.AllowedIdentities, StringComparer.Ordinal);
         _retryPolicy = new ToolRetryPolicy(_options.ToolRetry ?? new ToolRetryOptions());
+        _toolTelemetry = toolTelemetry;
     }
 
     /// <summary>
@@ -138,6 +150,130 @@ internal sealed class FeishuToolBinding
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>工具执行结果（成功结果或结构化错误）。</returns>
     public async Task<ToolResult> ExecuteAsync(
+        FeishuToolDefinition tool,
+        IReadOnlyDictionary<string, object?> arguments,
+        FeishuToolContext context,
+        Func<CancellationToken, Task<ToolResult>> invokeDownstream,
+        CancellationToken cancellationToken = default)
+    {
+        if (tool is null)
+            throw new ArgumentNullException(nameof(tool));
+
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var result = await ExecuteCoreAsync(tool, arguments, context, invokeDownstream, cancellationToken)
+            .ConfigureAwait(false);
+        stopwatch.Stop();
+
+        result = NormalizeUnstructuredFailure(tool.Name, result);
+
+        // 中立端口埋点（软缺席时零成本）：失败样本一并上报（含被转换为结构化错误的失败）。
+        _toolTelemetry?.ToolInvoked(
+            tool.Name,
+            tool.IsWrite,
+            stopwatch.ElapsedMilliseconds,
+            result.Truncated,
+            result.Error?.Category);
+
+        return result;
+    }
+
+    /// <summary>
+    /// 把执行器产出的「纯文本错误」升级为结构化错误结果（<c>Error</c> 非空的失败结果）。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>为什么必须在执行链出口统一做</b>：执行器（<c>Internal/**</c>）的参数校验/软缺席错误历史上
+    /// 只把结构化文案放进 <c>Text</c>、不带 <c>Error</c> 载荷——宿主按 <c>Error</c> 分流的观测面
+    /// 会把这些失败记成 <b>Succeeded</b>。逐执行器改写是 40+ 处同构改动且必然漏；出口统一升级
+    /// 是单点、可机械断言的做法（守卫 <c>ToolErrorPayloadContractGuards</c> 断言"错误文案必带载荷"）。
+    /// </para>
+    /// <para>
+    /// <b>判据只认产品自己的错误文案前缀</b>（<c>[tool_error]</c>，由 <c>ToolErrorText.StructuredError</c>
+    /// 独家产出）：正常结果即便正文里出现该串也不在**行首**，不会误升级。分类/子类经闭集标记判定，
+    /// 无法识别的落到 <c>api/upstream_error</c>（与中立 <c>ToolResult.FromUnclassifiedError</c> 同口径）。
+    /// </para>
+    /// </remarks>
+    /// <param name="toolName">工具名（载荷锚点）。</param>
+    /// <param name="result">执行器返回结果。</param>
+    /// <returns>结构化错误结果，或原结果（非错误文本 / 已带载荷）。</returns>
+    private ToolResult NormalizeUnstructuredFailure(string toolName, ToolResult result)
+    {
+        if (result.Error is not null)
+        {
+            return result;
+        }
+
+        var text = result.Text;
+        if (string.IsNullOrEmpty(text) || !text!.StartsWith(ToolErrorTextPrefix, StringComparison.Ordinal))
+        {
+            return result;
+        }
+
+        var (category, subtype) = ClassifyErrorText(text);
+        return ToolResultPipeline.Error(toolName, category, subtype, text, _options.MaxToolResultLength);
+    }
+
+    /// <summary>产品错误文案前缀（<c>ToolErrorText.StructuredError</c> 独家产出，不得在别处硬编码同串）。</summary>
+    private const string ToolErrorTextPrefix = "[tool_error]";
+
+    /// <summary>
+    /// 从错误文案的闭集标记反推分类 + 子类（标记由 <c>ToolErrorText.StructuredError</c> 唯一发射）。
+    /// </summary>
+    /// <param name="text">错误文案。</param>
+    /// <returns>错误分类与子类；无法识别时为 <c>api / upstream_error</c>。</returns>
+    private static (ToolErrorCategory Category, string Subtype) ClassifyErrorText(string text)
+    {
+        if (text.Contains("(invalid_args)"))
+        {
+            return (ToolErrorCategory.Validation, ToolErrorSubtype.InvalidArgs);
+        }
+
+        if (text.Contains("(retryable)"))
+        {
+            return (ToolErrorCategory.Retryable, ToolErrorSubtype.UpstreamError);
+        }
+
+        if (text.Contains("(tool_budget_exceeded)"))
+        {
+            return (ToolErrorCategory.Policy, ToolErrorSubtype.ToolBudgetExceeded);
+        }
+
+        if (text.Contains("(policy_denied)"))
+        {
+            return (ToolErrorCategory.Policy, ToolErrorSubtype.ToolNotAllowed);
+        }
+
+        if (text.Contains("(needs_confirmation)"))
+        {
+            return (ToolErrorCategory.Confirmation, ToolErrorSubtype.NeedsUserConfirmation);
+        }
+
+        if (text.Contains("(user_auth_required)"))
+        {
+            return (ToolErrorCategory.Authorization, ToolErrorSubtype.UserAuthRequired);
+        }
+
+        if (text.Contains("(user_token_refresh_failed)"))
+        {
+            return (ToolErrorCategory.Authorization, ToolErrorSubtype.UserTokenRefreshFailed);
+        }
+
+        if (text.Contains("(forbidden)"))
+        {
+            return (ToolErrorCategory.Authorization, ToolErrorSubtype.AuthorizationDenied);
+        }
+
+        return (ToolErrorCategory.Api, ToolErrorSubtype.UpstreamError);
+    }
+
+    /// <summary>执行链主体（由 <see cref="ExecuteAsync"/> 包裹：出口归一 + 中立端口埋点）。</summary>
+    /// <param name="tool">工具定义。</param>
+    /// <param name="arguments">模型 tool_call 入参。</param>
+    /// <param name="context">执行上下文。</param>
+    /// <param name="invokeDownstream">分域下游调用。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>工具执行结果。</returns>
+    private async Task<ToolResult> ExecuteCoreAsync(
         FeishuToolDefinition tool,
         IReadOnlyDictionary<string, object?> arguments,
         FeishuToolContext context,
@@ -305,7 +441,14 @@ internal sealed class FeishuToolBinding
                 cancellationToken).ConfigureAwait(false);
 
             // ⑦ 结果整形钩子（P1D-2a）：净化/投影/截断之后、回填之前；失败回退默认（异常隔离）。
-            return await ShapeWithIsolationAsync(tool.Name, result, cancellationToken).ConfigureAwait(false);
+            var shaped = await ShapeWithIsolationAsync(tool.Name, result, cancellationToken).ConfigureAwait(false);
+
+            // ⑧ 成本核算出口：按工具记「模型真正读到的量」。必须取整形之后的文本——
+            // 净化/投影/截断都会改变长度，取整形之前的读数会把成本归因到模型从未收到的字符上。
+            FeishuToolDiagnostics.RecordResultTokens(
+                tool.Name, context.AppKey, ChatTokenCounter.Count(shaped.ToString()));
+
+            return shaped;
         }
         catch (OperationCanceledException)
         {
@@ -483,6 +626,9 @@ internal sealed class FeishuToolBinding
     {
         var delayMs = _retryPolicy.ComputeDelay(attempt, error.RetryAfterSeconds);
         activity?.SetTag(FeishuToolDiagnostics.TagAttempts, attempt + 1);
+
+        // 中立端口埋点：重试循环的所有者在这里（策略本身是无环判定件），故埋点归本方法。
+        _toolTelemetry?.ToolRetried(tool.Name, attempt + 1);
 
         _logger?.LogInformation(
             "工具 {ToolName} 命中可重试错误（{Category}/{Subtype}），第 {Attempt} 次重试将于 {DelayMs} ms 后发起",

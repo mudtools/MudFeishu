@@ -121,6 +121,18 @@ internal static class FeishuToolDiagnostics
         FeishuMetrics.ToolDuration.Record(durationMs, tags);
     }
 
+    /// <summary>记录一次工具结果回填文本的 token 分布（<c>feishu.tool.result.tokens</c>；维度 tool/app_key——
+    /// 高基数纪律：conversation_key/chat_id/user_id 不入 tags；tokens 口径同 <c>ChatTokenCounter</c>）。</summary>
+    public static void RecordResultTokens(string toolName, string appKey, long tokens)
+    {
+        var tags = new TagList
+        {
+            { FeishuMetrics.Tags.Tool, toolName },
+            { FeishuMetrics.Tags.AppKey, appKey },
+        };
+        FeishuMetrics.ToolResultTokens.Record(tokens, tags);
+    }
+
     /// <summary>
     /// 记录一次降级路径计数（<c>feishu.agent.tool.degraded</c>；维度 app_key/reason——
     /// 高基数纪律：维度不得含键/用户标识。reason 取值见 <see cref="FeishuMetrics.DegradedReasons"/>。

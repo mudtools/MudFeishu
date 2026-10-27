@@ -18,11 +18,21 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// <list type="bullet">
 /// <item>每个描述符的 Output 非空（或显式豁免）。</item>
 /// <item>FeishuToolSchemas.SchemaByToolName 的键集与描述符表键集一致。</item>
-/// <item>risk == high-risk-write 时 input schema 含 confirm。</item>
 /// <item>每个工具的 name 与 FeishuToolNames 契约名一致。</item>
 /// <item>每个工具的 description 非空。</item>
 /// <item>每个工具的 parameters 含 type=object 且 properties 非空。</item>
 /// </list>
+/// <para>
+/// R-8 / BUG-10：原备注曾声明「risk == high-risk-write 时 input schema 含 confirm」但从未实现——
+/// 该机制已由 MAF 审批门（ApplyApprovalGate → ApprovalRequiredAIFunction）+ 执行链 fail-closed（R4-1）
+/// 取代，方案文档已加订正注；此处不再保留 confirm 字样的守卫声明，防止误导后续维护者。
+/// <para>
+/// <b>删除声明必须落在可证伪的用例上</b>：本类属<b>静态声明面</b>（键集/名称/描述/参数形状），
+/// 高危写的强制力不在 schema 里，而在执行链——对应的证伪用例是
+/// <c>HighRiskWriteEnablementContractGuards.EnabledHighRiskWriteTool_ShouldStillFailClosed_WithoutAuthorizer</c>
+/// （无授权器 ⇒ 拒绝、零调用下游、审计带 Risk 字面量）。故此处<b>不</b>再加一条同义用例。
+/// </para>
+/// </para>
 /// </remarks>
 public class FeishuToolDescriptorContractGuards
 {

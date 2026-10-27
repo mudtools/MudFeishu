@@ -50,8 +50,8 @@ package_version: 3.0.3
 - 「给对端加对接人」→ 读出原规则 → `update_collaboration_rule`（合并后整份提交，先 dry_run）
 
 ## 命令（工具）清单
-- `trustparty.create_collaboration_rule`（写）：在关联组织间新建一条互通规则（主体=我方实体，客体=对端实体；主客体实体数之和须 <100；返回 rule_id）。写操作：默认不启用，需宿主授权（IToolExecutionAuthorizer），需 trust_party:collaboration_rule:write。建议先 dry_run 预演核对两侧实体。
-- `trustparty.delete_collaboration_rule`（写）：删除一条互通规则（⚠️ 不可撤销：删除后对端立即失去互通能力，且只能重建、rule_id 会变——务必先 dry_run 预演并确认 rule_id 与 target_tenant_key 无误）。写操作：默认不启用，需宿主授权，需 trust_party:collaboration_rule:write。
+- `trustparty.create_collaboration_rule`（写）：在关联组织间新建一条互通规则（主体=我方实体，客体=对端实体；主客体实体数之和须 <100；返回 rule_id）。写操作：需 trust_party:collaboration_rule:write。建议先 dry_run 预演核对两侧实体。
+- `trustparty.delete_collaboration_rule`（写）：删除一条互通规则（⚠️ 不可撤销：删除后对端立即失去互通能力，且只能重建、rule_id 会变——务必先 dry_run 预演并确认 rule_id 与 target_tenant_key 无误）。写操作：需 trust_party:collaboration_rule:write。
 - `trustparty.get_collaboration_department`（只读）：按 target_tenant_key + target_department_id 查询关联组织的外部部门详情（部门名/排序/负责人标识/上级部门标识）——「对端这个部门是什么、谁负责」。只读，需 trust_party:collaboration.tenant:readonly。
 - `trustparty.get_collaboration_tenant`（只读）：按 target_tenant_key 查询单个关联组织的详情（组织名/短名/连接时间/标签/品牌）——「这个外部组织是谁、什么时候连上的」。只读，需 trust_party:collaboration.tenant:readonly。
 - `trustparty.get_collaboration_user`（只读）：按 target_tenant_key + target_user_id 查询关联组织的外部成员详情（姓名/职务/所属部门标识/上级标识）——「对端这个联系人是谁、在哪个部门」。⚠️ 不返回手机号、工号、自定义属性与在职状态（出站净化）。只读，需 trust_party:collaboration.tenant:readonly。
@@ -60,4 +60,4 @@ package_version: 3.0.3
 - `trustparty.list_collaboration_tenants`（只读）：分页列出本租户已建立互通关系的**关联组织**（返回 target_tenant_key/组织名/短名/连接时间/标签）——「我们和哪些组织有互通」的第一跳；拿到 target_tenant_key 才能查对端可见组织、外部部门与成员。只读，需 trust_party:collaboration.tenant:readonly。
 - `trustparty.list_share_entities`（只读）：分页查询目录里**被共享出去**的实体（部门 / 用户组 / 用户三份清单，含名称与 open_id|open_department_id|open_group_id）——「我们把哪些组织单元共享给了关联组织」。可用 target_tenant_key / target_department_id / target_group_id 收窄，is_select_subject 区分主体侧与客体侧。只读，需 trust_party:collaboration_rule:read。
 - `trustparty.list_visible_organization`（只读）：分页查询关联组织**对本租户可见**的组织实体（成员 / 部门 / 群，含名称与 open_id|department_id|group_id）——「对端开放了哪些人、哪些部门」。可用 target_department_id / target_group_id 收窄到某个分支。只读，需 trust_party:collaboration.tenant:readonly。
-- `trustparty.update_collaboration_rule`（写）：更新一条互通规则（按 rule_id；⚠️ 主体/客体为覆盖式替换，未传的一侧会被清空——只加成员请先 list_collaboration_rules 读出原值再整份提交）。写操作：默认不启用，需宿主授权，需 trust_party:collaboration_rule:write。建议先 dry_run 预演。
+- `trustparty.update_collaboration_rule`（写）：更新一条互通规则（按 rule_id；⚠️ 主体/客体为覆盖式替换，未传的一侧会被清空——只加成员请先 list_collaboration_rules 读出原值再整份提交）。写操作：需 trust_party:collaboration_rule:write。建议先 dry_run 预演。

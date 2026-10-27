@@ -22,9 +22,8 @@ using Mud.Feishu.DataModels.Spreadsheets;
 namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
-/// Bitable 写工具执行器（<c>bitable.add_record</c> / <c>bitable.record_batch_create</c>）：模型 JSON 字符串 →
-/// <see cref="RecordOpsRequest"/>（<c>Fields</c> 走 <see cref="JsonElement"/>——STJ 内建转换器
-/// 可源生成序列化，无反射）→ <c>AddRecordAsync</c> → 解包投影。
+/// Bitable 写工具执行器（<c>bitable.record_batch_create</c>）：模型 JSON 字符串 →
+/// 强类型记录数组 → <c>AddRecordsAsync</c> → 解包投影。
 /// </summary>
 internal sealed class BitableWriteTools(
     Mud.Feishu.IFeishuTenantV1BitableRecord recordClient,
@@ -34,40 +33,7 @@ internal sealed class BitableWriteTools(
         ?? throw new ArgumentNullException(nameof(recordClient));
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
-    /// <summary>bitable.add_record：新增记录（fields 为「字段名 → 值」JSON 对象字符串；<c>dry_run=true</c> 时只预演）。</summary>
-    /// <remarks>幂等键（T4-1 / F-1）：<c>idempotency_key</c> → 透传查询参数 <c>client_token</c>（重复请求返回原记录）。</remarks>
-    [ToolHandler(typeof(IFeishuTenantBitableAddRecordTool))]
-    public Task<ToolResult> AddRecordAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
-    {
-        var executor = new ToolExecutor(FeishuToolNames.BitableAddRecord, _maxResultLength);
-        return executor.RunAsync(async () =>
-        {
-            var args = BitableAddRecordArgs.Unpack(arguments);
-
-            // 参数合法性校验先于 dry_run 判定：预演的价值在于"能提前发现的问题都提前发现"，
-            // 若预演放过了非法 fields，模型会误以为参数没问题而在真实下发时才失败。
-            var fields = ParseFieldsObject(args.Fields);
-
-            if (ToolDryRun.IsRequested(args.DryRun))
-            {
-                return ToolResult.FromText(ToolDryRun.Describe(
-                    executor.ToolName, "POST",
-                    "/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/records",
-                    ToolDryRun.IdempotencyNote(args.IdempotencyKey),
-                    ("app_token", args.AppToken.Length), ("table_id", args.TableId.Length), ("fields", args.Fields.Length)));
-            }
-
-            var outcome = FeishuApiResultReader.Read(await _recordClient
-                .AddRecordAsync(args.AppToken, args.TableId, new RecordOpsRequest { Fields = fields }, client_token: args.IdempotencyKey, cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
-            return executor.FromApi(outcome, data => new JsonObject
-            {
-                ["record_id"] = data.Record?.RecordId,
-            });
-        });
-    }
-
-    /// <summary>bitable.record_batch_create：批量新增记录（单次上限 1000 条；<c>dry_run=true</c> 时只预演）。</summary>
+    /// <summary>bitable.record_batch_create：新增记录（1~1000 条；<c>dry_run=true</c> 时只预演）。</summary>
     /// <remarks>幂等键（T4-1 / F-1）：<c>idempotency_key</c> → 透传查询参数 <c>client_token</c>。</remarks>
     [ToolHandler(typeof(IFeishuTenantBitableRecordBatchCreateTool))]
     public Task<ToolResult> AddRecordsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
@@ -93,33 +59,6 @@ internal sealed class BitableWriteTools(
                 .ConfigureAwait(false));
             return executor.FromApi(outcome, ProjectBatchRecords);
         });
-    }
-
-    /// <summary>fields 参数 → JSON 对象 <see cref="JsonElement"/>（非对象/非法 JSON 转结构化错误）。</summary>
-    /// <remarks>
-    /// 此处 <c>catch (JsonException)</c> 是<b>校验逻辑</b>而非执行骨架（把平台无语义的解析失败
-    /// 翻译成带修复指引的 <see cref="ArgumentException"/>），不在 WP3 骨架收敛范围。
-    /// </remarks>
-    internal static JsonElement ParseFieldsObject(string fieldsJson)
-    {
-        JsonNode? node;
-        try
-        {
-            node = JsonNode.Parse(fieldsJson);
-        }
-        catch (JsonException ex)
-        {
-            throw new ArgumentException($"fields 不是合法 JSON: {ex.Message}");
-        }
-
-        if (node is not JsonObject)
-        {
-            throw new ArgumentException("fields 须为 JSON 对象（{\"字段名\": 值}）");
-        }
-
-        // WP4（W5 修复）：使用 using 归还池化缓冲（CA2000），Clone 后 JsonDocument 可安全释放。
-        using var document = JsonDocument.Parse(fieldsJson);
-        return document.RootElement.Clone();
     }
 
     /// <summary>批量记录单次上限（官方 batch_create / batch_update 均为 1000 条）。</summary>
@@ -181,8 +120,8 @@ internal sealed class BitableWriteTools(
 }
 
 /// <summary>
-/// Bitable 写工具执行器（<c>bitable.update_record</c> / <c>bitable.delete_record</c> / <c>bitable.record_batch_update</c>，WP2/R5）。
-/// 与 <see cref="BitableWriteTools"/>（<c>add_record</c>/<c>record_batch_create</c>）职责不同，故分列两个类型
+/// Bitable 写工具执行器（<c>bitable.delete_record</c> / <c>bitable.record_batch_update</c>，WP2/R5）。
+/// 与 <see cref="BitableWriteTools"/>（<c>record_batch_create</c>）职责不同，故分列两个类型
 /// （R3-20：原名 <c>BitableWriteTools2</c> 无语义，改按职责命名）。
 /// </summary>
 internal sealed class BitableWriteRecordOps(
@@ -193,36 +132,7 @@ internal sealed class BitableWriteRecordOps(
         ?? throw new ArgumentNullException(nameof(recordClient));
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
-    /// <summary>bitable.update_record：更新记录（fields 为「字段名 → 值」JSON 对象字符串）。</summary>
-    [ToolHandler(typeof(IFeishuTenantBitableUpdateRecordTool))]
-    public Task<ToolResult> UpdateRecordAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
-    {
-        var executor = new ToolExecutor(FeishuToolNames.BitableUpdateRecord, _maxResultLength);
-        return executor.RunAsync(async () =>
-        {
-            var args = BitableUpdateRecordArgs.Unpack(arguments);
-
-            var fields = BitableWriteTools.ParseFieldsObject(args.Fields);
-
-            if (ToolDryRun.IsRequested(args.DryRun))
-            {
-                return ToolResult.FromText(ToolDryRun.Describe(
-                    executor.ToolName, "PUT", $"/open-apis/bitable/v1/apps/{args.AppToken}/tables/{args.TableId}/records/{args.RecordId}",
-                    ToolDryRun.IdempotencyNote(args.IdempotencyKey),
-                    ("app_token", args.AppToken.Length), ("table_id", args.TableId.Length), ("record_id", args.RecordId.Length), ("fields", args.Fields.Length)));
-            }
-
-            var outcome = FeishuApiResultReader.Read(await _recordClient
-                .UpdateRecordAsync(args.AppToken, args.TableId, args.RecordId, new RecordOpsRequest { Fields = fields }, client_token: args.IdempotencyKey, cancellationToken: cancellationToken)
-                .ConfigureAwait(false));
-            return executor.FromApi(outcome, data => new JsonObject
-            {
-                ["record_id"] = data.Record?.RecordId,
-            });
-        });
-    }
-
-    /// <summary>bitable.record_batch_update：批量更新记录（单次上限 1000 条）。</summary>
+    /// <summary>bitable.record_batch_update：更新记录（1~1000 条）。</summary>
     /// <remarks>官方批量更新接口无幂等键参数（<c>client_token</c> 仅 batch_create 支持），故本工具不提供 <c>idempotency_key</c>。</remarks>
     [ToolHandler(typeof(IFeishuTenantBitableRecordBatchUpdateTool))]
     public Task<ToolResult> UpdateRecordsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)

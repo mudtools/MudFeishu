@@ -78,27 +78,27 @@ public class WriteIdempotencyKeyTests
         captured!.Uuid.Should().BeNullOrEmpty("省略幂等键时不得写入空 Uuid（空串可能引发平台 400）");
     }
 
-    // ───────────────────── bitable.add_record → client_token ─────────────────────
+    // ───────────────────── bitable.record_batch_create → client_token ─────────────────────
 
     [Fact]
-    public async Task AddRecord_ShouldPassIdempotencyKeyIntoClientToken_WhenProvided()
+    public async Task RecordBatchCreate_ShouldPassIdempotencyKeyIntoClientToken_WhenProvided()
     {
         string? capturedClientToken = null;
         _recordClient
-            .Setup(c => c.AddRecordAsync(
-                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<RecordOpsRequest>(),
+            .Setup(c => c.AddRecordsAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<AddRecordsRequest>(),
                 It.IsAny<string?>(), It.IsAny<bool?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .Callback((string _, string __, RecordOpsRequest ___, string? clientToken, bool? ____, string _____, CancellationToken ______)
+            .Callback((string _, string __, AddRecordsRequest ___, string? clientToken, bool? ____, string _____, CancellationToken ______)
                 => capturedClientToken = clientToken)
-            .ReturnsAsync(new FeishuApiResult<RecordOpsResult>
+            .ReturnsAsync(new FeishuApiResult<RecordsOpsResult>
             {
                 Code = 0,
-                Data = new RecordOpsResult { Record = new AppTableRecordInfo { RecordId = "rec_idem_1" } },
+                Data = new RecordsOpsResult { Records = [new AppTableRecordInfo { RecordId = "rec_idem_1" }] },
             });
 
         var tools = new BitableWriteTools(_recordClient.Object, Options.Create(NewOptions()));
-        await tools.AddRecordAsync(
-            Args(("app_token", "bascnX"), ("table_id", "tblY"), ("fields", "{\"任务\":\"写周报\"}"), ("idempotency_key", "bill-42-add")),
+        await tools.AddRecordsAsync(
+            Args(("app_token", "bascnX"), ("table_id", "tblY"), ("records", """[{"fields":{"任务":"写周报"}}]"""), ("idempotency_key", "bill-42-add")),
             CancellationToken.None);
 
         capturedClientToken.Should().Be("bill-42-add",
@@ -106,24 +106,24 @@ public class WriteIdempotencyKeyTests
     }
 
     [Fact]
-    public async Task AddRecord_ShouldNotFillClientToken_WhenIdempotencyKeyOmitted()
+    public async Task RecordBatchCreate_ShouldNotFillClientToken_WhenIdempotencyKeyOmitted()
     {
         string? capturedClientToken = "sentinel";
         _recordClient
-            .Setup(c => c.AddRecordAsync(
-                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<RecordOpsRequest>(),
+            .Setup(c => c.AddRecordsAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<AddRecordsRequest>(),
                 It.IsAny<string?>(), It.IsAny<bool?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .Callback((string _, string __, RecordOpsRequest ___, string? clientToken, bool? ____, string _____, CancellationToken ______)
+            .Callback((string _, string __, AddRecordsRequest ___, string? clientToken, bool? ____, string _____, CancellationToken ______)
                 => capturedClientToken = clientToken)
-            .ReturnsAsync(new FeishuApiResult<RecordOpsResult>
+            .ReturnsAsync(new FeishuApiResult<RecordsOpsResult>
             {
                 Code = 0,
-                Data = new RecordOpsResult { Record = new AppTableRecordInfo { RecordId = "rec_idem_2" } },
+                Data = new RecordsOpsResult { Records = [new AppTableRecordInfo { RecordId = "rec_idem_2" }] },
             });
 
         var tools = new BitableWriteTools(_recordClient.Object, Options.Create(NewOptions()));
-        await tools.AddRecordAsync(
-            Args(("app_token", "bascnX"), ("table_id", "tblY"), ("fields", "{\"任务\":\"写周报\"}")),
+        await tools.AddRecordsAsync(
+            Args(("app_token", "bascnX"), ("table_id", "tblY"), ("records", """[{"fields":{"任务":"写周报"}}]""")),
             CancellationToken.None);
 
         capturedClientToken.Should().BeNull("省略幂等键时不得下发空 client_token");
@@ -190,8 +190,8 @@ public class WriteIdempotencyKeyTests
         provided.Should().Contain("幂等键：provided", "预演必须显式回显幂等键状态（T4-1：预演不占坑）");
         provided.Should().NotContain("k1", "摘要不得回显幂等键原文（与 text/fields/form 同一不回原文纪律）");
 
-        var omitted = (await bitableTools.AddRecordAsync(
-            Args(("app_token", "bascnX"), ("table_id", "tblY"), ("fields", "{\"任务\":\"写周报\"}"), ("dry_run", true)),
+        var omitted = (await bitableTools.AddRecordsAsync(
+            Args(("app_token", "bascnX"), ("table_id", "tblY"), ("records", "[{\"fields\":{\"任务\":\"写周报\"}}]"), ("dry_run", true)),
             CancellationToken.None)).ToString()!;
         omitted.Should().Contain("幂等键：omitted", "省略幂等键时预演必须显式说明「不保证幂等」");
 

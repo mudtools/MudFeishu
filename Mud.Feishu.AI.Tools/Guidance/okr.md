@@ -10,6 +10,7 @@
 `list_cycles` → `list_objectives`（按 cycle_id）→ `list_key_results`（按 objective_id）→
 `list_objective_progresses` / `list_key_result_progresses`。
 写：`create_objective` / `update_objective` / `create_key_result` / `update_key_result`（删除类为 high-risk）。
+指标：`get_objective_indicator` / `get_key_result_indicator` 取 `indicator_id` → `update_indicator`（平台没有按 id 反查的接口）。
 
 ## 避坑
 - **层级顺序不能跳**：`list_objectives` 需要 cycle_id，`list_key_results` 需要 objective_id。
@@ -20,6 +21,8 @@
 - `list_periods` 是**周期模板**（租户级），与 `list_cycles` 的**用户周期**不是一回事：
   创建 Objective 需要的是 cycle_id。
 - `delete_objective` 会**连带删除**其下关键结果，不可恢复。
+- **指标与进展是两套面**：`update_indicator` 只动指标（值 / 计算方式 / 单位），文字进展走进展面；
+  哪些字段改得动取决于实体类型（Objective 不改起始值、目标值与单位），故必须先读指标再写。
 - 周期 / 目标 / 关键结果语义与计分口径 → `feishu.guidance_read(okr, model-and-scoring)`。
 
 ## 安全规则

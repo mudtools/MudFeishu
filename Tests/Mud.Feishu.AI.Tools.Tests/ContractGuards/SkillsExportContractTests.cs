@@ -33,6 +33,22 @@ public class SkillsExportContractTests
         RegexOptions.Multiline,
         TimeSpan.FromSeconds(5));
 
+    /// <summary>命令行（含描述正文）——截断守卫要读的是冒号之后的整段。</summary>
+    private static readonly Regex DescriptionLinePattern = new(
+        @"^- `(?<name>[a-z][a-z0-9_]*\.[a-z][a-z0-9_.]*)`（(?:只读|写)）：(?<desc>.*)$",
+        RegexOptions.Multiline | RegexOptions.Compiled,
+        TimeSpan.FromSeconds(5));
+
+    /// <summary>聚合入口 frontmatter 里声明的规模数字。</summary>
+    private static readonly Regex SuiteScalePattern = new(
+        @"、(?<total>\d+) 个工具（只读 (?<read>\d+) / 写 (?<write>\d+)）",
+        RegexOptions.Compiled,
+        TimeSpan.FromSeconds(5));
+
+    private static string SuitePath
+        => $"{FeishuSkillDocumentBuilder.RootDirectory}/{FeishuSkillDocumentBuilder.SuiteDirectory}/"
+           + FeishuSkillDocumentBuilder.SkillFileName;
+
     /// <summary>导出结果与 <c>skills/</c> 目录树<b>逐字节一致</b>（未登记的旧文件同样被逮住）。</summary>
     [Fact]
     public void SkillsTree_ShouldMatchExporterOutput()
@@ -188,8 +204,7 @@ public class SkillsExportContractTests
     [Fact]
     public void SkillFile_ShouldEmbedGuidanceBody_Verbatim()
     {
-        foreach (var document in FeishuSkillDocumentBuilder.Build()
-                     .Where(static d => d.Path.EndsWith("SKILL.md", StringComparison.Ordinal)))
+        foreach (var document in DomainSkillFiles())
         {
             var domain = document.Path
                 .Substring(FeishuSkillDocumentBuilder.RootDirectory.Length + 1)
@@ -200,6 +215,228 @@ public class SkillsExportContractTests
                 guidance.TrimEnd(),
                 $"{document.Path} 必须原样嵌入 L1 资产（否则 guidance 改动与产物之间出现第二份真相源）");
         }
+    }
+
+    /// <summary>
+    /// 聚合入口（GAP-7）的<b>双向</b>覆盖面：路由表里的域集合 ≡ guidance 域集合，且每行的规模数字
+    /// 与逐域重算值一致。
+    /// </summary>
+    /// <remarks>
+    /// 单入口是"34 个包里选哪个"这一步的成本来源；它一旦由手抄数字或漏域构成，Agent 会稳定地
+    /// 走错域（比报错更难发现）。故域集合与计数都必须机械对齐，而不是"看起来差不多"。
+    /// </remarks>
+    [Fact]
+    public void SuiteSkill_ShouldRouteEveryDomainPackage()
+    {
+        var candidate = FeishuSkillDocumentBuilder.Build()
+            .FirstOrDefault(static d => d.Path == SuitePath);
+        candidate.Should().NotBeNull("聚合入口必须由导出器产出（手写文件会被逐字节守卫判为陈旧文件）");
+        var suite = candidate!;
+
+        var routed = new HashSet<string>(StringComparer.Ordinal);
+        var rowPattern = new Regex(
+            @"^- `feishu-(?<domain>[a-z0-9_]+)`（(?<tools>\d+) 工具：只读 (?<read>\d+) / 写 (?<write>\d+)）：",
+            RegexOptions.Multiline);
+        var rows = rowPattern.Matches(suite.Content);
+        rows.Count.Should().BeGreaterThan(0, "扫不到任何行说明判据写坏了（假绿）");
+
+        var writeTools = new HashSet<string>(FeishuToolNames.WriteAll, StringComparer.Ordinal);
+        foreach (System.Text.RegularExpressions.Match row in rows)
+        {
+            var domain = row.Groups["domain"].Value;
+            routed.Add(domain);
+
+            FeishuToolGuidance.ByDomain.ContainsKey(domain).Should().BeTrue(
+                $"路由表出现无 L1 资产的域 {domain}（Agent 按它加载会得到空包）");
+
+            var tools = FeishuToolNames.All
+                .Where(name => name.StartsWith(domain + ".", StringComparison.Ordinal))
+                .ToArray();
+            var read = tools.Count(name => !writeTools.Contains(name));
+
+            int.Parse(row.Groups["tools"].Value).Should().Be(tools.Length, $"{domain} 的工具数与实面不符");
+            int.Parse(row.Groups["read"].Value).Should().Be(read, $"{domain} 的只读数与实面不符");
+            int.Parse(row.Groups["write"].Value).Should().Be(tools.Length - read, $"{domain} 的写数与实面不符");
+        }
+
+        routed.Should().BeEquivalentTo(
+            FeishuToolGuidance.ByDomain.Keys,
+            "路由表与域资产集合必须双向闭合（漏一个域＝该域对只读单入口的 Agent 不可见）");
+
+        var scale = SuiteScalePattern.Match(suite.Content);
+        scale.Success.Should().BeTrue("聚合入口必须声明规模数字（否则无从对账）");
+        int.Parse(scale.Groups["total"].Value)
+            .Should().Be(FeishuToolNames.All.Length, "聚合入口声明的工具总数必须等于实面（计数类文档不得手抄）");
+        int.Parse(scale.Groups["read"].Value)
+            .Should().Be(FeishuToolNames.ReadonlyAll.Length, "只读数必须等于实面");
+        (int.Parse(scale.Groups["read"].Value) + int.Parse(scale.Groups["write"].Value))
+            .Should().Be(int.Parse(scale.Groups["total"].Value), "读写分布必须与总数闭合（否则有工具没被归类）");
+    }
+
+    /// <summary>
+    /// 截断不得吞掉契约判据（实证报告发现的真实缺陷：27 条命令行被硬切在权限串中间）。
+    /// </summary>
+    /// <remarks>
+    /// 权限串与非默认身份写在描述<b>末尾</b>，硬切上界正好把它们切掉——仓外 Agent 拿到的是一行
+    /// "看着完整、其实缺授权判据"的文本，比缺整行更危险（它会照着残缺文本决定能不能调用）。
+    /// </remarks>
+    [Fact]
+    public void ToolDescription_ShouldNotLosePermissionOrIdentityJudgement()
+    {
+        var overBudget = new List<string>();
+        var lost = new List<string>();
+
+        foreach (var document in DomainSkillFiles())
+        {
+            foreach (System.Text.RegularExpressions.Match match in DescriptionLinePattern.Matches(document.Content))
+            {
+                var name = match.Groups["name"].Value;
+                var rendered = match.Groups["desc"].Value;
+                if (rendered.Length > FeishuSkillDocumentBuilder.DescriptionMaxLength)
+                {
+                    overBudget.Add($"{document.Path}: {name}（{rendered.Length} 字符）");
+                    continue;
+                }
+
+                if (!FeishuToolSchemas.SchemaByToolName.TryGetValue(name, out var schemaJson))
+                {
+                    lost.Add($"{document.Path}: {name}（无 Schema ⇒ 无法核对契约判据）");
+                    continue;
+                }
+
+                using var schema = System.Text.Json.JsonDocument.Parse(schemaJson);
+                var root = schema.RootElement;
+                var source = FlattenText(root.GetProperty("description").GetString()!);
+                var meta = root.TryGetProperty(ToolAffordanceText.ExtensionKey, out var extension)
+                    ? extension
+                    : default;
+
+                foreach (var scope in ReadStrings(meta, "required_scopes"))
+                {
+                    if (source.Contains(scope, StringComparison.Ordinal)
+                        && !rendered.Contains(scope, StringComparison.Ordinal))
+                    {
+                        lost.Add($"{document.Path}: {name} 丢失权限串 {scope}");
+                    }
+                }
+
+                var identity = meta.ValueKind == System.Text.Json.JsonValueKind.Object
+                    ? ReadString(meta, "identity")
+                    : null;
+                if (!string.IsNullOrEmpty(identity)
+                    && !string.Equals(identity, "tenant", StringComparison.Ordinal)
+                    && source.Contains(identity, StringComparison.Ordinal)
+                    && !rendered.Contains(identity, StringComparison.Ordinal))
+                {
+                    lost.Add($"{document.Path}: {name} 丢失身份要求 {identity}");
+                }
+            }
+        }
+
+        overBudget.Should().BeEmpty("SKILL.md 描述行超出预算 ⇒ 扫读形态失效");
+        lost.Should().BeEmpty(
+            "截断把授权判据吞掉了（Agent 会照着残缺文本决定能不能调用）：{0}", string.Join(" | ", lost));
+    }
+
+    /// <summary>截断策略自证：尾注回填、边界落点与预算上界（否则上面的守卫可能是假绿）。</summary>
+    [Theory]
+    [InlineData("", "im:message")]
+    [InlineData("user", "im:message")]
+    [InlineData("user", "")]
+    [InlineData("", "")]
+    public void ClampDescription_ShouldKeepContractTokens_WithinBudget(string identity, string scope)
+    {
+        var source = string.Join("，", Enumerable.Range(0, 40).Select(static i => $"第{i}项约束说明")) + "。"
+            + (scope.Length > 0 ? $"需要 {scope} 权限才能调用。" : string.Empty)
+            + (identity.Length > 0 ? $"该工具要求 {identity} 身份。" : string.Empty);
+
+        var scopes = scope.Length > 0 ? new[] { scope } : Array.Empty<string>();
+        var clamped = FeishuSkillDocumentBuilder.ClampDescription(source, scopes, identity);
+
+        clamped.Length.Should().BeLessThanOrEqualTo(FeishuSkillDocumentBuilder.DescriptionMaxLength);
+        if (scope.Length > 0)
+        {
+            clamped.Should().Contain(scope);
+        }
+
+        if (identity.Length > 0)
+        {
+            clamped.Should().Contain(identity);
+        }
+
+        if (identity.Length == 0 && scope.Length == 0)
+        {
+            // 无契约可回填 ⇒ 只截断，不挂空壳尾注（`〔〕` 会被消费方读成"有要求却没写出来"）。
+            clamped.Should().NotContain("〔");
+        }
+
+        // 断句必须落在边界上：省略号的前一个位置在原文里不得是标识符字符（"需 im:me…" 就是本守卫要拦的形态）。
+        var ellipsis = clamped.IndexOf('…');
+        if (ellipsis >= 0)
+        {
+            char.IsLetterOrDigit(source[ellipsis]).Should().BeFalse(
+                $"截断切进了 token 里（原文该位置是「{source[ellipsis]}」）");
+        }
+    }
+
+    /// <summary>未超长的描述必须逐字返回（导出层不得加工短描述——与「L1 原样嵌入」同一条纪律）。</summary>
+    [Fact]
+    public void ClampDescription_ShouldNotTouchShortDescriptions()
+    {
+        const string shortText = "只读，需 im:message。";
+
+        FeishuSkillDocumentBuilder.ClampDescription(shortText, new[] { "im:message" }, "tenant")
+            .Should().Be(shortText);
+        FeishuSkillDocumentBuilder.ClampDescription(shortText, new[] { "im:message:send_as_bot" }, "user")
+            .Should().Be(shortText);
+    }
+
+    /// <summary>
+    /// 指针闭环：正文里的 <c>feishu.guidance_read(域, 主题)</c> 在<b>文件形态</b>下必须能找到
+    /// 对应包的 <c>references/主题.md</c>。
+    /// </summary>
+    /// <remarks>
+    /// 真实 harness 消费记录发现的风险：这些指针指向的是<b>进程内工具</b>，只读文件的 Agent 调不到它
+    /// （导出层不得改写正文，故在「参考文档（细则）」小节给出解码规则）。解码规则本身也可能失效——
+    /// 主题改名、域漏资产时，指针就变成死链，而仓内自检全是绿的。故按解码规则逐条验落地文件存在。
+    /// </remarks>
+    [Fact]
+    public void GuidanceReadPointers_ShouldResolveToReferenceFiles()
+    {
+        var pointerPattern = new Regex(
+            @"feishu\.guidance_read\((?<domain>[a-z_]+)[,\s]+(?<topic>[a-z0-9_-]+)\)");
+        var paths = FeishuSkillDocumentBuilder.Build()
+            .Select(static d => d.Path)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var unresolved = new List<string>();
+        var scanned = 0;
+        foreach (var document in DomainSkillFiles())
+        {
+            foreach (System.Text.RegularExpressions.Match match in pointerPattern.Matches(document.Content))
+            {
+                var domain = match.Groups["domain"].Value;
+
+                // 讲解模板（教 Agent 怎么写指针）不是指针本身。
+                if (string.Equals(domain, "domain", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                scanned++;
+                var path = $"{FeishuSkillDocumentBuilder.RootDirectory}/feishu-{domain}/"
+                    + $"{FeishuSkillDocumentBuilder.ReferencesDirectory}/{match.Groups["topic"].Value}.md";
+                if (!paths.Contains(path))
+                {
+                    unresolved.Add($"{document.Path} → {path}");
+                }
+            }
+        }
+
+        scanned.Should().BeGreaterThan(0, "一个指针都没扫到说明判据写坏了（假绿）");
+        unresolved.Should().BeEmpty(
+            "以下进程内指针在产物树里没有对应文件（只读文件的 Agent 会走进死链）：{0}",
+            string.Join(" | ", unresolved));
     }
 
     /// <summary>确定性：同一份契约常量导出两次必须逐字节相同（否则守卫会随机变红）。</summary>
@@ -257,6 +494,36 @@ public class SkillsExportContractTests
     }
 
     // ────────── 辅助 ──────────
+
+    /// <summary>域级 SKILL.md（聚合入口没有 L1 资产，也不含命令行，故各按各自的路径集合断言）。</summary>
+    private static IReadOnlyList<SkillDocument> DomainSkillFiles()
+        => FeishuSkillDocumentBuilder.Build()
+            .Where(static d => d.Path.EndsWith("SKILL.md", StringComparison.Ordinal)
+                               && !d.Path.Contains("/" + FeishuSkillDocumentBuilder.SuiteDirectory + "/", StringComparison.Ordinal))
+            .ToArray();
+
+    private static string FlattenText(string value)
+        => value.Replace('\r', ' ').Replace('\n', ' ').Trim();
+
+    private static string? ReadString(System.Text.Json.JsonElement owner, string key)
+        => owner.TryGetProperty(key, out var value) && value.ValueKind == System.Text.Json.JsonValueKind.String
+            ? value.GetString()
+            : null;
+
+    private static IReadOnlyList<string> ReadStrings(System.Text.Json.JsonElement owner, string key)
+    {
+        if (owner.ValueKind != System.Text.Json.JsonValueKind.Object
+            || !owner.TryGetProperty(key, out var value)
+            || value.ValueKind != System.Text.Json.JsonValueKind.Array)
+        {
+            return Array.Empty<string>();
+        }
+
+        return value.EnumerateArray()
+            .Where(static item => item.ValueKind == System.Text.Json.JsonValueKind.String)
+            .Select(static item => item.GetString()!)
+            .ToArray();
+    }
 
     /// <summary>
     /// <b>打包路径守卫</b>：<c>skills/</c> 必须随 NuGet 包分发。

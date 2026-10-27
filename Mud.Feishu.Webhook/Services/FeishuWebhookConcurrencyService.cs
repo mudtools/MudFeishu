@@ -6,6 +6,7 @@
 // -----------------------------------------------------------------------
 
 using Mud.Feishu.Webhook.Configuration;
+using Mud.Feishu.Webhook.Utils;
 
 namespace Mud.Feishu.Webhook;
 
@@ -48,9 +49,10 @@ public class FeishuWebhookConcurrencyService : IAsyncDisposable, IHostedService
             _currentMaxConcurrentEvents);
 
         // 监听配置变更，支持热更新
-        // OnChange 回调必须是同步 void，异步体显式丢弃到线程池并
-        // 全覆盖 try/catch（异常只记日志，不上抛线程池导致进程崩溃）；订阅句柄在 DisposeAsync 释放
-        _onChangeSubscription = optionsMonitor.OnChange(newOptions =>
+        // OnChange 回调必须同步返回，故异步体显式丢弃到线程池；
+        // 异常护栏统一由 OnChangeSafe 提供（W-02：模块内唯一实现点，禁止裸 OnChange）；
+        // 订阅句柄在 DisposeAsync 释放。
+        _onChangeSubscription = optionsMonitor.OnChangeSafe(_logger, (newOptions, changeSource) =>
         {
             _ = Task.Run(async () =>
             {
@@ -60,6 +62,8 @@ public class FeishuWebhookConcurrencyService : IAsyncDisposable, IHostedService
                 }
                 catch (Exception ex)
                 {
+                    // Task.Run 体是"第二层"出逃面：OnChangeSafe 只保护同步部分，
+                    // 线程池上的异常必须在此就地兜住，否则同样终止进程。
                     _logger.LogError(ex, "并发控制配置热更新失败，最大并发数: {NewMax}", newOptions.MaxConcurrentEvents);
                 }
             });

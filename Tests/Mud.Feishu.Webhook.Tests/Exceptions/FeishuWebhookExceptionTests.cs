@@ -131,68 +131,6 @@ public class FeishuWebhookExceptionTests
 }
 
 /// <summary>
-/// FeishuWebhookSecurityException 单元测试
-/// </summary>
-public class FeishuWebhookSecurityExceptionTests
-{
-    [Fact]
-    public void Constructor_WithBasicParameters_ShouldSetProperties()
-    {
-        // Act
-        var exception = new FeishuWebhookSecurityException("Security violation");
-
-        // Assert
-        exception.Message.Should().Be("Security violation");
-        exception.ErrorType.Should().Be("SecurityException");
-    }
-
-    [Fact]
-    public void Constructor_WithRequestId_ShouldSetRequestId()
-    {
-        // Act
-        var exception = new FeishuWebhookSecurityException("Security violation", requestId: "req-123");
-
-        // Assert
-        exception.RequestId.Should().Be("req-123");
-    }
-
-    [Fact]
-    public void Constructor_WithClientIp_ShouldSetClientIp()
-    {
-        // Act
-        var exception = new FeishuWebhookSecurityException("Security violation", clientIp: "192.168.1.1");
-
-        // Assert
-        exception.ClientIp.Should().Be("192.168.1.1");
-    }
-
-    [Fact]
-    public void Constructor_WithSecurityEventType_ShouldSetSecurityEventType()
-    {
-        // Act
-        var exception = new FeishuWebhookSecurityException(
-            "Security violation",
-            securityEventType: SecurityEventType.SignatureValidation);
-
-        // Assert
-        exception.SecurityEventType.Should().Be(SecurityEventType.SignatureValidation);
-    }
-
-    [Fact]
-    public void Constructor_WithInnerException_ShouldSetInnerException()
-    {
-        // Arrange
-        var innerException = new InvalidOperationException("Inner error");
-
-        // Act
-        var exception = new FeishuWebhookSecurityException("Security violation", innerException);
-
-        // Assert
-        exception.InnerException.Should().Be(innerException);
-    }
-}
-
-/// <summary>
 /// FeishuWebhookValidationException 单元测试
 /// </summary>
 public class FeishuWebhookValidationExceptionTests
@@ -244,165 +182,47 @@ public class FeishuWebhookValidationExceptionTests
 }
 
 /// <summary>
-/// FeishuWebhookProcessingException 单元测试
+/// FeishuWebhookUnavailableException 单元测试（W-01）
 /// </summary>
-public class FeishuWebhookProcessingExceptionTests
+/// <remarks>
+/// 语义契约：<c>ErrorType = ServiceUnavailable</c> 且 <c>IsRetryable = true</c>。
+/// 该组合是"无法完成判定 ⇒ 请重推"的唯一表达，任何一处漂移都会让中间件/宿主的
+/// 重试判定失准，故单独锁定。
+/// </remarks>
+public class FeishuWebhookUnavailableExceptionTests
 {
     [Fact]
-    public void Constructor_WithBasicParameters_ShouldSetProperties()
+    public void Constructor_ShouldCarryServiceUnavailableSemantics()
     {
         // Act
-        var exception = new FeishuWebhookProcessingException("Processing failed");
+        var exception = new FeishuWebhookUnavailableException("无法获取密钥");
 
         // Assert
-        exception.Message.Should().Be("Processing failed");
-        exception.ErrorType.Should().Be("ProcessingError");
+        exception.ErrorType.Should().Be("ServiceUnavailable");
+        exception.IsRetryable.Should().BeTrue("无法判定 = 可重试（503），不得与签名不匹配（403 终态）混淆");
+        exception.RequestId.Should().BeNull();
+        exception.Message.Should().Be("无法获取密钥");
+    }
+
+    [Fact]
+    public void Constructor_WithInnerException_ShouldPreserveCause()
+    {
+        // Arrange
+        var inner = new InvalidOperationException("KeyVault 不可用");
+
+        // Act
+        var exception = new FeishuWebhookUnavailableException("验签链路内部故障", inner);
+
+        // Assert
+        exception.InnerException.Should().Be(inner, "归因必须保留原始异常");
         exception.IsRetryable.Should().BeTrue();
     }
 
     [Fact]
-    public void Constructor_WithEventType_ShouldSetEventType()
+    public void Type_ShouldBeDerivedFromWebhookExceptionBase()
     {
-        // Act
-        var exception = new FeishuWebhookProcessingException("Processing failed", eventType: "message.created");
-
-        // Assert
-        exception.EventType.Should().Be("message.created");
-    }
-
-    [Fact]
-    public void Constructor_WithEventId_ShouldSetEventId()
-    {
-        // Act
-        var exception = new FeishuWebhookProcessingException("Processing failed", eventId: "evt-123");
-
-        // Assert
-        exception.EventId.Should().Be("evt-123");
-    }
-
-    [Fact]
-    public void Constructor_WithRequestId_ShouldSetRequestId()
-    {
-        // Act
-        var exception = new FeishuWebhookProcessingException("Processing failed", requestId: "req-123");
-
-        // Assert
-        exception.RequestId.Should().Be("req-123");
-    }
-
-    [Fact]
-    public void Constructor_WithInnerException_ShouldSetInnerException()
-    {
-        // Arrange
-        var innerException = new InvalidOperationException("Inner error");
-
-        // Act
-        var exception = new FeishuWebhookProcessingException("Processing failed", innerException);
-
-        // Assert
-        exception.InnerException.Should().Be(innerException);
-    }
-}
-
-/// <summary>
-/// FeishuWebhookDecryptionException 单元测试
-/// </summary>
-public class FeishuWebhookDecryptionExceptionTests
-{
-    [Fact]
-    public void Constructor_WithBasicParameters_ShouldSetProperties()
-    {
-        // Act
-        var exception = new FeishuWebhookDecryptionException("Decryption failed");
-
-        // Assert
-        exception.Message.Should().Be("Decryption failed");
-        exception.ErrorType.Should().Be("DecryptionError");
-        exception.IsRetryable.Should().BeFalse();
-    }
-
-    [Fact]
-    public void Constructor_WithAppId_ShouldSetAppId()
-    {
-        // Act
-        var exception = new FeishuWebhookDecryptionException("Decryption failed", appId: "app-123");
-
-        // Assert
-        exception.AppId.Should().Be("app-123");
-    }
-
-    [Fact]
-    public void Constructor_WithRequestId_ShouldSetRequestId()
-    {
-        // Act
-        var exception = new FeishuWebhookDecryptionException("Decryption failed", requestId: "req-123");
-
-        // Assert
-        exception.RequestId.Should().Be("req-123");
-    }
-
-    [Fact]
-    public void Constructor_WithInnerException_ShouldSetInnerException()
-    {
-        // Arrange
-        var innerException = new System.Security.Cryptography.CryptographicException("Crypto error");
-
-        // Act
-        var exception = new FeishuWebhookDecryptionException("Decryption failed", innerException);
-
-        // Assert
-        exception.InnerException.Should().Be(innerException);
-    }
-}
-
-/// <summary>
-/// FeishuWebhookSerializationException 单元测试
-/// </summary>
-public class FeishuWebhookSerializationExceptionTests
-{
-    [Fact]
-    public void Constructor_WithBasicParameters_ShouldSetProperties()
-    {
-        // Act
-        var exception = new FeishuWebhookSerializationException("Serialization failed");
-
-        // Assert
-        exception.Message.Should().Be("Serialization failed");
-        exception.ErrorType.Should().Be("SerializationError");
-        exception.Format.Should().Be("JSON");
-        exception.IsRetryable.Should().BeFalse();
-    }
-
-    [Fact]
-    public void Constructor_WithCustomFormat_ShouldSetFormat()
-    {
-        // Act
-        var exception = new FeishuWebhookSerializationException("Serialization failed", format: "XML");
-
-        // Assert
-        exception.Format.Should().Be("XML");
-    }
-
-    [Fact]
-    public void Constructor_WithRequestId_ShouldSetRequestId()
-    {
-        // Act
-        var exception = new FeishuWebhookSerializationException("Serialization failed", requestId: "req-123");
-
-        // Assert
-        exception.RequestId.Should().Be("req-123");
-    }
-
-    [Fact]
-    public void Constructor_WithInnerException_ShouldSetInnerException()
-    {
-        // Arrange
-        var innerException = new System.Text.Json.JsonException("JSON error");
-
-        // Act
-        var exception = new FeishuWebhookSerializationException("Serialization failed", innerException);
-
-        // Assert
-        exception.InnerException.Should().Be(innerException);
+        // 宿主/中间件可能以基类做兜底 catch，派生关系不得漂移
+        typeof(FeishuWebhookException).IsAssignableFrom(typeof(FeishuWebhookUnavailableException))
+            .Should().BeTrue();
     }
 }

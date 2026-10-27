@@ -19,8 +19,8 @@ namespace Mud.Feishu.Agent.Demo;
 /// 模式节里的 <c>Enabled</c> 键保留一个作用：决定菜单的默认项（回车采用的项，见 <see cref="DemoModeCatalog.Default"/>）。
 /// </para>
 /// <para>
-/// 具体实现按功能归档：<c>Modes/</c>（裸模型、工具冒烟、IM 接入、领域事件、Skills 产物）与
-/// <c>DocAgent/</c>（文档业务智能体）。
+/// 具体实现按功能归档：<c>Modes/</c>（裸模型、工具冒烟、IM 接入、领域事件、Skills 产物、复合工作流、
+/// 装配自检）与 <c>DocAgent/</c>（文档业务智能体）。
 /// </para>
 /// <para>
 /// 非交互输入（stdin 被重定向 / 管道 / CI）跳过菜单、直接采用配置默认项，避免进程挂起。

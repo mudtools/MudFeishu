@@ -12,7 +12,7 @@ using Mud.Feishu.DataModels.Mail;
 namespace Mud.Feishu.AI.Tools.Tests.Tools;
 
 /// <summary>
-/// T-3（mail 域成环，17 个）的<b>真实调用链路</b>用例：草稿四件套 + 处置/附件 2 + 规则 5 + 模板 5 + 签名 1。
+/// T-3（mail 域成环，15 个）的<b>真实调用链路</b>用例：草稿四件套 + 处置/附件 2 + 规则 4 + 模板与签名 5。
 /// 覆盖三条"看似成功实则未生效"的平台陷阱（automation_send_disable、send_time 过早、规则 DSL 非法组合）。
 /// </summary>
 public class MailDeepToolsChainTests
@@ -53,19 +53,17 @@ public class MailDeepToolsChainTests
     [Theory]
     [InlineData("mail.create_draft", "POST", "/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/drafts", "user")]
     [InlineData("mail.update_draft", "PUT", "/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/drafts/{draft_id}", "user")]
-    [InlineData("mail.send_draft", "POST", "/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/drafts/{draft_id}/send", "user")]
+    [InlineData("mail.send", "POST", "/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/drafts/{draft_id}/send", "user")]
     [InlineData("mail.delete_draft", "DELETE", "/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/drafts/{draft_id}", "user")]
     [InlineData("mail.trash_message", "POST", "/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/messages/batch_trash", "tenant")]
     [InlineData("mail.get_attachment_url", "GET", "/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/messages/{message_id}/attachments/download_url", "tenant")]
     [InlineData("mail.rule_list", "GET", "/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/rules", "tenant")]
-    [InlineData("mail.rule_create", "POST", "/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/rules", "tenant")]
-    [InlineData("mail.rule_update", "PUT", "/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/rules/{rule_id}", "tenant")]
+    [InlineData("mail.rule_save", "POST", "/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/rules", "tenant")]
     [InlineData("mail.rule_delete", "DELETE", "/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/rules/{rule_id}", "tenant")]
     [InlineData("mail.rule_reorder", "POST", "/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/rules/reorder", "tenant")]
     [InlineData("mail.template_list", "GET", "/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/templates", "tenant")]
     [InlineData("mail.template_get", "GET", "/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/templates/{template_id}", "tenant")]
-    [InlineData("mail.template_create", "POST", "/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/templates", "tenant")]
-    [InlineData("mail.template_update", "PUT", "/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/templates/{template_id}", "tenant")]
+    [InlineData("mail.template_save", "POST", "/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/templates", "tenant")]
     [InlineData("mail.template_delete", "DELETE", "/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/templates/{template_id}", "tenant")]
     [InlineData("mail.signature_list", "GET", "/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/settings/signatures", "user")]
     public void Contracts_ShouldCarrySdkMethodRouteAndIdentity(string toolName, string httpMethod, string route, string identity)
@@ -172,7 +170,7 @@ public class MailDeepToolsChainTests
     }
 
     [Fact]
-    public async Task SendDraft_ShouldConvertRfc3339SendTimeIntoUnixSeconds()
+    public async Task SendDraftPath_ShouldConvertRfc3339SendTimeIntoUnixSeconds()
     {
         SendUserMailboxDraftRequest? captured = null;
         _draftClient
@@ -186,7 +184,7 @@ public class MailDeepToolsChainTests
             });
 
         var sendTime = DateTimeOffset.UtcNow.AddDays(2).ToString("yyyy-MM-ddTHH:mm:sszzz");
-        var result = await CreateTools().SendDraftAsync(
+        var result = await CreateTools().SendAsync(
             Args(("user_mailbox_id", "user@example.com"), ("draft_id", "draft_1"), ("send_time", sendTime)),
             CancellationToken.None);
 
@@ -198,7 +196,7 @@ public class MailDeepToolsChainTests
     }
 
     [Fact]
-    public async Task SendDraft_WithoutSendTime_ShouldSendImmediately()
+    public async Task SendDraftPath_WithoutSendTime_ShouldSendImmediately()
     {
         SendUserMailboxDraftRequest? captured = null;
         _draftClient
@@ -211,14 +209,88 @@ public class MailDeepToolsChainTests
                 Data = new SendUserMailboxDraftResult { MessageId = "msg_2" },
             });
 
-        await CreateTools().SendDraftAsync(
+        await CreateTools().SendAsync(
             Args(("user_mailbox_id", "user@example.com"), ("draft_id", "draft_1")), CancellationToken.None);
 
         captured!.SendTime.Should().BeNull("省略 send_time = 立即发送，不得下发 0（平台按过期定时处理）");
     }
 
     [Fact]
-    public async Task SendDraft_AutomationSendDisable_ShouldSurfaceAsError()
+    public async Task Send_ComposePath_ShouldCreateDraftThenSendIt()
+    {
+        UserMailboxDraftRequest? created = null;
+        string? sentDraftId = null;
+        _draftClient
+            .Setup(c => c.CreateUserMailboxDraftAsync(
+                It.IsAny<string>(), It.IsAny<UserMailboxDraftRequest>(), It.IsAny<CancellationToken>()))
+            .Callback((string _, UserMailboxDraftRequest request, CancellationToken __) => created = request)
+            .ReturnsAsync(new FeishuApiResult<UserMailboxDraftOopsResult>
+            {
+                Code = 0,
+                Data = new UserMailboxDraftOopsResult { Draft = new MailDraft { Id = "draft_new" } },
+            });
+        _draftClient
+            .Setup(c => c.SendUserMailboxDraftAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SendUserMailboxDraftRequest>(), It.IsAny<CancellationToken>()))
+            .Callback((string _, string draftId, SendUserMailboxDraftRequest __, CancellationToken ___) => sentDraftId = draftId)
+            .ReturnsAsync(new FeishuApiResult<SendUserMailboxDraftResult>
+            {
+                Code = 0,
+                Data = new SendUserMailboxDraftResult { MessageId = "msg_3", ThreadId = "thr_3" },
+            });
+
+        var result = await CreateTools().SendAsync(
+            Args(
+                ("user_mailbox_id", "user@example.com"),
+                ("to", new[] { "recipient@example.com" }),
+                ("subject", "现写现发"),
+                ("body", "正文")),
+            CancellationToken.None);
+
+        DecodeEml(created!.Raw!).Should().Contain("Subject: 现写现发", "现写现发复用同一套 EML 组装");
+        sentDraftId.Should().Be("draft_new", "发出的必须是本次新建的那份草稿");
+        result.ToString().Should().Contain("msg_3");
+        result.ToString().Should().Contain("draft_new", "现写现发回执额外给出中间态 draft_id，便于排查");
+    }
+
+    [Fact]
+    public async Task Send_WithBothDraftIdAndComposeFields_ShouldRejectBeforeDownstream()
+    {
+        var result = await CreateTools().SendAsync(
+            Args(
+                ("user_mailbox_id", "user@example.com"),
+                ("draft_id", "draft_1"),
+                ("to", new[] { "recipient@example.com" })),
+            CancellationToken.None);
+
+        result.ToString().Should().Contain("[tool_error] mail.send");
+        result.ToString().Should().Contain("互斥", "既给草稿又给正文时「发出的是哪份内容」不可判定");
+        _draftClient.Verify(
+            c => c.SendUserMailboxDraftAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SendUserMailboxDraftRequest>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Send_WithoutDraftIdAndMissingSubject_ShouldRejectBeforeDownstream()
+    {
+        var result = await CreateTools().SendAsync(
+            Args(
+                ("user_mailbox_id", "user@example.com"),
+                ("to", new[] { "recipient@example.com" }),
+                ("body", "只有正文")),
+            CancellationToken.None);
+
+        result.ToString().Should().Contain("[tool_error] mail.send");
+        result.ToString().Should().Contain("mail.create_draft", "只想存草稿的意图要指向正确入口");
+        _draftClient.Verify(
+            c => c.CreateUserMailboxDraftAsync(
+                It.IsAny<string>(), It.IsAny<UserMailboxDraftRequest>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task SendDraftPath_AutomationSendDisable_ShouldSurfaceAsError()
     {
         _draftClient
             .Setup(c => c.SendUserMailboxDraftAsync(
@@ -236,10 +308,10 @@ public class MailDeepToolsChainTests
                 },
             });
 
-        var result = await CreateTools().SendDraftAsync(
+        var result = await CreateTools().SendAsync(
             Args(("user_mailbox_id", "user@example.com"), ("draft_id", "draft_1")), CancellationToken.None);
 
-        result.ToString().Should().Contain("[tool_error] mail.send_draft");
+        result.ToString().Should().Contain("[tool_error] mail.send");
         result.ToString().Should().Contain("automation_send_disable",
             "code=0 但邮件未发出——不拦截就是静默反向失败");
         result.ToString().Should().Contain("admin_policy");
@@ -248,13 +320,13 @@ public class MailDeepToolsChainTests
     [Theory]
     [InlineData("2026-10-20T09:00:00")]
     [InlineData("明天上午")]
-    public async Task SendDraft_WithNonRfc3339SendTime_ShouldReturnStructuredError(string sendTime)
+    public async Task SendDraftPath_WithNonRfc3339SendTime_ShouldReturnStructuredError(string sendTime)
     {
-        var result = await CreateTools().SendDraftAsync(
+        var result = await CreateTools().SendAsync(
             Args(("user_mailbox_id", "u@example.com"), ("draft_id", "d1"), ("send_time", sendTime)),
             CancellationToken.None);
 
-        result.ToString().Should().Contain("[tool_error] mail.send_draft");
+        result.ToString().Should().Contain("[tool_error] mail.send");
         result.ToString().Should().Contain("带时区的 RFC3339");
         _draftClient.Verify(
             c => c.SendUserMailboxDraftAsync(
@@ -263,15 +335,15 @@ public class MailDeepToolsChainTests
     }
 
     [Fact]
-    public async Task SendDraft_SendTimeTooClose_ShouldReturnStructuredError()
+    public async Task SendDraftPath_SendTimeTooClose_ShouldReturnStructuredError()
     {
         var tooSoon = DateTimeOffset.UtcNow.AddMinutes(1).ToString("yyyy-MM-ddTHH:mm:sszzz");
 
-        var result = await CreateTools().SendDraftAsync(
+        var result = await CreateTools().SendAsync(
             Args(("user_mailbox_id", "u@example.com"), ("draft_id", "d1"), ("send_time", tooSoon)),
             CancellationToken.None);
 
-        result.ToString().Should().Contain("[tool_error] mail.send_draft");
+        result.ToString().Should().Contain("[tool_error] mail.send");
         result.ToString().Should().Contain("5 分钟", "平台要求定时至少晚于当前 5 分钟");
     }
 
@@ -411,7 +483,7 @@ public class MailDeepToolsChainTests
     }
 
     [Fact]
-    public async Task RuleCreate_ShouldCompileSimplifiedFormsIntoPlatformCodes()
+    public async Task RuleSave_CreatePath_ShouldCompileSimplifiedFormsIntoPlatformCodes()
     {
         CreateUserMailboxRuleRequest? captured = null;
         _ruleClient
@@ -424,7 +496,7 @@ public class MailDeepToolsChainTests
                 Data = new CreateUserMailboxRuleResult { Rule = new UserMailboxRuleInfo { Id = "rule_1" } },
             });
 
-        var result = await CreateTools().RuleCreateAsync(
+        var result = await CreateTools().RuleSaveAsync(
             Args(
                 ("user_mailbox_id", "user@example.com"),
                 ("name", "发票归档"),
@@ -445,9 +517,9 @@ public class MailDeepToolsChainTests
     }
 
     [Fact]
-    public async Task RuleCreate_WithIllegalField_ShouldFailBeforeDownstream_AndShowLegalForms()
+    public async Task RuleSave_WithIllegalField_ShouldFailBeforeDownstream_AndShowLegalForms()
     {
-        var result = await CreateTools().RuleCreateAsync(
+        var result = await CreateTools().RuleSaveAsync(
             Args(
                 ("user_mailbox_id", "user@example.com"),
                 ("name", "坏规则"),
@@ -456,7 +528,7 @@ public class MailDeepToolsChainTests
                 ("dry_run", true)),
             CancellationToken.None);
 
-        result.ToString().Should().Contain("[tool_error] mail.rule_create");
+        result.ToString().Should().Contain("[tool_error] mail.rule_save");
         result.ToString().Should().Contain("未知的条件字段");
         result.ToString().Should().Contain("subject|contains|", "错误消息必须附合法写法，模型才能自我纠正");
         _ruleClient.Verify(
@@ -466,9 +538,9 @@ public class MailDeepToolsChainTests
     }
 
     [Fact]
-    public async Task RuleCreate_DryRun_ShouldReportCompiledStructure()
+    public async Task RuleSave_CreatePath_DryRun_ShouldReportCompiledStructure()
     {
-        var result = await CreateTools().RuleCreateAsync(
+        var result = await CreateTools().RuleSaveAsync(
             Args(
                 ("user_mailbox_id", "user@example.com"),
                 ("name", "发票归档"),
@@ -486,7 +558,7 @@ public class MailDeepToolsChainTests
     }
 
     [Fact]
-    public async Task RuleUpdate_ShouldAddressRuleId_AndReplaceWholeRule()
+    public async Task RuleSave_UpdatePath_ShouldAddressRuleId_AndReplaceWholeRule()
     {
         string? capturedRuleId = null;
         UpdateUserMailboxRuleRequest? captured = null;
@@ -500,7 +572,7 @@ public class MailDeepToolsChainTests
             })
             .ReturnsAsync(new FeishuNullDataApiResult { Code = 0 });
 
-        var result = await CreateTools().RuleUpdateAsync(
+        var result = await CreateTools().RuleSaveAsync(
             Args(
                 ("user_mailbox_id", "user@example.com"),
                 ("rule_id", "rule_1"),
@@ -675,7 +747,7 @@ public class MailDeepToolsChainTests
     }
 
     [Fact]
-    public async Task TemplateCreate_ShouldAssembleTemplateObjectFromFlatArgs()
+    public async Task TemplateSave_CreatePath_ShouldAssembleTemplateObjectFromFlatArgs()
     {
         CreateMailTemplateRequest? captured = null;
         _templateClient
@@ -688,7 +760,7 @@ public class MailDeepToolsChainTests
                 Data = new CreateMailTemplateResult { Template = new MailTemplateInfo { TemplateId = "tpl_1" } },
             });
 
-        var result = await CreateTools().TemplateCreateAsync(
+        var result = await CreateTools().TemplateSaveAsync(
             Args(
                 ("user_mailbox_id", "user@example.com"),
                 ("name", "报价回复模板"),
@@ -706,7 +778,7 @@ public class MailDeepToolsChainTests
     }
 
     [Fact]
-    public async Task TemplateUpdate_ShouldBackfillInputTemplateId()
+    public async Task TemplateSave_UpdatePath_ShouldBackfillInputTemplateId()
     {
         _templateClient
             .Setup(c => c.UpdateMailTemplateAsync(
@@ -717,7 +789,7 @@ public class MailDeepToolsChainTests
                 Data = new UpdateMailTemplateResult { Template = new MailTemplate { Name = "改名后模板" } },
             });
 
-        var result = await CreateTools().TemplateUpdateAsync(
+        var result = await CreateTools().TemplateSaveAsync(
             Args(
                 ("user_mailbox_id", "user@example.com"),
                 ("template_id", "tpl_1"),

@@ -11,7 +11,7 @@
 >
 > | 内容 | 现落点（命名空间 / 入口） |
 > | --- | --- |
-> | 流式消息通道（`EditMessageChannel` / `CardStreamMessageChannel` / `StreamingChannelChain`） | `Mud.Feishu.AI.Channels`（`Mud.Feishu.AI` 程序集） |
+> | 流式消息通道（`EditMessageChannel` / `CardKitStreamMessageChannel` / `StreamingChannelChain`） | `Mud.Feishu.AI.Channels`（`Mud.Feishu.AI` 程序集） |
 > | 会话事件处理器与装配器（`ImMessage…` / `ApprovalTask…` / `TaskUpdated…` / `BitableRecordChanged…` / `SenderInfo…` / `QuoteMessage…`） | `Mud.Feishu.AI.Events` |
 > | 事件外桥与事件目录（`FeishuEventNdjsonBridge` / `FeishuEventCatalog` / `FeishuEventEnvelope`） | **已移出本库**：R-10 起作为 Demo 参考实现（`Demos/Mud.Feishu.Agent.Demo/Events/`），库不再承诺该生态位 |
 > | Aily 托管知识问答（`AilyKnowledgeProvider`） | `Mud.Feishu.AI.Knowledge` |
@@ -22,27 +22,26 @@
 
 ---
 
-## 1. 工具面现状（331 个：171 只读 + 160 写类）
+## 1. 工具面现状（351 个：185 只读 + 166 写类）
 
 > **本表为域级汇总，权威计数以 `FeishuToolNames.All` 为准**（由契约守卫 `ToolCountDocContractGuards` 机械锁定——本表数字必须等于编译期产物 `FeishuToolNames.All.Count`）。
 
 | 域 | 只读 | 写类 | 小计 |
 | --- | ---: | ---: | ---: |
-| Bitable | 13 | 15 | 28 |
-| 云文档 Docx | 8 | 9 | 17 |
-| Wiki | 5 | 6 | 11 |
+| Bitable | 12 | 13 | 25 |
+| 云文档 Docx | 8 | 8 | 16 |
+| Wiki | 5 | 7 | 12 |
 | 搜索 Search | 1 | — | 1 |
-| IM | 8 | 12 | 20 |
-| 云空间 Drive | 5 | 12 | 17 |
+| IM | 9 | 14 | 23 |
+| 云空间 Drive | 5 | 11 | 16 |
 | 电子表格 Sheets | 8 | 17 | 25 |
-| 通讯录 Contact | 4 | — | 4 |
-| 通讯录部门 ContactDept | 2 | 2 | 4 |
+| 通讯录 Contact | 8 | — | 8 |
 | 审批 Approval | 2 | 6 | 8 |
 | 日历 Calendar | 4 | 5 | 9 |
-| 任务 Task | 5 | 15 | 20 |
-| 邮件 Mail | 10 | 14 | 24 |
-| 妙记 Minutes | 5 | — | 5 |
-| OKR | 9 | 6 | 15 |
+| 任务 Task | 5 | 13 | 18 |
+| 邮件 Mail | 10 | 11 | 21 |
+| 妙记 Minutes | 6 | 4 | 10 |
+| OKR | 11 | 7 | 18 |
 | 视频会议 VC | 7 | 7 | 14 |
 | 知识库 Knowledge | 1 | — | 1 |
 | **画板 Board**（R7/A4） | 2 | 4 | 6 |
@@ -54,14 +53,17 @@
 | **国家地区 MDM**（F-1） | 1 | — | 1 |
 | **安全审计 Security**（F-1） | 1 | — | 1 |
 | **安全日志 SecurityOpenApiLog**（F-1） | 1 | — | 1 |
-| **企业词典 Lingo**（B1） | 11 | 5 | 16 |
-| **应用管理 Application**（B1） | 9 | 2 | 11 |
-| **服务台 HelpDesk**（B1） | 10 | 4 | 14 |
-| **群管理 ChatGroup**（B1） | 16 | 12 | 28 |
-| **跨组织互通 TrustParty**（B1） | 11 | 3 | 14 |
+| **企业词典 Lingo**（B1） | 6 | 5 | 11 |
+| **应用管理 Application**（B1） | 7 | 2 | 9 |
+| **服务台 HelpDesk**（B1） | 6 | 4 | 10 |
+| **群管理 ChatGroup**（B1） | 4 | 12 | 16 |
+| **跨组织互通 TrustParty**（B1） | 8 | 3 | 11 |
 | **智能伙伴数据知识 Aily**（B2） | 3 | — | 3 |
+| **幻灯片 Slides**（S-1） | 7 | 5 | 12 |
+| **Markdown**（S-2） | 2 | 2 | 4 |
+| **复合工作流 Workflow**（S-4） | 2 | — | 2 |
 | 元工具 | 4 | — | 4 |
-| **合计** | **171** | **160** | **331** |
+| **合计** | **185** | **166** | **351** |
 
 > **R-12（2026-10-10）**：万能兜底通道 `feishu.api_call` 已**整条删除**（双轨调用路径 + 全工具面风险最高的面
 > + 零外部消费）。未策展能力的正确处置是「先用 `feishu.capability_lookup` 判断是不存在还是未策展，
@@ -233,13 +235,13 @@ var response = await agent.RunApprovalContinuationAsync(
 
 ## 4. 模型看不到的能力，出路在哪
 
-本包刻意**不**做"每个 SDK 方法一个工具"（1268 无差别暴露），而是按高频工作流**策展**为 331 个工具。
-对于未策展的方法，提供两层兜底（而非变相暴露全部 1268 方法）：
+本包刻意**不**做"每个 SDK 方法一个工具"（1279 无差别暴露），而是按高频工作流**策展**为 351 个工具。
+对于未策展的方法，提供两层兜底（而非变相暴露全部 1279 方法）：
 
 | 层 | 内容 | 模型可见？ |
 | --- | --- | --- |
 | L1 能力目录 | 编译期聚合事实（SDK 方法总数 / 分组分布 / 策展计数），`build_property.FeishuToolCatalog=true` 时产出 | ❌（`internal`） |
-| L2 暴露策展 | 标注了 `[FeishuTool]` 的 331 个工具 | ✅（白名单启用后） |
+| L2 暴露策展 | 标注了 `[FeishuTool]` 的 351 个工具 | ✅（白名单启用后） |
 | **L3 能力出路** | **`feishu.capability_lookup`**：按关键字回答"这个能力在 SDK 里有几个分组 / 是否已策展成工具" | ✅（默认不启用） |
 | **L3.1 方法签名** | **`feishu.schema_read`**：查任意 SDK 方法的签名事实（HTTP/路由/参数/令牌/风险/是否已策展） | ✅（只读，`feishu:base` scope） |
 | **L3.2 guidance** | **`feishu.guidance_read`**：按需读取 L2 references（`{域}/{主题}`），键不存在时列出全部候选 | ✅（只读） |
@@ -321,14 +323,20 @@ var response = await agent.RunApprovalContinuationAsync(
 > 程序集跑测试——为解开这个自锁，csproj 提供了显式重固化窗口：
 >
 > ```powershell
+> dotnet build Mud.Feishu.AI.Tools/Mud.Feishu.AI.Tools.csproj -c Debug --no-incremental -p:FeishuToolRefreeze=true
 > $env:FeishuToolGoldenUpdate='true'
 > dotnet test Tests/Mud.Feishu.AI.Tools.Tests -p:FeishuToolRefreeze=true `
 >   --filter "FullyQualifiedName~FeishuToolGoldenTests"
 > ```
 >
+> ⚠️ **第一步不能省**：快照内容由测试从**已编译的程序集**读取，而 `dotnet test` 只在引用项目被判为过期时才
+> 重建它——新增 `Affordance/*.md` 常常不触发重建，于是生成器看不到新资产，固化**静默写成原样**（全绿、
+> 覆盖率却没涨）。`--no-incremental` 先强制重跑生成器，再让测试落盘。
+>
 > `-p:FeishuToolRefreeze=true` 让构建期 `AdditionalFiles` 暂时不引入快照（从而不比对），测试则用运行时
-> 真实 Schema 重写快照。固化后**必须**：评审 diff（媒体可见面变更）→ 运行
-> `pwsh ./scripts/sync-publicapi.ps1`（同步 `PublicAPI.Unshipped.txt` 里的 Schema 常量载荷）→ 记录 CHANGELOG。
+> 真实 Schema 重写快照。固化后**必须**：评审 diff（媒体可见面变更）→ 描述/参数有变时同批重固化
+> skills（`$env:FeishuSkillsUpdate='true'` + 跑 `SkillsExportContractTests`）→ 更新
+> `documents/AIAgent/工具权限对照表.md` 与 `public-surface-rationale.json`（新增公开类型时）→ 记录 CHANGELOG。
 
 ---
 
@@ -436,6 +444,13 @@ IToolSchemaExporter.Export(ToolSchemaDialect.Skills);
   `skills/feishu-{domain}/SKILL.md`（frontmatter `name/description/version/package_version` + **L1 guidance 原样嵌入** +
   命令清单〔工具名 + 只读/写 + Schema 描述〕+ references 索引）与
   `skills/feishu-{domain}/references/{topic}.md`（**L2 资产逐字落地**）。
+  另有 **`skills/feishu-suite/SKILL.md`**（单入口路由）：34 行域条目 + 规模数字，行体与 MCP 路由摘要**共用同一次推导**
+  （`GuidanceRoutingSummary.RouteBody`），不复述任何域内安全规则。
+  > 命令清单行超过 240 字符时**按标点边界截断**，并在行尾补一份从 `x-feishu` 元数据推导的契约尾注
+  > `〔user 身份；需 im:message:send_as_bot〕`——截断不得吞掉权限与身份判据（真实 harness 消费记录抓到的缺陷，
+  > 由 `ToolDescription_ShouldNotLosePermissionOrIdentityJudgement` 与 `ClampDescription_*` 锁定）。
+  > 有细则的域包末尾另给一条**解码规则**：正文里的 `feishu.guidance_read(域, 主题)` 是进程内工具形态，
+  > 文件形态下读本包 `references/主题.md`（导出层不改写正文，避免第二份真相源）。
   > `version` 是**产物形态**版本（结构变了才动）；`package_version` 是**包**版本（随 `<Version>` 走）。
   > 二者分开的原因：宿主拿到的是目录树、看不到包元数据，没有 `package_version` 就无法判断
   > "手上这份 `SKILL.md` 是否与当前包配套"。该字段由 `SkillsVersionConsistencyContractGuards` 锁定
@@ -469,7 +484,7 @@ IToolSchemaExporter.Export(ToolSchemaDialect.Skills);
   `<None Include="..\skills\**\*" Pack="true" PackagePath="skills\" />` **打进 NuGet 包** ⇒
   只装包的用户也能拿到技能包（库本身不做文件 IO，这一行是"生态位"落到用户手里的唯一通道）。
   ⚠️ `PackagePath` 末尾的**反斜杠不能省**：省掉（或写成 `skills\%(RecursiveDir)`）会让 NuGet 与递归目录
-  叠加成 `skills/feishu-ai/feishu-ai/SKILL.md`；反过来写成 `skills\%(Filename)%(Extension)` 则会把 31 个域的
+  叠加成 `skills/feishu-ai/feishu-ai/SKILL.md`；反过来写成 `skills\%(Filename)%(Extension)` 则会把 34 个域的
   同名 `SKILL.md` 拍平覆盖。两种坏法都由 `Package_ShouldShipSkillsTree` 守卫挡下。
 
 ### 7.4 事件外桥：NDJSON（R7 / C7 · 生态位）
@@ -525,7 +540,7 @@ await bridge.WriteAsync(new FeishuEventEnvelope(
 
 ### 7.6 进程外 Agent：MCP server（R7 / C6b · 可选包）
 
-工具面除了进程内模型，还可经 **MCP（stdio JSON-RPC 2.0）**交给进程外 Agent，
+工具面除了进程内模型，还可经 **MCP（stdio JSON-RPC 2.0 或 Streamable HTTP）**交给进程外 Agent，
 实现在**独立可选包** `Mud.Feishu.AI.Mcp`（不引用 SDK 强类型客户端、不被任何核心包引用）：
 
 ```csharp
@@ -534,18 +549,44 @@ builder.Services.AddFeishuMcpServer(o => o.AppKey = "cli_xxx");  // 进程级租
 await app.Services.RunFeishuMcpStdioAsync();             // 阻塞到客户端关闭 stdin
 ```
 
+HTTP 形态由**宿主自己映射端点**（本包不引入任何 Web 框架依赖，请求/响应是框架无关快照）：
+
+```csharp
+// 一个已认证的端点处理器：AppKey/UserId 只能来自认证层，其余字段逐条取自 HTTP 上下文
+var response = await handler.HandleAsync(new McpHttpRequest("POST")
+{
+    AppKey = authenticatedAppKey,
+    UserId = authenticatedUserId,          // user 身份工具必需，同样只由认证层提供
+    SessionId = sessionId,                 // initialize 之后由响应头 Mcp-Session-Id 下发
+    ContentType = contentType,
+    Accept = accept,
+    Origin = origin,                       // 浏览器客户端才有
+    Body = jsonRpcBody,
+}, ct);
+// 把 response.StatusCode / ContentType / Body / Headers 逐字段写回真实 HTTP 响应
+```
+
 - **白名单同源**：MCP 暴露的工具 == `FeishuAgent:Tools` + `WriteAllowList`，**不新增开关**；
 - **执行链零旁路**：每个 tool call 走同一个 `FeishuToolBinding`（授权 / 租户切换 / 净化 / 审计不变）；
-- **租户边界 = 进程**：appKey 只来自配置（协议层传 appKey 等于把切租户交给客户端），
+- **租户边界 = 进程**（stdio）：appKey 只来自配置（协议层传 appKey 等于把切租户交给客户端），
   跨租户宿主请**每租户一个 stdio 进程**；缺 appKey 启动期即抛（fail-closed）；
+- **租户边界 = 认证层**（HTTP）：`McpHttpRequest.AppKey` 只由宿主认证层填写，本包**绝不**从 URL、请求体或
+  任意自定义头推导租户；会话一经 `initialize` 绑定租户，后续请求给出不同身份即 403 —— **会话标识不是切租户的凭据**。
+  因此一个 HTTP 进程可服务多租户，逐请求 fail-closed（`FeishuMcp:Http:TenantBoundPerRequest` 是唯一的显式豁免声明，默认关）；
+- **HTTP 传输判据全部是拒绝形态**：`Origin` 白名单为空 ⇒ 拒绝一切带 `Origin` 的请求（DNS 重绑定防线，对非浏览器客户端零影响）；
+  `Content-Type` 非 JSON ⇒ 415、`Accept` 不接受 JSON ⇒ 406、`GET` ⇒ 405（**不做 SSE**）、批量 ⇒ 400、通知 ⇒ 202；
+  JSON-RPC 层错误仍是 200 + `error` 信封，两种错误形态**刻意分开**；
+- **会话目录在进程内**：`MaxSessions`（超限 503）+ 空闲惰性回收（不起后台线程）；多实例部署要么做会话粘滞，
+  要么把 `MaxSessions` 理解为**单实例**上限；
 - **写工具 HITL**：授权器返回"需人工确认" ⇒ `isError` + `needs_user_confirmation` + **零调用下游**
   （MCP 不走 MAF 审批管线，故不依赖 `ApprovalRequiredAIFunction` 这个**仅标记**的类型）；
 - **名字映射**：契约名 `.` → `_`（严格客户端只接受 `[a-zA-Z0-9_-]{1,64}`），契约名经 `title` 透出；
 - **stdio 注意事项**：stdout 是协议通道，日志必须写 stderr/文件。
 
-> **依赖选型**：本包 MCP 协议层为**自研**（不引官方 `ModelContextProtocol` SDK），仅覆盖
-> `tools` 能力 + stdio。裁决依据、**已证伪的常见理由**（TFM 兼容性 / AOT / 预览版三条均不成立）
-> 与**翻转触发条件**（HTTP-SSE / 多能力 / 客户端侧 / 新修订差异化语义）如上。
+> **依赖选型**：本包 MCP 协议层为**自研**（不引官方 `ModelContextProtocol` SDK），覆盖
+> `tools` 能力 + stdio 与 Streamable HTTP 两种传输。E-3 落地 HTTP 后，原「HTTP 传输缺席」这条翻转触发条件已**消除**
+> （其余触发条件——多能力 / 客户端侧 / 新修订差异化语义——不变）。裁决依据、**已证伪的常见理由**
+> （TFM 兼容性 / AOT / 预览版三条均不成立）如上。
 
 ### 7.7 凭据隔离：**这是宿主的职责**（R-3 / F-10 登记）
 
@@ -569,6 +610,27 @@ await app.Services.RunFeishuMcpStdioAsync();             // 阻塞到客户端�
   `AppSecret` 不进审计载荷 —— 这些约束与"凭据由谁提供"无关，宿主的代理实现同样受约束。
 - **本项不产生 SDK 变更**（登记性质）：若将来产品判定需要 SDK 侧统一形态，应走独立议题
   （需回答"多一层接口换来的是哪条具体的失败模式消失"），而不是在本包内加一个"凭据开关"。
+
+### 7.8 装配自检：把「第一次调用才暴露的装配缺陷」提前到一条命令（E-2 / GAP-11）
+
+`AddFeishuTools()` 注册 `IFeishuDiagnosticsProbe`（单例），宿主在启动末尾、发布流水线或健康检查里解析一次即可：
+
+```csharp
+var report = provider.GetRequiredService<IFeishuDiagnosticsProbe>().Probe();
+Console.WriteLine(report.ToText());          // 确定性排序：结论按（严重度, 码），读数按名
+if (report.HasErrors) { /* 拒绝上线 */ }
+```
+
+- **看什么**：`FeishuDiagnosticsFinding`（`severity` ∈ `info`/`warning`/`error` + 稳定机读 `code` + 含处置建议的
+  正文）与 `FeishuDiagnosticsFact`（`tools.enabled` / `tools.contract_surface` / `policy.*` / `host.*` /
+  `guidance.headroom_percent` 等读数）。**按码分支，不要按正文文案分支**——正文可改，码是契约。
+  `error` 的判据是「按当前配置运行期**必然**失败或**必然**静默丢弃」，不是「可能」。
+- **零副作用契约**：同步、不发起任何网络调用、不刷新令牌、不实例化应用。令牌轴只报**管理器可达性**，
+  不报有效期——读有效期需要触达存储并可能触发一次刷新，那会把一条诊断命令变成一次真实调用。
+- **不抛**：自检自身出错时回 `probe_fault` 结论，报告其余部分仍然有效。
+- **可当断言面**：同一装配两次调用逐字节相同，故冒烟用例可直接比对 `ToText()`。
+- 参考消费方：`Demos/Mud.Feishu.Agent.Demo` 的 `doctor` 模式（**零网络**；凭证留空即以占位凭证把容器
+  装配成完整形态，否则报告只剩一片「未配置」噪音）。
 
 ---
 
@@ -609,8 +671,11 @@ Mud.Feishu.AI.Tools/Affordance/{契约工具名}.md      # 如 out: Affordance/v
 - **接线三件套**：剖面槽 `AffordanceDirectory` ↔ csproj 的 `<AdditionalFiles Include="Affordance\**\*.md" />`
   ↔ 磁盘目录名。任一不一致 ⇒ 引擎收不到资产 ⇒ 整键消失**而构建全绿**（`MUDFT014` 会因 golden 漂移报错，
   `AffordanceContractGuards` 也会报红——这两道门是刻意的冗余）；
-- **强制集合**：`high-risk-write` 工具（16 个）**必须**有资产——`AffordanceContractGuards` 机械断言，
-  新增高危工具时不同批补资产即报红；
+- **覆盖率阈值**：`AffordanceCoverageContractGuards` 按风险分级设最低覆盖率——`high-risk-write` 与
+  `write` 两级 100%（39 + 129 = 168 份，写面满覆盖），`read` 级 18% 起步（im / bitable / docx / drive /
+  mail 的高频 `list` / `get` 共 33 份，合计 201 份）——分母取自契约集合，新增写类工具时不同批补资产即报红；
+  只读面**不做满覆盖承诺**：低频单点读取的决策路径由域 guidance 承担，全量补资产只会挤占描述预算；
+  写作规范与禁止项见 `documents/AIAgent/affordance-写作规范.md`；
 - **模型可见面**：`FeishuToolAIFunction.Description` 尾部追加（进程内 Agent 与 MCP 链共用同一实例
   ⇒ 逐字节一致），另经 `McpEnvelope` 方言结构化透传（`affordance` 字段）。
   之所以走描述：`x-feishu` 刻意**不进**参数 Schema 关键字空间（MEAI 的 `JsonSchema` 契约要求纯参数 Schema）。
@@ -623,7 +688,7 @@ Mud.Feishu.AI.Tools/Affordance/{契约工具名}.md      # 如 out: Affordance/v
 | `im.reply_message`             | ✅                     | ✅                      | 平台侧 1 小时去重                                                                                                           |
 | `im.send_image`                | ❌                     | —                       | 三步链路，幂等由落盘器保证                                                                                                  |
 | `im.send_file`                 | ❌                     | —                       | 同上                                                                                                                        |
-| `bitable.add_record`           | ✅                     | ✅                      | 相同键返回同一条记录                                                                                                        |
+| `bitable.record_batch_create`  | ✅                     | ✅                      | 相同键返回同一条记录                                                                                                        |
 | `bitable.update_record`        | ✅                     | ✅                      | 相同键不产生副作用                                                                                                          |
 | `bitable.delete_record`        | ❌                     | —                       | 删除天然幂等                                                                                                                |
 | `approval.create_instance`     | ✅                     | ✅                      | 相同键返回错误码 60012                                                                                                      |
@@ -646,6 +711,6 @@ Mud.Feishu.AI.Tools/Affordance/{契约工具名}.md      # 如 out: Affordance/v
 | `task.create_subtask`          | ✅                     | ✅                      | 平台原生幂等                                                                                                                |
 | `task.add_comment`             | ❌                     | —                       | 非幂等                                                                                                                      |
 | `task.add_members`             | ✅                     | ✅                      | 平台原生幂等                                                                                                                |
-| `mail.send_message`            | ❌                     | —                       | 两步合一，非幂等                                                                                                            |
+| `mail.send`            | ❌                     | —                       | 两步合一，非幂等                                                                                                            |
 
 **汇总**：28 个写工具中，10 个暴露 `idempotency_key`，18 个不暴露（其中 8 个天然幂等，10 个非幂等）。

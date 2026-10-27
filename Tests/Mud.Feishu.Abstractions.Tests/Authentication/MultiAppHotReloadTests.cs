@@ -430,6 +430,110 @@ public class MultiAppHotReloadTests
         ctx.Manager.ConfiguredAppKeys.Should().NotContain("app3");
     }
 
+    /// <summary>
+    /// 显式 <c>RemoveApp</c> 写入墓碑——配置源仍声明该键时，热更新不得把它静默复活；
+    /// 配置源正式删除该键后墓碑撤销，后续重新声明可再次注册。
+    /// </summary>
+    [Fact]
+    public void RemoveApp_ShouldBlockConfiguredResurrection_UntilConfigDropsKey()
+    {
+        using var ctx = new ProviderScope(CreateManager(
+            CreateConfig("app1", TestDataFactory.AppConfigs.AppIds.Default, TestDataFactory.AppConfigs.Secrets.Default, isDefault: true),
+            CreateConfig("app2", TestDataFactory.AppConfigs.AppIds.Hr, TestDataFactory.AppConfigs.Secrets.Hr)));
+
+        ctx.Manager.RemoveApp("app2").Should().BeTrue();
+        ctx.Manager.ConfiguredAppKeys.Should().NotContain("app2", "移除必须同步清理懒加载注册表");
+
+        ctx.Manager.OnConfigurationChanged(new List<FeishuAppConfig>
+        {
+            CreateConfig("app1", TestDataFactory.AppConfigs.AppIds.Default, TestDataFactory.AppConfigs.Secrets.Default, isDefault: true),
+            CreateConfig("app2", TestDataFactory.AppConfigs.AppIds.Hr, TestDataFactory.AppConfigs.Secrets.Hr)
+        });
+        ctx.Manager.HasApp("app2").Should().BeFalse(
+            "显式 RemoveApp 的墓碑必须阻止仍被配置源声明的应用被静默复活");
+
+        // 配置源正式删除该键：墓碑撤销（此后重新声明可再次注册）
+        ctx.Manager.OnConfigurationChanged(new List<FeishuAppConfig>
+        {
+            CreateConfig("app1", TestDataFactory.AppConfigs.AppIds.Default, TestDataFactory.AppConfigs.Secrets.Default, isDefault: true)
+        });
+
+        ctx.Manager.OnConfigurationChanged(new List<FeishuAppConfig>
+        {
+            CreateConfig("app1", TestDataFactory.AppConfigs.AppIds.Default, TestDataFactory.AppConfigs.Secrets.Default, isDefault: true),
+            CreateConfig("app2", TestDataFactory.AppConfigs.AppIds.Hr, TestDataFactory.AppConfigs.Secrets.Hr)
+        });
+        ctx.Manager.HasApp("app2").Should().BeTrue(
+            "配置源正式删除并重新声明后，墓碑不得永久封禁该键");
+    }
+
+    /// <summary>
+    /// 显式 <c>AddApp</c> 是墓碑的例外入口——运维重新纳入应用时无需先改配置源。
+    /// </summary>
+    [Fact]
+    public void AddApp_AfterRemoveApp_ShouldClearTombstone()
+    {
+        using var ctx = new ProviderScope(CreateManager(
+            CreateConfig("app1", TestDataFactory.AppConfigs.AppIds.Default, TestDataFactory.AppConfigs.Secrets.Default, isDefault: true)));
+
+        ctx.Manager.AddApp(CreateConfig("app2", TestDataFactory.AppConfigs.AppIds.Hr, TestDataFactory.AppConfigs.Secrets.Hr));
+        ctx.Manager.RemoveApp("app2").Should().BeTrue();
+
+        ctx.Manager.AddApp(CreateConfig("app2", TestDataFactory.AppConfigs.AppIds.Hr, TestDataFactory.AppConfigs.Secrets.Hr));
+
+        ctx.Manager.HasApp("app2").Should().BeTrue("显式 AddApp 必须覆盖剩余墓碑");
+    }
+
+    /// <summary>
+    /// 热更新中单个应用新增失败必须被隔离（其余变更照常提交），
+    /// 且失败键不得写入配置快照——否则下一次相同通知会被节流判定为"无变更"而永不重试。
+    /// </summary>
+    [Fact]
+    public void OnConfigurationChanged_ShouldIsolateFailedAdd_AndRetryOnNextReload()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        var failApp2 = true;
+        var tokenStoreFactoryMock = new Mock<IFeishuTokenStoreFactory>();
+        tokenStoreFactoryMock
+            .Setup(x => x.Create(It.IsAny<string>()))
+            .Returns((string appKey) =>
+            {
+                if (failApp2 && appKey == "app2")
+                    throw new HttpRequestException("模拟新增应用装配失败（如存储瞬时故障）");
+                return (new Mock<ITokenStore>().Object, new Mock<IUserTokenStore>().Object);
+            });
+
+        var existingDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IFeishuTokenStoreFactory));
+        if (existingDescriptor != null) services.Remove(existingDescriptor);
+        services.AddSingleton(tokenStoreFactoryMock.Object);
+
+        services.AddFeishuApp(new List<FeishuAppConfig>
+        {
+            CreateConfig("app1", TestDataFactory.AppConfigs.AppIds.Default, TestDataFactory.AppConfigs.Secrets.Default, isDefault: true)
+        });
+        using var provider = services.BuildServiceProvider();
+        var manager = (FeishuAppManager)provider.GetRequiredService<IFeishuAppManager>();
+
+        var incoming = new List<FeishuAppConfig>
+        {
+            CreateConfig("app1", TestDataFactory.AppConfigs.AppIds.Default, TestDataFactory.AppConfigs.Secrets.Default, isDefault: true),
+            CreateConfig("app2", TestDataFactory.AppConfigs.AppIds.Hr, TestDataFactory.AppConfigs.Secrets.Hr)
+        };
+
+        manager.OnConfigurationChanged(incoming);
+
+        manager.HasApp("app1").Should().BeTrue("单个应用新增失败不得影响其余应用");
+        manager.HasApp("app2").Should().BeFalse("新增失败的应用不得进入注册表");
+
+        failApp2 = false;
+        manager.OnConfigurationChanged(incoming);
+
+        manager.HasApp("app2").Should().BeTrue(
+            "失败的 AppKey 不得写入配置快照，否则相同通知会被节流为无变化而永不重试");
+    }
+
     private sealed class ProviderScope : IDisposable
     {
         public ProviderScope((ServiceProvider Provider, FeishuAppManager Manager) pair)

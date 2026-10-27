@@ -111,26 +111,26 @@ public class ToolArgsContractGuards
     [Fact]
     public void Unpack_ShouldThrow_WhenRequiredParameterMissing()
     {
-        // bitable.get_records_by_ids：必填 app_token/table_id（string）+ 必填 record_ids（string[]）。
-        var unpack = UnpackOf(FeishuToolNames.BitableGetRecordsByIds);
+        // bitable.record_batch_create：必填 app_token/table_id/records（string）。
+        var unpack = UnpackOf(FeishuToolNames.BitableRecordBatchCreate);
 
-        var missingScalar = () => unpack.Invoke(null, [Args(("table_id", "tbl1"), ("record_ids", new[] { "rec1" }))]);
+        var missingScalar = () => unpack.Invoke(null, [Args(("table_id", "tbl1"), ("records", "[{\"fields\":{}}]"))]);
         missingScalar.Should().Throw<TargetInvocationException>()
             .WithInnerException<ArgumentException>()
             .WithMessage("*app_token*", "缺失必填标量参数必须回填可读的 ArgumentException");
 
-        // 空数组视同缺失（OptionalStringArray 对空数组返回 null）——飞书批量接口对空列表无有意义语义。
-        var emptyArray = () => unpack.Invoke(null, [Args(("app_token", "bas1"), ("table_id", "tbl1"), ("record_ids", Array.Empty<string>()))]);
-        emptyArray.Should().Throw<TargetInvocationException>()
+        // 必填标量缺失（records 为空串视同缺失）——写面不接受"空批次"。
+        var emptyRecords = () => unpack.Invoke(null, [Args(("app_token", "bas1"), ("table_id", "tbl1"), ("records", ""))]);
+        emptyRecords.Should().Throw<TargetInvocationException>()
             .WithInnerException<ArgumentException>()
-            .WithMessage("*record_ids*");
+            .WithMessage("*records*");
     }
 
     /// <summary>可选参数缺省为 <see langword="null"/>；标量数组与整数按声明类型解包。</summary>
     [Fact]
     public void Unpack_ShouldReadOptionalParameters()
     {
-        var records = UnpackOf(FeishuToolNames.BitableGetRecordsByIds)
+        var records = UnpackOf(FeishuToolNames.BitableQueryRecords)
             .Invoke(null, [Args(("app_token", "bas1"), ("table_id", "tbl1"), ("record_ids", new[] { "rec1", "rec2" }))])!;
 
         ReadProperty(records, "AppToken").Should().Be("bas1");

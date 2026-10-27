@@ -226,7 +226,7 @@ public interface IFeishuTenantTrustpartyListCollaborationRulesTool
 /// 且主客体实体数之和须 &lt; 100（平台约束）。
 /// </remarks>
 [AgentTool("trustparty.create_collaboration_rule",
-    Description = "在关联组织间新建一条互通规则（主体=我方实体，客体=对端实体；主客体实体数之和须 <100；返回 rule_id）。写操作：默认不启用，需宿主授权（IToolExecutionAuthorizer），需 trust_party:collaboration_rule:write。建议先 dry_run 预演核对两侧实体。",
+    Description = "在关联组织间新建一条互通规则（主体=我方实体，客体=对端实体；主客体实体数之和须 <100；返回 rule_id）。写操作：需 trust_party:collaboration_rule:write。建议先 dry_run 预演核对两侧实体。",
     RequiredScopes = ["trust_party:collaboration_rule:write"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1DirectoryCollaborationRule) + "." + nameof(IFeishuTenantV1DirectoryCollaborationRule.CreateCollaborationRuleAsync))]
@@ -255,7 +255,7 @@ public interface IFeishuTenantTrustpartyCreateCollaborationRuleTool
 /// 合并后再整份提交。
 /// </remarks>
 [AgentTool("trustparty.update_collaboration_rule",
-    Description = "更新一条互通规则（按 rule_id；⚠️ 主体/客体为覆盖式替换，未传的一侧会被清空——只加成员请先 list_collaboration_rules 读出原值再整份提交）。写操作：默认不启用，需宿主授权，需 trust_party:collaboration_rule:write。建议先 dry_run 预演。",
+    Description = "更新一条互通规则（按 rule_id；⚠️ 主体/客体为覆盖式替换，未传的一侧会被清空——只加成员请先 list_collaboration_rules 读出原值再整份提交）。写操作：需 trust_party:collaboration_rule:write。建议先 dry_run 预演。",
     RequiredScopes = ["trust_party:collaboration_rule:write"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1DirectoryCollaborationRule) + "." + nameof(IFeishuTenantV1DirectoryCollaborationRule.UpdateCollaborationRuleAsync))]
@@ -286,7 +286,7 @@ public interface IFeishuTenantTrustpartyUpdateCollaborationRuleTool
 /// 且描述里必须同时出现 <c>dry_run</c> 与「预演 / 确认」。
 /// </remarks>
 [AgentTool("trustparty.delete_collaboration_rule",
-    Description = "删除一条互通规则（⚠️ 不可撤销：删除后对端立即失去互通能力，且只能重建、rule_id 会变——务必先 dry_run 预演并确认 rule_id 与 target_tenant_key 无误）。写操作：默认不启用，需宿主授权，需 trust_party:collaboration_rule:write。",
+    Description = "删除一条互通规则（⚠️ 不可撤销：删除后对端立即失去互通能力，且只能重建、rule_id 会变——务必先 dry_run 预演并确认 rule_id 与 target_tenant_key 无误）。写操作：需 trust_party:collaboration_rule:write。",
     RequiredScopes = ["trust_party:collaboration_rule:write"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1DirectoryCollaborationRule) + "." + nameof(IFeishuTenantV1DirectoryCollaborationRule.DeleteCollaborationRuleAsync))]

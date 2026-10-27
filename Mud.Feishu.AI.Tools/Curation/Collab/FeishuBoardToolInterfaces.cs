@@ -36,7 +36,7 @@ public interface IFeishuTenantBoardGetThemeTool
 /// 更新画板主题（幂等）。
 /// </remarks>
 [AgentTool("board.update_theme",
-    Description = "更新画板主题（配色方案）。幂等操作。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 board:whiteboard 权限。",
+    Description = "更新画板主题（配色方案）。幂等操作。写操作：可用 dry_run=true 预演；需 board:whiteboard 权限。",
     RequiredScopes = ["board:whiteboard"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1Board) + "." + nameof(IFeishuTenantV1Board.UpdateWhiteboardThemeAsync))]
@@ -59,7 +59,7 @@ public interface IFeishuTenantBoardUpdateThemeTool
 /// 模型无需懂画板节点结构，只需输出 DSL 文本。
 /// </remarks>
 [AgentTool("board.render_dsl",
-    Description = "将 PlantUML 或 Mermaid 源码解析为画板节点（协同编辑）。模型只需输出 DSL 文本，无需了解画板节点结构。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 board:whiteboard 权限。",
+    Description = "将 PlantUML 或 Mermaid 源码解析为画板节点（协同编辑）。模型只需输出 DSL 文本，无需了解画板节点结构。写操作：可用 dry_run=true 预演；需 board:whiteboard 权限。",
     RequiredScopes = ["board:whiteboard"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1Board) + "." + nameof(IFeishuTenantV1Board.CreatePlantumlWhiteboardNodeAsync))]
@@ -82,7 +82,7 @@ public interface IFeishuTenantBoardRenderDslTool
 /// 创建画板节点。底层支持 <c>client_token</c> 幂等 → 本工具暴露 <c>idempotency_key</c>。
 /// </remarks>
 [AgentTool("board.create_nodes",
-    Description = "在画板中创建节点（支持批量创建、父子关系）。支持幂等：传入 idempotency_key 可安全重试。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 board:whiteboard 权限。",
+    Description = "在画板中创建节点（支持批量创建、父子关系）。先读现有节点与 parent_id 结构用 board.list_nodes，避免重复创建。支持幂等：传入 idempotency_key 可安全重试。写操作：可用 dry_run=true 预演；需 board:whiteboard 权限。",
     RequiredScopes = ["board:whiteboard"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1Board) + "." + nameof(IFeishuTenantV1Board.CreateWhiteboardNodeAsync))]
@@ -105,7 +105,7 @@ public interface IFeishuTenantBoardCreateNodesTool
 /// 返回画板内所有节点，可通过 parent_id/children 组装成画板内容。
 /// </remarks>
 [AgentTool("board.list_nodes",
-    Description = "获取画板内所有节点（返回节点数组，可通过 parent_id/children 组装画板结构）。只读，需 board:whiteboard:readonly。",
+    Description = "获取画板内所有节点（返回节点数组，可通过 parent_id/children 组装画板结构）；改造画板用 board.create_nodes / board.delete_nodes。只读，需 board:whiteboard:readonly。",
     RequiredScopes = ["board:whiteboard:readonly"],
     Source = nameof(IFeishuTenantV1Board) + "." + nameof(IFeishuTenantV1Board.GetWhiteboardNodesAsync))]
 public interface IFeishuTenantBoardListNodesTool
@@ -124,7 +124,7 @@ public interface IFeishuTenantBoardListNodesTool
 /// 批量删除画板节点。<b>子节点会被递归删除</b>——描述中声明后果。
 /// </remarks>
 [AgentTool("board.delete_nodes",
-    Description = "批量删除画板节点。⚠️ 子节点会被递归删除，操作不可逆。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演确认；需 board:whiteboard 权限。",
+    Description = "批量删除画板节点。⚠️ 子节点会被递归删除，操作不可逆。写操作：可用 dry_run=true 预演确认；需 board:whiteboard 权限。",
     RequiredScopes = ["board:whiteboard"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1Board) + "." + nameof(IFeishuTenantV1Board.BatchDeleteWhiteboardNodeAsync))]

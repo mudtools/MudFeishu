@@ -81,9 +81,14 @@ internal sealed class FeishuToolAIFunction : AIFunction
         var context = _contextAccessor?.Current;
         if (context is null)
         {
-            return ToolResult.FromError(FeishuToolBinding.StructuredError(
+            // 结构化错误出口：该路径在 FeishuToolBinding 之外（上下文缺失连执行链都进不去），
+            // 故不能依赖执行链出口的错误载荷归一——这里直接产出带载荷的失败结果。
+            return ToolResult.FromUnclassifiedError(
+                FeishuToolBinding.StructuredError(
+                    _definition.Name,
+                    "工具执行上下文缺失（未设置 appKey）——请经 ConversationalFeishuEventHandler 或 IFeishuToolContextAccessor.Begin 注入"),
                 _definition.Name,
-                "工具执行上下文缺失（未设置 appKey）——请经 ConversationalFeishuEventHandler 或 IFeishuToolContextAccessor.Begin 注入"));
+                maxLength: 0);
         }
 
         // AIFunctionArguments 实现为 IReadOnlyDictionary<string, object?>（可空性注解仅编译期）。
@@ -183,84 +188,20 @@ internal sealed class FeishuToolsToolSource : FeishuAgentToolSource
     /// 未启用任何工具 → 无 guidance → 指令装配与 一致。
     /// </para>
     /// <para>
-    /// <b>排序＝丢弃优先级（R5 / B-12）</b>：超限时 <see cref="GuidanceComposer.Compose"/>
-    /// 按<b>输入顺序</b>整域丢弃尾部域，故输入顺序即"域重要性"。原实现按<b>域名字母序</b>，
-    /// 一旦超限就<b>确定性地</b>丢掉字母序靠后的域——实测在原 2048 预算下从第 7 个域
-    /// <c>feishu</c> 起共 8 个域的 guidance 从未进入过 prompt（含 <c>im</c>/<c>task</c>/<c>mail</c>/<c>wiki</c>）。
-    /// 现改为<b>按"该域已启用工具数"降序</b>，同数按域名字母序：
-    /// <list type="bullet">
-    /// <item>工具数多的域是Agent 最常命中的域（<c>im</c>/<c>task</c>/<c>calendar</c>/<c>bitable</c>/<c>drive</c>
-    /// 各 5~8 个工具），其 guidance 最不该被丢；</item>
-    /// <item>工具数少的域（<c>search</c>/<c>knowledge</c>/<c>feishu</c>/<c>wiki</c> 各 1~2 个）先于长尾被丢弃。</item>
-    /// </list>
-    /// <b>零人工配置</b>：优先级完全由 <see cref="FeishuToolRegistry.EnabledTools"/> 派生
-    /// （无需新增配置键，也不违反 R-4 "上限固化常量、不设公开配置键"的治理）。
-    /// 该顺序在"预算充足"与"预算被调小"两种场景下都给出可断言的行为。
-    /// </para>
-    /// <para>
-    /// <b>BUG-4 / §7.4：下发形态由 <see cref="FeishuAgentOptions.GuidanceMode"/> 决定</b>——
-    /// <c>routing</c>（默认）时每域只注入一行路由摘要（≤256 字符），全文退居"被引用资产"
-    /// （进程内经 <c>feishu.guidance_read</c>，MCP 经 <c>resources/read</c>）；
-    /// <c>full</c> 时保持既有全文拼接。**排序语义在两种形态下都不变**（丢弃优先级仍按工具数降序），
-    /// 故"预算被调小丢的是长尾域"这一可断言语义不因形态切换而改变。
+    /// 排序与形态判据的<b>唯一实现</b>在 <see cref="DomainGuidanceBlocks"/>（装配链与自检面共用同一份，
+    /// 否则自检报出的预算余量与被丢的域就不是真实下发的那一份）：按「该域已启用工具数」降序、
+    /// 同数按域名字母序——超限时 <see cref="GuidanceComposer.Compose"/> 按输入顺序整域丢弃尾部域，
+    /// 故输入顺序即「域重要性」；形态（routing 每域一行摘要 / full 每域 L1 全文）由
+    /// <see cref="FeishuAgentOptions.GuidanceMode"/> 决定，排序语义在两种形态下都不变。
     /// </para>
     /// </remarks>
     public override IReadOnlyList<GuidanceBlock> GetGuidance(IServiceProvider serviceProvider)
     {
         if (serviceProvider is null)
+        {
             throw new ArgumentNullException(nameof(serviceProvider));
-
-        var registry = serviceProvider.GetService<FeishuToolRegistry>();
-        if (registry is null)
-        {
-            return [];
         }
 
-        // 域 = 工具名首个"." 之前的部分；按域聚合已启用工具数 → 丢弃优先级（工具数降序，同数按域名字母序）。
-        var domainToolCounts = new Dictionary<string, int>(StringComparer.Ordinal);
-        foreach (var tool in registry.EnabledTools)
-        {
-            var domain = DomainOf(tool.Name);
-            if (domain.Length == 0)
-            {
-                continue;
-            }
-
-            domainToolCounts[domain] = domainToolCounts.TryGetValue(domain, out var count)
-                ? count + 1
-                : 1;
-        }
-
-        // OrderByDescending(工具数) → OrderBy(域名)：前者定重要性，后者保证同重要性的顺序确定（可 golden 比对）。
-        var domains = domainToolCounts
-            .OrderByDescending(static pair => pair.Value)
-            .ThenBy(static pair => pair.Key, StringComparer.Ordinal);
-
-        // BUG-4 / §7.4：下发形态（routing = 每域一行路由摘要，全文按需读；full = 既有全文拼接）。
-        // 未解析到 Options 时按**默认值** routing 处理（与 FeishuAgentOptions 的默认一致，
-        // 不因"装配缺失"悄悄退回全文拼接——那正是域扩容后整域丢弃的失败形态）。
-        var mode = serviceProvider.GetService<IOptions<FeishuAgentOptions>>()?.Value?.GuidanceMode;
-        var routing = !string.Equals(mode, GuidanceModes.Full, StringComparison.Ordinal);
-
-        var blocks = new List<GuidanceBlock>();
-        foreach (var domain in domains)
-        {
-            if (FeishuToolGuidance.ByDomain.TryGetValue(domain.Key, out var content))
-            {
-                blocks.Add(new GuidanceBlock(
-                    domain.Key,
-                    routing ? GuidanceRoutingSummary.Create(domain.Key, content) : content));
-            }
-        }
-
-        return blocks;
-    }
-
-    /// <summary>取工具名所属域（首个 <c>.</c> 之前的部分）。</summary>
-    private static string DomainOf(string toolName)
-    {
-        // 注：netstandard2.0 没有 IndexOf(char, StringComparison)，用字符串重载。
-        var index = toolName.IndexOf(".", StringComparison.Ordinal);
-        return index > 0 ? toolName.Substring(0, index) : toolName;
+        return DomainGuidanceBlocks.Create(serviceProvider);
     }
 }

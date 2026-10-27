@@ -49,10 +49,10 @@ package_version: 3.0.3
 ## 命令（工具）清单
 - `application.get_app`（只读）：按 app_id 查询应用详情（名称/描述/状态/场景类型/主语言/在线与待审版本 ID/移动端与 PC 端默认能力/已申请权限的 scope 名）。⚠️ 不返回应用密钥、加密配置与负责人联系方式（出站净化）。只读，需 application:application:readonly。
 - `application.get_app_version`（只读）：按 version_id 查询单个应用版本的详情（版本号/状态/创建与发布时间/备注/该版本申请的能力与可用范围）。只读，需 application:application.app_version:readonly。
-- `application.get_app_visibility`（只读）：查询应用可用范围（是否全员可见 + 可见/不可见的部门、用户组、用户列表）。回答「这个应用谁能看到」用它；成员过多时按 has_more_users/user_page_token 继续取用户列表。只读，需 application:application:readonly。
+- `application.get_app_visibility`（只读）：查询应用可用范围（是否全员可见 + 可见/不可见的部门、用户组、用户列表）。回答「这个应用谁能看到」用它；成员过多时按 has_more_users/user_page_token 继续取用户列表；要改这份范围用 application.update_visibility。只读，需 application:application:readonly。
 - `application.get_scopes`（只读）：查询本应用已申请的权限点及授权状态（scope_name/grant_status/scope_type）——回答「这个应用现在开了哪些权限」「某权限是否已生效」。只读，需 application:application:readonly。
 - `application.list_app_versions`（只读）：分页列出应用的版本历史（version_id/version/status/创建与发布时间）——用于回答「线上是哪一版」「有没有待审版本」。只读，需 application:application.app_version:readonly。
 - `application.list_apps`（只读）：分页列出企业自建/商店应用（返回 app_id/名称/状态/场景类型/在线版本 ID）——进入「应用管理」域的第一步：拿到 app_id 才能查详情、可用范围、协作者与版本。可按 status / payment_type / owner_type 过滤。只读，需 application:application:readonly。
 - `application.list_collaborators`（只读）：列出应用协作者（谁能进开发者后台改这个应用；返回 type=管理员/开发/运营 + user_id）——用于回答「这个应用谁能改」。只读，需 application:application:readonly。
-- `application.update_management`（写）：启用或停用应用的管理面（⚠️ 停用后管理员将无法在后台管理该应用，影响面极大——务必先 dry_run 预演并确认 app_id 与 enable 取值）。写操作：默认不启用，需宿主授权，需 application:application（⚠️ scope 名待控制台核对）。
-- `application.update_visibility`（写）：更新应用的可见范围（把应用开放/关闭给指定的用户、部门、用户组，或设为全员可见）——四类名单均为**增量**语义，未传的不动。写操作：默认不启用，需宿主授权（IToolExecutionAuthorizer），需 application:application（⚠️ scope 名待控制台核对）。建议先 dry_run 预演。
+- `application.update_management`（写）：启用或停用应用的管理面（⚠️ 停用后管理员将无法在后台管理该应用，影响面极大——务必先 dry_run 预演并确认 app_id 与 enable 取值）。写操作：需 application:application（⚠️ scope 名待控制台核对）。
+- `application.update_visibility`（写）：更新应用的可见范围（把应用开放/关闭给指定的用户、部门、用户组，或设为全员可见）——四类名单均为**增量**语义，未传的不动；改动前先用 application.get_app_visibility 读现状。写操作：需 application:application（⚠️ scope 名待控制台核对）。建议先 dry_run 预演。

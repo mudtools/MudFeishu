@@ -28,8 +28,8 @@
 ## 写面
 - 12 个写工具，覆盖群设置 / 成员 / 管理员 / 置顶 / 菜单删除五类操作。
 - **scope 全部待核对**：SDK 注释无字面量，按官方文档取 `im:chat`（⚠️ 控制台开通前按名称搜索确认）。
-- 5 个高危写（`delete_chat` / `delete_top_notice` / `delete_manager` / `remove_member` / `delete_menu`）各有 affordance 资产，执行前必须先读。
-- `add_member` / `remove_member` / `add_manager` 的回执带**无效 ID 清单**：非空说明有成员没进/没出群。
+- 12 个写工具各有 affordance 资产（执行前先读），其中 5 个高危：`delete_chat` / `delete_top_notice` / `delete_manager` / `remove_member` / `delete_menu`。
+- `add_member` / `remove_member` 回执带**无效 ID 清单**：非空即有人没进/没出群（`add_manager` 给管理员全量名单）。
 - `me_join_chat` 加的是**当前应用/机器人身份**，不是某个用户。
 - **新增/修改群菜单暂未纳入**：请求体是嵌套树，扁平参数无法表达。
 

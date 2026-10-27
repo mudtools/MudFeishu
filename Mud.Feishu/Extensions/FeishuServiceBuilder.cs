@@ -67,7 +67,8 @@ public class FeishuServiceBuilder
             [FeishuModule.MDM] = new FeishuModuleRegistrar(FeishuModule.MDM, s => s.AddMDMWebApiHttpClient()),
             [FeishuModule.Payroll] = new FeishuModuleRegistrar(FeishuModule.Payroll, s => s.AddPayrollWebApiHttpClient()),
             [FeishuModule.PersonalSettings] = new FeishuModuleRegistrar(FeishuModule.PersonalSettings, s => s.AddPersonalSettingsWebApiHttpClient()),
-            [FeishuModule.Okr] = new FeishuModuleRegistrar(FeishuModule.Okr, s => s.AddOkrWebApiHttpClient())
+            [FeishuModule.Okr] = new FeishuModuleRegistrar(FeishuModule.Okr, s => s.AddOkrWebApiHttpClient()),
+            [FeishuModule.Slides] = new FeishuModuleRegistrar(FeishuModule.Slides, s => s.AddSlidesWebApiHttpClient())
         };
     }
 
@@ -279,6 +280,12 @@ public class FeishuServiceBuilder
     /// </summary>
     /// <returns>建造者实例，支持链式调用</returns>
     public FeishuServiceBuilder AddOkrApi() => AddModule(FeishuModule.Okr);
+
+    /// <summary>
+    /// 添加飞书幻灯片 API 服务
+    /// </summary>
+    /// <returns>建造者实例，支持链式调用</returns>
+    public FeishuServiceBuilder AddSlidesApi() => AddModule(FeishuModule.Slides);
 
     /// <summary>
     /// 添加所有 API 服务

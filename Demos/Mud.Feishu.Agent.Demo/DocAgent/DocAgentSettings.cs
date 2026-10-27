@@ -220,7 +220,7 @@ internal sealed record DocAgentSettings
         FeishuToolNames.DriveUploadFile,
         FeishuToolNames.SheetsUpdateRange,
         FeishuToolNames.SheetsAppendRows,
-        FeishuToolNames.BitableAddRecord,
+        FeishuToolNames.BitableRecordBatchCreate,
     ];
 
     /// <summary>

@@ -37,7 +37,7 @@ public class AnyOfSemanticContractTests
         FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "FeishuToolSchemas.golden.txt");
 
     /// <summary>
-    /// 基线：带 <c>anyOf</c> 的工具恰为 <b>3 个</b>（三处条件必填），且组成员与运行时校验一致。
+    /// 基线：带 <c>anyOf</c> 的工具恰为 <b>4 个</b>（四处条件必填），且组成员与运行时校验一致。
     /// </summary>
     [Fact]
     public void AnyOfBearingTools_ShouldMatchRegisteredBaseline()
@@ -46,7 +46,8 @@ public class AnyOfSemanticContractTests
         {
             ["calendar.find_free_slots"] = ["user_id", "room_id"],
             ["contact.resolve_user"] = ["emails", "mobiles"],
-            ["task.update_task"] = ["summary", "description", "due"],
+            ["mail.send"] = ["draft_id", "to"],
+            ["task.update_task"] = ["summary", "description", "due", "completed"],
         };
 
         var actual = ReadAnyOfDeclarations();

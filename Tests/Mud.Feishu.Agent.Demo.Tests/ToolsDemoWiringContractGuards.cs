@@ -47,14 +47,18 @@ public class ToolsDemoWiringContractGuards
             "注册面必须与白名单等宽：少注册一枚工具，装配期即 fail-fast（多注册则由白名单裁剪，不入注册表）");
     }
 
-    /// <summary>剔除项只有 <c>knowledge.search</c> 一枚（它绑定宿主 RAG 门面，本 Demo 明确不接 Aily 托管知识）。</summary>
+    /// <summary>
+    /// 剔除项恰为两枚：<c>knowledge.search</c>（绑定宿主 RAG 门面，本 Demo 不接 Aily 托管知识）与
+    /// <c>workflow.meeting_summary</c>（PII <c>defaultDisabled</c>，只能由复合工作流演示显式启用）。
+    /// </summary>
     [Fact]
-    public void ReadonlyWhitelist_ShouldExcludeOnlyKnowledgeSearch()
+    public void ReadonlyWhitelist_ShouldExcludeOnlyNonSharedTools()
     {
         DemoAgentDefaults.ReadonlyToolWhitelist.Should().NotContain(FeishuToolNames.KnowledgeSearch);
+        DemoAgentDefaults.ReadonlyToolWhitelist.Should().NotContain(FeishuToolNames.WorkflowMeetingSummary);
         DemoAgentDefaults.ReadonlyToolWhitelist.Length.Should().Be(
-            FeishuToolNames.ReadonlyAll.Length - 1,
-            "全域只读白名单 = ReadonlyAll − knowledge.search，恰好少一枚");
+            FeishuToolNames.ReadonlyAll.Length - 2,
+            "全域只读白名单 = ReadonlyAll − knowledge.search − workflow.meeting_summary，恰好少两枚");
         FeishuToolNames.ReadonlyAll.Should().Contain(DemoAgentDefaults.ReadonlyToolWhitelist);
     }
 

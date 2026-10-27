@@ -183,6 +183,11 @@ public enum FeishuModule
     Okr,
 
     /// <summary>
+    /// 幻灯片
+    /// </summary>
+    Slides,
+
+    /// <summary>
     /// 所有功能
     /// </summary>
     All

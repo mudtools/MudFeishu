@@ -39,9 +39,9 @@ public class RollbackTaskRequest
 
     /// <summary>
     /// <para>节点 id，发起节点 id 为 START。退回到的节点 id 列表。</para>
-    /// <para>必填：否</para>
+    /// <para>必填：是</para>
     /// <para>示例值：["START"]</para>
     /// </summary>
     [JsonPropertyName("node_ids")]
-    public string[]? NodeIds { get; set; }
+    public string[] NodeIds { get; set; } = [];
 }

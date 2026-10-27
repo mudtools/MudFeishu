@@ -7,6 +7,7 @@
 
 using Mud.Feishu.Abstractions.Utilities;
 using Mud.Feishu.Webhook.Configuration;
+using Mud.Feishu.Webhook.Exceptions;
 using Mud.Feishu.Webhook.Utils;
 
 namespace Mud.Feishu.Webhook.Services;
@@ -182,7 +183,8 @@ public class SignatureValidator(
             // 仅对请求头侧做规范化（trim + 小写化），修复「大写 hex / 尾随空白」造成的误拒；
             // computedSignature 恒为小写 hex 无需处理。规范化不影响计时安全——比较仍走 FixedTimeEquals，
             // 且 ToLowerInvariant 的耗时与签名内容无关（单遍长度驱动的映射）。
-            var normalizedHeader = headerSignature.Trim().ToLowerInvariant();
+            // netstandard2.0 目标的 string.IsNullOrEmpty 不带 [NotNullWhen] 注解，故显式 !（上方已守卫）
+            var normalizedHeader = headerSignature!.Trim().ToLowerInvariant();
 
             // 使用固定时间比较防止计时攻击
             var isValid = normalizedHeader.Length > 0 &&
@@ -212,10 +214,17 @@ public class SignatureValidator(
 
             return isValid;
         }
+        catch (OperationCanceledException)
+        {
+            // 取消语义不得被吞成“签名无效”（会写 403 到已中止连接）。
+            throw;
+        }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "验证请求头签名时发生错误, AppKey: {AppKey}", CurrentAppKey ?? "null");
-            return false;
+            // W-01：判定过程异常（`IOptionsMonitor.CurrentValue` 因配置校验失败而抛，
+            // 是热更后的高频路径）≠ 判定结果为否。返回 false 会被映射 403（终态）⇒ 事件永久丢失。
+            Logger.LogError(ex, "验证请求头签名时发生错误（判定能力故障，非签名不匹配）, AppKey: {AppKey}", CurrentAppKey ?? "null");
+            throw new FeishuWebhookUnavailableException("验签链内部故障（配置构建失败或算法异常），无法完成验签判定", ex);
         }
     }
 

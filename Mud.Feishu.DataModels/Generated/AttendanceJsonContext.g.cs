@@ -57,6 +57,7 @@ namespace Mud.Feishu.DataModels.AttendanceApprovals;
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.AttendanceGroups.Common.AttendanceScopeGroup))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.AttendanceGroups.Common.AttendanceScopeValue))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.AttendanceGroups.AttendanceGroupFreePunchCfg))]
+[JsonSerializable(typeof(global::Mud.Feishu.DataModels.AttendanceGroups.AttendanceGroupFreeClockSetting))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.AttendanceGroups.AttendanceGroupClockInAbnormalSettings))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.AttendanceGroups.GroupMeta))]
 [JsonSerializable(typeof(global::Mud.Feishu.DataModels.AttendanceGroups.AttendanceGroupOvertimeClockCfg))]

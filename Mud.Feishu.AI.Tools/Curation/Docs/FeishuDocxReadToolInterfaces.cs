@@ -26,7 +26,7 @@ public interface IFeishuTenantDocxRawContentTool
 
 /// <summary>工具接口：docx.get_document_blocks（映射 <c>IFeishuTenantV1Docx.GetDocumentBlocksPageListAsync</c>）。</summary>
 [AgentTool("docx.get_document_blocks",
-    Description = "分块读取飞书文档结构（block_id/block_type/文本），表格/代码块等结构化场景使用；document_id 可来自 wiki.get_node 的 obj_token。只读，需 docx:document:readonly。",
+    Description = "分块读取飞书文档结构（block_id/block_type/文本），表格/代码块等结构化场景使用；document_id 可来自 wiki.get_node 的 obj_token。粒度=全篇扁平块：单块详情用 docx.get_block，某块的直接子块用 docx.list_block_children。只读，需 docx:document:readonly。",
     RequiredScopes = ["docx:document:readonly"],
     Source = nameof(IFeishuTenantV1Docx) + "." + nameof(IFeishuTenantV1Docx.GetDocumentBlocksPageListAsync))]
 public interface IFeishuTenantDocxDocumentBlocksTool

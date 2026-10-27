@@ -119,9 +119,22 @@ public class FeishuWebhookOptions
     public HashSet<string> AllowedHttpMethods { get; set; } = ["POST"];
 
     /// <summary>
-    /// 最大请求体大小（字节）
+    /// 最大请求体大小（字节），默认 1MB。
     /// </summary>
-    public long MaxRequestBodySize { get; set; } = 10 * 1024 * 1024; // 10MB
+    /// <remarks>
+    /// <para>
+    /// <b>为什么是 1MB</b>：验签必须覆盖完整报文，因此这是"未认证请求的单次代价上限"。
+    /// 飞书事件报文典型 &lt;10KB、极大（超大富文本卡片）&lt;200KB，1MB 留有 ~5 倍余量，
+    /// 同时把"验签前读体"的放大面压到原来的 1/10。
+    /// </para>
+    /// <para>
+    /// 确有超大事件的宿主可显式调大（下限 1024 字节由 <see cref="Validate"/> 强制）。
+    /// 不设业务上限，但**读取侧有结构性上限 <see cref="int.MaxValue"/>**：请求体整包读入内存并
+    /// 转成 <c>string</c>（长度受 <c>int</c> 约束），配置更大的值按 <c>int.MaxValue</c> 生效。
+    /// 超限请求返回 413，响应文案固定为 <c>Request Entity Too Large</c>（不包含上限数值）。
+    /// </para>
+    /// </remarks>
+    public long MaxRequestBodySize { get; set; } = 1024 * 1024; // 1MB
 
     /// <summary>
     /// 允许的源 IP 地址列表（白名单）
@@ -236,6 +249,21 @@ public class FeishuWebhookOptions
     public InterceptorFallbackMode InterceptorFallbackMode { get; set; } = InterceptorFallbackMode.Merge;
 
     /// <summary>
+    /// 应用专属处理器与全局处理器的分发策略，默认 <see cref="Configuration.HandlerDispatchMode.AppScopedOnly"/>。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 应用键已注册专属处理器时：<see cref="Configuration.HandlerDispatchMode.AppScopedOnly"/> 只分发专属处理器；
+    /// <see cref="Configuration.HandlerDispatchMode.MergeWithGlobal"/> 让全局处理器同时参与。
+    /// </para>
+    /// <para>
+    /// 未注册专属处理器时始终回退全局处理器，本选项不改变该行为。
+    /// 合并模式下处理器需自行保证幂等——同一事件会被两类处理器各处理一次。
+    /// </para>
+    /// </remarks>
+    public HandlerDispatchMode HandlerDispatchMode { get; set; } = HandlerDispatchMode.AppScopedOnly;
+
+    /// <summary>
     /// 空 EventId/Nonce 是否拒绝请求（true=fail-closed），默认 <c>true</c>。
     /// </summary>
     /// <remarks>
@@ -292,8 +320,16 @@ public class FeishuWebhookOptions
     public FailedEventRetryOptions Retry { get; set; } = new();
 
     /// <summary>
-    /// 解密阶段超时（毫秒），默认 1000。AES 毫秒级完成，此值为抗线程池饥饿的兜底（WHF-R2/B6）。
+    /// 解密阶段超时（毫秒），默认 1000。AES 为微秒级，此值只是抗线程池饥饿的兜底（WHF-R2/B6）。
     /// </summary>
+    /// <remarks>
+    /// <b>已知语义窗口（W-10）</b>：请求头 Nonce 在<b>验签通过后、解密之前</b>即被标记为已使用
+    /// （<c>CompositeFeishuEventValidator</c> → <c>NonceValidator.TryMarkNonceAsUsedAsync</c>）。
+    /// 这是防重放的正确姿态（标记必须早于任何昂贵/可失败处理，否则并发重放会在标记前全部通过），
+    /// 代价是：若解密超时返回 503、而对端重推时<b>复用同一 Nonce</b>，重推会被判为重放（403）。
+    /// 本模块的内部重试通道（<see cref="FeishuWebhookOptions.Retry"/> → <c>FailedEventRetryService</c>）
+    /// 不经 Nonce 校验，因此"解密超时"的恢复路径是内部重试而非外部重推。
+    /// </remarks>
     public int DecryptionTimeoutMs { get; set; } = 1000;
 
     /// <summary>
@@ -354,6 +390,10 @@ public class FeishuWebhookOptions
         // 验证解密超时配置
         if (DecryptionTimeoutMs is < 100 or > 60_000)
             throw new InvalidOperationException("DecryptionTimeoutMs 必须在 100~60000 毫秒之间");
+
+        if (HandlerDispatchMode is not (HandlerDispatchMode.AppScopedOnly or HandlerDispatchMode.MergeWithGlobal))
+            throw new InvalidOperationException(
+                $"HandlerDispatchMode 取值无效（{(int)HandlerDispatchMode}），允许值：AppScopedOnly(0) / MergeWithGlobal(1)");
 
         // 验证多应用配置
         foreach (var appConfig in Apps)

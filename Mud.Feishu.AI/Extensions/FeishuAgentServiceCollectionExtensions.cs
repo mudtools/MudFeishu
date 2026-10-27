@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+using Mud.AI.Abstractions.Observability;
 using Mud.Feishu.AI.Agents;
 using Mud.Feishu.AI.Channels;
 using Mud.Feishu.AI.Conversations;
@@ -157,7 +158,12 @@ public static class FeishuAgentServiceCollectionExtensions
 
         // 遥测端口默认接产品实现——宿主可替换；替换后回合管线 / 摘要器 /
         // 通道（含降级链）全部走宿主实现。端口未注册时中立侧落 Noop（零开销）。
-        services.TryAddSingleton<IAgentTelemetry, Mud.Feishu.AI.Diagnostics.FeishuAgentTelemetry>();
+        // 工具面端口（IAgentToolTelemetry）与主端口**同一实例**：接口拆分是能力面，不是第二个实现。
+        services.TryAddSingleton<Mud.Feishu.AI.Diagnostics.FeishuAgentTelemetry>();
+        services.TryAddSingleton<IAgentTelemetry>(static sp =>
+            sp.GetRequiredService<Mud.Feishu.AI.Diagnostics.FeishuAgentTelemetry>());
+        services.TryAddSingleton<IAgentToolTelemetry>(static sp =>
+            sp.GetRequiredService<Mud.Feishu.AI.Diagnostics.FeishuAgentTelemetry>());
 
         services.TryAddSingleton(static sp =>
         {
@@ -244,14 +250,13 @@ public static class FeishuAgentServiceCollectionExtensions
     }
 
     /// <summary>
-    /// 注册流式通道降级链：首选应用消息卡片流通道
-    /// （<see cref="CardStreamMessageChannel"/>，单聊按用户投放），Begin 失败自动降级
+    /// 注册流式通道降级链：首选 CardKit 会话内流式通道
+    /// （<see cref="CardKitStreamMessageChannel"/>，群聊/单聊通用），Begin 失败自动降级
     /// <see cref="EditMessageChannel"/>（分片编辑）——事件处理器零感知。
     /// </summary>
     /// <remarks>
-    /// 要求宿主已注册 <c>IFeishuTenantV1Message</c>（编辑通道必需）；卡片流客户端
-    /// <c>IFeishuTenantV2AppCardMessageStream</c> 缺席时链内仅剩编辑通道（注册期软缺席）。
-    /// 群聊场景卡片流目标解析为不适用，直接走编辑通道。
+    /// 要求宿主已注册 <c>IFeishuTenantV1Message</c>（编辑通道与气泡投放共用）；CardKit 客户端
+    /// （<c>IFeishuTenantV1Card</c> / <c>IFeishuTenantV1CardElements</c>）任一缺席时链内仅剩编辑通道（注册期软缺席）。
     /// </remarks>
     /// <param name="services">服务集合。</param>
     /// <returns>服务集合。</returns>
@@ -260,15 +265,18 @@ public static class FeishuAgentServiceCollectionExtensions
         if (services is null)
             throw new ArgumentNullException(nameof(services));
 
-        // 卡片流客户端缺席 → 通道缺席（链内仅编辑通道），与写执行器同一软缺席模式。
+        // CardKit 客户端缺席 → 通道缺席（链内仅编辑通道），与写执行器同一软缺席模式。
         // 两条通道均接遥测端口（产品子类覆写 OnUpdateDegraded 不走基类默认路径，
         // 接线只为中立机制自身的观测面，行为零漂移）。
-        services.TryAddSingleton(static sp => sp.GetService<Mud.Feishu.IFeishuTenantV2AppCardMessageStream>() is { } card
-            ? new CardStreamMessageChannel(
+        services.TryAddSingleton(static sp => sp.GetService<Mud.Feishu.IFeishuTenantV1Card>() is { } card
+            && sp.GetService<Mud.Feishu.IFeishuTenantV1CardElements>() is { } elements
+            ? new CardKitStreamMessageChannel(
                 card,
+                elements,
+                sp.GetRequiredService<Mud.Feishu.IFeishuTenantV1Message>(),
                 sp.GetRequiredService<IFeishuAppContextScopeFactory>(),
                 sp.GetRequiredService<IOptions<FeishuAgentOptions>>(),
-                sp.GetService<ILogger<CardStreamMessageChannel>>(),
+                sp.GetService<ILogger<CardKitStreamMessageChannel>>(),
                 telemetry: sp.GetService<IAgentTelemetry>())
             : null!);
         services.TryAddSingleton(static sp => new EditMessageChannel(
@@ -280,7 +288,7 @@ public static class FeishuAgentServiceCollectionExtensions
 
         services.TryAddSingleton<IMessageChannel>(static sp =>
         {
-            var card = sp.GetService<CardStreamMessageChannel>();
+            var card = sp.GetService<CardKitStreamMessageChannel>();
             var edit = sp.GetRequiredService<EditMessageChannel>();
             return card is not null
                 ? new StreamingChannelChain(sp.GetService<ILogger<StreamingChannelChain>>(), card, edit)

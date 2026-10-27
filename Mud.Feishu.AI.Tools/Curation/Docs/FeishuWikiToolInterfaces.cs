@@ -51,7 +51,7 @@ public interface IFeishuTenantWikiListNodesTool
 /// wiki 域<b>必须有写面</b>（get_node / list_nodes 只读，否则模型能看知识库但不能改）。
 /// </remarks>
 [AgentTool("wiki.create_node",
-    Description = "在知识空间下创建节点（新建一篇 wiki 文档/普通页面）。space_id 可由 wiki.list_nodes 的结果推断。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 wiki:wiki。",
+    Description = "在知识空间下创建节点（新建一篇 wiki 文档/普通页面）。space_id 可由 wiki.list_nodes 的结果推断。写操作：需 wiki:wiki。",
     RequiredScopes = ["wiki:wiki"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2WikiNodes) + "." + nameof(IFeishuTenantV2WikiNodes.CreateSpaceNodeAsync))]
@@ -73,7 +73,7 @@ public interface IFeishuTenantWikiCreateNodeTool
 /// 工具接口：wiki.move_node（映射 <c>IFeishuTenantV2WikiNodes.MoveSpaceNodeAsync</c>）。
 /// </summary>
 [AgentTool("wiki.move_node",
-    Description = "移动知识空间节点（改父节点或换空间）——用于知识库整理、归档。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 wiki:wiki。",
+    Description = "移动知识空间节点（改父节点或换空间）——用于知识库整理、归档。写操作：需 wiki:wiki。",
     RequiredScopes = ["wiki:wiki"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2WikiNodes) + "." + nameof(IFeishuTenantV2WikiNodes.MoveSpaceNodeAsync))]
@@ -98,7 +98,7 @@ public interface IFeishuTenantWikiMoveNodeTool
 /// 本工具走平台提供的<b>文档迁入</b>接口，是该场景的唯一正确入口。
 /// </remarks>
 [AgentTool("wiki.move_docs_to_space",
-    Description = "把已有云文档（docx/sheet/bitable 等）迁移进知识空间，成为 wiki 节点——'把这份文档挪进知识库'的首选入口。⚠️ 平台以异步任务执行，返回 task_id。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 wiki:wiki。",
+    Description = "把已有云文档（docx/sheet/bitable 等）迁移进知识空间，成为 wiki 节点——'把这份文档挪进知识库'的首选入口。⚠️ 平台以异步任务执行，返回 task_id。写操作：需 wiki:wiki。",
     RequiredScopes = ["wiki:wiki"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2WikiNodes) + "." + nameof(IFeishuTenantV2WikiNodes.MoveDocsToWikiSpaceNodeAsync))]
@@ -184,11 +184,11 @@ public interface IFeishuTenantWikiListMembersTool
 /// 工具接口：wiki.member_add（映射 <c>IFeishuTenantV2Wiki.CreateSpaceMemberAsync</c>）。
 /// </summary>
 /// <remarks>
-/// 与 <c>drive.grant_permission</c> 同类：<b>授权动作会扩大数据可达范围</b>，一次调用即让某人看到
+/// 与 <c>drive.set_permission</c> 同类：<b>授权动作会扩大数据可达范围</b>，一次调用即让某人看到
 /// 整个空间。成员增删的 ID 类型闭集只在描述里给全，模型才不至于把 open_id 当 user_id 传。
 /// </remarks>
 [AgentTool("wiki.member_add",
-    Description = "为知识空间添加成员或管理员（member_role：admin=管理员 / member=成员）。⚠️ 这是授权动作：一次调用即让该身份看到整个空间；公开空间（visibility=public）不支持加成员、只能加管理员；以应用身份调用时不能用 opendepartmentid。调用身份须为该空间管理员。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），建议先 dry_run 预演确认，需 wiki:wiki。",
+    Description = "为知识空间添加成员或管理员（member_role：admin=管理员 / member=成员）。⚠️ 这是授权动作：一次调用即让该身份看到整个空间；公开空间（visibility=public）不支持加成员、只能加管理员；以应用身份调用时不能用 opendepartmentid。调用身份须为该空间管理员。写操作：建议先 dry_run 预演确认，需 wiki:wiki。",
     RequiredScopes = ["wiki:wiki"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2Wiki) + "." + nameof(IFeishuTenantV2Wiki.CreateSpaceMemberAsync))]
@@ -214,7 +214,7 @@ public interface IFeishuTenantWikiAddMemberTool
 /// 不指望下游报错来教育模型。
 /// </remarks>
 [AgentTool("wiki.member_remove",
-    Description = "移除知识空间的成员或管理员。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 wiki:wiki。建议先 dry_run 预演确认。平台按 member_id + member_type + member_role 三元组定位，角色填错会删不到人——先用 wiki.member_list 核对三项再动手。",
+    Description = "移除知识空间的成员或管理员。高危写（high-risk-write）：需 wiki:wiki。建议先 dry_run 预演确认。平台按 member_id + member_type + member_role 三元组定位，角色填错会删不到人——先用 wiki.member_list 核对三项再动手。",
     RequiredScopes = ["wiki:wiki"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2Wiki) + "." + nameof(IFeishuTenantV2Wiki.DeleteSpaceMemberAsync))]
@@ -238,7 +238,7 @@ public interface IFeishuTenantWikiRemoveMemberTool
 /// move 改位置而 token 不变。模型常把"复制一份到别的空间"表述成 move，故描述里对照写明。
 /// </remarks>
 [AgentTool("wiki.node_copy",
-    Description = "复制知识空间节点副本到指定位置（原节点保留，产出新的 node_token）——'把这个页面复制一份到另一个空间/目录'用本工具；要改位置且保留 token 用 wiki.move_node。target_space_id 与 target_parent_token **至少提供一个**（两者都不传平台会拒绝，不会复制在当前空间顶层）；副本的底层文档也会被一并复制（obj_token 与原来不同）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），建议先 dry_run 预演确认，需 wiki:wiki。",
+    Description = "复制知识空间节点副本到指定位置（原节点保留，产出新的 node_token）——'把这个页面复制一份到另一个空间/目录'用本工具；要改位置且保留 token 用 wiki.move_node。target_space_id 与 target_parent_token **至少提供一个**（两者都不传平台会拒绝，不会复制在当前空间顶层）；副本的底层文档也会被一并复制（obj_token 与原来不同）。写操作：建议先 dry_run 预演确认，需 wiki:wiki。",
     RequiredScopes = ["wiki:wiki"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV2WikiNodes) + "." + nameof(IFeishuTenantV2WikiNodes.CopySpaceNodeAsync))]
@@ -252,5 +252,33 @@ public interface IFeishuTenantWikiCopyNodeTool
         [ToolParameter("target_parent_token", "目标父节点 token（可选；与 target_space_id 至少提供一个）")] string? target_parent_token = null,
         [ToolParameter("title", "副本标题（可选；缺省沿用源节点标题）")] string? title = null,
         [ToolParameter("dry_run", "仅预演不写入（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+// ─────────────────────────── 空间创建（用户身份） ───────────────────────────
+
+/// <summary>
+/// 工具接口：wiki.space_create（映射 <c>IFeishuUserV2Wiki.CreateSpaceAsync</c>）。
+/// </summary>
+/// <remarks>
+/// 创建知识空间在平台上<b>只有 user_access_token 形态</b>（租户态 <c>IFeishuTenantV2Wiki</c> 无此方法），
+/// 故接口名必须以 <c>IFeishuUser</c> 开头——身份轴由接口名前缀派生，写错前缀会让工具被当成
+/// 租户身份而在必将失败的调用上反复重试。空间创建者即空间管理员，后续
+/// <c>wiki.member_add</c> 才有权限可依据。
+/// </remarks>
+[AgentTool("wiki.space_create",
+    Description = "创建一个新的知识空间（返回 space_id，可直接作为 wiki.create_node / wiki.member_add 的上游输入）。⚠️ 仅支持用户身份调用：宿主须在 FeishuAgent:AllowedIdentities 放行 user，否则会因身份被拒而失败。创建者自动成为该空间的管理员。写操作：建议先 dry_run 预演确认，需 wiki:wiki。",
+    RequiredScopes = ["wiki:wiki"],
+    IsWrite = true,
+    Source = nameof(IFeishuUserV2Wiki) + "." + nameof(IFeishuUserV2Wiki.CreateSpaceAsync))]
+public interface IFeishuUserWikiCreateSpaceTool
+{
+    /// <summary>创建知识空间。</summary>
+    /// <returns>白名单投影后的 JSON 文本（space_id/name/description/space_type/visibility/open_sharing）。</returns>
+    Task<string> CreateSpaceAsync(
+        [ToolParameter("name", "知识空间名称", Required = true)] string name,
+        [ToolParameter("description", "知识空间描述（可选）")] string? description = null,
+        [ToolParameter("open_sharing", "分享状态（可选闭集：open=允许分享 / closed=不允许分享）")] string? open_sharing = null,
+        [ToolParameter("dry_run", "仅预演不创建（可选，默认 false）：返回将要下发的 method/path 与请求体字段摘要，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }

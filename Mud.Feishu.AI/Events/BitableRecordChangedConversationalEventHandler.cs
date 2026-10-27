@@ -307,7 +307,7 @@ public sealed class BitableRecordChangedConversationalEventHandler(
 
         return $"多维表格记录变更通知：表格 {eventData.FileToken} 的数据表 {eventData.TableId} 发生记录变更{actions}"
             + (eventData.Revision is null ? "" : $"（版本号：{eventData.Revision}）")
-            + "。你可以使用 bitable.get_records_by_ids 获取变更记录详情，或使用 bitable.query_records 检索该表记录。";
+            + "。你可以用 bitable.query_records 传 record_ids 获取变更记录详情，或按条件检索该表记录。";
     }
 
     /// <inheritdoc />

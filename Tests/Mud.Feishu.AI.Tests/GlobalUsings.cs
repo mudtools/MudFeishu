@@ -53,7 +53,7 @@ global using Mud.AI.Abstractions.Media;
 global using Mud.AI.Abstractions.Observability;
 global using Mud.AI.Agent.Approvals;
 // N2-b 中立化：缓冲通道基类与降级链上移 Mud.AI.Agent.Channels——产品子类用例
-// （EditMessageChannelTests / CardStreamMessageChannelTests）与黄金快照经此取用中立类型。
+// （EditMessageChannelTests / CardKitStreamMessageChannelTests）与黄金快照经此取用中立类型。
 global using Mud.AI.Agent.Channels;
 // N2-c 中立化：审批态桥 / 框架审批投影上移 Mud.AI.Agent.Approvals（产品侧经此消费）。
 global using Mud.AI.Agent.Approvals;

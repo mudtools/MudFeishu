@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -27,7 +27,6 @@ public class FeishuMultiAppMiddlewareTests
     private readonly Mock<IServiceScopeFactory> _scopeFactoryMock;
     private readonly Mock<IServiceScope> _scopeMock;
     private readonly Mock<IFeishuWebhookService> _webhookServiceMock;
-    private readonly FeishuWebhookHandlerRegistry _handlerRegistry;
     private readonly FeishuWebhookOptions _options;
 
     public FeishuMultiAppMiddlewareTests()
@@ -37,7 +36,6 @@ public class FeishuMultiAppMiddlewareTests
         _scopeFactoryMock = new Mock<IServiceScopeFactory>();
         _scopeMock = new Mock<IServiceScope>();
         _webhookServiceMock = new Mock<IFeishuWebhookService>();
-        _handlerRegistry = new FeishuWebhookHandlerRegistry();
         _options = new FeishuWebhookOptions
         {
             GlobalRoutePrefix = "feishu",
@@ -123,7 +121,6 @@ public class FeishuMultiAppMiddlewareTests
     public async Task InvokeAsync_WithInvalidHttpMethod_ShouldReturn405()
     {
         // Arrange
-        _handlerRegistry.Register("app1", typeof(TestHandler));
         var middleware = CreateMiddleware();
         var context = CreateHttpContext("/feishu/app1", "GET");
 
@@ -139,7 +136,6 @@ public class FeishuMultiAppMiddlewareTests
     public async Task InvokeAsync_WithInvalidContentType_ShouldReturn415()
     {
         // Arrange
-        _handlerRegistry.Register("app1", typeof(TestHandler));
         var middleware = CreateMiddleware();
         var context = CreateHttpContext("/feishu/app1", "POST");
         context.Request.ContentType = "text/plain";
@@ -155,7 +151,6 @@ public class FeishuMultiAppMiddlewareTests
     public async Task InvokeAsync_WithEmptyBody_ShouldReturn400()
     {
         // Arrange
-        _handlerRegistry.Register("app1", typeof(TestHandler));
         var middleware = CreateMiddleware();
         var context = CreateHttpContext("/feishu/app1", "POST", "");
 
@@ -219,7 +214,6 @@ public class FeishuMultiAppMiddlewareTests
     public async Task InvokeAsync_WithInvalidJson_ShouldReturn400()
     {
         // Arrange
-        _handlerRegistry.Register("app1", typeof(TestHandler));
         var middleware = CreateMiddleware();
         var context = CreateHttpContext("/feishu/app1", "POST", "invalid json {");
 
@@ -468,6 +462,83 @@ public class FeishuMultiAppMiddlewareTests
         context.Response.StatusCode.Should().Be(200, "开关关闭时空 EventId 事件按旧行为处理");
     }
 
+    // ────────────────────────────────────────────────────────────────────
+    // W-03：请求体预算
+    // ────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task InvokeAsync_ShouldReturn413_WhenChunkedBodyExceedsLimit()
+    {
+        // Arrange - 无 Content-Length（chunked）时，只能用逐块累计字节数判定上限
+        var options = new FeishuWebhookOptions
+        {
+            GlobalRoutePrefix = "feishu",
+            MaxRequestBodySize = 1024,
+            Apps = _options.Apps
+        };
+        var middleware = CreateMiddlewareWithOptions(options);
+
+        var context = new DefaultHttpContext();
+        context.Request.Path = "/feishu/app1";
+        context.Request.Method = "POST";
+        context.Request.ContentType = "application/json";
+        context.Connection.RemoteIpAddress = System.Net.IPAddress.Parse("192.168.1.1");
+        var payload = Encoding.UTF8.GetBytes(new string('x', 4096));
+        context.Request.Body = new MemoryStream(payload);
+        context.Request.ContentLength = null;   // 模拟 chunked
+        context.Response.Body = new MemoryStream();
+
+        // Act
+        await middleware.InvokeAsync(context);
+
+        // Assert
+        context.Response.StatusCode.Should().Be(413, "分块请求同样必须受字节预算约束");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ShouldNotBufferRequestBodyToDisk_WhenBodyExceeds30Kb()
+    {
+        // Arrange - W-03：移除 EnableBuffering() 后，>30KB 的请求体不得被替换为
+        // FileBufferingReadStream（该类型会落临时文件，是未认证请求即可触发的磁盘 I/O 面）。
+        var body = JsonSerializer.Serialize(new { encrypt = new string('a', 40 * 1024) });
+        var middleware = CreateMiddleware();
+        var context = CreateHttpContext("/feishu/app1", "POST", body);
+        var originalBody = context.Request.Body;
+
+        _webhookServiceMock.Setup(x => x.SetCurrentAppKey(It.IsAny<string>()));
+        _webhookServiceMock.Setup(x => x.HandleEventAsync(It.IsAny<FeishuWebhookRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);   // 验签失败即可：本用例只关心读体形态
+
+        // Act
+        await middleware.InvokeAsync(context);
+
+        // Assert
+        context.Request.Body.Should().BeSameAs(originalBody,
+            "读体不得替换 Request.Body（EnableBuffering 会对 >30KB 走 FileBufferingReadStream 落盘）");
+        context.Request.Body.GetType().Name.Should().NotBe("FileBufferingReadStream");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ShouldReturn503_WithRetryAfter_WhenSignatureUnavailable()
+    {
+        // Arrange - W-01/W-13：验签"无法判定"必须 503 + Retry-After，绝不得 403
+        var middleware = CreateMiddleware();
+        var context = CreateHttpContext("/feishu/app1", "POST",
+            JsonSerializer.Serialize(new { encrypt = "test_encrypted_data" }));
+
+        _webhookServiceMock.Setup(x => x.SetCurrentAppKey(It.IsAny<string>()));
+        _webhookServiceMock
+            .Setup(x => x.HandleEventAsync(It.IsAny<FeishuWebhookRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new Mud.Feishu.Webhook.Exceptions.FeishuWebhookUnavailableException("密钥服务不可用"));
+
+        // Act
+        await middleware.InvokeAsync(context);
+
+        // Assert
+        context.Response.StatusCode.Should().Be(503);
+        context.Response.Headers["Retry-After"].ToString().Should().NotBeNullOrEmpty();
+    }
+
     private FeishuMultiAppMiddleware CreateMiddleware()
     {
         return CreateMiddlewareWithOptions(_options);
@@ -484,8 +555,7 @@ public class FeishuMultiAppMiddlewareTests
             _nextMock.Object,
             _scopeFactoryMock.Object,
             _loggerMock.Object,
-            optionsMonitorMock.Object,
-            _handlerRegistry);
+            optionsMonitorMock.Object);
     }
 
     private static HttpContext CreateHttpContext(string path, string method, string? body = null)

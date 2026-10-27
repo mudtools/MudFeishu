@@ -128,3 +128,133 @@ public interface IFeishuTenantMinutesGetMediaTool
         [ToolParameter("minute_token", "妙记 token（形如 obcnXxx）", Required = true)] string minute_token,
         CancellationToken cancellationToken = default);
 }
+
+// ─────────────────────────── 逐字稿落盘出口 ───────────────────────────
+
+/// <summary>
+/// 工具接口：minutes.get_transcript（映射 <c>IFeishuTenantV1MinutesMinute.GetMinuteTranscriptAsync</c>）。
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>与 <c>minutes.get_artifacts</c> 的分工是选型要点</b>：artifacts 里的 <c>transcript</c> 是
+/// AI 产物面附带的逐字稿（按窗口回填进上下文，适合"读一段"）；本工具是平台的<b>导出文件</b>
+/// （完整、可选 srt 时间戳轨），<b>落宿主磁盘</b>而不是进上下文。
+/// </para>
+/// <para>
+/// <b>二进制防线</b>：SDK 该方法返回 <c>byte[]</c>，直接回填会击穿 SSE 帧并挤爆窗口，
+/// 故走与 <c>drive.download_file</c> 同一条受控下载出口（落盘器缺席 ⇒ 整域软缺席；
+/// 平台错误体不得落盘）。
+/// </para>
+/// </remarks>
+[AgentTool("minutes.get_transcript",
+    Description = "按 minute_token 导出妙记的完整逐字稿文件（txt/srt）并交宿主落盘，结果只回 local_path/size/content_type——字节不进上下文（no-bytes-in-context）。要『会议讲了什么』先用 minutes.get_artifacts（AI 总结/章节/待办，直接进上下文）；只有需要逐字原文或按时间戳定位原话才用本工具。只读，需 minutes:minutes.transcript:export。",
+    RequiredScopes = ["minutes:minutes.transcript:export"],
+    Source = nameof(IFeishuTenantV1MinutesMinute) + "." + nameof(IFeishuTenantV1MinutesMinute.GetMinuteTranscriptAsync))]
+public interface IFeishuTenantMinutesGetTranscriptTool
+{
+    /// <summary>导出逐字稿文件（落盘，只回路径）。</summary>
+    /// <returns>白名单投影后的 JSON 文本（local_path/size/content_type）。</returns>
+    Task<string> GetMinuteTranscriptAsync(
+        [ToolParameter("minute_token", "妙记 token（形如 obcnXxx）", Required = true)] string minute_token,
+        [ToolParameter("file_format", "导出格式（可选，闭集：txt=纯文本 / srt=带时间轴字幕，默认 txt）")] string? file_format = null,
+        [ToolParameter("need_speaker", "是否包含说话人（可选，默认由平台决定）")] bool? need_speaker = null,
+        [ToolParameter("need_timestamp", "是否包含时间戳（可选，默认由平台决定；srt 格式本身已带时间轴）")] bool? need_timestamp = null,
+        CancellationToken cancellationToken = default);
+}
+
+// ─────────────────────────── 妙记生产面（user 身份，4 个） ───────────────────────────
+//
+// 策展口径：剪辑/导入/订阅三件事在 SDK 里<b>只有 User 形态</b>（`IFeishuUserV1MinutesMinute`），
+// 因为它们的语义主语是"某个人的妙记"——用应用身份无法回答"剪谁的妙记、导入到谁的云盘"。
+// 故本组工具全部标注用户身份，宿主未放行 user 时装配期即失败（不是运行期才报错）。
+
+/// <summary>
+/// 工具接口：minutes.clip（映射 <c>IFeishuUserV1MinutesMinute.ClipMinuteAsync</c>）。
+/// </summary>
+/// <remarks>
+/// <b>time_ranges 用"每行 <c>起始|结束</c>"的文本 DSL 而不是嵌套对象数组</b>：模型产出
+/// 二维结构时最容易写出半成品 JSON；一行一段、竖线分隔可以把格式错误压在最可读的位置，
+/// 并在本地校验（段数、区间长度下限、RFC3339 带时区）后再下发。
+/// </remarks>
+[AgentTool("minutes.clip",
+    Description = "从已完成的妙记按时间段切出一段新妙记，返回新妙记链接。time_ranges 每行一段、格式「起始|结束」的 ISO 8601 带时区时间（如 2026-03-21T16:15:30+08:00|2026-03-21T16:25:00+08:00），1~50 段、每段须大于 1000 毫秒，重叠或相邻区间平台自动合并。⚠️ 异步生成：调用成功只表示已提交，转写与音视频在后台产出。用户身份工具：宿主须在 FeishuAgent:AllowedIdentities 放行 user。写操作：需 minutes:minutes.clip:write。",
+    RequiredScopes = ["minutes:minutes.clip:write"],
+    IsWrite = true,
+    Source = nameof(IFeishuUserV1MinutesMinute) + "." + nameof(IFeishuUserV1MinutesMinute.ClipMinuteAsync))]
+public interface IFeishuUserMinutesClipTool
+{
+    /// <summary>创建妙记剪辑。</summary>
+    /// <returns>白名单投影后的 JSON 文本（minute_url/requested_range_count）。</returns>
+    Task<string> ClipMinuteAsync(
+        [ToolParameter("minute_token", "源妙记 token（形如 obcnXxx）", Required = true)] string minute_token,
+        [ToolParameter("time_ranges", "时间段数组，每项格式「起始|结束」（ISO 8601 带时区），1~50 段，每段 >1000 毫秒", Required = true)] string[] time_ranges,
+        [ToolParameter("title", "剪辑标题（可选；留空由平台自动生成）")] string? title = null,
+        [ToolParameter("dry_run", "仅预演不写入（可选，默认 false）：返回将要下发的 method/path 与字段摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：minutes.upload（映射 <c>IFeishuUserV1MinutesMinute.UploadMinuteAsync</c>）。
+/// </summary>
+/// <remarks>
+/// 入参是<b>已在云盘的</b>文件 token，不是字节——工具面不接受上传字节（no-bytes-in-context
+/// 的同一纪律：模型手里只有 token/路径，二进制由宿主侧通道进入云盘）。
+/// </remarks>
+[AgentTool("minutes.upload",
+    Description = "把云盘上的音视频文件导入生成妙记，返回新妙记链接。file_token 是云盘文件 token（需当前用户对该文件有下载权限）。支持音频 wav/mp3/m4a/aac/ogg/wma/amr、视频 avi/wmv/mov/mp4/m4v/mpeg/ogg/flv；时长 ≤6 小时、文件 ≤6GB。本工具只接受 file_token，不搬运字节。用户身份工具：宿主须在 FeishuAgent:AllowedIdentities 放行 user。写操作：需 minutes:minutes.upload:write。",
+    RequiredScopes = ["minutes:minutes.upload:write"],
+    IsWrite = true,
+    Source = nameof(IFeishuUserV1MinutesMinute) + "." + nameof(IFeishuUserV1MinutesMinute.UploadMinuteAsync))]
+public interface IFeishuUserMinutesUploadTool
+{
+    /// <summary>导入云盘文件生成妙记。</summary>
+    /// <returns>白名单投影后的 JSON 文本（minute_url）。</returns>
+    Task<string> UploadMinuteAsync(
+        [ToolParameter("file_token", "云盘音视频文件 token", Required = true)] string file_token,
+        [ToolParameter("dry_run", "仅预演不写入（可选，默认 false）：返回将要下发的 method/path 与字段摘要，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：minutes.subscribe（映射 <c>IFeishuUserV1MinutesMinute.SubscribeMinuteAsync</c>）。
+/// </summary>
+/// <remarks>
+/// <b>订阅是"后续事件流向"的开关</b>：订阅后该用户的妙记生成事件会推给应用，
+/// 属于副作用型写操作（虽不改动妙记内容本身），故仍标 <c>IsWrite</c> 并走写白名单。
+/// 平台侧的订阅集合是幂等的（重复订阅不产生第二条订阅关系）。
+/// </remarks>
+[AgentTool("minutes.subscribe",
+    Description = "订阅妙记变更事件（当前 event_type 闭集只有 minutes.minute.generated_v1 = 妙记生成事件），订阅后该用户新产生的妙记会以事件回调推给应用。用户身份工具：宿主须在 FeishuAgent:AllowedIdentities 放行 user，且事件通道已接入（WebSocket/Webhook）。写操作：需 minutes:minutes.basic:read。",
+    RequiredScopes = ["minutes:minutes.basic:read"],
+    IsWrite = true,
+    Source = nameof(IFeishuUserV1MinutesMinute) + "." + nameof(IFeishuUserV1MinutesMinute.SubscribeMinuteAsync))]
+public interface IFeishuUserMinutesSubscribeTool
+{
+    /// <summary>订阅妙记变更事件。</summary>
+    /// <returns>白名单投影后的 JSON 文本（subscribed/event_type）。</returns>
+    Task<string> SubscribeMinuteAsync(
+        [ToolParameter("event_type", "事件类型（可选，闭集：minutes.minute.generated_v1，默认即该值）")] string? event_type = null,
+        [ToolParameter("dry_run", "仅预演不写入（可选，默认 false）：返回将要下发的 method/path，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 工具接口：minutes.unsubscribe（映射 <c>IFeishuUserV1MinutesMinute.UnsubscribeMinuteAsync</c>）。
+/// </summary>
+/// <remarks>
+/// 与 subscribe 成对出现是"写面成环"纪律：只给订阅不给退订，用户无法收回事件授权。
+/// </remarks>
+[AgentTool("minutes.unsubscribe",
+    Description = "取消订阅妙记变更事件（与 minutes.subscribe 成对；取消后该用户的妙记生成事件不再推给应用）。用户身份工具：宿主须在 FeishuAgent:AllowedIdentities 放行 user。写操作：需 minutes:minutes.basic:read。",
+    RequiredScopes = ["minutes:minutes.basic:read"],
+    IsWrite = true,
+    Source = nameof(IFeishuUserV1MinutesMinute) + "." + nameof(IFeishuUserV1MinutesMinute.UnsubscribeMinuteAsync))]
+public interface IFeishuUserMinutesUnsubscribeTool
+{
+    /// <summary>取消订阅妙记变更事件。</summary>
+    /// <returns>白名单投影后的 JSON 文本（unsubscribed/event_type）。</returns>
+    Task<string> UnsubscribeMinuteAsync(
+        [ToolParameter("event_type", "事件类型（可选，闭集：minutes.minute.generated_v1，默认即该值）")] string? event_type = null,
+        [ToolParameter("dry_run", "仅预演不写入（可选，默认 false）：返回将要下发的 method/path，不调用下游")] bool? dry_run = null,
+        CancellationToken cancellationToken = default);
+}

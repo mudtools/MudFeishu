@@ -56,6 +56,7 @@ internal sealed class CapabilityLookupTools(IOptions<FeishuAgentOptions> options
 
             var curatedByModule = BuildCuratedToolIndex();
             var matched = new JsonArray();
+            var matchedGroups = new List<string>();
             var matchedModules = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var pair in FeishuToolCapabilityCatalog.MethodsByDomain)
             {
@@ -76,6 +77,7 @@ internal sealed class CapabilityLookupTools(IOptions<FeishuAgentOptions> options
                     matchedModules.Add(module);
                 }
 
+                matchedGroups.Add(pair.Key);
                 matched.AddNode(new JsonObject
                 {
                     ["group"] = pair.Key,
@@ -83,6 +85,22 @@ internal sealed class CapabilityLookupTools(IOptions<FeishuAgentOptions> options
                     ["module_curated"] = modules.Any(curatedByModule.ContainsKey),
                     ["curated_modules"] = new JsonArray([.. modules.Select(static m => (JsonNode?)JsonValue.Create(m))]),
                 });
+            }
+
+            var methodFacts = CollectMethodFacts(matchedGroups);
+            var suggestGroupCount = 0;
+            foreach (var node in matched)
+            {
+                var group = node!.AsObject()["group"]!.GetValue<string>();
+                var facts = methodFacts[group];
+                node.AsObject()["curated_methods"] = facts.CuratedMethodCount;
+                node.AsObject()["uncurated_methods"] = facts.MethodCount - facts.CuratedMethodCount;
+                if (facts.SuggestedTools.Count > 0)
+                {
+                    suggestGroupCount++;
+                    node.AsObject()["suggest_tools"] =
+                        new JsonArray([.. facts.SuggestedTools.Select(static t => (JsonNode?)JsonValue.Create(t))]);
+                }
             }
 
             var curatedTools = new JsonArray();
@@ -105,15 +123,73 @@ internal sealed class CapabilityLookupTools(IOptions<FeishuAgentOptions> options
                 ["matched_groups"] = matched,
                 ["curated_tools"] = curatedTools,
                 ["actionable"] = curatedTools.Count > 0,
-                ["note"] = "回答能力分组级的存在性。要查方法级签名（HTTP/路由/参数），用 feishu.schema_read。"
+                ["suggest_group_count"] = suggestGroupCount,
+                ["apply_channel"] = CapabilityApplyLoop.ApplyChannel,
+                ["note"] = "回答能力分组级的存在性与缺口：curated_methods / uncurated_methods 是该分组内方法已策展/未策展的数量，"
+                    + "suggest_tools 是未策展方法对应的**候选策展名**（宿主策展时的建议，模型不可调用它）。"
+                    + "要查方法级签名（HTTP/路由/参数），用 feishu.schema_read。"
                     + "curated_tools 为空表示该能力尚未被策展为工具，本宿主的工具集里没有它——不要臆造调用。"
                     + "actionable=true 表示有对应工具可直接调用；actionable=false 表示能力存在但未策展为工具，"
-                    + "**本工具集没有调用通道**：请如实告知用户该能力暂不可用（可建议宿主策展）。",
+                    + "**本工具集没有调用通道**：请如实告知用户该能力暂不可用，并按 apply_channel 提示宿主策展。",
             };
 
             // R-1：出站唯一出口（B-1 一类——此前 TruncateJson 的截断对模型不可见）。
             return Task.FromResult(ToolResultPipeline.OkJson(envelope, _maxResultLength));
         });
+    }
+
+    /// <summary>
+    /// 按能力分组统计方法级策展缺口，并为未策展方法投影候选策展名
+    /// （分组键 = <see cref="FeishuToolMethodCatalog.Entry.Module"/>，与能力目录同一分组轴）。
+    /// </summary>
+    private static Dictionary<string, GroupMethodFacts> CollectMethodFacts(IReadOnlyList<string> matchedGroups)
+    {
+        var facts = new Dictionary<string, GroupMethodFacts>(StringComparer.Ordinal);
+        foreach (var group in matchedGroups)
+        {
+            facts[group] = new GroupMethodFacts();
+        }
+
+        foreach (var entry in FeishuToolMethodCatalog.ByQualifiedName.Values)
+        {
+            if (!facts.TryGetValue(entry.Module, out var stat))
+            {
+                continue;
+            }
+
+            stat.MethodCount++;
+            if (entry.Curated)
+            {
+                stat.CuratedMethodCount++;
+                continue;
+            }
+
+            if (stat.SuggestedTools.Count >= CapabilityApplyLoop.MaxSuggestionsPerGroup)
+            {
+                continue;
+            }
+
+            var suggestion = CapabilityApplyLoop.SuggestToolName(entry);
+            // 命中既有工具名的候选不输出（否则"建议"被读成"已有可用工具"）；同组重名也只留一条（不浪费限流额度）。
+            if (suggestion is not null
+                && !FeishuToolSchemas.SchemaByToolName.ContainsKey(suggestion)
+                && !stat.SuggestedTools.Contains(suggestion))
+            {
+                stat.SuggestedTools.Add(suggestion);
+            }
+        }
+
+        return facts;
+    }
+
+    /// <summary>单个能力分组的策展缺口事实。</summary>
+    private sealed class GroupMethodFacts
+    {
+        public int MethodCount { get; set; }
+
+        public int CuratedMethodCount { get; set; }
+
+        public List<string> SuggestedTools { get; } = [];
     }
 
     /// <summary>构造"模块 → 已策展工具名（有序）"索引。</summary>

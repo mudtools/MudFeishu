@@ -25,7 +25,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 
 /// <summary>工具接口：calendar.create_event（映射 <c>IFeishuTenantV4CalendarEvent.CreateCalendarEventAsync</c>）。</summary>
 [AgentTool("calendar.create_event",
-    Description = "在指定日历上创建一个日程（start/end 为 RFC3339 时间，如 2026-10-01T14:00:00+08:00）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 calendar:calendar。",
+    Description = "在指定日历上创建一个日程（start/end 为 RFC3339 时间，如 2026-10-01T14:00:00+08:00）。写操作：需 calendar:calendar。",
     RequiredScopes = ["calendar:calendar"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV4CalendarEvent) + "." + nameof(IFeishuTenantV4CalendarEvent.CreateCalendarEventAsync))]
@@ -118,7 +118,7 @@ public interface IFeishuTenantCalendarAgendaTool
 
 /// <summary>工具接口：calendar.update_event（映射 <c>IFeishuTenantV4CalendarEvent.UpdateCalendarEventAsync</c>）。</summary>
 [AgentTool("calendar.update_event",
-    Description = "更新指定日程的信息（summary/description/start/end 等字段，至少传一个要更新的字段）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 calendar:calendar。start/end 为 RFC3339 时间。",
+    Description = "更新指定日程的信息（summary/description/start/end 等字段，至少传一个要更新的字段）。写操作：需 calendar:calendar。start/end 为 RFC3339 时间。",
     RequiredScopes = ["calendar:calendar"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV4CalendarEvent) + "." + nameof(IFeishuTenantV4CalendarEvent.UpdateCalendarEventAsync))]
@@ -139,7 +139,7 @@ public interface IFeishuTenantCalendarUpdateEventTool
 
 /// <summary>工具接口：calendar.delete_event（映射 <c>IFeishuTenantV4CalendarEvent.DeleteCalendarEventAsync</c>）。</summary>
 [AgentTool("calendar.delete_event",
-    Description = "取消（删除）指定日程——取消日程会通知所有与会者。high-risk-write：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 calendar:calendar。建议先 dry_run 预演确认。",
+    Description = "取消（删除）指定日程——取消日程会通知所有与会者。高危写（high-risk-write）：需 calendar:calendar。建议先 dry_run 预演确认。",
     RequiredScopes = ["calendar:calendar"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV4CalendarEvent) + "." + nameof(IFeishuTenantV4CalendarEvent.DeleteCalendarEventAsync))]
@@ -156,7 +156,7 @@ public interface IFeishuTenantCalendarDeleteEventTool
 
 /// <summary>工具接口：calendar.add_event_attendees（映射 <c>IFeishuTenantV4CalendarEvent.CreateCalendarEventAttendeeAsync</c>）。</summary>
 [AgentTool("calendar.add_event_attendees",
-    Description = "向指定日程添加与会者（attendee_ids 为 open_id 数组，每位参会人会收到日程邀请）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 calendar:calendar。",
+    Description = "向指定日程添加与会者（attendee_ids 为 open_id 数组，每位参会人会收到日程邀请）。写操作：需 calendar:calendar。",
     RequiredScopes = ["calendar:calendar"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV4CalendarEvent) + "." + nameof(IFeishuTenantV4CalendarEvent.CreateCalendarEventAttendeeAsync))]
@@ -199,7 +199,7 @@ public interface IFeishuTenantCalendarListEventAttendeesTool
 /// 尽管平台方法为 POST、引擎风险分级为 <c>write</c>（非 high-risk）。
 /// </remarks>
 [AgentTool("calendar.rsvp",
-    Description = "回复日程邀请（rsvp_status：accept=接受 / decline=拒绝 / tentative=暂定），更新当前身份在该日程上的参与状态。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 calendar:calendar。",
+    Description = "回复日程邀请（rsvp_status：accept=接受 / decline=拒绝 / tentative=暂定），更新当前身份在该日程上的参与状态。写操作：需 calendar:calendar。",
     RequiredScopes = ["calendar:calendar"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV4CalendarEvent) + "." + nameof(IFeishuTenantV4CalendarEvent.ReplyCalendarEventAsync))]

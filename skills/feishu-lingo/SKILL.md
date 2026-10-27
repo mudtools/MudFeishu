@@ -49,14 +49,14 @@ package_version: 3.0.3
 - 「建个词条」→ `lingo.create_entity(main_key="…", description="…", dry_run=true)` → 确认后执行
 
 ## 命令（工具）清单
-- `lingo.create_draft`（写）：发起创建词条的**草稿申请**（需经词典管理员审核通过后才写入词库）——没有免审权限或需要留痕时的正确路径。写操作：默认不启用，需宿主授权，需 baike:entity 或 baike:entity:exempt_review（任一即可）。
-- `lingo.create_entity`（写）：创建词典词条（⚠️ 免审直写：不经过词典管理员审核，直接写入词库——要审核流程请改用 lingo.create_draft）。写操作：默认不启用，需宿主授权（IToolExecutionAuthorizer），需 baike:entity:exempt_review。建议先 dry_run 预演。
-- `lingo.delete_entity`（写）：删除词典词条（⚠️ 不可逆：词条直接从词库移除，引用该 entity_id 的外部系统会全部失效——务必先 dry_run 预演并确认 entity_id 无误）。写操作：默认不启用，需宿主授权，需 baike:entity:exempt_delete。
+- `lingo.create_draft`（写）：发起创建词条的**草稿申请**（需经词典管理员审核通过后才写入词库）——没有免审权限或需要留痕时的正确路径。写操作：需 baike:entity 或 baike:entity:exempt_review（任一即可）。
+- `lingo.create_entity`（写）：创建词典词条（⚠️ 免审直写：不经过词典管理员审核，直接写入词库——要审核流程请改用 lingo.create_draft）。写操作：需 baike:entity:exempt_review。建议先 dry_run 预演。
+- `lingo.delete_entity`（写）：删除词典词条（⚠️ 不可逆：词条直接从词库移除，引用该 entity_id 的外部系统会全部失效——务必先 dry_run 预演并确认 entity_id 无误）。写操作：需 baike:entity:exempt_delete。
 - `lingo.get_entity`（只读）：按 entity_id 查询单个词条的完整信息（主词/别名/描述/富文本/点赞统计/多语言描述）——拿到 main_keys 与 description 后可回答「这个词是什么意思」。只读，需 baike:entity:readonly。
 - `lingo.list_classifications`（只读）：列出企业词典的分类（栏目）目录，可按 repo_id 收窄；返回 classification_id/name/father_id，用 father_id 可还原层级。只读，需 baike:entity:readonly。
 - `lingo.list_entities`（只读）：分页列出企业词典词条（返回 entity_id/main_keys/aliases/description）——用于浏览「这个租户有哪些术语」，不按关键词过滤。按关键词查词条请用 lingo.search_entities。只读，需 baike:entity:readonly。
 - `lingo.list_repos`（只读）：列出企业词典的全部词库（返回 repo_id/name）——进入词典域的第一步：拿到 repo_id 后才能列分类、列词条或收窄搜索范围。只读，需 baike:entity:readonly。
 - `lingo.match_entities`（只读）：把一段词/短语与企业词典做精确匹配（返回命中的 entity_id/type）——用于判断「这个词是不是我们的专有术语」，不返回词条正文；要词条含义请改用 lingo.search_entities + lingo.get_entity。只读，需 baike:entity:readonly。
 - `lingo.search_entities`（只读）：按关键词搜索企业词典词条（返回 entity_id/main_keys/aliases/description）——回答「我们内部说的 XX 是什么」的首选工具；可用 repo_id 收窄词库、creators 只看指定创建人建的词条。只读，需 baike:entity:readonly。
-- `lingo.update_draft`（写）：更新词条草稿（⚠️ 已审批的草稿无法编辑；且为覆盖式提交，未传的释义/别名会被清空；main_key 必填）。写操作：默认不启用，需宿主授权，需 baike:entity 或 baike:entity:exempt_review（任一即可）。
-- `lingo.update_entity`（写）：更新词典词条（⚠️ 免审直写，且为**覆盖式**：未传的释义/别名会被清空——只改一项请先 lingo.get_entity 读出原值再整份提交；main_key 必填，与平台口径一致）。写操作：默认不启用，需宿主授权，需 baike:entity:exempt_review。建议先 dry_run 预演。
+- `lingo.update_draft`（写）：更新词条草稿（⚠️ 已审批的草稿无法编辑；且为覆盖式提交，未传的释义/别名会被清空；main_key 必填）。写操作：需 baike:entity 或 baike:entity:exempt_review（任一即可）。
+- `lingo.update_entity`（写）：更新词典词条（⚠️ 免审直写，且为**覆盖式**：未传的释义/别名会被清空——只改一项请先 lingo.get_entity 读出原值再整份提交；main_key 必填，与平台口径一致）。写操作：需 baike:entity:exempt_review。建议先 dry_run 预演。

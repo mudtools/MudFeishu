@@ -48,7 +48,7 @@ public class DomainRegistrarTests
         var registry = provider.GetRequiredService<FeishuToolRegistry>();
         registry.AllTools.Select(t => t.Name).Should().BeEquivalentTo(
             [FeishuToolNames.BitableListTables, FeishuToolNames.BitableListFields,
-             FeishuToolNames.BitableQueryRecords, FeishuToolNames.BitableGetRecordsByIds,
+             FeishuToolNames.BitableQueryRecords,
 
              // R5 / F-11：视图侧是**软依赖**（可空），故视图客户端缺席时这两个工具
              // 仍会注册在案（软缺席 = 执行期报错，而非"工具不存在"）。
@@ -91,7 +91,7 @@ public class DomainRegistrarTests
         var allDomainOptions = new[]
         {
             FeishuToolNames.BitableListTables, FeishuToolNames.BitableListFields,
-            FeishuToolNames.BitableQueryRecords, FeishuToolNames.BitableGetRecordsByIds,
+            FeishuToolNames.BitableQueryRecords,
             FeishuToolNames.DocxGetRawContent, FeishuToolNames.DocxGetDocumentBlocks,
             FeishuToolNames.WikiGetNode, FeishuToolNames.WikiListNodes,
             FeishuToolNames.SearchDocWiki,
@@ -155,6 +155,9 @@ public class DomainRegistrarTests
             FeishuToolNames.MailRuleList, FeishuToolNames.MailTemplateList,
             FeishuToolNames.MailTemplateGet, FeishuToolNames.MailSignatureList,
             FeishuToolNames.MailGetAttachmentUrl,
+
+            // S-4 复合工作流（2 个只读）：无 SDK 客户端依赖，恒在注册表——纳入等价性对比。
+            FeishuToolNames.WorkflowMeetingSummary, FeishuToolNames.WorkflowStandupReport,
         };
 
         var mockClients = new Action<IServiceCollection>(services =>
@@ -242,7 +245,7 @@ public class DomainRegistrarTests
         using var perDomainProvider = new ServiceCollection()
             .AddSingleton(sharedOptions)
             .Apply(mockClients)
-            // ── 公开入口清单（16 个：逐域 12 + 全域 2 + 元工具 2）──
+            // ── 公开入口清单（17 个：逐域 13 + 全域 2 + 元工具 2）──
             // "全域 = 逐域联合"的等价性要求**每个公开入口都被显式调一次**；
             // 过去这里的清单就是"入口清单真相源"，F-3/R-8 收敛后仍保持该性质（漏一个入口 ⇒ 本用例报红）。
             .AddFeishuBitableTools()
@@ -262,6 +265,8 @@ public class DomainRegistrarTests
             // 域组⑦：会务与考勤（attendance + vc；R-8 收尾合并——同为"人与时间"管理面且都含 user 身份工具）。
             .AddFeishuMeetingTools()
             .AddFeishuCalendarTools()
+            // S-4：复合工作流（workflow.*）——无 SDK 客户端依赖，只需分钟/日历/任务工具在执行期已启用。
+            .AddFeishuWorkflowTools()
             .AddFeishuSparkTools()
             // F-1：security 安全合规（行为审计 + 应用调用日志，均 PII 且默认不启用）。
             .AddFeishuSecurityTools()

@@ -114,8 +114,8 @@ public class DryRunContractGuards
     [Fact]
     public void Guard_ShouldActuallySeeDryRunOnKnownWriteTool()
     {
-        HasDryRunParameter(FeishuToolSchemas.SchemaByToolName[FeishuToolNames.BitableAddRecord])
-            .Should().BeTrue("判据失效：既有写工具 bitable.add_record 未被识别出 dry_run");
+        HasDryRunParameter(FeishuToolSchemas.SchemaByToolName[FeishuToolNames.BitableRecordBatchCreate])
+            .Should().BeTrue("判据失效：既有写工具 bitable.record_batch_create 未被识别出 dry_run");
     }
 
     // ────────── 判据（可被负例驱动的纯函数） ──────────

@@ -231,7 +231,11 @@ public class FailedEventRetryService : BackgroundService
                 else
                 {
                     failedEvent.RetryCount++;
-                    failedEvent.FailedAt = DateTime.UtcNow;
+                    // 不得在这里改写 FailedAt：它是"该事件**首次**失败的时刻"，也正是
+                    // InMemoryFailedEventStore.GetOldestPendingAge() → 健康检查
+                    // oldest_pending_retry_age_seconds（>5min → Degraded）的取值来源。
+                    // 逐轮刷新会让"处理器持续失败"的事件年龄恒≈轮询间隔，健康信号永远不触发
+                    // （F-2 的盲区被原样保留）。退避进度只由 NextRetryAt 表达。
                     failedEvent.NextRetryAt = DateTimeOffset.UtcNow + CalculateBackoff(failedEvent.RetryCount);
                     failedEvent.ExceptionMessage = result.ErrorReason ?? "重试失败";
 
@@ -246,7 +250,7 @@ public class FailedEventRetryService : BackgroundService
                 _logger.LogError(ex, "重试事件 {EventId} 时发生异常", failedEvent.EventId);
 
                 failedEvent.RetryCount++;
-                failedEvent.FailedAt = DateTime.UtcNow;
+                // 同上方：FailedAt 保留首次失败时刻（健康检查的"最旧待重试年龄"依赖它）
                 failedEvent.NextRetryAt = DateTimeOffset.UtcNow + CalculateBackoff(failedEvent.RetryCount);
                 failedEvent.ExceptionMessage = ex.Message;
 

@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -24,8 +24,8 @@ namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 /// <item><b>接线三件套一致</b>：剖面槽 <c>AffordanceDirectory</c> ↔ csproj 的 <c>AdditionalFiles</c> ↔
 /// 磁盘目录名。任一不一致 ⇒ 引擎收不到资产 ⇒ <c>x-feishu.affordance</c> 整键消失，
 /// 而构建<b>全绿</b>（MUDFT 一条都不会报：它压根没看到资产）；</item>
-/// <item><b>强制集合</b>：每个 <c>high-risk-write</c> 工具都必须有资产——这条把"哪些工具必须写"
-/// 从人的记忆变成机器断言（新增高危工具不同批补资产即报红）；</item>
+/// <item><b>强制集合</b>：资产必须真的进入编译期 Schema 与运行期可见面；「哪些工具必须有资产」
+/// 属于覆盖率轴，由 <see cref="AffordanceCoverageContractGuards"/> 按风险分级判定，本类不重复；</item>
 /// <item><b>模型可见性</b>：资产配了就必须出现在模型必然读到的字段上（工具 <c>Description</c>），
 /// 且**未配资产的工具描述逐字节不变**（升级回归锚）。</item>
 /// </list>
@@ -47,9 +47,22 @@ public class AffordanceContractGuards
     // T-4：wiki.member_remove + approval.cancel_instance（36 → 38；15061 → 16006 字符）。
     // 增量为 2 而非 4：风险等级由 FeishuToolProfile.WriteVerbKeywords 派生，本轮 12 枚新工具里
     // 只有 remove / cancel 两个动词落进高危词表。
-    private const int ExpectedAssetCount = 38;
+    // S-6 首刀：im.delete_reaction（38 → 39；16006 → 16603 字符）——同理由，本轮 13 枚里只有 delete 命中高危词表。
+    // S-5 一波：write 级扩面 76 份（im/mail/bitable/sheets/task/docx/drive/calendar），全部为 write 风险级（39 → 115；→ 51709 字符）。
+    // S-5 二波：补齐剩余 53 份 write 级（chatgroup/application/attendance/trustparty/okr/wiki/vc/task…），
+    //           write 两级（high-risk-write + write）自此满覆盖，只读级按批次另议（115 → 168；→ 78369 字符）。
+    // S-5 三波：只读级高频 list/get 33 份（im 9 / bitable 6 / docx 7 / drive 5 / mail 6），
+    //           只读覆盖率自此入表（阈值见 AffordanceCoverageContractGuards.ReadFloor；168 → 201；→ 94853 字符）。
+    // S-1：slides 整域 12 份（只读 7 + 写入 5，其中 delete_slide 落高危词表），
+    //      新域首个批次即读写全覆盖，不留只读缺口（201 → 213；→ 99865 字符）。
+    // S-2：markdown 生命周期 5 份（只读 2 + 写入 3，均为 write 风险级），
+    //      新域同样读写全覆盖（213 → 218；→ 102605 字符）。
+    // S-4：workflow 两个只读编排工具各 1 份（218 → 220；→ 103662 字符）。
+    // S-6 余项：docx.media_insert（write 级满覆盖要求）（220 → 221；→ 104370 字符）。
+    // T-4 工具面收敛：合并掉的 8 份资产改由 4 份合并资产覆盖（221 → 207；→ 100204 字符）。
+    private const int ExpectedAssetCount = 207;
 
-    private const int ExpectedTotalAssetCharacters = 16006;
+    private const int ExpectedTotalAssetCharacters = 100204;
 
     // B2 瘦身（测试体系治理，见《单元测试体系过度测试分析与解决方案》§三.5；该文档已迁 Mud.AI 仓）：
     // 与上游诊断**同一判定**的仓库侧副本已删除——
@@ -59,29 +72,6 @@ public class AffordanceContractGuards
     //   · 单资产/单小节字符上界            = MUDFT031（Warning，基线恒 0，CI/Standard 档断言）
     // 本类只守 MUDFT 看不到的两段：接线（资产 → 模型可见面）与规模冻结（目录被整体清空时
     // 上述诊断全部静默——没有文件就没有诊断，故冻结计数是唯一防线）。
-
-    [Fact]
-    public void EveryHighRiskWriteTool_ShouldDeclareAffordance()
-    {
-        var assets = ReadAssets().Select(asset => asset.ToolName).ToHashSet(StringComparer.Ordinal);
-
-        var missing = FeishuToolContracts.ByToolName.Values
-            .Where(contract => contract.Risk == FeishuToolRisk.HighRiskWrite)
-            .Where(contract => !assets.Contains(contract.Name))
-            .Select(contract => contract.Name)
-            .OrderBy(static name => name, StringComparer.Ordinal)
-            .ToArray();
-
-        missing.Should().BeEmpty(
-            "以下 high-risk-write 工具没有 affordance 资产——它们是“误用即不可逆”的面，"
-            + "必须显式回答何时用/不要用/前置/提示（新增高危工具时同批补资产）：{0}",
-            string.Join(", ", missing));
-
-        // 反向自证：高危集合不得为空（否则本断言恒绿）。
-        FeishuToolContracts.ByToolName.Values
-            .Count(contract => contract.Risk == FeishuToolRisk.HighRiskWrite)
-            .Should().BeGreaterThan(0, "高危写工具集合不得为空（空集会让本守卫恒绿）");
-    }
 
     [Fact]
     public void GoldenSchema_ShouldCarryAffordance_ExactlyForToolsWithAssets()
@@ -182,7 +172,7 @@ public class AffordanceContractGuards
         carried.Should().BeEquivalentTo(
             assets,
             "McpEnvelope 方言必须为“配了资产的工具”透传结构化 affordance（进程外消费者按字段机械消费），"
-            + "未配资产的工具**不得**出现该字段（否则导出结果对 166 个工具产生无意义 diff）");
+            + "未配资产的工具**不得**出现该字段（否则导出结果会对无资产工具产生无意义 diff）");
 
         // 抽验结构：透传的是四键对象，而不是被压成字符串。
         var sample = tools.First(tool => tool!["affordance"] is not null)!;

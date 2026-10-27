@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -71,7 +71,7 @@ public class PublicSurfaceRationaleContractGuards
     // N2-b（2026-10-14）：335 → **333**——流式通道机制中立化：分片缓冲基类
     // BufferedMessageChannel 与降级链 StreamingChannelChain 两个 public 类型迁出
     // Mud.Feishu.AI 发布面（新家 = Mud.AI.Agent.Channels，由该包自己的 PublicAPI
-    // 台账登记）。产品子类（EditMessageChannel / CardStreamMessageChannel）留飞书发布面。
+    // 台账登记）。产品子类（EditMessageChannel / CardKitStreamMessageChannel）留飞书发布面。
     // N2-d（2026-10-14）：333 → **332**——单轮工具预算 FeishuToolCallBudget 一个 public 类型
     // 迁出飞书发布面（新家 = Mud.AI.Agent.Tools.ToolCallBudget，「AI 运行时 ↔ 工具面共享接缝」
     // 的正确归属是中立运行期包）。同批迁出的 ToolNamePattern 原是 internal（不计类型级条目），
@@ -103,7 +103,33 @@ public class PublicSurfaceRationaleContractGuards
     // T-4 三域补齐（2026-10-19）：403 → **415**——12 个新工具声明面 public 接口
     // （wiki 6 + approval 2 + vc 4，全部登记在 reasons 段）；
     // Mud.Feishu.AI.Tools 346 → 358（Mud.Feishu.AI 50 / Mud.Feishu.AI.Mcp 7 不变）。
-    private const int BaselineTypeCount = 415;
+    // S-6 首刀（2026-10-19）：415 → **428**——13 个新工具声明面 public 接口
+    // （im 表情 4 + minutes 5 + okr 指标 3 + wiki.space_create，全部登记在 reasons 段）；
+    // Mud.Feishu.AI.Tools 358 → 371（Mud.Feishu.AI 50 / Mud.Feishu.AI.Mcp 7 不变）。
+    // S-1 幻灯片域（2026-10-20）：428 → **440**——12 个新工具声明面 public 接口
+    // （slides 只读 7 + 写 5，全部登记在 reasons 段）；
+    // Mud.Feishu.AI.Tools 371 → 383（Mud.Feishu.AI 50 / Mud.Feishu.AI.Mcp 7 不变）。
+    // S-2 Markdown 生命周期（2026-10-20）：440 → **445**——5 个新工具声明面 public 接口
+    // （markdown 只读 2 + 写 3，全部登记在 reasons 段）；
+    // Mud.Feishu.AI.Tools 383 → 388（Mud.Feishu.AI 50 / Mud.Feishu.AI.Mcp 7 不变）。
+    // S-4 复合工作流（2026-10-20）：445 → **447**——2 个新工具声明面 public 接口
+    // （workflow 只读 2，全部登记在 reasons 段）；
+    // Mud.Feishu.AI.Tools 388 → 390（Mud.Feishu.AI 50 / Mud.Feishu.AI.Mcp 7 不变）。
+    // S-6 余项（2026-10-20）：447 → **449**——2 个新工具声明面 public 接口
+    // （docx.history_list + docx.media_insert，全部登记在 reasons 段）；
+    // Mud.Feishu.AI.Tools 390 → 392（Mud.Feishu.AI 50 / Mud.Feishu.AI.Mcp 7 不变）。
+    // E-2 医生自检面（2026-10-20）：449 → **454**——GAP-11 支柱① 的宿主诊断契约公开面
+    // IFeishuDiagnosticsProbe + 报告值类型 FeishuDiagnosticsReport / Finding / Fact +
+    // 严重度常量面 FeishuDiagnosticsSeverities（全部登记在 reasons 段）；
+    // 探针实现 FeishuDiagnosticsProbe 与域装配助手 DomainGuidanceBlocks 均为 internal（不计条目）。
+    // E-3 MCP HTTP 传输（2026-10-20）：454 → **458**——Streamable HTTP 适配层的 4 个公开类型
+    // FeishuMcpHttpHandler / FeishuMcpHttpOptions / McpHttpRequest / McpHttpResponse
+    // （全部登记在 reasons 段）；Mud.Feishu.AI.Mcp 7 → 11
+    // （会话与目录 FeishuMcpSession / FeishuMcpSessionDirectory / McpHttpHeaders / McpWireJson 均为 internal）。
+    // T-4 工具面重复度收口 + v3.1 合并（2026-10-22）：458 → **449**——14 枚工具合并使声明接口
+    // 397 → 383；中立用量计量 5 类（IFeishuUsageMeter / InMemoryFeishuUsageMeter / FeishuUsageSnapshot /
+    // FeishuUsageSlice / FeishuToolUsageSlice）入 Mud.Feishu.AI：50 → 55；Mud.Feishu.AI.Mcp 11 不变。
+    private const int BaselineTypeCount = 449;
 
     /// <summary>反射实测的公开面来源程序集（= 原台账覆盖面：三个飞书发布包）。</summary>
     private static readonly string[] ProductAssemblies =

@@ -34,7 +34,6 @@ internal sealed class ImTools(
 {
     private const string ContainerIdTypeChat = "chat";
 
-    /// <summary>R5 / F-3：话题容器类型（<c>im.get_thread_messages</c> 用它取代 chat）。</summary>
     private const string ContainerIdTypeThread = "thread";
 
     private const string SortTypeByCreateTimeDesc = "ByCreateTimeDesc";
@@ -44,6 +43,9 @@ internal sealed class ImTools(
 
     /// <summary>允许的 <c>receive_id_type</c> 白名单（非法值提前拒绝，便于模型自我纠正）。</summary>
     private static readonly string[] AllowedReceiveIdTypes = ["open_id", "user_id", "union_id"];
+
+    /// <summary>im.batch_query_reactions 单次消息数上限（平台 queries 数组上限）。</summary>
+    private const int MaxBatchQueryMessageIds = 50;
 
     private readonly IFeishuTenantV1Message _messageClient = messageClient
         ?? throw new ArgumentNullException(nameof(messageClient));
@@ -96,6 +98,13 @@ internal sealed class ImTools(
         {
             var args = ImGetHistoryMessagesArgs.Unpack(arguments);
 
+            var containerType = ResolveContainerType(executor.ToolName, args.ContainerType);
+            if (containerType == ContainerIdTypeThread
+                && (args.StartTime is not null || args.EndTime is not null))
+            {
+                throw new ArgumentException("话题容器（container_type=thread）不支持 start_time / end_time 过滤");
+            }
+
             var startTime = ToUnixSeconds(args.StartTime, "start_time");
             var endTime = ToUnixSeconds(args.EndTime, "end_time");
 
@@ -105,8 +114,8 @@ internal sealed class ImTools(
                 string? token, CancellationToken ct)
                 => FeishuApiResultReader.Read(await _messageClient
                     .GetHistoryMessageAsync(
-                        ContainerIdTypeChat,
-                        args.ChatId,
+                        containerType,
+                        args.ContainerId,
                         startTime,
                         endTime,
                         SortTypeByCreateTimeDesc,
@@ -146,50 +155,6 @@ internal sealed class ImTools(
                 .GetContentListByMessageIdAsync(args.MessageId, cancellationToken: cancellationToken)
                 .ConfigureAwait(false));
             return executor.FromApi(outcome, ProjectContent);
-        });
-    }
-
-    /// <summary>get_history_messages 投影：items（含 content 预览截断）+ 翻页契约。</summary>
-    // ────────── R5 / F-3：IM 域补齐（thread / 撤回 / 转发 / 已读 / 群管理） ──────────
-
-    /// <summary>im.get_thread_messages：读取话题内消息（container_id_type 固定 thread）。</summary>
-    [ToolHandler(typeof(IFeishuTenantImGetThreadMessagesTool))]
-    public Task<ToolResult> GetThreadMessagesAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
-    {
-        var executor = new ToolExecutor(FeishuToolNames.ImGetThreadMessages, _maxResultLength);
-        return executor.RunAsync(async () =>
-        {
-            var args = ImGetThreadMessagesArgs.Unpack(arguments);
-
-            async Task<ToolApiOutcome<ApiPageListResult<HistoryMessageData>>> FetchPageAsync(
-                string? token, CancellationToken ct)
-                => FeishuApiResultReader.Read(await _messageClient
-                    .GetHistoryMessageAsync(
-                        ContainerIdTypeThread,
-                        args.ThreadId,
-                        start_time: null,
-                        end_time: null,
-                        sort_type: SortTypeByCreateTimeDesc,
-                        page_size: PageSizes.History,
-                        page_token: token,
-                        cancellationToken: ct)
-                    .ConfigureAwait(false));
-
-            if (args.FetchAll == true)
-            {
-                var maxItems = ToolPagination.ResolveMaxItems(args.MaxItems, _maxAutoFetchItems);
-                var aggregated = await ToolPagination.AggregateOutcomesAsync(
-                    FetchPageAsync,
-                    page => (page.HasMore, page.PageToken),
-                    page => ProjectHistory(page)["items"]!.AsArray(),
-                    maxItems,
-                    ToolPagination.ResolveMaxPages(_maxAutoFetchPages),
-                    cancellationToken).ConfigureAwait(false);
-                return executor.FromPagedResult(aggregated, maxItems);
-            }
-
-            var outcome = await FetchPageAsync(args.PageToken, cancellationToken).ConfigureAwait(false);
-            return executor.FromApi(outcome, ProjectHistory);
         });
     }
 
@@ -418,8 +383,9 @@ internal sealed class ImTools(
 
     private static JsonObject ProjectReadUsers(ApiPageListResult<ReadMessageUser> data)
     {
-        // R-3：信封形态单源（无翻页契约的列表信封）。
-        var envelope = ToolResultJsons.ItemsEnvelope();
+        // R-3：信封形态单源（ToolResultJsons.PageEnvelope）。
+        // 该接口是分页的，用 ItemsEnvelope 会让模型看得到 page_token 入参却拿不到续翻游标。
+        var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
         foreach (var user in data.Items ?? [])
         {
             envelope["items"]!.AsArray().AddNode(new JsonObject
@@ -620,6 +586,78 @@ internal sealed class ImTools(
         });
     }
 
+    /// <summary>im.list_reactions：查询某条消息上**指定表情**的回复明细（单页）。</summary>
+    [ToolHandler(typeof(IFeishuTenantImListReactionsTool))]
+    public Task<ToolResult> ListReactionsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.ImListReactions, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var args = ImListReactionsArgs.Unpack(arguments);
+
+            // 平台该端点的 reaction_type 是必填非可空参数（SDK 侧空/空白直接拒绝下发），
+            // 故在入口本地拒绝空白值并给出可读文案，而不是让模型收到平台的生硬错误。
+            var reactionType = args.ReactionType.Trim();
+            if (reactionType.Length == 0)
+            {
+                throw new ArgumentException("reaction_type 不能为空——本端点一次只查一种表情；要全部表情请用 im.batch_query_reactions");
+            }
+
+            var outcome = FeishuApiResultReader.Read(await _messageClient
+                .GetMessageReactionsPageListAsync(
+                    args.MessageId,
+                    reactionType,
+                    page_size: PageSizes.ImReactions,
+                    page_token: null,
+                    user_id_type: ResolveReactionUserIdType(args.UserIdType),
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApi(outcome, ProjectReactions);
+        });
+    }
+
+    /// <summary>im.batch_query_reactions：一次查多条消息的表情（默认只给计数，with_details 才给明细）。</summary>
+    [ToolHandler(typeof(IFeishuTenantImBatchQueryReactionsTool))]
+    public Task<ToolResult> BatchQueryReactionsAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.ImBatchQueryReactions, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var args = ImBatchQueryReactionsArgs.Unpack(arguments);
+
+            // 去空白 + 去重：平台按 queries 逐条返回，重复的 message_id 只会让同一份明细出现两次（白烧上下文）。
+            var messageIds = (args.MessageIds ?? [])
+                .Where(static id => !string.IsNullOrWhiteSpace(id))
+                .Select(static id => id.Trim())
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+
+            if (messageIds.Length == 0)
+            {
+                throw new ArgumentException("message_ids 不能为空（且不得全为空白项）");
+            }
+
+            if (messageIds.Length > MaxBatchQueryMessageIds)
+            {
+                throw new ArgumentException(
+                    $"message_ids 一次最多 {MaxBatchQueryMessageIds} 条，实际: {messageIds.Length}");
+            }
+
+            var request = new BatchQueryMessageReactionsRequest
+            {
+                Queries = [.. messageIds.Select(static id => new MessageReactionQuery { MessageId = id })],
+                PageSizePerMessage = PageSizes.ImReactionsPerMessage,
+                ReactionType = string.IsNullOrWhiteSpace(args.ReactionType) ? null : args.ReactionType.Trim(),
+            };
+
+            var withDetails = args.WithDetails == true;
+            var outcome = FeishuApiResultReader.Read(await _messageClient
+                .BatchQueryMessageReactionsAsync(request, cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApi(outcome, data => ProjectBatchReactions(data, withDetails));
+        });
+    }
+
     /// <summary>list_chat_members 投影：items（member_id/name/tenant_key）+ 翻页契约。</summary>
     private static JsonObject ProjectChatMembers(GetMemberPageListResult data)
     {
@@ -668,6 +706,102 @@ internal sealed class ImTools(
         return envelope;
     }
 
+    /// <summary>
+    /// list_reactions 投影：items（reaction_id/emoji_type/operator/action_time）+ <c>returned_count</c>。
+    /// </summary>
+    /// <remarks>
+    /// <c>returned_count</c> 是本域唯一的"可能还有更多"信号：<c>ApiListResult&lt;T&gt;</c> 不透出
+    /// <c>has_more</c>/<c>page_token</c>，模型只能靠"返回条数 == 页大小"判断需要换表情类型再查。
+    /// </remarks>
+    private static JsonObject ProjectReactions(ApiListResult<EmojiReactionResult> data)
+    {
+        var envelope = ToolResultJsons.ItemsEnvelope();
+        foreach (var reaction in data.Items)
+        {
+            envelope["items"]!.AsArray().AddNode(new JsonObject
+            {
+                ["reaction_id"] = reaction.ReactionId,
+                ["emoji_type"] = reaction.ReactionType?.EmojiType,
+                ["operator_id"] = reaction.Operator?.OperatorId,
+                ["operator_type"] = reaction.Operator?.OperatorType,
+                ["action_time"] = reaction.ActionTime,
+            });
+        }
+
+        envelope["returned_count"] = data.Items.Count;
+        return envelope;
+    }
+
+    /// <summary>
+    /// batch_query_reactions 投影：一条消息一个 items 元素（计数默认给、明细按 <c>with_details</c> 追加）+ failed。
+    /// </summary>
+    /// <remarks>
+    /// 平台把「计数」与「明细」分成两个数组返回，这里按 message_id <b>合并成一条</b>——
+    /// 模型不必自己 join 两个数组（join 错了会把 A 消息的明细算到 B 头上）。
+    /// </remarks>
+    private static JsonObject ProjectBatchReactions(BatchQueryMessageReactionsResult data, bool withDetails)
+    {
+        var envelope = ToolResultJsons.ItemsEnvelope();
+        var detailsByMessage = (data.SuccessMsgReactionDetails ?? [])
+            .Where(static detail => !string.IsNullOrEmpty(detail.MessageId))
+            .ToLookup(static detail => detail.MessageId!, StringComparer.Ordinal);
+
+        foreach (var count in data.SuccessMsgReactionCounts ?? [])
+        {
+            var message = new JsonObject
+            {
+                ["message_id"] = count.MessageId,
+                ["reactions"] = new JsonArray([.. (count.ReactionCount ?? [])
+                    .Select(static item => (JsonNode?)new JsonObject
+                    {
+                        ["emoji_type"] = item.ReactionType,
+                        ["count"] = item.Count,
+                    })]),
+            };
+
+            if (withDetails)
+            {
+                message["reaction_details"] = new JsonArray([.. detailsByMessage[count.MessageId ?? string.Empty]
+                    .SelectMany(static detail => detail.MessageReactionItems ?? [])
+                    .Select(static item => (JsonNode?)new JsonObject
+                    {
+                        ["reaction_id"] = item.ReactionId,
+                        ["emoji_type"] = item.ReactionType,
+                        ["operator_id"] = item.OperatorId,
+                        ["action_time"] = item.ActionTime,
+                    })]);
+            }
+
+            envelope["items"]!.AsArray().AddNode(message);
+        }
+
+        envelope["failed"] = new JsonArray([.. (data.FailMsgReactionDetails ?? [])
+            .Select(static item => (JsonNode?)new JsonObject
+            {
+                ["message_id"] = item.MessageId,
+                ["reason"] = item.FailReason,
+            })]);
+        return envelope;
+    }
+
+    /// <summary>解析 <c>user_id_type</c>（表情回复类工具）：空 ⇒ <c>open_id</c>；非空但不在白名单 ⇒ 抛错。</summary>
+    private static string ResolveReactionUserIdType(string? modelSupplied)
+    {
+        if (string.IsNullOrWhiteSpace(modelSupplied))
+        {
+            return DefaultReceiveIdType;
+        }
+
+        var value = modelSupplied.Trim();
+        if (Array.IndexOf(AllowedReceiveIdTypes, value) < 0)
+        {
+            throw new ArgumentException(
+                $"user_id_type 只能是 {string.Join(" / ", AllowedReceiveIdTypes)}，收到 '{value}'");
+        }
+
+        return value;
+    }
+
     /// <summary>从工具参数构造搜索过滤器（绑定层组装，模型只见标量/标量数组）。</summary>
     private static MessageSearchFilter? BuildSearchFilter(ImSearchMessagesArgs args)
     {
@@ -697,6 +831,27 @@ internal sealed class ImTools(
         "yyyy-MM-dd'T'HH:mm:ss.ffK",
         "yyyy-MM-dd'T'HH:mm:ss.fffK",
     ];
+
+    /// <summary>
+    /// 归一 <c>container_type</c>：缺省视为群聊；未知名直接拒绝
+    /// （静默回退到 chat 会让"读话题"错读成"读群聊"，是语义级错答）。
+    /// </summary>
+    private static string ResolveContainerType(string toolName, string? containerType)
+    {
+        if (string.IsNullOrWhiteSpace(containerType))
+        {
+            return ContainerIdTypeChat;
+        }
+
+        var normalized = containerType!.Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            ContainerIdTypeChat => ContainerIdTypeChat,
+            ContainerIdTypeThread => ContainerIdTypeThread,
+            _ => throw new ArgumentException(
+                $"{toolName} 的 container_type 仅支持 chat / thread，实际: {containerType}"),
+        };
+    }
 
     private static string? ToUnixSeconds(string? rfc3339, string parameterName)
     {

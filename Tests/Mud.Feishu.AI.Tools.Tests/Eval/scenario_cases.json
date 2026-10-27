@@ -1,0 +1,95 @@
+{
+  "_meta": {
+    "layer": "scenario",
+    "semantics": "场景=多步链路，按 profile 装配执行链（白名单/授权器/批准通道/风险上限），每一步断言落在哪个结局桶。结局桶：ok 成功返回 / plan 预演返回计划 / validation 参数被拒 / confirmation 需人工确认 / denied 授权拒 / not_enabled 工具面对模型不可见 / risk 超风险上限。approve=true 表示「宿主侧模拟用户已批准」后再重调该步。",
+    "offline_rule": "离线容器里的 SDK 客户端是 Mock，读类工具拿不到有意义的响应，因此只有无下游调用的元工具断言 ok；写类工具一律走 dry_run 预演断言 plan，副作用为零。",
+    "authored": "2026-10-20"
+  },
+  "profiles": {
+    "readonly_default": "只读面全启用、写面不启用、默认强制授权（宿主默认姿势）",
+    "write_forced": "读写全启用、保持 EnforceToolAuthorization=true、未注册授权器",
+    "write_open": "读写全启用、关闭强制授权（用于考察参数与预演面）",
+    "hitl_confirm": "读写全启用、授权器对写工具返回 NeedsUserConfirmation、注册宿主批准通道",
+    "risk_ceiling_read": "读写全启用、MaxToolRisk=read、关闭强制授权"
+  },
+  "scenarios": [
+    {
+      "name": "元工具自省闭环",
+      "profile": "readonly_default",
+      "steps": [
+        { "tool": "feishu.tool_search", "args": { "keyword": "邮件" }, "expect": "ok" },
+        { "tool": "feishu.schema_read", "args": { "keyword": "Calendar" }, "expect": "ok" },
+        { "tool": "feishu.guidance_read", "args": { "domain": "bitable", "topic": "filter" }, "expect": "ok|validation" }
+      ]
+    },
+    {
+      "name": "写工具在默认只读面对模型不可见",
+      "profile": "readonly_default",
+      "steps": [
+        { "tool": "im.send_message", "args": { "receive_id": "oc_a1", "text": "你好" }, "expect": "not_enabled" },
+        { "tool": "drive.upload_file", "args": { "file_url": "https://example.com/a.pdf", "file_name": "a.pdf" }, "expect": "not_enabled" },
+        { "tool": "feishu.tool_search", "args": { "keyword": "上传" }, "expect": "ok" }
+      ]
+    },
+    {
+      "name": "未注册授权器时写工具默认拒绝",
+      "profile": "write_forced",
+      "steps": [
+        { "tool": "im.send_message", "args": { "receive_id": "oc_a1", "text": "你好" }, "expect": "denied" },
+        { "tool": "bitable.delete_record", "args": { "app_token": "bascn1", "table_id": "tbl1", "record_id": "rec1" }, "expect": "denied" }
+      ]
+    },
+    {
+      "name": "HITL 两步批准：先挂起再预演",
+      "profile": "hitl_confirm",
+      "steps": [
+        { "tool": "docx.append_blocks", "args": { "document_id": "doxcn1", "block_type": "Text", "text": "第一段", "dry_run": true }, "expect": "confirmation" },
+        { "tool": "docx.append_blocks", "args": { "document_id": "doxcn1", "block_type": "Text", "text": "第一段", "dry_run": true }, "expect": "plan", "approve": true }
+      ]
+    },
+    {
+      "name": "文档写入链（预演，无副作用）",
+      "profile": "write_open",
+      "steps": [
+        { "tool": "docx.create_document", "args": { "title": "季度复盘", "dry_run": true }, "expect": "plan" },
+        { "tool": "docx.append_blocks", "args": { "document_id": "doxcn1", "block_type": "Text", "text": "结论", "dry_run": true }, "expect": "plan" },
+        { "tool": "docx.replace_document", "args": { "document_id": "dcn1", "markdown": "# 季度复盘", "idempotency_key": "eval-doc-1", "dry_run": true }, "expect": "plan" }
+      ]
+    },
+    {
+      "name": "参数错误在执行链上被拦截",
+      "profile": "write_open",
+      "steps": [
+        { "tool": "im.send_message", "args": {}, "expect": "validation" },
+        { "tool": "sheets.update_range", "args": { "spreadsheet_token": "shtcn1", "range": "Sheet1!A1:B2", "values": "not json", "dry_run": true }, "expect": "validation" },
+        { "tool": "drive.set_permission", "args": { "token": "doxcn1", "type": "docx", "member_type": "user", "member_id": "ou_1", "perm": "view", "dry_run": true }, "expect": "validation" },
+        { "tool": "markdown.patch", "args": { "document_token": "dcn1", "find": "旧值", "replace_with": "新值", "dry_run": true }, "expect": "validation" }
+      ]
+    },
+    {
+      "name": "风险上限收敛：只读宿主拒一切写",
+      "profile": "risk_ceiling_read",
+      "steps": [
+        { "tool": "bitable.delete_record", "args": { "app_token": "bascn1", "table_id": "tbl1", "record_id": "rec1", "dry_run": true }, "expect": "risk" },
+        { "tool": "docx.append_blocks", "args": { "document_id": "doxcn1", "block_type": "Text", "text": "第一段", "dry_run": true }, "expect": "risk" }
+      ]
+    },
+    {
+      "name": "表格与多维表批量写入预演",
+      "profile": "write_open",
+      "steps": [
+        { "tool": "sheets.append_rows", "args": { "spreadsheet_token": "shtcn1", "range": "Sheet1!A1:B2", "values": "[[\"1\",\"2\"],[\"3\",\"4\"]]", "dry_run": true }, "expect": "plan" },
+        { "tool": "bitable.record_batch_create", "args": { "app_token": "bascn1", "table_id": "tbl1", "records": "[{\"fields\":{\"状态\":\"进行中\"}}]", "dry_run": true }, "expect": "plan" }
+      ]
+    },
+    {
+      "name": "跨域工作前置：幻灯片与协作权限",
+      "profile": "write_open",
+      "steps": [
+        { "tool": "slides.create_presentation", "args": { "content": "<presentation/>", "dry_run": true }, "expect": "plan" },
+        { "tool": "slides.add_slide", "args": { "xml_presentation_id": "pres1", "content": "<slide/>", "dry_run": true }, "expect": "plan|validation" },
+        { "tool": "drive.set_permission", "args": { "token": "doxcn1", "type": "docx", "member_type": "openid", "member_id": "ou_1", "perm": "view", "dry_run": true }, "expect": "plan" }
+      ]
+    }
+  ]
+}

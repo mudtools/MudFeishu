@@ -414,7 +414,8 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
 
                 if (_unifiedDeduplicationMiddleware != null && (!string.IsNullOrEmpty(extractedEventId) || frame.SeqID > 0))
                 {
-                    var dedupResult = await _unifiedDeduplicationMiddleware.CheckAsync(extractedEventId, frame.SeqID, cancellationToken);
+                    var dedupResult = await _unifiedDeduplicationMiddleware.CheckAsync(
+                        extractedEventId, frame.SeqID, _options.ResolvedAppKey, cancellationToken);
                     if (dedupResult.ShouldSkip)
                     {
                         _logger.LogDebug("统一去重检查跳过: {Reason}, EventId={EventId}, SeqId={SeqId}",
@@ -475,7 +476,8 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                         (!string.IsNullOrEmpty(extractedEventId) || frame.SeqID > 0))
                     {
                         // 失败路径已在 RollbackTransportStateAsync 中收尾；成功路径仅做完成标记
-                        await _unifiedDeduplicationMiddleware.MarkCompletedAsync(extractedEventId, frame.SeqID, cancellationToken);
+                        await _unifiedDeduplicationMiddleware.MarkCompletedAsync(
+                            extractedEventId, frame.SeqID, _options.ResolvedAppKey, cancellationToken);
                     }
 
                     await SendAckMessageAsync(frame, eventArgs.ProcessingSuccess, cancellationToken);
@@ -611,6 +613,7 @@ public class BinaryMessageProcessor : IDisposable, IAsyncDisposable
                 await _unifiedDeduplicationMiddleware.RollbackAsync(
                     extractedEventId,
                     seqIdForRollback.HasValue && seqIdForRollback.Value > 0 ? seqIdForRollback : null,
+                    _options.ResolvedAppKey,
                     CancellationToken.None);
             }
             catch (Exception ex)

@@ -9,16 +9,18 @@
 namespace Mud.Feishu.AI.Tools.Tests.ContractGuards;
 
 /// <summary>
-/// B1 自动分页契约守卫（方案 §3.B1 守卫四条）。
+/// B1 自动分页契约守卫（方案 §3.B1 守卫四条 + 分页信封配对一条）。
 /// </summary>
 /// <remarks>
 /// <para>
-/// 守卫四条：
+/// 守卫判据：
 /// <list type="number">
 /// <item>每个分页工具的 Schema 必须同时含 <c>fetch_all</c> 与 <c>max_items</c>（缺一即红）；</item>
 /// <item>执行器内不得手写 <c>while</c>/<c>do</c> 翻页循环（防"两套翻页口径"）；</item>
 /// <item>上限值只能来自 <c>PageSizes</c> 或 Options 常量；</item>
 /// <item><c>fetch_all=false</c> 路径的行为等价性（金丝雀）。</item>
+/// <item>分页结果（<c>ApiPageListResult</c>）的投影必须配翻页信封——见
+/// <see cref="PagedProjections_ShouldEmitPagingEnvelope"/>（信封单源之外的另一条：选错信封同样断链）。</item>
 /// </list>
 /// </para>
 /// </remarks>
@@ -96,8 +98,8 @@ public class PaginationContractGuards
     /// <remarks>
     /// <para>
     /// <b>为什么用"声明了 page_token"作判据</b>：这是<b>工具自己</b>声明"我是分页列表"的事实
-    /// （比按工具名前缀猜 <c>list_/query_/search_</c> 精确：<c>vc.list_reserves</c> 名字像列表、
-    /// 实际按 ID 取详情；<c>attendance.query_*</c> 名字像列表、接口根本不分页）。
+    /// （比按工具名前缀猜 <c>list_/query_/search_</c> 精确：<c>attendance.query_*</c> 名字像列表、
+    /// 接口根本不分页）。
     /// 判据 = "契约说了要翻页，就必须提供自动翻页的能力"。
     /// </para>
     /// <para>
@@ -403,6 +405,153 @@ public class PaginationContractGuards
             "单页信封（items/has_more/page_token）必须经 ToolResultJsons 单源构造——"
             + "逐文件重写会让『空 token 不写』这类语义静默漂移（模型续不上页且无信号）：\n"
             + string.Join("\n", offenders));
+    }
+
+    /// <summary>
+    /// <b>分页结果 ↔ 翻页信封配对守卫</b>：投影方法<b>入参</b>是分页结果（<c>ApiPageListResult</c>）却用
+    /// 无翻页契约的 <c>ItemsEnvelope()</c> 出口 ⇒ 模型的 <c>page_token</c> 传得进去、游标拿不回来，
+    /// 表现为「声明了翻页却翻不了页」；golden 的输出契约照样写着 <c>has_more</c> / <c>page_token</c>，
+    /// 两侧没有任何机械对手，所以只能从源码形态拦。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>要拦的真回归</b>：<c>im.get_message_read_users</c> 即此形态（本轮逐条对账 affordance 文案与
+    /// <c>Internal/**</c> 回执时抓到，已改走 <c>PageEnvelope</c>，CHANGELOG 有记）。同一症状在
+    /// <c>ImTools.ProjectChats</c> 上更早出现过并修过一次 ⇒ 这是会复发的形态，不是孤例。
+    /// </para>
+    /// <para>
+    /// <b>与 <see cref="PageEnvelopeFields_ShouldOnlyComeFromSharedHelper"/> 的分工</b>：那条锁「信封键名
+    /// 只能来自共享帮助方法」（防逐字重写导致空 token 语义静默漂移），本条锁「分页结果必须配翻页信封」
+    /// （防在两个合法帮助方法里选错）。两条互不覆盖。
+    /// </para>
+    /// <para>
+    /// 判定窗口 = 签名之后、方法闭合之前的第一条信封语句（帮助方法恒是投影首句）。
+    /// <b>白名单为空是刻意的</b>：非分页的 <c>ApiListResult</c> 用 <c>ItemsEnvelope()</c> 是正确形态，
+    /// 由 <see cref="PagedProjectionScanner_ShouldSeparatePagedFromPlainResults"/> 自证不误伤；
+    /// 确需吞游标的聚合中间投影不得以 <c>ApiPageListResult</c> 为入参签名。
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void PagedProjections_ShouldEmitPagingEnvelope()
+    {
+        var executorFiles = Directory.GetFiles(
+            Path.Combine(FindRepositoryRoot(), "Mud.Feishu.AI.Tools", "Internal"),
+            "*.cs",
+            SearchOption.TopDirectoryOnly);
+
+        executorFiles.Should().NotBeEmpty("执行器文件必须存在");
+
+        var offenders = executorFiles
+            .SelectMany(static file => ScanCursorlessPagedProjections(
+                File.ReadAllText(file),
+                Path.GetFileName(file)))
+            .ToArray();
+
+        offenders.Should().BeEmpty(
+            "分页结果（ApiPageListResult）的投影必须用 ToolResultJsons.PageEnvelope(hasMore, pageToken)——"
+            + "用 ItemsEnvelope() 会吞掉游标，模型手工翻页链路直接断：\n{0}",
+            string.Join("\n", offenders));
+    }
+
+    /// <summary>
+    /// 判据自证：正例必被抓，两种合规形态（已配翻页信封 / 非分页结果）不得误报——
+    /// 否则本守卫要么恒绿（假门禁），要么逼人放宽判据。
+    /// </summary>
+    [Fact]
+    public void PagedProjectionScanner_ShouldSeparatePagedFromPlainResults()
+    {
+        const string Cursorless = """
+            private static JsonObject ProjectPaged(ApiPageListResult<Foo> data)
+            {
+                var envelope = ToolResultJsons.ItemsEnvelope();
+                return envelope;
+            }
+            """;
+
+        const string PagingEnvelope = """
+            private static JsonObject ProjectPaged(ApiPageListResult<Foo> data)
+            {
+                var envelope = ToolResultJsons.PageEnvelope(data.HasMore, data.PageToken);
+                return envelope;
+            }
+            """;
+
+        const string PlainResult = """
+            private static JsonObject ProjectPlain(ApiListResult<Foo> data)
+            {
+                var envelope = ToolResultJsons.ItemsEnvelope();
+                return envelope;
+            }
+            """;
+
+        // 签名换行（本仓常见形态）也必须被认出：漏判等于守卫对半数的投影文件失效。
+        const string WrappedSignature = """
+            private static JsonObject ProjectPaged(
+                ApiPageListResult<Foo> data)
+            {
+                var envelope = ToolResultJsons.ItemsEnvelope();
+                return envelope;
+            }
+            """;
+
+        ScanCursorlessPagedProjections(Cursorless, "X.cs").Should().HaveCount(1, "分页 DTO 配无游标信封正是本判据要拦的形态");
+        ScanCursorlessPagedProjections(WrappedSignature, "X.cs").Should().HaveCount(1, "签名换行不得成为漏判");
+        ScanCursorlessPagedProjections(PagingEnvelope, "X.cs").Should().BeEmpty("已配翻页信封即合规");
+        ScanCursorlessPagedProjections(PlainResult, "X.cs").Should().BeEmpty("非分页结果没有游标可回，ItemsEnvelope 是正确形态");
+    }
+
+    /// <summary>扫出「分页结果入参 + 无翻页信封出口」的投影（返回 文件名:行号 定位串）。</summary>
+    private static IEnumerable<string> ScanCursorlessPagedProjections(string source, string fileName)
+    {
+        var lines = source.Replace("\r\n", "\n").Split('\n');
+
+        for (var index = 0; index < lines.Length; index++)
+        {
+            if (!lines[index].Contains("ApiPageListResult", StringComparison.Ordinal)
+                || !HasProjectionSignature(lines, index))
+            {
+                continue;
+            }
+
+            for (var body = index + 1; body < lines.Length; body++)
+            {
+                var line = lines[body];
+                if (line.Contains("PageEnvelope(", StringComparison.Ordinal))
+                {
+                    break;
+                }
+
+                if (line.Contains("ItemsEnvelope()", StringComparison.Ordinal))
+                {
+                    yield return $"{fileName}:{index + 1}  {line.Trim()}";
+                    break;
+                }
+
+                if (line.Trim() == "}")
+                {
+                    break;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// 命中行自身是签名（单行形态）或其上方一至三行是签名（参数换行形态）都算投影起点——
+    /// 只按单行配对会对换行形态漏判，等于守卫对半数写法失效。
+    /// </summary>
+    private static bool HasProjectionSignature(string[] lines, int index)
+    {
+        for (var back = 0; back <= 3 && index - back >= 0; back++)
+        {
+            var candidate = lines[index - back];
+            if (candidate.Contains("static", StringComparison.Ordinal)
+                && candidate.Contains("JsonObject", StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

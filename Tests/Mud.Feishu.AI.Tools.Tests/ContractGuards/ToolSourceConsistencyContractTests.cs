@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -97,19 +97,25 @@ public class ToolSourceConsistencyContractTests
         // 覆盖数用**精确基线**而非下限：一条"永远为绿"的守卫与没有守卫等价，却会让人以为已守住。
         // 基线取值来自 golden 的权威口径（`source.sdk` 非空者 119 / 125，与声明面 Source 计数一致）。
         executorByInterface.Count.Should().Be(
-            331,
-            "331 个工具必须都能反查到执行器（MUDFT022/023 已在构建期保证一一绑定）；此处骤降说明反查机制失效。"
+            351,
+            "351 个工具必须都能反查到执行器（MUDFT022/023 已在构建期保证一一绑定）；此处骤降说明反查机制失效。"
             + "R-12：原 163 包含 feishu.api_call，该工具已整条删除；F-1：mdm + security + org + contact + hire 共 20 工具（162 → 182）；"
             + "专题一 B1 五域 + B2 补全：lingo 6 只读 + 5 写 + application 7 只读 + 2 写 + helpdesk 6 只读 + 4 写"
             + " + chatgroup 4 只读 + 12 写 + trustparty 8 只读 + 3 写 + aily 3 只读（182 → 242）；"
             + "T-1 读取闭环：drive.download_file / drive.export_document / calendar.agenda / calendar.rsvp（242 → 246）；"
             + "T-2 表格加深：bitable 19（7 读 + 12 写）+ sheets 21（6 读 + 15 写）（246 → 286）；"
             + "T-3 成环：im 4 + mail 17（草稿/规则/模板/签名/附件）+ task 12（清单/搜索/提醒/重开）（286 → 319）；"
-            + "T-4 补齐：wiki 6（3 读 + 3 写）+ approval 2（撤回/抄送）+ vc 4（1 读 + 3 机器人写）（319 → 331）");
+            + "T-4 补齐：wiki 6（3 读 + 3 写）+ approval 2（撤回/抄送）+ vc 4（1 读 + 3 机器人写）（319 → 331）；"
+            + "S-6 首刀：im 表情 4（2 读 + 2 写）+ minutes 5（1 读 + 4 写）+ okr 指标 3（2 读 + 1 写）+ wiki.space_create（331 → 344）；"
+            + "幻灯片整域 12（7 读 + 5 写，含截图/取图两个字节落盘出口）（344 → 356）；"
+            + "Markdown 生命周期 5（2 读 + 3 写）（356 → 361）；"
+            + "S-4 复合工作流 2（只读编排，无 Source）（361 → 363）；"
+            + "S-6 余项：docx.history_list（Drive 版本列表）+ docx.media_insert（Drive 媒体上传 → Docx 图片块）（363 → 365）；"
+            + "T-4 工具面收敛：邮件 6→3 + Drive 协作者 2→1 + 表格单条写去重（365 → 351）");
 
         checkedCount.Should().Be(
-            326,
-            "326 个工具声明了 Source（其余 5 个无 Source，由 MUDFT019 口径覆盖）。"
+            344,
+            "344 个工具声明了 Source（其余 5 个无 Source，由 MUDFT019 口径覆盖）。"
             + "新增/删除 Source 时需同步本基线——但不许把它改成'大于某个下限'，那会让覆盖缩水静默通过");
 
         violations.Should().BeEmpty(

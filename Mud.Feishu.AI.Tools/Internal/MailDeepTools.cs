@@ -10,7 +10,7 @@ using Mud.Feishu.DataModels.Mail;
 namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
-/// 邮件深化工具执行器（T-3 成环：草稿 4 / 处置与附件 2 / 收件规则 5 / 模板与签名 6，共 17 个）。
+/// 邮件深化工具执行器（T-3 成环：草稿 4 / 处置与附件 2 / 收件规则 4 / 模板与签名 5，共 15 个）。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -19,10 +19,10 @@ namespace Mud.Feishu.AI.Tools.Internal;
 /// 不影响 mail 其它工具）。
 /// </para>
 /// <para>
-/// 草稿四件套（create/update/send/delete）与 <c>mail.send_message</c> 同源：
+/// 草稿四件套（create/update/send/delete）与 <c>mail.send</c> 同源：
 /// 模型给扁平字段，工具层组装 RFC 5822 EML → base64url（<see cref="MailTools.BuildEml"/>）。
 /// 收件规则的条件/动作用 <see cref="MailRuleDsl"/> 管道分隔简化式（模型零 JSON、零平台代码）——
-/// rule_create/rule_update 编译式先于 dry_run 执行（非法组合在此报错并附合法写法），rule_list 反向渲染。
+/// rule_save 编译式先于 dry_run 执行（非法组合在此报错并附合法写法），rule_list 反向渲染。
 /// </para>
 /// </remarks>
 internal sealed class MailDeepTools(
@@ -129,40 +129,93 @@ internal sealed class MailDeepTools(
         });
     }
 
-    /// <summary>mail.send_draft：发送草稿（可定时；<c>dry_run=true</c> 时只预演）。</summary>
+    /// <summary>
+    /// mail.send：发送邮件。传 <c>draft_id</c> 发已存草稿；不传则现写现发（内部建草稿 → 发送）。
+    /// </summary>
     /// <remarks>
     /// 平台两类"看似成功实则未发出"的形态都必须转结构化成败：① <c>automation_send_disable</c>
     /// （自动发送被策略拦截，code 仍为 0）；② send_time 早于当前时间 5 分钟（本工具在调用前拦截）。
+    /// 两种用法互斥：有 draft_id 时出现正文/收件人即拒绝——否则"发出的是哪份内容"不可判定。
     /// </remarks>
-    [ToolHandler(typeof(IFeishuUserMailSendDraftTool))]
-    public Task<ToolResult> SendDraftAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    [ToolHandler(typeof(IFeishuUserMailSendTool))]
+    public Task<ToolResult> SendAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
-        var executor = new ToolExecutor(FeishuToolNames.MailSendDraft);
+        var executor = new ToolExecutor(FeishuToolNames.MailSend);
         return executor.RunAsync(async () =>
         {
             var client = Require(
                 _mailDraftUserClient, executor.ToolName, "IFeishuUserV1MailDraft",
                 "AddMailApi 的草稿侧客户端（用户令牌——须在 AllowedIdentities 放行 user）");
-            var args = MailSendDraftArgs.Unpack(arguments);
+            var args = MailSendArgs.Unpack(arguments);
 
-            // 结构校验先于 dry_run：非法 send_time 在预演期同样报错（与规则 DSL 编译同纪律）。
+            var hasDraft = !string.IsNullOrWhiteSpace(args.DraftId);
+            var hasCompose = args.To is { Length: > 0 };
+
+            // 结构校验先于 dry_run：互斥/缺失在预演期同样报错（与规则 DSL 编译同纪律）。
+            if (hasDraft && (hasCompose || args.Subject is not null || args.Body is not null
+                || args.Cc is { Length: > 0 } || args.Bcc is { Length: > 0 }))
+            {
+                throw new ArgumentException(
+                    "mail.send 的 draft_id 与 to/subject/body/cc/bcc 互斥：给 draft_id 即发送该草稿（内容已定），"
+                    + "要改内容请先用 mail.update_draft");
+            }
+
+            if (!hasDraft && (!hasCompose || string.IsNullOrEmpty(args.Subject) || string.IsNullOrEmpty(args.Body)))
+            {
+                throw new ArgumentException(
+                    "mail.send 不传 draft_id 时须给全 to/subject/body（现写现发）；只想存草稿不发出请用 mail.create_draft");
+            }
+
             var sendTimeSeconds = args.SendTime is null ? null : ToUnixSeconds(args.SendTime);
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return ToolResult.FromText(ToolDryRun.Describe(
-                    executor.ToolName, "POST",
-                    $"/open-apis/mail/v1/user_mailboxes/{args.UserMailboxId}/drafts/{args.DraftId}/send",
-                    ToolDryRun.IdempotencyNote(null),
-                    ("user_mailbox_id", args.UserMailboxId.Length),
-                    ("draft_id", args.DraftId.Length),
-                    ("send_time", args.SendTime?.Length ?? 0)));
+                return ToolResult.FromText(hasDraft
+                    ? ToolDryRun.Describe(
+                        executor.ToolName, "POST",
+                        $"/open-apis/mail/v1/user_mailboxes/{args.UserMailboxId}/drafts/{args.DraftId}/send",
+                        ToolDryRun.IdempotencyNote(null),
+                        ("user_mailbox_id", args.UserMailboxId.Length),
+                        ("draft_id", args.DraftId!.Length),
+                        ("send_time", args.SendTime?.Length ?? 0))
+                    : ToolDryRun.Describe(
+                        executor.ToolName, "POST", "/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/drafts",
+                        ToolDryRun.IdempotencyNote(null),
+                        ("user_mailbox_id", args.UserMailboxId.Length),
+                        ("to", args.To!.Length),
+                        ("subject", args.Subject!.Length),
+                        ("body", args.Body!.Length),
+                        ("cc", args.Cc?.Length ?? 0),
+                        ("bcc", args.Bcc?.Length ?? 0),
+                        ("send_time", args.SendTime?.Length ?? 0)));
+            }
+
+            string draftId;
+            if (hasDraft)
+            {
+                draftId = args.DraftId!;
+            }
+            else
+            {
+                var eml = MailTools.BuildEml(args.To!, args.Cc, args.Bcc, args.Subject!, args.Body!);
+                var createOutcome = FeishuApiResultReader.Read(await client
+                    .CreateUserMailboxDraftAsync(
+                        args.UserMailboxId,
+                        new UserMailboxDraftRequest { Raw = MailTools.Base64UrlEncode(eml) },
+                        cancellationToken)
+                    .ConfigureAwait(false));
+
+                draftId = createOutcome.Data?.Draft?.Id ?? string.Empty;
+                if (string.IsNullOrEmpty(draftId))
+                {
+                    throw new ArgumentException("创建邮件草稿失败：飞书未返回 draft_id");
+                }
             }
 
             var sendOutcome = FeishuApiResultReader.Read(await client
                 .SendUserMailboxDraftAsync(
                     args.UserMailboxId,
-                    args.DraftId,
+                    draftId,
                     new SendUserMailboxDraftRequest { SendTime = sendTimeSeconds },
                     cancellationToken)
                 .ConfigureAwait(false));
@@ -172,14 +225,24 @@ internal sealed class MailDeepTools(
             if (sendOutcome.Data?.AutomationSendDisable is { } disabled)
             {
                 throw new ArgumentException(
-                    $"发送草稿被平台限制（automation_send_disable）：{disabled.Reason ?? "(无原因)"}"
-                    + $"（reference: {disabled.Reference ?? "(无)"}）——请检查该邮箱的自动发送设置");
+                    $"发送邮件被平台限制（automation_send_disable）：{disabled.Reason ?? "(无原因)"}"
+                    + $"（reference: {disabled.Reference ?? "(无)"}）——请检查该邮箱的自动发送设置"
+                    + (hasDraft ? string.Empty : $"；本次已建草稿 draft_id={draftId}"));
             }
 
-            return executor.FromApiUntruncated(sendOutcome, static data => new JsonObject
+            return executor.FromApiUntruncated(sendOutcome, data =>
             {
-                ["message_id"] = data.MessageId,
-                ["thread_id"] = data.ThreadId,
+                var envelope = new JsonObject
+                {
+                    ["message_id"] = data.MessageId,
+                    ["thread_id"] = data.ThreadId,
+                };
+                if (!hasDraft)
+                {
+                    envelope["draft_id"] = draftId;
+                }
+
+                return envelope;
             });
         });
     }
@@ -331,31 +394,67 @@ internal sealed class MailDeepTools(
         });
     }
 
-    /// <summary>mail.rule_create：创建收件规则（简化式 → 平台代码编译；<c>dry_run=true</c> 时只预演）。</summary>
-    [ToolHandler(typeof(IFeishuTenantMailRuleCreateTool))]
-    public Task<ToolResult> RuleCreateAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    /// <summary>mail.rule_save：新建或整条替换收件规则（有 rule_id 走 PUT 覆盖，无则 POST 新建）。</summary>
+    /// <remarks>简化式 → 平台代码的编译先于 <c>dry_run</c>：非法 field/operator/action 组合在此报错并附合法写法，不进入下游。</remarks>
+    [ToolHandler(typeof(IFeishuTenantMailRuleSaveTool))]
+    public Task<ToolResult> RuleSaveAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
-        var executor = new ToolExecutor(FeishuToolNames.MailRuleCreate);
+        var executor = new ToolExecutor(FeishuToolNames.MailRuleSave);
         return executor.RunAsync(async () =>
         {
             var client = Require(_mailRuleClient, executor.ToolName, "IFeishuTenantV1MailRule", "AddMailApi 的规则侧客户端");
-            var args = MailRuleCreateArgs.Unpack(arguments);
+            var args = MailRuleSaveArgs.Unpack(arguments);
 
             // 编译期：非法 field/operator/action 组合在此报错并附合法写法；不进入下游。
             var condition = MailRuleDsl.CompileConditions(args.Conditions, args.MatchAll);
             var action = MailRuleDsl.CompileActions(args.Actions);
+            var hasRule = !string.IsNullOrWhiteSpace(args.RuleId);
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return ToolResult.FromText(ToolDryRun.Describe(
-                    executor.ToolName, "POST",
-                    $"/open-apis/mail/v1/user_mailboxes/{args.UserMailboxId}/rules",
-                    "规则结构（由 conditions/actions 编译，非模型手写）：" + DescribeCompiled(condition, action)
-                    + ToolDryRun.IdempotencyNote(null),
-                    ("user_mailbox_id", args.UserMailboxId.Length),
-                    ("name", args.Name.Length),
-                    ("conditions", args.Conditions.Length),
-                    ("actions", args.Actions.Length)));
+                return ToolResult.FromText(hasRule
+                    ? ToolDryRun.Describe(
+                        executor.ToolName, "PUT",
+                        $"/open-apis/mail/v1/user_mailboxes/{args.UserMailboxId}/rules/{args.RuleId}",
+                        "规则结构（由 conditions/actions 编译，非模型手写）：" + DescribeCompiled(condition, action)
+                        + ToolDryRun.IdempotencyNote("PUT 整条替换天然幂等——重复提交相同内容结果一致"),
+                        ("user_mailbox_id", args.UserMailboxId.Length),
+                        ("rule_id", args.RuleId!.Length),
+                        ("name", args.Name.Length),
+                        ("conditions", args.Conditions.Length),
+                        ("actions", args.Actions.Length))
+                    : ToolDryRun.Describe(
+                        executor.ToolName, "POST",
+                        $"/open-apis/mail/v1/user_mailboxes/{args.UserMailboxId}/rules",
+                        "规则结构（由 conditions/actions 编译，非模型手写）：" + DescribeCompiled(condition, action)
+                        + ToolDryRun.IdempotencyNote(null),
+                        ("user_mailbox_id", args.UserMailboxId.Length),
+                        ("name", args.Name.Length),
+                        ("conditions", args.Conditions.Length),
+                        ("actions", args.Actions.Length)));
+            }
+
+            if (hasRule)
+            {
+                var updateRequest = new UpdateUserMailboxRuleRequest
+                {
+                    Condition = condition,
+                    Action = action,
+                    Name = args.Name,
+                    IsEnable = args.IsEnable ?? true,
+                    IgnoreTheRestOfRules = args.IgnoreTheRestOfRules ?? false,
+                };
+
+                var updateResult = await client
+                    .UpdateUserMailboxRuleAsync(args.UserMailboxId, args.RuleId!, updateRequest, cancellationToken)
+                    .ConfigureAwait(false);
+                RequireNullDataSuccess(executor.ToolName, updateResult);
+
+                return ToolResultPipeline.OkReceipt(new JsonObject
+                {
+                    ["rule_id"] = args.RuleId,
+                    ["updated"] = true,
+                });
             }
 
             var request = new CreateUserMailboxRuleRequest
@@ -373,56 +472,6 @@ internal sealed class MailDeepTools(
             return executor.FromApiUntruncated(outcome, static data => new JsonObject
             {
                 ["rule_id"] = data.Rule?.Id,
-            });
-        });
-    }
-
-    /// <summary>mail.rule_update：更新收件规则（**整条替换**；简化式编译；<c>dry_run=true</c> 时只预演）。</summary>
-    [ToolHandler(typeof(IFeishuTenantMailRuleUpdateTool))]
-    public Task<ToolResult> RuleUpdateAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
-    {
-        var executor = new ToolExecutor(FeishuToolNames.MailRuleUpdate);
-        return executor.RunAsync(async () =>
-        {
-            var client = Require(_mailRuleClient, executor.ToolName, "IFeishuTenantV1MailRule", "AddMailApi 的规则侧客户端");
-            var args = MailRuleUpdateArgs.Unpack(arguments);
-
-            // 编译期：非法 field/operator/action 组合在此报错并附合法写法；不进入下游。
-            var condition = MailRuleDsl.CompileConditions(args.Conditions, args.MatchAll);
-            var action = MailRuleDsl.CompileActions(args.Actions);
-
-            if (ToolDryRun.IsRequested(args.DryRun))
-            {
-                return ToolResult.FromText(ToolDryRun.Describe(
-                    executor.ToolName, "PUT",
-                    $"/open-apis/mail/v1/user_mailboxes/{args.UserMailboxId}/rules/{args.RuleId}",
-                    "规则结构（由 conditions/actions 编译，非模型手写）：" + DescribeCompiled(condition, action)
-                    + ToolDryRun.IdempotencyNote("PUT 整条替换天然幂等——重复提交相同内容结果一致"),
-                    ("user_mailbox_id", args.UserMailboxId.Length),
-                    ("rule_id", args.RuleId.Length),
-                    ("name", args.Name.Length),
-                    ("conditions", args.Conditions.Length),
-                    ("actions", args.Actions.Length)));
-            }
-
-            var request = new UpdateUserMailboxRuleRequest
-            {
-                Condition = condition,
-                Action = action,
-                Name = args.Name,
-                IsEnable = args.IsEnable ?? true,
-                IgnoreTheRestOfRules = args.IgnoreTheRestOfRules ?? false,
-            };
-
-            var result = await client
-                .UpdateUserMailboxRuleAsync(args.UserMailboxId, args.RuleId, request, cancellationToken)
-                .ConfigureAwait(false);
-            RequireNullDataSuccess(executor.ToolName, result);
-
-            return ToolResultPipeline.OkReceipt(new JsonObject
-            {
-                ["rule_id"] = args.RuleId,
-                ["updated"] = true,
             });
         });
     }
@@ -545,26 +594,59 @@ internal sealed class MailDeepTools(
         });
     }
 
-    /// <summary>mail.template_create：创建个人邮件模板（<c>dry_run=true</c> 时只预演）。</summary>
-    [ToolHandler(typeof(IFeishuTenantMailTemplateCreateTool))]
-    public Task<ToolResult> TemplateCreateAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    /// <summary>mail.template_save：新建或整段替换个人邮件模板（有 template_id 走 PUT 覆盖，无则 POST 新建）。</summary>
+    [ToolHandler(typeof(IFeishuTenantMailTemplateSaveTool))]
+    public Task<ToolResult> TemplateSaveAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
     {
-        var executor = new ToolExecutor(FeishuToolNames.MailTemplateCreate);
+        var executor = new ToolExecutor(FeishuToolNames.MailTemplateSave);
         return executor.RunAsync(async () =>
         {
             var client = Require(_mailTemplateClient, executor.ToolName, "IFeishuTenantV1MailTemplate", "AddMailApi 的模板侧客户端");
-            var args = MailTemplateCreateArgs.Unpack(arguments);
+            var args = MailTemplateSaveArgs.Unpack(arguments);
+            var hasTemplate = !string.IsNullOrWhiteSpace(args.TemplateId);
 
             if (ToolDryRun.IsRequested(args.DryRun))
             {
-                return ToolResult.FromText(ToolDryRun.Describe(
-                    executor.ToolName, "POST",
-                    $"/open-apis/mail/v1/user_mailboxes/{args.UserMailboxId}/templates",
-                    ToolDryRun.IdempotencyNote(null),
-                    ("user_mailbox_id", args.UserMailboxId.Length),
-                    ("name", args.Name.Length),
-                    ("subject", args.Subject?.Length ?? 0),
-                    ("template_content", args.TemplateContent?.Length ?? 0)));
+                return ToolResult.FromText(hasTemplate
+                    ? ToolDryRun.Describe(
+                        executor.ToolName, "PUT",
+                        $"/open-apis/mail/v1/user_mailboxes/{args.UserMailboxId}/templates/{args.TemplateId}",
+                        ToolDryRun.IdempotencyNote("PUT 整段替换天然幂等——重复提交相同内容结果一致"),
+                        ("user_mailbox_id", args.UserMailboxId.Length),
+                        ("template_id", args.TemplateId!.Length),
+                        ("name", args.Name.Length),
+                        ("subject", args.Subject?.Length ?? 0),
+                        ("template_content", args.TemplateContent?.Length ?? 0))
+                    : ToolDryRun.Describe(
+                        executor.ToolName, "POST",
+                        $"/open-apis/mail/v1/user_mailboxes/{args.UserMailboxId}/templates",
+                        ToolDryRun.IdempotencyNote(null),
+                        ("user_mailbox_id", args.UserMailboxId.Length),
+                        ("name", args.Name.Length),
+                        ("subject", args.Subject?.Length ?? 0),
+                        ("template_content", args.TemplateContent?.Length ?? 0)));
+            }
+
+            if (hasTemplate)
+            {
+                var updateRequest = new UpdateMailTemplateRequest
+                {
+                    Template = BuildTemplate(
+                        args.Name, args.Subject, args.TemplateContent, args.IsPlainTextMode,
+                        args.Tos, args.Ccs, args.Bccs),
+                };
+
+                var updateResult = await client
+                    .UpdateMailTemplateAsync(args.UserMailboxId, args.TemplateId!, updateRequest, cancellationToken)
+                    .ConfigureAwait(false);
+                var outcome = FeishuApiResultReader.Read(updateResult);
+
+                // UpdateMailTemplateResult.Template 是 MailTemplate（无 id）——回填入参 template_id。
+                return executor.FromApiUntruncated(outcome, _ => new JsonObject
+                {
+                    ["template_id"] = args.TemplateId,
+                    ["updated"] = true,
+                });
             }
 
             var request = new CreateMailTemplateRequest
@@ -574,56 +656,12 @@ internal sealed class MailDeepTools(
                     args.Tos, args.Ccs, args.Bccs),
             };
 
-            var outcome = FeishuApiResultReader.Read(await client
+            var createOutcome = FeishuApiResultReader.Read(await client
                 .CreateMailTemplateAsync(args.UserMailboxId, request, cancellationToken)
                 .ConfigureAwait(false));
-            return executor.FromApiUntruncated(outcome, static data => new JsonObject
+            return executor.FromApiUntruncated(createOutcome, static data => new JsonObject
             {
                 ["template_id"] = data.Template?.TemplateId,
-            });
-        });
-    }
-
-    /// <summary>mail.template_update：更新模板（**整段替换**；PUT 天然幂等；<c>dry_run=true</c> 时只预演）。</summary>
-    [ToolHandler(typeof(IFeishuTenantMailTemplateUpdateTool))]
-    public Task<ToolResult> TemplateUpdateAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
-    {
-        var executor = new ToolExecutor(FeishuToolNames.MailTemplateUpdate);
-        return executor.RunAsync(async () =>
-        {
-            var client = Require(_mailTemplateClient, executor.ToolName, "IFeishuTenantV1MailTemplate", "AddMailApi 的模板侧客户端");
-            var args = MailTemplateUpdateArgs.Unpack(arguments);
-
-            if (ToolDryRun.IsRequested(args.DryRun))
-            {
-                return ToolResult.FromText(ToolDryRun.Describe(
-                    executor.ToolName, "PUT",
-                    $"/open-apis/mail/v1/user_mailboxes/{args.UserMailboxId}/templates/{args.TemplateId}",
-                    ToolDryRun.IdempotencyNote("PUT 整段替换天然幂等——重复提交相同内容结果一致"),
-                    ("user_mailbox_id", args.UserMailboxId.Length),
-                    ("template_id", args.TemplateId.Length),
-                    ("name", args.Name.Length),
-                    ("subject", args.Subject?.Length ?? 0),
-                    ("template_content", args.TemplateContent?.Length ?? 0)));
-            }
-
-            var request = new UpdateMailTemplateRequest
-            {
-                Template = BuildTemplate(
-                    args.Name, args.Subject, args.TemplateContent, args.IsPlainTextMode,
-                    args.Tos, args.Ccs, args.Bccs),
-            };
-
-            var result = await client
-                .UpdateMailTemplateAsync(args.UserMailboxId, args.TemplateId, request, cancellationToken)
-                .ConfigureAwait(false);
-            var outcome = FeishuApiResultReader.Read(result);
-
-            // UpdateMailTemplateResult.Template 是 MailTemplate（无 id）——回填入参 template_id。
-            return executor.FromApiUntruncated(outcome, _ => new JsonObject
-            {
-                ["template_id"] = args.TemplateId,
-                ["updated"] = true,
             });
         });
     }

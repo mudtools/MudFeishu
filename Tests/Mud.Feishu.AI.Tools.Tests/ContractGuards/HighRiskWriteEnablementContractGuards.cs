@@ -65,13 +65,13 @@ public class HighRiskWriteEnablementContractGuards
     [Fact]
     public void EnablingOrdinaryWriteTool_ShouldNotEmitWarning()
     {
-        var (provider, logs) = BuildProvider(o => o.WriteAllowList = [FeishuToolNames.BitableAddRecord]);
+        var (provider, logs) = BuildProvider(o => o.WriteAllowList = [FeishuToolNames.BitableRecordBatchCreate]);
 
         using (provider)
         {
             var registry = provider.GetRequiredService<FeishuToolRegistry>();
             registry.EnabledTools.Select(static t => t.Name)
-                .Should().Contain(FeishuToolNames.BitableAddRecord, "前置：白名单必须真的启用了普通写工具");
+                .Should().Contain(FeishuToolNames.BitableRecordBatchCreate, "前置：白名单必须真的启用了普通写工具");
 
             logs.Where(static e => e.Level == LogLevel.Warning)
                 .Should().BeEmpty("普通写（write）不得触发高危告警——否则告警会淹没在噪声里（负例自证）");

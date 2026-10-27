@@ -89,6 +89,7 @@ app.Run();
     }
   ],
   "FeishuWebSocket": {
+    "AppKey": "default",
     "Reconnect": {
       "Auto": true,
       "MaxAttempts": 5,
@@ -115,6 +116,11 @@ app.Run();
   }
 }
 ```
+
+> **多应用部署**：一条 WebSocket 连接只能绑定一个应用，`FeishuWebSocket:AppKey` 即连接级应用绑定键。
+> 单应用装配可留空（组合期解析为该应用）；多应用装配**必须显式配置**，否则启动期失败。绑定键在客户端
+> 构造期固定，配置热更新不会改绑（换绑需重启或重建客户端）。需要订阅多个应用的事件时，为每个应用部署
+> 独立的连接实例。
 
 ## 🏗️ 架构设计
 
@@ -715,7 +721,7 @@ public class ServiceManager
 
 | 选项                                  | 类型                                 | 默认值     | 说明                                        |
 | ------------------------------------- | ------------------------------------ | ---------- | ------------------------------------------- |
-| `AppKey`                              | string                               | "default"  | 飞书应用 AppKey，用于指标维度（**支持热更新**） |
+| `AppKey`                              | string                               | (空)       | 连接级**应用绑定键**：单应用留空自动解析，多应用必须显式配置（否则启动失败）。同时用于指标与去重维度；构造期固定，**不支持热更新**（改绑需重启或重建客户端） |
 | `Reconnect.Auto`                      | bool                                 | true       | 自动重连                                    |
 | `Reconnect.MaxAttempts`               | int                                  | 5          | 最大重连次数，0 表示无限（仅受 `Reconnect.TotalBudget` 限制） |
 | `Reconnect.MaxAuthRetryAttempts`      | int                                  | 5          | 认证最大重试次数，0 表示无限（独立于重连次数） |

@@ -53,10 +53,22 @@ public interface IFeishuWebhookService
     /// <param name="request">Webhook 请求</param>
     /// <param name="body">原始请求体</param>
     /// <param name="cancellationToken">取消令牌（中间件传 <c>context.RequestAborted</c>）</param>
-    /// <returns>签名验证是否通过</returns>
+    /// <returns>
+    /// <c>true</c> = 签名有效；<c>false</c> = <b>已判定签名无效</b>（终态，调用方应回 4xx 且不再重试）。
+    /// </returns>
+    /// <exception cref="Mud.Feishu.Webhook.Exceptions.FeishuWebhookUnavailableException">
+    /// <b>无法完成判定</b>（密钥不可用、验签链路内部故障、配置构建失败）。语义 = 本请求未被消费，
+    /// 调用方应回 503 + <c>Retry-After</c> 以便对端重推。
+    /// </exception>
+    /// <exception cref="OperationCanceledException">调用方取消 / 超时（不得写响应到已中止的连接）。</exception>
     /// <remarks>
-    /// Server 类 <see cref="FeishuRedisException"/>（去重体系致命故障）将直接上抛，
-    /// 由中间件转 503；其余异常安全失败返回 false。
+    /// <para>
+    /// <b>返回值语义（W-01）</b>：<c>false</c> 只表示"已判定为无效"，<b>不再</b>兼作"判定失败"的出口——
+    /// 把"取不到密钥"压缩成 <c>false</c> 会让调用方回 403（终态），导致基础设施抖动变成事件永久丢失。
+    /// </para>
+    /// <para>
+    /// Server 类 <c>FeishuRedisException</c>（去重体系致命故障）同样直接上抛（中间件转 503）。
+    /// </para>
     /// </remarks>
     Task<bool> HandleEventAsync(FeishuWebhookRequest request, string body, CancellationToken cancellationToken = default);
 

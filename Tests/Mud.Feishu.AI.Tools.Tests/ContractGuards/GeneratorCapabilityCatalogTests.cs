@@ -55,16 +55,18 @@ public class GeneratorCapabilityCatalogTests
     /// <c>Mud.Feishu</c> 新增 Application（v1/v6/v7）与 Bot（v3/v4）共 16 个接口文件、
     /// +40 个方法 ⇒ SDK 方法总数 1228 → 1268。本次评审结论：增量来自真实的 SDK 接口新增
     /// （非扫描器口径变化），故按新实测值重新锁定。
+    /// 1268 → <b>1279</b>（2026-10-20，幻灯片 SDK：3 个接口文件、11 个方法；真实接口新增）。
     /// </remarks>
-    private const int ExpectedSdkMethodCount = 1268;
+    private const int ExpectedSdkMethodCount = 1279;
 
     /// <summary>
     /// 能力分组个数（分组轴 = 接口名的 domain+resource 段）——精确值（AT-B17）。
     /// </summary>
     /// <remarks>
     /// 192 → <b>204</b>（同上批次，+12 个 domain+resource 段）。
+    /// 204 → <b>208</b>（2026-10-20，幻灯片 SDK：xml_presentation / slide / history / slide_image 四段）。
     /// </remarks>
-    private const int ExpectedDomainCount = 204;
+    private const int ExpectedDomainCount = 208;
 
     /// <summary>SDK 能力总数与 <c>Mud.Feishu</c> 的实际规模一致（精确锁定，非下界）。</summary>
     [Fact]

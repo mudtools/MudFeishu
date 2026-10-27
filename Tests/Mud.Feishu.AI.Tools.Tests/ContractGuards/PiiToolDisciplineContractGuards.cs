@@ -72,6 +72,9 @@ public class PiiToolDisciplineContractGuards
 
         // hire：Offer 列表（"某人是否获得 Offer"的事实），默认不启用；接口结构性不含薪资条件。
         "hire.list_offers",
+
+        // S-4：复合工作流汇总会议纪要（发言/待办与 minutes.get_artifacts 同源），默认不启用。
+        "workflow.meeting_summary",
     ];
 
     private sealed record PiiEntry(string Tool, string Category, bool DefaultDisabled, string Note);

@@ -7,7 +7,12 @@
 - 知识库里的多维表格先经 `wiki.get_node` 拿 token，再以 app_token 进 `bitable.*`。
 
 ## 前置链
-`list_tables` → `list_fields` → `query_records`；按视图取数先 `list_views`。
+`list_tables` → `list_fields` → `query_records`；按视图取数先 `list_views`；手上已有一批 record_id 时直接给 `query_records` 的 `record_ids`（≤100，不与 filter/view_id/sort 同用）。
+
+## 写入
+- 新增（含单条）→ `record_batch_create`，`records` 数组放几项就写几条。
+- 改（含单条）→ `record_batch_update`，每项带 `record_id`。
+- 删 → `delete_record`（不可恢复）。
 
 ## 避坑
 - 不要猜字段名，先 `list_fields`；字段类型错配是最高频的失败原因。

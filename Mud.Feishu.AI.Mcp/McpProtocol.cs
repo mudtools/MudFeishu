@@ -14,9 +14,10 @@ namespace Mud.Feishu.AI.Mcp;
 /// <para>
 /// <b>为什么把版本协商做成"闭集常量"而不是回显客户端值</b>：回显会让"服务端实际支持的语法"
 /// 与"声明的版本"脱钩——客户端按新版本发来的新参数我们会当未知字段静默忽略，失败方式不可观测。
-/// 本服务只用到 <c>tools</c> 能力（且 <c>listChanged=false</c>），三个已发布修订的
-/// <c>initialize</c>/<c>tools/list</c>/<c>tools/call</c> 形态一致，故显式声明支持的闭集，
-/// 客户端请求了闭集外的版本时返回<b>本服务支持的默认版本</b>（协议规定由客户端决定是否继续）。
+/// 本服务只用到 <c>tools</c> 能力（且 <c>listChanged=false</c>），在册修订的 <c>initialize</c> /
+/// <c>tools/list</c> / <c>tools/call</c> / <c>resources/*</c> 形态一致，故显式声明支持的闭集；
+/// <b>加版的唯一判据是这四项形态无变化</b>（任一项变化须先补适配再谈加版，否则"声明的版本"与
+/// "实际语法"脱钩、失败不可观测）；客户端请求了闭集外的版本时返回本服务默认版本（由客户端决定是否继续）。
 /// </para>
 /// <para>
 /// 本类型是 <b>internal</b>：协议常量不是宿主契约（宿主只需配置 <see cref="FeishuMcpServerOptions"/>）。
@@ -35,6 +36,10 @@ internal static class McpProtocol
 
     /// <summary>默认（也是声明支持的最高）协议版本。</summary>
     public const string DefaultVersion = Version20250618;
+
+    /// <summary>新修订差异评估流程（"加版决策"唯一入口）。</summary>
+
+    public const string VersionForwardCompatNote = "见 XML 文档：新修订差异评估清单（加版决策唯一入口）";
 
     /// <summary><c>initialize</c>：会话握手（客户端第一条请求）。</summary>
     public const string MethodInitialize = "initialize";
@@ -61,6 +66,10 @@ internal static class McpProtocol
     /// </summary>
     public const string MethodResourcesRead = "resources/read";
 
+    /// <summary><c>notifications/cancelled</c>：客户端取消请求。</summary>
+    /// <remarks>stdio 下不处理（顺序模型下读循环阻塞在处理内）；HTTP 下经请求中止天然获得。</remarks>
+    public const string MethodNotificationsCancelled = "notifications/cancelled";
+
     /// <summary>JSON-RPC 2.0：请求体不是合法 JSON。</summary>
     public const int ErrorParseError = -32700;
 
@@ -79,13 +88,15 @@ internal static class McpProtocol
     /// <summary>MCP 自定义：会话尚未初始化（未 `initialize` 就发请求）。</summary>
     public const int ErrorServerNotInitialized = -32002;
 
+    /// <summary>支持的协议修订闭集（时序升序）。<see cref="IsSupported"/> 与 <c>initialize</c> 的能力自描述共用
+    /// 本清单——两处各写一份字面量必然漂移，漂移表现为「客户端探测到不支持的版本」。</summary>
+    public static IReadOnlyList<string> SupportedVersions { get; } = [Version20241105, Version20250326, Version20250618];
+
     /// <summary>客户端请求的协议版本是否在支持闭集内。</summary>
     /// <param name="requested">客户端在 <c>initialize.params.protocolVersion</c> 中给出的版本（可空）。</param>
     /// <returns>是否支持。</returns>
     public static bool IsSupported(string? requested)
-        => string.Equals(requested, Version20241105, StringComparison.Ordinal)
-           || string.Equals(requested, Version20250326, StringComparison.Ordinal)
-           || string.Equals(requested, Version20250618, StringComparison.Ordinal);
+        => requested is not null && SupportedVersions.Contains(requested, StringComparer.Ordinal);
 
     /// <summary>协商结果：支持则回显请求版本，否则回落到 <see cref="DefaultVersion"/>。</summary>
     /// <param name="requested">客户端请求版本（可空）。</param>

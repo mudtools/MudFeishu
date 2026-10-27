@@ -63,7 +63,7 @@ public interface IFeishuTenantSparkGetAppAnalyticsTool
 /// <b>闭环首步</b>——创建妙搭应用（user 身份，纯 JSON 请求体）。
 /// </remarks>
 [AgentTool("spark.create_app",
-    Description = "创建妙搭应用（user 身份，闭环首步）。返回新应用的 app_id，后续用 spark.patch_app / spark.list_tables 继续。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 spark:app 权限。",
+    Description = "创建妙搭应用（user 身份，闭环首步）。返回新应用的 app_id，后续用 spark.patch_app / spark.list_tables 继续。写操作：可用 dry_run=true 预演；需 spark:app 权限。",
     RequiredScopes = ["spark:app"],
     IsWrite = true,
     Source = nameof(IFeishuUserV1SparkApp) + "." + nameof(IFeishuUserV1SparkApp.CreateAppAsync))]
@@ -84,7 +84,7 @@ public interface IFeishuUserSparkCreateAppTool
 /// 工具接口：spark.patch_app（映射 <c>IFeishuUserV1SparkApp.PatchAppAsync</c>）。
 /// </summary>
 [AgentTool("spark.patch_app",
-    Description = "修改妙搭应用元信息（名称/描述/图标，user 身份；PATCH 语义天然幂等）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 spark:app 权限。",
+    Description = "修改妙搭应用元信息（名称/描述/图标，user 身份；PATCH 语义天然幂等）。写操作：可用 dry_run=true 预演；需 spark:app 权限。",
     RequiredScopes = ["spark:app"],
     IsWrite = true,
     Source = nameof(IFeishuUserV1SparkApp) + "." + nameof(IFeishuUserV1SparkApp.PatchAppAsync))]
@@ -125,7 +125,7 @@ public interface IFeishuUserSparkGetAppVisibilityTool
 /// ⚠️ 扩大可达范围 → 走"敏感工具纪律"：描述中声明后果（可能使应用对外可见）+ 默认空名单不启用。
 /// </remarks>
 [AgentTool("spark.update_app_visibility",
-    Description = "修改妙搭应用的可用范围（user 身份）。⚠️ 此操作会扩大应用可达范围（scope=Public 即对全员/外部可见），敏感操作，建议先 spark.get_app_visibility 确认当前范围并用 dry_run=true 预演。scope 取值：Public（公开）/ Tenant（本租户）/ Range（指定范围，须配 users/departments/chats）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），需 spark:app 权限。",
+    Description = "修改妙搭应用的可用范围（user 身份）。⚠️ 此操作会扩大应用可达范围（scope=Public 即对全员/外部可见），敏感操作，建议先 spark.get_app_visibility 确认当前范围并用 dry_run=true 预演。scope 取值：Public（公开）/ Tenant（本租户）/ Range（指定范围，须配 users/departments/chats）。写操作：需 spark:app 权限。",
     RequiredScopes = ["spark:app"],
     IsWrite = true,
     Source = nameof(IFeishuUserV1SparkApp) + "." + nameof(IFeishuUserV1SparkApp.UpdateAppVisibilityAsync))]
@@ -190,7 +190,7 @@ public interface IFeishuUserSparkQueryTableRecordsTool
 /// 插入/可选合并（<c>upsert=true</c> → 绑定层映射请求头 <c>Prefer: resolution=merge-duplicates</c>）。
 /// </remarks>
 [AgentTool("spark.add_table_records",
-    Description = "向妙搭数据表添加记录（user 身份）。records_json 为记录数组 JSON，单次上限 500 条。upsert=true 时按主键合并（映射请求头 Prefer: resolution=merge-duplicates），缺省为纯插入。⚠️ 非幂等：不带 upsert 时重复调用会产生重复记录。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 spark:table 权限。",
+    Description = "向妙搭数据表添加记录（user 身份）。records_json 为记录数组 JSON，单次上限 500 条。upsert=true 时按主键合并（映射请求头 Prefer: resolution=merge-duplicates），缺省为纯插入。⚠️ 非幂等：不带 upsert 时重复调用会产生重复记录。写操作：可用 dry_run=true 预演；需 spark:table 权限。",
     RequiredScopes = ["spark:table"],
     IsWrite = true,
     Source = nameof(IFeishuUserV1SparkAppTable) + "." + nameof(IFeishuUserV1SparkAppTable.PostTableRecordsAsync))]
@@ -212,7 +212,7 @@ public interface IFeishuUserSparkAddTableRecordsTool
 /// </summary>
 /// <remarks>按 filter 条件更新（PostgREST 语法，如 age=gt.10）。filter 必填。</remarks>
 [AgentTool("spark.update_table_records",
-    Description = "按条件更新妙搭数据表记录（user 身份）。filter 必填（PostgREST 语法，如 age=gt.10），会更新**所有命中记录**；record_json 为要修改的字段对象。批量/条件更新天然幂等（同 filter 重放结果一致）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 spark:table 权限。",
+    Description = "按条件更新妙搭数据表记录（user 身份）。filter 必填（PostgREST 语法，如 age=gt.10），会更新**所有命中记录**；record_json 为要修改的字段对象。批量/条件更新天然幂等（同 filter 重放结果一致）。写操作：可用 dry_run=true 预演；需 spark:table 权限。",
     RequiredScopes = ["spark:table"],
     IsWrite = true,
     Source = nameof(IFeishuUserV1SparkAppTable) + "." + nameof(IFeishuUserV1SparkAppTable.PatchTableRecordsAsync))]

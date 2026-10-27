@@ -12,7 +12,7 @@ namespace Mud.Feishu.AI.Tools.Internal;
 /// <summary>
 /// OKR 写入工具执行器（R6 / S2）：<c>okr.create_objective</c> / <c>okr.update_objective</c> /
 /// <c>okr.delete_objective</c> / <c>okr.create_key_result</c> / <c>okr.update_key_result</c> /
-/// <c>okr.delete_key_result</c>。
+/// <c>okr.delete_key_result</c> / <c>okr.update_indicator</c>。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -34,11 +34,13 @@ internal sealed class OkrWriteTools(
     IFeishuTenantV2OkrCycle? okrCycleClient,
     IFeishuTenantV2OkrObjective? okrObjectiveClient,
     IFeishuTenantV2OkrKeyResult? okrKeyResultClient,
-    IOptions<FeishuAgentOptions> options)
+    IOptions<FeishuAgentOptions> options,
+    IFeishuTenantV2OkrIndicator? okrIndicatorClient = null)
 {
     private readonly IFeishuTenantV2OkrCycle? _okrCycleClient = okrCycleClient;
     private readonly IFeishuTenantV2OkrObjective? _okrObjectiveClient = okrObjectiveClient;
     private readonly IFeishuTenantV2OkrKeyResult? _okrKeyResultClient = okrKeyResultClient;
+    private readonly IFeishuTenantV2OkrIndicator? _okrIndicatorClient = okrIndicatorClient;
     private readonly int _maxResultLength = ToolExecutor.Require(options).MaxToolResultLength;
 
     /// <summary>okr.create_objective：在周期下创建目标（<c>dry_run=true</c> 时只预演）。</summary>
@@ -256,6 +258,146 @@ internal sealed class OkrWriteTools(
                 ["key_result_id"] = data.KeyResultId ?? args.KeyResultId,
             });
         });
+    }
+
+    /// <summary>okr.update_indicator：更新指标取值与计算方式（<c>dry_run=true</c> 时只预演）。</summary>
+    [ToolHandler(typeof(IFeishuTenantOkrUpdateIndicatorTool))]
+    public Task<ToolResult> UpdateIndicatorAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+    {
+        var executor = new ToolExecutor(FeishuToolNames.OkrUpdateIndicator, _maxResultLength);
+        return executor.RunAsync(async () =>
+        {
+            var client = _okrIndicatorClient
+                ?? throw new ArgumentException("okr.update_indicator 需要 IFeishuTenantV2OkrIndicator——宿主须启用 OKR 域客户端");
+            var args = OkrUpdateIndicatorArgs.Unpack(arguments);
+
+            // 校验全部先于预演：dry_run 也必须走同一套本地拒绝，否则预演通过、实调失败。
+            var request = BuildIndicatorRequest(
+                args,
+                ParseIndicatorValue(args.CurrentValue, "current_value"),
+                ParseIndicatorValue(args.StartValue, "start_value"),
+                ParseIndicatorValue(args.TargetValue, "target_value"));
+
+            if (ToolDryRun.IsRequested(args.DryRun))
+            {
+                return ToolResult.FromText(ToolDryRun.Describe(
+                    executor.ToolName, "PATCH", "/open-apis/okr/v2/indicators/{indicator_id}",
+                    "⚠️ 指标 PATCH 不支持幂等键；且「改哪个字段受实体类型限制」须先读指标确认",
+                    ("indicator_id", args.IndicatorId.Length)));
+            }
+
+            var outcome = FeishuApiResultReader.Read(await client
+                .UpdateIndicatorAsync(args.IndicatorId, request, cancellationToken: cancellationToken)
+                .ConfigureAwait(false));
+            return executor.FromApiUntruncated(outcome, data => OkrTools.ProjectIndicator(data.Indicator));
+        });
+    }
+
+    /// <summary>指标数值取值范围上限（官方：-99999999999 ~ 99999999999）。</summary>
+    private const double IndicatorValueLimit = 99_999_999_999d;
+
+    private static double? ParseIndicatorValue(string? raw, string parameterName)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        if (!double.TryParse(raw.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+            || double.IsNaN(value) || double.IsInfinity(value)
+            || Math.Abs(value) > IndicatorValueLimit)
+        {
+            throw new ArgumentException($"{parameterName} 需为 -99999999999 ~ 99999999999 之间的数值，实际: {raw}");
+        }
+
+        return value;
+    }
+
+    /// <summary>
+    /// 组装指标 PATCH 请求体，并只做<b>无需读即可判定</b>的本地拒绝（闭集、成对、空请求、
+    /// indicator_status 与非手动状态计算方式的冲突）。实体归属约束交平台。
+    /// </summary>
+    private static PatchIndicatorRequest BuildIndicatorRequest(
+        OkrUpdateIndicatorArgs args, double? currentValue, double? startValue, double? targetValue)
+    {
+        var currentCalcType = RequireIndicatorValue(args.CurrentValueCalculateType, [0, 1, 2], "current_value_calculate_type");
+        var statusCalcType = RequireIndicatorValue(args.StatusCalculateType, [0, 1, 2], "status_calculate_type");
+        var indicatorStatus = RequireIndicatorValue(args.IndicatorStatus, [-1, 0, 1, 2], "indicator_status");
+        var unit = BuildIndicatorUnit(args.UnitType, args.UnitValue);
+
+        if (currentValue is null && startValue is null && targetValue is null
+            && currentCalcType is null && statusCalcType is null && indicatorStatus is null && unit is null)
+        {
+            throw new ArgumentException(
+                "至少提供一个要更新的字段（current_value / start_value / target_value / "
+                + "current_value_calculate_type / status_calculate_type / indicator_status / unit_type+unit_value）");
+        }
+
+        // 平台只在「手动更新」下接受 indicator_status；把这条判据放在本地，是为了让模型
+        // 不必等一次平台报错（错误体不带字段名）就知道该改哪个参数。
+        if (indicatorStatus is not null && statusCalcType is not null && statusCalcType != 0)
+        {
+            throw new ArgumentException(
+                $"indicator_status 只在 status_calculate_type=0（手动更新）时可修改，"
+                + $"本次同时传入 status_calculate_type={statusCalcType.Value.ToString(CultureInfo.InvariantCulture)}");
+        }
+
+        return new PatchIndicatorRequest
+        {
+            CurrentValue = currentValue,
+            StartValue = startValue,
+            TargetValue = targetValue,
+            CurrentValueCalculateType = currentCalcType,
+            StatusCalculateType = statusCalcType,
+            IndicatorStatus = indicatorStatus,
+            Unit = unit,
+        };
+    }
+
+    /// <summary>单位面：unit_type 与 unit_value 必须成对；公共单位走闭集，自定义单位限 5 字符。</summary>
+    private static IndicatorUnit? BuildIndicatorUnit(int? unitType, string? unitValue)
+    {
+        if (unitType is null && string.IsNullOrWhiteSpace(unitValue))
+        {
+            return null;
+        }
+
+        if (unitType is null || string.IsNullOrWhiteSpace(unitValue))
+        {
+            throw new ArgumentException("unit_type 与 unit_value 必须成对提供（0=公共单位 / 1=自定义单位）");
+        }
+
+        RequireIndicatorValue(unitType, [0, 1], "unit_type");
+        var value = unitValue!.Trim();
+        if (unitType == 0 && value is not ("PERCENT" or "NONE" or "YUAN" or "DOLLAR"))
+        {
+            throw new ArgumentException($"unit_type=0（公共单位）的 unit_value 仅支持 PERCENT/NONE/YUAN/DOLLAR，实际: {unitValue}");
+        }
+
+        if (unitType == 1 && value.Length > 5)
+        {
+            throw new ArgumentException($"unit_type=1（自定义单位）的 unit_value 不超过 5 个字符，实际长度: {value.Length}");
+        }
+
+        return new IndicatorUnit { UnitType = unitType, UnitValue = value };
+    }
+
+    /// <summary>整数闭集校验（null = 未提供，直接放行）。</summary>
+    private static int? RequireIndicatorValue(int? raw, int[] allowed, string parameterName)
+    {
+        if (raw is null)
+        {
+            return null;
+        }
+
+        if (Array.IndexOf(allowed, raw.Value) < 0)
+        {
+            throw new ArgumentException(
+                $"{parameterName} 仅支持 {string.Join(" / ", allowed.Select(static x => x.ToString(CultureInfo.InvariantCulture)))}，"
+                + $"实际: {raw.Value.ToString(CultureInfo.InvariantCulture)}");
+        }
+
+        return raw;
     }
 
     /// <summary>解析 [0,1] 区间的比例参数（缺失返回 null；非法值抛可读错误）。</summary>

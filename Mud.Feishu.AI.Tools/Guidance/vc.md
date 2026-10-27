@@ -10,7 +10,7 @@
 
 ## 前置链
 `vc.list_meetings`（拿会议号/时段）→ `vc.get_meeting`（详情）/ `vc.list_participants`（明细）/
-`vc.get_recording`（录制）；会议室 `vc.list_rooms`；预约 `vc.list_reserves` → `vc.delete_reserve`。
+`vc.get_recording`（录制）；会议室 `vc.list_rooms`；预约 `vc.get_reserve` → `vc.delete_reserve`。
 写面：`vc.set_host` / `vc.invite_participants` / `vc.end_meeting`（均作用于**进行中的会议**）。
 机器人会中动作：`vc.user_active_meeting`（按人取两种 ID）或 `vc.join_meeting`（9 位会议号入会，返回长数字 ID）
 → `vc.send_meeting_message` / `vc.leave_meeting`。

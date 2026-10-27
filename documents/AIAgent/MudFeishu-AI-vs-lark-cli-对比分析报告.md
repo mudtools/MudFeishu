@@ -7,6 +7,7 @@
 | 分析方法 | 四路并行代码探索（Mud 侧三项目架构 + lark-cli skills/affordance/extension 体系 + lark-cli 命令/协议/事件/sidecar + lark-cli 设计理念文档） |
 | 结论一句话 | 两者**生态位互补而非竞品**：lark-cli 是"AI 操作飞书的手"（工具层，进程外，广度优先）；MudFeishu.AI 是"飞书原生的 AI Agent 大脑+手"（运行时层，进程内，深度优先）。 |
 | 关联文档 | `documents/AIAgent/lark-cli-同场景对比备忘.md`（2026-09-27 早期备忘，本报告是其展开） |
+| 后续更新（2026-10-21） | 本报告的「Skills 外部消费者」「suite 聚合路由」两条差距**已闭环**：`skills/feishu-suite/SKILL.md` 已交付（34 域条目，由域资产推导），并有一次真实外部 Agent 加载实证（单 harness，抓到并修好导出器两处缺陷）——逐条记录见 `documents/AIAgent/Skills外部消费实证报告.md`。文中其余 2026-10-10 时点的数字（如「21 个域产物」）**保持原样，属当时快照**。 |
 
 ---
 
@@ -56,11 +57,11 @@
 
 | 项 | MudFeishu.AI.Mcp | lark-cli |
 |---|---|---|
-| MCP Server | ✅ **自研** stdio JSON-RPC Server（`initialize`/`ping`/`tools/list`/`tools/call`） | ❌ 不运行 MCP 服务端 |
+| MCP Server | ✅ **自研** JSON-RPC 2.0 Server（stdio 与 Streamable HTTP 两种传输；`initialize`/`ping`/`tools/list`/`tools/call`） | ❌ 不运行 MCP 服务端 |
 | MCP Client | ❌ 无 | ❌ 无（但**解析** MCP 网关错误响应） |
 | MCP 风格 tool schema | ✅ `tools/list` 的 `inputSchema` 取自编译期 `AIFunction.JsonSchema` | ✅ `schema` 命令输出 **MCP 风格 envelope**（`name/description/inputSchema/outputSchema/_meta`） |
 | 协议版本 | 闭集协商（2024-11-05 / 2025-03-26 / 2025-06-18） | envelope_version "1.0" |
-| 传输 | 仅 stdio（刻意不做 SSE/HTTP，防 AsyncLocal 租户串号） | N/A（不充当服务端） |
+| 传输 | stdio **与** Streamable HTTP（E-3 补齐 HTTP；租户身份只取自宿主认证层，逐请求 fail-closed）；仍刻意不做 SSE 与批量 | N/A（不充当服务端） |
 | 生态定位 | 自立一个 MCP Server 供进程外 Agent 接入 | **被嵌入**：作为 MCP 生态中"可被 Agent 调用的能力层"，通过 skills + schema + 结构化契约供 Agent 使用 |
 
 **解读**：MudFeishu 选择了"自己做 MCP Server"（进程内执行链复用，租户边界=进程），lark-cli 选择了"不做 Server，但产出 MCP 风格 schema 供任意 Agent 自建工具表"。两种路线各有道理：MudFeishu 的 Server 复用同一执行链（授权/租户/净化/审计零旁路），lark-cli 的方式更轻、更易被任意 Agent 集成。
@@ -140,7 +141,7 @@
 3. **错误契约不够"AI 原生"**：无 wire-stable 的 Category/Subtype 分类法，无 `missing_scopes`/`retryable`/`hint` 系统化字段，AI 消费错误时缺少结构化恢复信号。
 4. **无 affordance 层**：缺少 per-command 的 WHEN/Avoid/Prerequisites 决策指导注入机制，AI 选工具主要靠 guidance + 元工具，不如 lark-cli 的 affordance 精细。
 5. **无 sidecar 凭据隔离**：沙箱/CI 环境下凭据必须进进程，不如 lark-cli 的 HMAC sidecar 安全。
-6. **MCP 仅 stdio**：刻意不做 SSE/HTTP（防租户串号），但限制了接入方式灵活性。
+6. ~~**MCP 仅 stdio**：刻意不做 SSE/HTTP（防租户串号），但限制了接入方式灵活性。~~ **已消解（E-3，2026-10-20）**：补了 Streamable HTTP 传输，租户身份改由宿主认证层逐请求给出（跨租户形态需显式声明 `FeishuMcp:Http:TenantBoundPerRequest`）；SSE 与批量仍是**显式取舍**而非缺口，理由见 `decisions/ADR-0008-mcp-http-transport.md`。
 7. **结构性张力**（架构报告自认 3 处）：命名空间跨程序集、`[FeishuTool]` 生命周期断链、执行链定义↔处理器循环依赖。
 8. **无 LLM 审查 CI / 无 plugin e2e**：工程治理少了两个 lark-cli 有的自动化维度。
 
@@ -215,10 +216,10 @@
 | 差距项 | 当前状态 | lark-cli 状态 | 影响程度 |
 |---|---|---|---|
 | **API 全覆盖逃生舱** | ❌ 已删 `feishu.api_call` | ✅ `api` 覆盖 2500+ | 高（长尾 API 不可达） |
-| **Skills 外部消费者** | ❌ 无外部消费 | ✅ `npx skills add` 主流工具兼容 | 高（生态位未闭环） |
+| **Skills 外部消费者** | ⚠️ **2026-10-21 已有一次真实消费实证**（单 harness：三层渐进披露 + frontmatter 兼容性可路由，抓到两处导出器缺陷并已修，见 `Skills外部消费实证报告.md`）；Claude Code / Cursor 仍未覆盖 | ✅ `npx skills add` 主流工具兼容 | 中（格式有效性已证，覆盖面仍是单点） |
 | **affordance 决策层** | ❌ 无独立层 | ✅ 8 域 markdown 注入 help/schema | 中高（选工具准确率） |
 | **错误 wire-stable 分类** | ❌ 无系统化分类 | ✅ 9 Category + Subtype + 恢复字段 | 中高（AI 错误恢复） |
-| **suite 聚合路由** | ❌ 无 | ✅ `lark-suite` 单入口路由 | 中（skill 发现成本） |
+| **suite 聚合路由** | ✅ **已交付**（2026-10-21）：`skills/feishu-suite/SKILL.md` 单入口路由，34 行域条目 + 规模数字，行体与 MCP 域路由摘要共用同一次推导、不复述域内安全规则 | ✅ `lark-suite` 单入口路由 | 已闭环（自定义 skill 框架仍无对应物） |
 | **自定义 skill 框架** | ❌ 无 | ✅ `lark-skill-maker` | 中（宿主扩展性） |
 | **sidecar 凭据隔离** | ❌ 无 | ✅ HMAC sidecar + 多租户 | 中（CI/沙箱安全） |
 | **LLM 语义审查 CI** | ❌ 无 | ✅ ARK PR 审查 | 低（工程自动化） |
@@ -235,7 +236,7 @@
 
 2. **补 P0 三项**（错误契约 AI 原生化 / affordance 层 / 覆盖面逃生舱评估）是性价比最高的改进，直接提升 AI 调用成功率与覆盖面。
 
-3. **Skills 闭环**：21 个域产物已投入但无消费者，是当前最大的"悬空资产"，应优先推动一个外部消费者落地验证。
+3. **Skills 闭环**：21 个域产物已投入但无消费者，是当前最大的"悬空资产"，应优先推动一个外部消费者落地验证。**已于 2026-10-21 推动一个真实 harness 落地**（三层披露可用 + 两处导出器缺陷修复 + suite 单入口路由）；剩余边界是 harness 只有 1 个，以及 lark-cli 那套 `skills list/read` 命令面与自定义 skill 框架仍无对应物。
 
 4. **保持护城河**：进程内闭环 / 编译期契约 / 五步执行链 / 策展哲学 是 lark-cli 架构上无法复制的优势，改进时不应为追广度而削弱这些深度特性。
 

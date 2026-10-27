@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -297,9 +297,11 @@ public class ToolArgumentShapeContractGuards
     }
 
     /// <summary>
-    /// <b>R5 / F-1</b>：基线 + <b>反向自证</b> —— <c>Curation/</c> 恰有 41 个声明文件、246 个契约接口
+    /// <b>R5 / F-1</b>：基线 + <b>反向自证</b> —— <c>Curation/</c> 恰有 44 个声明文件、351 个契约接口
     /// （R7/C3 后 163，R-12 删除 <c>feishu.api_call</c> 后为 162；六组目录切分后各域补域累计至 242，
-    /// T-1 读取闭环补 4 个至 246）。
+    /// T-1 读取闭环补 4 个至 246；此后按工具条目口径逐批改锚，S-1 幻灯片域整域 12 枚至 356，
+    /// S-2 Markdown 生命周期 5 枚至 361，S-4 复合工作流 2 枚至 363，S-6 余项 2 枚至 365，
+    /// T-4 重复度收口至 351）。
     /// </summary>
     /// <remarks>
     /// <para>
@@ -308,7 +310,7 @@ public class ToolArgumentShapeContractGuards
     /// Bitable/Docx/Wiki/Search/IM/Sheets 六域；<c>FeishuWriteToolInterfaces.cs</c> 混了
     /// IM 写与 Approval；<c>FeishuDocxSheetsDriveToolInterfaces.cs</c> 混了 Docx/Sheets/Drive 写；
     /// <c>FeishuMailToolInterfaces.cs</c> 混了 Mail/Contact 部门轴/Approval 实例详情），
-    /// 归位为「组目录 = 关注域、组内一域一文件」；补域后现为 41 文件 / 246 接口。
+    /// 归位为「组目录 = 关注域、组内一域一文件」；D-1 时点为 41 文件 / 246 接口。
     /// </para>
     /// <para>
     /// <b>身份改用相对路径</b>：文件名相同、组不同的情形（<c>Docs/…</c> vs <c>Collab/…</c>）
@@ -331,7 +333,7 @@ public class ToolArgumentShapeContractGuards
             .ToArray();
 
         files.Should().HaveCount(
-            41,
+            44,
             "Curation/ 的声明文件数从 27 变为 {0}：{1}。新增/拆分域声明文件属**有意的契约变更**，"
             + "请确认新文件只含工具契约并更新本基线",
             files.Length,
@@ -371,7 +373,7 @@ public class ToolArgumentShapeContractGuards
             .ToArray();
 
         interfaces.Should().HaveCount(
-            331,
+            351,
             "Curation/ 的工具契约接口数从 162 变为 {0}——新增/删除工具属有意的契约变更，请同步更新本基线"
             + "（若同时看到『文件数没变而接口数变了』，说明有文件被塞进了非契约内容）",
             interfaces.Length);

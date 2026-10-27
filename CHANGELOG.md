@@ -11,6 +11,8 @@
 > 回迁官方令牌恢复入口并更正过时论断）。
 > 本版为**破坏性依赖变更**：`Mud.HttpUtils` / `Mud.HttpUtils.Generator` 由 `3.0.8` 升至 `3.0.9`
 > （3.0.9 批次以「删自建件 + 更正论断」为主，无新增破坏性变更）。
+> 同时并入 v3.1 线批次：Webhook 语义修复、AI 流式与工作流工具、工具面收口（351 工具 / 34 域）、
+> 多应用管理加固与 `Mud.AI.*` 1.0.2（详见下文各节）。
 > **上线前提（已满足）**：上游 `3.0.9` **已发布至 nuget.org**；`nuget.config` 中的本地源（指向
 > Release 产物 `artifacts`）**已移除**，引用改由公共源还原并复跑全门禁。
 
@@ -24,6 +26,10 @@
   由 `pack.ps1 Release` 产出并逐字节校验）；**禁止**使用 `artifacts-debug` 的 Debug 包。
   上游 3.0.9 发布至 nuget.org 后本地源**已移除**，并按「清缓存 → `restore --no-cache` → `clean`
   → `build`」纪律重新还原自公共源（0 错误、190 warning 与升级前基线逐码一致），全门禁复跑通过。
+- `Mud.AI.Abstractions` / `Mud.AI.Agent` / `Mud.AI.Generator` 由 1.0.1 升至 **1.0.2**
+  （中立工具遥测端口 `IAgentToolTelemetry`、`AmbientScope<T>` 运行期装配扩展、`TurnScopeContext.Facts`、
+  `DelegatingToolFunction` 工具函数装饰基座、会话存储门面与回退错误截断修复）。1.0.2 已由上游发布至
+  nuget.org，联调用的本地 folder 源 `mudai-local` 已从 `nuget.config` 删除（还原后重新 restore 验证通过）。
 
 ### 变更（Changed）
 
@@ -57,6 +63,222 @@
 - 决策档案登记执行状态：`弃用成员移除方案.md`（§2 档 A 门禁、§5 风险 7 已消解）、
   `迁移与弃用史.md`、`编号索引.md`、`上游契约适配史.md`、`注释精简归档.md`。
 
+### 修复（Fixed）— Mud.Feishu.Webhook
+
+- **验签"无法判定"不再伪装成"验签失败"（P0）**：`IEncryptKeyProvider` 故障（KeyVault 抖动返回空）、验签链内部异常、
+  热更后配置构建失败，现在抛出 `FeishuWebhookUnavailableException` 并映射 **HTTP 503 + `Retry-After`**
+  （请飞书重推）。此前这些情况返回 `false` → 403 终态，事件永久丢失且不入失败存储。
+  - 语义契约：`HandleEventAsync(request, body)` 的 `false` **仅**表示"签名已被判定为无效"。
+  - 新增 `FeishuWebhookUnavailableException`；中间件 4 处 503 写点收敛为 `WriteServiceUnavailable`（统一带 `Retry-After`）。
+- **配置热更不再可能导致进程终止**：所有 `IOptionsMonitor.OnChange` 回调统一经
+  `SafeOptionsChangeExtensions.OnChangeSafe` 注册（回调异常只记日志、绝不上抛到配置重载线程），
+  且回调内不再读取 `CurrentValue`（改为与构造期播种的快照比较）。
+  限流中间件的 `System.Threading.Timer` 被删除，窗口清理改为请求路径上的机会式清扫
+  （无定时器 ⇒ 无回调异常面、无 `IDisposable`、无孤儿资源）。
+- **请求体读取预算化**：移除 `EnableBuffering()`（不再对 >30KB 报文落临时文件），改为 64KB 块读取 + 按
+  `ContentLength` 预分配 + 贯穿 `RequestAborted`，并去掉一次全量复制。
+  **`MaxRequestBodySize` 默认值由 10MB 调整为 1MB**（超限 413；确有超大卡片事件请显式调大）。
+- **`UseFeishuWebhook()` 在 `Apps` 为空时启动失败**：此前表现为"启动成功、端点静默 404、飞书持续重推"。
+  错误消息给出两条修复路径；仅使用 `IFeishuWebhookService` 手动驱动事件的宿主不受影响（不挂中间件即可）。
+- **`GlobalRoutePrefix` 归一化**：`"/feishu"`、`"feishu/"`、`" /feishu/ "` 等写法不再导致端点静默失效
+  （归一化在 `PostConfigure` 完成，所有消费方读到生效值）。
+- **实例化处理器/拦截器改为单例注册**：`AddHandler(instance)` / `AddInterceptor(instance)` 此前以 Scoped 注册
+  共享实例，DI 会在**首个请求 scope 结束时释放**它；现改为 Singleton（容器关停时释放），
+  XML 明确"实例必须线程安全；需按请求隔离状态请用 `AddHandler<T>()`"。
+- **删除中间件的容器注册**：`UseMiddleware` 恒自建管道实例，容器注册会产生第二个"幻影实例"
+  （重复的配置变更订阅 + 孤儿定时器）。
+- **解密阶段取密钥贯穿 `CancellationToken`**：此前 `DecryptEventAsync` 未透传 CT，
+  导致 `DecryptionTimeoutMs` 无法中断一次挂起的密钥获取调用。
+- **`InMemoryFailedEventStore.GetPendingRetryEventsAsync` 尊重 `beforeTime` 入参**（此前恒用当前时刻）。
+- **请求体预分配封顶，消除超大 `Content-Length` 的内存放大与整数溢出**：此前按声明的
+  `Content-Length` 直接 `(int)` 预分配（`MaxRequestBodySize` 为 `long` 且无上限）——
+  >2GB 声明会让 `(int)` 溢出为负并触发 500，且未认证请求只需写一个大 `Content-Length`
+  即可让服务端立即分配同等内存。现生效预算封顶 `min(MaxRequestBodySize, int.MaxValue)`
+  （产物是 `string`，长度受 `int` 约束），预分配容量 = `min(声明长度, 生效预算, 1MB)`，
+  超出部分由 `MemoryStream` 按需增长，字节预算仍逐块校验。
+- **失败事件重试不再刷新 `FailedAt`**：此前每轮重试都把它改成当前时刻，使
+  `InMemoryFailedEventStore.GetOldestPendingAge()`（→ 健康检查 `oldest_pending_retry_age_seconds`，
+  >5 分钟判 `Degraded`）对"处理器持续失败"恒定看不出问题。现 `FailedAt` 保留**首次失败时刻**，
+  退避进度仅由 `NextRetryAt` 表达。⚠️ 运维可见变化：长期失败的事件现在会真的让健康检查转为 `Degraded`。
+- **健康检查严重度不再倒挂**：此前"并发利用率 ≥80% → `Degraded`"排在"失败事件积压 ≥500 → `Unhealthy`"之前，
+  "利用率高 + 积压爆表"会被报成较轻的 `Degraded`。现统一按 **`Unhealthy` > `Degraded`** 判定
+  （槽位耗尽 → 积压硬阈值 → 利用率 → 最旧待重试年龄 → 积压软阈值），所有数据项始终完整回写。
+
+### 变更（Changed）— Mud.Feishu.Webhook
+
+- 解密热路径：去掉 `Task.Run`（AES 为微秒级，切换开销大于计算），派生密钥按 `EncryptKey` 缓存。
+- `SecurityAuditService` 的成功审计日志由 `Information` 降为 `Debug`（失败仍为 `Warning`）；
+  中间件的"收到请求/请求处理完成"降为 `Debug`，成功事件日志由 4 条降为 2 条。
+- 启动自检日志（`WebhookOptionsStartupValidator`）增补生效参数：`MaxRequestBodySize`、`DecryptionTimeoutMs`、
+  限流的启用状态与窗口/上限。
+
+### 移除（Removed）— Mud.Feishu.Webhook
+
+- 删除 4 个**无运行时抛出点**的公共异常类型（假公共面）：`FeishuWebhookDecryptionException`、
+  `FeishuWebhookProcessingException`、`FeishuWebhookSecurityException`、`FeishuWebhookSerializationException`。
+  保留 `FeishuWebhookException`（基类）、`FeishuWebhookValidationException`（413）、
+  `FeishuWebhookUnavailableException`（503）——每个类型都有真实抛出点与明确状态码映射。
+
+### 文档（Docs）
+
+- `documents/ErrorHandling.md` 新增「Webhook ACK 决策表」（与 `WebhookAckSemanticsContractGuards` 同源）
+  与「Webhook 部署前置条件」（跨实例需 Redis 去重、内存失败队列重启即丢、明文事件一律拒绝、
+  Nonce 消费顺序、请求体上限、路由前缀写法）。
+- `Mud.Feishu.Webhook/README.md` / `README_EN.md`：修正 `MaxRequestBodySize` 默认值，补充
+  `GlobalRoutePrefix` 写法、限流与重试的语义说明。
+- `documents/index.md` 新增「Webhook 排障速查」：503 = 密钥服务不可用（**不是**签名不匹配）、
+  403 / 404 / 413 的判定与处置。
+
+### 新增（Added）
+
+- **`Mud.Feishu.AI` —— 会话内流式回复（CardKit 卡片实体 + 会话气泡）**：
+  `CardKitStreamMessageChannel` 成为 `AddFeishuStreamingChannel()` 装配的降级链首选
+  （CardKit → `EditMessageChannel`）。协议三步「建实体（`streaming_mode`）→ 投气泡 → 推全量文本」，
+  平台边界与失败语义见 `documents/AIAgent/decisions/ADR-0013-cardkit-streaming-boundaries.md`。
+  - **目标语义由通道自解释**（实现 `IChannelTargetResolver`）：会话事件取 `ChatId`（`receive_id_type=chat_id`）；
+    业务事件（审批 / 表格记录变更，单聊）取操作人 `open_id`（`receive_id_type=open_id`）——
+    **p2p 事件因此重新具备流式能力**，且不新增任何平台 API 调用与权限点。
+  - 终态失败**可观测**：`Error` 日志 + 降级原因 `channel_terminal_failed`（与「单次增量失败」
+    `channel_update_failed` 分级）；投放失败产生的残留卡片实体单独计数 `channel_begin_orphaned`。
+  - 同文去重（终态文本与上次成功推送相同时不再多打一次 PUT）与终态后迟到写入丢弃（不重放、不重建状态）。
+- **`Mud.Feishu.AI` —— 会话键政策外移**：新增 internal `ConversationKeyPolicy` 作为「会话键怎么拼」的单一真相
+  （业务事件注入 `event-{EventKey}` 前缀段，聊天会话沿用默认前缀；五段键位与 `TryParse` 回灌不变）。
+- **Gate 补强**：`CardKitRouteContractGuards` 反射锁定 cardkit 建实体 / 流式更新两条路由模板，
+  防止「AI 通道打错端点」再次只能在线上被发现。
+
+- **Mud.Feishu.AI.Tools —— 复合工作流（S-4，+2 个只读工具；域数不变）**
+  - `workflow.meeting_summary`（`minutes.get` → `minutes.get_statistics`（可关）→ `minutes.get_artifacts`）
+    与 `workflow.standup_report`（`calendar.agenda` → `task.list_my_tasks`）：把"取哪几段、怎么拼"固化在
+    代码里，模型只给起点参数；返回步骤轨迹（每步工具/状态/耗时/错误）+ 聚合报告。
+  - **失败即停 + 断点续跑**：中途失败返回失败结果与 `resume_from`（步骤号），以 `start_at` 重调即从
+    失败步续跑，已成功的前序步骤标 `skipped` 不重复取数；`dry_run=true` 只列执行计划不取数。
+  - **白名单不得旁路**：步骤工具经注册表解析且必须落在启用集内，未启用即在该步失败（不静默跳过）。
+  - 只读链优先：首批两条链全只读；写工作流需"半途失败补偿"语义（平台无事务/补偿原语），登记为后续项。
+  - 新公开入口 AddFeishuWorkflowTools()（与全域入口 AddFeishuReadonlyToolCores 同进同出）。
+  - 同批：Guidance/workflow.md（L1）、skills/feishu-workflow 产物、权限对照表 +2 行（v1.15）、
+    golden 重固化 2 行、FeishuWorkflowRunnerTests（6 例：顺序/失败续跑/跳过/预演/白名单边界/定义契约）。
+
+### 变更（Changed）
+
+- **`Mud.Feishu.AI` —— 业务事件会话键带事件命名空间（一次性，不迁移历史）**：业务事件
+  （审批任务 / 表格记录变更 / 任务更新）的会话键前缀段为 `event-{EventKey}`，与同一用户的聊天会话
+  彻底隔离（防双向上下文污染）。键位仍是五段、`TryParse` 回灌不变。**本库尚未发布，故不提供迁移**：
+  升级到含本变更的版本后，业务事件会话从空历史开始（聊天会话不受影响）。`object_key`
+  （`instance_code` / `file_token+table_id`）**不进键位**，只经 `EventFacts` 注入 prompt。
+- **Mud.Feishu.AI.Tools —— 工具面重复度收口（365 → 351 个工具 / 34 域）**：合并 14 枚能力重叠的工具——
+  `mail.send_message` + `mail.send_draft` → `mail.send`；`mail.rule_create` + `mail.rule_update` → `mail.rule_save`；
+  `mail.template_create` + `mail.template_update` → `mail.template_save`；`drive.grant_permission` +
+  `drive.update_permission_member` → `drive.set_permission`；`bitable.add_record` 并入
+  `bitable.record_batch_create`（入参 `fields` → `records`）；`bitable.get_records_by_ids` 并入
+  `bitable.query_records`（`record_ids` 按 ID 精取）；另有 `vc.list_reserves` → `vc.get_reserve`。
+  读写分布 185 只读 / 166 写类（其中高危 39），公开面 458 → 449，affordance 221 → 207 份（100204 字符），
+  Source 声明 358 → 344。描述面同批做兄弟对首句互指（bitable 工作流、docx 三粒度读、contact 解析↔详情、
+  board 读↔建、application 可见范围读↔写）与 174 处写类权限模板句去重（授权约束由执行器强制，
+  不依赖模型读描述；描述总量 54,891 → 47,495 字符）；golden 重固化、skills 重导出、权限对照表 v1.19（351 行）。
+- **工具面规模数字校正**：README.md / README_EN.md / Mud.Feishu.AI.Tools/Readme.md /
+  .docs/AI/状态基线.md 中漂移的 "344 工具 / 176 只读 / 31 域" 等数字按真相源
+  FeishuToolSchemas.golden.txt 校正为 **351 工具（185 只读 + 166 写类 + 39 高危）/ 34 域**。
+- **`Mud.Feishu.AI.Mcp` —— 装配诊断**：空工具面在**构造期告警一次**并点名成因
+  （`registry_absent` / `factory_absent` / `whitelist_empty`）与可修配置节；非空时输出一条
+  `MCP 工具面就绪：tools=… domains=… readOnly=… write=… resources=…` 读数（与
+  `initialize.capabilities._meta` 同口径）。**行为契约不变**：`tools/list` 返回空仍是合法状态，
+  本包不新增第二条启用通道。
+- **`Mud.Feishu.AI.Mcp` —— 版本闭集补"加版唯一判据"**：新修订进入 `SupportedVersions` 的唯一条件是
+  `initialize` / `tools/list` / `tools/call` / `resources/*` 四项形态无变化（任一项变化须先补适配，
+  否则"声明的版本"与"实际语法"脱钩、失败不可观测）。`tools/call` 结果形态与进度通道的边界
+  （不产出 `structuredContent`、不实现 `notifications/progress`）登记为
+  `documents/AIAgent/decisions/ADR-0012-mcp-output-and-progress-scope.md`。
+- **`Mud.Feishu.AI.Mcp` —— 注释去规模数字**：`FeishuMcpServerOptions` 注释不再写死工具数
+  （规模以 `tools/list` 实测为准）；Runbook §4.1/§5 补 stdio 日志通道的正确形态与现行 Demo 入口，
+  §6 增结果形态决策索引。
+
+### 修复（Fixed）
+
+- **`Mud.Feishu.AI` 门禁恢复（P0）**：`Tests/Mud.Feishu.AI.Tests` 曾因泛型基类上的静态成员被无实参调用
+  而 6 × `CS0305` 编译失败——该工程的全部守卫（Golden / 审批 / 摘要 / 注释预算 / 诊断契约）本轮**一条都没执行**。
+  会话键构造上移为 `ConversationKeyPolicy` 后恢复编译，并同批修掉被遮蔽的三条红：
+  `PublicSurfaceRationale`（新通道未登记消费方）、`CommentConvention`（台账 `vanished`/`unfrozen` 双向脱节 +
+  新文件 26 行注释块越 20 行硬上限）、以及两条**用例自身的断言错误**
+  （`Sequence_ShouldRestartPerCard` 用两次 `Setup` 覆盖同一桩、`Channel_ShouldSwitchTenantScope` 把
+  「Begin 一个作用域覆盖建实体+投放」误算成两次）。
+- **通道测试成功桩恒走失败分支**：流式更新的桩只写 `Code = 0`、`Data` 为空，而解包器把空 `Data` 判为失败——
+  「成功路径」从未被覆盖。桩改为带 `Data`，并补「成功无 Warning」的正向断言。
+- **注释预算台账与注释体**：CardKit 通道的长注释块（平台边界五条）外移 ADR-0013，源码只留摘要，
+  台账同批重固化（新增通道与 `ConversationKeyPolicy`、删除已下线通道条目）。
+
+多应用管理与事件分发审查后的整批修复。除「连接级应用绑定」在**多应用装配**下属行为变更（未显式配置
+`FeishuWebSocket:AppKey` 将启动失败）外，其余各条对单应用部署语义不变。
+
+- **WebSocket —— 连接级应用绑定**：`FeishuWebSocketOptions.AppKey` 由「仅指标维度」升级为**连接绑定键**。
+  单应用装配留空即自动解析为该应用的键；多应用装配必须显式配置，未配置或配置了未注册的键在启动期
+  `InvalidOperationException` 失败——此前多应用部署下连接静默绑定默认应用，事件以错误身份收发。
+  绑定键在客户端构造期解析一次（`FeishuWebSocketClient` / `FeishuWebSocketManager` 各自缓存），
+  并贯穿指标、去重、失败事件落盘；配置热更新不会把已绑定连接切回默认应用（换绑需重启或重建客户端）。
+- **WebSocket —— 统一去重中间件的应用维度贯通**：新增 `IAppScopedUnifiedDeduplicationMiddleware`
+  （`UnifiedDeduplicationMiddleware` 实现），把 `appKey` 透传到事件去重器；旧接口方法等价于
+  `appKey = null`，二进制兼容。此前 WebSocket 事件经统一中间件去重时丢失应用维度，多应用部署下相同
+  EventId 会跨应用互相判重。`FeishuEventMessageHandler` 的检查 / 完成 / 回滚三处调用同批改为传实际应用键。
+- **Webhook —— 专属处理器与全局处理器的分发策略**：新增 `FeishuWebhook:HandlerDispatchMode`
+  （`AppScopedOnly` 默认 / `MergeWithGlobal`）。默认语义与此前一致（有专属处理器即不再走全局），
+  `MergeWithGlobal` 让全局处理器同时参与；未注册专属处理器时始终回退全局。合并模式下一个事件已被
+  专属处理器处理时，全局未注册不再记 `unhandled`。分发逻辑拆为专属 / 全局两条路径，原「专属处理器
+  全部不匹配事件类型」的 Warning 与 unhandled 指标保留；非法枚举值在 `Validate()` 拒绝。
+- **Webhook / WebSocket —— 后置拦截器韧性**：`AfterHandleAsync` 改为逐条 try/catch 并统一传
+  `CancellationToken.None`。此前单个后置拦截器抛异常会跳过其余拦截器，并把成功的业务处理改判为失败
+  （Webhook 侧还会顶替原始处理异常）；外部取消时传入的已取消令牌会让收尾逻辑被立即短路。
+  拦截器失败现在只记 Error 日志（拦截器类型 / 事件类型 / EventId），不影响原始处理结果。
+- **多应用管理 —— `RemoveApp` 生命周期收口**：注册表摘除、配置快照同步、墓碑写入、世代递增与
+  清库门打门在 `_registryLock` 内原子完成，清库在锁外异步执行并在 `finally` 撤销租约。三处修复：
+  ①**墓碑**——显式移除的键不再被「先于移除开始、晚于移除提交」的热更新静默复活（配置源不再声明该键
+  或显式 `AddApp` 才撤销）；②**ABA**——移除后立即重新添加时，迟到的清库以世代校验跳过，不会删除新
+  上下文刚写入的令牌；③**快照同步**——此前 `RemoveApp` 不同步配置快照，后续热更新会把已移除应用误判
+  为仍在线。默认应用提升的结果因此确定：按剔除后快照顺序，兜底 AppKey 序数排序。
+- **多应用管理 —— 热更新逐应用失败隔离**：新增 / 移除 / 更新三个提交阶段各自隔离异常，单个应用失败
+  不再中断其余应用的变更。提交顺序修正为「`RegisterApp` 成功后再退休旧上下文」——此前先入退休队列后
+  注册，注册失败会让旧上下文在宽限期后被 Dispose 却仍被注册表引用。更新失败的键回滚其 `Lazy` 引用交换；
+  失败的新增键不入配置快照（否则下次热更新会误判「未变更」而永不重试），失败的移除键保留原快照条目。
+  预清库计划随之收敛为只含 `WriteBackRiskKeys`（fire-and-forget 下「预清库超时」分支不可达）。
+- **多应用管理 —— 构造期 / 热更新 / `AddApp` 三入口校验统一**：重复 `AppKey`、空 `AppKey`、多个
+  `IsDefault = true` 一律硬失败。此前重复键只告警并让后注册者静默覆盖，多个默认应用让默认身份随注册
+  顺序漂移、热更新反复切换。
+- **用户令牌 —— 访问令牌失效写穿持久化**：新增公开能力接口 `IUserTokenStoreAccessTokenInvalidation`
+  （只删 access、保留 refresh），`FeishuUserTokenStore` / `RedisUserTokenStore` 实现，
+  `EncryptedUserTokenStore` 条件透传（内层无能力时 no-op，不降级为 `RemoveAsync`——那会连 refresh
+  一起删掉）。`UserTokenManager.InvalidateUserTokenAsync` 在清本地镜像后写穿存储，失败只记 Warning
+  不抛出（失效仍为尽力而为）；能力探测落在**未装饰的原始 store** 上，门装饰器刻意不声明该能力以避免
+  假命中。此前失效只清本地缓存，多实例部署与冷启动会从 store 恢复出本应失效的 access token。
+- **临界区自检与作用域说明**：配置热更新的 `_lazyRebuildLock` 提交段加 50ms 持有时间 Debug 自检
+  （提示锁内混入了 IO 或重计算）；`TokenStorePurgeGate` 补「只拦读、写/删直达、进程内生效」的作用域
+  说明；`TokenKeyBuilder` 注明键中明文 userId 的取舍。新增 ADR-0009（用户标识与存储键隐私）、
+  ADR-0010（热更新锁序与临界区预算）、ADR-0011（清库门作用域）。
+- **`Mud.Feishu.AI.Mcp` —— HTTP 传输两处语义对齐**：
+  - `Accept` 只声明 `text/event-stream` 的请求回 **406**（此前放行后返回 `application/json`，
+    等于返回一个客户端明确拒绝过的媒体类型）；规范围 MCP 客户端同时携带两者，**不受影响**。
+  - 以**通知形态**到达的 `initialize` 回 **202 空正文**（此前回 `200 {}`——既非合法 JSON-RPC
+    响应也无信息量的信封），会话标识仍随 `MCP-Session-Id` 头下发（否则客户端拿不到续约凭据）。
+- **`Mud.Feishu.AI.Mcp` —— 线协议序列化配置单一化**：stdio 宿主不再私配一份编码器实例，与协议层 /
+  HTTP 传输共用同一份（两处各配一份必然漂移：同一个中文字符串在 stdio 里是原文、在 HTTP 里是 `\uXXXX`）。
+- **CI 测试阶段「testhost 握手超时 90s ⇒ 3 个工程整段中止」的假红根治**（2026-10-23 windows-latest）：
+  单条 `dotnet test <slnx>` 让 MSBuild 按 4 核同时起 4 个测试宿主，首批 4 个里 3 个
+  （Abstractions / AI / AI.Tools）在 90s 内未完成与 `vstest.console` 的握手，各落一个
+  `total=0` 的 TRX 后 `Test Run Aborted`（同一批次其余 8 个工程全绿，含后续波次的 4 个并发
+  net8.0 宿主 ⇒ 冷启动预算问题，非用例失败）；VSTestTask 返回 false 却不记 MSBuild 错误
+  （MSB4181），最终只表现为「Build FAILED / 0 个错误」。修复：`Run tests` 改为**逐工程串行**
+  执行（与 `scripts/verify-build.ps1` 步骤 4 的 GATE-4 同口径），每个工程独占结果目录与 TRX
+  （不再靠 `[1]/[2]` 后缀猜工程名）；对 `total=0`（宿主启动/握手失败指纹）**单工程自动重试一次**，
+  重试仍为空则点名该工程失败，不再以整体退出码一句带过；`VSTEST_CONNECTION_TIMEOUT` 提到 300s
+  （workflow `env` 与本地门禁同值）。
+- **审批 / 考勤接口与官方文档逐字段对齐**（核对 `Interfaces/Approval`、`Interfaces/Attendance` 全部接口）：
+  - 审批：`ApprovalBotMessageRequest` 补 `sender_user_id` / `text`；`ApprovalBotMessageUpdateRequest.I18nResources`
+    改为非空数组；`AddSignTaskRequest.AddSignType` 与 `RollbackTaskRequest.NodeIds` 按文档改为必填；
+    审批文件上传的 multipart 字段名由 `file` 纠正为 `content`（服务端按该字段名取文件）。
+  - 考勤：考勤组 `free_punch_cfg` 补 `free_clock_setting`（`clock_mode` / `clock_internal_hhmm`）；
+    `user_stats_fields/query` 补必填查询参数 `employee_type`；归档规则列表返回改为单层
+    `FeishuApiResult<ApiPageListResult<ArchiveReportMeta>>`——此前多包一层信封，`data.items` 无法反序列化。
+  - 清理文档未声明的成员：`CommentsPageListResult` 不再继承分页基类（响应只有 `comments`）；
+    `AttendanceGroupsInfo` 删除仅请求侧存在的 `effect_now`；审批文件接口文件按命名规范由
+    `IFeishuV4ApprovalFile_Tenant.cs` 更正为 `IFeishuV2ApprovalFile_Tenant.cs`（接口名与文档同步）。
+
 ## [3.1.0] - 2026-10-19
 
 **重大功能版本 —— 新增 AI 能力。** `Mud.Feishu.AI`（Agent 运行时）、`Mud.Feishu.AI.Tools`（工具面）与
@@ -69,11 +291,12 @@
 
 - **飞书智能体运行时**：飞书消息 / 事件 → 会话 → 模型 → 回复，一行装配即可上线；Bot 自激过滤、
   群聊 @ 过滤等安全语义内建，回复支持消息卡片流式输出。
-- **331 个策展工具（31 个业务域）**：即时消息、邮件、任务、多维表格、电子表格、云文档、知识库、
-  日历、审批、通讯录、妙记等飞书高频操作以编译期 Schema 暴露给模型；只读与写类分离，
-  38 个高危写工具默认关闭、启用前须经宿主授权。
+- **365 个策展工具（34 个业务域）**：即时消息、邮件、任务、多维表格、电子表格、云文档、知识库、
+  日历、审批、通讯录、妙记、幻灯片等飞书高频操作以编译期 Schema 暴露给模型；只读与写类分离，
+  40 个高危写工具默认关闭、启用前须经宿主授权。
 - **人工确认（HITL）**：写操作可停在「等待确认」，经宿主审批通道放行后续跑；未确认绝不自动执行。
-- **MCP 服务器**（可选包）：stdio 接入 Claude Code / Cursor / 自建 harness，工具白名单与进程内 Agent 同源。
+- **MCP 服务器**（可选包）：stdio 或 Streamable HTTP 接入 Claude Code / Cursor / 自建 harness，
+  工具白名单与进程内 Agent 同源。
 - **会话记忆与知识检索**：条数 + token 双窗口记忆、超窗摘要压缩；内置知识接入与自建向量检索（RAG）
   两种形态，检索结果回链引用。
 
@@ -86,29 +309,123 @@
   - 流式回复通道：消息卡片流（创建 → 更新 → 终态），失败自动降级为消息编辑通道；
   - 事件上下文装配：审批、多维表格记录变更等事件进入对话上下文（`ConversationRequest` 新增事件事实）；
   - 交付可靠性：重投递命中「已生成但未确认送达」的回复时直接补发，不重跑模型。
-- **`Mud.Feishu.AI.Tools` —— 工具面（331 个策展工具 / 31 域，171 只读 + 160 写类）**
+- **`Mud.Feishu.AI.Tools` —— 工具面（365 个策展工具 / 34 域，188 只读 + 177 写类）**
+  - 幻灯片（`slides` 新域，12 枚）：XML 演示文稿的读、建、改、删与回滚——`slides.get_presentation` /
+    `slides.list_slides` / `slides.get_slide` 读取 XML 正文（按 `content_offset` / `content_limit`
+    窗口化，默认 25000 字符，回填编辑的原文**不截断**）；`slides.create_presentation` /
+    `slides.add_slide` / `slides.replace_slide` 建稿与改写；`slides.delete_slide`（高危写，默认关闭）；
+    `slides.list_histories` 列历史版本、`slides.revert_history` 提交异步回滚并由
+    `slides.get_revert_status` 轮询确认（「提交成功」不等于「已回滚完成」）；
+    `slides.list_slide_images` / `slides.render_slide_image` 渲染页面图片（base64 解码后经宿主
+    暂存落盘，结果不含字节）。写类五枚均支持 `dry_run` 预演、校验先于下发。
+  - Markdown 生命周期（`markdown` 新域，5 枚）：`markdown.create`（Markdown 上传为 `.md` → 导入任务转在线
+    文档 → 有界轮询 → 成功终态后清理源文件，失败保留源文件凭证供排查）、`markdown.fetch`（docx 正文按
+    窗口读回 Markdown；`.md` 资源文件走受控下载通道，严格 UTF-8 校验）、`markdown.patch`（唯一精确匹配
+    替换，0 处不写、多处直接拒绝）、`markdown.overwrite`（整篇正文重建，先建后删故删除失败时新旧并存）
+    与 `markdown.diff`（只读比对，输出行级 unified diff）。三个写工具均支持 `dry_run` 且默认不启用；
+    `markdown.create` 的 `file_extension` 必须与上传后缀一致，否则平台拒绝导入。
+  - 复合工作流（`workflow` 新域，2 枚只读）：`workflow.meeting_summary` 一键汇总一段时间内的会议
+    纪要（`minutes.search` → `minutes.get_artifacts`，按场次裁剪摘要/章节/待办），
+    `workflow.standup_report` 生成站会日报（`calendar.agenda` → `task.list_my_tasks`）。编排定义是
+    编译期常量，每步仍走完整授权 / 审计 / 脱敏链路（回执 `steps[]` 带逐步骤 `audit_id`）；
+    依赖工具未启用时返回可执行的 `tool_not_allowed`，`dry_run=true` 只回步骤计划不发起嵌套调用，
+    长链路可携带 `resume_token` 断点续跑（Base64 内联状态，服务端无会话）。两者刻意**不含任何写入
+    步骤**（只读设计，见 `documents/AIAgent/decisions/ADR-0007-workflow-layer.md`）；
+    `workflow.meeting_summary` 含他人发言与待办，**默认不启用**。
+    `Mud.Feishu.Agent.Demo` 新增「复合工作流」模式（第 7 项）：先对两个工作流各做一次 `dry_run` 预演，
+    再真实执行会议纪要汇总；站会日报在配置 `CalendarId` / `UserId` 时真实执行，否则打印跳过提示。
+    该模式不调用模型，共享只读白名单同步剔除 PII 工具（仅在该模式自己的白名单里显式启用）。
   - 收尾补齐（会议 / 知识库 / 审批）：会议机器人 `vc.user_active_meeting` / `join_meeting` /
     `leave_meeting` / `send_meeting_message`（9 位会议号入会、19 位会议 ID 离会与会中消息，双 ID
     不可互换）；知识库空间与成员 `wiki.space_list` / `space_get` / `member_list` / `member_add` /
     `member_remove`（高危写，默认关闭）/ `node_copy`；审批 `approval.cancel_instance`（提交人撤销）与
     `cc_instance`（抄送，**user 身份**）。
+  - 表情回复、妙记与 OKR 指标补齐：即时消息表情 `im.list_reactions` / `batch_query_reactions` /
+    `add_reaction` / `delete_reaction`（后者为高危写，默认关闭）；妙记逐字稿 `minutes.get_transcript`
+    （受控落盘，结果不含字节）与 **user 身份** `minutes.clip` / `upload` / `subscribe` / `unsubscribe`
+    （剪辑走「起始|结束」文本式时间区间，强制带时区、不做本地时区静默偏移，且校验先于 `dry_run`）；
+    OKR 指标 `okr.get_objective_indicator` / `get_key_result_indicator` / `update_indicator`
+    （写回执与读侧共用同一投影口径，改完即可原样读回）；知识库 `wiki.space_create`
+    （**user 身份**——平台的空间创建只有用户身份形态，且不支持幂等键，重复调用即创建多个同名空间）。
+  - 文档历史与素材补齐：`docx.history_list`（只读，云文档版本列表——版本能力在云空间侧、Docx 无对应
+    端点，故 Source 跨域指向 Drive 文件版本接口；`obj_type` 为闭集 `docx` / `sheet`，走统一分页信封，
+    只回版本元信息不含正文）与 `docx.media_insert`（写，图片两步链：素材上传 `parent_type=docx_image`
+    → 建图片块；建块失败时回 `partial_failure` 与已上传的 `image_token` 供续用，`idempotency_key`
+    只覆盖建块一步（素材上传不幂等），依赖宿主附件暂存器、默认不启用，支持 `dry_run` 预演）。
+    同批把「平台无接口故无法策展」的核验结论（日历改期转让、IM 收藏与 Feed 流、知识库删空间 /
+    删节点、OKR 评论、多维表格 upsert 与分享链接、妙记替换发言人、会议截图、邮件回复线程语义等）
+    登记于《工具权限对照表》不策展清单，而不是提供绕开策展的调用通道。
   - 强类型参数 Schema、统一分页信封与错误码；写操作支持 `dry_run` 预演；文件下载受控落盘，
     结果不含字节（不污染上下文）；工具结果被截断时如实向模型标记；
   - 权限模型：逐工具声明调用身份（tenant / user）与 OAuth scope，权限对照表随包分发；
   - 逐工具 affordance 决策指导（何时用 / 何时别用 / 前置条件 / 技巧），模型可见；
+    写类工具面已**满覆盖**（40 个高危写 + 137 个普通写），只读面按高频读取路径补齐
+    （im / bitable / docx / drive / mail 的 `list` / `get` 共 33 份 + slides 7 份 + markdown 2 份 +
+    workflow 2 份，只读合计 44 份，全面 **221 份资产**），
+    覆盖率由 `AffordanceCoverageContractGuards` 按风险分级锁定（写类两级 100%、只读级 18% 起步），
+    新增写类工具不同批补资产即构建报红；
   - 结构化审计出口（`IToolExecutionAuditSink`）与 OpenTelemetry 指标（工具执行、耗时、模型调用耗时）；
   - 自建知识检索（分块 / 索引 / 向量检索）与文本工具（`ai.translate_text`、`ai.detect_language`）；
-  - Skills 产物导出（`skills/feishu-*`），可直接分发给 Agent harness。
+  - Skills 产物导出（`skills/feishu-*`），可直接分发给 Agent harness；另含单入口路由
+    `skills/feishu-suite/SKILL.md`（34 行域条目 + 规模数字，行体与 MCP 域路由摘要共用同一次推导，
+    不复述任何域内安全规则）。
 - **`Mud.Feishu.AI.Mcp` —— MCP 服务器（可选包）**
-  - stdio JSON-RPC 把白名单飞书工具与资源暴露给进程外 Agent；与进程内 Agent 共用同一工具定义与
-    执行链，写工具同样走人工确认。
+  - stdio 与 Streamable HTTP 两种传输把白名单飞书工具与资源暴露给进程外 Agent；与进程内 Agent 共用同一
+    工具定义与执行链，写工具同样走人工确认。HTTP 形态的租户身份只取自宿主认证层，逐请求 fail-closed。
 - **人工确认（HITL）管线**：`IFeishuToolApprovalChannel` 宿主审批通道、待确认快照持久化
   （`IFeishuPendingApprovalStore`）、批准后续跑幂等；未注册审批通道时写工具停在「等待确认」。
 - **示例程序**：`Demos/Mud.Feishu.Agent.Demo` 以启动菜单选择运行模式（裸模型 / IM 会话 /
   文档智能体 / 工具冒烟 / 领域事件等），非交互环境下自动采用配置默认项。
+- **装配自检面（`Mud.Feishu.AI.Tools`）**：`IFeishuDiagnosticsProbe` 把「启动后第一次调用才暴露的装配
+  缺陷」变成一次可调用、可读、可断言的报告——`Probe()` 回 `FeishuDiagnosticsReport`（结论
+  `FeishuDiagnosticsFinding`（严重度 info / warning / error + 稳定机读码 + 处置建议）与事实读数
+  `FeishuDiagnosticsFact`），`ToText()` 排序全确定，可作发布前冒烟与健康检查的断言面。覆盖配置有效性、
+  注册表装配、契约↔注册对账、风险词表、写工具缺授权器、HITL 通道缺席、审计出口缺席、内容安全开关、
+  user 身份接线与令牌管理器可达性、应用配置、guidance 预算余量等。
+  **零副作用契约**：同步、不发起任何网络调用、不刷新令牌、不实例化应用（令牌维度只报「管理器可达性」，
+  不报「有效期」——读有效期会让一条诊断命令变成一次真实调用）；自检自身出错时降级为 `probe_fault`
+  结论而非抛出。由 `AddFeishuTools()` 注册为单例，宿主按需解析。
+- **成本核算出口（`Mud.Feishu.Abstractions` 指标面）**：新增 `feishu.agent.llm.tokens`（Counter，
+  维度只有 `direction` = input / output / total）与 `feishu.tool.result.tokens`（Histogram，
+  维度 `tool` + `app_key`，读数为** shaping 后**回填模型的文本 token 数）。前者与既有的 Span 用量属性
+  **相互独立**：没有 Activity 监听器时宿主仍拿到成本读数；供应商未回传 usage、零值与负值一律不计数
+  （宁缺不造）。高基数纪律不变：`conversation_key` / `chat_id` / `user_id` 只进 Span 属性，绝不进指标 tag。
+  两项指标仍是零依赖的 `Meter` 发射，SDK 不接 Exporter。
+- **MCP 运行时自描述**：`initialize` 响应的 `capabilities._meta` 新增装配读数
+  `tools` / `domains` / `readOnlyTools` / `writeTools` / `resources` / `protocolVersions`，
+  全部由**实际服务中的工具面**（受同一白名单约束）与协议版本闭集推导——外部 Agent 因此在第一次握手后
+  就知道「这个 server 到底给了我多大一面」，而不必靠 `tools/list` 回读后再自行分类。
+- **MCP Streamable HTTP 传输（`Mud.Feishu.AI.Mcp`）**：在 stdio 之外提供第二条传输。宿主把自己的 HTTP 端点
+  （`POST` / `DELETE`）映射到 `FeishuMcpHttpHandler`，请求与响应是框架无关快照（`McpHttpRequest` /
+  `McpHttpResponse`），本包**不引入任何 Web 框架依赖**（最小 API / MVC / FastEndpoints / 云函数皆可适配）。
+  **执行链零变化**：工具面、白名单、授权、出站净化与审计仍在协议层之下，传输层新增的判据全部是**拒绝**形态
+  （不合格请求宁可 4xx，也不会被交给执行链）。
+  - **租户身份的唯一来源是宿主认证层**：`AppKey` / `UserId` 只能由认证层写入请求快照，绝不从 URL、请求体或
+    自定义头推导；会话在 `initialize` 时绑定租户与协商后的协议版本，后续请求给出不同身份即 403——
+    **会话标识不是切换租户的凭据**。一个进程服务多租户需显式声明 `FeishuMcp:Http:TenantBoundPerRequest=true`
+    （默认关闭，此时 HTTP 与 stdio 同为单租户形态）。
+  - **会话目录在进程内**：`MaxSessions`（默认 64，超限 503）与 `SessionIdleTimeoutSeconds`（默认 900，
+    惰性回收、不起后台线程）；`DELETE` 终止会话回 204，未知或已回收的会话标识回 404（客户端重新握手）。
+    多实例部署需会话粘滞，或把上限理解为**单实例**上限。
+  - **跨源防护 fail-closed**：`AllowedOrigins` 为空时**拒绝一切带 `Origin` 的请求**（`Origin` 只由浏览器发出，
+    服务端 Agent 与 CLI 不发，故默认形态对它们零影响）；拒绝文案不回显来源值。`AllowedAppKeys` 是认证之后的
+    第二道名单，不是身份来源。
+  - **明确取舍（不是未完成）**：只做 JSON 响应，不做 `text/event-stream`（`GET` 一律 405）、不支持批量请求
+    （400）、通知回 202 无正文；请求体上限归宿主的 Web 层。决策与理由见
+    `documents/AIAgent/decisions/ADR-0008-mcp-http-transport.md`，部署与排障对照表见
+    `documents/AIAgent/MCP多租户部署Runbook.md` §2。
+- **`Demos/Mud.Feishu.Agent.Demo` 新增 `doctor` 模式**：零模型、零网络打印上述诊断报告。凭证留空即以
+  **占位凭证**把容器装配成完整形态（占位凭证永不被使用，该模式不触网），从而能读出真实装配结论而不是一堆
+  「未配置」噪音。
 
 ### 变更（Changed）
 
+- **长尾能力从「不可达」改为「可申请」**：`feishu.capability_lookup` 现按分组回策展缺口
+  （`curated_methods` / `uncurated_methods`）与候选策展名 `suggest_tools`，`feishu.schema_read` 对
+  未策展方法回 `suggested_tool`，两者共用同一条申请通道文案（`apply_channel`）。候选名是宿主策展的
+  **候选**，不构成调用通道——实测对既有策展面模块前缀一致率 95.6%、全名一致率 23.1%，故命名最终以
+  策展人为准（决策与口径：`documents/AIAgent/decisions/ADR-0006-capability-apply-loop.md`）。
+  工具面**仍不提供**任意方法兜底调用；未策展期间的正确处置是如实告知用户。
 - **OpenTelemetry 装配内核统一**：非法配置由静默忽略改为注册期即抛 `OptionsValidationException`；
   请择一注册 OpenTelemetry 装配（与 `AddMudHttpOpenTelemetry` 并用会重复导出）。
 - **上下文切换成员随 `Mud.HttpUtils` 3.0.8 移除**：`FeishuAppManager` 的 `GetWebApi` / `GetDefaultWebApi` /
@@ -120,14 +437,75 @@
 
 ### 修复（Fixed）
 
+- **Skills 产物的两处「只有真实外部 Agent 才会暴露」的缺陷**（由一次真实 harness 加载实证抓到，
+  发布的工具面零变化、golden 逐字节零漂移）：
+  - 命令清单行的 240 字符**按字符硬切**会把权限串与身份要求切成半截（实测 27 行受影响，
+    含 `im:message:send_as_bot` 整段丢失、`minutes.upload` 的 user 身份被切）。现改为
+    **按标点边界截断 + 行尾补契约尾注**（`〔user 身份；需 minutes:minutes.upload:write〕`），尾注取自
+    Schema 的 `x-feishu` 元数据而非散文（散文会漏），且只要发生截断就回填**全量**契约；短描述逐字节不变。
+  - 正文里的 `feishu.guidance_read(域, 主题)` 细则指针是**进程内工具**形态，只拿到 `skills/` 文件的
+    Agent 无法执行（实测 14 个域包 14 条全部落空）。导出层不改写正文（避免第二份真相源），改为在每个
+    有细则的包末尾追加一条**解码规则**——指针的「域, 主题」即本包 `references/主题.md`。
 - 未应答的人工确认不再阻塞后续会话（自动愈合）；流式回退路径不再丢失待确认审批。
 - 下发失败的重投递改为补发既有回复，不再重跑模型重复计费；空回复不再下发。
 - 多应用宿主下回复不再以默认应用身份误发到其他租户。
 - `minutes.get_artifacts` 逐字稿分窗口参数此前被丢弃（恒返回预览），现真实生效。
 - 知识召回的 `has_answer` 不再被中间事件重置导致答案被丢弃。
+- `chatgroup.create_chat` / `chatgroup.add_manager` 的工具描述与执行器回执不一致（描述承诺
+  「返回无效 ID 列表」，实际一个不投影、一个返回管理员全量名单）——模型据此会向用户误报拉人失败明细，
+  现已按实现改写；同批校正 `Guidance/chatgroup.md` 的回执口径。
+- `im.get_message_read_users` 声明了 `page_token` / `fetch_all` 入参，单页结果却用无翻页契约的信封
+  投影——模型既看不到 `has_more` 也拿不到续翻游标，等于「能传游标却翻不了页」；现改走统一分页信封，
+  与输出 Schema 声明一致。
+- MCP 协议层读取 `method` 字段用了 `GetValue<string>()`，且该调用落在 try/catch 之外：客户端把 `method`
+  写成非字符串（数字 / 对象）时，stdio 链抛出 `InvalidCastException` 而不是回 `-32600`，一条畸形请求就能
+  打断整条会话。现统一经 `McpJson.ReadOptionalString`（字段缺席与非字符串同判为「没有方法」），HTTP 形态
+  同样回 200 + 协议错误信封。
 - Token 计数精确化（此前词表缺失恒走字符估算）。
 - 安全：邮件头 CR/LF 注入被拒；IPv6 回环地址白名单校验生效；AOT 严格模式下消除全部
   `IL2026` / `IL3050` 裁剪告警。
+
+### 文档与测试
+
+- **新增工具面三层评测体系**（`Tests/Mud.Feishu.AI.Tools.Tests/Eval/`，8 个类 + 3 份 JSON 资产、26 条执行用例；
+  发布的工具面**零变化**，未新增工具、未改任何声明）：① 工具选择 192 条真实用户说法 / 34 个域；② 参数生成 41 条
+  （20 条按 JSON Schema 校验 + 21 条交真实执行链判定，两层都含「应通过」与「应被拒」两种极性）；③ 端到端场景
+  9 个 / 24 步，覆盖只读默认、强制授权、放开授权、风险上限、人工确认五种装配剖面与 7 类结局桶。评测集是
+  **资源文件而不是代码**——改工具面只动 JSON。全程离线：零网络、零新增依赖、无 sleep，写类工具一律以 `dry_run`
+  预演断言（只有无下游调用的元工具断言真实成功）。测试装配工厂同步增加一个可选的服务配置钩子，供按剖面追加注册。
+- **报告可复现**：同一命令两次独立运行的报告**逐字节相同**（由用例锁定），内含未中首位清单、参数双层判定、
+  场景结局桶，以及四类失败分类（选错工具 / 参数错 / 幻觉工具名 / 授权拒）。首轮基线：pass@1 **47.9%**、
+  pass@3 **71.9%**、pass@5 **80.2%**、幻觉工具名 **0**；阈值以「只涨不跌」的棘轮下界进门禁，空集一律报红。
+- **口径说明（防数字被误读）**：选择层是确定性词汇检索（TF-IDF），度量的是**工具描述的判别度**，不是任何大模型的
+  准确率。实测加 per-tool affordance 视图后词汇级 pass@1 由 47.9% 变为 45.3% ⇒ affordance 的收益不体现在字面检索上，
+  「补 affordance 即提升选择准确率」不得作为承诺。
+- **评测顺带核实、登记为后续待改的三条事实**（本版不改产品行为）：365 枚工具中**仅 2 枚**在 JSON Schema 上声明
+  枚举取值（其余闭集由执行器判定 ⇒ 参数质量只能靠执行链层度量）；`markdown.patch` / `markdown.overwrite` 的
+  `idempotency_key` 在 Schema 标为可选、执行链按必填拦截（两层分歧）；多维表格筛选/排序文法的拒绝走
+  **未分类的第二错误出口**（回执文本以 `[tool_error]` 开头而错误分类字段为空），机器可分辨性待收口。
+- 验证：标准档门禁全绿（**5,496 通过 + 25 门控跳过**；`Mud.Feishu.AI.Tools.Tests` 1638 通过，净增 26 条
+  全部来自评测），golden **逐字节零漂移**（未新增工具、未改任何声明 ⇒ 无需重固化，skills 与权限对照表零差异）。
+- **装配自检与成本出口的配套用例**：`FeishuDiagnosticsProbeTests`（探针逐码触发条件、严重度分档、
+  重复调用逐字节相同、`probe_fault` 不抛出）、`DoctorDemoTests`（占位凭证容器的装配读数与报告渲染）、
+  `FeishuAgentTelemetryTests` 增 5 条（2 条：token 计数三方向、无 Activity 时仍计数；3 行理论：缺项/零/负值不计数）、
+  `FeishuToolResultTokensTests`（读数为 shaping 后文本、shaper 改写的内容才是被计数的那一份、拒绝路径不计数）、
+  `FeishuMcpToolServerTests` 增 3 条（`_meta` 自描述与**实际服务对象**同源、资源读数随开关变化）。
+  发布的工具面**零变化**（365 枚 / 34 域 / affordance 221 份全部不变，未新增工具、未改任何 `[AgentTool]`
+  声明 ⇒ golden 无需重固化），公开面 449→**454**（自检契约的 5 个 public 类型，消费方理由同批登记）。
+- 验证：标准档门禁全绿（**5,539 通过 + 25 门控跳过 = 5,564 总计**；净增 43 条全部来自本批：
+  `Mud.Feishu.AI.Tools.Tests` 1638→1665、`Mud.Feishu.AI.Tests` 448→453、`Mud.Feishu.Agent.Demo.Tests` 165→176）。
+- **Skills 产物的真实消费实证与配套守卫**（`documents/AIAgent/Skills外部消费实证报告.md`）：把一个装了产物副本的
+  外部 Agent harness 当真实消费者跑了一遍——三层渐进披露（发现列表只带 `description`、正文按需注入、
+  `references/*.md` 再读一次）实测可用，非标准 frontmatter 键 `package_version` 被接受。产物 34→**35** 个
+  `SKILL.md`（新增单入口路由）、51→**52** 个 md；清单行 365 条 ≡ golden、超预算 0 条。守卫 **+8**：域路由表
+  逐行重算并与工具集合双向闭合、每条清单行的权限与身份判据可达性、截断策略自证（含「短描述逐字节不变」与「无契约可回填时不挂空壳尾注」两极）、
+  细则指针必须能落到 `references/` 文件（`scanned > 0` 防假绿）。**诚实边界**：只覆盖 1 个 harness，
+  Claude Code / Cursor 未做真机记录；顺带核实并登记 6 枚工具的**描述散文与 Schema 元数据不符**
+  （4 枚漏写 `required_scopes`、2 枚 user 身份未在散文声明）——属策展层内容缺陷，根治要改 `[AgentTool]`
+  描述并触发 golden 重固化，不在本版范围。
+- 验证：标准档门禁全绿（**5,603 通过 + 25 门控跳过 = 5,628 总计**；净增 8 条全部来自上条，
+  `Mud.Feishu.AI.Tools.Tests` 1721→1729，其余 10 个程序集逐项不变），golden **逐字节零漂移**
+  （未新增工具、未改任何 `[AgentTool]` 声明），公开面仍 458。
 
 ### 依赖（Dependencies）
 

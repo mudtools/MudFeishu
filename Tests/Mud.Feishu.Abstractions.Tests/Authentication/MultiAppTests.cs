@@ -186,7 +186,7 @@ public class MultiAppTests
     }
 
     [Fact]
-    public void MultiApp_DuplicateAppKeys_ShouldOverwrite()
+    public void MultiApp_DuplicateAppKeys_ShouldThrowOnRegistration()
     {
         // Arrange
         var services = CreateServiceCollection();
@@ -204,25 +204,51 @@ public class MultiAppTests
             {
                 AppKey = AppConfigs.AppKeys.App1,
                 AppId = AppConfigs.AppIds.App2,
+                AppSecret = AppConfigs.Secrets.App2
+            }
+        };
+
+        using var provider = services.BuildServiceProvider();
+
+        // Act & Assert：构造期硬失败，不再"后注册覆盖先注册"
+        var ex = Assert.Throws<InvalidOperationException>(() => new FeishuAppManager(
+            provider,
+            configs,
+            provider.GetRequiredService<ILogger<FeishuAppManager>>()));
+        Assert.Contains(AppConfigs.AppKeys.App1, ex.Message);
+    }
+
+    [Fact]
+    public void MultiApp_MultipleDefaultApps_ShouldThrowOnRegistration()
+    {
+        // Arrange
+        var services = CreateServiceCollection();
+
+        var configs = new List<FeishuAppConfig>
+        {
+            new FeishuAppConfig
+            {
+                AppKey = AppConfigs.AppKeys.App1,
+                AppId = AppConfigs.AppIds.App1,
+                AppSecret = AppConfigs.Secrets.App1,
+                IsDefault = true
+            },
+            new FeishuAppConfig
+            {
+                AppKey = AppConfigs.AppKeys.App2,
+                AppId = AppConfigs.AppIds.App2,
                 AppSecret = AppConfigs.Secrets.App2,
                 IsDefault = true
             }
         };
 
-        services.AddSingleton<IFeishuAppManager>(sp => new FeishuAppManager(
-            sp,
+        using var provider = services.BuildServiceProvider();
+
+        // Act & Assert：多个默认应用会使默认应用随注册顺序漂移，构造期硬失败
+        Assert.Throws<InvalidOperationException>(() => new FeishuAppManager(
+            provider,
             configs,
-            sp.GetRequiredService<ILogger<FeishuAppManager>>()));
-
-        var provider = services.BuildServiceProvider();
-        var appManager = provider.GetRequiredService<IFeishuAppManager>();
-
-        // Act
-        var app = appManager.GetApp(AppConfigs.AppKeys.App1);
-
-        // Assert
-        Assert.NotNull(app);
-        Assert.Equal(AppConfigs.AppIds.App2, app.Config.AppId);
+            provider.GetRequiredService<ILogger<FeishuAppManager>>()));
     }
 
     [Fact]

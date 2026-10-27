@@ -27,10 +27,15 @@ internal static class GuardProviderFactory
     /// <b>不</b>触发软缺席"（<c>TaskTools</c> 的 <c>IFeishuUserV2Task?</c> 是可选依赖，
     /// 缺席时 <c>task.list_my_tasks</c> 仍在位、由执行期回填结构化错误）。
     /// </param>
+    /// <param name="configureServices">
+    /// 追加宿主钩子注册（授权器 / 批准通道等）——执行链评测需要按剖面注入不同宿主策略，
+    /// 默认 <see langword="null"/> 保持既有调用点行为逐位不变。
+    /// </param>
     internal static ServiceProvider CreateProvider(
         Action<FeishuAgentOptions> configureOptions,
         bool withAttachmentStager = true,
-        bool withUserTaskClient = true)
+        bool withUserTaskClient = true,
+        Action<IServiceCollection>? configureServices = null)
     {
         var options = new FeishuAgentOptions { Instructions = "test" };
         configureOptions(options);
@@ -89,6 +94,10 @@ internal static class GuardProviderFactory
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1MinutesMinute>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DriveFolder>().Object)
             .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DriveFiles>().Object)
+            // docx.history_list / docx.media_insert 的跨域客户端：版本列表为 DocxDeepTools 的
+            // **必选**依赖（缺席 ⇒ 10 个 docx 深化工具整体软缺席），媒体上传为可空依赖。
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DriveFilesVersions>().Object)
+            .AddSingleton(new Mock<Mud.Feishu.IFeishuTenantV1DriveMedia>().Object)
             // MUDFT022：drive 协作面执行器（DriveCommentTools / DrivePermissionTools）的两个客户端——
             // 缺席时该域软缺席，AddFeishuTools_ShouldRegisterExactlyTheContractTools 的
             // "注册表 ≡ 契约表 125 项"断言必然落空。
@@ -127,6 +136,7 @@ internal static class GuardProviderFactory
         }
 
         // R-8：同义入口 AddFeishuReadonlyTools 已删除，全域入口只有 AddFeishuTools。
+        configureServices?.Invoke(services);
         return services.AddFeishuTools().BuildServiceProvider();
     }
 }

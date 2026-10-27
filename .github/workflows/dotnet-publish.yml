@@ -37,6 +37,16 @@ env:
     10.0.x
   CONFIGURATION: "Release" # 构建配置
   SOLUTION_FILE: "Mud.Feishu.slnx" # 解决方案文件
+  # testhost 握手超时（秒，VSTest 默认 90）。
+  # 2026-10-23 的 windows-latest 运行里，首批 4 个测试宿主并发冷启动时，
+  # 3 个（Abstractions / AI / AI.Tools）在 90s 内**始终没有完成 vstest.console 握手**
+  # （"vstest.console process failed to connect to testhost process after 90 seconds
+  #  ... The process with id X was still running"），各自落一个 total=0 的 TRX 后
+  # "Test Run Aborted"，整个 job 因此 Build FAILED —— 而同一批次的另外 8 个工程（含
+  # 后续波次的 4 个并发 net8.0 宿主）全部通过，故这是**runner 冷启动/杀软扫描**
+  # 类的启动预算问题，不是用例失败。放宽到 300s 让慢启动不再被判定为中止；
+  # 真正的「宿主起不来」由下方 Run tests 的 total=0 断言点名（不再靠超时兜底）。
+  VSTEST_CONNECTION_TIMEOUT: "300"
 
 jobs:
   # 第一个作业：负责构建和测试（支持多操作系统）
@@ -196,6 +206,16 @@ jobs:
       # （MSB4181），MSBuild 末尾只会打印「生成失败 / 0 个错误」，并把整个构建里仅有的无关警告
       # （net6.0 测试工程传递引用 10.0.x 包的 NETStandardCompatError_*）列进失败摘要，极易误判为警告导致失败。
       # 因此保留完整测试日志，并在失败时高亮失败用例 / 中止信息。
+      #
+      # 逐工程执行（2026-10-23 事故修复，勿改回单条 `dotnet test $SOLUTION_FILE`）：
+      # 单条 `dotnet test <slnx>` 会让 MSBuild 按节点数（windows-latest 4 核 ⇒ 4 个）**并发**起测试宿主。
+      # 实测首批 4 个宿主冷启动时，3 个在 90s 内没有完成与 vstest.console 的握手，各自落一个 total=0 的
+      # TRX 后 "Test Run Aborted"：VSTestTask 返回 false 但不记 MSBuild 错误（MSB4181），失败信息里
+      # 只有一句 "failed to connect to testhost process"，既看不出是哪个工程，也无法定位原因。
+      # 逐工程串行执行换来三件事：① 宿主启动不再互相抢 CPU/文件缓存（冷启动预算陡增）；
+      # ② 每个工程独占结果目录与 TRX，「哪个工程没跑起来」由目录名直接可见（不再靠 [1]/[2] 后缀猜）；
+      # ③ 可对单个工程做「total=0 ⇒ 重试一次」的自愈，而不必整段重跑。
+      # 同时与 scripts/verify-build.ps1 步骤 4 的 GATE-4 口径一致（AGENTS.md 已声明「CI mirrors this」）。
       - name: Run tests
         id: test
         shell: pwsh
@@ -209,6 +229,10 @@ jobs:
           # 提前写入 GITHUB_ENV：即使本步骤后续失败，摘要/上传步骤（if: always()）也能拿到该路径。
           "MUD_TEST_RESULTS_DIR=$resultsDir" | Out-File -FilePath $env:GITHUB_ENV -Append
           $log = Join-Path $resultsDir 'mudfeishu-test.log'
+          # 日志统一经 Tee-Object 落盘：与下方 dotnet 输出走同一个写入器/编码，
+          # 避免「Marker 用 Set-Content、正文用 Tee-Object」在 Windows PowerShell 5.1
+          # （Add-Content 默认 ANSI、Tee-Object 默认 UTF-16）下混出无法 grep 的半截乱码。
+          "==== dotnet test started: $(Get-Date -Format o) ====" | Tee-Object -FilePath $log | Out-Null
 
           # T-R2-04：启用真实 Redis 集成测试（Testcontainers.Redis，需 Docker daemon）。
           # ubuntu-latest runner 自带 Docker；GITHUB_ENV 仅对「后续步骤」生效，
@@ -221,24 +245,106 @@ jobs:
             Write-Host '[WARN] 非 Linux runner：未启用 Redis 集成测试（集成用例将被显式跳过，覆盖缺口见 scripts/verify-build.ps1 步骤 5）' -ForegroundColor Yellow
           }
 
-          # --results-directory + --logger trx 的组合下，VSTest 为每个（测试工程, TFM）组合各落盘一个
-          # TRX；同名时自动追加 [1]/[2] 后缀而非覆盖。TFM 已收敛为 net8.0（Agent.Demo.Tests 例外
-          # net10.0），组合数随 TFM 收敛减少，结果集全部保留。
-          #
+          # 工程清单从 .slnx 解析（glob 化，不写死数量）；只取 Project 条目，跳过 File 条目。
+          $testProjects = @()
+          $slnxContent = Get-Content -LiteralPath $env:SOLUTION_FILE -Raw -Encoding utf8
+          foreach ($m in [regex]::Matches($slnxContent, '<Project Path="(Tests/[^"]+)"')) {
+            $testProjects += (Join-Path $env:GITHUB_WORKSPACE ($m.Groups[1].Value -replace '/', '\'))
+          }
+          if ($testProjects.Count -eq 0) {
+            Write-Host '::error::未从 .slnx 解析到任何测试工程 —— 工程清单解析已失效，拒绝以「零工程全绿」收场。'
+            '未从 .slnx 解析到任何测试工程' | Tee-Object -FilePath $log -Append | Out-Null
+            exit 1
+          }
+          Write-Host "从 $env:SOLUTION_FILE 解析到 $($testProjects.Count) 个测试工程，逐个执行。" -ForegroundColor Cyan
+
           # 过滤口径与 scripts/verify-build.ps1 步骤 4 对齐（WSR2-14 + 测试体系治理 §三.3）：
           #   Category!=Stress  压力/长稳用例不进门禁（慢且引入不稳定性）
           #   Category!=Timing  计时敏感用例在高负载下抖动出假红（500ms 阈值实测 2.6s），仅本地 -Full 档执行
-          dotnet test $env:SOLUTION_FILE --no-build --configuration $env:CONFIGURATION --results-directory $resultsDir --logger trx --verbosity normal --filter "Category!=Stress&Category!=Timing" 2>&1 |
-            Tee-Object -FilePath $log
-          if ($LASTEXITCODE -ne 0) {
+          $testFilter = 'Category!=Stress&Category!=Timing'
+          $problems = New-Object System.Collections.Generic.List[string]
+
+          # 跑一次工程，返回本次新增 TRX 的合计读数。
+          # 不指定 LogFileName：让 VSTest 自己命名（多 TFM 时自动加 [1]/[2] 后缀不会互相覆盖），
+          # 再按「运行前后的文件差集」只统计本次结果 —— 这样重试不会把上一轮的 total 混进来。
+          function Invoke-TestProject {
+            param([string]$Project, [string]$Label, [int]$Attempt)
+            $runDir = Join-Path $resultsDir $Label
+            New-Item -ItemType Directory -Path $runDir -Force | Out-Null
+            $before = @(Get-ChildItem -LiteralPath $runDir -Filter '*.trx' -File -ErrorAction SilentlyContinue |
+                ForEach-Object { $_.FullName })
+            '' | Tee-Object -FilePath $log -Append | Out-Null
+            "---- [$Label] attempt $Attempt -> $Project ----" | Tee-Object -FilePath $log -Append | Out-Null
+            $testArgs = @('test', $Project, '--no-build', '--configuration', $env:CONFIGURATION,
+              '--results-directory', $runDir, '--logger', 'trx', '--verbosity', 'normal',
+              '--filter', $testFilter)
+            dotnet @testArgs 2>&1 | Tee-Object -FilePath $log -Append | Out-Host
+            $exitCode = $LASTEXITCODE
+
+            $total = 0; $passed = 0; $failed = 0
+            $newTrx = @(Get-ChildItem -LiteralPath $runDir -Filter '*.trx' -File -ErrorAction SilentlyContinue |
+                Where-Object { $before -notcontains $_.FullName })
+            foreach ($trx in $newTrx) {
+              try {
+                [xml]$doc = Get-Content -LiteralPath $trx.FullName -Raw -Encoding utf8
+                $counters = $doc.TestRun.ResultSummary.Counters
+                if ($counters) {
+                  $total += [int]$counters.total
+                  $passed += [int]$counters.passed
+                  $failed += [int]$counters.failed
+                }
+              }
+              catch {
+                Write-Host "  [WARN] 解析 TRX 失败：$($trx.Name) - $_" -ForegroundColor Yellow
+              }
+            }
+            return [pscustomobject]@{
+              ExitCode = $exitCode; Total = $total; Passed = $passed; Failed = $failed; TrxCount = $newTrx.Count
+            }
+          }
+
+          foreach ($project in $testProjects) {
+            $label = [System.IO.Path]::GetFileNameWithoutExtension($project)
+            Write-Host "  -> $label" -ForegroundColor DarkGray
+            $result = Invoke-TestProject -Project $project -Label $label -Attempt 1
+
+            # total=0 是「宿主没起来 / 握手失败 / 运行中止」的指纹（VSTest 照样写 TRX 且可能返回非零码）。
+            # 这类失败与用例内容无关，单工程重试一次即可自愈；真的起不来则在下一次判定里点名失败。
+            if ($result.Total -le 0) {
+              Write-Host "  [RETRY] $label：首次运行未执行任何用例（testhost 未握手 / 运行中止），单工程重试一次" -ForegroundColor Yellow
+              "[RETRY] $label 首次运行 total=0（exit=$($result.ExitCode)），重试一次" | Tee-Object -FilePath $log -Append | Out-Null
+              $result = Invoke-TestProject -Project $project -Label $label -Attempt 2
+            }
+
+            if ($result.Total -le 0) {
+              $problems.Add("$label 未执行任何用例（testhost 启动/握手失败，重试后仍为空；见该目录 TRX 与日志）")
+              Write-Host "  [FAIL] $label 未执行任何用例（total=0，exit=$($result.ExitCode)）" -ForegroundColor Red
+            }
+            elseif ($result.Failed -gt 0) {
+              $problems.Add("$label 失败 $($result.Failed) 项（总计 $($result.Total)）")
+              Write-Host "  [FAIL] $label 失败 $($result.Failed) / 总计 $($result.Total)" -ForegroundColor Red
+            }
+            elseif ($result.ExitCode -ne 0) {
+              $problems.Add("$label 退出码 $($result.ExitCode)（TRX 无失败用例，可能存在跳过/中断）")
+              Write-Host "  [FAIL] $label 退出码 $($result.ExitCode)，TRX 未记录失败用例" -ForegroundColor Red
+            }
+            else {
+              Write-Host "  [ OK ] $label 通过 $($result.Passed) / 总计 $($result.Total)" -ForegroundColor Green
+            }
+          }
+
+          if ($problems.Count -gt 0) {
             Write-Host ''
             Write-Host '==== 测试阶段失败：以下为失败用例 / 中止信息（MSBuild 摘要中的“0 个错误”不代表成功）====' -ForegroundColor Red
-            Select-String -Path $log -Pattern '^\s*(失败|Failed)\s+Mud\.|\[FAIL\]|测试运行失败|测试运行已中止|Test Run Failed|Test Run Aborted|(失败|Failed)! - (失败|Failed):\s*[1-9]' |
+            $problems | ForEach-Object { Write-Host "    - $_" -ForegroundColor Red }
+            Select-String -Path $log -Pattern '^\s*(失败|Failed)\s+Mud\.|\[FAIL\]|\[RETRY\]|测试运行失败|测试运行已中止|Test Run Failed|Test Run Aborted|vstest\.console process failed to connect|(失败|Failed)! - (失败|Failed):\s*[1-9]' |
               ForEach-Object { Write-Host $_.Line.Trim() -ForegroundColor Red }
             Write-Host ''
             Write-Host '完整日志与 TRX 见制品 test-results-${{ matrix.os }}（TestResults/），用例明细见下一步摘要。' -ForegroundColor Yellow
             exit 1
           }
+          Write-Host ''
+          Write-Host "全部测试工程通过（$($testProjects.Count) 个）。" -ForegroundColor Green
 
       # 步骤5.5：测试结果摘要（直接解析 TRX，locale 无关）
       # 目的：不下载制品也能在 Actions 日志里看到「哪个工程/TFM 失败、失败用例叫什么」。
@@ -277,11 +383,14 @@ jobs:
               $total += $t
               $color = if ($f -gt 0) { 'Red' } else { 'Green' }
               $state = if ($f -gt 0) { '[FAIL]' } else { '[ OK ]' }
-              Write-Host ("  {0} {1,-44} 总计 {2,5}  通过 {3,5}  失败 {4,5}" -f $state, $trx.BaseName, $t, $p, $f) -ForegroundColor $color
+              # 逐工程执行后 TRX 落在「工程名」子目录里，用相对路径当标签：
+              # total=0 的那一行只可能是「宿主没起来」，标签里带工程名才一眼可读。
+              $label = $trx.FullName.Substring($resultsDir.Length).TrimStart('\', '/')
+              Write-Host ("  {0} {1,-52} 总计 {2,5}  通过 {3,5}  失败 {4,5}" -f $state, $label, $t, $p, $f) -ForegroundColor $color
               foreach ($r in @($doc.TestRun.Results.UnitTestResult)) {
                 if ($r.outcome -eq 'failed') {
                   $name = if ($r.testName) { $r.testName } else { "$($r.TestMethod.className).$($r.TestMethod.name)" }
-                  $failedNames.Add("[$($trx.BaseName)] $name")
+                  $failedNames.Add("[$label] $name")
                 }
               }
             }

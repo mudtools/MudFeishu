@@ -408,6 +408,45 @@ public class FeishuWebSocketServiceBuilder
     }
 
     /// <summary>
+    /// 解析并校验 WebSocket 连接绑定的应用键。
+    /// </summary>
+    /// <remarks>
+    /// 一条 WebSocket 连接只能绑定一个应用：单应用模式自动解析默认应用键，
+    /// 多应用模式必须显式配置 <see cref="FeishuWebSocketOptions.AppKey"/>，否则启动期即失败。
+    /// 未注册 <see cref="IFeishuAppManager"/> 的旧单上下文场景保持原样（不解析）。
+    /// </remarks>
+    private static FeishuWebSocketOptions ResolveAppKeyAndValidate(
+        IServiceProvider serviceProvider,
+        FeishuWebSocketOptions options)
+    {
+        var appManager = serviceProvider.GetService<IFeishuAppManager>();
+        if (appManager == null)
+            return options;
+
+        var configured = appManager.ConfiguredAppKeys;
+
+        if (!string.IsNullOrWhiteSpace(options.AppKey))
+        {
+            if (!configured.Contains(options.AppKey!, StringComparer.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    $"FeishuWebSocket:AppKey '{options.AppKey}' 未在已配置的应用中注册。");
+            }
+
+            return options;
+        }
+
+        if (configured.Count > 1)
+        {
+            throw new InvalidOperationException(
+                "多应用模式下必须显式配置 FeishuWebSocket:AppKey（一条 WebSocket 连接只能绑定一个应用）。");
+        }
+
+        options.AppKey = appManager.DefaultAppKey ?? configured.FirstOrDefault();
+        return options;
+    }
+
+    /// <summary>
     /// 注册核心服务
     /// </summary>
     private void RegisterCoreServices()
@@ -549,6 +588,8 @@ public class FeishuWebSocketServiceBuilder
             var interceptors = serviceProvider.GetRequiredService<IFeishuEventInterceptor[]>();
             // 传入 IOptionsMonitor 而非 CurrentValue 快照
             var optionsMonitor = serviceProvider.GetRequiredService<IOptionsMonitor<FeishuWebSocketOptions>>();
+            // 连接级应用绑定：单应用自动解析，多应用必须显式配置（未配置即 fail-fast）。
+            var options = ResolveAppKeyAndValidate(serviceProvider, optionsMonitor.CurrentValue);
             var seqIdDeduplicator = serviceProvider.GetService<IFeishuSeqIDDeduplicator>();
             var sessionManager = serviceProvider.GetService<SessionManager>();
             var sequenceValidator = serviceProvider.GetService<MessageSequenceValidator>();
@@ -563,7 +604,7 @@ public class FeishuWebSocketServiceBuilder
             var failedEventStore = serviceProvider.GetService<IFailedEventStore>();
             return new FeishuWebSocketClient(
                 logger, eventHandlerFactory, loggerFactory,
-                eventDeduplicator, interceptors, options: optionsMonitor.CurrentValue,
+                eventDeduplicator, interceptors, options: options,
                 seqIdDeduplicator, sessionManager, sequenceValidator,
                 concurrencyService, optionsMonitor, unifiedDedupMiddleware,
                 failedEventStore: failedEventStore);

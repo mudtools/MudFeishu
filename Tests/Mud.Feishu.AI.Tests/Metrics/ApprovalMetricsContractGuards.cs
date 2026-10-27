@@ -29,13 +29,18 @@ public class ApprovalMetricsContractGuards
     /// <summary>
     /// 守卫 ②：ApprovalOutcomes 枚举常量全部有定义且非空（防高基数）。
     /// </summary>
+    /// <remarks>
+    /// 闭集由「生命周期六态」（<c>feishu.agent.approval</c>）+「解决两态」
+    /// （<c>feishu.agent.approval.resolved</c> 的 approved / denied）构成；两族共用同一字面量闭集
+    /// 而非各建一个嵌套类——它们是同一审批对象的两个观测点，分开会让"结果取值"出现第二份真相源。
+    /// </remarks>
     [Fact]
     public void ApprovalOutcomes_AllConstants_ShouldBeDefined()
     {
         var fields = typeof(FeishuMetrics.ApprovalOutcomes)
             .GetFields(BindingFlags.Public | BindingFlags.Static);
 
-        fields.Should().HaveCount(6, "审批生命周期六态闭集");
+        fields.Should().HaveCount(8, "审批生命周期六态 + 解决两态闭集");
 
         var expectedNames = new[]
         {
@@ -45,6 +50,8 @@ public class ApprovalMetricsContractGuards
             nameof(FeishuMetrics.ApprovalOutcomes.Replayed),
             nameof(FeishuMetrics.ApprovalOutcomes.Expired),
             nameof(FeishuMetrics.ApprovalOutcomes.Consumed),
+            nameof(FeishuMetrics.ApprovalOutcomes.Approved),
+            nameof(FeishuMetrics.ApprovalOutcomes.Denied),
         };
 
         foreach (var name in expectedNames)

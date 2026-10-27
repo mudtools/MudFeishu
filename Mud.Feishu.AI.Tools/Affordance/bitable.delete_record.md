@@ -4,7 +4,7 @@
 
 ## Avoid when
 
-- 记录仍有留痕价值（历史核对 / 审计）——改用 `bitable.update_record` 标记状态。
+- 记录仍有留痕价值（历史核对 / 审计）——改用 `bitable.record_batch_update` 标记状态。
 - 只是想清掉某个字段的值——更新该字段即可，不必删整条记录。
 
 ## Prerequisites

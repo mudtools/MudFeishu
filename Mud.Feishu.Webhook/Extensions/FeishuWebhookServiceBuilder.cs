@@ -216,8 +216,17 @@ public class FeishuWebhookServiceBuilder
     /// 添加事件处理器实例
     /// </summary>
     /// <typeparam name="THandler">处理器类型</typeparam>
-    /// <param name="handlerInstance">处理器实例</param>
+    /// <param name="handlerInstance">处理器实例（<b>所有权移交容器</b>，见 remarks）</param>
     /// <returns>建造者实例，支持链式调用</returns>
+    /// <remarks>
+    /// <b>W-05：按 Singleton 注册</b>——实例注册的语义只能是"进程级共享"。此前以
+    /// <c>AddScoped&lt;T&gt;(_ =&gt; instance)</c> 注册时，DI 会对该实例执行 <c>CaptureDisposable</c>，
+    /// 于是<b>首个请求的 scope 结束即释放</b>共享实例，后续请求拿到已释放对象。
+    /// <para>
+    /// 由此产生两条使用约束：① 实例会被容器持有至进程结束，必须<b>线程安全</b>；
+    /// ② 需要按请求隔离状态的场景请改用 <see cref="AddHandler{THandler}()"/>（类型注册）。
+    /// </para>
+    /// </remarks>
     public FeishuWebhookServiceBuilder AddHandler<THandler>(THandler handlerInstance)
         where THandler : class, IFeishuEventHandler
     {
@@ -226,8 +235,8 @@ public class FeishuWebhookServiceBuilder
 
         _handlerTypes.Add(typeof(THandler));
         _globalHandlerTypes.Add(typeof(THandler));   // R3-P1-4：实例注册同样是“全局注册”
-        _services.AddScoped<IFeishuEventHandler>(_ => handlerInstance);
-        _services.AddScoped<THandler>(_ => handlerInstance);
+        _services.AddSingleton<IFeishuEventHandler>(handlerInstance);
+        _services.AddSingleton<THandler>(handlerInstance);
         return this;
     }
 
@@ -273,8 +282,9 @@ public class FeishuWebhookServiceBuilder
     /// 添加事件拦截器实例
     /// </summary>
     /// <typeparam name="TInterceptor">拦截器类型</typeparam>
-    /// <param name="interceptorInstance">拦截器实例</param>
+    /// <param name="interceptorInstance">拦截器实例（<b>所有权移交容器</b>，必须线程安全）</param>
     /// <returns>建造者实例，支持链式调用</returns>
+    /// <remarks>与 <see cref="AddHandler{THandler}(THandler)"/> 同口径（W-05）：按 Singleton 注册，容器关停时释放。</remarks>
     public FeishuWebhookServiceBuilder AddInterceptor<TInterceptor>(TInterceptor interceptorInstance)
         where TInterceptor : class, IFeishuEventInterceptor
     {
@@ -283,8 +293,8 @@ public class FeishuWebhookServiceBuilder
 
         _interceptorTypes.Add(typeof(TInterceptor));
         _globalInterceptorTypes.Add(typeof(TInterceptor));   // R3-P2-3：实例注册同样是“全局注册”
-        _services.AddScoped<IFeishuEventInterceptor>(_ => interceptorInstance);
-        _services.AddScoped<TInterceptor>(_ => interceptorInstance);
+        _services.AddSingleton<IFeishuEventInterceptor>(interceptorInstance);
+        _services.AddSingleton<TInterceptor>(interceptorInstance);
         return this;
     }
 
@@ -583,6 +593,13 @@ public class FeishuWebhookServiceBuilder
         // 确保基本配置存在，并注册多应用的处理器和拦截器
         _services.PostConfigure<FeishuWebhookOptions>(options =>
         {
+            // W-04：路由前缀归一化（`"/feishu"` / `"feishu/"` / `" feishu "` → `"feishu"`）。
+            // 与下方 `config.AppKey = 字典键` 同属"派生生效字段"，故放在 PostConfigure：
+            // ① 所有消费方（含第三方读 GlobalRoutePrefix）看到的都是生效值，不必各自 Trim；
+            // ② 幂等，配置热更重放安全（每次重建都归一化到同一形态）；
+            // ③ 必须在 options.Validate() 之前——校验读的是归一化后的最终值。
+            options.GlobalRoutePrefix = Mud.Feishu.Webhook.Utils.WebhookPathHelper.NormalizePrefix(options.GlobalRoutePrefix);
+
             // 仅在用户显式调用 EnableAutoEndpoint()/DisableAutoEndpoint() 时覆盖配置值
             // 否则尊重 appsettings.json 中的配置
 #pragma warning disable CS0618 // 该开关无运行时效果，仅为源码级兼容而保留
@@ -674,7 +691,10 @@ public class FeishuWebhookServiceBuilder
             {
                 var mode = unified.Mode ?? FeishuDeduplicationOptions.DefaultMode;
                 if (string.Equals(mode, FeishuDeduplicationOptions.ModeNone, StringComparison.OrdinalIgnoreCase))
-                    return new NoopFeishuEventDeduplicator(logger as ILogger<NoopFeishuEventDeduplicator>);
+                    // NoopFeishuEventDeduplicator 的构造对 null 直接抛（ArgumentNullException）；
+                    // 无日志宿主（未注册 ILogger 泛型）时必须以 NullLogger 兜底，否则启动即失败。
+                    return new NoopFeishuEventDeduplicator(
+                        (ILogger?)logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance);
 
                 // 此处**不得**解析 IFeishuEventDeduplicator——本工厂正在构造该服务，
                 // 自解析会无限递归并导致 StackOverflowException（不可捕获，进程终止）。
@@ -768,20 +788,13 @@ public class FeishuWebhookServiceBuilder
         _services.TryAddScoped<IFeishuWebhookService, FeishuWebhookService>();
         _services.TryAddScoped<ISecurityAuditService, SecurityAuditService>();
 
-        // 中间件注册为 Singleton 使 IHost 关停时 Dispose 可达。
-        // UseMiddleware<T> 检测到 DI 注册后从容器解析实例，随容器 Dispose 释放
-        // _onChangeSubscription（MultiAppMiddleware）和 _cleanupTimer（RateLimitMiddleware）。
-        // 注意：不能用无工厂的 AddSingleton<T>()——Development 宿主默认 ValidateOnBuild=true，
-        // 会尝试构造实例，而 RequestDelegate 无法从 DI 解析，导致启动失败
-        // （开发环境启动即抛 "Unable to resolve service for type 'RequestDelegate'"）。
-        // 这里以工厂提供占位 RequestDelegate 仅供 DI 校验与容器关停 Dispose；
-        // 管道内实例仍由 UseMiddleware 的常规激活路径（ActivatorUtilities）创建。
-        _services.TryAddSingleton<FeishuMultiAppMiddleware>(sp =>
-            ActivatorUtilities.CreateInstance<FeishuMultiAppMiddleware>(
-                sp, (RequestDelegate)(_ => Task.CompletedTask)));
-        _services.TryAddSingleton<FeishuRateLimitMiddleware>(sp =>
-            ActivatorUtilities.CreateInstance<FeishuRateLimitMiddleware>(
-                sp, (RequestDelegate)(_ => Task.CompletedTask)));
+        // W-09：此处**不得**注册中间件（历史遗留的两处 TryAddSingleton 已删除）。
+        // UseMiddleware<T> 恒以 ActivatorUtilities.CreateInstance 构造**管道实例**，
+        // 与容器注册不是同一对象；此前的注册于是制造了"幻影实例"，带来三个真实后果：
+        //   ① 幻影实例同样订阅 IOptionsMonitor.OnChange ⇒ 每次配置变更执行两份回调（双份日志）；
+        //   ② 限流中间件被构造两次 ⇒ 多一个常驻但无用的 System.Threading.Timer；
+        //   ③ 注释宣称的"关停时 Dispose 可达"只释放幻影，管道实例的订阅/定时器仍不被释放。
+        // 中间件自身也不再依赖 IDisposable 资源（限流窗口改为请求路径上的机会式清扫）。
 
         // 去重「实现形态」与「部署形态」绑定检查（**单一** PostConfigure）。
         //

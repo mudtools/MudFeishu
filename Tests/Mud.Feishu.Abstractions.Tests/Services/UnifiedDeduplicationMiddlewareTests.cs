@@ -267,6 +267,94 @@ public class UnifiedDeduplicationMiddlewareTests
     }
 
     [Fact]
+    public async Task CheckAsync_WithAppKey_ShouldPassAppKeyToEventDeduplicator()
+    {
+        _eventDeduplicatorMock
+            .Setup(x => x.TryMarkAsProcessingAsync("event-123", "app-a", null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(DeduplicationResult.Success("event-123"));
+
+        var middleware = new UnifiedDeduplicationMiddleware(
+            eventDeduplicator: _eventDeduplicatorMock.Object,
+            seqIdDeduplicator: null,
+            options: _options,
+            logger: _loggerMock.Object);
+
+        var result = await middleware.CheckAsync("event-123", null, "app-a");
+
+        Assert.False(result.ShouldSkip);
+        _eventDeduplicatorMock.Verify(
+            x => x.TryMarkAsProcessingAsync("event-123", "app-a", null, null, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task MarkCompletedAsync_WithAppKey_ShouldPassAppKeyToEventDeduplicator()
+    {
+        var middleware = new UnifiedDeduplicationMiddleware(
+            eventDeduplicator: _eventDeduplicatorMock.Object,
+            seqIdDeduplicator: null,
+            options: _options,
+            logger: _loggerMock.Object);
+
+        await middleware.MarkCompletedAsync("event-123", null, "app-a");
+
+        _eventDeduplicatorMock.Verify(
+            x => x.MarkAsCompletedAsync("event-123", "app-a", It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task RollbackAsync_WithAppKey_ShouldPassAppKeyToEventDeduplicator()
+    {
+        var middleware = new UnifiedDeduplicationMiddleware(
+            eventDeduplicator: _eventDeduplicatorMock.Object,
+            seqIdDeduplicator: null,
+            options: _options,
+            logger: _loggerMock.Object);
+
+        await middleware.RollbackAsync("event-123", null, "app-a");
+
+        _eventDeduplicatorMock.Verify(
+            x => x.RollbackProcessingAsync("event-123", "app-a", It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task Extension_ShouldFallbackToLegacyInterface_WhenAppScopeNotSupported()
+    {
+        var legacy = new Mock<IUnifiedDeduplicationMiddleware>();
+        legacy
+            .Setup(x => x.CheckAsync("event-123", null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(UnifiedDeduplicationResult.Continue());
+
+        var result = await legacy.Object.CheckAsync("event-123", null, "app-a");
+
+        Assert.False(result.ShouldSkip);
+        legacy.Verify(x => x.CheckAsync("event-123", null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Extension_ShouldUseAppScopedInterface_WhenSupported()
+    {
+        _eventDeduplicatorMock
+            .Setup(x => x.TryMarkAsProcessingAsync("event-123", "app-a", null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(DeduplicationResult.Success("event-123"));
+
+        IUnifiedDeduplicationMiddleware middleware = new UnifiedDeduplicationMiddleware(
+            eventDeduplicator: _eventDeduplicatorMock.Object,
+            seqIdDeduplicator: null,
+            options: _options,
+            logger: _loggerMock.Object);
+
+        var result = await middleware.CheckAsync("event-123", null, "app-a");
+
+        Assert.False(result.ShouldSkip);
+        _eventDeduplicatorMock.Verify(
+            x => x.TryMarkAsProcessingAsync("event-123", "app-a", null, null, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
     public async Task DisposeAsync_ShouldDisposeDeduplicators()
     {
         _eventDeduplicatorMock

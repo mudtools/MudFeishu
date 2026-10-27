@@ -18,7 +18,7 @@ namespace Mud.Feishu.Abstractions.Authentication;
 /// 支持按用户标识隔离令牌数据。
 /// ITokenStore 的方法通过 UserTokenStoreBase 基类委托给内部 FeishuTokenStore 实现。
 /// </remarks>
-public class FeishuUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePurge
+public class FeishuUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePurge, IUserTokenStoreAccessTokenInvalidation
 {
     private readonly IMemoryCache _cache;
     private readonly string _appKey;
@@ -116,6 +116,18 @@ public class FeishuUserTokenStore : UserTokenStoreBase, IFeishuUserTokenStorePur
         UntrackUserTokenType(userId, tokenType);
         _cache.Remove(BuildUserAccessTokenKey(userId, tokenType));
         _cache.Remove(BuildUserRefreshTokenKey(userId, tokenType));
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// 仅删除访问令牌键，保留 refresh 键与记账（refresh 仍是唯一的续期凭据）。
+    /// </summary>
+    /// <param name="userId">用户标识</param>
+    /// <param name="tokenType">令牌类型</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    public Task InvalidateAccessTokenAsync(string userId, string tokenType, CancellationToken cancellationToken = default)
+    {
+        _cache.Remove(BuildUserAccessTokenKey(userId, tokenType));
         return Task.CompletedTask;
     }
 

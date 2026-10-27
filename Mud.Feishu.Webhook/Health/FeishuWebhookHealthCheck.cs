@@ -89,7 +89,27 @@ public class FeishuWebhookHealthCheck : IHealthCheck
             ["timestamp_tolerance_seconds"] = options.TimestampToleranceSeconds,
         };
 
-        // 并发槽位耗尽 → Unhealthy（最严重，优先判定）
+        // 先把积压维度取出来（数据项无论最终判定如何都应完整回写），再按
+        // **严重度从高到低**统一判定：Unhealthy > Degraded。此前"并发利用率 ≥80% → Degraded"
+        // 排在积压硬阈值之前，会让"利用率高 + 积压 600 条"这种真 Unhealthy 被降级报成 Degraded
+        // （监控仍会响，但严重度被吞掉）。
+        var backlog = -1;
+        var oldestAge = TimeSpan.Zero;
+        if (_failedEventStore is InMemoryFailedEventStore memStore)
+        {
+            backlog = memStore.GetFailedEventCount();
+            data["failed_event_backlog"] = backlog;
+
+            // F-2：最旧待重试事件年龄——补齐"积压条数正常但最旧事件卡死"的盲区
+            // （条数少、但每条都重试失败并不断推后 NextRetryAt 时，积压指标完全看不出来）。
+            oldestAge = memStore.GetOldestPendingAge();
+            data["oldest_pending_retry_age_seconds"] = Math.Round(oldestAge.TotalSeconds, 1);
+        }
+
+        const int backlogUnhealthyThreshold = 500;
+        const int backlogDegradedThreshold = 100;
+
+        // ① Unhealthy：并发槽位耗尽
         if (availableSlots <= 0)
         {
             return Task.FromResult(HealthCheckResult.Unhealthy(
@@ -98,7 +118,16 @@ public class FeishuWebhookHealthCheck : IHealthCheck
                 data));
         }
 
-        // 并发利用率 ≥ 80% → Degraded
+        // ② Unhealthy：失败事件积压超过硬阈值
+        if (backlog >= backlogUnhealthyThreshold)
+        {
+            return Task.FromResult(HealthCheckResult.Unhealthy(
+                $"失败事件积压 {backlog} 超过硬阈值 {backlogUnhealthyThreshold}",
+                null,
+                data));
+        }
+
+        // ③ Degraded：并发利用率 ≥ 80%
         var utilization = maxConcurrent > 0
             ? 1.0 - (double)availableSlots / maxConcurrent
             : 0;
@@ -110,30 +139,23 @@ public class FeishuWebhookHealthCheck : IHealthCheck
                 data));
         }
 
-        // 失败事件积压检测
-        if (_failedEventStore is InMemoryFailedEventStore memStore)
+        // ④ Degraded：最旧待重试事件超过 5 分钟仍未消费（退避链或重试服务已失效，比条数更早的告警信号）
+        if (oldestAge > TimeSpan.FromMinutes(5))
         {
-            var backlog = memStore.GetFailedEventCount();
-            data["failed_event_backlog"] = backlog;
+            return Task.FromResult(HealthCheckResult.Degraded(
+                $"最旧待重试事件已积压 {oldestAge.TotalMinutes:F1} 分钟（阈值 5 分钟），" +
+                "请检查 FailedEventRetryService 是否运行、处理器是否持续失败",
+                null,
+                data));
+        }
 
-            var degradedThreshold = 100;
-            var unhealthyThreshold = 500;
-
-            if (backlog >= unhealthyThreshold)
-            {
-                return Task.FromResult(HealthCheckResult.Unhealthy(
-                    $"失败事件积压 {backlog} 超过硬阈值 {unhealthyThreshold}",
-                    null,
-                    data));
-            }
-
-            if (backlog >= degradedThreshold)
-            {
-                return Task.FromResult(HealthCheckResult.Degraded(
-                    $"失败事件积压 {backlog} 超过软阈值 {degradedThreshold}",
-                    null,
-                    data));
-            }
+        // ⑤ Degraded：失败事件积压超过软阈值
+        if (backlog >= backlogDegradedThreshold)
+        {
+            return Task.FromResult(HealthCheckResult.Degraded(
+                $"失败事件积压 {backlog} 超过软阈值 {backlogDegradedThreshold}",
+                null,
+                data));
         }
 
         // R3-FEAT-4：生产 + 内存 Nonce 去重 = 静默的安全退化 → Degraded

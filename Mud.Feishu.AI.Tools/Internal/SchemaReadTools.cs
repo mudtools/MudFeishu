@@ -15,7 +15,7 @@ namespace Mud.Feishu.AI.Tools.Internal;
 /// </summary>
 /// <remarks>
 /// <para>
-/// 数据源是编译期 <see cref="FeishuToolMethodCatalog"/>（1268 个 SDK 方法的结构化事实），
+/// 数据源是编译期 <see cref="FeishuToolMethodCatalog"/>（1279 个 SDK 方法的结构化事实），
 /// 无下游调用、无网络、无租户依赖。支持三种查询模式：
 /// <list type="bullet">
 /// <item>精确匹配：给定方法限定名（如 <c>IFeishuTenantV1OkrPeriod.ListPeriodsAsync</c>），返回单条目；</item>
@@ -112,10 +112,12 @@ internal sealed class SchemaReadTools(IOptions<FeishuAgentOptions> options)
                 ["sdk_method_count"] = FeishuToolMethodCatalog.SdkMethodCount,
                 ["matched_count"] = results.Count,
                 ["methods"] = array,
-                ["note"] = "每条方法含：interface/method/http/route/token_kind/module/path_params/query_params/body_type/risk/curated/curated_tool。"
+                ["apply_channel"] = CapabilityApplyLoop.ApplyChannel,
+                ["note"] = "每条方法含：interface/method/http/route/token_kind/module/path_params/query_params/body_type/risk/curated/curated_tool"
+                    + "（curated=false 时另有 suggested_tool = 候选策展名）。"
                     + "curated=true 表示已有策展工具可直接调用（curated_tool 给出工具名）；"
                     + "curated=false 表示该方法未策展为工具，**本工具集没有调用它的通道**——"
-                    + "请如实告知用户该能力暂不可用（可建议宿主策展），不要臆造调用。",
+                    + "请如实告知用户该能力暂不可用，并可按 apply_channel 提示宿主把 suggested_tool 策展出来（建议名不可调用）。",
             };
 
             // R-1：出站唯一出口（B-1 一类——此前 TruncateJson 的截断对模型不可见）。
@@ -137,6 +139,7 @@ internal sealed class SchemaReadTools(IOptions<FeishuAgentOptions> options)
             queryParams.AddNode(JsonValue.Create(q));
         }
 
+        var suggestion = entry.Curated ? null : CapabilityApplyLoop.SuggestToolName(entry);
         return new JsonObject
         {
             ["interface"] = entry.InterfaceName,
@@ -154,6 +157,10 @@ internal sealed class SchemaReadTools(IOptions<FeishuAgentOptions> options)
             ["risk"] = FeishuToolRiskNames.ToLiteral(entry.Risk),
             ["curated"] = entry.Curated,
             ["curated_tool"] = entry.CuratedTool,
+            // 命中既有工具名的候选同样置空：模型会把"建议"误读成"已有可用工具"。
+            ["suggested_tool"] = suggestion is not null && !FeishuToolSchemas.SchemaByToolName.ContainsKey(suggestion)
+                ? suggestion
+                : null,
         };
     }
 }

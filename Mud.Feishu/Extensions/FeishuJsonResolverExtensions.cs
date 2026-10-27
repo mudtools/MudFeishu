@@ -36,6 +36,7 @@ using Mud.Feishu.DataModels.Performance;
 using Mud.Feishu.DataModels.PersonalSettings;
 using Mud.Feishu.DataModels.Search;
 using Mud.Feishu.DataModels.Security;
+using Mud.Feishu.DataModels.Slides;
 using Mud.Feishu.DataModels.Spark;
 using Mud.Feishu.DataModels.Spreadsheets;
 using Mud.Feishu.DataModels.TasksActivitySubscriptions;
@@ -96,7 +97,8 @@ public static class FeishuJsonResolverExtensions
              MDMJsonContext.Default,
              PayrollJsonContext.Default,
              PersonalSettingsJsonContext.Default,
-             OkrJsonContext.Default
+             OkrJsonContext.Default,
+             SlidesJsonContext.Default
          );
 
         // 注入合并后的 DataModels resolver 到 FeishuJsonDefaults

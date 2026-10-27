@@ -47,7 +47,10 @@ public class SecurityAuditService : ISecurityAuditService
         string? requestId = null,
         string? appKey = null)
     {
-        _logger.LogInformation("安全验证成功 - 类型: {EventType}, IP: {ClientIp}, 路径: {RequestPath}, 详情: {Details}, RequestId: {RequestId}, AppKey: {AppKey}",
+        // F-4：成功审计降为 Debug——每个成功事件都会走一次验签，"成功"属期望态而非事件；
+        // 保留 Debug 以便排障（把 Logging:LogLevel:Mud.Feishu.Webhook 调到 Debug 即可）。
+        // 失败审计保持 Warning（见 LogSecurityFailureAsync），它是需要人看的信号。
+        _logger.LogDebug("安全验证成功 - 类型: {EventType}, IP: {ClientIp}, 路径: {RequestPath}, 详情: {Details}, RequestId: {RequestId}, AppKey: {AppKey}",
             eventType, clientIp, requestPath, details, requestId ?? "", appKey ?? "");
 
         // 这里可以扩展到外部安全审计系统，如SIEM等

@@ -127,7 +127,7 @@ app.Run();
     "EventHandlingTimeoutMs": 30000,
     "MaxConcurrentEvents": 10,
     "AllowedHttpMethods": ["POST"],
-    "MaxRequestBodySize": 10485760,
+    "MaxRequestBodySize": 1048576,
     "AllowedSourceIPs": [],
     "EnforceHeaderSignatureValidation": true,
     "TimestampToleranceSeconds": 30,
@@ -166,6 +166,18 @@ app.Run();
   }
 }
 ```
+
+> **关键配置说明（易错项）**
+>
+> - `GlobalRoutePrefix`：只写路径名（如 `feishu`）。写成 `"/feishu"` / `"feishu/"` 会被自动归一化，
+>   不会再导致端点静默 404；但**保持不带斜杠**是最清晰的写法。
+> - `MaxRequestBodySize`：默认 **1MB**。验签必须覆盖完整报文，因此这是"未认证请求的单次代价上限"。
+>   飞书事件典型 <10KB、极大 <200KB；确有超大卡片事件时再显式调大（超限返回 413）。
+> - `RateLimit.EnableRateLimit`：默认 **false**（公网入口建议显式开启）。启用后按 `(AppKey, IP)` 固定窗口限流，
+>   超限返回 429 并带 `Retry-After`。启动自检日志会打印其生效值。
+> - `Retry.EnableRetry`：业务失败落盘重试的开关。**内部重试不经 Nonce 校验**，是解密超时等 5xx 的恢复路径。
+> - `Apps` 为空时 `app.UseFeishuWebhook()` 会在**启动期**抛异常（`AddFeishuWebhook` 只是注册服务，
+>   挂中间件才表达"我要收事件"）。
 
 ## 🏗️ 服务注册方式
 
@@ -440,7 +452,7 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | ---------------------------------- | ----------------- | -------- | ---------------------------------------------- |
 | `AllowedSourceIPs`                 | HashSet\<string\> | []       | 允许的源 IP 地址列表（非空时自动启用 IP 验证，支持 CIDR 与 IPv4-mapped IPv6） |
 | `AllowedHttpMethods`               | HashSet\<string\> | ["POST"] | 允许的 HTTP 方法                               |
-| `MaxRequestBodySize`               | long              | 10MB     | 最大请求体大小                                 |
+| `MaxRequestBodySize`               | long              | **1MB**  | 最大请求体大小（未认证请求的单次代价上限；下限 1024 字节，读取侧另受 `int.MaxValue` 结构性上限约束） |
 | `EnforceHeaderSignatureValidation` | bool              | true     | 是否强制验证请求头签名（生产环境禁止关闭，含应用级覆盖） |
 | `TimestampToleranceSeconds`        | int               | 30       | 时间戳验证容错范围（秒），上限 300 秒（重放窗口上限） |
 | `NonceValidationFailureMode`       | NonceFailureMode  | Reject  | Nonce 去重服务不可用时的降级策略（Reject=安全优先拒绝，Allow=可用性优先放行） |
@@ -449,6 +461,7 @@ public class DemoDepartmentEventHandler : DepartmentCreatedEventHandler
 | `AllowInMemoryNonceDedupInProduction` | bool           | false    | 生产环境是否允许使用进程内内存 Nonce 去重（见下方「部署形态约束」） |
 | `InterceptionAckMode`              | InterceptionAckMode | Ack    | 拦截器中断事件时对飞书表达的确认语义（见「拦截器中断语义」） |
 | `InterceptorFallbackMode`          | InterceptorFallbackMode | Merge | 应用专属拦截器与全局拦截器的组合策略（见「拦截器执行顺序」） |
+| `HandlerDispatchMode`              | HandlerDispatchMode | AppScopedOnly | 应用专属处理器与全局处理器的分发策略（见「处理器分发策略」） |
 | `NonceTtlSeconds`                  | int?               | null    | Nonce 有效期（秒）；显式配置时强制 **严格大于** `TimestampToleranceSeconds` |
 
 > **重放窗口不变量**：`NonceTtl`（Redis 工程 `RedisOptions`）必须 ≥ `TimestampToleranceSeconds`，
@@ -1084,12 +1097,19 @@ builder.Services.CreateFeishuWebhookServiceBuilder(builder.Configuration)
 
 ### 健康检查
 
-健康检查除并发槽位与失败事件积压外，还暴露**重放防护形态**：
+健康检查除并发槽位与失败事件积压外，还暴露**重放防护形态**与**积压年龄**：
 
 | 数据项 | 取值 | 说明 |
 | ------ | ---- | ---- |
 | `nonceDedup` | `InMemory` / `Distributed` | Nonce 去重的实现形态 |
 | `timestamp_tolerance_seconds` | 数值 | 当前时间戳容差 |
+| `failed_event_backlog` | 数值 | 待重试失败事件条数（≥100 `Degraded`，≥500 `Unhealthy`） |
+| `oldest_pending_retry_age_seconds` | 数值 | 最旧一条待重试事件的年龄（按**首次失败时刻**计，>300s `Degraded`） |
+
+> 判定严格按 **`Unhealthy` > `Degraded`** 的严重度顺序进行，且上表数据项**始终**完整回写
+> （不会因为提前命中某个判定分支而缺失）。`oldest_pending_retry_age_seconds` 覆盖
+> "积压条数少但事件卡死"这一盲区：条数正常而最旧事件超过 5 分钟仍未消化时，说明
+> `FailedEventRetryService` 未在运行或处理器持续失败。
 
 > 生产环境（`ASPNETCORE_ENVIRONMENT=Production`）使用**内存** Nonce 去重时，健康状态判定为
 > **`Degraded`**（多实例下跨实例重放不可检测）。这与启动期阻断、启动 Summary 日志共同构成
@@ -1594,6 +1614,19 @@ app.Run();
 ```
 
 > 💡 **说明**：通过 `AddHandler<T>(appKey)` 和 `AddInterceptor<T>(appKey)` 注册的处理器和拦截器仅对指定应用生效，不会注册到全局集合，避免跨应用泄漏。
+
+### 处理器分发策略
+
+应用键注册了专属处理器后，全局处理器是否参与该应用的事件由 `FeishuWebhook:HandlerDispatchMode` 决定：
+
+| 值                              | 行为                                                       |
+| ------------------------------- | ---------------------------------------------------------- |
+| `AppScopedOnly`（**默认**）     | 只分发应用专属处理器（既有行为）；全局处理器不参与          |
+| `MergeWithGlobal`               | 应用专属处理器与全局处理器**同时**收到事件                  |
+
+无专属处理器时始终回退全局处理器，本选项不改变该行为。合并模式下同一事件会被两类处理器各处理一次，
+处理器需自行保证幂等；专属处理器全部因 `SupportedEventType` 不匹配而跳过时，合并模式会把事件交给全局处理器，
+不会误记 `unhandled` 指标。
 
 ### 路由映射
 

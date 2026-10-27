@@ -11,21 +11,20 @@ using System.Text;
 namespace Mud.Feishu.AI.Tools.Internal;
 
 /// <summary>
-/// 邮件工具执行器（<c>mail.list_messages</c> / <c>mail.get_message</c> / <c>mail.send_message</c>，WP5/R5）。
+/// 邮件工具执行器（<c>mail.list_messages</c> / <c>mail.get_message</c>，WP5/R5）。
 /// </summary>
 /// <remarks>
 /// <para>
-/// 读侧（list/get）走 tenant 令牌（<c>IFeishuTenantV1MailMessage</c>），发信（send）走 user 令牌
-/// （<c>IFeishuUserV1MailDraft</c>）——邮件域是首个触发 T5-0 身份放行的域。
+/// 读侧（list/get）走 tenant 令牌（<c>IFeishuTenantV1MailMessage</c>）；发信（<c>mail.send</c>）走 user 令牌
+/// （<c>IFeishuUserV1MailDraft</c>）——邮件域是首个触发 T5-0 身份放行的域，发信执行器见 <see cref="MailDeepTools"/>。
 /// </para>
 /// <para>
-/// <c>mail.send_message</c> 内部为两步操作（创建草稿 → 发送草稿），模型不感知中间态：
-/// 草稿创建失败 → 返回结构化错误；草稿创建成功但发送失败 → 返回结构化错误（含 draft_id 供排查）。
+/// 本类保留 EML 组装与编码的单一实现（<see cref="BuildEml"/> / <see cref="Base64UrlEncode"/>），
+/// 供 <c>mail.create_draft</c> / <c>mail.update_draft</c> / <c>mail.send</c> 复用——模型给扁平字段，工具层组装。
 /// </para>
 /// </remarks>
 internal sealed class MailTools(
     Mud.Feishu.IFeishuTenantV1MailMessage? mailMessageClient,
-    Mud.Feishu.IFeishuUserV1MailDraft? mailDraftUserClient,
     IOptions<FeishuAgentOptions> options,
 
     // R5 / F-11：以下三个客户端一律**软依赖**（可空）。理由与 BitableViewTools 相同——
@@ -36,7 +35,6 @@ internal sealed class MailTools(
     Mud.Feishu.IFeishuTenantV1MailThread? mailThreadClient = null)
 {
     private readonly Mud.Feishu.IFeishuTenantV1MailMessage? _mailMessageClient = mailMessageClient;
-    private readonly Mud.Feishu.IFeishuUserV1MailDraft? _mailDraftUserClient = mailDraftUserClient;
     private readonly Mud.Feishu.IFeishuUserV1MailMessage? _mailUserMessageClient = mailUserMessageClient;
     private readonly Mud.Feishu.IFeishuTenantV1MailLabel? _mailLabelClient = mailLabelClient;
     private readonly Mud.Feishu.IFeishuTenantV1MailThread? _mailThreadClient = mailThreadClient;
@@ -168,76 +166,6 @@ internal sealed class MailTools(
                 .ConfigureAwait(false));
 
             return executor.FromApi(outcome, data => ProjectMessage(data.Message));
-        });
-    }
-
-    /// <summary>mail.send_message：以用户身份发送邮件（两步操作：创建草稿 → 发送草稿）。</summary>
-    /// <remarks>
-    /// 模型不感知两步细节——工具层把 subject/body/to/cc/bcc 组装成 RFC 5822 EML → base64url 编码 →
-    /// 创建草稿 → 发送草稿。草稿创建失败或发送失败均返回结构化错误。
-    /// </remarks>
-    [ToolHandler(typeof(IFeishuUserMailSendMessageTool))]
-    public Task<ToolResult> SendMessageAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
-    {
-        var executor = new ToolExecutor(FeishuToolNames.MailSendMessage);
-        return executor.RunAsync(async () =>
-        {
-            if (_mailDraftUserClient is null)
-            {
-                throw new ArgumentException(
-                    "mail.send_message 需要 IFeishuUserV1MailDraft（用户令牌）——宿主须启用 AddMailApi 的草稿侧客户端并在 AllowedIdentities 放行 user");
-            }
-
-            var args = MailSendMessageArgs.Unpack(arguments);
-
-            if (ToolDryRun.IsRequested(args.DryRun))
-            {
-                return ToolResult.FromText(ToolDryRun.Describe(
-                    executor.ToolName, "POST", "/open-apis/mail/v1/user_mailboxes/{user_mailbox_id}/drafts",
-                    ToolDryRun.IdempotencyNote(null),
-                    ("user_mailbox_id", args.UserMailboxId.Length),
-                    ("to", args.To.Length),
-                    ("subject", args.Subject.Length),
-                    ("body", args.Body.Length),
-                    ("cc", args.Cc?.Length ?? 0),
-                    ("bcc", args.Bcc?.Length ?? 0)));
-            }
-
-            // 构造 RFC 5822 EML 邮件
-            var eml = BuildEml(args.To, args.Cc, args.Bcc, args.Subject, args.Body);
-            var rawBase64 = Base64UrlEncode(eml);
-
-            // 步骤 1：创建草稿
-            var draftOutcome = FeishuApiResultReader.Read(await _mailDraftUserClient
-                .CreateUserMailboxDraftAsync(
-                    args.UserMailboxId,
-                    new UserMailboxDraftRequest { Raw = rawBase64 },
-                    cancellationToken)
-                .ConfigureAwait(false));
-
-            var draftId = draftOutcome.Data?.Draft?.Id;
-            if (string.IsNullOrEmpty(draftId))
-            {
-                throw new ArgumentException("创建邮件草稿失败：飞书未返回 draft_id");
-            }
-
-            // draftId 非空保证（消除 CS8604：SendUserMailboxDraftAsync 的 draft_id 参数不接受 null）
-            var nonNullDraftId = draftId!;
-
-            // 步骤 2：发送草稿
-            var sendOutcome = FeishuApiResultReader.Read(await _mailDraftUserClient
-                .SendUserMailboxDraftAsync(
-                    args.UserMailboxId,
-                    nonNullDraftId,
-                    new SendUserMailboxDraftRequest(),
-                    cancellationToken)
-                .ConfigureAwait(false));
-
-            return executor.FromApiUntruncated(sendOutcome, data => new JsonObject
-            {
-                ["message_id"] = data.MessageId,
-                ["thread_id"] = data.ThreadId,
-            });
         });
     }
 

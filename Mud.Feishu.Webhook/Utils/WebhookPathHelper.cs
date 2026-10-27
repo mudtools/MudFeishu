@@ -14,18 +14,35 @@ internal static class WebhookPathHelper
         new(@"^[a-zA-Z0-9_-]{1,64}$", System.Text.RegularExpressions.RegexOptions.Compiled);
 
     /// <summary>
+    /// 归一化全局路由前缀：去空白、去首尾斜杠（`" /feishu/ "` → `"feishu"`），幂等。
+    /// </summary>
+    /// <param name="globalRoutePrefix">用户配置的前缀（可能为空/带斜杠）</param>
+    /// <returns>可直接拼接到 `/` 之后的规范形态</returns>
+    /// <remarks>
+    /// <b>W-04：唯一的归一化实现</b>——由 <c>FeishuWebhookServiceBuilder</c> 的
+    /// <c>PostConfigure</c> 在每次 Options 构建时调用，因此所有消费方（含第三方读
+    /// <c>GlobalRoutePrefix</c>）看到的都是生效值。此处不再由各调用点各自拼接
+    /// <c>"/" + prefix</c>（历史缺陷：配置写成 `"/feishu"` 会得到 `"//feishu"`，
+    /// 写成 `"feishu/"` 会在前缀后直接比较 AppKey 段，两者都静默失效 → 端点全量 404）。
+    /// </remarks>
+    public static string NormalizePrefix(string? globalRoutePrefix)
+        => (globalRoutePrefix ?? string.Empty).Trim().Trim('/');
+
+    /// <summary>
     /// 从路径中提取 AppKey
     /// 前缀大小写不敏感、AppKey 段大小写敏感
     /// </summary>
     /// <param name="path">请求路径</param>
-    /// <param name="globalRoutePrefix">全局路由前缀</param>
+    /// <param name="globalRoutePrefix">全局路由前缀（应为已归一化的生效值）</param>
     /// <returns>合法 AppKey，或 null</returns>
     public static string? ExtractAppKeyFromPath(string path, string globalRoutePrefix)
     {
         if (string.IsNullOrEmpty(path))
             return null;
 
-        var prefix = "/" + globalRoutePrefix;
+        // 防御性再归一化：本方法可能被测试/宿主动态传入未归一化的值。
+        // 归一化是幂等的，对已归一化的生效值零副作用。
+        var prefix = "/" + NormalizePrefix(globalRoutePrefix);
 
         if (!path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             return null;

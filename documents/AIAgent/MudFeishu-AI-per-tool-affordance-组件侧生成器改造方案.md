@@ -212,7 +212,7 @@ Mud.Feishu.AI.Tools/
 需要按条件筛选/排序读取多维表格记录时。
 
 ## Avoid when
-- 已知 record_id 且只要一条 → 用 `bitable.get_records_by_ids`（更省 token）；
+- 已知 record_id 且只要一条 → 用 `bitable.query_records` 的 `record_ids` 精取（更省 token）；
 - 只想看表结构 → 用 `bitable.list_fields`。
 
 ## Prerequisites

@@ -38,7 +38,7 @@ public class DocxAnnouncementToolsTests
             new Mock<Mud.Feishu.IFeishuTenantV1Docx>().Object,
             new Mock<Mud.Feishu.IFeishuTenantV1DocxBlocks>().Object,
             announcement.Object,
-            new Mock<Mud.Feishu.IFeishuTenantV1DriveFiles>().Object,
+            new Mock<Mud.Feishu.IFeishuTenantV1DriveFilesVersions>().Object,
             Options.Create(AgentOptions()));
 
     // ───────────────────── 契约面：敏感广播面纪律 ─────────────────────

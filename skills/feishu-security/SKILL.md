@@ -47,5 +47,5 @@ package_version: 3.0.3
 - 「这个月有人删过群吗？」→ 时间窗 30 天分段 + `event_module` 收敛 → 结果里按 `event_name` 归类回答。
 
 ## 命令（工具）清单
-- `security.list_openapi_logs`（只读）：查询企业应用的【OpenAPI 调用日志】——哪个 app_id/哪个接口（path+method）在什么时间被调用、返回什么状态码、来自哪个 IP。用于集成排障（接口报错/鉴权失败/调用异常）取证。⚠️ 该工具属 PII：结果含调用方 IP，会进入【第三方模型上下文】；【默认不启用】，需宿主显式加入白名单并确认合规口径；原始请求体 payload / 响应体 response / 查询参数不返回（避免业务数据入上下文）。时间范围起止相差不能超过 30 天。只读，需 admi…
-- `security.query_audit_logs`（只读）：查询企业成员的【行为审计日志】——谁在什么时间、从哪个 IP/城市、对哪个对象（文档/会话/权限/应用）做了什么（事件名如 space_edit_doc、permission_change）。用于合规排查与异常操作复盘。⚠️ 该工具属 PII：结果含成员 user_id、IP 与设备/地理位置，会进入【第三方模型上下文】；【默认不启用】，需宿主显式加入白名单并确认合规口径。时间范围起止相差不能超过 30 天；建议 user_id_type 传 open_id（否则需字段权限 …
+- `security.list_openapi_logs`（只读）：查询企业应用的【OpenAPI 调用日志】——哪个 app_id/哪个接口（path+method）在什么时间被调用、返回什么状态码、来自哪个 IP。用于集成排障（接口报错/鉴权失败/调用异常）取证。⚠️ 该工具属 PII：结果含调用方 IP，会进入【第三方模型上下文】；【默认不启用】，需宿主显式加入白名单并确认合规口径；原始请求体 payload / 响应体 response /… 〔需 admin:audit_info:readonly〕
+- `security.query_audit_logs`（只读）：查询企业成员的【行为审计日志】——谁在什么时间、从哪个 IP/城市、对哪个对象（文档/会话/权限/应用）做了什么（事件名如 space_edit_doc、permission_change）。用于合规排查与异常操作复盘。⚠️ 该工具属 PII：结果含成员 user_id、IP 与设备/地理位置，会进入【第三方模型上下文】；【默认不启用】，需宿主显式加入白名单并确认合规口径。时间范围起止相差不能超过 30 天；建议… 〔需 admin:audit_info:readonly〕

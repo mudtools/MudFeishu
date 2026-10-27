@@ -71,11 +71,110 @@ public static class FeishuMetrics
     /// <summary>
     /// Agent 模型调用耗时直方图（毫秒，维度：agent）——模型延迟 P95。
     /// </summary>
-    /// <remarks>token 用量以 Span 属性 <c>feishu.llm.*</c> 聚合为主，不加高基数指标。</remarks>
+    /// <remarks>
+    /// token 用量有<b>两条出口</b>：每轮的明细进 Span 属性 <c>feishu.llm.*</c>（宿主按 trace 聚合，
+    /// 可下钻到会话/租户），总量与方向分布进 <see cref="AgentLlmTokens"/>（跨进程可加总，无高基数维度）。
+    /// </remarks>
     public static readonly Histogram<double> AgentLlmDuration = Instance.CreateHistogram<double>(
         "feishu.agent.llm.duration",
         unit: "ms",
         description: "飞书 Agent 模型调用耗时分布");
+
+    // ── 中立工具遥测端口口径（IAgentToolTelemetry；E-2） ──
+    //
+    // 与上方 feishu.tool.executions / feishu.tool.duration 的分工：那两条是**产品执行链口径**
+    // （带 app_key，由 FeishuToolBinding 记账）；本组是**中立端口口径**（端口签名不带租户键，
+    // 故无 app_key 维度）。两者指标名不同 ⇒ 同一调用分别记一次，不会在同一时间序列上重复计数。
+
+    /// <summary>
+    /// 中立端口工具调用计数（维度：tool, write, outcome, truncated）。
+    /// </summary>
+    /// <remarks>
+    /// outcome 取 <see cref="ToolOutcomes"/> 家族的字面量或其扩展（<c>ok</c> / 失败分类字面量）；
+    /// 高基数纪律（原则 8）：端口不携带租户/会话键，故本指标不含 app_key 维度。
+    /// </remarks>
+    public static readonly Counter<long> AgentToolInvoked = Instance.CreateCounter<long>(
+        "feishu.agent.tool.invoked",
+        unit: "{invocation}",
+        description: "中立遥测端口上报的工具调用次数");
+
+    /// <summary>中立端口工具调用耗时直方图（毫秒，维度：tool, write）。</summary>
+    public static readonly Histogram<double> AgentToolInvokedDuration = Instance.CreateHistogram<double>(
+        "feishu.agent.tool.invoked.duration",
+        unit: "ms",
+        description: "中立遥测端口上报的工具调用耗时分布");
+
+    /// <summary>中立端口工具重试计数（维度：tool, attempt）。</summary>
+    public static readonly Counter<long> AgentToolRetried = Instance.CreateCounter<long>(
+        "feishu.agent.tool.retried",
+        unit: "{retry}",
+        description: "中立遥测端口上报的工具重试次数");
+
+    /// <summary>中立端口 RAG 检索召回条数（无维度；数值 = 注入的 chunk 数）。</summary>
+    public static readonly Counter<long> AgentRetrievalChunks = Instance.CreateCounter<long>(
+        "feishu.agent.rag.chunks",
+        unit: "{chunk}",
+        description: "中立遥测端口上报的 RAG 召回注入条数");
+
+    /// <summary>中立端口 RAG 注入字符数直方图（无维度）。</summary>
+    public static readonly Histogram<double> AgentRetrievalInjectedChars = Instance.CreateHistogram<double>(
+        "feishu.agent.rag.injected_chars",
+        unit: "{char}",
+        description: "中立遥测端口上报的 RAG 注入字符数分布");
+
+    /// <summary>中立端口人工审批请求计数（维度：tool）。</summary>
+    public static readonly Counter<long> AgentApprovalRequested = Instance.CreateCounter<long>(
+        "feishu.agent.approval.requested",
+        unit: "{request}",
+        description: "中立遥测端口上报的人工审批请求次数");
+
+    /// <summary>中立端口人工审批解决计数（维度：tool, outcome = approved / denied）。</summary>
+    public static readonly Counter<long> AgentApprovalResolved = Instance.CreateCounter<long>(
+        "feishu.agent.approval.resolved",
+        unit: "{resolution}",
+        description: "中立遥测端口上报的人工审批解决次数");
+
+    /// <summary>中立端口人工审批等待时长直方图（毫秒，维度：tool）。</summary>
+    public static readonly Histogram<double> AgentApprovalWait = Instance.CreateHistogram<double>(
+        "feishu.agent.approval.wait",
+        unit: "ms",
+        description: "中立遥测端口上报的人工审批等待时长分布");
+
+    /// <summary>
+    /// Agent 模型 token 用量计数（维度：<see cref="Tags.Direction"/>），即<b>成本核算出口</b>。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 高基数纪律（原则 8）：不带 agent / app_key / conversation 维度。按会话与租户的用量聚合走
+    /// Span 属性（每轮一条、可下钻），指标只负责「总量 + 方向分布」这一可告警口径——
+    /// 把 agent/app_key 塞进 tag 会让序列数随配置应用数线性增长。
+    /// </para>
+    /// <para>
+    /// <b>缺项不计数</b>：模型未回传 usage 时（三项全空）不上报，绝不用估算值伪造成本读数。
+    /// </para>
+    /// </remarks>
+    public static readonly Counter<long> AgentLlmTokens = Instance.CreateCounter<long>(
+        "feishu.agent.llm.tokens",
+        unit: "{token}",
+        description: "飞书 Agent 模型 token 用量（按输入/输出/总量方向）");
+
+    /// <summary>
+    /// 工具结果回填文本的 token 分布（维度：tool, app_key）——把上下文成本归因到具体工具。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 口径与 <c>ChatTokenCounter</c> 一致（精确编码器可用时为 token，否则为字符估算），
+    /// 且只统计<b>允许回填</b>的结果文本（净化与截断之后）——那才是模型真正读到的量。
+    /// </para>
+    /// <para>
+    /// <b>不做「每工具消耗了多少模型 token」的归因</b>：工具结果与历史、指令一起进入同一请求，
+    /// 供应商只回传请求级 usage，任何 per-tool 模型 token 数字都只能是拆分猜测。
+    /// </para>
+    /// </remarks>
+    public static readonly Histogram<double> ToolResultTokens = Instance.CreateHistogram<double>(
+        "feishu.tool.result.tokens",
+        unit: "{token}",
+        description: "飞书 Agent 工具结果回填文本的 token 分布");
 
     /// <summary>
     /// 事件去重命中计数（维度：app_key, dedup_type, outcome）。
@@ -546,6 +645,18 @@ public static class FeishuMetrics
         /// <summary>通道单次更新失败（子类钩子记录，不中断模型流）。</summary>
         public const string ChannelUpdateFailed = "channel_update_failed";
 
+        /// <summary>
+        /// 通道<b>终态</b>未落地（占位消息停留在半截内容）。与 <see cref="ChannelUpdateFailed"/> 分开：
+        /// 后者是「中途少一次增量」（用户最终仍看到完整回答），前者是「用户永远看不到完整回答」。
+        /// </summary>
+        public const string ChannelTerminalFailed = "channel_terminal_failed";
+
+        /// <summary>
+        /// 通道占位资源已创建但投放失败（平台侧残留实体）。卡片实体无删除接口，只能等自然过期，
+        /// 故单独计数以便与「什么都没创建」的失败区分。
+        /// </summary>
+        public const string ChannelBeginOrphaned = "channel_begin_orphaned";
+
         /// <summary>用户令牌探测异常（T1/D1：fail-open 放行，由下游 401 兜底）。</summary>
         public const string UserTokenPrecheckError = "user_token_precheck_error";
 
@@ -579,6 +690,15 @@ public static class FeishuMetrics
         /// <summary>工具名（<see cref="ToolExecutions"/> / <see cref="ToolDuration"/> 维度）</summary>
         public const string Tool = "tool";
 
+        /// <summary>是否写工具（<see cref="AgentToolInvoked"/> 的读写拆分维度）</summary>
+        public const string IsWrite = "write";
+
+        /// <summary>结果是否被截断（<see cref="AgentToolInvoked"/> 的截断率维度）</summary>
+        public const string Truncated = "truncated";
+
+        /// <summary>第几次重试（1 起；<see cref="AgentToolRetried"/> 维度）</summary>
+        public const string Attempt = "attempt";
+
         /// <summary>Agent 展示名（<see cref="AgentLlmDuration"/> 维度）</summary>
         public const string Agent = "agent";
 
@@ -605,6 +725,28 @@ public static class FeishuMetrics
 
         /// <summary>Redis 命令/操作名（用于 <see cref="RedisOperationCount"/> 的维度拆分）</summary>
         public const string RedisCommand = "feishu.redis.command";
+
+        /// <summary>token 用量方向（用于 <see cref="AgentLlmTokens"/> 的维度拆分；取值见 <see cref="TokenDirections"/>）</summary>
+        public const string Direction = "direction";
+    }
+
+    /// <summary>
+    /// <see cref="AgentLlmTokens"/> 的方向取值（受控枚举，与供应商 usage 的三项一一对应）。
+    /// </summary>
+    /// <remarks>
+    /// 三项<b>各自独立累加</b>，故 <c>total</c> 序列不等于 <c>input + output</c> 序列之和
+    /// （供应商未回传 total 时该方向零计数）——按方向读数做成本估算时只取一组，不要相加。
+    /// </remarks>
+    public static class TokenDirections
+    {
+        /// <summary>输入 token。</summary>
+        public const string Input = "input";
+
+        /// <summary>输出 token。</summary>
+        public const string Output = "output";
+
+        /// <summary>总 token（供应商回传的合计值）。</summary>
+        public const string Total = "total";
     }
 
     /// <summary>
@@ -708,6 +850,9 @@ public static class FeishuMetrics
 
         /// <summary>执行异常（异常归一路径）。</summary>
         public const string Error = "error";
+
+        /// <summary>调用成功（中立遥测端口口径：无失败分类载荷）。</summary>
+        public const string Ok = "ok";
     }
 
     public static class DedupTypes
@@ -770,5 +915,11 @@ public static class FeishuMetrics
 
         /// <summary>幂等消费成功（审批后续轮完成）。</summary>
         public const string Consumed = "consumed";
+
+        /// <summary>人工已批准（<see cref="AgentApprovalResolved"/> 的 outcome 取值；写操作放行）。</summary>
+        public const string Approved = "approved";
+
+        /// <summary>人工已拒绝（<see cref="AgentApprovalResolved"/> 的 outcome 取值；拒绝结果回填模型）。</summary>
+        public const string Denied = "denied";
     }
 }

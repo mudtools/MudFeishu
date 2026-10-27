@@ -1,6 +1,6 @@
 {
   "source": "飞书开放平台 · 应用权限（scope 名称与官方文档核对；每次新增工具引入新 scope 时必须同批回填本清单并在「核对」栏留痕）",
-  "lastReviewed": "2026-10-16",
+  "lastReviewed": "2026-10-20",
   "_B2_WRITEFACES": "写面补全 + B2 补全域：新增 application:application（application.update_visibility / update_management 使用）与 helpdesk:ticket（helpdesk.start_service / answer_user_query / create_ticket_message / create_bot_message 使用）——两域 SDK 注释均只给自然语言、无字面量，按官方 API 文档取值，标 ⚠️ 待核对；aily 3 个只读工具复用既有 aily:knowledge:readonly（⚠️ 维持）。本批同时如实登记：HelpDesk 的 26 个 User 侧写方法（含 7 个命中危险词）因需用户身份上下文未纳入；Aily 的 ask/upload/create 系列因 SSE 流或本地文件路径模型侧不可达。",
   "_B1_LINGO_WRITE": "专题一 B1 Lingo 写面：新增 baike:entity:exempt_review / baike:entity:exempt_delete / baike:entity 三个写 scope（create/update/delete_entity + create/update_draft 共 5 个写工具使用）——**scope 名全部取自 SDK XML 注释原文**（IFeishuV1LingoEntity_Tenant.cs:24/43/62、IFeishuV1LingoDraft.cs:23/43），标 ✅ 已核对，无需 ⚠️；草稿两个方法注释为「任一即可」（baike:entity 或 baike:entity:exempt_review），已在权限对照表注明。本批同时交付 1 个 high-risk-write（lingo.delete_entity）的 Affordance 四节资产。",
   "_B1_CHATGROUP_WRITE": "专题一 B1 ChatGroup 写面：新增 im:chat（群管理写权限，12 个写工具使用）——**SDK XML 注释无 scope 字面量**（全目录搜 im:/chat:/scope 零命中），按官方 API 文档「获取与更新群信息」取值，标 ⚠️ 待核对；控制台开通前请在「权限管理」页按名称搜索确认。本批同时交付 5 个 high-risk-write 的 Affordance 四节资产。",
@@ -10,6 +10,10 @@
   "_R7_A5A6": "R7 A5/A6 新增：attendance:* / spark:* / board:* 共 8 个 scope——按官方 API 文档取值与核对，控制台开通前请在「权限管理」页按名称搜索确认（本批标 ⚠️ 待核对）。",
   "_T1_READ_FACES": "T-1 读取闭环（2026-10-16）新增：drive:export:readonly（drive.export_document 使用；官方《导出云文档》权限，覆盖创建/查询/下载导出任务三类接口，标 ✅ 已核对）；同时把 drive.download_file 记入既有 drive:drive:readonly、calendar.agenda 记入 calendar:calendar:readonly、calendar.rsvp 记入 calendar:calendar——四项均按官方 API 文档「权限要求」栏取值。",
   "_T2_TABLE_DEEP": "T-2 表格加深（2026-10-16）：40 个新工具（bitable 深化 19 + sheets 深化 21）全部复用既有 scope，未引入新权限点——读侧为 bitable:app:readonly / sheets:spreadsheet:readonly，写侧为 bitable:app / sheets:spreadsheet（与两域既有行同源核对，✅ 维持）。",
+  "_S6_MINUTES_FACES": "S-6 首刀（2026-10-19）新增 4 个 scope，全部在 minutes 域且**scope 名取自 SDK 接口注释原文**（✅ 已核对）：minutes:minutes.transcript:export（get_transcript 导出逐字稿）、minutes:minutes.clip:write（clip 剪辑）、minutes:minutes.upload:write（upload 导入生成）、minutes:minutes.basic:read（subscribe / unsubscribe 的事件订阅面）。其余 9 枚新工具复用既有 scope：im:message（表情读写 4 枚）、wiki:wiki（space_create）、okr:okr.content:readonly（两枚指标读）、okr:okr.content:writeonly（update_indicator）。get_transcript 的字节经宿主落盘、不进模型上下文，与 drive.download_file 同口径 ⇒ **不**新增 PII 登记；本批新增 1 个 high-risk-write（im.delete_reaction）的 Affordance 四节资产。",
+  "_S2_MARKDOWN_FACES": "S-2（2026-10-20）5 个 Markdown 生命周期工具**全部复用既有 scope，未引入新权限点**：读正文与只读比对用 drive:drive:readonly（markdown.fetch / diff），上传·导入·删除源文件用 drive:drive（markdown.create），docx 块重建用 docx:document（markdown.patch / overwrite；patch 另需 drive:drive:readonly 读正文）。三项均为既有已核对权限点（✅ 维持），本批无新 scope、无 PII 新增（正文由调用方提供或来自其有权读取的文档）。",
+  "_S1_SLIDES_FACES": "S-1（2026-10-20）新增 5 个 scope，全部在 slides 域，**scope 名取自 SDK 接口注释原文**（✅ 已核对）：slides:presentation:read（五个只读工具）、slides:presentation:screenshot（两个页图工具）、slides:presentation:create（create_presentation）、slides:presentation:update + slides:presentation:write_only（四个写工具按平台口径成对声明）。页图接口返回 base64，工具侧在**写出上下文之前**解码并经宿主 IFeishuAttachmentStager 落盘 ⇒ 与 drive.download_file 同口径，**不**新增 PII 登记；本批新增 1 个 high-risk-write（slides.delete_slide）的四节 Affordance 资产。",
+  "_S6_REMAINING_FACES": "S-6 余项（2026-10-20）2 枚补齐工具**全部复用既有 scope，未引入新权限点**（✅ 维持）：docx.history_list 用 drive:drive:readonly（版本端点归 Drive，SDK Docx 模块零命中），docx.media_insert 用 docx:document + drive:drive（素材上传与建块两步各需其一）。media_insert 的图片字节同样经宿主 IFeishuAttachmentStager 落盘后交 SDK 的 [FilePath] 表单参数消费，**不进模型上下文** ⇒ 与 drive.download_file / slides.render_slide_image 同口径，**不**新增 PII 登记；本批新增 1 份写类 Affordance 四节资产（docx.media_insert）。同批核验结论：日历改期转让、IM 收藏/Feed 流、知识库删空间/删节点、OKR 评论、多维表格 upsert 与分享链接、妙记替换发言人、会议截图、邮件回复线程语义等平台无对应接口，记入《工具权限对照表》不策展登记而非另起调用通道。",
   "scopes": {
     "aily:knowledge:readonly": "⚠️ 待核对：Aily 知识库 · 只读（knowledge.search 使用；scope 名称待核对：控制台二次确认，存疑但暂时保留）",
     "approval:approval": "审批 · 读写（approval.create_instance / approve_task 使用）",
@@ -17,8 +21,8 @@
     "attendance:rule": "⚠️ 待核对：考勤 · 班次规则只读（R7/A5 新增：attendance.get_shift 使用）",
     "attendance:stats": "⚠️ 待核对：考勤 · 统计报表只读（R7/A5 新增：attendance.query_stats_data 使用）",
     "attendance:task": "⚠️ 待核对：考勤 · 打卡与补卡读写（R7/A5 新增：attendance.query_my_flow / query_user_flow / get_flow / query_daily_shift / query_my_remedys / submit_remedy 使用）",
-    "bitable:app": "多维表格 · 读写（bitable.add_record 使用）",
-    "bitable:app:readonly": "多维表格 · 只读（bitable.list_tables / list_fields / query_records / get_records_by_ids 使用）",
+    "bitable:app": "多维表格 · 读写（bitable.record_batch_create 使用）",
+    "bitable:app:readonly": "多维表格 · 只读（bitable.list_tables / list_fields / query_records 使用）",
     "board:whiteboard": "⚠️ 待核对：画板 · 读写（R7/A4 新增：board.render_dsl / create_nodes / update_theme / delete_nodes 使用）",
     "board:whiteboard:readonly": "⚠️ 待核对：画板 · 只读（R7/A4 新增：board.get_theme / board.list_nodes 使用）",
     "calendar:calendar": "日历 · 读写（calendar.create_event / calendar.rsvp 使用）",
@@ -52,7 +56,7 @@
     "vc:meeting:readonly": "视频会议 · 只读（R6/S3 新增：vc.list_meetings / vc.get_meeting / vc.list_participants 使用）",
     "vc:recording:readonly": "会议录制 · 只读（R6/S3 新增：vc.get_recording 使用）",
     "vc:reserve": "会议室预约 · 读写（R6/S3 新增：vc.delete_reserve 使用）",
-    "vc:reserve:readonly": "会议室预约 · 只读（R6/S3 新增：vc.list_reserves 使用）",
+    "vc:reserve:readonly": "会议室预约 · 只读（R6/S3 新增：vc.get_reserve 使用）",
     "vc:room:readonly": "视频会议室 · 只读（R6/S3 新增：vc.list_rooms 使用）",
     "sheets:spreadsheet": "电子表格 · 读写（sheets.update_range / append_rows 使用）",
     "sheets:spreadsheet:readonly": "电子表格 · 只读（sheets.list_sheets / get_range_values 使用）",
@@ -61,6 +65,10 @@
     "translation:text": "AI（机器翻译） · 只读调用（R7/C3 新增：ai.translate_text / ai.detect_language 使用；名称已对照官方《Translate text》/《Detect text》文档的「权限要求」栏核实为 translation:text）",
     "feishu:base": "元工具 · 只读（feishu.capability_lookup / feishu.guidance_read 使用）",
     "minutes:minutes:readonly": "妙记 · 只读（R5/F-11 新增：minutes.get / minutes.get_artifacts 使用）",
+    "minutes:minutes.transcript:export": "妙记 · 导出逐字稿（S-6 新增：minutes.get_transcript 使用；scope 名取自 SDK 注释原文「所需权限：minutes:minutes.transcript:export（导出妙记文字转写）」，✅ 已核对。产物经宿主落盘、不进模型上下文，与 drive.download_file 同口径 ⇒ 不入 PII 登记）",
+    "minutes:minutes.clip:write": "妙记 · 创建剪辑（S-6 新增：minutes.clip 使用；scope 名取自 SDK 注释原文，✅ 已核对。**用户身份**工具，需宿主放行 user 身份）",
+    "minutes:minutes.upload:write": "妙记 · 从音视频文件生成妙记（S-6 新增：minutes.upload 使用；scope 名取自 SDK 注释原文，✅ 已核对。**用户身份**工具，且用户须对 file_token 有云盘下载权限）",
+    "minutes:minutes.basic:read": "妙记 · 基本信息只读（S-6 新增：minutes.subscribe / minutes.unsubscribe 使用；scope 名取自 SDK 注释原文，✅ 已核对。两枚写工具订阅/退订「妙记生成事件」，改动的是事件流向而非妙记内容）",
     "mdm:country_region:read": "主数据 · 国家/地区只读（F-1 新增：mdm.get_countries 使用；公共参考数据，非 PII）",
     "baike:entity:readonly": "企业词典 · 词条只读（专题一 B1 首个补域：lingo.list_repos / list_classifications / list_entities / get_entity / search_entities / match_entities 共 6 个只读工具使用；scope 名取自 SDK 注释原文；SDK 接口注释标注「查看词典词条」——投影已裁掉 creator/updater/related_meta，故为非 PII）",
     "baike:entity:exempt_review": "企业词典 · 创建、更新免审词条（专题一 B1 Lingo 写面：lingo.create_entity / update_entity 使用；**scope 名取自 SDK 注释原文**，无需 ⚠️；⚠️ 免审通道——不经过词典管理员审核直接写入词库，调用应慎重）",
@@ -83,7 +91,12 @@
     "hire:talent:readonly": "招聘 · 人才（候选人）只读（新增：hire.list_talents / hire.get_talent 使用；**PII 出口**，默认不启用——SDK 接口文档「所需权限」栏明确列出 hire:talent:readonly）",
     "hire:job_requirement:readonly": "招聘 · 招聘需求只读（新增：hire.list_job_requirements 使用；裁剪掉负责人/创建人/薪资后为**非 PII**——SDK 接口文档「所需权限」栏列出 hire:job_requirement:readonly）",
     "hire:interview:readonly": "招聘 · 面试只读（新增：hire.list_interviews 使用；**PII 出口**、默认不启用——SDK 接口文档「所需权限」栏明确列出 hire:interview:readonly）",
-    "hire:offer:readonly": "招聘 · Offer 只读（新增：hire.list_offers 使用；**PII 出口**、默认不启用；接口返回结构**不含薪资条件**——SDK 接口文档「所需权限」栏明确列出 hire:offer:readonly）"
+    "hire:offer:readonly": "招聘 · Offer 只读（新增：hire.list_offers 使用；**PII 出口**、默认不启用；接口返回结构**不含薪资条件**——SDK 接口文档「所需权限」栏明确列出 hire:offer:readonly）",
+    "slides:presentation:read": "幻灯片 · 只读（S-1 新增：slides.get_presentation / list_slides / get_slide / list_histories / get_revert_status 使用）",
+    "slides:presentation:screenshot": "幻灯片 · 页图与截图（S-1 新增：slides.list_slide_images / render_slide_image 使用；返回页图字节，经宿主落盘、不进模型上下文）",
+    "slides:presentation:create": "幻灯片 · 创建（S-1 新增：slides.create_presentation 使用）",
+    "slides:presentation:update": "幻灯片 · 更新（S-1 新增：slides.add_slide / replace_slide / delete_slide / revert_history 使用）",
+    "slides:presentation:write_only": "幻灯片 · 写入（S-1 新增：与 create/update 成对声明，平台口径为「读/写 + write_only」双 scope）"
   },
   "piiTools": [
     {
@@ -181,6 +194,12 @@
       "category": "候选人联系方式与在职字段（姓名/手机/邮箱/工作年限）",
       "defaultDisabled": true,
       "note": "DP-A5-1 档位 ①：「联系候选人」这一正当用途所需的最小集；身份证号 / 性别 / 年龄 / 国籍 / 籍贯 / 学历 / 工作经历 / 作品 / 获奖 / 简历附件 / 自定义字段一律不返回（与本工具目的无关却显著放大泄露面）"
+    },
+    {
+      "tool": "workflow.meeting_summary",
+      "category": "会议纪要汇总（参会人发言摘要 / 待办 / 关键词）",
+      "defaultDisabled": true,
+      "note": "DP-A5-1 档位 ①：工作流编排 minutes.search + minutes.get_artifacts，报告含他人发言与待办（与 minutes.get_artifacts 同源 PII）；默认不在任何白名单，需宿主显式启用并确认合规口径。投影按场次裁剪摘要/章节/待办长度"
     }
   ]
 }

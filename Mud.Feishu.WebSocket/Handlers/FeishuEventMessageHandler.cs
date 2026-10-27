@@ -138,7 +138,7 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                     if (_options.RejectEmptyEventIds)
                     {
                         _logger.LogWarning("事件 EventId 为空，RejectEmptyEventIds=true 拒绝处理: {EventType}", eventData.EventType);
-                        FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: false, "empty_event_id");
+                        FeishuMetricsHelper.RecordEventOutcome(_options.ResolvedAppKey, eventData.EventType, success: false, "empty_event_id");
                         return;
                     }
                     _logger.LogWarning("事件 EventId 为空，已配置放行——本次处理不具备去重保护: {EventType}", eventData.EventType);
@@ -152,26 +152,27 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                 if (_unifiedDedupMiddleware != null)
                 {
                     // WebSocket 文本事件路径无 SeqID 上下文，统一中间件内部会跳过 SeqID 检查。
-                    var unifiedResult = await _unifiedDedupMiddleware.CheckAsync(eventData.EventId, seqId: null, cancellationToken);
+                    var unifiedResult = await _unifiedDedupMiddleware.CheckAsync(
+                        eventData.EventId, seqId: null, _options.ResolvedAppKey, cancellationToken);
                     if (unifiedResult.ShouldSkip)
                     {
                         _logger.LogDebug("事件 {EventId} 被统一去重中间件跳过 (类型: {IdentifierType}, 原因: {Reason})",
                             eventData.EventId, unifiedResult.IdentifierType, unifiedResult.Reason);
                         shouldSkip = true;
-                        FeishuMetricsHelper.RecordEventDeduplication(_options.AppKey,
+                        FeishuMetricsHelper.RecordEventDeduplication(_options.ResolvedAppKey,
                             unifiedResult.IdentifierType.ToString().ToLowerInvariant(), hit: true);
                     }
                 }
                 else if (_deduplicator != null)
                 {
                     // WS 去重键带 AppKey，与 MemoryDeduplicator.GetCacheKey 多应用隔离口径一致
-                    var dedupResult = await _deduplicator.TryMarkAsProcessingAsync(eventData.EventId, _options.AppKey, cancellationToken: cancellationToken);
+                    var dedupResult = await _deduplicator.TryMarkAsProcessingAsync(eventData.EventId, _options.ResolvedAppKey, cancellationToken: cancellationToken);
                     if (dedupResult.IsDuplicate)
                     {
                         _logger.LogDebug("事件 {EventId} 已在处理中或已处理，跳过 (WasProcessing: {WasProcessing}, Status: {Status})",
                             eventData.EventId, dedupResult.WasProcessing, dedupResult.Status);
                         shouldSkip = true;
-                        FeishuMetricsHelper.RecordEventDeduplication(_options.AppKey, "event_id", hit: true);
+                        FeishuMetricsHelper.RecordEventDeduplication(_options.ResolvedAppKey, "event_id", hit: true);
                     }
                 }
 
@@ -180,7 +181,7 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                     Exception? processingException = null;
                     bool isInterrupted = false;
 
-                    using (FeishuMetricsHelper.RecordEventHandling(_options.AppKey, eventData.EventType))
+                    using (FeishuMetricsHelper.RecordEventHandling(_options.ResolvedAppKey, eventData.EventType))
                     {
                         try
                         {
@@ -198,7 +199,7 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                                     // 服务端重发后拦截器重新决策（retry-until-accept）
                                     await RollbackDeduplicationAsync(eventData.EventId, cancellationToken);
 
-                                    FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: false, "intercepted");
+                                    FeishuMetricsHelper.RecordEventOutcome(_options.ResolvedAppKey, eventData.EventType, success: false, "intercepted");
                                     processingException = new EventHandlingOutcomeException(
                                         "intercepted", $"事件被 {interceptor.GetType().Name} 拦截");
                                     throw processingException; // → ACK 500 → 服务端重发 → 与 Webhook 语义一致
@@ -218,9 +219,10 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                                 try
                                 {
                                     if (_unifiedDedupMiddleware != null)
-                                        await _unifiedDedupMiddleware.MarkCompletedAsync(eventData.EventId, seqId: null, CancellationToken.None);
+                                        await _unifiedDedupMiddleware.MarkCompletedAsync(
+                                            eventData.EventId, seqId: null, _options.ResolvedAppKey, CancellationToken.None);
                                     else if (_deduplicator != null)
-                                        await _deduplicator.MarkAsCompletedAsync(eventData.EventId, _options.AppKey, CancellationToken.None);
+                                        await _deduplicator.MarkAsCompletedAsync(eventData.EventId, _options.ResolvedAppKey, CancellationToken.None);
                                 }
                                 catch (Exception markEx)
                                 {
@@ -228,12 +230,12 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                                     _logger.LogWarning(markEx,
                                         "事件 {EventId} 处理成功但完成标记失败，保留 processing 态等待超时恢复",
                                         eventData.EventId);
-                                    FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: true, "mark_completed_failed");
+                                    FeishuMetricsHelper.RecordEventOutcome(_options.ResolvedAppKey, eventData.EventType, success: true, "mark_completed_failed");
                                 }
 
                                 // 记录事件处理成功（mark 失败分支已带 "mark_completed_failed" 标签，成功口径只记一次）
                                 if (markCompleted)
-                                    FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: true);
+                                    FeishuMetricsHelper.RecordEventOutcome(_options.ResolvedAppKey, eventData.EventType, success: true);
                             }
                         }
                         catch (EventHandlingOutcomeException outcomeEx)
@@ -251,7 +253,7 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                             // 异常仍按 OCE 原样传播，保持取消语义（MessageRouter 转为路由失败 → ACK 500）。
                             processingException = new EventHandlingOutcomeException("canceled", "事件处理被外部取消");
                             await RollbackDeduplicationAsync(eventData.EventId, cancellationToken);
-                            FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: false, "canceled");
+                            FeishuMetricsHelper.RecordEventOutcome(_options.ResolvedAppKey, eventData.EventType, success: false, "canceled");
                             cancelOutcomeRecorded = true;
                             throw;
                         }
@@ -263,7 +265,7 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                             await RollbackDeduplicationAsync(eventData.EventId, cancellationToken);
 
                             // 记录事件处理失败
-                            FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: false, ex.GetType().Name);
+                            FeishuMetricsHelper.RecordEventOutcome(_options.ResolvedAppKey, eventData.EventType, success: false, ex.GetType().Name);
 
                             // 业务失败落盘（可选容灾）。仅覆盖通用业务失败分支——
                             // OCE（取消后服务端必然重发）与 EventHandlingOutcomeException（拦截/取消终态，
@@ -274,10 +276,22 @@ public class FeishuEventMessageHandler : JsonMessageHandler
                         }
                         finally
                         {
-                            // 后置拦截器（无论成功或失败都执行）
+                            // 后置拦截器（无论成功或失败都执行）。
+                            // 收尾语义不消费调用方令牌（外部取消时令牌已取消）；
+                            // 逐条隔离异常——任一拦截器失败不得跳过其余拦截器，也不得把业务成功改判为失败。
                             foreach (var interceptor in _interceptors)
                             {
-                                await interceptor.AfterHandleAsync(eventData.EventType, eventData, processingException, cancellationToken);
+                                try
+                                {
+                                    await interceptor.AfterHandleAsync(
+                                        eventData.EventType, eventData, processingException, CancellationToken.None);
+                                }
+                                catch (Exception afterEx)
+                                {
+                                    _logger.LogError(afterEx,
+                                        "后置拦截器 {InterceptorType} 处理事件失败: {EventType}, EventId: {EventId}",
+                                        interceptor.GetType().Name, eventData.EventType, eventData.EventId);
+                                }
                             }
                         }
                     }
@@ -291,7 +305,7 @@ public class FeishuEventMessageHandler : JsonMessageHandler
             // 仅当取消发生在内层 try 之外（JSON 解析 / 去重检查等前置阶段）时才在此记账，
             // 内层已按真实 eventType 记账的取消不重复计数。
             if (!cancelOutcomeRecorded)
-                FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, "unknown", success: false, "canceled");
+                FeishuMetricsHelper.RecordEventOutcome(_options.ResolvedAppKey, "unknown", success: false, "canceled");
             throw;
         }
         catch (EventHandlingOutcomeException outcomeEx)
@@ -338,11 +352,12 @@ public class FeishuEventMessageHandler : JsonMessageHandler
         {
             if (_unifiedDedupMiddleware != null)
             {
-                await _unifiedDedupMiddleware.RollbackAsync(eventId, seqId: null, CancellationToken.None);
+                await _unifiedDedupMiddleware.RollbackAsync(
+                    eventId, seqId: null, _options.ResolvedAppKey, CancellationToken.None);
             }
             else if (_deduplicator != null)
             {
-                await _deduplicator.RollbackProcessingAsync(eventId, _options.AppKey, CancellationToken.None);
+                await _deduplicator.RollbackProcessingAsync(eventId, _options.ResolvedAppKey, CancellationToken.None);
             }
         }
         catch (Exception rollbackEx)
@@ -368,8 +383,8 @@ public class FeishuEventMessageHandler : JsonMessageHandler
         try
         {
             var nextRetryAt = DateTimeOffset.UtcNow.AddSeconds(_options.FailedEventInitialRetryDelaySeconds);
-            await _failedEventStore.StoreFailedEventAsync(eventData, exception, _options.AppKey, nextRetryAt, cancellationToken);
-            FeishuMetricsHelper.RecordEventOutcome(_options.AppKey, eventData.EventType, success: false, "failed_event_stored");
+            await _failedEventStore.StoreFailedEventAsync(eventData, exception, _options.ResolvedAppKey, nextRetryAt, cancellationToken);
+            FeishuMetricsHelper.RecordEventOutcome(_options.ResolvedAppKey, eventData.EventType, success: false, "failed_event_stored");
         }
         catch (Exception storeEx)
         {

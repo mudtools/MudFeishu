@@ -4,8 +4,8 @@
 
 ## Avoid when
 
-- 只是想给对方协作权限——用 `drive.grant_permission`（转移所有权重得多）。
-- 只是想调整协作者档位——用 `drive.update_permission_member`。
+- 只是想给对方协作权限——用 `drive.set_permission`（转移所有权重得多）。
+- 只是想调整协作者档位——用 `drive.set_permission`。
 
 ## Prerequisites
 

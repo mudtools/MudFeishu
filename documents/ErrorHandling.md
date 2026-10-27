@@ -137,7 +137,7 @@ WebSocket / Webhook 事件链路**不追求严格一次**，契约为 **at-least
 | 业务成功 | Mark completed → ACK 200 | Mark completed → 200 |
 | 业务失败 | 回滚 + ACK 500（重发） | 回滚 + 失败存储 + 500（或按配置返回） |
 | Mark 失败 | 保留 processing，ACK 200（WHF-07） | 保留 processing，按成功返回 |
-| 被拦截 | 回滚去重 + 重抛 → ACK 500（retry-until-accept） | 不进去重 + `(false,"Event intercepted")` → 500 |
+| 被拦截 | 回滚去重 + 重抛 → ACK 500（retry-until-accept） | 默认 `InterceptionAckMode=Ack` → 200（补落去重标记）；`Retryable` → 503 |
 | 空 EventId | 默认拒绝（`RejectEmptyEventIds=true`） | 默认 400（`RejectEmptyIdentifiers=true`） |
 | 未注册事件 | 默认回退默认处理器；`IgnoreUnknownEventTypes=true` 时忽略 | 默认忽略（`IgnoreUnknownEventTypes=true`） |
 | 去重体系致命故障 | （WS 无对应 WHF-02 中间件转换） | `FeishuDeduplicationFatalException` → 不回滚/不写失败存储 → 503 |
@@ -150,3 +150,37 @@ WebSocket / Webhook 事件链路**不追求严格一次**，契约为 **at-least
 
 - 启用 `Retry.EnableRetry` 时，业务失败会写入 `IFailedEventStore`（ADR-2）；`FailedEventInfo` 可含 `SerializedHeader`/`StoreKey`。
 - 多处理器扇出任一失败将**整体**回滚去重并依赖重发，已成功的处理器会重复执行（见 `IFeishuEventHandlerFactory.HandleEventParallelAsync` XML）。
+
+## 7. Webhook ACK 决策表（与守卫同源）
+
+Webhook 的**响应码就是对飞书的 ACK 语义**：200 = 已消费（不再重推）、4xx = 终态丢弃（飞书不重推）、
+5xx = 请重推。任何错配都会导致事件永久丢失或重推风暴，因此这张表由
+`Tests/Mud.Feishu.Webhook.Tests/ContractGuards/WebhookAckSemanticsContractGuards` 以**真实中间件 + 替身服务**
+逐行锁定（改表 = 改测试，二者必须同批）。
+
+| 场景 | 状态码 | 说明 |
+| --- | --- | --- |
+| 验签失败（已判定无效） | 403 | 终态；不写失败存储 |
+| 验签**不可用**（密钥服务故障 / 验签链内部异常 / 配置构建失败） | **503 + `Retry-After`** | 可重试；**不写失败存储、不回滚去重**（事件尚未被消费） |
+| 解密失败（密文非法/解析失败） | 400 | 终态 |
+| 解密/验签超时（非客户端断开） | 503 + `Retry-After` | 可重试 |
+| 去重体系致命故障（`FeishuDeduplicationFatalException`） | 503 + `Retry-After` | 可重试 |
+| 拦截器中断（`InterceptionAckMode=Ack`，默认） | 200 | 已消费；补落去重标记 |
+| 拦截器中断（`InterceptionAckMode=Retryable`） | 503 + `Retry-After` | 要求重推 |
+| 业务处理失败 | 500 | 回滚去重 + 写失败存储（`Retry.EnableRetry` 时） |
+
+> **排障口径**：持续出现 503 且指标 `signature_unavailable` 上升 = 密钥服务/配置有问题，**不是**签名不匹配；
+> 403 才是"对端签名无效"。连续 10 次 503 应立即检查 `IEncryptKeyProvider` 与配置热更状态。
+
+## 8. Webhook 部署前置条件
+
+1. **跨实例部署必须接入 Redis 去重**（`AddFeishuRedisDeduplicators()`）：进程内内存 Nonce/EventId 去重只对单实例有效，
+   生产环境默认会被启动期阻断（D1），显式豁免（`AllowInMemoryNonceDedupInProduction`）意味着承担跨实例重放风险。
+2. **内存失败队列重启即丢**：`InMemoryFailedEventStore` 仅适用于单实例或可容忍丢失的场景。
+3. **明文（未加密）事件一律拒绝**：`url_verification` 明文请求在验签前即 403，必须配置 `EncryptKey`。
+4. **Nonce 消费顺序**：Nonce 在**验签通过后、解密之前**即被标记（防重放要求标记早于昂贵处理）。因此解密超时等
+   5xx 之后，若对端重推**复用同一 Nonce**，重推会被判重放（403）；本模块的恢复路径是内部重试
+   （`Retry.EnableRetry` → `FailedEventRetryService`，不经 Nonce 校验），而不是外部重推。
+5. **请求体上限**：默认 1MB（`MaxRequestBodySize`）。确有超大卡片事件时显式调大，否则会被 413 拒绝。
+6. **路由前缀**：`GlobalRoutePrefix` 只写路径名（如 `feishu`）；带斜杠的写法（`/feishu`、`feishu/`）会被
+   自动归一化——这是修复项，不再导致静默 404。

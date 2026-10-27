@@ -7,7 +7,10 @@
 
 using System.Text.Json.Nodes;
 
+using Microsoft.Extensions.Logging;
+
 using Mud.Feishu.AI.Mcp;
+using Mud.Feishu.AI.Tools.Tests.Tools;
 using Mud.Feishu.DataModels.Messages;
 
 namespace Mud.Feishu.AI.Tools.Tests.Mcp;
@@ -40,7 +43,9 @@ public class FeishuMcpToolServerTests
         Action<FeishuMcpServerOptions>? mcp = null,
         Mock<IToolExecutionAuthorizer>? authorizer = null,
         IToolExecutionAuditSink? auditSink = null,
-        Mock<Mud.Feishu.IFeishuTenantV1Message>? messageClient = null)
+        Mock<Mud.Feishu.IFeishuTenantV1Message>? messageClient = null,
+        ILogger<FeishuMcpToolServer>? logger = null,
+        bool includeTools = true)
     {
         var agentOptions = new FeishuAgentOptions { Instructions = "test" };
         agent?.Invoke(agentOptions);
@@ -68,7 +73,16 @@ public class FeishuMcpToolServerTests
             services.AddSingleton(auditSink);
         }
 
-        services.AddFeishuTools();
+        if (logger is not null)
+        {
+            services.AddSingleton(logger);
+        }
+
+        if (includeTools)
+        {
+            services.AddFeishuTools();
+        }
+
         services.AddFeishuMcpServer(mcp);
         return services.BuildServiceProvider();
     }
@@ -196,6 +210,75 @@ public class FeishuMcpToolServerTests
             "默认配置（Tools/WriteAllowList 皆空）下没有任何工具被启用——MCP 不得自行放宽");
     }
 
+    // ─────────────────────────── 装配诊断（空工具面必须留痕） ───────────────────────────
+
+    /// <summary>
+    /// 注册表缺席（宿主没调 <c>AddFeishuTools</c>）必须告警且点名成因：空工具面是合法状态，
+    /// 但"忘装配"与"刻意空配"同形——没有这条日志，排障只能去读装配代码。
+    /// </summary>
+    [Fact]
+    public void BuildSurface_ShouldWarnOnce_WhenRegistryAbsent()
+    {
+        var logger = new RecordingLogger<FeishuMcpToolServer>();
+        using var provider = BuildProvider(mcp: McpConfigure(), logger: logger, includeTools: false);
+
+        provider.GetRequiredService<FeishuMcpToolServer>().Tools.Should().BeEmpty();
+
+        logger.Warnings.Should().ContainSingle(w => w.Contains("registry_absent"), "空面只告警一次（每请求告警等于日志放大器）");
+        logger.Warnings.Should().Contain(w => w.Contains("AddFeishuTools"), "告警必须给出可修指引");
+    }
+
+    /// <summary>注册表在、构桥接缝缺：同一装配缺陷的另一面，必须独立可辨。</summary>
+    [Fact]
+    public void BuildSurface_ShouldWarnOnce_WhenFunctionFactoryAbsent()
+    {
+        var logger = new RecordingLogger<FeishuMcpToolServer>();
+
+        var services = new ServiceCollection()
+            .AddSingleton(Options.Create(new FeishuAgentOptions { Instructions = "test" }))
+            .AddSingleton(new FeishuToolRegistry())
+            .AddSingleton<ILogger<FeishuMcpToolServer>>(logger);
+        services.AddFeishuMcpServer(McpConfigure());
+        using var provider = services.BuildServiceProvider();
+
+        provider.GetRequiredService<FeishuMcpToolServer>().Tools.Should().BeEmpty();
+        logger.Warnings.Should().ContainSingle(w => w.Contains("factory_absent"));
+    }
+
+    /// <summary>白名单为空（最常见的宿主误配）：告警必须点名配置节，而不是让人猜。</summary>
+    [Fact]
+    public void BuildSurface_ShouldWarn_WhenWhitelistEmpty()
+    {
+        var logger = new RecordingLogger<FeishuMcpToolServer>();
+        using var provider = BuildProvider(mcp: McpConfigure(), logger: logger);
+
+        provider.GetRequiredService<FeishuMcpToolServer>().Tools.Should().BeEmpty();
+
+        logger.Warnings.Should().ContainSingle(w => w.Contains("whitelist_empty"));
+        logger.Warnings.Should().Contain(w => w.Contains("FeishuAgent:Tools"), "告警须点名宿主该改哪个配置节");
+    }
+
+    /// <summary>
+    /// 非空工具面：一条就绪读数（与 <c>initialize._meta</c> 同口径）+ 零告警
+    /// ——后者是反噪音自证，否则真告警会被"每次都报"淹没。
+    /// </summary>
+    [Fact]
+    public void BuildSurface_ShouldLogReadyReadout_WhenToolsEnabled()
+    {
+        var logger = new RecordingLogger<FeishuMcpToolServer>();
+        using var provider = BuildProvider(
+            agent: o => o.Tools = [SchemaReadTool],
+            mcp: McpConfigure(),
+            logger: logger);
+
+        provider.GetRequiredService<FeishuMcpToolServer>().Tools.Should().HaveCount(1);
+
+        logger.Entries.Should().Contain(
+            e => e.Level == LogLevel.Information && e.Message.Contains("tools=1"),
+            "就绪读数让运维不必连客户端即可看到面规模");
+        logger.Warnings.Should().BeEmpty("非空工具面不得告警");
+    }
+
     // ─────────────────────────── 会话握手与生命周期 ───────────────────────────
 
     [Theory]
@@ -218,8 +301,93 @@ public class FeishuMcpToolServerTests
         response["result"]!["serverInfo"]!["name"]!.GetValue<string>().Should().Be("mud-feishu");
     }
 
+    // ─────────────── E-2 运行时自描述（capabilities._meta，GAP-11 支柱③） ───────────────
+
+    private static async Task<JsonObject> MetaAsync(FeishuMcpToolServer server)
+        => (await InitializeAsync(server))["result"]!["capabilities"]!["_meta"]!.AsObject();
+
+    /// <summary>
+    /// 握手段即读得到规模面（工具数 / 域数 / 读写分布 / 资源数 / 协议修订闭集）——
+    /// 客户端不必先 <c>tools/list</c> 再自行统计。
+    /// </summary>
+    [Fact]
+    public async Task Initialize_ShouldSelfDescribeSurface_InCapabilitiesMeta()
+    {
+        using var provider = BuildProvider(
+            agent: o => o.Tools = [SchemaReadTool],
+            mcp: McpConfigure());
+        var server = provider.GetRequiredService<FeishuMcpToolServer>();
+
+        var meta = await MetaAsync(server);
+
+        meta["tools"]!.GetValue<int>().Should().Be(1);
+        meta["domains"]!.GetValue<int>().Should().Be(1, "域 = 契约名首段（feishu.schema_read → feishu）");
+        meta["readOnlyTools"]!.GetValue<int>().Should().Be(1);
+        meta["writeTools"]!.GetValue<int>().Should().Be(0);
+        meta["resources"]!.GetValue<int>().Should().Be(server.Resources.Count);
+        meta["protocolVersions"]!.AsArray().Select(static v => v!.GetValue<string>()).Should()
+            .Equal(McpProtocol.SupportedVersions);
+    }
+
+    /// <summary>
+    /// 自描述读数必须等于客户端随后真能拿到的那份面（取本服务下发集，不取编译期策展总量——
+    /// 否则 <c>_meta</c> 就成了第二个真相源）。
+    /// </summary>
+    [Fact]
+    public async Task Initialize_MetaCountsShouldMatchTheServedToolSurface()
+    {
+        var messageClient = new Mock<Mud.Feishu.IFeishuTenantV1Message>();
+        using var provider = BuildProvider(
+            agent: o =>
+            {
+                o.Tools = [SchemaReadTool];
+                o.WriteAllowList = [SendMessageTool];
+            },
+            mcp: McpConfigure(includeGuidance: false),
+            messageClient: messageClient);
+        var server = provider.GetRequiredService<FeishuMcpToolServer>();
+
+        var meta = await MetaAsync(server);
+
+        var expectedDomains = server.Tools
+            .Select(static t => t.ContractName.Contains('.', StringComparison.Ordinal)
+                ? t.ContractName.Substring(0, t.ContractName.IndexOf('.', StringComparison.Ordinal))
+                : t.ContractName)
+            .Distinct(StringComparer.Ordinal)
+            .Count();
+
+        server.Tools.Should().HaveCount(2, "一读一写两枚工具都在下发面内");
+        meta["tools"]!.GetValue<int>().Should().Be(server.Tools.Count);
+        meta["domains"]!.GetValue<int>().Should().Be(expectedDomains);
+        meta["readOnlyTools"]!.GetValue<int>().Should().Be(
+            server.Tools.Count(static t => !t.IsWrite), "读写分布按本服务真实下发工具计");
+        meta["writeTools"]!.GetValue<int>().Should().Be(server.Tools.Count(static t => t.IsWrite));
+    }
+
+    /// <summary>资源关闸时自描述同步归零（读数跟随能力面，不是常量）。</summary>
+    [Fact]
+    public async Task Initialize_MetaResourceCountShouldFollowIncludeResources()
+    {
+        using var provider = BuildProvider(
+            agent: o => o.Tools = [SchemaReadTool],
+            mcp: options =>
+            {
+                McpConfigure(includeGuidance: false)(options);
+                options.IncludeResources = false;
+            });
+        var server = provider.GetRequiredService<FeishuMcpToolServer>();
+
+        var response = await InitializeAsync(server);
+
+        server.Resources.Should().BeEmpty("IncludeResources=false 时资源面整体关闭");
+        response["result"]!["capabilities"]!.AsObject().Select(static kv => kv.Key).Should().NotContain("resources");
+        response["result"]!["capabilities"]!["_meta"]!["resources"]!.GetValue<int>().Should().Be(0);
+    }
+
+
     [Fact]
     public async Task Initialize_ShouldFallBack_ForUnsupportedProtocolVersion()
+
     {
         using var provider = BuildProvider(mcp: McpConfigure(includeGuidance: false));
         var server = provider.GetRequiredService<FeishuMcpToolServer>();

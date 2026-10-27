@@ -39,6 +39,14 @@ TFMs resolve via `dotnet msbuild -getProperty:TargetFrameworks` (test projects i
 `Tests/Directory.Build.props`). CI mirrors this: `-CacheCheckOnly` before restore, then the build
 log is asserted against the same whitelist (`.github/workflows/dotnet-publish.yml`).
 
+The test step in CI is **per project, serial** with one result directory (and therefore one TRX set)
+per project — do **not** fold it back into a single `dotnet test <slnx>`: MSBuild then starts one
+testhost per core, and on a cold hosted runner the first wave can miss the 90 s `vstest.console`
+handshake (`failed to connect to testhost process ... The process with id X was still running`),
+aborting several projects with `total=0` while the *other* projects pass — a green-looking
+environment producing a red job. `VSTEST_CONNECTION_TIMEOUT` is 300 in both the workflow `env` and
+`verify-build.ps1`, and a `total=0` project is retried once before being named as a failure.
+
 **Source-project discovery is glob-based, never a hardcoded count**: `verify-build.ps1`
 step 3 enumerates the repo's `Mud.*` source directories at run time. The `Mud.AI.*` family has been
 migrated to its own repository (see "Mud.AI.* family migration" below), so it is AOT-smoked by that

@@ -59,7 +59,7 @@ public class BitableRecordContextAssemblerTests
         fragment.Should().Contain("操作人").And.Contain("ou_operator");
         fragment.Should().Contain("修改记录 rec1", "平台枚举码必须翻成模型可读的中文");
         fragment.Should().Contain("字段差异").And.Contain("fldA");
-        fragment.Should().Contain("bitable.get_records_by_ids", "片段应给出下一步动作");
+        fragment.Should().Contain("bitable.query_records", "片段应给出下一步动作");
     }
 
     /// <summary>平台三态枚举码全覆盖：新增 / 删除 / 修改。</summary>

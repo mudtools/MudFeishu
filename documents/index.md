@@ -145,6 +145,19 @@ public class MyController : ControllerBase
 | [错误处理指南](./ErrorHandling.md) | 统一响应模型、`ApiException` 语义、**文件下载类接口（`Task<byte[]?>`）的错误契约与残余风险** |
 | [响应缓存使用指南](./ResponseCaching.md) | `[Cache]` 特性接入方式、**多应用缓存键隔离约束**、适合缓存的接口清单 |
 
+## Webhook 排障速查
+
+> 响应码就是**对飞书的 ACK 语义**：200 = 已消费（停止重推）、4xx = 终态丢弃（飞书不再重推）、
+> 5xx = 请重推。完整决策表见 [错误处理指南](./ErrorHandling.md) 的「Webhook ACK 决策表」。
+
+| 现象 | 判定 | 处置 |
+| --- | --- | --- |
+| 持续返回 **503** 且指标 `signature_unavailable` 上升 | 验签**无法完成判定**（密钥服务故障 / 配置热更后构建失败）——**不是**签名不匹配 | 检查 `IEncryptKeyProvider`（KeyVault/Vault）与最近一次配置变更；连续 10 次 503 即应介入 |
+| 持续返回 **503** 但 `signature_unavailable` 不涨 | 去重体系致命故障、验签/解密超时，或拦截器要求重推（`InterceptionAckMode=Retryable`） | 看响应头 `Retry-After` 与去重实现（Redis）健康度 |
+| 返回 **403** | 签名已被判定为无效（终态，飞书不再重推） | 核对 `EncryptKey` 与 `SHA-256(timestamp + nonce + encryptKey + body)` 计算口径 |
+| 端点全量 **404**、启动日志却干净 | `FeishuWebhook:Apps` 为空，或路由前缀写法不匹配 | 3.x 起 `Apps` 为空会在 `UseFeishuWebhook()` 处**启动失败**；前缀 `"/feishu"` / `"feishu/"` 会被自动归一化 |
+| 事件被 **413** 拒绝 | 请求体超过 `MaxRequestBodySize`（默认 **1MB**） | 确有超大卡片事件时显式调大该值；服务端日志记录实际长度 |
+
 ## 命名空间与版本信息
 
 - **根命名空间**：`Mud.Feishu`

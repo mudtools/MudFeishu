@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------
+﻿// -----------------------------------------------------------------------
 //  作者：Mud Studio  版权所有 (c) Mud Studio 2026
 //  Mud.Feishu 项目的版权、商标、专利和其他相关权利均受相应法律法规的保护。使用本项目应遵守相关法律法规和许可证的要求。
 //  本项目主要遵循 MIT 许可证进行分发和使用。许可证位于源代码树根目录中的 LICENSE-MIT 文件。
@@ -62,14 +62,14 @@ public class GuidanceAssetContractGuards
     public void EveryContractDomain_ShouldHaveAL1GuidanceAsset()
     {
         // 自证（防"过滤器写坏 ⇒ 零缺失假绿"）：域数与工具条目数一起锁基线。
-        // 新增域时必须同批补 Guidance/{domain}.md 并更新这里的 31；工具增减时更新 331。
+        // 新增域时必须同批补 Guidance/{domain}.md 并更新这里的 34；工具增减时更新 351。
         var contractDomains = FeishuToolContracts.AllNames
             .Select(DomainOf)
             .ToHashSet(StringComparer.Ordinal);
         contractDomains.Should().HaveCount(
-            31, "工具面当前 31 个域（含元工具域 feishu）——新增域须同批补 L1 资产并更新本基线");
+            34, "工具面当前 34 个域（含元工具域 feishu）——新增域须同批补 L1 资产并更新本基线");
         FeishuToolContracts.AllNames.Should().HaveCount(
-            331, "工具条目基线（与 FeishuToolSchemas.golden.txt 同源）");
+            351, "工具条目基线（与 FeishuToolSchemas.golden.txt 同源）");
 
         var missing = FindDomainsWithoutGuidance(FeishuToolContracts.AllNames, FeishuToolGuidance.ByDomain);
 
@@ -379,7 +379,7 @@ public class GuidanceAssetContractGuards
 
     /// <summary>
     /// 启用全部工具：读写分列（写类工具必须经 <c>WriteAllowList</c> 单独键控）+ 放行 <c>user</c> 身份
-    /// （<c>approval.get_instance</c>/<c>task.list_my_tasks</c>/<c>mail.send_message</c> 是 user 身份工具，
+    /// （<c>approval.get_instance</c>/<c>task.list_my_tasks</c>/<c>mail.send</c> 是 user 身份工具，
     /// 不加入 <c>AllowedIdentities</c> 会在<b>装配期</b> fail-fast）。
     /// </summary>
     private static void EnableAllTools(FeishuAgentOptions options)
@@ -432,7 +432,7 @@ public class GuidanceAssetContractGuards
     [Fact]
     public void Scanner_ShouldFlagNonExistentToolReference_WhenGuidanceMentionsRemovedTool()
     {
-        var validNames = new HashSet<string>(["bitable.list_tables", "bitable.add_record"], StringComparer.Ordinal);
+        var validNames = new HashSet<string>(["bitable.list_tables", "bitable.record_batch_create"], StringComparer.Ordinal);
         var referenced = GuidanceReferenceScanner.FindToolReferences("写入走 bitable.ghost_tool（已删除）");
 
         var ghosts = referenced.Where(n => !validNames.Contains(n)).ToArray();

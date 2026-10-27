@@ -48,7 +48,8 @@ package_version: 3.0.3
 - `attendance.query_my_remedys`（只读）：查询指定用户的补卡申请记录（tenant 身份）。check_time_from/check_time_to 为秒级时间戳字符串。需 attendance:task 权限。
 - `attendance.query_stats_data`（只读）：查询考勤统计报表数据（tenant 身份）。stats_type 取值 day（按日）/ month（按月）；start_date/end_date 为 yyyyMMdd 整数日期。user_ids 缺省时按当前考勤组统计。需 attendance:stats 权限。
 - `attendance.query_user_flow`（只读）：批量查询指定用户的考勤打卡流水（tenant 身份，可查他人）。check_time_from/check_time_to 为秒级时间戳字符串（如 "1705312800"）。⚠️ PII 敏感：打卡时间/地点属员工隐私数据，结果将进入第三方模型上下文，请确认已获合规授权。默认不启用，需宿主显式加白名单。需 attendance:task 权限。
-- `attendance.submit_remedy`（写）：提交补卡申请（写入飞书考勤系统，状态为审批中；走补卡审批流）。remedy_date 为 yyyyMMdd 整数日期，remedy_time 为 HH:mm 字符串。⚠️ 非幂等：重复提交会造成重复申请（无幂等键可用）。写操作：默认空名单不启用，启用前须经宿主授权（IToolExecutionAuthorizer），可用 dry_run=true 预演；需 attendance:task 权限。
+- `attendance.submit_remedy`（写）：提交补卡申请（写入飞书考勤系统，状态为审批中；走补卡审批流）。remedy_date 为 yyyyMMdd 整数日期，remedy_time 为 HH:mm 字符串。⚠️ 非幂等：重复提交会造成重复申请（无幂等键可用）。写操作：可用 dry_run=true 预演；需 attendance:task 权限。
 
 ## 参考文档（细则）
 - `references/pii.md`：`attendance/pii`
+- 正文里形如 `feishu.guidance_read(attendance, 主题)` 的指针，在文件形态下读本包的 `references/主题.md`（本包细则就是那份资产，无需进程内工具）

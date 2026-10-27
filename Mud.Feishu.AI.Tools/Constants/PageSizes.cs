@@ -52,7 +52,7 @@ internal static class PageSizes
     /// <summary>drive.list_comments（官方默认 100，此处取 50 控量）。</summary>
     public const int DriveComments = 50;
 
-    /// <summary>bitable.get_records_by_ids（官方单请求上限 100）。</summary>
+    /// <summary>bitable.query_records 的 record_ids 模式（官方单请求上限 100）。</summary>
     public const int BitableRecordsByIds = 100;
 
     /// <summary>bitable.form_question_list（官方默认 100/页）。</summary>
@@ -111,6 +111,15 @@ internal static class PageSizes
 
     /// <summary>spark.query_table_records（官方默认 10、上限 500，此处取 100 控量）。</summary>
     public const int SparkRecords = 100;
+
+    /// <summary>im.list_reactions（官方上限 100；该端点不透游标，取上限即"单页尽量多"）。</summary>
+    public const int ImReactions = 100;
+
+    /// <summary>im.batch_query_reactions 的单条消息明细上限（官方默认 10）。</summary>
+    public const int ImReactionsPerMessage = 10;
+
+    /// <summary>docx.history_list（官方默认 10/页；未声明最大值，按默认值请求）。</summary>
+    public const int FileVersions = 10;
 
     /// <summary>单条消息 content 预览截断长度。</summary>
     public const int MessagePreviewLength = 200;

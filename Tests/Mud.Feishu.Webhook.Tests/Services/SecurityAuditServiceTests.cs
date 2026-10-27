@@ -88,7 +88,7 @@ public class SecurityAuditServiceTests
     }
 
     [Fact]
-    public async Task LogSecuritySuccessAsync_WithAllParameters_ShouldLogInformation()
+    public async Task LogSecuritySuccessAsync_WithAllParameters_ShouldLogDebug()
     {
         // Arrange
         var eventType = SecurityEventType.SignatureValidation;
@@ -101,10 +101,10 @@ public class SecurityAuditServiceTests
         // Act
         await _service.LogSecuritySuccessAsync(eventType, clientIp, requestPath, details, requestId, appKey);
 
-        // Assert
+        // Assert - F-4：成功审计降为 Debug（"成功"是期望态，每个事件都会走一次，不应占据 Information）
         _loggerMock.Verify(
             x => x.Log(
-                LogLevel.Information,
+                LogLevel.Debug,
                 It.IsAny<EventId>(),
                 It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("安全验证成功") &&
                     v.ToString()!.Contains("SignatureValidation") &&
@@ -116,7 +116,7 @@ public class SecurityAuditServiceTests
     }
 
     [Fact]
-    public async Task LogSecuritySuccessAsync_WithoutOptionalParameters_ShouldLogInformation()
+    public async Task LogSecuritySuccessAsync_WithoutOptionalParameters_ShouldLogDebug()
     {
         // Arrange
         var eventType = SecurityEventType.SubscriptionValidation;
@@ -130,7 +130,7 @@ public class SecurityAuditServiceTests
         // Assert
         _loggerMock.Verify(
             x => x.Log(
-                LogLevel.Information,
+                LogLevel.Debug,
                 It.IsAny<EventId>(),
                 It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("安全验证成功") &&
                     v.ToString()!.Contains("SubscriptionValidation")),

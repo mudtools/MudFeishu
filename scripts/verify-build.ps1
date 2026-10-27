@@ -253,10 +253,20 @@ else {
 # <Mud.AI 仓>/artifacts 这一本地文件夹源消费。同一版本覆盖打包同样不会让下游缓存失效
 # （NuGet 以 id+version 为键）——与 Mud.HttpUtils.Generator 完全同款。逐个包比对包内
 # DLL 与全局缓存 DLL 的 SHA256（ContentHash；对时间戳/PDB 路径变化不敏感）。
-$mudAiSource = 'D:/Repos/MudAIAgent/artifacts'
-if ((Normalize-SourcePath $mudAiSource) -notin $declaredLocalSources) {
+# 候选路径按「上游仓常见位置」列出：`D:/Repos/mudai` 是当前独立仓，`D:/Repos/MudAIAgent` 是迁移文档记载的旧目录。
+# 判定依据仍是 **nuget.config 是否声明了该路径**（未声明 ⇒ 该候选直接不参与，输出 SKIP）。
+$mudAiSource = ''
+$mudAiSourceCandidates = @('D:/Repos/mudai/artifacts', 'D:/Repos/MudAIAgent/artifacts') |
+    Where-Object { (Normalize-SourcePath $_) -in $declaredLocalSources }
+if ($mudAiSourceCandidates.Count -eq 0) {
     Write-Host "  [SKIP] nuget.config 未声明 Mud.AI 跨仓本地源 ⇒ 家族包取自已发布版本，比对不适用" -ForegroundColor DarkGray
-    $mudAiSource = ''
+}
+else {
+    $mudAiSource = @($mudAiSourceCandidates | Where-Object { Test-Path $_ }) | Select-Object -First 1
+    if (-not $mudAiSource) {
+        Write-Host "  [SKIP] 已声明跨仓本地源但目录不在场：$($mudAiSourceCandidates -join ', ')" -ForegroundColor DarkGray
+        $mudAiSource = ''
+    }
 }
 if ($mudAiSource -and (Test-Path $mudAiSource)) {
     Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -552,6 +562,12 @@ $testLog = Join-Path $env:TEMP "mudfeishu-verify-test-$([guid]::NewGuid().ToStri
 
 # 同时设置中文 locale（兼容旧日志解析）和 TRX logger（locale 无关）
 $env:DOTNET_CLI_UI_LANGUAGE = 'zh-CN'
+
+# testhost 与 vstest.console 的握手超时（秒，VSTest 默认 90）：与 CI 的 env 保持同一口径
+# （.github/workflows/dotnet-publish.yml 的 VSTEST_CONNECTION_TIMEOUT）。冷启动 / 杀软扫描
+# 的机器上，宿主可能 90s 内完不成握手而被判"运行中止"，落一个 total=0 的 TRX —— 症状极易
+# 被误读成"用例失败"。本机串行执行几乎不会命中，但口径必须一致，避免"本地绿、CI 红"。
+$env:VSTEST_CONNECTION_TIMEOUT = '300'
 
 # GATE-4 修复（2026-09-17）：改为**逐测试工程 + 逐 TFM** 运行。此前单条 `dotnet test $solution`
 # 把结果目录当作 LogFileName 传入，VSTest 实际只落盘最后一次运行的 TRX（实测 7 个工程 × 2 个

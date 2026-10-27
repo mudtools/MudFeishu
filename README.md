@@ -473,7 +473,7 @@ MudFeishu/
 ├── Demos/                         # 示例（含 AI Agent Demo / AOT 验证）
 ├── documents/                     # 官方文档镜像 + 工具权限对照表
 ├── scripts/                       # verify-build / audit-config-keys / GenerateJsonContext / ...
-└── Directory.Build.props          # 全局 MSBuild 属性（Version 3.0.1 唯一来源）
+└── Directory.Build.props          # 全局 MSBuild 属性（Version 3.1.1 唯一来源）
 ```
 
 ---

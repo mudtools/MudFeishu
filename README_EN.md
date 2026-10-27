@@ -816,7 +816,7 @@ MudFeishu/
 ├── Demos/                         # Samples (incl. AI Agent demo / AOT verification)
 ├── documents/                     # Official documentation mirror + tool permission cross-reference
 ├── scripts/                       # verify-build / audit-config-keys / GenerateJsonContext / ...
-└── Directory.Build.props          # Global MSBuild properties (single source of Version 3.0.1)
+└── Directory.Build.props          # Global MSBuild properties (single source of Version 3.1.1)
 ```
 
 ---

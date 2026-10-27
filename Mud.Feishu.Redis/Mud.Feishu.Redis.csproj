@@ -25,7 +25,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Mud.HttpUtils.Redis" Version="3.0.8" />
+		<PackageReference Include="Mud.HttpUtils.Redis" Version="3.0.9" />
 	</ItemGroup>		
 	<ItemGroup>
 		<!-- <PackageReference Include="Mud.Feishu.Abstractions" Version="1.1.2" /> -->

@@ -5,6 +5,58 @@
 [Keep a Changelog]: https://keepachangelog.com/zh-CN/1.1.0/
 [语义化版本]: https://semver.org/lang/zh-CN/
 
+## [Unreleased]
+
+> 主题：**适配 `Mud.HttpUtils` 3.0.9**（在 3.1.0 已随 3.0.8 完成 `BC-30` 三成员移除的基础上，
+> 回迁官方令牌恢复入口并更正过时论断）。
+> 本版为**破坏性依赖变更**：`Mud.HttpUtils` / `Mud.HttpUtils.Generator` 由 `3.0.8` 升至 `3.0.9`
+> （3.0.9 批次以「删自建件 + 更正论断」为主，无新增破坏性变更）。
+> **上线前提（已满足）**：上游 `3.0.9` **已发布至 nuget.org**；`nuget.config` 中的本地源（指向
+> Release 产物 `artifacts`）**已移除**，引用改由公共源还原并复跑全门禁。
+
+### 依赖升级
+
+- `Mud.HttpUtils` / `Mud.HttpUtils.Generator`：`3.0.8` → **`3.0.9`**（两者必须同版本）。
+  7 个源工程的 10 处 `Mud.HttpUtils*` 声明统一，各 README 依赖表与 `AGENTS.md` 同步；
+  `Mud.Feishu.AI*` 与示例工程的 `Mud.HttpUtils.Attributes` / `Mud.HttpUtils.Abstractions`
+  引用同批升级。
+- 验证期经本地 Release 包渠道还原（`mudhttputils-local` → `D:/Repos/MudHttpUtils/artifacts`，
+  由 `pack.ps1 Release` 产出并逐字节校验）；**禁止**使用 `artifacts-debug` 的 Debug 包。
+  上游 3.0.9 发布至 nuget.org 后本地源**已移除**，并按「清缓存 → `restore --no-cache` → `clean`
+  → `build`」纪律重新还原自公共源（0 错误、190 warning 与升级前基线逐码一致），全门禁复跑通过。
+
+### 变更（Changed）
+
+- **令牌恢复配置改走组件官方入口**：注册链中的「DTO 投影 + `Apply` + 手工
+  `ConfigurationChangeTokenSource` + 校验器 + 可解析实例」共 38 行自建块，整块替换为
+  `AddMudHttpTokenRecoveryFromConfiguration(configuration)`。绑定语义（DTO 投影、节缺失保留默认值、
+  非法值在选项解析期抛错）与热更新语义（配置重载 ⇒ `IOptionsMonitor` 缓存失效）逐项等价，
+  已由既有等价性 / 热更新用例覆盖；无 `IConfiguration` 的代码式注册路径保留选项管线、
+  校验器与可解析实例（不含节绑定）。
+- **JSON 上下文接入改为合并入口**：`AddMudHttpClientJsonContext(FeishuApiResultJsonContext.Default)`
+  改为 `AddMudHttpClientJsonContexts(FeishuJsonContext.Default, FeishuApiResultJsonContext.Default)`
+  （net8+）。DI 管道的解析器链同时覆盖事件/Webhook 类型与响应包装/认证 DTO；非 DI 路径依赖的
+  `FeishuJsonDefaults` 静态合并链**保持不变**。
+- **注释与用例更正**：删除「`TokenRecoveryEnhancedClient` 未重写 `WithBaseAddress`、强转抛
+  `InvalidCastException`」的过时论断（组件 3.0.9 起该方法返回同类型实例），热更新注释改为
+  明确「每 `CreateClient` 重跑配置委托」而非「克隆实例」；`PurgeGateTokenStoreDecorator` 的读降级
+  论断改为「组件已降级，装饰器位于 store 层仍保留降级作为纵深防御」（行为不变）。
+- **新增回归用例**：`TokenRecoveryClientCapabilityTests`（`WithBaseAddress` 返回同类型 + 基地址生效）、
+  `AddFeishuApp_ShouldRegisterFeishuDomains_SoNoBlankAllowlistWarning`（注册入口已登记飞书域名，
+  严格模式客户端不产生「空白名单」启动期提示）。
+
+### 修复（Fixed）
+
+- `scripts/verify-build.ps1` 步骤 0（CACHE-1）的本地源比对改为「**仅当 `nuget.config` 显式声明
+  本地文件夹源时**执行」，未声明时输出 `[SKIP]`：组件发布到公共源后本地源已移除，
+  此时缓存来自公共源，继续比对本机打包目录会把「公共源包与本地同版本重打包不一致」误报为下游缓存陈旧。
+  本地联调周期（声明了该源）的比对语义不变。
+- **更正旧文档的一处错误描述**：`GetWebApi<T>(appKey)` 曾被称为「返回独立实例」，实际与
+  `UseAppScope` / 旧的 `UseApp()` 共用同一个基于 `AsyncLocal` 的 `IAppContextHolder`，
+  **不存在「独立实例」语义**；正确做法是先切换、再从 DI 解析。
+- 决策档案登记执行状态：`弃用成员移除方案.md`（§2 档 A 门禁、§5 风险 7 已消解）、
+  `迁移与弃用史.md`、`编号索引.md`、`上游契约适配史.md`、`注释精简归档.md`。
+
 ## [3.1.0] - 2026-10-19
 
 **重大功能版本 —— 新增 AI 能力。** `Mud.Feishu.AI`（Agent 运行时）、`Mud.Feishu.AI.Tools`（工具面）与

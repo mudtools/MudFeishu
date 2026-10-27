@@ -891,9 +891,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/audit-config-keys.
 
 | 包                            | 版本             | 说明                                |
 | ----------------------------- | ---------------- | ----------------------------------- |
-| **Mud.HttpUtils**             | v3.0.8  | HTTP 客户端工具类（含源代码生成器） |
-| **Mud.HttpUtils.Generator**   | v3.0.8  | HTTP 客户端代码生成器（编译时）     |
-| **Mud.HttpUtils.Resilience**  | v3.0.8  | 弹性策略（重试 / 超时 / 熔断）      |
+| **Mud.HttpUtils**             | v3.0.9  | HTTP 客户端工具类（含源代码生成器） |
+| **Mud.HttpUtils.Generator**   | v3.0.9  | HTTP 客户端代码生成器（编译时）     |
+| **Mud.HttpUtils.Resilience**  | v3.0.9  | 弹性策略（重试 / 超时 / 熔断）      |
 | **Microsoft.Extensions.Http** | v10.0.12 | HTTP 客户端工厂                    |
 | **Microsoft.Agents.AI**       | v1.25.0 | AI 基座（仅 AI 包引用，核心包 MAF-free） |
 | **Mud.AI.Agent / Mud.AI.Abstractions** | v1.0.1 | 中立 AI 运行时（独立仓库发包） |

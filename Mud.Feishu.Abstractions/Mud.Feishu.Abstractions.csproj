@@ -24,11 +24,11 @@
         <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.12" />
     </ItemGroup>
 	<ItemGroup>
-		<PackageReference Include="Mud.HttpUtils" Version="3.0.8" />
-		<PackageReference Include="Mud.HttpUtils.Resilience" Version="3.0.8" />
+		<PackageReference Include="Mud.HttpUtils" Version="3.0.9" />
+		<PackageReference Include="Mud.HttpUtils.Resilience" Version="3.0.9" />
 	</ItemGroup>
     <ItemGroup>
-        <PackageReference Include="Mud.HttpUtils.Generator" Version="3.0.8" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <PackageReference Include="Mud.HttpUtils.Generator" Version="3.0.9" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
         <None Include=".\README.md" Pack="true" PackagePath="\" />
         <None Include="..\Icon.png" Pack="true" PackagePath="\" />
     </ItemGroup>

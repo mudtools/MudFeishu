@@ -1051,9 +1051,9 @@ core packages stay free of them).
 
 | Package | Version | Description |
 | --------------------------------------------- | ---------------- | ----------------------------------------------------- |
-| **Mud.HttpUtils** | v3.0.8 | HTTP client utilities (with source generator) |
-| **Mud.HttpUtils.Generator** | v3.0.8 | HTTP client code generator (compile-time) |
-| **Mud.HttpUtils.Resilience** | v3.0.8 | Resilience policies (retry / timeout / circuit breaker) |
+| **Mud.HttpUtils** | v3.0.9 | HTTP client utilities (with source generator) |
+| **Mud.HttpUtils.Generator** | v3.0.9 | HTTP client code generator (compile-time) |
+| **Mud.HttpUtils.Resilience** | v3.0.9 | Resilience policies (retry / timeout / circuit breaker) |
 | **Microsoft.Extensions.Http** | v10.0.12 | HTTP client factory |
 | **Microsoft.Agents.AI** | v1.25.0 | AI foundation (referenced by the AI packages only; core packages stay MAF-free) |
 | **Mud.AI.Agent / Mud.AI.Abstractions** | v1.0.1 | Neutral AI runtime (published from its own repository) |

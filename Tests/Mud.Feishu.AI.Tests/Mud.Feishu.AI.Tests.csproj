@@ -11,8 +11,8 @@
          ⚠ 禁兼引：不得同时引用组件侧 Mud.HttpUtils.Generator（同名 hintName 产物冲突）——
          由 SingleToolSurfaceEngineContractGuards 断言。 -->
     <PackageReference Include="Mud.AI.Generator" Version="1.0.1" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-    <PackageReference Include="Mud.HttpUtils.Attributes" Version="3.0.8" />
-    <PackageReference Include="Mud.HttpUtils.Abstractions" Version="3.0.8" />
+    <PackageReference Include="Mud.HttpUtils.Attributes" Version="3.0.9" />
+    <PackageReference Include="Mud.HttpUtils.Abstractions" Version="3.0.9" />
   </ItemGroup>
 
   <ItemGroup>

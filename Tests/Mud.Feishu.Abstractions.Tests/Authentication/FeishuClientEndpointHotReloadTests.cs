@@ -28,9 +28,10 @@ namespace Mud.Feishu.Abstractions.Tests.Authentication;
 /// 在每次创建客户端时从 <c>IOptionsMonitor&lt;List&lt;FeishuAppConfig&gt;&gt;</c> 读取当前值。
 /// </para>
 /// <para>
-/// 说明：不采用组件 <c>WithBaseAddress</c> 方案 —— <c>TokenRecoveryEnhancedClient</c> 为 sealed 且未重写该方法，
-/// 基类实现返回普通 <c>HttpClientFactoryEnhancedClient</c>（丢失令牌恢复并导致强转抛 <c>InvalidCastException</c>），
-/// 详见附录 B-1。
+/// 说明：热更新采用「每次 <c>CreateClient</c> 重跑配置委托」而非「克隆客户端实例」，
+/// 因此<b>不</b>改用组件 <c>WithBaseAddress</c> —— 后者只换基地址，不会重读配置。
+/// 组件 3.0.9 起 <c>TokenRecoveryEnhancedClient</c> 的 <c>WithBaseAddress</c> 已返回同类型实例
+/// （令牌恢复能力保留），该能力由 <see cref="TokenRecoveryClientCapabilityTests"/> 单独锁定。
 /// </para>
 /// </remarks>
 public class FeishuClientEndpointHotReloadTests

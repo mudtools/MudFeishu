@@ -33,7 +33,7 @@ namespace Mud.Feishu.AI.Tools.Curation;
 /// 回答"这个 Aily 应用配置了哪些数据知识库、各自什么状态"——数据知识的管理清单面。
 /// </remarks>
 [AgentTool("aily.list_data_assets",
-    Description = "分页列出 Aily 应用的数据知识库（data_asset_id/多语言标题/描述/数据源类型/连接状态/标签）——回答「这个应用接了哪些知识库」「哪个库连接失败」。只读，需 aily:knowledge:readonly（⚠️ scope 名待控制台核对）。",
+    Description = "分页列出 Aily 应用的数据知识库（data_asset_id/多语言标题/描述/数据源类型/连接状态/标签）——回答「这个应用接了哪些知识库」「哪个库连接失败」。只读，需 aily:knowledge:readonly。",
     RequiredScopes = ["aily:knowledge:readonly"],
     Source = nameof(IFeishuTenantV1AilyDataKnowledge) + "." + nameof(IFeishuTenantV1AilyDataKnowledge.GetDataAssetPageListAsync))]
 public interface IFeishuTenantAilyListDataAssetsTool
@@ -56,7 +56,7 @@ public interface IFeishuTenantAilyListDataAssetsTool
 /// 工具接口：aily.get_data_asset（映射 <c>GetDataAssetAsync</c>）。
 /// </summary>
 [AgentTool("aily.get_data_asset",
-    Description = "查询单个数据知识库详情（标题/描述/数据源类型/连接状态与失败原因/标签/条目数）——「这个知识库为什么连不上」。只读，需 aily:knowledge:readonly（⚠️ scope 名待控制台核对）。",
+    Description = "查询单个数据知识库详情（标题/描述/数据源类型/连接状态与失败原因/标签/条目数）——「这个知识库为什么连不上」。只读，需 aily:knowledge:readonly。",
     RequiredScopes = ["aily:knowledge:readonly"],
     Source = nameof(IFeishuTenantV1AilyDataKnowledge) + "." + nameof(IFeishuTenantV1AilyDataKnowledge.GetDataAssetAsync))]
 public interface IFeishuTenantAilyGetDataAssetTool
@@ -74,7 +74,7 @@ public interface IFeishuTenantAilyGetDataAssetTool
 /// 工具接口：aily.list_data_asset_tags（映射 <c>GetDataAssetTagPageListAsync</c>）。
 /// </summary>
 [AgentTool("aily.list_data_asset_tags",
-    Description = "分页列出数据知识库的标签（tag_id/name）——「知识库都打了哪些标签」「按标签筛库」。只读，需 aily:knowledge:readonly（⚠️ scope 名待控制台核对）。",
+    Description = "分页列出数据知识库的标签（tag_id/name）——「知识库都打了哪些标签」「按标签筛库」。只读，需 aily:knowledge:readonly。",
     RequiredScopes = ["aily:knowledge:readonly"],
     Source = nameof(IFeishuTenantV1AilyDataKnowledge) + "." + nameof(IFeishuTenantV1AilyDataKnowledge.GetDataAssetTagPageListAsync))]
 public interface IFeishuTenantAilyListDataAssetTagsTool

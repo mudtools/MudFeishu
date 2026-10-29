@@ -88,9 +88,9 @@ public interface IFeishuTenantMarkdownPatchTool
     Task<string> PatchAsync(
         [ToolParameter("document_token", "新版文档 token（形如 doxcnXxx）", Required = true)] string document_token,
         [ToolParameter("find", "要替换的原文（非空；须与正文逐字一致，含空白）", Required = true)] string find,
+        [ToolParameter("idempotency_key", "幂等键（必填）：相同 client_token 在 24 小时内至多成功一次，防止重试重复插入。请用稳定值", Required = true)] string idempotency_key,
         [ToolParameter("replace_with", "替换文本（缺省或空串 = 删除该段）")] string? replace_with = null,
         [ToolParameter("replace_all", "替换全部命中（可选，默认 false）；命中多处时不设此项会被拒绝")] bool? replace_all = null,
-        [ToolParameter("idempotency_key", "幂等键（必填）：相同 client_token 在 24 小时内至多成功一次，防止重试重复插入。请用稳定值")] string? idempotency_key = null,
         [ToolParameter("dry_run", "仅预演不写入（可选，默认 false）：返回命中数与长度变化，不调用下游写接口")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }

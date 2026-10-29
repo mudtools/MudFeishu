@@ -268,17 +268,23 @@ public static class FeishuAgentServiceCollectionExtensions
         // CardKit 客户端缺席 → 通道缺席（链内仅编辑通道），与写执行器同一软缺席模式。
         // 两条通道均接遥测端口（产品子类覆写 OnUpdateDegraded 不走基类默认路径，
         // 接线只为中立机制自身的观测面，行为零漂移）。
-        services.TryAddSingleton(static sp => sp.GetService<Mud.Feishu.IFeishuTenantV1Card>() is { } card
-            && sp.GetService<Mud.Feishu.IFeishuTenantV1CardElements>() is { } elements
-            ? new CardKitStreamMessageChannel(
-                card,
-                elements,
-                sp.GetRequiredService<Mud.Feishu.IFeishuTenantV1Message>(),
-                sp.GetRequiredService<IFeishuAppContextScopeFactory>(),
-                sp.GetRequiredService<IOptions<FeishuAgentOptions>>(),
-                sp.GetService<ILogger<CardKitStreamMessageChannel>>(),
-                telemetry: sp.GetService<IAgentTelemetry>())
-            : null!);
+        // 服务缺席（而非「注册一个实例为 null 的 Singleton」）是 DI 的标准缺席语义——
+        // 后者的成立依赖容器对 null 实例的宽容，换用 GetRequiredService 的消费方即炸。
+        if (services.All(static d => d.ServiceType != typeof(CardKitStreamMessageChannel)))
+        {
+            services.TryAddSingleton(static sp =>
+                sp.GetService<Mud.Feishu.IFeishuTenantV1Card>() is { } card
+                && sp.GetService<Mud.Feishu.IFeishuTenantV1CardElements>() is { } elements
+                    ? new CardKitStreamMessageChannel(
+                        card,
+                        elements,
+                        sp.GetRequiredService<Mud.Feishu.IFeishuTenantV1Message>(),
+                        sp.GetRequiredService<IFeishuAppContextScopeFactory>(),
+                        sp.GetRequiredService<IOptions<FeishuAgentOptions>>(),
+                        sp.GetService<ILogger<CardKitStreamMessageChannel>>(),
+                        telemetry: sp.GetService<IAgentTelemetry>())
+                    : null);
+        }
         services.TryAddSingleton(static sp => new EditMessageChannel(
             sp.GetRequiredService<Mud.Feishu.IFeishuTenantV1Message>(),
             sp.GetRequiredService<IFeishuAppContextScopeFactory>(),

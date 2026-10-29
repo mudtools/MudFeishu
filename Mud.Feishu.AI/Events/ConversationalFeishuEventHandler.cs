@@ -369,10 +369,14 @@ public abstract class ConversationalFeishuEventHandler<T> : IdempotentFeishuEven
     /// <remarks>
     /// 这是会被下发给用户/发回模型的文本，故必须<b>不含任何批准要素</b>
     /// （不含 requestId、不含入参原文、不含任何形式的令牌）——否则「批准只能来自宿主」的前提被破坏。
+    /// 文案按批准通道装配态分支：通道缺席时不得承诺「已通知审批人」（通知动作依赖通道，
+    /// 缺席即无人被通知——承诺与现实分叉是 P0-B 回归）。
     /// </remarks>
     protected virtual string BuildApprovalPendingReply(IReadOnlyList<FrameworkToolApprovalRequest> pending)
         => $"以下操作需要人工确认后才能执行：{string.Join("、", pending.Select(p => p.ToolName).Distinct(StringComparer.Ordinal))}。"
-           + "已通知审批人，确认后会自动继续。";
+           + (ApprovalChannel is null
+               ? "该会话未接入审批通道，请联系管理员完成批准。"
+               : "已通知审批人，确认后会自动继续。");
 
     /// <summary>
     /// 租户作用域建立的持有者（把 <see cref="IFeishuAppContextScopeFactory"/> 的 fail-closed 语义

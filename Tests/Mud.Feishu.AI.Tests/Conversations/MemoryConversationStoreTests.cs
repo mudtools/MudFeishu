@@ -193,4 +193,49 @@ public class MemoryConversationStoreTests
 
         store.Count.Should().Be(2, "未达阈值不触发清扫（均摊策略：不把 O(n) 成本摊到每次写入）");
     }
+
+    // ===== G（2026-10-28）：容量上限——新鲜条目数量不再无界 =====
+
+    /// <summary>
+    /// 回归出处：2026-10-28 审查（G，.docs/AI模块功能缺陷与完整性分析报告-2026-10-28.md §2.6）——
+    /// 清扫只回收已过期条目，TTL 窗口内新鲜条目无数量上限，长跑宿主内存单调增长。
+    /// </summary>
+    [Fact]
+    public async Task Save_ShouldEvictOldest_WhenCapacityExceeded()
+    {
+        var store = new MemoryConversationStore(ttl: TimeSpan.FromHours(1), maxEntries: 3);
+
+        await store.SaveAsync("k0", "{\"s\":0}");
+        await store.SaveAsync("k1", "{\"s\":1}");
+        await store.SaveAsync("k2", "{\"s\":2}");
+        await store.SaveAsync("k3", "{\"s\":3}");
+
+        store.Count.Should().Be(3, "超限即驱逐，新鲜条目数量有上界（G 回归）");
+        (await store.GetAsync("k0")).Should().BeNull("最早写入的条目被驱逐（驱逐序 = 首次登记序）");
+        (await store.GetAsync("k3")).Should().Be("{\"s\":3}", "最新写入的条目保留");
+    }
+
+    [Fact]
+    public async Task Save_SameKeyRepeatedly_ShouldNotEvictOthers()
+    {
+        var store = new MemoryConversationStore(ttl: TimeSpan.FromHours(1), maxEntries: 2);
+
+        await store.SaveAsync("k0", "{\"s\":0}");
+        await store.SaveAsync("k1", "{\"s\":1}");
+        // 同键续写刷新值，但登记位置不变（首写序）——不得把 k0/k1 之外的空间挤出来。
+        await store.SaveAsync("k1", "{\"s\":1b}");
+        await store.SaveAsync("k1", "{\"s\":1c}");
+
+        store.Count.Should().Be(2, "同键续写不增加占用，不触发驱逐");
+        (await store.GetAsync("k0")).Should().Be("{\"s\":0}");
+        (await store.GetAsync("k1")).Should().Be("{\"s\":1c}");
+    }
+
+    [Fact]
+    public void Ctor_ShouldRejectNonPositiveMaxEntries()
+    {
+        var act = () => new MemoryConversationStore(ttl: TimeSpan.FromHours(1), maxEntries: 0);
+
+        act.Should().Throw<ArgumentOutOfRangeException>("容量上限非正是配置错误，fail-fast");
+    }
 }

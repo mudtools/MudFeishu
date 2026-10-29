@@ -10,7 +10,7 @@
 
 ## Prerequisites
 
-- `view_id`（形如 veiwXxx）来自 `bitable.list_views`；`app_token`、`table_id` 与该视图同源。
+- `view_id`（形如 vewXxx）来自 `bitable.list_views`；`app_token`、`table_id` 与该视图同源。
 - 以 tenant 身份调用，需 bitable:app:readonly 权限。
 
 ## Tips

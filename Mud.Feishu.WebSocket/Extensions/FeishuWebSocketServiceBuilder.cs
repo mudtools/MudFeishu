@@ -16,6 +16,7 @@ using Mud.Feishu.Abstractions.Services;
 using Mud.Feishu.WebSocket;
 using System.Diagnostics.CodeAnalysis;
 using Mud.Feishu.WebSocket.Handlers;
+using Mud.Feishu.WebSocket.Services;
 using System.Diagnostics.Metrics;
 
 namespace Microsoft.Extensions.DependencyInjection;
@@ -525,6 +526,12 @@ public class FeishuWebSocketServiceBuilder
         {
             _services.AddSingleton<IFeishuSeqIDDeduplicator, FeishuSeqIDDeduplicator>();
         }
+
+        // E（2026-10-28）：WebSocket 侧补齐 IAppKeyAccessor（连接级常量语义）——
+        // 此前仅 Webhook 通道注册，会话式事件处理器在 WS 宿主拿不到 CurrentAppKey，
+        // 多应用装配下会话请求全部落入 fail-fast。TryAdd 与 Webhook 共存（先注册者胜）。
+        _services.TryAddSingleton<WebSocketAppKeyAccessor>();
+        _services.TryAddSingleton<IAppKeyAccessor>(static sp => sp.GetRequiredService<WebSocketAppKeyAccessor>());
 
         // 注册重连策略（单例，如果未手动注册则使用指数退避策略）
         if (!_services.Any(s => s.ServiceType == typeof(IReconnectStrategy)))

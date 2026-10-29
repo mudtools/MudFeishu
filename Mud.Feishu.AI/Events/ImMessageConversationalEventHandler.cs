@@ -52,10 +52,14 @@ public sealed class ImMessageConversationalEventHandler(
     IMessageChannel? messageChannel = null,
     IConversationGate? conversationGate = null,
     IAppKeyAccessor? appKeyAccessor = null,
-    IFeishuAppContextScopeFactory? appContextScopeFactory = null)
+    IFeishuAppContextScopeFactory? appContextScopeFactory = null,
+    IFeishuToolApprovalChannel? approvalChannel = null,
+    IPendingApprovalStore? pendingApprovalStore = null)
     : ConversationalFeishuEventHandler<MessageReceiveResult>(
         agent, businessDeduplicator, logger, contextAssemblers, toolContextAccessor, messageChannel, conversationGate, appKeyAccessor,
-        appContextScopeFactory: appContextScopeFactory)
+        approvalChannel: approvalChannel,
+        appContextScopeFactory: appContextScopeFactory,
+        pendingApprovalStore: pendingApprovalStore)
 {
     private const string ChatTypeGroup = "group";
     private const string SenderTypeApp = "app";

@@ -34,8 +34,8 @@ namespace Mud.Feishu.AI.AgentTools;
 /// </remarks>
 internal static class FeishuApiErrorVocabulary
 {
-    /// <summary>飞书权限类业务码（99991663=无权限操作 / 99991661=权限不足，控制台权限未开通同段位）。</summary>
-    private static readonly int[] ForbiddenApiCodes = [99991663, 99991661];
+    /// <summary>飞书权限类业务码（99991663=无权限操作 / 99991661=权限不足 / 99991672=应用未开通权限或调用方无访问权）。</summary>
+    private static readonly int[] ForbiddenApiCodes = [99991663, 99991661, 99991672];
 
     /// <summary>
     /// 飞书<b>可重试</b>业务码：<c>99991400</c> = 平台系统繁忙（限流/过载）。

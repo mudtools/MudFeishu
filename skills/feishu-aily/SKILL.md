@@ -42,6 +42,6 @@ package_version: 3.1.1
 - 「按'内部制度'标签找库」→ `aily.list_data_asset_tags(app_id="…")` 拿 tag_id → `aily.list_data_assets(data_asset_tag_ids=[…])`
 
 ## 命令（工具）清单
-- `aily.get_data_asset`（只读）：查询单个数据知识库详情（标题/描述/数据源类型/连接状态与失败原因/标签/条目数）——「这个知识库为什么连不上」。只读，需 aily:knowledge:readonly（⚠️ scope 名待控制台核对）。
-- `aily.list_data_asset_tags`（只读）：分页列出数据知识库的标签（tag_id/name）——「知识库都打了哪些标签」「按标签筛库」。只读，需 aily:knowledge:readonly（⚠️ scope 名待控制台核对）。
-- `aily.list_data_assets`（只读）：分页列出 Aily 应用的数据知识库（data_asset_id/多语言标题/描述/数据源类型/连接状态/标签）——回答「这个应用接了哪些知识库」「哪个库连接失败」。只读，需 aily:knowledge:readonly（⚠️ scope 名待控制台核对）。
+- `aily.get_data_asset`（只读）：查询单个数据知识库详情（标题/描述/数据源类型/连接状态与失败原因/标签/条目数）——「这个知识库为什么连不上」。只读，需 aily:knowledge:readonly。
+- `aily.list_data_asset_tags`（只读）：分页列出数据知识库的标签（tag_id/name）——「知识库都打了哪些标签」「按标签筛库」。只读，需 aily:knowledge:readonly。
+- `aily.list_data_assets`（只读）：分页列出 Aily 应用的数据知识库（data_asset_id/多语言标题/描述/数据源类型/连接状态/标签）——回答「这个应用接了哪些知识库」「哪个库连接失败」。只读，需 aily:knowledge:readonly。

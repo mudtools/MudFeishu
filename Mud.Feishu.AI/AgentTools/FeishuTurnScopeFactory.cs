@@ -36,5 +36,6 @@ internal sealed class FeishuTurnScopeFactory(IFeishuToolContextAccessor accessor
             context.TenantKey,
             context.ConversationKey,
             ChatId: context.ChatId,
-            UserId: context.UserId));
+            UserId: context.UserId,
+            ThreadId: context.ThreadId));
 }

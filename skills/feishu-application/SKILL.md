@@ -54,5 +54,5 @@ package_version: 3.1.1
 - `application.list_app_versions`（只读）：分页列出应用的版本历史（version_id/version/status/创建与发布时间）——用于回答「线上是哪一版」「有没有待审版本」。只读，需 application:application.app_version:readonly。
 - `application.list_apps`（只读）：分页列出企业自建/商店应用（返回 app_id/名称/状态/场景类型/在线版本 ID）——进入「应用管理」域的第一步：拿到 app_id 才能查详情、可用范围、协作者与版本。可按 status / payment_type / owner_type 过滤。只读，需 application:application:readonly。
 - `application.list_collaborators`（只读）：列出应用协作者（谁能进开发者后台改这个应用；返回 type=管理员/开发/运营 + user_id）——用于回答「这个应用谁能改」。只读，需 application:application:readonly。
-- `application.update_management`（写）：启用或停用应用的管理面（⚠️ 停用后管理员将无法在后台管理该应用，影响面极大——务必先 dry_run 预演并确认 app_id 与 enable 取值）。写操作：需 application:application（⚠️ scope 名待控制台核对）。
-- `application.update_visibility`（写）：更新应用的可见范围（把应用开放/关闭给指定的用户、部门、用户组，或设为全员可见）——四类名单均为**增量**语义，未传的不动；改动前先用 application.get_app_visibility 读现状。写操作：需 application:application（⚠️ scope 名待控制台核对）。建议先 dry_run 预演。
+- `application.update_management`（写）：启用或停用应用的管理面（⚠️ 停用后管理员将无法在后台管理该应用，影响面极大——务必先 dry_run 预演并确认 app_id 与 enable 取值）。写操作：需 application:application。
+- `application.update_visibility`（写）：更新应用的可见范围（把应用开放/关闭给指定的用户、部门、用户组，或设为全员可见）——四类名单均为**增量**语义，未传的不动；改动前先用 application.get_app_visibility 读现状。写操作：需 application:application。建议先 dry_run 预演。

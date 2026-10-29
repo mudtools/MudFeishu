@@ -183,4 +183,37 @@ public class ConversationalFeishuEventHandlerApprovalTests
         handler.LastReply.Should().NotBeNullOrEmpty("用户必须收到『等待确认』答复，而不是被空回复守卫静默吞掉");
         handler.LastReply.Should().NotContain("ficc_call-1", "答复不得携带批准要素");
     }
+
+    /// <summary>
+    /// 回归出处：2026-10-28 审查（P0-B，.docs/AI模块功能缺陷与完整性分析报告-2026-10-28.md §2.3）——
+    /// 通道缺席时答复仍承诺「已通知审批人」，实际无人被通知。分支后文案必须与装配态一致。
+    /// </summary>
+    [Fact]
+    public async Task HandleAsync_ShouldNotPromiseNotifiedApproval_WhenApprovalChannelAbsent()
+    {
+        var agent = new FeishuAgent(
+            CreateApprovalClient().Object, new FeishuAgentOptions { Instructions = "x" });
+        var handler = new RecordingHandler(agent, CreateDeduplicator().Object);
+
+        await handler.HandleAsync(DemoEventData("evt-approval-no-channel"), default);
+
+        handler.LastReply.Should().NotBeNullOrEmpty("通道缺席仍须给出『等待确认』答复（fail-closed 不变）");
+        handler.LastReply.Should().NotContain("已通知审批人",
+            "通道缺席时无人被通知，承诺「已通知」即承诺与现实分叉（P0-B 回归）");
+        handler.LastReply.Should().Contain("人工确认", "答复仍须告知用户操作在等待人工确认");
+    }
+
+    /// <summary>通道已装配时保留既有承诺文案（P0-B 修复不得收窄已装配形态的语义）。</summary>
+    [Fact]
+    public async Task HandleAsync_ShouldKeepNotifiedPromise_WhenApprovalChannelPresent()
+    {
+        var agent = new FeishuAgent(
+            CreateApprovalClient().Object, new FeishuAgentOptions { Instructions = "x" });
+        var handler = new RecordingHandler(agent, CreateDeduplicator().Object, new CapturingChannel());
+
+        await handler.HandleAsync(DemoEventData("evt-approval-with-channel"), default);
+
+        handler.LastReply.Should().Contain("已通知审批人",
+            "通道已装配且已提交请求，承诺文案与事实一致");
+    }
 }

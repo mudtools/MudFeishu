@@ -5,6 +5,57 @@
 [Keep a Changelog]: https://keepachangelog.com/zh-CN/1.1.0/
 [语义化版本]: https://semver.org/lang/zh-CN/
 
+## [未发布]
+
+### 修复（Fixed）
+
+- **审批续跑轮丢失话题维度**（`Mud.Feishu.AI`）：`FeishuTurnScopeFactory` 补投影 `ThreadId`——
+  话题（thread）内触发写工具并人工批准后续跑，`reply_in_thread` 行为与事件轮不一致。
+  新增 `TurnScopeProjectionContractGuards` 锁定两个作用域工厂投影逐字段一致。
+- **内置 IM 处理器无法接入 HITL 审批链**（`Mud.Feishu.AI`）：`ImMessageConversationalEventHandler`
+  构造器末尾新增可选参数 `approvalChannel` / `pendingApprovalStore` 并透传基类——宿主注册审批通道后
+  自动接通（未注册维持 fail-closed，源码兼容）。「等待人工确认」答复文案按通道装配态分支：
+  通道缺席时不再承诺「已通知审批人」。
+- **错误码 99991672 分类不一致**（`Mud.Feishu.AI`）：并入 `ForbiddenApiCodes`（与 99991663/99991661
+  同为权限语义）——此前落入 `Api/UpstreamError` 会引导模型重试一个「不要重试」的权限错误。
+- **MCP 工具面静默缺口**（`Mud.Feishu.AI.Mcp`）：白名单工具缺 Schema 常量被跳过时补 `LogWarning`
+  （工具名 + `schema_constant_missing`）——「已启用却在 tools/list 消失且不可观测」的路径收口。
+- **`bitable.get_view` 的 `view_id` 前缀拼写错误**（`Mud.Feishu.AI.Tools`）：`veiwXxx` → `vewXxx`
+  （策展源与 affordance 资产三处同错，golden 同批重固化）。
+- **`markdown.patch` 的 `idempotency_key` 必填声明脱节**（`Mud.Feishu.AI.Tools`）：描述声称必填但
+  Schema 未标 required——已改 `Required = true`（参数移至可选参数之前）。
+
+### 变更（Changed）
+
+- **工具描述与元数据口径对齐**（`Mud.Feishu.AI.Tools`，golden 24 行重固化）：
+  - `im.send_message` / `im.send_card` 描述 scope 修正为 `im:message:send_as_bot`（与 `RequiredScopes` 一致）；
+  - 移除 21 处描述内嵌的「⚠️ scope 名待控制台核对」宿主备忘（正式归宿是 `scope-authority.json`，
+    待核对状态由三方守卫持续输出；skills 目录同批清理）。
+- **`im.urgent_app` / `im.urgent_sms` 升入 high-risk-write**（`Mud.Feishu.AI.Tools`）：危险词表补
+  `urgent`——加急是强打扰动作（客户端弹窗/短信双通道），按行为强度收录。risk 分布
+  185/127/39 → 185 只读 + 125 写 + 41 高危写（总数与读写分布不变，README 计数同批）。
+
+### 新增（Added）
+
+- **golden 文本一致性守卫**（`Mud.Feishu.AI.Tools`）：`GoldenTextConsistencyContractGuards` 机械校验
+  三类口径——描述中 scope 字样 ∈ `RequiredScopes`、非布尔参数「必填」声明 ∈ schema required、
+  ID 前缀示例 ∈ 已知前缀词表（14 前缀，golden 全量提取固化）。
+- **WebSocket 侧 `IAppKeyAccessor`**（`Mud.Feishu.WebSocket`）：新增 `WebSocketAppKeyAccessor`
+  （连接级常量语义，`ResolvedAppKey` 经 `IOptionsMonitor` 读取）——会话式事件处理器在 WS 宿主
+  此前拿不到 `CurrentAppKey`，多应用装配下会话请求全部 fail-fast。与 Webhook 通道 TryAdd 共存。
+- **`MemoryConversationStore` 容量上限**（`Mud.Feishu.AI`）：新构造重载 `(ttl, maxEntries, utcNow)`
+  （默认 10_000），写入路径超限按首次登记序驱逐最旧条目——驱逐后果与 TTL 过期重建同型。
+  此前 TTL 窗口内新鲜条目无数量上限，长跑宿主内存随会话数单调增长。
+- **流式通道软缺席语义**（`Mud.Feishu.AI`）：CardKit 客户端缺席时 `AddFeishuStreamingChannel`
+  由「注册实例为 null 的 Singleton」改为标准服务缺席（`GetRequiredService` 抛错而非静默 null）。
+
+### 已知限制（跨仓登记）
+
+- `drive.get_permission_public`（GET 只读）仍标 `high-risk-write`：上游 `Mud.AI.Generator` 无
+  risk 覆写槽（T-1）；必填布尔进不了 schema required 同为上游解包映射表限制（T-2，MUDFT020
+  实证）。登记见 `.docs/跨仓登记-T1-T2-上游能力缺口-2026-10-28.md`（该文件位于 gitignored 的
+  `.docs/`，正式追踪以本条目为准）。
+
 ## [3.1.1] - 2026-10-27
 
 > 依赖升级与稳定性增强版本：`Mud.HttpUtils` 升至 **3.0.9**、`Mud.AI.*` 升至 **1.0.2**；

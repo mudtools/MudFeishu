@@ -89,7 +89,9 @@ namespace Mud.Feishu.AI.Tools.SdkProfile;
     // MUDFT026（生成器内部异常兜底）在上游与其余诊断**不同类别**。
     ToolingDiagnosticCategory = "MudFeishu.Tooling",
     // 旧 Extractors.DangerWords（方法名 snake_case 子串命中即 high-risk-write）。
-    WriteVerbKeywords = "delete|remove|transfer|cancel|revoke|resign|permission|reset_secret|password|dismiss|purge|wipe",
+    // urgent（2026-10-28 T-6）：加急是强打扰动作（客户端弹窗/短信双通道），
+    // 与删除同级打扰面，按行为强度而非仅名字词表收录。
+    WriteVerbKeywords = "delete|remove|transfer|cancel|revoke|resign|permission|reset_secret|password|dismiss|purge|wipe|urgent",
 
     // ────────── 8-11. 描述符与契约产物事实 ──────────
     SchemaExtensionKey = "x-feishu",

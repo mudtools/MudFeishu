@@ -46,13 +46,13 @@ package_version: 3.1.1
 - 「机器人答不了，转人工」→ `helpdesk.start_service(open_id="ou_…", dry_run=true)` → 确认后执行
 
 ## 命令（工具）清单
-- `helpdesk.answer_user_query`（写）：回传用户提问命中的 FAQ（event_id + 命中的 FAQ 列表）——用于「用户问的问题对应哪个 FAQ」的场景；注意它只回传命中结果，不直接给用户发消息。写操作：需 helpdesk:ticket（⚠️ scope 名待控制台核对）。
-- `helpdesk.create_bot_message`（写）：以服务台机器人身份发一条消息给指定会话或用户（msg_type 支持 text/post/image/interactive）——「主动通知用户」。写操作：需 helpdesk:ticket（⚠️ scope 名待控制台核对）。
-- `helpdesk.create_ticket_message`（写）：在工单里发一条消息（msg_type=text 纯文本 / post 富文本）——「回复工单」。⚠️ 富文本内容不出站（回执只给 message_id）；客户对话原文仍不走工具面。写操作：需 helpdesk:ticket（⚠️ scope 名待控制台核对）。
+- `helpdesk.answer_user_query`（写）：回传用户提问命中的 FAQ（event_id + 命中的 FAQ 列表）——用于「用户问的问题对应哪个 FAQ」的场景；注意它只回传命中结果，不直接给用户发消息。写操作：需 helpdesk:ticket。
+- `helpdesk.create_bot_message`（写）：以服务台机器人身份发一条消息给指定会话或用户（msg_type 支持 text/post/image/interactive）——「主动通知用户」。写操作：需 helpdesk:ticket。
+- `helpdesk.create_ticket_message`（写）：在工单里发一条消息（msg_type=text 纯文本 / post 富文本）——「回复工单」。⚠️ 富文本内容不出站（回执只给 message_id）；客户对话原文仍不走工具面。写操作：需 helpdesk:ticket。
 - `helpdesk.get_faq`（只读）：按 faq_id 查询单条服务台 FAQ 的完整内容（问题/答案全文/富文本片段/分类/标签/生效与过期时间）。⚠️ 不返回创建人与更新人（出站净化）。只读，需 helpdesk:faq:readonly。
 - `helpdesk.get_ticket`（只读）：按 ticket_id 查询工单的状态与流转信息（状态/类型/渠道/评分/是否解决/创建·更新·关闭时间/标签/客户与客服的 user_id 与姓名/处理时长）。⚠️ 不返回备注正文、对话消息与客户联系方式（工单内容属敏感面，另行评审）。只读，需 helpdesk:ticket:readonly。
 - `helpdesk.list_agent_skills`（只读）：列出服务台的客服技能（技能组）配置（skill_id/name/is_default）——回答「服务台配了哪些技能组」「这类问题该转给哪一组」。只读，需 helpdesk:agent:readonly。
 - `helpdesk.list_categories`（只读）：列出服务台 FAQ 分类目录树（category_id/name/parent_id/children）——用于回答「服务台都有哪些分类」或拿 category_id 收窄 helpdesk.list_faqs。只读，需 helpdesk:faq:readonly。
 - `helpdesk.list_faqs`（只读）：分页列出服务台 FAQ（可选按 category_id / status 过滤，或用 search 做粗过滤）——用于浏览「这个服务台有哪些常见问题」；按关键词找具体答复请用 helpdesk.search_faqs。只读，需 helpdesk:faq:readonly。
 - `helpdesk.search_faqs`（只读）：按关键词检索飞书服务台 FAQ（返回 faq_id/问题/答案摘要/分类/标签）——回答「这个问题客户服务台有没有现成答复」的首选；与 knowledge.search（Aily 知识）、wiki.*（云文档知识库）数据源不同，别混用。只读，需 helpdesk:faq:readonly。
-- `helpdesk.start_service`（写）：把工单转人工服务（可指定客服；返回 chat_id 与 ticket_id）——「机器人答不了，转人工」的第一跳。写操作：需 helpdesk:ticket（⚠️ scope 名待控制台核对）。
+- `helpdesk.start_service`（写）：把工单转人工服务（可指定客服；返回 chat_id 与 ticket_id）——「机器人答不了，转人工」的第一跳。写操作：需 helpdesk:ticket。

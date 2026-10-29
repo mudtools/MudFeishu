@@ -638,6 +638,11 @@ public sealed class FeishuMcpToolServer
             if (!FeishuToolSchemas.SchemaByToolName.TryGetValue(definition.Name, out var schemaJson))
             {
                 // 「注册名 ⊆ Schema 常量表」由装配期保证；此处兜底跳过而不是让服务起不来。
+                // 跳过必须可观测（MCP-1）：工具已启用却在 tools/list 静默消失是白名单漂移，
+                // 无日志则只能靠人工 diff 发现。
+                _logger?.LogWarning(
+                    "MCP 工具面：白名单工具 {ToolName} 缺少 Schema 常量（schema_constant_missing），已从 tools/list 跳过",
+                    definition.Name);
                 continue;
             }
 

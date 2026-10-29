@@ -136,7 +136,7 @@ public interface IFeishuTenantBitableGetViewTool
     Task<string> GetViewAsync(
         [ToolParameter("app_token", "多维表格 AppToken（形如 bascnXxx）", Required = true)] string app_token,
         [ToolParameter("table_id", "数据表 ID（形如 tblXxx）", Required = true)] string table_id,
-        [ToolParameter("view_id", "视图 ID（形如 veiwXxx，可由 bitable.list_views 获得）", Required = true)] string view_id,
+        [ToolParameter("view_id", "视图 ID（形如 vewXxx，可由 bitable.list_views 获得）", Required = true)] string view_id,
         CancellationToken cancellationToken = default);
 }
 

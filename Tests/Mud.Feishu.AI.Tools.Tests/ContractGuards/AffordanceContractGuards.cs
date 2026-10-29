@@ -60,9 +60,10 @@ public class AffordanceContractGuards
     // S-4：workflow 两个只读编排工具各 1 份（218 → 220；→ 103662 字符）。
     // S-6 余项：docx.media_insert（write 级满覆盖要求）（220 → 221；→ 104370 字符）。
     // T-4 工具面收敛：合并掉的 8 份资产改由 4 份合并资产覆盖（221 → 207；→ 100204 字符）。
+    // 2026-10-28：`bitable.get_view` 的 ID 前缀拼写修正（veiwXxx → vewXxx，T-5）使总长 -1 字符。
     private const int ExpectedAssetCount = 207;
 
-    private const int ExpectedTotalAssetCharacters = 100204;
+    private const int ExpectedTotalAssetCharacters = 100203;
 
     // B2 瘦身（测试体系治理，见《单元测试体系过度测试分析与解决方案》§三.5；该文档已迁 Mud.AI 仓）：
     // 与上游诊断**同一判定**的仓库侧副本已删除——

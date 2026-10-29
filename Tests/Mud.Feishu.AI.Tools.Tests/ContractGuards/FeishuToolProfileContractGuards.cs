@@ -97,7 +97,7 @@ public class FeishuToolProfileContractGuards
         ["DiagnosticPrefix"] = "MUDFT",
         ["DiagnosticCategory"] = "MudFeishu.AI",
         ["ToolingDiagnosticCategory"] = "MudFeishu.Tooling",
-        ["WriteVerbKeywords"] = "delete|remove|transfer|cancel|revoke|resign|permission|reset_secret|password|dismiss|purge|wipe",
+        ["WriteVerbKeywords"] = "delete|remove|transfer|cancel|revoke|resign|permission|reset_secret|password|dismiss|purge|wipe|urgent",
         // 8-11. 描述符与契约产物事实（旧 SchemaWriter 扩展键、SchemaEmitter.ToolNamesOwnerAssembly、
         //        各 Emitter 命名空间、SchemaEmitter 的风险枚举全名）
         ["SchemaExtensionKey"] = "x-feishu",

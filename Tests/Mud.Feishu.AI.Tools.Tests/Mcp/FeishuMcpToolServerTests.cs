@@ -279,6 +279,43 @@ public class FeishuMcpToolServerTests
         logger.Warnings.Should().BeEmpty("非空工具面不得告警");
     }
 
+    /// <summary>
+    /// 回归出处：2026-10-28 审查（MCP-1，.docs/AI模块功能缺陷与完整性分析报告-2026-10-28.md §3.3）——
+    /// 白名单工具缺 Schema 常量时被静默跳过且无日志，是全链路唯一「已启用却在 tools/list 消失且不可观测」
+    /// 的路径。跳过语义保留（fail-open 兜底），但必须留痕。
+    /// </summary>
+    [Fact]
+    public void BuildSurface_ShouldWarn_WhenWhitelistedToolLacksSchemaConstant()
+    {
+        var logger = new RecordingLogger<FeishuMcpToolServer>();
+        using var provider = BuildProvider(
+            agent: o => o.Tools = [SchemaReadTool],
+            mcp: McpConfigure(),
+            logger: logger);
+
+        // 人工向注册表追加一个白名单内、但 Schema 常量表没有的工具（构造该缺陷形态）。
+        var registry = provider.GetRequiredService<FeishuToolRegistry>();
+        registry.Register(new FeishuToolDefinition(
+            "probe.schema_missing",
+            "探针工具（Schema 常量缺失形态）",
+            [],
+            IsWrite: false,
+            FeishuToolRisk.Read,
+            "tenant",
+            static (_, _, _) => Task.FromResult(ToolResult.FromText("ok"))));
+        registry.MapTool("probe.schema_missing");
+
+        var server = provider.GetRequiredService<FeishuMcpToolServer>();
+
+        server.Tools.Select(t => t.ContractName).Should().NotContain(
+            "probe.schema_missing",
+            "缺 Schema 常量的工具仍须从 tools/list 跳过（fail-open 兜底语义不变）");
+
+        logger.Warnings.Should().Contain(
+            w => w.Contains("probe.schema_missing") && w.Contains("schema_constant_missing"),
+            "跳过必须可观测：白名单与可见面的漂移不能只靠人工 diff 发现（MCP-1 回归）");
+    }
+
     // ─────────────────────────── 会话握手与生命周期 ───────────────────────────
 
     [Theory]

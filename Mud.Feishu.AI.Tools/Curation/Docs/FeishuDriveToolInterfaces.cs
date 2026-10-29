@@ -117,7 +117,7 @@ public interface IFeishuTenantDriveResolveCommentTool
         [ToolParameter("file_token", "文件 token（形如 doxcnXxx）", Required = true)] string file_token,
         [ToolParameter("comment_id", "评论 ID（来自 drive.list_comments）", Required = true)] string comment_id,
         [ToolParameter("file_type", "文件类型（doc/docx/sheet/file/slides）", Required = true)] string file_type,
-        [ToolParameter("is_solved", "是否解决（true=解决，false=恢复）。执行器要求必须提供：缺失时兜底报错（引擎解包映射表不支持必填布尔，Schema 层无法标 required）")] bool? is_solved = null,
+        [ToolParameter("is_solved", "是否解决（true=解决，false=恢复）。必填：缺失时执行器兜底报错（引擎解包映射表不支持必填布尔，Schema 层无法标 required）")] bool? is_solved = null,
         [ToolParameter("dry_run", "仅预演不操作（可选，默认 false）：返回将要下发的 method/path，不调用下游")] bool? dry_run = null,
         CancellationToken cancellationToken = default);
 }

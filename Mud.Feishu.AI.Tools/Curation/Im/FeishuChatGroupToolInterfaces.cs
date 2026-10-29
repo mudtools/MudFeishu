@@ -137,7 +137,7 @@ public interface IFeishuTenantChatgroupGetMenuTool
 /// 应走独立工具而不是混在建群参数里。
 /// </remarks>
 [AgentTool("chatgroup.create_chat",
-    Description = "创建一个群（返回 chat_id；群主默认为当前应用身份）——「拉个群沟通」的第一落点。写操作：需 im:chat（⚠️ scope 名待控制台核对）。",
+    Description = "创建一个群（返回 chat_id；群主默认为当前应用身份）——「拉个群沟通」的第一落点。写操作：需 im:chat。",
     RequiredScopes = ["im:chat"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1ChatGroup) + "." + nameof(IFeishuTenantV1ChatGroup.CreateChatGroupAsync))]
@@ -165,7 +165,7 @@ public interface IFeishuTenantChatgroupCreateChatTool
 /// <b>只改传入的字段</b>（未传的保持原值）——与互通规则的覆盖式语义不同，这里是**增量更新**。
 /// </remarks>
 [AgentTool("chatgroup.update_chat",
-    Description = "更新群设置（群名/描述/编辑权限/拉人权限/分享名片权限/@所有人权限/消息模式）——未传的字段保持原值。写操作：需 im:chat（⚠️ scope 名待控制台核对）。",
+    Description = "更新群设置（群名/描述/编辑权限/拉人权限/分享名片权限/@所有人权限/消息模式）——未传的字段保持原值。写操作：需 im:chat。",
     RequiredScopes = ["im:chat"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1ChatGroup) + "." + nameof(IFeishuTenantV1ChatGroup.UpdateChatGroupByIdAsync))]
@@ -195,7 +195,7 @@ public interface IFeishuTenantChatgroupUpdateChatTool
 /// 群内历史消息随群一起消失，且只能重建（新 chat_id）。
 /// </remarks>
 [AgentTool("chatgroup.delete_chat",
-    Description = "解散一个群（⚠️ 不可逆：群内历史消息随群一起消失，且只能重建、会拿到新 chat_id——务必先 dry_run 预演并确认 chat_id 无误）。写操作：需 im:chat（⚠️ scope 名待控制台核对）。",
+    Description = "解散一个群（⚠️ 不可逆：群内历史消息随群一起消失，且只能重建、会拿到新 chat_id——务必先 dry_run 预演并确认 chat_id 无误）。写操作：需 im:chat。",
     RequiredScopes = ["im:chat"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1ChatGroup) + "." + nameof(IFeishuTenantV1ChatGroup.DeleteChatGroupAsync))]
@@ -217,7 +217,7 @@ public interface IFeishuTenantChatgroupDeleteChatTool
 /// 但"改群发言权限"实质是高危语义（可一句话禁言全群），故在描述里自行标注后果。
 /// </remarks>
 [AgentTool("chatgroup.update_moderation",
-    Description = "更新群的发言权限（⚠️ 高危语义：可一句话把全群改成「仅群主与管理员可发言」——moderation_setting=all_members / only_owner / moderator_list；选 moderator_list 时用 moderator_added_list / moderator_removed_list 增删可发言成员）。写操作：需 im:chat（⚠️ scope 名待控制台核对）。建议先 dry_run 预演。",
+    Description = "更新群的发言权限（⚠️ 高危语义：可一句话把全群改成「仅群主与管理员可发言」——moderation_setting=all_members / only_owner / moderator_list；选 moderator_list 时用 moderator_added_list / moderator_removed_list 增删可发言成员）。写操作：需 im:chat。建议先 dry_run 预演。",
     RequiredScopes = ["im:chat"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1ChatGroup) + "." + nameof(IFeishuTenantV1ChatGroup.UpdateChatModerationAsync))]
@@ -243,7 +243,7 @@ public interface IFeishuTenantChatgroupUpdateModerationTool
 /// 回执必须把它带回，否则模型会以为"全员拉进去了"。
 /// </remarks>
 [AgentTool("chatgroup.add_member",
-    Description = "把成员拉进群（返回无效成员 ID 列表）——「把人加进群沟通」。写操作：需 im:chat（⚠️ scope 名待控制台核对）。",
+    Description = "把成员拉进群（返回无效成员 ID 列表）——「把人加进群沟通」。写操作：需 im:chat。",
     RequiredScopes = ["im:chat"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1ChatGroupMember) + "." + nameof(IFeishuTenantV1ChatGroupMember.AddMemberAsync))]
@@ -268,7 +268,7 @@ public interface IFeishuTenantChatgroupAddMemberTool
 /// 且**不会**收到"你被移出了"的单独通知（只有群成员数变化）。
 /// </remarks>
 [AgentTool("chatgroup.remove_member",
-    Description = "把成员移出群（⚠️ 对方立即失去群内可见性，且不会收到单独通知——务必先 dry_run 预演并确认 id_list 无误）。写操作：需 im:chat（⚠️ scope 名待控制台核对）。",
+    Description = "把成员移出群（⚠️ 对方立即失去群内可见性，且不会收到单独通知——务必先 dry_run 预演并确认 id_list 无误）。写操作：需 im:chat。",
     RequiredScopes = ["im:chat"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1ChatGroupMember) + "." + nameof(IFeishuTenantV1ChatGroupMember.RemoveMemberAsync))]
@@ -288,7 +288,7 @@ public interface IFeishuTenantChatgroupRemoveMemberTool
 /// 工具接口：chatgroup.me_join_chat（映射 <c>MeJoinChatGroupAsync</c>）。
 /// </summary>
 [AgentTool("chatgroup.me_join_chat",
-    Description = "让当前应用/机器人身份加入一个群（公开群可直接加入；私密群需已在群内或被邀请）——用于「机器人进群后先自证在群内」的前置步骤。写操作：需 im:chat（⚠️ scope 名待控制台核对）。",
+    Description = "让当前应用/机器人身份加入一个群（公开群可直接加入；私密群需已在群内或被邀请）——用于「机器人进群后先自证在群内」的前置步骤。写操作：需 im:chat。",
     RequiredScopes = ["im:chat"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1ChatGroupMember) + "." + nameof(IFeishuTenantV1ChatGroupMember.MeJoinChatGroupAsync))]
@@ -306,7 +306,7 @@ public interface IFeishuTenantChatgroupMeJoinChatTool
 /// 工具接口：chatgroup.add_manager（映射 <c>AddManagersAsync</c>）。
 /// </summary>
 [AgentTool("chatgroup.add_manager",
-    Description = "把成员设为群管理员（可多人；回执给设置后的管理员全量名单）——「给群加管理员」。写操作：需 im:chat（⚠️ scope 名待控制台核对）。",
+    Description = "把成员设为群管理员（可多人；回执给设置后的管理员全量名单）——「给群加管理员」。写操作：需 im:chat。",
     RequiredScopes = ["im:chat"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1ChatGroupMember) + "." + nameof(IFeishuTenantV1ChatGroupMember.AddManagersAsync))]
@@ -330,7 +330,7 @@ public interface IFeishuTenantChatgroupAddManagerTool
 /// （改设置、踢人、置顶等），且**不会**收到通知。
 /// </remarks>
 [AgentTool("chatgroup.delete_manager",
-    Description = "撤销成员的群管理员身份（⚠️ 对方立即失去群管理能力且不会收到通知——务必先 dry_run 预演并确认 manager_ids 无误）。写操作：需 im:chat（⚠️ scope 名待控制台核对）。",
+    Description = "撤销成员的群管理员身份（⚠️ 对方立即失去群管理能力且不会收到通知——务必先 dry_run 预演并确认 manager_ids 无误）。写操作：需 im:chat。",
     RequiredScopes = ["im:chat"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1ChatGroupMember) + "." + nameof(IFeishuTenantV1ChatGroupMember.DeleteManagersAsync))]
@@ -354,7 +354,7 @@ public interface IFeishuTenantChatgroupDeleteManagerTool
 /// （**不需要** message_id，但要求群已开通公告——公告内容本身仍归 docx 域工具写）。
 /// </remarks>
 [AgentTool("chatgroup.put_top_notice",
-    Description = "设置群置顶（action_type=1 置顶某条消息，需配 message_id；action_type=2 置顶群公告，不需 message_id）——「把重要内容钉在群顶部」。写操作：需 im:chat（⚠️ scope 名待控制台核对）。",
+    Description = "设置群置顶（action_type=1 置顶某条消息，需配 message_id；action_type=2 置顶群公告，不需 message_id）——「把重要内容钉在群顶部」。写操作：需 im:chat。",
     RequiredScopes = ["im:chat"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1ChatGroup) + "." + nameof(IFeishuTenantV1ChatGroup.PutChatGroupTopNoticeAsync))]
@@ -378,7 +378,7 @@ public interface IFeishuTenantChatgroupPutTopNoticeTool
 /// （所有人看到的"钉在顶部"消失），但不丢消息本身。
 /// </remarks>
 [AgentTool("chatgroup.delete_top_notice",
-    Description = "取消群置顶（⚠️ 全群可见的置顶会消失，消息本身不丢失——务必先 dry_run 预演并确认 chat_id 无误）。写操作：需 im:chat（⚠️ scope 名待控制台核对）。",
+    Description = "取消群置顶（⚠️ 全群可见的置顶会消失，消息本身不丢失——务必先 dry_run 预演并确认 chat_id 无误）。写操作：需 im:chat。",
     RequiredScopes = ["im:chat"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1ChatGroup) + "." + nameof(IFeishuTenantV1ChatGroup.DeleteChatGroupTopNoticeAsync))]
@@ -401,7 +401,7 @@ public interface IFeishuTenantChatgroupDeleteTopNoticeTool
 /// 扁平参数无法表达，故不策展（见 Guidance）。
 /// </remarks>
 [AgentTool("chatgroup.delete_menu",
-    Description = "删除群的快捷菜单一级入口（⚠️ 二级菜单会随父级一起消失——务必先 dry_run 预演并确认 chat_menu_top_level_ids 无误）。写操作：需 im:chat（⚠️ scope 名待控制台核对）。",
+    Description = "删除群的快捷菜单一级入口（⚠️ 二级菜单会随父级一起消失——务必先 dry_run 预演并确认 chat_menu_top_level_ids 无误）。写操作：需 im:chat。",
     RequiredScopes = ["im:chat"],
     IsWrite = true,
     Source = nameof(IFeishuTenantV1ChatGroupMenu) + "." + nameof(IFeishuTenantV1ChatGroupMenu.DeleteMenuByIdAsync))]

@@ -56,12 +56,12 @@ package_version: 3.1.1
 - `im.revoke_message`（写）：撤回一条自己发出的消息（发错内容时纠正）。只能撤回本 Bot 发送的消息；message_id 来自事件上下文或 im.get_history_messages。高危写（high-risk-write）：需 im:message。建议先 dry_run 预演确认目标消息。
 - `im.search_chats`（只读）：按关键词搜索群聊（返回 chat_id/name/描述）——用户只记得群名片段时的入口。只读，需 im:chat:readonly。
 - `im.search_messages`（只读）：按关键词搜索可见会话中的消息——支持按会话/发送者/时间过滤。返回消息 ID 与命中片段预览，可用 im.get_message_content 回查完整内容。只读，需 im:message:readonly。
-- `im.send_card`（写）：发送一张交互式卡片（标题＋正文＋按钮），用于让对方一眼看到要点并能直接点按钮——比纯文本更适合通知、待办、审批提醒。⚠️ 用结构化语法描述内容，**不要写 JSON**：body 每行一个元素（text:内容 / quote:内容 / code:内容 / divider），buttons 每行一个按钮（按钮文本|url|链接 或 按钮文本|value|回调值）。写操作：需 im:message。
+- `im.send_card`（写）：发送一张交互式卡片（标题＋正文＋按钮），用于让对方一眼看到要点并能直接点按钮——比纯文本更适合通知、待办、审批提醒。⚠️ 用结构化语法描述内容，**不要写 JSON**：body 每行一个元素（text:内容 / quote:内容 / code:内容 / divider），buttons 每行一个按钮（按钮文本|url|链接 或 按钮文本|value|回调值）。写操作：需 im:message:send_as_bot。
 - `im.send_file`（写）：把一个网络文件作为消息发送到指定会话（file_url 为 http/https 绝对地址，由宿主负责下载落盘）。file_name 必须带扩展名。写操作：需 im:resource 与 im:message:send_as_bot。
 - `im.send_image`（写）：把一张网络图片作为消息发送到指定会话（image_url 为 http/https 绝对地址，由宿主负责下载落盘）。写操作：需 im:resource 与 im:message:send_as_bot。
-- `im.send_message`（写）：发送文本消息到指定群聊或用户。写操作：需 im:message。首次面向陌生接收者时建议先以 dry_run=true 预演。
-- `im.urgent_app`（写）：把一条已发送消息加急给指定用户（飞书客户端来弹窗强提醒）——适用于对方可能漏看的紧急场景。⚠️ 会打扰对方，仅在确有需要时使用。message_id 来自 im.send_message；user_ids 为对方 open_id 数组。写操作：需 im:message。
-- `im.urgent_sms`（写）：把一条已发送消息以短信加急给指定用户（飞书客户端通知＋手机短信双通道）——比 im.urgent_app 打扰更强，仅在对方可能长时间离线的紧急场景使用。message_id 来自 im.send_message；user_ids 为对方 open_id 数组。写操作：需 im:message。
+- `im.send_message`（写）：发送文本消息到指定群聊或用户。写操作：需 im:message:send_as_bot。首次面向陌生接收者时建议先以 dry_run=true 预演。
+- `im.urgent_app`（写）：把一条已发送消息加急给指定用户（飞书客户端来弹窗强提醒）——适用于对方可能漏看的紧急场景。⚠️ 会打扰对方，仅在确有需要时使用；建议先 dry_run 预演确认目标消息与接收人。message_id 来自 im.send_message；user_ids 为对方 open_id 数组。高危写：需 im:message。
+- `im.urgent_sms`（写）：把一条已发送消息以短信加急给指定用户（飞书客户端通知＋手机短信双通道）——比 im.urgent_app 打扰更强，仅在对方可能长时间离线的紧急场景使用；建议先 dry_run 预演确认目标消息与接收人。message_id 来自 im.send_message；user_ids 为对方 open_id 数组。高危写：需 im:message。
 
 ## 参考文档（细则）
 - `references/cards.md`：`im/cards`

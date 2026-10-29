@@ -78,6 +78,7 @@ public class ToolErrorClassifierTests
     [Theory]
     [InlineData(99991663, 2)]
     [InlineData(99991661, 2)]
+    [InlineData(99991672, 2)]
     [InlineData(230001, 5)]
     [InlineData(null, 5)]
     public void ProductCodeTable_ShouldMapPermissionCodes(int? code, int expectedCategory)
